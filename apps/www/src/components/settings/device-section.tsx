@@ -23,6 +23,14 @@ import {
   typedCode,
   useHomeLink,
 } from "@/lib/home-link"
+import { keepPracticeOnHome, usePracticeShared } from "@/lib/home-link/practice"
+import {
+  KEEP_SENDING,
+  KEEP_SENDING_MORE,
+  KEEP_SENDING_REFUSED,
+  KEEP_SENDING_SAID,
+  KEPT_NOTE,
+} from "@/lib/home-link/practice-words"
 import { remember, remembered } from "@/lib/home-link/remembered"
 import { lastSend, onPhone, sendHome } from "@/lib/home-link/send"
 import type { SyncResult } from "@/lib/home-link/sync"
@@ -183,14 +191,19 @@ const StopButton = ({ stopping }: { stopping: boolean }): JSX.Element => (
 /**
  * "Send to home" in three taps' worth of steps (LA8): count what is here, a
  * confirm naming that count and the host, then the one button that sends,
- * with Stop while it runs.
+ * with Stop while it runs. The confirm offers, unticked every time, to keep
+ * sending Practice from now on (LA11); ticked, the send adds that choice to
+ * the consent log before it starts.
  */
 const SendHome = ({
   base,
+  pairing,
   refresh,
   state,
 }: {
   base: string
+  /** The pairing a ticked box keeps Practice on home under (LA11). */
+  pairing: string
   refresh: () => unknown
   state: HomeLinkState
 }): JSX.Element => {
@@ -199,12 +212,21 @@ const SendHome = ({
   const count = useAsyncIntent((_: undefined) => onPhone(), {
     presentation: "interactive",
   })
-  const run = useAsyncIntent((_: undefined) => sendHome(base, refresh), {
-    presentation: "interactive",
-  })
+  const run = useAsyncIntent(
+    (_: undefined) => sendHome({ base, id: pairing }, refresh),
+    {
+      presentation: "interactive",
+    }
+  )
   useIntentEffect(run, say)
   const asking = count.state.status === "succeeded" ? count.state.value : null
   const last = lastSend()
+  const kept = usePracticeShared().size > 0
+  const [keepSending, setKeepSending] = useState(false)
+  const ask = (): void => {
+    setKeepSending(false)
+    count.start(undefined)
+  }
 
   return (
     <div className="space-y-2">
@@ -216,7 +238,7 @@ const SendHome = ({
       ) : asking === null ? (
         <IntentButton
           state={count.state}
-          onPress={() => count.start(undefined)}
+          onPress={ask}
           disabled={activity.kind !== "idle"}
           variant="outline"
           size="sm"
@@ -241,11 +263,40 @@ const SendHome = ({
             Send {asking.what} to {host}? Finished sessions are cleared from
             this phone once they&apos;re there.
           </p>
+          {kept ? null : (
+            <div className="flex items-start gap-3 rounded-md border p-3">
+              <input
+                id="keep-sending"
+                type="checkbox"
+                aria-describedby="keep-sending-more"
+                className="accent-primary mt-0.5 size-5 shrink-0"
+                checked={keepSending}
+                onChange={(event) => setKeepSending(event.target.checked)}
+              />
+              <div className="space-y-0.5">
+                <Label htmlFor="keep-sending" className="text-sm font-medium">
+                  {KEEP_SENDING}
+                </Label>
+                <p
+                  id="keep-sending-more"
+                  className="text-muted-foreground text-xs"
+                >
+                  {KEEP_SENDING_MORE}
+                </p>
+              </div>
+            </div>
+          )}
           <div className="flex flex-wrap gap-2">
             <IntentButton
               state={run.state}
               onPress={() => {
                 count.reset()
+                if (
+                  keepSending &&
+                  !keepPracticeOnHome(pairing, KEEP_SENDING_SAID)
+                ) {
+                  toast.error(KEEP_SENDING_REFUSED)
+                }
                 run.start(undefined)
               }}
               disabled={activity.kind !== "idle"}
@@ -264,6 +315,9 @@ const SendHome = ({
           </div>
         </div>
       )}
+      {kept ? (
+        <p className="text-muted-foreground text-xs">{KEPT_NOTE}</p>
+      ) : null}
       {last === "" ? null : (
         <p className="text-muted-foreground text-xs break-all">
           Last send: {last}
@@ -368,12 +422,14 @@ export const DeviceSection = (): JSX.Element => {
               </p>
             ) : null}
             <p className="text-muted-foreground text-xs">
-              Nothing is sent unless you tap below, except aph once you keep it
-              on home: it syncs on its own while aph is open.
+              Nothing is sent unless you tap below, except what you chose to
+              keep on home, each only while it is open: aph, the Jobs record,
+              and Practice.
             </p>
             {confirmingUnpair ? null : (
               <SendHome
                 base={paired.base}
+                pairing={paired.id}
                 refresh={() => queryClient.invalidateQueries()}
                 state={state}
               />

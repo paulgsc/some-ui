@@ -49,6 +49,11 @@ What follows from them:
   notes), describe each thing by what it is and does, plus its honest limits. Skip foils
   and put-downs ("not another X", "not just a Y"): an affirmative definition says it all.
   The voice is plain and first-person, with no pitch and no promise of support.
+- **State in the person's terms.** What the app says about itself (sharing, sending,
+  saving, what failed) says what is kept where, and since when, never the machinery behind
+  it: no request, status code, address, state name or internal term such as "grant" or
+  "sync" reaches the screen. A surface's words live in one pure table that tests for this,
+  as Practice's sharing words do (`apps/www/src/lib/home-link/practice-words.ts`).
 - **Never lose the record.** Because A is real use, the data it leaves (study sessions,
   reflections, typing rounds, voice takes) is also the evidence of growth over time:
   struggling to read a sentence at the first beta, finishing sessions much later. That

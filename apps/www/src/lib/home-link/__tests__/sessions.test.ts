@@ -8,7 +8,8 @@
  * `file_host` does.
  */
 import { openNodeSqlite } from "@/test-support/node-sqlite-driver"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { openDeviceBackend } from "@/lib/device-backend/backend"
 import type * as SessionHandlers from "@/lib/device-backend/handlers/sessions"
@@ -19,6 +20,7 @@ import { createDeviceFetch } from "@/lib/device-backend/interceptor"
 import type { HomeAnswer } from "@/lib/device-backend/native-http"
 import type { HomeSend } from "@/lib/home-link/runtime"
 import { sendHome } from "@/lib/home-link/send"
+import { readSent } from "@/lib/home-link/sent"
 import {
   causedBy,
   HomeForgotPhoneError,
@@ -32,6 +34,7 @@ import { createInMemoryStorage } from "@/lib/tenant/storage"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 const BASE = "https://home.example/api/v1"
+const PAIRED = { base: BASE, id: "pairing-1" }
 
 /**
  * What the copy from Settings reaches through module state: the link (its
@@ -233,6 +236,9 @@ describe("copying the phone's sessions home", () => {
 })
 
 describe("letting the phone's copies go once home holds them", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
   const NOW = new Date("2026-10-15T10:00:00Z")
   const today = (id: string): SessionRecord => ({
     ...onPhone(id, "completed"),
@@ -240,6 +246,8 @@ describe("letting the phone's copies go once home holds them", () => {
   })
 
   it("lets go of finished sessions home holds, and keeps unfinished and today's", async () => {
+    const storage = memoryStorage()
+    vi.stubGlobal("window", { localStorage: storage })
     phone.sessions = [
       onPhone("a", "completed"),
       onPhone("b", "scheduled"),
@@ -247,7 +255,7 @@ describe("letting the phone's copies go once home holds them", () => {
     ]
     let refreshed = 0
     const result = await sendHome(
-      BASE,
+      PAIRED,
       (): void => {
         refreshed += 1
       },
@@ -260,6 +268,12 @@ describe("letting the phone's copies go once home holds them", () => {
     })
     expect(phone.sessions.map((s) => s.id)).toEqual(["b", "c"])
     expect(refreshed).toBe(1)
+    // Home holds the finished ones, for the standing send to skip; the
+    // planned one is not counted among them.
+    expect(Object.keys(readSent(storage, PAIRED.id).sessions).sort()).toEqual([
+      "a",
+      "c",
+    ])
     // What left the phone is still on home, as it was.
     const there = await createHttpSessionsRepository(homeTransport(send)).list()
     expect(there.find((s) => s.name === "Session a")).toMatchObject({
@@ -271,14 +285,14 @@ describe("letting the phone's copies go once home holds them", () => {
   it("brings home's copy up to date when a session moved on, then lets it go", async () => {
     // Copied while it was only planned, and finished on the phone since.
     phone.sessions = [onPhone("a", "scheduled")]
-    await sendHome(BASE, () => undefined, NOW)
+    await sendHome(PAIRED, () => undefined, NOW)
     expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
 
     phone.sessions = [
       { ...onPhone("a", "completed"), updatedAt: "2026-10-14T09:10:00.000Z" },
     ]
     sent = []
-    const result = await sendHome(BASE, () => undefined, NOW)
+    const result = await sendHome(PAIRED, () => undefined, NOW)
     expect(result.line).toBe("Copied 1 session. Cleared 1 from this phone.")
     expect(sent.filter((call) => call.startsWith("POST "))).toEqual([])
     expect(phone.sessions).toEqual([])
@@ -300,7 +314,7 @@ describe("letting the phone's copies go once home holds them", () => {
         updatedAt: "2026-10-14T12:00:00.000Z",
       },
     ]
-    await sendHome(BASE, () => undefined, NOW)
+    await sendHome(PAIRED, () => undefined, NOW)
     expect(phone.sessions).toEqual([])
     const there = await createHttpSessionsRepository(homeTransport(send)).list()
     expect(there.map((s) => s.name)).toEqual(["Renamed"])
@@ -312,7 +326,7 @@ describe("letting the phone's copies go once home holds them", () => {
       method === "GET" && path !== "/sessions"
         ? Promise.reject(new SyncStoppedError())
         : send(method, path, body)
-    const result = await sendHome(BASE, () => undefined, NOW)
+    const result = await sendHome(PAIRED, () => undefined, NOW)
     expect(result.ok).toBe(false)
     expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
   })

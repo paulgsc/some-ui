@@ -50,7 +50,8 @@ export type HomeLinkPorts = {
   onHidden: (listener: () => void) => () => void
 }
 
-type Pairing = { base: string; token: string }
+/** A pairing kept before it had an id is known by its base. */
+type Pairing = { base: string; token: string; id: string }
 
 function parsePairing(record: string): Pairing | null {
   try {
@@ -58,7 +59,11 @@ function parsePairing(record: string): Pairing | null {
     return isRecord(parsed) &&
       typeof parsed.base === "string" &&
       typeof parsed.token === "string"
-      ? { base: parsed.base, token: parsed.token }
+      ? {
+          base: parsed.base,
+          token: parsed.token,
+          id: typeof parsed.id === "string" ? parsed.id : parsed.base,
+        }
       : null
   } catch {
     return null
@@ -191,7 +196,8 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
   /** One pairing request, and the token kept; why not, when it was not. */
   const finishPairing = async (
     base: string,
-    code: string
+    code: string,
+    id: string
   ): Promise<PairFailure | null> => {
     // `pairingAddress` refuses http; this is the runtime's own guard.
     if (new URL(base).protocol !== "https:") return "other"
@@ -209,7 +215,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     const token = stringFieldOf(answer.body, "token")
     if (token === null) return "other"
     try {
-      await ports.credential.write(JSON.stringify({ base, token }))
+      await ports.credential.write(JSON.stringify({ base, token, id }))
     } catch {
       // Home made a session this phone cannot keep: end it, in the same
       // tap, rather than leave it to expire.
@@ -262,7 +268,11 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
           const pairing = record === null ? null : parsePairing(record)
           dispatch({
             type: "read",
-            found: pairing ? { base: pairing.base } : lost ? "lost" : null,
+            found: pairing
+              ? { base: pairing.base, id: pairing.id }
+              : lost
+                ? "lost"
+                : null,
           })
         },
         () => dispatch({ type: "read", found: "unreadable" })
@@ -275,10 +285,11 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       dispatch({ type: "pairPressed", base: address.base })
       if (state === before) return
       const { base } = address
-      const failure = await finishPairing(base, code)
+      const id = crypto.randomUUID()
+      const failure = await finishPairing(base, code, id)
       dispatch(
         failure === null
-          ? { type: "paired", base }
+          ? { type: "paired", base, id }
           : { type: "pairFailed", failure }
       )
     },

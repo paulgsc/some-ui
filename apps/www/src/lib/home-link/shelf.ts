@@ -7,7 +7,8 @@
  *
  * Home's answers are counted, never retried: a full shelf (`409`) and a
  * refused item (`422`) are counted and the send goes on; a `401` (home no
- * longer knows this phone) or no answer ends it there. Stop, or the app
+ * longer knows this phone), home being busy (`429`) or no answer ends it
+ * there. Stop, or the app
  * going to the background, ends it before the next item.
  */
 import { stringFieldOf } from "@/lib/device-backend/common"
@@ -46,11 +47,15 @@ export function emptyReport(): SendReport {
   }
 }
 
-/** PUTs `items` through `send`, once each, into `report`. */
+/**
+ * PUTs `items` through `send`, once each, into `report`; `heard` hears each
+ * item home answered for with its copy (`held`) or refused (`refused`).
+ */
 export async function sendKept(
   items: ReadonlyArray<Kept>,
   send: HomeSend,
-  report: SendReport
+  report: SendReport,
+  heard: (item: Kept, answer: "held" | "refused") => void = () => undefined
 ): Promise<void> {
   for (const item of items) {
     let status: number
@@ -70,12 +75,17 @@ export async function sendKept(
       report.forgotten = true
       return
     }
+    if (status === 429) {
+      report.unreachable = true
+      return
+    }
     if (status === 409) {
       report.full.set(item.activity, (report.full.get(item.activity) ?? 0) + 1)
       continue
     }
     if (status === 422) {
       report.refused += 1
+      heard(item, "refused")
       continue
     }
     const change = status === 200 ? stringFieldOf(body, "change") : null
@@ -87,5 +97,6 @@ export async function sendKept(
       continue
     }
     report.sent += 1
+    heard(item, "held")
   }
 }

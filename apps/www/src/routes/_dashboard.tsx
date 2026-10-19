@@ -41,6 +41,7 @@ import { useIsDeclaredBounded } from "@/lib/route-bounds"
 import { navOf, owns, webSettingsOf, wingOf } from "@/lib/wings"
 import { AudioIndicator } from "@/components/audio/audio-indicator"
 import { AccountUnavailableBanner } from "@/components/auth/account-unavailable-banner"
+import { DeviceHomeGlyph } from "@/components/device-home-glyph"
 import { LocIndicator } from "@/components/loc/loc-indicator"
 import {
   barOf,
@@ -254,6 +255,9 @@ const DashboardLayout = (): JSX.Element => {
             {(!MOBILE_APP || wing?.id === "studio") && <LocIndicator />}
             <SiteLauncher />
             {MOBILE_APP && <MobileSettingsLink pathname={pathname} />}
+            {/* Practice's sharing mark, which runs its standing send while shown (LA11). */}
+            {import.meta.env.VITE_DEVICE_BACKEND === "true" &&
+              wing?.id === "practice" && <DeviceHomeGlyph />}
           </header>
         )}
         {!bareViewport && <AccountUnavailableBanner />}

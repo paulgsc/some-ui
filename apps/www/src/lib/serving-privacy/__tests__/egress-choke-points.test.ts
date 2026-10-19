@@ -49,16 +49,19 @@ const HOME_LINK_CALLERS = new Set([
   "components/aph/device-keep-on-home.tsx",
   "components/jobs/keep-on-home.tsx",
   "components/device-keep-on-home.tsx",
+  // LA11: Practice's mark in the header, which mounts its watch.
+  "components/device-home-glyph.tsx",
 ])
 
 /**
- * LA9 and LA10: the modules that call the link's `keep`, one per record kept
- * on home, and their shared runtime, which calls it through the port each
- * hands it.
+ * LA9, LA10 and LA11: the modules that call the link's `keep`, one per record
+ * kept on home, and their shared runtime, which calls it through the port
+ * each hands it.
  */
 const KEEPERS = new Set([
   "lib/home-link/aph.ts",
   "lib/home-link/jobs.ts",
+  "lib/home-link/practice.ts",
   "lib/home-link/kept-runtime.ts",
 ])
 
@@ -413,7 +416,7 @@ describe("LA8: the phone reaches home through one module", () => {
     ).toEqual([])
   })
 
-  it("calls the link's keep only from a record's keeping (LA9, LA10)", () => {
+  it("calls the link's keep only from a record's keeping (LA9, LA10, LA11)", () => {
     const keeps = (f: string): boolean => /\.keep\(/.test(read(f))
     const reach = sources.filter(
       (f) =>
@@ -423,6 +426,7 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(reach.filter(keeps)).toEqual([])
     expect(read("lib/home-link/aph.ts")).toContain("homeLink().keep(")
     expect(read("lib/home-link/jobs.ts")).toContain("homeLink().keep(")
+    expect(read("lib/home-link/practice.ts")).toContain("homeLink().keep(")
   })
 
   it("still finds what it is meant to guard", () => {

@@ -5,7 +5,7 @@
  * (`./shelf`, which stay). One run, so one Stop ends both, and one line says
  * how it went.
  */
-import { counted } from "@some-ui/core-utils"
+import { counted, localStorageOrNull } from "@some-ui/core-utils"
 
 import { deviceBackend } from "@/lib/device-backend/boot"
 import { mayLeavePhone } from "@/lib/device-backend/handlers/sessions"
@@ -21,9 +21,11 @@ import type { SessionRecord } from "@/lib/tenant/types"
 import { hostOf } from "./address"
 import { homeLink } from "./index"
 import { remember, remembered } from "./remembered"
+import { readSent, rememberSent, sessionsHeld, shelfHeld } from "./sent"
 import { causedBy, copyAndConfirm, HomeForgotPhoneError } from "./sessions"
 import type { SendReport } from "./shelf"
 import { emptyReport, sendKept } from "./shelf"
+import { noticingBusy } from "./standing"
 import type { SyncResult } from "./sync"
 
 const LAST_SEND_KEY = "some-ui.device.last-send.v1"
@@ -32,7 +34,7 @@ const sessions = (n: number): string => counted(n, "session")
 const items = (n: number): string => counted(n, "kept item")
 
 /** What a send would carry. Reads only this phone. */
-async function readPhone(): Promise<{
+export async function readPhone(): Promise<{
   local: Array<SessionRecord>
   kept: Array<Kept>
 }> {
@@ -62,15 +64,18 @@ export type SendOutcome = {
   readonly shelf: SendReport
   /** What threw and ended the run early, if anything did. */
   readonly ended: unknown
+  /** Home answered `429` at least once: it was busy. */
+  readonly busy?: boolean
 }
 
 /** Why a send ended early, in the block's words. */
-function endedLine(error: unknown, host: string): string {
+function endedLine(error: unknown, host: string, busy: boolean): string {
   if (causedBy(error, SyncStoppedError))
     return "Stopped: send again to carry on."
   if (causedBy(error, HomeForgotPhoneError)) {
     return `${host} no longer knows this phone: unpair, then pair again.`
   }
+  if (busy) return "Home is busy right now: send again in a minute to carry on."
   return `Lost ${host}: send again to carry on.`
 }
 
@@ -96,7 +101,9 @@ export function describeSend(outcome: SendOutcome, host: string): string {
     !causedBy(why, SyncStoppedError) &&
     !causedBy(why, HomeForgotPhoneError)
   ) {
-    return `Couldn't reach ${host}. Are you on the home network? Nothing was sent.`
+    return outcome.busy === true
+      ? "Home is busy right now. Nothing was sent; try again in a minute."
+      : `Couldn't reach ${host}. Are you on the home network? Nothing was sent.`
   }
   const full = [...shelf.full.values()].reduce((a, b) => a + b, 0)
   const parts = [
@@ -110,9 +117,30 @@ export function describeSend(outcome: SendOutcome, host: string): string {
     held.differs.length > 0
       ? `${held.differs.length} kept: home's copy didn't match.`
       : "",
-    why === null ? "" : endedLine(why, host),
+    why === null ? "" : endedLine(why, host, outcome.busy === true),
   ].filter((part) => part !== "")
   return parts.length === 0 ? `${host} is up to date.` : parts.join(" ")
+}
+
+/**
+ * What this send left home holding under `pairing`, for the standing send
+ * (`./standing`) to skip: every finished session, once the copy ran to its
+ * end, and each kept item home answered for, or refused.
+ */
+async function rememberHeld(
+  pairing: string,
+  copy: CopyResult | null,
+  local: ReadonlyArray<SessionRecord>,
+  heard: { held: ReadonlyArray<Kept>; refused: ReadonlyArray<Kept> }
+): Promise<void> {
+  const storage = localStorageOrNull()
+  const finished = local.filter((s) => s.status === "completed")
+  const sessions = copy?.outcome.kind === "copied" ? sessionsHeld(finished) : {}
+  rememberSent(storage, readSent(storage, pairing), {
+    sessions,
+    shelf: await shelfHeld(heard.held),
+    refused: await shelfHeld(heard.refused),
+  })
 }
 
 /** "time · what happened" for the last send, or "". */
@@ -121,12 +149,12 @@ export function lastSend(): string {
 }
 
 /**
- * Sends this phone's sessions and kept items to the paired `base`, lets go
- * of the finished sessions home confirms it holds, and calls `refresh` once
- * any left. Never throws: a failure is a line.
+ * Sends this phone's sessions and kept items to the paired home at `base`,
+ * lets go of the finished sessions home confirms it holds, and calls
+ * `refresh` once any left. Never throws: a failure is a line.
  */
 export async function sendHome(
-  base: string,
+  { base, id }: { base: string; id: string },
   refresh: () => unknown = () => undefined,
   now = new Date()
 ): Promise<SyncResult> {
@@ -145,19 +173,27 @@ export async function sendHome(
     copy: null,
     ended: null,
   }
-  const run = await homeLink().send(async (send) => {
+  let seen = { busy: false }
+  const heard = { held: new Array<Kept>(), refused: new Array<Kept>() }
+  const run = await homeLink().send(async (link) => {
+    const noticed = noticingBusy(link)
+    seen = noticed.seen
+    const { send } = noticed
     try {
       const step = await copyAndConfirm(send, local, leaving, held)
       ran.copy = step.copy
       ran.ended = step.ended
       if (step.ended !== null || step.copy.outcome.kind !== "copied") return
-      await sendKept(kept, send, shelf)
+      await sendKept(kept, send, shelf, (item, answer) =>
+        heard[answer].push(item)
+      )
     } catch (error) {
       // Stopped, or home stopped answering: what was done stays done.
       ran.ended = error
     }
   })
   if (run === null) return { ok: false, line: "" }
+  await rememberHeld(id, ran.copy, local, heard).catch(() => undefined)
 
   let freed = 0
   let freeing = ""
@@ -167,7 +203,7 @@ export async function sendHome(
   } catch (error) {
     freeing = ` Couldn't clear them from this phone: ${String(error)}`
   }
-  const outcome: SendOutcome = { ...ran, held, freed, shelf }
+  const outcome: SendOutcome = { ...ran, held, freed, shelf, busy: seen.busy }
   const line = describeSend(outcome, host) + freeing
   remember(LAST_SEND_KEY, `${new Date().toLocaleString()} · ${line}`)
   const clean = whyEnded(outcome) === null && held.differs.length === 0

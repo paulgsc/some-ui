@@ -3,7 +3,9 @@
  *
  * LA8 on the phone's Settings: opening it reads only the phone's own pairing
  * and sends nothing; the destination is named before any tap that sends;
- * unpairing and sending each take a second, deliberate press.
+ * unpairing and sending each take a second, deliberate press. LA11: the send's
+ * confirm offers, unticked every time, to keep sending Practice, and only a
+ * tick adds that choice to the consent log.
  */
 
 import type { ReactNode } from "react"
@@ -12,6 +14,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type { HomeCall } from "@/lib/device-backend/native-http"
+import { CONSENT_KEY } from "@/lib/home-link/consent-runtime"
 
 const home = vi.hoisted(
   (): { sent: Array<unknown>; record: string | null } => ({
@@ -54,6 +57,7 @@ vi.mock("@/lib/device-backend/handlers/shelf", () => ({
     ]),
 }))
 vi.mock("@/lib/tenant/queries", () => ({
+  sessionsKey: ["tenant", "sessions"],
   sessionsRepository: {
     list: (): Promise<Array<object>> =>
       Promise.resolve([
@@ -81,6 +85,7 @@ afterEach(() => {
   cleanup()
   home.sent.length = 0
   home.record = null
+  localStorage.clear()
   vi.resetModules()
 })
 
@@ -192,5 +197,44 @@ describe("DeviceSection's Home server block", () => {
       url: "https://home.example/api/v1/sessions",
       token: "t",
     })
+  })
+
+  it("keeps sending Practice only when its box is ticked, and asks every time until then", async () => {
+    home.record = JSON.stringify({
+      base: "https://home.example/api/v1",
+      token: "t",
+    })
+    await open()
+    const box = (): HTMLInputElement =>
+      screen.getByRole("checkbox", { name: /keep sending these to home/i })
+
+    await press(/send to home.example/i)
+    expect(box().checked).toBe(false)
+    await press(/^send 3$/i)
+    expect(localStorage.getItem(CONSENT_KEY)).toBeNull()
+
+    await press(/send to home.example/i)
+    expect(box().checked).toBe(false)
+    act(() => {
+      fireEvent.click(box())
+    })
+    await press(/^send 3$/i)
+    const log: unknown = JSON.parse(localStorage.getItem(CONSENT_KEY) ?? "[]")
+    expect(log).toEqual([
+      expect.objectContaining({
+        kind: "kept",
+        pairing: "https://home.example/api/v1",
+        scopes: ["sessions", "shelf"],
+        said: expect.stringMatching(
+          /^Keep sending these to home from now on\./
+        ),
+      }),
+    ])
+
+    await press(/send to home.example/i)
+    expect(screen.queryByRole("checkbox")).toBeNull()
+    expect(
+      screen.getByText(/go to home on their own while Practice is open/)
+    ).toBeTruthy()
   })
 })

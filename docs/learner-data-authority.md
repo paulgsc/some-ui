@@ -30,21 +30,22 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 
 ## What leaves the device
 
-|                                     | Learning on the device                       | On the account, reporting off                                                                                                                                                               | On the account, reporting on               |
-| ----------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| Sessions, settings, profile         | `localStorage`, never sent                   | sessions go to `file_host`                                                                                                                                                                  | the same                                   |
-| Session probe (`GET /auth/session`) | never made                                   | at boot, only because the account was chosen                                                                                                                                                | the same                                   |
-| Passkey ceremonies                  | only when the person starts one              | the same                                                                                                                                                                                    | the same                                   |
-| Lesson, round and vocab reads       | made, **without credentials**                | made, without credentials                                                                                                                                                                   | the same                                   |
-| This device's sessions              | stay here                                    | copied only by "Copy to my account", per account, after a confirmation; the phone's, to its paired home, by "Send to home", which then frees the finished ones home confirms it holds (LA8) | the same                                   |
-| `/signals`, `/presence/lease`       | never                                        | never                                                                                                                                                                                       | sent                                       |
-| Push subscription                   | never                                        | never                                                                                                                                                                                       | the account's, on the person's own taps    |
-| Reflections                         | on the device (at most 20), never sent       | never sent (LA7)                                                                                                                                                                            | never sent (LA7)                           |
-| Shelf                               | never                                        | the account's, on the person's own taps                                                                                                                                                     | the same                                   |
-| aph (the phone's)                   | on the phone, never sent                     | once its person keeps it on home, on the paired home, synced while aph is open; the phone keeps only what home has not confirmed (LA9)                                                      | the same                                   |
-| Jobs record (the phone's)           | on the phone, never sent                     | once its person keeps it on home, a copy on the paired home, synced while the Jobs wing is open; the phone keeps its whole log (LA10)                                                       | the same                                   |
-| Speech                              | the browser's own voice                      | the server's speech service                                                                                                                                                                 | the same                                   |
-| Reminders                           | the client's own policy, while a tab is open | the client's own policy, while a tab is open                                                                                                                                                | the server's push, with the browser closed |
+|                                     | Learning on the device                       | On the account, reporting off                                                                                                                                                                | On the account, reporting on               |
+| ----------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| Sessions, settings, profile         | `localStorage`, never sent                   | sessions go to `file_host`                                                                                                                                                                   | the same                                   |
+| Session probe (`GET /auth/session`) | never made                                   | at boot, only because the account was chosen                                                                                                                                                 | the same                                   |
+| Passkey ceremonies                  | only when the person starts one              | the same                                                                                                                                                                                     | the same                                   |
+| Lesson, round and vocab reads       | made, **without credentials**                | made, without credentials                                                                                                                                                                    | the same                                   |
+| This device's sessions              | stay here                                    | copied only by "Copy to my account", per account, after a confirmation; the phone's, to its paired home, by "Send to home", which then frees the finished ones home confirms it holds (LA8)  | the same                                   |
+| `/signals`, `/presence/lease`       | never                                        | never                                                                                                                                                                                        | sent                                       |
+| Push subscription                   | never                                        | never                                                                                                                                                                                        | the account's, on the person's own taps    |
+| Reflections                         | on the device (at most 20), never sent       | never sent (LA7)                                                                                                                                                                             | never sent (LA7)                           |
+| Shelf                               | never                                        | the account's, on the person's own taps                                                                                                                                                      | the same                                   |
+| aph (the phone's)                   | on the phone, never sent                     | once its person keeps it on home, on the paired home, synced while aph is open; the phone keeps only what home has not confirmed (LA9)                                                       | the same                                   |
+| Jobs record (the phone's)           | on the phone, never sent                     | once its person keeps it on home, a copy on the paired home, synced while the Jobs wing is open; the phone keeps its whole log (LA10)                                                        | the same                                   |
+| Practice (the phone's)              | on the phone, never sent                     | once its person ticks "Keep sending" in the send's confirm, its finished sessions and kept items sent while Practice is open; nothing let go on its own; stopped from Practice's mark (LA11) | the same                                   |
+| Speech                              | the browser's own voice                      | the server's speech service                                                                                                                                                                  | the same                                   |
+| Reminders                           | the client's own policy, while a tab is open | the client's own policy, while a tab is open                                                                                                                                                 | the server's push, with the browser closed |
 
 A returning account user whose server cannot be reached at boot (a timeout, a
 5xx, a refused connection) stays on the account, and its calls fail where they
@@ -301,8 +302,8 @@ declared (checked by reading every call site and by the tests named).
 - _Claim:_ in the Android app, every request to the home server goes through
   `lib/device-backend/native-http` (the one module that names
   `CapacitorHttp`), which only `lib/home-link` calls, and, but for a record
-  kept on home (aph, LA9; the Jobs record, LA10: the other callers of
-  `lib/home-link`), is started by a tap
+  kept on home (aph, LA9; the Jobs record, LA10; Practice, LA11: the other
+  callers of `lib/home-link`), is started by a tap
   in the Home server block of Settings
   (`components/settings/device-section.tsx`):
   the sync (published lessons and rounds, read with no credential), pairing
@@ -317,7 +318,7 @@ declared (checked by reading every call site and by the tests named).
   lets go of its own copy of those alone, each unchanged since it was read;
   then one PUT per item kept on this phone's shelf, its bytes as kept,
   nothing read back and the item kept on the phone. Nothing on home is
-  deleted. Outside LA9 and LA10, nothing is sent when the app or Settings
+  deleted. Outside LA9 to LA11, nothing is sent when the app or Settings
   opens, on resume, on a timer or on a network change: making the runtime and
   `load` read only the phone's own record. There is no retry; a sync, a send,
   a copy or a record's keeping ends at Stop, or when the app goes to the
@@ -339,11 +340,12 @@ declared (checked by reading every call site and by the tests named).
   `CapacitorHttp`, call `native-http`, call `lib/home-link`); one that calls
   a `homeLink()` method that sends (`pair`, `unpair`, `sync`, `send`) from anywhere but
   a press handler in the Home server block or a module that block calls; one
-  that calls its `keep` from anywhere but `lib/home-link/aph.ts` (LA9) or
-  `lib/home-link/jobs.ts` (LA10); one that sends from `createHomeLink`,
+  that calls its `keep` from anywhere but `lib/home-link/aph.ts` (LA9),
+  `lib/home-link/jobs.ts` (LA10) or `lib/home-link/practice.ts` (LA11); one
+  that sends from `createHomeLink`,
   `load`, or, outside those two, a `useEffect`, a timer, a
   `visibilitychange` or `online` listener; one that retries a failed home
-  request, or queues one for later, outside LA9 and LA10; one that lets the send start without
+  request, or queues one for later, outside LA9 to LA11; one that lets the send start without
   its confirm, or drops a count or the host from that confirm; one that
   sends shelf items other than `everyKept`'s, or with a method other than
   `PUT`; one that passes `copySessionsTo` anything but session records
@@ -393,7 +395,8 @@ declared (checked by reading every call site and by the tests named).
 - _Why not enforced:_ who may reach home is, by test (`egress-choke-points`:
   `CapacitorHttp` named only in `native-http`, which only
   `lib/home-link/index.ts` imports as a value, and `lib/home-link` imported
-  only by the Home server block and the kept-on-home strips). What a test cannot say is that a call
+  only by the Home server block, the kept-on-home strips and Practice's
+  mark). What a test cannot say is that a call
   site in that block is a tap: a lint rule cannot
   tell a press handler from an effect that reaches it through a helper.
   Held when declared, by reading every caller (`device-section.tsx` alone
@@ -406,7 +409,12 @@ declared (checked by reading every call site and by the tests named).
   asked about stay) and
   `components/settings/__tests__/device-section.test.tsx` (opening Settings,
   paired or not, sends nothing; unpairing and the send each take a second
-  press).
+  press). Held again when Practice's mark (`components/device-home-glyph.tsx`)
+  joined the link's callers: it calls none of `pair`, `unpair`, `sync`,
+  `send` or `stop`, and reaches home only through Practice's `keep` lane,
+  by `askPractice` from its Send now button and the watch
+  `usePracticeHome` mounts, both LA11's; its Stop sending only adds to the
+  consent log.
 
 ### LA9: aph is sent home only while its person is using it
 
@@ -457,7 +465,7 @@ a run is asked for:
   lint rule cannot tell a press handler from an effect that reaches it
   through a helper. Held when declared, by reading every call: `askKept` is
   called in `watchKept`'s three listeners and its first ask, and in
-  `askAph` and `askJobs`; `askAph` and `keepAphOnHome` are passed only as
+  `askAph`, `askJobs` and `askPractice` (LA11); `askAph` and `keepAphOnHome` are passed only as
   the shared strip's `ask` and `keep`, which it calls only from its
   buttons' `onClick`s.
 
@@ -509,6 +517,91 @@ What no test can say is when a run is asked for:
   as LA9 says; `askJobs` and `keepJobsOnHome` are passed only as the shared
   strip's `ask` and `keep`; `JobsHomeWatch` is mounted only by the Jobs
   layout.
+
+### LA11: Practice is sent home on its own only while its person keeps sending it
+
+What a standing send carries, and that a choice only ever appends, is
+enforced by test: the fold over the consent log and that an unreadable log
+is never written over (`lib/home-link/__tests__/consent.test.ts`), that a
+run sends only what its person keeps sending, only finished sessions and
+what changed since that home held it, takes nothing of home's in and lets
+nothing go, and sends nothing more once stopped (`standing.test.ts`; home is
+read only as the send's copy reads it, to plan: `planTransfer`'s look at
+the copies it made before, `sessions.test.ts`), that the send's box
+starts unticked every time and only a tick adds the choice
+(`components/settings/__tests__/device-section.test.tsx`), that the mark
+sends nothing before the choice and "Stop sending" appends a stop
+(`components/__tests__/device-home-glyph.test.tsx`), and that the words
+name no machinery (`practice-words.test.ts`). Who reaches the link and its
+`keep` lane is `egress-choke-points`'s. Sharing is one way: home keeps what
+it received, and a stop means only that nothing new goes. What no test can
+say is when a run is asked for:
+
+- _Claim:_ `askKept` asks for a run of Practice's standing send
+  (`lib/home-link/standing.ts`) only at a moment its person is using
+  Practice: from `watchKept`, which for Practice only `usePracticeHome`
+  starts, for as long as Practice's mark (`components/device-home-glyph.tsx`,
+  mounted only in the Android app's header while the Practice wing shows) is
+  mounted, at the moments LA9 names, where the record's revision moves with
+  the consent log, the sessions the app has read and each shelf keep
+  (`onKept`); or from `askPractice`,
+  which the mark's sheet calls only from its Send now button. Each asks only
+  when the consent log keeps something on the paired home and the document
+  is visible. A choice counts for the pairing it was made under alone (the
+  link's `id` for it, made new at each pairing and kept with its key), so a
+  new pairing, even to the same address, starts with nothing kept; a run
+  sends only finished sessions and
+  kept items, and every request it makes first finds its scope still kept,
+  so a stop ends a run before its next request. A kept choice enters the
+  log only from the send confirm's press with its box ticked, and a stop
+  only from the sheet's second press. Nothing asks on a timer.
+- _Falsified by:_ a hunk to `lib/home-link/kept-watch.ts` as LA9's says; a
+  hunk to `lib/home-link/practice.ts` that calls `watchKept` from anywhere
+  but `usePracticeHome`'s effect, passes it anything but `record` and
+  `practiceHome()`, keeps that effect from returning the cleanup `watchKept`
+  returns, calls `askKept` from anywhere but `askPractice`, changes
+  `record.kept` or the standing send's `shared` to anything but
+  `sharedNow` of the consent log, or calls `phoneConsent().choose` from
+  anywhere but `keepPracticeOnHome` and `stopPracticeOnHome`; a hunk that
+  calls `phoneConsent().choose` outside `lib/home-link/practice.ts`, or that
+  mounts `DeviceHomeGlyph` anywhere but `routes/_dashboard.tsx`'s header
+  in the device build and the Practice wing; a hunk to
+  `components/device-home-glyph.tsx` that calls `askPractice` or
+  `stopPracticeOnHome` other than from a button's `onClick`, or lets the
+  first press of Stop sending stop; a hunk to
+  `components/settings/device-section.tsx` that calls `keepPracticeOnHome`
+  other than in the send's press with its box ticked, starts the box ticked,
+  or keeps a tick across confirms (`ask` unticks it); a hunk to
+  `lib/home-link/runtime.ts` that lets `pair` keep an earlier pairing's `id`,
+  or lets `load` report an `id` other than the one stored with the key; a
+  hunk to
+  `lib/home-link/consent-model.ts` that lets `appended` edit, reorder or drop
+  an earlier event, or lets `sharedAt` count an event made after `t` or
+  under another pairing; to
+  `lib/home-link/consent-runtime.ts` that writes the log when it could not
+  read it; to `lib/home-link/sent.ts` that lets `sessionsToSend` pass a
+  session that is not completed, or `readSent` return one pairing's record for
+  another; or to `lib/home-link/standing.ts` that sends a request without
+  `gated`'s check that its scope is still kept, reads home other than
+  through `copyHome`'s plan, takes home's copy in, lets a phone session go,
+  or confirms what home holds (`confirmHeld`), or sends other than through
+  `copyHome` and `sendKept`. Each lets something reach home, or
+  leave the phone, that its person did not choose.
+- _Scope:_ `apps/www/src/lib/home-link/consent-model.ts`,
+  `consent-runtime.ts`, `practice.ts`, `runtime.ts`, `sent.ts`, `standing.ts`,
+  `apps/www/src/components/device-home-glyph.tsx`,
+  `apps/www/src/components/settings/device-section.tsx`,
+  `apps/www/src/routes/_dashboard.tsx`.
+- _Why not enforced:_ as LA9's: whether a moment is one where the person is
+  using Practice is a reading of intent, which a test sees only as a
+  listener, and whether a call site is a press handler is not something a
+  lint rule can tell through a helper. Held when declared, by reading every
+  call: `watchKept` for Practice only in `usePracticeHome`; `askPractice` only
+  in the sheet's Send now `onClick`; `keepPracticeOnHome` only in
+  `device-section.tsx`'s send `onPress`, behind the ticked box;
+  `stopPracticeOnHome` only in the sheet's second Stop press; `choose` only
+  in those two; `DeviceHomeGlyph` mounted only in `_dashboard.tsx`'s header
+  under `VITE_DEVICE_BACKEND` and `wing?.id === "practice"`.
 
 ## Not covered, on purpose
 

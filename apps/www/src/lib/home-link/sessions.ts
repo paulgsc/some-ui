@@ -55,6 +55,21 @@ export function causedBy(
 }
 
 /**
+ * Copies `local` home through `send`, reading home only to plan the copy,
+ * and confirms nothing: the standing send's half (`./standing`, LA11),
+ * which never lets a phone session go.
+ */
+export function copyHome(
+  send: HomeSend,
+  local: ReadonlyArray<SessionRecord>
+): Promise<CopyResult> {
+  return copySessionsTo(
+    local,
+    createHttpSessionsRepository(homeTransport(send))
+  )
+}
+
+/**
  * Copies `local` home through `send`, then reads back each of `leaving` into
  * `held`. A read that throws ends it, keeping the copy's result and what
  * `held` confirmed before it; a copy that cannot start throws.

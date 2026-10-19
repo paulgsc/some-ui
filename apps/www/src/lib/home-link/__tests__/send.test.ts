@@ -95,4 +95,24 @@ describe("describeSend", () => {
       )
     ).toBe("home.example no longer knows this phone: unpair, then pair again.")
   })
+
+  it("says home was busy when it turned the send away", () => {
+    const busy = new Error("home answered 429")
+    expect(
+      describeSend(
+        outcome({ copy: null, ended: busy, busy: true }),
+        "home.example"
+      )
+    ).toBe("Home is busy right now. Nothing was sent; try again in a minute.")
+    const shelf = { ...emptyReport(), sent: 1, kept: 1, unreachable: true }
+    expect(describeSend(outcome({ shelf, busy: true }), "home.example")).toBe(
+      "Sent 1 kept item. Home is busy right now: send again in a minute to carry on."
+    )
+    expect(
+      describeSend(
+        outcome({ copy: null, ended: new SyncStoppedError(), busy: true }),
+        "home.example"
+      )
+    ).toBe("Stopped: send again to carry on.")
+  })
 })
