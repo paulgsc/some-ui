@@ -98,8 +98,14 @@ export type Input =
   | { readonly kind: "rules"; readonly rules: Rules; readonly t: number }
   /**
    * The owner held the face control on `videoId`'s plated page for its
-   * whole time (QD13, #1805).
+   * whole time (QD13, #1805), or, where the mode lets the thumbnail be
+   * hidden again, pressed it to hide (#1966): `shown` is which.
    */
-  | { readonly kind: "face"; readonly videoId: VideoId; readonly t: number }
+  | {
+      readonly kind: "face"
+      readonly videoId: VideoId
+      readonly shown: boolean
+      readonly t: number
+    }
 
 export type CoreEvent = Token | Input

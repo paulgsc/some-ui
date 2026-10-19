@@ -423,19 +423,23 @@ This is friction in the opposite place from the old ladder. The ladder put work
 between the owner and the _video_, so every bad card cost effort. The hold puts
 work only between the owner and the _thumbnail_, which nothing needs.
 
-_Status: holds (#1805, #1966)._ A plated video's poster is the plate: its
-tone is the video's, and the player's own poster does not paint, before play
-or once it ends. In the description, "Hold to show the original thumbnail"
+_Status: holds (#1805, #1966)._ A plated video's poster is the plate: its tone
+is the video's, and the player's own poster does not paint, before play or
+once it ends. In the description, "Hold to show the original thumbnail"
 reports a hold of three seconds without a break, by the pointer or by Space or
-Enter, when it is let go (`actuator/face-hold.ts`); a release before then, a
-lost pointer, Escape or focus leaving cancels it, no key or click on it
-reaches YouTube, and nothing on it changes while it is held. Core keeps the
-face for that view only (R9): a navigation, another video or a view no longer
-plated takes it away, and nothing stores it. The control goes once used, with
-no message, and comes back when YouTube draws the description again. Strict
-offers no control at all, and choosing it takes a shown face away (#1966).
-`face.spec.ts` F1–F6 prove each, locally, and `core.test.ts` that Strict
-takes a shown face away.
+Enter (`actuator/face-hold.ts`); a release before then, a lost pointer, Escape
+or focus leaving cancels it, no Space, Enter or click on it reaches YouTube,
+and nothing on it changes before the three seconds. Under Standard it reports
+when let go. Core keeps the face for that view only (R9): a navigation,
+another video or a view no longer plated takes it away, and nothing stores it.
+The control goes once used, with no message, and comes back when YouTube draws
+the description again. Strict offers no control at all, and choosing it takes
+a shown face away. Open shows the face at three seconds while still held, and
+the control stays as "Hide original": a press and release on it puts the plate
+back for that view. Switching to Standard with the face shown keeps it, with
+no control, until the view ends (#1966). `face.spec.ts` F1–F7 prove each,
+locally, and `core.test.ts` that Strict takes a shown face away and only Open
+hides one.
 
 ---
 
@@ -531,7 +535,7 @@ _Status: holds (#1803, #1807); the modes in part (#1966)._ No gesture changes
 a card. The popup holds the boundary and the switch, and Diagnostics logs
 every boundary change. The settings record carries the mode, every open tab
 follows it, and each change of it is appended to `choiceChanges`. The surfaces
-that set it, Open's face and the autoplay choice are #1966's later slices;
+that set it and the autoplay choice are #1966's later slices;
 until they land, every install is Standard and autoplay stops at a held video.
 
 ---
@@ -549,7 +553,8 @@ mechanism the thing on screen; the owner found that inauthentic.
 _Status: holds (#1803, #1805)._ The ladder and its hints are deleted, and a
 plated card carries no copy. A held watch page carries "Not here." and Back,
 and its tab title is "YouTube". A plated one carries the face control, its
-label the only copy, and it goes once used.
+label the only copy, and it goes once used, except under Open, where it
+reads "Hide original" (#1966).
 
 ## 5. The temporal model
 

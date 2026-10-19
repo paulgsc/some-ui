@@ -360,7 +360,7 @@ describe("evidence alone decides (R7)", () => {
       stop: { kind: "stop", t: 3 },
       boundary: { kind: "boundary", days: 2 * B, t: 3 },
       rules: { kind: "rules", rules: STRICT, t: 3 },
-      face: { kind: "face", videoId: asVideoId("vid_a"), t: 3 },
+      face: { kind: "face", videoId: asVideoId("vid_a"), shown: true, t: 3 },
     }
     for (const uploadDate of [OLD, "3 days ago"]) {
       const { state } = fold([started, seen(1, { uploadDate })])
@@ -558,6 +558,7 @@ describe("the watch page (R8, #1805)", () => {
     const face = (t: number, videoId = "vid_w"): CoreEvent => ({
       kind: "face",
       videoId: asVideoId(videoId),
+      shown: true,
       t,
     })
     const faces = (actions: ReadonlyArray<Action>): Array<unknown> =>
@@ -765,26 +766,53 @@ describe("the mode (R7, R9, #1966)", () => {
       },
       t: 1,
     }
-    const offers = (actions: ReadonlyArray<Action>): Array<boolean> =>
+    const offers = (actions: ReadonlyArray<Action>): Array<string> =>
       actions.flatMap((a) => (a.kind === "watch" ? [a.offer] : []))
     const faced = fold([
       started,
       page,
-      { kind: "face", videoId: asVideoId("vid_w"), t: 2 },
+      { kind: "face", videoId: asVideoId("vid_w"), shown: true, t: 2 },
     ])
     expect(faced.state.watch?.face).toBe(true)
-    expect(offers(faced.actions)).toEqual([true, true])
+    expect(offers(faced.actions)).toEqual(["release", "release"])
 
     const narrowed = reduce(faced.state, strict())
     expect(narrowed.state.watch?.face, "Strict takes the face away").toBe(false)
-    expect(offers(narrowed.actions)).toEqual([false])
+    expect(offers(narrowed.actions)).toEqual(["none"])
     const held = reduce(narrowed.state, {
       kind: "face",
       videoId: asVideoId("vid_w"),
+      shown: true,
       t: 6,
     })
     expect(held.actions, "no face under Strict").toEqual([])
-    expect(offers(reduce(narrowed.state, standard()).actions)).toEqual([true])
+    expect(offers(reduce(narrowed.state, standard()).actions)).toEqual([
+      "release",
+    ])
+
+    // Only Open lets the thumbnail be hidden again.
+    const hide: CoreEvent = {
+      kind: "face",
+      videoId: asVideoId("vid_w"),
+      shown: false,
+      t: 7,
+    }
+    expect(reduce(faced.state, hide).actions, "not under Standard").toEqual([])
+    const open = reduce(faced.state, {
+      kind: "rules",
+      rules: MODE_RULES.open.core,
+      t: 7,
+    })
+    expect(open.state.watch?.face, "Open keeps a shown face").toBe(true)
+    expect(offers(open.actions)).toEqual(["held"])
+    const hidden = reduce(open.state, hide)
+    expect(hidden.state.watch?.face).toBe(false)
+    expect(offers(hidden.actions)).toEqual(["held"])
+
+    // Back to Standard with the face shown: it stays, offered no control.
+    const back = reduce(open.state, standard())
+    expect(back.state.watch?.face).toBe(true)
+    expect(offers(back.actions)).toEqual(["release"])
   })
 
   it("keeps autoplay from a whole video in the lane under Strict", () => {

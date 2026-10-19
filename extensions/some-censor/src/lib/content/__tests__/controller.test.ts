@@ -61,7 +61,6 @@ function recordingRuntime(): { runtime: Runtime; calls: Array<string> } {
     },
     scan: () => {},
     setBoundary: (days) => calls.push(`boundary:${String(days)}`),
-    // Standard and Open share Core's rules; the first match names them.
     setRules: (rules) =>
       calls.push(
         `rules:${MODES.find((m) => MODE_RULES[m].core === rules) ?? "?"}`
@@ -149,7 +148,7 @@ it("applies the stored mode to Core and to the page (#1966)", async () => {
   expect(root.getAttribute(LOADING_ATTRIBUTE)).toBe("blank")
   expect(root.getAttribute(POSTS_ATTRIBUTE)).toBe("hidden")
   change({ v: 1, boundary: "1y", mode: "open" })
-  expect(calls.at(-1)).toBe("rules:standard")
+  expect(calls.at(-1)).toBe("rules:open")
   expect(root.getAttribute(LOADING_ATTRIBUTE)).toBe("blurred")
   expect(root.getAttribute(POSTS_ATTRIBUTE)).toBe("shown")
 })

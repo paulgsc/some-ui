@@ -28,6 +28,7 @@
  */
 
 import type { Action } from "@censor/lib/content/core/actions"
+import type { FaceWhen } from "@censor/lib/content/core/state"
 import type { WatchView } from "@censor/lib/content/fsm"
 import { admitted } from "@censor/lib/content/fsm"
 import type { VideoId } from "@censor/types/ids"
@@ -50,10 +51,11 @@ export type WatchHold = {
 
 export function createWatchHold(
   doc: Document,
-  onFace: (videoId: VideoId) => void
+  onFace: (videoId: VideoId, shown: boolean) => void
 ): WatchHold {
   let face: FaceControl | null = null
   let faceFor: VideoId | null = null
+  let faceWhen: FaceWhen | null = null
   /** Whether this module created `<html>`'s style attribute, for the poster. */
   let styled = false
   let current: WatchView | null = null
@@ -171,19 +173,34 @@ export function createWatchHold(
     }
     root.toggleAttribute("data-boyo-face", faced)
 
-    const offered =
-      offer && view === "plated" && !faced && !miniplayer && videoId !== null
-    if (!offered || description === null) {
+    // Under `held` the control stays once used, to hide the thumbnail again.
+    const when =
+      offer === "none" || (faced && offer === "release") ? null : offer
+    if (
+      when === null ||
+      view !== "plated" ||
+      miniplayer ||
+      videoId === null ||
+      description === null
+    ) {
       face?.dispose()
       face = null
       faceFor = null
+      faceWhen = null
       return
     }
-    if (face?.el.parentElement === description && faceFor === videoId) return
-    face?.dispose()
-    face = createFaceControl(doc, () => onFace(videoId))
-    faceFor = videoId
-    description.append(face.el)
+    if (
+      face?.el.parentElement !== description ||
+      faceFor !== videoId ||
+      faceWhen !== when
+    ) {
+      face?.dispose()
+      face = createFaceControl(doc, when, (shown) => onFace(videoId, shown))
+      faceFor = videoId
+      faceWhen = when
+      description.append(face.el)
+    }
+    face.shown(faced)
   }
 
   function realize(watch: WatchRender, description: HTMLElement | null): void {
@@ -241,7 +258,7 @@ export function createWatchHold(
           miniplayer: false,
           poster: null,
           face: false,
-          offer: false,
+          offer: "none",
         },
         null
       )

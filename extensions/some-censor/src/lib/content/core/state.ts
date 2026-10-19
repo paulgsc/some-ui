@@ -48,6 +48,9 @@ export type WatchState = {
 
 type Phase = "idle" | "running"
 
+/** When a full hold on the face control shows the thumbnail. */
+export type FaceWhen = "release" | "held"
+
 /**
  * What the owner's mode asks of Core (#1966). The rest of a mode is the
  * stylesheet's (`settings/modes.ts`).
@@ -59,15 +62,18 @@ export type Rules = {
    * admits, or into music only.
    */
   readonly fromMusic: "admitted" | "music"
-  /** Whether a plated watch page offers the face control (QD13). */
-  readonly face: boolean
+  /**
+   * Whether a plated watch page offers the face control, and when a full
+   * hold shows the thumbnail: let go, or still held (QD13).
+   */
+  readonly face: "none" | FaceWhen
 }
 
 /** Standard's rules, and every Core's until the shell supplies others. */
 export const STANDARD_RULES: Rules = {
   signs: "all",
   fromMusic: "admitted",
-  face: true,
+  face: "release",
 }
 
 export type CoreState = {
