@@ -99,6 +99,7 @@ export const PAGE_WORDS = {
   follows: "Every open YouTube tab follows as you choose.",
   allSettings: "All settings",
   diagnostics: "Diagnostics",
+  diagnosticsTip: "What it held and showed on each page, and why",
 } as const
 
 /** The tab and toolbar-button menu (`background.ts`). */
@@ -107,4 +108,5 @@ export const MENU_WORDS = {
   mode: MODE_QUESTION,
   autoplayStops: "Autoplay stops at held videos",
   settings: `${PAGE_WORDS.allSettings}…`,
+  diagnostics: PAGE_WORDS.diagnostics,
 } as const

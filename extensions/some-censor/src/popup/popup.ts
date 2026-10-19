@@ -52,7 +52,7 @@ function header(settings: Settings): HTMLElement {
 function choices(settings: Settings): HTMLElement {
   const el = document.createElement("div")
   el.className = "popup__choices"
-  el.inert = !settings.enabled
+  el.toggleAttribute("inert", !settings.enabled)
   el.append(
     segments({
       id: "mode",
@@ -99,7 +99,7 @@ function footer(): HTMLElement {
     diagnosticsLink({
       href: ext.runtime.getURL("debug.html"),
       label: PAGE_WORDS.diagnostics,
-      tooltip: "Card resolution health, metrics and the masking event timeline",
+      tooltip: PAGE_WORDS.diagnosticsTip,
     })
   )
   return el

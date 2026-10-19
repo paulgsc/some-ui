@@ -75,3 +75,36 @@ it("sets autoplay and leaves the mode as it is", async () => {
     })
   })
 })
+
+it("names each card by its mode and describes it by every row", async () => {
+  await mount({ v: 1 })
+  await vi.waitFor(() => expect(cards()).toHaveLength(3))
+  const strict = cards()[0]
+  const said = (ids: string | null | undefined): string =>
+    (ids ?? "")
+      .split(" ")
+      .map((id) => document.getElementById(id)?.textContent ?? "")
+      .join(" | ")
+  expect(said(strict?.getAttribute("aria-labelledby"))).toBe("Strict")
+  const description = said(strict?.getAttribute("aria-describedby"))
+  expect(description).toContain("Original thumbnail | Never shown")
+  expect(description).toContain("Cards still loading | Blank")
+  // The stored mode's card also says it is the current one.
+  expect(said(cards()[1]?.getAttribute("aria-describedby"))).toMatch(
+    /^Current \| /
+  )
+})
+
+it("while off, says so and leaves every choice out of reach", async () => {
+  await mount({ v: 1, enabled: false })
+  await vi.waitFor(() => expect(cards()).toHaveLength(3))
+  const toggle = document.querySelector('[role="switch"]')
+  expect(toggle?.getAttribute("aria-checked")).toBe("false")
+  const state = document.getElementById(
+    toggle?.getAttribute("aria-describedby") ?? ""
+  )
+  expect(state?.textContent).toBe("Off: plain YouTube")
+  for (const section of document.querySelectorAll(".options__section")) {
+    expect(section.hasAttribute("inert")).toBe(true)
+  }
+})

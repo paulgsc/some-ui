@@ -80,42 +80,55 @@ function card(mode: Mode, current: Mode): HTMLElement {
   name.id = `${mode}-name`
   const tag = el("span", "mode-card__tag", words.tag)
   tag.id = `${mode}-tag`
-  button.setAttribute("aria-labelledby", name.id)
-  button.setAttribute("aria-describedby", tag.id)
+  // A button's children are not read out on their own, so its description
+  // points at the badge, the tag and every row: what the cards compare.
+  const described = [tag.id]
 
   const top = el("span", "mode-card__top")
   top.append(name)
-  if (chosen) top.append(el("span", "mode-card__badge", PAGE_WORDS.current))
-  else if (mode === DEFAULT_SETTINGS.mode) {
-    top.append(
-      el("span", "mode-card__badge mode-card__badge--quiet", PAGE_WORDS.default)
-    )
+  const badge = chosen
+    ? el("span", "mode-card__badge", PAGE_WORDS.current)
+    : mode === DEFAULT_SETTINGS.mode
+      ? el(
+          "span",
+          "mode-card__badge mode-card__badge--quiet",
+          PAGE_WORDS.default
+        )
+      : null
+  if (badge) {
+    badge.id = `${mode}-badge`
+    described.unshift(badge.id)
+    top.append(badge)
   }
   button.append(top, tag)
 
-  for (const row of MODE_ROWS) {
+  MODE_ROWS.forEach((row, i) => {
     const line = el("span", "mode-card__row")
     const value = words.rows[row]
     const differs =
       mode !== DEFAULT_SETTINGS.mode && value !== defaults.rows[row]
-    line.append(
-      el("span", "mode-card__label", row),
-      el(
-        "span",
-        differs
-          ? "mode-card__value mode-card__value--differs"
-          : "mode-card__value",
-        value
-      )
+    const label = el("span", "mode-card__label", row)
+    label.id = `${mode}-row-${String(i)}`
+    const said = el(
+      "span",
+      differs
+        ? "mode-card__value mode-card__value--differs"
+        : "mode-card__value",
+      value
     )
+    said.id = `${label.id}-value`
+    described.push(label.id, said.id)
+    line.append(label, said)
     button.append(line)
-  }
+  })
+  button.setAttribute("aria-labelledby", name.id)
+  button.setAttribute("aria-describedby", described.join(" "))
   return button
 }
 
 function modes(settings: Settings): HTMLElement {
   const section = el("section", "options__section")
-  section.inert = !settings.enabled
+  section.toggleAttribute("inert", !settings.enabled)
   const head = el("div", "options__section-head")
   const h2 = el("h2", "options__h2", MODE_QUESTION)
   h2.id = "mode-heading"
@@ -135,7 +148,7 @@ function modes(settings: Settings): HTMLElement {
 
 function standalone(settings: Settings): HTMLElement {
   const section = el("section", "options__section options__choices")
-  section.inert = !settings.enabled
+  section.toggleAttribute("inert", !settings.enabled)
   section.append(
     segments({
       id: "age",

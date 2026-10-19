@@ -59,3 +59,25 @@ it("builds two quick clicks on each other, logging each change", async () => {
     { at: expect.any(Number), choice: "autoplay", from: "stop", to: "skip" },
   ])
 })
+
+it("while off, leaves every choice out of reach but the switch", async () => {
+  const fake = fakeStorage()
+  fake.store.set(SETTINGS_KEY, { v: 1, enabled: false })
+  Reflect.set(ext, "storage", {
+    local: fake.area,
+    onChanged: { addListener: () => {} },
+  })
+  Reflect.set(ext.runtime, "getURL", (path: string) => path)
+  document.body.innerHTML = '<div id="app"></div>'
+  vi.resetModules()
+  await import("@censor/popup/popup")
+
+  await vi.waitFor(() => {
+    expect(
+      document.querySelector(".popup__choices")?.hasAttribute("inert")
+    ).toBe(true)
+  })
+  expect(document.querySelector('[role="switch"]')?.closest("[inert]")).toBe(
+    null
+  )
+})
