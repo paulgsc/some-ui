@@ -88,7 +88,12 @@ describe("a spoken answer", () => {
     expect(log.getSnapshot().log.at(-2)).toMatchObject({
       type: "spoken",
       screen: "s15",
-      answer: { as: "recorded", seconds: 41, ticks: [RUBRIC[0], RUBRIC[2]] },
+      answer: {
+        as: "recorded",
+        seconds: 41,
+        ticks: [RUBRIC[0], RUBRIC[2]],
+        strong: true,
+      },
     })
     expect(takes.note).toHaveBeenCalledWith({
       take: "take-1",
@@ -118,7 +123,7 @@ describe("a spoken answer", () => {
     expect(log.getSnapshot().log.slice(-3)).toEqual([
       expect.objectContaining({
         type: "spoken",
-        answer: { as: "typed", ticks: [RUBRIC[1]] },
+        answer: { as: "typed", ticks: [RUBRIC[1]], strong: false },
       }),
       expect.objectContaining({
         type: "placed",

@@ -1,12 +1,16 @@
 import type { FC, JSX } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { Glosses } from "@leetype/components/incident/glosses"
+import { ParkedRounds } from "@leetype/components/incident/parked-rounds"
 import { ReadingScreenView } from "@leetype/components/incident/reading-screen"
 import { RecordScreenView } from "@leetype/components/incident/record-screen"
 import { RoundScreen } from "@leetype/components/incident/round-screen"
 import { SessionEnd } from "@leetype/components/incident/session-end"
 import { SessionStart } from "@leetype/components/incident/session-start"
-import type { IncidentPlayPorts } from "@leetype/lib/leetype/incident-play"
+import type {
+  IncidentPlayPorts,
+  TakeParked,
+} from "@leetype/lib/leetype/incident-play"
 import {
   declaredMinutes,
   IncidentPlayRuntime,
@@ -18,6 +22,7 @@ import {
   parkedRounds,
   placeOf,
 } from "@leetype/lib/leetype/incident-play/words"
+import type { ParkedRound } from "@leetype/lib/leetype/incident-play/words"
 import {
   createSessionLogStore,
   ledgerOf,
@@ -78,6 +83,8 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
     runtime.getSnapshot
   )
   useEffect(() => runtime.close, [runtime])
+  // Whether the rounds waiting on a reading are open during play.
+  const [waiting, setWaiting] = useState(false)
   const ended = play?.ended ?? null
   const page =
     // scroll-intent: reading-page: a round is one scrolling screen
@@ -85,14 +92,21 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
     "flex h-full flex-col overflow-y-auto px-4 pb-6"
 
   const limit = limitMinutes === undefined ? {} : { limitMinutes }
+  const here = { fileName, file }
+  const kept = log.getSnapshot().log
+  const parked = parkedRounds(kept, here).flatMap((round) => {
+    const screen = file.screens[round.round]
+    return screen?.type === "choice" || screen?.type === "record"
+      ? [{ ...round, screen }]
+      : []
+  })
+  // Taken before its reading was read, a return is asked for (Prop. 9.4 (d)).
+  const taken = (
+    { round, reading, read }: ParkedRound,
+    take: "return" | "round"
+  ): TakeParked => ({ round, reading, take, asked: !read })
 
   if (play === null) {
-    const here = { fileName, file }
-    const kept = log.getSnapshot().log
-    const parked = parkedRounds(kept, here).flatMap((round) => {
-      const screen = file.screens[round.round]
-      return screen?.type === "choice" ? [{ ...round, screen }] : []
-    })
     return (
       <div data-scroll-intent="reading-page" className={cn(page, className)}>
         <SessionStart
@@ -105,13 +119,13 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
           onStart={(form): void =>
             runtime.start({ fileName, file, form, ...limit })
           }
-          onRound={({ round, reading, read }, take): void =>
+          onRound={(round, take): void =>
             runtime.start({
               fileName,
               file,
               form: "short",
               ...limit,
-              from: { round, reading, take, asked: !read },
+              from: taken(round, take),
             })
           }
           onConfirmation={({ round }): void =>
@@ -124,6 +138,9 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
   }
   const screen = play.file.screens[play.screen]
   const dispatch = runtime.dispatch
+  // A round boundary: no reveal and no spoken answer before its rubric.
+  const boundary =
+    ended === null && play.reveal === null && play.spoken === null
 
   const body = ((): JSX.Element | null => {
     if (ended !== null || screen === undefined) {
@@ -243,16 +260,42 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
         <p className="min-w-0 truncate text-xs text-muted-foreground">
           {play.file.title}
         </p>
-        {ended === null && play.reveal === null && play.spoken === null && (
-          <Button
-            variant="ghost"
-            className="min-h-11"
-            onClick={(): void => dispatch({ type: "leave" })}
-          >
-            End here
-          </Button>
+        {boundary && (
+          <div className="flex shrink-0 gap-1">
+            {parked.length > 0 && (
+              <Button
+                variant="ghost"
+                className="min-h-11"
+                aria-expanded={waiting}
+                onClick={(): void => setWaiting((now) => !now)}
+              >
+                Rounds waiting
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              className="min-h-11"
+              onClick={(): void => dispatch({ type: "leave" })}
+            >
+              End here
+            </Button>
+          </div>
         )}
       </header>
+      {boundary && waiting && (
+        <div className="pb-4">
+          <ParkedRounds
+            parked={parked}
+            onRound={(round, take): void => {
+              setWaiting(false)
+              dispatch({ type: "take-parked", ...taken(round, take) })
+            }}
+            onConfirmation={({ round }): void =>
+              runtime.takeConfirmation(fileName, round)
+            }
+          />
+        </div>
+      )}
       {timeUp && ended === null && (
         <p
           role="status"

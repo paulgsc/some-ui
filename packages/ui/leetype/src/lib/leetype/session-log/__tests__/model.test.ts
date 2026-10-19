@@ -63,6 +63,7 @@ function aSession(
         as: "recorded",
         seconds: 41,
         ticks: ["A majority must hold the write"],
+        strong: false,
       },
     },
     { ...stamp(session), file, screen: "end", type: "ended", how: "left" },
@@ -173,6 +174,28 @@ describe("ledgerOf", () => {
     expect(ledger.parked).toEqual([])
     expect(ledger.walked).toEqual([{ file: "thread-1.json", screen: "r1b" }])
     expect(ledgerOf(logOf(events), "a").parked).toHaveLength(1)
+  })
+
+  it("keeps a take parked until a later answer on it is strong", () => {
+    const take = { file: "thread-1.json", screen: "s1" }
+    const said = (strong: boolean): SessionEvent => ({
+      ...stamp("b"),
+      ...take,
+      type: "spoken",
+      answer: { as: "typed", ticks: [], strong },
+    })
+    const events = [
+      ...aSession("a"),
+      { ...stamp("a"), ...take, type: "parked" } as const,
+      said(false),
+    ]
+    expect(ledgerOf(logOf(events), "b").parked).toContainEqual(
+      expect.objectContaining(take)
+    )
+    events.push(said(true))
+    expect(ledgerOf(logOf(events), "b").parked).not.toContainEqual(
+      expect.objectContaining(take)
+    )
   })
 
   it("keeps a reading saved until it is read, whatever else is done with it", () => {

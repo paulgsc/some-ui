@@ -234,6 +234,128 @@ describe("an incident session's steps, on a small file", () => {
     expect(play.ended).toBe("declared")
   })
 
+  it("carries a struggle's placement through an info screen to its reading", () => {
+    const r1 = FILE.screens.r1
+    if (r1?.type !== "choice") throw new Error("r1 is not a choice")
+    const viaInfo = SessionFileSchema.parse({
+      ...FILE,
+      screens: {
+        ...FILE.screens,
+        r1: {
+          ...r1,
+          options: r1.options.map((option) =>
+            option.correct ? option : { ...option, next: "n1" }
+          ),
+        },
+        n1: { type: "info", actions: [{ label: "On to it", next: "g1" }] },
+      },
+    })
+    const { play, events } = playThrough(
+      [GO, WRONG, ON, GO, { type: "ask-return" }, RIGHT],
+      { file: viaInfo }
+    )
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "placed",
+        screen: "r1",
+        reading: "g1",
+        as: "placement",
+      })
+    )
+    expect(play.screen).toBe("v1")
+    expect(events.at(-1)).toMatchObject({
+      type: "returned",
+      screen: "r1",
+      variant: "v1",
+      asked: true,
+    })
+  })
+
+  it("takes a parked round's return at a round boundary, then comes back to where it left", () => {
+    const skip = { type: "act", action: 1 } as const
+    const away = playThrough([
+      GO,
+      WRONG,
+      ON,
+      skip,
+      {
+        type: "take-parked",
+        round: "r1",
+        reading: "g1",
+        take: "return",
+        asked: true,
+      },
+    ])
+    expect(away.play).toMatchObject({ screen: "v1", scope: "round" })
+
+    const { play, events } = playThrough([
+      GO,
+      WRONG,
+      ON,
+      skip,
+      {
+        type: "take-parked",
+        round: "r1",
+        reading: "g1",
+        take: "return",
+        asked: true,
+      },
+      { type: "pick", option: 1 },
+      ON,
+    ])
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: "returned", screen: "r1", asked: true })
+    )
+    expect(play).toMatchObject({
+      screen: "r2",
+      scope: "file",
+      resume: null,
+      ended: null,
+    })
+  })
+
+  it("plays a parked round itself as a detour, through its placement, and back", () => {
+    const skip = { type: "act", action: 1 } as const
+    const { play, events } = playThrough([
+      GO,
+      WRONG,
+      ON,
+      skip,
+      RIGHT,
+      ON,
+      {
+        type: "take-parked",
+        round: "r1",
+        reading: "g1",
+        take: "round",
+        asked: true,
+      },
+      WRONG,
+      ON,
+      skip,
+    ])
+    expect(
+      events.filter((event) => event.type === "picked" && event.screen === "r1")
+    ).toHaveLength(2)
+    // Its way on leads to r2; the detour comes back to the take it left.
+    expect(play).toMatchObject({ screen: "k1", scope: "file", resume: null })
+  })
+
+  it("takes no parked round in the middle of a reveal", () => {
+    const { play } = playThrough([
+      GO,
+      WRONG,
+      {
+        type: "take-parked",
+        round: "r1",
+        reading: "g1",
+        take: "round",
+        asked: true,
+      },
+    ])
+    expect(play).toMatchObject({ screen: "r1", scope: "file" })
+  })
+
   it("leaves time in the background out of a selection's time", () => {
     const { events } = playThrough([GO, RIGHT], { hiddenMs: 700 })
     // Shown at 1000, picked at 2000, 700 of it in the background.

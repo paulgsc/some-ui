@@ -142,18 +142,23 @@ export function parkedRounds(
 ): ReadonlyArray<ParkedRound> {
   const session = lastSession(log)
   if (session === null) return []
+  // The store lays the log out session by session: time orders sessions,
+  // and a stable sort keeps a session's own order where times tie.
+  const byTime = [...log].sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
   return ledgerOf(log, session).parked.flatMap(({ file, screen, reading }) => {
     const round = here.file.screens[screen]
-    if (file !== here.fileName || round?.type !== "choice") return []
-    // Read after it was last placed, and after it was last returned: a
-    // return answered since waits on its reading again. The log is in the
-    // order things happened, so its order says which came last.
+    if (file !== here.fileName) return []
+    if (round?.type !== "choice" && round?.type !== "record") return []
+    // Read after it was last placed, returned or said: an answer given
+    // since waits on its reading again.
     let since = -1
     let readAt = -1
-    for (const [index, event] of log.entries()) {
+    for (const [index, event] of byTime.entries()) {
       if (event.file !== file) continue
       if (
-        (event.type === "placed" || event.type === "returned") &&
+        (event.type === "placed" ||
+          event.type === "returned" ||
+          event.type === "spoken") &&
         event.screen === screen
       ) {
         since = index

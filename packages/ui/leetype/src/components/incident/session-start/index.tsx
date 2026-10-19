@@ -1,9 +1,7 @@
-import type { FC } from "react"
-import { useState } from "react"
-import { WorkedAnswer } from "@leetype/components/incident/worked-answer"
+import type { ComponentProps, FC } from "react"
+import { ParkedRounds } from "@leetype/components/incident/parked-rounds"
 import type { PlayForm } from "@leetype/lib/leetype/incident-play"
 import type { ParkedRound } from "@leetype/lib/leetype/incident-play/words"
-import type { ChoiceScreen } from "@leetype/types/session-file"
 import { Button } from "@some-ui/shared"
 
 type SessionStartProps = {
@@ -13,7 +11,7 @@ type SessionStartProps = {
   place: string
   fullMinutes: number
   shortMinutes: number
-  parked: ReadonlyArray<ParkedRound & { readonly screen: ChoiceScreen }>
+  parked: ComponentProps<typeof ParkedRounds>["parked"]
   onStart: (form: PlayForm) => void
   /** Plays a parked round's return, or the round itself. */
   onRound: (round: ParkedRound, take: "return" | "round") => void
@@ -26,9 +24,7 @@ type SessionStartProps = {
 /**
  * A session's first screen (canon v1.2, Prop. 9.6): the session, where the
  * learner is in it, and its length, declared, with the short form beside
- * it. Every round of the file still parked is here too, its return, the
- * round itself and its worked confirmation each one tap away (Prop. 9.4
- * (d)); a return whose reading was read is said to be ready.
+ * it, and every round of the file still parked (`ParkedRounds`).
  */
 export const SessionStart: FC<SessionStartProps> = ({
   title,
@@ -42,8 +38,6 @@ export const SessionStart: FC<SessionStartProps> = ({
   onConfirmation,
   onBack,
 }) => {
-  // Which worked confirmations are open, by round.
-  const [open, setOpen] = useState<ReadonlyArray<string>>([])
   return (
     <article className="flex flex-col gap-4 py-2">
       <h2 className="text-pretty text-base font-semibold text-foreground">
@@ -79,62 +73,11 @@ export const SessionStart: FC<SessionStartProps> = ({
           </Button>
         )}
       </div>
-      {parked.length > 0 && (
-        <section
-          aria-label="Waiting on a reading"
-          className="flex flex-col gap-3"
-        >
-          <p className="text-sm font-medium text-foreground">
-            Waiting on a reading
-          </p>
-          {parked.map((round) => (
-            <div
-              key={round.round}
-              className="flex flex-col gap-2 rounded-lg border border-border/60 px-3 py-2"
-            >
-              <p className="text-pretty text-sm text-foreground">
-                {round.name}
-                {round.read ? ": you read what it was waiting on." : ""}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {round.returns && (
-                  <Button
-                    variant={round.read ? "default" : "outline"}
-                    className="min-h-11"
-                    onClick={(): void => onRound(round, "return")}
-                  >
-                    Try it with new numbers
-                  </Button>
-                )}
-                <Button
-                  variant="outline"
-                  className="min-h-11"
-                  onClick={(): void => onRound(round, "round")}
-                >
-                  Play it again
-                </Button>
-                {!open.includes(round.round) && (
-                  <Button
-                    variant="outline"
-                    className="min-h-11"
-                    onClick={(): void => {
-                      onConfirmation(round)
-                      setOpen((now) => [...now, round.round])
-                    }}
-                  >
-                    Show the worked answer
-                  </Button>
-                )}
-              </div>
-              {open.includes(round.round) && (
-                <div className="text-sm">
-                  <WorkedAnswer screen={round.screen} />
-                </div>
-              )}
-            </div>
-          ))}
-        </section>
-      )}
+      <ParkedRounds
+        parked={parked}
+        onRound={onRound}
+        onConfirmation={onConfirmation}
+      />
     </article>
   )
 }

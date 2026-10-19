@@ -13,7 +13,13 @@ import {
   step,
 } from "./model"
 
-export type { PlayForm, PlayInput, Reveal, SpokenAnswer } from "./model"
+export type {
+  PlayForm,
+  PlayInput,
+  Reveal,
+  SpokenAnswer,
+  TakeParked,
+} from "./model"
 export { declaredMinutes, returnFrom } from "./model"
 
 export type IncidentPlaySnapshot = {

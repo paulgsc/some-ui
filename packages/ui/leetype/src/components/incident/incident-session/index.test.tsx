@@ -301,10 +301,73 @@ describe("IncidentSession", () => {
       expect.objectContaining({
         type: "spoken",
         screen: "s15",
-        answer: { as: "typed", ticks: [take.rubric[0], take.rubric[3]] },
+        answer: {
+          as: "typed",
+          ticks: [take.rubric[0], take.rubric[3]],
+          strong: true,
+        },
       })
     )
     expect(screen.getByText("This session has ended.")).toBeTruthy()
+  })
+
+  it("keeps a parked round one tap away during play, and comes back from it", () => {
+    const { log } = mount()
+    fireEvent.click(
+      screen.getByRole("button", { name: /Start with incident 1/ })
+    )
+    // Nothing waits yet.
+    expect(screen.queryByRole("button", { name: "Rounds waiting" })).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: WRONG?.label }))
+    expect(screen.queryByRole("button", { name: "Rounds waiting" })).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }))
+    fireEvent.click(screen.getByRole("button", { name: /Save it/ }))
+    const left = screen.getByRole("heading").textContent
+
+    fireEvent.click(screen.getByRole("button", { name: "Rounds waiting" }))
+    fireEvent.click(
+      screen.getByRole("button", { name: "Show the worked answer" })
+    )
+    expect(screen.getByText(/^Holds:/)).toBeTruthy()
+    expect(log.getSnapshot().log.at(-1)).toMatchObject({
+      type: "confirmation-taken",
+      screen: "s02",
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Play it again" }))
+    fireEvent.click(screen.getByRole("button", { name: RIGHT?.label }))
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }))
+    fireEvent.click(screen.getByRole("button", { name: "Skip" }))
+    expect(screen.getByRole("heading").textContent).toBe(left)
+  })
+
+  it("offers a passed take back: said again, or its rubric shown", () => {
+    const log = createSessionLogStore(memoryStorage())
+    render(<IncidentSession fileName="t1-01" file={FILE} ports={{ log }} />)
+    fireEvent.click(screen.getByRole("button", { name: /one incident/ }))
+    fireEvent.click(
+      screen.getByRole("button", { name: /Start with incident 1/ })
+    )
+    fireEvent.click(screen.getByRole("button", { name: RIGHT?.label }))
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }))
+    fireEvent.click(screen.getByRole("button", { name: "Skip" }))
+    fireEvent.click(screen.getByRole("button", { name: /^Incident 1/ }))
+    fireEvent.click(screen.getByRole("button", { name: "Pass" }))
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }))
+    fireEvent.click(
+      screen.getByRole("button", { name: /Skip; the take waits/ })
+    )
+    cleanup()
+
+    const take = FILE.screens.s15
+    if (take?.type !== "record") throw new Error("s15 is not a take")
+    render(<IncidentSession fileName="t1-01" file={FILE} ports={{ log }} />)
+    fireEvent.click(
+      screen.getByRole("button", { name: "Show what a good answer says" })
+    )
+    expect(screen.getByText(take.rubric[0] ?? "")).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", { name: "Say it again" }))
+    expect(screen.getByText(take.prompt)).toBeTruthy()
   })
 
   it("leaves the first screen without starting, on Not now", () => {
