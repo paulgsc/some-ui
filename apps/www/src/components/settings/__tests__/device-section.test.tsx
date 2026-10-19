@@ -21,7 +21,7 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { sha256Hex } from "@/lib/device-backend/common"
-import type { HomeCall } from "@/lib/device-backend/native-http"
+import type { HomeRequest } from "@/lib/device-backend/native-http"
 import { CONSENT_KEY } from "@/lib/home-link/consent-runtime"
 import { SENT_KEY } from "@/lib/home-link/sent"
 
@@ -33,7 +33,9 @@ const home = vi.hoisted(
 )
 
 vi.mock("@/lib/device-backend/native-http", () => ({
-  homeRequest: (call: HomeCall): Promise<{ status: number; body: string }> => {
+  homeRequest: (
+    call: HomeRequest
+  ): Promise<{ status: number; body: string }> => {
     home.sent.push(call)
     return Promise.resolve({ status: 200, body: "{}" })
   },

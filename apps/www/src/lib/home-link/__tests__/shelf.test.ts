@@ -3,11 +3,11 @@
  * no retry; home's refusals are counted; a 401 or no answer ends it there;
  * a stop rejects before the next item.
  */
+import { noAnswer } from "@/test-support/no-answer"
+import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
-import type { HomeAnswer } from "@/lib/device-backend/native-http"
-import type { HomeSend } from "@/lib/home-link/runtime"
 import { emptyReport, sendKept } from "@/lib/home-link/shelf"
 
 const KEPT = [
@@ -17,7 +17,7 @@ const KEPT = [
 ]
 
 function home(answers: Array<HomeAnswer | Error>): {
-  send: HomeSend
+  send: HomeCall
   sent: Array<[string, string]>
 } {
   const sent: Array<[string, string]> = []
@@ -84,7 +84,7 @@ describe("sendKept", () => {
     expect(forgotten.sent).toHaveLength(2)
     expect(a).toMatchObject({ sent: 1, forgotten: true })
 
-    const lost = home([new Error("timeout")])
+    const lost = home([noAnswer()])
     const b = emptyReport()
     await sendKept(KEPT, lost.send, b)
     expect(lost.sent).toHaveLength(1)

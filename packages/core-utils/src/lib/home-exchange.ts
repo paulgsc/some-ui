@@ -6,12 +6,19 @@
  * over these.
  */
 
-/** A credentialed request to the paired home, at `path` under its API base. */
+/** What home answered: its status, and its body as text. */
+export type HomeAnswer = { status: number; body: string; etag?: string }
+
+/**
+ * A credentialed request to the paired home, at `path` under its API base,
+ * with `body` sent as these bytes. The one request port every exchange with
+ * home sends through.
+ */
 export type HomeCall = (
-  method: "GET" | "PUT",
+  method: "GET" | "POST" | "PUT" | "PATCH",
   path: string,
   body?: string
-) => Promise<{ status: number; body: string }>
+) => Promise<HomeAnswer>
 
 /** How an exchange that got its answers ended. */
 export type HomeExchanged =

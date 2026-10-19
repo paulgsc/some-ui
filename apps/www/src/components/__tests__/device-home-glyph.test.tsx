@@ -20,7 +20,7 @@ import {
 } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import type { HomeCall as NativeCall } from "@/lib/device-backend/native-http"
+import type { HomeRequest as NativeCall } from "@/lib/device-backend/native-http"
 import type { AphKeeping } from "@/lib/home-link/aph"
 import { CONSENT_KEY } from "@/lib/home-link/consent-runtime"
 import type { JobsState } from "@/lib/jobs/model"
@@ -36,10 +36,19 @@ const home = vi.hoisted(
   } => ({
     credential: { base: "https://home.example/api/v1", token: "t" },
     sent: [],
-    answer: () => Promise.reject(new Error("no route to host")),
+    answer: () => unreachable(),
     jobs: { snapshot: null },
   })
 )
+/**
+ * Home giving no answer, as `native-http` says it: the error from this
+ * test's module registry, which `vi.resetModules` renews for each test.
+ */
+async function unreachable(): Promise<never> {
+  const { noAnswer } = await import("@/test-support/no-answer")
+  throw noAnswer()
+}
+
 const SESSION = sessionRecord({
   status: "completed",
   id: "s1",
@@ -103,8 +112,7 @@ afterEach(() => {
   vi.resetModules()
   localStorage.clear()
   home.sent = []
-  home.answer = (): Promise<never> =>
-    Promise.reject(new Error("no route to host"))
+  home.answer = (): Promise<never> => unreachable()
   home.jobs.snapshot = null
   home.credential = { base: PAIRING, token: "t" }
 })

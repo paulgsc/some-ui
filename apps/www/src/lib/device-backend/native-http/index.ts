@@ -19,6 +19,7 @@
  * rounds against the server's attested hash.
  */
 import { CapacitorHttp } from "@capacitor/core"
+import type { HomeAnswer } from "@some-ui/core-utils"
 import type { ForeignPort, ForeignVerdict } from "@some-ui/intent-kit"
 import {
   callForeign,
@@ -31,9 +32,8 @@ import { foreignValue, isMissingPlugin } from "@/lib/intent/foreign"
 /** Long enough for a slow LAN; short enough to say "unreachable" promptly. */
 const TIMEOUT_MS = 10_000
 
-export type HomeAnswer = { status: number; body: string; etag?: string }
-
-export type HomeCall = {
+/** One request as the plugin sends it; the phone's exchanges send `HomeCall`s. */
+export type HomeRequest = {
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
   url: string
   /** The pairing's session token, sent as `Authorization: Bearer`. */
@@ -83,7 +83,7 @@ const PORT: ForeignPort = {
   report: reportFailure,
 }
 
-export async function homeRequest(call: HomeCall): Promise<HomeAnswer> {
+export async function homeRequest(call: HomeRequest): Promise<HomeAnswer> {
   const { method, url, token, body, ifNoneMatch } = call
   if (token !== undefined && new URL(url).protocol !== "https:") {
     throw new InsecureHomeError()

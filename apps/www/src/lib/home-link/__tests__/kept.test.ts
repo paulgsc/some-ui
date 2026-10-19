@@ -6,7 +6,8 @@
  * (`@some-ui/aph`'s `lib/__tests__/sync.test.ts`, www's
  * `lib/jobs/__tests__/home.test.ts`, `standing.test.ts`).
  */
-import type { HomeExchanged } from "@some-ui/core-utils"
+import { noAnswer } from "@/test-support/no-answer"
+import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
@@ -17,9 +18,9 @@ import type { Kept, KeptPorts } from "@/lib/home-link/kept-runtime"
 import { createKept, laneExchange } from "@/lib/home-link/kept-runtime"
 import type { Lane } from "@/lib/home-link/lanes"
 import { INITIAL, step } from "@/lib/home-link/model"
-import type { HomeLink, HomeSend } from "@/lib/home-link/runtime"
+import type { HomeLink } from "@/lib/home-link/runtime"
 
-const send: HomeSend = () => Promise.resolve({ status: 200, body: "" })
+const send: HomeCall = () => Promise.resolve({ status: 200, body: "" })
 
 /** The link's `keep`: runs `run` at once, or turns it away. */
 function keep(busy = false): HomeLink["keep"] {
@@ -80,8 +81,12 @@ describe("a record kept on home", () => {
 
   it("says home was unreachable, or the run stopped, when the exchange throws", async () => {
     expect(
-      await lastOf({ exchange: () => Promise.reject(new Error("no route")) })
+      await lastOf({ exchange: () => Promise.reject(noAnswer()) })
     ).toEqual({ kind: "unreachable", at: 7 })
+    // A fault on this phone is not home's silence.
+    expect(
+      await lastOf({ exchange: () => Promise.reject(new TypeError("x.y")) })
+    ).toEqual({ kind: "failed", why: "something on this phone went wrong" })
     expect(
       await lastOf({
         exchange: () => Promise.reject(new SyncStoppedError()),
@@ -178,11 +183,11 @@ function lane(requests: number, ends: HomeExchanged): Lane {
 
 /** Home answering each request with the next of `statuses`, then 200. */
 function home(statuses: Array<number> = []): {
-  send: HomeSend
+  send: HomeCall
   sent: Array<string>
 } {
   const sent: Array<string> = []
-  const send: HomeSend = (_, path) => {
+  const send: HomeCall = (_, path) => {
     sent.push(path)
     return Promise.resolve({ status: statuses.shift() ?? 200, body: "" })
   }
@@ -220,7 +225,7 @@ describe("a lane's run", () => {
       () => "p",
       () => (stopped ? new Set() : kept())
     )
-    const gated: HomeSend = async (method, path, body) => {
+    const gated: HomeCall = async (method, path, body) => {
       const answer = await send(method, path, body)
       stopped = true
       return answer

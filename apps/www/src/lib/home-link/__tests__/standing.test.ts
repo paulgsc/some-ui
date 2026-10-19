@@ -4,13 +4,12 @@
  * taken in or let go, and a stop honoured before the next request.
  */
 import { sessionRecord } from "@/test-support/session-record"
+import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { describe, expect, it } from "vitest"
 
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
-import type { HomeAnswer } from "@/lib/device-backend/native-http"
 import type { Scope } from "@/lib/home-link/consent-model"
-import type { HomeSend } from "@/lib/home-link/runtime"
 import { readSent, SENT_KEY } from "@/lib/home-link/sent"
 import type { StandingPorts } from "@/lib/home-link/standing"
 import { sendStanding } from "@/lib/home-link/standing"
@@ -44,14 +43,14 @@ function setup(
   } = {}
 ): {
   ports: StandingPorts
-  send: HomeSend
+  send: HomeCall
   puts: Array<string>
   copies: Array<Array<string>>
 } {
   const puts: Array<string> = []
   const copies: Array<Array<string>> = []
   const answers = over.answers ?? []
-  const send: HomeSend = (method, path) => {
+  const send: HomeCall = (method, path) => {
     expect(method).toBe("PUT")
     puts.push(path)
     return Promise.resolve(
@@ -210,7 +209,7 @@ describe("a standing send", () => {
     let kept = true
     const { ports, send, puts } = setup({ scopes: ["shelf"] })
     ports.shared = (): ReadonlySet<Scope> => new Set(kept ? ["shelf"] : [])
-    const sendThenStop: HomeSend = async (method, path, body) => {
+    const sendThenStop: HomeCall = async (method, path, body) => {
       const answer = await send(method, path, body)
       kept = false
       return answer

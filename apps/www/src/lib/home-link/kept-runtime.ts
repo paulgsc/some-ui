@@ -6,7 +6,8 @@
  * exchange as a run makes it (`laneExchange`). The record's screens read
  * its snapshot; they hold no request of their own.
  */
-import type { HomeExchanged } from "@some-ui/core-utils"
+import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
+import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 
@@ -14,12 +15,15 @@ import type { Scope } from "./consent-model"
 import type { KeptEvent, KeptRun, KeptState } from "./kept-model"
 import { INITIAL_KEPT, stepKept } from "./kept-model"
 import type { Lane } from "./lanes"
-import type { HomeLink, HomeSend } from "./runtime"
-import { noticingBusy } from "./runtime"
+import type { HomeLink } from "./runtime"
+import { noticingBusy, unanswered } from "./runtime"
+import { HomeUnansweredError } from "./shelf"
+
+const FAULT = "something on this phone went wrong"
 
 export type KeptPorts = {
   /** One exchange through `send`; throws what `send` throws. */
-  exchange: (send: HomeSend) => Promise<HomeExchanged>
+  exchange: (send: HomeCall) => Promise<HomeExchanged>
   keep: HomeLink["keep"]
   /** Whether the phone is paired, read when the link turns a run away. */
   paired: () => boolean
@@ -56,7 +60,16 @@ export function createKept(ports: KeptPorts): Kept {
         : value
     } catch (error) {
       if (error instanceof SyncStoppedError) return { kind: "stopped" }
-      return { kind: "unreachable", at: ports.now() }
+      if (unanswered(error) || error instanceof HomeUnansweredError) {
+        return { kind: "unreachable", at: ports.now() }
+      }
+      // A fault on this phone, not home's silence: it goes to the native
+      // log, and the mark says something went wrong.
+      reportFailure({
+        port: "home server (kept)",
+        error: { ...toIntentError(error), summary: FAULT },
+      })
+      return { kind: "failed", why: FAULT }
     }
   }
 
@@ -84,7 +97,7 @@ export function createKept(ports: KeptPorts): Kept {
 
 const BUSY: HomeExchanged = { kind: "failed", why: "busy" }
 
-type Exchange = (send: HomeSend) => Promise<HomeExchanged>
+type Exchange = (send: HomeCall) => Promise<HomeExchanged>
 
 /**
  * `exchange` ending as busy once home answered any of its requests `429`,
@@ -117,7 +130,7 @@ export function laneExchange(
     if (under === null || shared().size === 0) {
       return Promise.resolve({ kind: "synced" })
     }
-    const gated: HomeSend = (method, path, body) =>
+    const gated: HomeCall = (method, path, body) =>
       shared().size > 0
         ? link(method, path, body)
         : Promise.reject(new SyncStoppedError())

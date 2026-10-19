@@ -8,7 +8,7 @@
  * the lane's mark mounts `useLaneHome`.
  */
 import { useEffect, useSyncExternalStore } from "react"
-import type { HomeExchanged } from "@some-ui/core-utils"
+import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { fnv1a } from "@some-ui/core-utils"
 
 import type { Scope, Shared } from "./consent-model"
@@ -22,7 +22,6 @@ import { createKept, laneExchange, sayingBusy } from "./kept-runtime"
 import type { KeptRecord } from "./kept-watch"
 import { askKept, watchKept } from "./kept-watch"
 import type { HomeLinkState } from "./model"
-import type { HomeSend } from "./runtime"
 
 export type LaneId = "practice" | "aph" | "jobs"
 
@@ -57,7 +56,7 @@ export type Lane = {
    * kept as it runs. Throws what `send` throws.
    */
   readonly exchange: (
-    send: HomeSend,
+    send: HomeCall,
     at: { pairing: string; shared: () => ReadonlySet<Scope> }
   ) => Promise<HomeExchanged>
   /** Moves when this phone changes what the lane would send. */
@@ -78,7 +77,7 @@ export type Lane = {
    * throws.
    */
   readonly bringBack?: (
-    send: HomeSend,
+    send: HomeCall,
     stopped: () => boolean
   ) => Promise<HomeExchanged>
 }

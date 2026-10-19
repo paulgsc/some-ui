@@ -4,9 +4,10 @@
  * unpair forgets it on the phone whether or not home heard; Stop and the
  * background end a sync before its next request.
  */
+import type { HomeAnswer } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
-import type { HomeAnswer, HomeCall } from "@/lib/device-backend/native-http"
+import type { HomeRequest } from "@/lib/device-backend/native-http"
 import type { CredentialPort, HomeLink } from "@/lib/home-link/runtime"
 import { createHomeLink } from "@/lib/home-link/runtime"
 
@@ -15,7 +16,7 @@ const HOME = { base: "https://home.example/api/v1", host: "home.example" }
 type Options = {
   record?: string | null
   lost?: boolean
-  answer?: (call: HomeCall) => HomeAnswer | Promise<HomeAnswer>
+  answer?: (call: HomeRequest) => HomeAnswer | Promise<HomeAnswer>
   write?: CredentialPort["write"]
   clear?: CredentialPort["clear"]
   read?: CredentialPort["read"]
@@ -23,14 +24,14 @@ type Options = {
 
 type Home = {
   link: HomeLink
-  sent: Array<HomeCall>
+  sent: Array<HomeRequest>
   record: () => string | null
   hide: () => void
 }
 
 function setup(options: Options = {}): Home {
   let record = options.record ?? null
-  const sent: Array<HomeCall> = []
+  const sent: Array<HomeRequest> = []
   let hide: () => void = () => undefined
   const credential: CredentialPort = {
     read:
