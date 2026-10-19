@@ -1,10 +1,13 @@
 import { mentionsWord } from "@some-ui/core-utils"
 
-import type { Digest } from "./digest"
+import type { Digest, Pick } from "./digest"
 import { RESUME_VARIANTS, SOFTWARE_VARIANTS } from "./digest"
 import { fingerprint, role as roleOf } from "./fingerprint"
 import {
   EXCLUDED_TITLE,
+  FORBIDDEN_TERMS,
+  MAX_ANSWER_WORDS,
+  MAX_COVER_LETTER_WORDS,
   MAX_OPEN_PICKS,
   MAX_POSTING_AGE_DAYS,
   PATCH_PRS_PER_RUN,
@@ -24,10 +27,91 @@ function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(to) - Date.parse(from)) / DAY_MS)
 }
 
+/** A phone number, in any of the ways a US one is written. */
+const PHONE = /(?<!\d)(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}(?!\d)/
+
+/** A street address: a house number, a name, and a street word. */
+const STREET =
+  /\b\d{1,6}\s+(?:[A-Z][\w'-]*\s+){1,3}(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Way|Dr|Drive|Ln|Lane|Ct|Court|Pl|Place|Ter|Terrace)\b/
+
+/** A kit row for a detail I type myself (an email address is not one). */
+const TYPED_BY_ME = /\b(?:phone|mobile|cell|(?<!e-?mail\s)address)\b/i
+
+function wordCount(draft: string): number {
+  return draft.split(/\s+/).filter(Boolean).length
+}
+
+/**
+ * A kit's drafts: within their caps, every required question answered, and
+ * nothing in them or the kit's rows that I never let a run write: a term the
+ * evidence doesn't support, one this pick says not to claim, or a contact
+ * detail beyond the email and links (ROUTINE.md §7).
+ */
+function kitFindings(pick: Pick, at: string): ReadonlyArray<Finding> {
+  const found: Array<Finding> = []
+  const { kit } = pick
+  const drafts: Array<[path: string, draft: string, cap: number]> = []
+  if (kit.coverLetter !== null)
+    drafts.push(["coverLetter", kit.coverLetter, MAX_COVER_LETTER_WORDS])
+  kit.questions.forEach((question, i) => {
+    if (question.draft !== null)
+      drafts.push([`questions.${i}.draft`, question.draft, MAX_ANSWER_WORDS])
+    else if (question.required)
+      found.push({
+        path: `${at}.kit.questions.${i}.draft`,
+        message: "a required question has a draft",
+      })
+  })
+  if (kit.compensation !== null)
+    drafts.push(["compensation.why", kit.compensation.why, MAX_ANSWER_WORDS])
+
+  const banned = [...FORBIDDEN_TERMS, ...pick.dontClaim]
+  for (const [path, draft, cap] of drafts) {
+    const words = wordCount(draft)
+    if (words > cap)
+      found.push({
+        path: `${at}.kit.${path}`,
+        message: `${words} words; the most is ${cap}`,
+      })
+    const term = banned.find((t) => mentionsWord(draft, t))
+    if (term)
+      found.push({
+        path: `${at}.kit.${path}`,
+        message: `claims "${term}", which ${FORBIDDEN_TERMS.includes(term) ? "the evidence doesn't support" : "dontClaim rules out"}`,
+      })
+  }
+
+  const rows = { fields: kit.fields, answers: kit.answers }
+  const texts: Array<[path: string, text: string]> = drafts.map(
+    ([path, draft]) => [path, draft]
+  )
+  if (kit.compensation !== null)
+    texts.push(["compensation.ask", kit.compensation.ask])
+  for (const [kind, list] of Object.entries(rows)) {
+    list.forEach((row, i) => {
+      texts.push([`${kind}.${i}`, row.value])
+      if (TYPED_BY_ME.test(row.label))
+        found.push({
+          path: `${at}.kit.${kind}.${i}.label`,
+          message: `"${row.label}" is mine to type`,
+        })
+    })
+  }
+  for (const [path, value] of texts) {
+    if (PHONE.test(value) || STREET.test(value))
+      found.push({
+        path: `${at}.kit.${path}`,
+        message: "a phone number or street address is mine to type",
+      })
+  }
+  return found
+}
+
 /**
  * What the schema cannot say about a digest: the policy's limits, the
- * queue's room, one fingerprint per posting, and no fit that claims what the
- * same pick says not to claim. An empty list is what a run uploads.
+ * queue's room, one fingerprint per posting, no fit that claims what the
+ * same pick says not to claim, and each kit's drafts (`kitFindings`). An
+ * empty list is what a run uploads.
  */
 export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
   const found: Array<Finding> = []
@@ -203,6 +287,7 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
             : `older than ${MAX_POSTING_AGE_DAYS} days on ${digest.day}`,
       })
     }
+    found.push(...kitFindings(pick, at))
     pick.fits.forEach((fit, j) => {
       const claim = `${fit.title} ${fit.detail}`
       const term = pick.dontClaim.find((t) => mentionsWord(claim, t))

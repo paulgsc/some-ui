@@ -49,7 +49,7 @@ shallow, read-only clone):
 - `packages/ui/resume/src/data/personal.typ`: location, work authorization and
   education.
 - `packages/ui/resume/scripts/check-claims.mjs`: `FORBIDDEN_TERMS`, which never
-  appear in a fit.
+  appear in a fit or a draft.
 
 Every fit cites one of these. Its `source` names the repo and path
 (`server · scripts/check_metric_contract.py`) or the job
@@ -388,13 +388,69 @@ a time. Its PRs carry the label `jobs-patch`, and only theirs do.
 
 ## 7. The kit
 
+The kit is what I paste into the posting's own application form, so read that
+form first. Each board serves it apart from the posting:
+
+- **Greenhouse:**
+  `https://boards-api.greenhouse.io/v1/boards/<board>/jobs/<id>?questions=true`.
+  Each entry of `questions` has a `label`, `required`, and `fields[].type`;
+  free text is a `textarea`, or an `input_text` the standard rows below don't
+  cover. "Cover Letter" is the cover letter. Skip `location_questions`,
+  `compliance` and `demographic_questions`.
+- **Ashby:** `POST https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiJobPosting`
+  with `content-type: application/json` and this body, the posting's board
+  name and id filled in:
+
+  ```json
+  {
+    "operationName": "ApiJobPosting",
+    "variables": {
+      "organizationHostedJobsPageName": "<org>",
+      "jobPostingId": "<id>"
+    },
+    "query": "query ApiJobPosting($organizationHostedJobsPageName: String!, $jobPostingId: String!) { jobPosting(organizationHostedJobsPageName: $organizationHostedJobsPageName, jobPostingId: $jobPostingId) { applicationForm { sections { fieldEntries { ... on FormFieldEntry { isRequired field } } } } } }"
+  }
+  ```
+
+  Each entry's `field` has a `title`, a `type` and a `path`; free text is a
+  `String` or `LongText` whose `path` is not a `_systemfield_` (name, email,
+  résumé). `cover_letter` is the cover letter.
+
+- **Lever:** the posting's `applyUrl` page (HTML). Its standard questions are
+  each a `<div class="application-label">`, a trailing `✱` marking one
+  required. Its custom questions are in each hidden input named
+  `cards[<id>][baseTemplate]`, whose `value` is entity-escaped JSON:
+  each of its `fields` has a `text`, a `type` (free text is `textarea` or
+  `text`) and `required`.
+- **A Hacker News post** has no form: leave the questions, the cover letter
+  and the pay expectation out.
+
+A form that can't be read leaves them out too; say so in the summary. Then:
+
 - **Fields:** email, GitHub and portfolio from the identity block of
   `packages/ui/resume/src/data/resume.typ`, and location from `personal.typ`.
-  Never a phone number or street address: I type those myself.
+  Never a phone number or street address: I type those myself, so no row is
+  labelled for them.
 - **Answers:** work authorization ("Yes, for any employer") and sponsorship
-  ("Not needed") when the form asks. Add nothing the evidence doesn't say.
-- **Why:** a draft of at most 120 words, only when the form asks for one,
-  built from the pick's fits.
+  ("Not needed") when the form asks, and any other choice the form offers
+  that the evidence settles. Add nothing the evidence doesn't say. Never
+  answer pronouns, demographics or an EEO question.
+- **Questions:** every free-text question the form asks, in `questions`, with
+  its `label` as the form words it and `required` as the form marks it. Each
+  required one gets a `draft`; an optional one gets one when the pick's fits
+  answer it, else `draft: null`. A draft is at most `MAX_ANSWER_WORDS` (150),
+  or the form's own limit when it states a shorter one ("in 2–3 sentences").
+- **Cover letter:** a `coverLetter` draft of at most `MAX_COVER_LETTER_WORDS`
+  (250), only when the form takes one.
+- **Compensation:** only when the form asks my pay expectation. `ask` is a
+  figure inside the posting's range, toward its top for a strong fit, or, when
+  it states none, "Open to the range for this role". `why` says how, in a
+  sentence.
+
+Every draft is first person and built from the pick's `fits`, restating what
+they say. It never claims a gap, a term in the pick's `dontClaim`, or one of
+`FORBIDDEN_TERMS`, and never carries a phone number or address. The checker
+holds the drafts to all of this.
 
 ## 8. Write it
 

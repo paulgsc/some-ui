@@ -9,6 +9,7 @@ import {
 } from "@job-desk/digest"
 import { digestFindings } from "@job-desk/findings"
 import { fingerprint } from "@job-desk/fingerprint"
+import { FORBIDDEN_TERMS } from "@job-desk/policy"
 import { parseScouts } from "@job-desk/scouts"
 import { describe, expect, it } from "vitest"
 
@@ -98,6 +99,14 @@ describe("the résumé lists a digest names", () => {
       ...source.matchAll(/^ {2}([a-z-]+): \(\s*track: "software"/gm),
     ].map(([, name]) => name)
     expect(SOFTWARE_VARIANTS).toEqual(software)
+  })
+
+  it("rule out the terms the résumé does", () => {
+    const [, list] = /const FORBIDDEN_TERMS = \[([^\]]*)\]/.exec(
+      resumeFile("scripts/check-claims.mjs")
+    )!
+    const terms = [...list!.matchAll(/"([^"]+)"/g)].map(([, term]) => term)
+    expect(FORBIDDEN_TERMS).toEqual(terms)
   })
 
   it("are the layouts that take contact details", () => {
@@ -410,6 +419,104 @@ describe("digestFindings", () => {
       review: null,
     })
     expect(messages(digest)).toEqual(["scouts.1.pickId: no pick nope-123"])
+  })
+
+  it("drafts every required question the form asks", () => {
+    const digest = sample()
+    digest.picks[0]!.kit.questions[0]!.draft = null
+    digest.picks[0]!.kit.questions[1]!.required = true
+    expect(messages(digest)).toEqual([
+      "picks.0.kit.questions.0.draft: a required question has a draft",
+      "picks.0.kit.questions.1.draft: a required question has a draft",
+    ])
+  })
+
+  it("holds each draft to its length", () => {
+    const digest = sample()
+    const { kit } = digest.picks[0]!
+    kit.coverLetter = "word ".repeat(251)
+    kit.questions[0]!.draft = "word ".repeat(151)
+    expect(messages(digest)).toEqual([
+      "picks.0.kit.coverLetter: 251 words; the most is 250",
+      "picks.0.kit.questions.0.draft: 151 words; the most is 150",
+    ])
+  })
+
+  it("finds a draft that claims what the evidence or the pick rules out", () => {
+    const digest = sample()
+    const { kit } = digest.picks[0]!
+    kit.coverLetter = "I have run services on Kubernetes."
+    kit.questions[0]!.draft = "I kept the .NET services on-call."
+    expect(messages(digest)).toEqual([
+      'picks.0.kit.coverLetter: claims "Kubernetes", which the evidence doesn\'t support',
+      'picks.0.kit.questions.0.draft: claims ".NET", which the evidence doesn\'t support',
+    ])
+    kit.coverLetter = "Years of managed cloud tenure."
+    kit.questions[0]!.draft = null
+    kit.questions[0]!.required = false
+    expect(messages(digest)).toEqual([
+      'picks.0.kit.coverLetter: claims "Managed cloud tenure", which dontClaim rules out',
+    ])
+  })
+
+  it("leaves my phone number and address to me", () => {
+    const digest = sample()
+    const { kit } = digest.picks[0]!
+    kit.coverLetter = "Call me at (510) 555-0134."
+    kit.compensation = { ask: "$110,000", why: "I live at 12 Oak Street." }
+    kit.fields.push({ label: "Phone", value: "on request" })
+    kit.answers.push({ label: "Street address", value: "Berkeley" })
+    expect(messages(digest)).toEqual([
+      'picks.0.kit.fields.4.label: "Phone" is mine to type',
+      'picks.0.kit.answers.2.label: "Street address" is mine to type',
+      "picks.0.kit.coverLetter: a phone number or street address is mine to type",
+      "picks.0.kit.compensation.why: a phone number or street address is mine to type",
+    ])
+  })
+
+  it("takes a pay range or an email address as neither", () => {
+    const digest = sample()
+    const { kit } = digest.picks[0]!
+    kit.compensation = {
+      ask: "$110,000",
+      why: "Inside the posted $95,000–$115,000 range, 2026-10-19.",
+    }
+    kit.fields.push({ label: "Email address", value: "me@example.com" })
+    expect(messages(digest)).toEqual([])
+  })
+
+  it("opens a digest written before the form was read", () => {
+    const [first, second, ...rest] = sample().picks
+    const digest = {
+      ...sample(),
+      picks: [
+        { ...first, kit: { fields: [], answers: [], why: null } },
+        {
+          ...second,
+          kit: {
+            fields: [],
+            answers: [],
+            why: { prompt: "Why us?", draft: "The booking app." },
+          },
+        },
+        ...rest,
+      ],
+    }
+    const parsed = parseDigest(JSON.stringify(digest))
+    if (!parsed.ok) throw new Error(parsed.problem)
+    const [old, folded] = parsed.value.picks
+    expect(old!.kit).toEqual({
+      fields: [],
+      answers: [],
+      coverLetter: null,
+      questions: [],
+      compensation: null,
+    })
+    expect(folded!.kit.questions).toEqual([
+      { label: "Why us?", required: false, draft: "The booking app." },
+    ])
+    // What the phone keeps opens again as it was.
+    expect(parseDigest(JSON.stringify(parsed.value))).toEqual(parsed)
   })
 })
 
