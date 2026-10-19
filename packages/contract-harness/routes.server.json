@@ -425,6 +425,20 @@
     },
     {
       "method": "GET",
+      "path": "/sharing",
+      "full_path": "/api/v1/sharing",
+      "versioned": true,
+      "module": "sharing"
+    },
+    {
+      "method": "PUT",
+      "path": "/sharing/:scope",
+      "full_path": "/api/v1/sharing/:scope",
+      "versioned": true,
+      "module": "sharing"
+    },
+    {
+      "method": "GET",
       "path": "/shelf/:activity",
       "full_path": "/api/v1/shelf/:activity",
       "versioned": true,
@@ -464,6 +478,13 @@
       "full_path": "/api/v1/subjects/me/stats",
       "versioned": true,
       "module": "subjects"
+    },
+    {
+      "method": "POST",
+      "path": "/sync/:collection/batch",
+      "full_path": "/api/v1/sync/:collection/batch",
+      "versioned": true,
+      "module": "sync"
     },
     {
       "method": "POST",
