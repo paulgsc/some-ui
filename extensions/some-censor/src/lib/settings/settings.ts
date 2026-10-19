@@ -6,10 +6,10 @@
  * through {@link followSettings}. An unreadable field parses to its default,
  * so a bad record never admits more than a fresh install does.
  *
- * Every boundary change is appended to `boundaryChanges`, and every change
- * of mode to `choiceChanges`, which only the Diagnostics page reads: the
- * doctrine's §9 falsifier is "`B` keeps getting lowered", and that needs the
- * history, kept whole.
+ * Every boundary change is appended to `boundaryChanges`, which only the
+ * Diagnostics page reads, and every change of mode to `choiceChanges`, kept
+ * for it too: the doctrine's §9 falsifier is "`B` keeps getting lowered",
+ * and that needs the history, kept whole.
  */
 
 import { DEFAULT_BOUNDARY_DAYS } from "@censor/lib/content/maturity/maturity"

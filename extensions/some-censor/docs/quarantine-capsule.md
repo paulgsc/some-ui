@@ -434,7 +434,8 @@ face for that view only (R9): a navigation, another video or a view no longer
 plated takes it away, and nothing stores it. The control goes once used, with
 no message, and comes back when YouTube draws the description again. Strict
 offers no control at all, and choosing it takes a shown face away (#1966).
-`face.spec.ts` F1–F6 prove each, locally.
+`face.spec.ts` F1–F6 prove each, locally, and `core.test.ts` that Strict
+takes a shown face away.
 
 ---
 

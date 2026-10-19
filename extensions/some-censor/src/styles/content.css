@@ -598,9 +598,10 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
 /* Open shows a community post's own images (#1966). They are drawn in
    `ytd-backstage-image-renderer`, one per image of a single or a
    multi-image post; the post's author photo is not in it, and stays
-   hidden. */
+   hidden. A post inside an element stamped plated stays plated: the
+   plate paints no image under its stamp (QD12). */
 :root:not([data-boyo-off])[data-boyo-posts="shown"]
-  ytd-backstage-image-renderer
+  ytd-backstage-image-renderer:not([data-boyo="plated"] *)
   yt-img-shadow
   img {
   visibility: visible !important;
