@@ -6,7 +6,8 @@
 // per sweep. The token's hourly budget is shared by every workflow in the
 // repo, so a sweep stops, reads or deletes, once fewer than RATE_FLOOR
 // requests are left, and the next one continues. Run states come from each
-// producing workflow's paged run list, not one request per run.
+// producing workflow's paged run list, with a capped lookup for a run the
+// list's date bound misses.
 //
 // Runs on Node's built-in type stripping with no install, like
 // check-workflows.ts.
@@ -15,7 +16,6 @@ import { appendFileSync } from "node:fs"
 // A relative import on purpose: Node's type stripping resolves no path aliases.
 // eslint-disable-next-line no-restricted-imports
 import {
-  ARTIFACT_FAMILIES,
   artifactFamily,
   plan,
   type Artifact,
@@ -25,6 +25,7 @@ import {
 } from "../packages/eslint/src/retention.ts"
 
 const RATE_FLOOR = 300
+const MAX_RUN_LOOKUPS = 50
 
 const token = process.env.GITHUB_TOKEN ?? ""
 const repo = process.env.GITHUB_REPOSITORY ?? ""
@@ -119,22 +120,34 @@ async function sweep(): Promise<string> {
     return run.conclusion === "success" ? "validated" : "failed"
   }
 
-  // A run missing from every listing reads as pending, so nothing of it is
-  // deleted.
   const runs = new Map<number, RunState>()
-  const producing = new Set(ARTIFACT_FAMILIES.flatMap((f) => f.workflows))
   for (const workflow of await pages(
     "/actions/workflows?per_page=100",
     "workflows"
   )) {
     const date = since.get(str(workflow.name))
-    if (!producing.has(str(workflow.name)) || date === undefined) continue
+    if (date === undefined) continue
     for (const run of await pages(
       `/actions/workflows/${num(workflow.id)}/runs?per_page=100&created=%3E%3D${date}`,
       "workflow_runs"
     )) {
       runs.set(num(run.id), stateOf(run))
     }
+  }
+  // A run can start well before its upload (one waiting for an approval), so
+  // the listing above misses it: look it up, up to a cap. One still missing
+  // reads as pending, so nothing of it is deleted.
+  const missing = [
+    ...new Set(
+      artifacts
+        .filter((a) => artifactFamily(a.name) && !runs.has(a.runId))
+        .map((a) => a.runId)
+    ),
+  ]
+  for (const runId of missing.slice(0, MAX_RUN_LOOKUPS)) {
+    const response = await request(`/actions/runs/${runId}`)
+    const run: unknown = response.ok ? await response.json() : undefined
+    if (isJson(run)) runs.set(runId, stateOf(run))
   }
 
   const caches: Array<Cache> = (

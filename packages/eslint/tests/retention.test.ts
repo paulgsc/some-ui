@@ -58,6 +58,14 @@ function deletedIds(s: State, families = [APK, TWO, PAGES]): Array<number> {
 }
 
 describe("artifact families", () => {
+  it("keeps `keep` validated generations in arrears", () => {
+    const s = state(
+      [1, 2, 3].map((n) => artifact(`two-${SHA(n)}`, n)),
+      [1, 2, 3].map((n) => [n, "validated"])
+    )
+    expect(deletedIds(s)).toEqual([10])
+  })
+
   it("abandons a failed generation only once a newer one is validated", () => {
     const failedFirst = state([artifact(`apk-${SHA(1)}`, 1)], [[1, "failed"]])
     expect(deletedIds(failedFirst)).toEqual([])

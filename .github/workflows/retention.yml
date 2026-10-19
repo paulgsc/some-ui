@@ -2,10 +2,10 @@ name: Retention
 # The retention state machine (packages/eslint/src/retention.ts; CLAUDE.md,
 # "Workflow storage") over every artifact and Actions cache. It runs after
 # each workflow that uploads a family kept across runs, so a new copy prunes
-# the old at once; after Trunk, which runs on every push to main, when merged
-# PRs' refs stop being live and consumed artifacts have been validated; and
-# daily. Each sweep plans from the whole current state, so one cancelled or
-# skipped loses nothing.
+# the old at once; after Trunk, which runs on every push to main, when a
+# merged PR's refs stop being live; and daily. Each sweep plans from the whole
+# current state (any workflow's consumed artifacts included), so one cancelled
+# or skipped loses nothing.
 #
 # Report-only: it prints what it would delete (#1950). On a pull request that
 # changes its own files it always reports, which is how a change is tried

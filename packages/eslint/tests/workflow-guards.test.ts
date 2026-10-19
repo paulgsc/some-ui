@@ -366,6 +366,29 @@ describe("producerNames", () => {
       ])
     )
   })
+
+  it("reads triggers from on:, in block or flow form, and names a file by its path without name:", () => {
+    const texts = new Map([
+      [
+        ".github/workflows/both.yml",
+        "name: Both\non:\n  workflow_dispatch:\n  workflow_call:\n    inputs:\n      push:\n        type: string",
+      ],
+      [".github/workflows/flow.yml", "name: Flow\non: [workflow_call]"],
+      [
+        ".github/workflows/caller.yml",
+        "name: Caller\non: push\njobs:\n  a:\n    uses: ./.github/workflows/flow.yml\n  b:\n    uses: ./.github/workflows/both.yml\n  c:\n    steps:\n      - uses: ./.github/actions/act/",
+      ],
+      [".github/workflows/nameless.yml", "on:\n  push:"],
+      [".github/actions/act/action.yaml", "runs:\n  using: composite"],
+    ])
+    const names = producerNames(texts)
+    expect(names.get(".github/workflows/both.yml")).toEqual(["Both", "Caller"])
+    expect(names.get(".github/workflows/flow.yml")).toEqual(["Caller"])
+    expect(names.get(".github/workflows/nameless.yml")).toEqual([
+      ".github/workflows/nameless.yml",
+    ])
+    expect(names.get(".github/actions/act/action.yaml")).toEqual(["Caller"])
+  })
 })
 
 describe("findCacheViolations", () => {

@@ -364,39 +364,66 @@ export function findArtifactFamilyViolations(
 // The `name:` of each top-level workflow whose runs execute a file: its own
 // for a workflow it triggers, its callers' for a reusable workflow or a
 // composite action, since a run carries the caller's name.
+// A workflow's triggers: the direct children of its `on:` key, or the value
+// on the same line (`on: push`, `on: [push, workflow_call]`).
+function triggers(text: string): Set<string> {
+  const lines = text.split(/\r?\n/)
+  const start = lines.findIndex((line) => /^["']?on["']?:/.test(line))
+  if (start < 0) return new Set()
+  const inline = (lines[start] ?? "")
+    .replace(/^["']?on["']?:/, "")
+    .replace(/\s+#.*$/, "")
+  const found = new Set(inline.match(/[a-z_]+/g) ?? [])
+  let column: number | null = null
+  for (const line of lines.slice(start + 1)) {
+    if (isBlankOrComment(line)) continue
+    if (indentOf(line) === 0) break
+    column ??= indentOf(line)
+    const key = /^\s*([a-z_]+):/.exec(line)?.[1]
+    if (key !== undefined && indentOf(line) === column) found.add(key)
+  }
+  return found
+}
+
 export function producerNames(
   texts: ReadonlyMap<string, string>
 ): Map<string, Array<string>> {
   const callers = new Map<string, Set<string>>()
   const own = new Map<string, string>()
   for (const [file, text] of texts) {
-    const name = /^name:\s*(.+)$/m.exec(text)?.[1]
-    if (
-      name !== undefined &&
-      file.startsWith(".github/workflows/") &&
-      !/^\s*workflow_call:/m.test(text)
-    ) {
-      own.set(file, scalarValue(name))
+    if (file.startsWith(".github/workflows/")) {
+      const on = triggers(text)
+      on.delete("workflow_call")
+      // A run with no `name:` is named after its file's path.
+      const name = /^name:\s*(.+)$/m.exec(text)?.[1]
+      if (on.size > 0)
+        own.set(file, name === undefined ? file : scalarValue(name))
     }
     for (const match of text.matchAll(
       /^\s*(?:-\s+)?uses:\s*["']?\.\/(\.github\/[^"'\s@]+)/gm
     )) {
-      const target = match[1] ?? ""
-      const callee =
+      const target = (match[1] ?? "").replace(/\/+$/, "")
+      const callees =
         target.endsWith(".yml") || target.endsWith(".yaml")
-          ? target
-          : `${target}/action.yml`
-      callers.set(callee, (callers.get(callee) ?? new Set()).add(file))
+          ? [target]
+          : [`${target}/action.yml`, `${target}/action.yaml`]
+      for (const callee of callees) {
+        callers.set(callee, (callers.get(callee) ?? new Set()).add(file))
+      }
     }
   }
+  // A file's runs carry its own name when something else triggers it, and
+  // its callers' names when it is called: both, for a workflow that is both.
   const resolve = (file: string, seen: Set<string>): Array<string> => {
-    const name = own.get(file)
-    if (name !== undefined) return [name]
     if (seen.has(file)) return []
     seen.add(file)
-    return [...(callers.get(file) ?? [])].flatMap((caller) =>
-      resolve(caller, seen)
-    )
+    const name = own.get(file)
+    return [
+      ...(name === undefined ? [] : [name]),
+      ...[...(callers.get(file) ?? [])].flatMap((caller) =>
+        resolve(caller, seen)
+      ),
+    ]
   }
   return new Map(
     [...texts.keys()].map((file) => [
