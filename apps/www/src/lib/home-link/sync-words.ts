@@ -19,7 +19,7 @@ export type SyncEnd =
   | { readonly kind: "storage"; readonly summary: string }
   /**
    * Anything else: an answer from home this phone couldn't read, or a fault
-   * on the phone, which goes to the native log.
+   * on the phone.
    */
   | { readonly kind: "other" }
 

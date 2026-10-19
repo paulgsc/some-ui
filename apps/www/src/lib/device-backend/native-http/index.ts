@@ -31,7 +31,6 @@ import { foreignValue, isMissingPlugin } from "@/lib/intent/foreign"
 /** Long enough for a slow LAN; short enough to say "unreachable" promptly. */
 const TIMEOUT_MS = 10_000
 
-/** `etag`: the answer's `ETag`, when it carried one. */
 export type HomeAnswer = { status: number; body: string; etag?: string }
 
 export type HomeCall = {
@@ -45,7 +44,7 @@ export type HomeCall = {
    * byte for byte and home's content hash matches the phone's).
    */
   body?: unknown
-  /** Sent as `If-None-Match`: home answers `304`, bodiless, when it matches. */
+  /** Sent as `If-None-Match`. */
   ifNoneMatch?: string
 }
 

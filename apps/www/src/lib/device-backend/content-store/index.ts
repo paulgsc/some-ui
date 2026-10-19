@@ -166,11 +166,14 @@ export type LessonEntry = {
 
 const LEVELS = ["beginner", "intermediate", "advanced"]
 
+/** Bytes the device holds, and their digest. */
+export type HeldBody = { body: string; hash: string }
+
 /** The body the device holds for lesson `key`, and its hash, or `null`. */
 export async function storedLesson(
   db: SqlDriver,
   key: string
-): Promise<{ body: string; hash: string } | null> {
+): Promise<HeldBody | null> {
   const row = await one(
     db,
     "SELECT body, content_hash FROM curriculum WHERE key = ?",

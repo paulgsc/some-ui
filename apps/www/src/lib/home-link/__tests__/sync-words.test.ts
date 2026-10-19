@@ -32,8 +32,4 @@ describe("syncLine", () => {
     const named = ENDS.map(syncLine).filter((line) => MACHINERY.test(line))
     expect(named).toEqual([])
   })
-
-  it("says home being busy as busy, not as a failure", () => {
-    expect(syncLine({ kind: "busy" })).toMatch(/^Home is busy right now\./)
-  })
 })

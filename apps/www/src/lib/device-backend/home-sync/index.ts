@@ -14,15 +14,11 @@
  * content). Tests pass a second device backend standing in for home, which
  * passes the server's own contracts.
  *
- * Each lesson and each round's runs are revalidated: sent with the `ETag`
- * this phone kept for them, so what home has not changed comes back
- * bodiless (`304`). The three listings are read whole, and a round's body
- * is skipped by the hash its listing names. Home answering `429` (busy) ends the sync
- * there, with what was copied before it kept, and is said as busy: there is
- * no retry, and the next tap is the next try.
+ * Lessons and runs are revalidated (`revalidated`); home being busy ends the
+ * sync (`HomeBusyError`), with no retry.
  */
 import { isRecord, sha256Hex, stringsAt } from "@/lib/device-backend/common"
-import type { LessonEntry } from "@/lib/device-backend/content-store"
+import type { HeldBody, LessonEntry } from "@/lib/device-backend/content-store"
 import {
   DEFAULT_LESSON_ACTIVITY,
   removeLessonsExcept,
@@ -51,7 +47,7 @@ import { TREE_ACTIVITY } from "@/lib/topik-content"
 /**
  * A GET against home, sent with `If-None-Match: etag` when `etag` is given.
  * `body` is the answer as text; a transport that parsed JSON on the way
- * (Capacitor's does) re-serialises it. `etag` is the answer's `ETag`.
+ * (Capacitor's does) re-serialises it.
  */
 export type HomeGet = (
   url: string,
@@ -88,7 +84,7 @@ export class SyncStoppedError extends Error {
   }
 }
 
-/** Home answered `429`: it is busy. What was copied before it stays. */
+/** Home answered `429`. */
 export class HomeBusyError extends Error {
   constructor() {
     super("home is busy")
@@ -157,9 +153,6 @@ type Read = {
   keep: () => Promise<void>
 }
 
-/** What the phone holds for an address: the bytes, and their digest. */
-type Held = { body: string; hash: string }
-
 type Reads = {
   db: SqlDriver
   store: SqlDriver
@@ -176,12 +169,12 @@ const done = (): Promise<void> => Promise.resolve()
  * tag was kept with: for a lesson its row (`held`), else the body kept with
  * the tag. A `304` then answers with that body, as a `200`. The tag is kept
  * only by `keep`, once the caller has stored what the answer carried, and
- * within the phone's budget. A `429` throws.
+ * within the phone's budget.
  */
 async function revalidated(
   sync: Reads,
   url: string,
-  held?: () => Promise<Held | null>
+  held?: () => Promise<HeldBody | null>
 ): Promise<Read> {
   const { db, store, get } = sync
   sync.read.add(url)
@@ -190,7 +183,7 @@ async function revalidated(
     "SELECT etag, hash, body FROM device_home_answer WHERE url = ?",
     [url]
   )
-  let holding: Held | null = null
+  let holding: HeldBody | null = null
   if (kept !== null) {
     const body = textOrNull(kept, "body")
     holding = held
@@ -203,7 +196,7 @@ async function revalidated(
     kept !== null && holding?.hash === text(kept, "hash")
       ? text(kept, "etag")
       : undefined
-  const answer = unlessBusy(await get(url, tag))
+  const answer = await get(url, tag)
   if (answer.status === 304 && tag !== undefined && holding !== null) {
     return { status: 200, body: holding.body, keep: done }
   }
@@ -233,10 +226,13 @@ async function revalidated(
   return { status: 200, body: answer.body, keep }
 }
 
-/** `answer`, unless home was busy. */
-function unlessBusy<T extends { status: number }>(answer: T): T {
-  if (answer.status === 429) throw new HomeBusyError()
-  return answer
+/** `get`, throwing `HomeBusyError` for each answer home was too busy for. */
+function busyAware(get: HomeGet): HomeGet {
+  return async (url, etag) => {
+    const answer = await get(url, etag)
+    if (answer.status === 429) throw new HomeBusyError()
+    return answer
+  }
 }
 
 /** A listing every write waits on: home unreachable or refusing fails it. */
@@ -249,10 +245,10 @@ async function getJson(
   try {
     answer = await get(`${base}${route}`)
   } catch (cause) {
-    if (cause instanceof SyncStoppedError) throw cause
+    if (endsTheSync(cause)) throw cause
     throw new HomeUnreachableError(base, { cause })
   }
-  if (unlessBusy(answer).status !== 200) {
+  if (answer.status !== 200) {
     throw new Error(`home answered ${answer.status} for ${route}`)
   }
   const parsed: unknown = JSON.parse(answer.body)
@@ -328,7 +324,7 @@ async function syncLessons(
 export async function syncFromHome(
   db: SqlDriver,
   homeInput: string,
-  get: HomeGet,
+  homeGet: HomeGet,
   now: () => number = Date.now,
   budget: StorageBudget = ANDROID_BACKUP_BUDGET
 ): Promise<SyncReport> {
@@ -342,10 +338,11 @@ export async function syncFromHome(
     failed: [],
   }
 
+  const get = busyAware(homeGet)
   const reads: Reads = { db, store, get, read: new Set() }
   // The manifests first; their failure fails the sync (an unreachable home
   // must be said plainly). Every listing before any write: a failed fetch
-  // aborts with nothing removed. Read whole: each is the plan for the rest.
+  // aborts with nothing removed.
   const lessons = topiksOf(
     await getJson(get, base, "/curriculum/manifest.json")
   )
@@ -391,7 +388,7 @@ export async function syncFromHome(
       // Same bytes: no body to fetch, but the runs still are (home can record
       // runs without changing the round, or a prior runs request failed).
       if ((await storedRoundHash(db, listing.id)) !== listing.contentHash) {
-        const body = unlessBusy(await get(`${base}/leetype/rounds/${id}`))
+        const body = await get(`${base}/leetype/rounds/${id}`)
         if (body.status !== 200) throw new Error(String(body.status))
         const outcome = await upsertRound(
           store,

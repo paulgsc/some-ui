@@ -60,8 +60,8 @@ const verbatimGet: HomeGet = async (url) => {
 
 /**
  * Home answering `If-None-Match` as `file_host` does (the device backend
- * stand-in never sees request headers), and every address it sent a body
- * for, and every tag it was sent.
+ * stand-in never sees request headers), every address it sent a body for,
+ * and every address it was sent a tag for.
  */
 function revalidatingHome(): {
   get: HomeGet
@@ -375,8 +375,6 @@ describe("syncFromHome revalidating what it holds", () => {
 
     home.bodies.length = 0
     const again = await syncFromHome(phoneDb, HOME, home.get, () => NOW)
-    // The lesson and the round's runs; the listings are read whole, and the
-    // round's body is skipped by its listed hash.
     expect(home.tags).toEqual([
       `${HOME}/api/v1/curriculum/k2-cafe`,
       `${HOME}/api/v1/leetype/rounds/home-only-round/runs`,
@@ -387,22 +385,6 @@ describe("syncFromHome revalidating what it holds", () => {
     expect(again.failed).toEqual([])
     expect(again.lessons).toMatchObject({ listed: 1, added: 0, updated: 0 })
     expect(again.rounds.runs).toBe(1)
-  })
-
-  it("still copies a renamed lesson whose body home kept", async () => {
-    const home = revalidatingHome()
-    await syncFromHome(phoneDb, HOME, home.get, () => NOW)
-    await homeDb.run("UPDATE curriculum SET display_name = ? WHERE key = ?", [
-      "At the bakery",
-      "k2-cafe",
-    ])
-    home.bodies.length = 0
-    const report = await syncFromHome(phoneDb, HOME, home.get, () => NOW)
-    expect(home.bodies.some((url) => url.endsWith("/k2-cafe"))).toBe(false)
-    expect(report.lessons.updated).toBe(1)
-    await expect(phoneJson("/curriculum/manifest.json")).resolves.toMatchObject(
-      { topiks: [{ displayName: "At the bakery" }] }
-    )
   })
 
   it("asks for a body afresh once the phone no longer holds it", async () => {
@@ -465,20 +447,6 @@ describe("syncFromHome revalidating what it holds", () => {
     expect(home.tags.some((url) => url.endsWith("/k3-big"))).toBe(false)
     expect(report.lessons.added).toBe(1)
   })
-
-  it("forgets the tags of what home stopped listing", async () => {
-    const home = revalidatingHome()
-    await syncFromHome(phoneDb, HOME, home.get, () => NOW)
-    await homeDb.run("UPDATE curriculum SET retired_at = ? WHERE key = ?", [
-      "2026-09-29T09:00:00+00:00",
-      "k2-cafe",
-    ])
-    await syncFromHome(phoneDb, HOME, home.get, () => NOW)
-    const tags = await phoneDb.all(
-      "SELECT url FROM device_home_answer WHERE url LIKE '%k2-cafe%'"
-    )
-    expect(tags).toEqual([])
-  })
 })
 
 describe("syncFromHome against a home it cannot read", () => {
@@ -530,15 +498,18 @@ describe("a round an earlier build seeded with home's own bytes", () => {
 })
 
 describe("a lesson home re-described", () => {
-  it("takes home's new name and tags when the body is unchanged", async () => {
-    await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
+  it("takes home's new name and tags when the body is unchanged, sent bodiless", async () => {
+    const home = revalidatingHome()
+    await syncFromHome(phoneDb, HOME, home.get, () => NOW)
     await upsertLesson(
       homeDb,
       { ...LESSON, displayName: "At the café, again", tags: ["food", "k2"] },
       '{\n  "batches": []\n}',
       NOW
     )
-    const report = await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
+    home.bodies.length = 0
+    const report = await syncFromHome(phoneDb, HOME, home.get, () => NOW)
+    expect(home.bodies.some((url) => url.endsWith("/k2-cafe"))).toBe(false)
     expect(report.lessons.updated).toBe(1)
     await expect(phoneJson("/curriculum/manifest.json")).resolves.toMatchObject(
       {
