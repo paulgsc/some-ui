@@ -1,14 +1,15 @@
 /**
- * The owner's settings (`QD16`, #1807): the boundary `B` and the on/off
- * switch, in `storage.local`.
+ * The owner's settings (`QD16`, #1807, #1966): the boundary `B`, the mode
+ * and the on/off switch, in `storage.local`.
  *
  * The popup is the only writer; the popup and the content script both read
  * through {@link followSettings}. An unreadable field parses to its default,
  * so a bad record never admits more than a fresh install does.
  *
  * Every boundary change is appended to `boundaryChanges`, which only the
- * Diagnostics page reads: the doctrine's §9 falsifier is "`B` keeps getting
- * lowered", and that needs the history, kept whole.
+ * Diagnostics page reads, and every change of mode to `choiceChanges`, kept
+ * for it too: the doctrine's §9 falsifier is "`B` keeps getting lowered",
+ * and that needs the history, kept whole.
  */
 
 import { DEFAULT_BOUNDARY_DAYS } from "@censor/lib/content/maturity/maturity"
@@ -16,6 +17,7 @@ import { isRecord } from "@some-extension/common"
 
 export const SETTINGS_KEY = "settings"
 export const BOUNDARY_CHANGES_KEY = "boundaryChanges"
+export const CHOICE_CHANGES_KEY = "choiceChanges"
 
 export const BOUNDARIES = ["6mo", "1y", "2y"] as const
 export type Boundary = (typeof BOUNDARIES)[number]
@@ -41,12 +43,21 @@ export function boundaryDays(b: Boundary): number {
   return BOUNDARY_DAYS[b]
 }
 
+/** Fixed bundles of the rest, strictest first (`modes.ts`). */
+export const MODES = ["strict", "standard", "open"] as const
+export type Mode = (typeof MODES)[number]
+
 export type Settings = {
   readonly boundary: Boundary
+  readonly mode: Mode
   readonly enabled: boolean
 }
 
-export const DEFAULT_SETTINGS: Settings = { boundary: "1y", enabled: true }
+export const DEFAULT_SETTINGS: Settings = {
+  boundary: "1y",
+  mode: "standard",
+  enabled: true,
+}
 
 /** The stored shape. `v` changes when a field's meaning does. */
 type StoredSettings = Settings & { readonly v: 1 }
@@ -57,16 +68,29 @@ export type BoundaryChange = {
   readonly to: Boundary
 }
 
-function isBoundary(value: unknown): value is Boundary {
-  return BOUNDARIES.some((b) => b === value)
+/** A change of mode, as `choiceChanges` keeps it. */
+export type ChoiceChange = {
+  readonly at: number
+  readonly choice: "mode"
+  readonly from: Mode
+  readonly to: Mode
 }
+
+const oneOf =
+  <T extends string>(values: ReadonlyArray<T>) =>
+  (value: unknown): value is T =>
+    values.some((v) => v === value)
+
+const isBoundary = oneOf(BOUNDARIES)
+const isMode = oneOf(MODES)
 
 /** A record from any build, or none, as settings this build can apply. */
 export function parseSettings(raw: unknown): Settings {
   if (!isRecord(raw) || raw["v"] !== 1) return DEFAULT_SETTINGS
-  const { boundary, enabled } = raw
+  const { boundary, mode, enabled } = raw
   return {
     boundary: isBoundary(boundary) ? boundary : DEFAULT_SETTINGS.boundary,
+    mode: isMode(mode) ? mode : DEFAULT_SETTINGS.mode,
     enabled: typeof enabled === "boolean" ? enabled : DEFAULT_SETTINGS.enabled,
   }
 }
@@ -83,10 +107,35 @@ export function parseBoundaryChanges(raw: unknown): Array<BoundaryChange> {
   )
 }
 
+/** The well-formed entries of the mode log, oldest first. */
+export function parseChoiceChanges(raw: unknown): Array<ChoiceChange> {
+  if (!Array.isArray(raw)) return []
+  return raw.filter(
+    (e: unknown): e is ChoiceChange =>
+      isRecord(e) &&
+      typeof e["at"] === "number" &&
+      e["choice"] === "mode" &&
+      isMode(e["from"]) &&
+      isMode(e["to"])
+  )
+}
+
 /**
- * What to store when the owner picks `next`, given what is stored now. The
- * log is only ever appended to: entries this build cannot read, and a value
- * that is not a list at all, are carried along rather than dropped.
+ * `log` with `entries` appended: a log is only ever appended to. Entries this
+ * build cannot read, and a value that is not a list at all, are carried
+ * along rather than dropped.
+ */
+function appended(
+  log: unknown,
+  entries: ReadonlyArray<unknown>
+): ReadonlyArray<unknown> {
+  if (Array.isArray(log)) return [...log, ...entries]
+  return log === undefined ? entries : [log, ...entries]
+}
+
+/**
+ * What to store when the owner picks `next`, given what is stored now. Each
+ * log gains an entry only when its own choice changed.
  */
 export function settingsWrite(
   stored: Readonly<Record<string, unknown>>,
@@ -94,18 +143,28 @@ export function settingsWrite(
   now: number
 ): Record<string, unknown> {
   const settings: StoredSettings = { v: 1, ...next }
-  const from = parseSettings(stored[SETTINGS_KEY]).boundary
-  if (from === next.boundary) return { [SETTINGS_KEY]: settings }
-  const change: BoundaryChange = { at: now, from, to: next.boundary }
-  const log = stored[BOUNDARY_CHANGES_KEY]
-  return {
-    [SETTINGS_KEY]: settings,
-    [BOUNDARY_CHANGES_KEY]: Array.isArray(log)
-      ? [...log, change]
-      : log === undefined
-        ? [change]
-        : [log, change],
+  const from = parseSettings(stored[SETTINGS_KEY])
+  const write: Record<string, unknown> = { [SETTINGS_KEY]: settings }
+  if (from.boundary !== next.boundary) {
+    const change: BoundaryChange = {
+      at: now,
+      from: from.boundary,
+      to: next.boundary,
+    }
+    write[BOUNDARY_CHANGES_KEY] = appended(stored[BOUNDARY_CHANGES_KEY], [
+      change,
+    ])
   }
+  if (from.mode !== next.mode) {
+    const change: ChoiceChange = {
+      at: now,
+      choice: "mode",
+      from: from.mode,
+      to: next.mode,
+    }
+    write[CHOICE_CHANGES_KEY] = appended(stored[CHOICE_CHANGES_KEY], [change])
+  }
+  return write
 }
 
 /** The slice of `browser.storage` the settings are read through. */

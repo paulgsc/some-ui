@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { isMusic } from "./lane"
 
 const titled = (title: string | null): boolean =>
-  isMusic({ title, channelName: "Some Channel", artist: false })
+  isMusic({ title, channelName: "Some Channel", artist: false }, "all")
 
 describe("isMusic (QD15, #1806)", () => {
   it.each<[string, boolean]>([
@@ -34,23 +34,38 @@ describe("isMusic (QD15, #1806)", () => {
 
   it("reads an artist's Topic channel or badge as music, whatever the title", () => {
     expect(
-      isMusic({
-        title: "Untitled",
-        channelName: "Ailee - Topic",
-        artist: false,
-      })
+      isMusic(
+        { title: "Untitled", channelName: "Ailee - Topic", artist: false },
+        "all"
+      )
     ).toBe(true)
     expect(
-      isMusic({ title: "Untitled", channelName: "Ailee", artist: true })
+      isMusic({ title: "Untitled", channelName: "Ailee", artist: true }, "all")
     ).toBe(true)
     expect(
-      isMusic({ title: "Untitled", channelName: "Topic Talks", artist: false })
+      isMusic(
+        { title: "Untitled", channelName: "Topic Talks", artist: false },
+        "all"
+      )
     ).toBe(false)
   })
 
   it("never admits on missing evidence", () => {
-    expect(isMusic({ title: null, channelName: null, artist: false })).toBe(
+    expect(
+      isMusic({ title: null, channelName: null, artist: false }, "all")
+    ).toBe(false)
+  })
+
+  it("reads the channel's signs alone under Strict (#1966)", () => {
+    const channel = (
+      title: string,
+      channelName: string,
+      artist: boolean
+    ): boolean => isMusic({ title, channelName, artist }, "channel")
+    expect(channel("[MV] Spring Letters OST", "Some Channel", false)).toBe(
       false
     )
+    expect(channel("Untitled", "Ailee - Topic", false)).toBe(true)
+    expect(channel("Untitled", "Ailee", true)).toBe(true)
   })
 })

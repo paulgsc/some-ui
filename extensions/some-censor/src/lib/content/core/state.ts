@@ -8,6 +8,7 @@
 
 import type { ViewState, WatchView } from "@censor/lib/content/fsm"
 import { admitted } from "@censor/lib/content/fsm"
+import type { MusicSigns } from "@censor/lib/content/lane/lane"
 import type { UnknownShapeReason } from "@censor/lib/content/layout/lookup"
 import { DEFAULT_BOUNDARY_DAYS } from "@censor/lib/content/maturity/maturity"
 import type { VideoId } from "@censor/types/ids"
@@ -47,6 +48,28 @@ export type WatchState = {
 
 type Phase = "idle" | "running"
 
+/**
+ * What the owner's mode asks of Core (#1966). The rest of a mode is the
+ * stylesheet's (`settings/modes.ts`).
+ */
+export type Rules = {
+  readonly signs: MusicSigns
+  /**
+   * Where autoplay may go from a whole video: into any video the page
+   * admits, or into music only.
+   */
+  readonly fromMusic: "admitted" | "music"
+  /** Whether a plated watch page offers the face control (QD13). */
+  readonly face: boolean
+}
+
+/** Standard's rules, and every Core's until the shell supplies others. */
+export const STANDARD_RULES: Rules = {
+  signs: "all",
+  fromMusic: "admitted",
+  face: true,
+}
+
 export type CoreState = {
   readonly phase: Phase
   readonly session: SessionId
@@ -61,6 +84,8 @@ export type CoreState = {
   readonly watchDates: WatchDates | null
   /** The owner's `B`, in days, as the shell last supplied it. */
   readonly boundaryDays: number
+  /** The owner's mode, as the shell last supplied it. */
+  readonly rules: Rules
   /** B4's staleness signal, per session: how often the table had no answer. */
   readonly unknownShapes: Readonly<Record<UnknownShapeReason, number>>
 }
@@ -81,6 +106,7 @@ export function initialState(session: SessionId): CoreState {
     watch: null,
     watchDates: null,
     boundaryDays: DEFAULT_BOUNDARY_DAYS,
+    rules: STANDARD_RULES,
     unknownShapes: EMPTY_UNKNOWN_SHAPES,
   }
 }
@@ -96,17 +122,23 @@ export type CoreSnapshot = {
   readonly watch: WatchState | null
   readonly watchDates: WatchDates | null
   readonly boundaryDays: number
+  readonly rules: Rules
   readonly unknownShapes: CoreState["unknownShapes"]
 }
 
 /**
  * Whether Core admits `videoId` where autoplay would go next (#1805): a
  * card for it is on the page, plated or whole in the lane. A held card, or a
- * video with no card at all, is not admitted (QD3, QD11).
+ * video with no card at all, is not admitted (QD3, QD11). From a whole
+ * video, a mode that keeps autoplay in the lane admits only another whole
+ * one (#1966).
  */
 export function admits(state: CoreState, videoId: VideoId): boolean {
+  const lane =
+    state.rules.fromMusic === "music" && state.watch?.view === "whole"
   for (const card of state.cards.values()) {
-    if (card.observation.videoId === videoId && admitted(card.view.kind)) {
+    if (card.observation.videoId !== videoId) continue
+    if (lane ? card.view.kind === "whole" : admitted(card.view.kind)) {
       return true
     }
   }
@@ -121,6 +153,7 @@ export function snapshot(state: CoreState): CoreSnapshot {
     watch: state.watch,
     watchDates: state.watchDates,
     boundaryDays: state.boundaryDays,
+    rules: state.rules,
     unknownShapes: state.unknownShapes,
   }
 }

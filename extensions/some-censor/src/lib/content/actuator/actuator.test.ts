@@ -256,6 +256,7 @@ describe("the watch page's hold (#1805, WH1, WH2)", () => {
       miniplayer,
       poster: view === "plated" ? "hsl(1 2% 3%)" : null,
       face: extra.face ?? false,
+      offer: true,
     },
     targets:
       extra.description === undefined
@@ -381,7 +382,8 @@ describe("the poster and the face control (#1805, QD13)", () => {
   const plated = (
     el: HTMLElement | undefined,
     face = false,
-    videoId = VIDEO
+    videoId = VIDEO,
+    offer = true
   ): BoundAction => ({
     action: {
       kind: "watch",
@@ -390,6 +392,7 @@ describe("the poster and the face control (#1805, QD13)", () => {
       miniplayer: false,
       poster: "hsl(1 2% 3%)",
       face,
+      offer,
     },
     targets: el === undefined ? [] : [{ el, role: "anchor" }],
   })
@@ -417,6 +420,18 @@ describe("the poster and the face control (#1805, QD13)", () => {
     expect(control()?.textContent).toBe("Hold to show the original thumbnail")
     actuator.realize([plated(desc)])
     expect(document.querySelectorAll("[data-boyo-face-hold]")).toHaveLength(1)
+  })
+
+  it("offers no control under a mode without one, and takes one back (#1966)", () => {
+    const desc = description()
+    actuator.realize([plated(desc, false, VIDEO, false)])
+    const root = document.documentElement
+    expect(root.style.getPropertyValue("--boyo-poster")).toBe("hsl(1 2% 3%)")
+    expect(control()).toBeNull()
+    actuator.realize([plated(desc)])
+    expect(control()?.parentElement).toBe(desc)
+    actuator.realize([plated(desc, false, VIDEO, false)])
+    expect(control()).toBeNull()
   })
 
   it("reports a hold of the full three seconds, and nothing shorter", () => {
@@ -493,6 +508,7 @@ describe("the poster and the face control (#1805, QD13)", () => {
           miniplayer: false,
           poster: null,
           face: false,
+          offer: true,
         },
         targets: [],
       },

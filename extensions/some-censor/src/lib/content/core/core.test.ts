@@ -10,6 +10,7 @@
 import { readdirSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { DEFAULT_BOUNDARY_DAYS } from "@censor/lib/content/maturity/maturity"
+import { MODE_RULES } from "@censor/lib/settings/modes"
 import { asChannelId, asVideoId } from "@censor/types/ids"
 import type { SessionId } from "@some-extension/common"
 import { describe, expect, it } from "vitest"
@@ -23,6 +24,7 @@ import type {
   WatchObservation,
 } from "./index"
 import { admits, cardKey, initialState, reduce, snapshot } from "./index"
+import { STANDARD_RULES } from "./state"
 
 // SessionId is a branded number minted by the shell; the reducer only ever
 // carries one, so a literal is enough here.
@@ -73,8 +75,11 @@ const started: CoreEvent = {
   kind: "start",
   session: session(1),
   boundaryDays: B,
+  rules: STANDARD_RULES,
   t: 0,
 }
+
+const STRICT = MODE_RULES.strict.core
 
 /** `videoId`'s card observed at `t`, with `overrides` on the default observation. */
 function seen(
@@ -212,6 +217,7 @@ describe("lifecycle (R1, R3)", () => {
       kind: "start",
       session: session(9),
       boundaryDays: B,
+      rules: STANDARD_RULES,
       t: 9,
     })
     expect(again.actions).toEqual([])
@@ -339,14 +345,21 @@ describe("evidence alone decides (R7)", () => {
     expect(viewOf(later.state)).toBe("plated")
   })
 
-  it("lets no input but the boundary change a card's view", () => {
+  it("lets no input but the boundary and the mode change a card's view", () => {
     // Every Input kind, by name: a new one fails to compile here until it
     // says what it does to a held card. These two cards are on the same side
-    // of every boundary the popup offers.
+    // of every boundary the popup offers, and carry no music sign.
     const inputs: { [K in Input["kind"]]: Extract<Input, { kind: K }> } = {
-      start: { kind: "start", session: session(5), boundaryDays: B, t: 3 },
+      start: {
+        kind: "start",
+        session: session(5),
+        boundaryDays: B,
+        rules: STANDARD_RULES,
+        t: 3,
+      },
       stop: { kind: "stop", t: 3 },
       boundary: { kind: "boundary", days: 2 * B, t: 3 },
+      rules: { kind: "rules", rules: STRICT, t: 3 },
       face: { kind: "face", videoId: asVideoId("vid_a"), t: 3 },
     }
     for (const uploadDate of [OLD, "3 days ago"]) {
@@ -394,7 +407,13 @@ describe("the boundary (R7, #1807)", () => {
     ])
     expect(viewOf(state)).toBe("absent")
     const restarted = fold([
-      { kind: "start", session: session(2), boundaryDays: 2 * B, t: 0 },
+      {
+        kind: "start",
+        session: session(2),
+        boundaryDays: 2 * B,
+        rules: STANDARD_RULES,
+        t: 0,
+      },
       seen(1, { uploadDate: TWO_YEARS }),
     ])
     expect(viewOf(restarted.state)).toBe("absent")
@@ -693,6 +712,120 @@ describe("what autoplay may go on into (#1805)", () => {
     expect(admits(lane.state, asVideoId("song")), "whole, in the lane").toBe(
       true
     )
+  })
+})
+
+describe("the mode (R7, R9, #1966)", () => {
+  const strict = (t = 5): CoreEvent => ({ kind: "rules", rules: STRICT, t })
+  const standard = (t = 6): CoreEvent => ({
+    kind: "rules",
+    rules: STANDARD_RULES,
+    t,
+  })
+  const OST = { uploadDate: "3 hours ago", title: "Stay With Me OST" }
+
+  it("re-decides a card on the title token alone, and back", () => {
+    const { state } = fold([started, seen(1, OST)])
+    expect(viewOf(state)).toBe("whole")
+    const narrowed = reduce(state, strict())
+    expect(viewOf(narrowed.state)).toBe("absent")
+    expect(kinds(narrowed.actions)).toEqual(["render", "record:entry.state"])
+    const widened = reduce(narrowed.state, standard())
+    expect(viewOf(widened.state)).toBe("whole")
+  })
+
+  it("decides later observations, and the next start, under the mode", () => {
+    const { state } = fold([started, strict(), seen(6, OST)])
+    expect(viewOf(state)).toBe("absent")
+    const restarted = fold([
+      {
+        kind: "start",
+        session: session(2),
+        boundaryDays: B,
+        rules: STRICT,
+        t: 0,
+      },
+      seen(1, OST),
+    ])
+    expect(viewOf(restarted.state)).toBe("absent")
+  })
+
+  it("offers the face control only under a mode that has one", () => {
+    const page: CoreEvent = {
+      kind: "watched",
+      watch: {
+        videoId: asVideoId("vid_w"),
+        short: false,
+        hydrated: true,
+        dates: ["21y ago"],
+        miniplayer: false,
+        title: "Me at the zoo",
+        channelName: "jawed",
+        artist: false,
+      },
+      t: 1,
+    }
+    const offers = (actions: ReadonlyArray<Action>): Array<boolean> =>
+      actions.flatMap((a) => (a.kind === "watch" ? [a.offer] : []))
+    const faced = fold([
+      started,
+      page,
+      { kind: "face", videoId: asVideoId("vid_w"), t: 2 },
+    ])
+    expect(faced.state.watch?.face).toBe(true)
+    expect(offers(faced.actions)).toEqual([true, true])
+
+    const narrowed = reduce(faced.state, strict())
+    expect(narrowed.state.watch?.face, "Strict takes the face away").toBe(false)
+    expect(offers(narrowed.actions)).toEqual([false])
+    const held = reduce(narrowed.state, {
+      kind: "face",
+      videoId: asVideoId("vid_w"),
+      t: 6,
+    })
+    expect(held.actions, "no face under Strict").toEqual([])
+    expect(offers(reduce(narrowed.state, standard()).actions)).toEqual([true])
+  })
+
+  it("keeps autoplay from a whole video in the lane under Strict", () => {
+    const watching = (overrides: Partial<WatchObservation>): CoreEvent => ({
+      kind: "watched",
+      watch: {
+        videoId: asVideoId("song"),
+        short: false,
+        hydrated: true,
+        dates: ["3 hours ago"],
+        miniplayer: false,
+        title: "Untitled",
+        channelName: "Ailee - Topic",
+        artist: false,
+        ...overrides,
+      },
+      t: 1,
+    })
+    const song = watching({})
+    const cards = [
+      seen(1, { uploadDate: OLD }, "old"),
+      seen(1, { uploadDate: "3 hours ago", artist: true }, "next-song"),
+    ]
+    const shown = fold([started, song, ...cards])
+    expect(shown.state.watch?.view).toBe("whole")
+    expect(admits(shown.state, asVideoId("old"))).toBe(true)
+    const lane = fold([started, strict(), song, ...cards])
+    expect(lane.state.watch?.view).toBe("whole")
+    expect(admits(lane.state, asVideoId("old")), "plated, not music").toBe(
+      false
+    )
+    expect(admits(lane.state, asVideoId("next-song"))).toBe(true)
+    // From a plated page, Strict admits what Standard does.
+    const plated = fold([
+      started,
+      strict(),
+      watching({ dates: ["21y ago"], channelName: "jawed" }),
+      ...cards,
+    ])
+    expect(plated.state.watch?.view).toBe("plated")
+    expect(admits(plated.state, asVideoId("old"))).toBe(true)
   })
 })
 

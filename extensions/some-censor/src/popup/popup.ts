@@ -11,6 +11,7 @@ import {
   BOUNDARIES,
   BOUNDARY_CHANGES_KEY,
   BOUNDARY_LABEL,
+  CHOICE_CHANGES_KEY,
   followSettings,
   parseSettings,
   SETTINGS_KEY,
@@ -33,6 +34,7 @@ function save(change: (stored: Settings) => Settings): void {
       const stored = await ext.storage.local.get([
         SETTINGS_KEY,
         BOUNDARY_CHANGES_KEY,
+        CHOICE_CHANGES_KEY,
       ])
       const next = change(parseSettings(stored[SETTINGS_KEY]))
       await ext.storage.local.set(settingsWrite(stored, next, Date.now()))

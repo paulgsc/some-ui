@@ -132,6 +132,14 @@ export const SEL = VIDEO_SELECTORS.join(",")
  */
 export const SWITCHED_OFF_ATTRIBUTE = "data-boyo-off"
 
+/**
+ * The mode's page rules (#1966) on `<html>`: `shown` lets community post
+ * images through, and `blank` paints no card the content script has not
+ * read yet. Absent, the stylesheet does what Standard does.
+ */
+export const POSTS_ATTRIBUTE = "data-boyo-posts"
+export const LOADING_ATTRIBUTE = "data-boyo-loading"
+
 /** The face control the Actuator puts in a plated page's description (QD13). */
 export const FACE_CONTROL_ATTRIBUTE = "data-boyo-face-hold"
 

@@ -7,6 +7,7 @@
 
 import type { ViewState } from "@censor/lib/content/fsm"
 import { decide, decideWatch, project } from "@censor/lib/content/fsm"
+import type { MusicSigns } from "@censor/lib/content/lane/lane"
 import { DEFAULT_BOUNDARY_DAYS } from "@censor/lib/content/maturity/maturity"
 import { plateOf } from "@censor/lib/content/plate/plate"
 import { asChannelId, asVideoId } from "@censor/types/ids"
@@ -22,8 +23,13 @@ function view(
   short = false,
   boundaryDays = DEFAULT_BOUNDARY_DAYS
 ): ViewState["kind"] {
-  return decide({ ...NO_MUSIC, uploadDate, short }, NOW, boundaryDays, session)
-    .kind
+  return decide(
+    { ...NO_MUSIC, uploadDate, short },
+    NOW,
+    boundaryDays,
+    "all",
+    session
+  ).kind
 }
 
 describe("decide", () => {
@@ -63,6 +69,7 @@ describe("decide", () => {
         { ...NO_MUSIC, uploadDate: null, short: false },
         NOW,
         DEFAULT_BOUNDARY_DAYS,
+        "all",
         session
       )
     ).toEqual({
@@ -87,7 +94,8 @@ describe("decideWatch (#1805)", () => {
         ...NO_MUSIC,
       },
       NOW,
-      DEFAULT_BOUNDARY_DAYS
+      DEFAULT_BOUNDARY_DAYS,
+      "all"
     )
 
   it("plates the page's video on the youngest date it shows", () => {
@@ -111,12 +119,14 @@ describe("the listening lane (QD15, #1806)", () => {
   const OST = "[MV] 너의 계절 (Spring Letters OST Part.3)"
   const card = (
     uploadDate: string | null,
-    overrides: Partial<Parameters<typeof decide>[0]> = {}
+    overrides: Partial<Parameters<typeof decide>[0]> = {},
+    signs: MusicSigns = "all"
   ): ViewState["kind"] =>
     decide(
       { ...NO_MUSIC, title: OST, uploadDate, short: false, ...overrides },
       NOW,
       DEFAULT_BOUNDARY_DAYS,
+      signs,
       session
     ).kind
 
@@ -159,9 +169,25 @@ describe("the listening lane (QD15, #1806)", () => {
       ...NO_MUSIC,
     }
     expect(
-      decideWatch({ ...page, title: OST }, NOW, DEFAULT_BOUNDARY_DAYS)
+      decideWatch({ ...page, title: OST }, NOW, DEFAULT_BOUNDARY_DAYS, "all")
     ).toBe("whole")
-    expect(decideWatch(page, NOW, DEFAULT_BOUNDARY_DAYS)).toBe("absent")
+    expect(decideWatch(page, NOW, DEFAULT_BOUNDARY_DAYS, "all")).toBe("absent")
+  })
+
+  it("threads the mode's music signs through (#1966)", () => {
+    const page = {
+      videoId: asVideoId("vid_w"),
+      short: false,
+      hydrated: true,
+      dates: ["3 days ago"],
+      miniplayer: false,
+      ...NO_MUSIC,
+      title: OST,
+    }
+    expect(decideWatch(page, NOW, DEFAULT_BOUNDARY_DAYS, "channel")).toBe(
+      "absent"
+    )
+    expect(card("3 days ago", {}, "channel")).toBe("absent")
   })
 })
 

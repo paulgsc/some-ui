@@ -43,6 +43,7 @@ it("builds two quick clicks on each other, logging each change", async () => {
     expect(fake.store.get(SETTINGS_KEY)).toEqual({
       v: 1,
       boundary: "2y",
+      mode: "standard",
       enabled: false,
     })
   })
