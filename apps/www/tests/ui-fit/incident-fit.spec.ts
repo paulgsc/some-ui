@@ -9,9 +9,12 @@
  * and each step below taps the way a learner would, then measures what
  * leaves the rect with the panel sweep's own measure (`findViolations`).
  *
- * The sizes are the phone's alone: the incident session is a phone surface
- * (`ON_PHONE` in www), so a desktop size would measure it on a device that
- * never shows it. 780x390 is a phone held sideways (see `VIEWPORTS`).
+ * The sizes are the phone's alone (`PHONE_VIEWPORTS`): the incident session
+ * is a phone surface (`ON_PHONE` in www). The fixture forces LeetType's
+ * rounds surface, so on the phone held sideways (780 wide, past the 768
+ * breakpoint) the card holding the file shows as it would not on a real
+ * phone, which opens the typing surface there; the session screens are true
+ * to it, since LeetType keeps a session open through the turn.
  *
  * Run against a built panel page:
  *
@@ -24,21 +27,17 @@ import { expect, test, type Page } from "@playwright/test"
 import {
   ALLOWED_FIT_INTENTS,
   findViolations,
+  INCIDENT_FIXTURE,
   PANEL_PAGE_BUILD,
   PANEL_PAGE_PATH,
   panelPageBuilt,
+  PHONE_VIEWPORTS,
   serve,
   type StaticSite,
 } from "./harness"
 import type { PanelId } from "./panel-page/fixtures"
 
-const FIXTURE: PanelId = "leetype-incident"
-
-const PHONES = [
-  { name: "phone-tall", width: 412, height: 915 },
-  { name: "phone-narrow", width: 360, height: 780 },
-  { name: "phone-landscape", width: 780, height: 390 },
-] as const
+const FIXTURE: PanelId = INCIDENT_FIXTURE
 
 /** One stop on the walk: how to get there from the stop before, and its name. */
 type Stop = {
@@ -150,7 +149,7 @@ test.describe("every screen of the incident session fits the phone", () => {
       `pnpm --filter www build:fit (or point WWW_FIT_HARNESS_DIST at one).`
   )
 
-  for (const phone of PHONES) {
+  for (const phone of PHONE_VIEWPORTS) {
     test(`fits at ${phone.name} (${phone.width}x${phone.height})`, async ({
       page,
     }) => {

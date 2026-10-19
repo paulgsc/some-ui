@@ -10,97 +10,26 @@
  * erased and do not count.
  */
 
-import { existsSync, readFileSync } from "fs"
-import { dirname, join, relative } from "path"
-import ts from "typescript"
+import { dirname } from "path"
+import { reachedFrom as reached } from "@some-ui/vite-config/vitest/source-graph"
 import { describe, expect, it } from "vitest"
 
 const SRC = dirname(new URL(import.meta.url).pathname)
 
-const CANDIDATES = ["", ".ts", ".tsx", "/index.ts", "/index.tsx"]
-
-const PACKAGE = "@some-ui/speech"
-
-/** A source file for an import of this package's own code, or null. */
-function resolveImport(from: string, specifier: string): string | null {
-  // The package naming itself goes to the entry's source, as the build would.
-  if (specifier === PACKAGE) return join(SRC, "index.ts")
-  const base = specifier.startsWith(`${PACKAGE}/`)
-    ? join(SRC, specifier.slice(PACKAGE.length + 1))
-    : specifier.startsWith("@speech/")
-      ? join(SRC, specifier.slice("@speech/".length))
-      : specifier.startsWith(".")
-        ? join(dirname(from), specifier)
-        : null
-  if (base === null) return null
-  for (const suffix of CANDIDATES) {
-    const path = `${base}${suffix}`
-    if (/\.tsx?$/.test(path) && existsSync(path)) return path
-  }
-  throw new Error(`cannot resolve "${specifier}" from ${from}`)
-}
-
-/** Whether an import or export declaration survives type erasure. */
-function isRuntime(node: ts.ImportDeclaration | ts.ExportDeclaration): boolean {
-  if (ts.isExportDeclaration(node)) {
-    if (node.isTypeOnly) return false
-    const clause = node.exportClause
-    if (clause && ts.isNamedExports(clause) && clause.elements.length > 0) {
-      return clause.elements.some((element) => !element.isTypeOnly)
-    }
-    return true
-  }
-  const clause = node.importClause
-  if (!clause) return true // a side-effect import
-  if (clause.isTypeOnly) return false
-  if (clause.name) return true
-  const bindings = clause.namedBindings
-  if (!bindings || ts.isNamespaceImport(bindings)) return true
-  return (
-    bindings.elements.length === 0 ||
-    bindings.elements.some((element) => !element.isTypeOnly)
-  )
-}
-
 /** Every source file `entry` reaches through runtime imports, relative to src. */
-function reachedFrom(entry: string): Set<string> {
-  const seen = new Set<string>()
-  const visit = (file: string): void => {
-    if (seen.has(file)) return
-    seen.add(file)
-    const source = ts.createSourceFile(
-      file,
-      readFileSync(file, "utf-8"),
-      ts.ScriptTarget.Latest
-    )
-    const follow = (specifier: ts.Expression | undefined): void => {
-      if (!specifier || !ts.isStringLiteralLike(specifier)) return
-      const target = resolveImport(file, specifier.text)
-      if (target) visit(target)
-    }
-    // Every node, not only top-level statements: a lazy `import()` anywhere
-    // reaches its module as surely as a static import does.
-    const walk = (node: ts.Node): void => {
-      if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
-        if (isRuntime(node)) follow(node.moduleSpecifier)
-      } else if (
-        ts.isImportEqualsDeclaration(node) &&
-        !node.isTypeOnly &&
-        ts.isExternalModuleReference(node.moduleReference)
-      ) {
-        follow(node.moduleReference.expression)
-      } else if (
-        ts.isCallExpression(node) &&
-        node.expression.kind === ts.SyntaxKind.ImportKeyword
-      ) {
-        follow(node.arguments[0])
-      }
-      ts.forEachChild(node, walk)
-    }
-    walk(source)
-  }
-  visit(join(SRC, entry))
-  return new Set([...seen].map((file) => relative(SRC, file)))
+function reachedFrom(entry: string): ReadonlySet<string> {
+  return reached(
+    {
+      src: SRC,
+      // The package naming itself goes to the entry's source, as the build would.
+      aliases: {
+        "@some-ui/speech": "index.ts",
+        "@some-ui/speech/": "",
+        "@speech/": "",
+      },
+    },
+    entry
+  ).files
 }
 
 /** What belongs to one backend, and to no other entry. */

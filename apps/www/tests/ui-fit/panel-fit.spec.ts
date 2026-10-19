@@ -52,6 +52,7 @@ import type { PanelKey } from "@/lib/playable"
 import {
   ALLOWED_FIT_INTENTS,
   findViolations,
+  INCIDENT_FIXTURE,
   PANEL_PAGE_BUILD,
   PANEL_PAGE_PATH,
   panelPageBuilt,
@@ -114,11 +115,11 @@ const PANEL_STAGES: ReadonlyArray<PanelId> = [
 const PLANTED_OVERFLOW: PanelId = "planted-overflow"
 
 /**
- * Fixtures another sweep walks, screen by screen, at its own sizes: the
- * phone's incident session (`./incident-fit.spec.ts`), a phone-only surface
- * this sweep's desktop sizes would measure on the wrong device.
+ * Fixtures another sweep walks: the phone's incident session, whose screens
+ * are reached only by playing it, so measuring it as it loads would see its
+ * first screen alone (`./incident-fit.spec.ts`).
  */
-const SWEPT_ELSEWHERE: ReadonlyArray<PanelId> = ["leetype-incident"]
+const SWEPT_ELSEWHERE: ReadonlyArray<PanelId> = [INCIDENT_FIXTURE]
 
 type SweptPanel = { label: string; panel: PanelId; debt: string | null }
 

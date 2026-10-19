@@ -121,9 +121,11 @@ route is none of those.
 
 ### 2. `apps/www/tests/ui-fit` (Playwright, the actual gate)
 
-Three specs, all run in CI (section 3): `panel-fit` (2c) mounts real panels
-on a page built with www's own config and CSS, and `launcher-fit` (2b) and
-`exercise-shell-fit` measure static fixtures that mirror the shipped classes.
+Four specs, all run in CI (section 3): `panel-fit` (2c) mounts real panels
+on a page built with www's own config and CSS, `incident-fit` (2e) plays the
+phone's LeetType incident session on that page through every kind of screen,
+and `launcher-fit` (2b) and `exercise-shell-fit` measure static fixtures that
+mirror the shipped classes.
 
 ```bash
 pnpm --filter www build:fit
@@ -189,7 +191,7 @@ This spec guards the property, for the two surfaces that render the activity
 catalogue:
 
 ```bash
-pnpm --filter www test:ui-fit          # runs all three ui-fit specs
+pnpm --filter www test:ui-fit          # runs all four ui-fit specs
 ```
 
 It asserts an invariant rather than a pixel budget: **the launcher's
@@ -319,13 +321,24 @@ more that nothing else could see:
   launches Chromium _without_ `--hide-scrollbars` (Playwright's headless
   default), because a run that can paint no scrollbar cannot fail on one.
 
+### 2e. `apps/www/tests/ui-fit/incident-fit.spec.ts` (Playwright, the phone's incident session)
+
+`panel-fit` measures each fixture as it loads. A LeetType session file's
+screens are reached only by playing one, so this spec plays the
+`leetype-incident` fixture, a session file written to fill every kind of
+screen (`panel-page/incident-session.ts`), tapping as a learner would and
+measuring at each stop with the same `findViolations` (`harness.ts`). It runs
+at the phone sizes alone (`PHONE_VIEWPORTS`): the session is a phone surface.
+Its first run found the pinned job's bleed overflowing its article by 16px on
+every screen that pins one (#1922).
+
 ### 3. CI
 
 The ui-fit specs ran nowhere until #899. `pnpm test:ui-fit` existed, this
 document called them "the actual gate", and no workflow invoked them — which
 is its own lesson about where guardrails actually live. `pr.yml` now builds
-the panel page and runs `panel-fit`, `launcher-fit` and `exercise-shell-fit`
-whenever a PR touches `packages/ui/**`, `packages/some-content-registry/**`,
+the panel page and runs `panel-fit`, `incident-fit`, `launcher-fit` and
+`exercise-shell-fit` whenever a PR touches `packages/ui/**`, `packages/some-content-registry/**`,
 `packages/some-styles/**`, `apps/www/src/**`, `apps/www/tests/ui-fit/**`,
 www's build config (the list is in `pr.yml`), the root `package.json` or
 `pnpm-lock.yaml`.

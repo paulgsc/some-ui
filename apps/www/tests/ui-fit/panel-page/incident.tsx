@@ -42,8 +42,10 @@ const takes: SpokenTakes = {
 }
 
 /**
- * LeetType on the phone holding one session file, mounted as the phone
- * mounts it; `../incident-fit.spec.ts` plays it through every screen kind.
+ * LeetType on the phone holding one session file, through the card and its
+ * Play button as the phone shows them; `../incident-fit.spec.ts` plays it
+ * through every screen kind. `surface` is forced so the card shows at every
+ * size the sweep takes, the phone on its side included.
  */
 export const IncidentFixture = (): JSX.Element => (
   <Leetype surface="rounds" sessionFiles={{ store }} takes={takes} />

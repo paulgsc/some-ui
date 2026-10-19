@@ -290,7 +290,7 @@ jobs:
       # docs/ui-fit calls its Playwright layer "the actual gate", and until #899
       # nothing ran it: it lived behind `pnpm test:ui-fit`, which no workflow
       # invoked, so a panel could paint outside its rect for months with every
-      # check green. This runs all three of its specs.
+      # check green. This runs all four of its specs.
       #
       # Scoped to PRs that touch UI or what www builds it with. The registry
       # is in the trigger set on purpose - binding a new key delegates size

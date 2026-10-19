@@ -1,9 +1,10 @@
 /**
  * Plumbing for the panel sweeps (panel-fit, incident-fit): the viewport sizes
  * they sweep, the panel page (`./panel-page`) built with www's own config,
- * served over HTTP, and the measure of what leaves a fixture's rect. Never `file://`: Chromium blocks cross-origin ES module loads from a
- * file origin, every panel then renders an empty root, and a sweep that does
- * not check for that passes having measured nothing.
+ * served over HTTP, and the measure of what leaves a fixture's rect. Never
+ * `file://`: Chromium blocks cross-origin ES module loads from a file origin,
+ * every panel then renders an empty root, and a sweep that does not check
+ * for that passes having measured nothing.
  */
 
 import { createReadStream, existsSync, statSync } from "node:fs"
@@ -62,12 +63,32 @@ export function panelPageBuilt(): boolean {
  * A surface that fits all four has been fitted. A surface that fits the first
  * three has been fitted for people holding their phone the usual way.
  */
+const PHONE_LANDSCAPE = {
+  name: "phone-landscape",
+  width: 780,
+  height: 390,
+} as const
+
 export const VIEWPORTS = [
   { name: "short-laptop", width: 1280, height: 560 },
   { name: "phone", width: 390, height: 720 },
-  { name: "phone-landscape", width: 780, height: 390 },
+  PHONE_LANDSCAPE,
   { name: "desktop", width: 1680, height: 1050 },
 ] as const
+
+/**
+ * The sizes a phone-only surface is swept at (incident-fit): a tall phone, a
+ * narrow one, and the same phone on its side as above. A desktop size would
+ * measure such a surface on a device that never shows it.
+ */
+export const PHONE_VIEWPORTS = [
+  { name: "phone-tall", width: 412, height: 915 },
+  { name: "phone-narrow", width: 360, height: 780 },
+  PHONE_LANDSCAPE,
+] as const
+
+/** The fixture incident-fit plays, which panel-fit leaves to it. */
+export const INCIDENT_FIXTURE = "leetype-incident"
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",

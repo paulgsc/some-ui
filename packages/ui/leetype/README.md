@@ -99,7 +99,7 @@ change against first:
    `lib/leetype/incident-play`, which knows screens, picks and the session log.
    That is what makes "a phone never loads the engine" true by construction;
    `components/leetype/index.test.tsx` pins it for both (rounds, and a session
-   file played to its end), with a negative control that asserts the wide
+   file started and ended), with a negative control that asserts the wide
    branch does load it, and `components/incident/incident-session/index.test.tsx`
    walks every module the session surface reaches and finds no engine one.
 
