@@ -132,8 +132,9 @@ it, keeping its transcript, before the next. Bring it into the container with
 the Google Drive connector's `download_file_content`, by the note's file id. A
 note is too large for the conversation, so the tool saves its result to a file
 and names that file's path: JSON whose `content` is the audio in base64.
-Decode it from there, and never paste a saved note's base64 into a command. The audio may be
-webm, ogg or m4a; ffmpeg reads the format from the file itself:
+Decode it from there, and never paste a saved note's base64 into a command.
+The audio may be webm, ogg or m4a; ffmpeg reads the format from the file
+itself:
 
 ```sh
 python3 -I -c 'import base64, json, sys; open(sys.argv[2], "wb").write(base64.b64decode(json.load(open(sys.argv[1]))["content"]))' <saved file> /tmp/whisper/note.audio
