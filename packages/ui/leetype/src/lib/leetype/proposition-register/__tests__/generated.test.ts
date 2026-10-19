@@ -31,8 +31,6 @@ describe("generated proposition register", () => {
     )
 
     expect(fresh).toContain('"CW-P16"')
-    expect(fresh).toContain('"M8"')
-    expect(fresh).toContain('"A10"')
     expect(fresh).toContain(exampleId)
   })
 

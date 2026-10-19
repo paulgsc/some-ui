@@ -420,26 +420,38 @@ export function parsePropositionRegister(
       Number(a.id.slice("CW-P".length)) - Number(b.id.slice("CW-P".length))
   )
 
-  const seen = new Set<string>()
-  for (const entry of entries) {
-    if (seen.has(entry.id)) {
-      throw new Error(
-        `proposition register cites "${entry.id}" more than once.`
-      )
-    }
-    seen.add(entry.id)
-  }
+  assertContiguous(
+    entries.map((entry) => entry.id),
+    "CW-P",
+    "proposition register"
+  )
+  return entries
+}
 
-  for (let n = 1; n <= entries.length; n++) {
-    const expectedId = `CW-P${n}`
+/**
+ * Throws unless `ids` are exactly `<prefix>1..<prefix>N` without duplicates,
+ * naming `register` in the error.
+ */
+function assertContiguous(
+  ids: ReadonlyArray<string>,
+  prefix: string,
+  register: string
+): void {
+  const seen = new Set<string>()
+  for (const id of ids) {
+    if (seen.has(id)) {
+      throw new Error(`${register} cites "${id}" more than once.`)
+    }
+    seen.add(id)
+  }
+  for (let n = 1; n <= ids.length; n++) {
+    const expectedId = `${prefix}${String(n)}`
     if (!seen.has(expectedId)) {
       throw new Error(
-        `proposition register is missing "${expectedId}" even though ${entries.length} entries were found — ids must be a contiguous CW-P1..CW-P${entries.length} sequence.`
+        `${register} is missing "${expectedId}" even though ${String(ids.length)} entries were found — ids must be a contiguous ${prefix}1..${prefix}${String(ids.length)} sequence.`
       )
     }
   }
-
-  return entries
 }
 
 /**
@@ -467,14 +479,7 @@ export type RuleRegisterEntry = {
   readonly id: string
   /** The rule's short name, the table's middle column. */
   readonly rule: string
-  /** "Its one line": what a learner reads. */
-  readonly line: string
   readonly status: "active" | "superseded"
-}
-
-/** The register a rule id belongs to, as Rem. 7.4's tables name them. */
-export function ruleRegisterOf(id: string): "Machine" | "Agreement" {
-  return id.startsWith("M") ? "Machine" : "Agreement"
 }
 
 /**
@@ -501,14 +506,11 @@ export function parseRuleRegisters(
   for (const match of body.matchAll(RULE_ROW)) {
     const id = `${match[1] ?? ""}${match[2] ?? ""}`
     const rule = bodyOfBracketBlock(body, match.index + match[0].length - 1)
-    const lineOpen = body.indexOf("[", rule.afterIndex)
-    const line = bodyOfBracketBlock(body, lineOpen)
     const name = normalizeStatement(rule.body)
     const superseded = name.endsWith(SUPERSEDED_SUFFIX)
     entries.push({
       id,
       rule: superseded ? name.slice(0, -SUPERSEDED_SUFFIX.length) : name,
-      line: normalizeStatement(line.body),
       status: superseded ? "superseded" : "active",
     })
   }
@@ -519,25 +521,16 @@ export function parseRuleRegisters(
       `Rem. 7.4 has ${String(cells)} rule id cell(s) but this parser matched ${String(entries.length)} row(s); a row does not have the "[\`M1\`], [rule], [line]," shape.`
     )
   }
-  for (const prefix of ["M", "A"]) {
-    const numbers = entries
-      .filter((entry) => entry.id.startsWith(prefix))
-      .map((entry) => Number(entry.id.slice(1)))
-    if (numbers.length === 0) {
-      throw new Error(
-        `Rem. 7.4's ${ruleRegisterOf(prefix)} register has no rows.`
-      )
-    }
-    if (new Set(numbers).size !== numbers.length) {
-      throw new Error(`Rem. 7.4 lists a ${prefix} id more than once.`)
-    }
-    for (let n = 1; n <= numbers.length; n++) {
-      if (!numbers.includes(n)) {
-        throw new Error(
-          `Rem. 7.4's ${ruleRegisterOf(prefix)} register is missing "${prefix}${String(n)}": ids run ${prefix}1..${prefix}${String(numbers.length)} without gaps.`
-        )
-      }
-    }
+  for (const [prefix, name] of [
+    ["M", "Machine"],
+    ["A", "Agreement"],
+  ] as const) {
+    const register = `Rem. 7.4's ${name} register`
+    const ids = entries
+      .map((entry) => entry.id)
+      .filter((id) => id.startsWith(prefix))
+    if (ids.length === 0) throw new Error(`${register} has no rows.`)
+    assertContiguous(ids, prefix, register)
   }
   const order = (id: string): number =>
     (id.startsWith("M") ? 0 : 1000) + Number(id.slice(1))

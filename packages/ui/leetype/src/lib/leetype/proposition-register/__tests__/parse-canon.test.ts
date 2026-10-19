@@ -364,14 +364,9 @@ describe("parseRuleRegisters", () => {
       )
     )
     expect(entries).toEqual([
-      { id: "M1", rule: "Ladder", line: "The line for M1.", status: "active" },
-      { id: "M2", rule: "Batch", line: "The line for M2.", status: "active" },
-      {
-        id: "A1",
-        rule: "Model",
-        line: "The line for A1.",
-        status: "superseded",
-      },
+      { id: "M1", rule: "Ladder", status: "active" },
+      { id: "M2", rule: "Batch", status: "active" },
+      { id: "A1", rule: "Model", status: "superseded" },
     ])
   })
 
@@ -428,7 +423,6 @@ describe("parseRuleRegisters", () => {
     expect(entries.filter((e) => e.id.startsWith("A"))).toHaveLength(10)
     expect(entries.find((e) => e.id === "M8")).toMatchObject({
       rule: "Durability has a price",
-      line: "An acknowledgement is only as durable as what was flushed before it was sent.",
     })
   })
 })

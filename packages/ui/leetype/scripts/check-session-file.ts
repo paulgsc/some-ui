@@ -49,8 +49,12 @@ function check(file: string): { parsed: SessionFile | null; problems: number } {
 
 const args = process.argv.slice(2)
 const corpus = args.includes("--corpus")
-const paths = args.filter((arg) => arg !== "--corpus").flatMap(filesAt)
-if (paths.length === 0) {
+const targets = args.filter((arg) => arg !== "--corpus")
+const paths = targets.flatMap(filesAt)
+if (targets.length > 0 && paths.length === 0) {
+  console.error(`no .json session files in ${targets.join(", ")}`)
+  process.exitCode = 1
+} else if (paths.length === 0) {
   console.error(
     "usage: pnpm --filter @some-ui/leetype lint:session-file [--corpus] <file.json | folder>..."
   )
@@ -65,7 +69,7 @@ if (paths.length === 0) {
   if (gaps.length > 0) {
     const report = corpus ? console.error : console.log
     report(
-      `Rem. 10.3 (5): no round another entry decides offers ${gaps.join(", ")} as an option's fix, across ${String(parsed.length)} file(s).`
+      `Rem. 10.3 (5): no round another entry decides offers ${gaps.join(", ")} as a wrong option's fix, across ${String(parsed.length)} file(s).`
     )
   }
   if (problems > 0 || (corpus && gaps.length > 0)) process.exitCode = 1

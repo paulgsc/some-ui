@@ -1,6 +1,5 @@
 import type { RuleId } from "@leetype/lib/leetype/proposition-register/generated"
 import { RULE_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
-import { ruleRegisterOf } from "@leetype/lib/leetype/proposition-register/parse-canon"
 import type {
   ChoiceScreen,
   SessionFile,
@@ -56,7 +55,7 @@ function isRuleId(id: string): id is RuleId {
 
 /** Why `id` does not resolve to a live Rem. 7.4 row, or null when it does. */
 function unregistered(id: string): string | null {
-  const table = `canon Rem. 7.4's ${ruleRegisterOf(id)} register`
+  const table = `canon Rem. 7.4's ${id.startsWith("M") ? "Machine" : "Agreement"} register`
   if (!isRuleId(id)) return `"${id}" is in no row of ${table}`
   if (RULE_REGISTER[id].status === "superseded") {
     return `"${id}" is superseded in ${table}; cite the row that replaces it`
@@ -371,7 +370,7 @@ export function negativeDiscriminationGaps(
   const discriminated = new Set<string>()
   for (const file of files) {
     for (const screen of Object.values(file.screens)) {
-      if (!isRound(screen)) continue
+      if (!isRound(screen) || screen.rule === undefined) continue
       for (const option of screen.options) {
         if (
           !option.correct &&

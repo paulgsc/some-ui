@@ -30,7 +30,7 @@ export function formatGeneratedModule(
   const ruleEntries = rules
     .map(
       (rule) =>
-        `  "${rule.id}": { id: "${rule.id}", rule: ${JSON.stringify(rule.rule)}, line: ${JSON.stringify(rule.line)}, status: "${rule.status}" },`
+        `  "${rule.id}": { id: "${rule.id}", rule: ${JSON.stringify(rule.rule)}, status: "${rule.status}" },`
     )
     .join("\n")
 

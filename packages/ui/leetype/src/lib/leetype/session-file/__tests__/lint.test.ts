@@ -299,13 +299,16 @@ describe("negativeDiscriminationGaps", () => {
     const round = file.screens.r1
     if (round?.type !== "choice") throw new Error("r1 is a choice")
     round.options[1] = { ...round.options[1]!, applies: "A9" }
-    // A3 decides r1, so its own option there does not count, and a correct
-    // option is never a distractor whatever it applies.
+    // A correct option is never a distractor, whatever it applies.
     round.options[0] = { ...round.options[0]!, applies: "A5" }
-    const gaps = negativeDiscriminationGaps([file])
-    expect(gaps).not.toContain("A9")
-    expect(gaps).toContain("A3")
-    expect(gaps).toContain("A5")
-    expect(gaps).toHaveLength(17)
+    expect(negativeDiscriminationGaps([file])).not.toContain("A9")
+    expect(negativeDiscriminationGaps([file])).toContain("A5")
+    // A wrong option applying the round's own rule, or any option on a round
+    // that names no rule, discriminates nothing.
+    round.options[1] = { ...round.options[1], applies: "A3" }
+    expect(negativeDiscriminationGaps([file])).toContain("A3")
+    round.options[1] = { ...round.options[1], applies: "A9" }
+    delete round.rule
+    expect(negativeDiscriminationGaps([file])).toContain("A9")
   })
 })

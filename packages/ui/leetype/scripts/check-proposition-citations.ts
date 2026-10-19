@@ -42,7 +42,7 @@ async function checkFreshness(root: string): Promise<Array<string>> {
   const expected = await regenerate(root)
   if (current === expected) return []
   return [
-    `${GENERATED_RELATIVE_PATH} is stale — it does not match what ${CANON_RELATIVE_PATH} §7 generates today. Run \`pnpm --filter @some-ui/leetype run generate:proposition-register\` and commit the result.`,
+    `${GENERATED_RELATIVE_PATH} is stale — it does not match what ${CANON_RELATIVE_PATH} §7 and Rem. 7.4 generate today. Run \`pnpm --filter @some-ui/leetype run generate:proposition-register\` and commit the result.`,
   ]
 }
 
