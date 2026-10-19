@@ -811,7 +811,10 @@ slow would break the loop's only rule.
 > mode or when the server is unreachable. The seam returns because a round is
 > a different object (Rem. 11.4), not because this argument was wrong about
 > `Exercise`; review still gates what reaches a player, through
-> `corpus/rounds/`, the importer and the round CRM's own checks.
+> `corpus/rounds/`, the importer and the round CRM's own checks. (Retired by
+> canon Rem. 11.7, #1924: the phone plays session files, `lib/leetype-content`
+> and the bundled corpus are gone, and the five rounds live on in Git history
+> and as the round CRM's prompt example.)
 
 **The corpus-fetch seam is gone, not re-typed.** `apps/www` no longer fetches
 anything for this activity, and the `public/leetype` plumbing, the

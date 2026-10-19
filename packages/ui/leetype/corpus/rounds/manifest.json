@@ -1,9 +1,0 @@
-{
-  "rounds": [
-    "count-at-least-max-hoist",
-    "count-present-sorted-lookup",
-    "has-duplicate-sort-adjacent",
-    "min-gap-sort-adjacent",
-    "range-sums-prefix"
-  ]
-}

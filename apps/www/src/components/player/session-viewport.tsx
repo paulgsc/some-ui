@@ -7,7 +7,6 @@ import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 
 import { useAuthority } from "@/lib/authority"
 import { AmbientIntentStatus } from "@/lib/intent/render"
-import { loadLeetypeRoundRuns, loadLeetypeRounds } from "@/lib/leetype-content"
 import { phoneSessionFiles } from "@/lib/leetype-files"
 import { phoneSpokenTakes } from "@/lib/leetype-takes"
 import { phoneLensTakes } from "@/lib/lens-takes"
@@ -96,16 +95,10 @@ export const SessionViewport = ({
 
   // The learner shelf (paulgsc/server#387): only while the data is the
   // account's (every shelf route is per person) and a file_host exists. A
-  // device learner keeps no shelf. Nothing in either activity depends on it.
+  // device learner keeps no shelf. Nothing in the activity depends on it.
   const signedIn = useAuthority().kind === "account"
   const shelves = useMemo(
-    () =>
-      signedIn
-        ? {
-            topik: createShelfClient("topik"),
-            leetype: createShelfClient("leetype"),
-          }
-        : undefined,
+    () => (signedIn ? { topik: createShelfClient("topik") } : undefined),
     [signedIn]
   )
 
@@ -114,11 +107,9 @@ export const SessionViewport = ({
   // Each panel's runtime props, keyed by the one registry key that consumes
   // them.
   //
-  // `leetype`'s rounds (H1, #1231; canon Rem. 11.4): `loadRounds` fetches the
-  // served corpus, and the package falls back to bundled rounds when it
-  // resolves empty or rejects (src/lib/leetype-content). The phone gets
-  // rounds and a wide window the typing surface, chosen inside the package;
-  // no `surface` prop here, since the registry contract is
+  // `leetype`: the phone plays session files picked from storage (canon
+  // Rem. 11.7) and a wide window gets the typing surface, chosen inside the
+  // package; no `surface` prop here, since the registry contract is
   // render-with-no-props.
   // Built through `defineSceneProps` so a misspelled registry key is caught.
   const sceneProps = useMemo(
@@ -143,11 +134,6 @@ export const SessionViewport = ({
           paused,
         },
         leetype: {
-          // A plain function too; the package parses what it returns.
-          loadRounds: loadLeetypeRounds,
-          // Fetched in `server` mode, nothing in `static` (bundled).
-          loadRuns: loadLeetypeRoundRuns,
-          shelf: shelves?.leetype,
           takes: PHONE_SPOKEN_TAKES,
           // Read at render, as topik's hints are.
           sessionFiles:

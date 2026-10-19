@@ -2,7 +2,7 @@
  * Does every screen of the phone's incident session fit the phone? (#1922.)
  *
  * The panel sweep (`./panel-fit.spec.ts`) measures each fixture as it loads,
- * which for LeetType is the rounds the panel opens on. A session file's
+ * which for LeetType is the card the panel opens on. A session file's
  * screens are reached only by playing it, so this sweep plays one: the
  * `leetype-incident` fixture holds a session file written to make every
  * kind of screen as full as a file can (`./panel-page/incident-session.ts`),

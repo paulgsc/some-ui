@@ -66,9 +66,9 @@ const upsert = (
  * Either way `intakeRound` runs the authored-round lint (every hunk
  * applies, admissibility claims agree with the cost graphs, the round
  * opens inadmissible after its constraint diff), and Save is held until it
- * passes. What is saved is `serializeRound`'s bytes, the same bytes
- * `corpus/rounds/` exports for the importer, so a round published here and
- * the same round imported hash alike.
+ * passes. What is saved is `serializeRound`'s bytes, the one serialization
+ * a round has, so a round published here and the same round imported by the
+ * server's own importer hash alike.
  *
  * The one check a browser cannot run is compiling `A` with `rustc`; see
  * `intakeRound`'s doc comment. Rounds reviewed in the repository still get
@@ -207,7 +207,7 @@ export const RoundCrm = ({ client, reporting }: RoundCrmProps): JSX.Element => {
           working: () => "Loading rounds…",
           succeeded: () =>
             rounds.length === 0
-              ? "No rounds on the server yet. Import corpus/rounds/ or start a new one."
+              ? "No rounds on the server yet. Start a new one."
               : `${rounds.filter((round) => round.retiredAt === null).length} served, ${rounds.filter((round) => round.retiredAt !== null).length} retired`,
           failed: (error) => error.summary,
         })}

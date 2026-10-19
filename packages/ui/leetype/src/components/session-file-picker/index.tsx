@@ -80,8 +80,9 @@ export const SessionFilePicker: FC<SessionFilePickerProps> = ({
   const status = statusOf(pick)
   const card =
     // scroll-intent: reading-page: the held list and a file's findings can
-    // outgrow a phone held sideways; the card scrolls inside its cap.
-    "flex max-h-[40%] flex-col gap-2 overflow-y-auto px-4 py-3"
+    // outgrow a phone held sideways; the card scrolls inside the box it is
+    // given.
+    "flex flex-col gap-2 overflow-y-auto px-4 py-3"
 
   return (
     <section

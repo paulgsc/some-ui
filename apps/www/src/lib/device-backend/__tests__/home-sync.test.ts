@@ -8,7 +8,7 @@ import { openNodeSqlite } from "@/test-support/node-sqlite-driver"
 import { beforeEach, describe, expect, it } from "vitest"
 
 import { openDeviceBackend } from "@/lib/device-backend/backend"
-import { isRecord, sha256Hex } from "@/lib/device-backend/common"
+import { sha256Hex } from "@/lib/device-backend/common"
 import {
   upsertLesson,
   upsertRound,
@@ -341,36 +341,16 @@ describe("syncFromHome against a home it cannot read", () => {
   })
 })
 
-describe("the bundled seed after a sync", () => {
-  it("leaves a round home updated as home's, across a restart", async () => {
-    const id = "has-duplicate-sort-adjacent"
-    const bundled = await phoneJson(`/leetype/rounds/${id}`)
-    if (!isRecord(bundled)) throw new Error("the bundled round is not a record")
-    const newer = JSON.stringify({ ...bundled, homeEdit: true })
-    await upsertRound(homeDb, newer, NOW, "bundled")
-    // Home's run under the same (variant, bounds) key as a bundled one.
-    await upsertRuns(
-      homeDb,
-      JSON.stringify({
-        roundId: id,
-        contentHash: await sha256Hex(newer),
-        runs: [{ variant: "A", bounds: "before", sizes: { n: 99 } }],
-      }),
-      NOW
-    )
-    const report = await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
-    expect(report.rounds.updated).toBe(1)
-
-    // The next start seeds the bundle again, rounds and runs.
+describe("a round home sent, across a restart", () => {
+  it("stays, runs included: the bundle's retirement takes only bundled rounds", async () => {
+    await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
     phone = await openDeviceBackend(phoneDb, () => NOW)
-    await expect(phoneJson(`/leetype/rounds/${id}`)).resolves.toMatchObject({
-      homeEdit: true,
-    })
     await expect(
-      phoneJson(`/leetype/rounds/${id}/runs`)
-    ).resolves.toMatchObject({
-      runs: [{ variant: "A", bounds: "before", sizes: { n: 99 } }],
-    })
+      phoneJson("/leetype/rounds/home-only-round")
+    ).resolves.toMatchObject({ id: "home-only-round" })
+    await expect(
+      phoneJson("/leetype/rounds/home-only-round/runs")
+    ).resolves.toMatchObject({ runs: [{ variant: "A", bounds: "before" }] })
   })
 })
 

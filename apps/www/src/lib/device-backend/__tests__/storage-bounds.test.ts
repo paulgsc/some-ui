@@ -9,10 +9,7 @@ import { withRoom } from "@some-ui/voice-capture"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { openDeviceBackend } from "@/lib/device-backend/backend"
-import {
-  removeRoundsExcept,
-  upsertRound,
-} from "@/lib/device-backend/content-store"
+import { upsertRound } from "@/lib/device-backend/content-store"
 import {
   oldestRemovable,
   removeUnchanged,
@@ -275,8 +272,8 @@ describe("presence leases", () => {
   })
 })
 
-describe("the bundled seed", () => {
-  it("removes a bundled round this build no longer ships, says so, and keeps home's", async () => {
+describe("the retired bundle", () => {
+  it("removes every round an earlier build seeded, says so, and keeps home's", async () => {
     await upsertRound(db, JSON.stringify({ id: "dropped" }), NOW, "bundled")
     await upsertRound(db, JSON.stringify({ id: "home-round" }), NOW, "home")
 
@@ -291,18 +288,5 @@ describe("the bundled seed", () => {
     if (notice === null) throw new Error("no notice")
     await dismissPruneNotice(db, notice)
     await expect(readPruneNotice(db)).resolves.toBeNull()
-  })
-
-  it("does not bring back a bundled round home retired", async () => {
-    const rows = await db.all("SELECT id FROM leetype_round ORDER BY id")
-    const ids = rows.map((row) => String(row.id))
-    const id = ids[0] ?? ""
-    await removeRoundsExcept(db, ids.slice(1), "home")
-
-    backend = await openDeviceBackend(db, () => NOW, budget)
-
-    await expect(
-      db.all("SELECT id FROM leetype_round WHERE id = ?", [id])
-    ).resolves.toEqual([])
   })
 })

@@ -23,5 +23,3 @@ export const AlgorithmSchema = z.object({
   entryPoint: z.string().min(1),
   inputAlphabet: z.string().min(1),
 })
-
-export type Algorithm = z.infer<typeof AlgorithmSchema>
