@@ -1,15 +1,10 @@
-import type {
-  Play,
-  PlayInput,
-  StepContext,
-} from "@leetype/lib/leetype/incident-play/model"
 import {
-  declaredMinutes,
-  startPlay,
-  step,
-} from "@leetype/lib/leetype/incident-play/model"
-import type { SessionEvent } from "@leetype/lib/leetype/session-log/model"
-import type { SessionFile } from "@leetype/types/session-file"
+  ON,
+  playerFor,
+  RIGHT,
+  WRONG,
+} from "@leetype/lib/leetype/incident-play/__tests__/play-through"
+import { declaredMinutes } from "@leetype/lib/leetype/incident-play/model"
 import { SessionFileSchema } from "@leetype/types/session-file"
 import { describe, expect, it } from "vitest"
 
@@ -106,46 +101,9 @@ const FILE = SessionFileSchema.parse({
   },
 })
 
-function playThrough(
-  inputs: ReadonlyArray<PlayInput>,
-  options: {
-    file?: SessionFile
-    form?: "full" | "short"
-    from?: Parameters<typeof startPlay>[0]["from"]
-    hiddenMs?: number
-  } = {}
-): { play: Play; events: Array<SessionEvent> } {
-  let id = 0
-  const ctx = (at: number): StepContext => ({
-    at,
-    newId: () => `e${String(++id)}`,
-    medianMs: null,
-    hiddenMs: options.hiddenMs ?? 0,
-  })
-  const started = startPlay(
-    {
-      fileName: "small",
-      file: options.file ?? FILE,
-      session: "s1",
-      form: options.form ?? "full",
-      ...(options.from === undefined ? {} : { from: options.from }),
-    },
-    ctx(0)
-  )
-  let play = started.play
-  const events = [...started.events]
-  inputs.forEach((input, index) => {
-    const stepped = step(play, input, ctx((index + 1) * 1000))
-    play = stepped.play
-    events.push(...stepped.events)
-  })
-  return { play, events }
-}
+const playThrough = playerFor(FILE, "small")
 
 const GO = { type: "act", action: 0 } as const
-const RIGHT = { type: "pick", option: 0 } as const
-const WRONG = { type: "pick", option: 1 } as const
-const ON = { type: "continue" } as const
 
 describe("an incident session's steps, on a small file", () => {
   it("gives the short form's second round way to the take", () => {
@@ -373,6 +331,23 @@ describe("an incident session's steps, on a small file", () => {
       },
     ])
     expect(play).toMatchObject({ screen: "r1", scope: "file", resume: null })
+  })
+
+  it("does not take again the parked round's return already in view", () => {
+    const { play } = playThrough([
+      GO,
+      WRONG,
+      ON,
+      GO,
+      {
+        type: "take-parked",
+        round: "r1",
+        reading: "g1",
+        take: "return",
+        asked: false,
+      },
+    ])
+    expect(play).toMatchObject({ screen: "v1", scope: "file", resume: null })
   })
 
   it("takes no parked round in the middle of a reveal", () => {

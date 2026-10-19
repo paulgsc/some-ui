@@ -5,6 +5,7 @@ import { ParkedRounds } from "@leetype/components/incident/parked-rounds"
 import { ReadingScreenView } from "@leetype/components/incident/reading-screen"
 import { RecordScreenView } from "@leetype/components/incident/record-screen"
 import { RoundScreen } from "@leetype/components/incident/round-screen"
+import { ScreenHeading } from "@leetype/components/incident/screen-heading"
 import { SessionEnd } from "@leetype/components/incident/session-end"
 import { SessionStart } from "@leetype/components/incident/session-start"
 import type {
@@ -94,12 +95,7 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
   const limit = limitMinutes === undefined ? {} : { limitMinutes }
   const here = { fileName, file }
   const kept = log.getSnapshot().log
-  const parked = parkedRounds(kept, here).flatMap((round) => {
-    const screen = file.screens[round.round]
-    return screen?.type === "choice" || screen?.type === "record"
-      ? [{ ...round, screen }]
-      : []
-  })
+  const parked = parkedRounds(kept, here)
   // Taken before its reading was read, a return is asked for (Prop. 9.4 (d)).
   const taken = (
     { round, reading, read }: ParkedRound,
@@ -212,21 +208,7 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
       case "end": {
         return (
           <article className="flex flex-col gap-4">
-            {screen.pinned !== undefined && (
-              <p className="sticky top-0 z-10 -mx-4 border-b border-border bg-background px-4 py-2 text-pretty text-sm font-medium text-foreground">
-                {screen.pinned}
-              </p>
-            )}
-            {screen.title !== undefined && (
-              <h2 className="text-pretty text-base font-semibold text-foreground">
-                {screen.title}
-              </h2>
-            )}
-            {screen.body !== undefined && (
-              <p className="whitespace-pre-line text-pretty text-sm leading-relaxed text-foreground">
-                {screen.body}
-              </p>
-            )}
+            <ScreenHeading screen={screen} />
             <Glosses
               terms={screen.glosses}
               glossary={play.file.glossary ?? {}}

@@ -1,22 +1,17 @@
 import type { FC } from "react"
 import { useState } from "react"
+import { RubricPoints } from "@leetype/components/incident/rubric-points"
 import { WorkedAnswer } from "@leetype/components/incident/worked-answer"
 import type { ParkedRound } from "@leetype/lib/leetype/incident-play/words"
-import type { ChoiceScreen, SessionScreen } from "@leetype/types/session-file"
 import { Button } from "@some-ui/shared"
 
-type RecordScreen = Extract<SessionScreen, { type: "record" }>
-
 type ParkedRoundsProps = {
-  /** A round, or a take (a record screen), parked. */
-  parked: ReadonlyArray<
-    ParkedRound & { readonly screen: ChoiceScreen | RecordScreen }
-  >
+  parked: ReadonlyArray<ParkedRound>
   /** Plays a parked round's return, or the round itself. */
   onRound: (round: ParkedRound, take: "return" | "round") => void
   /** Records a parked round's worked confirmation being taken. */
   onConfirmation: (round: ParkedRound) => void
-  /** The screen in view, during play: it is not offered to play again. */
+  /** The screen in view, during play: it is not offered again. */
   inView?: string
 }
 
@@ -51,7 +46,7 @@ export const ParkedRounds: FC<ParkedRoundsProps> = ({
             {round.read ? ": you read what it was waiting on." : ""}
           </p>
           <div className="flex flex-wrap gap-2">
-            {round.returns && (
+            {round.returnScreen !== null && round.returnScreen !== inView && (
               <Button
                 variant={round.read ? "default" : "outline"}
                 className="min-h-11"
@@ -89,16 +84,7 @@ export const ParkedRounds: FC<ParkedRoundsProps> = ({
           {open.includes(round.round) && (
             <div className="text-sm">
               {round.screen.type === "record" ? (
-                <ul className="flex list-disc flex-col gap-1 pl-5">
-                  {round.screen.rubric.map((point, index) => (
-                    <li
-                      key={`${String(index)} ${point}`}
-                      className="text-pretty"
-                    >
-                      {point}
-                    </li>
-                  ))}
-                </ul>
+                <RubricPoints rubric={round.screen.rubric} />
               ) : (
                 <WorkedAnswer screen={round.screen} />
               )}

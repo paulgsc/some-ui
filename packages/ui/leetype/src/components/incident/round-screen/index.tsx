@@ -1,6 +1,7 @@
 import type { FC } from "react"
 import { useEffect, useRef } from "react"
 import { Glosses } from "@leetype/components/incident/glosses"
+import { ScreenHeading } from "@leetype/components/incident/screen-heading"
 import { WorkedAnswer } from "@leetype/components/incident/worked-answer"
 import type { Reveal } from "@leetype/lib/leetype/incident-play"
 import type { ChoiceScreen } from "@leetype/types/session-file"
@@ -44,21 +45,7 @@ export const RoundScreen: FC<RoundScreenProps> = ({
 
   return (
     <article className="flex flex-col gap-4">
-      {screen.pinned !== undefined && (
-        <p className="sticky top-0 z-10 -mx-4 border-b border-border bg-background px-4 py-2 text-pretty text-sm font-medium text-foreground">
-          {screen.pinned}
-        </p>
-      )}
-      {screen.title !== undefined && (
-        <h2 className="text-pretty text-base font-semibold text-foreground">
-          {screen.title}
-        </h2>
-      )}
-      {screen.body !== undefined && (
-        <p className="whitespace-pre-line text-pretty text-sm leading-relaxed text-foreground">
-          {screen.body}
-        </p>
-      )}
+      <ScreenHeading screen={screen} />
       {screen.panel !== undefined && (
         <section
           aria-label={screen.panel.title ?? "Who holds what"}

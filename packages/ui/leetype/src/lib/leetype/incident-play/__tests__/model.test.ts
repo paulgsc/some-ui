@@ -1,11 +1,12 @@
-import type {
-  Play,
-  PlayInput,
-  StepContext,
-} from "@leetype/lib/leetype/incident-play/model"
+import {
+  clock,
+  ON,
+  playerFor,
+  RIGHT,
+  WRONG,
+} from "@leetype/lib/leetype/incident-play/__tests__/play-through"
 import {
   medianSelectionMs,
-  startPlay,
   step,
 } from "@leetype/lib/leetype/incident-play/model"
 import { AB_FIXTURES } from "@leetype/lib/leetype/session-file/__tests__/fixtures"
@@ -17,56 +18,9 @@ import { describe, expect, it } from "vitest"
 // Variant B: s01 info → s02 round 1 (correct → s05 pointer; else s03
 // placement → "Read now" s04 return) → s06 round 2 … s14 the take → s21 end.
 const FILE = SessionFileSchema.parse(AB_FIXTURES[1]?.raw)
-const T0 = Date.parse("2026-10-18T20:00:00.000Z")
-
-function clock(median: number | null = null): {
-  ctx: (after: number) => StepContext
-} {
-  let id = 0
-  return {
-    ctx: (after): StepContext => ({
-      at: T0 + after,
-      newId: () => `e${String(++id)}`,
-      medianMs: median,
-      hiddenMs: 0,
-    }),
-  }
-}
-
-/** Plays `inputs` in turn, one second apart, collecting every event. */
-function playThrough(
-  inputs: ReadonlyArray<PlayInput>,
-  options: {
-    median?: number | null
-    form?: "full" | "short"
-    gapMs?: number
-  } = {}
-): { play: Play; events: Array<SessionEvent> } {
-  const { ctx } = clock(options.median ?? null)
-  const gap = options.gapMs ?? 1000
-  const started = startPlay(
-    {
-      fileName: "t1-01",
-      file: FILE,
-      session: "s1",
-      form: options.form ?? "full",
-    },
-    ctx(0)
-  )
-  let play = started.play
-  const events = [...started.events]
-  inputs.forEach((input, index) => {
-    const stepped = step(play, input, ctx((index + 1) * gap))
-    play = stepped.play
-    events.push(...stepped.events)
-  })
-  return { play, events }
-}
+const playThrough = playerFor(FILE, "t1-01")
 
 const START = { type: "act", action: 0 } as const
-const WRONG = { type: "pick", option: 1 } as const
-const RIGHT = { type: "pick", option: 0 } as const
-const ON = { type: "continue" } as const
 
 describe("an incident session's steps", () => {
   it("starts on the file's first screen, declaring its length", () => {

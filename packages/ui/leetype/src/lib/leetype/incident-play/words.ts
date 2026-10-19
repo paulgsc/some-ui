@@ -3,7 +3,11 @@ import type {
   SessionLog,
 } from "@leetype/lib/leetype/session-log/model"
 import { ledgerOf } from "@leetype/lib/leetype/session-log/model"
-import type { SessionFile } from "@leetype/types/session-file"
+import type {
+  ChoiceScreen,
+  SessionFile,
+  SessionScreen,
+} from "@leetype/types/session-file"
 import { assertNever } from "@some-ui/core-utils"
 
 import { returnScreenOf } from "./model"
@@ -120,15 +124,16 @@ export function placeOf(log: SessionLog, here: Here): string {
     : "Last time it stopped before the first round."
 }
 
-/** A round of this file parked and not since solved, and what it waits on. */
+/** A round or a take of this file parked and not since solved, and what it waits on. */
 export type ParkedRound = {
   readonly round: string
+  readonly screen: ChoiceScreen | Extract<SessionScreen, { type: "record" }>
   readonly name: string
   readonly reading: string | null
-  /** Its reading was read since it was last placed or returned. */
+  /** Its reading was read since it was last placed, returned or said. */
   readonly read: boolean
-  /** The file authors a return for it (`returnScreenOf`). */
-  readonly returns: boolean
+  /** The return the file authors for it (`returnScreenOf`), if any. */
+  readonly returnScreen: string | null
 }
 
 /**
@@ -174,12 +179,12 @@ export function parkedRounds(
     return [
       {
         round: screen,
+        screen: round,
         name: screenName(here.file, screen),
         reading,
         read: reading !== null && readAt > since,
-        returns:
-          reading !== null &&
-          returnScreenOf(here.file, screen, reading) !== null,
+        returnScreen:
+          reading === null ? null : returnScreenOf(here.file, screen, reading),
       },
     ]
   })

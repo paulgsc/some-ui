@@ -770,10 +770,14 @@ export function step(play: Play, input: PlayInput, ctx: StepContext): Stepped {
     }
     case "take-parked": {
       if (play.reveal !== null || play.spoken !== null) return unchanged
-      // The round in view is already being played.
-      if (input.take === "round" && input.round === play.screen) {
-        return unchanged
-      }
+      // The round, or its return, in view is already being played.
+      const takes =
+        input.take === "round"
+          ? input.round
+          : input.reading === null
+            ? null
+            : returnScreenOf(play.file, input.round, input.reading)
+      if (takes === play.screen) return unchanged
       const { round, reading, take, asked } = input
       const away = detour(play, { round, reading, take, asked })
       return { play: { ...away, shownAt: ctx.at }, events: [] }

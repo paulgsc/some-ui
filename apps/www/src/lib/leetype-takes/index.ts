@@ -63,8 +63,10 @@ const notesFull = (): boolean => notes.read().length >= MAX
 /**
  * The port's snapshot, made again only when the desk's changes or the notes
  * fill. A take needs room on both, so `full` when either is; a typed answer
- * needs only a note, so `notesFull` alone stops it. The two part when an
- * export lets a note go but keeps a take whose audio it could not read.
+ * needs only a note, so `notesFull` alone stops it. The two part whenever a
+ * take is kept with no note: one that answered nothing (the learner moved
+ * on, or the surface closed mid-take), or one an export kept because it
+ * could not read its audio while letting its note go.
  */
 function adapted(): () => SpokenTakeSnapshot {
   let from: LensTakeSnapshot | null = null

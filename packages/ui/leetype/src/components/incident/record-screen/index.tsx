@@ -1,6 +1,8 @@
 import type { FC } from "react"
 import { useState } from "react"
 import { Glosses } from "@leetype/components/incident/glosses"
+import { RubricPoints } from "@leetype/components/incident/rubric-points"
+import { ScreenHeading } from "@leetype/components/incident/screen-heading"
 import type { SpokenAnswer } from "@leetype/lib/leetype/incident-play"
 import type { SpokenTakeSnapshot } from "@leetype/lib/leetype/spoken-take"
 import type { SessionScreen } from "@leetype/types/session-file"
@@ -66,21 +68,7 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
 
   const heading = (
     <>
-      {screen.pinned !== undefined && (
-        <p className="sticky top-0 z-10 -mx-4 border-b border-border bg-background px-4 py-2 text-pretty text-sm font-medium text-foreground">
-          {screen.pinned}
-        </p>
-      )}
-      {screen.title !== undefined && (
-        <h2 className="text-pretty text-base font-semibold text-foreground">
-          {screen.title}
-        </h2>
-      )}
-      {screen.body !== undefined && (
-        <p className="whitespace-pre-line text-pretty text-sm leading-relaxed text-foreground">
-          {screen.body}
-        </p>
-      )}
+      <ScreenHeading screen={screen} />
       <Glosses terms={screen.glosses} glossary={glossary} />
       <p className="text-pretty text-base font-medium text-foreground">
         {screen.prompt}
@@ -96,13 +84,7 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
           {answered(spoken)}
         </p>
         {spoken.as === "passed" ? (
-          <ul className="flex list-disc flex-col gap-1 pl-5 text-sm">
-            {screen.rubric.map((point, index) => (
-              <li key={`${String(index)} ${point}`} className="text-pretty">
-                {point}
-              </li>
-            ))}
-          </ul>
+          <RubricPoints rubric={screen.rubric} />
         ) : (
           <fieldset className="flex flex-col gap-2">
             <legend className="text-sm font-medium text-foreground">

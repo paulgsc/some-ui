@@ -24,7 +24,11 @@ export { declaredMinutes, returnFrom } from "./model"
 
 export type IncidentPlaySnapshot = {
   readonly play: Play | null
-  /** The session log refused a step; the surface shows it (`session-log`). */
+  /**
+   * The session log refused a step (`session-log`), or, after it, the phone
+   * could not keep what an answer said (`SpokenTakes.note`); the surface
+   * shows it.
+   */
   readonly problem: string | null
   /** The microphone, when the host gives one (`spoken-take`). */
   readonly take: SpokenTakeSnapshot | null
@@ -61,7 +65,8 @@ const MINUTE_MS = 60_000
  * every step's events go to the log in order. The session's id is made with
  * the runtime, so what the first screen records belongs to the session it
  * opens. An event the log refuses is not retried: the play goes on, and
- * `problem` carries the log's own word on it until a later append is kept.
+ * `problem` carries the log's own word on it until a later append is kept,
+ * or, when the log has none, that an answer's notes were not kept.
  * A take that lands for the record screen in view answers it; one that
  * lands after the learner moved on answers nothing. What it listens to (the
  * microphone, the app's visibility, the timer) it holds only between

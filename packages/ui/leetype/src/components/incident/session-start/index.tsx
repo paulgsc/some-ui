@@ -1,4 +1,4 @@
-import type { ComponentProps, FC } from "react"
+import type { FC } from "react"
 import { ParkedRounds } from "@leetype/components/incident/parked-rounds"
 import type { PlayForm } from "@leetype/lib/leetype/incident-play"
 import type { ParkedRound } from "@leetype/lib/leetype/incident-play/words"
@@ -11,7 +11,7 @@ type SessionStartProps = {
   place: string
   fullMinutes: number
   shortMinutes: number
-  parked: ComponentProps<typeof ParkedRounds>["parked"]
+  parked: ReadonlyArray<ParkedRound>
   onStart: (form: PlayForm) => void
   /** Plays a parked round's return, or the round itself. */
   onRound: (round: ParkedRound, take: "return" | "round") => void
