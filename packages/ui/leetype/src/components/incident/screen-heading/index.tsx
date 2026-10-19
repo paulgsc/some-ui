@@ -1,5 +1,12 @@
 import type { FC } from "react"
 
+/**
+ * The article a screen sits in. It spans the page's 16px gutter (the page
+ * pads by `px-4`) and pads it back, so the pinned job can bleed to the
+ * page's edges inside the article rather than past it.
+ */
+export const SCREEN_ARTICLE = "-mx-4 flex flex-col gap-4 px-4"
+
 /** The job, pinned above whatever the screen scrolls under it (Def. 9.3). */
 export const PinnedJob: FC<{ pinned: string | undefined }> = ({ pinned }) =>
   pinned === undefined ? null : (

@@ -1,6 +1,9 @@
 import type { FC } from "react"
 import { Glosses } from "@leetype/components/incident/glosses"
-import { PinnedJob } from "@leetype/components/incident/screen-heading"
+import {
+  PinnedJob,
+  SCREEN_ARTICLE,
+} from "@leetype/components/incident/screen-heading"
 import type { SessionScreen } from "@leetype/types/session-file"
 import { Button } from "@some-ui/shared"
 import { ExternalLink } from "lucide-react"
@@ -36,7 +39,7 @@ export const ReadingScreenView: FC<ReadingScreenProps> = ({
 }) => {
   const { source } = screen
   return (
-    <article className="flex flex-col gap-4">
+    <article className={SCREEN_ARTICLE}>
       <PinnedJob pinned={screen.pinned} />
       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {offered === "pointer" ? "If you want more" : "A reading"}

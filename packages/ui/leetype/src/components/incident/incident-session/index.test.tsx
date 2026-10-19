@@ -1,9 +1,11 @@
+import { fileURLToPath } from "node:url"
 import { IncidentSession } from "@leetype/components/incident/incident-session"
 import { AB_FIXTURES } from "@leetype/lib/leetype/session-file/__tests__/fixtures"
 import { createSessionLogStore } from "@leetype/lib/leetype/session-log"
 import type { ChoiceScreen } from "@leetype/types/session-file"
 import { SessionFileSchema } from "@leetype/types/session-file"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
+import { reachedFrom } from "@some-ui/vite-config/vitest/source-graph"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
@@ -495,5 +497,32 @@ describe("IncidentSession", () => {
     expect(
       screen.getByRole("button", { name: /Start with incident 1/ })
     ).toBeTruthy()
+  })
+})
+
+// Through a variable, as `session-file/__tests__/fixtures.ts` does: a literal
+// inside `new URL(...)` is rewritten by Vite's asset transform.
+const SRC_FROM_HERE = "../../../"
+const SRC = fileURLToPath(new URL(SRC_FROM_HERE, import.meta.url))
+
+describe("the incident path", () => {
+  // Boundary 5 (README): what a phone plays from a session file reaches no
+  // engine module, types included, so a phone never loads the engine.
+  it("reaches nothing engine-shaped from the session surface", () => {
+    const { files, packages } = reachedFrom(
+      { src: SRC, aliases: { "@leetype/": "" }, types: true },
+      "components/incident/incident-session/index.tsx"
+    )
+    const local = [...files]
+    // It walked the play model, so an empty walk cannot pass.
+    expect(local).toContain("lib/leetype/incident-play/model.ts")
+    expect(
+      local.filter((file) =>
+        /^(types\/leetype|types\/wasm\/|hooks\/leetype\/|lib\/leetype\/leetype-wasm-loader)/.test(
+          file
+        )
+      )
+    ).toEqual([])
+    expect([...packages].filter((name) => name.includes("wasm"))).toEqual([])
   })
 })

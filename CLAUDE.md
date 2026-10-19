@@ -468,7 +468,8 @@ never "sounds like good practice."
   commits — never stack new work on already-merged history. Fetch fresh; a stale local
   `origin/main` ref produces false alarms in both directions.
 - **A green ui-fit run proves only what is in the viewport matrix.** It is four sizes in
-  `apps/www/tests/ui-fit/harness.ts`, one of which (780×390) exists because the other
+  `apps/www/tests/ui-fit/harness.ts` (`VIEWPORTS`; the phone-only incident sweep takes
+  `PHONE_VIEWPORTS` beside it), one of which (780×390) exists because the other
   three are all portrait or landscape-desktop, and a phone held sideways was therefore a
   shape nothing could fail on. If a report is about an orientation or window shape, check
   that matrix contains it before concluding the surface is fine.

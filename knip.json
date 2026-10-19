@@ -84,7 +84,8 @@
       "entry": [
         "src/vitest/index.ts",
         "src/vitest/vitest.setup.ts",
-        "src/vitest/memory-storage.ts"
+        "src/vitest/memory-storage.ts",
+        "src/vitest/source-graph.ts"
       ]
     },
     "packages/speech": {

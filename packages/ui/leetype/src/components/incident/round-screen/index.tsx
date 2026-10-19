@@ -1,7 +1,10 @@
 import type { FC } from "react"
 import { useEffect, useRef } from "react"
 import { Glosses } from "@leetype/components/incident/glosses"
-import { ScreenHeading } from "@leetype/components/incident/screen-heading"
+import {
+  SCREEN_ARTICLE,
+  ScreenHeading,
+} from "@leetype/components/incident/screen-heading"
 import { WorkedAnswer } from "@leetype/components/incident/worked-answer"
 import type { Reveal } from "@leetype/lib/leetype/incident-play"
 import type { ChoiceScreen } from "@leetype/types/session-file"
@@ -44,7 +47,7 @@ export const RoundScreen: FC<RoundScreenProps> = ({
   }, [shown])
 
   return (
-    <article className="flex flex-col gap-4">
+    <article className={SCREEN_ARTICLE}>
       <ScreenHeading screen={screen} />
       {screen.panel !== undefined && (
         <section

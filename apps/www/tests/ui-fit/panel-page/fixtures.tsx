@@ -1,5 +1,6 @@
 /**
- * Every state the panel-fit sweep mounts (`../panel-fit.spec.ts`), by id.
+ * Every state the ui-fit sweeps mount (`../panel-fit.spec.ts`, and
+ * `../incident-fit.spec.ts` for the phone's incident session), by id.
  *
  * The panels are mounted through `PANELS` itself (`@/lib/playable`), the
  * lazy entries a session binds, with no props beyond the one a session would
@@ -30,6 +31,8 @@ import {
 } from "@some-ui/topik"
 
 import { PANELS } from "@/lib/playable"
+
+import { IncidentFixture } from "./incident"
 
 type QuizPanelProps = ComponentProps<typeof QuizPanel>
 type Question = QuizPanelProps["questions"][number]
@@ -305,6 +308,8 @@ export const PANEL_FIXTURES = {
     at: { kind: "end" },
     first: { c1: "d" },
   }),
+
+  "leetype-incident": IncidentFixture,
 
   // Inline styles, not utilities: this directory is outside www's Tailwind
   // sources (style.context.ts), so the page adds nothing to the CSS it
