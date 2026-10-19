@@ -13,6 +13,12 @@
  * address from the WebView's `https:` page (a `fetch` would be mixed
  * content). Tests pass a second device backend standing in for home, which
  * passes the server's own contracts.
+ *
+ * Every read but a round's body (skipped by its listed hash) is revalidated:
+ * sent with the `ETag` this phone kept for it, so what home has not changed
+ * comes back bodiless (`304`). Home answering `429` (busy) ends the sync
+ * there, with what was copied before it kept, and is said as busy: there is
+ * no retry, and the next tap is the next try.
  */
 import { isRecord, stringsAt } from "@/lib/device-backend/common"
 import type { LessonEntry } from "@/lib/device-backend/content-store"
@@ -20,13 +26,19 @@ import {
   DEFAULT_LESSON_ACTIVITY,
   removeLessonsExcept,
   removeRoundsExcept,
+  storedLessonBody,
   storedRoundHash,
   upsertLesson,
   upsertRound,
   upsertRuns,
 } from "@/lib/device-backend/content-store"
 import type { SqlDriver } from "@/lib/device-backend/sql"
-import { DeviceStorageError } from "@/lib/device-backend/sql"
+import {
+  DeviceStorageError,
+  one,
+  text,
+  textOrNull,
+} from "@/lib/device-backend/sql"
 import type { StorageBudget } from "@/lib/device-backend/storage"
 import {
   ANDROID_BACKUP_BUDGET,
@@ -36,10 +48,14 @@ import {
 import { TREE_ACTIVITY } from "@/lib/topik-content"
 
 /**
- * A GET against home. `body` is the answer as text; a transport that parsed
- * JSON on the way (Capacitor's does) re-serialises it.
+ * A GET against home, sent with `If-None-Match: etag` when `etag` is given.
+ * `body` is the answer as text; a transport that parsed JSON on the way
+ * (Capacitor's does) re-serialises it. `etag` is the answer's `ETag`.
  */
-export type HomeGet = (url: string) => Promise<{ status: number; body: string }>
+export type HomeGet = (
+  url: string,
+  etag?: string
+) => Promise<{ status: number; body: string; etag?: string }>
 
 /** `removed`: home stopped listing it. `skipped`: it would not fit. */
 type Tally = {
@@ -71,13 +87,23 @@ export class SyncStoppedError extends Error {
   }
 }
 
+/** Home answered `429`: it is busy. What was copied before it stays. */
+export class HomeBusyError extends Error {
+  constructor() {
+    super("home is busy")
+    this.name = "HomeBusyError"
+  }
+}
+
 /**
- * The phone's storage failing, or the person stopping, is not one item's
- * failure: the sync stops and says so.
+ * The phone's storage failing, the person stopping, or home being busy is
+ * not one item's failure: the sync stops and says so.
  */
 function endsTheSync(error: unknown): boolean {
   return (
-    error instanceof DeviceStorageError || error instanceof SyncStoppedError
+    error instanceof DeviceStorageError ||
+    error instanceof SyncStoppedError ||
+    error instanceof HomeBusyError
   )
 }
 
@@ -123,23 +149,85 @@ function isRoundListing(value: unknown): value is RoundListing {
   )
 }
 
+/** One read's answer, and `keep`, which keeps its `ETag` once it is stored. */
+type Read = {
+  status: number
+  body: string
+  keep: () => Promise<void>
+}
+
+/**
+ * `url`, revalidated (`device_home_answer`): sent with the `ETag` this phone
+ * kept for it while it still holds what that tag names, the body kept with
+ * the tag or, for a lesson, `held`. A `304` answers with that body, as a
+ * `200`. The tag is kept only by `keep`, once the caller has stored what the
+ * answer carried, so it never names bytes the phone lacks. A `429` throws.
+ */
+async function read(
+  sync: { db: SqlDriver; store: SqlDriver; get: HomeGet; read: Set<string> },
+  url: string,
+  held?: () => Promise<string | null>
+): Promise<Read> {
+  const { db, store, get } = sync
+  sync.read.add(url)
+  const kept = await one(
+    db,
+    "SELECT etag, body FROM device_home_answer WHERE url = ?",
+    [url]
+  )
+  const body =
+    kept === null ? null : held ? await held() : textOrNull(kept, "body")
+  const tag = kept !== null && body !== null ? text(kept, "etag") : undefined
+  const answer = unlessBusy(await get(url, tag))
+  const done = (): Promise<void> => Promise.resolve()
+  if (answer.status === 304 && body !== null) {
+    return { status: 200, body, keep: done }
+  }
+  if (answer.status !== 200) return { ...answer, keep: done }
+  const { etag } = answer
+  const keep = async (): Promise<void> => {
+    if (etag === undefined) {
+      await db.run("DELETE FROM device_home_answer WHERE url = ?", [url])
+      return
+    }
+    try {
+      await store.run(
+        `INSERT INTO device_home_answer (url, etag, body) VALUES (?, ?, ?)
+         ON CONFLICT(url) DO UPDATE SET etag = excluded.etag, body = excluded.body`,
+        [url, etag, held ? null : answer.body]
+      )
+    } catch (error) {
+      // A tag that does not fit only costs the next sync the download.
+      if (!(error instanceof OverBudgetError)) throw error
+    }
+  }
+  return { status: 200, body: answer.body, keep }
+}
+
+/** A listing every write waits on: home unreachable or refusing fails it. */
 async function getJson(
-  get: HomeGet,
-  base: string,
+  sync: Parameters<typeof read>[0] & { base: string },
   route: string
 ): Promise<unknown> {
-  let answer: { status: number; body: string }
+  let answer: Read
   try {
-    answer = await get(`${base}${route}`)
+    answer = await read(sync, `${sync.base}${route}`)
   } catch (cause) {
-    if (cause instanceof SyncStoppedError) throw cause
-    throw new HomeUnreachableError(base, { cause })
+    if (endsTheSync(cause)) throw cause
+    throw new HomeUnreachableError(sync.base, { cause })
   }
   if (answer.status !== 200) {
     throw new Error(`home answered ${answer.status} for ${route}`)
   }
-  const parsed: unknown = JSON.parse(answer.body)
-  return parsed
+  const value: unknown = JSON.parse(answer.body)
+  await answer.keep()
+  return value
+}
+
+/** `answer`, unless home was busy. */
+function unlessBusy<T extends { status: number }>(answer: T): T {
+  if (answer.status === 429) throw new HomeBusyError()
+  return answer
 }
 
 /** A curriculum manifest's entries, or a refusal to remove against it. */
@@ -158,11 +246,7 @@ function topiksOf(manifest: unknown): Array<unknown> {
  * kept until that activity's pass replaces it.
  */
 async function syncLessons(
-  sync: {
-    db: SqlDriver
-    store: SqlDriver
-    get: HomeGet
-    base: string
+  sync: Parameters<typeof getJson>[0] & {
     now: () => number
     failed: Array<string>
     listedAnywhere: Array<string>
@@ -171,7 +255,7 @@ async function syncLessons(
   listed: Array<unknown>,
   tally: Tally
 ): Promise<void> {
-  const { db, store, get, base, now, failed, listedAnywhere } = sync
+  const { db, store, base, now, failed, listedAnywhere } = sync
   // Every key home still lists, including an entry this phone cannot read:
   // that one fails, and is not removed.
   const listedKeys = stringsAt(listed, "key")
@@ -185,10 +269,14 @@ async function syncLessons(
   tally.removed = await removeLessonsExcept(db, listedAnywhere, activityId)
   for (const entry of entries) {
     try {
-      const answer = await get(
-        `${base}/curriculum/${encodeURIComponent(entry.key)}`
+      const answer = await read(
+        sync,
+        `${base}/curriculum/${encodeURIComponent(entry.key)}`,
+        () => storedLessonBody(db, entry.key)
       )
       if (answer.status !== 200) throw new Error(String(answer.status))
+      // A `304` still writes: home can rename a lesson, or move it to
+      // another activity, without changing its body.
       const outcome = await upsertLesson(
         store,
         entry,
@@ -196,6 +284,7 @@ async function syncLessons(
         now(),
         activityId
       )
+      await answer.keep()
       if (outcome === "inserted") tally.added += 1
       if (outcome === "updated") tally.updated += 1
     } catch (error) {
@@ -223,20 +312,15 @@ export async function syncFromHome(
     failed: [],
   }
 
+  const reads = { db, store, get, base, read: new Set<string>() }
   // The manifests first; their failure fails the sync (an unreachable home
   // must be said plainly). Every listing before any write: a failed fetch
   // aborts with nothing removed.
-  const lessons = topiksOf(
-    await getJson(get, base, "/curriculum/manifest.json")
-  )
+  const lessons = topiksOf(await getJson(reads, "/curriculum/manifest.json"))
   const trees = topiksOf(
-    await getJson(
-      get,
-      base,
-      `/curriculum/manifest.json?activity=${TREE_ACTIVITY}`
-    )
+    await getJson(reads, `/curriculum/manifest.json?activity=${TREE_ACTIVITY}`)
   )
-  const rounds = await getJson(get, base, "/leetype/rounds")
+  const rounds = await getJson(reads, "/leetype/rounds")
 
   // Keys are one namespace, so a home that lists a lesson in both answered
   // the tree manifest with its lessons: it predates `?activity=`. Copying
@@ -246,10 +330,7 @@ export async function syncFromHome(
   const treeKeys = stringsAt(trees, "key")
   const scoped = !treeKeys.some((key) => lessonKeys.includes(key))
   const sync = {
-    db,
-    store,
-    get,
-    base,
+    ...reads,
     now,
     failed: report.failed,
     listedAnywhere: scoped ? [...lessonKeys, ...treeKeys] : lessonKeys,
@@ -273,7 +354,7 @@ export async function syncFromHome(
       // Same bytes: no body to fetch, but the runs still are (home can record
       // runs without changing the round, or a prior runs request failed).
       if ((await storedRoundHash(db, listing.id)) !== listing.contentHash) {
-        const body = await get(`${base}/leetype/rounds/${id}`)
+        const body = unlessBusy(await get(`${base}/leetype/rounds/${id}`))
         if (body.status !== 200) throw new Error(String(body.status))
         const outcome = await upsertRound(
           store,
@@ -284,9 +365,10 @@ export async function syncFromHome(
         if (outcome === "inserted") report.rounds.added += 1
         if (outcome === "updated") report.rounds.updated += 1
       }
-      const runs = await get(`${base}/leetype/rounds/${id}/runs`)
+      const runs = await read(reads, `${base}/leetype/rounds/${id}/runs`)
       if (runs.status === 200) {
         report.rounds.runs += await upsertRuns(store, runs.body, now())
+        await runs.keep()
       }
     } catch (error) {
       if (endsTheSync(error)) throw error
@@ -294,5 +376,21 @@ export async function syncFromHome(
       else report.failed.push(listing.id)
     }
   }
+  await forgetUnread(db, base, reads.read)
   return report
+}
+
+/** Drops the tags of what home no longer lists, once a sync read it all. */
+async function forgetUnread(
+  db: SqlDriver,
+  base: string,
+  read: ReadonlySet<string>
+): Promise<void> {
+  const rows = await db.all("SELECT url FROM device_home_answer")
+  for (const row of rows) {
+    const url = text(row, "url")
+    if (url.startsWith(`${base}/`) && !read.has(url)) {
+      await db.run("DELETE FROM device_home_answer WHERE url = ?", [url])
+    }
+  }
 }

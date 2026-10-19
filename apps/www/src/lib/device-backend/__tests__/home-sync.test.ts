@@ -17,6 +17,7 @@ import {
 import type { HomeGet } from "@/lib/device-backend/home-sync"
 import {
   homeApiBase,
+  HomeBusyError,
   HomeUnreachableError,
   syncFromHome,
   SyncStoppedError,
@@ -46,10 +47,39 @@ function fetchFor(backend: DeviceBackend, base: string): typeof fetch {
   )
 }
 
-/** Home as the phone reaches it: bytes as served. */
+/** Home as the phone reaches it: bytes as served, with its `ETag`. */
 const verbatimGet: HomeGet = async (url) => {
   const response = await fetchFor(home, `${HOME}/api/v1`)(url)
-  return { status: response.status, body: await response.text() }
+  const etag = response.headers.get("etag")
+  return {
+    status: response.status,
+    body: await response.text(),
+    ...(etag === null ? {} : { etag }),
+  }
+}
+
+/**
+ * Home answering `If-None-Match` as `file_host` does (the device backend
+ * stand-in never sees request headers), and every address it sent a body
+ * for, and every tag it was sent.
+ */
+function revalidatingHome(): {
+  get: HomeGet
+  bodies: Array<string>
+  tags: Array<string>
+} {
+  const bodies: Array<string> = []
+  const tags: Array<string> = []
+  const get: HomeGet = async (url, etag) => {
+    if (etag !== undefined) tags.push(url)
+    const answer = await verbatimGet(url)
+    if (etag !== undefined && answer.etag === etag) {
+      return { status: 304, body: "", etag }
+    }
+    bodies.push(url)
+    return answer
+  }
+  return { get, bodies, tags }
 }
 
 /** Home through Capacitor's native HTTP, which parses JSON on the way. */
@@ -308,6 +338,116 @@ describe("syncFromHome", () => {
     const report = await syncFromHome(phoneDb, HOME, flaky, () => NOW)
     expect(report.failed).toEqual(["k2-cafe"])
     expect(report.lessons.removed).toBe(0)
+  })
+})
+
+describe("syncFromHome against a busy home", () => {
+  it("ends at home's first busy answer, keeping what came before it", async () => {
+    let asked = 0
+    const busyAfterOne: HomeGet = async (url, etag) => {
+      if (url.includes("/curriculum/k2-cafe")) asked += 1
+      return url.includes("/leetype/rounds/")
+        ? { status: 429, body: "" }
+        : verbatimGet(url, etag)
+    }
+    await expect(
+      syncFromHome(phoneDb, HOME, busyAfterOne, () => NOW)
+    ).rejects.toBeInstanceOf(HomeBusyError)
+    expect(asked).toBe(1)
+    await expect(phoneJson("/curriculum/manifest.json")).resolves.toMatchObject(
+      { topiks: [{ key: "k2-cafe" }] }
+    )
+  })
+
+  it("says busy, not unreachable, when home is busy for a listing", async () => {
+    const busy: HomeGet = () => Promise.resolve({ status: 429, body: "" })
+    await expect(
+      syncFromHome(phoneDb, HOME, busy, () => NOW)
+    ).rejects.toBeInstanceOf(HomeBusyError)
+  })
+})
+
+describe("syncFromHome revalidating what it holds", () => {
+  it("sends each tag it holds, and gets no body home already sent", async () => {
+    const home = revalidatingHome()
+    await syncFromHome(phoneDb, HOME, home.get, () => NOW)
+    expect(home.tags).toEqual([])
+    const first = home.bodies.length
+
+    home.bodies.length = 0
+    const again = await syncFromHome(phoneDb, HOME, home.get, () => NOW)
+    // Every read but the round's body, skipped by its listed hash.
+    expect(home.tags).toHaveLength(first - 1)
+    expect(home.bodies).toEqual([])
+    expect(again.failed).toEqual([])
+    expect(again.lessons).toMatchObject({ listed: 1, added: 0, updated: 0 })
+    expect(again.rounds.runs).toBe(1)
+  })
+
+  it("still copies a renamed lesson whose body home kept", async () => {
+    const home = revalidatingHome()
+    await syncFromHome(phoneDb, HOME, home.get, () => NOW)
+    await homeDb.run("UPDATE curriculum SET display_name = ? WHERE key = ?", [
+      "At the bakery",
+      "k2-cafe",
+    ])
+    home.bodies.length = 0
+    const report = await syncFromHome(phoneDb, HOME, home.get, () => NOW)
+    expect(home.bodies.some((url) => url.endsWith("/k2-cafe"))).toBe(false)
+    expect(report.lessons.updated).toBe(1)
+    await expect(phoneJson("/curriculum/manifest.json")).resolves.toMatchObject(
+      { topiks: [{ displayName: "At the bakery" }] }
+    )
+  })
+
+  it("asks for a body afresh once the phone no longer holds it", async () => {
+    const home = revalidatingHome()
+    await syncFromHome(phoneDb, HOME, home.get, () => NOW)
+    await phoneDb.run("DELETE FROM curriculum")
+    await phoneDb.run("DELETE FROM leetype_round")
+    home.bodies.length = 0
+    const report = await syncFromHome(phoneDb, HOME, home.get, () => NOW)
+    expect(report.lessons.added).toBe(1)
+    expect(report.rounds.added).toBe(1)
+    // The runs went with their round; the body kept with their tag
+    // brings them back.
+    await expect(
+      phoneJson("/leetype/rounds/home-only-round/runs")
+    ).resolves.toMatchObject({ runs: [{ variant: "A" }] })
+  })
+
+  it("keeps no tag for a lesson that did not fit", async () => {
+    const home = revalidatingHome()
+    await syncFromHome(phoneDb, HOME, home.get, () => NOW)
+    const big = { ...LESSON, key: "k3-big", displayName: "Long" }
+    await upsertLesson(
+      homeDb,
+      big,
+      JSON.stringify({ batches: ["x".repeat(20_000)] }),
+      NOW
+    )
+    const full: StorageBudget = { quotaBytes: await databaseBytes(phoneDb) }
+    const skipped = await syncFromHome(phoneDb, HOME, home.get, () => NOW, full)
+    expect(skipped.lessons.skipped).toBe(1)
+
+    home.tags.length = 0
+    const report = await syncFromHome(phoneDb, HOME, home.get, () => NOW)
+    expect(home.tags.some((url) => url.endsWith("/k3-big"))).toBe(false)
+    expect(report.lessons.added).toBe(1)
+  })
+
+  it("forgets the tags of what home stopped listing", async () => {
+    const home = revalidatingHome()
+    await syncFromHome(phoneDb, HOME, home.get, () => NOW)
+    await homeDb.run("UPDATE curriculum SET retired_at = ? WHERE key = ?", [
+      "2026-09-29T09:00:00+00:00",
+      "k2-cafe",
+    ])
+    await syncFromHome(phoneDb, HOME, home.get, () => NOW)
+    const tags = await phoneDb.all(
+      "SELECT url FROM device_home_answer WHERE url LIKE '%k2-cafe%'"
+    )
+    expect(tags).toEqual([])
   })
 })
 

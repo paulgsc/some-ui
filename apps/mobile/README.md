@@ -580,6 +580,12 @@ moves, and only home → phone, with no credential. **Stop** ends a running sync
 after the request in flight, and so does the app going to the background;
 what was copied stays. Sessions and the shelf stay where they were made.
 
+Each read carries the `ETag` the phone kept from the last one
+(`device_home_answer`), so what home has not changed comes back without a
+body; the number of requests is the same. Home answering **429** (it allows
+60 requests a minute per client) ends the sync there, said as "Home is busy
+right now", with what came before it kept and nothing retried.
+
 **Pairing** lets the phone act for the person's account on the home server,
 which it cannot do with a passkey (its page is `https://localhost`, another
 site). On the computer, **Settings → Account → Pair a phone** shows a code

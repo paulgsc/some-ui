@@ -31,7 +31,8 @@ import { foreignValue, isMissingPlugin } from "@/lib/intent/foreign"
 /** Long enough for a slow LAN; short enough to say "unreachable" promptly. */
 const TIMEOUT_MS = 10_000
 
-export type HomeAnswer = { status: number; body: string }
+/** `etag`: the answer's `ETag`, when it carried one. */
+export type HomeAnswer = { status: number; body: string; etag?: string }
 
 export type HomeCall = {
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
@@ -44,6 +45,8 @@ export type HomeCall = {
    * byte for byte and home's content hash matches the phone's).
    */
   body?: unknown
+  /** Sent as `If-None-Match`: home answers `304`, bodiless, when it matches. */
+  ifNoneMatch?: string
 }
 
 /** A credentialed request to a URL that is not `https:`. Nothing was sent. */
@@ -82,13 +85,14 @@ const PORT: ForeignPort = {
 }
 
 export async function homeRequest(call: HomeCall): Promise<HomeAnswer> {
-  const { method, url, token, body } = call
+  const { method, url, token, body, ifNoneMatch } = call
   if (token !== undefined && new URL(url).protocol !== "https:") {
     throw new InsecureHomeError()
   }
   const headers: Record<string, string> = {}
   if (token !== undefined) headers.Authorization = `Bearer ${token}`
   if (body !== undefined) headers["Content-Type"] = "application/json"
+  if (ifNoneMatch !== undefined) headers["If-None-Match"] = ifNoneMatch
   const answer = await foreignValue(
     callForeign({
       port: PORT,
@@ -108,8 +112,12 @@ export async function homeRequest(call: HomeCall): Promise<HomeAnswer> {
     })
   )
   const { data } = answer
+  const etag = Object.entries(answer.headers).find(
+    ([name]) => name.toLowerCase() === "etag"
+  )?.[1]
   return {
     status: answer.status,
     body: typeof data === "string" ? data : JSON.stringify(data),
+    ...(etag === undefined ? {} : { etag }),
   }
 }
