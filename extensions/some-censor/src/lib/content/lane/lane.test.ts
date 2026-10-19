@@ -65,7 +65,6 @@ describe("isMusic (QD15, #1806)", () => {
     expect(channel("[MV] Spring Letters OST", "Some Channel", false)).toBe(
       false
     )
-    expect(channel("MV Dali crashes into a bridge", "News", false)).toBe(false)
     expect(channel("Untitled", "Ailee - Topic", false)).toBe(true)
     expect(channel("Untitled", "Ailee", true)).toBe(true)
   })

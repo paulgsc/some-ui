@@ -9,8 +9,9 @@
  *   is in the miniplayer over another page.
  * - On `plated`, the plate's tone for the player's poster, as
  *   `--boyo-poster` on `<html>`, and, when the mode offers it, the face
- *   control (`face-hold.ts`) in the description it is given; once the owner has held it, `data-boyo-face`
- *   on `<html>`, which lifts the poster's plate (QD13).
+ *   control (`face-hold.ts`) in the description it is given; once the
+ *   owner has held it, `data-boyo-face` on `<html>`, which lifts the
+ *   poster's plate (QD13).
  * - Until `plated`, no media plays, and the tab title is not the video's.
  *
  * Those last two are holds YouTube would undo, so this is the one place the

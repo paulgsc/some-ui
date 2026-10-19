@@ -69,10 +69,9 @@
    (#1807), so the switch lifts the pre-mask, and a content script that never
    runs leaves it on.
 
-   Strict paints no unread card at all (#1966): the BLANK rule after this
-   block sets `--boyo-premask-opacity` to 0. Its fallback, 0.5, is the blur
-   every other mode keeps, and what a page shows before the content script
-   has read the owner's mode.
+   The opacity's fallback, 0.5, is what every mode but Strict keeps (BLANK,
+   below), and what a page shows before the content script has read the
+   owner's mode.
 
    Each tag gets its OWN rule below rather than sharing one comma-separated
    selector list. CSS selector-list invalidation is all-or-nothing: if any

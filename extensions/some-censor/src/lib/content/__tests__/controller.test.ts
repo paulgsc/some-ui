@@ -6,6 +6,10 @@
 
 import { Controller } from "@censor/lib/content/controller"
 import type { Runtime } from "@censor/lib/content/runtime/runtime"
+import {
+  LOADING_ATTRIBUTE,
+  POSTS_ATTRIBUTE,
+} from "@censor/lib/content/selectors"
 import { MODE_RULES } from "@censor/lib/settings/modes"
 import { MODES, SETTINGS_KEY } from "@censor/lib/settings/settings"
 import { ext } from "@censor/platform/content"
@@ -142,10 +146,10 @@ it("applies the stored mode to Core and to the page (#1966)", async () => {
     expect(calls).toEqual(["boundary:365", "rules:strict", "start"])
   )
   const root = document.documentElement
-  expect(root.getAttribute("data-boyo-loading")).toBe("blank")
-  expect(root.getAttribute("data-boyo-posts")).toBe("hidden")
+  expect(root.getAttribute(LOADING_ATTRIBUTE)).toBe("blank")
+  expect(root.getAttribute(POSTS_ATTRIBUTE)).toBe("hidden")
   change({ v: 1, boundary: "1y", mode: "open" })
   expect(calls.at(-1)).toBe("rules:standard")
-  expect(root.getAttribute("data-boyo-loading")).toBe("blurred")
-  expect(root.getAttribute("data-boyo-posts")).toBe("shown")
+  expect(root.getAttribute(LOADING_ATTRIBUTE)).toBe("blurred")
+  expect(root.getAttribute(POSTS_ATTRIBUTE)).toBe("shown")
 })

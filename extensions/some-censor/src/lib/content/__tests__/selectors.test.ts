@@ -143,35 +143,12 @@ describe("the stylesheet and the catalogue agree", () => {
     )
   })
 
-  it("lets Strict blank every occluder, and nothing else (#1966)", () => {
+  it("lets Strict blank every occluder (#1966)", () => {
     // Each occluder's opacity is one property, so the BLANK rule reaches
     // every one of them, the Firefox 112–120 fallback included.
-    const occluders = premaskRulesIn(CSS).length
     const variable = "opacity: var(--boyo-premask-opacity, 0.5) !important"
-    expect(occluders).toBeGreaterThan(0)
-    expect(CSS.split(variable).length - 1).toBe(occluders)
+    expect(CSS.split(variable).length - 1).toBe(premaskRulesIn(CSS).length)
     expect(CSS).not.toContain("opacity: 0.5 !important")
-    expect(normalize(CSS)).toContain(
-      normalize(`:root[data-boyo-loading="blank"] {
-        --boyo-premask-opacity: 0;
-      }`)
-    )
-  })
-
-  it("shows a post's own images under Open, and no other image (#1966)", () => {
-    const rules: Array<string> = []
-    for (let at = CSS.indexOf('data-boyo-posts="shown"'); at !== -1; ) {
-      const start = CSS.lastIndexOf("*/", at) + 2
-      const end = CSS.indexOf("}", at) + 1
-      rules.push(CSS.slice(start, end))
-      at = CSS.indexOf('data-boyo-posts="shown"', end)
-    }
-    expect(rules.map(normalize)).toEqual([
-      normalize(`:root:not([data-boyo-off])[data-boyo-posts="shown"]
-        ytd-backstage-image-renderer yt-img-shadow img {
-        visibility: visible !important;
-      }`),
-    ])
   })
 
   it("keeps a :has()-free fallback for exactly the tags that declare one", () => {

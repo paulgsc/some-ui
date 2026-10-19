@@ -10,6 +10,7 @@
  * F4 — Nothing on the control changes while it is held (#1966): no fill, no
  *      progress.
  * F5 — When YouTube draws the description again, the control comes back.
+ * F6 — Strict offers no control; Standard offers it again (#1966).
  */
 
 import { expect, test } from "@censor/playwright/fixture"
@@ -129,4 +130,15 @@ test("F5: the control comes back when the description is drawn again", async ({
     inner?.replaceWith(fresh)
   })
   await expect(page.locator(`#description-inner ${CONTROL}`)).toBeVisible()
+})
+
+test("F6: Strict offers no control", async ({ fixture }) => {
+  await fixture.settings({ mode: "strict" })
+  const page = await fixture.goto("yt-watch-page")
+  await plated(page)
+  await expect(page.locator("#primary-inner")).toBeVisible()
+  await expect(page.locator(CONTROL)).toHaveCount(0)
+
+  await fixture.settings({ mode: "standard" })
+  await expect(page.locator(CONTROL)).toBeVisible()
 })

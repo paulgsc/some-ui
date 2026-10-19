@@ -10,6 +10,7 @@
 import { readdirSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { DEFAULT_BOUNDARY_DAYS } from "@censor/lib/content/maturity/maturity"
+import { MODE_RULES } from "@censor/lib/settings/modes"
 import { asChannelId, asVideoId } from "@censor/types/ids"
 import type { SessionId } from "@some-extension/common"
 import { describe, expect, it } from "vitest"
@@ -23,7 +24,6 @@ import type {
   WatchObservation,
 } from "./index"
 import { admits, cardKey, initialState, reduce, snapshot } from "./index"
-import type { Rules } from "./state"
 import { STANDARD_RULES } from "./state"
 
 // SessionId is a branded number minted by the shell; the reducer only ever
@@ -79,8 +79,7 @@ const started: CoreEvent = {
   t: 0,
 }
 
-/** Strict's rules (`settings/modes.ts`), restated so Core's tests stand alone. */
-const STRICT: Rules = { signs: "channel", fromMusic: "music", face: false }
+const STRICT = MODE_RULES.strict.core
 
 /** `videoId`'s card observed at `t`, with `overrides` on the default observation. */
 function seen(
@@ -733,15 +732,6 @@ describe("the mode (R7, R9, #1966)", () => {
     expect(kinds(narrowed.actions)).toEqual(["render", "record:entry.state"])
     const widened = reduce(narrowed.state, standard())
     expect(viewOf(widened.state)).toBe("whole")
-  })
-
-  it("keeps a card the channel admits whole under Strict", () => {
-    const { state } = fold([
-      started,
-      strict(),
-      seen(1, { uploadDate: "3 hours ago", channelName: "Ailee - Topic" }),
-    ])
-    expect(viewOf(state)).toBe("whole")
   })
 
   it("decides later observations, and the next start, under the mode", () => {

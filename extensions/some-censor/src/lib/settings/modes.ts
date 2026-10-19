@@ -1,18 +1,8 @@
 /**
- * The three modes (#1966): fixed bundles, strictest first, each one a whole
+ * The three modes (#1966), strictest first: fixed bundles, each a whole
  * answer to how much of YouTube reaches the page. The owner picks a mode,
- * never a row of one. The boundary and autoplay at a held video stand
- * outside the modes and apply in every one of them.
- *
- * | Row                     | Strict          | Standard         | Open             |
- * | ----------------------- | --------------- | ---------------- | ---------------- |
- * | Music shown whole       | channel signs   | any sign         | any sign         |
- * | Autoplay from music     | music only      | anything shown   | anything shown   |
- * | Original thumbnail      | never offered   | 3-second hold    | 3-second hold    |
- * | Channel post images     | hidden          | hidden           | shown            |
- * | Cards still loading     | blank           | blurred          | blurred          |
- *
- * Standard is what the extension did before there were modes.
+ * never a row of one, and no mode moves the boundary. What each row does
+ * is `docs/absent-plated-heard.md` §7.
  */
 
 import type { Rules } from "@censor/lib/content/core/state"
@@ -38,11 +28,8 @@ const STANDARD_PAGE: PageRules = { posts: "hidden", loading: "blurred" }
 export const MODE_RULES: Readonly<Record<Mode, ModeRules>> = {
   strict: {
     core: { signs: "channel", fromMusic: "music", face: false },
-    page: { posts: "hidden", loading: "blank" },
+    page: { ...STANDARD_PAGE, loading: "blank" },
   },
   standard: { core: STANDARD_RULES, page: STANDARD_PAGE },
-  open: {
-    core: STANDARD_RULES,
-    page: { posts: "shown", loading: "blurred" },
-  },
+  open: { core: STANDARD_RULES, page: { ...STANDARD_PAGE, posts: "shown" } },
 }

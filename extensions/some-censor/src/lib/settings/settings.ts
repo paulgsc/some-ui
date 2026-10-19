@@ -1,16 +1,15 @@
 /**
- * The owner's settings (`QD16`, #1807, #1966): the boundary `B`, the mode,
- * what autoplay does at a held video, and the on/off switch, in
- * `storage.local`.
+ * The owner's settings (`QD16`, #1807, #1966): the boundary `B`, the mode
+ * and the on/off switch, in `storage.local`.
  *
  * The popup is the only writer; the popup and the content script both read
  * through {@link followSettings}. An unreadable field parses to its default,
  * so a bad record never admits more than a fresh install does.
  *
  * Every boundary change is appended to `boundaryChanges`, and every change
- * of mode or autoplay to `choiceChanges`, which only the Diagnostics page
- * reads: the doctrine's §9 falsifier is "`B` keeps getting lowered", and
- * that needs the history, kept whole. Both logs are only ever appended to.
+ * of mode to `choiceChanges`, which only the Diagnostics page reads: the
+ * doctrine's §9 falsifier is "`B` keeps getting lowered", and that needs the
+ * history, kept whole.
  */
 
 import { DEFAULT_BOUNDARY_DAYS } from "@censor/lib/content/maturity/maturity"
@@ -48,28 +47,19 @@ export function boundaryDays(b: Boundary): number {
 export const MODES = ["strict", "standard", "open"] as const
 export type Mode = (typeof MODES)[number]
 
-/** What autoplay does when its next video is held. */
-const AUTOPLAYS = ["stop", "skip"] as const
-type Autoplay = (typeof AUTOPLAYS)[number]
-
 export type Settings = {
   readonly boundary: Boundary
   readonly mode: Mode
-  readonly autoplay: Autoplay
   readonly enabled: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   boundary: "1y",
   mode: "standard",
-  autoplay: "stop",
   enabled: true,
 }
 
-/**
- * The stored shape. `v` changes when a field's meaning does; a field added
- * beside the others is read as its default from a record without it.
- */
+/** The stored shape. `v` changes when a field's meaning does. */
 type StoredSettings = Settings & { readonly v: 1 }
 
 export type BoundaryChange = {
@@ -78,20 +68,13 @@ export type BoundaryChange = {
   readonly to: Boundary
 }
 
-/** A change of mode or autoplay, as `choiceChanges` keeps it. */
-export type ChoiceChange =
-  | {
-      readonly at: number
-      readonly choice: "mode"
-      readonly from: Mode
-      readonly to: Mode
-    }
-  | {
-      readonly at: number
-      readonly choice: "autoplay"
-      readonly from: Autoplay
-      readonly to: Autoplay
-    }
+/** A change of mode, as `choiceChanges` keeps it. */
+export type ChoiceChange = {
+  readonly at: number
+  readonly choice: "mode"
+  readonly from: Mode
+  readonly to: Mode
+}
 
 const oneOf =
   <T extends string>(values: ReadonlyArray<T>) =>
@@ -100,16 +83,14 @@ const oneOf =
 
 const isBoundary = oneOf(BOUNDARIES)
 const isMode = oneOf(MODES)
-const isAutoplay = oneOf(AUTOPLAYS)
 
 /** A record from any build, or none, as settings this build can apply. */
 export function parseSettings(raw: unknown): Settings {
   if (!isRecord(raw) || raw["v"] !== 1) return DEFAULT_SETTINGS
-  const { boundary, mode, autoplay, enabled } = raw
+  const { boundary, mode, enabled } = raw
   return {
     boundary: isBoundary(boundary) ? boundary : DEFAULT_SETTINGS.boundary,
     mode: isMode(mode) ? mode : DEFAULT_SETTINGS.mode,
-    autoplay: isAutoplay(autoplay) ? autoplay : DEFAULT_SETTINGS.autoplay,
     enabled: typeof enabled === "boolean" ? enabled : DEFAULT_SETTINGS.enabled,
   }
 }
@@ -126,23 +107,23 @@ export function parseBoundaryChanges(raw: unknown): Array<BoundaryChange> {
   )
 }
 
-/** The well-formed entries of the mode and autoplay log, oldest first. */
+/** The well-formed entries of the mode log, oldest first. */
 export function parseChoiceChanges(raw: unknown): Array<ChoiceChange> {
   if (!Array.isArray(raw)) return []
-  return raw.filter((e: unknown): e is ChoiceChange => {
-    if (!isRecord(e) || typeof e["at"] !== "number") return false
-    const valid = e["choice"] === "mode" ? isMode : isAutoplay
-    return (
-      (e["choice"] === "mode" || e["choice"] === "autoplay") &&
-      valid(e["from"]) &&
-      valid(e["to"])
-    )
-  })
+  return raw.filter(
+    (e: unknown): e is ChoiceChange =>
+      isRecord(e) &&
+      typeof e["at"] === "number" &&
+      e["choice"] === "mode" &&
+      isMode(e["from"]) &&
+      isMode(e["to"])
+  )
 }
 
 /**
- * `log` with `entries` appended. Entries this build cannot read, and a value
- * that is not a list at all, are carried along rather than dropped.
+ * `log` with `entries` appended: a log is only ever appended to. Entries this
+ * build cannot read, and a value that is not a list at all, are carried
+ * along rather than dropped.
  */
 function appended(
   log: unknown,
@@ -154,7 +135,7 @@ function appended(
 
 /**
  * What to store when the owner picks `next`, given what is stored now. Each
- * log is only ever appended to, and only when its own choice changed.
+ * log gains an entry only when its own choice changed.
  */
 export function settingsWrite(
   stored: Readonly<Record<string, unknown>>,
@@ -174,20 +155,14 @@ export function settingsWrite(
       change,
     ])
   }
-  const choices: Array<ChoiceChange> = []
   if (from.mode !== next.mode) {
-    choices.push({ at: now, choice: "mode", from: from.mode, to: next.mode })
-  }
-  if (from.autoplay !== next.autoplay) {
-    choices.push({
+    const change: ChoiceChange = {
       at: now,
-      choice: "autoplay",
-      from: from.autoplay,
-      to: next.autoplay,
-    })
-  }
-  if (choices.length > 0) {
-    write[CHOICE_CHANGES_KEY] = appended(stored[CHOICE_CHANGES_KEY], choices)
+      choice: "mode",
+      from: from.mode,
+      to: next.mode,
+    }
+    write[CHOICE_CHANGES_KEY] = appended(stored[CHOICE_CHANGES_KEY], [change])
   }
   return write
 }

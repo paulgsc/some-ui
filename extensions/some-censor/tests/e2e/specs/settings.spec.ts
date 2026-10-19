@@ -6,9 +6,12 @@
  *      to the other: no card is ever unstamped on the way.
  * S2 — The switch stops and restarts the runtime in that tab, and off lifts
  *      the pre-mask.
+ * S3 — Under Strict a card the content script has not read is not painted;
+ *      Standard blurs it (#1966).
  */
 
 import { expect, test } from "@censor/playwright/fixture"
+import { paintedPixels, VIVID } from "@censor/playwright/rendered"
 import type { Page } from "@playwright/test"
 
 /** "2 years ago": plated under one year, absent under two. */
@@ -124,4 +127,44 @@ test("S2: the switch stops and restarts the open tab", async ({
     page,
     (d) => d.phase === "running" && d.entries[MOVES]?.viewKind === "plated"
   )
+})
+
+test("S3: Strict paints no unread card, and Standard blurs it", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-home")
+  await fixture.pollDebug(page, (d) => d.phase === "running")
+  // A card with no video link: the stylesheet occludes it, and the content
+  // script never reads it, so it stays unread for the whole test.
+  await page.evaluate((src) => {
+    const card = document.createElement("ytd-video-renderer")
+    card.id = "unread"
+    card.style.cssText = "display: block; width: 240px; height: 135px"
+    const img = document.createElement("img")
+    img.src = src
+    img.style.cssText = "display: block; width: 100%; height: 100%"
+    card.append(img)
+    document.querySelector("ytd-app")?.append(card)
+  }, VIVID)
+  const card = page.locator("#unread")
+  await expect(card).not.toHaveAttribute("data-boyo")
+  const ground = await page.evaluate(() => {
+    const [r = 0, g = 0, b = 0] =
+      getComputedStyle(document.body)
+        .backgroundColor.match(/\d+/g)
+        ?.map(Number) ?? []
+    return [r, g, b] as const
+  })
+  expect(
+    await paintedPixels(card, ground),
+    "Standard: blurred"
+  ).toBeGreaterThan(0)
+
+  await fixture.settings({ mode: "strict" })
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-boyo-loading",
+    "blank"
+  )
+  expect(await paintedPixels(card, ground), "Strict: not painted").toBe(0)
+  await expect(card).not.toHaveAttribute("data-boyo")
 })

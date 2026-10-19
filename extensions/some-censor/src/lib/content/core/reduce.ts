@@ -30,9 +30,9 @@
  *   R8 — The watch page is one more piece of evidence (#1805). Its view is
  *        `decideWatch()` of the merged `watched` observations of the same
  *        video, re-decided by `boundary` and `rules` as a card is. YouTube
- *        names the next video before it rewrites the date, so a reading whose runs
- *        are all runs the previous video showed is that video's, and reads
- *        as none. (Not covered: a start mid-transition, with no previous
+ *        names the next video before it rewrites the date, so a reading
+ *        whose runs are all runs the previous video showed is that video's,
+ *        and reads as none. (Not covered: a start mid-transition, with no previous
  *        video read; and a date written before its video's id, which would
  *        hold the next video pending.) It is not a card: `nav` leaves it to the next reading, and
  *        `stop` forgets it, the Actuator's `dispose` lifting its hold. A

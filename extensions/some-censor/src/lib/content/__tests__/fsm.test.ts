@@ -174,13 +174,7 @@ describe("the listening lane (QD15, #1806)", () => {
     expect(decideWatch(page, NOW, DEFAULT_BOUNDARY_DAYS, "all")).toBe("absent")
   })
 
-  it("reads only the channel's signs under Strict (#1966)", () => {
-    expect(card("3 days ago", {}, "channel")).toBe("absent")
-    expect(card("9 years ago", {}, "channel")).toBe("plated")
-    expect(
-      card("3 days ago", { channelName: "Ailee - Topic" }, "channel")
-    ).toBe("whole")
-    expect(card("3 days ago", { artist: true }, "channel")).toBe("whole")
+  it("threads the mode's music signs through (#1966)", () => {
     const page = {
       videoId: asVideoId("vid_w"),
       short: false,
@@ -193,14 +187,7 @@ describe("the listening lane (QD15, #1806)", () => {
     expect(decideWatch(page, NOW, DEFAULT_BOUNDARY_DAYS, "channel")).toBe(
       "absent"
     )
-    expect(
-      decideWatch(
-        { ...page, artist: true },
-        NOW,
-        DEFAULT_BOUNDARY_DAYS,
-        "channel"
-      )
-    ).toBe("whole")
+    expect(card("3 days ago", {}, "channel")).toBe("absent")
   })
 })
 

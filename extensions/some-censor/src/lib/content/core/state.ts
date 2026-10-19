@@ -53,7 +53,6 @@ type Phase = "idle" | "running"
  * stylesheet's (`settings/modes.ts`).
  */
 export type Rules = {
-  /** Which signs make a video music (QD15). */
   readonly signs: MusicSigns
   /**
    * Where autoplay may go from a whole video: into any video the page
@@ -64,7 +63,7 @@ export type Rules = {
   readonly face: boolean
 }
 
-/** Standard's rules: what the extension did before there were modes. */
+/** Standard's rules, and every Core's until the shell supplies others. */
 export const STANDARD_RULES: Rules = {
   signs: "all",
   fromMusic: "admitted",

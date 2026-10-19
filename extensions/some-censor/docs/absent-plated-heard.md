@@ -125,8 +125,8 @@ record, read by the content script at start and on every change, so an open
 tab follows without a reload. Unreadable storage yields the defaults. Off is
 plain YouTube: the content script stops and lifts the pre-mask, and a content
 script that never runs leaves it on. The popup sets the boundary and the
-switch; the mode and autoplay are followed but not yet offered anywhere, and
-Open's thumbnail timing and autoplay's skip are not built yet (#1966's later
+switch; the mode is followed but not yet offered anywhere, and Open's
+thumbnail timing and the autoplay choice are not built yet (#1966's later
 slices).
 
 ## 8. Never on youtube.com

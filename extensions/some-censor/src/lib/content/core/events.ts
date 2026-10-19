@@ -77,8 +77,9 @@ export type Token =
 /**
  * The shell's lifecycle, the owner's boundary and mode, and the face hold.
  * No gesture on a card reaches Core: a card's view is decided by its
- * evidence under the boundary and the mode (`fsm.ts`, `QD16`). The face hold decides nothing about whether a
- * video is admitted; it shows a plated video's own thumbnail (QD13).
+ * evidence under the boundary and the mode (`fsm.ts`, `QD16`). The face
+ * hold decides nothing about whether a video is admitted; it shows a plated
+ * video's own thumbnail (QD13).
  */
 export type Input =
   /** The shell started a session (bootstrap, or re-enable). */

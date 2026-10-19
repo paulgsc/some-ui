@@ -27,21 +27,9 @@ describe("parseSettings", () => {
         v: 1,
         boundary: "2y",
         mode: "strict",
-        autoplay: "skip",
         enabled: false,
       })
-    ).toEqual({
-      boundary: "2y",
-      mode: "strict",
-      autoplay: "skip",
-      enabled: false,
-    })
-  })
-
-  it("reads a record from before the modes as Standard, stopping (#1966)", () => {
-    expect(parseSettings({ v: 1, boundary: "2y", enabled: false })).toEqual(
-      settings({ boundary: "2y", enabled: false })
-    )
+    ).toEqual({ boundary: "2y", mode: "strict", enabled: false })
   })
 
   it("yields the defaults for no record, a foreign one or another version", () => {
@@ -60,9 +48,9 @@ describe("parseSettings", () => {
     expect(parseSettings({ v: 1, boundary: "6mo", enabled: "no" })).toEqual(
       settings({ boundary: "6mo" })
     )
-    expect(
-      parseSettings({ v: 1, mode: "lenient", autoplay: true, enabled: false })
-    ).toEqual(settings({ enabled: false }))
+    expect(parseSettings({ v: 1, mode: "lenient", enabled: false })).toEqual(
+      settings({ enabled: false })
+    )
   })
 })
 
@@ -98,26 +86,21 @@ describe("settingsWrite", () => {
   })
 })
 
-describe("the mode and autoplay log (#1966)", () => {
-  it("appends each change of mode or autoplay, and nothing else", () => {
+describe("the mode log (#1966)", () => {
+  it("appends each change of mode, and nothing else", () => {
     const first = settingsWrite({}, settings({ mode: "strict" }), 5)
     expect(first[CHOICE_CHANGES_KEY]).toEqual([
       { at: 5, choice: "mode", from: "standard", to: "strict" },
     ])
     expect(first[BOUNDARY_CHANGES_KEY]).toBeUndefined()
-    const both = settingsWrite(
-      first,
-      settings({ mode: "open", autoplay: "skip" }),
-      9
-    )
-    expect(parseChoiceChanges(both[CHOICE_CHANGES_KEY])).toEqual([
+    const next = settingsWrite(first, settings({ mode: "open" }), 9)
+    expect(parseChoiceChanges(next[CHOICE_CHANGES_KEY])).toEqual([
       { at: 5, choice: "mode", from: "standard", to: "strict" },
       { at: 9, choice: "mode", from: "strict", to: "open" },
-      { at: 9, choice: "autoplay", from: "stop", to: "skip" },
     ])
     const same = settingsWrite(
-      both,
-      settings({ mode: "open", autoplay: "skip", enabled: false }),
+      next,
+      settings({ mode: "open", enabled: false }),
       12
     )
     expect(same[CHOICE_CHANGES_KEY]).toBeUndefined()
@@ -125,15 +108,14 @@ describe("the mode and autoplay log (#1966)", () => {
 
   it("keeps entries it cannot read, and reads only well-formed ones", () => {
     const stored = { [CHOICE_CHANGES_KEY]: [{ odd: true }] }
-    const next = settingsWrite(stored, settings({ autoplay: "skip" }), 3)
+    const next = settingsWrite(stored, settings({ mode: "open" }), 3)
     expect(next[CHOICE_CHANGES_KEY]).toEqual([
       { odd: true },
-      { at: 3, choice: "autoplay", from: "stop", to: "skip" },
+      { at: 3, choice: "mode", from: "standard", to: "open" },
     ])
     expect(
       parseChoiceChanges([
         { at: 1, choice: "mode", from: "stop", to: "skip" },
-        { at: 1, choice: "autoplay", from: "strict", to: "open" },
         { at: 1, choice: "boundary", from: "1y", to: "2y" },
         { at: "1", choice: "mode", from: "strict", to: "open" },
       ])

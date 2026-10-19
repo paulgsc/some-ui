@@ -26,6 +26,7 @@ import {
   CHOICE_CHANGES_KEY,
   DEFAULT_SETTINGS,
   SETTINGS_KEY,
+  settingsWrite,
 } from "@censor/lib/settings/settings"
 import {
   test as base,
@@ -216,11 +217,16 @@ export const test = base.extend<BoyoFixtures & { page: Page }>({
         ] as const) as Promise<T>
       },
       async settings(overrides) {
+        const write = settingsWrite(
+          {},
+          { ...DEFAULT_SETTINGS, ...overrides },
+          0
+        )
         await worker.evaluate(
           ([key, value]) =>
             // eslint-disable-next-line no-restricted-globals -- Chromium's worker has no `browser`
             chrome.storage.local.set({ [key]: value }),
-          [SETTINGS_KEY, { v: 1, ...DEFAULT_SETTINGS, ...overrides }] as const
+          [SETTINGS_KEY, write[SETTINGS_KEY]] as const
         )
       },
     })

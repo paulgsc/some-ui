@@ -434,7 +434,7 @@ face for that view only (R9): a navigation, another video or a view no longer
 plated takes it away, and nothing stores it. The control goes once used, with
 no message, and comes back when YouTube draws the description again. Strict
 offers no control at all, and choosing it takes a shown face away (#1966).
-`face.spec.ts` F1–F5 and `modes.spec.ts` M2 prove each, locally.
+`face.spec.ts` F1–F6 prove each, locally.
 
 ---
 
@@ -499,8 +499,8 @@ poster, with no face control. Autoplay goes on into a whole video. The lane is
 on in every mode, with no switch of its own (owner, 2026-10-18). Strict reads
 the channel's two signs only, and from a whole video lets autoplay go on only
 into another whole one (owner, 2026-10-19, #1966). `lane.test.ts` holds the
-table, and `lane.spec.ts` LN1–LN3, `watch.spec.ts` W11 and `modes.spec.ts` M1
-and M3 prove it, locally.
+table, and `lane.spec.ts` LN1–LN4 and `watch.spec.ts` W11 and W12 prove it,
+locally.
 
 ---
 
@@ -528,11 +528,10 @@ in §7.
 
 _Status: holds (#1803, #1807); the modes in part (#1966)._ No gesture changes
 a card. The popup holds the boundary and the switch, and Diagnostics logs
-every boundary change. The settings record carries the mode and autoplay, every
-open tab follows them, and each change of either is appended to
-`choiceChanges`. The surfaces that set them, Open's face and autoplay's Skip
-are #1966's later slices; until they land, every install is Standard and
-stops.
+every boundary change. The settings record carries the mode, every open tab
+follows it, and each change of it is appended to `choiceChanges`. The surfaces
+that set it, Open's face and the autoplay choice are #1966's later slices;
+until they land, every install is Standard and autoplay stops at a held video.
 
 ---
 

@@ -12,8 +12,7 @@
  * description expands it).
  *
  * Grey, dashed, and plain on purpose (`absent-plated-heard.md` §4): no
- * progress colour, no reward, no memory of having been held. Nothing on it
- * changes while it is held (#1966).
+ * progress colour, no reward, no memory of having been held.
  */
 
 import { FACE_CONTROL_ATTRIBUTE } from "@censor/lib/content/selectors"
