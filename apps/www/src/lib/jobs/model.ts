@@ -510,8 +510,10 @@ export function kitOf(
     const asked = new Set(pick.kit.questions.map((q) => q.label))
     const questions = [
       ...pick.kit.questions.map((q) => {
-        const draft = redraft.questions.find((r) => r.label === q.label)?.draft
-        return draft ? { ...q, draft } : q
+        const draft = redraft.questions.find(
+          (r) => r.label === q.label && r.draft
+        )?.draft
+        return draft && draft !== q.draft ? { ...q, draft } : q
       }),
       ...redraft.questions.filter((r) => !asked.has(r.label) && r.draft),
     ]

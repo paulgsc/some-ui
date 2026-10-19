@@ -522,7 +522,7 @@ shorter limit, first person, the gaps) is yours to hold.
    and `review` §3 to §5 gave it, and a scout that became a pick its
    `pickId` from step 1.
 3. `read` names every Decisions and Scout file this run took in, and
-   `transcribed` every voice note it transcribed. `redrafts` holds each
+   `transcribed` every voice note it transcribed, by its file name. `redrafts` holds each
    redraft §2 wrote.
 4. Save the digest as bare JSON to a scratch file and check it from the repo
    root (run `pnpm install` first if `node_modules` is missing):
