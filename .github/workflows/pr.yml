@@ -41,8 +41,8 @@ concurrency:
 jobs:
   # ── Path detection ──────────────────────────────────────────────────────
   # Coarse-grained: did Rust files change? Node files? CI config?
-  # Used only to decide whether to run the Rust job and for the ci-gate
-  # logic. Node filtering is handled by turbo, not by this step.
+  # Decides which of the Rust, Node and Deny jobs run. Node filtering within
+  # a run is handled by turbo, not by this step.
   changes:
     uses: ./.github/workflows/_detect-changes.yml
 
@@ -459,12 +459,6 @@ jobs:
       rust: ${{ needs.changes.outputs.rust == 'true' || needs.changes.outputs.ci == 'true' }}
       node: ${{ needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true' }}
 
-  # ── CI Gate ────────────────────────────────────────────────────────────
-  # Always runs. Aggregates results from conditional jobs.
-  # Configure branch protection to require THIS job only.
-  #
-  # Skipped jobs are treated as passing (nothing to check → nothing broke).
-  # Failed or cancelled jobs that were required fail the gate.
   # ── Test layout (repo-wide) ────────────────────────────────────────────
   # At most one *.test.* per source directory, none in a src/routes/ tree
   # outside __tests__/ (#772, #1475). Its own job, with no `changes` gate:
@@ -533,6 +527,15 @@ jobs:
       - name: Check toolchain pins match the flake
         run: scripts/sync-toolchain.sh --check
 
+  # ── CI Gate ────────────────────────────────────────────────────────────
+  # A job whose `needs` fails is skipped, not failed, so the gate judges each
+  # result itself. `allowed-skips`: the jobs whose `if:` skips them for an
+  # unchanged area. `changes` must succeed: if it fails, everything gated on
+  # it skips.
+  #
+  # `always()`, not `!cancelled()`: a skipped required check counts as
+  # passed, so a gate that skipped on a cancelled run would read green on the
+  # current head. The cost is a red gate on a head a newer push superseded.
   ci-gate:
     name: CI Gate
     runs-on: ubuntu-latest
@@ -551,81 +554,9 @@ jobs:
         toolchain,
       ]
     if: always()
+    permissions: {}
     steps:
-      - name: Evaluate results
-        run: |
-          FAILED=false
-
-          RUST_REQUIRED="${{ needs.changes.outputs.rust == 'true' || needs.changes.outputs.ci == 'true' }}"
-          RUST_RESULT="${{ needs.rust.result }}"
-          if [ "$RUST_REQUIRED" = "true" ] && [ "$RUST_RESULT" != "success" ]; then
-            echo "❌ rust: $RUST_RESULT (required)"
-            FAILED=true
-          else
-            echo "✅ rust: $RUST_RESULT (required: $RUST_REQUIRED)"
-          fi
-
-          NODE_REQUIRED="${{ needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true' }}"
-          for pair in \
-            "node-checks:${{ needs.node-checks.result }}" \
-            "node-lint:${{ needs.node-lint.result }}" \
-            "node-test:${{ needs.node-test.result }}" \
-            "node-e2e:${{ needs.node-e2e.result }}"; do
-            job="${pair%%:*}"
-            result="${pair#*:}"
-            if [ "$NODE_REQUIRED" = "true" ] && [ "$result" != "success" ]; then
-              echo "❌ $job: $result (required)"
-              FAILED=true
-            else
-              echo "✅ $job: $result (required: $NODE_REQUIRED)"
-            fi
-          done
-
-          LAYOUT_RESULT="${{ needs.test-layout.result }}"
-          if [ "$LAYOUT_RESULT" != "success" ]; then
-            echo "❌ test-layout: $LAYOUT_RESULT (always required)"
-            FAILED=true
-          else
-            echo "✅ test-layout: $LAYOUT_RESULT"
-          fi
-
-          COORDINATION_RESULT="${{ needs.react-coordination.result }}"
-          if [ "$COORDINATION_RESULT" != "success" ]; then
-            echo "❌ react-coordination: $COORDINATION_RESULT (always required)"
-            FAILED=true
-          else
-            echo "✅ react-coordination: $COORDINATION_RESULT"
-          fi
-
-          WORKFLOWS_RESULT="${{ needs.workflows.result }}"
-          if [ "$WORKFLOWS_RESULT" != "success" ]; then
-            echo "❌ workflows: $WORKFLOWS_RESULT (always required)"
-            FAILED=true
-          else
-            echo "✅ workflows: $WORKFLOWS_RESULT"
-          fi
-
-          TOOLCHAIN_RESULT="${{ needs.toolchain.result }}"
-          if [ "$TOOLCHAIN_RESULT" != "success" ]; then
-            echo "❌ toolchain: $TOOLCHAIN_RESULT (always required)"
-            FAILED=true
-          else
-            echo "✅ toolchain: $TOOLCHAIN_RESULT"
-          fi
-
-          DENY_RESULT="${{ needs.deny.result }}"
-          if [ "$DENY_RESULT" = "failure" ] || [ "$DENY_RESULT" = "cancelled" ]; then
-            echo "❌ deny: $DENY_RESULT"
-            FAILED=true
-          else
-            echo "✅ deny: $DENY_RESULT"
-          fi
-
-          if [ "$FAILED" = "true" ]; then
-            echo ""
-            echo "One or more required CI jobs failed."
-            exit 1
-          fi
-
-          echo ""
-          echo "All required checks passed."
+      - uses: re-actors/alls-green@v1.3.0
+        with:
+          jobs: ${{ toJSON(needs) }}
+          allowed-skips: rust, node-checks, node-lint, node-test, node-e2e, deny

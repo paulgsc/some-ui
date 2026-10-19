@@ -86,41 +86,18 @@ jobs:
       rust: true
       node: true
   # ── Trunk health gate ───────────────────────────────────────────────────
-  # Single aggregation point. Wire up branch status / Slack notifications
-  # to this job rather than individual jobs.
+  # Single aggregation point. Nothing here is conditional, so every job must
+  # succeed.
   trunk-gate:
     name: Trunk Gate
     runs-on: ubuntu-latest
     needs: [rust, node, deny]
     if: always()
+    permissions: {}
     steps:
-      - name: Evaluate trunk health
-        run: |
-          FAILED=false
-
-          for job_result in \
-            "rust:${{ needs.rust.result }}" \
-            "node:${{ needs.node.result }}" \
-            "deny:${{ needs.deny.result }}"; do
-            name="${job_result%%:*}"
-            result="${job_result##*:}"
-            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
-              echo "❌ $name: $result"
-              FAILED=true
-            else
-              echo "✅ $name: $result"
-            fi
-          done
-
-          if [ "$FAILED" = "true" ]; then
-            echo ""
-            echo "Trunk is broken. Investigate and fix or revert before next merge."
-            exit 1
-          fi
-
-          echo ""
-          echo "Trunk is healthy."
-
+      - uses: re-actors/alls-green@v1.3.0
+        with:
+          jobs: ${{ toJSON(needs) }}
 # ── Optional: notify on failure ─────────────────────────────────────
 # Uncomment and configure SLACK_WEBHOOK_URL repository secret to
 # get notified when trunk breaks.
