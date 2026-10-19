@@ -362,9 +362,9 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
 /**
  * Rem. 10.3 (5) over a set of session files: every live `M` or `A` entry
  * that is no wrong option's `applies` on any playable round another entry
- * decides, so a
- * learner who always picks it is never shown wrong (Prop. 10.1). The canon
- * marks no entry uninstantiable, so every live row is owed one.
+ * decides, so a learner who always picks it is never shown wrong
+ * (Prop. 10.1). The canon marks no entry uninstantiable, so every live row
+ * is owed one.
  */
 export function negativeDiscriminationGaps(
   files: ReadonlyArray<SessionFile>

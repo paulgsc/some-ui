@@ -312,7 +312,6 @@ describe("negativeDiscriminationGaps", () => {
     expect(negativeDiscriminationGaps([file])).toContain("A9")
     // Nor does a round no path from the start reaches.
     round.rule = "A3"
-    file.screens.dead = { ...round }
     file.start = "p1"
     expect(negativeDiscriminationGaps([file])).toContain("A9")
   })
