@@ -26,7 +26,10 @@ export type HomeExchanged =
   | { readonly kind: "synced" }
   /** Home answered `401`: it no longer knows this phone. */
   | { readonly kind: "forgotten" }
-  /** Home answered something else, said in words. */
+  /**
+   * Home answered something else, or the exchange failed on the phone
+   * itself (`why: "fault"`), said in words.
+   */
   | { readonly kind: "failed"; readonly why: string }
 
 /** A schema's `safeParse`, as zod's has it. */

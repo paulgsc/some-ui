@@ -27,7 +27,13 @@ import {
   reportFailure,
 } from "@some-ui/intent-kit"
 
-import { foreignValue, isMissingPlugin } from "@/lib/intent/foreign"
+import {
+  ForeignCallError,
+  foreignValue,
+  isMissingPlugin,
+} from "@/lib/intent/foreign"
+
+import { HomeNoAnswerError } from "./no-answer"
 
 /** Long enough for a slow LAN; short enough to say "unreachable" promptly. */
 const TIMEOUT_MS = 10_000
@@ -108,7 +114,11 @@ export async function homeRequest(call: HomeRequest): Promise<HomeAnswer> {
           connectTimeout: TIMEOUT_MS,
           readTimeout: TIMEOUT_MS,
         }),
-    })
+    }),
+    (error) =>
+      error.kind === "unreachable"
+        ? new HomeNoAnswerError(error)
+        : new ForeignCallError(error)
   )
   const { data } = answer
   const etag = Object.entries(answer.headers).find(

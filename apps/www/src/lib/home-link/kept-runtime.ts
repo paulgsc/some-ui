@@ -19,7 +19,8 @@ import type { HomeLink } from "./runtime"
 import { noticingBusy, unanswered } from "./runtime"
 import { HomeUnansweredError } from "./shelf"
 
-const FAULT = "something on this phone went wrong"
+/** A run's end that was this phone's fault, as `failed`'s `why`. */
+const FAULT = "fault"
 
 export type KeptPorts = {
   /** One exchange through `send`; throws what `send` throws. */
@@ -67,7 +68,10 @@ export function createKept(ports: KeptPorts): Kept {
       // log, and the mark says something went wrong.
       reportFailure({
         port: "home server (kept)",
-        error: { ...toIntentError(error), summary: FAULT },
+        error: {
+          ...toIntentError(error),
+          summary: "Something on this phone went wrong.",
+        },
       })
       return { kind: "failed", why: FAULT }
     }

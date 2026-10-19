@@ -9,9 +9,11 @@
  * What did not go goes on the next ask.
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
+import { unexpectedAnswer } from "@some-ui/core-utils"
 
 import type { Kept } from "@/lib/device-backend/handlers/shelf"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
+import { FileHostResponseError } from "@/lib/file-host-config/client"
 import type { CopyResult } from "@/lib/tenant/sessions-copy"
 import type { SessionRecord } from "@/lib/tenant/types"
 
@@ -51,10 +53,21 @@ export type StandingPorts = {
 
 const failed = (why: StandingWhy): HomeExchanged => ({ kind: "failed", why })
 
+/** How the sessions copy ended at `error`, when home answered it: said, not thrown. */
+function answeredCopy(error: unknown): HomeExchanged | null {
+  if (causedBy(error, HomeForgotPhoneError)) return { kind: "forgotten" }
+  if (causedBy(error, SyncStoppedError)) throw new SyncStoppedError()
+  return error instanceof FileHostResponseError
+    ? unexpectedAnswer("a session", error.status)
+    : null
+}
+
 /**
- * Sends what changed; throws what `send` throws when home does not answer.
- * Every request first asks the log again (`gated`), so a stop pressed while
- * a send runs ends it before its next request.
+ * Sends what changed. Throws `HomeUnansweredError` when home does not answer
+ * the shelf, and what the sessions copy throws when it does not answer that
+ * (`./runtime`'s `unanswered` reads both). Every request first asks the log
+ * again (`gated`), so a stop pressed while a send runs ends it before its
+ * next request.
  */
 export async function sendStanding(
   send: HomeCall,
@@ -76,19 +89,15 @@ export async function sendStanding(
       try {
         copy = await (ports.copy ?? copyHome)(gated("sessions"), changed)
       } catch (error) {
-        if (causedBy(error, HomeForgotPhoneError)) return { kind: "forgotten" }
-        if (causedBy(error, SyncStoppedError)) throw new SyncStoppedError()
-        throw error
+        const ended = answeredCopy(error)
+        if (ended === null) throw error
+        return ended
       }
       const { outcome } = copy
       if (outcome.kind === "partial") {
-        if (causedBy(outcome.error, HomeForgotPhoneError)) {
-          return { kind: "forgotten" }
-        }
-        if (causedBy(outcome.error, SyncStoppedError)) {
-          throw new SyncStoppedError()
-        }
-        throw outcome.error
+        const ended = answeredCopy(outcome.error)
+        if (ended === null) throw outcome.error
+        return ended
       }
       sent = rememberSent(ports.storage, sent, {
         sessions: sessionsHeld(changed),

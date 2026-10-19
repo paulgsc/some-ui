@@ -91,6 +91,15 @@ describe("sendKept", () => {
     expect(b).toMatchObject({ sent: 0, unreachable: true })
   })
 
+  it("lets a fault on this phone through: it is not home's silence", async () => {
+    const h = home([new TypeError("x.y")])
+    const report = emptyReport()
+    await expect(sendKept(KEPT, h.send, report)).rejects.toBeInstanceOf(
+      TypeError
+    )
+    expect(report.unreachable).toBe(false)
+  })
+
   it("lets a stop through, with what was sent before it", async () => {
     const h = home([changed("kept"), new SyncStoppedError()])
     const report = emptyReport()

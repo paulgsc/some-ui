@@ -18,7 +18,10 @@ import type { Kept } from "@/lib/device-backend/handlers/shelf"
 
 import { unanswered } from "./runtime"
 
-/** A shelf send found no answer from home, or home busy (`unreachable`). */
+/**
+ * A shelf send found no answer from home, or home busy (`unreachable`).
+ * Not `home-sync`'s `HomeUnreachableError`, which is the lessons sync's.
+ */
 export class HomeUnansweredError extends Error {
   constructor() {
     super("home did not answer the shelf send")

@@ -37,6 +37,7 @@ const runs: Array<KeptState> = [
       { kind: "failed", why: "busy" },
       { kind: "failed", why: "full" },
       { kind: "failed", why: "refused" },
+      { kind: "failed", why: "fault" },
       { kind: "failed", why: "an entry: home answered 500" },
     ] satisfies Array<KeptRun>
   ).map((last) => ({ ...INITIAL_KEPT, last })),
@@ -179,6 +180,20 @@ describe("each lane's sharing words", () => {
   it("says a choice found from before only that it was before", () => {
     const view = laneView(WORDS.jobs, facts({ shared: KEPT }), day)
     expect(view.rows[0]?.text).toBe("Kept on home since before 18 Oct")
+  })
+
+  it("says a fault on this phone as the phone's, not home's", () => {
+    const fault = facts({
+      shared: KEPT,
+      run: { ...INITIAL_KEPT, last: { kind: "failed", why: "fault" } },
+    })
+    expect(laneView(WORDS.jobs, fault, day)).toMatchObject({
+      shape: "trouble",
+      word: "Didn't go",
+    })
+    expect(laneView(WORDS.jobs, fault, day).line).toMatch(
+      /^Something on this phone went wrong\./
+    )
   })
 
   it("says home was busy, with what waits, for every lane", () => {

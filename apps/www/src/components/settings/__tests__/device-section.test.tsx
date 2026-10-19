@@ -116,14 +116,22 @@ async function open(): Promise<void> {
   })
 }
 
+/** How long a step that digests kept items may take. */
+const SLOW = 5_000
+
 async function press(name: RegExp): Promise<void> {
   // The confirm appears once the count, which digests each kept item, is
   // in, and a button is pressed once the run before it has ended.
-  const button = await waitFor(() => {
-    const found = screen.getByRole("button", { name })
-    expect(found).toHaveProperty("disabled", false)
-    return found
-  })
+  // Digesting runs on the real `crypto.subtle`, slower on a loaded runner
+  // than the default second allows.
+  const button = await waitFor(
+    () => {
+      const found = screen.getByRole("button", { name })
+      expect(found).toHaveProperty("disabled", false)
+      return found
+    },
+    { timeout: SLOW }
+  )
   await act(async () => {
     fireEvent.click(button)
     // Long enough for the runtime's chain of port calls to finish.
@@ -239,11 +247,17 @@ describe("DeviceSection's Home server block", () => {
     await open()
     await press(/send to home.example/i)
     expect(
-      await screen.findByText(/^send 1 session to home.example\?/i)
+      await screen.findByText(
+        /^send 1 session to home.example\?/i,
+        {},
+        { timeout: SLOW }
+      )
     ).toBeTruthy()
     await press(/^send 1$/i)
     // Once the send has run to its end, as its last line says.
-    expect(await screen.findByText(/^Last send:/)).toBeTruthy()
+    expect(
+      await screen.findByText(/^Last send:/, {}, { timeout: SLOW })
+    ).toBeTruthy()
     expect(
       home.sent.filter((call) => JSON.stringify(call).includes("/shelf/"))
     ).toEqual([])
@@ -271,7 +285,9 @@ describe("DeviceSection's Home server block", () => {
       )
     ).toBeTruthy()
     await press(/^send 2$/i)
-    expect(await screen.findByText(/^Last send:/)).toBeTruthy()
+    expect(
+      await screen.findByText(/^Last send:/, {}, { timeout: SLOW })
+    ).toBeTruthy()
     expect(
       home.sent.filter((call) => JSON.stringify(call).includes("/shelf/"))
     ).toEqual([
@@ -317,7 +333,11 @@ describe("DeviceSection's Home server block", () => {
 
     await press(/send to home.example/i)
     expect(
-      await screen.findByText(/go to home on their own while Practice is open/)
+      await screen.findByText(
+        /go to home on their own while Practice is open/,
+        {},
+        { timeout: SLOW }
+      )
     ).toBeTruthy()
     expect(screen.queryByRole("checkbox")).toBeNull()
   })

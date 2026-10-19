@@ -3,14 +3,18 @@
  * sessions and what changed since this home last held it, nothing of home's
  * taken in or let go, and a stop honoured before the next request.
  */
+import { noAnswer } from "@/test-support/no-answer"
 import { sessionRecord } from "@/test-support/session-record"
 import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { describe, expect, it } from "vitest"
 
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
+import { FileHostUnreachableError } from "@/lib/file-host-config"
+import { FileHostResponseError } from "@/lib/file-host-config/client"
 import type { Scope } from "@/lib/home-link/consent-model"
 import { readSent, SENT_KEY } from "@/lib/home-link/sent"
+import { HomeUnansweredError } from "@/lib/home-link/shelf"
 import type { StandingPorts } from "@/lib/home-link/standing"
 import { sendStanding } from "@/lib/home-link/standing"
 import type { CopyResult } from "@/lib/tenant/sessions-copy"
@@ -117,10 +121,14 @@ describe("a standing send", () => {
       scopes: ["shelf"],
       answers: [busy, busy],
     })
-    await expect(sendStanding(send, ports)).rejects.toThrow()
+    await expect(sendStanding(send, ports)).rejects.toBeInstanceOf(
+      HomeUnansweredError
+    )
     expect(puts).toHaveLength(1)
     expect(readSent(ports.storage, PAIRING).shelf).toEqual({})
-    await expect(sendStanding(send, ports)).rejects.toThrow()
+    await expect(sendStanding(send, ports)).rejects.toBeInstanceOf(
+      HomeUnansweredError
+    )
     expect(puts).toHaveLength(2)
   })
 
@@ -241,20 +249,29 @@ describe("a standing send", () => {
   })
 
   it("throws when home stops answering a copy, keeping nothing as held", async () => {
+    const lost = new FileHostUnreachableError("/sessions", noAnswer())
     const { ports, send } = setup({
       scopes: ["sessions"],
       copy: () =>
         Promise.resolve({
-          outcome: {
-            kind: "partial",
-            copied: 1,
-            remaining: 1,
-            error: new Error("no answer"),
-          },
+          outcome: { kind: "partial", copied: 1, remaining: 1, error: lost },
           alreadyThere: 0,
         }),
     })
-    await expect(sendStanding(send, ports)).rejects.toThrow("no answer")
+    await expect(sendStanding(send, ports)).rejects.toBe(lost)
+    expect(ports.storage?.getItem(SENT_KEY) ?? null).toBeNull()
+  })
+
+  it("says what home answered a copy with, keeping nothing as held", async () => {
+    const { ports, send } = setup({
+      scopes: ["sessions"],
+      copy: () =>
+        Promise.reject(new FileHostResponseError(500, "/sessions", null)),
+    })
+    await expect(sendStanding(send, ports)).resolves.toEqual({
+      kind: "failed",
+      why: "a session: home answered 500",
+    })
     expect(ports.storage?.getItem(SENT_KEY) ?? null).toBeNull()
   })
 })

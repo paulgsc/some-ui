@@ -31,7 +31,8 @@ import { isRecord, stringFieldOf } from "@/lib/device-backend/common"
 import type { HomeGet } from "@/lib/device-backend/home-sync"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import type { HomeRequest } from "@/lib/device-backend/native-http"
-import { ForeignCallError } from "@/lib/intent/foreign"
+import { HomeNoAnswerError } from "@/lib/device-backend/native-http/no-answer"
+import { isFileHostTimeout } from "@/lib/file-host-config/client"
 
 import type { HomeAddress } from "./address"
 import type { HomeLinkEvent, HomeLinkState, PairFailure } from "./model"
@@ -100,12 +101,17 @@ function thrownFailureOf(error: unknown): PairFailure {
 }
 
 /**
- * `error` is the request finding no answer from home (`native-http`'s
- * `callForeign` failing), or a wrapping of that: not a fault on this phone.
+ * `error` is a request finding no answer from home, or a wrapping of that:
+ * `native-http`'s connection failing or timing out (`HomeNoAnswerError`),
+ * or `requestJSON`'s own deadline passing first (`isFileHostTimeout`). Any
+ * other failure, a Keystore read or a plugin missing from the build among
+ * them, is a fault on this phone.
  */
 export function unanswered(error: unknown): boolean {
   for (let cause = error; cause instanceof Error; cause = cause.cause) {
-    if (cause instanceof ForeignCallError) return true
+    if (cause instanceof HomeNoAnswerError || isFileHostTimeout(cause)) {
+      return true
+    }
   }
   return false
 }
