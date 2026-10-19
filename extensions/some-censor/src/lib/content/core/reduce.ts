@@ -42,9 +42,10 @@
  *        was drawn again.
  *   R9 — The face is one view's (QD13). A `face` input for the plated page's
  *        video, outside the miniplayer, shows its real thumbnail, unless
- *        the mode offers no face control; a new video, a view that is no
- *        longer plated, a mode without the control, and `nav` take it
- *        away. Nothing keeps it.
+ *        the mode offers no face control; one with `shown: false` hides it
+ *        again, only where the mode lets it (`held`). A new video, a view
+ *        that is no longer plated, a mode without the control, and `nav`
+ *        take it away. Nothing keeps it.
  *
  * R4 correlated the answers to Core's async requests; none are left, so it
  * is retired. The parenthesised M- and C- labels are kept so their
@@ -179,15 +180,16 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
       if (state.phase !== "running") return none(state)
       const watch = state.watch
       if (
-        !state.rules.face ||
+        state.rules.face === "none" ||
+        (!event.shown && state.rules.face !== "held") ||
         watch?.view !== "plated" ||
-        watch.face ||
+        watch.face === event.shown ||
         watch.observation.miniplayer ||
         watch.observation.videoId !== event.videoId
       ) {
         return none(state)
       }
-      const next = { ...watch, face: true }
+      const next = { ...watch, face: event.shown }
       return {
         state: { ...state, watch: next },
         actions: [watchAction(next, state.rules)],
@@ -476,7 +478,7 @@ function redecide(state: CoreState, boundaryDays: number, rules: Rules): Step {
       watch = {
         ...watch,
         view,
-        face: watch.face && view === "plated" && rules.face,
+        face: watch.face && view === "plated" && rules.face !== "none",
       }
       actions.push(watchAction(watch, rules))
     }

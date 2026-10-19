@@ -163,7 +163,8 @@ export function createRuntime(ports: RuntimePorts): Runtime {
     start(): void {
       if (state.phase === "running") return
       actuator = createActuator(ports.doc, {
-        onFace: (videoId) => dispatch({ kind: "face", videoId, t: clock() }),
+        onFace: (videoId, shown) =>
+          dispatch({ kind: "face", videoId, shown, t: clock() }),
       })
       health = createHealth({
         clock,

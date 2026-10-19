@@ -69,7 +69,7 @@ beforeEach(() => {
   document.body.innerHTML = ""
   faced = []
   actuator = createActuator(document, {
-    onFace: (videoId) => faced.push(videoId),
+    onFace: (videoId, shown) => faced.push(shown ? videoId : `-${videoId}`),
   })
 })
 
@@ -256,7 +256,7 @@ describe("the watch page's hold (#1805, WH1, WH2)", () => {
       miniplayer,
       poster: view === "plated" ? "hsl(1 2% 3%)" : null,
       face: extra.face ?? false,
-      offer: true,
+      offer: "release",
     },
     targets:
       extra.description === undefined
@@ -383,7 +383,7 @@ describe("the poster and the face control (#1805, QD13)", () => {
     el: HTMLElement | undefined,
     face = false,
     videoId = VIDEO,
-    offer = true
+    offer: "none" | "release" | "held" = "release"
   ): BoundAction => ({
     action: {
       kind: "watch",
@@ -424,13 +424,13 @@ describe("the poster and the face control (#1805, QD13)", () => {
 
   it("offers no control under a mode without one, and takes one back (#1966)", () => {
     const desc = description()
-    actuator.realize([plated(desc, false, VIDEO, false)])
+    actuator.realize([plated(desc, false, VIDEO, "none")])
     const root = document.documentElement
     expect(root.style.getPropertyValue("--boyo-poster")).toBe("hsl(1 2% 3%)")
     expect(control()).toBeNull()
     actuator.realize([plated(desc)])
     expect(control()?.parentElement).toBe(desc)
-    actuator.realize([plated(desc, false, VIDEO, false)])
+    actuator.realize([plated(desc, false, VIDEO, "none")])
     expect(control()).toBeNull()
   })
 
@@ -462,6 +462,32 @@ describe("the poster and the face control (#1805, QD13)", () => {
     key("keyup")
     vi.advanceTimersByTime(0)
     expect(faced).toEqual(["vid_w"])
+  })
+
+  it("under Open, shows at three seconds held, then offers to hide (#1966)", () => {
+    const desc = description()
+    actuator.realize([plated(desc, false, VIDEO, "held")])
+    const held = control()
+    key("keydown")
+    vi.advanceTimersByTime(2_999)
+    expect(faced).toEqual([])
+    vi.advanceTimersByTime(1)
+    expect(faced, "reported still held").toEqual(["vid_w"])
+
+    // Core answers: the face is shown, and the same control stays.
+    actuator.realize([plated(desc, true, VIDEO, "held")])
+    expect(control()).toBe(held)
+    expect(control()?.textContent).toBe("Hide original")
+    key("keyup")
+    vi.advanceTimersByTime(0)
+    expect(faced, "the press that showed it hides nothing").toEqual(["vid_w"])
+
+    key("keydown")
+    key("keyup")
+    vi.advanceTimersByTime(0)
+    expect(faced).toEqual(["vid_w", "-vid_w"])
+    actuator.realize([plated(desc, false, VIDEO, "held")])
+    expect(control()?.textContent).toBe("Hold to show the original thumbnail")
   })
 
   it("keeps Space and Enter from YouTube's own keys, held or let go", () => {
@@ -508,7 +534,7 @@ describe("the poster and the face control (#1805, QD13)", () => {
           miniplayer: false,
           poster: null,
           face: false,
-          offer: true,
+          offer: "release",
         },
         targets: [],
       },

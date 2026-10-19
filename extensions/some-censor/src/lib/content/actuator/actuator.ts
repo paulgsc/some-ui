@@ -61,7 +61,7 @@ const PLATE_PROPERTIES: Readonly<Record<keyof Plate, string>> = {
 
 export type ActuatorPorts = {
   /** The owner held the face control on `videoId`'s page (QD13). */
-  readonly onFace: (videoId: VideoId) => void
+  readonly onFace: (videoId: VideoId, shown: boolean) => void
 }
 
 export function createActuator(doc: Document, ports: ActuatorPorts): Actuator {
