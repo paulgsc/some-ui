@@ -1,10 +1,11 @@
 /**
- * The popup's writes (#1807). It renders on import, so each test re-imports
- * it against a fresh fake `storage`.
+ * The popup's writes (#1807, #1966). It renders on import, so each test
+ * re-imports it against a fresh fake `storage`.
  */
 
 import {
   BOUNDARY_CHANGES_KEY,
+  CHOICE_CHANGES_KEY,
   SETTINGS_KEY,
 } from "@censor/lib/settings/settings"
 import { ext } from "@censor/platform/content"
@@ -35,20 +36,26 @@ it("builds two quick clicks on each other, logging each change", async () => {
     return found
   }
   await vi.waitFor(() => button("2 years"))
-  // No re-render between the clicks: both handlers hold the first render.
+  // No re-render between the clicks: every handler holds the first render.
   button("2 years").click()
+  button("Strict").click()
+  button("Skip it").click()
   button("switch").click()
 
   await vi.waitFor(() => {
     expect(fake.store.get(SETTINGS_KEY)).toEqual({
       v: 1,
       boundary: "2y",
-      mode: "standard",
-      autoplay: "stop",
+      mode: "strict",
+      autoplay: "skip",
       enabled: false,
     })
   })
   expect(fake.store.get(BOUNDARY_CHANGES_KEY)).toEqual([
     { at: expect.any(Number), from: "1y", to: "2y" },
+  ])
+  expect(fake.store.get(CHOICE_CHANGES_KEY)).toEqual([
+    { at: expect.any(Number), choice: "mode", from: "standard", to: "strict" },
+    { at: expect.any(Number), choice: "autoplay", from: "stop", to: "skip" },
   ])
 })

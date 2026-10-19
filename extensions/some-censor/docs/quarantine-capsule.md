@@ -537,12 +537,13 @@ feel like I'm developing it as well"), so they come bundled. Amends `QD5`;
 supersedes `QD10`, `QA2`, `QA3`, §6's delayed subscription and the "airlock"
 in §7.
 
-_Status: holds (#1803, #1807); the modes in part (#1966)._ No gesture changes
-a card. The popup holds the boundary and the switch, and Diagnostics logs
-every boundary change. The settings record carries the mode and the autoplay
-choice, every open tab follows both, and each change of either is appended to
-`choiceChanges`. The surfaces that set them are #1966's last slice; until it
-lands, every install is Standard and autoplay stops at a held video.
+_Status: holds (#1803, #1807, #1966)._ No gesture changes a card. The popup
+holds the switch, the mode, the boundary and the autoplay choice; the settings
+page (`options.html`) shows the three modes as cards, each listing the same
+rows, and then the boundary and the autoplay choice; the tab and toolbar
+menu holds the switch, the mode and the autoplay choice, never the boundary.
+All three write through one saver, every open tab follows, and Diagnostics
+shows every change of the boundary, the mode and the autoplay choice.
 
 ---
 

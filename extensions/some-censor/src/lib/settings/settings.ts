@@ -3,8 +3,9 @@
  * what autoplay does at a held video, and the on/off switch, in
  * `storage.local`.
  *
- * The popup is the only writer; the popup and the content script both read
- * through {@link followSettings}. An unreadable field parses to its default,
+ * The popup, the settings page and the tab menu write through
+ * {@link createSaver}; they and the content script read through
+ * {@link followSettings}. An unreadable field parses to its default,
  * so a bad record never admits more than a fresh install does.
  *
  * Every boundary change is appended to `boundaryChanges`, which only the
@@ -50,8 +51,11 @@ export const MODES = ["strict", "standard", "open"] as const
 export type Mode = (typeof MODES)[number]
 
 /** What autoplay does when its next video is held. */
-const AUTOPLAYS = ["stop", "skip"] as const satisfies ReadonlyArray<Autoplay>
-type Autoplay = AutoplayRule
+export const AUTOPLAYS = [
+  "stop",
+  "skip",
+] as const satisfies ReadonlyArray<Autoplay>
+export type Autoplay = AutoplayRule
 
 export type Settings = {
   readonly boundary: Boundary
@@ -186,6 +190,36 @@ export function settingsWrite(
     write[CHOICE_CHANGES_KEY] = appended(stored[CHOICE_CHANGES_KEY], choices)
   }
   return write
+}
+
+/** The slice of `storage.local` a save reads and writes. */
+type SettingsArea = {
+  get(keys: Array<string>): Promise<Record<string, unknown>>
+  set(items: Record<string, unknown>): Promise<void>
+}
+
+/**
+ * Save the owner's choices one at a time: each `change` applies to what is
+ * stored when its turn comes, so two quick choices build on each other and
+ * neither drops a log entry. A failed save leaves storage as it was.
+ */
+export function createSaver(
+  area: SettingsArea
+): (change: (stored: Settings) => Settings) => void {
+  let saving: Promise<void> = Promise.resolve()
+  return (change) => {
+    saving = saving
+      .then(async () => {
+        const stored = await area.get([
+          SETTINGS_KEY,
+          BOUNDARY_CHANGES_KEY,
+          CHOICE_CHANGES_KEY,
+        ])
+        const next = change(parseSettings(stored[SETTINGS_KEY]))
+        await area.set(settingsWrite(stored, next, Date.now()))
+      })
+      .catch(() => undefined)
+  }
 }
 
 /** The slice of `browser.storage` the settings are read through. */

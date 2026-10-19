@@ -1,44 +1,69 @@
 /**
  * BOYO — background bundle entry point.
  *
- * Its one job is the "Open diagnostics" tab context-menu item.
+ * Its one job is the tab and toolbar-button menu (#1966): the switch, the
+ * mode, what autoplay does at a held video, the settings page and
+ * Diagnostics. The menu is rebuilt from what is stored on every change, so
+ * its marks always match the popup and the settings page.
  *
  * Runtime isolation: no imports from src/content/ or src/popup/ at runtime.
  */
+import { menuCommand, menuItems } from "@censor/lib/settings/menu"
+import type { Settings } from "@censor/lib/settings/settings"
+import { createSaver, followSettings } from "@censor/lib/settings/settings"
 import { ext } from "@censor/platform/background"
-import {
-  diagnosticsMenuItem,
-  isDiagnosticsMenuClick,
-} from "@some-extension/common/lib/diagnostics"
+import { assertNever } from "@some-extension/common"
+import { diagnosticsMenuItem } from "@some-extension/common/lib/diagnostics"
 
-// ─────────────────────────────────────────────
-// diagnostics
-// ─────────────────────────────────────────────
+// "tab" (right-click the tab strip) is Firefox-only; Chrome has no such
+// context and fails to create these items, which leaves the popup and the
+// settings page there. "action" is the toolbar button's own menu. Firefox
+// gathers the tab menu's items under the extension's name.
+const CONTEXTS: Array<browser.menus.ContextType> = ["tab", "action"]
 
-// "bc" namespaces this menu item per Charter idiom #4, matching debug.css's
-// own `bc-` prefix. "tab" (right-click the tab strip) is Firefox-only;
-// Chrome has no such context and silently fails to create this item, which
-// is fine — the popup's own "Diagnostics" footer link covers Chrome.
 const DIAGNOSTICS_MENU = diagnosticsMenuItem("bc")
 
-ext.runtime.onInstalled.addListener((): void => {
-  void ext.contextMenus.removeAll().then(() => {
-    ext.contextMenus.create({
-      id: DIAGNOSTICS_MENU.id,
-      title: DIAGNOSTICS_MENU.title,
-      contexts: ["tab"],
-      // Firefox only wraps an extension's items under its manifest icon +
-      // name when the extension contributes 2+ top-level items; some-censor
-      // has exactly one, so it renders flat unless the item carries its own
-      // icon. Per-item `icons` is keyed by size, same as manifest icons.
-      icons: { 16: "assets/icon-16.png" },
+const save = createSaver(ext.storage.local)
+
+let building: Promise<void> = Promise.resolve()
+
+/** Rebuild the menu for `settings`, one rebuild at a time. */
+function build(settings: Settings): void {
+  building = building
+    .then(async () => {
+      await ext.contextMenus.removeAll()
+      for (const item of menuItems(settings, DIAGNOSTICS_MENU)) {
+        ext.contextMenus.create({ ...item, contexts: CONTEXTS })
+      }
     })
-  })
-})
+    .catch(() => undefined)
+}
+
+followSettings(ext.storage, build)
 
 ext.contextMenus.onClicked.addListener((info): void => {
-  if (isDiagnosticsMenuClick(info.menuItemId, DIAGNOSTICS_MENU.id)) {
-    void ext.tabs.create({ url: ext.runtime.getURL("debug.html") })
+  const command = menuCommand(
+    String(info.menuItemId),
+    info.checked,
+    DIAGNOSTICS_MENU.id
+  )
+  if (command === null) return
+  switch (command.kind) {
+    case "change": {
+      save(command.change)
+      break
+    }
+    case "settings": {
+      void ext.runtime.openOptionsPage()
+      break
+    }
+    case "diagnostics": {
+      void ext.tabs.create({ url: ext.runtime.getURL("debug.html") })
+      break
+    }
+    default: {
+      assertNever(command)
+    }
   }
 })
 
