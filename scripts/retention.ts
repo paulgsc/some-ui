@@ -161,7 +161,9 @@ for (const [key, { count, bytes }] of [...tally].sort(
 }
 const undeclared = new Map<string, number>()
 for (const a of result.undeclaredArtifacts) {
-  const name = `artifact ${a.name.replace(/[0-9a-f]{40}/g, "<sha>")}`
+  const name = `artifact ${a.name
+    .replace(/[0-9a-f]{40}/g, "<sha>")
+    .replace(/~[0-9A-Z]+\./, "~<id>.")}`
   undeclared.set(name, (undeclared.get(name) ?? 0) + 1)
 }
 for (const c of result.undeclaredCaches) {
