@@ -241,6 +241,55 @@ describe("dispose", () => {
   })
 })
 
+describe("skip (#1966)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  function playing(): { clicks: Array<string>; card: HTMLElement } {
+    const card = document.createElement("ytd-compact-video-renderer")
+    card.innerHTML = `<a id="thumbnail" href="/watch?v=next"></a>`
+    document.body.append(card)
+    const clicks: Array<string> = []
+    card.addEventListener("click", (event) => {
+      event.preventDefault()
+      if (event.target instanceof HTMLElement) clicks.push(event.target.id)
+    })
+    return { clicks, card }
+  }
+  const play = (el: HTMLElement): BoundAction => ({
+    action: { kind: "play", key: cardKey(asVideoId("next")) },
+    targets: [{ el, role: "anchor" }],
+  })
+
+  it("clicks the card's watch link, a task after it is asked", () => {
+    const { clicks, card } = playing()
+    actuator.realize([play(card)])
+    expect(clicks).toEqual([])
+    vi.advanceTimersByTime(0)
+    expect(clicks).toEqual(["thumbnail"])
+  })
+
+  it("clicks nothing with no card, or a card with no watch link", () => {
+    const { clicks, card } = playing()
+    card.innerHTML = `<a id="channel" href="/@chan"></a>`
+    actuator.realize([play(card), { ...play(card), targets: [] }])
+    vi.advanceTimersByTime(0)
+    expect(clicks).toEqual([])
+  })
+
+  it("clicks nothing once disposed", () => {
+    const { clicks, card } = playing()
+    actuator.realize([play(card)])
+    actuator.dispose()
+    vi.advanceTimersByTime(0)
+    expect(clicks).toEqual([])
+  })
+})
+
 describe("the watch page's hold (#1805, WH1, WH2)", () => {
   const VIDEO = asVideoId("vid_w")
   const watch = (

@@ -23,6 +23,8 @@
  *       its own poster, and no face control.
  * W12 — Under Strict, autoplay from a music video goes on only into another
  *       music video, never into a plated one; Standard's goes on (#1966).
+ * W13 — Under Skip, a held autoplay opens the first video in Up next the
+ *       page admits instead; under Stop nothing opens (#1966).
  */
 
 import { SWITCHED_OFF_ATTRIBUTE } from "@censor/lib/content/selectors"
@@ -215,7 +217,10 @@ test("W9: the miniplayer going on to another video holds it", async ({
   expect(await playsThrough(page)).toBe(false)
 })
 
-/** Fill Up next with cards, each `[videoId, age, channel name]`. */
+/**
+ * Fill Up next with cards, each `[videoId, age, channel name]`, in the list
+ * YouTube draws them in.
+ */
 async function upNext(
   page: Page,
   cards: ReadonlyArray<readonly [string, string, string]>
@@ -223,12 +228,12 @@ async function upNext(
   await page.evaluate((list) => {
     const secondary = document.querySelector("#secondary")
     if (secondary)
-      secondary.innerHTML = list
+      secondary.innerHTML = `<div id="related"><ytd-watch-next-secondary-results-renderer>${list
         .map(
           ([id, age, channel]) =>
             `<ytd-compact-video-renderer><a id="video-title" href="/watch?v=${id}">${id}</a><ytd-channel-name><yt-formatted-string>${channel}</yt-formatted-string></ytd-channel-name><a href="/@${id}">${channel}</a><div id="metadata-line"><span>1M views</span><span>${age}</span></div></ytd-compact-video-renderer>`
         )
-        .join("")
+        .join("")}</ytd-watch-next-secondary-results-renderer></div>`
   }, cards)
 }
 
@@ -351,4 +356,48 @@ test("W12: under Strict, autoplay from music goes on only into music", async ({
   await expect
     .poll(() => reaches(page, "old_next", "1"), { message: "Standard goes on" })
     .toBe(true)
+})
+
+test("W13: Skip opens the next admitted video in Up next", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-watch-page")
+  await watchView(page, "plated")
+  await upNext(page, [
+    ["new_next", "3 hours ago", "Chan"],
+    ["old_next", "9 years ago", "Chan"],
+  ])
+  await stamped(page, "new_next", "absent")
+  await stamped(page, "old_next", "plated")
+  // Every link the page opens, kept from leaving the fixture.
+  await page.evaluate(() => {
+    const opened: Array<string> = []
+    Reflect.set(window, "__OPENED__", opened)
+    window.addEventListener(
+      "click",
+      (event) => {
+        const link =
+          event.target instanceof Element ? event.target.closest("a") : null
+        if (link === null) return
+        event.preventDefault()
+        opened.push(link.getAttribute("href") ?? "")
+      },
+      { capture: true }
+    )
+  })
+  const opened = (): Promise<unknown> =>
+    page.evaluate((): unknown => Reflect.get(window, "__OPENED__"))
+
+  expect(await reaches(page, "new_next", "1")).toBe(false)
+  await page.waitForTimeout(200)
+  expect(await opened(), "Stop opens nothing").toEqual([])
+
+  await fixture.settings({ autoplay: "skip" })
+  await expect
+    .poll(async () => {
+      await reaches(page, "new_next", "1")
+      return opened()
+    })
+    .toContain("/watch?v=old_next")
+  expect(await opened()).not.toContain("/watch?v=new_next")
 })

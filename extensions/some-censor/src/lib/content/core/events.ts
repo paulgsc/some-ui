@@ -19,7 +19,7 @@ import type { SessionId } from "@some-extension/common"
 
 import type { CardKey } from "./keys"
 import type { Observation, WatchObservation } from "./observation"
-import type { Rules } from "./state"
+import type { AutoplayRule, Rules } from "./state"
 
 // ── Tokens: what the Sensor derives from the vendor (B5) ─────────────────────
 
@@ -50,6 +50,15 @@ export type Token =
    * on the description as it is now (QD13).
    */
   | { readonly kind: "described"; readonly t: number }
+  /**
+   * The Sensor held autoplay's navigation into a video Core does not admit
+   * (#1805). `upNext` is the Up next videos it read, in page order.
+   */
+  | {
+      readonly kind: "held"
+      readonly upNext: ReadonlyArray<VideoId>
+      readonly t: number
+    }
   /**
    * The page's own video, as the watch page or a Short shows it, or null
    * when neither is shown (#1805). Re-sent whenever the reading changes.
@@ -88,6 +97,7 @@ export type Input =
       readonly session: SessionId
       readonly boundaryDays: number
       readonly rules: Rules
+      readonly autoplay: AutoplayRule
       readonly t: number
     }
   /** The shell is tearing the runtime down (disable). */
@@ -96,6 +106,12 @@ export type Input =
   | { readonly kind: "boundary"; readonly days: number; readonly t: number }
   /** The owner chose a mode (#1966). */
   | { readonly kind: "rules"; readonly rules: Rules; readonly t: number }
+  /** The owner chose what autoplay does at a held video (#1966). */
+  | {
+      readonly kind: "autoplay"
+      readonly autoplay: AutoplayRule
+      readonly t: number
+    }
   /**
    * The owner held the face control on `videoId`'s plated page for its
    * whole time (QD13, #1805), or, where the mode lets the thumbnail be

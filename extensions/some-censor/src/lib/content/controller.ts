@@ -55,6 +55,7 @@ export class Controller {
     const mode = MODE_RULES[settings.mode]
     this._runtime.setBoundary(boundaryDays(settings.boundary))
     this._runtime.setRules(mode.core)
+    this._runtime.setAutoplay(settings.autoplay)
     setPageRules(document, mode.page)
     if (settings.enabled) {
       setSwitchedOff(document, false)

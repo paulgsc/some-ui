@@ -44,6 +44,7 @@ it("builds two quick clicks on each other, logging each change", async () => {
       v: 1,
       boundary: "2y",
       mode: "standard",
+      autoplay: "stop",
       enabled: false,
     })
   })

@@ -15,7 +15,7 @@ two choices, the boundary and the mode. No gesture changes it (`QD16`).
 | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | Current, or of unprovable age (`QM0`–`QM2`), and not in the lane | **Absent**: no tile, no cover, no count (`QD11`)                                              | "Not here." and Back. No player, title, date, or video-derived tab title (`QD17`)                    | Never                                                                             |
 | Old enough (`QM3`–`QM4`, boundary `B`), and not in the lane      | **Plated**: title, channel name and duration, on a plate, with a plated channel icon (`QD12`) | The plate is the poster until play. Up next is plated. No comments (`QD14`) or end-screen thumbnails | After a 3-second hold on the watch page, for that view, except in Strict (`QD13`) |
-| Music, and not live, a premiere or a Short                       | **Whole**: as YouTube renders it, minus every crowd number and age (`QD14`, `QD15`)           | As YouTube renders it, minus the crowd. Autoplay stops before a held video (`QD11`)                  | Shown                                                                             |
+| Music, and not live, a premiere or a Short                       | **Whole**: as YouTube renders it, minus every crowd number and age (`QD14`, `QD15`)           | As YouTube renders it, minus the crowd. Autoplay stops before a held video, or skips it (`QD11`)     | Shown                                                                             |
 
 Live streams, premieres and Shorts are always held (`QD11`): a live object is
 present by definition, and a Short carries no date (`QD3`).
@@ -128,11 +128,11 @@ record, read by the content script at start and on every change, so an open
 tab follows without a reload. Unreadable storage yields the defaults. Off is
 plain YouTube: the content script stops and lifts the pre-mask, and a content
 script that never runs leaves it on. The popup sets the boundary and the
-switch; the mode is followed but not yet offered anywhere, and the autoplay
-choice is not built yet (#1966's later slices). Mode changes are logged, and
-Diagnostics shows only boundary changes so far. Until the content script has
-read the mode, which the stylesheet cannot do itself, an unread card is
-blurred under Strict too.
+switch; the mode and the autoplay choice are followed but not yet offered
+anywhere (#1966's last slice). Their changes are logged, and Diagnostics
+shows only boundary changes so far. Until the content script has read the
+mode, which the stylesheet cannot do itself, an unread card is blurred under
+Strict too.
 
 ## 8. Never on youtube.com
 

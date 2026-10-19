@@ -76,6 +76,7 @@ const started: CoreEvent = {
   session: session(1),
   boundaryDays: B,
   rules: STANDARD_RULES,
+  autoplay: "stop",
   t: 0,
 }
 
@@ -218,6 +219,7 @@ describe("lifecycle (R1, R3)", () => {
       session: session(9),
       boundaryDays: B,
       rules: STANDARD_RULES,
+      autoplay: "stop",
       t: 9,
     })
     expect(again.actions).toEqual([])
@@ -355,11 +357,13 @@ describe("evidence alone decides (R7)", () => {
         session: session(5),
         boundaryDays: B,
         rules: STANDARD_RULES,
+        autoplay: "stop",
         t: 3,
       },
       stop: { kind: "stop", t: 3 },
       boundary: { kind: "boundary", days: 2 * B, t: 3 },
       rules: { kind: "rules", rules: STRICT, t: 3 },
+      autoplay: { kind: "autoplay", autoplay: "skip", t: 3 },
       face: { kind: "face", videoId: asVideoId("vid_a"), shown: true, t: 3 },
     }
     for (const uploadDate of [OLD, "3 days ago"]) {
@@ -412,6 +416,7 @@ describe("the boundary (R7, #1807)", () => {
         session: session(2),
         boundaryDays: 2 * B,
         rules: STANDARD_RULES,
+        autoplay: "stop",
         t: 0,
       },
       seen(1, { uploadDate: TWO_YEARS }),
@@ -714,6 +719,79 @@ describe("what autoplay may go on into (#1805)", () => {
       true
     )
   })
+
+  it("skips under Skip to the first admitted video in Up next (R10, #1966)", () => {
+    const page: CoreEvent = {
+      kind: "watched",
+      watch: {
+        videoId: asVideoId("here"),
+        short: false,
+        hydrated: true,
+        dates: ["21y ago"],
+        miniplayer: false,
+        title: "Me at the zoo",
+        channelName: "jawed",
+        artist: false,
+      },
+      t: 1,
+    }
+    const cards = [
+      // The page's own video has a card too, plated: it is never the skip.
+      seen(1, { uploadDate: OLD }, "here"),
+      seen(1, { uploadDate: "3 hours ago" }, "recent"),
+      seen(1, { uploadDate: OLD }, "old"),
+      seen(1, { uploadDate: OLD }, "older"),
+    ]
+    const held = (upNext: ReadonlyArray<string>): CoreEvent => ({
+      kind: "held",
+      upNext: upNext.map(asVideoId),
+      t: 2,
+    })
+    const plays = (actions: ReadonlyArray<Action>): Array<string> =>
+      actions.flatMap((a) => (a.kind === "play" ? [String(a.key)] : []))
+
+    const stopping = fold([started, page, ...cards])
+    expect(
+      plays(reduce(stopping.state, held(["recent", "old"])).actions),
+      "Stop plays nothing"
+    ).toEqual([])
+
+    const { state } = fold([
+      started,
+      { kind: "autoplay", autoplay: "skip", t: 1 },
+      page,
+      ...cards,
+    ])
+    expect(
+      plays(
+        reduce(state, held(["here", "recent", "unseen", "old", "older"]))
+          .actions
+      )
+    ).toEqual([String(cardKey(asVideoId("old")))])
+    expect(
+      plays(reduce(state, held(["recent", "unseen"])).actions),
+      "nothing admitted: it stops"
+    ).toEqual([])
+
+    const miniplayer = reduce(state, {
+      kind: "watched",
+      watch: {
+        videoId: asVideoId("here"),
+        short: false,
+        hydrated: true,
+        dates: ["21y ago"],
+        miniplayer: true,
+        title: "Me at the zoo",
+        channelName: "jawed",
+        artist: false,
+      },
+      t: 3,
+    })
+    expect(
+      plays(reduce(miniplayer.state, held(["old"])).actions),
+      "the miniplayer plays over another page: it stops"
+    ).toEqual([])
+  })
 })
 
 describe("the mode (R7, R9, #1966)", () => {
@@ -744,6 +822,7 @@ describe("the mode (R7, R9, #1966)", () => {
         session: session(2),
         boundaryDays: B,
         rules: STRICT,
+        autoplay: "stop",
         t: 0,
       },
       seen(1, OST),

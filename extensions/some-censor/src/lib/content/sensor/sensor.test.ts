@@ -725,6 +725,37 @@ describe("autoplay (#1805)", () => {
     sensor.stop()
     expect(navigate(autoplay("held"))).toBe(true)
   })
+
+  it("tells Core what Up next holds, in page order, when it holds (#1966)", async () => {
+    // YouTube's two-column watch page: an engagement panel ahead of Up next
+    // in the same column, and Up next's list inside `#related`.
+    const manager = document.createElement("ytd-page-manager")
+    manager.innerHTML = `<ytd-watch-flexy><div id="secondary">
+      <div id="panels"></div>
+      <div id="related"><ytd-watch-next-secondary-results-renderer></ytd-watch-next-secondary-results-renderer></div>
+    </div></ytd-watch-flexy>`
+    manager.querySelector("#panels")?.append(cell("in-a-panel"))
+    manager
+      .querySelector("ytd-watch-next-secondary-results-renderer")
+      ?.append(lockup("first"), lockup("second"))
+    document.body.append(cell("elsewhere"), manager)
+    await tick()
+    tokens = []
+    navigate(autoplay("held"))
+    expect(tokens).toEqual([
+      { kind: "held", upNext: ["first", "second"], t: now },
+    ])
+    // A skip opens the Up next card itself, never a copy elsewhere.
+    const list = manager.querySelector(
+      "ytd-watch-next-secondary-results-renderer"
+    )
+    expect(sensor.upNextCard(cardKey(asVideoId("first")))).toBe(
+      list?.firstElementChild
+    )
+    for (const id of ["in-a-panel", "elsewhere"]) {
+      expect(sensor.upNextCard(cardKey(asVideoId(id))), id).toBeNull()
+    }
+  })
 })
 
 describe("census", () => {
