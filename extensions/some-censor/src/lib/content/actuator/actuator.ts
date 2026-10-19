@@ -190,12 +190,11 @@ export function createActuator(doc: Document, ports: ActuatorPorts): Actuator {
    * the Sensor never holds it.
    */
   function play(targets: ReadonlyArray<CustodyTarget>): void {
-    let link: HTMLElement | null = null
-    for (const { el } of targets) {
-      link = el.matches(WATCH_LINK) ? el : el.querySelector(WATCH_LINK)
-      if (link !== null) break
-    }
-    if (link === null) return
+    const card = targets[0]?.el
+    const link = card?.matches(WATCH_LINK)
+      ? card
+      : card?.querySelector<HTMLElement>(WATCH_LINK)
+    if (link === undefined || link === null) return
     const target = link
     if (pendingPlay !== null) clearTimeout(pendingPlay)
     // Lifetime: cleared by dispose(), and by the next play.

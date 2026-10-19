@@ -736,6 +736,8 @@ describe("what autoplay may go on into (#1805)", () => {
       t: 1,
     }
     const cards = [
+      // The page's own video has a card too, plated: it is never the skip.
+      seen(1, { uploadDate: OLD }, "here"),
       seen(1, { uploadDate: "3 hours ago" }, "recent"),
       seen(1, { uploadDate: OLD }, "old"),
       seen(1, { uploadDate: OLD }, "older"),
@@ -770,8 +772,28 @@ describe("what autoplay may go on into (#1805)", () => {
       plays(reduce(state, held(["recent", "unseen"])).actions),
       "nothing admitted: it stops"
     ).toEqual([])
+
+    const miniplayer = reduce(state, {
+      kind: "watched",
+      watch: {
+        videoId: asVideoId("here"),
+        short: false,
+        hydrated: true,
+        dates: ["21y ago"],
+        miniplayer: true,
+        title: "Me at the zoo",
+        channelName: "jawed",
+        artist: false,
+      },
+      t: 3,
+    })
+    expect(
+      plays(reduce(miniplayer.state, held(["old"])).actions),
+      "the miniplayer plays over another page: it stops"
+    ).toEqual([])
   })
 })
+
 describe("the mode (R7, R9, #1966)", () => {
   const strict = (t = 5): CoreEvent => ({ kind: "rules", rules: STRICT, t })
   const standard = (t = 6): CoreEvent => ({

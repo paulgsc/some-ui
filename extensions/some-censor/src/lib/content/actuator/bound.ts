@@ -6,7 +6,8 @@
  * read nothing but its own input (§3's ownership table) — so the join
  * between a `CardKey` and the elements currently carrying it happens in the
  * runtime, which asks the Sensor and hands the Actuator a `BoundAction`.
- * The Actuator never looks a card up. Its one read of the page is the
+ * The Actuator never looks a card up. A `play`'s one target is the Up next
+ * card to open, and the Actuator reads only its watch link. Its one read of the page is the
  * watch page's hold (`watch-hold.ts`), which reads only to keep its own
  * writes held and decides nothing.
  */

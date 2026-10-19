@@ -114,6 +114,12 @@ export function createRuntime(ports: RuntimePorts): Runtime {
       if (action.kind === "record") {
         if (action.fact.kind === "navigation") notifyNavigation()
         onFact(action.fact)
+      } else if (action.kind === "play") {
+        const el = sensorInstance.upNextCard(action.key)
+        bound.push({
+          action,
+          targets: el === null ? [] : [{ el, role: "anchor" }],
+        })
       } else if (action.kind === "watch") {
         const el = sensorInstance.description()
         bound.push({

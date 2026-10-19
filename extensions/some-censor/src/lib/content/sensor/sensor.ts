@@ -49,6 +49,7 @@ import {
   extractUploadDate,
   readAutonav,
   readDescription,
+  readUpNext,
   readWatch,
   tryExtract,
 } from "@censor/lib/content/extract/index"
@@ -80,9 +81,6 @@ import { createRetryQueue, RESOLVE_BUDGET_MS, RETRY_INTERVAL_MS } from "./queue"
 export const NAV_DEBOUNCE_MS = 150
 
 const NO_WATCH = JSON.stringify(null)
-
-/** The watch page's Up next column, where autoplay's next video comes from. */
-const UP_NEXT = "ytd-watch-flexy #secondary"
 
 export type SensorPorts = {
   readonly doc: Document
@@ -126,6 +124,8 @@ export type Sensor = {
   custodyOf(key: CardKey): ReadonlyArray<CustodyTarget>
   /** The shown watch page's description, where the face control goes. */
   description(): HTMLElement | null
+  /** The Up next card carrying `key`, the one a skip opens (#1966). */
+  upNextCard(key: CardKey): HTMLElement | null
   census(): SensorCensus
   /** How many elements are queued; O(1), unlike {@link census}. */
   readonly queued: number
@@ -633,13 +633,21 @@ export function createSensor(ports: SensorPorts): Sensor {
     ports.emit({ kind: "held", upNext: upNext(), t: ports.clock() })
   }
 
-  /** The videos of the cards held in the watch page's Up next, in order. */
+  /** The cards held in the watch page's Up next, in page order. */
+  function upNextCards(): Array<{ el: HTMLElement; key: CardKey }> {
+    const cards: Array<{ el: HTMLElement; key: CardKey }> = []
+    const list = readUpNext(ports.doc)
+    for (const el of list?.querySelectorAll<HTMLElement>(SEL) ?? []) {
+      const key = identity.keyOf(el)
+      if (key !== null) cards.push({ el, key })
+    }
+    return cards
+  }
+
+  /** Their videos, each once. */
   function upNext(): Array<VideoId> {
     const ids: Array<VideoId> = []
-    const column = ports.doc.querySelector(UP_NEXT)
-    for (const el of column?.querySelectorAll<HTMLElement>(SEL) ?? []) {
-      const key = identity.keyOf(el)
-      if (key === null) continue
+    for (const { key } of upNextCards()) {
       const id = keyVideoId(key)
       if (!ids.includes(id)) ids.push(id)
     }
@@ -730,6 +738,10 @@ export function createSensor(ports: SensorPorts): Sensor {
 
     description(): HTMLElement | null {
       return readDescription(ports.doc)
+    },
+
+    upNextCard(key: CardKey): HTMLElement | null {
+      return upNextCards().find((card) => card.key === key)?.el ?? null
     },
 
     census(): SensorCensus {

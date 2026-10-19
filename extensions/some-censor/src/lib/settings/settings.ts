@@ -9,11 +9,11 @@
  *
  * Every boundary change is appended to `boundaryChanges`, which only the
  * Diagnostics page reads, and every change of mode or autoplay to
- * `choiceChanges`, kept
- * for it too: the doctrine's §9 falsifier is "`B` keeps getting lowered",
- * and that needs the history, kept whole.
+ * `choiceChanges`, kept for it too: the doctrine's §9 falsifier is "`B`
+ * keeps getting lowered", and that needs the history, kept whole.
  */
 
+import type { AutoplayRule } from "@censor/lib/content/core/state"
 import { DEFAULT_BOUNDARY_DAYS } from "@censor/lib/content/maturity/maturity"
 import { isRecord } from "@some-extension/common"
 
@@ -50,8 +50,8 @@ export const MODES = ["strict", "standard", "open"] as const
 export type Mode = (typeof MODES)[number]
 
 /** What autoplay does when its next video is held. */
-const AUTOPLAYS = ["stop", "skip"] as const
-type Autoplay = (typeof AUTOPLAYS)[number]
+const AUTOPLAYS = ["stop", "skip"] as const satisfies ReadonlyArray<Autoplay>
+type Autoplay = AutoplayRule
 
 export type Settings = {
   readonly boundary: Boundary

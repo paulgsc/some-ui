@@ -727,12 +727,18 @@ describe("autoplay (#1805)", () => {
   })
 
   it("tells Core what Up next holds, in page order, when it holds (#1966)", async () => {
-    const page = document.createElement("ytd-watch-flexy")
-    const column = document.createElement("div")
-    column.id = "secondary"
-    column.append(cell("first"), cell("second"))
-    page.append(column)
-    document.body.append(cell("elsewhere"), page)
+    // YouTube's two-column watch page: an engagement panel ahead of Up next
+    // in the same column, and Up next's list inside `#related`.
+    const manager = document.createElement("ytd-page-manager")
+    manager.innerHTML = `<ytd-watch-flexy><div id="secondary">
+      <div id="panels"></div>
+      <div id="related"><ytd-watch-next-secondary-results-renderer></ytd-watch-next-secondary-results-renderer></div>
+    </div></ytd-watch-flexy>`
+    manager.querySelector("#panels")?.append(cell("in-a-panel"))
+    manager
+      .querySelector("ytd-watch-next-secondary-results-renderer")
+      ?.append(lockup("first"), lockup("second"))
+    document.body.append(cell("elsewhere"), manager)
     await tick()
     tokens = []
     navigate(autoplay("held"))

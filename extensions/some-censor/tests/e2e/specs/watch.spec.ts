@@ -217,7 +217,10 @@ test("W9: the miniplayer going on to another video holds it", async ({
   expect(await playsThrough(page)).toBe(false)
 })
 
-/** Fill Up next with cards, each `[videoId, age, channel name]`. */
+/**
+ * Fill Up next with cards, each `[videoId, age, channel name]`, in the list
+ * YouTube draws them in.
+ */
 async function upNext(
   page: Page,
   cards: ReadonlyArray<readonly [string, string, string]>
@@ -225,12 +228,12 @@ async function upNext(
   await page.evaluate((list) => {
     const secondary = document.querySelector("#secondary")
     if (secondary)
-      secondary.innerHTML = list
+      secondary.innerHTML = `<div id="related"><ytd-watch-next-secondary-results-renderer>${list
         .map(
           ([id, age, channel]) =>
             `<ytd-compact-video-renderer><a id="video-title" href="/watch?v=${id}">${id}</a><ytd-channel-name><yt-formatted-string>${channel}</yt-formatted-string></ytd-channel-name><a href="/@${id}">${channel}</a><div id="metadata-line"><span>1M views</span><span>${age}</span></div></ytd-compact-video-renderer>`
         )
-        .join("")
+        .join("")}</ytd-watch-next-secondary-results-renderer></div>`
   }, cards)
 }
 
