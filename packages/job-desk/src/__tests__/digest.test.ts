@@ -490,6 +490,8 @@ describe("digestFindings", () => {
     ])
       kit.answers.push({ label, value: "Mine" })
     expect(messages(digest)).toEqual([
+      "picks.0.kit.coverLetter: a phone number or street address is mine to type",
+      "picks.0.kit.compensation.why: a phone number or street address is mine to type",
       'picks.0.kit.fields.4.label: "Telephone" is mine to type',
       'picks.0.kit.answers.2.label: "Street address" is mine to type',
       'picks.0.kit.answers.3.label: "Phone ✱" is mine to type',
@@ -499,8 +501,6 @@ describe("digestFindings", () => {
       'picks.0.kit.answers.7.label: "Address (optional)" is mine to type',
       'picks.0.kit.answers.8.label: "What’s your phone number?" is mine to type',
       'picks.0.kit.answers.9.label: "Phone # (with country code)" is mine to type',
-      "picks.0.kit.coverLetter: a phone number or street address is mine to type",
-      "picks.0.kit.compensation.why: a phone number or street address is mine to type",
     ])
   })
 
@@ -515,6 +515,52 @@ describe("digestFindings", () => {
     kit.answers.push({ label: "Built mobile apps?", value: "Yes" })
     kit.answers.push({ label: "Website address", value: "https://a.example" })
     expect(messages(digest)).toEqual([])
+  })
+
+  it("redrafts only a pick still open, once, under the kit's rules", () => {
+    const digest = sample()
+    digest.queue = {
+      open: [
+        {
+          day: "2026-10-16",
+          pickId: "ash-1a2b",
+          track: "software",
+          closed: false,
+        },
+        {
+          day: "2026-10-16",
+          pickId: "elm-3c4d",
+          track: "software",
+          closed: true,
+        },
+      ],
+    }
+    digest.picks = digest.picks.filter((p) => p.track === "adjacent")
+    const redraft = {
+      day: "2026-10-16",
+      pickId: "ash-1a2b",
+      fit: ["ev-9"],
+      coverLetter: "I built the pipelines this team runs.",
+      questions: [{ label: "Why us?", required: true, draft: null }],
+    }
+    digest.redrafts = [
+      redraft,
+      { ...redraft, questions: [] },
+      { ...redraft, pickId: "elm-3c4d", questions: [] },
+      {
+        ...redraft,
+        pickId: "oak-5e6f",
+        coverLetter: "On Kubernetes.",
+        questions: [],
+      },
+    ]
+    expect(messages(digest)).toEqual([
+      "redrafts.0.questions.0.draft: a required question has no draft",
+      "redrafts.1: 2026-10-16/ash-1a2b is redrafted twice",
+      "redrafts.2: 2026-10-16/elm-3c4d is not an open pick in this digest's queue",
+      "redrafts.3: 2026-10-16/oak-5e6f is not an open pick in this digest's queue",
+      'redrafts.3.coverLetter: claims "Kubernetes", which the evidence doesn\'t support',
+    ])
   })
 
   it("opens a digest written before the form was read", () => {

@@ -82,14 +82,25 @@ For each new file:
 
 1. Check it with the checker (step 8). One that fails is skipped and named in
    the summary, never guessed at.
-2. Transcribe every voice note it names, with the transcriber this task's
-   prompt carries. If it can't, carry on without the note and say so.
+2. Transcribe every voice note it names (below, "The transcriber"). If it
+   can't, carry on without the note and say so.
 3. Take it in:
    - **Passed picks:** the reasons and notes tell me what to stop sending. A
      reason given twice is a rule for this run.
    - **Disagreements:** a set-aside posting I would have picked. Look it up
      again as §3 looks up a scout; if it is still open and its track has a
      free slot (below), it may be a pick today.
+   - **Fit notes:** on a pick I took, why I fit it, in a pick entry's `fit`.
+     A note whose `id` no file a digest names in `read` carried is new. For
+     each pick with a new note that is still open (below), write it a
+     redraft in `redrafts` (§8): its cover letter and every question of its
+     kit drafted again from the pick's fits and what I said, every note of
+     its `fit` read together, newest last. What I said may add what the
+     evidence doesn't hold, since it is mine to claim; it still never names
+     one of `FORBIDDEN_TERMS`, a term of that pick's `dontClaim`, or a phone
+     number or address. Keep each question's `label` and `required` as the
+     pick's kit has them. A pick no longer open gets no redraft: say so in
+     the summary.
    - **Debriefs and outcomes:** how applying went and what came of it. Report
      them in the summary. Once there are 30 or more outcomes, compare them with
      the odds each pick was given and say in the summary whether the rubric
@@ -101,6 +112,40 @@ the newest entry is the decision that stands.
 
 A posting picked in any earlier digest, or named in any decisions file, is
 never picked again, unless a disagreement brought it back.
+
+### The transcriber
+
+Voice notes are webm (or ogg, m4a) files beside the file that names them.
+Transcribe them in this run's own container, in a scratch directory outside
+the checkout, once per run:
+
+```sh
+python3 -m venv /tmp/whisper && /tmp/whisper/bin/pip install -q faster-whisper
+apt-get update -qq && apt-get install -y --no-install-recommends ffmpeg
+ffmpeg -loglevel error -y -i <note> -ar 16000 -ac 1 /tmp/whisper/note.wav
+```
+
+Then transcribe the wav with this script, saved outside the checkout as
+`/tmp/whisper/transcribe.py` and run as
+`/tmp/whisper/bin/python -I /tmp/whisper/transcribe.py /tmp/whisper/note.wav`.
+It passes the audio as a float32 array, never the path (the installed `av`
+breaks on a path), and `vad_filter` keeps silence from coming back as "You"
+or "Thank you.":
+
+```python
+import sys, wave
+import numpy as np
+from faster_whisper import WhisperModel
+
+with wave.open(sys.argv[1]) as w:
+    pcm = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16)
+model = WhisperModel("small.en", device="cpu", compute_type="int8")
+segments, _ = model.transcribe(pcm.astype(np.float32) / 32768, vad_filter=True)
+print(" ".join(s.text.strip() for s in segments))
+```
+
+An empty transcript is a note with nothing said: say so in the summary. List
+each note transcribed in the digest's `transcribed`, by its file name.
 
 ### The queue
 
@@ -475,7 +520,9 @@ shorter limit, first person, the gaps) is yours to hold.
    and `review` §3 to §5 gave it, and a scout that became a pick its
    `pickId` from step 1.
 3. `read` names every Decisions and Scout file this run took in, and
-   `transcribed` every voice note it transcribed.
+   `transcribed` every voice note it transcribed. `redrafts` holds each
+   redraft §2 wrote: the pick's digest `day` and `pickId`, the `fit` note ids
+   it was written from, and its `coverLetter` and `questions`.
 4. Save the digest as bare JSON to a scratch file and check it from the repo
    root (run `pnpm install` first if `node_modules` is missing):
 
@@ -500,6 +547,7 @@ Never edit, move, rename or trash anything under `some-ui jobs/`. Triage
 End with: the queue (each open pick with its digest day, which postings
 closed, and each track's free slots); each pick with its track, scores and
 résumé; the PR this run opened, or why it opened none; how many postings
-were set aside, by reason; what each new decisions file and voice note said; each
+were set aside, by reason; what each new decisions file and voice note said;
+each redraft, by its pick, or why a fit note got none; each
 scout's verdict; the calibration note, once there are enough outcomes; and
 anything skipped, with why.

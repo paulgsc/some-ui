@@ -2,8 +2,8 @@
  * @vitest-environment jsdom
  *
  * A pick's Apply step shows what the run drafted from the posting's form:
- * each draft with a copy button, a required question marked, and one left
- * to me said so.
+ * each draft with a copy button, a required question marked, one left to me
+ * said so, and a redraft from my fit notes named as one.
  */
 
 import { cleanup, render, screen } from "@testing-library/react"
@@ -38,6 +38,14 @@ describe("the kit's drafts", () => {
     expect(screen.getByTitle("Copy Why us?")).toBeTruthy()
     expect(screen.getByTitle("Copy Pay expectation")).toBeTruthy()
     expect(screen.queryByTitle("Copy Anything else?")).toBeNull()
+  })
+
+  it("says when a redraft from my fit notes stands in for the run's own", async () => {
+    const { KitDrafts } = await import("@/components/jobs/pick")
+    render(<KitDrafts kit={KIT} redraftedOn="2026-10-20" />)
+    expect(
+      screen.getByText("Redrafted from my fit notes in the 2026-10-20 digest.")
+    ).toBeTruthy()
   })
 
   it("shows nothing for a kit the run drafted nothing for", async () => {

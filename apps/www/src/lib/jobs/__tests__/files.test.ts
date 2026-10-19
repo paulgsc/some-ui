@@ -85,6 +85,31 @@ describe("decisionsFile", () => {
     ])
   })
 
+  it("carries a taken pick's fit notes, and sends their audio", () => {
+    let fitted = step(state, voice("v2"))
+    fitted = record(fitted, {
+      type: "fit-note",
+      ...ref(),
+      note: "I built the pipelines.",
+      voice: ["v2"],
+    })
+    const file = fileOf(
+      decisionsFile(fitted, "2026-10-18", "2026-10-18T22:00:00Z")
+    )
+    const json = JSON.parse(file.json)
+    expect(json.picks[0].fit).toEqual([
+      {
+        id: expect.any(String),
+        note: "I built the pipelines.",
+        voice: ["2026-10-18_nor-0b77_voice-1.webm"],
+      },
+    ])
+    expect(file.voice).toContainEqual({
+      id: "v2",
+      name: "2026-10-18_nor-0b77_voice-1.webm",
+    })
+  })
+
   it("sends no voice note the pick as written doesn't name", () => {
     const changed = record(state, { type: "taken", ...ref(AD) })
     const file = fileOf(

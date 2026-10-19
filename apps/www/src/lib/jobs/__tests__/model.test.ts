@@ -6,6 +6,7 @@ import {
   DIGESTS_KEPT,
   draftVoice,
   EMPTY,
+  kitOf,
   openOf,
   progressOf,
   releasedVoice,
@@ -281,5 +282,48 @@ describe("releasedVoice", () => {
     expect(releasedVoice(state)).toEqual(new Set())
     state = record(state, { type: "arrived", shareId: state.log.at(-1)!.id })
     expect(releasedVoice(state)).toEqual(new Set(["v1"]))
+  })
+})
+
+describe("a fit note", () => {
+  it("is kept only on a pick I took, and only when it says something", () => {
+    const fit = (note: string): Draft => ({
+      type: "fit-note",
+      ...ref(),
+      note,
+      voice: [],
+    })
+    expect(record(opened, fit("I built it."))).toBe(opened)
+    const taken = record(opened, { type: "taken", ...ref() })
+    expect(record(taken, fit("  "))).toBe(taken)
+    expect(record(taken, fit("I built it.")).log.at(-1)).toEqual(
+      expect.objectContaining({ type: "fit-note", note: "I built it." })
+    )
+  })
+})
+
+describe("kitOf", () => {
+  it("shows the newest redraft of a pick in place of its own drafts", () => {
+    const later = (day: string, coverLetter: string): typeof D => ({
+      ...digest(day),
+      redrafts: [
+        { day: DAY, pickId: SW.id, fit: ["e1"], coverLetter, questions: [] },
+      ],
+    })
+    expect(kitOf(opened, DAY, SW)).toEqual({ kit: SW.kit, redraftedOn: null })
+    let state = step(opened, {
+      type: "opened",
+      digest: later("2026-10-19", "First redraft."),
+      at: OPENED_AT,
+    })
+    state = step(state, {
+      type: "opened",
+      digest: later("2026-10-20", "Second redraft."),
+      at: OPENED_AT,
+    })
+    const { kit, redraftedOn } = kitOf(state, DAY, SW)
+    expect(redraftedOn).toBe("2026-10-20")
+    expect(kit.coverLetter).toBe("Second redraft.")
+    expect(kitOf(state, DAY, AD)).toEqual({ kit: AD.kit, redraftedOn: null })
   })
 })

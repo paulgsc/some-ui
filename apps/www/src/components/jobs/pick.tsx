@@ -30,6 +30,8 @@ import {
   decisionOf,
   digestOf,
   draftVoice,
+  fitNotesOf,
+  kitOf,
   pickOwner,
   progressOf,
 } from "@/lib/jobs/model"
@@ -322,13 +324,25 @@ const Resume = ({
  * cover letter, each free-text question as the form words it, and the pay
  * expectation.
  */
-export const KitDrafts = ({ kit }: { kit: Kit }): JSX.Element | null => {
+export const KitDrafts = ({
+  kit,
+  redraftedOn = null,
+}: {
+  kit: Kit
+  /** The digest day a redraft came from, when one did. */
+  redraftedOn?: string | null
+}): JSX.Element | null => {
   const { coverLetter, questions, compensation } = kit
   if (coverLetter === null && questions.length === 0 && compensation === null)
     return null
   return (
     <section className="flex flex-col gap-3">
       <h3 className={sectionHeading}>Drafts for the form</h3>
+      {redraftedOn !== null && (
+        <p className="text-muted-foreground text-xs">
+          Redrafted from my fit notes in the {redraftedOn} digest.
+        </p>
+      )}
       {coverLetter !== null && (
         <Draft label="Cover letter" draft={coverLetter} />
       )}
@@ -389,11 +403,12 @@ const Draft = ({
 )
 
 const Apply = ({
+  state,
   pick,
   pickRef,
   advance,
-}: StepProps & { pick: Pick }): JSX.Element => {
-  const { kit } = pick
+}: StepProps & { state: JobsState; pick: Pick }): JSX.Element => {
+  const { kit, redraftedOn } = kitOf(state, pickRef.day, pick)
   const rows = [...kit.fields, ...kit.answers]
   return (
     <div className="flex flex-col gap-4">
@@ -431,8 +446,76 @@ const Apply = ({
           </ul>
         </section>
       )}
-      <KitDrafts kit={kit} />
+      <KitDrafts kit={kit} redraftedOn={redraftedOn} />
+      <FitNote state={state} pickRef={pickRef} />
     </div>
+  )
+}
+
+/**
+ * Why I fit this pick, in words or aloud. It goes out with the next
+ * decisions share, and the run after it redrafts the cover letter and the
+ * answers from it (ROUTINE.md §2).
+ */
+const FitNote = ({
+  state,
+  pickRef,
+}: {
+  state: JobsState
+  pickRef: PickRef
+}): JSX.Element => {
+  const jobs = phoneJobs()
+  const [note, setNote] = useState("")
+  const owner = pickOwner(pickRef.day, pickRef.pickId, "fit")
+  const voice = draftVoice(state, owner)
+  const busy = useVoiceBusy(owner)
+  const kept = fitNotesOf(state, pickRef.day, pickRef.pickId).length
+  const empty = note.trim() === "" && voice.length === 0
+  return (
+    <section className="flex flex-col gap-2">
+      <Label htmlFor="fit-note" className={sectionHeading}>
+        Why I fit it
+      </Label>
+      <p className="text-muted-foreground text-xs">
+        Say what the posting leaves out. It goes with today’s decisions, and the
+        next run redrafts the cover letter and answers from it.
+      </p>
+      <Textarea
+        id="fit-note"
+        rows={3}
+        maxLength={MAX_NOTE}
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+      />
+      <VoiceNotes
+        owner={owner}
+        notes={voice}
+        hint="Or say it, up to a minute"
+      />
+      <Button
+        type="button"
+        variant="outline"
+        disabled={busy || empty}
+        onClick={() => {
+          if (busy || empty) return
+          const recorded = jobs.record({
+            type: "fit-note",
+            ...pickRef,
+            note: note.trim(),
+            voice: voice.map((v) => v.id),
+          })
+          if (recorded) setNote("")
+        }}
+      >
+        Keep it for the next run
+      </Button>
+      {kept > 0 && (
+        <p className="text-muted-foreground text-xs">
+          {kept === 1 ? "One fit note" : `${kept} fit notes`} kept for this
+          pick.
+        </p>
+      )}
+    </section>
   )
 }
 
@@ -644,7 +727,7 @@ export const PickFlow = ({
       ) : shown === 2 ? (
         <Resume pick={pick} pickRef={pickRef} advance={follow} />
       ) : shown === 3 ? (
-        <Apply pick={pick} pickRef={pickRef} advance={follow} />
+        <Apply state={state} pick={pick} pickRef={pickRef} advance={follow} />
       ) : (
         <Debrief state={state} pickRef={pickRef} advance={follow} />
       )}
