@@ -1,31 +1,27 @@
-// Retention (CLAUDE.md, "Workflow storage"; #1950): one state machine for
-// every artifact and Actions cache this repo writes. Each family below is an
-// instance of it; `plan` is the machine, a pure function from what GitHub
-// holds to what to delete. `scripts/retention.ts` feeds it the API's state
-// from `.github/workflows/retention.yml`, and `workflow-guards.ts` fails a
-// workflow that uploads or caches under a name no family declares.
+// Retention (CLAUDE.md, "Workflow storage"; #1950): the one state machine
+// for every artifact and Actions cache, each family below an instance of it.
+// `plan` maps what GitHub holds to what to delete; scripts/retention.ts feeds
+// it from retention.yml, and workflow-guards.ts fails an upload or cache no
+// family declares.
 //
-// An artifact generation is one run's upload. Its state comes from that run:
-// pending (still running or waiting), validated (concluded success: the run's
-// own jobs are its gate) or failed (any other conclusion). Per family, per
-// lineage (the name less any commit SHA) and per branch, the newest `keep`
-// validated generations are kept; older validated ones are superseded, failed
-// ones older than the newest validated are abandoned, and pending ones are
-// never touched. `keep: 0` means the artifact is consumed inside its run, so a
-// validated one is deleted at once and a failed one waits out its TTL for a
-// re-run. The plan only ever deletes generations older than a validated one,
-// so a newer state's deletions contain an older state's: two overlapping
-// sweeps cannot downgrade.
+// An artifact generation is one run's upload: pending while the run runs or
+// waits, validated once it succeeds, failed otherwise. Per family, lineage
+// (the name less any commit SHA) and branch, the newest `keep` validated are
+// kept, older validated ones are superseded, and pending ones are never
+// touched. A failed one older than the newest validated is abandoned when the
+// family keeps copies; with `keep: 0` (consumed inside its run) it waits out
+// its TTL, so "Re-run failed jobs" still finds it.
 //
-// A cache family has one of three scopes. `per-ref`: the newest `keep`
-// entries per lineage (the key less its last `-` segment) per ref. `shared`:
-// content-addressed entries, where a lineage is one piece of content, so one
-// copy is kept across refs, `main`'s when it has one, since every PR reads
-// `main`'s caches. `pool`: entries that share no lineage (Docker's layer
-// blobs), never pruned by age. In every scope a ref that is no longer live (a
-// closed PR, a deleted branch) drops its caches: nothing can read them.
+// Only generations older than a validated one are deleted, so while no run is
+// re-run a newer state's deletions contain an older one's and overlapping
+// sweeps cannot downgrade. A re-run that fails a validated run resets it.
 //
-// Names and keys no family declares are reported, never deleted.
+// Cache scopes: `per-ref` keeps the newest `keep` per lineage (the key less
+// its last `-` segment) per ref; `shared` (content-addressed, the Nix store)
+// keeps one copy across refs, `main`'s when it has one, since every PR reads
+// main's caches; `pool` (Docker's layer blobs) is never pruned by age. Every
+// scope drops a ref that is no longer live. Undeclared names and keys are
+// reported, never deleted.
 
 export type ArtifactFamily = {
   readonly kind: "artifact"
@@ -161,14 +157,21 @@ export const CACHE_FAMILIES: ReadonlyArray<CacheFamily> = [
     scope: "per-ref",
     keep: 1,
   },
-  // Two writers (pages.yml and mobile-apk.yml hash src, extension.yml hashes
-  // the tree) share this lineage, so each keeps one.
+  // pages.yml and mobile-apk.yml, keyed on packages' src.
   {
     kind: "cache",
     label: "workspace dist",
     prefix: "workspace-dist-",
     scope: "per-ref",
-    keep: 2,
+    keep: 1,
+  },
+  // extension.yml, keyed on the tree.
+  {
+    kind: "cache",
+    label: "workspace dist (tree)",
+    prefix: "workspace-dist-tree-",
+    scope: "per-ref",
+    keep: 1,
   },
   {
     kind: "cache",
@@ -216,6 +219,7 @@ export type Artifact = {
   readonly id: number
   readonly name: string
   readonly runId: number
+  // The run's branch, prefixed with its repository when it comes from a fork.
   readonly branch: string
   readonly bytes: number
 }
@@ -360,7 +364,7 @@ function planArtifacts(
         if (family.keep === 0) add(artifact, "consumed")
         else if (rank >= family.keep) add(artifact, "superseded")
       }
-      if (newest === undefined) continue
+      if (newest === undefined || family.keep === 0) continue
       for (const artifact of group) {
         if (stateOf(artifact) === "failed" && artifact.runId < newest) {
           add(artifact, "abandoned")
@@ -437,10 +441,4 @@ export function plan(
   planArtifacts(state, artifactFamilies, deletions, undeclaredArtifacts)
   planCaches(state, cacheFamilies, deletions, undeclaredCaches)
   return { deletions, undeclaredArtifacts, undeclaredCaches }
-}
-
-// The literal key prefix an `actions/cache` step writes under: the text before
-// its first `${{ }}` expression.
-export function literalKeyPrefix(key: string): string {
-  return key.split("${{")[0] ?? ""
 }

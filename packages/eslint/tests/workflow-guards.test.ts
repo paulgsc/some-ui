@@ -16,6 +16,8 @@ import {
   findRetentionViolations,
   findRs2Violations,
   isGuardedWorkflowPath,
+  literalKeyPrefix,
+  producerNames,
   RETENTION_FILE,
   RS1_FILE,
   rs1Fingerprint,
@@ -280,7 +282,7 @@ describe("findArtifactFamilyViolations", () => {
       "          name: some-ui-apk-${{ github.sha }}",
       "          retention-days: 30"
     )
-    expect(findArtifactFamilyViolations(F, text)).toEqual([])
+    expect(findArtifactFamilyViolations(F, text, ["Mobile APK"])).toEqual([])
   })
 
   it("reads upload-pages-artifact's default name", () => {
@@ -289,7 +291,7 @@ describe("findArtifactFamilyViolations", () => {
       "        with:",
       "          retention-days: 1"
     )
-    expect(findArtifactFamilyViolations(F, text)).toEqual([])
+    expect(findArtifactFamilyViolations(F, text, ["Pages"])).toEqual([])
   })
 
   it("reports an undeclared name and a TTL that disagrees with its family", () => {
@@ -303,7 +305,7 @@ describe("findArtifactFamilyViolations", () => {
       "          name: some-ui-apk-${{ github.sha }}",
       "          retention-days: 7"
     )
-    expect(findArtifactFamilyViolations(F, text)).toEqual([
+    expect(findArtifactFamilyViolations(F, text, ["Mobile APK"])).toEqual([
       { kind: "artifactUndeclared", file: F, line: 4, name: "mystery" },
       {
         kind: "artifactTtl",
@@ -314,6 +316,55 @@ describe("findArtifactFamilyViolations", () => {
         ttlDays: 30,
       },
     ])
+  })
+
+  it("reports a declared name uploaded by a workflow its family does not list", () => {
+    const text = steps(
+      "      - uses: actions/upload-artifact@v7",
+      "        with:",
+      "          name: workspace-dist",
+      "          retention-days: 1"
+    )
+    expect(findArtifactFamilyViolations(F, text, ["Pages"])).toEqual([
+      {
+        kind: "artifactProducer",
+        file: F,
+        line: 4,
+        name: "workspace-dist",
+        workflow: "Pages",
+      },
+    ])
+  })
+})
+
+describe("producerNames", () => {
+  it("names a workflow by its own name and a reusable one or an action by its callers'", () => {
+    const texts = new Map([
+      [
+        ".github/workflows/a.yml",
+        "name: A\non: push\njobs:\n  x:\n    uses: ./.github/workflows/_r.yml",
+      ],
+      [
+        ".github/workflows/b.yml",
+        "name: B\non: push\njobs:\n  y:\n    steps:\n      - uses: ./.github/actions/act",
+      ],
+      [
+        ".github/workflows/_r.yml",
+        "name: R\non:\n  workflow_call:\njobs:\n  z:\n    steps:\n      - uses: ./.github/actions/act",
+      ],
+      [
+        ".github/actions/act/action.yml",
+        "name: Act\nruns:\n  using: composite",
+      ],
+    ])
+    expect(producerNames(texts)).toEqual(
+      new Map([
+        [".github/workflows/a.yml", ["A"]],
+        [".github/workflows/b.yml", ["B"]],
+        [".github/workflows/_r.yml", ["A"]],
+        [".github/actions/act/action.yml", ["A", "B"]],
+      ])
+    )
   })
 })
 
@@ -347,6 +398,15 @@ describe("findCacheViolations", () => {
   })
 })
 
+describe("literalKeyPrefix", () => {
+  it("reads the text before a key's first expression", () => {
+    expect(
+      literalKeyPrefix("pnpm-${{ runner.os }}-${{ hashFiles('x') }}")
+    ).toBe("pnpm-")
+    expect(literalKeyPrefix("static")).toBe("static")
+  })
+})
+
 describe("findBuildRecordViolations", () => {
   it("requires a build-push step to turn off its build record", () => {
     const off = steps(
@@ -361,35 +421,58 @@ describe("findBuildRecordViolations", () => {
       "        with:",
       "          push: true"
     )
+    const misplaced = steps(
+      "      - uses: docker/build-push-action@v7",
+      "        with:",
+      "          DOCKER_BUILD_RECORD_UPLOAD: false"
+    )
     expect(findBuildRecordViolations(F, off)).toEqual([])
-    expect(findBuildRecordViolations(F, on)).toEqual([
-      { kind: "buildRecord", file: F, line: 4 },
-    ])
+    for (const text of [on, misplaced]) {
+      expect(findBuildRecordViolations(F, text)).toEqual([
+        { kind: "buildRecord", file: F, line: 4 },
+      ])
+    }
   })
 })
 
 describe("checkRetentionTriggers", () => {
-  it("names each producing workflow retention.yml does not run after", () => {
-    const missing = checkRetentionTriggers(
-      [
-        "on:",
-        "  workflow_run:",
-        "    workflows:",
-        "      - Mobile APK",
-        "      - Pages",
-        "      - Extension CI",
-        "      - Extension Release",
-        '      - "Sign Firefox Extension (Manual)"',
-      ].join("\n")
-    )
-    expect(missing).toEqual([
+  const names = new Set([
+    "Mobile APK",
+    "Pages",
+    "Extension CI",
+    "Extension Release",
+    "Sign Firefox Extension (Manual)",
+    "WASM Release",
+  ])
+
+  it("reads only the workflow_run list, and asks for each kept family's workflow", () => {
+    const text = [
+      "on:",
+      "  workflow_run:",
+      "    workflows:",
+      "      - Mobile APK",
+      '      - "Extension Release"',
+      "    types: [completed]",
+      "  pull_request:",
+      "    paths:",
+      "      - Sign Firefox Extension (Manual)",
+    ].join("\n")
+    expect(checkRetentionTriggers(text, names)).toEqual([
       {
         kind: "retentionTrigger",
         file: RETENTION_FILE,
-        workflow: "WASM Release",
+        workflow: "Sign Firefox Extension (Manual)",
       },
     ])
-    expect(checkRetentionTriggers(null)).toHaveLength(6)
+  })
+
+  it("names a family's workflow that no workflow is called", () => {
+    const renamed = new Set([...names].filter((n) => n !== "WASM Release"))
+    expect(checkRetentionTriggers(null, renamed)).toContainEqual({
+      kind: "familyWorkflowUnknown",
+      file: RETENTION_FILE,
+      workflow: "WASM Release",
+    })
   })
 })
 
@@ -444,6 +527,20 @@ describe("describeWorkflowViolation", () => {
         "workflow_run",
       ],
       [{ kind: "buildRecord", file: F, line: 2 }, "DOCKER_BUILD_RECORD_UPLOAD"],
+      [
+        {
+          kind: "artifactProducer",
+          file: F,
+          line: 2,
+          name: "x",
+          workflow: "W",
+        },
+        "does not list",
+      ],
+      [
+        { kind: "familyWorkflowUnknown", file: RETENTION_FILE, workflow: "W" },
+        "no workflow has that",
+      ],
     ]
     for (const [violation, expected] of cases) {
       expect(describeWorkflowViolation(violation)).toContain(expected)

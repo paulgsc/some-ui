@@ -1,9 +1,7 @@
 /**
  * The retention state machine (#1950): `plan` decides what to delete from
- * what GitHub holds. These cases pin each transition, and the properties the
- * machine promises: a newer state's deletions contain an older state's, the
- * newest validated generation is never deleted, and at most `keep` validated
- * generations plus the pending ones stay live.
+ * what GitHub holds. The property test walks every history of five runs; the
+ * cases pin what it cannot see (scopes, lineages, matching, caches).
  */
 
 import {
@@ -11,7 +9,6 @@ import {
   artifactLineage,
   cacheFamily,
   cacheLineage,
-  literalKeyPrefix,
   plan,
   type Artifact,
   type ArtifactFamily,
@@ -61,39 +58,6 @@ function deletedIds(s: State, families = [APK, TWO, PAGES]): Array<number> {
 }
 
 describe("artifact families", () => {
-  it("keeps the newest validated generation and supersedes the older", () => {
-    const s = state(
-      [artifact(`apk-${SHA(1)}`, 1), artifact(`apk-${SHA(2)}`, 2)],
-      [
-        [1, "validated"],
-        [2, "validated"],
-      ]
-    )
-    expect(plan(s, [APK], []).deletions).toEqual([
-      expect.objectContaining({ reason: "superseded", item: s.artifacts[0] }),
-    ])
-  })
-
-  it("keeps K in arrears", () => {
-    const s = state(
-      [1, 2, 3].map((n) => artifact(`two-${SHA(n)}`, n)),
-      [1, 2, 3].map((n) => [n, "validated"])
-    )
-    expect(deletedIds(s)).toEqual([10])
-  })
-
-  it("never touches a pending generation, newer or older", () => {
-    const s = state(
-      [1, 2, 3].map((n) => artifact(`apk-${SHA(n)}`, n)),
-      [
-        [1, "pending"],
-        [2, "validated"],
-        [3, "pending"],
-      ]
-    )
-    expect(deletedIds(s)).toEqual([])
-  })
-
   it("abandons a failed generation only once a newer one is validated", () => {
     const failedFirst = state([artifact(`apk-${SHA(1)}`, 1)], [[1, "failed"]])
     expect(deletedIds(failedFirst)).toEqual([])
@@ -124,17 +88,17 @@ describe("artifact families", () => {
     expect(deletedIds(s)).toEqual([])
   })
 
-  it("deletes a keep-0 artifact once its run is validated, and not before", () => {
+  it("deletes a keep-0 artifact once its run is validated, and keeps a failed one for a re-run", () => {
     const s = state(
       [artifact("pages", 1), artifact("pages", 2), artifact("pages", 3)],
       [
-        [1, "validated"],
-        [2, "failed"],
+        [1, "failed"],
+        [2, "validated"],
         [3, "pending"],
       ]
     )
-    expect(plan(s, [PAGES], []).deletions.map((d) => d.reason)).toEqual([
-      "consumed",
+    expect(plan(s, [PAGES], []).deletions).toEqual([
+      expect.objectContaining({ reason: "consumed", item: s.artifacts[1] }),
     ])
   })
 
@@ -360,12 +324,5 @@ describe("cache families", () => {
     expect(cacheFamily("pnpm-Linux-1", [PNPM, NIX])).toBe(PNPM)
     expect(cacheFamily(`${NAR}-zgPN`, [PNPM, NIX])).toBe(NIX)
     expect(cacheFamily("buildkit-x", [PNPM, NIX])).toBeUndefined()
-  })
-
-  it("reads the literal prefix of a cache step's key", () => {
-    expect(
-      literalKeyPrefix("pnpm-${{ runner.os }}-${{ hashFiles('x') }}")
-    ).toBe("pnpm-")
-    expect(literalKeyPrefix("static")).toBe("static")
   })
 })

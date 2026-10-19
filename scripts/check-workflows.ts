@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Guardrail over .github/: artifact retention and the retention families
-// (CLAUDE.md, "Workflow storage"), and the RS1 fingerprint and RS2 branch-name checks (CLAUDE.md,
-// "Cross-repo coupling"). The rules live in
+// (CLAUDE.md, "Workflow storage"), and the RS1 fingerprint and RS2
+// branch-name checks (CLAUDE.md, "Cross-repo coupling"). The rules live in
 // packages/eslint/src/workflow-guards.ts.
 //
 // Wired into the root `lint` script and into pr.yml as its own job, which runs
@@ -24,6 +24,7 @@ import {
   findRetentionViolations,
   findRs2Violations,
   isGuardedWorkflowPath,
+  producerNames,
   RETENTION_FILE,
   RS1_FILE,
   type WorkflowViolation,
@@ -44,19 +45,25 @@ const files = listed
       path !== "" && isGuardedWorkflowPath(path) && existsSync(join(root, path))
   )
 
+const texts = new Map(
+  files.map((file) => [file, readFileSync(join(root, file), "utf8")])
+)
+const producers = producerNames(texts)
 const violations: Array<WorkflowViolation> = []
-for (const file of files) {
-  const text = readFileSync(join(root, file), "utf8")
+for (const [file, text] of texts) {
   violations.push(...findRetentionViolations(file, text))
   violations.push(...findRs2Violations(file, text))
-  violations.push(...findArtifactFamilyViolations(file, text))
+  violations.push(
+    ...findArtifactFamilyViolations(file, text, producers.get(file) ?? [])
+  )
   violations.push(...findCacheViolations(file, text))
   violations.push(...findBuildRecordViolations(file, text))
 }
 const retentionPath = join(root, RETENTION_FILE)
 violations.push(
   ...checkRetentionTriggers(
-    existsSync(retentionPath) ? readFileSync(retentionPath, "utf8") : null
+    existsSync(retentionPath) ? readFileSync(retentionPath, "utf8") : null,
+    new Set([...producers.values()].flat())
   )
 )
 const rs1Path = join(root, RS1_FILE)

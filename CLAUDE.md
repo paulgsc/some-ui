@@ -193,11 +193,12 @@ the shortest life that works, and nothing recreated leaves its old copy behind.
   Docker's layer blobs). A generation is validated when its run succeeds; the machine
   keeps the newest `keep`, deletes only what is older than a validated one, and drops
   every cache on a ref that is no longer live. `.github/workflows/retention.yml` runs it
-  after each producing workflow, after Trunk, and daily; **report-only until #1950's
-  flip**. `pnpm check:workflows` fails an upload name or cache key no family declares,
-  an upload whose `retention-days` is not its family's TTL, and a producing workflow
-  `retention.yml` does not run after. A new family is a new entry there, not a new prune
-  job.
+  after each workflow uploading a family kept across runs, after Trunk, and daily;
+  **report-only until #1950's flip**. `pnpm check:workflows` fails an upload name or
+  cache key no family declares, an upload whose `retention-days` is not its family's
+  TTL or whose workflow its family does not list, and a kept family's workflow
+  `retention.yml` does not run after. A new family is a new entry there, not a new
+  prune job.
 - **Before shortening something to one day, name the path that breaks and its
   recovery** in the comment above the step. The usual one is "Re-run failed jobs" more
   than a day later, which finds no artifact: the recovery is a fresh run or the
@@ -205,10 +206,7 @@ the shortest life that works, and nothing recreated leaves its old copy behind.
   day-old build anyway.
 - **What stays, and why** (not artifacts, so no `retention-days` applies):
   - Actions caches, swept by the families above. GitHub also evicts an entry unused
-    for 7 days and, past the 10 GB cap, the least recently used. Measured on
-    2026-10-19 (#1950) the repo sat at that cap, most of it magic-nix-cache copies on
-    PR refs and GitHub's CodeQL default setup, which evicted the Docker layer cache
-    entirely.
+    for 7 days and, past the 10 GB cap, the least recently used.
   - The Pages deployment, npm packages, AMO submissions and the `paulgsc/www` Docker Hub
     image are the point of their workflows and are meant to last. Nothing prunes old
     Docker Hub tags; that is Docker Hub's storage, not this repo's.
