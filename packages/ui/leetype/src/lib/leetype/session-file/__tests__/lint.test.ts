@@ -273,6 +273,16 @@ describe("lintSessionFile", () => {
     ])
   })
 
+  it("reports a round that names no rule, and a correct option applying another", () => {
+    const file = clean()
+    const round = file.screens.r1
+    if (round?.type !== "choice") throw new Error("r1 is a choice")
+    round.options[0] = { ...round.options[0]!, applies: "A5" }
+    expect(codes(file)).toEqual(["correct-applies-other-rule"])
+    delete round.rule
+    expect(codes(file)).toContain("round-without-rule")
+  })
+
   it.each(AB_FIXTURES)(
     "reads the A/B's variant $variant as the A/B found it: no round cites its passage, and the end is authored",
     ({ raw }) => {
@@ -289,11 +299,13 @@ describe("negativeDiscriminationGaps", () => {
     const round = file.screens.r1
     if (round?.type !== "choice") throw new Error("r1 is a choice")
     round.options[1] = { ...round.options[1]!, applies: "A9" }
-    round.options[0] = { ...round.options[0]!, applies: "A3" }
+    // A3 decides r1, so its own option there does not count, and a correct
+    // option is never a distractor whatever it applies.
+    round.options[0] = { ...round.options[0]!, applies: "A5" }
     const gaps = negativeDiscriminationGaps([file])
     expect(gaps).not.toContain("A9")
-    // A3 decides r1, so its own option there does not count.
     expect(gaps).toContain("A3")
+    expect(gaps).toContain("A5")
     expect(gaps).toHaveLength(17)
   })
 })

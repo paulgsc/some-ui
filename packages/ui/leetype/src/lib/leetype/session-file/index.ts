@@ -20,7 +20,8 @@ import { assertNever, mentionsWord } from "@some-ui/core-utils"
  * placed when a struggle can reach it or it is tagged `placement`; its in-app
  * core is its passage, read at `WORDS_PER_MINUTE`. `unregistered-rule`
  * resolves every `rule` and `applies` against Rem. 7.4's registers
- * (Rem. 7.1's citation check over `M` and `A`).
+ * (Rem. 7.1's citation check over `M` and `A`); a round names its `rule`,
+ * and its correct option applies no other.
  *
  * Rem. 10.3 (5) spans files, so it is not here: `negativeDiscriminationGaps`
  * takes the whole set.
@@ -36,6 +37,8 @@ type SessionFileFindingCode =
   | "verbatim-return"
   | "authored-ledger"
   | "unregistered-rule"
+  | "round-without-rule"
+  | "correct-applies-other-rule"
 
 export type SessionFileFinding = {
   readonly code: SessionFileFindingCode
@@ -236,6 +239,26 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
     }
 
     if (isRound(screen)) {
+      if (screen.rule === undefined) {
+        add(
+          "round-without-rule",
+          id,
+          "a round names the Rem. 7.4 entry that decides it (`rule`, Def. 1.9)"
+        )
+      }
+      for (const option of screen.options) {
+        if (
+          option.correct &&
+          option.applies !== undefined &&
+          option.applies !== screen.rule
+        ) {
+          add(
+            "correct-applies-other-rule",
+            id,
+            `the correct option applies ${option.applies}, not the rule that decides the round`
+          )
+        }
+      }
       const abstentions = screen.options.filter((option) => option.abstain)
       if (abstentions.length !== 1) {
         add(
@@ -338,7 +361,7 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
 
 /**
  * Rem. 10.3 (5) over a set of session files: every live `M` or `A` entry
- * that is no option's `applies` on any round another entry decides, so a
+ * that is no wrong option's `applies` on any round another entry decides, so a
  * learner who always picks it is never shown wrong (Prop. 10.1). The canon
  * marks no entry uninstantiable, so every live row is owed one.
  */
@@ -350,7 +373,11 @@ export function negativeDiscriminationGaps(
     for (const screen of Object.values(file.screens)) {
       if (!isRound(screen)) continue
       for (const option of screen.options) {
-        if (option.applies !== undefined && option.applies !== screen.rule) {
+        if (
+          !option.correct &&
+          option.applies !== undefined &&
+          option.applies !== screen.rule
+        ) {
           discriminated.add(option.applies)
         }
       }

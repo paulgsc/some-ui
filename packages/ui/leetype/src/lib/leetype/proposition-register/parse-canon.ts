@@ -37,8 +37,9 @@ export type PropositionStatus = "active" | "retired"
 
 const RULE_REGISTERS_REMARK = /#remark\("7\.4", name: "[^"]*"\)\[/
 // The id cell of a register row; the rule and its one line follow as cells.
-const RULE_ROW = /\[`([MA])(\d+)`\],\s*\[/g
-const RULE_ID_CELL = /\[`[MA]\d+`\]/g
+const RULE_ROW = /\[\s*`([MA])(\d+)`\s*\],\s*\[/g
+// Looser than `RULE_ROW` on purpose, so a row it cannot read is counted.
+const RULE_ID_CELL = /\[\s*`?[MA]\d+`?\s*\]/g
 const SUPERSEDED_SUFFIX = " (superseded)"
 
 export type PropositionRegisterEntry = {

@@ -387,6 +387,26 @@ describe("parseRuleRegisters", () => {
     ).toThrow(/Agreement register has no rows/)
   })
 
+  it("reads an id cell with spaces inside its brackets", () => {
+    const source = registersFixture([["M1", "Ladder"]], [["A1", "Model"]])
+    expect(
+      parseRuleRegisters(source.replace("[`M1`]", "[ `M1` ]")).map((e) => e.id)
+    ).toEqual(["M1", "A1"])
+  })
+
+  it("throws on a row whose id cell it cannot read, rather than dropping it", () => {
+    const source = registersFixture(
+      [
+        ["M1", "Ladder"],
+        ["M2", "Batch"],
+      ],
+      [["A1", "Model"]]
+    )
+    expect(() => parseRuleRegisters(source.replace("[`M2`]", "[M2]"))).toThrow(
+      /3 rule id cell\(s\) but this parser matched 2/
+    )
+  })
+
   it("throws when Rem. 7.4 is missing", () => {
     expect(() => parseRuleRegisters("= Nothing here")).toThrow(/7\.4/)
   })
