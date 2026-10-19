@@ -4,12 +4,9 @@ on:
 permissions:
   contents: write
   pull-requests: write
-# Dispatched by hand, so every dispatch runs: `queue: max` keeps a third
-# dispatch from replacing the one still pending.
 concurrency:
   group: release-main
   cancel-in-progress: false
-  queue: max
 jobs:
   release:
     name: Changesets Release

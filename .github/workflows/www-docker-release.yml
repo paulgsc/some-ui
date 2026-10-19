@@ -43,14 +43,13 @@ env:
   DOCKERHUB_IMAGE: "pgathondu/www"
 permissions:
   contents: read
-# Every run waits its turn (`queue: max`) instead of the default, where a
-# newer push replaces the one pending run. A replaced run would be lost
-# either way: a release commit's publish has nothing to re-trigger it but a
-# publish_only dispatch, and an ordinary push's run is the only one that
-# compares that push's range (`github.event.before`), so its change would
-# never reach the release PR. Runs still go one at a time, so a refresh and a
-# publish never overlap; GitHub does not guarantee FIFO, so two queued runs
-# can rarely swap, and the next push's run corrects the release PR.
+# `queue: max`: every run waits its turn. Under the default, a newer push
+# replaces the one pending run, and a replaced run is lost either way: a
+# release commit's publish has nothing to re-trigger it but a publish_only
+# dispatch, and an ordinary push's run is the only one that compares that
+# push's range (`github.event.before`). Runs still go one at a time. GitHub
+# does not guarantee FIFO, so two queued runs can swap; an ordinary run that
+# starts after a newer release skips (www-detect/detect.sh).
 concurrency:
   group: www-docker-release-${{ github.ref }}
   cancel-in-progress: false
