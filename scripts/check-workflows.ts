@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Guardrail over .github/: artifact retention and the retention families
-// (CLAUDE.md, "Workflow storage"), and the RS1 fingerprint and RS2
-// branch-name checks (CLAUDE.md, "Cross-repo coupling"). The rules live in
-// packages/eslint/src/workflow-guards.ts.
+// (CLAUDE.md, "Workflow storage"), inline installs (node-ci-setup), and the
+// RS1 fingerprint and RS2 branch-name checks (CLAUDE.md, "Cross-repo
+// coupling"). The rules live in packages/eslint/src/workflow-guards.ts.
 //
 // Wired into the root `lint` script and into pr.yml as its own job, which runs
 // on every PR and which CI Gate requires. Like check-test-layout.ts, it runs on
@@ -21,6 +21,7 @@ import {
   findArtifactFamilyViolations,
   findBuildRecordViolations,
   findCacheViolations,
+  findInlineInstallViolations,
   findRetentionViolations,
   findRs2Violations,
   isGuardedWorkflowPath,
@@ -58,6 +59,7 @@ for (const [file, text] of texts) {
   )
   violations.push(...findCacheViolations(file, text))
   violations.push(...findBuildRecordViolations(file, text))
+  violations.push(...findInlineInstallViolations(file, text))
 }
 const retentionPath = join(root, RETENTION_FILE)
 violations.push(

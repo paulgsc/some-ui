@@ -286,6 +286,7 @@ jobs:
       # before ever reaching the publish step. `--filter .` scopes
       # resolution to the root package, and `--no-lockfile` skips the
       # workspace-wide lockfile pnpm would otherwise insist on computing.
+      # Why not node-ci-setup: its install is the whole workspace's, frozen.
       - name: Install dependencies
         run: |
           nix develop .#ci --command pnpm --filter . install \
