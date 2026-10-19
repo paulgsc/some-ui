@@ -195,6 +195,21 @@ describe("a standing send", () => {
     expect(Object.keys(sent.shelf).sort()).toEqual(["leetype/b", "topik/a"])
   })
 
+  it("counts a refusal only while its item is still kept", async () => {
+    const { ports, send } = setup({
+      scopes: ["shelf"],
+      answers: [{ status: 422, body: "" }],
+    })
+    await sendStanding(send, ports)
+    expect(Object.keys(readSent(ports.storage, PAIRING).refused)).toEqual([
+      "topik/a",
+    ])
+    ports.read = (): ReturnType<StandingPorts["read"]> =>
+      Promise.resolve({ local: [], kept: [KEPT[1]] })
+    await sendStanding(send, ports)
+    expect(readSent(ports.storage, PAIRING).refused).toEqual({})
+  })
+
   it("sends nothing more once its person stops, before the next request", async () => {
     let kept = true
     const { ports, send, puts } = setup({ scopes: ["shelf"] })

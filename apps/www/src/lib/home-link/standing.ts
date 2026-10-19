@@ -119,6 +119,14 @@ export async function sendStanding(
   }
 
   if (ports.shared().has("shelf")) {
+    // A refusal counts only while its item is still kept here.
+    const keys = new Set(kept.map(shelfKeyOf))
+    sent = {
+      ...sent,
+      refused: Object.fromEntries(
+        Object.entries(sent.refused).filter(([key]) => keys.has(key))
+      ),
+    }
     const digests = await shelfHeld(kept)
     const changed = kept.filter((item) => {
       const digest = digests[shelfKeyOf(item)]

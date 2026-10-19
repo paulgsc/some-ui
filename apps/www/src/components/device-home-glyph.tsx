@@ -108,6 +108,11 @@ export const DeviceHomeGlyph = (): JSX.Element => {
     run,
   })
   const kept = shared.size > 0
+  // A run home turned away (busy, or no answer) is worth trying again, even
+  // when only kept items wait.
+  const retryable =
+    run.last?.kind === "unreachable" ||
+    (run.last?.kind === "failed" && run.last.why === "busy")
 
   return (
     <>
@@ -181,7 +186,7 @@ export const DeviceHomeGlyph = (): JSX.Element => {
                   <dd className="text-muted-foreground">{view.rows.shelf}</dd>
                 </div>
               </dl>
-              {kept && paired && waiting > 0 && !run.running ? (
+              {kept && paired && (waiting > 0 || retryable) && !run.running ? (
                 <Button
                   size="lg"
                   className="h-12 rounded-2xl text-base"
