@@ -175,7 +175,7 @@ the shortest life that works, and nothing recreated leaves its old copy behind.
   default (90 days) is not a period anyone chose. So does a value that is not a literal
   number of days (`0`, empty, a `${{ }}` expression), since each can resolve to that
   default. Two artifacts keep longer today, both in `mobile-apk.yml`: the phone's APK
-  (30 days, pruned to one) and the Play review's inputs (3 days). Artifacts cannot be
+  (30 days, one kept) and the Play review's inputs (3 days). Artifacts cannot be
   overwritten across runs, so a short `retention-days` is how a recreated one leaves no tail.
 - **Enforced by `pnpm check:workflows`** (`scripts/check-workflows.ts`, rules in
   `packages/eslint/src/workflow-guards.ts`), in root `pnpm lint` and as its own `pr.yml`
@@ -193,8 +193,8 @@ the shortest life that works, and nothing recreated leaves its old copy behind.
   Docker's layer blobs). A generation is validated when its run succeeds; the machine
   keeps the newest `keep`, deletes only what is older than a validated one, and drops
   every cache on a ref that is no longer live. `.github/workflows/retention.yml` runs it
-  after each workflow uploading a family kept across runs, after Trunk, and daily;
-  **report-only until #1950's flip**. `pnpm check:workflows` fails an upload name or
+  after each workflow uploading a family kept across runs, and hourly, and deletes
+  (a pull request that changes it only reports). `pnpm check:workflows` fails an upload name or
   cache key no family declares, an upload whose `retention-days` is not its family's
   TTL or whose workflow its family does not list, and a kept family's workflow
   `retention.yml` does not run after. A new family is a new entry there, not a new

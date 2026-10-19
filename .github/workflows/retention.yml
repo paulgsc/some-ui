@@ -2,13 +2,15 @@ name: Retention
 # The retention state machine (packages/eslint/src/retention.ts; CLAUDE.md,
 # "Workflow storage") over every artifact and Actions cache. It runs after
 # each workflow that uploads a family kept across runs, so a new copy prunes
-# the old at once; after Trunk, which runs on every push to main, when a
-# merged PR's refs stop being live; and daily. Each sweep plans from the whole
-# current state (any workflow's consumed artifacts included), so one cancelled
-# or skipped loses nothing.
+# the old at once, and hourly for the rest: consumed artifacts and caches,
+# among them a merged PR's, whose ref is then no longer live. Each sweep plans
+# from the whole current state, so one cancelled or skipped loses nothing.
+# Hourly, not after every push: a sweep reads about 70 pages of the API, and
+# the token's 1,000 requests an hour are the whole repo's.
 #
-# Report-only: it prints what it would delete (#1950). On a pull request that
-# changes its own files it always reports, which is how a change is tried
+# It deletes, at most 300 items a sweep, and stops below the rate floor
+# (scripts/retention.ts); the next sweep continues. On a pull request that
+# changes its own files it only reports, which is how a change is tried
 # before merge, since workflow_run fires only from main.
 on:
   workflow_run:
@@ -16,10 +18,9 @@ on:
       - Mobile APK
       - Extension Release
       - Sign Firefox Extension (Manual)
-      - Trunk
     types: [completed]
   schedule:
-    - cron: "17 3 * * *"
+    - cron: "17 * * * *"
   workflow_dispatch:
   pull_request:
     paths:
@@ -27,7 +28,7 @@ on:
       - scripts/retention.ts
       - packages/eslint/src/retention.ts
 permissions:
-  actions: read
+  actions: write
   contents: read
   pull-requests: read
 concurrency:
@@ -54,5 +55,6 @@ jobs:
       - name: Sweep
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          RETENTION_MODE: report
+          RETENTION_MODE: ${{ github.event_name == 'pull_request' && 'report' || 'delete' }}
+          RETENTION_MAX_DELETIONS: 300
         run: node scripts/retention.ts

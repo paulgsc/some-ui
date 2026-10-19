@@ -39,9 +39,10 @@ on:
 
 permissions:
   contents: read
-  # To read the retained APK the review compares versionCode against, and to
-  # delete older APK artifacts once a newer one has passed it.
-  actions: write
+  # To read the retained APK the review compares versionCode against. Older
+  # APKs are deleted by the retention sweep (retention.yml) once a newer run
+  # succeeds.
+  actions: read
 
 jobs:
   approve:
@@ -150,7 +151,7 @@ jobs:
       # shrunk by R8, as an APK and as the app bundle Play requires of new
       # apps. The debug APK above goes only to the review, which checks both.
       # A release build that fails leaves the run with no new APK, and the
-      # previous one stays (prune runs only after a green review).
+      # previous one stays (it is deleted only once a newer run succeeds).
       - name: Build release APK and app bundle
         working-directory: apps/mobile/android
         env:
@@ -170,9 +171,9 @@ jobs:
       # Retention: the phone's owner downloads this APK to install it, often
       # days after the push, and the next run's review reads it to check that
       # versionCode only ever rises. 30 days is a backstop, not the cleanup:
-      # the prune job removes every older APK, so this bounds only the newest
-      # one's life. After 30 days with no push there is nothing to download
-      # until the next.
+      # its family keeps one (packages/eslint/src/retention.ts), so this
+      # bounds only the newest one's life. After 30 days with no push there
+      # is nothing to download until the next.
       - name: Upload APK
         if: github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v7
@@ -296,33 +297,3 @@ jobs:
           # For reading a failure right after the run; a later look is a
           # re-run away.
           retention-days: 1
-
-  # Only the newest APK is worth keeping, so a run that passes the review
-  # deletes this workflow's older ones: one ~10 MB artifact on GitHub at a
-  # time, not one per push. After the review, because the review reads the
-  # retained APK to check versionCode only ever rises, and after the launch
-  # test, so an APK that will not open never replaces one that does; and
-  # never after a failed or cancelled run, which leaves the previous APK in
-  # place. Older means an earlier run (run IDs only rise): two approved
-  # builds can overlap, and the older one's prune must not delete the newer
-  # one's APK.
-  prune:
-    name: Delete older APK artifacts
-    if: github.ref == 'refs/heads/main'
-    needs: [apk, review, launch]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Delete older APK artifacts
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh api --paginate "repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100" \
-            --jq ".artifacts[]
-                  | select(.name | startswith(\"some-ui-apk-\"))
-                  | select(.workflow_run.id < $GITHUB_RUN_ID)
-                  | select(.expired | not)
-                  | .id" |
-          while read -r id; do
-            echo "deleting artifact $id"
-            gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$id"
-          done
