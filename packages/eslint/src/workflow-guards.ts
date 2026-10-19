@@ -361,11 +361,8 @@ export function findArtifactFamilyViolations(
   return violations
 }
 
-// The `name:` of each top-level workflow whose runs execute a file: its own
-// for a workflow it triggers, its callers' for a reusable workflow or a
-// composite action, since a run carries the caller's name.
-// A workflow's triggers: the direct children of its `on:` key, or the value
-// on the same line (`on: push`, `on: [push, workflow_call]`).
+// A workflow's triggers: the direct children of its `on:` key (keys or list
+// items), or the value on the same line (`on: push`, `on: [push, …]`).
 function triggers(text: string): Set<string> {
   const lines = text.split(/\r?\n/)
   const start = lines.findIndex((line) => /^["']?on["']?:/.test(line))
@@ -379,12 +376,15 @@ function triggers(text: string): Set<string> {
     if (isBlankOrComment(line)) continue
     if (indentOf(line) === 0) break
     column ??= indentOf(line)
-    const key = /^\s*([a-z_]+):/.exec(line)?.[1]
+    const key = /^\s*(?:-\s+)?([a-z_]+)(?::|\s*$)/.exec(line)?.[1]
     if (key !== undefined && indentOf(line) === column) found.add(key)
   }
   return found
 }
 
+// The `name:` of each top-level workflow whose runs execute a file: its own
+// for a workflow it triggers, its callers' for a reusable workflow or a
+// composite action, since a run carries the caller's name.
 export function producerNames(
   texts: ReadonlyMap<string, string>
 ): Map<string, Array<string>> {

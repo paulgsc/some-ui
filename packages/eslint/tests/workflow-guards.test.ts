@@ -379,6 +379,7 @@ describe("producerNames", () => {
         "name: Caller\non: push\njobs:\n  a:\n    uses: ./.github/workflows/flow.yml\n  b:\n    uses: ./.github/workflows/both.yml\n  c:\n    steps:\n      - uses: ./.github/actions/act/",
       ],
       [".github/workflows/nameless.yml", "on:\n  push:"],
+      [".github/workflows/listed.yml", "name: Listed\non:\n  - push"],
       [".github/actions/act/action.yaml", "runs:\n  using: composite"],
     ])
     const names = producerNames(texts)
@@ -388,6 +389,7 @@ describe("producerNames", () => {
       ".github/workflows/nameless.yml",
     ])
     expect(names.get(".github/actions/act/action.yaml")).toEqual(["Caller"])
+    expect(names.get(".github/workflows/listed.yml")).toEqual(["Listed"])
   })
 })
 
