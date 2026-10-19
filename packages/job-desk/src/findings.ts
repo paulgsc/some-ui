@@ -27,15 +27,20 @@ function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(to) - Date.parse(from)) / DAY_MS)
 }
 
-/** A phone number, in any of the ways a US one is written. */
-const PHONE = /(?<!\d)(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}(?!\d)/
+/**
+ * A phone number, written the ways a US one is. A bare run of ten digits is
+ * not one: a posting's id in a link is as long.
+ */
+const PHONE =
+  /(?<!\d)(?:\+?1[\s.-]?)?(?:\(\d{3}\)\s?|\d{3}[\s.-])\d{3}[\s.-]\d{4}(?!\d)/
 
 /** A street address: a house number, a name, and a street word. */
 const STREET =
   /\b\d{1,6}\s+(?:[A-Z][\w'-]*\s+){1,3}(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Way|Dr|Drive|Ln|Lane|Ct|Court|Pl|Place|Ter|Terrace)\b/
 
-/** A kit row for a detail I type myself (an email address is not one). */
-const TYPED_BY_ME = /\b(?:phone|mobile|cell|(?<!e-?mail\s)address)\b/i
+/** A kit row labelled for a detail I type myself, as the whole label. */
+const TYPED_BY_ME =
+  /^\s*(?:(?:mobile|cell|home|work|contact)\s+)?(?:(?:tele)?phone(?:\s+number)?|number)\s*$|^\s*(?:(?:street|mailing|home|postal)\s+)?address\s*$/i
 
 function wordCount(draft: string): number {
   return draft.split(/\s+/).filter(Boolean).length
@@ -53,13 +58,20 @@ function kitFindings(pick: Pick, at: string): ReadonlyArray<Finding> {
   const drafts: Array<[path: string, draft: string, cap: number]> = []
   if (kit.coverLetter !== null)
     drafts.push(["coverLetter", kit.coverLetter, MAX_COVER_LETTER_WORDS])
+  const asked = new Set<string>()
   kit.questions.forEach((question, i) => {
+    if (asked.has(question.label))
+      found.push({
+        path: `${at}.kit.questions.${i}.label`,
+        message: `"${question.label}" is asked twice`,
+      })
+    asked.add(question.label)
     if (question.draft !== null)
       drafts.push([`questions.${i}.draft`, question.draft, MAX_ANSWER_WORDS])
     else if (question.required)
       found.push({
         path: `${at}.kit.questions.${i}.draft`,
-        message: "a required question has a draft",
+        message: "a required question has no draft",
       })
   })
   if (kit.compensation !== null)

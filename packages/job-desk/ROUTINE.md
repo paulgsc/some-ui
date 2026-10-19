@@ -389,14 +389,20 @@ a time. Its PRs carry the label `jobs-patch`, and only theirs do.
 ## 7. The kit
 
 The kit is what I paste into the posting's own application form, so read that
-form first. Each board serves it apart from the posting:
+form first. A form mixes its own questions with standard rows (name, email,
+phone, résumé, links, location). A **question** here is only one of the
+form's own that wants prose in my words; the standard rows are fields or
+mine to type, and a choice or a short fact ("How did you hear about us?") is
+an answer when the evidence settles it. Each board serves its form apart from
+the posting:
 
 - **Greenhouse:**
   `https://boards-api.greenhouse.io/v1/boards/<board>/jobs/<id>?questions=true`.
-  Each entry of `questions` has a `label`, `required`, and `fields[].type`;
-  free text is a `textarea`, or an `input_text` the standard rows below don't
-  cover. "Cover Letter" is the cover letter. Skip `location_questions`,
-  `compliance` and `demographic_questions`.
+  Each entry of `questions` has a `label`, `required` and `fields[]`. Its own
+  questions are those whose field `name` starts `question_`; one is free text
+  when that field is a `textarea`, or an `input_text` that asks for prose
+  rather than a link or a fact. The `cover_letter` entry is the cover letter.
+  Skip `location_questions`, `compliance` and `demographic_questions`.
 - **Ashby:** `POST https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiJobPosting`
   with `content-type: application/json` and this body, the posting's board
   name and id filled in:
@@ -412,16 +418,18 @@ form first. Each board serves it apart from the posting:
   }
   ```
 
-  Each entry's `field` has a `title`, a `type` and a `path`; free text is a
-  `String` or `LongText` whose `path` is not a `_systemfield_` (name, email,
-  résumé). `cover_letter` is the cover letter.
+  Each entry's `field` has a `title`, a `type` and a `path`. Its own
+  questions are those whose `path` is neither a `_systemfield_` nor `phone`;
+  one is free text when it is a `String` or `LongText` that asks for prose
+  (not a link such as "LinkedIn Profile"). `cover_letter` is the cover letter.
 
-- **Lever:** the posting's `applyUrl` page (HTML). Its standard questions are
-  each a `<div class="application-label">`, a trailing `✱` marking one
-  required. Its custom questions are in each hidden input named
-  `cards[<id>][baseTemplate]`, whose `value` is entity-escaped JSON:
-  each of its `fields` has a `text`, a `type` (free text is `textarea` or
-  `text`) and `required`.
+- **Lever:** the posting's `applyUrl` page (HTML). Its standard rows are the
+  `<div class="application-label">` ones outside the cards; "Additional
+  information" (`name="comments"`) is the cover letter. Its own questions are
+  in each hidden input named `cards[<id>][baseTemplate]`, whose `value` is
+  entity-escaped JSON: each of its `fields` has a `text`, a `type` (free text
+  is `textarea` or `text`) and `required`. Read the questions there only, not
+  their labels in the page as well.
 - **A Hacker News post** has no form: leave the questions, the cover letter
   and the pay expectation out.
 
@@ -442,7 +450,9 @@ A form that can't be read leaves them out too; say so in the summary. Then:
   or the form's own limit when it states a shorter one ("in 2–3 sentences").
 - **Cover letter:** a `coverLetter` draft of at most `MAX_COVER_LETTER_WORDS`
   (250), only when the form takes one.
-- **Compensation:** only when the form asks my pay expectation. `ask` is a
+- **Compensation:** only when the form asks my pay expectation, which then
+  goes here and not in `questions`, as the cover letter goes only in
+  `coverLetter`. `ask` is a
   figure inside the posting's range, toward its top for a strong fit, or, when
   it states none, "Open to the range for this role". `why` says how, in a
   sentence.
@@ -450,7 +460,9 @@ A form that can't be read leaves them out too; say so in the summary. Then:
 Every draft is first person and built from the pick's `fits`, restating what
 they say. It never claims a gap, a term in the pick's `dontClaim`, or one of
 `FORBIDDEN_TERMS`, and never carries a phone number or address. The checker
-holds the drafts to all of this.
+holds each draft to its cap, every required question to a draft, and every
+draft and row to the terms and contact details above; the rest (a form's
+shorter limit, first person, the gaps) is yours to hold.
 
 ## 8. Write it
 

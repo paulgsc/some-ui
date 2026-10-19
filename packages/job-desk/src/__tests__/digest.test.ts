@@ -426,8 +426,17 @@ describe("digestFindings", () => {
     digest.picks[0]!.kit.questions[0]!.draft = null
     digest.picks[0]!.kit.questions[1]!.required = true
     expect(messages(digest)).toEqual([
-      "picks.0.kit.questions.0.draft: a required question has a draft",
-      "picks.0.kit.questions.1.draft: a required question has a draft",
+      "picks.0.kit.questions.0.draft: a required question has no draft",
+      "picks.0.kit.questions.1.draft: a required question has no draft",
+    ])
+  })
+
+  it("lists each question once", () => {
+    const digest = sample()
+    const { questions } = digest.picks[0]!.kit
+    questions.push({ ...questions[0]! })
+    expect(messages(digest)).toEqual([
+      `picks.0.kit.questions.2.label: "${questions[0]!.label}" is asked twice`,
     ])
   })
 
@@ -462,12 +471,12 @@ describe("digestFindings", () => {
   it("leaves my phone number and address to me", () => {
     const digest = sample()
     const { kit } = digest.picks[0]!
-    kit.coverLetter = "Call me at (510) 555-0134."
+    kit.coverLetter = "Call me at (510)555-0134."
     kit.compensation = { ask: "$110,000", why: "I live at 12 Oak Street." }
-    kit.fields.push({ label: "Phone", value: "on request" })
+    kit.fields.push({ label: "Telephone", value: "on request" })
     kit.answers.push({ label: "Street address", value: "Berkeley" })
     expect(messages(digest)).toEqual([
-      'picks.0.kit.fields.4.label: "Phone" is mine to type',
+      'picks.0.kit.fields.4.label: "Telephone" is mine to type',
       'picks.0.kit.answers.2.label: "Street address" is mine to type',
       "picks.0.kit.coverLetter: a phone number or street address is mine to type",
       "picks.0.kit.compensation.why: a phone number or street address is mine to type",
@@ -482,6 +491,8 @@ describe("digestFindings", () => {
       why: "Inside the posted $95,000–$115,000 range, 2026-10-19.",
     }
     kit.fields.push({ label: "Email address", value: "me@example.com" })
+    kit.answers.push({ label: "Built mobile apps?", value: "Yes" })
+    kit.answers.push({ label: "Website address", value: "https://a.example" })
     expect(messages(digest)).toEqual([])
   })
 
