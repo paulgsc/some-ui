@@ -124,26 +124,49 @@ export function sayingBusy(exchange: Exchange): Exchange {
   }
 }
 
+type Tell = (send: HomeCall, pairing: string) => Promise<HomeExchanged>
+
 /**
- * `lane`'s exchange as a run makes it: each request first finds a scope in
- * `shared` still kept, and home being busy is said (`sayingBusy`).
+ * `then`, once home is told the choices under `pairing` it has not heard
+ * (`tell`, `./told`). Any other end of telling is told again next run, so
+ * `then` goes on; home having forgotten the phone ends it there.
+ */
+export function toldFirst(
+  tell: Tell,
+  pairing: string,
+  then: Exchange
+): Exchange {
+  return async (send) => {
+    const told = await tell(send, pairing)
+    return told.kind === "forgotten" ? told : then(send)
+  }
+}
+
+/**
+ * `lane`'s exchange as a run makes it: home first told the pairing's
+ * choices it has not heard (`tell`, `./told`), then each of the record's
+ * requests first finds a scope in `shared` still kept, and home being busy
+ * is said (`sayingBusy`).
  */
 export function laneExchange(
   lane: Lane,
   pairing: () => string | null,
-  shared: () => ReadonlySet<Scope>
+  shared: () => ReadonlySet<Scope>,
+  tell: Tell = () => Promise.resolve({ kind: "synced" })
 ): Exchange {
   return (link) => {
     const under = pairing()
     if (under === null || shared().size === 0) {
       return Promise.resolve({ kind: "synced" })
     }
-    const gated: HomeCall = (method, path, body) =>
-      shared().size > 0
-        ? link(method, path, body)
-        : Promise.reject(new SyncStoppedError())
-    return sayingBusy((send) =>
-      lane.exchange(send, { pairing: under, shared })
-    )(gated)
+    return sayingBusy(
+      toldFirst(tell, under, (send) => {
+        const gated: HomeCall = (method, path, body) =>
+          shared().size > 0
+            ? send(method, path, body)
+            : Promise.reject(new SyncStoppedError())
+        return lane.exchange(gated, { pairing: under, shared })
+      })
+    )(link)
   }
 }

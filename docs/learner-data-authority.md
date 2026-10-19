@@ -446,7 +446,8 @@ answers with it unchanged (`packages/ui/aph/src/lib/__tests__/sync.test.ts`,
 and sets aside a change that clashes with home's record (`sync.test.ts`), one
 run at a time, that every request a run makes finds a scope still kept and
 that home being busy is said as such (`lib/home-link/__tests__/kept.test.ts`),
-and the mark's two presses, its stop and its way back
+that home is told each choice once, in the order made, and nothing more
+(`told.test.ts`), and the mark's two presses, its stop and its way back
 (`components/__tests__/device-home-glyph.test.tsx`). What no test can say is
 when a run is asked for:
 
@@ -471,11 +472,17 @@ when a run is asked for:
   `true`, which every pairing this build makes is kept with), never one this
   build made; a stop only from the second press of Stop sending, in the
   mark's sheet or in Settings' ledger (`device-sharing-ledger.tsx`, for Practice and
-  the Jobs record; aph's row there sends its person to aph's mark). For
+  the Jobs record; aph's row there sends its person to aph's mark). Home is
+  told each choice it has not heard under the pairing (`lib/home-link/told.ts`:
+  one `PUT /sharing/:scope` with `{ "kept": … }` per scope, the words never,
+  once each, in the order made): first in every run of a lane and in aph's
+  way back, and, for a stop of a lane with no way back, by one run of its own
+  (`telling`) asked only from `stopOnHome`, since no run of a stopped lane
+  follows. For
   aph, the mark shows aph's lane only while aph's screens hand it in
   (`DeviceAphLane`, in aph's layout); opting in moves aph's record to home
   (`keepOnHome`), and stopping asks home once for its record back
-  (`bringBack`: `GET /aph`, nothing sent), from the stop's second press, from
+  (`bringBack`: `GET /aph`, after telling home the stop), from the stop's second press, from
   the Bring it back button, or once the link frees after turning that read
   away, only while nothing of aph is kept, found so before the read and again
   before its answer is kept; home being busy is said as busy; when home can't
@@ -504,8 +511,15 @@ when a run is asked for:
   `stopped` other than none of the lane's scopes being kept now, or outside
   `sayingBusy`, or asks it from anywhere but `stopOnHome`, `bringLaneBack` and
   the effect's link listener (once the link is idle after it was turned away
-  busy); a hunk to `lib/home-link/kept-runtime.ts` that lets `laneExchange`
-  send a request without its check that a scope is still kept, or makes a run
+  busy), or asks `telling()` from anywhere but `stopOnHome`, or makes
+  `tellChoices` tell anything but `tellHome` over the consent log under the
+  run's pairing; a hunk to `lib/home-link/told.ts` that sends anything but
+  one `PUT /sharing/:scope` with `{ kept }` per untold change, tells a change
+  made under another pairing or out of order, sends a choice's words, or
+  remembers a choice told before home answered every one of its scopes; a
+  hunk to `lib/home-link/kept-runtime.ts` that lets `laneExchange`
+  send a record's request without its check that a scope is still kept, tells
+  home under a pairing other than the run's, or makes a run
   say anything but busy once home answered one of its requests `429` (unless
   it was forgotten or stopped); a hunk to `components/device-home-glyph.tsx`
   that calls `askLane`, `keepOnHome`, `stopOnHome` or `bringLaneBack` other
@@ -540,7 +554,7 @@ when a run is asked for:
   without `forgetHomeRecord`'s copy under `LEFT_PREFIX`, or remove the home
   record before the device record is written.
 - _Scope:_ `apps/www/src/lib/home-link/kept-watch.ts`, `lanes.ts`,
-  `kept-runtime.ts`, `aph.ts`, `model.ts`, `runtime.ts`, `credential.ts`,
+  `kept-runtime.ts`, `told.ts`, `aph.ts`, `model.ts`, `runtime.ts`, `credential.ts`,
   `apps/www/src/components/device-home-glyph.tsx`,
   `apps/www/src/components/settings/device-sharing-ledger.tsx`,
   `apps/www/src/components/aph/device-aph-lane.tsx`,
@@ -557,7 +571,8 @@ when a run is asked for:
   `offer` it shows, and in `device-section.tsx`'s send `onPress` behind the
   ticked box; `stopOnHome` only in the sheet's second Stop press and the
   ledger's, which offers none for aph;
-  `bringLaneBack` only in Bring it back's `onClick`; `choose` only in
+  `bringLaneBack` only in Bring it back's `onClick`; `telling()` only in
+  `stopOnHome`; `choose` only in
   `keepOnHome`, `stopOnHome` and `enterEarlier`; `DeviceHomeGlyph` only in
   `_dashboard.tsx`'s header under `VITE_DEVICE_BACKEND`; `DeviceAphLane` only
   in aph's layout; `earlier` true only from the `read` of a pairing record
@@ -576,7 +591,7 @@ two presses, its stop and the choice its old switch made entering the log
 once, as found (`components/__tests__/device-home-glyph.test.tsx`). Unlike
 aph, the phone keeps its whole log once home holds it: its shares count
 events by their place in the log, and home's copy is the way back for a
-phone that lost it, so stopping is the choice alone. What no test can say is
+phone that lost it, so stopping is the choice, and home told it. What no test can say is
 when a run is asked for:
 
 - _Claim:_ LA9's claim holds for the Jobs record's lane

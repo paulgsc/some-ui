@@ -250,6 +250,28 @@ describe("a lane's run", () => {
     expect(sent).toEqual([])
   })
 
+  it("tells home its choices first, and ends there when home forgot the phone", async () => {
+    const { send, sent } = home()
+    const told: Array<string> = []
+    const tell =
+      (ends: HomeExchanged) =>
+      async (through: HomeCall, pairing: string): Promise<HomeExchanged> => {
+        told.push(pairing)
+        await through("PUT", "/sharing/jobs")
+        return ends
+      }
+    const run = (ends: HomeExchanged): Promise<HomeExchanged> =>
+      laneExchange(lane(1, SYNCED), () => "p", kept, tell(ends))(send)
+    await expect(run({ kind: "failed", why: "x" })).resolves.toEqual(SYNCED)
+    expect(sent).toEqual(["/sharing/jobs", "/jobs/0"])
+    sent.length = 0
+    await expect(run({ kind: "forgotten" })).resolves.toEqual({
+      kind: "forgotten",
+    })
+    expect(sent).toEqual(["/sharing/jobs"])
+    expect(told).toEqual(["p", "p"])
+  })
+
   it("sends nothing more once its person stops, before the next request", async () => {
     const { send, sent } = home()
     let stopped = false

@@ -628,6 +628,16 @@ before the next request; nothing is retried.
 
 Home no longer knowing the phone, or no answer, ends the send there.
 
+**Choices are told to home.** Each time I keep a record on home or stop
+it, home is told which record and that sharing began or stopped, never
+the words I agreed to (`lib/home-link/told.ts`; paulgsc/server#433 keeps
+the times). Home then refuses aph and Jobs writes from this phone once I
+stopped them. A choice is told first in the record's next run, and a stop
+right after its second press; one home could not hear then is told on the
+next run of any record. Each session's create also names its id, so a
+create whose answer was lost makes one session on a home from
+paulgsc/server#432 on. An older home is told nothing and names its own ids.
+
 **Archive finished sessions**, in the This phone block, is the way to
 make room without a home server. It shares one file
 (`sessions-<day>.json`, every finished session's full record) through

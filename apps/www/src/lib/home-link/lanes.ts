@@ -9,7 +9,7 @@
  */
 import { useEffect, useSyncExternalStore } from "react"
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
-import { fnv1a } from "@some-ui/core-utils"
+import { fnv1a, localStorageOrNull } from "@some-ui/core-utils"
 
 import type { Scope, Shared } from "./consent-model"
 import { everChosen, sharedNow, stoppedNow } from "./consent-model"
@@ -18,10 +18,11 @@ import { homeLink, useHomeLink } from "./index"
 import type { KeptState } from "./kept-model"
 import { INITIAL_KEPT } from "./kept-model"
 import type { Kept, KeptPorts } from "./kept-runtime"
-import { createKept, laneExchange, sayingBusy } from "./kept-runtime"
+import { createKept, laneExchange, sayingBusy, toldFirst } from "./kept-runtime"
 import type { KeptRecord } from "./kept-watch"
 import { askKept, watchKept } from "./kept-watch"
 import type { HomeLinkState } from "./model"
+import { tellHome } from "./told"
 
 export type LaneId = "practice" | "aph" | "jobs"
 
@@ -142,7 +143,7 @@ function wire(lane: Lane): Wired {
     },
     sending: createKept({
       ...ports,
-      exchange: laneExchange(lane, () => pairingOf(), shared),
+      exchange: laneExchange(lane, () => pairingOf(), shared, tellChoices),
     }),
     back:
       bringBack === undefined
@@ -151,9 +152,14 @@ function wire(lane: Lane): Wired {
             ...ports,
             exchange: sayingBusy((send) => {
               const stopped = (): boolean => shared().size === 0
-              return stopped()
-                ? bringBack(send, stopped)
-                : Promise.resolve({ kind: "synced" })
+              const pairing = pairingOf()
+              if (!stopped() || pairing === null) {
+                return Promise.resolve({ kind: "synced" })
+              }
+              // The stop first: home refuses aph's writes from then on.
+              return toldFirst(tellChoices, pairing, (through) =>
+                bringBack(through, stopped)
+              )(send)
             }),
           }),
   }
@@ -179,6 +185,34 @@ function enterEarlier(lane: Lane): void {
     scopes: lane.scopes,
     said: null,
   })
+}
+
+/** Tells home every choice under `pairing` it has not heard (`./told`). */
+function tellChoices(send: HomeCall, pairing: string): Promise<HomeExchanged> {
+  return tellHome(
+    send,
+    pairing,
+    phoneConsent().getSnapshot(),
+    localStorageOrNull()
+  )
+}
+
+let teller: Kept | null = null
+
+/** One run that only tells home the pairing's choices, for a stop. */
+function telling(): Kept {
+  teller ??= createKept({
+    keep: (run) => homeLink().keep(run),
+    paired: (): boolean => pairingOf() !== null,
+    now: Date.now,
+    exchange: sayingBusy((send) => {
+      const pairing = pairingOf()
+      return pairing === null
+        ? Promise.resolve({ kind: "synced" })
+        : tellChoices(send, pairing)
+    }),
+  })
+  return teller
 }
 
 /**
@@ -270,7 +304,10 @@ export function stopOnHome(lane: Lane): boolean {
     pairing,
     scopes: lane.scopes,
   })
-  if (stopped) wire(lane).back?.want()
+  // Home is told the stop: by the way back where the lane has one, which
+  // tells it first, and otherwise on its own, since no run of a stopped
+  // lane will.
+  if (stopped) (wire(lane).back ?? telling()).want()
   return stopped
 }
 
