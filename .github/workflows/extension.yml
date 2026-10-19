@@ -116,14 +116,16 @@ jobs:
             "$(printf '%s' "$tree" | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
       # Restore cached dist to skip rebuilding when nothing relevant changed.
+      # `-tree-` keeps it apart from pages.yml's and mobile-apk.yml's
+      # src-keyed entries, which restore-keys would otherwise fall back to.
       - name: Restore workspace dist cache
         id: ws-cache
         uses: actions/cache@v6
         with:
           path: packages/*/dist
-          key: workspace-dist-${{ runner.os }}-${{ steps.ws-key.outputs.hash }}
+          key: workspace-dist-tree-${{ runner.os }}-${{ steps.ws-key.outputs.hash }}
           restore-keys: |
-            workspace-dist-${{ runner.os }}-
+            workspace-dist-tree-${{ runner.os }}-
 
       # Build only the packages that extensions depend on.
       # pnpm build at the root invokes `turbo run build --filter='!./crates/*'`

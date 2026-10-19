@@ -184,18 +184,29 @@ the shortest life that works, and nothing recreated leaves its old copy behind.
   map, where the action gets it; anywhere else it does not count, and a flow-style
   `with: {...}` or `- {uses: ...}` step fails as unreadable. It finds steps by their `uses:` line, so an upload
   wrapped in a composite action or another publisher's upload action is not seen: add
-  it to the rule when one appears.
+  it to the rule when one appears, as `docker/build-push-action`'s build record was
+  (its step must set `DOCKER_BUILD_RECORD_UPLOAD: false`).
+- **Every artifact and cache belongs to a family** in `packages/eslint/src/retention.ts`:
+  one state machine, each family an instance with its `keep` (validated generations kept
+  per lineage, 0 for one consumed inside its run), its TTL, and for caches a scope
+  (`per-ref`, `shared` for content-addressed entries such as the Nix store, `pool` for
+  Docker's layer blobs). A generation is validated when its run succeeds; the machine
+  keeps the newest `keep`, deletes only what is older than a validated one, and drops
+  every cache on a ref that is no longer live. `.github/workflows/retention.yml` runs it
+  after each workflow uploading a family kept across runs, after Trunk, and daily;
+  **report-only until #1950's flip**. `pnpm check:workflows` fails an upload name or
+  cache key no family declares, an upload whose `retention-days` is not its family's
+  TTL or whose workflow its family does not list, and a kept family's workflow
+  `retention.yml` does not run after. A new family is a new entry there, not a new
+  prune job.
 - **Before shortening something to one day, name the path that breaks and its
   recovery** in the comment above the step. The usual one is "Re-run failed jobs" more
   than a day later, which finds no artifact: the recovery is a fresh run or the
   workflow's own `publish_only` dispatch, since re-running a day-old publish would ship a
   day-old build anyway.
 - **What stays, and why** (not artifacts, so no `retention-days` applies):
-  - Actions caches (`pnpm-cache`, `cargo-cache`, `resume-assets-cache`, the
-    workspace-dist cache, the Docker `type=gha` layer cache in
-    `www-docker-release.yml`): GitHub evicts an entry unused for 7 days and caps the
-    repo at 10 GB. Keys that change with their inputs churn that cap but cannot grow
-    past it.
+  - Actions caches, swept by the families above. GitHub also evicts an entry unused
+    for 7 days and, past the 10 GB cap, the least recently used.
   - The Pages deployment, npm packages, AMO submissions and the `paulgsc/www` Docker Hub
     image are the point of their workflows and are meant to last. Nothing prunes old
     Docker Hub tags; that is Docker Hub's storage, not this repo's.
