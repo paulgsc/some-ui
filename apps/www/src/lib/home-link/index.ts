@@ -1,8 +1,9 @@
 /**
  * The phone's link to its home server: pairing, unpairing, the sync, the
  * shelf send and the sessions copy, one at a time, each started by a tap
- * (LA8, docs/learner-data-authority.md); and aph kept on home, once its
- * person opted in, while aph is open (`./aph`, LA9).
+ * (LA8, docs/learner-data-authority.md); and aph, the Jobs record and
+ * Practice kept on home, once their person opted in, while each is open
+ * (`./aph`, LA9; `./jobs`, LA10; `./practice`, LA11).
  * Phone-only (`build.paths.ts`).
  */
 import { useSyncExternalStore } from "react"

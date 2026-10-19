@@ -112,7 +112,7 @@ describe("a record kept on home", () => {
 })
 
 describe("stepKept", () => {
-  it("asks for one more run at most, and only after one that reached home", () => {
+  it("asks for one more run at most, after one that reached home or was turned away", () => {
     const running = stepKept(INITIAL_KEPT, { type: "wanted" })
     const again = stepKept(running, { type: "wanted" })
     expect(stepKept(again, { type: "wanted" })).toBe(again)
@@ -122,6 +122,18 @@ describe("stepKept", () => {
     expect(
       stepKept(again, { type: "ran", run: { kind: "unreachable", at: 1 } })
     ).toMatchObject({ running: false, again: false })
+    // Asked again because the phone was found paired while the first run
+    // was turned away: the ask that matters is not dropped.
+    for (const kind of ["unpaired", "busy"] as const) {
+      expect(stepKept(again, { type: "ran", run: { kind } })).toEqual({
+        running: true,
+        again: false,
+        last: { kind },
+      })
+      expect(stepKept(running, { type: "ran", run: { kind } })).toMatchObject({
+        running: false,
+      })
+    }
   })
 })
 

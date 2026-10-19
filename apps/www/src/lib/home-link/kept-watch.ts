@@ -1,6 +1,6 @@
 /**
  * When a record kept on home asks for a run (aph, LA9; the Jobs record,
- * LA10; docs/learner-data-authority.md): only while its screens are open
+ * LA10; Practice, LA11; docs/learner-data-authority.md): only while its screens are open
  * with the app in the foreground, at the moments those invariants name.
  * Never on a timer.
  *

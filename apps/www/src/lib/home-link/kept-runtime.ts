@@ -1,7 +1,7 @@
 /**
  * The runtime behind `./kept-model`: one exchange with home at a time for a
  * record kept there (aph's `exchangeWithHome`, LA9; the Jobs record's
- * `exchangeJobs`, LA10), through the link's `keep`
+ * `exchangeJobs`, LA10; Practice's `sendStanding`, LA11), through the link's `keep`
  * (docs/learner-data-authority.md), and how each ended. The record's screens
  * read its snapshot; they hold no request of their own.
  */

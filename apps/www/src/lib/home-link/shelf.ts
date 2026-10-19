@@ -46,11 +46,15 @@ export function emptyReport(): SendReport {
   }
 }
 
-/** PUTs `items` through `send`, once each, into `report`. */
+/**
+ * PUTs `items` through `send`, once each, into `report`; `held` hears each
+ * item home answered for with its copy.
+ */
 export async function sendKept(
   items: ReadonlyArray<Kept>,
   send: HomeSend,
-  report: SendReport
+  report: SendReport,
+  held: (item: Kept) => void = () => undefined
 ): Promise<void> {
   for (const item of items) {
     let status: number
@@ -87,5 +91,6 @@ export async function sendKept(
       continue
     }
     report.sent += 1
+    held(item)
   }
 }

@@ -5,7 +5,7 @@
  * (`./shelf`, which stay). One run, so one Stop ends both, and one line says
  * how it went.
  */
-import { counted } from "@some-ui/core-utils"
+import { counted, localStorageOrNull } from "@some-ui/core-utils"
 
 import { deviceBackend } from "@/lib/device-backend/boot"
 import { mayLeavePhone } from "@/lib/device-backend/handlers/sessions"
@@ -21,6 +21,14 @@ import type { SessionRecord } from "@/lib/tenant/types"
 import { hostOf } from "./address"
 import { homeLink } from "./index"
 import { remember, remembered } from "./remembered"
+import type { HomeSend } from "./runtime"
+import {
+  digestOf,
+  readSent,
+  rememberSent,
+  sessionsHeld,
+  shelfKeyOf,
+} from "./sent"
 import { causedBy, copyAndConfirm, HomeForgotPhoneError } from "./sessions"
 import type { SendReport } from "./shelf"
 import { emptyReport, sendKept } from "./shelf"
@@ -32,7 +40,7 @@ const sessions = (n: number): string => counted(n, "session")
 const items = (n: number): string => counted(n, "kept item")
 
 /** What a send would carry. Reads only this phone. */
-async function readPhone(): Promise<{
+export async function readPhone(): Promise<{
   local: Array<SessionRecord>
   kept: Array<Kept>
 }> {
@@ -62,10 +70,13 @@ export type SendOutcome = {
   readonly shelf: SendReport
   /** What threw and ended the run early, if anything did. */
   readonly ended: unknown
+  /** Home answered `429` at least once: it was busy. */
+  readonly busy?: boolean
 }
 
 /** Why a send ended early, in the block's words. */
-function endedLine(error: unknown, host: string): string {
+function endedLine(error: unknown, host: string, busy: boolean): string {
+  if (busy) return "Home is busy right now: send again in a minute to carry on."
   if (causedBy(error, SyncStoppedError))
     return "Stopped: send again to carry on."
   if (causedBy(error, HomeForgotPhoneError)) {
@@ -96,7 +107,9 @@ export function describeSend(outcome: SendOutcome, host: string): string {
     !causedBy(why, SyncStoppedError) &&
     !causedBy(why, HomeForgotPhoneError)
   ) {
-    return `Couldn't reach ${host}. Are you on the home network? Nothing was sent.`
+    return outcome.busy === true
+      ? "Home is busy right now. Nothing was sent; try again in a minute."
+      : `Couldn't reach ${host}. Are you on the home network? Nothing was sent.`
   }
   const full = [...shelf.full.values()].reduce((a, b) => a + b, 0)
   const parts = [
@@ -110,9 +123,30 @@ export function describeSend(outcome: SendOutcome, host: string): string {
     held.differs.length > 0
       ? `${held.differs.length} kept: home's copy didn't match.`
       : "",
-    why === null ? "" : endedLine(why, host),
+    why === null ? "" : endedLine(why, host, outcome.busy === true),
   ].filter((part) => part !== "")
   return parts.length === 0 ? `${host} is up to date.` : parts.join(" ")
+}
+
+/**
+ * What this send left home holding, for the standing send (`./standing`) to
+ * skip: every session, once the copy ran to its end, and each kept item home
+ * answered for.
+ */
+async function rememberHeld(
+  copy: CopyResult | null,
+  local: ReadonlyArray<SessionRecord>,
+  shelf: ReadonlyArray<Kept>
+): Promise<void> {
+  const storage = localStorageOrNull()
+  const sessions = copy?.outcome.kind === "copied" ? sessionsHeld(local) : {}
+  const digests = await Promise.all(
+    shelf.map(async (item) => [shelfKeyOf(item), await digestOf(item.body)])
+  )
+  rememberSent(storage, readSent(storage), {
+    sessions,
+    shelf: Object.fromEntries(digests),
+  })
 }
 
 /** "time · what happened" for the last send, or "". */
@@ -145,19 +179,28 @@ export async function sendHome(
     copy: null,
     ended: null,
   }
-  const run = await homeLink().send(async (send) => {
+  const seen = { busy: false }
+  const shelfHeld: Array<Kept> = []
+  const run = await homeLink().send(async (link) => {
+    const send: HomeSend = async (method, path, body) => {
+      const answer = await link(method, path, body)
+      if (answer.status === 429) seen.busy = true
+      return answer
+    }
     try {
       const step = await copyAndConfirm(send, local, leaving, held)
       ran.copy = step.copy
       ran.ended = step.ended
       if (step.ended !== null || step.copy.outcome.kind !== "copied") return
-      await sendKept(kept, send, shelf)
+      await sendKept(kept, send, shelf, (item) => shelfHeld.push(item))
     } catch (error) {
       // Stopped, or home stopped answering: what was done stays done.
       ran.ended = error
     }
   })
   if (run === null) return { ok: false, line: "" }
+  // Bookkeeping only: unkept, the next standing send carries them again.
+  await rememberHeld(ran.copy, local, shelfHeld).catch(() => undefined)
 
   let freed = 0
   let freeing = ""
@@ -167,7 +210,7 @@ export async function sendHome(
   } catch (error) {
     freeing = ` Couldn't clear them from this phone: ${String(error)}`
   }
-  const outcome: SendOutcome = { ...ran, held, freed, shelf }
+  const outcome: SendOutcome = { ...ran, held, freed, shelf, busy: seen.busy }
   const line = describeSend(outcome, host) + freeing
   remember(LAST_SEND_KEY, `${new Date().toLocaleString()} · ${line}`)
   const clean = whyEnded(outcome) === null && held.differs.length === 0

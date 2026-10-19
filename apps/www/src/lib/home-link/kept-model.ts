@@ -1,8 +1,8 @@
 /**
- * A record kept on home (aph, LA9; the Jobs record, LA10) as one state:
- * whether a run is under way, whether another was asked for while it ran, and
- * how the last one ended. `step` is pure; `./kept-runtime` runs the work and
- * feeds its end back in.
+ * A record kept on home (aph, LA9; the Jobs record, LA10; Practice, LA11) as
+ * one state: whether a run is under way, whether another was asked for while
+ * it ran, and how the last one ended. `step` is pure; `./kept-runtime` runs
+ * the work and feeds its end back in.
  *
  * One run at a time, by structure: asking while one runs only marks that
  * another is wanted once it ends, so a burst of edits is one more run, not
@@ -50,8 +50,13 @@ export function stepKept(state: KeptState, event: KeptEvent): KeptState {
       if (!state.running) return state
       // A run asked for again goes on only after one that reached home: one
       // that could not would only fail the same way, and the next ask (an
-      // edit, the app coming back, the network) tries again.
-      const goOn = state.again && event.run.kind === "synced"
+      // edit, the app coming back, the network) tries again. One the link
+      // turned away before sending anything goes on too: what asked again
+      // while it ran (the phone found paired, the link freed) is what it
+      // waited for, and nothing else would ask.
+      const turnedAway =
+        event.run.kind === "busy" || event.run.kind === "unpaired"
+      const goOn = state.again && (event.run.kind === "synced" || turnedAway)
       return { running: goOn, again: false, last: event.run }
     }
     default: {

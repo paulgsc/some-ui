@@ -135,8 +135,9 @@ export const AccountSection = (): JSX.Element => {
       <div className="space-y-2" aria-labelledby="phones-heading">
         <Label id="phones-heading">Phones</Label>
         <p className="text-muted-foreground text-sm">
-          A paired phone sends here only when you tap it to, and names this
-          server first. To unpair a lost phone, sign out everywhere.
+          A paired phone sends here only what you tap to send, or chose there to
+          keep sending, and names this server first. To unpair a lost phone,
+          sign out everywhere.
         </p>
         {pairAt !== undefined && !pairable ? (
           <p className="text-muted-foreground text-xs break-all">

@@ -41,6 +41,7 @@ import { useIsDeclaredBounded } from "@/lib/route-bounds"
 import { navOf, owns, webSettingsOf, wingOf } from "@/lib/wings"
 import { AudioIndicator } from "@/components/audio/audio-indicator"
 import { AccountUnavailableBanner } from "@/components/auth/account-unavailable-banner"
+import { DeviceHomeGlyph } from "@/components/device-home-glyph"
 import { LocIndicator } from "@/components/loc/loc-indicator"
 import {
   barOf,
@@ -254,6 +255,11 @@ const DashboardLayout = (): JSX.Element => {
             {(!MOBILE_APP || wing?.id === "studio") && <LocIndicator />}
             <SiteLauncher />
             {MOBILE_APP && <MobileSettingsLink pathname={pathname} />}
+            {/* Where Practice is kept, and its standing send while it shows
+                (LA11): the phone's alone (an inline device-build check, so
+                other builds drop it), and only Practice's records yet. */}
+            {import.meta.env.VITE_DEVICE_BACKEND === "true" &&
+              wing?.id === "practice" && <DeviceHomeGlyph />}
           </header>
         )}
         {!bareViewport && <AccountUnavailableBanner />}
