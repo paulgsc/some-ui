@@ -62,7 +62,9 @@ const notesFull = (): boolean => notes.read().length >= MAX
 
 /**
  * The port's snapshot, made again only when the desk's changes or the notes
- * fill: full when either is, so no answer is given that could not be kept.
+ * fill. A take needs room on both, so `full` when either is; a typed answer
+ * needs only a note, so `notesFull` alone stops it. The two part when an
+ * export lets a note go but keeps a take whose audio it could not read.
  */
 function adapted(): () => SpokenTakeSnapshot {
   let from: LensTakeSnapshot | null = null
@@ -79,6 +81,7 @@ function adapted(): () => SpokenTakeSnapshot {
         said: now.said,
         last: now.last,
         full: now.full || full,
+        notesFull: full,
       }
     }
     return made
@@ -94,11 +97,11 @@ export function phoneSpokenTakes(): SpokenTakes {
     start: ({ file, screen }): void => desk.phone().start(`${file}#${screen}`),
     stop: (): void => desk.phone().stop(),
     reset: (): void => desk.phone().reset(),
-    note: (note): void => {
+    note: (note): boolean => {
       // Refused when full, never evicting an earlier one (the export lets
       // them go).
-      if (notesFull()) return
-      notes.put(
+      if (notesFull()) return false
+      return notes.put(
         { ...note, id: crypto.randomUUID(), notedAt: Date.now() },
         () => false
       )

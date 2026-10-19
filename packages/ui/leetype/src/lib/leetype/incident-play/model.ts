@@ -180,8 +180,12 @@ function returnOf(play: Play, screen: SessionScreen): string | null {
   if (!screen.tags?.includes("parked-return") || placed?.as !== "placement") {
     return null
   }
-  const round = play.file.screens[placed.round]
-  return round && isRound(round) ? placed.round : null
+  return isRoundId(play.file, placed.round) ? placed.round : null
+}
+
+function isRoundId(file: SessionFile, id: string): boolean {
+  const screen = file.screens[id]
+  return screen !== undefined && isRound(screen)
 }
 
 /** The return the reading placed for `round` leads to, if the file authors one. */
@@ -194,10 +198,12 @@ export function returnScreenOf(
   if (screen?.type !== "reading") return null
   for (const action of screen.actions) {
     const next = action.next ? file.screens[action.next] : undefined
+    // Inferred from the tag only for a round, as `returnOf` does.
+    const inferred =
+      next?.tags?.includes("parked-return") === true && isRoundId(file, round)
     if (
       next?.type === "choice" &&
-      (next.returnOf ??
-        (next.tags?.includes("parked-return") ? round : null)) === round
+      (next.returnOf ?? (inferred ? round : null)) === round
     ) {
       return action.next ?? null
     }
@@ -234,19 +240,18 @@ function stamp(
   }
 }
 
-/** The first screen tagged `tag` reachable from `from`, `from` included. */
-function nextTagged(
-  file: SessionFile,
-  from: string,
-  tag: string
-): string | null {
+/**
+ * The first take reachable from `from`, `from` included: a record screen,
+ * or the choice tagged `speak` that leads to one.
+ */
+function nextTake(file: SessionFile, from: string): string | null {
   const seen = new Set<string>()
   const queue = [from]
   for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
     const screen = file.screens[id]
     if (!screen || seen.has(id)) continue
     seen.add(id)
-    if (screen.tags?.includes(tag)) return id
+    if (screen.type === "record" || screen.tags?.includes("speak")) return id
     queue.push(...edgesOf(screen))
   }
   return null
@@ -378,7 +383,7 @@ function enter(
     return { play: resumed, events: [] }
   }
   if (play.form === "short" && freshRound && play.rounds >= 1) {
-    const take = nextTagged(play.file, target, "speak")
+    const take = nextTake(play.file, target)
     const to = take ?? firstEnd(play.file)
     return to === null || to === target
       ? ended(play, play.screen, ctx)
@@ -765,6 +770,10 @@ export function step(play: Play, input: PlayInput, ctx: StepContext): Stepped {
     }
     case "take-parked": {
       if (play.reveal !== null || play.spoken !== null) return unchanged
+      // The round in view is already being played.
+      if (input.take === "round" && input.round === play.screen) {
+        return unchanged
+      }
       const { round, reading, take, asked } = input
       const away = detour(play, { round, reading, take, asked })
       return { play: { ...away, shownAt: ctx.at }, events: [] }

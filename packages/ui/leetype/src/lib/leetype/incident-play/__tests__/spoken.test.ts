@@ -22,6 +22,7 @@ function fakeTakes(): SpokenTakes & {
     said: null,
     last: null,
     full: false,
+    notesFull: false,
   }
   const listeners = new Set<() => void>()
   const publish = (next: SpokenTakeSnapshot): void => {
@@ -37,7 +38,7 @@ function fakeTakes(): SpokenTakes & {
     start: vi.fn(() => publish({ ...snapshot, recording: true })),
     stop: vi.fn(),
     reset: vi.fn(() => publish({ ...snapshot, last: null })),
-    note: vi.fn(),
+    note: vi.fn(() => true),
     land: (id, durationMs): void =>
       publish({ ...snapshot, recording: false, last: { id, durationMs } }),
   }
@@ -56,6 +57,7 @@ function atTheTake(takes: SpokenTakes): {
     newId: (): string => `id${String(++id)}`,
     takes,
   })
+  runtime.attach()
   runtime.start({ fileName: "t1-01", file: FILE, form: "short" })
   runtime.dispatch({ type: "act", action: 0 })
   runtime.dispatch({ type: "pick", option: 0 })
@@ -150,9 +152,60 @@ describe("a spoken answer", () => {
     expect(runtime.getSnapshot().play?.spoken).toEqual({ as: "passed" })
     expect(runtime.getSnapshot().play?.screen).toBe("s15")
     runtime.dispatch({ type: "ticked", ticks: [] })
-    takes.land("late", 5_000)
     expect(runtime.getSnapshot().play?.screen).toBe("s18")
+    // Back on the same take, by "Say it again": the old take lands late.
+    runtime.dispatch({
+      type: "take-parked",
+      round: "s15",
+      reading: "s18",
+      take: "round",
+      asked: true,
+    })
+    expect(runtime.getSnapshot().play?.screen).toBe("s15")
+    takes.land("late", 5_000)
     expect(runtime.getSnapshot().play?.spoken).toBeNull()
     expect(takes.note).not.toHaveBeenCalled()
+  })
+
+  it("still answers the record screen after the surface mounts twice", () => {
+    const takes = fakeTakes()
+    const log = createSessionLogStore(memoryStorage())
+    let id = 0
+    const runtime = new IncidentPlayRuntime({
+      log,
+      now: (): number => 0,
+      newId: (): string => `id${String(++id)}`,
+      takes,
+    })
+    // React's StrictMode: mount, clean up, mount again.
+    runtime.attach()()
+    runtime.attach()
+    runtime.start({ fileName: "t1-01", file: FILE, form: "short" })
+    for (const input of [
+      { type: "act", action: 0 },
+      { type: "pick", option: 0 },
+      { type: "continue" },
+      { type: "act", action: 2 },
+      { type: "pick", option: 0 },
+    ] as const) {
+      runtime.dispatch(input)
+    }
+    runtime.record()
+    takes.land("take-1", 30_000)
+    expect(runtime.getSnapshot().play?.spoken).toMatchObject({
+      as: "recorded",
+      take: "take-1",
+    })
+  })
+
+  it("says so when the phone could not keep what an answer said", () => {
+    const takes = { ...fakeTakes(), note: vi.fn(() => false) }
+    const { runtime } = atTheTake(takes)
+    runtime.dispatch({
+      type: "answered",
+      answer: { as: "typed", text: "a typed answer" },
+    })
+    runtime.dispatch({ type: "ticked", ticks: RUBRIC })
+    expect(runtime.getSnapshot().problem).toMatch(/could not keep/)
   })
 })

@@ -16,6 +16,8 @@ type ParkedRoundsProps = {
   onRound: (round: ParkedRound, take: "return" | "round") => void
   /** Records a parked round's worked confirmation being taken. */
   onConfirmation: (round: ParkedRound) => void
+  /** The screen in view, during play: it is not offered to play again. */
+  inView?: string
 }
 
 /**
@@ -29,6 +31,7 @@ export const ParkedRounds: FC<ParkedRoundsProps> = ({
   parked,
   onRound,
   onConfirmation,
+  inView,
 }) => {
   // Which worked confirmations are open, by round.
   const [open, setOpen] = useState<ReadonlyArray<string>>([])
@@ -57,15 +60,17 @@ export const ParkedRounds: FC<ParkedRoundsProps> = ({
                 Try it with new numbers
               </Button>
             )}
-            <Button
-              variant="outline"
-              className="min-h-11"
-              onClick={(): void => onRound(round, "round")}
-            >
-              {round.screen.type === "record"
-                ? "Say it again"
-                : "Play it again"}
-            </Button>
+            {round.round !== inView && (
+              <Button
+                variant="outline"
+                className="min-h-11"
+                onClick={(): void => onRound(round, "round")}
+              >
+                {round.screen.type === "record"
+                  ? "Say it again"
+                  : "Play it again"}
+              </Button>
+            )}
             {!open.includes(round.round) && (
               <Button
                 variant="outline"

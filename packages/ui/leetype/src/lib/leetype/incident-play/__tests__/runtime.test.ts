@@ -66,6 +66,7 @@ describe("IncidentPlayRuntime", () => {
       newId: (): string => crypto.randomUUID(),
       after,
     })
+    const detach = runtime.attach()
     runtime.start({
       fileName: "t1-01",
       file: FILE,
@@ -82,8 +83,28 @@ describe("IncidentPlayRuntime", () => {
       timeUp: true,
       play: { screen: "s01", ended: null },
     })
-    runtime.close()
+    detach()
     expect(cancel).toHaveBeenCalled()
+  })
+
+  it("keeps the timer to a host's limit under a minute", () => {
+    const after = vi.fn(
+      (_ms: number, _fired: () => void) => (): void => undefined
+    )
+    const runtime = new IncidentPlayRuntime({
+      log: createSessionLogStore(memoryStorage()),
+      now: (): number => 0,
+      newId: (): string => crypto.randomUUID(),
+      after,
+    })
+    runtime.attach()
+    runtime.start({
+      fileName: "t1-01",
+      file: FILE,
+      form: "full",
+      limitMinutes: 1 / 3,
+    })
+    expect(after).toHaveBeenCalledWith(20_000, expect.any(Function))
   })
 
   it("leaves the time the app spends in the background out of a pick's time", () => {
@@ -108,6 +129,7 @@ describe("IncidentPlayRuntime", () => {
       hidden = to
       for (const listener of listeners) listener()
     }
+    const detach = runtime.attach()
     runtime.start({ fileName: "t1-01", file: FILE, form: "full" })
     runtime.dispatch({ type: "act", action: 0 })
     now += 2000
@@ -120,7 +142,27 @@ describe("IncidentPlayRuntime", () => {
       type: "picked",
       ms: 3000,
     })
-    runtime.close()
+    detach()
     expect(listeners.size).toBe(0)
+  })
+
+  it("runs on to the same deadline when the surface mounts twice", () => {
+    let now = 0
+    const after = vi.fn(
+      (_ms: number, _fired: () => void) => (): void => undefined
+    )
+    const runtime = new IncidentPlayRuntime({
+      log: createSessionLogStore(memoryStorage()),
+      now: (): number => now,
+      newId: (): string => crypto.randomUUID(),
+      after,
+    })
+    const detach = runtime.attach()
+    runtime.start({ fileName: "t1-01", file: FILE, form: "short" })
+    expect(after).toHaveBeenLastCalledWith(300_000, expect.any(Function))
+    detach()
+    now += 60_000
+    runtime.attach()
+    expect(after).toHaveBeenLastCalledWith(240_000, expect.any(Function))
   })
 })

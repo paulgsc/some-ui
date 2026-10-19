@@ -153,12 +153,30 @@ describe("an incident session's steps, on a small file", () => {
     expect(play.screen).toBe("k1")
   })
 
+  it("gives the short form's second round way to a take that is only a record screen", () => {
+    const untagged = SessionFileSchema.parse({
+      ...FILE,
+      screens: { ...FILE.screens, k1: { ...FILE.screens.k1, tags: [] } },
+    })
+    const { play } = playThrough([GO, RIGHT, ON, GO], {
+      file: untagged,
+      form: "short",
+    })
+    expect(play.screen).toBe("t1")
+  })
+
   it("ends the short form where no take is left, without looping", () => {
+    const k1 = FILE.screens.k1
+    if (k1?.type !== "choice") throw new Error("k1 is not a choice")
     const noTake = SessionFileSchema.parse({
       ...FILE,
       screens: {
         ...FILE.screens,
-        k1: { ...FILE.screens.k1, tags: [] },
+        k1: {
+          ...k1,
+          tags: [],
+          options: k1.options.map((option) => ({ ...option, next: "e1" })),
+        },
       },
     })
     const { play, events } = playThrough([GO, RIGHT, ON, GO], {
@@ -208,7 +226,9 @@ describe("an incident session's steps, on a small file", () => {
       RIGHT,
       { type: "pass" },
       { type: "ticked", ticks: [] },
+      // A take has no return to ask for; the reading's own way on is a round.
       { type: "ask-return" },
+      GO,
       RIGHT,
     ])
     expect(play.screen).toBe("v1")
@@ -339,6 +359,20 @@ describe("an incident session's steps, on a small file", () => {
     ).toHaveLength(2)
     // Its way on leads to r2; the detour comes back to the take it left.
     expect(play).toMatchObject({ screen: "k1", scope: "file", resume: null })
+  })
+
+  it("does not play again the parked round already in view", () => {
+    const { play } = playThrough([
+      GO,
+      {
+        type: "take-parked",
+        round: "r1",
+        reading: "g1",
+        take: "round",
+        asked: true,
+      },
+    ])
+    expect(play).toMatchObject({ screen: "r1", scope: "file", resume: null })
   })
 
   it("takes no parked round in the middle of a reveal", () => {

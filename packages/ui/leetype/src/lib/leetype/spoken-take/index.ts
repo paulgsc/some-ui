@@ -14,6 +14,8 @@ export type SpokenTakeSnapshot = {
   readonly last: { readonly id: string; readonly durationMs: number } | null
   /** No new take can be kept until the takes are shared. */
   readonly full: boolean
+  /** No answer can be kept at all, typed included, until they are shared. */
+  readonly notesFull: boolean
 }
 
 /** What a take answered, kept with it for the weekly review (#1927). */
@@ -37,6 +39,6 @@ export type SpokenTakes = {
   readonly stop: () => void
   /** A new prompt: the last take is forgotten, a take under way still kept. */
   readonly reset: () => void
-  /** Keeps what a settled answer said, beside its take. */
-  readonly note: (note: SpokenTakeNote) => void
+  /** Keeps what a settled answer said, beside its take: false when it could not. */
+  readonly note: (note: SpokenTakeNote) => boolean
 }

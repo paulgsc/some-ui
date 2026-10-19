@@ -82,7 +82,7 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
     runtime.getSnapshot,
     runtime.getSnapshot
   )
-  useEffect(() => runtime.close, [runtime])
+  useEffect(() => runtime.attach(), [runtime])
   // Whether the rounds waiting on a reading are open during play.
   const [waiting, setWaiting] = useState(false)
   const ended = play?.ended ?? null
@@ -286,6 +286,7 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
         <div className="pb-4">
           <ParkedRounds
             parked={parked}
+            inView={play.screen}
             onRound={(round, take): void => {
               setWaiting(false)
               dispatch({ type: "take-parked", ...taken(round, take) })

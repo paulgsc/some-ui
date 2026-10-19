@@ -63,7 +63,11 @@ const MINUTE_MS = 60_000
  * opens. An event the log refuses is not retried: the play goes on, and
  * `problem` carries the log's own word on it until a later append is kept.
  * A take that lands for the record screen in view answers it; one that
- * lands after the learner moved on answers nothing.
+ * lands after the learner moved on answers nothing. What it listens to (the
+ * microphone, the app's visibility, the timer) it holds only between
+ * `attach` and the cleanup `attach` returns, so a surface that mounts twice
+ * (React's StrictMode) holds them once, and the timer runs on to the same
+ * deadline.
  */
 export class IncidentPlayRuntime {
   private snapshot: IncidentPlaySnapshot
@@ -76,7 +80,11 @@ export class IncidentPlayRuntime {
   private hiddenSince: number | null = null
   private hiddenTotal = 0
   private cancelTimer: () => void = () => undefined
-  private readonly unsubscribe: Array<() => void> = []
+  /** When the declared length runs, on the runtime's clock. */
+  private deadline: number | null = null
+  private attached = false
+  /** A settled answer's notes the phone could not keep. */
+  private unkept: string | null = null
 
   constructor(private readonly ports: IncidentPlayPorts) {
     this.session = ports.newId()
@@ -86,10 +94,26 @@ export class IncidentPlayRuntime {
       take: ports.takes?.getSnapshot() ?? null,
       timeUp: false,
     }
-    if (ports.takes) this.unsubscribe.push(ports.takes.subscribe(this.onTake))
-    if (ports.visibility) {
-      this.unsubscribe.push(ports.visibility.subscribe(this.onVisibility))
-      if (ports.visibility.hidden()) this.hiddenSince = ports.now()
+  }
+
+  /** Listens to the ports until the returned cleanup runs. */
+  attach = (): (() => void) => {
+    const { takes, visibility } = this.ports
+    const unsubscribe = [
+      takes?.subscribe(this.onTake),
+      visibility?.subscribe(this.onVisibility),
+    ]
+    if (visibility?.hidden()) this.hiddenSince ??= this.ports.now()
+    this.attached = true
+    this.onTake()
+    this.arm()
+    // The surface is going: a take under way is kept, and answers nothing.
+    return () => {
+      this.attached = false
+      this.takingFor = null
+      takes?.stop()
+      this.cancelTimer()
+      for (const off of unsubscribe) off?.()
     }
   }
 
@@ -109,11 +133,11 @@ export class IncidentPlayRuntime {
       args.from !== undefined,
       args.limitMinutes
     )
-    const after = this.ports.after ?? defaultAfter
-    this.cancelTimer = after(minutes * MINUTE_MS, () => {
-      this.snapshot = { ...this.snapshot, timeUp: true }
-      this.publish()
-    })
+    // The declaration says whole minutes; the timer keeps to what the host
+    // has left, which can be less than one.
+    const ms = Math.min(minutes, args.limitMinutes ?? minutes) * MINUTE_MS
+    this.deadline = this.ports.now() + ms
+    this.arm()
   }
 
   /** A parked round's worked confirmation, taken from the first screen. */
@@ -145,12 +169,20 @@ export class IncidentPlayRuntime {
     this.ports.takes?.stop()
   }
 
-  /** The surface is going: a take under way is kept, and answers nothing. */
-  close = (): void => {
-    this.takingFor = null
-    this.ports.takes?.stop()
+  /** Sets the timer for what is left of the declared length. */
+  private arm(): void {
     this.cancelTimer()
-    for (const unsubscribe of this.unsubscribe.splice(0)) unsubscribe()
+    this.cancelTimer = (): void => undefined
+    const { play, timeUp } = this.snapshot
+    if (!this.attached || this.deadline === null || timeUp) return
+    // Not started (no play), or ended.
+    if (play?.ended !== null) return
+    const after = this.ports.after ?? defaultAfter
+    const left = Math.max(0, this.deadline - this.ports.now())
+    this.cancelTimer = after(left, () => {
+      this.snapshot = { ...this.snapshot, timeUp: true }
+      this.publish()
+    })
   }
 
   private readonly onVisibility = (): void => {
@@ -218,7 +250,7 @@ export class IncidentPlayRuntime {
       }
     }
     if (play.ended !== null) this.cancelTimer()
-    const { problem } = this.ports.log.getSnapshot()
+    const problem = this.ports.log.getSnapshot().problem ?? this.unkept
     if (play === before && problem === this.snapshot.problem) return
     this.snapshot = { ...this.snapshot, play, problem }
     this.publish()
@@ -236,7 +268,7 @@ export class IncidentPlayRuntime {
     ) {
       return
     }
-    this.ports.takes?.note({
+    const kept = this.ports.takes?.note({
       take: spoken.as === "recorded" ? spoken.take : null,
       file: play.fileName,
       screen: play.screen,
@@ -245,10 +277,14 @@ export class IncidentPlayRuntime {
       ticks: answer.ticks,
       typed: spoken.as === "typed" ? spoken.text : null,
     })
+    this.unkept =
+      kept === false
+        ? "This phone could not keep what that answer said. Share your answers with a study-context export to make room."
+        : null
   }
 
   private publishProblem(): void {
-    const { problem } = this.ports.log.getSnapshot()
+    const problem = this.ports.log.getSnapshot().problem ?? this.unkept
     if (problem === this.snapshot.problem) return
     this.snapshot = { ...this.snapshot, problem }
     this.publish()

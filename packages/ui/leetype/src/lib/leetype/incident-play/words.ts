@@ -132,9 +132,9 @@ export type ParkedRound = {
 }
 
 /**
- * The file's rounds still parked, across every session (`ledgerOf`), each
- * reachable from the first screen (Prop. 9.4 (d)). A take parked by a weak
- * answer is listed in the ledger, not here: it has no round to replay.
+ * The file's rounds and takes still parked, across every session
+ * (`ledgerOf`), each reachable from the first screen and at every round
+ * boundary (Prop. 9.4 (d)).
  */
 export function parkedRounds(
   log: SessionLog,
@@ -156,7 +156,8 @@ export function parkedRounds(
     for (const [index, event] of byTime.entries()) {
       if (event.file !== file) continue
       if (
-        (event.type === "placed" ||
+        // A pointer after a correct replay is no new placement.
+        ((event.type === "placed" && event.as === "placement") ||
           event.type === "returned" ||
           event.type === "spoken") &&
         event.screen === screen

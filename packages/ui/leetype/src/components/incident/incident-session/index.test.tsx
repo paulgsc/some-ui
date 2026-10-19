@@ -322,7 +322,17 @@ describe("IncidentSession", () => {
     expect(screen.queryByRole("button", { name: "Rounds waiting" })).toBeNull()
     fireEvent.click(screen.getByRole("button", { name: "Continue" }))
     fireEvent.click(screen.getByRole("button", { name: /Save it/ }))
+    // On to incident 3, past where the replay's own way leads (incident 2).
+    const second = choice("s06")
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: second.options.find((option) => option.correct)?.label,
+      })
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }))
+    fireEvent.click(screen.getByRole("button", { name: "Skip" }))
     const left = screen.getByRole("heading").textContent
+    expect(left).toMatch(/^Incident 3/)
 
     fireEvent.click(screen.getByRole("button", { name: "Rounds waiting" }))
     fireEvent.click(
@@ -339,6 +349,29 @@ describe("IncidentSession", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continue" }))
     fireEvent.click(screen.getByRole("button", { name: "Skip" }))
     expect(screen.getByRole("heading").textContent).toBe(left)
+  })
+
+  it("keeps a read reading read through a correct replay", () => {
+    const log = createSessionLogStore(memoryStorage())
+    mount(log)
+    fireEvent.click(
+      screen.getByRole("button", { name: /Start with incident 1/ })
+    )
+    fireEvent.click(screen.getByRole("button", { name: WRONG?.label }))
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }))
+    fireEvent.click(screen.getByRole("button", { name: "Read now" }))
+    fireEvent.click(screen.getByRole("button", { name: "End here" }))
+    cleanup()
+
+    render(<IncidentSession fileName="t1-01" file={FILE} ports={{ log }} />)
+    fireEvent.click(screen.getByRole("button", { name: "Play it again" }))
+    fireEvent.click(screen.getByRole("button", { name: RIGHT?.label }))
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }))
+    fireEvent.click(screen.getByRole("button", { name: "Skip" }))
+    cleanup()
+
+    render(<IncidentSession fileName="t1-01" file={FILE} ports={{ log }} />)
+    expect(screen.getByText(/you read what it was waiting on/)).toBeTruthy()
   })
 
   it("offers a passed take back: said again, or its rubric shown", () => {

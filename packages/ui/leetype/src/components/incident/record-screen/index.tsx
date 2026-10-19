@@ -60,7 +60,9 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
   const [typing, setTyping] = useState(take === null)
   const [text, setText] = useState("")
   const [ticks, setTicks] = useState<ReadonlyArray<string>>([])
+  // A take needs room for audio and a note; a typed answer, a note only.
   const full = take?.full === true
+  const noRoom = take?.notesFull === true
 
   const heading = (
     <>
@@ -150,8 +152,9 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
       {heading}
       {full && (
         <p role="status" className="text-pretty text-sm text-muted-foreground">
-          This phone has kept as many answers as it can until you share them
-          with a study-context export.
+          {noRoom
+            ? "This phone has kept as many answers as it can until you share them with a study-context export."
+            : "This phone has kept as many recorded answers as it can until you share them with a study-context export. You can still type one."}
         </p>
       )}
       {take !== null && !typing && (
@@ -198,7 +201,7 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
           />
           <Button
             className="min-h-11 self-start"
-            disabled={text.trim() === "" || full}
+            disabled={text.trim() === "" || noRoom}
             onClick={(): void => onTyped(text.trim())}
           >
             Done

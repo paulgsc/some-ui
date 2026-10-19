@@ -59,7 +59,7 @@ describe("phoneSpokenTakes", () => {
     for (let index = 0; index < 40; index++) {
       takes.note({ ...NOTE, typed: String(index) })
     }
-    expect(takes.getSnapshot().full).toBe(true)
+    expect(takes.getSnapshot()).toMatchObject({ full: true, notesFull: true })
     takes.note({ ...NOTE, typed: "one too many" })
     const { notes } = await leetypeTakesForExport()
     expect(notes).toHaveLength(40)
@@ -74,6 +74,7 @@ describe("phoneSpokenTakes", () => {
       recording: false,
       last: null,
       full: false,
+      notesFull: false,
     })
   })
 })
