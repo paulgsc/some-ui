@@ -192,4 +192,38 @@ describe("IncidentSession", () => {
       asked: false,
     })
   })
+
+  it("takes a typed answer where there is no microphone, then its rubric, then goes on", () => {
+    const log = createSessionLogStore(memoryStorage())
+    render(<IncidentSession fileName="t1-01" file={FILE} ports={{ log }} />)
+    fireEvent.click(screen.getByRole("button", { name: /one incident/ }))
+    fireEvent.click(
+      screen.getByRole("button", { name: /Start with incident 1/ })
+    )
+    fireEvent.click(screen.getByRole("button", { name: RIGHT?.label }))
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }))
+    fireEvent.click(screen.getByRole("button", { name: "Skip" }))
+    fireEvent.click(screen.getByRole("button", { name: /^Incident 1/ }))
+
+    const take = FILE.screens.s15
+    if (take?.type !== "record") throw new Error("s15 is not a take")
+    // The rubric is not shown before an answer (Ax. 9.2).
+    expect(screen.queryByText(take.rubric[0] ?? "")).toBeNull()
+    fireEvent.change(screen.getByLabelText("Your answer, typed"), {
+      target: { value: "The OK came before a majority held it." },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Done" }))
+    fireEvent.click(screen.getByLabelText(take.rubric[0] ?? ""))
+    fireEvent.click(screen.getByLabelText(take.rubric[3] ?? ""))
+    fireEvent.click(screen.getByRole("button", { name: "Done" }))
+
+    expect(log.getSnapshot().log).toContainEqual(
+      expect.objectContaining({
+        type: "spoken",
+        screen: "s15",
+        answer: { as: "typed", ticks: [take.rubric[0], take.rubric[3]] },
+      })
+    )
+    expect(screen.getByText("This session has ended.")).toBeTruthy()
+  })
 })

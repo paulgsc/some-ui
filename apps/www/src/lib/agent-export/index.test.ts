@@ -90,6 +90,32 @@ vi.mock("@/lib/lens-takes", () => ({
     ])
   },
 }))
+const letGoLeetypeTakes = vi.hoisted(() => vi.fn())
+const NOTE = {
+  file: "t1-01",
+  screen: "s15",
+  prompt: "Tell it to a colleague.",
+  rubric: ["one", "two"],
+  ticks: ["one"],
+  notedAt: 1_760_000_000_000,
+}
+vi.mock("@/lib/leetype-takes", () => ({
+  letGoLeetypeTakes,
+  leetypeTakesForExport: (): Promise<unknown> =>
+    Promise.resolve({
+      notes: [
+        { ...NOTE, id: "note-aloud", take: "lt-take-1111", typed: null },
+        { ...NOTE, id: "note-typed", take: null, typed: "on the bus" },
+      ],
+      takes: [
+        {
+          take: { ...TAKE, line: "t1-01#s15", id: "lt-take-1111" },
+          audio: new Blob(["opus"]),
+          read: true,
+        },
+      ],
+    }),
+}))
 vi.mock("@/lib/tenant/queries", () => ({
   sessionsRepository: {
     list: (): Promise<Array<unknown>> =>
@@ -332,6 +358,7 @@ describe("shareAgentExport", () => {
           "file:///cache/agent-export/soundbite-b1.webm",
           "file:///cache/agent-export/lens-take-school-bus-take-one.webm",
           `file:///cache/agent-export/lens-take-${"x".repeat(48)}-take-fou.webm`,
+          "file:///cache/agent-export/leetype-take-t1-01-s15-lt-take-.webm",
           "file:///cache/agent-export/2026-10-10_morning-drama_s1-00000_voice-04m12s-v1.webm",
         ],
       })
@@ -364,6 +391,18 @@ describe("shareAgentExport", () => {
           file: `lens-take-${"x".repeat(48)}-take-fou.webm`,
         },
       ],
+      leetypeAnswers: [
+        {
+          id: "note-aloud",
+          file: "t1-01",
+          ticks: ["one"],
+          audio: "leetype-take-t1-01-s15-lt-take-.webm",
+        },
+        { id: "note-typed", typed: "on the bus", audio: null },
+      ],
+      leetypeTakes: [
+        { id: "lt-take-1111", audio: "leetype-take-t1-01-s15-lt-take-.webm" },
+      ],
       soundbites: [{ id: "b1", file: "soundbite-b1.webm" }],
     })
     expect(context).not.toHaveProperty(["sessions", 0, "scenes"])
@@ -387,6 +426,10 @@ describe("shareAgentExport", () => {
       "take-two-bbbb",
       "take-four-dddd",
     ])
+    expect(letGoLeetypeTakes).toHaveBeenCalledWith({
+      notes: ["note-aloud", "note-typed"],
+      takes: ["lt-take-1111"],
+    })
     await vi.waitFor(() => {
       expect(letGoLensRecord).toHaveBeenCalledWith(LENS.entries)
     })

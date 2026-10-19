@@ -23,11 +23,16 @@ import { assertNever } from "@some-ui/core-utils"
  *   from a correct pick into a reading, offers it as a pointer.
  * - A parked round's worked confirmation and its return stay one action
  *   away (Prop. 9.4 (d)), and taking either is recorded.
- * - The learner may leave at any round boundary, which is any screen not
- *   showing a reveal (Prop. 9.6).
+ * - The learner may leave at any round boundary: any screen not showing a
+ *   reveal or a spoken answer's rubric (Prop. 9.6).
  */
 
 export type PlayForm = "full" | "short"
+
+/** Def. 9.5: aloud (a kept take), or typed where the learner can't speak. */
+export type SpokenAnswer =
+  | { readonly as: "recorded"; readonly take: string; readonly seconds: number }
+  | { readonly as: "typed"; readonly text: string }
 
 /** The short form: one incident and its take (Prop. 9.6). */
 export const SHORT_FORM_MINUTES = 5
@@ -64,6 +69,8 @@ export type Play = {
   } | null
   /** The screen in view was asked for rather than offered (Prop. 9.4 (d)). */
   readonly asked: boolean
+  /** A spoken answer given on the record screen in view, before its rubric. */
+  readonly spoken: SpokenAnswer | null
   readonly ended: "declared" | "left" | null
 }
 
@@ -77,6 +84,10 @@ export type PlayInput =
   | { readonly type: "leave" }
   /** A spoken answer passed: its abstention, a struggle (Def. 9.4). */
   | { readonly type: "pass" }
+  /** A spoken answer given; its rubric shows next (Ax. 9.2). */
+  | { readonly type: "answered"; readonly answer: SpokenAnswer }
+  /** The rubric points the learner ticks for their answer. */
+  | { readonly type: "ticked"; readonly ticks: ReadonlyArray<string> }
 
 export type StepContext = {
   /** Now, in epoch milliseconds. */
@@ -204,6 +215,7 @@ function enter(
     reveal: null,
     placement: extra.placement ?? null,
     asked: extra.asked ?? false,
+    spoken: null,
   }
   if (play.file.screens[screenId]?.type === "end") {
     return {
@@ -245,6 +257,7 @@ export function startPlay(
     reveal: null,
     placement: null,
     asked: false,
+    spoken: null,
     ended: null,
   }
   const started: SessionEvent = {
@@ -411,6 +424,47 @@ function act(
   return { play: entered.play, events: [...events, ...entered.events] }
 }
 
+type RecordScreen = Extract<SessionScreen, { type: "record" }>
+type Spoken = Extract<SessionEvent, { type: "spoken" }>["answer"]
+
+/**
+ * A spoken answer settled: a pass, or fewer ticks than the screen asks, is
+ * a struggle that goes to `onWeak` and places its reading (Def. 9.4).
+ */
+function speak(
+  play: Play,
+  screen: RecordScreen,
+  answer: Spoken,
+  ctx: StepContext
+): Stepped {
+  const weak =
+    answer.as === "passed" || answer.ticks.length < screen.weakIfFewerThan
+  const target = weak ? (screen.onWeak ?? screen.next) : screen.next
+  const events: Array<SessionEvent> = [
+    {
+      ...stamp(play, ctx),
+      type: "spoken",
+      file: play.fileName,
+      screen: play.screen,
+      answer,
+    },
+  ]
+  let placement: Play["placement"] = null
+  if (weak && play.file.screens[target]?.type === "reading") {
+    events.push({
+      ...stamp(play, ctx),
+      type: "placed",
+      file: play.fileName,
+      screen: play.screen,
+      reading: target,
+      as: "placement",
+    })
+    placement = { round: play.screen, as: "placement" }
+  }
+  const entered = enter(play, target, ctx, { placement })
+  return { play: entered.play, events: [...events, ...entered.events] }
+}
+
 export function step(play: Play, input: PlayInput, ctx: StepContext): Stepped {
   const unchanged: Stepped = { play, events: [] }
   if (play.ended !== null) return unchanged
@@ -474,34 +528,30 @@ export function step(play: Play, input: PlayInput, ctx: StepContext): Stepped {
         : enter(play, target, ctx, { placement: play.placement, asked: true })
     }
     case "pass": {
-      if (screen.type !== "record") return unchanged
-      const target = screen.onWeak ?? screen.next
-      const events: Array<SessionEvent> = [
-        {
-          ...stamp(play, ctx),
-          type: "spoken",
-          file: play.fileName,
-          screen: play.screen,
-          answer: { as: "passed" },
-        },
-      ]
-      let placement: Play["placement"] = null
-      if (play.file.screens[target]?.type === "reading") {
-        events.push({
-          ...stamp(play, ctx),
-          type: "placed",
-          file: play.fileName,
-          screen: play.screen,
-          reading: target,
-          as: "placement",
-        })
-        placement = { round: play.screen, as: "placement" }
-      }
-      const entered = enter(play, target, ctx, { placement })
-      return { play: entered.play, events: [...events, ...entered.events] }
+      return screen.type === "record" && play.spoken === null
+        ? speak(play, screen, { as: "passed" }, ctx)
+        : unchanged
+    }
+    case "answered": {
+      return screen.type === "record" && play.spoken === null
+        ? { play: { ...play, spoken: input.answer }, events: [] }
+        : unchanged
+    }
+    case "ticked": {
+      const spoken = play.spoken
+      if (screen.type !== "record" || spoken === null) return unchanged
+      const ticks = input.ticks.filter((tick) => screen.rubric.includes(tick))
+      return speak(
+        play,
+        screen,
+        spoken.as === "recorded"
+          ? { as: "recorded", seconds: spoken.seconds, ticks }
+          : { as: "typed", ticks },
+        ctx
+      )
     }
     case "leave": {
-      if (play.reveal !== null) return unchanged
+      if (play.reveal !== null || play.spoken !== null) return unchanged
       return {
         play: { ...play, ended: "left" },
         events: [

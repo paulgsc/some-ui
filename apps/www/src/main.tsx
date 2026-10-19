@@ -11,6 +11,7 @@ import ReactDOM from "react-dom/client"
 import { seedDemo } from "@/lib/demo"
 import { bootDeviceBackend } from "@/lib/device-backend/boot"
 import { driveFiling } from "@/lib/drive-filing"
+import { sweepLeetypeTakes } from "@/lib/leetype-takes"
 import { sweepLensTakes } from "@/lib/lens-takes"
 import { sweepOrphans } from "@/lib/reflection-voice"
 import { sweepSceneVoice } from "@/lib/scene-voice"
@@ -43,11 +44,12 @@ import.meta.glob(
 // before the app renders and anything issues a request. A no-op elsewhere.
 bootDeviceBackend()
 
-// Voice reflections, scene notes and grammar-lens takes, and their audio,
-// each without the other.
+// Voice reflections, scene notes, grammar-lens takes and LeetType takes, and
+// their audio, each without the other.
 if (import.meta.env.VITE_DEVICE_BACKEND === "true") {
   sweepOrphans()
   sweepLensTakes()
+  sweepLeetypeTakes()
   sweepSceneVoice()
   installShareSidecar(driveFiling())
 }

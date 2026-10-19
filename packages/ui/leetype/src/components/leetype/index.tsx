@@ -17,6 +17,7 @@ import type {
   OpenedSessionFile,
   SessionFileStore,
 } from "@leetype/lib/leetype/session-file-pick"
+import type { SpokenTakes } from "@leetype/lib/leetype/spoken-take"
 import type { Round } from "@leetype/types/authored-round"
 import { RoundSchema } from "@leetype/types/authored-round"
 import type { Exercise } from "@leetype/types/exercise"
@@ -96,6 +97,11 @@ type LeetypeProps = {
    * look for them (`lib/leetype/session-file-pick`). Phone surface only.
    */
   sessionFiles?: { store: SessionFileStore; hint?: string }
+  /**
+   * The microphone a session file's spoken answers are taken on
+   * (`lib/leetype/spoken-take`). Absent, an answer can only be typed.
+   */
+  takes?: SpokenTakes
 }
 
 /**
@@ -150,6 +156,7 @@ export const Leetype: FC<LeetypeProps> = ({
   shelf,
   loadRuns,
   sessionFiles,
+  takes,
 }) => {
   const isMobile = useIsMobile()
   const resolved =
@@ -244,6 +251,7 @@ export const Leetype: FC<LeetypeProps> = ({
           key={playing.name}
           fileName={playing.name}
           file={playing.file}
+          {...(takes === undefined ? {} : { ports: { takes } })}
           onEnd={(): void => {
             setPlaying(null)
             onSessionComplete?.()

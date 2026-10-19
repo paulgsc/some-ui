@@ -1,6 +1,7 @@
 import type { FC, JSX } from "react"
-import { useState, useSyncExternalStore } from "react"
+import { useEffect, useState, useSyncExternalStore } from "react"
 import { ReadingScreenView } from "@leetype/components/incident/reading-screen"
+import { RecordScreenView } from "@leetype/components/incident/record-screen"
 import { RoundScreen } from "@leetype/components/incident/round-screen"
 import { SessionEnd } from "@leetype/components/incident/session-end"
 import { SessionStart } from "@leetype/components/incident/session-start"
@@ -57,14 +58,16 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
         log: kept,
         now: ports?.now ?? ((): number => Date.now()),
         newId: ports?.newId ?? ((): string => crypto.randomUUID()),
+        ...(ports?.takes === undefined ? {} : { takes: ports.takes }),
       }),
     }
   })
-  const { play, problem } = useSyncExternalStore(
+  const { play, problem, take } = useSyncExternalStore(
     runtime.subscribe,
     runtime.getSnapshot,
     runtime.getSnapshot
   )
+  useEffect(() => runtime.close, [runtime])
   const ended = play?.ended ?? null
   const page =
     // scroll-intent: reading-page: a round is one scrolling screen
@@ -148,18 +151,19 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
       }
       case "record": {
         return (
-          <article key={play.screen} className="flex flex-col gap-4">
-            <p className="text-pretty text-base font-medium text-foreground">
-              {screen.prompt}
-            </p>
-            <Button
-              variant="outline"
-              className="self-start"
-              onClick={(): void => dispatch({ type: "pass" })}
-            >
-              Pass
-            </Button>
-          </article>
+          <RecordScreenView
+            key={play.screen}
+            screen={screen}
+            spoken={play.spoken}
+            take={take}
+            onRecordStart={runtime.record}
+            onRecordStop={runtime.stopRecording}
+            onTyped={(text): void =>
+              dispatch({ type: "answered", answer: { as: "typed", text } })
+            }
+            onPass={(): void => dispatch({ type: "pass" })}
+            onTicked={(ticks): void => dispatch({ type: "ticked", ticks })}
+          />
         )
       }
       case "info":
@@ -200,7 +204,7 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
         <p className="min-w-0 truncate text-xs text-muted-foreground">
           {play.file.title}
         </p>
-        {ended === null && play.reveal === null && (
+        {ended === null && play.reveal === null && play.spoken === null && (
           <Button
             variant="ghost"
             size="sm"

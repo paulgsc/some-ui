@@ -1,9 +1,11 @@
 import type { BlobShelf, Playback, Recording } from "@some-ui/voice-capture"
 import { describe, expect, it, vi } from "vitest"
 
-import { LENS_TAKES_MAX } from "@/lib/lens-takes/budget"
-import type { LensTake, LensTakesPorts } from "@/lib/lens-takes/runtime"
-import { createLensTakes } from "@/lib/lens-takes/runtime"
+import type { Take, TakesPorts } from "@/lib/takes-desk/runtime"
+import { createTakes } from "@/lib/takes-desk/runtime"
+
+const LENS_TAKES_MAX = 40
+const LIMITS = { max: LENS_TAKES_MAX, maxMs: 30_000 }
 
 function recording(durationMs: number): Recording {
   return {
@@ -20,8 +22,8 @@ function recording(durationMs: number): Recording {
 
 const NOW = 1_760_000_000_000
 
-function ports(listed: Array<LensTake> = []): LensTakesPorts & {
-  listed: Array<LensTake>
+function ports(listed: Array<Take> = []): TakesPorts & {
+  listed: Array<Take>
   audio: BlobShelf
   ended: () => void
 } {
@@ -72,7 +74,7 @@ const settle = (): Promise<void> => new Promise((r) => setTimeout(r, 0))
 
 /** One take of `line`, start to kept. */
 async function take(
-  takes: ReturnType<typeof createLensTakes>,
+  takes: ReturnType<typeof createTakes>,
   line = "school-bus"
 ): Promise<void> {
   takes.start(line)
@@ -81,7 +83,7 @@ async function take(
   await settle()
 }
 
-const kept = (id: string, takenAt: number): LensTake => ({
+const kept = (id: string, takenAt: number): Take => ({
   id,
   line: "older",
   takenAt,
@@ -89,10 +91,10 @@ const kept = (id: string, takenAt: number): LensTake => ({
   mimeType: "audio/webm",
 })
 
-describe("createLensTakes", () => {
+describe("createTakes", () => {
   it("keeps a take of the line, audio then entry, as the item's last", async () => {
     const p = ports()
-    const takes = createLensTakes(p)
+    const takes = createTakes(p, LIMITS)
     await take(takes)
     expect(p.audio.put).toHaveBeenCalledOnce()
     expect(p.listed).toMatchObject([{ id: "t1", line: "school-bus" }])
@@ -105,7 +107,7 @@ describe("createLensTakes", () => {
 
   it("forgets the last take on reset, and never makes a late save the next item's", async () => {
     const p = ports()
-    const takes = createLensTakes(p)
+    const takes = createTakes(p, LIMITS)
     await take(takes)
     takes.reset()
     expect(takes.getSnapshot()).toMatchObject({ last: null, said: null })
@@ -125,7 +127,7 @@ describe("createLensTakes", () => {
       kept(`old-${index}`, NOW - 400 * 24 * 60 * 60 * 1000 - index)
     )
     const p = ports(full)
-    const takes = createLensTakes(p)
+    const takes = createTakes(p, LIMITS)
     expect(takes.getSnapshot().full).toBe(true)
     takes.start("school-bus")
     await settle()
@@ -147,7 +149,7 @@ describe("createLensTakes", () => {
         kept(`old-${index}`, NOW - index)
       )
     )
-    const takes = createLensTakes(p)
+    const takes = createTakes(p, LIMITS)
     expect(takes.getSnapshot().full).toBe(false)
     await take(takes)
     expect(takes.getSnapshot().full).toBe(true)
@@ -156,7 +158,7 @@ describe("createLensTakes", () => {
   it("keeps a take's audio when the phone would not store its letting go", () => {
     const p = ports([kept("old", NOW)])
     p.takes.remove = (): boolean => false
-    createLensTakes(p).letGo(["old"])
+    createTakes(p, LIMITS).letGo(["old"])
     expect(p.audio.remove).not.toHaveBeenCalled()
   })
 
@@ -165,7 +167,7 @@ describe("createLensTakes", () => {
       kept(`old-${index}`, NOW - index)
     )
     const p = ports(almost)
-    const takes = createLensTakes(p)
+    const takes = createTakes(p, LIMITS)
     takes.start("school-bus")
     await settle()
     p.listed.unshift(kept("elsewhere", NOW))
@@ -177,7 +179,7 @@ describe("createLensTakes", () => {
 
   it("ends a playback on stop, as when the page is hidden", async () => {
     const p = ports()
-    const takes = createLensTakes(p)
+    const takes = createTakes(p, LIMITS)
     await take(takes)
     takes.playLast()
     await settle()
@@ -188,7 +190,7 @@ describe("createLensTakes", () => {
   it("starts no playback whose read lands after a stop", async () => {
     const p = ports()
     const play = vi.spyOn(p.player, "play")
-    const takes = createLensTakes(p)
+    const takes = createTakes(p, LIMITS)
     await take(takes)
     takes.playLast()
     // Hidden before the audio is read.
@@ -200,7 +202,7 @@ describe("createLensTakes", () => {
 
   it("says a playback stopped when Mine is tapped again and the take is gone", async () => {
     const p = ports()
-    const takes = createLensTakes(p)
+    const takes = createTakes(p, LIMITS)
     await take(takes)
     takes.playLast()
     await settle()
@@ -213,7 +215,7 @@ describe("createLensTakes", () => {
 
   it("plays the last take back, and says when it ends", async () => {
     const p = ports()
-    const takes = createLensTakes(p)
+    const takes = createTakes(p, LIMITS)
     await take(takes)
     takes.playLast()
     await settle()

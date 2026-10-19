@@ -9,6 +9,7 @@ import { useAuthority } from "@/lib/authority"
 import { AmbientIntentStatus } from "@/lib/intent/render"
 import { loadLeetypeRoundRuns, loadLeetypeRounds } from "@/lib/leetype-content"
 import { phoneSessionFiles } from "@/lib/leetype-files"
+import { phoneSpokenTakes } from "@/lib/leetype-takes"
 import { phoneLensTakes } from "@/lib/lens-takes"
 import {
   setSessionKey,
@@ -42,6 +43,7 @@ const ON_PHONE =
 const PHONE_SHARE = ON_PHONE ? shareDramaPrompt : undefined
 const PHONE_SCENE_VOICE = ON_PHONE ? phoneSceneVoice() : undefined
 const PHONE_LENS_TAKES = ON_PHONE ? phoneLensTakes() : undefined
+const PHONE_SPOKEN_TAKES = ON_PHONE ? phoneSpokenTakes() : undefined
 const PHONE_SESSION_FILES = ON_PHONE ? phoneSessionFiles() : undefined
 
 /** What the player renders: the bound panels, and a note for a web one. */
@@ -146,6 +148,7 @@ export const SessionViewport = ({
           // Fetched in `server` mode, nothing in `static` (bundled).
           loadRuns: loadLeetypeRoundRuns,
           shelf: shelves?.leetype,
+          takes: PHONE_SPOKEN_TAKES,
           // Read at render, as topik's hints are.
           sessionFiles:
             PHONE_SESSION_FILES === undefined
