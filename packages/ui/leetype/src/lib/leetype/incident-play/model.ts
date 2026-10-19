@@ -1,3 +1,4 @@
+import { isRound } from "@leetype/lib/leetype/session-file"
 import type {
   SessionEvent,
   SessionLog,
@@ -7,35 +8,63 @@ import type {
   SessionFile,
   SessionScreen,
 } from "@leetype/types/session-file"
-import { assertNever } from "@some-ui/core-utils"
+import { edgesOf } from "@leetype/types/session-file"
+import { assertNever, median } from "@some-ui/core-utils"
 
 /**
  * Playing a session file (canon v1.2, Def. 1.9, Def. 9.3, Def. 9.4,
- * Prop. 9.4, Prop. 9.6): where the learner is in its graph of screens, and
- * what each input records. `step` is pure; the runtime (`./index.ts`) owns
- * the clock, the ids and the log the events go to.
+ * Def. 9.5, Prop. 9.4, Prop. 9.6): where the learner is in its graph of
+ * screens, and what each input records. `step` is pure; the runtime
+ * (`./index.ts`) owns the clock, the ids and the log the events go to.
  *
  * - A round's reveal follows its commitment. A correct, unhurried pick
  *   reveals the worked confirmation (every option's reason); a struggle
  *   reveals only what the picked option breaks, never which option is
  *   right, and its way on is a placement.
- * - Continuing from a struggle into a reading places it and parks the round;
- *   from a correct pick into a reading, offers it as a pointer.
- * - A parked round's worked confirmation and its return stay one action
- *   away (Prop. 9.4 (d)), and taking either is recorded.
+ * - A struggle that goes on into a reading places it and parks the round
+ *   (a take too); a correct pick that goes on into one offers it as a
+ *   pointer.
+ * - A parked round's worked confirmation, the round itself and its return
+ *   stay one action away (Prop. 9.4 (d)): in the session, from the reveal
+ *   and the placement; across sessions, from the first screen
+ *   (`startPlay`'s `from`, `confirmationTaken`). Taking any is recorded.
  * - The learner may leave at any round boundary: any screen not showing a
  *   reveal or a spoken answer's rubric (Prop. 9.6).
  */
 
 export type PlayForm = "full" | "short"
 
-/** Def. 9.5: aloud (a kept take), or typed where the learner can't speak. */
+/**
+ * Def. 9.5: aloud (a kept take), typed where the learner can't speak, or
+ * passed, the commitment's abstention. Each is followed by the rubric.
+ */
 export type SpokenAnswer =
   | { readonly as: "recorded"; readonly take: string; readonly seconds: number }
   | { readonly as: "typed"; readonly text: string }
+  | { readonly as: "passed" }
 
 /** The short form: one incident and its take (Prop. 9.6). */
-export const SHORT_FORM_MINUTES = 5
+const SHORT_FORM_MINUTES = 5
+
+/** A return or a replay taken from the first screen, on its own. */
+const ONE_ROUND_MINUTES = 2
+
+/** What a session declares it takes (Prop. 9.6), never past the host's time. */
+export function declaredMinutes(
+  file: SessionFile,
+  form: PlayForm,
+  oneRound: boolean,
+  limitMinutes?: number
+): number {
+  const wants = oneRound
+    ? ONE_ROUND_MINUTES
+    : form === "short"
+      ? SHORT_FORM_MINUTES
+      : file.session.budgetMinutes
+  return limitMinutes === undefined
+    ? wants
+    : Math.max(1, Math.min(wants, Math.floor(limitMinutes)))
+}
 
 /** Selections needed before slowness can be judged (Def. 9.4). */
 const MEDIAN_AFTER = 5
@@ -58,6 +87,11 @@ export type Play = {
   readonly file: SessionFile
   readonly session: string
   readonly form: PlayForm
+  /**
+   * `"file"` walks the file; `"round"` is one round taken from the first
+   * screen, its return or itself, with its own placement, then the end.
+   */
+  readonly scope: "file" | "round"
   readonly screen: string
   /** When the screen came into view, on the runtime's clock. */
   readonly shownAt: number
@@ -71,6 +105,8 @@ export type Play = {
   readonly asked: boolean
   /** A spoken answer given on the record screen in view, before its rubric. */
   readonly spoken: SpokenAnswer | null
+  /** Rounds played this session, returns aside: the short form plays one. */
+  readonly rounds: number
   readonly ended: "declared" | "left" | null
 }
 
@@ -95,6 +131,11 @@ export type StepContext = {
   readonly newId: () => string
   /** The learner's median selection time, or `null` before there is one. */
   readonly medianMs: number | null
+  /**
+   * How long the app was in the background since the screen came into
+   * view: it is not time the learner took to choose.
+   */
+  readonly hiddenMs: number
 }
 
 export type Stepped = {
@@ -102,22 +143,20 @@ export type Stepped = {
   readonly events: ReadonlyArray<SessionEvent>
 }
 
-function roundNumber(screen: SessionScreen): number | null {
-  for (const tag of screen.tags ?? []) {
-    const match = /^round:(\d+)$/.exec(tag)
-    if (match) return Number(match[1])
-  }
-  return null
-}
-
-/** The round `screen` returns, given the placement it was reached from. */
+/**
+ * The round `screen` returns, given the placement it was reached from: its
+ * own `returnOf`, or, tagged `parked-return`, the round the placement in
+ * view was placed for, when that is a round.
+ */
 function returnOf(play: Play, screen: SessionScreen): string | null {
   if (screen.type !== "choice") return null
   if (screen.returnOf !== undefined) return screen.returnOf
-  return screen.tags?.includes("parked-return") &&
-    play.placement?.as === "placement"
-    ? play.placement.round
-    : null
+  const placed = play.placement
+  if (!screen.tags?.includes("parked-return") || placed?.as !== "placement") {
+    return null
+  }
+  const round = play.file.screens[placed.round]
+  return round && isRound(round) ? placed.round : null
 }
 
 /** The return the reading placed for `round` leads to, if the file authors one. */
@@ -156,17 +195,12 @@ export function medianSelectionMs(log: SessionLog): number | null {
       ? [event.ms]
       : []
   )
-  if (times.length < MEDIAN_AFTER) return null
-  const sorted = [...times].sort((a, b) => a - b)
-  const middle = Math.floor(sorted.length / 2)
-  return sorted.length % 2 === 1
-    ? (sorted[middle] ?? null)
-    : ((sorted[middle - 1] ?? 0) + (sorted[middle] ?? 0)) / 2
+  return times.length < MEDIAN_AFTER ? null : median(times)
 }
 
 function stamp(
-  play: Play,
-  ctx: StepContext
+  play: Pick<Play, "session">,
+  ctx: Pick<StepContext, "at" | "newId">
 ): { id: string; at: string; session: string } {
   return {
     id: ctx.newId(),
@@ -175,9 +209,20 @@ function stamp(
   }
 }
 
-function firstTagged(file: SessionFile, tag: string): string | null {
-  for (const [id, screen] of Object.entries(file.screens)) {
+/** The first screen tagged `tag` reachable from `from`, `from` included. */
+function nextTagged(
+  file: SessionFile,
+  from: string,
+  tag: string
+): string | null {
+  const seen = new Set<string>()
+  const queue = [from]
+  for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
+    const screen = file.screens[id]
+    if (!screen || seen.has(id)) continue
+    seen.add(id)
     if (screen.tags?.includes(tag)) return id
+    queue.push(...edgesOf(screen))
   }
   return null
 }
@@ -189,9 +234,26 @@ function firstEnd(file: SessionFile): string | null {
   return null
 }
 
+function ended(play: Play, screen: string, ctx: StepContext): Stepped {
+  return {
+    play: { ...play, screen, reveal: null, spoken: null, ended: "declared" },
+    events: [
+      {
+        ...stamp(play, ctx),
+        type: "ended",
+        file: play.fileName,
+        screen,
+        how: "declared",
+      },
+    ],
+  }
+}
+
 /**
- * Brings `target` into view. The short form skips from its first incident
- * to the take; an end screen ends the session as declared.
+ * Brings `target` into view. The short form plays one round: a second one
+ * gives way to the next take on from it, or the end. A round taken from the
+ * first screen ends once it and its placement are done. An end screen ends
+ * the session as declared.
  */
 function enter(
   play: Play,
@@ -199,45 +261,46 @@ function enter(
   ctx: StepContext,
   extra: Partial<Pick<Play, "placement" | "asked">> = {}
 ): Stepped {
-  let screenId = target
-  const screen = play.file.screens[screenId]
-  if (play.form === "short" && screen) {
-    const round = roundNumber(screen)
-    if (round !== null && round >= 2) {
-      screenId =
-        firstTagged(play.file, "speak") ?? firstEnd(play.file) ?? screenId
-    }
+  const placement = extra.placement ?? null
+  const screen = play.file.screens[target]
+  const arriving = { ...play, placement }
+  const freshRound =
+    screen !== undefined &&
+    isRound(screen) &&
+    returnOf(arriving, screen) === null
+  if (
+    play.scope === "round" &&
+    screen?.type !== "reading" &&
+    placement === null
+  ) {
+    return ended(play, play.screen, ctx)
+  }
+  if (play.form === "short" && freshRound && play.rounds >= 1) {
+    const take = nextTagged(play.file, target, "speak")
+    const to = take ?? firstEnd(play.file)
+    return to === null || to === target
+      ? ended(play, play.screen, ctx)
+      : enter(play, to, ctx)
   }
   const next: Play = {
     ...play,
-    screen: screenId,
+    screen: target,
     shownAt: ctx.at,
     reveal: null,
-    placement: extra.placement ?? null,
+    placement,
     asked: extra.asked ?? false,
     spoken: null,
+    rounds: play.rounds + (freshRound ? 1 : 0),
   }
-  if (play.file.screens[screenId]?.type === "end") {
-    return {
-      play: { ...next, ended: "declared" },
-      events: [
-        {
-          ...stamp(play, ctx),
-          type: "ended",
-          file: play.fileName,
-          screen: screenId,
-          how: "declared",
-        },
-      ],
-    }
-  }
-  return { play: next, events: [] }
+  return screen?.type === "end"
+    ? ended(next, target, ctx)
+    : { play: next, events: [] }
 }
 
 /**
- * Starts a session on its file's first screen, or, `returning`, on the
- * return of a round parked in an earlier session, offered because its
- * reading has since been read (Prop. 9.4 (b)).
+ * Starts a session on its file's first screen, or, `from`, on one parked
+ * round taken from the first screen (Prop. 9.4 (d)): its return, offered
+ * once its reading was read or asked for before, or the round itself.
  */
 export function startPlay(
   args: {
@@ -245,19 +308,28 @@ export function startPlay(
     readonly file: SessionFile
     readonly session: string
     readonly form: PlayForm
-    readonly returning?: { readonly round: string; readonly reading: string }
+    /** The most the host's time leaves, in minutes: the length is no longer. */
+    readonly limitMinutes?: number
+    readonly from?: {
+      readonly round: string
+      readonly reading: string | null
+      readonly take: "return" | "round"
+      readonly asked: boolean
+    }
   },
   ctx: StepContext
 ): Stepped {
-  const { returning, ...rest } = args
+  const { from, limitMinutes, ...rest } = args
   const play: Play = {
     ...rest,
+    scope: from ? "round" : "file",
     screen: args.file.start,
     shownAt: ctx.at,
     reveal: null,
     placement: null,
     asked: false,
     spoken: null,
+    rounds: 0,
     ended: null,
   }
   const started: SessionEvent = {
@@ -265,22 +337,52 @@ export function startPlay(
     type: "started",
     file: args.fileName,
     form: args.form,
-    declaredMinutes:
-      args.form === "short"
-        ? SHORT_FORM_MINUTES
-        : args.file.session.budgetMinutes,
+    declaredMinutes: declaredMinutes(
+      args.file,
+      args.form,
+      from !== undefined,
+      limitMinutes
+    ),
   }
-  const placement = returning
-    ? { round: returning.round, as: "placement" as const }
-    : null
-  const target = returning
-    ? returnScreenOf(args.file, returning.round, returning.reading)
-    : null
-  const entered =
-    target === null
-      ? enter(play, args.file.start, ctx)
-      : enter(play, target, ctx, { placement })
+  if (from) {
+    const back =
+      from.take === "return" && from.reading !== null
+        ? returnScreenOf(args.file, from.round, from.reading)
+        : null
+    const placement =
+      back === null ? null : { round: from.round, as: "placement" as const }
+    const screen = back ?? from.round
+    const next: Play = {
+      ...play,
+      screen,
+      placement,
+      asked: from.asked,
+      rounds: back === null ? 1 : 0,
+    }
+    return { play: next, events: [started] }
+  }
+  const entered = enter(play, args.file.start, ctx)
   return { play: entered.play, events: [started, ...entered.events] }
+}
+
+/**
+ * A parked round's worked confirmation, taken from the first screen
+ * (Prop. 9.4 (d)): recorded in the session the first screen opened.
+ */
+export function confirmationTaken(
+  args: {
+    readonly session: string
+    readonly file: string
+    readonly round: string
+  },
+  ctx: Pick<StepContext, "at" | "newId">
+): SessionEvent {
+  return {
+    ...stamp(args, ctx),
+    type: "confirmation-taken",
+    file: args.file,
+    screen: args.round,
+  }
 }
 
 function pick(
@@ -291,7 +393,7 @@ function pick(
 ): Stepped {
   const picked = screen.options[option]
   if (!picked) return { play, events: [] }
-  const ms = Math.max(0, ctx.at - play.shownAt)
+  const ms = Math.max(0, ctx.at - play.shownAt - ctx.hiddenMs)
   const slow = ctx.medianMs !== null && ms > 2 * ctx.medianMs
   const answer: Answer = picked.abstain
     ? { response: "abstained" }
@@ -384,10 +486,12 @@ function act(
   ) {
     return { play, events: [] }
   }
-  const action = (screen.actions ?? [])[index]
+  const actions = screen.actions ?? []
+  const action = actions[index]
   if (!action) return { play, events: [] }
   const events: Array<SessionEvent> = []
-  if (screen.type === "reading") {
+  // A reading's choice is recorded where it offers one: read, save, or not.
+  if (screen.type === "reading" && actions.some((one) => one.effect)) {
     events.push({
       ...stamp(play, ctx),
       type: "reading",
@@ -402,19 +506,8 @@ function act(
     })
   }
   if (action.next === null || action.next === undefined) {
-    return {
-      play: { ...play, ended: "declared" },
-      events: [
-        ...events,
-        {
-          ...stamp(play, ctx),
-          type: "ended",
-          file: play.fileName,
-          screen: play.screen,
-          how: "declared",
-        },
-      ],
-    }
+    const done = ended(play, play.screen, ctx)
+    return { play: done.play, events: [...events, ...done.events] }
   }
   // A placement stays with the screen only into the return it leads to.
   const lands = play.file.screens[action.next]
@@ -429,7 +522,8 @@ type Spoken = Extract<SessionEvent, { type: "spoken" }>["answer"]
 
 /**
  * A spoken answer settled: a pass, or fewer ticks than the screen asks, is
- * a struggle that goes to `onWeak` and places its reading (Def. 9.4).
+ * a struggle that goes to `onWeak`, places its reading and parks the take
+ * (Def. 9.4, Prop. 9.4).
  */
 function speak(
   play: Play,
@@ -451,18 +545,55 @@ function speak(
   ]
   let placement: Play["placement"] = null
   if (weak && play.file.screens[target]?.type === "reading") {
-    events.push({
-      ...stamp(play, ctx),
-      type: "placed",
-      file: play.fileName,
-      screen: play.screen,
-      reading: target,
-      as: "placement",
-    })
+    events.push(
+      {
+        ...stamp(play, ctx),
+        type: "placed",
+        file: play.fileName,
+        screen: play.screen,
+        reading: target,
+        as: "placement",
+      },
+      {
+        ...stamp(play, ctx),
+        type: "parked",
+        file: play.fileName,
+        screen: play.screen,
+      }
+    )
     placement = { round: play.screen, as: "placement" }
   }
   const entered = enter(play, target, ctx, { placement })
   return { play: entered.play, events: [...events, ...entered.events] }
+}
+
+/**
+ * A choice with no correct option only chooses the way on. On a take's
+ * choice, its abstention ("No take today") is the spoken answer's pass.
+ */
+function choose(
+  play: Play,
+  screen: ChoiceScreen,
+  index: number,
+  ctx: StepContext
+): Stepped {
+  const option = screen.options[index]
+  if (!option) return { play, events: [] }
+  const entered = enter(play, option.next, ctx)
+  if (!option.abstain || !screen.tags?.includes("speak")) return entered
+  return {
+    play: entered.play,
+    events: [
+      {
+        ...stamp(play, ctx),
+        type: "spoken",
+        file: play.fileName,
+        screen: play.screen,
+        answer: { as: "passed" },
+      },
+      ...entered.events,
+    ],
+  }
 }
 
 export function step(play: Play, input: PlayInput, ctx: StepContext): Stepped {
@@ -473,12 +604,9 @@ export function step(play: Play, input: PlayInput, ctx: StepContext): Stepped {
   switch (input.type) {
     case "pick": {
       if (screen.type !== "choice" || play.reveal !== null) return unchanged
-      if (screen.options.some((option) => option.correct)) {
-        return pick(play, screen, input.option, ctx)
-      }
-      // A choice with no correct option only chooses the way on.
-      const next = screen.options[input.option]?.next
-      return next === undefined ? unchanged : enter(play, next, ctx)
+      return isRound(screen)
+        ? pick(play, screen, input.option, ctx)
+        : choose(play, screen, input.option, ctx)
     }
     case "continue": {
       return screen.type === "choice" && play.reveal !== null
@@ -493,12 +621,14 @@ export function step(play: Play, input: PlayInput, ctx: StepContext): Stepped {
       return {
         play: { ...play, reveal: { ...reveal, confirmation: true } },
         events: [
-          {
-            ...stamp(play, ctx),
-            type: "confirmation-taken",
-            file: play.fileName,
-            screen: reveal.returnOf ?? play.screen,
-          },
+          confirmationTaken(
+            {
+              session: play.session,
+              file: play.fileName,
+              round: reveal.returnOf ?? play.screen,
+            },
+            ctx
+          ),
         ],
       }
     }
@@ -529,7 +659,7 @@ export function step(play: Play, input: PlayInput, ctx: StepContext): Stepped {
     }
     case "pass": {
       return screen.type === "record" && play.spoken === null
-        ? speak(play, screen, { as: "passed" }, ctx)
+        ? { play: { ...play, spoken: { as: "passed" } }, events: [] }
         : unchanged
     }
     case "answered": {
@@ -546,7 +676,9 @@ export function step(play: Play, input: PlayInput, ctx: StepContext): Stepped {
         screen,
         spoken.as === "recorded"
           ? { as: "recorded", seconds: spoken.seconds, ticks }
-          : { as: "typed", ticks },
+          : spoken.as === "typed"
+            ? { as: "typed", ticks }
+            : { as: "passed" },
         ctx
       )
     }

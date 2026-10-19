@@ -231,7 +231,17 @@ export const Leetype: FC<LeetypeProps> = ({
   const activeDurationMs =
     exercise !== undefined ? sessionDurationMs : (picked?.remainingMs ?? 0)
 
-  const [playing, setPlaying] = useState<OpenedSessionFile | null>(null)
+  // With what the term leaves at the pick: the session declares no more.
+  const [playing, setPlaying] = useState<
+    (OpenedSessionFile & { limitMinutes: number }) | null
+  >(null)
+  const handlePlay = useCallback(
+    (opened: OpenedSessionFile): void => {
+      const left = sessionDurationMs - (performance.now() - mountedAt)
+      setPlaying({ ...opened, limitMinutes: Math.max(0, left) / 60_000 })
+    },
+    [mountedAt, sessionDurationMs]
+  )
 
   // Only a picker-sourced choice returns to the picker on completion.
   const handleComplete = useCallback(
@@ -242,20 +252,22 @@ export const Leetype: FC<LeetypeProps> = ({
     [onSessionComplete, exercise]
   )
 
-  // On a phone: a session file the learner chose to play (Def. 1.9), or
-  // the Def. 1.7 rounds until one is.
-  if (playsRounds && playing !== null) {
+  // A session file the learner chose to play (Def. 1.9), kept through a
+  // turn of the phone that widens the window past the breakpoint.
+  if (playing !== null) {
     return (
       <div className={cn(appearanceClassName(appearance), "absolute inset-0")}>
         <IncidentSession
           key={playing.name}
           fileName={playing.name}
           file={playing.file}
+          limitMinutes={playing.limitMinutes}
           {...(takes === undefined ? {} : { ports: { takes } })}
           onEnd={(): void => {
             setPlaying(null)
             onSessionComplete?.()
           }}
+          onBack={(): void => setPlaying(null)}
         />
       </div>
     )
@@ -272,7 +284,7 @@ export const Leetype: FC<LeetypeProps> = ({
         {sessionFiles !== undefined && (
           <SessionFilePicker
             store={sessionFiles.store}
-            onPlay={setPlaying}
+            onPlay={handlePlay}
             {...(sessionFiles.hint === undefined
               ? {}
               : { hint: sessionFiles.hint })}

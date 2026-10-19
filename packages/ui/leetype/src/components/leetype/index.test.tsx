@@ -232,6 +232,63 @@ describe("Leetype", () => {
     expect(screen.getByText("Add a session from storage")).toBeTruthy()
   })
 
+  it("keeps a session file in play through a turn of the phone, and leaves it on Not now", async () => {
+    // A window whose verdict the test turns, telling those listening.
+    let mobile = true
+    const listeners = new Set<EventListenerOrEventListenerObject>()
+    vi.stubGlobal(
+      "matchMedia",
+      (query: string): MediaQueryList => ({
+        get matches(): boolean {
+          return mobile
+        },
+        media: query,
+        onchange: null,
+        addEventListener: (
+          _type: string,
+          listener: EventListenerOrEventListenerObject
+        ): void => void listeners.add(listener),
+        removeEventListener: (): void => {},
+        addListener: (): void => {},
+        removeListener: (): void => {},
+        dispatchEvent: (): boolean => false,
+      })
+    )
+    const raw = SessionFileSchema.parse(AB_FIXTURES[1]?.raw)
+    const store = {
+      list: vi.fn(() =>
+        Promise.resolve([
+          {
+            name: "t1-01",
+            title: raw.title,
+            oneLine: raw.oneLine,
+            pickedAt: "2026-10-18T21:00:00.000Z",
+          },
+        ])
+      ),
+      keep: vi.fn(),
+      read: vi.fn(() => Promise.resolve(JSON.stringify(raw))),
+    }
+    render(<Leetype sessionFiles={{ store }} />)
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: new RegExp(`Play ${raw.title}`),
+      })
+    )
+    await screen.findByRole("button", { name: /the whole session/ })
+
+    act(() => {
+      mobile = false
+      for (const listener of listeners) {
+        if (typeof listener === "function") listener(new Event("change"))
+      }
+    })
+    expect(screen.queryByLabelText("Typing input")).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Not now" }))
+    // Wide now, so leaving lands on the wide surface.
+    expect(screen.getByText("Choose what to practice")).toBeInTheDocument()
+  })
+
   it("starts a session once the learner picks an exercise from the picker", () => {
     setViewport(false)
     render(<Leetype />)

@@ -28,6 +28,7 @@ function clock(median: number | null = null): {
       at: T0 + after,
       newId: () => `e${String(++id)}`,
       medianMs: median,
+      hiddenMs: 0,
     }),
   }
 }
@@ -249,6 +250,7 @@ describe("an incident session's steps", () => {
       { type: "pick", option: 0 },
       ON,
       { type: "pass" },
+      { type: "ticked", ticks: [] },
       { type: "act", action: 2 },
     ])
     expect(events).toContainEqual(

@@ -1,4 +1,5 @@
 import type { FC } from "react"
+import { Glosses } from "@leetype/components/incident/glosses"
 import type { SessionScreen } from "@leetype/types/session-file"
 import { Button } from "@some-ui/shared"
 import { ExternalLink } from "lucide-react"
@@ -7,6 +8,7 @@ type ReadingScreen = Extract<SessionScreen, { type: "reading" }>
 
 type ReadingScreenProps = {
   screen: ReadingScreen
+  glossary: Readonly<Record<string, string>>
   /** How the reading was offered: after a struggle, or after a correct pick. */
   offered: "placement" | "pointer" | null
   /** Whether the round it was placed for can be tried again now (Prop. 9.4 (d)). */
@@ -24,6 +26,7 @@ type ReadingScreenProps = {
  */
 export const ReadingScreenView: FC<ReadingScreenProps> = ({
   screen,
+  glossary,
   offered,
   canAskReturn,
   onAct,
@@ -54,6 +57,7 @@ export const ReadingScreenView: FC<ReadingScreenProps> = ({
           {screen.body}
         </p>
       )}
+      <Glosses terms={screen.glosses} glossary={glossary} />
       <p className="text-pretty text-sm text-muted-foreground">
         {source.author}, <cite>{source.title}</cite> ({source.year}),{" "}
         {source.where}. About {source.minutes} min.
@@ -76,7 +80,7 @@ export const ReadingScreenView: FC<ReadingScreenProps> = ({
       <div className="flex flex-col gap-2">
         {screen.actions.map((action, index) => (
           <Button
-            key={action.label}
+            key={`${String(index)} ${action.label}`}
             variant={index === 0 ? "default" : "outline"}
             className="h-auto min-h-11 whitespace-normal text-pretty py-2"
             onClick={(): void => onAct(index)}
@@ -86,8 +90,8 @@ export const ReadingScreenView: FC<ReadingScreenProps> = ({
         ))}
         {canAskReturn && (
           <Button
-            variant="link"
-            className="h-auto self-start p-0"
+            variant="outline"
+            className="min-h-11 self-start"
             onClick={onAskReturn}
           >
             Try the round again with new numbers

@@ -42,7 +42,7 @@ function screenName(file: SessionFile, id: string): string {
 function nameIn(here: Here, file: string, id: string): string {
   return file === here.fileName
     ? screenName(here.file, id)
-    : `${id}, in ${file}`
+    : `a screen of the session ${file}`
 }
 
 type Line = { readonly key: string; readonly text: string }
@@ -120,43 +120,61 @@ export function placeOf(log: SessionLog, here: Here): string {
     : "Last time it stopped before the first round."
 }
 
-export type ReadyReturn = {
+/** A round of this file parked and not since solved, and what it waits on. */
+export type ParkedRound = {
   readonly round: string
-  readonly reading: string
   readonly name: string
+  readonly reading: string | null
+  /** Its reading was read since it was last placed or returned. */
+  readonly read: boolean
+  /** The file authors a return for it (`returnScreenOf`). */
+  readonly returns: boolean
 }
 
 /**
- * The file's parked rounds whose reading has been read since it was placed,
- * and whose return the file authors: the returns the shell offers unasked.
+ * The file's rounds still parked, across every session (`ledgerOf`), each
+ * reachable from the first screen (Prop. 9.4 (d)). A take parked by a weak
+ * answer is listed in the ledger, not here: it has no round to replay.
  */
-export function returnsReady(
+export function parkedRounds(
   log: SessionLog,
   here: Here
-): ReadonlyArray<ReadyReturn> {
+): ReadonlyArray<ParkedRound> {
   const session = lastSession(log)
   if (session === null) return []
   return ledgerOf(log, session).parked.flatMap(({ file, screen, reading }) => {
-    if (file !== here.fileName || reading === null) return []
-    let placedAt = -Infinity
-    let readAt = -Infinity
-    for (const event of log) {
+    const round = here.file.screens[screen]
+    if (file !== here.fileName || round?.type !== "choice") return []
+    // Read after it was last placed, and after it was last returned: a
+    // return answered since waits on its reading again. The log is in the
+    // order things happened, so its order says which came last.
+    let since = -1
+    let readAt = -1
+    for (const [index, event] of log.entries()) {
       if (event.file !== file) continue
-      const at = Date.parse(event.at)
-      if (event.type === "placed" && event.screen === screen) {
-        placedAt = Math.max(placedAt, at)
+      if (
+        (event.type === "placed" || event.type === "returned") &&
+        event.screen === screen
+      ) {
+        since = index
       } else if (
         event.type === "reading" &&
         event.reading === reading &&
         event.action === "read"
       ) {
-        readAt = Math.max(readAt, at)
+        readAt = index
       }
     }
-    if (readAt < placedAt) return []
-    const target = returnScreenOf(here.file, screen, reading)
-    return target === null
-      ? []
-      : [{ round: screen, reading, name: screenName(here.file, screen) }]
+    return [
+      {
+        round: screen,
+        name: screenName(here.file, screen),
+        reading,
+        read: reading !== null && readAt > since,
+        returns:
+          reading !== null &&
+          returnScreenOf(here.file, screen, reading) !== null,
+      },
+    ]
   })
 }

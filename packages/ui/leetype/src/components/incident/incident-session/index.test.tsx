@@ -4,7 +4,7 @@ import { createSessionLogStore } from "@leetype/lib/leetype/session-log"
 import type { ChoiceScreen } from "@leetype/types/session-file"
 import { SessionFileSchema } from "@leetype/types/session-file"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
 const FILE = SessionFileSchema.parse(AB_FIXTURES[1]?.raw)
@@ -150,7 +150,7 @@ describe("IncidentSession", () => {
     expect(screen.queryByText("Your take")).toBeNull()
   })
 
-  it("offers a parked round back once its reading has been read", () => {
+  it("keeps a parked round one tap away on the first screen: its worked answer, the round, its return", () => {
     const log = createSessionLogStore(memoryStorage())
     mount(log)
     fireEvent.click(
@@ -162,10 +162,76 @@ describe("IncidentSession", () => {
     fireEvent.click(screen.getByRole("button", { name: "End here" }))
     cleanup()
 
-    // Saved, not read: nothing comes back yet.
     render(<IncidentSession fileName="t1-01" file={FILE} ports={{ log }} />)
-    expect(screen.queryByText(/with new numbers/)).toBeNull()
-    fireEvent.click(screen.getByRole("button", { name: /the whole session/ }))
+    const waiting = screen.getByRole("region", { name: "Waiting on a reading" })
+    expect(waiting.textContent).not.toMatch(/you read what it was waiting on/)
+    fireEvent.click(
+      screen.getByRole("button", { name: "Show the worked answer" })
+    )
+    expect(screen.getByText(/^Holds:/)).toBeTruthy()
+    expect(log.getSnapshot().log.at(-1)).toMatchObject({
+      type: "confirmation-taken",
+      screen: "s02",
+    })
+
+    // Unread, a return is the learner's ask (Prop. 9.4 (d)).
+    fireEvent.click(
+      screen.getByRole("button", { name: "Try it with new numbers" })
+    )
+    const back = choice("s04")
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: back.options.find((option) => option.correct)?.label,
+      })
+    )
+    expect(log.getSnapshot().log.at(-1)).toMatchObject({
+      type: "returned",
+      screen: "s02",
+      variant: "s04",
+      asked: true,
+    })
+  })
+
+  it("plays a parked round again from the first screen, that round only, and it still waits", () => {
+    const log = createSessionLogStore(memoryStorage())
+    mount(log)
+    fireEvent.click(
+      screen.getByRole("button", { name: /Start with incident 1/ })
+    )
+    fireEvent.click(screen.getByRole("button", { name: WRONG?.label }))
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }))
+    fireEvent.click(screen.getByRole("button", { name: /Save it/ }))
+    fireEvent.click(screen.getByRole("button", { name: "End here" }))
+    cleanup()
+
+    render(<IncidentSession fileName="t1-01" file={FILE} ports={{ log }} />)
+    fireEvent.click(screen.getByRole("button", { name: "Play it again" }))
+    fireEvent.click(screen.getByRole("button", { name: RIGHT?.label }))
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }))
+    // The round's own reading still comes; past it, the session ends.
+    expect(screen.getByText("If you want more")).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", { name: "Skip" }))
+    expect(screen.getByText("This session has ended.")).toBeTruthy()
+    const types = log.getSnapshot().log.map((event) => event.type)
+    expect(types.slice(types.lastIndexOf("started"))).toEqual([
+      "started",
+      "picked",
+      "placed",
+      "reading",
+      "ended",
+    ])
+    cleanup()
+
+    // The same numbers again are no return: the round still waits.
+    render(<IncidentSession fileName="t1-01" file={FILE} ports={{ log }} />)
+    expect(
+      screen.getByRole("region", { name: "Waiting on a reading" })
+    ).toBeTruthy()
+  })
+
+  it("offers a return unasked once its reading is read, and waits on the reading again after it", () => {
+    const log = createSessionLogStore(memoryStorage())
+    mount(log)
     fireEvent.click(
       screen.getByRole("button", { name: /Start with incident 1/ })
     )
@@ -178,19 +244,33 @@ describe("IncidentSession", () => {
 
     render(<IncidentSession fileName="t1-01" file={FILE} ports={{ log }} />)
     expect(screen.getByText(/Last time you ended at/)).toBeTruthy()
-    fireEvent.click(screen.getByRole("button", { name: /with new numbers/ }))
+    expect(screen.getByText(/you read what it was waiting on/)).toBeTruthy()
+    fireEvent.click(
+      screen.getByRole("button", { name: "Try it with new numbers" })
+    )
     const back = choice("s04")
     fireEvent.click(
       screen.getByRole("button", {
-        name: back.options.find((option) => option.correct)?.label,
+        name: back.options.find((option) => option.correct === false)?.label,
       })
     )
-    expect(log.getSnapshot().log.at(-1)).toMatchObject({
-      type: "returned",
-      screen: "s02",
-      variant: "s04",
-      asked: false,
-    })
+    expect(log.getSnapshot().log).toContainEqual(
+      expect.objectContaining({
+        type: "returned",
+        screen: "s02",
+        variant: "s04",
+        asked: false,
+      })
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }))
+    cleanup()
+
+    // Missed again, it waits on its reading again, not on the old read.
+    render(<IncidentSession fileName="t1-01" file={FILE} ports={{ log }} />)
+    expect(
+      screen.getByRole("region", { name: "Waiting on a reading" })
+    ).toBeTruthy()
+    expect(screen.queryByText(/you read what it was waiting on/)).toBeNull()
   })
 
   it("takes a typed answer where there is no microphone, then its rubric, then goes on", () => {
@@ -225,5 +305,99 @@ describe("IncidentSession", () => {
       })
     )
     expect(screen.getByText("This session has ended.")).toBeTruthy()
+  })
+
+  it("leaves the first screen without starting, on Not now", () => {
+    const onBack = vi.fn()
+    const log = createSessionLogStore(memoryStorage())
+    render(
+      <IncidentSession
+        fileName="t1-01"
+        file={FILE}
+        ports={{ log }}
+        onBack={onBack}
+      />
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Not now" }))
+    expect(onBack).toHaveBeenCalled()
+    expect(log.getSnapshot().log).toEqual([])
+  })
+
+  it("glosses a term on any kind of screen that declares it", () => {
+    const first = FILE.screens.s01
+    if (first?.type !== "info") throw new Error("s01 is not an info screen")
+    const glossed = SessionFileSchema.parse({
+      ...FILE,
+      glossary: { quorum: "a majority of the voters" },
+      screens: { ...FILE.screens, s01: { ...first, glosses: ["quorum"] } },
+    })
+    render(
+      <IncidentSession
+        fileName="t1-01"
+        file={glossed}
+        ports={{ log: createSessionLogStore(memoryStorage()) }}
+      />
+    )
+    fireEvent.click(screen.getByRole("button", { name: /the whole session/ }))
+    expect(screen.getByText("quorum")).toBeTruthy()
+    expect(screen.getByText(": a majority of the voters")).toBeTruthy()
+  })
+
+  it("shows the rubric after a pass, then goes on", () => {
+    const log = createSessionLogStore(memoryStorage())
+    render(<IncidentSession fileName="t1-01" file={FILE} ports={{ log }} />)
+    fireEvent.click(screen.getByRole("button", { name: /one incident/ }))
+    fireEvent.click(
+      screen.getByRole("button", { name: /Start with incident 1/ })
+    )
+    fireEvent.click(screen.getByRole("button", { name: RIGHT?.label }))
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }))
+    fireEvent.click(screen.getByRole("button", { name: "Skip" }))
+    fireEvent.click(screen.getByRole("button", { name: /^Incident 1/ }))
+
+    const take = FILE.screens.s15
+    if (take?.type !== "record") throw new Error("s15 is not a take")
+    fireEvent.click(screen.getByRole("button", { name: "Pass" }))
+    expect(screen.getByText(take.rubric[0] ?? "")).toBeTruthy()
+    expect(screen.queryByRole("checkbox")).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }))
+    expect(log.getSnapshot().log).toContainEqual(
+      expect.objectContaining({
+        type: "spoken",
+        screen: "s15",
+        answer: { as: "passed" },
+      })
+    )
+  })
+
+  it("says when the declared length has run, and plays on", () => {
+    const fire: Array<() => void> = []
+    render(
+      <IncidentSession
+        fileName="t1-01"
+        file={FILE}
+        limitMinutes={4}
+        ports={{
+          log: createSessionLogStore(memoryStorage()),
+          after: (_ms, fired): (() => void) => {
+            fire.push(fired)
+            return (): void => undefined
+          },
+        }}
+      />
+    )
+    expect(
+      screen.getByRole("button", { name: "About 4 minutes: the whole session" })
+    ).toBeTruthy()
+    // Cut to the same four minutes, the short form is no shorter.
+    expect(screen.queryByRole("button", { name: /one incident/ })).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: /the whole session/ }))
+    act(() => fire[0]?.())
+    expect(screen.getByRole("status").textContent).toMatch(
+      /That is the time you set/
+    )
+    expect(
+      screen.getByRole("button", { name: /Start with incident 1/ })
+    ).toBeTruthy()
   })
 })

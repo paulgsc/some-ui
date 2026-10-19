@@ -115,7 +115,7 @@ describe("a spoken answer", () => {
     expect(runtime.getSnapshot().play?.ended).toBeNull()
 
     runtime.dispatch({ type: "ticked", ticks: [RUBRIC[1] ?? ""] })
-    expect(log.getSnapshot().log.slice(-2)).toEqual([
+    expect(log.getSnapshot().log.slice(-3)).toEqual([
       expect.objectContaining({
         type: "spoken",
         answer: { as: "typed", ticks: [RUBRIC[1]] },
@@ -126,6 +126,7 @@ describe("a spoken answer", () => {
         reading: "s18",
         as: "placement",
       }),
+      expect.objectContaining({ type: "parked", screen: "s15" }),
     ])
     expect(takes.note).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -140,8 +141,13 @@ describe("a spoken answer", () => {
     const { runtime } = atTheTake(takes)
     runtime.record()
     runtime.dispatch({ type: "pass" })
+    // A pass shows the rubric before going on (Def. 9.5).
+    expect(runtime.getSnapshot().play?.spoken).toEqual({ as: "passed" })
+    expect(runtime.getSnapshot().play?.screen).toBe("s15")
+    runtime.dispatch({ type: "ticked", ticks: [] })
     takes.land("late", 5_000)
     expect(runtime.getSnapshot().play?.screen).toBe("s18")
     expect(runtime.getSnapshot().play?.spoken).toBeNull()
+    expect(takes.note).not.toHaveBeenCalled()
   })
 })

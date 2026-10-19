@@ -4,7 +4,7 @@ import { createSessionLogStore } from "@leetype/lib/leetype/session-log"
 import { SessionFileSchema } from "@leetype/types/session-file"
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 const FILE = SessionFileSchema.parse(AB_FIXTURES[1]?.raw)
 
@@ -50,5 +50,77 @@ describe("IncidentPlayRuntime", () => {
     runtime.start({ fileName: "t1-01", file: FILE, form: "full" })
     expect(runtime.getSnapshot().play?.screen).toBe("s01")
     expect(runtime.getSnapshot().problem).toMatch(/can't read its session log/)
+  })
+
+  it("offers the end once the declared length runs, cut to the host's time", () => {
+    const fire: Array<() => void> = []
+    const cancel = vi.fn()
+    const after = vi.fn((_ms: number, fired: () => void) => {
+      fire.push(fired)
+      return cancel
+    })
+    const log = createSessionLogStore(memoryStorage())
+    const runtime = new IncidentPlayRuntime({
+      log,
+      now: (): number => 0,
+      newId: (): string => crypto.randomUUID(),
+      after,
+    })
+    runtime.start({
+      fileName: "t1-01",
+      file: FILE,
+      form: "full",
+      limitMinutes: 3,
+    })
+    expect(after).toHaveBeenCalledWith(180_000, expect.any(Function))
+    expect(log.getSnapshot().log[0]).toMatchObject({ declaredMinutes: 3 })
+    expect(runtime.getSnapshot().timeUp).toBe(false)
+
+    fire[0]?.()
+    // Offered, never forced: the session goes on.
+    expect(runtime.getSnapshot()).toMatchObject({
+      timeUp: true,
+      play: { screen: "s01", ended: null },
+    })
+    runtime.close()
+    expect(cancel).toHaveBeenCalled()
+  })
+
+  it("leaves the time the app spends in the background out of a pick's time", () => {
+    let now = 0
+    let hidden = false
+    const listeners = new Set<() => void>()
+    const log = createSessionLogStore(memoryStorage())
+    const runtime = new IncidentPlayRuntime({
+      log,
+      now: (): number => now,
+      newId: (): string => crypto.randomUUID(),
+      after: () => (): void => undefined,
+      visibility: {
+        hidden: (): boolean => hidden,
+        subscribe: (listener): (() => void) => {
+          listeners.add(listener)
+          return (): void => void listeners.delete(listener)
+        },
+      },
+    })
+    const toggle = (to: boolean): void => {
+      hidden = to
+      for (const listener of listeners) listener()
+    }
+    runtime.start({ fileName: "t1-01", file: FILE, form: "full" })
+    runtime.dispatch({ type: "act", action: 0 })
+    now += 2000
+    toggle(true)
+    now += 60_000
+    toggle(false)
+    now += 1000
+    runtime.dispatch({ type: "pick", option: 1 })
+    expect(log.getSnapshot().log.at(-1)).toMatchObject({
+      type: "picked",
+      ms: 3000,
+    })
+    runtime.close()
+    expect(listeners.size).toBe(0)
   })
 })

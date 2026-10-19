@@ -1,5 +1,6 @@
 import type { FC, JSX } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
+import { Glosses } from "@leetype/components/incident/glosses"
 import { ReadingScreenView } from "@leetype/components/incident/reading-screen"
 import { RecordScreenView } from "@leetype/components/incident/record-screen"
 import { RoundScreen } from "@leetype/components/incident/round-screen"
@@ -7,14 +8,15 @@ import { SessionEnd } from "@leetype/components/incident/session-end"
 import { SessionStart } from "@leetype/components/incident/session-start"
 import type { IncidentPlayPorts } from "@leetype/lib/leetype/incident-play"
 import {
+  declaredMinutes,
   IncidentPlayRuntime,
+  pageVisibility,
   returnFrom,
-  SHORT_FORM_MINUTES,
 } from "@leetype/lib/leetype/incident-play"
 import {
   endLines,
+  parkedRounds,
   placeOf,
-  returnsReady,
 } from "@leetype/lib/leetype/incident-play/words"
 import {
   createSessionLogStore,
@@ -30,8 +32,12 @@ type IncidentSessionProps = {
   file: SessionFile
   /** Read once, at mount: the runtime is made once per session. */
   ports?: Partial<IncidentPlayPorts>
+  /** The most the host's time leaves, in minutes: the length is no longer. */
+  limitMinutes?: number
   /** The learner is done with an ended session: by its end screen, or by leaving. */
   onEnd?: (how: "declared" | "left") => void
+  /** The learner leaves the first screen without starting. */
+  onBack?: () => void
   className?: string
 }
 
@@ -47,7 +53,9 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
   fileName,
   file,
   ports,
+  limitMinutes,
   onEnd,
+  onBack,
   className,
 }) => {
   const [{ runtime, log }] = useState(() => {
@@ -58,11 +66,13 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
         log: kept,
         now: ports?.now ?? ((): number => Date.now()),
         newId: ports?.newId ?? ((): string => crypto.randomUUID()),
+        visibility: ports?.visibility ?? pageVisibility,
         ...(ports?.takes === undefined ? {} : { takes: ports.takes }),
+        ...(ports?.after === undefined ? {} : { after: ports.after }),
       }),
     }
   })
-  const { play, problem, take } = useSyncExternalStore(
+  const { play, problem, take, timeUp } = useSyncExternalStore(
     runtime.subscribe,
     runtime.getSnapshot,
     runtime.getSnapshot
@@ -74,27 +84,40 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
     // (Def. 9.3); the page scrolls and the job stays pinned.
     "flex h-full flex-col overflow-y-auto px-4 pb-6"
 
+  const limit = limitMinutes === undefined ? {} : { limitMinutes }
+
   if (play === null) {
     const here = { fileName, file }
     const kept = log.getSnapshot().log
+    const parked = parkedRounds(kept, here).flatMap((round) => {
+      const screen = file.screens[round.round]
+      return screen?.type === "choice" ? [{ ...round, screen }] : []
+    })
     return (
       <div data-scroll-intent="reading-page" className={cn(page, className)}>
         <SessionStart
           title={file.title}
           oneLine={file.oneLine}
           place={placeOf(kept, here)}
-          fullMinutes={file.session.budgetMinutes}
-          shortMinutes={SHORT_FORM_MINUTES}
-          returns={returnsReady(kept, here)}
-          onStart={(form): void => runtime.start({ fileName, file, form })}
-          onReturn={({ round, reading }): void =>
+          fullMinutes={declaredMinutes(file, "full", false, limitMinutes)}
+          shortMinutes={declaredMinutes(file, "short", false, limitMinutes)}
+          parked={parked}
+          onStart={(form): void =>
+            runtime.start({ fileName, file, form, ...limit })
+          }
+          onRound={({ round, reading, read }, take): void =>
             runtime.start({
               fileName,
               file,
-              form: "full",
-              returning: { round, reading },
+              form: "short",
+              ...limit,
+              from: { round, reading, take, asked: !read },
             })
           }
+          onConfirmation={({ round }): void =>
+            runtime.takeConfirmation(fileName, round)
+          }
+          {...(onBack === undefined ? {} : { onBack })}
         />
       </div>
     )
@@ -113,7 +136,10 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
             })}
           />
           {ended !== null && onEnd !== undefined && (
-            <Button className="self-start" onClick={(): void => onEnd(ended)}>
+            <Button
+              className="min-h-11 self-start"
+              onClick={(): void => onEnd(ended)}
+            >
               Done
             </Button>
           )}
@@ -124,7 +150,6 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
       case "choice": {
         return (
           <RoundScreen
-            key={play.screen}
             screen={screen}
             glossary={play.file.glossary ?? {}}
             reveal={play.reveal}
@@ -139,8 +164,8 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
       case "reading": {
         return (
           <ReadingScreenView
-            key={play.screen}
             screen={screen}
+            glossary={play.file.glossary ?? {}}
             offered={play.placement?.as ?? null}
             canAskReturn={returnFrom(play) !== null}
             onAct={(action): void => dispatch({ type: "act", action })}
@@ -152,8 +177,8 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
       case "record": {
         return (
           <RecordScreenView
-            key={play.screen}
             screen={screen}
+            glossary={play.file.glossary ?? {}}
             spoken={play.spoken}
             take={take}
             onRecordStart={runtime.record}
@@ -169,7 +194,12 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
       case "info":
       case "end": {
         return (
-          <article key={play.screen} className="flex flex-col gap-4">
+          <article className="flex flex-col gap-4">
+            {screen.pinned !== undefined && (
+              <p className="sticky top-0 z-10 -mx-4 border-b border-border bg-background px-4 py-2 text-pretty text-sm font-medium text-foreground">
+                {screen.pinned}
+              </p>
+            )}
             {screen.title !== undefined && (
               <h2 className="text-pretty text-base font-semibold text-foreground">
                 {screen.title}
@@ -180,9 +210,13 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
                 {screen.body}
               </p>
             )}
+            <Glosses
+              terms={screen.glosses}
+              glossary={play.file.glossary ?? {}}
+            />
             {(screen.actions ?? []).map((action, index) => (
               <Button
-                key={action.label}
+                key={`${String(index)} ${action.label}`}
                 className="h-auto min-h-11 self-start whitespace-normal text-pretty py-2"
                 onClick={(): void => dispatch({ type: "act", action: index })}
               >
@@ -199,7 +233,12 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
   })()
 
   return (
-    <div data-scroll-intent="reading-page" className={cn(page, className)}>
+    // Keyed by screen: each opens at its top, not where the last was left.
+    <div
+      key={`${play.screen} ${ended ?? ""}`}
+      data-scroll-intent="reading-page"
+      className={cn(page, className)}
+    >
       <header className="flex items-center justify-between gap-3 py-2">
         <p className="min-w-0 truncate text-xs text-muted-foreground">
           {play.file.title}
@@ -207,13 +246,21 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
         {ended === null && play.reveal === null && play.spoken === null && (
           <Button
             variant="ghost"
-            size="sm"
+            className="min-h-11"
             onClick={(): void => dispatch({ type: "leave" })}
           >
             End here
           </Button>
         )}
       </header>
+      {timeUp && ended === null && (
+        <p
+          role="status"
+          className="pb-2 text-pretty text-sm text-muted-foreground"
+        >
+          That is the time you set. End here to see where you are, or go on.
+        </p>
+      )}
       {problem !== null && (
         <p role="alert" className="pb-2 text-sm text-destructive">
           {problem}
