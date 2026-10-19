@@ -14,7 +14,7 @@ import { boundedList } from "@/lib/bounded-list"
 import type { PhoneTakes, Take, TakeLimits } from "./runtime"
 import { createTakes } from "./runtime"
 
-export type { PhoneTakes, Take } from "./runtime"
+export type { Take } from "./runtime"
 
 const isTake = (value: unknown): value is Take =>
   typeof value === "object" &&
@@ -49,7 +49,7 @@ export type TakesDesk = {
 }
 
 /** The shelf's own cap: a full desk of full-length takes at the soundbites' bitrate. */
-export function maxBytes(limits: TakeLimits): number {
+function maxBytes(limits: TakeLimits): number {
   return limits.max * (limits.maxMs / 1000) * (SOUNDBITE_BITS_PER_SECOND / 8)
 }
 
