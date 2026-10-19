@@ -7,11 +7,16 @@
 
 import { readFileSync } from "node:fs"
 import {
+  checkRetentionTriggers,
   checkRs1,
   describeWorkflowViolation,
+  findArtifactFamilyViolations,
+  findBuildRecordViolations,
+  findCacheViolations,
   findRetentionViolations,
   findRs2Violations,
   isGuardedWorkflowPath,
+  RETENTION_FILE,
   RS1_FILE,
   rs1Fingerprint,
   type WorkflowViolation,
@@ -267,6 +272,127 @@ describe("findRs2Violations", () => {
   })
 })
 
+describe("findArtifactFamilyViolations", () => {
+  it("accepts a declared name kept for its family's TTL", () => {
+    const text = steps(
+      "      - uses: actions/upload-artifact@v7",
+      "        with:",
+      "          name: some-ui-apk-${{ github.sha }}",
+      "          retention-days: 30"
+    )
+    expect(findArtifactFamilyViolations(F, text)).toEqual([])
+  })
+
+  it("reads upload-pages-artifact's default name", () => {
+    const text = steps(
+      "      - uses: actions/upload-pages-artifact@v5",
+      "        with:",
+      "          retention-days: 1"
+    )
+    expect(findArtifactFamilyViolations(F, text)).toEqual([])
+  })
+
+  it("reports an undeclared name and a TTL that disagrees with its family", () => {
+    const text = steps(
+      "      - uses: actions/upload-artifact@v7",
+      "        with:",
+      "          name: mystery",
+      "          retention-days: 1",
+      "      - uses: actions/upload-artifact@v7",
+      "        with:",
+      "          name: some-ui-apk-${{ github.sha }}",
+      "          retention-days: 7"
+    )
+    expect(findArtifactFamilyViolations(F, text)).toEqual([
+      { kind: "artifactUndeclared", file: F, line: 4, name: "mystery" },
+      {
+        kind: "artifactTtl",
+        file: F,
+        line: 8,
+        name: "some-ui-apk-${{ github.sha }}",
+        value: "7",
+        ttlDays: 30,
+      },
+    ])
+  })
+})
+
+describe("findCacheViolations", () => {
+  it("accepts a key under a declared prefix, for restore and save too", () => {
+    const text = steps(
+      "      - uses: actions/cache@v6",
+      "        with:",
+      "          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}",
+      "      - uses: actions/cache/restore@v6",
+      "        with:",
+      "          key: cargo-target-${{ runner.os }}-x"
+    )
+    expect(findCacheViolations(F, text)).toEqual([])
+  })
+
+  it("reports a key no family declares", () => {
+    const text = steps(
+      "      - uses: actions/cache/save@v6",
+      "        with:",
+      "          key: turbo-${{ github.sha }}"
+    )
+    expect(findCacheViolations(F, text)).toEqual([
+      {
+        kind: "cacheUndeclared",
+        file: F,
+        line: 4,
+        key: "turbo-${{ github.sha }}",
+      },
+    ])
+  })
+})
+
+describe("findBuildRecordViolations", () => {
+  it("requires a build-push step to turn off its build record", () => {
+    const off = steps(
+      "      - uses: docker/build-push-action@v7",
+      "        env:",
+      "          DOCKER_BUILD_RECORD_UPLOAD: false",
+      "        with:",
+      "          push: true"
+    )
+    const on = steps(
+      "      - uses: docker/build-push-action@v7",
+      "        with:",
+      "          push: true"
+    )
+    expect(findBuildRecordViolations(F, off)).toEqual([])
+    expect(findBuildRecordViolations(F, on)).toEqual([
+      { kind: "buildRecord", file: F, line: 4 },
+    ])
+  })
+})
+
+describe("checkRetentionTriggers", () => {
+  it("names each producing workflow retention.yml does not run after", () => {
+    const missing = checkRetentionTriggers(
+      [
+        "on:",
+        "  workflow_run:",
+        "    workflows:",
+        "      - Mobile APK",
+        "      - Pages",
+        "      - Extension CI",
+        "      - Extension Release",
+        '      - "Sign Firefox Extension (Manual)"',
+      ].join("\n")
+    )
+    expect(missing).toEqual([
+      {
+        kind: "retentionTrigger",
+        file: RETENTION_FILE,
+        workflow: "WASM Release",
+      },
+    ])
+    expect(checkRetentionTriggers(null)).toHaveLength(6)
+  })
+})
+
 describe("isGuardedWorkflowPath", () => {
   it("covers workflows and composite actions only", () => {
     expect(isGuardedWorkflowPath(".github/workflows/a.yml")).toBe(true)
@@ -294,6 +420,30 @@ describe("describeWorkflowViolation", () => {
       [{ kind: "rs1Changed", file: RS1_FILE, actual: "abc" }, "abc"],
       [{ kind: "rs1Changed", file: RS1_FILE, actual: null }, "missing"],
       [{ kind: "rs2Named", file: F, line: 5 }, "RS2"],
+      [
+        { kind: "artifactUndeclared", file: F, line: 2, name: "x" },
+        "ARTIFACT_FAMILIES",
+      ],
+      [
+        {
+          kind: "artifactTtl",
+          file: F,
+          line: 2,
+          name: "x",
+          value: "2",
+          ttlDays: 1,
+        },
+        "says 1",
+      ],
+      [
+        { kind: "cacheUndeclared", file: F, line: 2, key: "k" },
+        "CACHE_FAMILIES",
+      ],
+      [
+        { kind: "retentionTrigger", file: RETENTION_FILE, workflow: "W" },
+        "workflow_run",
+      ],
+      [{ kind: "buildRecord", file: F, line: 2 }, "DOCKER_BUILD_RECORD_UPLOAD"],
     ]
     for (const [violation, expected] of cases) {
       expect(describeWorkflowViolation(violation)).toContain(expected)

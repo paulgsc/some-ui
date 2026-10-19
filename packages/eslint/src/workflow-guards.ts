@@ -25,11 +25,24 @@
 // RS2 (same section): no workflow or composite action other than
 // `server-route-snapshot.yml` names `bot/server-route-snapshot`.
 //
+// Families (same section, "Retention"): every upload step's artifact name and
+// every `actions/cache` key belongs to a family in retention.ts, the upload's
+// `retention-days` equals its family's TTL, retention.yml runs on every
+// workflow that uploads a declared artifact, and a `docker/build-push-action`
+// step turns off its build-record upload, which no family declares.
+//
 // Deliberately lexical, like test-layout.ts: a YAML parser would need an
 // install for a check that otherwise runs on bare Node. So each rule accepts a
 // closed shape and fails the rest, rather than listing shapes it rejects.
 
 import { createHash } from "node:crypto"
+
+import {
+  ARTIFACT_FAMILIES,
+  CACHE_FAMILIES,
+  cacheFamily,
+  literalKeyPrefix,
+} from "./retention.ts"
 
 export const RS1_FILE = ".github/workflows/server-route-snapshot.yml"
 // Updating this pin is the RS1 re-check: whoever changes it confirms, in the
@@ -37,6 +50,7 @@ export const RS1_FILE = ".github/workflows/server-route-snapshot.yml"
 const RS1_FINGERPRINT =
   "f1f668d5edd39995e1bf23e74c7aac9d21d9124c10110c9dfaffe3f93c7d2927"
 const SNAPSHOT_BRANCH = "bot/server-route-snapshot"
+export const RETENTION_FILE = ".github/workflows/retention.yml"
 
 export type WorkflowViolation =
   | {
@@ -67,6 +81,36 @@ export type WorkflowViolation =
       readonly actual: string | null
     }
   | { readonly kind: "rs2Named"; readonly file: string; readonly line: number }
+  | {
+      readonly kind: "artifactUndeclared"
+      readonly file: string
+      readonly line: number
+      readonly name: string
+    }
+  | {
+      readonly kind: "artifactTtl"
+      readonly file: string
+      readonly line: number
+      readonly name: string
+      readonly value: string
+      readonly ttlDays: number
+    }
+  | {
+      readonly kind: "cacheUndeclared"
+      readonly file: string
+      readonly line: number
+      readonly key: string
+    }
+  | {
+      readonly kind: "retentionTrigger"
+      readonly file: string
+      readonly workflow: string
+    }
+  | {
+      readonly kind: "buildRecord"
+      readonly file: string
+      readonly line: number
+    }
 
 const UPLOAD_STEP =
   /^(\s*)(-\s+)?uses:\s*["']?actions\/upload-(?:pages-)?artifact@/
@@ -74,7 +118,11 @@ const UPLOAD_STEP =
 // is a step this check cannot read, so it fails rather than being skipped.
 const UPLOAD_ANYWHERE = /uses:\s*["']?actions\/upload-(?:pages-)?artifact@/
 const SEQUENCE_ITEM = /^(\s*)-(\s+)\S/
-const RETENTION = /^\s*retention-days:\s*(.*)$/
+const CACHE_STEP =
+  /^(\s*)(-\s+)?uses:\s*["']?actions\/cache(?:\/restore|\/save)?@/
+const BUILD_PUSH_STEP = /^(\s*)(-\s+)?uses:\s*["']?docker\/build-push-action@/
+const BUILD_RECORD_OFF =
+  /^\s*DOCKER_BUILD_RECORD_UPLOAD:\s*["']?false["']?\s*(#.*)?$/
 const WITH_KEY = /^\s*with:(.*)$/
 const RETENTION_TAG = /^#+\s*Retention:\s*\S/
 const DAYS = /^[1-9][0-9]*$/
@@ -129,23 +177,25 @@ function stepBody(
   return body
 }
 
-// One closed shape, not a list of rejected ones: the value counts only as a
+// One closed shape, not a list of rejected ones: a value counts only as a
 // direct child of the step's block-style `with:` map, the one place the action
 // receives it. Anywhere else (under `env:`, nested deeper) it is missing, and a
 // flow-style `with: {...}`, like a whole `- {uses: ...}` step, is reported as
 // unreadable rather than guessed at.
-type WithRetention =
+type WithValue =
   | { readonly shape: "value"; readonly value: string }
   | { readonly shape: "missing" | "flow" }
 
-function withRetention(
+function withValue(
   body: ReadonlyArray<string>,
-  keyColumn: number
-): WithRetention {
+  keyColumn: number,
+  key: string
+): WithValue {
+  const pattern = new RegExp(`^\\s*${key}:\\s*(.*)$`)
   for (const [index, line] of body.entries()) {
-    const key = WITH_KEY.exec(line)
-    if (!key || indentOf(line) !== keyColumn) continue
-    if ((key[1] ?? "").replace(/(^|\s+)#.*$/, "").trim() !== "") {
+    const withKey = WITH_KEY.exec(line)
+    if (!withKey || indentOf(line) !== keyColumn) continue
+    if ((withKey[1] ?? "").replace(/(^|\s+)#.*$/, "").trim() !== "") {
       return { shape: "flow" }
     }
     let childColumn: number | null = null
@@ -153,9 +203,9 @@ function withRetention(
       if (isBlankOrComment(child)) continue
       if (indentOf(child) <= keyColumn) break
       childColumn ??= indentOf(child)
-      const retention = RETENTION.exec(child)
-      if (retention && indentOf(child) === childColumn) {
-        return { shape: "value", value: scalarValue(retention[1] ?? "") }
+      const found = pattern.exec(child)
+      if (found && indentOf(child) === childColumn) {
+        return { shape: "value", value: scalarValue(found[1] ?? "") }
       }
     }
     return { shape: "missing" }
@@ -163,34 +213,54 @@ function withRetention(
   return { shape: "missing" }
 }
 
+type Step = {
+  readonly start: number
+  readonly keyColumn: number
+  readonly body: ReadonlyArray<string>
+}
+
+// Every step whose `uses:` matches, with its lines.
+function stepsUsing(lines: ReadonlyArray<string>, uses: RegExp): Array<Step> {
+  const found: Array<Step> = []
+  lines.forEach((line, index) => {
+    const match = uses.exec(line)
+    if (!match) return
+    const keyColumn = `${match[1] ?? ""}${match[2] ?? ""}`.length
+    const start = match[2] ? index : stepStart(lines, index)
+    found.push({ start, keyColumn, body: stepBody(lines, start, keyColumn) })
+  })
+  return found
+}
+
 export function findRetentionViolations(
   file: string,
   text: string
 ): Array<WorkflowViolation> {
   const lines = text.split(/\r?\n/)
-  const violations: Array<WorkflowViolation> = []
+  const violations: Array<
+    Extract<WorkflowViolation, { readonly line: number }>
+  > = []
   lines.forEach((line, index) => {
-    const upload = UPLOAD_STEP.exec(line)
-    if (!upload) {
-      if (!line.trim().startsWith("#") && UPLOAD_ANYWHERE.test(line)) {
-        violations.push({ kind: "retentionUnreadable", file, line: index + 1 })
-      }
-      return
+    if (
+      !UPLOAD_STEP.test(line) &&
+      !line.trim().startsWith("#") &&
+      UPLOAD_ANYWHERE.test(line)
+    ) {
+      violations.push({ kind: "retentionUnreadable", file, line: index + 1 })
     }
-    const keyColumn = `${upload[1] ?? ""}${upload[2] ?? ""}`.length
-    const start = upload[2] ? index : stepStart(lines, index)
-
-    const found = withRetention(stepBody(lines, start, keyColumn), keyColumn)
+  })
+  for (const { start, keyColumn, body } of stepsUsing(lines, UPLOAD_STEP)) {
+    const found = withValue(body, keyColumn, "retention-days")
     if (found.shape === "flow") {
       violations.push({ kind: "retentionUnreadable", file, line: start + 1 })
-      return
+      continue
     }
     if (found.shape !== "value") {
       violations.push({ kind: "retentionMissing", file, line: start + 1 })
-      return
+      continue
     }
     const { value } = found
-    if (value === "1") return
+    if (value === "1") continue
     if (!DAYS.test(value)) {
       violations.push({
         kind: "retentionNotDays",
@@ -198,7 +268,7 @@ export function findRetentionViolations(
         line: start + 1,
         value,
       })
-      return
+      continue
     }
 
     let tagged = false
@@ -214,8 +284,107 @@ export function findRetentionViolations(
         value,
       })
     }
-  })
+  }
+  return violations.sort((a, b) => a.line - b.line)
+}
+
+// The step's artifact name as written, or the action's default.
+function artifactName(body: ReadonlyArray<string>, keyColumn: number): string {
+  const found = withValue(body, keyColumn, "name")
+  if (found.shape === "value") return found.value
+  return body.some((line) => /upload-pages-artifact@/.test(line))
+    ? "github-pages"
+    : "artifact"
+}
+
+// Every upload's name is a declared family's, kept for that family's TTL. A
+// step whose retention-days is missing or unreadable is the retention rule's
+// to report, not this one's.
+export function findArtifactFamilyViolations(
+  file: string,
+  text: string
+): Array<WorkflowViolation> {
+  const violations: Array<WorkflowViolation> = []
+  for (const { start, keyColumn, body } of stepsUsing(
+    text.split(/\r?\n/),
+    UPLOAD_STEP
+  )) {
+    const name = artifactName(body, keyColumn)
+    const family = ARTIFACT_FAMILIES.find((f) => f.name === name)
+    if (!family) {
+      violations.push({
+        kind: "artifactUndeclared",
+        file,
+        line: start + 1,
+        name,
+      })
+      continue
+    }
+    const retention = withValue(body, keyColumn, "retention-days")
+    if (
+      retention.shape === "value" &&
+      retention.value !== String(family.ttlDays)
+    ) {
+      violations.push({
+        kind: "artifactTtl",
+        file,
+        line: start + 1,
+        name,
+        value: retention.value,
+        ttlDays: family.ttlDays,
+      })
+    }
+  }
   return violations
+}
+
+// Every `actions/cache` key starts with a declared family's prefix.
+export function findCacheViolations(
+  file: string,
+  text: string
+): Array<WorkflowViolation> {
+  const lines = text.split(/\r?\n/)
+  const violations: Array<WorkflowViolation> = []
+  for (const { start, keyColumn, body } of stepsUsing(lines, CACHE_STEP)) {
+    const found = withValue(body, keyColumn, "key")
+    const key = found.shape === "value" ? found.value : ""
+    const family = cacheFamily(literalKeyPrefix(key), CACHE_FAMILIES)
+    if (!family?.prefix || !literalKeyPrefix(key).startsWith(family.prefix)) {
+      violations.push({ kind: "cacheUndeclared", file, line: start + 1, key })
+    }
+  }
+  return violations
+}
+
+// A build-push step uploads a build record as an artifact unless told not to.
+export function findBuildRecordViolations(
+  file: string,
+  text: string
+): Array<WorkflowViolation> {
+  const lines = text.split(/\r?\n/)
+  return stepsUsing(lines, BUILD_PUSH_STEP)
+    .filter(({ body }) => !body.some((line) => BUILD_RECORD_OFF.test(line)))
+    .map(({ start }) => ({ kind: "buildRecord", file, line: start + 1 }))
+}
+
+// retention.yml runs after every workflow that uploads a declared artifact.
+export function checkRetentionTriggers(
+  text: string | null
+): Array<WorkflowViolation> {
+  const listed = new Set(
+    (text ?? "")
+      .split(/\r?\n/)
+      .map((line) => /^\s*-\s+["']?([^"'#]+?)["']?\s*(#.*)?$/.exec(line)?.[1])
+      .filter((name) => name !== undefined)
+  )
+  const wanted = new Set(ARTIFACT_FAMILIES.flatMap((f) => f.workflows))
+  return [...wanted]
+    .filter((workflow) => !listed.has(workflow))
+    .map((workflow) => ({
+      kind: "retentionTrigger",
+      file: RETENTION_FILE,
+      workflow,
+    }))
 }
 
 export function rs1Fingerprint(text: string): string {
@@ -275,6 +444,21 @@ export function describeWorkflowViolation(v: WorkflowViolation): string {
     }
     case "rs2Named": {
       return `${v.file}:${v.line}: names ${SNAPSHOT_BRANCH}. Only ${RS1_FILE} may (RS2, CLAUDE.md, "Cross-repo coupling"); paulgsc/server's routes.yml is that PR's one writer.`
+    }
+    case "artifactUndeclared": {
+      return `${v.file}:${v.line}: uploads "${v.name}", which no family in packages/eslint/src/retention.ts declares. Add it to ARTIFACT_FAMILIES with its keep, TTL and workflows (CLAUDE.md, "Workflow storage").`
+    }
+    case "artifactTtl": {
+      return `${v.file}:${v.line}: uploads "${v.name}" for ${v.value} day(s), but its family in packages/eslint/src/retention.ts says ${v.ttlDays}. Change one to match the other.`
+    }
+    case "cacheUndeclared": {
+      return `${v.file}:${v.line}: caches under key "${v.key}", whose literal prefix no family in packages/eslint/src/retention.ts declares. Add it to CACHE_FAMILIES with its scope and keep.`
+    }
+    case "retentionTrigger": {
+      return `${v.file}: its workflow_run list does not name "${v.workflow}", which uploads a declared artifact, so those artifacts are never swept. Add it.`
+    }
+    case "buildRecord": {
+      return `${v.file}:${v.line}: docker/build-push-action uploads a build-record artifact (90-day default) unless its step sets \`env: DOCKER_BUILD_RECORD_UPLOAD: false\`.`
     }
     default: {
       return assertNever(v)

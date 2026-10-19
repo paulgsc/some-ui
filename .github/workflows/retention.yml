@@ -1,0 +1,60 @@
+name: Retention
+# The retention state machine (packages/eslint/src/retention.ts; CLAUDE.md,
+# "Workflow storage") over every artifact and Actions cache: it runs after
+# each workflow that uploads a declared artifact, after Trunk (every push to
+# main, which is when a PR's ref and its caches stop being live), and daily.
+# Each sweep plans from the whole current state, so a cancelled or skipped
+# one loses nothing: the next sees the same and more.
+#
+# Report-only: it prints what it would delete (#1950). On a pull request that
+# changes its own files it always reports, which is how a change is tried
+# before merge, since workflow_run fires only from main.
+on:
+  workflow_run:
+    workflows:
+      - Mobile APK
+      - Pages
+      - Extension CI
+      - Extension Release
+      - Sign Firefox Extension (Manual)
+      - WASM Release
+      - Trunk
+    types: [completed]
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/retention.yml
+      - scripts/retention.ts
+      - packages/eslint/src/retention.ts
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+concurrency:
+  group: retention-${{ github.event_name == 'pull_request' && github.ref || 'sweep' }}
+  cancel-in-progress: false
+jobs:
+  sweep:
+    name: Sweep artifacts and caches
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            scripts/retention.ts
+            packages/eslint/src/retention.ts
+            .nvmrc
+          sparse-checkout-cone-mode: false
+      # setup-node rather than the nix shell: magic-nix-cache would write
+      # cache entries on every sweep, the largest family this sweeps.
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - name: Sweep
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RETENTION_MODE: report
+        run: node scripts/retention.ts
