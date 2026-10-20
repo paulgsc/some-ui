@@ -85,4 +85,32 @@ describe("SessionFilePicker", () => {
     expect(alert.textContent).toMatch(/^notes isn't a session file\. /)
     expect(keep).not.toHaveBeenCalled()
   })
+
+  it("offers a viewer's samples to play and no way to pick, saying how long they last", async () => {
+    const onPlay = vi.fn()
+    render(
+      <SessionFilePicker
+        store={{
+          list: () =>
+            Promise.resolve([
+              {
+                name: "t1-01",
+                title: RAW.title,
+                oneLine: RAW.oneLine,
+                pickedAt: "2026-10-01T09:00:00.000Z",
+              },
+            ]),
+          keep: vi.fn<SessionFileStore["keep"]>(),
+          read: () => Promise.resolve(VALID),
+        }}
+        samples
+        onPlay={onPlay}
+      />
+    )
+    expect(screen.queryByLabelText("Add a session from storage")).toBeNull()
+    expect(screen.getByText(/lasts until you reload this page/)).toBeTruthy()
+    expect(
+      await screen.findByRole("list", { name: "Sample sessions" })
+    ).toBeTruthy()
+  })
 })

@@ -18,7 +18,7 @@ import { browserLocalStorage, writeJSON } from "@/lib/tenant/storage"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 /** When the samples were "made": fixed, so the demo reads the same each visit. */
-const SAMPLED_AT = "2026-10-01T09:00:00.000Z"
+export const SAMPLED_AT = "2026-10-01T09:00:00.000Z"
 
 /**
  * The sample drafts: one per activity this build offers, then one running the

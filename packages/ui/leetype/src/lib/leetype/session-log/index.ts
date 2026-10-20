@@ -5,8 +5,13 @@ import type { SessionEvent, SessionLog } from "./model"
 import { SessionEventSchema } from "./model"
 import { appendStored, openStored } from "./stored"
 
-export type { SessionEvent, SessionLedger, SessionLog } from "./model"
-export { ledgerOf } from "./model"
+export type {
+  SessionEvent,
+  SessionLedger,
+  SessionLog,
+  SessionSummary,
+} from "./model"
+export { ledgerOf, summariesOf } from "./model"
 
 /**
  * The session log on the device (`./model`, `./stored`): a snapshot to read,
