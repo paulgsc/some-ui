@@ -509,8 +509,7 @@ the failing state and the promise it suspects, if one is declared. When choosing
 on next, `kind:defect` issues come first. Issues filed before this rule are labelled just in
 time, by the PR or session that next touches one, against the code as it is then. Nobody
 backfills them: most were written against a `main` that has since moved. Review enforces the
-rest (`REVIEW.md`, "Change kind:
-a defect PR proves its claim").
+rest (`REVIEW.md`, "Change kind: a defect PR proves its claim").
 
 ## Cold-start footguns worth not re-discovering
 
