@@ -71,8 +71,9 @@ fixed body (release, Changesets and snapshot PRs) carry generated content and ar
 
 ## Change kind: a defect PR proves its claim
 
-Every commit carries a `Change-Kind: story` or `Change-Kind: defect` trailer, and a defect
-commit adds `Promise:` and, where it applies, `Relates:` (`CLAUDE.md`, "Two kinds of pull
+Every commit but a merge or a revert carries a `Change-Kind: story` or `Change-Kind: defect`
+trailer. The commit that declares or amends a promise, or a story that raises one's
+Tolerance, adds `Promise:`, and a defect adds `Relates:` where it applies (`CLAUDE.md`, "Two kinds of pull
 request"). Each of the following is a **blocking** finding:
 
 1. **The wrong kind.** A `story` PR whose stated purpose is a failure in a state its story

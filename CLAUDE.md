@@ -456,7 +456,8 @@ or comment. A gray-area promise is placed as invariants are (above).
 1. **Declares or amends a promise** whose Family contains the failing state. If the fix holds
    only part of the family, the claim and its Family are narrowed to that part.
 2. **Relates it to the promises before it.** Search the earlier `Promise:` trailers (below)
-   by path and by Family dimension. One of these applies, and only New excludes the others:
+   by path and by Family dimension. Each earlier promise that reaches the failing state gets
+   one relation, and New means none does:
    - **New:** no earlier promise reaches the failing state by scope or by a shared dimension.
    - **Breaks:** the failing state was inside an earlier promise's Family. That proof was
      wrong, and the PR fixes the proof as well as the code.
@@ -474,21 +475,23 @@ go in each message's final paragraph, with no blank line before `Co-Authored-By:
 
 ```
 Change-Kind: defect
-Promise: SS2 apps/www/src/lib/session-stop
+Promise: SS2 apps/www/src/lib/session-stop | stop-resume ordering, host
 Relates: SS1 shares stop-resume ordering
 Co-Authored-By: …
 ```
 
-Every commit carries `Change-Kind: story` or `Change-Kind: defect`. The commit-msg hook
-(`.commitlintrc.json`) rejects a commit without it in the final paragraph, except commitlint's
-default ignores (merges, reverts, fixups). It runs only where husky is installed, and it does
+Every commit but a merge or a revert carries `Change-Kind: story` or `Change-Kind: defect`.
+The commit-msg hook (`.commitlintrc.json`) rejects a commit without it in the final paragraph,
+except commitlint's default ignores (merges, reverts, fixups). It runs only where husky is installed, and it does
 not check the value. Checking the value, and a `pr.yml` job that lints every commit, are
 mechanical; not yet a rule. Commits a bot or a workflow writes are exempt, and a person's or
 an agent's commit on a bot's PR carries its own trailer. Keeping up with a dependency (a
 renamed export, a changed default) is a story: no promise changed.
 
-The commit that declares or amends a promise adds `Promise: <ID> <path>`, and, for a defect
-other than New, one `Relates: <ID> breaks|widens|shares <dimension>` per earlier promise. A
+The commit that declares or amends a promise adds `Promise: <ID> <path>… | <dimension>, …`:
+its scope's paths, then its Family's dimensions, so a later search can match either. For a
+defect other than New, it also adds one `Relates:` line per earlier promise:
+`Relates: <ID> breaks`, `Relates: <ID> widens`, or `Relates: <ID> shares <dimension>`. A
 story that raises a promise's Tolerance adds `Promise:` too, so the history shows the promise
 changing. A change that is both a story and a defect is two PRs.
 
