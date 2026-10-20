@@ -69,6 +69,34 @@ No finding when the PR body's **Superseded** section names the existing code and
 both must exist. Whether that reason holds is for a person to judge. PRs a workflow opens with a
 fixed body (release, Changesets and snapshot PRs) carry generated content and are exempt.
 
+## Change kind: a defect PR proves its claim
+
+Every commit but a merge or a revert carries a `Change-Kind: story` or `Change-Kind: defect`
+trailer. The commit that declares or amends a promise, or a story that raises one's
+Tolerance, adds `Promise:`, and a defect adds `Relates:` where it applies (`CLAUDE.md`, "Two kinds of pull
+request"). Each of the following is a **blocking** finding:
+
+1. **The wrong kind.** A `story` PR whose stated purpose is a failure in a state its story
+   already covered is a defect. A `defect` PR whose failure lies inside an existing promise's
+   Tolerance is a story: it raises the promise.
+2. **A defect with no promise.** A `defect` PR that declares or amends no promise with an ID,
+   Claim, Family and Proof, or no `Promise:` trailer naming it, or whose Family is only the
+   reported case.
+3. **A claim wider than its proof.** A Proof that does not reach every dimension of the Family
+   it names. For example, a test of one interleaving offered for "every interleaving of stop
+   and resume".
+4. **A missing relation.** A `defect` PR whose failing state lies inside a declared promise's
+   Family (Breaks), its scope (Widens), or turns on a dimension its Family names (Shares),
+   with no `Relates:` trailer naming that promise.
+5. **No account of the happy path.** A `defect` PR that does not say which check could have
+   caught the failure and why none did, or, for Breaks, Widens and Shares, why the earlier
+   PR missed this state.
+
+A `story` PR has nothing to prove: do not ask it for a claim, a family or a proof. A promise
+declared as a gray-area invariant is also reviewed under "Reviewing a change that declares or
+edits an invariant" above. Commits a workflow or a bot writes are exempt. A person's or an
+agent's commit on a bot's PR is not.
+
 ## The phone is Android only
 
 No finding whose failure reproduces only on iOS, iPadOS or Safari: those platforms are not

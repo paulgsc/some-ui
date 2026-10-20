@@ -112,8 +112,10 @@ The same pass reads each reflection for what it says about the app. A note
 can speak to both: what to study next shapes the pair, and a bug or a wish
 for how a screen works becomes a GitHub issue (an `epic` with sub-issues when
 it spans several steps), filed in the routine's own words and labelled
-`from-reflection`. The repo is public and the reflection is the owner's own,
-so an issue never quotes a note, a transcript or a study result. The routine
+`from-reflection`, with `kind:story` for a wish or `kind:defect` for a screen
+that fails at what it already offers (`CLAUDE.md`, "Two kinds of pull
+request"). The repo is public and the reflection is the owner's own, so an
+issue never quotes a note, a transcript or a study result. The routine
 then starts a session on each new issue: it opens a PR and drives it to
 green, or, where the direction is open, comments the options on the issue
 and stops. No such PR merges without the owner's approval.

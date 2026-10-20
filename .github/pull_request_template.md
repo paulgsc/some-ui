@@ -9,12 +9,27 @@ Please include a summary of the changes and the related issue. Please also inclu
 What this change made obsolete (code, tests, docs) and removed, or "None" and why. If it adds
 something existing code already does, name that code and say why both must exist.
 
+## Change kind
+
+`story` (the user story moved: behaviour added or retired) or `defect` (code failed in a state
+its story already covered), as in every commit's `Change-Kind:` trailer. See `CLAUDE.md`,
+"Two kinds of pull request".
+
+For a defect, give:
+
+- the promise it declares or amends: its ID and where it lives;
+- its **Claim**;
+- its **Family**, and the dimensions that generate it;
+- its **Proof**, and how it reaches each dimension;
+- any **Tolerance**;
+- its relation to each earlier promise it touches (Breaks, Widens or Shares, with that
+  promise's ID), or New;
+- which check could have caught the failure, and why none did.
+
 ## Type of Change
 
 Please delete options that are not relevant.
 
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
 - [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
 - [ ] This change requires a documentation update
 

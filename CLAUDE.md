@@ -417,6 +417,100 @@ arithmetic), leave the tag out: it adds nothing to review and is one more claim 
 The invariant defines the tag's terms (for costs, the variables) and makes deleting a tag
 whose code remains part of its falsifier.
 
+## Two kinds of pull request: the story moved, or a promise broke
+
+Every PR is one of two kinds and says which. Both have the same autonomy: drive it green and
+merge it. They differ in what green has to show.
+
+- **Story.** The user story moved. Behaviour is added because the owner wants it, or retired
+  because they no longer do: the background was green, and now the owner wants it purple. A
+  preference is not right or wrong, so a story PR has nothing to prove beyond the repo's usual
+  checks and its **Superseded** section. Raising a promise's reliability is a story too: the
+  owner wants more than was promised.
+- **Defect.** Code fails in a state its story already covered: a footgun, or a happy path that
+  assumed some input, ordering, host or timing away. Every story ships with an implicit
+  promise about the states it works in, and a defect is that promise surfacing. A failing
+  state machine is a fact, so a defect PR carries the burden of proof.
+
+**A promise** has an ID, three parts and an optional fourth. Its ID shares the invariants'
+namespace: an area prefix and a number, never reused.
+
+- **Claim:** one sentence about the code, over a named scope.
+- **Family:** every state or environment the claim covers, named by the dimensions that
+  generate it (orderings of events, hosts, inputs, timings), so a reviewer can check the
+  proof against each dimension. For example: every interleaving of stop and resume; every
+  host the story runs on.
+- **Proof:** what holds the claim over the whole Family. That can be a test that enumerates or
+  generates it, a type that makes the bad state unrepresentable, or a lint rule. Where no
+  mechanism can hold it, the promise is a gray-area invariant (above) with all four of that
+  format's parts.
+- **Tolerance** (optional): the failure the claim accepts, such as best effort, a share of
+  sittings, or hosts it leaves out. A failure inside the Tolerance is not a defect, and it
+  leaves no record unless someone files it as a story to raise the promise.
+
+A promise held by a test, type or lint rule lives with that check, its ID in the check's name
+or comment. A gray-area promise is placed as invariants are (above).
+
+**A defect PR:**
+
+1. **Declares or amends a promise** whose Family contains the failing state. If the fix holds
+   only part of the family, the claim and its Family are narrowed to that part.
+2. **Relates it to the promises before it.** Search the earlier `Promise:` trailers (below)
+   by path and by Family dimension. Each earlier promise that reaches the failing state gets
+   one relation, and New means none does:
+   - **New:** no earlier promise reaches the failing state by scope or by a shared dimension.
+   - **Breaks:** the failing state was inside an earlier promise's Family. That proof was
+     wrong, and the PR fixes the proof as well as the code.
+   - **Widens:** the state was in an earlier promise's scope but outside its Family. That
+     family was drawn too narrow, and the PR widens it.
+   - **Shares:** the state is in another scope, but the failure turns on a dimension an
+     earlier promise's Family already names (the same ordering, timing or host). The two
+     are coupled, so the PR says why the earlier proof did not carry over.
+3. **Says how the happy path got in:** which check could have caught it, and why none did.
+   For Breaks, Widens and Shares, that means why the earlier PR missed this state.
+
+**The record.** PRs merge by squash, which keeps the branch's commit messages
+(`squash_merge_commit_message: COMMIT_MESSAGES`), so the record lives in commit trailers. They
+go in each message's final paragraph, with no blank line before `Co-Authored-By:`:
+
+```
+Change-Kind: defect
+Promise: SS2 apps/www/src/lib/session-stop | stop-resume ordering, host
+Relates: SS1 shares stop-resume ordering
+Co-Authored-By: …
+```
+
+Every commit but a merge or a revert carries `Change-Kind: story` or `Change-Kind: defect`.
+The commit-msg hook (`.commitlintrc.json`) rejects a commit without it in the final paragraph,
+except commitlint's default ignores (merges, reverts, fixups). It runs only where husky is installed, and it does
+not check the value. Checking the value, and a `pr.yml` job that lints every commit, are
+mechanical; not yet a rule. Commits a bot or a workflow writes are exempt, and a person's or
+an agent's commit on a bot's PR carries its own trailer. Keeping up with a dependency (a
+renamed export, a changed default) is a story: no promise changed.
+
+The commit that declares or amends a promise adds `Promise: <ID> <path>… | <dimension>, …`:
+its scope's paths, then its Family's dimensions, so a later search can match either. For a
+defect other than New, it also adds one `Relates:` line per earlier promise:
+`Relates: <ID> breaks`, `Relates: <ID> widens`, or `Relates: <ID> shares <dimension>`. A
+story that raises a promise's Tolerance adds `Promise:` too, so the history shows the promise
+changing. A change that is both a story and a defect is two PRs.
+
+Query the trailers line by line, with `--grep`: a squash of several commits puts earlier
+trailers mid-message, where `%(trailers)` does not find them. `git log -E --grep
+'^Change-Kind: defect$'` lists every promise that broke, and each `Relates:` line names the
+earlier promise it was coupled to. The share of defect commits over time is the churn signal.
+Stories mean the product is moving. A run of defects that relate to one another means patches
+are chasing a promise nobody has stated.
+
+**Issues carry the kind too.** Whoever files an issue, a person, an agent or the reflection
+routine, labels it `kind:story` or `kind:defect`. The existing `story` and `epic` labels say
+how big the work is, and the `kind:` label says whether a promise broke. A defect issue names
+the failing state and the promise it suspects, if one is declared. When choosing what to work
+on next, `kind:defect` issues come first. Issues filed before this rule are labelled just in
+time, by the PR or session that next touches one, against the code as it is then. Nobody
+backfills them: most were written against a `main` that has since moved. Review enforces the
+rest (`REVIEW.md`, "Change kind: a defect PR proves its claim").
+
 ## Cold-start footguns worth not re-discovering
 
 These bite during ordinary implementation work, **before any PR exists** — read this at the

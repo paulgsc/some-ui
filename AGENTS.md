@@ -25,6 +25,17 @@ apply to any agent working here, not only Claude.
   `packages/react-hooks` and sibling workspaces first, and cite the existing path); and old code or tests a change
   replaced but kept. No finding when the PR body's **Superseded** section names the
   existing code and says why both must exist.
+- **Change kind: a defect PR proves its claim.** Every commit but a merge or revert
+  carries `Change-Kind: story` or `Change-Kind: defect`; the commit that declares or amends
+  a promise adds `Promise:`, and a defect adds `Relates:` where it applies.
+  Blocking when a `story` PR's purpose is a failure its story already covered (or a
+  `defect` sits inside a promise's Tolerance); a `defect` PR declares no promise (ID,
+  Claim, Family, Proof, and a `Promise:` trailer) or names only the reported case as its
+  family; its proof misses a
+  dimension of the family it names; its failing state lies in a declared promise's family
+  or scope, or turns on a dimension that family names, with no `Relates:` naming it; or it
+  does not say which check could have caught the failure. Ask a `story` PR to prove nothing. Issues are labelled `kind:story` or
+  `kind:defect` the same way.
 - **The phone is Android only.** No finding that reproduces only on iOS, iPadOS or
   Safari. A hunk that adds code, a test, a fallback or a comment for them is blocking.
 
