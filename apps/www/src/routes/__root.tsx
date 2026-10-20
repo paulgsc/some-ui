@@ -1,4 +1,4 @@
-import { TanstackDevtools } from "@tanstack/react-devtools"
+import { TanStackDevtools } from "@tanstack/react-devtools"
 import type { QueryClient } from "@tanstack/react-query"
 import { createRootRouteWithContext, Outlet } from "@tanstack/react-router"
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
@@ -34,11 +34,13 @@ export const Route = createRootRouteWithContext<RouterContext>()({
           production bundle - without the guard it also renders on the
           deployed GitHub Pages site, which is what happened before. */}
       {import.meta.env.DEV && (
-        <TanstackDevtools
+        <TanStackDevtools
           config={{
             // Not a bottom corner: on a phone that is the tab bar, and the
-            // trigger swallowed its first tab's taps.
+            // trigger swallowed its first tab's taps. Pinned, since the
+            // default floating trigger ignores `position`.
             position: "top-right",
+            triggerMode: "fixed",
           }}
           plugins={[
             {
