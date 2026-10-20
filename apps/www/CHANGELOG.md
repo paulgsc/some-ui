@@ -1,5 +1,14 @@
 # www
 
+## 0.1.47
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @some-ui/leetype@0.0.2
+  - @some-ui/content-registry@1.0.8
+  - @some-ui/lesson-crm@0.0.2
+
 ## 0.1.46
 
 ### Patch Changes
