@@ -436,6 +436,11 @@ describe("summariesOf", () => {
       placed("f", "p1", "placement"),
       parked("f"),
       returned("f", "correct"),
+      {
+        ...pickedA,
+        ...stamp("f"),
+        answer: { response: "correct", slow: false },
+      },
       startedB,
       { ...pickedA, ...stamp("g") },
       placed("g", "p1", "placement"),
@@ -443,6 +448,9 @@ describe("summariesOf", () => {
     ])
     const [f, g] = summariesOf(log)
     expect(f?.rounds[0]).toMatchObject({ placed: ["p1", "p1"], solved: false })
+    expect(f?.replays).toEqual([
+      { file: "thread-1.json", screen: "r1", picked: "correct" },
+    ])
     expect(g?.replays).toEqual([
       { file: "thread-1.json", screen: "r1", picked: "incorrect" },
     ])

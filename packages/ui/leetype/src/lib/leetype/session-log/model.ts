@@ -230,7 +230,9 @@ type Of<T extends SessionEvent["type"]> = Extract<SessionEvent, { type: T }>
 /**
  * One round's funnel (Prop. 9.4): its first pick, the readings placed after
  * a struggle and what was done with each, the returns played, and whether
- * it is solved: not waiting on a return, as `ledgerOf` has it. Later
+ * it is solved: a correct, unhurried pick or return since its last
+ * struggle, as `ledgerOf` counts parked rounds, except that a struggle left
+ * on its reveal (the app closed before it parked) is unsolved here. Later
  * sessions add to it: a reading saved on the bus and read the next day, a
  * return taken from the first screen, a replay's struggle that parks it
  * again. A reading opened with no placement in view goes to the round its
@@ -371,7 +373,7 @@ export function summariesOf(log: SessionLog): Array<SessionSummary> {
         break
       }
       case "parked": {
-        // A struggle on a replay parks the round again, as `ledgerOf` has it.
+        // Any park, a replay's included, unsolves it, as `ledgerOf` has it.
         const round = rounds.get(keyOf(event.file, event.screen))?.round
         if (round !== undefined) round.solved = false
         break
