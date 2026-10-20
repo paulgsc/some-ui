@@ -506,7 +506,10 @@ are chasing a promise nobody has stated.
 routine, labels it `kind:story` or `kind:defect`. The existing `story` and `epic` labels say
 how big the work is, and the `kind:` label says whether a promise broke. A defect issue names
 the failing state and the promise it suspects, if one is declared. When choosing what to work
-on next, `kind:defect` issues come first. Review enforces the rest (`REVIEW.md`, "Change kind:
+on next, `kind:defect` issues come first. Issues filed before this rule are labelled just in
+time, by the PR or session that next touches one, against the code as it is then. Nobody
+backfills them: most were written against a `main` that has since moved. Review enforces the
+rest (`REVIEW.md`, "Change kind:
 a defect PR proves its claim").
 
 ## Cold-start footguns worth not re-discovering
