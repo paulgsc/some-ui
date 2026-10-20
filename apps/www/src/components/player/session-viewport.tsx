@@ -6,7 +6,6 @@ import { useIsMobile } from "@some-ui/react-hooks"
 import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 
 import { useAuthority } from "@/lib/authority"
-import { VIEWER_BUILD } from "@/lib/data-mode"
 import { viewerSessionFiles } from "@/lib/demo/leetype-sample"
 import { AmbientIntentStatus } from "@/lib/intent/render"
 import { phoneSessionFiles } from "@/lib/leetype-files"
@@ -46,8 +45,13 @@ const PHONE_SCENE_VOICE = ON_PHONE ? phoneSceneVoice() : undefined
 const PHONE_LENS_TAKES = ON_PHONE ? phoneLensTakes() : undefined
 const PHONE_SPOKEN_TAKES = ON_PHONE ? phoneSpokenTakes() : undefined
 const PHONE_SESSION_FILES = ON_PHONE ? phoneSessionFiles() : undefined
-/** A viewer plays Thread 1's first session from memory (`lib/demo`). */
-const VIEWER_SESSION_FILES = VIEWER_BUILD ? viewerSessionFiles() : undefined
+/**
+ * A viewer plays Thread 1's first session from memory (`lib/demo`). The flag
+ * is read here, not through `VIEWER_BUILD`, so other builds fold the branch
+ * before chunking and emit no sample chunk (`check:bundle-paths`).
+ */
+const VIEWER_SESSION_FILES =
+  import.meta.env.VITE_STATIC_DATA === "true" ? viewerSessionFiles() : undefined
 
 /** What the player renders: the bound panels, and a note for a web one. */
 const PLAYER_PANELS = withWebOnlyNotes(PANELS, WEB_PANEL_KEYS)
