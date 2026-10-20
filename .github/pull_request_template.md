@@ -22,7 +22,7 @@ For a defect, give:
 - its **Family**, and the dimensions that generate it;
 - its **Proof**, and how it reaches each dimension;
 - any **Tolerance**;
-- its relation to earlier promises (New, Breaks or Widens, with the ID);
+- its relation to earlier promises: New, or Breaks, Widens or Shares with the earlier ID;
 - which check could have caught the failure, and why none did.
 
 ## Type of Change

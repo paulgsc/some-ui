@@ -79,15 +79,17 @@ request"). Each of the following is a **blocking** finding:
    already covered is a defect. A `defect` PR whose failure lies inside an existing promise's
    Tolerance is a story: it raises the promise.
 2. **A defect with no promise.** A `defect` PR that declares or amends no promise with an ID,
-   Claim, Family and Proof, or whose Family is only the reported case.
+   Claim, Family and Proof, or no `Promise:` trailer naming it, or whose Family is only the
+   reported case.
 3. **A claim wider than its proof.** A Proof that does not reach every dimension of the Family
    it names. For example, a test of one interleaving offered for "every interleaving of stop
    and resume".
 4. **A missing relation.** A `defect` PR whose failing state lies inside a declared promise's
-   Family (Breaks) or scope (Widens), with no `Relates:` trailer naming it.
+   Family (Breaks), its scope (Widens), or turns on a dimension its Family names (Shares),
+   with no `Relates:` trailer naming that promise.
 5. **No account of the happy path.** A `defect` PR that does not say which check could have
-   caught the failure and why none did, or, for Breaks and Widens, why the earlier PR missed
-   this state.
+   caught the failure and why none did, or, for Breaks, Widens and Shares, why the earlier
+   PR missed this state.
 
 A `story` PR has nothing to prove: do not ask it for a claim, a family or a proof. A promise
 declared as a gray-area invariant is also reviewed under "Reviewing a change that declares or
