@@ -8,6 +8,7 @@
  * `file_host` does.
  */
 import { openNodeSqlite } from "@/test-support/node-sqlite-driver"
+import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -17,8 +18,6 @@ import type * as ShelfHandlers from "@/lib/device-backend/handlers/shelf"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import type { DeviceBackend } from "@/lib/device-backend/interceptor"
 import { createDeviceFetch } from "@/lib/device-backend/interceptor"
-import type { HomeAnswer } from "@/lib/device-backend/native-http"
-import type { HomeSend } from "@/lib/home-link/runtime"
 import { sendHome } from "@/lib/home-link/send"
 import { readSent } from "@/lib/home-link/sent"
 import {
@@ -42,7 +41,7 @@ const PAIRED = { base: BASE, id: "pairing-1" }
  */
 type Phone = {
   sessions: Array<SessionRecord>
-  send: HomeSend | null
+  send: HomeCall | null
   receipt: StorageAdapter | null
 }
 
@@ -53,11 +52,11 @@ const phone = vi.hoisted(
 vi.mock("@/lib/home-link/index", () => ({
   homeLink: (): {
     send: <T>(
-      run: (send: HomeSend) => Promise<T>
+      run: (send: HomeCall) => Promise<T>
     ) => Promise<{ kind: "done"; value: T }>
   } => ({
     send: async <T>(
-      run: (send: HomeSend) => Promise<T>
+      run: (send: HomeCall) => Promise<T>
     ): Promise<{ kind: "done"; value: T }> => {
       if (phone.send === null) throw new Error("no send")
       return { kind: "done", value: await run(phone.send) }
@@ -137,7 +136,7 @@ const homeFetch = (): typeof fetch =>
   )
 
 /** The link's `send`, as the runtime hands it over, against home. */
-const send: HomeSend = async (method, path, body) => {
+const send: HomeCall = async (method, path, body) => {
   sent.push(`${method} ${path}`)
   const response = await homeFetch()(`${BASE}${path}`, {
     method,
@@ -170,7 +169,7 @@ function onPhone(id: string, status: SessionRecord["status"]): SessionRecord {
 
 const copy = (
   local: ReadonlyArray<SessionRecord>,
-  through: HomeSend = send
+  through: HomeCall = send
 ): ReturnType<typeof copySessionsTo> =>
   copySessionsTo(
     local,
@@ -199,7 +198,7 @@ describe("copying the phone's sessions home", () => {
   })
 
   it("says a 401 is the pairing's, without the app's sign-out", async () => {
-    const forgotten: HomeSend = (method, path, body) =>
+    const forgotten: HomeCall = (method, path, body) =>
       method === "POST"
         ? Promise.resolve({ status: 401, body: "{}" })
         : send(method, path, body)
@@ -212,7 +211,7 @@ describe("copying the phone's sessions home", () => {
 
   it("says what was copied before a stop", async () => {
     let posts = 0
-    const stopping: HomeSend = (method, path, body): Promise<HomeAnswer> => {
+    const stopping: HomeCall = (method, path, body): Promise<HomeAnswer> => {
       if (method === "POST" && ++posts === 2) {
         return Promise.reject(new SyncStoppedError())
       }

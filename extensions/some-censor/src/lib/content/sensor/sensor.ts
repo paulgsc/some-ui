@@ -49,6 +49,7 @@ import {
   extractUploadDate,
   readAutonav,
   readDescription,
+  readUpNext,
   readWatch,
   tryExtract,
 } from "@censor/lib/content/extract/index"
@@ -123,6 +124,8 @@ export type Sensor = {
   custodyOf(key: CardKey): ReadonlyArray<CustodyTarget>
   /** The shown watch page's description, where the face control goes. */
   description(): HTMLElement | null
+  /** The Up next card carrying `key`, the one a skip opens (#1966). */
+  upNextCard(key: CardKey): HTMLElement | null
   census(): SensorCensus
   /** How many elements are queued; O(1), unlike {@link census}. */
   readonly queued: number
@@ -620,11 +623,35 @@ export function createSensor(ports: SensorPorts): Sensor {
    * the app's own listener sees it, so stopping it here, in the capture
    * phase on the window, keeps the page where it is. The one vendor event
    * the Sensor holds, and only on Core's answer; a navigation the owner
-   * starts carries no `autonav`, and is never held.
+   * starts carries no `autonav`, and is never held. Core is told, with Up
+   * next's videos in page order, so it can skip to one (#1966).
    */
   function onYtNavigate(event: Event): void {
     const next = readAutonav(event)
-    if (next !== null && !ports.admits(next)) event.stopImmediatePropagation()
+    if (next === null || ports.admits(next)) return
+    event.stopImmediatePropagation()
+    ports.emit({ kind: "held", upNext: upNext(), t: ports.clock() })
+  }
+
+  /** The cards held in the watch page's Up next, in page order. */
+  function upNextCards(): Array<{ el: HTMLElement; key: CardKey }> {
+    const cards: Array<{ el: HTMLElement; key: CardKey }> = []
+    const list = readUpNext(ports.doc)
+    for (const el of list?.querySelectorAll<HTMLElement>(SEL) ?? []) {
+      const key = identity.keyOf(el)
+      if (key !== null) cards.push({ el, key })
+    }
+    return cards
+  }
+
+  /** Their videos, each once. */
+  function upNext(): Array<VideoId> {
+    const ids: Array<VideoId> = []
+    for (const { key } of upNextCards()) {
+      const id = keyVideoId(key)
+      if (!ids.includes(id)) ids.push(id)
+    }
+    return ids
   }
 
   function onNavigate(): void {
@@ -711,6 +738,10 @@ export function createSensor(ports: SensorPorts): Sensor {
 
     description(): HTMLElement | null {
       return readDescription(ports.doc)
+    },
+
+    upNextCard(key: CardKey): HTMLElement | null {
+      return upNextCards().find((card) => card.key === key)?.el ?? null
     },
 
     census(): SensorCensus {

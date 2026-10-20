@@ -109,6 +109,9 @@ jobs:
           path: packages/*/dist
           key: workspace-dist-${{ runner.os }}-${{ hashFiles('packages/**/src/**') }}
           restore-keys: workspace-dist-${{ runner.os }}-
+      # Why not node-ci-setup: a rollback checks out an older tree, and a local
+      # action runs from the checkout, so a rollback would run that commit's
+      # node-ci-setup, without its `build` input, or none at all.
       - name: Install dependencies
         run: |
           nix develop .#ci --command pnpm install \

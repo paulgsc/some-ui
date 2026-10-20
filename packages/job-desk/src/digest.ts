@@ -3,6 +3,7 @@ import { z } from "zod"
 import { ADJACENT_FAMILIES, MAX_SET_ASIDE, TRACKS } from "./policy"
 import {
   CommitSchema,
+  EventIdSchema,
   FingerprintSchema,
   HttpsUrlSchema,
   IdSchema,
@@ -92,6 +93,46 @@ const GapSchema = z.object({
   text,
 })
 
+/**
+ * A free-text question on the posting's own application form (ROUTINE.md
+ * §7), as the form words it, with the run's draft from the pick's fits.
+ */
+const QuestionSchema = z.object({
+  label: text,
+  required: z.boolean(),
+  /** Null only for an optional question the run left to me. */
+  draft: text.nullable(),
+})
+
+const KitSchema = z
+  .object({
+    /** Copied into the form one at a time: email, links, location. */
+    fields: z.array(LabelledSchema),
+    /** The form's standard questions, already answered. */
+    answers: z.array(LabelledSchema),
+    /** A draft, when the form takes a cover letter. Digests before it had none. */
+    coverLetter: text.nullable().default(null),
+    /** Every free-text question the form asks. Digests before it had none. */
+    questions: z.array(QuestionSchema).default([]),
+    /** What to answer when the form asks my pay expectation, and why. */
+    compensation: z.object({ ask: text, why: text }).nullable().default(null),
+    /** Digests before the form was read carried one free-text answer here. */
+    why: z.object({ prompt: text, draft: text }).nullable().optional(),
+  })
+  .transform(({ why, ...kit }) =>
+    why
+      ? {
+          ...kit,
+          questions: [
+            { label: why.prompt, required: false, draft: why.draft },
+            ...kit.questions,
+          ],
+        }
+      : kit
+  )
+
+export type Kit = z.infer<typeof KitSchema>
+
 const PickSchema = z
   .object({
     id: IdSchema,
@@ -113,13 +154,7 @@ const PickSchema = z
     gaps: z.array(GapSchema),
     dontClaim: z.array(text),
     resume: ResumeSchema,
-    kit: z.object({
-      /** Copied into the form one at a time: email, links, location. */
-      fields: z.array(LabelledSchema),
-      /** The form's standard questions, already answered. */
-      answers: z.array(LabelledSchema),
-      why: z.object({ prompt: text, draft: text }).nullable(),
-    }),
+    kit: KitSchema,
   })
   .and(TrackedSchema)
 
@@ -195,6 +230,23 @@ export const DigestSchema = z.object({
     })
     .nullable()
     .default(null),
+  /**
+   * Earlier picks' drafts rewritten from my fit notes (ROUTINE.md §2), each
+   * a pick still open in `queue`. The phone shows the newest in place of the
+   * pick's own. Digests before them had none.
+   */
+  redrafts: z
+    .array(
+      z.object({
+        day: z.iso.date(),
+        pickId: IdSchema,
+        /** The fit notes it was written from, by their event ids. */
+        fit: z.array(EventIdSchema).min(1),
+        coverLetter: text.nullable(),
+        questions: z.array(QuestionSchema),
+      })
+    )
+    .default([]),
   /** The Drive files this run read: decisions and scouts, by name. */
   read: z.array(text),
   /** The voice notes this run transcribed, by file name. */

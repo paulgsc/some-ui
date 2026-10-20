@@ -23,25 +23,32 @@
  *        (one per element the Sensor could not place) is counted.
  *   R7 — Evidence under the boundary. A card's view is `decide()` of its
  *        merged observation at the `t` it was last observed, under the
- *        state's boundary: a re-observation that moves the estimate moves
- *        the view (#1803), and so does the owner's `boundary`, re-deciding
- *        every card in place in one step (#1807). No other input changes it.
+ *        state's boundary and music signs: a re-observation that moves the
+ *        estimate moves the view (#1803), and so do the owner's `boundary`
+ *        and `rules`, re-deciding every card in place in one step (#1807,
+ *        #1966). No other input changes it.
  *   R8 — The watch page is one more piece of evidence (#1805). Its view is
  *        `decideWatch()` of the merged `watched` observations of the same
- *        video, re-decided by `boundary` as a card is. YouTube names the
- *        next video before it rewrites the date, so a reading whose runs
- *        are all runs the previous video showed is that video's, and reads
- *        as none. (Not covered: a start mid-transition, with no previous
+ *        video, re-decided by `boundary` and `rules` as a card is. YouTube
+ *        names the next video before it rewrites the date, so a reading
+ *        whose runs are all runs the previous video showed is that video's,
+ *        and reads as none. (Not covered: a start mid-transition, with no previous
  *        video read; and a date written before its video's id, which would
  *        hold the next video pending.) It is not a card: `nav` leaves it to the next reading, and
  *        `stop` forgets it, the Actuator's `dispose` lifting its hold. A
  *        `watch` action is emitted when its view, its video, where it plays
- *        or its face changes, and again on `described`, when the page's
- *        description was drawn again.
+ *        or its face changes, when the mode offers, withdraws or changes the face
+ *        control, and again on `described`, when the page's description
+ *        was drawn again.
  *   R9 — The face is one view's (QD13). A `face` input for the plated page's
- *        video, outside the miniplayer, shows its real thumbnail; a new
- *        video, a view that is no longer plated, and `nav` take it away.
- *        Nothing keeps it.
+ *        video, outside the miniplayer, shows its real thumbnail, unless
+ *        the mode offers no face control; one with `shown: false` hides it
+ *        again, only where the mode lets it (`held`). A new video, a view
+ *        that is no longer plated, a mode without the control, and `nav`
+ *        take it away. Nothing keeps it.
+ *  R10 — Skip goes only where Core admits (#1966). A `held` token yields a
+ *        `play` for the first Up next video `skipTo` names, and nothing
+ *        when the owner's choice is to stop or no such video is shown.
  *
  * R4 correlated the answers to Core's async requests; none are left, so it
  * is retired. The parenthesised M- and C- labels are kept so their
@@ -56,11 +63,11 @@ import { assertNever } from "@some-extension/common"
 import type { Action, CoreFact } from "./actions"
 import type { CoreEvent } from "./events"
 import type { CardKey } from "./keys"
-import { keyVideoId } from "./keys"
+import { cardKey, keyVideoId } from "./keys"
 import type { Observation, WatchObservation } from "./observation"
 import { mergeObservation, mergeWatch } from "./observation"
-import type { CardState, CoreState, WatchState } from "./state"
-import { EMPTY_UNKNOWN_SHAPES } from "./state"
+import type { CardState, CoreState, Rules, WatchState } from "./state"
+import { EMPTY_UNKNOWN_SHAPES, skipTo } from "./state"
 
 export type Step = {
   readonly state: CoreState
@@ -129,6 +136,8 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
           watch: null,
           watchDates: null,
           boundaryDays: event.boundaryDays,
+          rules: event.rules,
+          autoplay: event.autoplay,
           unknownShapes: EMPTY_UNKNOWN_SHAPES,
         },
         actions: [record({ kind: "session.start", session: event.session })],
@@ -165,7 +174,7 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
           record({ kind: "navigation" }),
           record({ kind: "session.reset", session: state.session }),
           ...cleared.actions,
-          ...(faced ? [watchAction(watch)] : []),
+          ...(faced ? [watchAction(watch, state.rules)] : []),
           record({ kind: "session.start", session: event.session }),
         ],
       }
@@ -175,20 +184,35 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
       if (state.phase !== "running") return none(state)
       const watch = state.watch
       if (
+        state.rules.face === "none" ||
+        (!event.shown && state.rules.face !== "held") ||
         watch?.view !== "plated" ||
-        watch.face ||
+        watch.face === event.shown ||
         watch.observation.miniplayer ||
         watch.observation.videoId !== event.videoId
       ) {
         return none(state)
       }
-      const next = { ...watch, face: true }
-      return { state: { ...state, watch: next }, actions: [watchAction(next)] }
+      const next = { ...watch, face: event.shown }
+      return {
+        state: { ...state, watch: next },
+        actions: [watchAction(next, state.rules)],
+      }
     }
 
     case "boundary": {
       if (state.phase !== "running") return none(state)
-      return rebound(state, event.days)
+      return redecide(state, event.days, state.rules)
+    }
+
+    case "rules": {
+      if (state.phase !== "running") return none(state)
+      return redecide(state, state.boundaryDays, event.rules)
+    }
+
+    case "autoplay": {
+      if (state.phase !== "running") return none(state)
+      return none({ ...state, autoplay: event.autoplay })
     }
 
     // ── Tokens ─────────────────────────────────────────────────────────────
@@ -214,9 +238,18 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
       return watched(state, event.watch, event.t)
     }
 
+    case "held": {
+      if (state.phase !== "running") return none(state)
+      const to = skipTo(state, event.upNext)
+      return {
+        state,
+        actions: to === null ? [] : [{ kind: "play", key: cardKey(to) }],
+      }
+    }
+
     case "described": {
       if (state.phase !== "running" || state.watch === null) return none(state)
-      return { state, actions: [watchAction(state.watch)] }
+      return { state, actions: [watchAction(state.watch, state.rules)] }
     }
 
     case "unknown-shape": {
@@ -259,7 +292,13 @@ function adopt(
   const card: CardState = {
     key,
     observation,
-    view: decide(observation, t, state.boundaryDays, state.session),
+    view: decide(
+      observation,
+      t,
+      state.boundaryDays,
+      state.rules.signs,
+      state.session
+    ),
     firstSeenAt: t,
     lastSeenAt: t,
   }
@@ -291,7 +330,13 @@ function reobserve(
   t: number
 ): Step {
   const merged = mergeObservation(card.observation, observation)
-  const view = decide(merged, t, state.boundaryDays, state.session)
+  const view = decide(
+    merged,
+    t,
+    state.boundaryDays,
+    state.rules.signs,
+    state.session
+  )
   const next: CardState = { ...card, observation: merged, view, lastSeenAt: t }
   const actions: Array<Action> = []
   const videoId = keyVideoId(card.key)
@@ -330,7 +375,7 @@ function reobserve(
   return { state: setCard(state, next), actions }
 }
 
-function watchAction(watch: WatchState | null): Action {
+function watchAction(watch: WatchState | null, rules: Rules): Action {
   const videoId = watch?.observation.videoId ?? null
   return {
     kind: "watch",
@@ -342,6 +387,7 @@ function watchAction(watch: WatchState | null): Action {
         ? plateOf({ videoId, channelId: null, channelName: null }).fill
         : null,
     face: watch?.face ?? false,
+    offer: rules.face,
   }
 }
 
@@ -360,7 +406,7 @@ function watched(
   if (observation === null) {
     return {
       state: { ...state, watch: null },
-      actions: previous === null ? [] : [watchAction(null)],
+      actions: previous === null ? [] : [watchAction(null, state.rules)],
     }
   }
   // R8: another video's dates, still on screen, are not this one's.
@@ -383,7 +429,7 @@ function watched(
         }
       : observation
   const merged = previous === null ? own : mergeWatch(previous.observation, own)
-  const view = decideWatch(merged, t, state.boundaryDays)
+  const view = decideWatch(merged, t, state.boundaryDays, state.rules.signs)
   const next: WatchState = {
     observation: merged,
     view,
@@ -411,16 +457,18 @@ function watched(
     previous.face !== next.face
   return {
     state: { ...state, watch: next, watchDates },
-    actions: moved ? [watchAction(next)] : [],
+    actions: moved ? [watchAction(next, state.rules)] : [],
   }
 }
 
 /**
- * Re-decide every card, and the watch page, under a new boundary. Only a
- * card whose view moved is re-rendered, and each goes straight from one
- * stamp to the other, so no card passes through unstamped.
+ * Re-decide every card, and the watch page, under a new boundary or mode.
+ * Only a card whose view moved is re-rendered, and each goes straight from
+ * one stamp to the other, so no card passes through unstamped. The watch
+ * page is rendered again when its view moved or the face control comes,
+ * goes or changes with the mode.
  */
-function rebound(state: CoreState, boundaryDays: number): Step {
+function redecide(state: CoreState, boundaryDays: number, rules: Rules): Step {
   const cards = new Map<CardKey, CardState>()
   const actions: Array<Action> = []
   for (const card of state.cards.values()) {
@@ -428,6 +476,7 @@ function rebound(state: CoreState, boundaryDays: number): Step {
       card.observation,
       card.lastSeenAt,
       boundaryDays,
+      rules.signs,
       state.session
     )
     const next: CardState = { ...card, view }
@@ -437,11 +486,20 @@ function rebound(state: CoreState, boundaryDays: number): Step {
   }
   let watch = state.watch
   if (watch !== null) {
-    const view = decideWatch(watch.observation, watch.seenAt, boundaryDays)
-    if (view !== watch.view) {
-      watch = { ...watch, view, face: watch.face && view === "plated" }
-      actions.push(watchAction(watch))
+    const view = decideWatch(
+      watch.observation,
+      watch.seenAt,
+      boundaryDays,
+      rules.signs
+    )
+    if (view !== watch.view || rules.face !== state.rules.face) {
+      watch = {
+        ...watch,
+        view,
+        face: watch.face && view === "plated" && rules.face !== "none",
+      }
+      actions.push(watchAction(watch, rules))
     }
   }
-  return { state: { ...state, boundaryDays, cards, watch }, actions }
+  return { state: { ...state, boundaryDays, rules, cards, watch }, actions }
 }

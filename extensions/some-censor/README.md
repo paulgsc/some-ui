@@ -12,7 +12,8 @@ settings in `storage.local`, `src/lib/settings/`) →
 resulting actions to the Actuator. The Layout table and Core are pure; the
 Sensor turns the vendor DOM into the tokens Core sees, and the Actuator is the
 only writer to it. The one vendor event the Sensor holds, on Core's answer, is
-an autoplay into a video Core does not admit (#1805).
+an autoplay into a video Core does not admit (#1805); under Skip, Core then
+names the Up next video the Actuator opens instead (#1966).
 
 Four stages, each owning exactly one concern, in a straight line from
 observation to write:
@@ -35,7 +36,10 @@ observation to write:
    maturity estimate): absent, plated when it is old enough, or whole when it
    is music (`lane/lane.ts`, QD15). No gesture on
    a card is an input (#1803); the boundary, set in the popup, is (#1807),
-   and so is the face hold on a plated watch page (QD13, #1805).
+   and so are the owner's mode (`settings/modes.ts`, #1966) and the face
+   hold on a plated watch page (QD13, #1805). The popup, the settings page
+   (`options.html`) and the tab menu (`background.ts`) set the mode, the
+   boundary and autoplay (#1966).
 4. **Actuator** (`src/lib/content/actuator/`) — the only writer to the
    vendor DOM. It only executes the actions Core named: the `data-boyo`
    stamp (`absent` is `display: none` in `styles/content.css`), the plate's
@@ -59,9 +63,10 @@ offer extensions, is not a bug.
 The e2e suite (`pnpm test:e2e`) runs locally, not in CI. Its specs wait on real
 time (poll timeouts from 4 to 15 s, 8 s by default, and three fixed sleeps),
 so they are tuned to a developer machine. A green run covers the code
-Firefox shares (the content script, the popup and the stylesheet), not the
-Firefox manifest, its platform adapters or how Firefox renders the page. Run it
-before pushing a change to the content script, the popup or the stylesheet.
+Firefox shares (the content script, the popup, the settings page and the
+stylesheet), not the Firefox manifest, its platform adapters, the tab menu or
+how Firefox renders the page. Run it before pushing a change to the content
+script, the popup, the settings page or the stylesheet.
 
 > [!IMPORTANT] > **Story-governed as well as canon-governed — read both before editing this package.**
 >

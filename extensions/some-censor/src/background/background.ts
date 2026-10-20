@@ -1,44 +1,102 @@
 /**
  * BOYO — background bundle entry point.
  *
- * Its one job is the "Open diagnostics" tab context-menu item.
+ * Its one job is the tab and toolbar-button menu (#1966): the switch, the
+ * mode, what autoplay does at a held video, the settings page and
+ * Diagnostics. The menu is created once, at install, and its marks are set
+ * from what is stored each time it opens, so they always match the popup
+ * and the settings page. Nothing here listens to storage. Firefox wakes
+ * the background for every context menu it opens, anywhere, so the marks
+ * are set only when the menu shown holds these items.
  *
  * Runtime isolation: no imports from src/content/ or src/popup/ at runtime.
  */
-import { ext } from "@censor/platform/background"
+import { menuCommand, menuItems } from "@censor/lib/settings/menu"
 import {
-  diagnosticsMenuItem,
-  isDiagnosticsMenuClick,
-} from "@some-extension/common/lib/diagnostics"
+  createSaver,
+  parseSettings,
+  SETTINGS_KEY,
+} from "@censor/lib/settings/settings"
+import { MENU_WORDS } from "@censor/lib/settings/words"
+import { ext } from "@censor/platform/background"
+import { assertNever } from "@some-extension/common"
+import { diagnosticsMenuItem } from "@some-extension/common/lib/diagnostics"
 
-// ─────────────────────────────────────────────
-// diagnostics
-// ─────────────────────────────────────────────
+// "tab" (right-click the tab strip) is Firefox-only; Chrome has no such
+// context and fails to create these items, which leaves the popup and the
+// settings page there. "action" is the toolbar button's own menu. Firefox
+// gathers the tab menu's items under the extension's name.
+const CONTEXTS: Array<browser.menus.ContextType> = ["tab", "action"]
 
-// "bc" namespaces this menu item per Charter idiom #4, matching debug.css's
-// own `bc-` prefix. "tab" (right-click the tab strip) is Firefox-only;
-// Chrome has no such context and silently fails to create this item, which
-// is fine — the popup's own "Diagnostics" footer link covers Chrome.
-const DIAGNOSTICS_MENU = diagnosticsMenuItem("bc")
+const DIAGNOSTICS_MENU = diagnosticsMenuItem("bc", MENU_WORDS.diagnostics)
+
+const save = createSaver(ext.storage.local)
+
+async function stored(): Promise<ReturnType<typeof parseSettings>> {
+  const record = await ext.storage.local.get(SETTINGS_KEY)
+  return parseSettings(record[SETTINGS_KEY])
+}
 
 ext.runtime.onInstalled.addListener((): void => {
-  void ext.contextMenus.removeAll().then(() => {
-    ext.contextMenus.create({
-      id: DIAGNOSTICS_MENU.id,
-      title: DIAGNOSTICS_MENU.title,
-      contexts: ["tab"],
-      // Firefox only wraps an extension's items under its manifest icon +
-      // name when the extension contributes 2+ top-level items; some-censor
-      // has exactly one, so it renders flat unless the item carries its own
-      // icon. Per-item `icons` is keyed by size, same as manifest icons.
-      icons: { 16: "assets/icon-16.png" },
+  void ext.contextMenus
+    .removeAll()
+    .then(stored)
+    .then((settings) => {
+      for (const item of menuItems(settings, DIAGNOSTICS_MENU)) {
+        ext.contextMenus.create({ ...item, contexts: CONTEXTS })
+      }
     })
-  })
+    .catch(() => undefined)
+})
+
+// Firefox only: Chrome has neither `onShown` nor `refresh`, nor these menus.
+const firefoxMenus: {
+  readonly onShown?: typeof ext.contextMenus.onShown
+  readonly refresh?: typeof ext.contextMenus.refresh
+} = ext.contextMenus
+
+firefoxMenus.onShown?.addListener((info): void => {
+  if (info.menuIds.length === 0) return
+  void stored()
+    .then(async (settings) => {
+      for (const { id, checked, enabled } of menuItems(
+        settings,
+        DIAGNOSTICS_MENU
+      )) {
+        if (checked === undefined && enabled === undefined) continue
+        await ext.contextMenus.update(id, {
+          ...(checked === undefined ? {} : { checked }),
+          ...(enabled === undefined ? {} : { enabled }),
+        })
+      }
+      await firefoxMenus.refresh?.()
+    })
+    .catch(() => undefined)
 })
 
 ext.contextMenus.onClicked.addListener((info): void => {
-  if (isDiagnosticsMenuClick(info.menuItemId, DIAGNOSTICS_MENU.id)) {
-    void ext.tabs.create({ url: ext.runtime.getURL("debug.html") })
+  const command = menuCommand(
+    String(info.menuItemId),
+    info.checked,
+    DIAGNOSTICS_MENU.id
+  )
+  if (command === null) return
+  switch (command.kind) {
+    case "change": {
+      save(command.change)
+      break
+    }
+    case "settings": {
+      void ext.runtime.openOptionsPage()
+      break
+    }
+    case "diagnostics": {
+      void ext.tabs.create({ url: ext.runtime.getURL("debug.html") })
+      break
+    }
+    default: {
+      assertNever(command)
+    }
   }
 })
 

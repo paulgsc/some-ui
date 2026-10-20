@@ -59,9 +59,12 @@ const PLATE_PROPERTIES: Readonly<Record<keyof Plate, string>> = {
   initial: "--boyo-initial",
 }
 
+/** A card's link to its own watch page. */
+const WATCH_LINK = 'a[href*="/watch?v="]'
+
 export type ActuatorPorts = {
   /** The owner held the face control on `videoId`'s page (QD13). */
-  readonly onFace: (videoId: VideoId) => void
+  readonly onFace: (videoId: VideoId, shown: boolean) => void
 }
 
 export function createActuator(doc: Document, ports: ActuatorPorts): Actuator {
@@ -176,6 +179,31 @@ export function createActuator(doc: Document, ports: ActuatorPorts): Actuator {
     realized.delete(key)
   }
 
+  // ── Skip (#1966) ───────────────────────────────────────────────────────
+
+  let pendingPlay: ReturnType<typeof setTimeout> | null = null
+
+  /**
+   * Open the card as a click on its watch link would, a task after the
+   * held navigation that asked for it, so YouTube's own navigation starts
+   * from an event it handles whole. A click carries no autoplay mark, so
+   * the Sensor never holds it.
+   */
+  function play(targets: ReadonlyArray<CustodyTarget>): void {
+    const card = targets[0]?.el
+    if (card === undefined) return
+    const link = card.matches(WATCH_LINK)
+      ? card
+      : card.querySelector<HTMLElement>(WATCH_LINK)
+    if (link === null) return
+    if (pendingPlay !== null) clearTimeout(pendingPlay)
+    // Lifetime: cleared by dispose(), and by the next play.
+    pendingPlay = setTimeout(() => {
+      pendingPlay = null
+      link.click()
+    }, 0)
+  }
+
   // ── Public ─────────────────────────────────────────────────────────────
 
   return {
@@ -190,6 +218,10 @@ export function createActuator(doc: Document, ports: ActuatorPorts): Actuator {
           }
           case "unmount": {
             unmount(action.key, targets)
+            break
+          }
+          case "play": {
+            play(targets)
             break
           }
           case "watch": {
@@ -214,6 +246,8 @@ export function createActuator(doc: Document, ports: ActuatorPorts): Actuator {
       disposed = true
       for (const key of [...realized.keys()]) unmount(key, [])
       watchHold.dispose()
+      if (pendingPlay !== null) clearTimeout(pendingPlay)
+      pendingPlay = null
     },
   }
 }

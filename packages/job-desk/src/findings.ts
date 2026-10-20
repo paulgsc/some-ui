@@ -1,10 +1,13 @@
 import { mentionsWord } from "@some-ui/core-utils"
 
-import type { Digest } from "./digest"
+import type { Digest, Kit, Pick } from "./digest"
 import { RESUME_VARIANTS, SOFTWARE_VARIANTS } from "./digest"
 import { fingerprint, role as roleOf } from "./fingerprint"
 import {
   EXCLUDED_TITLE,
+  FORBIDDEN_TERMS,
+  MAX_ANSWER_WORDS,
+  MAX_COVER_LETTER_WORDS,
   MAX_OPEN_PICKS,
   MAX_POSTING_AGE_DAYS,
   PATCH_PRS_PER_RUN,
@@ -25,9 +28,180 @@ function daysBetween(from: string, to: string): number {
 }
 
 /**
+ * A phone number, written the ways a US one is. A bare run of ten digits is
+ * not one: a posting's id in a link is as long.
+ */
+const PHONE =
+  /(?<!\d)(?:\+?1[\s.-]?)?(?:\(\d{3}\)[\s.-]?|\d{3}[\s.-])\d{3}[\s.-]\d{4}(?!\d)/
+
+/** A street address: a house number, a name, and a street word. */
+const STREET =
+  /\b\d{1,6}\s+(?:[A-Z][\w'-]*\s+){1,3}(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Way|Dr|Drive|Ln|Lane|Ct|Court|Pl|Place|Ter|Terrace)\b/
+
+/** A detail I type myself, as a form labels the row for it. */
+const TYPED_BY_ME =
+  /^(?:(?:mobile|cell|home|work|contact|preferred|primary)\s+)?(?:(?:tele)?phone(?:\s+(?:number|no|#))?|number)$|^(?:mobile|cell)$|^(?:(?:street|mailing|home|postal|current|residential)\s+)?address\s*(?:line\s*)?\d?$/
+
+/**
+ * Whether a kit row's label asks for a phone number or address. A form
+ * dresses a label ("What’s your phone number?", "Phone ✱", "Address
+ * (optional)"), so that is taken off before the label is matched whole: a
+ * question that only mentions one ("Built mobile apps?") is not a row for it.
+ */
+function typedByMe(label: string): boolean {
+  const bare = label
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, "")
+    .replace(/[\s*✱:?.]+$/u, "")
+    .replace(/^\s*(?:what(?: is|['’]s) )?(?:your\s+)?/u, "")
+    .trim()
+  return TYPED_BY_ME.test(bare)
+}
+
+/** `text` claiming a term the evidence or the pick rules out, if it does. */
+function claimFinding(
+  path: string,
+  text: string,
+  dontClaim: ReadonlyArray<string>
+): Finding | null {
+  const term = [...FORBIDDEN_TERMS, ...dontClaim].find((t) =>
+    mentionsWord(text, t)
+  )
+  if (!term) return null
+  const why = FORBIDDEN_TERMS.includes(term)
+    ? "the evidence doesn't support"
+    : "dontClaim rules out"
+  return { path, message: `claims "${term}", which ${why}` }
+}
+
+function wordCount(draft: string): number {
+  return draft.split(/\s+/).filter(Boolean).length
+}
+
+/** What a run drafts for a form: a pick's kit, or an earlier pick's redraft. */
+type Drafts = {
+  coverLetter: string | null
+  questions: Kit["questions"]
+  compensation?: Kit["compensation"]
+}
+
+/**
+ * Drafts within their caps, each question once, every required one answered,
+ * and nothing I never let a run write: a term the evidence doesn't support,
+ * one the pick says not to claim, or a phone number or street address
+ * (ROUTINE.md §7). `at` is the drafts' own path.
+ */
+function draftFindings(
+  drafts: Drafts,
+  dontClaim: ReadonlyArray<string>,
+  at: string
+): Array<Finding> {
+  const found: Array<Finding> = []
+  const texts: Array<[path: string, draft: string, cap: number]> = []
+  if (drafts.coverLetter !== null)
+    texts.push(["coverLetter", drafts.coverLetter, MAX_COVER_LETTER_WORDS])
+  const asked = new Set<string>()
+  drafts.questions.forEach((question, i) => {
+    if (asked.has(question.label))
+      found.push({
+        path: `${at}.questions.${i}.label`,
+        message: `"${question.label}" is asked twice`,
+      })
+    asked.add(question.label)
+    if (question.draft !== null)
+      texts.push([`questions.${i}.draft`, question.draft, MAX_ANSWER_WORDS])
+    else if (question.required)
+      found.push({
+        path: `${at}.questions.${i}.draft`,
+        message: "a required question has no draft",
+      })
+  })
+  if (drafts.compensation)
+    texts.push(["compensation.why", drafts.compensation.why, MAX_ANSWER_WORDS])
+
+  for (const [path, draft, cap] of texts) {
+    const words = wordCount(draft)
+    if (words > cap)
+      found.push({
+        path: `${at}.${path}`,
+        message: `${words} words; the most is ${cap}`,
+      })
+    const claim = claimFinding(`${at}.${path}`, draft, dontClaim)
+    if (claim) found.push(claim)
+    const contact = contactFinding(`${at}.${path}`, draft)
+    if (contact) found.push(contact)
+  }
+  if (drafts.compensation) {
+    const contact = contactFinding(
+      `${at}.compensation.ask`,
+      drafts.compensation.ask
+    )
+    if (contact) found.push(contact)
+  }
+  return found
+}
+
+function contactFinding(path: string, text: string): Finding | null {
+  return PHONE.test(text) || STREET.test(text)
+    ? { path, message: "a phone number or street address is mine to type" }
+    : null
+}
+
+/** A pick's kit: its drafts, and no row for a detail I type myself. */
+function kitFindings(pick: Pick, at: string): ReadonlyArray<Finding> {
+  const { kit } = pick
+  const found = draftFindings(kit, pick.dontClaim, `${at}.kit`)
+  for (const [kind, rows] of Object.entries({
+    fields: kit.fields,
+    answers: kit.answers,
+  })) {
+    rows.forEach((row, i) => {
+      if (typedByMe(row.label))
+        found.push({
+          path: `${at}.kit.${kind}.${i}.label`,
+          message: `"${row.label}" is mine to type`,
+        })
+      const contact = contactFinding(`${at}.kit.${kind}.${i}`, row.value)
+      if (contact) found.push(contact)
+    })
+  }
+  return found
+}
+
+/**
+ * Each redraft rewrites a pick still open in the queue, from an earlier
+ * digest, at most once, held to the same rules as a kit's drafts. The
+ * pick's own `dontClaim` is in its digest, which the run reads (§2).
+ */
+function redraftFindings(digest: Digest): ReadonlyArray<Finding> {
+  const found: Array<Finding> = []
+  const open = new Set(
+    (digest.queue?.open ?? [])
+      .filter((held) => !held.closed)
+      .map((held) => `${held.day}/${held.pickId}`)
+  )
+  const seen = new Set<string>()
+  digest.redrafts.forEach((redraft, i) => {
+    const at = `redrafts.${i}`
+    const key = `${redraft.day}/${redraft.pickId}`
+    if (!open.has(key))
+      found.push({
+        path: at,
+        message: `${key} is not an open pick in this digest's queue`,
+      })
+    if (seen.has(key))
+      found.push({ path: at, message: `${key} is redrafted twice` })
+    seen.add(key)
+    found.push(...draftFindings(redraft, [], at))
+  })
+  return found
+}
+
+/**
  * What the schema cannot say about a digest: the policy's limits, the
- * queue's room, one fingerprint per posting, and no fit that claims what the
- * same pick says not to claim. An empty list is what a run uploads.
+ * queue's room, one fingerprint per posting, no fit that claims what the
+ * evidence or the same pick rules out, each kit's drafts (`kitFindings`) and
+ * each redraft (`redraftFindings`). An empty list is what a run uploads.
  */
 export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
   const found: Array<Finding> = []
@@ -203,15 +377,14 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
             : `older than ${MAX_POSTING_AGE_DAYS} days on ${digest.day}`,
       })
     }
+    found.push(...kitFindings(pick, at))
     pick.fits.forEach((fit, j) => {
-      const claim = `${fit.title} ${fit.detail}`
-      const term = pick.dontClaim.find((t) => mentionsWord(claim, t))
-      if (term) {
-        found.push({
-          path: `${at}.fits.${j}`,
-          message: `claims "${term}", which dontClaim rules out`,
-        })
-      }
+      const claim = claimFinding(
+        `${at}.fits.${j}`,
+        `${fit.title} ${fit.detail}`,
+        pick.dontClaim
+      )
+      if (claim) found.push(claim)
     })
   })
 
@@ -296,5 +469,6 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
     }
   })
 
+  found.push(...redraftFindings(digest))
   return found
 }

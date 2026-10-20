@@ -1,45 +1,36 @@
 /**
- * Popup (`popup.html`), built to prototype D (`QD16`, #1807): the on/off
- * switch, "Show videos older than", and the Diagnostics link.
+ * Popup (`popup.html`), after the 2026-10-19 prototype (#1966): the on/off
+ * switch, the mode, "Show videos older than", what autoplay does at a held
+ * video, and links to the settings page and Diagnostics.
  *
  * `storage.local` is the only state: a click writes the settings, and the
  * popup renders from {@link followSettings}, so what it shows is what the
  * content script applies.
  */
+import { onSwitch, segments } from "@censor/lib/settings/choices"
 import type { Settings } from "@censor/lib/settings/settings"
 import {
+  AUTOPLAYS,
   BOUNDARIES,
-  BOUNDARY_CHANGES_KEY,
   BOUNDARY_LABEL,
+  createSaver,
   followSettings,
-  parseSettings,
-  SETTINGS_KEY,
-  settingsWrite,
+  MODES,
 } from "@censor/lib/settings/settings"
+import {
+  AGE_QUESTION,
+  AUTOPLAY_QUESTION,
+  AUTOPLAY_WORDS,
+  MODE_QUESTION,
+  MODE_WORDS,
+  PAGE_WORDS,
+} from "@censor/lib/settings/words"
 import { ext } from "@censor/platform/content"
 import { diagnosticsLink } from "@some-extension/common/lib/diagnostics"
 
 import "./popup.css"
 
-let saving: Promise<void> = Promise.resolve()
-
-/**
- * Apply `change` to what is stored, one save at a time: two quick clicks each
- * build on the other's write, and neither drops a log entry.
- */
-function save(change: (stored: Settings) => Settings): void {
-  saving = saving
-    .then(async () => {
-      const stored = await ext.storage.local.get([
-        SETTINGS_KEY,
-        BOUNDARY_CHANGES_KEY,
-      ])
-      const next = change(parseSettings(stored[SETTINGS_KEY]))
-      await ext.storage.local.set(settingsWrite(stored, next, Date.now()))
-    })
-    // A failed save leaves storage, and so the popup, as it was.
-    .catch(() => undefined)
-}
+const save = createSaver(ext.storage.local)
 
 function header(settings: Settings): HTMLElement {
   const el = document.createElement("header")
@@ -49,60 +40,76 @@ function header(settings: Settings): HTMLElement {
   name.className = "popup__name"
   name.textContent = "BOYO"
 
-  const toggle = document.createElement("button")
-  toggle.type = "button"
-  toggle.className = "popup__switch"
-  toggle.setAttribute("role", "switch")
-  toggle.setAttribute("aria-checked", String(settings.enabled))
-  toggle.setAttribute("aria-label", "On")
-  toggle.addEventListener("click", () => {
-    save((stored) => ({ ...stored, enabled: !stored.enabled }))
-  })
-
-  el.append(name, toggle)
+  el.append(
+    name,
+    onSwitch(settings.enabled, () => {
+      save((stored) => ({ ...stored, enabled: !stored.enabled }))
+    })
+  )
   return el
 }
 
-function boundaryChoice(settings: Settings): HTMLElement {
+function choices(settings: Settings): HTMLElement {
   const el = document.createElement("div")
-  el.className = "popup__question"
-
-  const label = document.createElement("div")
-  label.className = "popup__label"
-  label.id = "boundary-label"
-  label.textContent = "Show videos older than"
-
-  const group = document.createElement("div")
-  group.className = "popup__segments"
-  group.setAttribute("role", "group")
-  group.setAttribute("aria-labelledby", label.id)
-  for (const boundary of BOUNDARIES) {
-    const option = document.createElement("button")
-    option.type = "button"
-    option.textContent = BOUNDARY_LABEL[boundary]
-    option.setAttribute("aria-pressed", String(boundary === settings.boundary))
-    option.addEventListener("click", () => {
-      save((stored) => ({ ...stored, boundary }))
+  el.className = "popup__choices"
+  el.toggleAttribute("inert", !settings.enabled)
+  el.append(
+    segments({
+      id: "mode",
+      question: MODE_QUESTION,
+      values: MODES,
+      label: (mode) => MODE_WORDS[mode].name,
+      current: settings.mode,
+      onPick: (mode) => save((stored) => ({ ...stored, mode })),
+      line: MODE_WORDS[settings.mode].tag,
+    }),
+    segments({
+      id: "age",
+      question: AGE_QUESTION,
+      values: BOUNDARIES,
+      label: (boundary) => BOUNDARY_LABEL[boundary],
+      current: settings.boundary,
+      onPick: (boundary) => save((stored) => ({ ...stored, boundary })),
+    }),
+    segments({
+      id: "autoplay",
+      question: AUTOPLAY_QUESTION,
+      values: AUTOPLAYS,
+      label: (autoplay) => AUTOPLAY_WORDS[autoplay].label,
+      current: settings.autoplay,
+      onPick: (autoplay) => save((stored) => ({ ...stored, autoplay })),
+      line: AUTOPLAY_WORDS[settings.autoplay].line,
     })
-    group.appendChild(option)
-  }
+  )
+  return el
+}
 
-  el.append(label, group)
+function footer(): HTMLElement {
+  const el = document.createElement("div")
+  el.className = "popup__links"
+  const all = document.createElement("button")
+  all.type = "button"
+  all.className = "popup__link"
+  all.textContent = PAGE_WORDS.allSettings
+  all.addEventListener("click", () => {
+    void ext.runtime.openOptionsPage()
+  })
+  el.append(
+    all,
+    diagnosticsLink({
+      href: ext.runtime.getURL("debug.html"),
+      label: PAGE_WORDS.diagnostics,
+      tooltip: PAGE_WORDS.diagnosticsTip,
+    })
+  )
   return el
 }
 
 function render(settings: Settings): void {
   const root = document.getElementById("app")
   if (!root) return
-
-  root.replaceChildren(
-    header(settings),
-    boundaryChoice(settings),
-    diagnosticsLink({
-      href: ext.runtime.getURL("debug.html"),
-      tooltip: "Card resolution health, metrics and the masking event timeline",
-    })
-  )
+  root.classList.toggle("boyo-popup-off", !settings.enabled)
+  root.replaceChildren(header(settings), choices(settings), footer())
 }
 
 followSettings(ext.storage, render)

@@ -20,6 +20,10 @@ const browserStorage = window.localStorage
 const { demoSessions, seedDemo } = await import("@/lib/demo")
 const { OFFERED_ACTIVITIES } = await import("@/lib/playable")
 const { STORAGE_KEY } = await import("@/lib/tenant/sessions-repository")
+const { SAMPLE_SESSION_NAME, viewerSessionFiles } = await import(
+  "@/lib/demo/leetype-sample"
+)
+const { intakeSessionFile } = await import("@some-ui/leetype")
 
 afterEach(() => {
   window.localStorage.clear()
@@ -59,5 +63,32 @@ describe("the viewer's storage", () => {
     viewer.build = false
     seedDemo()
     expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull()
+  })
+})
+
+describe("viewerSessionFiles", () => {
+  it("holds Thread 1's first session, which the phone's own intake reads clean", async () => {
+    const store = viewerSessionFiles()
+    const [sample] = await store.list()
+    expect(sample.name).toBe(SAMPLE_SESSION_NAME)
+    const body = await store.read(SAMPLE_SESSION_NAME)
+    const intake = intakeSessionFile(`${SAMPLE_SESSION_NAME}.json`, body ?? "")
+    expect(intake).toMatchObject({
+      ok: true,
+      name: SAMPLE_SESSION_NAME,
+      file: { title: sample.title, oneLine: sample.oneLine },
+      findings: [],
+    })
+  })
+
+  it("takes no picks: a viewer's samples are all it holds", async () => {
+    const store = viewerSessionFiles()
+    await expect(
+      store.keep(
+        { name: "mine", title: "Mine", oneLine: "One.", body: "{}" },
+        new Date("2026-10-20T00:00:00.000Z")
+      )
+    ).rejects.toThrow()
+    expect(await store.read("mine")).toBeNull()
   })
 })

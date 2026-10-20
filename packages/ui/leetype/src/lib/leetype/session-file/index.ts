@@ -1,3 +1,5 @@
+import type { RuleId } from "@leetype/lib/leetype/proposition-register/generated"
+import { RULE_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
 import type {
   ChoiceScreen,
   SessionFile,
@@ -15,7 +17,13 @@ import { assertNever, mentionsWord } from "@some-ui/core-utils"
  * nowhere. `feedback-names-answer` matches the correct label as words, so a
  * paraphrase of the answer is for the review pass to catch. A reading is
  * placed when a struggle can reach it or it is tagged `placement`; its in-app
- * core is its passage, read at `WORDS_PER_MINUTE`.
+ * core is its passage, read at `WORDS_PER_MINUTE`. `unregistered-rule`
+ * resolves every `rule` and `applies` against Rem. 7.4's registers
+ * (Rem. 7.1's citation check over `M` and `A`); a round names its `rule`,
+ * and its correct option applies no other.
+ *
+ * Rem. 10.3 (5) spans files, so it is not here: `negativeDiscriminationGaps`
+ * takes the whole set.
  */
 
 type SessionFileFindingCode =
@@ -27,6 +35,9 @@ type SessionFileFindingCode =
   | "long-placement"
   | "verbatim-return"
   | "authored-ledger"
+  | "unregistered-rule"
+  | "round-without-rule"
+  | "correct-applies-other-rule"
 
 export type SessionFileFinding = {
   readonly code: SessionFileFindingCode
@@ -37,6 +48,20 @@ export type SessionFileFinding = {
 const PLACEMENT_CORE_MINUTES = 3
 /** Dense technical prose on a phone, the brief's reading-time estimate. */
 const WORDS_PER_MINUTE = 150
+
+function isRuleId(id: string): id is RuleId {
+  return Object.hasOwn(RULE_REGISTER, id)
+}
+
+/** Why `id` does not resolve to a live Rem. 7.4 row, or null when it does. */
+function unregistered(id: string): string | null {
+  const table = `canon Rem. 7.4's ${id.startsWith("M") ? "Machine" : "Agreement"} register`
+  if (!isRuleId(id)) return `"${id}" is in no row of ${table}`
+  if (RULE_REGISTER[id].status === "superseded") {
+    return `"${id}" is superseded in ${table}; cite the row that replaces it`
+  }
+  return null
+}
 
 export function isRound(screen: SessionScreen): screen is ChoiceScreen {
   return (
@@ -163,10 +188,11 @@ function alwaysReachesReading(
 }
 
 /**
- * Screens reachable from `start` without passing through a screen that
- * glosses `term`, which are therefore reached with `term` still undefined.
+ * Screens reachable from `start`, a return counted as reachable from its
+ * round. With `term`, the walk stops at screens that gloss it, so what it
+ * reaches is reached with `term` still undefined.
  */
-function reachableUnglossed(file: SessionFile, term: string): Set<string> {
+function reachable(file: SessionFile, term?: string): Set<string> {
   const reached = new Set<string>()
   // A return is played after its round, in this session or a later one.
   const returnsOf = new Map<string, Array<string>>()
@@ -182,7 +208,7 @@ function reachableUnglossed(file: SessionFile, term: string): Set<string> {
   for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
     const screen = file.screens[id]
     if (!screen || reached.has(id)) continue
-    if (screen.glosses?.includes(term)) continue
+    if (term !== undefined && screen.glosses?.includes(term)) continue
     reached.add(id)
     queue.push(...edgesOf(screen), ...(returnsOf.get(id) ?? []))
   }
@@ -201,7 +227,38 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
 
   const placed = new Set<string>()
   for (const [id, screen] of Object.entries(file.screens)) {
+    if (screen.type === "choice") {
+      const cited = [
+        screen.rule,
+        ...screen.options.map((option) => option.applies),
+      ]
+      for (const rule of new Set(cited)) {
+        const why = rule === undefined ? null : unregistered(rule)
+        if (why !== null) add("unregistered-rule", id, why)
+      }
+    }
+
     if (isRound(screen)) {
+      if (screen.rule === undefined) {
+        add(
+          "round-without-rule",
+          id,
+          "a round names the Rem. 7.4 entry that decides it (`rule`, Def. 1.9)"
+        )
+      }
+      for (const option of screen.options) {
+        if (
+          option.correct &&
+          option.applies !== undefined &&
+          option.applies !== screen.rule
+        ) {
+          add(
+            "correct-applies-other-rule",
+            id,
+            `the correct option applies ${option.applies}, not the rule that decides the round`
+          )
+        }
+      }
       const abstentions = screen.options.filter((option) => option.abstain)
       if (abstentions.length !== 1) {
         add(
@@ -286,7 +343,7 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
   }
 
   for (const term of Object.keys(file.glossary ?? {})) {
-    for (const id of reachableUnglossed(file, term)) {
+    for (const id of reachable(file, term)) {
       const screen = file.screens[id]
       const text = screen ? textOf(screen) : ""
       if (formsOf(term).some((form) => mentionsWord(text, form))) {
@@ -300,4 +357,37 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
   }
 
   return findings
+}
+
+/**
+ * Rem. 10.3 (5) over a set of session files: every live `M` or `A` entry
+ * that is no wrong option's `applies` on any playable round another entry
+ * decides, so a learner who always picks it is never shown wrong
+ * (Prop. 10.1). The canon marks no entry uninstantiable, so every live row
+ * is owed one.
+ */
+export function negativeDiscriminationGaps(
+  files: ReadonlyArray<SessionFile>
+): Array<RuleId> {
+  const discriminated = new Set<string>()
+  for (const file of files) {
+    for (const id of reachable(file)) {
+      const screen = file.screens[id]
+      if (!screen || !isRound(screen) || screen.rule === undefined) continue
+      for (const option of screen.options) {
+        if (
+          !option.correct &&
+          option.applies !== undefined &&
+          option.applies !== screen.rule
+        ) {
+          discriminated.add(option.applies)
+        }
+      }
+    }
+  }
+  return Object.values(RULE_REGISTER)
+    .filter((entry) => entry.status === "active")
+    .map((entry) => entry.id)
+    .filter(isRuleId)
+    .filter((id) => !discriminated.has(id))
 }

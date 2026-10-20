@@ -134,10 +134,10 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-      - uses: ./.github/actions/nix-setup
-      - uses: ./.github/actions/pnpm-cache
-      - name: Install dependencies
-        run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
+      - uses: ./.github/actions/node-ci-setup
+        with:
+          build: none
+          resume-assets: "false"
       # The same two builds the publish path runs (build-workspace, then the
       # sign job's own extension build), so the digest compared here is the
       # one the sign job will see.
@@ -214,12 +214,10 @@ jobs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
       - uses: actions/checkout@v7
-      - uses: ./.github/actions/nix-setup
-      - uses: ./.github/actions/pnpm-cache
-      - name: Install dependencies
-        run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
-        env:
-          HUSKY: 0
+      - uses: ./.github/actions/node-ci-setup
+        with:
+          build: none
+          resume-assets: "false"
       - name: Build workspace packages
         run: |
           nix develop .#ci --command pnpm build \

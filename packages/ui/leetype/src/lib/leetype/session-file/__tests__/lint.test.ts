@@ -2,7 +2,7 @@ import type { SessionFile } from "@leetype/types/session-file"
 import { SessionFileSchema } from "@leetype/types/session-file"
 import { describe, expect, it } from "vitest"
 
-import { lintSessionFile } from ".."
+import { lintSessionFile, negativeDiscriminationGaps } from ".."
 import { AB_FIXTURES } from "./fixtures"
 
 const source = {
@@ -253,6 +253,36 @@ describe("lintSessionFile", () => {
     expect(codes(file)).toEqual(["authored-ledger"])
   })
 
+  it("resolves rule and applies against Rem. 7.4, naming the register", () => {
+    const file = clean()
+    const round = file.screens.r1
+    if (round?.type !== "choice") throw new Error("r1 is a choice")
+    round.rule = "A99"
+    round.options[1] = { ...round.options[1]!, applies: "M42" }
+    expect(lintSessionFile(file)).toEqual([
+      {
+        code: "unregistered-rule",
+        screen: "r1",
+        message: `"A99" is in no row of canon Rem. 7.4's Agreement register`,
+      },
+      {
+        code: "unregistered-rule",
+        screen: "r1",
+        message: `"M42" is in no row of canon Rem. 7.4's Machine register`,
+      },
+    ])
+  })
+
+  it("reports a round that names no rule, and a correct option applying another", () => {
+    const file = clean()
+    const round = file.screens.r1
+    if (round?.type !== "choice") throw new Error("r1 is a choice")
+    round.options[0] = { ...round.options[0]!, applies: "A5" }
+    expect(codes(file)).toEqual(["correct-applies-other-rule"])
+    delete round.rule
+    expect(codes(file)).toContain("round-without-rule")
+  })
+
   it.each(AB_FIXTURES)(
     "reads the A/B's variant $variant as the A/B found it: no round cites its passage, and the end is authored",
     ({ raw }) => {
@@ -261,4 +291,28 @@ describe("lintSessionFile", () => {
       expect(found).toContain("authored-ledger")
     }
   )
+})
+
+describe("negativeDiscriminationGaps", () => {
+  it("owes every live entry a round another entry decides, where an option applies it", () => {
+    const file = clean()
+    const round = file.screens.r1
+    if (round?.type !== "choice") throw new Error("r1 is a choice")
+    round.options[1] = { ...round.options[1]!, applies: "A9" }
+    // A correct option is never a distractor, whatever it applies.
+    round.options[0] = { ...round.options[0]!, applies: "A5" }
+    expect(negativeDiscriminationGaps([file])).not.toContain("A9")
+    expect(negativeDiscriminationGaps([file])).toContain("A5")
+    // A wrong option applying the round's own rule, or any option on a round
+    // that names no rule, discriminates nothing.
+    round.options[1] = { ...round.options[1], applies: "A3" }
+    expect(negativeDiscriminationGaps([file])).toContain("A3")
+    round.options[1] = { ...round.options[1], applies: "A9" }
+    delete round.rule
+    expect(negativeDiscriminationGaps([file])).toContain("A9")
+    // Nor does a round no path from the start reaches.
+    round.rule = "A3"
+    file.start = "p1"
+    expect(negativeDiscriminationGaps([file])).toContain("A9")
+  })
 })

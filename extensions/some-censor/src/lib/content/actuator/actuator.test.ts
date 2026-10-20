@@ -69,7 +69,7 @@ beforeEach(() => {
   document.body.innerHTML = ""
   faced = []
   actuator = createActuator(document, {
-    onFace: (videoId) => faced.push(videoId),
+    onFace: (videoId, shown) => faced.push(shown ? videoId : `-${videoId}`),
   })
 })
 
@@ -241,6 +241,55 @@ describe("dispose", () => {
   })
 })
 
+describe("skip (#1966)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  function playing(): { clicks: Array<string>; card: HTMLElement } {
+    const card = document.createElement("ytd-compact-video-renderer")
+    card.innerHTML = `<a id="thumbnail" href="/watch?v=next"></a>`
+    document.body.append(card)
+    const clicks: Array<string> = []
+    card.addEventListener("click", (event) => {
+      event.preventDefault()
+      if (event.target instanceof HTMLElement) clicks.push(event.target.id)
+    })
+    return { clicks, card }
+  }
+  const play = (el: HTMLElement): BoundAction => ({
+    action: { kind: "play", key: cardKey(asVideoId("next")) },
+    targets: [{ el, role: "anchor" }],
+  })
+
+  it("clicks the card's watch link, a task after it is asked", () => {
+    const { clicks, card } = playing()
+    actuator.realize([play(card)])
+    expect(clicks).toEqual([])
+    vi.advanceTimersByTime(0)
+    expect(clicks).toEqual(["thumbnail"])
+  })
+
+  it("clicks nothing with no card, or a card with no watch link", () => {
+    const { clicks, card } = playing()
+    card.innerHTML = `<a id="channel" href="/@chan"></a>`
+    actuator.realize([play(card), { ...play(card), targets: [] }])
+    vi.advanceTimersByTime(0)
+    expect(clicks).toEqual([])
+  })
+
+  it("clicks nothing once disposed", () => {
+    const { clicks, card } = playing()
+    actuator.realize([play(card)])
+    actuator.dispose()
+    vi.advanceTimersByTime(0)
+    expect(clicks).toEqual([])
+  })
+})
+
 describe("the watch page's hold (#1805, WH1, WH2)", () => {
   const VIDEO = asVideoId("vid_w")
   const watch = (
@@ -256,6 +305,7 @@ describe("the watch page's hold (#1805, WH1, WH2)", () => {
       miniplayer,
       poster: view === "plated" ? "hsl(1 2% 3%)" : null,
       face: extra.face ?? false,
+      offer: "release",
     },
     targets:
       extra.description === undefined
@@ -381,7 +431,8 @@ describe("the poster and the face control (#1805, QD13)", () => {
   const plated = (
     el: HTMLElement | undefined,
     face = false,
-    videoId = VIDEO
+    videoId = VIDEO,
+    offer: "none" | "release" | "held" = "release"
   ): BoundAction => ({
     action: {
       kind: "watch",
@@ -390,6 +441,7 @@ describe("the poster and the face control (#1805, QD13)", () => {
       miniplayer: false,
       poster: "hsl(1 2% 3%)",
       face,
+      offer,
     },
     targets: el === undefined ? [] : [{ el, role: "anchor" }],
   })
@@ -415,8 +467,41 @@ describe("the poster and the face control (#1805, QD13)", () => {
     expect(root.style.getPropertyValue("--boyo-poster")).toBe("hsl(1 2% 3%)")
     expect(control()?.parentElement).toBe(desc)
     expect(control()?.textContent).toBe("Hold to show the original thumbnail")
+    const writes: Array<MutationRecord> = []
+    const watcher = new MutationObserver((records) => writes.push(...records))
+    watcher.observe(desc, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+    })
     actuator.realize([plated(desc)])
+    writes.push(...watcher.takeRecords())
+    watcher.disconnect()
+    expect(writes, "WH1: the same view again writes nothing").toEqual([])
     expect(document.querySelectorAll("[data-boyo-face-hold]")).toHaveLength(1)
+  })
+
+  it("rebuilds the control when the mode changes when it reports (#1966)", () => {
+    const desc = description()
+    actuator.realize([plated(desc)])
+    const standard = control()
+    actuator.realize([plated(desc, false, VIDEO, "held")])
+    expect(control()).not.toBe(standard)
+    key("keydown")
+    vi.advanceTimersByTime(3_000)
+    expect(faced, "Open's reports still held").toEqual(["vid_w"])
+  })
+
+  it("offers no control under a mode without one, and takes one back (#1966)", () => {
+    const desc = description()
+    actuator.realize([plated(desc, false, VIDEO, "none")])
+    const root = document.documentElement
+    expect(root.style.getPropertyValue("--boyo-poster")).toBe("hsl(1 2% 3%)")
+    expect(control()).toBeNull()
+    actuator.realize([plated(desc)])
+    expect(control()?.parentElement).toBe(desc)
+    actuator.realize([plated(desc, false, VIDEO, "none")])
+    expect(control()).toBeNull()
   })
 
   it("reports a hold of the full three seconds, and nothing shorter", () => {
@@ -447,6 +532,31 @@ describe("the poster and the face control (#1805, QD13)", () => {
     key("keyup")
     vi.advanceTimersByTime(0)
     expect(faced).toEqual(["vid_w"])
+  })
+
+  it("under Open, shows at three seconds held, then offers to hide (#1966)", () => {
+    const desc = description()
+    actuator.realize([plated(desc, false, VIDEO, "held")])
+    const held = control()
+    key("keydown")
+    vi.advanceTimersByTime(2_999)
+    expect(faced).toEqual([])
+    vi.advanceTimersByTime(1)
+    expect(faced, "reported still held").toEqual(["vid_w"])
+
+    // Core answers: the face is shown, and the same control stays.
+    actuator.realize([plated(desc, true, VIDEO, "held")])
+    expect(control()).toBe(held)
+    expect(control()?.textContent).toBe("Hide original")
+    key("keyup")
+    vi.advanceTimersByTime(0)
+    expect(faced, "the press that showed it hides nothing").toEqual(["vid_w"])
+
+    key("keydown")
+    key("keyup")
+    expect(faced, "the hide reports at once").toEqual(["vid_w", "-vid_w"])
+    actuator.realize([plated(desc, false, VIDEO, "held")])
+    expect(control()?.textContent).toBe("Hold to show the original thumbnail")
   })
 
   it("keeps Space and Enter from YouTube's own keys, held or let go", () => {
@@ -493,6 +603,7 @@ describe("the poster and the face control (#1805, QD13)", () => {
           miniplayer: false,
           poster: null,
           face: false,
+          offer: "release",
         },
         targets: [],
       },

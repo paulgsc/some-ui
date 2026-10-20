@@ -43,8 +43,9 @@ jobs:
         run: node --test apps/mobile/review/checks.test.mjs
 
       # The APK the phone may already have: this build's versionCode must be
-      # above it. The prune job deletes older ones only after this passes, so
-      # the retained set is every build since the last green review. Only
+      # above it. The retention sweep deletes older ones only once a run that
+      # passes this succeeds, so the retained set is every build since the
+      # last green run. Only
       # earlier runs' APKs count (run IDs only rise): two approved builds can
       # overlap, and the newer one's APK is no reason to fail the older one.
       - name: Fetch the retained APKs

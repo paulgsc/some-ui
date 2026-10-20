@@ -17,15 +17,21 @@ export type { Round } from "./types/authored-round"
 export { AUTHORED_ROUNDS } from "./lib/leetype/authored-rounds"
 // Sessions of incident rounds (canon v1.2): the append-only log the phone's
 // session surface writes and the reflection export reads (#1917–#1923).
-export { createSessionLogStore, ledgerOf } from "./lib/leetype/session-log"
+export {
+  createSessionLogStore,
+  ledgerOf,
+  summariesOf,
+} from "./lib/leetype/session-log"
 export type {
   SessionEvent,
   SessionLedger,
   SessionLog,
   SessionLogSnapshot,
   SessionLogStore,
+  SessionSummary,
 } from "./lib/leetype/session-log"
 // Session files picked from storage (Rem. 11.7): the store a host provides.
+export { intakeSessionFile } from "./lib/leetype/session-file-pick"
 export type {
   HeldSessionFile,
   KeepOutcome,

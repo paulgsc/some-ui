@@ -580,6 +580,16 @@ moves, and only home → phone, with no credential. **Stop** ends a running sync
 after the request in flight, and so does the app going to the background;
 what was copied stays. Sessions and the shelf stay where they were made.
 
+Each lesson and each round's runs are asked for with the `ETag` the phone
+kept from the last read (`device_home_answer`), while the phone still holds
+the bytes that tag named, so what home has not changed comes back without a
+body; the three listings are read whole, and the number of requests is the
+same. Home answering **429** (it allows 60 requests a minute per client)
+ends the sync there, said as "Home is busy right now", with what came before
+it kept and nothing retried. Each tap starts from the listings again, so a
+catalogue of more than about 55 lessons and rounds ends busy at the same
+place every time, and what is listed after it does not arrive.
+
 **Pairing** lets the phone act for the person's account on the home server,
 which it cannot do with a passkey (its page is `https://localhost`, another
 site). On the computer, **Settings → Account → Pair a phone** shows a code
@@ -608,10 +618,30 @@ before the next request; nothing is retried.
   back from home (`confirmHeld`), and those home holds exactly as the phone
   does leave the phone: sending is archiving. Nothing on home is deleted.
 - **Kept items** go one PUT each, their bytes as kept; one with the same
-  name there is replaced. They stay on the phone: they are for studying
-  again. A full shelf there, or a refused item, is counted and said.
+  name there is replaced. Only those home doesn't hold as they are now go
+  (the phone remembers each one home answered for by its bytes' digest),
+  and the confirm counts only those; one home refused is offered again.
+  An item removed on home is not sent again until its bytes change on the
+  phone. They stay on the
+  phone: they are for studying again. A full shelf there, or a refused item,
+  is counted and said.
 
 Home no longer knowing the phone, or no answer, ends the send there.
+
+**Choices are told to home.** Each time I keep a record on home or stop
+it, home is told which record and that sharing began or stopped, never
+the words I agreed to (`lib/home-link/told.ts`; paulgsc/server#433 keeps
+when it heard each one). Once home has heard a stop, it refuses aph and
+Jobs writes from this phone, and a record goes to home only once home has
+heard its choices. A choice is told first in the record's next run, and a
+stop right after its second press; a stop the link was too busy for then
+is told when a wing's mark next finds the link free, and one home did not
+answer is told on the next run of a record still kept. aph's way back asks
+for its record even when home could not hear the stop. Each session's
+create also names its id, so a create whose answer was lost makes one
+session on a home from paulgsc/server#432 on. An older home, once it has
+said twice that it keeps no choices, is told nothing more until the app
+starts again, and names its own ids.
 
 **Archive finished sessions**, in the This phone block, is the way to
 make room without a home server. It shares one file

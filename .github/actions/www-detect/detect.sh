@@ -14,8 +14,28 @@ elif [ "$EVENT_NAME" = "push" ] && [[ "$COMMIT_MESSAGE" == "$RELEASE_COMMIT_MESS
 	is_release_commit=true
 fi
 
+# A release merged after this push already shipped it: the image is built
+# from that release's tree, which contains this commit. Runs queue rather
+# than replace each other (www-docker-release.yml, `queue: max`), and two
+# queued runs can swap, so an ordinary run can start after a newer release;
+# without this it would reopen a release PR for what already shipped.
+# main's live tip is fetched here: actions/checkout points origin/main back
+# at this run's own commit, so it cannot show what landed since.
+shipped_since=false
+if [ "$EVENT_NAME" = "push" ]; then
+	if git fetch -q origin main; then
+		while IFS= read -r subject; do
+			if [[ "$subject" == "$RELEASE_COMMIT_MESSAGE"* ]]; then shipped_since=true; fi
+		done < <(git log --format=%s "${HEAD_SHA}..FETCH_HEAD")
+	else
+		echo "::warning::Could not fetch main; not checking for a newer release."
+	fi
+fi
+
 if [ "$is_release_commit" = "true" ]; then
 	release_mode=publish
+elif [ "$shipped_since" = "true" ]; then
+	release_mode=skip
 elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
 	release_mode=release-pr
 elif [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then

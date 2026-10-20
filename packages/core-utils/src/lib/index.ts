@@ -4,10 +4,20 @@ export * from "./date-utils"
 export * from "./array-utils"
 export * from "./stats"
 export { assertNever } from "./assert-never"
-export type { HomeCall, HomeExchanged } from "./home-exchange"
-export { readAs, refusalOf, unexpectedAnswer } from "./home-exchange"
+export type { HomeAnswer, HomeCall, HomeExchanged } from "./home-exchange"
+export {
+  readAs,
+  refusalOf,
+  stoppedOnHome,
+  unexpectedAnswer,
+} from "./home-exchange"
 export type { KeyedStorage, OpenedRecord } from "./storage"
-export { localStorageOrNull, openRecord, writeRecord } from "./storage"
+export {
+  localStorageOrNull,
+  openRecord,
+  quarantine,
+  writeRecord,
+} from "./storage"
 export type { AudioContextConstructor } from "./audio-context"
 export { audioContextConstructor } from "./audio-context"
 export { fnv1a, shuffledBySeed, unitIntervalBySeed } from "./seeded-random"

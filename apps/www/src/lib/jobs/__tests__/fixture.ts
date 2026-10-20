@@ -34,7 +34,13 @@ function pick(id: string, company: string, adjacent: boolean): Pick {
           change: "A data composition.",
         }
       : { kind: "build", variant: "backend", template: "safe", ref: "cb503cb" },
-    kit: { fields: [], answers: [], why: null },
+    kit: {
+      fields: [],
+      answers: [],
+      coverLetter: null,
+      questions: [],
+      compensation: null,
+    },
   }
 }
 
@@ -53,6 +59,7 @@ export function digest(day: string): Digest {
       pick("tid-7f2a", "Tidewater Analytics", true),
     ],
     queue: null,
+    redrafts: [],
     setAside: [
       {
         fingerprint: "juniper row|software engineer ii|remote",

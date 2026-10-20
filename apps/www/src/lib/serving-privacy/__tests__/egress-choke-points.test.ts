@@ -15,9 +15,9 @@
  *   `no-restricted-globals` cannot see it, and `no-restricted-imports`
  *   misses a dynamic `import()` and `Capacitor.Plugins.CapacitorHttp`: only
  *   `lib/device-backend/native-http` may name it, only `lib/home-link` may
- *   call that module, and only the Home server block and the strips of a
- *   record kept on home (aph, LA9; the Jobs record, LA10) may call
- *   `lib/home-link`.
+ *   call that module, and only the Home server block, the mark of a record
+ *   kept on home (aph, LA9; the Jobs record, LA10; Practice, LA11) and what
+ *   hands aph's lane to that mark may call `lib/home-link`.
  *
  * The last group feeds the checks known-bad sources, so a check that stopped
  * looking cannot stay green.
@@ -45,23 +45,21 @@ const NATIVE_HTTP = "lib/device-backend/native-http/index.ts"
 const NATIVE_HTTP_CALLERS = new Set(["lib/home-link/index.ts"])
 const HOME_LINK_CALLERS = new Set([
   "components/settings/device-section.tsx",
-  // LA9 and LA10: the strips of a record kept on home, and nothing else.
-  "components/aph/device-keep-on-home.tsx",
-  "components/jobs/keep-on-home.tsx",
-  "components/device-keep-on-home.tsx",
-  // LA11: Practice's mark in the header, which mounts its watch.
+  // Settings' ledger of what is shared: it reads the choices, and stops
+  // Practice and the Jobs record on a second press (LA9).
+  "components/settings/device-sharing-ledger.tsx",
+  // LA9 to LA11: the mark of a record kept on home, in the header, which
+  // mounts its lane's watch, and what hands aph's lane to it.
   "components/device-home-glyph.tsx",
+  "components/aph/device-aph-lane.tsx",
 ])
 
 /**
- * LA9, LA10 and LA11: the modules that call the link's `keep`, one per record
- * kept on home, and their shared runtime, which calls it through the port
- * each hands it.
+ * LA9, LA10 and LA11: the one wiring of every record kept on home, which
+ * calls the link's `keep`, and the runtime it hands that port.
  */
 const KEEPERS = new Set([
-  "lib/home-link/aph.ts",
-  "lib/home-link/jobs.ts",
-  "lib/home-link/practice.ts",
+  "lib/home-link/lanes.ts",
   "lib/home-link/kept-runtime.ts",
 ])
 
@@ -144,6 +142,7 @@ function valueImportsOf(
   return found
 }
 
+// The index alone: `native-http/no-answer` holds an error class, no request.
 const isNativeHttp = (module: string): boolean =>
   module === "lib/device-backend/native-http"
 const isHomeLink = (module: string): boolean =>
@@ -401,7 +400,7 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(problems).toEqual([])
   })
 
-  it("calls native-http only from the link, and the link only from the Home server block and the kept-on-home strips", () => {
+  it("calls native-http only from the link, and the link only from the Home server block and the kept-on-home mark", () => {
     const outsideLink = sources.filter((f) => !f.startsWith("lib/home-link/"))
     expect(
       sources
@@ -423,9 +422,7 @@ describe("LA8: the phone reaches home through one module", () => {
         !KEEPERS.has(f)
     )
     expect(reach.filter(keeps)).toEqual([])
-    expect(read("lib/home-link/aph.ts")).toContain("homeLink().keep(")
-    expect(read("lib/home-link/jobs.ts")).toContain("homeLink().keep(")
-    expect(read("lib/home-link/practice.ts")).toContain("homeLink().keep(")
+    expect(read("lib/home-link/lanes.ts")).toContain("homeLink().keep(")
   })
 
   it("still finds what it is meant to guard", () => {

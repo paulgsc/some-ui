@@ -1,12 +1,10 @@
-import type { PropositionRegisterEntry } from "./parse-canon"
-
-const REGISTERED_ID = /"(CW-P\d+)"/g
+const REGISTERED_ID = /"((?:CW-P|M|A)\d+)"/g
 
 /**
- * Every `CW-P` id appearing in a committed `generated.ts`'s source text —
- * cheap and reliable because the whole file is generated data (every
- * occurrence of `"CW-Pn"` in it is a real id, never prose), so no typst
- * parsing is needed to read it back.
+ * Every `CW-P`, `M` and `A` id appearing in a committed `generated.ts`'s
+ * source text — cheap and reliable because the whole file is generated data
+ * (every quoted `"CW-Pn"`, `"Mn"` or `"An"` in it is a real id, never
+ * prose), so no typst parsing is needed to read it back.
  */
 export function idsInGeneratedFile(
   generatedSource: string
@@ -37,7 +35,7 @@ export function idsInGeneratedFile(
  */
 export function assertNoRegisteredIdWasRemoved(
   previouslyRegisteredIds: ReadonlySet<string>,
-  entries: ReadonlyArray<PropositionRegisterEntry>
+  entries: ReadonlyArray<{ readonly id: string }>
 ): void {
   const currentIds = new Set(entries.map((entry) => entry.id))
   const removed = [...previouslyRegisteredIds].filter(
@@ -45,7 +43,7 @@ export function assertNoRegisteredIdWasRemoved(
   )
   if (removed.length > 0) {
     throw new Error(
-      `regenerating the proposition register would remove ${removed.sort().join(", ")} — canon §7's ids are stable citation anchors (Amendment protocol rule 2) and must never be removed, only marked retired and kept. If this id was genuinely retired, its #proposition(...) entry must still exist in canon §7 with a " (retired)" suffix on its title, not be deleted.`
+      `regenerating the proposition register would remove ${removed.sort().join(", ")} — canon §7's and Rem. 7.4's ids are stable citation anchors (Amendment protocol rule 2) and must never be removed, only marked and kept. A retired §7 entry keeps its #proposition(...) with a " (retired)" suffix on its title; a superseded Rem. 7.4 row keeps its row with " (superseded)" after its rule.`
     )
   }
 }

@@ -17,16 +17,14 @@
  *      and off is plain YouTube.
  * P7 — The same for the page header's images and the player's overlays, read
  *      off the screen, each painting once the extension is off.
+ * P8 — Open shows a community post's own image, never its author's photo
+ *      nor one under a plated card; Standard shows neither (#1966).
  */
 
 import { SWITCHED_OFF_ATTRIBUTE } from "@censor/lib/content/selectors"
 import { expect, test } from "@censor/playwright/fixture"
-import { mutant, vividPixels } from "@censor/playwright/rendered"
+import { mutant, VIVID, vividPixels } from "@censor/playwright/rendered"
 import type { Page } from "@playwright/test"
-
-/** The fixtures' vivid image: what a rendered oracle looks for. */
-const VIVID =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E"
 
 const CARDS = {
   poly: {
@@ -270,4 +268,38 @@ test("P7: no header or player image paints, unless off", async ({
       `${name ?? ""} paints when off`
     ).toBeGreaterThan(0)
   }
+})
+
+test("P8: Open shows a post's image, never its author's photo", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-channel-photos")
+  const image = page.locator("#posts img.post-image")
+  const author = page.locator("#posts img.author")
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-boyo-posts",
+    "hidden"
+  )
+  expect(await vividPixels(image)).toBe(0)
+
+  await fixture.settings({ mode: "open" })
+  await expect(page.locator("html")).toHaveAttribute("data-boyo-posts", "shown")
+  expect(await vividPixels(image)).toBeGreaterThan(0)
+  expect(await vividPixels(author)).toBe(0)
+
+  // A post inside a plated card stays plated (QD12).
+  await page.locator("#posts").evaluate((el) => {
+    el.dataset["boyo"] = "plated"
+  })
+  expect(await vividPixels(image)).toBe(0)
+  await page.locator("#posts").evaluate((el) => {
+    delete el.dataset["boyo"]
+  })
+
+  // The author's photo paints once the extension is off.
+  await page.evaluate(
+    (attribute) => document.documentElement.setAttribute(attribute, ""),
+    SWITCHED_OFF_ATTRIBUTE
+  )
+  expect(await vividPixels(author)).toBeGreaterThan(0)
 })

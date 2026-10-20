@@ -119,6 +119,16 @@ function playsAnother(doc: Document, metadata: Element): boolean {
 }
 
 /**
+ * The watch page's Up next list, where autoplay's next video comes from.
+ * The same element in the two-column and the single-column layout.
+ */
+export function readUpNext(doc: Document): HTMLElement | null {
+  return doc.querySelector<HTMLElement>(
+    `${WATCH_PAGE} ytd-watch-next-secondary-results-renderer`
+  )
+}
+
+/**
  * The shown watch page's description, where the face control goes (QD13):
  * stamped with the metadata, so it is there whenever the page is plated.
  */

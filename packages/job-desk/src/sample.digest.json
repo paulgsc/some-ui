@@ -83,7 +83,23 @@
             "value": "Not needed"
           }
         ],
-        "why": null
+        "coverLetter": "I build backend services and the pipelines behind them. On my own server, Redis coalesces work in front of NATS JetStream, and a retryable failure is NAKed so the stream redelivers it rather than dropping it. Python checks in CI hold the dashboards to the metrics the services actually emit, so a renamed metric fails a build instead of a chart. Scheduling maintenance for a fleet is the kind of event-driven work where that care pays off, and I would like to bring it to Northwind's backend.",
+        "questions": [
+          {
+            "label": "What draws you to fleet-maintenance software?",
+            "required": true,
+            "draft": "It is backend work where a dropped event has a cost: a missed inspection, not a missed notification. I have built pipelines that redeliver a failed job instead of losing it, and I want that problem with real schedules behind it."
+          },
+          {
+            "label": "Anything else you'd like us to know?",
+            "required": false,
+            "draft": null
+          }
+        ],
+        "compensation": {
+          "ask": "$110,000",
+          "why": "Inside the posted $95,000 to $115,000 range, toward its top for a backend role with pipeline work."
+        }
       }
     },
     {
@@ -148,7 +164,9 @@
           }
         ],
         "answers": [],
-        "why": null
+        "coverLetter": null,
+        "questions": [],
+        "compensation": null
       }
     },
     {
@@ -214,7 +232,15 @@
           }
         ],
         "answers": [],
-        "why": null
+        "coverLetter": null,
+        "questions": [
+          {
+            "label": "Describe a time you found a problem in a data feed.",
+            "required": true,
+            "draft": "At a clinical lab I accessioned samples into a HIPAA-compliant LIMS at 99.99% accuracy, which meant catching mismatched records before they reached a report. Later I wrote Python checks that hold dashboards to the metrics the services emit, so a feed that drifts fails a check instead of a meeting."
+          }
+        ],
+        "compensation": null
       }
     },
     {
@@ -277,7 +303,9 @@
           }
         ],
         "answers": [],
-        "why": null
+        "coverLetter": null,
+        "questions": [],
+        "compensation": null
       }
     }
   ],

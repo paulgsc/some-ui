@@ -23,20 +23,23 @@ import {
   typedCode,
   useHomeLink,
 } from "@/lib/home-link"
-import { keepPracticeOnHome, usePracticeShared } from "@/lib/home-link/practice"
+import { keepOnHome, useLaneChoices } from "@/lib/home-link/lanes"
+import { practiceLane } from "@/lib/home-link/practice"
+import { remember, remembered } from "@/lib/home-link/remembered"
+import { lastSend, onPhone, sendHome } from "@/lib/home-link/send"
+import type { SyncResult } from "@/lib/home-link/sync"
+import { lastSync, syncLessonsFrom } from "@/lib/home-link/sync"
 import {
   KEEP_SENDING,
   KEEP_SENDING_MORE,
   KEEP_SENDING_REFUSED,
   KEEP_SENDING_SAID,
   KEPT_NOTE,
-} from "@/lib/home-link/practice-words"
-import { remember, remembered } from "@/lib/home-link/remembered"
-import { lastSend, onPhone, sendHome } from "@/lib/home-link/send"
-import type { SyncResult } from "@/lib/home-link/sync"
-import { lastSync, syncLessonsFrom } from "@/lib/home-link/sync"
+  NOTHING_TO_SEND,
+} from "@/lib/home-link/words"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
+import { SharingLedger } from "@/components/settings/device-sharing-ledger"
 import {
   DeviceArchive,
   DeviceStorageSummary,
@@ -189,9 +192,9 @@ const StopButton = ({ stopping }: { stopping: boolean }): JSX.Element => (
 )
 
 /**
- * "Send to home" in three taps' worth of steps (LA8): count what is here, a
- * confirm naming that count and the host, then the one button that sends,
- * with Stop while it runs. The confirm offers, unticked every time, to keep
+ * "Send to home" in three taps' worth of steps (LA8): count what would go
+ * (what home lacks, by `./sent`), a confirm naming that count and the host,
+ * then the one button that sends, with Stop while it runs. The confirm offers, unticked every time, to keep
  * sending Practice from now on (LA11); ticked, the send adds that choice to
  * the consent log before it starts.
  */
@@ -209,7 +212,7 @@ const SendHome = ({
 }): JSX.Element => {
   const { activity } = state
   const host = hostOf(base)
-  const count = useAsyncIntent((_: undefined) => onPhone(), {
+  const count = useAsyncIntent((_: undefined) => onPhone(pairing), {
     presentation: "interactive",
   })
   const run = useAsyncIntent(
@@ -221,7 +224,7 @@ const SendHome = ({
   useIntentEffect(run, say)
   const asking = count.state.status === "succeeded" ? count.state.value : null
   const last = lastSend()
-  const kept = usePracticeShared().size > 0
+  const kept = useLaneChoices(practiceLane).shared.size > 0
   const [keepSending, setKeepSending] = useState(false)
   const ask = (): void => {
     setKeepSending(false)
@@ -247,7 +250,11 @@ const SendHome = ({
         />
       ) : asking.total === 0 ? (
         <div className="flex flex-wrap items-center gap-2" role="status">
-          <p className="text-sm">Nothing on this phone to send.</p>
+          <p className="text-sm">
+            {asking.taken > 0
+              ? NOTHING_TO_SEND.taken(host)
+              : NOTHING_TO_SEND.none}
+          </p>
           <Button
             type="button"
             variant="ghost"
@@ -293,7 +300,7 @@ const SendHome = ({
                 count.reset()
                 if (
                   keepSending &&
-                  !keepPracticeOnHome(pairing, KEEP_SENDING_SAID)
+                  !keepOnHome(practiceLane, pairing, KEEP_SENDING_SAID)
                 ) {
                   toast.error(KEEP_SENDING_REFUSED)
                 }
@@ -434,6 +441,7 @@ export const DeviceSection = (): JSX.Element => {
                 state={state}
               />
             )}
+            <SharingLedger />
           </>
         ) : (
           <>

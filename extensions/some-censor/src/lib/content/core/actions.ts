@@ -14,6 +14,7 @@ import type { VideoId } from "@censor/types/ids"
 
 import type { CardKey } from "./keys"
 import type { ShapeConfidence } from "./observation"
+import type { Rules } from "./state"
 
 export type Action =
   /**
@@ -43,7 +44,14 @@ export type Action =
       readonly poster: string | null
       /** The owner held for the real thumbnail, this view (QD13). */
       readonly face: boolean
+      /** The face control the owner's mode offers (#1966). */
+      readonly offer: Rules["face"]
     }
+  /**
+   * Open the card carrying `key`, as a click on it would: autoplay skips
+   * to it (#1966).
+   */
+  | { readonly kind: "play"; readonly key: CardKey }
   /** A fact for the flight recorder; the runtime forwards it. */
   | { readonly kind: "record"; readonly fact: CoreFact }
 

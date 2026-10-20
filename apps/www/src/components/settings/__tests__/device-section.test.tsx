@@ -10,11 +10,20 @@
 
 import type { ReactNode } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import type { HomeCall } from "@/lib/device-backend/native-http"
+import { sha256Hex } from "@/lib/device-backend/common"
+import type { HomeRequest } from "@/lib/device-backend/native-http"
 import { CONSENT_KEY } from "@/lib/home-link/consent-runtime"
+import { SENT_KEY } from "@/lib/home-link/sent"
 
 const home = vi.hoisted(
   (): { sent: Array<unknown>; record: string | null } => ({
@@ -24,7 +33,9 @@ const home = vi.hoisted(
 )
 
 vi.mock("@/lib/device-backend/native-http", () => ({
-  homeRequest: (call: HomeCall): Promise<{ status: number; body: string }> => {
+  homeRequest: (
+    call: HomeRequest
+  ): Promise<{ status: number; body: string }> => {
     home.sent.push(call)
     return Promise.resolve({ status: 200, body: "{}" })
   },
@@ -75,6 +86,10 @@ vi.mock("@/lib/tenant/queries", () => ({
       ]),
   },
 }))
+// The ledger has its own test (`device-sharing-ledger.test.tsx`).
+vi.mock("@/components/settings/device-sharing-ledger", () => ({
+  SharingLedger: (): null => null,
+}))
 vi.mock("@/components/settings/device-storage", () => ({
   DeviceStorageSummary: (): null => null,
   DeviceArchive: (): null => null,
@@ -105,9 +120,27 @@ async function open(): Promise<void> {
   })
 }
 
+/** How long a step that digests kept items may take. */
+const SLOW = 5_000
+
+// A test waits on up to three such steps.
+vi.setConfig({ testTimeout: 4 * SLOW })
+
 async function press(name: RegExp): Promise<void> {
+  // The confirm appears once the count, which digests each kept item, is
+  // in, and a button is pressed once the run before it has ended.
+  // Digesting runs on the real `crypto.subtle`, slower on a loaded runner
+  // than the default second allows.
+  const button = await waitFor(
+    () => {
+      const found = screen.getByRole("button", { name })
+      expect(found).toHaveProperty("disabled", false)
+      return found
+    },
+    { timeout: SLOW }
+  )
   await act(async () => {
-    fireEvent.click(screen.getByRole("button", { name }))
+    fireEvent.click(button)
     // Long enough for the runtime's chain of port calls to finish.
     await new Promise((resolve) => setTimeout(resolve, 0))
   })
@@ -182,7 +215,7 @@ describe("DeviceSection's Home server block", () => {
     await press(/send to home.example/i)
     expect(home.sent).toEqual([])
     expect(
-      screen.getByText(
+      await screen.findByText(
         /send 1 session and 2 kept items to home.example\? finished sessions are cleared from this phone/i
       )
     ).toBeTruthy()
@@ -192,11 +225,84 @@ describe("DeviceSection's Home server block", () => {
 
     await press(/send to home.example/i)
     await press(/^send 3$/i)
-    expect(home.sent[0]).toMatchObject({
-      method: "POST",
-      url: "https://home.example/api/v1/sessions",
+    await waitFor(() => {
+      expect(home.sent[0]).toMatchObject({
+        method: "POST",
+        url: "https://home.example/api/v1/sessions",
+        token: "t",
+      })
+    })
+  })
+
+  it("counts and sends only the kept items home didn't take as they are", async () => {
+    home.record = JSON.stringify({
+      base: "https://home.example/api/v1",
       token: "t",
     })
+    localStorage.setItem(
+      SENT_KEY,
+      JSON.stringify({
+        pairing: "https://home.example/api/v1",
+        sessions: {},
+        shelf: {
+          "topik/a": await sha256Hex('{"a":1}'),
+          "leetype/b": await sha256Hex("{}"),
+        },
+        refused: {},
+      })
+    )
+    await open()
+    await press(/send to home.example/i)
+    expect(
+      await screen.findByText(
+        /^send 1 session to home.example\?/i,
+        {},
+        { timeout: SLOW }
+      )
+    ).toBeTruthy()
+    await press(/^send 1$/i)
+    // Once the send has run to its end, as its last line says.
+    expect(
+      await screen.findByText(/^Last send:/, {}, { timeout: SLOW })
+    ).toBeTruthy()
+    expect(
+      home.sent.filter((call) => JSON.stringify(call).includes("/shelf/"))
+    ).toEqual([])
+  })
+
+  it("offers again a kept item home refused, since a tap is the way to retry", async () => {
+    home.record = JSON.stringify({
+      base: "https://home.example/api/v1",
+      token: "t",
+    })
+    localStorage.setItem(
+      SENT_KEY,
+      JSON.stringify({
+        pairing: "https://home.example/api/v1",
+        sessions: {},
+        shelf: { "topik/a": await sha256Hex('{"a":1}') },
+        refused: { "leetype/b": await sha256Hex("{}") },
+      })
+    )
+    await open()
+    await press(/send to home.example/i)
+    expect(
+      await screen.findByText(
+        /^send 1 session and 1 kept item to home.example\?/i
+      )
+    ).toBeTruthy()
+    await press(/^send 2$/i)
+    expect(
+      await screen.findByText(/^Last send:/, {}, { timeout: SLOW })
+    ).toBeTruthy()
+    expect(
+      home.sent.filter((call) => JSON.stringify(call).includes("/shelf/"))
+    ).toEqual([
+      expect.objectContaining({
+        method: "PUT",
+        url: "https://home.example/api/v1/shelf/leetype/b",
+      }),
+    ])
   })
 
   it("keeps sending Practice only when its box is ticked, and asks every time until then", async () => {
@@ -205,18 +311,19 @@ describe("DeviceSection's Home server block", () => {
       token: "t",
     })
     await open()
-    const box = (): HTMLInputElement =>
-      screen.getByRole("checkbox", { name: /keep sending these to home/i })
+    const box = (): Promise<HTMLElement> =>
+      screen.findByRole("checkbox", { name: /keep sending these to home/i })
 
     await press(/send to home.example/i)
-    expect(box().checked).toBe(false)
+    expect(await box()).toHaveProperty("checked", false)
     await press(/^send 3$/i)
     expect(localStorage.getItem(CONSENT_KEY)).toBeNull()
 
     await press(/send to home.example/i)
-    expect(box().checked).toBe(false)
+    const ticked = await box()
+    expect(ticked).toHaveProperty("checked", false)
     act(() => {
-      fireEvent.click(box())
+      fireEvent.click(ticked)
     })
     await press(/^send 3$/i)
     const log: unknown = JSON.parse(localStorage.getItem(CONSENT_KEY) ?? "[]")
@@ -232,9 +339,13 @@ describe("DeviceSection's Home server block", () => {
     ])
 
     await press(/send to home.example/i)
-    expect(screen.queryByRole("checkbox")).toBeNull()
     expect(
-      screen.getByText(/go to home on their own while Practice is open/)
+      await screen.findByText(
+        /go to home on their own while Practice is open/,
+        {},
+        { timeout: SLOW }
+      )
     ).toBeTruthy()
+    expect(screen.queryByRole("checkbox")).toBeNull()
   })
 })

@@ -6,7 +6,7 @@
 import type { JSX } from "react"
 import { useState } from "react"
 import { cn } from "@some-ui/core-utils"
-import type { Pick } from "@some-ui/job-desk"
+import type { Kit, Pick } from "@some-ui/job-desk"
 import {
   FRICTION,
   MAX_DEBRIEF_MINUTES,
@@ -30,6 +30,9 @@ import {
   decisionOf,
   digestOf,
   draftVoice,
+  fitNoteSays,
+  fitNotesOf,
+  kitOf,
   pickOwner,
   progressOf,
 } from "@/lib/jobs/model"
@@ -317,12 +320,96 @@ const Resume = ({
   )
 }
 
+/**
+ * What the run drafted from the posting's own form (ROUTINE.md §7): the
+ * cover letter, each free-text question as the form words it, and the pay
+ * expectation.
+ */
+export const KitDrafts = ({
+  kit,
+  redraftedOn = null,
+}: {
+  kit: Kit
+  /** The digest day a redraft came from, when one did. */
+  redraftedOn?: string | null
+}): JSX.Element | null => {
+  const { coverLetter, questions, compensation } = kit
+  if (coverLetter === null && questions.length === 0 && compensation === null)
+    return null
+  return (
+    <section className="flex flex-col gap-3">
+      <h3 className={sectionHeading}>Drafts for the form</h3>
+      {redraftedOn !== null && (
+        <p className="text-muted-foreground text-xs">
+          Redrafted from my fit notes in the {redraftedOn} digest.
+        </p>
+      )}
+      {coverLetter !== null && (
+        <Draft label="Cover letter" draft={coverLetter} />
+      )}
+      {questions.map((question) => (
+        <Draft
+          key={question.label}
+          label={question.label}
+          draft={question.draft}
+          required={question.required}
+        />
+      ))}
+      {compensation !== null && (
+        <Draft
+          label="Pay expectation"
+          draft={compensation.ask}
+          note={compensation.why}
+        />
+      )}
+    </section>
+  )
+}
+
+const Draft = ({
+  label,
+  draft,
+  required = false,
+  note,
+}: {
+  label: string
+  draft: string | null
+  required?: boolean
+  /** Why the run drafted it so, under the draft. */
+  note?: string
+}): JSX.Element => (
+  <div className="flex flex-col gap-2 rounded-xl border p-3">
+    <span className="flex items-center gap-2">
+      <span className="text-muted-foreground min-w-0 flex-1 text-xs">
+        {label}
+      </span>
+      {required && <Badge variant="outline">Required</Badge>}
+    </span>
+    {draft === null ? (
+      <p className="text-muted-foreground text-sm">
+        No draft: this one is mine.
+      </p>
+    ) : (
+      <>
+        <p className="text-sm leading-relaxed whitespace-pre-line select-all">
+          {draft}
+        </p>
+        {note !== undefined && (
+          <p className="text-muted-foreground text-xs">{note}</p>
+        )}
+        <CopyButton text={draft} what={label} />
+      </>
+    )}
+  </div>
+)
+
 const Apply = ({
+  state,
   pick,
   pickRef,
   advance,
-}: StepProps & { pick: Pick }): JSX.Element => {
-  const { kit } = pick
+}: StepProps & { state: JobsState; pick: Pick }): JSX.Element => {
+  const { kit, redraftedOn } = kitOf(state, pickRef.day, pick)
   const rows = [...kit.fields, ...kit.answers]
   return (
     <div className="flex flex-col gap-4">
@@ -360,16 +447,74 @@ const Apply = ({
           </ul>
         </section>
       )}
-      {kit.why && (
-        <section className="flex flex-col gap-2">
-          <h3 className={sectionHeading}>{kit.why.prompt} (draft)</h3>
-          <p className="rounded-xl border p-3 text-sm leading-relaxed select-all">
-            {kit.why.draft}
-          </p>
-          <CopyButton text={kit.why.draft} what="the draft" />
-        </section>
-      )}
+      <KitDrafts kit={kit} redraftedOn={redraftedOn} />
+      <FitNote state={state} pickRef={pickRef} />
     </div>
+  )
+}
+
+/** Why I fit this pick: the next run redrafts it (ROUTINE.md §2). */
+const FitNote = ({
+  state,
+  pickRef,
+}: {
+  state: JobsState
+  pickRef: PickRef
+}): JSX.Element | null => {
+  const jobs = phoneJobs()
+  const [note, setNote] = useState("")
+  const owner = pickOwner(pickRef.day, pickRef.pickId, "fit")
+  const voice = draftVoice(state, owner)
+  const busy = useVoiceBusy(owner)
+  const kept = fitNotesOf(state, pickRef.day, pickRef.pickId).length
+  const empty = !fitNoteSays(note, voice)
+  if (progressOf(state, pickRef.day, pickRef.pickId).kind !== "open")
+    return null
+  return (
+    <section className="flex flex-col gap-2">
+      <Label htmlFor="fit-note" className={sectionHeading}>
+        Why I fit it
+      </Label>
+      <p id="fit-note-hint" className="text-muted-foreground text-xs">
+        Say what the posting leaves out. It goes with today’s decisions, and the
+        next run redrafts the cover letter and answers from it.
+      </p>
+      <Textarea
+        id="fit-note"
+        aria-describedby="fit-note-hint"
+        rows={3}
+        maxLength={MAX_NOTE}
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+      />
+      <VoiceNotes
+        owner={owner}
+        notes={voice}
+        hint="Or say it, up to a minute"
+      />
+      <Button
+        type="button"
+        variant="outline"
+        disabled={busy || empty}
+        onClick={() => {
+          if (busy || empty) return
+          const recorded = jobs.record({
+            type: "fit-note",
+            ...pickRef,
+            note: note.trim(),
+            voice: voice.map((v) => v.id),
+          })
+          if (recorded) setNote("")
+        }}
+      >
+        Keep it for the next run
+      </Button>
+      <p role="status" className="text-muted-foreground text-xs">
+        {kept === 0
+          ? ""
+          : `${kept === 1 ? "One fit note" : `${kept} fit notes`} kept for this pick.`}
+      </p>
+    </section>
   )
 }
 
@@ -581,7 +726,7 @@ export const PickFlow = ({
       ) : shown === 2 ? (
         <Resume pick={pick} pickRef={pickRef} advance={follow} />
       ) : shown === 3 ? (
-        <Apply pick={pick} pickRef={pickRef} advance={follow} />
+        <Apply state={state} pick={pick} pickRef={pickRef} advance={follow} />
       ) : (
         <Debrief state={state} pickRef={pickRef} advance={follow} />
       )}

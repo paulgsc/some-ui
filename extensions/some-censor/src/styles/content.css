@@ -69,6 +69,10 @@
    (#1807), so the switch lifts the pre-mask, and a content script that never
    runs leaves it on.
 
+   The opacity's fallback, 0.5, is what every mode but Strict keeps (BLANK,
+   below), and what a page shows before the content script has read the
+   owner's mode.
+
    Each tag gets its OWN rule below rather than sharing one comma-separated
    selector list. CSS selector-list invalidation is all-or-nothing: if any
    one selector in a comma list fails to parse, the entire rule is dropped —
@@ -80,7 +84,7 @@
 :root:not([data-boyo-off]) ytd-video-renderer:not([data-boyo]) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-  opacity: 0.5 !important;
+  opacity: var(--boyo-premask-opacity, 0.5) !important;
   pointer-events: none !important;
   user-select: none !important;
 }
@@ -88,7 +92,7 @@
 :root:not([data-boyo-off]) ytd-grid-video-renderer:not([data-boyo]) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-  opacity: 0.5 !important;
+  opacity: var(--boyo-premask-opacity, 0.5) !important;
   pointer-events: none !important;
   user-select: none !important;
 }
@@ -96,7 +100,7 @@
 :root:not([data-boyo-off]) ytd-compact-video-renderer:not([data-boyo]) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-  opacity: 0.5 !important;
+  opacity: var(--boyo-premask-opacity, 0.5) !important;
   pointer-events: none !important;
   user-select: none !important;
 }
@@ -104,7 +108,7 @@
 :root:not([data-boyo-off]) ytd-playlist-panel-video-renderer:not([data-boyo]) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-  opacity: 0.5 !important;
+  opacity: var(--boyo-premask-opacity, 0.5) !important;
   pointer-events: none !important;
   user-select: none !important;
 }
@@ -112,7 +116,7 @@
 :root:not([data-boyo-off]) ytd-playlist-video-renderer:not([data-boyo]) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-  opacity: 0.5 !important;
+  opacity: var(--boyo-premask-opacity, 0.5) !important;
   pointer-events: none !important;
   user-select: none !important;
 }
@@ -120,7 +124,7 @@
 :root:not([data-boyo-off]) ytd-reel-item-renderer:not([data-boyo]) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-  opacity: 0.5 !important;
+  opacity: var(--boyo-premask-opacity, 0.5) !important;
   pointer-events: none !important;
   user-select: none !important;
 }
@@ -144,7 +148,7 @@
   ) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-  opacity: 0.5 !important;
+  opacity: var(--boyo-premask-opacity, 0.5) !important;
   pointer-events: none !important;
   user-select: none !important;
 }
@@ -168,7 +172,7 @@
   ) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-  opacity: 0.5 !important;
+  opacity: var(--boyo-premask-opacity, 0.5) !important;
   pointer-events: none !important;
   user-select: none !important;
 }
@@ -192,7 +196,7 @@
   ) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-  opacity: 0.5 !important;
+  opacity: var(--boyo-premask-opacity, 0.5) !important;
   pointer-events: none !important;
   user-select: none !important;
 }
@@ -219,7 +223,7 @@
   ) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-  opacity: 0.5 !important;
+  opacity: var(--boyo-premask-opacity, 0.5) !important;
   pointer-events: none !important;
   user-select: none !important;
 }
@@ -246,7 +250,7 @@
   ) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-  opacity: 0.5 !important;
+  opacity: var(--boyo-premask-opacity, 0.5) !important;
   pointer-events: none !important;
   user-select: none !important;
 }
@@ -275,10 +279,21 @@
   :root:not([data-boyo-off]) ytd-rich-item-renderer:not([data-boyo]) {
     cursor: default !important;
     filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-    opacity: 0.5 !important;
+    opacity: var(--boyo-premask-opacity, 0.5) !important;
     pointer-events: none !important;
     user-select: none !important;
   }
+}
+
+/* ----------------------------------------------------------
+   BLANK (Strict, #1966)
+
+   Under Strict an unread card is not painted: every pre-mask rule above
+   reads its opacity from this property. It only ever lowers the
+   occluder's opacity, so it cannot make an unread card more legible.
+   ---------------------------------------------------------- */
+:root[data-boyo-loading="blank"] {
+  --boyo-premask-opacity: 0;
 }
 
 /* ----------------------------------------------------------
@@ -580,6 +595,18 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
   visibility: visible !important;
 }
 
+/* Open shows a community post's own images (#1966). They are drawn in
+   `ytd-backstage-image-renderer`, one per image of a single or a
+   multi-image post; the post's author photo is not in it, and stays
+   hidden. A post inside an element stamped plated stays plated: the
+   plate paints no image under its stamp (QD12). */
+:root:not([data-boyo-off])[data-boyo-posts="shown"]
+  ytd-backstage-image-renderer:not([data-boyo="plated"] *)
+  yt-img-shadow
+  img {
+  visibility: visible !important;
+}
+
 /* The page header's images: a channel's banner, and a playlist's
    cover and the blurred backdrop drawn from it, which YouTube's
    seamless header moves into a portal outside the header. */
@@ -722,8 +749,8 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
 }
 
 /* "Hold to show the original thumbnail": grey, dashed and plain, with
-   no progress colour and no reward (absent-plated-heard.md §4). The
-   fill runs the hold's three seconds; reduced motion drops it. */
+   no progress colour and no reward (absent-plated-heard.md §4). Nothing
+   on it changes while it is held (#1966). */
 [data-boyo-face-hold] {
   background: transparent;
   border: 1px dashed var(--yt-spec-10-percent-layer, rgb(0 0 0 / 10%));
@@ -736,34 +763,9 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
     Arial,
     sans-serif;
   margin-top: 12px;
-  overflow: hidden;
   padding: 8px 10px;
-  position: relative;
   touch-action: none;
   user-select: none;
-}
-
-[data-boyo-face-hold]::before {
-  background: var(--yt-spec-10-percent-layer, rgb(0 0 0 / 10%));
-  content: "";
-  inset: 0 auto 0 0;
-  position: absolute;
-  width: 0;
-}
-
-[data-boyo-face-hold][data-holding]::before {
-  transition: width 3s linear;
-  width: 100%;
-}
-
-[data-boyo-face-hold] span {
-  position: relative;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  [data-boyo-face-hold][data-holding]::before {
-    transition: none;
-  }
 }
 
 :root[data-boyo-off] [data-boyo-face-hold] {

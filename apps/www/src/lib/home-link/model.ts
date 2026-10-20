@@ -43,6 +43,12 @@ type Link =
        * keep sending is for (LA11), so a new pairing starts from nothing.
        */
       readonly id: string
+      /**
+       * Paired by a build before the consent log held every record's
+       * choice, so a choice a record's own switch made may belong to it
+       * (LA9). A pairing this build makes never is.
+       */
+      readonly earlier: boolean
       /** The last Unpair could not forget the key on the phone. */
       readonly notForgotten: boolean
     }
@@ -56,8 +62,8 @@ type Activity =
   /** Sending what this phone holds to the paired home, with its key. */
   | { readonly kind: "sending"; readonly stopping: boolean }
   /**
-   * Keeping aph on home: its outbox sent and home's record read, started by
-   * `lib/home-link/aph` rather than a tap (LA9).
+   * Keeping a record on home: what it has to send sent, started by
+   * `lib/home-link/lanes` rather than a tap (LA9 to LA11).
    */
   | { readonly kind: "keeping"; readonly stopping: boolean }
 
@@ -75,7 +81,11 @@ export type HomeLinkEvent =
   | {
       readonly type: "read"
       readonly found:
-        | { readonly base: string; readonly id: string }
+        | {
+            readonly base: string
+            readonly id: string
+            readonly earlier: boolean
+          }
         | "lost"
         | "unreadable"
         | null
@@ -132,6 +142,7 @@ export function step(
                   kind: "paired",
                   base: found.base,
                   id: found.id,
+                  earlier: found.earlier,
                   notForgotten: false,
                 },
       }
@@ -148,10 +159,12 @@ export function step(
       if (activity.kind !== "pairing" || activity.base !== event.base)
         return state
       return {
+        ...state,
         link: {
           kind: "paired",
           base: event.base,
           id: event.id,
+          earlier: false,
           notForgotten: false,
         },
         activity: idle,
@@ -173,6 +186,7 @@ export function step(
     case "unpaired": {
       if (activity.kind !== "unpairing") return state
       return {
+        ...state,
         link: {
           kind: "unpaired",
           note: event.told ? "unpaired" : "unpaired-offline",

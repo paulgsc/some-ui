@@ -53,7 +53,7 @@ What follows from them:
   saving, what failed) says what is kept where, and since when, never the machinery behind
   it: no request, status code, address, state name or internal term such as "grant" or
   "sync" reaches the screen. A surface's words live in one pure table that tests for this,
-  as Practice's sharing words do (`apps/www/src/lib/home-link/practice-words.ts`).
+  as the sharing words of each record kept on home do (`apps/www/src/lib/home-link/words.ts`).
 - **Never lose the record.** Because A is real use, the data it leaves (study sessions,
   reflections, typing rounds, voice takes) is also the evidence of growth over time:
   struggling to read a sentence at the first beta, finishing sessions much later. That
@@ -175,7 +175,7 @@ the shortest life that works, and nothing recreated leaves its old copy behind.
   default (90 days) is not a period anyone chose. So does a value that is not a literal
   number of days (`0`, empty, a `${{ }}` expression), since each can resolve to that
   default. Two artifacts keep longer today, both in `mobile-apk.yml`: the phone's APK
-  (30 days, pruned to one) and the Play review's inputs (3 days). Artifacts cannot be
+  (30 days, one kept) and the Play review's inputs (3 days). Artifacts cannot be
   overwritten across runs, so a short `retention-days` is how a recreated one leaves no tail.
 - **Enforced by `pnpm check:workflows`** (`scripts/check-workflows.ts`, rules in
   `packages/eslint/src/workflow-guards.ts`), in root `pnpm lint` and as its own `pr.yml`
@@ -184,18 +184,29 @@ the shortest life that works, and nothing recreated leaves its old copy behind.
   map, where the action gets it; anywhere else it does not count, and a flow-style
   `with: {...}` or `- {uses: ...}` step fails as unreadable. It finds steps by their `uses:` line, so an upload
   wrapped in a composite action or another publisher's upload action is not seen: add
-  it to the rule when one appears.
+  it to the rule when one appears, as `docker/build-push-action`'s build record was
+  (its step must set `DOCKER_BUILD_RECORD_UPLOAD: false`).
+- **Every artifact and cache belongs to a family** in `packages/eslint/src/retention.ts`:
+  one state machine, each family an instance with its `keep` (validated generations kept
+  per lineage, 0 for one consumed inside its run), its TTL, and for caches a scope
+  (`per-ref`, `shared` for content-addressed entries such as the Nix store, `pool` for
+  Docker's layer blobs). A generation is validated when its run succeeds; the machine
+  keeps the newest `keep`, deletes only what is older than a validated one, and drops
+  every cache on a ref that is no longer live. `.github/workflows/retention.yml` runs it
+  after each workflow uploading a family kept across runs, and hourly, and deletes
+  (a pull request that changes it only reports). `pnpm check:workflows` fails an upload name or
+  cache key no family declares, an upload whose `retention-days` is not its family's
+  TTL or whose workflow its family does not list, and a kept family's workflow
+  `retention.yml` does not run after. A new family is a new entry there, not a new
+  prune job.
 - **Before shortening something to one day, name the path that breaks and its
   recovery** in the comment above the step. The usual one is "Re-run failed jobs" more
   than a day later, which finds no artifact: the recovery is a fresh run or the
   workflow's own `publish_only` dispatch, since re-running a day-old publish would ship a
   day-old build anyway.
 - **What stays, and why** (not artifacts, so no `retention-days` applies):
-  - Actions caches (`pnpm-cache`, `cargo-cache`, `resume-assets-cache`, the
-    workspace-dist cache, the Docker `type=gha` layer cache in
-    `www-docker-release.yml`): GitHub evicts an entry unused for 7 days and caps the
-    repo at 10 GB. Keys that change with their inputs churn that cap but cannot grow
-    past it.
+  - Actions caches, swept by the families above. GitHub also evicts an entry unused
+    for 7 days and, past the 10 GB cap, the least recently used.
   - The Pages deployment, npm packages, AMO submissions and the `paulgsc/www` Docker Hub
     image are the point of their workflows and are meant to last. Nothing prunes old
     Docker Hub tags; that is Docker Hub's storage, not this repo's.

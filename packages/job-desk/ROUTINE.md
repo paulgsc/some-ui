@@ -49,7 +49,7 @@ shallow, read-only clone):
 - `packages/ui/resume/src/data/personal.typ`: location, work authorization and
   education.
 - `packages/ui/resume/scripts/check-claims.mjs`: `FORBIDDEN_TERMS`, which never
-  appear in a fit.
+  appear in a fit or a draft.
 
 Every fit cites one of these. Its `source` names the repo and path
 (`server · scripts/check_metric_contract.py`) or the job
@@ -82,14 +82,28 @@ For each new file:
 
 1. Check it with the checker (step 8). One that fails is skipped and named in
    the summary, never guessed at.
-2. Transcribe every voice note it names, with the transcriber this task's
-   prompt carries. If it can't, carry on without the note and say so.
+2. Transcribe every voice note it names (below, "The transcriber"). If it
+   can't, carry on without the note and say so.
 3. Take it in:
    - **Passed picks:** the reasons and notes tell me what to stop sending. A
      reason given twice is a rule for this run.
    - **Disagreements:** a set-aside posting I would have picked. Look it up
      again as §3 looks up a scout; if it is still open and its track has a
      free slot (below), it may be a pick today.
+   - **Fit notes:** why I fit a pick I took, in a pick entry's `fit`. A note
+     is new unless a decisions file some earlier digest lists in `read`
+     already carried its `id`. For each pick with a new note that is still
+     open in the queue (below; a `closed` entry is not), write it a redraft
+     in `redrafts` (§8), from the pick's fits and what I said, every note of
+     its `fit` read together, newest last: its cover letter, if its kit has
+     one or its form takes one, and each question of its kit, with the
+     `label` and `required` the kit gives it. A question the kit left to me
+     (`draft: null`) gets a draft only when what I said answers it; the
+     phone keeps the kit's own draft for any the redraft leaves `null`. What
+     I said may add what the evidence doesn't hold, since it is mine to
+     claim; it still never names one of `FORBIDDEN_TERMS`, a term of that
+     pick's `dontClaim`, or a phone number or address. A pick no longer open
+     gets no redraft: say so in the summary.
    - **Debriefs and outcomes:** how applying went and what came of it. Report
      them in the summary. Once there are 30 or more outcomes, compare them with
      the odds each pick was given and say in the summary whether the rubric
@@ -101,6 +115,57 @@ the newest entry is the decision that stands.
 
 A posting picked in any earlier digest, or named in any decisions file, is
 never picked again, unless a disagreement brought it back.
+
+### The transcriber
+
+Voice notes are webm (or ogg, m4a) files beside the file that names them.
+Transcribe them in this run's own container, in a scratch directory outside
+the checkout. Set it up once per run:
+
+```sh
+python3 -m venv /tmp/whisper && /tmp/whisper/bin/pip install -q faster-whisper
+apt-get update -qq && apt-get install -y --no-install-recommends ffmpeg
+```
+
+Take one note at a time: bring it in, decode it, convert it and transcribe
+it, keeping its transcript, before the next. Bring it into the container with
+the Google Drive connector's `download_file_content`, by the note's file id. A
+note is too large for the conversation, so the tool saves its result to a file
+and names that file's path: JSON whose `content` is the audio in base64.
+Decode it from there, and never paste a saved note's base64 into a command.
+The audio may be webm, ogg or m4a; ffmpeg reads the format from the file
+itself:
+
+```sh
+python3 -I -c 'import base64, json, sys; open(sys.argv[2], "wb").write(base64.b64decode(json.load(open(sys.argv[1]))["content"]))' <saved file> /tmp/whisper/note.audio
+ffmpeg -loglevel error -y -i /tmp/whisper/note.audio -ar 16000 -ac 1 /tmp/whisper/note.wav
+```
+
+A note small enough to come back inline is a few seconds long, and the one
+place base64 goes into a command: write the whole JSON result with a quoted
+heredoc (`<<'EOF'`) to `/tmp/whisper/note.json` and run the same one-liner
+with that as `<saved file>`.
+
+Then transcribe the wav with this script, saved outside the checkout as
+`/tmp/whisper/transcribe.py` and run as
+`/tmp/whisper/bin/python -I /tmp/whisper/transcribe.py /tmp/whisper/note.wav`.
+It passes the audio as a float32 array, never the path (the installed `av`
+breaks on a path), and `vad_filter` keeps silence from coming back as "You"
+or "Thank you.":
+
+```python
+import sys, wave
+import numpy as np
+from faster_whisper import WhisperModel
+
+with wave.open(sys.argv[1]) as w:
+    pcm = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16)
+model = WhisperModel("small.en", device="cpu", compute_type="int8")
+segments, _ = model.transcribe(pcm.astype(np.float32) / 32768, vad_filter=True)
+print(" ".join(s.text.strip() for s in segments))
+```
+
+An empty transcript is a note with nothing said: say so in the summary.
 
 ### The queue
 
@@ -388,13 +453,83 @@ a time. Its PRs carry the label `jobs-patch`, and only theirs do.
 
 ## 7. The kit
 
+The kit is what I paste into the posting's own application form, so read that
+form first. A form mixes its own questions with standard rows (name, email,
+phone, résumé, links, location). A **question** here is only one of the
+form's own that wants prose in my words; the standard rows are fields or
+mine to type, and a choice or a short fact ("How did you hear about us?") is
+an answer when the evidence settles it. Each board serves its form apart from
+the posting:
+
+- **Greenhouse:**
+  `https://boards-api.greenhouse.io/v1/boards/<board>/jobs/<id>?questions=true`.
+  Each entry of `questions` has a `label`, `required` and `fields[]`. Its own
+  questions are those whose field `name` starts `question_`; one is free text
+  when that field is a `textarea`, or an `input_text` that asks for prose
+  rather than a link or a fact. The `cover_letter` entry is the cover letter.
+  Skip `location_questions`, `compliance` and `demographic_questions`.
+- **Ashby:** `POST https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiJobPosting`
+  with `content-type: application/json` and this body, the posting's board
+  name and id filled in:
+
+  ```json
+  {
+    "operationName": "ApiJobPosting",
+    "variables": {
+      "organizationHostedJobsPageName": "<org>",
+      "jobPostingId": "<id>"
+    },
+    "query": "query ApiJobPosting($organizationHostedJobsPageName: String!, $jobPostingId: String!) { jobPosting(organizationHostedJobsPageName: $organizationHostedJobsPageName, jobPostingId: $jobPostingId) { applicationForm { sections { fieldEntries { ... on FormFieldEntry { isRequired field } } } } } }"
+  }
+  ```
+
+  Each entry's `field` has a `title`, a `type` and a `path`. Its own
+  questions are those whose `path` is neither a `_systemfield_` nor `phone`;
+  one is free text when it is a `String` or `LongText` that asks for prose
+  (not a link such as "LinkedIn Profile"). `cover_letter` is the cover letter.
+
+- **Lever:** the posting's `applyUrl` page (HTML). Its standard rows are the
+  `<div class="application-label">` ones outside the cards; "Additional
+  information" (`name="comments"`) is the cover letter. Its own questions are
+  in each hidden input named `cards[<id>][baseTemplate]`, whose `value` is
+  entity-escaped JSON: each of its `fields` has a `text`, a `type` and
+  `required`; one is free text when it is a `textarea`, or a `text` that asks
+  for prose (not a preferred name or a pronunciation). Read the questions there only, not
+  their labels in the page as well.
+- **A Hacker News post** has no form: leave the questions, the cover letter
+  and the pay expectation out.
+
+A form that can't be read leaves them out too; say so in the summary. Then:
+
 - **Fields:** email, GitHub and portfolio from the identity block of
   `packages/ui/resume/src/data/resume.typ`, and location from `personal.typ`.
-  Never a phone number or street address: I type those myself.
+  Never a phone number or street address: I type those myself, so no row is
+  labelled for them.
 - **Answers:** work authorization ("Yes, for any employer") and sponsorship
-  ("Not needed") when the form asks. Add nothing the evidence doesn't say.
-- **Why:** a draft of at most 120 words, only when the form asks for one,
-  built from the pick's fits.
+  ("Not needed") when the form asks, and any other choice the form offers
+  that the evidence settles. Add nothing the evidence doesn't say. Never
+  answer pronouns, demographics or an EEO question.
+- **Questions:** every free-text question the form asks, in `questions`, with
+  its `label` as the form words it and `required` as the form marks it. Each
+  required one gets a `draft`; an optional one gets one when the pick's fits
+  answer it, else `draft: null`. A draft is at most `MAX_ANSWER_WORDS` (150),
+  or the form's own limit when it states a shorter one ("in 2–3 sentences").
+- **Cover letter:** a `coverLetter` draft of at most `MAX_COVER_LETTER_WORDS`
+  (250), only when the form takes one, as text or only as a file: I save the
+  draft as one.
+- **Compensation:** only when the form asks my pay expectation, which then
+  goes here and not in `questions`, as the cover letter goes only in
+  `coverLetter`. `ask` is a
+  figure inside the posting's range, toward its top for a strong fit, or, when
+  it states none, "Open to the range for this role". `why` says how, in a
+  sentence.
+
+Every draft is first person and built from the pick's `fits`, restating what
+they say. It never claims a gap, a term in the pick's `dontClaim`, or one of
+`FORBIDDEN_TERMS`, and never carries a phone number or address. The checker
+holds each draft to its cap, every required question to a draft, every draft
+to the terms above, and every draft and row to the contact details; the rest (a form's
+shorter limit, first person, the gaps) is yours to hold.
 
 ## 8. Write it
 
@@ -405,7 +540,8 @@ a time. Its PRs carry the label `jobs-patch`, and only theirs do.
    and `review` §3 to §5 gave it, and a scout that became a pick its
    `pickId` from step 1.
 3. `read` names every Decisions and Scout file this run took in, and
-   `transcribed` every voice note it transcribed.
+   `transcribed` every voice note it transcribed, by its file name. `redrafts` holds each
+   redraft §2 wrote.
 4. Save the digest as bare JSON to a scratch file and check it from the repo
    root (run `pnpm install` first if `node_modules` is missing):
 
@@ -430,6 +566,7 @@ Never edit, move, rename or trash anything under `some-ui jobs/`. Triage
 End with: the queue (each open pick with its digest day, which postings
 closed, and each track's free slots); each pick with its track, scores and
 résumé; the PR this run opened, or why it opened none; how many postings
-were set aside, by reason; what each new decisions file and voice note said; each
+were set aside, by reason; what each new decisions file and voice note said;
+each redraft, by its pick, or why a fit note got none; each
 scout's verdict; the calibration note, once there are enough outcomes; and
 anything skipped, with why.

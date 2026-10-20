@@ -6,6 +6,7 @@ import {
   append,
   ledgerOf,
   SessionEventSchema,
+  summariesOf,
 } from "@leetype/lib/leetype/session-log/model"
 import { describe, expect, it } from "vitest"
 
@@ -250,6 +251,211 @@ describe("ledgerOf", () => {
     expect(ledgerOf(log, "b").parked.map((round) => round.file)).toEqual([
       "one.json",
       "two.json",
+    ])
+  })
+})
+
+describe("summariesOf", () => {
+  it("says how each session went, round by round, without its events", () => {
+    const log = logOf([
+      ...aSession("a"),
+      { ...returned("a", "correct"), at: "2026-10-18T21:00:00.000Z" },
+    ])
+    expect(summariesOf(log)).toEqual([
+      {
+        session: "a",
+        file: "thread-1.json",
+        form: "short",
+        startedAt: log[0]?.at,
+        ended: "left",
+        rounds: [
+          {
+            file: "thread-1.json",
+            screen: "r1",
+            picked: "incorrect",
+            struggled: true,
+            placed: ["p1"],
+            reading: [{ reading: "p1", action: "saved" }],
+            returned: [{ response: "correct", slow: false }],
+            solved: true,
+          },
+        ],
+        replays: [],
+        spoken: [
+          {
+            file: "thread-1.json",
+            screen: "s1",
+            as: "recorded",
+            strong: false,
+          },
+        ],
+      },
+    ])
+  })
+
+  it("counts a slow pick as a struggle, and a slow return as not solving it", () => {
+    const [started, picked] = aSession("b")
+    if (started === undefined || picked?.type !== "picked") {
+      throw new Error("a session starts and picks")
+    }
+    const log = logOf([
+      started,
+      { ...picked, answer: { response: "correct", slow: true } },
+      placed("b", "g1", "placement"),
+      returned("b", "correct", true),
+    ])
+    expect(summariesOf(log)[0]?.rounds).toEqual([
+      expect.objectContaining({
+        picked: "correct",
+        struggled: true,
+        placed: ["g1"],
+        returned: [{ response: "correct", slow: true }],
+        solved: false,
+      }),
+    ])
+  })
+
+  it("keeps a round's funnel with the session that first picked it, whatever later sessions do", () => {
+    const [startedA, pickedA] = aSession("c")
+    const [startedB] = aSession("d", "thread-2.json")
+    if (
+      startedA === undefined ||
+      startedB === undefined ||
+      pickedA?.type !== "picked"
+    ) {
+      throw new Error("sessions start and pick")
+    }
+    const log = logOf([
+      startedA,
+      pickedA,
+      placed("c", "p1", "placement"),
+      {
+        ...stamp("c"),
+        file: "thread-1.json",
+        type: "reading",
+        reading: "p1",
+        action: "saved",
+      },
+      startedB,
+      {
+        ...stamp("d"),
+        file: "thread-1.json",
+        type: "reading",
+        reading: "p1",
+        action: "read",
+      },
+      returned("d", "correct"),
+      {
+        ...pickedA,
+        ...stamp("d"),
+        answer: { response: "correct", slow: false },
+      },
+    ])
+    const [c, d] = summariesOf(log)
+    expect(c?.rounds).toEqual([
+      expect.objectContaining({
+        screen: "r1",
+        reading: [
+          { reading: "p1", action: "saved" },
+          { reading: "p1", action: "read" },
+        ],
+        returned: [{ response: "correct", slow: false }],
+        solved: true,
+      }),
+    ])
+    expect(d).toMatchObject({
+      session: "d",
+      rounds: [],
+      replays: [{ file: "thread-1.json", screen: "r1", picked: "correct" }],
+    })
+  })
+
+  it("gives a reading's actions to the round its latest placement was for, and none to a pointer", () => {
+    const [started, picked] = aSession("e")
+    if (started === undefined || picked?.type !== "picked") {
+      throw new Error("a session starts and picks")
+    }
+    const on = (screen: string): { file: string; screen: string } => ({
+      file: "thread-1.json",
+      screen,
+    })
+    const read = (action: "opened" | "skipped"): SessionEvent => ({
+      ...stamp("e"),
+      file: "thread-1.json",
+      type: "reading",
+      reading: "p1",
+      action,
+    })
+    const log = logOf([
+      started,
+      { ...picked, ...on("r1"), answer: { response: "correct", slow: false } },
+      { ...placed("e", "p1", "pointer"), ...on("r1") },
+      read("opened"),
+      { ...picked, ...stamp("e"), ...on("r2") },
+      { ...placed("e", "p1", "placement"), ...on("r2") },
+      read("skipped"),
+      { ...picked, ...stamp("e"), ...on("r3") },
+      { ...placed("e", "p1", "placement"), ...on("r3") },
+    ])
+    expect(
+      summariesOf(log)[0]?.rounds.map(({ screen, placed: p, reading }) => ({
+        screen,
+        placed: p,
+        reading,
+      }))
+    ).toEqual([
+      { screen: "r1", placed: [], reading: [] },
+      {
+        screen: "r2",
+        placed: ["p1"],
+        reading: [{ reading: "p1", action: "skipped" }],
+      },
+      { screen: "r3", placed: ["p1"], reading: [] },
+    ])
+  })
+
+  it("parks a solved round again when a replay struggles on it, as the ledger does", () => {
+    const [startedA, pickedA] = aSession("f")
+    const [startedB] = aSession("g")
+    if (
+      startedA === undefined ||
+      startedB === undefined ||
+      pickedA?.type !== "picked"
+    ) {
+      throw new Error("sessions start and pick")
+    }
+    const parked = (session: string): SessionEvent => ({
+      ...stamp(session),
+      file: "thread-1.json",
+      screen: "r1",
+      type: "parked",
+    })
+    const log = logOf([
+      startedA,
+      pickedA,
+      placed("f", "p1", "placement"),
+      parked("f"),
+      returned("f", "correct"),
+      {
+        ...pickedA,
+        ...stamp("f"),
+        answer: { response: "correct", slow: false },
+      },
+      startedB,
+      { ...pickedA, ...stamp("g") },
+      placed("g", "p1", "placement"),
+      parked("g"),
+    ])
+    const [f, g] = summariesOf(log)
+    expect(f?.rounds[0]).toMatchObject({ placed: ["p1", "p1"], solved: false })
+    expect(f?.replays).toEqual([
+      { file: "thread-1.json", screen: "r1", picked: "correct" },
+    ])
+    expect(g?.replays).toEqual([
+      { file: "thread-1.json", screen: "r1", picked: "incorrect" },
+    ])
+    expect(ledgerOf(log, "g").parked).toEqual([
+      { file: "thread-1.json", screen: "r1", reading: "p1" },
     ])
   })
 })

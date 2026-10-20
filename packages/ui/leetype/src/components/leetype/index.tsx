@@ -64,10 +64,12 @@ type LeetypeProps = {
   exerciseBadges?: Readonly<Record<string, ExercisePickerBadge>>
   /**
    * Where the phone keeps session files picked from storage, and where to
-   * look for them (`lib/leetype/session-file-pick`). Phone surface only;
-   * absent, the phone surface says where its sessions come from.
+   * look for them (`lib/leetype/session-file-pick`); `samples` when the
+   * store holds a viewer's samples instead, which take no picks. Phone
+   * surface only; absent, the phone surface says where its sessions come
+   * from.
    */
-  sessionFiles?: { store: SessionFileStore; hint?: string }
+  sessionFiles?: { store: SessionFileStore; hint?: string; samples?: boolean }
   /**
    * The microphone a session file's spoken answers are taken on
    * (`lib/leetype/spoken-take`). Absent, an answer can only be typed.
@@ -224,6 +226,7 @@ export const Leetype: FC<LeetypeProps> = ({
             {...(sessionFiles.hint === undefined
               ? {}
               : { hint: sessionFiles.hint })}
+            samples={sessionFiles.samples ?? false}
             className="min-h-0 flex-1"
           />
         )}

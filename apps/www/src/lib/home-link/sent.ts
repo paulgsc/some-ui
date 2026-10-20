@@ -1,9 +1,10 @@
 /**
  * What this phone knows its paired home holds, so a standing send
- * (`./standing`, LA11) carries only what changed since: each finished
- * session's `updatedAt` as it was copied, each kept shelf item's digest as
- * home answered for it, and the digests home refused, so an unchanged
- * refused item is not offered again. Kept for one pairing (`pairing`, the
+ * (`./standing`, LA11) and Settings' send (`./send`) carry only what changed
+ * since: each finished session's `updatedAt` as it was copied, each kept
+ * shelf item's digest as home answered for it, and the digests home
+ * refused, so the standing send does not offer an unchanged refused item
+ * again (a tap in Settings does). Kept for one pairing (`pairing`, the
  * link's id for it): another pairing starts from nothing. Bookkeeping, not
  * the record: lost, it only means sending again, which home answers as
  * unchanged.
@@ -116,13 +117,35 @@ export function sessionsHeld(
 export const shelfKeyOf = (item: Kept): string => `${item.activity}/${item.key}`
 
 /** A shelf-held entry for each of `items`: its bytes' digest, to tell an edit. */
-export async function shelfHeld(
+async function shelfHeld(
   items: ReadonlyArray<Kept>
 ): Promise<Record<string, string>> {
   const held: Array<[string, string]> = await Promise.all(
     items.map(async (item) => [shelfKeyOf(item), await sha256Hex(item.body)])
   )
   return Object.fromEntries(held)
+}
+
+/**
+ * The kept items home does not hold as they are now, with every item's
+ * digest (`shelfHeld`), to remember home's answers by. An item home refused
+ * as it is now is left out too, unless `refused` says to offer it again: a
+ * person's tap does, a standing send does not.
+ */
+export async function shelfToSend(
+  kept: ReadonlyArray<Kept>,
+  sent: Sent,
+  refused: "skip" | "again" = "skip"
+): Promise<{ changed: Array<Kept>; digests: Record<string, string> }> {
+  const digests = await shelfHeld(kept)
+  const changed = kept.filter((item) => {
+    const key = shelfKeyOf(item)
+    return (
+      sent.shelf[key] !== digests[key] &&
+      (refused === "again" || sent.refused[key] !== digests[key])
+    )
+  })
+  return { changed, digests }
 }
 
 /** How many sessions and kept items this phone knows home holds, or refused. */

@@ -6,12 +6,19 @@
  * over these.
  */
 
-/** A credentialed request to the paired home, at `path` under its API base. */
+/** What home answered: its status, and its body as text. */
+export type HomeAnswer = { status: number; body: string; etag?: string }
+
+/**
+ * A credentialed request to the paired home, at `path` under its API base,
+ * with `body` sent as these bytes. The one request port every exchange with
+ * home sends through.
+ */
 export type HomeCall = (
-  method: "GET" | "PUT",
+  method: "GET" | "POST" | "PUT" | "PATCH",
   path: string,
   body?: string
-) => Promise<{ status: number; body: string }>
+) => Promise<HomeAnswer>
 
 /** How an exchange that got its answers ended. */
 export type HomeExchanged =
@@ -19,7 +26,10 @@ export type HomeExchanged =
   | { readonly kind: "synced" }
   /** Home answered `401`: it no longer knows this phone. */
   | { readonly kind: "forgotten" }
-  /** Home answered something else, said in words. */
+  /**
+   * Home answered something else, or the exchange failed on the phone
+   * itself (`why: "fault"`), said in words.
+   */
   | { readonly kind: "failed"; readonly why: string }
 
 /** A schema's `safeParse`, as zod's has it. */
@@ -66,4 +76,27 @@ export function refusalOf(body: string): string {
 /** An answer an exchange did not expect, said in words. */
 export function unexpectedAnswer(what: string, status: number): HomeExchanged {
   return { kind: "failed", why: `${what}: home answered ${status}` }
+}
+
+/**
+ * Home refused a write because this phone's person stopped sending it, as
+ * home heard (paulgsc/server#433's `409`, code `sharing_stopped`): not a
+ * refusal of what was sent.
+ */
+export function stoppedOnHome(answer: HomeAnswer): boolean {
+  if (answer.status !== 409) return false
+  try {
+    const parsed: unknown = JSON.parse(answer.body)
+    const error: unknown =
+      typeof parsed === "object" && parsed !== null
+        ? Reflect.get(parsed, "error")
+        : null
+    return (
+      typeof error === "object" &&
+      error !== null &&
+      Reflect.get(error, "code") === "sharing_stopped"
+    )
+  } catch {
+    return false
+  }
 }

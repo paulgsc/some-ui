@@ -12,7 +12,7 @@ export {
   parseDecisions,
   PASS_REASONS,
 } from "./decisions"
-export type { Digest, Pick, ResumeRecommendation } from "./digest"
+export type { Digest, Kit, Pick, ResumeRecommendation } from "./digest"
 export {
   DigestSchema,
   digestFileName,

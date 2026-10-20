@@ -19,6 +19,7 @@ import type { SessionId } from "@some-extension/common"
 
 import type { CardKey } from "./keys"
 import type { Observation, WatchObservation } from "./observation"
+import type { AutoplayRule, Rules } from "./state"
 
 // ── Tokens: what the Sensor derives from the vendor (B5) ─────────────────────
 
@@ -50,6 +51,15 @@ export type Token =
    */
   | { readonly kind: "described"; readonly t: number }
   /**
+   * The Sensor held autoplay's navigation into a video Core does not admit
+   * (#1805). `upNext` is the Up next videos it read, in page order.
+   */
+  | {
+      readonly kind: "held"
+      readonly upNext: ReadonlyArray<VideoId>
+      readonly t: number
+    }
+  /**
    * The page's own video, as the watch page or a Short shows it, or null
    * when neither is shown (#1805). Re-sent whenever the reading changes.
    */
@@ -74,10 +84,11 @@ export type Token =
 // ── Inputs: the extension's own world ────────────────────────────────────────
 
 /**
- * The shell's lifecycle, the owner's boundary, and the face hold. No gesture
- * on a card reaches Core: a card's view is decided by its evidence under the
- * boundary (`fsm.ts`, `QD16`). The face hold decides nothing about whether a
- * video is admitted; it shows a plated video's own thumbnail (QD13).
+ * The shell's lifecycle, the owner's boundary and mode, and the face hold.
+ * No gesture on a card reaches Core: a card's view is decided by its
+ * evidence under the boundary and the mode (`fsm.ts`, `QD16`). The face
+ * hold decides nothing about whether a video is admitted; it shows a plated
+ * video's own thumbnail (QD13).
  */
 export type Input =
   /** The shell started a session (bootstrap, or re-enable). */
@@ -85,16 +96,32 @@ export type Input =
       readonly kind: "start"
       readonly session: SessionId
       readonly boundaryDays: number
+      readonly rules: Rules
+      readonly autoplay: AutoplayRule
       readonly t: number
     }
   /** The shell is tearing the runtime down (disable). */
   | { readonly kind: "stop"; readonly t: number }
   /** The owner set the boundary in the popup (#1807). */
   | { readonly kind: "boundary"; readonly days: number; readonly t: number }
+  /** The owner chose a mode (#1966). */
+  | { readonly kind: "rules"; readonly rules: Rules; readonly t: number }
+  /** The owner chose what autoplay does at a held video (#1966). */
+  | {
+      readonly kind: "autoplay"
+      readonly autoplay: AutoplayRule
+      readonly t: number
+    }
   /**
    * The owner held the face control on `videoId`'s plated page for its
-   * whole time (QD13, #1805).
+   * whole time (QD13, #1805), or, where the mode lets the thumbnail be
+   * hidden again, pressed it to hide (#1966): `shown` is which.
    */
-  | { readonly kind: "face"; readonly videoId: VideoId; readonly t: number }
+  | {
+      readonly kind: "face"
+      readonly videoId: VideoId
+      readonly shown: boolean
+      readonly t: number
+    }
 
 export type CoreEvent = Token | Input

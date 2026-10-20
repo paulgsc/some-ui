@@ -1,3 +1,4 @@
+import { assertNever } from "@some-ui/core-utils"
 import { z } from "zod"
 
 /**
@@ -153,6 +154,12 @@ export type SessionLedger = {
 const keyOf = (file: string, screen: string): string =>
   JSON.stringify([file, screen])
 
+type Answer = z.infer<typeof AnswerSchema>
+
+/** A correct pick in time; anything else is a struggle (Def. 9.4). */
+const unhurried = (answer: Answer): boolean =>
+  answer.response === "correct" && !answer.slow
+
 export function ledgerOf(log: SessionLog, session: string): SessionLedger {
   // By time, not position: the store lays the log out session by session.
   let until = -Infinity
@@ -187,9 +194,8 @@ export function ledgerOf(log: SessionLog, session: string): SessionLedger {
       })
     } else if (
       event.type === "returned" &&
-      event.answer.response === "correct" &&
       // A slow correct return is still a struggle (Def. 9.4): it stays parked.
-      !event.answer.slow
+      unhurried(event.answer)
     ) {
       waiting.delete(keyOf(event.file, event.screen))
     } else if (
@@ -217,4 +223,168 @@ export function ledgerOf(log: SessionLog, session: string): SessionLedger {
     saved: [...saved.values()],
     spoken,
   }
+}
+
+type Of<T extends SessionEvent["type"]> = Extract<SessionEvent, { type: T }>
+
+/**
+ * One round's funnel (Prop. 9.4): its first pick, the readings placed after
+ * a struggle and what was done with each, the returns played, and whether
+ * it is solved: a correct, unhurried pick or return since its last
+ * struggle, as `ledgerOf` counts parked rounds, except that a struggle left
+ * on its reveal (the app closed before it parked) is unsolved here. Later
+ * sessions add to it: a reading saved on the bus and read the next day, a
+ * return taken from the first screen, a replay's struggle that parks it
+ * again. A reading opened with no placement in view goes to the round its
+ * latest placement was for.
+ */
+type RoundSummary = OnFile & {
+  readonly picked: Answer["response"]
+  readonly struggled: boolean
+  readonly placed: ReadonlyArray<string>
+  readonly reading: ReadonlyArray<{
+    readonly reading: string
+    readonly action: Of<"reading">["action"]
+  }>
+  readonly returned: ReadonlyArray<Answer>
+  readonly solved: boolean
+}
+
+/**
+ * How one session went, derived from the log and carrying none of its
+ * events, for a reader outside the phone's record (`apps/www`'s
+ * study-context export, some-ui #1923). `rounds` are the rounds first
+ * picked in it, each with its whole funnel so far; `replays`, rounds picked
+ * again after their first pick, whose own answers add nothing to it
+ * (Rem. 9.5).
+ */
+export type SessionSummary = {
+  readonly session: string
+  readonly file: string
+  readonly form: Of<"started">["form"]
+  readonly startedAt: string
+  readonly ended: Of<"ended">["how"] | null
+  readonly rounds: ReadonlyArray<RoundSummary>
+  readonly replays: ReadonlyArray<
+    OnFile & { readonly picked: Answer["response"] }
+  >
+  readonly spoken: ReadonlyArray<
+    OnFile & {
+      readonly as: Of<"spoken">["answer"]["as"]
+      readonly strong: boolean
+    }
+  >
+}
+
+type Mutable<T> = {
+  -readonly [K in keyof T]: T[K] extends ReadonlyArray<infer U>
+    ? Array<U>
+    : T[K]
+}
+
+/** Every started session's summary, in the order the sessions started. */
+export function summariesOf(log: SessionLog): Array<SessionSummary> {
+  // By time, not position: the store lays the log out session by session.
+  const ordered = [...log].sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
+  const sessions = new Map<string, Mutable<SessionSummary>>()
+  const rounds = new Map<
+    string,
+    { session: string; round: Mutable<RoundSummary> }
+  >()
+  // The round the latest placement of each reading was for; null for a pointer.
+  const placedFor = new Map<string, string | null>()
+  for (const event of ordered) {
+    const summary = sessions.get(event.session)
+    switch (event.type) {
+      case "started": {
+        sessions.set(event.session, {
+          session: event.session,
+          file: event.file,
+          form: event.form,
+          startedAt: event.at,
+          ended: null,
+          rounds: [],
+          replays: [],
+          spoken: [],
+        })
+        break
+      }
+      case "picked": {
+        const key = keyOf(event.file, event.screen)
+        const first = rounds.get(key)
+        if (summary === undefined) break
+        if (first === undefined) {
+          const round: Mutable<RoundSummary> = {
+            file: event.file,
+            screen: event.screen,
+            picked: event.answer.response,
+            struggled: !unhurried(event.answer),
+            placed: [],
+            reading: [],
+            returned: [],
+            solved: unhurried(event.answer),
+          }
+          rounds.set(key, { session: event.session, round })
+          summary.rounds.push(round)
+        } else {
+          summary.replays.push({
+            file: event.file,
+            screen: event.screen,
+            picked: event.answer.response,
+          })
+        }
+        break
+      }
+      case "placed": {
+        const key = keyOf(event.file, event.screen)
+        const placement = event.as === "placement"
+        placedFor.set(keyOf(event.file, event.reading), placement ? key : null)
+        if (placement) rounds.get(key)?.round.placed.push(event.reading)
+        break
+      }
+      case "reading": {
+        const owner = placedFor.get(keyOf(event.file, event.reading))
+        if (owner === undefined || owner === null) break
+        rounds.get(owner)?.round.reading.push({
+          reading: event.reading,
+          action: event.action,
+        })
+        break
+      }
+      case "returned": {
+        const round = rounds.get(keyOf(event.file, event.screen))?.round
+        if (round === undefined) break
+        round.returned.push(event.answer)
+        round.solved ||= unhurried(event.answer)
+        break
+      }
+      case "spoken": {
+        const { file, screen, answer } = event
+        summary?.spoken.push({
+          file,
+          screen,
+          as: answer.as,
+          strong: answer.as !== "passed" && answer.strong,
+        })
+        break
+      }
+      case "ended": {
+        if (summary !== undefined) summary.ended = event.how
+        break
+      }
+      case "parked": {
+        // Any park, a replay's included, unsolves it, as `ledgerOf` has it.
+        const round = rounds.get(keyOf(event.file, event.screen))?.round
+        if (round !== undefined) round.solved = false
+        break
+      }
+      case "confirmation-taken": {
+        break
+      }
+      default: {
+        assertNever(event)
+      }
+    }
+  }
+  return [...sessions.values()]
 }

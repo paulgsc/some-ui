@@ -9,6 +9,7 @@ import {
 } from "@job-desk/digest"
 import { digestFindings } from "@job-desk/findings"
 import { fingerprint } from "@job-desk/fingerprint"
+import { FORBIDDEN_TERMS } from "@job-desk/policy"
 import { parseScouts } from "@job-desk/scouts"
 import { describe, expect, it } from "vitest"
 
@@ -98,6 +99,14 @@ describe("the résumé lists a digest names", () => {
       ...source.matchAll(/^ {2}([a-z-]+): \(\s*track: "software"/gm),
     ].map(([, name]) => name)
     expect(SOFTWARE_VARIANTS).toEqual(software)
+  })
+
+  it("rule out the terms the résumé does", () => {
+    const [, list] = /const FORBIDDEN_TERMS = \[([^\]]*)\]/.exec(
+      resumeFile("scripts/check-claims.mjs")
+    )!
+    const terms = [...list!.matchAll(/"([^"]+)"/g)].map(([, term]) => term)
+    expect(FORBIDDEN_TERMS).toEqual(terms)
   })
 
   it("are the layouts that take contact details", () => {
@@ -332,11 +341,15 @@ describe("digestFindings", () => {
     ])
   })
 
-  it("finds a fit that claims what the pick rules out", () => {
+  it("finds a fit that claims what the evidence or the pick rules out", () => {
     const digest = sample()
-    digest.picks[0]!.fits[0]!.detail = "Ran it on Kubernetes."
+    digest.picks[0]!.fits[0]!.detail = "Years of managed cloud tenure."
     expect(messages(digest)).toEqual([
-      'picks.0.fits.0: claims "Kubernetes", which dontClaim rules out',
+      'picks.0.fits.0: claims "Managed cloud tenure", which dontClaim rules out',
+    ])
+    digest.picks[0]!.fits[0]!.detail = "Ran it on Terraform."
+    expect(messages(digest)).toEqual([
+      'picks.0.fits.0: claims "Terraform", which the evidence doesn\'t support',
     ])
   })
 
@@ -410,6 +423,178 @@ describe("digestFindings", () => {
       review: null,
     })
     expect(messages(digest)).toEqual(["scouts.1.pickId: no pick nope-123"])
+  })
+
+  it("drafts every required question the form asks", () => {
+    const digest = sample()
+    digest.picks[0]!.kit.questions[0]!.draft = null
+    digest.picks[0]!.kit.questions[1]!.required = true
+    expect(messages(digest)).toEqual([
+      "picks.0.kit.questions.0.draft: a required question has no draft",
+      "picks.0.kit.questions.1.draft: a required question has no draft",
+    ])
+  })
+
+  it("lists each question once", () => {
+    const digest = sample()
+    const { questions } = digest.picks[0]!.kit
+    questions.push({ ...questions[0]! })
+    expect(messages(digest)).toEqual([
+      `picks.0.kit.questions.2.label: "${questions[0]!.label}" is asked twice`,
+    ])
+  })
+
+  it("holds each draft to its length", () => {
+    const digest = sample()
+    const { kit } = digest.picks[0]!
+    kit.coverLetter = "word ".repeat(251)
+    kit.questions[0]!.draft = "word ".repeat(151)
+    expect(messages(digest)).toEqual([
+      "picks.0.kit.coverLetter: 251 words; the most is 250",
+      "picks.0.kit.questions.0.draft: 151 words; the most is 150",
+    ])
+  })
+
+  it("finds a draft that claims what the evidence or the pick rules out", () => {
+    const digest = sample()
+    const { kit } = digest.picks[0]!
+    kit.coverLetter = "I have run services on Kubernetes."
+    kit.questions[0]!.draft = "I kept the .NET services on-call."
+    expect(messages(digest)).toEqual([
+      'picks.0.kit.coverLetter: claims "Kubernetes", which the evidence doesn\'t support',
+      'picks.0.kit.questions.0.draft: claims ".NET", which the evidence doesn\'t support',
+    ])
+    kit.coverLetter = "Years of managed cloud tenure."
+    kit.questions[0]!.draft = null
+    kit.questions[0]!.required = false
+    expect(messages(digest)).toEqual([
+      'picks.0.kit.coverLetter: claims "Managed cloud tenure", which dontClaim rules out',
+    ])
+  })
+
+  it("leaves my phone number and address to me", () => {
+    const digest = sample()
+    const { kit } = digest.picks[0]!
+    kit.coverLetter = "Call me at (510)-555-0134."
+    kit.compensation = { ask: "$110,000", why: "I live at 12 Oak Street." }
+    kit.fields.push({ label: "Telephone", value: "on request" })
+    kit.answers.push({ label: "Street address", value: "Berkeley" })
+    for (const label of [
+      "Phone ✱",
+      "What is your phone number?",
+      "Mobile",
+      "Address line 1",
+      "Address (optional)",
+      "What’s your phone number?",
+      "Phone # (with country code)",
+    ])
+      kit.answers.push({ label, value: "Mine" })
+    expect(messages(digest)).toEqual([
+      "picks.0.kit.coverLetter: a phone number or street address is mine to type",
+      "picks.0.kit.compensation.why: a phone number or street address is mine to type",
+      'picks.0.kit.fields.4.label: "Telephone" is mine to type',
+      'picks.0.kit.answers.2.label: "Street address" is mine to type',
+      'picks.0.kit.answers.3.label: "Phone ✱" is mine to type',
+      'picks.0.kit.answers.4.label: "What is your phone number?" is mine to type',
+      'picks.0.kit.answers.5.label: "Mobile" is mine to type',
+      'picks.0.kit.answers.6.label: "Address line 1" is mine to type',
+      'picks.0.kit.answers.7.label: "Address (optional)" is mine to type',
+      'picks.0.kit.answers.8.label: "What’s your phone number?" is mine to type',
+      'picks.0.kit.answers.9.label: "Phone # (with country code)" is mine to type',
+    ])
+  })
+
+  it("takes a pay range or an email address as neither", () => {
+    const digest = sample()
+    const { kit } = digest.picks[0]!
+    kit.compensation = {
+      ask: "$110,000",
+      why: "Inside the posted $95,000–$115,000 range, 2026-10-19.",
+    }
+    kit.fields.push({ label: "Email address", value: "me@example.com" })
+    kit.answers.push({ label: "Built mobile apps?", value: "Yes" })
+    kit.answers.push({ label: "Website address", value: "https://a.example" })
+    expect(messages(digest)).toEqual([])
+  })
+
+  it("redrafts only a pick still open, once, under the kit's rules", () => {
+    const digest = sample()
+    digest.queue = {
+      open: [
+        {
+          day: "2026-10-16",
+          pickId: "ash-1a2b",
+          track: "software",
+          closed: false,
+        },
+        {
+          day: "2026-10-16",
+          pickId: "elm-3c4d",
+          track: "software",
+          closed: true,
+        },
+      ],
+    }
+    digest.picks = digest.picks.filter((p) => p.track === "adjacent")
+    const redraft = {
+      day: "2026-10-16",
+      pickId: "ash-1a2b",
+      fit: ["ev-9"],
+      coverLetter: "I built the pipelines this team runs.",
+      questions: [{ label: "Why us?", required: true, draft: null }],
+    }
+    digest.redrafts = [
+      redraft,
+      { ...redraft, questions: [] },
+      { ...redraft, pickId: "elm-3c4d", questions: [] },
+      {
+        ...redraft,
+        pickId: "oak-5e6f",
+        coverLetter: "On Kubernetes.",
+        questions: [],
+      },
+    ]
+    expect(messages(digest)).toEqual([
+      "redrafts.0.questions.0.draft: a required question has no draft",
+      "redrafts.1: 2026-10-16/ash-1a2b is redrafted twice",
+      "redrafts.2: 2026-10-16/elm-3c4d is not an open pick in this digest's queue",
+      "redrafts.3: 2026-10-16/oak-5e6f is not an open pick in this digest's queue",
+      'redrafts.3.coverLetter: claims "Kubernetes", which the evidence doesn\'t support',
+    ])
+  })
+
+  it("opens a digest written before the form was read", () => {
+    const [first, second, ...rest] = sample().picks
+    const digest = {
+      ...sample(),
+      picks: [
+        { ...first, kit: { fields: [], answers: [], why: null } },
+        {
+          ...second,
+          kit: {
+            fields: [],
+            answers: [],
+            why: { prompt: "Why us?", draft: "The booking app." },
+          },
+        },
+        ...rest,
+      ],
+    }
+    const parsed = parseDigest(JSON.stringify(digest))
+    if (!parsed.ok) throw new Error(parsed.problem)
+    const [old, folded] = parsed.value.picks
+    expect(old!.kit).toEqual({
+      fields: [],
+      answers: [],
+      coverLetter: null,
+      questions: [],
+      compensation: null,
+    })
+    expect(folded!.kit.questions).toEqual([
+      { label: "Why us?", required: false, draft: "The booking app." },
+    ])
+    // What the phone keeps opens again as it was.
+    expect(parseDigest(JSON.stringify(parsed.value))).toEqual(parsed)
   })
 })
 

@@ -19,7 +19,7 @@
  */
 
 import type { WatchObservation } from "@censor/lib/content/core/observation"
-import type { MusicEvidence } from "@censor/lib/content/lane/lane"
+import type { MusicEvidence, MusicSigns } from "@censor/lib/content/lane/lane"
 import { isMusic } from "@censor/lib/content/lane/lane"
 import {
   classify,
@@ -60,7 +60,8 @@ type Evidence = MusicEvidence & {
 }
 
 /**
- * The view a card's evidence earns at `now`, under the owner's boundary.
+ * The view a card's evidence earns at `now`, under the owner's boundary and
+ * the music signs their mode reads (#1966).
  *
  * Whole when it is music (`lane/lane.ts`) and its date proves a past upload,
  * neither live nor upcoming, at any age (QD15). Otherwise plated only when
@@ -73,11 +74,14 @@ export function decide(
   evidence: Evidence,
   now: number,
   boundaryDays: number,
+  signs: MusicSigns,
   session: SessionId
 ): ViewState {
   if (evidence.short) return { kind: "absent", session }
   const e = estimate(evidence.uploadDate, now)
-  if (e.kind === "aged" && isMusic(evidence)) return { kind: "whole", session }
+  if (e.kind === "aged" && isMusic(evidence, signs)) {
+    return { kind: "whole", session }
+  }
   const band = classify(e, boundaryDays)
   return band === "QM3" || band === "QM4"
     ? { kind: "plated", session }
@@ -140,12 +144,13 @@ export function admitted(view: WatchView | ViewState["kind"]): boolean {
 export function decideWatch(
   watch: WatchObservation,
   now: number,
-  boundaryDays: number
+  boundaryDays: number,
+  signs: MusicSigns
 ): WatchView {
   if (watch.short) return "absent"
   if (!watch.hydrated || watch.dates.length === 0) return "pending"
   const e = youngest(watch.dates.map((raw) => estimate(raw, now)))
-  if (e.kind === "aged" && isMusic(watch)) return "whole"
+  if (e.kind === "aged" && isMusic(watch, signs)) return "whole"
   const band = classify(e, boundaryDays)
   return band === "QM3" || band === "QM4" ? "plated" : "absent"
 }

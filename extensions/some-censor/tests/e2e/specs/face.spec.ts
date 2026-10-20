@@ -7,12 +7,17 @@
  * F2 — Held for three seconds, by the keyboard or the pointer, the control
  *      shows the real poster and goes; an early release changes nothing.
  * F3 — A navigation forgets the face: the plate and the control are back.
- * F4 — Under `prefers-reduced-motion` the control's fill does not animate.
+ * F4 — Nothing on the control changes while it is held (#1966): no fill, no
+ *      progress.
  * F5 — When YouTube draws the description again, the control comes back.
+ * F6 — Strict offers no control; Standard offers it again (#1966).
+ * F7 — Under Open the face shows at three seconds, still held, and no key
+ *      of that press reaches YouTube; "Hide original" then puts the plate
+ *      back (#1966).
  */
 
 import { expect, test } from "@censor/playwright/fixture"
-import { vividPixels } from "@censor/playwright/rendered"
+import { mutant, vividPixels } from "@censor/playwright/rendered"
 import type { Page } from "@playwright/test"
 
 const CONTROL = "[data-boyo-face-hold]"
@@ -88,18 +93,30 @@ test("F3: a navigation forgets the face", async ({ fixture }) => {
   await expect(page.locator(CONTROL)).toBeVisible()
 })
 
-test("F4: reduced motion drops the fill's animation", async ({ fixture }) => {
+test("F4: the control looks the same while it is held", async ({ fixture }) => {
   const page = await fixture.goto("yt-watch-page")
-  await page.emulateMedia({ reducedMotion: "reduce" })
   await plated(page)
-  await page.locator(CONTROL).focus()
-  await page.keyboard.down(" ")
-  await expect(page.locator(CONTROL)).toHaveAttribute("data-holding", "")
-  const duration = await page
-    .locator(CONTROL)
-    .evaluate((el) => getComputedStyle(el, "::before").transitionDuration)
-  await page.keyboard.up(" ")
-  expect(duration).toBe("0s")
+  const control = page.locator(CONTROL)
+  // Shot after the pointer is on it, so a hover style is in both.
+  await control.hover()
+  const before = await control.screenshot({ animations: "disabled" })
+  const heldShot = async (): Promise<Buffer> => {
+    await page.mouse.down()
+    await page.waitForTimeout(1_500)
+    const shot = await control.screenshot({ animations: "disabled" })
+    await page.mouse.up()
+    return shot
+  }
+  expect((await heldShot()).equals(before)).toBe(true)
+
+  // Negative control: a style that changes while held is seen.
+  const undo = await mutant(
+    page,
+    "html body [data-boyo-face-hold]:active { background: rgb(255 0 255) !important; }"
+  )
+  await control.hover()
+  expect((await heldShot()).equals(before)).toBe(false)
+  await undo()
 })
 
 test("F5: the control comes back when the description is drawn again", async ({
@@ -116,4 +133,57 @@ test("F5: the control comes back when the description is drawn again", async ({
     inner?.replaceWith(fresh)
   })
   await expect(page.locator(`#description-inner ${CONTROL}`)).toBeVisible()
+})
+
+test("F6: Strict offers no control", async ({ fixture }) => {
+  await fixture.settings({ mode: "strict" })
+  const page = await fixture.goto("yt-watch-page")
+  await plated(page)
+  await expect(page.locator("#primary-inner")).toBeVisible()
+  await expect(page.locator(CONTROL)).toHaveCount(0)
+
+  await fixture.settings({ mode: "standard" })
+  await expect(page.locator(CONTROL)).toBeVisible()
+})
+
+test("F7: under Open the face shows while held, and can be hidden", async ({
+  fixture,
+}) => {
+  await fixture.settings({ mode: "open" })
+  const page = await fixture.goto("yt-watch-page")
+  await plated(page)
+  const control = page.locator(CONTROL)
+  // The first keydown and keyup that reach the page, as YouTube's would.
+  await page.evaluate(() => {
+    const reached: Array<string> = []
+    Reflect.set(window, "__KEYS__", reached)
+    for (const type of ["keydown", "keyup"]) {
+      document.addEventListener(type, () => reached.push(type), { once: true })
+    }
+  })
+  const reached = (): Promise<unknown> =>
+    page.evaluate((): unknown => Reflect.get(window, "__KEYS__"))
+
+  await control.focus()
+  await page.keyboard.down(" ")
+  await expect(page.locator("html")).toHaveAttribute("data-boyo-face", "", {
+    timeout: 4_000,
+  })
+  expect(await showsFace(page), "shown, still held").toBe(true)
+  await expect(control).toHaveText("Hide original")
+  await page.keyboard.up(" ")
+  await page.waitForTimeout(200)
+  expect(await showsFace(page), "the release hides nothing").toBe(true)
+  expect(await reached()).toEqual([])
+
+  await control.click()
+  await expect(page.locator("html")).not.toHaveAttribute("data-boyo-face")
+  expect(await showsFace(page)).toBe(false)
+  await expect(control).toHaveText("Hold to show the original thumbnail")
+  // The listener hears a key that is not the control's.
+  await control.evaluate((el) => {
+    el.blur()
+  })
+  await page.keyboard.press("a")
+  expect(await reached()).toEqual(["keydown", "keyup"])
 })

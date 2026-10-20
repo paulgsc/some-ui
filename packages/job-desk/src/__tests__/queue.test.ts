@@ -35,6 +35,7 @@ function decisions(
       note: "",
       voice: [],
       debrief: null,
+      fit: [],
       ...answer,
     }
   })

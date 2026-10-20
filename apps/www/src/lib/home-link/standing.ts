@@ -6,32 +6,36 @@
  * as it PUTs them (`./shelf`), and nothing of home's is taken in or lets a
  * phone session go: freeing the phone stays a tap in Settings (`./send`).
  *
- * Home being busy (`429`) is said as such, so the person can see it; it is
- * not retried here, and what did not go goes on the next ask.
+ * What did not go goes on the next ask.
  */
-import type { HomeExchanged } from "@some-ui/core-utils"
+import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
+import { unexpectedAnswer } from "@some-ui/core-utils"
 
 import type { Kept } from "@/lib/device-backend/handlers/shelf"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
+import {
+  FileHostNotConfiguredError,
+  FileHostResponseError,
+} from "@/lib/file-host-config/client"
 import type { CopyResult } from "@/lib/tenant/sessions-copy"
+import { SessionNotFoundError } from "@/lib/tenant/sessions-repository"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 import type { Scope } from "./consent-model"
-import type { HomeSend } from "./runtime"
 import type { Sent } from "./sent"
 import {
   readSent,
   rememberSent,
   sessionsHeld,
   sessionsToSend,
-  shelfHeld,
   shelfKeyOf,
+  shelfToSend,
 } from "./sent"
 import { causedBy, copyHome, HomeForgotPhoneError } from "./sessions"
-import { emptyReport, sendKept } from "./shelf"
+import { emptyReport, HomeUnansweredError, sendKept } from "./shelf"
 
 /** Why a standing send ended short, as `failed`'s `why`. */
-type StandingWhy = "busy" | "full" | "refused"
+type StandingWhy = "full" | "refused"
 
 export type StandingPorts = {
   /** This phone's sessions and kept items. */
@@ -46,45 +50,45 @@ export type StandingPorts = {
   storage: Pick<Storage, "getItem" | "setItem"> | null
   /** The sessions copy (`./sessions`'s `copyHome`); a seam for tests. */
   copy?: (
-    send: HomeSend,
+    send: HomeCall,
     local: ReadonlyArray<SessionRecord>
   ) => Promise<CopyResult>
 }
 
 const failed = (why: StandingWhy): HomeExchanged => ({ kind: "failed", why })
 
-/** `send`, and whether home answered any of it as busy (`429`). */
-export function noticingBusy(send: HomeSend): {
-  send: HomeSend
-  seen: { busy: boolean }
-} {
-  const seen = { busy: false }
-  return {
-    seen,
-    send: async (method, path, body): ReturnType<HomeSend> => {
-      const answer = await send(method, path, body)
-      if (answer.status === 429) seen.busy = true
-      return answer
-    },
+/** How the sessions copy ended at `error`, when home answered it: said, not thrown. */
+function answeredCopy(error: unknown): HomeExchanged | null {
+  if (causedBy(error, HomeForgotPhoneError)) return { kind: "forgotten" }
+  if (causedBy(error, SyncStoppedError)) throw new SyncStoppedError()
+  if (error instanceof FileHostResponseError) {
+    return unexpectedAnswer("a session", error.status)
   }
+  // A 503 that is not home's busy, and a 404 for a copy gone since the plan.
+  if (error instanceof FileHostNotConfiguredError) {
+    return unexpectedAnswer("a session", 503)
+  }
+  return error instanceof SessionNotFoundError
+    ? unexpectedAnswer("a session", 404)
+    : null
 }
 
 /**
- * Sends what changed; throws what `send` throws when home does not answer.
- * Every request first asks the log again (`gated`), so a stop pressed while
- * a send runs ends it before its next request.
+ * Sends what changed. Throws `HomeUnansweredError` when home does not answer
+ * the shelf, what the sessions copy throws when it does not answer that
+ * (`./runtime`'s `unanswered` reads both), and any fault on this phone as
+ * it came. Every request first asks the log again (`gated`), so a stop
+ * pressed while a send runs ends it before its next request.
  */
 export async function sendStanding(
-  send: HomeSend,
+  send: HomeCall,
   ports: StandingPorts
 ): Promise<HomeExchanged> {
-  if (ports.shared().size === 0) return { kind: "synced" }
-  const { send: watched, seen } = noticingBusy(send)
   const gated =
-    (scope: Scope): HomeSend =>
+    (scope: Scope): HomeCall =>
     (method, path, body) =>
       ports.shared().has(scope)
-        ? watched(method, path, body)
+        ? send(method, path, body)
         : Promise.reject(new SyncStoppedError())
   const { local, kept } = await ports.read()
   let sent: Sent = readSent(ports.storage, ports.pairing)
@@ -96,21 +100,15 @@ export async function sendStanding(
       try {
         copy = await (ports.copy ?? copyHome)(gated("sessions"), changed)
       } catch (error) {
-        if (causedBy(error, HomeForgotPhoneError)) return { kind: "forgotten" }
-        if (causedBy(error, SyncStoppedError)) throw new SyncStoppedError()
-        if (seen.busy) return failed("busy")
-        throw error
+        const ended = answeredCopy(error)
+        if (ended === null) throw error
+        return ended
       }
       const { outcome } = copy
       if (outcome.kind === "partial") {
-        if (causedBy(outcome.error, HomeForgotPhoneError)) {
-          return { kind: "forgotten" }
-        }
-        if (causedBy(outcome.error, SyncStoppedError)) {
-          throw new SyncStoppedError()
-        }
-        if (seen.busy) return failed("busy")
-        throw outcome.error
+        const ended = answeredCopy(outcome.error)
+        if (ended === null) throw outcome.error
+        return ended
       }
       sent = rememberSent(ports.storage, sent, {
         sessions: sessionsHeld(changed),
@@ -127,14 +125,7 @@ export async function sendStanding(
         Object.entries(sent.refused).filter(([key]) => keys.has(key))
       ),
     }
-    const digests = await shelfHeld(kept)
-    const changed = kept.filter((item) => {
-      const digest = digests[shelfKeyOf(item)]
-      return (
-        sent.shelf[shelfKeyOf(item)] !== digest &&
-        sent.refused[shelfKeyOf(item)] !== digest
-      )
-    })
+    const { changed, digests } = await shelfToSend(kept, sent)
     const report = emptyReport()
     const held: Record<string, string> = {}
     const refused: Record<string, string> = {}
@@ -144,14 +135,13 @@ export async function sendStanding(
         ;(answer === "held" ? held : refused)[key] = digests[key] ?? ""
       })
     } finally {
-      sent = rememberSent(ports.storage, sent, { shelf: held, refused })
+      rememberSent(ports.storage, sent, { shelf: held, refused })
     }
     if (report.forgotten) return { kind: "forgotten" }
-    if (seen.busy) return failed("busy")
-    if (report.unreachable) throw new Error("home did not answer")
+    if (report.unreachable) throw new HomeUnansweredError()
     if (report.full.size > 0) return failed("full")
     if (report.refused + report.other > 0) return failed("refused")
   }
 
-  return seen.busy ? failed("busy") : { kind: "synced" }
+  return { kind: "synced" }
 }

@@ -47,6 +47,13 @@ export const EventSchema: z.ZodType<JobEvent> = z.discriminatedUnion("type", [
     note: z.string(),
     voice: Ids,
   }),
+  z.object({
+    ...Stamp,
+    ...PickRef,
+    type: z.literal("fit-note"),
+    note: z.string(),
+    voice: Ids,
+  }),
   z.object({ ...Stamp, ...PickRef, type: z.literal("resume-ready") }),
   z.object({ ...Stamp, ...PickRef, type: z.literal("apply-opened") }),
   z.object({

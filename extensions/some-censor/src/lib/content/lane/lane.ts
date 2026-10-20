@@ -7,6 +7,9 @@
  *
  * Pure, and mechanical: a token in the title, a suffix on the channel's
  * name, a badge. Nothing here judges what a title means (doctrine §8).
+ *
+ * Strict mode reads the channel's two signs only (#1966): the title token
+ * also admits a ship or a motorcycle ("MV Dali", "MV Agusta").
  */
 
 export type MusicEvidence = {
@@ -30,14 +33,16 @@ const MUSIC_TOKEN = /(?:^|[^A-Za-z0-9])(?:OST|MV)(?=$|[^A-Za-z0-9])/
 /** YouTube's auto-generated artist channels: "Ailee - Topic". */
 const TOPIC_SUFFIX = " - Topic"
 
-export function isMusic({
-  title,
-  channelName,
-  artist,
-}: MusicEvidence): boolean {
+/** Which signs make a video music: all three, or the channel's two. */
+export type MusicSigns = "all" | "channel"
+
+export function isMusic(
+  { title, channelName, artist }: MusicEvidence,
+  signs: MusicSigns
+): boolean {
   return (
     artist ||
     channelName?.trim().endsWith(TOPIC_SUFFIX) === true ||
-    (title !== null && MUSIC_TOKEN.test(title))
+    (signs === "all" && title !== null && MUSIC_TOKEN.test(title))
   )
 }

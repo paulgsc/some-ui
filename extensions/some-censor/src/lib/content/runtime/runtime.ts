@@ -23,7 +23,11 @@ import type { Action, CoreFact } from "@censor/lib/content/core/actions"
 import type { CoreEvent } from "@censor/lib/content/core/events"
 import { reduce } from "@censor/lib/content/core/reduce"
 import { admits, initialState } from "@censor/lib/content/core/state"
-import type { CoreState } from "@censor/lib/content/core/state"
+import type {
+  AutoplayRule,
+  CoreState,
+  Rules,
+} from "@censor/lib/content/core/state"
 import {
   notifyMutation,
   notifyNavigation,
@@ -60,6 +64,10 @@ export type Runtime = {
   scan(): void
   /** The owner's boundary, applied now if running and at every later start. */
   setBoundary(days: number): void
+  /** The owner's mode, applied now if running and at every later start. */
+  setRules(rules: Rules): void
+  /** The owner's autoplay choice, likewise. */
+  setAutoplay(autoplay: AutoplayRule): void
   readonly state: CoreState
   readonly running: boolean
 }
@@ -72,6 +80,8 @@ export function createRuntime(ports: RuntimePorts): Runtime {
 
   let state: CoreState = initialState(mintSession())
   let boundaryDays = state.boundaryDays
+  let rules = state.rules
+  let autoplay = state.autoplay
   let actuator: Actuator | null = null
   let health: Health | null = null
   let firstScan: number | null = null
@@ -104,6 +114,12 @@ export function createRuntime(ports: RuntimePorts): Runtime {
       if (action.kind === "record") {
         if (action.fact.kind === "navigation") notifyNavigation()
         onFact(action.fact)
+      } else if (action.kind === "play") {
+        const el = sensorInstance.upNextCard(action.key)
+        bound.push({
+          action,
+          targets: el === null ? [] : [{ el, role: "anchor" }],
+        })
       } else if (action.kind === "watch") {
         const el = sensorInstance.description()
         bound.push({
@@ -160,7 +176,8 @@ export function createRuntime(ports: RuntimePorts): Runtime {
     start(): void {
       if (state.phase === "running") return
       actuator = createActuator(ports.doc, {
-        onFace: (videoId) => dispatch({ kind: "face", videoId, t: clock() }),
+        onFace: (videoId, shown) =>
+          dispatch({ kind: "face", videoId, shown, t: clock() }),
       })
       health = createHealth({
         clock,
@@ -171,6 +188,8 @@ export function createRuntime(ports: RuntimePorts): Runtime {
         kind: "start",
         session: mintSession(),
         boundaryDays,
+        rules,
+        autoplay,
         t: clock(),
       })
       sensorInstance.start()
@@ -205,6 +224,16 @@ export function createRuntime(ports: RuntimePorts): Runtime {
     setBoundary(days: number): void {
       boundaryDays = days
       dispatch({ kind: "boundary", days, t: clock() })
+    },
+
+    setRules(next: Rules): void {
+      rules = next
+      dispatch({ kind: "rules", rules: next, t: clock() })
+    },
+
+    setAutoplay(next: AutoplayRule): void {
+      autoplay = next
+      dispatch({ kind: "autoplay", autoplay: next, t: clock() })
     },
 
     get state(): CoreState {

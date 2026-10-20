@@ -3,7 +3,7 @@
  * shelf send and the sessions copy, one at a time, each started by a tap
  * (LA8, docs/learner-data-authority.md); and aph, the Jobs record and
  * Practice kept on home, once their person opted in, while each is open
- * (`./aph`, LA9; `./jobs`, LA10; `./practice`, LA11).
+ * (`./lanes`; aph, LA9; the Jobs record, LA10; Practice, LA11).
  * Phone-only (`build.paths.ts`).
  */
 import { useSyncExternalStore } from "react"

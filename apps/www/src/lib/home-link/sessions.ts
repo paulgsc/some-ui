@@ -9,13 +9,13 @@
  * (`confirmHeld`), so the send can let go of those home holds exactly. The
  * plan and receipt are `lib/tenant/sessions-copy`'s.
  */
+import type { HomeCall } from "@some-ui/core-utils"
+
 import type { FileHostTransport } from "@/lib/file-host-config/client"
 import { createHttpSessionsRepository } from "@/lib/tenant/http-sessions-repository"
 import type { CopyResult, HeldReport } from "@/lib/tenant/sessions-copy"
 import { confirmHeld, copySessionsTo } from "@/lib/tenant/sessions-copy"
 import type { SessionRecord } from "@/lib/tenant/types"
-
-import type { HomeSend } from "./runtime"
 
 /** Home answered `401`: it no longer knows this phone. */
 export class HomeForgotPhoneError extends Error {
@@ -30,7 +30,7 @@ export class HomeForgotPhoneError extends Error {
  * is thrown before `requestJSON` sees it: it is the pairing's, not this
  * app's sign-in, so the app's own sign-out must not run.
  */
-export function homeTransport(send: HomeSend): FileHostTransport {
+export function homeTransport(send: HomeCall): FileHostTransport {
   return async (route, init) => {
     const method = (init?.method ?? "GET").toUpperCase()
     if (method !== "GET" && method !== "POST" && method !== "PATCH") {
@@ -60,7 +60,7 @@ export function causedBy(
  * which never lets a phone session go.
  */
 export function copyHome(
-  send: HomeSend,
+  send: HomeCall,
   local: ReadonlyArray<SessionRecord>
 ): Promise<CopyResult> {
   return copySessionsTo(
@@ -75,7 +75,7 @@ export function copyHome(
  * `held` confirmed before it; a copy that cannot start throws.
  */
 export async function copyAndConfirm(
-  send: HomeSend,
+  send: HomeCall,
   local: ReadonlyArray<SessionRecord>,
   leaving: ReadonlyArray<SessionRecord>,
   held: HeldReport

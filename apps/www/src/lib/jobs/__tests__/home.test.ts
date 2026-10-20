@@ -84,7 +84,7 @@ const holding =
   }
 
 describe("exchangeJobs", () => {
-  it("sends each event home doesn't hold, once, then reads home's record", async () => {
+  it("sends each event home doesn't hold, once, and reads nothing back for a phone with a log", async () => {
     const k = keeping(withLog)
     const h = home(holding())
     expect(await exchangeJobs(k, h.send)).toEqual({ kind: "synced" })
@@ -92,15 +92,14 @@ describe("exchangeJobs", () => {
       "PUT /jobs/events/e1",
       "PUT /jobs/events/e2",
       "PUT /jobs/events/e3",
-      "GET /jobs",
     ])
     expect(JSON.parse(h.calls[0]?.body ?? "")).toEqual(withLog.log[0])
     expect(k.current.home.held).toEqual(["e1", "e2", "e3"])
     expect(homeOutbox(k.current)).toEqual([])
 
     const again = home(holding())
-    await exchangeJobs(k, again.send)
-    expect(again.calls.map((c) => c.method)).toEqual(["GET"])
+    expect(await exchangeJobs(k, again.send)).toEqual({ kind: "synced" })
+    expect(again.calls).toEqual([])
     expect(k.current.log).toEqual(withLog.log)
   })
 
@@ -126,6 +125,21 @@ describe("exchangeJobs", () => {
       ],
     })
     expect(homeOutbox(k.current)).toEqual([])
+  })
+
+  it("refuses nothing when home says this phone stopped sending, and ends there", async () => {
+    const k = keeping(withLog)
+    const h = home(() => ({
+      status: 409,
+      body: { error: { code: "sharing_stopped", message: "stopped" } },
+    }))
+    expect(await exchangeJobs(k, h.send)).toEqual({
+      kind: "failed",
+      why: "an event: home answered 409",
+    })
+    expect(h.calls).toHaveLength(1)
+    expect(k.current.home.refused).toEqual([])
+    expect(homeOutbox(k.current)).toHaveLength(3)
   })
 
   it("keeps what home confirmed when the exchange stops part way", async () => {
@@ -175,15 +189,23 @@ describe("exchangeJobs", () => {
     await exchangeJobs(own, home(holding(withLog.log)).send)
     expect(own.current.log.map((e) => e.id)).toEqual(["mine"])
   })
+
+  it("says nothing failed when the phone's first event lands while home's record is read", async () => {
+    const k = keeping(EMPTY)
+    const send: HomeCall = (method, path, body) => {
+      k.current = step(opened, {
+        type: "record",
+        event: { type: "taken", ...ref() },
+        stamp: { id: "mine", at: "2026-10-19T10:00:00.000Z" },
+      })
+      return home(holding(withLog.log)).send(method, path, body)
+    }
+    expect(await exchangeJobs(k, send)).toEqual({ kind: "synced" })
+    expect(k.current.log.map((e) => e.id)).toEqual(["mine"])
+  })
 })
 
 describe("step on home's answers", () => {
-  it("is kept on home only by its person's press, once", () => {
-    const kept = step(withLog, { type: "kept-on-home" })
-    expect(kept.home.kept).toBe(true)
-    expect(step(kept, { type: "kept-on-home" })).toBe(kept)
-  })
-
   it("takes only answers about events in its log, each once", () => {
     const answered = step(withLog, {
       type: "home-answered",

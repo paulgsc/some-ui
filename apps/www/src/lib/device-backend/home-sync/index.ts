@@ -13,20 +13,29 @@
  * address from the WebView's `https:` page (a `fetch` would be mixed
  * content). Tests pass a second device backend standing in for home, which
  * passes the server's own contracts.
+ *
+ * Lessons and runs are revalidated (`revalidated`); home being busy ends the
+ * sync (`HomeBusyError`), with no retry.
  */
-import { isRecord, stringsAt } from "@/lib/device-backend/common"
-import type { LessonEntry } from "@/lib/device-backend/content-store"
+import { isRecord, sha256Hex, stringsAt } from "@/lib/device-backend/common"
+import type { HeldBody, LessonEntry } from "@/lib/device-backend/content-store"
 import {
   DEFAULT_LESSON_ACTIVITY,
   removeLessonsExcept,
   removeRoundsExcept,
+  storedLesson,
   storedRoundHash,
   upsertLesson,
   upsertRound,
   upsertRuns,
 } from "@/lib/device-backend/content-store"
 import type { SqlDriver } from "@/lib/device-backend/sql"
-import { DeviceStorageError } from "@/lib/device-backend/sql"
+import {
+  DeviceStorageError,
+  one,
+  text,
+  textOrNull,
+} from "@/lib/device-backend/sql"
 import type { StorageBudget } from "@/lib/device-backend/storage"
 import {
   ANDROID_BACKUP_BUDGET,
@@ -36,10 +45,14 @@ import {
 import { TREE_ACTIVITY } from "@/lib/topik-content"
 
 /**
- * A GET against home. `body` is the answer as text; a transport that parsed
- * JSON on the way (Capacitor's does) re-serialises it.
+ * A GET against home, sent with `If-None-Match: etag` when `etag` is given.
+ * `body` is the answer as text; a transport that parsed JSON on the way
+ * (Capacitor's does) re-serialises it.
  */
-export type HomeGet = (url: string) => Promise<{ status: number; body: string }>
+export type HomeGet = (
+  url: string,
+  etag?: string
+) => Promise<{ status: number; body: string; etag?: string }>
 
 /** `removed`: home stopped listing it. `skipped`: it would not fit. */
 type Tally = {
@@ -71,13 +84,23 @@ export class SyncStoppedError extends Error {
   }
 }
 
+/** Home answered `429`: it is busy. What was copied before it stays. */
+export class HomeBusyError extends Error {
+  constructor() {
+    super("home is busy")
+    this.name = "HomeBusyError"
+  }
+}
+
 /**
- * The phone's storage failing, or the person stopping, is not one item's
- * failure: the sync stops and says so.
+ * The phone's storage failing, the person stopping, or home being busy is
+ * not one item's failure: the sync stops and says so.
  */
 function endsTheSync(error: unknown): boolean {
   return (
-    error instanceof DeviceStorageError || error instanceof SyncStoppedError
+    error instanceof DeviceStorageError ||
+    error instanceof SyncStoppedError ||
+    error instanceof HomeBusyError
   )
 }
 
@@ -123,6 +146,98 @@ function isRoundListing(value: unknown): value is RoundListing {
   )
 }
 
+/** One read's answer, and `keep`, which keeps its `ETag` once it is stored. */
+type Read = {
+  status: number
+  body: string
+  keep: () => Promise<void>
+}
+
+type Reads = {
+  db: SqlDriver
+  store: SqlDriver
+  get: HomeGet
+  /** Every address this sync revalidated. */
+  read: Set<string>
+}
+
+const done = (): Promise<void> => Promise.resolve()
+
+/**
+ * `url`, revalidated (`device_home_answer`): sent with the `ETag` this phone
+ * kept for it only while it holds the bytes that tag names: for a lesson its
+ * row (`held`), by digest, else the body kept with the tag. A `304` then
+ * answers with those bytes, as a `200`. The tag is kept only by `keep`,
+ * once the caller has stored what the answer carried, and within the
+ * phone's budget.
+ */
+async function revalidated(
+  sync: Reads,
+  url: string,
+  held?: () => Promise<HeldBody | null>
+): Promise<Read> {
+  const { db, store, get } = sync
+  sync.read.add(url)
+  const kept = await one(
+    db,
+    "SELECT etag, hash, body FROM device_home_answer WHERE url = ?",
+    [url]
+  )
+  // What the phone holds that the kept tag names: a lesson's row while its
+  // digest is the one kept with the tag, or the body written with the tag.
+  let holding: { body: string; etag: string } | null = null
+  if (kept !== null) {
+    const etag = text(kept, "etag")
+    const body = textOrNull(kept, "body")
+    if (held) {
+      const lesson = await held()
+      if (lesson !== null && lesson.hash === textOrNull(kept, "hash")) {
+        holding = { body: lesson.body, etag }
+      }
+    } else if (body !== null) {
+      holding = { body, etag }
+    }
+  }
+  const answer = await get(url, holding?.etag)
+  if (answer.status === 304 && holding !== null) {
+    return { status: 200, body: holding.body, keep: done }
+  }
+  if (answer.status !== 200) return { ...answer, keep: done }
+  const { etag } = answer
+  const keep = async (): Promise<void> => {
+    if (etag === undefined) {
+      await db.run("DELETE FROM device_home_answer WHERE url = ?", [url])
+      return
+    }
+    const hash = held ? await sha256Hex(answer.body) : null
+    try {
+      await store.transaction(() =>
+        store.run(
+          `INSERT INTO device_home_answer (url, etag, hash, body) VALUES (?, ?, ?, ?)
+           ON CONFLICT(url) DO UPDATE SET
+             etag = excluded.etag, hash = excluded.hash, body = excluded.body`,
+          [url, etag, hash, held ? null : answer.body]
+        )
+      )
+    } catch (error) {
+      // A tag that does not fit costs only the next sync the download: the
+      // one kept before still names its own bytes.
+      if (!(error instanceof OverBudgetError)) throw error
+    }
+  }
+  return { status: 200, body: answer.body, keep }
+}
+
+/** `get`, throwing `HomeBusyError` for each answer home was too busy for. */
+function busyAware(get: HomeGet): HomeGet {
+  return async (url, etag) => {
+    const answer = await get(url, etag)
+    if (answer.status === 429) throw new HomeBusyError()
+    return answer
+  }
+}
+
+/** A listing every write waits on: home unreachable or refusing fails it. */
 async function getJson(
   get: HomeGet,
   base: string,
@@ -132,7 +247,7 @@ async function getJson(
   try {
     answer = await get(`${base}${route}`)
   } catch (cause) {
-    if (cause instanceof SyncStoppedError) throw cause
+    if (endsTheSync(cause)) throw cause
     throw new HomeUnreachableError(base, { cause })
   }
   if (answer.status !== 200) {
@@ -158,10 +273,7 @@ function topiksOf(manifest: unknown): Array<unknown> {
  * kept until that activity's pass replaces it.
  */
 async function syncLessons(
-  sync: {
-    db: SqlDriver
-    store: SqlDriver
-    get: HomeGet
+  sync: Reads & {
     base: string
     now: () => number
     failed: Array<string>
@@ -171,7 +283,7 @@ async function syncLessons(
   listed: Array<unknown>,
   tally: Tally
 ): Promise<void> {
-  const { db, store, get, base, now, failed, listedAnywhere } = sync
+  const { db, store, base, now, failed, listedAnywhere } = sync
   // Every key home still lists, including an entry this phone cannot read:
   // that one fails, and is not removed.
   const listedKeys = stringsAt(listed, "key")
@@ -185,10 +297,14 @@ async function syncLessons(
   tally.removed = await removeLessonsExcept(db, listedAnywhere, activityId)
   for (const entry of entries) {
     try {
-      const answer = await get(
-        `${base}/curriculum/${encodeURIComponent(entry.key)}`
+      const answer = await revalidated(
+        sync,
+        `${base}/curriculum/${encodeURIComponent(entry.key)}`,
+        () => storedLesson(db, entry.key)
       )
       if (answer.status !== 200) throw new Error(String(answer.status))
+      // A `304` still writes: home can rename a lesson, or move it to
+      // another activity, without changing its body.
       const outcome = await upsertLesson(
         store,
         entry,
@@ -196,6 +312,7 @@ async function syncLessons(
         now(),
         activityId
       )
+      await answer.keep()
       if (outcome === "inserted") tally.added += 1
       if (outcome === "updated") tally.updated += 1
     } catch (error) {
@@ -209,7 +326,7 @@ async function syncLessons(
 export async function syncFromHome(
   db: SqlDriver,
   homeInput: string,
-  get: HomeGet,
+  homeGet: HomeGet,
   now: () => number = Date.now,
   budget: StorageBudget = ANDROID_BACKUP_BUDGET
 ): Promise<SyncReport> {
@@ -223,6 +340,8 @@ export async function syncFromHome(
     failed: [],
   }
 
+  const get = busyAware(homeGet)
+  const reads: Reads = { db, store, get, read: new Set() }
   // The manifests first; their failure fails the sync (an unreachable home
   // must be said plainly). Every listing before any write: a failed fetch
   // aborts with nothing removed.
@@ -246,9 +365,7 @@ export async function syncFromHome(
   const treeKeys = stringsAt(trees, "key")
   const scoped = !treeKeys.some((key) => lessonKeys.includes(key))
   const sync = {
-    db,
-    store,
-    get,
+    ...reads,
     base,
     now,
     failed: report.failed,
@@ -284,9 +401,10 @@ export async function syncFromHome(
         if (outcome === "inserted") report.rounds.added += 1
         if (outcome === "updated") report.rounds.updated += 1
       }
-      const runs = await get(`${base}/leetype/rounds/${id}/runs`)
+      const runs = await revalidated(reads, `${base}/leetype/rounds/${id}/runs`)
       if (runs.status === 200) {
         report.rounds.runs += await upsertRuns(store, runs.body, now())
+        await runs.keep()
       }
     } catch (error) {
       if (endsTheSync(error)) throw error
@@ -294,5 +412,23 @@ export async function syncFromHome(
       else report.failed.push(listing.id)
     }
   }
+  await forgetUnread(db, reads.read)
   return report
+}
+
+/**
+ * Drops every tag this sync did not read, once it read all it lists: what
+ * home stopped listing, and what another address served.
+ */
+async function forgetUnread(
+  db: SqlDriver,
+  read: ReadonlySet<string>
+): Promise<void> {
+  const rows = await db.all("SELECT url FROM device_home_answer")
+  for (const row of rows) {
+    const url = text(row, "url")
+    if (!read.has(url)) {
+      await db.run("DELETE FROM device_home_answer WHERE url = ?", [url])
+    }
+  }
 }
