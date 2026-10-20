@@ -11,28 +11,24 @@ something existing code already does, name that code and say why both must exist
 
 ## Change kind
 
-One line, `Change-Kind: story` (the user story moved: behaviour added or retired) or
-`Change-Kind: defect` (code failed in a state its story already covered). See `CLAUDE.md`,
+`story` (the user story moved: behaviour added or retired) or `defect` (code failed in a state
+its story already covered), as in every commit's `Change-Kind:` trailer. See `CLAUDE.md`,
 "Two kinds of pull request".
-
-## The promise (defect only)
 
 For a defect, give:
 
-- the promise this PR declares: its ID and where it lives;
+- the promise it declares or amends: its ID and where it lives;
 - its **Claim**;
-- its **Family**, every state or environment it covers;
-- its **Proof**, what holds it over that family;
+- its **Family**, and the dimensions that generate it;
+- its **Proof**, and how it reaches each dimension;
+- any **Tolerance**;
+- its relation to earlier promises (New, Breaks or Widens, with the ID);
 - which check could have caught the failure, and why none did.
-
-For a story, write "Story: nothing to prove".
 
 ## Type of Change
 
 Please delete options that are not relevant.
 
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
 - [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
 - [ ] This change requires a documentation update
 

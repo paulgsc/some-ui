@@ -425,38 +425,62 @@ merge it. They differ in what green has to show.
 - **Story.** The user story moved. Behaviour is added because the owner wants it, or retired
   because they no longer do: the background was green, and now the owner wants it purple. A
   preference is not right or wrong, so a story PR has nothing to prove beyond the repo's usual
-  checks and its **Superseded** section.
+  checks and its **Superseded** section. Raising a promise's reliability is a story too: the
+  owner wants more than was promised.
 - **Defect.** Code fails in a state its story already covered: a footgun, or a happy path that
   assumed some input, ordering, host or timing away. Every story ships with an implicit
-  service level, a promise about the states it works in, whether or not anyone wrote it down.
-  A defect is that promise surfacing. Unlike a preference, a failing state machine is a fact,
-  so a defect PR carries the burden of proof:
-  1. **Declare the promise** in the same PR, with an ID, in the doc that owns the idiom, and a
-     one-line summary in the governed module's doc comment, as invariants are placed. A
-     promise has three parts:
-     - a **Claim**: one sentence about the code, over a named scope;
-     - the **Family**: every state or environment the failure belongs to, not only the case
-       that was reported. That means every interleaving of stop and resume, not the one seen;
-       every host, not the phone that showed it.
-     - the **Proof**: what holds the claim over that whole family. A test that enumerates or
-       generates the family, a type that makes the bad state unrepresentable, or a lint rule.
-       Where no mechanism can hold it, declare it as a gray-area invariant instead (above),
-       with all four parts.
-  2. **Fit the claim to the proof.** If the fix covers only part of the family, narrow the
-     claim to that part and say why the rest cannot occur. A claim wider than its proof is
-     false on landing, which "True when it lands" forbids. Fixing the reported case alone,
-     with no claim, is the whack-a-mole this rule exists to stop.
-  3. **Say how the happy path got in.** Name the check that could have caught it and why none
-     did. That answer is often the change most worth making.
+  promise about the states it works in, and a defect is that promise surfacing. A failing
+  state machine is a fact, so a defect PR carries the burden of proof.
 
-**How a PR says which.** The PR template's **Change kind** section holds one line,
-`Change-Kind: story` or `Change-Kind: defect`. PRs squash-merge with their body, so the line
-lands in the commit, and `git log --grep "Change-Kind: defect"` lists every promise that broke
-and the claim each one now makes. The commit type usually agrees (`feat` or `refactor` for a
-story, `fix` for a defect), but the line is the record. A change that is both is two PRs. PRs
-a workflow opens with a fixed body are exempt, as they are from **Superseded**. Review enforces
-this today (`REVIEW.md`, "Change kind: a defect PR proves its claim"). A `pr.yml` check that
-requires the line is mechanical; not yet a rule.
+**A promise** has an ID and up to four parts:
+
+- **Claim:** one sentence about the code, over a named scope.
+- **Family:** every state or environment the claim covers, named by the dimensions that
+  generate it (orderings of events, hosts, inputs, timings), so a reviewer can check the
+  proof against each dimension. For example: every interleaving of stop and resume; every
+  host the story runs on.
+- **Proof:** what holds the claim over the whole Family. That can be a test that enumerates or
+  generates it, a type that makes the bad state unrepresentable, or a lint rule. Where no
+  mechanism can hold it, the promise is a gray-area invariant (above) with all four of that
+  format's parts.
+- **Tolerance** (optional): the failure the claim accepts, such as best effort, a share of
+  sittings, or hosts it leaves out. A failure inside the Tolerance is not a defect.
+
+A promise held by a test, type or lint rule lives with that check, its ID in the check's name
+or comment. A gray-area promise is placed as invariants are (above).
+
+**A defect PR:**
+
+1. **Declares or amends a promise** whose Family contains the failing state. If the fix holds
+   only part of the family, the claim and its Family are narrowed to that part.
+2. **Relates it to the promises before it.** Search the earlier `Promise:` trailers (below)
+   for the same scope. Exactly one of these applies:
+   - **New:** no earlier promise's scope reaches the failing state. The domain is orthogonal
+     to the earlier ones.
+   - **Breaks:** the failing state was inside an earlier promise's Family. That proof was
+     wrong, and the PR fixes the proof as well as the code.
+   - **Widens:** the state was in an earlier promise's scope but outside its Family. That
+     family was drawn too narrow, and the PR widens it.
+3. **Says how the happy path got in:** which check could have caught it, and why none did.
+   For Breaks and Widens, that means why the earlier PR missed this state.
+
+**The record.** PRs squash-merge with their branch's commit messages
+(`squash_merge_commit_message: COMMIT_MESSAGES`), so the record lives in commit trailers:
+
+```
+Change-Kind: defect
+Promise: SS2
+Relates: SS1 widens
+```
+
+`Change-Kind: story` or `Change-Kind: defect` goes on every commit. Merge and revert commits
+are exempt. `.commitlintrc.json` rejects a commit with no `Change-Kind` trailer, and review
+checks its value. A defect commit adds `Promise:` and, for Breaks or Widens, `Relates:`. `git
+log --grep "Change-Kind: defect"` then lists every promise that broke, and the `Relates` links
+show, for each one, which earlier promises should have held it. A change that is both a story
+and a defect is two PRs. Commits a workflow or a bot writes carry generated messages and
+are exempt, as their PRs are from **Superseded**. Review enforces the rest (`REVIEW.md`,
+"Change kind: a defect PR proves its claim").
 
 ## Cold-start footguns worth not re-discovering
 

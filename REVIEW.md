@@ -71,25 +71,27 @@ fixed body (release, Changesets and snapshot PRs) carry generated content and ar
 
 ## Change kind: a defect PR proves its claim
 
-Every PR body has a **Change kind** section with `Change-Kind: story` or
-`Change-Kind: defect` (`CLAUDE.md`, "Two kinds of pull request"). Each of the following is a
-**blocking** finding:
+Every commit carries a `Change-Kind: story` or `Change-Kind: defect` trailer, and a defect
+commit adds `Promise:` and, where it applies, `Relates:` (`CLAUDE.md`, "Two kinds of pull
+request"). Each of the following is a **blocking** finding:
 
-1. **No line, or a wrong one.** A body without either line. A `story` PR whose diff makes code
-   handle a state its story already covered, such as a missing guard, a race, or a host it
-   failed on, is a defect and must say so.
-2. **A defect with no promise.** A `defect` PR that declares no promise with an ID, Claim,
-   Family and Proof, or whose Family is only the reported case without saying why the rest of
-   the family cannot occur.
-3. **A claim wider than its proof.** A Proof that does not reach every member of the Family it
-   names. For example, a test of one interleaving offered for "every order of stop and
-   resume", or a fix on one host for a claim about all of them.
-4. **No account of the happy path.** A `defect` PR that does not say which check could have
-   caught the failure and why none did.
+1. **The wrong kind.** A `story` PR whose stated purpose is a failure in a state its story
+   already covered is a defect. A `defect` PR whose failure lies inside an existing promise's
+   Tolerance is a story: it raises the promise.
+2. **A defect with no promise.** A `defect` PR that declares or amends no promise with an ID,
+   Claim, Family and Proof, or whose Family is only the reported case.
+3. **A claim wider than its proof.** A Proof that does not reach every dimension of the Family
+   it names. For example, a test of one interleaving offered for "every interleaving of stop
+   and resume".
+4. **A missing relation.** A `defect` PR whose failing state lies inside a declared promise's
+   Family (Breaks) or scope (Widens), with no `Relates:` trailer naming it.
+5. **No account of the happy path.** A `defect` PR that does not say which check could have
+   caught the failure and why none did, or, for Breaks and Widens, why the earlier PR missed
+   this state.
 
 A `story` PR has nothing to prove: do not ask it for a claim, a family or a proof. A promise
 declared as a gray-area invariant is also reviewed under "Reviewing a change that declares or
-edits an invariant" above. PRs a workflow opens with a fixed body are exempt.
+edits an invariant" above. Commits a workflow or a bot writes are exempt.
 
 ## The phone is Android only
 

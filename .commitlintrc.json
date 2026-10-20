@@ -1,3 +1,6 @@
 {
-  "extends": ["@commitlint/config-conventional"]
+  "extends": ["@commitlint/config-conventional"],
+  "rules": {
+    "trailer-exists": [2, "always", "Change-Kind:"]
+  }
 }
