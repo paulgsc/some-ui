@@ -230,9 +230,11 @@ type Of<T extends SessionEvent["type"]> = Extract<SessionEvent, { type: T }>
 /**
  * One round's funnel (Prop. 9.4): its first pick, the readings placed after
  * a struggle and what was done with each, the returns played, and whether
- * a correct, unhurried pick or return solved it. Later sessions add to it:
- * a reading saved on the bus and read the next day, a return taken from the
- * first screen.
+ * it is solved: not waiting on a return, as `ledgerOf` has it. Later
+ * sessions add to it: a reading saved on the bus and read the next day, a
+ * return taken from the first screen, a replay's struggle that parks it
+ * again. A reading opened with no placement in view goes to the round its
+ * latest placement was for.
  */
 type RoundSummary = OnFile & {
   readonly picked: Answer["response"]
@@ -251,7 +253,7 @@ type RoundSummary = OnFile & {
  * events, for a reader outside the phone's record (`apps/www`'s
  * study-context export, some-ui #1923). `rounds` are the rounds first
  * picked in it, each with its whole funnel so far; `replays`, rounds picked
- * again after an earlier session's first pick, which add nothing to it
+ * again after their first pick, whose own answers add nothing to it
  * (Rem. 9.5).
  */
 export type SessionSummary = {
@@ -322,7 +324,7 @@ export function summariesOf(log: SessionLog): Array<SessionSummary> {
           }
           rounds.set(key, { session: event.session, round })
           summary.rounds.push(round)
-        } else if (first.session !== event.session) {
+        } else {
           summary.replays.push({
             file: event.file,
             screen: event.screen,
@@ -368,7 +370,12 @@ export function summariesOf(log: SessionLog): Array<SessionSummary> {
         if (summary !== undefined) summary.ended = event.how
         break
       }
-      case "parked":
+      case "parked": {
+        // A struggle on a replay parks the round again, as `ledgerOf` has it.
+        const round = rounds.get(keyOf(event.file, event.screen))?.round
+        if (round !== undefined) round.solved = false
+        break
+      }
       case "confirmation-taken": {
         break
       }

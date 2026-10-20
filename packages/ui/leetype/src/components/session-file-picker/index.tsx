@@ -98,7 +98,8 @@ export const SessionFilePicker: FC<SessionFilePickerProps> = ({
     >
       {samples ? (
         <p className="text-pretty text-sm text-muted-foreground">
-          A sample session to try. Nothing you do in it is kept once you reload.
+          A sample session to try. What you do in it lasts until you reload this
+          page.
         </p>
       ) : (
         <>

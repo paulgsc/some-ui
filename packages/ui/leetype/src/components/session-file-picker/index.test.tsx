@@ -86,7 +86,7 @@ describe("SessionFilePicker", () => {
     expect(keep).not.toHaveBeenCalled()
   })
 
-  it("offers a viewer's samples to play and no way to pick, saying nothing is kept", async () => {
+  it("offers a viewer's samples to play and no way to pick, saying how long they last", async () => {
     const onPlay = vi.fn()
     render(
       <SessionFilePicker
@@ -108,7 +108,7 @@ describe("SessionFilePicker", () => {
       />
     )
     expect(screen.queryByLabelText("Add a session from storage")).toBeNull()
-    expect(screen.getByText(/Nothing you do in it is kept/)).toBeTruthy()
+    expect(screen.getByText(/lasts until you reload this page/)).toBeTruthy()
     expect(
       await screen.findByRole("list", { name: "Sample sessions" })
     ).toBeTruthy()

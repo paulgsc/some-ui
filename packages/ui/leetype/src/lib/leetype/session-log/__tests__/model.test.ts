@@ -413,4 +413,41 @@ describe("summariesOf", () => {
       { screen: "r3", placed: ["p1"], reading: [] },
     ])
   })
+
+  it("parks a solved round again when a replay struggles on it, as the ledger does", () => {
+    const [startedA, pickedA] = aSession("f")
+    const [startedB] = aSession("g")
+    if (
+      startedA === undefined ||
+      startedB === undefined ||
+      pickedA?.type !== "picked"
+    ) {
+      throw new Error("sessions start and pick")
+    }
+    const parked = (session: string): SessionEvent => ({
+      ...stamp(session),
+      file: "thread-1.json",
+      screen: "r1",
+      type: "parked",
+    })
+    const log = logOf([
+      startedA,
+      pickedA,
+      placed("f", "p1", "placement"),
+      parked("f"),
+      returned("f", "correct"),
+      startedB,
+      { ...pickedA, ...stamp("g") },
+      placed("g", "p1", "placement"),
+      parked("g"),
+    ])
+    const [f, g] = summariesOf(log)
+    expect(f?.rounds[0]).toMatchObject({ placed: ["p1", "p1"], solved: false })
+    expect(g?.replays).toEqual([
+      { file: "thread-1.json", screen: "r1", picked: "incorrect" },
+    ])
+    expect(ledgerOf(log, "g").parked).toEqual([
+      { file: "thread-1.json", screen: "r1", reading: "p1" },
+    ])
+  })
 })
