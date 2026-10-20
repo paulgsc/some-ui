@@ -3,9 +3,9 @@
  * and the one thing it is doing, if any. `step` is pure; `./runtime` runs
  * the ports and feeds their results back as events.
  *
- * One operation at a time, by structure: pairing, unpairing, a sync and a
- * send are arms of `activity`, and `step` refuses to start one while
- * another runs. A result for an operation that is no longer the current
+ * One operation at a time, by structure: pairing, unpairing, a sync, a
+ * send and aph's keeping are arms of `activity`, and `step` refuses to
+ * start one while another runs. A result for an operation that is no longer the current
  * one is dropped.
  */
 import { assertNever } from "@some-ui/core-utils"
@@ -38,6 +38,17 @@ type Link =
   | {
       readonly kind: "paired"
       readonly base: string
+      /**
+       * This pairing's own id, made when it was paired: what a choice to
+       * keep sending is for (LA11), so a new pairing starts from nothing.
+       */
+      readonly id: string
+      /**
+       * Paired by a build before the consent log held every record's
+       * choice, so a choice a record's own switch made may belong to it
+       * (LA9). A pairing this build makes never is.
+       */
+      readonly earlier: boolean
       /** The last Unpair could not forget the key on the phone. */
       readonly notForgotten: boolean
     }
@@ -50,6 +61,11 @@ type Activity =
   | { readonly kind: "syncing"; readonly stopping: boolean }
   /** Sending what this phone holds to the paired home, with its key. */
   | { readonly kind: "sending"; readonly stopping: boolean }
+  /**
+   * Keeping a record on home: what it has to send sent, started by
+   * `lib/home-link/lanes` rather than a tap (LA9 to LA11).
+   */
+  | { readonly kind: "keeping"; readonly stopping: boolean }
 
 export type HomeLinkState = {
   readonly link: Link
@@ -64,16 +80,25 @@ export type HomeLinkState = {
 export type HomeLinkEvent =
   | {
       readonly type: "read"
-      readonly found: { readonly base: string } | "lost" | "unreadable" | null
+      readonly found:
+        | {
+            readonly base: string
+            readonly id: string
+            readonly earlier: boolean
+          }
+        | "lost"
+        | "unreadable"
+        | null
     }
   | { readonly type: "pairPressed"; readonly base: string }
-  | { readonly type: "paired"; readonly base: string }
+  | { readonly type: "paired"; readonly base: string; readonly id: string }
   | { readonly type: "pairFailed"; readonly failure: PairFailure }
   | { readonly type: "unpairPressed" }
   | { readonly type: "unpaired"; readonly told: boolean }
   | { readonly type: "unpairFailed" }
   | { readonly type: "syncPressed" }
   | { readonly type: "sendPressed" }
+  | { readonly type: "keepStarted" }
   | { readonly type: "stopPressed" }
   /** The sync or send in flight ended, finished or stopped. */
   | { readonly type: "workEnded" }
@@ -85,6 +110,17 @@ export const INITIAL: HomeLinkState = {
 }
 
 const idle = { kind: "idle" } as const
+
+/** A sync, a send or aph's keeping: the activities Stop ends. */
+export function working(
+  activity: Activity
+): activity is Extract<Activity, { stopping: boolean }> {
+  return (
+    activity.kind === "syncing" ||
+    activity.kind === "sending" ||
+    activity.kind === "keeping"
+  )
+}
 
 export function step(
   state: HomeLinkState,
@@ -102,7 +138,13 @@ export function step(
             ? { kind: "unpaired", note: null }
             : typeof found === "string"
               ? { kind: "unpaired", note: found }
-              : { kind: "paired", base: found.base, notForgotten: false },
+              : {
+                  kind: "paired",
+                  base: found.base,
+                  id: found.id,
+                  earlier: found.earlier,
+                  notForgotten: false,
+                },
       }
     }
     case "pairPressed": {
@@ -117,7 +159,14 @@ export function step(
       if (activity.kind !== "pairing" || activity.base !== event.base)
         return state
       return {
-        link: { kind: "paired", base: event.base, notForgotten: false },
+        ...state,
+        link: {
+          kind: "paired",
+          base: event.base,
+          id: event.id,
+          earlier: false,
+          notForgotten: false,
+        },
         activity: idle,
         pairFailure: null,
       }
@@ -137,6 +186,7 @@ export function step(
     case "unpaired": {
       if (activity.kind !== "unpairing") return state
       return {
+        ...state,
         link: {
           kind: "unpaired",
           note: event.told ? "unpaired" : "unpaired-offline",
@@ -157,14 +207,16 @@ export function step(
       if (link.kind !== "paired" || activity.kind !== "idle") return state
       return { ...state, activity: { kind: "sending", stopping: false } }
     }
+    case "keepStarted": {
+      if (link.kind !== "paired" || activity.kind !== "idle") return state
+      return { ...state, activity: { kind: "keeping", stopping: false } }
+    }
     case "stopPressed": {
-      if (activity.kind !== "syncing" && activity.kind !== "sending")
-        return state
+      if (!working(activity)) return state
       return { ...state, activity: { kind: activity.kind, stopping: true } }
     }
     case "workEnded": {
-      if (activity.kind !== "syncing" && activity.kind !== "sending")
-        return state
+      if (!working(activity)) return state
       return { ...state, activity: idle }
     }
     default: {

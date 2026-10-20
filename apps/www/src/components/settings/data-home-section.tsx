@@ -4,7 +4,8 @@
  *
  * Which of the four screens this is follows `lib/authority`:
  *
- * - **No server** (the demo): the account section's own "no server" copy.
+ * - **No server**: not reached; the Pages build shows a viewer the front
+ *   desk's own sample-data note instead (`routes/_dashboard/settings.tsx`).
  * - **On this device**: nothing about the sessions is sent anywhere and no
  *   account is needed. One button to keep an account (the passkey screen).
  * - **On the account**: the account's controls, and, if the device holds
@@ -18,6 +19,7 @@
 
 import type { JSX } from "react"
 import { useState } from "react"
+import { counted } from "@some-ui/core-utils"
 import { Button, Label, Separator } from "@some-ui/shared"
 import { useNavigate } from "@tanstack/react-router"
 import { toast } from "sonner"
@@ -29,8 +31,7 @@ import { useCopyDeviceSessions, useTransferPreview } from "@/lib/tenant"
 
 import { AccountSection } from "./account-section"
 
-const plural = (n: number): string =>
-  n === 1 ? "1 session" : `${String(n)} sessions`
+const plural = (n: number): string => counted(n, "session")
 
 const OnThisDevice = (): JSX.Element => {
   const navigate = useNavigate()

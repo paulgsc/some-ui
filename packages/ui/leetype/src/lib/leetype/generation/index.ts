@@ -29,9 +29,6 @@ export const MIN_MEMBERS = 2
 /** `MAX_PRESENTABLE_DIFFS` in the corpus lint: a phone shows at most five. */
 export const MAX_MEMBERS = 5
 
-/** How many recently played rounds the prompt names: the delta, not the path. */
-const RECENT_ROUNDS = 5
-
 export type RoundRequest = {
   /** The register entry the admissible member should witness. */
   focus?: PropositionId
@@ -39,14 +36,6 @@ export type RoundRequest = {
   premise?: string
   /** `|D|`, clamped to `[MIN_MEMBERS, MAX_MEMBERS]`. */
   members?: number
-  /** Ids of rounds the learner has played recently, newest first. */
-  recent?: ReadonlyArray<string>
-  /**
-   * `learner` (the default) is one person's next round, kept on their
-   * device. `corpus` is the operator writing a round for everyone (the
-   * round CRM), so no one learner's history applies.
-   */
-  audience?: "learner" | "corpus"
 }
 
 const clampMembers = (members: number | undefined): number =>
@@ -91,13 +80,6 @@ export function buildRoundPrompt(request: RoundRequest = {}): string {
     `Premise: ${request.premise?.trim() || "(invent one)"}`,
     `Members: ${clampMembers(request.members)}`,
   ]
-  const recent = (request.recent ?? []).slice(0, RECENT_ROUNDS)
-  const history =
-    request.audience === "corpus"
-      ? "Recent rounds: none - this round joins the shared corpus every learner draws from."
-      : recent.length > 0
-        ? `Recent rounds (newest first): ${recent.join(", ")}`
-        : "Recent rounds: none yet."
   return [
     ROUND_PROMPT.trimEnd(),
     "",
@@ -114,7 +96,6 @@ export function buildRoundPrompt(request: RoundRequest = {}): string {
     "## This request",
     "",
     ...lines,
-    history,
     "",
   ].join("\n")
 }

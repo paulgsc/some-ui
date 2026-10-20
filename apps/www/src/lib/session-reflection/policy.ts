@@ -49,6 +49,9 @@ export type Answers = Partial<Record<QuestionKey, string>>
 /** k: every reflection on the phone, all sessions together. */
 export const REFLECTION_LIMIT = 20
 
+/** What a reflection refused for want of a slot says. */
+export const NO_ROOM = "No room for it: share or let some go first."
+
 /** Older than a week, a reflection no longer says how things are going. */
 export const STALE_AFTER_MS = 7 * 24 * 60 * 60_000
 

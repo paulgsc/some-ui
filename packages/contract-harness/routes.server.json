@@ -18,6 +18,27 @@
       "module": "activities"
     },
     {
+      "method": "GET",
+      "path": "/aph",
+      "full_path": "/api/v1/aph",
+      "versioned": true,
+      "module": "aph"
+    },
+    {
+      "method": "PUT",
+      "path": "/aph/entries/:id",
+      "full_path": "/api/v1/aph/entries/:id",
+      "versioned": true,
+      "module": "aph"
+    },
+    {
+      "method": "PUT",
+      "path": "/aph/settings",
+      "full_path": "/api/v1/aph/settings",
+      "versioned": true,
+      "module": "aph"
+    },
+    {
       "method": "DELETE",
       "path": "/auth/account",
       "full_path": "/api/v1/auth/account",
@@ -159,6 +180,20 @@
     },
     {
       "method": "GET",
+      "path": "/jobs",
+      "full_path": "/api/v1/jobs",
+      "versioned": true,
+      "module": "jobs"
+    },
+    {
+      "method": "PUT",
+      "path": "/jobs/events/:id",
+      "full_path": "/api/v1/jobs/events/:id",
+      "versioned": true,
+      "module": "jobs"
+    },
+    {
+      "method": "GET",
       "path": "/leetype/rounds",
       "full_path": "/api/v1/leetype/rounds",
       "versioned": true,
@@ -177,6 +212,27 @@
       "full_path": "/api/v1/leetype/rounds/:id/runs",
       "versioned": true,
       "module": "leetype"
+    },
+    {
+      "method": "GET",
+      "path": "/leetype/sessions",
+      "full_path": "/api/v1/leetype/sessions",
+      "versioned": true,
+      "module": "leetype_log"
+    },
+    {
+      "method": "GET",
+      "path": "/leetype/sessions/:session/events",
+      "full_path": "/api/v1/leetype/sessions/:session/events",
+      "versioned": true,
+      "module": "leetype_log"
+    },
+    {
+      "method": "PUT",
+      "path": "/leetype/sessions/:session/events/:id",
+      "full_path": "/api/v1/leetype/sessions/:session/events/:id",
+      "versioned": true,
+      "module": "leetype_log"
     },
     {
       "method": "GET",
@@ -390,6 +446,20 @@
     },
     {
       "method": "GET",
+      "path": "/sharing",
+      "full_path": "/api/v1/sharing",
+      "versioned": true,
+      "module": "sharing"
+    },
+    {
+      "method": "PUT",
+      "path": "/sharing/:scope",
+      "full_path": "/api/v1/sharing/:scope",
+      "versioned": true,
+      "module": "sharing"
+    },
+    {
+      "method": "GET",
       "path": "/shelf/:activity",
       "full_path": "/api/v1/shelf/:activity",
       "versioned": true,
@@ -429,6 +499,13 @@
       "full_path": "/api/v1/subjects/me/stats",
       "versioned": true,
       "module": "subjects"
+    },
+    {
+      "method": "POST",
+      "path": "/sync/:collection/batch",
+      "full_path": "/api/v1/sync/:collection/batch",
+      "versioned": true,
+      "module": "sync"
     },
     {
       "method": "POST",

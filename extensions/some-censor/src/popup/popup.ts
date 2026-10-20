@@ -1,56 +1,115 @@
 /**
- * Popup (`popup.html`) — the manifest's `default_popup`. Content is a header
- * (brand mark + name, the manifest's own `assets/icon-*.png`) and the
- * "Diagnostics" entry point per Charter idiom #3:
- * `@some-extension/common`'s `diagnosticsLink` is the same link some-filter's
- * and suspender-ledger's popups already end with. The whitelist/enabled
- * controls `@censor/types/messages` already models (`GET_ENABLED`,
- * `SET_ENABLED`, `GET_WHITELIST`) are a separate, not-yet-built surface —
- * out of scope here.
+ * Popup (`popup.html`), after the 2026-10-19 prototype (#1966): the on/off
+ * switch, the mode, "Show videos older than", what autoplay does at a held
+ * video, and links to the settings page and Diagnostics.
+ *
+ * `storage.local` is the only state: a click writes the settings, and the
+ * popup renders from {@link followSettings}, so what it shows is what the
+ * content script applies.
  */
+import { onSwitch, segments } from "@censor/lib/settings/choices"
+import type { Settings } from "@censor/lib/settings/settings"
+import {
+  AUTOPLAYS,
+  BOUNDARIES,
+  BOUNDARY_LABEL,
+  createSaver,
+  followSettings,
+  MODES,
+} from "@censor/lib/settings/settings"
+import {
+  AGE_QUESTION,
+  AUTOPLAY_QUESTION,
+  AUTOPLAY_WORDS,
+  MODE_QUESTION,
+  MODE_WORDS,
+  PAGE_WORDS,
+} from "@censor/lib/settings/words"
 import { ext } from "@censor/platform/content"
 import { diagnosticsLink } from "@some-extension/common/lib/diagnostics"
 
 import "./popup.css"
 
-function header(): HTMLElement {
+const save = createSaver(ext.storage.local)
+
+function header(settings: Settings): HTMLElement {
   const el = document.createElement("header")
   el.className = "popup__header"
 
-  const logo = document.createElement("img")
-  logo.className = "popup__logo"
-  logo.src = ext.runtime.getURL("assets/icon-48.png")
-  logo.alt = ""
-  logo.width = 20
-  logo.height = 20
+  const name = document.createElement("span")
+  name.className = "popup__name"
+  name.textContent = "BOYO"
 
-  const title = document.createElement("span")
-  title.className = "popup__title"
-  title.textContent = "BOYO"
-
-  el.append(logo, title)
+  el.append(
+    name,
+    onSwitch(settings.enabled, () => {
+      save((stored) => ({ ...stored, enabled: !stored.enabled }))
+    })
+  )
   return el
 }
 
-function tagline(): HTMLElement {
-  const p = document.createElement("p")
-  p.className = "popup__tagline"
-  p.textContent = "Progressive content masking with intentional disclosure"
-  return p
-}
-
-function render(): void {
-  const root = document.getElementById("app")
-  if (!root) return
-
-  root.append(
-    header(),
-    tagline(),
-    diagnosticsLink({
-      href: ext.runtime.getURL("debug.html"),
-      tooltip: "Card resolution health, metrics and the masking event timeline",
+function choices(settings: Settings): HTMLElement {
+  const el = document.createElement("div")
+  el.className = "popup__choices"
+  el.toggleAttribute("inert", !settings.enabled)
+  el.append(
+    segments({
+      id: "mode",
+      question: MODE_QUESTION,
+      values: MODES,
+      label: (mode) => MODE_WORDS[mode].name,
+      current: settings.mode,
+      onPick: (mode) => save((stored) => ({ ...stored, mode })),
+      line: MODE_WORDS[settings.mode].tag,
+    }),
+    segments({
+      id: "age",
+      question: AGE_QUESTION,
+      values: BOUNDARIES,
+      label: (boundary) => BOUNDARY_LABEL[boundary],
+      current: settings.boundary,
+      onPick: (boundary) => save((stored) => ({ ...stored, boundary })),
+    }),
+    segments({
+      id: "autoplay",
+      question: AUTOPLAY_QUESTION,
+      values: AUTOPLAYS,
+      label: (autoplay) => AUTOPLAY_WORDS[autoplay].label,
+      current: settings.autoplay,
+      onPick: (autoplay) => save((stored) => ({ ...stored, autoplay })),
+      line: AUTOPLAY_WORDS[settings.autoplay].line,
     })
   )
+  return el
 }
 
-render()
+function footer(): HTMLElement {
+  const el = document.createElement("div")
+  el.className = "popup__links"
+  const all = document.createElement("button")
+  all.type = "button"
+  all.className = "popup__link"
+  all.textContent = PAGE_WORDS.allSettings
+  all.addEventListener("click", () => {
+    void ext.runtime.openOptionsPage()
+  })
+  el.append(
+    all,
+    diagnosticsLink({
+      href: ext.runtime.getURL("debug.html"),
+      label: PAGE_WORDS.diagnostics,
+      tooltip: PAGE_WORDS.diagnosticsTip,
+    })
+  )
+  return el
+}
+
+function render(settings: Settings): void {
+  const root = document.getElementById("app")
+  if (!root) return
+  root.classList.toggle("boyo-popup-off", !settings.enabled)
+  root.replaceChildren(header(settings), choices(settings), footer())
+}
+
+followSettings(ext.storage, render)

@@ -1,59 +1,78 @@
-/* Popup styling — deliberately minimal: this page is currently just a
- * header and the "Diagnostics" entry point (see popup.ts), not the
- * whitelist/enabled controls `@censor/types/messages` already models.
- * Tokens mirror `../debug/debug.css`'s `bc-` prefix. */
+/* Popup styling, after the 2026-10-19 prototype (see popup.ts). The switch
+   and segments are choices.css's. */
 
 :root {
   color-scheme: dark;
 
-  --bc-bg: #1a1a1a;
-  --bc-fg: #e0e0e0;
-  --bc-muted: #8a8a8a;
-  --bc-border: rgb(255 255 255 / 8%);
+  --bc-bg: #1c1f1d;
+  --bc-fg: #e2e5de;
+  --bc-muted: #959e97;
+  --bc-border: #2f3531;
+  --bc-accent: #cfa253;
+  --bc-mono: ui-monospace, "SFMono-Regular", menlo, monospace;
 }
 
 #app {
-  width: 240px;
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  width: 288px;
 }
 
 .popup__header {
   align-items: center;
   display: flex;
-  gap: 8px;
-  padding: 12px;
+  justify-content: space-between;
 }
 
-.popup__logo {
-  display: block;
-  flex: none;
-}
-
-.popup__title {
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.popup__tagline {
+.popup__name {
   color: var(--bc-muted);
-  font-size: 12px;
-  margin: 0;
-  padding: 0 12px 12px;
+  font: 500 12px/1 var(--bc-mono);
+  letter-spacing: 0.1em;
+}
+
+.popup__choices {
+  display: grid;
+  gap: 18px;
+}
+
+.boyo-popup-off .popup__choices {
+  opacity: 0.4;
+}
+
+.popup__links {
+  align-items: center;
+  border-top: 1px solid var(--bc-border);
+  display: flex;
+  justify-content: space-between;
+  padding-top: 12px;
+}
+
+.popup__link {
+  background: transparent;
+  border: 0;
+  color: var(--bc-muted);
+  cursor: pointer;
+  font: 400 11.5px/1.4 var(--bc-mono);
+  padding: 0;
 }
 
 .popup__footer {
-  border-top: 1px solid var(--bc-border);
   margin: 0;
-  padding: 8px 12px;
-  text-align: right;
 }
 
 .popup__diagnostics {
   color: var(--bc-muted);
-  font-size: 11px;
+  font: 400 11.5px/1.4 var(--bc-mono);
   text-decoration: none;
 }
 
+.popup__link:hover,
 .popup__diagnostics:hover {
   color: var(--bc-fg);
+}
+
+:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
 }

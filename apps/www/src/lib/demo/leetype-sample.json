@@ -1,0 +1,635 @@
+{
+  "title": "One node",
+  "oneLine": "Thread 1, session 1 of 5: one node holding one value meets a power cut and a throughput target, each fixed by the smallest change that survives it, then a take aloud.",
+  "session": {
+    "kind": "incident",
+    "budgetMinutes": 10
+  },
+  "glossary": {
+    "node": "one machine running the service.",
+    "log": "an append-only file of records, read back in order after a restart.",
+    "ack": "the reply that tells a client its write is done.",
+    "fsync": "the call that flushes a file: it returns only once the disk itself, not the operating system's memory, holds the data.",
+    "acceptor": "in Paxos, a machine that votes on proposed values and must remember what it promised.",
+    "stable storage": "storage that keeps its contents through a crash: in practice, a disk after fsync.",
+    "Paxos": "Lamport's protocol for machines to agree on one value despite crashes; Raft is a close relative.",
+    "Paxos instance": "one run of Paxos, deciding one value (one slot of a replicated log).",
+    "in flight": "sent or started, and not yet finished.",
+    "group commit": "writes waiting for the same fsync share it, so one flush makes all of them durable.",
+    "entry": "one record in a replicated log.",
+    "invariant": "what a round says must hold; an option that lets it fail \"breaks the invariant\".",
+    "Little's law": "work in flight equals throughput times latency (M4).",
+    "transaction": "a group of database changes that takes effect all together or not at all.",
+    "commit record": "the log record saying a transaction is done; once it is on disk, the transaction survives a crash."
+  },
+  "start": "s00",
+  "screens": {
+    "s00": {
+      "type": "info",
+      "pinned": "The job: build a replicated log one failure at a time, picking the smallest change that survives each.",
+      "title": "One node",
+      "body": "Thread 1 builds a replicated log one failure at a time, over five sessions of two rounds each. This is the first: one node holding one value meets a power cut, then a throughput target. Each answer becomes the next round's \"So far\" line, and the next session picks up from round 2's.\n\nEvery figure is an assumption, stated in the round and inside the usual range: a flush to disk about 1 ms.\n\nA wrong pick, a \"Not sure\" or a long pause is kept as what it is. It places a short reading, and that round waits for it; after you read, the same mechanism comes back with new numbers. Nothing is locked, and you can stop at any round.",
+      "glosses": ["node", "log"],
+      "actions": [
+        {
+          "label": "Start with round 1",
+          "next": "r1"
+        }
+      ]
+    },
+    "r1": {
+      "type": "choice",
+      "pinned": "The job: decide what must be on disk before the client hears \"done\".",
+      "title": "Round 1: the power cut",
+      "tags": ["round:1"],
+      "rule": "M8",
+      "cites": "g1a",
+      "onHesitate": "g1a",
+      "provenance": "Numbers invented; each figure is an assumption inside the usual range.",
+      "glosses": ["ack", "fsync", "invariant"],
+      "body": "So far: one node holding one value, a balance, as the last record in its log.\n\nA client sends \"set balance = 70\". The node appends the record to the log file, which puts it in the operating system's memory, and sends the ack. 1 ms later the power fails. On restart the log ends at the old record, and the client reads balance = 100.\n\nAssumed figures: a write into memory about 100 ns; an fsync about 1 ms.\n\nMust hold: a write the client was told is done survives a power cut.\n\nWhat is the smallest change?",
+      "options": [
+        {
+          "label": "Run fsync once a second in the background, covering that second's writes",
+          "next": "g1a",
+          "applies": "M2",
+          "correct": false,
+          "feedback": "Breaks the invariant. One fsync a second is cheap, but a write acked in the last second before the cut is still only in memory: up to a second of acked writes is lost."
+        },
+        {
+          "label": "Reply only after fsync has returned for that record",
+          "next": "p1",
+          "applies": "M8",
+          "correct": true,
+          "feedback": "Yes. \"Done\" now means \"on disk\". The price: about 1 ms per write instead of about 100 ns, ten thousand times slower, and at one fsync per write and one fsync at a time this node takes at most 1 s ÷ 1 ms = 1,000 writes a second. That ceiling is round 2. The rule (M8, durability has a price): an acknowledgement is only as durable as what was flushed before it was sent."
+        },
+        {
+          "label": "Keep a second copy of the record in another process's memory",
+          "next": "g1a",
+          "correct": false,
+          "feedback": "Breaks the invariant. Both copies are in memory on the same machine, and the power cut empties all of it."
+        },
+        {
+          "label": "Write the record to the log file twice before replying",
+          "next": "g1a",
+          "correct": false,
+          "feedback": "Breaks the invariant. Two writes into the file are two writes into memory; without an fsync neither has reached the disk."
+        },
+        {
+          "label": "Not sure",
+          "next": "g1a",
+          "abstain": true
+        }
+      ]
+    },
+    "g1a": {
+      "type": "reading",
+      "tags": ["placement"],
+      "title": "A page for round 1",
+      "primer": "The question: when must a machine's answer be on disk? Lamport answers it for an acceptor in Paxos. Look at where the write to stable storage sits relative to the reply. The paragraph takes a minute; the section is under a page, across pp. 7–8. This round waits until you have read it.",
+      "source": {
+        "title": "Paxos Made Simple",
+        "author": "Leslie Lamport",
+        "year": 2001,
+        "url": "https://lamport.azurewebsites.net/pubs/paxos-simple.pdf",
+        "where": "§2.5 The Implementation, p. 8 (PDF p. 11)",
+        "minutes": 3
+      },
+      "passage": "“Stable storage, preserved during failures, is used to maintain the information that the acceptor must remember. An acceptor records its intended response in stable storage before actually sending the response.”\n\nShort quote; the full text is behind the link.",
+      "glosses": ["acceptor", "stable storage", "Paxos"],
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "v1a",
+          "effect": "read"
+        },
+        {
+          "label": "Save it; this round waits",
+          "next": "r2",
+          "effect": "save"
+        },
+        {
+          "label": "Skip; this round waits",
+          "next": "r2"
+        }
+      ]
+    },
+    "v1a": {
+      "type": "choice",
+      "returnOf": "r1",
+      "pinned": "The job: count what a power cut can erase when the ack comes before the flush.",
+      "title": "Round 1 again: flushing on a timer",
+      "tags": ["round:1", "return"],
+      "rule": "M8",
+      "cites": "g1a",
+      "onHesitate": "g1b",
+      "provenance": "Numbers invented; each figure is an assumption inside the usual range.",
+      "body": "Another node takes 20,000 writes a second. To save fsyncs it acks each write as soon as the record is in memory, and runs one fsync every 10 ms covering everything written since the last one.\n\nMust hold: a write the client was told is done survives a power cut.\n\nAt worst, how many acked writes can one power cut erase?",
+      "options": [
+        {
+          "label": "None: 10 ms is too short to matter",
+          "next": "g1b",
+          "correct": false,
+          "feedback": "Breaks the invariant. At 20,000 a second, 10 ms of acked writes sit in memory just before each fsync."
+        },
+        {
+          "label": "About 20",
+          "next": "g1b",
+          "correct": false,
+          "feedback": "Breaks the invariant by undercounting: 20 is what a 1 ms gap holds at this rate."
+        },
+        {
+          "label": "About 200",
+          "next": "r2",
+          "correct": true,
+          "feedback": "Right: 20,000 a second × 0.01 s = 200 writes acked and not yet on disk just before each fsync, and about 20 more if the cut lands while that 1 ms fsync is still running. A shorter timer shrinks the number and never reaches zero; only an fsync before each ack does.",
+          "applies": "M8"
+        },
+        {
+          "label": "About 2,000",
+          "next": "g1b",
+          "correct": false,
+          "feedback": "Overcounts: 2,000 is what a 100 ms gap holds at this rate."
+        },
+        {
+          "label": "Not sure",
+          "next": "g1b",
+          "abstain": true
+        }
+      ]
+    },
+    "g1b": {
+      "type": "reading",
+      "tags": ["placement"],
+      "title": "Another page for round 1",
+      "primer": "The question: does an fsync on the file always cover everything a reply depends on? Pillai and colleagues traced real applications, worked out the states a crash could leave on disk, and counted the ones that lose data. Read for which fsync calls were missing. About a minute for these lines; the section is short.",
+      "source": {
+        "title": "All File Systems Are Not Created Equal: On the Complexity of Crafting Crash-Consistent Applications",
+        "author": "Pillai, Chidambaram, Alagappan, Al-Kiswany, Arpaci-Dusseau and Arpaci-Dusseau",
+        "year": 2014,
+        "url": "https://www.usenix.org/system/files/conference/osdi14/osdi14-paper-pillai.pdf",
+        "where": "§4.4.4 Durability, p. 444 (PDF p. 13)",
+        "minutes": 2
+      },
+      "passage": "“Six applications require fsync() calls on directories”\n\n“many applications do issue an fsync() call before durability is essential, but do not fsync() all the required information.”\n\nShort quote; the full text is behind the link.",
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "v1b",
+          "effect": "read"
+        },
+        {
+          "label": "Save it; this round waits",
+          "next": "r2",
+          "effect": "save"
+        },
+        {
+          "label": "Skip; this round waits",
+          "next": "r2"
+        }
+      ]
+    },
+    "v1b": {
+      "type": "choice",
+      "returnOf": "r1",
+      "pinned": "The job: find what was not on disk when the ack went out.",
+      "title": "Round 1 again: a new log file",
+      "tags": ["round:1", "return"],
+      "rule": "M8",
+      "cites": "g1b",
+      "onHesitate": "g1a",
+      "provenance": "Numbers invented; each figure is an assumption inside the usual range.",
+      "body": "The log rolls over to a new file every 64 MB. The node creates log-000042, appends the next record to it, calls fsync on that file, and acks.\n\nThe power fails. On restart the directory has no log-000042, and the acked record is gone. The disk is healthy.\n\nMust hold: a write the client was told is done survives a power cut.\n\nWhich flush was missing?",
+      "options": [
+        {
+          "label": "An fsync of the directory that holds the new file",
+          "next": "r2",
+          "correct": true,
+          "feedback": "Right. The file's data was on disk, but the directory's record of the file's name was not, so after the restart nothing pointed at it. Pillai and colleagues found applications exposed to losing data this way: their fsync calls covered the file, not the directory. Same rule: an acknowledgement is only as durable as what was flushed before it was sent, and the file's name in its directory is part of what the record needs.",
+          "applies": "M8"
+        },
+        {
+          "label": "A second fsync of the same file",
+          "next": "g1a",
+          "correct": false,
+          "feedback": "Breaks the invariant. The file's data was already on disk after the first one; a second flushes nothing new."
+        },
+        {
+          "label": "None: an fsynced file cannot vanish, so the disk lost it",
+          "next": "g1a",
+          "correct": false,
+          "feedback": "Breaks the invariant, and the premise. The disk did what it was asked; what it was never asked to flush is what went missing."
+        },
+        {
+          "label": "An fsync of the previous file, log-000041",
+          "next": "g1a",
+          "correct": false,
+          "feedback": "Breaks the invariant. log-000041 was already flushed and is intact; the record lived in the new file."
+        },
+        {
+          "label": "Not sure",
+          "next": "g1a",
+          "abstain": true
+        }
+      ]
+    },
+    "p1": {
+      "type": "reading",
+      "tags": ["pointer"],
+      "title": "Where this is written",
+      "primer": "Optional, about a minute. The question it answers: is an fsync on the log file always enough? Pillai and colleagues found applications that could lose data they had already reported saved, even though the file itself had been fsynced.",
+      "source": {
+        "title": "All File Systems Are Not Created Equal: On the Complexity of Crafting Crash-Consistent Applications",
+        "author": "Pillai, Chidambaram, Alagappan, Al-Kiswany, Arpaci-Dusseau and Arpaci-Dusseau",
+        "year": 2014,
+        "url": "https://www.usenix.org/system/files/conference/osdi14/osdi14-paper-pillai.pdf",
+        "where": "§4.4.4 Durability, p. 444 (PDF p. 13)",
+        "minutes": 2
+      },
+      "passage": "“Six applications require fsync() calls on directories”\n\n“many applications do issue an fsync() call before durability is essential, but do not fsync() all the required information.”\n\nShort quote; the full text is behind the link.",
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "r2",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "r2",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "r2"
+        }
+      ]
+    },
+    "r2": {
+      "type": "choice",
+      "pinned": "The job: reach the target rate while every \"done\" still waits for its fsync.",
+      "title": "Round 2: the throughput target",
+      "tags": ["round:2"],
+      "rule": "M2",
+      "cites": "g2a",
+      "onHesitate": "g2a",
+      "provenance": "Numbers invented; each figure is an assumption inside the usual range.",
+      "glosses": ["in flight", "group commit", "Little's law"],
+      "body": "So far: one node; every write is fsynced before its ack.\n\nThe log is on one device that completes one fsync at a time, about 1 ms each (assumed). At one write per fsync the ceiling is 1 s ÷ 1 ms = 1,000 writes a second, however many clients there are.\n\nThe service needs 10,000 writes a second. Hundreds of clients each have a write waiting at any moment, so there is plenty of work in flight.\n\nMust hold: no ack before that write's fsync has returned.\nBudget: 10,000 writes a second.\n\nWhich change gets there?",
+      "options": [
+        {
+          "label": "Ten threads, each with its own log file on the device, fsyncing its own write",
+          "next": "g2a",
+          "applies": "M4",
+          "correct": false,
+          "feedback": "Misses the budget. More writes are in flight, but the one device still completes one fsync at a time, each covering one write: 1,000 a second."
+        },
+        {
+          "label": "Send the ack first and run the fsync in the background",
+          "next": "g2a",
+          "correct": false,
+          "feedback": "Breaks the invariant: round 1's power cut is back. An ack sent before the fsync promises what the disk does not yet hold."
+        },
+        {
+          "label": "A CPU twice as fast",
+          "next": "g2a",
+          "correct": false,
+          "feedback": "Misses the budget. The CPU's share of a write is about 100 ns of the 1 ms; halving it leaves the ceiling at about 1,000 a second."
+        },
+        {
+          "label": "Writes that arrive during an fsync wait, then share the next fsync",
+          "next": "p2",
+          "applies": "M2",
+          "correct": true,
+          "feedback": "Yes: group commit. Each fsync makes every waiting write durable at once. At 1,000 fsyncs a second, reaching 10,000 writes a second takes 10 writes per fsync on average. Little's law (M4) gives the same number from the other side: writes sharing each fsync = rate × fsync time = 10,000/s × 0.001 s = 10. The cost: a write may wait up to one extra fsync for its group to start. The rule (M2, batch to amortize a fixed cost): a fixed cost F per operation becomes F / k when k operations share it."
+        },
+        {
+          "label": "Not sure",
+          "next": "g2a",
+          "abstain": true
+        }
+      ]
+    },
+    "g2a": {
+      "type": "reading",
+      "tags": ["placement"],
+      "title": "A page for round 2",
+      "primer": "The question: what lets many writes pay for one disk write? Google's engineers describe it for their Paxos-based log; the same move works on one node. One sentence, half a minute; the section takes about three minutes.",
+      "source": {
+        "title": "Paxos Made Live: An Engineering Perspective",
+        "author": "Tushar Chandra, Robert Griesemer and Joshua Redstone",
+        "year": 2007,
+        "url": "https://static.googleusercontent.com/media/research.google.com/en//archive/paxos_made_live.pdf",
+        "where": "§4.2 Multi-Paxos, p. 5",
+        "minutes": 3
+      },
+      "passage": "“In order to get additional throughput in a concurrent system, it is possible to batch a collection of values submitted by different application threads into a single Paxos instance.”\n\nShort quote; the full text is behind the link.",
+      "glosses": ["Paxos", "Paxos instance"],
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "v2a",
+          "effect": "read"
+        },
+        {
+          "label": "Save it; this round waits",
+          "next": "k1",
+          "effect": "save"
+        },
+        {
+          "label": "Skip; this round waits",
+          "next": "k1"
+        }
+      ]
+    },
+    "v2a": {
+      "type": "choice",
+      "returnOf": "r2",
+      "pinned": "The job: reach the target rate while every \"done\" still waits for its fsync.",
+      "title": "Round 2 again: a slower device",
+      "tags": ["round:2", "return"],
+      "rule": "M2",
+      "cites": "g2a",
+      "onHesitate": "g2b",
+      "provenance": "Numbers invented; each figure is an assumption inside the usual range.",
+      "body": "A slower log device: about 4 ms per fsync, one at a time. Eight threads each keep their own log file on it and fsync their own write, and the node measures 250 writes a second. The target is 5,000, and plenty of writes are always waiting.\n\nMust hold: no ack before that write's fsync has returned.\nBudget: 5,000 writes a second.\n\nWhat is the smallest average number of writes each fsync must carry?",
+      "options": [
+        {
+          "label": "1, with more threads",
+          "next": "g2b",
+          "applies": "M4",
+          "correct": false,
+          "feedback": "Misses the budget. One write per 4 ms fsync is 250 a second however many threads wait."
+        },
+        {
+          "label": "20",
+          "next": "k1",
+          "applies": "M2",
+          "correct": true,
+          "feedback": "Right: 4 ms per fsync is 250 fsyncs a second, and 5,000 ÷ 250 = 20. Little's law agrees: 5,000/s × 0.004 s = 20 writes sharing each fsync."
+        },
+        {
+          "label": "200",
+          "next": "g2b",
+          "correct": false,
+          "feedback": "More than needed: 200 × 250 = 50,000 a second against a target of 5,000, and every write waits for a group that large to fill."
+        },
+        {
+          "label": "5,000",
+          "next": "g2b",
+          "correct": false,
+          "feedback": "That is the target rate per second, not a group size; one fsync carrying 5,000 writes would wait about a second to fill."
+        },
+        {
+          "label": "Not sure",
+          "next": "g2b",
+          "abstain": true
+        }
+      ],
+      "glosses": ["Little's law"]
+    },
+    "g2b": {
+      "type": "reading",
+      "tags": ["placement"],
+      "title": "Another page for round 2",
+      "primer": "The question: how far can one log device go if commits share its writes? DeWitt and colleagues work it out for a 1984 database with one log disk. Read §5.2: the arithmetic for one commit per log write, then the paragraph on the commit group, their name for the transactions one group commit covers. Link only: there is no excerpt here.",
+      "source": {
+        "title": "Implementation Techniques for Main Memory Database Systems (UCB/ERL M84/5)",
+        "author": "DeWitt, Katz, Olken, Shapiro, Stonebraker and Wood",
+        "year": 1984,
+        "url": "https://www2.eecs.berkeley.edu/Pubs/TechRpts/1984/ERL-m-84-5.pdf",
+        "where": "§5.1–5.2, pp. 16–17 (PDF pp. 20–21)",
+        "minutes": 4
+      },
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "v2b",
+          "effect": "read"
+        },
+        {
+          "label": "Save it; this round waits",
+          "next": "k1",
+          "effect": "save"
+        },
+        {
+          "label": "Skip; this round waits",
+          "next": "k1"
+        }
+      ],
+      "glosses": ["group commit", "transaction"]
+    },
+    "v2b": {
+      "type": "choice",
+      "returnOf": "r2",
+      "pinned": "The job: work out the rate when commits share each log write.",
+      "title": "Round 2 again: a 1984 log disk",
+      "tags": ["round:2", "return"],
+      "rule": "M2",
+      "cites": "g2b",
+      "onHesitate": "g2a",
+      "provenance": "Figures from DeWitt et al. 1984, §5.2, restated in my words.",
+      "body": "A database with one log device. Writing one log page takes 10 ms, the device writes one page at a time, and a transaction is not reported done until its commit record is on disk. At one commit record per log write that is 1 s ÷ 10 ms = 100 commits a second.\n\nThe log records of about ten typical transactions fit on one log page, and at least ten transactions are always ready to commit.\n\nMust hold: no transaction is reported done before its commit record is on disk.\n\nIf the commits on one page share that page's write, what is the ceiling?",
+      "options": [
+        {
+          "label": "100 a second",
+          "next": "g2a",
+          "correct": false,
+          "feedback": "Misses the change: that is one commit per log write, before any sharing."
+        },
+        {
+          "label": "1,000 a second",
+          "next": "k1",
+          "applies": "M2",
+          "correct": true,
+          "feedback": "Right: one 10 ms write now commits ten transactions, so 100 writes a second carry 1,000 commits. DeWitt and colleagues give the same figure."
+        },
+        {
+          "label": "10,000 a second",
+          "next": "g2a",
+          "correct": false,
+          "feedback": "Too many: that would need a hundred commit records per page, and about ten fit."
+        },
+        {
+          "label": "10 a second",
+          "next": "g2a",
+          "correct": false,
+          "feedback": "Sharing a write cannot lower the rate; ten records still cost one 10 ms write."
+        },
+        {
+          "label": "Not sure",
+          "next": "g2a",
+          "abstain": true
+        }
+      ],
+      "glosses": ["transaction", "commit record"]
+    },
+    "p2": {
+      "type": "reading",
+      "tags": ["pointer"],
+      "title": "Where this is written",
+      "primer": "Optional, about a minute. The question it answers: what else does a batch amortize besides the fsync? Ongaro names the network packet as well as the disk write.",
+      "source": {
+        "title": "Consensus: Bridging Theory and Practice (PhD dissertation, CC BY 4.0)",
+        "author": "Diego Ongaro",
+        "year": 2014,
+        "url": "https://web.stanford.edu/~ouster/cgi-bin/papers/OngaroPhD.pdf",
+        "where": "§10.2.2 Batching and pipelining, p. 142 (PDF p. 160)",
+        "minutes": 3
+      },
+      "passage": "“Many of the costs of request processing are amortized when multiple requests are collected into a batch. For example, it is much faster to send two entries over the network in one packet than in two separate packets, or to write two entries to disk at once.”\n\nExcerpt from Diego Ongaro's dissertation, CC BY 4.0.",
+      "glosses": ["entry"],
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "k1",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "k1",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "k1"
+        }
+      ]
+    },
+    "k1": {
+      "type": "choice",
+      "tags": ["speak"],
+      "title": "Your take",
+      "body": "Tell it aloud, in about a minute, as you would to a colleague who missed the incident review. It is kept with its prompt and the points you tick.",
+      "options": [
+        {
+          "label": "The power cut, on one node",
+          "next": "t1"
+        },
+        {
+          "label": "No take today",
+          "next": "e1",
+          "abstain": true
+        }
+      ]
+    },
+    "t1": {
+      "type": "record",
+      "pinned": "The job: tell round 1 so a colleague could explain it after you.",
+      "title": "Round 1, out loud",
+      "glosses": ["ack", "fsync", "group commit"],
+      "prompt": "A colleague asks why a balance went back to 100 after a power cut, and what keeping it would cost. Answer in about a minute.",
+      "maxSeconds": 60,
+      "rubric": [
+        "The ack went out while the record was only in the operating system's memory, so the power cut erased a write the client was told was done.",
+        "The fix is to reply only after fsync returns, at about one flush per write: about 1 ms against 100 ns.",
+        "Group commit wins the rate back: writes waiting for the same fsync share it, so no ack has to go out early."
+      ],
+      "weakIfFewerThan": 2,
+      "next": "e1",
+      "onWeak": "gt1"
+    },
+    "gt1": {
+      "type": "reading",
+      "tags": ["placement"],
+      "title": "A page for your take on round 1",
+      "primer": "The question your take answers: what must be on disk before a reply? Lamport's rule for acceptors is the same one. A minute; then a short numbers check on the fsync arithmetic.",
+      "source": {
+        "title": "Paxos Made Simple",
+        "author": "Leslie Lamport",
+        "year": 2001,
+        "url": "https://lamport.azurewebsites.net/pubs/paxos-simple.pdf",
+        "where": "§2.5 The Implementation, p. 8 (PDF p. 11)",
+        "minutes": 3
+      },
+      "passage": "“Stable storage, preserved during failures, is used to maintain the information that the acceptor must remember. An acceptor records its intended response in stable storage before actually sending the response.”\n\nShort quote; the full text is behind the link.",
+      "glosses": ["acceptor", "stable storage", "Paxos"],
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "q1",
+          "effect": "read"
+        },
+        {
+          "label": "Save it; this take waits",
+          "next": "e1",
+          "effect": "save"
+        },
+        {
+          "label": "Skip; this take waits",
+          "next": "e1"
+        }
+      ]
+    },
+    "q1": {
+      "type": "choice",
+      "tags": ["take-probe"],
+      "pinned": "The job: work out the ceiling one log device sets.",
+      "title": "A numbers check: one device",
+      "rule": "M2",
+      "cites": "gq1",
+      "onHesitate": "gq1",
+      "provenance": "Numbers invented; each figure is an assumption inside the usual range.",
+      "glosses": ["fsync", "ack"],
+      "body": "One log device, about 0.5 ms per fsync, one at a time (assumed). Each fsync covers one write, and there are always writes waiting.\n\nMust hold: no ack before that write's fsync has returned.\n\nWhat is the ceiling, in writes a second?",
+      "options": [
+        {
+          "label": "200 a second",
+          "next": "gq1",
+          "correct": false,
+          "feedback": "Too low: 200 a second is what a 5 ms fsync allows."
+        },
+        {
+          "label": "2,000 a second",
+          "next": "e1",
+          "applies": "M2",
+          "correct": true,
+          "feedback": "Right: 1 s ÷ 0.5 ms = 2,000. Sharing each fsync among waiting writes is what lifts it."
+        },
+        {
+          "label": "20,000 a second",
+          "next": "gq1",
+          "correct": false,
+          "feedback": "Too high: 20,000 a second would need a 0.05 ms fsync."
+        },
+        {
+          "label": "Not sure",
+          "next": "gq1",
+          "abstain": true
+        }
+      ]
+    },
+    "gq1": {
+      "type": "reading",
+      "tags": ["placement"],
+      "title": "A page for the numbers check",
+      "primer": "The question: how does one log device's write time set a ceiling, and how do shared writes raise it? DeWitt and colleagues do the arithmetic in §5.2. Link only: there is no excerpt here.",
+      "source": {
+        "title": "Implementation Techniques for Main Memory Database Systems (UCB/ERL M84/5)",
+        "author": "DeWitt, Katz, Olken, Shapiro, Stonebraker and Wood",
+        "year": 1984,
+        "url": "https://www2.eecs.berkeley.edu/Pubs/TechRpts/1984/ERL-m-84-5.pdf",
+        "where": "§5.1–5.2, pp. 16–17 (PDF pp. 20–21)",
+        "minutes": 4
+      },
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "e1",
+          "effect": "read"
+        },
+        {
+          "label": "Save it; this round waits",
+          "next": "e1",
+          "effect": "save"
+        },
+        {
+          "label": "Skip; this round waits",
+          "next": "e1"
+        }
+      ]
+    },
+    "e1": {
+      "type": "end"
+    }
+  }
+}

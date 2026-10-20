@@ -127,9 +127,9 @@ const PasskeyScreen = (): JSX.Element => {
       notice={
         DATA_MODE === "static"
           ? {
-              title: "Preview only",
+              title: "A demo on sample data",
               description:
-                "This build has no server, so there are no accounts. Continuing opens the demo.",
+                "This build has no server, so there are no accounts. Continuing opens my toolkit on sample data; try anything, and nothing you do is kept.",
             }
           : !supported
             ? {

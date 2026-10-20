@@ -340,9 +340,48 @@ backs should be cut, not kept and re-justified.
   suites pass against `adapter/null-adapter.ts` alone (Theorem D.2), with no
   domain logic anywhere in the tree.
 
+== Software-adjacent compositions (v14)
+
+`data`, `qa` and `solutions` add no new engineering facts: each bullet is an
+existing claim above, re-angled for what its postings screen for, or one of
+the non-engineering jobs below. The two lines that are new to the résumé
+trace to:
+
+- *Python CI checks over dashboards and scrape inventory* (`data`) ---
+  paulgsc/server `scripts/check_metric_contract.py` (reconciles the metric
+  names Grafana queries against the `counter!`/`histogram!`/`gauge!` names the
+  workspace emits, in both directions, with commented exemptions) and
+  `scripts/check_scrape_inventory.py` (reconciles `docker compose config`,
+  `infra/prometheus/inventory.yml` and `prometheus.yml`), both run by
+  `.github/workflows/test.yml`. Checked against the server's `main` on
+  2026-10-18.
+- *A typed export of sessions, reflections and stop reasons* (`data`,
+  `solutions`) --- `apps/www/src/lib/agent-export`: `shareAgentExport` writes
+  one `context.json` (sessions with their reflections, path counts, stops and
+  the practice record) and `shareReflections` one file per session, both out
+  through the phone's share sheet (`lib/share-files`) for an agent to read.
+- *Rendered-output checks* (`qa`) --- this package's own
+  `scripts/check-ats.mjs` and `scripts/check-layout.mjs`, which read every
+  built PDF back with `pdftotext` and fail on dropped terms, wrong heading
+  order or overlapping lines.
+
+Every other `data`, `qa` and `solutions` line restates one already traced in
+this section: the metrics, dashboard and fault-state lines (Server
+provenance), the SQLx data model and decaying-vector lines (backend), the
+contract harness (Study-session and notification platform; Platform,
+release, and reuse), the Playwright service-worker and Shadow DOM scope
+lines (fullstack, some-filter), the AMO release pipeline and CI gate
+(Platform, release, and reuse) and the transport kernel's null-adapter
+conformance. Titles are each composition's own (`title`, `role`): "Data
+Analyst", "QA Automation Engineer" and "Integration Engineer" describe the
+work on the page. The role lines ("Data & Analytics Engineer", "Test
+Automation Engineer" and "Integration Engineer", each followed by
+"independent systems work") keep the "no employer" note, so none reads as a
+job held.
+
 == Counts
 
-*44 workspace packages, 5 browser extensions* --- counted 2026-10-12 by
+*44 workspace packages, 5 browser extensions* --- counted 2026-10-18 by
 `scripts/check-claims.mjs`, which walks the globs in `pnpm-workspace.yaml`
 (`packages/ui/*`, `apps/*`, `docs/canon`, `extensions/**`, `packages/*`,
 `crates/*`) for a `package.json`, the same method `pnpm -r list --depth -1`
@@ -354,7 +393,12 @@ catches build scripts): `some-censor`, `some-drama`, `some-filter`,
 `filter-classifier`, `docs`, and `scripts` are excluded — shared code and a
 test corpus, not shipped extensions.
 
-The package count is 43 -> 44 on 2026-10-12, when `packages/ui/playoff-delta`
+The package count is 43 -> 44 on 2026-10-18: `packages/job-desk`
+(`@some-ui/job-desk`, the Jobs wing's Drive contract and the checker its
+daily routine runs) landed. Before that it was 44 -> 43 on 2026-10-17: `packages/job-tracker`
+(`@some-ui/job-tracker`, the web app's local job queue) was deleted with its
+`/jobs` page; the story behind it moved on. Before that it was 43 -> 44 on
+2026-10-12, when `packages/ui/playoff-delta`
 (`@some-ui/playoff-delta`, the weekly vlog's story stage, a web-only
 recording surface over a JSON contract) landed. Before that it was
 42 -> 43 on 2026-10-11, when `packages/voice-capture`
@@ -433,18 +477,15 @@ reusing the number anywhere that matters.
 Unlike every claim above, nothing in this section traces to `paulgsc/server` or
 `paulgsc/some-ui` — it is sourced from the candidate's own separate
 non-engineering résumé (`pg_resume_2026`), tracked here so the full history
-stays legible even though `src/data/personal.typ`'s `additional-experience`
-renders only one of these four entries. Kept out of the rendered résumé
-itself deliberately: an engineering résumé's "Additional experience" section
-exists to prove continuity and name transferable skills from one concrete
-job, not to re-litigate a full separate career — see `personal.typ`'s own
-comment on that field.
+stays legible. `src/data/personal.typ`'s `additional-experience` holds all
+four, and each composition renders only the ones its postings screen for
+(below).
 
 - *WIS* --- Inventory Specialist, Sacramento, CA, January 2024 --- Present
   (current). High-volume cycle counting and 10-key data entry at 99.9%+
   accuracy; daily reconciliation of physical counts against system records.
 - *CABA Design* --- Data Administrator, Rancho Cordova, CA, August 2020 ---
-  December 2023. The entry `personal.typ` actually renders: Tableau
+  December 2023. The entry every composition renders: Tableau
   dashboards on PostgreSQL, Google Workspace API-driven executive-reporting
   automation (10+ hours/week saved), and Python scripts against Odoo's
   XML-RPC API automating record creation and resolving data issues.
@@ -456,20 +497,20 @@ comment on that field.
   January 2019. Weekly inventory audits with zero discrepancies; named "Top
   Performing Employee" for error-free execution.
 
-*Why only CABA Design renders*: the previous revision of `personal.typ`
-consolidated all four into one entry (`org: "CABA Design · Natera · WIS"`,
-dates "2017 — Present") to show unbroken employment through today. That
-collapsed four distinct jobs, with their own titles, locations, and
-achievements, into one org string with no single accurate date range —
-narrowing it to CABA Design's own dates while leaving that org string
-untouched was flagged as a real accuracy bug by this repo's bot reviewer
-(PR #1286: dropping Natera/WIS but keeping "2017 — Present" would have read
-as nine years at CABA alone). Naming one real employer with its own real
-dates, location, and bullets is more honest than either the stale
-consolidation or an unsupported single-employer date range — the other
-three stay recorded here rather than silently dropped, exactly so a future
-revision that wants to render a second (or fourth) `additional-experience`
-entry, or correct this one further, has the sourced facts to do it from.
+*Which composition renders which job* (v14): all four now live in
+`personal.typ`'s `additional-experience`, each as its own entry with its own
+dates and bullets, and each composition names by `org` the ones it renders.
+The owner confirmed on 2026-10-17 that all four are true and may render. The
+software compositions keep CABA Design alone, as they have since v12; `data`
+renders CABA Design and Natera (dashboards, reporting automation, clinical
+data accuracy); `qa` renders CABA Design and WIS (reconciliation accuracy,
+and continuity to the present); `solutions` renders CABA Design (its API
+integrations). PayLocity renders nowhere yet: no composition's postings
+screen for what it evidences, and it stays here and in `personal.typ` for
+one that does. The earlier failure this section recorded still governs: one
+entry per real employer, with its own dates, never a consolidated range
+(PR #1286). WIS's "high-volume cycle counting" renders as "cycle counting"
+because `check-claims` reserves "high-volume" for traffic claims.
 
 = Method
 
@@ -646,6 +687,27 @@ substantiate those claims.
 
 
 = Current revision
+
+*v14 (2026-10-18).* Software-adjacent compositions, for the Jobs wing's
+second track (some-ui #1881).
+
+- *Titles moved into compositions.* `title` (the line under the name), the
+  engagement `role` and the PDF keywords were global and read "Software
+  Engineer" on every variant. They are now each composition's own; the
+  three software compositions keep exactly the text they had, and their ATS
+  transcripts are byte-identical before and after.
+- *Three adjacent compositions.* `data` (data analyst, BI, analytics
+  engineering), `qa` (test automation, SDET) and `solutions` (integration and
+  internal-tools building, with no sales or customer-call claims), each with
+  a `track` of "adjacent" against the software three. What each line traces
+  to is §"Software-adjacent compositions".
+- *All four jobs, chosen per composition.* `personal.typ` holds WIS, CABA
+  Design, Natera and PayLocity; each composition's `experience` names which
+  render (§"Non-engineering employment history").
+- *A latent spacing bug.* Two additional-experience entries had never
+  rendered in one document; in `classic` the second entry's title rode up
+  into the first's last bullet. The second and later entries now take
+  `STACK-GAP` above them, which leaves single-entry documents unchanged.
 
 *v13 (2026-09-27).* Brought three figures back in line with the repositories
 they cite, after the server's route snapshot started syncing automatically

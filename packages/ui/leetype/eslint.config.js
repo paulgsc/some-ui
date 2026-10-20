@@ -6,7 +6,7 @@ export default defineConfig([
 
   // Left on literal status hues: the typing game renders only in windows at
   // least 768px wide (useIsMobile; desktop, and the APK on a tablet, while a
-  // phone gets RoundSession), and that experience is being rebuilt to mirror
+  // phone plays session files), and that experience is being rebuilt to mirror
   // the phone's. Delete each glob when it migrates or goes.
   ...paletteRatchet(
     [

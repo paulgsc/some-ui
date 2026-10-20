@@ -38,12 +38,10 @@ async function copy(text: string): Promise<boolean> {
 }
 
 type GenerateRoundProps = {
-  /** Builds the prompt for this request; the caller adds what it knows (recent rounds, audience). */
-  buildPrompt: (request: Omit<RoundRequest, "recent" | "audience">) => string
-  /** A checked round, ready to play or publish. */
+  /** Builds the prompt for this request. */
+  buildPrompt: (request: RoundRequest) => string
+  /** A checked round, ready to publish. */
   onStart: (round: Round) => void
-  /** What the start button says: "Play it" for a learner, "Use this round" for the CRM. */
-  startLabel?: string
   /** Leaves without a round. Absent when the host has nowhere to go back to. */
   onCancel?: () => void
   initialReply?: string
@@ -52,19 +50,15 @@ type GenerateRoundProps = {
 
 /**
  * The round-generation loop, the same one TOPIK runs for lessons
- * (`@some-ui/topik`, `GenerateLesson`): the app hands the learner a prompt
- * for their own model and takes the round back. Nothing leaves the device.
+ * (`@some-ui/topik`, `GenerateLesson`), mounted by the round CRM: the app
+ * hands the operator a prompt for their own model and takes the round back.
  * The prompt goes out through the clipboard, the round comes back the same
  * way, and the check (`intakeRound`, the corpus lint CI runs) runs here. A
  * refused round comes with a fix request to send back to the model.
- *
- * The round CRM mounts this too, with the corpus audience: an operator
- * writes a round for everyone through the same prompt and the same check.
  */
 export const GenerateRound: FC<GenerateRoundProps> = ({
   buildPrompt,
   onStart,
-  startLabel = "Play it",
   onCancel,
   initialReply = "",
   className,
@@ -247,7 +241,7 @@ export const GenerateRound: FC<GenerateRoundProps> = ({
             className="h-12 w-full gap-2 rounded-2xl"
             onClick={() => onStart(intake.round)}
           >
-            <Play className="size-5" /> {startLabel}
+            <Play className="size-5" /> Use this round
           </Button>
         ) : (
           <Button

@@ -2,9 +2,9 @@ import type { ComponentType, JSX } from "react"
 import { cn } from "@some-ui/core-utils"
 import { useIsMobile } from "@some-ui/react-hooks"
 import {
-  BrandMark,
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
@@ -22,19 +22,38 @@ import {
   Outlet,
   useRouterState,
 } from "@tanstack/react-router"
-import { Briefcase, FileText, ListVideo, Settings, User } from "lucide-react"
+import {
+  BookOpenText,
+  ChevronLeft,
+  FileText,
+  Home,
+  Keyboard,
+  ListVideo,
+  Settings,
+  SlidersHorizontal,
+  User,
+} from "lucide-react"
 
 import { authority } from "@/lib/authority"
 import { MOBILE_APP } from "@/lib/build-profile"
 import { useIsTerminal } from "@/lib/orchestrator"
 import { useIsDeclaredBounded } from "@/lib/route-bounds"
+import { navOf, owns, webSettingsOf, wingOf } from "@/lib/wings"
 import { AudioIndicator } from "@/components/audio/audio-indicator"
 import { AccountUnavailableBanner } from "@/components/auth/account-unavailable-banner"
+import { DeviceHomeGlyph } from "@/components/device-home-glyph"
 import { LocIndicator } from "@/components/loc/loc-indicator"
-import { MobileHomeLink, MobileNav } from "@/components/mobile-shell"
+import {
+  barOf,
+  MobileNav,
+  MobileSettingsLink,
+  MobileWayOut,
+} from "@/components/mobile-shell"
+import { ProvenanceStrip } from "@/components/provenance-strip"
 import { DeviceStoragePrompt } from "@/components/settings/device-storage"
 import { SiteLauncher } from "@/components/site-launcher"
 import { ThemeSwitcher } from "@/components/theme-switcher"
+import { WingGlyph } from "@/components/wing-glyph"
 
 /**
  * Matches only the session player route (/sessions/$sessionId), whose
@@ -59,72 +78,93 @@ function isComposerPath(pathname: string): boolean {
   return COMPOSER_PATH.test(pathname)
 }
 
-/** The web app's sidebar. The Android app has its own bar (`MobileNav`). */
-type NavItem = {
-  to: "/app" | "/sessions" | "/resume" | "/jobs" | "/profile" | "/settings"
-  label: string
-  // Widened from `typeof Home` so the brand mark sits alongside the lucide
-  // glyphs; the sidebar's `[&>svg]:size-4` sizes both.
-  icon: ComponentType<{ className?: string }>
+/**
+ * Each sidebar room's icon, by room id. Typed wide so the lucide glyphs and
+ * the shared ones sit together; the sidebar's `[&>svg]:size-4` sizes both.
+ */
+const NAV_ICONS: Partial<
+  Record<string, ComponentType<{ className?: string }>>
+> = {
+  dashboard: Home,
+  sessions: ListVideo,
+  profile: User,
+  lessons: BookOpenText,
+  rounds: Keyboard,
+  "resume-build": FileText,
+  resume: FileText,
 }
 
-const NAV_ITEMS: ReadonlyArray<NavItem> = [
-  { to: "/app", label: "Home", icon: BrandMark },
-  { to: "/sessions", label: "Sessions", icon: ListVideo },
-  { to: "/resume", label: "Résumé", icon: FileText },
-  { to: "/jobs", label: "Jobs", icon: Briefcase },
-  { to: "/profile", label: "Profile", icon: User },
-  { to: "/settings", label: "Settings", icon: Settings },
-]
-
-function isNavItemActive(itemPath: NavItem["to"], pathname: string): boolean {
-  return pathname === itemPath || pathname.startsWith(`${itemPath}/`)
-}
-
+/**
+ * The web app's sidebar, by wing (lib/wings): the way back to the foyer, the
+ * wing's name, its rooms and its settings, and the front desk at the foot.
+ * Outside every wing (the front desk itself) only the way back and the front
+ * desk remain. The Android app has its own bar (`MobileNav`).
+ */
 const DashboardSidebarContent = ({
   pathname,
 }: {
   pathname: string
 }): JSX.Element => {
   const { setOpenMobile, isMobile } = useSidebar()
+  const wing = wingOf(pathname)
+  const settings = wing && webSettingsOf(wing)
+  const closeOnPhone = (): void => {
+    if (isMobile) setOpenMobile(false)
+  }
+  const items = wing
+    ? [
+        ...navOf(wing).map((room) => ({
+          to: room.roots[0],
+          label: room.nav,
+          icon: NAV_ICONS[room.id],
+        })),
+        ...(settings
+          ? [
+              {
+                to: settings,
+                label: `${wing.name} settings`,
+                icon: SlidersHorizontal,
+              },
+            ]
+          : []),
+      ]
+    : []
 
   return (
     <Sidebar>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild size="lg" tooltip="Some UI home">
-              <Link to="/" aria-label="Some UI home">
-                <span className="flex size-8 shrink-0 items-center justify-center">
-                  <BrandMark tone="brand" className="size-6" />
-                </span>
-                <span className="text-gradient-accent font-semibold">
-                  Some UI
-                </span>
+            <SidebarMenuButton asChild tooltip="Where to?">
+              <Link to="/" className="text-muted-foreground">
+                <ChevronLeft />
+                <span>Where to?</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
+          {wing && (
+            <SidebarMenuItem>
+              <div className="flex items-center gap-2 px-2 py-1.5">
+                <span className="bg-brand/30 text-brand-foreground dark:text-brand flex size-8 shrink-0 items-center justify-center rounded-lg empty:hidden">
+                  <WingGlyph wing={wing.id} className="size-4" />
+                </span>
+                <span className="text-gradient-accent text-base font-semibold">
+                  {wing.name}
+                </span>
+              </div>
+            </SidebarMenuItem>
+          )}
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {NAV_ITEMS.map((item) => (
+              {items.map((item) => (
                 <SidebarMenuItem key={item.to}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isNavItemActive(item.to, pathname)}
-                  >
-                    <Link
-                      to={item.to}
-                      onClick={() => {
-                        if (isMobile) {
-                          setOpenMobile(false)
-                        }
-                      }}
-                    >
-                      <item.icon />
+                  <SidebarMenuButton asChild isActive={owns(item.to, pathname)}>
+                    <Link to={item.to} onClick={closeOnPhone}>
+                      {item.icon && <item.icon />}
                       <span>{item.label}</span>
                     </Link>
                   </SidebarMenuButton>
@@ -134,6 +174,18 @@ const DashboardSidebarContent = ({
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={owns("/settings", pathname)}>
+              <Link to="/settings" onClick={closeOnPhone}>
+                <Settings />
+                <span>Front desk</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   )
 }
@@ -142,6 +194,7 @@ const DashboardLayout = (): JSX.Element => {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
+  const wing = wingOf(pathname)
   const isViewportRoute = isViewportPath(pathname)
   const isMobile = useIsMobile()
   const isTerminal = useIsTerminal()
@@ -175,33 +228,43 @@ const DashboardLayout = (): JSX.Element => {
     <SidebarProvider className={cn(isBoundedRoute && "h-dvh overflow-hidden")}>
       {/* The phone navigates by the bar along the bottom instead. */}
       {!MOBILE_APP && <DashboardSidebarContent pathname={pathname} />}
-      <SidebarInset>
+      <SidebarInset
+        className={cn(
+          !isBoundedRoute && barOf(pathname).length > 0 && "rail:pl-[6rem]"
+        )}
+      >
         {!bareViewport && (
           <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
             {!MOBILE_APP && <SidebarTrigger />}
-            {/* Where the bottom bar steps aside, the header holds the way
-                home, so the composer can be left without finishing it. */}
-            {MOBILE_APP && isBoundedRoute && <MobileHomeLink />}
-            <ThemeSwitcher />
-            {/* Layer 1 of audio disclosure: a standing indicator of what this
-                app may play, and where first-use notices point back to. */}
-            <AudioIndicator />
-            {/* Lines written lately (`lib/loc-report`); nothing in a build
-                without a snapshot. Before the Settings link `ml-auto` pins. */}
-            <LocIndicator />
-            <SiteLauncher />
+            {/* The phone's way out: back to the wing's Home where the bar
+                steps aside, so the composer can be left without finishing
+                it; otherwise to the foyer, to choose another wing. */}
             {MOBILE_APP && (
-              <Link
-                to="/settings"
-                aria-label="Settings"
-                className="hover:bg-accent ml-auto flex size-10 items-center justify-center rounded-md"
-              >
-                <Settings className="size-5" />
-              </Link>
+              <MobileWayOut pathname={pathname} bounded={isBoundedRoute} />
+            )}
+            {/* On the phone the theme is the front desk's (Settings). */}
+            {!MOBILE_APP && <ThemeSwitcher />}
+            {/* Layer 1 of audio disclosure: a standing indicator of what this
+                app may play, and where first-use notices point back to. On
+                the phone only Practice plays anything. */}
+            {(!MOBILE_APP || wing?.id === "practice") && <AudioIndicator />}
+            {/* Lines written lately (`lib/loc-report`); nothing in a build
+                without a snapshot. On the phone it is Studio's: what gets
+                made about the build. Before the Settings link `ml-auto`
+                pins. */}
+            {(!MOBILE_APP || wing?.id === "studio") && <LocIndicator />}
+            <SiteLauncher />
+            {MOBILE_APP && <MobileSettingsLink pathname={pathname} />}
+            {/* The wing's sharing mark, which runs its lane's send while shown (LA9 to LA11). */}
+            {import.meta.env.VITE_DEVICE_BACKEND === "true" && wing && (
+              <DeviceHomeGlyph wing={wing.id} />
             )}
           </header>
         )}
         {!bareViewport && <AccountUnavailableBanner />}
+        {!MOBILE_APP && wing?.exposure && (
+          <ProvenanceStrip exposure={wing.exposure} />
+        )}
         {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
           <DeviceStoragePrompt />
         ) : null}

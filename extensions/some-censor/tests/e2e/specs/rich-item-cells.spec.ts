@@ -11,18 +11,20 @@
  *      O1 must not open a window where a real card paints unoccluded.
  * O3 — The non-video cell does not keep the retry loop alive.
  * O4 — A cell that *contains* a card is a wrapper, not a card: the lockup
- *      inside is masked, the cell is neither adopted nor occluded.
+ *      inside is plated, the cell is neither adopted nor occluded.
  * O5 — The stylesheet's pre-mask condition and `classifyCard()` agree on
  *      every catalogue element, on a real engine — the unit suite cannot
  *      check this, because jsdom cannot parse `:not(:has())`.
  * O6 — A cell inserted atomically with its lockup already inside is handled
  *      through the live observer: the lockup is adopted, the cell is not.
  * O7 — An adopted cell handed to an ad slot in place is retired: no stale
- *      stamp, no veil, and not under the occluder either.
+ *      stamp, no plate, and not under the occluder either.
  * O8 — An adopted cell wrapped around a lockup in place is retired, and the
  *      lockup becomes the card.
  * O9 — The same, when the lockup carries the *same* video as the cell did:
  *      the cell's entry must not be repaired in place of adopting the lockup.
+ * O10 — A cell whose lockup is absent takes no space either: no tile, and
+ *      nothing in its place (QD11).
  */
 
 import {
@@ -67,12 +69,12 @@ test("O1: a non-video rich-item cell is neither masked nor left blurred", async 
   expect(pointerEvents, "the cell still takes pointer events").not.toBe("none")
 })
 
-test("O2: a video rich-item cell IS pre-masked before its veil arrives", async ({
+test("O2: a video rich-item cell IS pre-masked before it is plated", async ({
   fixture,
 }) => {
   // The other side of the same guard: `:has()` on this tag must not be so
-  // narrow that it stops protecting real cards. Once the veil is up the static
-  // filter is lifted by [data-boyo], so this asserts the rule matches the
+  // narrow that it stops protecting real cards. Once the card is stamped the
+  // static filter is lifted by [data-boyo], so this asserts the rule matches the
   // element rather than sampling a race — the same shape as L2.
   const page = await fixture.goto("yt-home")
   const matches = await page.evaluate(() =>
@@ -108,9 +110,8 @@ test("O4: a cell wrapping a lockup is released, and the lockup is the card", asy
   fixture,
 }) => {
   // The grid cell contains the lockup's watch links, so a link check alone
-  // would adopt the cell as one
-  // card with one veil over the lockup — and the cell's `pointer-events:
-  // none` under the occluder would make that veil unclickable anyway.
+  // would adopt the cell as one card around the lockup — and the cell's
+  // `pointer-events: none` under the occluder would make the card unclickable.
   const page = await fixture.goto("yt-home")
 
   const snap = await fixture.pollDebug(
@@ -120,22 +121,22 @@ test("O4: a cell wrapping a lockup is released, and the lockup is the card", asy
       timeout: 5000,
     }
   )
-  expect(snap.entries["lock_nested"]?.viewKind).toBe("masked")
+  expect(snap.entries["lock_nested"]?.viewKind).toBe("plated")
 
   const adopted = await page.evaluate(() => ({
     inner: document.getElementById("nested-inner")?.getAttribute("data-boyo"),
     outer: document.getElementById("nested-outer")?.hasAttribute("data-boyo"),
-    innerVeils: document
+    innerPlate: document
       .getElementById("nested-inner")
-      ?.querySelectorAll(".boyo-veil").length,
-    outerVeils: document
+      ?.style.getPropertyValue("--boyo-plate"),
+    outerPlate: document
       .getElementById("nested-outer")
-      ?.querySelectorAll(".boyo-veil").length,
+      ?.style.getPropertyValue("--boyo-plate"),
   }))
-  expect(adopted.inner, "the lockup is the card").toBe("0")
+  expect(adopted.inner, "the lockup is the card").toBe("plated")
   expect(adopted.outer, "the cell is not adopted").toBe(false)
-  expect(adopted.innerVeils, "exactly one veil, on the lockup").toBe(1)
-  expect(adopted.outerVeils, "and none anywhere else in the cell").toBe(1)
+  expect(adopted.innerPlate, "the plate is the lockup's").not.toBe("")
+  expect(adopted.outerPlate, "and not the cell's").toBe("")
 
   expect(
     await fixture.fixtureCall<boolean>(page, "isPreMasked", "nested-outer"),
@@ -145,7 +146,7 @@ test("O4: a cell wrapping a lockup is released, and the lockup is the card", asy
     () =>
       getComputedStyle(document.getElementById("nested-outer")!).pointerEvents
   )
-  expect(pointerEvents, "so the veil inside it is clickable").not.toBe("none")
+  expect(pointerEvents, "so the card inside it is clickable").not.toBe("none")
 })
 
 test("O5: the stylesheet and classifyCard() agree on every catalogue element", async ({
@@ -216,7 +217,7 @@ test("O6: a cell inserted with its lockup already inside is handled by the obser
   const snap = await fixture.pollDebug(page, (d) => "lock_late" in d.entries, {
     timeout: 5000,
   })
-  expect(snap.entries["lock_late"]?.viewKind).toBe("masked")
+  expect(snap.entries["lock_late"]?.viewKind).toBe("plated")
   expect(
     await fixture.fixtureCall<boolean>(page, "isMaskedById", "late-cell-inner"),
     "the lockup is the card"
@@ -256,14 +257,14 @@ test("O7: an adopted cell handed to an ad slot in place is retired", async ({
     const cs = getComputedStyle(el)
     return {
       stamped: el.hasAttribute("data-boyo"),
-      veils: el.querySelectorAll(".boyo-veil").length,
+      plate: el.style.getPropertyValue("--boyo-plate"),
       blurred: cs.filter.includes("blur"),
       pointerEvents: cs.pointerEvents,
     }
   })
   expect(cell).not.toBeNull()
   expect(cell?.stamped, "no stale stamp").toBe(false)
-  expect(cell?.veils, "no veil").toBe(0)
+  expect(cell?.plate, "no plate").toBe("")
   expect(cell?.blurred, "not under the occluder").toBe(false)
   expect(cell?.pointerEvents).not.toBe("none")
 })
@@ -289,7 +290,7 @@ test("O8: an adopted cell wrapped around a lockup in place is retired, and the l
     (d) => "lock_wrapped" in d.entries && !("vid_bbb222" in d.entries),
     { timeout: 5000 }
   )
-  expect(snap.entries["lock_wrapped"]?.viewKind).toBe("masked")
+  expect(snap.entries["lock_wrapped"]?.viewKind).toBe("plated")
 
   const shape = await page.evaluate(() => {
     const inner = document.getElementById("wrapped-inner")
@@ -298,16 +299,16 @@ test("O8: an adopted cell wrapped around a lockup in place is retired, and the l
     return {
       innerStamp: inner.getAttribute("data-boyo"),
       outerStamped: outer.hasAttribute("data-boyo"),
-      outerOwnVeils: outer.querySelectorAll(":scope > .boyo-veil").length,
-      innerVeils: inner.querySelectorAll(".boyo-veil").length,
+      outerPlate: outer.style.getPropertyValue("--boyo-plate"),
+      innerPlate: inner.style.getPropertyValue("--boyo-plate"),
       outerBlurred: getComputedStyle(outer).filter.includes("blur"),
     }
   })
   expect(shape).not.toBeNull()
-  expect(shape?.innerStamp, "the lockup is masked").toBe("0")
-  expect(shape?.innerVeils).toBe(1)
+  expect(shape?.innerStamp, "the lockup is plated").toBe("plated")
+  expect(shape?.innerPlate).not.toBe("")
   expect(shape?.outerStamped, "the cell's stamp is retired").toBe(false)
-  expect(shape?.outerOwnVeils, "and its veil is gone").toBe(0)
+  expect(shape?.outerPlate, "and its plate is gone").toBe("")
   expect(shape?.outerBlurred, "and it is not under the occluder").toBe(false)
 })
 
@@ -331,7 +332,8 @@ test("O9: a cell wrapped around a lockup for the same video hands the card to th
   // the rendered stamps can.
   await page.waitForFunction(
     () =>
-      document.getElementById("same-inner")?.getAttribute("data-boyo") === "0",
+      document.getElementById("same-inner")?.getAttribute("data-boyo") ===
+      "plated",
     undefined,
     { timeout: 5000 }
   )
@@ -341,16 +343,45 @@ test("O9: a cell wrapped around a lockup for the same video hands the card to th
     if (!inner || !(outer instanceof HTMLElement)) return null
     return {
       outerStamped: outer.hasAttribute("data-boyo"),
-      outerOwnVeils: outer.querySelectorAll(":scope > .boyo-veil").length,
-      innerVeils: inner.querySelectorAll(".boyo-veil").length,
+      outerPlate: outer.style.getPropertyValue("--boyo-plate"),
+      innerPlate: inner.style.getPropertyValue("--boyo-plate"),
       outerBlurred: getComputedStyle(outer).filter.includes("blur"),
       innerBlurred: getComputedStyle(inner).filter.includes("blur"),
     }
   })
   expect(shape).not.toBeNull()
-  expect(shape?.innerVeils, "the lockup carries the veil").toBe(1)
+  expect(shape?.innerPlate, "the lockup carries the plate").not.toBe("")
   expect(shape?.innerBlurred, "and is not under the occluder").toBe(false)
   expect(shape?.outerStamped, "the cell's stamp is retired").toBe(false)
-  expect(shape?.outerOwnVeils).toBe(0)
+  expect(shape?.outerPlate).toBe("")
   expect(shape?.outerBlurred).toBe(false)
+})
+
+test("O10: a cell whose lockup is absent takes no space", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-home")
+  await fixture.pollDebug(page, (d) => "lock_nested" in d.entries, {
+    timeout: 5000,
+  })
+
+  await fixture.fixtureCall<boolean>(
+    page,
+    "appendNestedCell",
+    "lock_fresh",
+    "fresh-cell",
+    "3 days ago"
+  )
+  const snap = await fixture.pollDebug(page, (d) => "lock_fresh" in d.entries, {
+    timeout: 5000,
+  })
+  expect(snap.entries["lock_fresh"]?.viewKind).toBe("absent")
+  expect(
+    await page.locator("#fresh-cell").boundingBox(),
+    "the cell is not laid out"
+  ).toBeNull()
+  expect(
+    await page.locator("#nested-outer").boundingBox(),
+    "a cell whose card is plated still is"
+  ).not.toBeNull()
 })

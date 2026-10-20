@@ -56,19 +56,17 @@ const upsert = (
  * `file_host`'s round operator routes. A round comes in one of two ways,
  * both ending in the same check:
  *
- * - **Write one with a model.** `GenerateRound`, with the corpus audience:
- *   the same prompt and the same in-browser check a learner's "make your
- *   own round" uses, so an operator's round and a learner's are held to one
- *   standard.
+ * - **Write one with a model.** `GenerateRound`: a prompt for the
+ *   operator's own model, and the in-browser check on what comes back.
  * - **Paste or edit the JSON.** A stored round opens with its body as the
  *   server holds it.
  *
  * Either way `intakeRound` runs the authored-round lint (every hunk
  * applies, admissibility claims agree with the cost graphs, the round
  * opens inadmissible after its constraint diff), and Save is held until it
- * passes. What is saved is `serializeRound`'s bytes, the same bytes
- * `corpus/rounds/` exports for the importer, so a round published here and
- * the same round imported hash alike.
+ * passes. What is saved is `serializeRound`'s bytes, the one serialization
+ * a round has, so a round published here and the same round imported by the
+ * server's own importer hash alike.
  *
  * The one check a browser cannot run is compiling `A` with `rustc`; see
  * `intakeRound`'s doc comment. Rounds reviewed in the repository still get
@@ -207,7 +205,7 @@ export const RoundCrm = ({ client, reporting }: RoundCrmProps): JSX.Element => {
           working: () => "Loading rounds…",
           succeeded: () =>
             rounds.length === 0
-              ? "No rounds on the server yet. Import corpus/rounds/ or start a new one."
+              ? "No rounds on the server yet. Start a new one."
               : `${rounds.filter((round) => round.retiredAt === null).length} served, ${rounds.filter((round) => round.retiredAt !== null).length} retired`,
           failed: (error) => error.summary,
         })}
@@ -268,10 +266,7 @@ export const RoundCrm = ({ client, reporting }: RoundCrmProps): JSX.Element => {
       >
         {generating ? (
           <GenerateRound
-            buildPrompt={(request) =>
-              buildRoundPrompt({ ...request, audience: "corpus" })
-            }
-            startLabel="Use this round"
+            buildPrompt={buildRoundPrompt}
             onStart={(round) => {
               setText(serializeRound(round))
               setGenerating(false)

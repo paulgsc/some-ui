@@ -6,14 +6,17 @@
  * read nothing but its own input (§3's ownership table) — so the join
  * between a `CardKey` and the elements currently carrying it happens in the
  * runtime, which asks the Sensor and hands the Actuator a `BoundAction`.
- * The Actuator never looks anything up.
+ * The Actuator never looks a card up. Besides the watch link of a `play`'s
+ * one target, the Up next card to open, its only read of the page is the
+ * watch page's hold (`watch-hold.ts`), which reads only to keep its own
+ * writes held and decides nothing.
  */
 
 import type { Action } from "@censor/lib/content/core/actions"
 
 /** How one element takes part in a card. */
 export type CustodyRole =
-  /** Carries the veil, the `data-boyo-vid` stamp and the click target. */
+  /** Carries the plate's values and the `data-boyo-vid` stamp. */
   | "anchor"
   /**
    * Inside an anchor and matching a pre-mask rule of its own (a grid cell
@@ -27,15 +30,16 @@ export type CustodyTarget = {
   readonly role: CustodyRole
 }
 
-/** A `render` or `unmount`, with its targets. */
-type BoundCardAction = {
-  readonly action: Extract<Action, { kind: "render" | "unmount" }>
+/**
+ * A `render`, `unmount`, `play` or `watch`, with its targets: the only
+ * actions the Actuator receives, since the runtime forwards `record` facts
+ * itself. A `watch` names no card; its one target, when the Sensor has
+ * one, is the shown watch page's description, where the face control goes.
+ */
+export type BoundAction = {
+  readonly action: Extract<
+    Action,
+    { kind: "render" | "unmount" | "play" | "watch" }
+  >
   readonly targets: ReadonlyArray<CustodyTarget>
 }
-
-/** Every other action carries everything it needs already. */
-type BoundOtherAction = {
-  readonly action: Exclude<Action, { kind: "render" | "unmount" }>
-}
-
-export type BoundAction = BoundCardAction | BoundOtherAction

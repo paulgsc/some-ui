@@ -19,6 +19,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { REFLECTION_LIMIT, reflections } from "@/lib/session-reflection"
 import { ReflectPanel } from "@/components/reflection/reflect-panel"
 
+const shareReflections = vi.hoisted(() => vi.fn())
+vi.mock("@/lib/agent-export", () => ({ shareReflections }))
+// On the phone the panel also records voice; that is its own module's test.
+vi.mock("@/components/reflection/device-reflection-voice", () => ({
+  DeviceReflectionVoice: (): null => null,
+}))
+
 function fill(count: number, sessionId = "older"): void {
   for (let i = 0; i < count; i++)
     reflections.keep({
@@ -38,6 +45,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+  vi.unstubAllEnvs()
 })
 
 describe("ReflectPanel", () => {
@@ -83,5 +91,27 @@ describe("ReflectPanel", () => {
     fireEvent.click(within(energy).getByRole("button", { name: "Keen" }))
 
     expect(screen.getByRole("alert").textContent).toMatch(/no room/i)
+  })
+
+  it("shares one reflection on its own, on the phone", () => {
+    vi.stubEnv("VITE_DEVICE_BACKEND", "true")
+    reflections.keep({
+      id: "now",
+      sessionId: "s1",
+      createdAt: "2026-10-10T09:00:00.000Z",
+      atMs: 252_000,
+      body: { kind: "text", text: "particles" },
+    })
+    shareReflections.mockResolvedValue({ outcome: "shared", sent: ["now"] })
+    render(withQueryClient(<ReflectPanel sessionId="s1" atMs={300_000} />))
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Share the one at 4:12" })
+    )
+
+    expect(shareReflections).toHaveBeenCalledWith({
+      sessionIds: ["s1"],
+      only: ["now"],
+    })
   })
 })

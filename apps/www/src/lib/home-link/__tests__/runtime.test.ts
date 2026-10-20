@@ -4,9 +4,10 @@
  * unpair forgets it on the phone whether or not home heard; Stop and the
  * background end a sync before its next request.
  */
+import type { HomeAnswer } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
-import type { HomeAnswer, HomeCall } from "@/lib/device-backend/native-http"
+import type { HomeRequest } from "@/lib/device-backend/native-http"
 import type { CredentialPort, HomeLink } from "@/lib/home-link/runtime"
 import { createHomeLink } from "@/lib/home-link/runtime"
 
@@ -15,7 +16,7 @@ const HOME = { base: "https://home.example/api/v1", host: "home.example" }
 type Options = {
   record?: string | null
   lost?: boolean
-  answer?: (call: HomeCall) => HomeAnswer | Promise<HomeAnswer>
+  answer?: (call: HomeRequest) => HomeAnswer | Promise<HomeAnswer>
   write?: CredentialPort["write"]
   clear?: CredentialPort["clear"]
   read?: CredentialPort["read"]
@@ -23,14 +24,14 @@ type Options = {
 
 type Home = {
   link: HomeLink
-  sent: Array<HomeCall>
+  sent: Array<HomeRequest>
   record: () => string | null
   hide: () => void
 }
 
 function setup(options: Options = {}): Home {
   let record = options.record ?? null
-  const sent: Array<HomeCall> = []
+  const sent: Array<HomeRequest> = []
   let hide: () => void = () => undefined
   const credential: CredentialPort = {
     read:
@@ -79,9 +80,13 @@ describe("the home link", () => {
       record: JSON.stringify({ base: HOME.base, token: "t" }),
     })
     await paired.link.load()
+    // A pairing kept before pairings had an id is known by its base, and
+    // one an earlier build made may hold a choice made before the log.
     expect(paired.link.getSnapshot().link).toEqual({
       kind: "paired",
       base: HOME.base,
+      id: HOME.base,
+      earlier: true,
       notForgotten: false,
     })
     expect(paired.sent).toEqual([])
@@ -121,11 +126,25 @@ describe("the home link", () => {
         body: { code: "K7QF2M9X" },
       },
     ])
+    const idOf = (): string | null => {
+      const { link } = home.link.getSnapshot()
+      return link.kind === "paired" ? link.id : null
+    }
+    const first = idOf()
+    expect(first).toEqual(expect.any(String))
     expect(JSON.parse(home.record() ?? "null")).toEqual({
       base: HOME.base,
       token: "phone-token",
+      id: first,
+      choicesLogged: true,
     })
-    expect(home.link.getSnapshot().link.kind).toBe("paired")
+    expect(home.link.getSnapshot().link).toMatchObject({ earlier: false })
+
+    // Paired again to the same address, it is a new pairing.
+    await home.link.unpair()
+    await home.link.pair(HOME, "K7QF2M9X")
+    expect(idOf()).toEqual(expect.any(String))
+    expect(idOf()).not.toBe(first)
   })
 
   it("says why a pairing failed, once, and keeps nothing", async () => {
@@ -257,14 +276,14 @@ describe("the home link", () => {
     })
   })
 
-  it("stops a sync before its next request, on Stop or in the background, and sends no credential", async () => {
+  it("stops a sync before its next request, on Stop or in the background, and sends no credential, only the tag it is given", async () => {
     for (const stop of ["tap", "background"] as const) {
       const home = setup({
         record: JSON.stringify({ base: HOME.base, token: "t" }),
       })
       await home.link.load()
       const outcome = await home.link.sync(async (get) => {
-        await get(`${HOME.base}/curriculum/manifest.json`)
+        await get(`${HOME.base}/curriculum/manifest.json`, '"v1"')
         if (stop === "tap") home.link.stop()
         else home.hide()
         await get(`${HOME.base}/curriculum/a`)
@@ -272,7 +291,11 @@ describe("the home link", () => {
       })
       expect(outcome, stop).toEqual({ kind: "stopped" })
       expect(home.sent, stop).toEqual([
-        { method: "GET", url: `${HOME.base}/curriculum/manifest.json` },
+        {
+          method: "GET",
+          url: `${HOME.base}/curriculum/manifest.json`,
+          ifNoneMatch: '"v1"',
+        },
       ])
       expect(home.link.getSnapshot().activity.kind).toBe("idle")
     }

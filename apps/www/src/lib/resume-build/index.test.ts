@@ -2,7 +2,12 @@ import type { ResumeRenderOutcome, ResumeRenderRequest } from "@some-ui/resume"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type { ResumeBuildRuntime } from "@/lib/resume-build"
-import { createResumeBuild, serviceRender } from "@/lib/resume-build"
+import {
+  createResumeBuild,
+  parseBuilderSearch,
+  pickFileName,
+  serviceRender,
+} from "@/lib/resume-build"
 
 const request: ResumeRenderRequest = {
   variant: "backend",
@@ -77,6 +82,18 @@ describe("createResumeBuild", () => {
     )
   })
 
+  it("names the PDF as asked, for a job pick", async () => {
+    const { runtime, pending } = harness()
+    runtime.build(request, pickFileName("tid-7f2a", request))
+    pending[0].outcome.resolve(pdf())
+    await vi.waitFor(() =>
+      expect(runtime.getSnapshot()).toMatchObject({
+        status: "ready",
+        filename: "resume-tid-7f2a-backend-classic.pdf",
+      })
+    )
+  })
+
   it("aborts and drops a render a newer one superseded", async () => {
     const { runtime, pending, created } = harness()
     runtime.build(request)
@@ -117,6 +134,24 @@ describe("createResumeBuild", () => {
         message: "The résumé failed to render.",
       })
     )
+  })
+})
+
+describe("parseBuilderSearch", () => {
+  it("keeps a known composition, a contact-details layout and a pick id", () => {
+    expect(
+      parseBuilderSearch({
+        variant: "data",
+        template: "safe",
+        pick: "tid-7f2a",
+      })
+    ).toEqual({ variant: "data", template: "safe", pick: "tid-7f2a" })
+  })
+
+  it("drops what it doesn't know, so a stale link still opens the page", () => {
+    expect(
+      parseBuilderSearch({ variant: "devops", template: "rail", pick: "../x" })
+    ).toEqual({ variant: undefined, template: undefined, pick: undefined })
   })
 })
 

@@ -1,16 +1,25 @@
+// First: on the Pages build, the page's storage becomes an in-memory copy
+// before any module reads it (lib/demo/viewer-storage).
+import "@/lib/demo/viewer-storage"
+
 import { StrictMode } from "react"
 import { AppProviders } from "@/providers"
 import { queryClient } from "@/providers/tanstack-query"
 import { createRouter, RouterProvider } from "@tanstack/react-router"
 import ReactDOM from "react-dom/client"
 
+import { seedDemo } from "@/lib/demo"
 import { bootDeviceBackend } from "@/lib/device-backend/boot"
 import { driveFiling } from "@/lib/drive-filing"
+import { sweepLeetypeTakes } from "@/lib/leetype-takes"
+import { sweepLensTakes } from "@/lib/lens-takes"
 import { sweepOrphans } from "@/lib/reflection-voice"
 import { sweepSceneVoice } from "@/lib/scene-voice"
 import { installShareSidecar } from "@/lib/share-files"
 import { releasePushWhenLeavingTheAccount } from "@/lib/study-nudge/leave-account"
+import { listenForWingEntry } from "@/lib/wings/entry"
 import { ErrorState, NotFound, RoutePending } from "@/components/housekeeping"
+import { DeviceReflectionsArrival } from "@/components/reflection/device-reflections-arrival"
 
 import { routeTree } from "./routeTree.gen"
 
@@ -35,12 +44,18 @@ import.meta.glob(
 // before the app renders and anything issues a request. A no-op elsewhere.
 bootDeviceBackend()
 
-// Voice reflections and scene notes, and their audio, each without the other.
+// Voice reflections, scene notes, grammar-lens takes and LeetType takes, and
+// their audio, each without the other.
 if (import.meta.env.VITE_DEVICE_BACKEND === "true") {
   sweepOrphans()
+  sweepLensTakes()
+  sweepLeetypeTakes()
   sweepSceneVoice()
   installShareSidecar(driveFiling())
 }
+
+// A viewer of the Pages build starts from sample drafts (lib/demo).
+seedDemo()
 
 // A browser subscribed to push while signed in must not stay subscribed once
 // the learner's data is no longer the account's. No request is made to do it.
@@ -64,6 +79,9 @@ const router = createRouter({
   defaultPendingComponent: RoutePending,
 })
 
+// A wing's launcher icon tapped while the Android app is open (lib/wings/entry).
+listenForWingEntry((to) => void router.navigate({ to }))
+
 const rootElement = document.getElementById("app")
 if (rootElement && !rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
@@ -71,6 +89,10 @@ if (rootElement && !rootElement.innerHTML) {
     <StrictMode>
       <AppProviders>
         <RouterProvider router={router} />
+        {/* Beside the routes, so a share's question outlives its screen. */}
+        {import.meta.env.VITE_DEVICE_BACKEND === "true" && (
+          <DeviceReflectionsArrival />
+        )}
       </AppProviders>
     </StrictMode>
   )

@@ -3,10 +3,9 @@
  *
  * Pure and total. Every branch below is a function of the state it is given
  * and the event it is handed — no clock, no randomness, no session counter,
- * no DOM, no browser call (Boundary Contract B6, B8). The disclosure ladder
- * is `fsm.ts`'s (F1–F4 hold: every view carries its session, transitions are
- * typed over their legal sources, `project()` is exhaustive); what this
- * module adds is the *orchestration*, as data in, data out.
+ * no DOM, no browser call (Boundary Contract B6, B8). What a card shows is
+ * `fsm.ts`'s `decide`, over the card's evidence and the event's `t`; this
+ * module is the orchestration, as data in, data out.
  *
  * Design properties, pinned by `core.test.ts` (labels for citation, not
  * declared review invariants):
@@ -16,54 +15,59 @@
  *        observation and re-renders; it never creates a second card (M2).
  *   R3 — Navigation is total. `nav` unmounts and forgets every card and
  *        adopts the shell's new session; nothing survives it (C2, M3, F1).
- *   R4 — Async answers are correlated. Every request names the card's
- *        incarnation (`generation`, unique across adoptions of a key) and,
- *        where the view matters, its `version`; an answer whose generation is
- *        not the card's, or whose version has moved on, is discarded and
- *        recorded as stale (Entry-2, M6). Key and channel alone would let a
- *        re-observed key take its predecessor's whitelist answer, and a
- *        version restarting at zero would let a predecessor's transform or
- *        timer through.
- *   R5 — Every state change renders. A card's view or channel changing
- *        always emits `render` for it; the Actuator's idempotence is what
+ *   R5 — Every observation renders. The Actuator's idempotence is what
  *        makes that cheap, and it is what keeps "what Core believes" and
  *        "what the page shows" from drifting.
  *   R6 — Unknown shape is a state (B4). A card the table could not place is
- *        still a card, masked like every other; each `unknown-shape` token
+ *        still a card, decided like every other; each `unknown-shape` token
  *        (one per element the Sensor could not place) is counted.
+ *   R7 — Evidence under the boundary. A card's view is `decide()` of its
+ *        merged observation at the `t` it was last observed, under the
+ *        state's boundary and music signs: a re-observation that moves the
+ *        estimate moves the view (#1803), and so do the owner's `boundary`
+ *        and `rules`, re-deciding every card in place in one step (#1807,
+ *        #1966). No other input changes it.
+ *   R8 — The watch page is one more piece of evidence (#1805). Its view is
+ *        `decideWatch()` of the merged `watched` observations of the same
+ *        video, re-decided by `boundary` and `rules` as a card is. YouTube
+ *        names the next video before it rewrites the date, so a reading
+ *        whose runs are all runs the previous video showed is that video's,
+ *        and reads as none. (Not covered: a start mid-transition, with no previous
+ *        video read; and a date written before its video's id, which would
+ *        hold the next video pending.) It is not a card: `nav` leaves it to the next reading, and
+ *        `stop` forgets it, the Actuator's `dispose` lifting its hold. A
+ *        `watch` action is emitted when its view, its video, where it plays
+ *        or its face changes, when the mode offers, withdraws or changes the face
+ *        control, and again on `described`, when the page's description
+ *        was drawn again.
+ *   R9 — The face is one view's (QD13). A `face` input for the plated page's
+ *        video, outside the miniplayer, shows its real thumbnail, unless
+ *        the mode offers no face control; one with `shown: false` hides it
+ *        again, only where the mode lets it (`held`). A new video, a view
+ *        that is no longer plated, a mode without the control, and `nav`
+ *        take it away. Nothing keeps it.
+ *  R10 — Skip goes only where Core admits (#1966). A `held` token yields a
+ *        `play` for the first Up next video `skipTo` names, and nothing
+ *        when the owner's choice is to stop or no such video is shown.
  *
- * The parenthesised M-, C- and Entry- labels are kept so their citations
- * resolve: M1, M2, M3 and M6 are R1, R2, R3 and R4 as stated, Entry-2 is
- * R4's `version` check, and C1–C4 are `controller.ts`'s. One more property
- * applies here:
- *
- *   Entry-4 — A card's channel may arrive late. A card observed without one
- *             is provisional, masked on its video id alone; an observation
- *             that supplies or changes the channel asks the whitelist afresh.
- *             A late verdict whitelists only a still-masked card, and a view
- *             the user climbed to is never taken back.
+ * R4 correlated the answers to Core's async requests; none are left, so it
+ * is retired. The parenthesised M- and C- labels are kept so their
+ * citations resolve: M1, M2 and M3 are R1, R2 and R3 as stated, and C1–C4
+ * are `controller.ts`'s.
  */
 
-import type { MetaData, ViewState } from "@censor/lib/content/fsm"
-import {
-  applyClick,
-  applyDblClick,
-  applySkipToTitle,
-  applyWhitelist,
-  project,
-} from "@censor/lib/content/fsm"
-import type { ChannelId } from "@censor/types/ids"
+import { decide, decideWatch, project } from "@censor/lib/content/fsm"
+import { plateOf } from "@censor/lib/content/plate/plate"
 import { assertNever } from "@some-extension/common"
 
 import type { Action, CoreFact } from "./actions"
-import { WHITELIST_REVEAL_DELAY_MS } from "./actions"
 import type { CoreEvent } from "./events"
 import type { CardKey } from "./keys"
-import { keyVideoId } from "./keys"
-import type { Observation } from "./observation"
-import { mergeObservation } from "./observation"
-import type { CardState, CoreState } from "./state"
-import { EMPTY_UNKNOWN_SHAPES } from "./state"
+import { cardKey, keyVideoId } from "./keys"
+import type { Observation, WatchObservation } from "./observation"
+import { mergeObservation, mergeWatch } from "./observation"
+import type { CardState, CoreState, Rules, WatchState } from "./state"
+import { EMPTY_UNKNOWN_SHAPES, skipTo } from "./state"
 
 export type Step = {
   readonly state: CoreState
@@ -93,16 +97,13 @@ function deleteCard(state: CoreState, key: CardKey): CoreState {
   return withCards(state, cards)
 }
 
-function metaOf(o: Observation): MetaData {
-  return {
-    channelName: o.channelName,
-    duration: o.duration,
-  }
-}
-
 /** The render for a card's current view. */
 function render(card: CardState): Action {
-  return { kind: "render", key: card.key, model: project(card.view) }
+  return {
+    kind: "render",
+    key: card.key,
+    model: project(card.view, card.observation),
+  }
 }
 
 function stateFact(card: CardState): Action {
@@ -111,77 +112,6 @@ function stateFact(card: CardState): Action {
     videoId: keyVideoId(card.key),
     state: card.view.kind,
   })
-}
-
-/**
- * Move a card to a new view: bump its version, render, record — and, when
- * the new view is a title with text, ask for the transform; when it is
- * whitelisted, schedule the reveal.
- */
-function transition(
-  state: CoreState,
-  card: CardState,
-  view: ViewState,
-  /** Whether a whitelist verdict, not the user, is moving the card. */
-  auto = false
-): Step {
-  if (view === card.view) return none(state)
-  const next: CardState = {
-    ...card,
-    view,
-    version: card.version + 1,
-    autoRevealed: auto,
-  }
-  const actions: Array<Action> = [render(next), stateFact(next)]
-  if (view.kind === "title" && view.title.text !== "") {
-    actions.push({
-      kind: "transform-title",
-      key: next.key,
-      generation: next.generation,
-      version: next.version,
-      text: view.title.text,
-      channelId: channelIdOf(next),
-    })
-  }
-  if (view.kind === "whitelisted") {
-    actions.push({
-      kind: "schedule",
-      key: next.key,
-      generation: next.generation,
-      version: next.version,
-      delayMs: WHITELIST_REVEAL_DELAY_MS,
-    })
-  }
-  return { state: setCard(state, next), actions }
-}
-
-function channelIdOf(card: CardState): ChannelId | null {
-  return card.channel.kind === "unknown" ? null : card.channel.channelId
-}
-
-/**
- * Whitelist a card locally from any view (parity with `applyWhitelist`;
- * #1385 narrows this).
- */
-function whitelistLocally(state: CoreState, channelId: ChannelId): Step {
-  let current = state
-  const actions: Array<Action> = []
-  for (const card of state.cards.values()) {
-    if (channelIdOf(card) !== channelId) continue
-    const known: CardState = {
-      ...card,
-      channel: { kind: "known", channelId, whitelisted: true },
-    }
-    const step = transition(
-      setCard(current, known),
-      known,
-      applyWhitelist(card.view),
-      true
-    )
-    current = step.state
-    actions.push(...step.actions)
-  }
-  return { state: current, actions }
 }
 
 /** Unmount and forget every card. */
@@ -203,6 +133,11 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
           phase: "running",
           session: event.session,
           cards: new Map(),
+          watch: null,
+          watchDates: null,
+          boundaryDays: event.boundaryDays,
+          rules: event.rules,
+          autoplay: event.autoplay,
           unknownShapes: EMPTY_UNKNOWN_SHAPES,
         },
         actions: [record({ kind: "session.start", session: event.session })],
@@ -213,7 +148,7 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
       if (state.phase !== "running") return none(state)
       const cleared = clearCards(state)
       return {
-        state: { ...cleared.state, phase: "idle" },
+        state: { ...cleared.state, phase: "idle", watch: null },
         actions: [
           record({ kind: "session.reset", session: state.session }),
           ...cleared.actions,
@@ -224,19 +159,60 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
     case "nav": {
       if (state.phase !== "running") return none(state)
       const cleared = clearCards(state)
+      // R9: a navigation is a new view, so the face goes with it.
+      const faced = state.watch?.face === true
+      const watch =
+        state.watch === null ? null : { ...state.watch, face: false }
       return {
         state: {
           ...cleared.state,
           session: event.session,
+          watch,
           unknownShapes: EMPTY_UNKNOWN_SHAPES,
         },
         actions: [
           record({ kind: "navigation" }),
           record({ kind: "session.reset", session: state.session }),
           ...cleared.actions,
+          ...(faced ? [watchAction(watch, state.rules)] : []),
           record({ kind: "session.start", session: event.session }),
         ],
       }
+    }
+
+    case "face": {
+      if (state.phase !== "running") return none(state)
+      const watch = state.watch
+      if (
+        state.rules.face === "none" ||
+        (!event.shown && state.rules.face !== "held") ||
+        watch?.view !== "plated" ||
+        watch.face === event.shown ||
+        watch.observation.miniplayer ||
+        watch.observation.videoId !== event.videoId
+      ) {
+        return none(state)
+      }
+      const next = { ...watch, face: event.shown }
+      return {
+        state: { ...state, watch: next },
+        actions: [watchAction(next, state.rules)],
+      }
+    }
+
+    case "boundary": {
+      if (state.phase !== "running") return none(state)
+      return redecide(state, event.days, state.rules)
+    }
+
+    case "rules": {
+      if (state.phase !== "running") return none(state)
+      return redecide(state, state.boundaryDays, event.rules)
+    }
+
+    case "autoplay": {
+      if (state.phase !== "running") return none(state)
+      return none({ ...state, autoplay: event.autoplay })
     }
 
     // ── Tokens ─────────────────────────────────────────────────────────────
@@ -255,6 +231,25 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
         state: deleteCard(state, event.key),
         actions: [{ kind: "unmount", key: event.key }],
       }
+    }
+
+    case "watched": {
+      if (state.phase !== "running") return none(state)
+      return watched(state, event.watch, event.t)
+    }
+
+    case "held": {
+      if (state.phase !== "running") return none(state)
+      const to = skipTo(state, event.upNext)
+      return {
+        state,
+        actions: to === null ? [] : [{ kind: "play", key: cardKey(to) }],
+      }
+    }
+
+    case "described": {
+      if (state.phase !== "running" || state.watch === null) return none(state)
+      return { state, actions: [watchAction(state.watch, state.rules)] }
     }
 
     case "unknown-shape": {
@@ -279,137 +274,6 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
       }
     }
 
-    // ── Inputs ─────────────────────────────────────────────────────────────
-    case "gesture": {
-      if (state.phase !== "running") return none(state)
-      const card = state.cards.get(event.key)
-      if (card === undefined) return none(state)
-      if (event.gesture === "dblclick") {
-        return transition(state, card, applyDblClick(card.view))
-      }
-      return transition(state, card, clickView(card))
-    }
-
-    case "whitelist-request": {
-      if (state.phase !== "running") return none(state)
-      const card = state.cards.get(event.key)
-      if (card === undefined) return none(state)
-      const channelId = channelIdOf(card)
-      // A provisional card has no channel to persist; the request is a
-      // no-op rather than a write with no channel id.
-      if (channelId === null) return none(state)
-      const local = whitelistLocally(state, channelId)
-      return {
-        state: local.state,
-        actions: [
-          {
-            kind: "persist-whitelist",
-            channelId,
-            channelName: card.observation.channelName ?? channelId,
-          },
-          ...local.actions,
-        ],
-      }
-    }
-
-    case "whitelist-broadcast": {
-      if (state.phase !== "running") return none(state)
-      return whitelistLocally(state, event.channelId)
-    }
-
-    case "whitelist-answer": {
-      if (state.phase !== "running") return none(state)
-      const card = state.cards.get(event.key)
-      if (card === undefined) return none(state)
-      // Only the answer to the question still open counts: a card whose
-      // channel moved on (recycled to another video's channel, or already
-      // answered), or a later incarnation of the key than the one that
-      // asked, treats the reply as stale (R4).
-      if (
-        card.generation !== event.generation ||
-        card.channel.kind !== "pending" ||
-        card.channel.query !== event.query ||
-        card.channel.channelId !== event.channelId
-      ) {
-        return {
-          state,
-          actions: [
-            record({ kind: "stale.discarded", videoId: keyVideoId(card.key) }),
-          ],
-        }
-      }
-      const known: CardState = {
-        ...card,
-        channel: {
-          kind: "known",
-          channelId: event.channelId,
-          whitelisted: event.whitelisted,
-        },
-      }
-      // A late whitelist must not yank a card the user has already begun
-      // progressing (Entry-4): only a still-masked card becomes whitelisted.
-      if (event.whitelisted && card.view.kind === "masked") {
-        return transition(
-          setCard(state, known),
-          known,
-          applyWhitelist(card.view),
-          true
-        )
-      }
-      return { state: setCard(state, known), actions: [render(known)] }
-    }
-
-    case "title-transformed": {
-      if (state.phase !== "running") return none(state)
-      const card = state.cards.get(event.key)
-      if (card === undefined) return none(state)
-      if (
-        card.generation !== event.generation ||
-        card.version !== event.version ||
-        card.view.kind !== "title"
-      ) {
-        return {
-          state,
-          actions: [
-            record({ kind: "stale.discarded", videoId: keyVideoId(card.key) }),
-          ],
-        }
-      }
-      const view: ViewState = {
-        ...card.view,
-        title: { text: event.text, translated: event.translated },
-      }
-      // Same version on purpose: the transform completes the title step, it
-      // is not a step of its own, so a reveal timer issued under this version
-      // stays valid.
-      const next: CardState = { ...card, view }
-      return { state: setCard(state, next), actions: [render(next)] }
-    }
-
-    case "timer": {
-      if (state.phase !== "running") return none(state)
-      const card = state.cards.get(event.key)
-      if (card === undefined) return none(state)
-      if (
-        card.generation !== event.generation ||
-        card.version !== event.version ||
-        card.view.kind !== "whitelisted"
-      ) {
-        return none(state)
-      }
-      return transition(
-        state,
-        card,
-        { kind: "revealed", session: card.view.session },
-        true
-      )
-    }
-
-    case "command": {
-      if (state.phase !== "running") return none(state)
-      return advanceAll(state)
-    }
-
     default: {
       kind satisfies never
       return assertNever(kind)
@@ -428,53 +292,35 @@ function adopt(
   const card: CardState = {
     key,
     observation,
-    view: { kind: "masked", session: state.session },
-    channel:
-      observation.channelId === null
-        ? { kind: "unknown" }
-        : {
-            kind: "pending",
-            channelId: observation.channelId,
-            since: t,
-            query: 1,
-          },
-    generation: state.nextGeneration,
-    queries: observation.channelId === null ? 0 : 1,
-    version: 0,
-    autoRevealed: false,
+    view: decide(
+      observation,
+      t,
+      state.boundaryDays,
+      state.rules.signs,
+      state.session
+    ),
     firstSeenAt: t,
     lastSeenAt: t,
   }
   const videoId = keyVideoId(key)
-  const actions: Array<Action> = [
-    render(card),
-    record(
-      observation.channelId === null
-        ? { kind: "mount.provisional", videoId }
-        : { kind: "mount.resolved", videoId }
-    ),
-    stateFact(card),
-    record({
-      kind: "date.observed",
-      raw: observation.uploadDate,
-      surface: observation.surface,
-      renderer: observation.renderer,
-    }),
-  ]
-  if (observation.channelId !== null) {
-    actions.push({
-      kind: "query-whitelist",
-      key,
-      generation: card.generation,
-      query: card.queries,
-      channelId: observation.channelId,
-    })
+  return {
+    state: setCard(state, card),
+    actions: [
+      render(card),
+      record(
+        observation.channelId === null
+          ? { kind: "mount.provisional", videoId }
+          : { kind: "mount.resolved", videoId }
+      ),
+      stateFact(card),
+      record({
+        kind: "date.observed",
+        raw: observation.uploadDate,
+        surface: observation.surface,
+        renderer: observation.renderer,
+      }),
+    ],
   }
-  const next = setCard(
-    { ...state, nextGeneration: state.nextGeneration + 1 },
-    card
-  )
-  return { state: next, actions }
 }
 
 function reobserve(
@@ -484,44 +330,29 @@ function reobserve(
   t: number
 ): Step {
   const merged = mergeObservation(card.observation, observation)
-  let next: CardState = { ...card, observation: merged, lastSeenAt: t }
+  const view = decide(
+    merged,
+    t,
+    state.boundaryDays,
+    state.rules.signs,
+    state.session
+  )
+  const next: CardState = { ...card, observation: merged, view, lastSeenAt: t }
   const actions: Array<Action> = []
   const videoId = keyVideoId(card.key)
 
-  // A channel arriving late upgrades a provisional card (Entry-4): ask the
-  // background about it now, once. A channel *changing* (a display-name
-  // fallback replaced by the hydrated canonical handle) is the same question
-  // asked afresh: the card goes back to pending under the new id, so the
-  // answer still in flight for the old one is stale by the channel check in
-  // `whitelist-answer`, and a verdict that only ever named the old id cannot
-  // reveal the card.
-  const reopened: ChannelId | null =
-    merged.channelId !== null && channelIdOf(card) !== merged.channelId
-      ? merged.channelId
-      : null
-  if (reopened !== null) {
-    const query = card.queries + 1
-    next = {
-      ...next,
-      queries: query,
-      channel: { kind: "pending", channelId: reopened, since: t, query },
-    }
-    actions.push(
-      {
-        kind: "query-whitelist",
-        key: card.key,
-        generation: card.generation,
-        query,
-        channelId: reopened,
-      },
-      record({ kind: "channel.backfilled", videoId })
-    )
+  // A channel arriving late (or a display-name fallback replaced by the
+  // hydrated handle) upgrades a provisional card.
+  if (
+    merged.channelId !== null &&
+    merged.channelId !== card.observation.channelId
+  ) {
+    actions.push(record({ kind: "channel.backfilled", videoId }))
   }
 
   // A date arriving late is corpus: YouTube hydrates it after the card, so
   // the adoption-time fact alone would miss most forms. Recorded when a later
-  // observation supplies a new or different date, never a repeat, and before
-  // any early return below.
+  // observation supplies a new or different date, never a repeat.
   if (
     merged.uploadDate !== null &&
     merged.uploadDate !== card.observation.uploadDate
@@ -536,106 +367,139 @@ function reobserve(
     )
   }
 
-  // A view the whitelist earned — the tint, or the reveal its timer completed
-  // to — was earned by the channel this card no longer has: a verdict that
-  // named only the old channel must not
-  // go on exposing the card, nor may a pending reveal timer complete. Back to
-  // masked; the version bump retires the timer. Views the user climbed to
-  // are not touched (Entry-4).
-  if (
-    reopened !== null &&
-    (next.view.kind === "whitelisted" ||
-      (next.view.kind === "revealed" && next.autoRevealed))
-  ) {
-    const remasked = transition(setCard(state, next), next, {
-      kind: "masked",
-      session: next.view.session,
-    })
-    return { state: remasked.state, actions: [...actions, ...remasked.actions] }
-  }
-
-  // A title transform in flight was asked with the old channel id (the hook
-  // takes it as input and may answer differently for another). Re-issue the
-  // step: the version bump retires the old
-  // answer, and the transition asks again under the channel the card has
-  // now, from the observed title rather than a translation made for the
-  // wrong channel. The user's own step, so provenance stays the user's.
-  // Gated on the view alone, not on the text it shows: a hook may answer
-  // with an empty string, and that answer is as stale as any other.
-  // `transition()` retires the old answer
-  // by version either way and asks again only when there is a title to ask
-  // about.
-  if (reopened !== null && next.view.kind === "title") {
-    const retitled = transition(setCard(state, next), next, {
-      ...next.view,
-      title: {
-        text: next.observation.title ?? next.view.title.text,
-        translated: false,
-      },
-    })
-    return { state: retitled.state, actions: [...actions, ...retitled.actions] }
-  }
-
-  // R5: re-render on every observation. The view's meta/title are snapshots
-  // taken at click time, so a re-observation does not rewrite them; the
-  // render is for custody — a re-observed card may have gained or lost
-  // elements, and the Actuator re-derives targets.
+  // R5 and R7: re-render on every observation, whether or not the view
+  // moved. A re-observed card may have gained or lost elements, and the
+  // Actuator re-derives targets.
   actions.push(render(next))
+  if (view.kind !== card.view.kind) actions.push(stateFact(next))
   return { state: setCard(state, next), actions }
 }
 
-function clickView(card: CardState): ViewState {
-  const { view } = card
-  const { kind } = view
-  switch (kind) {
-    case "masked": {
-      return applyClick(view, metaOf(card.observation))
+function watchAction(watch: WatchState | null, rules: Rules): Action {
+  const videoId = watch?.observation.videoId ?? null
+  return {
+    kind: "watch",
+    view: watch?.view ?? null,
+    videoId,
+    miniplayer: watch?.observation.miniplayer ?? false,
+    poster:
+      watch?.view === "plated" && videoId !== null
+        ? plateOf({ videoId, channelId: null, channelName: null }).fill
+        : null,
+    face: watch?.face ?? false,
+    offer: rules.face,
+  }
+}
+
+/** Every run of `dates` is one of `seen`: none of them is new. */
+const within = (
+  dates: ReadonlyArray<string>,
+  seen: ReadonlyArray<string>
+): boolean => dates.length > 0 && dates.every((d) => seen.includes(d))
+
+function watched(
+  state: CoreState,
+  observation: WatchObservation | null,
+  t: number
+): Step {
+  const previous = state.watch
+  if (observation === null) {
+    return {
+      state: { ...state, watch: null },
+      actions: previous === null ? [] : [watchAction(null, state.rules)],
     }
-    case "meta": {
-      return applyClick(view, card.observation.title ?? "")
+  }
+  // R8: another video's dates, still on screen, are not this one's.
+  const last = state.watchDates
+  const stale =
+    last !== null &&
+    last.videoId !== observation.videoId &&
+    within(observation.dates, last.dates)
+  // With them, the title and the channel are the previous video's too, so
+  // they say nothing about the lane (QD15) yet; nor do they on a reading
+  // with no date of this video's own, which may be the previous page.
+  const own =
+    stale || observation.dates.length === 0
+      ? {
+          ...observation,
+          dates: stale ? [] : observation.dates,
+          title: null,
+          channelName: null,
+          artist: false,
+        }
+      : observation
+  const merged = previous === null ? own : mergeWatch(previous.observation, own)
+  const view = decideWatch(merged, t, state.boundaryDays, state.rules.signs)
+  const next: WatchState = {
+    observation: merged,
+    view,
+    // R9: the face stays only with the same plated video, outside the
+    // miniplayer.
+    face:
+      previous?.face === true &&
+      previous.observation.videoId === merged.videoId &&
+      view === "plated" &&
+      !merged.miniplayer,
+    seenAt: t,
+  }
+  let watchDates = last
+  if (own.dates.length > 0) {
+    const seen = last?.videoId === observation.videoId ? last.dates : []
+    watchDates = {
+      videoId: observation.videoId,
+      dates: [...seen, ...own.dates.filter((d) => !seen.includes(d))],
     }
-    case "title":
-    case "revealed":
-    case "whitelisted": {
-      return view
-    }
-    default: {
-      kind satisfies never
-      return assertNever(kind)
-    }
+  }
+  const moved =
+    previous?.view !== next.view ||
+    previous.observation.videoId !== merged.videoId ||
+    previous.observation.miniplayer !== merged.miniplayer ||
+    previous.face !== next.face
+  return {
+    state: { ...state, watch: next, watchDates },
+    actions: moved ? [watchAction(next, state.rules)] : [],
   }
 }
 
 /**
- * Advance every masked or meta card to title — pointwise the same transition
- * a single card takes, so the command cannot express anything one card could
- * not (#1385's bulk-equivalence requirement).
+ * Re-decide every card, and the watch page, under a new boundary or mode.
+ * Only a card whose view moved is re-rendered, and each goes straight from
+ * one stamp to the other, so no card passes through unstamped. The watch
+ * page is rendered again when its view moved or the face control comes,
+ * goes or changes with the mode.
  */
-function advanceAll(state: CoreState): Step {
-  let current = state
+function redecide(state: CoreState, boundaryDays: number, rules: Rules): Step {
+  const cards = new Map<CardKey, CardState>()
   const actions: Array<Action> = []
-  let advanced = 0
-  let alreadyPast = 0
-  let channelPending = 0
   for (const card of state.cards.values()) {
-    const { kind } = card.view
-    if (kind === "masked" || kind === "meta") {
-      const view = applySkipToTitle(
-        card.view,
-        metaOf(card.observation),
-        card.observation.title ?? ""
-      )
-      const step = transition(current, card, view)
-      current = step.state
-      actions.push(...step.actions)
-      advanced += 1
-    } else {
-      alreadyPast += 1
-    }
-    if (card.channel.kind === "unknown") channelPending += 1
+    const view = decide(
+      card.observation,
+      card.lastSeenAt,
+      boundaryDays,
+      rules.signs,
+      state.session
+    )
+    const next: CardState = { ...card, view }
+    cards.set(card.key, next)
+    if (view.kind !== card.view.kind)
+      actions.push(render(next), stateFact(next))
   }
-  actions.push(
-    record({ kind: "bulk.advance", advanced, alreadyPast, channelPending })
-  )
-  return { state: current, actions }
+  let watch = state.watch
+  if (watch !== null) {
+    const view = decideWatch(
+      watch.observation,
+      watch.seenAt,
+      boundaryDays,
+      rules.signs
+    )
+    if (view !== watch.view || rules.face !== state.rules.face) {
+      watch = {
+        ...watch,
+        view,
+        face: watch.face && view === "plated" && rules.face !== "none",
+      }
+      actions.push(watchAction(watch, rules))
+    }
+  }
+  return { state: { ...state, boundaryDays, rules, cards, watch }, actions }
 }

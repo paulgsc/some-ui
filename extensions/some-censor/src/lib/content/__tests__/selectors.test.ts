@@ -4,8 +4,8 @@
  * The set of elements the *stylesheet* occludes and the set the *content
  * script* adopts live in two files and can drift. A tag in the CSS but not in
  * TypeScript is a card
- * blurred forever with no veil coming; a tag in TypeScript but not in the CSS
- * is a card that flashes its thumbnail before the veil mounts. Neither shows up
+ * blurred forever with no stamp coming; a tag in TypeScript but not in the CSS
+ * is a card that flashes its thumbnail before it is stamped. Neither shows up
  * in a type error and neither shows up in the e2e fixtures, which only contain
  * the tags someone remembered to add.
  *
@@ -19,13 +19,19 @@ import {
   classifyCard,
   detectOccluderEngine,
   isVideoCard,
+  LOADING_ATTRIBUTE,
   occludedElements,
+  POSTS_ATTRIBUTE,
   PREMASK_FALLBACK_SELECTORS,
   PREMASK_SELECTORS,
   SEL,
+  SHELF_COLLAPSE_SELECTORS,
+  SWITCHED_OFF_ATTRIBUTE,
   VIDEO_SELECTORS,
 } from "@censor/lib/content/selectors"
 import { describe, expect, it } from "vitest"
+
+import { commentsRules, CROWD_MARKER, crowdRules } from "./crowd-css"
 
 // Read from disk rather than imported: vitest resolves a `.css` import to an
 // empty module by design, and the point of this suite is the actual bytes the
@@ -69,8 +75,10 @@ function splitFallback(): { main: string; fallback: string } {
   return { main, fallback }
 }
 
-function premaskRulesIn(css: string): Array<string> {
-  const marker = "filter: brightness(0.35)"
+function premaskRulesIn(
+  css: string,
+  marker = "filter: brightness(0.35)"
+): Array<string> {
   const rules: Array<string> = []
   let searchFrom = 0
   for (;;) {
@@ -113,11 +121,54 @@ function topLevelCommaCount(selector: string): number {
   return count
 }
 
+/** The shelf-collapse rules, found by the condition only they carry. */
+function shelfRulesFromCss(): Array<string> {
+  return premaskRulesIn(
+    splitFallback().main,
+    "display: none !important"
+  ).filter((r) => normalize(r).includes(':has([data-boyo="absent"]):not('))
+}
+
+function crowdRulesFromCss(): ReturnType<typeof crowdRules> {
+  const rules = crowdRules(CSS)
+  expect(rules.length, "the crowd section must exist").toBeGreaterThan(0)
+  return rules
+}
+
+/** Every pre-mask rule's gate: the owner's off switch lifts them all. */
+const WHILE_ON = `:root:not([${SWITCHED_OFF_ATTRIBUTE}]) `
+
 describe("the stylesheet and the catalogue agree", () => {
   it("occludes exactly the tags the content script adopts, one rule per tag", () => {
     expect(premaskRulesFromCss().map(normalize)).toEqual(
       PREMASK_SELECTORS.map(normalize)
     )
+  })
+
+  it("lets Strict blank every occluder (#1966)", () => {
+    // Each occluder's opacity is one property, so the BLANK rule reaches
+    // every one of them, the Firefox 112–120 fallback included.
+    const variable = "opacity: var(--boyo-premask-opacity, 0.5) !important"
+    expect(CSS.split(variable).length - 1).toBe(premaskRulesIn(CSS).length)
+    expect(CSS).not.toContain("opacity: 0.5 !important")
+    // The e2e suite that renders this (S3) runs locally only.
+    expect(normalize(CSS)).toContain(
+      normalize(`:root[${LOADING_ATTRIBUTE}="blank"] {
+        --boyo-premask-opacity: 0;
+      }`)
+    )
+  })
+
+  it("shows a post's own images under Open, unless plated (#1966)", () => {
+    // One rule, in exactly this form: P8 renders it, locally only.
+    const rules = premaskRulesIn(CSS, "visibility: visible !important").filter(
+      (r) => r.includes(POSTS_ATTRIBUTE)
+    )
+    expect(rules.map(normalize)).toEqual([
+      normalize(`${WHILE_ON}[${POSTS_ATTRIBUTE}="shown"]
+        ytd-backstage-image-renderer:not([data-boyo="plated"] *)
+        yt-img-shadow img`),
+    ])
   })
 
   it("keeps a :has()-free fallback for exactly the tags that declare one", () => {
@@ -128,7 +179,7 @@ describe("the stylesheet and the catalogue agree", () => {
       PREMASK_FALLBACK_SELECTORS.map(normalize)
     )
     expect(PREMASK_FALLBACK_SELECTORS).toEqual([
-      "ytd-rich-item-renderer:not([data-boyo])",
+      `${WHILE_ON}ytd-rich-item-renderer:not([data-boyo])`,
     ])
     for (const rule of fallbackRulesFromCss()) {
       expect(rule, "a fallback rule must not itself need :has()").not.toContain(
@@ -137,18 +188,119 @@ describe("the stylesheet and the catalogue agree", () => {
     }
   })
 
+  it("collapses exactly the catalogued shelves, one rule per shelf", () => {
+    expect(shelfRulesFromCss().map(normalize)).toEqual(
+      SHELF_COLLAPSE_SELECTORS.map(normalize)
+    )
+  })
+
+  it("keeps a shelf whose cards are plated, pending, or not videos at all", () => {
+    const shelf = document.createElement("ytd-rich-section-renderer")
+    shelf.innerHTML = `
+      <ytd-rich-item-renderer><ytm-shorts-lockup-view-model-v2>
+        <ytm-shorts-lockup-view-model data-boyo="absent"><a href="/shorts/s1"></a></ytm-shorts-lockup-view-model>
+      </ytm-shorts-lockup-view-model-v2></ytd-rich-item-renderer>
+      <ytd-rich-item-renderer id="second"></ytd-rich-item-renderer>`
+    document.body.appendChild(shelf)
+    const [rule] = SHELF_COLLAPSE_SELECTORS
+    const second = shelf.querySelector("#second")
+    if (rule === undefined || second === null) throw new Error("fixture")
+    const collapses = (inner: string): boolean => {
+      second.innerHTML = inner
+      return shelf.matches(rule)
+    }
+
+    expect(collapses(""), "every card absent: the wrappers do not count").toBe(
+      true
+    )
+    expect(
+      collapses(
+        '<yt-lockup-view-model data-boyo="plated"></yt-lockup-view-model>'
+      ),
+      "a plated card"
+    ).toBe(false)
+    expect(
+      collapses(
+        '<yt-lockup-view-model><a href="/watch?v=p1"></a></yt-lockup-view-model>'
+      ),
+      "a card not adopted yet"
+    ).toBe(false)
+    expect(
+      collapses(
+        '<yt-lockup-view-model><a href="/@channel"></a></yt-lockup-view-model>'
+      ),
+      "a channel tile"
+    ).toBe(false)
+    expect(
+      collapses(
+        '<div id="content"><ytm-shorts-lockup-view-model-v2><ytm-shorts-lockup-view-model data-boyo="absent"></ytm-shorts-lockup-view-model></ytm-shorts-lockup-view-model-v2></div>'
+      ),
+      "a slot holding an absent card"
+    ).toBe(true)
+    expect(
+      collapses(
+        '<div id="content"><ytd-post-renderer></ytd-post-renderer></div>'
+      ),
+      "a slot holding a post"
+    ).toBe(false)
+    second.setAttribute("data-boyo", "absent")
+    expect(
+      collapses(
+        '<div id="content"><ytd-rich-grid-media></ytd-rich-grid-media></div>'
+      ),
+      "a cell that is itself the card: its stamp decides"
+    ).toBe(true)
+    second.removeAttribute("data-boyo")
+    second.remove()
+    shelf.querySelector("[data-boyo]")?.setAttribute("data-boyo", "plated")
+    expect(shelf.matches(rule), "no absent card at all").toBe(false)
+    shelf.remove()
+  })
+
+  it("collapses a channel section only when the shelf is all it holds", () => {
+    const section = document.createElement("ytd-item-section-renderer")
+    section.innerHTML = `<div id="contents"><ytd-reel-shelf-renderer>
+      <ytm-shorts-lockup-view-model data-boyo="absent"><a href="/shorts/s1"></a></ytm-shorts-lockup-view-model>
+    </ytd-reel-shelf-renderer></div>`
+    document.body.appendChild(section)
+    const matches = (): boolean =>
+      SHELF_COLLAPSE_SELECTORS.some((rule) => section.matches(rule))
+    expect(matches()).toBe(true)
+    // A sibling result: the section holds more than the shelf.
+    section
+      .querySelector("#contents")
+      ?.append(document.createElement("ytd-channel-renderer"))
+    expect(matches()).toBe(false)
+
+    section.innerHTML = `<div id="contents"><ytd-shelf-renderer>
+      <yt-horizontal-list-renderer><div id="items">
+        <yt-lockup-view-model data-boyo="absent"><a href="/watch?v=a1"></a></yt-lockup-view-model>
+        <ytd-grid-channel-renderer><a href="/@channel"></a></ytd-grid-channel-renderer>
+      </div></yt-horizontal-list-renderer>
+    </ytd-shelf-renderer></div>`
+    expect(matches(), "a channel tile holds a channel shelf open").toBe(false)
+    section.querySelector("ytd-grid-channel-renderer")?.remove()
+    expect(matches()).toBe(true)
+    section.remove()
+  })
+
   it("never shares one rule's declarations across more than one selector", () => {
     // QC0: CSS selector-list invalidation is all-or-nothing, so one
     // unparseable selector sharing a rule (e.g. `:has()` before Firefox 121)
     // would cost every other selector in that rule its occluder.
-    for (const rule of premaskRulesFromCss()) {
+    for (const rule of [
+      ...premaskRulesFromCss(),
+      ...shelfRulesFromCss(),
+      ...crowdRulesFromCss().map((r) => r.selector),
+      ...commentsRules(CSS).map((r) => r.selector),
+    ]) {
       expect(topLevelCommaCount(rule), rule).toBe(0)
     }
   })
 
   it("keeps the plain Polymer tags free of :has(), so the Firefox 112 floor — which predates :has() entirely — still occludes them", () => {
     const rule = premaskRulesFromCss().find((r) =>
-      r.startsWith("ytd-video-renderer:")
+      normalize(r).startsWith(normalize(`${WHILE_ON}ytd-video-renderer:`))
     )
     expect(rule).toBeDefined()
     expect(rule).not.toContain(":has(")
@@ -156,7 +308,9 @@ describe("the stylesheet and the catalogue agree", () => {
 
   it("guards every polymorphic tag with :has(), and no others", () => {
     for (const { tag, requiresVideoLink } of CARD_SELECTORS) {
-      const rule = premaskRulesFromCss().find((r) => r.startsWith(`${tag}:`))
+      const rule = premaskRulesFromCss().find((r) =>
+        normalize(r).startsWith(normalize(`${WHILE_ON}${tag}:`))
+      )
       expect(rule, `${tag} must appear in the pre-mask rule`).toBeDefined()
       expect(rule?.includes(":has("), `${tag} :has() guard`).toBe(
         requiresVideoLink
@@ -165,9 +319,9 @@ describe("the stylesheet and the catalogue agree", () => {
   })
 
   it("never occludes a card it cannot later un-occlude", () => {
-    // The invariant behind the guard: the only thing that lifts the pre-mask
-    // filter is the content script writing data-boyo, and it only does that for
-    // an element isVideoCard() accepts. So anything the CSS occludes must be
+    // The invariant behind the guard: while switched on, the only thing that
+    // lifts the pre-mask filter is the content script writing data-boyo, and
+    // it only does that for an element isVideoCard() accepts. So anything the CSS occludes must be
     // something isVideoCard() could accept.
     const guarded = CARD_SELECTORS.filter((s) => s.requiresVideoLink)
     for (const { tag } of guarded) {
@@ -181,9 +335,9 @@ describe("the stylesheet and the catalogue agree", () => {
   it("does not occlude a cell or shelf that merely contains cards", () => {
     // A wrapper necessarily contains its children's watch links, so a link
     // check alone would occlude it — and
-    // adopt it as one card with one veil over everything inside. The inner
+    // adopt it as one card around everything inside. The inner
     // cards are the cards; the stylesheet and classifyCard() both exclude
-    // the wrapper, so they agree about which element gets the veil.
+    // the wrapper, so they agree about which element gets the stamp.
     const cell = document.createElement("ytd-rich-item-renderer")
     cell.innerHTML = `<yt-lockup-view-model><a href="/watch?v=inner_1">t</a></yt-lockup-view-model>`
     document.body.appendChild(cell)
@@ -256,6 +410,35 @@ describe("the stylesheet and the catalogue agree", () => {
     wrapper.remove()
     channel.remove()
     plain.remove()
+  })
+})
+
+describe("the crowd rules (QD14)", () => {
+  it("hides a vendor element and does nothing else, behind the off switch", () => {
+    for (const { selector, body } of crowdRulesFromCss()) {
+      expect(body, selector).toBe("display: none !important;")
+      // A descendant of the gate: without the space it would name nothing.
+      expect(selector.startsWith(WHILE_ON), selector).toBe(true)
+    }
+  })
+
+  it("hides by where an element sits, never by what it says (H1)", () => {
+    // Matching an attribute's value is reading its text. Presence is not.
+    for (const { selector } of crowdRulesFromCss()) {
+      expect(selector, selector).not.toMatch(/\[[^\]]*=/)
+    }
+    expect(CSS.slice(CSS.indexOf(CROWD_MARKER))).not.toContain("@")
+  })
+})
+
+describe("the comments rules (QD14, #1805)", () => {
+  it("hide a vendor element whole and do nothing else, behind the off switch", () => {
+    const rules = commentsRules(CSS)
+    expect(rules.length, "the comments section must exist").toBeGreaterThan(0)
+    for (const { selector, body } of rules) {
+      expect(body, selector).toBe("display: none !important;")
+      expect(selector.startsWith(WHILE_ON), selector).toBe(true)
+    }
   })
 })
 

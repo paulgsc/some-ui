@@ -1,53 +1,43 @@
 /**
  * The Actuator (BC4), fed synthetic `BoundAction[]`: no Core, no
- * Sensor, a stub background. What it must do is write exactly what it was
- * told, idempotently, and route every answer back through the inbox.
+ * Sensor. What it must do is write exactly what it was told, idempotently.
  */
 
-import { WHITELIST_REVEAL_DELAY_MS } from "@censor/lib/content/core/actions"
-import type { Input } from "@censor/lib/content/core/events"
 import { cardKey } from "@censor/lib/content/core/keys"
 import type { RenderModel } from "@censor/lib/content/fsm"
 import { project } from "@censor/lib/content/fsm"
-import { asChannelId, asVideoId } from "@censor/types/ids"
-import type { BgRequest } from "@censor/types/messages"
+import { asVideoId } from "@censor/types/ids"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { Actuator } from "./actuator"
-import { createActuator, VEIL_EXIT_FALLBACK_MS } from "./actuator"
+import { createActuator } from "./actuator"
 import type { BoundAction, CustodyTarget } from "./bound"
+import { NEUTRAL_TITLE } from "./watch-hold"
 
 const K = cardKey(asVideoId("vid_a"))
 const K2 = cardKey(asVideoId("vid_b"))
 
-const MASKED: RenderModel = project({ kind: "masked", session: sessionOf(1) })
-const META: RenderModel = project({
-  kind: "meta",
-  session: sessionOf(1),
-  meta: { channelName: "Chan", duration: "1:23" },
-})
-const REVEALED: RenderModel = project({
-  kind: "revealed",
-  session: sessionOf(1),
-})
-const WHITELISTED: RenderModel = project({
-  kind: "whitelisted",
-  session: sessionOf(1),
-})
+const INPUTS = {
+  videoId: asVideoId("vid_a"),
+  channelId: null,
+  channelName: "Chan",
+}
+const PLATED: RenderModel = project(
+  { kind: "plated", session: sessionOf(1) },
+  INPUTS
+)
+const ABSENT: RenderModel = project(
+  { kind: "absent", session: sessionOf(1) },
+  INPUTS
+)
 
 function sessionOf(n: number): Parameters<typeof project>[0]["session"] {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return n as unknown as Parameters<typeof project>[0]["session"]
 }
 
-let inbox: Array<Input>
-let sent: Array<BgRequest>
-/** What the stub background answers next; `null` makes it reject. */
-let answer: unknown
-let titleHook: unknown
-let confirmAnswer: boolean
 let actuator: Actuator
-let now: number
+let faced: Array<string>
 
 function card(tag = "ytd-rich-item-renderer"): HTMLElement {
   const el = document.createElement(tag)
@@ -71,154 +61,79 @@ function unmount(
   return { action: { kind: "unmount", key }, targets }
 }
 
-function veilOf(el: HTMLElement): HTMLElement | null {
-  return el.querySelector(":scope > .boyo-veil")
+function fillOf(el: HTMLElement): string {
+  return el.style.getPropertyValue("--boyo-plate")
 }
 
 beforeEach(() => {
-  vi.useFakeTimers()
   document.body.innerHTML = ""
-  inbox = []
-  sent = []
-  now = 1000
-  answer = { ok: true, whitelisted: false }
-  titleHook = undefined
-  confirmAnswer = true
-  actuator = createActuator({
-    doc: document,
-    inbox: (i) => inbox.push(i),
-    clock: () => now,
-    onFact: () => {},
-    sendMessage: (msg: BgRequest): Promise<unknown> => {
-      sent.push(msg)
-      return answer === null
-        ? Promise.reject(new Error("worker gone"))
-        : Promise.resolve(answer)
-    },
-    titleHook: () => titleHook,
-    confirmWhitelist: () => confirmAnswer,
+  faced = []
+  actuator = createActuator(document, {
+    onFace: (videoId, shown) => faced.push(shown ? videoId : `-${videoId}`),
   })
 })
 
 afterEach(() => {
   actuator.dispose()
-  vi.useRealTimers()
 })
 
 describe("render", () => {
-  it("stamps the anchor, anchors it, and mounts one veil (A1, A2)", () => {
+  it("stamps the anchor and writes the plate's values on it", () => {
     const el = card()
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
+    actuator.realize([render(K, PLATED, [{ el, role: "anchor" }])])
 
-    expect(el.dataset["boyo"]).toBe("0")
+    expect(el.dataset["boyo"]).toBe("plated")
     expect(el.dataset["boyoVid"]).toBe("vid_a")
-    expect(el.style.position).toBe("relative")
-    const veil = veilOf(el)
-    expect(veil).not.toBeNull()
-    expect(veil?.textContent).toContain("Click to preview")
+    expect(fillOf(el)).toBe(PLATED.plate?.fill)
+    expect(el.style.getPropertyValue("--boyo-disc")).toBe(PLATED.plate?.disc)
+    expect(el.style.getPropertyValue("--boyo-initial")).toBe('"C"')
   })
 
   it("is idempotent: the same render twice is the same DOM (A3)", () => {
     const el = card()
-    const bound = [render(K, MASKED, [{ el, role: "anchor" }])]
+    const bound = [render(K, PLATED, [{ el, role: "anchor" }])]
     actuator.realize(bound)
     const before = el.outerHTML
-    const veil = veilOf(el)
     actuator.realize(bound)
     expect(el.outerHTML).toBe(before)
-    expect(veilOf(el), "the very same veil node").toBe(veil)
-    expect(el.querySelectorAll(".boyo-veil")).toHaveLength(1)
   })
 
-  it("re-attaches a veil the vendor removed, without duplicating it (A2)", () => {
+  it("clears the plate on a card that turns absent", () => {
     const el = card()
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
-    veilOf(el)?.remove()
-    delete el.dataset["boyo"]
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
-    expect(el.querySelectorAll(".boyo-veil")).toHaveLength(1)
-    expect(el.dataset["boyo"], "the stamp is re-asserted too").toBe("0")
+    actuator.realize([render(K, PLATED, [{ el, role: "anchor" }])])
+    actuator.realize([render(K, ABSENT, [{ el, role: "anchor" }])])
+    expect(el.dataset["boyo"]).toBe("absent")
+    expect(el.hasAttribute("style"), "removed at once").toBe(false)
   })
 
-  it("replaces a veil the vendor reparented elsewhere, without duplicating it (A2)", () => {
-    const el = card()
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
-    const moved = veilOf(el)
-    if (moved === null) throw new Error("no veil mounted")
-    document.body.appendChild(moved)
-    expect(moved.isConnected, "still connected, just not here").toBe(true)
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
-    expect(veilOf(el), "the anchor has a veil of its own again").not.toBeNull()
-    expect(veilOf(el)).not.toBe(moved)
-    expect(
-      document.querySelectorAll(".boyo-veil"),
-      "the stray one is gone"
-    ).toHaveLength(1)
-  })
-
-  it("rebuilds the veil's content when the model changes", () => {
-    const el = card()
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
-    actuator.realize([render(K, META, [{ el, role: "anchor" }])])
-    expect(el.dataset["boyo"]).toBe("1")
-    expect(veilOf(el)?.textContent).toContain("Chan")
-    expect(veilOf(el)?.textContent).toContain("1:23")
-    expect(el.querySelectorAll(".boyo-veil")).toHaveLength(1)
-  })
-
-  it("animates the veil out on reveal, and removes it within the fallback", () => {
-    const el = card()
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
-    actuator.realize([render(K, REVEALED, [{ el, role: "anchor" }])])
-    expect(el.dataset["boyo"]).toBe("3")
-    expect(veilOf(el), "still there, animating").not.toBeNull()
-    vi.advanceTimersByTime(VEIL_EXIT_FALLBACK_MS)
-    expect(veilOf(el), "gone").toBeNull()
-    // A later render of the same revealed model mounts nothing.
-    actuator.realize([render(K, REVEALED, [{ el, role: "anchor" }])])
-    expect(veilOf(el)).toBeNull()
-  })
-
-  it("replaces a veil still animating out when the card is remasked (A2)", () => {
-    const el = card()
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
-    actuator.realize([render(K, REVEALED, [{ el, role: "anchor" }])])
-    const exiting = veilOf(el)
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
-    const veils = el.querySelectorAll(".boyo-veil")
-    expect(veils, "the exiting veil is gone at once").toHaveLength(1)
-    expect(veils[0]).not.toBe(exiting)
-    expect(veils[0]?.textContent).toContain("Click to preview")
-    // Neither the old exit's fallback nor its animation end takes the new one.
-    exiting?.dispatchEvent(new Event("animationend"))
-    vi.advanceTimersByTime(VEIL_EXIT_FALLBACK_MS)
-    expect(el.querySelectorAll(".boyo-veil")).toHaveLength(1)
-    expect(veilOf(el)).toBe(veils[0])
-  })
-
-  it("leaves an anchor's inline position alone when it was already positioned", () => {
+  it("leaves the vendor's own inline style alone, an empty one included", () => {
     const el = card()
     el.style.position = "absolute"
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
-    expect(el.style.position).toBe("absolute")
-    actuator.realize([unmount(K)])
-    expect(el.style.position).toBe("absolute")
+    const empty = card()
+    empty.setAttribute("style", "")
+    actuator.realize([
+      render(K, PLATED, [{ el, role: "anchor" }]),
+      render(K2, PLATED, [{ el: empty, role: "anchor" }]),
+    ])
+    actuator.realize([unmount(K), unmount(K2)])
+    expect(el.getAttribute("style")).toBe("position: absolute;")
+    expect(empty.getAttribute("style")).toBe("")
   })
 
-  it("stamps nested custody without a veil (D6)", () => {
+  it("stamps nested custody without plate values (D6)", () => {
     const anchor = card("yt-lockup-view-model")
     const nested = document.createElement("ytd-rich-item-renderer")
     document.body.appendChild(nested)
     actuator.realize([
-      render(K, MASKED, [
+      render(K, PLATED, [
         { el: anchor, role: "anchor" },
         { el: nested, role: "nested" },
       ]),
     ])
-    expect(nested.dataset["boyo"]).toBe("0")
+    expect(nested.dataset["boyo"]).toBe("plated")
     expect(nested.dataset["boyoVid"]).toBeUndefined()
-    expect(veilOf(nested)).toBeNull()
-    expect(veilOf(anchor)).not.toBeNull()
+    expect(nested.hasAttribute("style")).toBe(false)
+    expect(fillOf(anchor)).not.toBe("")
     expect(actuator.custodyOf(K)).toEqual([anchor, nested])
   })
 })
@@ -229,161 +144,82 @@ describe("custody accounting (A5)", () => {
     const nested = document.createElement("yt-lockup-view-model")
     document.body.appendChild(nested)
     actuator.realize([
-      render(K, MASKED, [
+      render(K, PLATED, [
         { el: anchor, role: "anchor" },
         { el: nested, role: "nested" },
       ]),
     ])
-    actuator.realize([render(K, MASKED, [{ el: anchor, role: "anchor" }])])
+    actuator.realize([render(K, PLATED, [{ el: anchor, role: "anchor" }])])
     expect(nested.hasAttribute("data-boyo"), "left custody, stamp gone").toBe(
       false
     )
-    expect(anchor.dataset["boyo"]).toBe("0")
+    expect(anchor.dataset["boyo"]).toBe("plated")
   })
 
   it("never strips a stamp another key now owns, whichever render runs first", () => {
     const x = card()
-    actuator.realize([render(K, MASKED, [{ el: x, role: "anchor" }])])
+    actuator.realize([render(K, ABSENT, [{ el: x, role: "anchor" }])])
     // x moves to K2. K2 renders first, then K learns x is gone.
-    actuator.realize([render(K2, META, [{ el: x, role: "anchor" }])])
-    actuator.realize([render(K, MASKED, [])])
+    actuator.realize([render(K2, PLATED, [{ el: x, role: "anchor" }])])
+    actuator.realize([render(K, ABSENT, [])])
     expect(x.dataset["boyoVid"], "K2's stamp survives K's diff").toBe("vid_b")
-    expect(x.dataset["boyo"]).toBe("1")
-    expect(x.querySelectorAll(".boyo-veil"), "one veil, K2's").toHaveLength(1)
+    expect(x.dataset["boyo"]).toBe("plated")
+    expect(fillOf(x), "K2's plate survives too").not.toBe("")
 
     // The other order: K learns first, then K2 takes over.
     const y = card()
-    actuator.realize([render(K, MASKED, [{ el: y, role: "anchor" }])])
-    actuator.realize([render(K, MASKED, [])])
+    actuator.realize([render(K, PLATED, [{ el: y, role: "anchor" }])])
+    actuator.realize([render(K, PLATED, [])])
     expect(y.hasAttribute("data-boyo")).toBe(false)
-    actuator.realize([render(K2, META, [{ el: y, role: "anchor" }])])
+    actuator.realize([render(K2, PLATED, [{ el: y, role: "anchor" }])])
     expect(y.dataset["boyoVid"]).toBe("vid_b")
   })
 
   it("takes over another key's anchor as nested custody with nothing of the anchor left (D6)", () => {
     const x = card()
-    actuator.realize([render(K, MASKED, [{ el: x, role: "anchor" }])])
+    actuator.realize([render(K, PLATED, [{ el: x, role: "anchor" }])])
     expect(x.dataset["boyoVid"]).toBe("vid_a")
-    actuator.realize([render(K2, META, [{ el: x, role: "nested" }])])
+    actuator.realize([render(K2, ABSENT, [{ el: x, role: "nested" }])])
     expect(x.dataset["boyoVid"], "the old self-tag is gone").toBeUndefined()
-    expect(x.dataset["boyo"]).toBe("1")
-    expect(veilOf(x)).toBeNull()
-    expect(x.style.position).toBe("")
+    expect(x.dataset["boyo"]).toBe("absent")
+    expect(x.hasAttribute("style"), "and the plate").toBe(false)
     expect(actuator.custodyOf(K2)).toEqual([x])
   })
+})
 
-  it("demotes an anchor to nested custody by removing its veil", () => {
+describe("demotion", () => {
+  it("demotes an anchor to nested custody, plate values and self-tag gone", () => {
     const el = card()
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
-    actuator.realize([render(K, MASKED, [{ el, role: "nested" }])])
-    expect(veilOf(el)).toBeNull()
-    expect(el.dataset["boyo"]).toBe("0")
+    actuator.realize([render(K, PLATED, [{ el, role: "anchor" }])])
+    actuator.realize([render(K, PLATED, [{ el, role: "nested" }])])
+    expect(el.dataset["boyo"]).toBe("plated")
     expect(el.dataset["boyoVid"]).toBeUndefined()
+    expect(el.hasAttribute("style")).toBe(false)
   })
 })
 
 describe("unmount (A4)", () => {
-  it("leaves every stamped element as it was, and cancels the key's timers", () => {
+  it("leaves every stamped element as it was", () => {
     const anchor = card()
     const nested = document.createElement("yt-lockup-view-model")
     document.body.appendChild(nested)
     actuator.realize([
-      render(K, WHITELISTED, [
+      render(K, PLATED, [
         { el: anchor, role: "anchor" },
         { el: nested, role: "nested" },
       ]),
-      {
-        action: {
-          kind: "schedule",
-          key: K,
-          generation: 0,
-          version: 1,
-          delayMs: WHITELIST_REVEAL_DELAY_MS,
-        },
-      },
     ])
     actuator.realize([unmount(K)])
     expect(anchor.hasAttribute("data-boyo")).toBe(false)
     expect(anchor.hasAttribute("data-boyo-vid")).toBe(false)
-    expect(veilOf(anchor)).toBeNull()
+    expect(anchor.hasAttribute("style"), "no trace of the plate").toBe(false)
     expect(nested.hasAttribute("data-boyo")).toBe(false)
     expect(actuator.custodyOf(K)).toEqual([])
-
-    vi.advanceTimersByTime(WHITELIST_REVEAL_DELAY_MS * 2)
-    expect(inbox.filter((i) => i.kind === "timer")).toEqual([])
-  })
-
-  it("restores the anchoring position it wrote (A1, A4)", () => {
-    const el = card()
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
-    expect(el.style.position).toBe("relative")
-    actuator.realize([unmount(K)])
-    expect(el.style.position).toBe("")
-    expect(el.hasAttribute("style"), "no trace of the write").toBe(false)
-
-    // Demotion to nested custody is not an anchor either.
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
-    actuator.realize([render(K, MASKED, [{ el, role: "nested" }])])
-    expect(el.style.position).toBe("")
-  })
-
-  it("restores an inline position's priority along with its value", () => {
-    const el = card()
-    el.style.setProperty("position", "static", "important")
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
-    expect(el.style.position, "anchored over the vendor's static").toBe(
-      "relative"
-    )
-    actuator.realize([unmount(K)])
-    expect(el.style.getPropertyValue("position")).toBe("static")
-    expect(el.style.getPropertyPriority("position")).toBe("important")
-  })
-
-  it("keeps a vendor's `relative !important` written over the anchoring", () => {
-    const el = card()
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
-    el.style.setProperty("position", "relative", "important")
-    actuator.realize([unmount(K)])
-    expect(el.style.getPropertyValue("position")).toBe("relative")
-    expect(el.style.getPropertyPriority("position")).toBe("important")
-  })
-
-  it("re-anchoring over a value the vendor took back restores that value", () => {
-    const el = card()
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
-    el.style.position = "static"
-    actuator.realize([render(K, META, [{ el, role: "anchor" }])])
-    expect(el.style.position, "anchored again").toBe("relative")
-    actuator.realize([unmount(K)])
-    expect(el.style.position, "the vendor's later static, not none").toBe(
-      "static"
-    )
-  })
-
-  it("keeps an inline position the vendor wrote after the anchoring", () => {
-    const el = card()
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
-    expect(el.style.position).toBe("relative")
-    el.style.position = "absolute"
-    actuator.realize([unmount(K)])
-    expect(el.style.position, "the vendor's later value is not undone").toBe(
-      "absolute"
-    )
-  })
-
-  it("removes a veil still animating out, without waiting for it", () => {
-    const el = card()
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
-    actuator.realize([render(K, REVEALED, [{ el, role: "anchor" }])])
-    expect(veilOf(el), "exiting").not.toBeNull()
-    actuator.realize([unmount(K)])
-    expect(veilOf(el), "gone at once, no animationend needed").toBeNull()
-    expect(el.hasAttribute("style")).toBe(false)
   })
 
   it("is a no-op for a key it never realized", () => {
     const el = card()
-    actuator.realize([render(K2, MASKED, [{ el, role: "anchor" }])])
+    actuator.realize([render(K2, PLATED, [{ el, role: "anchor" }])])
     actuator.realize([unmount(K, [{ el, role: "anchor" }])])
     expect(el.dataset["boyoVid"], "another key's stamp is not touched").toBe(
       "vid_b"
@@ -391,290 +227,389 @@ describe("unmount (A4)", () => {
   })
 })
 
-describe("effects and their answers", () => {
-  it("asks the background about a channel and routes the verdict to the inbox", async () => {
-    answer = { ok: true, whitelisted: true }
-    actuator.realize([
-      {
-        action: {
-          kind: "query-whitelist",
-          key: K,
-          generation: 0,
-          query: 1,
-          channelId: asChannelId("@chan"),
-        },
-      },
-    ])
-    await vi.advanceTimersByTimeAsync(0)
-    expect(sent).toEqual([{ type: "IS_WHITELISTED", channelId: "@chan" }])
-    expect(inbox).toEqual([
-      {
-        kind: "whitelist-answer",
-        key: K,
-        generation: 0,
-        query: 1,
-        channelId: "@chan",
-        whitelisted: true,
-        t: 1000,
-      },
-    ])
-  })
-
-  it("answers false when the background fails", async () => {
-    answer = null
-    actuator.realize([
-      {
-        action: {
-          kind: "query-whitelist",
-          key: K,
-          generation: 0,
-          query: 1,
-          channelId: asChannelId("@chan"),
-        },
-      },
-    ])
-    await vi.advanceTimersByTimeAsync(0)
-    expect(inbox[0]).toMatchObject({
-      kind: "whitelist-answer",
-      whitelisted: false,
-    })
-  })
-
-  it("persists a whitelist entry", async () => {
-    actuator.realize([
-      {
-        action: {
-          kind: "persist-whitelist",
-          channelId: asChannelId("@chan"),
-          channelName: "Chan",
-        },
-      },
-    ])
-    await vi.advanceTimersByTimeAsync(0)
-    expect(sent).toEqual([
-      { type: "ADD_WHITELIST", channelId: "@chan", channelName: "Chan" },
-    ])
-    expect(inbox).toEqual([])
-  })
-
-  it("runs the title hook and returns a string result with its version", async () => {
-    titleHook = (title: string, channelId: string): string =>
-      `${title} (${channelId})`
-    actuator.realize([
-      {
-        action: {
-          kind: "transform-title",
-          key: K,
-          generation: 0,
-          version: 2,
-          text: "T",
-          channelId: asChannelId("@chan"),
-        },
-      },
-    ])
-    await vi.advanceTimersByTimeAsync(0)
-    expect(inbox).toEqual([
-      {
-        kind: "title-transformed",
-        key: K,
-        generation: 0,
-        version: 2,
-        text: "T (@chan)",
-        translated: true,
-        t: 1000,
-      },
-    ])
-  })
-
-  it("ignores a hook that is missing, returns a non-string, or throws", async () => {
-    for (const hook of [
-      undefined,
-      (): number => 42,
-      (): never => {
-        throw new Error("x")
-      },
-    ]) {
-      titleHook = hook
-      actuator.realize([
-        {
-          action: {
-            kind: "transform-title",
-            key: K,
-            generation: 0,
-            version: 1,
-            text: "T",
-            channelId: null,
-          },
-        },
-      ])
-      await vi.advanceTimersByTimeAsync(0)
-    }
-    expect(inbox).toEqual([])
-  })
-
-  it("fires a scheduled timer with the generation and version it was issued under", () => {
-    actuator.realize([
-      {
-        action: {
-          kind: "schedule",
-          key: K,
-          generation: 0,
-          version: 3,
-          delayMs: 1800,
-        },
-      },
-    ])
-    vi.advanceTimersByTime(1799)
-    expect(inbox).toEqual([])
-    now = 2800
-    vi.advanceTimersByTime(1)
-    expect(inbox).toEqual([
-      { kind: "timer", key: K, generation: 0, version: 3, t: 2800 },
-    ])
-  })
-
-  it("forwards facts to the recorder", () => {
-    const facts: Array<unknown> = []
-    const a = createActuator({
-      doc: document,
-      inbox: () => {},
-      clock: () => 0,
-      onFact: (f) => facts.push(f),
-      sendMessage: () => Promise.resolve({}),
-      titleHook: () => undefined,
-      confirmWhitelist: () => false,
-    })
-    a.realize([{ action: { kind: "record", fact: { kind: "navigation" } } }])
-    expect(facts).toEqual([{ kind: "navigation" }])
-    a.dispose()
-  })
-})
-
-describe("gestures", () => {
-  function clickVeil(
-    el: HTMLElement,
-    type: "click" | "dblclick" | "contextmenu"
-  ): void {
-    veilOf(el)?.dispatchEvent(
-      new MouseEvent(type, { bubbles: true, cancelable: true })
-    )
-  }
-
-  it("commits a single click after the double-click window", () => {
-    const el = card()
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
-    clickVeil(el, "click")
-    expect(inbox).toEqual([])
-    vi.advanceTimersByTime(400)
-    expect(inbox).toEqual([
-      { kind: "gesture", key: K, gesture: "click", t: 1000 },
-    ])
-  })
-
-  it("commits a double click immediately, swallowing the staged single", () => {
-    const el = card()
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
-    clickVeil(el, "click")
-    clickVeil(el, "click")
-    clickVeil(el, "dblclick")
-    vi.advanceTimersByTime(400)
-    expect(inbox).toEqual([
-      { kind: "gesture", key: K, gesture: "dblclick", t: 1000 },
-    ])
-  })
-
-  it("turns a confirmed context menu into a whitelist request", () => {
-    const el = card()
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
-    confirmAnswer = false
-    clickVeil(el, "contextmenu")
-    expect(inbox).toEqual([])
-    confirmAnswer = true
-    clickVeil(el, "contextmenu")
-    expect(inbox).toEqual([{ kind: "whitelist-request", key: K, t: 1000 }])
-  })
-
-  it("ignores clicks that are not on a veil", () => {
-    const el = card()
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
-    el
-      .querySelector("a")
-      ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
-    vi.advanceTimersByTime(400)
-    expect(inbox).toEqual([])
-  })
-
-  it("drops a staged click when the card is unmounted", () => {
-    const el = card()
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
-    clickVeil(el, "click")
-    actuator.realize([unmount(K)])
-    vi.advanceTimersByTime(400)
-    expect(inbox).toEqual([])
-  })
-})
-
 describe("dispose", () => {
-  it("removes a veil still animating out, even without an animationend", () => {
+  it("strips everything, and is inert afterwards", () => {
     const el = card()
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
-    actuator.realize([render(K, REVEALED, [{ el, role: "anchor" }])])
-    expect(veilOf(el), "exiting").not.toBeNull()
-    actuator.dispose()
-    expect(
-      veilOf(el),
-      "a reduced-motion user is not left a stale veil"
-    ).toBeNull()
-    expect(el.hasAttribute("style")).toBe(false)
-    vi.advanceTimersByTime(VEIL_EXIT_FALLBACK_MS)
-    expect(el.querySelectorAll(".boyo-veil")).toHaveLength(0)
-  })
-
-  it("strips everything, stops listening, and swallows late answers", async () => {
-    const el = card()
-    let settle: (r: unknown) => void = () => {}
-    answer = new Promise((resolve) => {
-      settle = resolve
-    })
-    actuator.realize([
-      render(K, MASKED, [{ el, role: "anchor" }]),
-      {
-        action: {
-          kind: "query-whitelist",
-          key: K,
-          generation: 0,
-          query: 1,
-          channelId: asChannelId("@chan"),
-        },
-      },
-      {
-        action: {
-          kind: "schedule",
-          key: K,
-          generation: 0,
-          version: 1,
-          delayMs: 100,
-        },
-      },
-    ])
+    actuator.realize([render(K, PLATED, [{ el, role: "anchor" }])])
     actuator.dispose()
     expect(el.hasAttribute("data-boyo")).toBe(false)
-    expect(veilOf(el)).toBeNull()
-
-    settle({ ok: true, whitelisted: true })
-    await vi.advanceTimersByTimeAsync(500)
-    expect(inbox, "no answer, no timer, after dispose").toEqual([])
-
-    // Listeners are gone: a click on a leftover veil-like node does nothing.
-    const stray = document.createElement("div")
-    stray.className = "boyo-veil"
-    el.appendChild(stray)
-    stray.dispatchEvent(new MouseEvent("click", { bubbles: true }))
-    vi.advanceTimersByTime(400)
-    expect(inbox).toEqual([])
-    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
+    expect(el.hasAttribute("style")).toBe(false)
+    actuator.realize([render(K, PLATED, [{ el, role: "anchor" }])])
     expect(el.hasAttribute("data-boyo"), "realize after dispose is inert").toBe(
       false
     )
+  })
+})
+
+describe("skip (#1966)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  function playing(): { clicks: Array<string>; card: HTMLElement } {
+    const card = document.createElement("ytd-compact-video-renderer")
+    card.innerHTML = `<a id="thumbnail" href="/watch?v=next"></a>`
+    document.body.append(card)
+    const clicks: Array<string> = []
+    card.addEventListener("click", (event) => {
+      event.preventDefault()
+      if (event.target instanceof HTMLElement) clicks.push(event.target.id)
+    })
+    return { clicks, card }
+  }
+  const play = (el: HTMLElement): BoundAction => ({
+    action: { kind: "play", key: cardKey(asVideoId("next")) },
+    targets: [{ el, role: "anchor" }],
+  })
+
+  it("clicks the card's watch link, a task after it is asked", () => {
+    const { clicks, card } = playing()
+    actuator.realize([play(card)])
+    expect(clicks).toEqual([])
+    vi.advanceTimersByTime(0)
+    expect(clicks).toEqual(["thumbnail"])
+  })
+
+  it("clicks nothing with no card, or a card with no watch link", () => {
+    const { clicks, card } = playing()
+    card.innerHTML = `<a id="channel" href="/@chan"></a>`
+    actuator.realize([play(card), { ...play(card), targets: [] }])
+    vi.advanceTimersByTime(0)
+    expect(clicks).toEqual([])
+  })
+
+  it("clicks nothing once disposed", () => {
+    const { clicks, card } = playing()
+    actuator.realize([play(card)])
+    actuator.dispose()
+    vi.advanceTimersByTime(0)
+    expect(clicks).toEqual([])
+  })
+})
+
+describe("the watch page's hold (#1805, WH1, WH2)", () => {
+  const VIDEO = asVideoId("vid_w")
+  const watch = (
+    view: "pending" | "absent" | "plated" | null,
+    videoId: typeof VIDEO | null = VIDEO,
+    miniplayer = false,
+    extra: { face?: boolean; description?: HTMLElement } = {}
+  ): BoundAction => ({
+    action: {
+      kind: "watch",
+      view,
+      videoId,
+      miniplayer,
+      poster: view === "plated" ? "hsl(1 2% 3%)" : null,
+      face: extra.face ?? false,
+      offer: "release",
+    },
+    targets:
+      extra.description === undefined
+        ? []
+        : [{ el: extra.description, role: "anchor" }],
+  })
+
+  /** A playing video; jsdom implements no playback, so its two calls are stubs. */
+  function playing(): HTMLVideoElement & { plays: number } {
+    const video = Object.assign(document.createElement("video"), { plays: 0 })
+    let paused = false
+    Object.defineProperty(video, "paused", { get: () => paused })
+    video.pause = (): void => {
+      paused = true
+    }
+    video.play = (): Promise<void> => {
+      paused = false
+      video.plays += 1
+      video.dispatchEvent(new Event("play"))
+      return Promise.resolve()
+    }
+    document.body.appendChild(video)
+    return video
+  }
+  const surface = (): HTMLElement | null =>
+    document.querySelector("[data-boyo-not-here]")
+  const flush = (): Promise<void> => new Promise((r) => setTimeout(r, 0))
+
+  beforeEach(() => {
+    document.title = "Me at the zoo - YouTube"
+  })
+
+  it("holds the page until it is decided: no media, no title, no surface yet", async () => {
+    const video = playing()
+    actuator.realize([watch("pending")])
+    expect(document.documentElement.dataset["boyoWatch"]).toBe("pending")
+    expect(video.paused).toBe(true)
+    expect(document.title).toBe(NEUTRAL_TITLE)
+    expect(surface()).toBeNull()
+
+    void video.play()
+    expect(video.paused, "a play while held is paused").toBe(true)
+    document.title = "Me at the zoo - YouTube"
+    await flush()
+    expect(document.title, "a title YouTube writes is replaced").toBe(
+      NEUTRAL_TITLE
+    )
+  })
+
+  it('says "Not here." with a Back button on absent, and is idempotent', () => {
+    actuator.realize([watch("absent")])
+    actuator.realize([watch("absent")])
+    const shown = document.querySelectorAll("[data-boyo-not-here]")
+    expect(shown).toHaveLength(1)
+    expect(shown[0]?.textContent).toBe("Not here.Back")
+
+    history.pushState(null, "", "#watch")
+    const back = vi.spyOn(history, "back").mockImplementation(() => undefined)
+    shown[0]?.querySelector("button")?.click()
+    expect(back).toHaveBeenCalledTimes(1)
+    back.mockRestore()
+  })
+
+  it('holds the miniplayer\'s video without saying "Not here." over another page', () => {
+    const video = playing()
+    actuator.realize([watch("absent", VIDEO, true)])
+    expect(document.documentElement.dataset["boyoWatch"]).toBe("absent")
+    expect(surface()).toBeNull()
+    expect(video.paused).toBe(true)
+    actuator.realize([watch("absent")])
+    expect(surface()).not.toBeNull()
+  })
+
+  it("gives back what it held on plated, and nothing else", async () => {
+    const video = playing()
+    actuator.realize([watch("pending")])
+    document.title = "Me at the zoo - YouTube"
+    await flush()
+    actuator.realize([watch("plated")])
+    expect(document.documentElement.dataset["boyoWatch"]).toBe("plated")
+    expect(document.title).toBe("Me at the zoo - YouTube")
+    expect(video.plays).toBe(1)
+    expect(video.paused).toBe(false)
+    expect(surface()).toBeNull()
+  })
+
+  it("never gives one video's title to another, or to a page no longer shown", () => {
+    actuator.realize([watch("absent")])
+    actuator.realize([watch("pending", asVideoId("vid_next"))])
+    actuator.realize([watch("plated", asVideoId("vid_next"))])
+    expect(document.title).toBe(NEUTRAL_TITLE)
+
+    actuator.realize([watch("absent")])
+    actuator.realize([watch(null, null)])
+    expect(document.title).toBe(NEUTRAL_TITLE)
+    expect(document.documentElement.hasAttribute("data-boyo-watch")).toBe(false)
+    expect(surface()).toBeNull()
+  })
+
+  it("lifts everything on dispose, and the shown page's title comes back", async () => {
+    const video = playing()
+    actuator.realize([watch("absent")])
+    actuator.dispose()
+    expect(document.documentElement.hasAttribute("data-boyo-watch")).toBe(false)
+    expect(surface()).toBeNull()
+    expect(document.title).toBe("Me at the zoo - YouTube")
+    void video.play()
+    expect(video.paused, "no listener is left").toBe(false)
+    document.title = "Next - YouTube"
+    await flush()
+    expect(document.title, "no observer is left").toBe("Next - YouTube")
+  })
+})
+
+describe("the poster and the face control (#1805, QD13)", () => {
+  const VIDEO = asVideoId("vid_w")
+  function description(): HTMLElement {
+    const el = document.createElement("div")
+    el.id = "description-inner"
+    document.body.append(el)
+    return el
+  }
+  const plated = (
+    el: HTMLElement | undefined,
+    face = false,
+    videoId = VIDEO,
+    offer: "none" | "release" | "held" = "release"
+  ): BoundAction => ({
+    action: {
+      kind: "watch",
+      view: "plated",
+      videoId,
+      miniplayer: false,
+      poster: "hsl(1 2% 3%)",
+      face,
+      offer,
+    },
+    targets: el === undefined ? [] : [{ el, role: "anchor" }],
+  })
+  const control = (): HTMLElement | null =>
+    document.querySelector("[data-boyo-face-hold]")
+  const key = (type: "keydown" | "keyup", repeat = false, name = " "): void => {
+    control()?.dispatchEvent(
+      new KeyboardEvent(type, { key: name, repeat, bubbles: true })
+    )
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("plates the poster and offers the control in the description it is given", () => {
+    const desc = description()
+    actuator.realize([plated(desc)])
+    const root = document.documentElement
+    expect(root.style.getPropertyValue("--boyo-poster")).toBe("hsl(1 2% 3%)")
+    expect(control()?.parentElement).toBe(desc)
+    expect(control()?.textContent).toBe("Hold to show the original thumbnail")
+    const writes: Array<MutationRecord> = []
+    const watcher = new MutationObserver((records) => writes.push(...records))
+    watcher.observe(desc, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+    })
+    actuator.realize([plated(desc)])
+    writes.push(...watcher.takeRecords())
+    watcher.disconnect()
+    expect(writes, "WH1: the same view again writes nothing").toEqual([])
+    expect(document.querySelectorAll("[data-boyo-face-hold]")).toHaveLength(1)
+  })
+
+  it("rebuilds the control when the mode changes when it reports (#1966)", () => {
+    const desc = description()
+    actuator.realize([plated(desc)])
+    const standard = control()
+    actuator.realize([plated(desc, false, VIDEO, "held")])
+    expect(control()).not.toBe(standard)
+    key("keydown")
+    vi.advanceTimersByTime(3_000)
+    expect(faced, "Open's reports still held").toEqual(["vid_w"])
+  })
+
+  it("offers no control under a mode without one, and takes one back (#1966)", () => {
+    const desc = description()
+    actuator.realize([plated(desc, false, VIDEO, "none")])
+    const root = document.documentElement
+    expect(root.style.getPropertyValue("--boyo-poster")).toBe("hsl(1 2% 3%)")
+    expect(control()).toBeNull()
+    actuator.realize([plated(desc)])
+    expect(control()?.parentElement).toBe(desc)
+    actuator.realize([plated(desc, false, VIDEO, "none")])
+    expect(control()).toBeNull()
+  })
+
+  it("reports a hold of the full three seconds, and nothing shorter", () => {
+    actuator.realize([plated(description())])
+    key("keydown")
+    vi.advanceTimersByTime(2_999)
+    key("keyup")
+    vi.advanceTimersByTime(5_000)
+    expect(faced, "an early release cancels").toEqual([])
+
+    key("keydown")
+    key("keydown", true)
+    vi.advanceTimersByTime(1_000)
+    control()?.dispatchEvent(new FocusEvent("blur"))
+    vi.advanceTimersByTime(5_000)
+    expect(faced, "leaving the control cancels").toEqual([])
+
+    key("keydown")
+    vi.advanceTimersByTime(3_000)
+    key("keydown", false, "Escape")
+    key("keyup")
+    vi.advanceTimersByTime(0)
+    expect(faced, "Escape cancels, even after the full time").toEqual([])
+
+    key("keydown")
+    vi.advanceTimersByTime(3_000)
+    expect(faced, "it reports on the release").toEqual([])
+    key("keyup")
+    vi.advanceTimersByTime(0)
+    expect(faced).toEqual(["vid_w"])
+  })
+
+  it("under Open, shows at three seconds held, then offers to hide (#1966)", () => {
+    const desc = description()
+    actuator.realize([plated(desc, false, VIDEO, "held")])
+    const held = control()
+    key("keydown")
+    vi.advanceTimersByTime(2_999)
+    expect(faced).toEqual([])
+    vi.advanceTimersByTime(1)
+    expect(faced, "reported still held").toEqual(["vid_w"])
+
+    // Core answers: the face is shown, and the same control stays.
+    actuator.realize([plated(desc, true, VIDEO, "held")])
+    expect(control()).toBe(held)
+    expect(control()?.textContent).toBe("Hide original")
+    key("keyup")
+    vi.advanceTimersByTime(0)
+    expect(faced, "the press that showed it hides nothing").toEqual(["vid_w"])
+
+    key("keydown")
+    key("keyup")
+    expect(faced, "the hide reports at once").toEqual(["vid_w", "-vid_w"])
+    actuator.realize([plated(desc, false, VIDEO, "held")])
+    expect(control()?.textContent).toBe("Hold to show the original thumbnail")
+  })
+
+  it("keeps Space and Enter from YouTube's own keys, held or let go", () => {
+    actuator.realize([plated(description())])
+    const reached: Array<string> = []
+    const page = new AbortController()
+    for (const type of ["keydown", "keyup"]) {
+      document.addEventListener(type, () => reached.push(type), {
+        signal: page.signal,
+      })
+    }
+    for (const name of [" ", "Enter"]) {
+      key("keydown", false, name)
+      vi.advanceTimersByTime(1_000)
+      key("keyup", false, name)
+    }
+    page.abort()
+    expect(reached).toEqual([])
+  })
+
+  it("keeps the description's own click from the control", () => {
+    const desc = description()
+    let expanded = 0
+    desc.addEventListener("click", () => (expanded += 1))
+    actuator.realize([plated(desc)])
+    control()?.click()
+    expect(expanded).toBe(0)
+  })
+
+  it("lifts the poster's plate once held, and takes everything back after", () => {
+    const desc = description()
+    actuator.realize([plated(desc)])
+    actuator.realize([plated(desc, true)])
+    const root = document.documentElement
+    expect(root.hasAttribute("data-boyo-face")).toBe(true)
+    expect(control(), "the control goes once used").toBeNull()
+
+    actuator.realize([
+      {
+        action: {
+          kind: "watch",
+          view: null,
+          videoId: null,
+          miniplayer: false,
+          poster: null,
+          face: false,
+          offer: "release",
+        },
+        targets: [],
+      },
+    ])
+    expect(root.hasAttribute("data-boyo-face")).toBe(false)
+    expect(root.style.getPropertyValue("--boyo-poster")).toBe("")
+    expect(root.hasAttribute("style")).toBe(false)
   })
 })

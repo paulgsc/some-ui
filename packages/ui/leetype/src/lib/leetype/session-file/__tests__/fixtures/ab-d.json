@@ -1,0 +1,670 @@
+{
+  "variant": "D",
+  "title": "Bet, then read the source",
+  "oneLine": "Each round is a short passage from a real paper: you bet on what it says before reading it, read it, then use it; a missed bet places the source itself as the reading.",
+  "session": {
+    "kind": "probe",
+    "budgetMinutes": 10
+  },
+  "start": "s01",
+  "screens": {
+    "s01": {
+      "type": "info",
+      "title": "Read it, but bet first",
+      "body": "Today's job: read a few short passages from real papers. Before each one, you bet on what it says.\n\nA bet is a pick you make before reading. \"Not sure\" is an honest bet and goes in your record as evidence.\n\nIf a bet misses, you are sent to the passage with a note on what to look for. Nothing is taken away and you are never told the answer; the paper says it.\n\nAbout 10 minutes. At the end you say one idea out loud; the recording is kept with its prompt and your own ticks.",
+      "actions": [
+        {
+          "label": "Start",
+          "next": "r1-bet"
+        }
+      ],
+      "tags": ["primer"]
+    },
+    "r1-bet": {
+      "type": "choice",
+      "pinned": "Job: bet on whether a recovery that asks any 3 out of 5 replicas always finds a write that reached 3.",
+      "title": "First bet",
+      "body": "Five replicas: A, B, C, D, E.\n\nA write W was acknowledged to the client after A, B and C had stored it. Then the leader crashed.\n\nRecovery: the new leader asks any 3 replicas what they stored.\n\nBet: do the 3 it asks always include a replica that stored W?",
+      "options": [
+        {
+          "label": "Yes, always. Any 3 of the 5 include one of A, B, C.",
+          "correct": true,
+          "feedback": "Right bet: 3 + 3 = 6, but only 5 replicas exist, so two groups of 3 must share one. Now read where Lamport rests the protocol on this.",
+          "next": "r1-read"
+        },
+        {
+          "label": "No. It might ask D, E and one that missed W.",
+          "correct": false,
+          "feedback": "Check that worst case: D and E are the only replicas that missed W. How many replicas does the leader have to ask?",
+          "next": "p1a"
+        },
+        {
+          "label": "Only if it asks 4 replicas or more.",
+          "correct": false,
+          "feedback": "Four would also work, but is it needed? Count how many replicas have W and how many the leader asks.",
+          "next": "p1a"
+        },
+        {
+          "label": "Only if the old leader is one of the 3 it asks.",
+          "correct": false,
+          "feedback": "The old leader crashed, so it may never answer. Does a safe recovery get to depend on it?",
+          "next": "p1a"
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "p1a"
+        }
+      ],
+      "onHesitate": "p1a",
+      "tags": ["round:1"]
+    },
+    "r1-read": {
+      "type": "reading",
+      "title": "Lamport, in his own terms",
+      "primer": "Why now: Lamport builds Paxos on one counting fact. Look for the size he picks for \"large enough\" and the one-line reason he gives for it.",
+      "source": {
+        "title": "Paxos Made Simple",
+        "author": "Lamport",
+        "year": 2001,
+        "where": "§2.2, p. 2",
+        "url": "https://lamport.azurewebsites.net/pubs/paxos-simple.pdf",
+        "minutes": 5
+      },
+      "passage": "Close paraphrase. Several acceptors must be able to choose a value, so one failed acceptor does not stop everything. To make sure only a single value is chosen, a value counts as chosen when a large enough set of acceptors accepts it. Take \"large enough\" to mean any majority of the acceptors. Any two majorities have at least one acceptor in common. So if each acceptor accepts at most one value, two different values can never both be chosen.",
+      "actions": [
+        {
+          "label": "I have read it",
+          "next": "r1-settle",
+          "effect": "read"
+        },
+        {
+          "label": "Save the full paper for a Read session",
+          "next": "r1-settle",
+          "effect": "save"
+        }
+      ],
+      "tags": ["reading"]
+    },
+    "r1-settle": {
+      "type": "choice",
+      "pinned": "Job: use the reading to say what breaks when a quorum is not a majority.",
+      "title": "What the passage settles",
+      "body": "A teammate says: \"Five replicas is slow. Acknowledge a write once 2 replicas have stored it, and recover by asking any 2.\"\n\nUsing what Lamport rests on, what breaks first?",
+      "options": [
+        {
+          "label": "The 2 that stored a write and the 2 asked in recovery can be different replicas, so an acknowledged write can be missed.",
+          "correct": true,
+          "feedback": "Yes: 2 + 2 = 4, fewer than 5. A write on A, B is invisible to a recovery that asks C, D, and the new leader may pick another value for the same slot.",
+          "next": "r2-bet"
+        },
+        {
+          "label": "Writes get slower, because the leader waits for more replicas.",
+          "correct": false,
+          "feedback": "With 2 it waits for fewer, not more. Ask what a recovery can miss, not what a write waits for.",
+          "next": "p1b"
+        },
+        {
+          "label": "A leader can no longer be elected.",
+          "correct": false,
+          "feedback": "Smaller groups make election easier, not harder. Look for what the easier election lets through.",
+          "next": "p1b"
+        },
+        {
+          "label": "Nothing, as long as the leader stays stable.",
+          "correct": false,
+          "feedback": "Leaders crash, and a successor has to recover. What does the successor need to see in order to be safe?",
+          "next": "p1b"
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "p1b"
+        }
+      ],
+      "onHesitate": "p1b",
+      "tags": ["settle"]
+    },
+    "p1a": {
+      "type": "reading",
+      "title": "A reading, placed",
+      "primer": "This round is parked until you have read this. Find the size Lamport picks for \"large enough\" and the one-line reason he gives. Then count your own example again: how many replicas have W, and how many does the leader ask?",
+      "source": {
+        "title": "Paxos Made Simple",
+        "author": "Lamport",
+        "year": 2001,
+        "where": "§2.2, p. 2",
+        "url": "https://lamport.azurewebsites.net/pubs/paxos-simple.pdf",
+        "minutes": 5
+      },
+      "passage": "Close paraphrase. Several acceptors must be able to choose a value, so one failed acceptor does not stop everything. To make sure only a single value is chosen, a value counts as chosen when a large enough set of acceptors accepts it. Take \"large enough\" to mean any majority of the acceptors. Any two majorities have at least one acceptor in common. So if each acceptor accepts at most one value, two different values can never both be chosen.",
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "r1-ret",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "r2-bet",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "r2-bet"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "p1b": {
+      "type": "reading",
+      "title": "A reading, placed",
+      "primer": "This round is parked until you have read this. Find the single fact each step of the induction uses, and ask what would make a step fail.",
+      "source": {
+        "title": "Paxos vs Raft: Have we reached consensus on distributed consensus?",
+        "author": "Howard, Mortier",
+        "year": 2020,
+        "where": "proof sketch, p. 4",
+        "url": "https://arxiv.org/pdf/2004.05074",
+        "minutes": 5
+      },
+      "passage": "Close paraphrase of the proof sketch. Suppose a value was committed in some earlier term. The authors show that every later leader proposes that same value, by induction over the later terms. Each step uses one fact: the group that committed the value and the group a later leader hears from overlap in at least one server, and that server's state carries the committed value forward.",
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "r1-ret",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "r2-bet",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "r2-bet"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "r1-ret": {
+      "type": "choice",
+      "pinned": "Job: a new case on the same idea, now that you have read the source.",
+      "title": "First idea, back again",
+      "body": "A team runs 6 replicas with quorum 3, \"because that's half\". A network split leaves 3 replicas on each side.\n\nWhat goes wrong?",
+      "options": [
+        {
+          "label": "Each side can gather 3 and acknowledge a different value; two groups of 3 from 6 need not overlap.",
+          "correct": true,
+          "feedback": "3 + 3 = 6 is not more than 6. A majority of 6 is 4, since 4 + 4 = 8 is more than 6.",
+          "next": "r2-bet"
+        },
+        {
+          "label": "Nothing. 3 out of 6 is a majority.",
+          "correct": false,
+          "feedback": "Half is not a majority. This round waits for next session. Test it yourself: can two groups of 3 taken from 6 be completely separate?",
+          "next": "r2-bet"
+        },
+        {
+          "label": "It is safe, and survives more failures than 4 out of 6 would.",
+          "correct": false,
+          "feedback": "It does survive 3 failures instead of 2. This round waits for next session. What does it give up to do that? Try the split.",
+          "next": "r2-bet"
+        },
+        {
+          "label": "It can never make progress.",
+          "correct": false,
+          "feedback": "Each side of a split can reach 3, so progress is easy. This round waits for next session. Ask whether the two sides' work can be combined.",
+          "next": "r2-bet"
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "r2-bet"
+        }
+      ],
+      "tags": ["round:1", "parked-return"]
+    },
+    "r2-bet": {
+      "type": "choice",
+      "pinned": "Job: bet which part of a commit costs more, the network or the disk.",
+      "title": "Second bet",
+      "body": "A 3-server cluster in one datacenter. To commit, the leader sends the entry to followers, which must fsync it before replying. The leader writes its own copy meanwhile.\n\nOur own assumed figures, not from any paper:\nnetwork round trip: 0.3 ms\nfsync: 1 ms\n\nA commit needs the leader's copy and one follower's reply. Bet: what is most of the time?",
+      "options": [
+        {
+          "label": "The disk. About 1.3 ms in all, 1 ms of it an fsync.",
+          "correct": true,
+          "feedback": "Right bet. Follower path: 0.3 ms round trip + 1 ms fsync = 1.3 ms. The leader's own 1 ms fsync runs in parallel. Now read how the Raft authors put a number on this.",
+          "next": "r2-read"
+        },
+        {
+          "label": "The network, because it is the distributed part.",
+          "correct": false,
+          "feedback": "Here the network is 0.3 ms. Add up the path a follower's reply travels: what else is on it?",
+          "next": "p2a"
+        },
+        {
+          "label": "They are about equal.",
+          "correct": false,
+          "feedback": "Compare the two figures on screen: 0.3 against 1. Are they about equal?",
+          "next": "p2a"
+        },
+        {
+          "label": "The leader's own write, because it goes first.",
+          "correct": false,
+          "feedback": "The leader writes while it sends. Which of the two paths finishes last?",
+          "next": "p2a"
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "p2a"
+        }
+      ],
+      "onHesitate": "p2a",
+      "tags": ["round:2"]
+    },
+    "r2-read": {
+      "type": "reading",
+      "title": "Raft's authors, on timing",
+      "primer": "Why now: your bet put a number on the disk. Look for what a server has to do before it can answer, and what the authors say that does to the range.",
+      "source": {
+        "title": "In Search of an Understandable Consensus Algorithm (extended)",
+        "author": "Ongaro, Ousterhout",
+        "year": 2014,
+        "where": "§5.6, p. 10",
+        "url": "https://raft.github.io/raft.pdf",
+        "minutes": 3
+      },
+      "passage": "Close paraphrase. Raft's timing rule is broadcastTime << electionTimeout << MTBF. Broadcast time is how long a server takes to send a request to every other server in parallel and get their answers. Because the answers require the other servers to write to stable storage first, the authors say broadcast time may range from about 0.5 ms to 20 ms, depending on the storage technology. Election timeouts must be much larger than that, or servers keep deposing a working leader.",
+      "actions": [
+        {
+          "label": "I have read it",
+          "next": "r2-settle",
+          "effect": "read"
+        },
+        {
+          "label": "Save the full paper for a Read session",
+          "next": "r2-settle",
+          "effect": "save"
+        }
+      ],
+      "tags": ["reading"]
+    },
+    "r2-settle": {
+      "type": "choice",
+      "pinned": "Job: use the reading to decide where an upgrade pays.",
+      "title": "What the passage settles",
+      "body": "Same cluster: 0.3 ms round trip, 1 ms fsync, so a commit takes about 1.3 ms. You can pay for one upgrade.\n\nX: a network 10 times faster (0.03 ms round trip).\nY: storage 10 times faster (0.1 ms fsync).\n\nWork out the commit time under each, then pick.",
+      "options": [
+        {
+          "label": "Y. 0.3 + 0.1 = 0.4 ms, against 0.03 + 1 = 1.03 ms for X.",
+          "correct": true,
+          "feedback": "Right: X removes 0.27 ms of a 1.3 ms commit, Y removes 0.9 ms. The rung that decides the total is the one to speed up.",
+          "next": "r2-ret"
+        },
+        {
+          "label": "X. Raft is about messages, so the network is the cost.",
+          "correct": false,
+          "feedback": "X leaves the 1 ms fsync in place: 0.03 + 1 = 1.03 ms. Work out Y the same way and compare.",
+          "next": "p2b"
+        },
+        {
+          "label": "Both give about the same.",
+          "correct": false,
+          "feedback": "Work both out, with the fsync in each sum. Are the two totals close?",
+          "next": "p2b"
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "p2b"
+        }
+      ],
+      "onHesitate": "p2b",
+      "tags": ["settle"]
+    },
+    "p2a": {
+      "type": "reading",
+      "title": "A reading, placed",
+      "primer": "This round is parked until you have read this. Find what a server must do before it answers, and what the authors say that does to the range of broadcast time.",
+      "source": {
+        "title": "In Search of an Understandable Consensus Algorithm (extended)",
+        "author": "Ongaro, Ousterhout",
+        "year": 2014,
+        "where": "§5.6, p. 10",
+        "url": "https://raft.github.io/raft.pdf",
+        "minutes": 3
+      },
+      "passage": "Close paraphrase. Raft's timing rule is broadcastTime << electionTimeout << MTBF. Broadcast time is how long a server takes to send a request to every other server in parallel and get their answers. Because the answers require the other servers to write to stable storage first, the authors say broadcast time may range from about 0.5 ms to 20 ms, depending on the storage technology. Election timeouts must be much larger than that, or servers keep deposing a working leader.",
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "r2-ret",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "r3-bet",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "r3-bet"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "p2b": {
+      "type": "reading",
+      "title": "A reading, placed",
+      "primer": "This round is parked until you have read this. Find whose flush is on the path to a commit and whose is not, and why the reply may not come before the flush.",
+      "source": {
+        "title": "Consensus: Bridging Theory and Practice",
+        "author": "Ongaro",
+        "year": 2014,
+        "where": "§10.2.1, pp. 141-142",
+        "url": "https://web.stanford.edu/~ouster/cgi-bin/papers/OngaroPhD.pdf",
+        "minutes": 6
+      },
+      "passage": "Close paraphrase. The leader can write new entries to its own disk in parallel with sending them to the followers, so its flush does not have to add to the commit time. A follower has to flush before it replies, because its reply tells the leader \"I have stored this\". The commit time therefore includes one network round trip and one follower flush.",
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "r2-ret",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "r3-bet",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "r3-bet"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "r2-ret": {
+      "type": "choice",
+      "pinned": "Job: a new case on the same idea, now that you have read the source.",
+      "title": "Second idea, back again",
+      "body": "A different cluster: leader and 2 followers in different zones.\n\nround trip: 0.5 ms\nfsync on fast NVMe: 0.1 ms\n\nWhere does a commit spend most of its time now?",
+      "options": [
+        {
+          "label": "The network: 0.5 ms of about 0.6 ms.",
+          "correct": true,
+          "feedback": "Round trip 0.5 + follower fsync 0.1 = 0.6 ms. Which rung dominates depends on your numbers; check before you optimise.",
+          "next": "r3-bet"
+        },
+        {
+          "label": "The disk. It is always the slowest part.",
+          "correct": false,
+          "feedback": "That held at 1 ms against 0.3 ms. This round waits for next session. Redo the sum with today's two numbers.",
+          "next": "r3-bet"
+        },
+        {
+          "label": "They are about equal.",
+          "correct": false,
+          "feedback": "This round waits for next session. Compare 0.5 with 0.1.",
+          "next": "r3-bet"
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "r3-bet"
+        }
+      ],
+      "tags": ["round:2", "parked-return"]
+    },
+    "r3-bet": {
+      "type": "choice",
+      "pinned": "Job: bet whether a leader that still believes it is leader can answer a read from its own copy.",
+      "title": "Third bet",
+      "body": "Three servers hold a replicated counter, now 41. S1 is the leader.\n\nA network fault cuts S1 off from S2 and S3. They elect S2, and a client writes 42 through S2.\n\nS1 has heard nothing and still thinks it is leader. A client asks S1 to read the counter, and S1 answers from its own copy.\n\nBet: what does that client get?",
+      "options": [
+        {
+          "label": "41. It was true once; S1 cannot tell it has been replaced.",
+          "correct": true,
+          "feedback": "Right bet: a stale read. Reading wrote nothing to the log, and that is exactly why nothing told S1. Now read what the Raft authors make a leader do first.",
+          "next": "r3-read"
+        },
+        {
+          "label": "42, because replication keeps S1 up to date.",
+          "correct": false,
+          "feedback": "S1 is cut off from S2 and S3. What can reach it?",
+          "next": "p3a"
+        },
+        {
+          "label": "An error, because a leader knows when it has lost its majority.",
+          "correct": false,
+          "feedback": "S1 knows only if it checks. Does answering from its own copy involve any check?",
+          "next": "p3a"
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "p3a"
+        }
+      ],
+      "onHesitate": "p3a",
+      "tags": ["round:3"]
+    },
+    "r3-read": {
+      "type": "reading",
+      "title": "Raft's authors, on reads",
+      "primer": "Why now: reading writes nothing, so nothing tells a deposed leader it was deposed. Look for the two things the leader does first, and for what the lease alternative relies on.",
+      "source": {
+        "title": "In Search of an Understandable Consensus Algorithm (extended)",
+        "author": "Ongaro, Ousterhout",
+        "year": 2014,
+        "where": "§8, p. 13",
+        "url": "https://raft.github.io/raft.pdf",
+        "minutes": 6
+      },
+      "passage": "Close paraphrase. Read-only requests can be handled without writing to the log. But with no extra measures this risks returning stale data, because the leader answering might have been superseded by a newer leader it does not know about. So Raft makes a leader do two things. It must know which entries are committed, which it learns by committing a no-op entry at the start of its term. And it must exchange heartbeats with a majority of the cluster before answering a read. A lease on the leader's clock is an alternative, but it relies on bounded clock drift.",
+      "actions": [
+        {
+          "label": "I have read it",
+          "next": "r3-settle",
+          "effect": "read"
+        },
+        {
+          "label": "Save the full paper for a Read session",
+          "next": "r3-settle",
+          "effect": "save"
+        }
+      ],
+      "tags": ["reading"]
+    },
+    "r3-settle": {
+      "type": "choice",
+      "pinned": "Job: use the reading to say what the fix does and what it costs.",
+      "title": "What the passage settles",
+      "body": "S1 now does what the paper says: before answering a read, it sends a heartbeat to S2 and S3 and waits for replies from a majority. It is still cut off.\n\nWhat happens to the read?",
+      "options": [
+        {
+          "label": "S1 cannot reach a majority (it counts as 1 out of 3), so it does not answer; the client must find S2.",
+          "correct": true,
+          "feedback": "Yes: the stale 41 is never served. The price is one round trip to a majority on every read.",
+          "next": "r3-ret"
+        },
+        {
+          "label": "S1 answers 41 anyway after a timeout.",
+          "correct": false,
+          "feedback": "The check exists to stop exactly that. What does the read need before it may be answered?",
+          "next": "p3b"
+        },
+        {
+          "label": "S1 asks S2 and S3, so it learns 42 and answers 42.",
+          "correct": false,
+          "feedback": "S1 is cut off from both. Who can reply?",
+          "next": "p3b"
+        },
+        {
+          "label": "S1 steps down the moment it sends the heartbeat.",
+          "correct": false,
+          "feedback": "A leader steps down when it learns of a higher term. Without any reply, what does S1 actually know?",
+          "next": "p3b"
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "p3b"
+        }
+      ],
+      "onHesitate": "p3b",
+      "tags": ["settle"]
+    },
+    "p3a": {
+      "type": "reading",
+      "title": "A reading, placed",
+      "primer": "This round is parked until you have read this. Find the risk the authors name for answering from the leader's own copy, and the two things a leader does before it answers.",
+      "source": {
+        "title": "In Search of an Understandable Consensus Algorithm (extended)",
+        "author": "Ongaro, Ousterhout",
+        "year": 2014,
+        "where": "§8, p. 13",
+        "url": "https://raft.github.io/raft.pdf",
+        "minutes": 6
+      },
+      "passage": "Close paraphrase. Read-only requests can be handled without writing to the log. But with no extra measures this risks returning stale data, because the leader answering might have been superseded by a newer leader it does not know about. So Raft makes a leader do two things. It must know which entries are committed, which it learns by committing a no-op entry at the start of its term. And it must exchange heartbeats with a majority of the cluster before answering a read. A lease on the leader's clock is an alternative, but it relies on bounded clock drift.",
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "r3-ret",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "rec",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "rec"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "p3b": {
+      "type": "reading",
+      "title": "A reading, placed",
+      "primer": "This round is parked until you have read this. Find which side's lease timeout is shorter, and what that protects against. Then find what the epoch number lets the master detect.",
+      "source": {
+        "title": "Paxos Made Live",
+        "author": "Chandra, Griesemer, Redstone",
+        "year": 2007,
+        "where": "§5.2-5.3, pp. 6-7",
+        "url": "https://static.googleusercontent.com/media/research.google.com/en//archive/paxos_made_live.pdf",
+        "minutes": 6
+      },
+      "passage": "Close paraphrase. A master cannot answer reads from its own copy without agreement. Google's system gives the master a lease: the replicas promise not to elect another master for the lease period, and the master's own timeout is set shorter than theirs so it stops serving before a new master can exist. The master also keeps an epoch number in the database and makes its operations conditional on it, so a request is aborted if this replica lost and re-acquired mastership while handling it.",
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "r3-ret",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "rec",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "rec"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "r3-ret": {
+      "type": "choice",
+      "pinned": "Job: a new case on the same idea, now that you have read the source.",
+      "title": "Third idea, back again",
+      "body": "A different system skips the per-read heartbeat. Its leader answers reads from its own copy while a 5-second lease lasts. Followers promised not to vote for anyone else for 5 seconds after their last reply.\n\nWhat does a correct answer from the leader rest on?",
+      "options": [
+        {
+          "label": "The leader's clock must not run slower than the followers', or it keeps serving after their promise has expired.",
+          "correct": true,
+          "feedback": "Right: the lease swaps a round trip per read for a timing assumption. If it fails, a newer leader and the old one can both answer.",
+          "next": "rec"
+        },
+        {
+          "label": "That no message is ever lost.",
+          "correct": false,
+          "feedback": "Lost messages slow progress but do not make a lease unsafe. This round waits for next session. Ask where time comes into the promise.",
+          "next": "rec"
+        },
+        {
+          "label": "That the leader never crashes.",
+          "correct": false,
+          "feedback": "A crashed leader serves nothing. This round waits for next session. Which clock does the leader trust to know the lease is still valid?",
+          "next": "rec"
+        },
+        {
+          "label": "Not sure",
+          "abstain": true,
+          "next": "rec"
+        }
+      ],
+      "tags": ["round:3", "parked-return"]
+    },
+    "rec": {
+      "type": "record",
+      "title": "Say it out loud",
+      "pinned": "Job: say, in your own voice, what forces a majority.",
+      "prompt": "A teammate says: \"Five replicas is a lot of waiting. Let's acknowledge a write after just 2 have it.\"\n\nIn about 40 seconds, tell them what a majority is for, what breaks with 2 out of 5, and what a majority costs. No notes.",
+      "maxSeconds": 60,
+      "rubric": [
+        "Any two majorities of 5 share at least one replica (3 + 3 is more than 5).",
+        "So a recovery that asks a majority always meets a replica holding every acknowledged write.",
+        "With 2 out of 5, two separate groups can acknowledge different writes, and one is lost or conflicts.",
+        "Cost: you wait for a third reply, and with 3 out of 5 down nothing can be committed (safe but stuck)."
+      ],
+      "weakIfFewerThan": 2,
+      "next": "end",
+      "onWeak": "p-rec",
+      "tags": ["speak"]
+    },
+    "p-rec": {
+      "type": "reading",
+      "title": "A reading, placed",
+      "primer": "Your recording is kept, with this prompt and your ticks. This speaking round is parked until you have read this. Find what each vote carries and who is allowed to win, then ask what the majority is doing in that rule.",
+      "source": {
+        "title": "Paxos vs Raft: Have we reached consensus on distributed consensus?",
+        "author": "Howard, Mortier",
+        "year": 2020,
+        "where": "§3.3, pp. 3-4",
+        "url": "https://arxiv.org/pdf/2004.05074",
+        "minutes": 10
+      },
+      "passage": "Close paraphrase. Both Paxos and Raft must give a new leader every committed entry. They get there differently. In Raft a voter grants its vote only to a candidate whose log is at least as up to date as its own, so any winner already holds every committed entry. In Paxos the voters send back the entries they hold, and the new leader picks up the highest-numbered ones from the replies. In both, the majority that committed an entry and the majority that elects the leader overlap in at least one server.",
+      "actions": [
+        {
+          "label": "Read now",
+          "next": "end",
+          "effect": "read"
+        },
+        {
+          "label": "Save for a Read session",
+          "next": "end",
+          "effect": "save"
+        },
+        {
+          "label": "Skip",
+          "next": "end"
+        }
+      ],
+      "tags": ["placement", "struggle"]
+    },
+    "end": {
+      "type": "end",
+      "title": "Where you are",
+      "body": "Your record, in words:\n\nFor each passage you either bet right and settled it, or read it and parked the round, or saved it for later. A parked round comes back only after you mark its reading read; a saved reading waits in your list.\n\nSources touched today: Lamport on majorities, Howard and Mortier on the proof, Raft on storage in a commit and on reads, Ongaro on whose flush counts, Chandra et al. on leases.\n\nYour spoken answer is saved with its prompt, rubric and your ticks, and exported for the weekly review.\n\nNext time starts from what is parked or saved, then one new passage.",
+      "actions": [],
+      "tags": ["end", "map"]
+    }
+  }
+}

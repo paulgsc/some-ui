@@ -19,6 +19,7 @@
  * rounds against the server's attested hash.
  */
 import { CapacitorHttp } from "@capacitor/core"
+import type { HomeAnswer } from "@some-ui/core-utils"
 import type { ForeignPort, ForeignVerdict } from "@some-ui/intent-kit"
 import {
   callForeign,
@@ -26,14 +27,19 @@ import {
   reportFailure,
 } from "@some-ui/intent-kit"
 
-import { foreignValue, isMissingPlugin } from "@/lib/intent/foreign"
+import {
+  ForeignCallError,
+  foreignValue,
+  isMissingPlugin,
+} from "@/lib/intent/foreign"
+
+import { HomeNoAnswerError } from "./no-answer"
 
 /** Long enough for a slow LAN; short enough to say "unreachable" promptly. */
 const TIMEOUT_MS = 10_000
 
-export type HomeAnswer = { status: number; body: string }
-
-export type HomeCall = {
+/** One request as the plugin sends it; the phone's exchanges send `HomeCall`s. */
+export type HomeRequest = {
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
   url: string
   /** The pairing's session token, sent as `Authorization: Bearer`. */
@@ -44,6 +50,8 @@ export type HomeCall = {
    * byte for byte and home's content hash matches the phone's).
    */
   body?: unknown
+  /** Sent as `If-None-Match`. */
+  ifNoneMatch?: string
 }
 
 /** A credentialed request to a URL that is not `https:`. Nothing was sent. */
@@ -81,14 +89,15 @@ const PORT: ForeignPort = {
   report: reportFailure,
 }
 
-export async function homeRequest(call: HomeCall): Promise<HomeAnswer> {
-  const { method, url, token, body } = call
+export async function homeRequest(call: HomeRequest): Promise<HomeAnswer> {
+  const { method, url, token, body, ifNoneMatch } = call
   if (token !== undefined && new URL(url).protocol !== "https:") {
     throw new InsecureHomeError()
   }
   const headers: Record<string, string> = {}
   if (token !== undefined) headers.Authorization = `Bearer ${token}`
   if (body !== undefined) headers["Content-Type"] = "application/json"
+  if (ifNoneMatch !== undefined) headers["If-None-Match"] = ifNoneMatch
   const answer = await foreignValue(
     callForeign({
       port: PORT,
@@ -105,11 +114,19 @@ export async function homeRequest(call: HomeCall): Promise<HomeAnswer> {
           connectTimeout: TIMEOUT_MS,
           readTimeout: TIMEOUT_MS,
         }),
-    })
+    }),
+    (error) =>
+      error.kind === "unreachable"
+        ? new HomeNoAnswerError(error)
+        : new ForeignCallError(error)
   )
   const { data } = answer
+  const etag = Object.entries(answer.headers).find(
+    ([name]) => name.toLowerCase() === "etag"
+  )?.[1]
   return {
     status: answer.status,
     body: typeof data === "string" ? data : JSON.stringify(data),
+    ...(etag === undefined ? {} : { etag }),
   }
 }

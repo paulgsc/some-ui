@@ -23,6 +23,7 @@ import { createSensor, NAV_DEBOUNCE_MS } from "./sensor"
 const TABLE: LayoutTable = YOUTUBE_LAYOUT
 
 let tokens: Array<Token>
+let admitted: Set<string>
 let facts: Array<CoreFact>
 let sensor: Sensor
 let now: number
@@ -45,7 +46,8 @@ function lockup(videoId: string, channel: string | null = "Chan"): HTMLElement {
   el.innerHTML = `
     <a class="yt-lockup-view-model__content-image" href="/watch?v=${videoId}"></a>
     <h3><a class="yt-lockup-metadata-view-model__title" href="/watch?v=${videoId}"><span>Lock ${videoId}</span></a></h3>
-    ${channel === null ? "" : `<a class="yt-content-metadata-view-model__metadata-text" href="/@${channel}">${channel}</a>`}`
+    ${channel === null ? "" : `<a class="yt-content-metadata-view-model__metadata-text" href="/@${channel}">${channel}</a>`}
+    <span class="yt-content-metadata-view-model__metadata-text">2 days ago</span>`
   return el
 }
 
@@ -77,6 +79,7 @@ function startSensor(): Sensor {
     mintSession: () => session(++sessions),
     emit: (t) => tokens.push(t),
     onFact: (f) => facts.push(f),
+    admits: (videoId) => admitted.has(videoId),
   })
   s.start()
   return s
@@ -104,6 +107,7 @@ beforeEach(() => {
   document.body.innerHTML = ""
   tokens = []
   facts = []
+  admitted = new Set()
   now = 10_000
   sessions = 0
   sensor = startSensor()
@@ -139,6 +143,7 @@ describe("observing cards", () => {
       channelId: "@Chan",
       title: "Title a",
       uploadDate: "2 days ago",
+      short: false,
       surface: "home",
       renderer: "ytd-rich-item-renderer",
       shape: "known",
@@ -148,6 +153,7 @@ describe("observing cards", () => {
       c?.kind === "observed" && c.observation.channelId,
       "a short has no channel"
     ).toBeNull()
+    expect(c?.kind === "observed" && c.observation.short).toBe(true)
   })
 
   it("sees an inserted card through the observer, and a card nested in an inserted cell", async () => {
@@ -241,6 +247,16 @@ describe("the retry queue", () => {
     ).toBe(0)
   })
 
+  it("keeps the retry loop alive for a card with no date, then lets it stop", async () => {
+    const el = cell("undated")
+    el.querySelector("#metadata-line span:nth-child(2)")!.textContent = ""
+    document.body.appendChild(el)
+    await tick()
+    expect(vi.getTimerCount(), "kept alive for the date").toBe(1)
+    await tick(RESOLVE_BUDGET_MS / RETRY_INTERVAL_MS + 2)
+    expect(vi.getTimerCount(), "budget spent, loop stopped").toBe(0)
+  })
+
   it("rejects a shell at budget, stickily, and revives it on extraction", async () => {
     const channelTile = document.createElement("yt-lockup-view-model")
     channelTile.innerHTML = '<a href="/@c">c</a>'
@@ -285,16 +301,89 @@ describe("the retry queue", () => {
     expect(sensor.census().channelPending).toHaveLength(0)
   })
 
+  it("re-reads a card whose channel name hydrates after its link", async () => {
+    const el = lockup("unnamed", "Named")
+    const link = el.querySelector<HTMLElement>('a[href="/@Named"]')!
+    link.textContent = ""
+    const text = link.appendChild(document.createTextNode(""))
+    document.body.appendChild(el)
+    await tick()
+    expect(sensor.census().channelPending, "its channel is known").toHaveLength(
+      0
+    )
+
+    // A text node's data changing is no mutation the observer sees.
+    text.data = "Named"
+    await tick(2)
+    const last = tokens
+      .filter((t) => t.kind === "observed" && t.key === K("unnamed"))
+      .at(-1)
+    expect(last?.kind === "observed" && last.observation.channelName).toBe(
+      "Named"
+    )
+  })
+
+  it("re-reads a card whose title hydrates after it, as the lane needs (QD15)", async () => {
+    const el = cell("untitled")
+    const anchor = el.querySelector<HTMLElement>("#video-title")!
+    anchor.textContent = ""
+    const text = anchor.appendChild(document.createTextNode(""))
+    document.body.appendChild(el)
+    await tick()
+
+    // A text node's data changing is no mutation the observer sees.
+    text.data = "Stay With Me MV"
+    await tick(2)
+    const last = tokens
+      .filter((t) => t.kind === "observed" && t.key === K("untitled"))
+      .at(-1)
+    expect(last?.kind === "observed" && last.observation.title).toBe(
+      "Stay With Me MV"
+    )
+  })
+
+  it("gives up on a name that never arrives quietly, and stops", async () => {
+    const el = lockup("nameless", "Nameless")
+    el.querySelector('a[href="/@Nameless"]')!.textContent = ""
+    document.body.appendChild(el)
+    await tick()
+    expect(vi.getTimerCount(), "the name is waited for").toBeGreaterThan(0)
+    await tick(RESOLVE_BUDGET_MS / RETRY_INTERVAL_MS + 2)
+    expect(facts.some((f) => f.kind === "channel.abandoned")).toBe(false)
+    expect(vi.getTimerCount(), "the loop terminates").toBe(0)
+  })
+
+  it("runs out a channel budget even while the card churns", async () => {
+    const el = lockup("churning", null)
+    document.body.appendChild(el)
+    await tick()
+    const preview = document.createElement("a")
+    preview.setAttribute("href", "/watch?v=preview")
+    el.prepend(preview)
+    el.insertAdjacentHTML(
+      "beforeend",
+      '<a class="yt-content-metadata-view-model__metadata-text" href="/@Late">Late</a>'
+    )
+    await tick(RESOLVE_BUDGET_MS / RETRY_INTERVAL_MS + 2)
+    expect(facts).toContainEqual({ kind: "churn.ignored", videoId: "churning" })
+    expect(facts).toContainEqual({
+      kind: "channel.abandoned",
+      videoId: "churning",
+    })
+    expect(sensor.census().channelPending).toHaveLength(0)
+    expect(vi.getTimerCount(), "the loop terminates").toBe(0)
+  })
+
   it("gives up on a channel that never arrives, keeping the card", async () => {
-    document.body.appendChild(shorts("s"))
+    document.body.appendChild(lockup("a", null))
     await tick(RESOLVE_BUDGET_MS / RETRY_INTERVAL_MS + 2)
     expect(sensor.census().channelPending).toHaveLength(0)
-    expect(facts).toContainEqual({ kind: "channel.abandoned", videoId: "s" })
+    expect(facts).toContainEqual({ kind: "channel.abandoned", videoId: "a" })
     expect(tokens.filter((t) => t.kind === "gone")).toEqual([])
   })
 
   it("starts a fresh channel budget for the video a pending card is recycled to", async () => {
-    const el = shorts("s")
+    const el = lockup("a", null)
     document.body.appendChild(el)
     await tick(RESOLVE_BUDGET_MS / RETRY_INTERVAL_MS + 2)
     expect(sensor.census().channelPending).toHaveLength(0)
@@ -302,6 +391,66 @@ describe("the retry queue", () => {
     el.replaceChildren(...lockup("b", null).childNodes)
     await tick()
     expect(sensor.census().channelPending).toHaveLength(1)
+  })
+
+  it("never waits on a channel for a Short or a Mix, which carry none (#1848)", async () => {
+    const mix = lockup("m", null)
+    mix.insertAdjacentHTML(
+      "afterbegin",
+      "<yt-collection-thumbnail-view-model></yt-collection-thumbnail-view-model>"
+    )
+    document.body.append(shorts("s"), mix)
+    await tick()
+    expect(observedKeys()).toEqual([K("s"), K("m")])
+    expect(sensor.census().channelPending).toHaveLength(0)
+  })
+})
+
+describe("surface", () => {
+  function pages(): { browse: HTMLElement; watch: HTMLElement } {
+    const manager = document.createElement("ytd-page-manager")
+    const browse = document.createElement("ytd-browse")
+    browse.setAttribute("page-subtype", "home")
+    const watch = document.createElement("ytd-watch-flexy")
+    manager.append(watch, browse)
+    document.body.appendChild(manager)
+    return { browse, watch }
+  }
+
+  function surfaceOf(key: string): string | undefined {
+    const token = tokens.find((t) => t.kind === "observed" && t.key === key)
+    return token?.kind === "observed" ? token.observation.surface : undefined
+  }
+
+  it("puts a card in the page an SPA navigation left hidden on that page's surface (#1848)", async () => {
+    const { browse, watch } = pages()
+    watch.setAttribute("hidden", "")
+    browse.appendChild(lockup("shown"))
+    watch.appendChild(lockup("left"))
+    await tick()
+    expect(surfaceOf(K("shown"))).toBe("home")
+    expect(surfaceOf(K("left"))).toBe("watch")
+  })
+
+  it("places a card in the hidden page against that page's layout, not the shown one's", async () => {
+    // The home table has never seen a playlist-panel row; the watch table has.
+    const { watch } = pages()
+    watch.setAttribute("hidden", "")
+    const row = document.createElement("ytd-playlist-panel-video-renderer")
+    row.innerHTML = '<a id="wc-endpoint" href="/watch?v=row"></a>'
+    watch.appendChild(row)
+    await tick()
+    expect(observedKeys()).toEqual([K("row")])
+    expect(tokens.filter((t) => t.kind === "unknown-shape")).toEqual([])
+  })
+
+  it("names a hidden page it cannot place other, never the page shown", async () => {
+    const { browse } = pages()
+    browse.setAttribute("hidden", "")
+    browse.setAttribute("page-subtype", "channels")
+    browse.appendChild(lockup("left"))
+    await tick()
+    expect(surfaceOf(K("left"))).toBe("other")
   })
 })
 
@@ -398,16 +547,6 @@ describe("identity", () => {
     await tick(5)
     expect(observedKeys().filter((k) => k === K("quiet"))).toHaveLength(1)
   })
-
-  it("re-observes a card on refresh, reading the evidence now", async () => {
-    const el = cell("fresh")
-    document.body.appendChild(el)
-    await tick()
-    el.querySelector("#video-title")!.textContent = "Renamed"
-    sensor.refresh(K("fresh"))
-    const last = tokens.filter((t) => t.kind === "observed").at(-1)
-    expect(last?.kind === "observed" && last.observation.title).toBe("Renamed")
-  })
 })
 
 describe("navigation (B5)", () => {
@@ -423,6 +562,199 @@ describe("navigation (B5)", () => {
     // The element was reused in place; the re-scan observes it afresh.
     expect(observedKeys()).toEqual([K("before")])
     expect(sensor.custodyOf(K("before"))).toHaveLength(1)
+  })
+})
+
+describe("the watch page (#1805)", () => {
+  function watchPage(videoId: string, date: string | null): HTMLElement {
+    const manager = document.createElement("ytd-page-manager")
+    manager.innerHTML = `<ytd-watch-flexy video-id="${videoId}"><ytd-watch-metadata video-id="${videoId}"><ytd-watch-info-text><yt-formatted-string id="info">${date === null ? "" : `<span>${date}</span>`}</yt-formatted-string></ytd-watch-info-text></ytd-watch-metadata></ytd-watch-flexy>`
+    document.body.appendChild(manager)
+    return manager
+  }
+  const watched = (): Array<unknown> =>
+    tokens.flatMap((t) => (t.kind === "watched" ? [t.watch] : []))
+  const reading = (
+    videoId: string,
+    dates: Array<string>
+  ): Record<string, unknown> => ({
+    videoId,
+    short: false,
+    hydrated: true,
+    dates,
+    miniplayer: false,
+    title: null,
+    channelName: null,
+    artist: false,
+  })
+
+  it("announces the page's video when what is read of it changes, and only then", async () => {
+    const manager = watchPage("w1", "21y ago")
+    await tick()
+    sensor.scan()
+    expect(watched()).toEqual([reading("w1", ["21y ago"])])
+    // An SPA navigation: the page's video changes before anything else does.
+    const flexy = manager.querySelector("ytd-watch-flexy")
+    flexy?.setAttribute("video-id", "w2")
+    await vi.advanceTimersByTimeAsync(0)
+    expect(watched().at(-1)).toMatchObject({ videoId: "w2", hydrated: false })
+    flexy?.setAttribute("hidden", "")
+    manager.append(document.createElement("ytd-browse"))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(watched().at(-1)).toBeNull()
+  })
+
+  it("re-reads the page under the budget, since its date can arrive unobserved", async () => {
+    const manager = watchPage("w1", null)
+    const run = document.createElement("span")
+    const text = run.appendChild(document.createTextNode(""))
+    manager.querySelector("#info")?.appendChild(run)
+    await tick()
+    tokens = []
+    // A date arriving as a text node's data: no mutation this observes.
+    text.data = "3 hours ago"
+    await tick()
+    expect(watched()).toEqual([reading("w1", ["3 hours ago"])])
+    now += RESOLVE_BUDGET_MS
+    await tick(2)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it("reads the page again when the miniplayer opens, though no node moves", async () => {
+    const app = document.createElement("ytd-app")
+    document.body.append(app)
+    const manager = watchPage("w1", "21y ago")
+    manager.querySelector("ytd-watch-flexy")?.setAttribute("hidden", "")
+    const mini = document.createElement("ytd-miniplayer")
+    mini.innerHTML = '<h1 class="ytdMiniplayerInfoBarTitle">Title</h1>'
+    manager
+      .querySelector("ytd-watch-metadata")
+      ?.insertAdjacentHTML("afterbegin", '<div id="title"><h1>Title</h1></div>')
+    app.append(manager, mini)
+    await tick()
+    tokens = []
+    app.setAttribute("miniplayer-is-active", "")
+    await vi.advanceTimersByTimeAsync(0)
+    expect(watched()).toEqual([
+      { ...reading("w1", ["21y ago"]), miniplayer: true, title: "Title" },
+    ])
+  })
+
+  it("announces the description when it is drawn again or loses the face control", async () => {
+    const manager = watchPage("w1", "21y ago")
+    const metadata = manager.querySelector("ytd-watch-metadata")
+    await tick()
+    const described = (): number =>
+      tokens.filter((t) => t.kind === "described").length
+    tokens = []
+    // Drawn late.
+    metadata?.insertAdjacentHTML(
+      "beforeend",
+      '<div id="description"><div id="description-inner"></div></div>'
+    )
+    await vi.advanceTimersByTimeAsync(0)
+    expect(described()).toBe(1)
+    // The control goes in, and is dropped by a redraw of the description.
+    const inner = manager.querySelector("#description-inner")
+    inner?.insertAdjacentHTML(
+      "beforeend",
+      "<button data-boyo-face-hold></button>"
+    )
+    await vi.advanceTimersByTimeAsync(0)
+    expect(described()).toBe(2)
+    // The same description loses the control, then is drawn anew.
+    inner?.querySelector("button")?.remove()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(described()).toBe(3)
+    inner?.replaceWith(document.createElement("div"))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(described()).toBe(4)
+    expect(watched(), "the reading itself did not change").toEqual([])
+  })
+
+  it("keeps the page across a navigation, which Core does too", async () => {
+    watchPage("w1", "21y ago")
+    await tick()
+    tokens = []
+    window.dispatchEvent(new Event("yt-navigate-finish"))
+    await vi.advanceTimersByTimeAsync(NAV_DEBOUNCE_MS)
+    expect(tokens.map((t) => t.kind)).toEqual(["nav"])
+  })
+})
+
+describe("autoplay (#1805)", () => {
+  /** What the app's own listener would see of a navigation. */
+  function navigate(detail: unknown): boolean {
+    let reached = false
+    const app = new AbortController()
+    window.addEventListener(
+      "yt-navigate",
+      () => {
+        reached = true
+      },
+      { signal: app.signal }
+    )
+    const root = document.createElement("ytd-watch-flexy")
+    document.body.append(root)
+    root.dispatchEvent(
+      // eslint-disable-next-line extension-charter/no-unprefixed-namespace -- YouTube's own event, as the page dispatches it
+      new CustomEvent("yt-navigate", { detail, bubbles: true, composed: true })
+    )
+    app.abort()
+    return reached
+  }
+  const autoplay = (videoId: string): unknown => ({
+    endpoint: { watchEndpoint: { videoId } },
+    tempData: { autonav: "1" },
+  })
+
+  it("holds an autoplay into a video Core does not admit", () => {
+    expect(navigate(autoplay("held"))).toBe(false)
+    admitted.add("old")
+    expect(navigate(autoplay("old"))).toBe(true)
+  })
+
+  it("never holds a navigation the owner asked for", () => {
+    expect(navigate({ endpoint: { watchEndpoint: { videoId: "held" } } })).toBe(
+      true
+    )
+    expect(navigate(null)).toBe(true)
+  })
+
+  it("holds nothing once stopped", () => {
+    sensor.stop()
+    expect(navigate(autoplay("held"))).toBe(true)
+  })
+
+  it("tells Core what Up next holds, in page order, when it holds (#1966)", async () => {
+    // YouTube's two-column watch page: an engagement panel ahead of Up next
+    // in the same column, and Up next's list inside `#related`.
+    const manager = document.createElement("ytd-page-manager")
+    manager.innerHTML = `<ytd-watch-flexy><div id="secondary">
+      <div id="panels"></div>
+      <div id="related"><ytd-watch-next-secondary-results-renderer></ytd-watch-next-secondary-results-renderer></div>
+    </div></ytd-watch-flexy>`
+    manager.querySelector("#panels")?.append(cell("in-a-panel"))
+    manager
+      .querySelector("ytd-watch-next-secondary-results-renderer")
+      ?.append(lockup("first"), lockup("second"))
+    document.body.append(cell("elsewhere"), manager)
+    await tick()
+    tokens = []
+    navigate(autoplay("held"))
+    expect(tokens).toEqual([
+      { kind: "held", upNext: ["first", "second"], t: now },
+    ])
+    // A skip opens the Up next card itself, never a copy elsewhere.
+    const list = manager.querySelector(
+      "ytd-watch-next-secondary-results-renderer"
+    )
+    expect(sensor.upNextCard(cardKey(asVideoId("first")))).toBe(
+      list?.firstElementChild
+    )
+    for (const id of ["in-a-panel", "elsewhere"]) {
+      expect(sensor.upNextCard(cardKey(asVideoId(id))), id).toBeNull()
+    }
   })
 })
 

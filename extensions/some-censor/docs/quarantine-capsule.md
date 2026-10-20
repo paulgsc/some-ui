@@ -33,7 +33,7 @@ It is nevertheless **governing**: sections below carry hand-assigned numbers
 (`QD1`–`QD17`, `QM0`–`QM4`, `QA1`–`QA5`) for the same reason the canons do, so
 source comments and commit messages can cite them and the citations survive
 reshuffles. The `Q` prefix is deliberate: the Actuator and Sensor cite the
-veil's own unrelated `D1`–`D6` (restated in `actuator/actuator.ts`), and Core
+veil ledger's unrelated `D1`–`D6` (restated in `actuator/actuator.ts`), and Core
 the card pipeline's `M1`–`M3` and `M6` (restated in `core/reduce.ts`) — a bare
 "see D3" or "M2" would resolve to whichever ledger the reader happened to be
 looking at. A behavioural change to this extension that
@@ -132,8 +132,7 @@ belonging to an unadmitted artifact may become legible without an explicit
 disclosure act by the user.
 
 _Status: holds._ This is the invariant the pre-mask occluder in
-`src/styles/content.css` and the veil in `src/lib/content/actuator/veil.ts`
-already enforce, and it is the one thing in the workspace that must never be
+`src/styles/content.css` and its plate rules already enforce, and it is the one thing in the workspace that must never be
 traded for comfort. Everything below is built **above** this line, never by
 weakening it.
 
@@ -150,13 +149,16 @@ from the friction mechanism the extension is today. Friction says _you may
 expose yourself, after several deliberate actions_. Quarantine says _this is
 not eligible yet_. The difference is whether curiosity has a path.
 
-_Status: absent._ Today every card, of every age, has a path to `revealed` in
-three interactions.
+_Status: holds on feeds and watch pages (#1803, #1805)._ A card's view is
+decided by its evidence alone: one the estimator cannot place at `QM3`–`QM4`
+under the boundary is absent, and no interaction reaches it. A watch page's
+own video is decided the same way, so a link to a held video reaches "Not
+here." (`QD11`).
 
 _Amended by `QD15`:_ "regardless of its subject" admits one exception. Music
-whose title is mostly in a script the owner listens to but doesn't read is
-admitted whole at any age, because its coupling to the present, the quantity
-this result bounds by age, is already zero.
+is admitted whole at any age, because the music the feed offers the owner is
+music whose words don't reach them, so its coupling to the present, the
+quantity this result bounds by age, is already zero.
 
 ---
 
@@ -181,13 +183,12 @@ empty values, in several languages. All of those are `Unverified`, and
 `Unverified` is sealed.
 
 _Status: holds in the estimator._ `src/lib/content/maturity/maturity.ts` maps
-every form it cannot read with certainty to `unverified` (`QM0`). Nothing
-gates on it yet; only the diagnostics record its estimate. #1803 makes it
-decide what is shown.
+every form it cannot read with certainty to `unverified` (`QM0`), and since
+#1803 that decides what is shown: an unverified card is absent.
 
-_Amended by `QD15`:_ opacity admits without age evidence, so a lane video is
-shown whole even when its age is unknown. Everywhere else, unknown still means
-outside.
+_Amended by `QD15`:_ a lane video needs no age, only a date that proves a
+past upload: one the estimator cannot read could be live, so it is still
+outside. Everywhere else, unknown still means outside.
 
 ---
 
@@ -203,8 +204,8 @@ the moment announcing itself in the one field the extension had decided was
 safe to echo. The presentation layer receives a class and a day count; it never
 receives the string they were derived from.
 
-_Status: holds._ The presentable `MetaData` has no date field, so the
-metadata chip in `src/lib/content/actuator/veil.ts` cannot render one; the raw
+_Status: holds._ The presentable `MetaData` has no date field, and the render
+model the Actuator draws from carries nothing from the card at all; the raw
 string stays in the observation as evidence (#1384). A type-level test in
 `maturity/maturity.test.ts` pins it. The one place the raw string is shown is
 the owner's own diagnostics page (OBS1), which is not a youtube.com surface.
@@ -229,12 +230,8 @@ not exempt a card from having one.
 _Amended by `QD16`:_ there is no channel trust at all. The whitelist is deleted
 (#1807), and every source has the same boundary.
 
-_Status: violated._ `applyWhitelist` in `src/lib/content/fsm.ts` accepts any
-state and yields `Whitelisted`, which is a permanent bypass, and the
-`CHANNEL_WHITELISTED` broadcast lifts every card from that channel at once —
-including the one uploaded this morning. The prompt's copy, "always show
-content from this channel," is an accurate description of the current
-behaviour and precisely the semantics QD5 rejects. See `QA2`.
+_Status: holds (#1803, #1807)._ The whitelist is deleted end to end: no
+message, handler, store or type for it is left. See `QA2`.
 
 ---
 
@@ -244,12 +241,11 @@ Any affordance that acts on many cards at once acts only on cards that are
 individually admissible. There is no operation whose plural form discloses
 something its singular form would refuse.
 
-_Status: violated._ `advance-all-to-title` (Ctrl/⌘+Shift+Period, wired in
-`src/lib/content/commands.ts`) advances **every** tracked card to `title`. Under
-QD2 that is a whole-page capsule breach bound to a single keystroke. Note also
-what its existence says diagnostically: the per-card ritual became mechanical
-enough that the user wanted to batch past it — which is an argument for
-_fewer eligible cards_, not for a faster ladder.
+_Status: holds (#1803)._ There is no bulk operation: `advance-all-to-title`
+and its keybinding are deleted with the ladder. What its existence said
+diagnostically still stands: the per-card ritual became mechanical enough that
+the user wanted to batch past it — an argument for _fewer eligible cards_, not
+for a faster ladder.
 
 ---
 
@@ -263,8 +259,8 @@ This is why [`absent-plated-heard.md`](./absent-plated-heard.md) forbids the
 padlock, the progress bar, the green check and every count, and why a held card
 is absent rather than drawn at all (`QD11`).
 
-_Status: violated._ The ladder's hints and progress rail present every veiled
-card as a pending step. #1803.
+_Status: holds (#1803)._ The ladder, its hints and its progress rail are
+deleted; a held card is absent, not pending.
 
 ---
 
@@ -280,7 +276,7 @@ Where a region contains nothing admissible, the region — not each card in it �
 is the unit of concealment. One quiet statement and reclaimed empty space is
 the correct rendering of "there is nothing here for you today."
 
-_Status: absent._ The veil is applied per renderer; there is no surface-level
+_Status: absent._ Concealment is per renderer; there is no surface-level
 construct at all.
 
 _Superseded in part by `QD11`._ The distance this result asks for stands. Its
@@ -332,10 +328,7 @@ disclosure step. `QD1`'s non-contact bar has no metadata-only exception for
 held material; this result only says what becomes available once an artifact
 has already cleared the boundary.
 
-_Status: absent._ No admission axis exists yet to gate `Inspect metadata` by
-eligibility (see the gap table in §7); the ladder currently starts
-unconditionally at `meta` for every card, which is the same root cause as
-`QD4`'s violation above.
+_Status: retired with the ladder (#1803)._ `Inspect metadata` is deleted.
 
 _Superseded by `QD12` and `QD16`._ There is no metadata step: an admitted card
 shows its title, channel name and duration on a plate, with no disclosure act.
@@ -352,15 +345,47 @@ A held card is not on the page. It leaves layout and the accessibility tree;
 nothing stands in its place, and nothing counts, summarizes or mentions it. A
 card is held when it is `QM0`–`QM2`, live, a premiere or a Short, unless
 `QD15` admits it. Nothing navigates to a held video on the owner's behalf:
-autoplay stops before one. Supersedes `QD8`'s quiet statement, `QD9`, and the
-interior bullet in §3.
+autoplay stops before one, or, under Skip, goes on to the first video in Up
+next that Core admits and that is not the page's own (#1966). Supersedes
+`QD8`'s quiet statement, `QD9`, and the interior bullet in §3.
 
 The owner's test, after living with the extension: what made a session bad was
 having _seen_ things. A covered card is still something seen — a shape, a
 slot, an invitation — and a count of covered cards is the present reported
 second-hand.
 
-_Status: absent._ Every held card is veiled in place today. #1803.
+_Status: holds on feeds (#1803, #1846)._ A held card is out of layout and the
+accessibility tree, and so is a home-feed grid cell around one, and a shelf
+whose every card is held, in the containers captured so far (home's rich
+section, search's grid shelf, a channel page's shelf section). Gaps remain:
+a shelf in any other container keeps its header, and so does one whose only
+other tile is a post with an absent video attached; a video-shaped element the
+Sensor cannot resolve stays blurred in place under the occluder
+(`OccluderReleases` reports it).
+
+Autoplay stops before a held video (#1805). YouTube's autoplay and playlist
+advance navigate by a `yt-navigate` marked `autonav`, naming the next video;
+the Sensor holds one in the capture phase, before the app sees it, unless a
+card for that video is on the page and plated (Core's `admits`). A navigation
+the owner starts carries no `autonav` and is never held. A playlist's rows
+carry no date (sealed under `QD3`), so a playlist, Mix or queue stops after
+nearly every video. Under Skip (#1966), Core names the first video in Up
+next, in page order, that it admits and is not the page's own (`skipTo`,
+R10), and the Actuator opens that Up next card as a click would; with none,
+or in the miniplayer, autoplay stops. In a playlist or Mix, whose rows are
+held, Skip leaves the list for the first such Up next video.
+`watch.spec.ts` W10 and W13 prove both, locally.
+
+A held video's watch page, reached by a link, is "Not here." and Back
+(#1805): `styles/content.css` renders no player, miniplayer, title or date
+until Core plates the page's video, its view written on `<html>`; until then
+the Actuator's watch hold pauses every media play and keeps the tab title
+"YouTube"; and a Short's page is never rendered. YouTube names the next
+video before it rewrites the date, so Core reads a page whose date runs are
+all runs the previous video showed as showing no date yet. The miniplayer
+goes on to the next video without touching the page, so its video is the
+page's only while its title bar names the page's title, and held otherwise.
+`watch.spec.ts` W2–W9 prove each, locally.
 
 ---
 
@@ -376,7 +401,21 @@ huge type, an arrow, the week's news. The owner already chooses from words, so
 the thumbnail has no job left. The plate is the card's finished state, not a
 cover waiting to be lifted.
 
-_Status: absent._ #1804.
+_Status: holds, with gaps (#1804)._ Under a plated
+card no image is painted, whatever its shape (`styles/content.css`, "THE
+PLATE"), so the card's own thumbnail and channel photo show nothing. The
+thumbnail's box is filled with the video's tone and the avatar's with the
+channel's disc, both hashed by `lib/content/plate/plate.ts`. The thumbnail takes
+no pointer except its duration badge, so a hover over the plate reaches no
+thumbnail, and the preview player never shows. Outside a card, every image in
+YouTube's general lazy image (`yt-img-shadow`) and its avatar (`yt-avatar-shape`)
+is hidden, and so are the avatars it draws as a bare image: the watch page's
+owner, the guide, channel results and headers, comment authors, people
+mentioned in a description and the notifications menu. The other images drawn
+in those elements go with them: notification and chapter frames, community post
+images, promo art. So do the page header's banner, cover and backdrop (its seamless
+portal too), and the thumbnails the player's end screens, video wall, autoplay
+card, suggestions, "More videos" button and playlist menu draw. The rest is in the gap table below.
 
 ---
 
@@ -390,7 +429,23 @@ This is friction in the opposite place from the old ladder. The ladder put work
 between the owner and the _video_, so every bad card cost effort. The hold puts
 work only between the owner and the _thumbnail_, which nothing needs.
 
-_Status: absent._ #1805.
+_Status: holds (#1805, #1966)._ A plated video's poster is the plate: its tone
+is the video's, and the player's own poster does not paint, before play or
+once it ends. In the description, "Hold to show the original thumbnail"
+reports a hold of three seconds without a break, by the pointer or by Space or
+Enter (`actuator/face-hold.ts`); a release before then, a lost pointer, Escape
+or focus leaving cancels it, no Space, Enter or click on it reaches YouTube,
+and nothing on it changes before the three seconds. Under Standard it reports
+when let go. Core keeps the face for that view only (R9): a navigation,
+another video or a view no longer plated takes it away, and nothing stores it.
+The control goes once used, with no message, and comes back when YouTube draws
+the description again. Strict offers no control at all, and choosing it takes
+a shown face away. Open shows the face at three seconds while still held, and
+the control stays as "Hide original": a press and release on it puts the plate
+back for that view. Switching to Standard with the face shown keeps it, with
+no control, until the view ends (#1966). `face.spec.ts` F1–F7 prove each,
+locally, and `core.test.ts` that Strict takes a shown face away and only Open
+hides one.
 
 ---
 
@@ -405,17 +460,37 @@ or derived, is shown on any surface, in any state, the lane included. Amends
 Each of these reports on a culture outside the rock. None informs a choice the
 owner makes.
 
-_Status: absent._ #1802.
+_Status: holds in the stylesheet (#1802), with gaps._ `styles/content.css`'s
+crowd rules hide each number and age by the element that carries it (pinned by
+`selectors.test.ts`). `tests/e2e/fixtures/yt-crowd.html` carries each visible
+shape the 2026-10-17 captures and signed-out live pages hold, and
+`crowd.spec.ts` proves a crowd rule hides each one and none hides what a card
+keeps. Gaps: a trending rank appears in no capture, so it has no rule; the
+"Video details" list needs `:has()`, so Firefox 112–120 still shows it; a
+linked video's views and age in the description's cards are unseen in any
+capture. The comments go whole wherever YouTube draws them (#1805): every
+comments section, the teaser, the metadata carousel (its title is the shown
+item's, a comment count among them), and the comments panel;
+`selectors.test.ts` pins their rules' shape, and `watch.spec.ts`, run locally,
+proves each hidden.
 
 ---
 
 ### QD15 — Opacity is a second way in
 
-Music whose title is mostly in a script the owner has declared they listen to
-but don't read is admitted whole, whatever its age, unless it is live, a
-premiere or a Short. The script is counted, never interpreted (§8). The owner
-sets this per language, so marking Chinese admits Han-script titles, which
-includes Japanese titles written mostly in kanji; that overlap is accepted.
+Music is admitted whole, whatever its age, unless it is live, a premiere or a
+Short. A video is music when its title carries "OST" or "MV" as a word, its
+channel is an artist's `… - Topic` channel, or the channel carries YouTube's
+official-artist badge. Each sign is read, never interpreted (§8).
+
+The owner first asked for music whose title is mostly in a script they listen
+to but don't read, set per language. On 2026-10-17 they chose music alone: the
+music the feed offers them is already the Korean and Chinese soundtracks they
+mean, so the script rule and its setting are dropped. An English song with
+topical lyrics is admitted whole too, and so is any title that carries the
+token without being music: a ship ("MV Dali"), a motorcycle ("MV Agusta"), a
+reaction video. The owner accepted both; the token is upper case only, since
+"Ost" and "ost" are words.
 
 `H2` makes age a classifier of _coupling to the present_. Music whose words do
 not reach the listener has no coupling to measure: the owner consumes K-drama
@@ -425,26 +500,51 @@ its subject" and `QD3`'s "unknown means outside" to say so. Lane videos keep
 their real thumbnails; `QD12` applies only to videos admitted by distance. The rule describes the owner as they
 are, and does not anticipate them learning these scripts.
 
-_Status: absent._ #1806.
+_Status: holds, with gaps (#1806)._ `lane/lane.ts` reads the three signs, off
+the title and channel name every card already carries and the badge the
+Sensor reads (`extract/meta.ts`); `fsm.ts` decides a card or the watch page
+whole when it is music and its date proves a past upload, before the boundary
+is asked. A whole card shows its own thumbnail and channel photo, and its
+crowd numbers still go; a whole watch page shows its player and its own
+poster, with no face control. Autoplay goes on into a whole video. The lane is
+on in every mode, with no switch of its own (owner, 2026-10-18). Strict reads
+the channel's two signs only, and from a whole video lets autoplay go on only
+into another whole one (owner, 2026-10-19, #1966). `lane.test.ts` holds the
+table, and `lane.spec.ts` LN1–LN4 and `watch.spec.ts` W11 and W12 prove it,
+locally.
 
 ---
 
 ### QD16 — Decide once
 
-The owner's judgement is exercised on two settings — the boundary `B`, and the
-scripts they listen to but don't read — and nowhere else, besides switching
-the extension on or off. No card, channel or page offers a disclosure step, a
-trust decision or a verdict. The one exception is `QD13`'s face control, which
-shows only the thumbnail of a video already admitted and plated, and decides
-nothing about admission.
+The owner's judgement is exercised on three choices, besides switching the
+extension on or off: the boundary `B`, a mode, and what autoplay does when it
+reaches a held video. A mode is a fixed bundle, strictest first: Strict,
+Standard or Open (`settings/modes.ts`). The owner picks a mode, never a row of
+one, so there is no single switch to tune and no Custom state. Modes never
+move `B`. (A languages setting was dropped on 2026-10-17 with the lane's
+title-script rule; see `QD15`.) No card, channel or page offers a disclosure
+step, a trust decision or a verdict. The one exception is `QD13`'s face
+control, which shows only the thumbnail of a video already admitted and
+plated, and decides nothing about admission.
 
 `H3` already said judgement does not scale; the ladder contradicted it, and
 the owner confirmed it from use: deciding card by card was "a chore", and "not
 rewarding … if you don't like the card that you did all that work for".
-Amends `QD5`; supersedes `QD10`, `QA2`, `QA3`, §6's delayed subscription and
-the "airlock" in §7.
+The modes keep it that way. On 2026-10-19 the owner asked for each choice of
+taste to be made at runtime, but not as a wall of switches ("I don't want to
+feel like I'm developing it as well"), so they come bundled. Amends `QD5`;
+supersedes `QD10`, `QA2`, `QA3`, §6's delayed subscription and the "airlock"
+in §7.
 
-_Status: absent._ The ladder is live. #1803, #1807.
+_Status: holds (#1803, #1807, #1966)._ No gesture changes a card. The popup
+holds the switch, the mode, the boundary and the autoplay choice; the settings
+page (`options.html`) shows the three modes as cards, each listing the same
+rows, and then the boundary and the autoplay choice; the tab and toolbar
+menu holds the switch, the mode and the autoplay choice, never the boundary.
+Each writes through `createSaver`, whose queue keeps one page's writes in
+order; every open tab follows, and Diagnostics shows every change of the
+boundary, the mode and the autoplay choice.
 
 ---
 
@@ -458,8 +558,11 @@ control (`QD13`), labelled with what it does and nothing more.
 A tool that narrates itself ("in here it is 2025", "24 held") makes its
 mechanism the thing on screen; the owner found that inauthentic.
 
-_Status: violated._ The ladder's hints ("Click to preview", "Double-click to
-reveal") are on-page copy. #1803.
+_Status: holds (#1803, #1805)._ The ladder and its hints are deleted, and a
+plated card carries no copy. A held watch page carries "Not here." and Back,
+and its tab title is "YouTube". A plated one carries the face control, its
+label the only copy, and it goes once used, except under Open, where it
+reads "Hide original" (#1966).
 
 ## 5. The temporal model
 
@@ -471,13 +574,9 @@ band is derived from `B`, so the model reads the same whether `B` is ninety
 days or five years, and there is no configuration surface with five
 independently wrong thresholds on it.
 
-This is a statement of the _model_, not a claim that a production path to
-store `B` exists today. It does not (#1807 builds one): `#1386` (`QC4`) established that
-`browser.storage.local` holds only `apiBaseUrl`, that every settings row sits
-behind an `ApiClient` no shipping build can reach, and that
-`_assertDev()` throws on `import.meta.env.PROD`. Whether `B` persists and
-propagates in production is `QC4`'s question to answer, not this document's
-to promise.
+`B` is stored in `browser.storage.local`, set from the popup to 6 months,
+1 year or 2 years, and followed live by every open tab (#1807, which
+answered `#1386`'s `QC4` question).
 
 | id    | class          | range               | meaning                                                    |
 | ----- | -------------- | ------------------- | ---------------------------------------------------------- |
@@ -522,7 +621,7 @@ under `QD11` it renders nothing at all.
 ## 6. Admission — the two axes
 
 Maturity is one axis. **Admission** is the other, and conflating them is the
-mistake the current whitelist makes.
+mistake the whitelist made until #1807 deleted it.
 
 | id    | primitive              | meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | ----- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -530,7 +629,7 @@ mistake the current whitelist makes.
 | `QA2` | **Identity trust**     | This channel is genuinely who it claims to be. Provenance, not admission. _Superseded by `QD16`:_ no trust decision exists.                                                                                                                                                                                                                                                                                                                                                          |
 | `QA3` | **Delayed source**     | This channel's uploads become admissible after `B` (or a per-source `B`) — never before it. _Superseded by `QD16`:_ there are no per-source settings; not planned.                                                                                                                                                                                                                                                                                                                   |
 | `QA4` | **Boundary exemption** | **Rejected.** Listed only to be ruled out: a channel's uploads skipping the boundary entirely is exactly what `QD2` forbids, however it is framed at the UI.                                                                                                                                                                                                                                                                                                                         |
-| `QA5` | **Opacity**            | Music whose title is mostly in a script the owner listens to but doesn't read is admitted whole, at any age, unless live, a premiere or a Short (`QD15`). Unlike `QA4` it is not keyed on a source: it measures the same coupling `B` does, by another route.                                                                                                                                                                                                                        |
+| `QA5` | **Opacity**            | Music is admitted whole, at any age, unless live, a premiere or a Short (`QD15`). Unlike `QA4` it is not keyed on a source: it measures the same coupling `B` does, by another route.                                                                                                                                                                                                                                                                                                |
 
 `QD2` says material newer than the boundary is ineligible "regardless of its
 source, its subject, or how much the user wants to see it in the moment." That
@@ -543,8 +642,8 @@ never a path that admits one that isn't. (This also matches `#1382`'s own
 non-goals: boundary exemption is explicitly out of the implementation
 floor.)
 
-Today's whitelist is `QA4` wearing `QA2`'s label, and under this resolution it
-has no home in the doctrine at all — it is not a stricter `QA3`, it is the
+The whitelist was `QA4` wearing `QA2`'s label, and under this resolution it
+had no home in the doctrine at all — it was not a stricter `QA3`, it was the
 primitive this section rejects. The replacement aligned with the story is
 `QA3`: a **delayed subscription**, where following a creator means receiving
 their work a year late. That is what living under a rock actually looks like,
@@ -584,17 +683,34 @@ section is a behavioural change; it is a statement of distance.
 
 ### What contradicts it
 
-| gap                                            | where                                                    | doctrine   |
-| ---------------------------------------------- | -------------------------------------------------------- | ---------- |
-| Every card, at every age, can reach `revealed` | `fsm.ts` — the `ViewState` union has no maturity axis    | QD2        |
-| Whitelist is a permanent, channel-wide bypass  | `fsm.ts:applyWhitelist`, `CHANNEL_WHITELISTED` broadcast | QD5, QA2   |
-| Bulk advance ignores eligibility               | `commands.ts` → Core's `advance-all-to-title` command    | QD6        |
-| No surface-level concealment                   | veil is per-renderer throughout                          | QD8        |
-| Manifest copy describes the mechanism          | `public/manifest.json` `description`                     | §0         |
-| Held cards are veiled in place, not absent     | `actuator/veil.ts` (the veil after handover)             | QD11       |
-| Admitted cards would show real thumbnails      | nothing replaces a thumbnail or avatar                   | QD12       |
-| No crowd number or age is removed              | vendor metadata rows render untouched                    | QD14       |
-| The ladder and its hints are on the page       | `fsm.ts:project()`, `actuator/gestures.ts`               | QD16, QD17 |
+| gap                                                                                  | where                                                                       | doctrine |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- | -------- |
+| No surface-level concealment                                                         | absence and the plate are per renderer                                      | QD8      |
+| Manifest copy describes the mechanism                                                | `public/manifest.json` `description`, the popup's tagline                   | §0       |
+| Autoplay stops before an old video that has no card on the page                      | Core admits only what it has plated, so an unseen next video is held        | QD12     |
+| A playlist skips an unplayable item into the next, held or not                       | that advance (`onPlaylistNext`) carries no `autonav`, so nothing holds it   | QD11     |
+| The countdown's "Play now" may be held like autoplay                                 | its module was not captured; if it plays next as autonav, it reads as one   | QD12     |
+| The autoplay countdown can show a held next video's title                            | the end screen's markup was not captured, so no rule names its title        | QD11     |
+| A page YouTube moves to another video could paint it unmasked                        | the mask returns when `video-id` changes; nothing proves it changes first   | QD11     |
+| A watch page that never shows its video's date stays blank                           | it is pending, which says nothing, and nothing ends pending                 | QD17     |
+| A held video's title shows in the tab on a direct load, briefly                      | the server sends it, and the content script runs at `document_end`          | QD11     |
+| Two videos showing the same date runs read as one                                    | the second is pending until a run differs, the view count included          | QD17     |
+| A start mid-transition can admit the next video on the last date                     | Core has read no previous video, so nothing marks that date as another's    | QD11     |
+| The miniplayer's next video is held, however old                                     | nothing on the page states its date; expanding it to its page decides it    | QD17     |
+| The miniplayer's next video gets in if its title is the same                         | its title bar is the only sign the video changed                            | QD11     |
+| A shelf elsewhere keeps its header                                                   | a container `SHELF_SELECTORS` does not name                                 | QD11     |
+| A channel photo outside a card leaves an empty space, not a disc                     | no card's ids to hash there; the photo itself is hidden                     | QD12     |
+| Live chat shows its authors' photos                                                  | the chat is its own frame, and the manifest injects into the top frame only | QD12     |
+| A channel's seamless header can play its video trailer                               | a video, not an image, so no image rule hides it (#1888)                    | QD12     |
+| The watch page's category, Music, is not read                                        | the rendered page carries it nowhere; YouTube's crawler block is empty      | QD15     |
+| A Topic channel and the artist badge are unseen in any capture                       | both are read as documented (`… - Topic`, "Official Artist Channel")        | QD15     |
+| A whole watch page hides its channel's photo                                         | the channel-photo rule exempts only whole cards                             | QD15     |
+| A whole card's hover preview never plays                                             | the preview player is hidden for every card                                 | QD15     |
+| A current non-music title with "MV" or "OST" as a word is whole                      | the token rule reads the word, not what it names (accepted, QD15)           | QD15     |
+| A watch page's title, channel and badge are assumed rewritten no later than its date | Core blanks the title, channel and badge only while the date is stale       | QD15     |
+| A hover on the duration badge can still start a hidden preview                       | the badge takes the pointer to open the card; the player is `display: none` | QD12     |
+| A trending rank is shown                                                             | no capture holds one, so no crowd rule names it                             | QD14     |
+| The "Video details" list shows on Firefox 112–120                                    | its crowd rule needs `:has()`                                               | QD14     |
 
 ### Extraction hazards a maturity estimator will meet
 

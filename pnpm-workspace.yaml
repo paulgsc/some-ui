@@ -93,7 +93,7 @@ catalog:
 # `pnpm add` writes exact versions. pnpm 12 ignores this in .npmrc.
 saveExact: true
 allowBuilds:
-  '@tailwindcss/oxide': true
+  "@tailwindcss/oxide": true
   esbuild: true
   unrs-resolver: true
 
@@ -130,3 +130,5 @@ allowBuilds:
 # wholesale and only the env var is re-applied afterwards, so the .npmrc form
 # looks correct and does nothing.
 enableGlobalVirtualStore: false
+patchedDependencies:
+  "@capacitor-community/sqlite@8.1.1": patches/@capacitor-community__sqlite@8.1.1.patch

@@ -12,8 +12,17 @@
  * pronounced when that differs from its spelling (Cor. 4.6 (iv)).
  *
  * An occurrence may also name its grammatical role, and a line its tense:
- * what the grammar lens asks the learner to find (`read-aloud/lens`). Both
- * are optional.
+ * what the grammar lens's step-down asks the learner to find. Both are
+ * optional. A line may also carry what the grammar lens needs to ask about
+ * it (Def. 4.9): a cue, misforms naming the mistake catalogue
+ * (`read-aloud/mistakes`), and situations of use. All optional: a line
+ * without them is read aloud as before.
+ *
+ * A deck is written for one practice, read-aloud or the grammar lens, and
+ * set in a context: a genre (a drama's, or everyday life) and a premise. A
+ * lens set keeps only lines with a lens; a read-aloud set keeps none of its
+ * lines' lenses. A deck with no practice is one written before sets had
+ * one: it serves both, as every deck once did.
  *
  * Content is checked at load, not trusted (Prop. 8.1, Thm. 8.2). A malformed
  * word, line or occurrence is dropped and reported, never the whole deck. A
@@ -32,9 +41,25 @@
  * their conventions: kebab-case ids and short glosses.
  */
 
+import { GENRES, koreanGenre } from "@topik/lib/topik/core/feed-card"
+import type { MistakeId } from "@topik/lib/topik/read-aloud/mistakes"
+import { isMistakeId } from "@topik/lib/topik/read-aloud/mistakes"
 import { z } from "zod"
 
 // TYPES
+
+const SET_PRACTICES = ["read-aloud", "lens"] as const
+export type SetPractice = (typeof SET_PRACTICES)[number]
+
+/**
+ * A set genre's Korean name: a drama's (로맨스), or 일상 for a set set in
+ * everyday life; none for a genre that is neither.
+ */
+export const setGenreKo = (genre: string): string | undefined =>
+  genre === "everyday" ? "일상" : koreanGenre(genre)
+
+/** Where a set's lines take place: a genre and a premise in a sentence. */
+type SetContext = { genre: string; premise: string }
 
 export const READ_ALOUD_LEVELS = [1, 2, 3] as const
 export type ReadAloudLevel = (typeof READ_ALOUD_LEVELS)[number]
@@ -54,8 +79,7 @@ export type ReadAloudWord = {
 }
 
 /**
- * What a written word does in its line, named by the Korean question it
- * answers, which is also what the lens shows the learner:
+ * What a written word does in its line, by the Korean question it answers:
  *
  * - `subject` 누가: marked 이/가
  * - `topic` 은·는: marked 은/는
@@ -68,7 +92,7 @@ export type ReadAloudWord = {
  * - `describing` 어때요: a describing verb (커요, 좋아요)
  * - `action` 뭐 해요: an action verb (먹어요, 가요)
  */
-export const GRAMMAR_ROLES = [
+const GRAMMAR_ROLES = [
   "subject",
   "topic",
   "object",
@@ -116,6 +140,48 @@ export type WordOccurrence = {
   role?: GrammarRole
 }
 
+/**
+ * One of a line's written words as learners are known to get it wrong
+ * (Def. 4.9). Authored, never generated: an exchange of particles that makes
+ * one line wrong can make another right (Rem. 4.7).
+ */
+type Misform = {
+  /** Which written word it replaces: an index into the line's `words`. */
+  word: number
+  /** The wrong form, one whole run of Hangul. */
+  surface: string
+  mistake: MistakeId
+  /** What this form does instead, for a learner who picked it. Never a gloss. */
+  instead?: string
+  /** The line's other words that make it wrong, marked at the reveal. */
+  decides: Array<number>
+  /** The cue's written words that make it wrong, marked at the reveal. */
+  cueDecides: Array<string>
+}
+
+/** The line the grammar lens shows first, which sets what this one must be. */
+type LensCue = {
+  korean: string
+  /** False when it is too long to be given as audio alone (Cor. 4.8). */
+  hearable: boolean
+}
+
+/** When someone would say the line: one candidate is the author's. */
+type Situations = {
+  options: [string, string, string]
+  intended: 0 | 1 | 2
+}
+
+/**
+ * What the grammar lens asks about a line (Def. 4.9, Rem. 4.15): kept only
+ * with at least one misform, since only such a line yields items.
+ */
+type LineLens = {
+  cue?: LensCue
+  misforms: Array<Misform>
+  situations?: Situations
+}
+
 export type ReadAloudLine = {
   id: string
   level: ReadAloudLevel
@@ -129,6 +195,7 @@ export type ReadAloudLine = {
    * the meaning part (내일 만나요 is present in form, future in meaning).
    */
   tense?: Tense
+  lens?: LineLens
 }
 
 export type ReadAloudDeck = {
@@ -140,11 +207,18 @@ export type ReadAloudDeck = {
    * (`added-sets`); a deck written for anyone has none.
    */
   from?: string
+  /** Absent on a deck written before sets had one: it serves both. */
+  practice?: SetPractice
+  context?: SetContext
   words: Array<ReadAloudWord>
   lines: Array<ReadAloudLine>
 }
 
 export type ContentFindingKind =
+  | "practice-unknown"
+  | "context-malformed"
+  | "line-without-lens"
+  | "lens-in-read-aloud-set"
   | "word-malformed"
   | "word-duplicate"
   | "line-malformed"
@@ -158,6 +232,9 @@ export type ContentFindingKind =
   | "line-without-words"
   | "role-unknown"
   | "tense-unknown"
+  | "lens-malformed"
+  | "misform-malformed"
+  | "misform-unknown-mistake"
 
 /** Something dropped at load, and why. */
 export type ContentFinding = {
@@ -201,15 +278,59 @@ const LineSchema = z.object({
   english: z.string().trim().min(1),
   words: z.array(z.unknown()),
   tense: z.unknown().optional(),
+  lens: z.unknown().optional(),
 })
+
+const LensSchema = z.object({
+  cue: z.unknown().optional(),
+  misforms: z.unknown().optional(),
+  situations: z.unknown().optional(),
+})
+
+const CueSchema = z.object({
+  korean: z
+    .string()
+    .trim()
+    .regex(/[가-힣]/, "a cue is written in Hangul"),
+  hearable: z.boolean().default(true),
+})
+
+const MisformSchema = z.object({
+  word: z.number().int().min(0),
+  surface: z.string().regex(HANGUL, "a misform is one run of Hangul"),
+  mistake: z.string(),
+  instead: z.string().trim().min(1).optional(),
+  decides: z.array(z.number().int().min(0)).default([]),
+  cueDecides: z.array(z.string()).default([]),
+})
+
+const Situation = z.string().trim().min(1)
+const SituationsSchema = z
+  .object({
+    options: z.tuple([Situation, Situation, Situation]),
+    intended: z.union([z.literal(0), z.literal(1), z.literal(2)]),
+  })
+  .refine(({ options }) => new Set(options).size === 3, "options repeat")
 
 const DeckSchema = z.object({
   schemaVersion: z.literal(1),
   id: IdSchema,
   title: z.string().trim().min(1),
   from: z.string().trim().min(1).max(200).optional(),
+  practice: z.unknown().optional(),
+  context: z.unknown().optional(),
   words: z.array(z.unknown()),
   lines: z.array(z.unknown()),
+})
+
+const ContextSchema = z.object({
+  genre: z
+    .string()
+    .refine(
+      (genre) => setGenreKo(genre) !== undefined,
+      `a genre is everyday or one of ${GENRES.map(({ genre }) => genre).join(", ")}`
+    ),
+  premise: z.string().trim().min(1).max(200),
 })
 
 const summarise = (error: z.ZodError): string =>
@@ -239,6 +360,152 @@ function withKnownRole(
     detail: `${JSON.stringify(role)} is not a grammatical role; the occurrence is kept without it`,
   })
   return rest
+}
+
+/**
+ * What the grammar lens may ask about a line, each part checked on its own:
+ * a malformed cue, misform or situation set is dropped and reported, and the
+ * rest kept. A lens with no misform left asks nothing (Def. 4.9), so it is
+ * dropped whole, and said so.
+ */
+function auditLens(
+  raw: unknown,
+  lineId: string,
+  authored: ReadonlyArray<WordOccurrence | null>,
+  findings: Array<ContentFinding>
+): LineLens | null {
+  // Where each authored word sits among those kept; null for one dropped.
+  let next = 0
+  const keptAt = authored.map((occurrence) =>
+    occurrence === null ? null : next++
+  )
+  const kept = authored.filter((occurrence) => occurrence !== null)
+  const where = `${lineId}/lens`
+  const dropped = (kind: ContentFindingKind, detail: string): null => {
+    findings.push({ kind, where, detail })
+    return null
+  }
+  const lens = LensSchema.safeParse(raw)
+  if (!lens.success) {
+    return dropped(
+      "lens-malformed",
+      `${summarise(lens.error)}; the line is kept without its lens`
+    )
+  }
+
+  let cue: LensCue | null = null
+  let cueRuns: Array<string> = []
+  if (lens.data.cue !== undefined) {
+    const parsed = CueSchema.safeParse(lens.data.cue)
+    if (parsed.success) {
+      cue = parsed.data
+      cueRuns = hangulRuns(cue.korean)
+    } else {
+      dropped("lens-malformed", `cue: ${summarise(parsed.error)}`)
+    }
+  }
+
+  const candidates = Array.isArray(lens.data.misforms) ? lens.data.misforms : []
+  if (lens.data.misforms !== undefined && !Array.isArray(lens.data.misforms)) {
+    dropped("misform-malformed", "misforms is not a list")
+  }
+  let misforms: Array<Misform> = []
+  for (const candidate of candidates) {
+    const parsed = MisformSchema.safeParse(candidate)
+    if (!parsed.success) {
+      dropped("misform-malformed", summarise(parsed.error))
+      continue
+    }
+    const { mistake, ...misform } = parsed.data
+    const written = authored[misform.word]
+    const at = keptAt[misform.word]
+    const strayWord = misform.decides.find(
+      (index) => index === misform.word || keptAt[index] == null
+    )
+    const strayCue = misform.cueDecides.find((word) => !cueRuns.includes(word))
+    if (written == null || at == null) {
+      dropped(
+        "misform-malformed",
+        `word ${misform.word} is not one of the line's kept words`
+      )
+    } else if (misform.surface === written.surface) {
+      dropped(
+        "misform-malformed",
+        `"${misform.surface}" is the word as written`
+      )
+    } else if (
+      misforms.some(
+        (kept) => kept.word === at && kept.surface === misform.surface
+      )
+    ) {
+      dropped("misform-malformed", `"${misform.surface}" is given twice`)
+    } else if (!isMistakeId(mistake)) {
+      dropped(
+        "misform-unknown-mistake",
+        `"${mistake}" is not in the mistake catalogue`
+      )
+    } else if (strayWord !== undefined) {
+      dropped(
+        "misform-malformed",
+        `"${misform.surface}": decides ${strayWord} is not another of the line's words`
+      )
+    } else if (strayCue !== undefined) {
+      dropped(
+        "misform-malformed",
+        `"${misform.surface}": ${strayCue} is not a word of the cue`
+      )
+    } else {
+      misforms.push({
+        ...misform,
+        word: at,
+        decides: misform.decides.flatMap((index) => keptAt[index] ?? []),
+        mistake,
+      })
+    }
+  }
+
+  // A cue that holds the word a misform replaces, or a misform, gives the
+  // answer away: 학교에 가요? spells the 학교에 the learner must choose. A
+  // misform the cue decides goes with it: without the cue it may be right.
+  if (cue) {
+    const answers = new Set(
+      misforms.flatMap((m) => [m.surface, kept[m.word]?.surface])
+    )
+    const telling = cueRuns.filter((run) => answers.has(run))
+    if (telling.length > 0) {
+      cue = dropped(
+        "lens-malformed",
+        `cue: ${telling.join(", ")} gives the answer away`
+      )
+      for (const misform of misforms.filter((m) => m.cueDecides.length > 0)) {
+        dropped(
+          "misform-malformed",
+          `"${misform.surface}" is wrong only beside the cue`
+        )
+      }
+      misforms = misforms.filter((m) => m.cueDecides.length === 0)
+    }
+  }
+
+  let situations: Situations | null = null
+  if (lens.data.situations !== undefined) {
+    const parsed = SituationsSchema.safeParse(lens.data.situations)
+    situations = parsed.success
+      ? parsed.data
+      : dropped("lens-malformed", `situations: ${summarise(parsed.error)}`)
+  }
+
+  if (misforms.length === 0) {
+    return dropped(
+      "lens-malformed",
+      "no misform; a lens asks nothing without one"
+    )
+  }
+  return {
+    ...(cue === null ? {} : { cue }),
+    misforms,
+    ...(situations === null ? {} : { situations }),
+  }
 }
 
 /**
@@ -341,6 +608,29 @@ export function parseReadAloudDeck(raw: unknown): ParsedDeck {
 
   const findings: Array<ContentFinding> = []
 
+  const rawPractice = outer.data.practice
+  const practice = SET_PRACTICES.find((known) => known === rawPractice)
+  if (rawPractice !== undefined && practice === undefined) {
+    findings.push({
+      kind: "practice-unknown",
+      where: "practice",
+      detail: `${JSON.stringify(rawPractice)} is not a practice; the deck serves both`,
+    })
+  }
+  let context: { context?: SetContext } = {}
+  if (outer.data.context !== undefined) {
+    const parsed = ContextSchema.safeParse(outer.data.context)
+    if (parsed.success) {
+      context = { context: parsed.data }
+    } else {
+      findings.push({
+        kind: "context-malformed",
+        where: "context",
+        detail: `${summarise(parsed.error)}; the deck is kept without it`,
+      })
+    }
+  }
+
   const words: Array<ReadAloudWord> = []
   const wordIds = new Set<string>()
   outer.data.words.forEach((candidate, index) => {
@@ -378,7 +668,7 @@ export function parseReadAloudDeck(raw: unknown): ParsedDeck {
       })
       return
     }
-    const { tense: rawTense, ...line } = parsed.data
+    const { tense: rawTense, lens: rawLens, ...line } = parsed.data
     if (lineIds.has(line.id)) {
       findings.push({
         kind: "line-duplicate",
@@ -396,7 +686,9 @@ export function parseReadAloudDeck(raw: unknown): ParsedDeck {
       covered: runs.map(() => false),
       next: 0,
     }
-    const occurrences = line.words.flatMap((rawOccurrence, position) => {
+    // Each authored occurrence as kept, or null where it was dropped: a
+    // lens indexes the authored list.
+    const authored = line.words.map((rawOccurrence, position) => {
       const shaped = OccurrenceSchema.safeParse(rawOccurrence)
       if (!shaped.success) {
         findings.push({
@@ -404,16 +696,16 @@ export function parseReadAloudDeck(raw: unknown): ParsedDeck {
           where: `${line.id}/words[${position}]`,
           detail: summarise(shaped.error),
         })
-        return []
+        return null
       }
       const known = withKnownRole(
         shaped.data,
         `${line.id}/${shaped.data.surface}`,
         findings
       )
-      const kept = auditOccurrence(known, audit, wordIds, findings)
-      return kept ? [kept] : []
+      return auditOccurrence(known, audit, wordIds, findings)
     })
+    const occurrences = authored.filter((kept) => kept !== null)
 
     const missing = runs.filter((_, index) => !audit.covered[index])
     if (missing.length > 0) {
@@ -444,7 +736,31 @@ export function parseReadAloudDeck(raw: unknown): ParsedDeck {
         })
       }
     }
-    lines.push({ ...line, words: occurrences, ...tense })
+    if (rawLens !== undefined && practice === "read-aloud") {
+      findings.push({
+        kind: "lens-in-read-aloud-set",
+        where: line.id,
+        detail: "a read-aloud set asks no lens; the line is kept without it",
+      })
+    }
+    const lens =
+      rawLens === undefined || practice === "read-aloud"
+        ? null
+        : auditLens(rawLens, line.id, authored, findings)
+    if (lens === null && practice === "lens") {
+      findings.push({
+        kind: "line-without-lens",
+        where: line.id,
+        detail: "a lens set's line is there to be asked about; it is dropped",
+      })
+      return
+    }
+    lines.push({
+      ...line,
+      words: occurrences,
+      ...tense,
+      ...(lens === null ? {} : { lens }),
+    })
   })
 
   return {
@@ -453,6 +769,8 @@ export function parseReadAloudDeck(raw: unknown): ParsedDeck {
       id: outer.data.id,
       title: outer.data.title,
       ...(outer.data.from === undefined ? {} : { from: outer.data.from }),
+      ...(practice === undefined ? {} : { practice }),
+      ...context,
       words,
       lines,
     },

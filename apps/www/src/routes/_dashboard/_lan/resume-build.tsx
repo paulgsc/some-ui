@@ -22,8 +22,13 @@ import {
 import { createFileRoute } from "@tanstack/react-router"
 import { Download, FileText, LoaderCircle } from "lucide-react"
 
-import type { ResumeBuildRuntime } from "@/lib/resume-build"
-import { createResumeBuild, serviceRender } from "@/lib/resume-build"
+import type { BuilderSearch, ResumeBuildRuntime } from "@/lib/resume-build"
+import {
+  createResumeBuild,
+  parseBuilderSearch,
+  pickFileName,
+  serviceRender,
+} from "@/lib/resume-build"
 import { RESUME_COMPOSITIONS, RESUME_TEMPLATES } from "@/lib/resume-options"
 
 const TEMPLATES = PII_TEMPLATES.map((id) => ({
@@ -49,8 +54,23 @@ const createRuntime = (): ResumeBuildRuntime =>
  * home network's résumé service (`packages/ui/resume/scripts/serve.mjs`). LAN
  * only because only the LAN deployment proxies `/api/resume/` to it. Autofill
  * is off so the browser keeps no copy of the fields.
+ *
+ * The phone's Jobs wing opens it in the phone's browser with a pick's
+ * composition and layout preselected (`?variant=&template=&pick=`), so it
+ * works at phone width: there the preview is left out (Android Chrome renders
+ * no PDF in a frame) and the download is the result.
  */
 const ResumeBuildRoute = (): JSX.Element => {
+  const search = Route.useSearch()
+  // A new link while the page is open starts a fresh form.
+  return <ResumeBuildForm key={JSON.stringify(search)} initialSearch={search} />
+}
+
+const ResumeBuildForm = ({
+  initialSearch,
+}: {
+  initialSearch: BuilderSearch
+}): JSX.Element => {
   const [runtime] = useState(createRuntime)
   useEffect(
     () => (): void => {
@@ -60,13 +80,23 @@ const ResumeBuildRoute = (): JSX.Element => {
   )
   const state = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
 
-  const [variant, setVariant] = useState<string>("backend")
-  const [template, setTemplate] = useState<string>("classic")
+  const [variant, setVariant] = useState<string>(
+    initialSearch.variant ?? "backend"
+  )
+  const [template, setTemplate] = useState<string>(
+    initialSearch.template ?? "classic"
+  )
   const [pii, setPii] = useState<Pii>({})
 
   const submit = (event: SubmitEvent<HTMLFormElement>): void => {
     event.preventDefault()
-    runtime.build({ variant, template, pii })
+    const request = { variant, template, pii }
+    runtime.build(
+      request,
+      initialSearch.pick === undefined
+        ? undefined
+        : pickFileName(initialSearch.pick, request)
+    )
   }
 
   return (
@@ -80,6 +110,12 @@ const ResumeBuildRoute = (): JSX.Element => {
           Built on the home network, never committed. What you type goes out in
           one request and is kept nowhere: not in this browser, the service or
           its logs. Leave a field empty to leave it off.
+          {initialSearch.pick === undefined ? null : (
+            <span className="mt-1 block">
+              For job {initialSearch.pick.startsWith("sc-") ? "scout" : "pick"}{" "}
+              <span className="font-mono">{initialSearch.pick}</span>.
+            </span>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex min-h-0 flex-1 flex-col gap-4 md:flex-row">
@@ -154,12 +190,12 @@ const ResumeBuildRoute = (): JSX.Element => {
             <Button asChild variant="outline">
               <a href={state.url} download={state.filename}>
                 <Download />
-                Download {state.filename}
+                Download PDF
               </a>
             </Button>
           )}
         </form>
-        <div className="min-h-96 min-w-0 flex-1 overflow-hidden rounded-md border">
+        <div className="hidden min-h-96 min-w-0 flex-1 overflow-hidden rounded-md border md:block">
           {state.status === "ready" ? (
             <iframe
               src={state.url}
@@ -180,5 +216,6 @@ const ResumeBuildRoute = (): JSX.Element => {
 }
 
 export const Route = createFileRoute("/_dashboard/_lan/resume-build")({
+  validateSearch: parseBuilderSearch,
   component: ResumeBuildRoute,
 })

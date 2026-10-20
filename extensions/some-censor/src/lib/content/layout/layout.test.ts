@@ -95,16 +95,16 @@ describe("the checked-in table", () => {
     expectInSync(CHECKED_IN)
   })
 
-  it("records a lockup nested in a grid cell", () => {
+  it("records a lockup nested in a grid cell, and a Short in its -v2 wrapper", () => {
     const home = CHECKED_IN.surfaces.home
     expect(home).toBeDefined()
-    expect(
+    const nested = (tag: string, outer: string): boolean | undefined =>
       home?.shapes.some(
-        (s) =>
-          s.tag === "yt-lockup-view-model" &&
-          s.role === "nested" &&
-          s.outer === "ytd-rich-item-renderer"
+        (s) => s.tag === tag && s.role === "nested" && s.outer === outer
       )
+    expect(nested("yt-lockup-view-model", "ytd-rich-item-renderer")).toBe(true)
+    expect(
+      nested("ytm-shorts-lockup-view-model", "ytm-shorts-lockup-view-model-v2")
     ).toBe(true)
   })
 
@@ -307,7 +307,7 @@ describe("classifyShape", () => {
 
   it("says unknown, with a reason, rather than guessing", () => {
     // A catalogue tag the crawl never saw on this surface.
-    expect(classify("watch", "yt-lockup-view-model", null)).toEqual({
+    expect(classify("watch", "ytd-video-renderer", null)).toEqual({
       kind: "unknown",
       reason: "tag-unseen",
     })

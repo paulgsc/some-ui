@@ -1,4 +1,9 @@
-import { FIELD_SELECTORS, LOCKUP_TEXT } from "@censor/lib/content/layout/fields"
+import {
+  CHANNEL_LINK_RUNS,
+  FIELD_SELECTORS,
+  LOCKUP_DATE_RUNS,
+  PLAIN_CHANNEL_RUN,
+} from "@censor/lib/content/layout/fields"
 import type { MetaData } from "@censor/types/states"
 
 /**
@@ -33,7 +38,7 @@ function firstText(
  *
  * Kept apart from {@link extractMeta} because it is evidence, not
  * presentation: it goes into the observation and the maturity estimate, and
- * never into anything a veil renders (QD4). Still pure (E1).
+ * never into anything a plate renders (QD4). Still pure (E1).
  */
 export function extractUploadDate(el: HTMLElement): string | null {
   const [polymer] = FIELD_SELECTORS.uploadDate
@@ -44,19 +49,102 @@ export function extractUploadDate(el: HTMLElement): string | null {
 
 export function extractMeta(el: HTMLElement): MetaData {
   return {
-    channelName: firstText(el, FIELD_SELECTORS.channelName),
+    channelName: channelName(el),
     duration: firstText(el, FIELD_SELECTORS.duration),
   }
 }
 
 /**
+ * The channel's display name. With `links` false the lockups' link runs are
+ * not read: `channel-id.ts` calls it only once no link's href named a channel,
+ * so a link's text then names something else, or a channel whose href is
+ * still on its way.
+ */
+export function channelName(el: HTMLElement, links = true): string | null {
+  for (const selector of FIELD_SELECTORS.channelName) {
+    if (!links && CHANNEL_LINK_RUNS.includes(selector)) continue
+    const value =
+      selector === PLAIN_CHANNEL_RUN ? plainChannelRun(el) : text(el, selector)
+    if (value) return value
+  }
+  return null
+}
+
+/** The first plain run is the channel's; one holding a link is a link run. */
+function plainChannelRun(el: HTMLElement): string | null {
+  if (isCollection(el)) return null
+  const run = el.querySelector(PLAIN_CHANNEL_RUN)
+  if (run?.querySelector("a") !== null) return null
+  return run.textContent.trim()
+}
+
+/**
  * A lockup's second metadata row reads "1.2M views · 3 days ago" as separate
- * text runs, and the age is usually the last of them. Positional, so low
+ * runs, and the age is usually the last of them. Positional, so low
  * confidence: on a row with no date the last run is the view count, which the
  * estimator does not recognize and holds as unverified (#1384).
+ *
+ * A run holding a link, or held by one, is never read: that is the channel,
+ * and YouTube places its row before or after the date's. Read as a date, a
+ * channel named like an age ("10 years ago") would admit a fresh video.
+ *
+ * The camelCase run is read by its `aria-label` ("8 days ago") rather than its
+ * compact text ("8d ago"), the form that names its unit in full.
  */
 function lockupUploadDate(el: HTMLElement): string | null {
-  const runs = el.querySelectorAll(`span${LOCKUP_TEXT}`)
+  const runs = [...el.querySelectorAll(LOCKUP_DATE_RUNS.join(", "))].filter(
+    (run) => run.querySelector("a") === null && run.closest("a") === null
+  )
   const last = runs[runs.length - 1]
-  return last?.textContent.trim() || null
+  if (last === undefined) return null
+  return (last.getAttribute("aria-label") ?? last.textContent).trim() || null
+}
+
+/** The catalogue tags that only ever render a Short. */
+const SHORTS_TAGS = new Set([
+  "ytd-reel-item-renderer",
+  "ytm-shorts-lockup-view-model",
+  "ytm-shorts-lockup-view-model-v2",
+])
+
+/**
+ * Is `el` a Short? A Shorts renderer, or any card linking to `/shorts/`: a
+ * search result renders a Short in the ordinary video renderer. Over-holding
+ * is the safe direction (QD3), so one Shorts link is enough.
+ */
+export function extractIsShort(el: HTMLElement): boolean {
+  return (
+    SHORTS_TAGS.has(el.tagName.toLowerCase()) ||
+    el.querySelector('a[href*="/shorts/"]') !== null
+  )
+}
+
+/**
+ * The official-artist badge (QD15). YouTube draws it with the plain verified
+ * badge's class, so only its label tells them apart: on a Polymer card's
+ * `badge-shape`, and on a lockup's metadata icon. The label is English, as
+ * the extension reads YouTube (`maturity.ts`'s `PARSER`).
+ */
+export const ARTIST_BADGE = '[aria-label="Official Artist Channel"]'
+
+export function extractIsArtist(el: HTMLElement): boolean {
+  return el.querySelector(ARTIST_BADGE) !== null
+}
+
+/**
+ * A lockup for a list rather than one video. Every one in the 2026-10-17
+ * captures is a Mix, whose metadata run is an artist list ("A, B and more"),
+ * not a channel.
+ */
+function isCollection(el: HTMLElement): boolean {
+  return el.querySelector("yt-collection-thumbnail-view-model") !== null
+}
+
+/**
+ * Can `el`'s markup hold a channel at all? A Shorts lockup has none, and
+ * neither does a Mix, so a channel backfill on either waits for nothing
+ * (#1848).
+ */
+export function extractCarriesChannel(el: HTMLElement): boolean {
+  return !SHORTS_TAGS.has(el.tagName.toLowerCase()) && !isCollection(el)
 }

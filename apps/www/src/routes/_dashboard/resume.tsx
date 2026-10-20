@@ -14,7 +14,11 @@ import { createFileRoute } from "@tanstack/react-router"
 import { Download, Layers3, LayoutTemplate } from "lucide-react"
 
 import type { ResumeComposition } from "@/lib/resume-options"
-import { RESUME_COMPOSITIONS, RESUME_TEMPLATES } from "@/lib/resume-options"
+import {
+  isResumeComposition,
+  RESUME_COMPOSITIONS,
+  RESUME_TEMPLATES,
+} from "@/lib/resume-options"
 
 const RESUME_COMPOSITION_KEY = "some-ui:resume-composition"
 
@@ -25,10 +29,6 @@ const MOBILE_PREVIEW_QUERY = "(max-width: 767px)"
 // A phone held sideways. `pointer: coarse` is what keeps a merely short
 // desktop window out of this branch; height alone would catch both.
 const TOUCH_LANDSCAPE_QUERY = "(max-height: 500px) and (pointer: coarse)"
-
-function isResumeComposition(value: string | null): value is ResumeComposition {
-  return RESUME_COMPOSITIONS.some(({ id }) => id === value)
-}
 
 function initialComposition(): ResumeComposition {
   if (typeof window === "undefined") return "backend"

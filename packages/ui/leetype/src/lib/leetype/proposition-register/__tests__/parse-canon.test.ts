@@ -1,6 +1,7 @@
 import type { PropositionStatus } from "@leetype/lib/leetype/proposition-register/parse-canon"
 import {
   parsePropositionRegister,
+  parseRuleRegisters,
   propositionDeclarationLineNumbers,
 } from "@leetype/lib/leetype/proposition-register/parse-canon"
 import { describe, expect, it } from "vitest"
@@ -321,5 +322,107 @@ describe("propositionDeclarationLineNumbers", () => {
 
     // Line 3 (1-indexed) is the §7 declaration; line 9's "8.1" is not.
     expect(propositionDeclarationLineNumbers(source)).toEqual(new Set([3]))
+  })
+})
+
+/** Rem. 7.4 with `machine` and `agreement` rows, each `[id, rule]`. */
+function registersFixture(
+  machine: ReadonlyArray<readonly [string, string]>,
+  agreement: ReadonlyArray<readonly [string, string]>
+): string {
+  const rows = (list: ReadonlyArray<readonly [string, string]>): string =>
+    list
+      .map(
+        ([id, rule]) => `    [\`${id}\`], [${rule}], [The *line* for ${id}.],`
+      )
+      .join("\n")
+  return [
+    '#remark("7.4", name: "Two registers beside `CW-P` (v1.2)")[',
+    "  *Machine register (v0).*",
+    "  #table(",
+    "    [*Id*], [*Rule*], [*Its one line*],",
+    rows(machine),
+    "  )",
+    "  *Agreement register (v0).*",
+    "  #table(",
+    "    [*Id*], [*Rule*], [*Its one line*],",
+    rows(agreement),
+    "  )",
+    "]",
+  ].join("\n")
+}
+
+describe("parseRuleRegisters", () => {
+  it("reads both tables in order, the rule and its one line rendered", () => {
+    const entries = parseRuleRegisters(
+      registersFixture(
+        [
+          ["M2", "Batch"],
+          ["M1", "Ladder"],
+        ],
+        [["A1", "Model (superseded)"]]
+      )
+    )
+    expect(entries).toEqual([
+      { id: "M1", rule: "Ladder", status: "active" },
+      { id: "M2", rule: "Batch", status: "active" },
+      { id: "A1", rule: "Model", status: "superseded" },
+    ])
+  })
+
+  it("throws on a gap, naming the register", () => {
+    expect(() =>
+      parseRuleRegisters(registersFixture([["M1", "Ladder"]], [["A2", "B"]]))
+    ).toThrow(/Agreement register is missing "A1"/)
+  })
+
+  it("throws when a register has no rows", () => {
+    expect(() =>
+      parseRuleRegisters(registersFixture([["M1", "L"]], []))
+    ).toThrow(/Agreement register has no rows/)
+  })
+
+  it("reads an id cell with spaces inside its brackets", () => {
+    const source = registersFixture([["M1", "Ladder"]], [["A1", "Model"]])
+    expect(
+      parseRuleRegisters(source.replace("[`M1`]", "[ `M1` ]")).map((e) => e.id)
+    ).toEqual(["M1", "A1"])
+  })
+
+  it("throws on a row whose id cell it cannot read, rather than dropping it", () => {
+    const source = registersFixture(
+      [
+        ["M1", "Ladder"],
+        ["M2", "Batch"],
+      ],
+      [["A1", "Model"]]
+    )
+    expect(() => parseRuleRegisters(source.replace("[`M2`]", "[M2]"))).toThrow(
+      /3 rule id cell\(s\) but this parser matched 2/
+    )
+  })
+
+  it("throws when Rem. 7.4 is missing", () => {
+    expect(() => parseRuleRegisters("= Nothing here")).toThrow(/7\.4/)
+  })
+
+  it("reads the real canon's Rem. 7.4: M1..M8 and A1..A10", async () => {
+    const { readFileSync } = await import("node:fs")
+    const { execFileSync } = await import("node:child_process")
+    const path = await import("node:path")
+    const root = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+      encoding: "utf8",
+    }).trim()
+    const entries = parseRuleRegisters(
+      readFileSync(
+        path.join(root, "docs/canon/complexity-witness-canon.typ"),
+        "utf8"
+      )
+    )
+    expect(entries.filter((e) => e.id.startsWith("M"))).toHaveLength(8)
+    expect(entries.filter((e) => e.id.startsWith("A"))).toHaveLength(10)
+    expect(entries.find((e) => e.id === "M8")).toMatchObject({
+      rule: "Durability has a price",
+    })
   })
 })

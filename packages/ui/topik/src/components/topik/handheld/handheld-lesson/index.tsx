@@ -30,6 +30,7 @@ import { usePastedTree } from "@topik/lib/topik/adapter/hooks/use-pasted-tree"
 import { useSceneVoice } from "@topik/lib/topik/adapter/hooks/use-scene-voice"
 import type { LastDramaStore } from "@topik/lib/topik/adapter/last-drama-store"
 import { createLastDramaStore } from "@topik/lib/topik/adapter/last-drama-store"
+import { createLensRecordStore } from "@topik/lib/topik/adapter/lens-record-store"
 import type { PastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
 import {
   createPastedLessonStore,
@@ -128,6 +129,8 @@ export const HandheldLesson = ({
     sceneVoice,
     sceneFileHint,
     wordSetHint,
+    recordsLens,
+    lensTakes,
   } = useSessionConfig()
   const draft = useSceneVoice(sceneVoice)
   const feed = useTreeFeed(treeFeed)
@@ -175,6 +178,8 @@ export const HandheldLesson = ({
   }
   const leaveServed = (): void => setServedKey(null)
   const [readAloud] = useState(() => readAloudStore ?? createReadAloudStore())
+  // Made once; whether it is kept is the host's call, at each render.
+  const [lensRecord] = useState(createLensRecordStore)
   const [added, setAdded] = useState(() => readAloud.sets())
   const resolved = useMemo(() => resolveSets(added), [added])
   const [setNote, setSetNote] = useState<StorageNote | null>(null)
@@ -225,7 +230,10 @@ export const HandheldLesson = ({
           topikLevel={own ? setLevel(own) : lessonPrompt.level}
           speech={speaker}
           store={readAloud}
+          lensRecord={recordsLens ? lensRecord : undefined}
+          lensTakes={lensTakes}
           deck={deck}
+          lensDeck={own ?? resolved.lens}
           short={short}
           paused={paused}
           onExit={() => setReading(null)}
@@ -446,8 +454,15 @@ export const HandheldLesson = ({
                   id: deck.id,
                   title: deck.title,
                   words: own.words.length,
+                  lines: own.lines.length,
                   level: setLevel(own),
                   ...(deck.from === undefined ? {} : { from: deck.from }),
+                  ...(deck.practice === undefined
+                    ? {}
+                    : { practice: deck.practice }),
+                  ...(deck.context === undefined
+                    ? {}
+                    : { context: deck.context }),
                 },
               ]
             : []

@@ -27,6 +27,7 @@ export {
   bySession,
   describeAge,
   inOrder,
+  NO_ROOM,
   QUESTIONS,
   REFLECTION_LIMIT,
   staleCount,

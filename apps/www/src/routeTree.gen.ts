@@ -18,16 +18,19 @@ import { Route as PlayoffDeltaRouteImport } from './routes/playoff-delta'
 import { Route as DashboardApkRouteImport } from './routes/_dashboard/_apk'
 import { Route as DashboardLanRouteImport } from './routes/_dashboard/_lan'
 import { Route as DashboardAppRouteImport } from './routes/_dashboard/app'
-import { Route as DashboardJobsRouteImport } from './routes/_dashboard/jobs'
+import { Route as DashboardJobRunRouteImport } from './routes/_dashboard/job-run'
 import { Route as DashboardProfileRouteImport } from './routes/_dashboard/profile'
 import { Route as DashboardResumeRouteImport } from './routes/_dashboard/resume'
 import { Route as DashboardSettingsRouteImport } from './routes/_dashboard/settings'
 import { Route as DashboardApkAphRouteImport } from './routes/_dashboard/_apk/aph'
+import { Route as DashboardApkFoyerRouteImport } from './routes/_dashboard/_apk/foyer'
+import { Route as DashboardApkJobsRouteImport } from './routes/_dashboard/_apk/jobs'
+import { Route as DashboardApkJournalRouteImport } from './routes/_dashboard/_apk/journal'
 import { Route as DashboardApkSoundbitesRouteImport } from './routes/_dashboard/_apk/soundbites'
-import { Route as DashboardApkTodayRouteImport } from './routes/_dashboard/_apk/today'
 import { Route as DashboardLanLessonsRouteImport } from './routes/_dashboard/_lan/lessons'
 import { Route as DashboardLanResumeBuildRouteImport } from './routes/_dashboard/_lan/resume-build'
 import { Route as DashboardLanRoundsRouteImport } from './routes/_dashboard/_lan/rounds'
+import { Route as DashboardPracticeSettingsRouteImport } from './routes/_dashboard/practice/settings'
 import { Route as DashboardSessionsIndexRouteImport } from './routes/_dashboard/sessions/index'
 import { Route as DashboardSessionsSessionIdRouteImport } from './routes/_dashboard/sessions/$sessionId'
 import { Route as DashboardSessionsNewRouteImport } from './routes/_dashboard/sessions/new'
@@ -35,6 +38,11 @@ import { Route as DashboardApkAphIndexRouteImport } from './routes/_dashboard/_a
 import { Route as DashboardApkAphHistoryRouteImport } from './routes/_dashboard/_apk/aph/history'
 import { Route as DashboardApkAphSettingsRouteImport } from './routes/_dashboard/_apk/aph/settings'
 import { Route as DashboardApkAphTrendRouteImport } from './routes/_dashboard/_apk/aph/trend'
+import { Route as DashboardApkJobsIndexRouteImport } from './routes/_dashboard/_apk/jobs/index'
+import { Route as DashboardApkJobsRecordRouteImport } from './routes/_dashboard/_apk/jobs/record'
+import { Route as DashboardApkJobsScoutRouteImport } from './routes/_dashboard/_apk/jobs/scout'
+import { Route as DashboardApkPracticeIndexRouteImport } from './routes/_dashboard/_apk/practice/index'
+import { Route as DashboardApkJobsPickDayPickIdRouteImport } from './routes/_dashboard/_apk/jobs/pick/$day/$pickId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -78,9 +86,9 @@ const DashboardAppRoute = DashboardAppRouteImport.update({
   path: '/app',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardJobsRoute = DashboardJobsRouteImport.update({
-  id: '/jobs',
-  path: '/jobs',
+const DashboardJobRunRoute = DashboardJobRunRouteImport.update({
+  id: '/job-run',
+  path: '/job-run',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardProfileRoute = DashboardProfileRouteImport.update({
@@ -103,14 +111,24 @@ const DashboardApkAphRoute = DashboardApkAphRouteImport.update({
   path: '/aph',
   getParentRoute: () => DashboardApkRoute,
 } as any)
+const DashboardApkFoyerRoute = DashboardApkFoyerRouteImport.update({
+  id: '/foyer',
+  path: '/foyer',
+  getParentRoute: () => DashboardApkRoute,
+} as any)
+const DashboardApkJobsRoute = DashboardApkJobsRouteImport.update({
+  id: '/jobs',
+  path: '/jobs',
+  getParentRoute: () => DashboardApkRoute,
+} as any)
+const DashboardApkJournalRoute = DashboardApkJournalRouteImport.update({
+  id: '/journal',
+  path: '/journal',
+  getParentRoute: () => DashboardApkRoute,
+} as any)
 const DashboardApkSoundbitesRoute = DashboardApkSoundbitesRouteImport.update({
   id: '/soundbites',
   path: '/soundbites',
-  getParentRoute: () => DashboardApkRoute,
-} as any)
-const DashboardApkTodayRoute = DashboardApkTodayRouteImport.update({
-  id: '/today',
-  path: '/today',
   getParentRoute: () => DashboardApkRoute,
 } as any)
 const DashboardLanLessonsRoute = DashboardLanLessonsRouteImport.update({
@@ -128,6 +146,12 @@ const DashboardLanRoundsRoute = DashboardLanRoundsRouteImport.update({
   path: '/rounds',
   getParentRoute: () => DashboardLanRoute,
 } as any)
+const DashboardPracticeSettingsRoute =
+  DashboardPracticeSettingsRouteImport.update({
+    id: '/practice/settings',
+    path: '/practice/settings',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const DashboardSessionsIndexRoute = DashboardSessionsIndexRouteImport.update({
   id: '/sessions/',
   path: '/sessions/',
@@ -164,6 +188,33 @@ const DashboardApkAphTrendRoute = DashboardApkAphTrendRouteImport.update({
   path: '/trend',
   getParentRoute: () => DashboardApkAphRoute,
 } as any)
+const DashboardApkJobsIndexRoute = DashboardApkJobsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DashboardApkJobsRoute,
+} as any)
+const DashboardApkJobsRecordRoute = DashboardApkJobsRecordRouteImport.update({
+  id: '/record',
+  path: '/record',
+  getParentRoute: () => DashboardApkJobsRoute,
+} as any)
+const DashboardApkJobsScoutRoute = DashboardApkJobsScoutRouteImport.update({
+  id: '/scout',
+  path: '/scout',
+  getParentRoute: () => DashboardApkJobsRoute,
+} as any)
+const DashboardApkPracticeIndexRoute =
+  DashboardApkPracticeIndexRouteImport.update({
+    id: '/practice/',
+    path: '/practice/',
+    getParentRoute: () => DashboardApkRoute,
+  } as any)
+const DashboardApkJobsPickDayPickIdRoute =
+  DashboardApkJobsPickDayPickIdRouteImport.update({
+    id: '/pick/$day/$pickId',
+    path: '/pick/$day/$pickId',
+    getParentRoute: () => DashboardApkJobsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -172,23 +223,31 @@ export interface FileRoutesByFullPath {
   '/mission': typeof MissionRoute
   '/playoff-delta': typeof PlayoffDeltaRoute
   '/app': typeof DashboardAppRoute
-  '/jobs': typeof DashboardJobsRoute
+  '/job-run': typeof DashboardJobRunRoute
   '/profile': typeof DashboardProfileRoute
   '/resume': typeof DashboardResumeRoute
   '/settings': typeof DashboardSettingsRoute
   '/aph': typeof DashboardApkAphRouteWithChildren
+  '/foyer': typeof DashboardApkFoyerRoute
+  '/jobs': typeof DashboardApkJobsRouteWithChildren
+  '/journal': typeof DashboardApkJournalRoute
   '/soundbites': typeof DashboardApkSoundbitesRoute
-  '/today': typeof DashboardApkTodayRoute
   '/lessons': typeof DashboardLanLessonsRoute
   '/resume-build': typeof DashboardLanResumeBuildRoute
   '/rounds': typeof DashboardLanRoundsRoute
+  '/practice/settings': typeof DashboardPracticeSettingsRoute
   '/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
   '/sessions/new': typeof DashboardSessionsNewRoute
   '/sessions/': typeof DashboardSessionsIndexRoute
   '/aph/history': typeof DashboardApkAphHistoryRoute
   '/aph/settings': typeof DashboardApkAphSettingsRoute
   '/aph/trend': typeof DashboardApkAphTrendRoute
+  '/jobs/record': typeof DashboardApkJobsRecordRoute
+  '/jobs/scout': typeof DashboardApkJobsScoutRoute
   '/aph/': typeof DashboardApkAphIndexRoute
+  '/jobs/': typeof DashboardApkJobsIndexRoute
+  '/practice/': typeof DashboardApkPracticeIndexRoute
+  '/jobs/pick/$day/$pickId': typeof DashboardApkJobsPickDayPickIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -197,22 +256,29 @@ export interface FileRoutesByTo {
   '/mission': typeof MissionRoute
   '/playoff-delta': typeof PlayoffDeltaRoute
   '/app': typeof DashboardAppRoute
-  '/jobs': typeof DashboardJobsRoute
+  '/job-run': typeof DashboardJobRunRoute
   '/profile': typeof DashboardProfileRoute
   '/resume': typeof DashboardResumeRoute
   '/settings': typeof DashboardSettingsRoute
+  '/foyer': typeof DashboardApkFoyerRoute
+  '/journal': typeof DashboardApkJournalRoute
   '/soundbites': typeof DashboardApkSoundbitesRoute
-  '/today': typeof DashboardApkTodayRoute
   '/lessons': typeof DashboardLanLessonsRoute
   '/resume-build': typeof DashboardLanResumeBuildRoute
   '/rounds': typeof DashboardLanRoundsRoute
+  '/practice/settings': typeof DashboardPracticeSettingsRoute
   '/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
   '/sessions/new': typeof DashboardSessionsNewRoute
   '/sessions': typeof DashboardSessionsIndexRoute
   '/aph/history': typeof DashboardApkAphHistoryRoute
   '/aph/settings': typeof DashboardApkAphSettingsRoute
   '/aph/trend': typeof DashboardApkAphTrendRoute
+  '/jobs/record': typeof DashboardApkJobsRecordRoute
+  '/jobs/scout': typeof DashboardApkJobsScoutRoute
   '/aph': typeof DashboardApkAphIndexRoute
+  '/jobs': typeof DashboardApkJobsIndexRoute
+  '/practice': typeof DashboardApkPracticeIndexRoute
+  '/jobs/pick/$day/$pickId': typeof DashboardApkJobsPickDayPickIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -225,23 +291,31 @@ export interface FileRoutesById {
   '/_dashboard/_apk': typeof DashboardApkRouteWithChildren
   '/_dashboard/_lan': typeof DashboardLanRouteWithChildren
   '/_dashboard/app': typeof DashboardAppRoute
-  '/_dashboard/jobs': typeof DashboardJobsRoute
+  '/_dashboard/job-run': typeof DashboardJobRunRoute
   '/_dashboard/profile': typeof DashboardProfileRoute
   '/_dashboard/resume': typeof DashboardResumeRoute
   '/_dashboard/settings': typeof DashboardSettingsRoute
   '/_dashboard/_apk/aph': typeof DashboardApkAphRouteWithChildren
+  '/_dashboard/_apk/foyer': typeof DashboardApkFoyerRoute
+  '/_dashboard/_apk/jobs': typeof DashboardApkJobsRouteWithChildren
+  '/_dashboard/_apk/journal': typeof DashboardApkJournalRoute
   '/_dashboard/_apk/soundbites': typeof DashboardApkSoundbitesRoute
-  '/_dashboard/_apk/today': typeof DashboardApkTodayRoute
   '/_dashboard/_lan/lessons': typeof DashboardLanLessonsRoute
   '/_dashboard/_lan/resume-build': typeof DashboardLanResumeBuildRoute
   '/_dashboard/_lan/rounds': typeof DashboardLanRoundsRoute
+  '/_dashboard/practice/settings': typeof DashboardPracticeSettingsRoute
   '/_dashboard/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
   '/_dashboard/sessions/new': typeof DashboardSessionsNewRoute
   '/_dashboard/sessions/': typeof DashboardSessionsIndexRoute
   '/_dashboard/_apk/aph/history': typeof DashboardApkAphHistoryRoute
   '/_dashboard/_apk/aph/settings': typeof DashboardApkAphSettingsRoute
   '/_dashboard/_apk/aph/trend': typeof DashboardApkAphTrendRoute
+  '/_dashboard/_apk/jobs/record': typeof DashboardApkJobsRecordRoute
+  '/_dashboard/_apk/jobs/scout': typeof DashboardApkJobsScoutRoute
   '/_dashboard/_apk/aph/': typeof DashboardApkAphIndexRoute
+  '/_dashboard/_apk/jobs/': typeof DashboardApkJobsIndexRoute
+  '/_dashboard/_apk/practice/': typeof DashboardApkPracticeIndexRoute
+  '/_dashboard/_apk/jobs/pick/$day/$pickId': typeof DashboardApkJobsPickDayPickIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -252,23 +326,31 @@ export interface FileRouteTypes {
     | '/mission'
     | '/playoff-delta'
     | '/app'
-    | '/jobs'
+    | '/job-run'
     | '/profile'
     | '/resume'
     | '/settings'
     | '/aph'
+    | '/foyer'
+    | '/jobs'
+    | '/journal'
     | '/soundbites'
-    | '/today'
     | '/lessons'
     | '/resume-build'
     | '/rounds'
+    | '/practice/settings'
     | '/sessions/$sessionId'
     | '/sessions/new'
     | '/sessions/'
     | '/aph/history'
     | '/aph/settings'
     | '/aph/trend'
+    | '/jobs/record'
+    | '/jobs/scout'
     | '/aph/'
+    | '/jobs/'
+    | '/practice/'
+    | '/jobs/pick/$day/$pickId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -277,22 +359,29 @@ export interface FileRouteTypes {
     | '/mission'
     | '/playoff-delta'
     | '/app'
-    | '/jobs'
+    | '/job-run'
     | '/profile'
     | '/resume'
     | '/settings'
+    | '/foyer'
+    | '/journal'
     | '/soundbites'
-    | '/today'
     | '/lessons'
     | '/resume-build'
     | '/rounds'
+    | '/practice/settings'
     | '/sessions/$sessionId'
     | '/sessions/new'
     | '/sessions'
     | '/aph/history'
     | '/aph/settings'
     | '/aph/trend'
+    | '/jobs/record'
+    | '/jobs/scout'
     | '/aph'
+    | '/jobs'
+    | '/practice'
+    | '/jobs/pick/$day/$pickId'
   id:
     | '__root__'
     | '/'
@@ -304,23 +393,31 @@ export interface FileRouteTypes {
     | '/_dashboard/_apk'
     | '/_dashboard/_lan'
     | '/_dashboard/app'
-    | '/_dashboard/jobs'
+    | '/_dashboard/job-run'
     | '/_dashboard/profile'
     | '/_dashboard/resume'
     | '/_dashboard/settings'
     | '/_dashboard/_apk/aph'
+    | '/_dashboard/_apk/foyer'
+    | '/_dashboard/_apk/jobs'
+    | '/_dashboard/_apk/journal'
     | '/_dashboard/_apk/soundbites'
-    | '/_dashboard/_apk/today'
     | '/_dashboard/_lan/lessons'
     | '/_dashboard/_lan/resume-build'
     | '/_dashboard/_lan/rounds'
+    | '/_dashboard/practice/settings'
     | '/_dashboard/sessions/$sessionId'
     | '/_dashboard/sessions/new'
     | '/_dashboard/sessions/'
     | '/_dashboard/_apk/aph/history'
     | '/_dashboard/_apk/aph/settings'
     | '/_dashboard/_apk/aph/trend'
+    | '/_dashboard/_apk/jobs/record'
+    | '/_dashboard/_apk/jobs/scout'
     | '/_dashboard/_apk/aph/'
+    | '/_dashboard/_apk/jobs/'
+    | '/_dashboard/_apk/practice/'
+    | '/_dashboard/_apk/jobs/pick/$day/$pickId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -397,11 +494,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAppRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/_dashboard/jobs': {
-      id: '/_dashboard/jobs'
-      path: '/jobs'
-      fullPath: '/jobs'
-      preLoaderRoute: typeof DashboardJobsRouteImport
+    '/_dashboard/job-run': {
+      id: '/_dashboard/job-run'
+      path: '/job-run'
+      fullPath: '/job-run'
+      preLoaderRoute: typeof DashboardJobRunRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/_dashboard/profile': {
@@ -432,18 +529,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardApkAphRouteImport
       parentRoute: typeof DashboardApkRoute
     }
+    '/_dashboard/_apk/foyer': {
+      id: '/_dashboard/_apk/foyer'
+      path: '/foyer'
+      fullPath: '/foyer'
+      preLoaderRoute: typeof DashboardApkFoyerRouteImport
+      parentRoute: typeof DashboardApkRoute
+    }
+    '/_dashboard/_apk/jobs': {
+      id: '/_dashboard/_apk/jobs'
+      path: '/jobs'
+      fullPath: '/jobs'
+      preLoaderRoute: typeof DashboardApkJobsRouteImport
+      parentRoute: typeof DashboardApkRoute
+    }
+    '/_dashboard/_apk/journal': {
+      id: '/_dashboard/_apk/journal'
+      path: '/journal'
+      fullPath: '/journal'
+      preLoaderRoute: typeof DashboardApkJournalRouteImport
+      parentRoute: typeof DashboardApkRoute
+    }
     '/_dashboard/_apk/soundbites': {
       id: '/_dashboard/_apk/soundbites'
       path: '/soundbites'
       fullPath: '/soundbites'
       preLoaderRoute: typeof DashboardApkSoundbitesRouteImport
-      parentRoute: typeof DashboardApkRoute
-    }
-    '/_dashboard/_apk/today': {
-      id: '/_dashboard/_apk/today'
-      path: '/today'
-      fullPath: '/today'
-      preLoaderRoute: typeof DashboardApkTodayRouteImport
       parentRoute: typeof DashboardApkRoute
     }
     '/_dashboard/_lan/lessons': {
@@ -466,6 +577,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/rounds'
       preLoaderRoute: typeof DashboardLanRoundsRouteImport
       parentRoute: typeof DashboardLanRoute
+    }
+    '/_dashboard/practice/settings': {
+      id: '/_dashboard/practice/settings'
+      path: '/practice/settings'
+      fullPath: '/practice/settings'
+      preLoaderRoute: typeof DashboardPracticeSettingsRouteImport
+      parentRoute: typeof DashboardRoute
     }
     '/_dashboard/sessions/': {
       id: '/_dashboard/sessions/'
@@ -516,6 +634,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardApkAphTrendRouteImport
       parentRoute: typeof DashboardApkAphRoute
     }
+    '/_dashboard/_apk/jobs/': {
+      id: '/_dashboard/_apk/jobs/'
+      path: '/'
+      fullPath: '/jobs/'
+      preLoaderRoute: typeof DashboardApkJobsIndexRouteImport
+      parentRoute: typeof DashboardApkJobsRoute
+    }
+    '/_dashboard/_apk/jobs/record': {
+      id: '/_dashboard/_apk/jobs/record'
+      path: '/record'
+      fullPath: '/jobs/record'
+      preLoaderRoute: typeof DashboardApkJobsRecordRouteImport
+      parentRoute: typeof DashboardApkJobsRoute
+    }
+    '/_dashboard/_apk/jobs/scout': {
+      id: '/_dashboard/_apk/jobs/scout'
+      path: '/scout'
+      fullPath: '/jobs/scout'
+      preLoaderRoute: typeof DashboardApkJobsScoutRouteImport
+      parentRoute: typeof DashboardApkJobsRoute
+    }
+    '/_dashboard/_apk/practice/': {
+      id: '/_dashboard/_apk/practice/'
+      path: '/practice'
+      fullPath: '/practice/'
+      preLoaderRoute: typeof DashboardApkPracticeIndexRouteImport
+      parentRoute: typeof DashboardApkRoute
+    }
+    '/_dashboard/_apk/jobs/pick/$day/$pickId': {
+      id: '/_dashboard/_apk/jobs/pick/$day/$pickId'
+      path: '/pick/$day/$pickId'
+      fullPath: '/jobs/pick/$day/$pickId'
+      preLoaderRoute: typeof DashboardApkJobsPickDayPickIdRouteImport
+      parentRoute: typeof DashboardApkJobsRoute
+    }
   }
 }
 
@@ -537,16 +690,39 @@ const DashboardApkAphRouteWithChildren = DashboardApkAphRoute._addFileChildren(
   DashboardApkAphRouteChildren,
 )
 
+interface DashboardApkJobsRouteChildren {
+  DashboardApkJobsRecordRoute: typeof DashboardApkJobsRecordRoute
+  DashboardApkJobsScoutRoute: typeof DashboardApkJobsScoutRoute
+  DashboardApkJobsIndexRoute: typeof DashboardApkJobsIndexRoute
+  DashboardApkJobsPickDayPickIdRoute: typeof DashboardApkJobsPickDayPickIdRoute
+}
+
+const DashboardApkJobsRouteChildren: DashboardApkJobsRouteChildren = {
+  DashboardApkJobsRecordRoute: DashboardApkJobsRecordRoute,
+  DashboardApkJobsScoutRoute: DashboardApkJobsScoutRoute,
+  DashboardApkJobsIndexRoute: DashboardApkJobsIndexRoute,
+  DashboardApkJobsPickDayPickIdRoute: DashboardApkJobsPickDayPickIdRoute,
+}
+
+const DashboardApkJobsRouteWithChildren =
+  DashboardApkJobsRoute._addFileChildren(DashboardApkJobsRouteChildren)
+
 interface DashboardApkRouteChildren {
   DashboardApkAphRoute: typeof DashboardApkAphRouteWithChildren
+  DashboardApkFoyerRoute: typeof DashboardApkFoyerRoute
+  DashboardApkJobsRoute: typeof DashboardApkJobsRouteWithChildren
+  DashboardApkJournalRoute: typeof DashboardApkJournalRoute
   DashboardApkSoundbitesRoute: typeof DashboardApkSoundbitesRoute
-  DashboardApkTodayRoute: typeof DashboardApkTodayRoute
+  DashboardApkPracticeIndexRoute: typeof DashboardApkPracticeIndexRoute
 }
 
 const DashboardApkRouteChildren: DashboardApkRouteChildren = {
   DashboardApkAphRoute: DashboardApkAphRouteWithChildren,
+  DashboardApkFoyerRoute: DashboardApkFoyerRoute,
+  DashboardApkJobsRoute: DashboardApkJobsRouteWithChildren,
+  DashboardApkJournalRoute: DashboardApkJournalRoute,
   DashboardApkSoundbitesRoute: DashboardApkSoundbitesRoute,
-  DashboardApkTodayRoute: DashboardApkTodayRoute,
+  DashboardApkPracticeIndexRoute: DashboardApkPracticeIndexRoute,
 }
 
 const DashboardApkRouteWithChildren = DashboardApkRoute._addFileChildren(
@@ -573,10 +749,11 @@ interface DashboardRouteChildren {
   DashboardApkRoute: typeof DashboardApkRouteWithChildren
   DashboardLanRoute: typeof DashboardLanRouteWithChildren
   DashboardAppRoute: typeof DashboardAppRoute
-  DashboardJobsRoute: typeof DashboardJobsRoute
+  DashboardJobRunRoute: typeof DashboardJobRunRoute
   DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardResumeRoute: typeof DashboardResumeRoute
   DashboardSettingsRoute: typeof DashboardSettingsRoute
+  DashboardPracticeSettingsRoute: typeof DashboardPracticeSettingsRoute
   DashboardSessionsSessionIdRoute: typeof DashboardSessionsSessionIdRoute
   DashboardSessionsNewRoute: typeof DashboardSessionsNewRoute
   DashboardSessionsIndexRoute: typeof DashboardSessionsIndexRoute
@@ -586,10 +763,11 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardApkRoute: DashboardApkRouteWithChildren,
   DashboardLanRoute: DashboardLanRouteWithChildren,
   DashboardAppRoute: DashboardAppRoute,
-  DashboardJobsRoute: DashboardJobsRoute,
+  DashboardJobRunRoute: DashboardJobRunRoute,
   DashboardProfileRoute: DashboardProfileRoute,
   DashboardResumeRoute: DashboardResumeRoute,
   DashboardSettingsRoute: DashboardSettingsRoute,
+  DashboardPracticeSettingsRoute: DashboardPracticeSettingsRoute,
   DashboardSessionsSessionIdRoute: DashboardSessionsSessionIdRoute,
   DashboardSessionsNewRoute: DashboardSessionsNewRoute,
   DashboardSessionsIndexRoute: DashboardSessionsIndexRoute,

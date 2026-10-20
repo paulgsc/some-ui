@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>BOYO Fixture — Channel Photos</title>
+    <style>
+      #posts img {
+        display: block;
+        height: 60px;
+        width: 60px;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+    BOYO fixture: channel photos outside a card (#1804), one per shape
+    YouTube draws them in, from its desktop templates. None may show while
+    the extension is on. The image is set from the script below.
+
+    #posts: a community post (#1966), as `ytd-backstage-post-renderer`
+    draws one: its author's photo, and its own image in
+    `ytd-backstage-image-renderer`. Open shows the image; no mode shows
+    the photo.
+  -->
+    <ytd-app>
+      <div id="photos">
+        <ytd-video-owner-renderer
+          ><yt-img-shadow id="avatar"><img /></yt-img-shadow
+        ></ytd-video-owner-renderer>
+        <yt-page-header-view-model
+          ><yt-avatar-shape
+            ><div class="ytSpecAvatarShapeHost"><img /></div></yt-avatar-shape
+        ></yt-page-header-view-model>
+        <yt-video-attribute-view-model
+          ><div
+            class="ytVideoAttributeViewModelHost ytVideoAttributeViewModelImageAvatar"
+          >
+            <img
+              class="ytCoreImageHost ytVideoAttributeViewModelHeroImage"
+            /></div
+        ></yt-video-attribute-view-model>
+        <ytd-rich-shelf-renderer
+          ><img class="ytCoreImageHost ytdRichShelfRendererAvatar"
+        /></ytd-rich-shelf-renderer>
+        <ytm-profile-icon class="ytProfileIconHost"
+          ><img class="ytProfileIconImage"
+        /></ytm-profile-icon>
+      </div>
+      <div id="posts">
+        <ytd-backstage-post-renderer
+          ><a id="author-thumbnail"
+            ><yt-img-shadow><img class="author" /></yt-img-shadow
+          ></a>
+          <div id="content-attachment">
+            <ytd-backstage-image-renderer
+              ><div id="image-container">
+                <yt-img-shadow><img class="post-image" /></yt-img-shadow></div
+            ></ytd-backstage-image-renderer></div
+        ></ytd-backstage-post-renderer>
+      </div>
+    </ytd-app>
+    <script>
+      for (const img of document.querySelectorAll("ytd-app img"))
+        img.src =
+          "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f0f'/%3E%3C/svg%3E"
+    </script>
+  </body>
+</html>

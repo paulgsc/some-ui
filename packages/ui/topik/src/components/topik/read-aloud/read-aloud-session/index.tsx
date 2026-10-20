@@ -13,10 +13,10 @@
  */
 
 import type { JSX } from "react"
-import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import { HeldNote, RepCard } from "@topik/components/topik/read-aloud/rep-card"
+import { SessionHeader } from "@topik/components/topik/read-aloud/session-header"
 import { SetCard } from "@topik/components/topik/read-aloud/set-card"
 import type { UseReadAloudOptions } from "@topik/lib/topik/adapter/hooks/use-read-aloud"
 import { useReadAloud } from "@topik/lib/topik/adapter/hooks/use-read-aloud"
@@ -29,15 +29,15 @@ export type ReadAloudSessionProps = UseReadAloudOptions & {
   short?: boolean
   /** The practice record to show on the start screen, and today's key. */
   record?: { record: PracticeRecord; today: string }
-  /** Turn grammar lenses on or off; the start screen offers it when given. */
-  onLenses?: (on: boolean) => void
+  /** The grammar-lens session's start, offered beside read-aloud's when given. */
+  lens?: { available: boolean; full?: boolean; onStart: () => void }
   onExit: () => void
 }
 
 export const ReadAloudSession = ({
   short = false,
   record,
-  onLenses,
+  lens,
   onExit,
   ...options
 }: ReadAloudSessionProps): JSX.Element => {
@@ -52,30 +52,17 @@ export const ReadAloudSession = ({
     onEntry && phase.name !== "paused" && phase.name !== "sitting-over"
 
   const header = (
-    <header className="shrink-0">
-      <div
-        className={cn("flex items-center gap-2 px-2", short ? "h-11" : "h-14")}
-      >
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-11 shrink-0"
-          onClick={onExit}
-          aria-label="Stop reading aloud"
-        >
-          <X className="size-6" />
-        </Button>
-        <h1 className="min-w-0 flex-1 truncate text-base font-semibold">
-          Read aloud
-        </h1>
-        {/* The level stays in sight through every rep (Cor. 4.6 (ii)). */}
-        <span
-          data-slot="read-aloud-level"
-          className="bg-primary/15 shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold last:mr-2"
-        >
-          TOPIK {options.level}
-        </span>
-        {(running || (paused && onEntry && !held)) && (
+    <SessionHeader
+      title="Read aloud"
+      level={options.level}
+      short={short}
+      exit={{
+        label: "Stop reading aloud",
+        icon: <X className="size-6" />,
+        onClick: onExit,
+      }}
+      trailing={
+        (running || (paused && onEntry && !held)) && (
           <Button
             variant="ghost"
             size="icon"
@@ -89,26 +76,12 @@ export const ReadAloudSession = ({
               <Pause className="size-6" />
             )}
           </Button>
-        )}
-      </div>
-      {vm.started && state.queue.length > 0 && (
-        <div
-          role="progressbar"
-          aria-label="Progress through this set"
-          aria-valuemin={0}
-          aria-valuemax={state.queue.length}
-          aria-valuenow={Math.min(state.cursor, state.queue.length)}
-          className="bg-muted h-1 w-full"
-        >
-          <div
-            className="bg-primary h-full rounded-r-full transition-[width] duration-300"
-            style={{
-              width: `${(Math.min(state.cursor, state.queue.length) / state.queue.length) * 100}%`,
-            }}
-          />
-        </div>
-      )}
-    </header>
+        )
+      }
+      progress={
+        vm.started ? { done: state.cursor, of: state.queue.length } : null
+      }
+    />
   )
 
   const body = ((): JSX.Element | null => {
@@ -122,9 +95,7 @@ export const ReadAloudSession = ({
           shortfall={levelShortfall(options.deck, options.level)}
           resuming={(options.resume?.queue.length ?? 0) > 0}
           record={record}
-          lenses={
-            onLenses && { on: options.lenses ?? false, onChange: onLenses }
-          }
+          lens={lens}
           short={short}
           onStart={vm.begin}
           onStop={onExit}
@@ -135,8 +106,7 @@ export const ReadAloudSession = ({
       return (
         <SetCard
           kind="summary"
-          counted={state.counted}
-          lensed={state.lensed}
+          headline={`${state.counted} read aloud`}
           runKey={state.seq}
           short={short}
           onNext={vm.nextSet}
@@ -181,9 +151,6 @@ export const ReadAloudSession = ({
         stepMs={vm.step?.seq === state.seq ? vm.step.ms : null}
         stepKey={state.seq}
         reported={state.reported}
-        answer={state.answer}
-        revealed={state.revealed}
-        onAnswer={vm.answer}
         playing={vm.playing === state.seq}
         short={short}
         onStuck={vm.stuck}

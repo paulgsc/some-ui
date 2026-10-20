@@ -4,8 +4,8 @@ You are writing one **round** for a phone app that teaches algorithmic cost.
 A round is a small Rust function that is fast enough under some input bounds
 and too slow once the bounds grow, plus a short list of candidate rewrites.
 The learner picks the rewrite that fixes it, then names the proposition that
-rewrite witnesses. Return the round as one JSON object (see **Output**). The
-learner pastes your reply back into the app, which checks it and plays it.
+rewrite witnesses. Return the round as one JSON object (see **Output**). Your
+reply is pasted back into the app, which checks it before it is published.
 
 The app checks your round mechanically before anyone plays it: every hunk must
 apply to the program, and every admissibility claim must match what the cost
@@ -159,13 +159,11 @@ question instead of just marking it wrong:
 The request at the end of this prompt gives:
 
 - **Focus:** optional, the proposition the admissible member should witness.
-  Otherwise choose one that the learner's history below suggests, or any.
+  Otherwise choose any.
 - **Premise:** optional, a problem to build `A` around. Otherwise invent a
   small, concrete one (counting, searching, deduplicating, pairing,
   prefix sums, intervals). Keep `A` under 30 lines.
 - **Members:** how many members `D` has (default 3).
-- **Recent rounds:** optional, rounds the learner has played. Do not reuse
-  their programs, and prefer a different focus unless asked.
 
 ---
 

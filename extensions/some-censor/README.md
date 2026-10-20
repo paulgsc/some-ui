@@ -6,12 +6,14 @@ the `@some-extension/transport` kernel.
 ## Architecture at a glance
 
 The content script runs four stages (Boundary Contract #1433, BC1–BC5):
-`src/content/content.ts` → `Controller` (lifecycle: enable/disable, whitelist
-broadcasts, keybindings) → `runtime/runtime.ts`, which folds every token and
-input through Core and hands the resulting actions to the Actuator. The
-Layout table and Core are pure; the Sensor turns the vendor DOM into the
-tokens Core sees, and the Actuator is the only writer to it and the only
-sender of the whitelist messages.
+`src/content/content.ts` → `Controller` (lifecycle: it follows the owner's
+settings in `storage.local`, `src/lib/settings/`) →
+`runtime/runtime.ts`, which folds every token through Core and hands the
+resulting actions to the Actuator. The Layout table and Core are pure; the
+Sensor turns the vendor DOM into the tokens Core sees, and the Actuator is the
+only writer to it. The one vendor event the Sensor holds, on Core's answer, is
+an autoplay into a video Core does not admit (#1805); under Skip, Core then
+names the Up next video the Actuator opens instead (#1966).
 
 Four stages, each owning exactly one concern, in a straight line from
 observation to write:
@@ -29,17 +31,42 @@ observation to write:
    (`layout.unknown_shape`), never thrown or skipped.
 3. **Core reducer** (`src/lib/content/core/`) — a pure, total
    `reduce(state, event) → { state, actions }`: no DOM, `browser.*`, clock,
-   or randomness anywhere under `core/`. Every card's generation (and, where
-   the view matters, its version) correlates the async requests it issues; a
-   whitelist or title-transform answer that no longer matches is discarded
-   and recorded as `stale.discarded`. A superseded reveal timer, or any
-   answer for a card that has already unmounted, is discarded silently
-   instead — that gap is real, not documentation slack.
+   or randomness anywhere under `core/`. A card's view is decided by its
+   evidence under the owner's boundary (`fsm.ts`'s `decide`, over the
+   maturity estimate): absent, plated when it is old enough, or whole when it
+   is music (`lane/lane.ts`, QD15). No gesture on
+   a card is an input (#1803); the boundary, set in the popup, is (#1807),
+   and so are the owner's mode (`settings/modes.ts`, #1966) and the face
+   hold on a plated watch page (QD13, #1805). The popup, the settings page
+   (`options.html`) and the tab menu (`background.ts`) set the mode, the
+   boundary and autoplay (#1966).
 4. **Actuator** (`src/lib/content/actuator/`) — the only writer to the
-   vendor DOM and the only sender of the whitelist messages (`IS_WHITELISTED`,
-   `ADD_WHITELIST`). It only executes the actions Core
-   named; answers to what it does (a whitelist verdict, a title transform, a
-   timer, a click) return to Core as inputs, never as calls back into it.
+   vendor DOM. It only executes the actions Core named: the `data-boyo`
+   stamp (`absent` is `display: none` in `styles/content.css`), the plate's
+   tones on a plated card, which the stylesheet paints in place of its
+   images (QD12), and the watch page's view (#1805): "Not here." on a held
+   video's page, and until a video is plated or whole no playback and a tab
+   title of "YouTube", which it keeps against YouTube's own writes.
+
+## Browsers
+
+Firefox is the product. The default `build` is the Firefox build: it is the one
+CI checks with `web-ext lint`, and the one an AMO release is built from.
+
+The Chromium build (`build:chromium`, `public/manifest.json`,
+`src/lib/platform/*/api.chrome.ts`) exists only so Playwright can run the e2e
+suite: Playwright has no supported way to load an unsigned extension into
+Firefox and drive it (`tests/e2e/global-setup.ts`). It is never shipped, so a
+gap that shows only in Chrome, such as the tab context menu Chrome does not
+offer extensions, is not a bug.
+
+The e2e suite (`pnpm test:e2e`) runs locally, not in CI. Its specs wait on real
+time (poll timeouts from 4 to 15 s, 8 s by default, and three fixed sleeps),
+so they are tuned to a developer machine. A green run covers the code
+Firefox shares (the content script, the popup, the settings page and the
+stylesheet), not the Firefox manifest, its platform adapters, the tab menu or
+how Firefox renders the page. Run it before pushing a change to the content
+script, the popup, the settings page or the stylesheet.
 
 > [!IMPORTANT] > **Story-governed as well as canon-governed — read both before editing this package.**
 >

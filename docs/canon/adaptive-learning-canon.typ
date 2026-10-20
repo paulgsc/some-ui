@@ -80,7 +80,7 @@
     skill
   ]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.17 --- 2026-10-11]
+  #text(size: 9.5pt)[Version 1.20 --- 2026-10-17]
   #v(2cm)
 ]
 
@@ -1756,6 +1756,188 @@ rather than as *data*, and the remedy is to exhibit the data.
   the record's level; the review never moves it.
 ]
 
+#definition("4.9", name: "Grammar-lens item")[
+  A *grammar-lens item* is a morphism probe (Def. 4.6) over a pair of
+  authored lines $(a, b)$: the *cue* $a$, which sets what $b$ must be --- a
+  question, a time, a verb that takes one particle and not another --- and
+  the *response line* $b$. Its relation is well-formedness of $b$ given $a$,
+  or of $b$ alone where $b$ itself decides and the cue is absent (Rem. 4.8
+  lets it be named so), and its order, two or three (Def. 4.7), is authored
+  with it: a tense that ignores the cue's question fails a felicitous reply.
+  Its candidates are $b$ as authored and *misforms* of $b$: $b$ with one
+  written word replaced by a form a learner is known to write there, each
+  naming one entry of an authored *mistake catalogue* (an identifier, a
+  one-line rule, and where the mistake comes from). An item takes one of two
+  shapes. A *pick* shows $b$ with one word's particle or ending left open
+  and offers the authored form against that word's misforms. A *judge* shows
+  $b$ whole, either as authored or with exactly one misform in place, and
+  asks for the word that is wrong or for "looks right". Only a line with at
+  least one misform yields items. Its objective is discrimination, and its
+  concepts are the catalogue entries its line's misforms name, by identifier
+  (Def. 1.3): Definition 4.1's $k$ is extended to a non-empty set $K_e$, as
+  Definition 4.8 extends it for read-aloud, and a judge shown as authored
+  examines the same set as every other item on its line. Its direction is a new
+  value of $p_"direction"$, *judgement* (a written form to whether it is well
+  formed), a new value of an existing dimension, which Theorem 4.1 says is
+  cheap.
+
+  Misforms are authored, never generated (Rem. 4.7): 부산에서 가요 is well
+  formed (setting off from Busan), so the swap that makes 편의점에 일해요 a
+  misform would make it valid.
+]
+
+#corollary("4.8", name: "The grammar-lens valuation, declared")[
+  The grammar-lens renderer of `packages/ui/topik` (capability set per
+  Definition 9.3: $p_"response" = "selection"$, the cue's modality within
+  ${"glyph", "audio"}$, and the session budget of Remark 4.10) delivers
+  Definition 4.9's item at one declared valuation, in its own session: the
+  read-aloud start screen offers a read-aloud session and a grammar-lens
+  session as two starts, and neither session's sets ever hold the other's
+  items. The valuation:
+  $p_"modality"$ of the cue one of ${"glyph"}$, ${"audio"}$ and
+  ${"glyph", "audio"}$, drawn per item among those the item allows (an
+  author may withhold audio alone from a long cue), uniformly from the
+  set's seed, so the draw selects nothing (Rem. 4.9); $b$ is always glyphs,
+  and where no speech adapter is present the cue is glyphs and the session
+  is still offered;
+  $p_"response" = "selection"$, observed;
+  $p_"direction" = "judgement"$ (Def. 4.9);
+  $p_"hint" = "none"$;
+  $p_"pressure" = "soft"$, the deadline at two minutes: nothing counts down
+  on screen, and an item unanswered when it is reached closes as *expired*
+  (Def. 3.1);
+  $p_"scored" = "true"$ --- right or wrong is shown at once, and the set's
+  summary counts both under every catalogue entry the item showed: each
+  misform a pick offered, the one a judge put in place, and, apart from
+  them, judges shown as authored, which show none; $p_"credited" = "false"$;
+  $p_"retry" = "forbidden"$; $p_"repeat" = "none"$;
+  $p_"reveal" = "explanation"$ --- the authored form, the catalogue rule,
+  the word of $a$ or $b$ that decided it, and for a missed pick what the
+  chosen form does instead; after a miss, once the step-down of
+  Remark 4.15 has ended.
+
+  Three decisions are named.
+  (i) *No meaning is given.* The surface shows no gloss of $a$ or $b$, before
+  or after the outcome. Remark 4.8 (i) already reserves the gloss; here it is
+  withheld from the reveal too, because the learner's own reading of what $b$
+  means is what the sealed checks of Remark 4.15 sample, and a gloss shown
+  first would answer them.
+  (ii) *A misform is never voiced.* Speech is asked only for $a$ and for $b$
+  as authored, and only $b$ as authored is offered for reading aloud
+  (Rem. 4.16), so the session never rehearses the mistake it shows.
+  (iii) *Some judges are right as written.* A share of judge items shows $b$
+  as authored, fixed per set and never zero, so "looks right" is an answer
+  the learner must sometimes give and the item asks for a judgement rather
+  than a search.
+
+  A set is a fixed number of items closed by its summary, and the budget is
+  Remark 4.10's, stated over every screen this session shows --- an item, its
+  reveal, each step-down question, the situation check, a take and the
+  summary --- each bounded at two minutes, and a sitting of either session
+  ends as Remark 4.10 says. An item's step-down and reveal belong to it: an
+  item showing at thirty minutes finishes with both, and what does not begin
+  is the next item. Grammar-lens items enter no practice record
+  (Def. 6.6).
+]
+
+#remark("4.15", name: "The step-down and the situation check, sealed")[
+  Two checks follow an outcome, and both are *sealed*: no answer to them is
+  marked right or wrong, and nothing on the device acts on one beyond
+  choosing the step-down's next question --- no summary, no later item, no
+  policy reads it. After a miss,
+  the *step-down* asks easier questions about the same $b$, one at a time,
+  each on a lower rung of a fixed ladder --- name the line's tense, find its
+  subject or object, find where a word's particle starts, find its verb ---
+  and ends at the first one answered rightly, when the ladder runs out, or
+  when the learner skips; it asks at most three. Its flow does disclose each
+  answer, since it moves on after a wrong one and stops after a right one;
+  what it withholds is any marking and the explanation. After alternate right
+  answers, an optional *situation check* asks when someone would say $b$: a
+  third-order probe (Def. 4.7) whose candidates are situations of use,
+  authored with the line, and whose choice is acknowledged and nothing more.
+  A situation is not a gloss (Def. 4.6 keeps the two relations apart), but it
+  is the one place the learner's own language reaches the surface, and it is
+  kept to that.
+
+  Both are graded by lookup on authored data: the step-down on each word's
+  role, its stem's end and the line's tense, offering a question only where
+  its answer is unique in $b$; the situation check on its authored
+  candidate. After a miss, the item's reveal (Cor. 4.8) waits until its
+  step-down ends, since an explanation shown first would answer it
+  (Prop. 3.1). Both are uncredited, unscored and skippable. Neither names a
+  concept of its own, so their answers are not observations (Def. 3.1): they
+  are the learner's answers kept as text, as a stuck report is (Rem. 3.6),
+  and Remark 4.18 keeps them, the step-down's last rung above all.
+]
+
+#remark("4.16", name: "A take of one's own reading")[
+  After the reveal the learner may record themselves reading $b$ as
+  authored, before or after hearing it. The take is kept as Remark 3.8 keeps
+  a spoken reflection, graded by nothing, carrying no outcome, and it leaves
+  the device only as Remark 4.18's record does. The record keeps what can be
+  said of a take without listening to it: how many were made, how long the
+  last ran, and whether the learner heard $b$ first. A take is never
+  required. Takes are bounded on their own (Rem. 7.5): at most forty, each at
+  most thirty seconds. None expires and none is evicted: a take leaves the
+  device only once the learner says an export carrying it arrived, and at
+  the bound a new take is refused, with a line saying how to make room.
+  Losing one costs the learner that recording and nothing else (Thm. 7.2).
+]
+
+#remark("4.17", name: "Time to answer, and racing")[
+  The time from an item's appearing to its answer is recorded. An answer is
+  *rushed* when it came sooner than the time to read $b$ aloud, and $a$ when
+  $a$ was shown as glyphs, at twice the level's rate (Cor. 4.6 (ii)); a
+  session is *racing* once three of its last five answers were rushed, and
+  stays so. Neither is shown, neither gates or moves anything, and neither
+  enters the summary, so no way through a set is paid or charged for its
+  speed (in the sense of Proposition 6.4 and its clause (iii)). They are for
+  whoever reads the record, who may weigh a racing session's outcomes less.
+]
+
+#remark("4.18", name: "The grammar-lens record")[
+  The outcomes of Corollary 4.8 and Remarks 4.15--4.17 are kept as one
+  record: per item, its identity, when it closed, the cue's modality, the
+  answer and whether it was right or expired, the catalogue entries it showed and the one
+  chosen, if a misform was, the time to answer
+  and whether it was rushed, the step-down's questions, answers and last
+  rung, the situation chosen, and the take's count, last length and whether
+  $b$ was heard first; per session, whether it was racing. The items'
+  outcomes are observations (Def. 3.1), and the sealed checks' answers ride
+  with them as text (Rem. 4.15); the surface keeps no belief,
+  so no update consumes them, and the application draws no inference from
+  them. They reach the learner's own agent only inside the study-context
+  export, a file the learner hands to the share sheet as Remark 8.3 allows
+  and in which Remark 3.8's reflections already leave, as text, with the
+  takes beside it. That extends Remark 4.14 (ii) from first choices to
+  per-item outcomes, because the items are drawn from a fixed, authored
+  catalogue: what an item's outcome supports is an inference about which
+  catalogue entries, cues and rungs fit this learner, which is input to the
+  next deck's authoring, class IV (Def. 8.1), and never to belief. The record
+  is kept only where that export exists (the phone app); elsewhere nothing is
+  recorded. It is a record outside the envelope (Rem. 7.5), at most a
+  thousand items, and since it is the learner's history, none expires and
+  none is evicted: an item leaves the device only once the learner says an
+  export carrying it arrived, and only if it is unchanged since. At the bound
+  a new item is not kept, and the session's summary says so until an export
+  makes room. It stays on the device until then (Rem. 7.3), and losing it
+  costs the next export its grammar-lens section and nothing else
+  (Thm. 7.2), so a write that fails is swallowed (Prop. 7.2).
+]
+
+#remark("4.19", name: "A question on a read-aloud rep, withdrawn")[
+  `packages/ui/topik` gave a read-aloud sentence a grammar question while its
+  ladder ran (\#1791), with no amendment: it asked on a rep, which
+  Corollary 4.6 says nothing does, and its set summary showed a found-of-asked
+  tally, against Corollary 4.6's $p_"scored" = "false"$. It moved neither a
+  word's pace nor the practice record. It is withdrawn, and Corollary 4.6 is
+  restored as filed: a read-aloud set asks nothing. On a clocked turn the
+  question competed with reading aloud, and its reveal came before it was
+  understood (the owner, \#1839). What it asked survives as Remark 4.15's
+  step-down; what it reached for is Definition 4.9's, in a session of its own
+  (Cor. 4.8).
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Estimator
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3275,6 +3457,29 @@ them, and this one is added.
    unchanged.],
 )
 
+#heading(level: 2)[Update --- TPK-LENS (v1.18): `packages/ui/topik` grammar-lens renderer]
+
+As above, earlier rows are retained, TPK-READ (v1.9) among them, and this one
+is added. It is filed ahead of the source it describes.
+
+#table(
+  columns: (3.3cm, 3.5cm, 1fr),
+  stroke: 0.4pt,
+  inset: 6pt,
+  [*Surface*], [*Current learner model*], [*What changed, and what did not*],
+
+  [`packages/ui/topik`, grammar-lens renderer],
+  [No belief and no persistence of competence. A bounded record of
+   grammar-lens outcomes, read by nothing on the device (Rem. 4.18), and the
+   learner's own takes (Rem. 4.16)],
+  [A second session beside read-aloud, started on its own (Cor. 4.8): pairs
+   of authored lines, misforms drawn from an authored mistake catalogue
+   (Def. 4.9), outcomes shown and never credited, sealed checks after them
+   (Rem. 4.15). The read-aloud renderer is to lose the question it carries
+   on a sentence, and its toggle (Rem. 4.19), and is otherwise as TPK-READ
+   describes it. O3 still does not exist for either to write into.],
+)
+
 #heading(level: 2)[The unreconciled duplication]
 
 The most consequential finding of the audit is not in the table. Two
@@ -3487,6 +3692,25 @@ would cost.
   ($beta > 0$), and Axiom 6.3 is withdrawn for the surface. Detectable from
   the rung reached on each line, which the handheld teaching state records
   (Cor. 4.4) and never credits.
+
++ *The catalogue is not the learner's.* Definition 4.9's misforms are drawn
+  from mistakes learners are known to make, and the catalogue that names
+  them is authored, not observed in this learner. The surface sees only
+  recognition: which authored forms the learner chose. If the record shows a
+  misform almost never chosen, its item asks the learner to recognise a form
+  they already recognise, and its outcome measures attention rather than
+  form; whether they would write that misform is not something selection can
+  show. Cost: misforms are weighted toward those this learner chooses, or
+  drawn from a production observation of their own writing that this surface
+  does not make, and Definition 4.9's "known to make" is narrowed
+  accordingly. Detectable from Remark 4.18's record, by whoever reads the
+  export.
+
++ *The items sit above the learner.* If the step-down reaches its lowest rung
+  on most misses, every miss says the same thing: the line was out of reach,
+  and which misform was chosen carries nothing. Cost: grammar-lens items are
+  drawn from lines below the learner's level, or the ladder gains lower
+  rungs. Detectable from the step-down's last rung in Remark 4.18's record.
 
 // ═══════════════════════════════════════════════════════════════════════════
 = Amendment Protocol
@@ -3767,6 +3991,41 @@ speech failed where the phone's recognizer would not listen. Filed with
 `packages/ui/leetype`, which drops `lib/leetype/notes`, and `apps/www`, which
 drops the phone's recognizer and its plugin. Moves the front-matter version
 line.
+
+*v1.18 --- 2026-10-17.* Admits a grammar-lens session beside read-aloud on
+the same start screen, as new items: the grammar-lens item, whose wrong
+candidates are authored misforms naming a mistake catalogue, with
+$p_"direction"$ gaining *judgement* (Def. 4.9); its valuation, with a soft
+two-minute deadline and nothing counting down, shown, never credited, with no gloss and no voiced misform (Cor. 4.8); a
+sealed step-down after a miss and a situation check after alternate right
+answers (Rem. 4.15); the learner's own take (Rem. 4.16); time to answer with
+rushed and racing flags nothing acts on (Rem. 4.17); and a bounded record
+that reaches only the learner's own agent, extending Remark 4.14 (ii) to
+per-item outcomes (Rem. 4.18). Withdraws the question \#1791 put on a
+read-aloud rep without an amendment, restoring Corollary 4.6 (Rem. 4.19).
+Adds a TPK-LENS row to §10 and two falsifiers to §12. Motivated by the
+owner's report that the question on a clocked rep was hard to use, and
+their request for the two practices as separate starts (\#1839). Filed
+ahead of `packages/ui/topik`'s deck schema (the cue, misforms and
+situations), the read-aloud renderer's removal of the question and its
+toggle, and the grammar-lens session. Moves the front-matter version line.
+
+*v1.19 --- 2026-10-17.* Amends Remark 4.18's bound: the grammar-lens
+record keeps at most a thousand items, none expiring and none evicted, and
+an item leaves the device only once the learner says an export carrying it
+arrived, unchanged since; at the bound a new item is not kept, and the
+summary says so. Motivated by the owner's direction that the learner's
+history is never lost unseen, and their choice to free it only after a
+confirmed copy (\#1839), as the phone's session archive and reflections
+already do. Filed with `packages/ui/topik`'s record store and `apps/www`'s
+study-context export. Moves the front-matter version line.
+
+*v1.20 --- 2026-10-17.* Amends Remark 4.16's bound as v1.19 amended
+Remark 4.18's: at most forty takes, none expiring and none evicted, each
+leaving the device only once the learner says an export carrying it arrived;
+at the bound a new take is refused. Motivated by the same direction of the
+owner's (\#1839). Filed with `packages/ui/topik`'s take row and `apps/www`'s
+take store and study-context export. Moves the front-matter version line.
 
 #pagebreak()
 

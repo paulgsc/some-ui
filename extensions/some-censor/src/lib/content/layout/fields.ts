@@ -14,49 +14,82 @@
  * (`…__metadata-row` gains modifiers) and reorders the rows between
  * surfaces, so `:first-child` / `:nth-child()` written against one shelf
  * silently returns the wrong row on another.
+ *
+ * Lockups come in two class spellings, BEM and camelCase, and the lockup
+ * selectors here name both.
  */
 
-/** The class every metadata text run in a Lit lockup carries. */
-export const LOCKUP_TEXT =
-  '[class*="yt-content-metadata-view-model__metadata-text"]'
+/**
+ * The lockup metadata runs an upload date can be read from, one per spelling.
+ * A camelCase run counts only when it carries an `aria-label`, which the view
+ * count and the age do in their long form ("8 days ago" for an "8d ago") and
+ * a plain-text channel run does not.
+ * `extract/meta.ts` reads them as one list, in document order.
+ */
+export const LOCKUP_DATE_RUNS = [
+  'span[class*="yt-content-metadata-view-model__metadata-text"]',
+  'span[class*="ytContentMetadataViewModelMetadataText"][aria-label]',
+] as const
+
+/**
+ * On the feed the channel is the metadata run that is a link. The BEM run can
+ * be the link; the camelCase run wraps one.
+ */
+export const CHANNEL_LINK_RUNS: ReadonlyArray<string> = [
+  'a[class*="yt-content-metadata-view-model__metadata-text"]',
+  '[class*="ytContentMetadataViewModelMetadataText"] a',
+]
+
+/**
+ * The watch rail's plain-text channel run. `extract/meta.ts` reads it only
+ * where it holds no link, and never on a collection.
+ */
+export const PLAIN_CHANNEL_RUN =
+  'span[class*="ytContentMetadataViewModelMetadataText"]:not([aria-label])'
 
 export type CardField = "title" | "channelName" | "duration" | "uploadDate"
 
 /**
  * Selectors in priority order. The first one that yields non-empty text wins
- * at extraction time; the fingerprint records every one that matched.
+ * at extraction time, except the lockup dates (see `uploadDate` below); the
+ * fingerprint records every one that matched.
  */
 export const FIELD_SELECTORS: Readonly<
   Record<CardField, ReadonlyArray<string>>
 > = {
   // Ordered most-specific first. The `yt-*-view-model` entries are the Lit-era
-  // lockups: their title is an anchor carrying a BEM-ish class
+  // lockups: their title is an anchor carrying a BEM or camelCase class
   // rather than the `#video-title` id the Polymer renderers use.
   title: [
     "#video-title",
     "a#video-title",
     "#video-title-link",
     "yt-formatted-string#video-title",
-    // Matched on a class *prefix* because YouTube appends modifiers
-    // (`…__title--small`) and versions the host class.
-    '[class*="lockup-metadata-view-model__title"]',
+    // The whole class token, not a substring: the metadata host's own
+    // `ytLockupMetadataViewModelTitleMaxLines3` would match one.
+    "a.ytLockupMetadataViewModelTitle",
     '[class*="shortsLockupViewModelHostMetadataTitle"]',
     "h3 a",
   ],
   channelName: [
     "ytd-channel-name yt-formatted-string",
     "#channel-name yt-formatted-string",
-    // The channel is the metadata run that is a link; view counts and dates
-    // are plain text.
-    `a${LOCKUP_TEXT}`,
+    ...CHANNEL_LINK_RUNS,
+    PLAIN_CHANNEL_RUN,
+    // The playlist panel's row has no link and no `ytd-channel-name`.
+    "span#byline",
   ],
   duration: [
     "span.ytd-thumbnail-overlay-time-status-renderer",
     '[class*="ThumbnailOverlayBadgeViewModel"] [class*="badge-shape"]',
+    // The bottom overlay holds the duration. A Mix's "Mix" badge sits in a
+    // corner overlay of its own and is not one.
+    '[class*="ytThumbnailBottomOverlayViewModelHost"] [class*="ytBadgeShapeText"]',
   ],
-  // The Polymer metadata line is "views · date" as two spans. The lockup case
-  // is positional — the *last* text run of the metadata row — and is spelled
-  // by `extract/meta.ts`'s `lockupUploadDate()` rather than as a selector, so
-  // it is recorded here under its own name for the fingerprint's benefit.
-  uploadDate: ["#metadata-line span:nth-child(2)", `span${LOCKUP_TEXT}`],
+  // The Polymer metadata line's last span: search puts a hidden badge and a
+  // separator ahead of "views", "age" (#1864). The lockup case is positional
+  // too — the *last* run, of either spelling — and is read by
+  // `extract/meta.ts`'s `lockupUploadDate()`; its runs are listed here so the
+  // fingerprint records them.
+  uploadDate: ["#metadata-line > span:last-of-type", ...LOCKUP_DATE_RUNS],
 }

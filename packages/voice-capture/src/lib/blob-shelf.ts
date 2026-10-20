@@ -1,13 +1,18 @@
 /**
  * Audio kept on the phone by id, in its own IndexedDB database, refusing a
  * write that would take it past `maxBytes` in the same transaction as the
- * write. What the audio belongs to, and whether it may be kept at all, is the
- * caller's: the shelf only holds the bytes.
+ * write, or past the device's room (`./room`). What the audio belongs to,
+ * and whether it may be kept at all, is the caller's: the shelf only holds
+ * the bytes.
  */
-import { bytesBesides, connection, done, result } from "./idb"
+import { bytesBesides, bytesOf, connection, done, result } from "./idb"
+import { withRoom } from "./room"
 
 export type BlobShelf = {
-  /** Rejects with `ShelfFullError`, keeping nothing, past `maxBytes`. */
+  /**
+   * Rejects with `ShelfFullError`, keeping nothing, past `maxBytes` or the
+   * device's room.
+   */
   put: (id: string, blob: Blob) => Promise<void>
   get: (id: string) => Promise<Blob | null>
   remove: (ids: ReadonlyArray<string>) => Promise<void>
@@ -37,14 +42,26 @@ export function blobShelf({
 
   return {
     async put(id, blob): Promise<void> {
-      const tx = (await connect()).transaction(STORE, "readwrite")
-      const blobs = tx.objectStore(STORE)
-      if ((await bytesBesides(blobs, id)) + blob.size > maxBytes) {
-        tx.abort()
-        throw new ShelfFullError()
-      }
-      blobs.put(blob, id)
-      await done(tx)
+      const freed = await bytesOf(await connect(), STORE, [id])
+      await withRoom(
+        blob.size - freed,
+        async (claim): Promise<void> => {
+          const tx = (await connect()).transaction(STORE, "readwrite")
+          const blobs = tx.objectStore(STORE)
+          const replaced: unknown = await result(blobs.get(id))
+          const frees = replaced instanceof Blob ? replaced.size : 0
+          if (
+            blob.size - frees > claim ||
+            (await bytesBesides(blobs, id)) + blob.size > maxBytes
+          ) {
+            tx.abort()
+            throw new ShelfFullError()
+          }
+          blobs.put(blob, id)
+          await done(tx)
+        },
+        () => new ShelfFullError()
+      )
     },
 
     async get(id): Promise<Blob | null> {

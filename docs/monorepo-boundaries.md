@@ -168,9 +168,10 @@ coordination, each fixed by one more local guard.
 >   `packages/eslint/src/react-coordination.ts`,
 >   `packages/eslint/src/site-count.ts` (its scope and allowlist parsing),
 >   `scripts/check-react-coordination.ts`, the root `lint` script or pr.yml's
->   `react-coordination` job (and its line in CI Gate) that narrows what is
->   counted or stops it running: a path excluded, a kind of site dropped, a
->   step removed, a file deleted or renamed.
+>   `react-coordination` job (and its entry in CI Gate's `needs`, which
+>   `allowed-skips` must not list) that narrows what is counted or stops it
+>   running: a path excluded, a kind of site dropped, a step removed, a file
+>   deleted or renamed.
 > - _Scope:_ `scripts/react-coordination.allowlist` and the files named
 >   above.
 > - _Why not enforced:_ the count is. `pnpm check:react-coordination` fails

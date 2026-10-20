@@ -1,0 +1,403 @@
+/**
+ * BOYO — the watch page (#1805)
+ *
+ * W1 — No comment, comment count or comments panel renders while the
+ *      extension is on; another engagement panel stays, and off is plain
+ *      YouTube.
+ * W2 — An old video's page shows as YouTube shows it.
+ * W3 — A recent video's page is "Not here." and Back: no player, title or
+ *      date, no playback, and a tab title that is not the video's.
+ * W4 — While the page still shows the previous video's date under the next
+ *      video, none of it shows or plays, and it does not yet say "Not here."
+ * W5 — A Short's page is "Not here."
+ * W6 — Off, the stylesheet lifts from a recent video's page. (The tab title
+ *      coming back on off is `runtime.test.ts`'s.)
+ * W7 — A held video moved into the miniplayer stays hidden and paused, and
+ *      "Not here." does not cover the page shown.
+ * W8 — An old video moved into the miniplayer plays on, shown.
+ * W9 — When the miniplayer goes on to another video, that video is held: the
+ *      page it was opened on says nothing about it.
+ * W10 — Autoplay goes on only into a video the page admits; a click is never
+ *       held.
+ * W11 — A music video's page is shown whole at any age (QD15): its player and
+ *       its own poster, and no face control.
+ * W12 — Under Strict, autoplay from a music video goes on only into another
+ *       music video, never into a plated one; Standard's goes on (#1966).
+ * W13 — Under Skip, a held autoplay opens the first video in Up next the
+ *       page admits instead; under Stop nothing opens (#1966).
+ */
+
+import { SWITCHED_OFF_ATTRIBUTE } from "@censor/lib/content/selectors"
+import { expect, test } from "@censor/playwright/fixture"
+import { vividPixels } from "@censor/playwright/rendered"
+import type { Page } from "@playwright/test"
+
+test("W1: no comments render, unless off", async ({ fixture }) => {
+  const page = await fixture.goto("yt-comments")
+  const comments = page.locator("[data-comments]")
+  await expect(comments).toHaveCount(5)
+  for (const el of await comments.all()) await expect(el).toBeHidden()
+  await expect(page.locator("#description-panel")).toBeVisible()
+
+  await page.evaluate(
+    (attribute) => document.documentElement.setAttribute(attribute, ""),
+    SWITCHED_OFF_ATTRIBUTE
+  )
+  for (const el of await comments.all()) await expect(el).toBeVisible()
+})
+
+// ── The page's own video ─────────────────────────────────────────────────────
+
+const NOT_HERE = "[data-boyo-not-here]"
+
+async function watchView(page: Page, view: string): Promise<void> {
+  await expect(page.locator("html")).toHaveAttribute("data-boyo-watch", view)
+}
+
+/** Rewrite the info line's age run, as YouTube does when the date arrives. */
+async function setAge(page: Page, age: string): Promise<void> {
+  await page.evaluate((text) => {
+    const runs = document.querySelectorAll("#info > span")
+    const run = runs[runs.length - 1]
+    if (run) run.textContent = text
+  }, age)
+}
+
+/**
+ * YouTube's "i", in its order: the home page shows, the player moves into
+ * the miniplayer, the app reflects it as `miniplayer-is-active`, and only
+ * then, a task later, the miniplayer's title bar fills in.
+ */
+async function toMiniplayer(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    document.querySelector("ytd-watch-flexy")?.setAttribute("hidden", "")
+    document.querySelector("ytd-browse")?.removeAttribute("hidden")
+    const mini = document.createElement("ytd-miniplayer")
+    mini.innerHTML = '<h1 class="ytdMiniplayerInfoBarTitle"></h1>'
+    const video = document.querySelector("video")
+    if (video) mini.append(video)
+    const app = document.querySelector("ytd-app")
+    app?.append(mini)
+    app?.setAttribute("miniplayer-is-active", "")
+    await new Promise((r) => setTimeout(r, 50))
+    const bar = mini.querySelector("h1")
+    if (bar) bar.textContent = "Me at the zoo"
+  })
+}
+
+/** A play the page asks for, and whether it is still playing after a beat. */
+async function playsThrough(page: Page): Promise<boolean> {
+  return page.evaluate(async () => {
+    const video = document.querySelector("video")
+    if (video === null) return false
+    void video.play().catch(() => undefined)
+    await new Promise((r) => setTimeout(r, 100))
+    return !video.paused
+  })
+}
+
+test("W2: an old video's page shows as YouTube shows it", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-watch-page")
+  await watchView(page, "plated")
+  await expect(page.locator("#primary-inner")).toBeVisible()
+  await expect(page.locator(NOT_HERE)).toHaveCount(0)
+  await expect(page).toHaveTitle("Me at the zoo - YouTube")
+  expect(await playsThrough(page), "the control for W3 and W4").toBe(true)
+})
+
+test('W3: a recent video\'s page is "Not here.", with nothing of the video', async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-watch-page")
+  await watchView(page, "plated")
+  await setAge(page, "3 hours ago")
+  await watchView(page, "absent")
+  await expect(page.locator(NOT_HERE)).toHaveText("Not here.Back")
+  await expect(page.getByRole("button", { name: "Back" })).toBeVisible()
+  await expect(page.locator("ytd-watch-flexy")).toBeHidden()
+  await expect(page).toHaveTitle("YouTube")
+  expect(await playsThrough(page)).toBe(false)
+})
+
+test("W4: the next video's page shows none of it while the old date is still up", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-watch-page")
+  await watchView(page, "plated")
+  // As YouTube moves to the next video: both ids at once, the date later.
+  await page.evaluate(() => {
+    for (const el of document.querySelectorAll("[video-id]")) {
+      el.setAttribute("video-id", "dQw4w9WgXcQ")
+    }
+  })
+  await watchView(page, "pending")
+  await expect(page.locator("#primary-inner")).toBeHidden()
+  await expect(page.locator("#secondary")).toBeVisible()
+  await expect(page.locator(NOT_HERE)).toHaveCount(0)
+  await expect(page).toHaveTitle("YouTube")
+  expect(await playsThrough(page)).toBe(false)
+
+  await setAge(page, "3 hours ago")
+  await watchView(page, "absent")
+})
+
+test('W5: a Short\'s page is "Not here."', async ({ fixture }) => {
+  const page = await fixture.goto("yt-watch-page")
+  await watchView(page, "plated")
+  await page.evaluate(() => {
+    document.querySelector("ytd-watch-flexy")?.setAttribute("hidden", "")
+    const shorts = document.createElement("ytd-shorts")
+    shorts.textContent = "A Short"
+    document.querySelector("ytd-page-manager")?.append(shorts)
+  })
+  await watchView(page, "absent")
+  await expect(page.locator("ytd-shorts")).toBeHidden()
+  await expect(page.locator(NOT_HERE)).toBeVisible()
+})
+
+test("W6: off, the stylesheet lifts from a recent video's page", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-watch-page")
+  await setAge(page, "3 hours ago")
+  await watchView(page, "absent")
+  await page.evaluate(
+    (attribute) => document.documentElement.setAttribute(attribute, ""),
+    SWITCHED_OFF_ATTRIBUTE
+  )
+  await expect(page.locator("#primary-inner")).toBeVisible()
+  await expect(page.locator(NOT_HERE)).toBeHidden()
+})
+
+test("W7: a held video moved into the miniplayer stays held, and says nothing", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-watch-page")
+  await setAge(page, "3 hours ago")
+  await watchView(page, "absent")
+  await expect(page.locator(NOT_HERE)).toBeVisible()
+  await toMiniplayer(page)
+  await expect(page.locator(NOT_HERE)).toHaveCount(0)
+  await expect(page.locator("ytd-miniplayer")).toBeHidden()
+  await expect(page).toHaveTitle("YouTube")
+  expect(await playsThrough(page)).toBe(false)
+})
+
+test("W8: an old video moved into the miniplayer plays on, shown", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-watch-page")
+  await watchView(page, "plated")
+  expect(await playsThrough(page), "playing before the move").toBe(true)
+  await toMiniplayer(page)
+  await expect(page.locator("ytd-miniplayer")).toBeVisible()
+  await watchView(page, "plated")
+  // Still playing, untouched: the move never read as another video.
+  expect(
+    await page.evaluate(() => document.querySelector("video")?.paused)
+  ).toBe(false)
+})
+
+test("W9: the miniplayer going on to another video holds it", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-watch-page")
+  await watchView(page, "plated")
+  await toMiniplayer(page)
+  await watchView(page, "plated")
+  // Autoplay in the miniplayer: only its title bar follows the new video.
+  await page.evaluate(() => {
+    const bar = document.querySelector(".ytdMiniplayerInfoBarTitle")
+    if (bar) bar.textContent = "A video posted an hour ago"
+  })
+  await watchView(page, "pending")
+  await expect(page.locator("ytd-miniplayer")).toBeHidden()
+  expect(await playsThrough(page)).toBe(false)
+})
+
+/**
+ * Fill Up next with cards, each `[videoId, age, channel name]`, in the list
+ * YouTube draws them in.
+ */
+async function upNext(
+  page: Page,
+  cards: ReadonlyArray<readonly [string, string, string]>
+): Promise<void> {
+  await page.evaluate((list) => {
+    const secondary = document.querySelector("#secondary")
+    if (secondary)
+      secondary.innerHTML = `<div id="related"><ytd-watch-next-secondary-results-renderer>${list
+        .map(
+          ([id, age, channel]) =>
+            `<ytd-compact-video-renderer><a id="video-title" href="/watch?v=${id}">${id}</a><ytd-channel-name><yt-formatted-string>${channel}</yt-formatted-string></ytd-channel-name><a href="/@${id}">${channel}</a><div id="metadata-line"><span>1M views</span><span>${age}</span></div></ytd-compact-video-renderer>`
+        )
+        .join("")}</ytd-watch-next-secondary-results-renderer></div>`
+  }, cards)
+}
+
+async function stamped(
+  page: Page,
+  videoId: string,
+  view: string
+): Promise<void> {
+  await expect(page.locator(`[data-boyo-vid="${videoId}"]`)).toHaveAttribute(
+    "data-boyo",
+    view
+  )
+}
+
+/**
+ * Whether YouTube's app would see a navigation to `videoId`, as YouTube
+ * sends it: `autonav` is autoplay's mark, and a click carries none.
+ */
+function reaches(
+  page: Page,
+  videoId: string,
+  autonav?: string
+): Promise<boolean> {
+  return page.evaluate(
+    ([id, nav]) => {
+      let reached = false
+      const app = new AbortController()
+      window.addEventListener(
+        "yt-navigate",
+        () => {
+          reached = true
+        },
+        { signal: app.signal }
+      )
+      document.querySelector("ytd-watch-flexy")?.dispatchEvent(
+        new CustomEvent("yt-navigate", {
+          bubbles: true,
+          composed: true,
+          detail: {
+            endpoint: { watchEndpoint: { videoId: id } },
+            tempData: { autonav: nav },
+          },
+        })
+      )
+      app.abort()
+      return reached
+    },
+    [videoId, autonav] as const
+  )
+}
+
+test("W10: autoplay goes on only into a video the page admits", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-watch-page")
+  await watchView(page, "plated")
+  await upNext(page, [
+    ["old_next", "9 years ago", "Chan"],
+    ["new_next", "3 hours ago", "Chan"],
+  ])
+  await stamped(page, "old_next", "plated")
+  await stamped(page, "new_next", "absent")
+  // Autoplay into the old one goes on; into the recent or an unseen one it is
+  // held; a click on the recent one is the owner's own and is never held.
+  expect(await reaches(page, "old_next", "1")).toBe(true)
+  expect(await reaches(page, "new_next", "1")).toBe(false)
+  expect(await reaches(page, "unseen", "1")).toBe(false)
+  expect(await reaches(page, "new_next")).toBe(true)
+})
+
+test("W11: a music video's page is shown whole, at any age", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-watch-page")
+  await watchView(page, "plated")
+  await page.evaluate(() => {
+    const title = document.querySelector("#title yt-formatted-string")
+    if (title) title.textContent = "[MV] Stay With Me (Goblin OST)"
+  })
+  await setAge(page, "3 hours ago")
+  await watchView(page, "whole")
+  await expect(page.locator("#primary-inner")).toBeVisible()
+  // The player's own poster, and no face control: nothing is plated.
+  expect(
+    await vividPixels(
+      page.locator("#movie_player > .ytp-cued-thumbnail-overlay > div")
+    )
+  ).toBeGreaterThan(0)
+  await expect(page.locator("[data-boyo-face-hold]")).toHaveCount(0)
+  expect(await playsThrough(page)).toBe(true)
+})
+
+test("W12: under Strict, autoplay from music goes on only into music", async ({
+  fixture,
+}) => {
+  await fixture.settings({ mode: "strict" })
+  const page = await fixture.goto("yt-watch-page")
+  await watchView(page, "plated")
+  // A music video by its channel, which Strict reads: whole.
+  await page.evaluate(() => {
+    document
+      .querySelector("ytd-watch-metadata #title")
+      ?.insertAdjacentHTML(
+        "afterend",
+        "<ytd-video-owner-renderer><ytd-channel-name><yt-formatted-string>Ailee - Topic</yt-formatted-string></ytd-channel-name></ytd-video-owner-renderer>"
+      )
+  })
+  await setAge(page, "3 hours ago")
+  await watchView(page, "whole")
+  await upNext(page, [
+    ["old_next", "9 years ago", "Chan"],
+    ["song_next", "3 hours ago", "Crush - Topic"],
+  ])
+  await stamped(page, "old_next", "plated")
+  await stamped(page, "song_next", "whole")
+  expect(await reaches(page, "song_next", "1")).toBe(true)
+  expect(await reaches(page, "old_next", "1")).toBe(false)
+
+  await fixture.settings({ mode: "standard" })
+  await expect
+    .poll(() => reaches(page, "old_next", "1"), { message: "Standard goes on" })
+    .toBe(true)
+})
+
+test("W13: Skip opens the next admitted video in Up next", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-watch-page")
+  await watchView(page, "plated")
+  await upNext(page, [
+    ["new_next", "3 hours ago", "Chan"],
+    ["old_next", "9 years ago", "Chan"],
+  ])
+  await stamped(page, "new_next", "absent")
+  await stamped(page, "old_next", "plated")
+  // Every link the page opens, kept from leaving the fixture.
+  await page.evaluate(() => {
+    const opened: Array<string> = []
+    Reflect.set(window, "__OPENED__", opened)
+    window.addEventListener(
+      "click",
+      (event) => {
+        const link =
+          event.target instanceof Element ? event.target.closest("a") : null
+        if (link === null) return
+        event.preventDefault()
+        opened.push(link.getAttribute("href") ?? "")
+      },
+      { capture: true }
+    )
+  })
+  const opened = (): Promise<unknown> =>
+    page.evaluate((): unknown => Reflect.get(window, "__OPENED__"))
+
+  expect(await reaches(page, "new_next", "1")).toBe(false)
+  await page.waitForTimeout(200)
+  expect(await opened(), "Stop opens nothing").toEqual([])
+
+  await fixture.settings({ autoplay: "skip" })
+  await expect
+    .poll(async () => {
+      await reaches(page, "new_next", "1")
+      return opened()
+    })
+    .toContain("/watch?v=old_next")
+  expect(await opened()).not.toContain("/watch?v=new_next")
+})

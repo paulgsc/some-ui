@@ -1,15 +1,13 @@
 /**
  * LeetType's rounds: the public read routes (paulgsc/server,
  * `routes::db::leetype`) and the operator routes beside them
- * (`routes::db::leetype_operator`). `apps/www`'s `lib/leetype-content` reads
- * the first two, and the round's recorded runs (X2/X5, paulgsc/server#381);
- * `@some-ui/lesson-crm`'s `RoundCrm`, through
- * `apps/www/src/lib/round-crm-client`, calls the rest.
+ * (`routes::db::leetype_operator`). `@some-ui/lesson-crm`'s `RoundCrm`
+ * calls them, through `apps/www/src/lib/round-crm-client`.
  *
- * Hand-written, like every contract here: `RoundManifestSchema` is what
- * `lib/leetype-content` parses, widened to the fields the CRM's
- * `OperatorRound` reads, and checked by hand against the server's
- * `RoundManifest`/`OperatorRound` in `handlers/db/leetype*.rs`. A round's
+ * Hand-written, like every contract here: `RoundManifestSchema` is the
+ * manifest's shape, widened to the fields the CRM's `OperatorRound` reads,
+ * and checked by hand against the server's `RoundManifest`/`OperatorRound`
+ * in `handlers/db/leetype*.rs`. A round's
  * body is not pinned here: the server stores it verbatim and never parses
  * more than its id, language and μ, and `@some-ui/leetype`'s own
  * `RoundSchema` is what holds it on the way in.
@@ -38,8 +36,8 @@ const RoundEntrySchema = z.object({
 })
 
 /**
- * `RunResult` (X1, `@some-ui/leetype`'s `lib/leetype/run-result`), as the
- * runs route carries it: checked by hand against the server's
+ * A recorded run's result (X1), as the runs route carries it: checked by
+ * hand against the server's
  * `leetype_round_repo::RunResult` (`crates/db/leetype_round/src/runs.rs`).
  */
 const RunResultSchema = z.discriminatedUnion("kind", [
@@ -92,7 +90,7 @@ const OperatorRoundSchema = RoundEntrySchema.extend({
 const ABSENT_ID = "contract-harness-does-not-exist"
 
 /**
- * A reviewed round's id (`corpus/rounds/` in `@some-ui/leetype`), for the
+ * A reviewed round's id (`AUTHORED_ROUNDS` in `@some-ui/leetype`), for the
  * runs contract's shape. An environment that has not imported the corpus
  * answers `404`, which that contract accepts without a schema: the shape is
  * checked wherever the round exists.

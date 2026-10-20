@@ -14,6 +14,11 @@
  * claim (what Thm. 6.1's proof calls "the authored statement of `μ(d)`").
  * It is read bracket-depth-aware (`bodyOfBracketBlock`), since typst content
  * may nest `[...]`.
+ *
+ * `parseRuleRegisters` reads Rem. 7.4's two tables, the Machine (`M`) and
+ * Agreement (`A`) registers incident rounds cite, the same way. A row whose
+ * rule ends ` (superseded)` is marked and kept (Rem. 7.4); like the
+ * retirement marker above, never yet exercised against a real row.
  */
 
 const SECTION_7_HEADING = "= The proposition register"
@@ -29,6 +34,13 @@ const NAME_SEPARATOR = " · "
 const RETIRED_SUFFIX = " (retired)"
 
 export type PropositionStatus = "active" | "retired"
+
+const RULE_REGISTERS_REMARK = /#remark\("7\.4", name: "[^"]*"\)\[/
+// The id cell of a register row; the rule and its one line follow as cells.
+const RULE_ROW = /\[\s*`([MA])(\d+)`\s*\],\s*\[/g
+// Looser than `RULE_ROW` on purpose, so a row it cannot read is counted.
+const RULE_ID_CELL = /\[\s*`?[MA]\d+`?\s*\]/g
+const SUPERSEDED_SUFFIX = " (superseded)"
 
 export type PropositionRegisterEntry = {
   readonly id: string
@@ -408,26 +420,38 @@ export function parsePropositionRegister(
       Number(a.id.slice("CW-P".length)) - Number(b.id.slice("CW-P".length))
   )
 
-  const seen = new Set<string>()
-  for (const entry of entries) {
-    if (seen.has(entry.id)) {
-      throw new Error(
-        `proposition register cites "${entry.id}" more than once.`
-      )
-    }
-    seen.add(entry.id)
-  }
+  assertContiguous(
+    entries.map((entry) => entry.id),
+    "CW-P",
+    "proposition register"
+  )
+  return entries
+}
 
-  for (let n = 1; n <= entries.length; n++) {
-    const expectedId = `CW-P${n}`
+/**
+ * Throws unless `ids` are exactly `<prefix>1..<prefix>N` without duplicates,
+ * naming `register` in the error.
+ */
+function assertContiguous(
+  ids: ReadonlyArray<string>,
+  prefix: string,
+  register: string
+): void {
+  const seen = new Set<string>()
+  for (const id of ids) {
+    if (seen.has(id)) {
+      throw new Error(`${register} cites "${id}" more than once.`)
+    }
+    seen.add(id)
+  }
+  for (let n = 1; n <= ids.length; n++) {
+    const expectedId = `${prefix}${String(n)}`
     if (!seen.has(expectedId)) {
       throw new Error(
-        `proposition register is missing "${expectedId}" even though ${entries.length} entries were found — ids must be a contiguous CW-P1..CW-P${entries.length} sequence.`
+        `${register} is missing "${expectedId}" even though ${String(ids.length)} entries were found — ids must be a contiguous ${prefix}1..${prefix}${String(ids.length)} sequence.`
       )
     }
   }
-
-  return entries
 }
 
 /**
@@ -449,4 +473,66 @@ export function propositionDeclarationLineNumbers(
     lines.add(upToMatch.split("\n").length)
   }
   return lines
+}
+
+export type RuleRegisterEntry = {
+  readonly id: string
+  /** The rule's short name, the table's middle column. */
+  readonly rule: string
+  readonly status: "active" | "superseded"
+}
+
+/**
+ * Parses Rem. 7.4's Machine and Agreement tables into rule entries, `M`
+ * rows then `A` rows, each in ascending order. Throws if the remark is
+ * missing, if a register is empty or not a contiguous `1..max` without
+ * duplicates, or if an id cell the row pattern did not match.
+ */
+export function parseRuleRegisters(
+  canonSource: string
+): ReadonlyArray<RuleRegisterEntry> {
+  const remark = RULE_REGISTERS_REMARK.exec(canonSource)
+  if (remark === null) {
+    throw new Error(
+      'parseRuleRegisters found no #remark("7.4", ...) — the Machine and Agreement registers may have moved.'
+    )
+  }
+  const { body } = bodyOfBracketBlock(
+    canonSource,
+    remark.index + remark[0].length - 1
+  )
+
+  const entries: Array<RuleRegisterEntry> = []
+  for (const match of body.matchAll(RULE_ROW)) {
+    const id = `${match[1] ?? ""}${match[2] ?? ""}`
+    const rule = bodyOfBracketBlock(body, match.index + match[0].length - 1)
+    const name = normalizeStatement(rule.body)
+    const superseded = name.endsWith(SUPERSEDED_SUFFIX)
+    entries.push({
+      id,
+      rule: superseded ? name.slice(0, -SUPERSEDED_SUFFIX.length) : name,
+      status: superseded ? "superseded" : "active",
+    })
+  }
+
+  const cells = [...body.matchAll(RULE_ID_CELL)].length
+  if (cells !== entries.length) {
+    throw new Error(
+      `Rem. 7.4 has ${String(cells)} rule id cell(s) but this parser matched ${String(entries.length)} row(s); a row does not have the "[\`M1\`], [rule], [line]," shape.`
+    )
+  }
+  for (const [prefix, name] of [
+    ["M", "Machine"],
+    ["A", "Agreement"],
+  ] as const) {
+    const register = `Rem. 7.4's ${name} register`
+    const ids = entries
+      .map((entry) => entry.id)
+      .filter((id) => id.startsWith(prefix))
+    if (ids.length === 0) throw new Error(`${register} has no rows.`)
+    assertContiguous(ids, prefix, register)
+  }
+  const order = (id: string): number =>
+    (id.startsWith("M") ? 0 : 1000) + Number(id.slice(1))
+  return entries.sort((a, b) => order(a.id) - order(b.id))
 }

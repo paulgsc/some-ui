@@ -2,12 +2,12 @@
 //
 // Produced by `pnpm --filter @some-ui/leetype run generate:proposition-register`
 // by parsing `docs/canon/complexity-witness-canon.typ` §7 (the proposition
-// register, Def. 1.5, Rem. 7.1) — a second, hand-maintained list of `CW-P`
-// ids is exactly the drift Rem. 7.2 warns against, so this file exists to
-// be the only one. `scripts/check-proposition-citations.ts` fails CI if
+// register, Def. 1.5, Rem. 7.1) and Rem. 7.4 (the Machine and Agreement
+// registers) — a second, hand-maintained list of ids is exactly the drift
+// Rem. 7.2 warns against, so this file exists to be the only one. `scripts/check-proposition-citations.ts` fails CI if
 // this file drifts from what the canon generates today.
 
-import type { PropositionRegisterEntry } from "./parse-canon"
+import type { PropositionRegisterEntry, RuleRegisterEntry } from "./parse-canon"
 
 export type PropositionId =
   | "CW-P1"
@@ -142,4 +142,65 @@ export const PROPOSITION_REGISTER: Readonly<
       'A term of T that does not vary with any dimension C bounds — a fixed setup cost, an unbounded wait, work in a dimension C says nothing about — is unaffected by every assignment of those bounds. If such a term already exceeds B, no constraint diff makes the program admissible, and the failure is of a different kind from "too slow at this size."',
     status: "active",
   },
+}
+
+export type RuleId =
+  | "M1"
+  | "M2"
+  | "M3"
+  | "M4"
+  | "M5"
+  | "M6"
+  | "M7"
+  | "M8"
+  | "A1"
+  | "A2"
+  | "A3"
+  | "A4"
+  | "A5"
+  | "A6"
+  | "A7"
+  | "A8"
+  | "A9"
+  | "A10"
+
+export const RULE_REGISTER: Readonly<Record<RuleId, RuleRegisterEntry>> = {
+  M1: { id: "M1", rule: "The latency ladder", status: "active" },
+  M2: { id: "M2", rule: "Batch to amortize a fixed cost", status: "active" },
+  M3: {
+    id: "M3",
+    rule: "Pointer chasing costs a miss per hop",
+    status: "active",
+  },
+  M4: { id: "M4", rule: "Little's law", status: "active" },
+  M5: { id: "M5", rule: "Shared writes serialize", status: "active" },
+  M6: { id: "M6", rule: "Queues explode near saturation", status: "active" },
+  M7: { id: "M7", rule: "Fan-out amplifies the tail", status: "active" },
+  M8: { id: "M8", rule: "Durability has a price", status: "active" },
+  A1: { id: "A1", rule: "The failure model decides", status: "active" },
+  A2: {
+    id: "A2",
+    rule: "Timeouts buy liveness, never safety",
+    status: "active",
+  },
+  A3: { id: "A3", rule: "Majorities intersect", status: "active" },
+  A4: {
+    id: "A4",
+    rule: "Safety always, liveness when stable",
+    status: "active",
+  },
+  A5: {
+    id: "A5",
+    rule: "A stable leader amortizes agreement",
+    status: "active",
+  },
+  A6: { id: "A6", rule: "Higher terms fence stale leaders", status: "active" },
+  A7: { id: "A7", rule: "Elect only complete leaders", status: "active" },
+  A8: {
+    id: "A8",
+    rule: "Committed means a majority stored it",
+    status: "active",
+  },
+  A9: { id: "A9", rule: "Replication is not consensus", status: "active" },
+  A10: { id: "A10", rule: "Reads need agreement too", status: "active" },
 }

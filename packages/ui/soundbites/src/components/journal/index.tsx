@@ -18,7 +18,7 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useId, useState, useSyncExternalStore } from "react"
 import { cn } from "@some-ui/core-utils"
-import { Button } from "@some-ui/shared"
+import { Button, useConfirmSheet } from "@some-ui/shared"
 import { RECORDING_FAILURE_COPY } from "@some-ui/voice-capture"
 import { formatDuration } from "@soundbites/lib/format"
 import type {
@@ -493,14 +493,14 @@ export const Journal = ({ ports, footer }: JournalProps): JSX.Element => {
   const recordedMs = line?.recordedMs ?? 0
   const focus = line?.rows.find((row) => row.cut.id === state.selected) ?? null
 
-  const discard = (): void => {
-    if (
-      window.confirm(
-        "Discard this episode? Its primer and every take leave the phone."
-      )
-    )
-      dispatch({ type: "episodeDiscarded" })
-  }
+  const { ask, sheet } = useConfirmSheet()
+  const discard = (): void =>
+    ask({
+      title: "Discard this episode?",
+      description: "Its primer and every take leave the phone.",
+      confirm: "Discard it",
+      onConfirm: () => dispatch({ type: "episodeDiscarded" }),
+    })
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -715,6 +715,7 @@ export const Journal = ({ ports, footer }: JournalProps): JSX.Element => {
           {footer({ taking, takes: takes.length })}
         </Fold>
       )}
+      {sheet}
     </div>
   )
 }

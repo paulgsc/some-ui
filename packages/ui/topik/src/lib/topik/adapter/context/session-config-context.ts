@@ -5,6 +5,7 @@ import type {
   ITopikMetadataRepository,
   ITopikRepository,
 } from "@topik/lib/topik"
+import type { LensTakes } from "@topik/lib/topik/adapter/lens-takes"
 import type { FileShare } from "@topik/lib/topik/adapter/next-scene-share"
 import type { SceneVoice } from "@topik/lib/topik/adapter/scene-voice"
 import type { TreeFeed } from "@topik/lib/topik/adapter/tree-feed"
@@ -33,6 +34,13 @@ export type SessionConfig = {
   sceneVoice?: SceneVoice
   sceneFileHint?: string
   wordSetHint?: string
+  /**
+   * The Android app keeps the grammar lens's record for its study-context
+   * export (adaptive-learning canon Rem. 4.18); absent, nothing is kept.
+   */
+  recordsLens?: boolean
+  /** The Android app's microphone, for the grammar lens's takes (Rem. 4.16). */
+  lensTakes?: LensTakes
 }
 
 const SessionConfigContext = createContext<SessionConfig | null>(null)

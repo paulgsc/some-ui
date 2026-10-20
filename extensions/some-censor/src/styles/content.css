@@ -1,64 +1,18 @@
 /* ============================================================
-   BOYO — Purposeful Feed  |  the irreducible layer
+   BOYO — Purposeful Feed
 
-   Everything that styles an element BOYO *builds* lives in
-   src/lib/content/veil-styles.ts as UnoCSS utilities, and is appended
-   below this file at build time. What is left here is the set of rules
-   that cannot be expressed as a class on our own element:
+   Every rule BOYO paints. They target *vendor* elements, which we do
+   not construct and must not add classes to: the pre-mask occluder,
+   the absent, shelf and plate rules, and the crowd rules.
 
-     1. Design tokens. The utilities reference these by name
-        (`text-[rgb(var(--boyo-ink))]`), so the ramp stays one edit.
-     2. The pre-mask occluder — rules that target *vendor* elements,
-        which we do not construct and must not add classes to.
-     3. Keyframes, which are @-rules rather than declarations.
-
-   State machine, driven by data-boyo on the renderer element:
-     "0" masked   "1" meta   "2" title   "3" revealed   "wl" whitelisted
+   A card's view, stamped as data-boyo on the renderer element:
+     "absent" not rendered      "plated" shown on its plate
+     "whole"  in the listening lane, as YouTube draws it (QD15)
    ============================================================ */
 
-:root {
-  /* UnoCSS spacing scale — normally emitted by preflight, which a content
-     script must not ship (it would repaint YouTube). */
-  --spacing: 0.25rem;
-  --boyo-ink: 232 234 240; /* near-white text          */
-  --boyo-dim: 168 176 196; /* muted captions           */
-  --boyo-glass: 15 15 18; /* veil base (matches yt)   */
-  --boyo-indigo: 129 140 248; /* meta accent              */
-  --boyo-violet: 167 139 250; /* title accent             */
-  --boyo-mint: 52 211 153; /* whitelist accent         */
-  --boyo-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
-  --boyo-font: "Roboto", "SF Pro Text", system-ui, sans-serif;
-
-  /* ── Firefox 112 baseline ────────────────────────────────────────────
-     UnoCSS emits colors as
-       color-mix(in oklab, <color> var(--un-bg-opacity), transparent)
-     and supplies that variable's initial value only through
-       @property --un-bg-opacity { initial-value: 100%; … }
-
-     Firefox did not support @property until 128, and
-     manifest.firefox.json declares strict_min_version 112.0. On 112–127
-     the variable resolves to nothing, color-mix() becomes invalid, and
-     the entire declaration is dropped — including the veil's background.
-
-     For a masking extension that is the worst available failure: the
-     veil still mounts and still takes clicks, but paints nothing, while
-     [data-boyo] has already lifted the static occluder. The extension
-     fails OPEN, showing exactly the content it exists to hide.
-
-     Declaring the same initial values as ordinary custom properties
-     makes them resolve everywhere; @property still registers them where
-     it is supported, so nothing is lost on modern engines.
-
-     Only the nine variables the generated sheet reads with no inline
-     `var(--x, fallback)` and never assigns are listed — the rest carry
-     their own fallback. Because nothing assigns these, ordinary
-     inheritance cannot leak one element's value to another the way it
-     could for a variable a utility sets per-element. styles.test.ts
-     regenerates the stylesheet and fails if either of those stops
-     holding, or if a new unbacked variable appears.
-
-     ── :has() baseline (#1390 / QC0) ────────────────────────────────
-     The same 112 floor also predates `:has()`. Firefox shipped `:has()`
+/* ── :has() baseline (#1390 / QC0) ────────────────────────────────
+     `manifest.firefox.json` declares strict_min_version 112.0, which
+     predates `:has()`. Firefox shipped `:has()`
      unflagged in version 121 — measured against MDN's browser-compat-data
      (css/selectors/has.json, firefox.version_added: "121", no experimental
      flag), not assumed from memory. Firefox 112–120 are therefore declared-
@@ -73,43 +27,28 @@
      closes for the six tags that never needed `:has()`. The seventh,
      `ytd-rich-item-renderer`, moved behind the guard in #1422 and gets an
      explicit `@supports not selector(:has(a))` fallback below instead. */
-  --un-bg-opacity: 100%;
-  --un-border-opacity: 100%;
-  --un-inset-ring-shadow: 0 0 #0000;
-  --un-inset-shadow: 0 0 #0000;
-  --un-outline-opacity: 100%;
-  --un-outline-style: solid;
-  --un-ring-offset-shadow: 0 0 #0000;
-  --un-ring-shadow: 0 0 #0000;
-  --un-text-opacity: 100%;
-
-  /* Read bare by the `transition` utility. Every call site here also sets an
-     explicit duration and easing, so the fallback is never reached today — but
-     that is a coincidence of the current class strings, not a property of the
-     stylesheet, and an unbacked var() is one edit away from being live. */
-  --default-transition-duration: 150ms;
-  /* stylelint-disable-next-line custom-property-pattern -- the name is
-     UnoCSS's, emitted camelCase; matching it exactly is the whole point. */
-  --default-transition-timingFunction: cubic-bezier(0.4, 0, 0.2, 1);
-}
 
 /* ============================================================
    PRE-MASK OCCLUSION — SAFETY INVARIANT, NOT DECORATION
    ------------------------------------------------------------
    This is the most important rule in the file. It is the static-CSS
-   guarantee that a card is OCCLUDED from the instant it paints until the
-   content script proves it has taken ownership by writing data-boyo.
+   guarantee that, while switched on, a card is OCCLUDED from the instant it
+   paints until the content script proves it has taken ownership by writing
+   data-boyo.
 
    The JS handover can fail open-endedly: the content script may never load,
    may throw during bootstrap, or may never resolve this particular card. In
    ALL of those failure modes this rule is the ONLY thing occluding the
-   thumbnail/title — there is no veil yet, because the veil is injected by JS.
+   thumbnail/title.
 
    Therefore this MUST be a true occluder, not a "pending" affordance. The
    blur radius and brightness floor are deliberately strong enough that the
    thumbnail content is unreadable. When JS does take over, [data-boyo]
-   replaces this with the glass veil — an equal-or-stronger occlusion — so the
-   handover is never a reveal, only a swap between two occluding layers.
+   hands the card to one of three states: absent, which takes it out of
+   layout altogether; plated, where no image under the card is painted
+   (THE PLATE below); or whole, music in the listening lane (QD15), the
+   one state that shows a card's own thumbnail. The handover reveals no
+   other thumbnail.
 
    DO NOT soften this into a legible dim. A readable pre-mask state exposes the
    card during the (possibly infinite) gap before JS resolves it, which defeats
@@ -125,63 +64,73 @@
    and adopted, never the wrapper (#1426's grid cell, and any shelf); see
    selectors.ts's classifyCard() for the full argument.
 
+   Every rule is keyed to `:root:not([data-boyo-off])`. The content script
+   sets that attribute only when the owner has switched the extension off
+   (#1807), so the switch lifts the pre-mask, and a content script that never
+   runs leaves it on.
+
+   The opacity's fallback, 0.5, is what every mode but Strict keeps (BLANK,
+   below), and what a page shows before the content script has read the
+   owner's mode.
+
    Each tag gets its OWN rule below rather than sharing one comma-separated
    selector list. CSS selector-list invalidation is all-or-nothing: if any
    one selector in a comma list fails to parse, the entire rule is dropped —
    which used to mean the seven plain tags here, none of which use `:has()`,
    lost their occluder too on any engine that couldn't parse the four that
-   do. See the `:has()` baseline note in :root above for the measured
+   do. See the `:has()` baseline note above for the measured
    Firefox gap this closes (#1390 / QC0).
    ============================================================ */
-ytd-video-renderer:not([data-boyo]) {
+:root:not([data-boyo-off]) ytd-video-renderer:not([data-boyo]) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-  opacity: 0.5 !important;
+  opacity: var(--boyo-premask-opacity, 0.5) !important;
   pointer-events: none !important;
   user-select: none !important;
 }
 
-ytd-grid-video-renderer:not([data-boyo]) {
+:root:not([data-boyo-off]) ytd-grid-video-renderer:not([data-boyo]) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-  opacity: 0.5 !important;
+  opacity: var(--boyo-premask-opacity, 0.5) !important;
   pointer-events: none !important;
   user-select: none !important;
 }
 
-ytd-compact-video-renderer:not([data-boyo]) {
+:root:not([data-boyo-off]) ytd-compact-video-renderer:not([data-boyo]) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-  opacity: 0.5 !important;
+  opacity: var(--boyo-premask-opacity, 0.5) !important;
   pointer-events: none !important;
   user-select: none !important;
 }
 
-ytd-playlist-panel-video-renderer:not([data-boyo]) {
+:root:not([data-boyo-off]) ytd-playlist-panel-video-renderer:not([data-boyo]) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-  opacity: 0.5 !important;
+  opacity: var(--boyo-premask-opacity, 0.5) !important;
   pointer-events: none !important;
   user-select: none !important;
 }
 
-ytd-playlist-video-renderer:not([data-boyo]) {
+:root:not([data-boyo-off]) ytd-playlist-video-renderer:not([data-boyo]) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-  opacity: 0.5 !important;
+  opacity: var(--boyo-premask-opacity, 0.5) !important;
   pointer-events: none !important;
   user-select: none !important;
 }
 
-ytd-reel-item-renderer:not([data-boyo]) {
+:root:not([data-boyo-off]) ytd-reel-item-renderer:not([data-boyo]) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-  opacity: 0.5 !important;
+  opacity: var(--boyo-premask-opacity, 0.5) !important;
   pointer-events: none !important;
   user-select: none !important;
 }
 
-ytd-rich-item-renderer:has(a[href*="/watch"], a[href*="/shorts/"]):not(
+:root:not([data-boyo-off])
+  ytd-rich-item-renderer:has(a[href*="/watch"], a[href*="/shorts/"]):not(
     :has(
       ytd-video-renderer,
       ytd-grid-video-renderer,
@@ -199,12 +148,13 @@ ytd-rich-item-renderer:has(a[href*="/watch"], a[href*="/shorts/"]):not(
   ) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-  opacity: 0.5 !important;
+  opacity: var(--boyo-premask-opacity, 0.5) !important;
   pointer-events: none !important;
   user-select: none !important;
 }
 
-yt-lockup-view-model:has(a[href*="/watch"], a[href*="/shorts/"]):not(
+:root:not([data-boyo-off])
+  yt-lockup-view-model:has(a[href*="/watch"], a[href*="/shorts/"]):not(
     :has(
       ytd-video-renderer,
       ytd-grid-video-renderer,
@@ -222,12 +172,13 @@ yt-lockup-view-model:has(a[href*="/watch"], a[href*="/shorts/"]):not(
   ) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-  opacity: 0.5 !important;
+  opacity: var(--boyo-premask-opacity, 0.5) !important;
   pointer-events: none !important;
   user-select: none !important;
 }
 
-ytm-shorts-lockup-view-model:has(a[href*="/watch"], a[href*="/shorts/"]):not(
+:root:not([data-boyo-off])
+  ytm-shorts-lockup-view-model:has(a[href*="/watch"], a[href*="/shorts/"]):not(
     :has(
       ytd-video-renderer,
       ytd-grid-video-renderer,
@@ -245,35 +196,13 @@ ytm-shorts-lockup-view-model:has(a[href*="/watch"], a[href*="/shorts/"]):not(
   ) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-  opacity: 0.5 !important;
+  opacity: var(--boyo-premask-opacity, 0.5) !important;
   pointer-events: none !important;
   user-select: none !important;
 }
 
-ytm-shorts-lockup-view-model-v2:has(a[href*="/watch"], a[href*="/shorts/"]):not(
-    :has(
-      ytd-video-renderer,
-      ytd-grid-video-renderer,
-      ytd-compact-video-renderer,
-      ytd-playlist-panel-video-renderer,
-      ytd-playlist-video-renderer,
-      ytd-reel-item-renderer,
-      ytd-rich-item-renderer,
-      yt-lockup-view-model,
-      ytm-shorts-lockup-view-model,
-      ytm-shorts-lockup-view-model-v2,
-      ytd-structured-description-video-lockup-renderer
-    ),
-    [data-boyo]
-  ) {
-  cursor: default !important;
-  filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-  opacity: 0.5 !important;
-  pointer-events: none !important;
-  user-select: none !important;
-}
-
-ytd-structured-description-video-lockup-renderer:has(
+:root:not([data-boyo-off])
+  ytm-shorts-lockup-view-model-v2:has(
     a[href*="/watch"],
     a[href*="/shorts/"]
   ):not(
@@ -294,7 +223,34 @@ ytd-structured-description-video-lockup-renderer:has(
   ) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-  opacity: 0.5 !important;
+  opacity: var(--boyo-premask-opacity, 0.5) !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+:root:not([data-boyo-off])
+  ytd-structured-description-video-lockup-renderer:has(
+    a[href*="/watch"],
+    a[href*="/shorts/"]
+  ):not(
+    :has(
+      ytd-video-renderer,
+      ytd-grid-video-renderer,
+      ytd-compact-video-renderer,
+      ytd-playlist-panel-video-renderer,
+      ytd-playlist-video-renderer,
+      ytd-reel-item-renderer,
+      ytd-rich-item-renderer,
+      yt-lockup-view-model,
+      ytm-shorts-lockup-view-model,
+      ytm-shorts-lockup-view-model-v2,
+      ytd-structured-description-video-lockup-renderer
+    ),
+    [data-boyo]
+  ) {
+  cursor: default !important;
+  filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
+  opacity: var(--boyo-premask-opacity, 0.5) !important;
   pointer-events: none !important;
   user-select: none !important;
 }
@@ -320,93 +276,687 @@ ytd-structured-description-video-lockup-renderer:has(
    lib/content/selectors.ts and asserted by selectors.test.ts.
    ---------------------------------------------------------- */
 @supports not selector(:has(a)) {
-  ytd-rich-item-renderer:not([data-boyo]) {
+  :root:not([data-boyo-off]) ytd-rich-item-renderer:not([data-boyo]) {
     cursor: default !important;
     filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-    opacity: 0.5 !important;
+    opacity: var(--boyo-premask-opacity, 0.5) !important;
     pointer-events: none !important;
     user-select: none !important;
   }
 }
 
 /* ----------------------------------------------------------
-   HANDOVER + POSITION CONTEXT
+   BLANK (Strict, #1966)
 
-   Once JS has taken ownership (data-boyo present) the veil occludes
-   instead, so the static filter is lifted and the veil's own backdrop
-   becomes what the user sees. The same rule establishes the local
-   stacking context the veil anchors to, which is what keeps it over the
-   card and never over a real YouTube dialog.
+   Under Strict an unread card is not painted: every pre-mask rule above
+   reads its opacity from this property. It only ever lowers the
+   occluder's opacity, so it cannot make an unread card more legible.
+   ---------------------------------------------------------- */
+:root[data-boyo-loading="blank"] {
+  --boyo-premask-opacity: 0;
+}
 
-   Targets vendor elements, so it cannot be a utility class: we do not
-   own these nodes and adding classes to them would be a mutation of the
-   host page's markup (Charter §0).
+/* ----------------------------------------------------------
+   HANDOVER
+
+   Once JS has taken ownership (data-boyo present) the card is absent or
+   plated instead, so the static filter is lifted.
    ---------------------------------------------------------- */
 [data-boyo] {
   filter: none !important;
-  isolation: isolate;
   opacity: 1 !important;
-  overflow: hidden !important;
   pointer-events: auto;
-  position: relative !important;
 }
 
 /* ----------------------------------------------------------
-   BOX MODEL — the one line of preflight a content script may ship.
+   ABSENT (QD11)
 
-   UnoCSS's preflight normally sets `box-sizing: border-box` globally, and
-   the utility scale assumes it: `w-full` plus `p-2` plus a 1px border is a
-   box that fits its parent only under border-box. We cannot ship that
-   preflight — it would restyle YouTube — so the same rule is scoped to the
-   veil's own subtree, which contains nothing but nodes this extension
-   built.
-
-   Without it the meta chip painted ~5px past the edge of a 168px card,
-   which is #973's overflow returning by a different route than the
-   `min-width` that originally caused it.
+   A card the evidence does not admit is not rendered: out of layout, and
+   out of the accessibility tree, so neither the eye nor the Tab key can
+   reach its links. A stamp the stylesheet keys on rather than an inline
+   style, which the vendor's own scripts could overwrite. Removing the stamp
+   (the Actuator's unmount) undoes it.
    ---------------------------------------------------------- */
-.boyo-veil,
-.boyo-veil * {
-  box-sizing: border-box;
+[data-boyo="absent"] {
+  display: none !important;
+}
+
+/* The home feed's grid cell wraps its card (a lockup) without being one, so
+   on an engine with `:has()` it carries no stamp of its own: the cell would
+   keep its width and margins around a card that is gone. An engine without
+   `:has()` stamps the cell as the card's nested custody instead, which the
+   rule above already covers. A cell wrapping more than one card (a post with
+   an attached video) goes with any absent one: it hides more, never less. */
+ytd-rich-item-renderer:has([data-boyo="absent"]) {
+  display: none !important;
 }
 
 /* ----------------------------------------------------------
-   MOTION — @keyframes are @-rules, not declarations, so they
-   stay here; the utilities reference them by name via
-   `animate-[boyo-rise_…]`.
+   SHELVES (QD11)
+
+   A shelf whose cards are all absent goes with them. Derived from
+   SHELF_COLLAPSE_SELECTORS in lib/content/selectors.ts, which says what
+   holds a shelf open and which element each surface needs gone; asserted
+   one-for-one by selectors.test.ts, one rule per selector (QC0).
    ---------------------------------------------------------- */
 
-@keyframes boyo-rise {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+ytd-rich-section-renderer:has([data-boyo="absent"]):not(
+    :has(
+      [data-boyo]:not([data-boyo="absent"]),
+      :is(
+          ytd-video-renderer,
+          ytd-grid-video-renderer,
+          ytd-compact-video-renderer,
+          ytd-playlist-panel-video-renderer,
+          ytd-playlist-video-renderer,
+          ytd-reel-item-renderer,
+          yt-lockup-view-model,
+          ytm-shorts-lockup-view-model,
+          ytd-structured-description-video-lockup-renderer
+        ):not([data-boyo="absent"]),
+      :is(
+          ytd-rich-item-renderer:not([data-boyo]) > #content,
+          yt-horizontal-list-renderer #items,
+          .ytGridShelfViewModelGridShelfItem
+        )
+        > :not(
+          ytd-video-renderer,
+          ytd-grid-video-renderer,
+          ytd-compact-video-renderer,
+          ytd-playlist-panel-video-renderer,
+          ytd-playlist-video-renderer,
+          ytd-reel-item-renderer,
+          ytd-rich-item-renderer,
+          yt-lockup-view-model,
+          ytm-shorts-lockup-view-model,
+          ytm-shorts-lockup-view-model-v2,
+          ytd-structured-description-video-lockup-renderer
+        )
+    )
+  ) {
+  display: none !important;
 }
 
-@keyframes boyo-thaw {
-  to {
-    backdrop-filter: blur(0);
-    opacity: 0;
-  }
+grid-shelf-view-model:has([data-boyo="absent"]):not(
+    :has(
+      [data-boyo]:not([data-boyo="absent"]),
+      :is(
+          ytd-video-renderer,
+          ytd-grid-video-renderer,
+          ytd-compact-video-renderer,
+          ytd-playlist-panel-video-renderer,
+          ytd-playlist-video-renderer,
+          ytd-reel-item-renderer,
+          yt-lockup-view-model,
+          ytm-shorts-lockup-view-model,
+          ytd-structured-description-video-lockup-renderer
+        ):not([data-boyo="absent"]),
+      :is(
+          ytd-rich-item-renderer:not([data-boyo]) > #content,
+          yt-horizontal-list-renderer #items,
+          .ytGridShelfViewModelGridShelfItem
+        )
+        > :not(
+          ytd-video-renderer,
+          ytd-grid-video-renderer,
+          ytd-compact-video-renderer,
+          ytd-playlist-panel-video-renderer,
+          ytd-playlist-video-renderer,
+          ytd-reel-item-renderer,
+          ytd-rich-item-renderer,
+          yt-lockup-view-model,
+          ytm-shorts-lockup-view-model,
+          ytm-shorts-lockup-view-model-v2,
+          ytd-structured-description-video-lockup-renderer
+        )
+    )
+  ) {
+  display: none !important;
 }
 
-@keyframes boyo-fade {
-  to {
-    opacity: 0;
-  }
+ytd-item-section-renderer:has(
+    > #contents > ytd-reel-shelf-renderer:only-child
+  ):has([data-boyo="absent"]):not(
+    :has(
+      [data-boyo]:not([data-boyo="absent"]),
+      :is(
+          ytd-video-renderer,
+          ytd-grid-video-renderer,
+          ytd-compact-video-renderer,
+          ytd-playlist-panel-video-renderer,
+          ytd-playlist-video-renderer,
+          ytd-reel-item-renderer,
+          yt-lockup-view-model,
+          ytm-shorts-lockup-view-model,
+          ytd-structured-description-video-lockup-renderer
+        ):not([data-boyo="absent"]),
+      :is(
+          ytd-rich-item-renderer:not([data-boyo]) > #content,
+          yt-horizontal-list-renderer #items,
+          .ytGridShelfViewModelGridShelfItem
+        )
+        > :not(
+          ytd-video-renderer,
+          ytd-grid-video-renderer,
+          ytd-compact-video-renderer,
+          ytd-playlist-panel-video-renderer,
+          ytd-playlist-video-renderer,
+          ytd-reel-item-renderer,
+          ytd-rich-item-renderer,
+          yt-lockup-view-model,
+          ytm-shorts-lockup-view-model,
+          ytm-shorts-lockup-view-model-v2,
+          ytd-structured-description-video-lockup-renderer
+        )
+    )
+  ) {
+  display: none !important;
 }
 
-/* The reduced-motion contract has to reach *every* BOYO node regardless of
-   which utilities it happens to carry, so it is written once against the
-   namespace rather than repeated as a variant on each class. */
-@media (prefers-reduced-motion: reduce) {
-  [class*="boyo-"] {
-    animation: none !important;
-    transition: none !important;
-  }
+ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
+    [data-boyo="absent"]
+  ):not(
+    :has(
+      [data-boyo]:not([data-boyo="absent"]),
+      :is(
+          ytd-video-renderer,
+          ytd-grid-video-renderer,
+          ytd-compact-video-renderer,
+          ytd-playlist-panel-video-renderer,
+          ytd-playlist-video-renderer,
+          ytd-reel-item-renderer,
+          yt-lockup-view-model,
+          ytm-shorts-lockup-view-model,
+          ytd-structured-description-video-lockup-renderer
+        ):not([data-boyo="absent"]),
+      :is(
+          ytd-rich-item-renderer:not([data-boyo]) > #content,
+          yt-horizontal-list-renderer #items,
+          .ytGridShelfViewModelGridShelfItem
+        )
+        > :not(
+          ytd-video-renderer,
+          ytd-grid-video-renderer,
+          ytd-compact-video-renderer,
+          ytd-playlist-panel-video-renderer,
+          ytd-playlist-video-renderer,
+          ytd-reel-item-renderer,
+          ytd-rich-item-renderer,
+          yt-lockup-view-model,
+          ytm-shorts-lockup-view-model,
+          ytm-shorts-lockup-view-model-v2,
+          ytd-structured-description-video-lockup-renderer
+        )
+    )
+  ) {
+  display: none !important;
+}
+
+/* ----------------------------------------------------------
+   THE PLATE (QD12, #1804)
+
+   A plated card paints no image: no thumbnail, no moving thumbnail,
+   no channel photo. Every image element (img, video, picture, canvas,
+   object, embed, SVG image) and background image under the stamp is
+   hidden, whatever the vendor's shape, so a
+   thumbnail shape this file does not name still shows nothing.
+
+   The tones are the Actuator's custom properties on the card
+   (`lib/content/plate/plate.ts`). The fill and the disc are painted on
+   the containers named below; one this file misses shows the
+   vendor's own empty box.
+   ---------------------------------------------------------- */
+[data-boyo="plated"] img,
+[data-boyo="plated"] video,
+[data-boyo="plated"] picture,
+[data-boyo="plated"] canvas,
+[data-boyo="plated"] object,
+[data-boyo="plated"] embed,
+[data-boyo="plated"] image {
+  visibility: hidden !important;
+}
+
+/* The plate's own fills below are more specific, so they still paint. */
+[data-boyo="plated"],
+[data-boyo="plated"] *,
+[data-boyo="plated"] *::before,
+[data-boyo="plated"] *::after {
+  background-image: none !important;
+}
+
+/* The thumbnail takes no pointer: YouTube starts its hover preview from
+   it, and a hidden preview still plays. The title, channel name and
+   duration open the card; the duration sits inside the thumbnail's
+   link, so its badge (a badge-shape, or Polymer's time-status renderer)
+   takes the pointer back. */
+[data-boyo="plated"] ytd-thumbnail,
+[data-boyo="plated"] .ytLockupViewModelContentImage {
+  pointer-events: none !important;
+}
+
+[data-boyo="plated"] ytd-thumbnail ytd-thumbnail-overlay-time-status-renderer,
+[data-boyo="plated"] ytd-thumbnail badge-shape,
+[data-boyo="plated"] .ytLockupViewModelContentImage badge-shape {
+  pointer-events: auto !important;
+}
+
+[data-boyo="plated"] .ytThumbnailViewModelImage,
+[data-boyo="plated"] ytd-thumbnail a#thumbnail {
+  background: linear-gradient(135deg, rgb(255 255 255 / 6%), transparent 55%),
+    var(--boyo-plate, rgb(15 15 18)) !important;
+}
+
+/* The channel disc: a tone and the name's first letter. */
+[data-boyo="plated"] .ytSpecAvatarShapeHost,
+[data-boyo="plated"] #channel-thumbnail yt-img-shadow,
+[data-boyo="plated"] #avatar-link yt-img-shadow {
+  background: var(--boyo-disc, rgb(15 15 18)) !important;
+  position: relative;
+}
+
+[data-boyo="plated"] .ytSpecAvatarShapeHost::after,
+[data-boyo="plated"] #channel-thumbnail yt-img-shadow::after,
+[data-boyo="plated"] #avatar-link yt-img-shadow::after {
+  align-items: center;
+  color: rgb(255 255 255 / 72%);
+  content: var(--boyo-initial, "");
+  display: flex;
+  font:
+    500 14px/1 Roboto,
+    Arial,
+    sans-serif;
+  inset: 0;
+  justify-content: center;
+  position: absolute;
+}
+
+/* Channel photos outside a card. `yt-img-shadow` is YouTube's general
+   lazy image and `yt-avatar-shape` its avatar; every image in either
+   is hidden, wherever it sits. With the channel photos (the watch
+   page's owner, the guide, channel results and headers, comment
+   authors, the notifications menu) go the other images YouTube draws in
+   them: notification and chapter frames, community post images, promo
+   art. The rest are avatars YouTube draws as a bare image. A whole
+   card in the listening lane (QD15) keeps its images: the two rules
+   after this one. */
+:root:not([data-boyo-off]) yt-img-shadow img,
+:root:not([data-boyo-off]) yt-avatar-shape img,
+:root:not([data-boyo-off]) .ytVideoAttributeViewModelImageAvatar img,
+:root:not([data-boyo-off]) .ytdRichShelfRendererAvatar,
+:root:not([data-boyo-off]) .ytProfileIconImage {
+  visibility: hidden !important;
+}
+
+:root:not([data-boyo-off]) [data-boyo="whole"] yt-img-shadow img {
+  visibility: visible !important;
+}
+
+:root:not([data-boyo-off]) [data-boyo="whole"] yt-avatar-shape img {
+  visibility: visible !important;
+}
+
+/* Open shows a community post's own images (#1966). They are drawn in
+   `ytd-backstage-image-renderer`, one per image of a single or a
+   multi-image post; the post's author photo is not in it, and stays
+   hidden. A post inside an element stamped plated stays plated: the
+   plate paints no image under its stamp (QD12). */
+:root:not([data-boyo-off])[data-boyo-posts="shown"]
+  ytd-backstage-image-renderer:not([data-boyo="plated"] *)
+  yt-img-shadow
+  img {
+  visibility: visible !important;
+}
+
+/* The page header's images: a channel's banner, and a playlist's
+   cover and the blurred backdrop drawn from it, which YouTube's
+   seamless header moves into a portal outside the header. */
+:root:not([data-boyo-off]) .ytPageHeaderViewModelHost img,
+:root:not([data-boyo-off]) .ytPageHeaderViewModelBackground img,
+:root:not([data-boyo-off]) yt-page-header-portal img,
+:root:not([data-boyo-off]) yt-image-banner-view-model img,
+:root:not([data-boyo-off]) ytd-playlist-header-renderer img {
+  visibility: hidden !important;
+}
+
+/* The player's overlays (#1805 owns the player itself) draw each
+   thumbnail as an inline background: the end-screen cards, the video
+   wall, the autoplay card, the pause and error suggestions, the "More
+   videos" button and the playlist menu. */
+:root:not([data-boyo-off]) .ytp-ce-covering-image,
+:root:not([data-boyo-off]) .ytp-ce-expanding-image,
+:root:not([data-boyo-off]) .ytp-videowall-still-image,
+:root:not([data-boyo-off]) .ytp-modern-videowall-still-image,
+:root:not([data-boyo-off]) .ytp-autonav-endscreen-upnext-thumbnail,
+:root:not([data-boyo-off]) .ytp-autonav-thumbnail-small,
+:root:not([data-boyo-off]) .ytp-suggestion-image,
+:root:not([data-boyo-off]) .ytp-more-videos-button-thumbnail,
+:root:not([data-boyo-off]) .ytp-video-menu-item-thumbnail {
+  background-image: none !important;
+}
+
+/* The hover preview is a moving thumbnail. YouTube plays it in one
+   shared player at the app level, over whichever card is hovered; one
+   started from elsewhere than a plated thumbnail never shows. */
+:root:not([data-boyo-off]) ytd-video-preview,
+:root:not([data-boyo-off]) #inline-preview-player {
+  display: none !important;
+}
+
+/* ----------------------------------------------------------
+   THE WATCH PAGE (QD11, QD17, #1805)
+
+   The page's own video is decided as a card is, and the Actuator
+   writes the view on <html> as data-boyo-watch. Until it reads
+   "plated" or "whole" the player and what is said about the video (title,
+   date, channel, description) are not rendered, whatever the
+   script has or has not decided yet, and neither is the miniplayer
+   the video can move into; on "absent" the whole page goes, and
+   "Not here." stands in its place. A Short is never admitted, so
+   the Shorts page is never rendered. A plated video's poster is the
+   plate, and the face control in its description lifts it.
+   ---------------------------------------------------------- */
+:root:not(
+    [data-boyo-off],
+    [data-boyo-watch="plated"],
+    [data-boyo-watch="whole"]
+  )
+  ytd-page-manager
+  > ytd-watch-flexy:not([hidden])
+  #full-bleed-container {
+  display: none !important;
+}
+
+:root:not(
+    [data-boyo-off],
+    [data-boyo-watch="plated"],
+    [data-boyo-watch="whole"]
+  )
+  ytd-page-manager
+  > ytd-watch-flexy:not([hidden])
+  #primary-inner {
+  display: none !important;
+}
+
+:root:not(
+    [data-boyo-off],
+    [data-boyo-watch="plated"],
+    [data-boyo-watch="whole"]
+  )
+  ytd-miniplayer {
+  display: none !important;
+}
+
+:root:not([data-boyo-off])[data-boyo-watch="absent"]
+  ytd-page-manager
+  > ytd-watch-flexy {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) ytd-page-manager > ytd-shorts {
+  display: none !important;
+}
+
+/* "Not here." and Back: below the masthead, in YouTube's own type and
+   tokens, so it reads as the page and not as the extension. */
+[data-boyo-not-here] {
+  align-items: center;
+  color: var(--yt-spec-text-secondary, #606060);
+  display: flex;
+  flex-direction: column;
+  font:
+    400 16px/22px Roboto,
+    Arial,
+    sans-serif;
+  gap: 16px;
+  inset: var(--ytd-masthead-height, 56px) 0 0;
+  justify-content: center;
+  position: fixed;
+  z-index: 1;
+}
+
+[data-boyo-not-here] p {
+  margin: 0;
+}
+
+[data-boyo-not-here] button {
+  background: var(--yt-spec-badge-chip-background, rgb(0 0 0 / 5%));
+  border: 0;
+  border-radius: 18px;
+  color: var(--yt-spec-text-primary, #0f0f0f);
+  cursor: pointer;
+  font:
+    500 14px/36px Roboto,
+    Arial,
+    sans-serif;
+  height: 36px;
+  padding: 0 16px;
+}
+
+:root[data-boyo-off] [data-boyo-not-here] {
+  display: none !important;
+}
+
+/* The plated video's poster is the plate until the owner holds for the
+   real thumbnail (QD12, QD13): before play, and again once it ends. The
+   player draws the poster as an inline background on this one element;
+   the same class inside the up-next card is the overlays' rule above. */
+:root:not([data-boyo-off], [data-boyo-face])[data-boyo-watch="plated"]
+  #movie_player
+  > .ytp-cued-thumbnail-overlay
+  > .ytp-cued-thumbnail-overlay-image {
+  background: linear-gradient(135deg, rgb(255 255 255 / 6%), transparent 55%),
+    var(--boyo-poster, rgb(15 15 18)) !important;
+}
+
+/* "Hold to show the original thumbnail": grey, dashed and plain, with
+   no progress colour and no reward (absent-plated-heard.md §4). Nothing
+   on it changes while it is held (#1966). */
+[data-boyo-face-hold] {
+  background: transparent;
+  border: 1px dashed var(--yt-spec-10-percent-layer, rgb(0 0 0 / 10%));
+  border-radius: 4px;
+  color: var(--yt-spec-text-secondary, #606060);
+  cursor: pointer;
+  display: block;
+  font:
+    400 12px/1 Roboto,
+    Arial,
+    sans-serif;
+  margin-top: 12px;
+  padding: 8px 10px;
+  touch-action: none;
+  user-select: none;
+}
+
+:root[data-boyo-off] [data-boyo-face-hold] {
+  display: none !important;
+}
+
+/* ----------------------------------------------------------
+   NO COMMENTS (QD14, #1805)
+
+   Comments are written in the present, even under a 2015 video, so
+   they go whole, wherever YouTube draws them: every comments section
+   (its header, count and threads; a watch page's, a post's, the one
+   inside a Short's panel), the narrow layout's teaser, and the comments
+   panel YouTube opens beside a video. The metadata carousel goes whole:
+   its title is the shown item's, a comment count among them. Its other
+   items open live chat and Ask, which have other ways in, and a quiz
+   teaser, which goes with it.
+   ---------------------------------------------------------- */
+:root:not([data-boyo-off]) ytd-comments {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) ytd-comments-entry-point-header-renderer {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) yt-video-metadata-carousel-view-model {
+  display: none !important;
+}
+
+:root:not([data-boyo-off])
+  ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-comments-section"] {
+  display: none !important;
+}
+
+/* ----------------------------------------------------------
+   THE CROWD (QD14)
+
+   A card keeps its title, its channel name and its duration.
+
+   These are vendor elements the extension never reads for what they
+   say (H1), so they are hidden by where they sit, never by their
+   text. The Sensor still reads an age's `aria-label`; `display:
+   none` does not change what the DOM holds.
+
+   One selector per rule (QC0), each behind the off switch (#1807).
+   Fixture: `tests/e2e/fixtures/yt-crowd.html`.
+   ---------------------------------------------------------- */
+
+/* Lockup metadata runs. A view count, an age, a live count and a
+   channel page's subscriber count each carry an `aria-label` with
+   their long form; a channel name does not. The leading icon sits
+   before the view count, and the delimiters only separate what goes. */
+:root:not([data-boyo-off])
+  yt-content-metadata-view-model
+  .ytContentMetadataViewModelMetadataText[aria-label] {
+  display: none !important;
+}
+
+:root:not([data-boyo-off])
+  yt-content-metadata-view-model
+  .ytContentMetadataViewModelLeadingIcon {
+  display: none !important;
+}
+
+:root:not([data-boyo-off])
+  yt-content-metadata-view-model
+  .ytContentMetadataViewModelDelimiter {
+  display: none !important;
+}
+
+/* The verified and official-artist tick after a channel name. */
+:root:not([data-boyo-off])
+  yt-content-metadata-view-model
+  .ytContentMetadataViewModelIcon {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) ytd-channel-name ytd-badge-supported-renderer {
+  display: none !important;
+}
+
+/* "New": on a Short, in a lockup thumbnail's top corner (a duration sits in
+   the bottom overlay, "Mix" in the bottom corner), and in a search result's
+   badges, where CC, 4K and LIVE are shaped otherwise (a "360°" there
+   would share New's shape and go too). A Short's view count. */
+:root:not([data-boyo-off]) .ytThumbnailOverlayBadgeViewModelTopStart {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) ytd-video-renderer #badges .ytBadgeShapeDefault {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) .shortsLockupViewModelHostOutsideMetadataSubhead {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) .shortsLockupViewModelHostBadge {
+  display: none !important;
+}
+
+/* Search: a Polymer result's line holds its views and age only, and a
+   channel result's holds its handle and subscriber count. */
+:root:not([data-boyo-off]) ytd-video-meta-block #metadata-line {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) ytd-channel-renderer #metadata {
+  display: none !important;
+}
+
+/* The watch page's info row: its spans are the views and age, and its
+   hashtags are links, which stay. */
+:root:not([data-boyo-off]) ytd-watch-info-text #info > span {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) ytd-watch-info-text #view-count {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) ytd-watch-info-text #date-text {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) ytd-watch-info-text tp-yt-paper-tooltip {
+  display: none !important;
+}
+
+/* The description: its header's likes, views and date, and the "Video
+   details" list of the same three. */
+:root:not([data-boyo-off]) ytd-video-description-header-renderer #factoids {
+  display: none !important;
+}
+
+:root:not([data-boyo-off])
+  yt-list-view-model:has(yt-list-item-view-count-view-model) {
+  display: none !important;
+}
+
+/* The like count. The button stays; there is no dislike count. */
+:root:not([data-boyo-off])
+  like-button-view-model
+  .ytSpecButtonShapeNextButtonTextContent {
+  display: none !important;
+}
+
+/* Subscribers, under the owner and in the description's channel card. A
+   linked video's card there has a `#subtitle` too, holding its channel. */
+:root:not([data-boyo-off]) #owner-sub-count {
+  display: none !important;
+}
+
+:root:not([data-boyo-off])
+  ytd-video-description-infocards-section-renderer
+  #header-text
+  > #subtitle {
+  display: none !important;
+}
+
+:root:not([data-boyo-off])
+  ytd-engagement-panel-title-header-renderer
+  #contextual-info {
+  display: none !important;
+}
+
+/* The player. The pill's title is "Most replayed" (its hover time stays).
+   The fullscreen overlay's subtitle and the small autoplay screen's line
+   are each one run of channel and counts, so the channel goes with them. */
+:root:not([data-boyo-off]) .ytp-heat-map-container {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) .ytp-tooltip-progress-bar-pill-title {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) .ytPlayerOverlayVideoDetailsRendererSubtitle {
+  display: none !important;
+}
+
+:root:not([data-boyo-off])
+  .ytp-modern-videowall-still-view-count-and-date-info {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) .ytp-autonav-view-and-date {
+  display: none !important;
+}
+
+:root:not([data-boyo-off]) .ytp-autonav-author-and-view {
+  display: none !important;
 }

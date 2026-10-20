@@ -6,6 +6,5 @@ export default createViteConfig({
   libraryName: "SomeUILeetype",
   alias: {
     "@leetype": resolve(import.meta.dirname, "src"),
-    "@leetype-corpus": resolve(import.meta.dirname, "corpus"),
   },
 })

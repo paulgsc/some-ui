@@ -9,6 +9,7 @@ import type { ResumeData, ResumeVariant } from "@resume/types"
 export const resumeData: Record<ResumeVariant, ResumeData> = {
   "backend": {
     "variant": "backend",
+    "track": "software",
     "profile": {
       "name": "Paul Gathondu",
       "title": "Software Engineer",
@@ -109,10 +110,10 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
       }
     ],
     "engagement": {
-      "role": "Software Engineer — independent systems work",
       "org": "paulgsc/server · paulgsc/some-ui",
       "dates": "2024 — Present",
-      "note": "Independent open-source project (no employer)"
+      "note": "Independent open-source project (no employer)",
+      "role": "Software Engineer — independent systems work"
     },
     "education": [
       {
@@ -141,6 +142,7 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
   },
   "platform": {
     "variant": "platform",
+    "track": "software",
     "profile": {
       "name": "Paul Gathondu",
       "title": "Software Engineer",
@@ -236,10 +238,10 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
       }
     ],
     "engagement": {
-      "role": "Software Engineer — independent systems work",
       "org": "paulgsc/server · paulgsc/some-ui",
       "dates": "2024 — Present",
-      "note": "Independent open-source project (no employer)"
+      "note": "Independent open-source project (no employer)",
+      "role": "Software Engineer — independent systems work"
     },
     "education": [
       {
@@ -268,6 +270,7 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
   },
   "fullstack": {
     "variant": "fullstack",
+    "track": "software",
     "profile": {
       "name": "Paul Gathondu",
       "title": "Software Engineer",
@@ -366,10 +369,418 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
       }
     ],
     "engagement": {
-      "role": "Software Engineer — independent systems work",
       "org": "paulgsc/server · paulgsc/some-ui",
       "dates": "2024 — Present",
-      "note": "Independent open-source project (no employer)"
+      "note": "Independent open-source project (no employer)",
+      "role": "Software Engineer — independent systems work"
+    },
+    "education": [
+      {
+        "institution": "University of California, Merced",
+        "credential": "B.S. Mechanical Engineering",
+        "detail": "Merced, CA",
+        "dates": "2011 — 2015"
+      }
+    ],
+    "languages": [],
+    "certifications": [],
+    "interests": [],
+    "additionalExperience": [
+      {
+        "role": "Data Administrator",
+        "org": "CABA Design",
+        "detail": "Rancho Cordova, CA",
+        "dates": "2020 — 2023",
+        "bullets": [
+          "Built interactive Tableau dashboards on PostgreSQL for daily operational visibility.",
+          "Automated executive reporting through Google Workspace API integration, saving 10+ hours weekly.",
+          "Automated record creation and resolved data issues with Python scripts against Odoo's XML-RPC API, eliminating manual intervention."
+        ]
+      }
+    ]
+  },
+  "data": {
+    "variant": "data",
+    "track": "adjacent",
+    "profile": {
+      "name": "Paul Gathondu",
+      "title": "Data Analyst",
+      "email": "paulgathondudev@gmail.com",
+      "github": "github.com/paulgsc",
+      "portfolio": "paulgsc.github.io/some-ui",
+      "location": "Berkeley, CA"
+    },
+    "label": "Data analysis, metrics & reporting",
+    "summary": "Data analyst with three years as a data administrator building Tableau dashboards on PostgreSQL, automating reporting through the Google Workspace API and data fixes in Python, followed by independent engineering on the data paths of a Rust and TypeScript platform: SQL schema and query design, migrations, Prometheus metrics and Grafana dashboards, Python checks for data quality in CI, and typed JSON data contracts. Earlier clinical data operations under HIPAA at 99.99% accuracy.",
+    "skills": "SQL; PostgreSQL; SQLite/SQLx; Python; Tableau; dashboards and reporting; reporting automation; data quality and validation checks; schema design and migrations; Prometheus metrics; Grafana; JSON; REST APIs; TypeScript; Zod data contracts; Google Workspace API; GitHub Actions CI/CD",
+    "projects": [
+      {
+        "name": "Metrics and dashboards for a Rust service",
+        "kind": "Prometheus, Grafana, Jsonnet, Python",
+        "premise": "A dashboard is only trustworthy when missing data reads as unknown, never as healthy.",
+        "bullets": [
+          "Wrote Python CI checks that reconcile Grafana dashboards against the metric names the code emits, in both directions, and the scrape inventory against the services the compose stack actually runs.",
+          "Defined bounded-cardinality Prometheus metrics for HTTP, dependencies, pools, cache, admission, connections, and loop progress, and generated the Grafana dashboards from Jsonnet.",
+          "Encoded six falsifiable service states — unreachable, dependency-down, rejecting, saturated, stalled, and observability-blind — so a gap in telemetry renders as unknown rather than healthy.",
+          "Kept refusal metrics separate from latency, so rejected work never reads as fast success."
+        ]
+      },
+      {
+        "name": "Session and event data model",
+        "kind": "SQL, SQLx/SQLite, migrations, TypeScript/Zod",
+        "premise": "A record is evidence only if its schema says what each field means and a consumer can prove it still agrees.",
+        "bullets": [
+          "Modeled sessions, consent, engagement gates, interventions, tabs, and mood events in SQLite/SQLx repositories with paired migrations, compile-time query validation, WAL mode, and explicit last-write-wins semantics.",
+          "Represented engagement as a decaying vector, persisted eligible_at, and reduced due-work selection to one indexed query.",
+          "Declared request and response shapes as TypeScript/Zod contracts diffed against the server's generated route inventory, so a schema change that breaks a consumer fails before merge.",
+          "Built a typed export that bundles study sessions, reflections, and stop reasons into JSON files for analysis outside the app."
+        ]
+      }
+    ],
+    "platform": [
+      "Write SQL against versioned schemas with paired migrations and compile-time-checked queries.",
+      "Treat missing data as a fault: every dashboard distinguishes measured-good, measured-bad, and unknown.",
+      "Automate recurring reports and data fixes rather than doing them by hand.",
+      "Check data contracts in CI so drift between producer and consumer fails a pull request.",
+      "Keep definitions, limits, and failure conditions in version control beside the code and tests."
+    ],
+    "highlights": [
+      {
+        "title": "Dashboards on PostgreSQL",
+        "body": "Tableau dashboards on PostgreSQL for daily operational visibility, and executive reporting automated through the Google Workspace API."
+      },
+      {
+        "title": "Missing data reads as unknown",
+        "body": "Six falsifiable service states in bounded-cardinality metrics; a telemetry gap renders as unknown, never as healthy."
+      },
+      {
+        "title": "Dashboards checked against the code",
+        "body": "Python CI checks fail when a dashboard queries a metric nothing emits, or the code emits one nothing reads."
+      },
+      {
+        "title": "Clinical data accuracy",
+        "body": "HIPAA-compliant LIMS sample accessioning at 99.99% accuracy at Natera."
+      }
+    ],
+    "toolbox": [
+      {
+        "label": "Languages",
+        "items": "SQL, Python, TypeScript, Rust"
+      },
+      {
+        "label": "Data",
+        "items": "PostgreSQL, SQLite, SQLx, migrations"
+      },
+      {
+        "label": "Reporting",
+        "items": "Tableau, Grafana, Prometheus"
+      },
+      {
+        "label": "Automation",
+        "items": "Python scripts, Google Workspace API, XML-RPC"
+      },
+      {
+        "label": "Contracts",
+        "items": "Zod schemas, JSON, route inventories"
+      },
+      {
+        "label": "Quality",
+        "items": "CI data checks, unit and contract tests"
+      }
+    ],
+    "repositories": [
+      {
+        "name": "paulgsc/server",
+        "body": "Multi-crate Rust workspace: Axum services, SQLx repositories, NATS JetStream, Redis, Web Push, Prometheus/Grafana."
+      },
+      {
+        "name": "paulgsc/some-ui",
+        "body": "TypeScript monorepo: React apps, Rust/WASM engines, Firefox MV3 extensions, contract and browser test suites."
+      }
+    ],
+    "engagement": {
+      "org": "paulgsc/server · paulgsc/some-ui",
+      "dates": "2024 — Present",
+      "note": "Independent open-source project (no employer)",
+      "role": "Data & Analytics Engineer — independent systems work"
+    },
+    "education": [
+      {
+        "institution": "University of California, Merced",
+        "credential": "B.S. Mechanical Engineering",
+        "detail": "Merced, CA",
+        "dates": "2011 — 2015"
+      }
+    ],
+    "languages": [],
+    "certifications": [],
+    "interests": [],
+    "additionalExperience": [
+      {
+        "role": "Data Administrator",
+        "org": "CABA Design",
+        "detail": "Rancho Cordova, CA",
+        "dates": "2020 — 2023",
+        "bullets": [
+          "Built interactive Tableau dashboards on PostgreSQL for daily operational visibility.",
+          "Automated executive reporting through Google Workspace API integration, saving 10+ hours weekly.",
+          "Automated record creation and resolved data issues with Python scripts against Odoo's XML-RPC API, eliminating manual intervention."
+        ]
+      },
+      {
+        "role": "Clinical Data Operator",
+        "org": "Natera",
+        "detail": "San Carlos, CA",
+        "dates": "2019 — 2020",
+        "bullets": [
+          "HIPAA-compliant LIMS sample accessioning at 99.99% accuracy.",
+          "Processed 30+ kits per hour; recognized as a top performer for speed and regulatory adherence."
+        ]
+      }
+    ]
+  },
+  "qa": {
+    "variant": "qa",
+    "track": "adjacent",
+    "profile": {
+      "name": "Paul Gathondu",
+      "title": "QA Automation Engineer",
+      "email": "paulgathondudev@gmail.com",
+      "github": "github.com/paulgsc",
+      "portfolio": "paulgsc.github.io/some-ui",
+      "location": "Berkeley, CA"
+    },
+    "label": "Test automation & quality engineering",
+    "summary": "Test automation engineer building the checks that gate every change across a TypeScript and Rust monorepo and its server: Playwright end-to-end suites in a real browser, contract and API testing against a generated route inventory, unit and integration tests, and change-scoped CI/CD that holds a release until they pass. Brings 99.9%+ accuracy habits from daily inventory reconciliation.",
+    "skills": "Playwright; Vitest; test automation; end-to-end, integration, unit, contract, and API testing; regression testing; cross-browser testing; TypeScript; Rust; Zod; REST APIs; GitHub Actions CI/CD; Turbo; Docker; release gating",
+    "projects": [
+      {
+        "name": "Cross-repo contract and route parity",
+        "kind": "TypeScript, Zod, generated route inventories",
+        "premise": "A client and server repository that each describe the same API independently will drift unless something proves they still agree.",
+        "bullets": [
+          "Authored a TypeScript/Zod contract harness checked against a schema-versioned server route inventory and live HTTP responses across two independently deployed repositories.",
+          "Gated server pull requests on the client's contracts so a route change that breaks one fails before merge, with integration tests that start a real HTTP server and assert concrete schema and route divergence.",
+          "Distinguished contract-breaking drift from informative slack — an undeclared field the server added, or a declared-optional field it never sends — instead of collapsing both into one failure."
+        ]
+      },
+      {
+        "name": "Browser test suites",
+        "kind": "Playwright, Chromium, Firefox MV3, Vitest",
+        "premise": "A test proves behavior only when it runs where the behavior happens: in a real browser, against the real worker.",
+        "bullets": [
+          "Covered a real Chromium push and service-worker hop with Playwright instead of mocking the final delivery step.",
+          "Browser-verified an extension's document and Shadow DOM scope lifecycle in Chromium for late-root discovery and self-healing after host-page mutation, with a unit-tested generation counter that rejects stale asynchronous completions.",
+          "Gated extension releases on typecheck, unit tests, lint, and signed web-ext packaging; the Firefox tab suspender they release passed Mozilla Add-ons (AMO) review.",
+          "Ran unit and Playwright conformance suites for a transport kernel against a null adapter alone, proving the kernel carries no domain logic."
+        ]
+      }
+    ],
+    "platform": [
+      "Scope lint, typecheck, and test to changed packages and their dependents in GitHub Actions, backed by a full-repo nightly sweep.",
+      "Hold 300+ Rust test functions, a ratcheted Clippy baseline, cargo-deny, and SQLx checks as merge gates.",
+      "Check rendered output, not source: résumé PDFs are read back with pdftotext and fail the build on dropped terms or overlapping lines.",
+      "Model UI and resolver states as exhaustive discriminated unions so illegal transitions fail at compile time.",
+      "Keep invariants, falsifiers, and failure conditions beside the code and tests, so every failing check explains itself."
+    ],
+    "highlights": [
+      {
+        "title": "Real-browser coverage",
+        "body": "Playwright suites drive the real service worker and real extension scopes in Chromium instead of mocking the last hop."
+      },
+      {
+        "title": "Contract drift fails before merge",
+        "body": "A server pull request that breaks a client contract fails CI, checked against a generated route inventory and live responses."
+      },
+      {
+        "title": "Release gates",
+        "body": "Extension releases are gated on typecheck, unit tests, lint, and signed web-ext packaging; the tab suspender passed AMO review."
+      },
+      {
+        "title": "Rendered-output checks",
+        "body": "Build artifacts are read back and checked as a reader receives them, so a dropped term or overlapping line fails the build."
+      }
+    ],
+    "toolbox": [
+      {
+        "label": "Testing",
+        "items": "Playwright, Vitest, cargo test"
+      },
+      {
+        "label": "Kinds",
+        "items": "End-to-end, integration, unit, contract, API"
+      },
+      {
+        "label": "CI/CD",
+        "items": "GitHub Actions, Turbo graphs, change-scoped runs"
+      },
+      {
+        "label": "Languages",
+        "items": "TypeScript, Rust"
+      },
+      {
+        "label": "Contracts",
+        "items": "Zod, route inventories, drift detection"
+      },
+      {
+        "label": "Release",
+        "items": "Changesets, signed web-ext, Docker"
+      }
+    ],
+    "repositories": [
+      {
+        "name": "paulgsc/server",
+        "body": "Multi-crate Rust workspace: Axum services, SQLx repositories, NATS JetStream, Redis, Web Push, Prometheus/Grafana."
+      },
+      {
+        "name": "paulgsc/some-ui",
+        "body": "TypeScript monorepo: React apps, Rust/WASM engines, Firefox MV3 extensions, contract and browser test suites."
+      }
+    ],
+    "engagement": {
+      "org": "paulgsc/server · paulgsc/some-ui",
+      "dates": "2024 — Present",
+      "note": "Independent open-source project (no employer)",
+      "role": "Test Automation Engineer — independent systems work"
+    },
+    "education": [
+      {
+        "institution": "University of California, Merced",
+        "credential": "B.S. Mechanical Engineering",
+        "detail": "Merced, CA",
+        "dates": "2011 — 2015"
+      }
+    ],
+    "languages": [],
+    "certifications": [],
+    "interests": [],
+    "additionalExperience": [
+      {
+        "role": "Data Administrator",
+        "org": "CABA Design",
+        "detail": "Rancho Cordova, CA",
+        "dates": "2020 — 2023",
+        "bullets": [
+          "Built interactive Tableau dashboards on PostgreSQL for daily operational visibility.",
+          "Automated executive reporting through Google Workspace API integration, saving 10+ hours weekly.",
+          "Automated record creation and resolved data issues with Python scripts against Odoo's XML-RPC API, eliminating manual intervention."
+        ]
+      },
+      {
+        "role": "Inventory Specialist",
+        "org": "WIS",
+        "detail": "Sacramento, CA",
+        "dates": "2024 — Present",
+        "bullets": [
+          "Cycle counting and 10-key data entry at 99.9%+ accuracy.",
+          "Reconcile physical counts against system records daily."
+        ]
+      }
+    ]
+  },
+  "solutions": {
+    "variant": "solutions",
+    "track": "adjacent",
+    "profile": {
+      "name": "Paul Gathondu",
+      "title": "Integration Engineer",
+      "email": "paulgathondudev@gmail.com",
+      "github": "github.com/paulgsc",
+      "portfolio": "paulgsc.github.io/some-ui",
+      "location": "Berkeley, CA"
+    },
+    "label": "Integrations & internal tools",
+    "summary": "Integration engineer connecting systems that were not built together: typed REST/JSON contracts between independently deployed client and server repositories, standards-based Web Push and WebSocket delivery, browser-extension messaging, and Python automation against third-party APIs. Builds internal tools that remove manual steps, from Google Workspace reporting automation to release pipelines that refuse to ship a build that differs from the reviewed one.",
+    "skills": "API integration; REST APIs; JSON; TypeScript; Rust; Python; Node.js; Zod contracts; WebSockets; Web Push (VAPID); Google Workspace API; XML-RPC; internal tools; automation; Docker; GitHub Actions CI/CD; integration and contract testing",
+    "projects": [
+      {
+        "name": "Study-session and notification system",
+        "kind": "Rust services, TypeScript/Zod contracts, Web Push",
+        "premise": "An intervention should follow learner state and consent, not a clock, and delivery failure must never become load-bearing for study.",
+        "bullets": [
+          "Separated warrant, admissibility, and actuation across pure Rust policy, file_host constraints, and push_kit VAPID/RFC 8291/8292 delivery behind a testable transport trait.",
+          "Integrated typed TypeScript/Zod clients checked by a contract harness that diffs every contract against the server's generated route inventory, plus Playwright coverage of a real Chromium push/service-worker hop.",
+          "Classified expiry, payload rejection, authentication, rate limiting, and transport failure; removed expired subscriptions and persisted outcomes so quiet behavior remains explainable.",
+          "Made consent a data-model precondition; malformed or empty grants become silence, while VAPID key mismatch fails at startup instead of invalidating delivery invisibly."
+        ]
+      },
+      {
+        "name": "Release and data-sharing tools",
+        "kind": "GitHub Actions, Node.js, web-ext, Docker",
+        "premise": "A manual step that repeats is a tool waiting to be written, and the tool must refuse to run on the wrong input.",
+        "bullets": [
+          "Built a human-gated extension release pipeline that binds Mozilla Add-ons (AMO) reviewer notes to the content digest of the build they describe, validates field limits, synchronizes manifest/package versions, and refuses to sign an artifact that differs from the reviewed record.",
+          "Built Docker image build/publish pipelines for the web and server images, SQLx offline-query preparation, and Changesets-driven versioning across the workspace.",
+          "Built a typed export that bundles study sessions, reflections, and stop reasons into JSON files shared out of the phone app for an agent to read."
+        ]
+      }
+    ],
+    "platform": [
+      "Distinguish contract-breaking drift from informative slack, so an integration fails only on a change that breaks a consumer.",
+      "Maintain typed shared crates for transport, caching, metrics, connections, events, repositories, and policy rather than copying infrastructure between binaries.",
+      "Compose distroless services with Caddy, Redis, NATS, Prometheus, and Grafana behind explicit health and readiness boundaries.",
+      "Probe SQLite, NATS, and Redis independently under bounded timeouts, and render missing telemetry as unknown rather than healthy.",
+      "Version contracts, migrations, and failure conditions beside source and tests rather than as tribal knowledge."
+    ],
+    "highlights": [
+      {
+        "title": "Contract parity across two repositories",
+        "body": "Typed TypeScript/Zod clients checked against a generated server route inventory; a breaking server change fails before merge."
+      },
+      {
+        "title": "Standards-based push delivery",
+        "body": "VAPID and RFC 8291/8292 Web Push behind a testable transport trait, with every delivery failure classified."
+      },
+      {
+        "title": "Release tooling that refuses drift",
+        "body": "Extension signing refuses any artifact that differs from the build its reviewer notes describe."
+      },
+      {
+        "title": "Reporting automation",
+        "body": "Reporting automated through the Google Workspace API, saving 10+ hours weekly, and Python scripts against Odoo's XML-RPC API that automated record creation and data fixes, at CABA Design."
+      }
+    ],
+    "toolbox": [
+      {
+        "label": "Languages",
+        "items": "TypeScript, Rust, Python"
+      },
+      {
+        "label": "Integration",
+        "items": "REST/JSON, WebSockets, Web Push, XML-RPC"
+      },
+      {
+        "label": "Contracts",
+        "items": "Zod, route inventories, drift checks"
+      },
+      {
+        "label": "Automation",
+        "items": "Google Workspace API, Node.js CLIs, GitHub Actions"
+      },
+      {
+        "label": "Delivery",
+        "items": "Docker, Changesets, signed web-ext"
+      },
+      {
+        "label": "Quality",
+        "items": "Contract, integration, Playwright tests"
+      }
+    ],
+    "repositories": [
+      {
+        "name": "paulgsc/server",
+        "body": "Multi-crate Rust workspace: Axum services, SQLx repositories, NATS JetStream, Redis, Web Push, Prometheus/Grafana."
+      },
+      {
+        "name": "paulgsc/some-ui",
+        "body": "TypeScript monorepo: React apps, Rust/WASM engines, Firefox MV3 extensions, contract and browser test suites."
+      }
+    ],
+    "engagement": {
+      "org": "paulgsc/server · paulgsc/some-ui",
+      "dates": "2024 — Present",
+      "note": "Independent open-source project (no employer)",
+      "role": "Integration Engineer — independent systems work"
     },
     "education": [
       {

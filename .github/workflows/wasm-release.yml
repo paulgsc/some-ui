@@ -17,9 +17,14 @@ env:
 permissions:
   contents: write
   pull-requests: write
+# `queue: max`, for www-docker-release.yml's reason: a replaced run loses a
+# publish or its push's range. Two queued runs can swap; an ordinary run that
+# starts after a newer release then proposes bumps from its older tree, and
+# `changeset publish` skips a version already on npm rather than overwrite it.
 concurrency:
   group: wasm-release-${{ github.ref }}
   cancel-in-progress: false
+  queue: max
 jobs:
   # ── Detect changed crates ────────────────────────────────────────────────
   # A wasm crate is any crates/*/ dir with both Cargo.toml (buildable) and
@@ -281,6 +286,7 @@ jobs:
       # before ever reaching the publish step. `--filter .` scopes
       # resolution to the root package, and `--no-lockfile` skips the
       # workspace-wide lockfile pnpm would otherwise insist on computing.
+      # Why not node-ci-setup: its install is the whole workspace's, frozen.
       - name: Install dependencies
         run: |
           nix develop .#ci --command pnpm --filter . install \

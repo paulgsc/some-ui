@@ -130,33 +130,24 @@ describe("the read-aloud store", () => {
     expect(store.sets()).toEqual([set])
   })
 
-  it("resumes a set with the lenses it was drawn with", () => {
-    const store = createReadAloudStore(memoryStorage())
-    const lensed: SetProgress = {
-      ...PROGRESS,
-      queue: PROGRESS.queue.map((entry) =>
-        entry.item.kind === "sentence"
-          ? {
-              ...entry,
-              item: {
-                ...entry.item,
-                lens: { kind: "role", role: "action", word: 4 },
-              },
-            }
-          : entry
-      ),
-    }
-    store.saveProgress(1, ":all", lensed)
-    expect(store.progress(1, ":all")).toEqual(lensed)
-  })
-
-  it("keeps grammar lenses off until turned on", () => {
+  it("resumes a set an older build stored with lenses, without them", () => {
     const storage = memoryStorage()
-    expect(createReadAloudStore(storage).lenses()).toBe(false)
-    createReadAloudStore(storage).saveLenses(true)
-    expect(createReadAloudStore(storage).lenses()).toBe(true)
-    createReadAloudStore(storage).saveLenses(false)
-    expect(createReadAloudStore(storage).lenses()).toBe(false)
+    storage.map.set(
+      READ_ALOUD_STORAGE_KEYS.progress,
+      JSON.stringify({
+        version: 1,
+        level: 1,
+        deck: ":all",
+        progress: {
+          ...PROGRESS,
+          queue: PROGRESS.queue.map((entry) => ({
+            ...entry,
+            item: { ...entry.item, lens: { kind: "tense", tense: "past" } },
+          })),
+        },
+      })
+    )
+    expect(createReadAloudStore(storage).progress(1, ":all")).toEqual(PROGRESS)
   })
 
   it("discards what it cannot parse", () => {

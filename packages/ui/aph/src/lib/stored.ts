@@ -13,21 +13,45 @@
  * - when even that is impossible (the storage throws), the store is opened
  *   read-only: it shows the fallback and refuses every change, rather than
  *   save over the record it failed to read.
+ *
+ * Once kept on home (`home.ts`), the phone keeps a `HomeRecord` under
+ * `HOME_KEY` instead: the settings and what home has not confirmed, held to
+ * the same rules. The device record is removed only after the home record
+ * that carries all of it is written, and a phone holding both opens the home
+ * one.
  */
-import { localStorageOrNull } from "@some-ui/core-utils"
+import type { KeyedStorage } from "@some-ui/core-utils"
+import {
+  localStorageOrNull,
+  openRecord,
+  quarantine,
+  writeRecord,
+} from "@some-ui/core-utils"
 import { z } from "zod"
 
+import type { HomeHeld, HomeRecord } from "./home"
 import type { AphSettings, Entry } from "./model"
 import { violations } from "./model"
 import type { AphState } from "./store"
 
 /** The part of `Storage` this touches, so tests can pass a fake. */
-export type AphStorage = Pick<Storage, "getItem" | "setItem">
+export type AphStorage = KeyedStorage
 
 export const STORAGE_KEY = "aph:state"
 /** Followed by 1, 2 …: an unreadable value, kept as it was found. */
 export const QUARANTINE_PREFIX = "aph:state:unreadable:"
 const VERSION = 1
+
+/** The home record, once aph is kept on home. */
+export const HOME_KEY = "aph:home"
+/** Followed by 1, 2 …: an unreadable home record, kept as it was found. */
+export const HOME_QUARANTINE_PREFIX = "aph:home:unreadable:"
+/**
+ * Followed by 1, 2 …: a home record whose waiting changes clashed with
+ * home's record when aph came back to this phone, kept as it was.
+ */
+export const LEFT_PREFIX = "aph:home:left:"
+const HOME_VERSION = 1
 
 const CheckpointSchema = z.object({
   id: z.string(),
@@ -36,7 +60,7 @@ const CheckpointSchema = z.object({
   goal: z.number(),
 })
 
-const SettingsSchema: z.ZodType<AphSettings> = z.object({
+export const SettingsSchema: z.ZodType<AphSettings> = z.object({
   checkpoints: z.array(CheckpointSchema),
   labels: z.array(z.string()),
   step: z.number(),
@@ -46,7 +70,7 @@ const SettingsSchema: z.ZodType<AphSettings> = z.object({
   since: z.string(),
 })
 
-const EntrySchema: z.ZodType<Entry> = z.object({
+export const EntrySchema: z.ZodType<Entry> = z.object({
   id: z.string(),
   day: z.string(),
   checkpoint: z.string().nullable(),
@@ -63,6 +87,14 @@ const StoredSchema = z.object({
   v: z.literal(VERSION),
   settings: SettingsSchema,
   entries: z.array(EntrySchema),
+})
+
+const HomeSchema = z.object({
+  v: z.literal(HOME_VERSION),
+  settings: SettingsSchema,
+  settingsPending: z.boolean(),
+  pending: z.array(EntrySchema),
+  refused: z.array(z.object({ id: z.string(), why: z.string() })),
 })
 
 /**
@@ -90,24 +122,15 @@ function parse(raw: string): AphState | null {
   }
 }
 
-/** Moves `raw` to the first free quarantine key; false if it could not. */
-function quarantine(storage: AphStorage, raw: string): boolean {
-  try {
-    let n = 1
-    while (storage.getItem(`${QUARANTINE_PREFIX}${n}`) !== null) n += 1
-    storage.setItem(`${QUARANTINE_PREFIX}${n}`, raw)
-    return true
-  } catch {
-    return false
-  }
-}
-
 /** Stands in for a `localStorage` the page has but cannot touch. */
 const BLOCKED: AphStorage = {
   getItem: () => {
     throw new Error("localStorage is blocked")
   },
   setItem: () => {
+    throw new Error("localStorage is blocked")
+  },
+  removeItem: () => {
     throw new Error("localStorage is blocked")
   },
 }
@@ -124,16 +147,9 @@ export function deviceStorage(): AphStorage | null {
 }
 
 export function openStored(storage: AphStorage): Opened {
-  let raw: string | null
-  try {
-    raw = storage.getItem(STORAGE_KEY)
-  } catch {
-    return { kind: "unreadable" }
-  }
-  if (raw === null) return { kind: "empty" }
-  const state = parse(raw)
-  if (state !== null) return { kind: "kept", state }
-  return quarantine(storage, raw) ? { kind: "empty" } : { kind: "unreadable" }
+  const opened = openRecord(storage, STORAGE_KEY, parse, QUARANTINE_PREFIX)
+  if (opened.kind === "kept") return { kind: "kept", state: opened.value }
+  return opened.kind === "moved" ? { kind: "empty" } : opened
 }
 
 /**
@@ -143,11 +159,92 @@ export function openStored(storage: AphStorage): Opened {
  */
 export function writeStored(storage: AphStorage, state: AphState): boolean {
   const text = JSON.stringify({ v: VERSION, ...state })
-  if (parse(text) === null) return false
+  return writeRecord(storage, STORAGE_KEY, text, parse)
+}
+
+/**
+ * What opening the home record found, as `Opened` for the device record:
+ * `moved` is an unreadable record now moved aside, which the store starts
+ * again from home's own copy rather than from the paper notes.
+ */
+export type OpenedHome =
+  | { kind: "kept"; record: HomeRecord }
+  | { kind: "empty" }
+  | { kind: "moved" }
+  | { kind: "unreadable" }
+
+function parseHome(raw: string): HomeRecord | null {
   try {
-    storage.setItem(STORAGE_KEY, text)
+    const stored = HomeSchema.safeParse(JSON.parse(raw))
+    if (!stored.success) return null
+    const { settings, settingsPending, pending, refused } = stored.data
+    return violations(settings, pending).length === 0
+      ? { settings, settingsPending, pending, refused }
+      : null
+  } catch {
+    return null
+  }
+}
+
+export function openHome(storage: AphStorage): OpenedHome {
+  const opened = openRecord(
+    storage,
+    HOME_KEY,
+    parseHome,
+    HOME_QUARANTINE_PREFIX
+  )
+  return opened.kind === "kept"
+    ? { kind: "kept", record: opened.value }
+    : opened
+}
+
+/** Writes `record`; false when the storage refused it or could not read it back. */
+export function writeHome(storage: AphStorage, record: HomeRecord): boolean {
+  const text = JSON.stringify({ v: HOME_VERSION, ...record })
+  return writeRecord(storage, HOME_KEY, text, parseHome)
+}
+
+/**
+ * Removes the device record, once a home record carrying all of it is kept.
+ * False when the storage would not; the home record still wins on opening.
+ */
+export function forgetDeviceRecord(storage: AphStorage): boolean {
+  return forget(storage, STORAGE_KEY)
+}
+
+function forget(storage: AphStorage, key: string): boolean {
+  try {
+    storage.removeItem(key)
     return true
   } catch {
     return false
   }
 }
+
+/**
+ * Removes the home record, once a device record carrying what it held is
+ * kept, and a copy of it as stored under `LEFT_PREFIX` first when `clashed`
+ * (some of its waiting changes are in no other record). False when the
+ * storage would not; the home record then still wins on opening.
+ */
+export function forgetHomeRecord(
+  storage: AphStorage,
+  clashed: boolean
+): boolean {
+  if (clashed) {
+    let text: string | null
+    try {
+      text = storage.getItem(HOME_KEY)
+    } catch {
+      return false
+    }
+    if (text !== null && !quarantine(storage, text, LEFT_PREFIX)) return false
+  }
+  return forget(storage, HOME_KEY)
+}
+
+/** Home's `GET /aph` answer. */
+export const HeldSchema: z.ZodType<HomeHeld> = z.object({
+  settings: SettingsSchema.nullable(),
+  entries: z.array(EntrySchema),
+})

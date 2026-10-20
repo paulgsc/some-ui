@@ -4,15 +4,12 @@
  *
  * Everything here is glue, and deliberately thin:
  *
- *   - tokens from the Sensor and inputs from the Actuator, the keybindings
- *     and the background go through one `dispatch()`, which folds the event
- *     through `reduce()`, binds the Actuator's targets to each `render` /
- *     `unmount` (the Sensor knows which elements carry a key; Core cannot),
- *     and hands the bound actions to the Actuator;
- *   - a gesture re-observes its card first, so Core decides on the evidence
- *     the page shows at click time rather than at first sight;
- *   - facts go to the flight recorder; the bulk-advance fact is completed
- *     with the DOM census only the Sensor can take (#1424);
+ *   - tokens from the Sensor and the shell's lifecycle go through one
+ *     `dispatch()`, which folds the event through `reduce()`, binds the
+ *     Actuator's targets to each `render` / `unmount` (the Sensor knows
+ *     which elements carry a key; Core cannot), and hands the bound actions
+ *     to the Actuator;
+ *   - facts go to the flight recorder;
  *   - the debug layer reads Core's state and the Sensor's census.
  *
  * Lifecycle (`controller.ts`'s C1–C4): `start()` is idempotent, `stop()`
@@ -23,10 +20,14 @@
 import type { Actuator, BoundAction } from "@censor/lib/content/actuator/index"
 import { createActuator } from "@censor/lib/content/actuator/index"
 import type { Action, CoreFact } from "@censor/lib/content/core/actions"
-import type { CoreEvent, Input } from "@censor/lib/content/core/events"
+import type { CoreEvent } from "@censor/lib/content/core/events"
 import { reduce } from "@censor/lib/content/core/reduce"
-import type { CoreState } from "@censor/lib/content/core/state"
-import { initialState } from "@censor/lib/content/core/state"
+import { admits, initialState } from "@censor/lib/content/core/state"
+import type {
+  AutoplayRule,
+  CoreState,
+  Rules,
+} from "@censor/lib/content/core/state"
 import {
   notifyMutation,
   notifyNavigation,
@@ -36,11 +37,8 @@ import {
 import { YOUTUBE_LAYOUT } from "@censor/lib/content/layout/generated/youtube-layout"
 import type { LayoutTable } from "@censor/lib/content/layout/schema"
 import { surfaceOf } from "@censor/lib/content/layout/surface"
-import { observability } from "@censor/lib/content/observability"
 import { createSensor } from "@censor/lib/content/sensor/sensor"
-import { ext } from "@censor/platform/content"
 import type { EntryDebugInfo } from "@censor/types/debug"
-import type { BgRequest } from "@censor/types/messages"
 import type { SessionId } from "@some-extension/common"
 import { mkSession } from "@some-extension/common"
 
@@ -54,8 +52,6 @@ export type RuntimePorts = {
   readonly table?: LayoutTable
   readonly clock?: () => number
   readonly mintSession?: () => SessionId
-  readonly sendMessage?: (msg: BgRequest) => Promise<unknown>
-  readonly confirmWhitelist?: () => boolean
   readonly onFact?: (fact: CoreFact) => void
 }
 
@@ -64,10 +60,14 @@ export type Runtime = {
   start(): void
   /** Tear everything down. Total. */
   stop(): void
-  /** Feed an input from outside the pipeline (a broadcast, a keybinding). */
-  dispatch(event: CoreEvent): void
   /** Observe every card on the page now. */
   scan(): void
+  /** The owner's boundary, applied now if running and at every later start. */
+  setBoundary(days: number): void
+  /** The owner's mode, applied now if running and at every later start. */
+  setRules(rules: Rules): void
+  /** The owner's autoplay choice, likewise. */
+  setAutoplay(autoplay: AutoplayRule): void
   readonly state: CoreState
   readonly running: boolean
 }
@@ -79,6 +79,9 @@ export function createRuntime(ports: RuntimePorts): Runtime {
   const onFact = ports.onFact ?? recordFact
 
   let state: CoreState = initialState(mintSession())
+  let boundaryDays = state.boundaryDays
+  let rules = state.rules
+  let autoplay = state.autoplay
   let actuator: Actuator | null = null
   let health: Health | null = null
   let firstScan: number | null = null
@@ -91,6 +94,7 @@ export function createRuntime(ports: RuntimePorts): Runtime {
     clock,
     mintSession,
     emit: (token) => dispatch(token),
+    admits: (videoId) => admits(state, videoId),
     onFact: (fact) => {
       onFact(fact)
       if (fact.kind === "mutation.batch") {
@@ -104,45 +108,29 @@ export function createRuntime(ports: RuntimePorts): Runtime {
     },
   })
 
-  function inbox(input: Input): void {
-    // Decide on the evidence the page shows now (see the module header).
-    if (input.kind === "gesture") sensorInstance.refresh(input.key)
-    dispatch(input)
-  }
-
   function bind(actions: ReadonlyArray<Action>): Array<BoundAction> {
     const bound: Array<BoundAction> = []
     for (const action of actions) {
-      if (action.kind === "render" || action.kind === "unmount") {
-        bound.push({ action, targets: sensorInstance.custodyOf(action.key) })
-      } else if (action.kind === "record") {
-        onFact(complete(action.fact))
+      if (action.kind === "record") {
+        if (action.fact.kind === "navigation") notifyNavigation()
+        onFact(action.fact)
+      } else if (action.kind === "play") {
+        const el = sensorInstance.upNextCard(action.key)
+        bound.push({
+          action,
+          targets: el === null ? [] : [{ el, role: "anchor" }],
+        })
+      } else if (action.kind === "watch") {
+        const el = sensorInstance.description()
+        bound.push({
+          action,
+          targets: el === null ? [] : [{ el, role: "anchor" }],
+        })
       } else {
-        bound.push({ action })
+        bound.push({ action, targets: sensorInstance.custodyOf(action.key) })
       }
     }
     return bound
-  }
-
-  /** The bulk-advance fact is Core's counts; the DOM census is the Sensor's. */
-  function complete(fact: CoreFact): CoreFact {
-    if (fact.kind === "navigation") notifyNavigation()
-    if (fact.kind !== "bulk.advance") return fact
-    const census = sensorInstance.census()
-    const obs = observability()
-    if (obs !== null) {
-      const queued = new Set(census.unresolved.map((q) => q.el))
-      let unresolved = 0
-      for (const el of census.occluded) if (queued.has(el)) unresolved += 1
-      obs.bulkAdvance({
-        advanced: fact.advanced,
-        alreadyPast: fact.alreadyPast,
-        unresolved,
-        occludedUntracked: census.occludedUntracked,
-        channelPending: fact.channelPending,
-      })
-    }
-    return fact
   }
 
   function dispatch(event: CoreEvent): void {
@@ -153,7 +141,6 @@ export function createRuntime(ports: RuntimePorts): Runtime {
     // A navigation is a new session (C2): occlusion ages from the page before
     // it must not count against the page after it.
     if (event.kind === "nav") health?.sessionStarted()
-    else health?.stateChanged()
     publish()
   }
 
@@ -176,8 +163,7 @@ export function createRuntime(ports: RuntimePorts): Runtime {
         const custody = sensorInstance.custodyOf(card.key)
         out.push({
           videoId: card.observation.videoId,
-          channelId:
-            card.channel.kind === "unknown" ? "" : card.channel.channelId,
+          channelId: card.observation.channelId ?? "",
           viewKind: card.view.kind,
           isConnected: custody.some((t) => t.el.isConnected),
         })
@@ -189,28 +175,23 @@ export function createRuntime(ports: RuntimePorts): Runtime {
   return {
     start(): void {
       if (state.phase === "running") return
-      actuator = createActuator({
-        doc: ports.doc,
-        inbox,
-        clock,
-        onFact,
-        sendMessage:
-          ports.sendMessage ??
-          ((msg): Promise<unknown> => ext.runtime.sendMessage(msg)),
-        titleHook: () => ports.win.__boyoTransformTitle,
-        confirmWhitelist:
-          ports.confirmWhitelist ??
-          ((): boolean =>
-            ports.win.confirm(
-              "Add this channel to whitelist?\n(Always show content from this channel)"
-            )),
+      actuator = createActuator(ports.doc, {
+        onFace: (videoId, shown) =>
+          dispatch({ kind: "face", videoId, shown, t: clock() }),
       })
       health = createHealth({
         clock,
         state: () => state,
         census: () => sensorInstance.census(),
       })
-      dispatch({ kind: "start", session: mintSession(), t: clock() })
+      dispatch({
+        kind: "start",
+        session: mintSession(),
+        boundaryDays,
+        rules,
+        autoplay,
+        t: clock(),
+      })
       sensorInstance.start()
       health.sessionStarted()
       if (typeof ports.win.requestAnimationFrame === "function") {
@@ -236,10 +217,23 @@ export function createRuntime(ports: RuntimePorts): Runtime {
       actuator = null
     },
 
-    dispatch,
-
     scan(): void {
       sensorInstance.scan()
+    },
+
+    setBoundary(days: number): void {
+      boundaryDays = days
+      dispatch({ kind: "boundary", days, t: clock() })
+    },
+
+    setRules(next: Rules): void {
+      rules = next
+      dispatch({ kind: "rules", rules: next, t: clock() })
+    },
+
+    setAutoplay(next: AutoplayRule): void {
+      autoplay = next
+      dispatch({ kind: "autoplay", autoplay: next, t: clock() })
     },
 
     get state(): CoreState {

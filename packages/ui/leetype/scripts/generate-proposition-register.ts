@@ -1,7 +1,8 @@
 /**
  * Generates `src/lib/leetype/proposition-register/generated.ts` from
- * `docs/canon/complexity-witness-canon.typ` §7 — the `PropositionId`
- * closed union and its register text, read from the canon rather than
+ * `docs/canon/complexity-witness-canon.typ` §7 and Rem. 7.4 — the
+ * `PropositionId` and `RuleId` closed unions and their register text, read
+ * from the canon rather than
  * transcribed (LTY-PROBE B1, Rem. 7.1, Rem. 7.2), the same
  * discipline `dump-routes` enforces for `packages/server-routes/src/
  * generated/routes.ts` in the paired `paulgsc/server` repo.
@@ -17,8 +18,14 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { formatGeneratedModule } from "@leetype/lib/leetype/proposition-register/format-generated-module"
-import type { PropositionRegisterEntry } from "@leetype/lib/leetype/proposition-register/parse-canon"
-import { parsePropositionRegister } from "@leetype/lib/leetype/proposition-register/parse-canon"
+import type {
+  PropositionRegisterEntry,
+  RuleRegisterEntry,
+} from "@leetype/lib/leetype/proposition-register/parse-canon"
+import {
+  parsePropositionRegister,
+  parseRuleRegisters,
+} from "@leetype/lib/leetype/proposition-register/parse-canon"
 import {
   assertNoRegisteredIdWasRemoved,
   idsInGeneratedFile,
@@ -33,11 +40,12 @@ import {
 
 async function formatForOutput(
   root: string,
-  entries: ReadonlyArray<PropositionRegisterEntry>
+  entries: ReadonlyArray<PropositionRegisterEntry>,
+  rules: ReadonlyArray<RuleRegisterEntry>
 ): Promise<string> {
   const outPath = path.join(root, GENERATED_RELATIVE_PATH)
   const config = await prettier.resolveConfig(outPath)
-  return prettier.format(formatGeneratedModule(entries), {
+  return prettier.format(formatGeneratedModule(entries, rules), {
     ...config,
     filepath: outPath,
   })
@@ -53,19 +61,24 @@ async function formatForOutput(
  */
 async function generateFromCanon(root: string): Promise<{
   entries: ReadonlyArray<PropositionRegisterEntry>
+  rules: ReadonlyArray<RuleRegisterEntry>
   contents: string
 }> {
   const canonSource = readFileSync(path.join(root, CANON_RELATIVE_PATH), "utf8")
   const entries = parsePropositionRegister(canonSource)
+  const rules = parseRuleRegisters(canonSource)
 
   const outPath = path.join(root, GENERATED_RELATIVE_PATH)
   const existingGenerated = existsSync(outPath)
     ? readFileSync(outPath, "utf8")
     : ""
-  assertNoRegisteredIdWasRemoved(idsInGeneratedFile(existingGenerated), entries)
+  assertNoRegisteredIdWasRemoved(idsInGeneratedFile(existingGenerated), [
+    ...entries,
+    ...rules,
+  ])
 
-  const contents = await formatForOutput(root, entries)
-  return { entries, contents }
+  const contents = await formatForOutput(root, entries, rules)
+  return { entries, rules, contents }
 }
 
 /**
@@ -80,24 +93,24 @@ async function main(): Promise<void> {
   const checkOnly = process.argv.includes("--check")
   const root = repoRoot()
   const outPath = path.join(root, GENERATED_RELATIVE_PATH)
-  const { entries, contents: generated } = await generateFromCanon(root)
+  const { entries, rules, contents: generated } = await generateFromCanon(root)
 
   if (checkOnly) {
     const current = existsSync(outPath) ? readFileSync(outPath, "utf8") : ""
     if (current !== generated) {
       console.error(
-        `${GENERATED_RELATIVE_PATH} is stale — it does not match what ${CANON_RELATIVE_PATH} §7 generates today. Run \`pnpm --filter @some-ui/leetype run generate:proposition-register\` and commit the result.`
+        `${GENERATED_RELATIVE_PATH} is stale — it does not match what ${CANON_RELATIVE_PATH} §7 and Rem. 7.4 generate today. Run \`pnpm --filter @some-ui/leetype run generate:proposition-register\` and commit the result.`
       )
       process.exitCode = 1
       return
     }
-    console.log(`OK: ${GENERATED_RELATIVE_PATH} matches canon §7.`)
+    console.log(`OK: ${GENERATED_RELATIVE_PATH} matches canon §7 and Rem. 7.4.`)
     return
   }
 
   writeFileSync(outPath, generated)
   console.log(
-    `Wrote ${entries.length} proposition(s) to ${GENERATED_RELATIVE_PATH}.`
+    `Wrote ${entries.length} proposition(s) and ${rules.length} rule(s) to ${GENERATED_RELATIVE_PATH}.`
   )
 }
 

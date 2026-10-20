@@ -1,47 +1,31 @@
 /**
- * "Send shelf to home": what this phone kept, copied to the paired home's
- * shelf (paulgsc/server `handlers/shelf.rs`), one PUT per item, after a tap
- * and a confirm that names the count and the host (LA8). Phone to home
- * only: nothing is read back, and nothing on home is deleted.
+ * The shelf half of "Send to home" (`./send`): what this phone kept, copied
+ * to the paired home's shelf (paulgsc/server `handlers/shelf.rs`), one PUT
+ * per item (LA8). Phone to home only: nothing is read back, nothing on home
+ * is deleted, and the phone keeps its own: kept items are for studying
+ * again, not an archive.
  *
- * Home's answers are said, never retried: a full shelf (`409`) and a refused
- * item (`422`) are counted and the send goes on; a `401` (home no longer
- * knows this phone) or no answer ends it there. Stop, or the app going to
- * the background, ends it before the next item.
+ * Home's answers are counted, never retried: a full shelf (`409`) and a
+ * refused item (`422`) are counted and the send goes on; a `401` (home no
+ * longer knows this phone), home being busy (`429`) or no answer ends it
+ * there. Stop, or the app
+ * going to the background, ends it before the next item.
  */
-import { deviceBackend } from "@/lib/device-backend/boot"
+import type { HomeCall } from "@some-ui/core-utils"
+
 import { stringFieldOf } from "@/lib/device-backend/common"
 import type { Kept } from "@/lib/device-backend/handlers/shelf"
-import { everyKept } from "@/lib/device-backend/handlers/shelf"
-import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 
-import { hostOf } from "./address"
-import { homeLink } from "./index"
-import { remember, remembered } from "./remembered"
-import type { HomeSend } from "./runtime"
-import type { SyncResult } from "./sync"
+import { unanswered } from "./runtime"
 
-const LAST_SEND_KEY = "some-ui.device.last-shelf-send.v1"
-
-const NAMES: Record<string, string> = { topik: "TOPIK", leetype: "Leetype" }
-
-const nameOf = (activity: string): string => NAMES[activity] ?? activity
-
-/** What a send or copy would carry, for its confirm: "2 kept items (…)". */
-export type ToSend = { total: number; what: string }
-
-/** Reads the phone's own shelf; sends nothing. */
-export async function keptOnPhone(): Promise<ToSend> {
-  const { context } = await deviceBackend()
-  const items = await everyKept(context.db)
-  const by = new Map<string, number>()
-  for (const { activity } of items)
-    by.set(activity, (by.get(activity) ?? 0) + 1)
-  const parts = [...by].map(([activity, n]) => `${n} ${nameOf(activity)}`)
-  const total = items.length
-  return {
-    total,
-    what: `${total} kept item${total === 1 ? "" : "s"} (${parts.join(", ")})`,
+/**
+ * A shelf send found no answer from home, or home busy (`unreachable`).
+ * Not `home-sync`'s `HomeUnreachableError`, which is the lessons sync's.
+ */
+export class HomeUnansweredError extends Error {
+  constructor() {
+    super("home did not answer the shelf send")
+    this.name = "HomeUnansweredError"
   }
 }
 
@@ -75,11 +59,15 @@ export function emptyReport(): SendReport {
   }
 }
 
-/** PUTs `items` through `send`, once each, into `report`. */
+/**
+ * PUTs `items` through `send`, once each, into `report`; `heard` hears each
+ * item home answered for with its copy (`held`) or refused (`refused`).
+ */
 export async function sendKept(
   items: ReadonlyArray<Kept>,
-  send: HomeSend,
-  report: SendReport
+  send: HomeCall,
+  report: SendReport,
+  heard: (item: Kept, answer: "held" | "refused") => void = () => undefined
 ): Promise<void> {
   for (const item of items) {
     let status: number
@@ -91,12 +79,16 @@ export async function sendKept(
         item.body
       ))
     } catch (error) {
-      if (error instanceof SyncStoppedError) throw error
+      if (!unanswered(error)) throw error
       report.unreachable = true
       return
     }
     if (status === 401) {
       report.forgotten = true
+      return
+    }
+    if (status === 429) {
+      report.unreachable = true
       return
     }
     if (status === 409) {
@@ -105,6 +97,7 @@ export async function sendKept(
     }
     if (status === 422) {
       report.refused += 1
+      heard(item, "refused")
       continue
     }
     const change = status === 200 ? stringFieldOf(body, "change") : null
@@ -116,75 +109,6 @@ export async function sendKept(
       continue
     }
     report.sent += 1
-  }
-}
-
-/** The report in the block's words. */
-export function describeSend(
-  report: SendReport,
-  host: string,
-  total: number
-): string {
-  const answered =
-    report.sent + report.refused + report.other + report.full.size > 0
-  if (report.unreachable && !answered) {
-    return `Couldn't reach ${host}. Are you on the home network? Nothing was sent.`
-  }
-  const parts = [
-    `Sent ${report.sent} of ${total} to ${host}: ${report.kept} new, ${report.replaced} replaced, ${report.unchanged} already there.`,
-  ]
-  for (const [activity, n] of report.full) {
-    parts.push(
-      `${n} didn't fit: the ${nameOf(activity)} shelf on ${host} is full.`
-    )
-  }
-  if (report.refused > 0) parts.push(`${report.refused} refused by ${host}.`)
-  if (report.other > 0) {
-    parts.push(`${report.other} got an answer this app doesn't know.`)
-  }
-  if (report.forgotten) {
-    parts.push(
-      `${host} no longer knows this phone, so nothing more was sent: unpair, then pair again.`
-    )
-  }
-  if (report.unreachable) {
-    parts.push(`Lost ${host} there, so nothing more was sent.`)
-  }
-  return parts.join(" ")
-}
-
-/** "time · what happened" for the last send, or "". */
-export function lastSend(): string {
-  return remembered(LAST_SEND_KEY)
-}
-
-/**
- * Sends everything kept on this phone to the paired `base`. Never throws:
- * a failure is a line.
- */
-export async function sendShelfTo(base: string): Promise<SyncResult> {
-  const host = hostOf(base)
-  const report = emptyReport()
-  try {
-    const { context } = await deviceBackend()
-    const items = await everyKept(context.db)
-    const total = items.length
-    const outcome = await homeLink().send((send) =>
-      sendKept(items, send, report)
-    )
-    if (outcome === null) return { ok: false, line: "" }
-    const line =
-      outcome.kind === "stopped"
-        ? `Stopped. ${describeSend(report, host, total)}`
-        : describeSend(report, host, total)
-    remember(LAST_SEND_KEY, `${new Date().toLocaleString()} · ${line}`)
-    const clean =
-      outcome.kind === "done" &&
-      report.sent === total &&
-      !report.forgotten &&
-      !report.unreachable
-    return { ok: clean, line }
-  } catch (error) {
-    return { ok: false, line: `Send failed: ${String(error)}` }
+    heard(item, "held")
   }
 }

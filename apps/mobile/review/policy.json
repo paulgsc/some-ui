@@ -20,7 +20,7 @@
       "reason": "The Home server block (Settings -> This phone; www lib/home-link, LA8): the sync from home fetches lessons from the LAN file_host, and pairing, unpairing, sending the shelf and copying sessions (each after a confirm naming the count and the host) reach the person's own home server, each on a tap."
     },
     "android.permission.RECORD_AUDIO": {
-      "reason": "Soundbites (Sessions -> Say why): the person records, on the phone, why a session did not happen. The WebView's getUserMedia, asked for by Capacitor's BridgeWebChromeClient on the first tap to talk. Voice reflections (Reflect, in any session) record the same way, as audio kept on the phone (apps/www src/lib/reflection-voice)."
+      "reason": "Soundbites (/soundbites in the Practice wing, reached from Practice's Home -> Not today? Say why): the person records, on the phone, why a session did not happen. The WebView's getUserMedia, asked for by Capacitor's BridgeWebChromeClient on the first tap to talk. The Build Journal (/journal, the Studio wing's Home) records its voice takes the same way, and voice reflections (Reflect, in any session) too, as audio kept on the phone (apps/www src/lib/reflection-voice)."
     },
     "android.permission.MODIFY_AUDIO_SETTINGS": {
       "reason": "Soundbites: Capacitor's BridgeWebChromeClient requests it with RECORD_AUDIO for any WebView audio capture. Install-time, no prompt."
@@ -62,7 +62,19 @@
 
   "exportedComponents": {
     "${applicationId}.MainActivity": {
-      "reason": "The launcher activity: the home screen starts it, so it must be exported."
+      "reason": "The launcher activity behind the plain app icon, which opens the foyer (/foyer) on a cold start and resumes the app where it was on a warm one: the home screen starts it, so it must be exported."
+    },
+    "${applicationId}.WingPractice": {
+      "reason": "The Practice wing's launcher icon, an activity-alias of MainActivity that opens the app at /practice: the home screen starts it, so it must be exported. MainActivity maps the alias's name to that path through a fixed table and reads nothing else from the intent, so another app starting it can do no more than a tap on the icon."
+    },
+    "${applicationId}.WingSelf": {
+      "reason": "The Self wing's launcher icon, an activity-alias of MainActivity that opens the app at /aph: the home screen starts it, so it must be exported. MainActivity maps the alias's name to that path through a fixed table and reads nothing else from the intent, so another app starting it can do no more than a tap on the icon."
+    },
+    "${applicationId}.WingStudio": {
+      "reason": "The Studio wing's launcher icon, an activity-alias of MainActivity that opens the app at /journal: the home screen starts it, so it must be exported. MainActivity maps the alias's name to that path through a fixed table and reads nothing else from the intent, so another app starting it can do no more than a tap on the icon."
+    },
+    "${applicationId}.WingJobs": {
+      "reason": "The Jobs wing's launcher icon, an activity-alias of MainActivity that opens the app at /jobs: the home screen starts it, so it must be exported. MainActivity maps the alias's name to that path through a fixed table and reads nothing else from the intent, so another app starting it can do no more than a tap on the icon."
     },
     "androidx.profileinstaller.ProfileInstallReceiver": {
       "reason": "androidx.profileinstaller (via androidx.appcompat and Capacitor) installs baseline profiles when adb or the Play Store asks it to. Guarded by android.permission.DUMP, which only the system and adb hold."

@@ -1,12 +1,12 @@
 /**
  * The canonical catalogue of YouTube card elements that BOYO tracks.
  *
- * Shared between the Sensor, the Actuator's gesture delegation and — via
+ * Shared between the Sensor and — via
  * `PREMASK_SELECTORS` — the static occluder rules in `styles/content.css`,
  * which are the only thing hiding a card between paint and the content
  * script taking ownership. If the two lists disagree, a card type only in the
- * CSS is blurred forever, and one only here flashes its thumbnail before the
- * veil mounts. `selectors.test.ts` asserts the stylesheet derives from this
+ * CSS is blurred forever, and one only here flashes its thumbnail before it is
+ * stamped. `selectors.test.ts` asserts the stylesheet derives from this
  * file.
  *
  * ## Two families, and why one of them needs a guard
@@ -61,6 +61,14 @@ export type CardSelector = {
    * ever release (L2).
    */
   readonly unguardedFallback?: boolean
+  /**
+   * `true` when YouTube renders this tag *around* another catalogue card as
+   * well as on its own: the home feed's grid cell, and the outer of the two
+   * Shorts revisions, which today wraps the inner one. Unstamped, such an
+   * element says nothing about whether a card inside it is still pending, so
+   * {@link SHELF_COLLAPSE_SELECTORS} does not count it as one.
+   */
+  readonly wrapsCards?: boolean
 }
 
 /** Anchor shapes that identify an element as pointing at a watchable video. */
@@ -84,13 +92,18 @@ export const CARD_SELECTORS: ReadonlyArray<CardSelector> = [
     tag: "ytd-rich-item-renderer",
     requiresVideoLink: true,
     unguardedFallback: true,
+    wrapsCards: true,
   },
   // The unified Lit-era card behind the upcoming-feed slider, watch-next and
   // search.
   { tag: "yt-lockup-view-model", requiresVideoLink: true },
   // Shorts shelves. Two tags because YouTube ships both revisions concurrently.
   { tag: "ytm-shorts-lockup-view-model", requiresVideoLink: true },
-  { tag: "ytm-shorts-lockup-view-model-v2", requiresVideoLink: true },
+  {
+    tag: "ytm-shorts-lockup-view-model-v2",
+    requiresVideoLink: true,
+    wrapsCards: true,
+  },
   // Video lockups inside a watch page's structured description.
   {
     tag: "ytd-structured-description-video-lockup-renderer",
@@ -113,6 +126,26 @@ export const VIDEO_SELECTORS: ReadonlyArray<string> = CARD_SELECTORS.map(
 export const SEL = VIDEO_SELECTORS.join(",")
 
 /**
+ * Set on `<html>` only while the owner has switched the extension off
+ * (#1807). Every pre-mask rule is keyed to its absence, so the switch lifts
+ * the pre-mask and a content script that never runs leaves it on.
+ */
+export const SWITCHED_OFF_ATTRIBUTE = "data-boyo-off"
+
+/**
+ * The mode's page rules (#1966) on `<html>`: `shown` lets community post
+ * images through, and `blank` paints no card the content script has not
+ * read yet. Absent, the stylesheet does what Standard does.
+ */
+export const POSTS_ATTRIBUTE = "data-boyo-posts"
+export const LOADING_ATTRIBUTE = "data-boyo-loading"
+
+/** The face control the Actuator puts in a plated page's description (QD13). */
+export const FACE_CONTROL_ATTRIBUTE = "data-boyo-face-hold"
+
+const WHILE_ON = `:root:not([${SWITCHED_OFF_ATTRIBUTE}])`
+
+/**
  * The exact selector text each pre-mask rule must use — one entry per tag,
  * one CSS rule per entry.
  *
@@ -127,8 +160,8 @@ export const SEL = VIDEO_SELECTORS.join(",")
 export const PREMASK_SELECTORS: ReadonlyArray<string> = CARD_SELECTORS.map(
   ({ tag, requiresVideoLink }) =>
     requiresVideoLink
-      ? `${tag}:has(${VIDEO_LINK_SELECTOR}):not(:has(${SEL}), [data-boyo])`
-      : `${tag}:not([data-boyo])`
+      ? `${WHILE_ON} ${tag}:has(${VIDEO_LINK_SELECTOR}):not(:has(${SEL}), [data-boyo])`
+      : `${WHILE_ON} ${tag}:not([data-boyo])`
 )
 
 /**
@@ -138,7 +171,7 @@ export const PREMASK_SELECTORS: ReadonlyArray<string> = CARD_SELECTORS.map(
  * modern engine they never apply and the guarded rule above is the only one.
  */
 export const PREMASK_FALLBACK_SELECTORS: ReadonlyArray<string> =
-  unguardedFallbackTags().map((tag) => `${tag}:not([data-boyo])`)
+  unguardedFallbackTags().map((tag) => `${WHILE_ON} ${tag}:not([data-boyo])`)
 
 /** The tags with {@link CardSelector.unguardedFallback}, comma-joined. */
 export const FALLBACK_TAGS: string = unguardedFallbackTags().join(",")
@@ -148,6 +181,68 @@ function unguardedFallbackTags(): ReadonlyArray<string> {
     ({ tag }) => tag
   )
 }
+
+/**
+ * A shelf: a row of cards under a header. When every card in it is absent,
+ * the header would be left over a gap, the slot QD11 forbids. Each entry is
+ * the element that has to go for no header and no gap to remain:
+ *
+ *   - Home: the grid's section around a `ytd-rich-shelf-renderer`.
+ *   - Search: `grid-shelf-view-model` itself. It is one result among the
+ *     others in a shared item section, and carries its own margins.
+ *   - Channel home: the item section that holds only the shelf. It draws the
+ *     separator line, so hiding the shelf alone would leave a doubled one.
+ *
+ * A shelf in any other container keeps its header.
+ */
+const SHELF_SELECTORS: ReadonlyArray<string> = [
+  "ytd-rich-section-renderer",
+  "grid-shelf-view-model",
+  "ytd-item-section-renderer:has(> #contents > ytd-reel-shelf-renderer:only-child)",
+  "ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child)",
+]
+
+/**
+ * The element a shelf holds each tile in, per surface (home, channel,
+ * search). A slot whose child is not a catalogue tag holds a tile no content
+ * script takes: a post, a channel tile. A home cell that is itself the card
+ * is stamped, and its stamp decides instead.
+ */
+const SHELF_ITEM_SLOTS = [
+  "ytd-rich-item-renderer:not([data-boyo]) > #content",
+  "yt-horizontal-list-renderer #items",
+  ".ytGridShelfViewModelGridShelfItem",
+].join(", ")
+
+/**
+ * What keeps a shelf on screen: a card that is not absent, whether plated or
+ * not adopted yet, or a tile in one of {@link SHELF_ITEM_SLOTS}. An unstamped
+ * {@link CardSelector.wrapsCards} tag is left out, because it may only be the
+ * wrapper around an absent card. That leaves one early collapse: a wrapper
+ * tag that is itself a pending card. It hides, and comes back once plated.
+ * And one header over nothing: a home post whose attached video is absent.
+ * Its cell is hidden, but the post still holds the shelf, and telling the
+ * two apart would need a `:has()` inside a `:has()`.
+ */
+const SHELF_LIVE_SELECTOR = [
+  '[data-boyo]:not([data-boyo="absent"])',
+  `:is(${CARD_SELECTORS.filter((s) => s.wrapsCards !== true)
+    .map(({ tag }) => tag)
+    .join(", ")}):not([data-boyo="absent"])`,
+  `:is(${SHELF_ITEM_SLOTS}) > :not(${VIDEO_SELECTORS.join(", ")})`,
+].join(", ")
+
+/**
+ * The exact selector text of each shelf-collapse rule in `content.css`, one
+ * rule per entry for the same reason as {@link PREMASK_SELECTORS}: a shelf
+ * that holds an absent card and nothing in {@link SHELF_LIVE_SELECTOR}. On an
+ * engine without `:has()` every one of these is dropped, and the header stays.
+ */
+export const SHELF_COLLAPSE_SELECTORS: ReadonlyArray<string> =
+  SHELF_SELECTORS.map(
+    (shelf) =>
+      `${shelf}:has([data-boyo="absent"]):not(:has(${SHELF_LIVE_SELECTOR}))`
+  )
 
 /**
  * What the engine rendering `root` can parse, as far as the pre-mask rules
@@ -179,7 +274,8 @@ export function detectOccluderEngine(root: ParentNode): OccluderEngine {
 }
 
 /**
- * Every element the static occluder is hiding *right now*, on this engine.
+ * Every element the static occluder is hiding *right now*, on this engine,
+ * while switched on (the runtime is stopped while off).
  *
  * With `:has()` available, the condition is the guarded one: a card per
  * {@link classifyCard} — the same three-way condition {@link PREMASK_SELECTORS}
@@ -227,7 +323,7 @@ export function occludedElements(
  *   `container` — a catalogue tag wrapping *other* catalogue cards: the home
  *                 feed's grid cell around a lockup, or a shelf around
  *                 a row of them. It holds video links, so a link check alone
- *                 would adopt it and mount one veil over everything inside;
+ *                 would adopt it as one card around everything inside;
  *                 the cards inside are the cards, and this is never one. It
  *                 is not queued and the stylesheet does not occlude it.
  *   `shell`     — a guarded tag with no video link (yet): a channel or

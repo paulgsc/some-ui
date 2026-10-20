@@ -96,6 +96,20 @@ const bodilessAsNull =
     return response.status === 204 ? Response.json(null) : response
   }
 
+const keptListeners = new Set<() => void>()
+
+/**
+ * Hears each item this app keeps, once home or the phone took it: on the
+ * phone, Practice's standing send (`lib/home-link/practice`, LA11) asks to
+ * carry it.
+ */
+export function onKept(listener: () => void): () => void {
+  keptListeners.add(listener)
+  return () => {
+    keptListeners.delete(listener)
+  }
+}
+
 /**
  * `transport` is a seam for tests. The default is `file_host` wherever this
  * build has one, and `null` (so no client) on the static build.
@@ -121,8 +135,14 @@ export function createShelfClient(
   return {
     list: () => request<ShelfListing>(`/shelf/${activity}`),
     read: (key) => request<unknown>(itemPath(key)),
-    keep: (key, body) =>
-      request<ShelfWritten>(itemPath(key), { method: "PUT", body }),
+    keep: async (key, body): Promise<ShelfWritten> => {
+      const written = await request<ShelfWritten>(itemPath(key), {
+        method: "PUT",
+        body,
+      })
+      for (const listener of keptListeners) listener()
+      return written
+    },
     remove: async (key): Promise<void> => {
       await request<unknown>(itemPath(key), { method: "DELETE" })
     },

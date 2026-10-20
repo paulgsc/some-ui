@@ -3,7 +3,12 @@ import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { ReadAloudScreen } from "@topik/components/topik/read-aloud/read-aloud-screen"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
-import { REPO_SETS as DECK } from "@topik/lib/topik/read-aloud/repo-sets"
+import {
+  REPO_SETS as DECK,
+  LEVEL_ONE_LENS_SET,
+  LEVEL_ONE_SET,
+  REPO_LENS,
+} from "@topik/lib/topik/read-aloud/repo-sets"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 function fakeSpeech(): Speaker {
@@ -54,34 +59,94 @@ afterEach(() => {
 })
 
 describe("ReadAloudScreen", () => {
-  it("runs a set with grammar lenses hands-free, and remembers the choice", async () => {
-    const storage = memoryStorage()
+  it("starts the grammar lens beside read-aloud, and comes back from it", () => {
     render(
       <ReadAloudScreen
         topikLevel={1}
         speech={fakeSpeech()}
         deck={DECK}
-        store={createReadAloudStore(storage)}
+        lensDeck={REPO_LENS}
+        store={createReadAloudStore(memoryStorage())}
         onExit={() => undefined}
       />
     )
-    fireEvent.click(screen.getByRole("switch"))
-    expect(createReadAloudStore(storage).lenses()).toBe(true)
-    fireEvent.click(screen.getByRole("button", { name: /start/i }))
-    let lensesSeen = 0
-    for (let tick = 0; tick < 2000; tick += 1) {
-      if (document.querySelector('[data-slot="read-aloud-summary"]')) break
-      if (document.querySelector('[data-slot="read-aloud-lens"]')) {
-        lensesSeen += 1
-      }
-      await advance(200)
-    }
-    expect(lensesSeen).toBeGreaterThan(0)
-    // Nothing was answered, and every rep still ran to the end.
+    expect(screen.getByRole("button", { name: /^read aloud$/i })).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", { name: /grammar lens/i }))
+    expect(document.querySelector('[data-slot="lens-card"]')).not.toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: /back to read-aloud/i }))
+    expect(screen.getByRole("button", { name: /^read aloud$/i })).toBeTruthy()
+  })
+
+  it("says on its start screen when the lens record keeps no new answers (Rem. 4.18)", () => {
+    const full = vi.fn(() => false)
+    render(
+      <ReadAloudScreen
+        topikLevel={1}
+        speech={null}
+        deck={DECK}
+        lensDeck={REPO_LENS}
+        store={createReadAloudStore(memoryStorage())}
+        lensRecord={{ add: () => undefined, full }}
+        onExit={() => undefined}
+      />
+    )
+    expect(screen.queryByText(/record is full/i)).toBeNull()
+    full.mockReturnValue(true)
+    fireEvent.click(screen.getByRole("button", { name: /grammar lens/i }))
+    fireEvent.click(screen.getByRole("button", { name: /back to read-aloud/i }))
+    expect(screen.getByText(/record is full/i)).toBeTruthy()
+  })
+
+  it("offers the grammar lens where nothing can speak (Cor. 4.8)", () => {
+    render(
+      <ReadAloudScreen
+        topikLevel={1}
+        speech={null}
+        deck={DECK}
+        lensDeck={REPO_LENS}
+        store={createReadAloudStore(memoryStorage())}
+        onExit={() => undefined}
+      />
+    )
+    fireEvent.click(screen.getByRole("button", { name: /grammar lens/i }))
+    expect(document.querySelector('[data-slot="lens-card"]')).not.toBeNull()
+  })
+
+  it("opens a lens set on the grammar lens, and leaves to where it came from", () => {
+    const onExit = vi.fn()
+    render(
+      <ReadAloudScreen
+        topikLevel={1}
+        speech={fakeSpeech()}
+        deck={LEVEL_ONE_LENS_SET}
+        store={createReadAloudStore(memoryStorage())}
+        onExit={onExit}
+      />
+    )
+    expect(document.querySelector('[data-slot="lens-card"]')).not.toBeNull()
+    expect(screen.queryByRole("button", { name: /^read aloud$/i })).toBeNull()
+    fireEvent.click(
+      screen.getByRole("button", { name: /stop the grammar lens/i })
+    )
+    expect(onExit).toHaveBeenCalledOnce()
+  })
+
+  it("offers a read-aloud set no grammar lens", () => {
+    render(
+      <ReadAloudScreen
+        topikLevel={1}
+        speech={fakeSpeech()}
+        deck={LEVEL_ONE_SET}
+        lensDeck={REPO_LENS}
+        store={createReadAloudStore(memoryStorage())}
+        onExit={() => undefined}
+      />
+    )
+    expect(screen.getByRole("button", { name: /^read aloud$/i })).toBeTruthy()
+    expect(screen.queryByRole("button", { name: /grammar lens/i })).toBeNull()
     expect(
-      document.querySelector('[data-slot="read-aloud-lensed"]')?.textContent
-    ).toMatch(/^Found 0 of [1-9]\d* with the lens$/)
-    expect(createReadAloudStore(storage).record().totals.reps).toBe(10)
+      document.querySelector('[data-slot="read-aloud-lens-about"]')
+    ).toBeNull()
   })
 
   it("records what ran and keeps each word's pace", async () => {
@@ -96,7 +161,7 @@ describe("ReadAloudScreen", () => {
         onExit={() => undefined}
       />
     )
-    fireEvent.click(screen.getByRole("button", { name: /start/i }))
+    fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))
     for (let tick = 0; tick < 2000; tick += 1) {
       if (document.querySelector('[data-slot="read-aloud-summary"]')) break
       await advance(200)
@@ -142,7 +207,7 @@ describe("ReadAloudScreen", () => {
         onExit={() => undefined}
       />
     )
-    fireEvent.click(screen.getByRole("button", { name: /start/i }))
+    fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))
     const firstItem = glyphs()
     // Let the first rep run to the end, then leave.
     for (let tick = 0; tick < 500 && glyphs() === firstItem; tick += 1) {
@@ -195,6 +260,6 @@ describe("ReadAloudScreen", () => {
       />
     )
     expect(screen.queryByRole("button", { name: /continue/i })).toBeNull()
-    expect(screen.getByRole("button", { name: /start/i })).toBeTruthy()
+    expect(screen.getByRole("button", { name: /^read aloud$/i })).toBeTruthy()
   })
 })

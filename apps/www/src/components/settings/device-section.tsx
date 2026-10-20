@@ -23,19 +23,27 @@ import {
   typedCode,
   useHomeLink,
 } from "@/lib/home-link"
+import { keepOnHome, useLaneChoices } from "@/lib/home-link/lanes"
+import { practiceLane } from "@/lib/home-link/practice"
 import { remember, remembered } from "@/lib/home-link/remembered"
-import {
-  copySessionsHome,
-  lastCopy,
-  sessionsOnPhone,
-} from "@/lib/home-link/sessions"
-import type { ToSend } from "@/lib/home-link/shelf"
-import { keptOnPhone, lastSend, sendShelfTo } from "@/lib/home-link/shelf"
+import { lastSend, onPhone, sendHome } from "@/lib/home-link/send"
 import type { SyncResult } from "@/lib/home-link/sync"
 import { lastSync, syncLessonsFrom } from "@/lib/home-link/sync"
+import {
+  KEEP_SENDING,
+  KEEP_SENDING_MORE,
+  KEEP_SENDING_REFUSED,
+  KEEP_SENDING_SAID,
+  KEPT_NOTE,
+  NOTHING_TO_SEND,
+} from "@/lib/home-link/words"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
-import { DeviceStorageSummary } from "@/components/settings/device-storage"
+import { SharingLedger } from "@/components/settings/device-sharing-ledger"
+import {
+  DeviceArchive,
+  DeviceStorageSummary,
+} from "@/components/settings/device-storage"
 
 const HOME_KEY = "some-ui.device.home-server.v1"
 
@@ -183,64 +191,70 @@ const StopButton = ({ stopping }: { stopping: boolean }): JSX.Element => (
   </Button>
 )
 
-/** What one confirmed send says and does; see `ConfirmedSend`. */
-type SendSpec = {
-  /** The first button: it only counts, on this phone. */
-  readonly open: string
-  readonly count: () => Promise<ToSend>
-  /** The confirm, naming what `count` found and the host. */
-  readonly ask: (what: string) => string
-  readonly go: (total: number) => string
-  readonly none: string
-  readonly busy: string
-  readonly run: () => Promise<SyncResult>
-  readonly lastLabel: string
-  readonly last: () => string
-}
-
 /**
- * A send to home in three taps' worth of steps (LA8): count what is here,
- * a confirm naming that count and the host, then the one button that sends,
- * with Stop while it runs.
+ * "Send to home" in three taps' worth of steps (LA8): count what would go
+ * (what home lacks, by `./sent`), a confirm naming that count and the host,
+ * then the one button that sends, with Stop while it runs. The confirm offers, unticked every time, to keep
+ * sending Practice from now on (LA11); ticked, the send adds that choice to
+ * the consent log before it starts.
  */
-const ConfirmedSend = ({
-  spec,
+const SendHome = ({
+  base,
+  pairing,
+  refresh,
   state,
 }: {
-  spec: SendSpec
+  base: string
+  /** The pairing a ticked box keeps Practice on home under (LA11). */
+  pairing: string
+  refresh: () => unknown
   state: HomeLinkState
 }): JSX.Element => {
   const { activity } = state
-  const count = useAsyncIntent((_: undefined) => spec.count(), {
+  const host = hostOf(base)
+  const count = useAsyncIntent((_: undefined) => onPhone(pairing), {
     presentation: "interactive",
   })
-  const run = useAsyncIntent((_: undefined) => spec.run(), {
-    presentation: "interactive",
-  })
+  const run = useAsyncIntent(
+    (_: undefined) => sendHome({ base, id: pairing }, refresh),
+    {
+      presentation: "interactive",
+    }
+  )
   useIntentEffect(run, say)
   const asking = count.state.status === "succeeded" ? count.state.value : null
-  const last = spec.last()
+  const last = lastSend()
+  const kept = useLaneChoices(practiceLane).shared.size > 0
+  const [keepSending, setKeepSending] = useState(false)
+  const ask = (): void => {
+    setKeepSending(false)
+    count.start(undefined)
+  }
 
   return (
     <div className="space-y-2">
       {run.state.status === "working" && activity.kind === "sending" ? (
         <div className="flex flex-wrap items-center gap-2" role="status">
-          <p className="text-sm">{spec.busy}</p>
+          <p className="text-sm">Sending to {host}...</p>
           <StopButton stopping={activity.stopping} />
         </div>
       ) : asking === null ? (
         <IntentButton
           state={count.state}
-          onPress={() => count.start(undefined)}
+          onPress={ask}
           disabled={activity.kind !== "idle"}
           variant="outline"
           size="sm"
-          idleLabel={spec.open}
+          idleLabel={`Send to ${host}...`}
           workingLabel="Counting..."
         />
       ) : asking.total === 0 ? (
         <div className="flex flex-wrap items-center gap-2" role="status">
-          <p className="text-sm">{spec.none}</p>
+          <p className="text-sm">
+            {asking.taken > 0
+              ? NOTHING_TO_SEND.taken(host)
+              : NOTHING_TO_SEND.none}
+          </p>
           <Button
             type="button"
             variant="ghost"
@@ -252,17 +266,49 @@ const ConfirmedSend = ({
         </div>
       ) : (
         <div className="space-y-2">
-          <p className="text-sm break-words">{spec.ask(asking.what)}</p>
+          <p className="text-sm break-words">
+            Send {asking.what} to {host}? Finished sessions are cleared from
+            this phone once they&apos;re there.
+          </p>
+          {kept ? null : (
+            <div className="flex items-start gap-3 rounded-md border p-3">
+              <input
+                id="keep-sending"
+                type="checkbox"
+                aria-describedby="keep-sending-more"
+                className="accent-primary mt-0.5 size-5 shrink-0"
+                checked={keepSending}
+                onChange={(event) => setKeepSending(event.target.checked)}
+              />
+              <div className="space-y-0.5">
+                <Label htmlFor="keep-sending" className="text-sm font-medium">
+                  {KEEP_SENDING}
+                </Label>
+                <p
+                  id="keep-sending-more"
+                  className="text-muted-foreground text-xs"
+                >
+                  {KEEP_SENDING_MORE}
+                </p>
+              </div>
+            </div>
+          )}
           <div className="flex flex-wrap gap-2">
             <IntentButton
               state={run.state}
               onPress={() => {
                 count.reset()
+                if (
+                  keepSending &&
+                  !keepOnHome(practiceLane, pairing, KEEP_SENDING_SAID)
+                ) {
+                  toast.error(KEEP_SENDING_REFUSED)
+                }
                 run.start(undefined)
               }}
               disabled={activity.kind !== "idle"}
               size="sm"
-              idleLabel={spec.go(asking.total)}
+              idleLabel={`Send ${asking.total}`}
               workingLabel="Sending..."
             />
             <Button
@@ -276,43 +322,16 @@ const ConfirmedSend = ({
           </div>
         </div>
       )}
+      {kept ? (
+        <p className="text-muted-foreground text-xs">{KEPT_NOTE}</p>
+      ) : null}
       {last === "" ? null : (
         <p className="text-muted-foreground text-xs break-all">
-          {spec.lastLabel}: {last}
+          Last send: {last}
         </p>
       )}
     </div>
   )
-}
-
-function sendsTo(base: string): ReadonlyArray<SendSpec> {
-  const host = hostOf(base)
-  return [
-    {
-      open: `Send shelf to ${host}...`,
-      count: keptOnPhone,
-      ask: (what) =>
-        `Send ${what} to ${host}? One with the same name there is replaced; nothing there is deleted.`,
-      go: (total) => `Send ${total}`,
-      none: "Nothing is kept on this phone to send.",
-      busy: `Sending your shelf to ${host}...`,
-      run: () => sendShelfTo(base),
-      lastLabel: "Last shelf send",
-      last: lastSend,
-    },
-    {
-      open: `Copy sessions to ${host}...`,
-      count: sessionsOnPhone,
-      ask: (what) =>
-        `Copy ${what} to ${host}? Each goes once, as its plan, status and times; reflections stay here. A copy can't be removed from this phone.`,
-      go: (total) => `Copy ${total}`,
-      none: "No sessions on this phone to copy.",
-      busy: `Copying sessions to ${host}...`,
-      run: () => copySessionsHome(base),
-      lastLabel: "Last sessions copy",
-      last: lastCopy,
-    },
-  ]
 }
 
 export const DeviceSection = (): JSX.Element => {
@@ -345,13 +364,13 @@ export const DeviceSection = (): JSX.Element => {
       <div className="space-y-1">
         <Label id="device-heading">This phone</Label>
         <p className="text-muted-foreground text-sm">
-          Everything you do here is saved on this phone and works with no
-          network. TOPIK lessons come from your home server: sync while
-          you&apos;re on the home network, and they stay here for later.
+          Saved on this phone, and works offline. Lessons sync from your home
+          server.
         </p>
       </div>
 
       <DeviceStorageSummary />
+      <DeviceArchive />
 
       <div className="space-y-2" aria-labelledby="home-heading">
         <Label id="home-heading" htmlFor="home-server">
@@ -410,15 +429,19 @@ export const DeviceSection = (): JSX.Element => {
               </p>
             ) : null}
             <p className="text-muted-foreground text-xs">
-              Nothing is sent unless you tap below.
+              Nothing is sent unless you tap below, except what you chose to
+              keep on home, each only while it is open: aph, the Jobs record,
+              and Practice.
             </p>
             {confirmingUnpair ? null : (
-              <>
-                {sendsTo(paired.base).map((spec) => (
-                  <ConfirmedSend key={spec.open} spec={spec} state={state} />
-                ))}
-              </>
+              <SendHome
+                base={paired.base}
+                pairing={paired.id}
+                refresh={() => queryClient.invalidateQueries()}
+                state={state}
+              />
             )}
+            <SharingLedger />
           </>
         ) : (
           <>

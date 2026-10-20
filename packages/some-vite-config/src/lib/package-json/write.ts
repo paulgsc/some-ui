@@ -4,7 +4,7 @@ import { resolve } from "path"
 import type { ViteConfigOptions } from "@/types/index.js"
 import { resolveEntryPath } from "@/lib/build-config.js"
 
-import { generatePackageJsonFields } from "./generate.js"
+import { cssFilePath, generatePackageJsonFields } from "./generate.js"
 
 /**
  * Refuses to touch a package.json that does not belong to the package being
@@ -53,8 +53,9 @@ function omitUndefined<T extends object>(obj: T): Partial<T> {
 /**
  * SIDE EFFECT: rewrites <packageRoot>/package.json in place.
  *
- * Call this ONLY from a build lifecycle hook (see ./plugin.ts) or from an
- * explicit, user-invoked sync command. It must never run as a consequence of
+ * Call this ONLY from a build lifecycle hook (see ./plugin.ts), once the
+ * bundle is written: whether the build emitted a stylesheet is read from
+ * disk. It must never run as a consequence of
  * a module being imported or a vite.config.ts being evaluated: tools that
  * merely *load* config to analyze it - knip, eslint config resolution, IDE
  * tooling, `vite --help` - would then silently rewrite the manifest of
@@ -86,14 +87,22 @@ export function updatePackageJson(
         ? existingPackageJson.name
         : options.packageName
 
-    // Generate new fields
-    const newFields = generatePackageJsonFields(options, realPackageName)
+    const emitsCss = existsSync(
+      resolve(packageRoot, cssFilePath(realPackageName))
+    )
+    const newFields = generatePackageJsonFields(options, {
+      realPackageName,
+      emitsCss,
+    })
 
     // Merge with existing package.json, new fields take precedence - but an
     // undefined newField (e.g. `type` when the package isn't ESM-only) must
     // not overwrite an existing value, so it's omitted rather than spread.
+    // `style` is the exception: it is this generator's to remove when the
+    // build has no stylesheet.
+    const { style: _style, ...kept } = existingPackageJson
     const updatedPackageJson: Record<string, unknown> = {
-      ...existingPackageJson,
+      ...kept,
       ...omitUndefined(newFields),
     }
 

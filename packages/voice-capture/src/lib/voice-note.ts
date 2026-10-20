@@ -14,7 +14,10 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 
+import type { BlobShelf } from "./blob-shelf"
+import { ShelfFullError } from "./blob-shelf"
 import type { RecordingFailure, StartRecording, Take } from "./recorder"
+import { RECORDING_FAILURE_COPY } from "./recorder"
 import type {
   TakeEffect,
   TakeLimits,
@@ -124,6 +127,69 @@ export const VOICE_NOTE_SAID: Readonly<Record<VoiceNoteOutcome, string>> = {
   short: "Too short to keep. Tap, talk, then tap again.",
   full: "There's no room for another voice note.",
   failed: "Couldn't keep that one. Try again.",
+}
+
+/** A voice note's take as a screen shows it. */
+export type TakeView =
+  | { kind: "idle" }
+  | { kind: "opening" }
+  | { kind: "recording"; elapsedMs: number }
+  | { kind: "keeping" }
+
+export function takeView(state: VoiceNoteState): TakeView {
+  if (state.kind === "saving") return { kind: "keeping" }
+  if (state.kind !== "taking") return { kind: "idle" }
+  const { phase } = state
+  if (phase.kind === "opening") return { kind: "opening" }
+  if (phase.kind === "recording") {
+    return { kind: "recording", elapsedMs: phase.elapsed }
+  }
+  return { kind: "keeping" }
+}
+
+/**
+ * What is said beside the button: why no take can start, or how the last
+ * one ended, unless `quiet` (something since made it moot).
+ */
+export function voiceNoteSaid(
+  state: VoiceNoteState,
+  quiet: boolean
+): string | null {
+  if (state.kind === "blocked") return RECORDING_FAILURE_COPY[state.reason]
+  return state.kind === "idle" && state.last !== null && !quiet
+    ? VOICE_NOTE_SAID[state.last]
+    : null
+}
+
+/**
+ * Keeps a take as a voice note: its audio on `audio` first, then its entry,
+ * through `list`, so an entry always has its audio; an entry that cannot be
+ * listed takes its audio back out. `saved` hears how it ended. `saving`
+ * marks the audio in flight, so a sweep leaves it be.
+ */
+export function shelveTake(
+  ports: {
+    audio: BlobShelf
+    saving: (id: string, inFlight: boolean) => void
+  },
+  id: string,
+  take: Take,
+  list: () => boolean,
+  saved: (outcome: VoiceNoteOutcome) => void
+): void {
+  ports.saving(id, true)
+  ports.audio.put(id, take.blob).then(
+    () => {
+      ports.saving(id, false)
+      const listed = list()
+      if (!listed) ports.audio.remove([id]).catch(() => undefined)
+      saved(listed ? "kept" : "failed")
+    },
+    (error: unknown) => {
+      ports.saving(id, false)
+      saved(error instanceof ShelfFullError ? "full" : "failed")
+    }
+  )
 }
 
 export type VoiceNoteRuntime = {

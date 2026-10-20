@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>BOYO Fixture — Search</title>
+  </head>
+  <body>
+    <!-- BOYO fixture: search results (#1864), in a signed-out live search's
+    child order. Titles, channels, ids and counts are placeholders. -->
+    <ytd-app></ytd-app>
+    <ytd-video-renderer>
+      <a id="video-title" href="/watch?v=vid_srch_old"
+        >Search result vid_srch_old</a
+      >
+      <ytd-channel-name
+        ><yt-formatted-string
+          ><a href="/@search_old">Search Channel</a></yt-formatted-string
+        ></ytd-channel-name
+      >
+      <div id="metadata-line">
+        <ytd-badge-supported-renderer
+          class="inline-metadata-badge"
+          hidden=""
+        ></ytd-badge-supported-renderer>
+        <div id="separator" hidden="">•</div>
+        <span class="inline-metadata-item">2.5M</span>
+        <span class="inline-metadata-item">7y ago</span>
+        <dom-repeat></dom-repeat>
+      </div>
+    </ytd-video-renderer>
+    <ytd-video-renderer>
+      <a id="video-title" href="/watch?v=vid_srch_new"
+        >Search result vid_srch_new</a
+      >
+      <ytd-channel-name
+        ><yt-formatted-string
+          ><a href="/@search_new">Search Channel</a></yt-formatted-string
+        ></ytd-channel-name
+      >
+      <div id="metadata-line">
+        <ytd-badge-supported-renderer
+          class="inline-metadata-badge"
+          hidden=""
+        ></ytd-badge-supported-renderer>
+        <div id="separator" hidden="">•</div>
+        <span class="inline-metadata-item">26K</span>
+        <span class="inline-metadata-item">9h ago</span>
+        <dom-repeat></dom-repeat>
+      </div>
+    </ytd-video-renderer>
+  </body>
+</html>

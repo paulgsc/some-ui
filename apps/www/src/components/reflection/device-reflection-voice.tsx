@@ -12,8 +12,7 @@ import { RECORDING_FAILURE_COPY, VOICE_NOTE_SAID } from "@some-ui/voice-capture"
 import { Mic, Square } from "lucide-react"
 
 import { phoneVoiceNote } from "@/lib/reflection-voice"
-
-import { NO_ROOM } from "./copy"
+import { NO_ROOM } from "@/lib/session-reflection"
 
 const SAID: Record<VoiceNoteOutcome, string> = {
   ...VOICE_NOTE_SAID,

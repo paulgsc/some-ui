@@ -2,11 +2,11 @@ import type { JSX } from "react"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import {
   ArrowLeft,
-  Ban,
   Brain,
   Contrast,
   EyeOff,
   Fingerprint,
+  Hand,
   HardDrive,
   KeyRound,
   Ruler,
@@ -18,19 +18,31 @@ import { ThemeSwitcher } from "@/components/theme-switcher"
 
 /**
  * The "why" behind this workspace, as a page: "/" says *what* is deployed;
- * this states the positions the projects take (a browser is an operating
- * system, exposure should be opt-in, visual comfort is measurable, a
- * curriculum should adapt). Not a blog: each position is one refusal, one
- * claim and one mechanism, held to `packages/ui/resume/resume.typ`'s rule
- * that a premise is immediately cashed out in its mechanism.
+ * this says the two mandates (`CLAUDE.md`) to the viewer, then the position
+ * each of four tools takes, as one claim and one mechanism, held to
+ * `packages/ui/resume/resume.typ`'s rule that a premise is immediately cashed
+ * out in its mechanism.
  */
+
+type Mandate = { term: string; gloss: string }
+
+const MANDATES: ReadonlyArray<Mandate> = [
+  {
+    term: "It works.",
+    gloss:
+      "Each tool exists because I use it: to study, to track, to make, to watch. It has to do its job in my own day first.",
+  },
+  {
+    term: "It reads.",
+    gloss:
+      "Each tool is also published as it is, so anyone can see what it does and how, whatever they bring to it.",
+  },
+]
 
 type Position = {
   /** Display ordinal. Not derived from the array index — it's typeset. */
   ordinal: string
-  /** The thing this project is constantly mistaken for. */
-  foil: string
-  /** What it actually is. */
+  /** What it is. */
   claim: string
   /** How the claim is made true in code — the part that keeps this honest. */
   mechanism: string
@@ -42,37 +54,33 @@ type Position = {
 const POSITIONS: ReadonlyArray<Position> = [
   {
     ordinal: "01",
-    foil: "Not another tab suspender.",
     claim: "A virtual-memory subsystem for the browser.",
     mechanism:
-      "A browser used as an operating system holds hundreds of tabs that are long-lived workspaces, not pages. So suspension is virtualization, not cleanup: memory is reclaimed while the tab keeps its strip position, its history entry, and its identity. There is no code path that closes a tab — reversibility is structural, not intended.",
+      "A browser used as an operating system holds hundreds of tabs that are long-lived workspaces. Suspension virtualizes them: memory is reclaimed while each tab keeps its strip position, its history entry and its identity. Every suspended tab stays open, so reversibility is built into the structure.",
     artifact: "suspender-ledger",
     icon: HardDrive,
   },
   {
     ordinal: "02",
-    foil: "Not an ad blocker.",
     claim: "An attention firewall.",
     mechanism:
-      "Recommendation surfaces are engineered to maximize exposure. Inverting that means nothing earns attention by default — every recommendation begins hidden and surrenders exactly one layer at a time, through a state machine whose illegal transitions are compile errors. Searching for something should never require being exposed to everything around it.",
+      "Every recommendation starts hidden and opens one layer at a time, when asked, through a state machine whose illegal transitions are compile errors. A search shows what was searched for, and attention goes only where it is given.",
     artifact: "some-censor",
     icon: EyeOff,
   },
   {
     ordinal: "03",
-    foil: "Not a dark mode.",
     claim: "A rendering layer for the readable web.",
     mechanism:
-      "Every site ships its own contrast and palette, forcing the eye to re-adapt on each navigation. Visual comfort is treated as a measurable property of what a page actually renders, scored against a corpus of human-labeled fixtures — so a visual regression is something you can fail a build on, not something you argue about.",
+      "Pages render with one consistent contrast and palette, so the eye settles once. Visual comfort is a measured property of what a page actually renders, scored against a corpus of human-labeled fixtures, so a visual regression fails the build like any other bug.",
     artifact: "some-filter",
     icon: Contrast,
   },
   {
     ordinal: "04",
-    foil: "Not educational games.",
     claim: "An engine that estimates what a learner knows.",
     mechanism:
-      "Fixed curricula make the learner adapt to the software. Inverting that makes the software responsible for inferring a hidden knowledge state from every interaction and choosing the next experience that teaches the most — adapting the modality, not just the difficulty. The games are not the product; they are the measurement instruments.",
+      "The software adapts to the learner: it infers a hidden knowledge state from every interaction and chooses the next experience that teaches the most, adapting the modality as well as the difficulty. The games are its measurement instruments.",
     artifact: "hangul-game-core · honeycomb",
     icon: Brain,
   },
@@ -87,32 +95,31 @@ type Principle = {
 const PRINCIPLES: ReadonlyArray<Principle> = [
   {
     term: "Own the critical path",
-    gloss:
-      "Anything load-bearing enough to lose your state is too important to rent from a closed-source vendor.",
+    gloss: "Whatever holds your state runs on software you own and can read.",
     icon: KeyRound,
   },
   {
-    term: "Default deny",
+    term: "Grant by intent",
     gloss:
-      "Nothing earns attention, memory, or visibility automatically. Access is granted by intent.",
-    icon: Ban,
+      "Attention, memory and visibility are given on purpose, one request at a time.",
+    icon: Hand,
   },
   {
     term: "Preserve identity",
     gloss:
-      "Reclaiming a resource must never destroy the thing holding it. Eviction is not deletion.",
+      "Reclaiming a resource keeps the thing holding it intact: an evicted tab is still that tab.",
     icon: Fingerprint,
   },
   {
     term: "Local-first",
     gloss:
-      "The work happens on the client, under the user's control, with no service to depend on or outlive.",
+      "The work happens on your own device, under your control, for as long as you keep it.",
     icon: WifiOff,
   },
   {
-    term: "Measure, don't assert",
+    term: "Measure it",
     gloss:
-      "Comfort, learning, and reliability get metrics and labeled corpora — not opinions in a review thread.",
+      "Comfort, learning and reliability get metrics and labeled corpora, checked like code.",
     icon: Ruler,
   },
   {
@@ -125,16 +132,21 @@ const PRINCIPLES: ReadonlyArray<Principle> = [
 
 type Figure = { value: string; label: string }
 
+/**
+ * Counted from the repo: packages and extensions as
+ * `packages/ui/resume/scripts/check-claims.mjs` counts them (its
+ * EXPECTED_PACKAGE_COUNT and EXPECTED_EXTENSION_COUNT), canons as the
+ * `docs/canon/*.typ` files.
+ */
 const FIGURES: ReadonlyArray<Figure> = [
-  { value: "58", label: "workspace packages" },
-  { value: "6", label: "browser extensions" },
-  { value: "3", label: "formal canons" },
+  { value: "43", label: "workspace packages" },
+  { value: "5", label: "browser extensions" },
+  { value: "4", label: "formal canons" },
   { value: "1", label: "engineer" },
 ]
 
 const PositionRow = ({
   ordinal,
-  foil,
   claim,
   mechanism,
   artifact,
@@ -151,9 +163,6 @@ const PositionRow = ({
     </div>
 
     <div className="space-y-5">
-      <p className="text-muted-foreground/70 text-base font-medium line-through decoration-1 md:text-lg">
-        {foil}
-      </p>
       <h3 className="text-gradient-heading max-w-3xl text-3xl leading-[1.1] font-bold tracking-tight text-balance md:text-5xl">
         {claim}
       </h3>
@@ -189,28 +198,61 @@ const Mission = (): JSX.Element => (
           Some UI — Mission
         </p>
         <h1 className="text-gradient-heading mt-6 text-5xl leading-[1.05] font-bold tracking-tight text-balance sm:text-6xl md:text-7xl">
-          Own the software you depend on.
+          My working toolkit, published as I use it.
         </h1>
         <p className="text-muted-foreground mt-8 max-w-2xl text-lg leading-relaxed text-pretty md:text-xl">
-          The tools that mediate a working day — the browser holding your state,
-          the feed spending your attention, the surface straining your eyes, the
-          software claiming to teach you — arrive with defaults chosen by
-          someone else. Every one of those defaults is reversible.
+          Everything here is something I use every day: how I learn Korean, how
+          I browse, the football numbers I care about, what I’m building next.
+          It’s a snapshot of real, live work, published as it happens.
         </p>
         <p className="text-muted-foreground/80 mt-5 max-w-2xl leading-relaxed text-pretty">
-          This workspace is four such reversals, built and operated as
-          production software rather than as arguments.
+          The code is all public, and my own data stays on my home network and
+          my devices. Where a tool here lets you try it, it runs on sample data,
+          and nothing you do is kept.
         </p>
       </header>
 
+      {/* ── The two mandates ───────────────────────────────────────────── */}
+      <section
+        aria-labelledby="mandates-heading"
+        className="border-border/60 border-t py-16 md:py-20"
+      >
+        <h2
+          id="mandates-heading"
+          className="text-muted-foreground text-xs font-medium tracking-[0.2em] uppercase"
+        >
+          Two mandates
+        </h2>
+        <dl className="mt-10 grid gap-x-10 gap-y-10 sm:grid-cols-2">
+          {MANDATES.map(({ term, gloss }) => (
+            <div key={term} className="space-y-3">
+              <dt className="text-gradient-heading text-3xl font-bold tracking-tight md:text-4xl">
+                {term}
+              </dt>
+              <dd className="text-muted-foreground max-w-md leading-relaxed">
+                {gloss}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
       {/* ── The four positions ─────────────────────────────────────────── */}
-      <section aria-labelledby="positions-heading" className="pb-8">
+      <section
+        aria-labelledby="positions-heading"
+        className="border-border/60 border-t pt-16 pb-8 md:pt-20"
+      >
         <h2
           id="positions-heading"
-          className="text-muted-foreground pb-2 text-xs font-medium tracking-[0.2em] uppercase"
+          className="text-muted-foreground text-xs font-medium tracking-[0.2em] uppercase"
         >
           Positions
         </h2>
+        <p className="text-muted-foreground mt-6 max-w-2xl pb-6 leading-relaxed text-pretty">
+          Four tools each set one default of a working day on purpose: what a
+          browser keeps, what a feed shows, how a page renders, and what a
+          lesson teaches next.
+        </p>
         {POSITIONS.map((position) => (
           <PositionRow key={position.ordinal} {...position} />
         ))}
@@ -220,12 +262,11 @@ const Mission = (): JSX.Element => (
       <section className="border-border/60 border-t py-20 md:py-28">
         <div className="border-primary/40 border-l-2 pl-6 md:pl-10">
           <p className="max-w-3xl text-2xl leading-snug font-semibold tracking-tight text-balance md:text-3xl">
-            Each of these begins by refusing a default, and none of them stops
-            there.
+            Each of these starts from a default worth changing and carries the
+            change all the way into code.
           </p>
           <p className="text-muted-foreground mt-6 max-w-2xl leading-relaxed text-pretty">
-            A position that cannot be cashed out in a mechanism is just taste.
-            So every claim above is load-bearing somewhere in the tree: an
+            Every claim above is load-bearing somewhere in the tree: an
             invariant that makes the bad state unconstructible, a type that
             turns a mistake into a compile error, a corpus that turns a
             preference into a test.

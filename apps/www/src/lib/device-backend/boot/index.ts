@@ -6,7 +6,7 @@
  * (vite.config.ts) silently drops an import that binds nothing, which once
  * shipped an APK with no backend.
  *
- * Everything heavy (the SQLite plugin, schema, handlers, bundled corpus) is
+ * Everything heavy (the SQLite plugin, schema, handlers) is
  * dynamically imported: other builds carry none of it, and the database opens
  * on the first `file_host` request, not before first paint.
  */
@@ -84,6 +84,13 @@ export function bootDeviceBackend(): void {
     return
   void import("@/lib/native-log").then(({ installNativeLog }) =>
     installNativeLog()
+  )
+  void import("@/lib/device-backend/storage").then(
+    ({ ANDROID_BACKUP_BUDGET, roomOn }) =>
+      roomOn(
+        async () => (await deviceBackend()).context.db,
+        ANDROID_BACKUP_BUDGET
+      )
   )
   const base = deviceFileHostBase()
   if (base === undefined) return

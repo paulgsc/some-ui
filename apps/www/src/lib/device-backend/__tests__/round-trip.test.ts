@@ -9,7 +9,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { openDeviceBackend } from "@/lib/device-backend/backend"
 import { deviceFileHostBase } from "@/lib/device-backend/boot"
-import { BUNDLED_ROUND_COUNT } from "@/lib/device-backend/bundled-corpus"
 import {
   removeLessonsExcept,
   upsertLesson,
@@ -189,27 +188,6 @@ describe("the shelf on the device", () => {
 })
 
 describe("content on the device", () => {
-  it("seeds the bundled Leetype corpus, runs included", async () => {
-    const fetchIn = deviceFetch()
-    const manifest: unknown = await (
-      await fetchIn(`${BASE}/leetype/rounds`)
-    ).json()
-    expect(manifest).toMatchObject({
-      rounds: expect.arrayContaining([
-        expect.objectContaining({ id: "has-duplicate-sort-adjacent" }),
-      ]),
-    })
-    expect(BUNDLED_ROUND_COUNT).toBeGreaterThan(0)
-
-    const runs: unknown = await (
-      await fetchIn(`${BASE}/leetype/rounds/has-duplicate-sort-adjacent/runs`)
-    ).json()
-    expect(runs).toMatchObject({
-      roundId: "has-duplicate-sort-adjacent",
-      runs: expect.arrayContaining([expect.objectContaining({ variant: "A" })]),
-    })
-  })
-
   it("serves a synced TOPIK lesson verbatim, and nothing once it is removed", async () => {
     const body = '{ "batches": [] }'
     await upsertLesson(

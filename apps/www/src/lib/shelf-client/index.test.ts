@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest"
 
 import type { FileHostTransport } from "@/lib/file-host-config/client"
 import { FileHostResponseError } from "@/lib/file-host-config/client"
-import { createShelfClient, ShelfRefusedError } from "@/lib/shelf-client"
+import {
+  createShelfClient,
+  onKept,
+  ShelfRefusedError,
+} from "@/lib/shelf-client"
 
 type Call = [method: string, route: string, body: string | undefined]
 
@@ -39,6 +43,23 @@ describe("createShelfClient", () => {
       // The raw body, not wrapped: the server keeps these bytes verbatim.
       ["PUT", "/shelf/topik/first-dinner", '{"version":1}'],
     ])
+  })
+
+  it("tells who listens once a keep lands, and not when it is refused", async () => {
+    let heard = 0
+    const stop = onKept(() => (heard += 1))
+    await createShelfClient(
+      "topik",
+      recording(() => Response.json({ change: "kept" })).transport
+    )!.keep("k", "{}")
+    await createShelfClient(
+      "topik",
+      recording(refusal(409, "conflict")).transport
+    )!
+      .keep("k", "{}")
+      .catch(() => undefined)
+    stop()
+    expect(heard).toBe(1)
   })
 
   it("resolves a delete's bodiless 204", async () => {

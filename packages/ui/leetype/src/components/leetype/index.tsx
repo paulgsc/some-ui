@@ -1,18 +1,19 @@
 import type { FC } from "react"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useState } from "react"
 import type { ExercisePickerBadge } from "@leetype/components/exercise-picker"
 import { ExercisePicker } from "@leetype/components/exercise-picker"
-import { RoundSession } from "@leetype/components/round/round-session"
+import { IncidentSession } from "@leetype/components/incident/incident-session"
+import { SessionFilePicker } from "@leetype/components/session-file-picker"
 import { TypingSession } from "@leetype/components/typing-game/typing-session"
-import { AUTHORED_ROUNDS } from "@leetype/lib/leetype/authored-rounds"
 import {
   nextExercise,
   SESSION_EXERCISE_IDS,
 } from "@leetype/lib/leetype/exercises"
-import { lintAuthoredRounds } from "@leetype/lib/leetype/round-assembly"
-import type { RoundRunsLoader } from "@leetype/lib/leetype/round-runs"
-import type { Round } from "@leetype/types/authored-round"
-import { RoundSchema } from "@leetype/types/authored-round"
+import type {
+  OpenedSessionFile,
+  SessionFileStore,
+} from "@leetype/lib/leetype/session-file-pick"
+import type { SpokenTakes } from "@leetype/lib/leetype/spoken-take"
 import type { Exercise } from "@leetype/types/exercise"
 import type {
   CompletedSessionStats,
@@ -20,13 +21,13 @@ import type {
 } from "@leetype/types/leetype"
 import { cn } from "@some-ui/core-utils"
 import { useIsMobile } from "@some-ui/react-hooks"
-import type { ShelfPort } from "@some-ui/shared"
 import type { Appearance } from "@some-ui/styles/theme"
 import { appearanceClassName } from "@some-ui/styles/theme"
 
 /**
  * Which probe the player gets. `"auto"` (default, what hosts pass) reads the
- * viewport; the explicit values are for stories, tests and deep links.
+ * viewport; the explicit values are for tests, fixtures and deep links.
+ * `"rounds"` is the phone's: incident rounds from session files.
  */
 export type LeetypeSurface = "auto" | "rounds" | "typing"
 
@@ -38,19 +39,17 @@ type LeetypeProps = {
    * A fixed exercise for a preview or deep link, played on the typing
    * surface. Normal sessions omit it and the learner picks from
    * `ExercisePicker`. The seam a generator plugs into (see
-   * `lib/leetype/exercises`). The rounds surface ignores it.
+   * `lib/leetype/exercises`). The phone's surface ignores it.
    */
   exercise?: Exercise
   /** Session term supplied by the composer/scene, in milliseconds. */
   sessionDurationMs?: number
-  /** Deterministic override for tests, previews, and replaying an ordering bug. */
-  sessionSeed?: number
-  /** Cosmetic, and typing-only: rounds paint no gradient over code. */
+  /** Cosmetic, and typing-only: the phone paints no gradient. */
   textGradient?: TextGradient
   /**
    * Called once the whole sequence is finished. `stats` comes only from the
-   * typing surface; rounds have no keystrokes to measure, so they report
-   * completion with nothing rather than misleading zeroes.
+   * typing surface; a phone session has no keystrokes to measure, so it
+   * reports completion with nothing rather than misleading zeroes.
    */
   onSessionComplete?: (stats?: CompletedSessionStats) => void
   /** Art direction. See `TypingSession` for the full note; `inherit` is the default. */
@@ -64,27 +63,18 @@ type LeetypeProps = {
    */
   exerciseBadges?: Readonly<Record<string, ExercisePickerBadge>>
   /**
-   * Where the phone's rounds come from: the served corpus, fetched by the
-   * host (`apps/www`'s `loadLeetypeRounds`). Absent or rejecting, the bundled
-   * `AUTHORED_ROUNDS` plays rather than an empty screen. Phone surface only.
+   * Where the phone keeps session files picked from storage, and where to
+   * look for them (`lib/leetype/session-file-pick`); `samples` when the
+   * store holds a viewer's samples instead, which take no picks. Phone
+   * surface only; absent, the phone surface says where its sessions come
+   * from.
    */
-  loadRounds?: () => Promise<ReadonlyArray<unknown>>
+  sessionFiles?: { store: SessionFileStore; hint?: string; samples?: boolean }
   /**
-   * The learner shelf (`lib/leetype/shelf`): where a round the learner made
-   * is kept on their account when they ask (canon Rem. 7.3). A plain object
-   * for the same reason as `loadRounds`; `apps/www` passes one only with a
-   * passkey session on a build with a `file_host`. Read only on the phone
-   * surface, where rounds are made.
+   * The microphone a session file's spoken answers are taken on
+   * (`lib/leetype/spoken-take`). Absent, an answer can only be typed.
    */
-  shelf?: ShelfPort
-  /**
-   * A round's recorded runs: `apps/www` fetches `GET /leetype/rounds/:id/runs`
-   * in `server` mode and resolves `null` in `static` mode. The package checks
-   * the result (`lib/leetype/round-runs`). Absent or failing, the bundled
-   * transcript (`corpus/runs/`) is shown if it matches the round's bytes.
-   * Phone surface only.
-   */
-  loadRuns?: RoundRunsLoader
+  takes?: SpokenTakes
 }
 
 /**
@@ -92,7 +82,9 @@ type LeetypeProps = {
  *
  * ```text
  * Leetype                         picks a surface
- * ├── RoundSession    < 768px      rounds (Def. 1.7): pick a change, name what it keeps
+ * ├── < 768px                      the phone: incident rounds (Def. 1.9)
+ * │   ├── SessionFilePicker        the session files held, each to play
+ * │   └── IncidentSession          the file chosen, played to its end
  * └── ≥ 768px                      the typing surface
  *     ├── ExercisePicker           no exercise chosen yet
  *     └── TypingSession            the chosen exercise, typed
@@ -100,7 +92,8 @@ type LeetypeProps = {
  *
  * # Why a branch here rather than responsive CSS
  *
- * Rounds and typing are different interactions, not one at two widths.
+ * A phone session and typing are different interactions, not one at two
+ * widths.
  * Reflowing `TypingSession` into a narrow column would report numbers that
  * mean nothing. A component branch (not a media query) also lets the phone
  * path mount none of the engine: `useTypingGame` cannot be called
@@ -111,7 +104,7 @@ type LeetypeProps = {
  * 768px, from `@some-ui/react-hooks`, so the workspace has one answer to "is this a
  * phone". It reads the media query via `useSyncExternalStore`, so the first
  * render already picks the right surface instead of starting a wasm load
- * for what turns out to be a round.
+ * for what turns out to be a phone.
  *
  * # The learner chooses the exercise
  *
@@ -129,15 +122,13 @@ type LeetypeProps = {
 export const Leetype: FC<LeetypeProps> = ({
   exercise,
   sessionDurationMs = DEFAULT_SESSION_DURATION_MS,
-  sessionSeed,
   textGradient,
   onSessionComplete,
   appearance = "inherit",
   surface = "auto",
   exerciseBadges,
-  loadRounds,
-  shelf,
-  loadRuns,
+  sessionFiles,
+  takes,
 }) => {
   const isMobile = useIsMobile()
   const resolved =
@@ -152,45 +143,6 @@ export const Leetype: FC<LeetypeProps> = ({
   const [mountedAt] = useState(() => performance.now())
 
   const playsRounds = resolved === "rounds"
-  // The rounds and the session budget left once they arrived, snapshotted
-  // together: time spent loading comes out of the term, for the reason
-  // `picked` below snapshots it (the orchestrator's deadline is fixed at
-  // this component's mount).
-  const [roundPlay, setRoundPlay] = useState<{
-    rounds: ReadonlyArray<Round>
-    remainingMs: number
-  } | null>(() =>
-    loadRounds === undefined
-      ? { rounds: AUTHORED_ROUNDS, remainingMs: sessionDurationMs }
-      : null
-  )
-  useEffect(() => {
-    if (!playsRounds || loadRounds === undefined) return
-    let live = true
-    const settle = (bodies: ReadonlyArray<unknown>): void => {
-      if (!live) return
-      // Parsed here, not by the host: the host's loader stays free of this
-      // package so its chunk stays lazy.
-      // A served round that fails the authored-round checks is not
-      // playable, so it cannot stand in for the bundled corpus either.
-      const rounds = bodies.flatMap((body) => {
-        if (lintAuthoredRounds([body]).length > 0) return []
-        const parsed = RoundSchema.safeParse(body)
-        return parsed.success ? [parsed.data] : []
-      })
-      setRoundPlay({
-        rounds: rounds.length > 0 ? rounds : AUTHORED_ROUNDS,
-        remainingMs: Math.max(
-          0,
-          sessionDurationMs - (performance.now() - mountedAt)
-        ),
-      })
-    }
-    loadRounds().then(settle, () => settle(AUTHORED_ROUNDS))
-    return (): void => {
-      live = false
-    }
-  }, [playsRounds, loadRounds, sessionDurationMs, mountedAt])
 
   // Snapshotted once at selection: recomputing per render would keep
   // shrinking the child's `sessionDurationMs` and re-anchor its clock.
@@ -212,6 +164,18 @@ export const Leetype: FC<LeetypeProps> = ({
   const activeDurationMs =
     exercise !== undefined ? sessionDurationMs : (picked?.remainingMs ?? 0)
 
+  // With what the term leaves at the pick: the session declares no more.
+  const [playing, setPlaying] = useState<
+    (OpenedSessionFile & { limitMinutes: number }) | null
+  >(null)
+  const handlePlay = useCallback(
+    (opened: OpenedSessionFile): void => {
+      const left = sessionDurationMs - (performance.now() - mountedAt)
+      setPlaying({ ...opened, limitMinutes: Math.max(0, left) / 60_000 })
+    },
+    [mountedAt, sessionDurationMs]
+  )
+
   // Only a picker-sourced choice returns to the picker on completion.
   const handleComplete = useCallback(
     (stats?: CompletedSessionStats): void => {
@@ -221,25 +185,49 @@ export const Leetype: FC<LeetypeProps> = ({
     [onSessionComplete, exercise]
   )
 
-  // On a phone the session is rounds (Def. 1.7).
-  if (playsRounds) {
+  // A session file the learner chose to play (Def. 1.9), kept through a
+  // turn of the phone that widens the window past the breakpoint.
+  if (playing !== null) {
     return (
       <div className={cn(appearanceClassName(appearance), "absolute inset-0")}>
-        {roundPlay === null ? (
-          <p
-            role="status"
-            className="flex h-full items-center justify-center text-sm text-muted-foreground"
-          >
-            Loading rounds…
+        <IncidentSession
+          key={playing.name}
+          fileName={playing.name}
+          file={playing.file}
+          limitMinutes={playing.limitMinutes}
+          {...(takes === undefined ? {} : { ports: { takes } })}
+          onEnd={(): void => {
+            setPlaying(null)
+            onSessionComplete?.()
+          }}
+          onBack={(): void => setPlaying(null)}
+        />
+      </div>
+    )
+  }
+
+  if (playsRounds) {
+    return (
+      <div
+        className={cn(
+          appearanceClassName(appearance),
+          "absolute inset-0 flex flex-col"
+        )}
+      >
+        {sessionFiles === undefined ? (
+          <p className="flex h-full items-center justify-center text-pretty px-6 text-center text-sm text-muted-foreground">
+            On a phone, LeetType plays sessions of incident rounds from files
+            added to the phone app from storage.
           </p>
         ) : (
-          <RoundSession
-            rounds={roundPlay.rounds}
-            sessionDurationMs={roundPlay.remainingMs}
-            {...(sessionSeed === undefined ? {} : { sessionSeed })}
-            {...(shelf === undefined ? {} : { shelf })}
-            {...(loadRuns === undefined ? {} : { loadRuns })}
-            onSessionComplete={(): void => onSessionComplete?.()}
+          <SessionFilePicker
+            store={sessionFiles.store}
+            onPlay={handlePlay}
+            {...(sessionFiles.hint === undefined
+              ? {}
+              : { hint: sessionFiles.hint })}
+            samples={sessionFiles.samples ?? false}
+            className="min-h-0 flex-1"
           />
         )}
       </div>

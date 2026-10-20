@@ -1,5 +1,74 @@
 # CLAUDE.md
 
+## What this repository is: two mandates
+
+Read this first. It answers the product questions the rest of this file doesn't.
+
+This is one person's working toolkit (studying, tracking, making, watching) run as real
+software, and every surface in it answers to two mandates at once:
+
+- **A: it works.** Build applications that materially achieve their goal in the owner's own
+  workflow. This is the owner's working mind on a screen, used every day.
+- **B: it reads.** Make each of them legible as an artifact any third party can take in,
+  read-only, at whatever level of sophistication they bring: an organic snapshot of real,
+  live work, shown as it happens.
+
+There are two users:
+
+- **The owner:** the only one who signs in and the only one ever online. Uses, maintains
+  and consumes all of it.
+- **The viewer** (the owner's word is "voyeur"): anyone else. Observes, read-only, and
+  never sees the owner's data. The aim is that they understand what they see.
+
+What follows from them:
+
+- **Published by default.** The code is public, and the apps ship through public channels:
+  Pages, AMO and YouTube today. The APK is sideloaded today and headed for Google Play as a
+  free personal hobby app. "For me" names the audience; exposure is a separate question.
+  Keep every public channel and its upkeep (the APK's Play readiness in
+  `apps/mobile/README.md`, say) even when only the owner uses the thing.
+- **Private only where the data is personal.** What serves A and holds PII stays on the
+  home network (the `lan` audience, behind the passkey) and on the owner's own devices.
+- **A comes first, and B shows A as it is.** Legibility effort goes to what really drives
+  the workflow, and every surface does what it appears to do.
+- **A way in for every reader.** Something anyone can take in (a short demo video), the
+  live screens for the curious, the source for the technical, each disclosed by
+  interaction rather than all at once. The extensions comb is the model
+  (`packages/ui/honeycomb/src/components/extensions-comb/extensions.data.ts`).
+- **One screen, two readings.** Where the owner and a viewer can reach the same screen, it
+  says which of them is looking: `components/provenance-strip.tsx` under the web header
+  tells the owner what a wing publishes and keeps, and tells a viewer it is sample data.
+- **A viewer tries, and nothing is kept.** The Pages build is the viewer's (`VIEWER_BUILD`,
+  `apps/www/src/lib/data-mode`). There the page's `localStorage` and `sessionStorage` are
+  in-memory copies (`apps/www/src/lib/demo/viewer-storage.ts`, imported first by
+  `main.tsx`), which `apps/www/src/lib/demo` seeds with sample drafts: a mock demo, where
+  every store, the activity packages' included, works as usual and a reload starts over.
+  A person's records may not bypass them (no IndexedDB, Cache Storage or cookie holding
+  them on the Pages build); a convenience, such as the sidebar's open/closed cookie, may.
+- **Say what it is.** In copy anyone reads (pages, READMEs, store listings, release
+  notes), describe each thing by what it is and does, plus its honest limits. Skip foils
+  and put-downs ("not another X", "not just a Y"): an affirmative definition says it all.
+  The voice is plain and first-person, with no pitch and no promise of support.
+- **State in the person's terms.** What the app says about itself (sharing, sending,
+  saving, what failed) says what is kept where, and since when, never the machinery behind
+  it: no request, status code, address, state name or internal term such as "grant" or
+  "sync" reaches the screen. A surface's words live in one pure table that tests for this,
+  as the sharing words of each record kept on home do (`apps/www/src/lib/home-link/words.ts`).
+- **Never lose the record.** Because A is real use, the data it leaves (study sessions,
+  reflections, typing rounds, voice takes) is also the evidence of growth over time:
+  struggling to read a sentence at the first beta, finishing sessions much later. That
+  record exists only if the history survives, so treat the owner's history as
+  append-only. Before adding anything that discards or rewrites it (a cap that evicts old
+  entries, pruning, a migration that drops or reshapes data, a "let it go" that deletes for
+  good), give it a durable copy first, or ask. This is the
+  owner's direction, not yet a declared invariant: today's code still discards history (a
+  session delete, the `reflection-voice` and `scene-voice` budgets, the Build Journal takes
+  store in `packages/ui/soundbites`, the "let it go" steps), so an append-only claim would
+  be false on landing. Declaring it, with a tag at each discard site, waits on the owner's
+  call about those sites.
+
+`/mission` (`apps/www/src/routes/mission.tsx`) says the same to the viewer.
+
 ## Pre-commit verification (Claude Code Remote)
 
 `.husky/pre-commit` skips its `lint-staged` step when `CLAUDE_CODE_REMOTE=true` — for a
@@ -106,7 +175,7 @@ the shortest life that works, and nothing recreated leaves its old copy behind.
   default (90 days) is not a period anyone chose. So does a value that is not a literal
   number of days (`0`, empty, a `${{ }}` expression), since each can resolve to that
   default. Two artifacts keep longer today, both in `mobile-apk.yml`: the phone's APK
-  (30 days, pruned to one) and the Play review's inputs (3 days). Artifacts cannot be
+  (30 days, one kept) and the Play review's inputs (3 days). Artifacts cannot be
   overwritten across runs, so a short `retention-days` is how a recreated one leaves no tail.
 - **Enforced by `pnpm check:workflows`** (`scripts/check-workflows.ts`, rules in
   `packages/eslint/src/workflow-guards.ts`), in root `pnpm lint` and as its own `pr.yml`
@@ -115,22 +184,33 @@ the shortest life that works, and nothing recreated leaves its old copy behind.
   map, where the action gets it; anywhere else it does not count, and a flow-style
   `with: {...}` or `- {uses: ...}` step fails as unreadable. It finds steps by their `uses:` line, so an upload
   wrapped in a composite action or another publisher's upload action is not seen: add
-  it to the rule when one appears.
+  it to the rule when one appears, as `docker/build-push-action`'s build record was
+  (its step must set `DOCKER_BUILD_RECORD_UPLOAD: false`).
+- **Every artifact and cache belongs to a family** in `packages/eslint/src/retention.ts`:
+  one state machine, each family an instance with its `keep` (validated generations kept
+  per lineage, 0 for one consumed inside its run), its TTL, and for caches a scope
+  (`per-ref`, `shared` for content-addressed entries such as the Nix store, `pool` for
+  Docker's layer blobs). A generation is validated when its run succeeds; the machine
+  keeps the newest `keep`, deletes only what is older than a validated one, and drops
+  every cache on a ref that is no longer live. `.github/workflows/retention.yml` runs it
+  after each workflow uploading a family kept across runs, and hourly, and deletes
+  (a pull request that changes it only reports). `pnpm check:workflows` fails an upload name or
+  cache key no family declares, an upload whose `retention-days` is not its family's
+  TTL or whose workflow its family does not list, and a kept family's workflow
+  `retention.yml` does not run after. A new family is a new entry there, not a new
+  prune job.
 - **Before shortening something to one day, name the path that breaks and its
   recovery** in the comment above the step. The usual one is "Re-run failed jobs" more
   than a day later, which finds no artifact: the recovery is a fresh run or the
   workflow's own `publish_only` dispatch, since re-running a day-old publish would ship a
   day-old build anyway.
 - **What stays, and why** (not artifacts, so no `retention-days` applies):
-  - Actions caches (`pnpm-cache`, `cargo-cache`, `resume-assets-cache`, the
-    workspace-dist cache, the Docker `type=gha` layer cache in
-    `www-docker-release.yml`): GitHub evicts an entry unused for 7 days and caps the
-    repo at 10 GB. Keys that change with their inputs churn that cap but cannot grow
-    past it.
+  - Actions caches, swept by the families above. GitHub also evicts an entry unused
+    for 7 days and, past the 10 GB cap, the least recently used.
   - The Pages deployment, npm packages, AMO submissions and the `paulgsc/www` Docker Hub
     image are the point of their workflows and are meant to last. Nothing prunes old
     Docker Hub tags; that is Docker Hub's storage, not this repo's.
-  - Bot branches (`release/pages`, `changeset-release/*`, `bot/server-route-snapshot`,
+  - Bot branches (`changeset-release/*`, `bot/server-route-snapshot`,
     `bot/flake-update`) are opened with `create-pull-request`'s `delete-branch: true`,
     so each deletes itself once `main` carries its content.
 - **Repo setting, not code:** Settings → Actions → General → "Artifact and log
@@ -151,7 +231,7 @@ workspace only through the web surface's door, `apps/www/src/lib/web-surface`
 (invariant A4), and a build offers exactly the activities whose panel it binds
 (`apps/www/src/lib/playable`). Before polishing, migrating or fixing UI, check
 which surface renders it, and fix it for that surface's device. Phone and
-desktop split in a few places: `useIsMobile` in `Leetype` (`RoundSession` under 768px
+desktop split in a few places: `useIsMobile` in `Leetype` (session files under 768px
 wide, the typing game above), `chooseSurface` in topik (`HandheldLesson` under
 768px wide or 480px tall, `DesktopSession` otherwise), the `lan` audience (not
 in the APK build), and the `_apk` routes. The window-size splits follow the
@@ -399,7 +479,8 @@ never "sounds like good practice."
   commits — never stack new work on already-merged history. Fetch fresh; a stale local
   `origin/main` ref produces false alarms in both directions.
 - **A green ui-fit run proves only what is in the viewport matrix.** It is four sizes in
-  `apps/www/tests/ui-fit/harness.ts`, one of which (780×390) exists because the other
+  `apps/www/tests/ui-fit/harness.ts` (`VIEWPORTS`; the phone-only incident sweep takes
+  `PHONE_VIEWPORTS` beside it), one of which (780×390) exists because the other
   three are all portrait or landscape-desktop, and a phone held sideways was therefore a
   shape nothing could fail on. If a report is about an orientation or window shape, check
   that matrix contains it before concluding the surface is fine.
@@ -413,9 +494,10 @@ never "sounds like good practice."
   which survives both: `adb logcat -s SomeUI`.
 - **Nothing on a PR builds or launches the Android app.** `mobile-apk.yml` (Gradle
   compile, R8 release build, Android Lint, the Play review, and an emulator launch test)
-  runs only on pushes to `main`, so a Java error in `apps/mobile/android`, an R8 break or a
+  runs only on pushes to `main`, and builds only once someone approves that run (the
+  `mobile-release` environment), so a Java error in `apps/mobile/android`, an R8 break or a
   Lint error (the review gates on errors, `lint.gate` in `apps/mobile/review/policy.json`;
-  warnings stay report-only) first appears after merge, on a green PR. Build it here before
+  warnings stay report-only) first appears after merge and approval, on a green PR. Build it here before
   pushing any change under `apps/mobile/android`: dl.google.com is reachable, so unzip
   Google's `commandlinetools` into the scratchpad, `sdkmanager --sdk_root=<dir>
 "platforms;android-36" "build-tools;36.0.0"`, then `pnpm exec cap sync android` from
@@ -424,11 +506,12 @@ never "sounds like good practice."
 :app:assembleRelease`. Maven Central can answer 429 mid-download; that is rate limiting,
   so retry. Separately, vitest and every www Playwright suite run the `lan` or `pages`
   build profile, never `mobile`: `MOBILE_APP` and `hasAudience("apk")` are false there, so
-  an APK-only branch (the bottom bar, the header's Home link) is rendered by no test unless
-  that test mocks `@/lib/build-profile` itself. `main`'s launch test does start the APK and
-  drive it with a monkey (`apps/mobile/launch/launch-test.sh`), but with `--pct-syskeys 0`:
-  it never presses back, so the back handling in `MainActivity` (the app has no
-  `@capacitor/app`) is reached by no test at all.
+  an APK-only branch (the wing bar, the header's way out, the foyer) is rendered by no test
+  unless that test mocks `@/lib/build-profile` itself. `main`'s launch test does start the
+  APK, each wing's launcher icon, and a monkey (`apps/mobile/launch/launch-test.sh`), but the
+  monkey runs with `--pct-syskeys 0`: back is pressed exactly once, at a wing entered by its
+  icon, so the rest of `MainActivity`'s back handling (the app has no `@capacitor/app`) is
+  reached by no test.
 - **Run `git diff --cached --stat` before every commit, not only `git status`.** Run it
   after staging (`git add`) — plain `git diff --stat` only shows the unstaged worktree, so
   it can miss binary corruption in content that's already staged and about to be committed.

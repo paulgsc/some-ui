@@ -4,46 +4,49 @@
  *
  * Android says "shared" once the person picks an app, even if they back out
  * of it, so nothing is let go on that alone: the person says whether they
- * arrived, and only then do they leave the phone (`handOff`).
+ * arrived (`DeviceReflectionsArrival`), and only then do they leave the phone.
  */
 import type { JSX, ReactNode } from "react"
 import type { ButtonProps } from "@some-ui/shared"
 import { Share2 } from "lucide-react"
 
-import { handOff, shareReflections } from "@/lib/agent-export"
-import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
+import type { ReflectionPick } from "@/lib/agent-export"
+import { shareReflections } from "@/lib/agent-export"
+import { useAsyncIntent } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 
-import { counted } from "./copy"
+type Labelled =
+  | {
+      label: ReactNode
+      /** The button's name when `label` alone does not say whose these are. */
+      title?: string
+    }
+  /** The icon alone, named by `title`. */
+  | { label?: undefined; title: string }
 
 export const DeviceShareReflections = ({
   sessionIds,
+  only,
   label,
   title,
   size = "sm",
   variant,
   className,
-}: {
-  sessionIds: ReadonlyArray<string>
-  label: ReactNode
-  /** The button's name when `label` alone does not say whose these are. */
-  title?: string
-  size?: ButtonProps["size"]
-  variant?: ButtonProps["variant"]
-  className?: string
-}): JSX.Element => {
-  const share = useAsyncIntent(() => shareReflections(sessionIds), {
+}: ReflectionPick &
+  Labelled & {
+    size?: ButtonProps["size"]
+    variant?: ButtonProps["variant"]
+    className?: string
+  }): JSX.Element => {
+  const share = useAsyncIntent(() => shareReflections({ sessionIds, only }), {
     presentation: "interactive",
   })
-  useIntentEffect(share, ({ outcome, sent }) => {
-    if (outcome !== "shared" || sent.length === 0) return
-    if (
-      confirm(
-        `Did they arrive? OK lets ${counted(sent.length)} go from this phone; Cancel keeps them here to share again.`
-      )
-    )
-      handOff(sent)
-  })
+  const icon = (
+    <Share2
+      className={label === undefined ? "size-3.5" : "mr-1.5 size-3.5"}
+      aria-hidden
+    />
+  )
   return (
     <IntentButton
       state={share.state}
@@ -54,11 +57,11 @@ export const DeviceShareReflections = ({
       title={title}
       idleLabel={
         <>
-          <Share2 className="mr-1.5 size-3.5" aria-hidden />
+          {icon}
           {label}
         </>
       }
-      workingLabel="Preparing..."
+      workingLabel={label === undefined ? icon : "Preparing..."}
     />
   )
 }

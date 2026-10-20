@@ -3,11 +3,13 @@ import {
   parseReadAloudDeck,
   READ_ALOUD_LEVELS,
 } from "@topik/lib/topik/read-aloud/content"
-import { lensesOf } from "@topik/lib/topik/read-aloud/lens"
 import {
+  LEVEL_ONE_LENS_SET,
   LEVEL_ONE_SET,
   rawSet,
+  REPO_LENS,
   REPO_SETS,
+  STARTER_LENS_SET,
   STARTER_SET,
 } from "@topik/lib/topik/read-aloud/repo-sets"
 import {
@@ -17,8 +19,10 @@ import {
 import { describe, expect, it } from "vitest"
 
 describe.each([
-  ["starter", STARTER_SET],
-  ["level-one", LEVEL_ONE_SET],
+  ["starter.read-aloud", STARTER_SET],
+  ["level-one.read-aloud", LEVEL_ONE_SET],
+  ["starter.lens", STARTER_LENS_SET],
+  ["level-one.lens", LEVEL_ONE_LENS_SET],
 ] as const)("%s.json", (name, deck) => {
   const result = parseReadAloudDeck(rawSet(name))
 
@@ -36,6 +40,11 @@ describe.each([
 
   it("is written for anyone, so says it answers no one", () => {
     expect(deck.from).toBeUndefined()
+  })
+
+  it("says its practice and its context", () => {
+    expect(deck.practice).toBe(name.endsWith(".lens") ? "lens" : "read-aloud")
+    expect(deck.context?.genre).toBe("everyday")
   })
 })
 
@@ -84,13 +93,55 @@ describe("the repo's sets, both added", () => {
     expect(wrong).toEqual([])
   })
 
-  it("give most level-one lines a lens, and every tense often enough to ask", () => {
+  it("give most level-one lines a role or tense, and every tense often enough", () => {
     const lines = REPO_SETS.lines.filter((line) => line.level === 1)
-    const lensed = lines.filter((line) => lensesOf(line).length > 0)
-    expect(lensed.length / lines.length).toBeGreaterThan(0.8)
+    const marked = lines.filter(
+      (line) =>
+        line.tense !== undefined || line.words.some((w) => w.role !== undefined)
+    )
+    expect(marked.length / lines.length).toBeGreaterThan(0.8)
     for (const tense of ["past", "present", "future"] as const) {
       const count = lines.filter((line) => line.tense === tense).length
       expect(count, tense).toBeGreaterThanOrEqual(4)
+    }
+  })
+
+  it("give the grammar lens enough lines for a full set at level one", () => {
+    const misformed = REPO_LENS.lines.filter((line) => line.level === 1)
+    expect(misformed.length).toBeGreaterThanOrEqual(16)
+  })
+
+  it("put no line's word in English, in what a misform does or when one is said (Cor. 4.8 (i))", () => {
+    const escape = (text: string): string =>
+      text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    const gloss = new Map(REPO_SETS.words.map((word) => [word.id, word.gloss]))
+    /** A gloss's parts ("see, watch" → see, watch), each as a word's start. */
+    const meanings = (
+      glosses: Iterable<string>,
+      shortest: number
+    ): Array<RegExp> =>
+      [...glosses]
+        .flatMap((text) => text.split(/[;,/()]| or /))
+        .map((part) => part.trim().replace(/^(to|be) /, ""))
+        .filter((part) => part.length >= shortest)
+        .map((part) => new RegExp(`\\b${escape(part)}`, "i"))
+    // Short glosses ("go", "what") are also words of the grammar's English.
+    const anyWord = meanings(gloss.values(), 6)
+    for (const line of REPO_LENS.lines) {
+      const { lens } = line
+      if (!lens) continue
+      const own = meanings(
+        line.words.flatMap(({ wordId }) => gloss.get(wordId) ?? []),
+        3
+      )
+      for (const misform of lens.misforms) {
+        for (const word of anyWord) {
+          expect(misform.instead ?? "").not.toMatch(word)
+        }
+      }
+      for (const option of lens.situations?.options ?? []) {
+        for (const word of own) expect(option, line.id).not.toMatch(word)
+      }
     }
   })
 

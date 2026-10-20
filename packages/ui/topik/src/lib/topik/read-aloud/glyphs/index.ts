@@ -43,8 +43,15 @@ export type GlyphCell =
     }
   | { kind: "gap"; key: string; text: string }
 
-const HANGUL_RUN = /[가-힣]+|[^가-힣]+/g
-const HANGUL = /^[가-힣]/
+/** A text's runs: each its Hangul, or what lies between. */
+export function hangulRuns(
+  text: string
+): Array<{ text: string; hangul: boolean }> {
+  return Array.from(text.matchAll(/[가-힣]+|[^가-힣]+/g), ([run]) => ({
+    text: run,
+    hangul: /^[가-힣]/.test(run),
+  }))
+}
 
 /** By id, in a Map, so no id can reach a prototype. */
 const byId = <T extends { id: string }>(items: Array<T>): Map<string, T> =>
@@ -77,21 +84,19 @@ function occurrencesOf(
 
 /**
  * An item's cells, drawn in the given mode. At the gloss a word is divided
- * at its stem; a sentence is not, since its gloss is the basket, except the
- * words in `divide`: those showing a grammar lens's answer.
+ * at its stem; a sentence is not, since its gloss is the basket.
  */
 export function glyphCells(
   deck: ReadAloudDeck,
   item: SetItem,
-  mode: GlyphMode,
-  divide: ReadonlyArray<number> = []
+  mode: GlyphMode
 ): Array<GlyphCell> {
   const occurrences = occurrencesOf(item, lineOf(deck, item.lineId))
   const cells: Array<GlyphCell> = []
   let word = 0
   let syllable = 0
-  for (const run of item.text.match(HANGUL_RUN) ?? []) {
-    if (!HANGUL.test(run)) {
+  for (const { text: run, hangul } of hangulRuns(item.text)) {
+    if (!hangul) {
       cells.push({ kind: "gap", key: `g${syllable}`, text: run })
       continue
     }
@@ -113,7 +118,7 @@ export function glyphCells(
         syllable,
         ending:
           mode === "divided" &&
-          (item.kind === "word" || divide.includes(word)) &&
+          item.kind === "word" &&
           occurrence !== undefined &&
           index >= occurrence.stemEnd,
       })

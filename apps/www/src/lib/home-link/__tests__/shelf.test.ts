@@ -1,14 +1,14 @@
 /**
- * The shelf send's promises (LA8): one PUT per kept item, its bytes as
- * kept, no retry; home's refusals are counted and said; a 401 or no answer
- * ends it there; a stop rejects before the next item.
+ * The shelf half of a send (LA8): one PUT per kept item, its bytes as kept,
+ * no retry; home's refusals are counted; a 401 or no answer ends it there;
+ * a stop rejects before the next item.
  */
+import { noAnswer } from "@/test-support/no-answer"
+import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
-import type { HomeAnswer } from "@/lib/device-backend/native-http"
-import type { HomeSend } from "@/lib/home-link/runtime"
-import { describeSend, emptyReport, sendKept } from "@/lib/home-link/shelf"
+import { emptyReport, sendKept } from "@/lib/home-link/shelf"
 
 const KEPT = [
   { activity: "topik", key: "a", body: '{ "a": 1 }' },
@@ -17,7 +17,7 @@ const KEPT = [
 ]
 
 function home(answers: Array<HomeAnswer | Error>): {
-  send: HomeSend
+  send: HomeCall
   sent: Array<[string, string]>
 } {
   const sent: Array<[string, string]> = []
@@ -58,12 +58,9 @@ describe("sendKept", () => {
       replaced: 1,
       unchanged: 1,
     })
-    expect(describeSend(report, "home.example", 3)).toBe(
-      "Sent 3 of 3 to home.example: 1 new, 1 replaced, 1 already there."
-    )
   })
 
-  it("goes on past a full shelf and a refusal, and says both", async () => {
+  it("goes on past a full shelf and a refusal, and counts both", async () => {
     const h = home([
       { status: 409, body: "" },
       { status: 422, body: "" },
@@ -72,9 +69,12 @@ describe("sendKept", () => {
     const report = emptyReport()
     await sendKept(KEPT, h.send, report)
     expect(h.sent).toHaveLength(3)
-    expect(describeSend(report, "home.example", 3)).toBe(
-      "Sent 1 of 3 to home.example: 1 new, 0 replaced, 0 already there. 1 didn't fit: the TOPIK shelf on home.example is full. 1 refused by home.example."
-    )
+    expect(report).toMatchObject({
+      sent: 1,
+      kept: 1,
+      refused: 1,
+      full: new Map([["topik", 1]]),
+    })
   })
 
   it("ends at a 401 or at no answer, and retries nothing", async () => {
@@ -82,26 +82,22 @@ describe("sendKept", () => {
     const a = emptyReport()
     await sendKept(KEPT, forgotten.send, a)
     expect(forgotten.sent).toHaveLength(2)
-    expect(describeSend(a, "home.example", 3)).toContain(
-      "home.example no longer knows this phone"
-    )
+    expect(a).toMatchObject({ sent: 1, forgotten: true })
 
-    const lost = home([new Error("timeout")])
+    const lost = home([noAnswer()])
     const b = emptyReport()
     await sendKept(KEPT, lost.send, b)
     expect(lost.sent).toHaveLength(1)
-    expect(describeSend(b, "home.example", 3)).toBe(
-      "Couldn't reach home.example. Are you on the home network? Nothing was sent."
-    )
+    expect(b).toMatchObject({ sent: 0, unreachable: true })
   })
 
-  it("says what home answered before the connection was lost", async () => {
-    const h = home([{ status: 409, body: "" }, new Error("timeout")])
+  it("lets a fault on this phone through: it is not home's silence", async () => {
+    const h = home([new TypeError("x.y")])
     const report = emptyReport()
-    await sendKept(KEPT, h.send, report)
-    expect(describeSend(report, "home.example", 3)).toBe(
-      "Sent 0 of 3 to home.example: 0 new, 0 replaced, 0 already there. 1 didn't fit: the TOPIK shelf on home.example is full. Lost home.example there, so nothing more was sent."
+    await expect(sendKept(KEPT, h.send, report)).rejects.toBeInstanceOf(
+      TypeError
     )
+    expect(report.unreachable).toBe(false)
   })
 
   it("lets a stop through, with what was sent before it", async () => {

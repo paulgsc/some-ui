@@ -122,13 +122,16 @@ test("D2: content script is injecting and running", async ({ fixture }) => {
   console.log("Elements with data-boyo:", boyoCount)
 
   /**
-   * Presence of veil nodes proves masking UI injected successfully.
+   * Plate values on a card prove the Actuator wrote what Core rendered.
    */
-  const veilCount = await page.evaluate(
-    () => document.querySelectorAll(".boyo-veil").length
+  const plateCount = await page.evaluate(
+    () =>
+      [...document.querySelectorAll<HTMLElement>("[data-boyo]")].filter(
+        (el) => el.style.getPropertyValue("--boyo-plate") !== ""
+      ).length
   )
 
-  console.log("Veil elements:", veilCount)
+  console.log("Plated elements:", plateCount)
 
   /**
    * Required bootstrap root.
@@ -171,11 +174,10 @@ test("D2: content script is injecting and running", async ({ fixture }) => {
    * proves a BOYO rule actually matched a BOYO element and won.
    */
   const hasStyle = await page.evaluate(() => {
-    const veil = document.querySelector(".boyo-veil")
-    if (!(veil instanceof HTMLElement)) return false
-    const style = getComputedStyle(veil)
-    // Both come from the extension stylesheet and neither is a UA default.
-    return style.position === "absolute" && style.backgroundColor !== ""
+    const absent = document.querySelector('[data-boyo="absent"]')
+    if (!(absent instanceof HTMLElement)) return false
+    // The extension stylesheet's, and no UA default for a custom element.
+    return getComputedStyle(absent).display === "none"
   })
 
   console.log("BOYO CSS injected:", hasStyle)
@@ -188,6 +190,6 @@ test("D2: content script is injecting and running", async ({ fixture }) => {
    */
   expect(hasApp).toBe(true)
   expect(boyoCount).toBeGreaterThan(0)
-  expect(veilCount).toBeGreaterThan(0)
+  expect(plateCount).toBeGreaterThan(0)
   expect(hasStyle).toBe(true)
 })

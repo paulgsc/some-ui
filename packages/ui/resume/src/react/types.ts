@@ -11,7 +11,16 @@
 // when rendering moves to a service (paulgsc/some-ui#1132), this is what that
 // service's response body has to satisfy.
 
-export type ResumeVariant = "backend" | "platform" | "fullstack"
+export type ResumeVariant =
+  | "backend"
+  | "platform"
+  | "fullstack"
+  | "data"
+  | "qa"
+  | "solutions"
+
+/** Software engineering, or the software-adjacent roles beside it. */
+type ResumeTrack = "software" | "adjacent"
 
 type ResumeProfile = {
   name: string
@@ -41,7 +50,7 @@ type ResumeEngagement = {
 }
 
 // Facts that cannot be derived from the source repositories. These live in
-// src/data/personal.typ and ship empty; every consumer renders them only when
+// src/data/personal.typ, filled only from real records; every consumer renders them only when
 // non-empty. See that file for why they are not filled with placeholders.
 type ResumeRole = {
   role: string
@@ -64,6 +73,7 @@ type ResumeInterest = { title: string; body: string }
 
 export type ResumeData = {
   variant: ResumeVariant
+  track: ResumeTrack
   profile: ResumeProfile
   label: string
   summary: string

@@ -1,0 +1,380 @@
+{
+  "schema": "some-ui.job-digest/1",
+  "day": "2026-10-18",
+  "createdAt": "2026-10-18T14:52:00Z",
+  "seen": 37,
+  "picks": [
+    {
+      "id": "nor-0b77",
+      "track": "software",
+      "family": null,
+      "fingerprint": "northwind avionics|backend engineer|remote",
+      "posting": {
+        "title": "Backend Engineer",
+        "company": "Northwind Avionics",
+        "location": "Remote",
+        "compensation": "$95,000–$115,000 a year",
+        "experience": null,
+        "postedOn": "2026-09-20",
+        "applyUrl": "https://jobs.example.com/nor-0b77"
+      },
+      "scores": {
+        "fit": 0.66,
+        "odds": 0.45,
+        "fitWhy": "covers 8 of 12 requirements",
+        "oddsWhy": "28 days old · remote"
+      },
+      "wants": "Backend services and event pipelines for a fleet-maintenance scheduling product, with automated tests and CI.",
+      "fits": [
+        {
+          "title": "Pipelines and background jobs",
+          "detail": "Redis coalescing in front of NATS JetStream; retryable failures are NAKed for redelivery.",
+          "source": "server · crates"
+        },
+        {
+          "title": "Data checks in CI",
+          "detail": "Python checks hold dashboards to the metrics the services emit.",
+          "source": "server · scripts/check_metric_contract.py"
+        }
+      ],
+      "gaps": [
+        {
+          "kind": "learnable",
+          "text": "Fleet-maintenance domain"
+        },
+        {
+          "kind": "unknown",
+          "text": "An on-call rotation"
+        }
+      ],
+      "dontClaim": ["Managed cloud tenure", "Kubernetes"],
+      "resume": {
+        "kind": "build",
+        "variant": "backend",
+        "template": "safe",
+        "ref": "cb503cb"
+      },
+      "kit": {
+        "fields": [
+          {
+            "label": "Email",
+            "value": "paulgathondudev@gmail.com"
+          },
+          {
+            "label": "Location",
+            "value": "Berkeley, CA"
+          },
+          {
+            "label": "GitHub",
+            "value": "https://github.com/paulgsc"
+          },
+          {
+            "label": "Portfolio",
+            "value": "https://paulgsc.github.io/some-ui"
+          }
+        ],
+        "answers": [
+          {
+            "label": "Authorized to work in the US",
+            "value": "Yes, for any employer"
+          },
+          {
+            "label": "Sponsorship",
+            "value": "Not needed"
+          }
+        ],
+        "coverLetter": "I build backend services and the pipelines behind them. On my own server, Redis coalesces work in front of NATS JetStream, and a retryable failure is NAKed so the stream redelivers it rather than dropping it. Python checks in CI hold the dashboards to the metrics the services actually emit, so a renamed metric fails a build instead of a chart. Scheduling maintenance for a fleet is the kind of event-driven work where that care pays off, and I would like to bring it to Northwind's backend.",
+        "questions": [
+          {
+            "label": "What draws you to fleet-maintenance software?",
+            "required": true,
+            "draft": "It is backend work where a dropped event has a cost: a missed inspection, not a missed notification. I have built pipelines that redeliver a failed job instead of losing it, and I want that problem with real schedules behind it."
+          },
+          {
+            "label": "Anything else you'd like us to know?",
+            "required": false,
+            "draft": null
+          }
+        ],
+        "compensation": {
+          "ask": "$110,000",
+          "why": "Inside the posted $95,000 to $115,000 range, toward its top for a backend role with pipeline work."
+        }
+      }
+    },
+    {
+      "id": "lar-5d19",
+      "track": "software",
+      "family": null,
+      "fingerprint": "larkspur labs|software engineer product|remote",
+      "posting": {
+        "title": "Software Engineer, Product",
+        "company": "Larkspur Labs",
+        "location": "Remote",
+        "compensation": "$105,000 a year",
+        "experience": "2+ years",
+        "postedOn": "2026-10-06",
+        "applyUrl": "https://jobs.example.com/lar-5d19"
+      },
+      "scores": {
+        "fit": 0.61,
+        "odds": 0.55,
+        "fitWhy": "covers 8 of 13 requirements",
+        "oddsWhy": "12 days old · remote · asks 2+ years, no penalty"
+      },
+      "wants": "Full-stack TypeScript work on a booking app: React front end, Node services, Postgres.",
+      "fits": [
+        {
+          "title": "React and TypeScript",
+          "detail": "A TanStack app with typed routes and builds gated by audience.",
+          "source": "some-ui · apps/www"
+        },
+        {
+          "title": "Services and SQL",
+          "detail": "40+ inventoried Axum operations and SQLx repositories.",
+          "source": "server · apps/servers/file_host"
+        }
+      ],
+      "gaps": [
+        {
+          "kind": "hard",
+          "text": "Two years in a paid engineering role"
+        },
+        {
+          "kind": "learnable",
+          "text": "Node services in production"
+        }
+      ],
+      "dontClaim": ["Commercial-scale traffic"],
+      "resume": {
+        "kind": "build",
+        "variant": "fullstack",
+        "template": "classic",
+        "ref": "cb503cb"
+      },
+      "kit": {
+        "fields": [
+          {
+            "label": "Email",
+            "value": "paulgathondudev@gmail.com"
+          },
+          {
+            "label": "GitHub",
+            "value": "https://github.com/paulgsc"
+          }
+        ],
+        "answers": [],
+        "coverLetter": null,
+        "questions": [],
+        "compensation": null
+      }
+    },
+    {
+      "id": "tid-7f2a",
+      "track": "adjacent",
+      "family": "data",
+      "fingerprint": "tidewater analytics|operations data analyst|remote",
+      "posting": {
+        "title": "Operations Data Analyst",
+        "company": "Tidewater Analytics",
+        "location": "Remote",
+        "compensation": "$72,000–$85,000 a year",
+        "experience": null,
+        "postedOn": "2026-10-14",
+        "applyUrl": "https://jobs.example.com/tid-7f2a"
+      },
+      "scores": {
+        "fit": 0.68,
+        "odds": 0.65,
+        "fitWhy": "covers 7 of 10 requirements",
+        "oddsWhy": "4 days old · remote"
+      },
+      "wants": "SQL and Python analysis of clinic scheduling data, dashboards for internal teams, and quality checks on incoming feeds.",
+      "fits": [
+        {
+          "title": "SQL and dashboards",
+          "detail": "Tableau dashboards on PostgreSQL, and reporting automated through the Google Workspace API.",
+          "source": "personal · CABA Design, 2020–2023"
+        },
+        {
+          "title": "Python data checks",
+          "detail": "Python checks hold dashboards to the metrics the services emit.",
+          "source": "server · scripts/check_metric_contract.py"
+        },
+        {
+          "title": "Clinical data handling",
+          "detail": "HIPAA-compliant LIMS accessioning at 99.99% accuracy.",
+          "source": "personal · Natera, 2019–2020"
+        }
+      ],
+      "gaps": [
+        {
+          "kind": "learnable",
+          "text": "Clinic scheduling domain"
+        },
+        {
+          "kind": "learnable",
+          "text": "dbt or a cloud warehouse"
+        }
+      ],
+      "dontClaim": ["Snowflake", "BigQuery", "A held analytics engineer title"],
+      "resume": {
+        "kind": "build",
+        "variant": "data",
+        "template": "safe",
+        "ref": "cb503cb"
+      },
+      "kit": {
+        "fields": [
+          {
+            "label": "Email",
+            "value": "paulgathondudev@gmail.com"
+          }
+        ],
+        "answers": [],
+        "coverLetter": null,
+        "questions": [
+          {
+            "label": "Describe a time you found a problem in a data feed.",
+            "required": true,
+            "draft": "At a clinical lab I accessioned samples into a HIPAA-compliant LIMS at 99.99% accuracy, which meant catching mismatched records before they reached a report. Later I wrote Python checks that hold dashboards to the metrics the services emit, so a feed that drifts fails a check instead of a meeting."
+          }
+        ],
+        "compensation": null
+      }
+    },
+    {
+      "id": "kes-21c0",
+      "track": "adjacent",
+      "family": "qa",
+      "fingerprint": "kestrel games|qa automation engineer|remote",
+      "posting": {
+        "title": "QA Automation Engineer",
+        "company": "Kestrel Games",
+        "location": "Remote",
+        "compensation": "$88,000–$104,000 a year",
+        "experience": null,
+        "postedOn": "2026-10-12",
+        "applyUrl": "https://jobs.example.com/kes-21c0"
+      },
+      "scores": {
+        "fit": 0.63,
+        "odds": 0.65,
+        "fitWhy": "covers 7 of 11 requirements",
+        "oddsWhy": "6 days old · remote"
+      },
+      "wants": "Keep an automated UI and API test suite running in CI for a mobile puzzle game, and triage failures with the developers.",
+      "fits": [
+        {
+          "title": "UI automation",
+          "detail": "Playwright end-to-end suites for the browser extensions and the web app.",
+          "source": "some-ui · extensions, apps/www/tests"
+        },
+        {
+          "title": "API contract tests",
+          "detail": "A contract harness that fails on route and payload drift.",
+          "source": "some-ui · packages/contract-harness"
+        }
+      ],
+      "gaps": [
+        {
+          "kind": "learnable",
+          "text": "Selenium or Cypress"
+        },
+        {
+          "kind": "unknown",
+          "text": "Mobile device lab"
+        }
+      ],
+      "dontClaim": ["A held QA job title", "ISTQB certification"],
+      "resume": {
+        "kind": "patch",
+        "variant": "qa",
+        "template": "classic",
+        "fallback": "qa",
+        "pr": null,
+        "change": "The qa composition leads with the Android launch test and the emulator monkey, which this posting asks for, ahead of the browser suites."
+      },
+      "kit": {
+        "fields": [
+          {
+            "label": "Email",
+            "value": "paulgathondudev@gmail.com"
+          }
+        ],
+        "answers": [],
+        "coverLetter": null,
+        "questions": [],
+        "compensation": null
+      }
+    }
+  ],
+  "setAside": [
+    {
+      "fingerprint": "juniper row|software engineer ii|remote",
+      "title": "Software Engineer II",
+      "company": "Juniper Row",
+      "why": "Posted Aug 30, older than 30 days"
+    },
+    {
+      "fingerprint": "mosaic annotation|backend engineer model evaluation contract|remote",
+      "title": "Backend Engineer, Model Evaluation (contract)",
+      "company": "Mosaic Annotation",
+      "why": "Part-time contract gig work"
+    },
+    {
+      "fingerprint": "bellwether analytics group|technical support specialist|remote",
+      "title": "Technical Support Specialist",
+      "company": "Bellwether Analytics Group",
+      "why": "Customer-facing support"
+    },
+    {
+      "fingerprint": "cobalt field systems|data analyst secret clearance required|remote",
+      "title": "Data Analyst (Secret clearance required)",
+      "company": "Cobalt Field Systems",
+      "why": "Requires a security clearance"
+    }
+  ],
+  "scouts": [
+    {
+      "scoutId": "sc-3f9a21c0",
+      "verdict": "agree",
+      "note": "A real fit, ranked third on the adjacent track today behind two fresher postings.",
+      "pickId": null,
+      "review": {
+        "scores": {
+          "fit": 0.6,
+          "odds": 0.45,
+          "fitWhy": "covers 6 of 10 requirements",
+          "oddsWhy": "posted 20 days ago · remote"
+        },
+        "gaps": [
+          {
+            "kind": "learnable",
+            "text": "Game-engine test tooling"
+          }
+        ],
+        "sends": {
+          "variant": "qa",
+          "template": "classic"
+        }
+      }
+    }
+  ],
+  "queue": {
+    "open": [
+      {
+        "day": "2026-10-17",
+        "pickId": "lum-4c19",
+        "track": "software",
+        "closed": false
+      }
+    ]
+  },
+  "read": ["scouts-20261017T210400.json"],
+  "transcribed": [],
+  "evidence": {
+    "someUi": "cb503cb",
+    "server": "9226240"
+  }
+}

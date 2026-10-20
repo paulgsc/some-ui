@@ -7,16 +7,14 @@
  * before handing one over, so nothing here can name an element either.
  */
 
-import type { RenderModel, ViewState } from "@censor/lib/content/fsm"
+import type { RenderModel, ViewState, WatchView } from "@censor/lib/content/fsm"
 import type { UnknownShapeReason } from "@censor/lib/content/layout/lookup"
 import type { BoyoSurface } from "@censor/lib/content/layout/surface"
-import type { ChannelId, VideoId } from "@censor/types/ids"
+import type { VideoId } from "@censor/types/ids"
 
 import type { CardKey } from "./keys"
 import type { ShapeConfidence } from "./observation"
-
-/** How long a whitelisted card shows its tint before revealing itself. */
-export const WHITELIST_REVEAL_DELAY_MS = 1800
+import type { Rules } from "./state"
 
 export type Action =
   /**
@@ -32,41 +30,28 @@ export type Action =
   /** Strip everything the extension put on the elements carrying `key`. */
   | { readonly kind: "unmount"; readonly key: CardKey }
   /**
-   * Ask the background whether `channelId` is whitelisted; answer as an
-   * Input, echoing `generation` so the answer lands on the incarnation that
-   * asked and on no later one.
+   * Bring the page to the watch view for `videoId`, or, with `view: null`,
+   * strip the watch page's hold: no watch page is shown (#1805). In the
+   * miniplayer the video is held the same, but "Not here." is not shown
+   * over a page that is not its own.
    */
   | {
-      readonly kind: "query-whitelist"
-      readonly key: CardKey
-      readonly generation: number
-      /** The lookup's ordinal within the incarnation; echoed by the answer. */
-      readonly query: number
-      readonly channelId: ChannelId
+      readonly kind: "watch"
+      readonly view: WatchView | null
+      readonly videoId: VideoId | null
+      readonly miniplayer: boolean
+      /** The plate's tone for the player's poster; null unless plated. */
+      readonly poster: string | null
+      /** The owner held for the real thumbnail, this view (QD13). */
+      readonly face: boolean
+      /** The face control the owner's mode offers (#1966). */
+      readonly offer: Rules["face"]
     }
-  /** Persist a whitelist entry in the background. */
-  | {
-      readonly kind: "persist-whitelist"
-      readonly channelId: ChannelId
-      readonly channelName: string
-    }
-  /** Run the optional title-transform hook; answer as an Input. */
-  | {
-      readonly kind: "transform-title"
-      readonly key: CardKey
-      readonly generation: number
-      readonly version: number
-      readonly text: string
-      readonly channelId: ChannelId | null
-    }
-  /** Fire a `timer` Input after `delayMs`, carrying `generation` and `version` back. */
-  | {
-      readonly kind: "schedule"
-      readonly key: CardKey
-      readonly generation: number
-      readonly version: number
-      readonly delayMs: number
-    }
+  /**
+   * Open the card carrying `key`, as a click on it would: autoplay skips
+   * to it (#1966).
+   */
+  | { readonly kind: "play"; readonly key: CardKey }
   /** A fact for the flight recorder; the runtime forwards it. */
   | { readonly kind: "record"; readonly fact: CoreFact }
 
@@ -89,14 +74,6 @@ export type CoreFact =
       readonly state: ViewState["kind"]
     }
   | { readonly kind: "channel.backfilled"; readonly videoId: VideoId }
-  /** A whitelist answer or a title transform arrived for a superseded version. */
-  | { readonly kind: "stale.discarded"; readonly videoId: VideoId }
-  | {
-      readonly kind: "bulk.advance"
-      readonly advanced: number
-      readonly alreadyPast: number
-      readonly channelPending: number
-    }
   | {
       readonly kind: "shape.unknown"
       readonly tag: string

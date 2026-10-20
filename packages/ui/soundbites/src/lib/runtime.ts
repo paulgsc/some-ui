@@ -11,7 +11,7 @@
  * Each is reached through a narrow function whose results come back as our
  * own events, and nothing here records the state of one of them.
  */
-import type { StartRecording } from "@some-ui/voice-capture"
+import type { Playback, Player, StartRecording } from "@some-ui/voice-capture"
 import { takeRunner } from "@some-ui/voice-capture"
 
 import type {
@@ -26,16 +26,6 @@ import { TAKE_TICK_MS } from "./policy"
 import type { SoundbiteStore } from "./store"
 import { SoundbitesFullError } from "./store"
 import type { SoundbiteSource } from "./types"
-
-/** One playback of a recording's audio. */
-export type Playback = {
-  /** Settles when the playback ends, fails or is stopped. */
-  ended: Promise<void>
-  /** Stops it and releases what it holds. Safe to call twice. */
-  stop: () => void
-}
-
-export type Player = { play: (audio: Blob) => Playback }
 
 export type SoundbitesPorts = {
   store: SoundbiteStore

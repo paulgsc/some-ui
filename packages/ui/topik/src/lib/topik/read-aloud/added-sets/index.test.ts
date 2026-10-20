@@ -121,6 +121,26 @@ describe("resolveSets", () => {
     ])
   })
 
+  it("reads a lens set's lines only in the lens, and every lens in it", () => {
+    const lens = { misforms: [] }
+    const asked: ReadAloudDeck = {
+      ...PLANS,
+      practice: "lens",
+      lines: PLANS.lines.map((kept) => ({ ...kept, lens })),
+    }
+    const legacy: ReadAloudDeck = {
+      ...CAFE,
+      lines: CAFE.lines.map((kept) => ({ ...kept, lens })),
+    }
+    const { all, lens: asking } = resolveSets([added(legacy), added(asked)])
+    expect(all.lines.map((kept) => kept.id)).toEqual(["cafe.coffee"])
+    expect(all.words.map((word) => word.id)).toContain("yaksok")
+    expect(asking.lines.map((kept) => kept.id)).toEqual([
+      "cafe.coffee",
+      "plans-2.line-1",
+    ])
+  })
+
   it("reads every set as one deck no set's id can name", () => {
     const { all } = resolveSets([])
     expect(all).toMatchObject({ id: ALL_SETS_ID, words: [], lines: [] })

@@ -92,15 +92,15 @@ describe("ReadAloudSession", () => {
     expect(levelChip()).toBe("TOPIK 1")
     await advance(60_000)
     expect(rep()).toBeNull()
-    fireEvent.click(screen.getByRole("button", { name: /start/i }))
+    fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))
     expect(stepOf()).toBe("glyphs")
   })
 
   it("keeps the level in sight, and says when lower levels fill its sets", () => {
     renderSession({ level: 2 })
     expect(levelChip()).toBe("TOPIK 2")
-    expect(shortfall()).toMatch(/^Only 2 sentences are written for TOPIK 2/)
-    fireEvent.click(screen.getByRole("button", { name: /start/i }))
+    expect(shortfall()).toMatch(/^Only 3 sentences are written for TOPIK 2/)
+    fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))
     expect(stepOf()).toBe("glyphs")
     expect(levelChip()).toBe("TOPIK 2")
   })
@@ -108,7 +108,7 @@ describe("ReadAloudSession", () => {
   it("is not offered without a voice (Cor. 4.6)", () => {
     renderSession({ speech: null })
     expect(screen.getByText(/no voice to play it with/i)).toBeTruthy()
-    expect(screen.queryByRole("button", { name: /start/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /^read aloud$/i })).toBeNull()
   })
 
   it("says so, and offers a way back, when the level has nothing to read", () => {
@@ -118,9 +118,9 @@ describe("ReadAloudSession", () => {
         lines: STARTER_SET.lines.filter((line) => line.level === 3),
       },
     })
-    fireEvent.click(screen.getByRole("button", { name: /start/i }))
+    fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))
     expect(screen.getByText(/nothing at this level/i)).toBeTruthy()
-    expect(screen.queryByRole("button", { name: /start/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /^read aloud$/i })).toBeNull()
     fireEvent.click(screen.getByRole("button", { name: /back/i }))
     expect(onExit).toHaveBeenCalledOnce()
   })
@@ -152,7 +152,7 @@ describe("ReadAloudSession", () => {
 
   it("runs the ladder by itself, pronouncing the glyphs while the audio plays", async () => {
     renderSession()
-    fireEvent.click(screen.getByRole("button", { name: /start/i }))
+    fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))
     const steps = new Set<string>()
     let pronounced = false
     await runUntil(() => {
@@ -172,7 +172,7 @@ describe("ReadAloudSession", () => {
 
   it("plays the audio at once when the learner reports stuck", async () => {
     renderSession()
-    fireEvent.click(screen.getByRole("button", { name: /start/i }))
+    fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))
     await runUntil(() => stepOf() === "turn")
     fireEvent.click(screen.getByRole("button", { name: /stuck/i }))
     expect(stepOf()).toBe("audio")
@@ -185,7 +185,7 @@ describe("ReadAloudSession", () => {
 
   it("shows a sentence's words at its gloss", async () => {
     renderSession()
-    fireEvent.click(screen.getByRole("button", { name: /start/i }))
+    fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))
     await runUntil(
       () => stepOf() === "gloss" && rep()?.dataset["kind"] === "sentence"
     )
@@ -195,7 +195,7 @@ describe("ReadAloudSession", () => {
 
   it("starts a paused rep over on resume", async () => {
     renderSession()
-    fireEvent.click(screen.getByRole("button", { name: /start/i }))
+    fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))
     await runUntil(() => stepOf() === "echo")
     fireEvent.click(screen.getByRole("button", { name: "Pause" }))
     expect(stepOf()).toBe("paused")
@@ -215,7 +215,7 @@ describe("ReadAloudSession", () => {
       />
     )
     const { rerender } = render(session(false))
-    fireEvent.click(screen.getByRole("button", { name: /start/i }))
+    fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))
     await runUntil(() => stepOf() === "echo")
 
     rerender(session(true))
@@ -230,7 +230,7 @@ describe("ReadAloudSession", () => {
 
   it("closes a set with its count, then moves on to the next", async () => {
     const { records } = renderSession()
-    fireEvent.click(screen.getByRole("button", { name: /start/i }))
+    fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))
     await runUntil(
       () => document.querySelector('[data-slot="read-aloud-summary"]') !== null
     )
@@ -242,7 +242,7 @@ describe("ReadAloudSession", () => {
 
   it("stops when the learner closes it", () => {
     const { onExit } = renderSession()
-    fireEvent.click(screen.getByRole("button", { name: /start/i }))
+    fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))
     fireEvent.click(screen.getByRole("button", { name: /stop reading aloud/i }))
     expect(onExit).toHaveBeenCalledOnce()
   })

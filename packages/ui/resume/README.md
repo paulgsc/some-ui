@@ -35,7 +35,7 @@ src/data/personal.typ    (facts that exist outside those repos — see below)
 src/resume.typ           (render-resume: the document as a function)
               ↓ called by
 src/main.typ  --variant/--template/--theme/--font-->
-              documents/resume-{backend,platform,fullstack}[-{classic,compact,vanilla,safe,conventional}].{pdf,svg}
+              documents/resume-{backend,platform,fullstack,data,qa,solutions}[-{classic,compact,vanilla,safe,conventional}].{pdf,svg}
 ```
 
 `src/main.typ` is the public build's entry point, and the only one the build
@@ -44,7 +44,7 @@ not a source edit:
 
 | input      | values                                                          |
 | ---------- | --------------------------------------------------------------- |
-| `variant`  | `backend`, `platform`, `fullstack`                              |
+| `variant`  | `backend`, `platform`, `fullstack`, `data`, `qa`, `solutions`   |
 | `template` | `rail`, `classic`, `compact`, `vanilla`, `safe`, `conventional` |
 | `theme`    | `teal`, `slate`, `ink`                                          |
 | `font`     | `lato`, `pt-serif`                                              |
@@ -53,6 +53,18 @@ The static build and the LAN render service (below) share one template set
 rather than diverging: both call `src/resume.typ`. The service takes a variant
 and an ATS template, uses that template's own theme and font, and adds contact
 details that are never committed, never as an input.
+
+### Compositions and tracks
+
+Six compositions on two tracks. `backend`, `platform` and `fullstack` are the
+software-engineering track; `data` (data analyst, BI), `qa` (test automation)
+and `solutions` (integration and internal tools, no sales or customer calls)
+are the software-adjacent one, for the Jobs wing's second track. Each
+composition carries its own `track`, `title` (the line under the name),
+engagement `role`, PDF `keywords`, and `experience`: which of
+`personal.typ`'s non-engineering jobs it renders. The adjacent three restate
+the same evidence for what their postings screen for, and add the
+non-engineering jobs that support it; `resume.meta.typ` traces every line.
 
 ### Templates
 
@@ -102,9 +114,11 @@ as a one-page document.
 `src/data/resume.typ` is distilled from the two repositories, and every claim in
 it traces to code (`src/canon/resume.meta.typ` records the trace). Degrees,
 spoken languages, certifications, and non-engineering roles cannot be derived
-that way, so they live in `personal.typ` and ship **empty**. A résumé makes
-hiring claims about a real person; an invented certification is not a
-placeholder but a false statement waiting to be sent to an employer.
+that way, so they live in `personal.typ`, filled only from the candidate's own
+records and otherwise left empty. A résumé makes hiring claims about a real
+person; an invented certification is not a placeholder but a false statement
+waiting to be sent to an employer. The four non-engineering jobs are all there,
+and each composition names (`experience`) which of them it renders.
 
 Templates render a section only when its list is non-empty, and the fitting pass
 redistributes the space, so filling these in later costs nothing structurally.
@@ -205,7 +219,7 @@ when declared:
 
 ### ATS checking
 
-`pnpm build` compiles all eighteen (variant × template) documents and then runs
+`pnpm build` compiles all thirty-six (variant × template) documents and then runs
 `scripts/check-claims.mjs`, `scripts/check-ats.mjs`, and `scripts/check-layout.mjs`
 in that order. `check-ats.mjs` asserts against the **rendered PDFs** rather than
 against the source data. A source-level assertion can only prove a string exists
@@ -220,7 +234,11 @@ pass. Each PDF is read back with Poppler's `pdftotext` and must expose:
   text specifically (the part every template renders in full and never
   truncates) — `backend` requires Rust/REST/SQL/asynchronous/testing/CI/CD,
   `platform` requires GitHub Actions/CI/CD/Docker/contract/observability,
-  `fullstack` requires React/web application/REST API/component/browser/testing;
+  `fullstack` requires React/web application/REST API/component/browser/testing,
+  and the adjacent three name what their postings screen for (`data`:
+  SQL/PostgreSQL/Python/Tableau/dashboards/reporting; `qa`:
+  Playwright/test automation/end-to-end/API testing/regression testing;
+  `solutions`: API integration/REST/Python/automation/internal tools);
 - at least 180 words, and no Unicode replacement glyphs.
 
 Each cluster is a guard against a targeted variant becoming so concise that it

@@ -15,7 +15,9 @@
  *   `no-restricted-globals` cannot see it, and `no-restricted-imports`
  *   misses a dynamic `import()` and `Capacitor.Plugins.CapacitorHttp`: only
  *   `lib/device-backend/native-http` may name it, only `lib/home-link` may
- *   call that module, and only the Home server block may call `lib/home-link`.
+ *   call that module, and only the Home server block, the mark of a record
+ *   kept on home (aph, LA9; the Jobs record, LA10; Practice, LA11) and what
+ *   hands aph's lane to that mark may call `lib/home-link`.
  *
  * The last group feeds the checks known-bad sources, so a check that stopped
  * looking cannot stay green.
@@ -41,7 +43,25 @@ const NATIVE_HTTP = "lib/device-backend/native-http/index.ts"
 
 /** LA8: who may call the native-HTTP module, and who may call the link. */
 const NATIVE_HTTP_CALLERS = new Set(["lib/home-link/index.ts"])
-const HOME_LINK_CALLERS = new Set(["components/settings/device-section.tsx"])
+const HOME_LINK_CALLERS = new Set([
+  "components/settings/device-section.tsx",
+  // Settings' ledger of what is shared: it reads the choices, and stops
+  // Practice and the Jobs record on a second press (LA9).
+  "components/settings/device-sharing-ledger.tsx",
+  // LA9 to LA11: the mark of a record kept on home, in the header, which
+  // mounts its lane's watch, and what hands aph's lane to it.
+  "components/device-home-glyph.tsx",
+  "components/aph/device-aph-lane.tsx",
+])
+
+/**
+ * LA9, LA10 and LA11: the one wiring of every record kept on home, which
+ * calls the link's `keep`, and the runtime it hands that port.
+ */
+const KEEPERS = new Set([
+  "lib/home-link/lanes.ts",
+  "lib/home-link/kept-runtime.ts",
+])
 
 /** Every mention of `CapacitorHttp` in `text`: an import, a member, a string. */
 function nativeHttpUses(path: string, text: string): Array<string> {
@@ -122,6 +142,7 @@ function valueImportsOf(
   return found
 }
 
+// The index alone: `native-http/no-answer` holds an error class, no request.
 const isNativeHttp = (module: string): boolean =>
   module === "lib/device-backend/native-http"
 const isHomeLink = (module: string): boolean =>
@@ -228,11 +249,13 @@ function networkGlobalUses(path: string, text: string): Array<string> {
  * LA2: where the transfer of device sessions to the account may be started.
  * Each name is called only from the files listed: the button's action,
  * through its hook, through the one function that copies; and the phone's
- * copy to its paired home, called only by the Home server block's (LA8).
+ * copy to its paired home, called only by the Home server block's (LA8),
+ * with the read-back that decides what may leave the phone (`confirmHeld`).
  * The plan and the run are called by those two copies alone.
  */
 const TRANSFER_CALLERS: Record<string, ReadonlyArray<string>> = {
   copySessionsTo: ["lib/home-link/sessions.ts"],
+  confirmHeld: ["lib/home-link/sessions.ts"],
   useCopyDeviceSessions: ["components/settings/data-home-section.tsx"],
   copyDeviceSessionsAndRefresh: ["lib/tenant/hooks.ts"],
   copyDeviceSessions: ["lib/tenant/sessions-transfer/index.ts"],
@@ -289,7 +312,6 @@ describe("LA4: a corpus read carries no credentials", () => {
         /createDataSource\s*[<(]/.test(readFileSync(join(SRC, f), "utf8"))
       )
     expect(found.sort()).toEqual([
-      "lib/leetype-content/index.ts",
       "lib/topik-content/index.ts",
       "lib/web-surface/hangul/vocab.ts",
       "lib/web-surface/playoff-delta/stage.tsx",
@@ -378,7 +400,7 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(problems).toEqual([])
   })
 
-  it("calls native-http only from the link, and the link only from the Home server block", () => {
+  it("calls native-http only from the link, and the link only from the Home server block and the kept-on-home mark", () => {
     const outsideLink = sources.filter((f) => !f.startsWith("lib/home-link/"))
     expect(
       sources
@@ -390,6 +412,17 @@ describe("LA8: the phone reaches home through one module", () => {
         .filter((f) => !HOME_LINK_CALLERS.has(f))
         .flatMap((f) => valueImportsOf(f, read(f), isHomeLink))
     ).toEqual([])
+  })
+
+  it("calls the link's keep only from a record's keeping (LA9, LA10, LA11)", () => {
+    const keeps = (f: string): boolean => /\.keep\(/.test(read(f))
+    const reach = sources.filter(
+      (f) =>
+        (f.startsWith("lib/home-link/") || HOME_LINK_CALLERS.has(f)) &&
+        !KEEPERS.has(f)
+    )
+    expect(reach.filter(keeps)).toEqual([])
+    expect(read("lib/home-link/lanes.ts")).toContain("homeLink().keep(")
   })
 
   it("still finds what it is meant to guard", () => {

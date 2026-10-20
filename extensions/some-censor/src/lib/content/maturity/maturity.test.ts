@@ -1,8 +1,10 @@
-import type { MetaData, VeilContent } from "@censor/lib/content/fsm"
+import type { RenderModel } from "@censor/lib/content/fsm"
+import type { Plate } from "@censor/lib/content/plate/plate"
+import type { MetaData } from "@censor/types/states"
 import { describe, expect, expectTypeOf, it } from "vitest"
 
 import type { Estimate } from "./maturity"
-import { classify, DEFAULT_BOUNDARY_DAYS, estimate } from "./maturity"
+import { classify, DEFAULT_BOUNDARY_DAYS, estimate, youngest } from "./maturity"
 
 const NOW = Date.UTC(2026, 9, 16)
 
@@ -25,6 +27,13 @@ describe("estimate", () => {
     ["Premiered 3 years ago", 912],
     ["Streamed live 2 years ago", 547],
     ["6 years ago", 2007],
+    // Search's compact form (#1864).
+    ["9h ago", 0],
+    ["30m ago", 0],
+    ["1d ago", 0],
+    ["5mo ago", 126],
+    ["7y ago", 2372],
+    ["Streamed 2w ago", 10],
     // 2024-01-06T12:00Z, the last instant Jan 5 exists anywhere, to NOW.
     ["Jan 5, 2024", 1013],
     ["Premiered on Jan 5, 2024", 1013],
@@ -64,6 +73,8 @@ describe("estimate", () => {
       "Foo 5, 2024",
       "3 days",
       "3 days ago · 1.2M views",
+      "9 h ago",
+      "9x ago",
       "watching",
       // A plain date after today: a misread or a wrong clock.
       "Dec 20, 2026",
@@ -106,11 +117,26 @@ describe("classify", () => {
   })
 })
 
+describe("youngest", () => {
+  const aged = (minDays: number): Estimate => ({ kind: "aged", minDays })
+  const live: Estimate = { kind: "present", reason: "live" }
+  const unverified: Estimate = { kind: "unverified" }
+
+  it("takes the smallest age, and a present reading over any age", () => {
+    expect(youngest([aged(900), aged(400), unverified])).toEqual(aged(400))
+    expect(youngest([aged(900), live, aged(1)])).toEqual(live)
+  })
+
+  it("is unverified only when no reading places the date (QD3)", () => {
+    expect(youngest([])).toEqual(unverified)
+    expect(youngest([unverified, unverified])).toEqual(unverified)
+  })
+})
+
 describe("the presentable metadata", () => {
-  it("cannot carry a raw date into a veil (QD4)", () => {
+  it("cannot carry a raw date into a render (QD4)", () => {
     expectTypeOf<keyof MetaData>().toEqualTypeOf<"channelName" | "duration">()
-    expectTypeOf<
-      Extract<VeilContent, { kind: "meta" }>["meta"]
-    >().toEqualTypeOf<MetaData>()
+    expectTypeOf<keyof RenderModel>().toEqualTypeOf<"dataBoyo" | "plate">()
+    expectTypeOf<keyof Plate>().toEqualTypeOf<"fill" | "disc" | "initial">()
   })
 })

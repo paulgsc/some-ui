@@ -4,10 +4,14 @@ name: Mobile APK
 # uploads it as a run artifact, so a phone can install what `main` actually
 # contains.
 #
-# On pushes to `main` only, and only when something the APK is built from
-# changes. It grew up on a long-lived mobile staging branch and moved to
-# `main` when that branch landed; pull requests do not build it (pr.yml still
-# lints, typechecks and tests the www code it carries).
+# On pushes to main when APK inputs change, or by manual dispatch to validate
+# a branch before merging. Pull requests do not build it automatically.
+#
+# A push does not build on its own: its run waits in the `approve` job on the
+# `mobile-release` environment's required reviewer, and only approving it
+# builds an APK, from that run's commit. Nothing consumes a version from this
+# workflow (versionCode is the run number), so no release PR or version bump
+# is involved (epic #1615, Decision 1).
 #
 # Why CI builds it rather than a laptop or the agent sandbox: Gradle needs the
 # Android SDK (`compileSdkVersion` in apps/mobile/android/variables.gradle),
@@ -15,6 +19,7 @@ name: Mobile APK
 # sandbox can install it too when its environment allows dl.google.com, but
 # only CI holds the signing key the phone's installed app was signed with.
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
@@ -24,41 +29,46 @@ on:
       - "pnpm-lock.yaml"
       - ".github/workflows/mobile-apk.yml"
       - ".github/workflows/_mobile-review.yml"
+      - ".github/workflows/_environment-approval.yml"
       - ".github/actions/**"
 
-concurrency:
-  group: mobile-apk-${{ github.ref }}
-  cancel-in-progress: true
+# No workflow-level concurrency: cancelling in progress there would let a
+# newer push kill a build someone approved, and queueing there would leave a
+# newer push behind a run still waiting for approval. Only `approve` takes a
+# group.
 
 permissions:
   contents: read
-  # To read the retained APK the review compares versionCode against, and to
-  # delete older APK artifacts once a newer one has passed it.
-  actions: write
+  # To read the retained APK the review compares versionCode against. Older
+  # APKs are deleted by the retention sweep (retention.yml) once a newer run
+  # succeeds.
+  actions: read
 
 jobs:
+  approve:
+    name: Approve APK build
+    uses: ./.github/workflows/_environment-approval.yml
+    with:
+      environment: mobile-release
+    permissions:
+      actions: read
+
   apk:
     name: Build APK
+    needs: approve
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
-      - uses: ./.github/actions/nix-setup
-      - uses: ./.github/actions/pnpm-cache
       - name: Cache workspace build outputs
         uses: actions/cache@v6
         with:
           path: packages/*/dist
           key: workspace-dist-${{ runner.os }}-${{ hashFiles('packages/**/src/**') }}
           restore-keys: workspace-dist-${{ runner.os }}-
-      - name: Install dependencies
-        run: |
-          nix develop .#ci --command pnpm install \
-            --frozen-lockfile \
-            --prefer-offline
-        env:
-          HUSKY: 0
-      - uses: ./.github/actions/resume-assets-cache
+      - uses: ./.github/actions/node-ci-setup
+        with:
+          build: none
 
       # The lines-of-code number in the dashboard header is a snapshot taken
       # here, as the app is built (apps/www/src/lib/loc-report). Best-effort:
@@ -141,7 +151,7 @@ jobs:
       # shrunk by R8, as an APK and as the app bundle Play requires of new
       # apps. The debug APK above goes only to the review, which checks both.
       # A release build that fails leaves the run with no new APK, and the
-      # previous one stays (prune runs only after a green review).
+      # previous one stays (it is deleted only once a newer run succeeds).
       - name: Build release APK and app bundle
         working-directory: apps/mobile/android
         env:
@@ -161,10 +171,11 @@ jobs:
       # Retention: the phone's owner downloads this APK to install it, often
       # days after the push, and the next run's review reads it to check that
       # versionCode only ever rises. 30 days is a backstop, not the cleanup:
-      # the prune job removes every older APK, so this bounds only the newest
-      # one's life. After 30 days with no push there is nothing to download
-      # until the next.
+      # its family keeps one (packages/eslint/src/retention.ts), so this
+      # bounds only the newest one's life. After 30 days with no push there
+      # is nothing to download until the next.
       - name: Upload APK
+        if: github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v7
         with:
           name: some-ui-apk-${{ github.sha }}
@@ -219,9 +230,11 @@ jobs:
           SOME_UI_VERSION_NAME: 0.1.${{ github.run_number }}+${{ github.sha }}
           SOME_UI_EXTRA_ABI: x86_64
         run: |
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew :app:assembleRelease :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon
           mkdir ../../../launch-apk
           cp app/build/outputs/apk/release/app-release.apk ../../../launch-apk/launch.apk
+          cp app/build/outputs/apk/debug/app-debug.apk ../../../launch-apk/debug.apk
+          cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk ../../../launch-apk/tests.apk
       - name: Upload the launch test's APK
         uses: actions/upload-artifact@v7
         with:
@@ -268,7 +281,12 @@ jobs:
           api-level: 36
           target: google_apis
           arch: x86_64
-          script: bash apps/mobile/launch/launch-test.sh launch-apk/launch.apk launch-out
+          script: |
+            bash apps/mobile/launch/launch-test.sh launch-apk/launch.apk launch-out
+            adb install -r launch-apk/debug.apk
+            adb install -r launch-apk/tests.apk
+            adb shell am instrument -w -r -e class dev.paulgsc.someui.SQLiteLifecycleTest dev.paulgsc.someui.test/androidx.test.runner.AndroidJUnitRunner | tee launch-out/lifecycle-test.txt
+            grep -q 'OK (1 test)' launch-out/lifecycle-test.txt
       - name: Upload what the emulator showed
         if: always()
         uses: actions/upload-artifact@v7
@@ -279,30 +297,3 @@ jobs:
           # For reading a failure right after the run; a later look is a
           # re-run away.
           retention-days: 1
-
-  # Only the newest APK is worth keeping, so a run that passes the review
-  # deletes this workflow's older ones: one ~10 MB artifact on GitHub at a
-  # time, not one per push. After the review, because the review reads the
-  # retained APK to check versionCode only ever rises, and after the launch
-  # test, so an APK that will not open never replaces one that does; and
-  # never after a failed or cancelled run, which leaves the previous APK in
-  # place.
-  prune:
-    name: Delete older APK artifacts
-    needs: [apk, review, launch]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Delete older APK artifacts
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh api --paginate "repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100" \
-            --jq ".artifacts[]
-                  | select(.name | startswith(\"some-ui-apk-\"))
-                  | select(.workflow_run.id != $GITHUB_RUN_ID)
-                  | select(.expired | not)
-                  | .id" |
-          while read -r id; do
-            echo "deleting artifact $id"
-            gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$id"
-          done

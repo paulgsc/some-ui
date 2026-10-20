@@ -5,8 +5,21 @@ import { resumeData } from "@some-ui/resume"
  * Order and the layout labels are presentation, so they belong here; the
  * composition labels are résumé content and come from resumeData.
  */
-const RESUME_ORDER = ["backend", "platform", "fullstack"] as const
+const RESUME_ORDER = [
+  "backend",
+  "platform",
+  "fullstack",
+  "data",
+  "qa",
+  "solutions",
+] as const
 export type ResumeComposition = (typeof RESUME_ORDER)[number]
+
+export function isResumeComposition(
+  value: unknown
+): value is ResumeComposition {
+  return RESUME_ORDER.some((id) => id === value)
+}
 export const RESUME_COMPOSITIONS: ReadonlyArray<{
   id: ResumeComposition
   label: string

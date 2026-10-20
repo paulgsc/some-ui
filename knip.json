@@ -43,8 +43,7 @@
         "src/popup/popup.ts",
         "src/lib/platform/**/api.*.ts",
         "scripts/setup-test-profile.mjs"
-      ],
-      "ignoreDependencies": ["@unocss/cli"]
+      ]
     },
     "extensions/some-drama": {
       "entry": [
@@ -85,7 +84,8 @@
       "entry": [
         "src/vitest/index.ts",
         "src/vitest/vitest.setup.ts",
-        "src/vitest/memory-storage.ts"
+        "src/vitest/memory-storage.ts",
+        "src/vitest/source-graph.ts"
       ]
     },
     "packages/speech": {
@@ -95,6 +95,9 @@
         "src/web-speech.ts",
         "src/native.ts"
       ]
+    },
+    "packages/job-desk": {
+      "entry": ["src/index.ts", "src/sample.ts"]
     },
     "packages/ui/resume": {
       "ignoreDependencies": ["@some-ui/contract-harness"]

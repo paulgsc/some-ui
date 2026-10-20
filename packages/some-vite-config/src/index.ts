@@ -9,7 +9,6 @@ import {
   createPlugins,
   createResolveConfig,
   createRollupOptions,
-  updatePackageJson,
 } from "./lib/index.js"
 import type { ViteConfigOptions } from "./types/index.js"
 
@@ -75,24 +74,6 @@ export function createViteConfig(
   }
 
   return defineConfig(config)
-}
-
-/**
- * Explicit, caller-invoked package.json sync for scripts that need the build
- * fields written without running a build. This is the deliberate escape hatch
- * from the build-only plugin - importing this module does not call it.
- *
- * `packageRoot` defaults to the cwd because this is invoked directly by a
- * script the way a CLI would be, but updatePackageJson still verifies the
- * directory really is the package described by `options` before writing, so a
- * sync run from the wrong directory throws rather than rewriting a stranger's
- * manifest.
- */
-export function syncPackageJson(
-  options: ViteConfigOptions,
-  packageRoot: string = process.cwd()
-): Record<string, unknown> {
-  return updatePackageJson(options, packageRoot)
 }
 
 export {

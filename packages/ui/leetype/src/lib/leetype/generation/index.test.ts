@@ -23,20 +23,9 @@ describe("buildRoundPrompt", () => {
       focus: "CW-P7",
       premise: "  pairs that sum to k ",
       members: 9,
-      recent: ["a", "b"],
     })
     expect(prompt).toContain("Focus: CW-P7")
     expect(prompt).toContain("Premise: pairs that sum to k")
     expect(prompt).toContain(`Members: ${MAX_MEMBERS}`)
-    expect(prompt).toContain("Recent rounds (newest first): a, b")
-  })
-
-  it("names no learner history for the operator's corpus rounds", () => {
-    const prompt = buildRoundPrompt({
-      audience: "corpus",
-      recent: ["a"],
-    })
-    expect(prompt).toContain("joins the shared corpus")
-    expect(prompt).not.toContain("Recent rounds (newest first)")
   })
 })

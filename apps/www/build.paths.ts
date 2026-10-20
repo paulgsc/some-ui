@@ -92,6 +92,7 @@ export const MOBILE_ROUTE_FILES = [
   "apps/www/src/routes/_dashboard.tsx*",
   "apps/www/src/routes/_dashboard/_apk.tsx*",
   "apps/www/src/routes/_dashboard/_apk/**",
+  "apps/www/src/routes/_dashboard/practice/settings.tsx*",
   "apps/www/src/routes/_dashboard/sessions/**",
   "apps/www/src/routes/_dashboard/settings.tsx*",
   "apps/www/src/routes/auth.tsx*",
@@ -109,15 +110,24 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/agent-export/**",
   "apps/www/src/lib/drive-filing/**",
   "apps/www/src/lib/home-link/**",
+  "apps/www/src/lib/jobs/**",
   "apps/www/src/lib/journal-share/**",
+  "apps/www/src/lib/lens-takes/**",
+  "apps/www/src/lib/leetype-files/**",
+  "apps/www/src/lib/leetype-takes/**",
   "apps/www/src/lib/reflection-voice/**",
   "apps/www/src/lib/scene-voice/**",
+  "apps/www/src/lib/session-archive/**",
   "apps/www/src/lib/share-files/**",
+  "apps/www/src/lib/takes-desk/**",
   "apps/www/src/lib/device-backend/**",
   "apps/www/src/lib/device-speech/**",
   "apps/www/src/lib/native-log/**",
   "apps/www/src/lib/study-nudge/native.ts",
   "apps/www/src/lib/study-nudge/schedule.ts",
+  "apps/www/src/components/device-home-glyph.tsx",
+  "apps/www/src/components/aph/device-*.tsx",
+  "apps/www/src/components/jobs/**",
   "apps/www/src/components/auth/device-*.tsx",
   "apps/www/src/components/settings/device-*.tsx",
   "apps/www/src/components/reflection/device-*.tsx",
@@ -151,6 +161,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
   exclusive: [
     ...gatedRoutes,
     {
+      modules: ["packages/job-desk/dist/@some-ui/job-desk.es.js"],
+      profiles: [MOBILE_PROFILE],
+      why: "job-desk's main entry: the Jobs wing's Drive files, which only the Android app's Jobs wing reads and writes (src/lib/jobs). The web builds take only its id rule (the résumé builder) and its sample entry (/job-run)",
+    },
+    {
       modules: [
         "apps/www/src/lib/tenant/sessions-transfer/**",
         "apps/www/src/lib/tenant/transfer-lock/**",
@@ -175,6 +190,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "the web builds' voice, the browser's own synthesizer: the Android app speaks only with the phone's engine (src/providers/tts.tsx)",
     },
     {
+      modules: ["apps/www/src/lib/demo/**"],
+      profiles: ["pages"],
+      why: "a viewer's sample drafts (CLAUDE.md, two mandates): only the Pages build is a viewer's, and the owner's builds keep to their own records",
+    },
+    {
       modules: [
         `${SPEECH_ENTRY}/http.es.js`,
         "apps/www/src/lib/tts-config/**",
@@ -192,6 +212,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       modules: ["apps/www/src/lib/web-surface/hangul/**"],
       profiles: ["lan", "pages"],
       why: "Hangul Honeycomb's panel, a desktop keyboard game the phone has no counterpart for: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
+    },
+    {
+      modules: ["apps/www/src/components/reflection/copy.ts"],
+      profiles: [MOBILE_PROFILE],
+      why: "the phone's hand-off wording (`arrived`, `goingOut`), after a share only the Android app makes; the web's reflection screens count with `@some-ui/core-utils`",
     },
     {
       modules: DEVICE_MODULES,
@@ -266,6 +291,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       modules: [`${SPEECH_ENTRY}/web-speech.es.js`],
       why: "Pages speaks through this (src/providers/tts.tsx); a build without it is silent",
     },
+    {
+      profile: "pages",
+      modules: ["apps/www/src/lib/demo/index.ts"],
+      why: "a viewer starts from these sample drafts (src/main.tsx); without them the demo opens empty. Also what keeps its `exclusive` rule from passing by matching nothing",
+    },
   ],
   // Every profile builds one route tree, shared by design until now
   // (AUDIENCES.md, "Build audiences"): a route off a profile's path ships
@@ -293,9 +323,9 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       "extensions.tsx*",
       "playoff-delta.tsx*",
       "_dashboard/app.tsx*",
-      "_dashboard/jobs.tsx*",
       "_dashboard/profile.tsx*",
       "_dashboard/resume.tsx*",
+      "_dashboard/job-run.tsx*",
     ].map(
       (route): Debt => ({
         profile: MOBILE_PROFILE,

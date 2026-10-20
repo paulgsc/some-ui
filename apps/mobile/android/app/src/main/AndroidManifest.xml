@@ -14,8 +14,9 @@
          RECORD_AUDIO is the runtime prompt the person sees, the first time
          they tap to talk; MODIFY_AUDIO_SETTINGS (install-time, no prompt) is
          what the WebView's audio capture needs to route the microphone.
-         Voice reflections (www src/lib/reflection-voice) record through the
-         same path. -->
+         The Build Journal's voice takes (www routes/_dashboard/_apk/journal.tsx)
+         and voice reflections (www src/lib/reflection-voice) record through
+         the same path. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
@@ -71,6 +72,65 @@
             </intent-filter>
 
         </activity>
+
+        <!-- Wings: one launcher icon per wing, each opening the app straight
+             into that wing (README "What the app carries"). Aliases of
+             .MainActivity, not activities of their own, so every icon shares
+             one task, one WebView and one database connection. MainActivity
+             maps the alias's name to the wing's root path through a fixed
+             table (wingRoot), never through anything the intent carries, so
+             being exported lets another app do no more than a tap on the
+             icon does. The names are frozen once shipped, as applicationId
+             is: the launcher keys home-screen icons and folders by component,
+             so a renamed or deleted alias silently drops off every home
+             screen. The plain icon stays .MainActivity for the same reason. -->
+        <activity-alias
+            android:name=".WingPractice"
+            android:targetActivity=".MainActivity"
+            android:label="@string/wing_practice"
+            android:icon="@mipmap/ic_wing_practice"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".WingSelf"
+            android:targetActivity=".MainActivity"
+            android:label="@string/wing_self"
+            android:icon="@mipmap/ic_wing_self"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".WingStudio"
+            android:targetActivity=".MainActivity"
+            android:label="@string/wing_studio"
+            android:icon="@mipmap/ic_wing_studio"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".WingJobs"
+            android:targetActivity=".MainActivity"
+            android:label="@string/wing_jobs"
+            android:icon="@mipmap/ic_wing_jobs"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <provider
             android:name="androidx.core.content.FileProvider"

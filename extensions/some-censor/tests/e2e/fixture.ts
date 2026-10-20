@@ -19,11 +19,21 @@
 
 import path from "path"
 import { fileURLToPath } from "url"
+import type { ViewState } from "@censor/lib/content/fsm"
+import type { Settings } from "@censor/lib/settings/settings"
+import {
+  BOUNDARY_CHANGES_KEY,
+  CHOICE_CHANGES_KEY,
+  DEFAULT_SETTINGS,
+  SETTINGS_KEY,
+  settingsWrite,
+} from "@censor/lib/settings/settings"
 import {
   test as base,
   chromium,
   type BrowserContext,
   type Page,
+  type Worker,
 } from "@playwright/test"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -44,7 +54,7 @@ type BoyoDebug = {
     {
       videoId: string
       channelId: string
-      viewKind: "masked" | "meta" | "title" | "revealed" | "whitelisted"
+      viewKind: ViewState["kind"]
       isConnected: boolean
     }
   >
@@ -84,10 +94,19 @@ async function pollDebug(
   )
 }
 
+/** The extension's service worker, once it has registered. */
+async function extensionWorker(context: BrowserContext): Promise<Worker> {
+  return (
+    context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"))
+  )
+}
+
 // ── Fixture types ─────────────────────────────────────────────────────────────
 
 type BoyoFixtures = {
   context: BrowserContext
+  /** The host of the extension's own pages, for `chrome-extension://<id>/`. */
+  extensionId: string
   fixture: {
     goto(name?: string): Promise<Page>
     pollDebug(
@@ -101,6 +120,11 @@ type BoyoFixtures = {
       method: string,
       ...args: Array<unknown>
     ): Promise<T>
+    /**
+     * Store the defaults with `overrides`, as the popup would: every open
+     * tab follows, and a page opened after reads them first.
+     */
+    settings(overrides: Partial<Settings>): Promise<void>
   }
 }
 
@@ -136,8 +160,6 @@ export const test = base.extend<BoyoFixtures & { page: Page }>({
       ],
     })
 
-    // Stub browser.runtime for fixture page-level JS.
-    // The content script uses the real extension API injected by Chromium.
     await context.addInitScript(
       /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-unsafe-argument */
       () => {
@@ -146,32 +168,25 @@ export const test = base.extend<BoyoFixtures & { page: Page }>({
             e.detail
           ) as typeof window.__BOYO_DEBUG__
         })
-
-        if (!(window as any).chrome?.runtime?.sendMessage) {
-          ;(window as any).chrome = {
-            runtime: {
-              // eslint-disable-next-line @typescript-eslint/require-await
-              sendMessage: async (msg: any): Promise<unknown> => {
-                if (msg.type === "IS_WHITELISTED")
-                  return { ok: true, whitelisted: false }
-                if (msg.type === "GET_ENABLED")
-                  return { ok: true, enabled: true }
-                if (msg.type === "ADD_WHITELIST") return { ok: true }
-                return { ok: true }
-              },
-              onMessage: {
-                addListener: (): void => {},
-                removeListener: (): void => {},
-              },
-            },
-          }
-        }
       }
       /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-unsafe-argument */
     )
 
+    // The profile outlives a test, and so would a setting one test changed.
+    const worker = await extensionWorker(context)
+    await worker.evaluate(
+      (keys) =>
+        // eslint-disable-next-line no-restricted-globals -- Chromium's worker has no `browser`
+        chrome.storage.local.remove(keys),
+      [SETTINGS_KEY, BOUNDARY_CHANGES_KEY, CHOICE_CHANGES_KEY]
+    )
+
     await use(context)
     await context.close()
+  },
+
+  extensionId: async ({ context }, use) => {
+    await use(new URL((await extensionWorker(context)).url()).host)
   },
 
   page: async ({ context }, use) => {
@@ -180,6 +195,7 @@ export const test = base.extend<BoyoFixtures & { page: Page }>({
   },
 
   fixture: async ({ context }, use) => {
+    const worker = await extensionWorker(context)
     await use({
       async goto(name = "yt-home") {
         const page = await context.newPage()
@@ -199,6 +215,19 @@ export const test = base.extend<BoyoFixtures & { page: Page }>({
           method,
           args,
         ] as const) as Promise<T>
+      },
+      async settings(overrides) {
+        const write = settingsWrite(
+          {},
+          { ...DEFAULT_SETTINGS, ...overrides },
+          0
+        )
+        await worker.evaluate(
+          ([key, value]) =>
+            // eslint-disable-next-line no-restricted-globals -- Chromium's worker has no `browser`
+            chrome.storage.local.set({ [key]: value }),
+          [SETTINGS_KEY, write[SETTINGS_KEY]] as const
+        )
       },
     })
   },

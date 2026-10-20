@@ -8,27 +8,27 @@
 ## 1. The three states
 
 Every video on www.youtube.com is in exactly one of three states. The state is
-a pure function of evidence (the video's estimated age, its title's script, its
-music signals) and two settings. No gesture changes it (`QD16`).
+a pure function of evidence (the video's estimated age, its music signals) and
+two choices, the boundary and the mode. No gesture changes it (`QD16`).
 
-| The video is                                                           | On feeds and search                                                                           | On its watch page                                                                                    | Its real thumbnail                                              |
-| ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| Current, or of unprovable age (`QM0`–`QM2`), and not in the lane       | **Absent**: no tile, no cover, no count (`QD11`)                                              | "Not here." and Back. No player, title, date, or video-derived tab title (`QD17`)                    | Never                                                           |
-| Old enough (`QM3`–`QM4`, boundary `B`), and not in the lane            | **Plated**: title, channel name and duration, on a plate, with a plated channel icon (`QD12`) | The plate is the poster until play. Up next is plated. No comments (`QD14`) or end-screen thumbnails | After a 3-second hold on the watch page, for that view (`QD13`) |
-| Music whose title is in a script the owner listens to but doesn't read | **Whole**: as YouTube renders it, minus every crowd number and age (`QD14`, `QD15`)           | As YouTube renders it, minus the crowd. Autoplay stops before a held video (`QD11`)                  | Shown                                                           |
+| The video is                                                     | On feeds and search                                                                           | On its watch page                                                                                    | Its real thumbnail                                                                |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Current, or of unprovable age (`QM0`–`QM2`), and not in the lane | **Absent**: no tile, no cover, no count (`QD11`)                                              | "Not here." and Back. No player, title, date, or video-derived tab title (`QD17`)                    | Never                                                                             |
+| Old enough (`QM3`–`QM4`, boundary `B`), and not in the lane      | **Plated**: title, channel name and duration, on a plate, with a plated channel icon (`QD12`) | The plate is the poster until play. Up next is plated. No comments (`QD14`) or end-screen thumbnails | After a 3-second hold on the watch page, for that view, except in Strict (`QD13`) |
+| Music, and not live, a premiere or a Short                       | **Whole**: as YouTube renders it, minus every crowd number and age (`QD14`, `QD15`)           | As YouTube renders it, minus the crowd. Autoplay stops before a held video, or skips it (`QD11`)     | Shown                                                                             |
 
 Live streams, premieres and Shorts are always held (`QD11`): a live object is
 present by definition, and a Short carries no date (`QD3`).
 
 ## 2. The terms
 
-| Term         | Meaning                                                                                                                                                                    |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Coupling** | How much of the present a video can carry into the owner's head. The one thing being managed (`H2`). Age and opacity are two ways of measuring it.                         |
-| **Distance** | The first way coupling fades: the video is older than `B`.                                                                                                                 |
-| **Opacity**  | The second way: the video is music, and its words are in a script the owner has said they listen to but don't read. Coupling is zero however recent it is (`QD15`, `QA5`). |
-| **Face**     | A video's real thumbnail. Never offered on a feed; reachable only by the hold on a watch page.                                                                             |
-| **Lane**     | The set of videos admitted by opacity. Shown whole: the owner chose to see drama stills and show names ("seeing the drama is fine").                                       |
+| Term         | Meaning                                                                                                                                            |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Coupling** | How much of the present a video can carry into the owner's head. The one thing being managed (`H2`). Age and opacity are two ways of measuring it. |
+| **Distance** | The first way coupling fades: the video is older than `B`.                                                                                         |
+| **Opacity**  | The second way: the video is music, whose words don't reach the owner. Coupling is zero however recent it is (`QD15`, `QA5`).                      |
+| **Face**     | A video's real thumbnail. Never offered on a feed; reachable only by the hold on a watch page.                                                     |
+| **Lane**     | The set of videos admitted by opacity. Shown whole: the owner chose to see drama stills and show names ("seeing the drama is fine").               |
 
 ## 3. The plate (`QD12`)
 
@@ -55,6 +55,9 @@ present by definition, and a Short carries no date (`QD3`).
   original thumbnail". It is one of `QD17`'s two exceptions.
 - Held continuously for **3 seconds** (pointer, or Space/Enter held), it
   replaces the poster plate with the real thumbnail. Releasing early cancels.
+- Strict offers no control, and choosing Strict takes a shown thumbnail
+  away (§7, `QD13`). Open shows it at three seconds, still held, and the
+  control then reads "Hide original"; a press and release puts the plate back.
 - It lasts for that view. Navigation forgets it, and nothing is persisted.
 - No progress colour, reward animation or memory of having done it. Anything
   more and it becomes the ladder again.
@@ -76,30 +79,60 @@ Removed on every surface, the lane included:
 
 ## 6. The lane (`QD15`)
 
-Admitted whole only when all three hold:
+Admitted whole when both hold:
 
-1. **It's music.** On the watch page, YouTube's category is Music. On a card,
-   a `… - Topic` channel or an official-artist badge. Over-holding is the safe
-   direction (`QD3`).
-2. **Its title is mostly in a script the owner marked.** Counted by Unicode
-   script over the title's code points, ignoring Latin, digits and punctuation.
-   Mechanical: no judgement about meaning (§8 of the doctrine).
-3. **It's not live, a premiere, or a Short.**
+1. **It's music.** Any one sign is enough: the title carries `OST` or `MV` as
+   a word (as YouTube titles write them: `OST`, `Ost`, `MV`; never lower case,
+   which is a word elsewhere), the channel is an artist's `… - Topic` channel,
+   or it carries the official-artist badge. Mechanical: no judgement about
+   meaning (§8 of the doctrine).
+2. **It's not live, a premiere, or a Short.** Its date must prove a past
+   upload; a date the estimator cannot read could be live, so it stays held
+   (`QD3`).
 
-The setting is per language and the rule counts scripts, so 中文 and 日本語
-share Han (`QD15`).
+The owner dropped the earlier rule, a title mostly in a script they listen to
+but don't read, on 2026-10-17: the feed's music is already that subset. The
+lane has no switch of its own (2026-10-18); Strict reads only the channel's
+two signs, and keeps autoplay from a music video in the lane (2026-10-19,
+§7). The watch page's category is not on the
+rendered page, so the watch page uses the same three signs (`QD15`).
 
 ## 7. Decide once (`QD16`)
 
-The popup holds the only choices:
+The choices, besides an on/off switch and Diagnostics:
 
 - **Show videos older than:** 6 months, 1 year (default), 2 years.
-- **Languages I listen to but don't read:** 한국어, 中文, 日本語.
-- An on/off switch, and Diagnostics.
+- **A mode**, one of three fixed bundles, strictest first. The owner picks a
+  mode, never a row of one:
 
-No counts, no history, no trusted channels, no "always show thumbnails"
-switch, no plate picker. Changing the boundary is recorded quietly in
-Diagnostics (the doctrine's §9 falsifier needs it) and never prompted about.
+  | Row                         | Strict               | Standard (default)           | Open                        |
+  | --------------------------- | -------------------- | ---------------------------- | --------------------------- |
+  | Music shown whole           | From artist channels | Those, or an OST or MV title | As Standard                 |
+  | Autoplay from a music video | Into music only      | Into anything shown          | Into anything shown         |
+  | Original thumbnail          | Never offered        | After a 3-second hold        | At 3 seconds, can be hidden |
+  | Channel post images         | Hidden               | Hidden                       | Shown                       |
+  | Cards still loading         | Not painted          | Blurred                      | Blurred                     |
+
+- **When autoplay reaches a held video:** stop (default), or skip to the next
+  video in Up next that isn't held.
+
+Modes never move the boundary. No counts, no history, no trusted channels, no
+languages setting (the owner dropped it on 2026-10-17: being music alone admits
+a video to the lane), no "always show thumbnails" switch, no plate picker, and
+no single switch inside a mode (#1966). Changing the boundary, the mode or
+autoplay is recorded quietly for Diagnostics (the doctrine's §9 falsifier
+needs it) and never prompted about.
+
+_Status: holds (#1807, #1966)._ The settings are one `storage.local`
+record, read by the content script at start and on every change, so an open
+tab follows without a reload. Unreadable storage yields the defaults. Off is
+plain YouTube: the content script stops and lifts the pre-mask, and a content
+script that never runs leaves it on. The popup holds every choice; the
+settings page shows the modes as cards and then the age and autoplay; the tab
+and toolbar menu holds the switch, the mode and autoplay, never the age.
+Diagnostics shows every change. Until the content script has read the mode,
+which the stylesheet cannot do itself, an unread card is blurred under Strict
+too.
 
 ## 8. Never on youtube.com
 

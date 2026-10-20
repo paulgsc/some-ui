@@ -1,14 +1,17 @@
 /**
  * The Sensor (BC2, #1435) — Boundary Contract B3, B4, B5: the only reader
- * of VendorDOM.
+ * of VendorDOM that Core hears from. (The Actuator's watch hold reads the
+ * page too, only to keep its own writes held: `actuator/watch-hold.ts`.)
  *
  * Wraps the mutation observer and the navigation event, resolves every
  * observed node against the catalogue and the layout table, keeps the
  * element ↔ card identity (`identity.ts`) and the retry queue
- * (`queue.ts`), and emits `Token`s. It never calls Core: tokens go onto
- * whatever `emit` it was given, and Core sees exactly two kinds of vendor
- * event through it — mutation-derived (`observed`, `gone`,
- * `unknown-shape`) and `nav` (B5).
+ * (`queue.ts`), and emits `Token`s. Tokens go onto whatever `emit` it was
+ * given, and Core sees exactly two kinds of vendor event through it:
+ * mutation-derived (`observed`, `gone`, `unknown-shape`, `watched`,
+ * `described`) and `nav` (B5). It asks Core one question, through the
+ * `admits` port: whether an autoplay may go on into a video. On a no it
+ * holds that one vendor event (`onYtNavigate`, #1805).
  *
  * Design properties (not declared review invariants; the behavioural ones
  * are pinned by `sensor.test.ts`):
@@ -16,8 +19,9 @@
  *   - Structure is looked up, not discovered (B3). What a node is comes
  *     from the catalogue predicate and the layout table; the only walks
  *     are single `closest()` calls (the enclosing card for the table's
- *     context, a mutation's enclosing card, the fallback wrapper), never
- *     a loop over ancestors.
+ *     context, a mutation's enclosing card, the fallback wrapper, the
+ *     hidden page a card's surface comes from), never a loop over
+ *     ancestors.
  *   - Unknown shape is a state (B4). A card the table cannot place is
  *     still observed (with `shape: "unknown"`), queued if it has no id yet,
  *     and reported once per element as `unknown-shape`.
@@ -27,7 +31,7 @@
  *     budget; rejection is sticky against `scan()` and revocable on
  *     extraction (#1422).
  *   - Observation is total on what it sees: `observe()` is what a scan,
- *     a mutation batch, a retry tick and a gesture refresh all call.
+ *     a mutation batch and a retry tick all call.
  */
 
 import type { CustodyTarget } from "@censor/lib/content/actuator/bound"
@@ -37,22 +41,35 @@ import type { CardKey } from "@censor/lib/content/core/keys"
 import { keyVideoId } from "@censor/lib/content/core/keys"
 import type { Observation } from "@censor/lib/content/core/observation"
 import {
+  extractCarriesChannel,
+  extractIsArtist,
+  extractIsShort,
   extractMeta,
   extractTitle,
   extractUploadDate,
+  readAutonav,
+  readDescription,
+  readUpNext,
+  readWatch,
   tryExtract,
 } from "@censor/lib/content/extract/index"
 import type { UnknownShapeReason } from "@censor/lib/content/layout/lookup"
 import type { LayoutTable } from "@censor/lib/content/layout/schema"
 import type { BoyoSurface } from "@censor/lib/content/layout/surface"
 import {
+  HIDDEN_PAGE_SELECTOR,
+  hiddenPageSurface,
+} from "@censor/lib/content/layout/surface"
+import {
   classifyCard,
   detectOccluderEngine,
+  FACE_CONTROL_ATTRIBUTE,
   FALLBACK_TAGS,
   occludedElements,
   SEL,
 } from "@censor/lib/content/selectors"
 import type { OccluderEngine } from "@censor/lib/content/selectors"
+import type { VideoId } from "@censor/types/ids"
 import type { SessionId } from "@some-extension/common"
 
 import { classifyNode } from "./classify"
@@ -63,15 +80,20 @@ import { createRetryQueue, RESOLVE_BUDGET_MS, RETRY_INTERVAL_MS } from "./queue"
 
 export const NAV_DEBOUNCE_MS = 150
 
+const NO_WATCH = JSON.stringify(null)
+
 export type SensorPorts = {
   readonly doc: Document
   readonly win: Window
   readonly table: LayoutTable
+  /** The surface the page being shown is on. */
   readonly surface: () => BoyoSurface
   readonly clock: () => number
   readonly mintSession: () => SessionId
   readonly emit: (token: Token) => void
   readonly onFact: (fact: CoreFact) => void
+  /** Core's answer: whether autoplay may go on into `videoId` (#1805). */
+  readonly admits: (videoId: VideoId) => boolean
 }
 
 /** The live queue state, for the health context and the debug layer. */
@@ -98,10 +120,12 @@ export type Sensor = {
   stop(): void
   /** Observe every catalogue element on the page. */
   scan(): void
-  /** Re-observe a card now (before a gesture reaches Core). */
-  refresh(key: CardKey): void
   /** The elements carrying `key`, for the runtime to bind. */
   custodyOf(key: CardKey): ReadonlyArray<CustodyTarget>
+  /** The shown watch page's description, where the face control goes. */
+  description(): HTMLElement | null
+  /** The Up next card carrying `key`, the one a skip opens (#1966). */
+  upNextCard(key: CardKey): HTMLElement | null
   census(): SensorCensus
   /** How many elements are queued; O(1), unlike {@link census}. */
   readonly queued: number
@@ -116,6 +140,27 @@ export function createSensor(ports: SensorPorts): Sensor {
   const channelPending = new Map<HTMLElement, number>()
   /** Cards whose channel budget is spent: not re-sampled again this session. */
   let channelAbandoned = new WeakSet<HTMLElement>()
+  /**
+   * Cards with a channel but no name yet, or no title yet: either can
+   * hydrate in place after the card, a text change no mutation this
+   * observes, and the plate's initial reads the name and the lane (QD15)
+   * both. Re-read under the same budget, and given up silently.
+   */
+  const namePending = new Map<
+    HTMLElement,
+    { since: number; name: boolean; title: boolean }
+  >()
+  let nameAbandoned = new WeakSet<HTMLElement>()
+  /**
+   * Cards observed with no upload date at all, kept under the same budget: the
+   * date decides whether a card is shown (#1803), and YouTube can fill an
+   * empty run in without a mutation the observer sees (a text node's data).
+   * Pending keeps the retry loop, whose `scan()` re-reads every card, alive
+   * until the date arrives or the budget is spent. A Short is held whatever
+   * its date, so it is never pending.
+   */
+  const datePending = new Map<HTMLElement, number>()
+  let dateAbandoned = new WeakSet<HTMLElement>()
   /** Elements already reported as `unknown-shape` this session. */
   let unknownReported = new WeakSet<HTMLElement>()
   /**
@@ -127,10 +172,28 @@ export function createSensor(ports: SensorPorts): Sensor {
    * feed card and a sidebar card) would otherwise each differ from the
    * other's last token and re-announce on every tick.
    */
-  const lastEmitted = new Map<
-    HTMLElement,
-    { readonly serialized: string; readonly observation: Observation }
-  >()
+  const lastEmitted = new Map<HTMLElement, string>()
+  /**
+   * The page's own video as last announced, serialized. Core starts with
+   * none, so "none" needs no announcing, and keeps it across `nav`.
+   */
+  let lastWatch = NO_WATCH
+  /**
+   * The watch page's video, and since when it is: re-read by the retry loop
+   * under the same budget, since its date arrives after it, and can arrive
+   * as a text node's data, which no mutation here shows. Which date is the
+   * video's own is Core's to tell (R8).
+   */
+  let watchSince: { videoId: VideoId | null; since: number } | null = null
+  /**
+   * The watch page's description as last seen, and whether the face control
+   * was in it. YouTube can draw the description late, or again, with no
+   * change in the reading, so it is announced on its own (`described`).
+   */
+  let lastDescription: { el: HTMLElement | null; offered: boolean } = {
+    el: null,
+    offered: false,
+  }
   let observer: MutationObserver | null = null
   let retryTimer: ReturnType<typeof setInterval> | null = null
   let navDebounce: ReturnType<typeof setTimeout> | null = null
@@ -138,11 +201,23 @@ export function createSensor(ports: SensorPorts): Sensor {
 
   // ── Observation ────────────────────────────────────────────────────────
 
+  /** `ports.surface()`, unless `el` is under a hidden page (`HIDDEN_PAGE_SELECTOR`). */
+  function cardSurface(el: HTMLElement): BoyoSurface {
+    const page = el.closest(HIDDEN_PAGE_SELECTOR)
+    return page === null
+      ? ports.surface()
+      : hiddenPageSurface(
+          page.tagName.toLowerCase(),
+          page.getAttribute("page-subtype")
+        )
+  }
+
   function observationOf(
     el: HTMLElement,
     videoId: Observation["videoId"],
     channelId: Observation["channelId"],
-    shape: Observation["shape"]
+    shape: Observation["shape"],
+    surface: BoyoSurface
   ): Observation {
     const meta = extractMeta(el)
     return {
@@ -152,22 +227,20 @@ export function createSensor(ports: SensorPorts): Sensor {
       title: extractTitle(el),
       duration: meta.duration,
       uploadDate: extractUploadDate(el),
-      surface: ports.surface(),
+      short: extractIsShort(el),
+      artist: extractIsArtist(el),
+      surface,
       renderer: el.tagName.toLowerCase(),
       shape,
     }
   }
 
-  /**
-   * One path for every element the Sensor is ever handed. `force` re-announces
-   * the card even when its evidence is unchanged: its subtree changed, and
-   * only a render (which Core sends on every observation) puts back a veil
-   * the vendor removed with it.
-   */
-  function observe(el: HTMLElement, force = false): void {
+  /** One path for every element the Sensor is ever handed. */
+  function observe(el: HTMLElement): void {
     if (!running) return
     const now = ports.clock()
-    const cls = classifyNode(el, ports.surface(), ports.table)
+    const surface = cardSurface(el)
+    const cls = classifyNode(el, surface, ports.table)
 
     if (cls.kind === "not-card") {
       // A container, or not ours. Whatever it carried as a card is over.
@@ -194,7 +267,7 @@ export function createSensor(ports: SensorPorts): Sensor {
       if (queue.enqueue(el, now)) {
         const tag = el.tagName.toLowerCase()
         ports.onFact({ kind: "mount.queued", tag })
-        if (cls.shape === "unknown") reportUnknown(el, cls.reason, now)
+        if (cls.shape === "unknown") reportUnknown(el, cls.reason, now, surface)
         ensureRetryLoop()
       }
       return
@@ -206,37 +279,22 @@ export function createSensor(ports: SensorPorts): Sensor {
     if (rec.kind === "churn") {
       // Kept its key, and nothing about the artifact changed.
       ports.onFact({ kind: "churn.ignored", videoId: keyVideoId(rec.key) })
-      const last = lastEmitted.get(el)
-      if (force && last !== undefined) {
-        ports.emit({
-          kind: "observed",
-          key: rec.key,
-          observation: last.observation,
-          t: now,
-        })
-      }
       return
     }
     // Per element, not per key: a second carrier of a video Core already
     // holds is as much a miss of the table as the first.
-    if (cls.shape === "unknown") reportUnknown(el, cls.reason, now)
+    if (cls.shape === "unknown") reportUnknown(el, cls.reason, now, surface)
     if (rec.kind === "recycled") {
       // The channel budget belonged to the previous video.
       channelPending.delete(el)
       channelAbandoned.delete(el)
+      namePending.delete(el)
+      nameAbandoned.delete(el)
+      datePending.delete(el)
+      dateAbandoned.delete(el)
       if (rec.previousGone) {
         ports.emit({ kind: "gone", key: rec.previous, t: now })
       }
-    }
-
-    if (extracted.kind === "video-only") {
-      if (!channelPending.has(el) && !channelAbandoned.has(el)) {
-        channelPending.set(el, now)
-        ensureRetryLoop()
-      }
-    } else {
-      channelPending.delete(el)
-      channelAbandoned.delete(el)
     }
 
     // On an engine without `:has()`, the fallback rule occludes an
@@ -258,31 +316,63 @@ export function createSensor(ports: SensorPorts): Sensor {
       el,
       extracted.videoId,
       extracted.channelId,
-      cls.shape
+      cls.shape,
+      surface
     )
+    if (observation.channelId === null) {
+      if (
+        extractCarriesChannel(el) &&
+        !channelPending.has(el) &&
+        !channelAbandoned.has(el)
+      ) {
+        channelPending.set(el, now)
+        ensureRetryLoop()
+      }
+    } else {
+      channelPending.delete(el)
+      channelAbandoned.delete(el)
+    }
+    const name =
+      observation.channelId !== null && observation.channelName === null
+    const title = observation.title === null
+    if (name || title) {
+      const pending = namePending.get(el)
+      if (pending !== undefined) {
+        // Only what is still missing is waited for.
+        namePending.set(el, { since: pending.since, name, title })
+      } else if (!nameAbandoned.has(el)) {
+        namePending.set(el, { since: now, name, title })
+        ensureRetryLoop()
+      }
+    } else {
+      namePending.delete(el)
+      nameAbandoned.delete(el)
+    }
+    if (observation.uploadDate || observation.short) {
+      datePending.delete(el)
+    } else if (!datePending.has(el) && !dateAbandoned.has(el)) {
+      datePending.set(el, now)
+      ensureRetryLoop()
+    }
     const serialized = JSON.stringify(observation)
     // A new nested wrapper is only stamped by the render a token causes.
-    if (
-      !force &&
-      !custodyChanged &&
-      lastEmitted.get(el)?.serialized === serialized
-    )
-      return
-    lastEmitted.set(el, { serialized, observation })
+    if (!custodyChanged && lastEmitted.get(el) === serialized) return
+    lastEmitted.set(el, serialized)
     ports.emit({ kind: "observed", key: rec.key, observation, t: now })
   }
 
   function reportUnknown(
     el: HTMLElement,
     reason: UnknownShapeReason,
-    now: number
+    now: number,
+    surface: BoyoSurface
   ): void {
     if (unknownReported.has(el)) return
     unknownReported.add(el)
     ports.emit({
       kind: "unknown-shape",
       tag: el.tagName.toLowerCase(),
-      surface: ports.surface(),
+      surface,
       reason,
       t: now,
     })
@@ -291,12 +381,16 @@ export function createSensor(ports: SensorPorts): Sensor {
   /**
    * `el` stopped being a card: release its custody. A key nothing carries is
    * gone; a key another element still carries is re-announced, because the
-   * Actuator drops an element's stamp and veil only on a render of its key.
+   * Actuator drops an element's stamp and plate only on a render of its key.
    */
   function releaseElement(el: HTMLElement, now: number): void {
     lastEmitted.delete(el)
     channelPending.delete(el)
     channelAbandoned.delete(el)
+    namePending.delete(el)
+    nameAbandoned.delete(el)
+    datePending.delete(el)
+    dateAbandoned.delete(el)
     const released = identity.release(el)
     if (released === null) return
     if (released.gone) {
@@ -323,7 +417,7 @@ export function createSensor(ports: SensorPorts): Sensor {
         queue.dequeue(el)
         continue
       }
-      const cls = classifyNode(el, ports.surface(), ports.table)
+      const cls = classifyNode(el, cardSurface(el), ports.table)
       if (cls.kind === "not-card") {
         queue.dequeue(el)
         continue
@@ -343,16 +437,36 @@ export function createSensor(ports: SensorPorts): Sensor {
         channelPending.delete(el)
         continue
       }
-      const extracted = tryExtract(el)
-      if (extracted.kind === "full") {
-        observe(el)
-      } else if (now - since >= RESOLVE_BUDGET_MS) {
+      // The budget first: a card observe() leaves pending (vendor churn)
+      // must still run out.
+      if (now - since >= RESOLVE_BUDGET_MS) {
         channelPending.delete(el)
         channelAbandoned.add(el)
         const key = identity.keyOf(el)
         if (key !== null) {
           ports.onFact({ kind: "channel.abandoned", videoId: keyVideoId(key) })
         }
+      } else if (tryExtract(el).kind === "full") {
+        observe(el)
+      }
+    }
+
+    for (const [el, { since, name, title }] of namePending) {
+      if (!el.isConnected || now - since >= RESOLVE_BUDGET_MS) {
+        namePending.delete(el)
+        nameAbandoned.add(el)
+      } else if (
+        (name && extractMeta(el).channelName !== null) ||
+        (title && extractTitle(el) !== null)
+      ) {
+        observe(el)
+      }
+    }
+
+    for (const [el, since] of datePending) {
+      if (!el.isConnected || now - since >= RESOLVE_BUDGET_MS) {
+        datePending.delete(el)
+        dateAbandoned.add(el)
       }
     }
 
@@ -395,10 +509,53 @@ export function createSensor(ports: SensorPorts): Sensor {
     }, RETRY_INTERVAL_MS)
   }
 
+  function watchWaiting(): boolean {
+    return (
+      watchSince !== null &&
+      ports.clock() - watchSince.since < RESOLVE_BUDGET_MS
+    )
+  }
+
   function maybeStopRetryLoop(): void {
-    if (queue.size === 0 && channelPending.size === 0 && retryTimer !== null) {
+    if (
+      queue.size === 0 &&
+      channelPending.size === 0 &&
+      namePending.size === 0 &&
+      datePending.size === 0 &&
+      !watchWaiting() &&
+      retryTimer !== null
+    ) {
       clearInterval(retryTimer)
       retryTimer = null
+    }
+  }
+
+  // ── The page's own video (#1805) ───────────────────────────────────────
+
+  /** Announce the page's own video when what is read of it changes. */
+  function observeWatch(): void {
+    if (!running) return
+    const now = ports.clock()
+    const watch = readWatch(ports.doc)
+    if (watch !== null && !watch.short) {
+      if (watchSince?.videoId !== watch.videoId) {
+        watchSince = { videoId: watch.videoId, since: now }
+      }
+      if (watchWaiting()) ensureRetryLoop()
+    } else {
+      watchSince = null
+    }
+    const serialized = JSON.stringify(watch)
+    if (serialized !== lastWatch) {
+      lastWatch = serialized
+      ports.emit({ kind: "watched", watch, t: now })
+    }
+    const el = readDescription(ports.doc)
+    const offered =
+      (el?.querySelector(`[${FACE_CONTROL_ATTRIBUTE}]`) ?? null) !== null
+    if (el !== lastDescription.el || offered !== lastDescription.offered) {
+      lastDescription = { el, offered }
+      ports.emit({ kind: "described", t: now })
     }
   }
 
@@ -437,12 +594,13 @@ export function createSensor(ports: SensorPorts): Sensor {
       }
     }
 
-    enclosing.forEach((el) => observe(el, true))
+    enclosing.forEach((el) => observe(el))
     candidates.forEach((el) => {
       if (!enclosing.has(el)) observe(el)
     })
     retry()
     if (removed) prune()
+    observeWatch()
     ports.onFact({
       kind: "mutation.batch",
       candidates: candidates.size + enclosing.size,
@@ -457,6 +615,43 @@ export function createSensor(ports: SensorPorts): Sensor {
         if (!el.isConnected) releaseElement(el, now)
       }
     }
+  }
+
+  /**
+   * An autoplay into a video Core does not admit is held (#1805, QD11).
+   * YouTube's `yt-navigate` is not cancelable, but it is dispatched before
+   * the app's own listener sees it, so stopping it here, in the capture
+   * phase on the window, keeps the page where it is. The one vendor event
+   * the Sensor holds, and only on Core's answer; a navigation the owner
+   * starts carries no `autonav`, and is never held. Core is told, with Up
+   * next's videos in page order, so it can skip to one (#1966).
+   */
+  function onYtNavigate(event: Event): void {
+    const next = readAutonav(event)
+    if (next === null || ports.admits(next)) return
+    event.stopImmediatePropagation()
+    ports.emit({ kind: "held", upNext: upNext(), t: ports.clock() })
+  }
+
+  /** The cards held in the watch page's Up next, in page order. */
+  function upNextCards(): Array<{ el: HTMLElement; key: CardKey }> {
+    const cards: Array<{ el: HTMLElement; key: CardKey }> = []
+    const list = readUpNext(ports.doc)
+    for (const el of list?.querySelectorAll<HTMLElement>(SEL) ?? []) {
+      const key = identity.keyOf(el)
+      if (key !== null) cards.push({ el, key })
+    }
+    return cards
+  }
+
+  /** Their videos, each once. */
+  function upNext(): Array<VideoId> {
+    const ids: Array<VideoId> = []
+    for (const { key } of upNextCards()) {
+      const id = keyVideoId(key)
+      if (!ids.includes(id)) ids.push(id)
+    }
+    return ids
   }
 
   function onNavigate(): void {
@@ -481,6 +676,10 @@ export function createSensor(ports: SensorPorts): Sensor {
     queue.clear()
     channelPending.clear()
     channelAbandoned = new WeakSet()
+    namePending.clear()
+    nameAbandoned = new WeakSet()
+    datePending.clear()
+    dateAbandoned = new WeakSet()
     unknownReported = new WeakSet()
     lastEmitted.clear()
     if (retryTimer !== null) {
@@ -492,6 +691,7 @@ export function createSensor(ports: SensorPorts): Sensor {
   function scan(): void {
     if (!running) return
     ports.doc.querySelectorAll<HTMLElement>(SEL).forEach((el) => observe(el))
+    observeWatch()
   }
 
   return {
@@ -503,9 +703,13 @@ export function createSensor(ports: SensorPorts): Sensor {
         childList: true,
         subtree: true,
         attributes: true,
-        attributeFilter: ["data-video-id"],
+        // `video-id`: the watch page's video changing (#1805), which can
+        // come before anything else on the page does; and the miniplayer
+        // opening or closing, which need not come with a navigation.
+        attributeFilter: ["data-video-id", "video-id", "miniplayer-is-active"],
       })
       ports.win.addEventListener("yt-navigate-finish", onNavigate)
+      ports.win.addEventListener("yt-navigate", onYtNavigate, true)
     },
 
     stop(): void {
@@ -514,23 +718,30 @@ export function createSensor(ports: SensorPorts): Sensor {
       observer?.disconnect()
       observer = null
       ports.win.removeEventListener("yt-navigate-finish", onNavigate)
+      ports.win.removeEventListener("yt-navigate", onYtNavigate, true)
       if (navDebounce !== null) {
         clearTimeout(navDebounce)
         navDebounce = null
       }
       forget()
+      // Core forgets the page's video on `stop`, not on `nav` (R8).
+      lastWatch = NO_WATCH
+      watchSince = null
+      lastDescription = { el: null, offered: false }
     },
 
     scan,
 
-    refresh(key: CardKey): void {
-      for (const { el, role } of identity.custodyOf(key)) {
-        if (role === "anchor") observe(el)
-      }
-    },
-
     custodyOf(key: CardKey): ReadonlyArray<CustodyTarget> {
       return identity.custodyOf(key)
+    },
+
+    description(): HTMLElement | null {
+      return readDescription(ports.doc)
+    },
+
+    upNextCard(key: CardKey): HTMLElement | null {
+      return upNextCards().find((card) => card.key === key)?.el ?? null
     },
 
     census(): SensorCensus {

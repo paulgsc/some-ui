@@ -42,8 +42,6 @@ describe("SettingsRepository - forward compatibility", () => {
       JSON.stringify({
         ttsProvider: "openai",
         ttsVoiceId: "",
-        defaultSessionDurationMinutes: 10,
-        defaultLayoutTree: "study",
       })
     )
     const repo = createSettingsRepository(storage, 0)

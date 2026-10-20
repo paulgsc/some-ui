@@ -9,7 +9,7 @@
  *
  * some-filter's page recomputes its `HealthReport` from the persisted context;
  * its invariants are time-independent. some-censor's are not:
- * `OccludedCardResolves` and `PromotionGuardClears` compare `now` against a
+ * `OccludedCardResolves` and `OccluderReleases` compare `now` against a
  * start time, so re-running them against a session that ended an hour ago
  * would report every card mid-queue at teardown as stuck. OBS1 records the
  * verdict *at the moment it was true*, and this page renders it with the age
@@ -31,6 +31,18 @@ import {
   sessionStorageKey,
   type IndexEntry,
 } from "@censor/lib/content/observability"
+import type {
+  BoundaryChange,
+  ChoiceChange,
+} from "@censor/lib/settings/settings"
+import {
+  BOUNDARY_CHANGES_KEY,
+  BOUNDARY_LABEL,
+  CHOICE_CHANGES_KEY,
+  parseBoundaryChanges,
+  parseChoiceChanges,
+} from "@censor/lib/settings/settings"
+import { AUTOPLAY_WORDS, MODE_WORDS } from "@censor/lib/settings/words"
 import { ext } from "@censor/platform/content"
 import {
   createSessionLoader,
@@ -377,12 +389,11 @@ const COUNTER_ORDER = [
   "mounts_provisional",
   "cards_queued_unresolved",
   "cards_rejected",
-  "stale_promotions_discarded",
   "channels_backfilled",
   "channels_abandoned",
-  "bulk_advances",
-  "bulk_advance_advanced",
-  "bulk_advance_skipped",
+  "entries_absent",
+  "entries_plated",
+  "entries_whole",
   "dates_observed",
   "dates_absent",
   "invariant_violations",
@@ -530,6 +541,106 @@ function timelineSection(b: Bundle, rerender: () => void): HTMLElement {
   return section
 }
 
+/** One logged change, as a row: when, what changed (if the log mixes), from, to. */
+type ChangeRow = {
+  readonly at: number
+  readonly cells: ReadonlyArray<string>
+}
+
+/**
+ * A log of the owner's changes, newest first. Each spans every session, so
+ * it does not follow the picker.
+ */
+function changesSection(
+  title: string,
+  unchanged: string,
+  columns: ReadonlyArray<string>,
+  rows: ReadonlyArray<ChangeRow> | null | undefined
+): HTMLElement {
+  const section = el("section")
+  section.append(el("h2", { text: title }))
+  if (rows == null || rows.length === 0) {
+    section.append(
+      el("div", {
+        class: rows === null ? "bc-empty bad" : "bc-empty",
+        text:
+          rows === undefined
+            ? "Loading…"
+            : rows === null
+              ? "The change log could not be read."
+              : unchanged,
+      })
+    )
+    return section
+  }
+  const table = el("table", { class: "bc-events" })
+  const head = el("tr")
+  for (const label of ["when", ...columns]) {
+    head.appendChild(el("th", { text: label }))
+  }
+  table.appendChild(el("thead", {}, [head]))
+  const body = el("tbody")
+  for (const { at, cells } of [...rows].reverse()) {
+    const row = el("tr")
+    row.append(
+      el("td", { class: "muted", text: new Date(at).toLocaleString() })
+    )
+    for (const cell of cells) row.append(el("td", { text: cell }))
+    body.appendChild(row)
+  }
+  table.appendChild(body)
+  section.append(el("div", { class: "bc-scroll" }, [table]))
+  return section
+}
+
+const boundaryRows = (
+  changes: ReadonlyArray<BoundaryChange>
+): ReadonlyArray<ChangeRow> =>
+  changes.map((c) => ({
+    at: c.at,
+    cells: [BOUNDARY_LABEL[c.from], BOUNDARY_LABEL[c.to]],
+  }))
+
+const choiceRows = (
+  changes: ReadonlyArray<ChoiceChange>
+): ReadonlyArray<ChangeRow> =>
+  changes.map((c) =>
+    c.choice === "mode"
+      ? {
+          at: c.at,
+          cells: ["mode", MODE_WORDS[c.from].name, MODE_WORDS[c.to].name],
+        }
+      : {
+          at: c.at,
+          cells: [
+            "autoplay",
+            AUTOPLAY_WORDS[c.from].label,
+            AUTOPLAY_WORDS[c.to].label,
+          ],
+        }
+  )
+
+/** `undefined` until read, `null` when the read failed. */
+let boundaryChanges: ReadonlyArray<ChangeRow> | null | undefined
+let choiceChanges: ReadonlyArray<ChangeRow> | null | undefined
+
+async function loadChanges(): Promise<void> {
+  try {
+    const stored = await ext.storage.local.get([
+      BOUNDARY_CHANGES_KEY,
+      CHOICE_CHANGES_KEY,
+    ])
+    boundaryChanges = boundaryRows(
+      parseBoundaryChanges(stored[BOUNDARY_CHANGES_KEY])
+    )
+    choiceChanges = choiceRows(parseChoiceChanges(stored[CHOICE_CHANGES_KEY]))
+  } catch {
+    boundaryChanges = null
+    choiceChanges = null
+  }
+  render()
+}
+
 // ── Actions ──────────────────────────────────────────────────────────────────
 
 /**
@@ -578,7 +689,10 @@ function header(b: Bundle | undefined): HTMLElement {
   )
 
   const refresh = el("button", { text: "Refresh" })
-  refresh.addEventListener("click", () => void loader.load())
+  refresh.addEventListener("click", () => {
+    void loader.load()
+    void loadChanges()
+  })
   const actions = el("div", { class: "bc-actions" }, [refresh])
 
   if (b) {
@@ -597,6 +711,22 @@ function render(): void {
 
   const { bundle, loadError } = loader
   root.appendChild(header(bundle))
+  root.appendChild(
+    changesSection(
+      "Boundary changes",
+      "The boundary has not changed.",
+      ["from", "to"],
+      boundaryChanges
+    )
+  )
+  root.appendChild(
+    changesSection(
+      "Mode and autoplay changes",
+      "Neither has changed.",
+      ["what", "from", "to"],
+      choiceChanges
+    )
+  )
   root.appendChild(pickerSection())
 
   if (loadError !== undefined) {
@@ -646,3 +776,4 @@ const loader = createSessionLoader<IndexEntry, Bundle>({
 })
 
 void loader.load()
+void loadChanges()

@@ -163,11 +163,6 @@ docs/.docusaurus/
 api-docs/
 api/
 
-# LeetType's exported round corpus: scripts/export-round-corpus.ts writes it,
-# and paulgsc/server stores each file's bytes verbatim, so a reformat would
-# change what learners fetch and fail `export-round-corpus.ts --check`.
-packages/ui/leetype/corpus/
-
 # Capacitor (apps/mobile) native scaffold and synced web assets.
 # `cap sync` copies apps/www/dist into the Android project, so the repo's
 # root `stylelint "**/*.css"` (which reads this file as its --ignore-path)
