@@ -417,6 +417,47 @@ arithmetic), leave the tag out: it adds nothing to review and is one more claim 
 The invariant defines the tag's terms (for costs, the variables) and makes deleting a tag
 whose code remains part of its falsifier.
 
+## Two kinds of pull request: the story moved, or a promise broke
+
+Every PR is one of two kinds and says which. Both have the same autonomy: drive it green and
+merge it. They differ in what green has to show.
+
+- **Story.** The user story moved. Behaviour is added because the owner wants it, or retired
+  because they no longer do: the background was green, and now the owner wants it purple. A
+  preference is not right or wrong, so a story PR has nothing to prove beyond the repo's usual
+  checks and its **Superseded** section.
+- **Defect.** Code fails in a state its story already covered: a footgun, or a happy path that
+  assumed some input, ordering, host or timing away. Every story ships with an implicit
+  service level, a promise about the states it works in, whether or not anyone wrote it down.
+  A defect is that promise surfacing. Unlike a preference, a failing state machine is a fact,
+  so a defect PR carries the burden of proof:
+  1. **Declare the promise** in the same PR, with an ID, in the doc that owns the idiom, and a
+     one-line summary in the governed module's doc comment, as invariants are placed. A
+     promise has three parts:
+     - a **Claim**: one sentence about the code, over a named scope;
+     - the **Family**: every state or environment the failure belongs to, not only the case
+       that was reported. That means every interleaving of stop and resume, not the one seen;
+       every host, not the phone that showed it.
+     - the **Proof**: what holds the claim over that whole family. A test that enumerates or
+       generates the family, a type that makes the bad state unrepresentable, or a lint rule.
+       Where no mechanism can hold it, declare it as a gray-area invariant instead (above),
+       with all four parts.
+  2. **Fit the claim to the proof.** If the fix covers only part of the family, narrow the
+     claim to that part and say why the rest cannot occur. A claim wider than its proof is
+     false on landing, which "True when it lands" forbids. Fixing the reported case alone,
+     with no claim, is the whack-a-mole this rule exists to stop.
+  3. **Say how the happy path got in.** Name the check that could have caught it and why none
+     did. That answer is often the change most worth making.
+
+**How a PR says which.** The PR template's **Change kind** section holds one line,
+`Change-Kind: story` or `Change-Kind: defect`. PRs squash-merge with their body, so the line
+lands in the commit, and `git log --grep "Change-Kind: defect"` lists every promise that broke
+and the claim each one now makes. The commit type usually agrees (`feat` or `refactor` for a
+story, `fix` for a defect), but the line is the record. A change that is both is two PRs. PRs
+a workflow opens with a fixed body are exempt, as they are from **Superseded**. Review enforces
+this today (`REVIEW.md`, "Change kind: a defect PR proves its claim"). A `pr.yml` check that
+requires the line is mechanical; not yet a rule.
+
 ## Cold-start footguns worth not re-discovering
 
 These bite during ordinary implementation work, **before any PR exists** — read this at the

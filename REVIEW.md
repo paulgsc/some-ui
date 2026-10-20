@@ -69,6 +69,28 @@ No finding when the PR body's **Superseded** section names the existing code and
 both must exist. Whether that reason holds is for a person to judge. PRs a workflow opens with a
 fixed body (release, Changesets and snapshot PRs) carry generated content and are exempt.
 
+## Change kind: a defect PR proves its claim
+
+Every PR body has a **Change kind** section with `Change-Kind: story` or
+`Change-Kind: defect` (`CLAUDE.md`, "Two kinds of pull request"). Each of the following is a
+**blocking** finding:
+
+1. **No line, or a wrong one.** A body without either line. A `story` PR whose diff makes code
+   handle a state its story already covered, such as a missing guard, a race, or a host it
+   failed on, is a defect and must say so.
+2. **A defect with no promise.** A `defect` PR that declares no promise with an ID, Claim,
+   Family and Proof, or whose Family is only the reported case without saying why the rest of
+   the family cannot occur.
+3. **A claim wider than its proof.** A Proof that does not reach every member of the Family it
+   names. For example, a test of one interleaving offered for "every order of stop and
+   resume", or a fix on one host for a claim about all of them.
+4. **No account of the happy path.** A `defect` PR that does not say which check could have
+   caught the failure and why none did.
+
+A `story` PR has nothing to prove: do not ask it for a claim, a family or a proof. A promise
+declared as a gray-area invariant is also reviewed under "Reviewing a change that declares or
+edits an invariant" above. PRs a workflow opens with a fixed body are exempt.
+
 ## The phone is Android only
 
 No finding whose failure reproduces only on iOS, iPadOS or Safari: those platforms are not
