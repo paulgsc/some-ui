@@ -32,7 +32,8 @@ apply to any agent working here, not only Claude.
   Claim, Family, Proof) or names only the reported case as its family; its proof misses a
   dimension of the family it names; its failing state lies in a declared promise's family
   or scope with no `Relates:` naming it; or it does not say which check could have caught
-  the failure. Ask a `story` PR to prove nothing.
+  the failure. Ask a `story` PR to prove nothing. Issues are labelled `kind:story` or
+  `kind:defect` the same way.
 - **The phone is Android only.** No finding that reproduces only on iOS, iPadOS or
   Safari. A hunk that adds code, a test, a fallback or a comment for them is blocking.
 

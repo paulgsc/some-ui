@@ -465,7 +465,8 @@ or comment. A gray-area promise is placed as invariants are (above).
    For Breaks and Widens, that means why the earlier PR missed this state.
 
 **The record.** PRs squash-merge with their branch's commit messages
-(`squash_merge_commit_message: COMMIT_MESSAGES`), so the record lives in commit trailers:
+(`squash_merge_commit_message: COMMIT_MESSAGES`), so the record lives in commit trailers, in
+each message's final paragraph beside `Co-Authored-By:`:
 
 ```
 Change-Kind: defect
@@ -473,14 +474,26 @@ Promise: SS2
 Relates: SS1 widens
 ```
 
-`Change-Kind: story` or `Change-Kind: defect` goes on every commit. Merge and revert commits
-are exempt. `.commitlintrc.json` rejects a commit with no `Change-Kind` trailer, and review
-checks its value. A defect commit adds `Promise:` and, for Breaks or Widens, `Relates:`. `git
-log --grep "Change-Kind: defect"` then lists every promise that broke, and the `Relates` links
-show, for each one, which earlier promises should have held it. A change that is both a story
-and a defect is two PRs. Commits a workflow or a bot writes carry generated messages and
-are exempt, as their PRs are from **Superseded**. Review enforces the rest (`REVIEW.md`,
-"Change kind: a defect PR proves its claim").
+Every commit carries `Change-Kind: story` or `Change-Kind: defect`. `.commitlintrc.json`
+rejects a commit without it, or with it anywhere but the final paragraph, and review checks
+the value. Merge and revert commits are exempt, and so are commits a bot or a workflow writes:
+a person's or an agent's commit on a bot's PR carries its own trailer. Keeping up with a
+dependency (a renamed export, a changed default) is a story: no promise changed. A defect
+commit adds `Promise:` and, for Breaks or Widens, `Relates:`. A change that is both a story
+and a defect is two PRs.
+
+Query the trailers line by line, so prose that mentions one does not match:
+`git log -E --grep '^Change-Kind: defect$'` lists every promise that broke, and its `Relates`
+lines show which earlier promises should have held it. The share of defect commits over time
+is the churn signal: stories mean the product is moving, and a run of defects that relate to
+one another means patches are chasing a promise nobody has stated.
+
+**Issues carry the kind too.** Whoever files an issue, a person, an agent or the reflection
+routine, labels it `kind:story` or `kind:defect`. The existing `story` and `epic` labels say
+how big the work is, and the `kind:` label says whether a promise broke. A defect issue names
+the failing state and the promise it suspects, if one is declared. When choosing what to work
+on next, `kind:defect` issues come first. Review enforces the rest (`REVIEW.md`, "Change kind:
+a defect PR proves its claim").
 
 ## Cold-start footguns worth not re-discovering
 

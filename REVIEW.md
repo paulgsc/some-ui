@@ -91,7 +91,8 @@ request"). Each of the following is a **blocking** finding:
 
 A `story` PR has nothing to prove: do not ask it for a claim, a family or a proof. A promise
 declared as a gray-area invariant is also reviewed under "Reviewing a change that declares or
-edits an invariant" above. Commits a workflow or a bot writes are exempt.
+edits an invariant" above. Commits a workflow or a bot writes are exempt. A person's or an
+agent's commit on a bot's PR is not.
 
 ## The phone is Android only
 
