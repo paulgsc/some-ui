@@ -17,7 +17,8 @@
  * Phone-only: rendered only in the device build, so no other profile ships it
  * (`build.paths.ts`).
  */
-import { extensionOf } from "@some-ui/core-utils"
+import { extensionOf, localStorageOrNull } from "@some-ui/core-utils"
+import type { SessionSummary } from "@some-ui/leetype"
 import type { Soundbite, SoundbiteStore } from "@some-ui/soundbites"
 import type { LensRecordExport, PracticeRecord } from "@some-ui/topik"
 
@@ -66,6 +67,12 @@ const LENS_TAKES =
 const LEETYPE_ANSWERS =
   "`leetypeAnswers` are the learner's spoken answers in LeetType's phone sessions (Def. 9.5 of docs/canon/complexity-witness-canon.typ), newest first: for each, the session file and its record screen (`file`, `screen`), the one-sentence `prompt`, the `rubric` shown only after answering, the points the learner ticked (`ticks`: their own reading of it, never a grade), and either the take's audio as the file named in `audio` (null: no take, or its audio could not be read) or, where they could not speak, the `typed` answer. `leetypeTakes` lists every take kept, with or without an answer noted (the app closed before the ticks). At most 40 of each are kept on the phone, each take at most 60 seconds; once the learner confirms this file arrived, they leave the phone, so this file is their only copy. The weekly review reads them: what the learner can now explain, what they still cannot, and which readings to place. Null means the app could not read them."
 
+const LEETYPE_SESSIONS =
+  '`leetypeSessions` says how each LeetType session went, in the order they started, derived from the phone\'s session log (Prop. 9.4 of docs/canon/complexity-witness-canon.typ) and carrying none of its events: the log itself goes to the home server, not here. For each: the session file (`file`), the `form` (full, or short: one incident and its take), when it started, how it `ended` ("declared": it reached its end; "left": the learner left at a round boundary; null: neither yet), each round\'s first `picked` answer (correct, incorrect or abstained), whether that was a struggle (`struggled`: not correct, or slow), the reading `placed` for it after a struggle and what was done with that reading (`reading`: opened, saved, read, skipped), the return\'s answer (`returned`), and whether the round ended `solved`, and each spoken answer (`spoken`: passed, recorded or typed, and `strong` when its ticks reached what the screen asks). Null means the app could not read the log.'
+
+const LEETYPE_ROUND_LEDGER =
+  "`leetypeRoundLedger` is what an earlier build kept about Def. 1.7 rounds (the round ledger, retired with those rounds in some-ui #1941), exactly as stored and still on the phone so that it is not lost; null when the phone holds none or could not read it."
+
 const STOPS =
   '`stops` are the times a session was stopped before its end, each with when (`stoppedAt`), how far in (`elapsedMs` of `plannedMs`, in `scene`), `via` a tap on "Got to go" or leaving (`left`: the app went to the background, or Android\'s back button or a link in the app closed the session\'s screen), the optional `reason` (`legend` reads it) and where it was given (`reasonFrom`), and `outcome` (open, resumed, done or lapsed, as of `settledAt`). Not every departure is a stop: one the learner was back from within a minute (a glance), and a tap taken back before leaving ("Oops, keep going"), are deleted, and `paths` counts them instead. Only the newest 20 stops are kept, so an older session can show none.'
 
@@ -85,6 +92,8 @@ const ABOUT = [
   GRAMMAR_LENS,
   LENS_TAKES,
   LEETYPE_ANSWERS,
+  LEETYPE_SESSIONS,
+  LEETYPE_ROUND_LEDGER,
 ].join("\n")
 
 const ABOUT_REFLECTIONS = [
@@ -262,6 +271,38 @@ async function leetypeTakes(): Promise<Awaited<
     return await leetypeTakesForExport()
   } catch {
     return null
+  }
+}
+
+/** How each LeetType session went, from the phone's session log; null if unreadable. */
+async function leetypeSessions(): Promise<Array<SessionSummary> | null> {
+  try {
+    const { createSessionLogStore, summariesOf } = await import(
+      "@some-ui/leetype"
+    )
+    const store = createSessionLogStore()
+    return store.readOnly ? null : summariesOf(store.getSnapshot().log)
+  } catch {
+    return null
+  }
+}
+
+/** The retired round ledger's stored value, as stored, so it is not lost (#1941). */
+const ROUND_LEDGER_KEY = "leetype:ledger"
+
+function leetypeRoundLedger(): unknown {
+  let raw: string | null
+  try {
+    raw = localStorageOrNull()?.getItem(ROUND_LEDGER_KEY) ?? null
+  } catch {
+    return null
+  }
+  if (raw === null) return null
+  try {
+    const stored: unknown = JSON.parse(raw)
+    return stored
+  } catch {
+    return raw
   }
 }
 
@@ -512,6 +553,8 @@ export async function shareAgentExport(
           ...take,
           audio: leetypeAudio.get(take.id) ?? null,
         })) ?? null,
+      leetypeSessions: await leetypeSessions(),
+      leetypeRoundLedger: leetypeRoundLedger(),
       // `file: null`: its audio could not be read (removed since listed).
       soundbites: bites.map((bite) => ({
         ...bite,

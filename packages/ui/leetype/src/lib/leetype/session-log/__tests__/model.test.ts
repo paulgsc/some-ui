@@ -6,6 +6,7 @@ import {
   append,
   ledgerOf,
   SessionEventSchema,
+  summariesOf,
 } from "@leetype/lib/leetype/session-log/model"
 import { describe, expect, it } from "vitest"
 
@@ -251,5 +252,89 @@ describe("ledgerOf", () => {
       "one.json",
       "two.json",
     ])
+  })
+})
+
+describe("summariesOf", () => {
+  it("says how each session went, round by round, without its events", () => {
+    const log = logOf([
+      ...aSession("a"),
+      { ...returned("a", "correct"), at: "2026-10-18T21:00:00.000Z" },
+    ])
+    expect(summariesOf(log)).toEqual([
+      {
+        session: "a",
+        file: "thread-1.json",
+        form: "short",
+        startedAt: log[0]?.at,
+        ended: "left",
+        rounds: [
+          {
+            file: "thread-1.json",
+            screen: "r1",
+            picked: "incorrect",
+            struggled: true,
+            placed: "p1",
+            reading: ["saved"],
+            returned: "correct",
+            solved: true,
+          },
+        ],
+        spoken: [
+          {
+            file: "thread-1.json",
+            screen: "s1",
+            as: "recorded",
+            strong: false,
+          },
+        ],
+      },
+    ])
+  })
+
+  it("counts a slow pick as a struggle, and a slow return as not solving it", () => {
+    const [started, picked] = aSession("b")
+    if (started === undefined || picked?.type !== "picked") {
+      throw new Error("a session starts and picks")
+    }
+    const log = logOf([
+      started,
+      { ...picked, answer: { response: "correct", slow: true } },
+      placed("b", "g1", "placement"),
+      returned("b", "correct", true),
+    ])
+    const [round] = summariesOf(log)[0]?.rounds ?? []
+    expect(round).toMatchObject({
+      picked: "correct",
+      struggled: true,
+      placed: "g1",
+      reading: [],
+      returned: "correct",
+      solved: false,
+    })
+  })
+
+  it("leaves a pointer out of the funnel and keeps each session apart", () => {
+    const [startedA, pickedA] = aSession("c")
+    const [startedB] = aSession("d")
+    if (
+      startedA === undefined ||
+      startedB === undefined ||
+      pickedA?.type !== "picked"
+    ) {
+      throw new Error("sessions start and pick")
+    }
+    const log = logOf([
+      startedA,
+      { ...pickedA, answer: { response: "correct", slow: false } },
+      placed("c", "p1", "pointer"),
+      startedB,
+    ])
+    const [c, d] = summariesOf(log)
+    expect(c?.rounds).toEqual([
+      expect.objectContaining({ solved: true, placed: null, reading: [] }),
+    ])
+    expect(c?.ended).toBeNull()
+    expect(d).toMatchObject({ session: "d", rounds: [], spoken: [] })
   })
 })

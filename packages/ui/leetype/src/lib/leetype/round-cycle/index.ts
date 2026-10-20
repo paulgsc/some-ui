@@ -328,7 +328,7 @@ export function nextRoundCycleState(
 /**
  * Def. 8.2 case 2's precondition, checked at corpus level:
  * `explanationPropositionId` must resolve to an *active* register entry
- * (retired is not available, as in `roundProbeOf`). Rem. 7.2's amendment
+ * (retired is not available). Rem. 7.2's amendment
  * protocol should guarantee this; a dangling or retired id leaves Def. 8.2's
  * second question with nothing to pose. An unrescuable diff itself is not a
  * defect (Rem. 8.2).

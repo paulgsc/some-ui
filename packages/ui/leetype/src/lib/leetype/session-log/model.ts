@@ -1,3 +1,4 @@
+import { assertNever } from "@some-ui/core-utils"
 import { z } from "zod"
 
 /**
@@ -217,4 +218,142 @@ export function ledgerOf(log: SessionLog, session: string): SessionLedger {
     saved: [...saved.values()],
     spoken,
   }
+}
+
+type Response = z.infer<typeof AnswerSchema>["response"]
+
+/**
+ * One round's funnel in one session (Prop. 9.4): the first pick, the
+ * reading placed after a struggle and what was done with it, the return
+ * played, and whether the round ended solved, a correct and unhurried pick
+ * or return.
+ */
+type RoundSummary = OnFile & {
+  readonly picked: Response
+  readonly struggled: boolean
+  readonly placed: string | null
+  readonly reading: ReadonlyArray<"opened" | "saved" | "read" | "skipped">
+  readonly returned: Response | null
+  readonly solved: boolean
+}
+
+/**
+ * How one session went, derived from its events and carrying none of them,
+ * for a reader outside the phone's record (`apps/www`'s study-context
+ * export, some-ui #1923): the record itself stays in the log.
+ */
+export type SessionSummary = {
+  readonly session: string
+  readonly file: string
+  readonly form: "full" | "short"
+  readonly startedAt: string
+  readonly ended: "declared" | "left" | null
+  readonly rounds: ReadonlyArray<RoundSummary>
+  readonly spoken: ReadonlyArray<
+    OnFile & {
+      readonly as: "passed" | "recorded" | "typed"
+      readonly strong: boolean
+    }
+  >
+}
+
+const unhurried = (answer: z.infer<typeof AnswerSchema>): boolean =>
+  answer.response === "correct" && !answer.slow
+
+/** Every started session's summary, in the order the log holds them. */
+export function summariesOf(log: SessionLog): Array<SessionSummary> {
+  const summaries: Array<SessionSummary> = []
+  for (const start of log) {
+    if (start.type !== "started") continue
+    const events = log.filter((event) => event.session === start.session)
+    const rounds = new Map<string, RoundSummary>()
+    const placedFor = new Map<string, string>()
+    const actions = new Map<string, Array<RoundSummary["reading"][number]>>()
+    const spoken: Array<SessionSummary["spoken"][number]> = []
+    let ended: SessionSummary["ended"] = null
+    for (const event of events) {
+      switch (event.type) {
+        case "picked": {
+          const key = keyOf(event.file, event.screen)
+          if (rounds.has(key)) break
+          const struggled = !unhurried(event.answer)
+          rounds.set(key, {
+            file: event.file,
+            screen: event.screen,
+            picked: event.answer.response,
+            struggled,
+            placed: null,
+            reading: [],
+            returned: null,
+            solved: !struggled,
+          })
+          break
+        }
+        case "placed": {
+          if (event.as === "placement") {
+            placedFor.set(keyOf(event.file, event.screen), event.reading)
+          }
+          break
+        }
+        case "reading": {
+          const key = keyOf(event.file, event.reading)
+          actions.set(key, [...(actions.get(key) ?? []), event.action])
+          break
+        }
+        case "returned": {
+          const key = keyOf(event.file, event.screen)
+          const round = rounds.get(key)
+          if (round === undefined) break
+          rounds.set(key, {
+            ...round,
+            returned: event.answer.response,
+            solved: round.solved || unhurried(event.answer),
+          })
+          break
+        }
+        case "spoken": {
+          const { file, screen, answer } = event
+          spoken.push({
+            file,
+            screen,
+            as: answer.as,
+            strong: answer.as !== "passed" && answer.strong,
+          })
+          break
+        }
+        case "ended": {
+          ended = event.how
+          break
+        }
+        case "started":
+        case "parked":
+        case "confirmation-taken": {
+          break
+        }
+        default: {
+          assertNever(event)
+        }
+      }
+    }
+    summaries.push({
+      session: start.session,
+      file: start.file,
+      form: start.form,
+      startedAt: start.at,
+      ended,
+      rounds: [...rounds].map(([key, round]) => {
+        const placed = placedFor.get(key) ?? null
+        return {
+          ...round,
+          placed,
+          reading:
+            placed === null
+              ? []
+              : (actions.get(keyOf(round.file, placed)) ?? []),
+        }
+      }),
+      spoken,
+    })
+  }
+  return summaries
 }

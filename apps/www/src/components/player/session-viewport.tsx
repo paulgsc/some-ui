@@ -6,6 +6,8 @@ import { useIsMobile } from "@some-ui/react-hooks"
 import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 
 import { useAuthority } from "@/lib/authority"
+import { VIEWER_BUILD } from "@/lib/data-mode"
+import { viewerSessionFiles } from "@/lib/demo/leetype-sample"
 import { AmbientIntentStatus } from "@/lib/intent/render"
 import { phoneSessionFiles } from "@/lib/leetype-files"
 import { phoneSpokenTakes } from "@/lib/leetype-takes"
@@ -44,6 +46,8 @@ const PHONE_SCENE_VOICE = ON_PHONE ? phoneSceneVoice() : undefined
 const PHONE_LENS_TAKES = ON_PHONE ? phoneLensTakes() : undefined
 const PHONE_SPOKEN_TAKES = ON_PHONE ? phoneSpokenTakes() : undefined
 const PHONE_SESSION_FILES = ON_PHONE ? phoneSessionFiles() : undefined
+/** A viewer plays Thread 1's first session from memory (`lib/demo`). */
+const VIEWER_SESSION_FILES = VIEWER_BUILD ? viewerSessionFiles() : undefined
 
 /** What the player renders: the bound panels, and a note for a web one. */
 const PLAYER_PANELS = withWebOnlyNotes(PANELS, WEB_PANEL_KEYS)
@@ -108,7 +112,7 @@ export const SessionViewport = ({
   // them.
   //
   // `leetype`: the phone plays session files picked from storage (canon
-  // Rem. 11.7) and a wide window gets the typing surface, chosen inside the
+  // Rem. 11.7), a viewer a sample held in memory, and a wide window gets the typing surface, chosen inside the
   // package; no `surface` prop here, since the registry contract is
   // render-with-no-props.
   // Built through `defineSceneProps` so a misspelled registry key is caught.
@@ -137,12 +141,12 @@ export const SessionViewport = ({
           takes: PHONE_SPOKEN_TAKES,
           // Read at render, as topik's hints are.
           sessionFiles:
-            PHONE_SESSION_FILES === undefined
-              ? undefined
-              : {
+            PHONE_SESSION_FILES !== undefined
+              ? {
                   store: PHONE_SESSION_FILES,
                   hint: lookIn("leetype-session"),
-                },
+                }
+              : VIEWER_SESSION_FILES && { store: VIEWER_SESSION_FILES },
         },
       }),
     [shelves, paused]

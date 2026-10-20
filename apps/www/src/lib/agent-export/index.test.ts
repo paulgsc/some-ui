@@ -347,6 +347,28 @@ describe("shareAgentExport", () => {
     seedStop(stopRecord(0, { reason: "focus", outcome: "done" }))
     storeEffect({ kind: "count", sessionId: "s1-0000000000", path: "opens" })
     storeEffect({ kind: "count", sessionId: "gone-session", path: "glances" })
+    const { createSessionLogStore } = await import("@some-ui/leetype")
+    const log = createSessionLogStore()
+    const stamp = { session: "lt-1", at: "2026-10-10T10:00:00.000Z" }
+    log.append({
+      ...stamp,
+      id: "lt-e1",
+      type: "started",
+      file: "t1-01",
+      form: "full",
+      declaredMinutes: 10,
+    })
+    log.append({
+      ...stamp,
+      id: "lt-e2",
+      type: "picked",
+      file: "t1-01",
+      screen: "r1",
+      option: "Reply only after fsync",
+      ms: 8000,
+      answer: { response: "correct", slow: false },
+    })
+    localStorage.setItem("leetype:ledger", '{"v":3,"rounds":[]}')
 
     const result = await shareAgentExport(soundbites, NOW)
     const { sent } = result
@@ -403,8 +425,19 @@ describe("shareAgentExport", () => {
       leetypeTakes: [
         { id: "lt-take-1111", audio: "leetype-take-t1-01-s15-lt-take-.webm" },
       ],
+      // How each session went, and none of its events (#1923).
+      leetypeSessions: [
+        {
+          session: "lt-1",
+          file: "t1-01",
+          ended: null,
+          rounds: [{ screen: "r1", picked: "correct", solved: true }],
+        },
+      ],
+      leetypeRoundLedger: { v: 3, rounds: [] },
       soundbites: [{ id: "b1", file: "soundbite-b1.webm" }],
     })
+    expect(context).not.toHaveProperty(["leetypeSessions", 0, "events"])
     expect(context).not.toHaveProperty(["sessions", 0, "scenes"])
     expect(sent).toEqual(["t2", "v1", "t1"])
     expect(result.soundbites).toEqual(["b1"])
@@ -439,6 +472,9 @@ describe("shareAgentExport", () => {
     reflections.letGo(["v1", "t1", "t2"])
     const result = await shareAgentExport(soundbites, NOW)
     expect(result).toMatchObject({ sent: [], soundbites: ["b1"] })
+    expect(
+      JSON.parse(written.get("agent-export/context.json") ?? "null")
+    ).toMatchObject({ leetypeSessions: [], leetypeRoundLedger: null })
 
     const remove = vi.fn(() => Promise.reject(new Error("busy")))
     // A refused remove is swallowed: vitest fails the run on an unhandled one.

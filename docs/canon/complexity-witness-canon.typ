@@ -81,7 +81,7 @@
     `packages/some-content/prompts/leetype-exercise-generator` · `pedagogy/`
   ]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.2 --- 2026-10-18]
+  #text(size: 9.5pt)[Version 1.3 --- 2026-10-20]
   #v(2cm)
 ]
 
@@ -1761,6 +1761,29 @@ superseded and kept.
   - Nothing in v1.2 governs the wide typing surface.
 ]
 
+#remark("11.8", name: "Rem. 11.6's round-surface artifacts are retired, and Rem. 7.1's check reaches `M` and `A`")[
+  Amends Rem. 11.6 and Rem. 7.4, which are retained as filed.
+
+  - Rem. 11.6 named the artifacts that carried §6 and §9 on the phone:
+    `roundProbeOf` in `lib/leetype/round-probe`, `READING_OPTION_COUNT` in
+    `lib/leetype/reading-probe`, and `DiffCard`, `RoundChoices` and
+    `RoundFeedback`. `#1941` removed all of them with `RoundSession`, as
+    Rem. 11.7's first consequence asks, so no surface plays a Def. 1.7 round.
+    §6, §9 and every `CW-P` entry stand as filed and still govern Def. 1.7
+    rounds, which the round CRM still authors; on the phone, Axiom 9.2's
+    mechanism is `components/incident`'s round screen, which commits and
+    reveals on one tap.
+  - Rem. 7.4's last sentence called Rem. 7.1's citation check over `M` and
+    `A` mechanical and not yet a rule. Since `#1942` it is one:
+    `lib/leetype/session-file`'s lint resolves every `rule` and `applies`
+    against the generated Rem. 7.4 register (`unregistered-rule`), reports a
+    round with no `rule` (`round-without-rule`) and a correct option applying
+    another entry (`correct-applies-other-rule`), and
+    `lint:session-file --corpus` fails on Rem. 10.3 (5)'s gaps.
+
+  Evidence: the code (Amendment protocol, fourth rule).
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = Falsifiers
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1937,6 +1960,13 @@ rounds.
 
 Prop. 9.4 (d) and Rem. 9.5 are the one condition the plan did not state; it
 is recorded here rather than left for a surface to discover.
+
+*v1.3 --- 2026-10-20.* Rem. 11.8 retires the round-surface artifacts
+Rem. 11.6 named (`roundProbeOf`, `READING_OPTION_COUNT`, `DiffCard`,
+`RoundChoices`, `RoundFeedback`), removed with `RoundSession` in `#1941`, and
+records that Rem. 7.1's citation check over `M` and `A`, which Rem. 7.4 left
+"not yet a rule", is the session-file lint of `#1942`. No Definition, Axiom,
+Theorem, `CW-P`, `M` or `A` entry changes.
 
 #pagebreak()
 
