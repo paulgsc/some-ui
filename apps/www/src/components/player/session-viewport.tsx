@@ -46,9 +46,8 @@ const PHONE_LENS_TAKES = ON_PHONE ? phoneLensTakes() : undefined
 const PHONE_SPOKEN_TAKES = ON_PHONE ? phoneSpokenTakes() : undefined
 const PHONE_SESSION_FILES = ON_PHONE ? phoneSessionFiles() : undefined
 /**
- * A viewer plays Thread 1's first session from memory (`lib/demo`). The flag
- * is read here, not through `VIEWER_BUILD`, so other builds fold the branch
- * before chunking and emit no sample chunk (`check:bundle-paths`).
+ * The flag is read here, not through `VIEWER_BUILD`, so other builds fold
+ * the branch before chunking and ship no sample.
  */
 const VIEWER_SESSION_FILES =
   import.meta.env.VITE_STATIC_DATA === "true" ? viewerSessionFiles() : undefined
@@ -116,7 +115,7 @@ export const SessionViewport = ({
   // them.
   //
   // `leetype`: the phone plays session files picked from storage (canon
-  // Rem. 11.7), a viewer a sample held in memory, and a wide window gets the typing surface, chosen inside the
+  // Rem. 11.7), a viewer a sample (`lib/demo`), and a wide window gets the typing surface, chosen inside the
   // package; no `surface` prop here, since the registry contract is
   // render-with-no-props.
   // Built through `defineSceneProps` so a misspelled registry key is caught.
@@ -150,7 +149,10 @@ export const SessionViewport = ({
                   store: PHONE_SESSION_FILES,
                   hint: lookIn("leetype-session"),
                 }
-              : VIEWER_SESSION_FILES && { store: VIEWER_SESSION_FILES },
+              : VIEWER_SESSION_FILES && {
+                  store: VIEWER_SESSION_FILES,
+                  samples: true,
+                },
         },
       }),
     [shelves, paused]

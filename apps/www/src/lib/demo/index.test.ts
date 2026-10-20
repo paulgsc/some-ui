@@ -67,7 +67,7 @@ describe("the viewer's storage", () => {
 })
 
 describe("viewerSessionFiles", () => {
-  it("holds Thread 1's first session, which parses and passes the content lint", async () => {
+  it("holds Thread 1's first session, which the phone's own intake reads clean", async () => {
     const store = viewerSessionFiles()
     const [sample] = await store.list()
     expect(sample.name).toBe(SAMPLE_SESSION_NAME)
@@ -76,25 +76,19 @@ describe("viewerSessionFiles", () => {
     expect(intake).toMatchObject({
       ok: true,
       name: SAMPLE_SESSION_NAME,
-      file: { title: sample.title },
+      file: { title: sample.title, oneLine: sample.oneLine },
       findings: [],
     })
   })
 
-  it("keeps what the viewer picks in memory only, and refuses other bytes under a held name", async () => {
-    const at = new Date("2026-10-20T00:00:00.000Z")
-    const picked = { name: "mine", title: "Mine", oneLine: "One.", body: "{}" }
+  it("takes no picks: a viewer's samples are all it holds", async () => {
     const store = viewerSessionFiles()
-    expect(await store.keep(picked, at)).toBe("kept")
-    expect(await store.keep(picked, at)).toBe("already-held")
-    expect(await store.keep({ ...picked, body: "[]" }, at)).toBe("name-taken")
-    expect(await store.keep({ ...picked, name: SAMPLE_SESSION_NAME }, at)).toBe(
-      "name-taken"
-    )
-    expect((await store.list()).map((file) => file.name)).toEqual([
-      SAMPLE_SESSION_NAME,
-      "mine",
-    ])
-    expect(await viewerSessionFiles().read("mine")).toBeNull()
+    await expect(
+      store.keep(
+        { name: "mine", title: "Mine", oneLine: "One.", body: "{}" },
+        new Date("2026-10-20T00:00:00.000Z")
+      )
+    ).rejects.toThrow()
+    expect(await store.read("mine")).toBeNull()
   })
 })

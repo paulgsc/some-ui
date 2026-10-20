@@ -274,12 +274,13 @@ describe("summariesOf", () => {
             screen: "r1",
             picked: "incorrect",
             struggled: true,
-            placed: "p1",
-            reading: ["saved"],
-            returned: "correct",
+            placed: ["p1"],
+            reading: [{ reading: "p1", action: "saved" }],
+            returned: [{ response: "correct", slow: false }],
             solved: true,
           },
         ],
+        replays: [],
         spoken: [
           {
             file: "thread-1.json",
@@ -303,20 +304,20 @@ describe("summariesOf", () => {
       placed("b", "g1", "placement"),
       returned("b", "correct", true),
     ])
-    const [round] = summariesOf(log)[0]?.rounds ?? []
-    expect(round).toMatchObject({
-      picked: "correct",
-      struggled: true,
-      placed: "g1",
-      reading: [],
-      returned: "correct",
-      solved: false,
-    })
+    expect(summariesOf(log)[0]?.rounds).toEqual([
+      expect.objectContaining({
+        picked: "correct",
+        struggled: true,
+        placed: ["g1"],
+        returned: [{ response: "correct", slow: true }],
+        solved: false,
+      }),
+    ])
   })
 
-  it("leaves a pointer out of the funnel and keeps each session apart", () => {
+  it("keeps a round's funnel with the session that first picked it, whatever later sessions do", () => {
     const [startedA, pickedA] = aSession("c")
-    const [startedB] = aSession("d")
+    const [startedB] = aSession("d", "thread-2.json")
     if (
       startedA === undefined ||
       startedB === undefined ||
@@ -326,15 +327,90 @@ describe("summariesOf", () => {
     }
     const log = logOf([
       startedA,
-      { ...pickedA, answer: { response: "correct", slow: false } },
-      placed("c", "p1", "pointer"),
+      pickedA,
+      placed("c", "p1", "placement"),
+      {
+        ...stamp("c"),
+        file: "thread-1.json",
+        type: "reading",
+        reading: "p1",
+        action: "saved",
+      },
       startedB,
+      {
+        ...stamp("d"),
+        file: "thread-1.json",
+        type: "reading",
+        reading: "p1",
+        action: "read",
+      },
+      returned("d", "correct"),
+      {
+        ...pickedA,
+        ...stamp("d"),
+        answer: { response: "correct", slow: false },
+      },
     ])
     const [c, d] = summariesOf(log)
     expect(c?.rounds).toEqual([
-      expect.objectContaining({ solved: true, placed: null, reading: [] }),
+      expect.objectContaining({
+        screen: "r1",
+        reading: [
+          { reading: "p1", action: "saved" },
+          { reading: "p1", action: "read" },
+        ],
+        returned: [{ response: "correct", slow: false }],
+        solved: true,
+      }),
     ])
-    expect(c?.ended).toBeNull()
-    expect(d).toMatchObject({ session: "d", rounds: [], spoken: [] })
+    expect(d).toMatchObject({
+      session: "d",
+      rounds: [],
+      replays: [{ file: "thread-1.json", screen: "r1", picked: "correct" }],
+    })
+  })
+
+  it("gives a reading's actions to the round its latest placement was for, and none to a pointer", () => {
+    const [started, picked] = aSession("e")
+    if (started === undefined || picked?.type !== "picked") {
+      throw new Error("a session starts and picks")
+    }
+    const on = (screen: string): { file: string; screen: string } => ({
+      file: "thread-1.json",
+      screen,
+    })
+    const read = (action: "opened" | "skipped"): SessionEvent => ({
+      ...stamp("e"),
+      file: "thread-1.json",
+      type: "reading",
+      reading: "p1",
+      action,
+    })
+    const log = logOf([
+      started,
+      { ...picked, ...on("r1"), answer: { response: "correct", slow: false } },
+      { ...placed("e", "p1", "pointer"), ...on("r1") },
+      read("opened"),
+      { ...picked, ...stamp("e"), ...on("r2") },
+      { ...placed("e", "p1", "placement"), ...on("r2") },
+      read("skipped"),
+      { ...picked, ...stamp("e"), ...on("r3") },
+      { ...placed("e", "p1", "placement"), ...on("r3") },
+    ])
+    expect(
+      summariesOf(log)[0]?.rounds.map(({ screen, placed: p, reading }) => ({
+        screen,
+        placed: p,
+        reading,
+      }))
+    ).toEqual([
+      { screen: "r1", placed: [], reading: [] },
+      {
+        screen: "r2",
+        placed: ["p1"],
+        reading: [{ reading: "p1", action: "skipped" }],
+      },
+      { screen: "r3", placed: ["p1"], reading: [] },
+    ])
   })
 })

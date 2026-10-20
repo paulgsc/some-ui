@@ -15,6 +15,11 @@ type SessionFilePickerProps = {
   store: SessionFileStore
   /** Where the file waits, as the host words it ("In Drive, look in …"). */
   hint?: string
+  /**
+   * The store holds samples a viewer plays and nothing else: no picking,
+   * and the list says what it is.
+   */
+  samples?: boolean
   /** A held file the learner chose to play. */
   onPlay: (opened: OpenedSessionFile) => void
   className?: string
@@ -57,6 +62,7 @@ function statusOf(pick: PickState): string | null {
 export const SessionFilePicker: FC<SessionFilePickerProps> = ({
   store,
   hint,
+  samples = false,
   onPlay,
   className,
 }) => {
@@ -90,20 +96,28 @@ export const SessionFilePicker: FC<SessionFilePickerProps> = ({
       data-scroll-intent="reading-page"
       className={cn(card, className)}
     >
-      <Button asChild variant="outline" size="sm" className="self-start">
-        <label className="cursor-pointer">
-          <FolderOpen aria-hidden />
-          Add a session from storage
-          <input
-            type="file"
-            accept="application/json,.json"
-            className="sr-only"
-            onChange={onPick}
-          />
-        </label>
-      </Button>
-      {hint !== undefined && (
-        <span className="text-xs text-muted-foreground">{hint}</span>
+      {samples ? (
+        <p className="text-pretty text-sm text-muted-foreground">
+          A sample session to try. Nothing you do in it is kept once you reload.
+        </p>
+      ) : (
+        <>
+          <Button asChild variant="outline" size="sm" className="self-start">
+            <label className="cursor-pointer">
+              <FolderOpen aria-hidden />
+              Add a session from storage
+              <input
+                type="file"
+                accept="application/json,.json"
+                className="sr-only"
+                onChange={onPick}
+              />
+            </label>
+          </Button>
+          {hint !== undefined && (
+            <span className="text-xs text-muted-foreground">{hint}</span>
+          )}
+        </>
       )}
       {status !== null && (
         <p
@@ -136,7 +150,10 @@ export const SessionFilePicker: FC<SessionFilePickerProps> = ({
         </p>
       )}
       {held.kind === "ready" && held.files.length > 0 && (
-        <ul aria-label="On this phone" className="flex flex-col gap-1">
+        <ul
+          aria-label={samples ? "Sample sessions" : "On this phone"}
+          className="flex flex-col gap-1"
+        >
           {held.files.map((file) => (
             <li key={file.name}>
               <Button
