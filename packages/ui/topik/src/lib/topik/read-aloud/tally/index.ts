@@ -12,12 +12,13 @@
  * - A stuck report is never kept here (Prop. 6.4 (iii)): no row, count or date
  *   changes with one, so the tally ends the same with the reports withheld.
  *
- * Nothing here trims a row. The one way a row leaves is the learner clearing
- * the tally on purpose, which stores an empty one (`storedTally`).
+ * Nothing here trims a row; the learner clearing the tally on purpose is the
+ * one way a row leaves.
  */
 
 import type { PaceBook } from "@topik/lib/topik/read-aloud/records"
 import type { QueueEntry } from "@topik/lib/topik/read-aloud/set-machine"
+import { own, paceOf } from "@topik/lib/topik/read-aloud/set-machine"
 import { z } from "zod"
 
 export type TallyRow = {
@@ -52,9 +53,8 @@ const TallySchema = z.object({
 
 export const emptyTally = (): Tally => ({})
 
-/** A line's own row: a line id such as `constructor` must not find `Object.prototype`'s. */
 export const rowOf = (tally: Tally, lineId: string): TallyRow | null =>
-  Object.hasOwn(tally, lineId) ? (tally[lineId] ?? null) : null
+  own(tally, lineId) ?? null
 
 /** The tally after `lineId`'s rep began for the first time in its set. */
 export function noteShown(tally: Tally, lineId: string, at: string): Tally {
@@ -97,8 +97,7 @@ export function markOf(
   if (role === "introduction") return null
   if (role === "return") return "seen"
   if (item.kind === "word") {
-    const pace = Object.hasOwn(paces, item.wordId) ? paces[item.wordId] : null
-    return (pace?.seen ?? 0) > 0 ? "seen" : "new"
+    return paceOf(paces, item.wordId).seen > 0 ? "seen" : "new"
   }
   return (rowOf(tally, item.lineId)?.shown ?? 0) > 1 ? "seen" : "new"
 }
@@ -114,7 +113,7 @@ export function tallySince(tally: Tally): string | null {
     : firsts.reduce((a, b) => (Date.parse(a) <= Date.parse(b) ? a : b))
 }
 
-/** What is kept for the tally; null when it is empty, which clears it. */
+/** What is kept for the tally; null when it is empty, which clears what was kept. */
 export function storedTally(tally: Tally): { version: 1; rows: Tally } | null {
   return tallySize(tally) === 0 ? null : { version: 1, rows: tally }
 }

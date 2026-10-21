@@ -30,12 +30,9 @@
  *   sentence is shown when its rep reaches its first step; a return or an
  *   introduction adds nothing (Prop. 6.4 (ii)). It lives in memory, as long
  *   as the sitting's clock, and `start-sitting` clears it.
- * - The tally (Rem. 7.5): the machine tells the host when a sentence's rep
- *   first begins (`note-shown`, once per rep however often a pause or a hidden
- *   page starts it over, and the flag that says so survives storage) and
- *   which sentence a counted rep was. Returns and introductions say nothing,
- *   and neither does a stuck report, so what the host keeps ends the same
- *   with the reports withheld (Prop. 6.4 (ii), (iii)).
+ * - The tally (Rem. 7.5): the host is told when a sentence's rep first begins
+ *   and which sentence a counted rep was. The flag that stops a restart
+ *   telling it twice survives storage.
  * - The sitting (Rem. 4.10): once thirty minutes have passed, nothing new
  *   begins - no rep, no introduction, no summary, no set. What is showing
  *   finishes first; a rep is never cut short by the bound. The set in
@@ -278,10 +275,12 @@ export const currentEntry = (state: SetMachineState): QueueEntry | undefined =>
   state.queue[state.cursor]
 
 /** A record's own entry: a word id such as `constructor` must not find `Object.prototype`'s. */
-const own = <T>(record: Record<string, T>, key: string): T | undefined =>
-  Object.hasOwn(record, key) ? record[key] : undefined
+export const own = <T>(
+  record: Record<string, T>,
+  key: string
+): T | undefined => (Object.hasOwn(record, key) ? record[key] : undefined)
 
-const paceOf = (paces: PaceBook, wordId: string): PaceEntry =>
+export const paceOf = (paces: PaceBook, wordId: string): PaceEntry =>
   own(paces, wordId) ?? { factor: 1, seen: 0 }
 
 const sittingOver = (state: SetMachineState, at: number): boolean =>
@@ -297,10 +296,7 @@ const withShown = (
   return [...state.shown.filter((id) => id !== item.lineId), item.lineId]
 }
 
-/**
- * What a sentence's rep starting for the first time shows the tally; null for
- * a rep already begun, a return, an introduction or a word (Rem. 7.5).
- */
+/** What the tally is told of a sentence's rep starting for the first time. */
 function firstShowing(
   state: SetMachineState,
   { item, role }: QueueEntry

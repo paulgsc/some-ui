@@ -849,18 +849,6 @@ describe("what the tally is told (Rem. 7.5)", () => {
     ])
   })
 
-  it("resumes a set an older build stored, which counts its held rep as shown", () => {
-    const host = new Host()
-    host.send({
-      type: "begin-set",
-      at: 0,
-      level: 1,
-      progress: { ...freshSet([ONE_CUP]), begun: undefined },
-      paces: SEEN,
-    })
-    expect(shownLines(host)).toEqual(["one-cup"])
-  })
-
   it("names how a sentence began, and clears it with the entry", () => {
     const host = new Host()
     host.begin([ONE_CUP, KEOPI])

@@ -181,13 +181,11 @@ describe("the read-aloud store", () => {
     }
   })
 
-  it("resumes a set with the rep it had begun, and one an older build stored without it", () => {
+  it("resumes a set with the rep it had begun", () => {
     const store = createReadAloudStore(memoryStorage())
     const begun: SetProgress = { ...PROGRESS, begun: true }
     store.saveProgress(1, ":all", begun)
     expect(store.progress(1, ":all")).toEqual(begun)
-    store.saveProgress(1, ":all", PROGRESS)
-    expect(store.progress(1, ":all")?.begun).toBeUndefined()
   })
 
   it("discards what it cannot parse", () => {

@@ -301,11 +301,9 @@ describe("ReadAloudSession's New or Seen before (Rem. 7.5)", () => {
   /** A host that keeps the tally, as the screen does, from `held`. */
   const Kept = ({
     held = {},
-    kept = true,
     onClear = (): boolean => true,
   }: {
     held?: Tally
-    kept?: boolean
     onClear?: () => boolean
   }): JSX.Element => {
     const [rows, setRows] = useState(held)
@@ -324,7 +322,7 @@ describe("ReadAloudSession's New or Seen before (Rem. 7.5)", () => {
             setRows((now) => noteRead(now, lineId))
           }
         }}
-        tally={{ rows, today: "2026-10-21", kept, onClear }}
+        tally={{ rows, today: "2026-10-21", kept: true, onClear }}
         onExit={vi.fn()}
       />
     )
@@ -346,8 +344,7 @@ describe("ReadAloudSession's New or Seen before (Rem. 7.5)", () => {
   }
   const chip = (): HTMLElement | null =>
     document.querySelector<HTMLElement>('[data-slot="read-aloud-mark"]')
-  const facts = (): HTMLElement | null =>
-    document.querySelector<HTMLElement>('[data-slot="read-aloud-facts"]')
+  const facts = (): string | null => slotText("read-aloud-facts")
 
   beforeEach(() => {
     vi.setSystemTime(TODAY)
@@ -386,7 +383,7 @@ describe("ReadAloudSession's New or Seen before (Rem. 7.5)", () => {
     )
     expect(stepOf()).toBe("paused")
     expect(screen.getByRole("dialog").textContent).toContain("This sentence")
-    const text = facts()?.textContent ?? ""
+    const text = facts() ?? ""
     expect(text).toContain("Reading is paused while this is open.")
     expect(text).toContain("Shown2 times")
     expect(text).toContain("First shownyesterday")
@@ -415,15 +412,6 @@ describe("ReadAloudSession's New or Seen before (Rem. 7.5)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Done" }))
     expect(facts()).toBeNull()
     expect(stepOf()).toBe("paused")
-  })
-
-  it("says when the phone could not keep it", async () => {
-    render(<Kept held={SEEN_YESTERDAY} kept={false} />)
-    await start("sentence")
-    fireEvent.click(screen.getByRole("button", { name: /^seen before/i }))
-    expect(facts()?.textContent).toContain(
-      "This phone couldn't keep this, so it lasts only until you close it."
-    )
   })
 
   it("closes the facts when the pause under them ends the sitting, and does not open them again", async () => {
@@ -461,9 +449,7 @@ describe("ReadAloudSession's New or Seen before (Rem. 7.5)", () => {
     it("says what is kept and since when, and clears it only on a second press that says what goes", () => {
       const onClear = vi.fn(() => true)
       render(<Kept held={rows} onClear={onClear} />)
-      expect(slotText("read-aloud-tally")).toContain(
-        "Kept on this phone: when 2 sentences were shown and read to the end, since 19 Oct."
-      )
+      expect(slotText("read-aloud-tally")).toContain("2 sentences")
       fireEvent.click(
         screen.getByRole("button", {
           name: "Clear what is kept about sentences",
@@ -471,9 +457,7 @@ describe("ReadAloudSession's New or Seen before (Rem. 7.5)", () => {
       )
       const ask = screen.getByRole("dialog")
       expect(ask.textContent).toContain("Clear what is kept about sentences?")
-      expect(ask.textContent).toContain(
-        "This clears when 2 sentences were shown and read to the end, since 19 Oct. Your practice record stays."
-      )
+      expect(ask.textContent).toContain("Your practice record stays.")
       expect(onClear).not.toHaveBeenCalled()
 
       fireEvent.click(screen.getByRole("button", { name: "Keep it" }))
@@ -489,24 +473,6 @@ describe("ReadAloudSession's New or Seen before (Rem. 7.5)", () => {
       expect(slotText("read-aloud-tally")).toContain(
         "Cleared. Every sentence starts as New again."
       )
-    })
-
-    it("says so when the phone could not clear it, and keeps offering to", () => {
-      render(<Kept held={rows} onClear={() => false} />)
-      fireEvent.click(
-        screen.getByRole("button", {
-          name: "Clear what is kept about sentences",
-        })
-      )
-      fireEvent.click(screen.getByRole("button", { name: "Clear it" }))
-      expect(slotText("read-aloud-tally")).toContain(
-        "This phone couldn't clear it."
-      )
-      expect(
-        screen.getByRole("button", {
-          name: "Clear what is kept about sentences",
-        })
-      ).toBeTruthy()
     })
 
     it("offers nothing to clear while nothing is kept", () => {

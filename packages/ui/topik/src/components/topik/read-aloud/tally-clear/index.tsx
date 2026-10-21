@@ -2,7 +2,6 @@
  * What the phone keeps about each sentence shown, on the start screen, with
  * the one way to let it go (adaptive-learning canon Rem. 7.5): a first press
  * that asks, and a second, in the sheet that says what goes and what stays.
- * It is not offered during a sitting, and the practice record is not touched.
  */
 
 import type { JSX } from "react"
@@ -49,7 +48,6 @@ export const TallyClear = ({
                 title: clear.title,
                 description: clear.goes(size, since, today),
                 confirm: clear.confirm,
-                keep: clear.keep,
                 onConfirm: () =>
                   setOutcome(onClear() ? "cleared" : "notCleared"),
               })

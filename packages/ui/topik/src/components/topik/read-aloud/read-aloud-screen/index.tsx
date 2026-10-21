@@ -103,7 +103,6 @@ export const ReadAloudScreen = ({
   const [tally, setTally] = useState({ rows: loaded.tally, kept: true })
   const keep = (next: Tally): void => {
     latest.current = next
-    // A failed write is not the drill's to stop: the sheet says it was not kept.
     setTally({ rows: next, kept: store.saveTally(next) })
   }
   const [practice, setPractice] = useState<"read-aloud" | "lens">("read-aloud")

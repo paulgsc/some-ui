@@ -12,8 +12,8 @@
  * so this screen keeps nothing between mounts.
  *
  * The mark beside the step label says whether the screen has shown the entry
- * before (adaptive-learning canon Rem. 7.5). On a sentence it opens what the
- * phone kept, and the drill holds while that is open.
+ * before (adaptive-learning canon Rem. 7.5); on a sentence it opens what the
+ * phone kept.
  */
 
 import type { JSX } from "react"

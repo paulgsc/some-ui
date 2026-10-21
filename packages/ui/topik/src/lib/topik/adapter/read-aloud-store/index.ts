@@ -13,11 +13,10 @@
  * mark on a sentence reads. Losing
  * any of them costs exactly that and nothing else (Thm. 7.2), which is why
  * every failure below is silent: eviction, a full quota, a private window, a
- * document an older build wrote. Only the answers say whether the phone kept
- * them, since the learner is told. Everything read is parsed, not trusted,
- * and nothing here sends any of it anywhere (`readAloudPracticeRecord`
- * below). It all goes through the page's own storage, so the viewer's build
- * keeps nothing.
+ * document an older build wrote. Only the answers and the tally say whether
+ * the phone kept them, since the learner is told. Everything read is parsed,
+ * not trusted, and nothing here sends any of it anywhere
+ * (`readAloudPracticeRecord` below).
  */
 
 import { localStorageOrNull } from "@some-ui/core-utils"
@@ -134,7 +133,6 @@ const ProgressDocumentSchema = z.object({
     returns: z.record(z.string(), z.number().int().min(0)),
     counted: z.number().int().min(0),
     reported: z.boolean(),
-    /** Absent in what builds before the tally wrote: counted as not begun. */
     begun: z.boolean().optional(),
   }),
 })

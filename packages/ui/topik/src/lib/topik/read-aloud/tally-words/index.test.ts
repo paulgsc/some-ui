@@ -1,10 +1,7 @@
+import { MACHINERY } from "@topik/lib/topik/read-aloud/__tests__/machinery"
 import type { EntryRole } from "@topik/lib/topik/read-aloud/set-machine"
 import { TALLY_WORDS } from "@topik/lib/topik/read-aloud/tally-words"
 import { describe, expect, it } from "vitest"
-
-/** What the person must never be told in: how it works, not what it did. */
-const MACHINERY =
-  /\b(tally|rows?|queue|deck|pool|draw\w*|seed|reducer|machine|entry|entries|role|rep|list|id|key|null|undefined|state|index|stuck report|introduction|stor(?:e|age)\w*|json|export\w*|field|flag|boolean|request|status|error|sync\w*|grant|scope)\b/i
 
 const TODAY = "2026-10-21"
 const ROW = {
@@ -19,8 +16,8 @@ describe("the sentence's words", () => {
     // Noon on each day keeps every timezone on that local day.
     expect(TALLY_WORDS.date("2026-10-21T12:00:00", TODAY)).toBe("today")
     expect(TALLY_WORDS.date("2026-10-20T12:00:00", TODAY)).toBe("yesterday")
-    expect(TALLY_WORDS.date("2026-10-05T12:00:00", TODAY)).toBe("5 Oct")
-    expect(TALLY_WORDS.date("2025-12-31T12:00:00", TODAY)).toBe("31 Dec 2025")
+    expect(TALLY_WORDS.date("2026-10-05T12:00:00", TODAY)).toBe("Oct 5")
+    expect(TALLY_WORDS.date("2025-12-31T12:00:00", TODAY)).toBe("Dec 31, 2025")
     expect(TALLY_WORDS.date("2026-09-30T12:00:00", "2026-10-01")).toBe(
       "yesterday"
     )
@@ -49,7 +46,7 @@ describe("the sentence's words", () => {
 
   it("says what is kept where and since when, and when it could not be kept", () => {
     expect(TALLY_WORDS.kept(ROW.first, "2026-10-21", true)).toBe(
-      "Kept on this phone, since 19 Oct."
+      "Kept on this phone, since Oct 19."
     )
     expect(TALLY_WORDS.kept(ROW.first, "2026-10-21", false)).toBe(
       "This phone couldn't keep this, so it lasts only until you close it."
@@ -58,7 +55,7 @@ describe("the sentence's words", () => {
 
   it("says what a clear takes and what stays, with the noun agreeing", () => {
     expect(TALLY_WORDS.clear.goes(54, ROW.first, TODAY)).toBe(
-      "This clears when 54 sentences were shown and read to the end, since 19 Oct. Your practice record stays."
+      "This clears when 54 sentences were shown and read to the end, since Oct 19. Your practice record stays."
     )
     expect(TALLY_WORDS.clear.goes(1, ROW.first, TODAY)).toContain(
       "1 sentence was shown"
@@ -98,7 +95,6 @@ describe("the sentence's words", () => {
       TALLY_WORDS.clear.askName,
       TALLY_WORDS.clear.title,
       TALLY_WORDS.clear.confirm,
-      TALLY_WORDS.clear.keep,
       TALLY_WORDS.clear.cleared,
       TALLY_WORDS.clear.notCleared,
     ]

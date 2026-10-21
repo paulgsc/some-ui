@@ -5,46 +5,29 @@
  * what is kept where, and since when. No tally, row, queue, id or storage
  * term reaches the screen (`index.test.ts`).
  *
- * The facts hold what the phone knows, which is what it showed. It cannot
- * hear whether the learner read, so the mark says "Seen before" and not
- * "Read before", and a stuck report is not among the facts (Prop. 6.4 (iii)).
+ * The phone knows what it showed and cannot hear whether the learner read,
+ * so the mark says "Seen before" and not "Read before".
  */
 
-import { counted } from "@some-ui/core-utils"
-import { dayKey } from "@topik/lib/topik/read-aloud/records"
+import { addDays, counted, dayOf, formatDay } from "@some-ui/core-utils"
 import type { Begun, EntryRole } from "@topik/lib/topik/read-aloud/set-machine"
 import type { Mark, TallyRow } from "@topik/lib/topik/read-aloud/tally"
-
-const MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-] as const
 
 const MARK: Record<Mark, string> = { new: "New", seen: "Seen before" }
 
 /**
  * The day an instant fell on, as a person says it beside `today` (a local
- * day key): "today", "yesterday", or "21 Oct", with the year once it is not
+ * day key): "today", "yesterday", or "Oct 5", with the year once it is not
  * this one.
  */
 function dateWords(iso: string, today: string): string {
-  const day = dayKey(new Date(iso))
+  const day = dayOf(new Date(iso))
   if (day === today) return "today"
-  const [year = 0, month = 1, date = 1] = today.split("-").map(Number)
-  if (day === dayKey(new Date(year, month - 1, date - 1))) return "yesterday"
-  const [thatYear = 0, thatMonth = 1, thatDate = 1] = day.split("-").map(Number)
-  const named = `${thatDate} ${MONTHS[thatMonth - 1] ?? ""}`
-  return thatYear === year ? named : `${named} ${thatYear}`
+  if (day === addDays(today, -1)) return "yesterday"
+  const year = day.slice(0, 4)
+  return year === today.slice(0, 4)
+    ? formatDay(day)
+    : `${formatDay(day)}, ${year}`
 }
 
 const times = (n: number): string => (n === 1 ? "once" : counted(n, "time"))
@@ -52,6 +35,10 @@ const times = (n: number): string => (n === 1 ? "once" : counted(n, "time"))
 const sentences = (n: number): string => counted(n, "sentence")
 
 const were = (n: number): string => (n === 1 ? "was" : "were")
+
+/** What the tally holds, as the clear control says it. */
+const shownAndRead = (size: number, since: string, today: string): string =>
+  `${sentences(size)} ${were(size)} shown and read to the end, since ${dateWords(since, today)}`
 
 export const TALLY_WORDS = {
   mark: (mark: Mark): string => MARK[mark],
@@ -86,16 +73,15 @@ export const TALLY_WORDS = {
       : "This phone couldn't keep this, so it lasts only until you close it.",
   clear: {
     kept: (size: number, since: string, today: string): string =>
-      `Kept on this phone: when ${sentences(size)} ${were(size)} shown and read to the end, since ${dateWords(since, today)}.`,
+      `Kept on this phone: when ${shownAndRead(size, since, today)}.`,
     /** The first press only asks. */
     ask: "Clear",
     askName: "Clear what is kept about sentences",
     /** The second press says what goes, and what stays. */
     title: "Clear what is kept about sentences?",
     goes: (size: number, since: string, today: string): string =>
-      `This clears when ${sentences(size)} ${were(size)} shown and read to the end, since ${dateWords(since, today)}. Your practice record stays.`,
+      `This clears when ${shownAndRead(size, since, today)}. Your practice record stays.`,
     confirm: "Clear it",
-    keep: "Keep it",
     cleared: "Cleared. Every sentence starts as New again.",
     notCleared: "This phone couldn't clear it.",
   },

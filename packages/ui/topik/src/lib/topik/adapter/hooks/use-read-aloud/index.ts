@@ -67,10 +67,7 @@ export type UseReadAloudOptions = {
   /** A counted rep or a finished set, and the local day it belongs to. */
   onRecord?: (event: ReadAloudRecordEvent, day: string) => void
   onPace?: (wordId: string, pace: PaceEntry) => void
-  /**
-   * A sentence's rep began for the first time, and when: once per rep, never
-   * for a return or an introduction (Rem. 7.5).
-   */
+  /** A sentence's rep began for the first time, and when (Rem. 7.5). */
   onShown?: (lineId: string, at: number) => void
   /** What is left of the set after every change, for resuming it later. */
   onProgress?: (progress: SetProgress | null) => void

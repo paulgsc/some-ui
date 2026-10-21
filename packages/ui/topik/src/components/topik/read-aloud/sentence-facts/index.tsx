@@ -2,8 +2,7 @@
  * What the phone kept about the sentence on screen, one tap from its mark:
  * how often it was shown, when first and last, how often it was read to the
  * end, and why it is here (adaptive-learning canon Rem. 7.5). The facts are
- * what the screen showed, never how the learner did, and a stuck report is
- * not among them (Prop. 6.4 (iii)). The drill holds while this is open.
+ * what the screen showed, never how the learner did.
  */
 
 import type { JSX } from "react"
