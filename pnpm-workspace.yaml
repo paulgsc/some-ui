@@ -96,6 +96,12 @@ allowBuilds:
   "@tailwindcss/oxide": true
   esbuild: true
   unrs-resolver: true
+  # wrangler's runtime, pulled in by apps/mailbox. Its postinstall only swaps a
+  # JS shim for the platform binary (faster `wrangler dev` startup); nothing in
+  # that workspace runs workerd (its tests use sql.js, and `deploy:dry` only
+  # bundles with esbuild), so it is denied rather than run. pnpm 12 fails the
+  # install on a build script that is neither allowed nor denied.
+  workerd: false
 
 # Recorded explicitly only to work around pnpm/pnpm#12337, a regression in
 # 11.5.3: the workspace state file stores a setting only when it was set

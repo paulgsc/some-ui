@@ -1,0 +1,26 @@
+{
+  "name": "@some-ui/mailbox",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "A Cloudflare Worker and D1 database that hold the Jobs digest, decisions and scouts, so the cloud routine and home can pass files without a hand-carried step",
+  "license": "MIT",
+  "scripts": {
+    "clean": "rm -rf .turbo node_modules .eslintcache .wrangler dist",
+    "deploy:dry": "wrangler deploy --dry-run --outdir dist/dry",
+    "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\"",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier . --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261005.1",
+    "@some-ui/tsconfig": "workspace:*",
+    "@some-ui/vite-config": "workspace:*",
+    "@types/sql.js": "1.4.11",
+    "sql.js": "1.14.2",
+    "wrangler": "4.147.0"
+  }
+}

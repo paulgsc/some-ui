@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "some-ui-mailbox",
+  "main": "src/index.ts",
+  // Pinned, not "today": a Worker's behaviour follows this date. Raise it on purpose.
+  "compatibility_date": "2026-10-01",
+  // No tokens here, ever (MB3): they are Worker secrets, set with
+  // `wrangler secret put ROUTINE_TOKEN` and `wrangler secret put HOME_TOKEN`.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "some-ui-mailbox",
+      // Not a secret, but owner-specific: `wrangler d1 create some-ui-mailbox`
+      // prints it. Deploy fails until this placeholder is replaced.
+      "database_id": "<set by owner>",
+      "migrations_dir": "migrations",
+    },
+  ],
+}
