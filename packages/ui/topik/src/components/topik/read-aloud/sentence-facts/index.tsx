@@ -63,7 +63,10 @@ export const SentenceFacts = ({
       >
         <SheetHeader className="px-0 text-left">
           <SheetTitle className="text-xl">{TALLY_WORDS.title}</SheetTitle>
-          <p lang="ko" className="text-foreground text-lg leading-snug">
+          <p
+            lang="ko"
+            className="text-foreground text-lg leading-snug break-keep"
+          >
             {text}
           </p>
           <SheetDescription className="text-foreground text-sm">

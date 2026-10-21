@@ -60,6 +60,9 @@ describe("the sentence's words", () => {
     expect(TALLY_WORDS.clear.goes(1, ROW.first, TODAY)).toContain(
       "1 sentence was shown"
     )
+    expect(TALLY_WORDS.clear.kept(54, ROW.first, TODAY)).toBe(
+      "Kept on this phone: when 54 sentences were shown and read to the end, since Oct 19."
+    )
     expect(TALLY_WORDS.clear.kept(1, ROW.first, TODAY)).toContain(
       "1 sentence was shown"
     )
