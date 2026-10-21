@@ -46,8 +46,8 @@ import {
 } from "@topik/lib/topik/read-aloud/set-machine"
 
 export type ReadAloudRecordEvent =
-  /** `lineId` names the sentence when the rep was one (Rem. 7.5). */
-  { type: "rep"; creditMs: number; lineId?: string } | { type: "set" }
+  /** `key` names the sentence when the rep was one (Rem. 7.5). */
+  { type: "rep"; creditMs: number; key?: string } | { type: "set" }
 
 export type UseReadAloudOptions = {
   deck: ReadAloudDeck
@@ -68,7 +68,7 @@ export type UseReadAloudOptions = {
   onRecord?: (event: ReadAloudRecordEvent, day: string) => void
   onPace?: (wordId: string, pace: PaceEntry) => void
   /** A sentence's rep began for the first time, and when (Rem. 7.5). */
-  onShown?: (lineId: string, at: number) => void
+  onShown?: (key: string, at: number) => void
   /** What is left of the set after every change, for resuming it later. */
   onProgress?: (progress: SetProgress | null) => void
   /** Test seams: the clock, and the key each new set is drawn with. */
@@ -253,13 +253,13 @@ function createRunner(
       }
       case "count-rep": {
         onRecord?.(
-          { type: "rep", creditMs: effect.creditMs, lineId: effect.lineId },
+          { type: "rep", creditMs: effect.creditMs, key: effect.key },
           dayKey(new Date(now()))
         )
         return
       }
       case "note-shown": {
-        onShown?.(effect.lineId, now())
+        onShown?.(effect.key, now())
         return
       }
       case "count-set": {

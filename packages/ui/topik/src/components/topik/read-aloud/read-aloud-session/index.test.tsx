@@ -7,7 +7,11 @@ import { ReadAloudSession } from "@topik/components/topik/read-aloud/read-aloud-
 import type { ReadAloudRecordEvent } from "@topik/lib/topik/adapter/hooks/use-read-aloud"
 import { STARTER_SET } from "@topik/lib/topik/read-aloud/repo-sets"
 import type { Tally } from "@topik/lib/topik/read-aloud/tally"
-import { noteRead, noteShown } from "@topik/lib/topik/read-aloud/tally"
+import {
+  noteRead,
+  noteShown,
+  tallyKey,
+} from "@topik/lib/topik/read-aloud/tally"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const SPOKEN_MS = 800
@@ -313,13 +317,13 @@ describe("ReadAloudSession's New or Seen before (Rem. 7.5)", () => {
         level={1}
         speech={fakeSpeech()}
         seedKey={() => "fixed"}
-        onShown={(lineId, at) =>
-          setRows((now) => noteShown(now, lineId, new Date(at).toISOString()))
+        onShown={(key, at) =>
+          setRows((now) => noteShown(now, key, new Date(at).toISOString()))
         }
         onRecord={(event) => {
-          if (event.type === "rep" && event.lineId !== undefined) {
-            const lineId = event.lineId
-            setRows((now) => noteRead(now, lineId))
+          if (event.type === "rep" && event.key !== undefined) {
+            const { key } = event
+            setRows((now) => noteRead(now, key))
           }
         }}
         tally={{ rows, today: "2026-10-21", kept: true, onClear }}
@@ -331,7 +335,7 @@ describe("ReadAloudSession's New or Seen before (Rem. 7.5)", () => {
   /** Every sentence of the deck shown once, yesterday and read to the end. */
   const SEEN_YESTERDAY: Tally = Object.fromEntries(
     STARTER_SET.lines.map((line) => [
-      line.id,
+      tallyKey({ lineId: line.id, text: line.korean }),
       { first: YESTERDAY, last: YESTERDAY, shown: 1, read: 1 },
     ])
   )
@@ -384,6 +388,12 @@ describe("ReadAloudSession's New or Seen before (Rem. 7.5)", () => {
     expect(stepOf()).toBe("paused")
     expect(screen.getByRole("dialog").textContent).toContain("This sentence")
     const text = facts() ?? ""
+    // The sheet names the sentence it is about.
+    expect(text).toContain(
+      document
+        .querySelector('[data-slot="read-aloud-glyphs"]')
+        ?.getAttribute("aria-label") ?? "no sentence on the card"
+    )
     expect(text).toContain("Reading is paused while this is open.")
     expect(text).toContain("Shown2 times")
     expect(text).toContain("First shownyesterday")

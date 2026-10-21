@@ -19,6 +19,8 @@ import { TALLY_WORDS } from "@topik/lib/topik/read-aloud/tally-words"
 
 type SentenceFactsProps = {
   open: boolean
+  /** The sentence itself: the sheet covers the card, and a reader hears it. */
+  text: string
   row: TallyRow
   /** Why the sentence is on screen, where there is something to say. */
   why: string | null
@@ -32,6 +34,7 @@ type SentenceFactsProps = {
 
 export const SentenceFacts = ({
   open,
+  text,
   row,
   why,
   since,
@@ -60,6 +63,9 @@ export const SentenceFacts = ({
       >
         <SheetHeader className="px-0 text-left">
           <SheetTitle className="text-xl">{TALLY_WORDS.title}</SheetTitle>
+          <p lang="ko" className="text-foreground text-lg leading-snug">
+            {text}
+          </p>
           <SheetDescription className="text-foreground text-sm">
             {TALLY_WORDS.holding}
           </SheetDescription>

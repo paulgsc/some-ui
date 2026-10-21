@@ -2830,22 +2830,24 @@ also survives its relaxation.
   travel.
 
   The read-aloud drill's *sentence tally* is admitted on the same terms. It
-  holds one row per sentence the device carries --- when the sentence was
-  first and last shown, how many times it was shown, and how many times a rep
-  of it ran to the end --- so it is bounded by the lines loaded, not by how
-  long the learner has read, and a showing opens a row only the first time a
-  sentence is shown. It is not an interaction log (Prop. 7.1): nothing in it
-  is ordered or timed beyond those two dates. A sentence is shown as
-  Remark 4.9 says and read to the end as Definition 6.6 counts a rep; a
-  return, an introduction and a stuck report add nothing (Prop. 6.4 (ii),
-  (iii)), so withholding a report leaves every row as it would have been. It
-  names nothing the learner was not already shown, stays on the device and is
-  never sent (Rem. 7.3), and is not part of the export of Definition 7.2. The
-  screen reads it to mark a sentence new or seen before and to show the row
-  on request: facts about what was shown, never a belief about the learner.
-  Nothing trims it, and the learner may clear it on purpose, which costs the
-  marks and nothing else (Thm. 7.2); a write that fails is swallowed
-  (Prop. 7.2). A word's mark reads the pace above and keeps nothing more.
+  holds one row per sentence the device has been given --- a line's id with
+  its Korean, so a line written again is another sentence --- and in each row
+  when the sentence was first and last shown, how many times it was shown, and
+  how many times a rep of it ran to the end. It is bounded by the sentences
+  loaded, not by how long the learner has read, and a showing opens a row only
+  the first time a sentence is shown. It is not an interaction log
+  (Prop. 7.1): nothing in it is ordered or timed beyond those two dates. A
+  sentence is shown as Remark 4.9 says and read to the end as Definition 6.6
+  counts a rep; a return, an introduction and a stuck report add nothing
+  (Prop. 6.4 (ii), (iii)), so a report changes no row by itself and the same
+  reps leave the same rows with or without it. It names nothing the learner
+  was not already shown, stays on the device and is never sent (Rem. 7.3), and
+  is not part of the export of Definition 7.2. The screen reads it to mark a
+  sentence new or seen before and to show the row on request: facts about what
+  was shown, never a belief about the learner. Nothing trims it, and the
+  learner may clear it on purpose, which costs the marks and nothing else
+  (Thm. 7.2); a write that fails is swallowed (Prop. 7.2). A word's mark reads
+  the pace above and keeps nothing more.
 ]
 
 #remark("7.6", name: "What an account may hold")[
@@ -4064,9 +4066,9 @@ owner's (\#1839). Filed with `packages/ui/topik`'s take row and `apps/www`'s
 take store and study-context export. Moves the front-matter version line.
 
 *v1.21 --- 2026-10-21.* Admits the read-aloud sentence tally in Remark 7.5:
-one row per sentence the device carries (first and last shown, times shown,
-times read to the end), bounded by the lines loaded, on the device only, and
-cleared only by the learner. The screen reads it for the New and Seen before
+one row per sentence the device has been given (first and last shown, times
+shown, times read to the end), bounded by the sentences loaded, on the device
+only, and cleared only by the learner. The screen reads it for the New and Seen before
 mark and a sheet of its facts. Remark 4.9's sitting list, which landed with
 \#1976 without an entry here, is recorded with it. Motivated by the owner's
 wish to see which sentences they have been shown (\#1965, \#1977). Filed

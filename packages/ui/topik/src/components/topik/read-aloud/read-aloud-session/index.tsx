@@ -37,6 +37,7 @@ import type { Tally } from "@topik/lib/topik/read-aloud/tally"
 import {
   markOf,
   rowOf,
+  tallyKey,
   tallySince,
   tallySize,
 } from "@topik/lib/topik/read-aloud/tally"
@@ -92,7 +93,7 @@ export const ReadAloudSession = ({
   const kind = tally && entry ? markOf(entry, tally.rows, state.paces) : null
   const row =
     tally && entry?.item.kind === "sentence"
-      ? rowOf(tally.rows, entry.item.lineId)
+      ? rowOf(tally.rows, tallyKey(entry.item))
       : null
   const since = tally ? tallySince(tally.rows) : null
   const openFacts = (): void => {
@@ -240,6 +241,7 @@ export const ReadAloudSession = ({
       {tally && entry && row && since && (
         <SentenceFacts
           open={facts !== null}
+          text={entry.item.text}
           row={row}
           why={TALLY_WORDS.why(entry.role, state.begun)}
           since={since}

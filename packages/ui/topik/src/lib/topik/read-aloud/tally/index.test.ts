@@ -7,6 +7,7 @@ import {
   parseTally,
   rowOf,
   storedTally,
+  tallyKey,
   tallySince,
   tallySize,
 } from "@topik/lib/topik/read-aloud/tally"
@@ -33,9 +34,29 @@ const WORD: SetItem = {
   syllables: 3,
 }
 
+describe("a sentence's key", () => {
+  it("is its line's id and its Korean, so a line written again is another sentence", () => {
+    const again = { lineId: "cafe", text: "두 잔 주세요." }
+    expect(tallyKey(SENTENCE)).toBe(tallyKey({ ...SENTENCE }))
+    expect(tallyKey(again)).not.toBe(tallyKey(SENTENCE))
+    expect(tallyKey({ lineId: "bus", text: SENTENCE.text })).not.toBe(
+      tallyKey(SENTENCE)
+    )
+    // What the old line showed is not shown of the new one.
+    const seen = noteShown(
+      noteShown(emptyTally(), tallyKey(SENTENCE), MON),
+      tallyKey(SENTENCE),
+      TUE
+    )
+    expect(
+      markOf({ item: { ...SENTENCE, ...again }, role: "rep" }, seen, {})
+    ).toBe("new")
+  })
+})
+
 describe("the mark on a rep", () => {
-  const shownOnce = noteShown(emptyTally(), "cafe", MON)
-  const shownTwice = noteShown(shownOnce, "cafe", TUE)
+  const shownOnce = noteShown(emptyTally(), tallyKey(SENTENCE), MON)
+  const shownTwice = noteShown(shownOnce, tallyKey(SENTENCE), TUE)
 
   it("calls a sentence new on its first showing, and seen before from the second, in the tally's own count", () => {
     const entry = { item: SENTENCE, role: "rep" } as const
@@ -133,6 +154,15 @@ describe("the sentence tally (Rem. 7.5)", () => {
     expect(storedTally(emptyTally())).toBeNull()
   })
 
+  it("keeps a row a clock set back wrote, with its last date before its first", () => {
+    const set = noteShown(noteShown(emptyTally(), "cafe", WED), "cafe", MON)
+    expect(rowOf(set, "cafe")).toMatchObject({ first: WED, last: MON })
+    expect(parseTally(JSON.parse(JSON.stringify(storedTally(set))))).toEqual(
+      set
+    )
+    expect(tallySince(set)).toBe(WED)
+  })
+
   describe("parsed, not trusted", () => {
     const good = { first: MON, last: TUE, shown: 2, read: 1 }
     const rows = (row: unknown): unknown => ({
@@ -143,7 +173,6 @@ describe("the sentence tally (Rem. 7.5)", () => {
     it.each([
       ["a missing field", { first: MON, last: TUE, shown: 2 }],
       ["a date that is not one", { ...good, first: "yesterday" }],
-      ["a last date before the first", { ...good, first: TUE, last: MON }],
       ["more reads than showings", { ...good, read: 3 }],
       ["a row never shown", { ...good, shown: 0, read: 0 }],
       ["a fraction", { ...good, shown: 1.5 }],

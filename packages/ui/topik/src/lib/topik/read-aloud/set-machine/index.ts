@@ -47,7 +47,9 @@ import { assertNever } from "@some-ui/core-utils"
 import type { Urgency } from "@some-ui/speech"
 import type { ReadAloudLevel } from "@topik/lib/topik/read-aloud/content"
 import type { PaceBook, PaceEntry } from "@topik/lib/topik/read-aloud/records"
+import { own, paceOf } from "@topik/lib/topik/read-aloud/records"
 import type { SetItem } from "@topik/lib/topik/read-aloud/set-builder"
+import { tallyKey } from "@topik/lib/topik/read-aloud/tally"
 import {
   audioWaitMs,
   echoMs,
@@ -170,15 +172,16 @@ export type SetEffect =
     }
   | { type: "stop-speech" }
   /**
-   * A sentence's rep began for the first time (Rem. 7.5): the line is shown.
-   * Never for a return, an introduction or a word, and never twice for a rep.
+   * A sentence's rep began for the first time (Rem. 7.5): `key` is the
+   * sentence's in the tally. Never for a return, an introduction or a word,
+   * and never twice for a rep.
    */
-  | { type: "note-shown"; lineId: string }
+  | { type: "note-shown"; key: string }
   /**
-   * Add one rep and its nominal practice to the record (Def. 6.6); `lineId`
+   * Add one rep and its nominal practice to the record (Def. 6.6); `key`
    * names the sentence when it was one, for the tally (Rem. 7.5).
    */
-  | { type: "count-rep"; creditMs: number; lineId?: string }
+  | { type: "count-rep"; creditMs: number; key?: string }
   | { type: "count-set" }
   /** Store the word's pace (Cor. 4.6 (iii)). */
   | { type: "save-pace"; wordId: string; pace: PaceEntry }
@@ -274,15 +277,6 @@ export function progressOf(state: SetMachineState): SetProgress | null {
 export const currentEntry = (state: SetMachineState): QueueEntry | undefined =>
   state.queue[state.cursor]
 
-/** A record's own entry: a word id such as `constructor` must not find `Object.prototype`'s. */
-export const own = <T>(
-  record: Record<string, T>,
-  key: string
-): T | undefined => (Object.hasOwn(record, key) ? record[key] : undefined)
-
-export const paceOf = (paces: PaceBook, wordId: string): PaceEntry =>
-  own(paces, wordId) ?? { factor: 1, seen: 0 }
-
 const sittingOver = (state: SetMachineState, at: number): boolean =>
   state.sittingStartedAt !== null && at - state.sittingStartedAt >= SITTING_MS
 
@@ -300,10 +294,12 @@ const withShown = (
 function firstShowing(
   state: SetMachineState,
   { item, role }: QueueEntry
-): { lineId: string; begun: Begun } | null {
+): { key: string; begun: Begun } | null {
   if (role !== "rep" || item.kind !== "sentence" || state.begun) return null
-  const { lineId } = item
-  return { lineId, begun: state.shown.includes(lineId) ? "repeat" : "fresh" }
+  return {
+    key: tallyKey(item),
+    begun: state.shown.includes(item.lineId) ? "repeat" : "fresh",
+  }
 }
 
 /** Move to a phase under a fresh sequence number. */
@@ -416,7 +412,7 @@ function startEntry(state: SetMachineState, at: number): SetTransition {
   return {
     state: next,
     effects: [
-      ...(first ? [{ type: "note-shown" as const, lineId: first.lineId }] : []),
+      ...(first ? [{ type: "note-shown" as const, key: first.key }] : []),
       { type: "wait", seq: next.seq, ms: SETTLE_MS },
     ],
   }
@@ -500,7 +496,7 @@ function completeRep(
     effects.push({
       type: "count-rep",
       creditMs: nominalRepMs(item.kind, item.syllables, state.level),
-      ...(item.kind === "sentence" && { lineId: item.lineId }),
+      ...(item.kind === "sentence" && { key: tallyKey(item) }),
     })
     next = { ...next, counted: next.counted + 1 }
   }

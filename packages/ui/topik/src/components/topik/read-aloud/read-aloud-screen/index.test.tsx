@@ -16,6 +16,7 @@ import {
 } from "@topik/lib/topik/read-aloud/repo-sets"
 import { buildSet } from "@topik/lib/topik/read-aloud/set-builder"
 import type { Tally } from "@topik/lib/topik/read-aloud/tally"
+import { tallyKey } from "@topik/lib/topik/read-aloud/tally"
 import { SITTING_MS } from "@topik/lib/topik/read-aloud/timing"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -380,7 +381,7 @@ describe("ReadAloudScreen's tally (Rem. 7.5)", () => {
   /** Every sentence of the deck shown once, read to the end, yesterday. */
   const SEEN_YESTERDAY: Tally = Object.fromEntries(
     DECK.lines.map((line) => [
-      line.id,
+      tallyKey({ lineId: line.id, text: line.korean }),
       { first: YESTERDAY, last: YESTERDAY, shown: 1, read: 1 },
     ])
   )
@@ -552,7 +553,9 @@ describe("ReadAloudScreen's tally (Rem. 7.5)", () => {
     fireEvent.click(screen.getByRole("button", { name: /continue/i }))
     await toSummary()
     const rows = store.tally()
-    expect(Object.keys(rows).sort()).toEqual([one.lineId, two.lineId].sort())
+    expect(Object.keys(rows).sort()).toEqual(
+      [tallyKey(one), tallyKey(two)].sort()
+    )
     for (const row of Object.values(rows)) {
       expect(row).toMatchObject({ shown: 1, read: 1 })
     }

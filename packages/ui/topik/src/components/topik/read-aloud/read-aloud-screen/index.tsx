@@ -139,12 +139,12 @@ export const ReadAloudScreen = ({
       paused={paused}
       onRecord={(event, day) => {
         setRecord(store.count(event, day))
-        if (event.type !== "rep" || event.lineId === undefined) return
-        const next = noteRead(latest.current, event.lineId)
+        if (event.type !== "rep" || event.key === undefined) return
+        const next = noteRead(latest.current, event.key)
         if (next !== latest.current) keep(next)
       }}
-      onShown={(lineId, at) =>
-        keep(noteShown(latest.current, lineId, new Date(at).toISOString()))
+      onShown={(key, at) =>
+        keep(noteShown(latest.current, key, new Date(at).toISOString()))
       }
       onPace={(wordId, pace) => store.savePace(wordId, pace)}
       onProgress={(progress) => store.saveProgress(level, deck.id, progress)}
