@@ -2833,9 +2833,10 @@ also survives its relaxation.
   holds one row per sentence the device has been given --- a line's id with
   its Korean, so a line written again is another sentence --- and in each row
   when the sentence was first and last shown, how many times it was shown, and
-  how many times a rep of it ran to the end. It is bounded by the sentences
-  loaded, not by how long the learner has read, and a showing opens a row only
-  the first time a sentence is shown. It is not an interaction log
+  how many times a rep of it ran to the end. It is bounded by the distinct
+  sentences the device has been given, a row of about a hundred bytes each, not
+  by how long the learner has read, and a showing opens a row only the first
+  time a sentence is shown. It is not an interaction log
   (Prop. 7.1): nothing in it is ordered or timed beyond those two dates. A
   sentence is shown as Remark 4.9 says and read to the end as Definition 6.6
   counts a rep; a return, an introduction and a stuck report add nothing
@@ -4067,8 +4068,8 @@ take store and study-context export. Moves the front-matter version line.
 
 *v1.21 --- 2026-10-21.* Admits the read-aloud sentence tally in Remark 7.5:
 one row per sentence the device has been given (first and last shown, times
-shown, times read to the end), bounded by the sentences loaded, on the device
-only, and cleared only by the learner. The screen reads it for the New and Seen before
+shown, times read to the end), bounded by the distinct sentences given, on the
+device only, and cleared only by the learner. The screen reads it for the New and Seen before
 mark and a sheet of its facts. Remark 4.9's sitting list, which landed with
 \#1976 without an entry here, is recorded with it. Motivated by the owner's
 wish to see which sentences they have been shown (\#1965, \#1977). Filed
