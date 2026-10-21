@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { RepCard } from "@topik/components/topik/read-aloud/rep-card"
 import { STARTER_SET } from "@topik/lib/topik/read-aloud/repo-sets"
 import type { SetItem } from "@topik/lib/topik/read-aloud/set-builder"
@@ -156,5 +156,66 @@ describe("a sentence's mark", () => {
     expect(at(1000)).toEqual(["잔"])
     expect(at(1000)).toEqual(["주세요"])
     expect(at(2500)).toEqual(["주세요"])
+  })
+})
+
+describe("RepCard's New or Seen before", () => {
+  const SENTENCE: SetItem = {
+    kind: "sentence",
+    key: "s:cafe-order",
+    lineId: "cafe-order",
+    text: "한 잔 주세요.",
+    syllables: 5,
+    wordIds: [],
+  }
+  const props = {
+    deck: STARTER_SET,
+    entry: { item: SENTENCE, role: "rep" as const },
+    step: "glyphs" as const,
+    stepMs: null,
+    stepKey: 1,
+    reported: false,
+    playing: false,
+    short: false,
+    onStuck: noop,
+    onSkip: noop,
+    onResume: noop,
+  }
+  const chip = (): HTMLElement | null =>
+    document.querySelector<HTMLElement>('[data-slot="read-aloud-mark"]')
+
+  it("shows a hollow ring and New, or dots and Seen before, and nothing when it has no mark", () => {
+    const { rerender } = render(<RepCard {...props} />)
+    expect(chip()).toBeNull()
+    rerender(<RepCard {...props} exposure={{ kind: "new" }} />)
+    expect(chip()?.textContent).toBe("New")
+    expect(chip()?.dataset["mark"]).toBe("new")
+    expect(chip()?.querySelector(".border-2")).not.toBeNull()
+    rerender(<RepCard {...props} exposure={{ kind: "seen" }} />)
+    expect(chip()?.textContent).toBe("Seen before")
+    expect(chip()?.querySelectorAll(".bg-current")).toHaveLength(3)
+  })
+
+  it("stays out of the live region, so a step change does not announce it", () => {
+    render(<RepCard {...props} exposure={{ kind: "seen" }} />)
+    const live = document.querySelector('[aria-live="polite"]')
+    expect(live?.textContent).toBe("Read it aloud")
+    expect(live?.contains(chip())).toBe(false)
+  })
+
+  it("is a button that opens the facts only when it can, and plain text otherwise", () => {
+    const onOpen = vi.fn()
+    const { rerender } = render(
+      <RepCard {...props} exposure={{ kind: "new", onOpen }} />
+    )
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "New. See what is kept about this sentence",
+      })
+    )
+    expect(onOpen).toHaveBeenCalledOnce()
+    rerender(<RepCard {...props} exposure={{ kind: "new" }} />)
+    expect(screen.queryByRole("button", { name: /^new/i })).toBeNull()
+    expect(chip()?.tagName).toBe("SPAN")
   })
 })

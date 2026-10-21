@@ -7,16 +7,22 @@
  * minutes (Rem. 4.10). The start screen and the end-of-sitting screen are
  * outside a sitting: nothing runs on them until the learner taps.
  *
- * Storage is the host's: the pace book, the practice record and an
- * unfinished set come in as props and go out through callbacks, so this
- * screen keeps nothing between mounts.
+ * Storage is the host's: the pace book, the practice record, the sentence
+ * tally and an unfinished set come in as props and go out through callbacks,
+ * so this screen keeps nothing between mounts.
+ *
+ * The mark beside the step label says whether the screen has shown the entry
+ * before (adaptive-learning canon Rem. 7.5). On a sentence it opens what the
+ * phone kept, and the drill holds while that is open.
  */
 
 import type { JSX } from "react"
+import { useState } from "react"
 import { Button } from "@some-ui/shared"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import { PoolNote } from "@topik/components/topik/read-aloud/pool-note"
 import { HeldNote, RepCard } from "@topik/components/topik/read-aloud/rep-card"
+import { SentenceFacts } from "@topik/components/topik/read-aloud/sentence-facts"
 import { SessionHeader } from "@topik/components/topik/read-aloud/session-header"
 import type { SetCardProps } from "@topik/components/topik/read-aloud/set-card"
 import { SetCard } from "@topik/components/topik/read-aloud/set-card"
@@ -27,6 +33,14 @@ import {
   levelShortfall,
   sentencePool,
 } from "@topik/lib/topik/read-aloud/set-builder"
+import type { Tally } from "@topik/lib/topik/read-aloud/tally"
+import {
+  markOf,
+  rowOf,
+  tallySince,
+  tallySize,
+} from "@topik/lib/topik/read-aloud/tally"
+import { TALLY_WORDS } from "@topik/lib/topik/read-aloud/tally-words"
 import { Pause, Play, X } from "lucide-react"
 
 export type ReadAloudSessionProps = UseReadAloudOptions & {
@@ -38,6 +52,17 @@ export type ReadAloudSessionProps = UseReadAloudOptions & {
   lens?: { available: boolean; full?: boolean; onStart: () => void }
   /** The sitting's two answers, asked for once the sitting is over. */
   feedback?: Extract<SetCardProps, { kind: "sitting-over" }>["feedback"]
+  /**
+   * What the phone keeps about each sentence shown, with the learner's local
+   * day, whether the phone could keep it, and the way to clear it (whether it
+   * did). Absent, the card carries no mark.
+   */
+  tally?: {
+    rows: Tally
+    today: string
+    kept: boolean
+    onClear: () => boolean
+  }
   onExit: () => void
 }
 
@@ -46,12 +71,17 @@ export const ReadAloudSession = ({
   record,
   lens,
   feedback,
+  tally,
   onExit,
   ...options
 }: ReadAloudSessionProps): JSX.Element => {
   const vm = useReadAloud(options)
   const { state, entry } = vm
   const { phase } = state
+  // Whether opening the facts paused the drill, and so closing them resumes it.
+  const [facts, setFacts] = useState<{ resume: boolean } | null>(null)
+  // The sheet belongs to the pause it made: any other phase closes it.
+  if (facts !== null && phase.name !== "paused") setFacts(null)
   const onEntry = entry !== undefined && vm.started
   const paused = phase.name === "paused"
   // Held by the page or the host's session, which resume it, not the learner.
@@ -59,6 +89,20 @@ export const ReadAloudSession = ({
   const running =
     onEntry && phase.name !== "paused" && phase.name !== "sitting-over"
   const pool = sentencePool(options.deck, options.level, state.shown)
+  const kind = tally && entry ? markOf(entry, tally.rows, state.paces) : null
+  const row =
+    tally && entry?.item.kind === "sentence"
+      ? rowOf(tally.rows, entry.item.lineId)
+      : null
+  const since = tally ? tallySince(tally.rows) : null
+  const openFacts = (): void => {
+    setFacts({ resume: phase.name !== "paused" })
+    if (phase.name !== "paused") vm.pause()
+  }
+  const closeFacts = (): void => {
+    setFacts(null)
+    if (facts?.resume) vm.resume()
+  }
 
   const header = (
     <SessionHeader
@@ -104,6 +148,14 @@ export const ReadAloudSession = ({
           shortfall={levelShortfall(options.deck, options.level)}
           resuming={(options.resume?.queue.length ?? 0) > 0}
           record={record}
+          tally={
+            tally && {
+              size: tallySize(tally.rows),
+              since,
+              today: tally.today,
+              onClear: tally.onClear,
+            }
+          }
           lens={lens}
           short={short}
           onStart={vm.begin}
@@ -164,6 +216,11 @@ export const ReadAloudSession = ({
         reported={state.reported}
         playing={vm.playing === state.seq}
         pool={pool}
+        exposure={
+          kind === null
+            ? undefined
+            : { kind, onOpen: row === null ? undefined : openFacts }
+        }
         short={short}
         onStuck={vm.stuck}
         onSkip={vm.skip}
@@ -180,6 +237,17 @@ export const ReadAloudSession = ({
     >
       {header}
       {body}
+      {tally && entry && row && since && (
+        <SentenceFacts
+          open={facts !== null}
+          row={row}
+          why={TALLY_WORDS.why(entry.role, state.begun)}
+          since={since}
+          today={tally.today}
+          kept={tally.kept}
+          onClose={closeFacts}
+        />
+      )}
     </div>
   )
 }

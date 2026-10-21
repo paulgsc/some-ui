@@ -18,7 +18,7 @@
  */
 
 import type { JSX } from "react"
-import { useState } from "react"
+import { useRef, useState } from "react"
 import type { Speaker } from "@some-ui/speech"
 import { LensSession } from "@topik/components/topik/read-aloud/lens-session"
 import { ReadAloudSession } from "@topik/components/topik/read-aloud/read-aloud-session"
@@ -32,6 +32,8 @@ import { toggled } from "@topik/lib/topik/read-aloud/feedback"
 import { lensLines } from "@topik/lib/topik/read-aloud/lens/items"
 import { dayKey } from "@topik/lib/topik/read-aloud/records"
 import { drawnFrom } from "@topik/lib/topik/read-aloud/set-builder"
+import type { Tally } from "@topik/lib/topik/read-aloud/tally"
+import { noteRead, noteShown } from "@topik/lib/topik/read-aloud/tally"
 
 type ReadAloudScreenProps = {
   /** The TOPIK level held on the material list, one to six. */
@@ -86,6 +88,7 @@ export const ReadAloudScreen = ({
           : null,
       record: store.record(),
       feedback: store.feedback(),
+      tally: store.tally(),
     }
   })
   const [record, setRecord] = useState(loaded.record)
@@ -94,6 +97,15 @@ export const ReadAloudScreen = ({
     kept: true,
   })
   const { store } = loaded
+  // Two callbacks can run before a render (a rep ends and the next begins),
+  // so the latest rows are held here, and the state is what the screen shows.
+  const latest = useRef(loaded.tally)
+  const [tally, setTally] = useState({ rows: loaded.tally, kept: true })
+  const keep = (next: Tally): void => {
+    latest.current = next
+    // A failed write is not the drill's to stop: the sheet says it was not kept.
+    setTally({ rows: next, kept: store.saveTally(next) })
+  }
   const [practice, setPractice] = useState<"read-aloud" | "lens">("read-aloud")
 
   if (practice === "lens" || deck.practice === "lens") {
@@ -126,9 +138,30 @@ export const ReadAloudScreen = ({
       record={{ record, today: dayKey(new Date(now())) }}
       short={short}
       paused={paused}
-      onRecord={(event, day) => setRecord(store.count(event, day))}
+      onRecord={(event, day) => {
+        setRecord(store.count(event, day))
+        if (event.type !== "rep" || event.lineId === undefined) return
+        const next = noteRead(latest.current, event.lineId)
+        if (next !== latest.current) keep(next)
+      }}
+      onShown={(lineId, at) =>
+        keep(noteShown(latest.current, lineId, new Date(at).toISOString()))
+      }
       onPace={(wordId, pace) => store.savePace(wordId, pace)}
       onProgress={(progress) => store.saveProgress(level, deck.id, progress)}
+      tally={{
+        rows: tally.rows,
+        today: dayKey(new Date(now())),
+        kept: tally.kept,
+        onClear: () => {
+          const cleared = store.saveTally({})
+          if (cleared) {
+            latest.current = {}
+            setTally({ rows: {}, kept: true })
+          }
+          return cleared
+        },
+      }}
       feedback={{
         ...feedback,
         onToggle: (key) => {

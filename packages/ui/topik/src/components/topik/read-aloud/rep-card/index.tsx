@@ -21,6 +21,8 @@ import {
   POOL_BAR_LABEL,
   reasonOf,
 } from "@topik/lib/topik/read-aloud/sitting-words"
+import type { Mark } from "@topik/lib/topik/read-aloud/tally"
+import { TALLY_WORDS } from "@topik/lib/topik/read-aloud/tally-words"
 import { SPEECH_MS_PER_SYLLABLE } from "@topik/lib/topik/read-aloud/timing"
 import { Hand, Play, SkipForward } from "lucide-react"
 
@@ -39,6 +41,11 @@ type RepCardProps = {
   playing: boolean
   /** How much of the sentences the sitting has shown; absent shows no bar. */
   pool?: SentencePool
+  /**
+   * Whether the screen has shown this before (Rem. 7.5); absent shows none.
+   * With `onOpen` it opens what the phone kept about it.
+   */
+  exposure?: { kind: Mark; onOpen?: () => void }
   short: boolean
   onStuck: () => void
   onSkip: () => void
@@ -107,6 +114,60 @@ function useMarch(
   return markAt(weights, tick.runKey === runKey ? tick.syllable : 0)
 }
 
+/** A hollow ring for what is new, dots for what has been seen before. */
+const MarkGlyph = ({ kind }: { kind: Mark }): JSX.Element =>
+  kind === "new" ? (
+    <span
+      aria-hidden="true"
+      className="size-2.5 shrink-0 rounded-full border-2 border-current"
+    />
+  ) : (
+    <span aria-hidden="true" className="flex shrink-0 gap-0.5">
+      {[0, 1, 2].map((dot) => (
+        <span key={dot} className="size-1.5 rounded-full bg-current" />
+      ))}
+    </span>
+  )
+
+/**
+ * The mark beside the step label, outside the live region: it holds still
+ * while the steps change and is not announced with them. `text-foreground`,
+ * since the muted colour misses 4.5:1 in the topik dark theme.
+ */
+const MarkChip = ({
+  kind,
+  onOpen,
+}: NonNullable<RepCardProps["exposure"]>): JSX.Element => {
+  const look =
+    "text-foreground inline-flex items-center gap-1.5 text-xs font-medium"
+  const inside = (
+    <>
+      <MarkGlyph kind={kind} />
+      {TALLY_WORDS.mark(kind)}
+    </>
+  )
+  return onOpen ? (
+    <button
+      type="button"
+      data-slot="read-aloud-mark"
+      data-mark={kind}
+      aria-label={TALLY_WORDS.openFacts(kind)}
+      onClick={onOpen}
+      // A 44px target, as tall as the row it sits in.
+      className={cn(
+        look,
+        "min-h-11 px-2 underline decoration-dotted underline-offset-4"
+      )}
+    >
+      {inside}
+    </button>
+  ) : (
+    <span data-slot="read-aloud-mark" data-mark={kind} className={look}>
+      {inside}
+    </span>
+  )
+}
+
 const PoolBar = ({ pool }: { pool: SentencePool }): JSX.Element => (
   <div
     data-slot="read-aloud-pool"
@@ -166,6 +227,7 @@ export const RepCard = ({
   reported,
   playing,
   pool,
+  exposure,
   short,
   onStuck,
   onSkip,
@@ -197,21 +259,24 @@ export const RepCard = ({
       data-kind={item.kind}
       className="flex w-full max-w-md flex-col items-center gap-4 text-center"
     >
-      <div
-        aria-live="polite"
-        className="flex min-h-4 max-w-full flex-wrap items-baseline justify-center gap-x-2"
-      >
-        <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
-          {LABEL[step]}
-        </span>
-        {reason !== null && (
-          <span
-            data-slot="read-aloud-reason"
-            className="text-foreground text-xs font-medium"
-          >
-            {reason}
+      <div className="flex min-h-4 max-w-full flex-wrap items-baseline justify-center gap-x-3 gap-y-1">
+        <div
+          aria-live="polite"
+          className="flex max-w-full flex-wrap items-baseline justify-center gap-x-2"
+        >
+          <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+            {LABEL[step]}
           </span>
-        )}
+          {reason !== null && (
+            <span
+              data-slot="read-aloud-reason"
+              className="text-foreground text-xs font-medium"
+            >
+              {reason}
+            </span>
+          )}
+        </div>
+        {exposure && <MarkChip {...exposure} />}
       </div>
 
       <GlyphLine

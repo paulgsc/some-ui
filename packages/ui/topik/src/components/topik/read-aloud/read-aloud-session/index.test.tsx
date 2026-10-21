@@ -1,10 +1,13 @@
 import type { JSX } from "react"
+import { useState } from "react"
 import type { Speaker, SpeechOutcome } from "@some-ui/speech"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import type { ReadAloudSessionProps } from "@topik/components/topik/read-aloud/read-aloud-session"
 import { ReadAloudSession } from "@topik/components/topik/read-aloud/read-aloud-session"
 import type { ReadAloudRecordEvent } from "@topik/lib/topik/adapter/hooks/use-read-aloud"
 import { STARTER_SET } from "@topik/lib/topik/read-aloud/repo-sets"
+import type { Tally } from "@topik/lib/topik/read-aloud/tally"
+import { noteRead, noteShown } from "@topik/lib/topik/read-aloud/tally"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const SPOKEN_MS = 800
@@ -287,5 +290,228 @@ describe("ReadAloudSession", () => {
     fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))
     fireEvent.click(screen.getByRole("button", { name: /stop reading aloud/i }))
     expect(onExit).toHaveBeenCalledOnce()
+  })
+})
+
+describe("ReadAloudSession's New or Seen before (Rem. 7.5)", () => {
+  /** 21 October 2026, midday, local time. */
+  const TODAY = new Date(2026, 9, 21, 12)
+  const YESTERDAY = new Date(2026, 9, 20, 12).toISOString()
+
+  /** A host that keeps the tally, as the screen does, from `held`. */
+  const Kept = ({
+    held = {},
+    kept = true,
+    onClear = (): boolean => true,
+  }: {
+    held?: Tally
+    kept?: boolean
+    onClear?: () => boolean
+  }): JSX.Element => {
+    const [rows, setRows] = useState(held)
+    return (
+      <ReadAloudSession
+        deck={STARTER_SET}
+        level={1}
+        speech={fakeSpeech()}
+        seedKey={() => "fixed"}
+        onShown={(lineId, at) =>
+          setRows((now) => noteShown(now, lineId, new Date(at).toISOString()))
+        }
+        onRecord={(event) => {
+          if (event.type === "rep" && event.lineId !== undefined) {
+            const lineId = event.lineId
+            setRows((now) => noteRead(now, lineId))
+          }
+        }}
+        tally={{ rows, today: "2026-10-21", kept, onClear }}
+        onExit={vi.fn()}
+      />
+    )
+  }
+
+  /** Every sentence of the deck shown once, yesterday and read to the end. */
+  const SEEN_YESTERDAY: Tally = Object.fromEntries(
+    STARTER_SET.lines.map((line) => [
+      line.id,
+      { first: YESTERDAY, last: YESTERDAY, shown: 1, read: 1 },
+    ])
+  )
+
+  const start = async (kind: "sentence" | "word"): Promise<void> => {
+    fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))
+    await runUntil(
+      () => stepOf() === "glyphs" && rep()?.dataset["kind"] === kind
+    )
+  }
+  const chip = (): HTMLElement | null =>
+    document.querySelector<HTMLElement>('[data-slot="read-aloud-mark"]')
+  const facts = (): HTMLElement | null =>
+    document.querySelector<HTMLElement>('[data-slot="read-aloud-facts"]')
+
+  beforeEach(() => {
+    vi.setSystemTime(TODAY)
+  })
+
+  it("calls a sentence New on its first showing, from the tally that has just heard of it", async () => {
+    render(<Kept />)
+    await start("sentence")
+    expect(chip()?.textContent).toBe("New")
+    await runUntil(() => stepOf() === "echo")
+    // The mark holds still while the steps change.
+    expect(chip()?.textContent).toBe("New")
+  })
+
+  it("calls a sentence Seen before once the tally had it already", async () => {
+    render(<Kept held={SEEN_YESTERDAY} />)
+    await start("sentence")
+    expect(chip()?.textContent).toBe("Seen before")
+  })
+
+  it("marks a word from the pace book, with no facts behind it", async () => {
+    render(<Kept />)
+    await start("word")
+    expect(chip()?.textContent).toBe("New")
+    expect(chip()?.tagName).toBe("SPAN")
+  })
+
+  it("holds the drill while the facts are open, and carries on from the start of the rep after", async () => {
+    render(<Kept held={SEEN_YESTERDAY} />)
+    await start("sentence")
+    await runUntil(() => stepOf() === "turn")
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Seen before. See what is kept about this sentence",
+      })
+    )
+    expect(stepOf()).toBe("paused")
+    expect(screen.getByRole("dialog").textContent).toContain("This sentence")
+    const text = facts()?.textContent ?? ""
+    expect(text).toContain("Reading is paused while this is open.")
+    expect(text).toContain("Shown2 times")
+    expect(text).toContain("First shownyesterday")
+    expect(text).toContain("Last showntoday")
+    expect(text).toContain("Read to the end")
+    expect(text).toContain("I hadn't shown it yet this sitting.")
+    expect(text).toContain("Kept on this phone, since yesterday.")
+    // Nothing about the stuck report is kept as a fact.
+    expect(text).not.toMatch(/stuck/i)
+    await advance(30_000)
+    expect(stepOf()).toBe("paused")
+
+    fireEvent.click(screen.getByRole("button", { name: "Done" }))
+    expect(facts()).toBeNull()
+    expect(stepOf()).toBe("glyphs")
+  })
+
+  it("leaves a rep the learner had paused paused when the facts close", async () => {
+    render(<Kept held={SEEN_YESTERDAY} />)
+    await start("sentence")
+    fireEvent.click(screen.getByRole("button", { name: "Pause" }))
+    fireEvent.click(
+      screen.getByRole("button", { name: /^seen before\. see what/i })
+    )
+    expect(facts()).not.toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: "Done" }))
+    expect(facts()).toBeNull()
+    expect(stepOf()).toBe("paused")
+  })
+
+  it("says when the phone could not keep it", async () => {
+    render(<Kept held={SEEN_YESTERDAY} kept={false} />)
+    await start("sentence")
+    fireEvent.click(screen.getByRole("button", { name: /^seen before/i }))
+    expect(facts()?.textContent).toContain(
+      "This phone couldn't keep this, so it lasts only until you close it."
+    )
+  })
+
+  it("closes the facts when the pause under them ends the sitting, and does not open them again", async () => {
+    render(<Kept held={SEEN_YESTERDAY} />)
+    await start("sentence")
+    fireEvent.click(screen.getByRole("button", { name: /^seen before/i }))
+    expect(facts()).not.toBeNull()
+    await advance(2 * 60_000 + 1000)
+    expect(facts()).toBeNull()
+    expect(slotText("read-aloud-sitting-over")).not.toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: /keep going/i }))
+    expect(stepOf()).toBe("glyphs")
+    expect(facts()).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: "Pause" }))
+    expect(facts()).toBeNull()
+  })
+
+  describe("on the start screen", () => {
+    const rows: Tally = {
+      ...Object.fromEntries(
+        [STARTER_SET.lines[0]?.id ?? "", STARTER_SET.lines[1]?.id ?? ""].map(
+          (id) => [
+            id,
+            {
+              first: "2026-10-19T12:00:00.000Z",
+              last: YESTERDAY,
+              shown: 2,
+              read: 1,
+            },
+          ]
+        )
+      ),
+    }
+
+    it("says what is kept and since when, and clears it only on a second press that says what goes", () => {
+      const onClear = vi.fn(() => true)
+      render(<Kept held={rows} onClear={onClear} />)
+      expect(slotText("read-aloud-tally")).toContain(
+        "Kept on this phone: when 2 sentences were shown and read to the end, since 19 Oct."
+      )
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Clear what is kept about sentences",
+        })
+      )
+      const ask = screen.getByRole("dialog")
+      expect(ask.textContent).toContain("Clear what is kept about sentences?")
+      expect(ask.textContent).toContain(
+        "This clears when 2 sentences were shown and read to the end, since 19 Oct. Your practice record stays."
+      )
+      expect(onClear).not.toHaveBeenCalled()
+
+      fireEvent.click(screen.getByRole("button", { name: "Keep it" }))
+      expect(onClear).not.toHaveBeenCalled()
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Clear what is kept about sentences",
+        })
+      )
+      fireEvent.click(screen.getByRole("button", { name: "Clear it" }))
+      expect(onClear).toHaveBeenCalledOnce()
+      expect(slotText("read-aloud-tally")).toContain(
+        "Cleared. Every sentence starts as New again."
+      )
+    })
+
+    it("says so when the phone could not clear it, and keeps offering to", () => {
+      render(<Kept held={rows} onClear={() => false} />)
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Clear what is kept about sentences",
+        })
+      )
+      fireEvent.click(screen.getByRole("button", { name: "Clear it" }))
+      expect(slotText("read-aloud-tally")).toContain(
+        "This phone couldn't clear it."
+      )
+      expect(
+        screen.getByRole("button", {
+          name: "Clear what is kept about sentences",
+        })
+      ).toBeTruthy()
+    })
+
+    it("offers nothing to clear while nothing is kept", () => {
+      render(<Kept />)
+      expect(slotText("read-aloud-tally")).toBeNull()
+    })
   })
 })
