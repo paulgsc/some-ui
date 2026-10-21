@@ -46,6 +46,10 @@ const PRACTICE = vi.hoisted(() => ({
   days: [{ day: "2026-10-10", reps: 30, sets: 3, practiceMs: 270_000 }],
   totals: { reps: 30, sets: 3, practiceMs: 270_000 },
 }))
+const FEEDBACK = vi.hoisted(() => ({
+  tooEasy: null,
+  tooManyRepeats: { at: "2026-10-10T09:00:00.000Z" },
+}))
 const LENS = vi.hoisted(() => ({
   entries: [{ session: "2026-10-10T08:00:00.000Z", line: "school-bus" }],
   sessions: [{ session: "2026-10-10T08:00:00.000Z", racing: false }],
@@ -55,6 +59,7 @@ const letGoLensRecord = vi.hoisted(() => vi.fn(() => 1))
 const lensReads = vi.hoisted((): Array<string> => [])
 vi.mock("@some-ui/topik", () => ({
   readAloudPracticeRecord: (): typeof PRACTICE => PRACTICE,
+  readAloudFeedbackForExport: (): typeof FEEDBACK => FEEDBACK,
   lensRecordForExport: (): typeof LENS => {
     lensReads.push("record")
     return LENS
@@ -246,6 +251,7 @@ describe("shareReflections", () => {
       stops: [{ sessionId: "s1-0000000000", reason: "break", via: "left" }],
       paths: { glances: 1, opens: 0 },
       readAloudPractice: PRACTICE,
+      readAloudFeedback: FEEDBACK,
     })
     // Android says "shared" once an app is picked: nothing goes on that.
     expect(reflections.getSnapshot().kept).toHaveLength(3)
@@ -401,6 +407,7 @@ describe("shareAgentExport", () => {
       pathsWithoutSession: [{ sessionId: "gone-session", glances: 1 }],
       stops: [{ sessionId: "session-1", reason: "focus" }],
       readAloudPractice: PRACTICE,
+      readAloudFeedback: FEEDBACK,
       grammarLens: LENS,
       // A take whose audio could not be read is listed without a file.
       lensTakes: [

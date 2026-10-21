@@ -1,9 +1,18 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useState } from "react"
+import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import { PracticeRecordView } from "@topik/components/topik/read-aloud/practice-record"
 import type { ReadAloudLevel } from "@topik/lib/topik/read-aloud/content"
+import type {
+  FeedbackKey,
+  ReadAloudFeedback,
+} from "@topik/lib/topik/read-aloud/feedback"
+import {
+  FEEDBACK_KEYS,
+  FEEDBACK_WORDS,
+} from "@topik/lib/topik/read-aloud/feedback"
 import type { PracticeRecord } from "@topik/lib/topik/read-aloud/records"
 import { SUMMARY_MS } from "@topik/lib/topik/read-aloud/timing"
 import { BookOpenText, Play, ScanSearch, VolumeX } from "lucide-react"
@@ -48,6 +57,13 @@ export type SetCardProps = { short: boolean; onStop: () => void } & (
       kind: "sitting-over"
       /** What waits for the next sitting; read-aloud's set when absent. */
       note?: string
+      /** The sitting's two answers, where the host keeps them. */
+      feedback?: {
+        value: ReadAloudFeedback | null
+        /** False when the phone could not keep what was last tapped. */
+        kept: boolean
+        onToggle: (key: FeedbackKey) => void
+      }
       onContinue: () => void
     }
 )
@@ -143,6 +159,12 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
   }
 
   if (props.kind === "sitting-over") {
+    const { feedback } = props
+    const saved =
+      feedback &&
+      (feedback.kept
+        ? FEEDBACK_WORDS.saved(feedback.value)
+        : FEEDBACK_WORDS.notKept)
     return (
       <StepLayout
         short={short}
@@ -159,10 +181,47 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
               {props.note ??
                 "Your set is kept. It picks up at its next item whenever you come back, now included."}
             </p>
+            {feedback && (
+              <p
+                data-slot="read-aloud-feedback-saved"
+                aria-live="polite"
+                className="text-foreground min-h-5 text-sm leading-relaxed"
+              >
+                {saved}
+              </p>
+            )}
           </div>
         }
         dock={
           <>
+            {feedback && (
+              <div
+                role="group"
+                aria-label={FEEDBACK_WORDS.group}
+                className={cn(
+                  "gap-2",
+                  short ? "flex flex-col" : "grid grid-cols-2"
+                )}
+              >
+                {FEEDBACK_KEYS.map((key) => {
+                  const pressed = feedback.value?.[key] != null
+                  return (
+                    <Button
+                      key={key}
+                      variant="secondary"
+                      className={cn(
+                        "h-auto min-h-10 min-w-0 rounded-2xl py-1.5 leading-tight whitespace-normal",
+                        pressed && "ring-primary ring-2"
+                      )}
+                      aria-pressed={pressed}
+                      onClick={() => feedback.onToggle(key)}
+                    >
+                      {FEEDBACK_WORDS.label(key)}
+                    </Button>
+                  )
+                })}
+              </div>
+            )}
             <Button
               className="h-12 gap-2 rounded-2xl"
               onClick={props.onContinue}

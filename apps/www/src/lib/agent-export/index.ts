@@ -20,7 +20,11 @@
 import { extensionOf, localStorageOrNull } from "@some-ui/core-utils"
 import type { SessionSummary } from "@some-ui/leetype"
 import type { Soundbite, SoundbiteStore } from "@some-ui/soundbites"
-import type { LensRecordExport, PracticeRecord } from "@some-ui/topik"
+import type {
+  LensRecordExport,
+  PracticeRecord,
+  ReadAloudFeedback,
+} from "@some-ui/topik"
 
 import { foreignValue } from "@/lib/intent/foreign"
 import type { LeetypeTake, LeetypeTakeNote } from "@/lib/leetype-takes"
@@ -50,6 +54,9 @@ type SoundbiteRemover = Pick<SoundbiteStore, "remove">
 
 const READ_ALOUD_PRACTICE =
   "`readAloudPractice` is the read-aloud drill's practice record: for each of the 60 most recent days that had any (a day without practice has no entry, and an old day stays until 60 newer ones replace it), and in `totals` for all time, the reps read to the end, the sets finished and the practice they are credited with (a nominal time per rep, not the clock). All zeros means nothing was recorded or the stored record could not be read, which the app cannot tell apart; null means the app could not load the drill at all."
+
+const READ_ALOUD_FEEDBACK =
+  "`readAloudFeedback` is what the learner said at the end of read-aloud sittings, as two separate answers: `tooEasy` (they want harder sentences) and `tooManyRepeats` (they want more variety), each with `at`, when they gave it (ISO), or null if they have not. They can give either, both or neither. An answer stays on the phone until they take it back, so read its `at` against the date of the session it comes with. The whole field is null when they gave neither, or the app could not read them. Neither answer moves their level, and a stuck report is not one of them."
 
 const GRAMMAR_LENS = [
   "`grammarLens` is the grammar-lens session's record (`grammarLens.entries`): one entry per item, most recent last. Once the learner confirms this file arrived, the entries in it leave the phone: this file is their only copy.",
@@ -89,6 +96,7 @@ const ABOUT = [
   PATHS,
   "A deleted session's counts, still on the phone, are in `pathsWithoutSession`.",
   READ_ALOUD_PRACTICE,
+  READ_ALOUD_FEEDBACK,
   GRAMMAR_LENS,
   LENS_TAKES,
   LEETYPE_ANSWERS,
@@ -103,6 +111,7 @@ const ABOUT_REFLECTIONS = [
   STOPS,
   PATHS,
   READ_ALOUD_PRACTICE,
+  READ_ALOUD_FEEDBACK,
   "Use them to shape the next session. Once handed off the reflections leave the phone (the stops, path counts and the practice record stay): this file is then their only copy.",
 ].join("\n")
 
@@ -245,6 +254,15 @@ async function readAloudPractice(): Promise<PracticeRecord | null> {
   try {
     const { readAloudPracticeRecord } = await import("@some-ui/topik")
     return readAloudPracticeRecord()
+  } catch {
+    return null
+  }
+}
+
+async function readAloudFeedback(): Promise<ReadAloudFeedback | null> {
+  try {
+    const { readAloudFeedbackForExport } = await import("@some-ui/topik")
+    return readAloudFeedbackForExport()
   } catch {
     return null
   }
@@ -451,6 +469,7 @@ export async function shareReflections(
   const exportedAt = now().toISOString()
   const { bySession, files, sent } = await writeOut(kept, sessions, exportedAt)
   const practice = await readAloudPractice()
+  const feedback = await readAloudFeedback()
   const stops = allStops()
   const jsons = [...bySession].map(([sessionId, { base, entries }]) => {
     const session = sessions.find((s) => s.id === sessionId)
@@ -467,6 +486,7 @@ export async function shareReflections(
           stops: stops.filter((stop) => stop.sessionId === sessionId),
           paths: pathCounts(sessionId),
           readAloudPractice: practice,
+          readAloudFeedback: feedback,
         },
         null,
         2
@@ -536,6 +556,7 @@ export async function shareAgentExport(
       ),
       stops: allStops(),
       readAloudPractice: await readAloudPractice(),
+      readAloudFeedback: await readAloudFeedback(),
       grammarLens: lens,
       lensTakes:
         takes?.map(({ take, audio: blob }) => ({

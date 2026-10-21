@@ -404,6 +404,24 @@ export const PANEL_FIXTURES = {
     />
   )),
 
+  // The end of a sitting with both answers given: the longest saved line.
+  "topik-read-aloud-sitting-over": handheldStage((short) => (
+    <SetCard
+      kind="sitting-over"
+      feedback={{
+        value: {
+          tooEasy: { at: "2026-10-21T08:00:00.000Z" },
+          tooManyRepeats: { at: "2026-10-21T08:05:00.000Z" },
+        },
+        kept: true,
+        onToggle: noop,
+      }}
+      short={short}
+      onContinue={noop}
+      onStop={noop}
+    />
+  )),
+
   "leetype-incident": IncidentFixture,
 
   // Inline styles, not utilities: this directory is outside www's Tailwind

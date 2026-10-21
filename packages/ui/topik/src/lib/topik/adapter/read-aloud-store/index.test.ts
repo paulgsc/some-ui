@@ -150,10 +150,26 @@ describe("the read-aloud store", () => {
     expect(createReadAloudStore(storage).progress(1, ":all")).toEqual(PROGRESS)
   })
 
+  it("keeps the sitting's answers across stores, and says when it could not", () => {
+    const storage = memoryStorage()
+    const answers = {
+      tooEasy: { at: "2026-10-21T08:00:00.000Z" },
+      tooManyRepeats: null,
+    }
+    expect(createReadAloudStore(storage).saveFeedback(answers)).toBe(true)
+    expect(createReadAloudStore(storage).feedback()).toEqual(answers)
+    createReadAloudStore(storage).saveFeedback(null)
+    expect(createReadAloudStore(storage).feedback()).toBeNull()
+    for (const gone of [null, refusing]) {
+      expect(createReadAloudStore(gone).saveFeedback(answers)).toBe(false)
+    }
+  })
+
   it("discards what it cannot parse", () => {
     const storage = memoryStorage()
     storage.map.set(READ_ALOUD_STORAGE_KEYS.paces, "{not json")
     storage.map.set(READ_ALOUD_STORAGE_KEYS.record, '{"version":9}')
+    storage.map.set(READ_ALOUD_STORAGE_KEYS.feedback, '{"version":1}')
     storage.map.set(
       READ_ALOUD_STORAGE_KEYS.progress,
       JSON.stringify({
@@ -165,6 +181,7 @@ describe("the read-aloud store", () => {
     const store = createReadAloudStore(storage)
     expect(store.paces()).toEqual({})
     expect(store.record()).toEqual(emptyRecord())
+    expect(store.feedback()).toBeNull()
     expect(store.progress(2, ":all")).toBeNull()
   })
 

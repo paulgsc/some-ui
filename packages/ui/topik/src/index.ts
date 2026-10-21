@@ -69,7 +69,11 @@ export type {
   ReadAloudWord,
   WordOccurrence,
 } from "./lib/topik/read-aloud/content"
-export { readAloudPracticeRecord } from "./lib/topik/adapter/read-aloud-store"
+export {
+  readAloudFeedbackForExport,
+  readAloudPracticeRecord,
+} from "./lib/topik/adapter/read-aloud-store"
+export type { ReadAloudFeedback } from "./lib/topik/read-aloud/feedback"
 export type { LensRecordExport } from "./lib/topik/adapter/lens-record-store"
 export {
   letGoLensRecord,
