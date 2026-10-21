@@ -1591,6 +1591,23 @@ rather than as *data*, and the remedy is to exhibit the data.
   drawn uniformly, which Proposition 6.2 shows is exactly right for a
   surface that holds no belief (Rem. 6.2); the one constraint on the draw,
   no three alike in a row, is a presentation constraint and selects nothing.
+
+  What a set holds follows the same rule. Within a sitting the sentences are
+  drawn without replacement: those not yet shown first, then, once every one
+  has been shown, the one shown longest ago. That selects by the sitting's own
+  history, a list of the sentences the screen has shown since the sitting
+  began, and holds no belief about the learner: it is a function of what was
+  shown, never of what the learner did or failed to do. A sentence is shown
+  when its rep reaches its first step, and a return or an introduction adds
+  nothing (Prop. 6.4 (ii)), so withholding a stuck report changes no list and
+  no later draw. The list lives in memory for as long as the sitting's clock
+  (Rem. 4.10), is cleared when the next sitting starts, and is never stored.
+  A word is not drilled on its own when a sentence of the same set holds it,
+  which is a presentation rule of the same kind. When a sentence is back
+  because the learner marked it stuck, or because the echo reads it a second
+  time, the screen says so; and the count of sentences shown, and the note
+  when every one has been, report what was shown and nothing about what was
+  learned.
 ]
 
 #remark("4.10", name: "The read-aloud session budget, amended")[

@@ -240,6 +240,58 @@ describe("ReadAloudSession", () => {
     expect(stepOf()).toBe("glyphs")
   })
 
+  it("counts the sentences the sitting has shown, on the bar and on each summary", async () => {
+    renderSession()
+    fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))
+    const bar = (): number =>
+      Number(
+        screen
+          .getByRole("meter", {
+            name: /different sentences shown this sitting/i,
+          })
+          .getAttribute("aria-valuenow")
+      )
+    expect(bar()).toBe(0)
+    const summary = (): boolean => slotText("read-aloud-summary") !== null
+    await runUntil(summary)
+    // The starter holds seven level-1 sentences and a set draws four.
+    expect(slotText("read-aloud-pool-note")).toBe(
+      "4 of 7 sentences shown this sitting"
+    )
+    fireEvent.click(screen.getByRole("button", { name: /next set/i }))
+    expect(bar()).toBeGreaterThanOrEqual(4)
+  })
+
+  it("says so once the sitting has shown every sentence, and not before", async () => {
+    renderSession()
+    fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))
+    const summary = (): boolean => slotText("read-aloud-summary") !== null
+    await runUntil(summary)
+    expect(slotText("read-aloud-pool-note")).not.toMatch(/all 7/)
+    fireEvent.click(screen.getByRole("button", { name: /next set/i }))
+    await runUntil(
+      () => slotText("read-aloud-pool-note")?.includes("all") ?? false
+    )
+    expect(slotText("read-aloud-pool-note")).toBe(
+      "That's all 7 sentences, once each this sitting. From here they come back, the ones I showed longest ago first."
+    )
+  })
+
+  it("says why an item is back: a second read, and a return after a stuck report", async () => {
+    renderSession()
+    fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))
+    await runUntil(() => stepOf() === "glyphs")
+    expect(slotText("read-aloud-reason")).toBeNull()
+    await runUntil(() => stepOf() === "echo")
+    expect(slotText("read-aloud-reason")).toBe("Second read")
+    await runUntil(() => stepOf() === "turn")
+    expect(slotText("read-aloud-reason")).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: /stuck/i }))
+    await runUntil(
+      () => slotText("read-aloud-reason") === "Back: you marked it stuck"
+    )
+  })
+
   it("stops when the learner closes it", () => {
     const { onExit } = renderSession()
     fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))

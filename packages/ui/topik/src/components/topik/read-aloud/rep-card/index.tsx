@@ -11,11 +11,16 @@ import {
   markAt,
   markWeights,
 } from "@topik/lib/topik/read-aloud/glyphs"
+import type { SentencePool } from "@topik/lib/topik/read-aloud/set-builder"
 import type {
   IntroductionStep,
   QueueEntry,
   RepStep,
 } from "@topik/lib/topik/read-aloud/set-machine"
+import {
+  POOL_BAR_LABEL,
+  reasonOf,
+} from "@topik/lib/topik/read-aloud/sitting-words"
 import { SPEECH_MS_PER_SYLLABLE } from "@topik/lib/topik/read-aloud/timing"
 import { Hand, Play, SkipForward } from "lucide-react"
 
@@ -32,6 +37,8 @@ type RepCardProps = {
   reported: boolean
   /** Whether this step's audio has started playing. */
   playing: boolean
+  /** How much of the sentences the sitting has shown; absent shows no bar. */
+  pool?: SentencePool
   short: boolean
   onStuck: () => void
   onSkip: () => void
@@ -100,6 +107,29 @@ function useMarch(
   return markAt(weights, tick.runKey === runKey ? tick.syllable : 0)
 }
 
+/**
+ * How many different sentences the sitting has shown, of those it can draw:
+ * thin and quiet at the foot of the card, filling as they are shown. The
+ * count itself is on the set summary.
+ */
+const PoolBar = ({ pool }: { pool: SentencePool }): JSX.Element => (
+  <div
+    data-slot="read-aloud-pool"
+    role="meter"
+    aria-label={POOL_BAR_LABEL}
+    aria-valuemin={0}
+    aria-valuemax={pool.of}
+    aria-valuenow={Math.min(pool.shown, pool.of)}
+    className="bg-muted h-1 w-full shrink-0 overflow-hidden rounded-full"
+  >
+    {/* foreground at 80% over the track keeps 3:1 or better in both themes */}
+    <div
+      className="bg-foreground/80 h-full rounded-full"
+      style={{ width: `${(Math.min(pool.shown, pool.of) / pool.of) * 100}%` }}
+    />
+  </div>
+)
+
 /** A bar that empties over the step's clock: the turn, or the echo. */
 const Meter = ({ ms, runKey }: { ms: number; runKey: number }): JSX.Element => {
   const bar = useRef<HTMLDivElement>(null)
@@ -140,12 +170,14 @@ export const RepCard = ({
   stepKey,
   reported,
   playing,
+  pool,
   short,
   onStuck,
   onSkip,
   onResume,
 }: RepCardProps): JSX.Element => {
   const { item } = entry
+  const reason = reasonOf(entry.role, step)
   const introduction = step === "intro-audio" || step === "intro-hold"
   const weights = markWeights(item)
   const marchMs =
@@ -170,12 +202,22 @@ export const RepCard = ({
       data-kind={item.kind}
       className="flex w-full max-w-md flex-col items-center gap-4 text-center"
     >
-      <span
+      <div
         aria-live="polite"
-        className="text-muted-foreground min-h-4 text-xs font-medium tracking-wider uppercase"
+        className="flex min-h-4 max-w-full items-baseline justify-center gap-2 whitespace-nowrap"
       >
-        {LABEL[step]}
-      </span>
+        <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+          {LABEL[step]}
+        </span>
+        {reason !== null && (
+          <span
+            data-slot="read-aloud-reason"
+            className="text-foreground text-xs font-medium"
+          >
+            {reason}
+          </span>
+        )}
+      </div>
 
       <GlyphLine
         deck={deck}
@@ -222,7 +264,7 @@ export const RepCard = ({
     </div>
   )
 
-  const dock =
+  const controls =
     step === "paused" ? (
       onResume ? (
         <Button className="h-12 gap-2 rounded-2xl" onClick={onResume}>
@@ -254,6 +296,13 @@ export const RepCard = ({
         </Button>
       </div>
     )
+
+  const dock = (
+    <>
+      {controls}
+      {pool && pool.of > 0 && <PoolBar pool={pool} />}
+    </>
+  )
 
   return (
     <StepLayout

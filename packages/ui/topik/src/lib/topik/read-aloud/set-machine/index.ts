@@ -25,6 +25,12 @@
  * - Pace (Cor. 4.6 (iii)): a word's factor moves when the word runs to the
  *   end as a rep or a return, and at no other time. A sentence has none: its
  *   turn is fixed by the level (Cor. 4.6 (ii)).
+ * - The sitting's list (Rem. 4.9): the ids of the sentences shown this
+ *   sitting, the one shown longest ago first, for the next set's draw. A
+ *   sentence is shown when its rep reaches its first step; a return or an
+ *   introduction adds nothing (Prop. 6.4 (ii)), so withholding a stuck report
+ *   changes no list. It lives in memory, as long as the sitting's clock, and
+ *   `start-sitting` clears it.
  * - The sitting (Rem. 4.10): once thirty minutes have passed, nothing new
  *   begins - no rep, no introduction, no summary, no set. What is showing
  *   finishes first; a rep is never cut short by the bound. The set in
@@ -116,6 +122,12 @@ export type SetMachineState = {
   paces: PaceBook
   /** When the sitting began; null before the first set. */
   sittingStartedAt: number | null
+  /**
+   * The line ids of the sentences shown this sitting, once each, the one
+   * shown longest ago first. Memory only: never stored, and cleared by
+   * `start-sitting`.
+   */
+  shown: Array<string>
 }
 
 export type SetEffect =
@@ -208,6 +220,7 @@ export function createSetMachine(level: ReadAloudLevel): SetMachineState {
     counted: 0,
     paces: {},
     sittingStartedAt: null,
+    shown: [],
   }
 }
 
@@ -242,6 +255,20 @@ const paceOf = (paces: PaceBook, wordId: string): PaceEntry =>
 
 const sittingOver = (state: SetMachineState, at: number): boolean =>
   state.sittingStartedAt !== null && at - state.sittingStartedAt >= SITTING_MS
+
+/**
+ * The sitting's list after a rep begins: a sentence's rep, its first entry
+ * in a set, moves its line to the end as the one shown most recently. A
+ * return, an introduction and a word add nothing.
+ */
+const withShown = (
+  state: SetMachineState,
+  entry: QueueEntry
+): Array<string> => {
+  const { item, role } = entry
+  if (role !== "rep" || item.kind !== "sentence") return state.shown
+  return [...state.shown.filter((id) => id !== item.lineId), item.lineId]
+}
 
 /** Move to a phase under a fresh sequence number. */
 const enter = (state: SetMachineState, phase: SetPhase): SetMachineState => ({
@@ -341,7 +368,8 @@ function startEntry(state: SetMachineState, at: number): SetTransition {
       effects: speakEffects(next.seq, entry, "next"),
     }
   }
-  const next = enter(state, { name: "glyphs" })
+  const listed = { ...state, shown: withShown(state, entry) }
+  const next = enter(listed, { name: "glyphs" })
   return {
     state: next,
     effects: [{ type: "wait", seq: next.seq, ms: SETTLE_MS }],
@@ -646,7 +674,7 @@ export function setMachineReducer(
 
     case "start-sitting": {
       if (phase.name !== "sitting-over") return unchanged
-      const fresh = { ...state, sittingStartedAt: event.at }
+      const fresh = { ...state, sittingStartedAt: event.at, shown: [] }
       if (progressOf(fresh)) return startEntry(fresh, event.at)
       return {
         state: enter(fresh, { name: "idle" }),

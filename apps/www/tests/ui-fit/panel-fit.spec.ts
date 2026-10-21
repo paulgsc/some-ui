@@ -106,6 +106,10 @@ const PANEL_STAGES: ReadonlyArray<PanelId> = [
   "topik-drama-beat",
   "topik-drama-choice",
   "topik-drama-ending",
+  // The phone's read-aloud: a return with its reason and the sitting's bar,
+  // and the summary that says every sentence has been shown.
+  "topik-read-aloud-return",
+  "topik-read-aloud-summary-full",
 ]
 
 const PLANTED_OVERFLOW: PanelId = "planted-overflow"

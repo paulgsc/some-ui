@@ -9,6 +9,13 @@
  * particular, a word's pace factor is pacing and nothing more (Cor. 4.6
  * (iii)), and no word is drawn more often for having been reported stuck.
  *
+ * Which sentences a set holds follows the sitting's own history and nothing
+ * else (Rem. 4.9): the ones not yet shown this sitting, then, once every one
+ * has been shown, the one shown longest ago. The history is the list of line
+ * ids the set machine keeps for the sitting, handed in as `shown`, oldest
+ * first. A word is drawn from no line's words that a sentence of the same
+ * set already holds.
+ *
  * Everything here is deterministic in its seed key, like the drama's option
  * order: a set can always be rebuilt from its key.
  */
@@ -53,6 +60,19 @@ export type SetOptions = {
   seedKey: string
   words?: number
   sentences?: number
+  /**
+   * The line ids shown this sitting, the one shown longest ago first (the set
+   * machine's `shown`). Absent at the start of a sitting.
+   */
+  shown?: ReadonlyArray<string>
+}
+
+/** How much of the sitting's sentences have been shown, for the pool bar. */
+export type SentencePool = {
+  /** Different sentences at or below the level shown this sitting. */
+  shown: number
+  /** Sentences at or below the level: every one a set can draw. */
+  of: number
 }
 
 const DEFAULT_WORDS = 6
@@ -112,6 +132,24 @@ export function levelShortfall(
   return own < sentences && below ? own : null
 }
 
+/**
+ * The sentences a sitting has drawn from, of those a set can draw at `level`
+ * (lines at or below it). A line shown that the deck no longer holds, or
+ * holds above the level, is not counted.
+ */
+export function sentencePool(
+  deck: ReadAloudDeck,
+  level: ReadAloudLevel,
+  shown: ReadonlyArray<string>
+): SentencePool {
+  const eligible = deck.lines.filter((line) => line.level <= level)
+  const ids = new Set(shown)
+  return {
+    shown: eligible.filter((line) => ids.has(line.id)).length,
+    of: eligible.length,
+  }
+}
+
 /** Def. 4.8's `K_e` for a line: every word it is written with, once each. */
 const sentenceWordIds = (line: ReadAloudLine): Array<string> => [
   ...new Set(line.words.map((word) => word.wordId)),
@@ -120,10 +158,13 @@ const sentenceWordIds = (line: ReadAloudLine): Array<string> => [
 /**
  * Build one set from a deck.
  *
- * Sentences are drawn from lines at or below the level, the level's own
- * lines first. Words are drawn uniformly from the written forms in those
- * lines, one form per word, so a set never shows one word twice as a word
- * rep.
+ * Sentences are drawn from lines at or below the level: those not yet shown
+ * this sitting first, the level's own lines before lower ones, each group in
+ * a fresh uniform order; once none is left unshown, the one shown longest
+ * ago. Words are drawn uniformly from the written forms in those lines, one
+ * form per word, so a set never shows one word twice as a word rep, and
+ * never one that a sentence of the set holds: that word is drilled in its
+ * sentence.
  */
 export function buildSet(
   deck: ReadAloudDeck,
@@ -132,30 +173,43 @@ export function buildSet(
     seedKey,
     words = DEFAULT_WORDS,
     sentences = DEFAULT_SENTENCES,
+    shown = [],
   }: SetOptions
 ): Array<SetItem> {
   const eligible = deck.lines.filter((line) => line.level <= level)
   const atLevel = eligible.filter((line) => line.level === level)
   const below = eligible.filter((line) => line.level < level)
 
-  const sentenceItems: Array<SetItem> = [
-    ...shuffledBySeed(atLevel, fnv1a(`${seedKey}:sentences:at`)),
-    ...shuffledBySeed(below, fnv1a(`${seedKey}:sentences:below`)),
-  ]
-    .slice(0, Math.max(0, sentences))
-    .map((line) => ({
-      kind: "sentence",
-      key: `s:${line.id}`,
-      lineId: line.id,
-      text: line.korean,
-      syllables: syllablesOf(line.korean),
-      wordIds: sentenceWordIds(line),
-    }))
+  const shownIds = new Set(shown)
+  const byId = new Map(eligible.map((line) => [line.id, line]))
+  const longestAgo = [...new Set(shown)].flatMap((id) => byId.get(id) ?? [])
+
+  const chosen = [
+    ...shuffledBySeed(
+      atLevel.filter((line) => !shownIds.has(line.id)),
+      fnv1a(`${seedKey}:sentences:at`)
+    ),
+    ...shuffledBySeed(
+      below.filter((line) => !shownIds.has(line.id)),
+      fnv1a(`${seedKey}:sentences:below`)
+    ),
+    ...longestAgo,
+  ].slice(0, Math.max(0, sentences))
+
+  const sentenceItems: Array<SetItem> = chosen.map((line) => ({
+    kind: "sentence",
+    key: `s:${line.id}`,
+    lineId: line.id,
+    text: line.korean,
+    syllables: syllablesOf(line.korean),
+    wordIds: sentenceWordIds(line),
+  }))
 
   const forms = eligible.flatMap((line) =>
     line.words.map((occurrence) => ({ line, occurrence }))
   )
-  const seen = new Set<string>()
+  // The words the sentences hold are in the set already, as sentences.
+  const seen = new Set<string>(chosen.flatMap(sentenceWordIds))
   const wordItems: Array<SetItem> = []
   for (const { line, occurrence } of shuffledBySeed(
     forms,

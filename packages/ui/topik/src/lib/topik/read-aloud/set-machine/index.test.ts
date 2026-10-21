@@ -1,5 +1,8 @@
+import type { ReadAloudDeck } from "@topik/lib/topik/read-aloud/content"
 import type { PaceBook } from "@topik/lib/topik/read-aloud/records"
+import { LEVEL_ONE_SET } from "@topik/lib/topik/read-aloud/repo-sets"
 import type { SetItem } from "@topik/lib/topik/read-aloud/set-builder"
+import { buildSet } from "@topik/lib/topik/read-aloud/set-builder"
 import type {
   EntryRole,
   SetEffect,
@@ -580,5 +583,199 @@ describe("the sitting bound (Rem. 4.10)", () => {
     host.send({ type: "shown", at: host.now + SITTING_MS })
     expect(host.state.phase.name).toBe("sitting-over")
     expect(progressOf(host.state)?.queue).toHaveLength(3)
+  })
+})
+
+describe("the sitting's list (Rem. 4.9)", () => {
+  const OTHER = sentence("other", "커피 주세요.")
+  const UNSEEN: PaceBook = {}
+
+  it("lists a sentence when its rep reaches its first step, and no word", () => {
+    const host = new Host()
+    host.begin([JUSEYO, ONE_CUP, KEOPI, OTHER])
+    expect(host.state.shown).toEqual([])
+    host.finishEntry()
+    expect(host.state.shown).toEqual(["one-cup"])
+    host.finishEntry()
+    host.finishEntry()
+    expect(host.state.shown).toEqual(["one-cup", "other"])
+  })
+
+  it("lists a skipped sentence, which reached its first step", () => {
+    const host = new Host()
+    host.begin([ONE_CUP])
+    host.send({ type: "skip", at: host.now })
+    expect(host.state.shown).toEqual(["one-cup"])
+  })
+
+  it("lists an interrupted sentence once, and keeps it when its rep starts over", () => {
+    const host = new Host()
+    host.begin([ONE_CUP, OTHER])
+    host.send({ type: "hidden", at: host.now })
+    host.send({ type: "shown", at: host.now })
+    host.send({ type: "pause", at: host.now })
+    host.send({ type: "resume", at: host.now })
+    expect(host.state.shown).toEqual(["one-cup"])
+  })
+
+  it("adds nothing for a return or an introduction (Prop. 6.4 (ii))", () => {
+    const run = (report: boolean): SetMachineState => {
+      const host = new Host()
+      host.begin([ONE_CUP, JUSEYO, OTHER, KEOPI, word("jan", "잔")], UNSEEN)
+      while (host.onEntry()) {
+        if (
+          report &&
+          host.state.phase.name === "glyphs" &&
+          !host.state.reported
+        ) {
+          host.send({ type: "stuck", at: host.now })
+        }
+        host.step()
+      }
+      return host.state
+    }
+    const reported = run(true)
+    expect(reported.queue.some((entry) => entry.role === "return")).toBe(true)
+    expect(reported.queue.some((entry) => entry.role === "introduction")).toBe(
+      true
+    )
+    expect(reported.shown).toEqual(run(false).shown)
+    expect(reported.shown).toEqual(["one-cup", "other"])
+  })
+
+  it("moves a sentence shown again to the end, as the most recent", () => {
+    const host = new Host()
+    host.begin([ONE_CUP, OTHER])
+    host.run()
+    host.step()
+    host.begin([ONE_CUP])
+    expect(host.state.shown).toEqual(["other", "one-cup"])
+  })
+
+  it("is cleared when a sitting starts, listing the rep it resumes", () => {
+    const host = new Host()
+    host.begin([ONE_CUP, KEOPI, OTHER])
+    host.finishEntry()
+    host.now += SITTING_MS
+    host.finishEntry()
+    expect(host.state.phase.name).toBe("sitting-over")
+    expect(host.state.shown).toEqual(["one-cup"])
+    host.send({ type: "start-sitting", at: host.now })
+    expect(host.state.shown).toEqual(["other"])
+  })
+
+  it("is not part of what a set keeps to resume", () => {
+    const host = new Host()
+    host.begin(SET)
+    host.finishEntry()
+    expect(Object.keys(progressOf(host.state) ?? {}).sort()).toEqual([
+      "counted",
+      "queue",
+      "reported",
+      "returns",
+    ])
+  })
+})
+
+/** A small, seeded random source: the same runs on every machine. */
+function random(seed: number): () => number {
+  let state = seed
+  return () => {
+    state = (state * 1_664_525 + 1_013_904_223) % 4_294_967_296
+    return state / 4_294_967_296
+  }
+}
+
+describe("sets drawn across a sitting (Rem. 4.9)", () => {
+  // Ten lines, four a set: three sets show them all, so the run reaches the
+  // pool being full and goes on past it.
+  const DECK: ReadAloudDeck = {
+    ...LEVEL_ONE_SET,
+    lines: LEVEL_ONE_SET.lines.slice(0, 10),
+  }
+  const IDS = DECK.lines.map((line) => line.id)
+
+  /**
+   * Drive the real machine and the real draw through a generated run of
+   * reports, skips, pauses, hidden pages, a clock jumping past the bound and
+   * a new sitting, and call `check` at every draw with the list it was
+   * handed.
+   */
+  function drive(
+    seed: number,
+    check: (shown: ReadonlyArray<string>, drawn: Array<string>) => void
+  ): { sets: number; sittings: number } {
+    const next = random(seed)
+    const host = new Host()
+    let sets = 0
+    let sittings = 1
+    for (let step = 0; step < 3000; step += 1) {
+      const { phase } = host.state
+      if (phase.name === "idle") {
+        const items = buildSet(DECK, {
+          level: 1,
+          seedKey: `${seed}:${sets}`,
+          shown: host.state.shown,
+        })
+        check(
+          host.state.shown,
+          items.flatMap((item) => (item.kind === "sentence" ? item.lineId : []))
+        )
+        sets += 1
+        host.begin(items, {})
+      } else if (phase.name === "sitting-over") {
+        sittings += 1
+        host.send({ type: "start-sitting", at: host.now })
+      } else if (phase.name === "paused") {
+        host.send({
+          type: phase.by === "learner" ? "resume" : "shown",
+          at: host.now,
+        })
+      } else if (phase.name === "summary") {
+        host.send({ type: "next-set", at: host.now })
+      } else {
+        const roll = next()
+        if (roll < 0.14) host.send({ type: "stuck", at: host.now })
+        else if (roll < 0.22) host.send({ type: "skip", at: host.now })
+        else if (roll < 0.27) host.send({ type: "pause", at: host.now })
+        else if (roll < 0.32) host.send({ type: "hidden", at: host.now })
+        else if (roll < 0.34) host.now += SITTING_MS
+        else host.step()
+      }
+      const { shown } = host.state
+      expect(new Set(shown).size).toBe(shown.length)
+      expect(shown.every((id) => IDS.includes(id))).toBe(true)
+    }
+    return { sets, sittings }
+  }
+
+  it("draws no sentence twice while one not yet shown remains (including stuck returns, skips, a hidden page, a pause and a new sitting)", () => {
+    let repeats = 0
+    for (let seed = 1; seed <= 25; seed += 1) {
+      const { sets, sittings } = drive(seed, (shown, drawn) => {
+        const unseen = IDS.filter((id) => !shown.includes(id))
+        const fresh = drawn.filter((id) => unseen.includes(id))
+        // Every unshown sentence a set has room for is in it...
+        expect(fresh).toHaveLength(Math.min(4, unseen.length))
+        // ...and a shown one is drawn only to fill what they could not.
+        repeats += drawn.length - fresh.length
+        expect(new Set(drawn).size).toBe(drawn.length)
+      })
+      expect(sets).toBeGreaterThan(5)
+      expect(sittings).toBeGreaterThan(0)
+    }
+    expect(repeats).toBeGreaterThan(0)
+  })
+
+  it("draws the one shown longest ago once every sentence has been shown", () => {
+    let full = 0
+    for (let seed = 1; seed <= 25; seed += 1) {
+      drive(seed, (shown, drawn) => {
+        if (shown.length < IDS.length) return
+        full += 1
+        expect([...drawn].sort()).toEqual([...shown.slice(0, 4)].sort())
+      })
+    }
+    expect(full).toBeGreaterThan(0)
   })
 })
