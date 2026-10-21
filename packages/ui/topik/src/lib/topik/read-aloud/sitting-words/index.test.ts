@@ -1,4 +1,5 @@
 import { counted } from "@some-ui/core-utils"
+import { MACHINERY } from "@topik/lib/topik/read-aloud/__tests__/machinery"
 import {
   POOL_BAR_LABEL,
   poolCount,
@@ -7,10 +8,6 @@ import {
   reasonOf,
 } from "@topik/lib/topik/read-aloud/sitting-words"
 import { describe, expect, it } from "vitest"
-
-/** What the person must never be told in: how it works, not what it did. */
-const MACHINERY =
-  /\b(queue|deck|pool|draw\w*|seed|reducer|machine|entry|entries|role|rep|list|id|key|null|undefined|state|index|stuck report|introduction)\b/i
 
 const STEPS = [
   "glyphs",

@@ -7,6 +7,7 @@ import type { StorageLike } from "@topik/lib/topik/adapter/storage"
 import { storedSet } from "@topik/lib/topik/read-aloud/added-sets"
 import { emptyRecord } from "@topik/lib/topik/read-aloud/records"
 import type { SetProgress } from "@topik/lib/topik/read-aloud/set-machine"
+import { noteRead, noteShown } from "@topik/lib/topik/read-aloud/tally"
 import { describe, expect, it } from "vitest"
 
 const refusing: StorageLike = {
@@ -165,11 +166,34 @@ describe("the read-aloud store", () => {
     }
   })
 
+  it("keeps the sentence tally across stores, empties it on a clear, and says when it could not", () => {
+    const storage = memoryStorage()
+    const tally = noteRead(
+      noteShown({}, "cafe-order", "2026-10-20T09:00:00.000Z"),
+      "cafe-order"
+    )
+    expect(createReadAloudStore(storage).saveTally(tally)).toBe(true)
+    expect(createReadAloudStore(storage).tally()).toEqual(tally)
+    expect(createReadAloudStore(storage).saveTally({})).toBe(true)
+    expect(createReadAloudStore(storage).tally()).toEqual({})
+    for (const gone of [null, refusing]) {
+      expect(createReadAloudStore(gone).saveTally(tally)).toBe(false)
+    }
+  })
+
+  it("resumes a set with the rep it had begun", () => {
+    const store = createReadAloudStore(memoryStorage())
+    const begun: SetProgress = { ...PROGRESS, begun: true }
+    store.saveProgress(1, ":all", begun)
+    expect(store.progress(1, ":all")).toEqual(begun)
+  })
+
   it("discards what it cannot parse", () => {
     const storage = memoryStorage()
     storage.map.set(READ_ALOUD_STORAGE_KEYS.paces, "{not json")
     storage.map.set(READ_ALOUD_STORAGE_KEYS.record, '{"version":9}')
     storage.map.set(READ_ALOUD_STORAGE_KEYS.feedback, '{"version":1}')
+    storage.map.set(READ_ALOUD_STORAGE_KEYS.tally, '{"version":1,"rows":[]}')
     storage.map.set(
       READ_ALOUD_STORAGE_KEYS.progress,
       JSON.stringify({
@@ -182,6 +206,7 @@ describe("the read-aloud store", () => {
     expect(store.paces()).toEqual({})
     expect(store.record()).toEqual(emptyRecord())
     expect(store.feedback()).toBeNull()
+    expect(store.tally()).toEqual({})
     expect(store.progress(2, ":all")).toBeNull()
   })
 
@@ -194,6 +219,7 @@ describe("the read-aloud store", () => {
       expect(store.paces()).toEqual({})
       expect(store.progress(1, ":all")).toBeNull()
       expect(store.sets()).toEqual([])
+      expect(store.tally()).toEqual({})
       expect(store.count({ type: "set" }, "2026-09-28").totals.sets).toBe(1)
     }
   })

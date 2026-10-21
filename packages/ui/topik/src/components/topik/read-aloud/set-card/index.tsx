@@ -1,9 +1,10 @@
-import type { JSX, ReactNode } from "react"
+import type { ComponentProps, JSX, ReactNode } from "react"
 import { useEffect, useState } from "react"
 import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import { PracticeRecordView } from "@topik/components/topik/read-aloud/practice-record"
+import { TallyClear } from "@topik/components/topik/read-aloud/tally-clear"
 import type { ReadAloudLevel } from "@topik/lib/topik/read-aloud/content"
 import type {
   FeedbackKey,
@@ -31,6 +32,8 @@ export type SetCardProps = { short: boolean; onStop: () => void } & (
       shortfall: number | null
       /** The practice record and the learner's local day, where one is kept. */
       record?: { record: PracticeRecord; today: string }
+      /** What is kept about each sentence shown, and the way to clear it. */
+      tally?: ComponentProps<typeof TallyClear>
       /**
        * The grammar-lens session, a start of its own (Cor. 4.8), where the
        * host offers it, whether any line at or below this level has
@@ -246,7 +249,7 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
       short={short}
       // With the record, the start screen is taller than a phone on its
       // side; it scrolls rather than clip.
-      longForm={props.record !== undefined}
+      longForm={props.record !== undefined || props.tally !== undefined}
       stage={
         <div
           data-slot="read-aloud-ready"
@@ -310,6 +313,7 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
               today={props.record.today}
             />
           )}
+          {props.tally && <TallyClear {...props.tally} />}
         </div>
       }
       dock={

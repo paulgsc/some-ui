@@ -1,3 +1,4 @@
+import { MACHINERY } from "@topik/lib/topik/read-aloud/__tests__/machinery"
 import type { ReadAloudFeedback } from "@topik/lib/topik/read-aloud/feedback"
 import {
   FEEDBACK_KEYS,
@@ -10,10 +11,6 @@ import { describe, expect, it } from "vitest"
 
 const AT = "2026-10-21T08:00:00.000Z"
 const LATER = "2026-10-21T08:05:00.000Z"
-
-/** What the person must never be told in: how it works, not what it did. */
-const MACHINERY =
-  /\b(queue|deck|pool|draw\w*|seed|state|store\w*|storage|key|id|null|undefined|json|export\w*|field|flag|boolean|request|status|error|sync\w*|grant|scope)\b/i
 
 const feedback = (easy: boolean, repeats: boolean): ReadAloudFeedback => ({
   tooEasy: easy ? { at: AT } : null,

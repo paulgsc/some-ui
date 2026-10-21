@@ -1,18 +1,22 @@
 /**
  * What the read-aloud drill keeps on the device between sittings: each
- * word's pace, the practice record, the set left unfinished, and the word
- * sets added from storage
+ * word's pace, the practice record, the set left unfinished, the word
+ * sets added from storage, the learner's two answers at a sitting's end and
+ * the tally of each sentence shown
  * (adaptive-learning canon Cor. 4.6 (iii), Def. 6.6, Rem. 4.10, Rem. 7.5).
  *
  * The added sets are content, kept so the learner need not pick them again;
- * losing them costs the picking. The other three sit outside the belief
+ * losing them costs the picking. The others sit outside the belief
  * envelope. The pace book is pacing and nothing more; the record is a count
  * shown to the learner; the unfinished set is a place in content, like the
- * handheld lesson's resume point. Losing
+ * handheld lesson's resume point; the tally is a row per sentence, which the
+ * mark on a sentence reads. Losing
  * any of them costs exactly that and nothing else (Thm. 7.2), which is why
  * every failure below is silent: eviction, a full quota, a private window, a
- * document an older build wrote. Everything read is parsed, not trusted, and
- * nothing here sends any of it anywhere (`readAloudPracticeRecord` below).
+ * document an older build wrote. Only the answers and the tally say whether
+ * the phone kept them, since the learner is told. Everything read is parsed,
+ * not trusted, and nothing here sends any of it anywhere
+ * (`readAloudPracticeRecord` below).
  */
 
 import { localStorageOrNull } from "@some-ui/core-utils"
@@ -41,6 +45,8 @@ import {
   prunePaceBook,
 } from "@topik/lib/topik/read-aloud/records"
 import type { SetProgress } from "@topik/lib/topik/read-aloud/set-machine"
+import type { Tally } from "@topik/lib/topik/read-aloud/tally"
+import { parseTally, storedTally } from "@topik/lib/topik/read-aloud/tally"
 import { z } from "zod"
 
 export const READ_ALOUD_STORAGE_KEYS = {
@@ -49,6 +55,7 @@ export const READ_ALOUD_STORAGE_KEYS = {
   progress: "topik:read-aloud-progress",
   sets: "topik:read-aloud-sets",
   feedback: "topik:read-aloud-feedback",
+  tally: "topik:read-aloud-tally",
 } as const
 
 /** A counted rep or a finished set, as the drill reports it. */
@@ -79,6 +86,10 @@ export type ReadAloudStore = {
   feedback: () => ReadAloudFeedback | null
   /** Whether the phone kept it: the learner is told when it did not. */
   saveFeedback: (feedback: ReadAloudFeedback | null) => boolean
+  /** The tally of each sentence shown; empty when none is kept. */
+  tally: () => Tally
+  /** Whether the phone kept it; the drill runs on either way. An empty tally clears it. */
+  saveTally: (tally: Tally) => boolean
 }
 
 const Id = z.string().min(1)
@@ -122,6 +133,7 @@ const ProgressDocumentSchema = z.object({
     returns: z.record(z.string(), z.number().int().min(0)),
     counted: z.number().int().min(0),
     reported: z.boolean(),
+    begun: z.boolean().optional(),
   }),
 })
 
@@ -200,6 +212,9 @@ export function createReadAloudStore(
       parseFeedback(read(READ_ALOUD_STORAGE_KEYS.feedback)),
     saveFeedback: (feedback): boolean =>
       write(READ_ALOUD_STORAGE_KEYS.feedback, storedFeedback(feedback)),
+    tally: (): Tally => parseTally(read(READ_ALOUD_STORAGE_KEYS.tally)),
+    saveTally: (tally): boolean =>
+      write(READ_ALOUD_STORAGE_KEYS.tally, storedTally(tally)),
   }
 }
 

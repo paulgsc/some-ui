@@ -18,6 +18,12 @@ import {
   progressOf,
   setMachineReducer,
 } from "@topik/lib/topik/read-aloud/set-machine"
+import type { Tally } from "@topik/lib/topik/read-aloud/tally"
+import {
+  noteRead,
+  noteShown,
+  tallyKey,
+} from "@topik/lib/topik/read-aloud/tally"
 import {
   audioWaitMs,
   MAX_SCREEN_MS,
@@ -769,5 +775,208 @@ describe("sets drawn across a sitting (Rem. 4.9)", () => {
     expect(repeats).toBeGreaterThan(0)
     expect(full).toBeGreaterThan(0)
     expect(second).toBeGreaterThan(0)
+  })
+})
+
+describe("what the tally is told (Rem. 7.5)", () => {
+  const AT = "2026-10-21T09:00:00.000Z"
+  const ONE_CUP_KEY = tallyKey(ONE_CUP)
+
+  /** The tally a host keeps from the machine's effects, as the screen does. */
+  const tallyOf = (host: Host): Tally =>
+    host.effects.reduce<Tally>((tally, effect) => {
+      if (effect.type === "note-shown") return noteShown(tally, effect.key, AT)
+      if (effect.type === "count-rep" && effect.key !== undefined) {
+        return noteRead(tally, effect.key)
+      }
+      return tally
+    }, {})
+
+  /** Every count, no date: the part of the tally a stuck report must not move. */
+  const countsOf = (tally: Tally): Record<string, [number, number]> =>
+    Object.fromEntries(
+      Object.entries(tally).map(([id, row]) => [id, [row.shown, row.read]])
+    )
+
+  const shownKeys = (host: Host): Array<string> =>
+    host.of("note-shown").map((effect) => effect.key)
+
+  it("shows the tally a sentence's rep once, and never a word, a return or an introduction (Prop. 6.4 (ii))", () => {
+    const host = new Host()
+    host.begin(SET, {})
+    while (host.onEntry()) {
+      const entry = currentEntry(host.state)
+      if (host.state.phase.name === "glyphs" && entry?.role === "rep") {
+        host.send({ type: "stuck", at: host.now })
+      }
+      host.step()
+    }
+    expect(host.roles()).toEqual(
+      expect.arrayContaining(["rep", "return", "introduction"])
+    )
+    expect(shownKeys(host)).toEqual([ONE_CUP_KEY])
+    expect(host.of("count-rep").flatMap((effect) => effect.key ?? [])).toEqual([
+      ONE_CUP_KEY,
+    ])
+    expect(
+      host.of("count-rep").filter((effect) => effect.key === undefined)
+    ).toHaveLength(2)
+  })
+
+  it("shows it nothing again when a pause, a hidden page or a stored resume starts the rep over", () => {
+    const host = new Host()
+    host.begin([ONE_CUP, KEOPI])
+    host.step()
+    host.send({ type: "pause", at: host.now })
+    host.send({ type: "resume", at: host.now })
+    host.step()
+    host.send({ type: "hidden", at: host.now })
+    host.send({ type: "shown", at: host.now })
+    expect(shownKeys(host)).toEqual([ONE_CUP_KEY])
+
+    const progress = progressOf(host.state)
+    expect(progress?.begun).toBe(true)
+    const later = new Host()
+    later.send({
+      type: "begin-set",
+      at: 0,
+      level: 1,
+      progress: JSON.parse(JSON.stringify(progress)),
+      paces: SEEN,
+    })
+    later.run()
+    expect(shownKeys(later)).toEqual([])
+    expect(countsOf(tallyOf(later))).toEqual({})
+    expect(later.of("count-rep").map((effect) => effect.key)).toEqual([
+      ONE_CUP_KEY,
+      undefined,
+    ])
+  })
+
+  it("names how a sentence began, and clears it with the entry", () => {
+    const host = new Host()
+    host.begin([ONE_CUP, KEOPI])
+    expect(host.state.begun).toBe("fresh")
+    host.send({ type: "pause", at: host.now })
+    host.send({ type: "resume", at: host.now })
+    expect(host.state.begun).toBe("fresh")
+    host.finishEntry()
+    expect(host.state.begun).toBeNull()
+
+    const again = new Host()
+    again.state = { ...again.state, shown: ["one-cup"] }
+    again.begin([ONE_CUP, KEOPI])
+    expect(again.state.begun).toBe("repeat")
+    again.send({ type: "hidden", at: again.now })
+    again.send({ type: "shown", at: again.now })
+    expect(again.state.begun).toBe("repeat")
+    expect(shownKeys(again)).toEqual([ONE_CUP_KEY])
+  })
+
+  it("holds a begun rep over into the next sitting as a first showing there, and shows the tally nothing", () => {
+    const host = new Host()
+    host.state = { ...host.state, shown: ["one-cup"] }
+    host.begin([ONE_CUP, KEOPI])
+    host.step()
+    host.send({ type: "pause", at: host.now })
+    host.step()
+    expect(host.state.phase.name).toBe("sitting-over")
+    expect(host.state.begun).toBe("repeat")
+    host.send({ type: "start-sitting", at: host.now })
+    expect(host.state.begun).toBe("fresh")
+    expect(host.state.phase.name).toBe("glyphs")
+    expect(shownKeys(host)).toEqual([ONE_CUP_KEY])
+  })
+
+  it("adds a skipped rep to shown and not to read to the end", () => {
+    const host = new Host()
+    host.begin([ONE_CUP, KEOPI])
+    host.step()
+    host.send({ type: "skip", at: host.now })
+    host.run()
+    expect(countsOf(tallyOf(host))).toEqual({ [ONE_CUP_KEY]: [1, 0] })
+  })
+
+  describe("for any run of a set, ends the same with or without stuck reports (Prop. 6.4 (ii), (iii))", () => {
+    const DECK: ReadAloudDeck = {
+      ...LEVEL_ONE_SET,
+      lines: LEVEL_ONE_SET.lines.slice(0, 10),
+    }
+
+    /**
+     * Run one drawn set. Skips and hidden pages follow the seed and the rep's
+     * key, so a stuck report, which only adds returns and introductions,
+     * leaves each of them where it was. `skipped` holds the sentences skipped.
+     */
+    function run(
+      seed: number,
+      withStuck: boolean
+    ): { host: Host; skipped: Set<string> } {
+      const roll = (key: string): number =>
+        unitIntervalBySeed(fnv1a(`${seed}:${key}`))
+      const items = buildSet(DECK, { level: 1, seedKey: `${seed}` })
+      const host = new Host()
+      host.begin(items, {})
+      const handled = new Set<string>()
+      const skipped = new Set<string>()
+      while (host.onEntry()) {
+        const entry = currentEntry(host.state)
+        const key = entry && `${entry.role}:${entry.item.key}`
+        if (
+          entry?.role === "rep" &&
+          key &&
+          host.state.phase.name === "glyphs" &&
+          !handled.has(key)
+        ) {
+          handled.add(key)
+          if (withStuck && roll(`stuck:${key}`) < 0.6) {
+            host.send({ type: "stuck", at: host.now })
+          }
+          if (roll(`skip:${key}`) < 0.25) {
+            if (entry.item.kind === "sentence")
+              skipped.add(tallyKey(entry.item))
+            host.send({ type: "skip", at: host.now })
+            continue
+          }
+          if (roll(`hide:${key}`) < 0.25) {
+            host.send({ type: "hidden", at: host.now })
+            host.send({ type: "shown", at: host.now })
+            continue
+          }
+        }
+        host.step()
+      }
+      return { host, skipped }
+    }
+
+    it("shows each sentence of the set once, reads to the end the ones not skipped, and ends the same with the reports", () => {
+      let returns = 0
+      let skipped = 0
+      for (let seed = 1; seed <= 60; seed += 1) {
+        const calm = run(seed, false)
+        const reported = run(seed, true)
+        returns += reported.host
+          .roles()
+          .filter((role) => role === "return").length
+        const expected = Object.fromEntries(
+          calm.host.state.queue.flatMap(({ item }) =>
+            item.kind === "sentence"
+              ? [
+                  [
+                    tallyKey(item),
+                    [1, calm.skipped.has(tallyKey(item)) ? 0 : 1],
+                  ],
+                ]
+              : []
+          )
+        )
+        expect(countsOf(tallyOf(calm.host))).toEqual(expected)
+        expect(countsOf(tallyOf(reported.host))).toEqual(expected)
+        skipped += calm.skipped.size
+      }
+      // The runs held returns to disregard, and reps to skip.
+      expect(returns).toBeGreaterThan(0)
+      expect(skipped).toBeGreaterThan(0)
+    })
   })
 })

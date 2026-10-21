@@ -14,6 +14,9 @@ import {
   LEVEL_ONE_SET,
   REPO_LENS,
 } from "@topik/lib/topik/read-aloud/repo-sets"
+import { buildSet } from "@topik/lib/topik/read-aloud/set-builder"
+import type { Tally } from "@topik/lib/topik/read-aloud/tally"
+import { tallyKey } from "@topik/lib/topik/read-aloud/tally"
 import { SITTING_MS } from "@topik/lib/topik/read-aloud/timing"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -370,5 +373,191 @@ describe("ReadAloudScreen", () => {
     )
     expect(screen.queryByRole("button", { name: /continue/i })).toBeNull()
     expect(screen.getByRole("button", { name: /^read aloud$/i })).toBeTruthy()
+  })
+})
+
+describe("ReadAloudScreen's tally (Rem. 7.5)", () => {
+  const YESTERDAY = new Date(2026, 8, 27, 12).toISOString()
+  /** Every sentence of the deck shown once, read to the end, yesterday. */
+  const SEEN_YESTERDAY: Tally = Object.fromEntries(
+    DECK.lines.map((line) => [
+      tallyKey({ lineId: line.id, text: line.korean }),
+      { first: YESTERDAY, last: YESTERDAY, shown: 1, read: 1 },
+    ])
+  )
+
+  const show = (store: ReadAloudStore): ReturnType<typeof render> =>
+    render(
+      <ReadAloudScreen
+        topikLevel={1}
+        speech={fakeSpeech()}
+        deck={DECK}
+        store={store}
+        onExit={() => undefined}
+      />
+    )
+  const rep = (): HTMLElement | null =>
+    document.querySelector<HTMLElement>('[data-slot="read-aloud-rep"]')
+  const chip = (): HTMLElement | null =>
+    document.querySelector<HTMLElement>('[data-slot="read-aloud-mark"]')
+
+  /** Run until the set's summary shows. */
+  async function toSummary(): Promise<void> {
+    for (let tick = 0; tick < 3000; tick += 1) {
+      if (document.querySelector('[data-slot="read-aloud-summary"]')) return
+      await advance(100)
+    }
+    throw new Error("the set never ended")
+  }
+
+  /** Run until a sentence's rep is on its first step. */
+  async function toSentence(): Promise<void> {
+    fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))
+    for (let tick = 0; tick < 3000; tick += 1) {
+      if (rep()?.dataset["kind"] === "sentence") return
+      await advance(100)
+    }
+    throw new Error("no sentence came")
+  }
+
+  it("keeps a sentence's first showing and its reading to the end on the phone, as the rep runs", async () => {
+    const storage = memoryStorage()
+    const store = createReadAloudStore(storage)
+    show(store)
+    await toSentence()
+    expect(chip()?.textContent).toBe("New")
+    const shown = store.tally()
+    const [lineId] = Object.keys(shown)
+    expect(Object.keys(shown)).toHaveLength(1)
+    expect(shown[lineId ?? ""]).toEqual({
+      first: new Date(NOON).toISOString(),
+      last: new Date(NOON).toISOString(),
+      shown: 1,
+      read: 0,
+    })
+    // The rep runs to the end: it is read once, and shown no more.
+    for (let tick = 0; tick < 3000; tick += 1) {
+      if ((store.tally()[lineId ?? ""]?.read ?? 0) > 0) break
+      await advance(100)
+    }
+    expect(store.tally()[lineId ?? ""]).toMatchObject({ shown: 1, read: 1 })
+  })
+
+  it("calls a sentence Seen before in a later sitting, from what the phone kept, across a restart", async () => {
+    const storage = memoryStorage()
+    createReadAloudStore(storage).saveTally(SEEN_YESTERDAY)
+    show(createReadAloudStore(storage))
+    await toSentence()
+    expect(chip()?.textContent).toBe("Seen before")
+    const rows = createReadAloudStore(storage).tally()
+    const counts = Object.values(rows).map((row) => row.shown)
+    expect(counts.filter((n) => n === 2)).toHaveLength(1)
+    expect(counts.filter((n) => n === 1)).toHaveLength(DECK.lines.length - 1)
+  })
+
+  it("dates the facts against today", async () => {
+    const storage = memoryStorage()
+    createReadAloudStore(storage).saveTally(SEEN_YESTERDAY)
+    show(createReadAloudStore(storage))
+    await toSentence()
+    fireEvent.click(screen.getByRole("button", { name: /^seen before/i }))
+    const sheet = screen.getByRole("dialog").textContent
+    expect(sheet).toContain("First shownyesterday")
+    expect(sheet).toContain("Last showntoday")
+    expect(sheet).toContain("Kept on this phone, since yesterday.")
+  })
+
+  it("runs the drill on when the phone cannot keep the tally, and says so in the sheet", async () => {
+    const base = memoryStorage()
+    const storage: StorageLike = {
+      getItem: (key) => base.getItem(key),
+      setItem: (key, value) => {
+        if (key === READ_ALOUD_STORAGE_KEYS.tally) throw new Error("quota")
+        base.setItem(key, value)
+      },
+    }
+    show(createReadAloudStore(storage))
+    await toSentence()
+    // The mark and the sheet still work from what the screen holds.
+    expect(chip()?.textContent).toBe("New")
+    fireEvent.click(screen.getByRole("button", { name: /^new/i }))
+    expect(screen.getByRole("dialog").textContent).toContain(
+      "This phone couldn't keep this, so it lasts only until you close it."
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Done" }))
+    await toSummary()
+    expect(createReadAloudStore(base).tally()).toEqual({})
+    expect(createReadAloudStore(base).record().totals.reps).toBe(10)
+  })
+
+  it("clears the tally on a second press and leaves the practice record alone", () => {
+    const storage = memoryStorage()
+    const store = createReadAloudStore(storage)
+    store.saveTally(SEEN_YESTERDAY)
+    store.count({ type: "rep", creditMs: 90_000 }, "2026-09-28")
+    show(store)
+    fireEvent.click(
+      screen.getByRole("button", { name: "Clear what is kept about sentences" })
+    )
+    expect(Object.keys(store.tally())).toHaveLength(DECK.lines.length)
+    fireEvent.click(screen.getByRole("button", { name: "Clear it" }))
+    expect(store.tally()).toEqual({})
+    expect(createReadAloudStore(storage).tally()).toEqual({})
+    expect(store.record().totals.reps).toBe(1)
+    expect(
+      document.querySelector('[data-slot="read-aloud-tally"]')?.textContent
+    ).toContain("Cleared.")
+  })
+
+  it("keeps what it holds, and says so, when the phone cannot clear it", () => {
+    const base = memoryStorage()
+    createReadAloudStore(base).saveTally(SEEN_YESTERDAY)
+    const storage: StorageLike = {
+      getItem: (key) => base.getItem(key),
+      setItem: (key, value) => {
+        if (key === READ_ALOUD_STORAGE_KEYS.tally) throw new Error("quota")
+        base.setItem(key, value)
+      },
+    }
+    show(createReadAloudStore(storage))
+    fireEvent.click(
+      screen.getByRole("button", { name: "Clear what is kept about sentences" })
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Clear it" }))
+    expect(
+      document.querySelector('[data-slot="read-aloud-tally"]')?.textContent
+    ).toContain("This phone couldn't clear it.")
+    expect(Object.keys(createReadAloudStore(base).tally())).toHaveLength(
+      DECK.lines.length
+    )
+    expect(
+      screen.getByRole("button", { name: "Clear what is kept about sentences" })
+    ).toBeTruthy()
+  })
+
+  it("keeps a reading and the next showing, though both come in one step before the screen renders", async () => {
+    const storage = memoryStorage()
+    const store = createReadAloudStore(storage)
+    // Two sentences side by side: the first ends and the second begins in one step.
+    const [one, two] = buildSet(DECK, { level: 1, seedKey: "tally" }).filter(
+      (item) => item.kind === "sentence"
+    )
+    if (!one || !two) throw new Error("the deck has too few sentences")
+    store.saveProgress(1, DECK.id, {
+      queue: [one, two].map((item) => ({ item, role: "rep" as const })),
+      returns: {},
+      counted: 0,
+      reported: false,
+    })
+    show(store)
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }))
+    await toSummary()
+    const rows = store.tally()
+    expect(Object.keys(rows).sort()).toEqual(
+      [tallyKey(one), tallyKey(two)].sort()
+    )
+    for (const row of Object.values(rows)) {
+      expect(row).toMatchObject({ shown: 1, read: 1 })
+    }
   })
 })

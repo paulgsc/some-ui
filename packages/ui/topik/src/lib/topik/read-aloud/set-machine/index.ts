@@ -30,6 +30,9 @@
  *   sentence is shown when its rep reaches its first step; a return or an
  *   introduction adds nothing (Prop. 6.4 (ii)). It lives in memory, as long
  *   as the sitting's clock, and `start-sitting` clears it.
+ * - The tally (Rem. 7.5): the host is told when a sentence's rep first begins
+ *   and which sentence a counted rep was. The flag that stops a restart
+ *   telling it twice survives storage.
  * - The sitting (Rem. 4.10): once thirty minutes have passed, nothing new
  *   begins - no rep, no introduction, no summary, no set. What is showing
  *   finishes first; a rep is never cut short by the bound. The set in
@@ -44,7 +47,9 @@ import { assertNever } from "@some-ui/core-utils"
 import type { Urgency } from "@some-ui/speech"
 import type { ReadAloudLevel } from "@topik/lib/topik/read-aloud/content"
 import type { PaceBook, PaceEntry } from "@topik/lib/topik/read-aloud/records"
+import { own, paceOf } from "@topik/lib/topik/read-aloud/records"
 import type { SetItem } from "@topik/lib/topik/read-aloud/set-builder"
+import { tallyKey } from "@topik/lib/topik/read-aloud/tally"
 import {
   audioWaitMs,
   echoMs,
@@ -71,6 +76,13 @@ import {
  */
 export type EntryRole = "rep" | "return" | "introduction"
 
+/**
+ * How a sentence's rep began: `repeat` when its line was already in the
+ * sitting's list, which the draw allows only once no sentence is left
+ * unshown, and `fresh` otherwise.
+ */
+export type Begun = "fresh" | "repeat"
+
 export type QueueEntry = { item: SetItem; role: EntryRole }
 
 /** A set as it can be stored and resumed: what is left of it. */
@@ -82,6 +94,11 @@ export type SetProgress = {
   counted: number
   /** Whether the first entry was reported stuck before it was interrupted. */
   reported: boolean
+  /**
+   * Whether the first entry's rep had begun, and so was already shown to the
+   * tally. Absent in what builds before the tally stored.
+   */
+  begun?: boolean
 }
 
 export type RepStep = "glyphs" | "turn" | "audio" | "echo" | "gloss"
@@ -116,6 +133,14 @@ export type SetMachineState = {
    * on moving to the next entry, so a report outlives a restart.
    */
   reported: boolean
+  /**
+   * Whether a sentence's rep at `cursor` has begun, and if so whether its line
+   * was already in the sitting's list then: a restart of the rep after a
+   * pause begins nothing. It is cleared only on moving to the next entry, so
+   * it outlives a restart as `reported` does, and names why the sentence is
+   * here for the sheet that asks.
+   */
+  begun: Begun | null
   /** Reps counted in this set: what the summary shows. */
   counted: number
   paces: PaceBook
@@ -146,8 +171,17 @@ export type SetEffect =
       urgency: Urgency
     }
   | { type: "stop-speech" }
-  /** Add one rep and its nominal practice to the record (Def. 6.6). */
-  | { type: "count-rep"; creditMs: number }
+  /**
+   * A sentence's rep began for the first time (Rem. 7.5): `key` is the
+   * sentence's in the tally. Never for a return, an introduction or a word,
+   * and never twice for a rep.
+   */
+  | { type: "note-shown"; key: string }
+  /**
+   * Add one rep and its nominal practice to the record (Def. 6.6); `key`
+   * names the sentence when it was one, for the tally (Rem. 7.5).
+   */
+  | { type: "count-rep"; creditMs: number; key?: string }
   | { type: "count-set" }
   /** Store the word's pace (Cor. 4.6 (iii)). */
   | { type: "save-pace"; wordId: string; pace: PaceEntry }
@@ -212,6 +246,7 @@ export function createSetMachine(level: ReadAloudLevel): SetMachineState {
     cursor: 0,
     returns: {},
     reported: false,
+    begun: null,
     counted: 0,
     paces: {},
     sittingStartedAt: null,
@@ -235,18 +270,12 @@ export function progressOf(state: SetMachineState): SetProgress | null {
     returns: state.returns,
     counted: state.counted,
     reported: state.reported,
+    ...(state.begun !== null && { begun: true }),
   }
 }
 
 export const currentEntry = (state: SetMachineState): QueueEntry | undefined =>
   state.queue[state.cursor]
-
-/** A record's own entry: a word id such as `constructor` must not find `Object.prototype`'s. */
-const own = <T>(record: Record<string, T>, key: string): T | undefined =>
-  Object.hasOwn(record, key) ? record[key] : undefined
-
-const paceOf = (paces: PaceBook, wordId: string): PaceEntry =>
-  own(paces, wordId) ?? { factor: 1, seen: 0 }
 
 const sittingOver = (state: SetMachineState, at: number): boolean =>
   state.sittingStartedAt !== null && at - state.sittingStartedAt >= SITTING_MS
@@ -259,6 +288,18 @@ const withShown = (
   const { item, role } = entry
   if (role !== "rep" || item.kind !== "sentence") return state.shown
   return [...state.shown.filter((id) => id !== item.lineId), item.lineId]
+}
+
+/** What the tally is told of a sentence's rep starting for the first time. */
+function firstShowing(
+  state: SetMachineState,
+  { item, role }: QueueEntry
+): { key: string; begun: Begun } | null {
+  if (role !== "rep" || item.kind !== "sentence" || state.begun) return null
+  return {
+    key: tallyKey(item),
+    begun: state.shown.includes(item.lineId) ? "repeat" : "fresh",
+  }
 }
 
 /** Move to a phase under a fresh sequence number. */
@@ -359,11 +400,21 @@ function startEntry(state: SetMachineState, at: number): SetTransition {
       effects: speakEffects(next.seq, entry, "next"),
     }
   }
-  const listed = { ...state, shown: withShown(state, entry) }
-  const next = enter(listed, { name: "glyphs" })
+  const first = firstShowing(state, entry)
+  const next = enter(
+    {
+      ...state,
+      shown: withShown(state, entry),
+      begun: first?.begun ?? state.begun,
+    },
+    { name: "glyphs" }
+  )
   return {
     state: next,
-    effects: [{ type: "wait", seq: next.seq, ms: SETTLE_MS }],
+    effects: [
+      ...(first ? [{ type: "note-shown" as const, key: first.key }] : []),
+      { type: "wait", seq: next.seq, ms: SETTLE_MS },
+    ],
   }
 }
 
@@ -388,6 +439,7 @@ function advance(
       ...state,
       cursor: state.cursor + 1,
       reported: false,
+      begun: null,
     },
     at
   )
@@ -444,6 +496,7 @@ function completeRep(
     effects.push({
       type: "count-rep",
       creditMs: nominalRepMs(item.kind, item.syllables, state.level),
+      ...(item.kind === "sentence" && { key: tallyKey(item) }),
     })
     next = { ...next, counted: next.counted + 1 }
   }
@@ -656,6 +709,8 @@ export function setMachineReducer(
           cursor: 0,
           counted: event.progress.counted,
           reported: event.progress.reported,
+          // This sitting's list holds nothing yet: a begun rep is not a repeat in it.
+          begun: event.progress.begun ? "fresh" : null,
           paces: event.paces,
           sittingStartedAt: state.sittingStartedAt ?? event.at,
         },
@@ -665,7 +720,13 @@ export function setMachineReducer(
 
     case "start-sitting": {
       if (phase.name !== "sitting-over") return unchanged
-      const fresh = { ...state, sittingStartedAt: event.at, shown: [] }
+      // The held rep was shown in the sitting that ended; the new list is empty.
+      const fresh: SetMachineState = {
+        ...state,
+        sittingStartedAt: event.at,
+        shown: [],
+        begun: state.begun === null ? null : "fresh",
+      }
       if (progressOf(fresh)) return startEntry(fresh, event.at)
       return {
         state: enter(fresh, { name: "idle" }),

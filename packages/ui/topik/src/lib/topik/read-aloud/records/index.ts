@@ -32,6 +32,16 @@ export type PaceEntry = {
 
 export type PaceBook = Record<string, PaceEntry>
 
+/** A record's own entry: an id such as `constructor` must not find `Object.prototype`'s. */
+export const own = <T>(
+  record: Record<string, T>,
+  key: string
+): T | undefined => (Object.hasOwn(record, key) ? record[key] : undefined)
+
+/** A word's pace; first sight when the book has none. */
+export const paceOf = (paces: PaceBook, wordId: string): PaceEntry =>
+  own(paces, wordId) ?? { factor: 1, seen: 0 }
+
 const PaceEntrySchema = z.object({
   factor: z.number().min(PACE_MIN).max(PACE_MAX),
   seen: z.number().int().min(0),
