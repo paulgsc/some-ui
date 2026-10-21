@@ -104,8 +104,9 @@ how each was checked when this workspace landed.
   the row (seq 1 became 2, the hash changed) and neither trigger fired. I have not checked
   D1 itself. So the `REPLACE` half rests on this falsifier alone. Lint cannot read SQL
   strings and a type cannot see them. Closing it in the database would take a `BEFORE INSERT`
-  guard and a `put` that reads before it writes, which changes the table's design, so it is
-  left for the owner to decide.
+  guard and a `put` that reads before it writes, which changes the table's design. The owner
+  chose to leave the gap (2026-10-21) rather than add that guard, so a hunk that adds a
+  `REPLACE` is what a reviewer is watching for, and it is a violation if one lands.
 - _Checked at landing:_ the only SQL in `src/` is the one `INSERT … DO NOTHING` and four
   `SELECT`s in `store.ts`; the words UPDATE, DELETE and REPLACE appear there only in comments.
 
