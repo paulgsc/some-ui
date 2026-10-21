@@ -23,6 +23,11 @@ import {
   storedSet,
 } from "@topik/lib/topik/read-aloud/added-sets"
 import type { ReadAloudLevel } from "@topik/lib/topik/read-aloud/content"
+import type { ReadAloudFeedback } from "@topik/lib/topik/read-aloud/feedback"
+import {
+  parseFeedback,
+  storedFeedback,
+} from "@topik/lib/topik/read-aloud/feedback"
 import type {
   PaceBook,
   PaceEntry,
@@ -43,6 +48,7 @@ export const READ_ALOUD_STORAGE_KEYS = {
   record: "topik:read-aloud-record",
   progress: "topik:read-aloud-progress",
   sets: "topik:read-aloud-sets",
+  feedback: "topik:read-aloud-feedback",
 } as const
 
 /** A counted rep or a finished set, as the drill reports it. */
@@ -69,6 +75,9 @@ export type ReadAloudStore = {
   /** The word sets added from storage, oldest first. */
   sets: () => Array<AddedSet>
   saveSets: (sets: ReadonlyArray<AddedSet>) => void
+  /** What the learner said at the end of a sitting, or null if nothing. */
+  feedback: () => ReadAloudFeedback | null
+  saveFeedback: (feedback: ReadAloudFeedback | null) => void
 }
 
 const Id = z.string().min(1)
@@ -182,6 +191,11 @@ export function createReadAloudStore(
     saveSets: (sets): void => {
       write(READ_ALOUD_STORAGE_KEYS.sets, sets.map(storedSet))
     },
+    feedback: (): ReadAloudFeedback | null =>
+      parseFeedback(read(READ_ALOUD_STORAGE_KEYS.feedback)),
+    saveFeedback: (feedback): void => {
+      write(READ_ALOUD_STORAGE_KEYS.feedback, storedFeedback(feedback))
+    },
   }
 }
 
@@ -191,3 +205,11 @@ export function createReadAloudStore(
  */
 export const readAloudPracticeRecord = (): PracticeRecord =>
   createReadAloudStore().record()
+
+/**
+ * What the learner last said at the end of a sitting, for the export that
+ * goes with their next reflection; null when nothing is kept. It leaves the
+ * phone only through the share sheet, with the reflection.
+ */
+export const readAloudFeedbackForExport = (): ReadAloudFeedback | null =>
+  createReadAloudStore().feedback()

@@ -18,6 +18,7 @@ import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import { PoolNote } from "@topik/components/topik/read-aloud/pool-note"
 import { HeldNote, RepCard } from "@topik/components/topik/read-aloud/rep-card"
 import { SessionHeader } from "@topik/components/topik/read-aloud/session-header"
+import type { SetCardProps } from "@topik/components/topik/read-aloud/set-card"
 import { SetCard } from "@topik/components/topik/read-aloud/set-card"
 import type { UseReadAloudOptions } from "@topik/lib/topik/adapter/hooks/use-read-aloud"
 import { useReadAloud } from "@topik/lib/topik/adapter/hooks/use-read-aloud"
@@ -35,6 +36,8 @@ export type ReadAloudSessionProps = UseReadAloudOptions & {
   record?: { record: PracticeRecord; today: string }
   /** The grammar-lens session's start, offered beside read-aloud's when given. */
   lens?: { available: boolean; full?: boolean; onStart: () => void }
+  /** The sitting's two answers, asked for once the sitting is over. */
+  feedback?: Extract<SetCardProps, { kind: "sitting-over" }>["feedback"]
   onExit: () => void
 }
 
@@ -42,6 +45,7 @@ export const ReadAloudSession = ({
   short = false,
   record,
   lens,
+  feedback,
   onExit,
   ...options
 }: ReadAloudSessionProps): JSX.Element => {
@@ -124,6 +128,7 @@ export const ReadAloudSession = ({
       return (
         <SetCard
           kind="sitting-over"
+          feedback={feedback}
           short={short}
           onContinue={vm.startSitting}
           onStop={onExit}

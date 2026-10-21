@@ -113,6 +113,18 @@ repo:
 > the pool keeps its count. Create the scene folder and set its description if
 > it is not there yet, then upload the decks it lacks into it.
 
+The reflection's export also carries `readAloudFeedback` (its `about` says what
+it is): the learner's two answers at the end of a read-aloud sitting, kept on
+the phone and sent with the next reflection. The routine reads them when it
+chooses the level and writes the pool. **Too easy** asks the next pool for a
+step harder: lines toward the top of the level's range, with a few from the
+level above. **Too many repeats** asks for more variety: more different
+words and situations, and fewer of the same words from line to line. They are
+separate, and the learner can give either, both or neither. Neither moves their
+level on its own, a stuck report is not one of them, and the app's own wording
+promises neither. Weigh an answer by its `answeredAt`: one given long before the
+reflection says less about it.
+
 The same pass reads each reflection for what it says about the app. A note
 can speak to both: what to study next shapes the pair, and a bug or a wish
 for how a screen works becomes a GitHub issue (an `epic` with sub-issues when

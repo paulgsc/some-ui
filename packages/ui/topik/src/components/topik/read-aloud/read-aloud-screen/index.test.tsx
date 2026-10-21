@@ -9,6 +9,7 @@ import {
   LEVEL_ONE_SET,
   REPO_LENS,
 } from "@topik/lib/topik/read-aloud/repo-sets"
+import { SITTING_MS } from "@topik/lib/topik/read-aloud/timing"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 function fakeSpeech(): Speaker {
@@ -56,6 +57,98 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   vi.useRealTimers()
+})
+
+describe("ReadAloudScreen, at the end of a sitting", () => {
+  it("asks how it was, keeps each answer on the phone, and moves nothing by itself", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    render(
+      <ReadAloudScreen
+        topikLevel={1}
+        speech={fakeSpeech()}
+        deck={DECK}
+        store={store}
+        onExit={() => undefined}
+      />
+    )
+    fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))
+    expect(
+      screen.queryByRole("group", { name: "How was this sitting?" })
+    ).toBeNull()
+    // Every screen ends within two minutes (Rem. 4.10): the sitting is over
+    // soon after its thirty.
+    await advance(SITTING_MS + 3 * 60_000)
+    expect(
+      document.querySelector('[data-slot="read-aloud-sitting-over"]')
+    ).not.toBeNull()
+
+    const easy = screen.getByRole("button", { name: "Too easy" })
+    const repeats = screen.getByRole("button", { name: "Too many repeats" })
+    expect(easy.getAttribute("aria-pressed")).toBe("false")
+    const saved = (): string | null =>
+      document.querySelector('[data-slot="read-aloud-feedback-saved"]')
+        ?.textContent ?? null
+    expect(saved()).toBeNull()
+
+    fireEvent.click(easy)
+    expect(easy.getAttribute("aria-pressed")).toBe("true")
+    expect(saved()).toBe(
+      "Saved on this phone: Too easy. It goes with your next reflection."
+    )
+    expect(store.feedback()).toEqual({
+      tooEasy: true,
+      tooManyRepeats: false,
+      answeredAt: new Date(Date.now()).toISOString(),
+    })
+
+    fireEvent.click(repeats)
+    expect(saved()).toBe(
+      "Saved on this phone: Too easy and Too many repeats. They go with your next reflection."
+    )
+    expect(store.feedback()).toMatchObject({
+      tooEasy: true,
+      tooManyRepeats: true,
+    })
+
+    fireEvent.click(easy)
+    fireEvent.click(repeats)
+    expect(saved()).toBeNull()
+    expect(store.feedback()).toBeNull()
+    // The level is the learner's to choose, whatever they said.
+    expect(
+      document.querySelector('[data-slot="read-aloud-level"]')?.textContent
+    ).toBe("TOPIK 1")
+  })
+
+  it("shows an answer given at an earlier sitting, still pressed", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    store.saveFeedback({
+      tooEasy: false,
+      tooManyRepeats: true,
+      answeredAt: new Date(NOON).toISOString(),
+    })
+    render(
+      <ReadAloudScreen
+        topikLevel={1}
+        speech={fakeSpeech()}
+        deck={DECK}
+        store={store}
+        onExit={() => undefined}
+      />
+    )
+    fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))
+    await advance(SITTING_MS + 3 * 60_000)
+    expect(
+      screen
+        .getByRole("button", { name: "Too many repeats" })
+        .getAttribute("aria-pressed")
+    ).toBe("true")
+    expect(
+      screen
+        .getByRole("button", { name: "Too easy" })
+        .getAttribute("aria-pressed")
+    ).toBe("false")
+  })
 })
 
 describe("ReadAloudScreen", () => {

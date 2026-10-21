@@ -110,6 +110,7 @@ const PANEL_STAGES: ReadonlyArray<PanelId> = [
   // and the summary that says every sentence has been shown.
   "topik-read-aloud-return",
   "topik-read-aloud-summary-full",
+  "topik-read-aloud-sitting-over",
 ]
 
 const PLANTED_OVERFLOW: PanelId = "planted-overflow"

@@ -28,6 +28,7 @@ import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import type { ReadAloudDeck } from "@topik/lib/topik/read-aloud/content"
 import { readAloudLevelFor } from "@topik/lib/topik/read-aloud/content"
+import { toggled } from "@topik/lib/topik/read-aloud/feedback"
 import { lensLines } from "@topik/lib/topik/read-aloud/lens/items"
 import { dayKey } from "@topik/lib/topik/read-aloud/records"
 import { drawnFrom } from "@topik/lib/topik/read-aloud/set-builder"
@@ -84,9 +85,11 @@ export const ReadAloudScreen = ({
           ? kept
           : null,
       record: store.record(),
+      feedback: store.feedback(),
     }
   })
   const [record, setRecord] = useState(loaded.record)
+  const [feedback, setFeedback] = useState(loaded.feedback)
   const { store } = loaded
   const [practice, setPractice] = useState<"read-aloud" | "lens">("read-aloud")
 
@@ -123,6 +126,14 @@ export const ReadAloudScreen = ({
       onRecord={(event, day) => setRecord(store.count(event, day))}
       onPace={(wordId, pace) => store.savePace(wordId, pace)}
       onProgress={(progress) => store.saveProgress(level, deck.id, progress)}
+      feedback={{
+        value: feedback,
+        onToggle: (key) => {
+          const next = toggled(feedback, key, new Date(now()).toISOString())
+          setFeedback(next)
+          store.saveFeedback(next)
+        },
+      }}
       lens={
         deck.practice === "read-aloud"
           ? undefined
