@@ -107,14 +107,14 @@ repo:
 > and a lens deck of 8 or so lines, each with its own `id` (the lens deck's
 > ending `-lens`), the same `title`, `from` and `context`. The words they
 > already have are those in `sets/` and in every deck under `Read aloud/`,
-> archived ones included. The reflection's `readAloudFeedback` asks for more:
-> "Too easy" a step harder (lines toward the top of the level's range), "Too
-> many repeats" more variety (more different words and situations). Check each
-> with `parseReadAloudDeck` and fix every finding, then count what is left: the
-> app drops a line it cannot show and keeps the deck, so write a few lines over
-> and make up any shortfall until the pool keeps its count. Create the scene
-> folder and set its description if it is not there yet, then upload the decks
-> it lacks into it.
+> archived ones included. Where the reflection's `readAloudFeedback` has an
+> answer, it asks for more: "Too easy" a step harder (lines toward the top of
+> the level's range), "Too many repeats" more variety (more different words and
+> situations). Check each deck with `parseReadAloudDeck` and fix every finding,
+> then count what is left: the app drops a line it cannot show and keeps the
+> deck, so write a few lines over and make up any shortfall until the pool keeps
+> its count. Create the scene folder and set its description if it is not there
+> yet, then upload the decks it lacks into it.
 
 The same pass reads each reflection for what it says about the app. A note
 can speak to both: what to study next shapes the pair, and a bug or a wish

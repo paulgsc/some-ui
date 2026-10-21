@@ -141,6 +141,11 @@ describe("ReadAloudScreen, at the end of a sitting", () => {
 
   it("says so when the phone cannot keep an answer, and shows what it holds", async () => {
     const base = memoryStorage()
+    const held = createReadAloudStore(base)
+    held.saveFeedback({
+      tooEasy: { at: new Date(NOON).toISOString() },
+      tooManyRepeats: null,
+    })
     const storage: StorageLike = {
       getItem: (key) => base.getItem(key),
       setItem: (key, value) => {
@@ -149,10 +154,16 @@ describe("ReadAloudScreen, at the end of a sitting", () => {
       },
     }
     await sittingOver(createReadAloudStore(storage))
-    const easy = screen.getByRole("button", { name: "Too easy" })
-    fireEvent.click(easy)
+    const pressed = (name: string): string | null =>
+      screen.getByRole("button", { name }).getAttribute("aria-pressed")
+    expect(pressed("Too easy")).toBe("true")
+
+    fireEvent.click(screen.getByRole("button", { name: "Too many repeats" }))
     expect(saved()).toBe("This phone couldn't keep that.")
-    expect(easy.getAttribute("aria-pressed")).toBe("false")
+    // The buttons show the answer the phone still holds, not the one tapped.
+    expect(pressed("Too many repeats")).toBe("false")
+    expect(pressed("Too easy")).toBe("true")
+    expect(held.feedback()).toMatchObject({ tooManyRepeats: null })
   })
 })
 

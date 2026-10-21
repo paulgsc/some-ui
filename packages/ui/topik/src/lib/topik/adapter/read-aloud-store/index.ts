@@ -145,7 +145,8 @@ export function createReadAloudStore(
       storage.setItem(key, JSON.stringify(value))
       return true
     } catch {
-      // Quota, privacy mode: what was lost is pace or a count, nothing more.
+      // Quota, privacy mode: what was lost is a pace, a count or an answer the
+      // learner is told of.
       return false
     }
   }
