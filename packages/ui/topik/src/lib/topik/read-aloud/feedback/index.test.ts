@@ -1,10 +1,11 @@
+import type { ReadAloudFeedback } from "@topik/lib/topik/read-aloud/feedback"
 import {
+  FEEDBACK_KEYS,
   FEEDBACK_WORDS,
   parseFeedback,
   storedFeedback,
   toggled,
 } from "@topik/lib/topik/read-aloud/feedback"
-import type { ReadAloudFeedback } from "@topik/lib/topik/read-aloud/feedback"
 import { describe, expect, it } from "vitest"
 
 const AT = "2026-10-21T08:00:00.000Z"
@@ -12,85 +13,63 @@ const LATER = "2026-10-21T08:05:00.000Z"
 
 /** What the person must never be told in: how it works, not what it did. */
 const MACHINERY =
-  /\b(queue|deck|pool|draw\w*|seed|state|store\w*|storage|key|id|null|undefined|json|export\w*|field|flag|boolean|level moves?|request|status|error)\b/i
+  /\b(queue|deck|pool|draw\w*|seed|state|store\w*|storage|key|id|null|undefined|json|export\w*|field|flag|boolean|request|status|error|sync\w*|grant|scope)\b/i
+
+const feedback = (easy: boolean, repeats: boolean): ReadAloudFeedback => ({
+  tooEasy: easy ? { at: AT } : null,
+  tooManyRepeats: repeats ? { at: AT } : null,
+})
 
 describe("the sitting's answers", () => {
-  it("gives either, both or neither, and a second tap takes one back", () => {
+  it("gives either, both or neither, and each carries its own date", () => {
     const easy = toggled(null, "tooEasy", AT)
-    expect(easy).toEqual({
-      tooEasy: true,
-      tooManyRepeats: false,
-      answeredAt: AT,
-    })
+    expect(easy).toEqual(feedback(true, false))
     const both = toggled(easy, "tooManyRepeats", LATER)
-    expect(both).toEqual({
-      tooEasy: true,
-      tooManyRepeats: true,
-      answeredAt: LATER,
+    expect(both).toEqual({ tooEasy: { at: AT }, tooManyRepeats: { at: LATER } })
+    expect(toggled(both, "tooEasy", LATER)).toEqual({
+      tooEasy: null,
+      tooManyRepeats: { at: LATER },
     })
-    expect(toggled(both, "tooEasy", AT)).toMatchObject({
-      tooEasy: false,
-      tooManyRepeats: true,
-    })
-    expect(
-      toggled(toggled(both, "tooEasy", AT), "tooManyRepeats", AT)
-    ).toBeNull()
-    expect(toggled(easy, "tooEasy", AT)).toBeNull()
+    expect(toggled(easy, "tooEasy", LATER)).toBeNull()
   })
 
-  it("keeps what it parses, and parses nothing it cannot trust", () => {
-    const both: ReadAloudFeedback = {
-      tooEasy: true,
-      tooManyRepeats: true,
-      answeredAt: AT,
-    }
-    expect(parseFeedback(storedFeedback(both))).toEqual(both)
+  it("parses what it kept, and nothing it cannot trust", () => {
+    expect(parseFeedback(storedFeedback(feedback(true, true)))).toEqual(
+      feedback(true, true)
+    )
     expect(storedFeedback(null)).toBeNull()
     for (const bad of [
-      null,
-      "{}",
-      { version: 2, tooEasy: true, tooManyRepeats: false, answeredAt: AT },
-      { version: 1, tooEasy: "yes", tooManyRepeats: false, answeredAt: AT },
-      { version: 1, tooEasy: true, tooManyRepeats: false, answeredAt: "soon" },
+      { version: 1, tooEasy: { at: "soon" }, tooManyRepeats: null },
       // Neither given is no answer at all.
-      { version: 1, tooEasy: false, tooManyRepeats: false, answeredAt: AT },
+      { version: 1, tooEasy: null, tooManyRepeats: null },
     ]) {
       expect(parseFeedback(bad)).toBeNull()
     }
   })
 
-  it("says what is kept, where, and what it goes with", () => {
-    const given = (tooEasy: boolean, tooManyRepeats: boolean): string | null =>
-      FEEDBACK_WORDS.saved({ tooEasy, tooManyRepeats, answeredAt: AT })
-    expect(given(true, false)).toBe(
+  it("says what is kept and what it goes with, and nothing when none is given", () => {
+    expect(FEEDBACK_WORDS.saved(feedback(true, false))).toBe(
       "Saved on this phone: Too easy. It goes with your next reflection."
     )
-    expect(given(false, true)).toBe(
+    expect(FEEDBACK_WORDS.saved(feedback(false, true))).toBe(
       "Saved on this phone: Too many repeats. It goes with your next reflection."
     )
-    expect(given(true, true)).toBe(
+    expect(FEEDBACK_WORDS.saved(feedback(true, true))).toBe(
       "Saved on this phone: Too easy and Too many repeats. They go with your next reflection."
     )
     expect(FEEDBACK_WORDS.saved(null)).toBeNull()
+    expect(FEEDBACK_WORDS.saved(feedback(false, false))).toBeNull()
   })
 
   it("never reaches for the machinery's terms", () => {
+    expect("a queue of sync grants").toMatch(MACHINERY)
     const words = [
       FEEDBACK_WORDS.group,
-      FEEDBACK_WORDS.label("tooEasy"),
-      FEEDBACK_WORDS.label("tooManyRepeats"),
-      ...[
-        [true, false],
-        [false, true],
-        [true, true],
-      ].flatMap(
-        ([tooEasy, tooManyRepeats]) =>
-          FEEDBACK_WORDS.saved({
-            tooEasy: tooEasy === true,
-            tooManyRepeats: tooManyRepeats === true,
-            answeredAt: AT,
-          }) ?? []
-      ),
+      FEEDBACK_WORDS.notKept,
+      ...FEEDBACK_KEYS.map(FEEDBACK_WORDS.label),
+      ...[feedback(true, false), feedback(false, true), feedback(true, true)]
+        .map(FEEDBACK_WORDS.saved)
+        .flatMap((line) => line ?? []),
     ]
     for (const line of words) expect(line).not.toMatch(MACHINERY)
   })

@@ -9,7 +9,10 @@ import type {
   FeedbackKey,
   ReadAloudFeedback,
 } from "@topik/lib/topik/read-aloud/feedback"
-import { FEEDBACK_WORDS } from "@topik/lib/topik/read-aloud/feedback"
+import {
+  FEEDBACK_KEYS,
+  FEEDBACK_WORDS,
+} from "@topik/lib/topik/read-aloud/feedback"
 import type { PracticeRecord } from "@topik/lib/topik/read-aloud/records"
 import { SUMMARY_MS } from "@topik/lib/topik/read-aloud/timing"
 import { BookOpenText, Play, ScanSearch, VolumeX } from "lucide-react"
@@ -57,6 +60,8 @@ export type SetCardProps = { short: boolean; onStop: () => void } & (
       /** The sitting's two answers, where the host keeps them. */
       feedback?: {
         value: ReadAloudFeedback | null
+        /** False when the phone could not keep what was last tapped. */
+        kept: boolean
         onToggle: (key: FeedbackKey) => void
       }
       onContinue: () => void
@@ -155,7 +160,11 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
 
   if (props.kind === "sitting-over") {
     const { feedback } = props
-    const saved = feedback && FEEDBACK_WORDS.saved(feedback.value)
+    const saved =
+      feedback &&
+      (feedback.kept
+        ? FEEDBACK_WORDS.saved(feedback.value)
+        : FEEDBACK_WORDS.notKept)
     return (
       <StepLayout
         short={short}
@@ -172,11 +181,11 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
               {props.note ??
                 "Your set is kept. It picks up at its next item whenever you come back, now included."}
             </p>
-            {saved && (
+            {feedback && (
               <p
                 data-slot="read-aloud-feedback-saved"
                 aria-live="polite"
-                className="text-foreground text-sm leading-relaxed"
+                className="text-foreground min-h-5 text-sm leading-relaxed"
               >
                 {saved}
               </p>
@@ -194,14 +203,14 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
                   short ? "flex flex-col" : "grid grid-cols-2"
                 )}
               >
-                {(["tooEasy", "tooManyRepeats"] as const).map((key) => {
-                  const pressed = feedback.value?.[key] === true
+                {FEEDBACK_KEYS.map((key) => {
+                  const pressed = feedback.value?.[key] != null
                   return (
                     <Button
                       key={key}
                       variant="secondary"
                       className={cn(
-                        "h-10 min-w-0 rounded-2xl",
+                        "h-auto min-h-10 min-w-0 rounded-2xl py-1.5 leading-tight whitespace-normal",
                         pressed && "ring-primary ring-2"
                       )}
                       aria-pressed={pressed}

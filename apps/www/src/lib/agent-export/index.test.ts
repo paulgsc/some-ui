@@ -47,9 +47,8 @@ const PRACTICE = vi.hoisted(() => ({
   totals: { reps: 30, sets: 3, practiceMs: 270_000 },
 }))
 const FEEDBACK = vi.hoisted(() => ({
-  tooEasy: false,
-  tooManyRepeats: true,
-  answeredAt: "2026-10-10T09:00:00.000Z",
+  tooEasy: null,
+  tooManyRepeats: { at: "2026-10-10T09:00:00.000Z" },
 }))
 const LENS = vi.hoisted(() => ({
   entries: [{ session: "2026-10-10T08:00:00.000Z", line: "school-bus" }],

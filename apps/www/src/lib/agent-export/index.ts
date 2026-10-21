@@ -56,7 +56,7 @@ const READ_ALOUD_PRACTICE =
   "`readAloudPractice` is the read-aloud drill's practice record: for each of the 60 most recent days that had any (a day without practice has no entry, and an old day stays until 60 newer ones replace it), and in `totals` for all time, the reps read to the end, the sets finished and the practice they are credited with (a nominal time per rep, not the clock). All zeros means nothing was recorded or the stored record could not be read, which the app cannot tell apart; null means the app could not load the drill at all."
 
 const READ_ALOUD_FEEDBACK =
-  "`readAloudFeedback` is what the learner last said at the end of a read-aloud sitting, as two separate answers: `tooEasy` (they want harder sentences) and `tooManyRepeats` (they want more variety), and `answeredAt` (ISO) for when they last changed it. They can give either, both or neither; null means neither. It stays on the phone until they change it, so read it against the date of the session it comes with. Neither answer moves their level, and a stuck report is not one of them."
+  "`readAloudFeedback` is what the learner said at the end of read-aloud sittings, as two separate answers: `tooEasy` (they want harder sentences) and `tooManyRepeats` (they want more variety), each with `at`, when they gave it (ISO), or null if they have not. They can give either, both or neither. An answer stays on the phone until they take it back, so read its `at` against the date of the session it comes with. The whole field is null when they gave neither, or the app could not read them. Neither answer moves their level, and a stuck report is not one of them."
 
 const GRAMMAR_LENS = [
   "`grammarLens` is the grammar-lens session's record (`grammarLens.entries`): one entry per item, most recent last. Once the learner confirms this file arrived, the entries in it leave the phone: this file is their only copy.",
@@ -259,7 +259,6 @@ async function readAloudPractice(): Promise<PracticeRecord | null> {
   }
 }
 
-/** What the learner last said at a sitting's end; null if nothing or unreadable. */
 async function readAloudFeedback(): Promise<ReadAloudFeedback | null> {
   try {
     const { readAloudFeedbackForExport } = await import("@some-ui/topik")

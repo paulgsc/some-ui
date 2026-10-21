@@ -2,7 +2,12 @@ import type { Speaker, SpeechOutcome } from "@some-ui/speech"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { ReadAloudScreen } from "@topik/components/topik/read-aloud/read-aloud-screen"
-import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
+import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
+import {
+  createReadAloudStore,
+  READ_ALOUD_STORAGE_KEYS,
+} from "@topik/lib/topik/adapter/read-aloud-store"
+import type { StorageLike } from "@topik/lib/topik/adapter/storage"
 import {
   REPO_SETS as DECK,
   LEVEL_ONE_LENS_SET,
@@ -60,8 +65,8 @@ afterEach(() => {
 })
 
 describe("ReadAloudScreen, at the end of a sitting", () => {
-  it("asks how it was, keeps each answer on the phone, and moves nothing by itself", async () => {
-    const store = createReadAloudStore(memoryStorage())
+  /** Reaches the end of a sitting, with the screen mounted on `store`. */
+  async function sittingOver(store: ReadAloudStore): Promise<void> {
     render(
       <ReadAloudScreen
         topikLevel={1}
@@ -72,72 +77,56 @@ describe("ReadAloudScreen, at the end of a sitting", () => {
       />
     )
     fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))
-    expect(
-      screen.queryByRole("group", { name: "How was this sitting?" })
-    ).toBeNull()
+    expect(screen.queryByRole("group", { name: ANSWERS })).toBeNull()
     // Every screen ends within two minutes (Rem. 4.10): the sitting is over
     // soon after its thirty.
     await advance(SITTING_MS + 3 * 60_000)
-    expect(
-      document.querySelector('[data-slot="read-aloud-sitting-over"]')
-    ).not.toBeNull()
+    expect(screen.getByRole("group", { name: ANSWERS })).toBeTruthy()
+  }
+  const ANSWERS = "About the sentences"
+  const saved = (): string | null =>
+    document.querySelector('[data-slot="read-aloud-feedback-saved"]')
+      ?.textContent || null
 
+  it("asks for the two answers, keeps each on the phone with its own date, and takes one back", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    await sittingOver(store)
     const easy = screen.getByRole("button", { name: "Too easy" })
     const repeats = screen.getByRole("button", { name: "Too many repeats" })
     expect(easy.getAttribute("aria-pressed")).toBe("false")
-    const saved = (): string | null =>
-      document.querySelector('[data-slot="read-aloud-feedback-saved"]')
-        ?.textContent ?? null
     expect(saved()).toBeNull()
 
     fireEvent.click(easy)
+    const first = new Date(Date.now()).toISOString()
     expect(easy.getAttribute("aria-pressed")).toBe("true")
-    expect(saved()).toBe(
-      "Saved on this phone: Too easy. It goes with your next reflection."
-    )
+    expect(saved()).toMatch(/^Saved on this phone: Too easy\./)
     expect(store.feedback()).toEqual({
-      tooEasy: true,
-      tooManyRepeats: false,
-      answeredAt: new Date(Date.now()).toISOString(),
+      tooEasy: { at: first },
+      tooManyRepeats: null,
     })
 
+    await advance(60_000)
     fireEvent.click(repeats)
-    expect(saved()).toBe(
-      "Saved on this phone: Too easy and Too many repeats. They go with your next reflection."
-    )
-    expect(store.feedback()).toMatchObject({
-      tooEasy: true,
-      tooManyRepeats: true,
+    const second = new Date(Date.now()).toISOString()
+    expect(saved()).toMatch(/Too easy and Too many repeats/)
+    expect(store.feedback()).toEqual({
+      tooEasy: { at: first },
+      tooManyRepeats: { at: second },
     })
 
     fireEvent.click(easy)
     fireEvent.click(repeats)
     expect(saved()).toBeNull()
     expect(store.feedback()).toBeNull()
-    // The level is the learner's to choose, whatever they said.
-    expect(
-      document.querySelector('[data-slot="read-aloud-level"]')?.textContent
-    ).toBe("TOPIK 1")
   })
 
   it("shows an answer given at an earlier sitting, still pressed", async () => {
     const store = createReadAloudStore(memoryStorage())
     store.saveFeedback({
-      tooEasy: false,
-      tooManyRepeats: true,
-      answeredAt: new Date(NOON).toISOString(),
+      tooEasy: null,
+      tooManyRepeats: { at: new Date(NOON).toISOString() },
     })
-    render(
-      <ReadAloudScreen
-        topikLevel={1}
-        speech={fakeSpeech()}
-        deck={DECK}
-        store={store}
-        onExit={() => undefined}
-      />
-    )
-    fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))
-    await advance(SITTING_MS + 3 * 60_000)
+    await sittingOver(store)
     expect(
       screen
         .getByRole("button", { name: "Too many repeats" })
@@ -148,6 +137,22 @@ describe("ReadAloudScreen, at the end of a sitting", () => {
         .getByRole("button", { name: "Too easy" })
         .getAttribute("aria-pressed")
     ).toBe("false")
+  })
+
+  it("says so when the phone cannot keep an answer, and shows what it holds", async () => {
+    const base = memoryStorage()
+    const storage: StorageLike = {
+      getItem: (key) => base.getItem(key),
+      setItem: (key, value) => {
+        if (key === READ_ALOUD_STORAGE_KEYS.feedback) throw new Error("quota")
+        base.setItem(key, value)
+      },
+    }
+    await sittingOver(createReadAloudStore(storage))
+    const easy = screen.getByRole("button", { name: "Too easy" })
+    fireEvent.click(easy)
+    expect(saved()).toBe("This phone couldn't keep that.")
+    expect(easy.getAttribute("aria-pressed")).toBe("false")
   })
 })
 

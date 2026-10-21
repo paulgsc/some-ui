@@ -410,10 +410,10 @@ export const PANEL_FIXTURES = {
       kind="sitting-over"
       feedback={{
         value: {
-          tooEasy: true,
-          tooManyRepeats: true,
-          answeredAt: "2026-10-21T08:00:00.000Z",
+          tooEasy: { at: "2026-10-21T08:00:00.000Z" },
+          tooManyRepeats: { at: "2026-10-21T08:05:00.000Z" },
         },
+        kept: true,
         onToggle: noop,
       }}
       short={short}

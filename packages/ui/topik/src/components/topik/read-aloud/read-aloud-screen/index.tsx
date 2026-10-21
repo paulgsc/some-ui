@@ -89,7 +89,10 @@ export const ReadAloudScreen = ({
     }
   })
   const [record, setRecord] = useState(loaded.record)
-  const [feedback, setFeedback] = useState(loaded.feedback)
+  const [feedback, setFeedback] = useState({
+    value: loaded.feedback,
+    kept: true,
+  })
   const { store } = loaded
   const [practice, setPractice] = useState<"read-aloud" | "lens">("read-aloud")
 
@@ -127,11 +130,16 @@ export const ReadAloudScreen = ({
       onPace={(wordId, pace) => store.savePace(wordId, pace)}
       onProgress={(progress) => store.saveProgress(level, deck.id, progress)}
       feedback={{
-        value: feedback,
+        ...feedback,
         onToggle: (key) => {
-          const next = toggled(feedback, key, new Date(now()).toISOString())
-          setFeedback(next)
-          store.saveFeedback(next)
+          const next = toggled(
+            feedback.value,
+            key,
+            new Date(now()).toISOString()
+          )
+          const kept = store.saveFeedback(next)
+          // What the phone holds is what the buttons show.
+          setFeedback({ value: kept ? next : store.feedback(), kept })
         },
       }}
       lens={

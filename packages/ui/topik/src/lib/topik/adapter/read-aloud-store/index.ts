@@ -77,7 +77,8 @@ export type ReadAloudStore = {
   saveSets: (sets: ReadonlyArray<AddedSet>) => void
   /** What the learner said at the end of a sitting, or null if nothing. */
   feedback: () => ReadAloudFeedback | null
-  saveFeedback: (feedback: ReadAloudFeedback | null) => void
+  /** Whether the phone kept it: the learner is told when it did not. */
+  saveFeedback: (feedback: ReadAloudFeedback | null) => boolean
 }
 
 const Id = z.string().min(1)
@@ -138,11 +139,14 @@ export function createReadAloudStore(
     }
   }
 
-  const write = (key: string, value: unknown): void => {
+  const write = (key: string, value: unknown): boolean => {
     try {
-      storage?.setItem(key, JSON.stringify(value))
+      if (!storage) return false
+      storage.setItem(key, JSON.stringify(value))
+      return true
     } catch {
       // Quota, privacy mode: what was lost is pace or a count, nothing more.
+      return false
     }
   }
 
@@ -193,9 +197,8 @@ export function createReadAloudStore(
     },
     feedback: (): ReadAloudFeedback | null =>
       parseFeedback(read(READ_ALOUD_STORAGE_KEYS.feedback)),
-    saveFeedback: (feedback): void => {
-      write(READ_ALOUD_STORAGE_KEYS.feedback, storedFeedback(feedback))
-    },
+    saveFeedback: (feedback): boolean =>
+      write(READ_ALOUD_STORAGE_KEYS.feedback, storedFeedback(feedback)),
   }
 }
 
@@ -206,10 +209,6 @@ export function createReadAloudStore(
 export const readAloudPracticeRecord = (): PracticeRecord =>
   createReadAloudStore().record()
 
-/**
- * What the learner last said at the end of a sitting, for the export that
- * goes with their next reflection; null when nothing is kept. It leaves the
- * phone only through the share sheet, with the reflection.
- */
+/** What the learner last said at the end of a sitting, for the export. */
 export const readAloudFeedbackForExport = (): ReadAloudFeedback | null =>
   createReadAloudStore().feedback()

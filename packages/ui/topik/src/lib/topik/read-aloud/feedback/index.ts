@@ -1,31 +1,29 @@
 /**
  * What the learner says at the end of a read-aloud sitting, in two separate
- * answers: "Too easy" asks the next pool for harder sentences, "Too many
- * repeats" for more variety. Either, both or neither; tapping one again takes
- * it back. They are kept on the phone and travel with the next reflection as a
- * field of their own. Nothing here moves the level or the draw, and nothing
- * infers an answer from a stuck report (Prop. 6.4 (iii)).
+ * answers: "Too easy" asks for harder sentences, "Too many repeats" for more
+ * variety. Nothing here moves the level or the draw, and no answer is inferred
+ * from a stuck report (Prop. 6.4 (iii)).
  *
- * Pure: `../../adapter/read-aloud-store` keeps it, and every word it shows is
- * in `FEEDBACK_WORDS`, which stays in the person's terms (`index.test.ts`).
+ * Every word it shows is in `FEEDBACK_WORDS` (`index.test.ts`).
  */
 
 import { z } from "zod"
 
-export type FeedbackKey = "tooEasy" | "tooManyRepeats"
+export const FEEDBACK_KEYS = ["tooEasy", "tooManyRepeats"] as const
 
-export type ReadAloudFeedback = {
-  tooEasy: boolean
-  tooManyRepeats: boolean
-  /** ISO. When it was last changed. */
-  answeredAt: string
-}
+export type FeedbackKey = (typeof FEEDBACK_KEYS)[number]
+
+/** An answer given, and when (ISO). */
+type Answer = { at: string }
+
+export type ReadAloudFeedback = Record<FeedbackKey, Answer | null>
+
+const AnswerSchema = z.object({ at: z.iso.datetime() }).nullable()
 
 const FeedbackSchema = z.object({
   version: z.literal(1),
-  tooEasy: z.boolean(),
-  tooManyRepeats: z.boolean(),
-  answeredAt: z.string().refine((at) => !Number.isNaN(Date.parse(at))),
+  tooEasy: AnswerSchema,
+  tooManyRepeats: AnswerSchema,
 })
 
 /** What is kept for the answers; null when neither is given. */
@@ -39,10 +37,8 @@ export function storedFeedback(
 export function parseFeedback(raw: unknown): ReadAloudFeedback | null {
   const parsed = FeedbackSchema.safeParse(raw)
   if (!parsed.success) return null
-  const { tooEasy, tooManyRepeats, answeredAt } = parsed.data
-  return tooEasy || tooManyRepeats
-    ? { tooEasy, tooManyRepeats, answeredAt }
-    : null
+  const { tooEasy, tooManyRepeats } = parsed.data
+  return tooEasy || tooManyRepeats ? { tooEasy, tooManyRepeats } : null
 }
 
 /** The answers after tapping `key`; null once neither is given. */
@@ -51,14 +47,12 @@ export function toggled(
   key: FeedbackKey,
   at: string
 ): ReadAloudFeedback | null {
-  const next = {
-    tooEasy: current?.tooEasy ?? false,
-    tooManyRepeats: current?.tooManyRepeats ?? false,
+  const next: ReadAloudFeedback = {
+    tooEasy: current?.tooEasy ?? null,
+    tooManyRepeats: current?.tooManyRepeats ?? null,
   }
-  next[key] = !next[key]
-  return next.tooEasy || next.tooManyRepeats
-    ? { ...next, answeredAt: at }
-    : null
+  next[key] = next[key] ? null : { at }
+  return next.tooEasy || next.tooManyRepeats ? next : null
 }
 
 const LABEL: Record<FeedbackKey, string> = {
@@ -67,18 +61,16 @@ const LABEL: Record<FeedbackKey, string> = {
 }
 
 export const FEEDBACK_WORDS = {
-  /** The group's spoken name, and what the buttons answer. */
-  group: "How was this sitting?",
+  /** The buttons' spoken group name. */
+  group: "About the sentences",
   label: (key: FeedbackKey): string => LABEL[key],
-  /** What is kept, where, and what it goes with; null when nothing is. */
   saved: (feedback: ReadAloudFeedback | null): string | null => {
-    if (feedback === null) return null
-    const given = (["tooEasy", "tooManyRepeats"] as const).filter(
-      (key) => feedback[key]
-    )
+    const given = FEEDBACK_KEYS.filter((key) => feedback?.[key])
+    if (given.length === 0) return null
     const names = given.map((key) => LABEL[key]).join(" and ")
     return given.length === 1
       ? `Saved on this phone: ${names}. It goes with your next reflection.`
       : `Saved on this phone: ${names}. They go with your next reflection.`
   },
+  notKept: "This phone couldn't keep that.",
 } as const
