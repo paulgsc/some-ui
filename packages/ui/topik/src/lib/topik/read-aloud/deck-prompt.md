@@ -170,6 +170,25 @@ spelling or for your own accent.
 Use vocabulary a learner at the level is expected to meet. Keep the grammar
 around a new word easier than the word itself.
 
+**A read-aloud deck is one pool, sized for a sitting.** The drill runs for
+thirty minutes, four sentences a set, and shows a sentence a second time only
+once it has no unseen one left. A sitting shows about 52–56 sentences at level
+1, 47–50 at level 2 and 37–39 at level 3, so write that many different lines
+at the level asked, and no fewer:
+
+| Level | Write          |
+| ----- | -------------- |
+| 1     | 50–60 lines    |
+| 2     | about 50 lines |
+| 3     | about 40 lines |
+
+A `Lines:` in the request overrides these. Write a few lines over: the app
+drops a line it cannot show, and the pool should still reach its count after
+that. Build the lines mostly from words the learner already has (the request
+lists them when it can), and bring in at most one or two new words in a
+sentence. A lens deck is not sized this way; write the lines the request asks
+for.
+
 **`sense` is for inflected meaning.** The word's `gloss` is its dictionary
 meaning (주다: give). When a form means something the gloss does not say
 (주세요: please give me), give `sense`. Keep both short.

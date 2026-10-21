@@ -24,14 +24,16 @@ with the genre and the premise.
   ```
   ## This request
 
-  Practice: lens
-  Level: 2
-  Lines: 12
+  Practice: read-aloud
+  Level: 1
+  Lines: 55
   Genre: office
   Premise: two coworkers stuck late find out they live on the same street
   ```
 
-  and give it to any model.
+  and give it to any model. A read-aloud request without `Lines:` gets the
+  pool `deck-prompt.md` sizes for the level; a lens request (`Practice: lens`)
+  names its `Lines:`, about 8.
 
 - Check the reply with `parseReadAloudDeck` (exported from `@some-ui/topik`).
   Every finding it reports is something the app would drop, so fix the deck or
@@ -100,13 +102,17 @@ repo:
 > premise that fits what the note mentions. Write two decks from
 > `deck-prompt.md` in `@some-ui/topik` (`src/lib/topik/read-aloud`) in that
 > context, at the level the learner asked for, or else the level they studied
-> at: a read-aloud deck of 12 or so lines, and a lens deck of 8 or so lines,
-> each with its own `id` (the lens deck's ending `-lens`), the same `title`,
-> `from` and `context`. The words they already have are those in `sets/` and
-> in every deck under `Read aloud/`, archived ones included. Check each with
-> `parseReadAloudDeck` and fix every finding. Create the scene folder and set
-> its description if it is not there yet, then upload the decks it lacks into
-> it.
+> at: a read-aloud pool sized for a sitting (50–60 lines at level 1, about 50
+> at level 2, about 40 at level 3, as `deck-prompt.md` says), written mostly
+> in words they already have with at most one or two new words in a sentence,
+> and a lens deck of 8 or so lines, each with its own `id` (the lens deck's
+> ending `-lens`), the same `title`, `from` and `context`. The words they
+> already have are those in `sets/` and in every deck under `Read aloud/`,
+> archived ones included. Check each with `parseReadAloudDeck` and fix every
+> finding, then count what is left: the app drops a line it cannot show and
+> keeps the deck, so write a few lines over and make up any shortfall until
+> the pool keeps its count. Create the scene folder and set its description if
+> it is not there yet, then upload the decks it lacks into it.
 
 The same pass reads each reflection for what it says about the app. A note
 can speak to both: what to study next shapes the pair, and a bug or a wish
