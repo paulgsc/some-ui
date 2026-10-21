@@ -106,9 +106,12 @@ const PANEL_STAGES: ReadonlyArray<PanelId> = [
   "topik-drama-beat",
   "topik-drama-choice",
   "topik-drama-ending",
-  // The phone's read-aloud: a return with its reason and the sitting's bar,
-  // and the summary that says every sentence has been shown.
+  // The phone's read-aloud: a return with its reason, its mark and the
+  // sitting's bar, the start screen with the tally's clear control, and the
+  // summary that says every sentence has been shown. The facts sheet is on
+  // the overlay plane, which the sweep does not measure.
   "topik-read-aloud-return",
+  "topik-read-aloud-ready",
   "topik-read-aloud-summary-full",
   "topik-read-aloud-sitting-over",
 ]

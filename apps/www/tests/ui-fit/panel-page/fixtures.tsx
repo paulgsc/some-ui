@@ -373,9 +373,10 @@ export const PANEL_FIXTURES = {
     first: { c1: "d" },
   }),
 
-  // A sentence back after a stuck report, at its echo, with the reason beside
-  // the step's label and the sitting's bar at the foot; and a set's summary
-  // once the sitting has shown every sentence.
+  // A sentence back after a stuck report, at its echo, with the reason and
+  // the mark ("Seen before", the longest) beside the step's label and the
+  // sitting's bar at the foot; and a set's summary once the sitting has
+  // shown every sentence.
   "topik-read-aloud-return": handheldStage((short) => (
     <RepCard
       deck={READ_ALOUD_DECK}
@@ -386,6 +387,7 @@ export const PANEL_FIXTURES = {
       reported={false}
       playing
       pool={{ shown: 31, of: 54 }}
+      exposure={{ kind: "seen", onOpen: noop }}
       short={short}
       onStuck={noop}
       onSkip={noop}
@@ -400,6 +402,39 @@ export const PANEL_FIXTURES = {
       runKey={1}
       short={short}
       onNext={noop}
+      onStop={noop}
+    />
+  )),
+
+  // The start screen at its fullest: the level's shortfall, the lens with its
+  // full record, the practice record, and the sentence tally with its clear
+  // control.
+  "topik-read-aloud-ready": handheldStage((short) => (
+    <SetCard
+      kind="ready"
+      level={3}
+      audio
+      resuming
+      shortfall={2}
+      record={{
+        record: {
+          version: 1,
+          days: [
+            { day: "2026-10-21", reps: 48, sets: 12, practiceMs: 1_800_000 },
+          ],
+          totals: { reps: 5300, sets: 1200, practiceMs: 20_000_000 },
+        },
+        today: "2026-10-21",
+      }}
+      tally={{
+        size: 54,
+        since: "2026-10-19T12:00:00.000Z",
+        today: "2026-10-21",
+        onClear: () => true,
+      }}
+      lens={{ available: true, full: true, onStart: noop }}
+      short={short}
+      onStart={noop}
       onStop={noop}
     />
   )),
