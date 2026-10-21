@@ -1594,7 +1594,8 @@ rather than as *data*, and the remedy is to exhibit the data.
 
   What a set holds follows the same rule. Within a sitting the sentences are
   drawn without replacement: those not yet shown first, then, once every one
-  has been shown, the one shown longest ago. That selects by the sitting's own
+  has been shown, the one shown longest ago, and within a set a repeat comes
+  after the sentences not yet shown. That selects by the sitting's own
   history, a list of the sentences the screen has shown since the sitting
   began, and holds no belief about the learner: it is a function of what was
   shown, never of what the learner did or failed to do. A sentence is shown

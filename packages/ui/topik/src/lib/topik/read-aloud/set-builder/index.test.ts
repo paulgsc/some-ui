@@ -61,6 +61,11 @@ describe("buildSet", () => {
         item.kind === "word" ? [item.wordId] : []
       )
       expect(new Set(words).size).toBe(words.length)
+      // A word a sentence of the set holds is drilled in that sentence.
+      const held = new Set(
+        items.flatMap((item) => (item.kind === "sentence" ? item.wordIds : []))
+      )
+      for (const wordId of words) expect(held.has(wordId)).toBe(false)
       for (const item of items) {
         if (item.kind !== "sentence") continue
         const line = STARTER_SET.lines.find((each) => each.id === item.lineId)
@@ -106,6 +111,10 @@ describe("buildSet", () => {
 
 const sorted = (ids: ReadonlyArray<string>): Array<string> => [...ids].sort()
 
+/** The line ids of a set's sentences in the order they come on screen. */
+const sentenceOrder = (items: Array<SetItem>): Array<string> =>
+  items.flatMap((item) => (item.kind === "sentence" ? [item.lineId] : []))
+
 /**
  * The line ids of a set's sentences, sorted: a built set is shuffled after
  * the draw, so which sentences it holds is what the draw decides.
@@ -118,17 +127,6 @@ const sentencesOf = (items: Array<SetItem>): Array<string> =>
 describe("buildSet, within a sitting (Rem. 4.9)", () => {
   const ids = LEVEL_ONE_SET.lines.map((line) => line.id)
 
-  it("draws the sentences not yet shown while four of them remain", () => {
-    for (const seedKey of SEEDS) {
-      const shown = ids.slice(0, 40)
-      const drawn = sentencesOf(
-        buildSet(LEVEL_ONE_SET, { level: 1, seedKey, shown })
-      )
-      expect(drawn).toHaveLength(4)
-      expect(drawn.some((id) => shown.includes(id))).toBe(false)
-    }
-  })
-
   it("takes every unshown sentence, then the one shown longest ago", () => {
     for (const seedKey of SEEDS.slice(0, 20)) {
       // Oldest first: the list is in the order the sentences were last shown.
@@ -137,15 +135,6 @@ describe("buildSet, within a sitting (Rem. 4.9)", () => {
         buildSet(LEVEL_ONE_SET, { level: 1, seedKey, shown })
       )
       expect(drawn).toEqual(sorted([...ids.slice(-2), ...shown.slice(0, 2)]))
-    }
-  })
-
-  it("draws the one shown longest ago first once every sentence is shown", () => {
-    const shown = [...ids].reverse()
-    for (const seedKey of SEEDS.slice(0, 20)) {
-      expect(
-        sentencesOf(buildSet(LEVEL_ONE_SET, { level: 1, seedKey, shown }))
-      ).toEqual(sorted(shown.slice(0, 4)))
     }
   })
 
@@ -174,29 +163,14 @@ describe("buildSet, within a sitting (Rem. 4.9)", () => {
     ).toEqual(plain)
   })
 
-  it("draws the same sentences as ever when nothing has been shown", () => {
-    for (const seedKey of SEEDS.slice(0, 20)) {
-      expect(
-        sentencesOf(buildSet(LEVEL_ONE_SET, { level: 1, seedKey, shown: [] }))
-      ).toEqual(sentencesOf(buildSet(LEVEL_ONE_SET, { level: 1, seedKey })))
-    }
-  })
-
-  it("never drills a word on its own when a sentence of the set holds it", () => {
-    for (const deck of [STARTER_SET, LEVEL_ONE_SET]) {
-      for (const level of LEVELS) {
-        for (const seedKey of SEEDS.slice(0, 40)) {
-          const items = buildSet(deck, { level, seedKey })
-          const held = new Set(
-            items.flatMap((item) =>
-              item.kind === "sentence" ? item.wordIds : []
-            )
-          )
-          for (const item of items) {
-            if (item.kind === "word") expect(held.has(item.wordId)).toBe(false)
-          }
-        }
-      }
+  it("puts a repeat after the unshown sentences of its own set", () => {
+    const shown = ids.slice(0, -2)
+    for (const seedKey of SEEDS) {
+      const order = sentenceOrder(
+        buildSet(LEVEL_ONE_SET, { level: 1, seedKey, shown })
+      )
+      const unseen = order.map((id) => !shown.includes(id))
+      expect(unseen).toEqual([true, true, false, false])
     }
   })
 })

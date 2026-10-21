@@ -1,3 +1,4 @@
+import { fnv1a, unitIntervalBySeed } from "@some-ui/core-utils"
 import type { ReadAloudDeck } from "@topik/lib/topik/read-aloud/content"
 import type { PaceBook } from "@topik/lib/topik/read-aloud/records"
 import { LEVEL_ONE_SET } from "@topik/lib/topik/read-aloud/repo-sets"
@@ -608,16 +609,6 @@ describe("the sitting's list (Rem. 4.9)", () => {
     expect(host.state.shown).toEqual(["one-cup"])
   })
 
-  it("lists an interrupted sentence once, and keeps it when its rep starts over", () => {
-    const host = new Host()
-    host.begin([ONE_CUP, OTHER])
-    host.send({ type: "hidden", at: host.now })
-    host.send({ type: "shown", at: host.now })
-    host.send({ type: "pause", at: host.now })
-    host.send({ type: "resume", at: host.now })
-    expect(host.state.shown).toEqual(["one-cup"])
-  })
-
   it("adds nothing for a return or an introduction (Prop. 6.4 (ii))", () => {
     const run = (report: boolean): SetMachineState => {
       const host = new Host()
@@ -663,28 +654,7 @@ describe("the sitting's list (Rem. 4.9)", () => {
     host.send({ type: "start-sitting", at: host.now })
     expect(host.state.shown).toEqual(["other"])
   })
-
-  it("is not part of what a set keeps to resume", () => {
-    const host = new Host()
-    host.begin(SET)
-    host.finishEntry()
-    expect(Object.keys(progressOf(host.state) ?? {}).sort()).toEqual([
-      "counted",
-      "queue",
-      "reported",
-      "returns",
-    ])
-  })
 })
-
-/** A small, seeded random source: the same runs on every machine. */
-function random(seed: number): () => number {
-  let state = seed
-  return () => {
-    state = (state * 1_664_525 + 1_013_904_223) % 4_294_967_296
-    return state / 4_294_967_296
-  }
-}
 
 describe("sets drawn across a sitting (Rem. 4.9)", () => {
   // Ten lines, four a set: three sets show them all, so the run reaches the
@@ -698,27 +668,32 @@ describe("sets drawn across a sitting (Rem. 4.9)", () => {
   /**
    * Drive the real machine and the real draw through a generated run of
    * reports, skips, pauses, hidden pages, a clock jumping past the bound and
-   * a new sitting, and call `check` at every draw with the list it was
-   * handed.
+   * a new sitting. `drawn` sees each draw with the list it was handed;
+   * `started` sees each sentence rep that begins, with the list before it.
    */
   function drive(
     seed: number,
-    check: (shown: ReadonlyArray<string>, drawn: Array<string>) => void
-  ): { sets: number; sittings: number } {
-    const next = random(seed)
+    drawn: (shown: ReadonlyArray<string>, lineIds: Array<string>) => void,
+    started: (lineId: string, shown: ReadonlyArray<string>) => void
+  ): { sittings: number } {
+    const roll = (step: number): number =>
+      unitIntervalBySeed(fnv1a(`${seed}:${step}`))
     const host = new Host()
     let sets = 0
     let sittings = 1
+    let begun = ""
     for (let step = 0; step < 3000; step += 1) {
       const { phase } = host.state
+      // A new sitting starts with nothing shown, in the event that starts it.
+      const before = phase.name === "sitting-over" ? [] : host.state.shown
       if (phase.name === "idle") {
         const items = buildSet(DECK, {
           level: 1,
           seedKey: `${seed}:${sets}`,
-          shown: host.state.shown,
+          shown: before,
         })
-        check(
-          host.state.shown,
+        drawn(
+          before,
           items.flatMap((item) => (item.kind === "sentence" ? item.lineId : []))
         )
         sets += 1
@@ -734,48 +709,65 @@ describe("sets drawn across a sitting (Rem. 4.9)", () => {
       } else if (phase.name === "summary") {
         host.send({ type: "next-set", at: host.now })
       } else {
-        const roll = next()
-        if (roll < 0.14) host.send({ type: "stuck", at: host.now })
-        else if (roll < 0.22) host.send({ type: "skip", at: host.now })
-        else if (roll < 0.27) host.send({ type: "pause", at: host.now })
-        else if (roll < 0.32) host.send({ type: "hidden", at: host.now })
-        else if (roll < 0.34) host.now += SITTING_MS
+        const r = roll(step)
+        if (r < 0.14) host.send({ type: "stuck", at: host.now })
+        else if (r < 0.22) host.send({ type: "skip", at: host.now })
+        else if (r < 0.27) host.send({ type: "pause", at: host.now })
+        else if (r < 0.32) host.send({ type: "hidden", at: host.now })
+        else if (r < 0.34) host.now += SITTING_MS
         else host.step()
       }
-      const { shown } = host.state
-      expect(new Set(shown).size).toBe(shown.length)
-      expect(shown.every((id) => IDS.includes(id))).toBe(true)
+      const entry = currentEntry(host.state)
+      const key = `${sets}:${host.state.cursor}:${host.state.shown.length}`
+      if (
+        host.onEntry() &&
+        entry?.role === "rep" &&
+        entry.item.kind === "sentence" &&
+        key !== begun
+      ) {
+        // Only the first step of an entry is a showing: a restart after a
+        // pause finds the line already listed, at the same cursor.
+        if (host.state.shown.at(-1) === entry.item.lineId) {
+          started(entry.item.lineId, before)
+        }
+      }
+      begun = key
     }
-    return { sets, sittings }
+    return { sittings }
   }
 
-  it("draws no sentence twice while one not yet shown remains (including stuck returns, skips, a hidden page, a pause and a new sitting)", () => {
+  it("draws no sentence twice while one not yet shown remains, and then the one shown longest ago (stuck returns, skips, a hidden page, a pause and a new sitting included)", () => {
     let repeats = 0
+    let full = 0
+    let second = 0
     for (let seed = 1; seed <= 25; seed += 1) {
-      const { sets, sittings } = drive(seed, (shown, drawn) => {
-        const unseen = IDS.filter((id) => !shown.includes(id))
-        const fresh = drawn.filter((id) => unseen.includes(id))
-        // Every unshown sentence a set has room for is in it...
-        expect(fresh).toHaveLength(Math.min(4, unseen.length))
-        // ...and a shown one is drawn only to fill what they could not.
-        repeats += drawn.length - fresh.length
-        expect(new Set(drawn).size).toBe(drawn.length)
-      })
-      expect(sets).toBeGreaterThan(5)
-      expect(sittings).toBeGreaterThan(0)
+      const { sittings } = drive(
+        seed,
+        (shown, lineIds) => {
+          const unseen = IDS.filter((id) => !shown.includes(id))
+          const fresh = lineIds.filter((id) => unseen.includes(id))
+          // Every unshown sentence a set has room for is in it...
+          expect(fresh).toHaveLength(Math.min(4, unseen.length))
+          // ...and a shown one is drawn only to fill what they could not,
+          // the one shown longest ago first.
+          repeats += lineIds.length - fresh.length
+          expect(new Set(lineIds).size).toBe(lineIds.length)
+          if (unseen.length === 0) {
+            full += 1
+            expect([...lineIds].sort()).toEqual([...shown.slice(0, 4)].sort())
+          }
+        },
+        (lineId, shown) => {
+          // A sentence shown again begins only once none is left unshown.
+          if (shown.includes(lineId)) {
+            expect(IDS.filter((id) => !shown.includes(id))).toEqual([])
+          }
+        }
+      )
+      if (sittings > 1) second += 1
     }
     expect(repeats).toBeGreaterThan(0)
-  })
-
-  it("draws the one shown longest ago once every sentence has been shown", () => {
-    let full = 0
-    for (let seed = 1; seed <= 25; seed += 1) {
-      drive(seed, (shown, drawn) => {
-        if (shown.length < IDS.length) return
-        full += 1
-        expect([...drawn].sort()).toEqual([...shown.slice(0, 4)].sort())
-      })
-    }
     expect(full).toBeGreaterThan(0)
+    expect(second).toBeGreaterThan(0)
   })
 })

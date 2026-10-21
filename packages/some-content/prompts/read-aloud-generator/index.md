@@ -32,8 +32,7 @@ with the genre and the premise.
   ```
 
   and give it to any model. A read-aloud request without `Lines:` gets the
-  pool `deck-prompt.md` sizes for the level; a lens request (`Practice: lens`)
-  names its `Lines:`, about 8.
+  pool `deck-prompt.md` sizes for the level.
 
 - Check the reply with `parseReadAloudDeck` (exported from `@some-ui/topik`).
   Every finding it reports is something the app would drop, so fix the deck or

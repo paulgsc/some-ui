@@ -107,11 +107,6 @@ function useMarch(
   return markAt(weights, tick.runKey === runKey ? tick.syllable : 0)
 }
 
-/**
- * How many different sentences the sitting has shown, of those it can draw:
- * thin and quiet at the foot of the card, filling as they are shown. The
- * count itself is on the set summary.
- */
 const PoolBar = ({ pool }: { pool: SentencePool }): JSX.Element => (
   <div
     data-slot="read-aloud-pool"
@@ -119,13 +114,13 @@ const PoolBar = ({ pool }: { pool: SentencePool }): JSX.Element => (
     aria-label={POOL_BAR_LABEL}
     aria-valuemin={0}
     aria-valuemax={pool.of}
-    aria-valuenow={Math.min(pool.shown, pool.of)}
+    aria-valuenow={pool.shown}
     className="bg-muted h-1 w-full shrink-0 overflow-hidden rounded-full"
   >
     {/* foreground at 80% over the track keeps 3:1 or better in both themes */}
     <div
       className="bg-foreground/80 h-full rounded-full"
-      style={{ width: `${(Math.min(pool.shown, pool.of) / pool.of) * 100}%` }}
+      style={{ width: `${(pool.shown / pool.of) * 100}%` }}
     />
   </div>
 )
@@ -204,7 +199,7 @@ export const RepCard = ({
     >
       <div
         aria-live="polite"
-        className="flex min-h-4 max-w-full items-baseline justify-center gap-2 whitespace-nowrap"
+        className="flex min-h-4 max-w-full flex-wrap items-baseline justify-center gap-x-2"
       >
         <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
           {LABEL[step]}

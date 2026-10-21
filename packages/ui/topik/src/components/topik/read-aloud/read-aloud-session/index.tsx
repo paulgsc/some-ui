@@ -54,8 +54,6 @@ export const ReadAloudSession = ({
   const held = phase.name === "paused" && phase.by !== "learner"
   const running =
     onEntry && phase.name !== "paused" && phase.name !== "sitting-over"
-  // The sentences this sitting has drawn from (Rem. 4.9), of those at or
-  // below the level; none shown yet before the first set.
   const pool = sentencePool(options.deck, options.level, state.shown)
 
   const header = (

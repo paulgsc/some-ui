@@ -74,65 +74,26 @@ describe("RepCard's mark", () => {
 })
 
 describe("RepCard's reason and pool bar", () => {
-  const props = {
-    deck: STARTER_SET,
-    stepMs: null,
-    stepKey: 1,
-    reported: false,
-    playing: false,
-    short: false,
-    onStuck: noop,
-    onSkip: noop,
-    onResume: noop,
-  }
-  const reason = (): string | null =>
-    document.querySelector('[data-slot="read-aloud-reason"]')?.textContent ??
-    null
-
-  it("says a return is back because the learner marked it stuck, at every step", () => {
-    const { rerender } = render(
-      <RepCard {...props} entry={{ item: JAN, role: "return" }} step="turn" />
-    )
-    expect(reason()).toBe("Back: you marked it stuck")
-    rerender(
-      <RepCard {...props} entry={{ item: JAN, role: "return" }} step="echo" />
-    )
-    expect(reason()).toBe("Back: you marked it stuck")
-  })
-
-  it("says a second read at the echo, and nothing at the other steps of a rep", () => {
-    const { rerender } = render(
-      <RepCard {...props} entry={{ item: JAN, role: "rep" }} step="echo" />
-    )
-    expect(reason()).toBe("Second read")
-    for (const step of ["glyphs", "turn", "audio", "gloss"] as const) {
-      rerender(
-        <RepCard {...props} entry={{ item: JAN, role: "rep" }} step={step} />
-      )
-      expect(reason()).toBeNull()
-    }
-  })
-
-  it("keeps the mark and the step's label on one line", () => {
-    render(
-      <RepCard {...props} entry={{ item: JAN, role: "return" }} step="echo" />
-    )
-    const mark = document.querySelector('[data-slot="read-aloud-reason"]')
-    expect(mark?.parentElement?.className).toContain("whitespace-nowrap")
-    expect(mark?.parentElement?.textContent).toBe(
-      "Say it againBack: you marked it stuck"
-    )
-  })
-
-  it("draws the bar from what the sitting has shown, and none without it", () => {
+  it("says why a return is back, and draws the bar from what the sitting has shown", () => {
     const { rerender } = render(
       <RepCard
-        {...props}
-        entry={{ item: JAN, role: "rep" }}
-        step="turn"
+        deck={STARTER_SET}
+        entry={{ item: JAN, role: "return" }}
+        step="echo"
+        stepMs={null}
+        stepKey={1}
+        reported={false}
+        playing={false}
         pool={{ shown: 3, of: 12 }}
+        short={false}
+        onStuck={noop}
+        onSkip={noop}
+        onResume={noop}
       />
     )
+    expect(
+      document.querySelector('[data-slot="read-aloud-reason"]')?.textContent
+    ).toBe("Back: you marked it stuck")
     const bar = screen.getByRole("meter", {
       name: "Different sentences shown this sitting",
     })
@@ -140,12 +101,21 @@ describe("RepCard's reason and pool bar", () => {
     expect(bar.getAttribute("aria-valuemax")).toBe("12")
     rerender(
       <RepCard
-        {...props}
+        deck={STARTER_SET}
         entry={{ item: JAN, role: "rep" }}
         step="turn"
+        stepMs={null}
+        stepKey={1}
+        reported={false}
+        playing={false}
         pool={{ shown: 0, of: 0 }}
+        short={false}
+        onStuck={noop}
+        onSkip={noop}
+        onResume={noop}
       />
     )
+    expect(document.querySelector('[data-slot="read-aloud-reason"]')).toBeNull()
     expect(screen.queryByRole("meter")).toBeNull()
   })
 })

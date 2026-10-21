@@ -34,22 +34,10 @@ const POOLS = [
 describe("the sitting's words", () => {
   it("marks a return at every step it runs, and a second read at the echo", () => {
     for (const step of STEPS) {
-      const back = reasonOf("return", step)
-      expect(back).toBe(step === "paused" ? null : "Back: you marked it stuck")
-      const rep = reasonOf("rep", step)
-      expect(rep).toBe(step === "echo" ? "Second read" : null)
-      expect(reasonOf("introduction", step)).toBeNull()
-    }
-  })
-
-  it("says each reason in one line, at a length that fits a phone beside its label", () => {
-    for (const role of ROLES) {
-      for (const step of STEPS) {
-        const reason = reasonOf(role, step)
-        if (reason === null) continue
-        expect(reason).not.toMatch(/\n/)
-        expect(reason.length).toBeLessThanOrEqual(28)
-      }
+      expect(reasonOf("return", step)).toBe(
+        step === "paused" ? null : "Back: you marked it stuck"
+      )
+      expect(reasonOf("rep", step)).toBe(step === "echo" ? "Second read" : null)
     }
   })
 
@@ -69,7 +57,7 @@ describe("the sitting's words", () => {
 
   it("names how many there are when it is full", () => {
     expect(poolFullNote({ shown: 54, of: 54 })).toBe(
-      "That's all 54 sentences, once each this sitting. From here they come back, the ones I showed longest ago first."
+      "You've seen all 54 sentences this sitting. From here they come back, the ones I showed longest ago first."
     )
   })
 

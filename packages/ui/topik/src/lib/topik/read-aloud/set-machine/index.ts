@@ -28,9 +28,8 @@
  * - The sitting's list (Rem. 4.9): the ids of the sentences shown this
  *   sitting, the one shown longest ago first, for the next set's draw. A
  *   sentence is shown when its rep reaches its first step; a return or an
- *   introduction adds nothing (Prop. 6.4 (ii)), so withholding a stuck report
- *   changes no list. It lives in memory, as long as the sitting's clock, and
- *   `start-sitting` clears it.
+ *   introduction adds nothing (Prop. 6.4 (ii)). It lives in memory, as long
+ *   as the sitting's clock, and `start-sitting` clears it.
  * - The sitting (Rem. 4.10): once thirty minutes have passed, nothing new
  *   begins - no rep, no introduction, no summary, no set. What is showing
  *   finishes first; a rep is never cut short by the bound. The set in
@@ -122,11 +121,7 @@ export type SetMachineState = {
   paces: PaceBook
   /** When the sitting began; null before the first set. */
   sittingStartedAt: number | null
-  /**
-   * The line ids of the sentences shown this sitting, once each, the one
-   * shown longest ago first. Memory only: never stored, and cleared by
-   * `start-sitting`.
-   */
+  /** The line ids of the sentences shown this sitting, oldest first. */
   shown: Array<string>
 }
 
@@ -256,11 +251,7 @@ const paceOf = (paces: PaceBook, wordId: string): PaceEntry =>
 const sittingOver = (state: SetMachineState, at: number): boolean =>
   state.sittingStartedAt !== null && at - state.sittingStartedAt >= SITTING_MS
 
-/**
- * The sitting's list after a rep begins: a sentence's rep, its first entry
- * in a set, moves its line to the end as the one shown most recently. A
- * return, an introduction and a word add nothing.
- */
+/** A sentence's rep moves its line to the end of the sitting's list. */
 const withShown = (
   state: SetMachineState,
   entry: QueueEntry

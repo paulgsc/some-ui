@@ -240,7 +240,7 @@ describe("ReadAloudSession", () => {
     expect(stepOf()).toBe("glyphs")
   })
 
-  it("counts the sentences the sitting has shown, on the bar and on each summary", async () => {
+  it("counts the sentences the sitting has shown, on the bar and on each summary, and says so once it has shown every one", async () => {
     renderSession()
     fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))
     const bar = (): number =>
@@ -260,20 +260,10 @@ describe("ReadAloudSession", () => {
     )
     fireEvent.click(screen.getByRole("button", { name: /next set/i }))
     expect(bar()).toBeGreaterThanOrEqual(4)
-  })
-
-  it("says so once the sitting has shown every sentence, and not before", async () => {
-    renderSession()
-    fireEvent.click(screen.getByRole("button", { name: /^read aloud$/i }))
-    const summary = (): boolean => slotText("read-aloud-summary") !== null
+    await runUntil(() => !summary() && stepOf() === "glyphs")
     await runUntil(summary)
-    expect(slotText("read-aloud-pool-note")).not.toMatch(/all 7/)
-    fireEvent.click(screen.getByRole("button", { name: /next set/i }))
-    await runUntil(
-      () => slotText("read-aloud-pool-note")?.includes("all") ?? false
-    )
-    expect(slotText("read-aloud-pool-note")).toBe(
-      "That's all 7 sentences, once each this sitting. From here they come back, the ones I showed longest ago first."
+    expect(slotText("read-aloud-pool-note")).toMatch(
+      /^You've seen all 7 sentences/
     )
   })
 

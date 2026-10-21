@@ -171,10 +171,10 @@ Use vocabulary a learner at the level is expected to meet. Keep the grammar
 around a new word easier than the word itself.
 
 **A read-aloud deck is one pool, sized for a sitting.** The drill runs for
-thirty minutes, four sentences a set, and shows a sentence a second time only
-once it has no unseen one left. A sitting shows about 52–56 sentences at level
-1, 47–50 at level 2 and 37–39 at level 3, so write that many different lines
-at the level asked, and no fewer:
+thirty minutes, four sentences a set, and draws a sentence again only once
+the sitting has shown every one. A sitting is a run of thirty minutes, so
+closing the app starts the count again. Write that many different lines at the
+level asked, and no fewer:
 
 | Level | Write          |
 | ----- | -------------- |

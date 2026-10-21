@@ -93,11 +93,7 @@ export { DramaLesson } from "./components/topik/handheld/drama-lesson"
 export { SharePrompt } from "./components/topik/handheld/share-prompt"
 export { lastDramaOf } from "./lib/topik/core/last-drama"
 
-/**
- * The read-aloud cards by state; apps/www's panel-fit page mounts a return at
- * its echo, with the sitting's bar, and a set summary once every sentence has
- * been shown, in the box the handheld gives them.
- */
+/** The read-aloud cards; apps/www's panel-fit page mounts them directly. */
 export { PoolNote } from "./components/topik/read-aloud/pool-note"
 export { RepCard } from "./components/topik/read-aloud/rep-card"
 export { SetCard } from "./components/topik/read-aloud/set-card"

@@ -189,13 +189,13 @@ const fitTree = ((): ComponentProps<typeof DramaLesson>["lesson"] => {
 })()
 
 /**
- * The drama opened at `point`, in the box the handheld gives it: a flex
- * column under its header (44px on a phone held sideways, 56px otherwise).
+ * A card in the box the handheld gives it: a flex column under its header
+ * (44px on a phone held sideways, 56px otherwise).
  */
-function dramaStage(
-  point: Parameters<typeof lastDramaOf>[1]
+function handheldStage(
+  card: (short: boolean) => JSX.Element
 ): () => JSX.Element {
-  const DramaStage = (): JSX.Element => {
+  const HandheldStage = (): JSX.Element => {
     const short = window.innerHeight < HANDHELD_MAX_HEIGHT
     return (
       <div
@@ -208,35 +208,43 @@ function dramaStage(
         }}
       >
         <div style={{ height: short ? 44 : 56, flexShrink: 0 }} />
-        <DramaLesson
-          lesson={fitTree}
-          voice={null}
-          sound={null}
-          points={{ get: () => point, set: noop }}
-          // The record an ending leaves, so an ending shows its review.
-          last={{
-            get: () => lastDramaOf(fitTree, point, null, Date.now()),
-            save: noop,
-            subscribe: () => noop,
-          }}
-          // The phone offers the next episode's share first in the dock.
-          ending={
-            <SharePrompt
-              share={() => new Promise(noop)}
-              label="다음 화 쓰기"
-              labelLang="ko"
-              prompt={() => ""}
-              onShared={noop}
-            />
-          }
-          short={short}
-          onLeave={noop}
-        />
+        {card(short)}
       </div>
     )
   }
-  return DramaStage
+  return HandheldStage
 }
+
+/** The drama opened at `point`. */
+const dramaStage = (
+  point: Parameters<typeof lastDramaOf>[1]
+): (() => JSX.Element) =>
+  handheldStage((short) => (
+    <DramaLesson
+      lesson={fitTree}
+      voice={null}
+      sound={null}
+      points={{ get: () => point, set: noop }}
+      // The record an ending leaves, so an ending shows its review.
+      last={{
+        get: () => lastDramaOf(fitTree, point, null, Date.now()),
+        save: noop,
+        subscribe: () => noop,
+      }}
+      // The phone offers the next episode's share first in the dock.
+      ending={
+        <SharePrompt
+          share={() => new Promise(noop)}
+          label="다음 화 쓰기"
+          labelLang="ko"
+          prompt={() => ""}
+          onShared={noop}
+        />
+      }
+      short={short}
+      onLeave={noop}
+    />
+  ))
 
 /**
  * One level-3 line of twenty-six syllables, the longest a read-aloud sentence
@@ -279,50 +287,15 @@ const READ_ALOUD_DECK: ReadAloudDeck = {
   ],
 }
 
+const FIT_LINE = READ_ALOUD_DECK.lines[0]
+
 const FIT_SENTENCE: ComponentProps<typeof RepCard>["entry"]["item"] = {
   kind: "sentence",
-  key: "s:fit-line",
-  lineId: "fit-line",
-  text: "비가 와서 어제는 친구를 만나지 못했지만 오늘은 꼭 만날 거예요.",
+  key: `s:${FIT_LINE.id}`,
+  lineId: FIT_LINE.id,
+  text: FIT_LINE.korean,
   syllables: 26,
-  wordIds: [
-    "bi",
-    "oda",
-    "eoje",
-    "chingu",
-    "mannada",
-    "mothada",
-    "oneul",
-    "kkok",
-    "geot",
-  ],
-}
-
-/**
- * A read-aloud card in the box the handheld gives it: a flex column under its
- * header (44px on a phone held sideways, 56px otherwise).
- */
-function readAloudStage(
-  card: (short: boolean) => JSX.Element
-): () => JSX.Element {
-  const ReadAloudStage = (): JSX.Element => {
-    const short = window.innerHeight < HANDHELD_MAX_HEIGHT
-    return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          width: "100%",
-          height: "100%",
-          minHeight: 0,
-        }}
-      >
-        <div style={{ height: short ? 44 : 56, flexShrink: 0 }} />
-        {card(short)}
-      </div>
-    )
-  }
-  return ReadAloudStage
+  wordIds: [...new Set(FIT_LINE.words.map((word) => word.wordId))],
 }
 
 // Unbound, it renders nothing, and the sweep fails on an empty panel.
@@ -403,7 +376,7 @@ export const PANEL_FIXTURES = {
   // A sentence back after a stuck report, at its echo, with the reason beside
   // the step's label and the sitting's bar at the foot; and a set's summary
   // once the sitting has shown every sentence.
-  "topik-read-aloud-return": readAloudStage((short) => (
+  "topik-read-aloud-return": handheldStage((short) => (
     <RepCard
       deck={READ_ALOUD_DECK}
       entry={{ item: FIT_SENTENCE, role: "return" }}
@@ -419,7 +392,7 @@ export const PANEL_FIXTURES = {
       onResume={noop}
     />
   )),
-  "topik-read-aloud-summary-full": readAloudStage((short) => (
+  "topik-read-aloud-summary-full": handheldStage((short) => (
     <SetCard
       kind="summary"
       headline="10 read aloud"
