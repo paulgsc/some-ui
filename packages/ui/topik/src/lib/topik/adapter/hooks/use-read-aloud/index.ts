@@ -153,6 +153,7 @@ function createRunner(
     const items = buildSet(deck, {
       level,
       seedKey: seedKey?.() ?? `${now()}`,
+      shown: state.shown,
     })
     if (items.length === 0) {
       // Nothing at or below this level: say so rather than wait for a set

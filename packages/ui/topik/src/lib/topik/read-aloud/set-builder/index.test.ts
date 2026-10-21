@@ -1,11 +1,15 @@
 import type { ReadAloudLevel } from "@topik/lib/topik/read-aloud/content"
-import { STARTER_SET } from "@topik/lib/topik/read-aloud/repo-sets"
+import {
+  LEVEL_ONE_SET,
+  STARTER_SET,
+} from "@topik/lib/topik/read-aloud/repo-sets"
 import type { SetItem } from "@topik/lib/topik/read-aloud/set-builder"
 import {
   buildSet,
   drawnFrom,
   hasThreeAlike,
   levelShortfall,
+  sentencePool,
 } from "@topik/lib/topik/read-aloud/set-builder"
 import { describe, expect, it } from "vitest"
 
@@ -57,6 +61,11 @@ describe("buildSet", () => {
         item.kind === "word" ? [item.wordId] : []
       )
       expect(new Set(words).size).toBe(words.length)
+      // A word a sentence of the set holds is drilled in that sentence.
+      const held = new Set(
+        items.flatMap((item) => (item.kind === "sentence" ? item.wordIds : []))
+      )
+      for (const wordId of words) expect(held.has(wordId)).toBe(false)
       for (const item of items) {
         if (item.kind !== "sentence") continue
         const line = STARTER_SET.lines.find((each) => each.id === item.lineId)
@@ -97,6 +106,94 @@ describe("buildSet", () => {
     })
     expect(items).toHaveLength(5)
     expect(items.every((item) => item.kind === "word")).toBe(true)
+  })
+})
+
+const sorted = (ids: ReadonlyArray<string>): Array<string> => [...ids].sort()
+
+/** The line ids of a set's sentences in the order they come on screen. */
+const sentenceOrder = (items: Array<SetItem>): Array<string> =>
+  items.flatMap((item) => (item.kind === "sentence" ? [item.lineId] : []))
+
+/**
+ * The line ids of a set's sentences, sorted: a built set is shuffled after
+ * the draw, so which sentences it holds is what the draw decides.
+ */
+const sentencesOf = (items: Array<SetItem>): Array<string> =>
+  sorted(
+    items.flatMap((item) => (item.kind === "sentence" ? [item.lineId] : []))
+  )
+
+describe("buildSet, within a sitting (Rem. 4.9)", () => {
+  const ids = LEVEL_ONE_SET.lines.map((line) => line.id)
+
+  it("takes every unshown sentence, then the one shown longest ago", () => {
+    for (const seedKey of SEEDS.slice(0, 20)) {
+      // Oldest first: the list is in the order the sentences were last shown.
+      const shown = ids.slice(0, -2).reverse()
+      const drawn = sentencesOf(
+        buildSet(LEVEL_ONE_SET, { level: 1, seedKey, shown })
+      )
+      expect(drawn).toEqual(sorted([...ids.slice(-2), ...shown.slice(0, 2)]))
+    }
+  })
+
+  it("keeps the level's own unshown lines ahead of the lower ones", () => {
+    const own = STARTER_SET.lines.filter((line) => line.level === 3)
+    for (const seedKey of SEEDS.slice(0, 20)) {
+      const drawn = sentencesOf(
+        buildSet(STARTER_SET, {
+          level: 3,
+          seedKey,
+          shown: [own[0]?.id ?? ""],
+        })
+      )
+      expect(drawn).toContain(own[1]?.id)
+    }
+  })
+
+  it("ignores a shown line the deck does not hold at the level", () => {
+    const plain = buildSet(STARTER_SET, { level: 1, seedKey: "same" })
+    expect(
+      buildSet(STARTER_SET, {
+        level: 1,
+        seedKey: "same",
+        shown: ["not-a-line"],
+      })
+    ).toEqual(plain)
+  })
+
+  it("puts a repeat after the unshown sentences of its own set", () => {
+    const shown = ids.slice(0, -2)
+    for (const seedKey of SEEDS) {
+      const order = sentenceOrder(
+        buildSet(LEVEL_ONE_SET, { level: 1, seedKey, shown })
+      )
+      const unseen = order.map((id) => !shown.includes(id))
+      expect(unseen).toEqual([true, true, false, false])
+    }
+  })
+})
+
+describe("sentencePool", () => {
+  it("counts the different sentences shown, of those at or below the level", () => {
+    const ids = STARTER_SET.lines
+      .filter((line) => line.level <= 2)
+      .map((line) => line.id)
+    expect(sentencePool(STARTER_SET, 2, [])).toEqual({
+      shown: 0,
+      of: ids.length,
+    })
+    expect(sentencePool(STARTER_SET, 2, ids.slice(0, 3))).toEqual({
+      shown: 3,
+      of: ids.length,
+    })
+  })
+
+  it("leaves out a line shown that the level or the deck does not hold", () => {
+    const high = STARTER_SET.lines.find((line) => line.level === 3)?.id ?? ""
+    const low = STARTER_SET.lines.find((line) => line.level === 1)?.id ?? ""
+    expect(sentencePool(STARTER_SET, 1, [high, low, "gone", low]).shown).toBe(1)
   })
 })
 

@@ -91,7 +91,7 @@ const Summary = ({
       stage={
         <div
           data-slot="read-aloud-summary"
-          className="mx-auto flex w-full max-w-sm flex-col items-center gap-2 text-center"
+          className="mx-auto my-auto flex w-full max-w-sm flex-col items-center gap-2 text-center"
         >
           <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
             Set done

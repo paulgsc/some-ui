@@ -18,6 +18,7 @@ import type { ComponentProps, JSX } from "react"
 import { HANDHELD_MAX_HEIGHT } from "@some-ui/react-hooks"
 import { SpeechProvider } from "@some-ui/speech"
 import { webSpeech } from "@some-ui/speech/web-speech"
+import type { ReadAloudDeck } from "@some-ui/topik"
 // This page is its own build (`build:fit`) and in no shipped bundle, so the
 // eager edge the rule guards against costs nothing here, and the quiz stages
 // are reachable through no lazy entry.
@@ -26,7 +27,10 @@ import {
   DramaLesson,
   intakeTree,
   lastDramaOf,
+  PoolNote,
   QuizPanel,
+  RepCard,
+  SetCard,
   SharePrompt,
 } from "@some-ui/topik"
 
@@ -185,13 +189,13 @@ const fitTree = ((): ComponentProps<typeof DramaLesson>["lesson"] => {
 })()
 
 /**
- * The drama opened at `point`, in the box the handheld gives it: a flex
- * column under its header (44px on a phone held sideways, 56px otherwise).
+ * A card in the box the handheld gives it: a flex column under its header
+ * (44px on a phone held sideways, 56px otherwise).
  */
-function dramaStage(
-  point: Parameters<typeof lastDramaOf>[1]
+function handheldStage(
+  card: (short: boolean) => JSX.Element
 ): () => JSX.Element {
-  const DramaStage = (): JSX.Element => {
+  const HandheldStage = (): JSX.Element => {
     const short = window.innerHeight < HANDHELD_MAX_HEIGHT
     return (
       <div
@@ -204,34 +208,94 @@ function dramaStage(
         }}
       >
         <div style={{ height: short ? 44 : 56, flexShrink: 0 }} />
-        <DramaLesson
-          lesson={fitTree}
-          voice={null}
-          sound={null}
-          points={{ get: () => point, set: noop }}
-          // The record an ending leaves, so an ending shows its review.
-          last={{
-            get: () => lastDramaOf(fitTree, point, null, Date.now()),
-            save: noop,
-            subscribe: () => noop,
-          }}
-          // The phone offers the next episode's share first in the dock.
-          ending={
-            <SharePrompt
-              share={() => new Promise(noop)}
-              label="다음 화 쓰기"
-              labelLang="ko"
-              prompt={() => ""}
-              onShared={noop}
-            />
-          }
-          short={short}
-          onLeave={noop}
-        />
+        {card(short)}
       </div>
     )
   }
-  return DramaStage
+  return HandheldStage
+}
+
+/** The drama opened at `point`. */
+const dramaStage = (
+  point: Parameters<typeof lastDramaOf>[1]
+): (() => JSX.Element) =>
+  handheldStage((short) => (
+    <DramaLesson
+      lesson={fitTree}
+      voice={null}
+      sound={null}
+      points={{ get: () => point, set: noop }}
+      // The record an ending leaves, so an ending shows its review.
+      last={{
+        get: () => lastDramaOf(fitTree, point, null, Date.now()),
+        save: noop,
+        subscribe: () => noop,
+      }}
+      // The phone offers the next episode's share first in the dock.
+      ending={
+        <SharePrompt
+          share={() => new Promise(noop)}
+          label="다음 화 쓰기"
+          labelLang="ko"
+          prompt={() => ""}
+          onShared={noop}
+        />
+      }
+      short={short}
+      onLeave={noop}
+    />
+  ))
+
+/**
+ * One level-3 line of twenty-six syllables, the longest a read-aloud sentence
+ * is written, so the card's stage is as full as a line can make it.
+ */
+const READ_ALOUD_DECK: ReadAloudDeck = {
+  id: "fit-read-aloud",
+  title: "Fit",
+  words: [
+    { id: "bi", lemma: "비", gloss: "rain" },
+    { id: "oda", lemma: "오다", gloss: "come" },
+    { id: "eoje", lemma: "어제", gloss: "yesterday" },
+    { id: "chingu", lemma: "친구", gloss: "friend" },
+    { id: "mannada", lemma: "만나다", gloss: "meet" },
+    { id: "mothada", lemma: "못하다", gloss: "be unable" },
+    { id: "oneul", lemma: "오늘", gloss: "today" },
+    { id: "kkok", lemma: "꼭", gloss: "surely" },
+    { id: "geot", lemma: "것", gloss: "thing" },
+  ],
+  lines: [
+    {
+      id: "fit-line",
+      level: 3,
+      korean: "비가 와서 어제는 친구를 만나지 못했지만 오늘은 꼭 만날 거예요.",
+      english:
+        "It rained, so I couldn't meet my friend yesterday, but I will today.",
+      words: [
+        { wordId: "bi", surface: "비가", stemEnd: 1 },
+        { wordId: "oda", surface: "와서", stemEnd: 1 },
+        { wordId: "eoje", surface: "어제는", stemEnd: 2 },
+        { wordId: "chingu", surface: "친구를", stemEnd: 2 },
+        { wordId: "mannada", surface: "만나지", stemEnd: 2 },
+        { wordId: "mothada", surface: "못했지만", stemEnd: 2 },
+        { wordId: "oneul", surface: "오늘은", stemEnd: 2 },
+        { wordId: "kkok", surface: "꼭", stemEnd: 1 },
+        { wordId: "mannada", surface: "만날", stemEnd: 2 },
+        { wordId: "geot", surface: "거예요", stemEnd: 1 },
+      ],
+    },
+  ],
+}
+
+const FIT_LINE = READ_ALOUD_DECK.lines[0]
+
+const FIT_SENTENCE: ComponentProps<typeof RepCard>["entry"]["item"] = {
+  kind: "sentence",
+  key: `s:${FIT_LINE.id}`,
+  lineId: FIT_LINE.id,
+  text: FIT_LINE.korean,
+  syllables: 26,
+  wordIds: [...new Set(FIT_LINE.words.map((word) => word.wordId))],
 }
 
 // Unbound, it renders nothing, and the sweep fails on an empty panel.
@@ -308,6 +372,37 @@ export const PANEL_FIXTURES = {
     at: { kind: "end" },
     first: { c1: "d" },
   }),
+
+  // A sentence back after a stuck report, at its echo, with the reason beside
+  // the step's label and the sitting's bar at the foot; and a set's summary
+  // once the sitting has shown every sentence.
+  "topik-read-aloud-return": handheldStage((short) => (
+    <RepCard
+      deck={READ_ALOUD_DECK}
+      entry={{ item: FIT_SENTENCE, role: "return" }}
+      step="echo"
+      stepMs={6000}
+      stepKey={1}
+      reported={false}
+      playing
+      pool={{ shown: 31, of: 54 }}
+      short={short}
+      onStuck={noop}
+      onSkip={noop}
+      onResume={noop}
+    />
+  )),
+  "topik-read-aloud-summary-full": handheldStage((short) => (
+    <SetCard
+      kind="summary"
+      headline="10 read aloud"
+      detail={<PoolNote pool={{ shown: 54, of: 54 }} />}
+      runKey={1}
+      short={short}
+      onNext={noop}
+      onStop={noop}
+    />
+  )),
 
   "leetype-incident": IncidentFixture,
 

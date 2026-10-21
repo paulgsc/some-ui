@@ -15,13 +15,17 @@
 import type { JSX } from "react"
 import { Button } from "@some-ui/shared"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
+import { PoolNote } from "@topik/components/topik/read-aloud/pool-note"
 import { HeldNote, RepCard } from "@topik/components/topik/read-aloud/rep-card"
 import { SessionHeader } from "@topik/components/topik/read-aloud/session-header"
 import { SetCard } from "@topik/components/topik/read-aloud/set-card"
 import type { UseReadAloudOptions } from "@topik/lib/topik/adapter/hooks/use-read-aloud"
 import { useReadAloud } from "@topik/lib/topik/adapter/hooks/use-read-aloud"
 import type { PracticeRecord } from "@topik/lib/topik/read-aloud/records"
-import { levelShortfall } from "@topik/lib/topik/read-aloud/set-builder"
+import {
+  levelShortfall,
+  sentencePool,
+} from "@topik/lib/topik/read-aloud/set-builder"
 import { Pause, Play, X } from "lucide-react"
 
 export type ReadAloudSessionProps = UseReadAloudOptions & {
@@ -50,6 +54,7 @@ export const ReadAloudSession = ({
   const held = phase.name === "paused" && phase.by !== "learner"
   const running =
     onEntry && phase.name !== "paused" && phase.name !== "sitting-over"
+  const pool = sentencePool(options.deck, options.level, state.shown)
 
   const header = (
     <SessionHeader
@@ -107,6 +112,7 @@ export const ReadAloudSession = ({
         <SetCard
           kind="summary"
           headline={`${state.counted} read aloud`}
+          detail={pool.of > 0 ? <PoolNote pool={pool} /> : undefined}
           runKey={state.seq}
           short={short}
           onNext={vm.nextSet}
@@ -152,6 +158,7 @@ export const ReadAloudSession = ({
         stepKey={state.seq}
         reported={state.reported}
         playing={vm.playing === state.seq}
+        pool={pool}
         short={short}
         onStuck={vm.stuck}
         onSkip={vm.skip}

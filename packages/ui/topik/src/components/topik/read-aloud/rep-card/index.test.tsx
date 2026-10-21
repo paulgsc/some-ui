@@ -1,4 +1,4 @@
-import { act, cleanup, render } from "@testing-library/react"
+import { act, cleanup, render, screen } from "@testing-library/react"
 import { RepCard } from "@topik/components/topik/read-aloud/rep-card"
 import { STARTER_SET } from "@topik/lib/topik/read-aloud/repo-sets"
 import type { SetItem } from "@topik/lib/topik/read-aloud/set-builder"
@@ -70,6 +70,53 @@ describe("RepCard's mark", () => {
     expect(marked()).toEqual([])
     rerender(<RepCard {...props} playing />)
     expect(marked()).toEqual(["잔"])
+  })
+})
+
+describe("RepCard's reason and pool bar", () => {
+  it("says why a return is back, and draws the bar from what the sitting has shown", () => {
+    const { rerender } = render(
+      <RepCard
+        deck={STARTER_SET}
+        entry={{ item: JAN, role: "return" }}
+        step="echo"
+        stepMs={null}
+        stepKey={1}
+        reported={false}
+        playing={false}
+        pool={{ shown: 3, of: 12 }}
+        short={false}
+        onStuck={noop}
+        onSkip={noop}
+        onResume={noop}
+      />
+    )
+    expect(
+      document.querySelector('[data-slot="read-aloud-reason"]')?.textContent
+    ).toBe("Back: you marked it stuck")
+    const bar = screen.getByRole("meter", {
+      name: "Different sentences shown this sitting",
+    })
+    expect(bar.getAttribute("aria-valuenow")).toBe("3")
+    expect(bar.getAttribute("aria-valuemax")).toBe("12")
+    rerender(
+      <RepCard
+        deck={STARTER_SET}
+        entry={{ item: JAN, role: "rep" }}
+        step="turn"
+        stepMs={null}
+        stepKey={1}
+        reported={false}
+        playing={false}
+        pool={{ shown: 0, of: 0 }}
+        short={false}
+        onStuck={noop}
+        onSkip={noop}
+        onResume={noop}
+      />
+    )
+    expect(document.querySelector('[data-slot="read-aloud-reason"]')).toBeNull()
+    expect(screen.queryByRole("meter")).toBeNull()
   })
 })
 
