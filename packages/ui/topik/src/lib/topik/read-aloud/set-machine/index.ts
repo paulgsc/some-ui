@@ -30,6 +30,12 @@
  *   sentence is shown when its rep reaches its first step; a return or an
  *   introduction adds nothing (Prop. 6.4 (ii)). It lives in memory, as long
  *   as the sitting's clock, and `start-sitting` clears it.
+ * - The tally (Rem. 7.5): the machine tells the host when a sentence's rep
+ *   first begins (`note-shown`, once per rep however often a pause or a hidden
+ *   page starts it over, and the flag that says so survives storage) and
+ *   which sentence a counted rep was. Returns and introductions say nothing,
+ *   and neither does a stuck report, so what the host keeps ends the same
+ *   with the reports withheld (Prop. 6.4 (ii), (iii)).
  * - The sitting (Rem. 4.10): once thirty minutes have passed, nothing new
  *   begins - no rep, no introduction, no summary, no set. What is showing
  *   finishes first; a rep is never cut short by the bound. The set in
@@ -71,6 +77,13 @@ import {
  */
 export type EntryRole = "rep" | "return" | "introduction"
 
+/**
+ * How a sentence's rep began: `repeat` when its line was already in the
+ * sitting's list, which the draw allows only once no sentence is left
+ * unshown, and `fresh` otherwise.
+ */
+export type Begun = "fresh" | "repeat"
+
 export type QueueEntry = { item: SetItem; role: EntryRole }
 
 /** A set as it can be stored and resumed: what is left of it. */
@@ -82,6 +95,11 @@ export type SetProgress = {
   counted: number
   /** Whether the first entry was reported stuck before it was interrupted. */
   reported: boolean
+  /**
+   * Whether the first entry's rep had begun, and so was already shown to the
+   * tally. Absent in what builds before the tally stored.
+   */
+  begun?: boolean
 }
 
 export type RepStep = "glyphs" | "turn" | "audio" | "echo" | "gloss"
@@ -116,6 +134,14 @@ export type SetMachineState = {
    * on moving to the next entry, so a report outlives a restart.
    */
   reported: boolean
+  /**
+   * Whether a sentence's rep at `cursor` has begun, and if so whether its line
+   * was already in the sitting's list then: a restart of the rep after a
+   * pause begins nothing. It is cleared only on moving to the next entry, so
+   * it outlives a restart as `reported` does, and names why the sentence is
+   * here for the sheet that asks.
+   */
+  begun: Begun | null
   /** Reps counted in this set: what the summary shows. */
   counted: number
   paces: PaceBook
@@ -146,8 +172,16 @@ export type SetEffect =
       urgency: Urgency
     }
   | { type: "stop-speech" }
-  /** Add one rep and its nominal practice to the record (Def. 6.6). */
-  | { type: "count-rep"; creditMs: number }
+  /**
+   * A sentence's rep began for the first time (Rem. 7.5): the line is shown.
+   * Never for a return, an introduction or a word, and never twice for a rep.
+   */
+  | { type: "note-shown"; lineId: string }
+  /**
+   * Add one rep and its nominal practice to the record (Def. 6.6); `lineId`
+   * names the sentence when it was one, for the tally (Rem. 7.5).
+   */
+  | { type: "count-rep"; creditMs: number; lineId?: string }
   | { type: "count-set" }
   /** Store the word's pace (Cor. 4.6 (iii)). */
   | { type: "save-pace"; wordId: string; pace: PaceEntry }
@@ -212,6 +246,7 @@ export function createSetMachine(level: ReadAloudLevel): SetMachineState {
     cursor: 0,
     returns: {},
     reported: false,
+    begun: null,
     counted: 0,
     paces: {},
     sittingStartedAt: null,
@@ -235,6 +270,7 @@ export function progressOf(state: SetMachineState): SetProgress | null {
     returns: state.returns,
     counted: state.counted,
     reported: state.reported,
+    ...(state.begun !== null && { begun: true }),
   }
 }
 
@@ -259,6 +295,19 @@ const withShown = (
   const { item, role } = entry
   if (role !== "rep" || item.kind !== "sentence") return state.shown
   return [...state.shown.filter((id) => id !== item.lineId), item.lineId]
+}
+
+/**
+ * What a sentence's rep starting for the first time shows the tally; null for
+ * a rep already begun, a return, an introduction or a word (Rem. 7.5).
+ */
+function firstShowing(
+  state: SetMachineState,
+  { item, role }: QueueEntry
+): { lineId: string; begun: Begun } | null {
+  if (role !== "rep" || item.kind !== "sentence" || state.begun) return null
+  const { lineId } = item
+  return { lineId, begun: state.shown.includes(lineId) ? "repeat" : "fresh" }
 }
 
 /** Move to a phase under a fresh sequence number. */
@@ -359,11 +408,21 @@ function startEntry(state: SetMachineState, at: number): SetTransition {
       effects: speakEffects(next.seq, entry, "next"),
     }
   }
-  const listed = { ...state, shown: withShown(state, entry) }
-  const next = enter(listed, { name: "glyphs" })
+  const first = firstShowing(state, entry)
+  const next = enter(
+    {
+      ...state,
+      shown: withShown(state, entry),
+      begun: first?.begun ?? state.begun,
+    },
+    { name: "glyphs" }
+  )
   return {
     state: next,
-    effects: [{ type: "wait", seq: next.seq, ms: SETTLE_MS }],
+    effects: [
+      ...(first ? [{ type: "note-shown" as const, lineId: first.lineId }] : []),
+      { type: "wait", seq: next.seq, ms: SETTLE_MS },
+    ],
   }
 }
 
@@ -388,6 +447,7 @@ function advance(
       ...state,
       cursor: state.cursor + 1,
       reported: false,
+      begun: null,
     },
     at
   )
@@ -444,6 +504,7 @@ function completeRep(
     effects.push({
       type: "count-rep",
       creditMs: nominalRepMs(item.kind, item.syllables, state.level),
+      ...(item.kind === "sentence" && { lineId: item.lineId }),
     })
     next = { ...next, counted: next.counted + 1 }
   }
@@ -656,6 +717,8 @@ export function setMachineReducer(
           cursor: 0,
           counted: event.progress.counted,
           reported: event.progress.reported,
+          // This sitting's list holds nothing yet: a begun rep is not a repeat in it.
+          begun: event.progress.begun ? "fresh" : null,
           paces: event.paces,
           sittingStartedAt: state.sittingStartedAt ?? event.at,
         },
@@ -665,7 +728,13 @@ export function setMachineReducer(
 
     case "start-sitting": {
       if (phase.name !== "sitting-over") return unchanged
-      const fresh = { ...state, sittingStartedAt: event.at, shown: [] }
+      // The held rep was shown in the sitting that ended; the new list is empty.
+      const fresh: SetMachineState = {
+        ...state,
+        sittingStartedAt: event.at,
+        shown: [],
+        begun: state.begun === null ? null : "fresh",
+      }
       if (progressOf(fresh)) return startEntry(fresh, event.at)
       return {
         state: enter(fresh, { name: "idle" }),
