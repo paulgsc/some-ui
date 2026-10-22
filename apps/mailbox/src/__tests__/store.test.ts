@@ -164,6 +164,19 @@ describe.each([
     ).toBe("b")
   })
 
+  it("seq only grows, even across puts of a name already held", async () => {
+    const store = await open()
+    const first = await store.put("brief", "b1.json", item("1"))
+    await store.put("brief", "b1.json", item("1"))
+    await store.put("brief", "b1.json", item("2"))
+    const second = await store.put("brief", "b2.json", item("3"))
+    if (first.change === "conflict" || second.change === "conflict") {
+      throw new Error("a new name is never a conflict")
+    }
+    // Not `first + 1`: SQLite spends a number on a put of a held name too.
+    expect(second.seq).toBeGreaterThan(first.seq)
+  })
+
   it("an absent name is null", async () => {
     const store = await open()
     expect(await store.get("brief", "digest-2026-10-21.json")).toBeNull()

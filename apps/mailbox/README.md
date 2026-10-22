@@ -38,6 +38,12 @@ Every request needs `Authorization: Bearer <token>`. Every answer is JSON, or th
 
 The folders are `brief`, `decisions` and `scout`.
 
+**`seq` only grows, and it has gaps.** SQLite hands out a number for every put that reaches the
+table, including a put of a name already held (`unchanged` or `conflict`), which stores nothing.
+So after a few repeats the next new file can jump ahead (checked on the live Worker: `seq 1`,
+then six repeats, then `seq 8`). Page with `after` set to the highest `seq` you have seen, never
+`after + 1`.
+
 ### Who may do what
 
 | Secret          | Role      | May                                       |
