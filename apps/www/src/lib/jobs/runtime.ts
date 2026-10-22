@@ -253,6 +253,13 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
         commit({ type: "home-answered", held, refused })
       },
       restored: (events) => commit({ type: "restored", events }),
+      fetched(digests): void {
+        commit({
+          type: "fetched",
+          digests,
+          at: ports.now().toISOString(),
+        })
+      },
     },
     getSnapshot: () => snapshot,
     subscribe(listener): () => void {

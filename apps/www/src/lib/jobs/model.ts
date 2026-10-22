@@ -8,9 +8,10 @@
  * The log is the record ("Never lose the record", CLAUDE.md): `step` only
  * appends to it, and a later event says what changed (a pick passed, then
  * taken, is taken). Nothing here removes an event. Digests are copies of
- * files kept in Drive's `some-ui jobs/Brief`: the phone keeps every digest
- * the log names or that has a pick still open (it holds a queue slot), and
- * of the rest only the newest `DIGESTS_KEPT`.
+ * files kept in Drive's `some-ui jobs/Brief`, opened from a file or taken in
+ * from home (`fetched`, which never replaces a day the phone holds): the
+ * phone keeps every digest the log names or that has a pick still open (it
+ * holds a queue slot), and of the rest only the newest `DIGESTS_KEPT`.
  */
 import { assertNever } from "@some-ui/core-utils"
 import type {
@@ -41,6 +42,13 @@ export type ShareKind = "decisions" | "scouts"
 
 /** The digests no event names that the phone keeps a copy of. */
 export const DIGESTS_KEPT = 30
+
+/**
+ * The most digests one exchange with home takes in. Home answers with at
+ * most this many (paulgsc/server's `DIGESTS_PER_ANSWER`), and the phone takes
+ * no more than this from any answer.
+ */
+export const DIGESTS_PER_RUN = 7
 
 /** A voice note's audio is on the shelf under `id`. */
 export type VoiceNote = {
@@ -143,7 +151,7 @@ export type JobsState = {
   digests: ReadonlyArray<Digest>
   /** The day Today shows, the digest opened last. */
   current: string | null
-  /** When each kept digest was first opened, by its day. */
+  /** When each kept digest first came to this phone, opened or taken in from home, by its day. */
   firstOpened: Readonly<Record<string, string>>
   log: ReadonlyArray<JobEvent>
   /** Voice notes whose audio is on the phone, or once was. */
@@ -169,6 +177,8 @@ export type Draft<T = JobEvent> = T extends unknown
 
 export type JobsAction =
   | { type: "opened"; digest: Digest; at: string }
+  /** Digests home holds, taken in for the days this phone does not hold. */
+  | { type: "fetched"; digests: ReadonlyArray<Digest>; at: string }
   | { type: "voice-kept"; note: VoiceNote }
   | { type: "voice-dropped"; ids: ReadonlyArray<string> }
   | { type: "record"; event: Draft; stamp: Stamp }
@@ -292,38 +302,80 @@ function fits(state: JobsState, event: Draft): boolean {
   return taken
 }
 
+/**
+ * `state`'s digests with `incoming` among them (a day `incoming` repeats is
+ * replaced), the ones kept once `DIGESTS_KEPT` has let go of the rest, and
+ * when each came to this phone: a day already held keeps its first time.
+ */
+function takeDigests(
+  state: JobsState,
+  incoming: ReadonlyArray<Digest>,
+  at: string
+): { digests: JobsState["digests"]; firstOpened: JobsState["firstOpened"] } {
+  const days = new Set(incoming.map((d) => d.day))
+  const others = state.digests.filter((d) => !days.has(d.day))
+  const all = [...others, ...incoming].sort((a, b) =>
+    a.day.localeCompare(b.day)
+  )
+  const recent = new Set(all.slice(-DIGESTS_KEPT).map((d) => d.day))
+  const referenced = new Set(
+    state.log.flatMap((e) => ("pickId" in e ? [e.day] : []))
+  )
+  // Over `all`, so the digests being taken count too.
+  const open = openOf({ ...state, digests: all })
+  const holding = new Set(open.map((o) => o.day))
+  const openKeys = new Set(open.map((o) => `${o.day}/${o.pick.id}`))
+  // A redraft of an open pick stands in for its drafts (`kitOf`).
+  const redrafting = (d: Digest): boolean =>
+    d.redrafts.some((r) => openKeys.has(`${r.day}/${r.pickId}`))
+  const digests = all.filter(
+    (d) =>
+      recent.has(d.day) ||
+      referenced.has(d.day) ||
+      holding.has(d.day) ||
+      redrafting(d)
+  )
+  const firstOpened = Object.fromEntries(
+    Object.entries({
+      ...Object.fromEntries([...days].map((day) => [day, at])),
+      ...state.firstOpened,
+    }).filter(([day]) => digests.some((d) => d.day === day))
+  )
+  return { digests, firstOpened }
+}
+
 export function step(state: JobsState, action: JobsAction): JobsState {
   switch (action.type) {
     case "opened": {
-      const { digest } = action
-      const others = state.digests.filter((d) => d.day !== digest.day)
-      const all = [...others, digest].sort((a, b) => a.day.localeCompare(b.day))
-      const recent = new Set(all.slice(-DIGESTS_KEPT).map((d) => d.day))
-      const referenced = new Set(
-        state.log.flatMap((e) => ("pickId" in e ? [e.day] : []))
+      const { digests, firstOpened } = takeDigests(
+        state,
+        [action.digest],
+        action.at
       )
-      // Over `all`, so the digest being opened counts too.
-      const open = openOf({ ...state, digests: all })
-      const holding = new Set(open.map((o) => o.day))
-      const openKeys = new Set(open.map((o) => `${o.day}/${o.pick.id}`))
-      // A redraft of an open pick stands in for its drafts (`kitOf`).
-      const redrafting = (d: Digest): boolean =>
-        d.redrafts.some((r) => openKeys.has(`${r.day}/${r.pickId}`))
-      const digests = all.filter(
-        (d) =>
-          recent.has(d.day) ||
-          referenced.has(d.day) ||
-          holding.has(d.day) ||
-          redrafting(d)
+      return { ...state, digests, current: action.digest.day, firstOpened }
+    }
+    case "fetched": {
+      // A day the phone holds is never replaced: it may be the one a person
+      // is deciding on, and the file they opened is the one they read.
+      const held = new Set(state.digests.map((d) => d.day))
+      const fresh = new Map<string, Digest>()
+      for (const d of action.digests) {
+        if (!held.has(d.day) && !fresh.has(d.day)) fresh.set(d.day, d)
+      }
+      const { digests, firstOpened } = takeDigests(
+        state,
+        [...fresh.values()],
+        action.at
       )
-      // A digest opened again keeps the first time it was opened.
-      const firstOpened = Object.fromEntries(
-        Object.entries({
-          [digest.day]: action.at,
-          ...state.firstOpened,
-        }).filter(([day]) => digests.some((d) => d.day === day))
-      )
-      return { ...state, digests, current: digest.day, firstOpened }
+      // Taken, and not let go at once by `DIGESTS_KEPT`.
+      const kept = digests.filter((d) => fresh.has(d.day))
+      const newest = kept.at(-1)
+      if (newest === undefined) return state
+      const current =
+        state.current === null || newest.day > state.current
+          ? newest.day
+          : state.current
+      return { ...state, digests, current, firstOpened }
     }
     case "voice-kept": {
       if (state.voice.some((n) => n.id === action.note.id)) return state
@@ -396,6 +448,21 @@ export function currentDigest(state: JobsState): Digest | null {
 
 export function digestOf(state: JobsState, day: string): Digest | null {
   return state.digests.find((d) => d.day === day) ?? null
+}
+
+/** The day of the newest digest the phone holds, or null while it holds none. */
+export function newestDay(state: JobsState): string | null {
+  return state.digests.at(-1)?.day ?? null
+}
+
+/** The Pacific calendar day of `at`, `YYYY-MM-DD`: the morning run's "today". */
+export function pacificDay(at: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Los_Angeles",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(at)
 }
 
 export type Decision = Exclude<(typeof DECISIONS)[number], "untouched">

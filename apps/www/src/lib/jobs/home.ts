@@ -1,9 +1,10 @@
 /**
  * One exchange with home for the Jobs record kept on home: every event home
  * does not hold yet sent, then, on a phone with no log, home's record read
- * back. Over a `send` port the app's home link hands in
- * (`lib/home-link/jobs`), so this module makes no request of its own. The
- * routes are paulgsc/server's `routes/jobs.rs`.
+ * back, then the digests home holds that the phone does not. Over a `send`
+ * port the app's home link hands in (`lib/home-link/jobs`), so this module
+ * makes no request of its own. The routes are paulgsc/server's
+ * `routes/jobs.rs`.
  *
  * Home's copy is a copy: the phone keeps its whole log either way, since its
  * shares count events by their place in it. In order:
@@ -16,7 +17,13 @@
  *    the exchange;
  * 2. home's whole record (`GET /jobs`), asked for only by a phone whose own
  *    log is empty, the one that takes it in: a reinstalled phone gets its
- *    record back.
+ *    record back;
+ * 3. home's digests (`GET /jobs/digests`), the days after the newest one the
+ *    phone holds (the newest few, on a phone holding none): the morning
+ *    run's picks, which home takes from the mailbox. At most
+ *    `DIGESTS_PER_RUN` are taken in, and a day the phone holds is never
+ *    replaced (`fetched`). A digest the phone can't read is skipped and the
+ *    rest are taken.
  *
  * What an exchange learned is handed over as it ends, however it ends: a
  * throw part way (a stop, no answer) keeps what home already confirmed.
@@ -28,10 +35,13 @@ import {
   stoppedOnHome,
   unexpectedAnswer,
 } from "@some-ui/core-utils"
+import { reportFailure, toIntentError } from "@some-ui/intent-kit"
+import type { Digest } from "@some-ui/job-desk"
+import { parseDigest } from "@some-ui/job-desk"
 import { z } from "zod"
 
 import type { HomeRefusal, JobEvent, JobsState } from "./model"
-import { homeOutbox } from "./model"
+import { DIGESTS_PER_RUN, homeOutbox, newestDay } from "./model"
 import { EventSchema } from "./stored"
 
 /** The record an exchange reads and the answers it hands back. */
@@ -43,17 +53,24 @@ export type JobsRecordPort = {
   ) => void
   /** Home's copy, for a phone whose log is empty; false if not taken. */
   restored: (events: ReadonlyArray<JobEvent>) => boolean
+  /** Digests home holds; the phone keeps those for days it does not hold. */
+  fetched: (digests: ReadonlyArray<Digest>) => void
 }
 
 const EventAnswer = z.object({ event: z.object({ id: z.string() }) })
 const HeldSchema = z.object({ events: z.array(EventSchema) })
+/** Each digest is read by job-desk's own parser, not by this schema. */
+const DigestsAnswer = z.object({
+  digests: z.array(z.object({ day: z.iso.date(), digest: z.unknown() })),
+})
 type Learned = { held: Array<string>; refused: Array<HomeRefusal> }
 
-async function exchange(
+/** Step 1. Null when every event is dealt with and the exchange goes on. */
+async function sendEvents(
   keeping: JobsRecordPort,
   send: HomeCall,
   learned: Learned
-): Promise<HomeExchanged> {
+): Promise<HomeExchanged | null> {
   for (const event of homeOutbox(keeping.state())) {
     const answer = await send(
       "PUT",
@@ -82,8 +99,14 @@ async function exchange(
     }
     learned.held.push(held)
   }
+  return null
+}
 
-  if (keeping.state().log.length > 0) return { kind: "synced" }
+/** Step 2, for a phone with no log. Null when the exchange goes on. */
+async function readRecord(
+  keeping: JobsRecordPort,
+  send: HomeCall
+): Promise<HomeExchanged | null> {
   const answer = await send("GET", "/jobs")
   if (answer.status === 401) return { kind: "forgotten" }
   const record = readAs(HeldSchema, answer.body)
@@ -96,10 +119,62 @@ async function exchange(
   if (empty && record.events.length > 0 && !keeping.restored(record.events)) {
     return { kind: "failed", why: "this phone couldn't keep home's record" }
   }
-  return { kind: "synced" }
+  return null
 }
 
-/** Steps 1 and 2 through `send`. Throws what `send` throws. */
+const DAY = /^\d{4}-\d{2}-\d{2}$/
+
+/** Step 3. Null when the exchange goes on to its end. */
+async function readDigests(
+  keeping: JobsRecordPort,
+  send: HomeCall
+): Promise<HomeExchanged | null> {
+  const after = newestDay(keeping.state())
+  const path =
+    after !== null && DAY.test(after)
+      ? `/jobs/digests?after=${after}`
+      : "/jobs/digests"
+  const answer = await send("GET", path)
+  if (answer.status === 401) return { kind: "forgotten" }
+  const held = readAs(DigestsAnswer, answer.body)
+  if (answer.status !== 200 || held === null) {
+    return unexpectedAnswer("the digests", answer.status)
+  }
+  const valid: Array<Digest> = []
+  for (const { day, digest } of held.digests) {
+    const parsed = parseDigest(JSON.stringify(digest))
+    if (parsed.ok) {
+      valid.push(parsed.value)
+      continue
+    }
+    // Only the day, never the digest: it is the owner's picks.
+    reportFailure({
+      port: "home server (digests)",
+      error: {
+        ...toIntentError(new Error(`the digest for ${day} was not readable`)),
+        summary: `The digest for ${day} couldn't be read.`,
+      },
+    })
+  }
+  if (valid.length > 0) keeping.fetched(valid.slice(-DIGESTS_PER_RUN))
+  return null
+}
+
+async function exchange(
+  keeping: JobsRecordPort,
+  send: HomeCall,
+  learned: Learned
+): Promise<HomeExchanged> {
+  const sent = await sendEvents(keeping, send, learned)
+  if (sent !== null) return sent
+  if (keeping.state().log.length === 0) {
+    const read = await readRecord(keeping, send)
+    if (read !== null) return read
+  }
+  return (await readDigests(keeping, send)) ?? { kind: "synced" }
+}
+
+/** Steps 1 to 3 through `send`. Throws what `send` throws. */
 export async function exchangeJobs(
   keeping: JobsRecordPort,
   send: HomeCall

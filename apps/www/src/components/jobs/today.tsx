@@ -24,9 +24,11 @@ import {
   currentDigest,
   disagreed,
   openOf,
+  pacificDay,
   progressOf,
   undecidedOf,
 } from "@/lib/jobs/model"
+import { arriveOnTheirOwn, notToday, orOpenFile } from "@/lib/jobs/words"
 import { Meter, resumeLabel, sectionHeading } from "@/components/job-reading"
 
 import { OpenDigest, Problem, useJobs } from "./parts"
@@ -323,12 +325,15 @@ export const JobsToday = (): JSX.Element => {
           {counted(PICKS_PER_DAY.adjacent, "software-adjacent one")}, each
           scored against the résumé. Open the newest one here.
         </p>
-        <OpenDigest prominent />
+        <p className="text-sm">{arriveOnTheirOwn}</p>
+        <OpenDigest label={orOpenFile} />
         <Problem />
       </section>
     )
   }
 
+  // The morning run's day: the phone may be anywhere, the run is Pacific.
+  const earlier = digest.day < pacificDay(new Date())
   const findings = digestFindings(digest)
   const tracks = TRACKS.map((t) => [t, TRACK_HEADINGS[t]] as const)
   return (
@@ -351,7 +356,12 @@ export const JobsToday = (): JSX.Element => {
             {findings[0]?.message}). Its picks still open.
           </p>
         )}
-        <OpenDigest prominent={false} />
+        {earlier && (
+          <p className="text-sm">
+            {notToday(digest.day)} {arriveOnTheirOwn}
+          </p>
+        )}
+        <OpenDigest label={earlier ? orOpenFile : undefined} />
       </section>
       <Problem />
       <Queue state={state} digest={digest} />

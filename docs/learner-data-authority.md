@@ -619,14 +619,26 @@ two presses, its stop and the choice its old switch made entering the log
 once, as found (`components/__tests__/device-home-glyph.test.tsx`). Unlike
 aph, the phone keeps its whole log once home holds it: its shares count
 events by their place in the log, and home's copy is the way back for a
-phone that lost it, so stopping is the choice, and home told it. What no test can say is
-when a run is asked for:
+phone that lost it, so stopping is the choice, and home told it.
+
+The exchange also reads the morning run's digests, which home holds (it
+takes them from the mailbox): `GET /jobs/digests`, after the newest day the
+phone holds. Digests are not the record; they come to the phone, not from it.
+That read takes in at most `DIGESTS_PER_RUN` digests, never one for a day the
+phone holds, and never moves the day Today shows back to an older one; a fetch
+changes the phone's digests, the day shown and when each came, and not the
+log or what home holds (`lib/jobs/__tests__/home.test.ts` and
+`model.test.ts`). It is asked for in every run, so at the moments below and
+no others, and the phone's revision does not move when a digest is taken in.
+What no test can say is when a run is asked for:
 
 - _Claim:_ LA9's claim holds for the Jobs record's lane
   (`lib/home-link/jobs.ts`): its mark shows in the header while the Jobs
   wing shows (Today, Scout and Record alike), its revision moves with each
   event added on this phone or home's copy taken in by a phone whose log was
-  empty, and its exchange is `exchangeJobs` over the record. The record's
+  empty, and its exchange is `exchangeJobs` over the record. Its run also
+  reads home's digests (above), asking for them at no moment but a run's, and
+  taking in none for a day the phone holds. The record's
   own switch from before the consent log (`home.kept`) is read only to
   enter that choice once and, in Settings' ledger, to say the record's
   choice is not entered yet; nothing sets it.
@@ -634,6 +646,10 @@ when a run is asked for:
   to `lib/home-link/jobs.ts` that makes the lane's `revision` anything but
   the log's length, its `keptBefore` anything but `home.kept`, or its
   `exchange` anything but `exchangeJobs` over the runtime's `keeping`; a
+  hunk to `lib/jobs/home.ts` or `lib/jobs/model.ts` that takes in a digest
+  for a day the phone holds, moves `current` back on a fetch, takes in more
+  than `DIGESTS_PER_RUN` digests in one exchange, makes a fetch change the
+  log or `home`, or reads home's digests anywhere but in `exchangeJobs`; a
   hunk to `components/settings/device-sharing-ledger.tsx` that reads
   `keptBefore` for anything but its row's wording; or a hunk to `lib/jobs`
   that sets `home.kept`.
