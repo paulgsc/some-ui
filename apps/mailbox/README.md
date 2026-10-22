@@ -123,17 +123,22 @@ how each was checked when this workspace landed.
 
 - _Claim:_ the `ROLES` table in `src/core.ts` is the only place a token is mapped to what it
   may do, and it holds exactly two roles: `routine` (read all three folders, put `brief`) and
-  `home` (read `brief`, put `decisions` and `scout`).
+  `home` (read `brief`, put `decisions` and `scout`). Every request passes `authenticate` and
+  then the `grant.get` or `grant.put` check in `serve` before anything reaches the store.
 - _Falsified by_ a hunk that adds, removes or renames a role; adds a folder to, or removes one
-  from, any role's `get` or `put` list; changes which secret a role reads or makes
-  `authenticate` read another secret; adds a method to a route in `routeOf`; or renames, moves
-  or deletes the `ROLES` table, when the PR description does not name the owner's decision to
-  do so.
+  from, any role's `get` or `put` list; changes which secret a role reads, or lets
+  `authenticate` read another secret or accept an unset, empty or shared one; edits, loosens or
+  removes the `grant.get` or `grant.put` check in `serve`, or lets `handle` reach `serve` or
+  the store without a grant; adds a method to a route in `routeOf`; or renames, moves or
+  deletes the `ROLES` table; when the PR description does not name the owner's decision to do
+  so.
 - _Scope:_ `apps/mailbox/src/core.ts` and `wrangler.jsonc`.
 - _Why not enforced:_ `__tests__/core.test.ts` pins today's matrix (every role against every
   folder and method), but a hunk that changes the table and the test together passes it. A test
   cannot know the owner agreed.
-- _Checked at landing:_ `ROLES` has two entries; no code outside `authenticate` reads a token.
+- _Checked at landing:_ `ROLES` has two entries; no code outside `authenticate` reads a token;
+  `serve` has one `grant.get` check and one `grant.put` check, each returning `403`; `handle`
+  calls `serve` only with a non-null grant.
 
 **MB3: No token reaches the repo or a log.**
 
