@@ -98,9 +98,10 @@ how each was checked when this workspace landed.
   `INSERT … ON CONFLICT (folder, name) DO NOTHING`, and the table carries two `BEFORE`
   triggers that abort an `UPDATE` or a `DELETE`.
 - _Falsified by_ a hunk that drops, renames or weakens either trigger (a later migration that
-  drops a trigger or the table included); that adds an `UPDATE`, `DELETE`, `INSERT OR REPLACE`,
-  `REPLACE INTO` or `ON CONFLICT … DO UPDATE` against `item` anywhere in `src/` or
-  `migrations/`; that changes `put` in `store.ts` away from `DO NOTHING`; or that deletes or
+  drops a trigger or the table included); that deletes or moves the migration that creates them,
+  or changes `migrations_dir` in `wrangler.jsonc` so it no longer applies; that adds an
+  `UPDATE`, `DELETE`, `INSERT OR REPLACE`, `REPLACE INTO` or `ON CONFLICT … DO UPDATE` against
+  `item` anywhere in `src/` or `migrations/`; that changes `put` in `store.ts` away from `DO NOTHING`; or that deletes or
   loosens the trigger cases or the scan in `__tests__/store.test.ts`.
 - _Scope:_ `apps/mailbox`.
 - _Why not enforced:_ the triggers and `store.test.ts` enforce `UPDATE` and `DELETE` (each case
@@ -123,9 +124,11 @@ how each was checked when this workspace landed.
 - _Claim:_ the `ROLES` table in `src/core.ts` is the only place a token is mapped to what it
   may do, and it holds exactly two roles: `routine` (read all three folders, put `brief`) and
   `home` (read `brief`, put `decisions` and `scout`).
-- _Falsified by_ a hunk that adds a role, adds a folder to any role's `get` or `put` list,
-  adds a method to a route in `routeOf`, or makes `authenticate` read another secret, when the
-  PR description does not name the owner's decision to do so.
+- _Falsified by_ a hunk that adds, removes or renames a role; adds a folder to, or removes one
+  from, any role's `get` or `put` list; changes which secret a role reads or makes
+  `authenticate` read another secret; adds a method to a route in `routeOf`; or renames, moves
+  or deletes the `ROLES` table, when the PR description does not name the owner's decision to
+  do so.
 - _Scope:_ `apps/mailbox/src/core.ts` and `wrangler.jsonc`.
 - _Why not enforced:_ `__tests__/core.test.ts` pins today's matrix (every role against every
   folder and method), but a hunk that changes the table and the test together passes it. A test
@@ -139,8 +142,9 @@ how each was checked when this workspace landed.
 - _Falsified by_ a hunk that writes a token-like value into `wrangler.jsonc` (a `vars` entry,
   say) or any committed file; that adds a test fixture that looks like a real token (the tests'
   are `test-…`); that adds an `eslint-disable` of `no-console`, or a `console.*` call, whose
-  arguments are or read from a `Request`, `Headers` or body; or that removes `.dev.vars` from
-  this workspace's `.gitignore`.
+  arguments are or read from a `Request`, `Headers` or body; that changes what `report` passes
+  to `console.error` from the error's `message`; or that removes `.dev.vars` from this
+  workspace's `.gitignore`, or deletes or moves that file.
 - _Scope:_ `apps/mailbox`.
 - _Why not enforced:_ **mechanical; not yet a rule.** `no-console` is on repo-wide, so a second
   call needs a visible `eslint-disable`, which is what the falsifier watches. Whether a string

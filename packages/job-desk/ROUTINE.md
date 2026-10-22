@@ -108,8 +108,11 @@ curl -sS --max-time 30 -H "Authorization: Bearer $JOBS_MAILBOX_TOKEN" \
 
 Each answer is `{"items":[{"seq","name","size","sha256","contentType","putAt"}]}`,
 oldest first. Ask again with `after` set to the highest `seq` in the answer,
-until `items` is empty, then do the same for `scout`. A file whose name no
-digest names in `read` is new, exactly as for Drive. Fetch each new one:
+until `items` is empty, then do the same for `scout`. An answer that is not
+that object (an `{"error":…}`, or nothing at all) means the mailbox has failed
+since §0.4: look no further in it, carry on with Drive alone, and say so in
+the summary. A file whose name no digest names in `read` is new, exactly as
+for Drive. Fetch each new one:
 
 ```sh
 curl -sS --max-time 30 -H "Authorization: Bearer $JOBS_MAILBOX_TOKEN" \
