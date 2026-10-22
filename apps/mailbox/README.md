@@ -147,16 +147,22 @@ step 1 of the deploy below.
 
 ## Deploy (the owner does this; nothing here deploys itself)
 
-There is no deploy workflow. `wrangler.jsonc` holds a placeholder `database_id`, so
-`wrangler deploy` fails until it is replaced in step 2.
+There is no deploy workflow. Run the commands from the repo root: `pnpm --filter
+@some-ui/mailbox exec wrangler …` runs this workspace's pinned wrangler inside `apps/mailbox`,
+where `wrangler.jsonc` is (run `pnpm install` once first). A bare `npx wrangler` from the root
+finds no config, so everything after step 2 needs it. The database was created in step 2 on
+2026-10-22 and its id is already in `wrangler.jsonc`.
 
 1. Create a Cloudflare account. **Add no payment method**, and confirm Billing lists none (MB4).
 2. `npx wrangler login`, then `npx wrangler d1 create some-ui-mailbox`. Put the printed
-   `database_id` into `wrangler.jsonc`. It is not a secret.
-3. `npx wrangler d1 migrations apply some-ui-mailbox --remote`.
+   `database_id` into `wrangler.jsonc`. It is not a secret. Keep the binding named `DB`:
+   wrangler's suggested snippet calls it `some_ui_mailbox`, which the Worker does not read.
+3. `pnpm --filter @some-ui/mailbox exec wrangler d1 migrations apply some-ui-mailbox --remote`.
 4. Make two long random tokens, for example `openssl rand -base64 32` twice, and run
-   `npx wrangler secret put ROUTINE_TOKEN` and `npx wrangler secret put HOME_TOKEN`.
-5. `npx wrangler deploy`, and note the URL, `https://some-ui-mailbox.<subdomain>.workers.dev`.
+   `pnpm --filter @some-ui/mailbox exec wrangler secret put ROUTINE_TOKEN` and the same with
+   `HOME_TOKEN`.
+5. `pnpm --filter @some-ui/mailbox exec wrangler deploy`, and note the URL,
+   `https://some-ui-mailbox.<subdomain>.workers.dev`.
 6. Smoke test with the routine's token:
 
    ```sh

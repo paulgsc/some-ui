@@ -10,9 +10,9 @@
     {
       "binding": "DB",
       "database_name": "some-ui-mailbox",
-      // Not a secret, but owner-specific: `wrangler d1 create some-ui-mailbox`
-      // prints it. Deploy fails until this placeholder is replaced.
-      "database_id": "<set by owner>",
+      // Not a secret, but owner-specific: printed by `wrangler d1 create
+      // some-ui-mailbox`. The binding stays `DB`, which is what the Worker reads.
+      "database_id": "2e57f2ee-cb4e-4827-8135-e91183bbe762",
       "migrations_dir": "migrations",
     },
   ],
