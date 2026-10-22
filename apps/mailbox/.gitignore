@@ -1,5 +1,5 @@
 # wrangler's bundling scratch and local dev state
 .wrangler/
-# local secrets for `wrangler dev`: tokens never go in the repo (MB3)
+# local secrets for `wrangler dev` (MB3)
 .dev.vars
 .dev.vars.*

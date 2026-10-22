@@ -15,7 +15,7 @@ async function migrated(): Promise<Database> {
   const files = readdirSync(MIGRATIONS)
     .filter((file) => file.endsWith(".sql"))
     .sort()
-  // A directory that moved would otherwise leave an empty database to pass on.
+  // The first migration is the one this suite is written against.
   expect(files).toContain("0001_create_item.sql")
   const db = await openSqlite()
   for (const file of files) {
@@ -117,7 +117,6 @@ describe.each([
       item("a", { putAt: "2030-01-01T00:00:00.000Z" })
     )
     expect(again).toEqual({ change: "unchanged", seq: 2 })
-    // The first put's time stands.
     expect((await store.get("brief", "digest-2026-10-21.json"))?.putAt).toBe(
       PUT_AT
     )

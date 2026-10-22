@@ -78,7 +78,7 @@ export type Deps = {
   readonly tokens: Tokens
   readonly store: Store
   readonly now: () => Date
-  /** Told of a storage failure. Never given the request (MB3). */
+  /** Told of a storage failure. */
   readonly report: (error: unknown) => void
 }
 

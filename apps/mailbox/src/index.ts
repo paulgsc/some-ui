@@ -1,6 +1,5 @@
 /**
- * The Worker's entry: wires the Cloudflare bindings into `handle`. Nothing
- * here decides an answer; `core.ts` does, and is tested without Cloudflare.
+ * The Worker's entry: wires the Cloudflare bindings into `handle`.
  */
 
 import { handle } from "./core"
@@ -8,7 +7,6 @@ import { d1Store } from "./store"
 
 type Env = {
   DB: D1Database
-  // Worker secrets (`wrangler secret put`); unset until the owner sets them.
   ROUTINE_TOKEN?: string
   HOME_TOKEN?: string
 }

@@ -4,14 +4,12 @@
   "main": "src/index.ts",
   // Pinned, not "today": a Worker's behaviour follows this date. Raise it on purpose.
   "compatibility_date": "2026-10-01",
-  // No tokens here, ever (MB3): they are Worker secrets, set with
-  // `wrangler secret put ROUTINE_TOKEN` and `wrangler secret put HOME_TOKEN`.
+  // No tokens here, ever (MB3): they are Worker secrets (`wrangler secret put`).
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "some-ui-mailbox",
-      // Not a secret, but owner-specific: printed by `wrangler d1 create
-      // some-ui-mailbox`. The binding stays `DB`, which is what the Worker reads.
+      // Not a secret.
       "database_id": "2e57f2ee-cb4e-4827-8135-e91183bbe762",
       "migrations_dir": "migrations",
     },

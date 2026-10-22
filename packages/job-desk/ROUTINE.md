@@ -16,8 +16,7 @@ nothing else in the repo.
 
 Beside Drive there is the mailbox (§0.4), a small service that holds the same
 files. The run also puts the digest there (§8) and reads my decisions and
-scouts from it as well as from Drive (§2). Drive stays the first route, and a
-problem with the mailbox never stops the run.
+scouts from it as well as from Drive (§2). Drive stays the first route.
 
 The shapes are this package's schemas, and `src/sample.digest.json`
 is a complete digest to copy. The limits (picks per track, open picks,

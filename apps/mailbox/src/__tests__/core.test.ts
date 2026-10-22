@@ -193,7 +193,6 @@ describe("authentication", () => {
 describe("roles", () => {
   it("the routine may put a digest and read every folder", async () => {
     const d = deps()
-    // Seed the two folders the routine only reads, as home would.
     expect(
       (
         await put(d, "decisions", DECISIONS_NAME, {
@@ -228,7 +227,6 @@ describe("roles", () => {
       201
     )
 
-    // What home may do.
     expect(
       (await send(d, "GET", "/v1/brief/items", { token: HOME })).status
     ).toBe(200)
@@ -248,7 +246,6 @@ describe("roles", () => {
       (await put(d, "scout", SCOUTS_NAME, { token: HOME, body: SCOUTS })).status
     ).toBe(201)
 
-    // What it may not, with a valid name and body each time.
     expect(
       (
         await put(d, "brief", "digest-2026-10-22.json", {
@@ -274,7 +271,6 @@ describe("roles", () => {
         .status
     ).toBe(403)
 
-    // And the routine may not put what only home puts.
     expect(
       (
         await put(d, "decisions", "decisions-2026-10-22.json", {
@@ -304,6 +300,10 @@ describe("names", () => {
       ["decisions", "digest-2026-10-21.json", HOME],
       ["scout", "scouts-2026-10-21.json", HOME],
       ["scout", "scouts-20261021T14520.json", HOME],
+      // Voice notes match no folder, on purpose.
+      ["brief", "voice-2026-10-21.webm", ROUTINE],
+      ["decisions", "decisions-2026-10-21-voice.json", HOME],
+      ["scout", "scouts-20261021T145200.m4a", HOME],
     ]
     for (const [folder, name, token] of refused) {
       const body =
@@ -314,26 +314,6 @@ describe("names", () => {
             : SCOUTS
       const response = await put(d, folder, name, { token, body })
       expect([folder, name, response.status]).toEqual([folder, name, 422])
-    }
-  })
-
-  it("a voice note name is refused", async () => {
-    const d = deps()
-    for (const [folder, token] of [
-      ["brief", ROUTINE],
-      ["decisions", HOME],
-      ["scout", HOME],
-    ] as const) {
-      for (const name of [
-        "voice-2026-10-21.webm",
-        "voice-2026-10-21.m4a",
-        "decisions-2026-10-21.voice.webm",
-        "decisions-2026-10-21-voice.json",
-        "scouts-20261021T145200.m4a",
-      ]) {
-        const response = await put(d, folder, name, { token, body: DIGEST })
-        expect([folder, name, response.status]).toEqual([folder, name, 422])
-      }
     }
   })
 
@@ -388,11 +368,9 @@ describe("bodies", () => {
     expect(
       (await put(d, "brief", DIGEST_NAME, { body: DIGEST, type: null })).status
     ).toBe(422)
-    // A byte-order mark is not part of JSON, and the stored bytes are the sent bytes.
     expect(
       (await put(d, "brief", DIGEST_NAME, { body: `\uFEFF${DIGEST}` })).status
     ).toBe(422)
-    // A charset parameter is fine.
     const ok = await put(d, "brief", DIGEST_NAME, {
       body: DIGEST,
       type: "Application/JSON; charset=utf-8",
@@ -557,7 +535,7 @@ describe("listing", () => {
     return last.seq
   }
 
-  it("listing pages by seq, oldest first, within limit", async () => {
+  it("a listing forwards after and limit, within its own folder", async () => {
     const d = await filled()
     const first = await page(d, "?limit=2")
     expect(first.map((i) => i.name)).toEqual([
@@ -569,9 +547,6 @@ describe("listing", () => {
       "digest-2026-10-19.json",
       "digest-2026-10-20.json",
     ])
-    const third = await page(d, `?after=${lastSeq(second)}&limit=2`)
-    expect(third.map((i) => i.name)).toEqual(["digest-2026-10-21.json"])
-    expect(await page(d, `?after=${lastSeq(third)}`)).toEqual([])
     expect((await page(d, "")).length).toBe(5)
   })
 

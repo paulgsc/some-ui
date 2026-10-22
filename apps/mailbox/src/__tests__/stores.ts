@@ -8,11 +8,7 @@ import type {
 
 type Held = StoredItem & { readonly folder: Folder }
 
-/**
- * A `Store` in memory, for the tests of `core.ts`. `store.test.ts` runs the
- * same contract against it and against the D1 adapter on real SQLite, so it
- * cannot drift from what D1 does.
- */
+/** A `Store` in memory, for the tests of `core.ts`. */
 export function memoryStore(): Store {
   const held: Array<Held> = []
   return {

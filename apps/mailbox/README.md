@@ -40,7 +40,7 @@ The folders are `brief`, `decisions` and `scout`.
 
 **`seq` only grows, and it has gaps.** SQLite hands out a number for every put that reaches the
 table, including a put of a name already held (`unchanged` or `conflict`), which stores nothing.
-So after a few repeats the next new file can jump ahead (checked on the live Worker: `seq 1`,
+So after a few repeats the next new file can jump ahead (for example `seq 1`,
 then six repeats, then `seq 8`). Page with `after` set to the highest `seq` you have seen, never
 `after + 1`.
 
@@ -158,8 +158,7 @@ step 1 of the deploy below.
 There is no deploy workflow. Run the commands from the repo root: `pnpm --filter
 @some-ui/mailbox exec wrangler …` runs this workspace's pinned wrangler inside `apps/mailbox`,
 where `wrangler.jsonc` is (run `pnpm install` once first). A bare `npx wrangler` from the root
-finds no config, so everything after step 2 needs it. The database was created in step 2 on
-2026-10-22 and its id is already in `wrangler.jsonc`.
+finds no config, so everything after step 2 needs it.
 
 1. Create a Cloudflare account. **Add no payment method**, and confirm Billing lists none (MB4).
 2. `npx wrangler login`, then `npx wrangler d1 create some-ui-mailbox`. Put the printed
@@ -194,9 +193,6 @@ pnpm --filter @some-ui/mailbox deploy:dry  # bundles the Worker; needs no accoun
   and the D1 adapter; `src/index.ts` only wires the bindings in.
 - `core.test.ts` runs all of `core.ts` against an in-memory store. `store.test.ts` applies the
   real migration to real SQLite (sql.js) and runs one set of cases against the in-memory store
-  and the D1 adapter, so the stand-in cannot drift from the real one. The adapter is checked
-  with a BLOB returned as an array of byte values, as D1 does, and as bytes.
+  and the D1 adapter, so the stand-in cannot drift from the real one.
 - The tests use sql.js rather than `@cloudflare/vitest-pool-workers`: that pool needs
   `vitest ^4.1`, and this repo runs vitest 5.
-- `pnpm-workspace.yaml` denies `workerd`'s install script (`allowBuilds`): nothing here runs
-  workerd, so pnpm 12 needs it denied or allowed to finish an install.
