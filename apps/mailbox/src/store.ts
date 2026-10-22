@@ -1,10 +1,6 @@
 /**
  * What the mailbox keeps, and the one adapter that keeps it in D1.
  *
- * The port (`Store`) is all `core.ts` knows of storage, so the whole
- * request-to-answer logic runs in tests against an in-memory store, and the
- * SQL runs in tests against real SQLite (`__tests__/store.test.ts`).
- *
  * MB1 (append-only): the adapter's only write is
  * `INSERT ... ON CONFLICT(folder, name) DO NOTHING`; the table's triggers abort
  * an UPDATE or DELETE of an item. They do not stop `INSERT OR REPLACE`, so no
@@ -157,7 +153,7 @@ export function d1Store(db: Db): Store {
         )
         .first()
       if (inserted !== null) return { change: "added", seq: seqOf(inserted) }
-      // DO NOTHING returns no row: the name is held. Which body holds it?
+      // DO NOTHING returned no row: the name is held.
       const held = await db.prepare(HELD_SQL).bind(folder, name).first()
       if (held === null) {
         // Unreachable while MB1 holds: nothing is ever deleted.

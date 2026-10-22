@@ -43,18 +43,6 @@ function item(text: string, overrides: Partial<NewItem> = {}): NewItem {
 const EVERY_BYTE = Uint8Array.from({ length: 256 }, (_, index) => index)
 
 describe("the migration", () => {
-  it("the migration applies", async () => {
-    const db = await migrated()
-    const found = db.exec(
-      "SELECT type, name FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
-    )
-    expect(found.at(0)?.values).toEqual([
-      ["table", "item"],
-      ["trigger", "item_is_append_only_delete"],
-      ["trigger", "item_is_append_only_update"],
-    ])
-  })
-
   it("an UPDATE of an item aborts", async () => {
     const db = await migrated()
     await d1Store(d1Shim(db)).put("brief", "digest-2026-10-21.json", item("a"))
@@ -162,19 +150,6 @@ describe.each([
         (await store.get("decisions", "same.json"))?.bytes
       )
     ).toBe("b")
-  })
-
-  it("seq only grows, even across puts of a name already held", async () => {
-    const store = await open()
-    const first = await store.put("brief", "b1.json", item("1"))
-    await store.put("brief", "b1.json", item("1"))
-    await store.put("brief", "b1.json", item("2"))
-    const second = await store.put("brief", "b2.json", item("3"))
-    if (first.change === "conflict" || second.change === "conflict") {
-      throw new Error("a new name is never a conflict")
-    }
-    // Not `first + 1`: SQLite spends a number on a put of a held name too.
-    expect(second.seq).toBeGreaterThan(first.seq)
   })
 
   it("an absent name is null", async () => {

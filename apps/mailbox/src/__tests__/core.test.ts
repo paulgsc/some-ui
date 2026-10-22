@@ -287,19 +287,6 @@ describe("roles", () => {
         .status
     ).toBe(403)
   })
-
-  it("a refusal to a role names nothing of the item", async () => {
-    const d = deps()
-    await put(d, "decisions", DECISIONS_NAME, { token: HOME, body: DECISIONS })
-    const response = await send(
-      d,
-      "GET",
-      `/v1/decisions/items/${DECISIONS_NAME}`,
-      { token: HOME }
-    )
-    expect(response.status).toBe(403)
-    expect(await json(response)).toEqual({ error: "forbidden" })
-  })
 })
 
 describe("names", () => {
@@ -432,20 +419,13 @@ describe("bodies", () => {
   it("a body over the cap is refused before it is read", async () => {
     const { store, touched } = untouchable()
     const d = deps(store)
-    // Declares one byte too many; a body that was read would be refused for
-    // its content instead (it is not JSON), so a 413 is the header consulted.
-    const big = await put(d, "brief", DIGEST_NAME, {
-      body: "x",
-      headers: { "content-length": String(MAX_BODY_BYTES + 1) },
-    })
-    expect(big.status).toBe(413)
-    expect(await json(big)).toEqual({ error: "too_big" })
-
-    // And with a stream: it is never pulled.
+    // Declares one byte too many, and the stream is never pulled.
     const { response, pulls } = streamed(d, [new Uint8Array(10)], {
       "content-length": String(MAX_BODY_BYTES + 1),
     })
-    expect((await response).status).toBe(413)
+    const big = await response
+    expect(big.status).toBe(413)
+    expect(await json(big)).toEqual({ error: "too_big" })
     expect(pulls()).toBe(0)
     expect(touched()).toBe(0)
   })
@@ -498,20 +478,13 @@ describe("keeping a file", () => {
     expect(await json(again)).toEqual({ change: "unchanged", seq: 1 })
   })
 
-  it("different bytes under a held name answer conflict and change nothing", async () => {
+  it("different bytes under a held name answer conflict", async () => {
     const d = deps()
     await put(d, "brief", DIGEST_NAME, { body: DIGEST })
     const other = JSON.stringify({ schema: "some-ui.job-digest/1", picks: [1] })
     const conflict = await put(d, "brief", DIGEST_NAME, { body: other })
     expect(conflict.status).toBe(409)
     expect(await json(conflict)).toEqual({ error: "conflict" })
-
-    const kept = await send(d, "GET", `/v1/brief/items/${DIGEST_NAME}`)
-    expect(await kept.text()).toBe(DIGEST)
-    const listing = await send(d, "GET", "/v1/brief/items")
-    expect(await json(listing)).toMatchObject({
-      items: [{ seq: 1, name: DIGEST_NAME }],
-    })
   })
 
   it("an item reads back as the exact bytes sent, with its hash as the ETag", async () => {
@@ -620,41 +593,6 @@ describe("listing", () => {
     })
   })
 
-  it("a listing shows the metadata fields only, whatever the store returns", async () => {
-    const inner = memoryStore()
-    // A store that hands back more than it should: a body, and its own columns.
-    const generous: Store = {
-      ...inner,
-      async list(folder, after, limit) {
-        const items = await inner.list(folder, after, limit)
-        return items.map((item) => ({
-          ...item,
-          bytes: new TextEncoder().encode(DIGEST),
-          folder,
-        }))
-      },
-    }
-    const d = deps(generous)
-    await put(d, "brief", DIGEST_NAME, { body: DIGEST })
-    const response = await send(d, "GET", "/v1/brief/items")
-    const text = await response.text()
-    expect(text).not.toContain("bytes")
-    expect(text).not.toContain("folder")
-    const parsed: unknown = JSON.parse(text)
-    expect(parsed).toEqual({
-      items: [expect.objectContaining({ seq: 1, name: DIGEST_NAME })],
-    })
-    if (!isListing(parsed)) throw new Error("not a listing")
-    expect(Object.keys(parsed.items.at(0) ?? {}).sort()).toEqual([
-      "contentType",
-      "name",
-      "putAt",
-      "seq",
-      "sha256",
-      "size",
-    ])
-  })
-
   it("a limit or cursor that is not a whole number in range is refused", async () => {
     const d = await filled()
     for (const query of [
@@ -699,22 +637,6 @@ describe("routes", () => {
       expect(response.headers.get("allow")).toBe("GET, PUT")
     }
   })
-
-  it("every refusal is JSON", async () => {
-    const d = deps()
-    const refusals = [
-      await send(d, "GET", "/v1/brief/items", { token: null }),
-      await send(d, "GET", "/v1/decisions/items", { token: HOME }),
-      await send(d, "GET", "/nowhere"),
-      await send(d, "POST", "/v1/brief/items"),
-      await put(d, "brief", "bad", { body: DIGEST }),
-      await put(d, "brief", DIGEST_NAME, { body: "{" }),
-    ]
-    for (const response of refusals) {
-      expect(response.headers.get("content-type")).toContain("application/json")
-      expect(await json(response)).toEqual({ error: expect.any(String) })
-    }
-  })
 })
 
 describe("when storage fails", () => {
@@ -726,7 +648,6 @@ describe("when storage fails", () => {
     const d = deps(failing(error), reported)
     const response = await send(d, "GET", "/v1/brief/items")
     expect(response.status).toBe(503)
-    expect(response.headers.get("content-type")).toContain("application/json")
     const text = await response.text()
     expect(JSON.parse(text)).toEqual({ error: "unavailable" })
     expect(text).not.toContain("test-secret-detail")

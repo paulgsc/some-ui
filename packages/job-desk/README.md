@@ -16,9 +16,8 @@ A second decisions share on one day is `decisions-<day>-2.json`, then `-3`
 The files also pass through the mailbox (`apps/mailbox`, a Worker and D1
 database), beside Drive. The routine puts each digest there once Drive has it,
 and reads the mailbox's `decisions` and `scout` folders as well as Drive's
-(`ROUTINE.md` §0.4, §2 and §8). Today nothing puts decisions or scouts in the
-mailbox and nothing reads the digest from it; home and the phone take those
-parts later. Voice notes never go through it.
+(`ROUTINE.md` §0.4, §2 and §8). Who may put and read what is in
+`apps/mailbox/README.md`. Voice notes never go through it.
 
 - `src/policy.ts` sets how many picks each track gets, where to search, the
   queries, and the titles never picked. The owner set it on 2026-10-17.

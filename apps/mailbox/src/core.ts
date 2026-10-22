@@ -13,7 +13,7 @@
  *   reviewable).
  */
 
-import type { Folder, ItemMeta, Role, Store } from "./store"
+import type { Folder, Role, Store } from "./store"
 
 /** Most bytes one item may hold. Real files are under 20 KB; D1's row cap is 2 MB. */
 export const MAX_BODY_BYTES = 1_048_576
@@ -22,9 +22,8 @@ export const LIST_LIMIT_MAX = 50
 
 type FolderRules = {
   readonly folder: Folder
-  /** Anchored: a name outside it is refused. Voice notes match none, on purpose. */
+  /** Voice notes match none, on purpose. */
   readonly name: RegExp
-  /** The top-level `schema` a body must carry. */
   readonly schema: string
 }
 
@@ -59,7 +58,7 @@ type Grant = {
   readonly put: ReadonlyArray<Folder>
 }
 
-/** MB2. A third role (the phone's, D3) is the owner's call, not a code change. */
+/** MB2. A third role (the phone's) is the owner's call, not a code change. */
 const ROLES: ReadonlyArray<Grant> = [
   {
     role: "routine",
@@ -83,8 +82,6 @@ export type Deps = {
   readonly report: (error: unknown) => void
 }
 
-// ── Answers ──────────────────────────────────────────────────────────────
-
 function answer(
   status: number,
   body: unknown,
@@ -104,21 +101,21 @@ function refuse(
   return answer(status, { error }, headers)
 }
 
-// ── Tokens ───────────────────────────────────────────────────────────────
+async function sha256(data: string | Uint8Array): Promise<Uint8Array> {
+  const bytes = typeof data === "string" ? new TextEncoder().encode(data) : data
+  return new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))
+}
 
-async function digest(text: string): Promise<Uint8Array> {
-  const hash = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(text)
+function hex(bytes: Uint8Array): string {
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(
+    ""
   )
-  return new Uint8Array(hash)
 }
 
 /**
  * Compares two digests without stopping at the first difference. Tokens are
- * hashed first, so what is compared is always 32 bytes: its length says
- * nothing about a token's, and an attacker cannot steer a byte of it.
- * (`crypto.subtle.timingSafeEqual` is Workers-only, so it is not used.)
+ * hashed first, so what is compared is always 32 bytes, whatever the token's
+ * length. (`crypto.subtle.timingSafeEqual` is Workers-only, so it is not used.)
  */
 function sameDigest(a: Uint8Array, b: Uint8Array): boolean {
   if (a.length !== b.length) return false
@@ -139,19 +136,17 @@ async function authenticate(
   if (tokens.routine !== undefined && tokens.routine === tokens.home) {
     return null
   }
-  const wanted = await digest(presented)
+  const wanted = await sha256(presented)
   let found: Grant | null = null
   for (const grant of ROLES) {
     const token = grant.token(tokens)
     if (token === undefined || token === "") continue
     // Every role is compared, so the time does not say which one matched.
-    const matches = sameDigest(wanted, await digest(token))
+    const matches = sameDigest(wanted, await sha256(token))
     if (matches && found === null) found = grant
   }
   return found
 }
-
-// ── Routes ───────────────────────────────────────────────────────────────
 
 type Route = {
   readonly rules: FolderRules
@@ -193,13 +188,7 @@ async function list(
     )
   }
   const items = await store.list(rules.folder, after, limit)
-  return answer(200, { items: items.map(describe) })
-}
-
-/** Exactly these fields, whatever else a store returns (never a body). */
-function describe(item: ItemMeta): ItemMeta {
-  const { seq, name, size, sha256, contentType, putAt } = item
-  return { seq, name, size, sha256, contentType, putAt }
+  return answer(200, { items })
 }
 
 async function read(
@@ -221,8 +210,6 @@ async function read(
     },
   })
 }
-
-// ── Writing ──────────────────────────────────────────────────────────────
 
 function isJsonType(contentType: string | null): boolean {
   const mediaType = contentType?.split(";").at(0)?.trim().toLowerCase()
@@ -273,11 +260,6 @@ function parseJson(
   }
 }
 
-async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))
-  return Array.from(hash, (byte) => byte.toString(16).padStart(2, "0")).join("")
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
@@ -295,8 +277,8 @@ async function write(
   if (!isJsonType(request.headers.get("content-type"))) {
     return refuse(422, "the content type must be application/json")
   }
-  // The declared length refuses a big body before a byte of it is read; the
-  // capped read below covers a body that declares nothing or lies.
+  // The declared length refuses before a byte is read; the capped read below
+  // covers a body that declares nothing or lies.
   const declared = request.headers.get("content-length")
   if (declared !== null && Number(declared) > MAX_BODY_BYTES) {
     return refuse(413, "too_big")
@@ -317,7 +299,7 @@ async function write(
 
   const result = await deps.store.put(rules.folder, name, {
     bytes,
-    sha256: await sha256Hex(bytes),
+    sha256: hex(await sha256(bytes)),
     contentType: "application/json",
     putBy: role,
     putAt: deps.now().toISOString(),
@@ -328,8 +310,6 @@ async function write(
     seq: result.seq,
   })
 }
-
-// ── Entry ────────────────────────────────────────────────────────────────
 
 async function serve(
   request: Request,
@@ -358,10 +338,7 @@ async function serve(
   return write(request, rules, name, grant.role, deps)
 }
 
-/**
- * Every request needs a token, and a missing or wrong one is answered before
- * the store is touched, so someone without a token cannot spend D1 quota.
- */
+/** A missing or wrong token is answered before the store is touched: no D1 quota for strangers. */
 export async function handle(request: Request, deps: Deps): Promise<Response> {
   const grant = await authenticate(
     request.headers.get("authorization"),
@@ -373,7 +350,6 @@ export async function handle(request: Request, deps: Deps): Promise<Response> {
   try {
     return await serve(request, grant, deps)
   } catch (error) {
-    // D1 over its daily limit fails every query until 00:00 UTC.
     deps.report(error)
     return refuse(503, "unavailable")
   }

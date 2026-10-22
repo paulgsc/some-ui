@@ -20,14 +20,14 @@ function toSqlValue(value: unknown): SqlValue {
   throw new Error("a value D1 would not bind")
 }
 
+type Prepared = ReturnType<Db["prepare"]>
+type Bound = ReturnType<Prepared["bind"]>
+
 /**
  * The part of `D1Database` the adapter uses, over a real SQLite (sql.js).
  * `blobs: "array"` returns a BLOB the way D1 does, as an array of byte values;
  * `"bytes"` as sql.js does, so the adapter is held to both.
  */
-type Prepared = ReturnType<Db["prepare"]>
-type Bound = ReturnType<Prepared["bind"]>
-
 export function d1Shim(db: Database, blobs: "array" | "bytes" = "array"): Db {
   return {
     prepare(sql): Prepared {
