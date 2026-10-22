@@ -13,6 +13,10 @@ UI here, only the shapes, the policy, a sample and a checker.
 A second decisions share on one day is `decisions-<day>-2.json`, then `-3`
 (`decisionsFileName`).
 
+The files also pass through the mailbox (`apps/mailbox`, a Worker and D1
+database), beside Drive. `ROUTINE.md` §0.4 says how the routine uses it, and
+`apps/mailbox/README.md` who may put and read what.
+
 - `src/policy.ts` sets how many picks each track gets, where to search, the
   queries, and the titles never picked. The owner set it on 2026-10-17.
 - `ROUTINE.md` is the routine's instructions. The scheduled task's prompt

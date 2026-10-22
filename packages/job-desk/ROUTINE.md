@@ -14,6 +14,10 @@ one résumé composition, for a posting no composition leads with yet (§6). I
 review and merge it; the run never does. It pushes nothing else and changes
 nothing else in the repo.
 
+Beside Drive there is the mailbox (§0.4), a small service that holds the same
+files. The run also puts the digest there (§8) and reads my decisions and
+scouts from it as well as from Drive (§2). Drive stays the first route.
+
 The shapes are this package's schemas, and `src/sample.digest.json`
 is a complete digest to copy. The limits (picks per track, open picks,
 places, queries, excluded titles, posting age) are `src/policy.ts`. When this file and the
@@ -30,6 +34,22 @@ policy disagree, the policy wins and this file is the bug.
    today's.
 3. List `some-ui jobs/Brief/`. If `digest-<today>.json` is already there,
    stop and say so. A digest is never replaced.
+4. The mailbox. `JOBS_MAILBOX_URL` (no trailing slash) and `JOBS_MAILBOX_TOKEN`
+   are set in this session's environment. If either is unset or empty, skip
+   every mailbox step in this file, carry on with Drive alone, and say so in
+   the summary. Otherwise check it once:
+
+   ```sh
+   curl -sS --max-time 30 -o /dev/null -w '%{http_code}\n' \
+     -H "Authorization: Bearer $JOBS_MAILBOX_TOKEN" \
+     "$JOBS_MAILBOX_URL/v1/brief/items?limit=1"
+   ```
+
+   `200` means it is usable. Anything else (`401` is a wrong token, `000` is no
+   network): skip every mailbox step, carry on with Drive alone, and say so in
+   the summary. A mailbox problem never stops the run and never changes what
+   goes to Drive. Use only `curl` with that `Authorization` header, never print
+   the token, and don't turn on shell tracing (`set -x`).
 
 Today is the date in America/Los_Angeles.
 
@@ -77,6 +97,35 @@ can repeat one already read:
   So also transcribe each note a file already read names whose audio is now
   in `Decisions/` or `Scout/` and no digest lists, and take it in with the
   entry that names it.
+
+If the mailbox is usable (§0.4), it is a second place to look. List its
+`decisions` and `scout` folders, starting at `after=0`:
+
+```sh
+curl -sS --max-time 30 -H "Authorization: Bearer $JOBS_MAILBOX_TOKEN" \
+  "$JOBS_MAILBOX_URL/v1/decisions/items?after=0&limit=50"
+```
+
+Each answer is `{"items":[{"seq","name","size","sha256","contentType","putAt"}]}`,
+oldest first. Ask again with `after` set to the highest `seq` in the answer,
+until `items` is empty, then do the same for `scout`. An answer that is not
+that object (an `{"error":…}`, or nothing at all) means the mailbox has failed
+since §0.4: look no further in it, carry on with Drive alone, and say so in
+the summary. A file whose name no digest names in `read` is new, exactly as
+for Drive. Fetch each new one:
+
+```sh
+curl -sS --max-time 30 -H "Authorization: Bearer $JOBS_MAILBOX_TOKEN" \
+  -o <scratch file> "$JOBS_MAILBOX_URL/v1/decisions/items/<name>"
+```
+
+`sha256sum <scratch file>` must equal the `sha256` its listing gave; a file that
+doesn't match is skipped and named in the summary. Then merge the two sources
+by file name: a name in both is one file, and if the bytes differ, use Drive's
+and say so in the summary. Home is the only one that can put a file in these
+mailbox folders, so the owner check in §0.1 doesn't apply to them. They never
+name voice notes (home holds no audio), so a voice note is found in Drive only,
+as above.
 
 For each new file:
 
@@ -539,8 +588,9 @@ shorter limit, first person, the gaps) is yours to hold.
 2. Answer every scout read in step 2 in `scouts`, with the verdict, note, `rule`
    and `review` §3 to §5 gave it, and a scout that became a pick its
    `pickId` from step 1.
-3. `read` names every Decisions and Scout file this run took in, and
-   `transcribed` every voice note it transcribed, by its file name. `redrafts` holds each
+3. `read` names every Decisions and Scout file this run took in, from Drive or
+   the mailbox, and `transcribed` every voice note it transcribed, by its file
+   name. `redrafts` holds each
    redraft §2 wrote.
 4. Save the digest as bare JSON to a scratch file and check it from the repo
    root (run `pnpm install` first if `node_modules` is missing):
@@ -558,6 +608,33 @@ shorter limit, first person, the gaps) is yours to hold.
    true. Confirm the result's mimeType is `application/json` and its fileSize
    equals the local file's byte count.
 
+6. If the mailbox is usable (§0.4), put the same bytes there, now that Drive
+   has them. Use `--data-binary`, which sends the file exactly; `--data` strips
+   its newlines:
+
+   ```sh
+   curl -sS --max-time 30 -X PUT \
+     -H "Authorization: Bearer $JOBS_MAILBOX_TOKEN" \
+     -H "Content-Type: application/json" \
+     --data-binary @<file> -w '\n%{http_code}\n' \
+     "$JOBS_MAILBOX_URL/v1/brief/items/digest-<today>.json"
+   ```
+
+   `201` (added) and `200` (unchanged) are both success. `409` means the
+   mailbox already holds a different digest for today: say so in the summary,
+   don't retry, and leave Drive as it is. Anything else: say so in the summary
+   and carry on. After a `201` or a `200`, read it back; the two hashes must
+   match, and if they don't, say so in the summary:
+
+   ```sh
+   curl -sS --max-time 30 -H "Authorization: Bearer $JOBS_MAILBOX_TOKEN" \
+     "$JOBS_MAILBOX_URL/v1/brief/items/digest-<today>.json" | sha256sum
+   sha256sum <file>
+   ```
+
+   The mailbox keeps what it is given for good, so only a digest that passed
+   step 4 and is in Drive (step 5) goes there.
+
 Never edit, move, rename or trash anything under `some-ui jobs/`. Triage
 `Inbox/` per the SOP if it holds anything.
 
@@ -568,5 +645,7 @@ closed, and each track's free slots); each pick with its track, scores and
 résumé; the PR this run opened, or why it opened none; how many postings
 were set aside, by reason; what each new decisions file and voice note said;
 each redraft, by its pick, or why a fit note got none; each
-scout's verdict; the calibration note, once there are enough outcomes; and
-anything skipped, with why.
+scout's verdict; the calibration note, once there are enough outcomes; the
+mailbox (whether the digest was added, was already there or was refused, and
+why; the files taken in from it; any name whose bytes differed from Drive's; or
+that it was skipped, and why); and anything skipped, with why.
