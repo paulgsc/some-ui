@@ -214,3 +214,59 @@ describe.each([
     })
   })
 })
+
+describe("MB1: nothing in the workspace issues a statement that rewrites an item", () => {
+  const SRC = join(import.meta.dirname, "..")
+  // The words appear in prose comments, so comments are cut before the scan.
+  const REWRITES =
+    /\b(UPDATE\s+\w+\s+SET|DELETE\s+FROM|REPLACE\s+INTO|OR\s+REPLACE|DO\s+UPDATE)\b/i
+  const UNGUARDS = /\b(DROP\s+(TRIGGER|TABLE)|ALTER\s+TABLE\s+item)\b/i
+  const tsCode = (text: string): string =>
+    text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "")
+  const sqlCode = (text: string): string => text.replace(/--[^\n]*/g, "")
+
+  it("the scan flags each statement it is there to catch, and not the adapter's own", () => {
+    for (const bad of [
+      "INSERT OR REPLACE INTO item (a) VALUES (1)",
+      "REPLACE INTO item (a) VALUES (1)",
+      "UPDATE item SET size = 0",
+      "DELETE FROM item WHERE seq = 1",
+      "INSERT INTO item (a) VALUES (1) ON CONFLICT (a) DO UPDATE SET a = 2",
+    ]) {
+      expect(bad).toMatch(REWRITES)
+    }
+    for (const bad of [
+      "DROP TRIGGER item_is_append_only_update",
+      "ALTER TABLE item ADD x",
+    ]) {
+      expect(bad).toMatch(UNGUARDS)
+    }
+    expect(
+      "INSERT INTO item (a) VALUES (1) ON CONFLICT (folder, name) DO NOTHING"
+    ).not.toMatch(REWRITES)
+  })
+
+  it("no source file issues one", () => {
+    const files = readdirSync(SRC).filter((file) => file.endsWith(".ts"))
+    // A directory that moved would otherwise leave nothing to scan.
+    expect(files).toEqual(
+      expect.arrayContaining(["core.ts", "index.ts", "store.ts"])
+    )
+    const offenders = files.filter((file) =>
+      REWRITES.test(tsCode(readFileSync(join(SRC, file), "utf8")))
+    )
+    expect(offenders).toEqual([])
+  })
+
+  it("no migration rewrites an item or removes what guards it", () => {
+    const files = readdirSync(MIGRATIONS).filter((file) =>
+      file.endsWith(".sql")
+    )
+    expect(files).toContain("0001_create_item.sql")
+    const offenders = files.filter((file) => {
+      const sql = sqlCode(readFileSync(join(MIGRATIONS, file), "utf8"))
+      return REWRITES.test(sql) || UNGUARDS.test(sql)
+    })
+    expect(offenders).toEqual([])
+  })
+})

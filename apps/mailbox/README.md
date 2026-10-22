@@ -101,15 +101,17 @@ how each was checked when this workspace landed.
   drops a trigger or the table included); that adds an `UPDATE`, `DELETE`, `INSERT OR REPLACE`,
   `REPLACE INTO` or `ON CONFLICT … DO UPDATE` against `item` anywhere in `src/` or
   `migrations/`; that changes `put` in `store.ts` away from `DO NOTHING`; or that deletes or
-  loosens the trigger cases in `__tests__/store.test.ts`.
+  loosens the trigger cases or the scan in `__tests__/store.test.ts`.
 - _Scope:_ `apps/mailbox`.
 - _Why not enforced:_ the triggers and `store.test.ts` enforce `UPDATE` and `DELETE` (each case
   fails if its trigger is removed). They do **not** enforce `INSERT OR REPLACE`: SQLite runs the
   delete trigger for the row a `REPLACE` removes only when `recursive_triggers` is on, and it is
   off by default. I checked this on SQLite 3.49.1 through sql.js: `INSERT OR REPLACE` replaced
   the row (seq 1 became 2, the hash changed) and neither trigger fired. I have not checked
-  D1 itself. So the `REPLACE` half rests on this falsifier alone. Lint cannot read SQL
-  strings and a type cannot see them. Closing it in the database would take a `BEFORE INSERT`
+  D1 itself. So in the database the `REPLACE` half rests on this falsifier. In the code, a
+  test in `store.test.ts` scans the comment-stripped `src/*.ts` and every migration for those
+  statements and for a dropped trigger; it cannot see SQL built at run time or typed into
+  Cloudflare's dashboard, and a type cannot see SQL at all. Closing it in the database would take a `BEFORE INSERT`
   guard and a `put` that reads before it writes, which changes the table's design. The owner
   chose to leave the gap (2026-10-21) rather than add that guard, so a hunk that adds a
   `REPLACE` is what a reviewer is watching for, and it is a violation if one lands.
