@@ -8,6 +8,10 @@
  * `HeldSchema` takes, checked by hand against the server's `jobs_repo::Record`
  * (every event, oldest first, each with its id and when it was recorded).
  * That reader holds each event to its full shape on the way in.
+ * `DigestsSchema` is the outline of the phone's `DigestsAnswer`, checked by
+ * hand against the server's `handlers::jobs::Digests` (each held digest's
+ * day and the file verbatim); the phone holds each digest to job-desk's
+ * schema on the way in.
  *
  * Every route is per person, so every contract is a `session` contract. The
  * record is append-only, so no probe may keep anything: the write is pinned
@@ -24,6 +28,10 @@ const JobsRecordSchema = z.object({
   ),
 })
 
+const DigestsSchema = z.object({
+  digests: z.array(z.object({ day: z.iso.date(), digest: z.unknown() })),
+})
+
 export const contracts = [
   defineContract({
     id: "jobs.record",
@@ -35,6 +43,18 @@ export const contracts = [
       "this subject's Jobs record as it stands: every event, oldest first",
     request: {},
     expect: { status: 200, schema: JobsRecordSchema },
+  }),
+
+  defineContract({
+    id: "jobs.digests",
+    module: "jobs",
+    session: true,
+    method: "GET",
+    path: "/jobs/digests",
+    summary:
+      "the daily job digests home holds for this subject, oldest first, at most 7",
+    request: {},
+    expect: { status: 200, schema: DigestsSchema },
   }),
 
   defineContract({
