@@ -18,6 +18,13 @@
  * 2. home's whole record (`GET /jobs`), asked for only by a phone whose own
  *    log is empty, the one that takes it in: a reinstalled phone gets its
  *    record back;
+ * 2½. the decisions and scouts files a share would send, when they name no
+ *    voice note (`PUT /jobs/files/:name`, the file as the body): home hands
+ *    them to the mailbox for the morning run. A `200` records the file shared
+ *    and arrived, as a share the person confirmed would; a `409` or `422` is
+ *    a refusal, kept by name and the file never filed again (it stays on the
+ *    share sheet). A file naming a voice note waits for the share sheet,
+ *    which carries the audio to Drive: home holds no audio;
  * 3. home's digests (`GET /jobs/digests`), the days after the newest one the
  *    phone holds (the newest few, on a phone holding none): the morning
  *    run's picks, which home takes from the mailbox. At most
@@ -39,7 +46,9 @@ import type { Digest } from "@some-ui/job-desk"
 import { DigestSchema } from "@some-ui/job-desk"
 import { z } from "zod"
 
-import type { HomeRefusal, JobEvent, JobsState } from "./model"
+import type { Outgoing, OutgoingFile } from "./files"
+import { isFile } from "./files"
+import type { HomeRefusal, JobEvent, JobsState, ShareKind } from "./model"
 import { DIGESTS_PER_RUN, homeOutbox, newestDay } from "./model"
 import { EventSchema } from "./stored"
 
@@ -54,6 +63,12 @@ export type JobsRecordPort = {
   restored: (events: ReadonlyArray<JobEvent>) => boolean
   /** Digests home holds, for the record to take in. */
   fetched: (digests: ReadonlyArray<Digest>) => void
+  /** The file a share of `kind` would send now, as the runtime builds it. */
+  outgoing: (kind: ShareKind) => Outgoing
+  /** Home holds `file`: recorded shared and arrived. False if not kept. */
+  filed: (kind: ShareKind, file: OutgoingFile) => boolean
+  /** Home refused the file of this name. */
+  fileRefused: (name: string) => void
 }
 
 const EventAnswer = z.object({ event: z.object({ id: z.string() }) })
@@ -155,6 +170,42 @@ async function readDigests(
   return null
 }
 
+const FILED: ReadonlyArray<ShareKind> = ["decisions", "scouts"]
+
+/** Step 2½. Null when the exchange goes on to its end. */
+async function fileOutgoing(
+  keeping: JobsRecordPort,
+  send: HomeCall
+): Promise<HomeExchanged | null> {
+  for (const kind of FILED) {
+    const file = keeping.outgoing(kind)
+    if (!isFile(file) || file.voice.length > 0) continue
+    if (keeping.state().home.refusedFiles.includes(file.name)) continue
+    const answer = await send(
+      "PUT",
+      `/jobs/files/${encodeURIComponent(file.name)}`,
+      file.json
+    )
+    if (answer.status === 401) return { kind: "forgotten" }
+    if (stoppedOnHome(answer)) return unexpectedAnswer("a file", 409)
+    if (answer.status === 409 || answer.status === 422) {
+      keeping.fileRefused(file.name)
+      // The name only, never the file: it is the owner's decisions.
+      reportFailure({
+        port: "home server (files)",
+        error: {
+          ...toIntentError(null),
+          summary: `Home didn’t take ${file.name}; it stays on the share sheet.`,
+        },
+      })
+      continue
+    }
+    if (answer.status !== 200) return unexpectedAnswer("a file", answer.status)
+    keeping.filed(kind, file)
+  }
+  return null
+}
+
 async function exchange(
   keeping: JobsRecordPort,
   send: HomeCall,
@@ -166,6 +217,8 @@ async function exchange(
     const read = await readRecord(keeping, send)
     if (read !== null) return read
   }
+  const filed = await fileOutgoing(keeping, send)
+  if (filed !== null) return filed
   return (await readDigests(keeping, send)) ?? { kind: "synced" }
 }
 

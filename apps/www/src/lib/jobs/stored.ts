@@ -128,8 +128,10 @@ const StoredSchema = z.object({
       kept: z.boolean(),
       held: Ids,
       refused: z.array(z.object({ id: z.string(), why: z.string() })),
+      // A record kept before files went home has none.
+      refusedFiles: z.array(z.string()).default([]),
     })
-    .default({ kept: false, held: [], refused: [] }),
+    .default({ kept: false, held: [], refused: [], refusedFiles: [] }),
 })
 
 /**

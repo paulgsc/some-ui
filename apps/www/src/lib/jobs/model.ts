@@ -144,6 +144,11 @@ type JobsHome = {
   held: ReadonlyArray<string>
   /** The events home refused: kept here, and not sent again. */
   refused: ReadonlyArray<HomeRefusal>
+  /**
+   * The decisions and scouts files home refused, by name: left to the share
+   * sheet, and never filed with home again.
+   */
+  refusedFiles: ReadonlyArray<string>
 }
 
 export type JobsState = {
@@ -165,7 +170,7 @@ export const EMPTY: JobsState = {
   firstOpened: {},
   log: [],
   voice: [],
-  home: { kept: false, held: [], refused: [] },
+  home: { kept: false, held: [], refused: [], refusedFiles: [] },
 }
 
 type Stamp = { id: string; at: string }
@@ -195,6 +200,8 @@ export type JobsAction =
     }
   /** Home's copy, taken in by a phone whose own log is empty. */
   | { type: "restored"; events: ReadonlyArray<JobEvent> }
+  /** Home refused the file of this name (`./home`). */
+  | { type: "file-refused"; name: string }
 
 const DECIDED = new Set(["taken", "passed", "archived"])
 
@@ -423,6 +430,16 @@ export function step(state: JobsState, action: JobsAction): JobsState {
           ...state.home,
           held: [...state.home.held, ...held],
           refused: [...state.home.refused, ...refused],
+        },
+      }
+    }
+    case "file-refused": {
+      if (state.home.refusedFiles.includes(action.name)) return state
+      return {
+        ...state,
+        home: {
+          ...state.home,
+          refusedFiles: [...state.home.refusedFiles, action.name],
         },
       }
     }

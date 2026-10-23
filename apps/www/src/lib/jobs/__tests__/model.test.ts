@@ -236,6 +236,16 @@ describe("step", () => {
   })
 })
 
+describe("a file home refused", () => {
+  it("is kept by name, once", () => {
+    const refused = step(EMPTY, { type: "file-refused", name: "scouts-1.json" })
+    expect(refused.home.refusedFiles).toEqual(["scouts-1.json"])
+    expect(step(refused, { type: "file-refused", name: "scouts-1.json" })).toBe(
+      refused
+    )
+  })
+})
+
 describe("progressOf", () => {
   it("walks the five steps from the log", () => {
     let state = opened

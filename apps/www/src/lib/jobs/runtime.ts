@@ -260,6 +260,32 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
           at: ports.now().toISOString(),
         })
       },
+      outgoing: (kind) => fileFor(kind, ports.now()),
+      // Home holds it, so it is shared and has arrived, in one change: a
+      // record of one without the other would offer the file again.
+      filed(kind, file): boolean {
+        const shared = stamp()
+        return commit({
+          type: "record-all",
+          events: [
+            {
+              event: {
+                type: "shared",
+                kind,
+                day: ports.dayOf(new Date(shared.at)),
+                file: file.name,
+                through: file.through,
+                voice: [],
+              },
+              stamp: shared,
+            },
+            { event: { type: "arrived", shareId: shared.id }, stamp: stamp() },
+          ],
+        })
+      },
+      fileRefused(name): void {
+        commit({ type: "file-refused", name })
+      },
     },
     getSnapshot: () => snapshot,
     subscribe(listener): () => void {

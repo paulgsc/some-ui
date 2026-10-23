@@ -4,9 +4,11 @@ import { addFailureSink } from "@some-ui/intent-kit"
 import type { Digest } from "@some-ui/job-desk"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+import type { Outgoing } from "@/lib/jobs/files"
+import { decisionsFile } from "@/lib/jobs/files"
 import type { JobsRecordPort } from "@/lib/jobs/home"
 import { exchangeJobs } from "@/lib/jobs/home"
-import type { JobEvent, JobsState, PickRef } from "@/lib/jobs/model"
+import type { JobEvent, JobsState, PickRef, ShareKind } from "@/lib/jobs/model"
 import { DIGESTS_PER_RUN, EMPTY, homeOutbox, step } from "@/lib/jobs/model"
 
 import { digest, OPENED_AT } from "./fixture"
@@ -40,15 +42,56 @@ const withLog = [
   opened
 )
 
-/** A keeping over a state it updates as `step` would. */
-function keeping(initial: JobsState): JobsRecordPort & {
+/**
+ * A keeping over a state it updates as `step` would. `outgoing` builds the
+ * file a share would send; by default there is none.
+ */
+function keeping(
+  initial: JobsState,
+  outgoing: (state: JobsState, kind: ShareKind) => Outgoing = () => null
+): JobsRecordPort & {
   current: JobsState
   fetches: Array<ReadonlyArray<Digest>>
 } {
   const fetches: Array<ReadonlyArray<Digest>> = []
+  let n = 0
+  const stamp = (): { id: string; at: string } => ({
+    id: `s${(n += 1)}`,
+    at: "2026-10-20T20:00:00.000Z",
+  })
   const k = {
     current: initial,
     fetches,
+    outgoing: (kind: ShareKind): Outgoing => outgoing(k.current, kind),
+    filed: (
+      kind: ShareKind,
+      file: { name: string; through: number }
+    ): boolean => {
+      const shared = stamp()
+      const next = step(k.current, {
+        type: "record-all",
+        events: [
+          {
+            event: {
+              type: "shared",
+              kind,
+              day: "2026-10-20",
+              file: file.name,
+              through: file.through,
+              voice: [],
+            },
+            stamp: shared,
+          },
+          { event: { type: "arrived", shareId: shared.id }, stamp: stamp() },
+        ],
+      })
+      const changed = next !== k.current
+      k.current = next
+      return changed
+    },
+    fileRefused: (name: string): void => {
+      k.current = step(k.current, { type: "file-refused", name })
+    },
     fetched: (digests: ReadonlyArray<Digest>): void => {
       fetches.push(digests)
       k.current = step(k.current, { type: "fetched", digests, at: OPENED_AT })
@@ -140,6 +183,7 @@ describe("exchangeJobs", () => {
         { id: "e1", why: "home holds a different event under this id" },
         { id: "e2", why: "fingerprint has three parts" },
       ],
+      refusedFiles: [],
     })
     expect(homeOutbox(k.current)).toEqual([])
   })
@@ -329,6 +373,108 @@ describe("exchangeJobs, the digests home holds", () => {
       expect(k.fetches).toEqual([])
       expect(k.current.digests).toEqual(withLog.digests)
     }
+  })
+})
+
+/** Today's decisions file, as the runtime builds one. */
+const decisionsToday = (state: JobsState, kind: ShareKind): Outgoing =>
+  kind === "decisions"
+    ? decisionsFile(state, "2026-10-20", "2026-10-20T20:00:00.000Z")
+    : null
+
+/** A home that holds every file it is sent, or answers `filing` for one. */
+const filing =
+  (status = 200) =>
+  (call: Call): { status: number; body: unknown } => {
+    if (call.path.startsWith("/jobs/files/")) {
+      return status === 200
+        ? { status, body: { change: "added" } }
+        : { status, body: { error: { code: "conflict" } } }
+    }
+    return holding()(call)
+  }
+
+describe("exchangeJobs, filing decisions and scouts with home", () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it("files a voice-free decisions file after the events, and records it shared and arrived", async () => {
+    const k = keeping(withLog, decisionsToday)
+    const h = home(filing())
+    expect(await exchangeJobs(k, h.send)).toEqual({ kind: "synced" })
+    expect(h.calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      "PUT /jobs/events/e1",
+      "PUT /jobs/events/e2",
+      "PUT /jobs/events/e3",
+      "PUT /jobs/files/decisions-2026-10-20.json",
+      "GET /jobs/digests?after=2026-10-18",
+    ])
+    const file = decisionsToday(withLog, "decisions")
+    expect(h.calls[3]?.body).toBe(
+      file !== null && "json" in file ? file.json : ""
+    )
+    const [shared, arrived] = k.current.log.slice(-2)
+    expect(shared.type).toBe("shared")
+    expect(arrived).toMatchObject({ type: "arrived", shareId: shared.id })
+    expect(decisionsToday(k.current, "decisions")).toBeNull()
+  })
+
+  it("leaves a file that names a voice note for the share sheet", async () => {
+    const k = keeping(withLog, (_, kind) =>
+      kind === "decisions"
+        ? {
+            kind,
+            name: "decisions-2026-10-20.json",
+            json: "{}",
+            voice: [{ id: "n1", name: "decisions-2026-10-20_voice-1.webm" }],
+            through: 3,
+          }
+        : null
+    )
+    const h = home(filing())
+    await exchangeJobs(k, h.send)
+    expect(h.calls.some((c) => c.path.startsWith("/jobs/files/"))).toBe(false)
+    expect(k.current.log.some((e) => e.type === "shared")).toBe(false)
+  })
+
+  it("keeps a refused file by name, reports only its name, and never files it again", async () => {
+    vi.spyOn(globalThis.console, "error").mockImplementation(() => undefined)
+    const failures: Array<ForeignFailure> = []
+    const stop = addFailureSink((failure) => failures.push(failure))
+    const k = keeping(withLog, decisionsToday)
+    for (const status of [409, 422]) {
+      k.current = {
+        ...k.current,
+        home: { ...k.current.home, refusedFiles: [] },
+      }
+      const h = home(filing(status))
+      expect(await exchangeJobs(k, h.send)).toEqual({ kind: "synced" })
+      expect(k.current.home.refusedFiles).toEqual(["decisions-2026-10-20.json"])
+      const again = home(filing(status))
+      await exchangeJobs(k, again.send)
+      expect(again.calls.some((c) => c.path.startsWith("/jobs/files/"))).toBe(
+        false
+      )
+    }
+    stop()
+    expect(k.current.log.some((e) => e.type === "shared")).toBe(false)
+    expect(failures.map((f) => f.error.summary)).toEqual([
+      "Home didn’t take decisions-2026-10-20.json; it stays on the share sheet.",
+      "Home didn’t take decisions-2026-10-20.json; it stays on the share sheet.",
+    ])
+  })
+
+  it("ends forgotten on a 401 while filing, keeping what the events step learned", async () => {
+    const k = keeping(withLog, decisionsToday)
+    const h = home((call) =>
+      call.path.startsWith("/jobs/files/")
+        ? { status: 401, body: {} }
+        : holding()(call)
+    )
+    expect(await exchangeJobs(k, h.send)).toEqual({ kind: "forgotten" })
+    expect(k.current.home.held).toEqual(["e1", "e2", "e3"])
+    expect(k.current.log.some((e) => e.type === "shared")).toBe(false)
   })
 })
 

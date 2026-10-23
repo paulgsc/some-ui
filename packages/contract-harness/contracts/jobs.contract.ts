@@ -72,4 +72,20 @@ export const contracts = [
     },
     expect: { status: 422 },
   }),
+
+  defineContract({
+    id: "jobs.file_refused",
+    module: "jobs",
+    session: true,
+    method: "PUT",
+    path: "/jobs/files/:name",
+    summary:
+      "a body that is not a decisions or scouts file is a 422, and nothing is filed",
+    mutates: true,
+    request: {
+      path: { name: "decisions-2026-10-23.json" },
+      body: "not a file",
+    },
+    expect: { status: 422 },
+  }),
 ]

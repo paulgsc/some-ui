@@ -30,22 +30,22 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 
 ## What leaves the device
 
-|                                     | Learning on the device                       | On the account, reporting off                                                                                                                                                                     | On the account, reporting on               |
-| ----------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| Sessions, settings, profile         | `localStorage`, never sent                   | sessions go to `file_host`                                                                                                                                                                        | the same                                   |
-| Session probe (`GET /auth/session`) | never made                                   | at boot, only because the account was chosen                                                                                                                                                      | the same                                   |
-| Passkey ceremonies                  | only when the person starts one              | the same                                                                                                                                                                                          | the same                                   |
-| Lesson, round and vocab reads       | made, **without credentials**                | made, without credentials                                                                                                                                                                         | the same                                   |
-| This device's sessions              | stay here                                    | copied only by "Copy to my account", per account, after a confirmation; the phone's, to its paired home, by "Send to home", which then frees the finished ones home confirms it holds (LA8)       | the same                                   |
-| `/signals`, `/presence/lease`       | never                                        | never                                                                                                                                                                                             | sent                                       |
-| Push subscription                   | never                                        | never                                                                                                                                                                                             | the account's, on the person's own taps    |
-| Reflections                         | on the device (at most 20), never sent       | never sent (LA7)                                                                                                                                                                                  | never sent (LA7)                           |
-| Shelf                               | never                                        | the account's, on the person's own taps                                                                                                                                                           | the same                                   |
-| aph (the phone's)                   | on the phone, never sent                     | once its person keeps it on home, on the paired home, synced while aph is open; the phone keeps only what home has not confirmed; stopped from aph's mark, which brings it back (LA9)             | the same                                   |
-| Jobs record (the phone's)           | on the phone, never sent                     | once its person keeps it on home, a copy on the paired home, synced while the Jobs wing is open; the phone keeps its whole log; stopped from the wing's mark or Settings (LA10)                   | the same                                   |
-| Practice (the phone's)              | on the phone, never sent                     | once its person ticks "Keep sending" in the send's confirm, its finished sessions and kept items sent while Practice is open; nothing let go on its own; stopped from its mark or Settings (LA11) | the same                                   |
-| Speech                              | the browser's own voice                      | the server's speech service                                                                                                                                                                       | the same                                   |
-| Reminders                           | the client's own policy, while a tab is open | the client's own policy, while a tab is open                                                                                                                                                      | the server's push, with the browser closed |
+|                                     | Learning on the device                       | On the account, reporting off                                                                                                                                                                                                                                                                      | On the account, reporting on               |
+| ----------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| Sessions, settings, profile         | `localStorage`, never sent                   | sessions go to `file_host`                                                                                                                                                                                                                                                                         | the same                                   |
+| Session probe (`GET /auth/session`) | never made                                   | at boot, only because the account was chosen                                                                                                                                                                                                                                                       | the same                                   |
+| Passkey ceremonies                  | only when the person starts one              | the same                                                                                                                                                                                                                                                                                           | the same                                   |
+| Lesson, round and vocab reads       | made, **without credentials**                | made, without credentials                                                                                                                                                                                                                                                                          | the same                                   |
+| This device's sessions              | stay here                                    | copied only by "Copy to my account", per account, after a confirmation; the phone's, to its paired home, by "Send to home", which then frees the finished ones home confirms it holds (LA8)                                                                                                        | the same                                   |
+| `/signals`, `/presence/lease`       | never                                        | never                                                                                                                                                                                                                                                                                              | sent                                       |
+| Push subscription                   | never                                        | never                                                                                                                                                                                                                                                                                              | the account's, on the person's own taps    |
+| Reflections                         | on the device (at most 20), never sent       | never sent (LA7)                                                                                                                                                                                                                                                                                   | never sent (LA7)                           |
+| Shelf                               | never                                        | the account's, on the person's own taps                                                                                                                                                                                                                                                            | the same                                   |
+| aph (the phone's)                   | on the phone, never sent                     | once its person keeps it on home, on the paired home, synced while aph is open; the phone keeps only what home has not confirmed; stopped from aph's mark, which brings it back (LA9)                                                                                                              | the same                                   |
+| Jobs record (the phone's)           | on the phone, never sent                     | once its person keeps it on home, a copy on the paired home, synced while the Jobs wing is open; its decisions and scouts files without voice, filed with home, which hands them to the Jobs mailbox on Cloudflare; the phone keeps its whole log; stopped from the wing's mark or Settings (LA10) | the same                                   |
+| Practice (the phone's)              | on the phone, never sent                     | once its person ticks "Keep sending" in the send's confirm, its finished sessions and kept items sent while Practice is open; nothing let go on its own; stopped from its mark or Settings (LA11)                                                                                                  | the same                                   |
+| Speech                              | the browser's own voice                      | the server's speech service                                                                                                                                                                                                                                                                        | the same                                   |
+| Reminders                           | the client's own policy, while a tab is open | the client's own policy, while a tab is open                                                                                                                                                                                                                                                       | the server's push, with the browser closed |
 
 A returning account user whose server cannot be reached at boot (a timeout, a
 5xx, a refused connection) stays on the account, and its calls fail where they
@@ -629,16 +629,25 @@ phone holds, and never moves the day Today shows back to an older one; a fetch
 changes the phone's digests, the day shown and when each came, and not the
 log or what home holds (`lib/jobs/__tests__/home.test.ts` and
 `model.test.ts`). The phone's revision does not move when a digest is taken
-in. What no test can say is when a run is asked for:
+in.
+
+The exchange also files the phone's decisions and scouts with home, which
+hands them to the Jobs mailbox for the morning run: `PUT /jobs/files/:name`,
+one per kind with something new. A file that names a voice note is never
+filed, and stays for the share sheet; a file home refuses (409 or 422) stays
+for the share sheet too, kept by name in `home.refusedFiles` and never filed
+again; only home's 200 records the file as shared and arrived, so it is not
+offered again (`lib/jobs/__tests__/home.test.ts`, `runtime.test.ts` and
+`model.test.ts`). What no test can say is when a run is asked for:
 
 - _Claim:_ LA9's claim holds for the Jobs record's lane
   (`lib/home-link/jobs.ts`): its mark shows in the header while the Jobs
   wing shows (Today, Scout and Record alike), its revision moves with each
   event added on this phone or home's copy taken in by a phone whose log was
   empty, and its exchange is `exchangeJobs` over the record. Its run also
-  reads home's digests (above), at no moment but a run's. The record's
-  own switch from before the consent log (`home.kept`) is read only to
-  enter that choice once and, in Settings' ledger, to say the record's
+  reads home's digests and files the phone's decisions and scouts with home
+  (above), at no moment but a run's. The record's own switch from before
+  the consent log (`home.kept`) is read only to enter that choice once and, in Settings' ledger, to say the record's
   choice is not entered yet; nothing sets it.
 - _Falsified by:_ a hunk LA9's falsifier names for the shared files; a hunk
   to `lib/home-link/jobs.ts` that makes the lane's `revision` anything but
@@ -647,7 +656,11 @@ in. What no test can say is when a run is asked for:
   hunk to `lib/jobs` that reads home's digests anywhere but in
   `exchangeJobs`, or that deletes, renames or moves the digests read
   (`readDigests` in `lib/jobs/home.ts`) so `exchangeJobs` no longer makes it
-  in every run that gets that far; a
+  in every run that gets that far; a hunk to `lib/jobs` that sends a
+  decisions or scouts file to home anywhere but in `exchangeJobs`, or that
+  deletes, renames or moves the filing step (`fileOutgoing` in
+  `lib/jobs/home.ts`) so `exchangeJobs` no longer makes it in every run
+  that gets that far; a
   hunk to `components/settings/device-sharing-ledger.tsx` that reads
   `keptBefore` for anything but its row's wording; or a hunk to `lib/jobs`
   that sets `home.kept`.
