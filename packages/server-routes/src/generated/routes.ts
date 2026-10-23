@@ -30,6 +30,7 @@ export type ServerRoute =
   | "/api/v1/jobs"
   | "/api/v1/jobs/digests"
   | "/api/v1/jobs/events/:id"
+  | "/api/v1/jobs/files/:name"
   | "/api/v1/leetype/operator/rounds"
   | "/api/v1/leetype/operator/rounds/:id"
   | "/api/v1/leetype/operator/rounds/:id/restore"
