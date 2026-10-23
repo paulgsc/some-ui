@@ -158,7 +158,8 @@ how each was checked when this workspace landed.
   test in `store.test.ts` scans the comment-stripped `src/*.ts` and every migration for those
   statements and for a dropped trigger; it cannot see SQL built at run time or typed into
   Cloudflare's dashboard, and a type cannot see SQL at all. Closing it in the database would take a `BEFORE INSERT`
-  guard and a `put` that reads before it writes, which changes the table's design. The owner
+  guard on every held name and a `put` that reads before it writes, which changes the table's
+  design (`item_keeps_an_archived_name` guards archived names only). The owner
   chose to leave the gap (2026-10-21) rather than add that guard, so a hunk that adds a
   `REPLACE` is what a reviewer is watching for, and it is a violation if one lands.
 - _Checked at landing:_ the only SQL in `src/` is the one `INSERT … DO NOTHING` and four
@@ -166,7 +167,7 @@ how each was checked when this workspace landed.
   _Checked at the 2026-10-23 amendment (archiving, the owner's decision):_ `store.ts` has two
   `DELETE`s (the archive's on `item`, and an answered ask on `wanted`), no `UPDATE` or
   `REPLACE`, one `INSERT INTO archived` (`ARCHIVE_SQL`), and every `INSERT` is `DO NOTHING`
-  or a plain insert into `restored`; each of the six triggers has a case in
+  or a plain insert into `restored`; each of the seven triggers has a case in
   `store.test.ts` that fails without it.
 
 **MB2: Roles.**

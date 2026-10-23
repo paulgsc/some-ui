@@ -387,6 +387,11 @@ describe.each([
       await store.restore("brief", "b1.json", bytes, "sha-of-1", LATER)
     ).toEqual({ change: "unchanged", seq: 3 })
     expect((await store.get("brief", "b1.json"))?.liveSince).toBe(RESTORED_AT)
+    // A put names the live copy's seq, not the archived one's.
+    expect(await store.put("brief", "b1.json", item("1"))).toEqual({
+      change: "unchanged",
+      seq: 3,
+    })
 
     // Counted from its return, it is too young to go home again.
     expect(
