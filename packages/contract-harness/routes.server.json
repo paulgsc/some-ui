@@ -186,6 +186,13 @@
       "module": "jobs"
     },
     {
+      "method": "GET",
+      "path": "/jobs/digests",
+      "full_path": "/api/v1/jobs/digests",
+      "versioned": true,
+      "module": "jobs"
+    },
+    {
       "method": "PUT",
       "path": "/jobs/events/:id",
       "full_path": "/api/v1/jobs/events/:id",
