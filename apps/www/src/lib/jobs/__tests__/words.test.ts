@@ -12,7 +12,7 @@ describe("Jobs' words about where the picks come from", () => {
     const said = Object.values(words).map((word) =>
       typeof word === "function" ? word("2026-10-18") : word
     )
-    expect(said).toHaveLength(4)
+    expect(said).toHaveLength(5)
     expect(said.filter((text) => MACHINERY.test(text))).toEqual([])
   })
 })

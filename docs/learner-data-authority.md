@@ -645,7 +645,9 @@ in. What no test can say is when a run is asked for:
   the log's length, its `keptBefore` anything but `home.kept`, or its
   `exchange` anything but `exchangeJobs` over the runtime's `keeping`; a
   hunk to `lib/jobs` that reads home's digests anywhere but in
-  `exchangeJobs`; a
+  `exchangeJobs`, or that deletes, renames or moves the digests read
+  (`readDigests` in `lib/jobs/home.ts`) so `exchangeJobs` no longer makes it
+  in every run that gets that far; a
   hunk to `components/settings/device-sharing-ledger.tsx` that reads
   `keptBefore` for anything but its row's wording; or a hunk to `lib/jobs`
   that sets `home.kept`.

@@ -63,6 +63,26 @@ describe("Today, as the picks arrive", () => {
     expect(screen.queryByText(PICKER)).toBeNull()
   })
 
+  it("does not say today's are missing when an older file is opened over them", async () => {
+    await showToday("2026-10-22T14:00:00Z", null)
+    const { phoneJobs } = await import("@/lib/jobs")
+    const { digest } = await import("@/lib/jobs/__tests__/fixture")
+    // No picks open on it, so the Queue links to nothing (no router here).
+    phoneJobs().keeping.fetched([{ ...digest("2026-10-22"), picks: [] }])
+    // jsdom's Blob reads no text; a file chosen in the picker does.
+    const json = JSON.stringify(digest("2026-10-18"))
+    class Chosen extends Blob {
+      override text(): Promise<string> {
+        return Promise.resolve(json)
+      }
+    }
+    phoneJobs().open(new Chosen([json]))
+    expect(
+      await screen.findByText(/Newer ones are on this phone too/)
+    ).toBeTruthy()
+    expect(screen.queryByText(/aren’t on this phone yet/)).toBeNull()
+  })
+
   it("says nothing of it for today's picks, by the Pacific day", async () => {
     // 23:59 on the 22nd in Los Angeles is already the 23rd in UTC.
     await showToday("2026-10-23T06:59:00Z", "2026-10-22")

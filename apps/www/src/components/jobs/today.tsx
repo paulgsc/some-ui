@@ -28,7 +28,12 @@ import {
   progressOf,
   undecidedOf,
 } from "@/lib/jobs/model"
-import { arriveOnTheirOwn, notToday, orOpenFile } from "@/lib/jobs/words"
+import {
+  arriveOnTheirOwn,
+  newerHeld,
+  notToday,
+  orOpenFile,
+} from "@/lib/jobs/words"
 import { Meter, resumeLabel, sectionHeading } from "@/components/job-reading"
 
 import { OpenDigest, Problem, useJobs } from "./parts"
@@ -332,7 +337,10 @@ export const JobsToday = (): JSX.Element => {
     )
   }
 
-  const earlier = digest.day < pacificDay(new Date())
+  const today = pacificDay(new Date())
+  const earlier = digest.day < today
+  // Opening an older file shows it even when a newer digest is held.
+  const newer = state.digests.some((d) => d.day > digest.day)
   const findings = digestFindings(digest)
   const tracks = TRACKS.map((t) => [t, TRACK_HEADINGS[t]] as const)
   return (
@@ -357,7 +365,9 @@ export const JobsToday = (): JSX.Element => {
         )}
         {earlier && (
           <p className="text-sm">
-            {notToday(digest.day)} {arriveOnTheirOwn}
+            {newer
+              ? newerHeld(digest.day)
+              : `${notToday(digest.day)} ${arriveOnTheirOwn}`}
           </p>
         )}
         <OpenDigest label={earlier ? orOpenFile : undefined} />
