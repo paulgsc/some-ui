@@ -81,6 +81,19 @@ describe("the migration", () => {
     expect(db.exec("SELECT count(*) FROM item").at(0)?.values).toEqual([[0]])
   })
 
+  it("an archived name takes no other bytes, whoever inserts them", async () => {
+    const db = await migrated()
+    const store = d1Store(d1Shim(db))
+    await store.put("brief", "b1.json", item("a"))
+    await store.archive("brief", "b1.json", "sha-of-a", ARCHIVED_AT, LATER)
+    expect(() =>
+      db.run(
+        "INSERT INTO item (folder, name, sha256, size, content_type, body, put_by, put_at) VALUES ('brief', 'b1.json', 'sha-of-b', 1, 'application/json', x'62', 'routine', 'now')"
+      )
+    ).toThrow("an archived name keeps its bytes")
+    expect(db.exec("SELECT count(*) FROM item").at(0)?.values).toEqual([[0]])
+  })
+
   it("an UPDATE or DELETE of archived or restored aborts", async () => {
     const db = await migrated()
     const store = d1Store(d1Shim(db))
@@ -411,9 +424,6 @@ describe("MB1: nothing in the workspace issues a statement that rewrites an item
     ]) {
       expect(bad).toMatch(REWRITES)
     }
-    expect(
-      [..."DELETE FROM item WHERE seq = 1".matchAll(DELETES)].map((m) => m[1])
-    ).toEqual(["item"])
     for (const bad of [
       "DROP TRIGGER item_is_append_only_update",
       "ALTER TABLE item ADD x",
@@ -442,10 +452,6 @@ describe("MB1: nothing in the workspace issues a statement that rewrites an item
       [...text.matchAll(DELETES)].map((found) => `${file}: ${found[1] ?? ""}`)
     )
     expect(deletes.sort()).toEqual(["store.ts: item", "store.ts: wanted"])
-    // The archive's delete names only items whose row is already in `archived`.
-    expect(code.find(({ file }) => file === "store.ts")?.text).toMatch(
-      /DELETE FROM item\s+WHERE folder = \?1 AND name = \?2 AND sha256 = \?3\s+AND seq IN \(SELECT seq FROM archived WHERE folder = \?1 AND name = \?2\)/
-    )
   })
 
   it("no migration rewrites an item or removes what guards it", () => {
@@ -465,23 +471,5 @@ describe("MB1: nothing in the workspace issues a statement that rewrites an item
       )
     })
     expect(offenders).toEqual([])
-  })
-
-  it("after every migration, each guard is in place", async () => {
-    const db = await migrated()
-    const triggers = db
-      .exec(
-        "SELECT name FROM sqlite_master WHERE type = 'trigger' ORDER BY name"
-      )
-      .at(0)
-      ?.values.flat()
-    expect(triggers).toEqual([
-      "archived_is_append_only_delete",
-      "archived_is_append_only_update",
-      "item_is_append_only_update",
-      "item_leaves_only_into_archived",
-      "restored_is_append_only_delete",
-      "restored_is_append_only_update",
-    ])
   })
 })

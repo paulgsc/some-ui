@@ -1,12 +1,9 @@
 /**
  * What the mailbox keeps, and the one adapter that keeps it in D1.
  *
- * MB1 (an item never changes, and leaves only into `archived`): the adapter's
- * writes to `item` are `INSERT ... ON CONFLICT(folder, name) DO NOTHING` and
- * the archive's `DELETE`, which the table's trigger aborts unless `archived`
- * already holds the item's row. Nothing updates an item. The triggers do not
- * stop `INSERT OR REPLACE`, so no code may issue one. Full text: README.md,
- * "Gray-area invariants".
+ * MB1: an item never changes, and leaves `item` only into `archived`; no code
+ * may issue `INSERT OR REPLACE`, which the triggers do not stop. Full text:
+ * README.md, "Gray-area invariants".
  */
 
 export type Folder = "brief" | "decisions" | "scout"
@@ -155,8 +152,10 @@ export type Db = {
   ): Promise<ReadonlyArray<{ results?: ReadonlyArray<Row> }>>
 }
 
+/** An archived name is held as surely as a live one, in the same statement. */
 const INSERT_SQL = `INSERT INTO item (folder, name, sha256, size, content_type, body, put_by, put_at)
-VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8
+WHERE NOT EXISTS (SELECT 1 FROM archived WHERE folder = ?1 AND name = ?2)
 ON CONFLICT (folder, name) DO NOTHING
 RETURNING seq`
 
@@ -228,36 +227,34 @@ function shapeError(): Error {
   return new Error("a row is not the shape the mailbox wrote")
 }
 
-function metaOf(row: Row): ItemMeta {
-  const { seq, name, size, sha256, contentType, putAt, liveSince } = row
+type FileMeta = Omit<ItemMeta, "liveSince">
+
+/** The columns an item row and an archived row share, checked. */
+function fileMetaOf(row: Row): FileMeta {
+  const { seq, name, size, sha256, contentType, putAt } = row
   if (
     typeof seq !== "number" ||
     typeof name !== "string" ||
     typeof size !== "number" ||
     typeof sha256 !== "string" ||
     typeof contentType !== "string" ||
-    typeof putAt !== "string" ||
-    typeof liveSince !== "string"
+    typeof putAt !== "string"
   ) {
     throw shapeError()
   }
-  return { seq, name, size, sha256, contentType, putAt, liveSince }
+  return { seq, name, size, sha256, contentType, putAt }
+}
+
+function metaOf(row: Row): ItemMeta {
+  const { liveSince } = row
+  if (typeof liveSince !== "string") throw shapeError()
+  return { ...fileMetaOf(row), liveSince }
 }
 
 function archivedMetaOf(row: Row): ArchivedMeta {
-  const { seq, name, size, sha256, contentType, putAt, archivedAt } = row
-  if (
-    typeof seq !== "number" ||
-    typeof name !== "string" ||
-    typeof size !== "number" ||
-    typeof sha256 !== "string" ||
-    typeof contentType !== "string" ||
-    typeof putAt !== "string" ||
-    typeof archivedAt !== "string"
-  ) {
-    throw shapeError()
-  }
-  return { seq, name, size, sha256, contentType, putAt, archivedAt }
+  const { archivedAt } = row
+  if (typeof archivedAt !== "string") throw shapeError()
+  return { ...fileMetaOf(row), archivedAt }
 }
 
 function wantedMetaOf(row: Row): WantedMeta {
@@ -303,6 +300,18 @@ export function d1Store(db: Db): Store {
       .bind(...values)
       .first()
 
+  const many = async <T>(
+    shape: (row: Row) => T,
+    sql: string,
+    ...values: ReadonlyArray<unknown>
+  ): Promise<ReadonlyArray<T>> => {
+    const { results } = await db
+      .prepare(sql)
+      .bind(...values)
+      .all()
+    return results.map(shape)
+  }
+
   const archivedOf = async (
     folder: Folder,
     name: string
@@ -312,13 +321,8 @@ export function d1Store(db: Db): Store {
   }
 
   return {
-    async list(folder, after, limit): Promise<ReadonlyArray<ItemMeta>> {
-      const { results } = await db
-        .prepare(LIST_SQL)
-        .bind(folder, after, limit)
-        .all()
-      return results.map(metaOf)
-    },
+    list: (folder, after, limit) =>
+      many(metaOf, LIST_SQL, folder, after, limit),
 
     async get(folder, name): Promise<StoredItem | null> {
       const row = await one(GET_SQL, folder, name)
@@ -327,15 +331,6 @@ export function d1Store(db: Db): Store {
     },
 
     async put(folder, name, item): Promise<PutResult> {
-      // An archived name is held as surely as a live one.
-      const archived = await archivedOf(folder, name)
-      if (archived !== null) {
-        const live = await one(HELD_SQL, folder, name)
-        const seq = live === null ? archived.seq : seqOf(live)
-        return archived.sha256 === item.sha256
-          ? { change: "unchanged", seq }
-          : { change: "conflict" }
-      }
       const inserted = await one(
         INSERT_SQL,
         folder,
@@ -348,12 +343,11 @@ export function d1Store(db: Db): Store {
         item.putAt
       )
       if (inserted !== null) return { change: "added", seq: seqOf(inserted) }
-      // DO NOTHING returned no row: the name is held.
-      const held = await one(HELD_SQL, folder, name)
-      if (held === null) {
-        // Unreachable: an item leaves only into `archived`, checked above.
-        throw new Error("a held item is not there")
-      }
+      // No row: the name is held, live or archived (and maybe both, put back).
+      const held =
+        (await one(HELD_SQL, folder, name)) ??
+        (await one(ARCHIVED_OF_SQL, folder, name))
+      if (held === null) throw new Error("a held item is not there")
       return held.sha256 === item.sha256
         ? { change: "unchanged", seq: seqOf(held) }
         : { change: "conflict" }
@@ -361,17 +355,8 @@ export function d1Store(db: Db): Store {
 
     archivedOf,
 
-    async listArchived(
-      folder,
-      after,
-      limit
-    ): Promise<ReadonlyArray<ArchivedMeta>> {
-      const { results } = await db
-        .prepare(LIST_ARCHIVED_SQL)
-        .bind(folder, after, limit)
-        .all()
-      return results.map(archivedMetaOf)
-    },
+    listArchived: (folder, after, limit) =>
+      many(archivedMetaOf, LIST_ARCHIVED_SQL, folder, after, limit),
 
     async archive(
       folder,
@@ -435,12 +420,7 @@ export function d1Store(db: Db): Store {
       return { change: "not_archived" }
     },
 
-    async listWanted(folder, limit): Promise<ReadonlyArray<WantedMeta>> {
-      const { results } = await db
-        .prepare(LIST_WANTED_SQL)
-        .bind(folder, limit)
-        .all()
-      return results.map(wantedMetaOf)
-    },
+    listWanted: (folder, limit) =>
+      many(wantedMetaOf, LIST_WANTED_SQL, folder, limit),
   }
 }

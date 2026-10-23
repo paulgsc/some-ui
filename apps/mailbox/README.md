@@ -125,25 +125,28 @@ how each was checked when this workspace landed.
 
 **MB1: An item never changes, and leaves `item` only into `archived`.**
 
-Amended 2026-10-23 for archiving (owner): until then an item was never removed at all.
-
-- _Claim:_ in `apps/mailbox`, no source file or migration updates or replaces an `item` row,
-  and the only statement that deletes one is the archive's, which names only items whose row
-  `archived` already holds. The adapter writes `item` with
-  `INSERT … ON CONFLICT (folder, name) DO NOTHING` and that `DELETE`; the table carries a
-  `BEFORE UPDATE` trigger that aborts, and a `BEFORE DELETE` trigger
-  (`item_leaves_only_into_archived`) that aborts unless `archived` holds a row with the item's
-  `seq`, folder, name and SHA-256. `archived` and `restored` carry triggers that abort every
-  `UPDATE` and `DELETE`. The only other delete is of an answered ask in `wanted`.
+- _Claim:_ in `apps/mailbox`, no source file or migration updates or replaces an `item` row;
+  the only statement that deletes one is the archive's, which names only items whose row
+  `archived` already holds with the SHA-256 the request named in `If-Match`; and an archived
+  name never takes other bytes. The adapter writes `item` with an `INSERT … ON CONFLICT
+(folder, name) DO NOTHING` (a put adds nothing under an archived name, in the same
+  statement) and that `DELETE`. `item` carries three triggers: `BEFORE UPDATE` aborts;
+  `item_leaves_only_into_archived` aborts a `DELETE` unless `archived` holds a row with the
+  item's `seq`, folder, name and SHA-256; `item_keeps_an_archived_name` aborts an `INSERT`
+  of other bytes under an archived name. `archived` and `restored` carry triggers that abort
+  every `UPDATE` and `DELETE`. The only other delete is of an answered ask in `wanted`, and
+  the only insert into `archived` is the archive's.
 - _Falsified by_ a hunk that drops, renames or weakens any of those triggers (a later
   migration that drops a trigger or one of the tables included); that deletes or moves the
   migrations that create them, or changes `migrations_dir` in `wrangler.jsonc` so they no
   longer apply; that adds an `UPDATE`, `INSERT OR REPLACE`, `REPLACE INTO` or
-  `ON CONFLICT … DO UPDATE` against `item`, `archived` or `restored`, or a `DELETE` other
-  than the two in `store.ts`, anywhere in `src/` or `migrations/`; that changes `put` in
-  `store.ts` away from `DO NOTHING`, or drops the archive `DELETE`'s
-  `seq IN (SELECT seq FROM archived …)` condition or runs it outside the batch that writes
-  the `archived` row; or that deletes or loosens the trigger cases or the scan in
+  `ON CONFLICT … DO UPDATE` against `item`, `archived` or `restored`, a `DELETE` other than
+  the two in `store.ts`, or an `INSERT INTO archived` other than `ARCHIVE_SQL`, anywhere in
+  `src/` or `migrations/`; that changes `put`'s `INSERT_SQL` away from `DO NOTHING` or drops
+  its `NOT EXISTS (… archived …)` condition; that drops the `sha256 = ?3` condition from
+  `ARCHIVE_SQL` or `DROP_BYTES_SQL`, drops the latter's `seq IN (SELECT seq FROM archived …)`,
+  or runs the two outside one batch; that lets `archive` in `core.ts` pass anything but the
+  `If-Match` hash as that SHA-256; or that deletes or loosens the trigger cases or the scan in
   `__tests__/store.test.ts`.
 - _Scope:_ `apps/mailbox`.
 - _Why not enforced:_ the triggers and `store.test.ts` enforce `UPDATE` and `DELETE` (each case
@@ -160,10 +163,11 @@ Amended 2026-10-23 for archiving (owner): until then an item was never removed a
   `REPLACE` is what a reviewer is watching for, and it is a violation if one lands.
 - _Checked at landing:_ the only SQL in `src/` is the one `INSERT … DO NOTHING` and four
   `SELECT`s in `store.ts`; the words UPDATE, DELETE and REPLACE appear there only in comments.
-  _Checked at the 2026-10-23 amendment:_ `store.ts` has two `DELETE`s (the archive's on
-  `item`, and an answered ask on `wanted`), no `UPDATE` or `REPLACE`, and every `INSERT` is
-  `DO NOTHING` or a plain insert into `restored`; the test that lists every trigger after
-  all migrations passes.
+  _Checked at the 2026-10-23 amendment (archiving, the owner's decision):_ `store.ts` has two
+  `DELETE`s (the archive's on `item`, and an answered ask on `wanted`), no `UPDATE` or
+  `REPLACE`, one `INSERT INTO archived` (`ARCHIVE_SQL`), and every `INSERT` is `DO NOTHING`
+  or a plain insert into `restored`; each of the six triggers has a case in
+  `store.test.ts` that fails without it.
 
 **MB2: Roles.**
 

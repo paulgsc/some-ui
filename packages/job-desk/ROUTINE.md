@@ -130,7 +130,9 @@ as above.
 The listings show live files only. A file that has been in the mailbox for
 months moves home (it is archived), and reading it answers `410`.
 `GET $JOBS_MAILBOX_URL/v1/<folder>/archived?after=0&limit=50` lists them, paged
-like the items. If this run needs one that Drive doesn't have, ask for it
+like the items; a file archived, put back and archived again is listed once
+each time, under one name. A name there that no digest names in `read` is new,
+as for the items. If this run needs one that Drive doesn't have, ask for it
 once, with no body:
 
 ```sh
@@ -138,9 +140,10 @@ curl -sS --max-time 30 -X PUT -H "Authorization: Bearer $JOBS_MAILBOX_TOKEN" \
   -w '\n%{http_code}\n' "$JOBS_MAILBOX_URL/v1/<folder>/wanted/<name>"
 ```
 
-`202` or `200` means home will put it back within about 15 minutes. Don't wait
-for it: carry on without it, and name it in the summary so the next run takes
-it in.
+`{"change":"live"}` means it is back already: fetch it from `items/<name>`
+as above. `{"change":"asked"}` or `{"change":"unchanged"}` means home will put
+it back within about 15 minutes. Don't wait for it: carry on without it, and
+name it in the summary so the next run takes it in.
 
 For each new file:
 

@@ -1,9 +1,4 @@
--- Archiving (MB1). The mailbox is a meeting point, not the record: home keeps
--- the record. An item old enough to archive moves home (the `archive` role
--- reads it, home stores it, then asks the mailbox to archive it), and the
--- mailbox keeps a row about it in `archived` and drops its bytes. When the
--- routine wants an archived item again it asks (`wanted`), and home puts the
--- same bytes back (`restored` says when).
+-- Archiving: README.md, "Archiving: home keeps the record", and MB1.
 
 -- One row per item archived, keyed by the seq it had while it was live. A
 -- restored item gets a new seq, so archiving it again adds a new row. Never
@@ -56,3 +51,12 @@ CREATE TRIGGER item_leaves_only_into_archived BEFORE DELETE ON item
       AND archived.name = OLD.name AND archived.sha256 = OLD.sha256
   )
   BEGIN SELECT RAISE(ABORT, 'an item leaves only into archived'); END;
+
+-- An archived name keeps its bytes: only the same ones go back in.
+CREATE TRIGGER item_keeps_an_archived_name BEFORE INSERT ON item
+  WHEN EXISTS (
+    SELECT 1 FROM archived
+    WHERE archived.folder = NEW.folder AND archived.name = NEW.name
+      AND archived.sha256 <> NEW.sha256
+  )
+  BEGIN SELECT RAISE(ABORT, 'an archived name keeps its bytes'); END;

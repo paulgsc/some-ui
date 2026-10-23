@@ -78,11 +78,7 @@ type Grant = {
 
 const ALL: ReadonlyArray<Folder> = ["brief", "decisions", "scout"]
 
-/**
- * MB2. Another role (the phone's, say) is the owner's call, not a code
- * change. `archive` is home's second token, held apart from `home` so the
- * one home uses every pass cannot drop a byte (owner, 2026-10-23).
- */
+/** MB2. Another role (the phone's, say) is the owner's call, not a code change. */
 const ROLES: ReadonlyArray<Grant> = [
   {
     role: "routine",

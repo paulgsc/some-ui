@@ -641,6 +641,10 @@ describe("routes", () => {
 describe("archiving", () => {
   const DAY = 86_400_000
   const DIGEST_SHA = createHash("sha256").update(DIGEST).digest("hex")
+  /** When `at(ARCHIVE_MIN_AGE_DAYS)` sets the clock. */
+  const OLD_ENOUGH = new Date(
+    NOW.getTime() + ARCHIVE_MIN_AGE_DAYS * DAY
+  ).toISOString()
 
   /** A mailbox holding today's digest, and a clock the test moves. */
   async function held(): Promise<{ d: Deps; at: (days: number) => void }> {
@@ -677,10 +681,6 @@ describe("archiving", () => {
         (await send(d, "GET", `/v1/${folder}/wanted`, { token: ARCHIVE }))
           .status
       ).toBe(200)
-      expect(
-        (await send(d, "GET", `/v1/${folder}/archived`, { token: ARCHIVE }))
-          .status
-      ).toBe(403)
     }
     // A put of a name never archived adds nothing.
     expect(
@@ -769,9 +769,7 @@ describe("archiving", () => {
     const { d, at } = await held()
     at(ARCHIVE_MIN_AGE_DAYS)
     await archive(d)
-    const archivedAt = new Date(
-      NOW.getTime() + ARCHIVE_MIN_AGE_DAYS * DAY
-    ).toISOString()
+    const archivedAt = OLD_ENOUGH
 
     const gone = await send(d, "GET", `/v1/brief/items/${DIGEST_NAME}`)
     expect([gone.status, await json(gone)]).toEqual([
@@ -823,9 +821,7 @@ describe("archiving", () => {
     await archive(d)
     expect(await answered(await ask())).toEqual([202, { change: "asked" }])
     expect(await answered(await ask())).toEqual([200, { change: "unchanged" }])
-    const askedAt = new Date(
-      NOW.getTime() + ARCHIVE_MIN_AGE_DAYS * DAY
-    ).toISOString()
+    const askedAt = OLD_ENOUGH
     expect(
       await json(await send(d, "GET", "/v1/brief/wanted", { token: ARCHIVE }))
     ).toEqual({ items: [{ name: DIGEST_NAME, askedAt }] })
