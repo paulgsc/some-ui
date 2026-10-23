@@ -9,6 +9,7 @@ type Env = {
   DB: D1Database
   ROUTINE_TOKEN?: string
   HOME_TOKEN?: string
+  ARCHIVE_TOKEN?: string
 }
 
 /** The message only: never the request, its headers or a body (MB3). */
@@ -24,7 +25,11 @@ function report(error: unknown): void {
 export default {
   fetch(request, env): Promise<Response> {
     return handle(request, {
-      tokens: { routine: env.ROUTINE_TOKEN, home: env.HOME_TOKEN },
+      tokens: {
+        routine: env.ROUTINE_TOKEN,
+        home: env.HOME_TOKEN,
+        archive: env.ARCHIVE_TOKEN,
+      },
       store: d1Store(env.DB),
       now: () => new Date(),
       report,

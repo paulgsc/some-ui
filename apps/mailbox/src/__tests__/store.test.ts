@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
-import type { NewItem, Store } from "@mailbox/store"
+import type { ArchiveResult, NewItem, Store } from "@mailbox/store"
 import { d1Store } from "@mailbox/store"
 import type { Database } from "sql.js"
 import { describe, expect, it } from "vitest"
@@ -25,6 +25,11 @@ async function migrated(): Promise<Database> {
 }
 
 const PUT_AT = "2026-10-21T14:52:00.000Z"
+const EARLIER = "2026-10-01T00:00:00.000Z"
+const ARCHIVED_AT = "2027-01-20T00:00:00.000Z"
+const ASKED_AT = "2027-02-01T00:00:00.000Z"
+const RESTORED_AT = "2027-02-01T00:15:00.000Z"
+const LATER = "2027-06-01T00:00:00.000Z"
 
 function item(text: string, overrides: Partial<NewItem> = {}): NewItem {
   const bytes = new TextEncoder().encode(text)
@@ -54,14 +59,67 @@ describe("the migration", () => {
     )
   })
 
-  it("a DELETE of an item aborts", async () => {
+  it("a DELETE of an item aborts unless archived holds its row", async () => {
     const db = await migrated()
     await d1Store(d1Shim(db)).put("brief", "digest-2026-10-21.json", item("a"))
-    expect(() => db.run("DELETE FROM item")).toThrow("item is append-only")
-    expect(() => db.run("DELETE FROM item WHERE seq = 1")).toThrow(
-      "item is append-only"
-    )
+    const leaves = "an item leaves only into archived"
+    expect(() => db.run("DELETE FROM item")).toThrow(leaves)
+    expect(() => db.run("DELETE FROM item WHERE seq = 1")).toThrow(leaves)
+    // A row that differs from the item in any column it is matched on is not it.
+    const archivedRow = (seq: number, name: string, sha: string): void => {
+      db.run(
+        "INSERT INTO archived (seq, folder, name, sha256, size, content_type, put_by, put_at, archived_at) VALUES (?, 'brief', ?, ?, 1, 'application/json', 'routine', 'then', 'now')",
+        [seq, name, sha]
+      )
+    }
+    archivedRow(9, "digest-2026-10-21.json", "sha-of-a")
+    archivedRow(10, "other.json", "sha-of-a")
+    expect(() => db.run("DELETE FROM item WHERE seq = 1")).toThrow(leaves)
     expect(db.exec("SELECT count(*) FROM item").at(0)?.values).toEqual([[1]])
+    archivedRow(1, "digest-2026-10-21.json", "sha-of-a")
+    expect(() => db.run("DELETE FROM item WHERE seq = 1")).not.toThrow()
+    expect(db.exec("SELECT count(*) FROM item").at(0)?.values).toEqual([[0]])
+  })
+
+  it("an UPDATE or DELETE of archived or restored aborts", async () => {
+    const db = await migrated()
+    const store = d1Store(d1Shim(db))
+    await store.put("brief", "b1.json", item("a"))
+    await store.archive("brief", "b1.json", "sha-of-a", ARCHIVED_AT, LATER)
+    await store.restore(
+      "brief",
+      "b1.json",
+      new Uint8Array([97]),
+      "sha-of-a",
+      RESTORED_AT
+    )
+    for (const table of ["archived", "restored"]) {
+      expect(() => db.run(`UPDATE ${table} SET seq = 7`)).toThrow(
+        `${table} is append-only`
+      )
+      expect(() => db.run(`DELETE FROM ${table}`)).toThrow(
+        `${table} is append-only`
+      )
+    }
+  })
+
+  it("a batch that fails part way leaves nothing behind", async () => {
+    const db = await migrated()
+    const shim = d1Shim(db)
+    await d1Store(shim).put("brief", "b1.json", item("a"))
+    await expect(
+      shim.batch([
+        shim
+          .prepare(
+            "INSERT INTO archived (seq, folder, name, sha256, size, content_type, put_by, put_at, archived_at) VALUES (1, 'brief', 'b1.json', 'sha-of-a', 1, 'application/json', 'routine', 'then', 'now')"
+          )
+          .bind(),
+        shim.prepare("UPDATE item SET size = 0").bind(),
+      ])
+    ).rejects.toThrow("item is append-only")
+    expect(db.exec("SELECT count(*) FROM archived").at(0)?.values).toEqual([
+      [0],
+    ])
   })
 
   it("a folder or a putter outside the two lists is refused by the table", async () => {
@@ -103,6 +161,7 @@ describe.each([
       sha256: "sha-every-byte",
       contentType: "application/json",
       putAt: PUT_AT,
+      liveSince: PUT_AT,
       bytes: EVERY_BYTE,
     })
   })
@@ -185,16 +244,160 @@ describe.each([
       sha256: "sha-of-1",
       contentType: "application/json",
       putAt: PUT_AT,
+      liveSince: PUT_AT,
     })
+  })
+
+  it("archiving moves an old item's metadata into archived and drops its bytes", async () => {
+    const store = await open()
+    await store.put("brief", "b1.json", item("1"))
+    await store.put("brief", "b2.json", item("2"))
+    expect(
+      await store.archive("brief", "b1.json", "sha-of-1", ARCHIVED_AT, LATER)
+    ).toEqual({ change: "archived" })
+
+    expect(await store.get("brief", "b1.json")).toBeNull()
+    expect((await store.list("brief", 0, 50)).map((i) => i.name)).toEqual([
+      "b2.json",
+    ])
+    const row = {
+      seq: 1,
+      name: "b1.json",
+      size: 1,
+      sha256: "sha-of-1",
+      contentType: "application/json",
+      putAt: PUT_AT,
+      archivedAt: ARCHIVED_AT,
+    }
+    expect(await store.archivedOf("brief", "b1.json")).toEqual(row)
+    expect(await store.listArchived("brief", 0, 50)).toEqual([row])
+    expect(await store.listArchived("brief", 1, 50)).toEqual([])
+    expect(await store.listArchived("decisions", 0, 50)).toEqual([])
+  })
+
+  it("archiving says why it did not: again, absent, other bytes, too young", async () => {
+    const store = await open()
+    await store.put("brief", "b1.json", item("1"))
+    await store.put("brief", "b2.json", item("2"))
+    await store.archive("brief", "b1.json", "sha-of-1", ARCHIVED_AT, LATER)
+
+    const archive = (
+      name: string,
+      sha: string,
+      before = LATER
+    ): Promise<ArchiveResult> =>
+      store.archive("brief", name, sha, ARCHIVED_AT, before)
+    expect(await archive("b1.json", "sha-of-1")).toEqual({
+      change: "unchanged",
+    })
+    expect(await archive("b1.json", "sha-of-9")).toEqual({ change: "mismatch" })
+    expect(await archive("b9.json", "sha-of-9")).toEqual({ change: "absent" })
+    expect(await archive("b2.json", "sha-of-9")).toEqual({ change: "mismatch" })
+    expect(await archive("b2.json", "sha-of-2", EARLIER)).toEqual({
+      change: "too_young",
+    })
+    // None of those moved anything.
+    expect((await store.get("brief", "b2.json"))?.sha256).toBe("sha-of-2")
+    expect(await store.listArchived("brief", 0, 50)).toHaveLength(1)
+  })
+
+  it("an archived name is still held: the same bytes are unchanged, others conflict", async () => {
+    const store = await open()
+    await store.put("brief", "b1.json", item("1"))
+    await store.archive("brief", "b1.json", "sha-of-1", ARCHIVED_AT, LATER)
+    expect(await store.put("brief", "b1.json", item("1"))).toEqual({
+      change: "unchanged",
+      seq: 1,
+    })
+    expect(await store.put("brief", "b1.json", item("2"))).toEqual({
+      change: "conflict",
+    })
+    expect(await store.get("brief", "b1.json")).toBeNull()
+  })
+
+  it("an ask for an archived item waits until home puts its bytes back", async () => {
+    const store = await open()
+    await store.put("brief", "b1.json", item("1"))
+    await store.put("brief", "b2.json", item("2"))
+    expect(await store.ask("brief", "b1.json", ASKED_AT)).toEqual({
+      change: "live",
+    })
+    expect(await store.ask("brief", "b9.json", ASKED_AT)).toEqual({
+      change: "not_archived",
+    })
+    await store.archive("brief", "b1.json", "sha-of-1", ARCHIVED_AT, LATER)
+    expect(await store.ask("brief", "b1.json", ASKED_AT)).toEqual({
+      change: "asked",
+    })
+    expect(await store.ask("brief", "b1.json", LATER)).toEqual({
+      change: "unchanged",
+    })
+    expect(await store.listWanted("brief", 50)).toEqual([
+      { name: "b1.json", askedAt: ASKED_AT },
+    ])
+    expect(await store.listWanted("decisions", 50)).toEqual([])
+  })
+
+  it("a restore puts the archived bytes back under a new seq and closes the ask", async () => {
+    const store = await open()
+    await store.put("brief", "b1.json", item("1"))
+    await store.put("brief", "b2.json", item("2"))
+    await store.archive("brief", "b1.json", "sha-of-1", ARCHIVED_AT, LATER)
+    await store.ask("brief", "b1.json", ASKED_AT)
+
+    const bytes = new TextEncoder().encode("1")
+    expect(
+      await store.restore("brief", "b1.json", bytes, "sha-of-9", RESTORED_AT)
+    ).toEqual({ change: "mismatch" })
+    // The wrong bytes leave the ask open.
+    expect(await store.listWanted("brief", 50)).toHaveLength(1)
+    expect(
+      await store.restore("brief", "b9.json", bytes, "sha-of-9", RESTORED_AT)
+    ).toEqual({ change: "not_archived" })
+
+    expect(
+      await store.restore("brief", "b1.json", bytes, "sha-of-1", RESTORED_AT)
+    ).toEqual({ change: "restored", seq: 3 })
+    expect(await store.listWanted("brief", 50)).toEqual([])
+    const back = await store.get("brief", "b1.json")
+    expect(back).toEqual({
+      seq: 3,
+      name: "b1.json",
+      size: 1,
+      sha256: "sha-of-1",
+      contentType: "application/json",
+      putAt: PUT_AT,
+      liveSince: RESTORED_AT,
+      bytes,
+    })
+    expect(
+      await store.restore("brief", "b1.json", bytes, "sha-of-1", LATER)
+    ).toEqual({ change: "unchanged", seq: 3 })
+    expect((await store.get("brief", "b1.json"))?.liveSince).toBe(RESTORED_AT)
+
+    // Counted from its return, it is too young to go home again.
+    expect(
+      await store.archive("brief", "b1.json", "sha-of-1", LATER, ARCHIVED_AT)
+    ).toEqual({ change: "too_young" })
+    expect(
+      await store.archive("brief", "b1.json", "sha-of-1", LATER, LATER)
+    ).toEqual({ change: "archived" })
+    expect(
+      (await store.listArchived("brief", 0, 50)).map((row) => row.seq)
+    ).toEqual([1, 3])
   })
 })
 
 describe("MB1: nothing in the workspace issues a statement that rewrites an item", () => {
   const SRC = join(import.meta.dirname, "..")
   // The words appear in prose comments, so comments are cut before the scan.
+  // `DELETE FROM` is matched apart: two are allowed (below).
   const REWRITES =
-    /\b(UPDATE\s+\w+\s+SET|DELETE\s+FROM|REPLACE\s+INTO|OR\s+REPLACE|DO\s+UPDATE)\b/i
+    /\b(UPDATE\s+\w+\s+SET|REPLACE\s+INTO|OR\s+REPLACE|DO\s+UPDATE)\b/i
+  const DELETES = /\bDELETE\s+FROM\s+(\w+)/gi
   const UNGUARDS = /\b(DROP\s+(TRIGGER|TABLE)|ALTER\s+TABLE\s+item)\b/i
+  /** The one trigger a migration may drop: 0002 replaces it in the same file. */
+  const REPLACED_TRIGGER = /\bDROP\s+TRIGGER\s+item_is_append_only_delete\s*;/i
   const tsCode = (text: string): string =>
     text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "")
   const sqlCode = (text: string): string => text.replace(/--[^\n]*/g, "")
@@ -204,11 +407,13 @@ describe("MB1: nothing in the workspace issues a statement that rewrites an item
       "INSERT OR REPLACE INTO item (a) VALUES (1)",
       "REPLACE INTO item (a) VALUES (1)",
       "UPDATE item SET size = 0",
-      "DELETE FROM item WHERE seq = 1",
       "INSERT INTO item (a) VALUES (1) ON CONFLICT (a) DO UPDATE SET a = 2",
     ]) {
       expect(bad).toMatch(REWRITES)
     }
+    expect(
+      [..."DELETE FROM item WHERE seq = 1".matchAll(DELETES)].map((m) => m[1])
+    ).toEqual(["item"])
     for (const bad of [
       "DROP TRIGGER item_is_append_only_update",
       "ALTER TABLE item ADD x",
@@ -220,27 +425,63 @@ describe("MB1: nothing in the workspace issues a statement that rewrites an item
     ).not.toMatch(REWRITES)
   })
 
-  it("no source file issues one", () => {
+  it("no source file issues one, and deletes only the archive's bytes and a closed ask", () => {
     const files = readdirSync(SRC).filter((file) => file.endsWith(".ts"))
     // A directory that moved would otherwise leave nothing to scan.
     expect(files).toEqual(
       expect.arrayContaining(["core.ts", "index.ts", "store.ts"])
     )
-    const offenders = files.filter((file) =>
-      REWRITES.test(tsCode(readFileSync(join(SRC, file), "utf8")))
+    const code = files.map((file) => ({
+      file,
+      text: tsCode(readFileSync(join(SRC, file), "utf8")),
+    }))
+    expect(
+      code.filter(({ text }) => REWRITES.test(text)).map(({ file }) => file)
+    ).toEqual([])
+    const deletes = code.flatMap(({ file, text }) =>
+      [...text.matchAll(DELETES)].map((found) => `${file}: ${found[1] ?? ""}`)
     )
-    expect(offenders).toEqual([])
+    expect(deletes.sort()).toEqual(["store.ts: item", "store.ts: wanted"])
+    // The archive's delete names only items whose row is already in `archived`.
+    expect(code.find(({ file }) => file === "store.ts")?.text).toMatch(
+      /DELETE FROM item\s+WHERE folder = \?1 AND name = \?2 AND sha256 = \?3\s+AND seq IN \(SELECT seq FROM archived WHERE folder = \?1 AND name = \?2\)/
+    )
   })
 
   it("no migration rewrites an item or removes what guards it", () => {
     const files = readdirSync(MIGRATIONS).filter((file) =>
       file.endsWith(".sql")
     )
-    expect(files).toContain("0001_create_item.sql")
+    expect(files).toEqual(
+      expect.arrayContaining(["0001_create_item.sql", "0002_archive.sql"])
+    )
     const offenders = files.filter((file) => {
-      const sql = sqlCode(readFileSync(join(MIGRATIONS, file), "utf8"))
-      return REWRITES.test(sql) || UNGUARDS.test(sql)
+      let sql = sqlCode(readFileSync(join(MIGRATIONS, file), "utf8"))
+      if (file === "0002_archive.sql") sql = sql.replace(REPLACED_TRIGGER, "")
+      return (
+        REWRITES.test(sql) ||
+        UNGUARDS.test(sql) ||
+        /\bDELETE\s+FROM\b/i.test(sql)
+      )
     })
     expect(offenders).toEqual([])
+  })
+
+  it("after every migration, each guard is in place", async () => {
+    const db = await migrated()
+    const triggers = db
+      .exec(
+        "SELECT name FROM sqlite_master WHERE type = 'trigger' ORDER BY name"
+      )
+      .at(0)
+      ?.values.flat()
+    expect(triggers).toEqual([
+      "archived_is_append_only_delete",
+      "archived_is_append_only_update",
+      "item_is_append_only_update",
+      "item_leaves_only_into_archived",
+      "restored_is_append_only_delete",
+      "restored_is_append_only_update",
+    ])
   })
 })

@@ -21,20 +21,47 @@ Drive stays in use alongside this until the owner retires it for Jobs.
 
 ## What it keeps
 
-One row per file, in the folder it belongs to, kept for good. A name holds one body: putting
-the same bytes again changes nothing, and putting other bytes under a held name is refused.
-Each row records who put it (`routine` or `home`), when, and the SHA-256 of its bytes.
+One row per file, in the folder it belongs to. A name holds one body for good: putting the
+same bytes again changes nothing, and putting other bytes under a held name is refused, even
+after the file is archived. Each row records who put it (`routine` or `home`), when, and the
+SHA-256 of its bytes.
+
+### Archiving: home keeps the record, the mailbox stays small
+
+The mailbox is where the routine and home meet, not where the record lives: home keeps that.
+So a file that has been live for a long time moves home, and the mailbox keeps only a row
+about it (owner, 2026-10-23):
+
+1. Home's `archive` token reads the file and home stores its bytes (`mailbox_archive` in
+   `paulgsc/server`).
+2. Home then asks the mailbox to archive it, naming the bytes it holds by their SHA-256
+   (`DELETE` with `If-Match`). The mailbox moves the file's metadata into `archived` and drops
+   its bytes in one transaction. A file goes only once it has been live for 30 days
+   (`ARCHIVE_MIN_AGE_DAYS`); home's own policy waits longer.
+3. Reading an archived file answers `410` with when it was archived, and `GET
+/v1/:folder/archived` lists them. When the routine wants one again it asks
+   (`PUT /v1/:folder/wanted/:name`). On its next pass (within 15 minutes) home puts the same
+   bytes back under a new `seq`, and the ask closes. Only the archived bytes can go back.
+   A file put back counts its 30 days again from its return.
+
+Nothing is deleted for good: the bytes are home's before the mailbox lets them go, and the
+`archived` row stays.
 
 ## API
 
 Every request needs `Authorization: Bearer <token>`. Every answer is JSON, or the stored bytes.
 
-| Request                                                 | Answer                                                                                                                                                                                                                                                 |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `GET /v1/:folder/items?after=<seq>&limit=<n>`           | `200 {"items":[{"seq","name","size","sha256","contentType","putAt"}]}`, oldest first, `seq > after` (default 0), `limit` 1–50 (default 50). Metadata only. A whole number outside those bounds is `422`.                                               |
-| `GET /v1/:folder/items/:name`                           | `200` with the stored bytes, `Content-Type` as stored and `ETag: "<sha256>"`; `404` if absent.                                                                                                                                                         |
-| `PUT /v1/:folder/items/:name` (body = the file's bytes) | `201 {"change":"added","seq"}`; `200 {"change":"unchanged","seq"}` for the same bytes; `409 {"error":"conflict"}` for other bytes under a held name; `413` when the body is over the cap; `422 {"error":"…why…"}` when the name or content is refused. |
-| anything else                                           | `404`; a method the path does not take is `405` with `Allow`. A missing or wrong token is `401`, a token that may not do this is `403`, and storage failing is `503`.                                                                                  |
+| Request                                                  | Answer                                                                                                                                                                                                                                                                                             |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /v1/:folder/items?after=<seq>&limit=<n>`            | `200 {"items":[{"seq","name","size","sha256","contentType","putAt","liveSince"}]}`, live files only, oldest first, `seq > after` (default 0), `limit` 1–50 (default 50). Metadata only. A whole number outside those bounds is `422`. `liveSince` is when it was put back from home, else `putAt`. |
+| `GET /v1/:folder/items/:name`                            | `200` with the stored bytes, `Content-Type` as stored and `ETag: "<sha256>"`; `410 {"error":"archived","archivedAt"}` if it moved home; `404` if never held.                                                                                                                                       |
+| `PUT /v1/:folder/items/:name` (body = the file's bytes)  | `201 {"change":"added","seq"}`; `200 {"change":"unchanged","seq"}` for the same bytes; `409 {"error":"conflict"}` for other bytes under a held name; `413` when the body is over the cap; `422 {"error":"…why…"}` when the name or content is refused.                                             |
+| `PUT /v1/:folder/items/:name` by `archive`               | Puts an archived file's own bytes back: `201 {"change":"restored","seq"}`; `200 {"change":"unchanged","seq"}` if it is live; `409` for other bytes; `404` if never archived. The body is checked as any put's is.                                                                                  |
+| `DELETE /v1/:folder/items/:name`, `If-Match: "<sha256>"` | Archives it: `200 {"change":"archived"}`, or `"unchanged"` if it already was; `412` if the live bytes are other ones; `422` if it has been live under 30 days; `404` if never held; `428` without a lower-case hex `If-Match`.                                                                     |
+| `GET /v1/:folder/archived?after=<seq>&limit=<n>`         | `200 {"items":[{"seq","name","size","sha256","contentType","putAt","archivedAt"}]}`, oldest first by the `seq` each had while live. Paged as above.                                                                                                                                                |
+| `PUT /v1/:folder/wanted/:name` (no body)                 | Asks home to put an archived file back: `202 {"change":"asked"}`; `200 {"change":"unchanged"}` if already asked; `200 {"change":"live"}` if it is there now; `404` if never archived.                                                                                                              |
+| `GET /v1/:folder/wanted?limit=<n>`                       | `200 {"items":[{"name","askedAt"}]}`, the open asks, oldest first.                                                                                                                                                                                                                                 |
+| anything else                                            | `404`; a method the path does not take is `405` with `Allow`. A missing or wrong token is `401`, a token that may not do this is `403`, and storage failing is `503`.                                                                                                                              |
 
 The folders are `brief`, `decisions` and `scout`.
 
@@ -46,14 +73,16 @@ then six repeats, then `seq 8`). Page with `after` set to the highest `seq` you 
 
 ### Who may do what
 
-| Secret          | Role      | May                                       |
-| --------------- | --------- | ----------------------------------------- |
-| `ROUTINE_TOKEN` | `routine` | read all three folders; put `brief`       |
-| `HOME_TOKEN`    | `home`    | read `brief`; put `decisions` and `scout` |
+| Secret          | Role      | May                                                                                     |
+| --------------- | --------- | --------------------------------------------------------------------------------------- |
+| `ROUTINE_TOKEN` | `routine` | read all three folders; put `brief`; list what is archived and ask for it back          |
+| `HOME_TOKEN`    | `home`    | read `brief`; put `decisions` and `scout`                                               |
+| `ARCHIVE_TOKEN` | `archive` | read all three folders; archive a file and put an archived one back; list the open asks |
 
-A secret that is unset or empty authenticates no one, and one value set for both roles
-authenticates neither. There is no third role. Letting the phone read `brief` from here
-directly would be one, and it is the owner's call, so it is not built.
+Home holds two tokens. `archive` is apart from `home` so the token home uses every pass cannot
+drop a byte. A secret that is unset or empty authenticates no one, and one value set for two
+roles authenticates no one. Letting the phone read `brief` from here directly would be another
+role, and it is the owner's call, so it is not built.
 
 ### What a put must satisfy
 
@@ -76,7 +105,10 @@ operation; it does not bill (see MB4).
 
 - Workers Free: 100,000 requests a day, 10 ms of CPU per request.
 - D1 Free: 500 MB a database, 100,000 rows written and 5 million read a day, 2,000,000 bytes
-  a row, 50 queries per invocation. Each request here uses at most two.
+  a row, 50 queries per invocation. Each request here uses at most five (an archive or a put
+  back runs its statements as one batch, then reads why it changed nothing, when it did not).
+  Archiving keeps the database to the files of the last few months; at a few KB a day it
+  would take decades to fill without it.
 - Past a D1 daily limit its queries fail until 00:00 UTC; the Worker answers `503` for
   that time. The 07:52 Pacific run is far from that reset.
 - D1 hands a BLOB back as an array of byte values, so reading a body near the 1 MiB cap costs
@@ -91,18 +123,28 @@ Each is written for review, one hunk at a time (`REVIEW.md`; `CLAUDE.md`, "Gray-
 invariants"). One line of each is in the doc comment of `src/core.ts`. The sections below say
 how each was checked when this workspace landed.
 
-**MB1: An item is never rewritten or removed by this code.**
+**MB1: An item never changes, and leaves `item` only into `archived`.**
 
-- _Claim:_ in `apps/mailbox`, no source file or migration updates, deletes or replaces an
-  `item` row: the adapter's only write is
-  `INSERT … ON CONFLICT (folder, name) DO NOTHING`, and the table carries two `BEFORE`
-  triggers that abort an `UPDATE` or a `DELETE`.
-- _Falsified by_ a hunk that drops, renames or weakens either trigger (a later migration that
-  drops a trigger or the table included); that deletes or moves the migration that creates them,
-  or changes `migrations_dir` in `wrangler.jsonc` so it no longer applies; that adds an
-  `UPDATE`, `DELETE`, `INSERT OR REPLACE`, `REPLACE INTO` or `ON CONFLICT … DO UPDATE` against
-  `item` anywhere in `src/` or `migrations/`; that changes `put` in `store.ts` away from `DO NOTHING`; or that deletes or
-  loosens the trigger cases or the scan in `__tests__/store.test.ts`.
+Amended 2026-10-23 for archiving (owner): until then an item was never removed at all.
+
+- _Claim:_ in `apps/mailbox`, no source file or migration updates or replaces an `item` row,
+  and the only statement that deletes one is the archive's, which names only items whose row
+  `archived` already holds. The adapter writes `item` with
+  `INSERT … ON CONFLICT (folder, name) DO NOTHING` and that `DELETE`; the table carries a
+  `BEFORE UPDATE` trigger that aborts, and a `BEFORE DELETE` trigger
+  (`item_leaves_only_into_archived`) that aborts unless `archived` holds a row with the item's
+  `seq`, folder, name and SHA-256. `archived` and `restored` carry triggers that abort every
+  `UPDATE` and `DELETE`. The only other delete is of an answered ask in `wanted`.
+- _Falsified by_ a hunk that drops, renames or weakens any of those triggers (a later
+  migration that drops a trigger or one of the tables included); that deletes or moves the
+  migrations that create them, or changes `migrations_dir` in `wrangler.jsonc` so they no
+  longer apply; that adds an `UPDATE`, `INSERT OR REPLACE`, `REPLACE INTO` or
+  `ON CONFLICT … DO UPDATE` against `item`, `archived` or `restored`, or a `DELETE` other
+  than the two in `store.ts`, anywhere in `src/` or `migrations/`; that changes `put` in
+  `store.ts` away from `DO NOTHING`, or drops the archive `DELETE`'s
+  `seq IN (SELECT seq FROM archived …)` condition or runs it outside the batch that writes
+  the `archived` row; or that deletes or loosens the trigger cases or the scan in
+  `__tests__/store.test.ts`.
 - _Scope:_ `apps/mailbox`.
 - _Why not enforced:_ the triggers and `store.test.ts` enforce `UPDATE` and `DELETE` (each case
   fails if its trigger is removed). They do **not** enforce `INSERT OR REPLACE`: SQLite runs the
@@ -118,27 +160,34 @@ how each was checked when this workspace landed.
   `REPLACE` is what a reviewer is watching for, and it is a violation if one lands.
 - _Checked at landing:_ the only SQL in `src/` is the one `INSERT … DO NOTHING` and four
   `SELECT`s in `store.ts`; the words UPDATE, DELETE and REPLACE appear there only in comments.
+  _Checked at the 2026-10-23 amendment:_ `store.ts` has two `DELETE`s (the archive's on
+  `item`, and an answered ask on `wanted`), no `UPDATE` or `REPLACE`, and every `INSERT` is
+  `DO NOTHING` or a plain insert into `restored`; the test that lists every trigger after
+  all migrations passes.
 
 **MB2: Roles.**
 
 - _Claim:_ the `ROLES` table in `src/core.ts` is the only place a token is mapped to what it
-  may do, and it holds exactly two roles: `routine` (read all three folders, put `brief`) and
-  `home` (read `brief`, put `decisions` and `scout`). Every request passes `authenticate` and
-  then the `grant.get` or `grant.put` check in `serve` before anything reaches the store.
+  may do, and it holds exactly three roles: `routine` (get all three folders, put `brief`, ask
+  all three), `home` (get `brief`, put `decisions` and `scout`) and `archive` (get and move all
+  three; owner, 2026-10-23). Every request passes `authenticate` and then one of `serve`'s
+  `may(grant.get | put | ask | move)` checks before anything reaches the store.
 - _Falsified by_ a hunk that adds, removes or renames a role; adds a folder to, or removes one
-  from, any role's `get` or `put` list; changes which secret a role reads, or lets
-  `authenticate` read another secret or accept an unset, empty or shared one; edits, loosens or
-  removes the `grant.get` or `grant.put` check in `serve`, or lets `handle` reach `serve` or
-  the store without a grant; adds a method to a route in `routeOf`; or renames, moves or
-  deletes the `ROLES` table; when the PR description does not name the owner's decision to do
-  so.
+  from, any role's `get`, `put`, `ask` or `move` list; changes which secret a role reads, or
+  lets `authenticate` read another secret or accept an unset, empty or shared one; edits,
+  loosens or removes a `may` check in `serve`, or changes which right a listing or method is
+  checked against; lets `handle` reach `serve` or the store without a grant; adds a method to
+  a route in `METHODS`; or renames, moves or deletes the `ROLES` table; when the PR
+  description does not name the owner's decision to do so.
 - _Scope:_ `apps/mailbox/src/core.ts` and `wrangler.jsonc`.
 - _Why not enforced:_ `__tests__/core.test.ts` pins today's matrix (every role against every
   folder and method), but a hunk that changes the table and the test together passes it. A test
   cannot know the owner agreed.
 - _Checked at landing:_ `ROLES` has two entries; no code outside `authenticate` reads a token;
   `serve` has one `grant.get` check and one `grant.put` check, each returning `403`; `handle`
-  calls `serve` only with a non-null grant.
+  calls `serve` only with a non-null grant. _Checked at the 2026-10-23 amendment:_ `ROLES`
+  has three entries; every branch of `serve` that reaches the store passes a `may` check that
+  returns `403`; `core.test.ts` pins every role against every collection.
 
 **MB3: No token reaches the repo or a log.**
 
@@ -174,9 +223,10 @@ finds no config, so everything after step 2 needs it.
    `database_id` into `wrangler.jsonc`. It is not a secret. Keep the binding named `DB`:
    wrangler's suggested snippet calls it `some_ui_mailbox`, which the Worker does not read.
 3. `pnpm --filter @some-ui/mailbox exec wrangler d1 migrations apply some-ui-mailbox --remote`.
-4. Make two long random tokens, for example `openssl rand -base64 32` twice, and run
+4. Make three long random tokens, for example `openssl rand -base64 32` three times, and run
    `pnpm --filter @some-ui/mailbox exec wrangler secret put ROUTINE_TOKEN` and the same with
-   `HOME_TOKEN`.
+   `HOME_TOKEN` and `ARCHIVE_TOKEN`. An `ARCHIVE_TOKEN` left unset only means nothing is
+   archived.
 5. `pnpm --filter @some-ui/mailbox exec wrangler deploy`, and note the URL,
    `https://some-ui-mailbox.<subdomain>.workers.dev`.
 6. Smoke test with the routine's token:
@@ -188,6 +238,12 @@ finds no config, so everything after step 2 needs it.
 
    Repeat it for `200 unchanged`. Send other bytes under that name for `409`. The item stays
    for good, which is fine: it is dated 2000.
+
+### Updating a deployed mailbox
+
+Run step 3 again, then step 5: `migrations apply` runs only the migrations it has not
+applied. For archiving (`0002_archive.sql`), also put `ARCHIVE_TOKEN` (step 4) and give the
+same value to home as `MAILBOX_ARCHIVE_TOKEN`.
 
 ## Working on it
 

@@ -106,7 +106,7 @@ curl -sS --max-time 30 -H "Authorization: Bearer $JOBS_MAILBOX_TOKEN" \
   "$JOBS_MAILBOX_URL/v1/decisions/items?after=0&limit=50"
 ```
 
-Each answer is `{"items":[{"seq","name","size","sha256","contentType","putAt"}]}`,
+Each answer is `{"items":[{"seq","name","size","sha256","contentType","putAt","liveSince"}]}`,
 oldest first. Ask again with `after` set to the highest `seq` in the answer,
 until `items` is empty, then do the same for `scout`. An answer that is not
 that object (an `{"error":…}`, or nothing at all) means the mailbox has failed
@@ -126,6 +126,21 @@ and say so in the summary. Home is the only one that can put a file in these
 mailbox folders, so the owner check in §0.1 doesn't apply to them. They never
 name voice notes (home holds no audio), so a voice note is found in Drive only,
 as above.
+
+The listings show live files only. A file that has been in the mailbox for
+months moves home (it is archived), and reading it answers `410`.
+`GET $JOBS_MAILBOX_URL/v1/<folder>/archived?after=0&limit=50` lists them, paged
+like the items. If this run needs one that Drive doesn't have, ask for it
+once, with no body:
+
+```sh
+curl -sS --max-time 30 -X PUT -H "Authorization: Bearer $JOBS_MAILBOX_TOKEN" \
+  -w '\n%{http_code}\n' "$JOBS_MAILBOX_URL/v1/<folder>/wanted/<name>"
+```
+
+`202` or `200` means home will put it back within about 15 minutes. Don't wait
+for it: carry on without it, and name it in the summary so the next run takes
+it in.
 
 For each new file:
 
@@ -632,8 +647,8 @@ shorter limit, first person, the gaps) is yours to hold.
    sha256sum <file>
    ```
 
-   The mailbox keeps what it is given for good, so only a digest that passed
-   step 4 and is in Drive (step 5) goes there.
+   The mailbox holds a name for good, with the bytes it was first given, so
+   only a digest that passed step 4 and is in Drive (step 5) goes there.
 
 Never edit, move, rename or trash anything under `some-ui jobs/`. Triage
 `Inbox/` per the SOP if it holds anything.

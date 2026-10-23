@@ -6,7 +6,8 @@
  * The invariants this file governs (full text: README.md, "Gray-area
  * invariants"):
  *
- * - MB1: an item is never updated or deleted (`store.ts`, `migrations/`).
+ * - MB1: an item never changes, and leaves `item` only into `archived`
+ *   (`store.ts`, `migrations/`).
  * - MB2: `ROLES` is the one place a token is mapped to what it may do.
  * - MB3: no token reaches the repo or a log.
  * - MB4: the Cloudflare account has no payment method (account state, not
@@ -19,6 +20,16 @@ import type { Folder, Role, Store } from "./store"
 export const MAX_BODY_BYTES = 1_048_576
 const LIST_LIMIT_DEFAULT = 50
 export const LIST_LIMIT_MAX = 50
+
+/**
+ * The youngest an item may be archived at, counted from when it went live.
+ * Home's own policy waits longer; this floor holds even if the archive token
+ * leaks, and keeps an item just put back from going straight home again.
+ */
+export const ARCHIVE_MIN_AGE_DAYS = 30
+const DAY_MS = 86_400_000
+
+const SHA256_HEX = /^[0-9a-f]{64}$/
 
 type FolderRules = {
   readonly folder: Folder
@@ -49,28 +60,53 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
 type Tokens = {
   readonly routine: string | undefined
   readonly home: string | undefined
+  readonly archive: string | undefined
 }
 
 type Grant = {
   readonly role: Role
   readonly token: (tokens: Tokens) => string | undefined
+  /** List and read live items. */
   readonly get: ReadonlyArray<Folder>
+  /** Put new items. */
   readonly put: ReadonlyArray<Folder>
+  /** List archived items and ask for one back. */
+  readonly ask: ReadonlyArray<Folder>
+  /** Archive items, put archived ones back, and list the asks. */
+  readonly move: ReadonlyArray<Folder>
 }
 
-/** MB2. A third role (the phone's) is the owner's call, not a code change. */
+const ALL: ReadonlyArray<Folder> = ["brief", "decisions", "scout"]
+
+/**
+ * MB2. Another role (the phone's, say) is the owner's call, not a code
+ * change. `archive` is home's second token, held apart from `home` so the
+ * one home uses every pass cannot drop a byte (owner, 2026-10-23).
+ */
 const ROLES: ReadonlyArray<Grant> = [
   {
     role: "routine",
     token: (tokens) => tokens.routine,
-    get: ["brief", "decisions", "scout"],
+    get: ALL,
     put: ["brief"],
+    ask: ALL,
+    move: [],
   },
   {
     role: "home",
     token: (tokens) => tokens.home,
     get: ["brief"],
     put: ["decisions", "scout"],
+    ask: [],
+    move: [],
+  },
+  {
+    role: "archive",
+    token: (tokens) => tokens.archive,
+    get: ALL,
+    put: [],
+    ask: [],
+    move: ALL,
   },
 ]
 
@@ -132,10 +168,11 @@ async function authenticate(
 ): Promise<Grant | null> {
   const presented = header?.match(/^bearer (\S+)$/i)?.at(1)
   if (presented === undefined) return null
-  // One secret set twice would hand the home token the routine's rights.
-  if (tokens.routine !== undefined && tokens.routine === tokens.home) {
-    return null
-  }
+  // One secret set for two roles would hand one the other's rights.
+  const set = ROLES.map((grant) => grant.token(tokens)).filter(
+    (token) => token !== undefined && token !== ""
+  )
+  if (new Set(set).size !== set.length) return null
   const wanted = await sha256(presented)
   let found: Grant | null = null
   for (const grant of ROLES) {
@@ -148,23 +185,51 @@ async function authenticate(
   return found
 }
 
+type Collection = "items" | "archived" | "wanted"
+
 type Route = {
   readonly rules: FolderRules
-  /** `null` for a folder's listing. */
+  readonly collection: Collection
+  /** `null` for a listing. */
   readonly name: string | null
   readonly methods: ReadonlyArray<string>
 }
 
-/** `/v1/:folder/items` and `/v1/:folder/items/:name`; anything else is no route. */
+/** Each collection's methods, for a listing and for one name. */
+const METHODS: Record<
+  Collection,
+  {
+    readonly listing: ReadonlyArray<string>
+    readonly one: ReadonlyArray<string>
+  }
+> = {
+  items: { listing: ["GET"], one: ["GET", "PUT", "DELETE"] },
+  archived: { listing: ["GET"], one: [] },
+  wanted: { listing: ["GET"], one: ["PUT"] },
+}
+
+function isCollection(text: string | undefined): text is Collection {
+  return text === "items" || text === "archived" || text === "wanted"
+}
+
+/** `/v1/:folder/:collection` and `/v1/:folder/:collection/:name`; anything else is no route. */
 function routeOf(pathname: string): Route | null {
-  const [lead, version, folder, items, name, ...rest] = pathname.split("/")
-  if (lead !== "" || version !== "v1" || items !== "items") return null
+  const [lead, version, folder, collection, name, ...rest] = pathname.split("/")
+  if (lead !== "" || version !== "v1" || !isCollection(collection)) {
+    return null
+  }
   if (rest.length > 0 || name === "") return null
   const rules = FOLDERS.find((candidate) => candidate.folder === folder)
   if (rules === undefined) return null
-  return name === undefined
-    ? { rules, name: null, methods: ["GET"] }
-    : { rules, name, methods: ["GET", "PUT"] }
+  const methods =
+    name === undefined ? METHODS[collection].listing : METHODS[collection].one
+  if (methods.length === 0) return null
+  return { rules, collection, name: name ?? null, methods }
+}
+
+/** For a switch that has handled every case the types allow. */
+function unreachable(value: never): never {
+  throw new Error(`unhandled case: ${String(value)}`)
 }
 
 function wholeNumber(text: string | null, fallback: number): number | null {
@@ -173,11 +238,9 @@ function wholeNumber(text: string | null, fallback: number): number | null {
   return Number(text)
 }
 
-async function list(
-  url: URL,
-  rules: FolderRules,
-  store: Store
-): Promise<Response> {
+type Page = { readonly after: number; readonly limit: number }
+
+function pageOf(url: URL): Page | Response {
   const after = wholeNumber(url.searchParams.get("after"), 0)
   const limit = wholeNumber(url.searchParams.get("limit"), LIST_LIMIT_DEFAULT)
   if (after === null) return refuse(422, "after must be a whole number")
@@ -187,8 +250,34 @@ async function list(
       `limit must be a whole number from 1 to ${LIST_LIMIT_MAX}`
     )
   }
-  const items = await store.list(rules.folder, after, limit)
-  return answer(200, { items })
+  return { after, limit }
+}
+
+async function list(
+  url: URL,
+  collection: Collection,
+  folder: Folder,
+  store: Store
+): Promise<Response> {
+  const page = pageOf(url)
+  if (page instanceof Response) return page
+  const { after, limit } = page
+  switch (collection) {
+    case "items": {
+      return answer(200, { items: await store.list(folder, after, limit) })
+    }
+    case "archived": {
+      return answer(200, {
+        items: await store.listArchived(folder, after, limit),
+      })
+    }
+    case "wanted": {
+      return answer(200, { items: await store.listWanted(folder, limit) })
+    }
+    default: {
+      return unreachable(collection)
+    }
+  }
 }
 
 async function read(
@@ -196,10 +285,13 @@ async function read(
   name: string,
   store: Store
 ): Promise<Response> {
-  const item = rules.name.test(name)
-    ? await store.get(rules.folder, name)
-    : null
-  if (item === null) return refuse(404, "not_found")
+  if (!rules.name.test(name)) return refuse(404, "not_found")
+  const item = await store.get(rules.folder, name)
+  if (item === null) {
+    const archived = await store.archivedOf(rules.folder, name)
+    if (archived === null) return refuse(404, "not_found")
+    return answer(410, { error: "archived", archivedAt: archived.archivedAt })
+  }
   return new Response(item.bytes, {
     status: 200,
     headers: {
@@ -264,13 +356,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
-async function write(
+type Body = { readonly bytes: Uint8Array; readonly sha256: string }
+
+/** The body of a put, checked as every put is, or the refusal. */
+async function bodyOf(
   request: Request,
   rules: FolderRules,
-  name: string,
-  role: Role,
-  deps: Deps
-): Promise<Response> {
+  name: string
+): Promise<Body | Response> {
   if (!rules.name.test(name)) {
     return refuse(422, "the name does not fit this folder")
   }
@@ -296,10 +389,22 @@ async function write(
   if (!isRecord(parsed.value) || parsed.value.schema !== rules.schema) {
     return refuse(422, `the body's schema must be ${rules.schema}`)
   }
+  return { bytes, sha256: hex(await sha256(bytes)) }
+}
 
+async function write(
+  request: Request,
+  rules: FolderRules,
+  name: string,
+  role: Role,
+  deps: Deps
+): Promise<Response> {
+  // The archive role puts nothing new (ROLES); `serve` routes its puts to `restore`.
+  if (role === "archive") return refuse(403, "forbidden")
+  const body = await bodyOf(request, rules, name)
+  if (body instanceof Response) return body
   const result = await deps.store.put(rules.folder, name, {
-    bytes,
-    sha256: hex(await sha256(bytes)),
+    ...body,
     contentType: "application/json",
     putBy: role,
     putAt: deps.now().toISOString(),
@@ -309,6 +414,120 @@ async function write(
     change: result.change,
     seq: result.seq,
   })
+}
+
+/** Home puts an archived item's own bytes back; any other bytes are refused. */
+async function restore(
+  request: Request,
+  rules: FolderRules,
+  name: string,
+  deps: Deps
+): Promise<Response> {
+  const body = await bodyOf(request, rules, name)
+  if (body instanceof Response) return body
+  const result = await deps.store.restore(
+    rules.folder,
+    name,
+    body.bytes,
+    body.sha256,
+    deps.now().toISOString()
+  )
+  switch (result.change) {
+    case "restored":
+    case "unchanged": {
+      return answer(result.change === "restored" ? 201 : 200, {
+        change: result.change,
+        seq: result.seq,
+      })
+    }
+    case "not_archived": {
+      return refuse(404, "not_found")
+    }
+    case "mismatch": {
+      return refuse(409, "conflict")
+    }
+    default: {
+      return unreachable(result)
+    }
+  }
+}
+
+/** `If-Match: "<sha256>"`: archiving names the bytes it means to drop. */
+function matchOf(request: Request): string | null {
+  const tag = request.headers.get("if-match")?.trim()
+  const sha = tag?.match(/^"([^"]*)"$/)?.at(1)
+  return sha !== undefined && SHA256_HEX.test(sha) ? sha : null
+}
+
+async function archive(
+  request: Request,
+  rules: FolderRules,
+  name: string,
+  deps: Deps
+): Promise<Response> {
+  if (!rules.name.test(name)) return refuse(404, "not_found")
+  const sha = matchOf(request)
+  if (sha === null) {
+    return refuse(428, 'If-Match must name the item\'s sha256, as "<hex>"')
+  }
+  const now = deps.now()
+  const result = await deps.store.archive(
+    rules.folder,
+    name,
+    sha,
+    now.toISOString(),
+    new Date(now.getTime() - ARCHIVE_MIN_AGE_DAYS * DAY_MS).toISOString()
+  )
+  switch (result.change) {
+    case "archived":
+    case "unchanged": {
+      return answer(200, { change: result.change })
+    }
+    case "absent": {
+      return refuse(404, "not_found")
+    }
+    case "mismatch": {
+      return refuse(412, "mismatch")
+    }
+    case "too_young": {
+      return refuse(
+        422,
+        `an item is archived only after ${ARCHIVE_MIN_AGE_DAYS} days live`
+      )
+    }
+    default: {
+      return unreachable(result.change)
+    }
+  }
+}
+
+/** The routine asks home to put an archived item back. */
+async function ask(
+  rules: FolderRules,
+  name: string,
+  deps: Deps
+): Promise<Response> {
+  if (!rules.name.test(name)) return refuse(404, "not_found")
+  const result = await deps.store.ask(
+    rules.folder,
+    name,
+    deps.now().toISOString()
+  )
+  switch (result.change) {
+    case "asked": {
+      return answer(202, { change: result.change })
+    }
+    case "unchanged":
+    case "live": {
+      return answer(200, { change: result.change })
+    }
+    case "not_archived": {
+      return refuse(404, "not_found")
+    }
+    default: {
+      return unreachable(result.change)
+    }
+  }
 }
 
 async function serve(
@@ -324,17 +543,33 @@ async function serve(
       allow: route.methods.join(", "),
     })
   }
-  const { rules, name } = route
+  const { rules, collection, name } = route
+  const { folder } = rules
+  const may = (rights: ReadonlyArray<Folder>): boolean =>
+    rights.includes(folder)
+  if (name === null) {
+    // Every listing is a GET (`METHODS`).
+    const rights = { items: grant.get, archived: grant.ask, wanted: grant.move }
+    if (!may(rights[collection])) return refuse(403, "forbidden")
+    return list(url, collection, folder, deps.store)
+  }
+  if (collection === "wanted") {
+    // A PUT, the only method on one ask.
+    if (!may(grant.ask)) return refuse(403, "forbidden")
+    return ask(rules, name, deps)
+  }
   if (request.method === "GET") {
-    if (!grant.get.includes(rules.folder)) return refuse(403, "forbidden")
-    return name === null
-      ? list(url, rules, deps.store)
-      : read(rules, name, deps.store)
+    if (!may(grant.get)) return refuse(403, "forbidden")
+    return read(rules, name, deps.store)
   }
-  // The route allows only GET and PUT, and a listing only GET: this is a PUT.
-  if (name === null || !grant.put.includes(rules.folder)) {
-    return refuse(403, "forbidden")
+  if (request.method === "DELETE") {
+    if (!may(grant.move)) return refuse(403, "forbidden")
+    return archive(request, rules, name, deps)
   }
+  // The route allows only GET, PUT and DELETE on an item: this is a PUT. A
+  // role that moves puts back; one that puts adds.
+  if (may(grant.move)) return restore(request, rules, name, deps)
+  if (!may(grant.put)) return refuse(403, "forbidden")
   return write(request, rules, name, grant.role, deps)
 }
 
