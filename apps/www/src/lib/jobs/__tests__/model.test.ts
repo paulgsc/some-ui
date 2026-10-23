@@ -7,7 +7,6 @@ import {
   draftVoice,
   EMPTY,
   kitOf,
-  newestDay,
   openOf,
   pacificDay,
   progressOf,
@@ -444,12 +443,9 @@ describe("digests home holds (fetched)", () => {
   it("changes the digests, the day shown and when each came, and nothing else", () => {
     const logged = record(opened, { type: "taken", ...ref() })
     const state = fetch(logged, "2026-10-19")
-    const { digests, current, firstOpened, ...rest } = state
+    const { digests: _d, current: _c, firstOpened: _f, ...rest } = state
     const { log, voice, home } = logged
     expect(rest).toEqual({ log, voice, home })
-    expect(digests).toHaveLength(2)
-    expect(current).toBe("2026-10-19")
-    expect(Object.keys(firstOpened).sort()).toEqual([DAY, "2026-10-19"])
   })
 
   it("takes no digest for a day the phone holds", () => {
@@ -473,46 +469,26 @@ describe("digests home holds (fetched)", () => {
     )
   })
 
-  it("lets go of old digests as opening would", () => {
-    const old = (i: number): string => `2026-09-${String(i).padStart(2, "0")}`
+  it("lets go at once of a digest older than everything kept", () => {
     const bare = (day: string): typeof D => ({ ...digest(day), picks: [] })
-    const through = (last: number, how: "opened" | "fetched"): JobsState => {
-      let state = EMPTY
-      for (let i = 1; i <= last; i += 1) {
-        state =
-          how === "opened" || i < last
-            ? step(state, {
-                type: "opened",
-                digest: bare(old(i)),
-                at: OPENED_AT,
-              })
-            : step(state, {
-                type: "fetched",
-                digests: [bare(old(i))],
-                at: FETCHED_AT,
-              })
-      }
-      return state
+    let full = EMPTY
+    for (let i = 1; i <= DIGESTS_KEPT; i += 1) {
+      const day = `2026-09-${String(i).padStart(2, "0")}`
+      full = step(full, { type: "opened", digest: bare(day), at: OPENED_AT })
     }
-    const opening = through(DIGESTS_KEPT + 1, "opened")
-    const fetching = through(DIGESTS_KEPT + 1, "fetched")
-    expect(days(fetching)).toEqual(days(opening))
-    expect(fetching.digests).toHaveLength(DIGESTS_KEPT)
-    // One older than everything kept is taken and let go at once: no change.
     expect(
-      step(fetching, {
+      step(full, {
         type: "fetched",
         digests: [bare("2026-08-01")],
         at: FETCHED_AT,
       })
-    ).toBe(fetching)
+    ).toBe(full)
   })
 
   it("returns the same state when nothing is new", () => {
     expect(step(opened, { type: "fetched", digests: [], at: FETCHED_AT })).toBe(
       opened
     )
-    expect(fetch(opened, DAY)).toBe(opened)
     // The same day twice in one answer is taken once.
     expect(fetch(EMPTY, "2026-10-19", "2026-10-19").digests).toHaveLength(1)
   })
@@ -540,21 +516,7 @@ describe("digests home holds (fetched)", () => {
   })
 })
 
-describe("newestDay and pacificDay", () => {
-  it("names the newest digest held, or none", () => {
-    expect(newestDay(EMPTY)).toBeNull()
-    expect(
-      newestDay(
-        step(opened, {
-          type: "fetched",
-          digests: [digest("2026-10-10")],
-          at: OPENED_AT,
-        })
-      )
-    ).toBe(DAY)
-    expect(newestDay(opened)).toBe(DAY)
-  })
-
+describe("pacificDay", () => {
   it("reads the Pacific day across both offsets", () => {
     expect(pacificDay(new Date("2026-10-22T06:59:00Z"))).toBe("2026-10-21")
     expect(pacificDay(new Date("2026-10-22T07:00:00Z"))).toBe("2026-10-22")

@@ -332,7 +332,6 @@ export const JobsToday = (): JSX.Element => {
     )
   }
 
-  // The morning run's day: the phone may be anywhere, the run is Pacific.
   const earlier = digest.day < pacificDay(new Date())
   const findings = digestFindings(digest)
   const tracks = TRACKS.map((t) => [t, TRACK_HEADINGS[t]] as const)

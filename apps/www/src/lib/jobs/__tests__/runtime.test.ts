@@ -1,31 +1,13 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { createJobsRuntime } from "@/lib/jobs/runtime"
-import type { JobsPorts } from "@/lib/jobs/runtime"
 import { STORAGE_KEY } from "@/lib/jobs/stored"
-import { createInMemoryStorage } from "@/lib/tenant/storage"
 import type { StorageAdapter } from "@/lib/tenant/storage"
 
-import { digest, memoryShelf } from "./fixture"
+import { digest, ports } from "./fixture"
 
 const blob = (text: string): Blob =>
   new Blob([text], { type: "application/json" })
-
-function ports(overrides: Partial<JobsPorts> = {}): JobsPorts {
-  let n = 0
-  return {
-    storage: createInMemoryStorage(),
-    audio: memoryShelf(),
-    saving: () => undefined,
-    isSaving: () => false,
-    startRecording: vi.fn(),
-    share: vi.fn(() => Promise.resolve<"shared" | "cancelled">("shared")),
-    now: () => new Date("2026-10-18T22:00:00Z"),
-    dayOf: () => "2026-10-18",
-    newId: () => `id${(n += 1)}`,
-    ...overrides,
-  }
-}
 
 const settle = (): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, 0))

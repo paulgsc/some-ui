@@ -13,5 +13,8 @@ export const notToday = (day: string): string =>
 export const arriveOnTheirOwn =
   "On the home Wi-Fi, today’s picks arrive by themselves: tap the home mark at the top and keep Jobs on home."
 
+/** The picker, as the way in. */
+export const openFromStorage = "Open today’s picks from storage"
+
 /** The picker, once it is not the way in. */
 export const orOpenFile = "Or open them from Drive"

@@ -13,20 +13,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 function mockJobs(): void {
   vi.doMock("@/lib/jobs", async () => {
     const { createJobsRuntime } = await import("@/lib/jobs/runtime")
-    const { createInMemoryStorage } = await import("@/lib/tenant/storage")
-    const { memoryShelf } = await import("@/lib/jobs/__tests__/fixture")
-    let n = 0
-    const runtime = createJobsRuntime({
-      storage: createInMemoryStorage(),
-      audio: memoryShelf(),
-      saving: () => undefined,
-      isSaving: () => false,
-      startRecording: vi.fn(),
-      share: vi.fn(),
-      now: () => new Date(),
-      dayOf: () => "2026-10-22",
-      newId: () => `id${(n += 1)}`,
-    })
+    const { ports } = await import("@/lib/jobs/__tests__/fixture")
+    const runtime = createJobsRuntime(
+      ports({ now: () => new Date(), dayOf: () => "2026-10-22" })
+    )
     return { phoneJobs: (): typeof runtime => runtime, copyText: vi.fn() }
   })
 }

@@ -11,20 +11,8 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@/lib/jobs", async () => {
   const { createJobsRuntime } = await import("@/lib/jobs/runtime")
-  const { createInMemoryStorage } = await import("@/lib/tenant/storage")
-  const { memoryShelf } = await import("@/lib/jobs/__tests__/fixture")
-  let n = 0
-  const runtime = createJobsRuntime({
-    storage: createInMemoryStorage(),
-    audio: memoryShelf(),
-    saving: () => undefined,
-    isSaving: () => false,
-    startRecording: vi.fn(),
-    share: vi.fn(),
-    now: () => new Date("2026-10-18T22:00:00Z"),
-    dayOf: () => "2026-10-18",
-    newId: () => `id${(n += 1)}`,
-  })
+  const { ports } = await import("@/lib/jobs/__tests__/fixture")
+  const runtime = createJobsRuntime(ports())
   return { phoneJobs: (): typeof runtime => runtime, copyText: vi.fn() }
 })
 

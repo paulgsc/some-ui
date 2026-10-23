@@ -21,9 +21,8 @@
  * 3. home's digests (`GET /jobs/digests`), the days after the newest one the
  *    phone holds (the newest few, on a phone holding none): the morning
  *    run's picks, which home takes from the mailbox. At most
- *    `DIGESTS_PER_RUN` are taken in, and a day the phone holds is never
- *    replaced (`fetched`). A digest the phone can't read is skipped and the
- *    rest are taken.
+ *    `DIGESTS_PER_RUN` are taken in (`fetched` decides which are kept). A
+ *    digest the phone can't read is skipped and the rest are taken.
  *
  * What an exchange learned is handed over as it ends, however it ends: a
  * throw part way (a stop, no answer) keeps what home already confirmed.
@@ -37,7 +36,7 @@ import {
 } from "@some-ui/core-utils"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import type { Digest } from "@some-ui/job-desk"
-import { parseDigest } from "@some-ui/job-desk"
+import { DigestSchema } from "@some-ui/job-desk"
 import { z } from "zod"
 
 import type { HomeRefusal, JobEvent, JobsState } from "./model"
@@ -53,7 +52,7 @@ export type JobsRecordPort = {
   ) => void
   /** Home's copy, for a phone whose log is empty; false if not taken. */
   restored: (events: ReadonlyArray<JobEvent>) => boolean
-  /** Digests home holds; the phone keeps those for days it does not hold. */
+  /** Digests home holds, for the record to take in. */
   fetched: (digests: ReadonlyArray<Digest>) => void
 }
 
@@ -122,18 +121,13 @@ async function readRecord(
   return null
 }
 
-const DAY = /^\d{4}-\d{2}-\d{2}$/
-
 /** Step 3. Null when the exchange goes on to its end. */
 async function readDigests(
   keeping: JobsRecordPort,
   send: HomeCall
 ): Promise<HomeExchanged | null> {
   const after = newestDay(keeping.state())
-  const path =
-    after !== null && DAY.test(after)
-      ? `/jobs/digests?after=${after}`
-      : "/jobs/digests"
+  const path = after === null ? "/jobs/digests" : `/jobs/digests?after=${after}`
   const answer = await send("GET", path)
   if (answer.status === 401) return { kind: "forgotten" }
   const held = readAs(DigestsAnswer, answer.body)
@@ -142,21 +136,22 @@ async function readDigests(
   }
   const valid: Array<Digest> = []
   for (const { day, digest } of held.digests) {
-    const parsed = parseDigest(JSON.stringify(digest))
-    if (parsed.ok) {
-      valid.push(parsed.value)
+    const parsed = DigestSchema.safeParse(digest)
+    if (parsed.success) {
+      valid.push(parsed.data)
       continue
     }
-    // Only the day, never the digest: it is the owner's picks.
+    // Only the day, never the digest (nor the parse error, which quotes
+    // it): it is the owner's picks.
     reportFailure({
       port: "home server (digests)",
       error: {
-        ...toIntentError(new Error(`the digest for ${day} was not readable`)),
+        ...toIntentError(null),
         summary: `The digest for ${day} couldn't be read.`,
       },
     })
   }
-  if (valid.length > 0) keeping.fetched(valid.slice(-DIGESTS_PER_RUN))
+  keeping.fetched(valid.slice(-DIGESTS_PER_RUN))
   return null
 }
 

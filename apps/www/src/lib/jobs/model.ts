@@ -9,7 +9,7 @@
  * appends to it, and a later event says what changed (a pick passed, then
  * taken, is taken). Nothing here removes an event. Digests are copies of
  * files kept in Drive's `some-ui jobs/Brief`, opened from a file or taken in
- * from home (`fetched`, which never replaces a day the phone holds): the
+ * from home (`fetched`): the
  * phone keeps every digest the log names or that has a pick still open (it
  * holds a queue slot), and of the rest only the newest `DIGESTS_KEPT`.
  */
@@ -177,7 +177,7 @@ export type Draft<T = JobEvent> = T extends unknown
 
 export type JobsAction =
   | { type: "opened"; digest: Digest; at: string }
-  /** Digests home holds, taken in for the days this phone does not hold. */
+  /** Digests home holds. */
   | { type: "fetched"; digests: ReadonlyArray<Digest>; at: string }
   | { type: "voice-kept"; note: VoiceNote }
   | { type: "voice-dropped"; ids: ReadonlyArray<string> }

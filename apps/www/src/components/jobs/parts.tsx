@@ -16,6 +16,7 @@ import type { JobsSnapshot } from "@/lib/jobs"
 import { copyText, phoneJobs } from "@/lib/jobs"
 import { isFile } from "@/lib/jobs/files"
 import type { ShareKind } from "@/lib/jobs/model"
+import { openFromStorage } from "@/lib/jobs/words"
 import { lookIn } from "@/lib/share-files"
 
 export function useJobs(): JobsSnapshot {
@@ -195,7 +196,7 @@ export const VoiceNotes = ({
 
 /** The system picker: Android lists Drive beside the phone's own files. */
 export const OpenDigest = ({
-  label = "Open today’s picks from storage",
+  label = openFromStorage,
 }: {
   label?: string | undefined
 }): JSX.Element => {
