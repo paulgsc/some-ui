@@ -25,8 +25,10 @@ type Bound = ReturnType<Prepared["bind"]>
 
 /**
  * The part of `D1Database` the adapter uses, over a real SQLite (sql.js).
+ * `batch` runs its statements in one transaction, as D1's does.
  */
 export function d1Shim(db: Database, blobs: "array" | "bytes" = "array"): Db {
+  const pending = new WeakMap<Bound, () => Array<Record<string, unknown>>>()
   return {
     prepare(sql): Prepared {
       return {
@@ -55,11 +57,28 @@ export function d1Shim(db: Database, blobs: "array" | "bytes" = "array"): Db {
               statement.free()
             }
           }
-          return {
+          const bound: Bound = {
             first: () => Promise.resolve(rows().at(0) ?? null),
             all: () => Promise.resolve({ results: rows() }),
           }
+          pending.set(bound, rows)
+          return bound
         },
+      }
+    },
+    batch(statements): ReturnType<Db["batch"]> {
+      db.exec("BEGIN")
+      try {
+        const results = statements.map((statement) => {
+          const rows = pending.get(statement)
+          if (rows === undefined) throw new Error("not a statement of this db")
+          return { results: rows() }
+        })
+        db.exec("COMMIT")
+        return Promise.resolve(results)
+      } catch (error) {
+        db.exec("ROLLBACK")
+        return Promise.reject(error)
       }
     },
   }
