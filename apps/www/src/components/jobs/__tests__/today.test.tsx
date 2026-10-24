@@ -122,6 +122,12 @@ describe("Today, opened", () => {
     expect(screen.queryByText("Ready for their form")).toBeNull()
     act(() => {
       phoneJobs().record({ type: "taken", ...ref })
+    })
+    expect(
+      screen.getByText("Résumé to build from the pick: backend")
+    ).toBeTruthy()
+    expect(screen.queryByText("Ready for their form")).toBeNull()
+    act(() => {
       phoneJobs().record({ type: "resume-ready", ...ref })
     })
     expect(screen.getByText("Ready for their form")).toBeTruthy()

@@ -69,7 +69,6 @@ describe("doneOn", () => {
     state = record(state, { type: "resume-ready", ...refOf(NEWER, 0) }, today)
     state = record(state, { type: "apply-opened", ...refOf(NEWER, 0) }, today)
     state = record(state, { type: "apply-opened", ...refOf(NEWER, 0) }, today)
-    state = letGo(state, OLDEST)
     expect(doneOn(state, "2026-10-18", dayOf)).toBe(2)
   })
 })

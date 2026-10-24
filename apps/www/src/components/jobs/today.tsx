@@ -522,11 +522,9 @@ export const JobsToday = (): JSX.Element => {
   const done = doneOn(state, dayOf(now), dayOf)
   return (
     <div className="flex flex-col gap-4">
-      {done > 0 && (
-        <p role="status" className="text-sm font-semibold">
-          {doneToday(done)}
-        </p>
-      )}
+      <p role="status" className="text-sm font-semibold empty:hidden">
+        {done > 0 ? doneToday(done) : null}
+      </p>
       {earlier && (
         <section className="flex flex-col gap-2">
           <p className="text-sm">
