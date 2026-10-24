@@ -79,6 +79,14 @@ describe("parseRoutineFiles", () => {
         }),
     })
     await expect(feed.list()).resolves.toHaveLength(1)
+    expect(feed.key).toBeUndefined()
+  })
+
+  it("carries the port's key, which the handheld's list is keyed on", () => {
+    const list = (): Promise<unknown> => Promise.resolve({ files: [] })
+    expect(createRoutineFeed({ key: "pairing-1@5", list }).key).toBe(
+      "pairing-1@5"
+    )
   })
 })
 

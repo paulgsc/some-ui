@@ -8,9 +8,10 @@
  *
  * - **Nothing is sent but by a method a tap called,** or by `keep`, which
  *   only `lib/home-link/lanes` calls, for a record its person keeps on home
- *   (LA9 to LA11). Creating the runtime and `load` read only the
- *   phone's own record; being paired sends nothing on a timer, on resume or
- *   on a network change.
+ *   (LA9 to LA11), and `lib/home-link/routine`, for Korean's look at the
+ *   routine's files its person chose to show (LA12). Creating the runtime
+ *   and `load` read only the phone's own record; being paired sends
+ *   nothing on a timer, on resume or on a network change.
  * - **No retry.** A failed request is said once and left; the next tap is
  *   the next try. (A kept record's changes go again when it next asks: LA9
  *   to LA11.)
@@ -156,7 +157,10 @@ export type HomeLink = {
   send: <T>(
     run: (send: HomeCall) => Promise<T>
   ) => Promise<SyncOutcome<T> | null>
-  /** As `send`, for aph kept on home (LA9). */
+  /**
+   * As `send`, for a record kept on home (`./lanes`, LA9 to LA11) and
+   * Korean's look at the routine's files (`./routine`, LA12).
+   */
   keep: <T>(
     run: (send: HomeCall) => Promise<T>
   ) => Promise<SyncOutcome<T> | null>

@@ -15,15 +15,19 @@ export function useRoutineFiles(
   feed: RoutineFeed | undefined
 ): UseQueryResult<ReadonlyArray<RoutineFile>> {
   return useQuery({
-    // Keyed on whether there is a home, so no answer outlives its host.
-    queryKey: ["routine-files", feed !== undefined],
+    // Keyed on which home, or whether there is one, so no answer outlives
+    // its host.
+    queryKey: ["routine-files", feed?.key ?? feed !== undefined],
     queryFn: () => (feed ? feed.list() : []),
     enabled: feed !== undefined,
-    // A routine answers at most a few times a day; once that is old, coming
-    // back to the list asks again (the host's default is never to).
-    staleTime: 10 * 60 * 1000,
+    // Asked on the lesson opening and the app coming back to the front, and
+    // at no other moment: never on an interval, a reconnect or a retry
+    // (LA12). Each is one look, so nothing a look missed waits out a window.
+    staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
+    refetchOnReconnect: false,
+    retry: false,
     gcTime: 30 * 60 * 1000,
   })
 }
