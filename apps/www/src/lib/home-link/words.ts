@@ -167,6 +167,9 @@ export const KEEP_SENDING = "Keep sending these to home from now on"
 export const KEEP_SENDING_MORE =
   "New finished sessions and kept items go to home while Practice is open, and the mark at the top shows each send. Stop any time; what's sent stays on home."
 
+/** Settings' send confirm, when it carries LeetType sessions: the phone keeps them. */
+export const LEETYPE_STAYS = "LeetType sessions stay on this phone."
+
 /** Settings' send with nothing to carry: some left out as home took them, or none at all. */
 export const NOTHING_TO_SEND = {
   taken: (host: string): string =>

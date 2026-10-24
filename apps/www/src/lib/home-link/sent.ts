@@ -2,7 +2,8 @@
  * What this phone knows its paired home holds, so a standing send
  * (`./standing`, LA11) and Settings' send (`./send`) carry only what changed
  * since: each finished session's `updatedAt` as it was copied, each kept
- * shelf item's digest as home answered for it, and the digests home
+ * shelf item's digest as home answered for it, each LeetType session's
+ * digest as home read it back (`./leetype-log`), and the digests home
  * refused, so the standing send does not offer an unchanged refused item
  * again (a tap in Settings does). Kept for one pairing (`pairing`, the
  * link's id for it): another pairing starts from nothing. Bookkeeping, not
@@ -20,6 +21,8 @@ export type Sent = {
   readonly sessions: Readonly<Record<string, string>>
   readonly shelf: Readonly<Record<string, string>>
   readonly refused: Readonly<Record<string, string>>
+  /** LeetType sessions by id, each with its digest as home read it back. */
+  readonly leetype: Readonly<Record<string, string>>
 }
 
 type Store = Pick<Storage, "getItem" | "setItem"> | null
@@ -29,6 +32,7 @@ const emptyFor = (pairing: string): Sent => ({
   sessions: {},
   shelf: {},
   refused: {},
+  leetype: {},
 })
 
 function stringsOf(value: unknown): Record<string, string> {
@@ -49,12 +53,13 @@ export function readSent(storage: Store, pairing: string): Sent {
     if (!isRecord(parsed) || parsed.pairing !== pairing) {
       return emptyFor(pairing)
     }
-    const { sessions, shelf, refused } = parsed
+    const { sessions, shelf, refused, leetype } = parsed
     return {
       pairing,
       sessions: stringsOf(sessions),
       shelf: stringsOf(shelf),
       refused: stringsOf(refused),
+      leetype: stringsOf(leetype),
     }
   } catch {
     return emptyFor(pairing)
@@ -86,6 +91,7 @@ export function rememberSent(
     sessions: { ...sent.sessions, ...more.sessions },
     shelf: { ...without(sent.shelf, more.refused), ...more.shelf },
     refused: { ...without(sent.refused, more.shelf), ...more.refused },
+    leetype: { ...sent.leetype, ...more.leetype },
   }
   try {
     storage?.setItem(SENT_KEY, JSON.stringify(next))

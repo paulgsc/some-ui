@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest"
 
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
+import { emptyLogReport } from "@/lib/home-link/leetype-log"
 import type { SendOutcome } from "@/lib/home-link/send"
 import { describeSend } from "@/lib/home-link/send"
 import { HomeForgotPhoneError } from "@/lib/home-link/sessions"
@@ -17,6 +18,7 @@ function outcome(over: Partial<SendOutcome> = {}): SendOutcome {
     held: emptyHeldReport(),
     freed: 0,
     shelf: emptyReport(),
+    log: emptyLogReport(),
     ended: null,
     ...over,
   }
@@ -53,6 +55,13 @@ describe("describeSend", () => {
     }
     expect(describeSend(outcome({ shelf }), "home.example")).toBe(
       "Sent 1 kept item. 2 didn't fit: home's shelf is full. 1 refused by home.example."
+    )
+  })
+
+  it("says which LeetType sessions home now holds, and which it didn't take", () => {
+    const log = { ...emptyLogReport(), held: 2, refused: 1, differs: 1 }
+    expect(describeSend(outcome({ log }), "home.example")).toBe(
+      "Copied 2 LeetType sessions. 1 refused by home.example. 1 kept: home's copy didn't match."
     )
   })
 

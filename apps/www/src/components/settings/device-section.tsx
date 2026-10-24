@@ -36,6 +36,7 @@ import {
   KEEP_SENDING_REFUSED,
   KEEP_SENDING_SAID,
   KEPT_NOTE,
+  LEETYPE_STAYS,
   NOTHING_TO_SEND,
 } from "@/lib/home-link/words"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
@@ -271,6 +272,7 @@ const SendHome = ({
           <p className="text-sm break-words">
             Send {asking.what} to {host}? Finished sessions are cleared from
             this phone once they&apos;re there.
+            {asking.leetype > 0 ? ` ${LEETYPE_STAYS}` : null}
           </p>
           {kept ? null : (
             <div className="flex items-start gap-3 rounded-md border p-3">
