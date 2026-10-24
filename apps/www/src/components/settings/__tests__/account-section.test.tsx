@@ -1,12 +1,15 @@
 /**
  * @vitest-environment jsdom
  *
- * The Account section's two promises: deleting the account takes a second,
- * deliberate press, and every way of leaving ends on the passkey screen.
+ * The Account section's promises: deleting the account takes a second,
+ * deliberate press, every way of leaving ends on the passkey screen, and the
+ * copy above the button says what goes and what stays.
  */
 
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
+
+import { ACCOUNT_ERASES } from "@/lib/auth/account-erases"
 
 const calls = vi.hoisted(() => {
   const auth: Array<string> = []
@@ -92,9 +95,20 @@ describe("AccountSection", () => {
     // The sign-up screen lists the shelf items and reminders too; so does this.
     expect(screen.getByText(/items you save to shelves/i)).toBeTruthy()
     expect(screen.getByText(/turn on reminders/i)).toBeTruthy()
-    expect(
-      screen.getByText(/does not rewrite server logs or backups/i)
-    ).toBeTruthy()
+  })
+
+  it("says, before the button, what deleting removes and what it leaves", () => {
+    render(<AccountSection />)
+    expect(screen.getByText(ACCOUNT_ERASES.lead)).toBeTruthy()
+    expect(screen.getByText(ACCOUNT_ERASES.goesTitle)).toBeTruthy()
+    expect(screen.getByText(ACCOUNT_ERASES.staysTitle)).toBeTruthy()
+    for (const { label, text } of [
+      ...ACCOUNT_ERASES.goes,
+      ...ACCOUNT_ERASES.stays,
+    ]) {
+      expect(screen.getByText(`${label}.`)).toBeTruthy()
+      expect(screen.getByText(text)).toBeTruthy()
+    }
   })
 
   it("deletes only on the second, explicit press, then leaves for the passkey screen", async () => {

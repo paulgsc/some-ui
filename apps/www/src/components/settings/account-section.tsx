@@ -12,9 +12,8 @@
  * phone (`paulgsc/server` `docs/identity.md`), so a lost one is unpaired by
  * signing out everywhere.
  *
- * Deleting takes two presses (the second button appears after the first): the
- * server deletes everything under the account's ID; logs and backups are not
- * rewritten, and the copy says so.
+ * Deleting takes two presses (the second button appears after the first); what
+ * it removes and leaves is said by `lib/auth/account-erases`.
  */
 
 import type { JSX } from "react"
@@ -31,11 +30,32 @@ import {
   signOutEverywhere,
   startPairing,
 } from "@/lib/auth"
+import type { Kind } from "@/lib/auth/account-erases"
+import { ACCOUNT_ERASES } from "@/lib/auth/account-erases"
 import { ACCOUNT_KEEPS } from "@/lib/auth/account-keeps"
 import { absoluteFileHostBase } from "@/lib/file-host-config"
 import { useAsyncIntent } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { passkeysSupported } from "@/lib/passkey"
+
+const KindList = ({
+  title,
+  kinds,
+}: {
+  title: string
+  kinds: ReadonlyArray<Kind>
+}): JSX.Element => (
+  <div className="space-y-1">
+    <p className="text-sm font-medium">{title}</p>
+    <ul className="text-muted-foreground list-disc space-y-1 pl-5 text-sm">
+      {kinds.map(({ label, text }) => (
+        <li key={label}>
+          <span className="text-foreground">{label}.</span> {text}
+        </li>
+      ))}
+    </ul>
+  </div>
+)
 
 export const AccountSection = (): JSX.Element => {
   const navigate = useNavigate()
@@ -177,13 +197,15 @@ export const AccountSection = (): JSX.Element => {
 
       <Separator />
       <div className="space-y-2">
-        <p className="text-muted-foreground text-sm">
-          Deleting removes everything stored under this account&apos;s ID from
-          the server&apos;s database (your sessions, saved shelf items, reminder
-          and progress records, and passkeys), so your passkeys will no longer
-          open anything here. It does not rewrite server logs or backups, and it
-          can&apos;t be undone.
-        </p>
+        <p className="text-muted-foreground text-sm">{ACCOUNT_ERASES.lead}</p>
+        <KindList
+          title={ACCOUNT_ERASES.goesTitle}
+          kinds={ACCOUNT_ERASES.goes}
+        />
+        <KindList
+          title={ACCOUNT_ERASES.staysTitle}
+          kinds={ACCOUNT_ERASES.stays}
+        />
         {confirmingDelete ? (
           <div className="flex flex-wrap gap-2">
             <IntentButton
