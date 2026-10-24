@@ -14,9 +14,9 @@ overrides:
   # repo-wide floor also dedupes concurrently's exact 1.8.4 pin.
   shell-quote: ^1.9.0
   # Transitive via ajv@8 (web-ext's addons-linter, api-extractor); Dependabot
-  # cannot bump it without a direct dependency to move. < 3.1.7 is
+  # cannot bump it without a direct dependency to move. < 3.1.9 is
   # advisory-affected.
-  fast-uri: ^3.1.7
+  fast-uri: ^3.1.9
   # Transitive via @capacitor/cli (tar ^7); same Dependabot gap as
   # fast-uri. < 7.5.21 is advisory-affected.
   tar: ^7.5.21
@@ -32,6 +32,29 @@ overrides:
   browserslist: ^4.28.7
   colord: ^2.9.4
   baseline-browser-mapping: ^2.11.0
+  # More of the same backlog, each at the first patched version. Where a
+  # parent's own range already admits it (minimatch's brace-expansion ^5.0.8,
+  # postcss's source-map-js ^1.2.1, knip's smol-toml ^1.7.1) the override only
+  # holds the floor. Where it does not, the reason is named:
+  #   seroval, seroval-plugins: solid-js@1.9.13 (TanStack devtools) asks ~1.5.0
+  #     and everything below 1.6.3 is affected; solid-js 1.9.17 asks ~1.6.8.
+  #   undici@7, sharp: miniflare (wrangler) pins 7.29.1 and 0.35.4 exactly.
+  #   uuid@7: xcode (via @capacitor/cli) asks ^7.0.3 and the fix is 11.1.1. The
+  #     only call is `uuid.v4()` in xcode's pbxProject.js, which the 11.x CJS
+  #     build still serves; the advisory is v3/v5/v6 given a `buf`.
+  # node-forge (web-ext > adbkit) has no entry because no patched release
+  # exists: 1.4.0 is the latest and the affected one.
+  "brace-expansion@5": ^5.0.12
+  seroval: ^1.6.3
+  seroval-plugins: ^1.6.3
+  source-map-js: ^1.2.2
+  smol-toml: ^1.9.0
+  "undici@7": ^7.30.1
+  sharp: ^0.35.5
+  "uuid@7": ^11.1.1
+  # The workspaces take zod from the catalog below; this holds the floor for
+  # the two dev tools that bring their own (knip, eslint-plugin-react-hooks).
+  "zod@4": ^4.6.6
 minimumReleaseAgeExclude:
   - "@some-ui/leetype-wasm"
 # Single source of truth for dependencies that more than one workspace needs
@@ -57,7 +80,7 @@ catalog:
   # resolve in 0.562.0 before unifying on it. Caret on a 0.x version only
   # admits patches, so this stays on 0.562.x.
   lucide-react: ^0.562.0
-  zod: 4.6.5
+  zod: 4.6.6
   # Radix is here for a second-order reason. These are proper semver ranges,
   # so caret alone would have been enough to converge them — but ten of the
   # eighteen were declared at different ranges (react-accordion had four:
