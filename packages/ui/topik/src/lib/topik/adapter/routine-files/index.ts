@@ -117,6 +117,8 @@ export type RoutineFeed = {
   /** The port's `key`: what the query is keyed on. */
   key?: string
   list: () => Promise<ReadonlyArray<RoutineFile>>
+  /** What the phone holds from home now, before any look: shown at once. */
+  initial?: () => ReadonlyArray<RoutineFile>
   /**
    * The routine's runs this phone heard of, kept under `key` as each look
    * brings them (`adapter/routine-runs`). Absent, none are said.
@@ -142,6 +144,7 @@ export function createRoutineFeed(
       held.keep(key, heard.at, answer)
       return parseRoutineFiles(held.held(key))
     },
+    initial: () => parseRoutineFiles(held.held(key)),
     runs,
   }
 }

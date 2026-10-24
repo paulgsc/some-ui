@@ -20,7 +20,14 @@
  */
 
 import type { JSX } from "react"
-import { useMemo, useState, useSyncExternalStore } from "react"
+import {
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import { cn, dayOf } from "@some-ui/core-utils"
 import { Button, KeepOnShelf, KeptShelf } from "@some-ui/shared"
 import { CastSheet } from "@topik/components/topik/handheld/cast-sheet"
@@ -121,6 +128,12 @@ type HandheldLessonProps = {
   now?: () => Date
   /** Injected in tests; defaults to `localStorage`. */
   routineOpened?: OpenedStore
+  /**
+   * "next": open on the next lesson, as its card's press would: the newest
+   * the routine left that isn't opened, else the newest word set added and
+   * not opened. With neither, the list. Read once, on mount.
+   */
+  initialOpen?: "next"
 }
 
 export const HandheldLesson = ({
@@ -134,6 +147,7 @@ export const HandheldLesson = ({
   servedPoints,
   now = (): Date => new Date(),
   routineOpened,
+  initialOpen,
 }: HandheldLessonProps): JSX.Element => {
   const [held] = useState(() => pastedStore ?? createPastedLessonStore())
   const drama = usePastedTree(held)
@@ -329,6 +343,31 @@ export const HandheldLesson = ({
     opened.markOpened(key)
     setOpenedKeys(opened.opened())
   }
+  const canRead = speaker?.available === true
+  const openNext = (): void => {
+    const fromRoutine = routineCards.find(
+      (card) => !card.opened && (card.kind === "drama" || canRead)
+    )
+    if (fromRoutine) {
+      openRoutine(fromRoutine.key)
+      return
+    }
+    const ready = readySets(added).at(0)
+    if (ready === undefined || !canRead) return
+    keepSets(openSet(added, ready.deck.id, now().toISOString()))
+    setReading({ set: ready.deck.id, begin: true })
+  }
+  // The press the host already made, once per mount, a double mount
+  // included: the second would open the one after it.
+  const opening = useRef(initialOpen)
+  const openAsked = useEffectEvent((): void => {
+    if (opening.current !== "next") return
+    opening.current = undefined
+    openNext()
+  })
+  useEffect(() => {
+    openAsked()
+  }, [])
   const [castOpen, setCastOpen] = useState(false)
 
   if (reading) {
@@ -558,9 +597,7 @@ export const HandheldLesson = ({
         // Read-aloud's audio is the rep: with no voice here it is not
         // offered at all (canon Cor. 4.6).
         onReadAloud={
-          speaker?.available === true
-            ? (): void => setReading({ set: null })
-            : undefined
+          canRead ? (): void => setReading({ set: null }) : undefined
         }
         addedSets={added.length}
         readySets={readySets(added).flatMap(({ deck }) => {

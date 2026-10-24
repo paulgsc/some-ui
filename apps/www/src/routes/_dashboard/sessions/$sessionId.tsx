@@ -74,8 +74,11 @@ const PlayerFailure = ({
  * without a matched router context. */
 export const SessionPlayer = ({
   sessionId,
+  next = false,
 }: {
   sessionId: string
+  /** Made by "Next lesson": play at once, on the lesson. */
+  next?: boolean
 }): JSX.Element => {
   // The same string as this route's URL and the push deep link
   // (`sessions/${id}`), which the server compares a lease against.
@@ -125,7 +128,7 @@ export const SessionPlayer = ({
         <div className="flex h-full min-h-0 w-full flex-col gap-3">
           {refreshBanner}
           <div className="min-h-0 flex-1">
-            <LivePlayer key={session.id} session={session} />
+            <LivePlayer key={session.id} session={session} initialNext={next} />
           </div>
         </div>
       )
@@ -135,10 +138,15 @@ export const SessionPlayer = ({
 
 const SessionPlayerRoute = (): JSX.Element => {
   const { sessionId } = Route.useParams()
-  return <SessionPlayer sessionId={String(sessionId)} />
+  const { next } = Route.useSearch()
+  return <SessionPlayer sessionId={String(sessionId)} next={next === true} />
 }
 
 export const Route = createFileRoute("/_dashboard/sessions/$sessionId")({
+  // `?next=true`: Practice Home's "Next lesson" made this session, so it
+  // plays at once and opens on the lesson.
+  validateSearch: (search: Record<string, unknown>): { next?: true } =>
+    search.next === true ? { next: true } : {},
   // Starts the session fetch when navigation starts (on hover, via
   // `defaultPreload: "intent"`) rather than after mount. Not awaited, and
   // `prefetchQuery` not `ensureQueryData`: a pure head start that never

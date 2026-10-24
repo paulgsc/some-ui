@@ -12,6 +12,7 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { Check } from "lucide-react"
 
 import { useMinuteClock } from "@/lib/clock"
+import { isOfferedActivityId } from "@/lib/playable"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import {
   closedPatch,
@@ -29,6 +30,7 @@ import {
   useUpdateSession,
 } from "@/lib/tenant"
 import { StopReasons } from "@/components/player/session-stop"
+import { NextLesson } from "@/components/practice/next-lesson"
 
 /**
  * Practice's Home: where studying picks up. What is open, what was finished
@@ -175,6 +177,11 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
           </Button>
         )}
       </div>
+      {status.kind === "ready" &&
+        status.open === null &&
+        isOfferedActivityId("topik") && (
+          <NextLesson className="h-12 rounded-2xl px-6 text-base" />
+        )}
       {cut && (
         <div className="flex flex-col gap-2">
           <p className="text-muted-foreground text-sm">

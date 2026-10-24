@@ -71,6 +71,7 @@ describe("Practice's study card", () => {
     expect(screen.getByText(/couldn’t read your sessions/)).toBeTruthy()
     expect(screen.queryByText("nothing in progress")).toBeNull()
     expect(screen.queryByText("Start")).toBeNull()
+    expect(screen.queryByText("Next lesson")).toBeNull()
     fireEvent.click(screen.getByRole("button", { name: "Retry" }))
     expect(refetch).toHaveBeenCalledTimes(1)
   })
@@ -89,6 +90,7 @@ describe("Practice's study card", () => {
 
     expect(screen.getByText("nothing in progress")).toBeTruthy()
     expect(screen.getByText("Start")).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Next lesson" })).toBeTruthy()
     expect(screen.queryByText(/this may be out of date/)).toBeNull()
   })
 

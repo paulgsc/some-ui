@@ -5,14 +5,11 @@
  * viewer can compose, edit and play; a reload starts over. Seeded from
  * `main.tsx`, which loads the activity registry anyway.
  */
-import {
-  defaultSessionName,
-  sequenceScenes,
-  totalDurationOfScenes,
-} from "@some-ui/activity-catalog"
+import { totalDurationOfScenes } from "@some-ui/activity-catalog"
 
 import { VIEWER_BUILD } from "@/lib/data-mode"
 import { OFFERED_ACTIVITIES } from "@/lib/playable"
+import { basicSession } from "@/lib/quick-start"
 import { STORAGE_KEY as SESSIONS_KEY } from "@/lib/tenant/sessions-repository"
 import { browserLocalStorage, writeJSON } from "@/lib/tenant/storage"
 import type { SessionRecord } from "@/lib/tenant/types"
@@ -30,19 +27,12 @@ export function demoSessions(): Array<SessionRecord> {
     ...(OFFERED_ACTIVITIES.length >= 2 ? [OFFERED_ACTIVITIES.slice(0, 2)] : []),
   ]
   return groups.map((group, index) => {
-    const activities = group.map((activity) => ({
-      activityId: activity.id,
-      config: activity.defaultConfig,
-    }))
-    const scenes = sequenceScenes(activities)
+    const draft = basicSession(group.map((activity) => activity.id))
     return {
+      ...draft,
       id: `demo-${index + 1}`,
-      name: defaultSessionName(activities.map((a) => a.activityId)),
       status: "draft",
-      activities,
-      scenes,
-      layoutMode: "basic",
-      totalDurationMs: totalDurationOfScenes(scenes),
+      totalDurationMs: totalDurationOfScenes(draft.scenes),
       createdAt: SAMPLED_AT,
       updatedAt: SAMPLED_AT,
     }
