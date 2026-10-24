@@ -496,12 +496,22 @@ jobs:
       # needs one package.
       - name: Install the eslint kit
         run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline --filter @some-ui/eslint-kit
+      # The checkout is the merge ref alone, so fetch the base's tip for
+      # `--base` (R1 and F1's Grandfathered groups only shrink).
+      - name: Fetch the base branch
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: git fetch --no-tags --depth=1 origin "+$BASE_REF:refs/remotes/origin/$BASE_REF"
       - name: Check React coordination
-        run: nix develop .#ci --command node scripts/check-react-coordination.ts
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: nix develop .#ci --command node scripts/check-react-coordination.ts --base "origin/$BASE_REF"
       # F1 (docs/monorepo-boundaries.md, "A port translates: the foreign
       # boundary"): the same kind of count, over waits on foreign APIs.
       - name: Check the foreign boundary
-        run: nix develop .#ci --command node scripts/check-foreign-boundary.ts
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: nix develop .#ci --command node scripts/check-foreign-boundary.ts --base "origin/$BASE_REF"
 
   # ── Workflow guards (repo-wide) ────────────────────────────────────────
   # Artifact retention (CLAUDE.md "Workflow storage") and the RS1 fingerprint
@@ -516,6 +526,25 @@ jobs:
       - uses: ./.github/actions/nix-setup
       - name: Check workflows
         run: nix develop .#ci --command node scripts/check-workflows.ts
+
+  # ── Change-kind record (repo-wide) ─────────────────────────────────────
+  # scripts/check-commit-trailers.ts over every commit the PR adds; the
+  # commit-msg hook runs it only where husky is installed. Full history, so
+  # origin/<base> is the base's tip now: a commit main gained after the event
+  # and the branch merged in is main's, not the PR's. No install.
+  commit-trailers:
+    name: Change-kind trailers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/nix-setup
+      - name: Check every commit's trailers
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: nix develop .#ci --command node scripts/check-commit-trailers.ts "origin/$BASE_REF..$HEAD_SHA"
 
   # ── Toolchain pins (repo-wide) ─────────────────────────────────────────
   # scripts/sync-toolchain.sh --check. No `changes` gate: either side can move
@@ -554,6 +583,7 @@ jobs:
         test-layout,
         react-coordination,
         workflows,
+        commit-trailers,
         toolchain,
       ]
     if: always()

@@ -5,7 +5,7 @@ import type * as ESTree from "estree"
  * Receivers whose listeners live as long as the page, whatever added them.
  * An element's listeners go when the element does; these never do.
  */
-const PAGE_LIFETIME_TARGETS = new Set([
+export const PAGE_LIFETIME_TARGETS = new Set([
   "document",
   "window",
   "globalThis",
@@ -200,7 +200,7 @@ function bareGlobalTarget(
 }
 
 /** The name is not declared in the file (defs) or imported: the global's. */
-function isGlobal(name: string, scope: Scope.Scope): boolean {
+export function isGlobal(name: string, scope: Scope.Scope): boolean {
   for (let s: Scope.Scope | null = scope; s !== null; s = s.upper) {
     const variable = s.set.get(name)
     if (variable && variable.defs.length > 0) return false

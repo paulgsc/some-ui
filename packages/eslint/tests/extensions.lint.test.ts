@@ -24,6 +24,14 @@ const TS_FILE = "src/content.ts"
 
 const SYNTAX = "no-restricted-syntax"
 
+// These snippets are parsed as JavaScript. One that doesn't parse runs no
+// rule, so "does NOT fire" would pass having checked nothing.
+const expectQuiet = (msgs: Array<{ fatal?: boolean }>, code: string): void => {
+  if (msgs.some((m) => m.fatal === true)) {
+    throw new Error(`snippet did not parse: ${code}`)
+  }
+}
+
 // ── extensions-security.config (#322) ─────────────────────────────────────
 
 describe("lint: extension-security", () => {
@@ -354,17 +362,6 @@ describe("lint: extension-charter — require-named-lifetime", () => {
 describe("lint: extension-charter — require-scoped-lifetime", () => {
   const RULE = "extension-charter/require-scoped-lifetime"
 
-  // These snippets are parsed as JavaScript. One that doesn't parse runs no
-  // rule, so "does NOT fire" would pass having checked nothing.
-  const expectQuiet = (
-    msgs: Array<{ fatal?: boolean }>,
-    code: string
-  ): void => {
-    if (msgs.some((m) => m.fatal === true)) {
-      throw new Error(`snippet did not parse: ${code}`)
-    }
-  }
-
   it("is a warning in the shared config — an audit, not a gate", async () => {
     const msgs = await lintSnippet(
       extensionsCharterConfig,
@@ -492,6 +489,91 @@ addEventListener("x", f)`
       `function open() { requestAnimationFrame(() => { const later = () => open() }) }`,
     ]) {
       const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
+      expectQuiet(msgs, code)
+      expectNoMessageForRule(msgs, RULE, code)
+    }
+  })
+})
+
+// ── L3: an exemption names what ends the resource ─────────────────────────
+
+describe("lint: extension-charter — require-lifetime-comment (L3)", () => {
+  const RULE = "extension-charter/require-lifetime-comment"
+  const NAMED = "extension-charter/require-named-lifetime"
+  const SCOPED = "extension-charter/require-scoped-lifetime"
+
+  it("fires on an exemption with no Lifetime: line directly above it", async () => {
+    for (const code of [
+      `// eslint-disable-next-line ${NAMED}\nsetInterval(f, 1000)`,
+      `// polls the page\n// eslint-disable-next-line ${NAMED} -- see above\nsetInterval(f, 1000)`,
+      // A code line breaks the block.
+      `// Lifetime: cleared by stop()\nconst x = 1\n// eslint-disable-next-line ${NAMED}\nsetInterval(f, 1000)`,
+      // A blank line breaks it too.
+      `// Lifetime: cleared by stop()\n\n// eslint-disable-next-line ${NAMED}\nsetInterval(f, 1000)`,
+      // The word must open the line.
+      `// No Lifetime: here\n// eslint-disable-next-line ${SCOPED}\ndocument.addEventListener("x", f)`,
+      `document.addEventListener("x", f) // eslint-disable-line ${SCOPED}`,
+      `/* eslint-disable ${NAMED}, no-console */\nsetInterval(f, 1000)`,
+    ]) {
+      const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
+      expectMessageForRule(msgs, RULE, code)
+    }
+  })
+
+  it("does NOT fire when the block above names the lifetime", async () => {
+    for (const code of [
+      `// Lifetime: cleared by stop().\n// eslint-disable-next-line ${NAMED} -- lifetime stated above\nsetInterval(f, 1000)`,
+      // Anywhere in the unbroken block, empty comment lines included.
+      `function f() {\n  // Lifetime: the page's; it only records a time.\n  //\n  // More on why.\n  // eslint-disable-next-line ${SCOPED}\n  document.addEventListener("x", g)\n}`,
+      `// Lifetime: the page's.\ndocument.addEventListener("x", f) // eslint-disable-line ${SCOPED}`,
+      // Directives for other rules are not its business.
+      `// eslint-disable-next-line no-console\nconsole.log(1)`,
+    ]) {
+      const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
+      expectQuiet(msgs, code)
+      expectNoMessageForRule(msgs, RULE, code)
+    }
+  })
+})
+
+// ── L6: one module decides whether the page is showing ────────────────────
+
+describe("lint: extension-charter — no-direct-page-showing (L6)", () => {
+  const RULE = "extension-charter/no-direct-page-showing"
+  const adopted = defineConfig([
+    ...extensionsCharterConfig,
+    { rules: { [RULE]: "error" } },
+  ])
+
+  it("is off in the shared config", async () => {
+    const code = `if (document.hidden) stop()`
+    const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
+    expectNoMessageForRule(msgs, RULE, code)
+  })
+
+  it("fires on a direct read of the global document's showing state", async () => {
+    for (const code of [
+      `if (document.visibilityState === "visible") go()`,
+      `const h = document.hidden`,
+      `const fs = document["fullscreenElement"]`,
+      `const v = window.document.visibilityState`,
+      `const v = globalThis.document.hidden`,
+      `const { hidden, title } = document`,
+    ]) {
+      const msgs = await lintSnippet(adopted, code, TS_FILE)
+      expectMessageForRule(msgs, RULE, code)
+    }
+  })
+
+  it("does NOT fire on an element's own hidden, a parameter, or a local document", async () => {
+    for (const code of [
+      `el.hidden = true`,
+      `const t = document.title`,
+      `export function isPageShowing(doc = document) { return doc.visibilityState === "visible" }`,
+      `function f(document) { return document.hidden }`,
+      `const document = frame.contentDocument; const h = document.hidden`,
+    ]) {
+      const msgs = await lintSnippet(adopted, code, TS_FILE)
       expectQuiet(msgs, code)
       expectNoMessageForRule(msgs, RULE, code)
     }

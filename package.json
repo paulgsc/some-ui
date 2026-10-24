@@ -30,6 +30,7 @@
     "knip": "knip --no-progress --reporter compact",
     "check:bundle-paths": "scripts/with-limits.sh turbo run check:bundle-paths --filter=www",
     "check:catalog": "node scripts/check-catalog-drift.mjs",
+    "check:commit-trailers": "node scripts/check-commit-trailers.ts",
     "check:foreign-boundary": "node scripts/check-foreign-boundary.ts",
     "check:react-coordination": "node scripts/check-react-coordination.ts",
     "check:test-layout": "node scripts/check-test-layout.ts",

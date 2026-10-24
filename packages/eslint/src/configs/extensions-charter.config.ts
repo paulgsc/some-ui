@@ -1,8 +1,10 @@
 import {
+  noDirectPageShowing,
   noLogicLayerSideEffects,
   noRawStorage,
   noUnprefixedNamespace,
   noZindexEscalation,
+  requireLifetimeComment,
   requireNamedLifetime,
   requireScopedLifetime,
 } from "@eslint/rules/index.js"
@@ -28,6 +30,8 @@ export const extensionCharterPlugin = {
     "no-raw-storage": noRawStorage,
     "require-named-lifetime": requireNamedLifetime,
     "require-scoped-lifetime": requireScopedLifetime,
+    "require-lifetime-comment": requireLifetimeComment,
+    "no-direct-page-showing": noDirectPageShowing,
   },
 }
 
@@ -65,6 +69,11 @@ const extensionsCharterConfig = defineConfig([
         "warn",
         { lifecycleModule: "@some-extension/common's Disposables" },
       ],
+      // L3: an exemption from either lifetime rule says what ends the
+      // resource. Everywhere, since either rule can be disabled anywhere.
+      // L6's no-direct-page-showing stays off here: an adopted workspace
+      // turns it on beside require-scoped-lifetime at error.
+      "extension-charter/require-lifetime-comment": "error",
     },
   },
 ])

@@ -1,2 +1,2 @@
-
 pnpm exec commitlint --edit "$1"
+node scripts/check-commit-trailers.ts --message-file "$1"

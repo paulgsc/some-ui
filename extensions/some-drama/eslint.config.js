@@ -20,6 +20,8 @@ export default defineConfig(
         "error",
         { lifecycleModule: "@some-extension/common's Disposables" },
       ],
+      // L6 (extensions/common's GOOD_CITIZEN.md).
+      "extension-charter/no-direct-page-showing": "error",
     },
   },
   {

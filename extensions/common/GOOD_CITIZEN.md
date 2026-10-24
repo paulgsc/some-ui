@@ -233,11 +233,11 @@ or replaced before it ever started.
 
 **What upholds it.**
 
-| Layer      | What                                                                                                                                                                                                  |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Primitives | `Disposables` (a lifetime: `signal`, `interval`, `timeout`, `frame`, `loop`, `child`), `ActiveScope` (acquire in one `start`, released by any named hold), `isPageShowing` / `watchPageShowing`       |
-| Lint       | `require-named-lifetime` (`setInterval`, `requestIdleCallback`); `require-scoped-lifetime` (listeners on `document`/`window` without a `signal` or `once`; self-rescheduling `requestAnimationFrame`) |
-| Tests      | `@some-extension/common/testing`: `probeResources()` counts live intervals, timeouts, frames and page listeners; `ungatedInfiniteAnimations()` finds infinite CSS animations outside a dormant gate   |
+| Layer      | What                                                                                                                                                                                                                                                                  |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Primitives | `Disposables` (a lifetime: `signal`, `interval`, `timeout`, `frame`, `loop`, `child`), `ActiveScope` (acquire in one `start`, released by any named hold), `isPageShowing` / `watchPageShowing`                                                                       |
+| Lint       | `require-named-lifetime` (`setInterval`, `requestIdleCallback`); `require-scoped-lifetime` (listeners on `document`/`window` without a `signal` or `once`; self-rescheduling `requestAnimationFrame`); `require-lifetime-comment` (L3); `no-direct-page-showing` (L6) |
+| Tests      | `@some-extension/common/testing`: `probeResources()` counts live intervals, timeouts, frames and page listeners; `ungatedInfiniteAnimations()` finds infinite CSS animations outside a dormant gate                                                                   |
 
 `require-scoped-lifetime` is a warning in the shared config and an error in a
 workspace that has adopted the primitives. `some-drama` is the reference: its
@@ -290,13 +290,15 @@ because a reviewer stops when the falsifier doesn't match.
 - _Claim:_ every `eslint-disable` of `require-named-lifetime` or
   `require-scoped-lifetime` has a line starting `Lifetime:` in the unbroken
   `//` comment block directly above it, saying what ends the resource.
-- _Falsified by_ a hunk that adds such a directive without that line, that
-  deletes or rewords the `Lifetime:` line above an existing directive, or
-  that breaks the comment block between them (inserting a non-comment line).
-- _Scope:_ the whole repo. All 12 exemptions met it when it was written.
-- _Why not lint or tests:_ whether the `Lifetime:` line is true needs a
-  person to read it. Whether it exists is mechanical, so this could become a
-  lint rule; until it does, the review checks it.
+- _Falsified by_ a hunk that writes or rewords a `Lifetime:` line so it no
+  longer names what ends the resource, or that changes what ends an exempted
+  resource (drops its stop, moves its teardown) without updating that line;
+  or a hunk that turns `require-lifetime-comment` off or narrows it.
+- _Scope:_ the whole repo.
+- _Why not lint or tests:_ that the line exists is a lint rule:
+  `require-lifetime-comment`, an error in the shared config, fails a
+  directive naming either rule without a `Lifetime:` line in the unbroken
+  `//` block above it. Whether the line is true needs a person to read it.
 
 **L4: A resource the rules do not recognise is still owned.**
 
@@ -344,10 +346,16 @@ because a reviewer stops when the falsifier doesn't match.
 - _Claim:_ shipped code reads `document.visibilityState`, `document.hidden`
   or `document.fullscreenElement` only through `isPageShowing` or
   `watchPageShowing`.
-- _Falsified by_ a hunk that adds such a read anywhere else.
+- _Falsified by_ a hunk that adds such a read through a `Document` the
+  lint rule does not see (an alias such as `const d = document`, a parameter
+  or another frame's document) outside `page-showing.ts`, or that turns
+  `no-direct-page-showing` off or narrows it in an adopted workspace.
 - _Scope:_ adopted workspaces.
-- _Why not lint or tests:_ this one is mechanical and could become a
-  `no-restricted-syntax` rule. What stays out of reach is what "showing"
+- _Why not lint or tests:_ the global `document`'s reads are a lint rule:
+  `no-direct-page-showing`, at error in each adopted workspace, fails
+  `document.x`, `document["x"]`, `window.document.x` and
+  `const { x } = document`. Any other way to reach a `Document` needs data
+  flow, so review keeps it. What stays out of reach is what "showing"
   means in a real browser: an OS window covered by another can report hidden
   and stop painting, and a page restored from the back/forward cache comes
   back without re-running the content script. jsdom can simulate neither,

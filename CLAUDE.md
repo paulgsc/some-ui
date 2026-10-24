@@ -74,7 +74,8 @@ What follows from them:
 `.husky/pre-commit` skips its `lint-staged` step when `CLAUDE_CODE_REMOTE=true` — for a
 commit spanning many workspaces, running per-package `eslint`, `tsc --noEmit`, and
 `prettier` there routinely exceeds this sandbox's command timeout, which hangs the
-commit rather than failing it cleanly. `commit-msg` (commitlint) still runs regardless.
+commit rather than failing it cleanly. `commit-msg` (commitlint and the Change-Kind check) still
+runs regardless.
 
 Because that safety net is off in this environment, **before every commit** you must
 manually run the equivalent of what `lint-staged.config.js` would have run over your
@@ -391,20 +392,21 @@ the resource-lifetime invariants L1–L8 in `extensions/common/GOOD_CITIZEN.md` 
 lifetimes: what is enforced, and what is not"; `extensions/common/src/lib/lifetime/index.ts`
 carries their one-line summaries.
 
-A worked example, quoted from that set (`GOOD_CITIZEN.md` is the authoritative copy; all 12
-exemptions conform on `main`):
+A worked example, quoted from that set (`GOOD_CITIZEN.md` is the authoritative copy). It
+began as "mechanical; not yet a rule"; once the existence half became a lint rule, the
+invariant kept only what a person has to judge:
 
 > **L3: An exemption names what ends the resource.**
 >
 > - _Claim:_ every `eslint-disable` of `require-named-lifetime` or `require-scoped-lifetime`
 >   has a line starting `Lifetime:` in the unbroken `//` comment block directly above it,
 >   saying what ends the resource.
-> - _Falsified by_ a hunk that adds such a directive without that line, that deletes or
->   rewords the `Lifetime:` line above an existing directive, or that breaks the comment
->   block between them (inserting a non-comment line).
+> - _Falsified by_ a hunk that writes or rewords a `Lifetime:` line so it no longer names
+>   what ends the resource, or that changes what ends an exempted resource without
+>   updating that line; or a hunk that turns `require-lifetime-comment` off or narrows it.
 > - _Scope:_ the whole repo.
-> - _Why not enforced:_ whether the `Lifetime:` line is true needs a person to read it.
->   Whether it exists is mechanical ("mechanical; not yet a rule").
+> - _Why not enforced:_ that the line exists is a lint rule (`require-lifetime-comment`).
+>   Whether it is true needs a person to read it.
 
 **Per-site tags: state the fact where the code hides it.** When a claim is about many sites
 rather than one rule, as L3's `Lifetime:` line is, the invariant can govern a tagged comment
@@ -480,13 +482,12 @@ Relates: SS1 shares stop-resume ordering
 Co-Authored-By: …
 ```
 
-Every commit but a merge or a revert carries `Change-Kind: story` or `Change-Kind: defect`.
-The commit-msg hook (`.commitlintrc.json`) rejects a commit without it in the final paragraph,
-except commitlint's default ignores (merges, reverts, fixups). It runs only where husky is installed, and it does
-not check the value. Checking the value, and a `pr.yml` job that lints every commit, are
-mechanical; not yet a rule. Commits a bot or a workflow writes are exempt, and a person's or
-an agent's commit on a bot's PR carries its own trailer. Keeping up with a dependency (a
-renamed export, a changed default) is a story: no promise changed.
+Every commit but a merge, a revert or a fixup carries `Change-Kind: story` or
+`Change-Kind: defect`, and `pnpm check:commit-trailers` (`packages/eslint/src/commit-trailers.ts`)
+holds the shapes below: the commit-msg hook runs it on the message being written, and a
+`pr.yml` job that CI Gate requires runs it on every commit a PR adds. Commits a bot writes are
+exempt; a person's or an agent's commit on a bot's PR carries its own trailer. Keeping up with
+a dependency (a renamed export, a changed default) is a story: no promise changed.
 
 The commit that declares or amends a promise adds `Promise: <ID> <path>… | <dimension>, …`:
 its scope's paths, then its Family's dimensions, so a later search can match either. For a
