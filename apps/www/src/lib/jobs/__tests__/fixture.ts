@@ -1,6 +1,10 @@
 import type { Digest, Pick } from "@some-ui/job-desk"
 import { fingerprint } from "@some-ui/job-desk"
 import type { BlobShelf } from "@some-ui/voice-capture"
+import { vi } from "vitest"
+
+import type { JobsPorts } from "@/lib/jobs/runtime"
+import { createInMemoryStorage } from "@/lib/tenant/storage"
 
 function pick(id: string, company: string, adjacent: boolean): Pick {
   const posting = {
@@ -76,7 +80,7 @@ export function digest(day: string): Digest {
 }
 
 /** A shelf in memory. */
-export function memoryShelf(): BlobShelf & { blobs: Map<string, Blob> } {
+function memoryShelf(): BlobShelf & { blobs: Map<string, Blob> } {
   const blobs = new Map<string, Blob>()
   return {
     blobs,
@@ -90,5 +94,22 @@ export function memoryShelf(): BlobShelf & { blobs: Map<string, Blob> } {
       return Promise.resolve()
     },
     ids: () => Promise.resolve([...blobs.keys()]),
+  }
+}
+
+/** A runtime's ports in memory, on 2026-10-18 unless `overrides` say not. */
+export function ports(overrides: Partial<JobsPorts> = {}): JobsPorts {
+  let n = 0
+  return {
+    storage: createInMemoryStorage(),
+    audio: memoryShelf(),
+    saving: () => undefined,
+    isSaving: () => false,
+    startRecording: vi.fn(),
+    share: vi.fn(() => Promise.resolve<"shared" | "cancelled">("shared")),
+    now: () => new Date("2026-10-18T22:00:00Z"),
+    dayOf: () => "2026-10-18",
+    newId: () => `id${(n += 1)}`,
+    ...overrides,
   }
 }

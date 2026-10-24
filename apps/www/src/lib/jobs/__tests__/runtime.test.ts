@@ -1,31 +1,14 @@
 import { describe, expect, it, vi } from "vitest"
 
+import { isFile } from "@/lib/jobs/files"
 import { createJobsRuntime } from "@/lib/jobs/runtime"
-import type { JobsPorts } from "@/lib/jobs/runtime"
 import { STORAGE_KEY } from "@/lib/jobs/stored"
-import { createInMemoryStorage } from "@/lib/tenant/storage"
 import type { StorageAdapter } from "@/lib/tenant/storage"
 
-import { digest, memoryShelf } from "./fixture"
+import { digest, ports } from "./fixture"
 
 const blob = (text: string): Blob =>
   new Blob([text], { type: "application/json" })
-
-function ports(overrides: Partial<JobsPorts> = {}): JobsPorts {
-  let n = 0
-  return {
-    storage: createInMemoryStorage(),
-    audio: memoryShelf(),
-    saving: () => undefined,
-    isSaving: () => false,
-    startRecording: vi.fn(),
-    share: vi.fn(() => Promise.resolve<"shared" | "cancelled">("shared")),
-    now: () => new Date("2026-10-18T22:00:00Z"),
-    dayOf: () => "2026-10-18",
-    newId: () => `id${(n += 1)}`,
-    ...overrides,
-  }
-}
 
 const settle = (): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, 0))
@@ -68,7 +51,7 @@ describe("createJobsRuntime", () => {
     p.storage.setItem(STORAGE_KEY, JSON.stringify(firstBuild))
     expect(createJobsRuntime(p).getSnapshot().state).toMatchObject({
       current: "2026-10-18",
-      home: { kept: false, held: [], refused: [] },
+      home: { kept: false, held: [], refused: [], refusedFiles: [] },
     })
 
     p.storage.setItem(STORAGE_KEY, "{torn")
@@ -129,6 +112,36 @@ describe("createJobsRuntime", () => {
     )
     if (again.outcome === "shared") runtime.arrived(again.shareId)
     expect(runtime.getSnapshot().state.log.at(-1)?.type).toBe("arrived")
+    expect(await runtime.share("decisions")).toEqual({ outcome: "nothing" })
+  })
+
+  it("records a file home took as shared and arrived, and offers it no more", async () => {
+    const runtime = createJobsRuntime(ports())
+    runtime.open(blob(JSON.stringify(digest("2026-10-18"))))
+    await settle()
+    const pick = runtime.getSnapshot().state.digests[0].picks[1]
+    runtime.record({
+      type: "passed",
+      day: "2026-10-18",
+      pickId: pick.id,
+      fingerprint: pick.fingerprint,
+      reasons: ["pay"],
+      note: "",
+      voice: [],
+    })
+    const file = runtime.keeping.outgoing("decisions")
+    if (!isFile(file)) throw new Error("expected a file")
+
+    expect(runtime.keeping.filed("decisions", file)).toBe(true)
+    const [shared, arrived] = runtime.getSnapshot().state.log.slice(-2)
+    expect(shared).toMatchObject({
+      type: "shared",
+      kind: "decisions",
+      file: file.name,
+      voice: [],
+    })
+    expect(arrived).toMatchObject({ type: "arrived", shareId: shared.id })
+    expect(runtime.keeping.outgoing("decisions")).toBeNull()
     expect(await runtime.share("decisions")).toEqual({ outcome: "nothing" })
   })
 

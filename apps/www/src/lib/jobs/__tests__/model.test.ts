@@ -8,10 +8,12 @@ import {
   EMPTY,
   kitOf,
   openOf,
+  pacificDay,
   progressOf,
   releasedVoice,
   step,
   undecidedOf,
+  untouchedReported,
 } from "@/lib/jobs/model"
 
 import { digest, OPENED_AT } from "./fixture"
@@ -234,6 +236,16 @@ describe("step", () => {
   })
 })
 
+describe("a file home refused", () => {
+  it("is kept by name, once", () => {
+    const refused = step(EMPTY, { type: "file-refused", name: "scouts-1.json" })
+    expect(refused.home.refusedFiles).toEqual(["scouts-1.json"])
+    expect(step(refused, { type: "file-refused", name: "scouts-1.json" })).toBe(
+      refused
+    )
+  })
+})
+
 describe("progressOf", () => {
   it("walks the five steps from the log", () => {
     let state = opened
@@ -413,5 +425,112 @@ describe("kitOf", () => {
       { label: "Why us?", required: true, draft: "Theirs." },
     ])
     expect(kitOf(state, DAY, AD)).toEqual({ kit: AD.kit, redraftedOn: null })
+  })
+})
+
+describe("digests home holds (fetched)", () => {
+  const FETCHED_AT = "2026-10-21T15:00:00Z"
+  const fetch = (state: JobsState, ...days: Array<string>): JobsState =>
+    step(state, {
+      type: "fetched",
+      digests: days.map((day) => digest(day)),
+      at: FETCHED_AT,
+    })
+  const days = (state: JobsState): Array<string> =>
+    state.digests.map((d) => d.day)
+
+  it("keeps a digest for a new day and makes it the one Today shows", () => {
+    const state = fetch(opened, "2026-10-19")
+    expect(days(state)).toEqual([DAY, "2026-10-19"])
+    expect(state.current).toBe("2026-10-19")
+    expect(state.firstOpened).toEqual({
+      [DAY]: OPENED_AT,
+      "2026-10-19": FETCHED_AT,
+    })
+    expect(fetch(EMPTY, "2026-10-19").current).toBe("2026-10-19")
+  })
+
+  it("changes the digests, the day shown and when each came, and nothing else", () => {
+    const logged = record(opened, { type: "taken", ...ref() })
+    const state = fetch(logged, "2026-10-19")
+    const { digests: _d, current: _c, firstOpened: _f, ...rest } = state
+    const { log, voice, home } = logged
+    expect(rest).toEqual({ log, voice, home })
+  })
+
+  it("takes no digest for a day the phone holds", () => {
+    const other = { ...digest(DAY), picks: [], seen: 99 }
+    const state = step(opened, {
+      type: "fetched",
+      digests: [other],
+      at: FETCHED_AT,
+    })
+    expect(state).toBe(opened)
+    expect(state.digests[0]).toBe(D)
+  })
+
+  it("does not move the day Today shows back to an older one", () => {
+    const state = fetch(opened, "2026-10-10")
+    expect(days(state)).toEqual(["2026-10-10", DAY])
+    expect(state.current).toBe(DAY)
+    // Several at once: the newest of them leads.
+    expect(fetch(EMPTY, "2026-10-12", "2026-10-14", "2026-10-13").current).toBe(
+      "2026-10-14"
+    )
+  })
+
+  it("lets go at once of a digest older than everything kept", () => {
+    const bare = (day: string): typeof D => ({ ...digest(day), picks: [] })
+    let full = EMPTY
+    for (let i = 1; i <= DIGESTS_KEPT; i += 1) {
+      const day = `2026-09-${String(i).padStart(2, "0")}`
+      full = step(full, { type: "opened", digest: bare(day), at: OPENED_AT })
+    }
+    expect(
+      step(full, {
+        type: "fetched",
+        digests: [bare("2026-08-01")],
+        at: FETCHED_AT,
+      })
+    ).toBe(full)
+  })
+
+  it("returns the same state when nothing is new", () => {
+    expect(step(opened, { type: "fetched", digests: [], at: FETCHED_AT })).toBe(
+      opened
+    )
+    // The same day twice in one answer is taken once.
+    expect(fetch(EMPTY, "2026-10-19", "2026-10-19").digests).toHaveLength(1)
+  })
+
+  it("counts a digest as new to the phone from when it was taken in", () => {
+    const shared = record(opened, {
+      type: "shared",
+      kind: "decisions",
+      day: "2026-10-20",
+      file: "decisions-2026-10-20.json",
+      through: 0,
+      voice: [],
+    })
+    const sharedId = shared.log.find((e) => e.type === "shared")?.id ?? ""
+    const arrived = record(shared, { type: "arrived", shareId: sharedId })
+    // That share was made before the phone had the 19th, so it can't have
+    // reported its picks; the 18th was open then.
+    const state = step(arrived, {
+      type: "fetched",
+      digests: [digest("2026-10-19")],
+      at: "2026-10-21T08:00:00Z",
+    })
+    expect(untouchedReported(state, DAY)).toBe(true)
+    expect(untouchedReported(state, "2026-10-19")).toBe(false)
+  })
+})
+
+describe("pacificDay", () => {
+  it("reads the Pacific day across both offsets", () => {
+    expect(pacificDay(new Date("2026-10-22T06:59:00Z"))).toBe("2026-10-21")
+    expect(pacificDay(new Date("2026-10-22T07:00:00Z"))).toBe("2026-10-22")
+    expect(pacificDay(new Date("2026-12-01T07:59:00Z"))).toBe("2026-11-30")
+    expect(pacificDay(new Date("2026-12-01T08:00:00Z"))).toBe("2026-12-01")
   })
 })

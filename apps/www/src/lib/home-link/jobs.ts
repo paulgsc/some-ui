@@ -1,9 +1,11 @@
 /**
  * The Jobs record's lane (LA10, docs/learner-data-authority.md): every event
  * home does not hold yet, sent by `exchangeJobs` (`lib/jobs/home`) through
- * the one wiring (`./lanes`). Its record moves with each event added on this
- * phone, or home's copy taken in by a phone whose log was empty. The phone
- * keeps its whole log either way, so stopping is only the choice.
+ * the one wiring (`./lanes`), which also takes in the digests home holds for
+ * days the phone does not. Its record moves with each event added on this
+ * phone, or home's copy taken in by a phone whose log was empty; a digest
+ * taken in does not move it. The phone keeps its whole log either way, so
+ * stopping is only the choice.
  */
 import { useSyncExternalStore } from "react"
 

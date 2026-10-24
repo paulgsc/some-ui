@@ -8,6 +8,10 @@
  * `HeldSchema` takes, checked by hand against the server's `jobs_repo::Record`
  * (every event, oldest first, each with its id and when it was recorded).
  * That reader holds each event to its full shape on the way in.
+ * `DigestsSchema` is the outline of the phone's `DigestsAnswer`, checked by
+ * hand against the server's `handlers::jobs::Digests` (each held digest's
+ * day and the file verbatim); the phone holds each digest to job-desk's
+ * schema on the way in.
  *
  * Every route is per person, so every contract is a `session` contract. The
  * record is append-only, so no probe may keep anything: the write is pinned
@@ -24,6 +28,10 @@ const JobsRecordSchema = z.object({
   ),
 })
 
+const DigestsSchema = z.object({
+  digests: z.array(z.object({ day: z.iso.date(), digest: z.unknown() })),
+})
+
 export const contracts = [
   defineContract({
     id: "jobs.record",
@@ -38,6 +46,18 @@ export const contracts = [
   }),
 
   defineContract({
+    id: "jobs.digests",
+    module: "jobs",
+    session: true,
+    method: "GET",
+    path: "/jobs/digests",
+    summary:
+      "the daily job digests home holds for this subject, oldest first, at most 7",
+    request: {},
+    expect: { status: 200, schema: DigestsSchema },
+  }),
+
+  defineContract({
     id: "jobs.event_refused",
     module: "jobs",
     session: true,
@@ -49,6 +69,22 @@ export const contracts = [
     request: {
       path: { id: "contract-harness-does-not-exist" },
       body: "not an event",
+    },
+    expect: { status: 422 },
+  }),
+
+  defineContract({
+    id: "jobs.file_refused",
+    module: "jobs",
+    session: true,
+    method: "PUT",
+    path: "/jobs/files/:name",
+    summary:
+      "a body that is not a decisions or scouts file is a 422, and nothing is filed",
+    mutates: true,
+    request: {
+      path: { name: "decisions-2026-10-23.json" },
+      body: "not a file",
     },
     expect: { status: 422 },
   }),

@@ -16,6 +16,7 @@ import type { JobsSnapshot } from "@/lib/jobs"
 import { copyText, phoneJobs } from "@/lib/jobs"
 import { isFile } from "@/lib/jobs/files"
 import type { ShareKind } from "@/lib/jobs/model"
+import { openFromStorage } from "@/lib/jobs/words"
 import { lookIn } from "@/lib/share-files"
 
 export function useJobs(): JobsSnapshot {
@@ -195,9 +196,9 @@ export const VoiceNotes = ({
 
 /** The system picker: Android lists Drive beside the phone's own files. */
 export const OpenDigest = ({
-  prominent,
+  label = openFromStorage,
 }: {
-  prominent: boolean
+  label?: string | undefined
 }): JSX.Element => {
   const { importing } = useJobs()
   const where = lookIn("job-digest")
@@ -209,16 +210,10 @@ export const OpenDigest = ({
   }
   return (
     <div className="flex flex-col gap-1.5">
-      <Button
-        asChild
-        variant={prominent ? "default" : "outline"}
-        size={prominent ? "lg" : "sm"}
-      >
+      <Button asChild variant="outline" size="sm">
         <label className="cursor-pointer">
           <FolderOpen aria-hidden />
-          {importing.kind === "reading"
-            ? "Reading…"
-            : "Open today’s picks from storage"}
+          {importing.kind === "reading" ? "Reading…" : label}
           <input
             type="file"
             accept="application/json,.json"
