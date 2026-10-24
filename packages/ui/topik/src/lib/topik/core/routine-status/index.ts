@@ -5,21 +5,17 @@
  * person's terms: what the routine did and what this phone holds, never how
  * it travels (`index.test.ts`).
  *
- * Each mark differs in form, not only in colour (`RoutineMark`): `fresh` and
- * `opened` in the success tone, `rested` and `unheard` muted, `quiet` and
- * `trouble` in the warning tone.
- *
  * The phone can say the routine went quiet only from what home told it after
  * the run was due: a look made before then, away from home, says only when
  * it last looked.
  */
 
-import { counted } from "@some-ui/core-utils"
+import { counted, dayWords } from "@some-ui/core-utils"
+import { routineKey } from "@topik/lib/topik/adapter/routine-files"
 import type {
   HeldRuns,
   RoutineRun,
 } from "@topik/lib/topik/adapter/routine-runs"
-import { dayWords } from "@topik/lib/topik/core/day-words"
 
 export type RoutineShape =
   /** Something it added is not opened yet. */
@@ -61,41 +57,30 @@ const dueBy = (run: RoutineRun): string =>
   run.nextBy ??
   new Date(new Date(run.startedAt).getTime() + DUE_AFTER_MS).toISOString()
 
+/** "a drama", "2 dramas", or null for none. */
+const some = (n: number, noun: string): string | null =>
+  n === 0 ? null : n === 1 ? `a ${noun}` : counted(n, noun)
+
+const joined = (parts: ReadonlyArray<string | null>): string =>
+  parts.filter((part) => part !== null).join(" and ")
+
 /** "2 word sets and a drama". */
 function whatOf(added: RoutineRun["added"]): string {
   const scenes = added.filter((file) => file.folder === "scene").length
-  const dramas = added.length - scenes
-  const parts = [
-    scenes === 0
-      ? null
-      : scenes === 1
-        ? "a word set"
-        : counted(scenes, "word set"),
-    dramas === 0 ? null : dramas === 1 ? "a drama" : counted(dramas, "drama"),
-  ].filter((part) => part !== null)
-  return parts.join(" and ")
+  return joined([
+    some(scenes, "word set"),
+    some(added.length - scenes, "drama"),
+  ])
 }
 
 /** "2 reflections and a drama prompt", or null for nothing. */
 function foundOf(found: RoutineRun["found"]): string | null {
   const parts = [
-    found.reflections === 0
-      ? null
-      : found.reflections === 1
-        ? "a reflection"
-        : counted(found.reflections, "reflection"),
-    found.prompts === 0
-      ? null
-      : found.prompts === 1
-        ? "a drama prompt"
-        : counted(found.prompts, "drama prompt"),
-  ].filter((part) => part !== null)
-  return parts.length === 0 ? null : parts.join(" and ")
+    some(found.reflections, "reflection"),
+    some(found.prompts, "drama prompt"),
+  ]
+  return parts.every((part) => part === null) ? null : joined(parts)
 }
-
-/** The added files' keys, as "From the routine" opens them. */
-const addedKey = (file: RoutineRun["added"][number]): string =>
-  `${file.folder}/${file.name}`
 
 export const ROUTINE_WORDS = {
   title: "The routine",
@@ -159,7 +144,7 @@ export function routineView(
   }
   const waiting = held.runs
     .flatMap((run) => run.added)
-    .filter((file) => !opened.has(addedKey(file)))
+    .filter((file) => !opened.has(routineKey(file.folder, file.name)))
   if (waiting.length > 0) {
     return {
       shape: "fresh",

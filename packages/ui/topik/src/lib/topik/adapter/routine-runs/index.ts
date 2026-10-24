@@ -11,7 +11,12 @@
  * rewritten or dropped. A run is a few hundred bytes, one a day.
  */
 
-import { localStorageOrNull } from "@some-ui/core-utils"
+import type { KeyedStorage } from "@some-ui/core-utils"
+import {
+  localStorageOrNull,
+  openRecord,
+  writeRecord,
+} from "@some-ui/core-utils"
 import { z } from "zod"
 
 export type RoutineRun = {
@@ -161,28 +166,38 @@ export type RunLog = {
   subscribe: (listener: () => void) => () => void
 }
 
+function parseHomes(raw: string): Record<string, HeldRuns> | null {
+  try {
+    const parsed = StoredSchema.safeParse(JSON.parse(raw))
+    return parsed.success ? parsed.data.homes : null
+  } catch {
+    return null
+  }
+}
+
 /**
- * The runs heard on this device. A failed read is none, and is never
- * written over, so an unreadable record is not lost; a failed write keeps
- * what was heard until the app closes.
+ * The runs heard on this device. An unreadable record is moved aside, never
+ * written over (`openRecord`); with storage that throws, nothing is
+ * written, and what was heard is held until the app closes.
  */
 export function createRunLog(
-  storage: Pick<Storage, "getItem" | "setItem"> | null = localStorageOrNull()
+  storage: KeyedStorage | null = localStorageOrNull()
 ): RunLog {
-  let readable = true
-  const read = (): Record<string, HeldRuns> => {
-    try {
-      const text = storage?.getItem(ROUTINE_RUNS_KEY) ?? null
-      if (text === null) return {}
-      const parsed = StoredSchema.safeParse(JSON.parse(text))
-      if (parsed.success) return parsed.data.homes
-    } catch {
-      // Unreadable: treated as below.
-    }
-    readable = false
-    return {}
+  /** What is stored, or null when storage throws (nothing may be written). */
+  const read = (): Record<string, HeldRuns> | null => {
+    if (storage === null) return null
+    const opened = openRecord(
+      storage,
+      ROUTINE_RUNS_KEY,
+      parseHomes,
+      `${ROUTINE_RUNS_KEY}:unreadable:`
+    )
+    if (opened.kind === "unreadable") return null
+    return opened.kind === "kept" ? opened.value : {}
   }
-  let homes = read()
+  const first = read()
+  let writable = first !== null
+  let homes = first ?? {}
   const listeners = new Set<() => void>()
   return {
     held: (key) => homes[key] ?? NONE,
@@ -200,22 +215,20 @@ export function createRunLog(
         return
       }
       homes = { ...homes, [key]: next }
-      if (readable) {
-        // Another page on this device may have kept runs since this one
-        // read: what it kept is merged in, never written over.
-        for (const [home, stored] of Object.entries(read())) {
-          homes = { ...homes, [home]: merged(homes[home] ?? NONE, stored) }
+      // Another page on this device may have kept runs since this one read:
+      // what it kept is merged in, never written over.
+      const stored = writable ? read() : null
+      if (stored === null) writable = false
+      if (stored !== null && storage !== null) {
+        for (const [home, runs] of Object.entries(stored)) {
+          homes = { ...homes, [home]: merged(homes[home] ?? NONE, runs) }
         }
-      }
-      if (readable) {
-        try {
-          storage?.setItem(
-            ROUTINE_RUNS_KEY,
-            JSON.stringify({ version: 1, homes })
-          )
-        } catch {
-          // Quota, privacy mode: held until the app closes.
-        }
+        writeRecord(
+          storage,
+          ROUTINE_RUNS_KEY,
+          JSON.stringify({ version: 1, homes }),
+          parseHomes
+        )
       }
       for (const listener of listeners) listener()
     },

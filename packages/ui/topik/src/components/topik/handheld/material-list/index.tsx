@@ -84,11 +84,7 @@ type MaterialListProps = {
   /** What came of the last one opened. */
   routineNote?: StorageNote | null
   onOpenRoutine?: (key: string) => void
-  /**
-   * The routine's mark (`RoutineStatus`): when it last ran and whether it
-   * brought anything new, above its files and shown without them. Absent
-   * where the host reaches no home.
-   */
+  /** The routine's mark (`RoutineStatus`), shown with or without its files. */
   routineStatus?: JSX.Element
 }
 

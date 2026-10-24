@@ -123,7 +123,7 @@ describe("parseRoutineFiles", () => {
     expect(runs.held("").lookedAt).toBeNull()
   })
 
-  it("keeps home's answers across copies on one device, and never writes over one it cannot read", () => {
+  it("keeps home's answers across copies on one device, and moves one it cannot read aside", () => {
     const storage = memoryStorage()
     createHeldAnswers(storage).keep("a", "2026-10-24T00:00:00.000Z", { n: 1 })
     expect(createHeldAnswers(storage).held("a")).toEqual({ n: 1 })
@@ -132,17 +132,17 @@ describe("parseRoutineFiles", () => {
     const unreadable = createHeldAnswers(storage)
     unreadable.keep("a", "2026-10-25T00:00:00.000Z", { n: 2 })
     expect(unreadable.held("a")).toEqual({ n: 2 })
-    expect(storage.getItem(ROUTINE_ANSWERS_KEY)).toBe("{not json")
+    expect(storage.getItem(`${ROUTINE_ANSWERS_KEY}:unreadable:1`)).toBe(
+      "{not json"
+    )
+    expect(createHeldAnswers(storage).held("a")).toEqual({ n: 2 })
   })
 
-  it("carries the port's key, which the handheld's list is keyed on, and its way to tell home what was opened", () => {
+  it("carries the port's key, which the handheld's list is keyed on", () => {
     const list = (): Promise<unknown> => Promise.resolve({ files: [] })
     expect(createRoutineFeed({ key: "pairing-1@5", list }).key).toBe(
       "pairing-1@5"
     )
-    const opened = (): void => {}
-    expect(createRoutineFeed({ list, opened }).tellOpened).toBe(opened)
-    expect(createRoutineFeed({ list }).tellOpened).toBeUndefined()
   })
 })
 

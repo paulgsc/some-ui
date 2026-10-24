@@ -24,8 +24,7 @@
  * - **Which lessons were opened is told only as the choice's words say.**
  *   `tellOpened` sends one `PUT /routine/opened` of names, when Korean
  *   opens one, only under a choice whose words pressed carry
- *   `ROUTINE_TELLS_OPENED` (owner, 2026-10-24: the routine keeps three
- *   ready), with the app in front, one at a time, never retried and never
+ *   `ROUTINE_TELLS_OPENED`, with the app in front, one at a time, never retried and never
  *   rejected. One asked for while a look or another telling is on its way,
  *   or turned away by another send, waits: the newest is told once that
  *   look or telling settles, and the next open tells them all again.
@@ -90,7 +89,7 @@ export type RoutineReads = {
   /**
    * Tells home which of the routine's lessons this phone opened, by
    * `<folder>/<name>`, when `tells` holds and the app is in front; never
-   * rejects, and drops a call while one is on its way.
+   * rejects.
    */
   tellOpened: (keys: ReadonlyArray<string>) => void
 }

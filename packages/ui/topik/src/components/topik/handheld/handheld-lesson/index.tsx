@@ -289,7 +289,6 @@ export const HandheldLesson = ({
   // The read-aloud drill takes the whole screen, header included; leaving it
   // returns to the material list it was opened from. `set` is the added set
   // it reads on its own, or null for every word the phone has.
-  // `begin`: a set the learner picked starts reading at once.
   const [reading, setReading] = useState<{
     set: string | null
     begin?: boolean

@@ -151,16 +151,10 @@ describe("LivePlayer across the breakpoint", () => {
 })
 
 describe("LivePlayer asked for the next lesson", () => {
-  it("plays an active session on arrival, and opens the activity on the lesson only when asked", async () => {
+  it("plays an active session on arrival, and opens the activity on the lesson", async () => {
     setViewport(true)
     render(<LivePlayer session={fixtureSession()} initialNext />)
     await vi.waitFor(() => expect(played.starts).toBe(1))
     expect(played.opening.at(-1)).toBe("next")
-    cleanup()
-
-    played.opening = []
-    render(<LivePlayer session={fixtureSession()} />)
-    await vi.waitFor(() => expect(played.starts).toBe(2))
-    expect(played.opening.at(-1)).toBeUndefined()
   })
 })

@@ -27,10 +27,7 @@ import { WindDownNudge } from "./wind-down-nudge"
 
 type LivePlayerProps = {
   session: SessionRecord
-  /**
-   * Asked for the next lesson (Practice Home's "Next lesson"): the activity
-   * opens on the lesson. An active session plays on mount anyway (`stops`).
-   */
+  /** Made by "Next lesson" (`components/practice/next-lesson`). */
   initialNext?: boolean
 }
 

@@ -12,14 +12,19 @@
  * since home's list is the only way back to it. The record only grows: a
  * few names a day.
  *
- * Home's last answer is kept on the device too (`createHeldAnswers`, the
- * owner's choice of 2026-10-24), for each home it reads, so the list is
+ * Home's last answer is kept on the device too (`createHeldAnswers`), for
+ * each home it reads, so the list is
  * there away from home. It is a copy of what home holds, replaced by each
  * newer answer: home keeps the files, so nothing of the learner's is lost
  * when it is.
  */
 
-import { localStorageOrNull } from "@some-ui/core-utils"
+import type { KeyedStorage } from "@some-ui/core-utils"
+import {
+  localStorageOrNull,
+  openRecord,
+  writeRecord,
+} from "@some-ui/core-utils"
 import type { RunLog } from "@topik/lib/topik/adapter/routine-runs"
 import {
   parseRoutineRuns,
@@ -39,10 +44,7 @@ export type RoutineFilesPort = {
   key?: string
   /** Home's answer, as it came: parsed here. */
   list: () => Promise<unknown>
-  /**
-   * Tells home which of the routine's lessons were opened (`openedKey`s),
-   * so it keeps three ready. Absent where the learner didn't choose that.
-   */
+  /** Tells home which were opened (`openedKey`s); absent where not chosen. */
   opened?: (keys: ReadonlyArray<string>) => void
 }
 
@@ -174,40 +176,47 @@ export type HeldAnswers = {
   keep: (key: string, at: string, answer: unknown) => void
 }
 
+function parseHeld(
+  raw: string
+): Record<string, { at: string; answer: unknown }> | null {
+  try {
+    const parsed = HeldSchema.safeParse(JSON.parse(raw))
+    return parsed.success ? parsed.data.homes : null
+  } catch {
+    return null
+  }
+}
+
 /**
- * Home's last answer for each home, on this device. A failed read is none,
- * and is never written over; a failed write keeps it until the app closes.
+ * Home's last answer for each home, on this device. An unreadable copy is
+ * moved aside (`openRecord`); a failed write keeps it until the app closes.
  */
 export function createHeldAnswers(
-  storage: Pick<Storage, "getItem" | "setItem"> | null = localStorageOrNull()
+  storage: KeyedStorage | null = localStorageOrNull()
 ): HeldAnswers {
-  let readable = true
-  let homes: Record<string, { at: string; answer: unknown }> = {}
-  try {
-    const text = storage?.getItem(ROUTINE_ANSWERS_KEY) ?? null
-    if (text !== null) {
-      const parsed = HeldSchema.safeParse(JSON.parse(text))
-      if (parsed.success) homes = parsed.data.homes
-      else readable = false
-    }
-  } catch {
-    readable = false
-  }
+  const opened =
+    storage === null
+      ? null
+      : openRecord(
+          storage,
+          ROUTINE_ANSWERS_KEY,
+          parseHeld,
+          `${ROUTINE_ANSWERS_KEY}:unreadable:`
+        )
+  let homes = opened?.kind === "kept" ? opened.value : {}
   return {
     held: (key) => homes[key]?.answer ?? null,
     keep(key, at, answer): void {
       const was = homes[key]
       if (was !== undefined && was.at.localeCompare(at) >= 0) return
       homes = { ...homes, [key]: { at, answer } }
-      if (!readable) return
-      try {
-        storage?.setItem(
-          ROUTINE_ANSWERS_KEY,
-          JSON.stringify({ version: 1, homes })
-        )
-      } catch {
-        // Quota, privacy mode: held until the app closes.
-      }
+      if (storage === null || opened?.kind === "unreadable") return
+      writeRecord(
+        storage,
+        ROUTINE_ANSWERS_KEY,
+        JSON.stringify({ version: 1, homes }),
+        parseHeld
+      )
     },
   }
 }
@@ -223,8 +232,12 @@ function sharedHeldAnswers(): HeldAnswers {
 export const ROUTINE_OPENED_KEY = "topik:routine-opened"
 
 /** A file's key in the opened record: home keys it by folder and name. */
+/** A routine file's key, `<folder>/<name>`, as home names it. */
+export const routineKey = (folder: string, name: string): string =>
+  `${folder}/${name}`
+
 export const openedKey = (file: RoutineFile): string =>
-  `${file.kind}/${file.name}`
+  routineKey(file.kind, file.name)
 
 const OpenedSchema = z.object({
   version: z.literal(1),

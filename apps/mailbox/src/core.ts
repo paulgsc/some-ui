@@ -76,7 +76,7 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
   },
   {
     // Which of the routine's lessons the phone has opened, names only, as
-    // home filed them: the routine keeps three not opened.
+    // home filed them.
     folder: "opened",
     name: /^opened-\d{8}T\d{9}Z\.json$/,
     schema: "some-ui.routine-opened/1",

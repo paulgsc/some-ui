@@ -169,12 +169,15 @@ describe("createRunLog", () => {
     expect(log.held("b")).toEqual({ runs: [], lookedAt: null, since: null })
   })
 
-  it("never writes over a record it cannot read", () => {
+  it("moves a record it cannot read aside, never over it", () => {
     const storage = memoryStorage()
     storage.setItem(ROUTINE_RUNS_KEY, "{not json")
     const log = createRunLog(storage)
     log.keep("home", answer(AT, "2026-10-24T16:00:00Z"))
     expect(log.held("home").runs).toHaveLength(1)
-    expect(storage.getItem(ROUTINE_RUNS_KEY)).toBe("{not json")
+    expect(storage.getItem(`${ROUTINE_RUNS_KEY}:unreadable:1`)).toBe(
+      "{not json"
+    )
+    expect(createRunLog(storage).held("home").runs).toHaveLength(1)
   })
 })

@@ -74,7 +74,7 @@ const BIND_OPTIONS = Object.keys(PANELS).map((key) => ({
 
 type SessionViewportProps = {
   session: SessionRecord
-  /** "next": Korean opens on the next lesson (topik's `opening`). */
+  /** Topik's `opening`. */
   opening?: "next"
 }
 

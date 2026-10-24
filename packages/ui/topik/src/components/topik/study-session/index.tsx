@@ -136,10 +136,7 @@ export type KoreanStudyPageProps = {
    * read-aloud drill holds for it; the rest of the applet is unaffected.
    */
   paused?: boolean
-  /**
-   * "next": the host was asked for the next lesson, so the handheld opens on
-   * it (`HandheldLesson`'s `initialOpen`) instead of its list. Read once.
-   */
+  /** `HandheldLesson`'s `initialOpen`. */
   opening?: "next"
 }
 

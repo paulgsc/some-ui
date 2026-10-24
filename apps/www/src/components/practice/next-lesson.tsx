@@ -19,15 +19,15 @@ import {
   useIntentEffect,
 } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
-import { basicSession } from "@/lib/quick-start"
+import { basicSession, startedPatch } from "@/lib/quick-start"
 import type { SessionRecord } from "@/lib/tenant"
 import { useCreateSession, useUpdateSession } from "@/lib/tenant"
 
 const activate = (
   session: SessionRecord
-): { id: string; patch: { status: "active"; startedAt: string } } => ({
+): { id: string; patch: ReturnType<typeof startedPatch> } => ({
   id: session.id,
-  patch: { status: "active", startedAt: new Date().toISOString() },
+  patch: startedPatch(),
 })
 
 export const NextLesson = ({

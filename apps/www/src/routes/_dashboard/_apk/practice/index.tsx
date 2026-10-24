@@ -74,8 +74,6 @@ function studiedLine(today: ReadonlyArray<SessionRecord>): string {
  * list whose refresh just failed.
  */
 const StudyCard = ({ now }: { now: Date }): JSX.Element => {
-  // Once pressed, "Next lesson" stays mounted until it has opened the
-  // player: the session it starts is in progress before it navigates.
   const [launching, setLaunching] = useState(false)
   const outcome = queryOutcome(useSessions())
   const status = matchQueryOutcome(outcome, {

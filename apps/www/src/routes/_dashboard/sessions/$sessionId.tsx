@@ -77,7 +77,6 @@ export const SessionPlayer = ({
   next = false,
 }: {
   sessionId: string
-  /** Made by "Next lesson": play at once, on the lesson. */
   next?: boolean
 }): JSX.Element => {
   // The same string as this route's URL and the push deep link

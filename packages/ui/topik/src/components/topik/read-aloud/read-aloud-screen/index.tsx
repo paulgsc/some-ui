@@ -51,7 +51,7 @@ type ReadAloudScreenProps = {
   /** The host's session is paused (`useReadAloud`'s `paused`). */
   paused?: boolean
   onExit: () => void
-  /** Start reading at once, with no start screen: the learner picked this set. */
+  /** As `useReadAloud`'s. */
   initialBegin?: boolean
   /** Test seam: the clock, which also dates the record. */
   now?: () => number

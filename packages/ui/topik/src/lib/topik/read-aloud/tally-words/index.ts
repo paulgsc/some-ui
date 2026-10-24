@@ -9,8 +9,7 @@
  * so the mark says "Seen before" and not "Read before".
  */
 
-import { counted } from "@some-ui/core-utils"
-import { dayWords } from "@topik/lib/topik/core/day-words"
+import { counted, dayWords } from "@some-ui/core-utils"
 import type { Begun, EntryRole } from "@topik/lib/topik/read-aloud/set-machine"
 import type { Mark, TallyRow } from "@topik/lib/topik/read-aloud/tally"
 
