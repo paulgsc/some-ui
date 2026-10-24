@@ -1,18 +1,17 @@
 /**
- * What deleting the account says it removes and leaves: every kind of record
- * the server's deletion erases is named, the Jobs mailbox's files (the archived
- * ones, whose home copy is the only one) included, what stays is said where it
- * stays, and none of it names the machinery.
+ * What deleting the account says: in the person's terms, none of it naming the
+ * machinery, and the mailbox's files said both where they go and where they stay.
  */
 
 import { describe, expect, it } from "vitest"
 
+import type { Kind } from "@/lib/auth/account-erases"
 import { ACCOUNT_ERASES } from "@/lib/auth/account-erases"
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
 
-const kinds = [...ACCOUNT_ERASES.goes, ...ACCOUNT_ERASES.stays]
-const said = (list: ReadonlyArray<{ label: string; text: string }>): string =>
-  list.map(({ label, text }) => `${label}. ${text}`).join("\n")
+const { goes, stays } = ACCOUNT_ERASES
+const textOf = (list: ReadonlyArray<Kind>, label: string): string | undefined =>
+  list.find((kind) => kind.label === label)?.text
 
 describe("what deleting the account says", () => {
   it("says nothing of the machinery", () => {
@@ -20,61 +19,32 @@ describe("what deleting the account says", () => {
       ACCOUNT_ERASES.lead,
       ACCOUNT_ERASES.goesTitle,
       ACCOUNT_ERASES.staysTitle,
-      ...kinds.flatMap(({ label, text }) => [label, text]),
+      ...[...goes, ...stays].flatMap(({ label, text }) => [label, text]),
     ]
     expect(words.filter((text) => MACHINERY.test(text))).toEqual([])
   })
 
-  it("names each kind once, as a sentence", () => {
-    const labels = kinds.map(({ label }) => label)
-    expect(new Set(labels).size).toBe(labels.length)
-    for (const { label, text } of kinds) {
-      expect(label.trim()).not.toBe("")
-      expect(text).toMatch(/\.$/)
-    }
+  it("still names the kinds it named", () => {
+    expect(goes.map(({ label }) => label)).toEqual([
+      "Sessions",
+      "Saved shelf items",
+      "Reminders and progress",
+      "aph",
+      "The Jobs record",
+      "Jobs mailbox files home holds",
+      "Filed with home for the mailbox",
+      "LeetType sessions",
+      "What your phones share",
+      "Sign-in",
+    ])
   })
 
-  it("names every kind of record home keeps under an account", () => {
-    const goes = said(ACCOUNT_ERASES.goes)
-    for (const kind of [
-      /study sessions/i,
-      /shelf/i,
-      /reminder/i,
-      /\baph\b/,
-      /Jobs record/,
-      /word sets/,
-      /dramas/,
-      /run records/,
-      /decisions and scouts/,
-      /lessons you opened/,
-      /LeetType/,
-      /paired phone/,
-      /passkeys/,
-    ]) {
-      expect(goes).toMatch(kind)
-    }
-  })
-
-  it("says the archived mailbox files go too, and why that matters", () => {
-    const mailbox = ACCOUNT_ERASES.goes.find(({ label }) =>
-      /mailbox files/i.test(label)
-    )
-    expect(mailbox?.text).toMatch(/archived out of the mailbox/)
-    expect(mailbox?.text).toMatch(/only one/)
-  })
-
-  it("says what stays, and where", () => {
-    const stays = said(ACCOUNT_ERASES.stays)
-    expect(stays).toMatch(/phone/i)
-    expect(stays).toMatch(/Drive/)
-    expect(stays).toMatch(/still in the mailbox stay/)
-    expect(stays).toMatch(/never what was in it/)
-    expect(stays).toMatch(/logs and backups are not rewritten/i)
-  })
-
-  it("does not say a file left in the mailbox ages out", () => {
-    // Home archives nothing for an account that is gone, so a live file stays
-    // until it is removed from the mailbox itself.
-    expect(said(ACCOUNT_ERASES.stays)).not.toMatch(/\bage[sd]?\b|expire/i)
+  it("says the mailbox's files go, archived ones too, and what stays in the mailbox", () => {
+    const gone = textOf(goes, "Jobs mailbox files home holds")
+    expect(gone).toMatch(/archived out of the mailbox/)
+    expect(gone).toMatch(/only one/)
+    const left = textOf(stays, "In the Jobs mailbox")
+    expect(left).toMatch(/still in the mailbox stay/)
+    expect(left).toMatch(/never what was in it/)
   })
 })

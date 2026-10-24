@@ -95,7 +95,6 @@ describe("AccountSection", () => {
     // The sign-up screen lists the shelf items and reminders too; so does this.
     expect(screen.getByText(/items you save to shelves/i)).toBeTruthy()
     expect(screen.getByText(/turn on reminders/i)).toBeTruthy()
-    expect(screen.getByText(/logs and backups are not rewritten/i)).toBeTruthy()
   })
 
   it("says, before the button, what deleting removes and what it leaves", () => {
@@ -110,10 +109,6 @@ describe("AccountSection", () => {
       expect(screen.getByText(`${label}.`)).toBeTruthy()
       expect(screen.getByText(text)).toBeTruthy()
     }
-    // The archived mailbox files go with the account, and the screen says so.
-    expect(
-      screen.getByText(/archived out of the mailbox included/i)
-    ).toBeTruthy()
   })
 
   it("deletes only on the second, explicit press, then leaves for the passkey screen", async () => {

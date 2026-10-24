@@ -12,10 +12,8 @@
  * phone (`paulgsc/server` `docs/identity.md`), so a lost one is unpaired by
  * signing out everywhere.
  *
- * Deleting takes two presses (the second button appears after the first): the
- * server deletes everything under the account's ID, and the copy above the
- * button says what goes and what stays (`lib/auth/account-erases`), the Jobs
- * mailbox's files and the logs and backups included.
+ * Deleting takes two presses (the second button appears after the first); what
+ * it removes and leaves is said by `lib/auth/account-erases`.
  */
 
 import type { JSX } from "react"

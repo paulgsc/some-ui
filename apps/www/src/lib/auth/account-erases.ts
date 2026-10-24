@@ -1,22 +1,12 @@
 /**
- * What deleting the account removes, and what it leaves, in the words the
- * Account screen shows above the button that deletes.
- *
- * Pure, and the one place those words live, so they stay in the person's
- * terms (what is kept where) and never the machinery's
- * (`__tests__/account-erases.test.ts`). `paulgsc/server` `docs/identity.md`,
- * "What deleting an account erases", lists each kind below and the tables
- * under it, and its test fails when a table has no kind there: a kind added
- * to that list is added here, which no test in this repository can see.
- *
- * Home's copy of a Jobs mailbox file is the only one once the mailbox has let
- * the file go (invariant 21), which is why the mailbox's files are named, the
- * archived ones included. A file still live in the mailbox is not reached: home
- * keeps nothing and archives nothing for a subject with no account, so nothing
- * there removes it afterwards.
+ * What deleting the account removes and leaves, in the words the Account
+ * screen shows above the delete button. Mirrors `paulgsc/server`
+ * `docs/identity.md`, "What deleting an account erases": a kind added there is
+ * added here, and no test in this repository can see it. A mailbox file still
+ * live stays because home keeps and archives nothing for an account that is gone
+ * (`mailbox::pass`), not because it ages out.
  */
 
-/** One kind of thing, named, and said in a sentence. */
 export type Kind = { readonly label: string; readonly text: string }
 
 export const ACCOUNT_ERASES = {
@@ -80,10 +70,4 @@ export const ACCOUNT_ERASES = {
       text: "Home's logs and backups are not rewritten.",
     },
   ],
-} as const satisfies {
-  readonly lead: string
-  readonly goesTitle: string
-  readonly goes: ReadonlyArray<Kind>
-  readonly staysTitle: string
-  readonly stays: ReadonlyArray<Kind>
-}
+} as const
