@@ -586,6 +586,15 @@ never "sounds like good practice."
 - **A `console.error` in www is gone from release builds** (`build.minify.ts`), and the APK's
   console reaches nothing anyway. Report failures through `reportFailure` (`@some-ui/intent-kit`),
   which survives both: `adb logcat -s SomeUI`.
+- **A session can migrate and deploy the Jobs mailbox, but only if it started after the
+  Cloudflare variables did.** The environment carries `CLOUDFLARE_API_TOKEN` and
+  `CLOUDFLARE_ACCOUNT_ID`, so the session that merges a change to `apps/mailbox` applies its
+  migrations and deploys it (`apps/mailbox/README.md`, "Deploy" and "Updating a deployed
+  mailbox") instead of handing the owner the commands. A container's environment is fixed
+  when it starts, though: a session started before a variable was added never sees it, and
+  `wrangler whoami` then says only "You are not authenticated", with no error code. Check
+  `[ -n "$CLOUDFLARE_API_TOKEN" ]` (never print it) before counting on it. If it is unset,
+  give the owner a paste-ready prompt for a new session instead.
 - **Nothing on a PR builds or launches the Android app.** `mobile-apk.yml` (Gradle
   compile, R8 release build, Android Lint, the Play review, and an emulator launch test)
   runs only on pushes to `main`, and builds only once someone approves that run (the
