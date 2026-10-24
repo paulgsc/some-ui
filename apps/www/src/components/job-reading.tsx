@@ -12,7 +12,7 @@ export const sectionHeading =
   "text-muted-foreground text-xs font-semibold tracking-wider uppercase"
 
 /** A 0–1 score as a bar and its value. */
-export const Meter = ({
+const Meter = ({
   label,
   value,
   tone,
@@ -70,6 +70,18 @@ export const Gaps = ({
       </ul>
     </section>
   )
+
+/** Who posted it, where, what it pays and when it went up, in one line. */
+export function postingLine(posting: Pick["posting"]): string {
+  return [
+    posting.company,
+    posting.location,
+    posting.compensation,
+    posting.postedOn,
+  ]
+    .filter(Boolean)
+    .join(" · ")
+}
 
 /** The résumé a pick sends, in one line. */
 export function resumeLabel(resume: ResumeRecommendation): string {

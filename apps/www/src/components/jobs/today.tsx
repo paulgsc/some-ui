@@ -1,11 +1,13 @@
 /**
- * Jobs › Today: the digest opened last, the queue its picks wait in, its
- * picks by track, and what the routine set aside.
+ * Jobs › Today: what I have done today, then one pick to go on with and
+ * what is ready for its form. Every other pick, and how they were picked,
+ * sit behind a tap. Today counts what is done, never what is left, and its
+ * words are `lib/jobs/words`.
  */
-import type { JSX } from "react"
+import type { JSX, ReactNode } from "react"
 import { useState } from "react"
-import { assertNever, counted } from "@some-ui/core-utils"
-import type { Digest, Pick, Track } from "@some-ui/job-desk"
+import { dayOf } from "@some-ui/core-utils"
+import type { Digest, Pick } from "@some-ui/job-desk"
 import {
   digestFindings,
   freeSlots,
@@ -16,64 +18,162 @@ import {
 } from "@some-ui/job-desk"
 import { Badge, Button, Textarea, useConfirmSheet } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
+import { Check } from "lucide-react"
 
 import { hasAudience } from "@/lib/build-profile"
+import { useMinuteClock } from "@/lib/clock"
 import { phoneJobs } from "@/lib/jobs"
-import type { JobsState, Progress } from "@/lib/jobs/model"
+import type { JobsState } from "@/lib/jobs/model"
 import {
   currentDigest,
   disagreed,
+  kitOf,
   openOf,
   pacificDay,
   progressOf,
   undecidedOf,
 } from "@/lib/jobs/model"
+import { doneOn, nextPick } from "@/lib/jobs/today"
 import {
+  allDone,
+  answersDrafted,
   arriveOnTheirOwn,
+  breaksRules,
+  coverLetterDrafted,
+  detailsToPaste,
+  doneToday,
+  fitWord,
+  heldOver,
+  holdsPlace,
+  howPicked,
+  keepWhy,
+  leftOut,
+  letGoAsk,
+  letGoConfirm,
+  letGoKeep,
+  letGoLabel,
+  letGoWhat,
   newerHeld,
+  noPicksYet,
   notToday,
+  openIt,
+  openOfTrack,
   orOpenFile,
+  pickedForYou,
+  pickedFrom,
+  pickState,
+  readyHeading,
+  resumeInHand,
+  resumeToBuild,
+  saidWouldHavePicked,
+  seeAll,
+  stillOpen,
+  trackHeading,
+  whatMorningsBring,
+  whyItFits,
+  wouldHavePicked,
 } from "@/lib/jobs/words"
-import { Meter, resumeLabel, sectionHeading } from "@/components/job-reading"
+import { postingLine, sectionHeading } from "@/components/job-reading"
 
 import { OpenDigest, Problem, useJobs } from "./parts"
 
-const TRACK_HEADINGS: Readonly<Record<Track, string>> = {
-  software: "Software engineering",
-  adjacent: "Software-adjacent",
-}
+/** A pick's place in Jobs: a link on the phone, plain elsewhere. */
+const ToPick = ({
+  day,
+  pick,
+  className,
+  children,
+}: {
+  day: string
+  pick: Pick
+  className: string
+  children: ReactNode
+}): JSX.Element =>
+  hasAudience("apk") ? (
+    <Link
+      to="/jobs/pick/$day/$pickId"
+      params={{ day, pickId: pick.id }}
+      className={className}
+    >
+      {children}
+    </Link>
+  ) : (
+    <div className={className}>{children}</div>
+  )
 
-const STATE_LABEL = (progress: Progress): string => {
-  switch (progress.kind) {
-    case "passed": {
-      return "Passed"
-    }
-    case "archived": {
-      return "Archived"
-    }
-    case "done": {
-      return progress.result === "submitted" ? "Applied" : "Done"
-    }
-    case "open": {
-      return progress.step === 0 ? "New" : "In progress"
-    }
-    default: {
-      return assertNever(progress)
-    }
+/**
+ * What is ready for the company's form, only what truly is: the résumé once
+ * I said I have its PDF, and what the pick's kit holds. The résumé still to
+ * build is said apart, unticked.
+ */
+function readiness(
+  state: JobsState,
+  day: string,
+  pick: Pick
+): { ready: Array<string>; resume: string | null } {
+  const { kit } = kitOf(state, day, pick)
+  const answers =
+    kit.answers.length + kit.questions.filter((q) => q.draft !== null).length
+  const variant =
+    pick.resume.kind === "build" ? pick.resume.variant : pick.resume.fallback
+  const progress = progressOf(state, day, pick.id)
+  const inHand = progress.kind === "open" && progress.step >= 3
+  return {
+    ready: [
+      ...(inHand ? [resumeInHand(variant)] : []),
+      ...(kit.coverLetter === null ? [] : [coverLetterDrafted]),
+      ...(answers === 0 ? [] : [answersDrafted(answers)]),
+      ...(kit.fields.length === 0 ? [] : [detailsToPaste(kit.fields.length)]),
+    ],
+    resume: inHand ? null : resumeToBuild(variant),
   }
 }
 
-const Steps = ({ progress }: { progress: Progress }): JSX.Element => {
-  const done = progress.kind === "open" ? progress.step : 5
+/** The one pick Today opens on, and what is ready for its form. */
+const NextPick = ({
+  state,
+  day,
+  pick,
+}: {
+  state: JobsState
+  day: string
+  pick: Pick
+}): JSX.Element => {
+  const { ready, resume } = readiness(state, day, pick)
   return (
-    <div className="flex gap-1" aria-hidden>
-      {[0, 1, 2, 3, 4].map((i) => (
-        <span
-          key={i}
-          className={`h-1 min-w-0 flex-1 rounded-full ${i < done ? "bg-emerald-600" : "bg-muted"}`}
-        />
-      ))}
-    </div>
+    <section className="bg-card flex flex-col gap-3 rounded-xl border p-4">
+      <span className="text-muted-foreground text-xs">
+        {pickedForYou} · {fitWord(pick.scores.fit)}
+      </span>
+      <h2 className="text-xl leading-tight font-bold">{pick.posting.title}</h2>
+      <span className="text-muted-foreground text-sm">
+        {postingLine(pick.posting)}
+      </span>
+      <p className="bg-muted rounded-xl p-3 text-sm">{pick.scores.fitWhy}</p>
+      {ready.length > 0 && (
+        <section className="flex flex-col gap-1.5 rounded-xl border p-3">
+          <h3 className={sectionHeading}>{readyHeading}</h3>
+          <ul className="flex flex-col gap-1 text-sm">
+            {ready.map((line) => (
+              <li key={line} className="flex items-center gap-2">
+                <Check aria-hidden className="size-4 shrink-0" />
+                {line}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {resume !== null && (
+        <p className="text-muted-foreground text-sm">{resume}</p>
+      )}
+      {hasAudience("apk") && (
+        <Button asChild size="lg">
+          <Link to="/jobs/pick/$day/$pickId" params={{ day, pickId: pick.id }}>
+            {openIt}
+          </Link>
+        </Button>
+      )}
+    </section>
   )
 }
 
@@ -87,13 +187,16 @@ const PickCard = ({
   pick: Pick
 }): JSX.Element => {
   const progress = progressOf(state, day, pick.id)
-  const { posting } = pick
-  const card =
-    "bg-card hover:border-primary flex flex-col gap-2 rounded-xl border p-3"
-  const body = (
-    <>
+  return (
+    <ToPick
+      day={day}
+      pick={pick}
+      className="bg-card hover:border-primary flex flex-col gap-1 rounded-xl border p-3"
+    >
       <div className="flex items-baseline justify-between gap-2">
-        <span className="leading-tight font-semibold">{posting.title}</span>
+        <span className="leading-tight font-semibold">
+          {pick.posting.title}
+        </span>
         <Badge
           variant={
             progress.kind === "open" && progress.step === 0
@@ -101,40 +204,61 @@ const PickCard = ({
               : "secondary"
           }
         >
-          {STATE_LABEL(progress)}
+          {pickState(progress)}
         </Badge>
       </div>
       <span className="text-muted-foreground text-xs">
-        {[
-          posting.company,
-          posting.location,
-          posting.compensation,
-          posting.postedOn,
-        ]
-          .filter(Boolean)
-          .join(" · ")}
+        {postingLine(pick.posting)} · {fitWord(pick.scores.fit)}
       </span>
-      <Meter label="Fit" value={pick.scores.fit} tone="fit" />
-      <Meter label="Odds" value={pick.scores.odds} tone="odds" />
-      <span className="text-xs">{resumeLabel(pick.resume)}</span>
-      <Steps progress={progress} />
-    </>
-  )
-  return hasAudience("apk") ? (
-    <Link
-      to="/jobs/pick/$day/$pickId"
-      params={{ day, pickId: pick.id }}
-      className={card}
-    >
-      {body}
-    </Link>
-  ) : (
-    <div className={card}>{body}</div>
+    </ToPick>
   )
 }
 
-/** Archives `day`'s undecided picks unreviewed, once asked. */
-const ArchiveBatch = ({
+/** Every pick of the digest on show, by track, behind one tap. */
+const AllPicks = ({
+  state,
+  digest,
+}: {
+  state: JobsState
+  digest: Digest
+}): JSX.Element => {
+  const [shown, setShown] = useState(false)
+  return (
+    <section className="flex flex-col gap-3">
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="self-start"
+        aria-expanded={shown}
+        onClick={() => setShown((s) => !s)}
+      >
+        {seeAll(shown)}
+      </Button>
+      {shown &&
+        TRACKS.map((track) => {
+          const picks = digest.picks.filter((p) => p.track === track)
+          if (picks.length === 0) return null
+          return (
+            <section key={track} className="flex flex-col gap-2">
+              <h2 className={sectionHeading}>{trackHeading[track]}</h2>
+              {picks.map((pick) => (
+                <PickCard
+                  key={pick.id}
+                  state={state}
+                  day={digest.day}
+                  pick={pick}
+                />
+              ))}
+            </section>
+          )
+        })}
+    </section>
+  )
+}
+
+/** Lets `day`'s undecided picks go unread, once asked. */
+const LetGo = ({
   day,
   count,
   label,
@@ -154,11 +278,10 @@ const ArchiveBatch = ({
         className="self-start"
         onClick={() =>
           ask({
-            title: `Archive ${counted(count, "pick")}?`,
-            description:
-              "They leave the queue unreviewed, which the morning run hears once you share your decisions. You can still open one and decide it.",
-            confirm: "Archive them",
-            keep: "Review them",
+            title: letGoAsk(count),
+            description: letGoWhat,
+            confirm: letGoConfirm,
+            keep: letGoKeep,
             onConfirm: () => {
               jobs.archive(day)
             },
@@ -173,12 +296,10 @@ const ArchiveBatch = ({
 }
 
 /**
- * How many picks each track holds open, and the first choice on a digest:
- * review its picks, or archive the undecided ones unreviewed. Earlier
- * digests' open picks are listed here, since the cards below are only this
- * digest's.
+ * The places open picks hold: how many are open by track, earlier days'
+ * picks still open, and letting a day's undecided picks go.
  */
-const Queue = ({
+const Places = ({
   state,
   digest,
 }: {
@@ -190,31 +311,32 @@ const Queue = ({
   const earlier = [
     ...new Set(open.filter((o) => o.day !== digest.day).map((o) => o.day)),
   ]
-  const held = digest.queue?.open ?? []
-  const room = freeSlots(held)
+  const queued = digest.queue?.open ?? []
+  const held = queued.filter((p) => !p.closed)
+  const room = freeSlots(queued)
   const full = digest.queue !== null && TRACKS.every((t) => room[t] === 0)
   return (
-    <section className="flex flex-col gap-2 rounded-xl border p-3">
-      <h2 className={sectionHeading}>Queue</h2>
-      <p className="text-sm tabular-nums">
-        Open on this phone:{" "}
-        {TRACKS.map(
-          (t) =>
-            `${open.filter((o) => o.pick.track === t).length} of ${MAX_OPEN_PICKS[t]} ${t}`
-        ).join(" · ")}
+    <section className="flex flex-col gap-2">
+      <p className="text-sm">
+        {stillOpen(
+          TRACKS.map((t) =>
+            openOfTrack(
+              t,
+              open.filter((o) => o.pick.track === t).length,
+              MAX_OPEN_PICKS[t]
+            )
+          )
+        )}
       </p>
       <p className="text-muted-foreground text-xs">
-        A pick stays open until you pass it, archive it, or take it and debrief,
-        and share your decisions. The morning run adds new picks only into free
-        slots.
-        {held.length > 0 &&
-          ` This one found ${counted(held.filter((p) => !p.closed).length, "pick")} from earlier days still open${full ? ", so it searched nothing" : ""}.`}
+        {holdsPlace}
+        {held.length > 0 && ` ${heldOver(held.length, full)}`}
       </p>
       {undecided.length > 0 && (
-        <ArchiveBatch
+        <LetGo
           day={digest.day}
           count={undecided.length}
-          label={`Archive ${counted(undecided.length, "undecided pick")}`}
+          label={letGoLabel(undecided.length, null)}
         />
       )}
       {earlier.map((day) => {
@@ -227,23 +349,19 @@ const Queue = ({
                 .filter((o) => o.day === day)
                 .map(({ pick }) => (
                   <li key={pick.id}>
-                    <Link
-                      to="/jobs/pick/$day/$pickId"
-                      params={{ day, pickId: pick.id }}
+                    <ToPick
+                      day={day}
+                      pick={pick}
                       className="text-sm underline-offset-2 hover:underline"
                     >
                       {pick.posting.title} · {pick.posting.company} ·{" "}
-                      {STATE_LABEL(progressOf(state, day, pick.id))}
-                    </Link>
+                      {pickState(progressOf(state, day, pick.id))}
+                    </ToPick>
                   </li>
                 ))}
             </ul>
             {left > 0 && (
-              <ArchiveBatch
-                day={day}
-                count={left}
-                label={`Archive ${day}’s ${counted(left, "undecided pick")}`}
-              />
+              <LetGo day={day} count={left} label={letGoLabel(left, day)} />
             )}
           </div>
         )
@@ -252,7 +370,7 @@ const Queue = ({
   )
 }
 
-const SetAside = ({
+const LeftOut = ({
   state,
   day,
   aside,
@@ -270,9 +388,7 @@ const SetAside = ({
         {aside.company} · {aside.why}
       </span>
       {said ? (
-        <span className="text-xs">
-          You’d have picked this. Tomorrow’s run hears it.
-        </span>
+        <span className="text-xs">{saidWouldHavePicked}</span>
       ) : note === null ? (
         <Button
           type="button"
@@ -281,7 +397,7 @@ const SetAside = ({
           className="self-start"
           onClick={() => setNote("")}
         >
-          I’d have picked this
+          {wouldHavePicked}
         </Button>
       ) : (
         <div className="flex flex-col gap-2">
@@ -290,7 +406,7 @@ const SetAside = ({
             rows={2}
             maxLength={MAX_NOTE}
             value={note}
-            placeholder="Why it fits"
+            placeholder={whyItFits}
             onChange={(e) => setNote(e.target.value)}
           />
           <Button
@@ -307,7 +423,7 @@ const SetAside = ({
               })
             }
           >
-            Tell the run
+            {keepWhy}
           </Button>
         </div>
       )}
@@ -315,20 +431,82 @@ const SetAside = ({
   )
 }
 
+/** How the picks on show came to be, behind one disclosure. */
+const HowPicked = ({
+  state,
+  digest,
+  picker,
+}: {
+  state: JobsState
+  digest: Digest
+  /** The file picker, when it isn't already offered above. */
+  picker: boolean
+}): JSX.Element => {
+  const [showLeftOut, setShowLeftOut] = useState(false)
+  const findings = digestFindings(digest)
+  return (
+    <details className="rounded-xl border p-3">
+      <summary className="text-muted-foreground cursor-pointer text-sm font-semibold">
+        {howPicked}
+      </summary>
+      <div className="mt-3 flex flex-col gap-3">
+        <p className="text-sm">
+          {pickedFrom(
+            digest.day,
+            digest.seen,
+            digest.picks.length,
+            digest.setAside.length
+          )}
+        </p>
+        {findings.length > 0 && (
+          <p className="text-muted-foreground text-xs">
+            {breaksRules(findings.length, findings[0]?.message ?? "")}
+          </p>
+        )}
+        <Places state={state} digest={digest} />
+        {digest.setAside.length > 0 && (
+          <section className="flex flex-col gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="self-start"
+              aria-expanded={showLeftOut}
+              onClick={() => setShowLeftOut((s) => !s)}
+            >
+              {leftOut(showLeftOut, digest.setAside.length)}
+            </Button>
+            {showLeftOut && (
+              <ul className="flex flex-col gap-2">
+                {digest.setAside.map((aside) => (
+                  <LeftOut
+                    key={aside.fingerprint}
+                    state={state}
+                    day={digest.day}
+                    aside={aside}
+                  />
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
+        {picker && <OpenDigest />}
+      </div>
+    </details>
+  )
+}
+
 export const JobsToday = (): JSX.Element => {
   const { state } = useJobs()
-  const [showAside, setShowAside] = useState(false)
+  const now = useMinuteClock()
   const digest = currentDigest(state)
 
   if (digest === null) {
     return (
       <section className="flex flex-col gap-4 py-6">
-        <h2 className="text-xl font-bold">No picks open yet</h2>
+        <h2 className="text-xl font-bold">{noPicksYet}</h2>
         <p className="text-muted-foreground">
-          Every morning a run leaves the day’s picks in Drive: up to{" "}
-          {counted(PICKS_PER_DAY.software, "software role")} and{" "}
-          {counted(PICKS_PER_DAY.adjacent, "software-adjacent one")}, each
-          scored against the résumé. Open the newest one here.
+          {whatMorningsBring(PICKS_PER_DAY.software, PICKS_PER_DAY.adjacent)}
         </p>
         <p className="text-sm">{arriveOnTheirOwn}</p>
         <OpenDigest label={orOpenFile} />
@@ -337,88 +515,34 @@ export const JobsToday = (): JSX.Element => {
     )
   }
 
-  const today = pacificDay(new Date())
-  const earlier = digest.day < today
+  const earlier = digest.day < pacificDay(now)
   // Opening an older file shows it even when a newer digest is held.
   const newer = state.digests.some((d) => d.day > digest.day)
-  const findings = digestFindings(digest)
-  const tracks = TRACKS.map((t) => [t, TRACK_HEADINGS[t]] as const)
+  const next = nextPick(state)
+  const done = doneOn(state, dayOf(now), dayOf)
   return (
     <div className="flex flex-col gap-4">
-      <section className="flex flex-col gap-2 rounded-xl border p-3">
-        <div className="flex items-baseline justify-between">
-          <span className="font-semibold">{digest.day}</span>
-          <Badge>{digest.picks.length} picks</Badge>
-        </div>
-        <span className="text-muted-foreground text-xs">
-          {digest.seen} seen, {digest.setAside.length} set aside, checked at
-          some-ui {digest.evidence.someUi}.
-        </span>
-        {findings.length > 0 && (
-          <p
-            role="status"
-            className="text-amber-700 text-xs dark:text-amber-400"
-          >
-            This digest breaks {findings.length} of the run’s rules (first:{" "}
-            {findings[0]?.message}). Its picks still open.
-          </p>
-        )}
-        {earlier && (
+      <p role="status" className="text-sm font-semibold empty:hidden">
+        {done > 0 ? doneToday(done) : null}
+      </p>
+      {earlier && (
+        <section className="flex flex-col gap-2">
           <p className="text-sm">
             {newer
               ? newerHeld(digest.day)
               : `${notToday(digest.day)} ${arriveOnTheirOwn}`}
           </p>
-        )}
-        <OpenDigest label={earlier ? orOpenFile : undefined} />
-      </section>
-      <Problem />
-      <Queue state={state} digest={digest} />
-      {tracks.map(([track, heading]) => {
-        const picks = digest.picks.filter((p) => p.track === track)
-        if (picks.length === 0) return null
-        return (
-          <section key={track} className="flex flex-col gap-2">
-            <h2 className={sectionHeading}>
-              {heading} · {picks.length}
-            </h2>
-            {picks.map((pick) => (
-              <PickCard
-                key={pick.id}
-                state={state}
-                day={digest.day}
-                pick={pick}
-              />
-            ))}
-          </section>
-        )
-      })}
-      {digest.setAside.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="self-start"
-            onClick={() => setShowAside((s) => !s)}
-          >
-            {showAside ? "Hide" : "Show"} what the run set aside (
-            {digest.setAside.length})
-          </Button>
-          {showAside && (
-            <ul className="flex flex-col gap-2">
-              {digest.setAside.map((aside) => (
-                <SetAside
-                  key={aside.fingerprint}
-                  state={state}
-                  day={digest.day}
-                  aside={aside}
-                />
-              ))}
-            </ul>
-          )}
+          <OpenDigest label={orOpenFile} />
         </section>
       )}
+      <Problem />
+      {next === null ? (
+        <p className="bg-muted rounded-xl p-4 text-sm">{allDone}</p>
+      ) : (
+        <NextPick state={state} day={next.day} pick={next.pick} />
+      )}
+      <AllPicks state={state} digest={digest} />
+      <HowPicked state={state} digest={digest} picker={!earlier} />
     </div>
   )
 }

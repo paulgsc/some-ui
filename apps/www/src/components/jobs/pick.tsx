@@ -42,6 +42,7 @@ import {
 } from "@/lib/jobs/model"
 import {
   Gaps,
+  postingLine,
   resumeLabel,
   Scores,
   sectionHeading,
@@ -706,13 +707,7 @@ export const PickFlow = ({
           {pick.posting.title}
         </h2>
         <span className="text-muted-foreground text-sm">
-          {[
-            pick.posting.company,
-            pick.posting.location,
-            pick.posting.compensation,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
+          {postingLine(pick.posting)}
         </span>
         <span className="text-xs">{resumeLabel(pick.resume)}</span>
       </header>
