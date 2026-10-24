@@ -45,11 +45,11 @@ export const ACCOUNT_ERASES = {
     },
     {
       label: "Jobs mailbox files home holds",
-      text: "The daily job picks, word sets and dramas home holds for you, the ones it archived out of the mailbox included. Once the mailbox has let a file go, home's copy is the only one, so it goes too.",
+      text: "The daily job picks, word sets, dramas and run records home holds for you, the ones it archived out of the mailbox included. Once the mailbox has let a file go, home's copy is the only one, so it goes too.",
     },
     {
-      label: "Decisions and scouts filed with home",
-      text: "The decisions and scouts you filed with home for the mailbox, and home's note of each one it passed on.",
+      label: "Filed with home for the mailbox",
+      text: "The decisions and scouts you filed with home, which lessons you opened, and home's note of each one it passed on.",
     },
     {
       label: "LeetType sessions",
