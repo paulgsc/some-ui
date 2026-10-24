@@ -87,6 +87,25 @@ const LEGS: Readonly<Record<Leg, string>> = {
   ahead: "border-border",
 }
 
+/** The "!" of a stop, or the check of a read, at an icon's corner. */
+const CornerBadge = ({
+  tone,
+  children,
+}: {
+  tone: string
+  children: ReactNode
+}): JSX.Element => (
+  <span
+    aria-hidden
+    className={cn(
+      "absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full text-[0.625rem] font-bold",
+      tone
+    )}
+  >
+    {children}
+  </span>
+)
+
 /** The whole road: each stop, and the way between them. */
 const JourneyTrack = ({ road }: { road: Road }): JSX.Element => (
   <div
@@ -118,9 +137,9 @@ const JourneyTrack = ({ road }: { road: Road }): JSX.Element => (
             >
               <Icon className="size-3.5" />
               {mark === "stopped" && (
-                <span className="bg-destructive text-background absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full text-[0.625rem] font-bold">
+                <CornerBadge tone="bg-destructive text-background">
                   !
-                </span>
+                </CornerBadge>
               )}
             </span>
           </span>
@@ -240,20 +259,14 @@ export const JourneyStatus = ({
               >
                 <Icon aria-hidden className="size-4.5" />
                 {theme === "stopped" && (
-                  <span
-                    aria-hidden
-                    className="bg-background text-destructive border-destructive absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full border text-[0.625rem] font-bold"
-                  >
+                  <CornerBadge tone="bg-background text-destructive border border-destructive">
                     !
-                  </span>
+                  </CornerBadge>
                 )}
                 {theme === "read" && (
-                  <span
-                    aria-hidden
-                    className="bg-background text-success border-success absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full border"
-                  >
+                  <CornerBadge tone="bg-background text-success border border-success">
                     <Check className="size-2.5" strokeWidth={3} />
-                  </span>
+                  </CornerBadge>
                 )}
               </span>
             </button>

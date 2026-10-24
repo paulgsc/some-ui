@@ -14,11 +14,7 @@ const TITLE =
 /**
  * Every journey state's card (J0), stacked as the Jobs wing stacks its cards
  * on the phone, each with the longest words the table says: several files
- * (`them`), a time with its date, a run's day. `../jobs-status-fit.spec.ts`
- * opens each one's pop-up at the phone's sizes, closes it every way it
- * closes, and checks each theme's contrast. Inline styles, not utilities:
- * this directory is outside www's Tailwind sources (style.context.ts), so
- * only the component's own classes are in the CSS it measures.
+ * (`them`), a time with its date, a run's day (`../jobs-status-fit.spec.ts`).
  */
 export const JobsStatusFixture = (): JSX.Element => (
   <div

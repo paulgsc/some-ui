@@ -307,8 +307,7 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
       outgoing: (kind) => fileFor(kind, ports.now()),
       // Home holds it, so it is shared and has arrived, in one change: a
       // record of one without the other would offer the file again. Both
-      // at one instant, which tells a filed share from a confirmed one
-      // (`./journey`).
+      // at one instant (`./journey`).
       filed(kind, file): boolean {
         const shared = stamp()
         return commit({

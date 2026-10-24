@@ -737,7 +737,12 @@ export function lastDelivered(
 export function deliveredThrough(state: JobsState, kind: ShareKind): number {
   const share = lastDelivered(state, kind)
   if (share === null) return 0
-  return Math.min(share.through, state.log.indexOf(share))
+  return coveredBy(share, state.log.indexOf(share))
+}
+
+/** How much of the log a share at `index` covers: its `through`, never past itself. */
+export function coveredBy(share: { through: number }, index: number): number {
+  return Math.min(share.through, index)
 }
 
 /** How many shares of `kind` went out on `day`, confirmed or not. */

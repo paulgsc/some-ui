@@ -20,6 +20,7 @@ import { ExternalLink } from "lucide-react"
 import { phoneJobs } from "@/lib/jobs"
 import { eventJourney } from "@/lib/jobs/journey"
 import { draftVoice, SCOUT_OWNER } from "@/lib/jobs/model"
+import { themeOf } from "@/lib/journey"
 import { Gaps, Scores, sectionHeading } from "@/components/job-reading"
 
 import {
@@ -97,8 +98,16 @@ export const JobsScout = (): JSX.Element => {
   const voice = draftVoice(state, SCOUT_OWNER)
   const context = useJourneyContext()
   const scouts = state.log.flatMap((e, index) =>
-    e.type === "scout" ? [{ scout: e.scout, index }] : []
+    e.type === "scout"
+      ? [{ scout: e.scout, journey: eventJourney(context, index) }]
+      : []
   )
+  const newestFirst = [...scouts].reverse()
+  // One file carries every scout waiting, so one card asks to share it.
+  const asking = newestFirst.find(({ journey }) => {
+    const theme = journey === null ? null : themeOf(journey.id)
+    return theme === "waiting" || theme === "stopped"
+  })?.scout.id
   const verdicts = new Map(
     state.digests.flatMap((d) => d.scouts.map((s) => [s.scoutId, s] as const))
   )
@@ -200,9 +209,8 @@ export const JobsScout = (): JSX.Element => {
         <section className="flex flex-col gap-2">
           <h2 className={sectionHeading}>My scouts · {scouts.length}</h2>
           <ul className="flex flex-col gap-2">
-            {[...scouts].reverse().map(({ scout, index }) => {
+            {newestFirst.map(({ scout, journey }) => {
               const verdict = verdicts.get(scout.id)
-              const journey = eventJourney(context, index)
               return (
                 <li key={scout.id}>
                   <JourneyCard
@@ -238,11 +246,13 @@ export const JobsScout = (): JSX.Element => {
                         <Review review={verdict.review} scoutId={scout.id} />
                       )}
                     </div>
-                    <ShareAction
-                      kind="scouts"
-                      journey={journey}
-                      label="Share scouts to Drive"
-                    />
+                    {scout.id === asking && (
+                      <ShareAction
+                        kind="scouts"
+                        journey={journey}
+                        label="Share scouts to Drive"
+                      />
+                    )}
                   </JourneyCard>
                 </li>
               )

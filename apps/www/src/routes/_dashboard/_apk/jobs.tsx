@@ -13,12 +13,21 @@ const VIEWS = [
   { to: "/jobs/record", label: "Record", exact: false },
 ] as const satisfies ReadonlyArray<View>
 
+/** The Jobs screens, told whether Jobs is kept on home: the phone's alone. */
+const KeptOutlet = (): JSX.Element => (
+  <KeptOnHome value={useJobsKeptOnHome()}>
+    <Outlet />
+  </KeptOnHome>
+)
+
 const JobsLayout = (): JSX.Element => (
   <div className="mx-auto flex w-full max-w-md flex-col gap-4 pb-6">
     <ViewStrip label="Jobs" views={VIEWS} />
-    <KeptOnHome value={useJobsKeptOnHome()}>
+    {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
+      <KeptOutlet />
+    ) : (
       <Outlet />
-    </KeptOnHome>
+    )}
   </div>
 )
 

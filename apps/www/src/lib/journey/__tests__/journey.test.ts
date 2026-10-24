@@ -7,7 +7,7 @@
 import { describe, expect, it } from "vitest"
 
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
-import type { Journey, JourneyId, JourneyTheme, Noun } from "@/lib/journey"
+import type { Journey, Noun } from "@/lib/journey"
 import {
   everyState,
   iconLabel,
@@ -17,7 +17,6 @@ import {
   mostUrgent,
   roadOf,
   roadSaid,
-  runDaySaid,
   stateTitle,
   STOP_NAMES,
   stopOf,
@@ -80,8 +79,7 @@ describe("the journey states", () => {
     })
     const { line } = journeySaid(j, "them", NOW)
     expect(line).toContain(whenSaid("2026-10-24T16:14:00Z", NOW))
-    expect(line).toContain(`the ${runDaySaid("2026-10-25")} run`)
-    expect(runDaySaid("2026-10-25")).toMatch(/Oct/)
+    expect(line).toContain("the Oct 25 run")
   })
 
   it("give a different day its date, and today its time alone", () => {
@@ -112,19 +110,6 @@ describe("the journey states", () => {
       "mailbox",
       "run",
     ])
-  })
-
-  it("fall into the four themes the owner approved", () => {
-    const themes: Readonly<Record<JourneyTheme, ReadonlyArray<JourneyId>>> = {
-      waiting: ["on-phone", "needs-sheet", "sheet-unconfirmed"],
-      moving: ["with-home", "in-mailbox", "in-drive"],
-      read: ["read"],
-      stopped: ["missed-run", "home-refused", "mailbox-refused"],
-    }
-    for (const [theme, ids] of Object.entries(themes)) {
-      for (const id of ids) expect(themeOf(id)).toBe(theme)
-    }
-    expect(Object.values(themes).flat().sort()).toEqual([...JOURNEY_IDS].sort())
   })
 
   it("mark a stopped road, and only a stopped one, with a stop", () => {

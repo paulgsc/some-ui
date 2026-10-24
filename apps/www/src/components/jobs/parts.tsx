@@ -23,7 +23,7 @@ import { isFile } from "@/lib/jobs/files"
 import type { JourneyContext } from "@/lib/jobs/journey"
 import { unconfirmedShare } from "@/lib/jobs/journey"
 import type { ShareKind } from "@/lib/jobs/model"
-import { openFromStorage } from "@/lib/jobs/words"
+import { itArrived, openFromStorage, shareAgain } from "@/lib/jobs/words"
 import type { Journey, Noun } from "@/lib/journey"
 import { themeOf } from "@/lib/journey"
 import { lookIn } from "@/lib/share-files"
@@ -337,7 +337,7 @@ export const ShareAction = ({
           size="lg"
           onClick={() => jobs.arrived(unconfirmed.id)}
         >
-          It arrived
+          {itArrived}
         </Button>
       )}
       {asks && file !== null && (
@@ -347,7 +347,7 @@ export const ShareAction = ({
             onPress={() => share.start(undefined)}
             size="lg"
             variant={unconfirmed === null ? "default" : "outline"}
-            idleLabel={unconfirmed === null ? label : "Share again"}
+            idleLabel={unconfirmed === null ? label : shareAgain}
             workingLabel="Sharing…"
           />
           <p className="text-muted-foreground text-xs">

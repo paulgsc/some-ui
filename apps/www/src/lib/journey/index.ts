@@ -13,7 +13,7 @@
  * It sits outside `lib/home-link`, which only the screens LA8 names may
  * import: these are words and pictures, and reach nothing.
  */
-import { assertNever } from "@some-ui/core-utils"
+import { assertNever, formatDay } from "@some-ui/core-utils"
 
 /** The places a file can be: the stops its road passes. */
 export type Stop = "phone" | "home" | "mailbox" | "drive" | "run"
@@ -214,8 +214,6 @@ export function mostUrgent(journeys: ReadonlyArray<Journey>): Journey | null {
   return found
 }
 
-// The words.
-
 /** What a card holds: one file, or several. */
 export type Noun = "it" | "them"
 
@@ -243,15 +241,6 @@ export function whenSaid(at: string, now: Date): string {
   return `${day}, ${time}`
 }
 
-/** A run's day, `YYYY-MM-DD`, as "Oct 25". */
-export function runDaySaid(day: string): string {
-  return new Date(`${day}T12:00:00Z`).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  })
-}
-
 /** What a state says: its name, and a line on where it is and what comes next. */
 export type Said = { readonly title: string; readonly line: string }
 
@@ -261,7 +250,7 @@ export function journeySaid(j: Journey, noun: Noun, now: Date): Said {
   const it = noun
   const they = many ? "they" : "it"
   const since = j.since === null ? null : whenSaid(j.since, now)
-  const run = j.runDay === null ? "the last" : `the ${runDaySaid(j.runDay)}`
+  const run = j.runDay === null ? "the last" : `the ${formatDay(j.runDay)}`
   switch (j.id) {
     case "on-phone": {
       return {

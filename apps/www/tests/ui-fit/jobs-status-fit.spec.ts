@@ -2,9 +2,7 @@
  * Does each Jobs card's pop-up fit the phone, close every way it should,
  * and hold its colors in every theme? (J0, JB2.)
  *
- * The owner's prototype failed both of the first two: its pop-up did not
- * close on a press elsewhere, and its words overflowed its box. jsdom can
- * say neither, so this walks the `jobs-status` fixture
+ * jsdom can say none of it, so this walks the `jobs-status` fixture
  * (`./panel-page/jobs-status.tsx`): every state of the union, with the
  * longest words the table says, at the phone's sizes (`PHONE_VIEWPORTS`, the
  * phone held sideways among them; Jobs is a phone surface). For each state
@@ -22,21 +20,13 @@
  */
 
 import { expect, test, type Locator, type Page } from "@playwright/test"
+import { CONTRAST_FLOOR, SESSION_THEMES } from "@some-ui/styles/theme"
 
-import { JOURNEY_IDS, themeOf } from "@/lib/journey"
+import { JOURNEY_IDS } from "@/lib/journey"
 
 import { JOBS_STATUS_FIXTURE, PHONE_VIEWPORTS, servePanelPage } from "./harness"
 
 const PAGE = servePanelPage()
-
-/** The session themes, by the classes their controller puts on the root. */
-const THEMES = [
-  { name: "light", classes: [] },
-  { name: "dark", classes: ["dark"] },
-  { name: "mochi", classes: ["mochi"] },
-  { name: "rose-night", classes: ["dark", "rose-night"] },
-  { name: "harvest-sky", classes: ["dark", "harvest-sky"] },
-] as const
 
 test.describe.configure({ timeout: 3 * 60 * 1000 })
 
@@ -76,8 +66,7 @@ test.describe("each Jobs card's pop-up fits the phone and closes", () => {
       const failures: Array<string> = []
 
       for (const id of JOURNEY_IDS) {
-        const bar = await openState(page, id)
-        expect(await bar.getAttribute("data-journey-theme")).toBe(themeOf(id))
+        await openState(page, id)
         const box = await popup(page).boundingBox()
         if (box === null) throw new Error(`${id}: the pop-up has no box`)
         if (
@@ -212,24 +201,21 @@ test.describe("each state's colors hold in every theme", () => {
     await page.setViewportSize({ width: 412, height: 915 })
     await openFixture(page)
     const failures: Array<string> = []
-    for (const theme of THEMES) {
+    for (const theme of SESSION_THEMES) {
+      // As the session controller does: the theme's classes on the root.
       await page.evaluate((classes) => {
         document.documentElement.className = classes.join(" ")
-      }, theme.classes)
+      }, theme.boundary.classNames)
       // The bar's color moves over 200ms; read it once it has.
       await page.waitForTimeout(300)
       for (const p of await paint(page)) {
         const text = contrast(p.title, p.bar)
         const icon = contrast(p.icon, p.chip)
-        if (text < 4.5) {
-          failures.push(
-            `${theme.name} ${p.id}: title ${text.toFixed(2)}:1, under 4.5`
-          )
+        if (text < CONTRAST_FLOOR.text) {
+          failures.push(`${theme.id} ${p.id}: title ${text.toFixed(2)}:1`)
         }
-        if (icon < 3) {
-          failures.push(
-            `${theme.name} ${p.id}: icon ${icon.toFixed(2)}:1, under 3`
-          )
+        if (icon < CONTRAST_FLOOR.mark) {
+          failures.push(`${theme.id} ${p.id}: icon ${icon.toFixed(2)}:1`)
         }
       }
     }

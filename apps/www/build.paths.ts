@@ -220,6 +220,14 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "the phone's hand-off wording (`arrived`, `goingOut`), after a share only the Android app makes; the web's reflection screens count with `@some-ui/core-utils`",
     },
     {
+      modules: [
+        "apps/www/src/lib/journey/**",
+        "apps/www/src/components/journey-status.tsx",
+      ],
+      profiles: [MOBILE_PROFILE],
+      why: "where a file the phone sent is now, and the title bar that wears it (J0): only the Android app's Jobs cards send files to say it of (src/components/jobs)",
+    },
+    {
       modules: DEVICE_MODULES,
       profiles: [MOBILE_PROFILE],
       why: "native-only code, which runs only in the Android app (src/lib/device-backend, src/vite-env.d.ts on VITE_DEVICE_BACKEND)",

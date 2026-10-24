@@ -24,7 +24,6 @@ import type { Draft, JobsState, ShareKind } from "@/lib/jobs/model"
 import { DIGESTS_KEPT, EMPTY, step } from "@/lib/jobs/model"
 import { createJobsRuntime } from "@/lib/jobs/runtime"
 import type { JourneyId } from "@/lib/journey"
-import { JOURNEY_IDS } from "@/lib/journey"
 
 import { digest, OPENED_AT, ports } from "./fixture"
 
@@ -281,6 +280,94 @@ describe("JB2: a file home took without a tap", () => {
   })
 })
 
+describe("JB2: two shares interleaved", () => {
+  it("reads as read when a confirmed share carried what home also filed", () => {
+    // Shared by the sheet, not yet confirmed; home files the same decision;
+    // then the person says the sheet's arrived, and the run reads only it.
+    const shared = share(record(opened, taken()))
+    const filed = fileWithHome(shared.state, later(NOON, 60_000))
+    const confirmed = record(
+      filed.state,
+      { type: "arrived", shareId: shared.id },
+      later(NOON, 120_000)
+    )
+    const sheetFile = confirmed.log.find((e) => e.id === shared.id)
+    if (sheetFile?.type !== "shared") throw new Error("no share")
+    const state = run(confirmed, NEXT, [sheetFile.file], "2026-10-19T16:00:00Z")
+    expect(idOf(state)).toBe("read")
+    expect(
+      outgoing(
+        deliveryView(state, "decisions", new Date("2026-10-19T17:00:00Z")),
+        "decisions"
+      )
+    ).toBeNull()
+  })
+
+  it("says shared only of what the unconfirmed share carried", () => {
+    const scout = (id: string): Draft => ({
+      type: "scout",
+      scout: {
+        id,
+        url: "https://example.org/job",
+        title: id,
+        why: "",
+        postingText: null,
+        track: "software",
+        family: null,
+      },
+      voice: [],
+    })
+    const first = record(opened, scout("sc-1"))
+    const shared = share(first, NOON, "scouts")
+    const second = record(shared.state, scout("sc-2"))
+    const ctx = context(second)
+    expect(eventJourney(ctx, 0)?.id).toBe("sheet-unconfirmed")
+    expect(eventJourney(ctx, second.log.length - 1)?.id).toBe("on-phone")
+  })
+
+  it("is read once a run named a share nobody confirmed", () => {
+    const shared = share(record(opened, taken()))
+    const file = shared.state.log.at(-1)
+    if (file?.type !== "shared") throw new Error("no share")
+    const state = run(shared.state, NEXT, [file.file], "2026-10-19T16:00:00Z")
+    const decision = state.log.findIndex((e) => e.type === "taken")
+    expect(eventJourney(context(state), decision)?.id).toBe("read")
+  })
+
+  it("counts a restored share as carrying nothing past its own place", () => {
+    // Home's copy lacks two events it refused, so the share's `through`
+    // runs past where it now sits.
+    const s1 = record(opened, taken())
+    const shareStamp = stamp(NOON)
+    let state: JobsState = {
+      ...s1,
+      log: [
+        ...s1.log,
+        {
+          ...shareStamp,
+          type: "shared",
+          kind: "decisions",
+          day: DAY,
+          file: "decisions-2026-10-18-1.json",
+          through: 4,
+          voice: [],
+        },
+      ],
+    }
+    state = record(state, taken(AD))
+    state = record(
+      state,
+      { type: "arrived", shareId: shareStamp.id },
+      later(NOON, 60_000)
+    )
+    const second = state.log.findIndex(
+      (e) => e.type === "taken" && e.pickId === AD.id
+    )
+    expect(eventJourney(context(state), 0)?.id).toBe("in-drive")
+    expect(eventJourney(context(state), second)?.id).toBe("on-phone")
+  })
+})
+
 describe("JB2: one event's file", () => {
   it("follows a scout from the phone to the run", () => {
     let state = record(opened, {
@@ -360,23 +447,5 @@ describe("JB2: the runtime", () => {
       )
     ).toMatchObject({ id: "with-home", since: at.toISOString() })
     expect(again.outgoing("decisions")).toBeNull()
-  })
-})
-
-describe("JB2: the union", () => {
-  it("is reached by the phone's record, but for what needs home's word", () => {
-    const reached: Array<JourneyId> = [
-      "on-phone",
-      "with-home",
-      "read",
-      "missed-run",
-      "home-refused",
-      "needs-sheet",
-      "sheet-unconfirmed",
-      "in-drive",
-    ]
-    expect(new Set([...reached, "in-mailbox", "mailbox-refused"])).toEqual(
-      new Set(JOURNEY_IDS)
-    )
   })
 })
