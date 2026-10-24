@@ -15,6 +15,7 @@ import {
   laneView,
   lastLook,
   ROUTINE_READS,
+  ROUTINE_TELLS_OPENED,
   WORDS,
 } from "@/lib/home-link/words"
 
@@ -281,7 +282,14 @@ describe("the routine's files in Korean", () => {
     )
     const confirm = ROUTINE_READS.confirm("home.example")
     expect(confirm).toContain("home.example")
-    expect(confirm).toContain("It sends nothing of yours.")
+    // What is told, and only that: the choice's words gate the telling.
+    expect(confirm).toContain(ROUTINE_TELLS_OPENED)
+    expect(confirm).toContain("Nothing else of yours is sent.")
+    expect(
+      [ROUTINE_TELLS_OPENED, ROUTINE_READS.askAgain].filter((line) =>
+        MACHINERY.test(line)
+      )
+    ).toEqual([])
     expect(ROUTINE_READS.on("18 Oct")).toBe("Shown in Korean since 18 Oct.")
     expect(ROUTINE_READS.stopMore).toBe("What you opened stays on this phone.")
   })

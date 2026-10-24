@@ -29,6 +29,21 @@ export type ReadChoice = {
 
 export type ReadLog = ReadonlyArray<ReadChoice>
 
+/** The words pressed for the choice `under` names (the latest, at a tie), or null. */
+export function saidUnder(log: ReadLog, under: Under): string | null {
+  let said: string | null = null
+  for (const choice of log) {
+    if (
+      choice.kind === "shown" &&
+      choice.pairing === under.pairing &&
+      choice.at === under.since
+    ) {
+      said = choice.said
+    }
+  }
+  return said
+}
+
 /** Since when the routine's files are shown under `pairing`, or null. */
 export function shownNow(log: ReadLog, pairing: string | null): number | null {
   if (pairing === null) return null

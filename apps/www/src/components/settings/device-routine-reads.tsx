@@ -42,6 +42,11 @@ export const DeviceRoutineReads = (): JSX.Element | null => {
             {ROUTINE_READS.on(fullDay(since))}
           </p>
           <p className="text-muted-foreground text-xs">{lastLook(read.last)}</p>
+          {!reads.tells() && (
+            <p className="text-muted-foreground text-xs">
+              {ROUTINE_READS.askAgain}
+            </p>
+          )}
         </div>
       )}
       {refused ? (

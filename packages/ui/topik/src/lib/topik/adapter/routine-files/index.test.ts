@@ -1,11 +1,14 @@
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import {
+  createHeldAnswers,
   createOpenedStore,
   createRoutineFeed,
   openedKey,
   parseRoutineFiles,
+  ROUTINE_ANSWERS_KEY,
   ROUTINE_OPENED_KEY,
 } from "@topik/lib/topik/adapter/routine-files"
+import { createRunLog } from "@topik/lib/topik/adapter/routine-runs"
 import {
   workedExample,
   workedLesson,
@@ -71,15 +74,80 @@ describe("parseRoutineFiles", () => {
     expect(parseRoutineFiles({ files: "no" })).toEqual([])
   })
 
-  it("parses what the port hands back", async () => {
-    const feed = createRoutineFeed({
-      list: () =>
-        Promise.resolve({
-          files: [{ folder: "drama", name: "d.json", file: drama }],
-        }),
-    })
+  it("parses what the port hands back, and keeps the runs it tells of under the port's key", async () => {
+    const runs = createRunLog(memoryStorage())
+    const run = {
+      schema: "some-ui.routine-run/1",
+      startedAt: "2026-10-24T16:02:08Z",
+      outcome: "done",
+      found: { reflections: 0, prompts: 0 },
+      added: [],
+    }
+    const answer = {
+      files: [{ folder: "drama", name: "d.json", file: drama }],
+      runs: [{ folder: "run", name: "run-reflections-1.json", file: run }],
+      at: "2026-10-24T18:00:00.000Z",
+    }
+    const held = createHeldAnswers(memoryStorage())
+    const feed = createRoutineFeed(
+      { key: "home-1", list: () => Promise.resolve(answer) },
+      runs,
+      held
+    )
     await expect(feed.list()).resolves.toHaveLength(1)
-    expect(feed.key).toBeUndefined()
+    expect(feed.runs).toBe(runs)
+    expect(runs.held("home-1")).toMatchObject({
+      runs: [{ name: "run-reflections-1.json" }],
+      lookedAt: answer.at,
+    })
+    expect(runs.held("").runs).toEqual([])
+
+    // Away from home the port hands back no dated answer: home's last one
+    // for this key is listed, and an older one never replaces it.
+    const away = createRoutineFeed(
+      { key: "home-1", list: () => Promise.resolve({ files: [] }) },
+      runs,
+      held
+    )
+    await expect(away.list()).resolves.toHaveLength(1)
+    held.keep("home-1", "2026-10-23T00:00:00.000Z", { files: [] })
+    await expect(away.list()).resolves.toHaveLength(1)
+
+    const before = createRoutineFeed(
+      { list: () => Promise.resolve({ files: [] }) },
+      runs,
+      held
+    )
+    await expect(before.list()).resolves.toEqual([])
+    expect(before.key).toBeUndefined()
+    expect(runs.held("").lookedAt).toBeNull()
+  })
+
+  it("keeps the newest answer for each home that any page on the device kept", () => {
+    const storage = memoryStorage()
+    const first = createHeldAnswers(storage)
+    const second = createHeldAnswers(storage)
+    first.keep("a", "2026-10-24T18:00:00.000Z", { n: "newer" })
+    second.keep("a", "2026-10-24T17:00:00.000Z", { n: "older" })
+    second.keep("b", "2026-10-24T17:00:00.000Z", { n: "b" })
+    const again = createHeldAnswers(storage)
+    expect(again.held("a")).toEqual({ n: "newer" })
+    expect(again.held("b")).toEqual({ n: "b" })
+  })
+
+  it("keeps home's answers across copies on one device, and moves one it cannot read aside", () => {
+    const storage = memoryStorage()
+    createHeldAnswers(storage).keep("a", "2026-10-24T00:00:00.000Z", { n: 1 })
+    expect(createHeldAnswers(storage).held("a")).toEqual({ n: 1 })
+    expect(createHeldAnswers(storage).held("b")).toBeNull()
+    storage.setItem(ROUTINE_ANSWERS_KEY, "{not json")
+    const unreadable = createHeldAnswers(storage)
+    unreadable.keep("a", "2026-10-25T00:00:00.000Z", { n: 2 })
+    expect(unreadable.held("a")).toEqual({ n: 2 })
+    expect(storage.getItem(`${ROUTINE_ANSWERS_KEY}:unreadable:1`)).toBe(
+      "{not json"
+    )
+    expect(createHeldAnswers(storage).held("a")).toEqual({ n: 2 })
   })
 
   it("carries the port's key, which the handheld's list is keyed on", () => {

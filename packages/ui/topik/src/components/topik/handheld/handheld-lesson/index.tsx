@@ -20,8 +20,15 @@
  */
 
 import type { JSX } from "react"
-import { useMemo, useState, useSyncExternalStore } from "react"
-import { cn } from "@some-ui/core-utils"
+import {
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
+import { cn, dayOf } from "@some-ui/core-utils"
 import { Button, KeepOnShelf, KeptShelf } from "@some-ui/shared"
 import { CastSheet } from "@topik/components/topik/handheld/cast-sheet"
 import { DramaLesson } from "@topik/components/topik/handheld/drama-lesson"
@@ -31,6 +38,7 @@ import type {
   StorageNote,
 } from "@topik/components/topik/handheld/material-list"
 import { MaterialList } from "@topik/components/topik/handheld/material-list"
+import { RoutineStatus } from "@topik/components/topik/handheld/routine-status"
 import { SharePrompt } from "@topik/components/topik/handheld/share-prompt"
 import { ReadAloudScreen } from "@topik/components/topik/read-aloud/read-aloud-screen"
 import { useSessionConfig } from "@topik/lib/topik/adapter/context/session-config-context"
@@ -56,6 +64,7 @@ import {
   createOpenedStore,
   openedKey,
 } from "@topik/lib/topik/adapter/routine-files"
+import type { HeldRuns, RunLog } from "@topik/lib/topik/adapter/routine-runs"
 import { useRoutineFiles } from "@topik/lib/topik/adapter/server/routine-files-queries"
 import { useTopikManifest } from "@topik/lib/topik/adapter/server/topik-metadata-queries"
 import {
@@ -83,6 +92,7 @@ import type { DramaLesson as Tree } from "@topik/lib/topik/core/drama"
 import { titleOf } from "@topik/lib/topik/core/drama"
 import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
 import type { Seed } from "@topik/lib/topik/core/feed-card"
+import { routineView } from "@topik/lib/topik/core/routine-status"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 import { intakeTree } from "@topik/lib/topik/generation/tree-intake"
 import {
@@ -118,6 +128,12 @@ type HandheldLessonProps = {
   now?: () => Date
   /** Injected in tests; defaults to `localStorage`. */
   routineOpened?: OpenedStore
+  /**
+   * "next": open on the next lesson, as its card's press would: the newest
+   * the routine left that isn't opened, else the newest word set added and
+   * not opened. With neither, the list. Read once, on mount.
+   */
+  initialOpen?: "next"
 }
 
 export const HandheldLesson = ({
@@ -131,6 +147,7 @@ export const HandheldLesson = ({
   servedPoints,
   now = (): Date => new Date(),
   routineOpened,
+  initialOpen,
 }: HandheldLessonProps): JSX.Element => {
   const [held] = useState(() => pastedStore ?? createPastedLessonStore())
   const drama = usePastedTree(held)
@@ -215,7 +232,7 @@ export const HandheldLesson = ({
   const addSetTexts = (
     texts: ReadonlyArray<string>,
     say: (note: StorageNote) => void
-  ): boolean => {
+  ): typeof added | null => {
     // Judged together first, so a group that doesn't fit says what the phone
     // holds now, not after its first set.
     const fresh = new Set(
@@ -234,7 +251,7 @@ export const HandheldLesson = ({
         tone: "problem",
         text: `This phone keeps ${ADDED_SET_LIMIT} word sets and has ${added.length}, so these ${fresh} weren't added.`,
       })
-      return false
+      return null
     }
     let next = added
     const titles: Array<string> = []
@@ -243,7 +260,7 @@ export const HandheldLesson = ({
       const intake = intakeSet(text, next)
       if (!intake.ok) {
         say({ tone: "problem", text: intake.error })
-        return false
+        return null
       }
       next = addSet(next, intake.deck, now().toISOString())
       titles.push(`"${intake.deck.title}"`)
@@ -264,7 +281,7 @@ export const HandheldLesson = ({
           ? `Added ${what}. ${dropped} line${dropped === 1 ? "" : "s"} couldn't be read.`
           : `Added ${what}.`,
     })
-    return true
+    return next
   }
   const openSetText = (text: string): void => {
     addSetTexts([text], setSetNote)
@@ -272,10 +289,14 @@ export const HandheldLesson = ({
   // The read-aloud drill takes the whole screen, header included; leaving it
   // returns to the material list it was opened from. `set` is the added set
   // it reads on its own, or null for every word the phone has.
-  const [reading, setReading] = useState<{ set: string | null } | null>(null)
+  const [reading, setReading] = useState<{
+    set: string | null
+    begin?: boolean
+  } | null>(null)
   const routine = useRoutineFiles(routineFeed)
   const [opened] = useState(() => routineOpened ?? createOpenedStore())
   const [openedKeys, setOpenedKeys] = useState(opened.opened)
+  const heldRuns = useHeldRuns(routineFeed?.runs, routineFeed?.key ?? "")
   const [routineNote, setRoutineNote] = useState<StorageNote | null>(null)
   const routineCards = useMemo(() => {
     const cards = (routine.data ?? []).map((file) =>
@@ -287,7 +308,7 @@ export const HandheldLesson = ({
     ]
   }, [routine.data, openedKeys])
   // A pair's sets the phone already holds are left as they are, record and
-  // all; with both held, the pair opens on its first set.
+  // all; the rest are added, and the pair opens reading its first set.
   const openRoutineScene = (decks: ReadonlyArray<unknown>): boolean => {
     const texts = decks.map((deck) => JSON.stringify(deck))
     const ids = texts.map((text) => {
@@ -297,11 +318,16 @@ export const HandheldLesson = ({
     const missing = texts.filter(
       (_, at) => !added.some((set) => set.deck.id === ids[at])
     )
-    if (missing.length > 0) return addSetTexts(missing, setRoutineNote)
+    let held = added
+    if (missing.length > 0) {
+      const next = addSetTexts(missing, setRoutineNote)
+      if (next === null) return false
+      held = next
+    }
     const first = ids[0]
     if (first == null) return false
-    keepSets(openSet(added, first, now().toISOString()))
-    setReading({ set: first })
+    keepSets(openSet(held, first, now().toISOString()))
+    setReading({ set: first, begin: true })
     return true
   }
   const openRoutine = (key: string): void => {
@@ -314,8 +340,41 @@ export const HandheldLesson = ({
       startTree(file.tree)
     }
     opened.markOpened(key)
-    setOpenedKeys(opened.opened())
+    const nowOpened = opened.opened()
+    setOpenedKeys(nowOpened)
+    // Every listed one opened, so a filing lost on the way is told again.
+    routineFeed?.tellOpened?.(
+      (routine.data ?? []).map(openedKey).filter((one) => nowOpened.has(one))
+    )
   }
+  const canRead = speaker?.available === true
+  /** Opens the next lesson; false when there is none to open. */
+  const openNext = (): boolean => {
+    const fromRoutine = routineCards.find(
+      (card) => !card.opened && (card.kind === "drama" || canRead)
+    )
+    if (fromRoutine) {
+      openRoutine(fromRoutine.key)
+      return true
+    }
+    const ready = readySets(added).at(0)
+    if (ready === undefined || !canRead) return false
+    keepSets(openSet(added, ready.deck.id, now().toISOString()))
+    setReading({ set: ready.deck.id, begin: true })
+    return true
+  }
+  // The press the host already made, answered once, a double mount
+  // included: the second would open the one after it. With nothing to open
+  // yet, it waits for the first look at home to settle, then tries once more.
+  const opening = useRef(initialOpen)
+  const looking = routine.isFetching
+  const openAsked = useEffectEvent((): void => {
+    if (opening.current !== "next") return
+    if (openNext() || !looking) opening.current = undefined
+  })
+  useEffect(() => {
+    openAsked()
+  }, [looking])
   const [castOpen, setCastOpen] = useState(false)
 
   if (reading) {
@@ -340,6 +399,7 @@ export const HandheldLesson = ({
           short={short}
           paused={paused}
           onExit={() => setReading(null)}
+          initialBegin={reading.begin === true}
         />
       </div>
     )
@@ -544,9 +604,7 @@ export const HandheldLesson = ({
         // Read-aloud's audio is the rep: with no voice here it is not
         // offered at all (canon Cor. 4.6).
         onReadAloud={
-          speaker?.available === true
-            ? (): void => setReading({ set: null })
-            : undefined
+          canRead ? (): void => setReading({ set: null }) : undefined
         }
         addedSets={added.length}
         readySets={readySets(added).flatMap(({ deck }) => {
@@ -572,7 +630,7 @@ export const HandheldLesson = ({
         })}
         onOpenSet={(id) => {
           keepSets(openSet(added, id, now().toISOString()))
-          setReading({ set: id })
+          setReading({ set: id, begin: true })
         }}
         onSetText={openSetText}
         setFileHint={wordSetHint}
@@ -580,6 +638,17 @@ export const HandheldLesson = ({
         fromRoutine={routineCards}
         routineNote={routineNote}
         onOpenRoutine={openRoutine}
+        {...(heldRuns === null
+          ? {}
+          : {
+              routineStatus: (
+                <RoutineStatus
+                  view={routineView(heldRuns, openedKeys, now(), dayOf(now()))}
+                  held={heldRuns}
+                  today={dayOf(now())}
+                />
+              ),
+            })}
       />
     )
   })()
@@ -600,6 +669,17 @@ export const HandheldLesson = ({
         />
       )}
     </div>
+  )
+}
+
+const NO_SUBSCRIBE = (): (() => void) => () => {}
+const NO_LOG = (): null => null
+
+/** What the phone holds of the routine's runs from this home, or null with no log. */
+function useHeldRuns(log: RunLog | undefined, key: string): HeldRuns | null {
+  return useSyncExternalStore(
+    log?.subscribe ?? NO_SUBSCRIBE,
+    log === undefined ? NO_LOG : (): HeldRuns => log.held(key)
   )
 }
 

@@ -1,6 +1,7 @@
 import {
   addDays,
   dayOf,
+  dayWords,
   formatDay,
   formatRelativeTime,
   formatWeekday,
@@ -126,6 +127,16 @@ describe("calendar days", () => {
   it("formats a day as the month and date, or the weekday", () => {
     expect(formatDay("2026-10-02")).toBe("Oct 2")
     expect(formatWeekday("2026-10-02")).toBe("Fri")
+  })
+
+  it("says a date beside today as a person does", () => {
+    // Noon on each day keeps every timezone on that local day.
+    const today = "2026-10-21"
+    expect(dayWords("2026-10-21T12:00:00", today)).toBe("today")
+    expect(dayWords("2026-10-20T12:00:00", today)).toBe("yesterday")
+    expect(dayWords("2026-10-05T12:00:00", today)).toBe("Oct 5")
+    expect(dayWords("2025-12-31T12:00:00", today)).toBe("Dec 31, 2025")
+    expect(dayWords("2026-09-30T12:00:00", "2026-10-01")).toBe("yesterday")
   })
 })
 
