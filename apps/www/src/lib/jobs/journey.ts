@@ -28,7 +28,10 @@
  * - Tolerance: the mailbox's own states wait on home saying what it handed
  *   on (S0), so `with-home` stands in for them. A share confirmed in Drive
  *   stays "In Drive" until a run names it: no run is counted as missing a
- *   Drive file, since the next one reads every file no digest named.
+ *   Drive file, since the next one reads every file no digest named. A
+ *   phone restored from home has lost its notes of where shares began
+ *   (`carried`), so a reshare it made after a missed run before then can
+ *   be asked for once more.
  * - Proof: `__tests__/journey.test.ts` derives each state of the union from
  *   a record built for it, and `components/__tests__/journey-status.test.tsx`
  *   renders every state.
