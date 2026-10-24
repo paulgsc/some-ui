@@ -57,12 +57,14 @@ import {
   noPicksYet,
   notToday,
   openIt,
+  openOfTrack,
   orOpenFile,
   pickedForYou,
   pickedFrom,
   pickState,
   readyHeading,
-  resumeToSend,
+  resumeInHand,
+  resumeToBuild,
   saidWouldHavePicked,
   seeAll,
   stillOpen,
@@ -71,7 +73,7 @@ import {
   whyItFits,
   wouldHavePicked,
 } from "@/lib/jobs/words"
-import { sectionHeading } from "@/components/job-reading"
+import { postingLine, sectionHeading } from "@/components/job-reading"
 
 import { OpenDigest, Problem, useJobs } from "./parts"
 
@@ -99,24 +101,32 @@ const ToPick = ({
     <div className={className}>{children}</div>
   )
 
-const where = (posting: Pick["posting"]): string =>
-  [posting.company, posting.location, posting.compensation]
-    .filter(Boolean)
-    .join(" · ")
-
-/** What the pick's kit already holds for the company's form. */
-function readyLines(state: JobsState, day: string, pick: Pick): Array<string> {
+/**
+ * What is ready for the company's form, only what truly is: the résumé once
+ * I said I have its PDF, and what the pick's kit holds. The résumé still to
+ * build is said apart, unticked.
+ */
+function readiness(
+  state: JobsState,
+  day: string,
+  pick: Pick
+): { ready: Array<string>; resume: string | null } {
   const { kit } = kitOf(state, day, pick)
   const answers =
     kit.answers.length + kit.questions.filter((q) => q.draft !== null).length
   const variant =
     pick.resume.kind === "build" ? pick.resume.variant : pick.resume.fallback
-  return [
-    resumeToSend(variant),
-    ...(kit.coverLetter === null ? [] : [coverLetterDrafted]),
-    ...(answers === 0 ? [] : [answersDrafted(answers)]),
-    ...(kit.fields.length === 0 ? [] : [detailsToPaste(kit.fields.length)]),
-  ]
+  const progress = progressOf(state, day, pick.id)
+  const inHand = progress.kind === "open" && progress.step >= 3
+  return {
+    ready: [
+      ...(inHand ? [resumeInHand(variant)] : []),
+      ...(kit.coverLetter === null ? [] : [coverLetterDrafted]),
+      ...(answers === 0 ? [] : [answersDrafted(answers)]),
+      ...(kit.fields.length === 0 ? [] : [detailsToPaste(kit.fields.length)]),
+    ],
+    resume: inHand ? null : resumeToBuild(variant),
+  }
 }
 
 /** The one pick Today opens on, and what is ready for its form. */
@@ -128,34 +138,44 @@ const NextPick = ({
   state: JobsState
   day: string
   pick: Pick
-}): JSX.Element => (
-  <section className="bg-card flex flex-col gap-3 rounded-xl border p-4">
-    <span className="text-muted-foreground text-xs">
-      {pickedForYou} · {fitWord(pick.scores.fit)}
-    </span>
-    <h2 className="text-xl leading-tight font-bold">{pick.posting.title}</h2>
-    <span className="text-muted-foreground text-sm">{where(pick.posting)}</span>
-    <p className="bg-muted rounded-xl p-3 text-sm">{pick.scores.fitWhy}</p>
-    <section className="flex flex-col gap-1.5 rounded-xl border p-3">
-      <h3 className={sectionHeading}>{readyHeading}</h3>
-      <ul className="flex flex-col gap-1 text-sm">
-        {readyLines(state, day, pick).map((line) => (
-          <li key={line} className="flex items-center gap-2">
-            <Check aria-hidden className="size-4 shrink-0" />
-            {line}
-          </li>
-        ))}
-      </ul>
+}): JSX.Element => {
+  const { ready, resume } = readiness(state, day, pick)
+  return (
+    <section className="bg-card flex flex-col gap-3 rounded-xl border p-4">
+      <span className="text-muted-foreground text-xs">
+        {pickedForYou} · {fitWord(pick.scores.fit)}
+      </span>
+      <h2 className="text-xl leading-tight font-bold">{pick.posting.title}</h2>
+      <span className="text-muted-foreground text-sm">
+        {postingLine(pick.posting)}
+      </span>
+      <p className="bg-muted rounded-xl p-3 text-sm">{pick.scores.fitWhy}</p>
+      {ready.length > 0 && (
+        <section className="flex flex-col gap-1.5 rounded-xl border p-3">
+          <h3 className={sectionHeading}>{readyHeading}</h3>
+          <ul className="flex flex-col gap-1 text-sm">
+            {ready.map((line) => (
+              <li key={line} className="flex items-center gap-2">
+                <Check aria-hidden className="size-4 shrink-0" />
+                {line}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {resume !== null && (
+        <p className="text-muted-foreground text-sm">{resume}</p>
+      )}
+      {hasAudience("apk") && (
+        <Button asChild size="lg">
+          <Link to="/jobs/pick/$day/$pickId" params={{ day, pickId: pick.id }}>
+            {openIt}
+          </Link>
+        </Button>
+      )}
     </section>
-    {hasAudience("apk") && (
-      <Button asChild size="lg">
-        <Link to="/jobs/pick/$day/$pickId" params={{ day, pickId: pick.id }}>
-          {openIt}
-        </Link>
-      </Button>
-    )}
-  </section>
-)
+  )
+}
 
 const PickCard = ({
   state,
@@ -188,7 +208,7 @@ const PickCard = ({
         </Badge>
       </div>
       <span className="text-muted-foreground text-xs">
-        {where(pick.posting)} · {fitWord(pick.scores.fit)}
+        {postingLine(pick.posting)} · {fitWord(pick.scores.fit)}
       </span>
     </ToPick>
   )
@@ -291,16 +311,20 @@ const Places = ({
   const earlier = [
     ...new Set(open.filter((o) => o.day !== digest.day).map((o) => o.day)),
   ]
-  const held = (digest.queue?.open ?? []).filter((p) => !p.closed)
-  const room = freeSlots(digest.queue?.open ?? [])
+  const queued = digest.queue?.open ?? []
+  const held = queued.filter((p) => !p.closed)
+  const room = freeSlots(queued)
   const full = digest.queue !== null && TRACKS.every((t) => room[t] === 0)
   return (
     <section className="flex flex-col gap-2">
       <p className="text-sm">
         {stillOpen(
-          TRACKS.map(
-            (t) =>
-              `${open.filter((o) => o.pick.track === t).length} of ${MAX_OPEN_PICKS[t]} ${t}`
+          TRACKS.map((t) =>
+            openOfTrack(
+              t,
+              open.filter((o) => o.pick.track === t).length,
+              MAX_OPEN_PICKS[t]
+            )
           )
         )}
       </p>
@@ -495,11 +519,14 @@ export const JobsToday = (): JSX.Element => {
   // Opening an older file shows it even when a newer digest is held.
   const newer = state.digests.some((d) => d.day > digest.day)
   const next = nextPick(state)
+  const done = doneOn(state, dayOf(now), dayOf)
   return (
     <div className="flex flex-col gap-4">
-      <p role="status" className="text-sm font-semibold">
-        {doneToday(doneOn(state, dayOf(now), dayOf))}
-      </p>
+      {done > 0 && (
+        <p role="status" className="text-sm font-semibold">
+          {doneToday(done)}
+        </p>
+      )}
       {earlier && (
         <section className="flex flex-col gap-2">
           <p className="text-sm">

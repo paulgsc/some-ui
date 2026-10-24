@@ -1,7 +1,8 @@
 /**
  * What Today opens on, read from the record: the one pick to go on with,
- * and what I have done today. Today counts up, never what is left (the
- * foyer's rule, `components/foyer.tsx`).
+ * and what I have done today. Today counts up, never what is left, and says
+ * nothing of it until something is done: a line about what wasn't done
+ * primes the visit with it (`routes/_dashboard/_apk/foyer.tsx`).
  */
 import type { Pick } from "@some-ui/job-desk"
 

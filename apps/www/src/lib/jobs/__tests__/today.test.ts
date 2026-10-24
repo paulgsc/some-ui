@@ -1,38 +1,75 @@
 import { describe, expect, it } from "vitest"
 
+import type { Draft, JobsState, PickRef } from "@/lib/jobs/model"
 import { EMPTY, step } from "@/lib/jobs/model"
-import { nextPick } from "@/lib/jobs/today"
+import { doneOn, nextPick } from "@/lib/jobs/today"
 
 import { digest, OPENED_AT } from "./fixture"
 
+const OLDEST = digest("2026-10-16")
+const OLDER = digest("2026-10-17")
+const NEWER = digest("2026-10-18")
+
+let n = 0
+function record(state: JobsState, event: Draft, at = OPENED_AT): JobsState {
+  n += 1
+  return step(state, { type: "record", event, stamp: { id: `e${n}`, at } })
+}
+
+const refOf = (d: typeof NEWER, i: number): PickRef => ({
+  day: d.day,
+  pickId: d.picks[i].id,
+  fingerprint: d.picks[i].fingerprint,
+})
+
+function letGo(state: JobsState, d: typeof NEWER): JobsState {
+  return d.picks.reduce(
+    (s, _, i) => record(s, { type: "archived", ...refOf(d, i) }),
+    state
+  )
+}
+
+const held = [OLDEST, NEWER, OLDER].reduce(
+  (s, d) => step(s, { type: "opened", digest: d, at: OPENED_AT }),
+  EMPTY
+)
+
 describe("nextPick", () => {
-  it("opens on the digest on show first, then the newest other one, and none once all are decided", () => {
-    const older = digest("2026-10-17")
-    const newer = digest("2026-10-18")
-    let state = step(EMPTY, { type: "opened", digest: newer, at: OPENED_AT })
-    state = step(state, { type: "opened", digest: older, at: OPENED_AT })
-    expect(nextPick(state)?.day).toBe("2026-10-17")
-    state = { ...state, current: "2026-10-18" }
-    expect(nextPick(state)).toMatchObject({
-      day: "2026-10-18",
-      pick: { id: newer.picks[0].id },
+  it("opens on the picks on show, then the newest other digest's, and none once all are decided", () => {
+    const onShow = { ...held, current: "2026-10-17" }
+    expect(nextPick(onShow)).toMatchObject({
+      day: "2026-10-17",
+      pick: { id: OLDER.picks[0].id },
     })
-    let n = 0
-    for (const d of [older, newer]) {
-      for (const pick of d.picks) {
-        n += 1
-        state = step(state, {
-          type: "record",
-          event: {
-            type: "archived",
-            day: d.day,
-            pickId: pick.id,
-            fingerprint: pick.fingerprint,
-          },
-          stamp: { id: `e${n}`, at: OPENED_AT },
-        })
-      }
-    }
-    expect(nextPick(state)).toBeNull()
+    expect(nextPick(letGo(onShow, OLDER))?.day).toBe("2026-10-18")
+    expect(
+      nextPick(letGo(letGo(letGo(onShow, OLDER), NEWER), OLDEST))
+    ).toBeNull()
+  })
+
+  it("opens on a pick I started before any new one, the oldest first", () => {
+    let state = record(held, { type: "taken", ...refOf(NEWER, 1) })
+    state = record(state, { type: "taken", ...refOf(OLDER, 1) })
+    expect(nextPick(state)).toMatchObject({
+      day: "2026-10-17",
+      pick: { id: OLDER.picks[1].id },
+    })
+  })
+})
+
+describe("doneOn", () => {
+  it("counts what was done on the day, and a posting opened again once", () => {
+    const today = "2026-10-18T16:00:00Z"
+    const dayOf = (at: Date): string => at.toISOString().slice(0, 10)
+    let state = record(
+      held,
+      { type: "taken", ...refOf(NEWER, 0) },
+      "2026-10-17T16:00:00Z"
+    )
+    state = record(state, { type: "resume-ready", ...refOf(NEWER, 0) }, today)
+    state = record(state, { type: "apply-opened", ...refOf(NEWER, 0) }, today)
+    state = record(state, { type: "apply-opened", ...refOf(NEWER, 0) }, today)
+    state = letGo(state, OLDEST)
+    expect(doneOn(state, "2026-10-18", dayOf)).toBe(2)
   })
 })

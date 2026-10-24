@@ -17,12 +17,13 @@ const SAID: Readonly<Record<keyof typeof words, ReadonlyArray<string>>> = {
   arriveOnTheirOwn: [words.arriveOnTheirOwn],
   openFromStorage: [words.openFromStorage],
   orOpenFile: [words.orOpenFile],
-  doneToday: [0, 1, 4].map(words.doneToday),
+  doneToday: [1, 4].map(words.doneToday),
   allDone: [words.allDone],
   pickedForYou: [words.pickedForYou],
   fitWord: [0.9, 0.6, 0.3].map(words.fitWord),
   readyHeading: [words.readyHeading],
-  resumeToSend: [words.resumeToSend("backend")],
+  resumeInHand: [words.resumeInHand("backend")],
+  resumeToBuild: [words.resumeToBuild("backend")],
   coverLetterDrafted: [words.coverLetterDrafted],
   answersDrafted: [1, 3].map(words.answersDrafted),
   detailsToPaste: [1, 4].map(words.detailsToPaste),
@@ -31,7 +32,11 @@ const SAID: Readonly<Record<keyof typeof words, ReadonlyArray<string>>> = {
   howPicked: [words.howPicked],
   pickedFrom: [words.pickedFrom(DAY, 42, 5, 14)],
   holdsPlace: [words.holdsPlace],
-  stillOpen: [words.stillOpen(["2 of 3 software", "1 of 2 adjacent"])],
+  openOfTrack: [
+    words.openOfTrack("software", 2, 3),
+    words.openOfTrack("adjacent", 1, 2),
+  ],
+  stillOpen: [words.stillOpen(["2 of 3 software roles"])],
   leftOut: [words.leftOut(true, 14), words.leftOut(false, 14)],
   noPicksYet: [words.noPicksYet],
   whatMorningsBring: [words.whatMorningsBring(3, 2)],
@@ -65,12 +70,7 @@ describe("Jobs' words", () => {
     expect(said.filter((text) => MACHINERY.test(text))).toEqual([])
   })
 
-  it("count what is done, and say a fit in words", () => {
-    expect(SAID.doneToday).toEqual([
-      "Today: nothing yet, and that’s fine.",
-      "Today: one thing done.",
-      "Today: 4 things done.",
-    ])
+  it("say a fit in words, from a strong fit down to a stretch", () => {
     expect(SAID.fitWord).toEqual(["Strong fit", "Good fit", "A stretch"])
   })
 })

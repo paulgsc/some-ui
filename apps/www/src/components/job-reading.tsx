@@ -71,6 +71,18 @@ export const Gaps = ({
     </section>
   )
 
+/** Who posted it, where, what it pays and when it went up, in one line. */
+export function postingLine(posting: Pick["posting"]): string {
+  return [
+    posting.company,
+    posting.location,
+    posting.compensation,
+    posting.postedOn,
+  ]
+    .filter(Boolean)
+    .join(" · ")
+}
+
 /** The résumé a pick sends, in one line. */
 export function resumeLabel(resume: ResumeRecommendation): string {
   return resume.kind === "build"

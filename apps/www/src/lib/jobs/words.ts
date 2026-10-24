@@ -4,7 +4,7 @@
  * behind it (`__tests__/words.test.ts` holds it to the list in
  * `lib/home-link/__tests__/machinery.ts`).
  */
-import { assertNever } from "@some-ui/core-utils"
+import { assertNever, counted } from "@some-ui/core-utils"
 import type { Track } from "@some-ui/job-desk"
 
 import type { Progress } from "./model"
@@ -27,17 +27,13 @@ export const openFromStorage = "Open today’s picks from storage"
 /** The picker, once it is not the way in. */
 export const orOpenFile = "Or open them from Drive"
 
-/** What I have done in Jobs today, counted up, never what is left. */
+/** What I have done in Jobs today, once there is something: never what is left. */
 export const doneToday = (count: number): string =>
-  count === 0
-    ? "Today: nothing yet, and that’s fine."
-    : `Today: ${count === 1 ? "one thing" : `${count} things`} done.`
+  `Today: ${count === 1 ? "one thing" : `${count} things`} done.`
 
 /** Today with no pick left open. */
-export const allDone =
-  "That’s every pick for now. New ones arrive each morning."
+export const allDone = "That’s every pick for now."
 
-/** Above the pick Today opens on. */
 export const pickedForYou = "Picked for you"
 
 /** How well a pick fits, in words, from its fit score (0 to 1). */
@@ -47,8 +43,13 @@ export const fitWord = (fit: number): string =>
 /** What is ready before their form opens. */
 export const readyHeading = "Ready for their form"
 
-export const resumeToSend = (variant: string): string =>
-  `Résumé to send: ${variant}`
+/** The résumé, once I said I have its PDF. */
+export const resumeInHand = (variant: string): string =>
+  `Résumé PDF in hand: ${variant}`
+
+/** The résumé, before I have its PDF: built from the pick. */
+export const resumeToBuild = (variant: string): string =>
+  `Résumé to build from the pick: ${variant}`
 
 export const coverLetterDrafted = "Cover letter drafted"
 
@@ -58,7 +59,6 @@ export const answersDrafted = (count: number): string =>
 export const detailsToPaste = (count: number): string =>
   count === 1 ? "One detail to paste" : `${count} details to paste`
 
-/** The way into the pick Today opens on. */
 export const openIt = "Open it"
 
 /** Browsing every pick, kept behind the one Today opens on. */
@@ -77,11 +77,23 @@ export const pickedFrom = (
 ): string =>
   `On ${day}, ${picked} picked from ${seen} postings looked at, and ${leftOut} left out.`
 
-/** What a pick left unfinished holds. */
+/** What a pick left unfinished holds, and until when. */
 export const holdsPlace =
-  "A pick holds its place until you pass on it, let it go, or send it and say how it went. New picks fill only the places that are free."
+  "A pick holds its place until you pass on it, let it go, or send it and say how it went, and the morning’s picking has heard so. New picks fill only the places that are free."
 
-/** How many picks are still open, by kind of role. */
+const TRACK_ROLES: Readonly<Record<Track, string>> = {
+  software: "software roles",
+  adjacent: "software-adjacent roles",
+}
+
+/** How many of a track's places open picks hold. */
+export const openOfTrack = (
+  track: Track,
+  open: number,
+  places: number
+): string => `${open} of ${places} ${TRACK_ROLES[track]}`
+
+/** The places open picks hold, track by track. */
 export const stillOpen = (parts: ReadonlyArray<string>): string =>
   `Still open on this phone: ${parts.join(" · ")}.`
 
@@ -89,7 +101,6 @@ export const stillOpen = (parts: ReadonlyArray<string>): string =>
 export const leftOut = (shown: boolean, count: number): string =>
   `${shown ? "Hide" : "Show"} the postings left out (${count})`
 
-/** Today's heading before any picks have come. */
 export const noPicksYet = "No picks open yet"
 
 /** What the mornings bring, before the first ones have come. */
@@ -128,17 +139,17 @@ export const breaksRules = (count: number, first: string): string =>
 
 /** Earlier days' picks still open when these were chosen. */
 export const heldOver = (count: number, full: boolean): string =>
-  `${count === 1 ? "One pick" : `${count} picks`} from earlier days ${count === 1 ? "was" : "were"} still open${full ? ", so no new ones came" : ""}.`
+  `${counted(count, "pick")} from earlier days ${count === 1 ? "was" : "were"} still open${full ? ", so no new ones came" : ""}.`
 
 /** Letting a day's undecided picks go, unread. */
 export const letGoLabel = (count: number, day: string | null): string =>
-  `Let ${day === null ? "" : `${day}’s `}${count === 1 ? "undecided pick" : `${count} undecided picks`} go`
+  `Let ${day === null ? "" : `${day}’s `}${counted(count, "undecided pick")} go`
 
 export const letGoAsk = (count: number): string =>
   `Let ${count === 1 ? "this pick" : `these ${count} picks`} go?`
 
 export const letGoWhat =
-  "They stop holding their places, unread. You can still open one and decide it."
+  "Once the morning’s picking hears it, they stop holding their places, unread. You can still open one and decide it."
 
 export const letGoConfirm = "Let them go"
 
