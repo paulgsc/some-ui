@@ -374,7 +374,13 @@ declared (checked by reading every call site and by the tests named).
   now), so the send carries what home already holds; one that passes
   `sendLog` sessions that did not come through `logGoing` (in
   `lib/home-link/send`), or events not through `homeFormOf`, or that lets
-  `homeFormOf` keep a spoken answer's `ticks`; one that makes `sendLog`
+  `homeFormOf` keep a spoken answer's `ticks`; one that deletes, bypasses
+  or weakens `finishedSessions` (in
+  `packages/ui/leetype/src/lib/leetype/session-log/home.ts`: a session goes
+  only once it ended or another started after it) or `logToSend` and
+  `digestOf` (in `lib/home-link/leetype-log`: a session goes unless what
+  home last read back of it under this pairing holds every event it has
+  now); one that makes `sendLog`
   remember a session as held without reading it back, or compare less than
   every event it sent (`holdsAll`), or send with a method other than `PUT`
   and `GET`; one that lets the send remove an event from the phone's

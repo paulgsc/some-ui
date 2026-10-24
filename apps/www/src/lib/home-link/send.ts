@@ -110,11 +110,12 @@ export async function onPhone(pairing: string): Promise<ToSend> {
   const { local, kept } = await readPhone()
   const going = (await keptToSend(kept, pairing)).changed
   const log = logGoing(await readLog(), pairing)
-  const what = [
+  const parts = [
     ...(local.length > 0 ? [sessions(local.length)] : []),
     ...(going.length > 0 ? [items(going.length)] : []),
     ...(log.length > 0 ? [leetype(log.length)] : []),
-  ].join(" and ")
+  ]
+  const what = new Intl.ListFormat("en", { type: "conjunction" }).format(parts)
   return {
     total: local.length + going.length + log.length,
     what,
@@ -162,8 +163,7 @@ export function describeSend(outcome: SendOutcome, host: string): string {
   const why = whyEnded(outcome)
   const copied = copy?.outcome.copied ?? 0
   const sent = shelf.kept + shelf.replaced
-  const refused = shelf.refused + shelf.other + log.refused
-  const differs = held.differs.length + log.differs
+  const logRefused = log.refused + log.other
   if (
     copied === 0 &&
     shelf.sent === 0 &&
@@ -182,9 +182,17 @@ export function describeSend(outcome: SendOutcome, host: string): string {
     sent > 0 ? `Sent ${items(sent)}.` : "",
     log.held > 0 ? `Copied ${leetype(log.held)}.` : "",
     full > 0 ? `${full} didn't fit: home's shelf is full.` : "",
-    refused > 0 ? `${refused} refused by ${host}.` : "",
+    shelf.refused + shelf.other > 0
+      ? `${shelf.refused + shelf.other} refused by ${host}.`
+      : "",
+    logRefused > 0 ? `${leetype(logRefused)} refused by ${host}.` : "",
     freed > 0 ? `Cleared ${freed} from this phone.` : "",
-    differs > 0 ? `${differs} kept: home's copy didn't match.` : "",
+    held.differs.length > 0
+      ? `${held.differs.length} kept: home's copy didn't match.`
+      : "",
+    log.differs > 0
+      ? `${leetype(log.differs)} kept here: home's copy didn't match.`
+      : "",
     why === null ? "" : endedLine(why, host, outcome.busy === true),
   ].filter((part) => part !== "")
   return parts.length === 0 ? `${host} is up to date.` : parts.join(" ")
@@ -219,7 +227,8 @@ export function lastSend(): string {
 }
 
 /**
- * Sends this phone's sessions and kept items to the paired home at `base`,
+ * Sends this phone's sessions, kept items and finished LeetType sessions to
+ * the paired home at `base`,
  * lets go of the finished sessions home confirms it holds, and calls
  * `refresh` once any left. Never throws: a failure is a line.
  */

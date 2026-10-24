@@ -59,9 +59,15 @@ describe("describeSend", () => {
   })
 
   it("says which LeetType sessions home now holds, and which it didn't take", () => {
-    const log = { ...emptyLogReport(), held: 2, refused: 1, differs: 1 }
+    const log = {
+      ...emptyLogReport(),
+      held: 2,
+      refused: 1,
+      other: 1,
+      differs: 1,
+    }
     expect(describeSend(outcome({ log }), "home.example")).toBe(
-      "Copied 2 LeetType sessions. 1 refused by home.example. 1 kept: home's copy didn't match."
+      "Copied 2 LeetType sessions. 2 LeetType sessions refused by home.example. 1 LeetType session kept here: home's copy didn't match."
     )
   })
 

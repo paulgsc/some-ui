@@ -35,6 +35,8 @@
  * Nothing here deletes, locally or remotely.
  */
 
+import { canonicalJson } from "@some-ui/core-utils"
+
 import { StaleAuthorityError } from "@/lib/authority"
 import { FileHostResponseError } from "@/lib/file-host-config/client"
 import type { SessionsStore } from "@/lib/tenant/sessions-repository"
@@ -102,23 +104,10 @@ export type TransferOutcome =
   /** Another tab is copying right now; nothing was planned or sent. */
   | { readonly kind: "busy" }
 
-/** JSON with object keys in order, so two spellings of one value compare equal. */
-function canonical(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`
-  if (typeof value === "object" && value !== null) {
-    return `{${Object.entries(value)
-      .filter(([, member]) => member !== undefined)
-      .sort(([a], [b]) => (a < b ? -1 : 1))
-      .map(([key, member]) => `${JSON.stringify(key)}:${canonical(member)}`)
-      .join(",")}}`
-  }
-  return value === undefined ? "null" : JSON.stringify(value)
-}
-
 /** What `create` is given, which is what a copy made from it still carries. */
 function sameContent(a: SessionRecord, b: SessionRecord): boolean {
   const content = (session: SessionRecord): string =>
-    canonical([
+    canonicalJson([
       session.name,
       session.layoutMode,
       session.activities,
@@ -425,7 +414,7 @@ function sameRecord(device: SessionRecord, account: SessionRecord): boolean {
     device.status === account.status &&
     device.totalDurationMs === account.totalDurationMs &&
     (device.finalElapsedMs ?? null) === (account.finalElapsedMs ?? null) &&
-    canonical(device.layout) === canonical(account.layout) &&
+    canonicalJson(device.layout) === canonicalJson(account.layout) &&
     sameStamp(device.startedAt, account.startedAt) &&
     sameStamp(device.completedAt, account.completedAt)
   )

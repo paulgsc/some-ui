@@ -29,3 +29,19 @@ export function mentionsWord(text: string, term: string): boolean {
     "iu"
   ).test(text)
 }
+
+/**
+ * `value` as JSON with every object's keys in order and its `undefined`
+ * members left out, so two spellings of one value compare equal.
+ */
+export function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`
+  if (typeof value === "object" && value !== null) {
+    return `{${Object.entries(value)
+      .filter(([, member]) => member !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([key, member]) => `${JSON.stringify(key)}:${canonicalJson(member)}`)
+      .join(",")}}`
+  }
+  return value === undefined ? "null" : JSON.stringify(value)
+}

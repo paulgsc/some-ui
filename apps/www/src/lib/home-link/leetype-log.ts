@@ -13,7 +13,7 @@
  * answer ends it there, as the shelf's does (`./shelf`).
  */
 import type { HomeCall } from "@some-ui/core-utils"
-import { fnv1a } from "@some-ui/core-utils"
+import { canonicalJson, fnv1a } from "@some-ui/core-utils"
 import type { HomeEvent } from "@some-ui/leetype"
 
 import { isRecord } from "@/lib/device-backend/common"
@@ -31,8 +31,10 @@ export type HomeSession = {
 export type LogReport = {
   /** Sessions home now holds as they are, read back. */
   held: number
-  /** Sessions home refused an event of; kept here, offered by the next tap. */
+  /** Sessions home refused an event of (`422`, `409`); kept here, offered by the next tap. */
   refused: number
+  /** Sessions home answered an event of some other way; kept here too. */
+  other: number
   /** Sessions whose read-back did not match what was sent. */
   differs: number
   /** Home answered `401`: it no longer knows this phone. */
@@ -45,6 +47,7 @@ export function emptyLogReport(): LogReport {
   return {
     held: 0,
     refused: 0,
+    other: 0,
     differs: 0,
     forgotten: false,
     unreachable: false,
@@ -67,16 +70,6 @@ export function logToSend(
   )
 }
 
-/** `value` as JSON with every object's keys sorted: home does not keep key order. */
-function canonical(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`
-  if (isRecord(value)) {
-    const keys = Object.keys(value).sort()
-    return `{${keys.map((key) => `${JSON.stringify(key)}:${canonical(value[key])}`).join(",")}}`
-  }
-  return JSON.stringify(value)
-}
-
 /** Home's read-back holds every one of `session`'s events exactly as sent. */
 function holdsAll(session: HomeSession, body: string): boolean {
   let parsed: unknown
@@ -88,10 +81,10 @@ function holdsAll(session: HomeSession, body: string): boolean {
   if (!isRecord(parsed) || !Array.isArray(parsed.events)) return false
   const there = new Map<unknown, string>()
   for (const event of parsed.events) {
-    if (isRecord(event)) there.set(event.id, canonical(event))
+    if (isRecord(event)) there.set(event.id, canonicalJson(event))
   }
   return session.events.every(
-    (event) => there.get(event.id) === canonical(event)
+    (event) => there.get(event.id) === canonicalJson(event)
   )
 }
 
@@ -129,15 +122,16 @@ export async function sendLog(
   }
 
   for (const session of sessions) {
-    let refused = false
+    let taken: "all" | "refused" | "other" = "all"
     for (const event of session.events) {
       const path = `${eventsPath(session.session)}/${encodeURIComponent(event.id)}`
       const answer = await ask("PUT", path, JSON.stringify(event))
       if (answer === null) return
-      if (answer.status !== 200) refused = true
+      if (answer.status === 409 || answer.status === 422) taken = "refused"
+      else if (answer.status !== 200 && taken === "all") taken = "other"
     }
-    if (refused) {
-      report.refused += 1
+    if (taken !== "all") {
+      report[taken] += 1
       continue
     }
     const back = await ask("GET", eventsPath(session.session))
