@@ -36,10 +36,13 @@ import {
   fitNoteSays,
   fitNotesOf,
   kitOf,
+  pacificDay,
   pickOwner,
   progressOf,
+  standingOf,
   timedMinutes,
 } from "@/lib/jobs/model"
+import { lapsedOn } from "@/lib/jobs/words"
 import {
   Gaps,
   postingLine,
@@ -168,7 +171,9 @@ const Decide = ({
   }
   const voice = draftVoice(state, owner)
   const busy = useVoiceBusy(owner)
+  const today = pacificDay(useMinuteClock())
   const decision = decisionOf(state, pickRef.day, pickRef.pickId)
+  const standing = standingOf(state, pickRef.day, pickRef.pickId, today)
   if (decision === "passed") {
     return (
       <div className="flex flex-col gap-3">
@@ -193,6 +198,11 @@ const Decide = ({
         <p className="bg-muted rounded-xl p-3 text-sm">
           Archived with its digest, unreviewed. Taking or passing it now
           replaces that.
+        </p>
+      )}
+      {standing.kind === "lapsed" && (
+        <p className="bg-muted rounded-xl p-3 text-sm">
+          {lapsedOn(standing.on)}
         </p>
       )}
       <div className="grid grid-cols-2 gap-2">

@@ -10,8 +10,11 @@
  * taken, is taken). Nothing here removes an event. Digests are copies of
  * files kept in Drive's `some-ui jobs/Brief`, opened from a file or taken in
  * from home (`fetched`): the
- * phone keeps every digest the log names or that has a pick still open (it
- * holds a queue slot), and of the rest only the newest `DIGESTS_KEPT`.
+ * phone keeps every digest the log names, that has a pick still open (it
+ * holds a queue slot) or that Today shows, and of the rest only the newest
+ * `DIGESTS_KEPT`. A pick left untouched for `LAPSE_DAYS` days lapses
+ * (`standingOf`): it no longer holds a slot, and nothing is recorded, since
+ * the lapse follows from the digest's day alone.
  */
 import { assertNever } from "@some-ui/core-utils"
 import type {
@@ -28,6 +31,8 @@ import type {
 import {
   DebriefMinutesSchema,
   FrictionSchema,
+  hasLapsed,
+  lapsesOn,
   MAX_NOTE,
   MAX_POSTING_TEXT,
   MAX_SCOUT_TITLE,
@@ -321,11 +326,14 @@ function fits(state: JobsState, event: Draft): boolean {
  * `state`'s digests with `incoming` among them (a day `incoming` repeats is
  * replaced), the ones kept once `DIGESTS_KEPT` has let go of the rest, and
  * when each came to this phone: a day already held keeps its first time.
+ * The digest Today shows (`shown`) is kept too: an old file opened by hand,
+ * whose picks all lapsed, holds no place but is the one being read.
  */
 function takeDigests(
   state: JobsState,
   incoming: ReadonlyArray<Digest>,
-  at: string
+  at: string,
+  shown: string | null
 ): { digests: JobsState["digests"]; firstOpened: JobsState["firstOpened"] } {
   const days = new Set(incoming.map((d) => d.day))
   const others = state.digests.filter((d) => !days.has(d.day))
@@ -337,7 +345,7 @@ function takeDigests(
     state.log.flatMap((e) => ("pickId" in e ? [e.day] : []))
   )
   // Over `all`, so the digests being taken count too.
-  const open = openOf({ ...state, digests: all })
+  const open = openOf({ ...state, digests: all }, pacificDay(new Date(at)))
   const holding = new Set(open.map((o) => o.day))
   const openKeys = new Set(open.map((o) => `${o.day}/${o.pick.id}`))
   // A redraft of an open pick stands in for its drafts (`kitOf`).
@@ -345,6 +353,7 @@ function takeDigests(
     d.redrafts.some((r) => openKeys.has(`${r.day}/${r.pickId}`))
   const digests = all.filter(
     (d) =>
+      d.day === shown ||
       recent.has(d.day) ||
       referenced.has(d.day) ||
       holding.has(d.day) ||
@@ -365,7 +374,8 @@ export function step(state: JobsState, action: JobsAction): JobsState {
       const { digests, firstOpened } = takeDigests(
         state,
         [action.digest],
-        action.at
+        action.at,
+        action.digest.day
       )
       return { ...state, digests, current: action.digest.day, firstOpened }
     }
@@ -380,7 +390,8 @@ export function step(state: JobsState, action: JobsAction): JobsState {
       const { digests, firstOpened } = takeDigests(
         state,
         [...fresh.values()],
-        action.at
+        action.at,
+        state.current
       )
       // Taken, and not let go at once by `DIGESTS_KEPT`.
       const kept = digests.filter((d) => fresh.has(d.day))
@@ -519,26 +530,20 @@ export function decisionOf(
     : null
 }
 
-/** `day`'s picks with no decision yet: what archiving its digest lets go. */
-export function undecidedOf(
-  state: JobsState,
-  day: string
-): ReadonlyArray<Pick> {
-  const picks = digestOf(state, day)?.picks ?? []
-  return picks.filter((p) => decisionOf(state, day, p.id) === null)
-}
-
 /**
- * The picks of every kept digest still open on the phone: no decision, or
- * taken with no debrief. The morning run counts the same rule over what was
- * shared (`openPicks`), so until a share arrives it may count more.
+ * The picks of every kept digest still open on the phone on Pacific day
+ * `today`: no decision for fewer than `LAPSE_DAYS` days, or taken with no
+ * debrief. The morning run counts the same rule over what was shared
+ * (`queueOf`), so until a share arrives it may count more, or lapse a pick
+ * the phone has decided.
  */
 export function openOf(
-  state: JobsState
+  state: JobsState,
+  today: string
 ): ReadonlyArray<{ day: string; pick: Pick }> {
   return state.digests.flatMap((d) =>
     d.picks
-      .filter((p) => progressOf(state, d.day, p.id).kind === "open")
+      .filter((p) => standingOf(state, d.day, p.id, today).kind === "open")
       .map((pick) => ({ day: d.day, pick }))
   )
 }
@@ -549,6 +554,26 @@ export type Progress =
   | { kind: "passed" }
   | { kind: "archived" }
   | { kind: "done"; result: DebriefResult }
+
+/**
+ * Where a pick stands on Pacific day `today`: its progress, or lapsed (and
+ * since when) once it waited `LAPSE_DAYS` days with no decision. A decision
+ * made after that replaces the lapse.
+ */
+export type Standing = Progress | { kind: "lapsed"; on: string }
+
+export function standingOf(
+  state: JobsState,
+  day: string,
+  pickId: string,
+  today: string
+): Standing {
+  const progress = progressOf(state, day, pickId)
+  const untouched = progress.kind === "open" && progress.step === 0
+  return untouched && hasLapsed(day, today)
+    ? { kind: "lapsed", on: lapsesOn(day) }
+    : progress
+}
 
 export function progressOf(
   state: JobsState,

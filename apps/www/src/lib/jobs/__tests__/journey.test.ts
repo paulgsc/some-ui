@@ -17,7 +17,6 @@ import {
   eventJourney,
   HANDOVER_MS,
   kindJourney,
-  lastLetGo,
   unconfirmedShare,
 } from "@/lib/jobs/journey"
 import type { Draft, JobsState, ShareKind } from "@/lib/jobs/model"
@@ -444,46 +443,6 @@ describe("JB2: one event's file", () => {
     expect(eventJourney(context(state), index)).toMatchObject({
       id: "read",
       runDay: NEXT,
-    })
-  })
-
-  it("names the picks let go last, together", () => {
-    let state = record(opened, taken())
-    state = step(state, {
-      type: "record-all",
-      events: [SW, AD].map((p) => ({
-        event: {
-          type: "archived",
-          day: DAY,
-          pickId: p.id,
-          fingerprint: p.fingerprint,
-        },
-        stamp: stamp("2026-10-18T19:30:00.000Z"),
-      })),
-    })
-    expect(lastLetGo(state)).toMatchObject({
-      at: "2026-10-18T19:30:00.000Z",
-      count: 2,
-    })
-    expect(lastLetGo(opened)).toBeNull()
-
-    // Then another day's, with nothing in between: a letting go of its own.
-    const other = digest("2026-10-19")
-    const [pick] = other.picks
-    state = step(state, { type: "opened", digest: other, at: OPENED_AT })
-    state = record(
-      state,
-      {
-        type: "archived",
-        day: other.day,
-        pickId: pick.id,
-        fingerprint: pick.fingerprint,
-      },
-      "2026-10-19T19:30:00.000Z"
-    )
-    expect(lastLetGo(state)).toMatchObject({
-      at: "2026-10-19T19:30:00.000Z",
-      count: 1,
     })
   })
 

@@ -176,30 +176,38 @@ describe("Today, opened", () => {
   })
 })
 
-describe("Today, letting picks go (JB2)", () => {
-  it("says where the picks let go went, and follows them home", async () => {
-    await showToday("2026-10-22T14:00:00Z", "2026-10-22", true)
-    fireEvent.click(screen.getByRole("button", { name: /^Let 2 undecided/ }))
-    fireEvent.click(screen.getByRole("button", { name: "Let them go" }))
-    const card = screen.getByRole("heading", { name: /^2 picks let go at / })
-    const bar = (): string | null | undefined =>
-      card.closest("[data-journey]")?.getAttribute("data-journey")
-    expect(bar()).toBe("on-phone")
-    expect(
-      screen.getByRole("button", { name: /^On this phone\. Show where/ })
-    ).toBeTruthy()
+describe("Today, once picks lapse (J5)", () => {
+  it("says a pick left untouched three days lapsed, and offers no way to let picks go", async () => {
+    await showToday("2026-10-22T14:00:00Z", "2026-10-18")
+    expect(screen.getByText("That’s every pick for now.")).toBeTruthy()
+    fireEvent.click(
+      screen.getByRole("button", { name: "See all of these picks" })
+    )
+    expect(screen.getAllByText("Lapsed")).toHaveLength(2)
+    expect(screen.queryByRole("button", { name: /^Let / })).toBeNull()
+  })
 
+  it("names what the morning's picking found had lapsed", async () => {
+    await showToday("2026-10-22T14:00:00Z", null)
     const { phoneJobs } = await import("@/lib/jobs")
-    const { isFile } = await import("@/lib/jobs/files")
-    const jobs = phoneJobs()
-    const file = jobs.keeping.outgoing("decisions")
-    if (!isFile(file)) throw new Error("no decisions file")
+    const { digest } = await import("@/lib/jobs/__tests__/fixture")
+    const today = digest("2026-10-22")
     act(() => {
-      jobs.keeping.filed("decisions", file)
+      phoneJobs().keeping.fetched([
+        {
+          ...today,
+          queue: {
+            open: [],
+            lapsed: [
+              { day: "2026-10-18", pickId: "old-0001", track: "software" },
+              { day: "2026-10-18", pickId: "old-0002", track: "adjacent" },
+            ],
+          },
+        },
+      ])
     })
-    expect(bar()).toBe("with-home")
     expect(
-      screen.getByRole("button", { name: /^Home has them\. Show where/ })
+      screen.getByText(/2 picks from earlier days lapsed, untouched for 3 days/)
     ).toBeTruthy()
   })
 })

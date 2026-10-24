@@ -37,7 +37,7 @@ import type {
   ScoutDraft,
   ShareKind,
 } from "./model"
-import { EMPTY, hasArrived, releasedVoice, step, undecidedOf } from "./model"
+import { EMPTY, hasArrived, releasedVoice, step } from "./model"
 import { openStored, writeStored } from "./stored"
 
 /** Reading a picked file: nothing in hand, reading, or not a digest (and why). */
@@ -98,11 +98,6 @@ export type JobsRuntime = {
   record: (event: Draft) => boolean
   /** Keeps what `owner`'s form holds, or clears it with null. */
   draft: (owner: string, draft: FormDraft | null) => void
-  /**
-   * Archives every pick of `day`'s digest with no decision yet, unreviewed;
-   * false when there was none or the phone kept none.
-   */
-  archive: (day: string) => boolean
   /** Adds a scout, with an id of its own and the voice notes it names. */
   addScout: (scout: ScoutDraft, voice: ReadonlyArray<string>) => boolean
   /** Records what happened to an application, dated today. */
@@ -356,19 +351,6 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
       return true
     },
     draft: setDraft,
-    archive: (day) =>
-      commit({
-        type: "record-all",
-        events: undecidedOf(state, day).map((pick) => ({
-          event: {
-            type: "archived",
-            day,
-            pickId: pick.id,
-            fingerprint: pick.fingerprint,
-          },
-          stamp: stamp(),
-        })),
-      }),
     addScout: (scout, voice) =>
       commit({
         type: "record",

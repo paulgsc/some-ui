@@ -25,7 +25,9 @@ import {
  *
  * A pick I archived (`archived`) is one I let go with the rest of its
  * digest, unreviewed: it says nothing about the posting, only that its slot
- * in the queue (`openPicks`) is free.
+ * in the queue (`queueOf`) is free. The phone stopped offering it once
+ * untouched picks lapsed on their own (`LAPSE_DAYS`); earlier files still
+ * carry it.
  *
  * A share the phone was not told arrived is offered again, so a later file
  * can repeat what an earlier one said. Each pick's decision, debrief,

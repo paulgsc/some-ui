@@ -534,6 +534,7 @@ describe("digestFindings", () => {
           closed: true,
         },
       ],
+      lapsed: [],
     }
     digest.picks = digest.picks.filter((p) => p.track === "adjacent")
     const redraft = {

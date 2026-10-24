@@ -240,7 +240,8 @@ I work one batch before the next: applying takes effort, and applying
 everywhere gets nothing back. So a run adds picks only into free slots, and
 the picks I haven't finished hold theirs. The limit is `MAX_OPEN_PICKS` per
 track (the same as `PICKS_PER_DAY`: 3 software, 2 adjacent), earlier
-digests' picks included.
+digests' picks included. A pick I leave untouched for `LAPSE_DAYS` days (3)
+lapses and frees its slot, so the queue never turns into a backlog to clear.
 
 1. Download every digest in `Brief/` and every decisions file in
    `Decisions/` that passes the checker (all of them, not only the new ones;
@@ -249,25 +250,31 @@ digests' picks included.
 
    ```sh
    pnpm --filter @some-ui/job-desk build
-   pnpm --filter @some-ui/job-desk queue <folder>/*.json
+   pnpm --filter @some-ui/job-desk queue --day <today> <folder>/*.json
    ```
 
-   It prints the picks still open (`open`) and each track's free slots
-   (`free`), and names any file it couldn't read under `skipped`: say each
-   in the summary. A pick is open while no shared decision answers it,
-   while it is `untouched`, or while it is `taken` with no debrief. One
-   `passed`, `archived` (I let the batch go unreviewed) or debriefed is
-   done. Only what
-   reached Drive counts: a pick I decided on the phone and haven't shared is
-   still open.
+   `<today>` is the day of the digest you are writing. It prints the picks
+   still open (`open`), those that lapse today (`lapsed`), and each track's
+   free slots (`free`), and names any file it couldn't read under `skipped`:
+   say each in the summary. A pick is open while no shared decision answers
+   it or it is `untouched`, or while it is `taken` with no debrief. One of
+   those untouched lapses on its digest's day plus `LAPSE_DAYS`: `lapsed`
+   lists each that no earlier digest's `queue.lapsed` names, and a later
+   share that takes it opens it again. One `passed`, `archived` (an older
+   phone let the batch go unreviewed) or debriefed is done. Only what
+   reached Drive or the mailbox counts: a pick I decided on the phone and
+   haven't shared is still open, or lapses.
 
 2. Read each open pick's posting again, as §3 reads one. When it has closed
    (a Greenhouse or Lever 404, an Ashby `id` gone from its board), its slot
    is free: mark it `closed` and say so in the summary. Nothing else frees a
-   slot. No pick expires with age: one waiting ten days is mine to decide or
-   archive. The run never writes a decision; only the phone does.
+   slot but a lapse. A pick I took never lapses: one waiting ten days is
+   mine to debrief. The run never writes a decision; only the phone does,
+   and a lapse is not one.
 3. Record it in the digest: `queue.open` lists every open pick with its
-   `day`, `pickId`, `track` and `closed`.
+   `day`, `pickId`, `track` and `closed`, and `queue.lapsed` every pick
+   `lapsed` printed, with its `day`, `pickId` and `track`. A lapse is
+   recorded once, by the first digest after it, and never deleted.
 4. Each track gets at most its `free` slots today, plus one for each of its
    picks you marked `closed` (`free` counts them as held), and never more
    than `PICKS_PER_DAY`. The checker holds the digest to this, and to
@@ -659,7 +666,7 @@ Never edit, move, rename or trash anything under `some-ui jobs/`. Triage
 ## 9. Summary
 
 End with: the queue (each open pick with its digest day, which postings
-closed, and each track's free slots); each pick with its track, scores and
+closed, each pick that lapsed, and each track's free slots); each pick with its track, scores and
 résumé; the PR this run opened, or why it opened none; how many postings
 were set aside, by reason; what each new decisions file and voice note said;
 each redraft, by its pick, or why a fit note got none; each

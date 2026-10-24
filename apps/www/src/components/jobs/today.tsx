@@ -16,14 +16,13 @@ import {
   PICKS_PER_DAY,
   TRACKS,
 } from "@some-ui/job-desk"
-import { Badge, Button, Textarea, useConfirmSheet } from "@some-ui/shared"
+import { Badge, Button, Textarea } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 import { Check } from "lucide-react"
 
 import { hasAudience } from "@/lib/build-profile"
 import { useMinuteClock } from "@/lib/clock"
 import { phoneJobs } from "@/lib/jobs"
-import { eventJourney, lastLetGo } from "@/lib/jobs/journey"
 import type { JobsState } from "@/lib/jobs/model"
 import {
   currentDigest,
@@ -32,7 +31,7 @@ import {
   openOf,
   pacificDay,
   progressOf,
-  undecidedOf,
+  standingOf,
 } from "@/lib/jobs/model"
 import { doneOn, nextPick } from "@/lib/jobs/today"
 import {
@@ -48,13 +47,8 @@ import {
   holdsPlace,
   howPicked,
   keepWhy,
+  lapsedEarlier,
   leftOut,
-  letGoAsk,
-  letGoConfirm,
-  letGoKeep,
-  letGoLabel,
-  letGoneAt,
-  letGoWhat,
   newerHeld,
   noPicksYet,
   notToday,
@@ -75,17 +69,9 @@ import {
   whyItFits,
   wouldHavePicked,
 } from "@/lib/jobs/words"
-import { mostUrgent, whenSaid } from "@/lib/journey"
 import { postingLine, sectionHeading } from "@/components/job-reading"
 
-import {
-  JourneyCard,
-  OpenDigest,
-  Problem,
-  ShareAction,
-  useJobs,
-  useJourneyContext,
-} from "./parts"
+import { OpenDigest, Problem, useJobs } from "./parts"
 
 /** A pick's place in Jobs: a link on the phone, plain elsewhere. */
 const ToPick = ({
@@ -196,7 +182,8 @@ const PickCard = ({
   day: string
   pick: Pick
 }): JSX.Element => {
-  const progress = progressOf(state, day, pick.id)
+  const today = pacificDay(useMinuteClock())
+  const progress = standingOf(state, day, pick.id, today)
   return (
     <ToPick
       day={day}
@@ -267,82 +254,9 @@ const AllPicks = ({
   )
 }
 
-/** Lets `day`'s undecided picks go unread, once asked. */
-const LetGo = ({
-  day,
-  count,
-  label,
-}: {
-  day: string
-  count: number
-  label: string
-}): JSX.Element => {
-  const jobs = phoneJobs()
-  const { ask, sheet } = useConfirmSheet()
-  return (
-    <>
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        className="self-start"
-        onClick={() =>
-          ask({
-            title: letGoAsk(count),
-            description: letGoWhat,
-            confirm: letGoConfirm,
-            keep: letGoKeep,
-            onConfirm: () => {
-              jobs.archive(day)
-            },
-          })
-        }
-      >
-        {label}
-      </Button>
-      {sheet}
-    </>
-  )
-}
-
-/**
- * Where the picks let go last went, on the day they were let go and until a
- * run has read that they were: they leave in the decisions file.
- */
-const LetGone = ({ state }: { state: JobsState }): JSX.Element | null => {
-  const now = useMinuteClock()
-  const context = useJourneyContext()
-  const letGo = lastLetGo(state)
-  if (letGo === null) return null
-  const journey = mostUrgent(
-    letGo.indices.flatMap((i) => {
-      const j = eventJourney(context, i)
-      return j === null ? [] : [j]
-    })
-  )
-  if (journey === null) return null
-  if (journey.id === "read" && dayOf(new Date(letGo.at)) !== dayOf(now)) {
-    return null
-  }
-  return (
-    <JourneyCard
-      title={letGoneAt(letGo.count, whenSaid(letGo.at, now))}
-      journey={journey}
-      noun={letGo.count === 1 ? "it" : "them"}
-      heading="h3"
-    >
-      <ShareAction
-        kind="decisions"
-        journey={journey}
-        label="Share today’s decisions"
-      />
-    </JourneyCard>
-  )
-}
-
 /**
  * The places open picks hold: how many are open by track, earlier days'
- * picks still open, and letting a day's undecided picks go.
+ * picks still open, and what lapsed since the picks before these.
  */
 const Places = ({
   state,
@@ -351,8 +265,8 @@ const Places = ({
   state: JobsState
   digest: Digest
 }): JSX.Element => {
-  const open = openOf(state)
-  const undecided = undecidedOf(state, digest.day)
+  const open = openOf(state, pacificDay(useMinuteClock()))
+  const lapsed = digest.queue?.lapsed ?? []
   const earlier = [
     ...new Set(open.filter((o) => o.day !== digest.day).map((o) => o.day)),
   ]
@@ -376,42 +290,29 @@ const Places = ({
       <p className="text-muted-foreground text-xs">
         {holdsPlace}
         {held.length > 0 && ` ${heldOver(held.length, full)}`}
+        {lapsed.length > 0 && ` ${lapsedEarlier(lapsed.length)}`}
       </p>
-      {undecided.length > 0 && (
-        <LetGo
-          day={digest.day}
-          count={undecided.length}
-          label={letGoLabel(undecided.length, null)}
-        />
-      )}
-      <LetGone state={state} />
-      {earlier.map((day) => {
-        const left = undecidedOf(state, day).length
-        return (
-          <div key={day} className="flex flex-col gap-1.5 border-t pt-2">
-            <span className="text-xs font-semibold">{day}</span>
-            <ul className="flex flex-col gap-1">
-              {open
-                .filter((o) => o.day === day)
-                .map(({ pick }) => (
-                  <li key={pick.id}>
-                    <ToPick
-                      day={day}
-                      pick={pick}
-                      className="text-sm underline-offset-2 hover:underline"
-                    >
-                      {pick.posting.title} · {pick.posting.company} ·{" "}
-                      {pickState(progressOf(state, day, pick.id))}
-                    </ToPick>
-                  </li>
-                ))}
-            </ul>
-            {left > 0 && (
-              <LetGo day={day} count={left} label={letGoLabel(left, day)} />
-            )}
-          </div>
-        )
-      })}
+      {earlier.map((day) => (
+        <div key={day} className="flex flex-col gap-1.5 border-t pt-2">
+          <span className="text-xs font-semibold">{day}</span>
+          <ul className="flex flex-col gap-1">
+            {open
+              .filter((o) => o.day === day)
+              .map(({ pick }) => (
+                <li key={pick.id}>
+                  <ToPick
+                    day={day}
+                    pick={pick}
+                    className="text-sm underline-offset-2 hover:underline"
+                  >
+                    {pick.posting.title} · {pick.posting.company} ·{" "}
+                    {pickState(progressOf(state, day, pick.id))}
+                  </ToPick>
+                </li>
+              ))}
+          </ul>
+        </div>
+      ))}
     </section>
   )
 }
@@ -564,7 +465,7 @@ export const JobsToday = (): JSX.Element => {
   const earlier = digest.day < pacificDay(now)
   // Opening an older file shows it even when a newer digest is held.
   const newer = state.digests.some((d) => d.day > digest.day)
-  const next = nextPick(state)
+  const next = nextPick(state, pacificDay(now))
   const done = doneOn(state, dayOf(now), dayOf)
   return (
     <div className="flex flex-col gap-4">

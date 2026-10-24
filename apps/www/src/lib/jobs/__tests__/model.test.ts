@@ -11,9 +11,9 @@ import {
   pacificDay,
   progressOf,
   releasedVoice,
+  standingOf,
   step,
   timedMinutes,
-  undecidedOf,
   untouchedReported,
 } from "@/lib/jobs/model"
 
@@ -84,11 +84,17 @@ describe("step", () => {
   })
 
   it("keeps a digest whose picks still hold queue slots, however many follow", () => {
-    let state = step(EMPTY, {
-      type: "opened",
-      digest: digest("2026-08-01"),
-      at: OPENED_AT,
-    })
+    const old = digest("2026-08-01")
+    let state = step(EMPTY, { type: "opened", digest: old, at: OPENED_AT })
+    // Taken, so they never lapse.
+    for (const p of old.picks) {
+      state = record(state, {
+        type: "taken",
+        day: old.day,
+        pickId: p.id,
+        fingerprint: p.fingerprint,
+      })
+    }
     for (let i = 1; i <= DIGESTS_KEPT + 2; i += 1) {
       const day = `2026-09-${String(i).padStart(2, "0")}`
       state = step(state, {
@@ -98,13 +104,37 @@ describe("step", () => {
       })
     }
     expect(state.digests[0].day).toBe("2026-08-01")
-    expect(undecidedOf(state, "2026-08-01")).toHaveLength(2)
+    expect(openOf(state, DAY).filter((o) => o.day === old.day)).toHaveLength(2)
+  })
+
+  it("lets go of a digest whose picks all lapsed, once newer ones fill the phone (J5)", () => {
+    let state = step(EMPTY, {
+      type: "opened",
+      digest: digest("2026-08-01"),
+      at: "2026-08-01T15:00:00Z",
+    })
+    for (let i = 1; i <= DIGESTS_KEPT + 2; i += 1) {
+      const day = `2026-09-${String(i).padStart(2, "0")}`
+      state = step(state, {
+        type: "opened",
+        digest: { ...digest(day), picks: [] },
+        at: OPENED_AT,
+      })
+    }
+    expect(state.digests.map((d) => d.day)).not.toContain("2026-08-01")
   })
 
   it("keeps a digest that redrafts an open pick, however many follow", () => {
     const first = digest("2026-08-01")
     const [pick] = first.picks
     let state = step(EMPTY, { type: "opened", digest: first, at: OPENED_AT })
+    // A redraft comes of a fit note, which only a pick I took has.
+    state = record(state, {
+      type: "taken",
+      day: first.day,
+      pickId: pick.id,
+      fingerprint: pick.fingerprint,
+    })
     state = step(state, {
       type: "opened",
       digest: {
@@ -153,7 +183,12 @@ describe("step", () => {
       at: OPENED_AT,
     })
     expect(state.current).toBe("2026-08-01")
-    expect(undecidedOf(state, "2026-08-01")).toHaveLength(2)
+    // Its picks lapsed long ago, but it is the one on show.
+    const [first] = digest("2026-08-01").picks
+    expect(standingOf(state, "2026-08-01", first.id, DAY)).toEqual({
+      kind: "lapsed",
+      on: "2026-08-04",
+    })
   })
 
   it("archives together or not at all", () => {
@@ -318,20 +353,43 @@ describe("timedMinutes (JB1)", () => {
   })
 })
 
-describe("an archived pick", () => {
+describe("an archived pick, as an earlier phone recorded it", () => {
   it("leaves the queue unreviewed, until a later decision replaces it", () => {
     let state = record(opened, { type: "taken", ...ref() })
-    expect(undecidedOf(state, DAY).map((p) => p.id)).toEqual([AD.id])
-    expect(openOf(state).map((o) => o.pick.id)).toEqual([SW.id, AD.id])
+    expect(openOf(state, DAY).map((o) => o.pick.id)).toEqual([SW.id, AD.id])
 
     state = record(state, { type: "archived", ...ref(AD) })
     expect(progressOf(state, DAY, AD.id)).toEqual({ kind: "archived" })
-    expect(undecidedOf(state, DAY)).toEqual([])
-    expect(openOf(state).map((o) => o.pick.id)).toEqual([SW.id])
+    expect(openOf(state, DAY).map((o) => o.pick.id)).toEqual([SW.id])
     expect(applicationsOf(state).map((a) => a.pick.id)).toEqual([SW.id])
 
     state = record(state, { type: "taken", ...ref(AD) })
     expect(progressOf(state, DAY, AD.id)).toEqual({ kind: "open", step: 2 })
+  })
+})
+
+describe("a pick left untouched (J5)", () => {
+  it("lapses on its digest's day plus three, freeing its place", () => {
+    expect(standingOf(opened, DAY, AD.id, "2026-10-20")).toEqual({
+      kind: "open",
+      step: 0,
+    })
+    expect(openOf(opened, "2026-10-20")).toHaveLength(2)
+    expect(standingOf(opened, DAY, AD.id, "2026-10-21")).toEqual({
+      kind: "lapsed",
+      on: "2026-10-21",
+    })
+    expect(openOf(opened, "2026-10-21")).toEqual([])
+  })
+
+  it("never lapses once taken, and opens again when taken after it lapsed", () => {
+    const taken = record(opened, { type: "taken", ...ref() })
+    expect(openOf(taken, "2026-11-30").map((o) => o.pick.id)).toEqual([SW.id])
+    const late = record(taken, { type: "taken", ...ref(AD) })
+    expect(standingOf(late, DAY, AD.id, "2026-11-30")).toEqual({
+      kind: "open",
+      step: 2,
+    })
   })
 })
 

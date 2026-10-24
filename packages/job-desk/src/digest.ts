@@ -213,8 +213,9 @@ export const DigestSchema = z.object({
   ),
   /**
    * The picks from earlier digests still open when the run began
-   * (`openPicks`), each holding a slot of its track's `MAX_OPEN_PICKS`
-   * unless its posting has `closed`. Digests before the queue had none.
+   * (`queueOf`), each holding a slot of its track's `MAX_OPEN_PICKS`
+   * unless its posting has `closed`, and those that lapsed since the last
+   * digest. Digests before the queue had none.
    */
   queue: z
     .object({
@@ -227,6 +228,20 @@ export const DigestSchema = z.object({
           closed: z.boolean(),
         })
       ),
+      /**
+       * Picks left untouched for `LAPSE_DAYS` days, each named by the first
+       * digest after it lapsed and by none later: the record that it
+       * lapsed, never a decision. Digests before lapsing had none.
+       */
+      lapsed: z
+        .array(
+          z.object({
+            day: z.iso.date(),
+            pickId: IdSchema,
+            track: z.enum(TRACKS),
+          })
+        )
+        .default([]),
     })
     .nullable()
     .default(null),

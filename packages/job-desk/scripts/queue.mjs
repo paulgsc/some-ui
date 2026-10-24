@@ -1,20 +1,26 @@
 #!/usr/bin/env node
-// usage: pnpm --filter @some-ui/job-desk queue <digest or decisions file>...
+// usage: pnpm --filter @some-ui/job-desk queue --day <today> <digest or decisions file>...
 // Prints the picks still open across every digest and decisions file named,
-// each track's free slots, and the files that are neither (`skipped`).
+// those that lapse on <today> (the day of the digest being written), each
+// track's free slots, and the files that are neither (`skipped`).
 // Reads this package's own build.
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import {
   freeSlots,
-  openPicks,
   parseDecisions,
   parseDigest,
+  queueOf,
 } from "@some-ui/job-desk"
 
-const files = process.argv.slice(2)
-if (files.length === 0)
-  throw new Error("usage: pnpm --filter @some-ui/job-desk queue <file.json>...")
+const USAGE =
+  "usage: pnpm --filter @some-ui/job-desk queue --day <YYYY-MM-DD> <file.json>..."
+
+const [flag, today, ...files] = process.argv.slice(2)
+if (flag !== "--day" || !/^\d{4}-\d{2}-\d{2}$/.test(today ?? "")) {
+  throw new Error(USAGE)
+}
+if (files.length === 0) throw new Error(USAGE)
 
 const digests = []
 const decisions = []
@@ -32,7 +38,7 @@ for (const file of files) {
   else skipped.push(file)
 }
 
-const open = openPicks(digests, decisions)
+const { open, lapsed } = queueOf(digests, decisions, today)
 process.stdout.write(
-  `${JSON.stringify({ open, free: freeSlots(open), skipped }, null, 2)}\n`
+  `${JSON.stringify({ open, lapsed, free: freeSlots(open), skipped }, null, 2)}\n`
 )
