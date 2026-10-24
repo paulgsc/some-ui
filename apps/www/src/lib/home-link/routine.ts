@@ -27,7 +27,8 @@
  *   `ROUTINE_TELLS_OPENED`, with the app in front, one at a time, never retried and never
  *   rejected. One asked for while a look or another telling is on its way,
  *   or turned away by another send, waits: the newest is told once that
- *   look or telling settles, and the next open tells them all again.
+ *   look or telling settles, while its choice is still the one shown, and
+ *   the next open tells them all again.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { localStorageOrNull } from "@some-ui/core-utils"
@@ -215,20 +216,32 @@ export function createRoutineReads(ports: RoutinePorts): RoutineReads {
   }
   let telling = false
   // The newest names asked for while a look or a telling was on its way, or
-  // that the link turned away for another send: told once, when that look or
-  // telling settles.
-  let waiting: ReadonlyArray<string> | null = null
-  const startTelling = (keys: ReadonlyArray<string>): void => {
+  // that the link turned away for another send, with the choice they were
+  // asked under: told once that look or telling settles, and only while that
+  // choice is the one shown, so no home is told of another's.
+  let waiting: { under: Under; keys: ReadonlyArray<string> } | null = null
+  const startTelling = (under: Under, keys: ReadonlyArray<string>): void => {
     telling = true
-    void tell(keys)
+    void tell(under, keys)
   }
+  // A new pairing or choice drops what waits under the old one.
+  ports.onLink(() => {
+    if (waiting !== null && !sameUnder(waiting.under, underNowHere())) {
+      waiting = null
+    }
+  })
   const flush = (): void => {
     if (waiting === null || telling || inFlight !== null) return
-    const keys = waiting
+    const { under, keys } = waiting
     waiting = null
-    if (ports.visible() && tells()) startTelling(keys)
+    if (ports.visible() && tells() && sameUnder(under, underNowHere())) {
+      startTelling(under, keys)
+    }
   }
-  const tell = async (keys: ReadonlyArray<string>): Promise<void> => {
+  const tell = async (
+    under: Under,
+    keys: ReadonlyArray<string>
+  ): Promise<void> => {
     let turnedAway = false
     try {
       const outcome = await ports.keep((send) =>
@@ -236,7 +249,7 @@ export function createRoutineReads(ports: RoutinePorts): RoutineReads {
       )
       if (outcome === null) {
         turnedAway = true
-        waiting ??= keys
+        waiting ??= { under, keys }
       }
     } catch (error) {
       // Home's silence is said nowhere: the next open tells it again. A
@@ -304,12 +317,15 @@ export function createRoutineReads(ports: RoutinePorts): RoutineReads {
     },
     tells,
     tellOpened(keys): void {
-      if (keys.length === 0 || !ports.visible() || !tells()) return
-      if (telling || inFlight !== null) {
-        waiting = keys
+      const under = underNowHere()
+      if (keys.length === 0 || under === null || !ports.visible() || !tells()) {
         return
       }
-      startTelling(keys)
+      if (telling || inFlight !== null) {
+        waiting = { under, keys }
+        return
+      }
+      startTelling(under, keys)
     },
   }
 }

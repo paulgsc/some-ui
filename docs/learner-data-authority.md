@@ -769,8 +769,10 @@ opened, names only, and home files them for the mailbox's `opened` folder
 choice whose words pressed carry `ROUTINE_TELLS_OPENED`, so a choice made
 under the earlier words ("It sends nothing of yours") tells nothing, and
 Settings says how to choose again. It is started by that open, a tap, with
-the app in front, one at a time, never retried and never rejected: the next
-open tells them all again.
+the app in front, one at a time, never retried and never rejected: one
+asked for while a look or another is on its way waits for it, and is told
+only while its choice is still the one shown, so no home is told of another's;
+the next open tells them all again.
 
 The same answer carries a record of each of the routine's runs (when it
 ran, what it found and added, what it could not do) and when home answered.

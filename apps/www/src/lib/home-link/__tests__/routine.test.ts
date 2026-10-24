@@ -409,6 +409,23 @@ describe("Korean's look at the routine's files", () => {
     expect(home.sent.at(-1)).toBe("PUT /routine/opened")
   })
 
+  it("never tells one home of what was opened under another", async () => {
+    const home = homeOf({ busy: true })
+    const reads = readsOf(home)
+    reads.choose("shown", `Show them? ${ROUTINE_TELLS_OPENED}`)
+    reads.tellOpened(["scene/a.json"])
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(home.sent).toEqual([])
+
+    // Turned away, then paired with another home and shown there.
+    home.busy = false
+    relink(home, "pairing-2")
+    reads.choose("shown", `Show them? ${ROUTINE_TELLS_OPENED}`)
+    await reads.list()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(home.sent).toEqual(["GET /routine/files"])
+  })
+
   it("keeps each choice with the words pressed, under its pairing", () => {
     const storage = memoryStorage()
     const reads = readsOf(homeOf(), storage)
