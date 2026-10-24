@@ -55,9 +55,10 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
     schema: "some-ui.job-scouts/1",
   },
   {
-    // The routine's answer to a study reflection (`<date>_<session>_<id>`).
+    // The routine's answer to a study reflection (`<date>_<session>_<id>`),
+    // `-2` and on for a second reflection under one name.
     folder: "scene",
-    name: /^scene-\d{4}-\d{2}-\d{2}_[a-z0-9-]{1,40}_[0-9A-Za-z-]{1,8}\.json$/,
+    name: /^scene-\d{4}-\d{2}-\d{2}_[a-z0-9-]{1,40}_[0-9A-Za-z-]{1,8}(-\d+)?\.json$/,
     schema: "some-ui.routine-scene/1",
   },
   {

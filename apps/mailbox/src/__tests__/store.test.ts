@@ -180,6 +180,36 @@ describe("the migration", () => {
       "item is append-only"
     )
   })
+
+  it("the rebuild carries seq past archived items when none is live, and starts at 1 on a table never used", async () => {
+    const files = migrationFiles()
+    const rebuild = files.indexOf("0003_folders.sql")
+    const upTo = async (
+      fill: (store: Store) => Promise<void>
+    ): Promise<Store> => {
+      const db = await openSqlite()
+      for (const file of files.slice(0, rebuild)) apply(db, file)
+      const store = d1Store(d1Shim(db))
+      await fill(store)
+      for (const file of files.slice(rebuild)) apply(db, file)
+      return store
+    }
+    const allArchived = await upTo(async (store) => {
+      await store.put("brief", "b1.json", item("1"))
+      await store.put("brief", "b2.json", item("2"))
+      await store.archive("brief", "b1.json", "sha-of-1", ARCHIVED_AT, LATER)
+      await store.archive("brief", "b2.json", "sha-of-2", ARCHIVED_AT, LATER)
+    })
+    expect(await allArchived.put("drama", "d.json", item("3"))).toEqual({
+      change: "added",
+      seq: 3,
+    })
+    const unused = await upTo(() => Promise.resolve())
+    expect(await unused.put("drama", "d.json", item("1"))).toEqual({
+      change: "added",
+      seq: 1,
+    })
+  })
 })
 
 describe.each([

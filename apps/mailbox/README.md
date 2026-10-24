@@ -93,8 +93,9 @@ role, and it is the owner's call, so it is not built.
 
 - **Name**, anchored to its folder: `brief` takes `digest-YYYY-MM-DD.json`; `decisions` takes
   `decisions-YYYY-MM-DD.json` or `decisions-YYYY-MM-DD-<n>.json`; `scout` takes
-  `scouts-YYYYMMDDTHHMMSS.json`; `scene` takes `scene-<reflection>.json`, named for the
-  reflection it answers (`YYYY-MM-DD_<session>_<id>`); `drama` takes `drama-<stamp>.json`,
+  `scouts-YYYYMMDDTHHMMSS.json`; `scene` takes `scene-<reflection>.json` or
+  `scene-<reflection>-<n>.json`, named for the reflection it answers
+  (`YYYY-MM-DD_<session>_<id>`, which two reflections can share); `drama` takes `drama-<stamp>.json`,
   named for its prompt (`drama-YYYYMMDDTHHMMSSmmmZ`). Anything else, voice-note names
   included, is `422`.
 - **Content type** `application/json` (parameters such as `charset` are ignored), and the body
@@ -149,7 +150,8 @@ how each was checked when this workspace landed.
   every `UPDATE` and `DELETE`. The only other delete is of an answered ask in `wanted`, and
   the only insert into `archived` is the archive's.
 - _Falsified by_ a hunk that drops, renames or weakens any of those triggers (a later
-  migration that drops a trigger or one of the tables included); that deletes or moves the
+  migration that drops a trigger or one of the tables included, other than `0003_folders.sql`'s
+  rebuild, which recreates them); that deletes or moves the
   migrations that create them, or changes `migrations_dir` in `wrangler.jsonc` so they no
   longer apply; that adds an `UPDATE`, `INSERT OR REPLACE`, `REPLACE INTO` or
   `ON CONFLICT … DO UPDATE` against `item`, `archived` or `restored`, a `DELETE` other than
@@ -182,7 +184,12 @@ how each was checked when this workspace landed.
   `DELETE`s (the archive's on `item`, and an answered ask on `wanted`), no `UPDATE` or
   `REPLACE`, one `INSERT INTO archived` (`ARCHIVE_SQL`), and every `INSERT` is `DO NOTHING`
   or a plain insert into `restored`; each of the seven triggers has a case in
-  `store.test.ts` that fails without it.
+  `store.test.ts` that fails without it. _Checked at the rebuild (`0003_folders.sql`,
+  2026-10-23):_ after every migration `item` has the same three triggers; the rebuild test
+  keeps every row and seq and carries the sequence past archived seqs, with items live, with
+  none live, and on a table never used; and workerd's D1 (`wrangler d1 migrations apply
+--local`) applied it with the same result. Remote D1 was not tried: if it refuses the
+  `sqlite_sequence` update, the migration rolls back whole and nothing changes.
 
 **MB2: Roles.**
 
@@ -207,7 +214,10 @@ how each was checked when this workspace landed.
   `serve` has one `grant.get` check and one `grant.put` check, each returning `403`; `handle`
   calls `serve` only with a non-null grant. _Checked at the 2026-10-23 amendment:_ `ROLES`
   has three entries; every branch of `serve` that reaches the store passes a `may` check that
-  returns `403`; `core.test.ts` pins every role against every collection.
+  returns `403`; `core.test.ts` pins every role against every collection. _Checked at the scene and
+  drama amendment (2026-10-23):_ `ROLES` has three entries; `core.test.ts` pins `scene` and
+  `drama` for every role: the routine puts, reads, lists archived and asks, home reads and
+  may not put, and only the archive role archives.
 
 **MB3: No token reaches the repo or a log.**
 

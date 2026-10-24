@@ -4,8 +4,8 @@
 --
 -- SQLite cannot change a CHECK in place, so `item` is rebuilt with every row,
 -- seq and byte as it was, and its triggers recreated (MB1). The next seq
--- continues from the highest ever handed out, live or archived, so no new
--- item can take an archived item's seq.
+-- continues from the highest the old table ever handed out (every archived
+-- seq among them), so no new item can take an archived item's seq.
 CREATE TABLE item_next (
   seq          INTEGER PRIMARY KEY AUTOINCREMENT,  -- the cursor readers page by
   folder       TEXT NOT NULL,                      -- one of core.ts's FOLDERS
@@ -21,11 +21,7 @@ CREATE TABLE item_next (
 INSERT INTO item_next (seq, folder, name, sha256, size, content_type, body, put_by, put_at)
   SELECT seq, folder, name, sha256, size, content_type, body, put_by, put_at FROM item;
 UPDATE sqlite_sequence
-  SET seq = MAX(
-    seq,
-    COALESCE((SELECT seq FROM sqlite_sequence WHERE name = 'item'), 0),
-    COALESCE((SELECT MAX(seq) FROM archived), 0)
-  )
+  SET seq = MAX(seq, COALESCE((SELECT seq FROM sqlite_sequence WHERE name = 'item'), 0))
   WHERE name = 'item_next';
 DROP TABLE item;
 ALTER TABLE item_next RENAME TO item;
