@@ -176,30 +176,96 @@ describe("Today, opened", () => {
   })
 })
 
-describe("Today, letting picks go (JB2)", () => {
-  it("says where the picks let go went, and follows them home", async () => {
-    await showToday("2026-10-22T14:00:00Z", "2026-10-22", true)
-    fireEvent.click(screen.getByRole("button", { name: /^Let 2 undecided/ }))
-    fireEvent.click(screen.getByRole("button", { name: "Let them go" }))
-    const card = screen.getByRole("heading", { name: /^2 picks let go at / })
-    const bar = (): string | null | undefined =>
-      card.closest("[data-journey]")?.getAttribute("data-journey")
-    expect(bar()).toBe("on-phone")
-    expect(
-      screen.getByRole("button", { name: /^On this phone\. Show where/ })
-    ).toBeTruthy()
+describe("Today, once picks lapse (J5)", () => {
+  it("says a pick left untouched three days lapsed", async () => {
+    await showToday("2026-10-22T14:00:00Z", "2026-10-18")
+    expect(screen.getByText("That’s every pick for now.")).toBeTruthy()
+    fireEvent.click(
+      screen.getByRole("button", { name: "See all of these picks" })
+    )
+    expect(screen.getAllByText("Lapsed")).toHaveLength(2)
+  })
 
+  it("says nothing of a recorded lapse for a pick I passed on", async () => {
+    await showToday("2026-10-22T14:00:00Z", null)
     const { phoneJobs } = await import("@/lib/jobs")
-    const { isFile } = await import("@/lib/jobs/files")
+    const { digest } = await import("@/lib/jobs/__tests__/fixture")
     const jobs = phoneJobs()
-    const file = jobs.keeping.outgoing("decisions")
-    if (!isFile(file)) throw new Error("no decisions file")
+    const old = digest("2026-10-18")
+    const [passed] = old.picks
     act(() => {
-      jobs.keeping.filed("decisions", file)
+      jobs.keeping.fetched([old])
     })
-    expect(bar()).toBe("with-home")
+    act(() => {
+      jobs.record({
+        type: "passed",
+        reasons: [],
+        note: "",
+        voice: [],
+        day: old.day,
+        pickId: passed.id,
+        fingerprint: passed.fingerprint,
+      })
+    })
+    act(() => {
+      jobs.keeping.fetched([
+        {
+          ...digest("2026-10-22"),
+          queue: {
+            open: [],
+            lapsed: [{ day: old.day, pickId: passed.id, track: passed.track }],
+          },
+        },
+      ])
+    })
+    expect(screen.queryByText(/lapsed, untouched/)).toBeNull()
+    expect(screen.queryByText(/lapsed before the morning’s picking/)).toBeNull()
+  })
+
+  it("names what the morning's picking lapsed, apart from what I took before it heard, and keeps a way to a lapsed pick", async () => {
+    await showToday("2026-10-22T14:00:00Z", null)
+    const { phoneJobs } = await import("@/lib/jobs")
+    const { digest } = await import("@/lib/jobs/__tests__/fixture")
+    const jobs = phoneJobs()
+    const old = digest("2026-10-18")
+    const [taken, left] = old.picks
+    act(() => {
+      jobs.keeping.fetched([old])
+    })
+    act(() => {
+      jobs.record({
+        type: "taken",
+        day: old.day,
+        pickId: taken.id,
+        fingerprint: taken.fingerprint,
+      })
+    })
+    act(() => {
+      jobs.keeping.fetched([
+        {
+          ...digest("2026-10-22"),
+          queue: {
+            open: [],
+            lapsed: [taken, left].map((p) => ({
+              day: old.day,
+              pickId: p.id,
+              track: p.track,
+            })),
+          },
+        },
+      ])
+    })
     expect(
-      screen.getByRole("button", { name: /^Home has them\. Show where/ })
+      screen.getByText(/1 pick from earlier days lapsed, untouched for 3 days/)
+    ).toBeTruthy()
+    expect(
+      screen.getByText(/1 pick you took lapsed before the morning’s picking/)
+    ).toBeTruthy()
+    fireEvent.click(
+      screen.getByRole("button", { name: "Show the picks that lapsed (1)" })
+    )
+    expect(
+      screen.getByText(new RegExp(`^2026-10-18 · ${left.posting.title}`))
     ).toBeTruthy()
   })
 })

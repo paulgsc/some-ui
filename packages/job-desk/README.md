@@ -24,10 +24,11 @@ database), beside Drive. `ROUTINE.md` §0.4 says how the routine uses it, and
 - `src/sample.digest.json` (`sampleDigest()`) is a complete digest on made-up
   postings: the template a run copies, and what the web builds' `/job-run`
   page reads to a viewer, since the real digests stay on the phone.
-- `pnpm --filter @some-ui/job-desk queue <files>` reads every digest and
-  decisions file named and prints the picks still open (`openPicks`) and each
-  track's free slots: a run adds picks only into those (`MAX_OPEN_PICKS`).
-  A pick stays open until I pass it, archive it, or debrief it, and share that.
+- `pnpm --filter @some-ui/job-desk queue --day <today> <files>` reads every
+  digest and decisions file named and prints the picks still open, those that
+  lapse today (`queueOf`), and each track's free slots: a run adds picks only
+  into those (`MAX_OPEN_PICKS`). A pick stays open until I pass it or debrief
+  it and share that, or until it lapses, untouched for `LAPSE_DAYS` days.
 - `pnpm --filter @some-ui/job-desk check <file>` checks any of the three files
   the way the phone will read it, after a build. It prints `[]` when the file
   is ready to upload.

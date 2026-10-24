@@ -369,6 +369,13 @@
         "track": "software",
         "closed": false
       }
+    ],
+    "lapsed": [
+      {
+        "day": "2026-10-15",
+        "pickId": "hal-2b07",
+        "track": "adjacent"
+      }
     ]
   },
   "read": ["scouts-20261017T210400.json"],

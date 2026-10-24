@@ -169,28 +169,6 @@ describe("createJobsRuntime", () => {
     expect(outcome).toMatchObject({ type: "outcome", on: "2026-10-19" })
   })
 
-  it("archives a digest's undecided picks", async () => {
-    const runtime = createJobsRuntime(ports())
-    const day = digest("2026-10-18")
-    runtime.open(blob(JSON.stringify(day)))
-    await settle()
-    const [taken, left] = day.picks
-    runtime.record({
-      type: "taken",
-      day: day.day,
-      pickId: taken.id,
-      fingerprint: taken.fingerprint,
-    })
-    expect(runtime.archive(day.day)).toBe(true)
-    expect(runtime.archive(day.day)).toBe(false)
-    const archived = runtime
-      .getSnapshot()
-      .state.log.filter((e) => e.type === "archived")
-    expect(archived).toEqual([
-      expect.objectContaining({ pickId: left.id, day: day.day }),
-    ])
-  })
-
   it("keeps each form's draft between launches, apart from the record, until what settles it is kept (JB1)", async () => {
     const p = ports()
     const runtime = createJobsRuntime(p)

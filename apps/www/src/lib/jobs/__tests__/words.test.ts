@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest"
 
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
-import type { Progress } from "@/lib/jobs/model"
+import type { Standing } from "@/lib/jobs/model"
 import * as words from "@/lib/jobs/words"
 
 const DAY = "2026-10-18"
@@ -49,21 +49,17 @@ const SAID: Readonly<Record<keyof typeof words, ReadonlyArray<string>>> = {
       { kind: "archived" },
       { kind: "done", result: "submitted" },
       { kind: "done", result: "gave-up" },
-    ] satisfies ReadonlyArray<Progress>
+      { kind: "lapsed", on: DAY },
+    ] satisfies ReadonlyArray<Standing>
   ).map((progress) => words.pickState(progress)),
   breaksRules: [words.breaksRules(1, "a pick has no link to apply")],
   heldOver: [words.heldOver(1, false), words.heldOver(3, true)],
-  letGoLabel: [words.letGoLabel(1, null), words.letGoLabel(3, DAY)],
-  letGoAsk: [1, 3].map(words.letGoAsk),
-  letGoWhat: [words.letGoWhat],
-  letGoConfirm: [words.letGoConfirm],
-  letGoKeep: [words.letGoKeep],
+  lapsedEarlier: [1, 3].map(words.lapsedEarlier),
+  lapsedOn: [words.lapsedOn(DAY)],
+  lapsedBeforeHeard: [1, 2].map(words.lapsedBeforeHeard),
+  lapsedList: [words.lapsedList(true, 4), words.lapsedList(false, 4)],
   itArrived: [words.itArrived],
   shareAgain: [words.shareAgain],
-  letGoneAt: [
-    words.letGoneAt(1, "9:14 AM"),
-    words.letGoneAt(2, "Oct 24, 9:14 AM"),
-  ],
   wouldHavePicked: [words.wouldHavePicked],
   saidWouldHavePicked: [words.saidWouldHavePicked],
   whyItFits: [words.whyItFits],

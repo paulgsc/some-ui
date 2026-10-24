@@ -22,12 +22,22 @@ const refOf = (d: typeof NEWER, i: number): PickRef => ({
   fingerprint: d.picks[i].fingerprint,
 })
 
-function letGo(state: JobsState, d: typeof NEWER): JobsState {
+function passAll(state: JobsState, d: typeof NEWER): JobsState {
   return d.picks.reduce(
-    (s, _, i) => record(s, { type: "archived", ...refOf(d, i) }),
+    (s, _, i) =>
+      record(s, {
+        type: "passed",
+        reasons: [],
+        note: "",
+        voice: [],
+        ...refOf(d, i),
+      }),
     state
   )
 }
+
+/** The newest digest's own day: none of them has lapsed yet. */
+const TODAY = "2026-10-18"
 
 const held = [OLDEST, NEWER, OLDER].reduce(
   (s, d) => step(s, { type: "opened", digest: d, at: OPENED_AT }),
@@ -37,20 +47,32 @@ const held = [OLDEST, NEWER, OLDER].reduce(
 describe("nextPick", () => {
   it("opens on the picks on show, then the newest other digest's, and none once all are decided", () => {
     const onShow = { ...held, current: "2026-10-17" }
-    expect(nextPick(onShow)).toMatchObject({
+    expect(nextPick(onShow, TODAY)).toMatchObject({
       day: "2026-10-17",
       pick: { id: OLDER.picks[0].id },
     })
-    expect(nextPick(letGo(onShow, OLDER))?.day).toBe("2026-10-18")
+    expect(nextPick(passAll(onShow, OLDER), TODAY)?.day).toBe("2026-10-18")
     expect(
-      nextPick(letGo(letGo(letGo(onShow, OLDER), NEWER), OLDEST))
+      nextPick(passAll(passAll(passAll(onShow, OLDER), NEWER), OLDEST), TODAY)
     ).toBeNull()
+  })
+
+  it("passes over picks that lapsed untouched, never one I started (J5)", () => {
+    const onShow = { ...held, current: "2026-10-16" }
+    // 2026-10-16's picks lapse on 2026-10-19, the others later.
+    expect(nextPick(onShow, "2026-10-19")?.day).toBe("2026-10-18")
+    expect(nextPick(onShow, "2026-10-21")).toBeNull()
+    const started = record(onShow, { type: "taken", ...refOf(OLDEST, 0) })
+    expect(nextPick(started, "2026-10-30")).toMatchObject({
+      day: "2026-10-16",
+      pick: { id: OLDEST.picks[0].id },
+    })
   })
 
   it("opens on a pick I started before any new one, the oldest first", () => {
     let state = record(held, { type: "taken", ...refOf(NEWER, 1) })
     state = record(state, { type: "taken", ...refOf(OLDER, 1) })
-    expect(nextPick(state)).toMatchObject({
+    expect(nextPick(state, TODAY)).toMatchObject({
       day: "2026-10-17",
       pick: { id: OLDER.picks[1].id },
     })

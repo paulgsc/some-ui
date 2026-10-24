@@ -10,12 +10,16 @@ import type { JobEvent, JobsState } from "./model"
 import { openOf, progressOf } from "./model"
 
 /**
- * The pick Today opens on: one I took and haven't ended, the oldest first,
- * else the first untouched pick of the digest on show, then of the newest
- * other digest; null once none is open.
+ * The pick Today opens on, Pacific day `today`: one I took and haven't
+ * ended, the oldest first, else the first untouched pick of the digest on
+ * show, then of the newest other digest; null once none is open or all the
+ * untouched ones lapsed.
  */
-export function nextPick(state: JobsState): { day: string; pick: Pick } | null {
-  const open = openOf(state)
+export function nextPick(
+  state: JobsState,
+  today: string
+): { day: string; pick: Pick } | null {
+  const open = openOf(state, today)
   const started = open.find(({ day, pick }) => {
     const progress = progressOf(state, day, pick.id)
     return progress.kind === "open" && progress.step > 0

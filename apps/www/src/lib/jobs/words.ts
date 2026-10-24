@@ -4,10 +4,11 @@
  * behind it (`__tests__/words.test.ts` holds it to the list in
  * `lib/home-link/__tests__/machinery.ts`).
  */
-import { assertNever, counted } from "@some-ui/core-utils"
+import { assertNever, counted, formatDay } from "@some-ui/core-utils"
 import type { Track } from "@some-ui/job-desk"
+import { LAPSE_DAYS } from "@some-ui/job-desk"
 
-import type { Progress } from "./model"
+import type { Standing } from "./model"
 
 /** The digest on show is from an earlier day than today's. */
 export const notToday = (day: string): string =>
@@ -78,8 +79,26 @@ export const pickedFrom = (
   `On ${day}, ${picked} picked from ${seen} postings looked at, and ${leftOut} left out.`
 
 /** What a pick left unfinished holds, and until when. */
-export const holdsPlace =
-  "A pick holds its place until you pass on it, let it go, or send it and say how it went, and the morning’s picking has heard so. New picks fill only the places that are free."
+export const holdsPlace = `A pick holds its place until you pass on it, or send it and say how it went, and the morning’s picking has heard so. One left untouched for ${LAPSE_DAYS} days lapses and frees its place. New picks fill only the places that are free.`
+
+/** Earlier days' picks the morning's picking found had lapsed. */
+export const lapsedEarlier = (count: number): string =>
+  `${counted(count, "pick")} from earlier days lapsed, untouched for ${LAPSE_DAYS} days, so ${count === 1 ? "its place is" : "their places are"} free.`
+
+/**
+ * Picks I took here that the morning's picking lapsed anyway, since my
+ * decision had not reached it yet.
+ */
+export const lapsedBeforeHeard = (count: number): string =>
+  `${counted(count, "pick")} you took lapsed before the morning’s picking heard so; ${count === 1 ? "it holds its" : "they hold their"} place again once it does.`
+
+/** Earlier days' lapsed picks, behind their own toggle. */
+export const lapsedList = (shown: boolean, count: number): string =>
+  `${shown ? "Hide" : "Show"} the picks that lapsed (${count})`
+
+/** A pick that lapsed: since when, and that deciding it still counts. */
+export const lapsedOn = (on: string): string =>
+  `Lapsed on ${formatDay(on)}, untouched for ${LAPSE_DAYS} days, so it no longer holds a place. Taking or passing it now replaces that.`
 
 const TRACK_ROLES: Readonly<Record<Track, string>> = {
   software: "software roles",
@@ -113,13 +132,16 @@ export const trackHeading: Readonly<Record<Track, string>> = {
 }
 
 /** Where a pick stands, in a word or two. */
-export function pickState(progress: Progress): string {
+export function pickState(progress: Standing): string {
   switch (progress.kind) {
     case "passed": {
       return "Passed"
     }
     case "archived": {
       return "Let go"
+    }
+    case "lapsed": {
+      return "Lapsed"
     }
     case "done": {
       return progress.result === "submitted" ? "Applied" : "Done"
@@ -141,29 +163,11 @@ export const breaksRules = (count: number, first: string): string =>
 export const heldOver = (count: number, full: boolean): string =>
   `${counted(count, "pick")} from earlier days ${count === 1 ? "was" : "were"} still open${full ? ", so no new ones came" : ""}.`
 
-/** Letting a day's undecided picks go, unread. */
-export const letGoLabel = (count: number, day: string | null): string =>
-  `Let ${day === null ? "" : `${day}’s `}${counted(count, "undecided pick")} go`
-
-export const letGoAsk = (count: number): string =>
-  `Let ${count === 1 ? "this pick" : `these ${count} picks`} go?`
-
-export const letGoWhat =
-  "Once the morning’s picking hears it, they stop holding their places, unread. You can still open one and decide it."
-
-export const letGoConfirm = "Let them go"
-
-export const letGoKeep = "Keep them"
-
 /** A share the sheet made, said to have arrived in Drive. */
 export const itArrived = "It arrived"
 
 /** The share sheet again, for a share not yet said to have arrived. */
 export const shareAgain = "Share again"
-
-/** The picks let go last, and when: the card that says where they went. */
-export const letGoneAt = (count: number, time: string): string =>
-  `${count === 1 ? "One pick" : `${count} picks`} let go at ${time}`
 
 /** A posting left out that I would have picked. */
 export const wouldHavePicked = "I’d have picked this"

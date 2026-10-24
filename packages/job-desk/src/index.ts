@@ -27,6 +27,7 @@ export type { AdjacentFamily, Track } from "./policy"
 export {
   ADJACENT_FAMILIES,
   EXCLUDED_TITLE,
+  LAPSE_DAYS,
   LOCATIONS,
   MAX_OPEN_PICKS,
   MAX_POSTING_AGE_DAYS,
@@ -35,8 +36,8 @@ export {
   QUERIES,
   TRACKS,
 } from "./policy"
-export type { OpenPick } from "./queue"
-export { freeSlots, openPicks } from "./queue"
+export type { OpenPick, Queue } from "./queue"
+export { freeSlots, hasLapsed, lapsesOn, queueOf } from "./queue"
 export type { Scouts } from "./scouts"
 export {
   MAX_POSTING_TEXT,

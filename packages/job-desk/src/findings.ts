@@ -16,7 +16,7 @@ import {
   SCOUT_AGREE_FIT,
   TRACKS,
 } from "./policy"
-import { freeSlots } from "./queue"
+import { freeSlots, hasLapsed, lapsesOn } from "./queue"
 
 /** One way a well-formed digest breaks the routine's rules, by path. */
 export type Finding = { path: string; message: string }
@@ -226,7 +226,7 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
     })
   }
   if (digest.queue !== null) {
-    const { open } = digest.queue
+    const { open, lapsed } = digest.queue
     const free = freeSlots(open)
     const queued = new Set<string>()
     open.forEach((held, i) => {
@@ -240,6 +240,22 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
       if (queued.has(key)) {
         found.push({
           path: `queue.open.${i}`,
+          message: `${key} is listed twice`,
+        })
+      }
+      queued.add(key)
+    })
+    lapsed.forEach((gone, i) => {
+      const key = `${gone.day}/${gone.pickId}`
+      if (!hasLapsed(gone.day, digest.day)) {
+        found.push({
+          path: `queue.lapsed.${i}.day`,
+          message: `${key} lapses only on ${lapsesOn(gone.day)}`,
+        })
+      }
+      if (queued.has(key)) {
+        found.push({
+          path: `queue.lapsed.${i}`,
           message: `${key} is listed twice`,
         })
       }

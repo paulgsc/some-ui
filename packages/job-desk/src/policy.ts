@@ -21,13 +21,20 @@ export const PICKS_PER_DAY: Readonly<Record<Track, number>> = {
 
 /**
  * The most picks each track may hold open at once, earlier digests' included
- * (`openPicks`). A run adds only what fits under it, so the next picks wait
- * until I have decided and shared the last ones: applying should take
- * effort, and a full queue says so.
+ * (`queueOf`). A run adds only what fits under it, so the next picks wait
+ * until I have decided and shared the last ones, or left them to lapse
+ * (`LAPSE_DAYS`): the effort belongs in the application, not in clearing a
+ * backlog.
  */
 export const MAX_OPEN_PICKS: Readonly<Record<Track, number>> = {
   ...PICKS_PER_DAY,
 }
+
+/**
+ * The days a pick no decision answers waits, from its digest's day, before it
+ * lapses and frees its slot (`hasLapsed`).
+ */
+export const LAPSE_DAYS = 3
 
 /** The first day a digest must record its queue. */
 export const QUEUE_FROM = "2026-10-19"
