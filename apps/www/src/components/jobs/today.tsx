@@ -23,6 +23,7 @@ import { Check } from "lucide-react"
 import { hasAudience } from "@/lib/build-profile"
 import { useMinuteClock } from "@/lib/clock"
 import { phoneJobs } from "@/lib/jobs"
+import { eventJourney, lastLetGo } from "@/lib/jobs/journey"
 import type { JobsState } from "@/lib/jobs/model"
 import {
   currentDigest,
@@ -52,6 +53,7 @@ import {
   letGoConfirm,
   letGoKeep,
   letGoLabel,
+  letGoneAt,
   letGoWhat,
   newerHeld,
   noPicksYet,
@@ -73,9 +75,17 @@ import {
   whyItFits,
   wouldHavePicked,
 } from "@/lib/jobs/words"
+import { mostUrgent, whenSaid } from "@/lib/journey"
 import { postingLine, sectionHeading } from "@/components/job-reading"
 
-import { OpenDigest, Problem, useJobs } from "./parts"
+import {
+  JourneyCard,
+  OpenDigest,
+  Problem,
+  ShareAction,
+  useJobs,
+  useJourneyContext,
+} from "./parts"
 
 /** A pick's place in Jobs: a link on the phone, plain elsewhere. */
 const ToPick = ({
@@ -296,6 +306,41 @@ const LetGo = ({
 }
 
 /**
+ * Where the picks let go last went, on the day they were let go and until a
+ * run has read that they were: they leave in the decisions file.
+ */
+const LetGone = ({ state }: { state: JobsState }): JSX.Element | null => {
+  const now = useMinuteClock()
+  const context = useJourneyContext()
+  const letGo = lastLetGo(state)
+  if (letGo === null) return null
+  const journey = mostUrgent(
+    letGo.indices.flatMap((i) => {
+      const j = eventJourney(context, i)
+      return j === null ? [] : [j]
+    })
+  )
+  if (journey === null) return null
+  if (journey.id === "read" && dayOf(new Date(letGo.at)) !== dayOf(now)) {
+    return null
+  }
+  return (
+    <JourneyCard
+      title={letGoneAt(letGo.count, whenSaid(letGo.at, now))}
+      journey={journey}
+      noun={letGo.count === 1 ? "it" : "them"}
+      heading="h3"
+    >
+      <ShareAction
+        kind="decisions"
+        journey={journey}
+        label="Share today’s decisions"
+      />
+    </JourneyCard>
+  )
+}
+
+/**
  * The places open picks hold: how many are open by track, earlier days'
  * picks still open, and letting a day's undecided picks go.
  */
@@ -339,6 +384,7 @@ const Places = ({
           label={letGoLabel(undecided.length, null)}
         />
       )}
+      <LetGone state={state} />
       {earlier.map((day) => {
         const left = undecidedOf(state, day).length
         return (

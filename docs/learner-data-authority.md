@@ -647,7 +647,13 @@ filed, and stays for the share sheet; a file home refuses (409 or 422) stays
 for the share sheet too, kept by name in `home.refusedFiles` and never filed
 again; only home's 200 records the file as shared and arrived, so it is not
 offered again (`lib/jobs/__tests__/home.test.ts`, `runtime.test.ts` and
-`model.test.ts`). What no test can say is when a run is asked for:
+`model.test.ts`). That 200 records both at one instant, which is how the
+wing tells a file home took from one the person confirmed in Drive: each
+card says where its file is now, read off the log and the digests' `read`
+lists, and nothing filed goes unsaid (`lib/jobs/journey.ts`, promise JB2).
+A file home took that a later run did not read is offered to the share
+sheet again; the exchange never files it again. What no test can say is
+when a run is asked for:
 
 - _Claim:_ LA9's claim holds for the Jobs record's lane
   (`lib/home-link/jobs.ts`): its mark shows in the header while the Jobs

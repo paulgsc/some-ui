@@ -53,6 +53,7 @@ import {
   describeViolation,
   findViolations,
   INCIDENT_FIXTURE,
+  JOBS_STATUS_FIXTURE,
   servePanelPage,
   VIEWPORTS,
   type Violation,
@@ -118,8 +119,14 @@ const PANEL_STAGES: ReadonlyArray<PanelId> = [
 
 const PLANTED_OVERFLOW: PanelId = "planted-overflow"
 
-/** Fixtures another sweep walks (`./incident-fit.spec.ts`). */
-const SWEPT_ELSEWHERE: ReadonlyArray<PanelId> = [INCIDENT_FIXTURE]
+/**
+ * Fixtures another sweep walks (`./incident-fit.spec.ts`,
+ * `./jobs-status-fit.spec.ts`).
+ */
+const SWEPT_ELSEWHERE: ReadonlyArray<PanelId> = [
+  INCIDENT_FIXTURE,
+  JOBS_STATUS_FIXTURE,
+]
 
 type SweptPanel = { label: string; panel: PanelId; debt: string | null }
 

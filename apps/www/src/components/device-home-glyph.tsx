@@ -302,6 +302,14 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
 }
 
 /**
+ * Whether the Jobs record is kept on the paired home now, so an exchange
+ * files its decisions and scouts there: its cards say so (J0, LA10).
+ */
+export function useJobsKeptOnHome(): boolean {
+  return useLaneChoices(jobsLane).shared.size > 0
+}
+
+/**
  * The mark of the wing that shows: Practice's and the Jobs record's lanes
  * here, aph's once its screens hand it in. Nothing for another wing.
  */

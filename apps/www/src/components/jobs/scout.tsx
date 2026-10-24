@@ -1,6 +1,6 @@
 /**
  * Jobs › Scout: postings I found myself, for the morning run's second
- * opinion. Some sites, Indeed among them, refuse agents, so the posting's text
+ * opinion, each card wearing where it is on its way to that run. Some sites, Indeed among them, refuse agents, so the posting's text
  * can come along.
  */
 import type { JSX } from "react"
@@ -18,15 +18,18 @@ import { Badge, Button, Input, Label, Textarea } from "@some-ui/shared"
 import { ExternalLink } from "lucide-react"
 
 import { phoneJobs } from "@/lib/jobs"
-import { draftVoice, SCOUT_OWNER, scoutsOf } from "@/lib/jobs/model"
+import { eventJourney } from "@/lib/jobs/journey"
+import { draftVoice, SCOUT_OWNER } from "@/lib/jobs/model"
 import { Gaps, Scores, sectionHeading } from "@/components/job-reading"
 
 import {
   builderHref,
   Chips,
+  JourneyCard,
   Problem,
-  ShareToDrive,
+  ShareAction,
   useJobs,
+  useJourneyContext,
   useVoiceBusy,
   VoiceNotes,
 } from "./parts"
@@ -92,7 +95,10 @@ export const JobsScout = (): JSX.Element => {
   const [why, setWhy] = useState("")
   const [postingText, setPostingText] = useState("")
   const voice = draftVoice(state, SCOUT_OWNER)
-  const scouts = scoutsOf(state)
+  const context = useJourneyContext()
+  const scouts = state.log.flatMap((e, index) =>
+    e.type === "scout" ? [{ scout: e.scout, index }] : []
+  )
   const verdicts = new Map(
     state.digests.flatMap((d) => d.scouts.map((s) => [s.scoutId, s] as const))
   )
@@ -194,47 +200,56 @@ export const JobsScout = (): JSX.Element => {
         <section className="flex flex-col gap-2">
           <h2 className={sectionHeading}>My scouts · {scouts.length}</h2>
           <ul className="flex flex-col gap-2">
-            {[...scouts].reverse().map((scout) => {
+            {[...scouts].reverse().map(({ scout, index }) => {
               const verdict = verdicts.get(scout.id)
+              const journey = eventJourney(context, index)
               return (
-                <li
-                  key={scout.id}
-                  className="flex flex-col gap-1 rounded-xl border p-3"
-                >
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-sm font-semibold">{scout.title}</span>
-                    <Badge
-                      variant={
-                        verdict?.verdict === "disagree"
-                          ? "destructive"
-                          : "secondary"
-                      }
-                    >
-                      {verdict === undefined
-                        ? "Waits for a run"
-                        : verdict.verdict === "agree"
-                          ? "Run agrees"
-                          : verdict.verdict === "disagree"
-                            ? "Run disagrees"
-                            : "Run couldn’t find it"}
-                    </Badge>
-                  </div>
-                  <span className="text-muted-foreground text-xs">
-                    {scout.track}
-                    {scout.family ? ` · ${scout.family}` : ""}
-                    {scout.why ? ` · ${scout.why}` : ""}
-                  </span>
-                  {verdict && <p className="text-sm">{verdict.note}</p>}
-                  {verdict?.review && (
-                    <Review review={verdict.review} scoutId={scout.id} />
-                  )}
+                <li key={scout.id}>
+                  <JourneyCard
+                    title={scout.title}
+                    journey={journey}
+                    noun="it"
+                    heading="h3"
+                  >
+                    <div className="flex flex-col gap-1 px-3.5 py-3">
+                      <span className="text-muted-foreground text-xs">
+                        {scout.track}
+                        {scout.family ? ` · ${scout.family}` : ""}
+                        {scout.why ? ` · ${scout.why}` : ""}
+                      </span>
+                      {verdict && (
+                        <Badge
+                          className="self-start"
+                          variant={
+                            verdict.verdict === "disagree"
+                              ? "destructive"
+                              : "secondary"
+                          }
+                        >
+                          {verdict.verdict === "agree"
+                            ? "Run agrees"
+                            : verdict.verdict === "disagree"
+                              ? "Run disagrees"
+                              : "Run couldn’t find it"}
+                        </Badge>
+                      )}
+                      {verdict && <p className="text-sm">{verdict.note}</p>}
+                      {verdict?.review && (
+                        <Review review={verdict.review} scoutId={scout.id} />
+                      )}
+                    </div>
+                    <ShareAction
+                      kind="scouts"
+                      journey={journey}
+                      label="Share scouts to Drive"
+                    />
+                  </JourneyCard>
                 </li>
               )
             })}
           </ul>
         </section>
       )}
-      <ShareToDrive kind="scouts" label="Share scouts to Drive" />
     </div>
   )
 }

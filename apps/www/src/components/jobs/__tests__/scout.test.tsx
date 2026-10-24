@@ -6,7 +6,7 @@
  * build for it anyway.
  */
 
-import { cleanup, render, screen } from "@testing-library/react"
+import { act, cleanup, render, screen, within } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@/lib/jobs", async () => {
@@ -86,5 +86,55 @@ describe("a scout the run reviewed", () => {
       template: "classic",
       pick: scout.id,
     })
+  })
+})
+
+describe("a scout filed with home without a tap (JB2)", () => {
+  it("wears where it is: on the phone, then with home, with nothing left to share", async () => {
+    const { phoneJobs } = await import("@/lib/jobs")
+    const { isFile } = await import("@/lib/jobs/files")
+    const jobs = phoneJobs()
+    expect(
+      jobs.addScout(
+        {
+          url: "https://jobs.lever.co/acme/1",
+          track: "software",
+          family: null,
+          title: "Platform Engineer",
+          why: "",
+          postingText: null,
+        },
+        []
+      )
+    ).toBe(true)
+    const { JobsScout } = await import("@/components/jobs/scout")
+    const { KeptOnHome } = await import("@/components/jobs/parts")
+    render(
+      <KeptOnHome value>
+        <JobsScout />
+      </KeptOnHome>
+    )
+    const card = screen.getByRole("heading", { name: "Platform Engineer" })
+    const bar = (): string | null | undefined =>
+      card.closest("[data-journey]")?.getAttribute("data-journey")
+    const inCard = within(card.closest("section") ?? document.body)
+    expect(bar()).toBe("on-phone")
+    expect(
+      inCard.getByRole("button", { name: "Share scouts to Drive" })
+    ).toBeTruthy()
+
+    const file = jobs.keeping.outgoing("scouts")
+    if (!isFile(file)) throw new Error("no scouts file")
+    act(() => {
+      jobs.keeping.filed("scouts", file)
+    })
+    expect(bar()).toBe("with-home")
+    expect(
+      inCard.getByRole("button", { name: /^Home has it\. Show where it is/ })
+    ).toBeTruthy()
+    expect(
+      inCard.queryByRole("button", { name: "Share scouts to Drive" })
+    ).toBeNull()
+    expect(screen.queryByText("Nothing new to share.")).toBeNull()
   })
 })

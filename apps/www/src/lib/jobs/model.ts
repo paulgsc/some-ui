@@ -70,7 +70,7 @@ export type ScoutDraft = {
   | { track: "adjacent"; family: AdjacentFamily }
 )
 
-export type Scout = { id: string } & ScoutDraft
+type Scout = { id: string } & ScoutDraft
 
 /** Names one pick: ids are unique only within the digest of `day`. */
 export type PickRef = { day: string; pickId: string; fingerprint: string }
@@ -703,10 +703,6 @@ export function applicationsOf(state: JobsState): ReadonlyArray<Application> {
     found.push({ day: e.day, pick, progress, outcomes })
   }
   return found
-}
-
-export function scoutsOf(state: JobsState): ReadonlyArray<Scout> {
-  return state.log.flatMap((e) => (e.type === "scout" ? [e.scout] : []))
 }
 
 /** Fingerprints of set-aside postings I said I'd have picked. */

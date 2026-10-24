@@ -1,6 +1,8 @@
 import type { JSX } from "react"
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 
+import { useJobsKeptOnHome } from "@/components/device-home-glyph"
+import { KeptOnHome } from "@/components/jobs/parts"
 import type { View } from "@/components/view-strip"
 import { ViewStrip } from "@/components/view-strip"
 
@@ -14,7 +16,9 @@ const VIEWS = [
 const JobsLayout = (): JSX.Element => (
   <div className="mx-auto flex w-full max-w-md flex-col gap-4 pb-6">
     <ViewStrip label="Jobs" views={VIEWS} />
-    <Outlet />
+    <KeptOnHome value={useJobsKeptOnHome()}>
+      <Outlet />
+    </KeptOnHome>
   </div>
 )
 

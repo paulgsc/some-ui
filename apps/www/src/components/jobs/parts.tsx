@@ -5,7 +5,12 @@
  * `VITE_DEVICE_BACKEND`.
  */
 import type { ChangeEvent, JSX, ReactNode } from "react"
-import { useEffect, useSyncExternalStore } from "react"
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useSyncExternalStore,
+} from "react"
 import { counted, formatTimecode } from "@some-ui/core-utils"
 import { Button, useConfirmSheet } from "@some-ui/shared"
 import { FolderOpen, Mic, Square } from "lucide-react"
@@ -15,9 +20,14 @@ import { IntentButton } from "@/lib/intent/render"
 import type { JobsSnapshot } from "@/lib/jobs"
 import { copyText, phoneJobs } from "@/lib/jobs"
 import { isFile } from "@/lib/jobs/files"
+import type { JourneyContext } from "@/lib/jobs/journey"
+import { unconfirmedShare } from "@/lib/jobs/journey"
 import type { ShareKind } from "@/lib/jobs/model"
 import { openFromStorage } from "@/lib/jobs/words"
+import type { Journey, Noun } from "@/lib/journey"
+import { themeOf } from "@/lib/journey"
 import { lookIn } from "@/lib/share-files"
+import { JourneyStatus } from "@/components/journey-status"
 
 export function useJobs(): JobsSnapshot {
   const jobs = phoneJobs()
@@ -237,20 +247,61 @@ export const OpenDigest = ({
 }
 
 /**
- * Shares `kind`'s new file and its voice notes, then asks whether they
- * arrived: only then does the share count, and its audio leave the phone.
+ * Whether Jobs is kept on the paired home, as the wing's layout reads it
+ * (`useJobsKeptOnHome`): only then does an exchange file the cards' files.
  */
-export const ShareToDrive = ({
-  kind,
-  label,
+const KeptOnHomeContext = createContext(false)
+
+export const KeptOnHome = KeptOnHomeContext.Provider
+
+/** What the Jobs cards read their state from (`lib/jobs/journey`). */
+export function useJourneyContext(): JourneyContext {
+  const { state } = useJobs()
+  const kept = useContext(KeptOnHomeContext)
+  return { state, kept, outgoing: phoneJobs().keeping.outgoing }
+}
+
+/** A card whose title bar wears where its file is, and what it holds. */
+export const JourneyCard = ({
+  title,
+  journey,
+  noun,
+  heading,
   children,
 }: {
-  kind: ShareKind
-  label: string
+  title: ReactNode
+  journey: Journey | null
+  noun: Noun
+  heading?: "h2" | "h3"
   children?: ReactNode
-}): JSX.Element => {
-  // Read for its re-render: what is new to share changes with the record.
-  useJobs()
+}): JSX.Element => (
+  <section className="flex flex-col rounded-xl border">
+    <JourneyStatus
+      title={title}
+      journey={journey}
+      noun={noun}
+      heading={heading}
+    />
+    {children}
+  </section>
+)
+
+/**
+ * What a card that waits on me, or stopped, asks: share `kind`'s file to
+ * Drive (and its voice notes, and what a run missed), then say whether it
+ * arrived; only then does the share count, and its audio leave the phone.
+ * Nothing for a file on its way or read.
+ */
+export const ShareAction = ({
+  kind,
+  journey,
+  label,
+}: {
+  kind: ShareKind
+  journey: Journey | null
+  label: string
+}): JSX.Element | null => {
+  const { state } = useJobs()
   const jobs = phoneJobs()
   const outgoing = jobs.outgoing(kind)
   const share = useAsyncIntent(() => jobs.share(kind), {
@@ -270,30 +321,47 @@ export const ShareToDrive = ({
       onConfirm: () => jobs.arrived(shared.shareId),
     })
   })
+  const problem =
+    outgoing !== null && "problem" in outgoing ? outgoing.problem : null
+  const theme = journey === null ? null : themeOf(journey.id)
+  const asks = theme === "waiting" || theme === "stopped"
   const file = isFile(outgoing) ? outgoing : null
+  // A share not yet confirmed can be, whatever else the card says.
+  const unconfirmed = asks ? unconfirmedShare(state, kind) : null
+  if (!asks && problem === null) return <>{sheet}</>
   return (
-    <section className="flex flex-col gap-2">
-      <IntentButton
-        state={share.state}
-        onPress={() => share.start(undefined)}
-        disabled={file === null}
-        size="lg"
-        idleLabel={label}
-        workingLabel="Sharing…"
-      />
-      <p className="text-muted-foreground text-xs">
-        {file === null
-          ? "Nothing new to share."
-          : `${file.name}${file.voice.length > 0 ? ` and ${counted(file.voice.length, "voice note")}` : ""}.`}
-      </p>
-      {outgoing !== null && "problem" in outgoing && (
+    <div className="flex flex-col gap-2 px-3.5 pb-3.5">
+      {unconfirmed !== null && (
+        <Button
+          type="button"
+          size="lg"
+          onClick={() => jobs.arrived(unconfirmed.id)}
+        >
+          It arrived
+        </Button>
+      )}
+      {asks && file !== null && (
+        <>
+          <IntentButton
+            state={share.state}
+            onPress={() => share.start(undefined)}
+            size="lg"
+            variant={unconfirmed === null ? "default" : "outline"}
+            idleLabel={unconfirmed === null ? label : "Share again"}
+            workingLabel="Sharing…"
+          />
+          <p className="text-muted-foreground text-xs">
+            {`${file.name}${file.voice.length > 0 ? ` and ${counted(file.voice.length, "voice note")}` : ""}.`}
+          </p>
+        </>
+      )}
+      {problem !== null && (
         <p role="alert" className="text-destructive text-sm">
-          {outgoing.problem}
+          {problem}
         </p>
       )}
-      {children}
       {sheet}
-    </section>
+    </div>
   )
 }
 

@@ -130,6 +130,9 @@ export const PHONE_VIEWPORTS = [
 
 export const INCIDENT_FIXTURE = "leetype-incident"
 
+/** Every journey state's card (J0), walked by `./jobs-status-fit.spec.ts`. */
+export const JOBS_STATUS_FIXTURE = "jobs-status"
+
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",

@@ -58,6 +58,10 @@ const SAID: Readonly<Record<keyof typeof words, ReadonlyArray<string>>> = {
   letGoWhat: [words.letGoWhat],
   letGoConfirm: [words.letGoConfirm],
   letGoKeep: [words.letGoKeep],
+  letGoneAt: [
+    words.letGoneAt(1, "9:14 AM"),
+    words.letGoneAt(2, "Oct 24, 9:14 AM"),
+  ],
   wouldHavePicked: [words.wouldHavePicked],
   saidWouldHavePicked: [words.saidWouldHavePicked],
   whyItFits: [words.whyItFits],
