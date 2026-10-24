@@ -74,10 +74,13 @@ const BIND_OPTIONS = Object.keys(PANELS).map((key) => ({
 
 type SessionViewportProps = {
   session: SessionRecord
+  /** Topik's `opening`. */
+  opening?: "next"
 }
 
 export const SessionViewport = ({
   session,
+  opening,
 }: SessionViewportProps): JSX.Element => {
   const activeLifetimes = useSceneLifetimes()
   /**
@@ -164,6 +167,7 @@ export const SessionViewport = ({
           recordsLens: ON_PHONE,
           lensTakes: PHONE_LENS_TAKES,
           paused,
+          ...(opening ? { opening } : {}),
         },
         leetype: {
           takes: PHONE_SPOKEN_TAKES,
@@ -180,7 +184,7 @@ export const SessionViewport = ({
                 },
         },
       }),
-    [shelves, routineFiles, paused]
+    [shelves, routineFiles, paused, opening]
   )
 
   const renderedLifetimes = useMemo(

@@ -67,6 +67,20 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
     name: /^drama-\d{8}T\d{9}Z\.json$/,
     schema: "some-ui.routine-drama/1",
   },
+  {
+    // What one run of a routine did, named for the routine and when it
+    // started (UTC): what it found, what it added, and what went wrong.
+    folder: "run",
+    name: /^run-[a-z]{1,20}-\d{8}T\d{6}Z\.json$/,
+    schema: "some-ui.routine-run/1",
+  },
+  {
+    // Which of the routine's lessons the phone has opened, names only, as
+    // home filed them.
+    folder: "opened",
+    name: /^opened-\d{8}T\d{9}Z\.json$/,
+    schema: "some-ui.routine-opened/1",
+  },
 ]
 
 /** The Worker secrets. An unset or empty one never authenticates anyone. */
@@ -95,6 +109,8 @@ const ALL: ReadonlyArray<Folder> = [
   "scout",
   "scene",
   "drama",
+  "run",
+  "opened",
 ]
 
 /** MB2. Another role (the phone's, say) is the owner's call, not a code change. */
@@ -103,15 +119,15 @@ const ROLES: ReadonlyArray<Grant> = [
     role: "routine",
     token: (tokens) => tokens.routine,
     get: ALL,
-    put: ["brief", "scene", "drama"],
+    put: ["brief", "scene", "drama", "run"],
     ask: ALL,
     move: [],
   },
   {
     role: "home",
     token: (tokens) => tokens.home,
-    get: ["brief", "scene", "drama"],
-    put: ["decisions", "scout"],
+    get: ["brief", "scene", "drama", "run"],
+    put: ["decisions", "scout", "opened"],
     ask: [],
     move: [],
   },

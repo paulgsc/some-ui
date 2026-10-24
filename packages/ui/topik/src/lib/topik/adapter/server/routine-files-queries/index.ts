@@ -20,6 +20,10 @@ export function useRoutineFiles(
     queryKey: ["routine-files", feed?.key ?? feed !== undefined],
     queryFn: () => (feed ? feed.list() : []),
     enabled: feed !== undefined,
+    // What the phone holds lists at once, dated never, so the look still runs.
+    ...(feed?.initial
+      ? { initialData: feed.initial, initialDataUpdatedAt: 0 }
+      : {}),
     // Asked on the lesson opening and the app coming back to the front, and
     // at no other moment: never on an interval, a reconnect or a retry
     // (LA12). Each is one look, so nothing a look missed waits out a window.

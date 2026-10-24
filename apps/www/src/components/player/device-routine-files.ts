@@ -17,6 +17,8 @@ type RoutineFilesPort = {
   /** Which choice the answers are for. */
   key: string
   list: () => Promise<unknown>
+  /** Present only under a choice whose words say home is told (LA12). */
+  opened?: (keys: ReadonlyArray<string>) => void
 }
 
 export function useHomeRoutineFiles(): RoutineFilesPort | undefined {
@@ -25,8 +27,22 @@ export function useHomeRoutineFiles(): RoutineFilesPort | undefined {
   const { log } = useSyncExternalStore(reads.subscribe, reads.getSnapshot)
   const under = underNow(log, link.kind === "paired" ? link.id : null)
   const key = under === null ? null : `${under.pairing}@${under.since}`
+  // Read under the same log as `key`, so the two never disagree.
+  const tells = key !== null && reads.tells()
   return useMemo(
-    () => (key === null ? undefined : { key, list: () => reads.list() }),
-    [key, reads]
+    () =>
+      key === null
+        ? undefined
+        : {
+            key,
+            list: () => reads.list(),
+            ...(tells
+              ? {
+                  opened: (keys: ReadonlyArray<string>): void =>
+                    reads.tellOpened(keys),
+                }
+              : {}),
+          },
+    [key, tells, reads]
   )
 }

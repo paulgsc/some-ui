@@ -39,6 +39,7 @@ import {
   useIntentEffect,
 } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
+import { startedPatch } from "@/lib/quick-start"
 import {
   checkSessionDuration,
   describeDurationCheck,
@@ -205,7 +206,7 @@ export const SessionComposer = ({
     } else if (activeAction === "play") {
       updateIntent.start({
         id: session.id,
-        patch: { status: "active", startedAt: new Date().toISOString() },
+        patch: startedPatch(),
       })
     }
   })
@@ -406,8 +407,7 @@ export const SessionComposer = ({
           scenes,
           layoutMode: arrangementMode,
           totalDurationMs: totalDurationOfScenes(scenes),
-          status: "active",
-          startedAt: new Date().toISOString(),
+          ...startedPatch(),
         },
       })
       return

@@ -113,6 +113,22 @@ describe("useReadAloud", () => {
     expect(speech.said).toEqual([])
   })
 
+  it("begins on mount once when the learner already picked the set, a double mount included", () => {
+    const { options, progress } = harness({ initialBegin: true })
+    const { result } = renderHook(() => useReadAloud(options), {
+      reactStrictMode: true,
+    })
+    expect(result.current.started).toBe(true)
+    expect(result.current.state.phase.name).toBe("glyphs")
+    const drawn = progress.at(-1)?.queue
+    expect(drawn).toHaveLength(10)
+    // A tap on Start after it began draws nothing new.
+    const told = progress.length
+    act(() => result.current.begin())
+    expect(progress).toHaveLength(told)
+    expect(progress.at(-1)?.queue).toBe(drawn)
+  })
+
   it("draws a set on begin and runs it to its summary", async () => {
     const { options, records, progress } = harness()
     const { result } = renderHook(() => useReadAloud(options))

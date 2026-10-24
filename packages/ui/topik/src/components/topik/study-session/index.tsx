@@ -136,6 +136,8 @@ export type KoreanStudyPageProps = {
    * read-aloud drill holds for it; the rest of the applet is unaffected.
    */
   paused?: boolean
+  /** `HandheldLesson`'s `initialOpen`. */
+  opening?: "next"
 }
 
 /**
@@ -186,10 +188,12 @@ const KoreanStudySession = ({
   appearance = "inherit",
   surface: preference = "auto",
   paused,
+  opening,
 }: {
   appearance?: Appearance
   surface?: SurfacePreference
   paused?: boolean
+  opening?: "next"
 } = {}): JSX.Element => {
   const root = useRef<HTMLDivElement>(null)
   const box = useElementBox(root)
@@ -212,7 +216,11 @@ const KoreanStudySession = ({
        * the row past the height the host granted (docs/ui-fit).
        */}
       {surface === "handheld" ? (
-        <HandheldLesson short={isShort(box)} paused={paused} />
+        <HandheldLesson
+          short={isShort(box)}
+          paused={paused}
+          {...(opening ? { initialOpen: opening } : {})}
+        />
       ) : (
         <DesktopSession />
       )}
@@ -238,6 +246,7 @@ export const KoreanStudyPage = ({
   appearance = "inherit",
   surface = "auto",
   paused,
+  opening,
 }: KoreanStudyPageProps = {}): JSX.Element => {
   /*
    * The one thing that is legitimately ambient. There is one pair of
@@ -299,6 +308,7 @@ export const KoreanStudyPage = ({
         appearance={appearance}
         surface={surface}
         paused={paused}
+        opening={opening}
       />
     </SessionConfigProvider>
   )

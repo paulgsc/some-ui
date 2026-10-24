@@ -29,7 +29,12 @@ import type {
   RoutineFeed,
   RoutineFile,
 } from "@topik/lib/topik/adapter/routine-files"
-import { createOpenedStore } from "@topik/lib/topik/adapter/routine-files"
+import {
+  createHeldAnswers,
+  createOpenedStore,
+  createRoutineFeed,
+} from "@topik/lib/topik/adapter/routine-files"
+import { createRunLog } from "@topik/lib/topik/adapter/routine-runs"
 import type {
   SoundControl,
   ToneContextFactory,
@@ -71,6 +76,7 @@ type RenderOptions = {
   wordSetHint?: string
   routineFeed?: RoutineFeed
   routineOpened?: OpenedStore
+  initialOpen?: "next"
 }
 
 function renderLesson({
@@ -89,6 +95,7 @@ function renderLesson({
   wordSetHint,
   routineFeed,
   routineOpened = createOpenedStore(memoryStorage()),
+  initialOpen,
 }: RenderOptions = {}): { feedWith: (next: RoutineFeed) => void } {
   const tree = (feed = routineFeed): JSX.Element => (
     <QueryClientProvider client={client}>
@@ -113,6 +120,7 @@ function renderLesson({
           servedPoints={servedPoints}
           now={(): Date => new Date("2026-10-14T06:00:00.000Z")}
           routineOpened={routineOpened}
+          {...(initialOpen ? { initialOpen } : {})}
         />
       </SessionConfigProvider>
     </QueryClientProvider>
@@ -304,8 +312,10 @@ describe("HandheldLesson", () => {
       document.querySelector('[data-slot="read-aloud-level"]')?.textContent
     ).toBe("TOPIK 2")
     expect(store.sets()[0]?.openedAt).toBe("2026-10-14T06:00:00.000Z")
+    // Picked, so reading starts with no start screen.
+    expect(screen.getByRole("button", { name: "Pause" })).toBeTruthy()
 
-    click("Back")
+    click("Stop reading aloud")
     const card = await screen.findByRole("button", { name: /Read aloud/ })
     expect(card.textContent).toContain("1 word set")
     expect(screen.queryByRole("button", { name: /^2 words New/ })).toBeNull()
@@ -347,10 +357,14 @@ describe("HandheldLesson", () => {
         routineDeck("plans-2-lens", "Plans, lens"),
       ]),
     ]
+    const told: Array<ReadonlyArray<string>> = []
     renderLesson({
       speaker: voice(() => Promise.resolve({ kind: "heard" })),
       readAloudStore: store,
-      routineFeed: { list: () => Promise.resolve(files) },
+      routineFeed: {
+        list: () => Promise.resolve(files),
+        tellOpened: (keys) => told.push(keys),
+      },
       routineOpened: opened,
     })
     const waiting = await screen.findByRole("region", {
@@ -361,17 +375,24 @@ describe("HandheldLesson", () => {
     fireEvent.click(
       within(waiting).getByRole("button", { name: /TOPIK 2 · 일상 · 약속/ })
     )
+    // One press adds the pair and starts reading its first set.
     expect(
-      await screen.findByText('Added "Plans" and "Plans, lens".')
+      await screen.findByRole("button", { name: "Stop reading aloud" })
     ).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Pause" })).toBeTruthy()
     expect(
       store
         .sets()
         .map((set) => set.deck.id)
         .sort()
     ).toEqual(["plans-2", "plans-2-lens"])
+    click("Stop reading aloud")
+    expect(
+      await screen.findByText('Added "Plans" and "Plans, lens".')
+    ).toBeTruthy()
     // Still listed, after the one not opened yet.
-    const buttons = within(waiting).getAllByRole("button")
+    const after = screen.getByRole("region", { name: "From the routine" })
+    const buttons = within(after).getAllByRole("button")
     expect(
       buttons.map((button) => button.textContent.includes("Opened"))
     ).toEqual([false, true])
@@ -381,6 +402,14 @@ describe("HandheldLesson", () => {
     expect([...opened.opened()].sort()).toEqual([
       "drama/drama-20261013T145200123Z.json",
       "scene/scene-2026-10-13_morning_session-.json",
+    ])
+    // Each open tells home every listed one opened, names only.
+    expect(told).toEqual([
+      ["scene/scene-2026-10-13_morning_session-.json"],
+      [
+        "drama/drama-20261013T145200123Z.json",
+        "scene/scene-2026-10-13_morning_session-.json",
+      ],
     ])
   })
 
@@ -430,10 +459,15 @@ describe("HandheldLesson", () => {
       name: "From the routine",
     })
     fireEvent.click(within(waiting).getByRole("button"))
+    click("Stop reading aloud")
     await screen.findByText('Added "Plans" and "Plans, lens".')
     const addedAt = store.sets().map((set) => set.addedAt)
 
-    fireEvent.click(within(waiting).getByRole("button", { name: /Opened/ }))
+    fireEvent.click(
+      within(
+        screen.getByRole("region", { name: "From the routine" })
+      ).getByRole("button", { name: /Opened/ })
+    )
     expect(
       document.querySelector('[data-slot="read-aloud-level"]')
     ).not.toBeNull()
@@ -527,6 +561,175 @@ describe("HandheldLesson", () => {
     expect(
       screen.queryByRole("region", { name: "From the routine" })
     ).toBeNull()
+  })
+
+  it("says when the routine last ran and what it left, from what the phone kept, away from home too", async () => {
+    const runs = createRunLog(memoryStorage())
+    const held = createHeldAnswers(memoryStorage())
+    const answer = {
+      files: [
+        {
+          folder: "scene",
+          name: "scene-a.json",
+          file: {
+            schema: "some-ui.routine-scene/1",
+            title: "약속",
+            decks: [
+              routineDeck("plans-2", "Plans"),
+              routineDeck("plans-2-lens", "Plans, lens"),
+            ],
+          },
+        },
+      ],
+      runs: [
+        {
+          folder: "run",
+          name: "run-reflections-20261013T160208Z.json",
+          file: {
+            schema: "some-ui.routine-run/1",
+            startedAt: "2026-10-13T16:02:08Z",
+            outcome: "done",
+            found: { reflections: 1, prompts: 0 },
+            added: [{ folder: "scene", name: "scene-a.json", title: "약속" }],
+          },
+        },
+      ],
+      at: "2026-10-14T05:00:00.000Z",
+    }
+    const { feedWith } = renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: createReadAloudStore(memoryStorage()),
+      routineFeed: createRoutineFeed(
+        { key: "home", list: () => Promise.resolve(answer) },
+        runs,
+        held
+      ),
+    })
+    const mark = await screen.findByRole("button", {
+      name: /^The routine: New from the routine: a word set/,
+    })
+    expect(mark.textContent).toContain("1 new")
+    fireEvent.click(mark)
+    expect(await screen.findByText(/Added a word set: 약속\.$/)).toBeTruthy()
+    expect(
+      screen.getByRole("region", { name: "What the mark says" })
+    ).toBeTruthy()
+
+    fireEvent.click(screen.getByRole("button", { name: "Done" }))
+
+    // Away from home: the look answers nothing, and what was kept still shows.
+    feedWith(
+      createRoutineFeed(
+        { key: "home", list: () => Promise.resolve({ files: [] }) },
+        runs,
+        held
+      )
+    )
+    expect(
+      await screen.findByRole("button", { name: /^The routine: New/ })
+    ).toBeTruthy()
+    const kept = await screen.findByRole("region", {
+      name: "From the routine",
+    })
+    expect(within(kept).getByRole("button").textContent).toContain("약속")
+  })
+
+  it("opens on the next lesson when asked: the routine's newest not opened, from what the phone kept, else a set added and not opened", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    const held = createHeldAnswers(memoryStorage())
+    held.keep("home", "2026-10-14T05:00:00.000Z", {
+      files: [
+        {
+          folder: "scene",
+          name: "scene-a.json",
+          file: {
+            schema: "some-ui.routine-scene/1",
+            title: "약속",
+            decks: [
+              routineDeck("plans-2", "Plans"),
+              routineDeck("plans-2-lens", "Plans, lens"),
+            ],
+          },
+        },
+      ],
+    })
+    const opened = createOpenedStore(memoryStorage())
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: store,
+      routineOpened: opened,
+      initialOpen: "next",
+      // Away from home: the look brings nothing, and the kept answer opens.
+      routineFeed: createRoutineFeed(
+        { key: "home", list: () => Promise.resolve({ files: [] }) },
+        createRunLog(memoryStorage()),
+        held
+      ),
+    })
+    expect(await screen.findByRole("button", { name: "Pause" })).toBeTruthy()
+    expect([...opened.opened()]).toEqual(["scene/scene-a.json"])
+    expect(
+      store.sets().find((set) => set.deck.id === "plans-2")?.openedAt
+    ).not.toBeNull()
+    cleanup()
+
+    // Nothing new from the routine: the set added and not opened.
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: store,
+      routineOpened: opened,
+      initialOpen: "next",
+      routineFeed: createRoutineFeed(
+        { key: "home", list: () => Promise.resolve({ files: [] }) },
+        createRunLog(memoryStorage()),
+        held
+      ),
+    })
+    expect(await screen.findByRole("button", { name: "Pause" })).toBeTruthy()
+    expect(store.sets().every((set) => set.openedAt !== null)).toBe(true)
+    cleanup()
+
+    // Nothing on the phone yet: it waits for home's first answer, then opens.
+    let answer: (value: unknown) => void = () => {}
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: createReadAloudStore(memoryStorage()),
+      initialOpen: "next",
+      routineFeed: createRoutineFeed(
+        {
+          key: "home",
+          list: () =>
+            new Promise((resolve) => {
+              answer = resolve
+            }),
+        },
+        createRunLog(memoryStorage()),
+        createHeldAnswers(memoryStorage())
+      ),
+    })
+    await screen.findByText("No dramas this week yet.")
+    expect(screen.queryByRole("button", { name: "Pause" })).toBeNull()
+    act(() =>
+      answer({
+        files: [
+          {
+            folder: "scene",
+            name: "scene-b.json",
+            file: {
+              schema: "some-ui.routine-scene/1",
+              title: "약속",
+              decks: [
+                routineDeck("plans-3", "Plans"),
+                routineDeck("plans-3-lens", "Plans, lens"),
+              ],
+            },
+          },
+        ],
+        runs: [],
+        at: "2026-10-14T05:00:00.000Z",
+      })
+    )
+    expect(await screen.findByRole("button", { name: "Pause" })).toBeTruthy()
   })
 
   it("says what a set is for and where it takes place, and opens a lens set on the lens", async () => {

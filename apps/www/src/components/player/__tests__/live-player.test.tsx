@@ -22,13 +22,19 @@ import type { SessionRecord } from "@/lib/tenant"
 import { LivePlayer } from "@/components/player/live-player"
 
 const lifecycle = { mounts: 0, unmounts: 0 }
+const played = vi.hoisted((): { starts: number; opening: Array<unknown> } => ({
+  starts: 0,
+  opening: [],
+}))
 
 vi.mock("@/lib/orchestrator", async () => {
   const actual =
     await vi.importActual<typeof Orchestrator>("@/lib/orchestrator")
   const store = {
     configure: (): Promise<void> => Promise.resolve(),
-    start: (): void => {},
+    start: (): void => {
+      played.starts += 1
+    },
   }
   return {
     ...actual,
@@ -45,7 +51,8 @@ vi.mock("@/lib/orchestrator", async () => {
 })
 
 vi.mock("@/components/player/session-viewport", () => ({
-  SessionViewport: (): JSX.Element => {
+  SessionViewport: ({ opening }: { opening?: string }): JSX.Element => {
+    played.opening.push(opening)
     const [step, setStep] = useState(1)
     useEffect(() => {
       lifecycle.mounts += 1
@@ -98,6 +105,8 @@ function fixtureSession(): SessionRecord {
 beforeEach(() => {
   lifecycle.mounts = 0
   lifecycle.unmounts = 0
+  played.starts = 0
+  played.opening = []
 })
 
 afterEach(() => {
@@ -138,5 +147,14 @@ describe("LivePlayer across the breakpoint", () => {
     expect(screen.queryByTestId("session-chrome")).toBeNull()
     expect(screen.queryByTestId("now-next")).not.toBeNull()
     expect(screen.queryByTestId("transport")).not.toBeNull()
+  })
+})
+
+describe("LivePlayer asked for the next lesson", () => {
+  it("plays an active session on arrival, and opens the activity on the lesson", async () => {
+    setViewport(true)
+    render(<LivePlayer session={fixtureSession()} initialNext />)
+    await vi.waitFor(() => expect(played.starts).toBe(1))
+    expect(played.opening.at(-1)).toBe("next")
   })
 })

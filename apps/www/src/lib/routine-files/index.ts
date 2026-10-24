@@ -6,7 +6,7 @@
  * itself (`adapter/routine-files`).
  *
  * ```text
- * GET /routine/files → { files: [{ folder, name, file }] }, newest first
+ * GET /routine/files → { files: [{ folder, name, file }], runs: [...], at }, newest first
  * ```
  *
  * Read only, and only with a passkey session (`401` without). A build with

@@ -21,6 +21,7 @@ import {
   shownNow,
 } from "@/lib/home-link/routine-model"
 import type { HomeLink } from "@/lib/home-link/runtime"
+import { ROUTINE_TELLS_OPENED } from "@/lib/home-link/words"
 
 const FILES = { files: [{ folder: "drama", name: "d.json", file: {} }] }
 const NO_FILES = { files: [] }
@@ -29,6 +30,8 @@ const SAID = "Show them? It sends nothing of yours."
 type Home = {
   /** Every request sent, as `METHOD path`. */
   sent: Array<string>
+  /** Each request's body, in the same order. */
+  bodies: Array<string | undefined>
   /** What home answers next; a function answers each in turn. */
   answer: () => Promise<HomeAnswer>
   busy: boolean
@@ -43,6 +46,7 @@ const ok = (body: unknown): Promise<HomeAnswer> =>
 function homeOf(over: Partial<Home> = {}): Home {
   return {
     sent: [],
+    bodies: [],
     answer: () => ok(FILES),
     busy: false,
     pairing: "pairing-1",
@@ -56,8 +60,9 @@ function homeOf(over: Partial<Home> = {}): Home {
 function keepOf(home: Home): HomeLink["keep"] {
   return async (run) => {
     if (home.busy || home.pairing === null) return null
-    const send: HomeCall = (method, path) => {
+    const send: HomeCall = (method, path, body) => {
       home.sent.push(`${method} ${path}`)
+      home.bodies.push(body)
       return home.answer()
     }
     try {
@@ -331,6 +336,94 @@ describe("Korean's look at the routine's files", () => {
     expect(storage.getItem(READS_KEY)).toBe("not a log")
     await expect(reads.list()).resolves.toEqual(NO_FILES)
     expect(home.sent).toEqual([])
+  })
+
+  it("tells home which lessons were opened only under a choice whose words say so, in front, one at a time", async () => {
+    const home = homeOf()
+    const reads = readsOf(home)
+    reads.choose("shown", SAID)
+    expect(reads.tells()).toBe(false)
+    reads.tellOpened(["scene/a.json"])
+    expect(home.sent).toEqual([])
+
+    // Chosen again, with the words that say home is told.
+    reads.choose("hidden", "Stop?")
+    reads.choose("shown", `Show them? ${ROUTINE_TELLS_OPENED}`)
+    expect(reads.tells()).toBe(true)
+    home.visible = false
+    reads.tellOpened(["scene/a.json"])
+    expect(home.sent).toEqual([])
+    home.visible = true
+    reads.tellOpened([])
+    reads.tellOpened(["scene/a.json"])
+    reads.tellOpened(["scene/a.json", "drama/b.json"])
+    reads.tellOpened(["scene/a.json", "drama/b.json", "drama/c.json"])
+    // One at a time; the newest asked meanwhile is told once, after it.
+    expect(home.sent).toEqual(["PUT /routine/opened"])
+    await vi.waitFor(() => expect(home.sent).toHaveLength(2))
+    expect(home.bodies.at(-1)).toBe(
+      JSON.stringify({
+        opened: ["scene/a.json", "drama/b.json", "drama/c.json"],
+      })
+    )
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(home.sent).toHaveLength(2)
+
+    // Home's silence is never a rejection.
+    home.answer = (): Promise<HomeAnswer> => Promise.reject(noAnswer())
+    reads.tellOpened(["scene/a.json"])
+    expect(home.sent).toHaveLength(3)
+    relink(home, null)
+    expect(reads.tells()).toBe(false)
+  })
+
+  it("tells what was opened once a look on its way settles, and what the link turned away once the next look does", async () => {
+    let answer: (value: HomeAnswer) => void = () => {}
+    const home = homeOf({
+      answer: () =>
+        new Promise((resolve) => {
+          answer = resolve
+        }),
+    })
+    const reads = readsOf(home)
+    reads.choose("shown", `Show them? ${ROUTINE_TELLS_OPENED}`)
+    const looking = reads.list()
+    reads.tellOpened(["scene/a.json"])
+    expect(home.sent).toEqual(["GET /routine/files"])
+    answer({ status: 200, body: JSON.stringify(FILES) })
+    await looking
+    await vi.waitFor(() =>
+      expect(home.sent).toEqual(["GET /routine/files", "PUT /routine/opened"])
+    )
+
+    // Turned away by another send: held, and told when the next look settles.
+    home.busy = true
+    answer({ status: 200, body: "{}" })
+    reads.tellOpened(["scene/a.json", "drama/b.json"])
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(home.sent).toHaveLength(2)
+    home.busy = false
+    home.answer = (): Promise<HomeAnswer> => ok(FILES)
+    await reads.list()
+    await vi.waitFor(() => expect(home.sent).toHaveLength(4))
+    expect(home.sent.at(-1)).toBe("PUT /routine/opened")
+  })
+
+  it("never tells one home of what was opened under another", async () => {
+    const home = homeOf({ busy: true })
+    const reads = readsOf(home)
+    reads.choose("shown", `Show them? ${ROUTINE_TELLS_OPENED}`)
+    reads.tellOpened(["scene/a.json"])
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(home.sent).toEqual([])
+
+    // Turned away, then paired with another home and shown there.
+    home.busy = false
+    relink(home, "pairing-2")
+    reads.choose("shown", `Show them? ${ROUTINE_TELLS_OPENED}`)
+    await reads.list()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(home.sent).toEqual(["GET /routine/files"])
   })
 
   it("keeps each choice with the words pressed, under its pairing", () => {

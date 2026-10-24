@@ -21,6 +21,14 @@
  * - **An unreadable choice log is never written over,** as the consent
  *   log's is not (`./consent-runtime`): every choice is then refused, and
  *   nothing is shown until it can be read.
+ * - **Which lessons were opened is told only as the choice's words say.**
+ *   `tellOpened` sends one `PUT /routine/opened` of names, when Korean
+ *   opens one, only under a choice whose words pressed carry
+ *   `ROUTINE_TELLS_OPENED`, with the app in front, one at a time, never retried and never
+ *   rejected. One asked for while a look or another telling is on its way,
+ *   or turned away by another send, waits: the newest is told once that
+ *   look or telling settles, while its choice is still the one shown, and
+ *   the next open tells them all again.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { localStorageOrNull } from "@some-ui/core-utils"
@@ -36,12 +44,14 @@ import {
   INITIAL_READ,
   mayRead,
   parseReadLog,
+  saidUnder,
   sameUnder,
   stepRead,
   underNow,
 } from "./routine-model"
 import type { HomeLink } from "./runtime"
 import { unanswered } from "./runtime"
+import { ROUTINE_TELLS_OPENED } from "./words"
 
 export const READS_KEY = "some-ui.home.reads.v1"
 
@@ -75,6 +85,14 @@ export type RoutineReads = {
    * with `said` the words pressed. False when the phone would not keep it.
    */
   choose: (kind: "shown" | "hidden", said: string) => boolean
+  /** Whether the choice shown now lets `tellOpened` tell home anything. */
+  tells: () => boolean
+  /**
+   * Tells home which of the routine's lessons this phone opened, by
+   * `<folder>/<name>`, when `tells` holds and the app is in front; never
+   * rejects.
+   */
+  tellOpened: (keys: ReadonlyArray<string>) => void
 }
 
 type Ended = Extract<ReadEvent, { type: "ended" }>["kind"]
@@ -189,6 +207,69 @@ export function createRoutineReads(ports: RoutinePorts): RoutineReads {
   // another choice does not share it.
   let inFlight: { under: Under; reading: Promise<unknown> } | null = null
 
+  const tells = (): boolean => {
+    const under = underNowHere()
+    return (
+      under !== null &&
+      (saidUnder(log, under)?.includes(ROUTINE_TELLS_OPENED) ?? false)
+    )
+  }
+  let telling = false
+  // The newest names asked for while a look or a telling was on its way, or
+  // that the link turned away for another send, with the choice they were
+  // asked under: told once that look or telling settles, and only while that
+  // choice is the one shown, so no home is told of another's.
+  let waiting: { under: Under; keys: ReadonlyArray<string> } | null = null
+  const startTelling = (under: Under, keys: ReadonlyArray<string>): void => {
+    telling = true
+    void tell(under, keys)
+  }
+  // A new pairing or choice drops what waits under the old one.
+  ports.onLink(() => {
+    if (waiting !== null && !sameUnder(waiting.under, underNowHere())) {
+      waiting = null
+    }
+  })
+  const flush = (): void => {
+    if (waiting === null || telling || inFlight !== null) return
+    const { under, keys } = waiting
+    waiting = null
+    if (ports.visible() && tells() && sameUnder(under, underNowHere())) {
+      startTelling(under, keys)
+    }
+  }
+  const tell = async (
+    under: Under,
+    keys: ReadonlyArray<string>
+  ): Promise<void> => {
+    let turnedAway = false
+    try {
+      const outcome = await ports.keep((send) =>
+        send("PUT", "/routine/opened", JSON.stringify({ opened: keys }))
+      )
+      if (outcome === null) {
+        turnedAway = true
+        waiting ??= { under, keys }
+      }
+    } catch (error) {
+      // Home's silence is said nowhere: the next open tells it again. A
+      // fault on this phone goes to the native log, once.
+      if (!unanswered(error) && !(error instanceof ForeignCallError)) {
+        reportFailure({
+          port: "home server (routine)",
+          error: {
+            ...toIntentError(error),
+            summary: "Something on this phone went wrong.",
+          },
+        })
+      }
+    } finally {
+      telling = false
+      // Turned away: told when the next look settles, not straight back.
+      if (!turnedAway) flush()
+    }
+  }
+
   return {
     getSnapshot: () => snapshot,
     subscribe(listener): () => void {
@@ -214,6 +295,7 @@ export function createRoutineReads(ports: RoutinePorts): RoutineReads {
       inFlight = looking
       const done = (): void => {
         if (inFlight === looking) inFlight = null
+        flush()
       }
       reading.then(done, done)
       return reading
@@ -232,6 +314,18 @@ export function createRoutineReads(ports: RoutinePorts): RoutineReads {
       changed({ log, read: snapshot.read })
       settle()
       return true
+    },
+    tells,
+    tellOpened(keys): void {
+      const under = underNowHere()
+      if (keys.length === 0 || under === null || !ports.visible() || !tells()) {
+        return
+      }
+      if (telling || inFlight !== null) {
+        waiting = { under, keys }
+        return
+      }
+      startTelling(under, keys)
     },
   }
 }

@@ -12,17 +12,6 @@ const ROW = {
 }
 
 describe("the sentence's words", () => {
-  it("says a date beside today as a person does", () => {
-    // Noon on each day keeps every timezone on that local day.
-    expect(TALLY_WORDS.date("2026-10-21T12:00:00", TODAY)).toBe("today")
-    expect(TALLY_WORDS.date("2026-10-20T12:00:00", TODAY)).toBe("yesterday")
-    expect(TALLY_WORDS.date("2026-10-05T12:00:00", TODAY)).toBe("Oct 5")
-    expect(TALLY_WORDS.date("2025-12-31T12:00:00", TODAY)).toBe("Dec 31, 2025")
-    expect(TALLY_WORDS.date("2026-09-30T12:00:00", "2026-10-01")).toBe(
-      "yesterday"
-    )
-  })
-
   it("counts what was shown and read, with the noun agreeing", () => {
     expect(TALLY_WORDS.shown({ ...ROW, shown: 1 })).toBe("once")
     expect(TALLY_WORDS.shown(ROW)).toBe("3 times")

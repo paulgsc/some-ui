@@ -27,6 +27,8 @@ import { WindDownNudge } from "./wind-down-nudge"
 
 type LivePlayerProps = {
   session: SessionRecord
+  /** Made by "Next lesson" (`components/practice/next-lesson`). */
+  initialNext?: boolean
 }
 
 /**
@@ -34,7 +36,10 @@ type LivePlayerProps = {
  * Render with `key={session.id}` so each session gets a fresh mount and
  * "configured yet" guard.
  */
-export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
+export const LivePlayer = ({
+  session,
+  initialNext = false,
+}: LivePlayerProps): JSX.Element => {
   const configure = useOrchestratorStore((s) => s.configure)
   const start = useOrchestratorStore((s) => s.start)
   const { state: stop, stops } = useSessionStop(session.id)
@@ -147,7 +152,10 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
             onGotToGo={stops.tap}
           />
         )}
-        <SessionViewport session={session} />
+        <SessionViewport
+          session={session}
+          {...(initialNext ? { opening: "next" as const } : {})}
+        />
         {!isMobile && <WindDownNudge className="self-center" />}
         {!isMobile && <NowNextStrip scenes={session.scenes} />}
         {!isMobile && <TransportControls onPlay={() => void start()} />}
