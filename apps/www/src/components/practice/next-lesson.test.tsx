@@ -48,6 +48,18 @@ it("makes one Korean session, starts it, and opens it on the lesson", async () =
   expect(navigateSpy).toHaveBeenCalledWith({
     to: "/sessions/$sessionId",
     params: { sessionId: expect.any(String) },
-    search: { next: true },
+    search: { open: "next" },
+  })
+})
+
+it("opens the session on the portion menu when asked to", async () => {
+  render(withQueryClient(<NextLesson open="menu" />))
+  fireEvent.click(screen.getByRole("button", { name: "Pick a portion" }))
+
+  await waitFor(() => expect(navigateSpy).toHaveBeenCalledTimes(1))
+  expect(navigateSpy).toHaveBeenCalledWith({
+    to: "/sessions/$sessionId",
+    params: { sessionId: expect.any(String) },
+    search: { open: "menu" },
   })
 })

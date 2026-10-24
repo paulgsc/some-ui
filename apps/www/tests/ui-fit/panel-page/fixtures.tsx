@@ -18,7 +18,7 @@ import type { ComponentProps, JSX } from "react"
 import { HANDHELD_MAX_HEIGHT } from "@some-ui/react-hooks"
 import { SpeechProvider } from "@some-ui/speech"
 import { webSpeech } from "@some-ui/speech/web-speech"
-import type { ReadAloudDeck } from "@some-ui/topik"
+import type { Dish, ReadAloudDeck } from "@some-ui/topik"
 // This page is its own build (`build:fit`) and in no shipped bundle, so the
 // eager edge the rule guards against costs nothing here, and the quiz stages
 // are reachable through no lazy entry.
@@ -28,6 +28,8 @@ import {
   intakeTree,
   lastDramaOf,
   PoolNote,
+  PortionAsk,
+  PortionServed,
   QuizPanel,
   RepCard,
   SetCard,
@@ -299,6 +301,21 @@ const FIT_SENTENCE: ComponentProps<typeof RepCard>["entry"]["item"] = {
   wordIds: [...new Set(FIT_LINE.words.map((word) => word.wordId))],
 }
 
+/** A snack of four of the deck's longest line, due again. */
+const FIT_SNACK: Dish = {
+  portion: "snack",
+  key: "snack:fit:0",
+  setId: READ_ALOUD_DECK.id,
+  setTitle: READ_ALOUD_DECK.title,
+  at: 0,
+  lines: [0, 1, 2, 3].map((n) => ({
+    id: `${FIT_LINE.id}-${n}`,
+    korean: FIT_LINE.korean,
+    english: FIT_LINE.english,
+  })),
+  fresh: { kind: "due", lastShown: "2026-10-12T12:00:00.000Z" },
+}
+
 // Unbound, it renders nothing, and the sweep fails on an empty panel.
 const Hangul = PANELS.hangul?.Component ?? ((): null => null)
 const Leetype = PANELS.leetype.Component
@@ -437,6 +454,27 @@ export const PANEL_FIXTURES = {
       short={short}
       onStart={noop}
       onStop={noop}
+    />
+  )),
+
+  // "What are you hungry for?": the question screen, and `FIT_SNACK`.
+  "topik-portion-ask": handheldStage((short) => (
+    <PortionAsk
+      order={{ portion: "meal", freshness: "seen" }}
+      onOrder={noop}
+      onServe={noop}
+      short={short}
+    />
+  )),
+  "topik-portion-served": handheldStage((short) => (
+    <PortionServed
+      order={{ portion: "snack", freshness: "either" }}
+      dish={FIT_SNACK}
+      now={new Date("2026-10-21T12:00:00.000Z")}
+      onStart={noop}
+      onAnother={noop}
+      onChange={noop}
+      short={short}
     />
   )),
 

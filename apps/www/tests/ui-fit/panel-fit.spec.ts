@@ -115,6 +115,10 @@ const PANEL_STAGES: ReadonlyArray<PanelId> = [
   "topik-read-aloud-ready",
   "topik-read-aloud-summary-full",
   "topik-read-aloud-sitting-over",
+  // "What are you hungry for?": its question screen, and a snack served at
+  // its longest.
+  "topik-portion-ask",
+  "topik-portion-served",
 ]
 
 const PLANTED_OVERFLOW: PanelId = "planted-overflow"

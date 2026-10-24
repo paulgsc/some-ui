@@ -18,6 +18,7 @@ import { useSpeaker } from "@some-ui/speech"
 import type { Appearance } from "@some-ui/styles/theme"
 import { appearanceClassName } from "@some-ui/styles/theme"
 import { ChatPanel } from "@topik/components/topik/chat-panel"
+import type { LessonOpening } from "@topik/components/topik/handheld/handheld-lesson"
 import { HandheldLesson } from "@topik/components/topik/handheld/handheld-lesson"
 import { QuizPanel } from "@topik/components/topik/quiz-panel"
 import { SessionHeader } from "@topik/components/topik/session-header"
@@ -137,7 +138,7 @@ export type KoreanStudyPageProps = {
    */
   paused?: boolean
   /** `HandheldLesson`'s `initialOpen`. */
-  opening?: "next"
+  opening?: LessonOpening
 }
 
 /**
@@ -193,7 +194,7 @@ const KoreanStudySession = ({
   appearance?: Appearance
   surface?: SurfacePreference
   paused?: boolean
-  opening?: "next"
+  opening?: LessonOpening
 } = {}): JSX.Element => {
   const root = useRef<HTMLDivElement>(null)
   const box = useElementBox(root)

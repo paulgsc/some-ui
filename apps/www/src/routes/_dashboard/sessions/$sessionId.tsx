@@ -14,6 +14,7 @@ import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import { usePresenceLease } from "@/lib/study-nudge/use-presence-lease"
 import { sessionQuery, useSession } from "@/lib/tenant"
 import { LivePlayer } from "@/components/player/live-player"
+import type { LessonOpening } from "@/components/player/session-viewport"
 
 const PlayerSkeleton = (): JSX.Element => (
   <Card className="max-w-3xl">
@@ -74,10 +75,10 @@ const PlayerFailure = ({
  * without a matched router context. */
 export const SessionPlayer = ({
   sessionId,
-  next = false,
+  opening,
 }: {
   sessionId: string
-  next?: boolean
+  opening?: LessonOpening
 }): JSX.Element => {
   // The same string as this route's URL and the push deep link
   // (`sessions/${id}`), which the server compares a lease against.
@@ -127,7 +128,11 @@ export const SessionPlayer = ({
         <div className="flex h-full min-h-0 w-full flex-col gap-3">
           {refreshBanner}
           <div className="min-h-0 flex-1">
-            <LivePlayer key={session.id} session={session} initialNext={next} />
+            <LivePlayer
+              key={session.id}
+              session={session}
+              {...(opening ? { initialOpening: opening } : {})}
+            />
           </div>
         </div>
       )
@@ -137,15 +142,24 @@ export const SessionPlayer = ({
 
 const SessionPlayerRoute = (): JSX.Element => {
   const { sessionId } = Route.useParams()
-  const { next } = Route.useSearch()
-  return <SessionPlayer sessionId={String(sessionId)} next={next === true} />
+  const { open } = Route.useSearch()
+  return (
+    <SessionPlayer
+      sessionId={String(sessionId)}
+      {...(open ? { opening: open } : {})}
+    />
+  )
 }
 
 export const Route = createFileRoute("/_dashboard/sessions/$sessionId")({
-  // `?next=true`: Practice Home's "Next lesson" made this session, so it
-  // plays at once and opens on the lesson.
-  validateSearch: (search: Record<string, unknown>): { next?: true } =>
-    search.next === true ? { next: true } : {},
+  // `?open=next` or `?open=menu`: Practice Home's "Next lesson" or "Pick a
+  // portion" made this session, so it plays at once and opens there.
+  validateSearch: (
+    search: Record<string, unknown>
+  ): { open?: LessonOpening } =>
+    search.open === "next" || search.open === "menu"
+      ? { open: search.open }
+      : {},
   // Starts the session fetch when navigation starts (on hover, via
   // `defaultPreload: "intent"`) rather than after mount. Not awaited, and
   // `prefetchQuery` not `ensureQueryData`: a pure head start that never

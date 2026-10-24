@@ -101,6 +101,13 @@ export { lastDramaOf } from "./lib/topik/core/last-drama"
 export { PoolNote } from "./components/topik/read-aloud/pool-note"
 export { RepCard } from "./components/topik/read-aloud/rep-card"
 export { SetCard } from "./components/topik/read-aloud/set-card"
+
+/** "What are you hungry for?"'s two screens; the panel-fit page mounts them. */
+export {
+  PortionAsk,
+  PortionServed,
+} from "./components/topik/handheld/portion-menu"
+export type { Dish } from "./lib/topik/core/portion"
 export type { FileShare } from "./lib/topik/adapter/next-scene-share"
 export type {
   SceneNote,
