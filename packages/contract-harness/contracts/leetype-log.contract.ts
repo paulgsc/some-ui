@@ -8,8 +8,7 @@
  * Hand-written: `SessionEventsSchema` is the outline of what the phone's
  * read-back takes, checked by hand against the server's
  * `leetype_log_repo::SessionEvents` (the session, and every event it holds
- * of it, each with its id). The phone compares each event with the one it
- * sent, field by field, before it counts the session as held.
+ * of it, each with its id).
  *
  * Every route is per person, so every contract is a `session` contract. The
  * log is append-only, so no probe may keep anything: the write is pinned by

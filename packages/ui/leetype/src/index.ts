@@ -17,17 +17,16 @@ export type { Round } from "./types/authored-round"
 export { AUTHORED_ROUNDS } from "./lib/leetype/authored-rounds"
 // Sessions of incident rounds (canon v1.2): the append-only log the phone's
 // session surface writes, the reflection export reads (#1917–#1923), and
-// "Send to home" sends, in its home form (#1934).
+// "Send to home" sends, in its home form.
 export {
   createSessionLogStore,
   finishedSessions,
-  homeFormOf,
   ledgerOf,
   summariesOf,
 } from "./lib/leetype/session-log"
 export type {
   HomeEvent,
-  LoggedSession,
+  HomeSession,
   SessionEvent,
   SessionLedger,
   SessionLog,

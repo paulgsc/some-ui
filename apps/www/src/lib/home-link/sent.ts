@@ -10,6 +10,9 @@
  * the record: lost, it only means sending again, which home answers as
  * unchanged.
  */
+import { fnv1a } from "@some-ui/core-utils"
+import type { HomeSession } from "@some-ui/leetype"
+
 import { isRecord, sha256Hex } from "@/lib/device-backend/common"
 import type { Kept } from "@/lib/device-backend/handlers/shelf"
 import type { SessionRecord } from "@/lib/tenant/types"
@@ -21,7 +24,6 @@ export type Sent = {
   readonly sessions: Readonly<Record<string, string>>
   readonly shelf: Readonly<Record<string, string>>
   readonly refused: Readonly<Record<string, string>>
-  /** LeetType sessions by id, each with its digest as home read it back. */
   readonly leetype: Readonly<Record<string, string>>
 }
 
@@ -118,6 +120,22 @@ export function sessionsHeld(
   sessions: ReadonlyArray<SessionRecord>
 ): Record<string, string> {
   return Object.fromEntries(sessions.map((s) => [s.id, s.updatedAt]))
+}
+
+/** A LeetType-held entry for `session`: its events, by id. */
+export function digestOf(session: HomeSession): string {
+  const ids = session.events.map((event) => event.id)
+  return `${String(ids.length)}:${String(fnv1a(ids.join("|")))}`
+}
+
+/** The finished LeetType sessions home does not hold as they are now. */
+export function logToSend(
+  sessions: ReadonlyArray<HomeSession>,
+  sent: Sent
+): Array<HomeSession> {
+  return sessions.filter(
+    (session) => sent.leetype[session.session] !== digestOf(session)
+  )
 }
 
 export const shelfKeyOf = (item: Kept): string => `${item.activity}/${item.key}`

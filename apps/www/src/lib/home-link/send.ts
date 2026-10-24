@@ -8,6 +8,7 @@
  * three, and one line says how it went.
  */
 import { counted, localStorageOrNull } from "@some-ui/core-utils"
+import type { HomeSession } from "@some-ui/leetype"
 
 import { deviceBackend } from "@/lib/device-backend/boot"
 import { mayLeavePhone } from "@/lib/device-backend/handlers/sessions"
@@ -22,11 +23,12 @@ import type { SessionRecord } from "@/lib/tenant/types"
 
 import { hostOf } from "./address"
 import { homeLink } from "./index"
-import type { HomeSession, LogReport } from "./leetype-log"
-import { emptyLogReport, logToSend, sendLog } from "./leetype-log"
+import type { LogReport } from "./leetype-log"
+import { emptyLogReport, sendLog } from "./leetype-log"
 import { remember, remembered } from "./remembered"
 import { noticingBusy } from "./runtime"
 import {
+  logToSend,
   readSent,
   rememberSent,
   sessionsHeld,
@@ -55,28 +57,20 @@ export async function readPhone(): Promise<{
 }
 
 /**
- * This phone's finished LeetType sessions, in their home form; null when
- * its session log can't be read. Reads only this phone.
+ * What a send under `pairing` carries of this phone's finished LeetType
+ * sessions, in their home form: what home doesn't hold as it is now; none
+ * when the session log can't be read. Reads only this phone.
  */
-async function readLog(): Promise<Array<HomeSession> | null> {
-  const { createSessionLogStore, finishedSessions, homeFormOf } = await import(
+async function logGoing(pairing: string): Promise<Array<HomeSession>> {
+  const { createSessionLogStore, finishedSessions } = await import(
     "@some-ui/leetype"
   )
   const store = createSessionLogStore()
-  if (store.readOnly) return null
-  return finishedSessions(store.getSnapshot().log).map(
-    ({ session, events }) => ({ session, events: events.map(homeFormOf) })
+  if (store.readOnly) return []
+  return logToSend(
+    finishedSessions(store.getSnapshot().log),
+    readSent(localStorageOrNull(), pairing)
   )
-}
-
-/** Of `log`, what a send under `pairing` carries: what home doesn't hold as it is now. */
-function logGoing(
-  log: ReadonlyArray<HomeSession> | null,
-  pairing: string
-): Array<HomeSession> {
-  return log === null
-    ? []
-    : logToSend(log, readSent(localStorageOrNull(), pairing))
 }
 
 /**
@@ -109,7 +103,7 @@ function keptToSend(
 export async function onPhone(pairing: string): Promise<ToSend> {
   const { local, kept } = await readPhone()
   const going = (await keptToSend(kept, pairing)).changed
-  const log = logGoing(await readLog(), pairing)
+  const log = await logGoing(pairing)
   const parts = [
     ...(local.length > 0 ? [sessions(local.length)] : []),
     ...(going.length > 0 ? [items(going.length)] : []),
@@ -243,7 +237,7 @@ export async function sendHome(
   let going: Array<HomeSession>
   try {
     ;({ local, kept } = await readPhone())
-    going = logGoing(await readLog(), id)
+    going = await logGoing(id)
   } catch (error) {
     return { ok: false, line: `Couldn't read this phone: ${String(error)}` }
   }

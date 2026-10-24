@@ -373,12 +373,13 @@ declared (checked by reading every call site and by the tests named).
   home last answered for it under this pairing holds its bytes as they are
   now), so the send carries what home already holds; one that passes
   `sendLog` sessions that did not come through `logGoing` (in
-  `lib/home-link/send`), or events not through `homeFormOf`, or that lets
-  `homeFormOf` keep a spoken answer's `ticks`; one that deletes, bypasses
+  `lib/home-link/send`), or lets `finishedSessions` hand on an event
+  that did not pass through `homeFormOf`, or lets `homeFormOf` keep a
+  spoken answer's `ticks`; one that deletes, bypasses
   or weakens `finishedSessions` (in
   `packages/ui/leetype/src/lib/leetype/session-log/home.ts`: a session goes
   only once it ended or another started after it) or `logToSend` and
-  `digestOf` (in `lib/home-link/leetype-log`: a session goes unless what
+  `digestOf` (in `lib/home-link/sent`: a session goes unless what
   home last read back of it under this pairing holds every event it has
   now); one that makes `sendLog`
   remember a session as held without reading it back, or compare less than

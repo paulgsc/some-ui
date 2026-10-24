@@ -6,6 +6,7 @@
 import { assertNever } from "@some-ui/core-utils"
 
 import type { SessionEvent, SessionLog } from "./model"
+import { byTime } from "./model"
 
 type Spoken = Extract<SessionEvent, { type: "spoken" }>
 type HomeAnswer =
@@ -47,21 +48,20 @@ export function homeFormOf(event: SessionEvent): HomeEvent {
   }
 }
 
-/** One session's events, in the order they happened. */
-export type LoggedSession = {
+/** One finished session, its events in the order they happened, in their home form. */
+export type HomeSession = {
   readonly session: string
-  readonly events: SessionLog
+  readonly events: ReadonlyArray<HomeEvent>
 }
 
 /**
- * The sessions in `log` that are done with, in the order they started: one
- * that ended, or one another session started after its last event. The
- * session still being played, or one the app closed mid-round with nothing
- * started since, is left out until either happens.
+ * The sessions in `log` that are done with, in the order they started, each
+ * in its home form: one that ended, or one another session started after
+ * its last event. The session still being played, or one the app closed
+ * mid-round with nothing started since, is left out until either happens.
  */
-export function finishedSessions(log: SessionLog): Array<LoggedSession> {
-  // By time, not position: the store lays the log out session by session.
-  const ordered = [...log].sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
+export function finishedSessions(log: SessionLog): Array<HomeSession> {
+  const ordered = byTime(log)
   const sessions = new Map<string, Array<SessionEvent>>()
   for (const event of ordered) {
     const events = sessions.get(event.session)
@@ -77,5 +77,5 @@ export function finishedSessions(log: SessionLog): Array<LoggedSession> {
         (start) => start.session !== session && Date.parse(start.at) > last
       )
     })
-    .map(([session, events]) => ({ session, events }))
+    .map(([session, events]) => ({ session, events: events.map(homeFormOf) }))
 }

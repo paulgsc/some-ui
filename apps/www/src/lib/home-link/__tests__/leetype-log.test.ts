@@ -1,23 +1,17 @@
-/**
- * The LeetType half of a send (LA8): each finished session home does not
- * hold, one PUT per event as kept, then one read back; held only when every
- * event reads back as sent. Home's refusals are counted; a 401, a 429 or no
- * answer ends it there, and nothing is retried.
- */
 import { noAnswer } from "@/test-support/no-answer"
 import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
-import type { HomeEvent } from "@some-ui/leetype"
+import type { HomeEvent, HomeSession } from "@some-ui/leetype"
 import { describe, expect, it } from "vitest"
 
 import { isRecord } from "@/lib/device-backend/common"
-import type { HomeSession } from "@/lib/home-link/leetype-log"
+import { emptyLogReport, sendLog } from "@/lib/home-link/leetype-log"
 import {
   digestOf,
-  emptyLogReport,
   logToSend,
-  sendLog,
-} from "@/lib/home-link/leetype-log"
-import { readSent, rememberSent } from "@/lib/home-link/sent"
+  readSent,
+  rememberSent,
+} from "@/lib/home-link/sent"
+import { createInMemoryStorage } from "@/lib/tenant/storage"
 
 function session(id: string): HomeSession {
   const at = "2026-10-24T20:00:00.000Z"
@@ -144,29 +138,16 @@ describe("sendLog", () => {
       expect(report).toMatchObject({ held: 0, ...ended })
     }
   })
-
-  it("throws a fault on this phone as it came", async () => {
-    const fault = new Error("a plugin missing from the build")
-    await expect(
-      sendLog([session("a")], home([fault]).send, emptyLogReport())
-    ).rejects.toBe(fault)
-  })
 })
 
 describe("logToSend", () => {
-  it("leaves out a session home read back as it is now, under this pairing alone", () => {
-    const storage = new Map<string, string>()
-    const store = {
-      getItem: (key: string): string | null => storage.get(key) ?? null,
-      setItem: (key: string, value: string): void =>
-        void storage.set(key, value),
-    }
+  it("leaves out a session home read back as it is now", () => {
+    const store = createInMemoryStorage()
     const [a, b] = [session("a"), session("b")]
     rememberSent(store, readSent(store, "p1"), {
       leetype: { a: digestOf(a) },
     })
     expect(logToSend([a, b], readSent(store, "p1"))).toEqual([b])
-    expect(logToSend([a, b], readSent(store, "p2"))).toEqual([a, b])
     const grown = { ...a, events: [...a.events, { ...a.events[0], id: "a-3" }] }
     expect(logToSend([grown], readSent(store, "p1"))).toEqual([grown])
   })

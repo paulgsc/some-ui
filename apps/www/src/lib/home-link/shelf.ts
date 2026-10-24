@@ -11,7 +11,7 @@
  * there. Stop, or the app
  * going to the background, ends it before the next item.
  */
-import type { HomeCall } from "@some-ui/core-utils"
+import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
 
 import { stringFieldOf } from "@/lib/device-backend/common"
 import type { Kept } from "@/lib/device-backend/handlers/shelf"
@@ -29,8 +29,42 @@ export class HomeUnansweredError extends Error {
   }
 }
 
+/** How a send ended early, as the shelf's and LeetType's reports say it. */
+export type EndedReport = {
+  /** Home answered `401`: it no longer knows this phone. */
+  forgotten: boolean
+  /** A request got no answer, or home was busy; nothing after it was sent. */
+  unreachable: boolean
+}
+
+/**
+ * `send`'s answer, or null once the send is over: no answer, home busy
+ * (`429`) or a `401`, each said in `report`. A fault on this phone is
+ * thrown as it came.
+ */
+export async function answerOrEnd(
+  send: HomeCall,
+  report: EndedReport,
+  method: "GET" | "PUT",
+  path: string,
+  body?: string
+): Promise<HomeAnswer | null> {
+  let answer: HomeAnswer
+  try {
+    answer = await send(method, path, body)
+  } catch (error) {
+    if (!unanswered(error)) throw error
+    report.unreachable = true
+    return null
+  }
+  if (answer.status === 401) report.forgotten = true
+  else if (answer.status === 429) report.unreachable = true
+  else return answer
+  return null
+}
+
 /** How a send went, item by item; filled as it goes, so a stop keeps it. */
-export type SendReport = {
+export type SendReport = EndedReport & {
   sent: number
   kept: number
   replaced: number
@@ -39,10 +73,6 @@ export type SendReport = {
   full: Map<string, number>
   refused: number
   other: number
-  /** Home answered `401`: it no longer knows this phone. */
-  forgotten: boolean
-  /** A request got no answer; nothing after it was sent. */
-  unreachable: boolean
 }
 
 export function emptyReport(): SendReport {
@@ -70,27 +100,15 @@ export async function sendKept(
   heard: (item: Kept, answer: "held" | "refused") => void = () => undefined
 ): Promise<void> {
   for (const item of items) {
-    let status: number
-    let body: string
-    try {
-      ;({ status, body } = await send(
-        "PUT",
-        `/shelf/${item.activity}/${encodeURIComponent(item.key)}`,
-        item.body
-      ))
-    } catch (error) {
-      if (!unanswered(error)) throw error
-      report.unreachable = true
-      return
-    }
-    if (status === 401) {
-      report.forgotten = true
-      return
-    }
-    if (status === 429) {
-      report.unreachable = true
-      return
-    }
+    const answer = await answerOrEnd(
+      send,
+      report,
+      "PUT",
+      `/shelf/${item.activity}/${encodeURIComponent(item.key)}`,
+      item.body
+    )
+    if (answer === null) return
+    const { status, body } = answer
     if (status === 409) {
       report.full.set(item.activity, (report.full.get(item.activity) ?? 0) + 1)
       continue
