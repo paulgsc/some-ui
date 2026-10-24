@@ -483,7 +483,7 @@ describe("MB1: nothing in the workspace issues a statement that rewrites an item
    * every row and trigger survives it.
    */
   const REBUILD =
-    /\bUPDATE\s+sqlite_sequence\s+SET\b[\s\S]*?WHERE name = 'item_next';\s*DROP\s+TABLE\s+item;\s*ALTER\s+TABLE\s+item_next\s+RENAME\s+TO\s+item;/i
+    /\bUPDATE sqlite_sequence\s+SET seq = MAX\(seq, COALESCE\(\(SELECT seq FROM sqlite_sequence WHERE name = 'item'\), 0\)\)\s+WHERE name = 'item_next';\s*DROP TABLE item;\s*ALTER TABLE item_next RENAME TO item;/
   /** The one trigger a migration may drop: 0002 replaces it in the same file. */
   const REPLACED_TRIGGER = /\bDROP\s+TRIGGER\s+item_is_append_only_delete\s*;/i
   const tsCode = (text: string): string =>
@@ -499,6 +499,11 @@ describe("MB1: nothing in the workspace issues a statement that rewrites an item
     ]) {
       expect(bad).toMatch(REWRITES)
     }
+    // The rebuild's exemption is its exact text: a statement slipped inside
+    // it is no longer exempt.
+    expect(
+      "UPDATE sqlite_sequence\n  SET seq = 1; UPDATE item SET size = 0\n  WHERE name = 'item_next';\nDROP TABLE item;\nALTER TABLE item_next RENAME TO item;"
+    ).not.toMatch(REBUILD)
     for (const bad of [
       "DROP TRIGGER item_is_append_only_update",
       "ALTER TABLE item ADD x",
