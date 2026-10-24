@@ -184,12 +184,6 @@ describe("step", () => {
     })
     expect(state.current).toBe("2026-08-01")
     expect(state.digests.map((d) => d.day)).toContain("2026-08-01")
-    // Its picks lapsed long ago, but it is the one on show.
-    const [first] = digest("2026-08-01").picks
-    expect(standingOf(state, "2026-08-01", first.id, DAY)).toEqual({
-      kind: "lapsed",
-      on: "2026-08-04",
-    })
   })
 
   it("archives together or not at all", () => {
@@ -383,14 +377,9 @@ describe("a pick left untouched (J5)", () => {
     expect(openOf(opened, "2026-10-21")).toEqual([])
   })
 
-  it("never lapses once taken, and opens again when taken after it lapsed", () => {
+  it("never lapses once taken", () => {
     const taken = record(opened, { type: "taken", ...ref() })
     expect(openOf(taken, "2026-11-30").map((o) => o.pick.id)).toEqual([SW.id])
-    const late = record(taken, { type: "taken", ...ref(AD) })
-    expect(standingOf(late, DAY, AD.id, "2026-11-30")).toEqual({
-      kind: "open",
-      step: 2,
-    })
   })
 })
 

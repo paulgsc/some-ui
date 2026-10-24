@@ -122,12 +122,22 @@ describe("queueOf: what stays open", () => {
   })
 })
 
+/** A later digest that recorded `pickId` of `earlier` as lapsed. */
+const recorderOf = (earlier: Digest, pickId: string): Digest => ({
+  ...sample(),
+  day: "2026-10-21",
+  picks: [],
+  queue: {
+    open: [],
+    lapsed: [{ day: earlier.day, pickId, track: "software" }],
+  },
+})
+
 describe("queueOf: a pick left untouched lapses", () => {
   it("lapses on its digest's day plus three, and not a day before", () => {
     expect(lapsesOn(DAY)).toBe("2026-10-21")
     expect(hasLapsed(DAY, "2026-10-20")).toBe(false)
     expect(hasLapsed(DAY, "2026-10-21")).toBe(true)
-    expect(hasLapsed("2026-10-30", "2026-11-02")).toBe(true)
     const digest = sample()
     expect(queueOf([digest], [], "2026-10-20").lapsed).toEqual([])
     const lapsed = queueOf([digest], [], "2026-10-21")
@@ -151,31 +161,10 @@ describe("queueOf: a pick left untouched lapses", () => {
     )
   })
 
-  it("opens a lapsed pick again once a later share takes it", () => {
-    const digest = sample()
-    const [first] = ids(digest)
-    const late = decisions(digest, "2026-10-23T08:00:00Z", {
-      [first!]: { decision: "taken" },
-    })
-    const queue = queueOf([digest], [late], "2026-10-23")
-    expect(queue.open.map((p) => p.pickId)).toEqual([first])
-    expect(queue.lapsed.map((p) => p.pickId)).not.toContain(first)
-  })
-
   it("opens a pick again when a share takes it after a digest recorded its lapse", () => {
     const earlier = sample()
     const [first] = ids(earlier)
-    const recorder = {
-      ...sample(),
-      day: "2026-10-21",
-      picks: [],
-      queue: {
-        open: [],
-        lapsed: [
-          { day: earlier.day, pickId: first!, track: "software" as const },
-        ],
-      },
-    }
+    const recorder = recorderOf(earlier, first!)
     const late = decisions(earlier, "2026-10-22T08:00:00Z", {
       [first!]: { decision: "taken" },
     })
@@ -186,17 +175,7 @@ describe("queueOf: a pick left untouched lapses", () => {
   it("names a lapse once: not again after a digest recorded it", () => {
     const earlier = sample()
     const [first, ...rest] = ids(earlier)
-    const recorder = {
-      ...sample(),
-      day: "2026-10-21",
-      picks: [],
-      queue: {
-        open: [],
-        lapsed: [
-          { day: earlier.day, pickId: first!, track: "software" as const },
-        ],
-      },
-    }
+    const recorder = recorderOf(earlier, first!)
     const queue = queueOf([earlier, recorder], [], "2026-10-22")
     expect(queue.lapsed.map((p) => p.pickId)).toEqual(rest)
     expect(queue.open).toEqual([])

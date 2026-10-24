@@ -31,6 +31,7 @@ import {
   kitOf,
   openOf,
   pacificDay,
+  picksStanding,
   progressOf,
   standingOf,
 } from "@/lib/jobs/model"
@@ -272,21 +273,14 @@ const Places = ({
   const today = pacificDay(useMinuteClock())
   const [showLapsed, setShowLapsed] = useState(false)
   const open = openOf(state, today)
-  // The run lapses what no share answered; a pick decided here and not yet
-  // shared holds its place again once the share arrives.
   const recorded = digest.queue?.lapsed ?? []
   const decidedHere = recorded.filter(
     (l) => decisionOf(state, l.day, l.pickId) !== null
   ).length
   const untouched = recorded.length - decidedHere
-  // Earlier days' picks that lapsed on this phone: still there to decide.
-  const lapsed = state.digests
-    .filter((d) => d.day !== digest.day)
-    .flatMap((d) =>
-      d.picks
-        .filter((p) => standingOf(state, d.day, p.id, today).kind === "lapsed")
-        .map((pick) => ({ day: d.day, pick }))
-    )
+  const lapsed = picksStanding(state, today, "lapsed").filter(
+    (l) => l.day !== digest.day
+  )
   const earlier = [
     ...new Set(open.filter((o) => o.day !== digest.day).map((o) => o.day)),
   ]

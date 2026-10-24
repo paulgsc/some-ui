@@ -541,9 +541,18 @@ export function openOf(
   state: JobsState,
   today: string
 ): ReadonlyArray<{ day: string; pick: Pick }> {
+  return picksStanding(state, today, "open")
+}
+
+/** The picks of every kept digest whose standing on `today` is `kind`. */
+export function picksStanding(
+  state: JobsState,
+  today: string,
+  kind: Standing["kind"]
+): ReadonlyArray<{ day: string; pick: Pick }> {
   return state.digests.flatMap((d) =>
     d.picks
-      .filter((p) => standingOf(state, d.day, p.id, today).kind === "open")
+      .filter((p) => standingOf(state, d.day, p.id, today).kind === kind)
       .map((pick) => ({ day: d.day, pick }))
   )
 }

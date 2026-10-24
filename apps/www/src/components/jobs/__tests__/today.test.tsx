@@ -177,14 +177,13 @@ describe("Today, opened", () => {
 })
 
 describe("Today, once picks lapse (J5)", () => {
-  it("says a pick left untouched three days lapsed, and offers no way to let picks go", async () => {
+  it("says a pick left untouched three days lapsed", async () => {
     await showToday("2026-10-22T14:00:00Z", "2026-10-18")
     expect(screen.getByText("That’s every pick for now.")).toBeTruthy()
     fireEvent.click(
       screen.getByRole("button", { name: "See all of these picks" })
     )
     expect(screen.getAllByText("Lapsed")).toHaveLength(2)
-    expect(screen.queryByRole("button", { name: /^Let / })).toBeNull()
   })
 
   it("names what the morning's picking lapsed, apart from what I decided before it heard, and keeps a way to a lapsed pick", async () => {

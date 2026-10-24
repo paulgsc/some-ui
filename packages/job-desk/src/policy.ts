@@ -31,10 +31,8 @@ export const MAX_OPEN_PICKS: Readonly<Record<Track, number>> = {
 }
 
 /**
- * The days a pick waits untouched before it lapses (`hasLapsed`): from its
- * digest's day, a pick no decision answers lapses on the day this many days
- * later, and its slot frees. One I took holds its slot until I say how it
- * went. The owner set it on 2026-10-24 (D3).
+ * The days a pick no decision answers waits, from its digest's day, before it
+ * lapses and frees its slot (`hasLapsed`).
  */
 export const LAPSE_DAYS = 3
 
