@@ -295,6 +295,83 @@ describe("roles", () => {
   })
 })
 
+describe("the routine's study files", () => {
+  const SCENE = JSON.stringify({
+    schema: "some-ui.routine-scene/1",
+    answers: "2026-10-13_morning-drama_s-7f3a91",
+    title: "TOPIK 2 · 로맨스 · 첫 만남",
+    decks: [],
+  })
+  const DRAMA = JSON.stringify({
+    schema: "some-ui.routine-drama/1",
+    answers: "drama-20261013T145200123Z",
+    tree: {},
+  })
+  const SCENE_NAME = "scene-2026-10-13_morning-drama_s-7f3a91.json"
+  const DRAMA_NAME = "drama-20261013T145200123Z.json"
+
+  it("the routine puts a scene and a drama, and home reads them and may not put them", async () => {
+    const d = deps()
+    expect((await put(d, "scene", SCENE_NAME, { body: SCENE })).status).toBe(
+      201
+    )
+    expect((await put(d, "drama", DRAMA_NAME, { body: DRAMA })).status).toBe(
+      201
+    )
+    for (const [folder, name] of [
+      ["scene", SCENE_NAME],
+      ["drama", DRAMA_NAME],
+    ] as const) {
+      expect(
+        (await send(d, "GET", `/v1/${folder}/items`, { token: HOME })).status
+      ).toBe(200)
+      expect(
+        (await send(d, "GET", `/v1/${folder}/items/${name}`, { token: HOME }))
+          .status
+      ).toBe(200)
+    }
+    expect(
+      (
+        await put(d, "scene", "scene-2026-10-14_x_s-1.json", {
+          token: HOME,
+          body: SCENE,
+        })
+      ).status
+    ).toBe(403)
+  })
+
+  it("a name or schema that is not the folder's is refused", async () => {
+    const d = deps()
+    for (const name of [
+      "scene-2026-10-13.json",
+      "scene-2026-10-13_Morning_s-1.json",
+      "scene-2026-10-13_x_s-1.m4a",
+      "2026-10-13_morning-drama_s-7f3a91.json",
+    ]) {
+      expect([
+        name,
+        (await put(d, "scene", name, { body: SCENE })).status,
+      ]).toEqual([name, 422])
+    }
+    for (const name of [
+      "drama-20261013T145200Z.json",
+      "drama-20261013T145200123Z.voice-1.m4a",
+      "drama-20261013T145200123Z.prompt.md",
+    ]) {
+      expect([
+        name,
+        (await put(d, "drama", name, { body: DRAMA })).status,
+      ]).toEqual([name, 422])
+    }
+    expect((await put(d, "scene", SCENE_NAME, { body: DRAMA })).status).toBe(
+      422
+    )
+    expect((await put(d, "drama", DRAMA_NAME, { body: SCENE })).status).toBe(
+      422
+    )
+  })
+})
+
 describe("names", () => {
   it("a name that breaks the folder's pattern is refused", async () => {
     const d = deps()
@@ -673,7 +750,7 @@ describe("archiving", () => {
 
   it("the archive role reads every folder, archives and puts back, and puts nothing new", async () => {
     const { d, at } = await held()
-    for (const folder of ["brief", "decisions", "scout"]) {
+    for (const folder of ["brief", "decisions", "scout", "scene", "drama"]) {
       expect(
         (await send(d, "GET", `/v1/${folder}/items`, { token: ARCHIVE })).status
       ).toBe(200)
