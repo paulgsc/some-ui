@@ -12,6 +12,7 @@ import {
   progressOf,
   releasedVoice,
   step,
+  timedMinutes,
   undecidedOf,
   untouchedReported,
 } from "@/lib/jobs/model"
@@ -283,6 +284,37 @@ describe("progressOf", () => {
     })
     state = record(state, { type: "taken", ...ref() })
     expect(progressOf(state, DAY, SW.id)).toEqual({ kind: "open", step: 2 })
+  })
+})
+
+describe("timedMinutes (JB1)", () => {
+  const T = Date.parse("2026-10-18T16:00:00Z")
+  const minute = (m: number): Date => new Date(T + m * 60_000)
+  const openAt = (state: JobsState, m: number): JobsState =>
+    step(state, {
+      type: "record",
+      event: { type: "apply-opened", ...ref() },
+      stamp: { id: `open${m}`, at: minute(m).toISOString() },
+    })
+  const taken = record(opened, { type: "taken", ...ref() })
+
+  it("offers the time since the posting opened, and none past two hours", () => {
+    expect(timedMinutes(taken, DAY, SW.id, minute(5))).toBeNull()
+    const state = openAt(taken, 0)
+    expect(timedMinutes(state, DAY, SW.id, minute(0))).toBe(1)
+    expect(timedMinutes(state, DAY, SW.id, minute(25))).toBe(25)
+    expect(timedMinutes(state, DAY, SW.id, minute(120))).toBe(120)
+    expect(timedMinutes(state, DAY, SW.id, minute(121))).toBeNull()
+  })
+
+  it("times a reopened posting from the sitting's first open, and a new sitting afresh", () => {
+    const reopened = openAt(openAt(taken, 0), 20)
+    expect(timedMinutes(reopened, DAY, SW.id, minute(40))).toBe(40)
+    // A glance an hour and more before applying is a sitting of its own.
+    const glanced = openAt(openAt(taken, 0), 110)
+    expect(timedMinutes(glanced, DAY, SW.id, minute(135))).toBe(25)
+    const nextMorning = openAt(reopened, 16 * 60)
+    expect(timedMinutes(nextMorning, DAY, SW.id, minute(16 * 60 + 9))).toBe(9)
   })
 })
 

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { isFile } from "@/lib/jobs/files"
+import type { PickRef } from "@/lib/jobs/model"
 import { createJobsRuntime } from "@/lib/jobs/runtime"
 import { STORAGE_KEY } from "@/lib/jobs/stored"
 import type { StorageAdapter } from "@/lib/tenant/storage"
@@ -188,6 +189,100 @@ describe("createJobsRuntime", () => {
     expect(archived).toEqual([
       expect.objectContaining({ pickId: left.id, day: day.day }),
     ])
+  })
+
+  it("keeps each form's draft between launches, apart from the record, until what settles it is kept (JB1)", async () => {
+    const p = ports()
+    const runtime = createJobsRuntime(p)
+    const day = digest("2026-10-18")
+    runtime.open(blob(JSON.stringify(day)))
+    await settle()
+    const [first, second] = day.picks
+    const refOf = (pick: typeof first): PickRef => ({
+      day: day.day,
+      pickId: pick.id,
+      fingerprint: pick.fingerprint,
+    })
+    const record = runtime.getSnapshot().state
+    const owner = (pick: typeof first, form: string): string =>
+      `${day.day}/${pick.id}/${form}`
+    const debrief = {
+      form: "debrief",
+      minutes: "20",
+      friction: 2,
+      chips: [],
+      what: "Workday",
+      result: "submitted",
+    } as const
+    runtime.draft(owner(first, "pass"), {
+      form: "pass",
+      reasons: ["pay"],
+      note: "Too low",
+    })
+    runtime.draft(owner(second, "fit"), { form: "fit", note: "I ran it" })
+    runtime.draft(owner(second, "debrief"), debrief)
+    expect(createJobsRuntime(p).getSnapshot().state).toEqual(record)
+
+    const relaunched = createJobsRuntime(p)
+    expect(Object.keys(relaunched.getSnapshot().drafts)).toHaveLength(3)
+    relaunched.record({
+      type: "passed",
+      ...refOf(first),
+      reasons: ["pay"],
+      note: "Too low",
+      voice: [],
+    })
+    relaunched.record({ type: "taken", ...refOf(second) })
+    relaunched.record({ type: "resume-ready", ...refOf(second) })
+    relaunched.record({ type: "apply-opened", ...refOf(second) })
+    relaunched.record({
+      type: "fit-note",
+      ...refOf(second),
+      note: "I ran it",
+      voice: [],
+    })
+    expect(Object.keys(relaunched.getSnapshot().drafts)).toEqual([
+      owner(second, "debrief"),
+    ])
+    relaunched.record({
+      type: "debrief",
+      ...refOf(second),
+      minutes: 20,
+      friction: 2,
+      chips: [],
+      what: "Workday",
+      voice: [],
+      result: "submitted",
+    })
+    expect(createJobsRuntime(p).getSnapshot().drafts).toEqual({})
+  })
+
+  it("keeps the drafts it can read, copies the value aside first, and never writes over one it couldn't copy", () => {
+    const kept = JSON.stringify({
+      "2026-10-18/a/fit": { form: "fit", note: "I ran it" },
+      x: { form: "gone" },
+    })
+    const p = ports()
+    p.storage.setItem("some-ui:jobs:drafts", kept)
+    const runtime = createJobsRuntime(p)
+    expect(runtime.getSnapshot().drafts).toEqual({
+      "2026-10-18/a/fit": { form: "fit", note: "I ran it" },
+    })
+    expect(p.storage.getItem("some-ui:jobs:drafts:unreadable:1")).toBe(kept)
+
+    // A full phone: the copy aside fails, so the value stays as it was.
+    const full = ports()
+    full.storage.setItem("some-ui:jobs:drafts", kept)
+    const setItem = full.storage.setItem.bind(full.storage)
+    full.storage.setItem = (key, value): void => {
+      if (key.includes(":unreadable:")) throw new Error("full")
+      setItem(key, value)
+    }
+    const cramped = createJobsRuntime(full)
+    cramped.draft("2026-10-18/b/fit", { form: "fit", note: "hi" })
+    expect(full.storage.getItem("some-ui:jobs:drafts")).toBe(kept)
+    expect(cramped.getSnapshot().problem).toMatch(/lasts only while Jobs/)
+    expect(cramped.getSnapshot().drafts).toHaveProperty("2026-10-18/b/fit")
   })
 
   it("records nothing for a share backed out of", async () => {

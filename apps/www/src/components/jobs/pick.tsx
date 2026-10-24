@@ -1,7 +1,9 @@
 /**
  * Jobs › a pick: Review, Decide, Résumé, Apply, Debrief. Each step adds one
  * event to the record; the step shown follows the record, and any step
- * already reached can be looked at again.
+ * already reached can be looked at again. Apply stays the step shown until
+ * the debrief is kept, and each form's text is a draft the runtime keeps, so
+ * leaving the app to apply, or halfway through a form, loses nothing (JB1).
  */
 import type { JSX } from "react"
 import { useState } from "react"
@@ -18,6 +20,8 @@ import { ExternalLink } from "lucide-react"
 
 import { useMinuteClock } from "@/lib/clock"
 import { phoneJobs } from "@/lib/jobs"
+import type { DebriefDraft, PassDraft } from "@/lib/jobs/drafts"
+import { draftOf } from "@/lib/jobs/drafts"
 import type {
   DebriefResult,
   FrictionChip,
@@ -26,7 +30,6 @@ import type {
   PickRef,
 } from "@/lib/jobs/model"
 import {
-  applyOpenedAt,
   decisionOf,
   digestOf,
   draftVoice,
@@ -35,6 +38,7 @@ import {
   kitOf,
   pickOwner,
   progressOf,
+  timedMinutes,
 } from "@/lib/jobs/model"
 import {
   Gaps,
@@ -74,6 +78,15 @@ const FRICTION_LABELS: Readonly<Record<FrictionChip, string>> = {
   "cover-letter": "Cover letter",
   "long-questionnaire": "Long questionnaire",
   "form-broke": "Form broke",
+}
+
+const EMPTY_DEBRIEF: DebriefDraft = {
+  form: "debrief",
+  minutes: null,
+  friction: null,
+  chips: [],
+  what: "",
+  result: null,
 }
 
 const RESULTS: ReadonlyArray<readonly [DebriefResult, string]> = [
@@ -144,10 +157,14 @@ const Decide = ({
   advance: () => void
 }): JSX.Element => {
   const jobs = phoneJobs()
-  const [passing, setPassing] = useState(false)
-  const [reasons, setReasons] = useState<ReadonlyArray<PassReason>>([])
-  const [note, setNote] = useState("")
   const owner = pickOwner(pickRef.day, pickRef.pickId, "pass")
+  const draft = draftOf(useJobs().drafts, owner, "pass")
+  const passing = draft !== null
+  const reasons = draft?.reasons ?? []
+  const note = draft?.note ?? ""
+  const keep = (change: Partial<Omit<PassDraft, "form">>): void => {
+    jobs.draft(owner, { form: "pass", reasons, note, ...change })
+  }
   const voice = draftVoice(state, owner)
   const busy = useVoiceBusy(owner)
   const decision = decisionOf(state, pickRef.day, pickRef.pickId)
@@ -192,7 +209,9 @@ const Decide = ({
           size="lg"
           variant={passing ? "destructive" : "outline"}
           aria-pressed={passing}
-          onClick={() => setPassing(true)}
+          onClick={() => {
+            if (!passing) keep({})
+          }}
         >
           Pass
         </Button>
@@ -204,7 +223,7 @@ const Decide = ({
             label="Why pass"
             options={PASS_REASONS.map((r) => [r, PASS_LABELS[r]] as const)}
             pressed={(r) => reasons.includes(r)}
-            onToggle={(r) => setReasons((list) => toggle(list, r))}
+            onToggle={(r) => keep({ reasons: toggle(reasons, r) })}
           />
           <Label htmlFor="pass-note" className={sectionHeading}>
             In a few words
@@ -214,7 +233,7 @@ const Decide = ({
             rows={2}
             maxLength={MAX_NOTE}
             value={note}
-            onChange={(e) => setNote(e.target.value)}
+            onChange={(e) => keep({ note: e.target.value })}
           />
           <VoiceNotes
             owner={owner}
@@ -407,8 +426,14 @@ const Apply = ({
   state,
   pick,
   pickRef,
-  advance,
-}: StepProps & { state: JobsState; pick: Pick }): JSX.Element => {
+  onDone,
+}: {
+  state: JobsState
+  pick: Pick
+  pickRef: PickRef
+  /** Goes on to the debrief, once the posting has been opened. */
+  onDone: (() => void) | null
+}): JSX.Element => {
   const { kit, redraftedOn } = kitOf(state, pickRef.day, pick)
   const rows = [...kit.fields, ...kit.answers]
   return (
@@ -419,15 +444,14 @@ const Apply = ({
           target="_blank"
           rel="noreferrer"
           onClick={() => {
-            if (phoneJobs().record({ type: "apply-opened", ...pickRef }))
-              advance()
+            phoneJobs().record({ type: "apply-opened", ...pickRef })
           }}
         >
           Open the posting <ExternalLink aria-hidden />
         </a>
       </Button>
       <p className="text-muted-foreground text-xs">
-        Opening it starts the clock for the debrief.
+        Everything below stays here while you fill in their form.
       </p>
       {rows.length > 0 && (
         <section className="flex flex-col gap-2">
@@ -449,6 +473,11 @@ const Apply = ({
       )}
       <KitDrafts kit={kit} redraftedOn={redraftedOn} />
       <FitNote state={state} pickRef={pickRef} />
+      {onDone !== null && (
+        <Button type="button" size="lg" variant="outline" onClick={onDone}>
+          Done with their form
+        </Button>
+      )}
     </div>
   )
 }
@@ -462,8 +491,8 @@ const FitNote = ({
   pickRef: PickRef
 }): JSX.Element | null => {
   const jobs = phoneJobs()
-  const [note, setNote] = useState("")
   const owner = pickOwner(pickRef.day, pickRef.pickId, "fit")
+  const note = draftOf(useJobs().drafts, owner, "fit")?.note ?? ""
   const voice = draftVoice(state, owner)
   const busy = useVoiceBusy(owner)
   const kept = fitNotesOf(state, pickRef.day, pickRef.pickId).length
@@ -485,7 +514,9 @@ const FitNote = ({
         rows={3}
         maxLength={MAX_NOTE}
         value={note}
-        onChange={(e) => setNote(e.target.value)}
+        onChange={(e) =>
+          jobs.draft(owner, { form: "fit", note: e.target.value })
+        }
       />
       <VoiceNotes
         owner={owner}
@@ -498,13 +529,12 @@ const FitNote = ({
         disabled={busy || empty}
         onClick={() => {
           if (busy || empty) return
-          const recorded = jobs.record({
+          jobs.record({
             type: "fit-note",
             ...pickRef,
             note: note.trim(),
             voice: voice.map((v) => v.id),
           })
-          if (recorded) setNote("")
         }}
       >
         Keep it for the next run
@@ -525,26 +555,18 @@ const Debrief = ({
 }: StepProps & { state: JobsState }): JSX.Element => {
   const jobs = phoneJobs()
   const now = useMinuteClock()
-  const openedAt = applyOpenedAt(state, pickRef.day, pickRef.pickId)
-  const timed =
-    openedAt === null
-      ? null
-      : Math.min(
-          MAX_DEBRIEF_MINUTES,
-          Math.max(
-            1,
-            Math.round((now.getTime() - Date.parse(openedAt)) / 60_000)
-          )
-        )
-  const [minutes, setMinutes] = useState<string | null>(null)
-  const [friction, setFriction] = useState<number | null>(null)
-  const [chips, setChips] = useState<ReadonlyArray<FrictionChip>>([])
-  const [what, setWhat] = useState("")
-  const [result, setResult] = useState<DebriefResult | null>(null)
+  const timed = timedMinutes(state, pickRef.day, pickRef.pickId, now)
   const owner = pickOwner(pickRef.day, pickRef.pickId, "debrief")
+  const draft = draftOf(useJobs().drafts, owner, "debrief") ?? EMPTY_DEBRIEF
+  const { minutes, friction, chips, what, result } = draft
+  const shownMinutes = minutes ?? (timed === null ? "" : String(timed))
+  // The minutes on show are kept with the first change, so the clock moving
+  // on can't empty them mid-form.
+  const keep = (change: Partial<Omit<DebriefDraft, "form">>): void => {
+    jobs.draft(owner, { ...draft, minutes: shownMinutes, ...change })
+  }
   const voice = draftVoice(state, owner)
   const busy = useVoiceBusy(owner)
-  const shownMinutes = minutes ?? (timed === null ? "" : String(timed))
   const parsedMinutes = Number.parseInt(shownMinutes, 10)
   const minutesFit = parsedMinutes >= 1 && parsedMinutes <= MAX_DEBRIEF_MINUTES
   const ready = friction !== null && result !== null && minutesFit
@@ -559,7 +581,7 @@ const Debrief = ({
           inputMode="numeric"
           className="w-28"
           value={shownMinutes}
-          onChange={(e) => setMinutes(e.target.value)}
+          onChange={(e) => keep({ minutes: e.target.value })}
         />
         {!minutesFit && shownMinutes !== "" && (
           <span className="text-muted-foreground text-xs">
@@ -580,7 +602,7 @@ const Debrief = ({
               type="button"
               variant={friction === n ? "default" : "outline"}
               aria-pressed={friction === n}
-              onClick={() => setFriction(n)}
+              onClick={() => keep({ friction: n })}
             >
               {n}
             </Button>
@@ -593,7 +615,7 @@ const Debrief = ({
           label="What got in the way"
           options={FRICTION.map((c) => [c, FRICTION_LABELS[c]] as const)}
           pressed={(c) => chips.includes(c)}
-          onToggle={(c) => setChips((list) => toggle(list, c))}
+          onToggle={(c) => keep({ chips: toggle(chips, c) })}
         />
       </section>
       <section className="flex flex-col gap-2">
@@ -605,7 +627,7 @@ const Debrief = ({
           rows={3}
           maxLength={MAX_NOTE}
           value={what}
-          onChange={(e) => setWhat(e.target.value)}
+          onChange={(e) => keep({ what: e.target.value })}
         />
         <VoiceNotes
           owner={owner}
@@ -619,7 +641,7 @@ const Debrief = ({
           label="Result"
           options={RESULTS}
           pressed={(r) => result === r}
-          onToggle={setResult}
+          onToggle={(r) => keep({ result: r })}
         />
       </section>
       <Button
@@ -672,7 +694,8 @@ export const PickFlow = ({
       : progress.kind === "passed" || progress.kind === "archived"
         ? 1
         : 4
-  const current = progress.kind === "open" ? progress.step : reached
+  const current =
+    progress.kind === "open" ? Math.min(progress.step, 3) : reached
   const shown = Math.min(viewed ?? current, reached)
   // Once a step records, the screen follows the record again.
   const follow = (): void => setViewed(null)
@@ -703,7 +726,7 @@ export const PickFlow = ({
             onClick={() => setViewed(i)}
             className={cn(
               "border-t-4 py-1.5 text-[11px] font-semibold disabled:opacity-50",
-              i < current || progress.kind !== "open"
+              progress.kind !== "open" || i < progress.step
                 ? "border-emerald-600"
                 : "border-muted",
               i === shown && "border-amber-500"
@@ -726,7 +749,16 @@ export const PickFlow = ({
       ) : shown === 2 ? (
         <Resume pick={pick} pickRef={pickRef} advance={follow} />
       ) : shown === 3 ? (
-        <Apply state={state} pick={pick} pickRef={pickRef} advance={follow} />
+        <Apply
+          state={state}
+          pick={pick}
+          pickRef={pickRef}
+          onDone={
+            progress.kind === "open" && progress.step === 4
+              ? (): void => setViewed(4)
+              : null
+          }
+        />
       ) : (
         <Debrief state={state} pickRef={pickRef} advance={follow} />
       )}
