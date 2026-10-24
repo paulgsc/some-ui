@@ -27,24 +27,24 @@ overrides:
   # scoped to the affected major, and every dependent's declared range
   # already admits the patched version.
   "brace-expansion@2": ^2.1.4
+  "brace-expansion@5": ^5.0.12
   "js-yaml@3": ^3.15.2
   "js-yaml@4": ^4.3.2
   browserslist: ^4.28.7
   colord: ^2.9.4
   baseline-browser-mapping: ^2.11.0
-  # More of the same backlog, each at the first patched version. Where a
-  # parent's own range already admits it (minimatch's brace-expansion ^5.0.8,
-  # postcss's source-map-js ^1.2.1, knip's smol-toml ^1.7.1) the override only
-  # holds the floor. Where it does not, the reason is named:
-  #   seroval, seroval-plugins: solid-js@1.9.13 (TanStack devtools) asks ~1.5.0
-  #     and everything below 1.6.3 is affected; solid-js 1.9.17 asks ~1.6.8.
+  # Same backlog, each at the first patched version. Parent ranges already
+  # admit source-map-js and smol-toml, so those two only move their existing
+  # lock entries; the rest need the override:
+  #   seroval, seroval-plugins: seroval < 1.6.3 is affected, and solid-js@1.9.13
+  #     (TanStack devtools) asks ~1.5.0 for both. The plugins ride along so the
+  #     pair matches what solid-js 1.9.17 ships (~1.6.8); drop both once it is
+  #     reached.
   #   undici@7, sharp: miniflare (wrangler) pins 7.29.1 and 0.35.4 exactly.
   #   uuid@7: xcode (via @capacitor/cli) asks ^7.0.3 and the fix is 11.1.1. The
   #     only call is `uuid.v4()` in xcode's pbxProject.js, which the 11.x CJS
   #     build still serves; the advisory is v3/v5/v6 given a `buf`.
-  # node-forge (web-ext > adbkit) has no entry because no patched release
-  # exists: 1.4.0 is the latest and the affected one.
-  "brace-expansion@5": ^5.0.12
+  # node-forge (web-ext > adbkit): no patched release yet.
   seroval: ^1.6.3
   seroval-plugins: ^1.6.3
   source-map-js: ^1.2.2
@@ -52,8 +52,9 @@ overrides:
   "undici@7": ^7.30.1
   sharp: ^0.35.5
   "uuid@7": ^11.1.1
-  # The workspaces take zod from the catalog below; this holds the floor for
-  # the two dev tools that bring their own (knip, eslint-plugin-react-hooks).
+  # Workspaces take zod from the catalog below, which an override does not
+  # reach; this moves the copies knip, TanStack router and
+  # eslint-plugin-react-hooks bring.
   "zod@4": ^4.6.6
 minimumReleaseAgeExclude:
   - "@some-ui/leetype-wasm"
