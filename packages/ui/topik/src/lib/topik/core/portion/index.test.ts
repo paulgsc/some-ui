@@ -14,6 +14,7 @@ import {
   PORTION_WORDS,
   portionDeck,
   serve,
+  servedAfter,
   SNACK_LINES,
 } from "@topik/lib/topik/core/portion"
 import { workedLesson } from "@topik/lib/topik/generation/tree-intake/worked-example"
@@ -260,6 +261,29 @@ describe("another one like this", () => {
       served: ["bite:cafe.line-1", "bite:cafe.line-2"],
     })
     expect(again?.key).toBe("bite:cafe.line-1")
+  })
+
+  it("goes round every one again, in the same order, round after round", () => {
+    const held = { ...NONE, sets: [setOf("cafe", 3)] }
+    let served: ReadonlyArray<string> = []
+    const keys: Array<string> = []
+    for (let n = 0; n < 9; n += 1) {
+      const dish = serve({
+        order: order("bite"),
+        held,
+        tally: {},
+        now: NOW,
+        served,
+      })
+      if (dish === null) throw new Error("nothing served")
+      served = servedAfter(served, dish)
+      keys.push(dish.key.replace("bite:cafe.", ""))
+    }
+    expect(keys).toEqual([
+      ...["line-1", "line-2", "line-3"],
+      ...["line-1", "line-2", "line-3"],
+      ...["line-1", "line-2", "line-3"],
+    ])
   })
 
   it("serves the only one again rather than nothing", () => {

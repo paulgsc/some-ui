@@ -24,6 +24,7 @@ import {
   PORTION_WORDS,
   PORTIONS,
   serve,
+  servedAfter,
 } from "@topik/lib/topik/core/portion"
 import type { Tally } from "@topik/lib/topik/read-aloud/tally"
 
@@ -417,7 +418,7 @@ export const PortionMenu = ({
 
   const serveNext = (served: ReadonlyArray<string>): void => {
     const dish = serve({ order, held, tally, now, served })
-    setTable({ dish, served: dish ? [...served, dish.key] : served })
+    setTable({ dish, served: dish ? servedAfter(served, dish) : served })
   }
 
   return table === null ? (

@@ -337,6 +337,16 @@ export function serve({
 }
 
 /**
+ * What was served for the order once `dish` is: a dish served before in this
+ * round starts the next round, so each one fitting comes round again.
+ */
+export const servedAfter = (
+  served: ReadonlyArray<string>,
+  dish: Dish
+): ReadonlyArray<string> =>
+  served.includes(dish.key) ? [dish.key] : [...served, dish.key]
+
+/**
  * The order the question screen opens on: the last one asked for, leaning
  * fresh while the phone holds something not opened yet.
  */
