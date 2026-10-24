@@ -167,7 +167,7 @@ describe("step", () => {
     expect(kitOf(state, first.day, pick).redraftedOn).toBe("2026-08-02")
   })
 
-  it("keeps an old digest with open picks as it is opened", () => {
+  it("keeps an old digest as it is opened, though its picks all lapsed", () => {
     let state = EMPTY
     for (let i = 1; i <= DIGESTS_KEPT + 2; i += 1) {
       const day = `2026-09-${String(i).padStart(2, "0")}`
@@ -183,6 +183,7 @@ describe("step", () => {
       at: OPENED_AT,
     })
     expect(state.current).toBe("2026-08-01")
+    expect(state.digests.map((d) => d.day)).toContain("2026-08-01")
     // Its picks lapsed long ago, but it is the one on show.
     const [first] = digest("2026-08-01").picks
     expect(standingOf(state, "2026-08-01", first.id, DAY)).toEqual({

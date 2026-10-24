@@ -56,6 +56,8 @@ const SAID: Readonly<Record<keyof typeof words, ReadonlyArray<string>>> = {
   heldOver: [words.heldOver(1, false), words.heldOver(3, true)],
   lapsedEarlier: [1, 3].map(words.lapsedEarlier),
   lapsedOn: [words.lapsedOn(DAY)],
+  lapsedBeforeHeard: [1, 2].map(words.lapsedBeforeHeard),
+  lapsedList: [words.lapsedList(true, 4), words.lapsedList(false, 4)],
   itArrived: [words.itArrived],
   shareAgain: [words.shareAgain],
   wouldHavePicked: [words.wouldHavePicked],

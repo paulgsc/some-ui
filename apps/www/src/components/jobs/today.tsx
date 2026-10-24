@@ -26,6 +26,7 @@ import { phoneJobs } from "@/lib/jobs"
 import type { JobsState } from "@/lib/jobs/model"
 import {
   currentDigest,
+  decisionOf,
   disagreed,
   kitOf,
   openOf,
@@ -47,7 +48,9 @@ import {
   holdsPlace,
   howPicked,
   keepWhy,
+  lapsedBeforeHeard,
   lapsedEarlier,
+  lapsedList,
   leftOut,
   newerHeld,
   noPicksYet,
@@ -256,7 +259,8 @@ const AllPicks = ({
 
 /**
  * The places open picks hold: how many are open by track, earlier days'
- * picks still open, and what lapsed since the picks before these.
+ * picks still open, what the morning's picking found had lapsed, and
+ * earlier days' lapsed picks, still there to open and decide.
  */
 const Places = ({
   state,
@@ -265,8 +269,24 @@ const Places = ({
   state: JobsState
   digest: Digest
 }): JSX.Element => {
-  const open = openOf(state, pacificDay(useMinuteClock()))
-  const lapsed = digest.queue?.lapsed ?? []
+  const today = pacificDay(useMinuteClock())
+  const [showLapsed, setShowLapsed] = useState(false)
+  const open = openOf(state, today)
+  // The run lapses what no share answered; a pick decided here and not yet
+  // shared holds its place again once the share arrives.
+  const recorded = digest.queue?.lapsed ?? []
+  const decidedHere = recorded.filter(
+    (l) => decisionOf(state, l.day, l.pickId) !== null
+  ).length
+  const untouched = recorded.length - decidedHere
+  // Earlier days' picks that lapsed on this phone: still there to decide.
+  const lapsed = state.digests
+    .filter((d) => d.day !== digest.day)
+    .flatMap((d) =>
+      d.picks
+        .filter((p) => standingOf(state, d.day, p.id, today).kind === "lapsed")
+        .map((pick) => ({ day: d.day, pick }))
+    )
   const earlier = [
     ...new Set(open.filter((o) => o.day !== digest.day).map((o) => o.day)),
   ]
@@ -290,7 +310,8 @@ const Places = ({
       <p className="text-muted-foreground text-xs">
         {holdsPlace}
         {held.length > 0 && ` ${heldOver(held.length, full)}`}
-        {lapsed.length > 0 && ` ${lapsedEarlier(lapsed.length)}`}
+        {untouched > 0 && ` ${lapsedEarlier(untouched)}`}
+        {decidedHere > 0 && ` ${lapsedBeforeHeard(decidedHere)}`}
       </p>
       {earlier.map((day) => (
         <div key={day} className="flex flex-col gap-1.5 border-t pt-2">
@@ -313,6 +334,35 @@ const Places = ({
           </ul>
         </div>
       ))}
+      {lapsed.length > 0 && (
+        <div className="flex flex-col gap-1.5 border-t pt-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="self-start"
+            aria-expanded={showLapsed}
+            onClick={() => setShowLapsed((shown) => !shown)}
+          >
+            {lapsedList(showLapsed, lapsed.length)}
+          </Button>
+          {showLapsed && (
+            <ul className="flex flex-col gap-1">
+              {lapsed.map(({ day, pick }) => (
+                <li key={`${day}/${pick.id}`}>
+                  <ToPick
+                    day={day}
+                    pick={pick}
+                    className="text-sm underline-offset-2 hover:underline"
+                  >
+                    {day} · {pick.posting.title} · {pick.posting.company}
+                  </ToPick>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </section>
   )
 }

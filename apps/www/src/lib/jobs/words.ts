@@ -85,6 +85,17 @@ export const holdsPlace = `A pick holds its place until you pass on it, or send 
 export const lapsedEarlier = (count: number): string =>
   `${counted(count, "pick")} from earlier days lapsed, untouched for ${LAPSE_DAYS} days, so ${count === 1 ? "its place is" : "their places are"} free.`
 
+/**
+ * Picks I decided here that the morning's picking lapsed anyway, since my
+ * decision had not reached it yet.
+ */
+export const lapsedBeforeHeard = (count: number): string =>
+  `${counted(count, "pick")} you decided lapsed before the morning’s picking heard so; ${count === 1 ? "it holds its" : "they hold their"} place again once it does.`
+
+/** Earlier days' lapsed picks, behind their own toggle. */
+export const lapsedList = (shown: boolean, count: number): string =>
+  `${shown ? "Hide" : "Show"} the picks that lapsed (${count})`
+
 /** A pick that lapsed: since when, and that deciding it still counts. */
 export const lapsedOn = (on: string): string =>
   `Lapsed on ${formatDay(on)}, untouched for ${LAPSE_DAYS} days, so it no longer holds a place. Taking or passing it now replaces that.`

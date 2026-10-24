@@ -162,6 +162,27 @@ describe("queueOf: a pick left untouched lapses", () => {
     expect(queue.lapsed.map((p) => p.pickId)).not.toContain(first)
   })
 
+  it("opens a pick again when a share takes it after a digest recorded its lapse", () => {
+    const earlier = sample()
+    const [first] = ids(earlier)
+    const recorder = {
+      ...sample(),
+      day: "2026-10-21",
+      picks: [],
+      queue: {
+        open: [],
+        lapsed: [
+          { day: earlier.day, pickId: first!, track: "software" as const },
+        ],
+      },
+    }
+    const late = decisions(earlier, "2026-10-22T08:00:00Z", {
+      [first!]: { decision: "taken" },
+    })
+    const queue = queueOf([earlier, recorder], [late], "2026-10-23")
+    expect(queue.open.map((p) => p.pickId)).toEqual([first])
+  })
+
   it("names a lapse once: not again after a digest recorded it", () => {
     const earlier = sample()
     const [first, ...rest] = ids(earlier)
