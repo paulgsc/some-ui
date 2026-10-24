@@ -12,6 +12,7 @@ import {
   progressOf,
   releasedVoice,
   step,
+  timedMinutes,
   undecidedOf,
   untouchedReported,
 } from "@/lib/jobs/model"
@@ -283,6 +284,33 @@ describe("progressOf", () => {
     })
     state = record(state, { type: "taken", ...ref() })
     expect(progressOf(state, DAY, SW.id)).toEqual({ kind: "open", step: 2 })
+  })
+})
+
+describe("timedMinutes (JB1)", () => {
+  it("offers the time since the posting last opened, and none past two hours", () => {
+    let state = record(opened, { type: "taken", ...ref() })
+    const at = (time: string): Date => new Date(`2026-10-18T${time}Z`)
+    expect(timedMinutes(state, DAY, SW.id, at("16:00:00"))).toBeNull()
+    state = record(state, { type: "apply-opened", ...ref() })
+    const openedAt = state.log.at(-1)?.at ?? ""
+    const after = (minutes: number): Date =>
+      new Date(Date.parse(openedAt) + minutes * 60_000)
+    expect(timedMinutes(state, DAY, SW.id, after(0))).toBe(1)
+    expect(timedMinutes(state, DAY, SW.id, after(25))).toBe(25)
+    expect(timedMinutes(state, DAY, SW.id, after(120))).toBe(120)
+    expect(timedMinutes(state, DAY, SW.id, after(121))).toBeNull()
+    expect(timedMinutes(state, DAY, SW.id, after(16 * 60))).toBeNull()
+    // Opened again the next morning: timed from then.
+    state = record(state, { type: "apply-opened", ...ref() })
+    expect(
+      timedMinutes(
+        state,
+        DAY,
+        SW.id,
+        new Date(Date.parse(state.log.at(-1)?.at ?? "") + 9 * 60_000)
+      )
+    ).toBe(9)
   })
 })
 

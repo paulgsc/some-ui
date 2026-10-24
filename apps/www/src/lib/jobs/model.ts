@@ -622,16 +622,33 @@ export function fitNotesOf(
   )
 }
 
-/** When the posting was last opened for this pick, to time the debrief. */
-export function applyOpenedAt(
+/**
+ * The longest time since the posting last opened that the debrief offers as
+ * how long the application took. A longer gap more likely means I left and
+ * came back, so the debrief offers no number (JB1).
+ */
+const TIMED_UP_TO_MINUTES = 120
+
+/**
+ * The whole minutes since the posting last opened for this pick, for the
+ * debrief to offer, or null when it never opened or opened longer ago than
+ * `TIMED_UP_TO_MINUTES`.
+ */
+export function timedMinutes(
   state: JobsState,
   day: string,
-  pickId: string
-): string | null {
+  pickId: string,
+  now: Date
+): number | null {
   const opened = pickEvents(state.log, day, pickId)
     .filter((e) => e.type === "apply-opened")
     .at(-1)
-  return opened?.at ?? null
+  if (opened === undefined) return null
+  const minutes = Math.max(
+    1,
+    Math.round((now.getTime() - Date.parse(opened.at)) / 60_000)
+  )
+  return minutes <= TIMED_UP_TO_MINUTES ? minutes : null
 }
 
 /** The voice notes `owner` has that no event names yet: a form's draft. */

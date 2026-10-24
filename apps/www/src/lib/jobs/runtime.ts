@@ -23,6 +23,8 @@ import {
 import type { SharedFile } from "@/lib/share-files"
 import type { StorageAdapter } from "@/lib/tenant/storage"
 
+import type { FormDraft, FormDrafts } from "./drafts"
+import { draftRecordedBy, readDrafts, withDraft, writeDrafts } from "./drafts"
 import type { Outgoing, OutgoingFile } from "./files"
 import { decisionsFile, isFile, scoutsFile } from "./files"
 import type { JobsRecordPort } from "./home"
@@ -50,6 +52,8 @@ export type JobsSnapshot = {
   readOnly: boolean
   /** The last change the phone refused to keep, said once. */
   problem: string | null
+  /** What the pick forms hold that isn't kept yet (`./drafts`). */
+  drafts: FormDrafts
   /** The voice note under way, and whose. */
   take: TakeView
   takeOwner: string | null
@@ -86,8 +90,13 @@ export type JobsRuntime = {
   subscribe: (listener: () => void) => () => void
   /** Reads `file` as a digest. A later pick wins over one still being read. */
   open: (file: Blob) => void
-  /** Adds an event to the record; false when it doesn't fit or wasn't kept. */
+  /**
+   * Adds an event to the record; false when it doesn't fit or wasn't kept.
+   * Once kept, it clears the form draft it came from.
+   */
   record: (event: Draft) => boolean
+  /** Keeps what `owner`'s form holds, or clears it with null. */
+  draft: (owner: string, draft: FormDraft | null) => void
   /**
    * Archives every pick of `day`'s digest with no decision yet, unreviewed;
    * false when there was none or the phone kept none.
@@ -135,6 +144,7 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
   const readOnly = opened.kind === "unreadable"
   let importing: Importing = IDLE
   let problem: string | null = null
+  let drafts = readDrafts(ports.storage)
   let takeOwner: string | null = null
   let picks = 0
   const sharing = new Set<ShareKind>()
@@ -172,6 +182,7 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
       importing,
       readOnly,
       problem,
+      drafts,
       take: takeView(voice),
       takeOwner: voice.kind === "idle" ? null : takeOwner,
       said: voiceNoteSaid(voice, false),
@@ -199,6 +210,15 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
     problem = null
     publish()
     return true
+  }
+
+  // A draft the phone could not keep still holds while the page is open.
+  const setDraft = (owner: string, draft: FormDraft | null): void => {
+    const next = withDraft(drafts, owner, draft)
+    if (next === drafts) return
+    drafts = next
+    if (!readOnly) writeDrafts(ports.storage, drafts)
+    publish()
   }
 
   const stamp = (): { id: string; at: string } => ({
@@ -300,7 +320,13 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
       publish()
       void read(file, picks)
     },
-    record: (event) => commit({ type: "record", event, stamp: stamp() }),
+    record(event): boolean {
+      if (!commit({ type: "record", event, stamp: stamp() })) return false
+      const owner = draftRecordedBy(event)
+      if (owner !== null) setDraft(owner, null)
+      return true
+    },
+    draft: setDraft,
     archive: (day) =>
       commit({
         type: "record-all",

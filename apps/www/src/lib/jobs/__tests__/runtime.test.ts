@@ -190,6 +190,37 @@ describe("createJobsRuntime", () => {
     ])
   })
 
+  it("keeps a form's draft between launches, apart from the record, and clears it once kept (JB1)", async () => {
+    const p = ports()
+    const runtime = createJobsRuntime(p)
+    const day = digest("2026-10-18")
+    runtime.open(blob(JSON.stringify(day)))
+    await settle()
+    const [pick] = day.picks
+    const ref = { day: day.day, pickId: pick.id, fingerprint: pick.fingerprint }
+    const owner = `${day.day}/${pick.id}/pass`
+    runtime.draft(owner, { form: "pass", reasons: ["pay"], note: "Too low" })
+    const before = p.storage.getItem(STORAGE_KEY)
+
+    const relaunched = createJobsRuntime(p)
+    expect(relaunched.getSnapshot().drafts).toEqual({
+      [owner]: { form: "pass", reasons: ["pay"], note: "Too low" },
+    })
+    expect(p.storage.getItem(STORAGE_KEY)).toBe(before)
+
+    expect(
+      relaunched.record({
+        type: "passed",
+        ...ref,
+        reasons: ["pay"],
+        note: "Too low",
+        voice: [],
+      })
+    ).toBe(true)
+    expect(relaunched.getSnapshot().drafts).toEqual({})
+    expect(createJobsRuntime(p).getSnapshot().drafts).toEqual({})
+  })
+
   it("records nothing for a share backed out of", async () => {
     const p = ports({
       share: vi.fn(() => Promise.resolve<"shared" | "cancelled">("cancelled")),
