@@ -210,8 +210,7 @@ const Decide = ({
           variant={passing ? "destructive" : "outline"}
           aria-pressed={passing}
           onClick={() => {
-            if (passing) jobs.draft(owner, null)
-            else keep({})
+            if (!passing) keep({})
           }}
         >
           Pass

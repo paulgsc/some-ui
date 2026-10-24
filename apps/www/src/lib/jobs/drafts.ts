@@ -6,7 +6,7 @@
  * go home or into a share, and a form's draft is cleared once the event
  * that settles it is recorded.
  */
-import { assertNever, openRecord, writeRecord } from "@some-ui/core-utils"
+import { assertNever, quarantine } from "@some-ui/core-utils"
 import { DEBRIEF_RESULTS, FRICTION, PASS_REASONS } from "@some-ui/job-desk"
 import { z } from "zod"
 
@@ -58,7 +58,12 @@ const FormDraftSchema = z.discriminatedUnion("form", [
   }),
 ])
 
-const DraftsSchema = z.record(z.string(), FormDraftSchema)
+function isForm<F extends FormDraft["form"]>(
+  draft: FormDraft | undefined,
+  form: F
+): draft is Extract<FormDraft, { form: F }> {
+  return draft?.form === form
+}
 
 /** `owner`'s draft of `form`, or null while there is none. */
 export function draftOf<F extends FormDraft["form"]>(
@@ -68,13 +73,6 @@ export function draftOf<F extends FormDraft["form"]>(
 ): Extract<FormDraft, { form: F }> | null {
   const draft = drafts[owner]
   return isForm(draft, form) ? draft : null
-}
-
-function isForm<F extends FormDraft["form"]>(
-  draft: FormDraft | undefined,
-  form: F
-): draft is Extract<FormDraft, { form: F }> {
-  return draft?.form === form
 }
 
 export function withDraft(
@@ -121,22 +119,45 @@ export function draftRecordedBy(event: Draft): string | null {
   }
 }
 
-function parse(raw: string): FormDrafts | null {
+/** Each entry of a kept value, or null when it isn't a map of entries. */
+function entriesOf(raw: string): ReadonlyArray<[string, unknown]> | null {
   try {
-    const parsed = DraftsSchema.safeParse(JSON.parse(raw))
-    return parsed.success ? parsed.data : null
+    const parsed = z.record(z.string(), z.unknown()).safeParse(JSON.parse(raw))
+    return parsed.success ? Object.entries(parsed.data) : null
   } catch {
     return null
   }
 }
 
 /**
- * The drafts kept on this phone. A value it can't read is moved aside, never
- * written over, and the drafts start again empty.
+ * The drafts kept on this phone, each entry read on its own, and whether
+ * they may be written: a value with any entry it can't read is first copied
+ * aside, and when that fails (or the storage throws) nothing is written over
+ * it, so the drafts last only while Jobs stays open.
  */
-export function readDrafts(storage: StorageAdapter): FormDrafts {
-  const opened = openRecord(storage, DRAFTS_KEY, parse, QUARANTINE_PREFIX)
-  return opened.kind === "kept" ? opened.value : {}
+export function readDrafts(storage: StorageAdapter): {
+  drafts: FormDrafts
+  writable: boolean
+} {
+  let raw: string | null
+  try {
+    raw = storage.getItem(DRAFTS_KEY)
+  } catch {
+    return { drafts: {}, writable: false }
+  }
+  if (raw === null) return { drafts: {}, writable: true }
+  const entries = entriesOf(raw)
+  const drafts: Record<string, FormDraft> = {}
+  for (const [owner, value] of entries ?? []) {
+    const draft = FormDraftSchema.safeParse(value)
+    if (draft.success) drafts[owner] = draft.data
+  }
+  const whole =
+    entries !== null && Object.keys(drafts).length === entries.length
+  return {
+    drafts,
+    writable: whole || quarantine(storage, raw, QUARANTINE_PREFIX),
+  }
 }
 
 /** False when the phone could not keep `drafts`. */
@@ -144,5 +165,10 @@ export function writeDrafts(
   storage: StorageAdapter,
   drafts: FormDrafts
 ): boolean {
-  return writeRecord(storage, DRAFTS_KEY, JSON.stringify(drafts), parse)
+  try {
+    storage.setItem(DRAFTS_KEY, JSON.stringify(drafts))
+    return true
+  } catch {
+    return false
+  }
 }

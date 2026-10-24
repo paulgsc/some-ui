@@ -133,6 +133,9 @@ const LIMITS = { minMs: SOUNDBITE_MIN_MS, maxMs: SOUNDBITE_MAX_MS }
 
 const IDLE: Importing = { kind: "idle" }
 
+const DRAFT_NOT_KEPT =
+  "This phone couldn’t keep what you typed, so it lasts only while Jobs stays open. Free some space."
+
 const SHARES: Readonly<Record<ShareKind, { dir: ShareDir; title: string }>> = {
   decisions: { dir: "job-decisions", title: "Today's job decisions" },
   scouts: { dir: "job-scouts", title: "Jobs I found" },
@@ -144,7 +147,8 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
   const readOnly = opened.kind === "unreadable"
   let importing: Importing = IDLE
   let problem: string | null = null
-  let drafts = readDrafts(ports.storage)
+  const keptDrafts = readDrafts(ports.storage)
+  let drafts = keptDrafts.drafts
   let takeOwner: string | null = null
   let picks = 0
   const sharing = new Set<ShareKind>()
@@ -212,14 +216,17 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
     return true
   }
 
-  // A draft the phone could not keep still holds while the page is open.
+  // A draft the phone can't keep still holds while the page is open, and
+  // says so; clearing one that then comes back says nothing.
   const setDraft = (owner: string, draft: FormDraft | null): void => {
     const next = withDraft(drafts, owner, draft)
     if (next === drafts) return
     drafts = next
-    if (!readOnly && !writeDrafts(ports.storage, drafts)) {
-      problem =
-        "This phone couldn't keep what you typed, so it lasts only while Jobs stays open. Free some space."
+    const kept =
+      !readOnly && keptDrafts.writable && writeDrafts(ports.storage, drafts)
+    if (draft !== null) {
+      if (!kept) problem = DRAFT_NOT_KEPT
+      else if (problem === DRAFT_NOT_KEPT) problem = null
     }
     publish()
   }

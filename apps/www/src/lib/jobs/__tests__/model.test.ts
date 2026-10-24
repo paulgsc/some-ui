@@ -308,8 +308,11 @@ describe("timedMinutes (JB1)", () => {
   })
 
   it("times a reopened posting from the sitting's first open, and a new sitting afresh", () => {
-    const reopened = openAt(openAt(taken, 0), 30)
+    const reopened = openAt(openAt(taken, 0), 20)
     expect(timedMinutes(reopened, DAY, SW.id, minute(40))).toBe(40)
+    // A glance an hour and more before applying is a sitting of its own.
+    const glanced = openAt(openAt(taken, 0), 110)
+    expect(timedMinutes(glanced, DAY, SW.id, minute(135))).toBe(25)
     const nextMorning = openAt(reopened, 16 * 60)
     expect(timedMinutes(nextMorning, DAY, SW.id, minute(16 * 60 + 9))).toBe(9)
   })
