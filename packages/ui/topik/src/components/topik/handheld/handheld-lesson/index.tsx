@@ -349,30 +349,33 @@ export const HandheldLesson = ({
     )
   }
   const canRead = speaker?.available === true
-  const openNext = (): void => {
+  /** Opens the next lesson; false when there is none to open. */
+  const openNext = (): boolean => {
     const fromRoutine = routineCards.find(
       (card) => !card.opened && (card.kind === "drama" || canRead)
     )
     if (fromRoutine) {
       openRoutine(fromRoutine.key)
-      return
+      return true
     }
     const ready = readySets(added).at(0)
-    if (ready === undefined || !canRead) return
+    if (ready === undefined || !canRead) return false
     keepSets(openSet(added, ready.deck.id, now().toISOString()))
     setReading({ set: ready.deck.id, begin: true })
+    return true
   }
-  // The press the host already made, once per mount, a double mount
-  // included: the second would open the one after it.
+  // The press the host already made, answered once, a double mount
+  // included: the second would open the one after it. With nothing to open
+  // yet, it waits for the first look at home to settle, then tries once more.
   const opening = useRef(initialOpen)
+  const looking = routine.isFetching
   const openAsked = useEffectEvent((): void => {
     if (opening.current !== "next") return
-    opening.current = undefined
-    openNext()
+    if (openNext() || !looking) opening.current = undefined
   })
   useEffect(() => {
     openAsked()
-  }, [])
+  }, [looking])
   const [castOpen, setCastOpen] = useState(false)
 
   if (reading) {

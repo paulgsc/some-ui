@@ -687,6 +687,49 @@ describe("HandheldLesson", () => {
     })
     expect(await screen.findByRole("button", { name: "Pause" })).toBeTruthy()
     expect(store.sets().every((set) => set.openedAt !== null)).toBe(true)
+    cleanup()
+
+    // Nothing on the phone yet: it waits for home's first answer, then opens.
+    let answer: (value: unknown) => void = () => {}
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: createReadAloudStore(memoryStorage()),
+      initialOpen: "next",
+      routineFeed: createRoutineFeed(
+        {
+          key: "home",
+          list: () =>
+            new Promise((resolve) => {
+              answer = resolve
+            }),
+        },
+        createRunLog(memoryStorage()),
+        createHeldAnswers(memoryStorage())
+      ),
+    })
+    await screen.findByText("No dramas this week yet.")
+    expect(screen.queryByRole("button", { name: "Pause" })).toBeNull()
+    act(() =>
+      answer({
+        files: [
+          {
+            folder: "scene",
+            name: "scene-b.json",
+            file: {
+              schema: "some-ui.routine-scene/1",
+              title: "약속",
+              decks: [
+                routineDeck("plans-3", "Plans"),
+                routineDeck("plans-3-lens", "Plans, lens"),
+              ],
+            },
+          },
+        ],
+        runs: [],
+        at: "2026-10-14T05:00:00.000Z",
+      })
+    )
+    expect(await screen.findByRole("button", { name: "Pause" })).toBeTruthy()
   })
 
   it("says what a set is for and where it takes place, and opens a lens set on the lens", async () => {
