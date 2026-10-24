@@ -132,6 +132,8 @@ const StoredSchema = z.object({
       refusedFiles: z.array(z.string()).default([]),
     })
     .default({ kept: false, held: [], refused: [], refusedFiles: [] }),
+  // A record kept before shares noted where they began has none.
+  carried: z.record(z.string(), z.number()).default({}),
 })
 
 /**
@@ -148,8 +150,9 @@ function parse(raw: string): JobsState | null {
   try {
     const stored = StoredSchema.safeParse(JSON.parse(raw))
     if (!stored.success) return null
-    const { digests, current, firstOpened, log, voice, home } = stored.data
-    return { digests, current, firstOpened, log, voice, home }
+    const { digests, current, firstOpened, log, voice, home, carried } =
+      stored.data
+    return { digests, current, firstOpened, log, voice, home, carried }
   } catch {
     return null
   }

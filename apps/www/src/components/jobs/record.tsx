@@ -1,6 +1,6 @@
 /**
  * Jobs › Record: every pick taken, what came of it, and today's decisions
- * out to Drive for the morning run.
+ * on their way to the morning run, the card wearing where they are.
  */
 import type { JSX } from "react"
 import { median } from "@some-ui/core-utils"
@@ -10,11 +10,18 @@ import { Link } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
 import { phoneJobs } from "@/lib/jobs"
+import { kindJourney } from "@/lib/jobs/journey"
 import type { Outcome } from "@/lib/jobs/model"
 import { applicationsOf, lastDelivered } from "@/lib/jobs/model"
 import { sectionHeading } from "@/components/job-reading"
 
-import { Problem, ShareToDrive, useJobs } from "./parts"
+import {
+  JourneyCard,
+  Problem,
+  ShareAction,
+  useJobs,
+  useJourneyContext,
+} from "./parts"
 
 const OUTCOME_LABELS: Readonly<Record<Outcome, string>> = {
   viewed: "Viewed",
@@ -34,6 +41,7 @@ export const JobsRecord = (): JSX.Element => {
   const passed = state.log.filter((e) => e.type === "passed").length
   const minutes = median(debriefs.map((d) => d.minutes))
   const last = lastDelivered(state, "decisions")
+  const journey = kindJourney(useJourneyContext(), "decisions")
   return (
     <div className="flex flex-col gap-5">
       <section className="grid grid-cols-2 gap-2 rounded-xl border p-3 text-sm tabular-nums">
@@ -53,12 +61,17 @@ export const JobsRecord = (): JSX.Element => {
       <p className="text-muted-foreground text-xs">
         Nothing here is edited or deleted, only added to.
       </p>
-      <ShareToDrive kind="decisions" label="Share today’s decisions">
-        <p className="text-muted-foreground text-xs">
+      <JourneyCard title="Today’s decisions" journey={journey} noun="them">
+        <p className="text-muted-foreground px-3.5 py-3 text-xs">
           The morning run reads these and your voice notes.
-          {last ? ` Last shared ${last.day}.` : ""}
+          {last ? ` Last sent ${last.day}.` : ""}
         </p>
-      </ShareToDrive>
+        <ShareAction
+          kind="decisions"
+          journey={journey}
+          label="Share today’s decisions"
+        />
+      </JourneyCard>
       <Problem />
       {applications.length > 0 && (
         <section className="flex flex-col gap-2">

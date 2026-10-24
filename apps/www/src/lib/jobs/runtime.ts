@@ -28,6 +28,7 @@ import { draftRecordedBy, readDrafts, withDraft, writeDrafts } from "./drafts"
 import type { Outgoing, OutgoingFile } from "./files"
 import { decisionsFile, isFile, scoutsFile } from "./files"
 import type { JobsRecordPort } from "./home"
+import { deliveryView } from "./journey"
 import type {
   Draft,
   JobsAction,
@@ -112,8 +113,9 @@ export type JobsRuntime = {
   /** Lets a draft's voice notes go; a note the record names stays. */
   dropVoice: (ids: ReadonlyArray<string>) => void
   /**
-   * The file `kind` would share now, why it can't be shared, or null when
-   * there's nothing new since the last share that arrived.
+   * The file `kind`'s share sheet would send now, why it can't be shared,
+   * or null when there's nothing new since the last share that arrived and
+   * no run missed one.
    */
   outgoing: (kind: ShareKind) => Outgoing
   share: (kind: ShareKind) => Promise<Shared>
@@ -258,10 +260,22 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
     }
   }
 
-  const fileFor = (kind: ShareKind, at: Date): Outgoing =>
+  const fileFor = (kind: ShareKind, at: Date, from = state): Outgoing =>
     kind === "decisions"
-      ? decisionsFile(state, ports.dayOf(at), at.toISOString())
-      : scoutsFile(state, at)
+      ? decisionsFile(from, ports.dayOf(at), at.toISOString())
+      : scoutsFile(from, at)
+
+  /**
+   * The share sheet's file: what an exchange would file, and what a run
+   * missed besides (`deliveryView`). A note already let go stays named in
+   * it, but its audio is gone, so none goes beside it.
+   */
+  const sheetFile = (kind: ShareKind, at: Date): Outgoing => {
+    const file = fileFor(kind, at, deliveryView(state, kind, at))
+    if (!isFile(file)) return file
+    const released = releasedVoice(state)
+    return { ...file, voice: file.voice.filter((v) => !released.has(v.id)) }
+  }
 
   const audioOf = async (
     file: OutgoingFile
@@ -292,7 +306,8 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
       },
       outgoing: (kind) => fileFor(kind, ports.now()),
       // Home holds it, so it is shared and has arrived, in one change: a
-      // record of one without the other would offer the file again.
+      // record of one without the other would offer the file again. Both
+      // at one instant (`./journey`).
       filed(kind, file): boolean {
         const shared = stamp()
         return commit({
@@ -308,8 +323,12 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
                 voice: [],
               },
               stamp: shared,
+              since: file.since,
             },
-            { event: { type: "arrived", shareId: shared.id }, stamp: stamp() },
+            {
+              event: { type: "arrived", shareId: shared.id },
+              stamp: { id: ports.newId(), at: shared.at },
+            },
           ],
         })
       },
@@ -385,11 +404,11 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
       const gone = before.filter((n) => !state.voice.includes(n))
       ports.audio.remove(gone.map((n) => n.id)).catch(() => undefined)
     },
-    outgoing: (kind) => fileFor(kind, ports.now()),
+    outgoing: (kind) => sheetFile(kind, ports.now()),
     async share(kind): Promise<Shared> {
       if (sharing.has(kind)) return { outcome: "cancelled" }
       const at = ports.now()
-      const file = fileFor(kind, at)
+      const file = sheetFile(kind, at)
       if (!isFile(file)) return { outcome: "nothing" }
       sharing.add(kind)
       try {
@@ -412,6 +431,7 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
             voice: file.voice.map(({ id }) => id),
           },
           stamp: shareStamp,
+          since: file.since,
         })
         if (!noted) return { outcome: "unrecorded" }
         return { outcome: "shared", shareId: shareStamp.id }

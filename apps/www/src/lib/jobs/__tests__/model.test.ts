@@ -486,8 +486,8 @@ describe("digests home holds (fetched)", () => {
     const logged = record(opened, { type: "taken", ...ref() })
     const state = fetch(logged, "2026-10-19")
     const { digests: _d, current: _c, firstOpened: _f, ...rest } = state
-    const { log, voice, home } = logged
-    expect(rest).toEqual({ log, voice, home })
+    const { log, voice, home, carried } = logged
+    expect(rest).toEqual({ log, voice, home, carried })
   })
 
   it("takes no digest for a day the phone holds", () => {

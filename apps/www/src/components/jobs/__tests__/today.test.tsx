@@ -6,7 +6,7 @@
  * the way in only when nothing arrives on its own.
  */
 
-import { act, cleanup, render, screen } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { PickRef } from "@/lib/jobs/model"
@@ -36,7 +36,11 @@ afterEach(() => {
 const PICKER = "Open today’s picks from storage"
 
 /** Today, as the phone shows it at `now`, holding the digest of `day` (or none). */
-async function showToday(now: string, day: string | null): Promise<void> {
+async function showToday(
+  now: string,
+  day: string | null,
+  kept = false
+): Promise<void> {
   vi.setSystemTime(new Date(now))
   mockJobs()
   const { phoneJobs } = await import("@/lib/jobs")
@@ -45,7 +49,12 @@ async function showToday(now: string, day: string | null): Promise<void> {
     phoneJobs().keeping.fetched([digest(day)])
   }
   const { JobsToday } = await import("@/components/jobs/today")
-  render(<JobsToday />)
+  const { KeptOnHome } = await import("@/components/jobs/parts")
+  render(
+    <KeptOnHome value={kept}>
+      <JobsToday />
+    </KeptOnHome>
+  )
 }
 
 describe("Today, as the picks arrive", () => {
@@ -164,5 +173,33 @@ describe("Today, opened", () => {
     })
     expect(screen.getByText("Today: 3 things done.")).toBeTruthy()
     expect(screen.getByText("That’s every pick for now.")).toBeTruthy()
+  })
+})
+
+describe("Today, letting picks go (JB2)", () => {
+  it("says where the picks let go went, and follows them home", async () => {
+    await showToday("2026-10-22T14:00:00Z", "2026-10-22", true)
+    fireEvent.click(screen.getByRole("button", { name: /^Let 2 undecided/ }))
+    fireEvent.click(screen.getByRole("button", { name: "Let them go" }))
+    const card = screen.getByRole("heading", { name: /^2 picks let go at / })
+    const bar = (): string | null | undefined =>
+      card.closest("[data-journey]")?.getAttribute("data-journey")
+    expect(bar()).toBe("on-phone")
+    expect(
+      screen.getByRole("button", { name: /^On this phone\. Show where/ })
+    ).toBeTruthy()
+
+    const { phoneJobs } = await import("@/lib/jobs")
+    const { isFile } = await import("@/lib/jobs/files")
+    const jobs = phoneJobs()
+    const file = jobs.keeping.outgoing("decisions")
+    if (!isFile(file)) throw new Error("no decisions file")
+    act(() => {
+      jobs.keeping.filed("decisions", file)
+    })
+    expect(bar()).toBe("with-home")
+    expect(
+      screen.getByRole("button", { name: /^Home has them\. Show where/ })
+    ).toBeTruthy()
   })
 })

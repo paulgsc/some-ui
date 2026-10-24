@@ -155,6 +155,16 @@ export const letGoConfirm = "Let them go"
 
 export const letGoKeep = "Keep them"
 
+/** A share the sheet made, said to have arrived in Drive. */
+export const itArrived = "It arrived"
+
+/** The share sheet again, for a share not yet said to have arrived. */
+export const shareAgain = "Share again"
+
+/** The picks let go last, and when: the card that says where they went. */
+export const letGoneAt = (count: number, time: string): string =>
+  `${count === 1 ? "One pick" : `${count} picks`} let go at ${time}`
+
 /** A posting left out that I would have picked. */
 export const wouldHavePicked = "I’d have picked this"
 
