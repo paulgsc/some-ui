@@ -486,6 +486,95 @@ describe("the routine's study files", () => {
   })
 })
 
+describe("LeetType's files", () => {
+  const SESSION = JSON.stringify({
+    schema: "some-ui.leetype-session/1",
+    file: { title: "One node", screens: [] },
+  })
+  const LOG = JSON.stringify({
+    schema: "some-ui.leetype-log/1",
+    session: "0b6c4fae-eae3-47be-bc1f-6c351f98ca3c",
+    file: "t1-01-one-node.json",
+    events: [],
+  })
+  const SESSION_NAME = "t1-01-one-node.json"
+  const LOG_NAME = "log-0b6c4fae-eae3-47be-bc1f-6c351f98ca3c.json"
+
+  it("the routine puts a session file, and home reads it and may not put one", async () => {
+    const d = deps()
+    expect(
+      (await put(d, "leetype", SESSION_NAME, { body: SESSION })).status
+    ).toBe(201)
+    const path = `/v1/leetype/items/${SESSION_NAME}`
+    expect((await send(d, "GET", path, { token: HOME })).status).toBe(200)
+    expect(
+      (await send(d, "GET", "/v1/leetype/items", { token: HOME })).status
+    ).toBe(200)
+    expect(
+      (
+        await put(d, "leetype", "t1-02-lost-machine-split-network.json", {
+          token: HOME,
+          body: SESSION,
+        })
+      ).status
+    ).toBe(403)
+  })
+
+  it("home puts a session's log, and the routine reads it; neither the other way", async () => {
+    const d = deps()
+    expect(
+      (await put(d, "leetype-log", LOG_NAME, { token: HOME, body: LOG })).status
+    ).toBe(201)
+    const path = `/v1/leetype-log/items/${LOG_NAME}`
+    expect((await send(d, "GET", path)).status).toBe(200)
+    expect((await send(d, "GET", "/v1/leetype-log/items")).status).toBe(200)
+    expect((await send(d, "GET", path, { token: HOME })).status).toBe(403)
+    expect(
+      (await put(d, "leetype-log", "log-another.json", { body: LOG })).status
+    ).toBe(403)
+  })
+
+  it("takes only its own names and schemas", async () => {
+    const d = deps()
+    for (const name of [
+      "t1-one-node.json",
+      "t1-01.json",
+      "t1-01-One-Node.json",
+      "t1-01-one_node.json",
+      "t1-01-one-node.JSON",
+      "one-node.json",
+    ]) {
+      expect([
+        name,
+        (await put(d, "leetype", name, { body: SESSION })).status,
+      ]).toEqual([name, 422])
+    }
+    for (const name of [
+      "log-.json",
+      "log-a:b.json",
+      `log-${"a".repeat(65)}.json`,
+      "log-a.r.json",
+      "leetype-log-a.json",
+    ]) {
+      expect([
+        name,
+        (await put(d, "leetype-log", name, { token: HOME, body: LOG })).status,
+      ]).toEqual([name, 422])
+    }
+    expect(
+      (await put(d, "leetype-log", "log-a.r2.json", { token: HOME, body: LOG }))
+        .status
+    ).toBe(201)
+    expect((await put(d, "leetype", SESSION_NAME, { body: LOG })).status).toBe(
+      422
+    )
+    expect(
+      (await put(d, "leetype-log", LOG_NAME, { token: HOME, body: SESSION }))
+        .status
+    ).toBe(422)
+  })
+})
+
 describe("names", () => {
   it("a name that breaks the folder's pattern is refused", async () => {
     const d = deps()
@@ -872,6 +961,8 @@ describe("archiving", () => {
       "drama",
       "run",
       "opened",
+      "leetype",
+      "leetype-log",
     ]) {
       expect(
         (await send(d, "GET", `/v1/${folder}/items`, { token: ARCHIVE })).status
