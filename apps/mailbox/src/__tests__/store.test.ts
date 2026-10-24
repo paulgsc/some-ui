@@ -10,17 +10,22 @@ import { memoryStore } from "./stores"
 
 const MIGRATIONS = join(import.meta.dirname, "..", "..", "migrations")
 
-/** A database with every migration applied, in order, as `wrangler d1 migrations apply` does. */
-async function migrated(): Promise<Database> {
-  const files = readdirSync(MIGRATIONS)
+const migrationFiles = (): ReadonlyArray<string> =>
+  readdirSync(MIGRATIONS)
     .filter((file) => file.endsWith(".sql"))
     .sort()
+
+const apply = (db: Database, file: string): void => {
+  db.exec(readFileSync(join(MIGRATIONS, file), "utf8"))
+}
+
+/** A database with every migration applied, in order, as `wrangler d1 migrations apply` does. */
+async function migrated(): Promise<Database> {
+  const files = migrationFiles()
   // The first migration is the one this suite is written against.
   expect(files).toContain("0001_create_item.sql")
   const db = await openSqlite()
-  for (const file of files) {
-    db.exec(readFileSync(join(MIGRATIONS, file), "utf8"))
-  }
+  for (const file of files) apply(db, file)
   return db
 }
 
@@ -135,17 +140,75 @@ describe("the migration", () => {
     ])
   })
 
-  it("a folder or a putter outside the two lists is refused by the table", async () => {
+  it("a putter outside the two is refused by the table", async () => {
     const db = await migrated()
-    const insert = (folder: string, putBy: string): void => {
+    const insert = (putBy: string): void => {
       db.run(
-        "INSERT INTO item (folder, name, sha256, size, content_type, body, put_by, put_at) VALUES (?, 'n', 's', 0, 'application/json', x'00', ?, 'now')",
-        [folder, putBy]
+        "INSERT INTO item (folder, name, sha256, size, content_type, body, put_by, put_at) VALUES ('scene', 'n', 's', 0, 'application/json', x'00', ?, 'now')",
+        [putBy]
       )
     }
-    expect(() => insert("voice", "home")).toThrow()
-    expect(() => insert("brief", "phone")).toThrow()
-    expect(() => insert("brief", "home")).not.toThrow()
+    expect(() => insert("phone")).toThrow()
+    expect(() => insert("home")).not.toThrow()
+  })
+
+  it("the rebuild for new folders keeps every row and seq, and seq goes on past every one archived", async () => {
+    const db = await openSqlite()
+    const files = migrationFiles()
+    const rebuild = files.indexOf("0003_folders.sql")
+    expect(rebuild).toBeGreaterThan(0)
+    for (const file of files.slice(0, rebuild)) apply(db, file)
+    const store = d1Store(d1Shim(db))
+    await store.put("brief", "b1.json", item("1"))
+    await store.put("brief", "b2.json", item("2"))
+    await store.put("brief", "b3.json", item("3"))
+    await store.archive("brief", "b3.json", "sha-of-3", ARCHIVED_AT, LATER)
+    const before = db.exec(
+      "SELECT seq, folder, name, sha256, body FROM item ORDER BY seq"
+    )
+    for (const file of files.slice(rebuild)) apply(db, file)
+
+    expect(
+      db.exec("SELECT seq, folder, name, sha256, body FROM item ORDER BY seq")
+    ).toEqual(before)
+    // b3 held seq 3 and is archived: the next item goes past it.
+    expect(await store.put("scene", "s1.json", item("4"))).toEqual({
+      change: "added",
+      seq: 4,
+    })
+    expect(() => db.run("UPDATE item SET size = 0")).toThrow(
+      "item is append-only"
+    )
+  })
+
+  it("the rebuild carries seq past archived items when none is live, and starts at 1 on a table never used", async () => {
+    const files = migrationFiles()
+    const rebuild = files.indexOf("0003_folders.sql")
+    const upTo = async (
+      fill: (store: Store) => Promise<void>
+    ): Promise<Store> => {
+      const db = await openSqlite()
+      for (const file of files.slice(0, rebuild)) apply(db, file)
+      const store = d1Store(d1Shim(db))
+      await fill(store)
+      for (const file of files.slice(rebuild)) apply(db, file)
+      return store
+    }
+    const allArchived = await upTo(async (store) => {
+      await store.put("brief", "b1.json", item("1"))
+      await store.put("brief", "b2.json", item("2"))
+      await store.archive("brief", "b1.json", "sha-of-1", ARCHIVED_AT, LATER)
+      await store.archive("brief", "b2.json", "sha-of-2", ARCHIVED_AT, LATER)
+    })
+    expect(await allArchived.put("drama", "d.json", item("3"))).toEqual({
+      change: "added",
+      seq: 3,
+    })
+    const unused = await upTo(() => Promise.resolve())
+    expect(await unused.put("drama", "d.json", item("1"))).toEqual({
+      change: "added",
+      seq: 1,
+    })
   })
 })
 
@@ -414,6 +477,13 @@ describe("MB1: nothing in the workspace issues a statement that rewrites an item
     /\b(UPDATE\s+\w+\s+SET|REPLACE\s+INTO|OR\s+REPLACE|DO\s+UPDATE)\b/i
   const DELETES = /\bDELETE\s+FROM\s+(\w+)/gi
   const UNGUARDS = /\b(DROP\s+(TRIGGER|TABLE)|ALTER\s+TABLE\s+item)\b/i
+  /**
+   * 0003's rebuild of `item` for new folders, the one place a migration may
+   * set the sequence and drop and rename the table: the rebuild test checks
+   * every row and trigger survives it.
+   */
+  const REBUILD =
+    /\bUPDATE sqlite_sequence\s+SET seq = MAX\(seq, COALESCE\(\(SELECT seq FROM sqlite_sequence WHERE name = 'item'\), 0\)\)\s+WHERE name = 'item_next';\s*DROP TABLE item;\s*ALTER TABLE item_next RENAME TO item;/
   /** The one trigger a migration may drop: 0002 replaces it in the same file. */
   const REPLACED_TRIGGER = /\bDROP\s+TRIGGER\s+item_is_append_only_delete\s*;/i
   const tsCode = (text: string): string =>
@@ -429,6 +499,11 @@ describe("MB1: nothing in the workspace issues a statement that rewrites an item
     ]) {
       expect(bad).toMatch(REWRITES)
     }
+    // The rebuild's exemption is its exact text: a statement slipped inside
+    // it is no longer exempt.
+    expect(
+      "UPDATE sqlite_sequence\n  SET seq = 1; UPDATE item SET size = 0\n  WHERE name = 'item_next';\nDROP TABLE item;\nALTER TABLE item_next RENAME TO item;"
+    ).not.toMatch(REBUILD)
     for (const bad of [
       "DROP TRIGGER item_is_append_only_update",
       "ALTER TABLE item ADD x",
@@ -469,6 +544,7 @@ describe("MB1: nothing in the workspace issues a statement that rewrites an item
     const offenders = files.filter((file) => {
       let sql = sqlCode(readFileSync(join(MIGRATIONS, file), "utf8"))
       if (file === "0002_archive.sql") sql = sql.replace(REPLACED_TRIGGER, "")
+      if (file === "0003_folders.sql") sql = sql.replace(REBUILD, "")
       return (
         REWRITES.test(sql) ||
         UNGUARDS.test(sql) ||

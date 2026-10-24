@@ -54,6 +54,19 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
     name: /^scouts-\d{8}T\d{6}\.json$/,
     schema: "some-ui.job-scouts/1",
   },
+  {
+    // The routine's answer to a study reflection (`<date>_<session>_<id>`),
+    // `-2` and on for a second reflection under one name.
+    folder: "scene",
+    name: /^scene-\d{4}-\d{2}-\d{2}_[a-z0-9-]{1,40}_[0-9A-Za-z-]{1,8}(-\d+)?\.json$/,
+    schema: "some-ui.routine-scene/1",
+  },
+  {
+    // The routine's answer to a drama prompt, named as the prompt is.
+    folder: "drama",
+    name: /^drama-\d{8}T\d{9}Z\.json$/,
+    schema: "some-ui.routine-drama/1",
+  },
 ]
 
 /** The Worker secrets. An unset or empty one never authenticates anyone. */
@@ -76,7 +89,13 @@ type Grant = {
   readonly move: ReadonlyArray<Folder>
 }
 
-const ALL: ReadonlyArray<Folder> = ["brief", "decisions", "scout"]
+const ALL: ReadonlyArray<Folder> = [
+  "brief",
+  "decisions",
+  "scout",
+  "scene",
+  "drama",
+]
 
 /** MB2. Another role (the phone's, say) is the owner's call, not a code change. */
 const ROLES: ReadonlyArray<Grant> = [
@@ -84,14 +103,14 @@ const ROLES: ReadonlyArray<Grant> = [
     role: "routine",
     token: (tokens) => tokens.routine,
     get: ALL,
-    put: ["brief"],
+    put: ["brief", "scene", "drama"],
     ask: ALL,
     move: [],
   },
   {
     role: "home",
     token: (tokens) => tokens.home,
-    get: ["brief"],
+    get: ["brief", "scene", "drama"],
     put: ["decisions", "scout"],
     ask: [],
     move: [],
