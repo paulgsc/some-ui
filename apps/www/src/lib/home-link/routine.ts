@@ -26,7 +26,9 @@
  *   opens one, only under a choice whose words pressed carry
  *   `ROUTINE_TELLS_OPENED` (owner, 2026-10-24: the routine keeps three
  *   ready), with the app in front, one at a time, never retried and never
- *   rejected: the next open tells them all again.
+ *   rejected. One asked for while a look or another telling is on its way,
+ *   or turned away by another send, waits: the newest is told once that
+ *   look or telling settles, and the next open tells them all again.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { localStorageOrNull } from "@some-ui/core-utils"
@@ -213,11 +215,30 @@ export function createRoutineReads(ports: RoutinePorts): RoutineReads {
     )
   }
   let telling = false
+  // The newest names asked for while a look or a telling was on its way, or
+  // that the link turned away for another send: told once, when that look or
+  // telling settles.
+  let waiting: ReadonlyArray<string> | null = null
+  const startTelling = (keys: ReadonlyArray<string>): void => {
+    telling = true
+    void tell(keys)
+  }
+  const flush = (): void => {
+    if (waiting === null || telling || inFlight !== null) return
+    const keys = waiting
+    waiting = null
+    if (ports.visible() && tells()) startTelling(keys)
+  }
   const tell = async (keys: ReadonlyArray<string>): Promise<void> => {
+    let turnedAway = false
     try {
-      await ports.keep((send) =>
+      const outcome = await ports.keep((send) =>
         send("PUT", "/routine/opened", JSON.stringify({ opened: keys }))
       )
+      if (outcome === null) {
+        turnedAway = true
+        waiting ??= keys
+      }
     } catch (error) {
       // Home's silence is said nowhere: the next open tells it again. A
       // fault on this phone goes to the native log, once.
@@ -232,6 +253,8 @@ export function createRoutineReads(ports: RoutinePorts): RoutineReads {
       }
     } finally {
       telling = false
+      // Turned away: told when the next look settles, not straight back.
+      if (!turnedAway) flush()
     }
   }
 
@@ -260,6 +283,7 @@ export function createRoutineReads(ports: RoutinePorts): RoutineReads {
       inFlight = looking
       const done = (): void => {
         if (inFlight === looking) inFlight = null
+        flush()
       }
       reading.then(done, done)
       return reading
@@ -281,9 +305,12 @@ export function createRoutineReads(ports: RoutinePorts): RoutineReads {
     },
     tells,
     tellOpened(keys): void {
-      if (telling || keys.length === 0 || !ports.visible() || !tells()) return
-      telling = true
-      void tell(keys)
+      if (keys.length === 0 || !ports.visible() || !tells()) return
+      if (telling || inFlight !== null) {
+        waiting = keys
+        return
+      }
+      startTelling(keys)
     },
   }
 }

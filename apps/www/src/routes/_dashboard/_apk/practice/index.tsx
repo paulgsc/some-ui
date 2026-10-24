@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { cn, formatTimecode } from "@some-ui/core-utils"
 import {
   BrandMark,
@@ -74,6 +74,9 @@ function studiedLine(today: ReadonlyArray<SessionRecord>): string {
  * list whose refresh just failed.
  */
 const StudyCard = ({ now }: { now: Date }): JSX.Element => {
+  // Once pressed, "Next lesson" stays mounted until it has opened the
+  // player: the session it starts is in progress before it navigates.
+  const [launching, setLaunching] = useState(false)
   const outcome = queryOutcome(useSessions())
   const status = matchQueryOutcome(outcome, {
     pending: (): StudyStatus => ({ kind: "pending" }),
@@ -178,9 +181,12 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
         )}
       </div>
       {status.kind === "ready" &&
-        status.open === null &&
+        (status.open === null || launching) &&
         isOfferedActivityId("topik") && (
-          <NextLesson className="h-12 rounded-2xl px-6 text-base" />
+          <NextLesson
+            className="h-12 rounded-2xl px-6 text-base"
+            onLaunch={() => setLaunching(true)}
+          />
         )}
       {cut && (
         <div className="flex flex-col gap-2">

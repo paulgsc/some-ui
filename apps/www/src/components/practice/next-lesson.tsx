@@ -32,8 +32,14 @@ const activate = (
 
 export const NextLesson = ({
   className,
+  onLaunch,
 }: {
   className?: string
+  /**
+   * Pressed: the host keeps this mounted from now until it navigates, as
+   * the session it starts shows as in progress before then.
+   */
+  onLaunch?: () => void
 }): JSX.Element => {
   const navigate = useNavigate()
   const create = useIntent(useCreateSession(), { presentation: "interactive" })
@@ -58,6 +64,7 @@ export const NextLesson = ({
     failed: () => null,
   })
   const press = (): void => {
+    onLaunch?.()
     if (made) start.start(activate(made))
     else create.start({ ...basicSession(["topik"]), id })
   }

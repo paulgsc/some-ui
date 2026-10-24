@@ -57,11 +57,17 @@ afterEach(() => {
 
 type Sessions = Array<SessionRecord>
 
-function renderWith(
-  fields: Parameters<typeof fakeQueryResult<Sessions>>[0]
-): void {
+function renderWith(fields: Parameters<typeof fakeQueryResult<Sessions>>[0]): {
+  refresh: (next: Parameters<typeof fakeQueryResult<Sessions>>[0]) => void
+} {
   mockResult = fakeQueryResult<Sessions>({ refetch, ...fields })
-  render(withQueryClient(<PracticeHome />))
+  const { rerender } = render(withQueryClient(<PracticeHome />))
+  return {
+    refresh: (next): void => {
+      mockResult = fakeQueryResult<Sessions>({ refetch, ...next })
+      rerender(withQueryClient(<PracticeHome />))
+    },
+  }
 }
 
 describe("Practice's study card", () => {
@@ -119,6 +125,16 @@ describe("Practice's study card", () => {
 
     expect(screen.getByText("Resume")).toBeTruthy()
     expect(screen.queryByText("Studied today")).toBeNull()
+    expect(screen.queryByText("Next lesson")).toBeNull()
+  })
+
+  it("keeps Next lesson on screen once pressed, while the session it starts shows as open", () => {
+    const { refresh } = renderWith({ data: [], isError: false })
+    fireEvent.click(screen.getByRole("button", { name: "Next lesson" }))
+    const open = { ...finished("Korean", 0), status: "active" as const }
+    refresh({ data: [open], isError: false })
+    expect(screen.getByText("Resume")).toBeTruthy()
+    expect(screen.queryByText(/Next lesson|Getting it ready/)).not.toBeNull()
   })
 
   it("offers Pick up for a session stopped within the window", () => {
