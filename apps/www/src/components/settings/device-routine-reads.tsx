@@ -3,7 +3,8 @@
  * reflections routine left on the paired home (LA12,
  * docs/learner-data-authority.md): two presses to show them, the second
  * keeping the words the first showed, and two to stop. Its words are
- * `lib/home-link/words`'s alone; it sends nothing. Korean's own list reads
+ * `lib/home-link/words`'s alone; it sends nothing. A choice made before its
+ * words told home which lessons were opened says so, and how to choose that. Korean's own list reads
  * home (`components/player/device-routine-files.ts`).
  */
 import type { JSX } from "react"
@@ -42,6 +43,11 @@ export const DeviceRoutineReads = (): JSX.Element | null => {
             {ROUTINE_READS.on(fullDay(since))}
           </p>
           <p className="text-muted-foreground text-xs">{lastLook(read.last)}</p>
+          {!reads.tells() && (
+            <p className="text-muted-foreground text-xs">
+              {ROUTINE_READS.askAgain}
+            </p>
+          )}
         </div>
       )}
       {refused ? (

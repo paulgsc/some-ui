@@ -464,6 +464,14 @@ export function laneView(
 }
 
 /**
+ * In a choice's words, what lets this phone tell home which of the
+ * routine's lessons it opened (`./routine`'s `tellOpened`): a choice made
+ * without them tells home nothing.
+ */
+export const ROUTINE_TELLS_OPENED =
+  "When you open one, this phone tells home which, by name, so the routine keeps three ready."
+
+/**
  * Korean's look at what the reflections routine left on home (LA12):
  * Settings' choice to show it there, and how the last look went.
  */
@@ -473,7 +481,10 @@ export const ROUTINE_READS = {
   show: "Show them in Korean...",
   /** The first press's question: also the words kept with the choice. */
   confirm: (host: string): string =>
-    `Show the routine's word sets and dramas from ${host} in Korean? While Korean is open, this phone looks at what ${host} holds for you. It sends nothing of yours.`,
+    `Show the routine's word sets and dramas from ${host} in Korean? While Korean is open, this phone looks at what ${host} holds for you. ${ROUTINE_TELLS_OPENED} Nothing else of yours is sent.`,
+  /** Shown under a choice made before it told home which were opened. */
+  askAgain:
+    "This phone doesn't tell home which ones you open, so the routine can't keep three ready. To choose that, stop showing them, then show them again.",
   confirmYes: "Show them",
   confirmNo: "Cancel",
   refused: "This phone couldn't keep that choice. Nothing changed.",

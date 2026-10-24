@@ -341,7 +341,12 @@ export const HandheldLesson = ({
       startTree(file.tree)
     }
     opened.markOpened(key)
-    setOpenedKeys(opened.opened())
+    const nowOpened = opened.opened()
+    setOpenedKeys(nowOpened)
+    // Every listed one opened, so a filing lost on the way is told again.
+    routineFeed?.tellOpened?.(
+      (routine.data ?? []).map(openedKey).filter((one) => nowOpened.has(one))
+    )
   }
   const canRead = speaker?.available === true
   const openNext = (): void => {

@@ -18,8 +18,9 @@
  *   call that module, and only the Home server block, the mark of a record
  *   kept on home (aph, LA9; the Jobs record, LA10; Practice, LA11), what
  *   hands aph's lane to that mark, and the choice and port of the routine's
- *   files in Korean (LA12, whose read sends one `GET /routine/files`) may
- *   call `lib/home-link`.
+ *   files in Korean (LA12, whose read sends one `GET /routine/files` and
+ *   whose telling of what was opened one `PUT /routine/opened`) may call
+ *   `lib/home-link`.
  *
  * The last group feeds the checks known-bad sources, so a check that stopped
  * looking cannot stay green.
@@ -71,9 +72,12 @@ const KEEPERS = new Set([
   "lib/home-link/routine.ts",
 ])
 
-/** LA12: the routine's read, and the one request it may send. */
+/** LA12: the routine's read, and the two requests it may send. */
 const ROUTINE_READ = "lib/home-link/routine.ts"
-const ROUTINE_SEND = ['"GET"', '"/routine/files"']
+const ROUTINE_SENDS = [
+  ['"GET"', '"/routine/files"'],
+  ['"PUT"', '"/routine/opened"', "JSON.stringify({ opened: keys })"],
+]
 
 /** Every call of a function named `send` in `text`, as its arguments' text. */
 function sendCalls(path: string, text: string): Array<Array<string>> {
@@ -455,8 +459,8 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(read(ROUTINE_READ)).toContain("homeLink().keep(")
   })
 
-  it("sends nothing from the routine's read but one GET /routine/files (LA12)", () => {
-    expect(sendCalls(ROUTINE_READ, read(ROUTINE_READ))).toEqual([ROUTINE_SEND])
+  it("sends nothing from the routine's read but one GET /routine/files and one PUT /routine/opened (LA12)", () => {
+    expect(sendCalls(ROUTINE_READ, read(ROUTINE_READ))).toEqual(ROUTINE_SENDS)
   })
 
   it("still finds what it is meant to guard", () => {
@@ -563,7 +567,7 @@ describe("the checks themselves", () => {
         "x.ts",
         'void send("GET", "/routine/files"); void link.send("PUT", path, body); void sender("GET", "/x")'
       )
-    ).toEqual([ROUTINE_SEND, ['"PUT"', "path", "body"]])
+    ).toEqual([ROUTINE_SENDS[0], ['"PUT"', "path", "body"]])
   })
 
   it("flags an eslint-disable of the rule and nothing else", () => {

@@ -5,7 +5,8 @@ other files. For the Jobs wing: the daily **digest** (`brief`), the phone's **de
 (`decisions`) and its **scouts** (`scout`). For study: the reflections routine's **word sets**
 (`scene`) and **dramas** (`drama`), which home serves to the phone, and a **run record** for
 each of the routine's runs (`run`): what it found and added, so the phone can say when the
-routine last ran and whether it brought anything new. Each side reaches it with
+routine last ran and whether it brought anything new. Home leaves it which of those lessons the
+phone opened (`opened`), names only, so it keeps three ready. Each side reaches it with
 its own token, so the files move between them without a hand-carried step.
 
 ## Why it exists
@@ -17,6 +18,7 @@ answers only on the home network. Home can make outbound requests, so both sides
 cloud routine ──PUT brief──▶ [ mailbox ] ◀──GET brief── home ◀── phone (while Jobs is open, at home)
 cloud routine ◀─GET decisions, scout── [ mailbox ] ◀──PUT decisions, scout── home ◀── phone
 cloud routine ──PUT scene, drama, run──▶ [ mailbox ] ◀──GET scene, drama, run── home ◀── phone (Korean study)
+cloud routine ◀──GET opened── [ mailbox ] ◀──PUT opened── home ◀── phone (a lesson opened)
 ```
 
 The phone talks to home only. Home carries no audio (`docs/identity.md` in `paulgsc/server`,
@@ -67,7 +69,7 @@ Every request needs `Authorization: Bearer <token>`. Every answer is JSON, or th
 | `GET /v1/:folder/wanted?limit=<n>`                       | `200 {"items":[{"name","askedAt"}]}`, the open asks, oldest first.                                                                                                                                                                                                                                 |
 | anything else                                            | `404`; a method the path does not take is `405` with `Allow`. A missing or wrong token is `401`, a token that may not do this is `403`, and storage failing is `503`.                                                                                                                              |
 
-The folders are `brief`, `decisions`, `scout`, `scene`, `drama` and `run`.
+The folders are `brief`, `decisions`, `scout`, `scene`, `drama`, `run` and `opened`.
 
 **`seq` only grows, and it has gaps.** SQLite hands out a number for every put that reaches the
 table, including a put of a name already held (`unchanged` or `conflict`), which stores nothing.
@@ -80,7 +82,7 @@ then six repeats, then `seq 8`). Page with `after` set to the highest `seq` you 
 | Secret          | Role      | May                                                                                                   |
 | --------------- | --------- | ----------------------------------------------------------------------------------------------------- |
 | `ROUTINE_TOKEN` | `routine` | read every folder; put `brief`, `scene`, `drama` and `run`; list what is archived and ask for it back |
-| `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama` and `run`; put `decisions` and `scout`                                 |
+| `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama` and `run`; put `decisions`, `scout` and `opened`                       |
 | `ARCHIVE_TOKEN` | `archive` | read every folder; archive a file and put an archived one back; list the open asks                    |
 
 The routine role is every scheduled routine's: the Jobs digest and the study reflections each
@@ -100,12 +102,13 @@ role, and it is the owner's call, so it is not built.
   (`YYYY-MM-DD_<session>_<id>`, which two reflections can share); `drama` takes `drama-<stamp>.json`,
   named for its prompt (`drama-YYYYMMDDTHHMMSSmmmZ`); `run` takes
   `run-<routine>-YYYYMMDDTHHMMSSZ.json`, named for the routine (lower-case letters) and when the
-  run started, in UTC. Anything else, voice-note names included, is `422`.
+  run started, in UTC; `opened` takes `opened-YYYYMMDDTHHMMSSmmmZ.json`, named for when home
+  filed it. Anything else, voice-note names included, is `422`.
 - **Content type** `application/json` (parameters such as `charset` are ignored), and the body
   must be UTF-8 JSON with no byte-order mark.
 - **Schema**: the top-level `schema` must be `some-ui.job-digest/1`, `some-ui.job-decisions/1`,
-  `some-ui.job-scouts/1`, `some-ui.routine-scene/1`, `some-ui.routine-drama/1` or `some-ui.routine-run/1` to
-  match the folder. The Worker checks that and nothing deeper; the readers validate the full shape.
+  `some-ui.job-scouts/1`, `some-ui.routine-scene/1`, `some-ui.routine-drama/1`, `some-ui.routine-run/1` or
+  `some-ui.routine-opened/1` to match the folder. The Worker checks that and nothing deeper; the readers validate the full shape.
 - **A scene** is `{"schema":"some-ui.routine-scene/1","answers":"<reflection>","title":"<the
 scene folder's name>","decks":[<read-aloud deck>,<lens deck>]}`, each deck exactly as the
   phone's word set check takes it. **A drama** is `{"schema":"some-ui.routine-drama/1",
@@ -113,7 +116,10 @@ scene folder's name>","decks":[<read-aloud deck>,<lens deck>]}`, each deck exact
   is `{"schema":"some-ui.routine-run/1","routine":"reflections","startedAt","finishedAt",
 "outcome":"done"|"partly"|"stopped","found":{"reflections","prompts"},"added":[{"folder",
 "name","title"}],"problems":["<a plain sentence>"]}`: what that run found unanswered, the
-  files it put, and what it could not do. Topik's `adapter/routine-runs` reads it.
+  files it put, and what it could not do. Topik's `adapter/routine-runs` reads it. **An opened
+  filing** is `{"schema":"some-ui.routine-opened/1","opened":["scene/<name>","drama/<name>"],
+"at"}`: every listed lesson the phone had opened when it filed, as home builds it
+  (paulgsc/server `PUT /routine/opened`).
 - **Size**: at most 1,048,576 bytes. A declared `Content-Length` over that is refused before
   the body is read, and a body that declares nothing is cut off as it passes the cap. Real
   files are under 20 KB.
@@ -203,8 +209,8 @@ how each was checked when this workspace landed.
 - _Claim:_ the `ROLES` table in `src/core.ts` is the only place a token is mapped to what it
   may do, and it holds exactly three roles: `routine` (get every folder, put `brief`, `scene`,
   `drama` and `run`, ask every folder), `home` (get `brief`, `scene`, `drama` and `run`, put
-  `decisions` and `scout`) and `archive` (get and move every folder; owner, 2026-10-23, and
-  `scene` and `drama` the same day; `run` 2026-10-24). Every request passes `authenticate` and then one of `serve`'s
+  `decisions`, `scout` and `opened`) and `archive` (get and move every folder; owner,
+  2026-10-23, and `scene` and `drama` the same day; `run` and `opened` 2026-10-24). Every request passes `authenticate` and then one of `serve`'s
   `may(grant.get | put | ask | move)` checks before anything reaches the store.
 - _Falsified by_ a hunk that adds, removes or renames a role; adds a folder to, or removes one
   from, any role's `get`, `put`, `ask` or `move` list; changes which secret a role reads, or
@@ -226,7 +232,10 @@ how each was checked when this workspace landed.
   `drama` for every role: the routine puts, reads, lists archived and asks, home reads and
   may not put, and only the archive role archives. _Checked at the run amendment
   (2026-10-24, the owner's ask that the routine say when it ran and what it added):_ `ROLES`
-  has three entries; `core.test.ts` pins `run` as it pins `scene` and `drama`.
+  has three entries; `core.test.ts` pins `run` as it pins `scene` and `drama`. _Checked at the
+  opened amendment (2026-10-24, the owner's choice that the routine keep three lessons ready):_
+  `ROLES` has three entries; `core.test.ts` pins `opened`: home puts it and may not read it, the
+  routine reads it and may not put it, and archive moves it.
 
 **MB3: No token reaches the repo or a log.**
 

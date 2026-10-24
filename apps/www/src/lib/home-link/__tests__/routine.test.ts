@@ -21,6 +21,7 @@ import {
   shownNow,
 } from "@/lib/home-link/routine-model"
 import type { HomeLink } from "@/lib/home-link/runtime"
+import { ROUTINE_TELLS_OPENED } from "@/lib/home-link/words"
 
 const FILES = { files: [{ folder: "drama", name: "d.json", file: {} }] }
 const NO_FILES = { files: [] }
@@ -331,6 +332,41 @@ describe("Korean's look at the routine's files", () => {
     expect(storage.getItem(READS_KEY)).toBe("not a log")
     await expect(reads.list()).resolves.toEqual(NO_FILES)
     expect(home.sent).toEqual([])
+  })
+
+  it("tells home which lessons were opened only under a choice whose words say so, in front, one at a time", async () => {
+    const home = homeOf()
+    const reads = readsOf(home)
+    reads.choose("shown", SAID)
+    expect(reads.tells()).toBe(false)
+    reads.tellOpened(["scene/a.json"])
+    expect(home.sent).toEqual([])
+
+    // Chosen again, with the words that say home is told.
+    reads.choose("hidden", "Stop?")
+    reads.choose("shown", `Show them? ${ROUTINE_TELLS_OPENED}`)
+    expect(reads.tells()).toBe(true)
+    home.visible = false
+    reads.tellOpened(["scene/a.json"])
+    expect(home.sent).toEqual([])
+    home.visible = true
+    reads.tellOpened([])
+    reads.tellOpened(["scene/a.json"])
+    reads.tellOpened(["scene/a.json", "drama/b.json"])
+    expect(home.sent).toEqual(["PUT /routine/opened"])
+    await vi.waitFor(() => {
+      reads.tellOpened(["scene/a.json", "drama/b.json"])
+      expect(home.sent).toHaveLength(2)
+    })
+
+    // Home's silence is never a rejection.
+    home.answer = (): Promise<HomeAnswer> => Promise.reject(noAnswer())
+    await vi.waitFor(() => {
+      reads.tellOpened(["scene/a.json"])
+      expect(home.sent).toHaveLength(3)
+    })
+    relink(home, null)
+    expect(reads.tells()).toBe(false)
   })
 
   it("keeps each choice with the words pressed, under its pairing", () => {

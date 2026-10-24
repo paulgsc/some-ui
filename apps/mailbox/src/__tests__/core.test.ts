@@ -395,6 +395,48 @@ describe("the routine's study files", () => {
     }
   })
 
+  it("home puts which lessons were opened, and the routine reads it; neither the other way", async () => {
+    const d = deps()
+    const OPENED = JSON.stringify({
+      schema: "some-ui.routine-opened/1",
+      opened: ["scene/scene-a.json"],
+    })
+    const name = "opened-20261024T160208123Z.json"
+    expect(
+      (await put(d, "opened", name, { token: HOME, body: OPENED })).status
+    ).toBe(201)
+    expect((await send(d, "GET", `/v1/opened/items/${name}`)).status).toBe(200)
+    expect((await send(d, "GET", "/v1/opened/items")).status).toBe(200)
+    expect(
+      (
+        await put(d, "opened", "opened-20261024T160208124Z.json", {
+          body: OPENED,
+        })
+      ).status
+    ).toBe(403)
+    expect(
+      (await send(d, "GET", `/v1/opened/items/${name}`, { token: HOME })).status
+    ).toBe(403)
+    for (const wrong of [
+      "opened-20261024T160208Z.json",
+      "opened-2026-10-24.json",
+      "opened-20261024T160208123Z.txt",
+    ]) {
+      expect([
+        wrong,
+        (await put(d, "opened", wrong, { token: HOME, body: OPENED })).status,
+      ]).toEqual([wrong, 422])
+    }
+    expect(
+      (
+        await put(d, "opened", "opened-20261024T160208125Z.json", {
+          token: HOME,
+          body: RUN,
+        })
+      ).status
+    ).toBe(422)
+  })
+
   it("a second reflection under one name takes a number", async () => {
     const d = deps()
     const second = "scene-2026-10-13_morning-drama_session--2.json"
@@ -829,6 +871,7 @@ describe("archiving", () => {
       "scene",
       "drama",
       "run",
+      "opened",
     ]) {
       expect(
         (await send(d, "GET", `/v1/${folder}/items`, { token: ARCHIVE })).status

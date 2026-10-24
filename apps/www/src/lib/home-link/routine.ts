@@ -21,6 +21,12 @@
  * - **An unreadable choice log is never written over,** as the consent
  *   log's is not (`./consent-runtime`): every choice is then refused, and
  *   nothing is shown until it can be read.
+ * - **Which lessons were opened is told only as the choice's words say.**
+ *   `tellOpened` sends one `PUT /routine/opened` of names, when Korean
+ *   opens one, only under a choice whose words pressed carry
+ *   `ROUTINE_TELLS_OPENED` (owner, 2026-10-24: the routine keeps three
+ *   ready), with the app in front, one at a time, never retried and never
+ *   rejected: the next open tells them all again.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { localStorageOrNull } from "@some-ui/core-utils"
@@ -36,12 +42,14 @@ import {
   INITIAL_READ,
   mayRead,
   parseReadLog,
+  saidUnder,
   sameUnder,
   stepRead,
   underNow,
 } from "./routine-model"
 import type { HomeLink } from "./runtime"
 import { unanswered } from "./runtime"
+import { ROUTINE_TELLS_OPENED } from "./words"
 
 export const READS_KEY = "some-ui.home.reads.v1"
 
@@ -75,6 +83,14 @@ export type RoutineReads = {
    * with `said` the words pressed. False when the phone would not keep it.
    */
   choose: (kind: "shown" | "hidden", said: string) => boolean
+  /** Whether the choice shown now lets `tellOpened` tell home anything. */
+  tells: () => boolean
+  /**
+   * Tells home which of the routine's lessons this phone opened, by
+   * `<folder>/<name>`, when `tells` holds and the app is in front; never
+   * rejects, and drops a call while one is on its way.
+   */
+  tellOpened: (keys: ReadonlyArray<string>) => void
 }
 
 type Ended = Extract<ReadEvent, { type: "ended" }>["kind"]
@@ -189,6 +205,36 @@ export function createRoutineReads(ports: RoutinePorts): RoutineReads {
   // another choice does not share it.
   let inFlight: { under: Under; reading: Promise<unknown> } | null = null
 
+  const tells = (): boolean => {
+    const under = underNowHere()
+    return (
+      under !== null &&
+      (saidUnder(log, under)?.includes(ROUTINE_TELLS_OPENED) ?? false)
+    )
+  }
+  let telling = false
+  const tell = async (keys: ReadonlyArray<string>): Promise<void> => {
+    try {
+      await ports.keep((send) =>
+        send("PUT", "/routine/opened", JSON.stringify({ opened: keys }))
+      )
+    } catch (error) {
+      // Home's silence is said nowhere: the next open tells it again. A
+      // fault on this phone goes to the native log, once.
+      if (!unanswered(error) && !(error instanceof ForeignCallError)) {
+        reportFailure({
+          port: "home server (routine)",
+          error: {
+            ...toIntentError(error),
+            summary: "Something on this phone went wrong.",
+          },
+        })
+      }
+    } finally {
+      telling = false
+    }
+  }
+
   return {
     getSnapshot: () => snapshot,
     subscribe(listener): () => void {
@@ -232,6 +278,12 @@ export function createRoutineReads(ports: RoutinePorts): RoutineReads {
       changed({ log, read: snapshot.read })
       settle()
       return true
+    },
+    tells,
+    tellOpened(keys): void {
+      if (telling || keys.length === 0 || !ports.visible() || !tells()) return
+      telling = true
+      void tell(keys)
     },
   }
 }

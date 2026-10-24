@@ -135,11 +135,14 @@ describe("parseRoutineFiles", () => {
     expect(storage.getItem(ROUTINE_ANSWERS_KEY)).toBe("{not json")
   })
 
-  it("carries the port's key, which the handheld's list is keyed on", () => {
+  it("carries the port's key, which the handheld's list is keyed on, and its way to tell home what was opened", () => {
     const list = (): Promise<unknown> => Promise.resolve({ files: [] })
     expect(createRoutineFeed({ key: "pairing-1@5", list }).key).toBe(
       "pairing-1@5"
     )
+    const opened = (): void => {}
+    expect(createRoutineFeed({ list, opened }).tellOpened).toBe(opened)
+    expect(createRoutineFeed({ list }).tellOpened).toBeUndefined()
   })
 })
 

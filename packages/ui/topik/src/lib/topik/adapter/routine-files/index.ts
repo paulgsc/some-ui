@@ -39,6 +39,11 @@ export type RoutineFilesPort = {
   key?: string
   /** Home's answer, as it came: parsed here. */
   list: () => Promise<unknown>
+  /**
+   * Tells home which of the routine's lessons were opened (`openedKey`s),
+   * so it keeps three ready. Absent where the learner didn't choose that.
+   */
+  opened?: (keys: ReadonlyArray<string>) => void
 }
 
 export type RoutineFile =
@@ -119,6 +124,8 @@ export type RoutineFeed = {
   list: () => Promise<ReadonlyArray<RoutineFile>>
   /** What the phone holds from home now, before any look: shown at once. */
   initial?: () => ReadonlyArray<RoutineFile>
+  /** The port's `opened`: absent where home is not to be told. */
+  tellOpened?: (keys: ReadonlyArray<string>) => void
   /**
    * The routine's runs this phone heard of, kept under `key` as each look
    * brings them (`adapter/routine-runs`). Absent, none are said.
@@ -145,6 +152,7 @@ export function createRoutineFeed(
       return parseRoutineFiles(held.held(key))
     },
     initial: () => parseRoutineFiles(held.held(key)),
+    ...(port.opened ? { tellOpened: port.opened } : {}),
     runs,
   }
 }

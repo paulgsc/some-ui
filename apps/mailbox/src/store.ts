@@ -6,7 +6,14 @@
  * README.md, "Gray-area invariants".
  */
 
-export type Folder = "brief" | "decisions" | "scout" | "scene" | "drama" | "run"
+export type Folder =
+  | "brief"
+  | "decisions"
+  | "scout"
+  | "scene"
+  | "drama"
+  | "run"
+  | "opened"
 
 /** Who put an item. A restored item keeps its first putter. */
 export type Putter = "routine" | "home"

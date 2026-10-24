@@ -357,10 +357,14 @@ describe("HandheldLesson", () => {
         routineDeck("plans-2-lens", "Plans, lens"),
       ]),
     ]
+    const told: Array<ReadonlyArray<string>> = []
     renderLesson({
       speaker: voice(() => Promise.resolve({ kind: "heard" })),
       readAloudStore: store,
-      routineFeed: { list: () => Promise.resolve(files) },
+      routineFeed: {
+        list: () => Promise.resolve(files),
+        tellOpened: (keys) => told.push(keys),
+      },
       routineOpened: opened,
     })
     const waiting = await screen.findByRole("region", {
@@ -398,6 +402,14 @@ describe("HandheldLesson", () => {
     expect([...opened.opened()].sort()).toEqual([
       "drama/drama-20261013T145200123Z.json",
       "scene/scene-2026-10-13_morning_session-.json",
+    ])
+    // Each open tells home every listed one opened, names only.
+    expect(told).toEqual([
+      ["scene/scene-2026-10-13_morning_session-.json"],
+      [
+        "drama/drama-20261013T145200123Z.json",
+        "scene/scene-2026-10-13_morning_session-.json",
+      ],
     ])
   })
 
