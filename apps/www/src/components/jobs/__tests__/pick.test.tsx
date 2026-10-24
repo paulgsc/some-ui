@@ -3,9 +3,25 @@
  *
  * A pick's Apply step shows what the run drafted from the posting's form:
  * each draft with a copy button, a required question marked, one left to me
- * said so, and a redraft from my fit notes named as one. Leaving the app for
- * the posting, or halfway through a form, and coming back loses neither the
- * kit nor what I typed, however long I was gone (JB1).
+ * said so, and a redraft from my fit notes named as one.
+ *
+ * JB1: a pick left and come back to is as I left it.
+ *
+ * - Claim: in the phone's Jobs wing, leaving a pick (for the posting, or
+ *   halfway through its pass, fit note or debrief) and coming back shows the
+ *   step I left with its paste kit and what I typed, and the debrief offers
+ *   no time it can't vouch for.
+ * - Family: leave-and-return ordering (after the posting opens and before
+ *   the debrief is kept; halfway through each of the three forms; passing
+ *   halfway, then taking the pick); time away (within a sitting, past two
+ *   hours, the next morning, a tab reopened mid-sitting, the clock moving on
+ *   mid-form); the page kept or reloaded (a new runtime over the same
+ *   storage).
+ * - Proof: the tests below, `timedMinutes (JB1)` in
+ *   `lib/jobs/__tests__/model.test.ts`, and the drafts tests in
+ *   `lib/jobs/__tests__/runtime.test.ts`.
+ * - Tolerance: a draft the phone could not write lasts while Jobs stays
+ *   open, and the phone says so.
  */
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
@@ -138,22 +154,28 @@ describe("a pick left for the posting and come back to (JB1)", () => {
     expect(screen.getByLabelText("How long it took, in minutes")).toBeTruthy()
   })
 
-  it("offers the minutes only while the posting opened recently", async () => {
+  it("offers the minutes only for a recent sitting, and keeps them once the form is touched", async () => {
     vi.useFakeTimers({ toFake: ["Date"] })
     const { jobs } = await runtimeWithDigest()
     readyToApply(jobs, 0)
     jobs.record({ type: "apply-opened", ...refOf(jobs, 0) })
-    const minutesShown = async (afterMinutes: number): Promise<string> => {
+    const minutes = (): string =>
+      screen
+        .getByLabelText("How long it took, in minutes")
+        .getAttribute("value") ?? ""
+    const debriefAt = async (afterMinutes: number): Promise<void> => {
+      cleanup()
       vi.setSystemTime(STAMPED + afterMinutes * 60_000)
       await showPick(0, jobs)
       fireEvent.click(screen.getByText("Debrief"))
-      const input = screen.getByLabelText("How long it took, in minutes")
-      const value = input instanceof HTMLInputElement ? input.value : null
-      cleanup()
-      return value ?? ""
     }
-    expect(await minutesShown(25)).toBe("25")
-    expect(await minutesShown(14 * 60)).toBe("")
+    await debriefAt(14 * 60)
+    expect(minutes()).toBe("")
+    await debriefAt(115)
+    expect(minutes()).toBe("115")
+    fireEvent.click(screen.getByRole("button", { name: "2" }))
+    await debriefAt(125)
+    expect(minutes()).toBe("115")
   })
 
   it("keeps what I typed in the pass, fit note and debrief when I leave halfway", async () => {
@@ -193,10 +215,9 @@ describe("a pick left for the posting and come back to (JB1)", () => {
         .getByRole("button", { name: "Seniority" })
         .getAttribute("aria-pressed")
     ).toBe("true")
-    fireEvent.click(screen.getByText("Pass and keep the reason"))
-    expect(again.getSnapshot().drafts).not.toHaveProperty(
-      `${DAY}/${refOf(again, 0).pickId}/pass`
-    )
+    fireEvent.click(screen.getByText("Take it"))
+    fireEvent.click(screen.getAllByRole("button", { name: "Decide" })[0])
+    expect(screen.queryByLabelText("In a few words")).toBeNull()
     cleanup()
 
     await showPick(1, again)

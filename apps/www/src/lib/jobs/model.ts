@@ -622,17 +622,16 @@ export function fitNotesOf(
   )
 }
 
-/**
- * The longest time since the posting last opened that the debrief offers as
- * how long the application took. A longer gap more likely means I left and
- * came back, so the debrief offers no number (JB1).
- */
+/** Opens of a posting closer together than this are one sitting (JB1). */
 const TIMED_UP_TO_MINUTES = 120
 
 /**
- * The whole minutes since the posting last opened for this pick, for the
- * debrief to offer, or null when it never opened or opened longer ago than
- * `TIMED_UP_TO_MINUTES`.
+ * The whole minutes the debrief offers as how long the application took:
+ * since the first open of the posting in the latest sitting, opens closer
+ * than `TIMED_UP_TO_MINUTES` apart being one sitting (a lost tab reopened
+ * still counts from the start). Null when it never opened since the pick
+ * was taken, or that sitting began longer ago than `TIMED_UP_TO_MINUTES`,
+ * which more likely means I left and came back.
  */
 export function timedMinutes(
   state: JobsState,
@@ -640,14 +639,17 @@ export function timedMinutes(
   pickId: string,
   now: Date
 ): number | null {
-  const opened = pickEvents(state.log, day, pickId)
+  const opens = sinceTaken(pickEvents(state.log, day, pickId))
     .filter((e) => e.type === "apply-opened")
-    .at(-1)
-  if (opened === undefined) return null
-  const minutes = Math.max(
-    1,
-    Math.round((now.getTime() - Date.parse(opened.at)) / 60_000)
-  )
+    .map((e) => Date.parse(e.at))
+  const bound = TIMED_UP_TO_MINUTES * 60_000
+  let start = opens.at(-1)
+  if (start === undefined) return null
+  for (const at of opens.slice(0, -1).reverse()) {
+    if (start - at > bound) break
+    start = at
+  }
+  const minutes = Math.max(1, Math.round((now.getTime() - start) / 60_000))
   return minutes <= TIMED_UP_TO_MINUTES ? minutes : null
 }
 

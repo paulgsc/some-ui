@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { isFile } from "@/lib/jobs/files"
+import type { PickRef } from "@/lib/jobs/model"
 import { createJobsRuntime } from "@/lib/jobs/runtime"
 import { STORAGE_KEY } from "@/lib/jobs/stored"
 import type { StorageAdapter } from "@/lib/tenant/storage"
@@ -190,35 +191,76 @@ describe("createJobsRuntime", () => {
     ])
   })
 
-  it("keeps a form's draft between launches, apart from the record, and clears it once kept (JB1)", async () => {
+  it("keeps each form's draft between launches, apart from the record, until what settles it is kept (JB1)", async () => {
     const p = ports()
     const runtime = createJobsRuntime(p)
     const day = digest("2026-10-18")
     runtime.open(blob(JSON.stringify(day)))
     await settle()
-    const [pick] = day.picks
-    const ref = { day: day.day, pickId: pick.id, fingerprint: pick.fingerprint }
-    const owner = `${day.day}/${pick.id}/pass`
-    runtime.draft(owner, { form: "pass", reasons: ["pay"], note: "Too low" })
-    const before = p.storage.getItem(STORAGE_KEY)
+    const [first, second] = day.picks
+    const refOf = (pick: typeof first): PickRef => ({
+      day: day.day,
+      pickId: pick.id,
+      fingerprint: pick.fingerprint,
+    })
+    const record = runtime.getSnapshot().state
+    const owner = (pick: typeof first, form: string): string =>
+      `${day.day}/${pick.id}/${form}`
+    const debrief = {
+      form: "debrief",
+      minutes: "20",
+      friction: 2,
+      chips: [],
+      what: "Workday",
+      result: "submitted",
+    } as const
+    runtime.draft(owner(first, "pass"), {
+      form: "pass",
+      reasons: ["pay"],
+      note: "Too low",
+    })
+    runtime.draft(owner(second, "fit"), { form: "fit", note: "I ran it" })
+    runtime.draft(owner(second, "debrief"), debrief)
+    expect(createJobsRuntime(p).getSnapshot().state).toEqual(record)
 
     const relaunched = createJobsRuntime(p)
-    expect(relaunched.getSnapshot().drafts).toEqual({
-      [owner]: { form: "pass", reasons: ["pay"], note: "Too low" },
+    expect(Object.keys(relaunched.getSnapshot().drafts)).toHaveLength(3)
+    // Taking the pick settles the pass it was not.
+    relaunched.record({ type: "taken", ...refOf(first) })
+    relaunched.record({ type: "taken", ...refOf(second) })
+    relaunched.record({ type: "resume-ready", ...refOf(second) })
+    relaunched.record({ type: "apply-opened", ...refOf(second) })
+    relaunched.record({
+      type: "fit-note",
+      ...refOf(second),
+      note: "I ran it",
+      voice: [],
     })
-    expect(p.storage.getItem(STORAGE_KEY)).toBe(before)
-
-    expect(
-      relaunched.record({
-        type: "passed",
-        ...ref,
-        reasons: ["pay"],
-        note: "Too low",
-        voice: [],
-      })
-    ).toBe(true)
-    expect(relaunched.getSnapshot().drafts).toEqual({})
+    expect(Object.keys(relaunched.getSnapshot().drafts)).toEqual([
+      owner(second, "debrief"),
+    ])
+    relaunched.record({
+      type: "debrief",
+      ...refOf(second),
+      minutes: 20,
+      friction: 2,
+      chips: [],
+      what: "Workday",
+      voice: [],
+      result: "submitted",
+    })
     expect(createJobsRuntime(p).getSnapshot().drafts).toEqual({})
+  })
+
+  it("moves drafts it can't read aside rather than writing over them", () => {
+    const p = ports()
+    p.storage.setItem("some-ui:jobs:drafts", '{"x":{"form":"gone"}}')
+    const runtime = createJobsRuntime(p)
+    expect(runtime.getSnapshot().drafts).toEqual({})
+    runtime.draft("2026-10-18/a/fit", { form: "fit", note: "hi" })
+    expect(p.storage.getItem("some-ui:jobs:drafts:unreadable:1")).toBe(
+      '{"x":{"form":"gone"}}'
+    )
   })
 
   it("records nothing for a share backed out of", async () => {

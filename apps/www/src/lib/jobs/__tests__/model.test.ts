@@ -288,29 +288,30 @@ describe("progressOf", () => {
 })
 
 describe("timedMinutes (JB1)", () => {
-  it("offers the time since the posting last opened, and none past two hours", () => {
-    let state = record(opened, { type: "taken", ...ref() })
-    const at = (time: string): Date => new Date(`2026-10-18T${time}Z`)
-    expect(timedMinutes(state, DAY, SW.id, at("16:00:00"))).toBeNull()
-    state = record(state, { type: "apply-opened", ...ref() })
-    const openedAt = state.log.at(-1)?.at ?? ""
-    const after = (minutes: number): Date =>
-      new Date(Date.parse(openedAt) + minutes * 60_000)
-    expect(timedMinutes(state, DAY, SW.id, after(0))).toBe(1)
-    expect(timedMinutes(state, DAY, SW.id, after(25))).toBe(25)
-    expect(timedMinutes(state, DAY, SW.id, after(120))).toBe(120)
-    expect(timedMinutes(state, DAY, SW.id, after(121))).toBeNull()
-    expect(timedMinutes(state, DAY, SW.id, after(16 * 60))).toBeNull()
-    // Opened again the next morning: timed from then.
-    state = record(state, { type: "apply-opened", ...ref() })
-    expect(
-      timedMinutes(
-        state,
-        DAY,
-        SW.id,
-        new Date(Date.parse(state.log.at(-1)?.at ?? "") + 9 * 60_000)
-      )
-    ).toBe(9)
+  const T = Date.parse("2026-10-18T16:00:00Z")
+  const minute = (m: number): Date => new Date(T + m * 60_000)
+  const openAt = (state: JobsState, m: number): JobsState =>
+    step(state, {
+      type: "record",
+      event: { type: "apply-opened", ...ref() },
+      stamp: { id: `open${m}`, at: minute(m).toISOString() },
+    })
+  const taken = record(opened, { type: "taken", ...ref() })
+
+  it("offers the time since the posting opened, and none past two hours", () => {
+    expect(timedMinutes(taken, DAY, SW.id, minute(5))).toBeNull()
+    const state = openAt(taken, 0)
+    expect(timedMinutes(state, DAY, SW.id, minute(0))).toBe(1)
+    expect(timedMinutes(state, DAY, SW.id, minute(25))).toBe(25)
+    expect(timedMinutes(state, DAY, SW.id, minute(120))).toBe(120)
+    expect(timedMinutes(state, DAY, SW.id, minute(121))).toBeNull()
+  })
+
+  it("times a reopened posting from the sitting's first open, and a new sitting afresh", () => {
+    const reopened = openAt(openAt(taken, 0), 30)
+    expect(timedMinutes(reopened, DAY, SW.id, minute(40))).toBe(40)
+    const nextMorning = openAt(reopened, 16 * 60)
+    expect(timedMinutes(nextMorning, DAY, SW.id, minute(16 * 60 + 9))).toBe(9)
   })
 })
 

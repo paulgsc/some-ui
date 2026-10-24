@@ -3,10 +3,10 @@
  * kept: one draft per form, under the owner its voice notes use
  * (`pickOwner`), so leaving the app halfway loses nothing (JB1). Drafts are
  * not the record: they live under a `localStorage` key of their own, never
- * go home or into a share, and a form's draft is cleared once the event it
- * becomes is recorded.
+ * go home or into a share, and a form's draft is cleared once the event
+ * that settles it is recorded.
  */
-import { assertNever } from "@some-ui/core-utils"
+import { assertNever, openRecord, writeRecord } from "@some-ui/core-utils"
 import { DEBRIEF_RESULTS, FRICTION, PASS_REASONS } from "@some-ui/job-desk"
 import { z } from "zod"
 
@@ -16,6 +16,8 @@ import type { DebriefResult, Draft, FrictionChip, PassReason } from "./model"
 import { pickOwner } from "./model"
 
 const DRAFTS_KEY = "some-ui:jobs:drafts"
+/** Followed by 1, 2 …: an unreadable value, kept as it was found. */
+const QUARANTINE_PREFIX = "some-ui:jobs:drafts:unreadable:"
 
 export type PassDraft = {
   form: "pass"
@@ -58,13 +60,6 @@ const FormDraftSchema = z.discriminatedUnion("form", [
 
 const DraftsSchema = z.record(z.string(), FormDraftSchema)
 
-function isForm<F extends FormDraft["form"]>(
-  draft: FormDraft | undefined,
-  form: F
-): draft is Extract<FormDraft, { form: F }> {
-  return draft?.form === form
-}
-
 /** `owner`'s draft of `form`, or null while there is none. */
 export function draftOf<F extends FormDraft["form"]>(
   drafts: FormDrafts,
@@ -75,7 +70,13 @@ export function draftOf<F extends FormDraft["form"]>(
   return isForm(draft, form) ? draft : null
 }
 
-/** `drafts` with `owner`'s set to `draft`, or cleared by null. */
+function isForm<F extends FormDraft["form"]>(
+  draft: FormDraft | undefined,
+  form: F
+): draft is Extract<FormDraft, { form: F }> {
+  return draft?.form === form
+}
+
 export function withDraft(
   drafts: FormDrafts,
   owner: string,
@@ -88,10 +89,14 @@ export function withDraft(
   )
 }
 
-/** The draft an event records, which it clears once kept; null for the rest. */
+/**
+ * The draft an event settles, which it clears once kept: a pass, fit note
+ * or debrief its own form's, and taking a pick the pass it was not.
+ */
 export function draftRecordedBy(event: Draft): string | null {
   switch (event.type) {
-    case "passed": {
+    case "passed":
+    case "taken": {
       return pickOwner(event.day, event.pickId, "pass")
     }
     case "fit-note": {
@@ -100,7 +105,6 @@ export function draftRecordedBy(event: Draft): string | null {
     case "debrief": {
       return pickOwner(event.day, event.pickId, "debrief")
     }
-    case "taken":
     case "archived":
     case "resume-ready":
     case "apply-opened":
@@ -117,27 +121,28 @@ export function draftRecordedBy(event: Draft): string | null {
   }
 }
 
-/** The drafts kept on this phone; none when they can't be read. */
-export function readDrafts(storage: StorageAdapter): FormDrafts {
+function parse(raw: string): FormDrafts | null {
   try {
-    const raw = storage.getItem(DRAFTS_KEY)
-    if (raw === null) return {}
     const parsed = DraftsSchema.safeParse(JSON.parse(raw))
-    return parsed.success ? parsed.data : {}
+    return parsed.success ? parsed.data : null
   } catch {
-    return {}
+    return null
   }
 }
 
-/** Keeps `drafts`; false when the phone could not. */
+/**
+ * The drafts kept on this phone. A value it can't read is moved aside, never
+ * written over, and the drafts start again empty.
+ */
+export function readDrafts(storage: StorageAdapter): FormDrafts {
+  const opened = openRecord(storage, DRAFTS_KEY, parse, QUARANTINE_PREFIX)
+  return opened.kind === "kept" ? opened.value : {}
+}
+
+/** False when the phone could not keep `drafts`. */
 export function writeDrafts(
   storage: StorageAdapter,
   drafts: FormDrafts
 ): boolean {
-  try {
-    storage.setItem(DRAFTS_KEY, JSON.stringify(drafts))
-    return true
-  } catch {
-    return false
-  }
+  return writeRecord(storage, DRAFTS_KEY, JSON.stringify(drafts), parse)
 }

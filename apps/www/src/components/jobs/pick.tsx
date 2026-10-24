@@ -210,7 +210,8 @@ const Decide = ({
           variant={passing ? "destructive" : "outline"}
           aria-pressed={passing}
           onClick={() => {
-            if (!passing) keep({})
+            if (passing) jobs.draft(owner, null)
+            else keep({})
           }}
         >
           Pass
@@ -422,10 +423,6 @@ const Draft = ({
   </div>
 )
 
-/**
- * The posting's link and everything to paste into its form. Opening the
- * posting records it and stays here, since I come back for each field.
- */
 const Apply = ({
   state,
   pick,
@@ -563,12 +560,14 @@ const Debrief = ({
   const owner = pickOwner(pickRef.day, pickRef.pickId, "debrief")
   const draft = draftOf(useJobs().drafts, owner, "debrief") ?? EMPTY_DEBRIEF
   const { minutes, friction, chips, what, result } = draft
+  const shownMinutes = minutes ?? (timed === null ? "" : String(timed))
+  // The minutes on show are kept with the first change, so the clock moving
+  // on can't empty them mid-form.
   const keep = (change: Partial<Omit<DebriefDraft, "form">>): void => {
-    jobs.draft(owner, { ...draft, ...change })
+    jobs.draft(owner, { ...draft, minutes: shownMinutes, ...change })
   }
   const voice = draftVoice(state, owner)
   const busy = useVoiceBusy(owner)
-  const shownMinutes = minutes ?? (timed === null ? "" : String(timed))
   const parsedMinutes = Number.parseInt(shownMinutes, 10)
   const minutesFit = parsedMinutes >= 1 && parsedMinutes <= MAX_DEBRIEF_MINUTES
   const ready = friction !== null && result !== null && minutesFit
@@ -696,8 +695,6 @@ export const PickFlow = ({
       : progress.kind === "passed" || progress.kind === "archived"
         ? 1
         : 4
-  // Apply stays the step shown until the debrief is kept: I come back to its
-  // kit from the posting for each field (JB1).
   const current =
     progress.kind === "open" ? Math.min(progress.step, 3) : reached
   const shown = Math.min(viewed ?? current, reached)
@@ -730,7 +727,7 @@ export const PickFlow = ({
             onClick={() => setViewed(i)}
             className={cn(
               "border-t-4 py-1.5 text-[11px] font-semibold disabled:opacity-50",
-              i < current || progress.kind !== "open"
+              progress.kind !== "open" || i < progress.step
                 ? "border-emerald-600"
                 : "border-muted",
               i === shown && "border-amber-500"

@@ -217,7 +217,10 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
     const next = withDraft(drafts, owner, draft)
     if (next === drafts) return
     drafts = next
-    if (!readOnly) writeDrafts(ports.storage, drafts)
+    if (!readOnly && !writeDrafts(ports.storage, drafts)) {
+      problem =
+        "This phone couldn't keep what you typed, so it lasts only while Jobs stays open. Free some space."
+    }
     publish()
   }
 
