@@ -82,6 +82,102 @@
     z-index: 2;
   }
 
+  /* Field markings give the recording a stage while keeping theme tokens. */
+  .pd-frame::before {
+    background: radial-gradient(
+        ellipse at 100% 20%,
+        color-mix(in oklab, var(--chart-2) 12%, transparent),
+        transparent 65%
+      ),
+      repeating-linear-gradient(
+        0deg,
+        transparent 0 19.8%,
+        color-mix(in oklab, var(--foreground) 4%, transparent) 19.8% 20%
+      );
+    content: "";
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+  }
+
+  .pd-teamline {
+    align-items: baseline;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    font-size: 5cqw;
+    gap: 3cqw;
+    justify-content: space-between;
+    padding-bottom: 3cqw;
+  }
+
+  .pd-hook {
+    display: flex;
+    flex-direction: column;
+    gap: 5cqw;
+  }
+
+  .pd-headline {
+    font-size: 16cqw;
+    font-weight: 900;
+    letter-spacing: -0.065em;
+    line-height: 0.95;
+  }
+
+  .pd-headline em {
+    color: var(--success);
+    font-family: var(--font-serif, Georgia, serif);
+    font-weight: 500;
+    letter-spacing: -0.04em;
+  }
+
+  .pd-footnote {
+    border-top: 1px solid var(--border);
+    color: var(--muted-foreground);
+    font-size: 3.4cqw;
+    padding-top: 3cqw;
+  }
+
+  .pd-verdict {
+    --pd-emotion: var(--success);
+
+    border-left: 0.8cqw solid var(--pd-emotion);
+    display: flex;
+    flex-direction: column;
+    gap: 2cqw;
+    padding-left: 3cqw;
+  }
+
+  .pd-verdict[data-tone="danger"],
+  .pd-verdict[data-tone="over"] {
+    --pd-emotion: var(--destructive);
+  }
+
+  .pd-survival {
+    align-items: center;
+    color: var(--pd-emotion);
+    display: flex;
+    gap: 3cqw;
+  }
+
+  .pd-survival > b {
+    font-size: 20cqw;
+    font-weight: 800;
+    letter-spacing: -0.06em;
+    line-height: 1;
+  }
+
+  .pd-survival > span {
+    font-size: 5cqw;
+    font-weight: 700;
+  }
+
+  .pd-survival small {
+    color: var(--muted-foreground);
+    display: block;
+    font-size: 2.8cqw;
+    font-weight: 400;
+  }
+
   /* ------------------------------------------------------------ type */
   .pd-kicker {
     color: var(--muted-foreground);

@@ -35,6 +35,19 @@ hook → the test → the alphabet → the grammar → last week's paths → you
 → who fell → how they fell → this week's paths → the path → the rivals →
 the collisions (only when there are any) → the benchmark → the outro.
 
+## Design direction: the Sunday survival report
+
+The opening names this week's team and record, then asks “How much hope is
+left?” Oversized type, a serif accent and quiet field markings give the
+portrait a sports editorial rhythm within the active theme.
+
+The weekly payoff gives the remaining path count the most weight. Its
+headline and accent follow the change in the minimum winning record and
+seed: relief when the floor improves, tension when it worsens, held hope
+when it stays, and a closed door on elimination. The voiceover uses the
+same verdict. These are possible scenarios, not playoff probabilities;
+the frame says so. The ending closes with the paths when none remain.
+
 ## The symbol algebra
 
 Seven event types exist before any week is played; each week only fills them
