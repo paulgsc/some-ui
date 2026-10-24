@@ -403,6 +403,13 @@
       "module": "readiness"
     },
     {
+      "method": "GET",
+      "path": "/routine/files",
+      "full_path": "/api/v1/routine/files",
+      "versioned": true,
+      "module": "routine"
+    },
+    {
       "method": "DELETE",
       "path": "/sessions",
       "full_path": "/api/v1/sessions",
