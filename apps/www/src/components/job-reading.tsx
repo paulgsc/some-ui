@@ -12,7 +12,7 @@ export const sectionHeading =
   "text-muted-foreground text-xs font-semibold tracking-wider uppercase"
 
 /** A 0–1 score as a bar and its value. */
-export const Meter = ({
+const Meter = ({
   label,
   value,
   tone,
