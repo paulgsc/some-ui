@@ -15,7 +15,8 @@ export function useRoutineFiles(
   feed: RoutineFeed | undefined
 ): UseQueryResult<ReadonlyArray<RoutineFile>> {
   return useQuery({
-    queryKey: ["routine-files"],
+    // Keyed on whether there is a home, so no answer outlives its host.
+    queryKey: ["routine-files", feed !== undefined],
     queryFn: () => (feed ? feed.list() : []),
     enabled: feed !== undefined,
     // A routine answers at most a few times a day.

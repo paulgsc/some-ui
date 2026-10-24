@@ -12,9 +12,11 @@
  * (`read-aloud/added-sets`). A set not opened yet waits
  * under "Ready for you", above everything else, and opens on its own words.
  *
- * What the reflections routine left on home (`adapter/routine-files`) waits
- * under "From the routine", at the top, until opened: a word set pair is
- * added as two picked files are, a drama starts as a picked scene does.
+ * What the reflections routine left on home (`adapter/routine-files`) is
+ * listed under "From the routine", at the top, the ones not opened yet
+ * first: a word set pair is added as two picked files are, a drama starts
+ * as a picked scene does. An opened one stays listed, marked opened, since
+ * home's list is the only way back to it.
  */
 
 import type { JSX } from "react"
@@ -50,7 +52,10 @@ import type {
   OpenedStore,
   RoutineFile,
 } from "@topik/lib/topik/adapter/routine-files"
-import { createOpenedStore } from "@topik/lib/topik/adapter/routine-files"
+import {
+  createOpenedStore,
+  openedKey,
+} from "@topik/lib/topik/adapter/routine-files"
 import { useRoutineFiles } from "@topik/lib/topik/adapter/server/routine-files-queries"
 import { useTopikManifest } from "@topik/lib/topik/adapter/server/topik-metadata-queries"
 import {
@@ -81,6 +86,7 @@ import type { Seed } from "@topik/lib/topik/core/feed-card"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 import { intakeTree } from "@topik/lib/topik/generation/tree-intake"
 import {
+  ADDED_SET_LIMIT,
   addSet,
   intakeSet,
   openSet,
@@ -205,15 +211,34 @@ export const HandheldLesson = ({
     setAdded(next)
   }
   // Each text through the intake in turn, onto what the phone holds: all of
-  // them are added, or none and the note says why.
-  const addSetTexts = (texts: ReadonlyArray<string>): boolean => {
+  // them are added, or none and `say` says why.
+  const addSetTexts = (
+    texts: ReadonlyArray<string>,
+    say: (note: StorageNote) => void
+  ): boolean => {
+    // Judged together first, so a group that doesn't fit says what the phone
+    // holds now, not after its first set.
+    const fresh = texts.filter((text) => {
+      const intake = intakeSet(text, added)
+      return intake.ok && !added.some((set) => set.deck.id === intake.deck.id)
+    }).length
+    if (
+      added.length < ADDED_SET_LIMIT &&
+      added.length + fresh > ADDED_SET_LIMIT
+    ) {
+      say({
+        tone: "problem",
+        text: `This phone keeps ${ADDED_SET_LIMIT} word sets, and has ${added.length}: these are ${fresh} more.`,
+      })
+      return false
+    }
     let next = added
     const titles: Array<string> = []
     let dropped = 0
     for (const text of texts) {
       const intake = intakeSet(text, next)
       if (!intake.ok) {
-        setSetNote({ tone: "problem", text: intake.error })
+        say({ tone: "problem", text: intake.error })
         return false
       }
       next = addSet(next, intake.deck, now().toISOString())
@@ -228,7 +253,7 @@ export const HandheldLesson = ({
     }
     keepSets(next)
     const what = titles.join(" and ")
-    setSetNote({
+    say({
       tone: "done",
       text:
         dropped > 0
@@ -238,26 +263,32 @@ export const HandheldLesson = ({
     return true
   }
   const openSetText = (text: string): void => {
-    addSetTexts([text])
+    addSetTexts([text], setSetNote)
   }
   const routine = useRoutineFiles(routineFeed)
   const [opened] = useState(() => routineOpened ?? createOpenedStore())
-  const [openedNames, setOpenedNames] = useState(opened.opened)
-  const waiting = useMemo(
-    () => (routine.data ?? []).filter((file) => !openedNames.has(file.name)),
-    [routine.data, openedNames]
-  )
-  const routineCards = useMemo(() => waiting.map(routineCardOf), [waiting])
-  const openRoutine = (name: string): void => {
-    const file = waiting.find((candidate) => candidate.name === name)
+  const [openedKeys, setOpenedKeys] = useState(opened.opened)
+  const [routineNote, setRoutineNote] = useState<StorageNote | null>(null)
+  const routineCards = useMemo(() => {
+    const cards = (routine.data ?? []).map((file) =>
+      routineCardOf(file, openedKeys.has(openedKey(file)))
+    )
+    return [
+      ...cards.filter((card) => !card.opened),
+      ...cards.filter((card) => card.opened),
+    ]
+  }, [routine.data, openedKeys])
+  const openRoutine = (key: string): void => {
+    const file = routine.data?.find((candidate) => openedKey(candidate) === key)
     if (file === undefined) return
     if (file.kind === "scene") {
-      if (!addSetTexts(file.decks.map((deck) => JSON.stringify(deck)))) return
+      const decks = file.decks.map((deck) => JSON.stringify(deck))
+      if (!addSetTexts(decks, setRoutineNote)) return
     } else {
-      openSceneText(JSON.stringify(file.tree))
+      startTree(file.tree)
     }
-    opened.markOpened(file.name)
-    setOpenedNames(opened.opened())
+    opened.markOpened(key)
+    setOpenedKeys(opened.opened())
   }
   // The read-aloud drill takes the whole screen, header included; leaving it
   // returns to the material list it was opened from. `set` is the added set
@@ -525,6 +556,7 @@ export const HandheldLesson = ({
         setFileHint={wordSetHint}
         setNote={setNote}
         fromRoutine={routineCards}
+        routineNote={routineNote}
         onOpenRoutine={openRoutine}
       />
     )
@@ -550,22 +582,20 @@ export const HandheldLesson = ({
 }
 
 /** A routine file as its card shows it; a drama names its own title and level. */
-function routineCardOf(file: RoutineFile): RoutineCard {
-  if (file.kind === "scene") {
-    return {
-      name: file.name,
-      kind: "scene",
-      title: file.title,
-      details: "Word sets: read aloud and grammar lens",
-    }
-  }
-  const intake = intakeTree(JSON.stringify(file.tree))
-  return intake.status === "checked"
+function routineCardOf(file: RoutineFile, opened: boolean): RoutineCard {
+  return file.kind === "scene"
     ? {
-        name: file.name,
-        kind: "drama",
-        title: titleOf(intake.lesson),
-        details: `Drama · TOPIK ${intake.lesson.level}`,
+        key: openedKey(file),
+        kind: "scene",
+        title: file.title,
+        details: "Word sets: read aloud and grammar lens",
+        opened,
       }
-    : { name: file.name, kind: "drama", title: "A drama", details: "Drama" }
+    : {
+        key: openedKey(file),
+        kind: "drama",
+        title: titleOf(file.tree),
+        details: `Drama · TOPIK ${file.tree.level}`,
+        opened,
+      }
 }

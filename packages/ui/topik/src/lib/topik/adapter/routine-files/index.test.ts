@@ -2,9 +2,14 @@ import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import {
   createOpenedStore,
   createRoutineFeed,
+  openedKey,
   parseRoutineFiles,
   ROUTINE_OPENED_KEY,
 } from "@topik/lib/topik/adapter/routine-files"
+import {
+  workedExample,
+  workedLesson,
+} from "@topik/lib/topik/generation/tree-intake/worked-example"
 import { describe, expect, it } from "vitest"
 
 const scene = {
@@ -16,7 +21,7 @@ const scene = {
 const drama = {
   schema: "some-ui.routine-drama/1",
   answers: "drama-20261013T145200123Z",
-  tree: { id: "t" },
+  tree: JSON.parse(workedExample()),
 }
 
 describe("parseRoutineFiles", () => {
@@ -29,7 +34,7 @@ describe("parseRoutineFiles", () => {
         ],
       })
     ).toEqual([
-      { kind: "drama", name: "drama-2.json", tree: { id: "t" } },
+      { kind: "drama", name: "drama-2.json", tree: workedLesson() },
       {
         kind: "scene",
         name: "scene-1.json",
@@ -39,13 +44,25 @@ describe("parseRoutineFiles", () => {
     ])
   })
 
-  it("leaves out a file of a shape it does not know, and reads no answer as none", () => {
+  it("leaves out a file of a shape it does not know, or a drama the phone could not play, and reads no answer as none", () => {
+    const { tree: _tree, ...treeless } = drama
     expect(
       parseRoutineFiles({
         files: [
           { folder: "scene", name: "s.json", file: { ...scene, decks: [] } },
+          {
+            folder: "scene",
+            name: "three.json",
+            file: { ...scene, decks: [{}, {}, {}] },
+          },
           { folder: "scene", name: "t.json", file: drama },
           { folder: "brief", name: "digest.json", file: scene },
+          { folder: "drama", name: "none.json", file: treeless },
+          {
+            folder: "drama",
+            name: "rejected.json",
+            file: { ...drama, tree: { id: "t" } },
+          },
           { folder: "drama", name: "d.json", file: drama },
         ],
       }).map((file) => file.name)
@@ -66,6 +83,19 @@ describe("parseRoutineFiles", () => {
 })
 
 describe("createOpenedStore", () => {
+  it("keys a file by its folder and name, as home does", () => {
+    const [played, read] = parseRoutineFiles({
+      files: [
+        { folder: "drama", name: "same.json", file: drama },
+        { folder: "scene", name: "same.json", file: scene },
+      ],
+    })
+    expect([played && openedKey(played), read && openedKey(read)]).toEqual([
+      "drama/same.json",
+      "scene/same.json",
+    ])
+  })
+
   it("keeps the names opened, across stores on the same device", () => {
     const storage = memoryStorage()
     const first = createOpenedStore(storage)
