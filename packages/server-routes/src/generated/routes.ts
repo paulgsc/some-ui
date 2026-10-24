@@ -53,6 +53,7 @@ export type ServerRoute =
   | "/api/v1/push/subscriptions"
   | "/api/v1/push/test"
   | "/api/v1/push/vapid-key"
+  | "/api/v1/routine/files"
   | "/api/v1/sessions"
   | "/api/v1/sessions/:id"
   | "/api/v1/sessions/:id/duplicate"
