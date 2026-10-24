@@ -392,20 +392,21 @@ the resource-lifetime invariants L1–L8 in `extensions/common/GOOD_CITIZEN.md` 
 lifetimes: what is enforced, and what is not"; `extensions/common/src/lib/lifetime/index.ts`
 carries their one-line summaries.
 
-A worked example, quoted from that set (`GOOD_CITIZEN.md` is the authoritative copy; all 12
-exemptions conform on `main`):
+A worked example, quoted from that set (`GOOD_CITIZEN.md` is the authoritative copy). It
+began as "mechanical; not yet a rule"; once the existence half became a lint rule, the
+invariant kept only what a person has to judge:
 
 > **L3: An exemption names what ends the resource.**
 >
 > - _Claim:_ every `eslint-disable` of `require-named-lifetime` or `require-scoped-lifetime`
 >   has a line starting `Lifetime:` in the unbroken `//` comment block directly above it,
 >   saying what ends the resource.
-> - _Falsified by_ a hunk that adds such a directive without that line, that deletes or
->   rewords the `Lifetime:` line above an existing directive, or that breaks the comment
->   block between them (inserting a non-comment line).
+> - _Falsified by_ a hunk that writes or rewords a `Lifetime:` line so it no longer names
+>   what ends the resource, or that changes what ends an exempted resource without
+>   updating that line; or a hunk that turns `require-lifetime-comment` off or narrows it.
 > - _Scope:_ the whole repo.
-> - _Why not enforced:_ whether the `Lifetime:` line is true needs a person to read it.
->   Whether it exists is mechanical ("mechanical; not yet a rule").
+> - _Why not enforced:_ that the line exists is a lint rule (`require-lifetime-comment`).
+>   Whether it is true needs a person to read it.
 
 **Per-site tags: state the fact where the code hides it.** When a claim is about many sites
 rather than one rule, as L3's `Lifetime:` line is, the invariant can govern a tagged comment

@@ -20,6 +20,9 @@ export default defineConfig(
         "error",
         { lifecycleModule: "@some-extension/common's Disposables" },
       ],
+      // L6 (extensions/common's GOOD_CITIZEN.md): whether the page is
+      // showing is read through isPageShowing / watchPageShowing only.
+      "extension-charter/no-direct-page-showing": "error",
     },
   },
   {

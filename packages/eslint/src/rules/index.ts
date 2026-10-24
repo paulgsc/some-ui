@@ -14,6 +14,8 @@ export { noUnboundedIntent } from "./no-unbounded-intent.js"
 export { noLoadingElidedDefault } from "./no-loading-elided-default.js"
 export { requireNamedLifetime } from "./require-named-lifetime.js"
 export { requireScopedLifetime } from "./require-scoped-lifetime.js"
+export { requireLifetimeComment } from "./require-lifetime-comment.js"
+export { noDirectPageShowing } from "./no-direct-page-showing.js"
 export { noMountSnapshot } from "./no-mount-snapshot.js"
 export {
   noFixedStatusColor,
