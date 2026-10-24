@@ -39,6 +39,8 @@ import {
 } from "@topik/lib/topik/adapter/hooks/use-surface"
 import type { LensTakes } from "@topik/lib/topik/adapter/lens-takes"
 import type { FileShare } from "@topik/lib/topik/adapter/next-scene-share"
+import type { RoutineFilesPort } from "@topik/lib/topik/adapter/routine-files"
+import { createRoutineFeed } from "@topik/lib/topik/adapter/routine-files"
 import type { SceneVoice } from "@topik/lib/topik/adapter/scene-voice"
 import { createTreeFeed } from "@topik/lib/topik/adapter/tree-feed"
 
@@ -79,6 +81,13 @@ export type KoreanStudyPageProps = {
    * session on a build with a `file_host`. Absent, nothing offers to keep.
    */
   shelf?: ShelfPort
+  /**
+   * Home's word sets and dramas from the reflections routine
+   * (`adapter/routine-files`), which only the handheld lists. A plain object
+   * for the same reason as the loaders; `apps/www` passes one only with a
+   * passkey session on a build with a `file_host`. Absent, none are listed.
+   */
+  routineFiles?: RoutineFilesPort
   /** The Android app's share sheet (`FileShare`); absent, none is offered. */
   share?: FileShare
   /**
@@ -217,6 +226,7 @@ export const KoreanStudyPage = ({
   loadTopik,
   loadTreeManifest,
   shelf,
+  routineFiles,
   share,
   sceneVoice,
   sceneFileHint,
@@ -251,6 +261,7 @@ export const KoreanStudyPage = ({
         createTopikMetadataRepository(loadManifest ?? manifestUrl),
       speaker,
       ...(shelf ? { shelf } : {}),
+      ...(routineFiles ? { routineFeed: createRoutineFeed(routineFiles) } : {}),
       ...(share ? { share } : {}),
       ...(sceneVoice ? { sceneVoice } : {}),
       ...(sceneFileHint ? { sceneFileHint } : {}),
@@ -270,6 +281,7 @@ export const KoreanStudyPage = ({
       loadTreeManifest,
       speaker,
       shelf,
+      routineFiles,
       share,
       sceneVoice,
       sceneFileHint,

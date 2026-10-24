@@ -11,6 +11,10 @@
  * Read-aloud reads the word sets the learner added from storage
  * (`read-aloud/added-sets`). A set not opened yet waits
  * under "Ready for you", above everything else, and opens on its own words.
+ *
+ * What the reflections routine left on home (`adapter/routine-files`) waits
+ * under "From the routine", at the top, until opened: a word set pair is
+ * added as two picked files are, a drama starts as a picked scene does.
  */
 
 import type { JSX } from "react"
@@ -20,7 +24,10 @@ import { Button, KeepOnShelf, KeptShelf } from "@some-ui/shared"
 import { CastSheet } from "@topik/components/topik/handheld/cast-sheet"
 import { DramaLesson } from "@topik/components/topik/handheld/drama-lesson"
 import { GenerateLesson } from "@topik/components/topik/handheld/generate-lesson"
-import type { StorageNote } from "@topik/components/topik/handheld/material-list"
+import type {
+  RoutineCard,
+  StorageNote,
+} from "@topik/components/topik/handheld/material-list"
 import { MaterialList } from "@topik/components/topik/handheld/material-list"
 import { SharePrompt } from "@topik/components/topik/handheld/share-prompt"
 import { ReadAloudScreen } from "@topik/components/topik/read-aloud/read-aloud-screen"
@@ -39,6 +46,12 @@ import {
 } from "@topik/lib/topik/adapter/pasted-lesson"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
+import type {
+  OpenedStore,
+  RoutineFile,
+} from "@topik/lib/topik/adapter/routine-files"
+import { createOpenedStore } from "@topik/lib/topik/adapter/routine-files"
+import { useRoutineFiles } from "@topik/lib/topik/adapter/server/routine-files-queries"
 import { useTopikManifest } from "@topik/lib/topik/adapter/server/topik-metadata-queries"
 import {
   useServedTree,
@@ -97,6 +110,8 @@ type HandheldLessonProps = {
   servedPoints?: DramaPointStore
   /** Injected in tests: the clock that dates an added set. */
   now?: () => Date
+  /** Injected in tests; defaults to `localStorage`. */
+  routineOpened?: OpenedStore
 }
 
 export const HandheldLesson = ({
@@ -109,6 +124,7 @@ export const HandheldLesson = ({
   tones,
   servedPoints,
   now = (): Date => new Date(),
+  routineOpened,
 }: HandheldLessonProps): JSX.Element => {
   const [held] = useState(() => pastedStore ?? createPastedLessonStore())
   const drama = usePastedTree(held)
@@ -124,6 +140,7 @@ export const HandheldLesson = ({
     speaker,
     shelf,
     treeFeed,
+    routineFeed,
     metadataRepository,
     share,
     sceneVoice,
@@ -187,13 +204,22 @@ export const HandheldLesson = ({
     readAloud.saveSets(next)
     setAdded(next)
   }
-  const openSetText = (text: string): void => {
-    const intake = intakeSet(text, added)
-    if (!intake.ok) {
-      setSetNote({ tone: "problem", text: intake.error })
-      return
+  // Each text through the intake in turn, onto what the phone holds: all of
+  // them are added, or none and the note says why.
+  const addSetTexts = (texts: ReadonlyArray<string>): boolean => {
+    let next = added
+    const titles: Array<string> = []
+    let dropped = 0
+    for (const text of texts) {
+      const intake = intakeSet(text, next)
+      if (!intake.ok) {
+        setSetNote({ tone: "problem", text: intake.error })
+        return false
+      }
+      next = addSet(next, intake.deck, now().toISOString())
+      titles.push(`"${intake.deck.title}"`)
+      dropped += intake.dropped
     }
-    const next = addSet(added, intake.deck, now().toISOString())
     const leaving = wordsLeaving(added, next)
     if (leaving.size > 0) {
       readAloud.prunePaces(
@@ -201,13 +227,37 @@ export const HandheldLesson = ({
       )
     }
     keepSets(next)
+    const what = titles.join(" and ")
     setSetNote({
       tone: "done",
       text:
-        intake.dropped > 0
-          ? `Added "${intake.deck.title}". ${intake.dropped} line${intake.dropped === 1 ? "" : "s"} couldn't be read.`
-          : `Added "${intake.deck.title}".`,
+        dropped > 0
+          ? `Added ${what}. ${dropped} line${dropped === 1 ? "" : "s"} couldn't be read.`
+          : `Added ${what}.`,
     })
+    return true
+  }
+  const openSetText = (text: string): void => {
+    addSetTexts([text])
+  }
+  const routine = useRoutineFiles(routineFeed)
+  const [opened] = useState(() => routineOpened ?? createOpenedStore())
+  const [openedNames, setOpenedNames] = useState(opened.opened)
+  const waiting = useMemo(
+    () => (routine.data ?? []).filter((file) => !openedNames.has(file.name)),
+    [routine.data, openedNames]
+  )
+  const routineCards = useMemo(() => waiting.map(routineCardOf), [waiting])
+  const openRoutine = (name: string): void => {
+    const file = waiting.find((candidate) => candidate.name === name)
+    if (file === undefined) return
+    if (file.kind === "scene") {
+      if (!addSetTexts(file.decks.map((deck) => JSON.stringify(deck)))) return
+    } else {
+      openSceneText(JSON.stringify(file.tree))
+    }
+    opened.markOpened(file.name)
+    setOpenedNames(opened.opened())
   }
   // The read-aloud drill takes the whole screen, header included; leaving it
   // returns to the material list it was opened from. `set` is the added set
@@ -474,6 +524,8 @@ export const HandheldLesson = ({
         onSetText={openSetText}
         setFileHint={wordSetHint}
         setNote={setNote}
+        fromRoutine={routineCards}
+        onOpenRoutine={openRoutine}
       />
     )
   })()
@@ -495,4 +547,25 @@ export const HandheldLesson = ({
       )}
     </div>
   )
+}
+
+/** A routine file as its card shows it; a drama names its own title and level. */
+function routineCardOf(file: RoutineFile): RoutineCard {
+  if (file.kind === "scene") {
+    return {
+      name: file.name,
+      kind: "scene",
+      title: file.title,
+      details: "Word sets: read aloud and grammar lens",
+    }
+  }
+  const intake = intakeTree(JSON.stringify(file.tree))
+  return intake.status === "checked"
+    ? {
+        name: file.name,
+        kind: "drama",
+        title: titleOf(intake.lesson),
+        details: `Drama · TOPIK ${intake.lesson.level}`,
+      }
+    : { name: file.name, kind: "drama", title: "A drama", details: "Drama" }
 }

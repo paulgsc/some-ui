@@ -18,6 +18,7 @@ import {
   useSceneLifetimes,
 } from "@/lib/orchestrator"
 import { PANELS } from "@/lib/playable"
+import { createRoutineFilesClient } from "@/lib/routine-files"
 import { phoneSceneVoice, shareDramaPrompt } from "@/lib/scene-voice"
 import { lookIn, runsNatively } from "@/lib/share-files"
 import { createShelfClient } from "@/lib/shelf-client"
@@ -100,12 +101,19 @@ export const SessionViewport = ({
     return (): void => setSuspended(false)
   }, [editMode])
 
-  // The learner shelf (paulgsc/server#387): only while the data is the
-  // account's (every shelf route is per person) and a file_host exists. A
-  // device learner keeps no shelf. Nothing in the activity depends on it.
+  // The learner shelf (paulgsc/server#387) and what the reflections routine
+  // left on home (`/routine/files`): only while the data is the account's
+  // (both are per person) and a file_host exists. A device learner has
+  // neither. Nothing in the activity depends on them.
   const signedIn = useAuthority().kind === "account"
   const shelves = useMemo(
-    () => (signedIn ? { topik: createShelfClient("topik") } : undefined),
+    () =>
+      signedIn
+        ? {
+            topik: createShelfClient("topik"),
+            routineFiles: createRoutineFilesClient(),
+          }
+        : undefined,
     [signedIn]
   )
 
@@ -130,6 +138,8 @@ export const SessionViewport = ({
           // The served scene trees, which only the handheld lesson lists.
           loadTreeManifest,
           shelf: shelves?.topik,
+          // What the reflections routine left on home, as `shelf` is.
+          routineFiles: shelves?.routineFiles,
           share: PHONE_SHARE,
           sceneVoice: PHONE_SCENE_VOICE,
           // Read at render: main.tsx installs the sidecar after imports run.

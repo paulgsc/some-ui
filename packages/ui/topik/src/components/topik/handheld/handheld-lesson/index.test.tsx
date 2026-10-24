@@ -24,6 +24,12 @@ import {
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import type {
+  OpenedStore,
+  RoutineFeed,
+  RoutineFile,
+} from "@topik/lib/topik/adapter/routine-files"
+import { createOpenedStore } from "@topik/lib/topik/adapter/routine-files"
+import type {
   SoundControl,
   ToneContextFactory,
 } from "@topik/lib/topik/adapter/sound-port"
@@ -61,6 +67,8 @@ type RenderOptions = {
   share?: FileShare
   sceneFileHint?: string
   wordSetHint?: string
+  routineFeed?: RoutineFeed
+  routineOpened?: OpenedStore
 }
 
 function renderLesson({
@@ -77,6 +85,8 @@ function renderLesson({
   share,
   sceneFileHint,
   wordSetHint,
+  routineFeed,
+  routineOpened = createOpenedStore(memoryStorage()),
 }: RenderOptions = {}): void {
   const tree = (): JSX.Element => (
     <QueryClientProvider client={client}>
@@ -89,6 +99,7 @@ function renderLesson({
           ...(share ? { share } : {}),
           ...(sceneFileHint ? { sceneFileHint } : {}),
           ...(wordSetHint ? { wordSetHint } : {}),
+          ...(routineFeed ? { routineFeed } : {}),
         }}
       >
         <HandheldLesson
@@ -99,6 +110,7 @@ function renderLesson({
           tones={tones}
           servedPoints={servedPoints}
           now={(): Date => new Date("2026-10-14T06:00:00.000Z")}
+          routineOpened={routineOpened}
         />
       </SessionConfigProvider>
     </QueryClientProvider>
@@ -294,6 +306,72 @@ describe("HandheldLesson", () => {
     const card = await screen.findByRole("button", { name: /Read aloud/ })
     expect(card.textContent).toContain("1 word set")
     expect(screen.queryByRole("button", { name: /^2 words New/ })).toBeNull()
+  })
+
+  it("lists what the routine left on home, adds a word set pair and starts a drama, and offers neither again", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    const opened = createOpenedStore(memoryStorage())
+    const deck = (id: string, title: string): unknown => ({
+      schemaVersion: 1,
+      id,
+      title,
+      words: [{ id: `${id}-w`, lemma: "약속", gloss: "plans" }],
+      lines: [
+        {
+          id: `${id}-l`,
+          level: 2,
+          korean: "약속",
+          english: "Plans",
+          words: [{ wordId: `${id}-w`, surface: "약속", stemEnd: 2 }],
+        },
+      ],
+    })
+    const files: ReadonlyArray<RoutineFile> = [
+      {
+        kind: "drama",
+        name: "drama-20261013T145200123Z.json",
+        tree: JSON.parse(workedExample()),
+      },
+      {
+        kind: "scene",
+        name: "scene-2026-10-13_morning_session-.json",
+        title: "TOPIK 2 · 일상 · 약속",
+        decks: [deck("plans-2", "Plans"), deck("plans-2-lens", "Plans, lens")],
+      },
+    ]
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: store,
+      routineFeed: { list: () => Promise.resolve(files) },
+      routineOpened: opened,
+    })
+    const waiting = await screen.findByRole("region", {
+      name: "From the routine",
+    })
+    expect(within(waiting).getAllByRole("button")).toHaveLength(2)
+
+    fireEvent.click(
+      within(waiting).getByRole("button", { name: /TOPIK 2 · 일상 · 약속/ })
+    )
+    expect(
+      await screen.findByText('Added "Plans" and "Plans, lens".')
+    ).toBeTruthy()
+    expect(
+      store
+        .sets()
+        .map((set) => set.deck.id)
+        .sort()
+    ).toEqual(["plans-2", "plans-2-lens"])
+    expect(
+      screen.queryByRole("button", { name: /TOPIK 2 · 일상 · 약속/ })
+    ).toBeNull()
+
+    fireEvent.click(screen.getByRole("button", { name: /Drama · TOPIK/ }))
+    expect(await screen.findByText("숨 막히는 긴장감")).toBeTruthy()
+    expect([...opened.opened()].sort()).toEqual([
+      "drama-20261013T145200123Z.json",
+      "scene-2026-10-13_morning_session-.json",
+    ])
   })
 
   it("says what a set is for and where it takes place, and opens a lens set on the lens", async () => {
