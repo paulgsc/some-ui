@@ -16,7 +16,7 @@
 
 import type { Folder, Role, Store } from "./store"
 
-/** Most bytes one item may hold. Real files are under 20 KB; D1's row cap is 2 MB. */
+/** Most bytes one item may hold, far above any real file (README, "What a put must satisfy"); D1's row cap is 2 MB. */
 export const MAX_BODY_BYTES = 1_048_576
 const LIST_LIMIT_DEFAULT = 50
 export const LIST_LIMIT_MAX = 50

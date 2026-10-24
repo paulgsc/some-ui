@@ -7,7 +7,7 @@ other files. For the Jobs wing: the daily **digest** (`brief`), the phone's **de
 each of the routine's runs (`run`): what it found and added, so the phone can say when the
 routine last ran and whether it brought anything new. Home leaves it which of those lessons the
 phone opened (`opened`), names only, so it keeps three ready. For LeetType: the **session
-files** a routine or an authoring agent writes (`leetype`), which home serves to the phone, and
+files** a routine writes (`leetype`), which home serves to the phone, and
 each finished session's **log** as home holds it (`leetype-log`), so a routine can read how the
 sessions went. Each side reaches it with
 its own token, so the files move between them without a hand-carried step.
@@ -91,8 +91,8 @@ then six repeats, then `seq 8`). Page with `after` set to the highest `seq` you 
 | `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama`, `run` and `leetype`; put `decisions`, `scout`, `opened` and `leetype-log`        |
 | `ARCHIVE_TOKEN` | `archive` | read every folder; archive a file and put an archived one back; list the open asks                               |
 
-The routine role is every scheduled routine's: the Jobs digest and the study reflections each
-put to their own folders.
+The routine role is every scheduled routine's: the Jobs digest, the study reflections and,
+once it is scheduled, the LeetType review each put to their own folders.
 
 Home holds two tokens. `archive` is apart from `home` so the token home uses every pass cannot
 drop a byte. A secret that is unset or empty authenticates no one, and one value set for two
@@ -156,8 +156,8 @@ operation; it does not bill (see MB4).
 - Past a D1 daily limit its queries fail until 00:00 UTC; the Worker answers `503` for
   that time. The 07:52 Pacific run is far from that reset.
 - D1 hands a BLOB back as an array of byte values, so reading a body near the 1 MiB cap costs
-  CPU. I have not measured whether it fits in 10 ms; files are a few KB in practice, and a
-  LeetType session file tens of KB.
+  CPU. I have not measured whether it fits in 10 ms; files are far below it in practice
+  (the sizes are under "What a put must satisfy").
 
 A missing or wrong token is answered before any query runs, so a request without a token does
 not spend D1 quota.

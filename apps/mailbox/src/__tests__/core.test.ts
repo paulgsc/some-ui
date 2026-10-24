@@ -502,9 +502,20 @@ describe("LeetType's files", () => {
 
   it("the routine puts a session file, and home reads it and may not put one", async () => {
     const d = deps()
-    expect(
-      (await put(d, "leetype", SESSION_NAME, { body: SESSION })).status
-    ).toBe(201)
+    // Thread 1's names in Drive, and a fix's.
+    for (const name of [
+      SESSION_NAME,
+      "t1-02-lost-machine-split-network.json",
+      "t1-03-two-flushes-and-the-rate.json",
+      "t1-04-old-leaders-old-writes.json",
+      "t1-05-fresh-reads.json",
+      "t1-01-one-node-r2.json",
+    ]) {
+      expect([
+        name,
+        (await put(d, "leetype", name, { body: SESSION })).status,
+      ]).toEqual([name, 201])
+    }
     const path = `/v1/leetype/items/${SESSION_NAME}`
     expect((await send(d, "GET", path, { token: HOME })).status).toBe(200)
     expect(
@@ -512,7 +523,7 @@ describe("LeetType's files", () => {
     ).toBe(200)
     expect(
       (
-        await put(d, "leetype", "t1-02-lost-machine-split-network.json", {
+        await put(d, "leetype", "t1-06-another.json", {
           token: HOME,
           body: SESSION,
         })
