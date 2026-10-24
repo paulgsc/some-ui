@@ -6,7 +6,10 @@ other files. For the Jobs wing: the daily **digest** (`brief`), the phone's **de
 (`scene`) and **dramas** (`drama`), which home serves to the phone, and a **run record** for
 each of the routine's runs (`run`): what it found and added, so the phone can say when the
 routine last ran and whether it brought anything new. Home leaves it which of those lessons the
-phone opened (`opened`), names only, so it keeps three ready. Each side reaches it with
+phone opened (`opened`), names only, so it keeps three ready. For LeetType: the **session
+files** a routine writes (`leetype`), which home serves to the phone, and
+each finished session's **log** as home holds it (`leetype-log`), so a routine can read how the
+sessions went. Each side reaches it with
 its own token, so the files move between them without a hand-carried step.
 
 ## Why it exists
@@ -19,6 +22,8 @@ cloud routine ──PUT brief──▶ [ mailbox ] ◀──GET brief── home
 cloud routine ◀─GET decisions, scout── [ mailbox ] ◀──PUT decisions, scout── home ◀── phone
 cloud routine ──PUT scene, drama, run──▶ [ mailbox ] ◀──GET scene, drama, run── home ◀── phone (Korean study)
 cloud routine ◀──GET opened── [ mailbox ] ◀──PUT opened── home ◀── phone (a lesson opened)
+cloud routine ──PUT leetype──▶ [ mailbox ] ◀──GET leetype── home ◀── phone (LeetType sessions)
+cloud routine ◀──GET leetype-log── [ mailbox ] ◀──PUT leetype-log── home ◀── phone (Send to home)
 ```
 
 The phone talks to home only. Home carries no audio (`docs/identity.md` in `paulgsc/server`,
@@ -69,7 +74,8 @@ Every request needs `Authorization: Bearer <token>`. Every answer is JSON, or th
 | `GET /v1/:folder/wanted?limit=<n>`                       | `200 {"items":[{"name","askedAt"}]}`, the open asks, oldest first.                                                                                                                                                                                                                                 |
 | anything else                                            | `404`; a method the path does not take is `405` with `Allow`. A missing or wrong token is `401`, a token that may not do this is `403`, and storage failing is `503`.                                                                                                                              |
 
-The folders are `brief`, `decisions`, `scout`, `scene`, `drama`, `run` and `opened`.
+The folders are `brief`, `decisions`, `scout`, `scene`, `drama`, `run`, `opened`, `leetype`
+and `leetype-log`.
 
 **`seq` only grows, and it has gaps.** SQLite hands out a number for every put that reaches the
 table, including a put of a name already held (`unchanged` or `conflict`), which stores nothing.
@@ -79,14 +85,14 @@ then six repeats, then `seq 8`). Page with `after` set to the highest `seq` you 
 
 ### Who may do what
 
-| Secret          | Role      | May                                                                                                   |
-| --------------- | --------- | ----------------------------------------------------------------------------------------------------- |
-| `ROUTINE_TOKEN` | `routine` | read every folder; put `brief`, `scene`, `drama` and `run`; list what is archived and ask for it back |
-| `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama` and `run`; put `decisions`, `scout` and `opened`                       |
-| `ARCHIVE_TOKEN` | `archive` | read every folder; archive a file and put an archived one back; list the open asks                    |
+| Secret          | Role      | May                                                                                                              |
+| --------------- | --------- | ---------------------------------------------------------------------------------------------------------------- |
+| `ROUTINE_TOKEN` | `routine` | read every folder; put `brief`, `scene`, `drama`, `run` and `leetype`; list what is archived and ask for it back |
+| `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama`, `run` and `leetype`; put `decisions`, `scout`, `opened` and `leetype-log`        |
+| `ARCHIVE_TOKEN` | `archive` | read every folder; archive a file and put an archived one back; list the open asks                               |
 
-The routine role is every scheduled routine's: the Jobs digest and the study reflections each
-put to their own folders.
+The routine role is every scheduled routine's: the Jobs digest, the study reflections and,
+once it is scheduled, the LeetType review each put to their own folders.
 
 Home holds two tokens. `archive` is apart from `home` so the token home uses every pass cannot
 drop a byte. A secret that is unset or empty authenticates no one, and one value set for two
@@ -103,12 +109,17 @@ role, and it is the owner's call, so it is not built.
   named for its prompt (`drama-YYYYMMDDTHHMMSSmmmZ`); `run` takes
   `run-<routine>-YYYYMMDDTHHMMSSZ.json`, named for the routine (lower-case letters) and when the
   run started, in UTC; `opened` takes `opened-YYYYMMDDTHHMMSSmmmZ.json`, named for when home
-  filed it. Anything else, voice-note names included, is `422`.
+  filed it; `leetype` takes `t<thread>-<NN>-<slug>.json`, the name the Drive SOP gives a
+  session file (a slug of lower-case words joined by `-`, so a fix's `-r2` fits it); and
+  `leetype-log` takes `log-<session>.json`, named for the phone's id for the session (1 to 64
+  letters, digits, `-` or `_`, as home's log takes it), or `log-<session>.r<n>.json` for a
+  later copy of a session home holds more of. Anything else, voice-note names included, is
+  `422`.
 - **Content type** `application/json` (parameters such as `charset` are ignored), and the body
   must be UTF-8 JSON with no byte-order mark.
 - **Schema**: the top-level `schema` must be `some-ui.job-digest/1`, `some-ui.job-decisions/1`,
-  `some-ui.job-scouts/1`, `some-ui.routine-scene/1`, `some-ui.routine-drama/1`, `some-ui.routine-run/1` or
-  `some-ui.routine-opened/1` to match the folder. The Worker checks that and nothing deeper; the readers validate the full shape.
+  `some-ui.job-scouts/1`, `some-ui.routine-scene/1`, `some-ui.routine-drama/1`, `some-ui.routine-run/1`,
+  `some-ui.routine-opened/1`, `some-ui.leetype-session/1` or `some-ui.leetype-log/1` to match the folder. The Worker checks that and nothing deeper; the readers validate the full shape.
 - **A scene** is `{"schema":"some-ui.routine-scene/1","answers":"<reflection>","title":"<the
 scene folder's name>","decks":[<read-aloud deck>,<lens deck>]}`, each deck exactly as the
   phone's word set check takes it. **A drama** is `{"schema":"some-ui.routine-drama/1",
@@ -119,10 +130,17 @@ scene folder's name>","decks":[<read-aloud deck>,<lens deck>]}`, each deck exact
   files it put, and what it could not do. Topik's `adapter/routine-runs` reads it. **An opened
   filing** is `{"schema":"some-ui.routine-opened/1","opened":["scene/<name>","drama/<name>"],
 "at"}`: every listed lesson the phone had opened when it filed, as home builds it
-  (paulgsc/server `PUT /routine/opened`).
+  (paulgsc/server `PUT /routine/opened`). **A LeetType session** is
+  `{"schema":"some-ui.leetype-session/1","file":<the session file, as the phone's session-file
+check takes it>}`: the file itself has no `schema` key, so it travels wrapped. **A LeetType
+  log** is `{"schema":"some-ui.leetype-log/1","session","file","events":[<every event of the
+session, as home holds it>]}`: the events in their home form (paulgsc/server
+  `docs/identity.md` invariant 18), so no spoken answer's ticks, nothing said or typed, and no
+  audio.
 - **Size**: at most 1,048,576 bytes. A declared `Content-Length` over that is refused before
   the body is read, and a body that declares nothing is cut off as it passes the cap. Real
-  files are under 20 KB.
+  files are under 20 KB, except LeetType session files: Thread 1's first file is 30 KB
+  for two rounds, and the ten-round draft was 140 KB.
 
 ## Limits
 
@@ -138,7 +156,8 @@ operation; it does not bill (see MB4).
 - Past a D1 daily limit its queries fail until 00:00 UTC; the Worker answers `503` for
   that time. The 07:52 Pacific run is far from that reset.
 - D1 hands a BLOB back as an array of byte values, so reading a body near the 1 MiB cap costs
-  CPU. I have not measured whether it fits in 10 ms; files are a few KB in practice.
+  CPU. I have not measured whether it fits in 10 ms; files are far below it in practice
+  (the sizes are under "What a put must satisfy").
 
 A missing or wrong token is answered before any query runs, so a request without a token does
 not spend D1 quota.
@@ -208,9 +227,10 @@ how each was checked when this workspace landed.
 
 - _Claim:_ the `ROLES` table in `src/core.ts` is the only place a token is mapped to what it
   may do, and it holds exactly three roles: `routine` (get every folder, put `brief`, `scene`,
-  `drama` and `run`, ask every folder), `home` (get `brief`, `scene`, `drama` and `run`, put
-  `decisions`, `scout` and `opened`) and `archive` (get and move every folder; owner,
-  2026-10-23, and `scene` and `drama` the same day; `run` and `opened` 2026-10-24). Every request passes `authenticate` and then one of `serve`'s
+  `drama`, `run` and `leetype`, ask every folder), `home` (get `brief`, `scene`, `drama`, `run`
+  and `leetype`, put `decisions`, `scout`, `opened` and `leetype-log`) and `archive` (get and move every folder; owner,
+  2026-10-23, and `scene` and `drama` the same day; `run` and `opened` 2026-10-24; `leetype` and
+  `leetype-log` 2026-10-24 too). Every request passes `authenticate` and then one of `serve`'s
   `may(grant.get | put | ask | move)` checks before anything reaches the store.
 - _Falsified by_ a hunk that adds, removes or renames a role; adds a folder to, or removes one
   from, any role's `get`, `put`, `ask` or `move` list; changes which secret a role reads, or
@@ -235,7 +255,11 @@ how each was checked when this workspace landed.
   has three entries; `core.test.ts` pins `run` as it pins `scene` and `drama`. _Checked at the
   opened amendment (2026-10-24, the owner's choice that the routine keep three lessons ready):_
   `ROLES` has three entries; `core.test.ts` pins `opened`: home puts it and may not read it, the
-  routine reads it and may not put it, and archive moves it.
+  routine reads it and may not put it, and archive moves it. _Checked at the LeetType amendment
+  (2026-10-24, the owner's choice that LeetType's session files and logs go through the
+  mailbox, both folders):_ `ROLES` has three entries; `core.test.ts` pins `leetype` (the
+  routine puts it, home reads it and may not put it) and `leetype-log` (home puts it and may
+  not read it, the routine reads it and may not put it), and archive moves both.
 
 **MB3: No token reaches the repo or a log.**
 

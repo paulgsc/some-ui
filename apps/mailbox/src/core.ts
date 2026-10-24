@@ -16,7 +16,7 @@
 
 import type { Folder, Role, Store } from "./store"
 
-/** Most bytes one item may hold. Real files are under 20 KB; D1's row cap is 2 MB. */
+/** Most bytes one item may hold, far above any real file (README, "What a put must satisfy"); D1's row cap is 2 MB. */
 export const MAX_BODY_BYTES = 1_048_576
 const LIST_LIMIT_DEFAULT = 50
 export const LIST_LIMIT_MAX = 50
@@ -81,6 +81,20 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
     name: /^opened-\d{8}T\d{9}Z\.json$/,
     schema: "some-ui.routine-opened/1",
   },
+  {
+    // A LeetType session file, under the name the phone holds it by
+    // (`t<thread>-<NN>-<slug>.json`, the Drive SOP's), wrapped with its schema.
+    folder: "leetype",
+    name: /^t\d{1,3}-\d{2}(-[a-z0-9]{1,30}){1,12}\.json$/,
+    schema: "some-ui.leetype-session/1",
+  },
+  {
+    // One finished LeetType session, as home holds it, named for the
+    // phone's id for it; `.r<n>` and on if home holds more of it later.
+    folder: "leetype-log",
+    name: /^log-[A-Za-z0-9_-]{1,64}(\.r\d{1,4})?\.json$/,
+    schema: "some-ui.leetype-log/1",
+  },
 ]
 
 /** The Worker secrets. An unset or empty one never authenticates anyone. */
@@ -111,6 +125,8 @@ const ALL: ReadonlyArray<Folder> = [
   "drama",
   "run",
   "opened",
+  "leetype",
+  "leetype-log",
 ]
 
 /** MB2. Another role (the phone's, say) is the owner's call, not a code change. */
@@ -119,15 +135,15 @@ const ROLES: ReadonlyArray<Grant> = [
     role: "routine",
     token: (tokens) => tokens.routine,
     get: ALL,
-    put: ["brief", "scene", "drama", "run"],
+    put: ["brief", "scene", "drama", "run", "leetype"],
     ask: ALL,
     move: [],
   },
   {
     role: "home",
     token: (tokens) => tokens.home,
-    get: ["brief", "scene", "drama", "run"],
-    put: ["decisions", "scout", "opened"],
+    get: ["brief", "scene", "drama", "run", "leetype"],
+    put: ["decisions", "scout", "opened", "leetype-log"],
     ask: [],
     move: [],
   },
