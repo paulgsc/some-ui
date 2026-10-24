@@ -473,19 +473,19 @@ export const MaterialList = ({
             />
           ))}
         </ul>
-        {routineNote && (
-          <p
-            role={routineNote.tone === "problem" ? "alert" : "status"}
-            className={cn(
-              "text-sm",
-              routineNote.tone === "problem"
-                ? "text-destructive"
-                : "text-muted-foreground"
-            )}
-          >
-            {routineNote.text}
-          </p>
-        )}
+        {/* Always mounted, so a note that arrives is announced. */}
+        <p
+          aria-live="polite"
+          data-slot="routine-note"
+          className={cn(
+            "text-sm empty:hidden",
+            routineNote?.tone === "problem"
+              ? "text-destructive"
+              : "text-muted-foreground"
+          )}
+        >
+          {routineNote?.text}
+        </p>
       </section>
     )}
 

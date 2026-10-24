@@ -19,8 +19,11 @@ export function useRoutineFiles(
     queryKey: ["routine-files", feed !== undefined],
     queryFn: () => (feed ? feed.list() : []),
     enabled: feed !== undefined,
-    // A routine answers at most a few times a day.
+    // A routine answers at most a few times a day; once that is old, coming
+    // back to the list asks again (the host's default is never to).
     staleTime: 10 * 60 * 1000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
     gcTime: 30 * 60 * 1000,
   })
 }

@@ -42,6 +42,7 @@ import {
   workedExample,
   workedLesson,
 } from "@topik/lib/topik/generation/tree-intake/worked-example"
+import { parseReadAloudDeck } from "@topik/lib/topik/read-aloud/content"
 import {
   LEVEL_ONE_LENS_SET,
   LEVEL_ONE_SET,
@@ -402,14 +403,78 @@ describe("HandheldLesson", () => {
       name: "From the routine",
     })
     fireEvent.click(within(waiting).getByRole("button"))
-    expect(within(waiting).getByRole("alert").textContent).toBe(
-      "That file isn't a word set."
-    )
+    expect(
+      waiting.querySelector('[data-slot="routine-note"]')?.textContent
+    ).toBe("That file isn't a word set.")
     expect(store.sets()).toEqual([])
     expect(opened.opened().size).toBe(0)
     expect(within(waiting).getByRole("button").textContent).not.toContain(
       "Opened"
     )
+  })
+
+  it("opens an opened pair on its first set, leaving the sets the phone holds as they are", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    const decks = [
+      routineDeck("plans-2", "Plans"),
+      routineDeck("plans-2-lens", "Plans, lens"),
+    ]
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: store,
+      routineFeed: { list: () => Promise.resolve([routineScene(decks)]) },
+    })
+    const waiting = await screen.findByRole("region", {
+      name: "From the routine",
+    })
+    fireEvent.click(within(waiting).getByRole("button"))
+    await screen.findByText('Added "Plans" and "Plans, lens".')
+    const addedAt = store.sets().map((set) => set.addedAt)
+
+    fireEvent.click(within(waiting).getByRole("button", { name: /Opened/ }))
+    expect(
+      document.querySelector('[data-slot="read-aloud-level"]')
+    ).not.toBeNull()
+    expect(store.sets().map((set) => set.addedAt)).toEqual(addedAt)
+    expect(
+      store.sets().find((set) => set.deck.id === "plans-2")?.openedAt
+    ).not.toBeNull()
+  })
+
+  it("adds neither set of a pair the phone has no room for, and says what it holds", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    store.saveSets(
+      Array.from({ length: 49 }, (_, at) => {
+        const parsed = parseReadAloudDeck(
+          routineDeck(`held-${at}`, `Held ${at}`)
+        )
+        if (!parsed.ok) throw new Error(parsed.error)
+        return { deck: parsed.deck, addedAt: "", openedAt: "" }
+      })
+    )
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: store,
+      routineFeed: {
+        list: () =>
+          Promise.resolve([
+            routineScene([
+              routineDeck("plans-2", "Plans"),
+              routineDeck("plans-2-lens", "Plans, lens"),
+            ]),
+          ]),
+      },
+    })
+    const waiting = await screen.findByRole("region", {
+      name: "From the routine",
+    })
+    fireEvent.click(within(waiting).getByRole("button"))
+    expect(
+      waiting.querySelector('[data-slot="routine-note"]')?.textContent
+    ).toBe(
+      "This phone keeps 50 word sets and has 49, so these 2 weren't added."
+    )
+    expect(store.sets()).toHaveLength(49)
   })
 
   it("lists nothing from the routine where the host reaches no home", async () => {

@@ -10,9 +10,13 @@
  * ```
  *
  * Read only, and only with a passkey session (`401` without). A build with
- * no `file_host` gets no client, so topik lists none.
+ * no `file_host` gets no client, so topik lists none. Nor does the Android
+ * app: its account is the phone's own backend, and home is reached only
+ * through the home link (docs/learner-data-authority.md, LA8), which does
+ * not carry these files yet.
  */
 
+import { MOBILE_APP } from "@/lib/build-profile"
 import { DATA_MODE } from "@/lib/data-mode"
 import type { FileHostTransport } from "@/lib/file-host-config/client"
 import {
@@ -27,10 +31,10 @@ type RoutineFilesClient = {
 
 /**
  * `transport` is a seam for tests. The default is `file_host` wherever this
- * build has one, and `null` (so no client) on the static build.
+ * build has one, and `null` (so no client) on the static build and the app.
  */
 export function createRoutineFilesClient(
-  transport: FileHostTransport | null = DATA_MODE === "static"
+  transport: FileHostTransport | null = DATA_MODE === "static" || MOBILE_APP
     ? null
     : createFileHostTransport("account")
 ): RoutineFilesClient | undefined {
