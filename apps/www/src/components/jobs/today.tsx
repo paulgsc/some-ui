@@ -274,10 +274,15 @@ const Places = ({
   const [showLapsed, setShowLapsed] = useState(false)
   const open = openOf(state, today)
   const recorded = digest.queue?.lapsed ?? []
-  const decidedHere = recorded.filter(
-    (l) => decisionOf(state, l.day, l.pickId) !== null
+  // A pick passed or debriefed here frees its place either way; one taken
+  // and not ended takes its place back once the share arrives.
+  const takenHere = recorded.filter((l) => {
+    const progress = progressOf(state, l.day, l.pickId)
+    return progress.kind === "open" && progress.step > 0
+  }).length
+  const untouched = recorded.filter(
+    (l) => decisionOf(state, l.day, l.pickId) === null
   ).length
-  const untouched = recorded.length - decidedHere
   const lapsed = picksStanding(state, today, "lapsed").filter(
     (l) => l.day !== digest.day
   )
@@ -305,7 +310,7 @@ const Places = ({
         {holdsPlace}
         {held.length > 0 && ` ${heldOver(held.length, full)}`}
         {untouched > 0 && ` ${lapsedEarlier(untouched)}`}
-        {decidedHere > 0 && ` ${lapsedBeforeHeard(decidedHere)}`}
+        {takenHere > 0 && ` ${lapsedBeforeHeard(takenHere)}`}
       </p>
       {earlier.map((day) => (
         <div key={day} className="flex flex-col gap-1.5 border-t pt-2">

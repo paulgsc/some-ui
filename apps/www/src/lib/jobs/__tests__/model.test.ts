@@ -184,6 +184,8 @@ describe("step", () => {
     })
     expect(state.current).toBe("2026-08-01")
     expect(state.digests.map((d) => d.day)).toContain("2026-08-01")
+    const [first] = digest("2026-08-01").picks
+    expect(standingOf(state, "2026-08-01", first.id, DAY).kind).toBe("lapsed")
   })
 
   it("archives together or not at all", () => {

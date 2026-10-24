@@ -186,7 +186,43 @@ describe("Today, once picks lapse (J5)", () => {
     expect(screen.getAllByText("Lapsed")).toHaveLength(2)
   })
 
-  it("names what the morning's picking lapsed, apart from what I decided before it heard, and keeps a way to a lapsed pick", async () => {
+  it("says nothing of a recorded lapse for a pick I passed on", async () => {
+    await showToday("2026-10-22T14:00:00Z", null)
+    const { phoneJobs } = await import("@/lib/jobs")
+    const { digest } = await import("@/lib/jobs/__tests__/fixture")
+    const jobs = phoneJobs()
+    const old = digest("2026-10-18")
+    const [passed] = old.picks
+    act(() => {
+      jobs.keeping.fetched([old])
+    })
+    act(() => {
+      jobs.record({
+        type: "passed",
+        reasons: [],
+        note: "",
+        voice: [],
+        day: old.day,
+        pickId: passed.id,
+        fingerprint: passed.fingerprint,
+      })
+    })
+    act(() => {
+      jobs.keeping.fetched([
+        {
+          ...digest("2026-10-22"),
+          queue: {
+            open: [],
+            lapsed: [{ day: old.day, pickId: passed.id, track: passed.track }],
+          },
+        },
+      ])
+    })
+    expect(screen.queryByText(/lapsed, untouched/)).toBeNull()
+    expect(screen.queryByText(/lapsed before the morning’s picking/)).toBeNull()
+  })
+
+  it("names what the morning's picking lapsed, apart from what I took before it heard, and keeps a way to a lapsed pick", async () => {
     await showToday("2026-10-22T14:00:00Z", null)
     const { phoneJobs } = await import("@/lib/jobs")
     const { digest } = await import("@/lib/jobs/__tests__/fixture")
@@ -223,7 +259,7 @@ describe("Today, once picks lapse (J5)", () => {
       screen.getByText(/1 pick from earlier days lapsed, untouched for 3 days/)
     ).toBeTruthy()
     expect(
-      screen.getByText(/1 pick you decided lapsed before the morning’s picking/)
+      screen.getByText(/1 pick you took lapsed before the morning’s picking/)
     ).toBeTruthy()
     fireEvent.click(
       screen.getByRole("button", { name: "Show the picks that lapsed (1)" })
