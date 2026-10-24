@@ -12,6 +12,8 @@ export type {
   SessionSummary,
 } from "./model"
 export { ledgerOf, summariesOf } from "./model"
+export type { HomeEvent, HomeSession } from "./home"
+export { finishedSessions } from "./home"
 
 /**
  * The session log on the device (`./model`, `./stored`): a snapshot to read,

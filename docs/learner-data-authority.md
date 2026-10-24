@@ -45,6 +45,7 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 | Jobs record (the phone's)                   | on the phone, never sent                     | once its person keeps it on home, a copy on the paired home, synced while the Jobs wing is open; its decisions and scouts files without voice, filed with home, which hands them to the Jobs mailbox on Cloudflare; the phone keeps its whole log; stopped from the wing's mark or Settings (LA10)             | the same                                   |
 | Practice (the phone's)                      | on the phone, never sent                     | once its person ticks "Keep sending" in the send's confirm, its finished sessions and kept items sent while Practice is open; nothing let go on its own; stopped from its mark or Settings (LA11)                                                                                                              | the same                                   |
 | The routine's word sets and dramas (home's) | not read                                     | read with the account's session while Korean is open; in the Android app, once its person shows them in Korean (Settings), from the paired home with the pairing's key while Korean is open, nothing of the phone's sent, its newest files and its run records kept on the phone; stopped from Settings (LA12) | the same                                   |
+| LeetType session log (the phone's)          | on the phone, never sent                     | its finished sessions copied to the paired home by "Send to home", each event without a spoken answer's ticks, read back before it counts as held; the phone keeps its whole log (LA8)                                                                                                                         | the same                                   |
 | Speech                                      | the browser's own voice                      | the server's speech service                                                                                                                                                                                                                                                                                    | the same                                   |
 | Reminders                                   | the client's own policy, while a tab is open | the client's own policy, while a tab is open                                                                                                                                                                                                                                                                   | the server's push, with the browser closed |
 
@@ -318,8 +319,8 @@ declared (checked by reading every call site and by the tests named).
   (`components/settings/device-section.tsx`):
   the sync (published lessons and rounds, read with no credential), pairing
   (the code only), unpairing, and the send to home (`lib/home-link/send`,
-  after one confirm that names how many sessions and kept items and the
-  host): the phone's sessions, each one's record, its plan, status and
+  after one confirm that names how many sessions, kept items and LeetType
+  sessions and the host): the phone's sessions, each one's record, its plan, status and
   times, created once, restored with one patch, and patched again whenever
   the phone's record has moved on from home's copy; home is read only to
   learn what it already holds and, once the copy has run, to read back each
@@ -329,7 +330,13 @@ declared (checked by reading every call site and by the tests named).
   then one PUT per item kept on this phone's shelf that home does not hold
   as it is now, by what home last answered for it under this pairing
   (`./sent`), its bytes as kept, nothing read back and the item kept on the
-  phone. Nothing on home is
+  phone; then each finished LeetType session (`finishedSessions`: ended, or
+  another session started after it) that home does not hold as it is now,
+  by what home last read back of it under this pairing (`./sent`), one PUT
+  per event in its home form (`homeFormOf`: a spoken answer without its
+  ticks, which stay on the phone), then one read of that session back,
+  compared event by event, and only a session that reads back exactly as
+  sent is remembered as held; the phone keeps its whole log. Nothing on home is
   deleted. Outside LA9 to LA12, nothing is sent when the app or Settings
   opens, on resume, on a timer or on a network change: making the runtime and
   `load` read only the phone's own record. There is no retry; a sync, a send,
@@ -364,7 +371,21 @@ declared (checked by reading every call site and by the tests named).
   `keptToSend` (in `lib/home-link/send`), or that deletes, bypasses or
   weakens its filter (`shelfToSend` in `./sent`: an item goes unless what
   home last answered for it under this pairing holds its bytes as they are
-  now), so the send carries what home already holds; one that passes `copySessionsTo` anything but session records
+  now), so the send carries what home already holds; one that passes
+  `sendLog` sessions that did not come through `logGoing` (in
+  `lib/home-link/send`), or lets `finishedSessions` hand on an event
+  that did not pass through `homeFormOf`, or lets `homeFormOf` keep a
+  spoken answer's `ticks`; one that deletes, bypasses
+  or weakens `finishedSessions` (in
+  `packages/ui/leetype/src/lib/leetype/session-log/home.ts`: a session goes
+  only once it ended or another started after it) or `logToSend` and
+  `digestOf` (in `lib/home-link/sent`: a session goes unless what
+  home last read back of it under this pairing holds every event it has
+  now); one that makes `sendLog`
+  remember a session as held without reading it back, or compare less than
+  every event it sent (`holdsAll`), or send with a method other than `PUT`
+  and `GET`; one that lets the send remove an event from the phone's
+  session log; one that passes `copySessionsTo` anything but session records
   (a reflection, a stop or a soundbite: LA7), or lets `homeTransport` send a
   method other than `GET`, `POST` or `PATCH`, or hand a `401` to
   `requestJSON` (the app's own sign-out); one that sends a session's create

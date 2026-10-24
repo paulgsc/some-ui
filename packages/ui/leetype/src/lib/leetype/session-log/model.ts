@@ -125,6 +125,10 @@ export const SessionEventSchema = z.discriminatedUnion("type", [
 export type SessionEvent = z.infer<typeof SessionEventSchema>
 export type SessionLog = ReadonlyArray<SessionEvent>
 
+/** `log` in the order its events happened: the store lays it out session by session. */
+export const byTime = (log: SessionLog): Array<SessionEvent> =>
+  [...log].sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
+
 export function append(log: SessionLog, event: SessionEvent): SessionLog {
   return log.some((kept) => kept.id === event.id) ? log : [...log, event]
 }
@@ -284,8 +288,7 @@ type Mutable<T> = {
 
 /** Every started session's summary, in the order the sessions started. */
 export function summariesOf(log: SessionLog): Array<SessionSummary> {
-  // By time, not position: the store lays the log out session by session.
-  const ordered = [...log].sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
+  const ordered = byTime(log)
   const sessions = new Map<string, Mutable<SessionSummary>>()
   const rounds = new Map<
     string,

@@ -1,4 +1,4 @@
-import { mentionsWord } from "@core-utils/lib/string-utils"
+import { canonicalJson, mentionsWord } from "@core-utils/lib/string-utils"
 import { describe, expect, it } from "vitest"
 
 describe("mentionsWord", () => {
@@ -12,5 +12,18 @@ describe("mentionsWord", () => {
     ["quorums", "quorum", false],
   ])("%j mentions %j: %s", (text, term, expected) => {
     expect(mentionsWord(text, term)).toBe(expected)
+  })
+})
+
+describe("canonicalJson", () => {
+  it("spells one value one way, whatever its key order", () => {
+    expect(canonicalJson({ b: [1, { d: 2, c: "x" }], a: null })).toBe(
+      canonicalJson({ a: null, b: [1, { c: "x", d: 2 }] })
+    )
+    expect(canonicalJson({ b: 1, a: 2 })).toBe('{"a":2,"b":1}')
+  })
+
+  it("leaves undefined members out", () => {
+    expect(canonicalJson({ a: 1, b: undefined })).toBe(canonicalJson({ a: 1 }))
   })
 })
