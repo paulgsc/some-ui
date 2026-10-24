@@ -24,6 +24,14 @@ const TS_FILE = "src/content.ts"
 
 const SYNTAX = "no-restricted-syntax"
 
+// These snippets are parsed as JavaScript. One that doesn't parse runs no
+// rule, so "does NOT fire" would pass having checked nothing.
+const expectQuiet = (msgs: Array<{ fatal?: boolean }>, code: string): void => {
+  if (msgs.some((m) => m.fatal === true)) {
+    throw new Error(`snippet did not parse: ${code}`)
+  }
+}
+
 // ── extensions-security.config (#322) ─────────────────────────────────────
 
 describe("lint: extension-security", () => {
@@ -354,17 +362,6 @@ describe("lint: extension-charter — require-named-lifetime", () => {
 describe("lint: extension-charter — require-scoped-lifetime", () => {
   const RULE = "extension-charter/require-scoped-lifetime"
 
-  // These snippets are parsed as JavaScript. One that doesn't parse runs no
-  // rule, so "does NOT fire" would pass having checked nothing.
-  const expectQuiet = (
-    msgs: Array<{ fatal?: boolean }>,
-    code: string
-  ): void => {
-    if (msgs.some((m) => m.fatal === true)) {
-      throw new Error(`snippet did not parse: ${code}`)
-    }
-  }
-
   it("is a warning in the shared config — an audit, not a gate", async () => {
     const msgs = await lintSnippet(
       extensionsCharterConfig,
@@ -498,13 +495,6 @@ addEventListener("x", f)`
   })
 })
 
-// These snippets are parsed as JavaScript. One that doesn't parse runs no
-// rule, so "does NOT fire" would pass having checked nothing.
-const expectParsed = (msgs: Array<{ fatal?: boolean }>, code: string): void => {
-  if (msgs.some((m) => m.fatal === true))
-    throw new Error(`snippet did not parse: ${code}`)
-}
-
 // ── L3: an exemption names what ends the resource ─────────────────────────
 
 describe("lint: extension-charter — require-lifetime-comment (L3)", () => {
@@ -540,7 +530,7 @@ describe("lint: extension-charter — require-lifetime-comment (L3)", () => {
       `// eslint-disable-next-line no-console\nconsole.log(1)`,
     ]) {
       const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
-      expectParsed(msgs, code)
+      expectQuiet(msgs, code)
       expectNoMessageForRule(msgs, RULE, code)
     }
   })
@@ -584,7 +574,7 @@ describe("lint: extension-charter — no-direct-page-showing (L6)", () => {
       `const document = frame.contentDocument; const h = document.hidden`,
     ]) {
       const msgs = await lintSnippet(adopted, code, TS_FILE)
-      expectParsed(msgs, code)
+      expectQuiet(msgs, code)
       expectNoMessageForRule(msgs, RULE, code)
     }
   })

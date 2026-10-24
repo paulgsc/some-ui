@@ -1,11 +1,10 @@
 import type { Rule, Scope } from "eslint"
 import type * as ESTree from "estree"
 
-import { isGlobal } from "./require-scoped-lifetime.js"
+import { isGlobal, PAGE_LIFETIME_TARGETS } from "./require-scoped-lifetime.js"
 
 /** What "is the page showing" is decided from (GOOD_CITIZEN.md, L6). */
 const PAGE_SHOWING = new Set(["visibilityState", "hidden", "fullscreenElement"])
-const GLOBAL_OBJECTS = new Set(["window", "globalThis", "self"])
 
 /**
  * Invariant L6 in extensions/common's GOOD_CITIZEN.md: only one module
@@ -81,7 +80,8 @@ function isGlobalDocument(node: ESTree.Node, scope: Scope.Scope): boolean {
     node.type === "MemberExpression" &&
     propertyName(node) === "document" &&
     node.object.type === "Identifier" &&
-    GLOBAL_OBJECTS.has(node.object.name) &&
+    node.object.name !== "document" &&
+    PAGE_LIFETIME_TARGETS.has(node.object.name) &&
     isGlobal(node.object.name, scope)
   )
 }

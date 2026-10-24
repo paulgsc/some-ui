@@ -4,12 +4,6 @@
 // counts, exactly and in both directions, with an allowlist whose entries are
 // reasoned by a comment line. What a site is, and which reasons an entry may
 // give, is each check's own; the scope, the parse and the allowlist are here.
-//
-// Both allowlists open with a `Grandfathered:` group, the debt each check
-// found when it landed. That group only shrinks: against the base branch's
-// allowlist, an entry may not join it and a count in it may not rise
-// (`findGrandfatherGrowth`), so new coordination or a new unbounded wait
-// always arrives under a reason of its own.
 import { execFileSync } from "node:child_process"
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
@@ -343,7 +337,10 @@ function baseAllowlist(
     if (asked !== undefined) throw new Error(`--base ${ref} does not resolve`)
     return { ref, text: null }
   }
-  return { ref, text: git(["show", `${ref}:${file}`]) }
+  const text = git(["show", `${ref}:${file}`])
+  if (text === null && git(["cat-file", "-e", `${ref}:${file}`]) !== null)
+    throw new Error(`could not read ${file} at ${ref}`)
+  return { ref, text }
 }
 
 /**

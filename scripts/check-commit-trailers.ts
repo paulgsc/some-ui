@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 // Guardrail: the change-kind record (CLAUDE.md, "Two kinds of pull request").
-// Every commit but a merge, a revert or a fixup ends with a `Change-Kind:
-// story|defect` trailer, and its `Promise:` and `Relates:` lines follow their
-// shapes. The rule lives in packages/eslint/src/commit-trailers.ts.
+// The rule lives in packages/eslint/src/commit-trailers.ts.
 //
 //   node scripts/check-commit-trailers.ts --message-file <path>
 //     The commit-msg hook (.husky/commit-msg): the message being written.

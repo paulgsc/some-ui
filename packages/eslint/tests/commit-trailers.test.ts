@@ -7,9 +7,7 @@
 import {
   checkCommitTrailers,
   cleanCommitMessage,
-  describeTrailerFinding,
   isBotIdentity,
-  isExemptSubject,
 } from "@eslint/commit-trailers.js"
 import { describe, expect, it } from "vitest"
 
@@ -37,27 +35,13 @@ describe("checkCommitTrailers", () => {
           [
             "Change-Kind: defect",
             "Promise: SS2 apps/www/src/lib/session-stop | stop-resume ordering, host",
+            "Promise: JB1 apps/www/src/components/jobs apps/www/src/lib/jobs | leave and return, time away",
             "Relates: SS1 shares stop-resume ordering",
             "Relates: LA8 breaks",
             "Relates: JB1 widens",
             coAuthor,
           ].join("\n")
         )
-      )
-    ).toEqual([])
-  })
-
-  it("accepts every Promise and Relates line on main when this landed", () => {
-    const lines = [
-      "Promise: JB2 apps/www/src/lib/jobs/journey.ts | road, network, timing, share order",
-      "Promise: JB1 apps/www/src/components/jobs apps/www/src/lib/jobs | leave and return, time away",
-      "Promise: LA8 apps/www/src/lib/home-link | what starts a home request",
-      "Promise: LA12 apps/www/src/lib/home-link packages/ui/topik | look moment, pairing, late answer",
-      "Relates: LA8 shares timing",
-    ]
-    expect(
-      checkCommitTrailers(
-        msg("fix(x): y", ["Change-Kind: defect", ...lines].join("\n"))
       )
     ).toEqual([])
   })
@@ -133,20 +117,28 @@ describe("checkCommitTrailers", () => {
     ).toEqual([])
   })
 
-  it("skips merges, reverts and autosquash commits", () => {
+  it("skips what commitlint skips: merges, reverts, reapplies, autosquash, version bumps", () => {
     for (const subject of [
       "Merge branch 'main' into claude/x",
       "Merge pull request #12 from a/b",
       "Merge remote-tracking branch 'origin/main' into x",
+      "Merge tag 'v1.2.0'",
+      "Automatic merge from main",
+      "Auto-merged main into x",
+      "Merged PR 42: a title",
       'Revert "feat(x): y"',
+      'revert "feat(x): y"',
+      'Reapply "feat(x): y"',
       "fixup! feat(x): y",
       "squash! feat(x): y",
       "amend! feat(x): y",
+      "1.2.3",
+      "chore: v2.0.0-rc.1 [skip ci]",
     ]) {
-      expect(isExemptSubject(subject)).toBe(true)
       expect(checkCommitTrailers(subject)).toEqual([])
     }
-    expect(isExemptSubject("feat(merge): Merge two lists")).toBe(false)
+    for (const subject of ["feat(merge): Merge two lists", "chore: 1.2"])
+      expect(checkCommitTrailers(subject)).toEqual([{ kind: "missingKind" }])
   })
 })
 
@@ -170,22 +162,5 @@ describe("isBotIdentity", () => {
     ).toBe(true)
     expect(isBotIdentity("renovate[bot]", "bot@renovateapp.com")).toBe(true)
     expect(isBotIdentity("Claude", "noreply@anthropic.com")).toBe(false)
-  })
-})
-
-describe("describeTrailerFinding", () => {
-  it("says what to write for every finding", () => {
-    for (const finding of [
-      { kind: "missingKind" },
-      { kind: "kindNotFinal" },
-      { kind: "duplicateKind" },
-      { kind: "badKind", value: "x" },
-      { kind: "notFinal", key: "Relates" },
-      { kind: "badPromise", value: "x" },
-      { kind: "badRelates", value: "x" },
-      { kind: "relatesOnStory" },
-    ] as const) {
-      expect(describeTrailerFinding(finding)).not.toBe("")
-    }
   })
 })

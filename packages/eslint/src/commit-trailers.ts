@@ -27,15 +27,22 @@ const TRAILER_LINE = /^([A-Za-z][A-Za-z0-9-]*):[ \t]*(.*?)\s*$/
 const RECORD_KEYS = ["Change-Kind", "Promise", "Relates"] as const
 type RecordKey = (typeof RECORD_KEYS)[number]
 
-// commitlint's default ignores, which the commit-msg hook has always skipped:
-// merges, reverts and the autosquash prefixes, none of which reach `main` as
-// a message of their own.
+// commitlint's default ignores (`@commitlint/is-ignored`'s `wildcards`),
+// kept in step by hand because this runs with no install: merges, reverts and
+// reapplies, the autosquash prefixes and a bare version bump.
 const EXEMPT_SUBJECT = [
-  /^Merge (?:branch|pull request|remote-tracking branch|tag|[0-9a-f]{7,40}) /,
-  /^Merged? .* into /,
-  /^Revert "/,
-  /^(?:fixup|squash|amend)! /,
+  /^Merge (?:pull request|branch|tag) /,
+  /^Merge .*? into /,
+  /^[Rr]evert /,
+  /^[Rr]eapply /,
+  /^(?:amend|fixup|squash)!/,
+  /^(?:Merged .*?(?:in|into) .*|Merged PR .*: .*)/,
+  /^Merge remote-tracking branch/,
+  /^Automatic merge/,
+  /^Auto-merged .*? into /,
 ]
+const VERSION_BUMP =
+  /^v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
 
 export type TrailerFinding =
   | { readonly kind: "missingKind" }
@@ -63,10 +70,14 @@ export function cleanCommitMessage(raw: string): string {
   return lines.join("\n").trim()
 }
 
-/** True for a merge, a revert or an autosquash commit, by its subject. */
-export function isExemptSubject(message: string): boolean {
+function isExemptSubject(message: string): boolean {
   const subject = message.trimStart().split("\n", 1)[0] ?? ""
-  return EXEMPT_SUBJECT.some((pattern) => pattern.test(subject))
+  if (EXEMPT_SUBJECT.some((pattern) => pattern.test(subject))) return true
+  const version = subject
+    .replace(/^chore(?:\([^)]+\))?:/, "")
+    .replace(/[[(](?:skip|ci)[-\s](?:ci|skip)[\])]/i, "")
+    .trim()
+  return VERSION_BUMP.test(version)
 }
 
 /** True for an identity GitHub marks as an app (`name[bot]`). */

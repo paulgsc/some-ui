@@ -294,8 +294,7 @@ because a reviewer stops when the falsifier doesn't match.
   longer names what ends the resource, or that changes what ends an exempted
   resource (drops its stop, moves its teardown) without updating that line;
   or a hunk that turns `require-lifetime-comment` off or narrows it.
-- _Scope:_ the whole repo. All 12 exemptions met it when it was written, and
-  all 10 met the lint rule when it landed.
+- _Scope:_ the whole repo.
 - _Why not lint or tests:_ that the line exists is a lint rule:
   `require-lifetime-comment`, an error in the shared config, fails a
   directive naming either rule without a `Lifetime:` line in the unbroken

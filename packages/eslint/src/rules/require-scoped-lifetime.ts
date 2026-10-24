@@ -5,7 +5,7 @@ import type * as ESTree from "estree"
  * Receivers whose listeners live as long as the page, whatever added them.
  * An element's listeners go when the element does; these never do.
  */
-const PAGE_LIFETIME_TARGETS = new Set([
+export const PAGE_LIFETIME_TARGETS = new Set([
   "document",
   "window",
   "globalThis",
