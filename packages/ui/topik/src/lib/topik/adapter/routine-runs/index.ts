@@ -36,7 +36,10 @@ export type RoutineRun = {
   nextBy: string | null
 }
 
-const Instant = z.iso.datetime({ offset: true })
+/** Any offset is taken, and kept as UTC, so instants compare as text. */
+const Instant = z.iso
+  .datetime({ offset: true })
+  .transform((at) => new Date(at).toISOString())
 const Count = z.number().int().nonnegative()
 
 const RunSchema = z.object({
@@ -97,6 +100,9 @@ export function parseRoutineRuns(answer: unknown): RunsAnswer | null {
 
 export const ROUTINE_RUNS_KEY = "topik:routine-runs"
 
+const newestFirst = (a: RoutineRun, b: RoutineRun): number =>
+  b.startedAt.localeCompare(a.startedAt) || b.name.localeCompare(a.name)
+
 /** What the phone holds for one home. */
 export type HeldRuns = {
   /** Newest first, by when each started. */
@@ -109,10 +115,13 @@ export type HeldRuns = {
 
 const NONE: HeldRuns = { runs: [], lookedAt: null, since: null }
 
+const Stored = z.iso.datetime()
+
 const StoredRun = RunSchema.omit({ schema: true }).extend({
   name: z.string().min(1),
-  finishedAt: Instant.nullable(),
-  nextBy: Instant.nullable(),
+  startedAt: Stored,
+  finishedAt: Stored.nullable(),
+  nextBy: Stored.nullable(),
 })
 
 const StoredSchema = z.object({
@@ -121,11 +130,28 @@ const StoredSchema = z.object({
     z.string(),
     z.object({
       runs: z.array(StoredRun),
-      lookedAt: Instant.nullable(),
-      since: Instant.nullable(),
+      lookedAt: Stored.nullable(),
+      since: Stored.nullable(),
     })
   ),
 })
+
+const later = (a: string | null, b: string | null): string | null =>
+  a === null ? b : b === null ? a : a > b ? a : b
+const earlier = (a: string | null, b: string | null): string | null =>
+  a === null ? b : b === null ? a : a < b ? a : b
+
+/** Both records of one home as one: every run of either, once. */
+function merged(a: HeldRuns, b: HeldRuns): HeldRuns {
+  const names = new Set(a.runs.map((run) => run.name))
+  return {
+    runs: [...a.runs, ...b.runs.filter((run) => !names.has(run.name))].sort(
+      newestFirst
+    ),
+    lookedAt: later(a.lookedAt, b.lookedAt),
+    since: earlier(a.since, b.since),
+  }
+}
 
 export type RunLog = {
   /** The same object until home says something new for `key`. */
@@ -134,9 +160,6 @@ export type RunLog = {
   keep: (key: string, answer: RunsAnswer) => void
   subscribe: (listener: () => void) => () => void
 }
-
-const newestFirst = (a: RoutineRun, b: RoutineRun): number =>
-  b.startedAt.localeCompare(a.startedAt) || b.name.localeCompare(a.name)
 
 /**
  * The runs heard on this device. A failed read is none, and is never
@@ -165,20 +188,24 @@ export function createRunLog(
     held: (key) => homes[key] ?? NONE,
     keep(key, answer): void {
       const was = homes[key] ?? NONE
-      const names = new Set(was.runs.map((run) => run.name))
-      const fresh = answer.runs.filter((run) => !names.has(run.name))
-      const lookedAt =
-        was.lookedAt !== null && was.lookedAt.localeCompare(answer.at) >= 0
-          ? was.lookedAt
-          : answer.at
-      if (fresh.length === 0 && lookedAt === was.lookedAt) return
-      homes = {
-        ...homes,
-        [key]: {
-          runs: [...was.runs, ...fresh].sort(newestFirst),
-          lookedAt,
-          since: was.since ?? answer.at,
-        },
+      const next = merged(was, {
+        runs: answer.runs,
+        lookedAt: answer.at,
+        since: answer.at,
+      })
+      if (
+        next.runs.length === was.runs.length &&
+        next.lookedAt === was.lookedAt
+      ) {
+        return
+      }
+      homes = { ...homes, [key]: next }
+      if (readable) {
+        // Another page on this device may have kept runs since this one
+        // read: what it kept is merged in, never written over.
+        for (const [home, stored] of Object.entries(read())) {
+          homes = { ...homes, [home]: merged(homes[home] ?? NONE, stored) }
+        }
       }
       if (readable) {
         try {

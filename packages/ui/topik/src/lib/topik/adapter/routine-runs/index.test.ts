@@ -58,8 +58,8 @@ describe("parseRoutineRuns", () => {
       runs: [
         {
           name: "run-reflections-20261024T160208Z.json",
-          startedAt: "2026-10-24T16:02:08Z",
-          finishedAt: "2026-10-24T16:02:08Z",
+          startedAt: "2026-10-24T16:02:08.000Z",
+          finishedAt: "2026-10-24T16:02:08.000Z",
           outcome: "partly",
           found: { reflections: 1, prompts: 0 },
           added: [
@@ -70,9 +70,28 @@ describe("parseRoutineRuns", () => {
             },
           ],
           problems: ["One voice note couldn't be heard."],
-          nextBy: "2026-10-25T17:00:00Z",
+          nextBy: "2026-10-25T17:00:00.000Z",
         },
       ],
+    })
+  })
+
+  it("keeps every instant as UTC, whatever offset it came with, so they compare as text", () => {
+    const answer = parseRoutineRuns({
+      runs: [
+        held(
+          "a.json",
+          run("2026-10-25T01:02:08+09:00", {
+            nextBy: "2026-10-25T14:00:00+09:00",
+          })
+        ),
+      ],
+      at: "2026-10-25T06:00:00+09:00",
+    })
+    expect(answer?.at).toBe("2026-10-24T21:00:00.000Z")
+    expect(answer?.runs[0]).toMatchObject({
+      startedAt: "2026-10-24T16:02:08.000Z",
+      nextBy: "2026-10-25T05:00:00.000Z",
     })
   })
 
@@ -123,6 +142,17 @@ describe("createRunLog", () => {
     ])
     expect(again.lookedAt).toBe(AT)
     expect(again.since).toBe("2026-10-23T18:00:00.000Z")
+  })
+
+  it("keeps what another page on this device kept since it read", () => {
+    const storage = memoryStorage()
+    const first = createRunLog(storage)
+    const second = createRunLog(storage)
+    first.keep("a", answer(AT, "2026-10-24T16:00:00Z"))
+    second.keep("b", answer(AT, "2026-10-23T16:00:00Z"))
+    const again = createRunLog(storage)
+    expect(again.held("a").runs).toHaveLength(1)
+    expect(again.held("b").runs).toHaveLength(1)
   })
 
   it("holds nothing of one home under another, and tells only on a change", () => {
