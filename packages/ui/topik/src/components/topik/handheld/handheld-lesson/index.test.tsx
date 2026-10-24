@@ -22,6 +22,7 @@ import {
   createPastedLessonStore,
   RETIRED_KEYS,
 } from "@topik/lib/topik/adapter/pasted-lesson"
+import { createPortionOrderStore } from "@topik/lib/topik/adapter/portion-order"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import type {
@@ -56,6 +57,7 @@ import {
 } from "@topik/lib/topik/read-aloud/repo-sets"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+import type { LessonOpening } from "."
 import { HandheldLesson } from "."
 import { fixtureMetadataRepository, fixtureTopikRepository } from "./fixture"
 
@@ -76,7 +78,8 @@ type RenderOptions = {
   wordSetHint?: string
   routineFeed?: RoutineFeed
   routineOpened?: OpenedStore
-  initialOpen?: "next"
+  portionOrder?: ReturnType<typeof createPortionOrderStore>
+  initialOpen?: LessonOpening
 }
 
 function renderLesson({
@@ -95,6 +98,7 @@ function renderLesson({
   wordSetHint,
   routineFeed,
   routineOpened = createOpenedStore(memoryStorage()),
+  portionOrder = createPortionOrderStore(memoryStorage()),
   initialOpen,
 }: RenderOptions = {}): { feedWith: (next: RoutineFeed) => void } {
   const tree = (feed = routineFeed): JSX.Element => (
@@ -120,6 +124,7 @@ function renderLesson({
           servedPoints={servedPoints}
           now={(): Date => new Date("2026-10-14T06:00:00.000Z")}
           routineOpened={routineOpened}
+          portionOrder={portionOrder}
           {...(initialOpen ? { initialOpen } : {})}
         />
       </SessionConfigProvider>
@@ -812,6 +817,119 @@ describe("HandheldLesson", () => {
         .getByRole("radio", { name: "TOPIK 2" })
         .getAttribute("aria-checked")
     ).toBe("true")
+  })
+
+  describe("What are you hungry for? (core/portion)", () => {
+    const heard = (): Speaker => voice(() => Promise.resolve({ kind: "heard" }))
+    const dish = (): HTMLElement => {
+      const card = document.querySelector<HTMLElement>(
+        '[data-slot="portion-dish"]'
+      )
+      if (card === null) throw new Error("nothing served")
+      return card
+    }
+    const starterLine = (n: number): string =>
+      STARTER_SET.lines[n]?.korean ?? ""
+
+    it("serves a bite, then the next one like it, and reads aloud that sentence alone", async () => {
+      const store = createReadAloudStore(memoryStorage())
+      store.saveSets([
+        {
+          deck: STARTER_SET,
+          addedAt: "2026-10-01T00:00:00.000Z",
+          openedAt: null,
+        },
+      ])
+      const orders = createPortionOrderStore(memoryStorage())
+      renderLesson({
+        speaker: heard(),
+        readAloudStore: store,
+        portionOrder: orders,
+      })
+      fireEvent.click(
+        await screen.findByRole("button", { name: /What are you hungry for\?/ })
+      )
+      // Something never shown is held, so it leans fresh.
+      expect(
+        screen
+          .getByRole("radio", { name: /A bite/ })
+          .getAttribute("aria-checked")
+      ).toBe("true")
+      expect(
+        screen
+          .getByRole("radio", { name: /New to me/ })
+          .getAttribute("aria-checked")
+      ).toBe("true")
+      click("Serve it")
+      expect(screen.getByText("Served · A bite · New to me")).toBeTruthy()
+      expect(dish().textContent).toContain(starterLine(0))
+      expect(dish().textContent).toContain("New · never shown")
+      expect(orders.last()).toEqual({ portion: "bite", freshness: "new" })
+
+      click("Another one like this")
+      expect(dish().textContent).toContain(starterLine(1))
+      click("Start")
+      expect(await screen.findByRole("button", { name: "Pause" })).toBeTruthy()
+      await waitFor(() => expect(Object.keys(store.tally())).toHaveLength(1))
+      expect(Object.keys(store.tally())[0]).toMatch(
+        new RegExp(`^${STARTER_SET.id}\\.${STARTER_SET.lines[1]?.id ?? ""}:`)
+      )
+      // A bite isn't opening the set: it still waits under "Ready for you".
+      expect(store.sets()[0]?.openedAt).toBeNull()
+    })
+
+    it("opens on the menu when asked, on the order kept, and says when nothing fits", async () => {
+      const orders = createPortionOrderStore(memoryStorage())
+      orders.save({ portion: "dessert", freshness: "seen" })
+      renderLesson({
+        speaker: heard(),
+        portionOrder: orders,
+        initialOpen: "menu",
+      })
+      expect(
+        (await screen.findByRole("radio", { name: /Dessert/ })).getAttribute(
+          "aria-checked"
+        )
+      ).toBe("true")
+      click("Serve it")
+      expect(
+        screen.getByText(
+          /Nothing on this phone makes dessert that is seen before/
+        )
+      ).toBeTruthy()
+      click("Change my order")
+      click("Back to materials")
+      expect(await writeYourOwnButton()).toBeTruthy()
+    })
+
+    it("serves the routine's drama not opened yet as dessert, and plays it", async () => {
+      const opened = createOpenedStore(memoryStorage())
+      renderLesson({
+        speaker: heard(),
+        routineOpened: opened,
+        routineFeed: {
+          list: () =>
+            Promise.resolve([
+              {
+                kind: "drama",
+                name: "drama-20261013T145200123Z.json",
+                tree: workedLesson(),
+              },
+            ] satisfies ReadonlyArray<RoutineFile>),
+        },
+      })
+      await screen.findByRole("region", { name: "From the routine" })
+      click(/What are you hungry for\?/)
+      fireEvent.click(screen.getByRole("radio", { name: /Dessert/ }))
+      click("Serve it")
+      expect(dish().textContent).toContain("New · from the routine")
+      expect(dish().textContent).toContain("Nothing is marked.")
+      click("Start")
+      expect(await screen.findByText("숨 막히는 긴장감")).toBeTruthy()
+      expect([...opened.opened()]).toEqual([
+        "drama/drama-20261013T145200123Z.json",
+      ])
+    })
   })
 
   describe("the operator's served dramas (MKJ-S4)", () => {

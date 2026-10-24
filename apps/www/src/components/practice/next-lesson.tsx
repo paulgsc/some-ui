@@ -1,8 +1,9 @@
 /**
- * Practice Home's "Next lesson": one press makes a Korean session at its
- * defaults (`lib/quick-start`), starts it and opens the player on the
- * lesson (`?next=true`: it plays at once, and Korean opens on the newest
- * lesson not opened). The composer stays behind "Start" for anything else.
+ * Practice Home's "Next lesson" and "Pick a portion": one press makes a
+ * Korean session at its defaults (`lib/quick-start`), starts it and opens
+ * the player on the lesson (`?open=`: it plays at once, and Korean opens on
+ * the newest lesson not opened, or on "What are you hungry for?"). The
+ * composer stays behind "Start" for anything else.
  *
  * Made then started, as the composer's "Save & Play" is: a press after the
  * session was made but not started only starts it, so one press never makes
@@ -30,10 +31,21 @@ const activate = (
   patch: startedPatch(),
 })
 
+/** Each press's words, by where it opens the lesson. */
+const LABELS = {
+  next: { idle: "Next lesson", working: "Getting it ready..." },
+  menu: { idle: "Pick a portion", working: "Getting it ready..." },
+} as const
+
 export const NextLesson = ({
+  open = "next",
+  variant,
   className,
   onLaunch,
 }: {
+  /** Where the lesson opens: the next lesson, or the portion menu. */
+  open?: keyof typeof LABELS
+  variant?: "outline"
   className?: string
   /**
    * Pressed: the host keeps this mounted from now until it navigates, as
@@ -53,7 +65,7 @@ export const NextLesson = ({
     void navigate({
       to: "/sessions/$sessionId",
       params: { sessionId: session.id },
-      search: { next: true },
+      search: { open },
     })
   })
 
@@ -76,9 +88,10 @@ export const NextLesson = ({
         second: "start",
       })}
       onPress={press}
-      idleLabel="Next lesson"
-      workingLabel="Getting it ready..."
+      idleLabel={LABELS[open].idle}
+      workingLabel={LABELS[open].working}
       size="sm"
+      variant={variant}
       className={className}
     />
   )

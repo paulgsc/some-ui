@@ -17,6 +17,11 @@
  * first: a word set pair is added as two picked files are, a drama starts
  * as a picked scene does. An opened one stays listed, marked opened, since
  * home's list is the only way back to it.
+ *
+ * "What are you hungry for?" (`PortionMenu`, `core/portion`) serves one
+ * thing of the size asked for from all of the above: a bite or a snack is
+ * read aloud from its set's lines alone, a meal opens as its card would,
+ * and dessert plays.
  */
 
 import type { JSX } from "react"
@@ -28,7 +33,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react"
-import { cn, dayOf } from "@some-ui/core-utils"
+import { assertNever, cn, dayOf } from "@some-ui/core-utils"
 import { Button, KeepOnShelf, KeptShelf } from "@some-ui/shared"
 import { CastSheet } from "@topik/components/topik/handheld/cast-sheet"
 import { DramaLesson } from "@topik/components/topik/handheld/drama-lesson"
@@ -38,6 +43,7 @@ import type {
   StorageNote,
 } from "@topik/components/topik/handheld/material-list"
 import { MaterialList } from "@topik/components/topik/handheld/material-list"
+import { PortionMenu } from "@topik/components/topik/handheld/portion-menu"
 import { RoutineStatus } from "@topik/components/topik/handheld/routine-status"
 import { SharePrompt } from "@topik/components/topik/handheld/share-prompt"
 import { ReadAloudScreen } from "@topik/components/topik/read-aloud/read-aloud-screen"
@@ -54,6 +60,8 @@ import {
   serializePastedTree,
   treeOfDocument,
 } from "@topik/lib/topik/adapter/pasted-lesson"
+import type { PortionOrderStore } from "@topik/lib/topik/adapter/portion-order"
+import { createPortionOrderStore } from "@topik/lib/topik/adapter/portion-order"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import type {
@@ -92,6 +100,13 @@ import type { DramaLesson as Tree } from "@topik/lib/topik/core/drama"
 import { titleOf } from "@topik/lib/topik/core/drama"
 import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
 import type { Seed } from "@topik/lib/topik/core/feed-card"
+import type { Dish } from "@topik/lib/topik/core/portion"
+import {
+  holdingsOf,
+  holdsNew,
+  openingOrder,
+  portionDeck,
+} from "@topik/lib/topik/core/portion"
 import { routineView } from "@topik/lib/topik/core/routine-status"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 import { intakeTree } from "@topik/lib/topik/generation/tree-intake"
@@ -105,6 +120,7 @@ import {
   setLevel,
   wordsLeaving,
 } from "@topik/lib/topik/read-aloud/added-sets"
+import type { Tally } from "@topik/lib/topik/read-aloud/tally"
 import { ChevronLeft, Loader2, Music, Users } from "lucide-react"
 
 type HandheldLessonProps = {
@@ -128,13 +144,19 @@ type HandheldLessonProps = {
   now?: () => Date
   /** Injected in tests; defaults to `localStorage`. */
   routineOpened?: OpenedStore
+  /** Injected in tests; defaults to `localStorage`. */
+  portionOrder?: PortionOrderStore
   /**
    * "next": open on the next lesson, as its card's press would: the newest
    * the routine left that isn't opened, else the newest word set added and
-   * not opened. With neither, the list. Read once, on mount.
+   * not opened. With neither, the list. "menu": open on "What are you
+   * hungry for?". Read once, on mount.
    */
-  initialOpen?: "next"
+  initialOpen?: LessonOpening
 }
+
+/** Where the handheld lesson opens (`HandheldLesson`'s `initialOpen`). */
+export type LessonOpening = "next" | "menu"
 
 export const HandheldLesson = ({
   short = false,
@@ -147,6 +169,7 @@ export const HandheldLesson = ({
   servedPoints,
   now = (): Date => new Date(),
   routineOpened,
+  portionOrder,
   initialOpen,
 }: HandheldLessonProps): JSX.Element => {
   const [held] = useState(() => pastedStore ?? createPastedLessonStore())
@@ -289,9 +312,11 @@ export const HandheldLesson = ({
   // The read-aloud drill takes the whole screen, header included; leaving it
   // returns to the material list it was opened from. `set` is the added set
   // it reads on its own, or null for every word the phone has.
+  // `lines`: a bite or a snack, read from those lines of the set alone.
   const [reading, setReading] = useState<{
     set: string | null
     begin?: boolean
+    lines?: ReadonlyArray<string>
   } | null>(null)
   const routine = useRoutineFiles(routineFeed)
   const [opened] = useState(() => routineOpened ?? createOpenedStore())
@@ -376,10 +401,49 @@ export const HandheldLesson = ({
     openAsked()
   }, [looking])
   const [castOpen, setCastOpen] = useState(false)
+  // "What are you hungry for?", open with read-aloud's record as it stood
+  // when it opened: what is served is judged against that.
+  const [orders] = useState(() => portionOrder ?? createPortionOrderStore())
+  const [menu, setMenu] = useState<{ tally: Tally } | null>(() =>
+    initialOpen === "menu" ? { tally: readAloud.tally() } : null
+  )
+  const openMenu = (): void => setMenu({ tally: readAloud.tally() })
+  const startDish = (dish: Dish): void => {
+    setMenu(null)
+    switch (dish.portion) {
+      case "bite":
+      case "snack": {
+        setReading({
+          set: dish.setId,
+          begin: true,
+          lines: dish.lines.map((line) => line.id),
+        })
+        return
+      }
+      case "meal": {
+        if (dish.start.from === "routine") {
+          openRoutine(dish.start.key)
+        } else {
+          keepSets(openSet(added, dish.start.id, now().toISOString()))
+          setReading({ set: dish.start.id, begin: true })
+        }
+        return
+      }
+      case "dessert": {
+        if (dish.start.from === "routine") openRoutine(dish.start.key)
+        else drama.play()
+        return
+      }
+      default: {
+        assertNever(dish)
+      }
+    }
+  }
 
   if (reading) {
-    const own =
+    const set =
       reading.set === null ? undefined : resolved.sets.get(reading.set)
+    const own = set && reading.lines ? portionDeck(set, reading.lines) : set
     const deck = own ?? resolved.all
     return (
       <div
@@ -425,7 +489,7 @@ export const HandheldLesson = ({
       <div
         className={cn("flex items-center gap-2 px-2", short ? "h-11" : "h-14")}
       >
-        {playing || servedKey !== null || generating ? (
+        {playing || servedKey !== null || generating || menu ? (
           <Button
             variant="ghost"
             size="icon"
@@ -433,7 +497,9 @@ export const HandheldLesson = ({
             onClick={
               playing || servedKey !== null
                 ? leave
-                : (): void => setGenerating(null)
+                : generating
+                  ? (): void => setGenerating(null)
+                  : (): void => setMenu(null)
             }
             aria-label="Back to materials"
           >
@@ -543,6 +609,27 @@ export const HandheldLesson = ({
         </div>
       )
     }
+    if (menu) {
+      const held = holdingsOf({
+        added,
+        sets: resolved.sets,
+        routine: routine.data ?? [],
+        opened: openedKeys,
+        pasted: drama.tree ? titleOf(drama.tree) : null,
+        canRead,
+      })
+      return (
+        <PortionMenu
+          held={held}
+          tally={menu.tally}
+          now={now()}
+          initialOrder={openingOrder(orders.last(), holdsNew(held, menu.tally))}
+          onOrdered={orders.save}
+          onStart={startDish}
+          short={short}
+        />
+      )
+    }
     if (generating) {
       return (
         <GenerateLesson
@@ -635,6 +722,7 @@ export const HandheldLesson = ({
         onSetText={openSetText}
         setFileHint={wordSetHint}
         setNote={setNote}
+        onOrder={openMenu}
         fromRoutine={routineCards}
         routineNote={routineNote}
         onOpenRoutine={openRoutine}

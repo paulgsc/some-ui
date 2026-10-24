@@ -2,12 +2,14 @@ import type { JSX } from "react"
 import { useId } from "react"
 import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
+import { PortionMark } from "@topik/components/topik/handheld/portion-menu"
 import type { TopikMetadata } from "@topik/lib/topik"
 import { useSceneFile } from "@topik/lib/topik/adapter/hooks/use-scene-file"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
 import { titleOf } from "@topik/lib/topik/core/drama"
 import type { FeedCard, Seed } from "@topik/lib/topik/core/feed-card"
 import { cardOf, koreanGenre, seedOf } from "@topik/lib/topik/core/feed-card"
+import { PORTION_WORDS } from "@topik/lib/topik/core/portion"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 import type {
   ReadAloudDeck,
@@ -86,6 +88,8 @@ type MaterialListProps = {
   onOpenRoutine?: (key: string) => void
   /** The routine's mark (`RoutineStatus`), shown with or without its files. */
   routineStatus?: JSX.Element
+  /** Opens "What are you hungry for?"; absent where it isn't offered. */
+  onOrder?: () => void
 }
 
 /** A word set pair or a drama the routine left, as its card shows it. */
@@ -429,6 +433,7 @@ export const MaterialList = ({
   routineNote = null,
   onOpenRoutine,
   routineStatus,
+  onOrder,
 }: MaterialListProps): JSX.Element => (
   <div
     data-slot="topik-material-list"
@@ -465,6 +470,24 @@ export const MaterialList = ({
     </div>
 
     {routineStatus}
+
+    {onOrder && (
+      <button
+        type="button"
+        data-slot="portion-entry"
+        onClick={onOrder}
+        className="bg-card border-border flex min-h-16 shrink-0 items-center gap-3 rounded-2xl border p-4 text-left"
+      >
+        <PortionMark portion="meal" className="text-primary size-7 shrink-0" />
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold">{PORTION_WORDS.entry}</span>
+          <span className="text-muted-foreground block text-sm">
+            {PORTION_WORDS.entryDetails}
+          </span>
+        </span>
+        <ChevronRight className="text-muted-foreground size-5 shrink-0" />
+      </button>
+    )}
 
     {onOpenRoutine && fromRoutine.length > 0 && (
       <section aria-label="From the routine" className="flex flex-col gap-2">

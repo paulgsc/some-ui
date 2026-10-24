@@ -74,8 +74,8 @@ const BIND_OPTIONS = Object.keys(PANELS).map((key) => ({
 
 type SessionViewportProps = {
   session: SessionRecord
-  /** Topik's `opening`. */
-  opening?: "next"
+  /** Topik's `opening`: `HandheldLesson`'s `initialOpen`. */
+  opening?: "next" | "menu"
 }
 
 export const SessionViewport = ({

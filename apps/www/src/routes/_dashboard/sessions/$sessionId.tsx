@@ -74,10 +74,10 @@ const PlayerFailure = ({
  * without a matched router context. */
 export const SessionPlayer = ({
   sessionId,
-  next = false,
+  opening,
 }: {
   sessionId: string
-  next?: boolean
+  opening?: Opening
 }): JSX.Element => {
   // The same string as this route's URL and the push deep link
   // (`sessions/${id}`), which the server compares a lease against.
@@ -127,7 +127,11 @@ export const SessionPlayer = ({
         <div className="flex h-full min-h-0 w-full flex-col gap-3">
           {refreshBanner}
           <div className="min-h-0 flex-1">
-            <LivePlayer key={session.id} session={session} initialNext={next} />
+            <LivePlayer
+              key={session.id}
+              session={session}
+              {...(opening ? { initialOpening: opening } : {})}
+            />
           </div>
         </div>
       )
@@ -137,15 +141,35 @@ export const SessionPlayer = ({
 
 const SessionPlayerRoute = (): JSX.Element => {
   const { sessionId } = Route.useParams()
-  const { next } = Route.useSearch()
-  return <SessionPlayer sessionId={String(sessionId)} next={next === true} />
+  const { open } = Route.useSearch()
+  return (
+    <SessionPlayer
+      sessionId={String(sessionId)}
+      {...(open ? { opening: open } : {})}
+    />
+  )
 }
 
+/** Where the lesson opens: Topik's `opening`. */
+type Opening = "next" | "menu"
+
+/**
+ * `?open=next` or `?open=menu`: Practice Home's "Next lesson" or "Pick a
+ * portion" made this session, so it plays at once and opens there. `?next=
+ * true` is what "Next lesson" sent before there were two.
+ */
+const openOf = (search: Record<string, unknown>): Opening | undefined =>
+  search.open === "next" || search.open === "menu"
+    ? search.open
+    : search.next === true
+      ? "next"
+      : undefined
+
 export const Route = createFileRoute("/_dashboard/sessions/$sessionId")({
-  // `?next=true`: Practice Home's "Next lesson" made this session, so it
-  // plays at once and opens on the lesson.
-  validateSearch: (search: Record<string, unknown>): { next?: true } =>
-    search.next === true ? { next: true } : {},
+  validateSearch: (search: Record<string, unknown>): { open?: Opening } => {
+    const open = openOf(search)
+    return open ? { open } : {}
+  },
   // Starts the session fetch when navigation starts (on hover, via
   // `defaultPreload: "intent"`) rather than after mount. Not awaited, and
   // `prefetchQuery` not `ensureQueryData`: a pure head start that never

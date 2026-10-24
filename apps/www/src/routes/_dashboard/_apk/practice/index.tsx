@@ -181,10 +181,18 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
       {status.kind === "ready" &&
         (status.open === null || launching) &&
         isOfferedActivityId("topik") && (
-          <NextLesson
-            className="h-12 rounded-2xl px-6 text-base"
-            onLaunch={() => setLaunching(true)}
-          />
+          <div className="flex flex-wrap gap-2">
+            <NextLesson
+              className="h-12 rounded-2xl px-6 text-base"
+              onLaunch={() => setLaunching(true)}
+            />
+            <NextLesson
+              open="menu"
+              variant="outline"
+              className="h-12 rounded-2xl px-6 text-base"
+              onLaunch={() => setLaunching(true)}
+            />
+          </div>
         )}
       {cut && (
         <div className="flex flex-col gap-2">
