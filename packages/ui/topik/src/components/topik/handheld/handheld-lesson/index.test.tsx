@@ -30,6 +30,7 @@ import type {
   RoutineFile,
 } from "@topik/lib/topik/adapter/routine-files"
 import {
+  createHeldAnswers,
   createOpenedStore,
   createRoutineFeed,
 } from "@topik/lib/topik/adapter/routine-files"
@@ -308,8 +309,10 @@ describe("HandheldLesson", () => {
       document.querySelector('[data-slot="read-aloud-level"]')?.textContent
     ).toBe("TOPIK 2")
     expect(store.sets()[0]?.openedAt).toBe("2026-10-14T06:00:00.000Z")
+    // Picked, so reading starts with no start screen.
+    expect(screen.getByRole("button", { name: "Pause" })).toBeTruthy()
 
-    click("Back")
+    click("Stop reading aloud")
     const card = await screen.findByRole("button", { name: /Read aloud/ })
     expect(card.textContent).toContain("1 word set")
     expect(screen.queryByRole("button", { name: /^2 words New/ })).toBeNull()
@@ -365,17 +368,24 @@ describe("HandheldLesson", () => {
     fireEvent.click(
       within(waiting).getByRole("button", { name: /TOPIK 2 · 일상 · 약속/ })
     )
+    // One press adds the pair and starts reading its first set.
     expect(
-      await screen.findByText('Added "Plans" and "Plans, lens".')
+      await screen.findByRole("button", { name: "Stop reading aloud" })
     ).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Pause" })).toBeTruthy()
     expect(
       store
         .sets()
         .map((set) => set.deck.id)
         .sort()
     ).toEqual(["plans-2", "plans-2-lens"])
+    click("Stop reading aloud")
+    expect(
+      await screen.findByText('Added "Plans" and "Plans, lens".')
+    ).toBeTruthy()
     // Still listed, after the one not opened yet.
-    const buttons = within(waiting).getAllByRole("button")
+    const after = screen.getByRole("region", { name: "From the routine" })
+    const buttons = within(after).getAllByRole("button")
     expect(
       buttons.map((button) => button.textContent.includes("Opened"))
     ).toEqual([false, true])
@@ -434,10 +444,15 @@ describe("HandheldLesson", () => {
       name: "From the routine",
     })
     fireEvent.click(within(waiting).getByRole("button"))
+    click("Stop reading aloud")
     await screen.findByText('Added "Plans" and "Plans, lens".')
     const addedAt = store.sets().map((set) => set.addedAt)
 
-    fireEvent.click(within(waiting).getByRole("button", { name: /Opened/ }))
+    fireEvent.click(
+      within(
+        screen.getByRole("region", { name: "From the routine" })
+      ).getByRole("button", { name: /Opened/ })
+    )
     expect(
       document.querySelector('[data-slot="read-aloud-level"]')
     ).not.toBeNull()
@@ -535,8 +550,22 @@ describe("HandheldLesson", () => {
 
   it("says when the routine last ran and what it left, from what the phone kept, away from home too", async () => {
     const runs = createRunLog(memoryStorage())
+    const held = createHeldAnswers(memoryStorage())
     const answer = {
-      files: [],
+      files: [
+        {
+          folder: "scene",
+          name: "scene-a.json",
+          file: {
+            schema: "some-ui.routine-scene/1",
+            title: "약속",
+            decks: [
+              routineDeck("plans-2", "Plans"),
+              routineDeck("plans-2-lens", "Plans, lens"),
+            ],
+          },
+        },
+      ],
       runs: [
         {
           folder: "run",
@@ -557,7 +586,8 @@ describe("HandheldLesson", () => {
       readAloudStore: createReadAloudStore(memoryStorage()),
       routineFeed: createRoutineFeed(
         { key: "home", list: () => Promise.resolve(answer) },
-        runs
+        runs,
+        held
       ),
     })
     const mark = await screen.findByRole("button", {
@@ -576,12 +606,17 @@ describe("HandheldLesson", () => {
     feedWith(
       createRoutineFeed(
         { key: "home", list: () => Promise.resolve({ files: [] }) },
-        runs
+        runs,
+        held
       )
     )
     expect(
       await screen.findByRole("button", { name: /^The routine: New/ })
     ).toBeTruthy()
+    const kept = await screen.findByRole("region", {
+      name: "From the routine",
+    })
+    expect(within(kept).getByRole("button").textContent).toContain("약속")
   })
 
   it("says what a set is for and where it takes place, and opens a lens set on the lens", async () => {

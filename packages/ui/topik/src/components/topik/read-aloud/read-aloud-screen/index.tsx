@@ -51,6 +51,8 @@ type ReadAloudScreenProps = {
   /** The host's session is paused (`useReadAloud`'s `paused`). */
   paused?: boolean
   onExit: () => void
+  /** Start reading at once, with no start screen: the learner picked this set. */
+  initialBegin?: boolean
   /** Test seam: the clock, which also dates the record. */
   now?: () => number
 }
@@ -66,6 +68,7 @@ export const ReadAloudScreen = ({
   short = false,
   paused,
   onExit,
+  initialBegin,
   now = Date.now,
 }: ReadAloudScreenProps): JSX.Element => {
   const level = readAloudLevelFor(topikLevel)
@@ -137,6 +140,7 @@ export const ReadAloudScreen = ({
       record={{ record, today: dayKey(new Date(now())) }}
       short={short}
       paused={paused}
+      initialBegin={initialBegin}
       onRecord={(event, day) => {
         setRecord(store.count(event, day))
         if (event.type !== "rep" || event.key === undefined) return

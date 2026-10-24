@@ -74,6 +74,11 @@ export type UseReadAloudOptions = {
   /** Test seams: the clock, and the key each new set is drawn with. */
   now?: () => number
   seedKey?: () => string
+  /**
+   * Begin on mount, with no start screen: the learner already chose this
+   * set. Read once; it never begins a drill already on screen.
+   */
+  initialBegin?: boolean
 }
 
 /** The running wait: how long the current step lasts. */
@@ -356,17 +361,22 @@ export function useReadAloud(options: UseReadAloudOptions): ReadAloudVM {
   // Made on mount, never during render: it reads the latest options, and it
   // outlives React's development double mount.
   const runnerRef = useRef<Runner | null>(null)
-  const [started, setStarted] = useState(false)
+  const [started, setStarted] = useState(options.initialBegin === true)
 
   // A hidden page or a paused session interrupts the rep; with neither, it
   // starts over. The same pair covers an unmount: whatever was running
   // stops, and the set's progress, current rep included, is what the host
   // last received.
   useEffect(() => {
+    const made = runnerRef.current === null
     const runner = (runnerRef.current ??= createRunner(
       () => latest.current,
       setSnapshot
     ))
+    if (made && latest.current.initialBegin === true) {
+      runner.begin()
+      holdOrShow(runner, latest.current.paused)
+    }
     return (): void => {
       runner.dispose()
     }

@@ -218,7 +218,7 @@ export const HandheldLesson = ({
   const addSetTexts = (
     texts: ReadonlyArray<string>,
     say: (note: StorageNote) => void
-  ): boolean => {
+  ): typeof added | null => {
     // Judged together first, so a group that doesn't fit says what the phone
     // holds now, not after its first set.
     const fresh = new Set(
@@ -237,7 +237,7 @@ export const HandheldLesson = ({
         tone: "problem",
         text: `This phone keeps ${ADDED_SET_LIMIT} word sets and has ${added.length}, so these ${fresh} weren't added.`,
       })
-      return false
+      return null
     }
     let next = added
     const titles: Array<string> = []
@@ -246,7 +246,7 @@ export const HandheldLesson = ({
       const intake = intakeSet(text, next)
       if (!intake.ok) {
         say({ tone: "problem", text: intake.error })
-        return false
+        return null
       }
       next = addSet(next, intake.deck, now().toISOString())
       titles.push(`"${intake.deck.title}"`)
@@ -267,7 +267,7 @@ export const HandheldLesson = ({
           ? `Added ${what}. ${dropped} line${dropped === 1 ? "" : "s"} couldn't be read.`
           : `Added ${what}.`,
     })
-    return true
+    return next
   }
   const openSetText = (text: string): void => {
     addSetTexts([text], setSetNote)
@@ -275,7 +275,11 @@ export const HandheldLesson = ({
   // The read-aloud drill takes the whole screen, header included; leaving it
   // returns to the material list it was opened from. `set` is the added set
   // it reads on its own, or null for every word the phone has.
-  const [reading, setReading] = useState<{ set: string | null } | null>(null)
+  // `begin`: a set the learner picked starts reading at once.
+  const [reading, setReading] = useState<{
+    set: string | null
+    begin?: boolean
+  } | null>(null)
   const routine = useRoutineFiles(routineFeed)
   const [opened] = useState(() => routineOpened ?? createOpenedStore())
   const [openedKeys, setOpenedKeys] = useState(opened.opened)
@@ -291,7 +295,7 @@ export const HandheldLesson = ({
     ]
   }, [routine.data, openedKeys])
   // A pair's sets the phone already holds are left as they are, record and
-  // all; with both held, the pair opens on its first set.
+  // all; the rest are added, and the pair opens reading its first set.
   const openRoutineScene = (decks: ReadonlyArray<unknown>): boolean => {
     const texts = decks.map((deck) => JSON.stringify(deck))
     const ids = texts.map((text) => {
@@ -301,11 +305,16 @@ export const HandheldLesson = ({
     const missing = texts.filter(
       (_, at) => !added.some((set) => set.deck.id === ids[at])
     )
-    if (missing.length > 0) return addSetTexts(missing, setRoutineNote)
+    let held = added
+    if (missing.length > 0) {
+      const next = addSetTexts(missing, setRoutineNote)
+      if (next === null) return false
+      held = next
+    }
     const first = ids[0]
     if (first == null) return false
-    keepSets(openSet(added, first, now().toISOString()))
-    setReading({ set: first })
+    keepSets(openSet(held, first, now().toISOString()))
+    setReading({ set: first, begin: true })
     return true
   }
   const openRoutine = (key: string): void => {
@@ -344,6 +353,7 @@ export const HandheldLesson = ({
           short={short}
           paused={paused}
           onExit={() => setReading(null)}
+          initialBegin={reading.begin === true}
         />
       </div>
     )
@@ -576,7 +586,7 @@ export const HandheldLesson = ({
         })}
         onOpenSet={(id) => {
           keepSets(openSet(added, id, now().toISOString()))
-          setReading({ set: id })
+          setReading({ set: id, begin: true })
         }}
         onSetText={openSetText}
         setFileHint={wordSetHint}

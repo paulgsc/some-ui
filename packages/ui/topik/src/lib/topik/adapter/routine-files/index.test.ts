@@ -1,9 +1,11 @@
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import {
+  createHeldAnswers,
   createOpenedStore,
   createRoutineFeed,
   openedKey,
   parseRoutineFiles,
+  ROUTINE_ANSWERS_KEY,
   ROUTINE_OPENED_KEY,
 } from "@topik/lib/topik/adapter/routine-files"
 import { createRunLog } from "@topik/lib/topik/adapter/routine-runs"
@@ -86,9 +88,11 @@ describe("parseRoutineFiles", () => {
       runs: [{ folder: "run", name: "run-reflections-1.json", file: run }],
       at: "2026-10-24T18:00:00.000Z",
     }
+    const held = createHeldAnswers(memoryStorage())
     const feed = createRoutineFeed(
       { key: "home-1", list: () => Promise.resolve(answer) },
-      runs
+      runs,
+      held
     )
     await expect(feed.list()).resolves.toHaveLength(1)
     expect(feed.runs).toBe(runs)
@@ -98,13 +102,37 @@ describe("parseRoutineFiles", () => {
     })
     expect(runs.held("").runs).toEqual([])
 
+    // Away from home the port hands back no dated answer: home's last one
+    // for this key is listed, and an older one never replaces it.
+    const away = createRoutineFeed(
+      { key: "home-1", list: () => Promise.resolve({ files: [] }) },
+      runs,
+      held
+    )
+    await expect(away.list()).resolves.toHaveLength(1)
+    held.keep("home-1", "2026-10-23T00:00:00.000Z", { files: [] })
+    await expect(away.list()).resolves.toHaveLength(1)
+
     const before = createRoutineFeed(
       { list: () => Promise.resolve({ files: [] }) },
-      runs
+      runs,
+      held
     )
-    await before.list()
+    await expect(before.list()).resolves.toEqual([])
     expect(before.key).toBeUndefined()
     expect(runs.held("").lookedAt).toBeNull()
+  })
+
+  it("keeps home's answers across copies on one device, and never writes over one it cannot read", () => {
+    const storage = memoryStorage()
+    createHeldAnswers(storage).keep("a", "2026-10-24T00:00:00.000Z", { n: 1 })
+    expect(createHeldAnswers(storage).held("a")).toEqual({ n: 1 })
+    expect(createHeldAnswers(storage).held("b")).toBeNull()
+    storage.setItem(ROUTINE_ANSWERS_KEY, "{not json")
+    const unreadable = createHeldAnswers(storage)
+    unreadable.keep("a", "2026-10-25T00:00:00.000Z", { n: 2 })
+    expect(unreadable.held("a")).toEqual({ n: 2 })
+    expect(storage.getItem(ROUTINE_ANSWERS_KEY)).toBe("{not json")
   })
 
   it("carries the port's key, which the handheld's list is keyed on", () => {

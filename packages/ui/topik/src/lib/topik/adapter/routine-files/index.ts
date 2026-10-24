@@ -11,6 +11,12 @@
  * folder and name, so the list can say so; an opened file stays listed,
  * since home's list is the only way back to it. The record only grows: a
  * few names a day.
+ *
+ * Home's last answer is kept on the device too (`createHeldAnswers`, the
+ * owner's choice of 2026-10-24), for each home it reads, so the list is
+ * there away from home. It is a copy of what home holds, replaced by each
+ * newer answer: home keeps the files, so nothing of the learner's is lost
+ * when it is.
  */
 
 import { localStorageOrNull } from "@some-ui/core-utils"
@@ -120,18 +126,87 @@ export type RoutineFeed = {
 
 export function createRoutineFeed(
   port: RoutineFilesPort,
-  runs: RunLog = sharedRunLog()
+  runs: RunLog = sharedRunLog(),
+  held: HeldAnswers = sharedHeldAnswers()
 ): RoutineFeed {
+  const key = port.key ?? ""
   return {
     ...(port.key === undefined ? {} : { key: port.key }),
     list: async (): Promise<ReadonlyArray<RoutineFile>> => {
       const answer = await port.list()
+      // Home dates each answer it gives; what the port hands back without a
+      // date (no answer, away from home) lists what home last said.
       const heard = parseRoutineRuns(answer)
-      if (heard !== null) runs.keep(port.key ?? "", heard)
-      return parseRoutineFiles(answer)
+      if (heard === null) return parseRoutineFiles(held.held(key) ?? answer)
+      runs.keep(key, heard)
+      held.keep(key, heard.at, answer)
+      return parseRoutineFiles(held.held(key))
     },
     runs,
   }
+}
+
+export const ROUTINE_ANSWERS_KEY = "topik:routine-answers"
+
+const HeldSchema = z.object({
+  version: z.literal(1),
+  homes: z.record(
+    z.string(),
+    z.object({ at: z.string(), answer: z.unknown() })
+  ),
+})
+
+export type HeldAnswers = {
+  /** Home's newest answer kept for `key`, as it came, or null. */
+  held: (key: string) => unknown
+  /** Keeps `answer`, given at `at` by home's clock, unless a newer one is kept. */
+  keep: (key: string, at: string, answer: unknown) => void
+}
+
+/**
+ * Home's last answer for each home, on this device. A failed read is none,
+ * and is never written over; a failed write keeps it until the app closes.
+ */
+export function createHeldAnswers(
+  storage: Pick<Storage, "getItem" | "setItem"> | null = localStorageOrNull()
+): HeldAnswers {
+  let readable = true
+  let homes: Record<string, { at: string; answer: unknown }> = {}
+  try {
+    const text = storage?.getItem(ROUTINE_ANSWERS_KEY) ?? null
+    if (text !== null) {
+      const parsed = HeldSchema.safeParse(JSON.parse(text))
+      if (parsed.success) homes = parsed.data.homes
+      else readable = false
+    }
+  } catch {
+    readable = false
+  }
+  return {
+    held: (key) => homes[key]?.answer ?? null,
+    keep(key, at, answer): void {
+      const was = homes[key]
+      if (was !== undefined && was.at.localeCompare(at) >= 0) return
+      homes = { ...homes, [key]: { at, answer } }
+      if (!readable) return
+      try {
+        storage?.setItem(
+          ROUTINE_ANSWERS_KEY,
+          JSON.stringify({ version: 1, homes })
+        )
+      } catch {
+        // Quota, privacy mode: held until the app closes.
+      }
+    },
+  }
+}
+
+let sharedHeld: HeldAnswers | null = null
+
+/** One copy per page load, over `localStorage`. */
+function sharedHeldAnswers(): HeldAnswers {
+  sharedHeld ??= createHeldAnswers()
+  return sharedHeld
 }
 
 export const ROUTINE_OPENED_KEY = "topik:routine-opened"
