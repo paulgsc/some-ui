@@ -75,6 +75,26 @@ type MaterialListProps = {
   setFileHint?: string
   /** What came of the last word set picked, until the next. */
   setNote?: StorageNote | null
+  /**
+   * What the reflections routine left on home, the ones not opened yet
+   * first: "From the routine", at the top. Absent where the host reaches no
+   * home.
+   */
+  fromRoutine?: Array<RoutineCard>
+  /** What came of the last one opened. */
+  routineNote?: StorageNote | null
+  onOpenRoutine?: (key: string) => void
+}
+
+/** A word set pair or a drama the routine left, as its card shows it. */
+export type RoutineCard = {
+  /** What `onOpenRoutine` is called with. */
+  key: string
+  kind: "scene" | "drama"
+  title: string
+  details: string
+  /** Opened on this phone before. */
+  opened: boolean
 }
 
 /** An added word set, as its card shows it. */
@@ -251,7 +271,41 @@ const OpenFromStorage = ({
   )
 }
 
-/** An added word set not opened yet: what it is, and what it answers. */
+/** A word set pair or a drama the routine left: what it is, and whether it was opened. */
+const RoutineCardButton = ({
+  card,
+  onOpen,
+}: {
+  card: RoutineCard
+  onOpen: (key: string) => void
+}): JSX.Element => (
+  <li>
+    <button
+      type="button"
+      onClick={() => onOpen(card.key)}
+      className={cn(
+        "flex min-h-16 w-full items-center gap-3 rounded-2xl border p-4 text-left",
+        card.opened ? "bg-card" : "bg-primary/10 border-primary/30"
+      )}
+    >
+      {card.kind === "scene" ? (
+        <BookOpenText className="text-primary size-6 shrink-0" />
+      ) : (
+        <Play className="text-primary size-6 shrink-0" />
+      )}
+      <span className="min-w-0 flex-1">
+        <span lang="ko" className="block font-semibold">
+          {card.title}
+        </span>
+        <span className="text-muted-foreground block text-sm">
+          {card.opened ? `${card.details} · Opened` : card.details}
+        </span>
+      </span>
+      <ChevronRight className="text-muted-foreground size-5 shrink-0" />
+    </button>
+  </li>
+)
+
 const ReadyCardButton = ({
   card,
   onOpen,
@@ -369,6 +423,9 @@ export const MaterialList = ({
   onSetText,
   setFileHint,
   setNote,
+  fromRoutine = [],
+  routineNote = null,
+  onOpenRoutine,
 }: MaterialListProps): JSX.Element => (
   <div
     data-slot="topik-material-list"
@@ -403,6 +460,34 @@ export const MaterialList = ({
         </button>
       ))}
     </div>
+
+    {onOpenRoutine && fromRoutine.length > 0 && (
+      <section aria-label="From the routine" className="flex flex-col gap-2">
+        <Heading>From the routine</Heading>
+        <ul className="flex flex-col gap-2">
+          {fromRoutine.map((card) => (
+            <RoutineCardButton
+              key={card.key}
+              card={card}
+              onOpen={onOpenRoutine}
+            />
+          ))}
+        </ul>
+        {/* Always mounted, so a note that arrives is announced. */}
+        <p
+          aria-live="polite"
+          data-slot="routine-note"
+          className={cn(
+            "text-sm empty:hidden",
+            routineNote?.tone === "problem"
+              ? "text-destructive"
+              : "text-muted-foreground"
+          )}
+        >
+          {routineNote?.text}
+        </p>
+      </section>
+    )}
 
     {onReadAloud && onOpenSet && readySets.length > 0 && (
       <section aria-label="Ready for you" className="flex flex-col gap-2">
