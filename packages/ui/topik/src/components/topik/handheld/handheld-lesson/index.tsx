@@ -11,6 +11,12 @@
  * Read-aloud reads the word sets the learner added from storage
  * (`read-aloud/added-sets`). A set not opened yet waits
  * under "Ready for you", above everything else, and opens on its own words.
+ *
+ * What the reflections routine left on home (`adapter/routine-files`) is
+ * listed under "From the routine", at the top, the ones not opened yet
+ * first: a word set pair is added as two picked files are, a drama starts
+ * as a picked scene does. An opened one stays listed, marked opened, since
+ * home's list is the only way back to it.
  */
 
 import type { JSX } from "react"
@@ -20,7 +26,10 @@ import { Button, KeepOnShelf, KeptShelf } from "@some-ui/shared"
 import { CastSheet } from "@topik/components/topik/handheld/cast-sheet"
 import { DramaLesson } from "@topik/components/topik/handheld/drama-lesson"
 import { GenerateLesson } from "@topik/components/topik/handheld/generate-lesson"
-import type { StorageNote } from "@topik/components/topik/handheld/material-list"
+import type {
+  RoutineCard,
+  StorageNote,
+} from "@topik/components/topik/handheld/material-list"
 import { MaterialList } from "@topik/components/topik/handheld/material-list"
 import { SharePrompt } from "@topik/components/topik/handheld/share-prompt"
 import { ReadAloudScreen } from "@topik/components/topik/read-aloud/read-aloud-screen"
@@ -39,6 +48,15 @@ import {
 } from "@topik/lib/topik/adapter/pasted-lesson"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
+import type {
+  OpenedStore,
+  RoutineFile,
+} from "@topik/lib/topik/adapter/routine-files"
+import {
+  createOpenedStore,
+  openedKey,
+} from "@topik/lib/topik/adapter/routine-files"
+import { useRoutineFiles } from "@topik/lib/topik/adapter/server/routine-files-queries"
 import { useTopikManifest } from "@topik/lib/topik/adapter/server/topik-metadata-queries"
 import {
   useServedTree,
@@ -68,6 +86,7 @@ import type { Seed } from "@topik/lib/topik/core/feed-card"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 import { intakeTree } from "@topik/lib/topik/generation/tree-intake"
 import {
+  ADDED_SET_LIMIT,
   addSet,
   intakeSet,
   openSet,
@@ -97,6 +116,8 @@ type HandheldLessonProps = {
   servedPoints?: DramaPointStore
   /** Injected in tests: the clock that dates an added set. */
   now?: () => Date
+  /** Injected in tests; defaults to `localStorage`. */
+  routineOpened?: OpenedStore
 }
 
 export const HandheldLesson = ({
@@ -109,6 +130,7 @@ export const HandheldLesson = ({
   tones,
   servedPoints,
   now = (): Date => new Date(),
+  routineOpened,
 }: HandheldLessonProps): JSX.Element => {
   const [held] = useState(() => pastedStore ?? createPastedLessonStore())
   const drama = usePastedTree(held)
@@ -124,6 +146,7 @@ export const HandheldLesson = ({
     speaker,
     shelf,
     treeFeed,
+    routineFeed,
     metadataRepository,
     share,
     sceneVoice,
@@ -187,13 +210,45 @@ export const HandheldLesson = ({
     readAloud.saveSets(next)
     setAdded(next)
   }
-  const openSetText = (text: string): void => {
-    const intake = intakeSet(text, added)
-    if (!intake.ok) {
-      setSetNote({ tone: "problem", text: intake.error })
-      return
+  // Each text through the intake in turn, onto what the phone holds: all of
+  // them are added, or none and `say` says why.
+  const addSetTexts = (
+    texts: ReadonlyArray<string>,
+    say: (note: StorageNote) => void
+  ): boolean => {
+    // Judged together first, so a group that doesn't fit says what the phone
+    // holds now, not after its first set.
+    const fresh = new Set(
+      texts.flatMap((text) => {
+        const intake = intakeSet(text, added)
+        return intake.ok && !added.some((set) => set.deck.id === intake.deck.id)
+          ? [intake.deck.id]
+          : []
+      })
+    ).size
+    if (
+      added.length < ADDED_SET_LIMIT &&
+      added.length + fresh > ADDED_SET_LIMIT
+    ) {
+      say({
+        tone: "problem",
+        text: `This phone keeps ${ADDED_SET_LIMIT} word sets and has ${added.length}, so these ${fresh} weren't added.`,
+      })
+      return false
     }
-    const next = addSet(added, intake.deck, now().toISOString())
+    let next = added
+    const titles: Array<string> = []
+    let dropped = 0
+    for (const text of texts) {
+      const intake = intakeSet(text, next)
+      if (!intake.ok) {
+        say({ tone: "problem", text: intake.error })
+        return false
+      }
+      next = addSet(next, intake.deck, now().toISOString())
+      titles.push(`"${intake.deck.title}"`)
+      dropped += intake.dropped
+    }
     const leaving = wordsLeaving(added, next)
     if (leaving.size > 0) {
       readAloud.prunePaces(
@@ -201,18 +256,66 @@ export const HandheldLesson = ({
       )
     }
     keepSets(next)
-    setSetNote({
+    const what = titles.join(" and ")
+    say({
       tone: "done",
       text:
-        intake.dropped > 0
-          ? `Added "${intake.deck.title}". ${intake.dropped} line${intake.dropped === 1 ? "" : "s"} couldn't be read.`
-          : `Added "${intake.deck.title}".`,
+        dropped > 0
+          ? `Added ${what}. ${dropped} line${dropped === 1 ? "" : "s"} couldn't be read.`
+          : `Added ${what}.`,
     })
+    return true
+  }
+  const openSetText = (text: string): void => {
+    addSetTexts([text], setSetNote)
   }
   // The read-aloud drill takes the whole screen, header included; leaving it
   // returns to the material list it was opened from. `set` is the added set
   // it reads on its own, or null for every word the phone has.
   const [reading, setReading] = useState<{ set: string | null } | null>(null)
+  const routine = useRoutineFiles(routineFeed)
+  const [opened] = useState(() => routineOpened ?? createOpenedStore())
+  const [openedKeys, setOpenedKeys] = useState(opened.opened)
+  const [routineNote, setRoutineNote] = useState<StorageNote | null>(null)
+  const routineCards = useMemo(() => {
+    const cards = (routine.data ?? []).map((file) =>
+      routineCardOf(file, openedKeys.has(openedKey(file)))
+    )
+    return [
+      ...cards.filter((card) => !card.opened),
+      ...cards.filter((card) => card.opened),
+    ]
+  }, [routine.data, openedKeys])
+  // A pair's sets the phone already holds are left as they are, record and
+  // all; with both held, the pair opens on its first set.
+  const openRoutineScene = (decks: ReadonlyArray<unknown>): boolean => {
+    const texts = decks.map((deck) => JSON.stringify(deck))
+    const ids = texts.map((text) => {
+      const intake = intakeSet(text, added)
+      return intake.ok ? intake.deck.id : null
+    })
+    const missing = texts.filter(
+      (_, at) => !added.some((set) => set.deck.id === ids[at])
+    )
+    if (missing.length > 0) return addSetTexts(missing, setRoutineNote)
+    const first = ids[0]
+    if (first == null) return false
+    keepSets(openSet(added, first, now().toISOString()))
+    setReading({ set: first })
+    return true
+  }
+  const openRoutine = (key: string): void => {
+    const file = routine.data?.find((candidate) => openedKey(candidate) === key)
+    if (file === undefined) return
+    setRoutineNote(null)
+    if (file.kind === "scene") {
+      if (!openRoutineScene(file.decks)) return
+    } else {
+      startTree(file.tree)
+    }
+    opened.markOpened(key)
+    setOpenedKeys(opened.opened())
+  }
   const [castOpen, setCastOpen] = useState(false)
 
   if (reading) {
@@ -474,6 +577,9 @@ export const HandheldLesson = ({
         onSetText={openSetText}
         setFileHint={wordSetHint}
         setNote={setNote}
+        fromRoutine={routineCards}
+        routineNote={routineNote}
+        onOpenRoutine={openRoutine}
       />
     )
   })()
@@ -495,4 +601,23 @@ export const HandheldLesson = ({
       )}
     </div>
   )
+}
+
+/** A routine file as its card shows it; a drama names its own title and level. */
+function routineCardOf(file: RoutineFile, opened: boolean): RoutineCard {
+  return file.kind === "scene"
+    ? {
+        key: openedKey(file),
+        kind: "scene",
+        title: file.title,
+        details: "Word sets: read aloud and grammar lens",
+        opened,
+      }
+    : {
+        key: openedKey(file),
+        kind: "drama",
+        title: titleOf(file.tree),
+        details: `Drama · TOPIK ${file.tree.level}`,
+        opened,
+      }
 }

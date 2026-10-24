@@ -4,7 +4,8 @@
  * to the home server (LA8, docs/learner-data-authority.md).
  *
  * Every hop is a tap here, and names where it goes (LA8); `lib/home-link`
- * owns the work, and this component only shows it.
+ * owns the work, and this component only shows it. The choice to show the
+ * routine's files in Korean is made here too, and Korean reads them (LA12).
  */
 
 import type { JSX } from "react"
@@ -39,6 +40,7 @@ import {
 } from "@/lib/home-link/words"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
+import { DeviceRoutineReads } from "@/components/settings/device-routine-reads"
 import { SharingLedger } from "@/components/settings/device-sharing-ledger"
 import {
   DeviceArchive,
@@ -441,6 +443,7 @@ export const DeviceSection = (): JSX.Element => {
                 state={state}
               />
             )}
+            <DeviceRoutineReads />
             <SharingLedger />
           </>
         ) : (

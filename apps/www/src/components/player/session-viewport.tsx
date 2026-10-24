@@ -18,6 +18,7 @@ import {
   useSceneLifetimes,
 } from "@/lib/orchestrator"
 import { PANELS } from "@/lib/playable"
+import { createRoutineFilesClient } from "@/lib/routine-files"
 import { phoneSceneVoice, shareDramaPrompt } from "@/lib/scene-voice"
 import { lookIn, runsNatively } from "@/lib/share-files"
 import { createShelfClient } from "@/lib/shelf-client"
@@ -29,6 +30,7 @@ import {
 } from "@/lib/topik-content"
 import { WEB_PANEL_KEYS } from "@/lib/web-surface"
 
+import { useHomeRoutineFiles } from "./device-routine-files"
 import { defineSceneProps, withSceneProps } from "./scene-props"
 import { useLiveLayoutEditor } from "./use-live-layout-editor"
 import { withWebOnlyNotes } from "./web-only-note"
@@ -51,6 +53,16 @@ const PHONE_SESSION_FILES = ON_PHONE ? phoneSessionFiles() : undefined
  */
 const VIEWER_SESSION_FILES =
   import.meta.env.VITE_STATIC_DATA === "true" ? viewerSessionFiles() : undefined
+
+/**
+ * What the reflections routine left on home, as the Android app reads it:
+ * through its paired home, once its person chose to show it (LA12). The
+ * flag is read here so other builds fold the branch and ship no link.
+ */
+const useRoutineFromHome =
+  import.meta.env.VITE_DEVICE_BACKEND === "true"
+    ? useHomeRoutineFiles
+    : (): undefined => undefined
 
 /** What the player renders: the bound panels, and a note for a web one. */
 const PLAYER_PANELS = withWebOnlyNotes(PANELS, WEB_PANEL_KEYS)
@@ -100,14 +112,24 @@ export const SessionViewport = ({
     return (): void => setSuspended(false)
   }, [editMode])
 
-  // The learner shelf (paulgsc/server#387): only while the data is the
-  // account's (every shelf route is per person) and a file_host exists. A
-  // device learner keeps no shelf. Nothing in the activity depends on it.
+  // The learner shelf (paulgsc/server#387) and what the reflections routine
+  // left on home (`/routine/files`): only while the data is the account's
+  // (both are per person) and a file_host exists. A device learner has
+  // neither; the Android app reads the routine's files from its paired home
+  // instead (`useRoutineFromHome`). Nothing in the activity depends on them.
   const signedIn = useAuthority().kind === "account"
   const shelves = useMemo(
-    () => (signedIn ? { topik: createShelfClient("topik") } : undefined),
+    () =>
+      signedIn
+        ? {
+            topik: createShelfClient("topik"),
+            routineFiles: createRoutineFilesClient(),
+          }
+        : undefined,
     [signedIn]
   )
+  const routineFromHome = useRoutineFromHome()
+  const routineFiles = shelves?.routineFiles ?? routineFromHome
 
   const paused = useIsPaused()
 
@@ -130,6 +152,9 @@ export const SessionViewport = ({
           // The served scene trees, which only the handheld lesson lists.
           loadTreeManifest,
           shelf: shelves?.topik,
+          // What the reflections routine left on home: the account's, as
+          // `shelf` is, or, in the app, through its paired home.
+          routineFiles,
           share: PHONE_SHARE,
           sceneVoice: PHONE_SCENE_VOICE,
           // Read at render: main.tsx installs the sidecar after imports run.
@@ -155,7 +180,7 @@ export const SessionViewport = ({
                 },
         },
       }),
-    [shelves, paused]
+    [shelves, routineFiles, paused]
   )
 
   const renderedLifetimes = useMemo(

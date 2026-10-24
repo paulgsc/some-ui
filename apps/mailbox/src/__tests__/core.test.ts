@@ -1,6 +1,11 @@
 import { createHash } from "node:crypto"
 import type { Deps } from "@mailbox/core"
-import { handle, LIST_LIMIT_MAX, MAX_BODY_BYTES } from "@mailbox/core"
+import {
+  ARCHIVE_MIN_AGE_DAYS,
+  handle,
+  LIST_LIMIT_MAX,
+  MAX_BODY_BYTES,
+} from "@mailbox/core"
 import type { Folder, Store } from "@mailbox/store"
 import { describe, expect, it } from "vitest"
 
@@ -8,6 +13,7 @@ import { failing, memoryStore, untouchable } from "./stores"
 
 const ROUTINE = "test-routine-token"
 const HOME = "test-home-token"
+const ARCHIVE = "test-archive-token"
 const NOW = new Date("2026-10-21T14:52:00.000Z")
 
 const DIGEST = JSON.stringify({ schema: "some-ui.job-digest/1", picks: [] })
@@ -26,7 +32,7 @@ function deps(
   reported: Array<unknown> = []
 ): Deps {
   return {
-    tokens: { routine: ROUTINE, home: HOME },
+    tokens: { routine: ROUTINE, home: HOME, archive: ARCHIVE },
     store,
     now: () => NOW,
     report: (error): void => {
@@ -167,7 +173,7 @@ describe("authentication", () => {
     const { store, touched } = untouchable()
     const d: Deps = {
       ...deps(store),
-      tokens: { routine: undefined, home: "" },
+      tokens: { routine: undefined, home: "", archive: undefined },
     }
     for (const token of ["", "undefined", "null", "empty"]) {
       const response = await send(d, "GET", "/v1/brief/items", { token })
@@ -176,16 +182,20 @@ describe("authentication", () => {
     expect(touched()).toBe(0)
   })
 
-  it("one secret set for both roles authenticates neither", async () => {
+  it("one secret set for two roles authenticates no one", async () => {
     const { store, touched } = untouchable()
-    const d: Deps = {
-      ...deps(store),
-      tokens: { routine: "test-shared-token", home: "test-shared-token" },
+    const shared = "test-shared-token"
+    for (const tokens of [
+      { routine: shared, home: shared, archive: ARCHIVE },
+      { routine: ROUTINE, home: shared, archive: shared },
+      { routine: shared, home: HOME, archive: shared },
+    ]) {
+      const d: Deps = { ...deps(store), tokens }
+      for (const token of [shared, ROUTINE, HOME, ARCHIVE]) {
+        const response = await send(d, "GET", "/v1/brief/items", { token })
+        expect(response.status).toBe(401)
+      }
     }
-    const response = await send(d, "GET", "/v1/brief/items", {
-      token: "test-shared-token",
-    })
-    expect(response.status).toBe(401)
     expect(touched()).toBe(0)
   })
 })
@@ -221,7 +231,7 @@ describe("roles", () => {
     }
   })
 
-  it("home may read brief and put decisions and scouts, and nothing else", async () => {
+  it("home may read brief, not decisions or scouts, and put only decisions and scouts", async () => {
     const d = deps()
     expect((await put(d, "brief", DIGEST_NAME, { body: DIGEST })).status).toBe(
       201
@@ -282,6 +292,126 @@ describe("roles", () => {
       (await put(d, "scout", "scouts-20261022T000000.json", { body: SCOUTS }))
         .status
     ).toBe(403)
+  })
+})
+
+describe("the routine's study files", () => {
+  const SCENE = JSON.stringify({
+    schema: "some-ui.routine-scene/1",
+    answers: "2026-10-13_morning-drama_session-",
+    title: "TOPIK 2 · 로맨스 · 첫 만남",
+    decks: [],
+  })
+  const DRAMA = JSON.stringify({
+    schema: "some-ui.routine-drama/1",
+    answers: "drama-20261013T145200123Z",
+    tree: {},
+  })
+  // As the phone names a reflection: every session id starts `session-`.
+  const SCENE_NAME = "scene-2026-10-13_morning-drama_session-.json"
+  const DRAMA_NAME = "drama-20261013T145200123Z.json"
+
+  it("the routine puts a scene and a drama, and home reads them and may not put them", async () => {
+    const d = deps()
+    expect((await put(d, "scene", SCENE_NAME, { body: SCENE })).status).toBe(
+      201
+    )
+    expect((await put(d, "drama", DRAMA_NAME, { body: DRAMA })).status).toBe(
+      201
+    )
+    for (const [folder, name] of [
+      ["scene", SCENE_NAME],
+      ["drama", DRAMA_NAME],
+    ] as const) {
+      expect(
+        (await send(d, "GET", `/v1/${folder}/items`, { token: HOME })).status
+      ).toBe(200)
+      expect(
+        (await send(d, "GET", `/v1/${folder}/items/${name}`, { token: HOME }))
+          .status
+      ).toBe(200)
+    }
+    expect(
+      (
+        await put(d, "scene", "scene-2026-10-14_x_s-1.json", {
+          token: HOME,
+          body: SCENE,
+        })
+      ).status
+    ).toBe(403)
+  })
+
+  it("the routine reads them, lists what is archived and asks for one back; only the archive role archives them", async () => {
+    const d = deps()
+    await put(d, "scene", SCENE_NAME, { body: SCENE })
+    await put(d, "drama", DRAMA_NAME, { body: DRAMA })
+    for (const [folder, name] of [
+      ["scene", SCENE_NAME],
+      ["drama", DRAMA_NAME],
+    ] as const) {
+      expect((await send(d, "GET", `/v1/${folder}/items/${name}`)).status).toBe(
+        200
+      )
+      expect((await send(d, "GET", `/v1/${folder}/archived`)).status).toBe(200)
+      expect(
+        (await send(d, "PUT", `/v1/${folder}/wanted/${name}`)).status
+      ).toBe(200)
+      for (const token of [ROUTINE, HOME]) {
+        expect(
+          (
+            await send(d, "DELETE", `/v1/${folder}/items/${name}`, {
+              token,
+              headers: { "if-match": `"${"0".repeat(64)}"` },
+            })
+          ).status
+        ).toBe(403)
+      }
+      expect(
+        (
+          await send(d, "DELETE", `/v1/${folder}/items/${name}`, {
+            token: ARCHIVE,
+            headers: { "if-match": `"${"0".repeat(64)}"` },
+          })
+        ).status
+      ).toBe(412)
+    }
+  })
+
+  it("a second reflection under one name takes a number", async () => {
+    const d = deps()
+    const second = "scene-2026-10-13_morning-drama_session--2.json"
+    expect((await put(d, "scene", second, { body: SCENE })).status).toBe(201)
+  })
+
+  it("a name or schema that is not the folder's is refused", async () => {
+    const d = deps()
+    for (const name of [
+      "scene-2026-10-13.json",
+      "scene-2026-10-13_Morning_s-1.json",
+      "scene-2026-10-13_x_s-1.m4a",
+      "2026-10-13_morning-drama_s-7f3a91.json",
+    ]) {
+      expect([
+        name,
+        (await put(d, "scene", name, { body: SCENE })).status,
+      ]).toEqual([name, 422])
+    }
+    for (const name of [
+      "drama-20261013T145200Z.json",
+      "drama-20261013T145200123Z.voice-1.m4a",
+      "drama-20261013T145200123Z.prompt.md",
+    ]) {
+      expect([
+        name,
+        (await put(d, "drama", name, { body: DRAMA })).status,
+      ]).toEqual([name, 422])
+    }
+    expect((await put(d, "scene", SCENE_NAME, { body: DRAMA })).status).toBe(
+      422
+    )
+    expect((await put(d, "drama", DRAMA_NAME, { body: SCENE })).status).toBe(
+      422
+    )
   })
 })
 
@@ -563,6 +693,7 @@ describe("listing", () => {
           sha256,
           contentType: "application/json",
           putAt: NOW.toISOString(),
+          liveSince: NOW.toISOString(),
         },
       ],
     })
@@ -598,6 +729,9 @@ describe("routes", () => {
       "/v1/voice/items",
       "/v1/brief/other",
       `/v1/brief/items/${DIGEST_NAME}/extra`,
+      `/v1/brief/archived/${DIGEST_NAME}`,
+      "/v1/brief/wanted/",
+      "/v1/voice/wanted",
     ]) {
       const response = await send(d, "GET", path)
       expect([path, response.status]).toEqual([path, 404])
@@ -606,11 +740,246 @@ describe("routes", () => {
     const onListing = await send(d, "PUT", "/v1/brief/items", { body: DIGEST })
     expect(onListing.status).toBe(405)
     expect(onListing.headers.get("allow")).toBe("GET")
-    for (const method of ["POST", "DELETE", "PATCH", "HEAD", "OPTIONS"]) {
+    for (const method of ["POST", "PATCH", "HEAD", "OPTIONS"]) {
       const response = await send(d, method, `/v1/brief/items/${DIGEST_NAME}`)
       expect([method, response.status]).toEqual([method, 405])
-      expect(response.headers.get("allow")).toBe("GET, PUT")
+      expect(response.headers.get("allow")).toBe("GET, PUT, DELETE")
     }
+    for (const [method, path, allow] of [
+      ["PUT", "/v1/brief/archived", "GET"],
+      ["PUT", "/v1/brief/wanted", "GET"],
+      ["GET", `/v1/brief/wanted/${DIGEST_NAME}`, "PUT"],
+      ["DELETE", `/v1/brief/wanted/${DIGEST_NAME}`, "PUT"],
+    ] as const) {
+      const response = await send(d, method, path)
+      expect([method, path, response.status]).toEqual([method, path, 405])
+      expect(response.headers.get("allow")).toBe(allow)
+    }
+  })
+})
+
+describe("archiving", () => {
+  const DAY = 86_400_000
+  const DIGEST_SHA = createHash("sha256").update(DIGEST).digest("hex")
+  /** When `at(ARCHIVE_MIN_AGE_DAYS)` sets the clock. */
+  const OLD_ENOUGH = new Date(
+    NOW.getTime() + ARCHIVE_MIN_AGE_DAYS * DAY
+  ).toISOString()
+
+  /** A mailbox holding today's digest, and a clock the test moves. */
+  async function held(): Promise<{ d: Deps; at: (days: number) => void }> {
+    let now = NOW
+    const d: Deps = { ...deps(), now: () => now }
+    expect((await put(d, "brief", DIGEST_NAME, { body: DIGEST })).status).toBe(
+      201
+    )
+    return {
+      d,
+      at: (days): void => {
+        now = new Date(NOW.getTime() + days * DAY)
+      },
+    }
+  }
+
+  function archive(
+    d: Deps,
+    { token = ARCHIVE, sha = DIGEST_SHA, name = DIGEST_NAME } = {}
+  ): Promise<Response> {
+    return send(d, "DELETE", `/v1/brief/items/${name}`, {
+      token,
+      headers: { "if-match": `"${sha}"` },
+    })
+  }
+
+  it("the archive role reads every folder, archives and puts back, and puts nothing new", async () => {
+    const { d, at } = await held()
+    for (const folder of ["brief", "decisions", "scout", "scene", "drama"]) {
+      expect(
+        (await send(d, "GET", `/v1/${folder}/items`, { token: ARCHIVE })).status
+      ).toBe(200)
+      expect(
+        (await send(d, "GET", `/v1/${folder}/wanted`, { token: ARCHIVE }))
+          .status
+      ).toBe(200)
+    }
+    // A put of a name never archived adds nothing.
+    expect(
+      (
+        await put(d, "brief", "digest-2026-10-22.json", {
+          token: ARCHIVE,
+          body: DIGEST,
+        })
+      ).status
+    ).toBe(404)
+    expect(
+      (
+        await send(d, "PUT", `/v1/brief/wanted/${DIGEST_NAME}`, {
+          token: ARCHIVE,
+        })
+      ).status
+    ).toBe(403)
+
+    at(ARCHIVE_MIN_AGE_DAYS)
+    for (const token of [ROUTINE, HOME]) {
+      expect((await archive(d, { token })).status).toBe(403)
+    }
+    expect((await archive(d)).status).toBe(200)
+  })
+
+  it("only the routine lists what is archived and asks for it back", async () => {
+    const { d } = await held()
+    for (const token of [HOME, ARCHIVE]) {
+      expect(
+        (await send(d, "GET", "/v1/brief/archived", { token })).status
+      ).toBe(403)
+    }
+    expect(
+      (await send(d, "PUT", `/v1/brief/wanted/${DIGEST_NAME}`, { token: HOME }))
+        .status
+    ).toBe(403)
+    for (const token of [ROUTINE, HOME]) {
+      expect((await send(d, "GET", "/v1/brief/wanted", { token })).status).toBe(
+        403
+      )
+    }
+  })
+
+  it("an archive names the bytes it drops, and waits until the item is old enough", async () => {
+    const { d, at } = await held()
+    const noTag = await send(d, "DELETE", `/v1/brief/items/${DIGEST_NAME}`, {
+      token: ARCHIVE,
+    })
+    expect(noTag.status).toBe(428)
+    for (const tag of [
+      DIGEST_SHA,
+      `"${DIGEST_SHA.toUpperCase()}"`,
+      '"abc"',
+      "*",
+    ]) {
+      const response = await send(
+        d,
+        "DELETE",
+        `/v1/brief/items/${DIGEST_NAME}`,
+        { token: ARCHIVE, headers: { "if-match": tag } }
+      )
+      expect([tag, response.status]).toEqual([tag, 428])
+    }
+    expect((await archive(d, { sha: "0".repeat(64) })).status).toBe(412)
+    expect((await archive(d, { name: "digest-2026-10-22.json" })).status).toBe(
+      404
+    )
+    expect((await archive(d, { name: "voice-1.m4a" })).status).toBe(404)
+
+    at(ARCHIVE_MIN_AGE_DAYS - 1)
+    expect((await archive(d)).status).toBe(422)
+    at(ARCHIVE_MIN_AGE_DAYS)
+    const done = await archive(d)
+    expect([done.status, await json(done)]).toEqual([
+      200,
+      { change: "archived" },
+    ])
+    const again = await archive(d)
+    expect([again.status, await json(again)]).toEqual([
+      200,
+      { change: "unchanged" },
+    ])
+  })
+
+  it("an archived item reads as gone, is listed as archived, and its name stays held", async () => {
+    const { d, at } = await held()
+    at(ARCHIVE_MIN_AGE_DAYS)
+    await archive(d)
+    const archivedAt = OLD_ENOUGH
+
+    const gone = await send(d, "GET", `/v1/brief/items/${DIGEST_NAME}`)
+    expect([gone.status, await json(gone)]).toEqual([
+      410,
+      { error: "archived", archivedAt },
+    ])
+    expect(await json(await send(d, "GET", "/v1/brief/items"))).toEqual({
+      items: [],
+    })
+    expect(await json(await send(d, "GET", "/v1/brief/archived"))).toEqual({
+      items: [
+        {
+          seq: 1,
+          name: DIGEST_NAME,
+          size: DIGEST.length,
+          sha256: DIGEST_SHA,
+          contentType: "application/json",
+          putAt: NOW.toISOString(),
+          archivedAt,
+        },
+      ],
+    })
+    expect((await put(d, "brief", DIGEST_NAME, { body: DIGEST })).status).toBe(
+      200
+    )
+    const other = JSON.stringify({ schema: "some-ui.job-digest/1", picks: [1] })
+    expect((await put(d, "brief", DIGEST_NAME, { body: other })).status).toBe(
+      409
+    )
+  })
+
+  it("an ask is answered by home putting the same bytes back", async () => {
+    const { d, at } = await held()
+    const ask = (): Promise<Response> =>
+      send(d, "PUT", `/v1/brief/wanted/${DIGEST_NAME}`)
+    const answered = async (response: Response): Promise<unknown> => [
+      response.status,
+      await json(response),
+    ]
+
+    expect(await answered(await ask())).toEqual([200, { change: "live" }])
+    expect(
+      (await send(d, "PUT", "/v1/brief/wanted/digest-2026-10-22.json")).status
+    ).toBe(404)
+    expect((await send(d, "PUT", "/v1/brief/wanted/voice.m4a")).status).toBe(
+      404
+    )
+    at(ARCHIVE_MIN_AGE_DAYS)
+    await archive(d)
+    expect(await answered(await ask())).toEqual([202, { change: "asked" }])
+    expect(await answered(await ask())).toEqual([200, { change: "unchanged" }])
+    const askedAt = OLD_ENOUGH
+    expect(
+      await json(await send(d, "GET", "/v1/brief/wanted", { token: ARCHIVE }))
+    ).toEqual({ items: [{ name: DIGEST_NAME, askedAt }] })
+
+    // Other bytes, or a body no put would take, never go back.
+    const other = JSON.stringify({ schema: "some-ui.job-digest/1", picks: [1] })
+    expect(
+      (await put(d, "brief", DIGEST_NAME, { token: ARCHIVE, body: other }))
+        .status
+    ).toBe(409)
+    expect(
+      (await put(d, "brief", DIGEST_NAME, { token: ARCHIVE, body: SCOUTS }))
+        .status
+    ).toBe(422)
+
+    at(ARCHIVE_MIN_AGE_DAYS + 1)
+    const back = await put(d, "brief", DIGEST_NAME, {
+      token: ARCHIVE,
+      body: DIGEST,
+    })
+    expect(await answered(back)).toEqual([201, { change: "restored", seq: 2 }])
+    expect(
+      await json(await send(d, "GET", "/v1/brief/wanted", { token: ARCHIVE }))
+    ).toEqual({ items: [] })
+    const read = await send(d, "GET", `/v1/brief/items/${DIGEST_NAME}`)
+    expect([read.status, await read.text()]).toEqual([200, DIGEST])
+    const again = await put(d, "brief", DIGEST_NAME, {
+      token: ARCHIVE,
+      body: DIGEST,
+    })
+    expect(await answered(again)).toEqual([
+      200,
+      { change: "unchanged", seq: 2 },
+    ])
+
+    // Counted from its return, so it does not go straight home again.
+    at(ARCHIVE_MIN_AGE_DAYS * 2)
+    expect((await archive(d)).status).toBe(422)
   })
 })
 

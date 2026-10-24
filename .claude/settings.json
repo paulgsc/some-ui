@@ -4,7 +4,8 @@
       "Bash(scripts/bootstrap-wasm-crates.sh*)",
       "Bash(cargo install wasm-pack*)",
       "Bash(rustup target add wasm32-unknown-unknown*)",
-      "Bash(wasm-pack build*)"
+      "Bash(wasm-pack build*)",
+      "Bash(pnpm --filter @some-ui/mailbox exec wrangler deploy*)"
     ]
   },
   "hooks": {

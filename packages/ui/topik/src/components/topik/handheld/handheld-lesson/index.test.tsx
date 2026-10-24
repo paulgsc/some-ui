@@ -8,6 +8,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react"
 import { EXERCISE_FRAMING } from "@topik/components/topik/handheld/drama-lesson/exercise-framing"
@@ -24,6 +25,12 @@ import {
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import type {
+  OpenedStore,
+  RoutineFeed,
+  RoutineFile,
+} from "@topik/lib/topik/adapter/routine-files"
+import { createOpenedStore } from "@topik/lib/topik/adapter/routine-files"
+import type {
   SoundControl,
   ToneContextFactory,
 } from "@topik/lib/topik/adapter/sound-port"
@@ -36,6 +43,7 @@ import {
   workedExample,
   workedLesson,
 } from "@topik/lib/topik/generation/tree-intake/worked-example"
+import { parseReadAloudDeck } from "@topik/lib/topik/read-aloud/content"
 import {
   LEVEL_ONE_LENS_SET,
   LEVEL_ONE_SET,
@@ -61,6 +69,8 @@ type RenderOptions = {
   share?: FileShare
   sceneFileHint?: string
   wordSetHint?: string
+  routineFeed?: RoutineFeed
+  routineOpened?: OpenedStore
 }
 
 function renderLesson({
@@ -77,8 +87,10 @@ function renderLesson({
   share,
   sceneFileHint,
   wordSetHint,
-}: RenderOptions = {}): void {
-  const tree = (): JSX.Element => (
+  routineFeed,
+  routineOpened = createOpenedStore(memoryStorage()),
+}: RenderOptions = {}): { feedWith: (next: RoutineFeed) => void } {
+  const tree = (feed = routineFeed): JSX.Element => (
     <QueryClientProvider client={client}>
       <SessionConfigProvider
         value={{
@@ -89,6 +101,7 @@ function renderLesson({
           ...(share ? { share } : {}),
           ...(sceneFileHint ? { sceneFileHint } : {}),
           ...(wordSetHint ? { wordSetHint } : {}),
+          ...(feed ? { routineFeed: feed } : {}),
         }}
       >
         <HandheldLesson
@@ -99,11 +112,13 @@ function renderLesson({
           tones={tones}
           servedPoints={servedPoints}
           now={(): Date => new Date("2026-10-14T06:00:00.000Z")}
+          routineOpened={routineOpened}
         />
       </SessionConfigProvider>
     </QueryClientProvider>
   )
-  render(tree())
+  const { rerender } = render(tree())
+  return { feedWith: (next) => rerender(tree(next)) }
 }
 
 const voice = (say: Speaker["say"]): Speaker => ({
@@ -294,6 +309,224 @@ describe("HandheldLesson", () => {
     const card = await screen.findByRole("button", { name: /Read aloud/ })
     expect(card.textContent).toContain("1 word set")
     expect(screen.queryByRole("button", { name: /^2 words New/ })).toBeNull()
+  })
+
+  const routineDeck = (id: string, title: string): unknown => ({
+    schemaVersion: 1,
+    id,
+    title,
+    words: [{ id: `${id}-w`, lemma: "약속", gloss: "plans" }],
+    lines: [
+      {
+        id: `${id}-l`,
+        level: 2,
+        korean: "약속",
+        english: "Plans",
+        words: [{ wordId: `${id}-w`, surface: "약속", stemEnd: 2 }],
+      },
+    ],
+  })
+  const routineScene = (decks: ReadonlyArray<unknown>): RoutineFile => ({
+    kind: "scene",
+    name: "scene-2026-10-13_morning_session-.json",
+    title: "TOPIK 2 · 일상 · 약속",
+    decks,
+  })
+
+  it("lists what the routine left on home, adds a word set pair and starts a drama, then marks both opened", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    const opened = createOpenedStore(memoryStorage())
+    const files: ReadonlyArray<RoutineFile> = [
+      {
+        kind: "drama",
+        name: "drama-20261013T145200123Z.json",
+        tree: workedLesson(),
+      },
+      routineScene([
+        routineDeck("plans-2", "Plans"),
+        routineDeck("plans-2-lens", "Plans, lens"),
+      ]),
+    ]
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: store,
+      routineFeed: { list: () => Promise.resolve(files) },
+      routineOpened: opened,
+    })
+    const waiting = await screen.findByRole("region", {
+      name: "From the routine",
+    })
+    expect(within(waiting).getAllByRole("button")).toHaveLength(2)
+
+    fireEvent.click(
+      within(waiting).getByRole("button", { name: /TOPIK 2 · 일상 · 약속/ })
+    )
+    expect(
+      await screen.findByText('Added "Plans" and "Plans, lens".')
+    ).toBeTruthy()
+    expect(
+      store
+        .sets()
+        .map((set) => set.deck.id)
+        .sort()
+    ).toEqual(["plans-2", "plans-2-lens"])
+    // Still listed, after the one not opened yet.
+    const buttons = within(waiting).getAllByRole("button")
+    expect(
+      buttons.map((button) => button.textContent.includes("Opened"))
+    ).toEqual([false, true])
+
+    fireEvent.click(screen.getByRole("button", { name: /Drama · TOPIK/ }))
+    expect(await screen.findByText("숨 막히는 긴장감")).toBeTruthy()
+    expect([...opened.opened()].sort()).toEqual([
+      "drama/drama-20261013T145200123Z.json",
+      "scene/scene-2026-10-13_morning_session-.json",
+    ])
+  })
+
+  it("adds neither set of a pair one of which can't be read, says so under the routine's files, and leaves it not opened", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    const opened = createOpenedStore(memoryStorage())
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: store,
+      routineFeed: {
+        list: () =>
+          Promise.resolve([
+            routineScene([
+              routineDeck("plans-2", "Plans"),
+              { schemaVersion: 1 },
+            ]),
+          ]),
+      },
+      routineOpened: opened,
+    })
+    const waiting = await screen.findByRole("region", {
+      name: "From the routine",
+    })
+    fireEvent.click(within(waiting).getByRole("button"))
+    expect(
+      waiting.querySelector('[data-slot="routine-note"]')?.textContent
+    ).toBe("That file isn't a word set.")
+    expect(store.sets()).toEqual([])
+    expect(opened.opened().size).toBe(0)
+    expect(within(waiting).getByRole("button").textContent).not.toContain(
+      "Opened"
+    )
+  })
+
+  it("opens an opened pair on its first set, leaving the sets the phone holds as they are", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    const decks = [
+      routineDeck("plans-2", "Plans"),
+      routineDeck("plans-2-lens", "Plans, lens"),
+    ]
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: store,
+      routineFeed: { list: () => Promise.resolve([routineScene(decks)]) },
+    })
+    const waiting = await screen.findByRole("region", {
+      name: "From the routine",
+    })
+    fireEvent.click(within(waiting).getByRole("button"))
+    await screen.findByText('Added "Plans" and "Plans, lens".')
+    const addedAt = store.sets().map((set) => set.addedAt)
+
+    fireEvent.click(within(waiting).getByRole("button", { name: /Opened/ }))
+    expect(
+      document.querySelector('[data-slot="read-aloud-level"]')
+    ).not.toBeNull()
+    expect(store.sets().map((set) => set.addedAt)).toEqual(addedAt)
+    expect(
+      store.sets().find((set) => set.deck.id === "plans-2")?.openedAt
+    ).not.toBeNull()
+  })
+
+  it("adds neither set of a pair the phone has no room for, and says what it holds", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    store.saveSets(
+      Array.from({ length: 49 }, (_, at) => {
+        const parsed = parseReadAloudDeck(
+          routineDeck(`held-${at}`, `Held ${at}`)
+        )
+        if (!parsed.ok) throw new Error(parsed.error)
+        return { deck: parsed.deck, addedAt: "", openedAt: "" }
+      })
+    )
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: store,
+      routineFeed: {
+        list: () =>
+          Promise.resolve([
+            routineScene([
+              routineDeck("plans-2", "Plans"),
+              routineDeck("plans-2-lens", "Plans, lens"),
+            ]),
+          ]),
+      },
+    })
+    const waiting = await screen.findByRole("region", {
+      name: "From the routine",
+    })
+    fireEvent.click(within(waiting).getByRole("button"))
+    expect(
+      waiting.querySelector('[data-slot="routine-note"]')?.textContent
+    ).toBe(
+      "This phone keeps 50 word sets and has 49, so these 2 weren't added."
+    )
+    expect(store.sets()).toHaveLength(49)
+  })
+
+  it("lists nothing of an earlier home's once the feed's key moves on", async () => {
+    const drama = (name: string): RoutineFile => ({
+      kind: "drama",
+      name,
+      tree: workedLesson(),
+    })
+    let answer: (files: ReadonlyArray<RoutineFile>) => void = () => undefined
+    const { feedWith } = renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: createReadAloudStore(memoryStorage()),
+      routineFeed: {
+        key: "pairing-1@1",
+        list: () => Promise.resolve([drama("old.json"), drama("older.json")]),
+      },
+    })
+    const waiting = await screen.findByRole("region", {
+      name: "From the routine",
+    })
+    expect(within(waiting).getAllByRole("button")).toHaveLength(2)
+
+    feedWith({
+      key: "pairing-2@9",
+      list: () =>
+        new Promise((resolve) => {
+          answer = resolve
+        }),
+    })
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("region", { name: "From the routine" })
+      ).toBeNull()
+    )
+    act(() => answer([drama("new.json")]))
+    const fresh = await screen.findByRole("region", {
+      name: "From the routine",
+    })
+    expect(within(fresh).getAllByRole("button")).toHaveLength(1)
+  })
+
+  it("lists nothing from the routine where the host reaches no home", async () => {
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: createReadAloudStore(memoryStorage()),
+    })
+    await screen.findByText("No dramas this week yet.")
+    expect(
+      screen.queryByRole("region", { name: "From the routine" })
+    ).toBeNull()
   })
 
   it("says what a set is for and where it takes place, and opens a lens set on the lens", async () => {

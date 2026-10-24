@@ -30,22 +30,23 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 
 ## What leaves the device
 
-|                                     | Learning on the device                       | On the account, reporting off                                                                                                                                                                                                                                                                      | On the account, reporting on               |
-| ----------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| Sessions, settings, profile         | `localStorage`, never sent                   | sessions go to `file_host`                                                                                                                                                                                                                                                                         | the same                                   |
-| Session probe (`GET /auth/session`) | never made                                   | at boot, only because the account was chosen                                                                                                                                                                                                                                                       | the same                                   |
-| Passkey ceremonies                  | only when the person starts one              | the same                                                                                                                                                                                                                                                                                           | the same                                   |
-| Lesson, round and vocab reads       | made, **without credentials**                | made, without credentials                                                                                                                                                                                                                                                                          | the same                                   |
-| This device's sessions              | stay here                                    | copied only by "Copy to my account", per account, after a confirmation; the phone's, to its paired home, by "Send to home", which then frees the finished ones home confirms it holds (LA8)                                                                                                        | the same                                   |
-| `/signals`, `/presence/lease`       | never                                        | never                                                                                                                                                                                                                                                                                              | sent                                       |
-| Push subscription                   | never                                        | never                                                                                                                                                                                                                                                                                              | the account's, on the person's own taps    |
-| Reflections                         | on the device (at most 20), never sent       | never sent (LA7)                                                                                                                                                                                                                                                                                   | never sent (LA7)                           |
-| Shelf                               | never                                        | the account's, on the person's own taps                                                                                                                                                                                                                                                            | the same                                   |
-| aph (the phone's)                   | on the phone, never sent                     | once its person keeps it on home, on the paired home, synced while aph is open; the phone keeps only what home has not confirmed; stopped from aph's mark, which brings it back (LA9)                                                                                                              | the same                                   |
-| Jobs record (the phone's)           | on the phone, never sent                     | once its person keeps it on home, a copy on the paired home, synced while the Jobs wing is open; its decisions and scouts files without voice, filed with home, which hands them to the Jobs mailbox on Cloudflare; the phone keeps its whole log; stopped from the wing's mark or Settings (LA10) | the same                                   |
-| Practice (the phone's)              | on the phone, never sent                     | once its person ticks "Keep sending" in the send's confirm, its finished sessions and kept items sent while Practice is open; nothing let go on its own; stopped from its mark or Settings (LA11)                                                                                                  | the same                                   |
-| Speech                              | the browser's own voice                      | the server's speech service                                                                                                                                                                                                                                                                        | the same                                   |
-| Reminders                           | the client's own policy, while a tab is open | the client's own policy, while a tab is open                                                                                                                                                                                                                                                       | the server's push, with the browser closed |
+|                                             | Learning on the device                       | On the account, reporting off                                                                                                                                                                                                                                                                      | On the account, reporting on               |
+| ------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| Sessions, settings, profile                 | `localStorage`, never sent                   | sessions go to `file_host`                                                                                                                                                                                                                                                                         | the same                                   |
+| Session probe (`GET /auth/session`)         | never made                                   | at boot, only because the account was chosen                                                                                                                                                                                                                                                       | the same                                   |
+| Passkey ceremonies                          | only when the person starts one              | the same                                                                                                                                                                                                                                                                                           | the same                                   |
+| Lesson, round and vocab reads               | made, **without credentials**                | made, without credentials                                                                                                                                                                                                                                                                          | the same                                   |
+| This device's sessions                      | stay here                                    | copied only by "Copy to my account", per account, after a confirmation; the phone's, to its paired home, by "Send to home", which then frees the finished ones home confirms it holds (LA8)                                                                                                        | the same                                   |
+| `/signals`, `/presence/lease`               | never                                        | never                                                                                                                                                                                                                                                                                              | sent                                       |
+| Push subscription                           | never                                        | never                                                                                                                                                                                                                                                                                              | the account's, on the person's own taps    |
+| Reflections                                 | on the device (at most 20), never sent       | never sent (LA7)                                                                                                                                                                                                                                                                                   | never sent (LA7)                           |
+| Shelf                                       | never                                        | the account's, on the person's own taps                                                                                                                                                                                                                                                            | the same                                   |
+| aph (the phone's)                           | on the phone, never sent                     | once its person keeps it on home, on the paired home, synced while aph is open; the phone keeps only what home has not confirmed; stopped from aph's mark, which brings it back (LA9)                                                                                                              | the same                                   |
+| Jobs record (the phone's)                   | on the phone, never sent                     | once its person keeps it on home, a copy on the paired home, synced while the Jobs wing is open; its decisions and scouts files without voice, filed with home, which hands them to the Jobs mailbox on Cloudflare; the phone keeps its whole log; stopped from the wing's mark or Settings (LA10) | the same                                   |
+| Practice (the phone's)                      | on the phone, never sent                     | once its person ticks "Keep sending" in the send's confirm, its finished sessions and kept items sent while Practice is open; nothing let go on its own; stopped from its mark or Settings (LA11)                                                                                                  | the same                                   |
+| The routine's word sets and dramas (home's) | not read                                     | read with the account's session while Korean is open; in the Android app, once its person shows them in Korean (Settings), from the paired home with the pairing's key while Korean is open, nothing of the phone's sent and what is read held in memory only; stopped from Settings (LA12)        | the same                                   |
+| Speech                                      | the browser's own voice                      | the server's speech service                                                                                                                                                                                                                                                                        | the same                                   |
+| Reminders                                   | the client's own policy, while a tab is open | the client's own policy, while a tab is open                                                                                                                                                                                                                                                       | the server's push, with the browser closed |
 
 A returning account user whose server cannot be reached at boot (a timeout, a
 5xx, a refused connection) stays on the account, and its calls fail where they
@@ -309,8 +310,10 @@ declared (checked by reading every call site and by the tests named).
 - _Claim:_ in the Android app, every request to the home server goes through
   `lib/device-backend/native-http` (the one module that names
   `CapacitorHttp`), which only `lib/home-link` calls, and, but for a record
-  kept on home (aph, LA9; the Jobs record, LA10; Practice, LA11: the other
-  callers of `lib/home-link`), is started by a tap
+  kept on home (aph, LA9; the Jobs record, LA10; Practice, LA11) and for
+  Korean's look at the routine's files (LA12, the one request started
+  neither by a tap nor by a record's send), which are the other callers of
+  `lib/home-link`, is started by a tap
   in the Home server block of Settings
   (`components/settings/device-section.tsx`):
   the sync (published lessons and rounds, read with no credential), pairing
@@ -327,7 +330,7 @@ declared (checked by reading every call site and by the tests named).
   as it is now, by what home last answered for it under this pairing
   (`./sent`), its bytes as kept, nothing read back and the item kept on the
   phone. Nothing on home is
-  deleted. Outside LA9 to LA11, nothing is sent when the app or Settings
+  deleted. Outside LA9 to LA12, nothing is sent when the app or Settings
   opens, on resume, on a timer or on a network change: making the runtime and
   `load` read only the phone's own record. There is no retry; a sync, a send,
   a copy or a record's keeping ends at Stop, or when the app goes to the
@@ -350,9 +353,9 @@ declared (checked by reading every call site and by the tests named).
   a `homeLink()` method that sends (`pair`, `unpair`, `sync`, `send`) from anywhere but
   a press handler in the Home server block or a module that block calls; one
   that calls its `keep` from anywhere but `lib/home-link/lanes.ts` (LA9 to
-  LA11); one
+  LA11) and `lib/home-link/routine.ts` (LA12); one
   that sends from `createHomeLink`,
-  `load`, or, outside those two, a `useEffect`, a timer, a
+  `load`, or, outside LA9 to LA12, a `useEffect`, a timer, a
   `visibilitychange` or `online` listener; one that retries a failed home
   request, or queues one for later, outside LA9 to LA11; one that lets the send start without
   its confirm, or drops a count or the host from that confirm; one that
@@ -410,7 +413,9 @@ declared (checked by reading every call site and by the tests named).
   `lib/home-link/index.ts` imports as a value (its `no-answer` sibling holds
   an error class and no request), and `lib/home-link` imported
   only by the Home server block and its ledger of what is shared, the marks
-  of the records kept on home and what hands aph's lane to its mark). What a test cannot say is that a call
+  of the records kept on home, what hands aph's lane to its mark, and
+  LA12's choice and port; the routine's read sends one `GET /routine/files`
+  and nothing else). What a test cannot say is that a call
   site in that block is a tap: a lint rule cannot
   tell a press handler from an effect that reaches it through a helper.
   Held when declared, by reading every caller (`device-section.tsx` alone
@@ -434,7 +439,11 @@ declared (checked by reading every call site and by the tests named).
   with no way back, from the stop's second press in the mark or Settings'
   ledger, and again when a mark's link listener finds that run turned away
   busy): all LA9's; its choices add to the consent log, and home is told
-  each, never its words.
+  each, never its words. Held again when Korean's look at the routine's
+  files (LA12) joined `keep`'s callers: `lib/home-link/routine.ts` calls it
+  only from `list`, with one `GET /routine/files`, never retried, and
+  nothing else of the link (`egress-choke-points` pins that it calls `keep`
+  and sends that one request; that it does so only from `list` is read).
 
 ### LA9: aph is sent home only while its person is using it
 
@@ -732,6 +741,101 @@ is when a run is asked for:
   `onPress`, behind the ticked box, and its sheet showing no opt-in
   (`startElsewhere`).
 
+### LA12: Korean reads the routine's files from home only while its person shows them there
+
+The owner chose (2026-10-24) a read-only way to what the reflections routine
+left on home: after one opt-in, while the Korean study is open, the phone
+reads `GET /routine/files` (paulgsc/server `handlers/routine.rs`) from its
+paired home with the pairing's key, and the handheld lesson lists it under
+"From the routine". It is not a lane: home keeps no choice for it (the
+server's sharing scopes are a closed set, so telling it one would be refused
+and hold up every lane's run), and nothing of the phone's is sent. The
+choice is the phone's own log, `some-ui.home.reads.v1`, which only grows
+and counts for the pairing it was made under alone.
+
+What a look sends and keeps is enforced by test: no request unless shown
+under the pairing the phone holds with the app in front, one `GET` per look
+and one on its way shared, no request as time passes, every failure resolved
+(never rejected, so the app's query cannot retry it) with what was last read
+under the same choice, nothing held once stopped, unpaired or paired anew, an
+answer landing after a stop dropped, and an unreadable log never written over
+(`lib/home-link/__tests__/routine.test.ts`); the read being `keep`'s only
+other caller and its one send `GET /routine/files`, and who may import the
+link (`egress-choke-points`); Settings sending nothing, naming home before
+the choice, and taking a second press to show and to stop, with the words
+agreed to kept (`components/settings/__tests__/device-routine-reads.test.tsx`);
+the words naming no machinery (`words.test.ts`); and a new key listing
+nothing of the old one's (topik's `handheld-lesson/index.test.tsx`). What no
+test can say is when a look is asked for:
+
+- _Claim:_ in the Android app, `routineReads().list()`
+  (`lib/home-link/routine.ts`) is called only through the port
+  `useHomeRoutineFiles` (`components/player/device-routine-files.ts`)
+  returns, which exists only while the phone is paired and the read log
+  shows the files under that pairing, keyed by the pairing and since when;
+  `session-viewport.tsx` hands that port to topik's `routineFiles` alone,
+  in the device build alone, and topik reads it only in the handheld
+  lesson's `useRoutineFiles` query (on the lesson mounting and the app
+  coming back to the front, while Korean is open; never on an interval, a
+  reconnect or a retry); a
+  choice enters the log only from a second press in Settings
+  (`components/settings/device-routine-reads.tsx`), showing with the words
+  its first press showed and stopping with the stop's.
+- _Falsified by:_ a hunk that calls `routineReads()`'s `list` anywhere but
+  the port in `device-routine-files.ts`, or its `choose` anywhere but the
+  two second-press `onClick`s in `device-routine-reads.tsx`; a hunk to
+  `device-routine-files.ts` that returns a port while `underNow` is null,
+  keys it on anything but the pairing and since when, or whose `list` does
+  more than call `list`; a hunk to `session-viewport.tsx` that reaches
+  `useHomeRoutineFiles` other than through `useRoutineFromHome`'s
+  `VITE_DEVICE_BACKEND` branch, or hands its port anywhere but topik's
+  `routineFiles`; a hunk to `device-routine-reads.tsx` that calls `choose`
+  on a first press, passes a `said` other than the confirm's words (shown)
+  or the stop's (hidden), or calls `list`; a hunk to `routine.ts` that lets
+  `list` start a read without `mayRead`'s checks or while one under the
+  same choice is on its way, lets it reject, retries a read, starts one from a timer or from the
+  `onLink` listener (which only settles), sends anything but one
+  `GET /routine/files`, keeps an answer whose choice is not the one shown
+  when it lands, removes or weakens `settle`'s clearing, writes the log when
+  it could not read it, or keeps home's files anywhere but memory; a hunk
+  to `routine-model.ts` that changes what any of its functions answers
+  (`shownNow`, `appendedRead`, `parseReadLog`, `underNow`, `sameUnder`,
+  `heldFor`, `mayRead`, `stepRead`: together they judge whose choice is
+  shown, whose answer is kept and whether the log was read, so each such
+  hunk is re-checked against this claim); a hunk to topik's
+  `adapter/server/routine-files-queries` that keys its query on anything
+  but the feed's `key` (or, with none, whether there is a feed), or changes
+  or removes its `enabled`, `staleTime`, `refetchOnMount`,
+  `refetchOnWindowFocus`, `refetchOnReconnect` or `retry`, or adds a
+  `refetchInterval`; a hunk in topik that calls the feed's or the port's
+  `list` anywhere but that query's `queryFn`, or that calls
+  `useRoutineFiles` anywhere but `HandheldLesson`, or to
+  `adapter/routine-files` that drops the port's `key` from the feed; or a
+  hunk that deletes, renames or moves
+  any file, function or constant this claim names without carrying the
+  claim to its new place.
+- _Scope:_ `apps/www/src/lib/home-link/routine.ts`, `routine-model.ts`,
+  `apps/www/src/components/player/device-routine-files.ts`,
+  `apps/www/src/components/player/session-viewport.tsx`,
+  `apps/www/src/components/settings/device-routine-reads.tsx`,
+  `packages/ui/topik/src/lib/topik/adapter/server/routine-files-queries/index.ts`,
+  `packages/ui/topik/src/lib/topik/adapter/routine-files/index.ts`,
+  `packages/ui/topik/src/components/topik/handheld/handheld-lesson/index.tsx`,
+  `packages/ui/topik/src/components/topik/study-session/index.tsx`.
+- _Why not enforced:_ whether a moment is one where its person is using
+  Korean is a reading of intent: a test sees a query run, not the screen it
+  runs for, and a lint rule cannot tell a press handler from an effect that
+  reaches it through a port handed down a prop. The import test says who
+  may reach the link, not which of those calls `list`. Held when declared,
+  by reading every call: `list` only in `device-routine-files.ts`'s port;
+  that port only in `session-viewport.tsx`, under `VITE_DEVICE_BACKEND`, as
+  topik's `routineFiles`; topik's feed only in `KoreanStudyPage`'s session
+  config, read by `useRoutineFiles` in `HandheldLesson` alone, with
+  `refetchOnMount` and `refetchOnWindowFocus`, `refetchOnReconnect` and
+  `retry` off, and no interval; `choose`
+  only in the two second-press `onClick`s; no timer or listener in
+  `routine.ts` but `onLink`, whose listener is `settle`.
+
 ## Not covered, on purpose
 
 - **The shared origin.** On GitHub Pages every project under the same `github.io`
@@ -752,7 +856,8 @@ is when a run is asked for:
   (`lib/session-archive`) hands the share sheet one file of the finished
   sessions' records, and they leave the phone once the learner says it
   arrived. The phone's Home server block
-  syncs, pairs, unpairs and sends to home on a tap (LA8). These are explicit actions on
+  syncs, pairs, unpairs and sends to home on a tap (LA8), and Korean reads
+  the routine's files from home once its person chose to show them (LA12). These are explicit actions on
   the account path or by the learner, not defaults.
 - **The server's side.** What `file_host` stores and logs is
   `paulgsc/server` `docs/identity.md`.

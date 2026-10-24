@@ -63,7 +63,8 @@ type Activity =
   | { readonly kind: "sending"; readonly stopping: boolean }
   /**
    * Keeping a record on home: what it has to send sent, started by
-   * `lib/home-link/lanes` rather than a tap (LA9 to LA11).
+   * `lib/home-link/lanes` rather than a tap (LA9 to LA11); or Korean's look
+   * at the routine's files (`lib/home-link/routine`, LA12).
    */
   | { readonly kind: "keeping"; readonly stopping: boolean }
 

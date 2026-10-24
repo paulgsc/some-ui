@@ -7,6 +7,7 @@ import type {
 } from "@topik/lib/topik"
 import type { LensTakes } from "@topik/lib/topik/adapter/lens-takes"
 import type { FileShare } from "@topik/lib/topik/adapter/next-scene-share"
+import type { RoutineFeed } from "@topik/lib/topik/adapter/routine-files"
 import type { SceneVoice } from "@topik/lib/topik/adapter/scene-voice"
 import type { TreeFeed } from "@topik/lib/topik/adapter/tree-feed"
 
@@ -30,6 +31,11 @@ export type SessionConfig = {
    * lesson only. Absent, it lists none.
    */
   treeFeed?: TreeFeed
+  /**
+   * What the reflections routine left on home (`adapter/routine-files`),
+   * read by the handheld lesson only. Absent, it lists none.
+   */
+  routineFeed?: RoutineFeed
   share?: FileShare
   sceneVoice?: SceneVoice
   sceneFileHint?: string
