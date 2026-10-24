@@ -8,7 +8,9 @@
  *   front.** `list` sends nothing unless the choice log shows the files
  *   under the pairing this phone holds and the app is visible; otherwise it
  *   answers with what it last read under that choice, or no files.
- * - **One read at a time:** a call while one is on its way shares it.
+ * - **One read at a time:** a call while one is on its way, under the same
+ *   choice, shares it. A look the link turns away (it is busy with another
+ *   send) is said nowhere and answers what was held.
  * - **Never rejects, never retries.** The app's query retries a rejection,
  *   and LA8 allows no retry, so every way a read ends resolves: a refusal,
  *   home's silence or a fault on this phone is said in `last`, and the
@@ -158,13 +160,13 @@ export function createRoutineReads(ports: RoutinePorts): RoutineReads {
       return end(under, "failed")
     }
     if (outcome === null) {
-      // Turned away: the link was doing something else, or the phone is no
-      // longer paired, which `settle` clears.
-      if (ports.pairing() === null) {
-        dispatch({ type: "dropped" })
-        return heldNow()
-      }
-      return end(under, "busy")
+      // Turned away: this phone's link was doing something else (a record
+      // kept on home sending), or the phone is no longer paired, which
+      // `settle` clears. Neither is home's to answer for, so nothing is
+      // said; the next look asks again.
+      dispatch({ type: "dropped" })
+      settle()
+      return heldNow()
     }
     if (outcome.kind === "stopped") {
       dispatch({ type: "dropped" })
@@ -183,7 +185,9 @@ export function createRoutineReads(ports: RoutinePorts): RoutineReads {
     return read.files
   }
 
-  let inFlight: Promise<unknown> | null = null
+  // The look on its way, and the choice it was made under: a call under
+  // another choice does not share it.
+  let inFlight: { under: Under; reading: Promise<unknown> } | null = null
 
   return {
     getSnapshot: () => snapshot,
@@ -195,19 +199,23 @@ export function createRoutineReads(ports: RoutinePorts): RoutineReads {
     },
     list(): Promise<unknown> {
       settle()
-      if (inFlight !== null) return inFlight
       const under = underNowHere()
       if (under === null) return Promise.resolve(NO_FILES)
+      if (inFlight !== null && sameUnder(inFlight.under, under)) {
+        return inFlight.reading
+      }
       if (!mayRead(snapshot.read, { under, visible: ports.visible() })) {
         return Promise.resolve(heldNow())
       }
       heldUnder ??= under
       dispatch({ type: "started" })
       const reading = readUnder(under)
-      inFlight = reading
-      void reading.then(() => {
-        if (inFlight === reading) inFlight = null
-      })
+      const looking = { under, reading }
+      inFlight = looking
+      const done = (): void => {
+        if (inFlight === looking) inFlight = null
+      }
+      reading.then(done, done)
       return reading
     },
     choose(kind, said): boolean {

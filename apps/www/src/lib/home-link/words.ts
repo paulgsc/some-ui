@@ -490,7 +490,7 @@ export const ROUTINE_READS = {
     failed: (when: string): string =>
       `Something went wrong when Korean last looked, ${when}.`,
   } satisfies Record<LastRead["kind"], (when: string) => string>,
-  notYet: "Korean looks the next time it opens.",
+  notYet: "Korean looks the next time its list opens on this phone.",
   stop: "Stop showing...",
   stopQuestion: "Stop showing the routine's word sets and dramas in Korean?",
   stopMore: "What you opened stays on this phone.",

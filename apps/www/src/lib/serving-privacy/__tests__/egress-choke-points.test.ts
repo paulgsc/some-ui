@@ -429,7 +429,7 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(problems).toEqual([])
   })
 
-  it("calls native-http only from the link, and the link only from the Home server block and the kept-on-home mark", () => {
+  it("calls native-http only from the link, and the link only from the Home server block, the kept-on-home mark and Korean's look", () => {
     const outsideLink = sources.filter((f) => !f.startsWith("lib/home-link/"))
     expect(
       sources

@@ -190,7 +190,6 @@ describe("Korean's look at the routine's files", () => {
       [{ answer: () => Promise.resolve({ status: 200, body: "<" }) }, "failed"],
       [{ answer: () => Promise.reject(noAnswer()) }, "unreachable"],
       [{ answer: () => Promise.reject(new Error("keystore")) }, "failed"],
-      [{ busy: true }, "busy"],
     ]
     for (const [over, kind] of failures) {
       Object.assign(home, homeOf(over), {
@@ -201,10 +200,49 @@ describe("Korean's look at the routine's files", () => {
       expect(reads.getSnapshot().read.last?.kind).toBe(kind)
       expect(reads.getSnapshot().read.reading).toBe(false)
     }
-    // Each is one look, never tried again: the turned-away one sent nothing.
+    // Each is one look, never tried again.
     expect(home.sent).toHaveLength(7)
     expect(reported).toEqual(["home server (routine)"])
+
+    // This phone's link busy with another send is not home's to answer for:
+    // nothing is said of it, nothing is sent, and what was held answers.
+    home.busy = true
+    home.answer = (): Promise<HomeAnswer> => ok(FILES)
+    await expect(reads.list()).resolves.toEqual(FILES)
+    expect(reads.getSnapshot().read).toMatchObject({
+      reading: false,
+      last: { kind: "failed" },
+    })
+    expect(home.sent).toHaveLength(7)
     unsink()
+  })
+
+  it("shares a look on its way only with a call under the same choice", async () => {
+    const lands: Array<(answer: HomeAnswer) => void> = []
+    const home = homeOf({
+      answer: () =>
+        new Promise((resolve) => {
+          lands.push(resolve)
+        }),
+    })
+    let clock = 10
+    const reads = readsOf(home, memoryStorage(), () => clock)
+    reads.choose("shown", SAID)
+    const old = reads.list()
+    await Promise.resolve()
+    reads.choose("hidden", SAID)
+    clock = 20
+    reads.choose("shown", SAID)
+    // Not the stopped choice's look: nothing yet, and no second request
+    // while one is on its way.
+    await expect(reads.list()).resolves.toEqual(NO_FILES)
+    expect(home.sent).toEqual(["GET /routine/files"])
+    for (const land of lands) land({ status: 200, body: JSON.stringify(FILES) })
+    await expect(old).resolves.toEqual(NO_FILES)
+    // The next look, under the choice shown now, asks home itself.
+    home.answer = (): Promise<HomeAnswer> => ok(FILES)
+    await expect(reads.list()).resolves.toEqual(FILES)
+    expect(home.sent).toHaveLength(2)
   })
 
   it("answers no files, not an earlier choice's, when a first look fails", async () => {

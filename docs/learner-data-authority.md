@@ -310,9 +310,9 @@ declared (checked by reading every call site and by the tests named).
 - _Claim:_ in the Android app, every request to the home server goes through
   `lib/device-backend/native-http` (the one module that names
   `CapacitorHttp`), which only `lib/home-link` calls, and, but for a record
-  kept on home (aph, LA9; the Jobs record, LA10; Practice, LA11) and
+  kept on home (aph, LA9; the Jobs record, LA10; Practice, LA11) and for
   Korean's look at the routine's files (LA12, the one request started
-  neither by a tap nor by a record's send), the other callers of
+  neither by a tap nor by a record's send), which are the other callers of
   `lib/home-link`, is started by a tap
   in the Home server block of Settings
   (`components/settings/device-section.tsx`):
@@ -442,7 +442,8 @@ declared (checked by reading every call site and by the tests named).
   each, never its words. Held again when Korean's look at the routine's
   files (LA12) joined `keep`'s callers: `lib/home-link/routine.ts` calls it
   only from `list`, with one `GET /routine/files`, never retried, and
-  nothing else of the link (`egress-choke-points` pins both).
+  nothing else of the link (`egress-choke-points` pins that it calls `keep`
+  and sends that one request; that it does so only from `list` is read).
 
 ### LA9: aph is sent home only while its person is using it
 
@@ -747,7 +748,8 @@ test can say is when a look is asked for:
   `session-viewport.tsx` hands that port to topik's `routineFiles` alone,
   in the device build alone, and topik reads it only in the handheld
   lesson's `useRoutineFiles` query (on the lesson mounting and the app
-  coming back to the front, while Korean is open, never on an interval); a
+  coming back to the front, while Korean is open; never on an interval, a
+  reconnect or a retry); a
   choice enters the log only from a second press in Settings
   (`components/settings/device-routine-reads.tsx`), showing with the words
   its first press showed and stopping with the stop's.
@@ -762,19 +764,26 @@ test can say is when a look is asked for:
   `routineFiles`; a hunk to `device-routine-reads.tsx` that calls `choose`
   on a first press, passes a `said` other than the confirm's words (shown)
   or the stop's (hidden), or calls `list`; a hunk to `routine.ts` that lets
-  `list` start a read without `mayRead`'s checks or while one is on its
-  way, lets it reject, retries a read, starts one from a timer or from the
+  `list` start a read without `mayRead`'s checks or while one under the
+  same choice is on its way, lets it reject, retries a read, starts one from a timer or from the
   `onLink` listener (which only settles), sends anything but one
   `GET /routine/files`, keeps an answer whose choice is not the one shown
   when it lands, removes or weakens `settle`'s clearing, writes the log when
   it could not read it, or keeps home's files anywhere but memory; a hunk
-  to `routine-model.ts` that makes `shownNow` answer for another pairing,
-  lets `appendedRead` edit, reorder or drop a choice, or drops a condition
-  from `mayRead`; a hunk to topik's `adapter/server/routine-files-queries`
-  that keys its query on anything but the feed's `key` (or, with none,
-  whether there is a feed), adds a `refetchInterval`, or calls it from
-  anywhere but the handheld lesson, or to `adapter/routine-files` that drops
-  the port's `key` from the feed; or a hunk that deletes, renames or moves
+  to `routine-model.ts` that changes what any of its functions answers
+  (`shownNow`, `appendedRead`, `parseReadLog`, `underNow`, `sameUnder`,
+  `heldFor`, `mayRead`, `stepRead`: together they judge whose choice is
+  shown, whose answer is kept and whether the log was read, so each such
+  hunk is re-checked against this claim); a hunk to topik's
+  `adapter/server/routine-files-queries` that keys its query on anything
+  but the feed's `key` (or, with none, whether there is a feed), or changes
+  or removes its `enabled`, `staleTime`, `refetchOnMount`,
+  `refetchOnWindowFocus`, `refetchOnReconnect` or `retry`, or adds a
+  `refetchInterval`; a hunk in topik that calls the feed's or the port's
+  `list` anywhere but that query's `queryFn`, or that calls
+  `useRoutineFiles` anywhere but `HandheldLesson`, or to
+  `adapter/routine-files` that drops the port's `key` from the feed; or a
+  hunk that deletes, renames or moves
   any file, function or constant this claim names without carrying the
   claim to its new place.
 - _Scope:_ `apps/www/src/lib/home-link/routine.ts`, `routine-model.ts`,
@@ -782,7 +791,9 @@ test can say is when a look is asked for:
   `apps/www/src/components/player/session-viewport.tsx`,
   `apps/www/src/components/settings/device-routine-reads.tsx`,
   `packages/ui/topik/src/lib/topik/adapter/server/routine-files-queries/index.ts`,
-  `packages/ui/topik/src/lib/topik/adapter/routine-files/index.ts`.
+  `packages/ui/topik/src/lib/topik/adapter/routine-files/index.ts`,
+  `packages/ui/topik/src/components/topik/handheld/handheld-lesson/index.tsx`,
+  `packages/ui/topik/src/components/topik/study-session/index.tsx`.
 - _Why not enforced:_ whether a moment is one where its person is using
   Korean is a reading of intent: a test sees a query run, not the screen it
   runs for, and a lint rule cannot tell a press handler from an effect that
@@ -792,7 +803,8 @@ test can say is when a look is asked for:
   that port only in `session-viewport.tsx`, under `VITE_DEVICE_BACKEND`, as
   topik's `routineFiles`; topik's feed only in `KoreanStudyPage`'s session
   config, read by `useRoutineFiles` in `HandheldLesson` alone, with
-  `refetchOnMount` and `refetchOnWindowFocus` and no interval; `choose`
+  `refetchOnMount` and `refetchOnWindowFocus`, `refetchOnReconnect` and
+  `retry` off, and no interval; `choose`
   only in the two second-press `onClick`s; no timer or listener in
   `routine.ts` but `onLink`, whose listener is `settle`.
 
