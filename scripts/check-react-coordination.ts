@@ -9,4 +9,4 @@
 import { COORDINATION_CHECK } from "../packages/eslint/src/react-coordination.ts"
 import { runCountedCheck } from "../packages/eslint/src/site-count.ts"
 
-runCountedCheck(COORDINATION_CHECK)
+runCountedCheck(COORDINATION_CHECK, process.argv.slice(2))

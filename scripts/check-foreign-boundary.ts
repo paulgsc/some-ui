@@ -8,4 +8,4 @@
 import { FOREIGN_BOUNDARY_CHECK } from "../packages/eslint/src/foreign-boundary.ts"
 import { runCountedCheck } from "../packages/eslint/src/site-count.ts"
 
-runCountedCheck(FOREIGN_BOUNDARY_CHECK)
+runCountedCheck(FOREIGN_BOUNDARY_CHECK, process.argv.slice(2))

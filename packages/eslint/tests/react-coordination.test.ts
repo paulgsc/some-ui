@@ -12,6 +12,10 @@ import {
   isInScope,
   parseAllowlist,
 } from "@eslint/react-coordination.js"
+import {
+  findGrandfatherGrowth,
+  type AllowlistEntry,
+} from "@eslint/site-count.js"
 import { describe, expect, it } from "vitest"
 
 describe("isInScope", () => {
@@ -158,8 +162,16 @@ describe("coordinationSites", () => {
   })
 })
 
+const e = (
+  path: string,
+  sites: number,
+  line: number,
+  reasoned: boolean,
+  grandfathered: boolean
+): AllowlistEntry => ({ path, sites, line, reasoned, grandfathered })
+
 describe("parseAllowlist", () => {
-  it("reasons every entry by its group's Coordination or Grandfathered line", () => {
+  it("reasons every entry by its group's Coordination or Grandfathered line, and marks the debt", () => {
     const { entries, problems } = parseAllowlist(
       [
         "# header, no reason",
@@ -177,10 +189,10 @@ describe("parseAllowlist", () => {
     )
     expect(problems).toEqual([])
     expect(entries).toEqual([
-      { path: "packages/a.tsx", sites: 2, line: 4, reasoned: true },
-      { path: "packages/b.tsx", sites: 1, line: 5, reasoned: true },
-      { path: "packages/c.tsx", sites: 1, line: 9, reasoned: true },
-      { path: "packages/d.tsx", sites: 3, line: 11, reasoned: false },
+      e("packages/a.tsx", 2, 4, true, true),
+      e("packages/b.tsx", 1, 5, true, true),
+      e("packages/c.tsx", 1, 9, true, false),
+      e("packages/d.tsx", 3, 11, false, false),
     ])
   })
 
@@ -262,5 +274,92 @@ describe("findCoordinationViolations", () => {
         sites: 3,
       })
     ).toContain("Grandfathered, move it under its own")
+  })
+})
+
+describe("findGrandfatherGrowth (R1 and F1: the Grandfathered group only shrinks)", () => {
+  const REASON = /^#\s*(?:Coordination|Grandfathered):\s*\S/
+  const base = [
+    "# Grandfathered: before R1",
+    "3 packages/a.tsx",
+    "2 packages/b.tsx",
+    "",
+    "# Coordination: one awaited submit",
+    "1 packages/c.tsx",
+  ].join("\n")
+  const grow = (allowlist: string): ReturnType<typeof findGrandfatherGrowth> =>
+    findGrandfatherGrowth(allowlist, base, REASON)
+
+  it("passes the same group, a lowered count and a paid-off entry", () => {
+    expect(grow(base)).toEqual([])
+    expect(
+      grow(
+        "# Grandfathered: before R1\n1 packages/a.tsx\n\n# Coordination: x\n1 packages/c.tsx"
+      )
+    ).toEqual([])
+  })
+
+  it("passes debt that moves out under a reason of its own, at any count", () => {
+    expect(
+      grow(
+        "# Grandfathered: before R1\n3 packages/a.tsx\n\n# Coordination: the mic\n5 packages/b.tsx"
+      )
+    ).toEqual([])
+  })
+
+  it("fails a raised count in the group", () => {
+    expect(
+      grow("# Grandfathered: before R1\n4 packages/a.tsx\n2 packages/b.tsx")
+    ).toEqual([
+      {
+        kind: "raisedGrandfathered",
+        path: "packages/a.tsx",
+        line: 2,
+        base: 3,
+        listed: 4,
+      },
+    ])
+  })
+
+  it("fails an entry that joins the group, a reasoned one or a moved file included", () => {
+    expect(
+      grow(
+        "# Grandfathered: before R1\n3 packages/a.tsx\n1 packages/c.tsx\n2 packages/moved/b.tsx"
+      )
+    ).toEqual([
+      { kind: "joinedGrandfathered", path: "packages/c.tsx", line: 3 },
+      { kind: "joinedGrandfathered", path: "packages/moved/b.tsx", line: 4 },
+    ])
+  })
+
+  it("reads a second Grandfathered group as the same debt", () => {
+    expect(
+      grow(
+        "# Grandfathered: before R1\n3 packages/a.tsx\n\n# Grandfathered: again\n9 packages/new.tsx"
+      )
+    ).toEqual([
+      { kind: "joinedGrandfathered", path: "packages/new.tsx", line: 5 },
+    ])
+  })
+
+  it("says where the entry goes instead", () => {
+    expect(
+      describeCoordinationViolation({
+        kind: "joinedGrandfathered",
+        path: "packages/c.tsx",
+        line: 3,
+      })
+    ).toContain(
+      'only shrinks (R1). Put it in its own group under a "# Coordination: <why>" line'
+    )
+    expect(
+      describeCoordinationViolation({
+        kind: "raisedGrandfathered",
+        path: "packages/a.tsx",
+        line: 2,
+        base: 3,
+        listed: 4,
+      })
+    ).toContain("rises from 3 to 4")
   })
 })

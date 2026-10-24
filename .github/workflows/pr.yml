@@ -496,12 +496,23 @@ jobs:
       # needs one package.
       - name: Install the eslint kit
         run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline --filter @some-ui/eslint-kit
+      # Each allowlist's Grandfathered group only shrinks, compared with the
+      # base branch's copy (R1, F1). The checkout is the merge ref alone, so
+      # fetch the base's tip; a `--base` that does not resolve fails the step.
+      - name: Fetch the base branch
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: git fetch --no-tags --depth=1 origin "+$BASE_REF:refs/remotes/origin/$BASE_REF"
       - name: Check React coordination
-        run: nix develop .#ci --command node scripts/check-react-coordination.ts
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: nix develop .#ci --command node scripts/check-react-coordination.ts --base "origin/$BASE_REF"
       # F1 (docs/monorepo-boundaries.md, "A port translates: the foreign
       # boundary"): the same kind of count, over waits on foreign APIs.
       - name: Check the foreign boundary
-        run: nix develop .#ci --command node scripts/check-foreign-boundary.ts
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: nix develop .#ci --command node scripts/check-foreign-boundary.ts --base "origin/$BASE_REF"
 
   # ── Workflow guards (repo-wide) ────────────────────────────────────────
   # Artifact retention (CLAUDE.md "Workflow storage") and the RS1 fingerprint

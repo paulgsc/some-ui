@@ -170,8 +170,8 @@ coordination, each fixed by one more local guard.
 >   `scripts/check-react-coordination.ts`, the root `lint` script or pr.yml's
 >   `react-coordination` job (and its entry in CI Gate's `needs`, which
 >   `allowed-skips` must not list) that narrows what is counted or stops it
->   running: a path excluded, a kind of site dropped, a step removed, a file
->   deleted or renamed.
+>   running: a path excluded, a kind of site dropped, a step removed, the
+>   `--base` comparison or the base fetch dropped, a file deleted or renamed.
 > - _Scope:_ `scripts/react-coordination.allowlist` and the files named
 >   above.
 > - _Why not enforced:_ the count is. `pnpm check:react-coordination` fails
@@ -195,8 +195,10 @@ coordination, each fixed by one more local guard.
 >   turns every change in how much a React module coordinates into a line in
 >   the diff, and that line is where this falsifier is applied, as with RS1's
 >   fingerprint and the Rust side's `scripts/check-mutation-boundary.sh`.
->   "Grandfathered counts never rise" is mechanical; not yet a rule (it needs
->   the base branch's allowlist to compare against).
+>   "Grandfathered counts never rise" is checked too: the same run compares
+>   the `Grandfathered:` group with the base branch's allowlist
+>   (`findGrandfatherGrowth` in `site-count.ts`; pr.yml passes `--base`), and
+>   fails an entry that joins it or a count that rises.
 >
 > True when declared: all 56 entries are in the `Grandfathered:` group, and
 > the check passes on the tree that declares R1.
@@ -256,7 +258,7 @@ came first and stays: its four laws are the same idea inside one package.
 >   that narrows what is counted or stops it running: a foreign module or
 >   global dropped, a kind of site dropped, the `callForeign` exemption
 >   widened past its inline `start` function, a path excluded, a step
->   removed, a file deleted or renamed.
+>   removed, the `--base` comparison dropped, a file deleted or renamed.
 > - _Scope:_ `scripts/foreign-boundary.allowlist` and the files named above.
 > - _Why not enforced:_ the count is: `pnpm check:foreign-boundary` fails any
 >   file whose count differs from its entry, in either direction. Whether a
@@ -265,8 +267,8 @@ came first and stays: its four laws are the same idea inside one package.
 >   settles, so the check never judges: it makes every new unbounded wait a
 >   line in the diff, where this falsifier is applied. What it cannot see is
 >   in `foreign-boundary.ts`'s header, for review. The laws themselves are a
->   test, not this invariant. "Grandfathered counts never rise" is
->   mechanical; not yet a rule, as for R1.
+>   test, not this invariant. "Grandfathered counts never rise" is checked
+>   against the base branch's allowlist, as for R1.
 >
 > True when declared: 12 entries (28 waits) are in the `Grandfathered:`
 > group and one is `Unbounded:` (the native log's own fire-and-forget
