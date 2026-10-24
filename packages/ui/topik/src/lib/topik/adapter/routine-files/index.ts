@@ -20,6 +20,12 @@ import { z } from "zod"
 
 /** The host's way to home; absent, the handheld lists nothing from it. */
 export type RoutineFilesPort = {
+  /**
+   * Whose answers these are, where the host can reach more than one home
+   * (the Android app's pairing, and its person's choice to show them): a
+   * new key lists nothing of the old one's. Absent, there is one.
+   */
+  key?: string
   /** Home's answer, as it came: parsed here. */
   list: () => Promise<unknown>
 }
@@ -97,11 +103,16 @@ export function parseRoutineFiles(answer: unknown): ReadonlyArray<RoutineFile> {
 
 /** Home's files, parsed: what the handheld's query reads. */
 export type RoutineFeed = {
+  /** The port's `key`: what the query is keyed on. */
+  key?: string
   list: () => Promise<ReadonlyArray<RoutineFile>>
 }
 
 export function createRoutineFeed(port: RoutineFilesPort): RoutineFeed {
-  return { list: async () => parseRoutineFiles(await port.list()) }
+  return {
+    ...(port.key === undefined ? {} : { key: port.key }),
+    list: async () => parseRoutineFiles(await port.list()),
+  }
 }
 
 export const ROUTINE_OPENED_KEY = "topik:routine-opened"

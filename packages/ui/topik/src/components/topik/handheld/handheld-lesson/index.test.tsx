@@ -8,6 +8,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react"
 import { EXERCISE_FRAMING } from "@topik/components/topik/handheld/drama-lesson/exercise-framing"
@@ -88,8 +89,8 @@ function renderLesson({
   wordSetHint,
   routineFeed,
   routineOpened = createOpenedStore(memoryStorage()),
-}: RenderOptions = {}): void {
-  const tree = (): JSX.Element => (
+}: RenderOptions = {}): { feedWith: (next: RoutineFeed) => void } {
+  const tree = (feed = routineFeed): JSX.Element => (
     <QueryClientProvider client={client}>
       <SessionConfigProvider
         value={{
@@ -100,7 +101,7 @@ function renderLesson({
           ...(share ? { share } : {}),
           ...(sceneFileHint ? { sceneFileHint } : {}),
           ...(wordSetHint ? { wordSetHint } : {}),
-          ...(routineFeed ? { routineFeed } : {}),
+          ...(feed ? { routineFeed: feed } : {}),
         }}
       >
         <HandheldLesson
@@ -116,7 +117,8 @@ function renderLesson({
       </SessionConfigProvider>
     </QueryClientProvider>
   )
-  render(tree())
+  const { rerender } = render(tree())
+  return { feedWith: (next) => rerender(tree(next)) }
 }
 
 const voice = (say: Speaker["say"]): Speaker => ({
@@ -475,6 +477,45 @@ describe("HandheldLesson", () => {
       "This phone keeps 50 word sets and has 49, so these 2 weren't added."
     )
     expect(store.sets()).toHaveLength(49)
+  })
+
+  it("lists nothing of an earlier home's once the feed's key moves on", async () => {
+    const drama = (name: string): RoutineFile => ({
+      kind: "drama",
+      name,
+      tree: workedLesson(),
+    })
+    let answer: (files: ReadonlyArray<RoutineFile>) => void = () => undefined
+    const { feedWith } = renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: createReadAloudStore(memoryStorage()),
+      routineFeed: {
+        key: "pairing-1@1",
+        list: () => Promise.resolve([drama("old.json"), drama("older.json")]),
+      },
+    })
+    const waiting = await screen.findByRole("region", {
+      name: "From the routine",
+    })
+    expect(within(waiting).getAllByRole("button")).toHaveLength(2)
+
+    feedWith({
+      key: "pairing-2@9",
+      list: () =>
+        new Promise((resolve) => {
+          answer = resolve
+        }),
+    })
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("region", { name: "From the routine" })
+      ).toBeNull()
+    )
+    act(() => answer([drama("new.json")]))
+    const fresh = await screen.findByRole("region", {
+      name: "From the routine",
+    })
+    expect(within(fresh).getAllByRole("button")).toHaveLength(1)
   })
 
   it("lists nothing from the routine where the host reaches no home", async () => {

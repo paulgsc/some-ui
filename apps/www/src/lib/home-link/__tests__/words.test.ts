@@ -1,6 +1,7 @@
 /**
- * Each lane's sharing words (LA9 to LA11): each state reads as what is kept
- * where, and none of them names the machinery behind it.
+ * Each lane's sharing words (LA9 to LA11), and the routine's files shown in
+ * Korean (LA12): each state reads as what is kept where, and none of them
+ * names the machinery behind it.
  */
 import { describe, expect, it } from "vitest"
 
@@ -9,7 +10,13 @@ import type { KeptRun, KeptState } from "@/lib/home-link/kept-model"
 import { INITIAL_KEPT } from "@/lib/home-link/kept-model"
 import type { LaneFacts } from "@/lib/home-link/words"
 import * as words from "@/lib/home-link/words"
-import { historyLines, laneView, WORDS } from "@/lib/home-link/words"
+import {
+  historyLines,
+  laneView,
+  lastLook,
+  ROUTINE_READS,
+  WORDS,
+} from "@/lib/home-link/words"
 
 import { MACHINERY } from "./machinery"
 
@@ -256,5 +263,26 @@ describe("the ledger's history", () => {
       "day 1 · aph: kept on home, under an earlier pairing, as chosen before this phone kept its choices.",
     ])
     expect(lines.filter((line) => MACHINERY.test(line.text))).toEqual([])
+  })
+})
+
+describe("the routine's files in Korean", () => {
+  it("says every look in the person's terms, and that showing sends nothing", () => {
+    const looks = [
+      lastLook(null),
+      ...(["read", "busy", "unreachable", "forgotten", "failed"] as const).map(
+        (kind) => lastLook({ kind, at: 1 }, () => "18 Oct, 10:42")
+      ),
+    ]
+    expect(new Set(looks).size).toBe(looks.length)
+    expect(looks.filter((line) => MACHINERY.test(line))).toEqual([])
+    expect(lastLook({ kind: "read", at: 1 }, () => "18 Oct, 10:42")).toBe(
+      "Last looked at home 18 Oct, 10:42."
+    )
+    const confirm = ROUTINE_READS.confirm("home.example")
+    expect(confirm).toContain("home.example")
+    expect(confirm).toContain("It sends nothing of yours.")
+    expect(ROUTINE_READS.on("18 Oct")).toBe("Shown in Korean since 18 Oct.")
+    expect(ROUTINE_READS.stopMore).toBe("What you opened stays on this phone.")
   })
 })

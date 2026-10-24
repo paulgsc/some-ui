@@ -1,6 +1,7 @@
 /**
  * Every word a record kept on home shows (LA9 to LA11): each lane's mark in
- * the header, its sheet, and the choice to keep sending. Pure, and the one
+ * the header, its sheet, and the choice to keep sending; and Settings'
+ * choice to show the routine's files in Korean (LA12). Pure, and the one
  * place those words live, so they stay in the person's terms (what is kept
  * where, and since when) and never the machinery's: no request, status
  * code, address or state name reaches the screen (`__tests__/words.test.ts`).
@@ -10,6 +11,7 @@ import { counted } from "@some-ui/core-utils"
 import type { ConsentLog, Scope, Shared } from "./consent-model"
 import type { KeptState } from "./kept-model"
 import type { LaneCounts, LaneId } from "./lanes"
+import type { LastRead } from "./routine-model"
 
 /** One row of a lane's sheet: what one scope is called, and one of it. */
 type Row = {
@@ -459,4 +461,58 @@ export function laneView(
     )
   }
   return show("kept", "On home", "Kept on home. Up to date.")
+}
+
+/**
+ * Korean's look at what the reflections routine left on home (LA12):
+ * Settings' choice to show it there, and how the last look went.
+ */
+export const ROUTINE_READS = {
+  title: "From the routine",
+  off: "Korean on this phone doesn't show the word sets and dramas the routine leaves on home.",
+  show: "Show them in Korean...",
+  /** The first press's question: also the words kept with the choice. */
+  confirm: (host: string): string =>
+    `Show the routine's word sets and dramas from ${host} in Korean? While Korean is open, this phone looks at what ${host} holds for you. It sends nothing of yours.`,
+  confirmYes: "Show them",
+  confirmNo: "Cancel",
+  refused: "This phone couldn't keep that choice. Nothing changed.",
+  on: (day: string): string => `Shown in Korean since ${day}.`,
+  /** How the last look went, given when. */
+  last: {
+    read: (when: string): string => `Last looked at home ${when}.`,
+    busy: (when: string): string =>
+      `Home was busy when Korean last looked, ${when}.`,
+    unreachable: (when: string): string =>
+      `Home didn't answer when Korean last looked, ${when}.`,
+    forgotten: (when: string): string =>
+      `Home no longer knows this phone (${when}). Pair it again, then choose to show them again.`,
+    failed: (when: string): string =>
+      `Something went wrong when Korean last looked, ${when}.`,
+  } satisfies Record<LastRead["kind"], (when: string) => string>,
+  notYet: "Korean looks the next time it opens.",
+  stop: "Stop showing...",
+  stopQuestion: "Stop showing the routine's word sets and dramas in Korean?",
+  stopMore: "What you opened stays on this phone.",
+  stopYes: "Stop showing",
+  stopNo: "Keep showing",
+} as const
+
+/** A moment a look was made: its day and time. */
+export const lookedAt = (t: number): string =>
+  new Date(t).toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  })
+
+/** What Settings says of the last look, or that none was made yet. */
+export function lastLook(
+  last: LastRead | null,
+  when: (t: number) => string = lookedAt
+): string {
+  return last === null
+    ? ROUTINE_READS.notYet
+    : ROUTINE_READS.last[last.kind](when(last.at))
 }

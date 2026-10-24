@@ -12,8 +12,9 @@
  * Read only, and only with a passkey session (`401` without). A build with
  * no `file_host` gets no client, so topik lists none. Nor does the Android
  * app: its account is the phone's own backend, and home is reached only
- * through the home link (docs/learner-data-authority.md, LA8), which does
- * not carry these files yet.
+ * through the home link (docs/learner-data-authority.md, LA8), so the app
+ * reads these files there, with the pairing's key, once its person chose
+ * to show them (`lib/home-link/routine`, LA12).
  */
 
 import { MOBILE_APP } from "@/lib/build-profile"

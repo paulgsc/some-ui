@@ -16,8 +16,10 @@
  *   misses a dynamic `import()` and `Capacitor.Plugins.CapacitorHttp`: only
  *   `lib/device-backend/native-http` may name it, only `lib/home-link` may
  *   call that module, and only the Home server block, the mark of a record
- *   kept on home (aph, LA9; the Jobs record, LA10; Practice, LA11) and what
- *   hands aph's lane to that mark may call `lib/home-link`.
+ *   kept on home (aph, LA9; the Jobs record, LA10; Practice, LA11), what
+ *   hands aph's lane to that mark, and the choice and port of the routine's
+ *   files in Korean (LA12, whose read sends one `GET /routine/files`) may
+ *   call `lib/home-link`.
  *
  * The last group feeds the checks known-bad sources, so a check that stopped
  * looking cannot stay green.
@@ -52,16 +54,43 @@ const HOME_LINK_CALLERS = new Set([
   // mounts its lane's watch, and what hands aph's lane to it.
   "components/device-home-glyph.tsx",
   "components/aph/device-aph-lane.tsx",
+  // LA12: Settings' choice to show the routine's files in Korean, and the
+  // port Korean reads them through.
+  "components/settings/device-routine-reads.tsx",
+  "components/player/device-routine-files.ts",
 ])
 
 /**
  * LA9, LA10 and LA11: the one wiring of every record kept on home, which
- * calls the link's `keep`, and the runtime it hands that port.
+ * calls the link's `keep`, and the runtime it hands that port; and LA12:
+ * Korean's read of the routine's files.
  */
 const KEEPERS = new Set([
   "lib/home-link/lanes.ts",
   "lib/home-link/kept-runtime.ts",
+  "lib/home-link/routine.ts",
 ])
+
+/** LA12: the routine's read, and the one request it may send. */
+const ROUTINE_READ = "lib/home-link/routine.ts"
+const ROUTINE_SEND = ['"GET"', '"/routine/files"']
+
+/** Every call of a function named `send` in `text`, as its arguments' text. */
+function sendCalls(path: string, text: string): Array<Array<string>> {
+  const found: Array<Array<string>> = []
+  const file = parse(path, text)
+  walk(file, (node) => {
+    if (
+      ts.isCallExpression(node) &&
+      ((ts.isIdentifier(node.expression) && node.expression.text === "send") ||
+        (ts.isPropertyAccessExpression(node.expression) &&
+          node.expression.name.text === "send"))
+    ) {
+      found.push(node.arguments.map((argument) => argument.getText(file)))
+    }
+  })
+  return found
+}
 
 /** Every mention of `CapacitorHttp` in `text`: an import, a member, a string. */
 function nativeHttpUses(path: string, text: string): Array<string> {
@@ -423,6 +452,11 @@ describe("LA8: the phone reaches home through one module", () => {
     )
     expect(reach.filter(keeps)).toEqual([])
     expect(read("lib/home-link/lanes.ts")).toContain("homeLink().keep(")
+    expect(read(ROUTINE_READ)).toContain("homeLink().keep(")
+  })
+
+  it("sends nothing from the routine's read but one GET /routine/files (LA12)", () => {
+    expect(sendCalls(ROUTINE_READ, read(ROUTINE_READ))).toEqual([ROUTINE_SEND])
   })
 
   it("still finds what it is meant to guard", () => {
@@ -521,6 +555,15 @@ describe("the checks themselves", () => {
         isNativeHttp
       )
     ).toEqual([])
+  })
+
+  it("finds every send, by name or as a member, with what it sends", () => {
+    expect(
+      sendCalls(
+        "x.ts",
+        'void send("GET", "/routine/files"); void link.send("PUT", path, body); void sender("GET", "/x")'
+      )
+    ).toEqual([ROUTINE_SEND, ['"PUT"', "path", "body"]])
   })
 
   it("flags an eslint-disable of the rule and nothing else", () => {

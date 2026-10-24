@@ -84,8 +84,10 @@ export type KoreanStudyPageProps = {
   /**
    * Home's word sets and dramas from the reflections routine
    * (`adapter/routine-files`), which only the handheld lists. A plain object
-   * for the same reason as the loaders; `apps/www` passes one only with a
-   * passkey session on a build with a `file_host`. Absent, none are listed.
+   * for the same reason as the loaders; `apps/www` passes one with a
+   * passkey session on a build with a `file_host`, and in the Android app
+   * once its person chose to show them from the paired home, keyed by that
+   * choice (`key`, carried into the feed). Absent, none are listed.
    */
   routineFiles?: RoutineFilesPort
   /** The Android app's share sheet (`FileShare`); absent, none is offered. */
