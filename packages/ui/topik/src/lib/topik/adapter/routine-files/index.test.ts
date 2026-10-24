@@ -123,6 +123,18 @@ describe("parseRoutineFiles", () => {
     expect(runs.held("").lookedAt).toBeNull()
   })
 
+  it("keeps the newest answer for each home that any page on the device kept", () => {
+    const storage = memoryStorage()
+    const first = createHeldAnswers(storage)
+    const second = createHeldAnswers(storage)
+    first.keep("a", "2026-10-24T18:00:00.000Z", { n: "newer" })
+    second.keep("a", "2026-10-24T17:00:00.000Z", { n: "older" })
+    second.keep("b", "2026-10-24T17:00:00.000Z", { n: "b" })
+    const again = createHeldAnswers(storage)
+    expect(again.held("a")).toEqual({ n: "newer" })
+    expect(again.held("b")).toEqual({ n: "b" })
+  })
+
   it("keeps home's answers across copies on one device, and moves one it cannot read aside", () => {
     const storage = memoryStorage()
     createHeldAnswers(storage).keep("a", "2026-10-24T00:00:00.000Z", { n: 1 })

@@ -194,23 +194,43 @@ function parseHeld(
 export function createHeldAnswers(
   storage: KeyedStorage | null = localStorageOrNull()
 ): HeldAnswers {
-  const opened =
-    storage === null
-      ? null
-      : openRecord(
-          storage,
-          ROUTINE_ANSWERS_KEY,
-          parseHeld,
-          `${ROUTINE_ANSWERS_KEY}:unreadable:`
-        )
-  let homes = opened?.kind === "kept" ? opened.value : {}
+  type Homes = Record<string, { at: string; answer: unknown }>
+  /** What is stored, or null when storage throws (nothing may be written). */
+  const read = (): Homes | null => {
+    if (storage === null) return null
+    const opened = openRecord(
+      storage,
+      ROUTINE_ANSWERS_KEY,
+      parseHeld,
+      `${ROUTINE_ANSWERS_KEY}:unreadable:`
+    )
+    if (opened.kind === "unreadable") return null
+    return opened.kind === "kept" ? opened.value : {}
+  }
+  /** Each home's newer answer of the two. */
+  const newest = (a: Homes, b: Homes): Homes => {
+    const both = { ...a }
+    for (const [key, held] of Object.entries(b)) {
+      const mine = both[key]
+      if (mine === undefined || mine.at.localeCompare(held.at) < 0) {
+        both[key] = held
+      }
+    }
+    return both
+  }
+  const first = read()
+  let writable = first !== null
+  let homes: Homes = first ?? {}
   return {
     held: (key) => homes[key]?.answer ?? null,
     keep(key, at, answer): void {
-      const was = homes[key]
-      if (was !== undefined && was.at.localeCompare(at) >= 0) return
-      homes = { ...homes, [key]: { at, answer } }
-      if (storage === null || opened?.kind === "unreadable") return
+      homes = newest(homes, { [key]: { at, answer } })
+      // Another page on this device may have kept a newer answer since this
+      // one read: the newest for each home is what is written.
+      const stored = writable ? read() : null
+      if (stored === null) writable = false
+      if (stored === null || storage === null) return
+      homes = newest(homes, stored)
       writeRecord(
         storage,
         ROUTINE_ANSWERS_KEY,
