@@ -308,10 +308,16 @@ describe("the routine's study files", () => {
     tree: {},
   })
   // As the phone names a reflection: every session id starts `session-`.
+  const RUN = JSON.stringify({
+    schema: "some-ui.routine-run/1",
+    routine: "reflections",
+    startedAt: "2026-10-13T16:02:08Z",
+  })
   const SCENE_NAME = "scene-2026-10-13_morning-drama_session-.json"
   const DRAMA_NAME = "drama-20261013T145200123Z.json"
+  const RUN_NAME = "run-reflections-20261013T160208Z.json"
 
-  it("the routine puts a scene and a drama, and home reads them and may not put them", async () => {
+  it("the routine puts a scene, a drama and a run, and home reads them and may not put them", async () => {
     const d = deps()
     expect((await put(d, "scene", SCENE_NAME, { body: SCENE })).status).toBe(
       201
@@ -319,9 +325,11 @@ describe("the routine's study files", () => {
     expect((await put(d, "drama", DRAMA_NAME, { body: DRAMA })).status).toBe(
       201
     )
+    expect((await put(d, "run", RUN_NAME, { body: RUN })).status).toBe(201)
     for (const [folder, name] of [
       ["scene", SCENE_NAME],
       ["drama", DRAMA_NAME],
+      ["run", RUN_NAME],
     ] as const) {
       expect(
         (await send(d, "GET", `/v1/${folder}/items`, { token: HOME })).status
@@ -339,15 +347,25 @@ describe("the routine's study files", () => {
         })
       ).status
     ).toBe(403)
+    expect(
+      (
+        await put(d, "run", "run-reflections-20261014T160208Z.json", {
+          token: HOME,
+          body: RUN,
+        })
+      ).status
+    ).toBe(403)
   })
 
   it("the routine reads them, lists what is archived and asks for one back; only the archive role archives them", async () => {
     const d = deps()
     await put(d, "scene", SCENE_NAME, { body: SCENE })
     await put(d, "drama", DRAMA_NAME, { body: DRAMA })
+    await put(d, "run", RUN_NAME, { body: RUN })
     for (const [folder, name] of [
       ["scene", SCENE_NAME],
       ["drama", DRAMA_NAME],
+      ["run", RUN_NAME],
     ] as const) {
       expect((await send(d, "GET", `/v1/${folder}/items/${name}`)).status).toBe(
         200
@@ -406,6 +424,17 @@ describe("the routine's study files", () => {
         (await put(d, "drama", name, { body: DRAMA })).status,
       ]).toEqual([name, 422])
     }
+    for (const name of [
+      "run-20261013T160208Z.json",
+      "run-Reflections-20261013T160208Z.json",
+      "run-reflections-20261013T160208.json",
+      "run-reflections-2026-10-13.json",
+    ]) {
+      expect([name, (await put(d, "run", name, { body: RUN })).status]).toEqual(
+        [name, 422]
+      )
+    }
+    expect((await put(d, "run", RUN_NAME, { body: SCENE })).status).toBe(422)
     expect((await put(d, "scene", SCENE_NAME, { body: DRAMA })).status).toBe(
       422
     )
@@ -793,7 +822,14 @@ describe("archiving", () => {
 
   it("the archive role reads every folder, archives and puts back, and puts nothing new", async () => {
     const { d, at } = await held()
-    for (const folder of ["brief", "decisions", "scout", "scene", "drama"]) {
+    for (const folder of [
+      "brief",
+      "decisions",
+      "scout",
+      "scene",
+      "drama",
+      "run",
+    ]) {
       expect(
         (await send(d, "GET", `/v1/${folder}/items`, { token: ARCHIVE })).status
       ).toBe(200)

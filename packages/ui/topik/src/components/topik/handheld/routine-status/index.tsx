@@ -1,0 +1,195 @@
+/**
+ * The reflections routine's mark on the handheld start screen
+ * (`core/routine-status`): when it last ran and whether it brought anything
+ * new, at a glance, and a sheet with its runs as home told them and what
+ * each mark means. Its words are `ROUTINE_WORDS`' alone.
+ */
+
+import type { JSX } from "react"
+import { useState } from "react"
+import { cn } from "@some-ui/core-utils"
+import {
+  Button,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@some-ui/shared"
+import type { HeldRuns } from "@topik/lib/topik/adapter/routine-runs"
+import type {
+  RoutineShape,
+  RoutineView,
+} from "@topik/lib/topik/core/routine-status"
+import { ROUTINE_WORDS, runLine } from "@topik/lib/topik/core/routine-status"
+
+/** Runs the sheet lists; all are kept. */
+const SHOWN_RUNS = 14
+
+const TONE: Record<RoutineShape, string> = {
+  fresh: "text-success",
+  opened: "text-success",
+  rested: "text-muted-foreground",
+  unheard: "text-muted-foreground",
+  away: "text-muted-foreground",
+  quiet: "text-warning",
+  trouble: "text-warning",
+}
+
+const LEGEND: ReadonlyArray<RoutineShape> = [
+  "fresh",
+  "opened",
+  "rested",
+  "trouble",
+  "quiet",
+  "away",
+  "unheard",
+]
+
+/**
+ * A sun for the morning run. Each shape differs in form, not only in
+ * colour: rays for something new, a check for all opened, a flat line for
+ * nothing to answer, a broken ring for no word, a mark for trouble.
+ */
+const RoutineMark = ({
+  shape,
+  className,
+}: {
+  shape: RoutineShape
+  className?: string
+}): JSX.Element => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.8}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+    data-shape={shape}
+    className={className}
+  >
+    <circle
+      cx="12"
+      cy="12"
+      r="6"
+      strokeDasharray={
+        shape === "quiet" || shape === "away" || shape === "unheard"
+          ? "2.6 2.4"
+          : undefined
+      }
+    />
+    {shape === "fresh" ? (
+      <path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" />
+    ) : null}
+    {shape === "opened" ? <path d="m9.3 12.2 1.9 1.9 3.6-4" /> : null}
+    {shape === "rested" ? <path d="M9.5 12h5" /> : null}
+    {shape === "trouble" || shape === "quiet" ? (
+      <>
+        <path d="M12 9v3.2" />
+        <path d="M12 15v.1" />
+      </>
+    ) : null}
+  </svg>
+)
+
+export const RoutineStatus = ({
+  view,
+  held,
+  today,
+}: {
+  view: RoutineView
+  held: HeldRuns
+  /** The learner's local day. */
+  today: string
+}): JSX.Element => {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button
+        type="button"
+        data-slot="routine-status"
+        aria-label={ROUTINE_WORDS.open(view)}
+        onClick={() => setOpen(true)}
+        className="bg-card border-border flex min-h-12 shrink-0 items-center gap-3 rounded-2xl border px-4 py-2.5 text-left"
+      >
+        <RoutineMark
+          shape={view.shape}
+          className={cn("size-6 shrink-0", TONE[view.shape])}
+        />
+        <span className="min-w-0 flex-1">
+          <span className={cn("block text-sm font-semibold", TONE[view.shape])}>
+            {view.word}
+          </span>
+          <span className="text-muted-foreground line-clamp-2 block text-xs">
+            {view.line}
+          </span>
+        </span>
+      </button>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent
+          side="bottom"
+          data-slot="routine-sheet"
+          data-scroll-intent="long-form"
+          className={
+            // scroll-intent: long-form — a fortnight of runs and the legend
+            // outgrow a phone held sideways, so the sheet scrolls.
+            "max-h-[85dvh] overflow-y-auto rounded-t-3xl px-5 pt-6 pb-8"
+          }
+        >
+          <SheetHeader className="px-0 text-left">
+            <SheetTitle className="text-xl">{ROUTINE_WORDS.title}</SheetTitle>
+            <SheetDescription className={cn("text-base", TONE[view.shape])}>
+              {view.line}
+            </SheetDescription>
+          </SheetHeader>
+          <p className="text-muted-foreground mt-3 text-sm">
+            {ROUTINE_WORDS.what}
+          </p>
+          {held.runs.length > 0 && (
+            <section aria-label={ROUTINE_WORDS.history} className="mt-4">
+              <h3 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+                {ROUTINE_WORDS.history}
+              </h3>
+              <ol className="mt-2 flex flex-col gap-2">
+                {held.runs.slice(0, SHOWN_RUNS).map((run) => (
+                  <li key={run.name} className="text-sm break-words">
+                    {runLine(run, today)}
+                  </li>
+                ))}
+              </ol>
+              {held.since !== null && (
+                <p className="text-muted-foreground mt-2 text-xs">
+                  {ROUTINE_WORDS.kept(held.since, today)}
+                </p>
+              )}
+            </section>
+          )}
+          <section aria-label={ROUTINE_WORDS.legend} className="mt-4">
+            <h3 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+              {ROUTINE_WORDS.legend}
+            </h3>
+            <ul className="mt-2 flex flex-col gap-2">
+              {LEGEND.map((shape) => (
+                <li key={shape} className="flex items-center gap-3 text-sm">
+                  <RoutineMark
+                    shape={shape}
+                    className={cn("size-5 shrink-0", TONE[shape])}
+                  />
+                  {ROUTINE_WORDS.shapes[shape]}
+                </li>
+              ))}
+            </ul>
+          </section>
+          <Button
+            size="lg"
+            className="mt-5 h-12 w-full rounded-2xl text-base"
+            onClick={() => setOpen(false)}
+          >
+            {ROUTINE_WORDS.done}
+          </Button>
+        </SheetContent>
+      </Sheet>
+    </>
+  )
+}

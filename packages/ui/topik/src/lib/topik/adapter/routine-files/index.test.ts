@@ -6,6 +6,7 @@ import {
   parseRoutineFiles,
   ROUTINE_OPENED_KEY,
 } from "@topik/lib/topik/adapter/routine-files"
+import { createRunLog } from "@topik/lib/topik/adapter/routine-runs"
 import {
   workedExample,
   workedLesson,
@@ -71,15 +72,39 @@ describe("parseRoutineFiles", () => {
     expect(parseRoutineFiles({ files: "no" })).toEqual([])
   })
 
-  it("parses what the port hands back", async () => {
-    const feed = createRoutineFeed({
-      list: () =>
-        Promise.resolve({
-          files: [{ folder: "drama", name: "d.json", file: drama }],
-        }),
-    })
+  it("parses what the port hands back, and keeps the runs it tells of under the port's key", async () => {
+    const runs = createRunLog(memoryStorage())
+    const run = {
+      schema: "some-ui.routine-run/1",
+      startedAt: "2026-10-24T16:02:08Z",
+      outcome: "done",
+      found: { reflections: 0, prompts: 0 },
+      added: [],
+    }
+    const answer = {
+      files: [{ folder: "drama", name: "d.json", file: drama }],
+      runs: [{ folder: "run", name: "run-reflections-1.json", file: run }],
+      at: "2026-10-24T18:00:00.000Z",
+    }
+    const feed = createRoutineFeed(
+      { key: "home-1", list: () => Promise.resolve(answer) },
+      runs
+    )
     await expect(feed.list()).resolves.toHaveLength(1)
-    expect(feed.key).toBeUndefined()
+    expect(feed.runs).toBe(runs)
+    expect(runs.held("home-1")).toMatchObject({
+      runs: [{ name: "run-reflections-1.json" }],
+      lookedAt: answer.at,
+    })
+    expect(runs.held("").runs).toEqual([])
+
+    const before = createRoutineFeed(
+      { list: () => Promise.resolve({ files: [] }) },
+      runs
+    )
+    await before.list()
+    expect(before.key).toBeUndefined()
+    expect(runs.held("").lookedAt).toBeNull()
   })
 
   it("carries the port's key, which the handheld's list is keyed on", () => {

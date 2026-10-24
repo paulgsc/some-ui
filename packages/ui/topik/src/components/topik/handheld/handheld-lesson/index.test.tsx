@@ -29,7 +29,11 @@ import type {
   RoutineFeed,
   RoutineFile,
 } from "@topik/lib/topik/adapter/routine-files"
-import { createOpenedStore } from "@topik/lib/topik/adapter/routine-files"
+import {
+  createOpenedStore,
+  createRoutineFeed,
+} from "@topik/lib/topik/adapter/routine-files"
+import { createRunLog } from "@topik/lib/topik/adapter/routine-runs"
 import type {
   SoundControl,
   ToneContextFactory,
@@ -527,6 +531,57 @@ describe("HandheldLesson", () => {
     expect(
       screen.queryByRole("region", { name: "From the routine" })
     ).toBeNull()
+  })
+
+  it("says when the routine last ran and what it left, from what the phone kept, away from home too", async () => {
+    const runs = createRunLog(memoryStorage())
+    const answer = {
+      files: [],
+      runs: [
+        {
+          folder: "run",
+          name: "run-reflections-20261013T160208Z.json",
+          file: {
+            schema: "some-ui.routine-run/1",
+            startedAt: "2026-10-13T16:02:08Z",
+            outcome: "done",
+            found: { reflections: 1, prompts: 0 },
+            added: [{ folder: "scene", name: "scene-a.json", title: "약속" }],
+          },
+        },
+      ],
+      at: "2026-10-14T05:00:00.000Z",
+    }
+    const { feedWith } = renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: createReadAloudStore(memoryStorage()),
+      routineFeed: createRoutineFeed(
+        { key: "home", list: () => Promise.resolve(answer) },
+        runs
+      ),
+    })
+    const mark = await screen.findByRole("button", {
+      name: /^The routine: New from the routine: a word set/,
+    })
+    expect(mark.textContent).toContain("1 new")
+    fireEvent.click(mark)
+    expect(await screen.findByText(/Added a word set: 약속\.$/)).toBeTruthy()
+    expect(
+      screen.getByRole("region", { name: "What the mark says" })
+    ).toBeTruthy()
+
+    fireEvent.click(screen.getByRole("button", { name: "Done" }))
+
+    // Away from home: the look answers nothing, and what was kept still shows.
+    feedWith(
+      createRoutineFeed(
+        { key: "home", list: () => Promise.resolve({ files: [] }) },
+        runs
+      )
+    )
+    expect(
+      await screen.findByRole("button", { name: /^The routine: New/ })
+    ).toBeTruthy()
   })
 
   it("says what a set is for and where it takes place, and opens a lens set on the lens", async () => {

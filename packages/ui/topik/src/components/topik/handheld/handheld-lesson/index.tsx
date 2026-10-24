@@ -21,7 +21,7 @@
 
 import type { JSX } from "react"
 import { useMemo, useState, useSyncExternalStore } from "react"
-import { cn } from "@some-ui/core-utils"
+import { cn, dayOf } from "@some-ui/core-utils"
 import { Button, KeepOnShelf, KeptShelf } from "@some-ui/shared"
 import { CastSheet } from "@topik/components/topik/handheld/cast-sheet"
 import { DramaLesson } from "@topik/components/topik/handheld/drama-lesson"
@@ -31,6 +31,7 @@ import type {
   StorageNote,
 } from "@topik/components/topik/handheld/material-list"
 import { MaterialList } from "@topik/components/topik/handheld/material-list"
+import { RoutineStatus } from "@topik/components/topik/handheld/routine-status"
 import { SharePrompt } from "@topik/components/topik/handheld/share-prompt"
 import { ReadAloudScreen } from "@topik/components/topik/read-aloud/read-aloud-screen"
 import { useSessionConfig } from "@topik/lib/topik/adapter/context/session-config-context"
@@ -56,6 +57,7 @@ import {
   createOpenedStore,
   openedKey,
 } from "@topik/lib/topik/adapter/routine-files"
+import type { HeldRuns, RunLog } from "@topik/lib/topik/adapter/routine-runs"
 import { useRoutineFiles } from "@topik/lib/topik/adapter/server/routine-files-queries"
 import { useTopikManifest } from "@topik/lib/topik/adapter/server/topik-metadata-queries"
 import {
@@ -83,6 +85,7 @@ import type { DramaLesson as Tree } from "@topik/lib/topik/core/drama"
 import { titleOf } from "@topik/lib/topik/core/drama"
 import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
 import type { Seed } from "@topik/lib/topik/core/feed-card"
+import { routineView } from "@topik/lib/topik/core/routine-status"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 import { intakeTree } from "@topik/lib/topik/generation/tree-intake"
 import {
@@ -276,6 +279,7 @@ export const HandheldLesson = ({
   const routine = useRoutineFiles(routineFeed)
   const [opened] = useState(() => routineOpened ?? createOpenedStore())
   const [openedKeys, setOpenedKeys] = useState(opened.opened)
+  const heldRuns = useHeldRuns(routineFeed?.runs, routineFeed?.key ?? "")
   const [routineNote, setRoutineNote] = useState<StorageNote | null>(null)
   const routineCards = useMemo(() => {
     const cards = (routine.data ?? []).map((file) =>
@@ -580,6 +584,17 @@ export const HandheldLesson = ({
         fromRoutine={routineCards}
         routineNote={routineNote}
         onOpenRoutine={openRoutine}
+        {...(heldRuns === null
+          ? {}
+          : {
+              routineStatus: (
+                <RoutineStatus
+                  view={routineView(heldRuns, openedKeys, now(), dayOf(now()))}
+                  held={heldRuns}
+                  today={dayOf(now())}
+                />
+              ),
+            })}
       />
     )
   })()
@@ -600,6 +615,17 @@ export const HandheldLesson = ({
         />
       )}
     </div>
+  )
+}
+
+const NO_SUBSCRIBE = (): (() => void) => () => {}
+const NO_LOG = (): null => null
+
+/** What the phone holds of the routine's runs from this home, or null with no log. */
+function useHeldRuns(log: RunLog | undefined, key: string): HeldRuns | null {
+  return useSyncExternalStore(
+    log?.subscribe ?? NO_SUBSCRIBE,
+    log === undefined ? NO_LOG : (): HeldRuns => log.held(key)
   )
 }
 

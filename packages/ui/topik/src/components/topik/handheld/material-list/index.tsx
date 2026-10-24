@@ -84,6 +84,12 @@ type MaterialListProps = {
   /** What came of the last one opened. */
   routineNote?: StorageNote | null
   onOpenRoutine?: (key: string) => void
+  /**
+   * The routine's mark (`RoutineStatus`): when it last ran and whether it
+   * brought anything new, above its files and shown without them. Absent
+   * where the host reaches no home.
+   */
+  routineStatus?: JSX.Element
 }
 
 /** A word set pair or a drama the routine left, as its card shows it. */
@@ -426,6 +432,7 @@ export const MaterialList = ({
   fromRoutine = [],
   routineNote = null,
   onOpenRoutine,
+  routineStatus,
 }: MaterialListProps): JSX.Element => (
   <div
     data-slot="topik-material-list"
@@ -460,6 +467,8 @@ export const MaterialList = ({
         </button>
       ))}
     </div>
+
+    {routineStatus}
 
     {onOpenRoutine && fromRoutine.length > 0 && (
       <section aria-label="From the routine" className="flex flex-col gap-2">

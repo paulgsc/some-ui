@@ -14,6 +14,11 @@
  */
 
 import { localStorageOrNull } from "@some-ui/core-utils"
+import type { RunLog } from "@topik/lib/topik/adapter/routine-runs"
+import {
+  parseRoutineRuns,
+  sharedRunLog,
+} from "@topik/lib/topik/adapter/routine-runs"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
 import { intakeTree } from "@topik/lib/topik/generation/tree-intake"
 import { z } from "zod"
@@ -106,12 +111,26 @@ export type RoutineFeed = {
   /** The port's `key`: what the query is keyed on. */
   key?: string
   list: () => Promise<ReadonlyArray<RoutineFile>>
+  /**
+   * The routine's runs this phone heard of, kept under `key` as each look
+   * brings them (`adapter/routine-runs`). Absent, none are said.
+   */
+  runs?: RunLog
 }
 
-export function createRoutineFeed(port: RoutineFilesPort): RoutineFeed {
+export function createRoutineFeed(
+  port: RoutineFilesPort,
+  runs: RunLog = sharedRunLog()
+): RoutineFeed {
   return {
     ...(port.key === undefined ? {} : { key: port.key }),
-    list: async () => parseRoutineFiles(await port.list()),
+    list: async (): Promise<ReadonlyArray<RoutineFile>> => {
+      const answer = await port.list()
+      const heard = parseRoutineRuns(answer)
+      if (heard !== null) runs.keep(port.key ?? "", heard)
+      return parseRoutineFiles(answer)
+    },
+    runs,
   }
 }
 
