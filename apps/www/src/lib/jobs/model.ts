@@ -162,6 +162,12 @@ export type JobsState = {
   /** Voice notes whose audio is on the phone, or once was. */
   voice: ReadonlyArray<VoiceNote>
   home: JobsHome
+  /**
+   * Where in the log each share's file began, by the share's id: what it
+   * carried runs from here to its `through` (`./journey`). The phone's own
+   * note, never sent; a share made before it was kept has none.
+   */
+  carried: Readonly<Record<string, number>>
 }
 
 export const EMPTY: JobsState = {
@@ -171,6 +177,7 @@ export const EMPTY: JobsState = {
   log: [],
   voice: [],
   home: { kept: false, held: [], refused: [], refusedFiles: [] },
+  carried: {},
 }
 
 type Stamp = { id: string; at: string }
@@ -186,11 +193,12 @@ export type JobsAction =
   | { type: "fetched"; digests: ReadonlyArray<Digest>; at: string }
   | { type: "voice-kept"; note: VoiceNote }
   | { type: "voice-dropped"; ids: ReadonlyArray<string> }
-  | { type: "record"; event: Draft; stamp: Stamp }
+  /** `since`, for a share: where its file began (`carried`). */
+  | { type: "record"; event: Draft; stamp: Stamp; since?: number }
   /** Several events kept together, or none if any doesn't fit. */
   | {
       type: "record-all"
-      events: ReadonlyArray<{ event: Draft; stamp: Stamp }>
+      events: ReadonlyArray<{ event: Draft; stamp: Stamp; since?: number }>
     }
   /** What one exchange with home learned (`./home`). */
   | {
@@ -399,12 +407,22 @@ export function step(state: JobsState, action: JobsAction): JobsState {
     case "record": {
       if (!fits(state, action.event)) return state
       const event: JobEvent = { ...action.event, ...action.stamp }
-      return { ...state, log: [...state.log, event] }
+      const log = [...state.log, event]
+      if (event.type !== "shared" || action.since === undefined) {
+        return { ...state, log }
+      }
+      const carried = { ...state.carried, [event.id]: action.since }
+      return { ...state, log, carried }
     }
     case "record-all": {
       let next = state
-      for (const { event, stamp } of action.events) {
-        const after = step(next, { type: "record", event, stamp })
+      for (const { event, stamp, since } of action.events) {
+        const after = step(next, {
+          type: "record",
+          event,
+          stamp,
+          ...(since === undefined ? {} : { since }),
+        })
         if (after === next) return state
         next = after
       }

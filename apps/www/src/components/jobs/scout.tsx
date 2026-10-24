@@ -18,7 +18,7 @@ import { Badge, Button, Input, Label, Textarea } from "@some-ui/shared"
 import { ExternalLink } from "lucide-react"
 
 import { phoneJobs } from "@/lib/jobs"
-import { eventJourney } from "@/lib/jobs/journey"
+import { eventJourney, kindJourney } from "@/lib/jobs/journey"
 import { draftVoice, SCOUT_OWNER } from "@/lib/jobs/model"
 import { themeOf } from "@/lib/journey"
 import { Gaps, Scores, sectionHeading } from "@/components/job-reading"
@@ -259,6 +259,15 @@ export const JobsScout = (): JSX.Element => {
             })}
           </ul>
         </section>
+      )}
+      {asking === undefined && (
+        // No card asks, yet a share may still wait to be confirmed, or the
+        // file can't be shared: say so here.
+        <ShareAction
+          kind="scouts"
+          journey={kindJourney(context, "scouts")}
+          label="Share scouts to Drive"
+        />
       )}
     </div>
   )

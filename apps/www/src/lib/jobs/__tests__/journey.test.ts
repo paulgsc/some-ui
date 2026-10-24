@@ -75,7 +75,7 @@ function context(state: JobsState, kept = true): JourneyContext {
 const idOf = (state: JobsState, kept = true): JourneyId | null =>
   kindJourney(context(state, kept), "decisions")?.id ?? null
 
-/** Shared by the sheet at `at`, not yet confirmed; and its id. */
+/** Shared by the sheet at `at`, as the runtime records it; and its id. */
 function share(
   state: JobsState,
   at = NOON,
@@ -95,6 +95,7 @@ function share(
       voice: file.voice.map((v) => v.id),
     },
     stamp: s,
+    since: file.since,
   })
   return { state: next, id: s.id }
 }
@@ -120,6 +121,7 @@ function fileWithHome(
           voice: [],
         },
         stamp: s,
+        since: file.since,
       },
       { event: { type: "arrived", shareId: s.id }, stamp: stamp(at) },
     ],
@@ -301,6 +303,56 @@ describe("JB2: two shares interleaved", () => {
         "decisions"
       )
     ).toBeNull()
+  })
+
+  it("stays in Drive when the share confirmed last is the sheet's", () => {
+    // Shared, not confirmed; home files the same decision; no run names
+    // either; then the person says the sheet's arrived.
+    const shared = share(record(opened, taken()))
+    const filed = fileWithHome(shared.state, later(NOON, 60_000))
+    let state = run(filed.state, NEXT, [], "2026-10-19T16:00:00Z")
+    state = record(
+      state,
+      { type: "arrived", shareId: shared.id },
+      "2026-10-19T17:00:00.000Z"
+    )
+    expect(idOf(state)).toBe("in-drive")
+  })
+
+  it("carries what its file held when it was built, whatever came while the sheet was open", () => {
+    // Home holds the first decision; the sheet's file holds the second
+    // alone; a run that missed the first comes in while the sheet is open.
+    const filed = fileWithHome(record(opened, taken()))
+    let state = record(filed.state, taken(AD))
+    const file = fileOf(state)
+    state = run(state, NEXT, [], "2026-10-19T16:00:00Z")
+    const s = stamp("2026-10-19T16:01:00.000Z")
+    state = step(state, {
+      type: "record",
+      event: {
+        type: "shared",
+        kind: "decisions",
+        day: DAY,
+        file: file.name,
+        through: file.through,
+        voice: [],
+      },
+      stamp: s,
+      since: file.since,
+    })
+    state = record(
+      state,
+      { type: "arrived", shareId: s.id },
+      "2026-10-19T16:02:00.000Z"
+    )
+    const first = state.log.findIndex((e) => e.type === "taken")
+    expect(eventJourney(context(state), first)?.id).toBe("missed-run")
+    expect(
+      outgoing(
+        deliveryView(state, "decisions", new Date("2026-10-19T17:00:00Z")),
+        "decisions"
+      )
+    ).not.toBeNull()
   })
 
   it("says shared only of what the unconfirmed share carried", () => {

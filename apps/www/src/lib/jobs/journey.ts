@@ -12,11 +12,10 @@
  * a run named any file that carried it, and missed when the last file that
  * carried it went home and a later run went by without naming one.
  *
- * What a share carried is what the log held after the share before it that
- * had arrived, as `./files` builds it: replayed here (`ledger`), share by
- * share, from the log as it stood when each was made. The share sheet's
- * file also takes back in what a run missed (`deliveryView`), so a share
- * made then carried that too.
+ * What a share carried runs from where its file began, which the phone
+ * notes as it records the share (`carried`), to its `through`. The share
+ * sheet's file also takes back in what a run missed (`deliveryView`), so
+ * where it began can be earlier than the last share that arrived.
  *
  * JB2 (promise, Change-Kind: defect):
  * - Claim: every control in the Jobs wing whose effect leaves the phone, or
@@ -68,6 +67,8 @@ type ShareLeg = {
   /** Where what it carried ends (`coveredBy`). */
   readonly through: number
   readonly arrival: ArrivedEvent | null
+  /** Where its arrival sits in the log, or -1. */
+  readonly arrivalIndex: number
   /** Filed with home by an exchange, not shared by the sheet. */
   readonly filed: boolean
 }
@@ -95,11 +96,29 @@ function horizon(state: JobsState): number {
   return created[created.length - DIGESTS_KEPT] ?? -Infinity
 }
 
-/** The digests the phone held by `asOf`, oldest run first. */
-function knownBy(state: JobsState, asOf: number): JobsState["digests"] {
-  return [...state.digests]
-    .filter((d) => at(state.firstOpened[d.day] ?? d.createdAt) <= asOf)
-    .sort((a, b) => at(a.createdAt) - at(b.createdAt))
+/** The runs the phone held by `asOf`, as each fate needs them. */
+type Runs = {
+  /** Each file a run named, and the first run that did. */
+  readonly read: ReadonlyMap<string, string>
+  /** Each run: when it was made and when it reached the phone, oldest first. */
+  readonly made: ReadonlyArray<{ day: string; created: number; came: number }>
+  readonly horizon: number
+}
+
+function runsBy(state: JobsState, asOf: number): Runs {
+  const made = state.digests
+    .map((d) => ({
+      day: d.day,
+      read: d.read,
+      created: at(d.createdAt),
+      came: at(state.firstOpened[d.day] ?? d.createdAt),
+    }))
+    .filter((d) => d.came <= asOf)
+    .sort((a, b) => a.created - b.created)
+  const read = new Map<string, string>()
+  for (const d of made)
+    for (const f of d.read) if (!read.has(f)) read.set(f, d.day)
+  return { read, made, horizon: horizon(state) }
 }
 
 /** Where an event stands among the files that carried it, by a time. */
@@ -112,39 +131,36 @@ type Fate =
   | { kind: "unsent"; unconfirmed: boolean }
 
 /**
- * The event at `index`, as the phone knew by `asOf`: read once a run named
- * any file that carried it; else missed when the last that arrived was filed
- * with home and a run made after home could hand it on went by without it;
- * else on its way.
+ * The event at `index`, by `asOf`: read once a run named any file that
+ * carried it; else, by the file that carried it to arrive last, missed when
+ * that file went home and a run made well after home could hand it on went
+ * by without it; else on its way.
  */
 function fateOf(
-  state: JobsState,
   legs: ReadonlyArray<ShareLeg>,
+  runs: Runs,
   index: number,
   asOf: number
 ): Fate {
-  const known = knownBy(state, asOf)
   const carriers = legs.filter((l) => l.since <= index && index < l.through)
   for (const leg of carriers) {
-    const run = known.find((d) => d.read.includes(leg.share.file))
-    if (run) return { kind: "read", leg, day: run.day }
+    const day = runs.read.get(leg.share.file)
+    if (day !== undefined) return { kind: "read", leg, day }
   }
-  const arrived = carriers.filter(
-    (l) => l.arrival !== null && at(l.arrival.at) <= asOf
-  )
+  const arrived = carriers
+    .filter((l) => l.arrival !== null && at(l.arrival.at) <= asOf)
+    .sort((a, b) => a.arrivalIndex - b.arrivalIndex)
   const leg = arrived.at(-1)
   if (leg?.arrival == null) {
     return { kind: "unsent", unconfirmed: carriers.length > arrived.length }
   }
   const since = at(leg.arrival.at)
-  if (since < horizon(state)) return { kind: "too-old" }
+  if (since < runs.horizon) return { kind: "too-old" }
   // Come to the phone after the filing too: a phone's clock running behind
   // the run's can't make a run that went by early.
   const missed = leg.filed
-    ? known.find(
-        (d) =>
-          at(d.createdAt) > since + HANDOVER_MS + RUN_MS &&
-          at(state.firstOpened[d.day] ?? d.createdAt) > since
+    ? runs.made.find(
+        (d) => d.created > since + HANDOVER_MS + RUN_MS && d.came > since
       )
     : undefined
   return missed
@@ -152,20 +168,9 @@ function fateOf(
     : { kind: "on-way", leg }
 }
 
-/** The first event of `kind` before `end` a run missed, by `asOf`, or null. */
-function firstMissed(
-  state: JobsState,
-  kind: ShareKind,
-  legs: ReadonlyArray<ShareLeg>,
-  end: number,
-  asOf: number
-): number | null {
-  for (let i = 0; i < end; i += 1) {
-    const e = state.log.at(i)
-    if (e === undefined || kindOf(e) !== kind) continue
-    if (fateOf(state, legs, i, asOf).kind === "missed") return i
-  }
-  return null
+/** Where share `id`'s file began, if the phone noted it (`carried`). */
+function noted(state: JobsState, id: string): number | undefined {
+  return Object.hasOwn(state.carried, id) ? state.carried[id] : undefined
 }
 
 const ledgers = new WeakMap<
@@ -173,44 +178,38 @@ const ledgers = new WeakMap<
   Map<ShareKind, ReadonlyArray<ShareLeg>>
 >()
 
-/** Every share of `kind`, in log order, with what each carried. */
+/**
+ * Every share of `kind`, in log order, with what each carried: from where
+ * its file began (`carried`), or, for a share made before the phone noted
+ * that, from the end of the last share that had arrived when it was made,
+ * as `./files` built it then.
+ */
 function ledger(state: JobsState, kind: ShareKind): ReadonlyArray<ShareLeg> {
   const cached = ledgers.get(state)?.get(kind)
   if (cached) return cached
-  const legs: Array<ShareLeg> = []
   const arrivals = new Map<string, { event: ArrivedEvent; index: number }>()
   state.log.forEach((e, index) => {
     if (e.type === "arrived" && !arrivals.has(e.shareId)) {
       arrivals.set(e.shareId, { event: e, index })
     }
   })
+  const legs: Array<ShareLeg> = []
   state.log.forEach((e, index) => {
     if (e.type !== "shared" || e.kind !== kind) return
     const arrived = arrivals.get(e.id)
     const filed =
       arrived?.index === index + 1 &&
       Math.abs(at(arrived.event.at) - at(e.at)) <= FILED_WITHIN_MS
-    // What had arrived when it was made; the sheet's file also took back
-    // in what a run had missed, as `deliveryView` does.
-    const missed = filed
-      ? null
-      : firstMissed(state, kind, legs, index, at(e.at))
-    const last = legs
-      .filter((l) => {
-        const done = arrivals.get(l.share.id)
-        return (
-          done !== undefined &&
-          done.index < index &&
-          (missed === null || l.through <= missed)
-        )
-      })
-      .at(-1)
+    const before = legs.filter(
+      (l) => l.arrivalIndex >= 0 && l.arrivalIndex < index
+    )
     legs.push({
       share: e,
       index,
-      since: last?.through ?? 0,
+      since: noted(state, e.id) ?? before.at(-1)?.through ?? 0,
       through: coveredBy(e, index),
       arrival: arrived?.event ?? null,
+      arrivalIndex: arrived?.index ?? -1,
       filed,
     })
   })
@@ -219,6 +218,26 @@ function ledger(state: JobsState, kind: ShareKind): ReadonlyArray<ShareLeg> {
   byKind.set(kind, legs)
   ledgers.set(state, byKind)
   return legs
+}
+
+/** The first event of `kind` a run missed, by `asOf`, or null. */
+function firstMissed(
+  state: JobsState,
+  kind: ShareKind,
+  asOf: number
+): number | null {
+  const legs = ledger(state, kind)
+  const runs = runsBy(state, asOf)
+  // Only what a file filed with home carried can be missed.
+  const filed = legs.filter((l) => l.filed)
+  const from = Math.min(...filed.map((l) => l.since))
+  const to = Math.max(...filed.map((l) => l.through))
+  for (let i = Math.max(0, from); i < Math.min(to, state.log.length); i += 1) {
+    const e = state.log.at(i)
+    if (e === undefined || kindOf(e) !== kind) continue
+    if (fateOf(legs, runs, i, asOf).kind === "missed") return i
+  }
+  return null
 }
 
 /**
@@ -232,11 +251,12 @@ export function deliveryView(
   kind: ShareKind,
   now: Date
 ): JobsState {
-  const legs = ledger(state, kind)
-  const missed = firstMissed(state, kind, legs, state.log.length, now.getTime())
+  const missed = firstMissed(state, kind, now.getTime())
   if (missed === null) return state
   const undone = new Set(
-    legs.filter((l) => l.through > missed).map((l) => l.share.id)
+    ledger(state, kind)
+      .filter((l) => l.through > missed)
+      .map((l) => l.share.id)
   )
   return {
     ...state,
@@ -246,6 +266,17 @@ export function deliveryView(
         : e
     ),
   }
+}
+
+const nowRuns = new WeakMap<JobsState, Runs>()
+
+/** Every run the phone holds, once per record. */
+function runsNow(state: JobsState): Runs {
+  const found = nowRuns.get(state)
+  if (found) return found
+  const runs = runsBy(state, Infinity)
+  nowRuns.set(state, runs)
+  return runs
 }
 
 /** What a card reads its state from. */
@@ -290,7 +321,12 @@ export function eventJourney(
   const event = ctx.state.log.at(index)
   const kind = event === undefined || index < 0 ? null : kindOf(event)
   if (kind === null) return null
-  const fate = fateOf(ctx.state, ledger(ctx.state, kind), index, Infinity)
+  const fate = fateOf(
+    ledger(ctx.state, kind),
+    runsNow(ctx.state),
+    index,
+    Infinity
+  )
   switch (fate.kind) {
     case "read": {
       const via = fate.leg.filed ? "home" : "drive"

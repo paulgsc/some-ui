@@ -323,6 +323,7 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
                 voice: [],
               },
               stamp: shared,
+              since: file.since,
             },
             {
               event: { type: "arrived", shareId: shared.id },
@@ -430,6 +431,7 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
             voice: file.voice.map(({ id }) => id),
           },
           stamp: shareStamp,
+          since: file.since,
         })
         if (!noted) return { outcome: "unrecorded" }
         return { outcome: "shared", shareId: shareStamp.id }

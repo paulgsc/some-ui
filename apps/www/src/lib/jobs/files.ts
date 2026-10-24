@@ -30,6 +30,8 @@ export type OutgoingFile = {
   json: string
   /** Each voice note to send beside it, by the name the file gives it. */
   voice: ReadonlyArray<{ id: string; name: string }>
+  /** Where in the log what it covers begins. */
+  since: number
   /** The log's length it covers. */
   through: number
 }
@@ -225,6 +227,7 @@ export function decisionsFile(
     name: decisionsFileName(day, sharesOn(state, "decisions", day) + 1),
     json: JSON.stringify(file, null, 2),
     voice,
+    since: deliveredThrough(state, "decisions"),
     through: state.log.length,
   }
 }
@@ -254,6 +257,7 @@ export function scoutsFile(state: JobsState, at: Date): Outgoing {
     name: scoutsFileName(stamp),
     json: JSON.stringify(file, null, 2),
     voice,
+    since: deliveredThrough(state, "scouts"),
     through: state.log.length,
   }
 }
