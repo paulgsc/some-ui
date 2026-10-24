@@ -340,14 +340,21 @@ export function kindJourney(
   return mostUrgent([...(pending === null ? [] : [pending]), ...events])
 }
 
-/** The last picks let go together, and when, or null if none were. */
+/**
+ * The last picks let go together, and when, or null if none were. One
+ * letting go is one day's undecided picks, side by side in the log; it
+ * leaves none of that day's undecided, so the next is another day's.
+ */
 export function lastLetGo(
   state: JobsState
 ): { at: string; count: number; indices: ReadonlyArray<number> } | null {
   const last = state.log.map((e) => e.type).lastIndexOf("archived")
-  if (last < 0) return null
+  const tail = state.log.at(last)
+  if (last < 0 || tail?.type !== "archived") return null
   const indices: Array<number> = []
-  for (let i = last; i >= 0 && state.log.at(i)?.type === "archived"; i -= 1) {
+  for (let i = last; i >= 0; i -= 1) {
+    const e = state.log.at(i)
+    if (e?.type !== "archived" || e.day !== tail.day) break
     indices.unshift(i)
   }
   const first = state.log.at(indices[0] ?? last)

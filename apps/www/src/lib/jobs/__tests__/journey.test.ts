@@ -414,6 +414,25 @@ describe("JB2: one event's file", () => {
       count: 2,
     })
     expect(lastLetGo(opened)).toBeNull()
+
+    // Then another day's, with nothing in between: a letting go of its own.
+    const other = digest("2026-10-19")
+    const [pick] = other.picks
+    state = step(state, { type: "opened", digest: other, at: OPENED_AT })
+    state = record(
+      state,
+      {
+        type: "archived",
+        day: other.day,
+        pickId: pick.id,
+        fingerprint: pick.fingerprint,
+      },
+      "2026-10-19T19:30:00.000Z"
+    )
+    expect(lastLetGo(state)).toMatchObject({
+      at: "2026-10-19T19:30:00.000Z",
+      count: 1,
+    })
   })
 
   it("says nothing of a share older than the digests the phone keeps", () => {
