@@ -22,6 +22,7 @@ import {
   createPastedLessonStore,
   RETIRED_KEYS,
 } from "@topik/lib/topik/adapter/pasted-lesson"
+import type { PortionOrderStore } from "@topik/lib/topik/adapter/portion-order"
 import { createPortionOrderStore } from "@topik/lib/topik/adapter/portion-order"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
@@ -78,7 +79,7 @@ type RenderOptions = {
   wordSetHint?: string
   routineFeed?: RoutineFeed
   routineOpened?: OpenedStore
-  portionOrder?: ReturnType<typeof createPortionOrderStore>
+  portionOrder?: PortionOrderStore
   initialOpen?: LessonOpening
 }
 

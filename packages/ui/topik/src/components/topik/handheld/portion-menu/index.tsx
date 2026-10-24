@@ -6,7 +6,7 @@
  * keeps only which screen is up and what was served for the order.
  */
 
-import type { JSX } from "react"
+import type { JSX, ReactNode } from "react"
 import { useState } from "react"
 import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
@@ -126,6 +126,29 @@ function faceOf(dish: Dish): { korean: string; english: string } {
     : { korean: dish.title, english: "" }
 }
 
+/** Either screen's column. */
+const Screen = ({
+  short,
+  children,
+}: {
+  short: boolean
+  children: ReactNode
+}): JSX.Element => (
+  <div
+    data-slot="topik-portion-menu"
+    data-scroll-intent="long-form"
+    className={cn(
+      // scroll-intent: long-form — with large text, the portions or a
+      // snack's sentences and the buttons under them can run past the
+      // screen, and a thumb scrolls them as it does the material list.
+      "flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 pt-2 pb-[max(1.5rem,env(safe-area-inset-bottom))]",
+      short ? "gap-2" : "gap-3.5"
+    )}
+  >
+    {children}
+  </div>
+)
+
 /** The question screen: a portion, then fresh or familiar. */
 export const PortionAsk = ({
   order,
@@ -139,17 +162,7 @@ export const PortionAsk = ({
   /** Landscape phone: compact chrome. */
   short?: boolean
 }): JSX.Element => (
-  <div
-    data-slot="topik-portion-menu"
-    data-scroll-intent="long-form"
-    className={cn(
-      // scroll-intent: long-form — a phone with large text can still run
-      // the portions and the button under them past the screen, and a
-      // thumb scrolls them as it does the material list.
-      "flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 pt-2 pb-[max(1.5rem,env(safe-area-inset-bottom))]",
-      short ? "gap-2" : "gap-3.5"
-    )}
-  >
+  <Screen short={short}>
     <h2
       className={cn(
         "mx-1 leading-snug font-bold",
@@ -253,7 +266,7 @@ export const PortionAsk = ({
     >
       {PORTION_WORDS.serve}
     </Button>
-  </div>
+  </Screen>
 )
 
 /** What was served for `order`, or that nothing fits it. */
@@ -277,16 +290,7 @@ export const PortionServed = ({
 }): JSX.Element => {
   const face = dish && faceOf(dish)
   return (
-    <div
-      data-slot="topik-portion-menu"
-      data-scroll-intent="long-form"
-      className={cn(
-        // scroll-intent: long-form — with large text, a snack's sentences
-        // and the choices under them can run past the screen.
-        "flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 pt-2 pb-[max(1.5rem,env(safe-area-inset-bottom))]",
-        short ? "gap-2" : "gap-3.5"
-      )}
-    >
+    <Screen short={short}>
       <h2 className="text-muted-foreground mx-1 text-xs font-medium tracking-wider uppercase">
         {PORTION_WORDS.served(order)}
       </h2>
@@ -382,7 +386,7 @@ export const PortionServed = ({
           {PORTION_WORDS.change}
         </Button>
       </div>
-    </div>
+    </Screen>
   )
 }
 

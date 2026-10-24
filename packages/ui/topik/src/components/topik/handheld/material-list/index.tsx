@@ -480,7 +480,7 @@ export const MaterialList = ({
       >
         <PortionMark portion="meal" className="text-primary size-7 shrink-0" />
         <span className="min-w-0 flex-1">
-          <span className="block font-semibold">{PORTION_WORDS.entry}</span>
+          <span className="block font-semibold">{PORTION_WORDS.title}</span>
           <span className="text-muted-foreground block text-sm">
             {PORTION_WORDS.entryDetails}
           </span>

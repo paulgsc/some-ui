@@ -457,8 +457,7 @@ export const PANEL_FIXTURES = {
     />
   )),
 
-  // "What are you hungry for?": the question screen, and a snack served at
-  // its longest, four sentences due again.
+  // "What are you hungry for?": the question screen, and `FIT_SNACK`.
   "topik-portion-ask": handheldStage((short) => (
     <PortionAsk
       order={{ portion: "meal", freshness: "seen" }}

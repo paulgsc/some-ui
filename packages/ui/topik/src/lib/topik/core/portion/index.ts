@@ -24,17 +24,24 @@
  * fit, then to the rest; when every one has been served, it starts over.
  */
 
-import { assertNever, fnv1a } from "@some-ui/core-utils"
+import {
+  addDays,
+  assertNever,
+  dayOf,
+  dayWords,
+  fnv1a,
+} from "@some-ui/core-utils"
 import type { RoutineFile } from "@topik/lib/topik/adapter/routine-files"
 import { openedKey } from "@topik/lib/topik/adapter/routine-files"
 import { titleOf } from "@topik/lib/topik/core/drama"
 import type { AddedSet } from "@topik/lib/topik/read-aloud/added-sets"
-import { intakeSet } from "@topik/lib/topik/read-aloud/added-sets"
 import type {
   ReadAloudDeck,
+  ReadAloudLine,
   SetPractice,
 } from "@topik/lib/topik/read-aloud/content"
-import type { Tally } from "@topik/lib/topik/read-aloud/tally"
+import { parseReadAloudDeck } from "@topik/lib/topik/read-aloud/content"
+import type { Tally, TallyRow } from "@topik/lib/topik/read-aloud/tally"
 import { rowOf, tallyKey } from "@topik/lib/topik/read-aloud/tally"
 
 export const PORTIONS = ["bite", "snack", "meal", "dessert"] as const
@@ -58,7 +65,7 @@ export type Fresh =
   | { kind: "due"; lastShown: string }
 
 /** A sentence as the drill reads it: its line's id filed under its set. */
-export type HeldLine = { id: string; korean: string; english: string }
+export type HeldLine = Pick<ReadAloudLine, "id" | "korean" | "english">
 
 /** A word set the phone holds, as the drill reads it on its own. */
 export type HeldSet = {
@@ -126,18 +133,8 @@ export type Dish =
 
 // FRESHNESS
 
-const DAY_MS = 24 * 60 * 60 * 1000
-
-const midnight = (date: Date): number =>
-  new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
-
-/** Local days from `iso` to `now`; none for an instant after it. */
-function daysSince(iso: string, now: Date): number {
-  return Math.max(
-    0,
-    Math.round((midnight(now) - midnight(new Date(iso))) / DAY_MS)
-  )
-}
+const rowFor = (tally: Tally, line: HeldLine): TallyRow | null =>
+  rowOf(tally, tallyKey({ lineId: line.id, text: line.korean }))
 
 /** How a group of sentences stands: see the module comment. */
 function freshOf(
@@ -146,14 +143,14 @@ function freshOf(
   now: Date
 ): Fresh {
   const lasts = lines.flatMap((line) => {
-    const row = rowOf(tally, tallyKey({ lineId: line.id, text: line.korean }))
+    const row = rowFor(tally, line)
     return row ? [row.last] : []
   })
   if (lasts.length === 0) return { kind: "new" }
   const lastShown = lasts.reduce((a, b) =>
     Date.parse(a) >= Date.parse(b) ? a : b
   )
-  return daysSince(lastShown, now) >= DUE_DAYS
+  return dayOf(new Date(lastShown)) <= addDays(dayOf(now), -DUE_DAYS)
     ? { kind: "due", lastShown }
     : { kind: "seen", lastShown }
 }
@@ -170,19 +167,14 @@ const shownAt = (fresh: Fresh): number =>
     ? 0
     : Date.parse(fresh.lastShown)
 
-/** A stable sort: what ties keeps the order it was listed in. */
 const ranked = <T extends { fresh: Fresh }>(
   dishes: ReadonlyArray<T>
 ): Array<T> =>
-  dishes
-    .map((dish, place) => ({ dish, place }))
-    .sort(
-      (a, b) =>
-        RANK[a.dish.fresh.kind] - RANK[b.dish.fresh.kind] ||
-        shownAt(a.dish.fresh) - shownAt(b.dish.fresh) ||
-        a.place - b.place
-    )
-    .map(({ dish }) => dish)
+  [...dishes].sort(
+    (a, b) =>
+      RANK[a.fresh.kind] - RANK[b.fresh.kind] ||
+      shownAt(a.fresh) - shownAt(b.fresh)
+  )
 
 // WHAT EACH PORTION IS CUT FROM
 
@@ -289,7 +281,6 @@ function menuOf(
 
 type LinesDish = Extract<Dish, { portion: "bite" | "snack" }>
 
-/** A bite or a snack: lines read aloud from one set. */
 export const isLines = (dish: Dish): dish is LinesDish =>
   dish.portion === "bite" || dish.portion === "snack"
 
@@ -318,7 +309,6 @@ export function serve({
   )
   const last = served.at(-1)
   const anchor = offered.find((dish) => dish.key === last)
-  // The next lines of the same set come first, in the set's own order.
   const following =
     anchor && isLines(anchor)
       ? offered
@@ -329,7 +319,6 @@ export function serve({
   const passed = new Set(served)
   return (
     [...following, ...offered].find((dish) => !passed.has(dish.key)) ??
-    // All served: start over, past the one on screen if there is another.
     offered.find((dish) => dish.key !== last) ??
     offered.at(0) ??
     null
@@ -365,10 +354,7 @@ export const holdsNew = (held: Holdings, tally: Tally): boolean =>
   held.scenes.some((scene) => !scene.opened) ||
   held.dramas.some((drama) => !drama.seen) ||
   readable(held).some((set) =>
-    set.lines.some(
-      (line) =>
-        rowOf(tally, tallyKey({ lineId: line.id, text: line.korean })) === null
-    )
+    set.lines.some((line) => rowFor(tally, line) === null)
   )
 
 // FROM WHAT THE PHONE HOLDS
@@ -405,11 +391,7 @@ export function holdingsOf({
                 ...(own.practice === undefined
                   ? {}
                   : { practice: own.practice }),
-                lines: own.lines.map(({ id, korean, english }) => ({
-                  id,
-                  korean,
-                  english,
-                })),
+                lines: own.lines,
                 addedAt: set.addedAt,
               },
             ]
@@ -426,8 +408,8 @@ export function holdingsOf({
                   title: file.title,
                   opened: opened.has(openedKey(file)),
                   setIds: file.decks.flatMap((deck) => {
-                    const intake = intakeSet(JSON.stringify(deck), added)
-                    return intake.ok ? [intake.deck.id] : []
+                    const parsed = parseReadAloudDeck(deck)
+                    return parsed.ok ? [parsed.deck.id] : []
                   }),
                 },
               ]
@@ -473,10 +455,8 @@ export function portionDeck(
 
 // WORDS
 
-const ago = (iso: string, now: Date): string => {
-  const days = daysSince(iso, now)
-  return days === 0 ? "today" : days === 1 ? "yesterday" : `${days} days ago`
-}
+const shown = (iso: string, now: Date): string =>
+  `last shown ${dayWords(iso, dayOf(now))}`
 
 /** One set's title, quoted. */
 const from = (title: string): string => `from “${title}”`
@@ -490,8 +470,7 @@ export const PORTION_WORDS = {
   start: "Start",
   another: "Another one like this",
   change: "Change my order",
-  /** The way in from the start screen, and what it offers. */
-  entry: "What are you hungry for?",
+  /** What the way in from the start screen offers, under `title`. */
   entryDetails: "A bite, a snack, a meal or dessert",
   portions: {
     bite: { ko: "한 입", en: "A bite", hint: "One sentence" },
@@ -519,12 +498,12 @@ export const PORTION_WORDS = {
   fact: (dish: Dish, now: Date): string => {
     const { fresh } = dish
     if (fresh.kind === "due") {
-      return `Due again · last shown ${ago(fresh.lastShown, now)}`
+      return `Due again · ${shown(fresh.lastShown, now)}`
     }
     if (fresh.kind === "seen") {
       return fresh.lastShown === undefined
         ? "Seen before"
-        : `Seen before · last shown ${ago(fresh.lastShown, now)}`
+        : `Seen before · ${shown(fresh.lastShown, now)}`
     }
     return "start" in dish && dish.start.from === "routine"
       ? "New · from the routine"

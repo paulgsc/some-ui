@@ -20,6 +20,7 @@ import { CompletionSummary } from "./completion-summary"
 import { NowNextStrip } from "./now-next-strip"
 import { SessionChrome } from "./session-chrome"
 import { StopScreen } from "./session-stop"
+import type { LessonOpening } from "./session-viewport"
 import { SessionViewport } from "./session-viewport"
 import { TransportControls } from "./transport-controls"
 import { useSessionStop } from "./use-session-stop"
@@ -31,7 +32,7 @@ type LivePlayerProps = {
    * Made by "Next lesson" or "Pick a portion" (`components/practice/
    * next-lesson`): where the lesson opens.
    */
-  initialOpening?: "next" | "menu"
+  initialOpening?: LessonOpening
 }
 
 /**

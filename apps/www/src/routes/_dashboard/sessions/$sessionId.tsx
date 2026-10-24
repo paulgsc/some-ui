@@ -14,6 +14,7 @@ import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import { usePresenceLease } from "@/lib/study-nudge/use-presence-lease"
 import { sessionQuery, useSession } from "@/lib/tenant"
 import { LivePlayer } from "@/components/player/live-player"
+import type { LessonOpening } from "@/components/player/session-viewport"
 
 const PlayerSkeleton = (): JSX.Element => (
   <Card className="max-w-3xl">
@@ -77,7 +78,7 @@ export const SessionPlayer = ({
   opening,
 }: {
   sessionId: string
-  opening?: Opening
+  opening?: LessonOpening
 }): JSX.Element => {
   // The same string as this route's URL and the push deep link
   // (`sessions/${id}`), which the server compares a lease against.
@@ -150,26 +151,15 @@ const SessionPlayerRoute = (): JSX.Element => {
   )
 }
 
-/** Where the lesson opens: Topik's `opening`. */
-type Opening = "next" | "menu"
-
-/**
- * `?open=next` or `?open=menu`: Practice Home's "Next lesson" or "Pick a
- * portion" made this session, so it plays at once and opens there. `?next=
- * true` is what "Next lesson" sent before there were two.
- */
-const openOf = (search: Record<string, unknown>): Opening | undefined =>
-  search.open === "next" || search.open === "menu"
-    ? search.open
-    : search.next === true
-      ? "next"
-      : undefined
-
 export const Route = createFileRoute("/_dashboard/sessions/$sessionId")({
-  validateSearch: (search: Record<string, unknown>): { open?: Opening } => {
-    const open = openOf(search)
-    return open ? { open } : {}
-  },
+  // `?open=next` or `?open=menu`: Practice Home's "Next lesson" or "Pick a
+  // portion" made this session, so it plays at once and opens there.
+  validateSearch: (
+    search: Record<string, unknown>
+  ): { open?: LessonOpening } =>
+    search.open === "next" || search.open === "menu"
+      ? { open: search.open }
+      : {},
   // Starts the session fetch when navigation starts (on hover, via
   // `defaultPreload: "intent"`) rather than after mount. Not awaited, and
   // `prefetchQuery` not `ensureQueryData`: a pure head start that never

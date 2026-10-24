@@ -72,10 +72,12 @@ const BIND_OPTIONS = Object.keys(PANELS).map((key) => ({
   label: key,
 }))
 
+/** Where Topik's lesson opens: `HandheldLesson`'s `initialOpen`. */
+export type LessonOpening = "next" | "menu"
+
 type SessionViewportProps = {
   session: SessionRecord
-  /** Topik's `opening`: `HandheldLesson`'s `initialOpen`. */
-  opening?: "next" | "menu"
+  opening?: LessonOpening
 }
 
 export const SessionViewport = ({

@@ -23,6 +23,7 @@ import { IntentButton } from "@/lib/intent/render"
 import { basicSession, startedPatch } from "@/lib/quick-start"
 import type { SessionRecord } from "@/lib/tenant"
 import { useCreateSession, useUpdateSession } from "@/lib/tenant"
+import type { LessonOpening } from "@/components/player/session-viewport"
 
 const activate = (
   session: SessionRecord
@@ -32,10 +33,10 @@ const activate = (
 })
 
 /** Each press's words, by where it opens the lesson. */
-const LABELS = {
-  next: { idle: "Next lesson", working: "Getting it ready..." },
-  menu: { idle: "Pick a portion", working: "Getting it ready..." },
-} as const
+const LABELS: Record<LessonOpening, string> = {
+  next: "Next lesson",
+  menu: "Pick a portion",
+}
 
 export const NextLesson = ({
   open = "next",
@@ -44,7 +45,7 @@ export const NextLesson = ({
   onLaunch,
 }: {
   /** Where the lesson opens: the next lesson, or the portion menu. */
-  open?: keyof typeof LABELS
+  open?: LessonOpening
   variant?: "outline"
   className?: string
   /**
@@ -88,8 +89,8 @@ export const NextLesson = ({
         second: "start",
       })}
       onPress={press}
-      idleLabel={LABELS[open].idle}
-      workingLabel={LABELS[open].working}
+      idleLabel={LABELS[open]}
+      workingLabel="Getting it ready..."
       size="sm"
       variant={variant}
       className={className}

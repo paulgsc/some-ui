@@ -8,11 +8,13 @@ import type {
 } from "@topik/lib/topik/core/portion"
 import {
   DUE_DAYS,
+  FRESHNESS,
   holdingsOf,
   holdsNew,
   openingOrder,
   PORTION_WORDS,
   portionDeck,
+  PORTIONS,
   serve,
   servedAfter,
   SNACK_LINES,
@@ -114,7 +116,7 @@ describe("a bite", () => {
     })
     expect(first?.fresh).toEqual({ kind: "due", lastShown: daysAgo(DUE_DAYS) })
     expect(first && PORTION_WORDS.fact(first, NOW)).toBe(
-      `Due again · last shown ${DUE_DAYS} days ago`
+      "Due again · last shown Oct 17"
     )
   })
 
@@ -423,8 +425,8 @@ describe("its words", () => {
     dramas: [{ start: { from: "pasted" }, title: "숨", seen: true }],
   }
   const tally = shown([lineOf("cafe", 1)], daysAgo(9))
-  const dishes = (["bite", "snack", "meal", "dessert"] as const).flatMap(
-    (portion) => dishesFor(held, tally, order(portion))
+  const dishes = PORTIONS.flatMap((portion) =>
+    dishesFor(held, tally, order(portion))
   )
   const words = [
     PORTION_WORDS.title,
@@ -432,8 +434,8 @@ describe("its words", () => {
     PORTION_WORDS.entryDetails,
     ...Object.values(PORTION_WORDS.portions).flatMap((p) => [p.en, p.hint]),
     ...Object.values(PORTION_WORDS.freshness),
-    ...(["bite", "snack", "meal", "dessert"] as const).flatMap((portion) =>
-      (["new", "seen", "either"] as const).flatMap((freshness) => [
+    ...PORTIONS.flatMap((portion) =>
+      FRESHNESS.flatMap((freshness) => [
         PORTION_WORDS.served(order(portion, freshness)),
         PORTION_WORDS.none(order(portion, freshness)),
       ])
