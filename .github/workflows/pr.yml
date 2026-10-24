@@ -517,6 +517,27 @@ jobs:
       - name: Check workflows
         run: nix develop .#ci --command node scripts/check-workflows.ts
 
+  # ── Change-kind record (repo-wide) ─────────────────────────────────────
+  # Every commit the PR adds ends with `Change-Kind: story|defect`, and its
+  # `Promise:` and `Relates:` lines keep their shapes (CLAUDE.md, "Two kinds
+  # of pull request"; rule in packages/eslint/src/commit-trailers.ts). The
+  # commit-msg hook runs the same check, but only where husky is installed.
+  # Full history, so origin/<base> is the base's tip now: a commit main gained
+  # after the event and the branch merged in is main's, not the PR's. No install.
+  commit-trailers:
+    name: Change-kind trailers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/nix-setup
+      - name: Check every commit's trailers
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: nix develop .#ci --command node scripts/check-commit-trailers.ts "origin/$BASE_REF..$HEAD_SHA"
+
   # ── Toolchain pins (repo-wide) ─────────────────────────────────────────
   # scripts/sync-toolchain.sh --check. No `changes` gate: either side can move
   # alone (a flake.lock bump, a hand edit of .nvmrc), and a hand edit of a copy
@@ -554,6 +575,7 @@ jobs:
         test-layout,
         react-coordination,
         workflows,
+        commit-trailers,
         toolchain,
       ]
     if: always()

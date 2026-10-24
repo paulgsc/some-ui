@@ -74,7 +74,8 @@ What follows from them:
 `.husky/pre-commit` skips its `lint-staged` step when `CLAUDE_CODE_REMOTE=true` — for a
 commit spanning many workspaces, running per-package `eslint`, `tsc --noEmit`, and
 `prettier` there routinely exceeds this sandbox's command timeout, which hangs the
-commit rather than failing it cleanly. `commit-msg` (commitlint) still runs regardless.
+commit rather than failing it cleanly. `commit-msg` (commitlint and the Change-Kind check) still
+runs regardless.
 
 Because that safety net is off in this environment, **before every commit** you must
 manually run the equivalent of what `lint-staged.config.js` would have run over your
@@ -480,13 +481,12 @@ Relates: SS1 shares stop-resume ordering
 Co-Authored-By: …
 ```
 
-Every commit but a merge or a revert carries `Change-Kind: story` or `Change-Kind: defect`.
-The commit-msg hook (`.commitlintrc.json`) rejects a commit without it in the final paragraph,
-except commitlint's default ignores (merges, reverts, fixups). It runs only where husky is installed, and it does
-not check the value. Checking the value, and a `pr.yml` job that lints every commit, are
-mechanical; not yet a rule. Commits a bot or a workflow writes are exempt, and a person's or
-an agent's commit on a bot's PR carries its own trailer. Keeping up with a dependency (a
-renamed export, a changed default) is a story: no promise changed.
+Every commit but a merge, a revert or a fixup carries `Change-Kind: story` or
+`Change-Kind: defect`, and `pnpm check:commit-trailers` (`packages/eslint/src/commit-trailers.ts`)
+holds the shapes below: the commit-msg hook runs it on the message being written, and a
+`pr.yml` job that CI Gate requires runs it on every commit a PR adds. Commits a bot writes are
+exempt; a person's or an agent's commit on a bot's PR carries its own trailer. Keeping up with
+a dependency (a renamed export, a changed default) is a story: no promise changed.
 
 The commit that declares or amends a promise adds `Promise: <ID> <path>… | <dimension>, …`:
 its scope's paths, then its Family's dimensions, so a later search can match either. For a
