@@ -241,12 +241,28 @@ no diff can show it. It is listed so a reviewer knows the cost model rests on it
 on file, Workers or D1 use past the free limits can bill instead of failing. Confirming it is
 step 1 of the deploy below.
 
-## Deploy (the owner does this; nothing here deploys itself)
+## Deploy
 
 There is no deploy workflow. Run the commands from the repo root: `pnpm --filter
 @some-ui/mailbox exec wrangler …` runs this workspace's pinned wrangler inside `apps/mailbox`,
 where `wrangler.jsonc` is (run `pnpm install` once first). A bare `npx wrangler` from the root
 finds no config, so everything after step 2 needs it.
+
+**Who runs it.** Setting it up (steps 1, 2 and 4) is the owner's: the account, the database and
+the secrets. Updating it (below) can be done by a Claude cloud session in the owner's
+environment, which carries `CLOUDFLARE_API_TOKEN` (a token with D1 Edit and Workers Scripts
+Edit on the one account) and `CLOUDFLARE_ACCOUNT_ID`. So a session that merges a change to
+this workspace runs the update itself rather than handing it to the owner. Such a session:
+
+- checks first that both are set without printing them (`[ -n "$CLOUDFLARE_API_TOKEN" ]`), then
+  runs `pnpm --filter @some-ui/mailbox exec wrangler whoami`;
+- never runs `wrangler secret`, and never prints a token;
+- after deploying, checks that each folder the routine reads answers `200` and prints only
+  the status codes (`GET $JOBS_MAILBOX_URL/v1/<folder>/items?limit=1` with
+  `JOBS_MAILBOX_TOKEN`).
+
+`.claude/settings.json` lets `wrangler deploy` run without a prompt; `migrations apply` still
+asks.
 
 1. Create a Cloudflare account. **Add no payment method**, and confirm Billing lists none (MB4).
 2. `npx wrangler login`, then `npx wrangler d1 create some-ui-mailbox`. Put the printed
@@ -271,8 +287,8 @@ finds no config, so everything after step 2 needs it.
 
 ### Updating a deployed mailbox
 
-Run step 3 again, then step 5: `migrations apply` runs only the migrations it has not
-applied. For archiving (`0002_archive.sql`), also put `ARCHIVE_TOKEN` (step 4) and give the
+Run step 3 again, then step 5, from `origin/main`: `migrations apply` runs only the
+migrations it has not applied, and a migration that fails is rolled back whole. For archiving (`0002_archive.sql`), also put `ARCHIVE_TOKEN` (step 4) and give the
 same value to home as `MAILBOX_ARCHIVE_TOKEN`.
 
 ## Working on it
