@@ -5,35 +5,36 @@ import { ALPHABET, SYMBOLS } from "@playoff-delta/lib/symbols"
 
 import { Kicker, Reveal, type SlideProps } from "./shared"
 
-export const Hook = (): JSX.Element => {
+export const Hook = ({ season, week }: SlideProps): JSX.Element => {
   return (
     <>
-      <Kicker>Every Sunday</Kicker>
-      <div className="my-auto flex flex-col gap-[4cqw]">
-        <Reveal
-          at={0.2}
-          className="text-muted-foreground text-[5.5cqw] font-semibold"
-        >
-          Most fans ask one question.
+      <Kicker>The Sunday survival report</Kicker>
+      <Reveal at={0.1} className="pd-teamline">
+        <span>{nameOf(season, season.team)}</span>
+        <b className="pd-mono">
+          {week.record.w}–{week.record.l}
+        </b>
+      </Reveal>
+      <div className="pd-hook my-auto">
+        <Reveal at={0.5} className="pd-small pd-mono text-muted-foreground">
+          WEEK {week.week} / THE QUESTION THAT KEEPS US HERE
         </Reveal>
-        <Reveal at={1} className="text-[10cqw] font-extrabold">
-          <s className="decoration-destructive decoration-[1cqw]">
-            Did we win?
-          </s>
+        <Reveal at={1}>
+          <h1 className="pd-headline">
+            How much
+            <br />
+            hope is
+            <br />
+            <em>left?</em>
+          </h1>
         </Reveal>
-        <Reveal
-          at={2}
-          className="text-muted-foreground text-[5.5cqw] font-semibold"
-        >
-          We ask a different one.
-        </Reveal>
-        <Reveal
-          at={2.8}
-          className="text-[9cqw] leading-[1.1] font-extrabold text-balance"
-        >
+        <Reveal at={2.4} className="pd-say text-muted-foreground">
           How bad can we be, and still make the playoffs?
         </Reveal>
       </div>
+      <Reveal at={3.2} className="pd-footnote">
+        One team. One week. Every way still in.
+      </Reveal>
     </>
   )
 }

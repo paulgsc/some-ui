@@ -221,7 +221,11 @@ export const Outro = ({ season, week }: SlideProps): JSX.Element => {
         futility points: {week.points.season.scored} of{" "}
         {week.points.season.possible}
       </span>
-      <span className="pd-kicker mt-auto">Next week, we ask again</span>
+      <span className="pd-kicker mt-auto">
+        {a.in
+          ? "Hope survives. See you next week."
+          : "The playoff paths end here."}
+      </span>
     </>
   )
 }

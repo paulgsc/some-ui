@@ -10,6 +10,7 @@ import { assertNever } from "@some-ui/intent-kit"
 
 import {
   claimOf,
+  floorKey,
   floorRecord,
   nameOf,
   sinceLabel,
@@ -76,8 +77,27 @@ function claimLine(
   const c = claimOf(paths, wins)
   if (!c.in) return "every path is closed"
   if (c.extraWins === 0)
-    return `even if they never win again, they're in, as high as the number ${c.seed} seed`
+    return `even if they never win again, a path remains as high as the number ${c.seed} seed`
   return `they need ${counted(c.extraWins, "more win")}, then as high as the number ${c.seed} seed. That's a ${floorRecord(c, season.seasonLength)} team`
+}
+
+/** The weekly payoff, shared by the frame and its voiceover. */
+export function weeklyVerdict(
+  season: StorySeason,
+  week: StoryWeek
+): {
+  headline: string
+  tone: "hope" | "danger" | "over"
+} {
+  const a = claimOf(week.paths.after, week.paths.winsAfter)
+  const b = claimOf(week.paths.before, week.paths.winsBefore)
+  if (!a.in)
+    return { headline: b.in ? "The door shut." : "Still out.", tone: "over" }
+  const change =
+    floorKey(a, season.seasonLength) - floorKey(b, season.seasonLength)
+  if (change < 0) return { headline: "Room to breathe.", tone: "hope" }
+  if (change > 0) return { headline: "Less room to fall.", tone: "danger" }
+  return { headline: "Hope held on.", tone: "hope" }
 }
 
 /** The voiceover line for one slide. */
@@ -91,7 +111,7 @@ export function narration(
   const { record } = week
   switch (id) {
     case "hook": {
-      return "Most fans ask one question: did we win? We ask a different one. How bad can we be, and still make the playoffs?"
+      return `Week ${week.week}. The ${name} are ${record.w} and ${record.l}. How much hope is left? How bad can we be, and still make the playoffs?`
     }
     case "test": {
       return `The ${name} are ${record.w} and ${record.l}. Freeze the season: if they never win again, they finish ${record.w} and ${season.seasonLength - record.w}. Can that team still make the playoffs?`
@@ -125,7 +145,7 @@ export function narration(
       return `${counted(out, "conference team")} lost to the other conference, ${counted(week.templates.spoilers.filter((r) => r.yourWay).length, "spoiler")}, and ${counted(week.templates.forced.length, "forced game")}.`
     }
     case "after": {
-      return `After week ${week.week}, ${claimLine(season, week.paths.after, week.paths.winsAfter)}.`
+      return `${weeklyVerdict(season, week).headline} After week ${week.week}, ${claimLine(season, week.paths.after, week.paths.winsAfter)}.`
     }
     case "path": {
       return week.path
@@ -146,7 +166,9 @@ export function narration(
       return `The lowest bar in the league belongs to the ${n(low.team)}: ${counted(low.wins, "win")} could still get them in.`
     }
     case "outro": {
-      return "Next week, we ask again."
+      return claimOf(week.paths.after, week.paths.winsAfter).in
+        ? "Hope survives. See you next week."
+        : "The playoff paths end here."
     }
     default: {
       return assertNever(id)

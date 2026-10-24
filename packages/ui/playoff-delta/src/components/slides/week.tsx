@@ -1,12 +1,11 @@
 import type { JSX } from "react"
 import { PathGrid } from "@playoff-delta/components/path-grid"
 import { SymbolGlyph } from "@playoff-delta/components/symbol"
-import { HOW, WHO } from "@playoff-delta/lib/slides"
+import { HOW, weeklyVerdict, WHO } from "@playoff-delta/lib/slides"
 import {
   blewIt,
   cellChanges,
   claimOf,
-  floorKey,
   floorRecord,
   isOpen,
   nameOf,
@@ -286,21 +285,26 @@ export const After = ({ season, week }: SlideProps): JSX.Element => {
   const pruned = changes.filter((c) => c === "pruned").length
   const opened = changes.filter((c) => c === "opened").length
   const open = changes.filter((c) => c === "open" || c === "opened").length
-  const word = !a.in
-    ? b.in
-      ? "Absorbed."
-      : "Still out."
-    : floorKey(a, season.seasonLength) < floorKey(b, season.seasonLength)
-      ? "Better."
-      : floorKey(a, season.seasonLength) > floorKey(b, season.seasonLength)
-        ? "Worse."
-        : "Held."
+  const result = weeklyVerdict(season, week)
   return (
     <>
       <Kicker>After week {week.week}</Kicker>
-      <div>
-        <b className="pd-big block">{word}</b>
-        <span className="pd-say text-muted-foreground">{verdict(a).line}</span>
+      <div className="pd-verdict" data-tone={result.tone}>
+        <h2 className="pd-q">{result.headline}</h2>
+        <Reveal at={0.4} className="pd-survival">
+          <b className="pd-mono">{open}</b>
+          <span>
+            open {open === 1 ? "path" : "paths"}
+            <small>ways into the playoffs</small>
+          </span>
+        </Reveal>
+        <span className="pd-say text-muted-foreground">
+          {a.in
+            ? a.extraWins === 0
+              ? `Even with no more wins, a #${a.seed} seed is still possible.`
+              : `${counted(a.extraWins, "more win")} could still get us in as high as #${a.seed}.`
+            : "No remaining scenario gets us in."}
+        </span>
       </div>
       <PathGrid paths={week.paths.after} week={week} />
       <Reveal at={1.2} className="pd-say text-muted-foreground flex gap-[3cqw]">
@@ -310,7 +314,7 @@ export const After = ({ season, week }: SlideProps): JSX.Element => {
         {pruned ? (
           <span className="text-destructive font-bold">{pruned} pruned</span>
         ) : null}
-        <span>{open} open</span>
+        <span className="pd-small">Possible scenarios, not playoff odds.</span>
       </Reveal>
       <Floor at={1.5}>
         <span className="pd-mono pd-small text-muted-foreground">
