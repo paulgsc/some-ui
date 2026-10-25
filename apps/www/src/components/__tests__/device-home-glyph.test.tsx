@@ -176,6 +176,7 @@ function jobsRecord(events: number, kept: boolean): void {
         refusedFiles: [],
         lookedAt: null,
         runs: null,
+        notice: { wanted: false, token: null, filed: null },
       },
     },
   }

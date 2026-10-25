@@ -34,6 +34,10 @@ export const ACCOUNT_ERASES = {
       text: "Each pick you took, passed on or archived and why, how applying went, and what came of it.",
     },
     {
+      label: "Telling the phone a morning run is in",
+      text: "Which phones asked to be told when the morning run is in, and which runs home told them of.",
+    },
+    {
       label: "Jobs mailbox files home holds",
       text: "The daily job picks, word sets, dramas and run records home holds for you, the ones it archived out of the mailbox included. Once the mailbox has let a file go, home's copy is the only one, so it goes too.",
     },

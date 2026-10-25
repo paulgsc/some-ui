@@ -92,6 +92,12 @@ function keeping(
     fileRefused: (name: string): void => {
       k.current = step(k.current, { type: "file-refused", name })
     },
+    noticeFiled: (token: string | null): void => {
+      k.current = step(k.current, { type: "notice-filed", token })
+    },
+    noticeRefused: (): void => {
+      k.current = step(k.current, { type: "notice-token", token: null })
+    },
     fetched: (
       digests: ReadonlyArray<Digest>,
       runs?: ReadonlyArray<JobsRun>
@@ -203,6 +209,7 @@ describe("exchangeJobs", () => {
       refusedFiles: [],
       lookedAt: OPENED_AT,
       runs: [],
+      notice: { wanted: false, token: null, filed: null },
     })
     expect(homeOutbox(k.current)).toEqual([])
   })
@@ -471,6 +478,108 @@ describe("exchangeJobs, the runs' records home holds", () => {
       expect(k.fetches).toEqual([])
       expect(k.current.home.runs).toBeNull()
     }
+  })
+})
+
+describe("exchangeJobs, the notice home is owed", () => {
+  const wanting = (token: string | null, filed: string | null): JobsState => ({
+    ...withLog,
+    home: { ...withLog.home, notice: { wanted: true, token, filed } },
+  })
+  const notices = (calls: ReadonlyArray<Call>): Array<string> =>
+    calls
+      .filter((c) => c.path === "/jobs/notice")
+      .map((c) => `${c.method} ${String(c.body)}`)
+  const answering =
+    (status: number, change = "added") =>
+    (call: Call): { status: number; body: unknown } =>
+      call.path === "/jobs/notice"
+        ? { status, body: status === 200 ? { change } : {} }
+        : holding()(call)
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it("files a token home doesn't hold, after the events and before the runs", async () => {
+    const k = keeping(wanting("t1", null))
+    const h = home(answering(200))
+    expect(await exchangeJobs(k, h.send)).toEqual({ kind: "synced" })
+    const paths = h.calls.map((c) => `${c.method} ${c.path}`)
+    expect(paths.slice(3, 5)).toEqual(["PUT /jobs/notice", "GET /jobs/runs"])
+    expect(notices(h.calls)).toEqual(['PUT {"token":"t1"}'])
+    expect(k.current.home.notice.filed).toBe("t1")
+
+    const again = home(answering(200))
+    await exchangeJobs(k, again.send)
+    expect(notices(again.calls)).toEqual([])
+  })
+
+  it("takes the old token back and files the new one when the phone's changes", async () => {
+    const k = keeping(wanting("t2", "t1"))
+    const h = home(answering(200, "removed"))
+    await exchangeJobs(k, h.send)
+    expect(notices(h.calls)).toEqual([
+      'DELETE {"token":"t1"}',
+      'PUT {"token":"t2"}',
+    ])
+    expect(k.current.home.notice.filed).toBe("t2")
+  })
+
+  it("takes the token back once it is turned off", async () => {
+    const k = keeping({
+      ...withLog,
+      home: {
+        ...withLog.home,
+        notice: { wanted: false, token: "t1", filed: "t1" },
+      },
+    })
+    const h = home(answering(200, "removed"))
+    await exchangeJobs(k, h.send)
+    expect(notices(h.calls)).toEqual(['DELETE {"token":"t1"}'])
+    expect(k.current.home.notice.filed).toBeNull()
+  })
+
+  it("asks a home from before the notice again next time, and still reads its runs", async () => {
+    const k = keeping(wanting("t1", null))
+    const h = home(answering(404))
+    expect(await exchangeJobs(k, h.send)).toEqual({ kind: "synced" })
+    expect(k.current.home.notice.filed).toBeNull()
+    expect(h.calls.some((c) => c.path === "/jobs/runs")).toBe(true)
+  })
+
+  it("drops a token home won't take, and reports it without the token", async () => {
+    vi.spyOn(globalThis.console, "error").mockImplementation(() => undefined)
+    const failures: Array<ForeignFailure> = []
+    const stop = addFailureSink((f) => failures.push(f))
+    try {
+      const k = keeping(wanting("secret-token", null))
+      const h = home(answering(422))
+      expect(await exchangeJobs(k, h.send)).toEqual({ kind: "synced" })
+      expect(k.current.home.notice).toEqual({
+        wanted: true,
+        token: null,
+        filed: null,
+      })
+      expect(failures).toHaveLength(1)
+      expect(JSON.stringify(failures)).not.toContain("secret-token")
+    } finally {
+      stop()
+    }
+  })
+
+  it("ends forgotten on a 401, and on an answer it can't read", async () => {
+    const forgot = home(answering(401))
+    expect(
+      await exchangeJobs(keeping(wanting("t1", null)), forgot.send)
+    ).toEqual({
+      kind: "forgotten",
+    })
+    const odd = home(answering(500))
+    expect(await exchangeJobs(keeping(wanting("t1", null)), odd.send)).toEqual({
+      kind: "failed",
+      why: "the notice: home answered 500",
+    })
   })
 })
 

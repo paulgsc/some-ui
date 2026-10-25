@@ -27,10 +27,15 @@ const home = vi.hoisted(
     sent: Array<{ method: string; url: string; body?: unknown }>
     earlier: boolean
     jobsKept: boolean
+    /** Whether this build can tell the phone of a morning run (RUN5). */
+    noticeOffered: boolean
+    wanted: Array<boolean>
   } => ({
     sent: [],
     earlier: false,
     jobsKept: false,
+    noticeOffered: false,
+    wanted: [],
   })
 )
 
@@ -62,15 +67,24 @@ vi.mock("@/lib/home-link/send", () => ({
 }))
 vi.mock("@/lib/jobs", async () => {
   const { EMPTY } = await import("@/lib/jobs/model")
-  const made = (kept: boolean): unknown => ({
+  const made = (kept: boolean, offered: boolean): unknown => ({
     state: { ...EMPTY, home: { ...EMPTY.home, kept } },
+    notice: { offered, asking: false, why: null },
   })
-  // One snapshot per test's `jobsKept`, as `useSyncExternalStore` needs.
-  const snapshots = new Map([true, false].map((kept) => [kept, made(kept)]))
+  // One snapshot per test's `jobsKept` and `noticeOffered`, as
+  // `useSyncExternalStore` needs.
+  const key = (kept: boolean, offered: boolean): string =>
+    `${String(kept)}|${String(offered)}`
+  const snapshots = new Map(
+    [true, false].flatMap((kept) =>
+      [true, false].map((offered) => [key(kept, offered), made(kept, offered)])
+    )
+  )
   return {
     phoneJobs: (): unknown => ({
-      getSnapshot: () => snapshots.get(home.jobsKept),
+      getSnapshot: () => snapshots.get(key(home.jobsKept, home.noticeOffered)),
       subscribe: () => () => undefined,
+      wantNotice: (on: boolean) => home.wanted.push(on),
     }),
   }
 })
@@ -85,6 +99,8 @@ afterEach(() => {
   home.sent = []
   home.earlier = false
   home.jobsKept = false
+  home.noticeOffered = false
+  home.wanted = []
 })
 
 function logged(
@@ -170,6 +186,22 @@ describe("the sharing ledger", () => {
     expect(document.activeElement).toBe(
       screen.getByRole("button", { name: "Stop sending..." })
     )
+  })
+
+  it("offers the arrival notice under the Jobs record kept on home, where this build can be told", async () => {
+    logged({ kind: "kept", scopes: ["jobs"] })
+    await mount()
+    expect(screen.queryByRole("switch")).toBeNull()
+    cleanup()
+    home.noticeOffered = true
+    await mount()
+    const toggle = screen.getByRole("switch", {
+      name: "Tell me when the morning run is in",
+    })
+    expect(screen.getByText(/Google carries it/)).toBeTruthy()
+    fireEvent.click(toggle)
+    expect(home.wanted).toEqual([true])
+    expect(home.sent).toEqual([])
   })
 
   it("claims nothing for aph, or Jobs its switch kept, under a pairing made before choices were kept", async () => {

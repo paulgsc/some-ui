@@ -691,6 +691,37 @@ with `isExactNotification: false`, and the manifest removes the plugin's
 exact, and without exact-alarm access (Android 14 denies it by default) each
 `schedule()` would open the "Alarms & reminders" settings screen.
 
+## The Jobs arrival notice
+
+Home tells the phone when the morning run is in (RUN4 and RUN5, epic #2051):
+the run picked something, picked nothing, or couldn't finish. It is the one
+thing home pushes, so it comes by **Firebase Cloud Messaging**
+(`@capacitor/push-notifications`), not a local notification. A phone that
+asked home on a timer would break the rule that the phone asks only while
+Jobs is open (LA10), and a fixed-time notification would be a reminder,
+which Jobs does not have.
+
+- **Turning it on:** Settings, the Jobs record's row, **Tell me when the
+  morning run is in**, shown only while Jobs is kept on home. Android asks
+  for notifications, the push service gives this install a token
+  (`lib/jobs/notice-native.ts`), and the next exchange with home files it
+  (`PUT /jobs/notice`). Off takes it back (`DELETE /jobs/notice`).
+- **What it says:** fixed words from home, whether the picks are at home or
+  the run couldn't finish. Google carries the text, so nothing of the picks
+  goes in it. Tapping it opens Jobs, and on the home Wi‑Fi the card says the
+  rest.
+- **A build without Firebase:** the Gradle build applies Google's services
+  plugin only when `android/app/google-services.json` exists. Without it,
+  `register()` would throw, and Capacitor turns that into a crash, so
+  `patches/@capacitor__push-notifications@8.1.3.patch` makes it answer
+  `UNAVAILABLE`, and the control is not shown.
+- **To turn it on for real:** a Firebase project with the Android app
+  `dev.paulgsc.someui`, its `google-services.json` in `android/app/` (it is
+  configuration, not a secret), and on the box the service account
+  `FCM_SERVICE_ACCOUNT_FILE` names (paulgsc/server `example.env`).
+- **Play:** the data-safety form gains a device identifier (the FCM token),
+  sent to the owner's own server, for app functionality.
+
 ## A session ends by winding down, not by stopping
 
 A session's length is the person's budget, and it holds, but the end is

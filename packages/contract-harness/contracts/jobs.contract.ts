@@ -93,6 +93,19 @@ export const contracts = [
   }),
 
   defineContract({
+    id: "jobs.notice_refused",
+    module: "jobs",
+    session: true,
+    method: "PUT",
+    path: "/jobs/notice",
+    summary:
+      "a body that is not a phone's FCM token is a 422 naming the token, and no phone is registered",
+    mutates: true,
+    request: { body: "not a token" },
+    expect: { status: 422 },
+  }),
+
+  defineContract({
     id: "jobs.file_refused",
     module: "jobs",
     session: true,

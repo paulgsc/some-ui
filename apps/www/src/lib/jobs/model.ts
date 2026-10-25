@@ -43,6 +43,9 @@ import {
   TRACKS,
 } from "@some-ui/job-desk"
 
+import type { NoticeAction, NoticeState } from "./notice"
+import { NO_NOTICE, stepNotice } from "./notice"
+
 export type PassReason = (typeof PASS_REASONS)[number]
 export type FrictionChip = (typeof FRICTION)[number]
 export type Outcome = (typeof OUTCOMES)[number]
@@ -180,6 +183,8 @@ type JobsHome = {
    * until a home that keeps them has answered.
    */
   runs: ReadonlyArray<JobsRun> | null
+  /** Whether home tells this phone when a morning run is in (`./notice`). */
+  notice: NoticeState
 }
 
 export type JobsState = {
@@ -214,6 +219,7 @@ export const EMPTY: JobsState = {
     refusedFiles: [],
     lookedAt: null,
     runs: null,
+    notice: NO_NOTICE,
   },
   carried: {},
 }
@@ -256,6 +262,7 @@ export type JobsAction =
   | { type: "restored"; events: ReadonlyArray<JobEvent> }
   /** Home refused the file of this name (`./home`). */
   | { type: "file-refused"; name: string }
+  | NoticeAction
 
 const DECIDED = new Set(["taken", "passed", "archived"])
 
@@ -533,6 +540,13 @@ export function step(state: JobsState, action: JobsAction): JobsState {
           refusedFiles: [...state.home.refusedFiles, action.name],
         },
       }
+    }
+    case "notice-wanted":
+    case "notice-token":
+    case "notice-filed": {
+      const notice = stepNotice(state.home.notice, action)
+      if (notice === state.home.notice) return state
+      return { ...state, home: { ...state.home, notice } }
     }
     case "restored": {
       if (state.log.length > 0 || action.events.length === 0) return state

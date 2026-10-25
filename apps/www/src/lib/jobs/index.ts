@@ -10,10 +10,12 @@ import {
 } from "@some-ui/soundbites/contract"
 import { micRecorder, savingShelf } from "@some-ui/voice-capture"
 
+import { MOBILE_APP } from "@/lib/build-profile"
 import { foreignValue } from "@/lib/intent/foreign"
 import { shareFiles } from "@/lib/share-files"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 
+import { nativeNotice } from "./notice-native"
 import type { JobsRuntime } from "./runtime"
 import { createJobsRuntime } from "./runtime"
 
@@ -51,6 +53,7 @@ export function phoneJobs(): JobsRuntime {
       now: () => new Date(),
       dayOf,
       newId: () => crypto.randomUUID(),
+      ...(MOBILE_APP ? { notice: nativeNotice } : {}),
     })
     jobs.sweep()
   }

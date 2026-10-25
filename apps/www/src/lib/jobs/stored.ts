@@ -149,6 +149,14 @@ const StoredSchema = z.object({
                 return read.success ? [read.data] : []
               })
         ),
+      // A record kept before the phone could be told of a run has none.
+      notice: z
+        .object({
+          wanted: z.boolean(),
+          token: z.string().nullable(),
+          filed: z.string().nullable(),
+        })
+        .default({ wanted: false, token: null, filed: null }),
     })
     .default({
       kept: false,
@@ -157,6 +165,7 @@ const StoredSchema = z.object({
       refusedFiles: [],
       lookedAt: null,
       runs: null,
+      notice: { wanted: false, token: null, filed: null },
     }),
   // A record kept before shares noted where they began has none.
   carried: z.record(z.string(), z.number()).default({}),

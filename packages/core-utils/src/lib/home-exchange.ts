@@ -15,7 +15,7 @@ export type HomeAnswer = { status: number; body: string; etag?: string }
  * home sends through.
  */
 export type HomeCall = (
-  method: "GET" | "POST" | "PUT" | "PATCH",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   path: string,
   body?: string
 ) => Promise<HomeAnswer>

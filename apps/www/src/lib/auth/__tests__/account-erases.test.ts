@@ -31,6 +31,7 @@ describe("what deleting the account says", () => {
       "Reminders and progress",
       "aph",
       "The Jobs record",
+      "Telling the phone a morning run is in",
       "Jobs mailbox files home holds",
       "Filed with home for the mailbox",
       "LeetType sessions",
