@@ -106,7 +106,8 @@ is a regression, not debt. Each falsifier covers deletions and moves as well as 
   `src/lib/policy.ts`, whose one import is `import type`; `@some-ui/lesson-crm` exports no
   `./contract`.
 - _Why not wholly enforced:_ the graph is enforced. `pnpm check:ui-manifests` finds each such
-  workspace's contract source (the `entries.contract` of its `vite.config.ts`, which it
+  workspace's contract source (the `entries.contract` of its `vite.config.ts`, read only when
+  that is `export default createViteConfig({ … })` over a plain literal object, and which it
   requires the `./contract` export to be the build output of), walks it with `reachedFrom`,
   type imports followed, and
   fails a value import of anything but `zod`, an import it cannot follow, and a contract it

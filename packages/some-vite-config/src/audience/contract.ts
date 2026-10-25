@@ -23,50 +23,92 @@ export type ContractSource =
   | { kind: "source"; path: string }
   | { kind: "unresolved"; why: string }
 
+type ConfigRead =
+  | { ok: true; packageName: string; contract: string }
+  | { ok: false; why: string }
+
+const SHAPE =
+  "its vite.config.ts is not `export default createViteConfig({ … })` over a literal object"
+
 /**
- * What a vite config says that A2 reads: the `contract` entry of every
- * `entries: { … }` object, and every `packageName`. A value that is not a
- * string literal is null.
+ * What a vite config says that A2 reads: its `packageName` and
+ * `entries.contract`. Only one shape is read: `export default
+ * createViteConfig({ … })` over an object literal with no spread, computed
+ * key, method or `configOverrides`, whose `entries` is a literal object of the
+ * same kind. Anything else could change which file the build uses without the
+ * text saying so, so it is not read.
  */
-function readConfig(viteConfig: string): {
-  contracts: Array<string | null>
-  packageNames: Array<string | null>
-} {
+function readConfig(viteConfig: string): ConfigRead {
   const source = ts.createSourceFile(
     "vite.config.ts",
     viteConfig,
     ts.ScriptTarget.Latest,
     true
   )
-  const contracts: Array<string | null> = []
-  const packageNames: Array<string | null> = []
   const nameOf = (name: ts.PropertyName): string | undefined =>
     ts.isIdentifier(name) || ts.isStringLiteralLike(name)
       ? name.text
       : undefined
-  const literal = (value: ts.Expression): string | null =>
-    ts.isStringLiteralLike(value) ? value.text : null
-  const visit = (node: ts.Node): void => {
-    if (ts.isPropertyAssignment(node)) {
-      const name = nameOf(node.name)
-      if (name === "packageName") packageNames.push(literal(node.initializer))
-      if (
-        name === "entries" &&
-        ts.isObjectLiteralExpression(node.initializer)
-      ) {
-        for (const entry of node.initializer.properties) {
-          if (
-            ts.isPropertyAssignment(entry) &&
-            nameOf(entry.name) === "contract"
-          )
-            contracts.push(literal(entry.initializer))
-        }
+  /** The plain properties of an object literal, or why it has other kinds. */
+  const plain = (
+    object: ts.ObjectLiteralExpression
+  ): Map<string, ts.Expression> | null => {
+    const found = new Map<string, ts.Expression>()
+    for (const property of object.properties) {
+      let name: string | undefined
+      let value: ts.Expression | undefined
+      if (ts.isPropertyAssignment(property)) {
+        name = nameOf(property.name)
+        value = property.initializer
+      } else if (ts.isShorthandPropertyAssignment(property)) {
+        name = property.name.text
+        value = property.name
       }
+      if (name === undefined || value === undefined || found.has(name))
+        return null
+      found.set(name, value)
     }
-    ts.forEachChild(node, visit)
+    return found
   }
-  visit(source)
-  return { contracts, packageNames }
+
+  const exported = source.statements.filter(ts.isExportAssignment)
+  const call = exported.length === 1 ? exported[0]?.expression : undefined
+  const options =
+    call && ts.isCallExpression(call) ? call.arguments[0] : undefined
+  if (
+    !call ||
+    !ts.isCallExpression(call) ||
+    !ts.isIdentifier(call.expression) ||
+    call.expression.text !== "createViteConfig" ||
+    call.arguments.length !== 1 ||
+    options === undefined ||
+    !ts.isObjectLiteralExpression(options)
+  )
+    return { ok: false, why: SHAPE }
+  const top = plain(options)
+  if (top === null || top.has("configOverrides"))
+    return {
+      ok: false,
+      why: "its createViteConfig options have a spread, a computed key, a method, a repeated key or `configOverrides`, any of which can change what the build uses",
+    }
+  const packageName = top.get("packageName")
+  if (packageName === undefined || !ts.isStringLiteralLike(packageName))
+    return {
+      ok: false,
+      why: "its vite.config.ts has no `packageName` string to read",
+    }
+  const entries = top.get("entries")
+  const inner =
+    entries !== undefined && ts.isObjectLiteralExpression(entries)
+      ? plain(entries)
+      : null
+  const contract = inner?.get("contract")
+  if (contract === undefined || !ts.isStringLiteralLike(contract))
+    return {
+      ok: false,
+      why: 'its vite.config.ts has no `entries: { contract: "<source>" }` of plain properties to read',
+    }
+  return { ok: true, packageName: packageName.text, contract: contract.text }
 }
 
 /** Every string under an export's conditions. */
@@ -95,23 +137,13 @@ export function contractSource(
       kind: "unresolved",
       why: `it exports ${CONTRACT} but has no vite.config.ts naming its source`,
     }
-  const { contracts, packageNames } = readConfig(viteConfig)
-  const [only, ...otherContracts] = contracts
-  if (only === undefined || only === null || otherContracts.length > 0)
+  const config = readConfig(viteConfig)
+  if (!config.ok)
     return {
       kind: "unresolved",
-      why: `it exports ${CONTRACT} but its vite.config.ts has not exactly one \`entries: { contract: "<source>" }\` with a string to read`,
+      why: `it exports ${CONTRACT} but ${config.why}`,
     }
-  const [packageName, ...otherNames] = packageNames
-  if (
-    packageName === undefined ||
-    packageName === null ||
-    otherNames.length > 0
-  )
-    return {
-      kind: "unresolved",
-      why: `it exports ${CONTRACT} but its vite.config.ts has not exactly one \`packageName\` string to read`,
-    }
+  const { packageName } = config
   const output = `./dist/${packageName}/contract.`
   const targets = targetsOf(
     Object.entries(exports).find(([key]) => key === CONTRACT)?.[1]
@@ -124,7 +156,7 @@ export function contractSource(
       kind: "unresolved",
       why: `its ${CONTRACT} export is not the build output of its \`entries.contract\` (${output}*)`,
     }
-  return { kind: "source", path: only }
+  return { kind: "source", path: config.contract }
 }
 
 /**

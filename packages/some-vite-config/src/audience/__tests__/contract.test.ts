@@ -14,7 +14,7 @@ const MANIFEST = JSON.stringify({
   exports: { ".": {}, "./contract": CONTRACT_EXPORT },
 })
 const CONFIG =
-  'createViteConfig({ packageName: "@x/pkg", entries: { contract: "src/contract.ts" } })'
+  'export default createViteConfig({ packageName: "@x/pkg", entries: { contract: "src/contract.ts" } })'
 
 let dirs: Array<string> = []
 afterEach(() => {
@@ -178,7 +178,8 @@ describe("checkContract: the graph", () => {
 describe("contractSource", () => {
   const withContract = { exports: { ".": {}, "./contract": CONTRACT_EXPORT } }
   const config = (body: string): string =>
-    `createViteConfig({ packageName: "@x/pkg", ${body} })`
+    `export default createViteConfig({ packageName: "@x/pkg", ${body} })`
+  const entries = (inner: string): string => config(`entries: { ${inner} }`)
 
   it("is none for a workspace that exports no ./contract", () => {
     expect(contractSource({}, null)).toEqual({ kind: "none" })
@@ -189,10 +190,13 @@ describe("contractSource", () => {
 
   it("reads entries.contract, whatever else surrounds it", () => {
     for (const text of [
-      config("entries: { contract: 'src/contract.ts' }"),
-      config('entries: { "contract": "src/contract.ts" }'),
-      config('entries: { http: "src/http.ts", contract: "src/contract.ts" }'),
-      `// entries: { contract: "src/old.ts" }\n${config('entries: { contract: "src/contract.ts" }')}`,
+      entries("contract: 'src/contract.ts'"),
+      entries('"contract": "src/contract.ts"'),
+      entries('http: "src/http.ts", contract: "src/contract.ts"'),
+      config(
+        'alias: { "@x": resolve(import.meta.dirname, "src") }, entries: { contract: "src/contract.ts" }'
+      ),
+      `import { resolve } from "path"\n// entries: { contract: "src/old.ts" }\n${entries('contract: "src/contract.ts"')}`,
     ]) {
       expect(contractSource(withContract, text), text).toEqual({
         kind: "source",
@@ -201,17 +205,16 @@ describe("contractSource", () => {
     }
   })
 
-  it("does not pass what it cannot trace to one string", () => {
+  it("does not pass a contract it cannot trace to one string", () => {
     for (const text of [
       null,
-      "createViteConfig({ packageName: '@x/pkg' })",
+      "export default createViteConfig({ packageName: '@x/pkg' })",
       config('entries: { http: "src/http.ts" }'),
       config("entries: ENTRIES"),
-      config('entries: { contract: "src/" + "contract.ts" }'),
-      config('entries: { subcontract: "src/c.ts" }'),
-      `${config('entries: { contract: "src/a.ts" }')}; ${config('entries: { contract: "src/b.ts" }')}`,
-      'createViteConfig({ entries: { contract: "src/contract.ts" } })',
-      'createViteConfig({ packageName: NAME, entries: { contract: "src/contract.ts" } })',
+      entries('contract: "src/" + "contract.ts"'),
+      entries('subcontract: "src/c.ts"'),
+      'export default createViteConfig({ entries: { contract: "src/contract.ts" } })',
+      'export default createViteConfig({ packageName: NAME, entries: { contract: "src/contract.ts" } })',
     ]) {
       expect(contractSource(withContract, text).kind, String(text)).toBe(
         "unresolved"
@@ -219,8 +222,33 @@ describe("contractSource", () => {
     }
   })
 
+  it("reads one config shape and no other, since any other can change what the build uses", () => {
+    const body =
+      'packageName: "@x/pkg", entries: { contract: "src/contract.ts" }'
+    for (const text of [
+      // a spread that can override the entry, after it or before the options
+      `const extra = { contract: "src/impl.ts" }\nexport default createViteConfig({ packageName: "@x/pkg", entries: { contract: "src/contract.ts", ...extra } })`,
+      `export default createViteConfig({ packageName: "@x/pkg", entries: { ...extra, contract: "src/contract.ts" } })`,
+      `export default createViteConfig({ ${body}, ...extra })`,
+      `export default createViteConfig({ ...base, ${body} })`,
+      // something wrapped around, or standing in for, the options
+      `export default mergeConfig(createViteConfig({ ${body} }), { build: {} })`,
+      `export default defineConfig(createViteConfig({ ${body} }))`,
+      `const options = { ${body} }\nexport default createViteConfig(options)`,
+      `export default createViteConfig({ ${body} }, "/elsewhere")`,
+      `const config = createViteConfig({ ${body} })\nexport default config`,
+      // options that can redirect the build, a computed key, a method, a repeat
+      `export default createViteConfig({ ${body}, configOverrides: {} })`,
+      `export default createViteConfig({ packageName: "@x/pkg", entries: { ["contract"]: "src/contract.ts" } })`,
+      `export default createViteConfig({ ${body}, build() {} })`,
+      `export default createViteConfig({ ${body}, packageName: "@x/other" })`,
+    ]) {
+      expect(contractSource(withContract, text).kind, text).toBe("unresolved")
+    }
+  })
+
   it("requires the export to be the build output of that entry", () => {
-    const text = config('entries: { contract: "src/contract.ts" }')
+    const text = entries('contract: "src/contract.ts"')
     for (const target of [
       { ...CONTRACT_EXPORT, import: "./dist/@x/pkg.es.js" },
       { ...CONTRACT_EXPORT, default: "./dist/@x/other/contract.es.js" },
@@ -248,7 +276,9 @@ describe("checkContract: which workspaces", () => {
   })
 
   it("fails a contract whose source it cannot find", () => {
-    const dir = workspace({ "vite.config.ts": "createViteConfig({})" })
+    const dir = workspace({
+      "vite.config.ts": "export default createViteConfig({})",
+    })
     const checked = checkContract(dir)
     expect(checked.exported).toBe(true)
     expect(checked.problems).toEqual([
