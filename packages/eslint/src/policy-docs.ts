@@ -84,7 +84,7 @@ const ACTIVE_PARTS: ReadonlyArray<Part> = [
 const DECLARATION =
   /^[>\s]*\*\*(?<id>[A-Z]{1,4}\d+)(?: \((?<mark>not reviewable|retired)\))?:\s/
 const HEADING = /^ {0,3}#{1,6}[ \t]+(?<text>.+?)(?:[ \t]+#+)?[ \t]*$/
-const FENCE = /^[\s>]*(?:```|~~~)/
+const FENCE = /^[\s>]*(?<mark>`{3,}|~{3,})(?<rest>.*)$/
 const SPAN = /`([^`\n]+)`/g
 const HEADING_REF =
   /`(?<file>[\w./-]+\.md)`\s*(?:,|→|->)\s*"(?<heading>[^"]+)"/g
@@ -140,16 +140,29 @@ function lines(text: string): Array<string> {
   return text.replace(/\r\n/g, "\n").split("\n")
 }
 
-/** The text with fenced code blocks blanked, so line numbers still hold. */
+/**
+ * The text with fenced code blocks blanked, so line numbers still hold. As in
+ * CommonMark, a fence closes only on the same character, at least as long as
+ * the opening one and with nothing after it, so a longer fence can hold a
+ * shorter one.
+ */
 function withoutFences(text: string): string {
-  let inside = false
+  let open: { char: string; length: number } | null = null
   return lines(text)
     .map((line) => {
-      if (FENCE.test(line)) {
-        inside = !inside
-        return ""
+      const fence = FENCE.exec(line)?.groups
+      const mark = fence?.["mark"]
+      if (mark === undefined) return open === null ? line : ""
+      if (open === null) {
+        open = { char: mark.charAt(0), length: mark.length }
+      } else if (
+        mark.charAt(0) === open.char &&
+        mark.length >= open.length &&
+        (fence?.["rest"] ?? "").trim() === ""
+      ) {
+        open = null
       }
-      return inside ? "" : line
+      return ""
     })
     .join("\n")
 }

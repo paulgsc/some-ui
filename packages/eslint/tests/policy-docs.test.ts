@@ -111,6 +111,28 @@ describe("parseDeclarations", () => {
     expect(second?.missing).toEqual(["whyNot"])
   })
 
+  it("closes a fence only on the same character and at least its length", () => {
+    const ids = (text: string): Array<string> =>
+      parseDeclarations("x.md", text).map((d) => d.id)
+    const inner = ["```md", declaration("X9"), "```"]
+    // A longer fence holds a shorter one, backticks or tildes.
+    for (const [opening, closing] of [
+      ["````md", "````"],
+      ["~~~~", "~~~~"],
+    ] as const) {
+      const text = [opening, ...inner, closing, declaration("A1")].join("\n")
+      expect(ids(text)).toEqual(["A1"])
+    }
+    // A closing fence may be longer than the opening one.
+    expect(
+      ids(["```", declaration("X9"), "`````", declaration("A1")].join("\n"))
+    ).toEqual(["A1"])
+    // A `~~~` fence is not closed by backticks: it runs to the end.
+    expect(
+      ids(["~~~", declaration("X9"), "```", declaration("A1")].join("\n"))
+    ).toEqual([])
+  })
+
   it("reads a list item, a fenced example and a lone bold ID as no declaration", () => {
     const text = [
       "- **R8:** Capacitor's consumer rules.",
