@@ -23,48 +23,65 @@ export type ContractSource =
   | { kind: "source"; path: string }
   | { kind: "unresolved"; why: string }
 
-/** The `contract` entries of every `entries: { … }` object in a vite config. */
-function contractEntries(viteConfig: string): Array<string | null> {
+/**
+ * What a vite config says that A2 reads: the `contract` entry of every
+ * `entries: { … }` object, and every `packageName`. A value that is not a
+ * string literal is null.
+ */
+function readConfig(viteConfig: string): {
+  contracts: Array<string | null>
+  packageNames: Array<string | null>
+} {
   const source = ts.createSourceFile(
     "vite.config.ts",
     viteConfig,
     ts.ScriptTarget.Latest,
     true
   )
-  const found: Array<string | null> = []
+  const contracts: Array<string | null> = []
+  const packageNames: Array<string | null> = []
   const nameOf = (name: ts.PropertyName): string | undefined =>
     ts.isIdentifier(name) || ts.isStringLiteralLike(name)
       ? name.text
       : undefined
+  const literal = (value: ts.Expression): string | null =>
+    ts.isStringLiteralLike(value) ? value.text : null
   const visit = (node: ts.Node): void => {
-    if (
-      ts.isPropertyAssignment(node) &&
-      nameOf(node.name) === "entries" &&
-      ts.isObjectLiteralExpression(node.initializer)
-    ) {
-      for (const entry of node.initializer.properties) {
-        if (
-          !ts.isPropertyAssignment(entry) ||
-          nameOf(entry.name) !== "contract"
-        )
-          continue
-        found.push(
-          ts.isStringLiteralLike(entry.initializer)
-            ? entry.initializer.text
-            : null
-        )
+    if (ts.isPropertyAssignment(node)) {
+      const name = nameOf(node.name)
+      if (name === "packageName") packageNames.push(literal(node.initializer))
+      if (
+        name === "entries" &&
+        ts.isObjectLiteralExpression(node.initializer)
+      ) {
+        for (const entry of node.initializer.properties) {
+          if (
+            ts.isPropertyAssignment(entry) &&
+            nameOf(entry.name) === "contract"
+          )
+            contracts.push(literal(entry.initializer))
+        }
       }
     }
     ts.forEachChild(node, visit)
   }
   visit(source)
-  return found
+  return { contracts, packageNames }
+}
+
+/** Every string under an export's conditions. */
+function targetsOf(target: unknown): Array<string> {
+  if (typeof target === "string") return [target]
+  if (typeof target !== "object" || target === null) return []
+  return Object.values(target).flatMap(targetsOf)
 }
 
 /**
  * Where the `./contract` export's source is: nothing when the workspace does
  * not export one, else the file `entries.contract` names in its vite config
- * (`viteConfig`, its text, or null when it has none).
+ * (`viteConfig`, its text, or null when it has none). The export must be that
+ * entry's build output, `./dist/<packageName>/contract.*`: otherwise the file
+ * checked is not the one consumers get.
  */
 export function contractSource(
   manifest: Record<string, unknown>,
@@ -78,11 +95,34 @@ export function contractSource(
       kind: "unresolved",
       why: `it exports ${CONTRACT} but has no vite.config.ts naming its source`,
     }
-  const [only, ...others] = contractEntries(viteConfig)
-  if (only === undefined || only === null || others.length > 0)
+  const { contracts, packageNames } = readConfig(viteConfig)
+  const [only, ...otherContracts] = contracts
+  if (only === undefined || only === null || otherContracts.length > 0)
     return {
       kind: "unresolved",
       why: `it exports ${CONTRACT} but its vite.config.ts has not exactly one \`entries: { contract: "<source>" }\` with a string to read`,
+    }
+  const [packageName, ...otherNames] = packageNames
+  if (
+    packageName === undefined ||
+    packageName === null ||
+    otherNames.length > 0
+  )
+    return {
+      kind: "unresolved",
+      why: `it exports ${CONTRACT} but its vite.config.ts has not exactly one \`packageName\` string to read`,
+    }
+  const output = `./dist/${packageName}/contract.`
+  const targets = targetsOf(
+    Object.entries(exports).find(([key]) => key === CONTRACT)?.[1]
+  )
+  if (
+    targets.length === 0 ||
+    targets.some((target) => !target.startsWith(output))
+  )
+    return {
+      kind: "unresolved",
+      why: `its ${CONTRACT} export is not the build output of its \`entries.contract\` (${output}*)`,
     }
   return { kind: "source", path: only }
 }

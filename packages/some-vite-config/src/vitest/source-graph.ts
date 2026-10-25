@@ -14,8 +14,9 @@ export type SourceGraph = {
    */
   readonly aliases: Readonly<Record<string, string>>
   /**
-   * Follow type-only imports too. Off, the walk is what a bundle reaches;
-   * on, it is every module whose vocabulary the entry can name.
+   * Follow type-only imports too (`import type`, and an inline
+   * `import("./x").T`). Off, the walk is what a bundle reaches; on, it is every
+   * module whose vocabulary the entry can name.
    */
   readonly types?: boolean
 }
@@ -150,6 +151,13 @@ export function reachedFrom(graph: SourceGraph, entry: string): Reached {
         node.expression.kind === ts.SyntaxKind.ImportKeyword
       ) {
         follow(node.arguments[0], true)
+      } else if (
+        graph.types === true &&
+        ts.isImportTypeNode(node) &&
+        ts.isLiteralTypeNode(node.argument) &&
+        ts.isStringLiteralLike(node.argument.literal)
+      ) {
+        follow(node.argument.literal, false)
       } else if (
         ts.isCallExpression(node) &&
         ts.isPropertyAccessExpression(node.expression) &&

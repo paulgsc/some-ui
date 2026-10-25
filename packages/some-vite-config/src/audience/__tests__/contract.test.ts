@@ -4,8 +4,17 @@ import { dirname, join } from "path"
 import { checkContract, contractSource } from "@/audience/contract.js"
 import { afterEach, describe, expect, it } from "vitest"
 
-const MANIFEST = JSON.stringify({ exports: { ".": {}, "./contract": {} } })
-const CONFIG = 'createViteConfig({ entries: { contract: "src/contract.ts" } })'
+// What the build writes for `packageName: "@x/pkg"` and `entries.contract`.
+const CONTRACT_EXPORT = {
+  types: "./dist/@x/pkg/contract.d.ts",
+  import: "./dist/@x/pkg/contract.es.js",
+  default: "./dist/@x/pkg/contract.es.js",
+}
+const MANIFEST = JSON.stringify({
+  exports: { ".": {}, "./contract": CONTRACT_EXPORT },
+})
+const CONFIG =
+  'createViteConfig({ packageName: "@x/pkg", entries: { contract: "src/contract.ts" } })'
 
 let dirs: Array<string> = []
 afterEach(() => {
@@ -128,6 +137,19 @@ describe("checkContract: the graph", () => {
     ).toEqual([expect.stringContaining("src/b.ts:1:")])
   })
 
+  it("follows an inline import type to the module it names", () => {
+    expect(
+      problemsOf('export type T = import("./impl").T', {
+        "src/impl.ts": 'import { x } from "react"\nexport type T = number',
+      })
+    ).toEqual([expect.stringContaining("src/impl.ts:1:")])
+    expect(
+      problemsOf('export type T = typeof import("./impl")', {
+        "src/impl.ts": 'import type { X } from "react"\nexport const t = 1',
+      })
+    ).toEqual([])
+  })
+
   it("visits a module once, cycles included", () => {
     expect(
       problemsOf('export * from "./a"\nexport * from "./b"', {
@@ -154,7 +176,9 @@ describe("checkContract: the graph", () => {
 })
 
 describe("contractSource", () => {
-  const withContract = { exports: { ".": {}, "./contract": {} } }
+  const withContract = { exports: { ".": {}, "./contract": CONTRACT_EXPORT } }
+  const config = (body: string): string =>
+    `createViteConfig({ packageName: "@x/pkg", ${body} })`
 
   it("is none for a workspace that exports no ./contract", () => {
     expect(contractSource({}, null)).toEqual({ kind: "none" })
@@ -164,13 +188,13 @@ describe("contractSource", () => {
   })
 
   it("reads entries.contract, whatever else surrounds it", () => {
-    for (const config of [
-      "createViteConfig({ entries: { contract: 'src/contract.ts' } })",
-      'createViteConfig({ entries: { "contract": "src/contract.ts" } })',
-      'createViteConfig({ entries: { http: "src/http.ts", contract: "src/contract.ts" } })',
-      '// entries: { contract: "src/old.ts" }\ncreateViteConfig({ entries: { contract: "src/contract.ts" } })',
+    for (const text of [
+      config("entries: { contract: 'src/contract.ts' }"),
+      config('entries: { "contract": "src/contract.ts" }'),
+      config('entries: { http: "src/http.ts", contract: "src/contract.ts" }'),
+      `// entries: { contract: "src/old.ts" }\n${config('entries: { contract: "src/contract.ts" }')}`,
     ]) {
-      expect(contractSource(withContract, config), config).toEqual({
+      expect(contractSource(withContract, text), text).toEqual({
         kind: "source",
         path: "src/contract.ts",
       })
@@ -178,19 +202,42 @@ describe("contractSource", () => {
   })
 
   it("does not pass what it cannot trace to one string", () => {
-    for (const config of [
+    for (const text of [
       null,
-      "createViteConfig({ packageName: 'x' })",
-      'createViteConfig({ entries: { http: "src/http.ts" } })',
-      "createViteConfig({ entries: ENTRIES })",
-      'createViteConfig({ entries: { contract: "src/" + "contract.ts" } })',
-      'createViteConfig({ entries: { subcontract: "src/c.ts" } })',
-      'a({ entries: { contract: "src/a.ts" } }); b({ entries: { contract: "src/b.ts" } })',
+      "createViteConfig({ packageName: '@x/pkg' })",
+      config('entries: { http: "src/http.ts" }'),
+      config("entries: ENTRIES"),
+      config('entries: { contract: "src/" + "contract.ts" }'),
+      config('entries: { subcontract: "src/c.ts" }'),
+      `${config('entries: { contract: "src/a.ts" }')}; ${config('entries: { contract: "src/b.ts" }')}`,
+      'createViteConfig({ entries: { contract: "src/contract.ts" } })',
+      'createViteConfig({ packageName: NAME, entries: { contract: "src/contract.ts" } })',
     ]) {
-      expect(contractSource(withContract, config).kind, String(config)).toBe(
+      expect(contractSource(withContract, text).kind, String(text)).toBe(
         "unresolved"
       )
     }
+  })
+
+  it("requires the export to be the build output of that entry", () => {
+    const text = config('entries: { contract: "src/contract.ts" }')
+    for (const target of [
+      { ...CONTRACT_EXPORT, import: "./dist/@x/pkg.es.js" },
+      { ...CONTRACT_EXPORT, default: "./dist/@x/other/contract.es.js" },
+      "./dist/@x/pkg.es.js",
+      {},
+    ]) {
+      const manifest = { exports: { "./contract": target } }
+      expect(contractSource(manifest, text).kind, JSON.stringify(target)).toBe(
+        "unresolved"
+      )
+    }
+    expect(
+      contractSource(
+        { exports: { "./contract": "./dist/@x/pkg/contract.es.js" } },
+        text
+      ).kind
+    ).toBe("source")
   })
 })
 
