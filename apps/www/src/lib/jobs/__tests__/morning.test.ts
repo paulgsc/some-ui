@@ -18,6 +18,7 @@ import {
   morningOf,
   morningRoad,
   morningSaid,
+  offersDrive,
   runSaid,
 } from "@/lib/jobs/morning"
 
@@ -151,6 +152,22 @@ describe("this morning's run", () => {
     expect(m).toMatchObject({ id: "trouble", picked: 2, seen: 12 })
     expect(morningSaid(m, AFTER).line).toBe(
       "One voice note couldn’t be heard. It still read 12 postings and picked 2."
+    )
+  })
+
+  it("offers Drive for a run whose picks are there but not on this phone", () => {
+    const heard = told(lookedAt("2026-10-22T16:30:00Z"), [PARTLY])
+    const m = morningOf(heard, true, AFTER)
+    expect(m).toMatchObject({ id: "trouble", inDrive: true })
+    expect(offersDrive(m)).toBe(true)
+    expect(morningSaid(m, AFTER).line).toBe(
+      "One voice note couldn’t be heard. Its picks are in Drive; open them from there."
+    )
+    // A stopped run put nothing in Drive, and picks this phone holds need none.
+    const stopped = morningOf(told(heard, [STOPPED]), true, AFTER)
+    expect(offersDrive(stopped)).toBe(false)
+    expect(offersDrive(morningOf(told(holding(), [PARTLY]), true, AFTER))).toBe(
+      false
     )
   })
 

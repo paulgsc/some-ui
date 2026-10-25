@@ -518,7 +518,7 @@ export const JobsToday = (): JSX.Element => {
   const digest = currentDigest(state)
   const card = (
     <MorningCard morning={morning} runs={state.home.runs ?? []} now={now}>
-      {offersDrive(morning.id) && <OpenDigest />}
+      {offersDrive(morning) && <OpenDigest />}
     </MorningCard>
   )
 
@@ -547,7 +547,7 @@ export const JobsToday = (): JSX.Element => {
           <p className="text-sm">
             {newer ? newerHeld(digest.day) : notToday(digest.day)}
           </p>
-          {!offersDrive(morning.id) && <OpenDigest />}
+          {!offersDrive(morning) && <OpenDigest />}
         </section>
       )}
       <Problem />

@@ -66,6 +66,11 @@ export type Morning = {
   readonly problem: string | null
   /** For `quiet`: home keeps the runs' records, and holds none this morning. */
   readonly unrecorded: boolean
+  /**
+   * For `trouble`: the run put today's picks in Drive, and this phone doesn't
+   * hold them, so Drive is the way in.
+   */
+  readonly inDrive: boolean
 }
 
 const STARTS = RUN_STARTS.hour * 60 + RUN_STARTS.minute
@@ -98,6 +103,7 @@ export function morningOf(state: JobsState, kept: boolean, now: Date): Morning {
     lookedAt,
     problem: null,
     unrecorded: false,
+    inDrive: false,
   }
   if (digest !== null) {
     const picked = digest.picks.length
@@ -114,7 +120,12 @@ export function morningOf(state: JobsState, kept: boolean, now: Date): Morning {
     return { id: placesFull(digest) ? "full" : "rested", ...counts }
   }
   if (run !== null && run.outcome !== "done") {
-    return { ...base, id: "trouble", problem: run.problems[0] ?? null }
+    return {
+      ...base,
+      id: "trouble",
+      problem: run.problems[0] ?? null,
+      inDrive: run.added.length > 0,
+    }
   }
   const minutes = pacificMinutes(now)
   if (minutes < STARTS) return { id: "before", ...base }
@@ -125,9 +136,9 @@ export function morningOf(state: JobsState, kept: boolean, now: Date): Morning {
   return { ...base, id: "quiet", unrecorded: runs !== null && run === null }
 }
 
-/** Whether a state offers the picker: where Drive is a real way in. */
-export function offersDrive(id: MorningId): boolean {
-  return id === "away" || id === "quiet" || id === "not-kept"
+/** Whether `m` offers the picker: where Drive is a real way in. */
+export function offersDrive(m: Morning): boolean {
+  return m.id === "away" || m.id === "quiet" || m.id === "not-kept" || m.inDrive
 }
 
 /** The road a run's picks take: home's, or Drive's by the share sheet. */
@@ -251,13 +262,12 @@ export function morningSaid(m: Morning, now: Date): Said {
     }
     case "trouble": {
       const why = m.problem ?? "It didn’t say why."
-      return {
-        title: "This morning’s run couldn’t finish",
-        line:
-          m.seen === 0 && m.picked === 0
-            ? why
-            : `${why} It still read ${postings(m.seen)} and picked ${m.picked}.`,
-      }
+      const still = m.inDrive
+        ? " Its picks are in Drive; open them from there."
+        : m.seen === 0 && m.picked === 0
+          ? ""
+          : ` It still read ${postings(m.seen)} and picked ${m.picked}.`
+      return { title: "This morning’s run couldn’t finish", line: why + still }
     }
     case "before": {
       return {
