@@ -24,7 +24,8 @@
  *    and arrived, as a share the person confirmed would; a `409` or `422` is
  *    a refusal, kept by name and the file never filed again (it stays on the
  *    share sheet). A file naming a voice note waits for the share sheet,
- *    which carries the audio to Drive: home holds no audio;
+ *    which carries the audio to Drive, since the mailbox carries no audio
+ *    (home's own copy of a note goes by the voice lane, LA13);
  * 2¾. whether home should tell this phone when a morning run is in
  *    (`PUT` or `DELETE /jobs/notice`, `./notice`'s `noticeFiling`): at most
  *    one token taken back and one filed. A `200` records what home holds; a

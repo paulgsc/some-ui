@@ -30,6 +30,9 @@ const shelf = savingShelf({
   maxBytes: JOB_VOICE_MAX_BYTES,
 })
 
+/** The voice notes' audio, by note id, for the home link's voice lane. */
+export const jobVoiceAudio = shelf.shelf
+
 let jobs: JobsRuntime | null = null
 
 /** Made on first use, so importing this module reads nothing. */

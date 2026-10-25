@@ -71,4 +71,36 @@ describe("homeRequest", () => {
       homeRequest({ method: "GET", url: "http://192.168.1.10:3000/x" })
     ).resolves.toEqual({ status: 200, body: "" })
   })
+
+  it("sends bytes as their own type, base64 for the plugin, and text as JSON", async () => {
+    plugin.request.mockResolvedValue({ status: 200, data: "{}", headers: {} })
+    await homeRequest({
+      method: "PUT",
+      url: "https://home.example/api/v1/voice-notes/n1",
+      token: "t",
+      body: { contentType: "audio/webm;codecs=opus", base64: "GkXfow==" },
+    })
+    expect(plugin.request).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        headers: {
+          Authorization: "Bearer t",
+          "Content-Type": "audio/webm;codecs=opus",
+        },
+        data: "GkXfow==",
+        dataType: "file",
+      })
+    )
+    await homeRequest({
+      method: "PUT",
+      url: "https://home.example/api/v1/jobs/events/e1",
+      token: "t",
+      body: '{"id":"e1"}',
+    })
+    const options = plugin.request.mock.lastCall?.[0]
+    expect(options).toMatchObject({
+      headers: { "Content-Type": "application/json" },
+      data: '{"id":"e1"}',
+    })
+    expect(options).not.toHaveProperty("dataType")
+  })
 })

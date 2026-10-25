@@ -108,7 +108,9 @@ function fakeHome(
     const failure = options.fail?.(requests.length) ?? null
     requests.push(`${method} ${path}`)
     return failure === null
-      ? Promise.resolve(answering(method, path, body))
+      ? Promise.resolve(
+          answering(method, path, typeof body === "string" ? body : undefined)
+        )
       : Promise.reject(failure)
   }
   return { send, held, settings: () => settings, requests }

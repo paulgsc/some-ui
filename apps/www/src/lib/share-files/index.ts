@@ -45,8 +45,11 @@ const PORT: ForeignPort = {
   report: reportFailure,
 }
 
-/** Base64 without the `data:` prefix, which is what `writeFile` takes for bytes. */
-function base64(blob: Blob): Promise<string> {
+/**
+ * Base64 without the `data:` prefix, which is what `writeFile` takes for
+ * bytes, and the native request for a body of bytes.
+ */
+export function base64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = (): void =>

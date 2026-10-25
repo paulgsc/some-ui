@@ -41,7 +41,7 @@ import { useIsDeclaredBounded } from "@/lib/route-bounds"
 import { navOf, owns, webSettingsOf, wingOf } from "@/lib/wings"
 import { AudioIndicator } from "@/components/audio/audio-indicator"
 import { AccountUnavailableBanner } from "@/components/auth/account-unavailable-banner"
-import { DeviceHomeGlyph } from "@/components/device-home-glyph"
+import { DeviceHomeGlyph, VoiceNotesHome } from "@/components/device-home-glyph"
 import { LocIndicator } from "@/components/loc/loc-indicator"
 import {
   barOf,
@@ -226,6 +226,7 @@ const DashboardLayout = (): JSX.Element => {
 
   return (
     <SidebarProvider className={cn(isBoundedRoute && "h-dvh overflow-hidden")}>
+      {import.meta.env.VITE_DEVICE_BACKEND === "true" && <VoiceNotesHome />}
       {/* The phone navigates by the bar along the bottom instead. */}
       {!MOBILE_APP && <DashboardSidebarContent pathname={pathname} />}
       <SidebarInset

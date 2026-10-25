@@ -137,7 +137,11 @@ function home(answer: (call: Call) => { status: number; body: unknown }): {
 } {
   const calls: Array<Call> = []
   const send: HomeCall = (method, path, body) => {
-    const call = { method, path, body }
+    const call = {
+      method,
+      path,
+      body: typeof body === "string" ? body : undefined,
+    }
     calls.push(call)
     const { status, body: out } = answer(call)
     return Promise.resolve({ status, body: JSON.stringify(out) })

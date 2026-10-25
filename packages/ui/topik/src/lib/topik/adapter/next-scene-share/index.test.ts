@@ -26,7 +26,12 @@ function sheet(): {
   }
 }
 
-const file = { name: "drama-1.prompt.md", text: "prompt" }
+const file = {
+  name: "drama-1.prompt.md",
+  text: "prompt",
+  stamp: "drama-1",
+  at: "2026-10-09T07:05:03.120Z",
+}
 
 describe("ShareRuntime", () => {
   it("is shared only once the person sent it somewhere", async () => {

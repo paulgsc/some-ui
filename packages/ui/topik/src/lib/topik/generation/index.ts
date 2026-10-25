@@ -214,10 +214,12 @@ export function buildTreePrompt(request: TreeRequest): string {
 export function nextSceneFile(
   prompt: string,
   at: Date
-): { name: string; text: string } {
+): { name: string; text: string; stamp: string; at: string } {
   const stamp = sceneStamp(at)
   return {
     name: `${stamp}.prompt.md`,
+    stamp,
+    at: at.toISOString(),
     text: [
       `> **For an agent:** follow the prompt below. If it names voice notes (\`Scene, spoken\`), they are the audio files beside this one: listen to them first. Write the drama it asks for as one JSON file next to this one, named \`${stamp}.json\`, holding the bare JSON, not the fenced block **Output** asks for. Write nothing else, and do not change this file.`,
       "",
