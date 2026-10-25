@@ -207,6 +207,20 @@
       "module": "jobs"
     },
     {
+      "method": "DELETE",
+      "path": "/jobs/notice",
+      "full_path": "/api/v1/jobs/notice",
+      "versioned": true,
+      "module": "jobs"
+    },
+    {
+      "method": "PUT",
+      "path": "/jobs/notice",
+      "full_path": "/api/v1/jobs/notice",
+      "versioned": true,
+      "module": "jobs"
+    },
+    {
       "method": "GET",
       "path": "/jobs/runs",
       "full_path": "/api/v1/jobs/runs",
