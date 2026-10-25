@@ -46,6 +46,10 @@ export const ACCOUNT_ERASES = {
       text: "Each session you played: your picks, how long each took, and how it ended.",
     },
     {
+      label: "Voice notes",
+      text: "Each voice note your phone sent home, its sound included.",
+    },
+    {
       label: "What your phones share",
       text: "What each paired phone chose to keep sending home, and when it chose.",
     },
