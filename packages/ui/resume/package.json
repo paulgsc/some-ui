@@ -19,6 +19,7 @@
     "check:ats": "node scripts/check-ats.mjs",
     "check:layout": "node scripts/check-layout.mjs",
     "check:claims": "node scripts/check-claims.mjs",
+    "check:pii-path": "node scripts/check-pii-path.mjs",
     "export:data": "node scripts/export-data.mjs",
     "typecheck": "tsc --noEmit"
   },

@@ -156,6 +156,16 @@ async function verifyPii(typstBin, fontPath, { extractor }) {
       console.log(`[resume] ATS and layout checks passed: ${label}`)
     }
   }
+  // RP1, end to end: the service's render, through recording shims of typst
+  // and pdftotext. Its checks need Poppler, so it runs where those do.
+  if (!extractor) return
+  execFileSync(
+    process.execPath,
+    [join(packageDir, "scripts", "check-pii-path.mjs")],
+    {
+      stdio: "inherit",
+    }
+  )
 }
 
 async function main() {

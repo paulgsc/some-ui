@@ -187,12 +187,26 @@ when declared:
 > - _Falsified by_ a hunk in `scripts/` or `src/` that adds `pii` to
 >   `inputArgs` or to any spawn's arguments or environment, writes a request
 >   body or a PDF built with PII to disk, calls `render-resume` with PII from
->   anywhere else, or makes `main.typ` pass anything but `none`.
+>   anywhere else, or makes `main.typ` pass anything but `none`; or that
+>   deletes `scripts/check-pii-path.mjs`, weakens what it asserts, or stops
+>   `scripts/compile.mjs` running it beside the ATS and layout checks.
 > - _Scope:_ `packages/ui/resume/scripts`, `packages/ui/resume/src`.
-> - _Why not enforced:_ mechanical, not yet a rule. A test can record the
->   argv and environment of shimmed `typst`/`pdftotext` binaries during a
->   render (done by hand when RP1 was declared). It needs typst, fonts and
->   Poppler, and this package has no test runner.
+> - _Why not enforced:_ the service's own path is a check.
+>   `scripts/check-pii-path.mjs` (`pnpm check:pii-path`, run by the build
+>   after its faux-PII pass wherever Poppler is, so always in CI) starts
+>   `serve.mjs` with `typst` and `pdftotext` replaced by shims that record
+>   every call's argv and environment, renders once with
+>   `scripts/fixtures/faux-pii.json`, and fails when a value, as written or as
+>   the bytes list `compileWithPii`'s program carries it, is in any argument
+>   or variable; when typst never compiled from stdin; when a file under the
+>   package changed or the service left one in its own `TMPDIR`; and when
+>   `main.typ` passes anything but `pii: none`. It is a build check rather
+>   than a unit test because it needs the build's typst, fonts and Poppler.
+>   What stays a reading: a path that one request does not take (the build's
+>   own faux-PII pass, a branch on another template), which the falsifier
+>   still covers. _Checked when it landed (2026-10-25, #2044):_ it passes;
+>   PII added as an `--input`, as an environment variable, as a file under
+>   the package and as a temp file each fail it.
 >
 > **RP2: the service logs no request text and returns none.**
 >
