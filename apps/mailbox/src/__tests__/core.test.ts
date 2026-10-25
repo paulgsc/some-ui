@@ -721,6 +721,9 @@ describe("voice transcripts", () => {
       [{ ...HEARD, note: "" }, "note must be the note's id"],
       [{ ...HEARD, note: "a/b" }, "note must be the note's id"],
       [{ ...HEARD, note: "zzz" }, "the name must carry the note's id"],
+      // `transcript-k3v9qa-1.json` is note `k3v9qa`'s, not note `k3v9qa-1`'s
+      // first, nor `k3v`'s.
+      [{ ...HEARD, note: "k3v" }, "the name must carry the note's id"],
       [{ ...HEARD, of: "diary" }, "of must be reflection, jobs or scene"],
       [{ ...HEARD, ref: 7 }, "ref must name what the note belongs to"],
       [{ ...HEARD, at: "soon" }, "at must be when the note was recorded"],
@@ -745,6 +748,19 @@ describe("voice transcripts", () => {
         { error: why },
       ])
     }
+    const hyphened = JSON.stringify({ ...HEARD, note: "a-2" })
+    expect(
+      (
+        await asHome(
+          d,
+          "transcript-a-2-1.json",
+          JSON.stringify({ ...HEARD, note: "a" })
+        )
+      ).status
+    ).toBe(422)
+    expect((await asHome(d, "transcript-a-2-1.json", hyphened)).status).toBe(
+      201
+    )
     for (const name of [
       "transcript-k3v9qa.json",
       "transcript--1.json",

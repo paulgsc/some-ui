@@ -91,7 +91,11 @@ function transcriptRefusal(
   if (typeof body.note !== "string" || !NOTE_ID.test(body.note)) {
     return "note must be the note's id"
   }
-  if (!name.startsWith(`transcript-${body.note}-`)) {
+  const prefix = `transcript-${body.note}-`
+  if (
+    !name.startsWith(prefix) ||
+    !/^[1-9]\d{0,18}\.json$/.test(name.slice(prefix.length))
+  ) {
     return "the name must carry the note's id"
   }
   if (!NOTE_OF.has(body.of)) return "of must be reflection, jobs or scene"
