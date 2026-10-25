@@ -42,6 +42,7 @@ export type { JobsRun } from "./run"
 export {
   JobsRunSchema,
   MAX_PROBLEM,
+  pacificDay,
   parseJobsRun,
   runFileName,
   runFindings,

@@ -78,6 +78,7 @@ describe("parseRoutineFiles", () => {
     const runs = createRunLog(memoryStorage())
     const run = {
       schema: "some-ui.routine-run/1",
+      routine: "reflections",
       startedAt: "2026-10-24T16:02:08Z",
       outcome: "done",
       found: { reflections: 0, prompts: 0 },

@@ -19,7 +19,6 @@ const PARSERS = new Map([
   ["some-ui.routine-run/1", parseJobsRun],
 ])
 
-/** A run record is checked against its own name, the one it goes to the mailbox under. */
 function check(raw, name) {
   let schema
   try {

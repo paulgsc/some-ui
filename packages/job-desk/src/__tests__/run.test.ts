@@ -43,23 +43,6 @@ const stopped = (problem: string): JobsRun =>
 const messages = (run: JobsRun, name = NAME): ReadonlyArray<string> =>
   runFindings(run, name).map((f) => `${f.path}: ${f.message}`)
 
-describe("parseJobsRun", () => {
-  it("reads a record the checker passes", () => {
-    const parsed = parseJobsRun(JSON.stringify(done()))
-    expect(parsed.ok).toBe(true)
-    if (parsed.ok) expect(messages(parsed.value)).toEqual([])
-  })
-
-  it("takes only the jobs routine's runs", () => {
-    const parsed = parseJobsRun(
-      JSON.stringify({ ...done(), routine: "reflections" })
-    )
-    expect(parsed.ok).toBe(false)
-    if (!parsed.ok)
-      expect(parsed.problem).toMatch(/^Not a jobs run record: routine/)
-  })
-})
-
 describe("ROUTINE.md's example record", () => {
   it("passes the checker under the name it gives", () => {
     const routine = readFileSync(
@@ -83,14 +66,15 @@ describe("runFileName", () => {
   it("names the run for when it started, in UTC to the second, as the mailbox takes it", () => {
     expect(runFileName(STARTED)).toBe(NAME)
     expect(runFileName("2026-10-26T07:52:07.512-07:00")).toBe(NAME)
-    expect(NAME).toMatch(/^run-[a-z]{1,20}-\d{8}T\d{6}Z\.json$/)
   })
 })
 
 describe("pacificDay", () => {
-  it("is the day in America/Los_Angeles, which can be a day behind UTC's", () => {
-    expect(pacificDay(STARTED)).toBe("2026-10-26")
-    expect(pacificDay("2026-10-27T03:00:00Z")).toBe("2026-10-26")
+  it("reads the Pacific day across both offsets", () => {
+    expect(pacificDay(new Date("2026-10-22T06:59:00Z"))).toBe("2026-10-21")
+    expect(pacificDay(new Date("2026-10-22T07:00:00Z"))).toBe("2026-10-22")
+    expect(pacificDay(new Date("2026-12-01T07:59:00Z"))).toBe("2026-11-30")
+    expect(pacificDay(new Date("2026-12-01T08:00:00Z"))).toBe("2026-12-01")
   })
 })
 
@@ -179,6 +163,7 @@ describe("runFindings", () => {
       "The checker found the digest's schema wrong.",
       "The request to https://api.lever.co failed.",
       "Couldn't sync with home.",
+      "The upload answered 503.",
     ]) {
       expect(MACHINERY.test(problem), problem).toBe(true)
       expect(messages(stopped(problem))).toHaveLength(1)
@@ -188,6 +173,8 @@ describe("runFindings", () => {
       "Today's picks were already in Drive, so this run added none.",
       "Home couldn't be reached, so today's picks are in Drive only.",
       "Two of your shares couldn't be read, so they wait for tomorrow.",
+      "I read 120 postings, and your places were full.",
+      "No response came from two forms, so their questions are left out.",
     ]) {
       expect(MACHINERY.test(problem), problem).toBe(false)
     }

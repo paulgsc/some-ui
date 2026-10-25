@@ -12,6 +12,7 @@ import {
   digestFindings,
   MAX_NOTE,
   MAX_OPEN_PICKS,
+  pacificDay,
   TRACKS,
 } from "@some-ui/job-desk"
 import { Badge, Button, Textarea } from "@some-ui/shared"
@@ -28,7 +29,6 @@ import {
   disagreed,
   kitOf,
   openOf,
-  pacificDay,
   picksStanding,
   placesFull,
   progressOf,

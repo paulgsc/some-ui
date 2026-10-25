@@ -715,7 +715,7 @@ so it is written even when nothing else was. The shape is `JobsRunSchema` in
   digest reached Drive but something this run set out to do wasn't done: a
   file the checker turned down or whose bytes didn't match, a voice note
   that couldn't be transcribed, a form that couldn't be read, a résumé PR
-  whose checks failed, the digest not reaching the mailbox. Otherwise it is
+  whose checks failed, a mailbox that turned the digest down. Otherwise it is
   `done`. Picking nothing is `done`: weak postings or full places are what
   the run found, not something it failed at.
 - `found` is what the run read: `postings` is the digest's `seen` (0 when it

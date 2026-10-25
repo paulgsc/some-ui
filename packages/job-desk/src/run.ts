@@ -4,32 +4,20 @@ import { digestFileName } from "./digest"
 import type { Finding } from "./findings"
 import { parseWith, text, type Parsed } from "./shared"
 
-/**
- * `some-ui.routine-run/1` with `"routine": "jobs"`: what one morning run did,
- * put to the mailbox's `run` folder as `run-jobs-<stamp>.json` last, on every
- * run, a stopped one included (ROUTINE.md §9). Home keeps it beside the
- * reflections routine's runs, which share the schema and differ by `routine`
- * (`apps/mailbox/README.md`, "What a put must satisfy").
- *
- * The phone shows `problems` as they are written (RUN3, #2054), so each is a
- * sentence in my terms: what was or wasn't done, never how it works.
- */
 const Instant = z.iso.datetime({ offset: true })
 const Count = z.number().int().nonnegative()
 
 /** The longest a problem may run: one sentence on a phone screen. */
 export const MAX_PROBLEM = 200
 
+/** What one morning run did, a stopped one included (ROUTINE.md §9). */
 export const JobsRunSchema = z.object({
   schema: z.literal("some-ui.routine-run/1"),
   routine: z.literal("jobs"),
   startedAt: Instant,
   finishedAt: Instant,
-  /** `done`: today's picks were written and nothing was left out; `partly`: they were, and something was; `stopped`: none were. */
   outcome: z.enum(["done", "partly", "stopped"]),
-  /** What it read: distinct postings (the digest's `seen`), and the new scouts and decisions files it took in. */
   found: z.object({ postings: Count, scouts: Count, decisions: Count }),
-  /** Today's digest, once it is in Drive. */
   added: z.array(
     z.object({ folder: z.literal("brief"), name: text, title: text })
   ),
@@ -58,18 +46,18 @@ const PACIFIC_DAY = new Intl.DateTimeFormat("en-CA", {
   day: "2-digit",
 })
 
-/** The America/Los_Angeles day an instant falls on: the run's "today". */
-export function pacificDay(at: string): string {
-  return PACIFIC_DAY.format(new Date(at))
+/** The Pacific calendar day of `at`, `YYYY-MM-DD`: the morning run's "today". */
+export function pacificDay(at: Date): string {
+  return PACIFIC_DAY.format(at)
 }
 
 /**
  * How it works rather than what it did: a status code, an address, a
- * variable, a file format or a step of ROUTINE.md. None may reach the
- * phone's screen.
+ * variable, a file format or a step of ROUTINE.md. The phone shows each
+ * problem as written (RUN3), so none may name these.
  */
 export const MACHINERY =
-  /\b(mailbox|schema|json|checker|curl|connector|token|env\w*|api|http\w*|https?:|status|error|request|response|sync\w*|server|queue|retry|null|undefined|\d{3})\b|§|\b[A-Z][A-Z0-9]*_[A-Z0-9_]+\b|\.(lan|local|com|json)\b/i
+  /\b(mailbox|schema|json|checker|curl|connector|token|env\w*|api|http\w*|https?:|status|error|request|sync\w*|server|retry|null|undefined)\b|\b[1-5]\d\d\b(?! [a-z])|§|\b[A-Z][A-Z0-9]*_[A-Z0-9_]+\b|\.(lan|local|com|json)\b/i
 
 /**
  * The rules the schema can't state: the name, the clock, what each outcome
@@ -92,7 +80,7 @@ export function runFindings(
     found.push({ path: "finishedAt", message: "before startedAt" })
   }
 
-  const digest = digestFileName(pacificDay(run.startedAt))
+  const digest = digestFileName(pacificDay(new Date(run.startedAt)))
   run.added.forEach((added, i) => {
     if (added.name !== digest) {
       found.push({

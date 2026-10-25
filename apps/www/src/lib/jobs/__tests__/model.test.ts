@@ -9,7 +9,6 @@ import {
   EMPTY,
   kitOf,
   openOf,
-  pacificDay,
   progressOf,
   releasedVoice,
   standingOf,
@@ -634,14 +633,5 @@ describe("digests home holds (fetched)", () => {
     })
     expect(untouchedReported(state, DAY)).toBe(true)
     expect(untouchedReported(state, "2026-10-19")).toBe(false)
-  })
-})
-
-describe("pacificDay", () => {
-  it("reads the Pacific day across both offsets", () => {
-    expect(pacificDay(new Date("2026-10-22T06:59:00Z"))).toBe("2026-10-21")
-    expect(pacificDay(new Date("2026-10-22T07:00:00Z"))).toBe("2026-10-22")
-    expect(pacificDay(new Date("2026-12-01T07:59:00Z"))).toBe("2026-11-30")
-    expect(pacificDay(new Date("2026-12-01T08:00:00Z"))).toBe("2026-12-01")
   })
 })

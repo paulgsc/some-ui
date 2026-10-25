@@ -593,6 +593,7 @@ describe("HandheldLesson", () => {
           name: "run-reflections-20261013T160208Z.json",
           file: {
             schema: "some-ui.routine-run/1",
+            routine: "reflections",
             startedAt: "2026-10-13T16:02:08Z",
             outcome: "done",
             found: { reflections: 1, prompts: 0 },

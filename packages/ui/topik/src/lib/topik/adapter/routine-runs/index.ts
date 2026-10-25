@@ -51,8 +51,7 @@ const RunSchema = z.object({
   schema: z.literal("some-ui.routine-run/1"),
   // The jobs routine's runs share the schema and the folder
   // (`@some-ui/job-desk`'s `JobsRunSchema`); only this routine's are read.
-  // A run from before the field is this routine's.
-  routine: z.literal("reflections").optional(),
+  routine: z.literal("reflections"),
   startedAt: Instant,
   finishedAt: Instant.nullish(),
   outcome: z.enum(["done", "partly", "stopped"]),
@@ -126,7 +125,7 @@ const NONE: HeldRuns = { runs: [], lookedAt: null, since: null }
 
 const Stored = z.iso.datetime()
 
-const StoredRun = RunSchema.omit({ schema: true }).extend({
+const StoredRun = RunSchema.omit({ schema: true, routine: true }).extend({
   name: z.string().min(1),
   startedAt: Stored,
   finishedAt: Stored.nullable(),
