@@ -304,11 +304,13 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
       },
       restored: (events) => commit({ type: "restored", events }),
       fetched(digests): void {
-        commit({
+        const action: JobsAction = {
           type: "fetched",
           digests,
           at: ports.now().toISOString(),
-        })
+        }
+        // Only that home answered, which nobody asked for: quiet.
+        commit(action, step(state, action).digests === state.digests)
       },
       outgoing: (kind) => fileFor(kind, ports.now()),
       // Home holds it, so it is shared and has arrived, in one change: a

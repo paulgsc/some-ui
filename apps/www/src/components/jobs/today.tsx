@@ -10,10 +10,8 @@ import { dayOf } from "@some-ui/core-utils"
 import type { Digest, Pick } from "@some-ui/job-desk"
 import {
   digestFindings,
-  freeSlots,
   MAX_NOTE,
   MAX_OPEN_PICKS,
-  PICKS_PER_DAY,
   TRACKS,
 } from "@some-ui/job-desk"
 import { Badge, Button, Textarea } from "@some-ui/shared"
@@ -32,14 +30,14 @@ import {
   openOf,
   pacificDay,
   picksStanding,
+  placesFull,
   progressOf,
   standingOf,
 } from "@/lib/jobs/model"
+import { morningOf, offersDrive } from "@/lib/jobs/morning"
 import { doneOn, nextPick } from "@/lib/jobs/today"
 import {
-  allDone,
   answersDrafted,
-  arriveOnTheirOwn,
   breaksRules,
   coverLetterDrafted,
   detailsToPaste,
@@ -54,11 +52,9 @@ import {
   lapsedList,
   leftOut,
   newerHeld,
-  noPicksYet,
   notToday,
   openIt,
   openOfTrack,
-  orOpenFile,
   pickedForYou,
   pickedFrom,
   pickState,
@@ -71,13 +67,13 @@ import {
   sendIt,
   stillOpen,
   trackHeading,
-  whatMorningsBring,
   whyItFits,
   wouldHavePicked,
 } from "@/lib/jobs/words"
 import { postingLine, sectionHeading } from "@/components/job-reading"
 
-import { OpenDigest, Problem, useJobs } from "./parts"
+import { MorningCard } from "./morning-card"
+import { OpenDigest, Problem, useJourneyContext } from "./parts"
 
 /** A pick's place in Jobs: a link on the phone, plain elsewhere. */
 const ToPick = ({
@@ -314,8 +310,7 @@ const Places = ({
   ]
   const queued = digest.queue?.open ?? []
   const held = queued.filter((p) => !p.closed)
-  const room = freeSlots(queued)
-  const full = digest.queue !== null && TRACKS.every((t) => room[t] === 0)
+  const full = placesFull(digest)
   return (
     <section className="flex flex-col gap-2">
       <p className="text-sm">
@@ -454,12 +449,12 @@ const LeftOut = ({
 const HowPicked = ({
   state,
   digest,
-  picker,
+  today,
 }: {
   state: JobsState
   digest: Digest
-  /** The file picker, when it isn't already offered above. */
-  picker: boolean
+  /** The Pacific day, so today's run is said as this morning's. */
+  today: string
 }): JSX.Element => {
   const [showLeftOut, setShowLeftOut] = useState(false)
   const findings = digestFindings(digest)
@@ -472,6 +467,7 @@ const HowPicked = ({
         <p className="text-sm">
           {pickedFrom(
             digest.day,
+            today,
             digest.seen,
             digest.picks.length,
             digest.setAside.length
@@ -509,59 +505,57 @@ const HowPicked = ({
             )}
           </section>
         )}
-        {picker && <OpenDigest />}
       </div>
     </details>
   )
 }
 
 export const JobsToday = (): JSX.Element => {
-  const { state } = useJobs()
+  const { state, kept } = useJourneyContext()
   const now = useMinuteClock()
+  const today = pacificDay(now)
+  const morning = morningOf(state, kept, now)
   const digest = currentDigest(state)
+  const card = (
+    <MorningCard morning={morning} now={now}>
+      {offersDrive(morning.id) && <OpenDigest />}
+    </MorningCard>
+  )
 
   if (digest === null) {
     return (
-      <section className="flex flex-col gap-4 py-6">
-        <h2 className="text-xl font-bold">{noPicksYet}</h2>
-        <p className="text-muted-foreground">
-          {whatMorningsBring(PICKS_PER_DAY.software, PICKS_PER_DAY.adjacent)}
-        </p>
-        <p className="text-sm">{arriveOnTheirOwn}</p>
-        <OpenDigest label={orOpenFile} />
+      <div className="flex flex-col gap-4">
+        {card}
         <Problem />
-      </section>
+      </div>
     )
   }
 
-  const earlier = digest.day < pacificDay(now)
+  const earlier = digest.day < today
   // Opening an older file shows it even when a newer digest is held.
   const newer = state.digests.some((d) => d.day > digest.day)
-  const next = nextPick(state, pacificDay(now))
+  const next = nextPick(state, today)
   const done = doneOn(state, dayOf(now), dayOf)
   return (
     <div className="flex flex-col gap-4">
       <p role="status" className="text-sm font-semibold empty:hidden">
         {done > 0 ? doneToday(done) : null}
       </p>
+      {card}
       {earlier && (
         <section className="flex flex-col gap-2">
           <p className="text-sm">
-            {newer
-              ? newerHeld(digest.day)
-              : `${notToday(digest.day)} ${arriveOnTheirOwn}`}
+            {newer ? newerHeld(digest.day) : notToday(digest.day)}
           </p>
-          <OpenDigest label={orOpenFile} />
+          {!offersDrive(morning.id) && <OpenDigest />}
         </section>
       )}
       <Problem />
-      {next === null ? (
-        <p className="bg-muted rounded-xl p-4 text-sm">{allDone}</p>
-      ) : (
+      {next !== null && (
         <NextPick state={state} day={next.day} pick={next.pick} />
       )}
       <AllPicks state={state} digest={digest} />
-      <HowPicked state={state} digest={digest} picker={!earlier} />
+      <HowPicked state={state} digest={digest} today={today} />
     </div>
   )
 }

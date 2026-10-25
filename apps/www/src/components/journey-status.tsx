@@ -1,11 +1,11 @@
 /**
- * A card's title bar that wears where its file is (J0, `lib/journey`): the
- * state's color across the bar, and at its right the stop the file is at,
- * badged "!" when stopped and checked when read. Pressing the icon opens a
- * pop-up with the state's words, its road, and every state, its own picked
- * out; it closes on any press or focus elsewhere, and on Escape (Radix's
- * popover). When the state changes, the bar's color moves with it; nothing
- * loops. Colors come from the theme's tokens, so each holds in every theme.
+ * A card's title bar that wears a state (`StatusBar`): the state's color
+ * across the bar, and at its right the stop it is at, badged "!" when
+ * stopped and checked when read. Pressing the icon opens a pop-up with the
+ * state's words, its road, and every state, its own picked out; it closes on
+ * any press or focus elsewhere, and on Escape (Radix's popover). When the
+ * state changes, the bar's color moves with it; nothing loops. Colors come
+ * from the theme's tokens, so each holds in every theme.
  */
 import type { JSX, ReactNode } from "react"
 import { useRef, useState } from "react"
@@ -16,12 +16,12 @@ import { Check, Folder, House, Inbox, Smartphone, Sunrise } from "lucide-react"
 
 import type {
   Journey,
-  JourneyId,
   JourneyTheme,
   Leg,
   Mark,
   Noun,
   Road,
+  Said,
   Stop,
 } from "@/lib/journey"
 import {
@@ -159,20 +159,27 @@ const JourneyTrack = ({ road }: { road: Road }): JSX.Element => (
   </div>
 )
 
+/** One state of a closed set, as the pop-up's list names it. */
+type Listed = {
+  readonly id: string
+  readonly title: string
+  readonly theme: JourneyTheme
+}
+
 /** The pop-up's list: every state, the card's own picked out. */
 const EveryState = ({
   current,
-  noun,
+  every,
 }: {
-  current: JourneyId
-  noun: Noun
+  current: string
+  every: ReadonlyArray<Listed>
 }): JSX.Element => (
   <div className="flex flex-col gap-1 border-t pt-2">
     <span className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
       {everyState}
     </span>
     <ul className="flex flex-col gap-0.5">
-      {JOURNEY_IDS.map((id) => (
+      {every.map(({ id, title, theme }) => (
         <li
           key={id}
           aria-current={id === current ? "true" : undefined}
@@ -183,14 +190,166 @@ const EveryState = ({
         >
           <span
             aria-hidden
-            className={cn("size-2.5 rounded-sm", THEMES[themeOf(id)].swatch)}
+            className={cn("size-2.5 rounded-sm", THEMES[theme].swatch)}
           />
-          <span className="break-words">{stateTitle(id, noun)}</span>
+          <span className="break-words">{title}</span>
         </li>
       ))}
     </ul>
   </div>
 )
+
+/** A state as a bar wears it. */
+export type BarState = {
+  readonly id: string
+  readonly theme: JourneyTheme
+  /** The stop its icon shows. */
+  readonly at: Stop
+  readonly said: Said
+  /** The icon's spoken name. */
+  readonly label: string
+  readonly road: Road
+  /** Every state of its set, for the pop-up's list. */
+  readonly every: ReadonlyArray<Listed>
+}
+
+export type StatusBarProps = {
+  /** The card's name. */
+  title: ReactNode
+  /** The state it wears; null before there is one. */
+  state: BarState | null
+  /** The heading the title is, under the screen's own. */
+  heading?: "h2" | "h3" | undefined
+  className?: string | undefined
+}
+
+/** A card's title bar, wearing `state`. */
+const StatusBar = ({
+  title,
+  state,
+  heading: Heading = "h2",
+  className,
+}: StatusBarProps): JSX.Element => {
+  const trigger = useRef<HTMLButtonElement>(null)
+  // Toward the larger half of the window, so a card low on a phone held
+  // sideways opens upward rather than into the strip below it.
+  const [side, setSide] = useState<"top" | "bottom">("bottom")
+  const aim = (open: boolean): void => {
+    const box = trigger.current?.getBoundingClientRect()
+    if (!open || box === undefined) return
+    setSide(
+      box.top + box.height / 2 > window.innerHeight / 2 ? "top" : "bottom"
+    )
+  }
+  const Icon = state === null ? null : STOP_ICONS[state.at]
+  return (
+    <div
+      data-journey={state?.id ?? "none"}
+      data-journey-theme={state?.theme ?? "none"}
+      className={cn(
+        "flex min-h-13 items-center justify-between gap-2 rounded-t-xl border-b py-1 pl-3.5 pr-1 transition-colors duration-200 motion-reduce:transition-none",
+        state === null ? "bg-muted/40 border-border" : THEMES[state.theme].bar,
+        className
+      )}
+    >
+      <Heading className="min-w-0 break-words text-base font-semibold">
+        {title}
+      </Heading>
+      {state !== null && Icon && (
+        <Popover onOpenChange={aim}>
+          <PopoverTrigger asChild>
+            <button
+              ref={trigger}
+              type="button"
+              aria-label={state.label}
+              className="focus-visible:ring-ring flex size-11 shrink-0 items-center justify-center rounded-lg focus-visible:outline-none focus-visible:ring-2"
+            >
+              <span
+                data-journey-chip=""
+                className={cn(
+                  "relative flex size-8 items-center justify-center rounded-lg transition-colors duration-200 motion-reduce:transition-none",
+                  THEMES[state.theme].chip
+                )}
+              >
+                <Icon aria-hidden className="size-4.5" />
+                {state.theme === "stopped" && (
+                  <CornerBadge tone="bg-background text-destructive border border-destructive">
+                    !
+                  </CornerBadge>
+                )}
+                {state.theme === "read" && (
+                  <CornerBadge tone="bg-background text-success border border-success">
+                    <Check className="size-2.5" strokeWidth={3} />
+                  </CornerBadge>
+                )}
+              </span>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            side={side}
+            align="end"
+            collisionPadding={16}
+            aria-label={state.said.title}
+            data-journey-popup=""
+            data-scroll-intent=""
+            className={
+              // scroll-intent: the words, the road and every state stay
+              // whole; on a phone held sideways the box is shorter than
+              // they are, and it scrolls inside the window rather than
+              // leaving it.
+              "flex max-h-[min(30rem,var(--radix-popover-content-available-height))] w-[min(19rem,calc(100vw-2rem))] flex-col gap-2 overflow-y-auto p-3"
+            }
+          >
+            <span className="break-words text-[0.9375rem] font-semibold">
+              {state.said.title}
+            </span>
+            <span className="text-muted-foreground break-words text-sm leading-snug">
+              {state.said.line}
+            </span>
+            <div className="flex justify-center">
+              <JourneyTrack road={state.road} />
+            </div>
+            <EveryState current={state.id} every={state.every} />
+          </PopoverContent>
+        </Popover>
+      )}
+    </div>
+  )
+}
+
+/** A card whose title bar wears `state`, and what it holds. */
+export const StatusCard = ({
+  children,
+  ...bar
+}: StatusBarProps & { children?: ReactNode }): JSX.Element => (
+  <section className="flex flex-col rounded-xl border">
+    <StatusBar {...bar} />
+    {children}
+  </section>
+)
+
+/** Where a file is (J0), as a bar wears it; null before anything was offered. */
+export function journeyBarState(
+  journey: Journey | null,
+  noun: Noun,
+  now: Date
+): BarState | null {
+  if (journey === null) return null
+  const said = journeySaid(journey, noun, now)
+  return {
+    id: journey.id,
+    theme: themeOf(journey.id),
+    at: stopOf(journey.id),
+    said,
+    label: iconLabel(said, noun),
+    road: roadOf(journey),
+    every: JOURNEY_IDS.map((id) => ({
+      id,
+      title: stateTitle(id, noun),
+      theme: themeOf(id),
+    })),
+  }
+}
 
 export type JourneyStatusProps = {
   /** The card's name: what the file holds. */
@@ -205,100 +364,12 @@ export type JourneyStatusProps = {
   className?: string | undefined
 }
 
-/** A card's title bar, wearing its file's state. */
+/** A card's title bar, wearing where its file is (J0). */
 export const JourneyStatus = ({
-  title,
   journey,
   noun,
-  heading: Heading = "h2",
   now = new Date(),
-  className,
-}: JourneyStatusProps): JSX.Element => {
-  const trigger = useRef<HTMLButtonElement>(null)
-  // Toward the larger half of the window, so a card low on a phone held
-  // sideways opens upward rather than into the strip below it.
-  const [side, setSide] = useState<"top" | "bottom">("bottom")
-  const aim = (open: boolean): void => {
-    const box = trigger.current?.getBoundingClientRect()
-    if (!open || box === undefined) return
-    setSide(
-      box.top + box.height / 2 > window.innerHeight / 2 ? "top" : "bottom"
-    )
-  }
-  const theme = journey === null ? null : themeOf(journey.id)
-  const said = journey === null ? null : journeySaid(journey, noun, now)
-  const Icon = journey === null ? null : STOP_ICONS[stopOf(journey.id)]
-  return (
-    <div
-      data-journey={journey?.id ?? "none"}
-      data-journey-theme={theme ?? "none"}
-      className={cn(
-        "flex min-h-13 items-center justify-between gap-2 rounded-t-xl border-b py-1 pl-3.5 pr-1 transition-colors duration-200 motion-reduce:transition-none",
-        theme === null ? "bg-muted/40 border-border" : THEMES[theme].bar,
-        className
-      )}
-    >
-      <Heading className="min-w-0 break-words text-base font-semibold">
-        {title}
-      </Heading>
-      {journey !== null && said !== null && theme !== null && Icon && (
-        <Popover onOpenChange={aim}>
-          <PopoverTrigger asChild>
-            <button
-              ref={trigger}
-              type="button"
-              aria-label={iconLabel(said, noun)}
-              className="focus-visible:ring-ring flex size-11 shrink-0 items-center justify-center rounded-lg focus-visible:outline-none focus-visible:ring-2"
-            >
-              <span
-                data-journey-chip=""
-                className={cn(
-                  "relative flex size-8 items-center justify-center rounded-lg transition-colors duration-200 motion-reduce:transition-none",
-                  THEMES[theme].chip
-                )}
-              >
-                <Icon aria-hidden className="size-4.5" />
-                {theme === "stopped" && (
-                  <CornerBadge tone="bg-background text-destructive border border-destructive">
-                    !
-                  </CornerBadge>
-                )}
-                {theme === "read" && (
-                  <CornerBadge tone="bg-background text-success border border-success">
-                    <Check className="size-2.5" strokeWidth={3} />
-                  </CornerBadge>
-                )}
-              </span>
-            </button>
-          </PopoverTrigger>
-          <PopoverContent
-            side={side}
-            align="end"
-            collisionPadding={16}
-            aria-label={said.title}
-            data-journey-popup=""
-            data-scroll-intent=""
-            className={
-              // scroll-intent: the words, the road and every state stay
-              // whole; on a phone held sideways the box is shorter than
-              // they are, and it scrolls inside the window rather than
-              // leaving it.
-              "flex max-h-[min(30rem,var(--radix-popover-content-available-height))] w-[min(19rem,calc(100vw-2rem))] flex-col gap-2 overflow-y-auto p-3"
-            }
-          >
-            <span className="break-words text-[0.9375rem] font-semibold">
-              {said.title}
-            </span>
-            <span className="text-muted-foreground break-words text-sm leading-snug">
-              {said.line}
-            </span>
-            <div className="flex justify-center">
-              <JourneyTrack road={roadOf(journey)} />
-            </div>
-            <EveryState current={journey.id} noun={noun} />
-          </PopoverContent>
-        </Popover>
-      )}
-    </div>
-  )
-}
+  ...bar
+}: JourneyStatusProps): JSX.Element => (
+  <StatusBar {...bar} state={journeyBarState(journey, noun, now)} />
+)

@@ -1,6 +1,6 @@
 /**
  * Does each Jobs card's pop-up fit the phone, close every way it should,
- * and hold its colors in every theme? (J0, JB2.)
+ * and hold its colors in every theme? (J0, JB2; RUN1's morning states.)
  *
  * jsdom can say none of it, so this walks the `jobs-status` fixture
  * (`./panel-page/jobs-status.tsx`): every state of the union, with the
@@ -22,11 +22,15 @@
 import { expect, test, type Locator, type Page } from "@playwright/test"
 import { CONTRAST_FLOOR, SESSION_THEMES } from "@some-ui/styles/theme"
 
+import { MORNING_IDS } from "@/lib/jobs/morning"
 import { JOURNEY_IDS } from "@/lib/journey"
 
 import { JOBS_STATUS_FIXTURE, PHONE_VIEWPORTS, servePanelPage } from "./harness"
 
 const PAGE = servePanelPage()
+
+/** Every bar the fixture draws: J0's journeys, then this morning's run (RUN1). */
+const STATES: ReadonlyArray<string> = [...JOURNEY_IDS, ...MORNING_IDS]
 
 test.describe.configure({ timeout: 3 * 60 * 1000 })
 
@@ -34,7 +38,7 @@ async function openFixture(page: Page): Promise<void> {
   const errors: Array<string> = []
   page.on("pageerror", (error) => errors.push(error.message))
   await page.goto(PAGE.url(JOBS_STATUS_FIXTURE), { waitUntil: "load" })
-  await expect(page.locator("[data-journey]")).toHaveCount(JOURNEY_IDS.length)
+  await expect(page.locator("[data-journey]")).toHaveCount(STATES.length)
   expect(errors, errors.join("\n")).toEqual([])
 }
 
@@ -65,7 +69,7 @@ test.describe("each Jobs card's pop-up fits the phone and closes", () => {
       await openFixture(page)
       const failures: Array<string> = []
 
-      for (const id of JOURNEY_IDS) {
+      for (const id of STATES) {
         await openState(page, id)
         const box = await popup(page).boundingBox()
         if (box === null) throw new Error(`${id}: the pop-up has no box`)
