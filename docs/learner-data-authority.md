@@ -673,21 +673,32 @@ wing tells a file home took from one the person confirmed in Drive: each
 card says where its file is now, read off the log and the digests' `read`
 lists, and nothing filed goes unsaid (`lib/jobs/journey.ts`, promise JB2).
 A file home took that a later run did not read is offered to the share
-sheet again; the exchange never files it again. What no test can say is
-when a run is asked for:
+sheet again; the exchange never files it again.
+
+The exchange also files this phone's notice token, when the person asked
+to be told the morning run is in (RUN5): `PUT /jobs/notice` with the
+token home should hold and `DELETE /jobs/notice` with the one it no longer
+should, at most two requests a run, as `noticeFiling` (`lib/jobs/notice.ts`)
+says. A token home refuses (422) is dropped and reported without the
+token. While a filing is owed the revision moves, so a token the push
+service hands over while the wing shows is filed then, and not at the next
+foreground (`lib/jobs/__tests__/home.test.ts`, `notice.test.ts`). What no
+test can say is when a run is asked for:
 
 - _Claim:_ LA9's claim holds for the Jobs record's lane
   (`lib/home-link/jobs.ts`): its mark shows in the header while the Jobs
   wing shows (Today, Scout and Record alike), its revision moves with each
   event added on this phone or home's copy taken in by a phone whose log was
-  empty, and its exchange is `exchangeJobs` over the record. Its run also
-  reads home's digests and files the phone's decisions and scouts with home
+  empty, and when a notice filing comes to be owed or stops being owed, and
+  its exchange is `exchangeJobs` over the record. Its run also reads home's
+  digests and files the phone's decisions, scouts and notice token with home
   (above), at no moment but a run's. The record's own switch from before
   the consent log (`home.kept`) is read only to enter that choice once and, in Settings' ledger, to say the record's
   choice is not entered yet; nothing sets it.
 - _Falsified by:_ a hunk LA9's falsifier names for the shared files; a hunk
   to `lib/home-link/jobs.ts` that makes the lane's `revision` anything but
-  the log's length, its `keptBefore` anything but `home.kept`, or its
+  twice the log's length, plus one while `noticeFiling` owes home a
+  request, its `keptBefore` anything but `home.kept`, or its
   `exchange` anything but `exchangeJobs` over the runtime's `keeping`; a
   hunk to `lib/jobs` that reads home's digests anywhere but in
   `exchangeJobs`, or that deletes, renames or moves the digests read
@@ -696,18 +707,24 @@ when a run is asked for:
   decisions or scouts file to home anywhere but in `exchangeJobs`, or that
   deletes, renames or moves the filing step (`fileOutgoing` in
   `lib/jobs/home.ts`) so `exchangeJobs` no longer makes it in every run
-  that gets that far; a
+  that gets that far; a hunk to `lib/jobs` that sends the notice token to
+  home anywhere but in `exchangeJobs`, or that deletes, renames or moves
+  the notice step (`fileNotice` in `lib/jobs/home.ts`) so `exchangeJobs`
+  no longer makes it in every run that gets that far; a
   hunk to `components/settings/device-sharing-ledger.tsx` that reads
   `keptBefore` for anything but its row's wording; or a hunk to `lib/jobs`
   that sets `home.kept`.
 - _Scope:_ LA9's shared files, `apps/www/src/lib/home-link/jobs.ts`,
   `apps/www/src/components/settings/device-sharing-ledger.tsx`,
   `apps/www/src/lib/jobs/home.ts`, `apps/www/src/lib/jobs/model.ts`,
-  `apps/www/src/lib/jobs/runtime.ts`.
+  `apps/www/src/lib/jobs/runtime.ts`, `apps/www/src/lib/jobs/notice.ts`.
 - _Why not enforced:_ as LA9's. Held when declared, by reading every call
   as LA9 says, and `home.kept` read only by the lane's `keptBefore` (whose
   callers are `enterEarlier` and the ledger's Jobs row) and the record's
-  stored schema.
+  stored schema. The notice amendment (RUN5) was checked the same way:
+  `/jobs/notice` is reached only by `fileNotice`, called once in the run
+  `exchangeJobs` makes, and the lane's `revision` alone reads `noticeFiling`
+  outside `lib/jobs/home.ts`.
 
 ### LA11: Practice is sent home on its own only while its person keeps sending it
 
