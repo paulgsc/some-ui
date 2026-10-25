@@ -586,6 +586,196 @@ describe("LeetType's files", () => {
   })
 })
 
+describe("voice transcripts", () => {
+  const HEARD = {
+    schema: "some-ui.voice-transcript/1",
+    note: "k3v9qa",
+    of: "reflection",
+    ref: "session-7f2a",
+    at: "2026-10-25T03:10:00.000Z",
+    text: "오늘은 the second scene felt slow.",
+    language: "ko",
+    model: "ggml-small-q5_1.bin",
+    heardAt: "2026-10-25T03:12:41.204Z",
+  }
+  const TRANSCRIPT = JSON.stringify(HEARD)
+  const NAME = "transcript-k3v9qa-1.json"
+  const asHome = (
+    d: Deps,
+    name: string,
+    body: string = TRANSCRIPT
+  ): Promise<Response> => put(d, "transcript", name, { token: HOME, body })
+
+  it("home puts a transcript once, and the routine reads it; neither the other way", async () => {
+    const d = deps()
+    expect((await asHome(d, NAME)).status).toBe(201)
+    expect((await asHome(d, NAME)).status).toBe(200)
+    expect(
+      (await asHome(d, NAME, JSON.stringify({ ...HEARD, text: "other" })))
+        .status
+    ).toBe(409)
+    // A better model's transcript of the same note goes under a new name.
+    expect(
+      (
+        await asHome(
+          d,
+          "transcript-k3v9qa-2.json",
+          JSON.stringify({ ...HEARD, model: "ggml-medium-q5_0.bin" })
+        )
+      ).status
+    ).toBe(201)
+
+    const path = `/v1/transcript/items/${NAME}`
+    const read = await send(d, "GET", path)
+    expect(read.status).toBe(200)
+    expect(await read.text()).toBe(TRANSCRIPT)
+    expect((await send(d, "GET", "/v1/transcript/items")).status).toBe(200)
+    expect((await send(d, "GET", path, { token: HOME })).status).toBe(403)
+    expect(
+      (await send(d, "GET", "/v1/transcript/items", { token: HOME })).status
+    ).toBe(403)
+    expect(
+      (await put(d, "transcript", "transcript-a-1.json", { body: TRANSCRIPT }))
+        .status
+    ).toBe(403)
+  })
+
+  it("refuses a transcript that carries audio or names a Drive file, and says why", async () => {
+    const d = deps()
+    const audio = "a transcript carries no audio: home keeps the audio"
+    const drive = "a transcript names no Drive file: home keeps the audio"
+    const wrapped = Array.from({ length: 6 }, () => "GkXfo59C".repeat(10)).join(
+      "\n"
+    )
+    const refused: ReadonlyArray<readonly [string, string]> = [
+      [JSON.stringify({ ...HEARD, audio: "T2dnUwACAAAAAAAA" }), audio],
+      [JSON.stringify({ ...HEARD, base64: "T2dnUwACAAAAAAAA" }), audio],
+      [
+        JSON.stringify({
+          ...HEARD,
+          text: "here data:audio/webm;base64,GkXfo59ChoEB",
+        }),
+        audio,
+      ],
+      // Base64 as `base64` prints it, wrapped at 76 columns.
+      [JSON.stringify({ ...HEARD, text: wrapped }), audio],
+      // `JSON.parse` keeps the second `text`; the stored bytes hold both.
+      [
+        TRANSCRIPT.replace(
+          '"text":',
+          '"text":"data:audio/ogg;base64,T2dnUwAC","text":'
+        ),
+        audio,
+      ],
+      [
+        JSON.stringify({ ...HEARD, driveId: "1AbCdEfGhIjKlMnOpQrStUvWxYz012" }),
+        drive,
+      ],
+      [
+        JSON.stringify({ ...HEARD, fileId: "1AbCdEfGhIjKlMnOpQrStUvWxYz012" }),
+        drive,
+      ],
+      [
+        JSON.stringify({
+          ...HEARD,
+          text: "see https://drive.google.com/file/d/1AbC/view",
+        }),
+        drive,
+      ],
+    ]
+    for (const [index, [body, why]] of refused.entries()) {
+      const response = await asHome(d, NAME, body)
+      expect([index, response.status, await response.json()]).toEqual([
+        index,
+        422,
+        { error: why },
+      ])
+    }
+  })
+
+  it("takes speech that only talks about audio, data or Drive", async () => {
+    const d = deps()
+    for (const [index, text] of [
+      "Data: we need more of it",
+      "the audio on my drive was quiet",
+      "I put it on docs.google.com yesterday",
+    ].entries()) {
+      expect([
+        text,
+        (
+          await asHome(
+            d,
+            `transcript-k3v9qa-${String(index + 1)}.json`,
+            JSON.stringify({ ...HEARD, text })
+          )
+        ).status,
+      ]).toEqual([text, 201])
+    }
+  })
+
+  it("takes only a transcript's own shape", async () => {
+    const d = deps()
+    const { text: _text, ...untold } = HEARD
+    const wrong: ReadonlyArray<readonly [Record<string, unknown>, string]> = [
+      [{ ...HEARD, words: 7 }, "words is not part of a transcript"],
+      [{ ...HEARD, note: "" }, "note must be the note's id"],
+      [{ ...HEARD, note: "a/b" }, "note must be the note's id"],
+      [{ ...HEARD, note: "zzz" }, "the name must carry the note's id"],
+      // `transcript-k3v9qa-1.json` is note `k3v9qa`'s, not note `k3v9qa-1`'s
+      // first, nor `k3v`'s.
+      [{ ...HEARD, note: "k3v" }, "the name must carry the note's id"],
+      [{ ...HEARD, of: "diary" }, "of must be reflection, jobs or scene"],
+      [{ ...HEARD, ref: 7 }, "ref must name what the note belongs to"],
+      [{ ...HEARD, at: "soon" }, "at must be when the note was recorded"],
+      [
+        { ...HEARD, at: "2026-10-25T03:10:00" },
+        "at must be when the note was recorded",
+      ],
+      [untold, "text must be what home heard"],
+      [{ ...HEARD, text: "  " }, "text must be what home heard"],
+      [
+        { ...HEARD, language: "Korean" },
+        "language must be the language heard, as en or ko",
+      ],
+      [{ ...HEARD, model: "" }, "model must name the model that heard it"],
+      [{ ...HEARD, heardAt: 1 }, "heardAt must be when home heard it"],
+    ]
+    for (const [index, [body, why]] of wrong.entries()) {
+      const response = await asHome(d, NAME, JSON.stringify(body))
+      expect([index, response.status, await response.json()]).toEqual([
+        index,
+        422,
+        { error: why },
+      ])
+    }
+    const hyphened = JSON.stringify({ ...HEARD, note: "a-2" })
+    expect(
+      (
+        await asHome(
+          d,
+          "transcript-a-2-1.json",
+          JSON.stringify({ ...HEARD, note: "a" })
+        )
+      ).status
+    ).toBe(422)
+    expect((await asHome(d, "transcript-a-2-1.json", hyphened)).status).toBe(
+      201
+    )
+    for (const name of [
+      "transcript-k3v9qa.json",
+      "transcript--1.json",
+      "transcript-k3v9qa-x.json",
+      "transcript-k3v9qa-0.json",
+      "transcript-k3v9qa-01.json",
+      `transcript-${"a".repeat(65)}-1.json`,
+      "transcript-k3v9qa-1.webm",
+      "k3v9qa_voice-20261025T031000Z-k3v9qa.m4a",
+    ]) {
+      expect([name, (await asHome(d, name)).status]).toEqual([name, 422])
+    }
+  })
+})
+
 describe("names", () => {
   it("a name that breaks the folder's pattern is refused", async () => {
     const d = deps()
@@ -974,6 +1164,7 @@ describe("archiving", () => {
       "opened",
       "leetype",
       "leetype-log",
+      "transcript",
     ]) {
       expect(
         (await send(d, "GET", `/v1/${folder}/items`, { token: ARCHIVE })).status
