@@ -106,3 +106,6 @@ targets, and whatever works there does so by coincidence (`CLAUDE.md`, "The phon
 the desktop web are separate surfaces"). The reverse is a **blocking** finding, since the fix is only deletion: a hunk that adds
 code, a test, a fallback or a comment for them (a `webkit`-prefixed global Chrome does not
 need, an Apple meta tag, a Safari-version workaround, an iPhone branch).
+`pnpm check:android-only` already fails the tokens `CLAUDE.md` lists (in "The phone and the
+desktop web are separate surfaces"), so do not re-check those. What stays for review is
+anything they do not reach: another spelling, a prose file, any other line that exists for them.

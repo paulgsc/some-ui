@@ -245,12 +245,17 @@ iOS, iPadOS or Safari, and whatever works there does so by coincidence. Add no
 code, test, fallback or comment for them (a `webkit`-prefixed global Chrome does
 not need, an Apple meta tag, a Safari-version workaround, an iPhone branch), and
 delete one you find while working. A finding that reproduces only on iOS or
-Safari is answered with this rule, not fixed or filed. This is a review rule
-(`REVIEW.md`, "The phone is Android only"), not a declared invariant: beyond a
-few tokens (`webkitAudioContext`, `apple-touch-icon`, an `iphone` user-agent
-test), whether a line exists "for" Safari is a reading of intent, since Chrome
-has `webkit`-prefixed APIs of its own, so a reviewer judges the hunk. A check
-for those tokens is mechanical; not yet a rule.
+Safari is answered with this rule, not fixed or filed. A few tokens are held by
+`pnpm check:android-only` (`scripts/check-android-only.ts`, rule in
+`packages/eslint/src/android-only.ts`; root `pnpm lint`, and a `pr.yml` job CI Gate
+requires): `webkitAudioContext`, an Apple meta or link tag (`apple-touch-*`,
+`apple-mobile-web-app-*`, `apple-itunes-*`), and an iOS device name (`iphone`, `ipad`,
+`ipados`, `ipod`, in any case, and inside an identifier like `isIPhone`). It reads source and
+markup files (code, HTML, CSS, JSON, XML, workflows; not Markdown or typst prose), comments
+included, and every tracked path's name. Beyond those, whether a line exists "for" Safari is a
+reading of intent, since Chrome has
+`webkit`-prefixed APIs of its own, so this stays a review rule (`REVIEW.md`, "The phone is
+Android only"), not a declared invariant: a reviewer judges the hunk.
 
 ## Vestiges
 

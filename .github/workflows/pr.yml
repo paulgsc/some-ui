@@ -550,6 +550,22 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         run: nix develop .#ci --command node scripts/check-policy-docs.ts --base "origin/$BASE_REF"
 
+  # ── Android only (repo-wide) ───────────────────────────────────────────
+  # CLAUDE.md, "The phone and the desktop web are separate surfaces": a few
+  # Apple-only tokens, listed in packages/eslint/src/android-only.ts, appear in
+  # no source, markup or path name. No `changes` gate: the rule spans every
+  # workspace and every file type, a workflow included. No install (Node's
+  # type stripping). A script because the tokens can sit in HTML, JSON and
+  # workflows as well as TypeScript.
+  android-only:
+    name: Android only
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/nix-setup
+      - name: Check the Android-only tokens
+        run: nix develop .#ci --command node scripts/check-android-only.ts
+
   # ── Change-kind record (repo-wide) ─────────────────────────────────────
   # scripts/check-commit-trailers.ts over every commit the PR adds; the
   # commit-msg hook runs it only where husky is installed. Full history, so
@@ -607,6 +623,7 @@ jobs:
         react-coordination,
         workflows,
         policy-docs,
+        android-only,
         commit-trailers,
         toolchain,
       ]
