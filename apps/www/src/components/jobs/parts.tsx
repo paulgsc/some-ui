@@ -23,11 +23,11 @@ import { isFile } from "@/lib/jobs/files"
 import type { JourneyContext } from "@/lib/jobs/journey"
 import { unconfirmedShare } from "@/lib/jobs/journey"
 import type { ShareKind } from "@/lib/jobs/model"
-import { itArrived, openFromStorage, shareAgain } from "@/lib/jobs/words"
+import { itArrived, openFromDrive, shareAgain } from "@/lib/jobs/words"
 import type { Journey, Noun } from "@/lib/journey"
 import { themeOf } from "@/lib/journey"
 import { lookIn } from "@/lib/share-files"
-import { JourneyStatus } from "@/components/journey-status"
+import { journeyBarState, StatusCard } from "@/components/journey-status"
 
 export function useJobs(): JobsSnapshot {
   const jobs = phoneJobs()
@@ -205,11 +205,7 @@ export const VoiceNotes = ({
 }
 
 /** The system picker: Android lists Drive beside the phone's own files. */
-export const OpenDigest = ({
-  label = openFromStorage,
-}: {
-  label?: string | undefined
-}): JSX.Element => {
+export const OpenDigest = (): JSX.Element => {
   const { importing } = useJobs()
   const where = lookIn("job-digest")
   const onPick = (event: ChangeEvent<HTMLInputElement>): void => {
@@ -223,7 +219,7 @@ export const OpenDigest = ({
       <Button asChild variant="outline" size="sm">
         <label className="cursor-pointer">
           <FolderOpen aria-hidden />
-          {importing.kind === "reading" ? "Reading…" : label}
+          {importing.kind === "reading" ? "Reading…" : openFromDrive}
           <input
             type="file"
             accept="application/json,.json"
@@ -271,15 +267,13 @@ export const JourneyCard = ({
   heading?: "h2" | "h3"
   children?: ReactNode
 }): JSX.Element => (
-  <section className="flex flex-col rounded-xl border">
-    <JourneyStatus
-      title={title}
-      journey={journey}
-      noun={noun}
-      heading={heading}
-    />
+  <StatusCard
+    title={title}
+    state={journeyBarState(journey, noun, new Date())}
+    heading={heading}
+  >
     {children}
-  </section>
+  </StatusCard>
 )
 
 /**

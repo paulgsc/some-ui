@@ -45,6 +45,13 @@ describe("createJobsRuntime", () => {
     await settle()
     expect(createJobsRuntime(p).getSnapshot().state.current).toBe("2026-10-18")
 
+    // A record kept before the phone noted when home last answered opens
+    // with none.
+    const noted = p.storage.getItem(STORAGE_KEY) ?? ""
+    expect(noted).toContain(',"lookedAt":null')
+    p.storage.setItem(STORAGE_KEY, noted.replace(',"lookedAt":null', ""))
+    expect(createJobsRuntime(p).getSnapshot().state.home.lookedAt).toBeNull()
+
     // A record the first Jobs build kept has no `home`: it opens, not kept there.
     const kept: unknown = JSON.parse(p.storage.getItem(STORAGE_KEY) ?? "{}")
     const firstBuild = Object.fromEntries(
@@ -99,6 +106,9 @@ describe("createJobsRuntime", () => {
     }
     full = true
     expect(runtime.read(ref)).toBe(false)
+    expect(runtime.getSnapshot().problem).toBeNull()
+    // Home answering with nothing new, unkept, says nothing either.
+    runtime.keeping.fetched([])
     expect(runtime.getSnapshot().problem).toBeNull()
     expect(runtime.record({ type: "taken", ...ref })).toBe(false)
     expect(runtime.getSnapshot().problem).not.toBeNull()

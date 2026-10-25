@@ -35,7 +35,7 @@ afterEach(() => {
   vi.resetModules()
 })
 
-const PICKER = "Open today’s picks from storage"
+const PICKER = "Open picks from Drive"
 
 /** Today, as the phone shows it at `now`, holding the digest of `day` (or none). */
 async function showToday(
@@ -60,12 +60,36 @@ async function showToday(
 }
 
 describe("Today, as the picks arrive", () => {
-  it("with no picks yet, says they arrive by themselves and keeps the picker as the other way", async () => {
+  it("before the run, says when it runs and offers no file to open", async () => {
+    // 07:00 in Los Angeles.
     await showToday("2026-10-22T14:00:00Z", null)
-    expect(screen.getByText("No picks open yet")).toBeTruthy()
-    expect(screen.getByText(/tap the home mark at the top/)).toBeTruthy()
-    expect(screen.getByText("Or open them from Drive")).toBeTruthy()
+    expect(screen.getByText("Today’s run is at 7:52")).toBeTruthy()
     expect(screen.queryByText(PICKER)).toBeNull()
+  })
+
+  it("past the run with Jobs not kept on home, says today's picks are in Drive and offers them", async () => {
+    // 10:00 in Los Angeles.
+    await showToday("2026-10-22T17:00:00Z", null)
+    expect(screen.getByText("Today’s picks are in Drive")).toBeTruthy()
+    expect(screen.getByText(PICKER)).toBeTruthy()
+  })
+
+  it("past the run on a phone that hasn't heard from home since, says so and offers Drive", async () => {
+    await showToday("2026-10-22T17:00:00Z", null, true)
+    expect(screen.getByText("Not checked with home since the run")).toBeTruthy()
+    expect(screen.getByText(PICKER)).toBeTruthy()
+  })
+
+  it("once home answered with nothing for today, says there is no word of the run", async () => {
+    await showToday("2026-10-22T17:00:00Z", null, true)
+    const { phoneJobs } = await import("@/lib/jobs")
+    act(() => {
+      phoneJobs().keeping.fetched([])
+    })
+    expect(screen.getByText("No word of this morning’s run")).toBeTruthy()
+    expect(
+      document.querySelector("[data-journey-theme='stopped']")
+    ).not.toBeNull()
   })
 
   // JR1: the hint names the Drive folder once, as the sidecar words it.
@@ -74,7 +98,7 @@ describe("Today, as the picks arrive", () => {
     const { driveFiling } = await import("@/lib/drive-filing")
     installShareSidecar(driveFiling())
     try {
-      await showToday("2026-10-22T14:00:00Z", null)
+      await showToday("2026-10-22T17:00:00Z", null)
       expect(
         screen.getByText("In Drive, look in some-ui jobs › Brief")
       ).toBeTruthy()
@@ -83,15 +107,13 @@ describe("Today, as the picks arrive", () => {
     }
   })
 
-  it("says an earlier day's picks are not today's, and what brings today's", async () => {
+  it("says an earlier day's picks are not today's, with the file picker beside them", async () => {
     await showToday("2026-10-22T14:00:00Z", "2026-10-18")
-    expect(screen.getByText(/These are 2026-10-18’s picks/)).toBeTruthy()
-    expect(screen.getByText(/tap the home mark at the top/)).toBeTruthy()
-    expect(screen.getByText("Or open them from Drive")).toBeTruthy()
-    expect(screen.queryByText(PICKER)).toBeNull()
+    expect(screen.getByText("These are Oct 18’s picks.")).toBeTruthy()
+    expect(screen.getByText(PICKER)).toBeTruthy()
   })
 
-  it("does not say today's are missing when an older file is opened over them", async () => {
+  it("says the run picked none when today's digest has no picks, and the older file opened over it is older", async () => {
     await showToday("2026-10-22T14:00:00Z", null)
     const { phoneJobs } = await import("@/lib/jobs")
     const { digest } = await import("@/lib/jobs/__tests__/fixture")
@@ -108,16 +130,17 @@ describe("Today, as the picks arrive", () => {
     expect(
       await screen.findByText(/Newer ones are on this phone too/)
     ).toBeTruthy()
-    expect(screen.queryByText(/aren’t on this phone yet/)).toBeNull()
+    expect(screen.getByText("This morning’s run picked none")).toBeTruthy()
   })
 
-  it("says nothing of it for today's picks, by the Pacific day", async () => {
-    // 23:59 on the 22nd in Los Angeles is already the 23rd in UTC.
-    await showToday("2026-10-23T06:59:00Z", "2026-10-22")
-    expect(screen.getByText(/^On 2026-10-22,/)).toBeTruthy()
-    expect(screen.queryByText(/aren’t on this phone yet/)).toBeNull()
-    expect(screen.queryByText(/tap the home mark at the top/)).toBeNull()
-    expect(screen.getByText(PICKER)).toBeTruthy()
+  it("says this morning's picks are here, with no file to open", async () => {
+    await showToday("2026-10-22T17:00:00Z", "2026-10-22")
+    expect(screen.getByText("This morning’s run picked 2 for you")).toBeTruthy()
+    expect(
+      screen.getByText(/^This morning the run read 12 postings/)
+    ).toBeTruthy()
+    expect(screen.queryByText(/These are/)).toBeNull()
+    expect(screen.queryByText(PICKER)).toBeNull()
   })
 })
 
@@ -221,14 +244,13 @@ describe("Today, opened", () => {
       pass(second)
     })
     expect(screen.getByText("Today: 3 things done.")).toBeTruthy()
-    expect(screen.getByText("That’s every pick for now.")).toBeTruthy()
+    expect(screen.getByText("You’ve decided this morning’s picks")).toBeTruthy()
   })
 })
 
 describe("Today, once picks lapse (J5)", () => {
   it("says a pick left untouched three days lapsed", async () => {
     await showToday("2026-10-22T14:00:00Z", "2026-10-18")
-    expect(screen.getByText("That’s every pick for now.")).toBeTruthy()
     fireEvent.click(
       screen.getByRole("button", { name: "See all of these picks" })
     )

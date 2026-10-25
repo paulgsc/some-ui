@@ -1,6 +1,8 @@
 import type { JSX } from "react"
 
+import { MORNING_IDS } from "@/lib/jobs/morning"
 import { journey, JOURNEY_IDS } from "@/lib/journey"
+import { MorningCard } from "@/components/jobs/morning-card"
 import { JourneyStatus } from "@/components/journey-status"
 
 /** A day before the fixture's `NOW`, so every time is said with its date. */
@@ -12,7 +14,8 @@ const TITLE =
   "Senior Platform Engineer, Developer Infrastructure · Northwind Avionics"
 
 /**
- * Every journey state's card (J0), stacked as the Jobs wing stacks its cards
+ * Every journey state's card (J0), then every state of this morning's run
+ * (RUN1) with its largest counts, stacked as the Jobs wing stacks its cards
  * on the phone, each with the longest words the table says: several files
  * (`them`), a time with its date, a run's day (`../jobs-status-fit.spec.ts`).
  */
@@ -51,6 +54,13 @@ export const JobsStatusFixture = (): JSX.Element => (
           The morning run reads these and your voice notes.
         </p>
       </section>
+    ))}
+    {MORNING_IDS.map((id) => (
+      <MorningCard
+        key={id}
+        morning={{ id, picked: 5, undecided: 4, seen: 48, lookedAt: SINCE }}
+        now={NOW}
+      />
     ))}
   </div>
 )

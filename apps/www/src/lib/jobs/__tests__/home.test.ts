@@ -184,6 +184,7 @@ describe("exchangeJobs", () => {
         { id: "e2", why: "fingerprint has three parts" },
       ],
       refusedFiles: [],
+      lookedAt: OPENED_AT,
     })
     expect(homeOutbox(k.current)).toEqual([])
   })

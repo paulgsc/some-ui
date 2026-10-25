@@ -131,8 +131,16 @@ const StoredSchema = z.object({
       refused: z.array(z.object({ id: z.string(), why: z.string() })),
       // A record kept before files went home has none.
       refusedFiles: z.array(z.string()).default([]),
+      // A record kept before the phone noted when home last answered has none.
+      lookedAt: z.iso.datetime().nullable().default(null),
     })
-    .default({ kept: false, held: [], refused: [], refusedFiles: [] }),
+    .default({
+      kept: false,
+      held: [],
+      refused: [],
+      refusedFiles: [],
+      lookedAt: null,
+    }),
   // A record kept before shares noted where they began has none.
   carried: z.record(z.string(), z.number()).default({}),
 })

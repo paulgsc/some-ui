@@ -556,12 +556,17 @@ describe("digests home holds (fetched)", () => {
     expect(fetch(EMPTY, "2026-10-19").current).toBe("2026-10-19")
   })
 
-  it("changes the digests, the day shown and when each came, and nothing else", () => {
+  it("changes the digests, the day shown, when each came and when home answered, and nothing else", () => {
     const logged = record(opened, { type: "taken", ...ref() })
     const state = fetch(logged, "2026-10-19")
     const { digests: _d, current: _c, firstOpened: _f, ...rest } = state
     const { log, voice, home, carried } = logged
-    expect(rest).toEqual({ log, voice, home, carried })
+    expect(rest).toEqual({
+      log,
+      voice,
+      home: { ...home, lookedAt: FETCHED_AT },
+      carried,
+    })
   })
 
   it("takes no digest for a day the phone holds", () => {
@@ -571,7 +576,7 @@ describe("digests home holds (fetched)", () => {
       digests: [other],
       at: FETCHED_AT,
     })
-    expect(state).toBe(opened)
+    expect(state.digests).toBe(opened.digests)
     expect(state.digests[0]).toBe(D)
   })
 
@@ -598,13 +603,13 @@ describe("digests home holds (fetched)", () => {
         digests: [bare("2026-08-01")],
         at: FETCHED_AT,
       })
-    ).toBe(full)
+    ).toEqual({ ...full, home: { ...full.home, lookedAt: FETCHED_AT } })
   })
 
-  it("returns the same state when nothing is new", () => {
-    expect(step(opened, { type: "fetched", digests: [], at: FETCHED_AT })).toBe(
-      opened
-    )
+  it("notes only that home answered when nothing is new", () => {
+    expect(
+      step(opened, { type: "fetched", digests: [], at: FETCHED_AT })
+    ).toEqual({ ...opened, home: { ...opened.home, lookedAt: FETCHED_AT } })
     // The same day twice in one answer is taken once.
     expect(fetch(EMPTY, "2026-10-19", "2026-10-19").digests).toHaveLength(1)
   })

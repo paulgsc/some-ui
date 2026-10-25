@@ -13,28 +13,18 @@ import type { DebriefResult, FrictionChip, PassReason, Standing } from "./model"
 
 /** The digest on show is from an earlier day than today's. */
 export const notToday = (day: string): string =>
-  `These are ${day}’s picks. Today’s aren’t on this phone yet.`
+  `These are ${formatDay(day)}’s picks.`
 
 /** The digest on show is older than one this phone holds. */
 export const newerHeld = (day: string): string =>
-  `These are ${day}’s picks. Newer ones are on this phone too.`
+  `These are ${formatDay(day)}’s picks. Newer ones are on this phone too.`
 
-/** Where today's picks come from when the phone is kept on home. */
-export const arriveOnTheirOwn =
-  "On the home Wi-Fi, today’s picks arrive by themselves: tap the home mark at the top and keep Jobs on home."
-
-/** The picker, as the way in. */
-export const openFromStorage = "Open today’s picks from storage"
-
-/** The picker, once it is not the way in. */
-export const orOpenFile = "Or open them from Drive"
+/** The file picker, where Drive is a way in (`lib/jobs/morning`). */
+export const openFromDrive = "Open picks from Drive"
 
 /** What I have done in Jobs today, once there is something: never what is left. */
 export const doneToday = (count: number): string =>
   `Today: ${count === 1 ? "one thing" : `${count} things`} done.`
-
-/** Today with no pick left open. */
-export const allDone = "That’s every pick for now."
 
 export const pickedForYou = "Picked for you"
 
@@ -77,14 +67,22 @@ export const seeAll = (shown: boolean): string =>
 /** The one disclosure of how the picks came to be. */
 export const howPicked = "How these were picked"
 
-/** How many postings were looked at, picked and left out on `day`. */
+/**
+ * How many postings `day`'s run read, picked and left out. A digest does
+ * not list the rest: ones already decided, scouts it answered apart, those
+ * below the cut, and any past the list's cap.
+ */
 export const pickedFrom = (
   day: string,
+  today: string,
   seen: number,
   picked: number,
   leftOut: number
-): string =>
-  `On ${day}, ${picked} picked from ${seen} postings looked at, and ${leftOut} left out.`
+): string => {
+  const unlisted = seen - picked - leftOut
+  const when = day === today ? "This morning" : `On ${formatDay(day)}`
+  return `${when} the run read ${counted(seen, "posting")}: ${picked} picked, ${leftOut} left out${unlisted > 0 ? `, and ${unlisted} not listed` : ""}.`
+}
 
 /** What a pick left unfinished holds, and until when. */
 export const holdsPlace = `A pick holds its place until you pass on it, or send it and say how it went, and the morning’s picking has heard so. One left untouched for ${LAPSE_DAYS} days lapses and frees its place. New picks fill only the places that are free.`
@@ -127,12 +125,6 @@ export const stillOpen = (parts: ReadonlyArray<string>): string =>
 /** The postings left out, behind their own toggle. */
 export const leftOut = (shown: boolean, count: number): string =>
   `${shown ? "Hide" : "Show"} the postings left out (${count})`
-
-export const noPicksYet = "No picks open yet"
-
-/** What the mornings bring, before the first ones have come. */
-export const whatMorningsBring = (software: number, adjacent: number): string =>
-  `Each morning brings up to ${software} software roles and ${adjacent} software-adjacent ones, each matched against my résumé.`
 
 export const trackHeading: Readonly<Record<Track, string>> = {
   software: "Software engineering",

@@ -14,11 +14,8 @@ const DAY = "2026-10-18"
 const SAID: Readonly<Record<keyof typeof words, ReadonlyArray<string>>> = {
   notToday: [words.notToday(DAY)],
   newerHeld: [words.newerHeld(DAY)],
-  arriveOnTheirOwn: [words.arriveOnTheirOwn],
-  openFromStorage: [words.openFromStorage],
-  orOpenFile: [words.orOpenFile],
+  openFromDrive: [words.openFromDrive],
   doneToday: [1, 4].map(words.doneToday),
-  allDone: [words.allDone],
   pickedForYou: [words.pickedForYou],
   fitWord: [0.9, 0.6, 0.3].map(words.fitWord),
   readyHeading: [words.readyHeading],
@@ -30,7 +27,10 @@ const SAID: Readonly<Record<keyof typeof words, ReadonlyArray<string>>> = {
   openIt: [words.openIt],
   seeAll: [true, false].map(words.seeAll),
   howPicked: [words.howPicked],
-  pickedFrom: [words.pickedFrom(DAY, 42, 5, 14)],
+  pickedFrom: [
+    words.pickedFrom(DAY, DAY, 42, 5, 14),
+    words.pickedFrom(DAY, "2026-10-19", 7, 0, 7),
+  ],
   holdsPlace: [words.holdsPlace],
   openOfTrack: [
     words.openOfTrack("software", 2, 3),
@@ -38,8 +38,6 @@ const SAID: Readonly<Record<keyof typeof words, ReadonlyArray<string>>> = {
   ],
   stillOpen: [words.stillOpen(["2 of 3 software roles"])],
   leftOut: [words.leftOut(true, 14), words.leftOut(false, 14)],
-  noPicksYet: [words.noPicksYet],
-  whatMorningsBring: [words.whatMorningsBring(3, 2)],
   trackHeading: Object.values(words.trackHeading),
   pickState: (
     [

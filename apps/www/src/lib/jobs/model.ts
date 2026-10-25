@@ -30,6 +30,7 @@ import type {
 } from "@some-ui/job-desk"
 import {
   DebriefMinutesSchema,
+  freeSlots,
   FrictionSchema,
   hasLapsed,
   lapsesOn,
@@ -37,6 +38,7 @@ import {
   MAX_POSTING_TEXT,
   MAX_SCOUT_TITLE,
   MAX_URL,
+  TRACKS,
 } from "@some-ui/job-desk"
 
 export type PassReason = (typeof PASS_REASONS)[number]
@@ -157,6 +159,12 @@ type JobsHome = {
    * sheet, and never filed with home again.
    */
   refusedFiles: ReadonlyArray<string>
+  /**
+   * When home last answered which digests it holds, even with none new:
+   * whether this phone has heard from home since the morning run
+   * (`./morning`).
+   */
+  lookedAt: string | null
 }
 
 export type JobsState = {
@@ -184,7 +192,13 @@ export const EMPTY: JobsState = {
   firstOpened: {},
   log: [],
   voice: [],
-  home: { kept: false, held: [], refused: [], refusedFiles: [] },
+  home: {
+    kept: false,
+    held: [],
+    refused: [],
+    refusedFiles: [],
+    lookedAt: null,
+  },
   carried: {},
 }
 
@@ -405,15 +419,16 @@ export function step(state: JobsState, action: JobsAction): JobsState {
         action.at,
         state.current
       )
+      const home = { ...state.home, lookedAt: action.at }
       // Taken, and not let go at once by `DIGESTS_KEPT`.
       const kept = digests.filter((d) => fresh.has(d.day))
       const newest = kept.at(-1)
-      if (newest === undefined) return state
+      if (newest === undefined) return { ...state, home }
       const current =
         state.current === null || newest.day > state.current
           ? newest.day
           : state.current
-      return { ...state, digests, current, firstOpened }
+      return { ...state, digests, current, firstOpened, home }
     }
     case "voice-kept": {
       if (state.voice.some((n) => n.id === action.note.id)) return state
@@ -511,6 +526,27 @@ export function digestOf(state: JobsState, day: string): Digest | null {
 /** The day of the newest digest the phone holds, or null while it holds none. */
 export function newestDay(state: JobsState): string | null {
   return state.digests.at(-1)?.day ?? null
+}
+
+/** Minutes since midnight at `at`, Pacific: the morning run's clock. */
+export function pacificMinutes(at: Date): number {
+  const [hour = 0, minute = 0] = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "America/Los_Angeles",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  })
+    .format(at)
+    .split(":")
+    .map(Number)
+  return hour * 60 + minute
+}
+
+/** Whether every place was held when `digest`'s run began, so it could pick none. */
+export function placesFull(digest: Digest): boolean {
+  if (digest.queue === null) return false
+  const room = freeSlots(digest.queue.open)
+  return TRACKS.every((track) => room[track] === 0)
 }
 
 /** The Pacific calendar day of `at`, `YYYY-MM-DD`: the morning run's "today". */
