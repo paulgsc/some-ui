@@ -56,12 +56,14 @@ export const EventSchema: z.ZodType<JobEvent> = z.discriminatedUnion("type", [
   }),
   z.object({ ...Stamp, ...PickRef, type: z.literal("resume-ready") }),
   z.object({ ...Stamp, ...PickRef, type: z.literal("apply-opened") }),
+  z.object({ ...Stamp, ...PickRef, type: z.literal("read") }),
   z.object({
     ...Stamp,
     ...PickRef,
     type: z.literal("debrief"),
-    minutes: DebriefMinutesSchema,
-    friction: FrictionSchema,
+    // A record kept before the one-tap ending holds numbers here.
+    minutes: DebriefMinutesSchema.nullable(),
+    friction: FrictionSchema.nullable(),
     chips: z.array(z.enum(FRICTION)),
     what: z.string(),
     voice: Ids,

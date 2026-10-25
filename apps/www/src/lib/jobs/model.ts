@@ -99,10 +99,13 @@ export type JobEvent = { id: string; at: string } & (
     } & PickRef)
   | ({ type: "resume-ready" } & PickRef)
   | ({ type: "apply-opened" } & PickRef)
+  /** A posting read through, with no verdict: it never moves the pick. */
+  | ({ type: "read" } & PickRef)
   | ({
       type: "debrief"
-      minutes: number
-      friction: number
+      /** Null when left unsaid. */
+      minutes: number | null
+      friction: number | null
       chips: ReadonlyArray<FrictionChip>
       what: string
       voice: ReadonlyArray<string>
@@ -284,6 +287,7 @@ function withinLimits(event: Draft): boolean {
     case "archived":
     case "resume-ready":
     case "apply-opened":
+    case "read":
     case "shared":
     case "arrived": {
       return true
@@ -304,8 +308,8 @@ function fits(state: JobsState, event: Draft): boolean {
   if (
     event.type === "debrief" &&
     !(
-      DebriefMinutesSchema.safeParse(event.minutes).success &&
-      FrictionSchema.safeParse(event.friction).success
+      DebriefMinutesSchema.nullable().safeParse(event.minutes).success &&
+      FrictionSchema.nullable().safeParse(event.friction).success
     )
   ) {
     return false
@@ -314,7 +318,7 @@ function fits(state: JobsState, event: Draft): boolean {
   const digest = state.digests.find((d) => d.day === event.day)
   const pick = digest?.picks.find((p) => p.id === event.pickId)
   if (pick?.fingerprint !== event.fingerprint) return false
-  if (DECIDED.has(event.type)) return true
+  if (DECIDED.has(event.type) || event.type === "read") return true
   // A debriefed pick is out of the queue, so no run would redraft it.
   const taken = decisionOf(state, event.day, event.pickId) === "taken"
   if (event.type === "fit-note")
@@ -610,6 +614,19 @@ function sinceTaken(
 ): ReadonlyArray<JobEvent & PickRef> {
   const taken = events.map((e) => e.type).lastIndexOf("taken")
   return taken < 0 ? [] : events.slice(taken)
+}
+
+/** Whether a pick was read on local day `on`: a read counts once a day. */
+export function readOn(
+  state: JobsState,
+  day: string,
+  pickId: string,
+  on: string,
+  dayOf: (at: Date) => string
+): boolean {
+  return pickEvents(state.log, day, pickId).some(
+    (e) => e.type === "read" && dayOf(new Date(e.at)) === on
+  )
 }
 
 /** The debrief of a pick's latest attempt, if it has one. */

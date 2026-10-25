@@ -34,10 +34,11 @@ import type {
   JobsAction,
   JobsState,
   Outcome,
+  PickRef,
   ScoutDraft,
   ShareKind,
 } from "./model"
-import { EMPTY, hasArrived, releasedVoice, step } from "./model"
+import { EMPTY, hasArrived, readOn, releasedVoice, step } from "./model"
 import { openStored, writeStored } from "./stored"
 
 /** Reading a picked file: nothing in hand, reading, or not a digest (and why). */
@@ -96,6 +97,11 @@ export type JobsRuntime = {
    * Once kept, it clears the form draft it came from.
    */
   record: (event: Draft) => boolean
+  /**
+   * Records that I read `pick` through, once a local day; false when it was
+   * already read today, or wasn't kept.
+   */
+  read: (pick: PickRef) => boolean
   /** Keeps what `owner`'s form holds, or clears it with null. */
   draft: (owner: string, draft: FormDraft | null) => void
   /** Adds a scout, with an id of its own and the voice notes it names. */
@@ -349,6 +355,15 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
       const owner = draftRecordedBy(event)
       if (owner !== null) setDraft(owner, null)
       return true
+    },
+    read(pick): boolean {
+      const today = ports.dayOf(ports.now())
+      if (readOn(state, pick.day, pick.pickId, today, ports.dayOf)) return false
+      return commit({
+        type: "record",
+        event: { type: "read", ...pick },
+        stamp: stamp(),
+      })
     },
     draft: setDraft,
     addScout: (scout, voice) =>

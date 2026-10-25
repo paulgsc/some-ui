@@ -64,12 +64,51 @@ const SAID: Readonly<Record<keyof typeof words, ReadonlyArray<string>>> = {
   saidWouldHavePicked: [words.saidWouldHavePicked],
   whyItFits: [words.whyItFits],
   keepWhy: [words.keepWhy],
+  readIt: [words.readIt],
+  sendIt: [words.sendIt],
+  notForMe: [words.notForMe],
+  steps: [...words.steps],
+  whatTheyWant: [words.whatTheyWant],
+  whereIFit: [words.whereIFit],
+  dontClaim: [words.dontClaim],
+  onToDecide: [words.onToDecide],
+  passLabels: Object.values(words.passLabels),
+  passedIt: [words.passedIt],
+  sendAfterAll: [words.sendAfterAll],
+  archivedIt: [words.archivedIt],
+  decideHint: [words.decideHint],
+  sayWhyNot: [words.sayWhyNot],
+  whyNot: [words.whyNot],
+  inAFewWords: [words.inAFewWords],
+  sayWhyAloud: [words.sayWhyAloud],
+  notForMeWithWhy: [words.notForMeWithWhy],
+  endingLabels: Object.values(words.endingLabels),
+  howDidItEnd: [words.howDidItEnd],
+  addHowItWent: [words.addHowItWent],
+  howItWentHint: [words.howItWentHint],
+  howLong: [words.howLong],
+  minutesRange: [words.minutesRange(600)],
+  frictionHeading: [words.frictionHeading],
+  frictionScale: [words.frictionScale],
+  whatGotInTheWay: [words.whatGotInTheWay],
+  frictionLabels: Object.values(words.frictionLabels),
+  whatHappened: [words.whatHappened],
+  sayItAloud: [words.sayItAloud],
+  endedAs: (["submitted", "gave-up", "closed"] as const).map(words.endedAs),
 }
 
 describe("Jobs' words", () => {
   it("never name the machinery", () => {
     const said = Object.values(SAID).flat()
     expect(said.filter((text) => MACHINERY.test(text))).toEqual([])
+  })
+
+  it("name each ending as the one-tap buttons do, never by its stored name", () => {
+    expect(SAID.endedAs).toEqual([
+      "Ended: Sent. Add replies and interviews under Record as they come.",
+      "Ended: Stopped partway. Add replies and interviews under Record as they come.",
+      "Ended: Couldn’t: posting closed. Add replies and interviews under Record as they come.",
+    ])
   })
 
   it("say a fit in words, from a strong fit down to a stretch", () => {

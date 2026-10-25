@@ -1,3 +1,4 @@
+import { parseDecisions } from "@some-ui/job-desk"
 import { describe, expect, it } from "vitest"
 
 import type { Outgoing, OutgoingFile } from "@/lib/jobs/files"
@@ -129,6 +130,28 @@ describe("decisionsFile", () => {
       expect.objectContaining({ decision: "taken", voice: [] })
     )
     expect(file.voice).toEqual([])
+  })
+
+  it("says an ending left unsaid as null, and the file still reads", () => {
+    const ended = record(state, {
+      type: "debrief",
+      ...ref(),
+      minutes: null,
+      friction: null,
+      chips: [],
+      what: "",
+      voice: [],
+      result: "gave-up",
+    })
+    const file = fileOf(
+      decisionsFile(ended, "2026-10-18", "2026-10-18T22:00:00Z")
+    )
+    expect(parseDecisions(file.json)).toMatchObject({ ok: true })
+    expect(JSON.parse(file.json).picks[0].debrief).toMatchObject({
+      minutes: null,
+      friction: null,
+      result: "gave-up",
+    })
   })
 
   it("reports a new attempt without the debrief of the one before", () => {

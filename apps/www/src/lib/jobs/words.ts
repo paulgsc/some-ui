@@ -1,6 +1,7 @@
 /**
- * What Jobs' Today says, in the person's terms: what is on this phone, what
- * brings the rest, what is ready and what I have done, never the machinery
+ * What Jobs' Today and a pick say, in the person's terms: what is on this
+ * phone, what brings the rest, what is ready, what I have done and how a pick
+ * went, never the machinery
  * behind it (`__tests__/words.test.ts` holds it to the list in
  * `lib/home-link/__tests__/machinery.ts`).
  */
@@ -8,7 +9,7 @@ import { assertNever, counted, formatDay } from "@some-ui/core-utils"
 import type { Track } from "@some-ui/job-desk"
 import { LAPSE_DAYS } from "@some-ui/job-desk"
 
-import type { Standing } from "./model"
+import type { DebriefResult, FrictionChip, PassReason, Standing } from "./model"
 
 /** The digest on show is from an earlier day than today's. */
 export const notToday = (day: string): string =>
@@ -61,6 +62,15 @@ export const detailsToPaste = (count: number): string =>
   count === 1 ? "One detail to paste" : `${count} details to paste`
 
 export const openIt = "Open it"
+
+/** Opens a pick on its reading: what they want and where I fit. */
+export const readIt = "Read it"
+
+/** Takes a pick and goes on to its résumé. */
+export const sendIt = "Send it"
+
+/** Passes on a pick, no reason needed. */
+export const notForMe = "Not for me"
 
 /** Browsing every pick, kept behind the one Today opens on. */
 export const seeAll = (shown: boolean): string =>
@@ -178,3 +188,100 @@ export const saidWouldHavePicked =
 export const whyItFits = "Why it fits"
 
 export const keepWhy = "Keep it"
+
+/** A pick's steps, as its step bar names them. */
+export const steps = ["Read", "Decide", "Résumé", "Apply", "Ending"] as const
+
+export const whatTheyWant = "What they want"
+
+export const whereIFit = "Where I fit"
+
+export const dontClaim = "Don’t claim"
+
+/** Leaves the reading for the decision; it records nothing. */
+export const onToDecide = "On to deciding"
+
+/** Why I passed, from the run's list. */
+export const passLabels: Readonly<Record<PassReason, string>> = {
+  role: "Role",
+  "customer-facing": "Customer-facing",
+  seniority: "Seniority",
+  pay: "Pay",
+  location: "Location",
+  company: "Company",
+  closed: "Posting closed",
+  other: "Other",
+}
+
+/** A pick I passed on. */
+export const passedIt =
+  "Not for you. That goes out with today’s decisions, with any reason you gave."
+
+export const sendAfterAll = "Send it after all"
+
+/** A pick let go with its digest before picks lapsed. */
+export const archivedIt =
+  "Let go with its digest, unread. Sending it or passing on it now replaces that."
+
+/** What the two choices do, before either is made. */
+export const decideHint =
+  "Sending it moves on to the résumé. Not for me tells tomorrow’s picking, so it sends fewer like it. A reason helps but isn’t needed."
+
+/** Opens the reasons behind "Not for me". */
+export const sayWhyNot = "Not for me, and say why"
+
+export const whyNot = "Why not?"
+
+export const inAFewWords = "In a few words"
+
+export const sayWhyAloud = "Or say why, up to a minute"
+
+/** Passes on a pick with the reasons given. */
+export const notForMeWithWhy = "Not for me, with this"
+
+/** How applying ended, one tap each. */
+export const endingLabels: Readonly<Record<DebriefResult, string>> = {
+  submitted: "Sent",
+  "gave-up": "Stopped partway",
+  closed: "Couldn’t: posting closed",
+}
+
+export const howDidItEnd = "How did it end?"
+
+/** Opens what else I can say about applying; none of it is needed. */
+export const addHowItWent = "Add how it went"
+
+/** The extras, once opened. */
+export const howItWentHint =
+  "All of this is optional, and goes with the ending you tap above."
+
+export const howLong = "How long it took, in minutes"
+
+/** The minutes typed don't fit; `most` is the longest, in minutes. */
+export const minutesRange = (most: number): string =>
+  `Whole minutes, up to ${most / 60} hours, or leave it empty.`
+
+export const frictionHeading = "Friction"
+
+export const frictionScale = "1 smooth · 5 nearly gave up"
+
+export const whatGotInTheWay = "What got in the way"
+
+/** What got in the way, from the run's list. */
+export const frictionLabels: Readonly<Record<FrictionChip, string>> = {
+  "account-wall": "Account wall",
+  "company-ats": "Sent to company ATS",
+  "retyped-resume": "Re-typed my résumé",
+  assessment: "Assessment",
+  "cover-letter": "Cover letter",
+  "long-questionnaire": "Long questionnaire",
+  "form-broke": "Form broke",
+}
+
+export const whatHappened = "What happened"
+
+export const sayItAloud = "Or say it, up to a minute"
+
+/** A pick whose ending I gave. */
+export const endedAs = (result: DebriefResult): string =>
+  `Ended: ${endingLabels[result]}. Add replies and interviews under Record as they come.`
