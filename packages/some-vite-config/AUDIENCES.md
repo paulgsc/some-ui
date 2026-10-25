@@ -158,7 +158,8 @@ checked against every existing link. What is left is inside such a file.
   the door's own module); or a hunk to `apps/www/build.profiles.ts` that adds a directory to
   `doors` whose `index.ts` does not meet the claim, or to `profileBuildEnv` in
   `apps/www/build.paths.ts` that sets `VITE_DEVICE_BACKEND` to `"true"` in a profile carrying
-  `web`.
+  `web`; or a hunk to `apps/www/eslint.config.js` that drops `DOOR_PATTERN` from a block, or
+  adds a block setting `no-restricted-imports` for `src/` files without it.
 - _Scope:_ the directories in `doors` (`apps/www/build.profiles.ts`), imports of them from the
   rest of `apps/www`, `doors` itself, and `profileBuildEnv` in `apps/www/build.paths.ts`. Held
   when written: `web-surface/index.ts`'s two exports (`WEB_PANELS`, `ExtensionsComb`) both sit
@@ -171,8 +172,10 @@ checked against every existing link. What is left is inside such a file.
   `check:bundle-paths` fails when the door's internals (`web-surface/hangul/**`, an `exclusive`
   rule) reach the `mobile` output. Neither sees a new export the test does not name until
   something in the APK binds it. Which branch an `import()` sits in is control flow, beyond a
-  lint rule's reach for the same reasons as A3. The deep-import half is **mechanical; not yet a
-  rule** (a `no-restricted-imports` pattern on `@/lib/web-surface/*`).
+  lint rule's reach for the same reasons as A3. The deep-import half is a lint rule: `www`'s
+  `eslint.config.js` restricts `@/lib/web-surface/*` (`DOOR_PATTERN`) in every block that sets
+  `no-restricted-imports` for `src/`, tests included; a dynamic `import()` below the index is
+  outside that rule and stays with the falsifier.
 
 ## Paths: what each build ships
 
