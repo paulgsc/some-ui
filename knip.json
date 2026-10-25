@@ -27,6 +27,7 @@
         "@capacitor-community/text-to-speech",
         "@capacitor/filesystem",
         "@capacitor/local-notifications",
+        "@capacitor/push-notifications",
         "@capacitor/share"
       ]
     },
