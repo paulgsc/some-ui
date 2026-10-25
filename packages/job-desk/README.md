@@ -10,6 +10,11 @@ UI here, only the shapes, the policy, a sample and a checker.
 | `decisions-<day>.json`, job-decisions/1 | the phone, shared | the routine | `some-ui jobs/Decisions` |
 | `scouts-<stamp>.json`, job-scouts/1     | the phone, shared | the routine | `some-ui jobs/Scout`     |
 
+Every run, one that stops early included, also leaves `run-jobs-<stamp>.json`
+(`routine-run/1`, `"routine": "jobs"`, `JobsRunSchema`) in the mailbox's `run`
+folder only, never in Drive: when it ran, what it read, the digest it added,
+and what it couldn't do (`ROUTINE.md` §9).
+
 A second decisions share on one day is `decisions-<day>-2.json`, then `-3`
 (`decisionsFileName`).
 
@@ -29,9 +34,11 @@ database), beside Drive. `ROUTINE.md` §0.4 says how the routine uses it, and
   lapse today (`queueOf`), and each track's free slots: a run adds picks only
   into those (`MAX_OPEN_PICKS`). A pick stays open until I pass it or debrief
   it and share that, or until it lapses, untouched for `LAPSE_DAYS` days.
-- `pnpm --filter @some-ui/job-desk check <file>` checks any of the three files
-  the way the phone will read it, after a build. It prints `[]` when the file
-  is ready to upload.
+- `pnpm --filter @some-ui/job-desk check <file>` checks any of the three files,
+  or a run record, the way the phone will read it, after a build. It prints
+  `[]` when the file is ready to upload. A run record is also held to its file
+  name, to what its outcome means, and to problems said in my terms
+  (`runFindings`).
 
 The files are append-only by convention: a later one adds to what an earlier
 one said, and the routine never replaces a digest.

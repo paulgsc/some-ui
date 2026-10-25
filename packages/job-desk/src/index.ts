@@ -38,6 +38,14 @@ export {
 } from "./policy"
 export type { OpenPick, Queue } from "./queue"
 export { freeSlots, hasLapsed, lapsesOn, queueOf } from "./queue"
+export type { JobsRun } from "./run"
+export {
+  JobsRunSchema,
+  MAX_PROBLEM,
+  parseJobsRun,
+  runFileName,
+  runFindings,
+} from "./run"
 export type { Scouts } from "./scouts"
 export {
   MAX_POSTING_TEXT,

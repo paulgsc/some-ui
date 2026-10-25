@@ -49,6 +49,10 @@ const Count = z.number().int().nonnegative()
 
 const RunSchema = z.object({
   schema: z.literal("some-ui.routine-run/1"),
+  // The jobs routine's runs share the schema and the folder
+  // (`@some-ui/job-desk`'s `JobsRunSchema`); only this routine's are read.
+  // A run from before the field is this routine's.
+  routine: z.literal("reflections").optional(),
   startedAt: Instant,
   finishedAt: Instant.nullish(),
   outcome: z.enum(["done", "partly", "stopped"]),
@@ -82,7 +86,7 @@ export type RunsAnswer = {
 /**
  * The runs in home's answer, or null when it says nothing of them (a home
  * from before run records, or no answer at all). A run of a shape this
- * build does not know is left out.
+ * build does not know, or another routine's, is left out.
  */
 export function parseRoutineRuns(answer: unknown): RunsAnswer | null {
   const parsed = AnswerSchema.safeParse(answer)
@@ -90,7 +94,7 @@ export function parseRoutineRuns(answer: unknown): RunsAnswer | null {
   const runs = parsed.data.runs.flatMap((held): Array<RoutineRun> => {
     const run = RunSchema.safeParse(held.file)
     if (!run.success) return []
-    const { schema: _, ...rest } = run.data
+    const { schema: _, routine: __, ...rest } = run.data
     return [
       {
         ...rest,

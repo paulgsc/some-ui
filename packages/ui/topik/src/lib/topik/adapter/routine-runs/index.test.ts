@@ -113,6 +113,31 @@ describe("parseRoutineRuns", () => {
   })
 })
 
+describe("parseRoutineRuns, beside the jobs routine", () => {
+  it("leaves out another routine's runs, even one this shape would take, and reads one from before the field", () => {
+    const { routine: _, ...before } = run("2026-10-22T16:02:08Z")
+    const answer = parseRoutineRuns({
+      runs: [
+        held(
+          "run-jobs-20261024T145207Z.json",
+          run("2026-10-24T14:52:07Z", { routine: "jobs" })
+        ),
+        held(
+          "run-reflections-20261023T160208Z.json",
+          run("2026-10-23T16:02:08Z")
+        ),
+        held("run-reflections-20261022T160208Z.json", before),
+      ],
+      at: AT,
+    })
+    expect(answer?.runs.map((one) => one.name)).toEqual([
+      "run-reflections-20261023T160208Z.json",
+      "run-reflections-20261022T160208Z.json",
+    ])
+    expect(answer?.runs[0]).not.toHaveProperty("routine")
+  })
+})
+
 describe("createRunLog", () => {
   const answer = (at: string, ...starts: Array<string>): RunsAnswer => ({
     at,
