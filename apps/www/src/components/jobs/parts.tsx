@@ -232,11 +232,7 @@ export const OpenDigest = ({
           />
         </label>
       </Button>
-      {where && (
-        <span className="text-muted-foreground text-xs">
-          In Drive, look in {where}
-        </span>
-      )}
+      {where && <span className="text-muted-foreground text-xs">{where}</span>}
       {importing.kind === "rejected" && (
         <p role="alert" className="text-destructive text-sm">
           {importing.problem}

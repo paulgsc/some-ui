@@ -68,6 +68,21 @@ describe("Today, as the picks arrive", () => {
     expect(screen.queryByText(PICKER)).toBeNull()
   })
 
+  // JR1: the hint names the Drive folder once, as the sidecar words it.
+  it("names where in Drive the picks wait, once", async () => {
+    const { installShareSidecar } = await import("@/lib/share-files")
+    const { driveFiling } = await import("@/lib/drive-filing")
+    installShareSidecar(driveFiling())
+    try {
+      await showToday("2026-10-22T14:00:00Z", null)
+      expect(
+        screen.getByText("In Drive, look in some-ui jobs › Brief")
+      ).toBeTruthy()
+    } finally {
+      installShareSidecar(undefined)
+    }
+  })
+
   it("says an earlier day's picks are not today's, and what brings today's", async () => {
     await showToday("2026-10-22T14:00:00Z", "2026-10-18")
     expect(screen.getByText(/These are 2026-10-18’s picks/)).toBeTruthy()
