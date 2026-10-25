@@ -10,7 +10,11 @@
  * like `./sent`'s bookkeeping). Lost, it only means telling again, which
  * home answers as unchanged. A home that keeps no choices (one before #433
  * answers `404`) is told nothing more that run, and, once it has answered
- * so twice in a row, nothing more until the app starts again.
+ * so twice in a row, nothing more until the app starts again. A home that
+ * does not know a choice yet (one older than its scope, voice notes before
+ * paulgsc/server#472, answers `422`) is told it again on the next run, and
+ * nothing after it until then; the run goes on, since that home refuses
+ * nothing under a scope it does not know.
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { unexpectedAnswer } from "@some-ui/core-utils"
@@ -102,6 +106,7 @@ export async function tellHome(
       return { kind: "synced" }
     }
     misses.delete(pairing)
+    if (status === 422) return { kind: "synced" }
     if (status !== 200) return unexpectedAnswer("a choice", status)
     // An event's scopes go one request each: it is told once all of them are.
     if (changes[i + 1]?.seq !== seq) rememberTold(storage, pairing, seq)

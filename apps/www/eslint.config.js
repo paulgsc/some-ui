@@ -49,6 +49,10 @@ const REFLECTION_MAY_IMPORT = [
 ]
 const REFLECTION_IMPORTERS = [
   "src/lib/agent-export/**",
+  // LA13: the voice lane reads spoken reflections to copy them for home,
+  // and only while its person keeps voice notes there.
+  "src/lib/home-link/voice.ts",
+  "src/lib/home-link/voice-copy.ts",
   "src/main.tsx",
   "src/components/player/completion-summary.tsx",
   "src/components/player/live-player.tsx",

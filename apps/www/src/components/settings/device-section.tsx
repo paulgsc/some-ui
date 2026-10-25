@@ -47,6 +47,7 @@ import {
   DeviceArchive,
   DeviceStorageSummary,
 } from "@/components/settings/device-storage"
+import { VoiceHomeChoice } from "@/components/settings/device-voice-home"
 
 const HOME_KEY = "some-ui.device.home-server.v1"
 
@@ -434,8 +435,8 @@ export const DeviceSection = (): JSX.Element => {
             ) : null}
             <p className="text-muted-foreground text-xs">
               Nothing is sent unless you tap below, except what you chose to
-              keep on home, each only while it is open: aph, the Jobs record,
-              and Practice.
+              keep on home: aph, the Jobs record and Practice, each only while
+              it is open, and voice notes, from anywhere in the app.
             </p>
             {confirmingUnpair ? null : (
               <SendHome
@@ -446,6 +447,7 @@ export const DeviceSection = (): JSX.Element => {
               />
             )}
             <DeviceRoutineReads />
+            <VoiceHomeChoice />
             <SharingLedger />
           </>
         ) : (

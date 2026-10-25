@@ -11,6 +11,7 @@ import type { FileShare, SceneNote, SceneVoice } from "@some-ui/topik"
 import { micRecorder, savingShelf } from "@some-ui/voice-capture"
 
 import { boundedList } from "@/lib/bounded-list"
+import { copySceneNotes } from "@/lib/home-link/voice-copy"
 import type { SharedFile } from "@/lib/share-files"
 import { shareFiles } from "@/lib/share-files"
 
@@ -80,6 +81,8 @@ const SHARE_PORT = "scene voice (share)"
  * The drama's next-scene prompt, as topik's `FileShare` port, with the
  * scene's voice notes it names beside it. A note whose audio cannot be read
  * fails the share, so the prompt never names a file that does not arrive.
+ * Once shared, its notes are copied for home under the prompt's stamp, while
+ * voice notes are kept on home (LA13).
  */
 export const shareDramaPrompt: FileShare = async ({
   name,
@@ -102,10 +105,24 @@ export const shareDramaPrompt: FileShare = async ({
     return failed(error)
   }
   const files: Array<SharedFile> = [{ name, data: text }]
+  const forHome: Array<{ id: string; mimeType: string; audio: Blob }> = []
+  const listed = notes.read()
   for (const [index, note] of named.entries()) {
     const blob = blobs[index]
     if (!blob) return failed(new Error(`no audio for voice note ${note.id}`))
     files.push({ name: note.name, data: blob })
+    const mimeType = listed.find(({ id }) => id === note.id)?.mimeType
+    if (mimeType !== undefined) {
+      forHome.push({ id: note.id, mimeType, audio: blob })
+    }
   }
-  return shareFiles("drama-prompt", "The next scene's prompt", files)
+  const shared = await shareFiles(
+    "drama-prompt",
+    "The next scene's prompt",
+    files
+  )
+  if (shared.status === "succeeded" && shared.value === "shared") {
+    copySceneNotes(name, forHome)
+  }
+  return shared
 }

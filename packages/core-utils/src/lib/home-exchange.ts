@@ -10,14 +10,35 @@
 export type HomeAnswer = { status: number; body: string; etag?: string }
 
 /**
+ * A body that is not JSON: its media type, and its bytes as base64, the way
+ * the phone's native request carries bytes (a voice note's audio).
+ */
+export type HomeBytes = {
+  readonly contentType: string
+  readonly base64: string
+}
+
+/** `body` is bytes with a media type, not JSON text. */
+export function isHomeBytes(body: unknown): body is HomeBytes {
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    "contentType" in body &&
+    "base64" in body &&
+    typeof body.contentType === "string" &&
+    typeof body.base64 === "string"
+  )
+}
+
+/**
  * A credentialed request to the paired home, at `path` under its API base,
- * with `body` sent as these bytes. The one request port every exchange with
- * home sends through.
+ * with `body` sent as these bytes: JSON text, or `HomeBytes`. The one request
+ * port every exchange with home sends through.
  */
 export type HomeCall = (
   method: "GET" | "POST" | "PUT" | "PATCH",
   path: string,
-  body?: string
+  body?: string | HomeBytes
 ) => Promise<HomeAnswer>
 
 /** How an exchange that got its answers ended. */

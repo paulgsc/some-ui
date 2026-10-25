@@ -32,7 +32,7 @@ function home(answers: Array<HomeAnswer | Error> = []): {
   return {
     sent,
     send: (method, path, body): Promise<HomeAnswer> => {
-      sent.push(`${method} ${path} ${body ?? ""}`)
+      sent.push(`${method} ${path} ${typeof body === "string" ? body : ""}`)
       const answer = answers.shift() ?? { status: 200, body: "{}" }
       return answer instanceof Error
         ? Promise.reject(answer)
@@ -102,6 +102,34 @@ describe("telling home its person's choices", () => {
     const again = home()
     await tellHome(again.send, "old", old, storage)
     expect(again.sent).toEqual([])
+  })
+
+  it("tells a home older than a choice's scope it again next run, and nothing after it till then", async () => {
+    const storage = memoryStorage()
+    const log: ConsentLog = [
+      {
+        seq: 1,
+        at: 1,
+        pairing: "p",
+        kind: "kept",
+        scopes: ["voice"],
+        said: "yes",
+      },
+      { seq: 2, at: 2, pairing: "p", kind: "stopped", scopes: ["jobs"] },
+    ]
+    const older = home([{ status: 422, body: "{}" }])
+    await expect(tellHome(older.send, "p", log, storage)).resolves.toEqual({
+      kind: "synced",
+    })
+    expect(older.sent).toEqual(['PUT /sharing/voice {"kept":true}'])
+    expect(readTold(storage, "p")).toBe(0)
+    const updated = home()
+    await tellHome(updated.send, "p", log, storage)
+    expect(updated.sent).toEqual([
+      'PUT /sharing/voice {"kept":true}',
+      'PUT /sharing/jobs {"kept":false}',
+    ])
+    expect(readTold(storage, "p")).toBe(2)
   })
 
   it("tells everything again once forgotten", async () => {

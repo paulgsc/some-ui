@@ -20,6 +20,7 @@
  */
 import { CapacitorHttp } from "@capacitor/core"
 import type { HomeAnswer } from "@some-ui/core-utils"
+import { isHomeBytes } from "@some-ui/core-utils"
 import type { ForeignPort, ForeignVerdict } from "@some-ui/intent-kit"
 import {
   callForeign,
@@ -47,7 +48,9 @@ export type HomeRequest = {
   /**
    * Sent as JSON: an object serialised, a string as its own bytes (the
    * plugin writes a string `data` unchanged, so a kept shelf body arrives
-   * byte for byte and home's content hash matches the phone's).
+   * byte for byte and home's content hash matches the phone's). `HomeBytes`
+   * go as their own media type, the plugin decoding the base64 (on Android 8
+   * and later; Android 7's plugin sends an empty body, which home refuses).
    */
   body?: unknown
   /** Sent as `If-None-Match`. */
@@ -96,7 +99,10 @@ export async function homeRequest(call: HomeRequest): Promise<HomeAnswer> {
   }
   const headers: Record<string, string> = {}
   if (token !== undefined) headers.Authorization = `Bearer ${token}`
-  if (body !== undefined) headers["Content-Type"] = "application/json"
+  const bytes = isHomeBytes(body) ? body : null
+  if (body !== undefined) {
+    headers["Content-Type"] = bytes?.contentType ?? "application/json"
+  }
   if (ifNoneMatch !== undefined) headers["If-None-Match"] = ifNoneMatch
   const answer = await foreignValue(
     callForeign({
@@ -108,7 +114,11 @@ export async function homeRequest(call: HomeRequest): Promise<HomeAnswer> {
           method,
           url,
           headers,
-          ...(body === undefined ? {} : { data: body }),
+          ...(bytes !== null
+            ? { data: bytes.base64, dataType: "file" as const }
+            : body === undefined
+              ? {}
+              : { data: body }),
           responseType: "text",
           disableRedirects: true,
           connectTimeout: TIMEOUT_MS,

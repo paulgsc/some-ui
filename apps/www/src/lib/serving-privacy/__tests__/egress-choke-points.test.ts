@@ -48,6 +48,10 @@ const NATIVE_HTTP = "lib/device-backend/native-http/index.ts"
 const NATIVE_HTTP_CALLERS = new Set(["lib/home-link/index.ts"])
 const HOME_LINK_CALLERS = new Set([
   "components/settings/device-section.tsx",
+  // LA13: Settings' choice to keep voice notes on home, and the drama
+  // share that copies its scene notes for home once shared.
+  "components/settings/device-voice-home.tsx",
+  "lib/scene-voice/index.ts",
   // Settings' ledger of what is shared: it reads the choices, and stops
   // Practice and the Jobs record on a second press (LA9).
   "components/settings/device-sharing-ledger.tsx",
@@ -371,7 +375,13 @@ describe("LA1: only the choke points name a network global", () => {
 
   it("keeps the exemption list in eslint.config.js to the same two files", () => {
     const config = readFileSync(join(SRC, "../eslint.config.js"), "utf8")
-    const listed = [...config.matchAll(/"(src\/lib\/[^"]+\.ts)"/g)].map(
+    // The `files` of the block that turns the network rules off.
+    const before = config.slice(
+      0,
+      config.indexOf('"no-restricted-globals": "off"')
+    )
+    const block = before.slice(before.lastIndexOf("files: ["))
+    const listed = [...block.matchAll(/"(src\/lib\/[^"]+\.ts)"/g)].map(
       (m) => m[1]
     )
     expect(listed.sort()).toEqual(

@@ -54,7 +54,8 @@ function home(
   const held = new Map<string, Array<Record<string, unknown>>>()
   return {
     calls,
-    send: (method, path, body): Promise<HomeAnswer> => {
+    send: (method, path, sent): Promise<HomeAnswer> => {
+      const body = typeof sent === "string" ? sent : undefined
       calls.push([method, path, body])
       const session = decodeURIComponent(path.split("/")[3] ?? "")
       if (method === "GET") {

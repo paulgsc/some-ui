@@ -39,7 +39,8 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 | This device's sessions                      | stay here                                    | copied only by "Copy to my account", per account, after a confirmation; the phone's, to its paired home, by "Send to home", which then frees the finished ones home confirms it holds (LA8)                                                                                                                    | the same                                   |
 | `/signals`, `/presence/lease`               | never                                        | never                                                                                                                                                                                                                                                                                                          | sent                                       |
 | Push subscription                           | never                                        | never                                                                                                                                                                                                                                                                                                          | the account's, on the person's own taps    |
-| Reflections                                 | on the device (at most 20), never sent       | never sent (LA7)                                                                                                                                                                                                                                                                                               | never sent (LA7)                           |
+| Reflections                                 | on the device (at most 20), never sent       | never sent, but a spoken one's audio, once its person keeps voice notes on home (LA7, LA13)                                                                                                                                                                                                                    | the same                                   |
+| Voice notes (the phone's)                   | on the phone, never sent                     | once its person keeps voice notes on home (Settings), each spoken reflection, Jobs voice note an event names and scene note of a shared drama prompt copied and sent to the paired home while the app is open, the copy kept until home holds it; stopped from Settings (LA13)                                 | the same                                   |
 | Shelf                                       | never                                        | the account's, on the person's own taps                                                                                                                                                                                                                                                                        | the same                                   |
 | aph (the phone's)                           | on the phone, never sent                     | once its person keeps it on home, on the paired home, synced while aph is open; the phone keeps only what home has not confirmed; stopped from aph's mark, which brings it back (LA9)                                                                                                                          | the same                                   |
 | Jobs record (the phone's)                   | on the phone, never sent                     | once its person keeps it on home, a copy on the paired home, synced while the Jobs wing is open; its decisions and scouts files without voice, filed with home, which hands them to the Jobs mailbox on Cloudflare; the phone keeps its whole log; stopped from the wing's mark or Settings (LA10)             | the same                                   |
@@ -268,12 +269,15 @@ declared (checked by reading every call site and by the tests named).
   test can say is that a new caller chose the right purpose, which is LA1's
   limit too.
 
-### LA7: a reflection reaches no server
+### LA7: a reflection reaches no server, but a spoken one's audio its person keeps on home
 
 - _Claim:_ a session reflection (a typed line, a voice note, the one-tap
   answers; `lib/session-reflection`), or any value built from one, is never
   passed to anything that sends to `file_host` or writes what does (a session
-  record, a signal, the device backend's database). It leaves the device only
+  record, a signal, the device backend's database), with one exception: a
+  voice note's audio, with its id, session, time and media type, which the
+  voice lane copies for the paired home and sends there while its person
+  keeps voice notes on home (LA13). It leaves the device otherwise only
   through the share sheet (`lib/agent-export`), which the person starts. Two
   allowlists in `apps/www/eslint.config.js` bound where one can travel: the
   modules that hold or show reflections (`REFLECTION_MODULES`) import from `@/`
@@ -289,10 +293,13 @@ declared (checked by reading every call site and by the tests named).
   `no-restricted-imports` in a file either block covers; a hunk that adds a
   name to `REFLECTION_MAY_IMPORT`, `REFLECTION_IMPORTERS` or
   `allowImportNames` (each is a new place a reflection can reach, so read the
-  module it names against the next clause); or a hunk, in `lib/agent-export`
+  module it names against the next clause); a hunk, in `lib/agent-export`
   or a module either list names, that passes a reflection or a value built
   from one to a call that sends to `file_host` or writes a session, a signal
-  or the device backend's database.
+  or the device backend's database; or a hunk to `lib/home-link/voice-copy.ts`
+  or `lib/home-link/voice.ts` that reads any part of a reflection but a voice
+  note's id, `sessionId`, `createdAt`, `body.kind`, `body.mimeType` and its
+  audio, or copies one while `keptNow(VOICE_SCOPES)` is false.
 - _Scope:_ `apps/www/src`. The way out by the share sheet is LA1's "what a
   learner chooses to send" (below), not a request.
 - _Why not enforced:_ the imports are, by lint (checked when declared by
@@ -304,7 +311,12 @@ declared (checked by reading every call site and by the tests named).
   Held when declared, by reading each: `agent-export` gives reflections to
   `shareFiles` alone and reads the sessions repository only for names and
   dates, and the importers only render reflection components or call
-  `sweepOrphans`.
+  `sweepOrphans`. _Amended with LA13 (owner, paulgsc/some-ui#2038):_ the voice
+  lane's two modules, added to `REFLECTION_IMPORTERS`, read a reflection only
+  in `reflectionNote` (id, session, time, kind and media type) and its audio
+  only through `reflectionAudio().get`, inside `copyAll`, which checks
+  `keptNow(VOICE_SCOPES)` before every note; `voice.ts` reads the store only
+  to render the count again.
 
 ### LA8: the phone reaches its home server only when tapped, and says where
 
@@ -468,13 +480,14 @@ declared (checked by reading every call site and by the tests named).
 
 ### LA9: aph is sent home only while its person is using it
 
-aph, the Jobs record and Practice are kept on home through one wiring
-(`lib/home-link/lanes.ts`): each declares its lane (its scopes, its exchange,
-how its record moves, its sheet's counts; `aph.ts`, `jobs.ts`,
-`practice.ts`), and every lane shares the consent log, the runtime, the watch
-and the mark (`components/device-home-glyph.tsx`). This invariant states the
-wiring's claim for every lane, and aph's own; LA10 and LA11 add the Jobs
-record's and Practice's.
+aph, the Jobs record, Practice and voice notes are kept on home through one
+wiring (`lib/home-link/lanes.ts`): each declares its lane (its scopes, its
+exchange, how its record moves, its sheet's counts; `aph.ts`, `jobs.ts`,
+`practice.ts`, `voice.ts`), and every lane shares the consent log, the
+runtime, the watch and, but voice notes, the mark
+(`components/device-home-glyph.tsx`). This invariant states the wiring's
+claim for every lane, and aph's own; LA10, LA11 and LA13 add the Jobs
+record's, Practice's and voice notes'.
 
 What aph may send home, and what the phone may let go of, is enforced by
 test: who reaches the link and its `keep` lane (`egress-choke-points`), the
@@ -493,18 +506,23 @@ when a run is asked for:
   only at a moment its person is using that lane's wing: from `watchKept`,
   which only `useLaneHome` starts, for as long as the lane's mark (`LaneMark`,
   which `DeviceHomeGlyph` mounts only in the Android app's header, for the
-  wing that shows) is mounted, on the mark mounting, a move of the lane's
+  wing that shows) is mounted (voice notes, which have no mark: for as long
+  as `VoiceNotesHome`, which `routes/_dashboard.tsx` mounts on every screen of
+  the Android app, is; LA13), on the mark mounting, a move of the lane's
   revision (its record changed on this phone, or the consent log grew), the
   app coming back to the foreground, the network coming back, the phone being
   paired, or the link freeing up after turning a run away; or from `askLane`,
-  which the mark's sheet calls only from its Send now button. Each asks only
+  which the mark's sheet calls only from its Send now button (and Settings'
+  voice choice from its own, LA13). Each asks only
   when the consent log keeps one of the lane's scopes under the paired home's
   id and the document is visible, and every request of the record's that a
   run makes first finds one still kept (`laneExchange`), so a stop ends a run
   before its next such request; telling home a choice is not gated, since a
   stop is one. Nothing asks on a timer. A kept choice enters the log only from the
   mark's second press, with the words its first press showed (`offer`), from
-  Settings' send with its box ticked (Practice, LA11), or once, as found
+  Settings' send with its box ticked (Practice, LA11), from the second press
+  of Settings' voice choice, with the words its first press showed (LA13),
+  or once, as found
   (`said: null`), for a lane whose record's own switch kept it on home before
   the log and whose scopes no choice ever named, under a pairing an earlier
   build made (the link's `earlier`: its record's `choicesLogged` is not
@@ -520,7 +538,10 @@ when a run is asked for:
   follows, and again from a lane mark's link listener once the link frees
   after turning it away. A lane's run sends its record only once home has
   heard every choice (a home that answered twice in a row that it keeps none
-  counts as having heard, until the app starts again); aph's way back, which
+  counts as having heard, until the app starts again, and a home that
+  answers a choice `422`, one older than its scope, as having heard for that
+  run, the choice and every one after it left untold until a run home
+  answers it `200`); aph's way back, which
   only reads, goes on either way. A `409` saying the phone stopped
   (`stoppedOnHome`) refuses nothing and makes the next run tell every choice
   again. For
@@ -569,8 +590,9 @@ when a run is asked for:
   choice told before home answered every one of its scopes with `200`,
   makes `readTold` answer for another pairing, sets `keepsNone` on anything
   but a second `404` in a row for that pairing, keys it on anything but the
-  pairing or keeps it past the page load, or lets `tellHome` answer
-  `synced` on anything but every change answered `200` or a `404`; a hunk to
+  pairing or keeps it past the page load, lets `tellHome` answer
+  `synced` on anything but every change answered `200`, a `404` or a `422`,
+  or remembers a change home answered `422` as told; a hunk to
   `lib/home-link/kept-runtime.ts` that lets `toldFirst` run what follows
   before telling, or, unless its caller says `"tried"` (aph's way back
   alone), after telling ended any way but `synced`, or that drops
@@ -590,6 +612,7 @@ when a run is asked for:
   `watchKept`, or `choose` on the consent runtime under any name; a
   hunk that mounts
   `DeviceHomeGlyph` anywhere but `routes/_dashboard.tsx`'s header in the
+  device build, `VoiceNotesHome` anywhere but `routes/_dashboard.tsx` in the
   device build, or `DeviceAphLane` anywhere but
   `routes/_dashboard/_apk/aph.tsx`; a hunk to `lib/home-link/aph.ts` that
   makes the lane's `exchange` do more than make the switch and run aph's
@@ -625,9 +648,11 @@ when a run is asked for:
   a helper. Held when declared, by reading every call: `watchKept` only in
   `useLaneHome`'s effect; `askKept` in `watchKept`'s three listeners and its
   first ask, and in `askLane`; `askLane` only in the sheet's Send now
-  `onClick`; `keepOnHome` only in the sheet's second opt-in press, with the
-  `offer` it shows, and in `device-section.tsx`'s send `onPress` behind the
-  ticked box; `stopOnHome` only in the sheet's second Stop press and the
+  `onClick` (and, since LA13, Settings' voice choice's); `keepOnHome` only in
+  the sheet's second opt-in press, with the `offer` it shows, in
+  `device-section.tsx`'s send `onPress` behind the ticked box, and in
+  `device-voice-home.tsx`'s second press, with the `offer` it shows;
+  `stopOnHome` only in the sheet's second Stop press and the
   ledger's, which offers none for aph;
   `bringLaneBack` only in Bring it back's `onClick`; the teller only in
   `stopOnHome` and the link listener; `choose` only in
@@ -897,6 +922,83 @@ test can say is when a look is asked for:
   `retry` off, and no interval; `choose`
   only in the two second-press `onClick`s; no timer or listener in
   `routine.ts` but `onLink`, whose listener is `settle`.
+
+### LA13: voice notes go home only while their person keeps them there, and none is lost before home has it
+
+Voice notes are kept on home through LA9's wiring, with a lane of their own
+(`lib/home-link/voice.ts`, scope `voice`) and no mark: they come from more
+than one wing (spoken reflections and the drama's scene notes in Practice,
+voice notes in Jobs), so Settings offers the choice
+(`components/settings/device-voice-home.tsx`, two presses, the second keeping
+the first's words) and the app shell mounts the lane's watch on every screen
+(`VoiceNotesHome`, owner, paulgsc/some-ui#2038). Home keeps each recording
+and transcribes it (paulgsc/server#460); paulgsc/server refuses a note from a
+pairing that stopped (`sharing_stopped`).
+
+Which notes go, and what each is told home as, is enforced by test
+(`lib/home-link/__tests__/voice.test.ts`): a spoken reflection by its session
+and when it was said, a written one never; a Jobs voice note by the first pick
+or scout event that names it, a draft's never; a scene note by its drama
+prompt's stamp, when that prompt is shared. That a note's audio is copied
+once, before the record names it, that the copy goes once home holds the
+note and stays when home refused it, and that a copy nothing names is swept
+(`lib/voice-home/__tests__/runtime.test.ts`); that a note counts as home's
+only once home answers with its SHA-256, that a replay counts as held, that
+other audio under its id or a field home won't take is a refusal kept and
+never sent again, and that a body home did not get, a stop or a forgotten
+phone refuses nothing (`home.test.ts`); and that a home older than the
+`voice` scope is told the choice again and refuses nothing meanwhile
+(`lib/home-link/__tests__/told.test.ts`). What no test can say is when a note
+is copied:
+
+- _Claim:_ a voice note's audio is copied for home (`phoneVoiceHome().copy`)
+  only while the consent log keeps `voice` under the paired home's id
+  (`keptNow(VOICE_SCOPES)`), and only from `copyAll` (each spoken reflection
+  and named Jobs note on the phone, from `watchVoiceNotes`, which only
+  `useVoiceHome`'s effect starts) and `copySceneNotes` (a drama prompt's
+  notes, from `shareDramaPrompt` once its share succeeded as shared); the
+  lane's runs are asked for as LA9 says, its exchange is `exchangeVoice`
+  over the store's `keeping`, and a copy goes only once home holds its note.
+  Letting a note go where it was recorded never removes its copy.
+- _Falsified by:_ a hunk LA9's falsifier names for the shared files; a hunk
+  to `lib/home-link/voice-copy.ts` that calls `copy` from anywhere but
+  `copyAll` and `copySceneNotes`, removes either's `keptNow(VOICE_SCOPES)`
+  check (`copyAll`'s before every note), or starts `copySoon` from anything
+  but `watchVoiceNotes` and its subscriptions; a hunk to
+  `lib/home-link/voice.ts` that makes the lane's `exchange` anything but
+  `exchangeVoice` over `phoneVoiceHome().keeping`, its scopes anything but
+  `voice`, or calls `watchVoiceNotes` from anywhere but `useVoiceHome`'s
+  effect, or drops its cleanup; a hunk to `lib/scene-voice/index.ts` that
+  calls `copySceneNotes` before or without the share's `succeeded`/`shared`
+  outcome; a hunk to `lib/voice-home/runtime.ts` that removes a copy from
+  the shelf on anything but a `held` answer or in `sweep`, lets `sweep`
+  remove a copy the record names waiting or refused, or writes the record
+  naming a copy before the shelf took it; a hunk to `lib/voice-home/home.ts`
+  that counts a note held without home's `200` naming its id and the
+  phone's SHA-256, or refuses one on a `422` that names only its body; or a
+  hunk to `components/settings/device-voice-home.tsx` that calls
+  `keepOnHome` other than from the second press's `onClick` with the
+  `offer` it shows, or `askLane` other than from Send now's.
+- _Scope:_ LA9's shared files, `apps/www/src/lib/home-link/voice.ts`,
+  `voice-copy.ts`, `apps/www/src/lib/voice-home/**`,
+  `apps/www/src/lib/scene-voice/index.ts`,
+  `apps/www/src/components/settings/device-voice-home.tsx`.
+- _Tolerance:_ a note recorded and let go before the watch copies it (the
+  app closed in between) is not copied; one the copies' shelf has no room for
+  (`VOICE_HOME_MAX_BYTES`, a hundred minutes) waits, `roomless`, until a copy
+  fits, and is lost if it is let go meanwhile; a note on Android 7, whose
+  native request sends no body, waits and is never sent. A reflection that
+  leaves the bounded list before it is copied is not copied either.
+- _Why not enforced:_ as LA9's: when a copy may be made is a reading of the
+  call sites, which a test sees one at a time and a lint rule not at all.
+  Held when declared, by reading every call: `copy` in `copyAll`, behind
+  `keptNow(VOICE_SCOPES)` before each note, and in `copySceneNotes`, behind
+  it once; `copySceneNotes` only in `shareDramaPrompt` after a share that
+  `succeeded` as `shared`; `watchVoiceNotes` only in `useVoiceHome`'s effect,
+  which returns its cleanup; `useVoiceHome` only in `VoiceNotesHome`, which
+  `_dashboard.tsx` mounts under `VITE_DEVICE_BACKEND`; `shelf.remove` in the
+  runtime only on `held` and in `sweep`, which keeps waiting and refused
+  copies.
 
 ## Not covered, on purpose
 

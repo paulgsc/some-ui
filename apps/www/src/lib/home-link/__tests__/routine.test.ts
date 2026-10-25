@@ -62,7 +62,7 @@ function keepOf(home: Home): HomeLink["keep"] {
     if (home.busy || home.pairing === null) return null
     const send: HomeCall = (method, path, body) => {
       home.sent.push(`${method} ${path}`)
-      home.bodies.push(body)
+      home.bodies.push(typeof body === "string" ? body : undefined)
       return home.answer()
     }
     try {

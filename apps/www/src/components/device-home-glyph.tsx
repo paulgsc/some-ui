@@ -34,6 +34,7 @@ import {
   useLaneHome,
 } from "@/lib/home-link/lanes"
 import { practiceLane } from "@/lib/home-link/practice"
+import { useVoiceHome } from "@/lib/home-link/voice"
 import type { Shape } from "@/lib/home-link/words"
 import { laneView, SHEET, WORDS } from "@/lib/home-link/words"
 import type { WingId } from "@/lib/wings"
@@ -329,4 +330,13 @@ export const DeviceHomeGlyph = ({
           : null
   // Keyed: each lane's counts are its own hooks.
   return lane === null ? null : <LaneMark key={lane.id} lane={lane} />
+}
+
+/**
+ * Voice notes' send, which has no mark: mounted by the app shell on every
+ * screen, so notes go home from any wing (LA13).
+ */
+export const VoiceNotesHome = (): null => {
+  useVoiceHome()
+  return null
 }

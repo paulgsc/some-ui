@@ -14,7 +14,7 @@
 import { isRecord } from "@/lib/device-backend/common"
 
 /** What a person can keep sending home. Closed: a new one is a reviewed diff. */
-const SCOPES = ["sessions", "shelf", "aph", "jobs"] as const
+const SCOPES = ["sessions", "shelf", "aph", "jobs", "voice"] as const
 export type Scope = (typeof SCOPES)[number]
 
 /** One choice, as made: when (this phone's clock), under which pairing, and what it covered. */

@@ -25,7 +25,7 @@ function home(answers: Array<HomeAnswer | Error>): {
     sent,
     send: (method, path, body): Promise<HomeAnswer> => {
       expect(method).toBe("PUT")
-      sent.push([path, body ?? ""])
+      sent.push([path, typeof body === "string" ? body : ""])
       const answer = answers.shift() ?? {
         status: 200,
         body: '{"change":"kept"}',

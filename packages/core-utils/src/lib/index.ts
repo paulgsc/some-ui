@@ -4,8 +4,14 @@ export * from "./date-utils"
 export * from "./array-utils"
 export * from "./stats"
 export { assertNever } from "./assert-never"
-export type { HomeAnswer, HomeCall, HomeExchanged } from "./home-exchange"
+export type {
+  HomeAnswer,
+  HomeBytes,
+  HomeCall,
+  HomeExchanged,
+} from "./home-exchange"
 export {
+  isHomeBytes,
   readAs,
   refusalOf,
   stoppedOnHome,
