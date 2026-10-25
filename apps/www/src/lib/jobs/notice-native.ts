@@ -13,6 +13,7 @@ import {
   reportFailure,
 } from "@some-ui/intent-kit"
 
+import { hasAudience } from "@/lib/build-profile"
 import { isMissingPlugin } from "@/lib/intent/foreign"
 
 import type { NoticeAsked, NoticePort } from "./runtime"
@@ -99,11 +100,13 @@ const NOTICE_OPENS = "/jobs"
 /**
  * A tapped notice opens Jobs, through `go` (the router). The plugin keeps a
  * tap until a listener comes, so a cold start from the notice still lands
- * there. Called on the Android app only (`main.tsx`).
+ * there. On the Android app only; `main.tsx` also guards the call, so the
+ * other builds drop this module.
  */
 export function listenForNoticeTaps(
   go: (to: typeof NOTICE_OPENS) => void
 ): void {
+  if (!hasAudience("apk")) return
   void import("@capacitor/push-notifications").then(({ PushNotifications }) =>
     PushNotifications.addListener(
       "pushNotificationActionPerformed",
