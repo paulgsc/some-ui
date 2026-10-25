@@ -160,7 +160,7 @@ const JourneyTrack = ({ road }: { road: Road }): JSX.Element => (
 )
 
 /** One state of a closed set, as the pop-up's list names it. */
-export type Listed = {
+type Listed = {
   readonly id: string
   readonly title: string
   readonly theme: JourneyTheme
@@ -224,7 +224,7 @@ export type StatusBarProps = {
 }
 
 /** A card's title bar, wearing `state`. */
-export const StatusBar = ({
+const StatusBar = ({
   title,
   state,
   heading: Heading = "h2",
