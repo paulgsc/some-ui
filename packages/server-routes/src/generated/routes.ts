@@ -31,6 +31,7 @@ export type ServerRoute =
   | "/api/v1/jobs/digests"
   | "/api/v1/jobs/events/:id"
   | "/api/v1/jobs/files/:name"
+  | "/api/v1/jobs/runs"
   | "/api/v1/leetype/operator/rounds"
   | "/api/v1/leetype/operator/rounds/:id"
   | "/api/v1/leetype/operator/rounds/:id/restore"
@@ -54,6 +55,7 @@ export type ServerRoute =
   | "/api/v1/push/test"
   | "/api/v1/push/vapid-key"
   | "/api/v1/routine/files"
+  | "/api/v1/routine/opened"
   | "/api/v1/sessions"
   | "/api/v1/sessions/:id"
   | "/api/v1/sessions/:id/duplicate"
@@ -72,7 +74,8 @@ export type ServerRoute =
   | "/api/v1/tabs/prune"
   | "/api/v1/tabs/reconcile"
   | "/api/v1/tabs/summaries"
-  | "/api/v1/utter";
+  | "/api/v1/utter"
+  | "/api/v1/voice-notes/:id";
 
 /** Routes NOT nested under API_BASE_PATH. */
 export type UnversionedRoute =
