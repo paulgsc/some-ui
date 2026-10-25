@@ -92,29 +92,28 @@ is a regression, not debt. Each falsifier covers deletions and moves as well as 
 
 - _Claim:_ in a workspace whose `someUi.audience` is not `public`, the module its
   `package.json` exports as `./contract`, and every module that one imports relatively,
-  import values only from `zod` and from each other; every other import is `import type`.
-- _Falsified by_ a hunk to `src/audience/contract.ts` or `scripts/check-ui-manifests.ts`
-  that makes the check allow more than the claim or read less of it: a value specifier
-  allowed besides `zod`, an import form that stays in the output read as a type import, a
-  relative import left out of the graph, a non-`public` workspace skipped, or a contract it
-  cannot trace passing; or that stops it running: either file deleted, renamed or moved, or
-  `check:ui-manifests` dropped from the root `lint` script or from pr.yml's node job.
-- _Scope:_ `packages/some-vite-config/src/audience/contract.ts`,
-  `scripts/check-ui-manifests.ts`, and `packages/ui/*` workspaces with a non-`public`
-  audience. Held: the one contract in the repo, `@some-ui/soundbites`'s `src/contract.ts`,
-  re-exports `src/lib/policy.ts`, whose one import is `import type`, so its graph is those
-  two modules and `src/lib/types.ts`; `@some-ui/lesson-crm` exports no `./contract`.
-- _Why not wholly enforced:_ the graph is enforced. `pnpm check:ui-manifests` finds each
-  such workspace's contract source (the `entries.contract` of its `vite.config.ts`, the
-  entry the build turns into that export), follows every relative import, `import type`
-  included, and fails a value import of anything but `zod`, an import it cannot read, and a
-  contract whose source it cannot find. No check sees its own wiring edited away, which is
-  why the falsifier names those files.
-- _Checked at landing:_ the walk passes on soundbites' three modules. Four breaks of that
-  contract, each tried and then undone, failed it: a value import of `react`, an
-  `import { type X }` of another package (kept by `verbatimModuleSyntax`), a contract that
-  re-exported the main entry (whose own imports then failed it), and a `vite.config.ts` with
-  no `entries.contract`.
+  import values only from `zod` and from each other; every other import is a type import
+  (`import type`, or one whose every specifier is `type`), which the build erases.
+- _Falsified by_ a hunk to `src/audience/contract.ts`, `src/vitest/source-graph.ts` (its
+  `values` and `unreadable` results) or `scripts/check-ui-manifests.ts` that makes the check
+  allow more than the claim or read less of it: a value specifier allowed besides `zod`, an
+  import that stays in the output read as a type import, a relative import left out of the
+  graph, a non-`public` workspace skipped, or a contract it cannot trace passing; or that
+  stops it running: a file deleted, renamed or moved, or `check:ui-manifests` dropped from
+  the root `lint` script or from pr.yml's node job.
+- _Scope:_ those three files, and `packages/ui/*` workspaces with a non-`public` audience.
+  Held: the one contract in the repo, `@some-ui/soundbites`'s `src/contract.ts`, re-exports
+  `src/lib/policy.ts`, whose one import is `import type`; `@some-ui/lesson-crm` exports no
+  `./contract`.
+- _Why not wholly enforced:_ the graph is enforced. `pnpm check:ui-manifests` finds each such
+  workspace's contract source (the `entries.contract` of its `vite.config.ts`, the entry the
+  build turns into that export), walks it with `reachedFrom`, type imports followed, and
+  fails a value import of anything but `zod`, an import it cannot follow, and a contract it
+  cannot trace (`src/audience/__tests__/contract.test.ts` pins each form). No check sees its own wiring edited away, which is why the falsifier names
+  those files.
+- _Checked at landing:_ soundbites' contract passes. Three breaks of it, each tried and then
+  undone, failed the check: a value import of `react`, a re-export of the main entry (whose
+  own imports then failed), and a `vite.config.ts` with no `entries.contract`.
 
 **A3: Public UI offers a gated route only when the build carries it.**
 

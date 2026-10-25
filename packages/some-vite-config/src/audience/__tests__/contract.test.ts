@@ -1,43 +1,65 @@
-import {
-  checkContract,
-  contractSource,
-  walkContract,
-} from "@/audience/contract.js"
-import { describe, expect, it } from "vitest"
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "fs"
+import { tmpdir } from "os"
+import { dirname, join } from "path"
+import { checkContract, contractSource } from "@/audience/contract.js"
+import { afterEach, describe, expect, it } from "vitest"
 
-// A workspace on an in-memory disk: path -> text.
-function disk(files: Record<string, string>): (path: string) => string | null {
-  return (path) => files[path] ?? null
+const MANIFEST = JSON.stringify({ exports: { ".": {}, "./contract": {} } })
+const CONFIG = 'createViteConfig({ entries: { contract: "src/contract.ts" } })'
+
+let dirs: Array<string> = []
+afterEach(() => {
+  for (const dir of dirs) rmSync(dir, { recursive: true, force: true })
+  dirs = []
+})
+
+/** A workspace on disk exporting ./contract from src/contract.ts. */
+function workspace(files: Record<string, string>): string {
+  const dir = mkdtempSync(join(tmpdir(), "contract-"))
+  dirs.push(dir)
+  const all = {
+    "package.json": MANIFEST,
+    "vite.config.ts": CONFIG,
+    ...files,
+  }
+  for (const [path, text] of Object.entries(all)) {
+    mkdirSync(dirname(join(dir, path)), { recursive: true })
+    writeFileSync(join(dir, path), text)
+  }
+  return dir
 }
-const ENTRY = "/ws/src/contract.ts"
-const walk = (files: Record<string, string>): Array<string> =>
-  walkContract(ENTRY, disk(files))
+const problemsOf = (
+  contract: string,
+  more: Record<string, string> = {}
+): Array<string> =>
+  checkContract(workspace({ "src/contract.ts": contract, ...more })).problems
 
-describe("walkContract: what a contract may import", () => {
+describe("checkContract: what a contract may import", () => {
   it("accepts type imports, zod, and relative modules that do the same", () => {
     expect(
-      walk({
-        [ENTRY]: [
+      problemsOf(
+        [
           'export { LIMIT } from "./lib/policy"',
           'export type { Take } from "./lib/types"',
           'import type { Foo } from "@some-ui/types"',
           'import { z } from "zod"',
-          'import { z as z4 } from "zod/v4"',
         ].join("\n"),
-        "/ws/src/lib/policy.ts":
-          'import type { Take } from "./types"\nexport const LIMIT = 1',
-        "/ws/src/lib/types.ts": "export type Take = { ms: number }",
-      })
+        {
+          "src/lib/policy.ts":
+            'import type { Take } from "./types"\nexport const LIMIT = 1',
+          "src/lib/types.ts": "export type Take = { ms: number }",
+        }
+      )
     ).toEqual([])
   })
 
-  it("names a value import of any other package, with file and line", () => {
-    const problems = walk({
-      [ENTRY]: 'import type { A } from "x"\nimport { b } from "react"\n',
+  it("names a value import of another package, with file and line, in any module of the graph", () => {
+    const problems = problemsOf('export * from "./a"', {
+      "src/a.ts": 'import type { A } from "x"\nimport { b } from "react"',
     })
-    expect(problems).toHaveLength(1)
-    expect(problems[0]).toContain(`${ENTRY}:2:`)
-    expect(problems[0]).toContain('"react"')
+    expect(problems).toEqual([
+      expect.stringMatching(/src\/a\.ts:2: a value import of "react"/),
+    ])
     expect(problems[0]).toContain("import type")
   })
 
@@ -45,98 +67,88 @@ describe("walkContract: what a contract may import", () => {
     for (const line of [
       'import "side-effect"',
       'import def from "pkg"',
-      'import { type A } from "pkg"',
+      'import { type A, b } from "pkg"',
       'import * as ns from "pkg"',
       'export { a } from "pkg"',
-      'export { type A } from "pkg"',
       'export * from "pkg"',
       'export * as ns from "pkg"',
       'const m = import("pkg")',
-      'const m = require("pkg")',
       'import fs = require("pkg")',
     ]) {
-      expect(walk({ [ENTRY]: line }), line).toHaveLength(1)
+      expect(problemsOf(line), line).toHaveLength(1)
     }
   })
 
-  it("reads every form that is erased as a type import", () => {
+  it("reads every form the build erases as a type import", () => {
     for (const line of [
       'import type { A } from "pkg"',
       'import type A from "pkg"',
       'import type * as ns from "pkg"',
+      'import { type A } from "pkg"',
       'export type { A } from "pkg"',
+      'export { type A } from "pkg"',
       'export type * from "pkg"',
-      'type T = import("pkg").A',
     ]) {
-      expect(walk({ [ENTRY]: line }), line).toEqual([])
+      expect(problemsOf(line), line).toEqual([])
     }
   })
 
-  it("accepts zod and its subpaths only", () => {
-    expect(walk({ [ENTRY]: 'import { z } from "zod/mini"' })).toEqual([])
-    expect(walk({ [ENTRY]: 'import { z } from "zodiac"' })).toHaveLength(1)
-    expect(walk({ [ENTRY]: 'import { z } from "@zod/core"' })).toHaveLength(1)
+  it("accepts zod and no other specifier", () => {
+    expect(problemsOf('import { z } from "zod"')).toEqual([])
+    for (const specifier of ["zod/v4", "zodiac", "@soundbites/lib/policy"]) {
+      expect(
+        problemsOf(`import { z } from "${specifier}"`),
+        specifier
+      ).toHaveLength(1)
+    }
   })
 
-  it("names an alias import, since only relative ones are the graph's own", () => {
-    const problems = walk({
-      [ENTRY]: 'import { LIMIT } from "@soundbites/lib/policy"',
-    })
-    expect(problems).toHaveLength(1)
-    expect(problems[0]).toContain("@soundbites/lib/policy")
-  })
-
-  it("cannot check an import() or require() it cannot read", () => {
-    const problems = walk({ [ENTRY]: "const m = import(name)" })
-    expect(problems).toHaveLength(1)
-    expect(problems[0]).toContain(`${ENTRY}:1:`)
-    expect(problems[0]).toContain("not a string literal")
+  it("cannot follow an import() with no literal specifier, or an import.meta.glob", () => {
+    for (const line of [
+      "const m = import(name)",
+      'const m = import.meta.glob("./impl/*.ts", { eager: true })',
+    ]) {
+      const problems = problemsOf(line)
+      expect(problems, line).toEqual([
+        expect.stringMatching(
+          /src\/contract\.ts:1: an import the contract graph cannot follow/
+        ),
+      ])
+    }
   })
 })
 
-describe("walkContract: the graph", () => {
+describe("checkContract: the graph", () => {
   it("follows relative imports, type imports included, to any depth", () => {
-    const problems = walk({
-      [ENTRY]: 'import type { A } from "./a"',
-      "/ws/src/a.ts": 'export { b } from "./b"',
-      "/ws/src/b.ts": 'import { c } from "lodash"\nexport const b = 1',
-    })
-    expect(problems).toHaveLength(1)
-    expect(problems[0]).toContain("/ws/src/b.ts:1:")
-  })
-
-  it("resolves .js specifiers, index files and .tsx", () => {
     expect(
-      walk({
-        [ENTRY]: 'import "./a.js"\nimport "./dir"\nimport "./view"',
-        "/ws/src/a.ts": 'import "x"',
-        "/ws/src/dir/index.ts": 'import "y"',
-        "/ws/src/view.tsx": 'import "z"',
+      problemsOf('import type { A } from "./a"', {
+        "src/a.ts": 'export { b } from "./b"',
+        "src/b.ts": 'import { c } from "lodash"\nexport const b = 1',
       })
-    ).toHaveLength(3)
+    ).toEqual([expect.stringContaining("src/b.ts:1:")])
   })
 
   it("visits a module once, cycles included", () => {
     expect(
-      walk({
-        [ENTRY]: 'export * from "./a"\nexport * from "./b"',
-        "/ws/src/a.ts": 'import "pkg"\nexport * from "./b"',
-        "/ws/src/b.ts": 'export * from "./a"',
+      problemsOf('export * from "./a"\nexport * from "./b"', {
+        "src/a.ts": 'import "pkg"\nexport * from "./b"',
+        "src/b.ts": 'export * from "./a"',
       })
-    ).toEqual([expect.stringContaining("/ws/src/a.ts:1:")])
+    ).toEqual([expect.stringContaining("src/a.ts:1:")])
   })
 
-  it("cannot check a relative import that is not a TypeScript module", () => {
-    for (const specifier of ["./missing", "./data.json", "./styles.css"]) {
-      const problems = walk({ [ENTRY]: `import "${specifier}"` })
-      expect(problems, specifier).toHaveLength(1)
-      expect(problems[0]).toContain(specifier)
-    }
+  it("fails a relative import that is not a TypeScript module", () => {
+    expect(
+      problemsOf('import data from "./data.json"', {
+        "src/data.json": "{}",
+      })
+    ).toEqual([expect.stringContaining('cannot resolve "./data.json"')])
   })
 
-  it("names an entry that is not there", () => {
-    expect(walkContract(ENTRY, disk({}))).toEqual([
-      expect.stringContaining(`${ENTRY}: the contract graph reaches this file`),
+  it("fails a contract whose source file is not there", () => {
+    const dir = workspace({})
+    expect(checkContract(dir).problems).toEqual([
+      expect.stringContaining("cannot be checked"),
     ])
   })
 })
@@ -151,13 +163,12 @@ describe("contractSource", () => {
     })
   })
 
-  it("reads entries.contract in either quote style", () => {
+  it("reads entries.contract, whatever else surrounds it", () => {
     for (const config of [
-      'createViteConfig({ entries: { contract: "src/contract.ts" } })',
       "createViteConfig({ entries: { contract: 'src/contract.ts' } })",
       'createViteConfig({ entries: { "contract": "src/contract.ts" } })',
       'createViteConfig({ entries: { http: "src/http.ts", contract: "src/contract.ts" } })',
-      'createViteConfig({\n  entries: {\n    contract: "src/contract.ts",\n  },\n})',
+      '// entries: { contract: "src/old.ts" }\ncreateViteConfig({ entries: { contract: "src/contract.ts" } })',
     ]) {
       expect(contractSource(withContract, config), config).toEqual({
         kind: "source",
@@ -166,13 +177,15 @@ describe("contractSource", () => {
     }
   })
 
-  it("does not pass what it cannot trace", () => {
+  it("does not pass what it cannot trace to one string", () => {
     for (const config of [
       null,
       "createViteConfig({ packageName: 'x' })",
       'createViteConfig({ entries: { http: "src/http.ts" } })',
       "createViteConfig({ entries: ENTRIES })",
+      'createViteConfig({ entries: { contract: "src/" + "contract.ts" } })',
       'createViteConfig({ entries: { subcontract: "src/c.ts" } })',
+      'a({ entries: { contract: "src/a.ts" } }); b({ entries: { contract: "src/b.ts" } })',
     ]) {
       expect(contractSource(withContract, config).kind, String(config)).toBe(
         "unresolved"
@@ -181,36 +194,15 @@ describe("contractSource", () => {
   })
 })
 
-describe("checkContract", () => {
-  const manifest = JSON.stringify({ exports: { "./contract": {} } })
-  const config =
-    'createViteConfig({ entries: { contract: "src/contract.ts" } })'
-
-  it("walks the contract a workspace exports", () => {
-    const files = {
-      "/ws/package.json": manifest,
-      "/ws/vite.config.ts": config,
-      "/ws/src/contract.ts": 'import { x } from "react"',
-    }
-    const checked = checkContract("/ws", disk(files))
-    expect(checked.exported).toBe(true)
-    expect(checked.problems).toHaveLength(1)
-    expect(checked.problems[0]).toContain("/ws/src/contract.ts:1:")
-  })
-
-  it("is quiet for a workspace with no contract, or no manifest", () => {
-    expect(checkContract("/ws", disk({ "/ws/package.json": "{}" }))).toEqual({
-      exported: false,
-      problems: [],
-    })
-    expect(checkContract("/ws", disk({}))).toEqual({
-      exported: false,
-      problems: [],
-    })
+describe("checkContract: which workspaces", () => {
+  it("is quiet for a workspace with no contract", () => {
+    const dir = workspace({ "package.json": "{}" })
+    expect(checkContract(dir)).toEqual({ exported: false, problems: [] })
   })
 
   it("fails a contract whose source it cannot find", () => {
-    const checked = checkContract("/ws", disk({ "/ws/package.json": manifest }))
+    const dir = workspace({ "vite.config.ts": "createViteConfig({})" })
+    const checked = checkContract(dir)
     expect(checked.exported).toBe(true)
     expect(checked.problems).toEqual([
       expect.stringContaining("A2 cannot be checked"),
