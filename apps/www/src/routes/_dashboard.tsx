@@ -226,7 +226,6 @@ const DashboardLayout = (): JSX.Element => {
 
   return (
     <SidebarProvider className={cn(isBoundedRoute && "h-dvh overflow-hidden")}>
-      {/* Voice notes' send, on every screen (LA13): they have no wing's mark. */}
       {import.meta.env.VITE_DEVICE_BACKEND === "true" && <VoiceNotesHome />}
       {/* The phone navigates by the bar along the bottom instead. */}
       {!MOBILE_APP && <DashboardSidebarContent pathname={pathname} />}

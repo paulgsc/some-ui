@@ -36,7 +36,11 @@ export type VoiceHomeState = {
   readonly held: ReadonlyArray<string>
   /** What home will never hold, with why. */
   readonly refused: ReadonlyArray<VoiceRefusal>
-  /** Notes this phone had no room to copy yet; tried again when seen again. */
+  /**
+   * Notes this phone had no room to copy yet, tried again when offered again:
+   * a spoken reflection or Jobs note at each change, a scene note never (it
+   * is offered only at its share).
+   */
   readonly roomless: ReadonlyArray<string>
 }
 

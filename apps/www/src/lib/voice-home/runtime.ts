@@ -2,9 +2,11 @@
  * The voice notes on their way home, as one store per page load (LA13): the
  * record (`./model`) kept in this device's storage, the copies' audio on a
  * shelf of their own, and the port `./home`'s exchange reads and answers
- * through. A copy is written before the record names it, and goes once home
- * holds its note: the copy of a note home refused stays, since it may be the
- * only one. `sweep` clears a copy the record never named.
+ * through. A copy is written before the record names it, and counts only
+ * once that record is in storage: otherwise the copy goes and the note is
+ * offered again while its own screen still has it. A copy goes once home
+ * holds its note: the copy of a note home refused stays, since it may be
+ * the only one. `sweep` clears a copy the record never named.
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { openRecord, writeRecord } from "@some-ui/core-utils"
@@ -36,7 +38,8 @@ export type VoiceHome = {
   settled: (id: string) => boolean
   /**
    * Copies `note`'s audio for home, once. A shelf with no room leaves it
-   * `roomless`, to be tried again when it is offered again.
+   * `roomless`, and storage that won't keep the record leaves it uncopied:
+   * either is tried again when the note is offered again.
    */
   copy: (note: VoiceOut, audio: Blob) => Promise<void>
   /** What `./home`'s exchange reads and answers through. */
@@ -56,14 +59,19 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
   const writable = storage !== null && opened?.kind !== "unreadable"
   const listeners = new Set<() => void>()
 
-  const apply = (event: VoiceHomeEvent): void => {
+  /** Steps the record; false when the step could not be kept in storage. */
+  const apply = (event: VoiceHomeEvent): boolean => {
     const next = stepVoiceHome(state, event)
-    if (next === state) return
+    if (next === state) return true
+    const kept =
+      writable &&
+      writeRecord(storage, STORAGE_KEY, JSON.stringify(next), parseVoiceHome)
+    // A copy the record cannot name for good is no copy: a later launch
+    // would sweep it while the person may have let the note go.
+    if (!kept && event.kind === "copied") return false
     state = next
-    if (writable) {
-      writeRecord(storage, STORAGE_KEY, JSON.stringify(state), parseVoiceHome)
-    }
     for (const listener of listeners) listener()
+    return kept
   }
 
   const copying = new Set<string>()
@@ -82,7 +90,7 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
       copying.add(note.id)
       try {
         await shelf.put(note.id, audio)
-        apply({ kind: "copied", note })
+        if (!apply({ kind: "copied", note })) await shelf.remove([note.id])
       } catch (error) {
         if (!(error instanceof ShelfFullError)) throw error
         apply({ kind: "roomless", id: note.id })

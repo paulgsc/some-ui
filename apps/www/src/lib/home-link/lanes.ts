@@ -257,6 +257,15 @@ export function useLaneHome(lane: Lane): KeptState {
   return useSyncExternalStore(sending.subscribe, sending.getSnapshot)
 }
 
+/**
+ * How sending `lane` home is going, read without a watch of its own: for a
+ * screen that shows a lane another one sends (Settings, for voice notes).
+ */
+export function useLaneRun(lane: Lane): KeptState {
+  const { sending } = wire(lane)
+  return useSyncExternalStore(sending.subscribe, sending.getSnapshot)
+}
+
 const NO_BACK: Kept = {
   getSnapshot: () => INITIAL_KEPT,
   subscribe: () => () => undefined,

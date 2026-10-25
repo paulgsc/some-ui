@@ -9,8 +9,8 @@
  * - a Jobs voice note (`lib/jobs`), once an event names it: `jobs`, the
  *   pick (`<day>:<pick>`) or scout, when that event was made;
  * - the drama's next scene said aloud (`lib/scene-voice`), when its prompt
- *   is shared: `scene`, the prompt's stamp, when the prompt was made
- *   (`copySceneNotes`).
+ *   is shared (`onPromptShared`): `scene`, the prompt's stamp, when the
+ *   prompt was made.
  *
  * Copying deletes nothing where the note was recorded; letting it go there
  * leaves the copy, which goes once home holds the note.
@@ -24,6 +24,8 @@ import {
   onAudioSettled,
   reflectionAudio,
 } from "@/lib/reflection-voice"
+import type { SharedPrompt } from "@/lib/scene-voice"
+import { onPromptShared } from "@/lib/scene-voice"
 import { reflections } from "@/lib/session-reflection"
 import type { Reflection } from "@/lib/session-reflection/policy"
 import { phoneVoiceHome } from "@/lib/voice-home"
@@ -100,20 +102,6 @@ export function jobsNotes(
   return [...notes.values()]
 }
 
-/** `drama-<YYYYMMDDTHHMMSSmmm>Z.prompt.md`: the stamp, and when it was made. */
-const PROMPT =
-  /^(drama-(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(\d{3})Z)\.prompt\.md$/
-
-/** The drama prompt's stamp and when it was made, from its file's name. */
-export function promptOf(
-  name: string
-): { readonly stamp: string; readonly at: string } | null {
-  const match = PROMPT.exec(name)
-  if (match === null) return null
-  const [, stamp, y, mo, d, h, mi, s, ms] = match
-  return { stamp, at: `${y}-${mo}-${d}T${h}:${mi}:${s}.${ms}Z` }
-}
-
 /** One note on this phone that could go home, and where its audio is. */
 type Candidate = {
   readonly note: VoiceOut
@@ -150,7 +138,8 @@ async function copyAll(): Promise<void> {
     if (!keptNow(VOICE_SCOPES)) return
     if (home.settled(note.id)) continue
     const blob = await audio()
-    if (blob !== null) await home.copy(note, blob)
+    // A stop can land while the audio is read.
+    if (blob !== null && keptNow(VOICE_SCOPES)) await home.copy(note, blob)
   }
 }
 
@@ -176,49 +165,45 @@ function copySoon(): void {
 }
 
 /**
- * The drama prompt `name` was shared with these notes: each is copied for
- * home under the prompt's stamp, while voice notes are kept on home. Best
- * effort, and nothing waits on it.
+ * A drama prompt was shared with these notes: each is copied for home under
+ * the prompt's stamp, while voice notes are kept on home. Best effort, and
+ * nothing waits on it.
  */
-export function copySceneNotes(
-  name: string,
-  notes: ReadonlyArray<{
-    readonly id: string
-    readonly mimeType: string
-    readonly audio: Blob
-  }>
-): void {
-  const prompt = promptOf(name)
-  if (prompt === null || !keptNow(VOICE_SCOPES)) return
+function copySceneNotes({ stamp, at, notes }: SharedPrompt): void {
+  if (!keptNow(VOICE_SCOPES)) return
   const home = phoneVoiceHome()
   for (const { id, mimeType, audio } of notes) {
     home
-      .copy(
-        {
-          id,
-          of: "scene",
-          ref: prompt.stamp,
-          at: prompt.at,
-          contentType: mimeType,
-        },
-        audio
-      )
+      .copy({ id, of: "scene", ref: stamp, at, contentType: mimeType }, audio)
       .catch(() => undefined)
   }
 }
 
-/** Copies each new note while voice notes are kept on home, until stopped. */
+/**
+ * Copies each new note while voice notes are kept on home, until stopped.
+ * The stores that hold notes are listened to only once voice notes are
+ * kept, so a phone that never chose it builds none of them for this.
+ */
 export function watchVoiceNotes(): () => void {
-  copySoon()
+  const stores: Array<() => void> = []
+  const changed = (): void => {
+    if (keptNow(VOICE_SCOPES) && stores.length === 0) {
+      stores.push(
+        reflections.subscribe(copySoon),
+        // A spoken reflection is listed before its audio is written.
+        onAudioSettled(copySoon),
+        phoneJobs().subscribe(copySoon)
+      )
+    }
+    copySoon()
+  }
+  changed()
   const stops = [
-    reflections.subscribe(copySoon),
-    // A spoken reflection is listed before its audio is written.
-    onAudioSettled(copySoon),
-    phoneJobs().subscribe(copySoon),
-    phoneConsent().subscribe(copySoon),
-    homeLink().subscribe(copySoon),
+    onPromptShared(copySceneNotes),
+    phoneConsent().subscribe(changed),
+    homeLink().subscribe(changed),
   ]
   return (): void => {
-    for (const stop of stops) stop()
+    for (const stop of [...stops, ...stores]) stop()
   }
 }

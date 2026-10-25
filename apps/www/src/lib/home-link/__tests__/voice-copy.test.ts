@@ -1,12 +1,12 @@
 /**
  * What each voice note is told home as (`../voice-copy`, LA13): a spoken
- * reflection by its session, a Jobs note by the first event that names it,
- * and a scene note by its drama prompt's stamp, with times that never move
- * between tries (home takes a replay only as it was first described).
+ * reflection by its session, and a Jobs note by the first event that names
+ * it, with times that never move between tries (home takes a replay only as
+ * it was first described). A scene note's stamp is topik's `promptOfFile`.
  */
 import { describe, expect, it } from "vitest"
 
-import { jobsNotes, promptOf, reflectionNote } from "@/lib/home-link/voice-copy"
+import { jobsNotes, reflectionNote } from "@/lib/home-link/voice-copy"
 import type { JobEvent, VoiceNote } from "@/lib/jobs/model"
 
 const PICK = { day: "2026-10-25", pickId: "acme-sre", fingerprint: "f" }
@@ -110,19 +110,5 @@ describe("what each voice note is told home as", () => {
         contentType: "audio/webm",
       },
     ])
-  })
-
-  it("reads a drama prompt's stamp, and when it was made, from its file's name", () => {
-    expect(promptOf("drama-20261009T070503120Z.prompt.md")).toEqual({
-      stamp: "drama-20261009T070503120Z",
-      at: "2026-10-09T07:05:03.120Z",
-    })
-    for (const name of [
-      "drama-20261009T070503120Z.voice-1.webm",
-      "drama-1.prompt.md",
-      "scene-20261009T070503120Z.prompt.md",
-    ]) {
-      expect([name, promptOf(name)]).toEqual([name, null])
-    }
   })
 })

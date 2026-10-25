@@ -232,6 +232,11 @@ describe("DeviceSection's Home server block", () => {
         token: "t",
       })
     })
+    // The send runs on past its first request: let it end here, or its
+    // shelf requests land in the next test's record of what was sent.
+    expect(
+      await screen.findByText(/^Last send:/, {}, { timeout: SLOW })
+    ).toBeTruthy()
   })
 
   it("counts and sends only the kept items home didn't take as they are", async () => {

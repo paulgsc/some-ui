@@ -10,14 +10,16 @@
  * like `./sent`'s bookkeeping). Lost, it only means telling again, which
  * home answers as unchanged. A home that keeps no choices (one before #433
  * answers `404`) is told nothing more that run, and, once it has answered
- * so twice in a row, nothing more until the app starts again. A home that
- * does not know a choice yet (one older than its scope, voice notes before
- * paulgsc/server#472, answers `422`) is told it again on the next run, and
- * nothing after it until then; the run goes on, since that home refuses
- * nothing under a scope it does not know.
+ * so twice in a row, nothing more until the app starts again. A home older
+ * than a choice's scope (voice notes before paulgsc/server#472) answers it
+ * `422` naming the scope: the choices after it are still told, and that one
+ * and every later one stay untold, told again on each run until home takes
+ * them (as unchanged, the ones it heard). The run goes on, since that home
+ * refuses nothing under a scope it does not know.
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
-import { unexpectedAnswer } from "@some-ui/core-utils"
+import { readAs, unexpectedAnswer } from "@some-ui/core-utils"
+import { z } from "zod"
 
 import { isRecord } from "@/lib/device-backend/common"
 
@@ -78,6 +80,10 @@ export function forgetTold(storage: Store, pairing: string): void {
 let keepsNone: string | null = null
 const misses = new Map<string, number>()
 
+const ScopeRefused = z.object({
+  error: z.object({ details: z.object({ scope: z.unknown() }) }),
+})
+
 /**
  * Tells home, through `send`, every choice under `pairing` it has not
  * heard. Throws what `send` throws when home does not answer; what was
@@ -91,8 +97,10 @@ export async function tellHome(
 ): Promise<HomeExchanged> {
   if (keepsNone === pairing) return { kind: "synced" }
   const changes = untold(log, pairing, readTold(storage, pairing))
+  /** A choice home did not know the scope of: nothing from it on is told. */
+  let unknown = false
   for (const [i, { seq, scope, kept }] of changes.entries()) {
-    const { status } = await send(
+    const { status, body } = await send(
       "PUT",
       `/sharing/${scope}`,
       JSON.stringify({ kept })
@@ -106,10 +114,15 @@ export async function tellHome(
       return { kind: "synced" }
     }
     misses.delete(pairing)
-    if (status === 422) return { kind: "synced" }
+    if (status === 422 && readAs(ScopeRefused, body) !== null) {
+      unknown = true
+      continue
+    }
     if (status !== 200) return unexpectedAnswer("a choice", status)
     // An event's scopes go one request each: it is told once all of them are.
-    if (changes[i + 1]?.seq !== seq) rememberTold(storage, pairing, seq)
+    if (!unknown && changes[i + 1]?.seq !== seq) {
+      rememberTold(storage, pairing, seq)
+    }
   }
   return { kind: "synced" }
 }

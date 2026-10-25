@@ -48,10 +48,8 @@ const NATIVE_HTTP = "lib/device-backend/native-http/index.ts"
 const NATIVE_HTTP_CALLERS = new Set(["lib/home-link/index.ts"])
 const HOME_LINK_CALLERS = new Set([
   "components/settings/device-section.tsx",
-  // LA13: Settings' choice to keep voice notes on home, and the drama
-  // share that copies its scene notes for home once shared.
+  // LA13: Settings' choice to keep voice notes on home.
   "components/settings/device-voice-home.tsx",
-  "lib/scene-voice/index.ts",
   // Settings' ledger of what is shared: it reads the choices, and stops
   // Practice and the Jobs record on a second press (LA9).
   "components/settings/device-sharing-ledger.tsx",
@@ -375,15 +373,20 @@ describe("LA1: only the choke points name a network global", () => {
 
   it("keeps the exemption list in eslint.config.js to the same two files", () => {
     const config = readFileSync(join(SRC, "../eslint.config.js"), "utf8")
-    // The `files` of the block that turns the network rules off.
-    const before = config.slice(
-      0,
-      config.indexOf('"no-restricted-globals": "off"')
-    )
-    const block = before.slice(before.lastIndexOf("files: ["))
-    const listed = [...block.matchAll(/"(src\/lib\/[^"]+\.ts)"/g)].map(
-      (m) => m[1]
-    )
+    // The `files` of every block that turns either network rule off.
+    const blocks = [
+      ...config.matchAll(/"no-restricted-(globals|properties)": "off"/g),
+    ].map(({ index }) => {
+      const before = config.slice(0, index)
+      return before.slice(before.lastIndexOf("files: ["))
+    })
+    const listed = [
+      ...new Set(
+        blocks.flatMap((block) =>
+          [...block.matchAll(/"(src\/lib\/[^"]+\.ts)"/g)].map((m) => m[1])
+        )
+      ),
+    ]
     expect(listed.sort()).toEqual(
       [...NETWORK_EXEMPT].map((f) => `src/${f}`).sort()
     )
@@ -590,5 +593,35 @@ describe("the checks themselves", () => {
     expect(
       networkLintDisables("x.ts", "// eslint-disable-next-line no-console")
     ).toEqual([])
+  })
+})
+
+describe("LA13: what copies a voice note for home", () => {
+  /** Each non-test file whose text matches `pattern`. */
+  const using = (pattern: RegExp): Array<string> =>
+    sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) => pattern.test(readFileSync(join(SRC, f), "utf8")))
+      .sort()
+
+  it("reaches the copies' store only from the voice lane, and copies only in voice-copy", () => {
+    expect(using(/from "@\/lib\/voice-home"/)).toEqual([
+      "lib/home-link/voice-copy.ts",
+      "lib/home-link/voice.ts",
+    ])
+    expect(
+      using(/\.copy\(/).filter((f) => f.startsWith("lib/home-link/"))
+    ).toEqual(["lib/home-link/voice-copy.ts"])
+  })
+
+  it("starts the watch only from the lane's hook, and hears shared prompts only there", () => {
+    expect(using(/watchVoiceNotes\(/)).toEqual([
+      "lib/home-link/voice-copy.ts",
+      "lib/home-link/voice.ts",
+    ])
+    expect(using(/onPromptShared\(/)).toEqual([
+      "lib/home-link/voice-copy.ts",
+      "lib/scene-voice/index.ts",
+    ])
   })
 })

@@ -108,9 +108,22 @@ describe("the voice notes on their way home", () => {
     })
   })
 
-  it("keeps the record in memory when the phone has no storage to write to", async () => {
-    const home = createVoiceHome({ storage: null, shelf: shelf(), encode })
-    await home.copy(note("n1"), new Blob(["a"]))
-    expect(home.getSnapshot().waiting).toHaveLength(1)
+  it("counts no copy the record can't keep in storage, and lets its audio go", async () => {
+    for (const storage of [
+      null,
+      {
+        ...memoryStorage(),
+        setItem: (): void => {
+          throw new Error("quota")
+        },
+      },
+    ]) {
+      const s = shelf()
+      const home = createVoiceHome({ storage, shelf: s, encode })
+      await home.copy(note("n1"), new Blob(["a"]))
+      expect(home.getSnapshot().waiting).toEqual([])
+      expect(home.settled("n1")).toBe(false)
+      expect(s.held.size).toBe(0)
+    }
   })
 })
