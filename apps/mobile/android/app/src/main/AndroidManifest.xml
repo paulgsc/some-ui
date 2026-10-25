@@ -141,6 +141,13 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+
+        <!-- No FCM token until the Jobs notice is turned on (README "The
+             Jobs arrival notice"); the push plugin's register() turns this
+             back on. -->
+        <meta-data
+            android:name="firebase_messaging_auto_init_enabled"
+            android:value="false" />
     </application>
 
 </manifest>

@@ -26,6 +26,11 @@
  *    share sheet). A file naming a voice note waits for the share sheet,
  *    which carries the audio to Drive, since the mailbox carries no audio
  *    (home's own copy of a note goes by the voice lane, LA13);
+ * 2¾. whether home should tell this phone when a morning run is in
+ *    (`PUT` or `DELETE /jobs/notice`, `./notice`'s `noticeFiling`): at most
+ *    one token taken back and one filed. A `200` records what home holds; a
+ *    `422` is a token home won't take, dropped so it is not sent again; a
+ *    home from before the notice (a `404`) is asked again next time;
  * 3. home's records of the morning runs (`GET /jobs/runs`), its newest
  *    few: what each run did, and what it couldn't, a stopped run included.
  *    A record the phone can't read is skipped, and a home that doesn't keep
@@ -56,6 +61,7 @@ import type { Outgoing, OutgoingFile } from "./files"
 import { isFile } from "./files"
 import type { HomeRefusal, JobEvent, JobsState, ShareKind } from "./model"
 import { DIGESTS_PER_RUN, homeOutbox, newestDay } from "./model"
+import { noticeFiling } from "./notice"
 import { EventSchema } from "./stored"
 
 /** The record an exchange reads and the answers it hands back. */
@@ -81,6 +87,10 @@ export type JobsRecordPort = {
   filed: (kind: ShareKind, file: OutgoingFile) => boolean
   /** Home refused the file of this name. */
   fileRefused: (name: string) => void
+  /** Home holds `token` for this phone's notice, or none. */
+  noticeFiled: (token: string | null) => void
+  /** Home won't take this phone's token: it is dropped. */
+  noticeRefused: () => void
 }
 
 const EventAnswer = z.object({ event: z.object({ id: z.string() }) })
@@ -148,6 +158,51 @@ async function readRecord(
   const empty = keeping.state().log.length === 0
   if (empty && record.events.length > 0 && !keeping.restored(record.events)) {
     return { kind: "failed", why: "this phone couldn't keep home's record" }
+  }
+  return null
+}
+
+/** At most a token taken back and one filed. */
+const NOTICE_FILINGS_PER_EXCHANGE = 2
+
+const NoticeAnswer = z.object({
+  change: z.enum(["added", "unchanged", "removed"]),
+})
+
+/** Step 2¾. Null when the exchange goes on to its end. */
+async function fileNotice(
+  keeping: JobsRecordPort,
+  send: HomeCall
+): Promise<HomeExchanged | null> {
+  for (let i = 0; i < NOTICE_FILINGS_PER_EXCHANGE; i += 1) {
+    const filing = noticeFiling(keeping.state().home.notice)
+    if (filing === null) return null
+    const answer = await send(
+      filing.method,
+      "/jobs/notice",
+      JSON.stringify({ token: filing.token })
+    )
+    if (answer.status === 401) return { kind: "forgotten" }
+    // A home from before the notice: nothing filed, and asked again later.
+    if (answer.status === 404) return null
+    if (stoppedOnHome(answer)) return unexpectedAnswer("the notice", 409)
+    if (answer.status === 422) {
+      // Never the token: it names this phone to its push service.
+      reportFailure({
+        port: "home server (notice)",
+        error: {
+          ...toIntentError(null),
+          summary: "Home didn’t take this phone’s notice token.",
+        },
+      })
+      if (filing.method === "PUT") keeping.noticeRefused()
+      else keeping.noticeFiled(null)
+      continue
+    }
+    if (answer.status !== 200 || readAs(NoticeAnswer, answer.body) === null) {
+      return unexpectedAnswer("the notice", answer.status)
+    }
+    keeping.noticeFiled(filing.method === "PUT" ? filing.token : null)
   }
   return null
 }
@@ -267,6 +322,8 @@ async function exchange(
   }
   const filed = await fileOutgoing(keeping, send)
   if (filed !== null) return filed
+  const told = await fileNotice(keeping, send)
+  if (told !== null) return told
   return (await readDigests(keeping, send)) ?? { kind: "synced" }
 }
 

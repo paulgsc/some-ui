@@ -34,6 +34,12 @@
     "android.permission.WAKE_LOCK": {
       "reason": "@capacitor/local-notifications, to deliver a scheduled nudge while the phone sleeps."
     },
+    "android.permission.ACCESS_NETWORK_STATE": {
+      "reason": "Firebase Messaging (@capacitor/push-notifications, the Jobs arrival notice: Settings -> the Jobs record's row; README 'The Jobs arrival notice') checks for a connection before asking Google for this install's token. Install-time, no prompt."
+    },
+    "com.google.android.c2dm.permission.RECEIVE": {
+      "reason": "Firebase Messaging: lets Google Play services deliver the Jobs arrival notice, which home sends only after the person turns it on. Install-time, no prompt."
+    },
     "${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION": {
       "reason": "androidx.core (1.9+) declares and holds this signature permission to keep its runtime-registered receivers private on Android < 13. Not user-visible."
     }
@@ -78,6 +84,9 @@
     },
     "androidx.profileinstaller.ProfileInstallReceiver": {
       "reason": "androidx.profileinstaller (via androidx.appcompat and Capacitor) installs baseline profiles when adb or the Play Store asks it to. Guarded by android.permission.DUMP, which only the system and adb hold."
+    },
+    "com.google.firebase.iid.FirebaseInstanceIdReceiver": {
+      "reason": "Firebase Messaging receives the Jobs arrival notice through it. Guarded by com.google.android.c2dm.permission.SEND, which only Google Play services holds, so no other app can send to it."
     }
   },
 

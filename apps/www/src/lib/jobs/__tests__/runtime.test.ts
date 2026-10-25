@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import { isFile } from "@/lib/jobs/files"
 import type { PickRef } from "@/lib/jobs/model"
+import type { NoticeAsked, NoticePort } from "@/lib/jobs/runtime"
 import { createJobsRuntime } from "@/lib/jobs/runtime"
 import { STORAGE_KEY } from "@/lib/jobs/stored"
 import type { StorageAdapter } from "@/lib/tenant/storage"
@@ -329,5 +330,100 @@ describe("createJobsRuntime", () => {
     await settle()
     expect(await runtime.share("decisions")).toEqual({ outcome: "cancelled" })
     expect(runtime.getSnapshot().state.log).toEqual([])
+  })
+})
+
+describe("the arrival notice", () => {
+  const asking = (
+    ...answers: Array<NoticeAsked>
+  ): { port: NoticePort; asked: () => number } => {
+    let asked = 0
+    return {
+      port: {
+        register: (): Promise<NoticeAsked> => {
+          const answer = answers.at(Math.min(asked, answers.length - 1))
+          asked += 1
+          return Promise.resolve(answer ?? { kind: "failed" })
+        },
+      },
+      asked: () => asked,
+    }
+  }
+
+  it("is not offered where this build has no push service", () => {
+    expect(createJobsRuntime(ports()).getSnapshot().notice.offered).toBe(false)
+  })
+
+  it("turned on, keeps the push service's token and owes it to home", async () => {
+    const { port } = asking({ kind: "token", token: "t1" })
+    const runtime = createJobsRuntime(ports({ notice: port }))
+    expect(runtime.getSnapshot().notice.offered).toBe(true)
+    runtime.wantNotice(true)
+    expect(runtime.getSnapshot().notice.asking).toBe(true)
+    await settle()
+    expect(runtime.getSnapshot().state.home.notice).toEqual({
+      wanted: true,
+      token: "t1",
+      filed: null,
+    })
+    expect(runtime.getSnapshot().notice).toEqual({
+      offered: true,
+      asking: false,
+      why: null,
+    })
+  })
+
+  it("is withdrawn in a build that can't be told, and says no when notifications are off", async () => {
+    const gone = createJobsRuntime(
+      ports({ notice: asking({ kind: "unavailable" }).port })
+    )
+    gone.wantNotice(true)
+    await settle()
+    expect(gone.getSnapshot().notice.offered).toBe(false)
+    expect(gone.getSnapshot().state.home.notice.wanted).toBe(false)
+
+    const refused = createJobsRuntime(
+      ports({ notice: asking({ kind: "not-allowed" }).port })
+    )
+    refused.wantNotice(true)
+    await settle()
+    expect(refused.getSnapshot().notice.why).toBe("not-allowed")
+    expect(refused.getSnapshot().state.home.notice.wanted).toBe(false)
+  })
+
+  it("asks again on start while it is on, for a token that changed", async () => {
+    const p = ports()
+    const first = asking({ kind: "token", token: "t1" })
+    const runtime = createJobsRuntime({ ...p, notice: first.port })
+    runtime.wantNotice(true)
+    await settle()
+    const next = asking({ kind: "token", token: "t2" })
+    const restarted = createJobsRuntime({ ...p, notice: next.port })
+    await settle()
+    expect(next.asked()).toBe(1)
+    expect(restarted.getSnapshot().state.home.notice.token).toBe("t2")
+  })
+
+  it("turned off, keeps no late token as asked for", async () => {
+    let answer: (asked: NoticeAsked) => void = () => undefined
+    const runtime = createJobsRuntime(
+      ports({
+        notice: {
+          register: () =>
+            new Promise<NoticeAsked>((resolve) => {
+              answer = resolve
+            }),
+        },
+      })
+    )
+    runtime.wantNotice(true)
+    runtime.wantNotice(false)
+    answer({ kind: "token", token: "late" })
+    await settle()
+    expect(runtime.getSnapshot().state.home.notice).toEqual({
+      wanted: false,
+      token: null,
+      filed: null,
+    })
   })
 })

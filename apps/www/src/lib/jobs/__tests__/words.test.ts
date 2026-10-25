@@ -7,11 +7,25 @@ import { describe, expect, it } from "vitest"
 
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
 import type { Standing } from "@/lib/jobs/model"
+import { NO_NOTICE } from "@/lib/jobs/notice"
 import * as words from "@/lib/jobs/words"
 
 const DAY = "2026-10-18"
 
+const OFF = NO_NOTICE
+const ON = { wanted: true, token: "t", filed: "t" }
+const IDLE = { asking: false, why: null }
+
 const SAID: Readonly<Record<keyof typeof words, ReadonlyArray<string>>> = {
+  NOTICE_WORDS: Object.values(words.NOTICE_WORDS),
+  noticeSaid: [
+    words.noticeSaid(OFF, IDLE),
+    words.noticeSaid(ON, IDLE),
+    words.noticeSaid({ ...ON, filed: null }, IDLE),
+    words.noticeSaid(OFF, { asking: true, why: null }),
+    words.noticeSaid(OFF, { asking: false, why: "not-allowed" }),
+    words.noticeSaid(OFF, { asking: false, why: "failed" }),
+  ],
   notToday: [words.notToday(DAY)],
   newerHeld: [words.newerHeld(DAY)],
   openFromDrive: [words.openFromDrive],

@@ -9,9 +9,9 @@
  * screens can do (`@some-ui/aph` is theirs), so its row says where to stop
  * instead of offering it here.
  */
-import type { JSX } from "react"
+import type { JSX, ReactNode } from "react"
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
-import { Button, Label } from "@some-ui/shared"
+import { Button, Label, Switch } from "@some-ui/shared"
 
 import { useHomeLink } from "@/lib/home-link"
 import type { Scope } from "@/lib/home-link/consent-model"
@@ -31,6 +31,9 @@ import {
   SHEET,
   WORDS,
 } from "@/lib/home-link/words"
+import { phoneJobs } from "@/lib/jobs"
+import { NOTICE_WORDS, noticeSaid } from "@/lib/jobs/words"
+import { useJobs } from "@/components/jobs/parts"
 
 const APH_SCOPES = { scopes: ["aph"] } as const
 
@@ -49,6 +52,7 @@ const Row = ({
   counts,
   lane,
   unsure,
+  children,
 }: {
   id: LaneId
   counts: LaneCounts
@@ -59,6 +63,8 @@ const Row = ({
    * (`lanes.ts`'s `enterEarlier`), which only its own screens enter.
    */
   unsure: boolean
+  /** What the row offers while its record is kept on home. */
+  children?: ReactNode
 }): JSX.Element => {
   const { shared, stopped } = useLaneChoices(lane ?? APH_SCOPES)
   const [confirming, setConfirming] = useState(false)
@@ -96,6 +102,7 @@ const Row = ({
           ))}
         </ul>
       )}
+      {kept ? children : null}
       {refused ? (
         <p className="text-destructive text-xs" role="status">
           {SHEET.stopRefused}
@@ -158,6 +165,33 @@ const PracticeRow = (): JSX.Element => (
   />
 )
 
+/**
+ * Whether home tells this phone when the morning run is in (RUN5), where
+ * this build can be told; nothing where it can't.
+ */
+const JobsNotice = (): JSX.Element | null => {
+  const { state, notice } = useJobs()
+  if (!notice.offered) return null
+  return (
+    <div className="flex items-start gap-3 rounded-md border p-3">
+      <Switch
+        id="jobs-notice"
+        checked={state.home.notice.wanted}
+        disabled={notice.asking}
+        onCheckedChange={(on) => phoneJobs().wantNotice(on)}
+      />
+      <div className="space-y-1">
+        <Label htmlFor="jobs-notice" className="text-sm">
+          {NOTICE_WORDS.label}
+        </Label>
+        <p className="text-muted-foreground text-xs" role="status">
+          {noticeSaid(state.home.notice, notice)}
+        </p>
+      </div>
+    </div>
+  )
+}
+
 const JobsRow = ({ unsure }: { unsure: boolean }): JSX.Element => (
   <Row
     id="jobs"
@@ -166,7 +200,9 @@ const JobsRow = ({ unsure }: { unsure: boolean }): JSX.Element => (
     // Read in render: `useCounts` above subscribes to the same Jobs store,
     // so a change to it renders this row again.
     unsure={unsure && jobsLane.keptBefore?.() === true}
-  />
+  >
+    <JobsNotice />
+  </Row>
 )
 
 const VoiceRow = (): JSX.Element => (

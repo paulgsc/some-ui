@@ -1,0 +1,41 @@
+diff --git a/android/src/main/java/com/capacitorjs/plugins/pushnotifications/PushNotificationsPlugin.java b/android/src/main/java/com/capacitorjs/plugins/pushnotifications/PushNotificationsPlugin.java
+index 63916663afefbca12833494d8b4af16dc4186a54..bd59fa3206706e6af8e6cc4464120581d8ea6acb 100644
+--- a/android/src/main/java/com/capacitorjs/plugins/pushnotifications/PushNotificationsPlugin.java
++++ b/android/src/main/java/com/capacitorjs/plugins/pushnotifications/PushNotificationsPlugin.java
+@@ -19,6 +19,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
+ import com.getcapacitor.annotation.Permission;
+ import com.getcapacitor.annotation.PermissionCallback;
+ import com.google.android.gms.tasks.Tasks;
++import com.google.firebase.FirebaseApp;
+ import com.google.firebase.messaging.CommonNotificationBuilder;
+ import com.google.firebase.messaging.FirebaseMessaging;
+ import com.google.firebase.messaging.ImageDownload;
+@@ -109,8 +110,20 @@ public class PushNotificationsPlugin extends Plugin {
+         }
+     }
+ 
++    // some-ui: an app built without google-services.json has no FirebaseApp,
++    // and FirebaseMessaging.getInstance() then throws, which the bridge turns
++    // into a crash. Say so instead, and the app withdraws the control.
++    private boolean unconfigured(PluginCall call) {
++        if (FirebaseApp.getApps(getContext()).isEmpty()) {
++            call.reject("Firebase is not configured in this build", "UNAVAILABLE");
++            return true;
++        }
++        return false;
++    }
++
+     @PluginMethod
+     public void register(PluginCall call) {
++        if (unconfigured(call)) return;
+         FirebaseMessaging.getInstance().setAutoInitEnabled(true);
+         FirebaseMessaging.getInstance()
+             .getToken()
+@@ -126,6 +139,7 @@ public class PushNotificationsPlugin extends Plugin {
+ 
+     @PluginMethod
+     public void unregister(PluginCall call) {
++        if (unconfigured(call)) return;
+         FirebaseMessaging.getInstance().setAutoInitEnabled(false);
+         FirebaseMessaging.getInstance().deleteToken();
+         call.resolve();

@@ -36,7 +36,7 @@ export function isHomeBytes(body: unknown): body is HomeBytes {
  * port every exchange with home sends through.
  */
 export type HomeCall = (
-  method: "GET" | "POST" | "PUT" | "PATCH",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   path: string,
   body?: string | HomeBytes
 ) => Promise<HomeAnswer>

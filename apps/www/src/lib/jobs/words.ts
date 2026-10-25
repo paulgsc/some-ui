@@ -10,6 +10,8 @@ import type { Track } from "@some-ui/job-desk"
 import { LAPSE_DAYS } from "@some-ui/job-desk"
 
 import type { DebriefResult, FrictionChip, PassReason, Standing } from "./model"
+import type { NoticeState } from "./notice"
+import type { NoticeView } from "./runtime"
 
 /** The digest on show is from an earlier day than today's. */
 export const notToday = (day: string): string =>
@@ -272,3 +274,30 @@ export const sayItAloud = "Or say it, up to a minute"
 
 export const endedAs = (result: DebriefResult): string =>
   `Ended: ${endingLabels[result]}. Add replies and interviews under Record as they come.`
+
+/** The arrival notice's control (`./notice`, Settings' Jobs row). */
+export const NOTICE_WORDS = {
+  label: "Tell me when the morning run is in",
+  off: "Home sends this phone a notification when the morning run has picked, picked nothing or couldn’t finish. Google carries it, so it says only that.",
+  asking: "Asking Android…",
+  onFiled: "On. Home tells this phone when the morning run is in.",
+  onWaiting:
+    "On. Home starts telling this phone the next time Jobs reaches it on the home Wi‑Fi.",
+  notAllowed:
+    "Android won’t let Jobs show notifications. Turn them on in the app’s settings, then try again.",
+  failed: "That didn’t work. Try again.",
+} as const
+
+/** What the control says under it, from what the record and the ask hold. */
+export function noticeSaid(
+  notice: NoticeState,
+  view: Pick<NoticeView, "asking" | "why">
+): string {
+  if (view.asking) return NOTICE_WORDS.asking
+  if (view.why === "not-allowed") return NOTICE_WORDS.notAllowed
+  if (view.why === "failed") return NOTICE_WORDS.failed
+  if (!notice.wanted) return NOTICE_WORDS.off
+  return notice.token !== null && notice.filed === notice.token
+    ? NOTICE_WORDS.onFiled
+    : NOTICE_WORDS.onWaiting
+}

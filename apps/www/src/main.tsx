@@ -11,6 +11,7 @@ import ReactDOM from "react-dom/client"
 import { seedDemo } from "@/lib/demo"
 import { bootDeviceBackend } from "@/lib/device-backend/boot"
 import { driveFiling } from "@/lib/drive-filing"
+import { listenForNoticeTaps } from "@/lib/jobs/notice-native"
 import { sweepLeetypeTakes } from "@/lib/leetype-takes"
 import { sweepLensTakes } from "@/lib/lens-takes"
 import { sweepOrphans } from "@/lib/reflection-voice"
@@ -81,6 +82,13 @@ const router = createRouter({
 
 // A wing's launcher icon tapped while the Android app is open (lib/wings/entry).
 listenForWingEntry((to) => void router.navigate({ to }))
+
+// A tapped arrival notice opens Jobs. Guarded here, where the build folds the
+// test away, so the lan and Pages builds ship none of the push plugin
+// (check:bundle-paths); a check inside the function would not do that.
+if (import.meta.env.VITE_DEVICE_BACKEND === "true") {
+  listenForNoticeTaps((to) => void router.navigate({ to }))
+}
 
 const rootElement = document.getElementById("app")
 if (rootElement && !rootElement.innerHTML) {

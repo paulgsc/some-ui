@@ -3,6 +3,7 @@
  * picked digest, a voice note's take, the share sheet) and decides which late
  * result is stale. Screens read `getSnapshot` and call the methods below.
  */
+import { assertNever } from "@some-ui/core-utils"
 import { parseDigest } from "@some-ui/job-desk"
 import {
   SOUNDBITE_MAX_MS,
@@ -60,6 +61,32 @@ export type JobsSnapshot = {
   take: TakeView
   takeOwner: string | null
   said: string | null
+  /** Whether this phone can be told when a morning run is in (`./notice`). */
+  notice: NoticeView
+}
+
+/** What the notice's control shows. */
+export type NoticeView = {
+  /** The control is shown: this build can ask, and has not found it can't. */
+  readonly offered: boolean
+  /** Waiting on Android's prompt, or the push service. */
+  readonly asking: boolean
+  /** Why the last ask came to nothing, in the person's terms, or null. */
+  readonly why: "not-allowed" | "failed" | null
+}
+
+/** What asking the push service for this phone's token came to. */
+export type NoticeAsked =
+  | { readonly kind: "token"; readonly token: string }
+  /** This build can't be told: the control is withdrawn. */
+  | { readonly kind: "unavailable" }
+  | { readonly kind: "not-allowed" }
+  | { readonly kind: "failed" }
+
+/** The push service, on the Android app only (`./notice-native`). */
+export type NoticePort = {
+  /** Asks for this install's token, with Android's permission first. */
+  register: () => Promise<NoticeAsked>
 }
 
 type ShareDir = "job-decisions" | "job-scouts"
@@ -80,6 +107,8 @@ export type JobsPorts = {
   /** The local calendar day of `at`, `YYYY-MM-DD`. */
   dayOf: (at: Date) => string
   newId: () => string
+  /** The push service, where this build has one. */
+  notice?: NoticePort
 }
 
 type Shared =
@@ -128,6 +157,11 @@ export type JobsRuntime = {
   arrived: (shareId: string) => void
   /** Audio no note lists (the app closed mid-save). Best effort. */
   sweep: () => void
+  /**
+   * Turns the notice on or off. On asks the push service for this phone's
+   * token; the next exchange with home files it (`./home`).
+   */
+  wantNotice: (on: boolean) => void
   /** The record one exchange with home reads and answers (`./home`). */
   keeping: JobsRecordPort
 }
@@ -157,6 +191,13 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
   let picks = 0
   const sharing = new Set<ShareKind>()
   const listeners = new Set<() => void>()
+  let notice: NoticeView = {
+    offered: ports.notice !== undefined,
+    asking: false,
+    why: null,
+  }
+  /** The latest ask: an earlier one's answer is stale. */
+  let asks = 0
 
   const note = voiceNoteRuntime(
     {
@@ -194,6 +235,7 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
       take: takeView(voice),
       takeOwner: voice.kind === "idle" ? null : takeOwner,
       said: voiceNoteSaid(voice, false),
+      notice,
     }
   }
   let snapshot = snapshotNow()
@@ -222,6 +264,48 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
     if (!quiet) problem = null
     publish()
     return true
+  }
+
+  /**
+   * Asks the push service for this phone's token. `quiet`: nobody pressed
+   * anything, so a failure is not shown.
+   */
+  const askForToken = async (
+    port: NoticePort,
+    quiet: boolean
+  ): Promise<void> => {
+    asks += 1
+    const mine = asks
+    if (!quiet) {
+      notice = { ...notice, asking: true, why: null }
+      publish()
+    }
+    const asked = await port.register()
+    if (mine !== asks) return
+    notice = { ...notice, asking: false }
+    switch (asked.kind) {
+      case "token": {
+        commit({ type: "notice-token", token: asked.token }, quiet)
+        break
+      }
+      case "unavailable": {
+        notice = { offered: false, asking: false, why: null }
+        commit({ type: "notice-wanted", wanted: false }, true)
+        break
+      }
+      case "not-allowed":
+      case "failed": {
+        if (!quiet) {
+          notice = { ...notice, why: asked.kind }
+          commit({ type: "notice-wanted", wanted: false }, true)
+        }
+        break
+      }
+      default: {
+        assertNever(asked)
+      }
+    }
+    publish()
   }
 
   // A draft the phone can't keep still holds while the page is open, and
@@ -296,6 +380,12 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
     })
   }
 
+  // A token can change under the app (FCM rotates them): ask again on each
+  // start while the notice is on, so home holds the current one.
+  if (ports.notice !== undefined && state.home.notice.wanted) {
+    void askForToken(ports.notice, true)
+  }
+
   return {
     keeping: {
       state: () => state,
@@ -345,6 +435,22 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
       fileRefused(name): void {
         commit({ type: "file-refused", name })
       },
+      noticeFiled(token): void {
+        commit({ type: "notice-filed", token }, true)
+      },
+      noticeRefused(): void {
+        commit({ type: "notice-token", token: null }, true)
+      },
+    },
+    wantNotice(on): void {
+      if (!commit({ type: "notice-wanted", wanted: on }) && !on) return
+      if (!on) {
+        asks += 1
+        notice = { ...notice, asking: false, why: null }
+        publish()
+        return
+      }
+      if (ports.notice !== undefined) void askForToken(ports.notice, false)
     },
     getSnapshot: () => snapshot,
     subscribe(listener): () => void {

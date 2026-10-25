@@ -27,6 +27,7 @@ import { z } from "zod"
 import type { StorageAdapter } from "@/lib/tenant/storage"
 
 import type { JobEvent, JobsState } from "./model"
+import { NO_NOTICE } from "./notice"
 
 export const STORAGE_KEY = "some-ui:jobs"
 /** Followed by 1, 2 …: an unreadable value, kept as it was found. */
@@ -149,6 +150,14 @@ const StoredSchema = z.object({
                 return read.success ? [read.data] : []
               })
         ),
+      // A record kept before the phone could be told of a run has none.
+      notice: z
+        .object({
+          wanted: z.boolean(),
+          token: z.string().nullable(),
+          filed: z.string().nullable(),
+        })
+        .default(NO_NOTICE),
     })
     .default({
       kept: false,
@@ -157,6 +166,7 @@ const StoredSchema = z.object({
       refusedFiles: [],
       lookedAt: null,
       runs: null,
+      notice: NO_NOTICE,
     }),
   // A record kept before shares noted where they began has none.
   carried: z.record(z.string(), z.number()).default({}),
