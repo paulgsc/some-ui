@@ -20,7 +20,7 @@ apply to any agent working here, not only Claude.
   that is there in name only, a falsifier that can't be decided from the hunk and the file it
   changes, or that covers only additions (missing a deletion, rename or move that also breaks
   the claim), covers something a lint rule, type or test could enforce without saying why that
-  fails, or is false on the code in the same change.
+  fails, is false on the code in the same change, or gives an ID already in use a different claim.
 - **Second implementations and code left behind are blocking findings.** Flag two
   copies of the same code added in one diff; an added module, component, hook or helper
   whose job existing code already does (search `packages/ui/shared`, `packages/core-utils`,

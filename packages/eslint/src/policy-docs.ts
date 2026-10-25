@@ -1,41 +1,40 @@
 // What the policy documents' text can hold (CLAUDE.md, "Gray-area invariants:
-// declare them falsifiable"), as pure functions over the markdown files'
-// text. `scripts/check-policy-docs.ts` runs them over every tracked `*.md`.
+// declare them falsifiable"), as pure functions over markdown text.
+// `scripts/check-policy-docs.ts` runs them over every tracked `*.md`.
 //
-// Invariant declarations, in any markdown file. A declaration is a line that
-// starts, after any `>` quote markers, with `**<ID>:`, `**<ID> (not
-// reviewable):` or `**<ID> (retired):`, with a space after the colon (a bold
-// `- **ID:**` list item is not one). Its block runs to the next declaration or heading.
+// Invariant declarations, in any markdown file, outside fenced code. A
+// declaration is a line that starts, after any `>` quote markers, with
+// `**<ID>:`, `**<ID> (not reviewable):` or `**<ID> (retired):`, with a space
+// after the colon (a bold `- **ID:**` list item is not one). Its block runs to
+// the next declaration or heading.
 // - An active one has a line starting `_Claim:_`, `_Falsified by_`,
 //   `_Scope:_` and `_Why not …:_` (`enforced`, `lint or tests`, `wholly
 //   enforced`). One marked `(not reviewable)` needs none: no diff can falsify
 //   it. A retired one has a `_Retired:_` line giving the reason.
 // - An ID is declared once across the repo (`QUOTED_COPIES` is the one
-//   exception), and an ID declared at the base ref is still declared: a
-//   renumbered or dropped one fails, a moved one does not. IDs are stable.
+//   exception), and an ID declared at the base ref, read the same way, is still
+//   declared: a renumbered or dropped one fails, a moved one does not. A new
+//   claim under an old ID shows as neither: that is review's.
 //
 // References, in the policy documents (`POLICY_DOCS`), outside fenced code:
-// - a backticked path ending in a file extension names a tracked file, as a
-//   full path or any `/`-suffix of one (a bare basename included);
 // - a backticked path under a top-level directory names a tracked file or
-//   directory;
-// - `` `file.md`, "Heading" `` (a `→` or `->` for the comma, line breaks
+//   directory, by its full path;
+// - any other backticked path ending in a file extension names a tracked file
+//   by a `/`-suffix of its path (a bare basename included), the way a doc
+//   inside a package writes a path relative to it;
+// - `` `file.md`, "Heading" `` (a comma, `→` or `->` between them, line breaks
 //   allowed) names a heading in that file, whole or up to its first `: `
 //   ("Two kinds of pull request" for "Two kinds of pull request: the story
 //   moved, or a promise broke").
 // A path in another repository is listed in `FOREIGN_PATHS`; an entry no
-// policy document uses fails, so the list only shrinks with the prose.
+// policy document uses fails, so the list only shrinks with the prose. A path
+// that is ignored or generated is not tracked: write it without backticks.
 //
-// What it cannot hold: whether a falsifier is decidable from a hunk, whether a
-// claim is true, whether a sentence should be a rule. That is review's
-// (REVIEW.md, "Reviewing a change that declares or edits an invariant").
-//
-// Why a script and not an ESLint rule: both checks read other files (the
-// tree's paths and headings, the base ref's IDs), and `eslint --cache` re-uses
-// a file's verdict until that file's own content changes (see test-layout.ts).
-// Lexical, like workflow-guards.ts: each rule accepts a closed shape.
+// A script, not an ESLint rule, for test-layout.ts's reason: both checks read
+// other files. Lexical, like workflow-guards.ts: each rule accepts a closed
+// shape. Whether a falsifier is decidable and a claim true stays review's.
 
-export const POLICY_DOCS: ReadonlyArray<string> = [
+const POLICY_DOCS: ReadonlyArray<string> = [
   "CLAUDE.md",
   "REVIEW.md",
   "AGENTS.md",
@@ -84,11 +83,11 @@ const ACTIVE_PARTS: ReadonlyArray<Part> = [
 
 const DECLARATION =
   /^[>\s]*\*\*(?<id>[A-Z]{1,4}\d+)(?: \((?<mark>not reviewable|retired)\))?:\s/
-const HEADING = /^ {0,3}#{1,6}[ \t]+(?<text>.+?)[ \t]*#*[ \t]*$/
+const HEADING = /^ {0,3}#{1,6}[ \t]+(?<text>.+?)(?:[ \t]+#+)?[ \t]*$/
 const FENCE = /^[\s>]*(?:```|~~~)/
 const SPAN = /`([^`\n]+)`/g
 const HEADING_REF =
-  /`(?<file>[\w./-]+\.md)`\s*(?:,|→|->)?\s*"(?<heading>[^"]+)"/g
+  /`(?<file>[\w./-]+\.md)`\s*(?:,|→|->)\s*"(?<heading>[^"]+)"/g
 const FILE_EXTENSION =
   /\.(?:md|ts|tsx|js|jsx|mjs|cjs|json|jsonc|ya?ml|toml|sh|css|sql|typ|html|rs|allowlist|gradle|java|kt|xml|txt|lock)$/
 const PATH_SHAPE = /^[\w.@-]+(?:\/[\w.@-]+)*$/
@@ -164,11 +163,6 @@ function lineAt(text: string, index: number): number {
   return line
 }
 
-/** The ID a declaration line declares, or null for any other line. */
-export function declaredId(line: string): string | null {
-  return DECLARATION.exec(line)?.groups?.["id"] ?? null
-}
-
 /** Every declaration in one file's text, with the parts its block lacks. */
 export function parseDeclarations(
   file: string,
@@ -204,46 +198,56 @@ export function parseDeclarations(
   return declarations
 }
 
-/**
- * The invariant violations among `docs` (repo-relative path -> text, every
- * tracked `*.md`), in a stable order. `base` is the IDs declared at the base
- * ref, or null when there is nothing to hold the tree against.
- */
-export function findInvariantViolations(
-  docs: ReadonlyMap<string, string>,
-  base: ReadonlySet<string> | null
-): Array<PolicyViolation> {
-  const violations: Array<PolicyViolation> = []
-  const first = new Map<string, Declaration>()
+/** The declarations among `docs`, in path order, without the quoted copies. */
+function scan(docs: ReadonlyMap<string, string>): {
+  declarations: Array<Declaration>
+  quoted: Set<string>
+} {
+  const declarations: Array<Declaration> = []
   const quoted = new Set<string>()
   for (const file of [...docs.keys()].sort()) {
     for (const declaration of parseDeclarations(file, docs.get(file) ?? "")) {
-      const { id } = declaration
-      if (QUOTED_COPIES.get(id) === file) {
-        quoted.add(id)
-        continue
-      }
-      const earlier = first.get(id)
-      if (earlier !== undefined) {
-        violations.push({
-          kind: "duplicateId",
-          file,
-          line: declaration.line,
-          id,
-          first: `${earlier.file}:${earlier.line}`,
-        })
-        continue
-      }
-      first.set(id, declaration)
-      if (declaration.missing.length > 0) {
-        violations.push({
-          kind: "missingParts",
-          file,
-          line: declaration.line,
-          id,
-          missing: declaration.missing.map((part) => PART_LABEL[part]),
-        })
-      }
+      if (QUOTED_COPIES.get(declaration.id) === file) quoted.add(declaration.id)
+      else declarations.push(declaration)
+    }
+  }
+  return { declarations, quoted }
+}
+
+/**
+ * The invariant violations among `docs` (repo-relative path -> text, every
+ * tracked `*.md`), in a stable order. `base` is the same files as the base ref
+ * holds them, or null when there is nothing to hold the tree against.
+ */
+export function findInvariantViolations(
+  docs: ReadonlyMap<string, string>,
+  base: ReadonlyMap<string, string> | null
+): Array<PolicyViolation> {
+  const violations: Array<PolicyViolation> = []
+  const first = new Map<string, Declaration>()
+  const { declarations, quoted } = scan(docs)
+  for (const declaration of declarations) {
+    const { id, file } = declaration
+    const earlier = first.get(id)
+    if (earlier !== undefined) {
+      violations.push({
+        kind: "duplicateId",
+        file,
+        line: declaration.line,
+        id,
+        first: `${earlier.file}:${earlier.line}`,
+      })
+      continue
+    }
+    first.set(id, declaration)
+    if (declaration.missing.length > 0) {
+      violations.push({
+        kind: "missingParts",
+        file,
+        line: declaration.line,
+        id,
+        missing: declaration.missing.map((part) => PART_LABEL[part]),
+      })
     }
   }
   for (const [id, file] of QUOTED_COPIES) {
@@ -251,7 +255,8 @@ export function findInvariantViolations(
       violations.push({ kind: "staleQuote", id, file })
   }
   if (base !== null) {
-    for (const id of [...base].sort()) {
+    const kept = new Set(scan(base).declarations.map(({ id }) => id))
+    for (const id of [...kept].sort()) {
       if (!first.has(id)) violations.push({ kind: "removedId", id })
     }
   }
@@ -301,12 +306,9 @@ function indexTree(tracked: ReadonlyArray<string>): TreeIndex {
 function resolves(index: TreeIndex, ref: string): boolean | null {
   const segments = ref.split("/")
   const last = segments[segments.length - 1] ?? ""
-  const isFile = FILE_EXTENSION.test(last)
   const isTree = segments.length > 1 && index.topLevel.has(segments[0] ?? "")
-  if (!isFile && !isTree) return null
-  return (
-    (isFile && index.suffixes.has(ref)) || (isTree && index.entries.has(ref))
-  )
+  if (isTree) return index.entries.has(ref)
+  return FILE_EXTENSION.test(last) ? index.suffixes.has(ref) : null
 }
 
 /**
@@ -386,7 +388,7 @@ export function findReferenceViolations(
 export function describePolicyViolation(violation: PolicyViolation): string {
   switch (violation.kind) {
     case "missingParts": {
-      return `${violation.file}:${violation.line}: ${violation.id} has no ${violation.missing.join(", ")} line. A declared invariant has _Claim:_, _Falsified by_, _Scope:_ and _Why not enforced:_ lines; one no diff can falsify says "(not reviewable)" in its heading, and a retired one "(retired)" with a _Retired:_ reason (CLAUDE.md, "Gray-area invariants: declare them falsifiable").`
+      return `${violation.file}:${violation.line}: ${violation.id} has no ${violation.missing.join(", ")} line. A line starting \`**<ID>:\` declares an invariant (CLAUDE.md, "Gray-area invariants: declare them falsifiable"); if this is not one, write the bold label without an ID-shaped start.`
     }
     case "duplicateId": {
       return `${violation.file}:${violation.line}: ${violation.id} is already declared at ${violation.first}. An ID names one invariant and is never reused.`
@@ -401,7 +403,7 @@ export function describePolicyViolation(violation: PolicyViolation): string {
       return `${violation.file} is a policy document (POLICY_DOCS in packages/eslint/src/policy-docs.ts) and is not in the tree.`
     }
     case "missingPath": {
-      return `${violation.file}:${violation.line}: \`${violation.ref}\` is not a file or directory here. Fix the path, or add it to FOREIGN_PATHS in packages/eslint/src/policy-docs.ts if it lives in another repository.`
+      return `${violation.file}:${violation.line}: \`${violation.ref}\` is not a tracked file or directory. Fix the path, or add it to FOREIGN_PATHS in packages/eslint/src/policy-docs.ts if it lives in another repository.`
     }
     case "missingHeading": {
       return `${violation.file}:${violation.line}: ${violation.target} has no heading "${violation.heading}". Quote its heading as it reads now.`

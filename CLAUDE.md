@@ -412,10 +412,10 @@ invariant kept only what a person has to judge:
 **What a check holds.** `pnpm check:policy-docs` (`scripts/check-policy-docs.ts`, rules in
 `packages/eslint/src/policy-docs.ts`; root `pnpm lint`, and a `pr.yml` job CI Gate requires)
 fails, in any markdown file, a declaration (a line starting `**<ID>:`) with no `_Claim:_`,
-`_Falsified by_`, `_Scope:_` or `_Why not …:_` line, an ID declared twice, and an ID declared at
-the base branch and not now; and, in `CLAUDE.md`, `REVIEW.md` and `AGENTS.md`, a path or
-quoted-heading reference that points at nothing. A review does not re-check those. Whether a
-falsifier is decidable from a hunk, whether a claim is true and whether a sentence should be a
+`_Falsified by_`, `_Scope:_` or `_Why not …:_` line, an ID declared twice, and an ID declared
+at the base branch and not now; and, in `CLAUDE.md`, `REVIEW.md` and `AGENTS.md`, a path or
+quoted-heading reference that points at nothing. A review does not re-check those. Whether a falsifier is decidable from a hunk, whether a claim
+is true, whether an old ID now carries a different claim and whether a sentence should be a
 rule stay review's.
 
 **Per-site tags: state the fact where the code hides it.** When a claim is about many sites

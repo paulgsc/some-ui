@@ -5,12 +5,10 @@
  */
 
 import {
-  declaredId,
   describePolicyViolation,
   findInvariantViolations,
   findReferenceViolations,
   parseDeclarations,
-  POLICY_DOCS,
   type PolicyViolation,
 } from "@eslint/policy-docs.js"
 import { describe, expect, it } from "vitest"
@@ -123,9 +121,6 @@ describe("parseDeclarations", () => {
       "plain **A1: text** in a sentence",
     ].join("\n")
     expect(parseDeclarations("x.md", text)).toEqual([])
-    expect(declaredId("- **R8: x**")).toBeNull()
-    expect(declaredId("> **MK3: x**")).toBe("MK3")
-    expect(declaredId("**L7 (not reviewable): x**")).toBe("L7")
   })
 })
 
@@ -134,7 +129,7 @@ describe("findInvariantViolations", () => {
     expect(
       findInvariantViolations(
         docs({ "a.md": declaration("A1"), "b.md": declaration("B1") }),
-        new Set(["A1"])
+        docs({ "a.md": declaration("A1") })
       )
     ).toEqual([])
   })
@@ -178,12 +173,9 @@ describe("findInvariantViolations", () => {
       "CLAUDE.md": declaration("L3"),
       "extensions/common/GOOD_CITIZEN.md": declaration("L3"),
     })
-    expect(findInvariantViolations(quoted, new Set(["L3"]))).toEqual([])
+    expect(findInvariantViolations(quoted, quoted)).toEqual([])
     expect(
-      findInvariantViolations(
-        docs({ "CLAUDE.md": declaration("L3") }),
-        new Set(["L3"])
-      )
+      findInvariantViolations(docs({ "CLAUDE.md": declaration("L3") }), quoted)
     ).toEqual([{ kind: "removedId", id: "L3" }])
   })
 
@@ -200,7 +192,10 @@ describe("findInvariantViolations", () => {
   })
 
   it("holds the IDs of the base ref: dropped or renumbered fails, moved or retired does not", () => {
-    const base = new Set(["A1", "A2", "A3"])
+    const base = docs({
+      "a.md": [declaration("A1"), declaration("A2")].join("\n\n"),
+      "c.md": declaration("A3"),
+    })
     expect(
       findInvariantViolations(
         docs({
@@ -215,9 +210,30 @@ describe("findInvariantViolations", () => {
         docs({
           "moved.md": [declaration("A1"), declaration("A2")].join("\n\n"),
         }),
-        new Set(["A1", "A2"])
+        base
+      )
+    ).toEqual([{ kind: "removedId", id: "A3" }])
+    expect(
+      findInvariantViolations(
+        docs({
+          "moved.md": [
+            declaration("A1"),
+            declaration("A2"),
+            declaration("A3"),
+          ].join("\n\n"),
+        }),
+        base
       )
     ).toEqual([])
+  })
+
+  it("reads the base's declarations as it reads the tree's: a fenced example is none", () => {
+    const fenced = docs({
+      "a.md": ["```md", declaration("X9"), "```"].join("\n"),
+    })
+    expect(findInvariantViolations(docs({ "a.md": "# Gone" }), fenced)).toEqual(
+      []
+    )
   })
 
   it("compares no IDs without a base", () => {
@@ -298,6 +314,16 @@ describe("findReferenceViolations: paths", () => {
     ])
   })
 
+  it("reads a path under a top-level directory by its full path only", () => {
+    const tree = [...TREE, "packages/x/scripts/moved.ts", "scripts/other.ts"]
+    expect(
+      kinds(findReferenceViolations(policy("`scripts/moved.ts`"), tree))
+    ).toEqual(["missingPath"])
+    expect(
+      findReferenceViolations(policy("`packages/x/scripts/moved.ts`"), tree)
+    ).toEqual([])
+  })
+
   it("leaves what is not a repo path alone", () => {
     const text = [
       "`pnpm check:workflows` `lib/` `core/` `dist/` `@some-ui/intent-kit`",
@@ -341,7 +367,6 @@ describe("findReferenceViolations: paths", () => {
     expect(violations).toEqual([
       { kind: "missingPolicyDoc", file: "AGENTS.md" },
     ])
-    expect(POLICY_DOCS).toContain("AGENTS.md")
   })
 })
 
@@ -401,6 +426,24 @@ describe("findReferenceViolations: headings", () => {
     ])
   })
 
+  it("reads a quoted word after a file as prose, not a heading", () => {
+    expect(
+      findReferenceViolations(
+        policy('the `REVIEW.md` "not reviewable" rule'),
+        TREE
+      )
+    ).toEqual([])
+  })
+
+  it("keeps a `#` that ends a heading's text", () => {
+    const others = {
+      "docs/monorepo-boundaries.md": "## Notes on C#\n## Closed ##\n",
+    }
+    const text =
+      '`docs/monorepo-boundaries.md`, "Notes on C#" `docs/monorepo-boundaries.md`, "Closed"'
+    expect(findReferenceViolations(policy(text, others), TREE)).toEqual([])
+  })
+
   it("reports a missing file once, as a path", () => {
     expect(
       kinds(findReferenceViolations(policy('`gone.md`, "Anything"'), TREE))
@@ -422,41 +465,49 @@ describe("findReferenceViolations: headings", () => {
 
 describe("describePolicyViolation", () => {
   it("says one line naming each violation's place and its fix", () => {
-    const all: Array<PolicyViolation> = [
-      {
-        kind: "missingParts",
-        file: "a.md",
-        line: 4,
-        id: "A1",
-        missing: ["_Scope:_"],
-      },
-      { kind: "duplicateId", file: "b.md", line: 9, id: "A1", first: "a.md:4" },
-      { kind: "removedId", id: "A2" },
-      { kind: "staleQuote", id: "L3", file: "CLAUDE.md" },
-      { kind: "missingPolicyDoc", file: "AGENTS.md" },
-      { kind: "missingPath", file: "CLAUDE.md", line: 7, ref: "x/y.ts" },
-      {
-        kind: "missingHeading",
-        file: "CLAUDE.md",
-        line: 8,
-        target: "REVIEW.md",
-        heading: "Gone",
-      },
-      { kind: "staleForeign", path: "routes.yml" },
+    const cases: Array<[PolicyViolation, string]> = [
+      [
+        {
+          kind: "missingParts",
+          file: "a.md",
+          line: 4,
+          id: "A1",
+          missing: ["_Scope:_"],
+        },
+        "a.md:4",
+      ],
+      [
+        {
+          kind: "duplicateId",
+          file: "b.md",
+          line: 9,
+          id: "A1",
+          first: "a.md:4",
+        },
+        "b.md:9",
+      ],
+      [{ kind: "removedId", id: "A2" }, "A2"],
+      [{ kind: "staleQuote", id: "L3", file: "CLAUDE.md" }, "L3"],
+      [{ kind: "missingPolicyDoc", file: "AGENTS.md" }, "AGENTS.md"],
+      [
+        { kind: "missingPath", file: "CLAUDE.md", line: 7, ref: "x/y.ts" },
+        "CLAUDE.md:7",
+      ],
+      [
+        {
+          kind: "missingHeading",
+          file: "CLAUDE.md",
+          line: 8,
+          target: "REVIEW.md",
+          heading: "Gone",
+        },
+        "CLAUDE.md:8",
+      ],
+      [{ kind: "staleForeign", path: "routes.yml" }, "routes.yml"],
     ]
-    const places = [
-      "a.md:4",
-      "b.md:9",
-      "A2",
-      "L3",
-      "AGENTS.md",
-      "CLAUDE.md:7",
-      "CLAUDE.md:8",
-      "routes.yml",
-    ]
-    for (const [index, violation] of all.entries()) {
+    for (const [violation, place] of cases) {
       const text = describePolicyViolation(violation)
-      expect(text).toContain(places[index] ?? "")
+      expect(text).toContain(place)
       expect(text).not.toContain("\n")
     }
   })

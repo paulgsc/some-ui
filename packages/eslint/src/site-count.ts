@@ -4,12 +4,16 @@
 // counts, exactly and in both directions, with an allowlist whose entries are
 // reasoned by a comment line. What a site is, and which reasons an entry may
 // give, is each check's own; the scope, the parse and the allowlist are here.
-import { execFileSync } from "node:child_process"
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import ts from "typescript"
 
-import { gitOrNull, resolveBaseRef } from "./base-ref.ts"
+import {
+  gitOrNull,
+  repoRoot,
+  resolveBaseRef,
+  worktreeFiles,
+} from "./git-tree.ts"
 
 /** `.then`, `.catch`, `.finally`: a promise chained, a site in both checks. */
 export const PROMISE_CHAIN: ReadonlySet<string> = new Set([
@@ -309,9 +313,8 @@ export function describeCountViolation(
 
 /**
  * The allowlist as the base ref holds it, for `findGrandfatherGrowth`; null
- * when there is nothing to hold it against (no such ref and none was asked
- * for, or no allowlist there yet). Throws for a `--base` that does not
- * resolve: a ratchet asked for and skipped would read as passed.
+ * when there is nothing to hold it against (`resolveBaseRef` found no ref, or
+ * the ref has no allowlist yet).
  */
 function baseAllowlist(
   root: string,
@@ -340,21 +343,11 @@ export function runCountedCheck(
   check: CountedCheck,
   args: ReadonlyArray<string> = []
 ): void {
-  const root = execFileSync("git", ["rev-parse", "--show-toplevel"], {
-    encoding: "utf8",
-  }).trim()
-  const listed = execFileSync(
-    "git",
-    ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
-    { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }
-  )
+  const root = repoRoot()
   const actual = new Map<string, number>()
-  for (const path of listed.split("\0")) {
-    if (path === "" || !isInScope(path)) continue
-    const absolute = join(root, path)
-    // Listed but deleted in the working tree.
-    if (!existsSync(absolute)) continue
-    const sites = check.count(path, readFileSync(absolute, "utf8"))
+  for (const path of worktreeFiles(root)) {
+    if (!isInScope(path)) continue
+    const sites = check.count(path, readFileSync(join(root, path), "utf8"))
     if (sites !== null && sites > 0) actual.set(path, sites)
   }
   const allowlistPath = join(root, check.allowlistFile)

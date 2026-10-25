@@ -44,7 +44,8 @@ falsifiable"), so do not re-check those. Flag the declaration itself when it:
   that would also make the claim false;
 - covers something a lint rule, type or test could enforce, without saying why that
   mechanism fails, or without the label "mechanical; not yet a rule";
-- is false on the code in the same change.
+- is false on the code in the same change;
+- gives an ID already used at the base a different claim.
 
 ## Second implementations and code left behind
 
