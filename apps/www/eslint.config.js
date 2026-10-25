@@ -58,6 +58,15 @@ const REFLECTION_IMPORTERS = [
 ]
 const TESTS = ["src/**/__tests__/**", "src/**/*.test.{ts,tsx}"]
 
+// A4 (packages/some-vite-config/AUDIENCES.md): the web surface's door hands
+// out its gated workspaces only through its index, so nothing reaches below
+// it. The door's own files are held to it too; none imports another through `@/`.
+const DOOR_PATTERN = {
+  regex: "^@/lib/web-surface/",
+  message:
+    "Import the web surface through its door, `@/lib/web-surface`, never below it: the index keeps each gated workspace behind its guard. See packages/some-vite-config/AUDIENCES.md, A4.",
+}
+
 const REFLECTION_GUARD =
   "Reflections leave the device only through the share sheet (lib/agent-export), never by a server transport or a session record. See docs/learner-data-authority.md, LA7."
 
@@ -124,6 +133,7 @@ export default defineConfig([
           patterns: [
             parentRelativeImportPattern,
             compiledPackageStyleImportBanPattern,
+            DOOR_PATTERN,
             {
               regex: `^@/(?!(${REFLECTION_MAY_IMPORT.join("|")})(/|$))`,
               message: REFLECTION_GUARD,
@@ -147,6 +157,7 @@ export default defineConfig([
           patterns: [
             parentRelativeImportPattern,
             compiledPackageStyleImportBanPattern,
+            DOOR_PATTERN,
             {
               // `reflection-voice/budget` is a size, which the storage
               // budget reserves; it holds no reflection.
@@ -154,6 +165,23 @@ export default defineConfig([
                 "^@/(lib/(session-reflection|agent-export)|lib/reflection-voice(?!/budget$)|components/reflection)(/|$)",
               message: REFLECTION_GUARD,
             },
+          ],
+        },
+      ],
+    },
+  },
+
+  {
+    // A4 for what both LA7 blocks leave out, restating the preset's patterns.
+    files: [...REFLECTION_IMPORTERS, ...TESTS],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            parentRelativeImportPattern,
+            compiledPackageStyleImportBanPattern,
+            DOOR_PATTERN,
           ],
         },
       ],

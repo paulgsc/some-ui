@@ -529,8 +529,9 @@ jobs:
 
   # ── Policy documents (repo-wide) ───────────────────────────────────────
   # CLAUDE.md, "Gray-area invariants": every declaration has its parts, no ID
-  # is reused or dropped, and the paths and headings CLAUDE.md, REVIEW.md and
-  # AGENTS.md name exist. No `changes` gate: a markdown edit matches no path
+  # is reused or dropped, debt labels name their issue and do not grow, the
+  # paths and headings CLAUDE.md, REVIEW.md and AGENTS.md name exist, each
+  # Held by line's check runs here, and AGENTS.md's digest matches REVIEW.md. No `changes` gate: a markdown edit matches no path
   # filter. No install (Node's type stripping). A script rather than an ESLint
   # rule because it reads other files (packages/eslint/src/policy-docs.ts).
   policy-docs:

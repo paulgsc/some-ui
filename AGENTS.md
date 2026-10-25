@@ -8,14 +8,16 @@ apply to any agent working here, not only Claude.
 - **Declared invariants: check the falsifier, then stop.** Some rules here cannot be
   enforced by lint, types or tests, so they are declared as invariants with an ID (e.g.
   `L3`) and four parts: Claim, Falsified by, Scope, Why not enforced (format:
-  `CLAUDE.md`, "Gray-area invariants: declare them falsifiable"). For a hunk inside an
-  invariant's Scope, evaluate only its **Falsified by** line, against the hunk, the
-  file it changes (after the diff), and any files that line names:
+  `CLAUDE.md`, "Gray-area invariants: declare them falsifiable"). The sets: L1–L8 in
+  `extensions/common/GOOD_CITIZEN.md`, A1–A4 in `packages/some-vite-config/AUDIENCES.md`,
+  LP1–LP3 in `extensions/some-drama/README.md`, R1 and F1 in `docs/monorepo-boundaries.md`.
+  For a hunk inside an invariant's Scope, evaluate only its **Falsified by** line, against
+  the hunk, the file it changes (after the diff), and any files that line names:
   - **nothing matches:** no comment, and no search of other states or call paths for a
     violation elsewhere;
   - **it matches:** one finding citing the ID and the lines. Invariants marked "not
     reviewable" are never flagged.
-- **A change that declares or edits an invariant:** `pnpm check:policy-docs` already fails a
+- **Reviewing a change that declares or edits an invariant:** `pnpm check:policy-docs` already fails a
   missing part, a reused ID and a dropped one; do not re-check those. Flag it if it has a part
   that is there in name only, a falsifier that can't be decided from the hunk and the file it
   changes, or that covers only additions (missing a deletion, rename or move that also breaks
