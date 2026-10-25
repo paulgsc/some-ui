@@ -3,7 +3,8 @@
 // files. `scripts/check-android-only.ts` runs it.
 //
 // The Apple-only tokens in TOKENS fail in files ending in CODE_EXTENSIONS,
-// comments included, and in any tracked path's name. Markdown and the typst
+// comments included, and in any tracked path's name; PATH_TOKENS, an iOS
+// project's own file names, in path names only. Markdown and the typst
 // canons are prose and outside the scan, so a document can state the rule.
 // `Safari` is no token (Chrome's user agent names it), and a `webkit` prefix
 // alone says nothing (Chrome has its own): those stay review's (REVIEW.md,
@@ -40,6 +41,27 @@ const TOKENS: ReadonlyArray<{
   },
 ]
 
+/**
+ * Names only an iOS project has, matched in tracked paths alone: `cap add ios`
+ * writes an `ios/` platform beside `android/`, with an Xcode project, a
+ * Podfile, an Info.plist and Swift sources. In file text these words are
+ * prose, so they are not scanned there.
+ */
+const PATH_TOKENS: ReadonlyArray<{
+  readonly name: string
+  readonly patterns: ReadonlyArray<RegExp>
+}> = [
+  {
+    name: "an iOS project file",
+    patterns: [
+      /(?:^|\/)ios(?:\/|$)/i,
+      /\.(?:swift|pbxproj|entitlements|xcconfig)$/i,
+      /\.(?:xcodeproj|xcworkspace)(?:\/|$)/i,
+      /(?:^|\/)(?:Info\.plist|Podfile(?:\.lock)?)$/,
+    ],
+  },
+]
+
 export type AndroidOnlyViolation =
   | {
       readonly kind: "token"
@@ -71,7 +93,7 @@ export function findAndroidOnlyViolations(
 ): Array<AndroidOnlyViolation> {
   const violations: Array<AndroidOnlyViolation> = []
   for (const file of [...tracked].sort()) {
-    for (const token of TOKENS) {
+    for (const token of [...TOKENS, ...PATH_TOKENS]) {
       if (hits(token, file))
         violations.push({ kind: "path", file, token: token.name })
     }

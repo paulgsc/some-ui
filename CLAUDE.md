@@ -252,7 +252,8 @@ requires): `webkitAudioContext`, an Apple meta or link tag (`apple-touch-*`,
 `apple-mobile-web-app-*`, `apple-itunes-*`), and an iOS device name (`iphone`, `ipad`,
 `ipados`, `ipod`, in any case, and inside an identifier like `isIPhone`). It reads source and
 markup files (code, HTML, CSS, JSON, XML, workflows; not Markdown or typst prose), comments
-included, and every tracked path's name. Beyond those, whether a line exists "for" Safari is a
+included, and every tracked path's name, where an iOS project's own files (an `ios/` folder,
+`*.swift`, an Xcode project, `Podfile`, `Info.plist`) fail too. Beyond those, whether a line exists "for" Safari is a
 reading of intent, since Chrome has
 `webkit`-prefixed APIs of its own, so this stays a review rule (`REVIEW.md`, "The phone is
 Android only"), not a declared invariant: a reviewer judges the hunk.

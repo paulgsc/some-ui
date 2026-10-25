@@ -15,8 +15,6 @@ export function watchFullscreen(
   function checkAndNotify(): void {
     const isFs =
       !!document.fullscreenElement ||
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any
-      !!(document as any).webkitFullscreenElement ||
       document.documentElement.classList.contains("ytp-fullscreen") ||
       !!document.querySelector(".ytp-fullscreen")
 
@@ -31,7 +29,6 @@ export function watchFullscreen(
 
   // Standard fullscreen API
   document.addEventListener("fullscreenchange", checkAndNotify)
-  document.addEventListener("webkitfullscreenchange", checkAndNotify)
 
   // YT uses class mutations on the player for its own fullscreen toggle
   const observer = new MutationObserver(checkAndNotify)
@@ -50,7 +47,6 @@ export function watchFullscreen(
   return {
     destroy(): void {
       document.removeEventListener("fullscreenchange", checkAndNotify)
-      document.removeEventListener("webkitfullscreenchange", checkAndNotify)
       observer.disconnect()
     },
   }
