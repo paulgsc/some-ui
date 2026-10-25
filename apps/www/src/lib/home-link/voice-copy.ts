@@ -19,7 +19,11 @@ import { assertNever } from "@some-ui/core-utils"
 
 import { jobVoiceAudio, phoneJobs } from "@/lib/jobs"
 import type { JobEvent, VoiceNote } from "@/lib/jobs/model"
-import { isSaving, reflectionAudio } from "@/lib/reflection-voice"
+import {
+  isSaving,
+  onAudioSettled,
+  reflectionAudio,
+} from "@/lib/reflection-voice"
 import { reflections } from "@/lib/session-reflection"
 import type { Reflection } from "@/lib/session-reflection/policy"
 import { phoneVoiceHome } from "@/lib/voice-home"
@@ -208,6 +212,8 @@ export function watchVoiceNotes(): () => void {
   copySoon()
   const stops = [
     reflections.subscribe(copySoon),
+    // A spoken reflection is listed before its audio is written.
+    onAudioSettled(copySoon),
     phoneJobs().subscribe(copySoon),
     phoneConsent().subscribe(copySoon),
     homeLink().subscribe(copySoon),
