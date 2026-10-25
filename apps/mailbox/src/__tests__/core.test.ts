@@ -586,6 +586,148 @@ describe("LeetType's files", () => {
   })
 })
 
+describe("voice transcripts", () => {
+  const HEARD = {
+    schema: "some-ui.voice-transcript/1",
+    note: "k3v9qa",
+    of: "reflection",
+    ref: "session-7f2a",
+    at: "2026-10-25T03:10:00.000Z",
+    text: "오늘은 the second scene felt slow.",
+    language: "ko",
+    model: "ggml-small-q5_1.bin",
+    heardAt: "2026-10-25T03:12:41.204Z",
+  }
+  const TRANSCRIPT = JSON.stringify(HEARD)
+  const NAME = "transcript-k3v9qa-1.json"
+  const asHome = (
+    d: Deps,
+    name: string,
+    body: string = TRANSCRIPT
+  ): Promise<Response> => put(d, "transcript", name, { token: HOME, body })
+
+  it("home puts a transcript once, and the routine reads it; neither the other way", async () => {
+    const d = deps()
+    expect((await asHome(d, NAME)).status).toBe(201)
+    expect((await asHome(d, NAME)).status).toBe(200)
+    expect(
+      (await asHome(d, NAME, JSON.stringify({ ...HEARD, text: "other" })))
+        .status
+    ).toBe(409)
+    // A better model's transcript of the same note goes under a new name.
+    expect(
+      (
+        await asHome(
+          d,
+          "transcript-k3v9qa-2.json",
+          JSON.stringify({ ...HEARD, model: "ggml-medium-q5_0.bin" })
+        )
+      ).status
+    ).toBe(201)
+
+    const path = `/v1/transcript/items/${NAME}`
+    const read = await send(d, "GET", path)
+    expect(read.status).toBe(200)
+    expect(await read.text()).toBe(TRANSCRIPT)
+    expect((await send(d, "GET", "/v1/transcript/items")).status).toBe(200)
+    expect((await send(d, "GET", path, { token: HOME })).status).toBe(403)
+    expect(
+      (await put(d, "transcript", "transcript-a-1.json", { body: TRANSCRIPT }))
+        .status
+    ).toBe(403)
+  })
+
+  it("refuses a transcript that carries audio or names a Drive file, and says why", async () => {
+    const d = deps()
+    const audio = "a transcript carries no audio: home keeps the audio"
+    const drive = "a transcript names no Drive file: home keeps the audio"
+    const refused: ReadonlyArray<readonly [Record<string, unknown>, string]> = [
+      [{ ...HEARD, audio: "T2dnUwACAAAAAAAA" }, audio],
+      [{ ...HEARD, audioBase64: "T2dnUwACAAAAAAAA" }, audio],
+      [{ ...HEARD, take: { bytes: [79, 103] } }, audio],
+      [{ ...HEARD, text: "data:audio/webm;base64,GkXfo59ChoEB" }, audio],
+      [
+        { ...HEARD, text: `heard ${"GkXfo59ChoEBQveBAULygQRC".repeat(10)}` },
+        audio,
+      ],
+      [{ ...HEARD, driveId: "1AbCdEfGhIjKlMnOpQrStUvWxYz012345" }, drive],
+      [{ ...HEARD, fileId: "1AbCdEfGhIjKlMnOpQrStUvWxYz012345" }, drive],
+      [
+        {
+          ...HEARD,
+          ref: "session-7f2a",
+          text: "see https://drive.google.com/file/d/1AbC/view",
+        },
+        drive,
+      ],
+    ]
+    for (const [index, [body, why]] of refused.entries()) {
+      const response = await asHome(
+        d,
+        `transcript-n${String(index)}-1.json`,
+        JSON.stringify(body)
+      )
+      expect([index, response.status, await response.json()]).toEqual([
+        index,
+        422,
+        { error: why },
+      ])
+    }
+  })
+
+  it("takes only a transcript's own shape", async () => {
+    const d = deps()
+    const { text: _text, ...untold } = HEARD
+    const wrong: ReadonlyArray<readonly [Record<string, unknown>, string]> = [
+      [{ ...HEARD, words: 7 }, "words is not part of a transcript"],
+      [{ ...HEARD, note: "" }, "note must be the note's id"],
+      [{ ...HEARD, note: "a/b" }, "note must be the note's id"],
+      [{ ...HEARD, of: "diary" }, "of must be reflection, jobs or scene"],
+      [{ ...HEARD, ref: 7 }, "ref must name what the note belongs to"],
+      [{ ...HEARD, at: "soon" }, "at must be when the note was recorded"],
+      [untold, "text must be what home heard"],
+      [{ ...HEARD, text: "  " }, "text must be what home heard"],
+      [
+        { ...HEARD, language: "Korean" },
+        "language must be the language heard, as en or ko",
+      ],
+      [{ ...HEARD, model: "" }, "model must name the model that heard it"],
+      [{ ...HEARD, heardAt: 1 }, "heardAt must be when home heard it"],
+    ]
+    for (const [index, [body, why]] of wrong.entries()) {
+      const response = await asHome(
+        d,
+        `transcript-n${String(index)}-1.json`,
+        JSON.stringify(body)
+      )
+      expect([index, response.status, await response.json()]).toEqual([
+        index,
+        422,
+        { error: why },
+      ])
+    }
+    for (const name of [
+      "transcript-k3v9qa.json",
+      "transcript--1.json",
+      "transcript-k3v9qa-x.json",
+      `transcript-${"a".repeat(65)}-1.json`,
+      "transcript-k3v9qa-1.webm",
+      "k3v9qa_voice-20261025T031000Z-k3v9qa.m4a",
+    ]) {
+      expect([name, (await asHome(d, name)).status]).toEqual([name, 422])
+    }
+    expect(
+      (
+        await asHome(
+          d,
+          "transcript-k3v9qa-1.json",
+          JSON.stringify({ ...HEARD, schema: "some-ui.leetype-log/1" })
+        )
+      ).status
+    ).toBe(422)
+  })
+})
+
 describe("names", () => {
   it("a name that breaks the folder's pattern is refused", async () => {
     const d = deps()
@@ -974,6 +1116,7 @@ describe("archiving", () => {
       "opened",
       "leetype",
       "leetype-log",
+      "transcript",
     ]) {
       expect(
         (await send(d, "GET", `/v1/${folder}/items`, { token: ARCHIVE })).status
