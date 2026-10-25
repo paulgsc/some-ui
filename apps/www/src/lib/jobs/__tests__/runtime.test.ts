@@ -79,7 +79,7 @@ describe("createJobsRuntime", () => {
     expect(runtime.getSnapshot().state.log).toEqual([])
   })
 
-  it("says nothing of a reading it couldn't keep, and the next change I make says why", () => {
+  it("says nothing of a reading, kept or not, and leaves what the next change I make says", () => {
     const memory = createInMemoryStorage()
     let full = false
     const storage: StorageAdapter = {
@@ -104,6 +104,7 @@ describe("createJobsRuntime", () => {
     expect(runtime.getSnapshot().problem).not.toBeNull()
     full = false
     expect(runtime.read(ref)).toBe(true)
+    expect(runtime.getSnapshot().problem).not.toBeNull()
     expect(runtime.read(ref)).toBe(false)
   })
 

@@ -205,7 +205,7 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
 
   /**
    * Applies `action`, keeping the result first; false if it changed nothing.
-   * A `quiet` one that can't be kept says nothing: nobody asked for it.
+   * A `quiet` one neither raises nor clears a problem: nobody asked for it.
    */
   function commit(action: JobsAction, quiet = false): boolean {
     const next = step(state, action)
@@ -219,7 +219,7 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
       return false
     }
     state = next
-    problem = null
+    if (!quiet) problem = null
     publish()
     return true
   }

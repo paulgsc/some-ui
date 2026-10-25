@@ -227,6 +227,7 @@ describe("step", () => {
       result: "submitted",
     })
     expect(record(taken, debrief(1_440))).toBe(taken)
+    expect(record(taken, debrief(0))).toBe(taken)
     expect(record(taken, debrief(45, 6))).toBe(taken)
     expect(record(taken, debrief(45)).log).toHaveLength(2)
     expect(record(taken, debrief(null, null)).log).toHaveLength(2)
