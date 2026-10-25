@@ -141,6 +141,15 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+
+        <!-- The Jobs arrival notice (README "The Jobs arrival notice"): a
+             build with google-services.json would otherwise ask Firebase for
+             a token on every start, so Google would know this install before
+             the person turned the notice on. Turning it on in Settings calls
+             the push plugin's register(), which turns this back on. -->
+        <meta-data
+            android:name="firebase_messaging_auto_init_enabled"
+            android:value="false" />
     </application>
 
 </manifest>

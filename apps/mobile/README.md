@@ -715,6 +715,12 @@ which Jobs does not have.
   `register()` would throw, and Capacitor turns that into a crash, so
   `patches/@capacitor__push-notifications@8.1.3.patch` makes it answer
   `UNAVAILABLE`, and the control is not shown.
+- **Nothing reaches Google until it is on:** the manifest turns off
+  Firebase Messaging's start-up token
+  (`firebase_messaging_auto_init_enabled`), so an install with Firebase
+  configured gets a token only when the person turns the notice on.
+  Firebase still adds its receiver for Google Play services' messages
+  (`review/policy.json`).
 - **To turn it on for real:** a Firebase project with the Android app
   `dev.paulgsc.someui`, its `google-services.json` in `android/app/` (it is
   configuration, not a secret), and on the box the service account
