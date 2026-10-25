@@ -45,7 +45,8 @@
 // The review digest (#2048): AGENTS.md's "Review guidelines" restates
 // REVIEW.md for Codex. Each REVIEW.md `##` section has one bullet there whose
 // bold lead begins with the section's heading, and the two name the same
-// `check:*` scripts and declared invariant IDs; no bullet is left over.
+// `check:*` scripts and declared invariant IDs (backticked or not); no bullet
+// is left over.
 // A path in another repository is listed in `FOREIGN_PATHS`; an entry no
 // policy document uses fails, so the list only shrinks with the prose. A path
 // that is ignored or generated is not tracked: write it without backticks.
@@ -125,7 +126,7 @@ const HELD_BY =
   /^[>\s]*(?:[-*]\s+)?Held by: `pnpm (?<name>check:[\w-]+)`\.?\s*$/
 const SCRIPT_FILE = /\bscripts\/[\w./-]+\.(?:ts|mjs|js|sh)\b/
 const CHECK_NAME = /\bcheck:[\w-]+/g
-const ID_SPAN = /`([A-Z]{1,4}\d+)`/g
+const ID_WORD = /(?<![\w-])([A-Z]{1,4}\d+)(?![\w-])/g
 const BULLET_LEAD = /^- \*\*(?<lead>[^*]+)\*\*/
 
 export type PolicyViolation =
@@ -460,22 +461,44 @@ type Gate =
   | { readonly runs: ReadonlyArray<string> }
   | { readonly unreadable: string }
 
-/** The text of every `run:` in a job's lines, block scalars included. */
+/**
+ * The text of every `run:` in a job's steps, block scalars included, except a
+ * step that may not run or whose failure does not count (`if:`,
+ * `continue-on-error:`).
+ */
 function runsOf(body: ReadonlyArray<string>): string {
+  const steps: Array<Array<string>> = []
+  let column = -1
+  for (const line of body) {
+    const item = /^\s*-\s/.test(line)
+    if (item && (column === -1 || indentOf(line) === column)) {
+      column = indentOf(line)
+      steps.push([line])
+    } else if (column !== -1 && indentOf(line) > column)
+      steps.at(-1)?.push(line)
+  }
   const runs: Array<string> = []
-  for (const [at, line] of body.entries()) {
-    const value = /^\s*(?:-\s+)?run:\s*(?<value>.*)$/.exec(line)?.groups?.[
-      "value"
-    ]
-    if (value === undefined) continue
-    if (!/^[|>][-+]?$/.test(value)) {
-      runs.push(value)
-      continue
-    }
-    const column = indentOf(line)
-    for (const next of body.slice(at + 1)) {
-      if (indentOf(next) <= column) break
-      runs.push(next.trim())
+  for (const step of steps) {
+    const keyColumn = column + 2
+    const keys = step.map((line, at) =>
+      at === 0
+        ? line.replace(/^\s*-\s+/, "")
+        : indentOf(line) === keyColumn
+          ? line.trim()
+          : ""
+    )
+    if (keys.some((key) => /^(?:if|continue-on-error):/.test(key))) continue
+    for (const [at, key] of keys.entries()) {
+      const value = /^run:\s*(?<value>.*)$/.exec(key)?.groups?.["value"]
+      if (value === undefined) continue
+      if (!/^[|>][-+]?$/.test(value)) {
+        runs.push(value)
+        continue
+      }
+      for (const next of step.slice(at + 1)) {
+        if (indentOf(next) <= keyColumn) break
+        runs.push(next.trim())
+      }
     }
   }
   return runs.join("\n")
@@ -667,7 +690,7 @@ const leadKey = (text: string): string =>
 function namesIn(text: string, declared: ReadonlySet<string>): Set<string> {
   return new Set([
     ...[...text.matchAll(CHECK_NAME)].map(([name]) => name),
-    ...[...text.matchAll(ID_SPAN)]
+    ...[...text.matchAll(ID_WORD)]
       .map(([, id]) => id ?? "")
       .filter((id) => declared.has(id)),
   ])
@@ -873,7 +896,7 @@ export function describePolicyViolation(violation: PolicyViolation): string {
     case "heldByUnwired": {
       return violation.why === "noScript"
         ? `${violation.file}:${violation.line}: Held by \`pnpm ${violation.name}\`, which is not a script in the root package.json.`
-        : `${violation.file}:${violation.line}: Held by \`pnpm ${violation.name}\`, which no pr.yml job that CI Gate needs runs. Wire it in, or drop the line with the rule it held.`
+        : `${violation.file}:${violation.line}: Held by \`pnpm ${violation.name}\`, which no unconditional step of a pr.yml job that CI Gate needs runs. Wire it in, or drop the line with the rule it held.`
     }
     case "gateUnreadable": {
       return `.github/workflows/pr.yml: ${violation.why}, so no Held by line could be checked. The check reads a \`ci-gate\` job whose \`needs\` lists jobs that exist.`

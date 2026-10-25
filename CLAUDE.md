@@ -433,7 +433,7 @@ labels than the base branch has. In `CLAUDE.md`, `REVIEW.md` and
 `AGENTS.md` it fails a path or quoted-heading reference that points at nothing; a line
 `Held by: <check>` (the backticked `pnpm check:<name>`, alone on its line, under the rule it
 holds) whose script is not in the root `package.json` or is run by no `run:` of a `pr.yml` job
-CI Gate needs and may not skip, or a line starting `Held by` in another shape; and an `AGENTS.md` "Review guidelines" bullet that does not match a `REVIEW.md`
+CI Gate needs and may not skip (in a step with no `if:` or `continue-on-error:`), or a line starting `Held by` in another shape; and an `AGENTS.md` "Review guidelines" bullet that does not match a `REVIEW.md`
 section by its bold lead, or names other `check:*` scripts or declared invariant IDs. A rule held by a
 lint rule or a type names it in its own text and carries no `Held by:` line. A review does not
 re-check those. Whether a falsifier is decidable from a hunk, whether a claim

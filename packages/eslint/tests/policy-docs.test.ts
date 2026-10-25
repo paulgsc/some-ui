@@ -512,6 +512,24 @@ describe("findHeldByViolations", () => {
     ).toEqual(["heldByUnwired"])
   })
 
+  it("does not count a step that may not run or whose failure does not count", () => {
+    for (const key of ["if: false", "continue-on-error: true"]) {
+      const conditional = WORKFLOW.replace(
+        "      - run: pnpm check:a",
+        `      - run: pnpm check:a\n        ${key}`
+      )
+      expect(
+        kinds(findHeldByViolations(claude("check:a"), SCRIPTS, conditional)),
+        key
+      ).toEqual(["heldByUnwired"])
+    }
+    const named = WORKFLOW.replace(
+      "      - run: pnpm check:a",
+      "      - name: Check a\n        run: pnpm check:a"
+    )
+    expect(findHeldByViolations(claude("check:a"), SCRIPTS, named)).toEqual([])
+  })
+
   it("fails a line that starts Held by in any other shape", () => {
     for (const line of [
       "Held by `pnpm check:a`",
@@ -596,6 +614,25 @@ describe("findDigestViolations", () => {
         docs({ "REVIEW.md": REVIEW, "AGENTS.md": agents, "ids.md": DECLARED })
       )
     ).toEqual([{ kind: "digestExtra", lead: "A stray rule naming `ES2022`." }])
+  })
+
+  it("reads a declared ID written without backticks too", () => {
+    const review = REVIEW.replace(
+      "Evaluate `L3`'s falsifier.",
+      "Evaluate L3 and L4."
+    )
+    expect(
+      findDigestViolations(
+        docs({ "REVIEW.md": review, "AGENTS.md": AGENTS, "ids.md": DECLARED })
+      )
+    ).toEqual([
+      {
+        kind: "digestDrift",
+        heading: "Declared invariants: check the falsifier",
+        only: "REVIEW.md",
+        names: ["L4"],
+      },
+    ])
   })
 
   it("reports a check or ID named on one side only", () => {
