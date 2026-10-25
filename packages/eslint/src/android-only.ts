@@ -1,43 +1,42 @@
-// The tokens of "The phone is Android, and only Android" (CLAUDE.md, "The
-// phone and the desktop web are separate surfaces"), as a pure function over
-// the tracked files. `scripts/check-android-only.ts` runs it.
+// "The phone is Android, and only Android" (CLAUDE.md, "The phone and the
+// desktop web are separate surfaces"), as a pure function over the tracked
+// files. `scripts/check-android-only.ts` runs it.
 //
-// Nothing in this repo targets iOS, iPadOS or Safari, so none of these appears
-// in source or markup, comments included (the rule adds no comment for them):
-// - `webkitAudioContext`: Chrome has `AudioContext`;
-// - an Apple meta or link tag (`apple-touch-icon`, `apple-mobile-web-app-*`,
-//   `apple-itunes-app`);
-// - the words `iphone`, `ipad`, `ipados` and `ipod`, as in a user-agent test.
-// A tracked path that names one fails too, whatever the file is.
-//
-// Held here: those tokens, in files ending in `CODE_EXTENSIONS`. Not held, and
-// review's (REVIEW.md, "The phone is Android only"): whether any other line
-// exists "for" Safari. Chrome has `webkit`-prefixed APIs of its own, so a
-// prefix alone says nothing, and neither does `Safari` (Chrome's user agent
-// names it). Markdown and the typst canons are prose and outside the scan, so
-// a document can state the rule.
+// The Apple-only tokens in TOKENS fail in files ending in CODE_EXTENSIONS,
+// comments included, and in any tracked path's name. Markdown and the typst
+// canons are prose and outside the scan, so a document can state the rule.
+// `Safari` is no token (Chrome's user agent names it), and a `webkit` prefix
+// alone says nothing (Chrome has its own): those stay review's (REVIEW.md,
+// "The phone is Android only").
 
-/** Files that define the tokens above, so they name them. */
+/** Files that define the tokens, so they name them. */
 const EXEMPT: ReadonlySet<string> = new Set([
   "packages/eslint/src/android-only.ts",
   "packages/eslint/tests/android-only.test.ts",
 ])
 const CODE_EXTENSIONS =
   /\.(?:[cm]?[jt]sx?|html?|css|scss|jsonc?|webmanifest|xml|gradle|java|kt|rs|sh|toml|ya?ml)$/
-const LOCKFILE = /(?:^|\/)pnpm-lock\.yaml$/
 
 const TOKENS: ReadonlyArray<{
   readonly name: string
-  readonly pattern: RegExp
+  readonly patterns: ReadonlyArray<RegExp>
 }> = [
-  { name: "webkitAudioContext", pattern: /webkitAudioContext/i },
   {
-    name: "an Apple meta or link tag",
-    pattern: /apple-(?:touch|mobile-web-app|itunes)/i,
+    name: "webkitAudioContext",
+    patterns: [/webkit(?:Offline)?AudioContext/i],
   },
   {
-    name: "an iPhone, iPad or iPod branch",
-    pattern: /\b(?:iphone|ipad|ipados|ipod)\b/i,
+    name: "an Apple meta or link tag",
+    patterns: [/apple-(?:touch|mobile-web-app|itunes)/i],
+  },
+  {
+    name: "an iOS device name",
+    patterns: [
+      // Not inside another word (`ipAddress`, `tripod`), but after `_` or a digit.
+      /(?<![a-z])(?:iphone|ipados|ipad|ipod)(?![a-z])/i,
+      // camelCase: `isIPhone`.
+      /(?<=[a-z])(?:IPhone|IPad|IPod)(?![a-z])/,
+    ],
   },
 ]
 
@@ -55,7 +54,11 @@ export type AndroidOnlyViolation =
     }
 
 function inScope(path: string): boolean {
-  return CODE_EXTENSIONS.test(path) && !LOCKFILE.test(path) && !EXEMPT.has(path)
+  return CODE_EXTENSIONS.test(path) && !EXEMPT.has(path)
+}
+
+function hits(token: (typeof TOKENS)[number], text: string): boolean {
+  return token.patterns.some((pattern) => pattern.test(text))
 }
 
 /**
@@ -68,19 +71,19 @@ export function findAndroidOnlyViolations(
 ): Array<AndroidOnlyViolation> {
   const violations: Array<AndroidOnlyViolation> = []
   for (const file of [...tracked].sort()) {
-    for (const { name, pattern } of TOKENS) {
-      if (!EXEMPT.has(file) && pattern.test(file))
-        violations.push({ kind: "path", file, token: name })
+    for (const token of TOKENS) {
+      if (hits(token, file))
+        violations.push({ kind: "path", file, token: token.name })
     }
     if (!inScope(file)) continue
     for (const [index, text] of read(file).split("\n").entries()) {
-      for (const { name, pattern } of TOKENS) {
-        if (pattern.test(text))
+      for (const token of TOKENS) {
+        if (hits(token, text))
           violations.push({
             kind: "token",
             file,
             line: index + 1,
-            token: name,
+            token: token.name,
           })
       }
     }
@@ -88,8 +91,7 @@ export function findAndroidOnlyViolations(
   return violations
 }
 
-const RULE =
-  'The phone is Android only (CLAUDE.md, "The phone and the desktop web are separate surfaces"): delete it.'
+const RULE = "The phone is Android only: delete it."
 
 /** One human-readable line per violation, naming the fix. */
 export function describeAndroidOnlyViolation(

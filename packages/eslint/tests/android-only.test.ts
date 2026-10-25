@@ -56,29 +56,40 @@ describe("findAndroidOnlyViolations: tokens", () => {
         kind: "token",
         file: "src/a.ts",
         line: 3,
-        token: "an iPhone, iPad or iPod branch",
+        token: "an iOS device name",
       },
     ])
   })
 
-  it("reads a token in any case, and in a comment", () => {
+  it("reads a token in any case, in a comment, and in an identifier", () => {
     for (const text of [
       "// handles WEBKITAUDIOCONTEXT",
+      "const Ctx = window.webkitOfflineAudioContext",
       "/* iPadOS quirk */",
       "const isPod = /ipod/i.test(ua)",
       "// Apple-Touch-Icon",
+      "const isIPhone = test(ua)",
+      "const isIPad = test(ua)",
+      "const IS_IPHONE = test(ua)",
+      "const is_ipad = test(ua)",
+      'device: "iPhone15"',
     ]) {
       expect(scan({ "a.ts": text })).toHaveLength(1)
     }
   })
 
-  it("matches the words, not their letters inside another word", () => {
+  it("leaves a name that only contains the letters of one", () => {
     for (const text of [
-      "const shipadding = 1",
+      "const ipAddress = host()",
+      "const ipaddr = host()",
+      'import ipaddr from "ipaddr.js"',
+      "const tripod = stand()",
       "ipodium()",
       "unipad",
       "const pineapple = touch()",
       "apple-pie",
+      'const t = "x86_64-apple-darwin"',
+      "font-family: -apple-system, sans-serif",
     ]) {
       expect(scan({ "a.ts": text })).toEqual([])
     }
@@ -95,15 +106,9 @@ describe("findAndroidOnlyViolations: tokens", () => {
 })
 
 describe("findAndroidOnlyViolations: scope", () => {
-  it("scans source and markup, not prose or lockfiles", () => {
+  it("scans source and markup, not prose", () => {
     const token = "iPhone apple-touch-icon webkitAudioContext"
-    for (const path of [
-      "CLAUDE.md",
-      "docs/canon/x.typ",
-      "pnpm-lock.yaml",
-      "apps/www/pnpm-lock.yaml",
-      "image.png",
-    ]) {
+    for (const path of ["CLAUDE.md", "docs/canon/x.typ", "image.png"]) {
       expect(scan({ [path]: token })).toEqual([])
     }
     for (const path of [
@@ -148,6 +153,7 @@ describe("findAndroidOnlyViolations: scope", () => {
       scan({
         "apps/www/public/apple-touch-icon.png": "",
         "docs/iPhone-notes.md": "",
+        "assets/my_ipad.png": "",
         "src/fine.ts": "",
       })
     ).toEqual([
@@ -158,16 +164,15 @@ describe("findAndroidOnlyViolations: scope", () => {
       },
       {
         kind: "path",
+        file: "assets/my_ipad.png",
+        token: "an iOS device name",
+      },
+      {
+        kind: "path",
         file: "docs/iPhone-notes.md",
-        token: "an iPhone, iPad or iPod branch",
+        token: "an iOS device name",
       },
     ])
-  })
-
-  it("orders the violations by path", () => {
-    expect(
-      scan({ "b.ts": "iphone", "a.ts": "iphone" }).map((v) => v.file)
-    ).toEqual(["a.ts", "b.ts"])
   })
 })
 

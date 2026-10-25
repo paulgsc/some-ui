@@ -40,7 +40,7 @@ apply to any agent working here, not only Claude.
   `kind:defect` the same way.
 - **The phone is Android only.** No finding that reproduces only on iOS, iPadOS or
   Safari. A hunk that adds code, a test, a fallback or a comment for them is blocking.
-  `pnpm check:android-only` already fails `webkitAudioContext`, Apple meta and link tags and
-  the words `iphone`, `ipad`, `ipados` and `ipod`; do not re-check those.
+  `pnpm check:android-only` already fails the tokens `CLAUDE.md` lists; what stays is anything
+  they do not reach (another spelling, a prose file, any other line that exists for them).
 
 Full text: `REVIEW.md`.
