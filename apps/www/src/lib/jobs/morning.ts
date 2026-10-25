@@ -80,10 +80,7 @@ function afterDue(at: Date, today: string): boolean {
  * The record that speaks for Pacific day `today`'s run, of `runs` (newest
  * first): the newest that added the picks, or else the newest, or null.
  */
-function runOf(
-  runs: ReadonlyArray<JobsRun>,
-  today: string
-): JobsRun | null {
+function runOf(runs: ReadonlyArray<JobsRun>, today: string): JobsRun | null {
   const todays = runs.filter((r) => pacificDay(new Date(r.startedAt)) === today)
   return todays.find((r) => r.added.length > 0) ?? todays.at(0) ?? null
 }
