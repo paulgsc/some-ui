@@ -35,6 +35,15 @@ const err = (line: string): void => void process.stderr.write(`${line}\n`)
 const MARKDOWN = ".md"
 const WORKFLOW = ".github/workflows/pr.yml"
 
+// Missing, it reads as a workflow with no jobs, which the check reports.
+function readWorkflow(root: string): string {
+  try {
+    return readFileSync(join(root, WORKFLOW), "utf8")
+  } catch {
+    return ""
+  }
+}
+
 function rootScripts(root: string): Record<string, string> {
   const manifest: unknown = JSON.parse(
     readFileSync(join(root, "package.json"), "utf8")
@@ -65,7 +74,9 @@ function main(): void {
   try {
     const { ref, resolved } = resolveBaseRef(root, process.argv.slice(2))
     base = resolved ? readFilesAt(root, ref, MARKDOWN) : null
-    held = resolved ? `IDs kept since ${ref}` : `IDs not compared, no ${ref}`
+    held = resolved
+      ? `IDs and debt held against ${ref}`
+      : `IDs and debt not compared, no ${ref}`
   } catch (error) {
     err(
       `[policy-docs] ${error instanceof Error ? error.message : String(error)}`
@@ -77,11 +88,7 @@ function main(): void {
   const violations = [
     ...findInvariantViolations(docs, base),
     ...findDebtViolations(docs, base),
-    ...findHeldByViolations(
-      docs,
-      rootScripts(root),
-      readFileSync(join(root, WORKFLOW), "utf8")
-    ),
+    ...findHeldByViolations(docs, rootScripts(root), readWorkflow(root)),
     ...findDigestViolations(docs),
     ...findReferenceViolations(docs, tracked),
   ]

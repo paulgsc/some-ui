@@ -60,7 +60,7 @@ const TESTS = ["src/**/__tests__/**", "src/**/*.test.{ts,tsx}"]
 
 // A4 (packages/some-vite-config/AUDIENCES.md): the web surface's door hands
 // out its gated workspaces only through its index, so nothing reaches below
-// it. Inside the door, write such an import relative.
+// it. The door's own files are held to it too; none imports another through `@/`.
 const DOOR_PATTERN = {
   regex: "^@/lib/web-surface/",
   message:

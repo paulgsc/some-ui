@@ -305,11 +305,27 @@ describe("findDebtLabels", () => {
       "mechanical, not yet a rule.",
       "mechanical and not yet a rule.",
       'mechanical ("mechanical;\n  not yet a rule").',
-      "Mechanical;\n>   not yet\n>   a rule.",
     ]) {
-      const text = withWhy(why).replace(/^/gm, why.includes(">") ? "> " : "")
-      expect(findDebtLabels(text), why).toHaveLength(1)
+      expect(findDebtLabels(withWhy(why)), why).toHaveLength(1)
     }
+    const quoted = withWhy("Mechanical;\n  not yet\n  a rule.").replace(
+      /^/gm,
+      "> "
+    )
+    expect(findDebtLabels(quoted)).toHaveLength(1)
+  })
+
+  it("reads only the parts: prose before, between or after them is not counted", () => {
+    const text = [
+      "**A1: A thing.**",
+      "",
+      "Intro prose, mechanical; not yet a rule.",
+      "",
+      ...PARTS,
+      "",
+      "Trailing prose, mechanical; not yet a rule. Tracked: #4",
+    ].join("\n")
+    expect(findDebtLabels(text)).toEqual([])
   })
 
   it("gives the label's own line, and whether its block names an issue", () => {
@@ -327,13 +343,6 @@ describe("findDebtLabels", () => {
       "mechanical; not yet a rule",
     ].join("\n")
     expect(findDebtLabels(text)).toEqual([])
-  })
-
-  it("ends a block at the next heading, so a later label is not its", () => {
-    const text = `${withWhy("mechanical; not yet a rule.")}\n\n## Next\n\nTracked: #3`
-    expect(findDebtLabels(text)).toEqual([
-      { id: "A1", line: 6, tracked: false },
-    ])
   })
 })
 
@@ -453,7 +462,70 @@ describe("findHeldByViolations", () => {
         SCRIPTS,
         "jobs:\n  lint:\n"
       )
-    ).toEqual([{ kind: "gateUnreadable" }])
+    ).toEqual([{ kind: "gateUnreadable", why: "no `ci-gate` job" }])
+    expect(
+      findHeldByViolations(
+        claude("check:a"),
+        SCRIPTS,
+        WORKFLOW.replace("        guard,", "        guard,\n        gone,")
+      )
+    ).toEqual([
+      {
+        kind: "gateUnreadable",
+        why: "`ci-gate` needs `gone`, which is no job",
+      },
+    ])
+  })
+
+  it("drops comments: in the needs list, after it, on a job line, and as a run's only mention", () => {
+    const commented = WORKFLOW.replace(
+      "        lint,",
+      "        # stray may skip\n        lint,"
+    )
+      .replace("      ]", "      ] # all of them")
+      .replace("  guard:", "  guard: # the second")
+    expect(
+      findHeldByViolations(claude("check:a", "check:b"), SCRIPTS, commented)
+    ).toEqual([])
+    const echoed = WORKFLOW.replace(
+      "      - run: pnpm check:a",
+      "      - run: echo skipped # pnpm check:a"
+    )
+    expect(
+      kinds(findHeldByViolations(claude("check:a"), SCRIPTS, echoed))
+    ).toEqual(["heldByUnwired"])
+  })
+
+  it("reads a block scalar run, and not a job the gate may skip or a longer name", () => {
+    const block = WORKFLOW.replace(
+      "      - run: pnpm check:a",
+      "      - run: |\n          echo first\n          pnpm check:a --strict"
+    )
+    expect(findHeldByViolations(claude("check:a"), SCRIPTS, block)).toEqual([])
+    const skippable = `${WORKFLOW}\n      with:\n        allowed-skips: lint, stray`
+    expect(
+      kinds(findHeldByViolations(claude("check:a"), SCRIPTS, skippable))
+    ).toEqual(["heldByUnwired"])
+    const longer = WORKFLOW.replace("pnpm check:a", "pnpm check:a-longer")
+    expect(
+      kinds(findHeldByViolations(claude("check:a"), SCRIPTS, longer))
+    ).toEqual(["heldByUnwired"])
+  })
+
+  it("fails a line that starts Held by in any other shape", () => {
+    for (const line of [
+      "Held by `pnpm check:a`",
+      "Held by: pnpm check:a",
+      "**Held by:** `pnpm check:a`",
+      "Held by: `pnpm check:a`, `pnpm check:b`",
+    ]) {
+      expect(
+        kinds(
+          findHeldByViolations(docs({ "CLAUDE.md": line }), SCRIPTS, WORKFLOW)
+        ),
+        line
+      ).toEqual(["heldByMalformed"])
+    }
   })
 
   it("reads only a line that is the label alone, outside fences", () => {
@@ -466,6 +538,8 @@ describe("findHeldByViolations", () => {
 })
 
 describe("findDigestViolations", () => {
+  // The IDs the digest compares are the declared ones.
+  const DECLARED = [declaration("L3"), declaration("L4")].join("\n\n")
   const REVIEW = [
     "# REVIEW.md",
     "",
@@ -492,7 +566,9 @@ describe("findDigestViolations", () => {
 
   it("is quiet when each section has its bullet, naming the same checks and IDs", () => {
     expect(
-      findDigestViolations(docs({ "REVIEW.md": REVIEW, "AGENTS.md": AGENTS }))
+      findDigestViolations(
+        docs({ "REVIEW.md": REVIEW, "AGENTS.md": AGENTS, "ids.md": DECLARED })
+      )
     ).toEqual([])
   })
 
@@ -503,15 +579,31 @@ describe("findDigestViolations", () => {
     )
     expect(
       kinds(
-        findDigestViolations(docs({ "REVIEW.md": REVIEW, "AGENTS.md": agents }))
+        findDigestViolations(
+          docs({ "REVIEW.md": REVIEW, "AGENTS.md": agents, "ids.md": DECLARED })
+        )
       )
     ).toEqual(["digestMissing", "digestExtra"])
+  })
+
+  it("leaves out a bullet with no bold lead, and an undeclared ID-shaped name", () => {
+    const agents = AGENTS.replace(
+      "Full text",
+      "- A stray rule naming `ES2022`.\n\nFull text"
+    )
+    expect(
+      findDigestViolations(
+        docs({ "REVIEW.md": REVIEW, "AGENTS.md": agents, "ids.md": DECLARED })
+      )
+    ).toEqual([{ kind: "digestExtra", lead: "A stray rule naming `ES2022`." }])
   })
 
   it("reports a check or ID named on one side only", () => {
     const agents = AGENTS.replace("As `L3`", "As `L4`")
     expect(
-      findDigestViolations(docs({ "REVIEW.md": REVIEW, "AGENTS.md": agents }))
+      findDigestViolations(
+        docs({ "REVIEW.md": REVIEW, "AGENTS.md": agents, "ids.md": DECLARED })
+      )
     ).toEqual([
       {
         kind: "digestDrift",

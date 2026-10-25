@@ -27,23 +27,25 @@
 //   ("Two kinds of pull request" for "Two kinds of pull request: the story
 //   moved, or a promise broke").
 //
-// Debt, in any markdown file's declaration blocks (#2047): the label
+// Debt, in any markdown file's declarations (#2047): the label
 // "mechanical; not yet a rule" (also with a comma or "and", across line breaks
-// and quote markers) needs a `Tracked: #<issue>` in the same block, and the
-// tree holds no more of them than the base ref does. A label outside a
-// declaration describes the format and is not counted.
+// and quote markers) needs a `Tracked: #<issue>` in the same parts, and the
+// tree holds no more of them than the base ref does. Only a declaration's part
+// items are read (`partsText`): a label in other prose describes the format
+// and is not counted, nor is a quoted copy's.
 //
 // Held by, in the policy documents (#2046): a line `Held by: \`pnpm
 // check:<name>\`` says a check holds the rule it sits under. The script is in
-// the root package.json, and a pr.yml job CI Gate needs runs it (as `pnpm
-// check:<name>` or by the file its script runs), so removing or unwiring the
-// check fails the change that does it. A lint rule or a type is held by its
+// the root package.json, and a `run:` of a pr.yml job CI Gate needs, and may
+// not skip, runs it (as `pnpm check:<name>` or by the file its script runs), so
+// removing or unwiring the check fails the change that does it. A line that
+// starts `Held by` in any other shape fails too. A lint rule or a type is held by its
 // config, which the rule's own text names; the line is for check scripts.
 //
 // The review digest (#2048): AGENTS.md's "Review guidelines" restates
 // REVIEW.md for Codex. Each REVIEW.md `##` section has one bullet there whose
 // bold lead begins with the section's heading, and the two name the same
-// `check:*` scripts and backticked invariant IDs; no bullet is left over.
+// `check:*` scripts and declared invariant IDs; no bullet is left over.
 // A path in another repository is listed in `FOREIGN_PATHS`; an entry no
 // policy document uses fails, so the list only shrinks with the prose. A path
 // that is ignored or generated is not tracked: write it without backticks.
@@ -51,6 +53,8 @@
 // A script, not an ESLint rule, for test-layout.ts's reason: both checks read
 // other files. Lexical, like workflow-guards.ts: each rule accepts a closed
 // shape. Whether a falsifier is decidable and a claim true stays review's.
+
+import { indentOf, isBlankOrComment, scalarValue } from "./workflow-guards.ts"
 
 const POLICY_DOCS: ReadonlyArray<string> = [
   "CLAUDE.md",
@@ -115,9 +119,10 @@ const DEBT_LABEL =
   /mechanical(?:[;,]|[\s>]+and)[\s>]+not[\s>]+yet[\s>]+a[\s>]+rule/gi
 const TRACKED = /Tracked:[\s>]*#\d+/
 
+const QUOTED_MARK = /^\s*>\s?/
+const HELD_BY_START = /^[>\s]*(?:[-*]\s+)?\**Held by\b/
 const HELD_BY =
   /^[>\s]*(?:[-*]\s+)?Held by: `pnpm (?<name>check:[\w-]+)`\.?\s*$/
-const JOB = /^ {2}(?<id>[\w-]+):\s*$/
 const SCRIPT_FILE = /\bscripts\/[\w./-]+\.(?:ts|mjs|js|sh)\b/
 const CHECK_NAME = /\bcheck:[\w-]+/g
 const ID_SPAN = /`([A-Z]{1,4}\d+)`/g
@@ -172,7 +177,12 @@ export type PolicyViolation =
       readonly name: string
       readonly why: "noScript" | "notInGate"
     }
-  | { readonly kind: "gateUnreadable" }
+  | { readonly kind: "gateUnreadable"; readonly why: string }
+  | {
+      readonly kind: "heldByMalformed"
+      readonly file: string
+      readonly line: number
+    }
   | {
       readonly kind: "digestMissing"
       readonly heading: string
@@ -268,6 +278,28 @@ function blocksOf(text: string): Array<Block> {
     })
   }
   return blocks
+}
+
+/**
+ * A block's part items (`_Claim:_` … `_Retired:_`) with their indented
+ * continuation lines, other lines blanked so offsets still give lines. Prose
+ * between or after the parts is not a part.
+ */
+function partsText(block: Block): string {
+  let inPart = false
+  return block.lines
+    .map((line, at) => {
+      if (at === 0) return ""
+      const content = line.replace(QUOTED_MARK, "")
+      const item = content.replace(/^\s*[-*]\s+/, "")
+      if (Object.values(PART_LINE).some((part) => part.test(item))) {
+        inPart = true
+        return line
+      }
+      inPart &&= /^\s+\S/.test(content) && !/^\s*[-*]\s/.test(content)
+      return inPart ? line : ""
+    })
+    .join("\n")
 }
 
 /** Every declaration in one file's text, with the parts its block lacks. */
@@ -369,16 +401,16 @@ export type DebtLabel = {
   readonly tracked: boolean
 }
 
-/** The debt labels in one file's declaration blocks, with their lines. */
+/** The debt labels in one file's declaration parts, with their lines. */
 export function findDebtLabels(text: string): Array<DebtLabel> {
   const labels: Array<DebtLabel> = []
   for (const block of blocksOf(text)) {
-    const joined = block.lines.join("\n")
-    const tracked = TRACKED.test(joined)
-    for (const match of joined.matchAll(DEBT_LABEL)) {
+    const parts = partsText(block)
+    const tracked = TRACKED.test(parts)
+    for (const match of parts.matchAll(DEBT_LABEL)) {
       labels.push({
         id: block.id,
-        line: block.index + lineAt(joined, match.index),
+        line: block.index + lineAt(parts, match.index),
         tracked,
       })
     }
@@ -395,13 +427,17 @@ export function findDebtViolations(
   base: ReadonlyMap<string, string> | null
 ): Array<PolicyViolation> {
   const count = (files: ReadonlyMap<string, string>): number =>
-    [...files.values()].reduce(
-      (sum, text) => sum + findDebtLabels(text).length,
+    [...files].reduce(
+      (sum, [file, text]) =>
+        sum +
+        findDebtLabels(text).filter(({ id }) => QUOTED_COPIES.get(id) !== file)
+          .length,
       0
     )
   const violations: Array<PolicyViolation> = []
   for (const file of [...docs.keys()].sort()) {
     for (const label of findDebtLabels(docs.get(file) ?? "")) {
+      if (QUOTED_COPIES.get(label.id) === file) continue
       if (!label.tracked)
         violations.push({
           kind: "untrackedDebt",
@@ -420,48 +456,108 @@ export function findDebtViolations(
   return violations
 }
 
-/**
- * The jobs CI Gate needs in pr.yml's text, each with its block, or null when
- * the gate or its `needs` cannot be read (a closed shape: a flow list, or a
- * block list of `- <job>` lines).
- */
-function gatedJobs(workflow: string): Map<string, string> | null {
-  const all = lines(workflow)
-  const jobs = new Map<string, string>()
-  let current: { id: string; body: Array<string> } | null = null
-  for (const line of all) {
-    const id = JOB.exec(line)?.groups?.["id"]
-    if (id !== undefined) {
-      if (current !== null) jobs.set(current.id, current.body.join("\n"))
-      current = { id, body: [] }
-    } else if (current !== null) {
-      if (/^\S/.test(line)) {
-        jobs.set(current.id, current.body.join("\n"))
-        current = null
-      } else current.body.push(line)
+type Gate =
+  | { readonly runs: ReadonlyArray<string> }
+  | { readonly unreadable: string }
+
+/** The text of every `run:` in a job's lines, block scalars included. */
+function runsOf(body: ReadonlyArray<string>): string {
+  const runs: Array<string> = []
+  for (const [at, line] of body.entries()) {
+    const value = /^\s*(?:-\s+)?run:\s*(?<value>.*)$/.exec(line)?.groups?.[
+      "value"
+    ]
+    if (value === undefined) continue
+    if (!/^[|>][-+]?$/.test(value)) {
+      runs.push(value)
+      continue
+    }
+    const column = indentOf(line)
+    for (const next of body.slice(at + 1)) {
+      if (indentOf(next) <= column) break
+      runs.push(next.trim())
     }
   }
-  if (current !== null) jobs.set(current.id, current.body.join("\n"))
-  const gate = jobs.get("ci-gate")
-  if (gate === undefined) return null
-  const needs = /^ {4}needs:(?<rest>[^]*?)(?=^ {4}\w|(?![^]))/m.exec(gate)
-    ?.groups?.["rest"]
-  if (needs === undefined) return null
-  const ids = [...needs.matchAll(/[\w-]+/g)].map(([id]) => id)
-  if (ids.length === 0) return null
-  const gated = new Map<string, string>()
-  for (const id of ids) {
-    const body = jobs.get(id)
-    if (body === undefined) return null
-    gated.set(id, body)
-  }
-  return gated
+  return runs.join("\n")
 }
 
 /**
- * The `Held by:` lines in the policy documents whose check is missing from
- * `scripts` (the root package.json's) or run by no job CI Gate needs in
- * `workflow` (pr.yml's text).
+ * pr.yml's jobs that CI Gate needs and does not allow to skip, as the text of
+ * their `run:` steps; or why the gate could not be read. Comments are dropped
+ * first, as the workflow guards drop them.
+ */
+function gateOf(workflow: string): Gate {
+  const all = lines(workflow)
+    .filter((line) => !isBlankOrComment(line))
+    .map((line) => line.replace(/\s+#.*$/, ""))
+  const top = all.findIndex((line) => line === "jobs:")
+  const column = indentOf(all[top + 1] ?? "")
+  if (top === -1 || column === 0) return { unreadable: "no `jobs:` map" }
+  const jobs = new Map<string, Array<string>>()
+  let current: Array<string> | null = null
+  for (const line of all.slice(top + 1)) {
+    if (indentOf(line) === 0) break
+    const id =
+      indentOf(line) === column ? /^\s*(?<id>[\w-]+):\s*$/.exec(line) : null
+    if (id?.groups?.["id"] !== undefined) {
+      current = []
+      jobs.set(id.groups["id"], current)
+    } else current?.push(line)
+  }
+  const gate = jobs.get("ci-gate")
+  if (gate === undefined) return { unreadable: "no `ci-gate` job" }
+  const at = gate.findIndex((line) => /^\s*needs:/.test(line))
+  if (at === -1) return { unreadable: "`ci-gate` has no `needs`" }
+  const needsLine = gate[at] ?? ""
+  const inline = needsLine.replace(/^\s*needs:/, "")
+  const needed: Array<string> = []
+  const flow =
+    inline.trim() !== "" || (gate[at + 1] ?? "").trim().startsWith("[")
+  if (!flow) {
+    for (const next of gate.slice(at + 1)) {
+      const item = /^\s*-\s*(?<id>[\w-]+)\s*$/.exec(next)?.groups?.["id"]
+      if (indentOf(next) <= indentOf(needsLine) || item === undefined) break
+      needed.push(item)
+    }
+  } else {
+    let text = inline
+    for (const next of gate.slice(at + 1)) {
+      if (text.includes("]")) break
+      text += next
+    }
+    if (!text.includes("[") || !text.includes("]"))
+      return { unreadable: "`ci-gate`'s `needs` list is not closed" }
+    needed.push(...[...text.matchAll(/[\w-]+/g)].map(([id]) => id))
+  }
+  if (needed.length === 0) return { unreadable: "`ci-gate` needs no job" }
+  const skips = new Set(
+    gate
+      .map(
+        (line) =>
+          /^\s*allowed-skips:(?<value>.*)$/.exec(line)?.groups?.["value"]
+      )
+      .flatMap((value) =>
+        value === undefined ? [] : scalarValue(value).split(",")
+      )
+      .map((id) => id.trim())
+  )
+  const runs: Array<string> = []
+  for (const id of needed) {
+    const body = jobs.get(id)
+    if (body === undefined)
+      return { unreadable: `\`ci-gate\` needs \`${id}\`, which is no job` }
+    if (!skips.has(id)) runs.push(runsOf(body))
+  }
+  return { runs }
+}
+
+const escapeRegExp = (text: string): string =>
+  text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+
+/**
+ * The `Held by:` lines in the policy documents that do not parse, or whose
+ * check is missing from `scripts` (the root package.json's) or run by no
+ * `run:` of a job CI Gate needs and may not skip in `workflow` (pr.yml's text).
  */
 export function findHeldByViolations(
   docs: ReadonlyMap<string, string>,
@@ -469,14 +565,18 @@ export function findHeldByViolations(
   workflow: string
 ): Array<PolicyViolation> {
   const violations: Array<PolicyViolation> = []
-  const gated = gatedJobs(workflow)
+  const gate = gateOf(workflow)
   let reported = false
   for (const file of POLICY_DOCS) {
     for (const [index, line] of lines(
       withoutFences(docs.get(file) ?? "")
     ).entries()) {
+      if (!HELD_BY_START.test(line)) continue
       const name = HELD_BY.exec(line)?.groups?.["name"]
-      if (name === undefined) continue
+      if (name === undefined) {
+        violations.push({ kind: "heldByMalformed", file, line: index + 1 })
+        continue
+      }
       const script = scripts[name]
       if (script === undefined) {
         violations.push({
@@ -488,16 +588,20 @@ export function findHeldByViolations(
         })
         continue
       }
-      if (gated === null) {
-        if (!reported) violations.push({ kind: "gateUnreadable" })
+      if ("unreadable" in gate) {
+        if (!reported)
+          violations.push({ kind: "gateUnreadable", why: gate.unreadable })
         reported = true
         continue
       }
       const target = SCRIPT_FILE.exec(script)?.[0]
-      const runs = [...gated.values()].some(
-        (body) =>
-          body.includes(`pnpm ${name}`) ||
-          (target !== undefined && body.includes(target))
+      const byName = new RegExp(`pnpm ${escapeRegExp(name)}(?![\\w:-])`)
+      const byFile =
+        target === undefined
+          ? null
+          : new RegExp(`(?<![\\w./-])${escapeRegExp(target)}(?![\\w.-])`)
+      const runs = gate.runs.some(
+        (text) => byName.test(text) || (byFile?.test(text) ?? false)
       )
       if (!runs)
         violations.push({
@@ -532,39 +636,40 @@ function sectionsOf(text: string): Map<string, string> {
   return sections
 }
 
-/** AGENTS.md's "Review guidelines" bullets: bold lead -> the bullet's text. */
+/**
+ * AGENTS.md's "Review guidelines" bullets: bold lead -> the bullet's text. A
+ * bullet with no bold lead is keyed by its first line, so it is left over.
+ */
 function digestBullets(text: string): Map<string, string> {
   const section = sectionsOf(text).get("Review guidelines") ?? ""
   const bullets = new Map<string, string>()
   let lead: string | null = null
   let body: Array<string> = []
+  const close = (): void => {
+    if (lead !== null) bullets.set(lead, body.join("\n"))
+    lead = null
+  }
   for (const line of lines(section)) {
-    const found = BULLET_LEAD.exec(line)?.groups?.["lead"]
-    if (found !== undefined) {
-      if (lead !== null) bullets.set(lead, body.join("\n"))
-      lead = found
+    if (line.startsWith("- ")) {
+      close()
+      lead = BULLET_LEAD.exec(line)?.groups?.["lead"] ?? line.slice(2)
       body = [line]
     } else if (lead !== null && /^\s+\S/.test(line)) body.push(line)
-    else if (lead !== null && line.trim() !== "") {
-      bullets.set(lead, body.join("\n"))
-      lead = null
-    }
+    else if (line.trim() !== "") close()
   }
-  if (lead !== null) bullets.set(lead, body.join("\n"))
+  close()
   return bullets
 }
 
 const leadKey = (text: string): string =>
-  text
-    .replace(/[.:]\s*$/, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase()
+  normalizeHeading(text).replace(/[.:]$/, "")
 
-function namesIn(text: string): Set<string> {
+function namesIn(text: string, declared: ReadonlySet<string>): Set<string> {
   return new Set([
     ...[...text.matchAll(CHECK_NAME)].map(([name]) => name),
-    ...[...text.matchAll(ID_SPAN)].map(([, id]) => id ?? ""),
+    ...[...text.matchAll(ID_SPAN)]
+      .map(([, id]) => id ?? "")
+      .filter((id) => declared.has(id)),
   ])
 }
 
@@ -576,19 +681,21 @@ export function findDigestViolations(
   const agents = docs.get("AGENTS.md")
   if (review === undefined || agents === undefined) return []
   const bullets = digestBullets(agents)
+  const declared = new Set(scan(docs).declarations.map(({ id }) => id))
   const used = new Set<string>()
   const violations: Array<PolicyViolation> = []
   for (const [heading, body] of sectionsOf(review)) {
-    const lead = [...bullets.keys()].find((candidate) =>
-      leadKey(candidate).startsWith(leadKey(heading))
+    const lead = [...bullets.keys()].find(
+      (candidate) =>
+        !used.has(candidate) && leadKey(candidate).startsWith(leadKey(heading))
     )
     if (lead === undefined) {
       violations.push({ kind: "digestMissing", heading })
       continue
     }
     used.add(lead)
-    const inReview = namesIn(body)
-    const inAgents = namesIn(bullets.get(lead) ?? "")
+    const inReview = namesIn(body, declared)
+    const inAgents = namesIn(bullets.get(lead) ?? "", declared)
     const onlyReview = [...inReview].filter((name) => !inAgents.has(name))
     const onlyAgents = [...inAgents].filter((name) => !inReview.has(name))
     if (onlyReview.length > 0)
@@ -769,7 +876,10 @@ export function describePolicyViolation(violation: PolicyViolation): string {
         : `${violation.file}:${violation.line}: Held by \`pnpm ${violation.name}\`, which no pr.yml job that CI Gate needs runs. Wire it in, or drop the line with the rule it held.`
     }
     case "gateUnreadable": {
-      return `.github/workflows/pr.yml: CI Gate's \`needs\` could not be read (a \`ci-gate\` job whose \`needs\` is a list of jobs that exist), so no Held by line could be checked.`
+      return `.github/workflows/pr.yml: ${violation.why}, so no Held by line could be checked. The check reads a \`ci-gate\` job whose \`needs\` lists jobs that exist.`
+    }
+    case "heldByMalformed": {
+      return `${violation.file}:${violation.line}: a line starting "Held by" must be "Held by:" and one backticked pnpm check:<name>, alone on its line.`
     }
     case "digestMissing": {
       return `REVIEW.md's section "${violation.heading}" has no bullet in AGENTS.md's "Review guidelines" whose bold lead begins with it.`

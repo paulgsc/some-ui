@@ -179,7 +179,7 @@ the shortest life that works, and nothing recreated leaves its old copy behind.
   (30 days, one kept) and the Play review's inputs (3 days). Artifacts cannot be
   overwritten across runs, so a short `retention-days` is how a recreated one leaves no tail.
 - **Enforced by `pnpm check:workflows`** (`scripts/check-workflows.ts`, rules in
-  `packages/eslint/src/workflow-guards.ts`). The same script carries RS1's fingerprint and RS2's grep
+  `packages/eslint/src/workflow-guards.ts`), also in root `pnpm lint`. The same script carries RS1's fingerprint and RS2's grep
   (above). It reads the value only as a direct child of the step's block-style `with:`
   map, where the action gets it; anywhere else it does not count, and a flow-style
   `with: {...}` or `- {uses: ...}` step fails as unreadable. It finds steps by their `uses:` line, so an upload
@@ -249,7 +249,7 @@ not need, an Apple meta tag, a Safari-version workaround, an iPhone branch), and
 delete one you find while working. A finding that reproduces only on iOS or
 Safari is answered with this rule, not fixed or filed. A few tokens are held by
 `pnpm check:android-only` (`scripts/check-android-only.ts`, rule in
-`packages/eslint/src/android-only.ts`): `webkitAudioContext`, an Apple meta or link tag (`apple-touch-*`,
+`packages/eslint/src/android-only.ts`; also in root `pnpm lint`): `webkitAudioContext`, an Apple meta or link tag (`apple-touch-*`,
 `apple-mobile-web-app-*`, `apple-itunes-*`), and an iOS device name (`iphone`, `ipad`,
 `ipados`, `ipod`, in any case, and inside an identifier like `isIPhone`). It reads source and
 markup files (code, HTML, CSS, JSON, XML, workflows; not Markdown or typst prose), comments
@@ -300,7 +300,8 @@ trees named `__tests__/` or `tests/` (`packages/eslint/tests`,
 `packages/some-styles/styles-build/tests`) are exempt from the one-per-directory limit.
 
 This is enforced, not advisory: `pnpm check:test-layout` (`scripts/check-test-layout.ts`,
-rule in `packages/eslint/src/test-layout.ts`) fails a tree that breaks it (#772, #1475). Colocating a second test beside the file you're editing is the easy path,
+rule in `packages/eslint/src/test-layout.ts`) fails the PR workflow and root `pnpm lint`
+(#772, #1475). Colocating a second test beside the file you're editing is the easy path,
 and it fails that check. The check is deliberately not an ESLint rule: `eslint --cache`
 re-uses a file's result until the file itself changes, so a sibling-dependent verdict
 goes stale. When moving tests, prefer the package's path alias over `../`, which most
@@ -336,7 +337,7 @@ is not the coordinator" has the shape, the model to copy (topik's `core/`) and i
 `packages/ui/lesson-crm`'s turn counters in refs are grandfathered debt, not precedent: do
 not match that surrounding code.
 
-Enforced as a count, not a verdict: `pnpm check:react-coordination` fails when a React module, component or hook, has more or fewer
+Enforced as a count, not a verdict: `pnpm check:react-coordination` (also in root `pnpm lint`) fails when a React module, component or hook, has more or fewer
 `await`/`.then`/`.catch`/`.finally` sites than `scripts/react-coordination.allowlist` says. An
 entry is allowed when the reason is real: put it in its own group under
 `# Coordination: <the external work, and why it cannot live outside React>`, never in the
@@ -424,16 +425,16 @@ invariant kept only what a person has to judge:
 >   Whether it is true needs a person to read it.
 
 **What a check holds.** `pnpm check:policy-docs` (`scripts/check-policy-docs.ts`, rules in
-`packages/eslint/src/policy-docs.ts`) fails, in any markdown file, a declaration (a line
+`packages/eslint/src/policy-docs.ts`; also in root `pnpm lint`) fails, in any markdown file, a declaration (a line
 starting `**<ID>:`) with no `_Claim:_`, `_Falsified by_`, `_Scope:_` or `_Why not …:_` line,
 an ID declared twice, and an ID declared at the base branch and not now; the debt label above in a
-declaration (any spelling, across line breaks) with no `Tracked: #<issue>`, and more such
+declaration's parts (its three spellings, across line breaks) with no `Tracked: #<issue>`, and more such
 labels than the base branch has. In `CLAUDE.md`, `REVIEW.md` and
 `AGENTS.md` it fails a path or quoted-heading reference that points at nothing; a line
 `Held by: <check>` (the backticked `pnpm check:<name>`, alone on its line, under the rule it
-holds) whose script is not in the root `package.json` or is run by no `pr.yml` job CI Gate
-needs; and an `AGENTS.md` "Review guidelines" bullet that does not match a `REVIEW.md`
-section by its bold lead, or names other `check:*` scripts or invariant IDs. A rule held by a
+holds) whose script is not in the root `package.json` or is run by no `run:` of a `pr.yml` job
+CI Gate needs and may not skip, or a line starting `Held by` in another shape; and an `AGENTS.md` "Review guidelines" bullet that does not match a `REVIEW.md`
+section by its bold lead, or names other `check:*` scripts or declared invariant IDs. A rule held by a
 lint rule or a type names it in its own text and carries no `Held by:` line. A review does not
 re-check those. Whether a falsifier is decidable from a hunk, whether a claim
 is true, whether an old ID now carries a different claim and whether a sentence should be a

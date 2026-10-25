@@ -143,17 +143,17 @@ const ENV_KEY = /^\s*env:(.*)$/
 const RETENTION_TAG = /^#+\s*Retention:\s*\S/
 const DAYS = /^[1-9][0-9]*$/
 
-function indentOf(line: string): number {
+export function indentOf(line: string): number {
   return line.length - line.trimStart().length
 }
 
-function isBlankOrComment(line: string): boolean {
+export function isBlankOrComment(line: string): boolean {
   const trimmed = line.trim()
   return trimmed === "" || trimmed.startsWith("#")
 }
 
 // `"1"`, `'1'` and `1 # note` all read as `1`.
-function scalarValue(raw: string): string {
+export function scalarValue(raw: string): string {
   const withoutComment = raw.replace(/\s+#.*$/, "").trim()
   const quoted = /^(["'])(.*)\1$/.exec(withoutComment)
   return quoted?.[2] ?? withoutComment
