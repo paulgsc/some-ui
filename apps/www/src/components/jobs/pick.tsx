@@ -15,6 +15,7 @@ import {
   FRICTION,
   MAX_DEBRIEF_MINUTES,
   MAX_NOTE,
+  pacificDay,
   PASS_REASONS,
 } from "@some-ui/job-desk"
 import { Badge, Button, Input, Label, Textarea } from "@some-ui/shared"
@@ -32,7 +33,6 @@ import {
   fitNoteSays,
   fitNotesOf,
   kitOf,
-  pacificDay,
   pickOwner,
   progressOf,
   standingOf,

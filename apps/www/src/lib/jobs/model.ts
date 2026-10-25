@@ -38,6 +38,7 @@ import {
   MAX_POSTING_TEXT,
   MAX_SCOUT_TITLE,
   MAX_URL,
+  pacificDay,
   TRACKS,
 } from "@some-ui/job-desk"
 
@@ -547,16 +548,6 @@ export function placesFull(digest: Digest): boolean {
   if (digest.queue === null) return false
   const room = freeSlots(digest.queue.open)
   return TRACKS.every((track) => room[track] === 0)
-}
-
-/** The Pacific calendar day of `at`, `YYYY-MM-DD`: the morning run's "today". */
-export function pacificDay(at: Date): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Los_Angeles",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(at)
 }
 
 export type Decision = Exclude<(typeof DECISIONS)[number], "untouched">

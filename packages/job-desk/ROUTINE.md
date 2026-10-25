@@ -16,7 +16,10 @@ nothing else in the repo.
 
 Beside Drive there is the mailbox (§0.4), a small service that holds the same
 files. The run also puts the digest there (§8) and reads my decisions and
-scouts from it as well as from Drive (§2). Drive stays the first route.
+scouts from it as well as from Drive (§2). Drive stays the first route. And
+every run, one that stops early included, leaves a record there of what it
+did (§9): the phone has no other way to tell a run that found nothing from
+one that never finished.
 
 The shapes are this package's schemas, and `src/sample.digest.json`
 is a complete digest to copy. The limits (picks per track, open picks,
@@ -25,15 +28,26 @@ policy disagree, the policy wins and this file is the bug.
 
 ## 0. Before anything
 
-1. Read the Google Doc titled `README — Drive SOP` in My Drive. It is the rule
+Note when the run started, before anything else; it is the run record's
+`startedAt` (§9):
+
+```sh
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+
+Wherever this file says to stop, write no digest, but still write the run
+record (§9) and the summary (§10). Nothing ends a run before those two.
+
+1. If this session has no Google Drive connector, stop (§9). Otherwise read
+   the Google Doc titled `README — Drive SOP` in My Drive. It is the rule
    for where files go, and its `some-ui jobs/` section holds the folder ids.
    Every Drive result's owner must be paulgathondudev@gmail.com; if one isn't,
-   stop.
-2. If this session can't run a web search and an HTTPS GET, stop and say
-   so. Write no digest: a digest from yesterday's postings would read as
+   stop (§9).
+2. If this session can't run a web search and an HTTPS GET, stop (§9) and
+   say so. Write no digest: a digest from yesterday's postings would read as
    today's.
 3. List `some-ui jobs/Brief/`. If `digest-<today>.json` is already there,
-   stop and say so. A digest is never replaced.
+   stop (§9) and say so. A digest is never replaced.
 4. The mailbox. `JOBS_MAILBOX_URL` (no trailing slash) and `JOBS_MAILBOX_TOKEN`
    are set in this session's environment. If either is unset or empty, skip
    every mailbox step in this file, carry on with Drive alone, and say so in
@@ -630,12 +644,14 @@ shorter limit, first person, the gaps) is yours to hold.
    ```
 
    It must print `[]`. Fix every finding and check again; never upload a
-   digest with findings.
+   digest with findings. A digest you can't make pass is not uploaded: the
+   run stops (§9).
 
 5. Upload it as `digest-<today>.json` into `some-ui jobs/Brief/`: bare JSON,
    `contentMimeType` `application/json`, `disableConversionToGoogleType`
    true. Confirm the result's mimeType is `application/json` and its fileSize
-   equals the local file's byte count.
+   equals the local file's byte count. If the upload fails, the run stops
+   (§9): a digest that isn't in Drive doesn't go to the mailbox either.
 
 6. If the mailbox is usable (§0.4), put the same bytes there, now that Drive
    has them. Use `--data-binary`, which sends the file exactly; `--data` strips
@@ -667,7 +683,83 @@ shorter limit, first person, the gaps) is yours to hold.
 Never edit, move, rename or trash anything under `some-ui jobs/`. Triage
 `Inbox/` per the SOP if it holds anything.
 
-## 9. Summary
+## 9. The run record
+
+Last, on every run, whatever happened, the run leaves one record in the
+mailbox's `run` folder. It is how the phone says "couldn't finish" and why,
+so it is written even when nothing else was. The shape is `JobsRunSchema` in
+`src/run.ts`:
+
+```json
+{
+  "schema": "some-ui.routine-run/1",
+  "routine": "jobs",
+  "startedAt": "2026-10-26T14:52:07Z",
+  "finishedAt": "2026-10-26T15:01:40Z",
+  "outcome": "partly",
+  "found": { "postings": 7, "scouts": 1, "decisions": 2 },
+  "added": [
+    {
+      "folder": "brief",
+      "name": "digest-2026-10-26.json",
+      "title": "2 picks from 7 postings"
+    }
+  ],
+  "problems": ["One voice note couldn't be heard, so it waits for tomorrow."]
+}
+```
+
+- `startedAt` is the time §0 noted; `finishedAt` is now, as you write it.
+- `outcome` is `stopped` when no digest reached Drive (a stop in §0, a digest
+  that wouldn't pass its check, a failed upload). It is `partly` when the
+  digest reached Drive but something this run set out to do wasn't done: a
+  file the checker turned down or whose bytes didn't match, a voice note
+  that couldn't be transcribed, a form that couldn't be read, a résumé PR
+  whose checks failed, a mailbox that turned the digest down. Otherwise it is
+  `done`. Picking nothing is `done`: weak postings or full places are what
+  the run found, not something it failed at.
+- `found` is what the run read: `postings` is the digest's `seen` (0 when it
+  searched nothing), `scouts` and `decisions` the new Scout and Decisions
+  files it took in (§2).
+- `added` is today's digest once it is in Drive, with a `title` saying in a
+  few words what it holds ("2 picks from 7 postings", "No picks: your places
+  were full"); empty when the run stopped.
+- `problems` is empty for `done`, and otherwise says why, one plain sentence
+  each, most important first: the phone shows the first one. Say what was
+  or wasn't done in my terms, never how: no mailbox, status code, address,
+  variable, file format or section of this file. "This session couldn't
+  search the web, so there are no picks today." "Today's picks were already
+  in Drive, so this run added none."
+
+1. Save it as bare JSON to a scratch file named `run-jobs-<stamp>.json`,
+   the stamp being `startedAt` without its `-` and `:`
+   (`run-jobs-20261026T145207Z.json`, `runFileName`). Check it from the repo
+   root, as §8 checks the digest:
+
+   ```sh
+   pnpm --filter @some-ui/job-desk build
+   pnpm --filter @some-ui/job-desk check <scratch>/run-jobs-<stamp>.json
+   ```
+
+   It must print `[]`; fix every finding and check again. A record that
+   can't be made to pass isn't put: say so in the summary.
+
+2. If §0.4 hasn't run (the run stopped before it), run its check now. If the
+   mailbox is usable, put the record, once:
+
+   ```sh
+   curl -sS --max-time 30 -X PUT \
+     -H "Authorization: Bearer $JOBS_MAILBOX_TOKEN" \
+     -H "Content-Type: application/json" \
+     --data-binary @<scratch>/run-jobs-<stamp>.json -w '\n%{http_code}\n' \
+     "$JOBS_MAILBOX_URL/v1/run/items/run-jobs-<stamp>.json"
+   ```
+
+   `201` (added) and `200` (unchanged) are both success. Anything else, or a
+   mailbox that isn't usable: say so in the summary, and don't retry. A run puts one record, under the name its
+   start gives it, and never a second.
+
+## 10. Summary
 
 End with: the queue (each open pick with its digest day, which postings
 closed, each pick that lapsed, and each track's free slots); each pick with its track, scores and
@@ -677,4 +769,5 @@ each redraft, by its pick, or why a fit note got none; each
 scout's verdict; the calibration note, once there are enough outcomes; the
 mailbox (whether the digest was added, was already there or was refused, and
 why; the files taken in from it; any name whose bytes differed from Drive's; or
-that it was skipped, and why); and anything skipped, with why.
+that it was skipped, and why); the run record (its outcome and problems, and
+whether the mailbox took it); and anything skipped, with why.

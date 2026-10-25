@@ -124,10 +124,14 @@ role, and it is the owner's call, so it is not built.
 scene folder's name>","decks":[<read-aloud deck>,<lens deck>]}`, each deck exactly as the
   phone's word set check takes it. **A drama** is `{"schema":"some-ui.routine-drama/1",
 "answers":"drama-<stamp>","tree":<the drama, as the phone's scene check takes it>}`. **A run**
-  is `{"schema":"some-ui.routine-run/1","routine":"reflections","startedAt","finishedAt",
-"outcome":"done"|"partly"|"stopped","found":{"reflections","prompts"},"added":[{"folder",
-"name","title"}],"problems":["<a plain sentence>"]}`: what that run found unanswered, the
-  files it put, and what it could not do. Topik's `adapter/routine-runs` reads it. **An opened
+  is `{"schema":"some-ui.routine-run/1","routine","startedAt","finishedAt",
+"outcome":"done"|"partly"|"stopped","found":{…},"added":[{"folder","name","title"}],
+"problems":["<a plain sentence>"]}`: what that run found, the files it put, and what it could
+  not do. `routine` names the routine, as the file's name does, and decides what `found` counts:
+  the reflections routine's (`{"reflections","prompts"}`, read by Topik's
+  `adapter/routine-runs`) or the jobs routine's (`{"postings","scouts","decisions"}`, its
+  `added` today's `brief`; `@some-ui/job-desk`'s `JobsRunSchema`, `ROUTINE.md` §9). Each reader
+  leaves out the other routine's runs. **An opened
   filing** is `{"schema":"some-ui.routine-opened/1","opened":["scene/<name>","drama/<name>"],
 "at"}`: every listed lesson the phone had opened when it filed, as home builds it
   (paulgsc/server `PUT /routine/opened`). **A LeetType session** is
