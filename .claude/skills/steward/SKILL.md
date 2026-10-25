@@ -6,9 +6,9 @@ description: Repo-specific PR-driving policy Claude Code consults before acting 
 # steward
 
 Mechanics for driving a PR to green in this repo, distilled from this org's own multi-session
-relay history — long-running stories that span many sessions, each one picking up from a
-self-contained handoff the previous session wrote (see `handoff-template.md` in this
-directory). Nothing here weakens a "never" rule the parent Claude Code instructions state
+relay history — long-running stories that span many sessions, each one picking up from the
+epic issue and the Residual Ledger item the previous session left current (`CLAUDE.md`,
+"Multi-session relay work"). Nothing here weakens a "never" rule the parent Claude Code instructions state
 (skip a real CI failure, disable or quarantine a test, rewrite someone else's branch history,
 widen a PR beyond what a finding needs) — it only nails down mechanics sessions on this relay
 have gotten wrong before, so the next one doesn't have to relearn them.
@@ -189,8 +189,8 @@ missing structure or invariant a future story needs to build), the default move 
 as a tracked sub-issue of the story** (`sub_issue_write`, parented to the issue this PR closes)
 rather than only disclosing it on the PR thread per the rule above. A PR thread is read once and
 then scrolls away; a tracked sub-issue survives to whichever future story actually needs it.
-Also record it in that session's own handoff, under "Continuing the relay" — a sub-issue filed
-but never mentioned in the handoff is easy for the next session to miss entirely.
+Also name it in the epic's "Where we are" — a sub-issue filed but never mentioned there is easy
+for the next session to miss entirely.
 
 **This now applies to the capped closing review too**, which is what its own "substantive ->
 file it and merge" branch above means in practice: file first, then merge, so the deferral is
@@ -231,9 +231,9 @@ reporting `skipped` is the confirming signal.
 
 ## Auto-merge, when the user has standing-authorized it for this repo
 
-Standing authorization is scoped to the exact repo(s) it was granted for and must be restated
-in every handoff, not assumed to persist silently — a grant for this repo does not imply
-`paulgsc/server`, or vice versa. When it applies here: confirm CI is green on the _current_
+Standing authorization is scoped to the exact repo(s) it was granted for and must be written
+in the epic it was granted for, not assumed to persist silently — a grant for this repo does
+not imply `paulgsc/server`, or vice versa. When it applies here: confirm CI is green on the _current_
 head (per the freshness check above), confirm `mergeable_state: "clean"`, confirm review
 coverage on the current head ("Review coverage on every head" above) — "no unresolved thread"
 is not the same as "reviewed," since a review requested but not yet answered creates no
