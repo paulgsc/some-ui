@@ -48,7 +48,7 @@ a LAN-only page talks to is the server's to guard.
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Types | `gates` is a total record over the gated audiences, so a new audience fails `tsc` until it has a gate; profile audiences are checked against `AUDIENCES`                                                                                                                                                                                                                                                                                                                             |
 | Build | `audiencePlugin` fails the build on a missing or invalid `someUi` field, and on an import of a gated workspace from outside its gate, in **every** profile (not only the ones that stub it)                                                                                                                                                                                                                                                                                          |
-| CI    | `pnpm check:ui-manifests` (the plugin's own manifest reader, run from source) runs on every PR and in root `pnpm lint`, so a workspace no app builds yet still fails the PR that adds it; turbo hashes `SOME_UI_PROFILE` for `www#build`                                                                                                                                                                                                                                             |
+| CI    | `pnpm check:ui-manifests` (the plugin's own manifest reader, run from source) runs on every PR and in root `pnpm lint`, so a workspace no app builds yet still fails the PR that adds it; it also walks each non-`public` workspace's `./contract` (A2); turbo hashes `SOME_UI_PROFILE` for `www#build`                                                                                                                                                                              |
 | Tests | `src/audience/__tests__/plugin.test.ts` (real builds over a fixture workspace: stubs, contract, boundary, manifests); `apps/www/src/routes/__tests__/audience-gates.test.ts` (every route under every gate is not-found without its audience, and loads with it; a source file outside the gates that names a gated path must import `hasAudience`, with the gated paths taken from the route tree so moves and new gates are covered; pins the router behaviour the gate relies on) |
 
 The router behaviour that test pins, measured on `@tanstack/react-router` 1.170: before a
@@ -93,22 +93,28 @@ is a regression, not debt. Each falsifier covers deletions and moves as well as 
 - _Claim:_ in a workspace whose `someUi.audience` is not `public`, the module its
   `package.json` exports as `./contract`, and every module that one imports relatively,
   import values only from `zod` and from each other; every other import is `import type`.
-- _Falsified by_ a hunk, in such a module, that adds a value import from any other specifier
-  or turns an `import type` into a value import; or that adds a relative import of a module
-  not already in the contract's graph, when that module, or any module it imports relatively,
-  does not meet the claim (read the newly imported module and follow its relative imports);
-  or a hunk to that workspace's `package.json` that points `exports["./contract"]` at a
-  module not meeting the claim, or makes the workspace non-`public` while its contract
-  module does not meet it.
-- _Scope:_ `packages/ui/*` workspaces with a non-`public` audience. Held: the one contract
-  in the repo, `@some-ui/soundbites`'s `src/contract.ts`, re-exports `src/lib/policy.ts`,
-  whose one import is `import type`; `@some-ui/lesson-crm` exports no `./contract`.
-- _Why not enforced:_ **mechanical; not yet a rule.** The plugin never stubs `/contract`, so
-  whatever a contract module imports ships in every profile: a size regression, not a
-  broken build, so neither the build nor an existing test notices. A lint rule would see one
-  file at a time, but the claim is about the contract's whole relative-import graph, rooted
-  at `package.json#exports` in another file. A test can walk that graph (the way
-  `check:ui-manifests` walks manifests); nobody has written it yet.
+- _Falsified by_ a hunk to `src/audience/contract.ts` or `scripts/check-ui-manifests.ts`
+  that makes the check allow more than the claim or read less of it: a value specifier
+  allowed besides `zod`, an import form that stays in the output read as a type import, a
+  relative import left out of the graph, a non-`public` workspace skipped, or a contract it
+  cannot trace passing; or that stops it running: either file deleted, renamed or moved, or
+  `check:ui-manifests` dropped from the root `lint` script or from pr.yml's node job.
+- _Scope:_ `packages/some-vite-config/src/audience/contract.ts`,
+  `scripts/check-ui-manifests.ts`, and `packages/ui/*` workspaces with a non-`public`
+  audience. Held: the one contract in the repo, `@some-ui/soundbites`'s `src/contract.ts`,
+  re-exports `src/lib/policy.ts`, whose one import is `import type`, so its graph is those
+  two modules and `src/lib/types.ts`; `@some-ui/lesson-crm` exports no `./contract`.
+- _Why not wholly enforced:_ the graph is enforced. `pnpm check:ui-manifests` finds each
+  such workspace's contract source (the `entries.contract` of its `vite.config.ts`, the
+  entry the build turns into that export), follows every relative import, `import type`
+  included, and fails a value import of anything but `zod`, an import it cannot read, and a
+  contract whose source it cannot find. No check sees its own wiring edited away, which is
+  why the falsifier names those files.
+- _Checked at landing:_ the walk passes on soundbites' three modules. Four breaks of that
+  contract, each tried and then undone, failed it: a value import of `react`, an
+  `import { type X }` of another package (kept by `verbatimModuleSyntax`), a contract that
+  re-exported the main entry (whose own imports then failed it), and a `vite.config.ts` with
+  no `entries.contract`.
 
 **A3: Public UI offers a gated route only when the build carries it.**
 
