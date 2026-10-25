@@ -179,14 +179,16 @@ the shortest life that works, and nothing recreated leaves its old copy behind.
   (30 days, one kept) and the Play review's inputs (3 days). Artifacts cannot be
   overwritten across runs, so a short `retention-days` is how a recreated one leaves no tail.
 - **Enforced by `pnpm check:workflows`** (`scripts/check-workflows.ts`, rules in
-  `packages/eslint/src/workflow-guards.ts`), in root `pnpm lint` and as its own `pr.yml`
-  job that CI Gate requires. The same script carries RS1's fingerprint and RS2's grep
+  `packages/eslint/src/workflow-guards.ts`). The same script carries RS1's fingerprint and RS2's grep
   (above). It reads the value only as a direct child of the step's block-style `with:`
   map, where the action gets it; anywhere else it does not count, and a flow-style
   `with: {...}` or `- {uses: ...}` step fails as unreadable. It finds steps by their `uses:` line, so an upload
   wrapped in a composite action or another publisher's upload action is not seen: add
   it to the rule when one appears, as `docker/build-push-action`'s build record was
   (its step must set `DOCKER_BUILD_RECORD_UPLOAD: false`).
+
+  Held by: `pnpm check:workflows`
+
 - **Every artifact and cache belongs to a family** in `packages/eslint/src/retention.ts`:
   one state machine, each family an instance with its `keep` (validated generations kept
   per lineage, 0 for one consumed inside its run), its TTL, and for caches a scope
@@ -247,8 +249,7 @@ not need, an Apple meta tag, a Safari-version workaround, an iPhone branch), and
 delete one you find while working. A finding that reproduces only on iOS or
 Safari is answered with this rule, not fixed or filed. A few tokens are held by
 `pnpm check:android-only` (`scripts/check-android-only.ts`, rule in
-`packages/eslint/src/android-only.ts`; root `pnpm lint`, and a `pr.yml` job CI Gate
-requires): `webkitAudioContext`, an Apple meta or link tag (`apple-touch-*`,
+`packages/eslint/src/android-only.ts`): `webkitAudioContext`, an Apple meta or link tag (`apple-touch-*`,
 `apple-mobile-web-app-*`, `apple-itunes-*`), and an iOS device name (`iphone`, `ipad`,
 `ipados`, `ipod`, in any case, and inside an identifier like `isIPhone`). It reads source and
 markup files (code, HTML, CSS, JSON, XML, workflows; not Markdown or typst prose), comments
@@ -257,6 +258,8 @@ included, and every tracked path's name, where an iOS project's own files (an `i
 reading of intent, since Chrome has
 `webkit`-prefixed APIs of its own, so this stays a review rule (`REVIEW.md`, "The phone is
 Android only"), not a declared invariant: a reviewer judges the hunk.
+
+Held by: `pnpm check:android-only`
 
 ## Vestiges
 
@@ -297,13 +300,14 @@ trees named `__tests__/` or `tests/` (`packages/eslint/tests`,
 `packages/some-styles/styles-build/tests`) are exempt from the one-per-directory limit.
 
 This is enforced, not advisory: `pnpm check:test-layout` (`scripts/check-test-layout.ts`,
-rule in `packages/eslint/src/test-layout.ts`) fails the PR workflow and root `pnpm lint`
-(#772, #1475). Colocating a second test beside the file you're editing is the easy path,
+rule in `packages/eslint/src/test-layout.ts`) fails a tree that breaks it (#772, #1475). Colocating a second test beside the file you're editing is the easy path,
 and it fails that check. The check is deliberately not an ESLint rule: `eslint --cache`
 re-uses a file's result until the file itself changes, so a sibling-dependent verdict
 goes stale. When moving tests, prefer the package's path alias over `../`, which most
 workspaces ban. Watch any test that derives a directory from `import.meta.url` to scan it:
 it now sits one level deeper and can pass having scanned nothing.
+
+Held by: `pnpm check:test-layout`
 
 ## Deleting is in scope
 
@@ -332,17 +336,20 @@ is not the coordinator" has the shape, the model to copy (topik's `core/`) and i
 `packages/ui/lesson-crm`'s turn counters in refs are grandfathered debt, not precedent: do
 not match that surrounding code.
 
-Enforced as a count, not a verdict: `pnpm check:react-coordination` (root `pnpm lint`, and a
-pr.yml job CI Gate requires) fails when a React module, component or hook, has more or fewer
+Enforced as a count, not a verdict: `pnpm check:react-coordination` fails when a React module, component or hook, has more or fewer
 `await`/`.then`/`.catch`/`.finally` sites than `scripts/react-coordination.allowlist` says. An
 entry is allowed when the reason is real: put it in its own group under
 `# Coordination: <the external work, and why it cannot live outside React>`, never in the
 grandfathered group. If the only honest reason is "it needs an await", the code belongs in the
 runtime instead.
 
+Held by: `pnpm check:react-coordination`
+
 A port to anything we do not own (a native plugin, `navigator`, `Notification`) waits through
 `callForeign` (`@some-ui/intent-kit`), never its own failure union or timeout; `unavailable` means
 withdraw the control. `pnpm check:foreign-boundary` counts bare waits as R1 does (F1).
+
+Held by: `pnpm check:foreign-boundary`
 
 A component or hook that seeds `useState`/`useReducer` from its own prop or from the clock keeps
 a copy frozen at mount while the owner moves on; #1659's review found that five times, one per
@@ -366,7 +373,8 @@ or widening the rule would flag correct code), types, and tests (the state space
 open-ended, or only a real browser shows it). If something _could_ be enforced
 mechanically, enforce it instead. If it is enforceable but not yet enforced, it may be
 declared, but labelled **"mechanical; not yet a rule"** so it reads as debt, not as a
-permanent gap.
+permanent gap, with `Tracked: #<issue>` in its block naming the issue that will make it a
+check.
 
 **Shape.** Every invariant has an ID and all four parts:
 
@@ -416,13 +424,22 @@ invariant kept only what a person has to judge:
 >   Whether it is true needs a person to read it.
 
 **What a check holds.** `pnpm check:policy-docs` (`scripts/check-policy-docs.ts`, rules in
-`packages/eslint/src/policy-docs.ts`; root `pnpm lint`, and a `pr.yml` job CI Gate requires)
-fails, in any markdown file, a declaration (a line starting `**<ID>:`) with no `_Claim:_`,
-`_Falsified by_`, `_Scope:_` or `_Why not …:_` line, an ID declared twice, and an ID declared
-at the base branch and not now; and, in `CLAUDE.md`, `REVIEW.md` and `AGENTS.md`, a path or
-quoted-heading reference that points at nothing. A review does not re-check those. Whether a falsifier is decidable from a hunk, whether a claim
+`packages/eslint/src/policy-docs.ts`) fails, in any markdown file, a declaration (a line
+starting `**<ID>:`) with no `_Claim:_`, `_Falsified by_`, `_Scope:_` or `_Why not …:_` line,
+an ID declared twice, and an ID declared at the base branch and not now; the debt label above in a
+declaration (any spelling, across line breaks) with no `Tracked: #<issue>`, and more such
+labels than the base branch has. In `CLAUDE.md`, `REVIEW.md` and
+`AGENTS.md` it fails a path or quoted-heading reference that points at nothing; a line
+`Held by: <check>` (the backticked `pnpm check:<name>`, alone on its line, under the rule it
+holds) whose script is not in the root `package.json` or is run by no `pr.yml` job CI Gate
+needs; and an `AGENTS.md` "Review guidelines" bullet that does not match a `REVIEW.md`
+section by its bold lead, or names other `check:*` scripts or invariant IDs. A rule held by a
+lint rule or a type names it in its own text and carries no `Held by:` line. A review does not
+re-check those. Whether a falsifier is decidable from a hunk, whether a claim
 is true, whether an old ID now carries a different claim and whether a sentence should be a
 rule stay review's.
+
+Held by: `pnpm check:policy-docs`
 
 **Per-site tags: state the fact where the code hides it.** When a claim is about many sites
 rather than one rule, as L3's `Lifetime:` line is, the invariant can govern a tagged comment
@@ -500,10 +517,12 @@ Co-Authored-By: …
 
 Every commit but a merge, a revert or a fixup carries `Change-Kind: story` or
 `Change-Kind: defect`, and `pnpm check:commit-trailers` (`packages/eslint/src/commit-trailers.ts`)
-holds the shapes below: the commit-msg hook runs it on the message being written, and a
-`pr.yml` job that CI Gate requires runs it on every commit a PR adds. Commits a bot writes are
+holds the shapes below: the commit-msg hook runs it on the message being written, and CI on
+every commit a PR adds. Commits a bot writes are
 exempt; a person's or an agent's commit on a bot's PR carries its own trailer. Keeping up with
 a dependency (a renamed export, a changed default) is a story: no promise changed.
+
+Held by: `pnpm check:commit-trailers`
 
 The commit that declares or amends a promise adds `Promise: <ID> <path>… | <dimension>, …`:
 its scope's paths, then its Family's dimensions, so a later search can match either. For a

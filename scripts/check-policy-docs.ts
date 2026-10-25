@@ -5,7 +5,7 @@
 //
 //   node scripts/check-policy-docs.ts [--base <ref>]
 //
-// The invariant IDs are held against the base ref's (`--base <ref>`, else
+// The invariant IDs and the debt label count are held against the base ref's (`--base <ref>`, else
 // `origin/main` where it exists). Wired into the root `lint` script and
 // pr.yml's `policy-docs` job, which CI Gate requires. Runs on Node's built-in
 // type stripping, with no install (see scripts/check-test-layout.ts).
@@ -23,6 +23,9 @@ import {
 // eslint-disable-next-line no-restricted-imports
 import {
   describePolicyViolation,
+  findDebtViolations,
+  findDigestViolations,
+  findHeldByViolations,
   findInvariantViolations,
   findReferenceViolations,
 } from "../packages/eslint/src/policy-docs.ts"
@@ -30,6 +33,23 @@ import {
 const out = (line: string): void => void process.stdout.write(`${line}\n`)
 const err = (line: string): void => void process.stderr.write(`${line}\n`)
 const MARKDOWN = ".md"
+const WORKFLOW = ".github/workflows/pr.yml"
+
+function rootScripts(root: string): Record<string, string> {
+  const manifest: unknown = JSON.parse(
+    readFileSync(join(root, "package.json"), "utf8")
+  )
+  const scripts: unknown =
+    typeof manifest === "object" && manifest !== null
+      ? Reflect.get(manifest, "scripts")
+      : undefined
+  if (typeof scripts !== "object" || scripts === null) return {}
+  return Object.fromEntries(
+    Object.entries(scripts).filter(
+      (entry): entry is [string, string] => typeof entry[1] === "string"
+    )
+  )
+}
 
 function main(): void {
   const root = repoRoot()
@@ -56,6 +76,13 @@ function main(): void {
 
   const violations = [
     ...findInvariantViolations(docs, base),
+    ...findDebtViolations(docs, base),
+    ...findHeldByViolations(
+      docs,
+      rootScripts(root),
+      readFileSync(join(root, WORKFLOW), "utf8")
+    ),
+    ...findDigestViolations(docs),
     ...findReferenceViolations(docs, tracked),
   ]
   for (const violation of violations) {

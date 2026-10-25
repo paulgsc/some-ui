@@ -15,7 +15,7 @@ apply to any agent working here, not only Claude.
     violation elsewhere;
   - **it matches:** one finding citing the ID and the lines. Invariants marked "not
     reviewable" are never flagged.
-- **A change that declares or edits an invariant:** `pnpm check:policy-docs` already fails a
+- **Reviewing a change that declares or edits an invariant:** `pnpm check:policy-docs` already fails a
   missing part, a reused ID and a dropped one; do not re-check those. Flag it if it has a part
   that is there in name only, a falsifier that can't be decided from the hunk and the file it
   changes, or that covers only additions (missing a deletion, rename or move that also breaks

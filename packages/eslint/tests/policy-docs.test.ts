@@ -6,6 +6,10 @@
 
 import {
   describePolicyViolation,
+  findDebtLabels,
+  findDebtViolations,
+  findDigestViolations,
+  findHeldByViolations,
   findInvariantViolations,
   findReferenceViolations,
   parseDeclarations,
@@ -290,6 +294,240 @@ const policy = (
     "AGENTS.md": "# Agents\n",
     ...others,
   })
+
+describe("findDebtLabels", () => {
+  const withWhy = (why: string): string =>
+    declaration("A1", [...PARTS.slice(0, 3), `- _Why not enforced:_ ${why}`])
+
+  it("finds the label in each spelling, wrapped, quoted and bold", () => {
+    for (const why of [
+      "**mechanical; not yet a rule.**",
+      "mechanical, not yet a rule.",
+      "mechanical and not yet a rule.",
+      'mechanical ("mechanical;\n  not yet a rule").',
+      "Mechanical;\n>   not yet\n>   a rule.",
+    ]) {
+      const text = withWhy(why).replace(/^/gm, why.includes(">") ? "> " : "")
+      expect(findDebtLabels(text), why).toHaveLength(1)
+    }
+  })
+
+  it("gives the label's own line, and whether its block names an issue", () => {
+    const text = `intro\n\n${withWhy("a reason;\n  mechanical; not yet a rule. Tracked: #12")}`
+    expect(findDebtLabels(text)).toEqual([{ id: "A1", line: 9, tracked: true }])
+  })
+
+  it("counts only labels inside a declaration, outside fences", () => {
+    const text = [
+      'An invariant may be labelled "mechanical; not yet a rule".',
+      "```md",
+      withWhy("mechanical; not yet a rule"),
+      "```",
+      "## Next",
+      "mechanical; not yet a rule",
+    ].join("\n")
+    expect(findDebtLabels(text)).toEqual([])
+  })
+
+  it("ends a block at the next heading, so a later label is not its", () => {
+    const text = `${withWhy("mechanical; not yet a rule.")}\n\n## Next\n\nTracked: #3`
+    expect(findDebtLabels(text)).toEqual([
+      { id: "A1", line: 6, tracked: false },
+    ])
+  })
+})
+
+describe("findDebtViolations", () => {
+  const debt = (id: string, tracked: boolean): string =>
+    declaration(id, [
+      ...PARTS.slice(0, 3),
+      `- _Why not enforced:_ mechanical; not yet a rule.${tracked ? " Tracked: #9" : ""}`,
+    ])
+
+  it("reports a label with no issue", () => {
+    const violations = findDebtViolations(
+      docs({ "a.md": debt("A1", false), "b.md": debt("B1", true) }),
+      null
+    )
+    expect(violations).toEqual([
+      { kind: "untrackedDebt", file: "a.md", line: 6, id: "A1" },
+    ])
+    expect(describePolicyViolation(violations[0]!)).toContain("Tracked: #")
+  })
+
+  it("holds the count to the base's: more fails, the same or fewer does not", () => {
+    const base = docs({ "a.md": debt("A1", true) })
+    expect(
+      findDebtViolations(docs({ "a.md": debt("A1", true) }), base)
+    ).toEqual([])
+    expect(
+      findDebtViolations(docs({ "a.md": declaration("A1") }), base)
+    ).toEqual([])
+    expect(
+      findDebtViolations(
+        docs({ "a.md": debt("A1", true), "b.md": debt("B1", true) }),
+        base
+      )
+    ).toEqual([{ kind: "debtGrew", count: 2, base: 1 }])
+    expect(
+      findDebtViolations(
+        docs({ "a.md": debt("A1", true), "b.md": debt("B1", true) }),
+        null
+      )
+    ).toEqual([])
+  })
+})
+
+describe("findHeldByViolations", () => {
+  const WORKFLOW = [
+    "jobs:",
+    "  lint:",
+    "    steps:",
+    "      - run: pnpm check:a",
+    "  guard:",
+    "    steps:",
+    "      - run: node scripts/check-b.ts --base x",
+    "  stray:",
+    "    steps:",
+    "      - run: pnpm check:c",
+    "  ci-gate:",
+    "    needs:",
+    "      [",
+    "        lint,",
+    "        guard,",
+    "      ]",
+    "    steps:",
+    "      - uses: re-actors/alls-green@v1.3.0",
+  ].join("\n")
+  const SCRIPTS = {
+    "check:a": "node scripts/check-a.ts",
+    "check:b": "node scripts/check-b.ts",
+    "check:c": "node scripts/check-c.ts",
+  }
+  const claude = (...names: Array<string>): Map<string, string> =>
+    docs({
+      "CLAUDE.md": names
+        .map((name) => `A rule.\n\nHeld by: \`pnpm ${name}\``)
+        .join("\n\n"),
+    })
+
+  it("passes a check run by a gated job, by its name or by its script's file", () => {
+    expect(
+      findHeldByViolations(claude("check:a", "check:b"), SCRIPTS, WORKFLOW)
+    ).toEqual([])
+  })
+
+  it("fails a check with no script, or run only by a job the gate does not need", () => {
+    expect(
+      findHeldByViolations(claude("check:c", "check:gone"), SCRIPTS, WORKFLOW)
+    ).toEqual([
+      {
+        kind: "heldByUnwired",
+        file: "CLAUDE.md",
+        line: 3,
+        name: "check:c",
+        why: "notInGate",
+      },
+      {
+        kind: "heldByUnwired",
+        file: "CLAUDE.md",
+        line: 7,
+        name: "check:gone",
+        why: "noScript",
+      },
+    ])
+  })
+
+  it("reads a one-line needs list, and fails once on a gate it cannot read", () => {
+    const oneLine = WORKFLOW.replace(
+      /needs:\n {6}\[\n {8}lint,\n {8}guard,\n {6}\]/,
+      "needs: [lint, guard]"
+    )
+    expect(oneLine).toContain("needs: [lint, guard]")
+    expect(findHeldByViolations(claude("check:a"), SCRIPTS, oneLine)).toEqual(
+      []
+    )
+    expect(
+      findHeldByViolations(
+        claude("check:a", "check:b"),
+        SCRIPTS,
+        "jobs:\n  lint:\n"
+      )
+    ).toEqual([{ kind: "gateUnreadable" }])
+  })
+
+  it("reads only a line that is the label alone, outside fences", () => {
+    const text =
+      "See `Held by: pnpm check:gone` inline.\n```\nHeld by: `pnpm check:gone`\n```"
+    expect(
+      findHeldByViolations(docs({ "CLAUDE.md": text }), SCRIPTS, WORKFLOW)
+    ).toEqual([])
+  })
+})
+
+describe("findDigestViolations", () => {
+  const REVIEW = [
+    "# REVIEW.md",
+    "",
+    "## Declared invariants: check the falsifier",
+    "",
+    "Evaluate `L3`'s falsifier.",
+    "",
+    "## The phone is Android only",
+    "",
+    "`pnpm check:android-only` already fails the tokens.",
+  ].join("\n")
+  const AGENTS = [
+    "# AGENTS.md",
+    "",
+    "## Review guidelines",
+    "",
+    "- **Declared invariants: check the falsifier, then stop.** As `L3`",
+    "  shows.",
+    "- **The phone is Android only.** `pnpm check:android-only` already fails",
+    "  the tokens.",
+    "",
+    "Full text: `REVIEW.md`.",
+  ].join("\n")
+
+  it("is quiet when each section has its bullet, naming the same checks and IDs", () => {
+    expect(
+      findDigestViolations(docs({ "REVIEW.md": REVIEW, "AGENTS.md": AGENTS }))
+    ).toEqual([])
+  })
+
+  it("reports a section with no bullet, and a bullet with no section", () => {
+    const agents = AGENTS.replace(
+      "**The phone is Android only.**",
+      "**Phones.**"
+    )
+    expect(
+      kinds(
+        findDigestViolations(docs({ "REVIEW.md": REVIEW, "AGENTS.md": agents }))
+      )
+    ).toEqual(["digestMissing", "digestExtra"])
+  })
+
+  it("reports a check or ID named on one side only", () => {
+    const agents = AGENTS.replace("As `L3`", "As `L4`")
+    expect(
+      findDigestViolations(docs({ "REVIEW.md": REVIEW, "AGENTS.md": agents }))
+    ).toEqual([
+      {
+        kind: "digestDrift",
+        heading: "Declared invariants: check the falsifier",
+        only: "REVIEW.md",
+        names: ["L3"],
+      },
+      {
+        kind: "digestDrift",
+        heading: "Declared invariants: check the falsifier",
+        only: "AGENTS.md",
+        names: ["L4"],
+      },
+    ])
+  })
+})
 
 describe("findReferenceViolations: paths", () => {
   it("resolves a path by its full name, a suffix, a basename or a directory", () => {

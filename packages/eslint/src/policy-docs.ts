@@ -26,6 +26,24 @@
 //   allowed) names a heading in that file, whole or up to its first `: `
 //   ("Two kinds of pull request" for "Two kinds of pull request: the story
 //   moved, or a promise broke").
+//
+// Debt, in any markdown file's declaration blocks (#2047): the label
+// "mechanical; not yet a rule" (also with a comma or "and", across line breaks
+// and quote markers) needs a `Tracked: #<issue>` in the same block, and the
+// tree holds no more of them than the base ref does. A label outside a
+// declaration describes the format and is not counted.
+//
+// Held by, in the policy documents (#2046): a line `Held by: \`pnpm
+// check:<name>\`` says a check holds the rule it sits under. The script is in
+// the root package.json, and a pr.yml job CI Gate needs runs it (as `pnpm
+// check:<name>` or by the file its script runs), so removing or unwiring the
+// check fails the change that does it. A lint rule or a type is held by its
+// config, which the rule's own text names; the line is for check scripts.
+//
+// The review digest (#2048): AGENTS.md's "Review guidelines" restates
+// REVIEW.md for Codex. Each REVIEW.md `##` section has one bullet there whose
+// bold lead begins with the section's heading, and the two name the same
+// `check:*` scripts and backticked invariant IDs; no bullet is left over.
 // A path in another repository is listed in `FOREIGN_PATHS`; an entry no
 // policy document uses fails, so the list only shrinks with the prose. A path
 // that is ignored or generated is not tracked: write it without backticks.
@@ -92,6 +110,19 @@ const FILE_EXTENSION =
   /\.(?:md|ts|tsx|js|jsx|mjs|cjs|json|jsonc|ya?ml|toml|sh|css|sql|typ|html|rs|allowlist|gradle|java|kt|xml|txt|lock)$/
 const PATH_SHAPE = /^[\w.@-]+(?:\/[\w.@-]+)*$/
 
+/** The debt label in its three spellings, whitespace and `>` between words. */
+const DEBT_LABEL =
+  /mechanical(?:[;,]|[\s>]+and)[\s>]+not[\s>]+yet[\s>]+a[\s>]+rule/gi
+const TRACKED = /Tracked:[\s>]*#\d+/
+
+const HELD_BY =
+  /^[>\s]*(?:[-*]\s+)?Held by: `pnpm (?<name>check:[\w-]+)`\.?\s*$/
+const JOB = /^ {2}(?<id>[\w-]+):\s*$/
+const SCRIPT_FILE = /\bscripts\/[\w./-]+\.(?:ts|mjs|js|sh)\b/
+const CHECK_NAME = /\bcheck:[\w-]+/g
+const ID_SPAN = /`([A-Z]{1,4}\d+)`/g
+const BULLET_LEAD = /^- \*\*(?<lead>[^*]+)\*\*/
+
 export type PolicyViolation =
   | {
       readonly kind: "missingParts"
@@ -128,6 +159,39 @@ export type PolicyViolation =
       readonly heading: string
     }
   | { readonly kind: "staleForeign"; readonly path: string }
+  | {
+      readonly kind: "untrackedDebt"
+      readonly file: string
+      readonly line: number
+      readonly id: string
+    }
+  | {
+      readonly kind: "heldByUnwired"
+      readonly file: string
+      readonly line: number
+      readonly name: string
+      readonly why: "noScript" | "notInGate"
+    }
+  | { readonly kind: "gateUnreadable" }
+  | {
+      readonly kind: "digestMissing"
+      readonly heading: string
+    }
+  | {
+      readonly kind: "digestExtra"
+      readonly lead: string
+    }
+  | {
+      readonly kind: "digestDrift"
+      readonly heading: string
+      readonly only: "REVIEW.md" | "AGENTS.md"
+      readonly names: ReadonlyArray<string>
+    }
+  | {
+      readonly kind: "debtGrew"
+      readonly count: number
+      readonly base: number
+    }
 
 export type Declaration = {
   readonly id: string
@@ -176,29 +240,52 @@ function lineAt(text: string, index: number): number {
   return line
 }
 
+type Block = {
+  readonly id: string
+  readonly mark: string | undefined
+  /** 0-based index of the declaration line. */
+  readonly index: number
+  /** The declaration line and the lines after it, up to the next one. */
+  readonly lines: ReadonlyArray<string>
+}
+
+/** Each declaration's block: its line, to the next declaration or heading. */
+function blocksOf(text: string): Array<Block> {
+  const all = lines(withoutFences(text))
+  const blocks: Array<Block> = []
+  for (const [index, line] of all.entries()) {
+    const found = DECLARATION.exec(line)?.groups
+    const id = found?.["id"]
+    if (id === undefined) continue
+    const end = all.findIndex(
+      (next, at) => at > index && (DECLARATION.test(next) || HEADING.test(next))
+    )
+    blocks.push({
+      id,
+      mark: found?.["mark"],
+      index,
+      lines: all.slice(index, end === -1 ? undefined : end),
+    })
+  }
+  return blocks
+}
+
 /** Every declaration in one file's text, with the parts its block lacks. */
 export function parseDeclarations(
   file: string,
   text: string
 ): Array<Declaration> {
-  const all = lines(withoutFences(text))
   const declarations: Array<Declaration> = []
-  for (const [index, line] of all.entries()) {
-    const found = DECLARATION.exec(line)?.groups
-    const id = found?.["id"]
-    if (id === undefined) continue
-    const mark = found?.["mark"]
+  for (const { id, mark, index, lines: own } of blocksOf(text)) {
     const wanted: ReadonlyArray<Part> =
       mark === "retired"
         ? ["retired"]
         : mark === "not reviewable"
           ? []
           : ACTIVE_PARTS
-    const block: Array<string> = []
-    for (const next of all.slice(index + 1)) {
-      if (DECLARATION.test(next) || HEADING.test(next)) break
-      block.push(next.replace(/^[\s>]*(?:[-*]\s+)?/, ""))
-    }
+    const block = own
+      .slice(1)
+      .map((next) => next.replace(/^[\s>]*(?:[-*]\s+)?/, ""))
     declarations.push({
       id,
       file,
@@ -272,6 +359,255 @@ export function findInvariantViolations(
     for (const id of [...kept].sort()) {
       if (!first.has(id)) violations.push({ kind: "removedId", id })
     }
+  }
+  return violations
+}
+
+export type DebtLabel = {
+  readonly id: string
+  readonly line: number
+  readonly tracked: boolean
+}
+
+/** The debt labels in one file's declaration blocks, with their lines. */
+export function findDebtLabels(text: string): Array<DebtLabel> {
+  const labels: Array<DebtLabel> = []
+  for (const block of blocksOf(text)) {
+    const joined = block.lines.join("\n")
+    const tracked = TRACKED.test(joined)
+    for (const match of joined.matchAll(DEBT_LABEL)) {
+      labels.push({
+        id: block.id,
+        line: block.index + lineAt(joined, match.index),
+        tracked,
+      })
+    }
+  }
+  return labels
+}
+
+/**
+ * The debt violations among `docs`: a label with no `Tracked: #<issue>` in its
+ * block, and more labels than `base` holds (null: nothing to hold against).
+ */
+export function findDebtViolations(
+  docs: ReadonlyMap<string, string>,
+  base: ReadonlyMap<string, string> | null
+): Array<PolicyViolation> {
+  const count = (files: ReadonlyMap<string, string>): number =>
+    [...files.values()].reduce(
+      (sum, text) => sum + findDebtLabels(text).length,
+      0
+    )
+  const violations: Array<PolicyViolation> = []
+  for (const file of [...docs.keys()].sort()) {
+    for (const label of findDebtLabels(docs.get(file) ?? "")) {
+      if (!label.tracked)
+        violations.push({
+          kind: "untrackedDebt",
+          file,
+          line: label.line,
+          id: label.id,
+        })
+    }
+  }
+  if (base !== null) {
+    const now = count(docs)
+    const before = count(base)
+    if (now > before)
+      violations.push({ kind: "debtGrew", count: now, base: before })
+  }
+  return violations
+}
+
+/**
+ * The jobs CI Gate needs in pr.yml's text, each with its block, or null when
+ * the gate or its `needs` cannot be read (a closed shape: a flow list, or a
+ * block list of `- <job>` lines).
+ */
+function gatedJobs(workflow: string): Map<string, string> | null {
+  const all = lines(workflow)
+  const jobs = new Map<string, string>()
+  let current: { id: string; body: Array<string> } | null = null
+  for (const line of all) {
+    const id = JOB.exec(line)?.groups?.["id"]
+    if (id !== undefined) {
+      if (current !== null) jobs.set(current.id, current.body.join("\n"))
+      current = { id, body: [] }
+    } else if (current !== null) {
+      if (/^\S/.test(line)) {
+        jobs.set(current.id, current.body.join("\n"))
+        current = null
+      } else current.body.push(line)
+    }
+  }
+  if (current !== null) jobs.set(current.id, current.body.join("\n"))
+  const gate = jobs.get("ci-gate")
+  if (gate === undefined) return null
+  const needs = /^ {4}needs:(?<rest>[^]*?)(?=^ {4}\w|(?![^]))/m.exec(gate)
+    ?.groups?.["rest"]
+  if (needs === undefined) return null
+  const ids = [...needs.matchAll(/[\w-]+/g)].map(([id]) => id)
+  if (ids.length === 0) return null
+  const gated = new Map<string, string>()
+  for (const id of ids) {
+    const body = jobs.get(id)
+    if (body === undefined) return null
+    gated.set(id, body)
+  }
+  return gated
+}
+
+/**
+ * The `Held by:` lines in the policy documents whose check is missing from
+ * `scripts` (the root package.json's) or run by no job CI Gate needs in
+ * `workflow` (pr.yml's text).
+ */
+export function findHeldByViolations(
+  docs: ReadonlyMap<string, string>,
+  scripts: Readonly<Record<string, string>>,
+  workflow: string
+): Array<PolicyViolation> {
+  const violations: Array<PolicyViolation> = []
+  const gated = gatedJobs(workflow)
+  let reported = false
+  for (const file of POLICY_DOCS) {
+    for (const [index, line] of lines(
+      withoutFences(docs.get(file) ?? "")
+    ).entries()) {
+      const name = HELD_BY.exec(line)?.groups?.["name"]
+      if (name === undefined) continue
+      const script = scripts[name]
+      if (script === undefined) {
+        violations.push({
+          kind: "heldByUnwired",
+          file,
+          line: index + 1,
+          name,
+          why: "noScript",
+        })
+        continue
+      }
+      if (gated === null) {
+        if (!reported) violations.push({ kind: "gateUnreadable" })
+        reported = true
+        continue
+      }
+      const target = SCRIPT_FILE.exec(script)?.[0]
+      const runs = [...gated.values()].some(
+        (body) =>
+          body.includes(`pnpm ${name}`) ||
+          (target !== undefined && body.includes(target))
+      )
+      if (!runs)
+        violations.push({
+          kind: "heldByUnwired",
+          file,
+          line: index + 1,
+          name,
+          why: "notInGate",
+        })
+    }
+  }
+  return violations
+}
+
+/** REVIEW.md's `##` sections: heading -> body. */
+function sectionsOf(text: string): Map<string, string> {
+  const sections = new Map<string, string>()
+  let heading: string | null = null
+  let body: Array<string> = []
+  for (const line of lines(withoutFences(text))) {
+    const found = /^## (?<text>.+?)\s*$/.exec(line)?.groups?.["text"]
+    if (found !== undefined) {
+      if (heading !== null) sections.set(heading, body.join("\n"))
+      heading = found
+      body = []
+    } else if (heading !== null) {
+      if (line.startsWith("# ")) break
+      body.push(line)
+    }
+  }
+  if (heading !== null) sections.set(heading, body.join("\n"))
+  return sections
+}
+
+/** AGENTS.md's "Review guidelines" bullets: bold lead -> the bullet's text. */
+function digestBullets(text: string): Map<string, string> {
+  const section = sectionsOf(text).get("Review guidelines") ?? ""
+  const bullets = new Map<string, string>()
+  let lead: string | null = null
+  let body: Array<string> = []
+  for (const line of lines(section)) {
+    const found = BULLET_LEAD.exec(line)?.groups?.["lead"]
+    if (found !== undefined) {
+      if (lead !== null) bullets.set(lead, body.join("\n"))
+      lead = found
+      body = [line]
+    } else if (lead !== null && /^\s+\S/.test(line)) body.push(line)
+    else if (lead !== null && line.trim() !== "") {
+      bullets.set(lead, body.join("\n"))
+      lead = null
+    }
+  }
+  if (lead !== null) bullets.set(lead, body.join("\n"))
+  return bullets
+}
+
+const leadKey = (text: string): string =>
+  text
+    .replace(/[.:]\s*$/, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase()
+
+function namesIn(text: string): Set<string> {
+  return new Set([
+    ...[...text.matchAll(CHECK_NAME)].map(([name]) => name),
+    ...[...text.matchAll(ID_SPAN)].map(([, id]) => id ?? ""),
+  ])
+}
+
+/** Where AGENTS.md's review digest and REVIEW.md disagree. */
+export function findDigestViolations(
+  docs: ReadonlyMap<string, string>
+): Array<PolicyViolation> {
+  const review = docs.get("REVIEW.md")
+  const agents = docs.get("AGENTS.md")
+  if (review === undefined || agents === undefined) return []
+  const bullets = digestBullets(agents)
+  const used = new Set<string>()
+  const violations: Array<PolicyViolation> = []
+  for (const [heading, body] of sectionsOf(review)) {
+    const lead = [...bullets.keys()].find((candidate) =>
+      leadKey(candidate).startsWith(leadKey(heading))
+    )
+    if (lead === undefined) {
+      violations.push({ kind: "digestMissing", heading })
+      continue
+    }
+    used.add(lead)
+    const inReview = namesIn(body)
+    const inAgents = namesIn(bullets.get(lead) ?? "")
+    const onlyReview = [...inReview].filter((name) => !inAgents.has(name))
+    const onlyAgents = [...inAgents].filter((name) => !inReview.has(name))
+    if (onlyReview.length > 0)
+      violations.push({
+        kind: "digestDrift",
+        heading,
+        only: "REVIEW.md",
+        names: onlyReview.sort(),
+      })
+    if (onlyAgents.length > 0)
+      violations.push({
+        kind: "digestDrift",
+        heading,
+        only: "AGENTS.md",
+        names: onlyAgents.sort(),
+      })
+  }
+  for (const lead of bullets.keys()) {
+    if (!used.has(lead)) violations.push({ kind: "digestExtra", lead })
   }
   return violations
 }
@@ -423,6 +759,29 @@ export function describePolicyViolation(violation: PolicyViolation): string {
     }
     case "staleForeign": {
       return `${violation.path} is in FOREIGN_PATHS (packages/eslint/src/policy-docs.ts) and no policy document names it. Remove the entry.`
+    }
+    case "untrackedDebt": {
+      return `${violation.file}:${violation.line}: ${violation.id} is labelled "mechanical; not yet a rule" with no \`Tracked: #<issue>\` in its block. Name the issue that will make it a check.`
+    }
+    case "heldByUnwired": {
+      return violation.why === "noScript"
+        ? `${violation.file}:${violation.line}: Held by \`pnpm ${violation.name}\`, which is not a script in the root package.json.`
+        : `${violation.file}:${violation.line}: Held by \`pnpm ${violation.name}\`, which no pr.yml job that CI Gate needs runs. Wire it in, or drop the line with the rule it held.`
+    }
+    case "gateUnreadable": {
+      return `.github/workflows/pr.yml: CI Gate's \`needs\` could not be read (a \`ci-gate\` job whose \`needs\` is a list of jobs that exist), so no Held by line could be checked.`
+    }
+    case "digestMissing": {
+      return `REVIEW.md's section "${violation.heading}" has no bullet in AGENTS.md's "Review guidelines" whose bold lead begins with it.`
+    }
+    case "digestExtra": {
+      return `AGENTS.md's review bullet "${violation.lead}" matches no REVIEW.md section. Add the section to REVIEW.md, or drop the bullet.`
+    }
+    case "digestDrift": {
+      return `"${violation.heading}": ${violation.names.join(", ")} named only in ${violation.only}. AGENTS.md's bullet and REVIEW.md's section name the same checks and invariant IDs.`
+    }
+    case "debtGrew": {
+      return `${violation.count} "mechanical; not yet a rule" labels, ${violation.base} at the base ref. Make the rule a check instead of declaring more debt (CLAUDE.md, "Gray-area invariants: declare them falsifiable").`
     }
     default: {
       const unhandled: never = violation
