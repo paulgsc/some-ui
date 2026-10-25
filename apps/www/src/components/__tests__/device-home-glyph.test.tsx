@@ -33,6 +33,7 @@ import type { AphKeeping } from "@/lib/home-link/aph"
 import { CONSENT_KEY } from "@/lib/home-link/consent-runtime"
 import type { JobsState } from "@/lib/jobs/model"
 import { EMPTY } from "@/lib/jobs/model"
+import { NO_NOTICE } from "@/lib/jobs/notice"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 const home = vi.hoisted(
@@ -176,7 +177,7 @@ function jobsRecord(events: number, kept: boolean): void {
         refusedFiles: [],
         lookedAt: null,
         runs: null,
-        notice: { wanted: false, token: null, filed: null },
+        notice: NO_NOTICE,
       },
     },
   }

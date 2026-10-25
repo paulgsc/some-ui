@@ -82,11 +82,7 @@ const router = createRouter({
 
 // A wing's launcher icon tapped while the Android app is open (lib/wings/entry).
 listenForWingEntry((to) => void router.navigate({ to }))
-
-// A tapped arrival notice opens Jobs, on the Android app only.
-if (import.meta.env.VITE_DEVICE_BACKEND === "true") {
-  listenForNoticeTaps((to) => void router.navigate({ to }))
-}
+listenForNoticeTaps((to) => void router.navigate({ to }))
 
 const rootElement = document.getElementById("app")
 if (rootElement && !rootElement.innerHTML) {

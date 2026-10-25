@@ -32,6 +32,7 @@ import {
 } from "@/lib/home-link/words"
 import { phoneJobs } from "@/lib/jobs"
 import { NOTICE_WORDS, noticeSaid } from "@/lib/jobs/words"
+import { useJobs } from "@/components/jobs/parts"
 
 const APH_SCOPES = { scopes: ["aph"] } as const
 
@@ -168,11 +169,7 @@ const PracticeRow = (): JSX.Element => (
  * this build can be told; nothing where it can't.
  */
 const JobsNotice = (): JSX.Element | null => {
-  const jobs = phoneJobs()
-  const { state, notice } = useSyncExternalStore(
-    jobs.subscribe,
-    jobs.getSnapshot
-  )
+  const { state, notice } = useJobs()
   if (!notice.offered) return null
   return (
     <div className="flex items-start gap-3 rounded-md border p-3">
@@ -180,7 +177,7 @@ const JobsNotice = (): JSX.Element | null => {
         id="jobs-notice"
         checked={state.home.notice.wanted}
         disabled={notice.asking}
-        onCheckedChange={(on) => jobs.wantNotice(on)}
+        onCheckedChange={(on) => phoneJobs().wantNotice(on)}
       />
       <div className="space-y-1">
         <Label htmlFor="jobs-notice" className="text-sm">

@@ -7,11 +7,12 @@ import { describe, expect, it } from "vitest"
 
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
 import type { Standing } from "@/lib/jobs/model"
+import { NO_NOTICE } from "@/lib/jobs/notice"
 import * as words from "@/lib/jobs/words"
 
 const DAY = "2026-10-18"
 
-const OFF = { wanted: false, token: null, filed: null }
+const OFF = NO_NOTICE
 const ON = { wanted: true, token: "t", filed: "t" }
 const IDLE = { asking: false, why: null }
 

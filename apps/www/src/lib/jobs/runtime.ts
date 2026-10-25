@@ -80,7 +80,6 @@ export type NoticeAsked =
   | { readonly kind: "token"; readonly token: string }
   /** This build can't be told: the control is withdrawn. */
   | { readonly kind: "unavailable" }
-  /** The person said no to notifications. */
   | { readonly kind: "not-allowed" }
   | { readonly kind: "failed" }
 
@@ -268,9 +267,8 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
   }
 
   /**
-   * Asks the push service for this phone's token. `quiet`, on start-up, to
-   * catch a token that changed: nobody pressed anything, so a failure is
-   * not shown.
+   * Asks the push service for this phone's token. `quiet`: nobody pressed
+   * anything, so a failure is not shown.
    */
   const askForToken = async (
     port: NoticePort,

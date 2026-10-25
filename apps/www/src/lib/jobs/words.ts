@@ -10,6 +10,8 @@ import type { Track } from "@some-ui/job-desk"
 import { LAPSE_DAYS } from "@some-ui/job-desk"
 
 import type { DebriefResult, FrictionChip, PassReason, Standing } from "./model"
+import type { NoticeState } from "./notice"
+import type { NoticeView } from "./runtime"
 
 /** The digest on show is from an earlier day than today's. */
 export const notToday = (day: string): string =>
@@ -288,8 +290,8 @@ export const NOTICE_WORDS = {
 
 /** What the control says under it, from what the record and the ask hold. */
 export function noticeSaid(
-  notice: { wanted: boolean; token: string | null; filed: string | null },
-  view: { asking: boolean; why: "not-allowed" | "failed" | null }
+  notice: NoticeState,
+  view: Pick<NoticeView, "asking" | "why">
 ): string {
   if (view.asking) return NOTICE_WORDS.asking
   if (view.why === "not-allowed") return NOTICE_WORDS.notAllowed

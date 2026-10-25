@@ -10,6 +10,7 @@ import type { JobsRecordPort } from "@/lib/jobs/home"
 import { exchangeJobs } from "@/lib/jobs/home"
 import type { JobEvent, JobsState, PickRef, ShareKind } from "@/lib/jobs/model"
 import { DIGESTS_PER_RUN, EMPTY, homeOutbox, step } from "@/lib/jobs/model"
+import { NO_NOTICE } from "@/lib/jobs/notice"
 
 import { digest, OPENED_AT, run } from "./fixture"
 
@@ -209,7 +210,7 @@ describe("exchangeJobs", () => {
       refusedFiles: [],
       lookedAt: OPENED_AT,
       runs: [],
-      notice: { wanted: false, token: null, filed: null },
+      notice: NO_NOTICE,
     })
     expect(homeOutbox(k.current)).toEqual([])
   })

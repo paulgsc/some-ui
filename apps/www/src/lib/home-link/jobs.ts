@@ -21,7 +21,8 @@ export const jobsLane: Lane = {
   id: "jobs",
   scopes: ["jobs"],
   exchange: (send) => exchangeJobs(phoneJobs().keeping, send),
-  // A notice home is owed moves it too, so turning it on files it.
+  // Doubled, so a notice filing coming owed or settling never lands on
+  // the value of another log length.
   revision: () => {
     const { state } = phoneJobs().getSnapshot()
     return (
