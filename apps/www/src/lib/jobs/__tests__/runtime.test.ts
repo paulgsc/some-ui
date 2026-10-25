@@ -5,6 +5,7 @@ import type { PickRef } from "@/lib/jobs/model"
 import { createJobsRuntime } from "@/lib/jobs/runtime"
 import { STORAGE_KEY } from "@/lib/jobs/stored"
 import type { StorageAdapter } from "@/lib/tenant/storage"
+import { createInMemoryStorage } from "@/lib/tenant/storage"
 
 import { digest, ports } from "./fixture"
 
@@ -76,6 +77,34 @@ describe("createJobsRuntime", () => {
     ).toBe(false)
     expect(runtime.getSnapshot().problem).not.toBeNull()
     expect(runtime.getSnapshot().state.log).toEqual([])
+  })
+
+  it("says nothing of a reading it couldn't keep, and the next change I make says why", () => {
+    const memory = createInMemoryStorage()
+    let full = false
+    const storage: StorageAdapter = {
+      ...memory,
+      setItem: (key, value) => {
+        if (full) throw new Error("full")
+        memory.setItem(key, value)
+      },
+    }
+    const runtime = createJobsRuntime(ports({ storage }))
+    runtime.keeping.fetched([digest("2026-10-18")])
+    const pick = runtime.getSnapshot().state.digests[0].picks[0]
+    const ref = {
+      day: "2026-10-18",
+      pickId: pick.id,
+      fingerprint: pick.fingerprint,
+    }
+    full = true
+    expect(runtime.read(ref)).toBe(false)
+    expect(runtime.getSnapshot().problem).toBeNull()
+    expect(runtime.record({ type: "taken", ...ref })).toBe(false)
+    expect(runtime.getSnapshot().problem).not.toBeNull()
+    full = false
+    expect(runtime.read(ref)).toBe(true)
+    expect(runtime.read(ref)).toBe(false)
   })
 
   it("offers a share again until it arrived, by a name of its own", async () => {

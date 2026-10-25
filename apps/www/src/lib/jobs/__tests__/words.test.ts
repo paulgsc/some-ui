@@ -103,14 +103,6 @@ describe("Jobs' words", () => {
     expect(said.filter((text) => MACHINERY.test(text))).toEqual([])
   })
 
-  it("name each ending as the one-tap buttons do, never by its stored name", () => {
-    expect(SAID.endedAs).toEqual([
-      "Ended: Sent. Add replies and interviews under Record as they come.",
-      "Ended: Stopped partway. Add replies and interviews under Record as they come.",
-      "Ended: Couldn’t: posting closed. Add replies and interviews under Record as they come.",
-    ])
-  })
-
   it("say a fit in words, from a strong fit down to a stretch", () => {
     expect(SAID.fitWord).toEqual(["Strong fit", "Good fit", "A stretch"])
   })

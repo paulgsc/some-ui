@@ -61,7 +61,6 @@ export const EventSchema: z.ZodType<JobEvent> = z.discriminatedUnion("type", [
     ...Stamp,
     ...PickRef,
     type: z.literal("debrief"),
-    // A record kept before the one-tap ending holds numbers here.
     minutes: DebriefMinutesSchema.nullable(),
     friction: FrictionSchema.nullable(),
     chips: z.array(z.enum(FRICTION)),

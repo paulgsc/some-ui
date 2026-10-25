@@ -232,6 +232,14 @@ function pickEvents(
   )
 }
 
+/**
+ * An event that is a step on a pick: every one naming a pick but a reading,
+ * which moves nothing, goes out in no file and keeps no digest.
+ */
+export function isPickStep(e: JobEvent): e is JobEvent & PickRef {
+  return "pickId" in e && e.type !== "read"
+}
+
 /** Voice ids the log names: no longer a draft's to drop. */
 function named(log: ReadonlyArray<JobEvent>): Set<string> {
   const ids = new Set<string>()
@@ -346,7 +354,7 @@ function takeDigests(
   )
   const recent = new Set(all.slice(-DIGESTS_KEPT).map((d) => d.day))
   const referenced = new Set(
-    state.log.flatMap((e) => ("pickId" in e ? [e.day] : []))
+    state.log.flatMap((e) => (isPickStep(e) ? [e.day] : []))
   )
   // Over `all`, so the digests being taken count too.
   const open = openOf({ ...state, digests: all }, pacificDay(new Date(at)))

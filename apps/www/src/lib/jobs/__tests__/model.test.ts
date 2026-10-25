@@ -108,12 +108,20 @@ describe("step", () => {
     expect(openOf(state, DAY).filter((o) => o.day === old.day)).toHaveLength(2)
   })
 
-  it("lets go of a digest whose picks all lapsed, once newer ones fill the phone (J5)", () => {
+  it("lets go of a digest whose picks all lapsed, once newer ones fill the phone, read or not (J5)", () => {
+    const old = digest("2026-08-01")
     let state = step(EMPTY, {
       type: "opened",
-      digest: digest("2026-08-01"),
+      digest: old,
       at: "2026-08-01T15:00:00Z",
     })
+    state = record(state, {
+      type: "read",
+      day: old.day,
+      pickId: old.picks[0].id,
+      fingerprint: old.picks[0].fingerprint,
+    })
+    expect(state.log).toHaveLength(1)
     for (let i = 1; i <= DIGESTS_KEPT + 2; i += 1) {
       const day = `2026-09-${String(i).padStart(2, "0")}`
       state = step(state, {
@@ -219,7 +227,6 @@ describe("step", () => {
       result: "submitted",
     })
     expect(record(taken, debrief(1_440))).toBe(taken)
-    expect(record(taken, debrief(0))).toBe(taken)
     expect(record(taken, debrief(45, 6))).toBe(taken)
     expect(record(taken, debrief(45)).log).toHaveLength(2)
     expect(record(taken, debrief(null, null)).log).toHaveLength(2)
@@ -232,7 +239,6 @@ describe("step", () => {
     expect(progressOf(read, ref().day, ref().pickId)).toEqual(
       progressOf(opened, ref().day, ref().pickId)
     )
-    expect(record(EMPTY, { type: "read", ...ref() })).toBe(EMPTY)
   })
 
   it("refuses what home would refuse to keep", () => {

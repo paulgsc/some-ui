@@ -106,10 +106,7 @@ function toggle<T>(list: ReadonlyArray<T>, value: T): Array<T> {
     : [...list, value]
 }
 
-/**
- * What the posting wants and where I fit, in words, with no verdict asked:
- * showing it records that I read it, once a day (`JobsRuntime.read`).
- */
+/** What the posting wants and where I fit, in words, with no verdict asked. */
 const Read = ({
   pick,
   pickRef,

@@ -99,7 +99,8 @@ export type JobsRuntime = {
   record: (event: Draft) => boolean
   /**
    * Records that I read `pick` through, once a local day; false when it was
-   * already read today, or wasn't kept.
+   * already read today, or wasn't kept. Opening a pick does this unasked, so
+   * a reading the phone can't keep says nothing.
    */
   read: (pick: PickRef) => boolean
   /** Keeps what `owner`'s form holds, or clears it with null. */
@@ -202,11 +203,15 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
   }
   note.subscribe(publish)
 
-  /** Applies `action`, keeping the result first; false if it changed nothing. */
-  function commit(action: JobsAction): boolean {
+  /**
+   * Applies `action`, keeping the result first; false if it changed nothing.
+   * A `quiet` one that can't be kept says nothing: nobody asked for it.
+   */
+  function commit(action: JobsAction, quiet = false): boolean {
     const next = step(state, action)
     if (next === state) return false
     if (readOnly || !writeStored(ports.storage, next)) {
+      if (quiet) return false
       problem = readOnly
         ? "This phone can't read its jobs record, so it isn't changing it."
         : "This phone couldn't keep that. Free some space and try again."
@@ -359,11 +364,10 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
     read(pick): boolean {
       const today = ports.dayOf(ports.now())
       if (readOn(state, pick.day, pick.pickId, today, ports.dayOf)) return false
-      return commit({
-        type: "record",
-        event: { type: "read", ...pick },
-        stamp: stamp(),
-      })
+      return commit(
+        { type: "record", event: { type: "read", ...pick }, stamp: stamp() },
+        true
+      )
     },
     draft: setDraft,
     addScout: (scout, voice) =>

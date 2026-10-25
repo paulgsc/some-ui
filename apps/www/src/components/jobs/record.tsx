@@ -39,7 +39,6 @@ export const JobsRecord = (): JSX.Element => {
   const applications = applicationsOf(state)
   const debriefs = state.log.flatMap((e) => (e.type === "debrief" ? [e] : []))
   const passed = state.log.filter((e) => e.type === "passed").length
-  // Of the debriefs that said how long: an unsaid one is not zero minutes.
   const minutes = median(
     debriefs.flatMap((d) => (d.minutes === null ? [] : [d.minutes]))
   )

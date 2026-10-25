@@ -86,7 +86,7 @@ export const FrictionSchema = z.number().int().min(1).max(5)
 
 const DebriefSchema = z.object({
   id: EventIdSchema,
-  /** Null when I left it unsaid: never read as zero, or as smooth. */
+  /** Null when I left it unsaid. */
   minutes: DebriefMinutesSchema.nullable(),
   friction: FrictionSchema.nullable(),
   frictionChips: z.array(z.enum(FRICTION)),

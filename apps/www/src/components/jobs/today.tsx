@@ -142,8 +142,8 @@ const NextPick = ({
   pick: Pick
 }): JSX.Element => {
   const { ready, resume } = readiness(state, day, pick)
-  const progress = progressOf(state, day, pick.id)
-  const untouched = progress.kind === "open" && progress.step === 0
+  const untouched = decisionOf(state, day, pick.id) === null
+  const pickRef = { day, pickId: pick.id, fingerprint: pick.fingerprint }
   const link = {
     to: "/jobs/pick/$day/$pickId",
     params: { day, pickId: pick.id },
@@ -184,12 +184,7 @@ const NextPick = ({
               <Link
                 {...link}
                 onClick={() => {
-                  phoneJobs().record({
-                    type: "taken",
-                    day,
-                    pickId: pick.id,
-                    fingerprint: pick.fingerprint,
-                  })
+                  phoneJobs().record({ type: "taken", ...pickRef })
                 }}
               >
                 {sendIt}

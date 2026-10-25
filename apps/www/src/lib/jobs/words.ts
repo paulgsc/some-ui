@@ -66,10 +66,8 @@ export const openIt = "Open it"
 /** Opens a pick on its reading: what they want and where I fit. */
 export const readIt = "Read it"
 
-/** Takes a pick and goes on to its résumé. */
 export const sendIt = "Send it"
 
-/** Passes on a pick, no reason needed. */
 export const notForMe = "Not for me"
 
 /** Browsing every pick, kept behind the one Today opens on. */
@@ -213,7 +211,6 @@ export const passLabels: Readonly<Record<PassReason, string>> = {
   other: "Other",
 }
 
-/** A pick I passed on. */
 export const passedIt =
   "Not for you. That goes out with today’s decisions, with any reason you gave."
 
@@ -251,7 +248,6 @@ export const howDidItEnd = "How did it end?"
 /** Opens what else I can say about applying; none of it is needed. */
 export const addHowItWent = "Add how it went"
 
-/** The extras, once opened. */
 export const howItWentHint =
   "All of this is optional, and goes with the ending you tap above."
 
@@ -282,6 +278,5 @@ export const whatHappened = "What happened"
 
 export const sayItAloud = "Or say it, up to a minute"
 
-/** A pick whose ending I gave. */
 export const endedAs = (result: DebriefResult): string =>
   `Ended: ${endingLabels[result]}. Add replies and interviews under Record as they come.`
