@@ -40,5 +40,7 @@ apply to any agent working here, not only Claude.
   `kind:defect` the same way.
 - **The phone is Android only.** No finding that reproduces only on iOS, iPadOS or
   Safari. A hunk that adds code, a test, a fallback or a comment for them is blocking.
+  `pnpm check:android-only` already fails `webkitAudioContext`, Apple meta and link tags and
+  the words `iphone`, `ipad`, `ipados` and `ipod`; do not re-check those.
 
 Full text: `REVIEW.md`.
