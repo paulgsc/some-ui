@@ -20,6 +20,24 @@ const shelf = savingShelf({
 /** Whether `id`'s audio is still being written: not ready to share. */
 export const isSaving = shelf.isSaving
 
+const settledListeners = new Set<() => void>()
+
+/**
+ * Tells `listener` each time a take's audio is written, or given up on: the
+ * reflection itself is kept before its audio, so its list says nothing then.
+ */
+export function onAudioSettled(listener: () => void): () => void {
+  settledListeners.add(listener)
+  return (): void => {
+    settledListeners.delete(listener)
+  }
+}
+
+function saving(id: string, writing: boolean): void {
+  shelf.saving(id, writing)
+  if (!writing) for (const listener of settledListeners) listener()
+}
+
 export const reflectionAudio = shelf.shelf
 
 export function phoneVoiceNote(sessionId: string): VoiceNoteRuntime {
@@ -29,7 +47,7 @@ export function phoneVoiceNote(sessionId: string): VoiceNoteRuntime {
       audio: reflectionAudio(),
       keep: (reflection) => reflections.keep(reflection),
       letGo: (ids) => reflections.letGo(ids),
-      saving: shelf.saving,
+      saving,
       now: () => Date.now(),
       newId: () => crypto.randomUUID(),
     },

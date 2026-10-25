@@ -76,14 +76,42 @@ export function sweepSceneVoice(): void {
 
 const SHARE_PORT = "scene voice (share)"
 
+/** A drama prompt that was shared, with the voice notes beside it. */
+export type SharedPrompt = {
+  readonly stamp: string
+  /** When the prompt was made, ISO 8601. */
+  readonly at: string
+  readonly notes: ReadonlyArray<{
+    readonly id: string
+    readonly mimeType: string
+    readonly audio: Blob
+  }>
+}
+
+const sharedListeners = new Set<(shared: SharedPrompt) => void>()
+
+/** Tells `listener` of each drama prompt shared with voice notes. */
+export function onPromptShared(
+  listener: (shared: SharedPrompt) => void
+): () => void {
+  sharedListeners.add(listener)
+  return (): void => {
+    sharedListeners.delete(listener)
+  }
+}
+
 /**
  * The drama's next-scene prompt, as topik's `FileShare` port, with the
  * scene's voice notes it names beside it. A note whose audio cannot be read
  * fails the share, so the prompt never names a file that does not arrive.
+ * Once shared, `onPromptShared`'s listeners hear of it (the voice lane,
+ * LA13).
  */
 export const shareDramaPrompt: FileShare = async ({
   name,
   text,
+  stamp,
+  at,
   notes: named = [],
 }) => {
   const failed = (cause: unknown): Awaited<ReturnType<FileShare>> => {
@@ -102,10 +130,30 @@ export const shareDramaPrompt: FileShare = async ({
     return failed(error)
   }
   const files: Array<SharedFile> = [{ name, data: text }]
+  const shared: Array<SharedPrompt["notes"][number]> = []
+  const listed = notes.read()
   for (const [index, note] of named.entries()) {
     const blob = blobs[index]
     if (!blob) return failed(new Error(`no audio for voice note ${note.id}`))
     files.push({ name: note.name, data: blob })
+    const mimeType = listed.find(({ id }) => id === note.id)?.mimeType
+    if (mimeType !== undefined) {
+      shared.push({ id: note.id, mimeType, audio: blob })
+    }
   }
-  return shareFiles("drama-prompt", "The next scene's prompt", files)
+  const outcome = await shareFiles(
+    "drama-prompt",
+    "The next scene's prompt",
+    files
+  )
+  if (
+    outcome.status === "succeeded" &&
+    outcome.value === "shared" &&
+    shared.length > 0
+  ) {
+    for (const listener of sharedListeners) {
+      listener({ stamp, at, notes: shared })
+    }
+  }
+  return outcome
 }

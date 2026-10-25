@@ -27,6 +27,7 @@ const KEPT: Shared = new Map([
   ["shelf", ALL],
   ["aph", ALL],
   ["jobs", { since: 0, earlier: true }],
+  ["voice", ALL],
 ])
 const NONE: Shared = new Map()
 const ONLY_SESSIONS: Shared = new Map([["sessions", ALL]])

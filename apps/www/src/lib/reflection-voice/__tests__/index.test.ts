@@ -4,7 +4,12 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { letGoReflections, sweepOrphans } from "@/lib/reflection-voice"
+import {
+  letGoReflections,
+  onAudioSettled,
+  phoneVoiceNote,
+  sweepOrphans,
+} from "@/lib/reflection-voice"
 import { reflections } from "@/lib/session-reflection"
 
 const removeAudio = vi.hoisted(() => vi.fn(() => Promise.resolve()))
@@ -27,6 +32,20 @@ vi.mock("@some-ui/voice-capture", () => {
     micRecorder: vi.fn(),
   }
 })
+
+/** The `saving` port the runtime was made with. */
+const ports = vi.hoisted(
+  () => new Map<"saving", (id: string, writing: boolean) => void>()
+)
+
+vi.mock("@/lib/reflection-voice/runtime", () => ({
+  createVoiceNote: (made: {
+    saving: (id: string, writing: boolean) => void
+  }): object => {
+    ports.set("saving", made.saving)
+    return {}
+  },
+}))
 
 function voice(id: string): void {
   reflections.keep({
@@ -79,5 +98,21 @@ describe("sweepOrphans", () => {
       expect(reflections.getSnapshot().kept.map((r) => r.id)).toEqual(["v2"])
     })
     expect(removeAudio).toHaveBeenCalledWith(["stray"])
+  })
+})
+
+describe("onAudioSettled", () => {
+  it("tells each listener when a take's audio is written, and not while it is", () => {
+    const heard = vi.fn()
+    const stop = onAudioSettled(heard)
+    phoneVoiceNote("s1")
+    const saving = ports.get("saving")
+    saving?.("v2", true)
+    expect(heard).not.toHaveBeenCalled()
+    saving?.("v2", false)
+    expect(heard).toHaveBeenCalledTimes(1)
+    stop()
+    saving?.("v3", false)
+    expect(heard).toHaveBeenCalledTimes(1)
   })
 })

@@ -136,7 +136,8 @@ const homeFetch = (): typeof fetch =>
   )
 
 /** The link's `send`, as the runtime hands it over, against home. */
-const send: HomeCall = async (method, path, body) => {
+const send: HomeCall = async (method, path, given) => {
+  const body = typeof given === "string" ? given : undefined
   sent.push(`${method} ${path}`)
   const response = await homeFetch()(`${BASE}${path}`, {
     method,

@@ -1,6 +1,6 @@
 /**
  * Settings' ledger of what this phone shares with its paired home (LA9 to
- * LA11, docs/learner-data-authority.md): one row per record, each kind it
+ * LA11, LA13, docs/learner-data-authority.md): one row per record, each kind it
  * holds with since when and how much is on home, the way to stop, what is
  * never shared, and every choice ever made. Its words are
  * `lib/home-link/words`'s alone; it sends nothing.
@@ -22,6 +22,7 @@ import { INITIAL_KEPT } from "@/lib/home-link/kept-model"
 import type { Lane, LaneCounts, LaneId } from "@/lib/home-link/lanes"
 import { pairingOf, stopOnHome, useLaneChoices } from "@/lib/home-link/lanes"
 import { practiceLane } from "@/lib/home-link/practice"
+import { voiceLane } from "@/lib/home-link/voice"
 import {
   fullDay,
   historyLines,
@@ -168,6 +169,15 @@ const JobsRow = ({ unsure }: { unsure: boolean }): JSX.Element => (
   />
 )
 
+const VoiceRow = (): JSX.Element => (
+  <Row
+    id="voice"
+    counts={voiceLane.useCounts()}
+    lane={voiceLane}
+    unsure={false}
+  />
+)
+
 export const SharingLedger = (): JSX.Element => {
   const consent = phoneConsent()
   const log = useSyncExternalStore(consent.subscribe, consent.getSnapshot)
@@ -187,6 +197,7 @@ export const SharingLedger = (): JSX.Element => {
         <PracticeRow />
         <Row id="aph" counts={NO_COUNTS} lane={null} unsure={unlogged("aph")} />
         <JobsRow unsure={unlogged("jobs")} />
+        <VoiceRow />
       </ul>
       <div className="space-y-1">
         <p className="text-sm font-medium">{LEDGER.neverTitle}</p>

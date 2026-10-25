@@ -22,6 +22,7 @@ import { contracts as routineContracts } from "../contracts/routine.contract"
 import { contracts as shelfContracts } from "../contracts/shelf.contract"
 import { contracts as studyNudgeContracts } from "../contracts/study-nudge.contract"
 import { contracts as tabContracts } from "../contracts/tabs.contract"
+import { contracts as voiceContracts } from "../contracts/voice.contract"
 import type { Contract } from "./contract"
 
 export const allContracts: ReadonlyArray<Contract> = [
@@ -37,6 +38,7 @@ export const allContracts: ReadonlyArray<Contract> = [
   ...shelfContracts,
   ...studyNudgeContracts,
   ...tabContracts,
+  ...voiceContracts,
 ]
 
 /** Fails loudly on duplicate ids — two contracts sharing one id would make the

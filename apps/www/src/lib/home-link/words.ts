@@ -1,5 +1,5 @@
 /**
- * Every word a record kept on home shows (LA9 to LA11): each lane's mark in
+ * Every word a record kept on home shows (LA9 to LA11, LA13): each lane's mark in
  * the header, its sheet, and the choice to keep sending; and Settings'
  * choice to show the routine's files in Korean (LA12). Pure, and the one
  * place those words live, so they stay in the person's terms (what is kept
@@ -80,7 +80,8 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
     phoneOnly: "Practice is only on this phone. Losing the phone loses it.",
     partly:
       "Some of Practice is on home. New sessions stay on this phone until you send them.",
-    footnote: "Reflections never leave this phone.",
+    footnote:
+      "Written reflections never leave this phone. Spoken ones go to home only if you keep voice notes there, in Settings.",
     stopQuestion: "Stop sending new sessions and kept items to home?",
     stopMore:
       "This phone tells home you stopped, when it can. What home already has stays there. This phone keeps everything it has. You can choose to keep sending again from any send.",
@@ -132,13 +133,42 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
       "The Jobs record is only on this phone. Losing the phone loses it.",
     partly:
       "Some of the Jobs record is on home. New events stay on this phone from now on.",
-    footnote: "Voice notes stay on the phone and in Drive.",
+    footnote:
+      "Voice notes go to home only if you keep voice notes there, in Settings. They still go to Drive as you share them.",
     stopQuestion: "Stop sending the Jobs record to home?",
     stopMore:
       "This phone tells home you stopped, when it can. What home already has stays there. This phone keeps its whole record.",
     startElsewhere: null,
     offer: (n) =>
       `Send ${counted(n, "event")} to home, and keep sending from now on? This phone keeps its whole record too. New events go while Jobs is open. Stop any time; what's sent stays on home.`,
+    away: null,
+    clash: null,
+    unread: null,
+  },
+  voice: {
+    markLabel: "Where voice notes are kept",
+    title: "Voice notes and home",
+    rows: [
+      {
+        scope: "voice",
+        label: "Spoken reflections, Jobs and scene notes",
+        one: "voice note",
+      },
+    ],
+    waits: waits("voice note"),
+    whileOpen: "while the app is open",
+    phoneOnly:
+      "Voice notes are only on this phone, and in Drive when you share them.",
+    partly:
+      "Some voice notes are on home. New ones stay on this phone from now on.",
+    footnote:
+      "Home keeps every recording and turns it into text for the morning routines. Written reflections and read-aloud takes stay on this phone.",
+    stopQuestion: "Stop sending voice notes to home?",
+    stopMore:
+      "This phone tells home you stopped, when it can. What home already has stays there. Voice notes stay on this phone, and you can still share them to Drive.",
+    startElsewhere: null,
+    offer: (n) =>
+      `Send ${counted(n, "voice note")} to home, and keep sending from now on? Spoken reflections, Jobs voice notes and the drama's scene notes go to home while the app is open, wherever you are in it. Home keeps each recording and turns it into text for the morning routines. This phone keeps a note until home has it, even after you let it go here. Stop any time; what's sent stays on home.`,
     away: null,
     clash: null,
     unread: null,
@@ -196,6 +226,7 @@ export const LEDGER = {
     practice: "Practice",
     aph: "aph",
     jobs: "The Jobs record",
+    voice: "Voice notes",
   } satisfies Record<LaneId, string>,
   /** aph comes back to this phone as it stops, which its own screens do. */
   stopInAph:
@@ -207,7 +238,7 @@ export const LEDGER = {
       text: "Come from home when you ask for them. Nothing goes the other way.",
     },
     {
-      label: "Reflections, voice takes and soundbites",
+      label: "Written reflections, read-aloud takes and soundbites",
       text: "Never go to home. You can share them yourself, to Drive.",
     },
     {
@@ -224,6 +255,7 @@ export const LEDGER = {
     practice: "Practice",
     aph: "aph",
     jobs: "Jobs",
+    voice: "Settings",
   } satisfies Record<LaneId, string>,
   /** A record whose choice an earlier pairing made, which only its own screens know. */
   unsure: (opens: string): string =>
@@ -235,6 +267,7 @@ const LANE_OF: Readonly<Record<Scope, LaneId>> = {
   shelf: "practice",
   aph: "aph",
   jobs: "jobs",
+  voice: "voice",
 }
 
 /** One choice, as the ledger's history says it. */

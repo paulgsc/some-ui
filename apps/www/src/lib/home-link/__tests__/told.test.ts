@@ -32,7 +32,7 @@ function home(answers: Array<HomeAnswer | Error> = []): {
   return {
     sent,
     send: (method, path, body): Promise<HomeAnswer> => {
-      sent.push(`${method} ${path} ${body ?? ""}`)
+      sent.push(`${method} ${path} ${typeof body === "string" ? body : ""}`)
       const answer = answers.shift() ?? { status: 200, body: "{}" }
       return answer instanceof Error
         ? Promise.reject(answer)
@@ -102,6 +102,62 @@ describe("telling home its person's choices", () => {
     const again = home()
     await tellHome(again.send, "old", old, storage)
     expect(again.sent).toEqual([])
+  })
+
+  it("tells a home older than a choice's scope the choices after it too, and keeps that one and all after it untold", async () => {
+    const storage = memoryStorage()
+    const log: ConsentLog = [
+      { seq: 1, at: 1, pairing: "p", kind: "stopped", scopes: ["jobs"] },
+      {
+        seq: 2,
+        at: 2,
+        pairing: "p",
+        kind: "kept",
+        scopes: ["voice"],
+        said: "yes",
+      },
+      {
+        seq: 3,
+        at: 3,
+        pairing: "p",
+        kind: "kept",
+        scopes: ["jobs"],
+        said: "yes",
+      },
+    ]
+    const unknownScope = {
+      status: 422,
+      body: '{"error":{"details":{"scope":["is sessions, shelf, aph or jobs"]}}}',
+    }
+    const older = home([{ status: 200, body: "{}" }, unknownScope])
+    await expect(tellHome(older.send, "p", log, storage)).resolves.toEqual({
+      kind: "synced",
+    })
+    expect(older.sent).toEqual([
+      'PUT /sharing/jobs {"kept":false}',
+      'PUT /sharing/voice {"kept":true}',
+      'PUT /sharing/jobs {"kept":true}',
+    ])
+    expect(readTold(storage, "p")).toBe(1)
+    const updated = home()
+    await tellHome(updated.send, "p", log, storage)
+    expect(updated.sent).toEqual([
+      'PUT /sharing/voice {"kept":true}',
+      'PUT /sharing/jobs {"kept":true}',
+    ])
+    expect(readTold(storage, "p")).toBe(3)
+  })
+
+  it("says any other 422 is home's answer", async () => {
+    await expect(
+      tellHome(
+        home([{ status: 422, body: '{"error":{"details":{"kept":["no"]}}}' }])
+          .send,
+        "p",
+        LOG,
+        null
+      )
+    ).resolves.toEqual({ kind: "failed", why: "a choice: home answered 422" })
   })
 
   it("tells everything again once forgotten", async () => {

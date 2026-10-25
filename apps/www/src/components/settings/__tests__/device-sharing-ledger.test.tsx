@@ -115,7 +115,8 @@ async function mount(): Promise<void> {
 describe("the sharing ledger", () => {
   it("says everything is only on this phone, and sends nothing", async () => {
     await mount()
-    expect(screen.getAllByText(/: Only on this phone$/)).toHaveLength(4)
+    // Practice's two kinds, aph, the Jobs record and voice notes.
+    expect(screen.getAllByText(/: Only on this phone$/)).toHaveLength(5)
     expect(screen.getByText(/No choice to keep sending made yet/)).toBeTruthy()
     expect(screen.queryByRole("button")).toBeNull()
     expect(home.sent).toEqual([])
@@ -178,7 +179,8 @@ describe("the sharing ledger", () => {
     await mount()
     expect(screen.getByText(/shows on aph's own mark\.$/)).toBeTruthy()
     expect(screen.getByText(/shows on Jobs's own mark\.$/)).toBeTruthy()
-    expect(screen.getAllByText(/: Only on this phone$/)).toHaveLength(2)
+    // Practice's two kinds and voice notes.
+    expect(screen.getAllByText(/: Only on this phone$/)).toHaveLength(3)
     expect(screen.getByText(LEDGER.noHistoryEarlier)).toBeTruthy()
   })
 

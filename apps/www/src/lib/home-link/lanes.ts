@@ -1,11 +1,13 @@
 /**
  * One wiring for every record its person may keep on home (aph, LA9; the
- * Jobs record, LA10; Practice, LA11; docs/learner-data-authority.md). A lane
- * declares what it is (`Lane`; `./aph`, `./jobs`, `./practice`), and this
- * module does the rest, once for all of them: what its person chose
- * (`./consent-runtime`), one runtime per lane per page load over the link's
- * `keep` (`./kept-runtime`), and the watch (`./kept-watch`) for as long as
- * the lane's mark mounts `useLaneHome`.
+ * Jobs record, LA10; Practice, LA11; voice notes, LA13;
+ * docs/learner-data-authority.md). A lane declares what it is (`Lane`;
+ * `./aph`, `./jobs`, `./practice`, `./voice`), and this module does the
+ * rest, once for all of them: what its person chose (`./consent-runtime`),
+ * one runtime per lane per page load over the link's `keep`
+ * (`./kept-runtime`), and the watch (`./kept-watch`) for as long as the
+ * lane's mark mounts `useLaneHome` (voice notes have no mark: the app shell
+ * mounts theirs).
  */
 import { useEffect, useSyncExternalStore } from "react"
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
@@ -24,7 +26,7 @@ import { askKept, watchKept } from "./kept-watch"
 import type { HomeLinkState } from "./model"
 import { forgetTold, tellHome } from "./told"
 
-export type LaneId = "practice" | "aph" | "jobs"
+export type LaneId = "practice" | "aph" | "jobs" | "voice"
 
 /** What a lane's sheet counts, as its record says while its mark shows. */
 export type LaneCounts = {
@@ -105,6 +107,11 @@ function sharedBy(
   pairing = pairingOf()
 ): Shared {
   return ofLane(lane, sharedNow(log, pairing))
+}
+
+/** Whether `lane`'s person keeps sending it to the paired home, now. */
+export function keptNow(lane: Pick<Lane, "scopes">): boolean {
+  return sharedBy(lane).size > 0
 }
 
 type Wired = {
@@ -247,6 +254,15 @@ export function useLaneHome(lane: Lane): KeptState {
       unwatch()
     }
   }, [lane])
+  return useSyncExternalStore(sending.subscribe, sending.getSnapshot)
+}
+
+/**
+ * How sending `lane` home is going, read without a watch of its own: for a
+ * screen that shows a lane another one sends (Settings, for voice notes).
+ */
+export function useLaneRun(lane: Lane): KeptState {
+  const { sending } = wire(lane)
   return useSyncExternalStore(sending.subscribe, sending.getSnapshot)
 }
 
