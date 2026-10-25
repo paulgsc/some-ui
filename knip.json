@@ -10,7 +10,7 @@
     "packages/some-styles/styles-build/*.d.mts",
     "packages/some-styles/styles-build/examples/**"
   ],
-  "ignoreBinaries": ["typst", "rustc", "wasm-pack"],
+  "ignoreBinaries": ["typst", "rustc", "wasm-pack", "ffmpeg"],
   "ignoreIssues": {
     "extensions/some-censor/src/lib/content/debug.ts": ["exports"],
     "packages/eslint/src/index.ts": ["duplicates"]

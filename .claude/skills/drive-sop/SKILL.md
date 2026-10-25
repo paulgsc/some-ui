@@ -13,6 +13,12 @@ other agent without this repo reads the same text:
 - **The SOP:** the Google Doc titled `README — Drive SOP` in My Drive's root. Find it with
   `search_files`, `title = 'README — Drive SOP'`, and read it with `read_file_content`
   before your first write. It wins over this file, a handoff or a memory on where files go.
+- **Audio and other binary files:** the connector returns them as base64 text, which a
+  session would have to copy out by hand. When the environment carries `DRIVE_SA_KEY_B64`,
+  read them with that service account instead: the Drive API with `alt=media`, checked
+  against the file's `md5Checksum` (the build-journal skill's `drive_pull.py` does this
+  for voice takes). It only reads: it cannot create, move or trash a file, and it has no
+  storage of its own.
 
 What it settles, so you know it's worth the read:
 

@@ -9,6 +9,7 @@
     "content:link": "node scripts/link-content-assets.js",
     "build": "node scripts/sync-resume.mjs && vite build && tsc",
     "build:fit": "WWW_FIT_HARNESS=1 vite build --outDir out/ui-fit --emptyOutDir",
+    "build:apk-sample": "VITE_STATIC_DATA=true VITE_BASE_PATH=/ SOME_UI_PROFILE=mobile vite build --outDir out/apk-sample --emptyOutDir",
     "check:bundle-paths": "node check-bundle-paths.ts",
     "serve": "vite preview",
     "clean": "rm -rf .turbo node_modules .eslintcache && pnpm clean:build",
@@ -24,6 +25,7 @@
     "test:e2e": "playwright test --config playwright.config.ts",
     "test:ui-fit": "playwright test --config playwright.config.ts tests/ui-fit",
     "test:sw": "playwright test --config playwright.config.ts tests/study-nudge",
+    "record:apk-shorts": "tsx tests/record/apk-shorts.ts",
     "record:playoff-delta": "tsx tests/record/playoff-delta.ts"
   },
   "dependencies": {
