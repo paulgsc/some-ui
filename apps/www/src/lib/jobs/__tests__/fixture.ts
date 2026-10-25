@@ -1,5 +1,5 @@
-import type { Digest, Pick } from "@some-ui/job-desk"
-import { fingerprint } from "@some-ui/job-desk"
+import type { Digest, JobsRun, Pick } from "@some-ui/job-desk"
+import { digestFileName, fingerprint } from "@some-ui/job-desk"
 import type { BlobShelf } from "@some-ui/voice-capture"
 import { vi } from "vitest"
 
@@ -50,6 +50,45 @@ function pick(id: string, company: string, adjacent: boolean): Pick {
 
 /** When a test's digests are opened, before any event it records. */
 export const OPENED_AT = "2026-10-17T15:00:00Z"
+
+/**
+ * The record of the run that started at `startedAt`, as ROUTINE.md §9 writes
+ * one: a `done` run added the morning's digest, a `stopped` one nothing.
+ */
+export function run(
+  startedAt: string,
+  outcome: JobsRun["outcome"] = "done",
+  problems: ReadonlyArray<string> = outcome === "done"
+    ? []
+    : ["This session couldn’t search the web, so there are no picks today."]
+): JobsRun {
+  const day = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Los_Angeles",
+  }).format(new Date(startedAt))
+  return {
+    schema: "some-ui.routine-run/1",
+    routine: "jobs",
+    startedAt,
+    finishedAt: startedAt,
+    outcome,
+    found: {
+      postings: outcome === "stopped" ? 0 : 12,
+      scouts: 0,
+      decisions: 0,
+    },
+    added:
+      outcome === "stopped"
+        ? []
+        : [
+            {
+              folder: "brief",
+              name: digestFileName(day),
+              title: "2 picks from 12 postings",
+            },
+          ],
+    problems: [...problems],
+  }
+}
 
 /** A digest for `day` with one software pick and one adjacent one. */
 export function digest(day: string): Digest {

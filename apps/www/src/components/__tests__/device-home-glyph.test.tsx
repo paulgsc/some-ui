@@ -169,7 +169,14 @@ function jobsRecord(events: number, kept: boolean): void {
         pickId: `p${i}`,
         fingerprint: `f${i}`,
       })),
-      home: { kept, held: [], refused: [], refusedFiles: [], lookedAt: null },
+      home: {
+        kept,
+        held: [],
+        refused: [],
+        refusedFiles: [],
+        lookedAt: null,
+        runs: null,
+      },
     },
   }
 }

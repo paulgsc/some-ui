@@ -25,11 +25,16 @@
  *    a refusal, kept by name and the file never filed again (it stays on the
  *    share sheet). A file naming a voice note waits for the share sheet,
  *    which carries the audio to Drive: home holds no audio;
- * 3. home's digests (`GET /jobs/digests`), the days after the newest one the
+ * 3. home's records of the morning runs (`GET /jobs/runs`), its newest
+ *    few: what each run did, and what it couldn't, a stopped run included.
+ *    A record the phone can't read is skipped, and a home that doesn't keep
+ *    them (a `404`) tells none;
+ * 4. home's digests (`GET /jobs/digests`), the days after the newest one the
  *    phone holds (the newest few, on a phone holding none): the morning
  *    run's picks, which home takes from the mailbox. At most
- *    `DIGESTS_PER_RUN` are taken in (`fetched` decides which are kept). A
- *    digest the phone can't read is skipped and the rest are taken.
+ *    `DIGESTS_PER_RUN` are taken in (`fetched` decides which are kept), with
+ *    step 3's records, so a look at home says both or neither. A digest the
+ *    phone can't read is skipped and the rest are taken.
  *
  * What an exchange learned is handed over as it ends, however it ends: a
  * throw part way (a stop, no answer) keeps what home already confirmed.
@@ -42,8 +47,8 @@ import {
   unexpectedAnswer,
 } from "@some-ui/core-utils"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
-import type { Digest } from "@some-ui/job-desk"
-import { DigestSchema } from "@some-ui/job-desk"
+import type { Digest, JobsRun } from "@some-ui/job-desk"
+import { DigestSchema, JobsRunSchema } from "@some-ui/job-desk"
 import { z } from "zod"
 
 import type { Outgoing, OutgoingFile } from "./files"
@@ -61,8 +66,14 @@ export type JobsRecordPort = {
   ) => void
   /** Home's copy, for a phone whose log is empty; false if not taken. */
   restored: (events: ReadonlyArray<JobEvent>) => boolean
-  /** Digests home holds, for the record to take in. */
-  fetched: (digests: ReadonlyArray<Digest>) => void
+  /**
+   * Digests home holds, for the record to take in, and its runs' records
+   * (none from a home that doesn't keep them).
+   */
+  fetched: (
+    digests: ReadonlyArray<Digest>,
+    runs?: ReadonlyArray<JobsRun>
+  ) => void
   /** The file a share of `kind` would send now, as the runtime builds it. */
   outgoing: (kind: ShareKind) => Outgoing
   /** Home holds `file`: recorded shared and arrived. False if not kept. */
@@ -76,6 +87,10 @@ const HeldSchema = z.object({ events: z.array(EventSchema) })
 /** Each digest is read by job-desk's own parser, not by this schema. */
 const DigestsAnswer = z.object({
   digests: z.array(z.object({ day: z.iso.date(), digest: z.unknown() })),
+})
+/** Each record is read by job-desk's own schema, not by this one. */
+const RunsAnswer = z.object({
+  runs: z.array(z.object({ name: z.string(), run: z.unknown() })),
 })
 type Learned = { held: Array<string>; refused: Array<HomeRefusal> }
 
@@ -136,11 +151,43 @@ async function readRecord(
   return null
 }
 
-/** Step 3. Null when the exchange goes on to its end. */
+/** Step 3: the records, or none from a home that doesn't keep them. */
+async function readRuns(
+  send: HomeCall
+): Promise<{ runs: ReadonlyArray<JobsRun> | undefined } | HomeExchanged> {
+  const answer = await send("GET", "/jobs/runs")
+  if (answer.status === 401) return { kind: "forgotten" }
+  // A home from before the runs were kept: the digests still come.
+  if (answer.status === 404) return { runs: undefined }
+  const held = readAs(RunsAnswer, answer.body)
+  if (answer.status !== 200 || held === null) {
+    return unexpectedAnswer("the runs", answer.status)
+  }
+  const runs: Array<JobsRun> = []
+  for (const { name, run } of held.runs) {
+    const parsed = JobsRunSchema.safeParse(run)
+    if (parsed.success) {
+      runs.push(parsed.data)
+      continue
+    }
+    reportFailure({
+      port: "home server (runs)",
+      error: {
+        ...toIntentError(null),
+        summary: `The record ${name} couldn't be read.`,
+      },
+    })
+  }
+  return { runs }
+}
+
+/** Steps 3 and 4. Null when the exchange goes on to its end. */
 async function readDigests(
   keeping: JobsRecordPort,
   send: HomeCall
 ): Promise<HomeExchanged | null> {
+  const read = await readRuns(send)
+  if ("kind" in read) return read
   const after = newestDay(keeping.state())
   const path = after === null ? "/jobs/digests" : `/jobs/digests?after=${after}`
   const answer = await send("GET", path)
@@ -166,7 +213,7 @@ async function readDigests(
       },
     })
   }
-  keeping.fetched(valid.slice(-DIGESTS_PER_RUN))
+  keeping.fetched(valid.slice(-DIGESTS_PER_RUN), read.runs)
   return null
 }
 
@@ -222,7 +269,7 @@ async function exchange(
   return (await readDigests(keeping, send)) ?? { kind: "synced" }
 }
 
-/** Steps 1 to 3 through `send`. Throws what `send` throws. */
+/** Steps 1 to 4 through `send`. Throws what `send` throws. */
 export async function exchangeJobs(
   keeping: JobsRecordPort,
   send: HomeCall

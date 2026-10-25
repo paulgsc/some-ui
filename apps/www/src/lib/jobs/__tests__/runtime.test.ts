@@ -7,7 +7,7 @@ import { STORAGE_KEY } from "@/lib/jobs/stored"
 import type { StorageAdapter } from "@/lib/tenant/storage"
 import { createInMemoryStorage } from "@/lib/tenant/storage"
 
-import { digest, ports } from "./fixture"
+import { digest, ports, run } from "./fixture"
 
 const blob = (text: string): Blob =>
   new Blob([text], { type: "application/json" })
@@ -51,6 +51,23 @@ describe("createJobsRuntime", () => {
     expect(noted).toContain(',"lookedAt":null')
     p.storage.setItem(STORAGE_KEY, noted.replace(',"lookedAt":null', ""))
     expect(createJobsRuntime(p).getSnapshot().state.home.lookedAt).toBeNull()
+
+    // A record kept before the phone read the runs' records has none, and a
+    // stored run this build can't read is left out, the record kept.
+    const before = p.storage.getItem(STORAGE_KEY) ?? ""
+    expect(before).toContain(',"runs":null')
+    const good = run("2026-10-18T14:52:07Z")
+    const odd = { routine: "jobs", outcome: "fine" }
+    p.storage.setItem(
+      STORAGE_KEY,
+      before.replace(',"runs":null', `,"runs":${JSON.stringify([good, odd])}`)
+    )
+    expect(createJobsRuntime(p).getSnapshot().state).toMatchObject({
+      current: "2026-10-18",
+      home: { runs: [good] },
+    })
+    p.storage.setItem(STORAGE_KEY, before.replace(',"runs":null', ""))
+    expect(createJobsRuntime(p).getSnapshot().state.home.runs).toBeNull()
 
     // A record the first Jobs build kept has no `home`: it opens, not kept there.
     const kept: unknown = JSON.parse(p.storage.getItem(STORAGE_KEY) ?? "{}")

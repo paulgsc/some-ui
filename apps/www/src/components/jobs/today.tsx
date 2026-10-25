@@ -517,8 +517,8 @@ export const JobsToday = (): JSX.Element => {
   const morning = morningOf(state, kept, now)
   const digest = currentDigest(state)
   const card = (
-    <MorningCard morning={morning} now={now}>
-      {offersDrive(morning.id) && <OpenDigest />}
+    <MorningCard morning={morning} runs={state.home.runs ?? []} now={now}>
+      {offersDrive(morning) && <OpenDigest />}
     </MorningCard>
   )
 
@@ -547,7 +547,7 @@ export const JobsToday = (): JSX.Element => {
           <p className="text-sm">
             {newer ? newerHeld(digest.day) : notToday(digest.day)}
           </p>
-          {!offersDrive(morning.id) && <OpenDigest />}
+          {!offersDrive(morning) && <OpenDigest />}
         </section>
       )}
       <Problem />
