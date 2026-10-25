@@ -632,6 +632,9 @@ describe("voice transcripts", () => {
     expect((await send(d, "GET", "/v1/transcript/items")).status).toBe(200)
     expect((await send(d, "GET", path, { token: HOME })).status).toBe(403)
     expect(
+      (await send(d, "GET", "/v1/transcript/items", { token: HOME })).status
+    ).toBe(403)
+    expect(
       (await put(d, "transcript", "transcript-a-1.json", { body: TRANSCRIPT }))
         .status
     ).toBe(403)
@@ -641,37 +644,72 @@ describe("voice transcripts", () => {
     const d = deps()
     const audio = "a transcript carries no audio: home keeps the audio"
     const drive = "a transcript names no Drive file: home keeps the audio"
-    const refused: ReadonlyArray<readonly [Record<string, unknown>, string]> = [
-      [{ ...HEARD, audio: "T2dnUwACAAAAAAAA" }, audio],
-      [{ ...HEARD, audioBase64: "T2dnUwACAAAAAAAA" }, audio],
-      [{ ...HEARD, take: { bytes: [79, 103] } }, audio],
-      [{ ...HEARD, text: "data:audio/webm;base64,GkXfo59ChoEB" }, audio],
+    const wrapped = Array.from({ length: 6 }, () => "GkXfo59C".repeat(10)).join(
+      "\n"
+    )
+    const refused: ReadonlyArray<readonly [string, string]> = [
+      [JSON.stringify({ ...HEARD, audio: "T2dnUwACAAAAAAAA" }), audio],
+      [JSON.stringify({ ...HEARD, base64: "T2dnUwACAAAAAAAA" }), audio],
       [
-        { ...HEARD, text: `heard ${"GkXfo59ChoEBQveBAULygQRC".repeat(10)}` },
+        JSON.stringify({
+          ...HEARD,
+          text: "here data:audio/webm;base64,GkXfo59ChoEB",
+        }),
         audio,
       ],
-      [{ ...HEARD, driveId: "1AbCdEfGhIjKlMnOpQrStUvWxYz012345" }, drive],
-      [{ ...HEARD, fileId: "1AbCdEfGhIjKlMnOpQrStUvWxYz012345" }, drive],
+      // Base64 as `base64` prints it, wrapped at 76 columns.
+      [JSON.stringify({ ...HEARD, text: wrapped }), audio],
+      // `JSON.parse` keeps the second `text`; the stored bytes hold both.
       [
-        {
+        TRANSCRIPT.replace(
+          '"text":',
+          '"text":"data:audio/ogg;base64,T2dnUwAC","text":'
+        ),
+        audio,
+      ],
+      [
+        JSON.stringify({ ...HEARD, driveId: "1AbCdEfGhIjKlMnOpQrStUvWxYz012" }),
+        drive,
+      ],
+      [
+        JSON.stringify({ ...HEARD, fileId: "1AbCdEfGhIjKlMnOpQrStUvWxYz012" }),
+        drive,
+      ],
+      [
+        JSON.stringify({
           ...HEARD,
-          ref: "session-7f2a",
           text: "see https://drive.google.com/file/d/1AbC/view",
-        },
+        }),
         drive,
       ],
     ]
     for (const [index, [body, why]] of refused.entries()) {
-      const response = await asHome(
-        d,
-        `transcript-n${String(index)}-1.json`,
-        JSON.stringify(body)
-      )
+      const response = await asHome(d, NAME, body)
       expect([index, response.status, await response.json()]).toEqual([
         index,
         422,
         { error: why },
       ])
+    }
+  })
+
+  it("takes speech that only talks about audio, data or Drive", async () => {
+    const d = deps()
+    for (const [index, text] of [
+      "Data: we need more of it",
+      "the audio on my drive was quiet",
+      "I put it on docs.google.com yesterday",
+    ].entries()) {
+      expect([
+        text,
+        (
+          await asHome(
+            d,
+            `transcript-k3v9qa-${String(index + 1)}.json`,
+            JSON.stringify({ ...HEARD, text })
+          )
+        ).status,
+      ]).toEqual([text, 201])
     }
   })
 
@@ -682,9 +720,14 @@ describe("voice transcripts", () => {
       [{ ...HEARD, words: 7 }, "words is not part of a transcript"],
       [{ ...HEARD, note: "" }, "note must be the note's id"],
       [{ ...HEARD, note: "a/b" }, "note must be the note's id"],
+      [{ ...HEARD, note: "zzz" }, "the name must carry the note's id"],
       [{ ...HEARD, of: "diary" }, "of must be reflection, jobs or scene"],
       [{ ...HEARD, ref: 7 }, "ref must name what the note belongs to"],
       [{ ...HEARD, at: "soon" }, "at must be when the note was recorded"],
+      [
+        { ...HEARD, at: "2026-10-25T03:10:00" },
+        "at must be when the note was recorded",
+      ],
       [untold, "text must be what home heard"],
       [{ ...HEARD, text: "  " }, "text must be what home heard"],
       [
@@ -695,11 +738,7 @@ describe("voice transcripts", () => {
       [{ ...HEARD, heardAt: 1 }, "heardAt must be when home heard it"],
     ]
     for (const [index, [body, why]] of wrong.entries()) {
-      const response = await asHome(
-        d,
-        `transcript-n${String(index)}-1.json`,
-        JSON.stringify(body)
-      )
+      const response = await asHome(d, NAME, JSON.stringify(body))
       expect([index, response.status, await response.json()]).toEqual([
         index,
         422,
@@ -710,21 +749,14 @@ describe("voice transcripts", () => {
       "transcript-k3v9qa.json",
       "transcript--1.json",
       "transcript-k3v9qa-x.json",
+      "transcript-k3v9qa-0.json",
+      "transcript-k3v9qa-01.json",
       `transcript-${"a".repeat(65)}-1.json`,
       "transcript-k3v9qa-1.webm",
       "k3v9qa_voice-20261025T031000Z-k3v9qa.m4a",
     ]) {
       expect([name, (await asHome(d, name)).status]).toEqual([name, 422])
     }
-    expect(
-      (
-        await asHome(
-          d,
-          "transcript-k3v9qa-1.json",
-          JSON.stringify({ ...HEARD, schema: "some-ui.leetype-log/1" })
-        )
-      ).status
-    ).toBe(422)
   })
 })
 

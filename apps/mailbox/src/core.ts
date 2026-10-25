@@ -47,59 +47,52 @@ const NO_AUDIO = "a transcript carries no audio: home keeps the audio"
 const NO_DRIVE = "a transcript names no Drive file: home keeps the audio"
 const AUDIO_KEY = /audio|sound|wav|webm|ogg|opus|m4a|mp3|base64|bytes|blob/i
 const DRIVE_KEY = /drive|file_?id/i
-const DRIVE_LINK = /\b(drive|docs)\.google\.com\b/i
-/** Encoded bytes, not speech: a long run with no space in base64's alphabet. */
-const ENCODED_RUN = /[A-Za-z0-9+/=_-]{200,}/
+const DATA_URI = /\bdata:[\w.+-]+\/[\w.+-]+[;,]/i
+const DRIVE_LINK = /drive\.google\.com|docs\.google\.com\/(uc|open|file)/i
+/**
+ * Encoded bytes, not speech: a run in base64's alphabet longer than any id
+ * a transcript holds (a `ref` is at most 200), once line breaks are gone.
+ */
+const ENCODED_RUN = /[A-Za-z0-9+/=_-]{256,}/
 /** home's note ids and refs (`voice_repo::is_name` in paulgsc/server). */
 const NOTE_ID = /^[A-Za-z0-9_.:-]{1,64}$/
 const NOTE_REF = /^[A-Za-z0-9_.:-]{1,200}$/
 const NOTE_OF: ReadonlySet<unknown> = new Set(["reflection", "jobs", "scene"])
-
-/** Every key and string in a JSON value, however deep. */
-function leavesOf(value: unknown): {
-  readonly keys: ReadonlyArray<string>
-  readonly strings: ReadonlyArray<string>
-} {
-  const keys: Array<string> = []
-  const strings: Array<string> = []
-  const queue: Array<unknown> = [value]
-  for (let next = queue.pop(); next !== undefined; next = queue.pop()) {
-    if (typeof next === "string") strings.push(next)
-    else if (typeof next === "object" && next !== null) {
-      // An array's entries are keyed "0", "1", …: no word a check looks for.
-      for (const [key, inner] of Object.entries(next)) {
-        keys.push(key)
-        queue.push(inner)
-      }
-    }
-  }
-  return { keys, strings }
-}
+const INSTANT =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?(Z|[+-]\d{2}:\d{2})$/
 
 function isInstant(value: unknown): boolean {
   return (
     typeof value === "string" &&
-    /^\d{4}-\d{2}-\d{2}T/.test(value) &&
+    INSTANT.test(value) &&
     !Number.isNaN(Date.parse(value))
   )
 }
 
-/** README, "What a put must satisfy": a transcript is text, and only its own keys. */
+/**
+ * README, "What a put must satisfy": a transcript is text, and only its own
+ * keys. Audio and Drive links are looked for in the body's text as sent, so
+ * a key given twice, whose first value `JSON.parse` drops, is read too.
+ */
 function transcriptRefusal(
-  body: Readonly<Record<string, unknown>>
+  body: Readonly<Record<string, unknown>>,
+  text: string,
+  name: string
 ): string | null {
-  const { keys, strings } = leavesOf(body)
-  if (keys.some((key) => AUDIO_KEY.test(key))) return NO_AUDIO
-  if (keys.some((key) => DRIVE_KEY.test(key))) return NO_DRIVE
-  if (strings.some((value) => /^data:/i.test(value.trim()))) return NO_AUDIO
-  if (strings.some((value) => DRIVE_LINK.test(value))) return NO_DRIVE
-  if (typeof body.text === "string" && ENCODED_RUN.test(body.text)) {
-    return NO_AUDIO
-  }
+  const flat = text.replace(/\\[nr]|[\r\n]/g, "").replaceAll("\\/", "/")
+  if (DATA_URI.test(text) || ENCODED_RUN.test(flat)) return NO_AUDIO
+  if (DRIVE_LINK.test(text)) return NO_DRIVE
   const extra = Object.keys(body).find((key) => !TRANSCRIPT_KEYS.has(key))
-  if (extra !== undefined) return `${extra} is not part of a transcript`
+  if (extra !== undefined) {
+    if (AUDIO_KEY.test(extra)) return NO_AUDIO
+    if (DRIVE_KEY.test(extra)) return NO_DRIVE
+    return `${extra} is not part of a transcript`
+  }
   if (typeof body.note !== "string" || !NOTE_ID.test(body.note)) {
     return "note must be the note's id"
+  }
+  if (!name.startsWith(`transcript-${body.note}-`)) {
+    return "the name must carry the note's id"
   }
   if (!NOTE_OF.has(body.of)) return "of must be reflection, jobs or scene"
   if (typeof body.ref !== "string" || !NOTE_REF.test(body.ref)) {
@@ -135,7 +128,11 @@ type FolderRules = {
    * Checks deeper than the schema, for a folder whose shape the mailbox
    * itself must hold: why the body is refused, or `null`.
    */
-  readonly refuses?: (body: Readonly<Record<string, unknown>>) => string | null
+  readonly refuses?: (
+    body: Readonly<Record<string, unknown>>,
+    text: string,
+    name: string
+  ) => string | null
 }
 
 const FOLDERS: ReadonlyArray<FolderRules> = [
@@ -199,7 +196,7 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
     // What home heard in one voice note, named for the note's id and home's
     // number for the transcript, so a better model's goes under a new name.
     folder: "transcript",
-    name: /^transcript-[A-Za-z0-9_.:-]{1,64}-\d{1,19}\.json$/,
+    name: /^transcript-[A-Za-z0-9_.:-]{1,64}-[1-9]\d{0,18}\.json$/,
     schema: "some-ui.voice-transcript/1",
     refuses: transcriptRefusal,
   },
@@ -494,7 +491,9 @@ async function readCapped(
 
 function parseJson(
   bytes: Uint8Array
-): { readonly ok: true; readonly value: unknown } | { readonly ok: false } {
+):
+  | { readonly ok: true; readonly value: unknown; readonly text: string }
+  | { readonly ok: false } {
   try {
     // A byte-order mark stays in the text, where JSON.parse refuses it: the
     // stored bytes are exactly what was sent.
@@ -502,7 +501,7 @@ function parseJson(
       fatal: true,
       ignoreBOM: true,
     }).decode(bytes)
-    return { ok: true, value: JSON.parse(text) }
+    return { ok: true, value: JSON.parse(text), text }
   } catch {
     return { ok: false }
   }
@@ -545,7 +544,7 @@ async function bodyOf(
   if (!isRecord(parsed.value) || parsed.value.schema !== rules.schema) {
     return refuse(422, `the body's schema must be ${rules.schema}`)
   }
-  const refusal = rules.refuses?.(parsed.value) ?? null
+  const refusal = rules.refuses?.(parsed.value, parsed.text, name) ?? null
   if (refusal !== null) return refuse(422, refusal)
   return { bytes, sha256: hex(await sha256(bytes)) }
 }

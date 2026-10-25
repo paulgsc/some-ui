@@ -117,14 +117,17 @@ role, and it is the owner's call, so it is not built.
   letters, digits, `-` or `_`, as home's log takes it), or `log-<session>.r<n>.json` for a
   later copy of a session home holds more of; and `transcript` takes
   `transcript-<note>-<n>.json`, named for the note's id (1 to 64 letters, digits, `-`, `_`, `.`
-  or `:`, as home's `PUT /voice-notes/:id` takes it) and home's number for that transcript, so
-  a better model's transcript of the same note goes under a new name. Anything else, an audio
-  file's name included, is `422`.
+  or `:`, as home's `PUT /api/v1/voice-notes/:id` takes it, sent unencoded: the Worker does not
+  decode `%3A`) and `<n>`, home's number for that transcript, from 1 with no leading zero. `<n>`
+  must differ for every transcript of the note across every model (the row's own number, never
+  its `attempt`, which starts again at 1 for each model), so a better model's transcript goes
+  under a new name rather than meeting a `409`. Anything else, an audio file's name included,
+  is `422`.
 - **Content type** `application/json` (parameters such as `charset` are ignored), and the body
   must be UTF-8 JSON with no byte-order mark.
 - **Schema**: the top-level `schema` must be `some-ui.job-digest/1`, `some-ui.job-decisions/1`,
   `some-ui.job-scouts/1`, `some-ui.routine-scene/1`, `some-ui.routine-drama/1`, `some-ui.routine-run/1`,
-  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1` or `some-ui.voice-transcript/1` to match the folder. The Worker checks that and, but for a transcript, nothing deeper; the readers validate the full shape.
+  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1` or `some-ui.voice-transcript/1` to match the folder. The Worker checks that and nothing deeper, except for a transcript (below); the readers validate the full shape.
 - **A scene** is `{"schema":"some-ui.routine-scene/1","answers":"<reflection>","title":"<the
 scene folder's name>","decks":[<read-aloud deck>,<lens deck>]}`, each deck exactly as the
   phone's word set check takes it. **A drama** is `{"schema":"some-ui.routine-drama/1",
@@ -152,12 +155,14 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   stamp), when it was recorded, what home heard, the language heard (Whisper's code, `en` or
   `ko`), the model that heard it, and when. Unlike the other folders, the Worker holds this
   shape itself, because the one thing a transcript must never be is audio: a body with any
-  other key is `422`, and so is one that carries audio or names a Drive file, with the reason
-  (`a transcript carries no audio` or `a transcript names no Drive file`). That catches a key
-  that names audio, bytes or base64, or a Drive or file id, at any depth; a `data:` URI or a
-  Drive link in any string; and a run of 200 or more base64 characters with no space in the
-  text, which no speech produces. It cannot catch audio spelled some other way inside the text,
-  or a bare Drive id in `ref`, which looks like any other id.
+  other key is `422`, a name that does not carry the body's `note` is `422`, and so is a body
+  that carries audio or names a Drive file, with the reason (`a transcript carries no audio` or
+  `a transcript names no Drive file`). That catches an extra key that names audio, bytes or
+  base64, or a Drive or file id; and, anywhere in the body's text as sent (a key given twice
+  included), a `data:<type>/<subtype>` URI, a Drive link, or a run of 256 or more base64
+  characters once line breaks are taken out, longer than any id a transcript holds and longer
+  than any word of speech. It cannot catch audio spelled some other way (a `\u`-escaped
+  `data:`, say), or a bare Drive id in any field, which looks like any other id.
 - **Size**: at most 1,048,576 bytes. A declared `Content-Length` over that is refused before
   the body is read, and a body that declares nothing is cut off as it passes the cap. Real
   files are under 20 KB, except LeetType session files: Thread 1's first file is 30 KB
