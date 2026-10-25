@@ -609,6 +609,10 @@ describe("lint: extension-charter — no-playback-polling (LP1)", () => {
       `const EVENTS = ["play", "timeupdate"]`,
       `video.ontimeupdate = read`,
       `video.onprogress = read`,
+      `const every = setInterval; every(read, 1000)`,
+      `const { setInterval: every } = globalThis`,
+      `const { alarms } = chrome; alarms.create("poll", {})`,
+      `globalThis.chrome.alarms.create("poll", {})`,
     ]) {
       const msgs = await lintSnippet(adopted, code, TS_FILE)
       expectMessageForRule(msgs, RULE, code)
@@ -622,9 +626,26 @@ describe("lint: extension-charter — no-playback-polling (LP1)", () => {
       `video.addEventListener("seeked", report)`,
       `const entry = { progress: 0 }; const p = entry.progress`,
       `const o = { "progress": 0 }`,
+      `const bar = document.createElement("progress")`,
       `function f(setInterval) { setInterval() }`,
+      `const { alarms } = settings`,
     ]) {
       const msgs = await lintSnippet(adopted, code, TS_FILE)
+      expectQuiet(msgs, code)
+      expectNoMessageForRule(msgs, RULE, code)
+    }
+  })
+
+  it("does NOT fire on a type or a quoted field in one", async () => {
+    const typed = defineConfig([
+      ...adopted,
+      { files: ["**/*.ts"], languageOptions: { parser: typescriptParser } },
+    ])
+    for (const code of [
+      `type Field = "progress"`,
+      `interface Entry { "progress": number }`,
+    ]) {
+      const msgs = await lintSnippet(typed, code, TS_FILE)
       expectQuiet(msgs, code)
       expectNoMessageForRule(msgs, RULE, code)
     }
@@ -660,7 +681,7 @@ describe("lint: extension-charter — message-sent-only-through (LP2)", () => {
       `const LIVE = "LIVE_PLAYBACK"`,
       "tabs.sendMessage(id, { type: `LIVE_PLAYBACK`, live })",
       `const publish = livePublisher(ask, send); broadcast({ type: "LIVE_PLAYBACK", live })`,
-      `livePublisher(ask, send, "LIVE_PLAYBACK"[0]) && ["LIVE_PLAYBACK"]`,
+      `const types = ["LIVE_PLAYBACK"]`,
     ]) {
       const msgs = await lintSnippet(adopted, code, TS_FILE)
       expectMessageForRule(msgs, RULE, code)

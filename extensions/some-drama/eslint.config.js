@@ -25,8 +25,7 @@ export default defineConfig(
     },
   },
   {
-    // LP1 (README.md, "Live playback"): no schedule reads playback. The
-    // card's own timers in src/components/ are L1's, not LP1's.
+    // LP1 (README.md, "Live playback"): no schedule reads playback.
     files: ["src/**/*.{js,mjs,ts,tsx}"],
     ignores: ["src/components/**", "**/__tests__/**"],
     plugins: {

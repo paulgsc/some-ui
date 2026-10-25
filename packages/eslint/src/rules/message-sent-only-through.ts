@@ -1,5 +1,7 @@
 import type { Rule } from "eslint"
 
+import { isKeyOrType, staticText, stringOption } from "./ast-names.js"
+
 const COMPARISONS: ReadonlySet<string> = new Set(["===", "!==", "==", "!="])
 
 /**
@@ -9,10 +11,9 @@ const COMPARISONS: ReadonlySet<string> = new Set(["===", "!==", "==", "!="])
  * as a value anywhere except inside the arguments of a call to the
  * publisher. The places that name the type without sending it pass:
  *
- *   - a type position (`type: "LIVE_PLAYBACK"` in a type alias);
+ *   - a key or a type position (`type: "LIVE_PLAYBACK"` in a type alias);
  *   - an operand of `===`, `!==`, `==` or `!=`, and a `case` label (a guard
- *     that reads a received message);
- *   - an object key.
+ *     that reads a received message).
  *
  * So a constant or a helper elsewhere that builds the message, each of which
  * needs the string as a value, is reported. Whether `background.ts` routes
@@ -56,32 +57,18 @@ export const messageSentOnlyThrough: Rule.RuleModule = {
         if (node.value === type) check(node)
       },
       TemplateLiteral(node): void {
-        if (
-          node.expressions.length === 0 &&
-          node.quasis[0]?.value.cooked === type
-        )
-          check(node)
+        if (staticText(node) === type) check(node)
       },
     }
   },
 }
 
-function stringOption(options: unknown, key: string): string | null {
-  if (typeof options !== "object" || options === null) return null
-  const value: unknown = Reflect.get(options, key)
-  return typeof value === "string" ? value : null
-}
-
 function isRead(node: Rule.Node): boolean {
+  if (isKeyOrType(node)) return true
   const parent = node.parent
-  if (parent === null) return false
-  // A TypeScript literal type is not in ESTree's union.
-  const kind: string = parent.type
-  if (kind === "TSLiteralType") return true
-  if (parent.type === "BinaryExpression")
+  if (parent?.type === "BinaryExpression")
     return COMPARISONS.has(parent.operator)
-  if (parent.type === "SwitchCase") return parent.test === node
-  if (parent.type === "Property") return parent.key === node && !parent.computed
+  if (parent?.type === "SwitchCase") return parent.test === node
   return false
 }
 

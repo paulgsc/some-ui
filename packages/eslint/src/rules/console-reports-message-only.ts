@@ -1,15 +1,17 @@
 import type { Rule } from "eslint"
 import type * as ESTree from "estree"
 
-import { isGlobal } from "./require-scoped-lifetime.js"
+import { propertyName, stringOption } from "./ast-names.js"
+import { isGlobal, PAGE_LIFETIME_TARGETS } from "./require-scoped-lifetime.js"
 
 /**
- * Invariant MB3 in apps/mailbox's README: no token reaches a log. The one
- * `console` call is the reporter's, and it logs an error's message, never a
- * request, a header or a body. Configured with the reporter's name, it
- * reports every reference to the global `console` except a direct
- * `console.<method>(…)` call inside that function, and, in that call, any
- * argument other than:
+ * Invariant MB3 in apps/mailbox's README: no token reaches a log. `console`
+ * is used only by the reporter, which logs an error's message, never a
+ * request, a header or a body. Configured with the reporter's name (any
+ * function of that name counts), it reports every reference to the global
+ * `console`, bare or through `globalThis` / `window` / `self`, except a
+ * direct `console.<method>(…)` call inside that function, and, in such a
+ * call, any argument other than:
  *
  *   - a string (a literal, or a template with no `${}`);
  *   - `<p>.message`, where `<p>` is the reporter's first parameter;
@@ -41,16 +43,21 @@ export const consoleReportsMessageOnly: Rule.RuleModule = {
     },
   },
   create(context) {
-    // The schema guarantees the string; read it without an assertion.
-    const options: unknown = context.options[0]
-    const value: unknown =
-      typeof options === "object" && options !== null
-        ? Reflect.get(options, "reporter")
-        : undefined
-    if (typeof value !== "string") return {}
-    const reporter = value
+    const reporter = stringOption(context.options[0], "reporter")
+    if (reporter === null) return {}
     const data = { reporter }
     return {
+      // `globalThis.console` (or `window`, `self`) is console outside the
+      // reporter, which uses the bare name.
+      MemberExpression(node): void {
+        if (
+          propertyName(node) === "console" &&
+          node.object.type === "Identifier" &&
+          PAGE_LIFETIME_TARGETS.has(node.object.name) &&
+          isGlobal(node.object.name, context.sourceCode.getScope(node))
+        )
+          context.report({ node, messageId: "outside", data })
+      },
       Identifier(node): void {
         if (node.name !== "console" || !isReference(node)) return
         if (!isGlobal("console", context.sourceCode.getScope(node))) return

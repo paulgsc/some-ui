@@ -267,17 +267,17 @@ how each was checked when this workspace landed.
   `console` call logs an error's message, never a request, a header or a body.
 - _Falsified by_ a hunk that writes a token-like value into `wrangler.jsonc` (a `vars` entry,
   say) or any committed file; that adds a test fixture that looks like a real token (the tests'
-  are `test-…`); that adds an `eslint-disable` of `no-console`, or a `console.*` call, whose
-  arguments are or read from a `Request`, `Headers` or body; that changes what `report` passes
-  to `console.error` from the error's `message`; or that removes `.dev.vars` from this
-  workspace's `.gitignore`, or deletes or moves that file; or that turns
-  `log-guard/console-reports-message-only` off, narrows it, or renames `report` without
-  updating its `reporter` option.
+  are `test-…`); that lets what `report` logs come from a request, a header or a body in a way
+  the rule below cannot see (reassigning its parameter before the call, or a second function
+  named `report`); that removes `.dev.vars` from this workspace's `.gitignore`, or deletes or
+  moves that file; or that turns `log-guard/console-reports-message-only` off or narrows it, in
+  this workspace's `eslint.config.js` or in `logGuardConfig`
+  (`packages/eslint/src/configs/log-guard.config.ts`).
 - _Scope:_ `apps/mailbox`.
 - _Why not enforced:_ the logging half is a lint rule. `log-guard/console-reports-message-only`
   (`logGuardConfig` in `@some-ui/eslint-kit`, on in this workspace's `eslint.config.js`) fails any
-  use of `console` outside `report`, and any argument of `report`'s call other than a string or
-  the error's `message`; `no-console` still asks for a visible disable at the call. What stays a
+  use of `console`, bare or through `globalThis`, outside a function named `report`, and any
+  argument of `report`'s call other than a string or the error's `message`; `no-console` still asks for a visible disable at the call. What stays a
   reading: whether a string committed anywhere is a real token (no secret scanner runs over this
   workspace), and whether an error's message can carry one.
 - _Checked at landing:_ one `console` call (`src/index.ts`, `report`, the error's `message`);

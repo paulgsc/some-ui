@@ -18,10 +18,12 @@ const EXEMPT: ReadonlySet<string> = new Set([
 const CODE_EXTENSIONS =
   /\.(?:[cm]?[jt]sx?|html?|css|scss|jsonc?|webmanifest|xml|gradle|java|kt|rs|sh|toml|ya?ml)$/
 
-const TOKENS: ReadonlyArray<{
+type Token = {
   readonly name: string
   readonly patterns: ReadonlyArray<RegExp>
-}> = [
+}
+
+const TOKENS: ReadonlyArray<Token> = [
   {
     name: "webkitAudioContext",
     patterns: [/webkit(?:Offline)?AudioContext/i],
@@ -41,16 +43,8 @@ const TOKENS: ReadonlyArray<{
   },
 ]
 
-/**
- * Names only an iOS project has, matched in tracked paths alone: `cap add ios`
- * writes an `ios/` platform beside `android/`, with an Xcode project, a
- * Podfile, an Info.plist and Swift sources. In file text these words are
- * prose, so they are not scanned there.
- */
-const PATH_TOKENS: ReadonlyArray<{
-  readonly name: string
-  readonly patterns: ReadonlyArray<RegExp>
-}> = [
+/** What `cap add ios` writes beside `android/`. */
+const PATH_TOKENS: ReadonlyArray<Token> = [
   {
     name: "an iOS project file",
     patterns: [
@@ -79,7 +73,9 @@ function inScope(path: string): boolean {
   return CODE_EXTENSIONS.test(path) && !EXEMPT.has(path)
 }
 
-function hits(token: (typeof TOKENS)[number], text: string): boolean {
+const ALL_TOKENS: ReadonlyArray<Token> = [...TOKENS, ...PATH_TOKENS]
+
+function hits(token: Token, text: string): boolean {
   return token.patterns.some((pattern) => pattern.test(text))
 }
 
@@ -93,7 +89,7 @@ export function findAndroidOnlyViolations(
 ): Array<AndroidOnlyViolation> {
   const violations: Array<AndroidOnlyViolation> = []
   for (const file of [...tracked].sort()) {
-    for (const token of [...TOKENS, ...PATH_TOKENS]) {
+    for (const token of ALL_TOKENS) {
       if (hits(token, file))
         violations.push({ kind: "path", file, token: token.name })
     }

@@ -66,6 +66,8 @@ describe("lint: log-guard/console-reports-message-only (MB3)", () => {
       `function report(error: unknown) { const log = console; log.error("x") }`,
       `function report(error: unknown) { [1].forEach(() => console.error("x")) }`,
       `function report(error: unknown) { console["error"]; }`,
+      `function handle(request: Request) { globalThis.console.log(request) }`,
+      `function report(error: unknown) { self.console.error("x") }`,
     ]) {
       for (const declared of [true, false]) {
         const msgs = await lintSnippet(makeConfig(declared), code, TS_FILE)

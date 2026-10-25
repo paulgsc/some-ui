@@ -1,6 +1,7 @@
 import type { Rule, Scope } from "eslint"
 import type * as ESTree from "estree"
 
+import { keyName, propertyName } from "./ast-names.js"
 import { isGlobal, PAGE_LIFETIME_TARGETS } from "./require-scoped-lifetime.js"
 
 /** What "is the page showing" is decided from (GOOD_CITIZEN.md, L6). */
@@ -59,17 +60,6 @@ export const noDirectPageShowing: Rule.RuleModule = {
       },
     }
   },
-}
-
-function propertyName(node: ESTree.MemberExpression): string | null {
-  if (node.property.type === "PrivateIdentifier") return null
-  return keyName(node.property, node.computed)
-}
-
-function keyName(key: ESTree.Node, computed: boolean): string | null {
-  if (!computed && key.type === "Identifier") return key.name
-  if (key.type === "Literal" && typeof key.value === "string") return key.value
-  return null
 }
 
 /** `document`, or `window.document` (or `globalThis`, `self`), unshadowed. */

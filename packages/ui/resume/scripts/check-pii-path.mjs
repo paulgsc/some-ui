@@ -1,26 +1,7 @@
 #!/usr/bin/env node
-// RP1, held by a run: PII reaches typst only through `compileWithPii`.
-//
-// Starts scripts/serve.mjs with `typst` and `pdftotext` replaced by shims
-// that record every invocation's argv and environment and then run the real
-// binary, so the render is the service's own, end to end. One request goes in
-// with scripts/fixtures/faux-pii.json. The check fails when:
-//
-//   - a faux value is in any recorded argv or environment variable;
-//   - typst never compiled from stdin to stdout (`compile … - -`), so the run
-//     proved nothing, or the render did not return a PDF;
-//   - a file under this package (outside node_modules and turbo's .turbo
-//     log) changed during the
-//     render, or the render left any file in its own temp directory (the
-//     service runs with a fresh TMPDIR, which Node and typst both honour);
-//   - the service's own output holds a value (RP2's half that a run can see);
-//   - src/main.typ passes anything but `pii: none`.
-//
-// What it cannot see stays with RP1's falsifier: a hunk that would send PII
-// another way only on a path this one request does not take.
-//
-// Needs the build's typst, fonts and Poppler, so scripts/compile.mjs runs it
-// after its own PII pass, wherever it runs the ATS and layout checks.
+// RP1 (README.md, "Scope and limits"), held by one real render: serve.mjs runs
+// with typst and pdftotext behind recording shims, and a PII value must reach
+// neither an argument, the environment nor a file.
 import { execFileSync, spawn } from "node:child_process"
 import {
   chmodSync,
@@ -58,10 +39,10 @@ function fail(message) {
   throw new Error(`[resume] RP1 check failed: ${message}`)
 }
 
-function realPdftotext() {
-  const named = process.env.PDFTOTEXT_BIN ?? "pdftotext"
-  if (named.includes("/")) return named
-  return execFileSync("sh", ["-c", 'command -v "$1"', "sh", named], {
+/** `name` as an absolute path, so a shim of the same name cannot run itself. */
+function absolute(name) {
+  if (name.includes("/")) return name
+  return execFileSync("sh", ["-c", 'command -v "$1"', "sh", name], {
     encoding: "utf8",
   }).trim()
 }
@@ -95,20 +76,26 @@ function freePort() {
   })
 }
 
-/** Files under `dir` changed at or after `since` (ms), skipping `skip`. */
-function changedSince(dir, since, skip) {
-  const changed = []
+// Written beside a build by other tasks (eslint's cache, tsc's build info, turbo's log).
+const NOT_THE_RENDER = new Set(["node_modules", ".turbo", ".eslintcache"])
+
+/** Every file under `dir`: path -> size and mtime. */
+function snapshot(dir) {
+  const files = new Map()
   const walk = (at) => {
     for (const entry of readdirSync(at, { withFileTypes: true })) {
       const path = join(at, entry.name)
-      if (skip.has(entry.name) || skip.has(path)) continue
+      if (NOT_THE_RENDER.has(entry.name) || entry.name.endsWith(".tsbuildinfo"))
+        continue
       if (entry.isDirectory()) walk(path)
-      else if (entry.isFile() && statSync(path).mtimeMs >= since)
-        changed.push(path)
+      else if (entry.isFile()) {
+        const { size, mtimeMs } = statSync(path)
+        files.set(path, `${size}:${mtimeMs}`)
+      }
     }
   }
   walk(dir)
-  return changed
+  return files
 }
 
 function holdsValue(text) {
@@ -125,14 +112,29 @@ async function main() {
 
   const { bin } = await resolveTypst()
   const shimDir = mkdtempSync(join(tmpdir(), "resume-rp1-"))
-  const log = join(shimDir, "calls.jsonl")
   const serviceTmp = mkdtempSync(join(tmpdir(), "resume-rp1-tmp-"))
+  try {
+    await render({ bin, shimDir, serviceTmp })
+  } finally {
+    // The log holds every call's environment: never leave it behind.
+    rmSync(shimDir, { recursive: true, force: true })
+    rmSync(serviceTmp, { recursive: true, force: true })
+  }
+}
+
+async function render({ bin, shimDir, serviceTmp }) {
+  const log = join(shimDir, "calls.jsonl")
   writeFileSync(log, "")
-  writeShim(shimDir, "typst", bin, log)
-  const pdftotextShim = writeShim(shimDir, "pdftotext", realPdftotext(), log)
+  writeShim(shimDir, "typst", absolute(bin), log)
+  const pdftotextShim = writeShim(
+    shimDir,
+    "pdftotext",
+    absolute(process.env.PDFTOTEXT_BIN ?? "pdftotext"),
+    log
+  )
 
   const port = await freePort()
-  const started = Date.now()
+  const before = snapshot(packageDir)
   const server = spawn(
     process.execPath,
     [join(packageDir, "scripts", "serve.mjs")],
@@ -214,18 +216,15 @@ async function main() {
     fail("the render's checks never ran pdftotext.")
   if (holdsValue(output)) fail("the service's output held a PII value.")
 
-  const written = changedSince(
-    packageDir,
-    started,
-    new Set(["node_modules", ".turbo"])
-  )
+  const after = snapshot(packageDir)
+  const written = [...after].filter(([path, stat]) => before.get(path) !== stat)
   if (written.length > 0)
     fail(
       `the render wrote under the package: ${written
-        .map((path) => relative(packageDir, path))
+        .map(([path]) => relative(packageDir, path))
         .join(", ")}`
     )
-  const left = changedSince(serviceTmp, 0, new Set())
+  const left = [...snapshot(serviceTmp).keys()]
   if (left.length > 0)
     fail(
       `the render left a temp file: ${left
@@ -233,8 +232,6 @@ async function main() {
         .join(", ")}`
     )
 
-  rmSync(shimDir, { recursive: true, force: true })
-  rmSync(serviceTmp, { recursive: true, force: true })
   // eslint-disable-next-line no-console
   console.log(
     `[resume] RP1 check passed: ${calls.length} typst and pdftotext calls, ` +
