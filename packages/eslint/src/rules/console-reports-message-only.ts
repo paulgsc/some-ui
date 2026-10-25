@@ -1,7 +1,7 @@
 import type { Rule } from "eslint"
 import type * as ESTree from "estree"
 
-import { propertyName, stringOption } from "./ast-names.js"
+import { keyName, propertyName, stringOption } from "./ast-names.js"
 import { isGlobal, PAGE_LIFETIME_TARGETS } from "./require-scoped-lifetime.js"
 
 /**
@@ -9,7 +9,8 @@ import { isGlobal, PAGE_LIFETIME_TARGETS } from "./require-scoped-lifetime.js"
  * is used only by the reporter, which logs an error's message, never a
  * request, a header or a body. Configured with the reporter's name (any
  * function of that name counts), it reports every reference to the global
- * `console`, bare or through `globalThis` / `window` / `self`, except a
+ * `console`, bare or read or destructured from `globalThis` / `window` /
+ * `self`, except a
  * direct `console.<method>(…)` call inside that function, and, in such a
  * call, any argument other than:
  *
@@ -46,17 +47,26 @@ export const consoleReportsMessageOnly: Rule.RuleModule = {
     const reporter = stringOption(context.options[0], "reporter")
     if (reporter === null) return {}
     const data = { reporter }
+    const isPageGlobal = (node: ESTree.Node): boolean =>
+      node.type === "Identifier" &&
+      PAGE_LIFETIME_TARGETS.has(node.name) &&
+      isGlobal(node.name, context.sourceCode.getScope(node))
     return {
-      // `globalThis.console` (or `window`, `self`) is console outside the
-      // reporter, which uses the bare name.
+      // `globalThis.console` (or `window`, `self`), read or destructured, is
+      // console outside the reporter, which uses the bare name.
       MemberExpression(node): void {
-        if (
-          propertyName(node) === "console" &&
-          node.object.type === "Identifier" &&
-          PAGE_LIFETIME_TARGETS.has(node.object.name) &&
-          isGlobal(node.object.name, context.sourceCode.getScope(node))
-        )
+        if (propertyName(node) === "console" && isPageGlobal(node.object))
           context.report({ node, messageId: "outside", data })
+      },
+      VariableDeclarator(node): void {
+        if (node.id.type !== "ObjectPattern" || !node.init) return
+        if (!isPageGlobal(node.init)) return
+        for (const property of node.id.properties)
+          if (
+            property.type === "Property" &&
+            keyName(property.key, property.computed) === "console"
+          )
+            context.report({ node: property, messageId: "outside", data })
       },
       Identifier(node): void {
         if (node.name !== "console" || !isReference(node)) return
