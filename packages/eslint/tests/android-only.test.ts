@@ -176,6 +176,44 @@ describe("findAndroidOnlyViolations: scope", () => {
   })
 })
 
+describe("findAndroidOnlyViolations: an iOS project", () => {
+  it("fails the files `cap add ios` writes, by path alone", () => {
+    const paths = [
+      "apps/mobile/ios/App/App/AppDelegate.swift",
+      "apps/mobile/ios/App/Podfile",
+      "apps/mobile/ios/App/Podfile.lock",
+      "apps/mobile/ios/App/App/Info.plist",
+      "App.xcodeproj/project.pbxproj",
+      "App.xcworkspace/contents.xcworkspacedata",
+      "App/App.entitlements",
+      "Config/debug.xcconfig",
+      "src/Thing.swift",
+    ]
+    const found = scan(Object.fromEntries(paths.map((path) => [path, ""])))
+    expect(new Set(found.map((v) => v.file))).toEqual(new Set(paths))
+    for (const violation of found) {
+      expect(violation).toMatchObject({
+        kind: "path",
+        token: "an iOS project file",
+      })
+    }
+  })
+
+  it("passes look-alike paths, and the words in a file's text", () => {
+    expect(
+      scan({
+        "apps/mobile/android/app/src/main/AndroidManifest.xml": "",
+        "src/bios/index.ts": "",
+        "src/ios-free/readme.ts": "",
+        "src/swiftly.ts": "",
+        "src/podfiles.ts": "",
+        "src/notes.ts":
+          "// no ios/ folder, no Podfile, no Info.plist, no .swift",
+      })
+    ).toEqual([])
+  })
+})
+
 describe("describeAndroidOnlyViolation", () => {
   it("says one line naming the place and the rule", () => {
     const token = describeAndroidOnlyViolation({

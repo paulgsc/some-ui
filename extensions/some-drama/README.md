@@ -69,22 +69,29 @@ its cross-file dependencies carry their `Counted by` lines).
   callback — and nothing listens for the media `timeupdate` or `progress`
   events. It is a claim about polling only: which events may trigger a
   read of a video's position is not part of it.
-- _Falsified by_ a hunk, in that scope, that adds one of those timers, adds a
-  `timeupdate` or `progress` listener (including adding either name to
-  `PLAYBACK_EVENTS` in `src/effects/content/playback.ts`), or changes an
-  existing one-shot timer so that its callback arms it again. A timer moved
-  into the scope from elsewhere counts: it appears as an added line.
+- _Falsified by_ a hunk, in that scope, that changes an existing one-shot
+  timer so that its callback arms it again, or adds a timer or a
+  `timeupdate` / `progress` listener the rule below cannot see (a timer
+  reached through a parameter or a helper, an event name built at run time).
+  A timer moved into the scope from elsewhere counts: it appears as an added
+  line. So does a hunk to `eslint.config.js` that turns `no-playback-polling`
+  off, narrows its `files` or widens its `ignores`.
 - _Scope:_ `extensions/some-drama/src/`, except `src/components/` (the card's
   own timers, held by L1 in `extensions/common/GOOD_CITIZEN.md` and the tests
   above) and `__tests__/`.
-- _Why not enforced:_ lint — `require-named-lifetime` flags a bare
-  `setInterval`, but `.interval(` on a `Disposables` is the sanctioned form
-  the card itself uses, and whether a timer polls depends on what its
-  callback reads, which needs data flow. Banning those names in this scope is
-  mechanical ("mechanical; not yet a rule": a path-scoped
-  `no-restricted-syntax`). Tests — `content.ts` and `background.ts` are entry
-  modules that run on import against browser globals; nothing drives them,
-  and a test sees only the states it drives.
+- _Why not enforced:_ the names are a lint rule.
+  `extension-charter/no-playback-polling`, on in this workspace's
+  `eslint.config.js` for exactly this scope, fails the global `setInterval`
+  (called or taken as a value, through `globalThis` or destructured), a call
+  to `.interval(` or `.loop(`, `alarms` on the global `browser` or `chrome`,
+  and the `timeupdate` / `progress` event names (as values, or as `on…`
+  handlers). What stays a reading: a `setTimeout` or `.timeout(` re-armed
+  from its own callback, which needs data flow to tell from a one-shot.
+  Tests — `content.ts` and `background.ts` are entry modules that run on
+  import against browser globals; nothing drives them, and a test sees only
+  the states it drives.
+  _Checked when the rule landed (2026-10-25, #2043):_ the scope passes it; a
+  `setInterval` added to `content.ts` fails it.
 
 **LP2: `LIVE_PLAYBACK` goes out only through the publisher.**
 
@@ -98,25 +105,32 @@ its cross-file dependencies carry their `Counted by` lines).
   `livePublisher(` call, the type's definition in `types/index.ts`, and the
   receiving guard `isLivePlaybackMessage` in `content.ts` (which reads the
   message, never sends one):
-  - adds the string literal `"LIVE_PLAYBACK"`, quotes included (so not
-    `"GET_LIVE_PLAYBACK"`, and not a comment), or a constant or variable
-    holding it — so a helper elsewhere that builds the message to send it,
-    which needs one or the other, matches here too;
+  - builds the string `"LIVE_PLAYBACK"` other than as a literal (the rule
+    below fails the literal), say by concatenation, or adds a second
+    `livePublisher(` call whose `send` sends it;
   - adds a use of the `LivePlaybackMessage` type other than an import and
     `broadcast`'s parameter type;
   - adds, in `background.ts`, a `broadcast(` or `tabs.sendMessage(` call, outside `broadcast`'s
     own body, whose message is not visibly another message — a literal
     object with another `type`, or a value declared with another message
     type;
-  - or deletes, renames or bypasses the `livePublisher(` call in
+  - deletes, renames or bypasses the `livePublisher(` call in
     `publishLivePlayback`'s definition (a direct `broadcast` of a fresh
-    `requestSourceReport()`, say).
+    `requestSourceReport()`, say);
+  - or, in `eslint.config.js`, turns `message-sent-only-through` off,
+    narrows its `files`, or changes its `type` or `through` option.
 - _Scope:_ `extensions/some-drama/src/`, except `__tests__/`.
 - _Why not enforced:_ the decision itself — send only when the last report
-  sent no longer predicts the new one — is tested (table above). Whether
-  `background.ts` routes through it is not: it is an entry module with no
-  harness. Rejecting the literal outside one call is mechanical ("mechanical;
-  not yet a rule").
+  sent no longer predicts the new one — is tested (table above). The literal
+  is a lint rule: `extension-charter/message-sent-only-through`, configured
+  in this workspace's `eslint.config.js` with `LIVE_PLAYBACK` and
+  `livePublisher`, fails the string as a value anywhere in `src/` but inside
+  the arguments of a `livePublisher(` call, any call of that name (a type
+  position, a comparison, a `case` label and an object key pass). What stays
+  a reading is the rest of the falsifier. `background.ts` is an entry module
+  with no harness. _Checked when the rule landed (2026-10-25,
+  #2043):_ `src/` passes it; a second `broadcast({ type: "LIVE_PLAYBACK" … })`
+  in `background.ts` fails it.
 
 **LP3: A stated cost matches the code it describes.**
 

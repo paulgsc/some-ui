@@ -8,6 +8,7 @@ import {
   default as extensionsCharterConfig,
 } from "@eslint/configs/extensions-charter.config.js"
 import extensionsSecurityConfig from "@eslint/configs/extensions-security.config.js"
+import typescriptParser from "@typescript-eslint/parser"
 import type { Linter } from "eslint"
 import { defineConfig } from "eslint/config"
 import { describe, it } from "vitest"
@@ -577,5 +578,134 @@ describe("lint: extension-charter — no-direct-page-showing (L6)", () => {
       expectQuiet(msgs, code)
       expectNoMessageForRule(msgs, RULE, code)
     }
+  })
+})
+
+// ── LP1: playback is read on events, never on a schedule ──────────────────
+
+describe("lint: extension-charter — no-playback-polling (LP1)", () => {
+  const RULE = "extension-charter/no-playback-polling"
+  const adopted = defineConfig([
+    ...extensionsCharterConfig,
+    { rules: { [RULE]: "error" } },
+  ])
+
+  it("is off in the shared config", async () => {
+    const code = `life.interval(() => read(), 1000)`
+    const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
+    expectNoMessageForRule(msgs, RULE, code)
+  })
+
+  it("fires on each name a schedule is built from", async () => {
+    for (const code of [
+      `setInterval(() => read(), 1000)`,
+      `window.setInterval(() => read(), 1000)`,
+      `life.interval(() => read(), 1000)`,
+      `life.loop(() => read())`,
+      `browser.alarms.create("poll", { periodInMinutes: 1 })`,
+      `chrome.alarms.onAlarm.addListener(read)`,
+      `video.addEventListener("timeupdate", read)`,
+      "video.addEventListener(`progress`, read)",
+      `const EVENTS = ["play", "timeupdate"]`,
+      `video.ontimeupdate = read`,
+      `video.onprogress = read`,
+      `const every = setInterval; every(read, 1000)`,
+      `const { setInterval: every } = globalThis`,
+      `const { alarms } = chrome; alarms.create("poll", {})`,
+      `globalThis.chrome.alarms.create("poll", {})`,
+    ]) {
+      const msgs = await lintSnippet(adopted, code, TS_FILE)
+      expectMessageForRule(msgs, RULE, code)
+    }
+  })
+
+  it("does NOT fire on one-shot timers, events or a progress field", async () => {
+    for (const code of [
+      `life.timeout(() => settle(), 300)`,
+      `await new Promise((r) => setTimeout(r, 300))`,
+      `video.addEventListener("seeked", report)`,
+      `const entry = { progress: 0 }; const p = entry.progress`,
+      `const o = { "progress": 0 }`,
+      `const bar = document.createElement("progress")`,
+      `function f(setInterval) { setInterval() }`,
+      `const { alarms } = settings`,
+    ]) {
+      const msgs = await lintSnippet(adopted, code, TS_FILE)
+      expectQuiet(msgs, code)
+      expectNoMessageForRule(msgs, RULE, code)
+    }
+  })
+
+  it("does NOT fire on a type or a quoted field in one", async () => {
+    const typed = defineConfig([
+      ...adopted,
+      { files: ["**/*.ts"], languageOptions: { parser: typescriptParser } },
+    ])
+    for (const code of [
+      `type Field = "progress"`,
+      `interface Entry { "progress": number }`,
+    ]) {
+      const msgs = await lintSnippet(typed, code, TS_FILE)
+      expectQuiet(msgs, code)
+      expectNoMessageForRule(msgs, RULE, code)
+    }
+  })
+})
+
+// ── LP2: LIVE_PLAYBACK goes out only through the publisher ────────────────
+
+describe("lint: extension-charter — message-sent-only-through (LP2)", () => {
+  const RULE = "extension-charter/message-sent-only-through"
+  const adopted = defineConfig([
+    ...extensionsCharterConfig,
+    {
+      rules: {
+        [RULE]: ["error", { type: "LIVE_PLAYBACK", through: "livePublisher" }],
+      },
+    },
+  ])
+  const typed = defineConfig([
+    ...adopted,
+    { files: ["**/*.ts"], languageOptions: { parser: typescriptParser } },
+  ])
+
+  it("is off in the shared config", async () => {
+    const code = `broadcast({ type: "LIVE_PLAYBACK", live })`
+    const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
+    expectNoMessageForRule(msgs, RULE, code)
+  })
+
+  it("fires on the type built outside the publisher's call", async () => {
+    for (const code of [
+      `broadcast({ type: "LIVE_PLAYBACK", live })`,
+      `const LIVE = "LIVE_PLAYBACK"`,
+      "tabs.sendMessage(id, { type: `LIVE_PLAYBACK`, live })",
+      `const publish = livePublisher(ask, send); broadcast({ type: "LIVE_PLAYBACK", live })`,
+      `const types = ["LIVE_PLAYBACK"]`,
+    ]) {
+      const msgs = await lintSnippet(adopted, code, TS_FILE)
+      expectMessageForRule(msgs, RULE, code)
+    }
+  })
+
+  it("does NOT fire inside the publisher's call, on a read, or on another type", async () => {
+    for (const code of [
+      `const p = livePublisher(ask, (live) => broadcast({ type: "LIVE_PLAYBACK", live }))`,
+      `const is = (v) => v.type === "LIVE_PLAYBACK"`,
+      `switch (msg.type) { case "LIVE_PLAYBACK": { show(msg) } }`,
+      `send({ type: "GET_LIVE_PLAYBACK" })`,
+      `const o = { "LIVE_PLAYBACK": 1 }`,
+    ]) {
+      const msgs = await lintSnippet(adopted, code, TS_FILE)
+      expectQuiet(msgs, code)
+      expectNoMessageForRule(msgs, RULE, code)
+    }
+  })
+
+  it("does NOT fire on the message's type definition", async () => {
+    const code = `export type LivePlaybackMessage = { type: "LIVE_PLAYBACK"; live: null }`
+    const msgs = await lintSnippet(typed, code, TS_FILE)
+    expectQuiet(msgs, code)
+    expectNoMessageForRule(msgs, RULE, code)
   })
 })

@@ -3,7 +3,8 @@
 // files. `scripts/check-android-only.ts` runs it.
 //
 // The Apple-only tokens in TOKENS fail in files ending in CODE_EXTENSIONS,
-// comments included, and in any tracked path's name. Markdown and the typst
+// comments included, and in any tracked path's name; PATH_TOKENS, an iOS
+// project's own file names, in path names only. Markdown and the typst
 // canons are prose and outside the scan, so a document can state the rule.
 // `Safari` is no token (Chrome's user agent names it), and a `webkit` prefix
 // alone says nothing (Chrome has its own): those stay review's (REVIEW.md,
@@ -17,10 +18,12 @@ const EXEMPT: ReadonlySet<string> = new Set([
 const CODE_EXTENSIONS =
   /\.(?:[cm]?[jt]sx?|html?|css|scss|jsonc?|webmanifest|xml|gradle|java|kt|rs|sh|toml|ya?ml)$/
 
-const TOKENS: ReadonlyArray<{
+type Token = {
   readonly name: string
   readonly patterns: ReadonlyArray<RegExp>
-}> = [
+}
+
+const TOKENS: ReadonlyArray<Token> = [
   {
     name: "webkitAudioContext",
     patterns: [/webkit(?:Offline)?AudioContext/i],
@@ -36,6 +39,19 @@ const TOKENS: ReadonlyArray<{
       /(?<![a-z])(?:iphone|ipados|ipad|ipod)(?![a-z])/i,
       // camelCase: `isIPhone`.
       /(?<=[a-z])(?:IPhone|IPad|IPod)(?![a-z])/,
+    ],
+  },
+]
+
+/** What `cap add ios` writes beside `android/`. */
+const PATH_TOKENS: ReadonlyArray<Token> = [
+  {
+    name: "an iOS project file",
+    patterns: [
+      /(?:^|\/)ios(?:\/|$)/i,
+      /\.(?:swift|pbxproj|entitlements|xcconfig)$/i,
+      /\.(?:xcodeproj|xcworkspace)(?:\/|$)/i,
+      /(?:^|\/)(?:Info\.plist|Podfile(?:\.lock)?)$/,
     ],
   },
 ]
@@ -57,7 +73,9 @@ function inScope(path: string): boolean {
   return CODE_EXTENSIONS.test(path) && !EXEMPT.has(path)
 }
 
-function hits(token: (typeof TOKENS)[number], text: string): boolean {
+const ALL_TOKENS: ReadonlyArray<Token> = [...TOKENS, ...PATH_TOKENS]
+
+function hits(token: Token, text: string): boolean {
   return token.patterns.some((pattern) => pattern.test(text))
 }
 
@@ -71,7 +89,7 @@ export function findAndroidOnlyViolations(
 ): Array<AndroidOnlyViolation> {
   const violations: Array<AndroidOnlyViolation> = []
   for (const file of [...tracked].sort()) {
-    for (const token of TOKENS) {
+    for (const token of ALL_TOKENS) {
       if (hits(token, file))
         violations.push({ kind: "path", file, token: token.name })
     }

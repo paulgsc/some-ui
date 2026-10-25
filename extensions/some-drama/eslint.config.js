@@ -25,6 +25,31 @@ export default defineConfig(
     },
   },
   {
+    // LP1 (README.md, "Live playback"): no schedule reads playback.
+    files: ["src/**/*.{js,mjs,ts,tsx}"],
+    ignores: ["src/components/**", "**/__tests__/**"],
+    plugins: {
+      "extension-charter": extensionCharterPlugin,
+    },
+    rules: {
+      "extension-charter/no-playback-polling": "error",
+    },
+  },
+  {
+    // LP2: LIVE_PLAYBACK goes out only through the publisher's call.
+    files: ["src/**/*.{js,mjs,ts,tsx}"],
+    ignores: ["**/__tests__/**"],
+    plugins: {
+      "extension-charter": extensionCharterPlugin,
+    },
+    rules: {
+      "extension-charter/message-sent-only-through": [
+        "error",
+        { type: "LIVE_PLAYBACK", through: "livePublisher" },
+      ],
+    },
+  },
+  {
     files: ["src/logic/**/*.{js,mjs,ts,tsx}"],
     plugins: {
       "extension-charter": extensionCharterPlugin,
