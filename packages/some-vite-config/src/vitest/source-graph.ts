@@ -14,8 +14,9 @@ export type SourceGraph = {
    */
   readonly aliases: Readonly<Record<string, string>>
   /**
-   * Follow type-only imports too. Off, the walk is what a bundle reaches;
-   * on, it is every module whose vocabulary the entry can name.
+   * Follow type-only imports too (`import type`, and an inline
+   * `import("./x").T`). Off, the walk is what a bundle reaches; on, it is every
+   * module whose vocabulary the entry can name.
    */
   readonly types?: boolean
 }
@@ -25,6 +26,17 @@ export type Reached = {
   readonly files: ReadonlySet<string>
   /** Every other package named by a followed import. */
   readonly packages: ReadonlySet<string>
+  /**
+   * The packages among those that a runtime import names, each with where
+   * (`<file relative to src>:<line>`). A package only a type import names is
+   * in `packages` and not here.
+   */
+  readonly values: ReadonlyMap<string, ReadonlyArray<string>>
+  /**
+   * Imports the walk cannot follow, with where: an `import()` whose specifier
+   * is not a string literal, and an `import.meta.glob`.
+   */
+  readonly unreadable: ReadonlyArray<string>
 }
 
 const CANDIDATES = ["", ".ts", ".tsx", "/index.ts", "/index.tsx"]
@@ -88,6 +100,8 @@ function isRuntime(node: ts.ImportDeclaration | ts.ExportDeclaration): boolean {
 export function reachedFrom(graph: SourceGraph, entry: string): Reached {
   const seen = new Set<string>()
   const packages = new Set<string>()
+  const values = new Map<string, Array<string>>()
+  const unreadable: Array<string> = []
   const visit = (file: string): void => {
     if (seen.has(file)) return
     seen.add(file)
@@ -96,30 +110,61 @@ export function reachedFrom(graph: SourceGraph, entry: string): Reached {
       readFileSync(file, "utf-8"),
       ts.ScriptTarget.Latest
     )
-    const follow = (specifier: ts.Expression | undefined): void => {
-      if (!specifier || !ts.isStringLiteralLike(specifier)) return
+    const where = (node: ts.Node): string =>
+      `${relative(graph.src, file)}:${source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1}`
+    const follow = (
+      specifier: ts.Expression | undefined,
+      runtime: boolean
+    ): void => {
+      if (!specifier) return
+      if (!ts.isStringLiteralLike(specifier)) {
+        unreadable.push(where(specifier))
+        return
+      }
       const target = resolveImport(graph, file, specifier.text)
       if (target) visit(target)
-      else packages.add(specifier.text)
+      else {
+        packages.add(specifier.text)
+        if (runtime) {
+          const named = values.get(specifier.text) ?? []
+          named.push(where(specifier))
+          values.set(specifier.text, named)
+        }
+      }
     }
     // Every node, not only top-level statements: a lazy `import()` anywhere
     // reaches its module as surely as a static import does.
     const walk = (node: ts.Node): void => {
       if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
-        if (graph.types === true || isRuntime(node)) {
-          follow(node.moduleSpecifier)
+        const runtime = isRuntime(node)
+        if (graph.types === true || runtime) {
+          follow(node.moduleSpecifier, runtime)
         }
       } else if (
         ts.isImportEqualsDeclaration(node) &&
         (graph.types === true || !node.isTypeOnly) &&
         ts.isExternalModuleReference(node.moduleReference)
       ) {
-        follow(node.moduleReference.expression)
+        follow(node.moduleReference.expression, !node.isTypeOnly)
       } else if (
         ts.isCallExpression(node) &&
         node.expression.kind === ts.SyntaxKind.ImportKeyword
       ) {
-        follow(node.arguments[0])
+        follow(node.arguments[0], true)
+      } else if (
+        graph.types === true &&
+        ts.isImportTypeNode(node) &&
+        ts.isLiteralTypeNode(node.argument) &&
+        ts.isStringLiteralLike(node.argument.literal)
+      ) {
+        follow(node.argument.literal, false)
+      } else if (
+        ts.isCallExpression(node) &&
+        ts.isPropertyAccessExpression(node.expression) &&
+        ts.isMetaProperty(node.expression.expression) &&
+        node.expression.name.text.startsWith("glob")
+      ) {
+        unreadable.push(where(node))
       }
       ts.forEachChild(node, walk)
     }
@@ -129,5 +174,7 @@ export function reachedFrom(graph: SourceGraph, entry: string): Reached {
   return {
     files: new Set([...seen].map((file) => relative(graph.src, file))),
     packages,
+    values,
+    unreadable,
   }
 }
