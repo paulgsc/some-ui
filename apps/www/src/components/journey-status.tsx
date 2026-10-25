@@ -220,6 +220,8 @@ export type StatusBarProps = {
   state: BarState | null
   /** The heading the title is, under the screen's own. */
   heading?: "h2" | "h3" | undefined
+  /** What the pop-up shows under the road, before every state. */
+  more?: ReactNode
   className?: string | undefined
 }
 
@@ -228,6 +230,7 @@ const StatusBar = ({
   title,
   state,
   heading: Heading = "h2",
+  more,
   className,
 }: StatusBarProps): JSX.Element => {
   const trigger = useRef<HTMLButtonElement>(null)
@@ -309,6 +312,7 @@ const StatusBar = ({
             <div className="flex justify-center">
               <JourneyTrack road={state.road} />
             </div>
+            {more}
             <EveryState current={state.id} every={state.every} />
           </PopoverContent>
         </Popover>

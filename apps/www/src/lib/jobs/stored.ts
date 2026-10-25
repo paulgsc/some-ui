@@ -16,6 +16,7 @@ import {
   DigestSchema,
   FRICTION,
   FrictionSchema,
+  JobsRunSchema,
   MAX_POSTING_TEXT,
   OUTCOMES,
   PASS_REASONS,
@@ -133,6 +134,21 @@ const StoredSchema = z.object({
       refusedFiles: z.array(z.string()).default([]),
       // A record kept before the phone noted when home last answered has none.
       lookedAt: z.iso.datetime().nullable().default(null),
+      // A record kept before the phone read the runs' records has none. Each
+      // is a copy of home's, so one this build can't read is left out rather
+      // than setting the whole record aside.
+      runs: z
+        .array(z.unknown())
+        .nullable()
+        .default(null)
+        .transform((runs) =>
+          runs === null
+            ? null
+            : runs.flatMap((run) => {
+                const read = JobsRunSchema.safeParse(run)
+                return read.success ? [read.data] : []
+              })
+        ),
     })
     .default({
       kept: false,
@@ -140,6 +156,7 @@ const StoredSchema = z.object({
       refused: [],
       refusedFiles: [],
       lookedAt: null,
+      runs: null,
     }),
   // A record kept before shares noted where they began has none.
   carried: z.record(z.string(), z.number()).default({}),

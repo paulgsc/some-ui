@@ -6,14 +6,20 @@
  * so they say what the run did and what this phone holds, never how it
  * travels (`__tests__/morning.test.ts`).
  *
- * A run that stops writes no digest, so until the routine leaves a record of
- * each run (RUN2, RUN3) a run that couldn't finish reads as `quiet`.
+ * Every run leaves a record of itself, a stopped one included (RUN2), which
+ * home keeps and this phone reads (RUN3): a run that couldn't do all it set
+ * out to is `trouble`, with the first reason it gave, whatever else is held.
+ * Of two records one morning (a re-run), the one that added the picks
+ * speaks, so a re-run that stops because the picks were in doesn't turn a
+ * good morning into trouble. `quiet` is home answering, after the run was
+ * due, with no picks and, from a home that keeps them, no record of a run.
  *
  * The phone can say home has no word of the run only from what home told it
  * after the run was due: a look made before then says only when it last
  * heard from home (`away`).
  */
 import { assertNever, counted } from "@some-ui/core-utils"
+import type { JobsRun } from "@some-ui/job-desk"
 import { pacificDay, PICKS_PER_DAY } from "@some-ui/job-desk"
 
 import type { JourneyTheme, Mark, Road, Said, Stop } from "@/lib/journey"
@@ -36,6 +42,7 @@ export const MORNING_IDS = [
   "decided",
   "rested",
   "full",
+  "trouble",
   "before",
   "running",
   "away",
@@ -55,6 +62,10 @@ export type Morning = {
   readonly seen: number
   /** When this phone last heard from home (ISO), or null. */
   readonly lookedAt: string | null
+  /** For `trouble`: the first reason the run gave, as it wrote it. */
+  readonly problem: string | null
+  /** For `quiet`: home keeps the runs' records, and holds none this morning. */
+  readonly unrecorded: boolean
 }
 
 const STARTS = RUN_STARTS.hour * 60 + RUN_STARTS.minute
@@ -65,29 +76,56 @@ function afterDue(at: Date, today: string): boolean {
   return pacificDay(at) === today && pacificMinutes(at) >= DUE
 }
 
+/**
+ * The record that speaks for Pacific day `today`'s run, of `runs` (newest
+ * first): the newest that added the picks, or else the newest, or null.
+ */
+function runOf(
+  runs: ReadonlyArray<JobsRun>,
+  today: string
+): JobsRun | null {
+  const todays = runs.filter((r) => pacificDay(new Date(r.startedAt)) === today)
+  return todays.find((r) => r.added.length > 0) ?? todays.at(0) ?? null
+}
+
 /** This morning's run at `now`, given whether Jobs is kept on home. */
 export function morningOf(state: JobsState, kept: boolean, now: Date): Morning {
   const today = pacificDay(now)
   const digest = digestOf(state, today)
-  const { lookedAt } = state.home
-  const base = { picked: 0, undecided: 0, seen: 0, lookedAt }
+  const { lookedAt, runs } = state.home
+  const run = runs === null ? null : runOf(runs, today)
+  const base = {
+    picked: 0,
+    undecided: 0,
+    seen: 0,
+    lookedAt,
+    problem: null,
+    unrecorded: false,
+  }
   if (digest !== null) {
     const picked = digest.picks.length
     const undecided = digest.picks.filter(
       (p) => decisionOf(state, today, p.id) === null
     ).length
     const counts = { ...base, picked, undecided, seen: digest.seen }
+    if (run !== null && run.outcome !== "done") {
+      return { ...counts, id: "trouble", problem: run.problems[0] ?? null }
+    }
     if (picked > 0) {
       return { id: undecided > 0 ? "picked" : "decided", ...counts }
     }
     return { id: placesFull(digest) ? "full" : "rested", ...counts }
+  }
+  if (run !== null && run.outcome !== "done") {
+    return { ...base, id: "trouble", problem: run.problems[0] ?? null }
   }
   const minutes = pacificMinutes(now)
   if (minutes < STARTS) return { id: "before", ...base }
   if (minutes < DUE) return { id: "running", ...base }
   if (!kept) return { id: "not-kept", ...base }
   const heard = lookedAt !== null && afterDue(new Date(lookedAt), today)
-  return { id: heard ? "quiet" : "away", ...base }
+  if (!heard) return { id: "away", ...base }
+  return { ...base, id: "quiet", unrecorded: runs !== null && run === null }
 }
 
 /** Whether a state offers the picker: where Drive is a real way in. */
@@ -117,6 +155,16 @@ const SHAPES: Readonly<
   decided: { theme: "read", at: "phone", road: HERE },
   rested: { theme: "read", at: "run", road: HERE },
   full: { theme: "waiting", at: "run", road: HERE },
+  // Its record came home; what it set out to do stopped at the run.
+  trouble: {
+    theme: "stopped",
+    at: "run",
+    road: {
+      stops: HOME_ROAD,
+      marks: ["stopped", A, A, R],
+      legs: ["broken", "ahead", "ahead"],
+    },
+  },
   before: {
     theme: "moving",
     at: "run",
@@ -204,6 +252,16 @@ export function morningSaid(m: Morning, now: Date): Said {
         line: "The run picked none: every place was held by a pick still open. Pass on one, or send it and say how it went, and the next run fills its place.",
       }
     }
+    case "trouble": {
+      const why = m.problem ?? "It didn’t say why."
+      return {
+        title: "This morning’s run couldn’t finish",
+        line:
+          m.seen === 0 && m.picked === 0
+            ? why
+            : `${why} It still read ${postings(m.seen)} and picked ${m.picked}.`,
+      }
+    }
     case "before": {
       return {
         title: `Today’s run is at ${START_TIME}`,
@@ -223,6 +281,12 @@ export function morningSaid(m: Morning, now: Date): Said {
       }
     }
     case "quiet": {
+      if (m.unrecorded) {
+        return {
+          title: "No word of this morning’s run",
+          line: `Home had no record of a run this morning${heard === null ? "" : ` at ${heard}`}, so it may not have started. If its picks are in Drive, open them from there.`,
+        }
+      }
       return {
         title: "No word of this morning’s run",
         line: `Home had nothing for today that this phone could read${heard === null ? "" : ` at ${heard}`}. The run may not have finished, or its picks didn’t reach home. If they’re in Drive, open them from there.`,
@@ -246,6 +310,7 @@ export const MORNING_LEGEND: Readonly<Record<MorningId, string>> = {
   decided: "You’ve decided this morning’s picks",
   rested: "The run picked none today",
   full: "Your places were full, so it picked none",
+  trouble: "The run couldn’t finish, and says why",
   before: "Today’s run hasn’t started",
   running: "Today’s run is under way",
   away: "Not checked with home since the run",
@@ -256,4 +321,20 @@ export const MORNING_LEGEND: Readonly<Record<MorningId, string>> = {
 /** The icon's spoken name: what the run did, and what pressing it shows. */
 export function morningLabel(said: Said): string {
   return `${said.title}. Show the way its picks come`
+}
+
+/** The heading over the pop-up's list of runs. */
+export const RUNS_HEADING = "The last runs"
+
+/** One run as the pop-up lists it: when, what it added, and what it couldn't do. */
+export function runSaid(run: JobsRun, now: Date): string {
+  const added = run.added[0]?.title ?? "No picks added"
+  const outcome =
+    run.outcome === "done"
+      ? ""
+      : run.outcome === "stopped"
+        ? " It couldn’t finish."
+        : " Some of it couldn’t be done."
+  const problems = run.problems.length === 0 ? "" : ` ${run.problems.join(" ")}`
+  return `${whenSaid(run.startedAt, now)}: ${added}.${outcome}${problems}`
 }

@@ -1,8 +1,9 @@
 /**
- * This morning's run, as the phone knows it (RUN1): each state of the union
- * derived from a record built for it, by the Pacific day and clock, and none
- * of its words naming the machinery.
+ * This morning's run, as the phone knows it (RUN1, RUN3): each state of the
+ * union derived from a record built for it, by the Pacific day and clock and
+ * the runs' records home told, and none of its words naming the machinery.
  */
+import type { JobsRun } from "@some-ui/job-desk"
 import { MAX_OPEN_PICKS, TRACKS } from "@some-ui/job-desk"
 import { describe, expect, it } from "vitest"
 
@@ -17,9 +18,10 @@ import {
   morningOf,
   morningRoad,
   morningSaid,
+  runSaid,
 } from "@/lib/jobs/morning"
 
-import { digest } from "./fixture"
+import { digest, run } from "./fixture"
 
 const DAY = "2026-10-22"
 /** 07:00, 08:30 and 10:00 on the 22nd in Los Angeles. */
@@ -34,6 +36,18 @@ const lookedAt = (at: string | null): JobsState => ({
   ...EMPTY,
   home: { ...EMPTY.home, lookedAt: at },
 })
+
+/** `state`, with home having told these runs' records, newest first. */
+const told = (state: JobsState, runs: ReadonlyArray<JobsRun>): JobsState => ({
+  ...state,
+  home: { ...state.home, runs },
+})
+
+/** 07:52 on the 22nd in Los Angeles, and a re-run at 09:00. */
+const MORNING = "2026-10-22T14:52:07Z"
+const RERUN = "2026-10-22T16:00:00Z"
+const STOPPED = run(MORNING, "stopped")
+const PARTLY = run(MORNING, "partly", ["One voice note couldn’t be heard."])
 
 function passedAll(state: JobsState): JobsState {
   return digest(DAY).picks.reduce(
@@ -87,6 +101,11 @@ const CASES: Readonly<
   },
   // Heard from home before the run was due, so home's answer says nothing yet.
   away: { state: lookedAt("2026-10-22T16:00:00Z"), kept: true, now: AFTER },
+  trouble: {
+    state: told(lookedAt("2026-10-22T16:30:00Z"), [STOPPED]),
+    kept: true,
+    now: AFTER,
+  },
   quiet: { state: lookedAt("2026-10-22T16:30:00Z"), kept: true, now: AFTER },
   "not-kept": { state: EMPTY, kept: false, now: AFTER },
 }
@@ -115,6 +134,55 @@ describe("this morning's run", () => {
     expect(morningOf(holding(), true, late).id).toBe("picked")
   })
 
+  it("says a stopped run couldn't finish, with its first reason, however early", () => {
+    const heard = told(lookedAt("2026-10-22T15:05:00Z"), [STOPPED])
+    for (const now of [RUNNING, AFTER]) {
+      const m = morningOf(heard, true, now)
+      expect(m).toMatchObject({ id: "trouble", problem: STOPPED.problems[0] })
+      expect(morningSaid(m, now)).toEqual({
+        title: "This morning’s run couldn’t finish",
+        line: STOPPED.problems[0],
+      })
+    }
+  })
+
+  it("says a run that left something undone couldn't finish, and what it still picked", () => {
+    const m = morningOf(told(holding(), [PARTLY]), true, AFTER)
+    expect(m).toMatchObject({ id: "trouble", picked: 2, seen: 12 })
+    expect(morningSaid(m, AFTER).line).toBe(
+      "One voice note couldn’t be heard. It still read 12 postings and picked 2."
+    )
+  })
+
+  it("lets the run that added the picks speak for a morning re-run", () => {
+    // The re-run stopped because today's picks were already in.
+    const rerun = run(RERUN, "stopped", [
+      "Today’s picks were already in Drive, so this run added none.",
+    ])
+    const morning = told(holding(), [rerun, run(MORNING)])
+    expect(morningOf(morning, true, AFTER).id).toBe("picked")
+  })
+
+  it("hears nothing of today from yesterday's stopped run", () => {
+    const yesterday = run("2026-10-21T14:52:07Z", "stopped")
+    const heard = told(lookedAt("2026-10-22T16:30:00Z"), [yesterday])
+    expect(morningOf(heard, true, AFTER)).toMatchObject({
+      id: "quiet",
+      unrecorded: true,
+    })
+  })
+
+  it("says home has no record of a run only from a home that keeps them", () => {
+    const at = "2026-10-22T16:30:00Z"
+    const keeps = morningOf(told(lookedAt(at), []), true, AFTER)
+    expect(keeps).toMatchObject({ id: "quiet", unrecorded: true })
+    expect(morningSaid(keeps, AFTER).line).toMatch(
+      /^Home had no record of a run/
+    )
+    const keepsNone = morningOf(lookedAt(at), true, AFTER)
+    expect(keepsNone).toMatchObject({ id: "quiet", unrecorded: false })
+  })
+
   it("draws a whole road for every state", () => {
     for (const id of MORNING_IDS) {
       const road = morningRoad(id)
@@ -135,8 +203,9 @@ describe("this morning's run", () => {
       })
     })
     const legend = Object.values(MORNING_LEGEND)
-    expect([...said, ...legend].filter((text) => MACHINERY.test(text))).toEqual(
-      []
-    )
+    const runs = [STOPPED, PARTLY, run(MORNING)].map((r) => runSaid(r, AFTER))
+    expect(
+      [...said, ...legend, ...runs].filter((text) => MACHINERY.test(text))
+    ).toEqual([])
   })
 })

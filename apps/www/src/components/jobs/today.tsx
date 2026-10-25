@@ -517,7 +517,7 @@ export const JobsToday = (): JSX.Element => {
   const morning = morningOf(state, kept, now)
   const digest = currentDigest(state)
   const card = (
-    <MorningCard morning={morning} now={now}>
+    <MorningCard morning={morning} runs={state.home.runs ?? []} now={now}>
       {offersDrive(morning.id) && <OpenDigest />}
     </MorningCard>
   )

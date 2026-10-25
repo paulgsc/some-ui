@@ -11,13 +11,14 @@ import {
   openOf,
   progressOf,
   releasedVoice,
+  RUNS_KEPT,
   standingOf,
   step,
   timedMinutes,
   untouchedReported,
 } from "@/lib/jobs/model"
 
-import { digest, OPENED_AT } from "./fixture"
+import { digest, OPENED_AT, run } from "./fixture"
 
 const DAY = "2026-10-18"
 const D = digest(DAY)
@@ -611,6 +612,27 @@ describe("digests home holds (fetched)", () => {
     ).toEqual({ ...opened, home: { ...opened.home, lookedAt: FETCHED_AT } })
     // The same day twice in one answer is taken once.
     expect(fetch(EMPTY, "2026-10-19", "2026-10-19").digests).toHaveLength(1)
+  })
+
+  it("keeps the runs' records home told, newest first, a week of them, and holds them when home tells none", () => {
+    const told = Array.from({ length: RUNS_KEPT + 2 }, (_, i) =>
+      run(`2026-10-${String(10 + i)}T14:52:07Z`)
+    )
+    const state = step(opened, {
+      type: "fetched",
+      digests: [],
+      runs: told,
+      at: FETCHED_AT,
+    })
+    expect(state.home.runs?.map((r) => r.startedAt)).toEqual(
+      told
+        .slice(-RUNS_KEPT)
+        .reverse()
+        .map((r) => r.startedAt)
+    )
+    const quiet = step(state, { type: "fetched", digests: [], at: FETCHED_AT })
+    expect(quiet.home.runs).toBe(state.home.runs)
+    expect(opened.home.runs).toBeNull()
   })
 
   it("counts a digest as new to the phone from when it was taken in", () => {

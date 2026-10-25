@@ -23,6 +23,7 @@ import type {
   DECISIONS,
   Digest,
   FRICTION,
+  JobsRun,
   Kit,
   OUTCOMES,
   PASS_REASONS,
@@ -57,6 +58,13 @@ export const DIGESTS_KEPT = 30
  * no more than this from any answer.
  */
 export const DIGESTS_PER_RUN = 7
+
+/**
+ * The morning runs' records the phone keeps, newest first: a week, as many as
+ * home answers with (paulgsc/server's `RUNS_PER_ANSWER`). Each is a copy of
+ * one home keeps for good, so the ones let go here are lost to nothing.
+ */
+export const RUNS_KEPT = 7
 
 /** A voice note's audio is on the shelf under `id`. */
 export type VoiceNote = {
@@ -166,6 +174,12 @@ type JobsHome = {
    * (`./morning`).
    */
   lookedAt: string | null
+  /**
+   * The morning runs' records as home last told them, newest first, at most
+   * `RUNS_KEPT`: what each run did, and what it couldn't (`./morning`). Null
+   * until a home that keeps them has answered.
+   */
+  runs: ReadonlyArray<JobsRun> | null
 }
 
 export type JobsState = {
@@ -199,6 +213,7 @@ export const EMPTY: JobsState = {
     refused: [],
     refusedFiles: [],
     lookedAt: null,
+    runs: null,
   },
   carried: {},
 }
@@ -212,8 +227,16 @@ export type Draft<T = JobEvent> = T extends unknown
 
 export type JobsAction =
   | { type: "opened"; digest: Digest; at: string }
-  /** Digests home holds. */
-  | { type: "fetched"; digests: ReadonlyArray<Digest>; at: string }
+  /**
+   * Digests home holds, and its morning runs' records (none from a home that
+   * doesn't keep them).
+   */
+  | {
+      type: "fetched"
+      digests: ReadonlyArray<Digest>
+      runs?: ReadonlyArray<JobsRun>
+      at: string
+    }
   | { type: "voice-kept"; note: VoiceNote }
   | { type: "voice-dropped"; ids: ReadonlyArray<string> }
   /** `since`, for a share: where its file began (`carried`). */
@@ -395,6 +418,12 @@ function takeDigests(
   return { digests, firstOpened }
 }
 
+function newestRuns(runs: ReadonlyArray<JobsRun>): ReadonlyArray<JobsRun> {
+  return [...runs]
+    .sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt))
+    .slice(0, RUNS_KEPT)
+}
+
 export function step(state: JobsState, action: JobsAction): JobsState {
   switch (action.type) {
     case "opened": {
@@ -420,7 +449,12 @@ export function step(state: JobsState, action: JobsAction): JobsState {
         action.at,
         state.current
       )
-      const home = { ...state.home, lookedAt: action.at }
+      const home = {
+        ...state.home,
+        lookedAt: action.at,
+        // Home answers its newest, so they replace what the phone held.
+        ...(action.runs === undefined ? {} : { runs: newestRuns(action.runs) }),
+      }
       // Taken, and not let go at once by `DIGESTS_KEPT`.
       const kept = digests.filter((d) => fresh.has(d.day))
       const newest = kept.at(-1)

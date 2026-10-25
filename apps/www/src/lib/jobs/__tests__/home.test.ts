@@ -1,7 +1,7 @@
 import type { HomeCall } from "@some-ui/core-utils"
 import type { ForeignFailure } from "@some-ui/intent-kit"
 import { addFailureSink } from "@some-ui/intent-kit"
-import type { Digest } from "@some-ui/job-desk"
+import type { Digest, JobsRun } from "@some-ui/job-desk"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type { Outgoing } from "@/lib/jobs/files"
@@ -11,7 +11,7 @@ import { exchangeJobs } from "@/lib/jobs/home"
 import type { JobEvent, JobsState, PickRef, ShareKind } from "@/lib/jobs/model"
 import { DIGESTS_PER_RUN, EMPTY, homeOutbox, step } from "@/lib/jobs/model"
 
-import { digest, OPENED_AT } from "./fixture"
+import { digest, OPENED_AT, run } from "./fixture"
 
 const D = digest("2026-10-18")
 const [SW, AD] = D.picks
@@ -92,9 +92,17 @@ function keeping(
     fileRefused: (name: string): void => {
       k.current = step(k.current, { type: "file-refused", name })
     },
-    fetched: (digests: ReadonlyArray<Digest>): void => {
+    fetched: (
+      digests: ReadonlyArray<Digest>,
+      runs?: ReadonlyArray<JobsRun>
+    ): void => {
       fetches.push(digests)
-      k.current = step(k.current, { type: "fetched", digests, at: OPENED_AT })
+      k.current = step(k.current, {
+        type: "fetched",
+        digests,
+        ...(runs === undefined ? {} : { runs }),
+        at: OPENED_AT,
+      })
     },
     state: (): JobsState => k.current,
     answered: (
@@ -130,13 +138,21 @@ function home(answer: (call: Call) => { status: number; body: unknown }): {
   return { send, calls }
 }
 
-/** A home holding `record`, and the `digests` it has taken from the mailbox. */
+/**
+ * A home holding `record`, and the `digests` and run records (`runs`, each
+ * `{ name, run }`) it has taken from the mailbox.
+ */
 const holding =
-  (record: ReadonlyArray<unknown> = [], digests: ReadonlyArray<unknown> = []) =>
+  (
+    record: ReadonlyArray<unknown> = [],
+    digests: ReadonlyArray<unknown> = [],
+    runs: ReadonlyArray<unknown> = []
+  ) =>
   (call: Call): { status: number; body: unknown } => {
     if (call.path.startsWith("/jobs/digests")) {
       return { status: 200, body: { digests } }
     }
+    if (call.path === "/jobs/runs") return { status: 200, body: { runs } }
     if (call.method === "GET") return { status: 200, body: { events: record } }
     const event: unknown = JSON.parse(call.body ?? "{}")
     return { status: 200, body: { change: "added", event } }
@@ -151,6 +167,7 @@ describe("exchangeJobs", () => {
       "PUT /jobs/events/e1",
       "PUT /jobs/events/e2",
       "PUT /jobs/events/e3",
+      "GET /jobs/runs",
       "GET /jobs/digests?after=2026-10-18",
     ])
     expect(JSON.parse(h.calls[0]?.body ?? "")).toEqual(withLog.log[0])
@@ -159,7 +176,7 @@ describe("exchangeJobs", () => {
 
     const again = home(holding())
     expect(await exchangeJobs(k, again.send)).toEqual({ kind: "synced" })
-    expect(again.calls.map((c) => c.method)).toEqual(["GET"])
+    expect(again.calls.map((c) => c.method)).toEqual(["GET", "GET"])
     expect(k.current.log).toEqual(withLog.log)
   })
 
@@ -185,6 +202,7 @@ describe("exchangeJobs", () => {
       ],
       refusedFiles: [],
       lookedAt: OPENED_AT,
+      runs: [],
     })
     expect(homeOutbox(k.current)).toEqual([])
   })
@@ -294,6 +312,7 @@ describe("exchangeJobs, the digests home holds", () => {
     await exchangeJobs(empty, restored.send)
     expect(restored.calls.map((c) => `${c.method} ${c.path}`)).toEqual([
       "GET /jobs",
+      "GET /jobs/runs",
       "GET /jobs/digests",
     ])
   })
@@ -377,6 +396,84 @@ describe("exchangeJobs, the digests home holds", () => {
   })
 })
 
+describe("exchangeJobs, the runs' records home holds", () => {
+  const held = (r: JobsRun): { name: string; run: JobsRun } => ({
+    name: `run-jobs-${r.startedAt.replace(/[-:]/g, "")}.json`,
+    run: r,
+  })
+  const STOPPED = run("2026-10-20T14:52:07Z", "stopped")
+  const DONE = run("2026-10-19T14:52:07Z")
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it("takes the records in with the digests, newest first", async () => {
+    const k = keeping(withLog)
+    const h = home(holding([], [], [held(DONE), held(STOPPED)]))
+    expect(await exchangeJobs(k, h.send)).toEqual({ kind: "synced" })
+    expect(k.current.home.runs).toEqual([STOPPED, DONE])
+    expect(k.current.home.lookedAt).toBe(OPENED_AT)
+  })
+
+  it("skips a record that is not one, reports only its name, and takes the rest", async () => {
+    vi.spyOn(globalThis.console, "error").mockImplementation(() => undefined)
+    const failures: Array<ForeignFailure> = []
+    const stop = addFailureSink((f) => failures.push(f))
+    try {
+      const k = keeping(withLog)
+      const odd = {
+        name: "run-jobs-20261018T145207Z.json",
+        run: { ...DONE, outcome: "fine", problems: ["secret"] },
+      }
+      const h = home(holding([], [], [held(STOPPED), odd]))
+      expect(await exchangeJobs(k, h.send)).toEqual({ kind: "synced" })
+      expect(k.current.home.runs).toEqual([STOPPED])
+      expect(failures).toHaveLength(1)
+      const said = JSON.stringify(failures[0]?.error.summary)
+      expect(said).toContain("run-jobs-20261018T145207Z.json")
+      expect(said).not.toContain("secret")
+    } finally {
+      stop()
+    }
+  })
+
+  it("still takes the digests from a home that keeps no records", async () => {
+    const k = keeping(withLog)
+    const h = home((call) =>
+      call.path === "/jobs/runs"
+        ? { status: 404, body: {} }
+        : holding(
+            [],
+            [{ day: "2026-10-19", digest: digest("2026-10-19") }]
+          )(call)
+    )
+    expect(await exchangeJobs(k, h.send)).toEqual({ kind: "synced" })
+    expect(k.fetches.map((f) => f.map((d) => d.day))).toEqual([["2026-10-19"]])
+    expect(k.current.home.runs).toBeNull()
+  })
+
+  it("fetches nothing on a 401, or an answer it can't read", async () => {
+    for (const [status, body, end] of [
+      [401, {}, { kind: "forgotten" }],
+      [500, {}, { kind: "failed", why: "the runs: home answered 500" }],
+      [
+        200,
+        { runs: "none" },
+        { kind: "failed", why: "the runs: home answered 200" },
+      ],
+    ] as const) {
+      const k = keeping(withLog)
+      const h = home((call) =>
+        call.path === "/jobs/runs" ? { status, body } : holding()(call)
+      )
+      expect(await exchangeJobs(k, h.send)).toEqual(end)
+      expect(k.fetches).toEqual([])
+      expect(k.current.home.runs).toBeNull()
+    }
+  })
+})
+
 /** Today's decisions file, as the runtime builds one. */
 const decisionsToday = (state: JobsState, kind: ShareKind): Outgoing =>
   kind === "decisions"
@@ -409,6 +506,7 @@ describe("exchangeJobs, filing decisions and scouts with home", () => {
       "PUT /jobs/events/e2",
       "PUT /jobs/events/e3",
       "PUT /jobs/files/decisions-2026-10-20.json",
+      "GET /jobs/runs",
       "GET /jobs/digests?after=2026-10-18",
     ])
     const file = decisionsToday(withLog, "decisions")

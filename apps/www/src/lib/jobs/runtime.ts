@@ -303,13 +303,15 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
         commit({ type: "home-answered", held, refused })
       },
       restored: (events) => commit({ type: "restored", events }),
-      fetched(digests): void {
+      fetched(digests, runs): void {
         const action: JobsAction = {
           type: "fetched",
           digests,
+          ...(runs === undefined ? {} : { runs }),
           at: ports.now().toISOString(),
         }
-        // Only that home answered, which nobody asked for: quiet.
+        // Only that home answered, and what its runs did, copies of home's
+        // that nobody asked for: quiet.
         commit(action, step(state, action).digests === state.digests)
       },
       outgoing: (kind) => fileFor(kind, ports.now()),

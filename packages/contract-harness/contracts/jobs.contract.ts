@@ -11,7 +11,10 @@
  * `DigestsSchema` is the outline of the phone's `DigestsAnswer`, checked by
  * hand against the server's `handlers::jobs::Digests` (each held digest's
  * day and the file verbatim); the phone holds each digest to job-desk's
- * schema on the way in.
+ * schema on the way in. `RunsSchema` is the outline of the phone's
+ * `RunsAnswer`, checked by hand against `handlers::jobs::Runs` (each held
+ * run record's name and the file verbatim), each held to job-desk's
+ * `JobsRunSchema` on the way in.
  *
  * Every route is per person, so every contract is a `session` contract. The
  * record is append-only, so no probe may keep anything: the write is pinned
@@ -30,6 +33,10 @@ const JobsRecordSchema = z.object({
 
 const DigestsSchema = z.object({
   digests: z.array(z.object({ day: z.iso.date(), digest: z.unknown() })),
+})
+
+const RunsSchema = z.object({
+  runs: z.array(z.object({ name: z.string().min(1), run: z.unknown() })),
 })
 
 export const contracts = [
@@ -55,6 +62,18 @@ export const contracts = [
       "the daily job digests home holds for this subject, oldest first, at most 7",
     request: {},
     expect: { status: 200, schema: DigestsSchema },
+  }),
+
+  defineContract({
+    id: "jobs.runs",
+    module: "jobs",
+    session: true,
+    method: "GET",
+    path: "/jobs/runs",
+    summary:
+      "the jobs routine's run records home holds for this subject, newest first, at most 7",
+    request: {},
+    expect: { status: 200, schema: RunsSchema },
   }),
 
   defineContract({
