@@ -1,6 +1,8 @@
 import {
+  messageSentOnlyThrough,
   noDirectPageShowing,
   noLogicLayerSideEffects,
+  noPlaybackPolling,
   noRawStorage,
   noUnprefixedNamespace,
   noZindexEscalation,
@@ -32,6 +34,8 @@ export const extensionCharterPlugin = {
     "require-scoped-lifetime": requireScopedLifetime,
     "require-lifetime-comment": requireLifetimeComment,
     "no-direct-page-showing": noDirectPageShowing,
+    "no-playback-polling": noPlaybackPolling,
+    "message-sent-only-through": messageSentOnlyThrough,
   },
 }
 

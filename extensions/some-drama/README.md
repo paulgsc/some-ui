@@ -73,18 +73,25 @@ its cross-file dependencies carry their `Counted by` lines).
   `timeupdate` or `progress` listener (including adding either name to
   `PLAYBACK_EVENTS` in `src/effects/content/playback.ts`), or changes an
   existing one-shot timer so that its callback arms it again. A timer moved
-  into the scope from elsewhere counts: it appears as an added line.
+  into the scope from elsewhere counts: it appears as an added line. So does
+  a hunk to `eslint.config.js` that turns `no-playback-polling` off, narrows
+  its `files` or widens its `ignores`.
 - _Scope:_ `extensions/some-drama/src/`, except `src/components/` (the card's
   own timers, held by L1 in `extensions/common/GOOD_CITIZEN.md` and the tests
   above) and `__tests__/`.
-- _Why not enforced:_ lint — `require-named-lifetime` flags a bare
-  `setInterval`, but `.interval(` on a `Disposables` is the sanctioned form
-  the card itself uses, and whether a timer polls depends on what its
-  callback reads, which needs data flow. Banning those names in this scope is
-  mechanical ("mechanical; not yet a rule": a path-scoped
-  `no-restricted-syntax`). Tests — `content.ts` and `background.ts` are entry
-  modules that run on import against browser globals; nothing drives them,
-  and a test sees only the states it drives.
+- _Why not enforced:_ the names are a lint rule.
+  `extension-charter/no-playback-polling`, on in this workspace's
+  `eslint.config.js` for exactly this scope, fails `setInterval`, a call to
+  `.interval(` or `.loop(`, `browser.alarms` / `chrome.alarms`, and the
+  `timeupdate` / `progress` event names (as strings, or as `on…` handlers).
+  What stays a reading: a `setTimeout` or `.timeout(` re-armed from its own
+  callback, which needs data flow to tell from a one-shot; and the rule's own
+  config, so a hunk that turns it off, narrows its `files` or widens its
+  `ignores` is in the falsifier above. Tests — `content.ts` and
+  `background.ts` are entry modules that run on import against browser
+  globals; nothing drives them, and a test sees only the states it drives.
+  _Checked when the rule landed (2026-10-25, #2043):_ the scope passes it; a
+  `setInterval` added to `content.ts` fails it.
 
 **LP2: `LIVE_PLAYBACK` goes out only through the publisher.**
 
@@ -108,15 +115,24 @@ its cross-file dependencies carry their `Counted by` lines).
     own body, whose message is not visibly another message — a literal
     object with another `type`, or a value declared with another message
     type;
-  - or deletes, renames or bypasses the `livePublisher(` call in
+  - deletes, renames or bypasses the `livePublisher(` call in
     `publishLivePlayback`'s definition (a direct `broadcast` of a fresh
-    `requestSourceReport()`, say).
+    `requestSourceReport()`, say);
+  - or, in `eslint.config.js`, turns `message-sent-only-through` off,
+    narrows its `files`, or changes its `type` or `through` option.
 - _Scope:_ `extensions/some-drama/src/`, except `__tests__/`.
 - _Why not enforced:_ the decision itself — send only when the last report
-  sent no longer predicts the new one — is tested (table above). Whether
-  `background.ts` routes through it is not: it is an entry module with no
-  harness. Rejecting the literal outside one call is mechanical ("mechanical;
-  not yet a rule").
+  sent no longer predicts the new one — is tested (table above). The literal
+  is a lint rule: `extension-charter/message-sent-only-through`, configured
+  in this workspace's `eslint.config.js` with `LIVE_PLAYBACK` and
+  `livePublisher`, fails the string as a value anywhere in `src/` but inside
+  that call's arguments (a type position, a comparison, a `case` label and an
+  object key pass). What stays a reading: the type's other uses, sends in
+  `background.ts` whose message is not visibly another type, the
+  `livePublisher(` call itself, and the rule's config. `background.ts` is an
+  entry module with no harness. _Checked when the rule landed (2026-10-25,
+  #2043):_ `src/` passes it; a second `broadcast({ type: "LIVE_PLAYBACK" … })`
+  in `background.ts` fails it.
 
 **LP3: A stated cost matches the code it describes.**
 

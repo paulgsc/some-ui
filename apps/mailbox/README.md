@@ -270,13 +270,19 @@ how each was checked when this workspace landed.
   are `test-…`); that adds an `eslint-disable` of `no-console`, or a `console.*` call, whose
   arguments are or read from a `Request`, `Headers` or body; that changes what `report` passes
   to `console.error` from the error's `message`; or that removes `.dev.vars` from this
-  workspace's `.gitignore`, or deletes or moves that file.
+  workspace's `.gitignore`, or deletes or moves that file; or that turns
+  `log-guard/console-reports-message-only` off, narrows it, or renames `report` without
+  updating its `reporter` option.
 - _Scope:_ `apps/mailbox`.
-- _Why not enforced:_ **mechanical; not yet a rule.** `no-console` is on repo-wide, so a second
-  call needs a visible `eslint-disable`, which is what the falsifier watches. Whether a string
-  is a real token is a reading, and no secret scanner runs over this workspace.
+- _Why not enforced:_ the logging half is a lint rule. `log-guard/console-reports-message-only`
+  (`logGuardConfig` in `@some-ui/eslint-kit`, on in this workspace's `eslint.config.js`) fails any
+  use of `console` outside `report`, and any argument of `report`'s call other than a string or
+  the error's `message`; `no-console` still asks for a visible disable at the call. What stays a
+  reading: whether a string committed anywhere is a real token (no secret scanner runs over this
+  workspace), and whether an error's message can carry one.
 - _Checked at landing:_ one `console` call (`src/index.ts`, `report`, the error's `message`);
-  no `vars` in `wrangler.jsonc`; no token-shaped string in the workspace.
+  no `vars` in `wrangler.jsonc`; no token-shaped string in the workspace. _Checked when the rule
+  landed (2026-10-25, #2042):_ `src/` passes it; `report` logging `String(error)` fails it.
 
 **MB4 (not reviewable): The Cloudflare account has no payment method.** It is account state, so
 no diff can show it. It is listed so a reviewer knows the cost model rests on it. With a card

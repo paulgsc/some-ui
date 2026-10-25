@@ -1,3 +1,5 @@
-import someUIEslint from "@some-ui/eslint-kit"
+import someUIEslint, { logGuardConfig } from "@some-ui/eslint-kit"
+import { defineConfig } from "eslint/config"
 
-export default someUIEslint
+// MB3 (README.md): the one console call is `report`'s, and logs a message.
+export default defineConfig([...someUIEslint, ...logGuardConfig])

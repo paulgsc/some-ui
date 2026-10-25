@@ -14,6 +14,8 @@ import {
   intentGuardPlugin,
   lazyRegistryConfig,
   lazyRegistryPlugin,
+  logGuardConfig,
+  logGuardPlugin,
   ownerGuardConfig,
   ownerGuardPlugin,
   parentRelativeImportPattern,
@@ -98,6 +100,9 @@ export { queryGuardConfig, queryGuardPlugin }
 
 // ── State seeded from a prop or the clock (#1659) ──────────────────────────
 export { ownerGuardConfig, ownerGuardPlugin }
+
+// ── One reporter, an error's message only (apps/mailbox, MB3) ─────────────
+export { logGuardConfig, logGuardPlugin }
 
 // ── Tailwind static-classname idiom rules ──────────────────────────────────
 export { fitsTheBoxConfig, fitsTheBoxPlugin }

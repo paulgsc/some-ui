@@ -16,6 +16,9 @@ export { requireNamedLifetime } from "./require-named-lifetime.js"
 export { requireScopedLifetime } from "./require-scoped-lifetime.js"
 export { requireLifetimeComment } from "./require-lifetime-comment.js"
 export { noDirectPageShowing } from "./no-direct-page-showing.js"
+export { noPlaybackPolling } from "./no-playback-polling.js"
+export { messageSentOnlyThrough } from "./message-sent-only-through.js"
+export { consoleReportsMessageOnly } from "./console-reports-message-only.js"
 export { noMountSnapshot } from "./no-mount-snapshot.js"
 export {
   noFixedStatusColor,
