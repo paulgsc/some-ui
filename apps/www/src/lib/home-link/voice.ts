@@ -11,17 +11,21 @@ import { useEffect, useSyncExternalStore } from "react"
 import { phoneJobs } from "@/lib/jobs"
 import { reflections } from "@/lib/session-reflection"
 import { phoneVoiceHome } from "@/lib/voice-home"
-import { exchangeVoice } from "@/lib/voice-home/home"
 
 import type { KeptState } from "./kept-model"
 import type { Lane, LaneCounts } from "./lanes"
 import { useLaneHome } from "./lanes"
-import { candidates, VOICE_SCOPES, watchVoiceNotes } from "./voice-copy"
+import {
+  candidates,
+  sendVoice,
+  VOICE_SCOPES,
+  watchVoiceNotes,
+} from "./voice-copy"
 
 export const voiceLane: Lane = {
   id: "voice",
   scopes: VOICE_SCOPES.scopes,
-  exchange: (send) => exchangeVoice(phoneVoiceHome().keeping, send),
+  exchange: sendVoice,
   revision: () => phoneVoiceHome().getSnapshot().waiting.length,
   subscribe: (listener) => phoneVoiceHome().subscribe(listener),
   useCounts: (): LaneCounts => {
@@ -35,7 +39,8 @@ export const voiceLane: Lane = {
     return {
       held: { voice: state.held.length },
       refused: { voice: state.refused.length },
-      waiting: state.waiting.length,
+      // A note not copied yet is no safer than one copied and not sent.
+      waiting: state.waiting.length + onPhone.length,
       away: null,
       hidden: 0,
       pulled: true,

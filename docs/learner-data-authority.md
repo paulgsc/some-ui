@@ -967,22 +967,23 @@ watch started only from the lane's hook and a shared prompt heard only by it
   only while the consent log keeps `voice` under the paired home's id
   (`keptNow(VOICE_SCOPES)`), and only from `copyAll` (each spoken reflection
   and named Jobs note on the phone, from `watchVoiceNotes`, which only
-  `useVoiceHome`'s effect starts) and `copySceneNotes` (a drama prompt's
+  `useVoiceHome`'s effect starts, and from the lane's exchange, `sendVoice`) and `copySceneNotes` (a drama prompt's
   notes, heard through `onPromptShared`, which `shareDramaPrompt` tells
   only once its share succeeded as shared); the
-  lane's runs are asked for as LA9 says, its exchange is `exchangeVoice`
-  over the store's `keeping`, and a copy goes only once home holds its note.
+  lane's runs are asked for as LA9 says, its exchange is `sendVoice` (a copy
+  pass, then `exchangeVoice` over the store's `keeping`), and a copy goes only once home holds its note.
   Letting a note go where it was recorded never removes its copy.
 - _Falsified by:_ a hunk LA9's falsifier names for the shared files; a hunk
   to `lib/home-link/voice-copy.ts` that calls `copy` from anywhere but
   `copyAll` and `copySceneNotes`, removes either's `keptNow(VOICE_SCOPES)`
   check (`copyAll`'s before every note and again after its audio is read),
-  starts `copySoon` from anything but `watchVoiceNotes` and its
-  subscriptions, or makes `VOICE_SCOPES` anything but `voice`; a hunk to
+  starts `copySoon` from anything but `watchVoiceNotes`, its subscriptions
+  and `sendVoice`, makes `sendVoice` anything but a copy pass and then
+  `exchangeVoice` over `phoneVoiceHome().keeping`, or makes `VOICE_SCOPES` anything but `voice`; a hunk to
   `lib/home-link/lanes.ts` that makes `keptNow` anything but the lane's
   scopes in `sharedNow` of the log under `pairingOf`; a hunk to
   `lib/home-link/voice.ts` that makes the lane's `exchange` anything but
-  `exchangeVoice` over `phoneVoiceHome().keeping`, its scopes anything but
+  `sendVoice`, its scopes anything but
   `voice`, or calls `watchVoiceNotes` from anywhere but `useVoiceHome`'s
   effect, or drops its cleanup; a hunk to `lib/scene-voice/index.ts` that
   tells `onPromptShared`'s listeners before or without the share's

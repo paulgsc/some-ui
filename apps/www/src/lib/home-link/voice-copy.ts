@@ -15,6 +15,7 @@
  * Copying deletes nothing where the note was recorded; letting it go there
  * leaves the copy, which goes once home holds the note.
  */
+import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/core-utils"
 
 import { jobVoiceAudio, phoneJobs } from "@/lib/jobs"
@@ -29,6 +30,7 @@ import { onPromptShared } from "@/lib/scene-voice"
 import { reflections } from "@/lib/session-reflection"
 import type { Reflection } from "@/lib/session-reflection/policy"
 import { phoneVoiceHome } from "@/lib/voice-home"
+import { exchangeVoice } from "@/lib/voice-home/home"
 import type { VoiceOut } from "@/lib/voice-home/model"
 
 import { phoneConsent } from "./consent-runtime"
@@ -162,6 +164,17 @@ function copySoon(): void {
         copySoon()
       }
     })
+}
+
+/**
+ * The voice lane's exchange: a copy pass first, so a note the watch could
+ * not copy yet (no room, storage that would not keep its record) is tried
+ * again, then each copy waiting sent (`exchangeVoice`).
+ */
+export async function sendVoice(send: HomeCall): Promise<HomeExchanged> {
+  copySoon()
+  await copying
+  return exchangeVoice(phoneVoiceHome().keeping, send)
 }
 
 /**
