@@ -34,16 +34,17 @@ tracked.
 
 ## Reviewing a change that declares or edits an invariant
 
-Flag the declaration itself when it:
+`pnpm check:policy-docs` already fails a declaration missing a part, an ID declared twice and an
+ID dropped since the base branch (`CLAUDE.md`, "Gray-area invariants: declare them
+falsifiable"), so do not re-check those. Flag the declaration itself when it:
 
-- is missing any of the four parts, or has a **Falsified by** that can't be decided from the hunk
-  and the file it changes (advice, or a claim about the whole program);
+- has a part that is there in name only, or a **Falsified by** that can't be decided from the
+  hunk and the file it changes (advice, or a claim about the whole program);
 - has a **Falsified by** that covers only additions, missing a deletion, rename or move
   that would also make the claim false;
 - covers something a lint rule, type or test could enforce, without saying why that
   mechanism fails, or without the label "mechanical; not yet a rule";
-- is false on the code in the same change;
-- renumbers an existing ID, or removes one instead of marking it retired with a reason.
+- is false on the code in the same change.
 
 ## Second implementations and code left behind
 

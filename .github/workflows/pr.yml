@@ -527,6 +527,29 @@ jobs:
       - name: Check workflows
         run: nix develop .#ci --command node scripts/check-workflows.ts
 
+  # ── Policy documents (repo-wide) ───────────────────────────────────────
+  # CLAUDE.md, "Gray-area invariants": every declaration has its parts, no ID
+  # is reused or dropped, and the paths and headings CLAUDE.md, REVIEW.md and
+  # AGENTS.md name exist. No `changes` gate: a markdown edit matches no path
+  # filter. No install (Node's type stripping). A script rather than an ESLint
+  # rule because it reads other files (packages/eslint/src/policy-docs.ts).
+  policy-docs:
+    name: Policy documents
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/nix-setup
+      # The checkout is the merge ref alone, so fetch the base's tip for
+      # `--base` (an ID declared there stays declared).
+      - name: Fetch the base branch
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: git fetch --no-tags --depth=1 origin "+$BASE_REF:refs/remotes/origin/$BASE_REF"
+      - name: Check the policy documents
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: nix develop .#ci --command node scripts/check-policy-docs.ts --base "origin/$BASE_REF"
+
   # ── Change-kind record (repo-wide) ─────────────────────────────────────
   # scripts/check-commit-trailers.ts over every commit the PR adds; the
   # commit-msg hook runs it only where husky is installed. Full history, so
@@ -583,6 +606,7 @@ jobs:
         test-layout,
         react-coordination,
         workflows,
+        policy-docs,
         commit-trailers,
         toolchain,
       ]

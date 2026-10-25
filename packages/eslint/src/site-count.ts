@@ -9,6 +9,8 @@ import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import ts from "typescript"
 
+import { gitOrNull, resolveBaseRef } from "./base-ref.ts"
+
 /** `.then`, `.catch`, `.finally`: a promise chained, a site in both checks. */
 export const PROMISE_CHAIN: ReadonlySet<string> = new Set([
   "then",
@@ -316,29 +318,13 @@ function baseAllowlist(
   file: string,
   args: ReadonlyArray<string>
 ): { ref: string; text: string | null } {
-  const flag = args.indexOf("--base")
-  const asked = flag === -1 ? undefined : args[flag + 1]
-  if (flag !== -1 && (asked === undefined || asked === ""))
-    throw new Error("--base needs a ref")
-  const ref = asked ?? "origin/main"
-  const git = (gitArgs: Array<string>): string | null => {
-    try {
-      return execFileSync("git", gitArgs, {
-        cwd: root,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
-        maxBuffer: 16 * 1024 * 1024,
-      })
-    } catch {
-      return null
-    }
-  }
-  if (git(["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]) === null) {
-    if (asked !== undefined) throw new Error(`--base ${ref} does not resolve`)
-    return { ref, text: null }
-  }
-  const text = git(["show", `${ref}:${file}`])
-  if (text === null && git(["cat-file", "-e", `${ref}:${file}`]) !== null)
+  const { ref, resolved } = resolveBaseRef(root, args)
+  if (!resolved) return { ref, text: null }
+  const text = gitOrNull(root, ["show", `${ref}:${file}`])
+  if (
+    text === null &&
+    gitOrNull(root, ["cat-file", "-e", `${ref}:${file}`]) !== null
+  )
     throw new Error(`could not read ${file} at ${ref}`)
   return { ref, text }
 }
