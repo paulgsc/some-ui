@@ -8,11 +8,12 @@
 // on every PR and which CI Gate requires. Like check-test-layout.ts, it runs on
 // Node's built-in type stripping with no install, and reads tracked plus
 // untracked, non-ignored files, so it describes the tree as it is now.
-import { execFileSync } from "node:child_process"
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
 // A relative import on purpose: Node's type stripping resolves no path aliases.
+// eslint-disable-next-line no-restricted-imports
+import { repoRoot, worktreeFiles } from "../packages/eslint/src/git-tree.ts"
 // eslint-disable-next-line no-restricted-imports
 import {
   checkRetentionTriggers,
@@ -31,20 +32,8 @@ import {
   type WorkflowViolation,
 } from "../packages/eslint/src/workflow-guards.ts"
 
-const root = execFileSync("git", ["rev-parse", "--show-toplevel"], {
-  encoding: "utf8",
-}).trim()
-const listed = execFileSync(
-  "git",
-  ["ls-files", "--cached", "--others", "--exclude-standard", "-z", ".github"],
-  { cwd: root, encoding: "utf8" }
-)
-const files = listed
-  .split("\0")
-  .filter(
-    (path) =>
-      path !== "" && isGuardedWorkflowPath(path) && existsSync(join(root, path))
-  )
+const root = repoRoot()
+const files = worktreeFiles(root, [".github"]).filter(isGuardedWorkflowPath)
 
 const texts = new Map(
   files.map((file) => [file, readFileSync(join(root, file), "utf8")])

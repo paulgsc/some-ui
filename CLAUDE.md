@@ -145,7 +145,7 @@ so a PR whose snapshot already reached `main` another way closes itself.
 > There is no `uses:` step, and the only permissions are
 > `issues: write` and `pull-requests: read` under a top-level `permissions: {}`.
 >
-> **RS2: nothing else in this repository writes the route snapshot PR** (not reviewable).
+> **RS2 (not reviewable): nothing else in this repository writes the route snapshot PR.**
 > Any workflow's action or script could push that branch without naming it, so no hunk
 > can settle it, and a reviewer should not flag or clear a diff on it. What can be
 > checked mechanically is the narrow case: no workflow other than
@@ -377,8 +377,8 @@ permanent gap.
 - **Scope** — the paths or workspaces it covers, and any stated exceptions.
 - **Why not enforced** — which of lint, types and tests fails here, and why.
 
-Something that no diff can falsify (CI wiring, say) is still listed, marked **"not
-reviewable"**, with where it is tracked, so a reviewer knows not to flag it.
+Something that no diff can falsify (CI wiring, say) is still listed, headed
+`**<ID> (not reviewable): …**`, with where it is tracked, so a reviewer knows not to flag it.
 
 **True when it lands.** Check every claim against the code in the same change that declares it.
 If one doesn't hold, fix the code or narrow the claim. A declared invariant must describe the
@@ -387,7 +387,8 @@ for example "all 12 exemptions conform".
 
 **Placement.** Put the full set in the doc that owns the idiom. Put a one-line-per-ID summary in
 the doc comment of the module it governs, so a reviewer reading the hunk finds it. IDs are
-stable: never renumber; retire one by marking it retired with a reason. The first full set is
+stable: never renumber; retire one by keeping its declaration, headed `**<ID> (retired): …**`,
+with a `_Retired:_` line giving the reason. The first full set is
 the resource-lifetime invariants L1–L8 in `extensions/common/GOOD_CITIZEN.md` → "Resource
 lifetimes: what is enforced, and what is not"; `extensions/common/src/lib/lifetime/index.ts`
 carries their one-line summaries.
@@ -407,6 +408,15 @@ invariant kept only what a person has to judge:
 > - _Scope:_ the whole repo.
 > - _Why not enforced:_ that the line exists is a lint rule (`require-lifetime-comment`).
 >   Whether it is true needs a person to read it.
+
+**What a check holds.** `pnpm check:policy-docs` (`scripts/check-policy-docs.ts`, rules in
+`packages/eslint/src/policy-docs.ts`; root `pnpm lint`, and a `pr.yml` job CI Gate requires)
+fails, in any markdown file, a declaration (a line starting `**<ID>:`) with no `_Claim:_`,
+`_Falsified by_`, `_Scope:_` or `_Why not …:_` line, an ID declared twice, and an ID declared
+at the base branch and not now; and, in `CLAUDE.md`, `REVIEW.md` and `AGENTS.md`, a path or
+quoted-heading reference that points at nothing. A review does not re-check those. Whether a falsifier is decidable from a hunk, whether a claim
+is true, whether an old ID now carries a different claim and whether a sentence should be a
+rule stay review's.
 
 **Per-site tags: state the fact where the code hides it.** When a claim is about many sites
 rather than one rule, as L3's `Lifetime:` line is, the invariant can govern a tagged comment

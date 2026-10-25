@@ -15,10 +15,12 @@ apply to any agent working here, not only Claude.
     violation elsewhere;
   - **it matches:** one finding citing the ID and the lines. Invariants marked "not
     reviewable" are never flagged.
-- **A change that declares or edits an invariant:** flag it if it is missing a part, has a
-  falsifier that can't be decided from the hunk and the file it changes, or that covers only additions (missing a deletion, rename or move that also breaks the claim), covers something a lint rule, type or
-  test could enforce without saying why that fails, is false on the code in the same
-  change, or renumbers or removes an ID instead of retiring it.
+- **A change that declares or edits an invariant:** `pnpm check:policy-docs` already fails a
+  missing part, a reused ID and a dropped one; do not re-check those. Flag it if it has a part
+  that is there in name only, a falsifier that can't be decided from the hunk and the file it
+  changes, or that covers only additions (missing a deletion, rename or move that also breaks
+  the claim), covers something a lint rule, type or test could enforce without saying why that
+  fails, is false on the code in the same change, or gives an ID already in use a different claim.
 - **Second implementations and code left behind are blocking findings.** Flag two
   copies of the same code added in one diff; an added module, component, hook or helper
   whose job existing code already does (search `packages/ui/shared`, `packages/core-utils`,

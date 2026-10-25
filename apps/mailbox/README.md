@@ -278,7 +278,7 @@ how each was checked when this workspace landed.
 - _Checked at landing:_ one `console` call (`src/index.ts`, `report`, the error's `message`);
   no `vars` in `wrangler.jsonc`; no token-shaped string in the workspace.
 
-**MB4: The Cloudflare account has no payment method.** _Not reviewable_: it is account state, so
+**MB4 (not reviewable): The Cloudflare account has no payment method.** It is account state, so
 no diff can show it. It is listed so a reviewer knows the cost model rests on it. With a card
 on file, Workers or D1 use past the free limits can bill instead of failing. Confirming it is
 step 1 of the deploy below.
