@@ -62,11 +62,13 @@ import {
   pickedForYou,
   pickedFrom,
   pickState,
+  readIt,
   readyHeading,
   resumeInHand,
   resumeToBuild,
   saidWouldHavePicked,
   seeAll,
+  sendIt,
   stillOpen,
   trackHeading,
   whatMorningsBring,
@@ -140,6 +142,12 @@ const NextPick = ({
   pick: Pick
 }): JSX.Element => {
   const { ready, resume } = readiness(state, day, pick)
+  const untouched = decisionOf(state, day, pick.id) === null
+  const pickRef = { day, pickId: pick.id, fingerprint: pick.fingerprint }
+  const link = {
+    to: "/jobs/pick/$day/$pickId",
+    params: { day, pickId: pick.id },
+  } as const
   return (
     <section className="bg-card flex flex-col gap-3 rounded-xl border p-4">
       <span className="text-muted-foreground text-xs">
@@ -166,13 +174,28 @@ const NextPick = ({
       {resume !== null && (
         <p className="text-muted-foreground text-sm">{resume}</p>
       )}
-      {hasAudience("apk") && (
-        <Button asChild size="lg">
-          <Link to="/jobs/pick/$day/$pickId" params={{ day, pickId: pick.id }}>
-            {openIt}
-          </Link>
-        </Button>
-      )}
+      {hasAudience("apk") &&
+        (untouched ? (
+          <div className="grid grid-cols-2 gap-2">
+            <Button asChild size="lg" variant="outline">
+              <Link {...link}>{readIt}</Link>
+            </Button>
+            <Button asChild size="lg">
+              <Link
+                {...link}
+                onClick={() => {
+                  phoneJobs().record({ type: "taken", ...pickRef })
+                }}
+              >
+                {sendIt}
+              </Link>
+            </Button>
+          </div>
+        ) : (
+          <Button asChild size="lg">
+            <Link {...link}>{openIt}</Link>
+          </Button>
+        ))}
     </section>
   )
 }

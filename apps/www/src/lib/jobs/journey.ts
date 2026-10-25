@@ -45,7 +45,7 @@ import { journey, mostUrgent } from "@/lib/journey"
 import type { Outgoing } from "./files"
 import { isFile } from "./files"
 import type { JobEvent, JobsState, ShareKind } from "./model"
-import { coveredBy, DIGESTS_KEPT } from "./model"
+import { coveredBy, DIGESTS_KEPT, isPickStep } from "./model"
 
 /** How long home takes to hand a file to the mailbox (its 900-second pass). */
 export const HANDOVER_MS = 15 * 60_000
@@ -80,7 +80,7 @@ type ShareLeg = {
 /** Which file an event goes out in, or null for one no file carries. */
 function kindOf(e: JobEvent): ShareKind | null {
   if (e.type === "scout") return "scouts"
-  if ("pickId" in e || e.type === "outcome" || e.type === "disagree") {
+  if (isPickStep(e) || e.type === "outcome" || e.type === "disagree") {
     return "decisions"
   }
   return null

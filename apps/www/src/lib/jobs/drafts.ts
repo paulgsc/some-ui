@@ -7,12 +7,12 @@
  * that settles it is recorded.
  */
 import { assertNever, quarantine } from "@some-ui/core-utils"
-import { DEBRIEF_RESULTS, FRICTION, PASS_REASONS } from "@some-ui/job-desk"
+import { FRICTION, PASS_REASONS } from "@some-ui/job-desk"
 import { z } from "zod"
 
 import type { StorageAdapter } from "@/lib/tenant/storage"
 
-import type { DebriefResult, Draft, FrictionChip, PassReason } from "./model"
+import type { Draft, FrictionChip, PassReason } from "./model"
 import { pickOwner } from "./model"
 
 const DRAFTS_KEY = "some-ui:jobs:drafts"
@@ -34,7 +34,6 @@ export type DebriefDraft = {
   friction: number | null
   chips: ReadonlyArray<FrictionChip>
   what: string
-  result: DebriefResult | null
 }
 
 export type FormDraft = PassDraft | FitDraft | DebriefDraft
@@ -54,7 +53,6 @@ const FormDraftSchema = z.discriminatedUnion("form", [
     friction: z.number().nullable(),
     chips: z.array(z.enum(FRICTION)),
     what: z.string(),
-    result: z.enum(DEBRIEF_RESULTS).nullable(),
   }),
 ])
 
@@ -106,6 +104,7 @@ export function draftRecordedBy(event: Draft): string | null {
     case "archived":
     case "resume-ready":
     case "apply-opened":
+    case "read":
     case "outcome":
     case "disagree":
     case "scout":

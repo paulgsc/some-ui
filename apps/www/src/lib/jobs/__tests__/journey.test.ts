@@ -209,6 +209,17 @@ describe("JB2: a file waiting to leave the phone", () => {
   it("says nothing before anything was offered", () => {
     expect(idOf(opened)).toBeNull()
   })
+
+  it("offers nothing for a pick only read: a reading goes out in no file", () => {
+    const read = record(opened, {
+      type: "read",
+      day: DAY,
+      pickId: SW.id,
+      fingerprint: SW.fingerprint,
+    })
+    expect(isFile(outgoing(read, "decisions"))).toBe(false)
+    expect(idOf(read)).toBeNull()
+  })
 })
 
 describe("JB2: a file home took without a tap", () => {

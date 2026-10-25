@@ -1,15 +1,17 @@
 /**
- * Jobs › a pick: Review, Decide, Résumé, Apply, Debrief. Each step adds one
- * event to the record; the step shown follows the record, and any step
- * already reached can be looked at again. Apply stays the step shown until
- * the debrief is kept, and each form's text is a draft the runtime keeps, so
+ * Jobs › a pick: Read, Decide, Résumé, Apply, Ending. Opening the reading
+ * records that I read it, once a day, and moves nothing; each later step adds
+ * one event to the record. The step shown follows the record, and any step
+ * already reached can be looked at again. Apply stays the step shown until the
+ * ending is kept, and each form's text is a draft the runtime keeps, so
  * leaving the app to apply, or halfway through a form, loses nothing (JB1).
  */
 import type { JSX } from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { cn } from "@some-ui/core-utils"
 import type { Kit, Pick } from "@some-ui/job-desk"
 import {
+  DEBRIEF_RESULTS,
   FRICTION,
   MAX_DEBRIEF_MINUTES,
   MAX_NOTE,
@@ -22,13 +24,7 @@ import { useMinuteClock } from "@/lib/clock"
 import { phoneJobs } from "@/lib/jobs"
 import type { DebriefDraft, PassDraft } from "@/lib/jobs/drafts"
 import { draftOf } from "@/lib/jobs/drafts"
-import type {
-  DebriefResult,
-  FrictionChip,
-  JobsState,
-  PassReason,
-  PickRef,
-} from "@/lib/jobs/model"
+import type { JobsState, PickRef } from "@/lib/jobs/model"
 import {
   decisionOf,
   digestOf,
@@ -42,12 +38,44 @@ import {
   standingOf,
   timedMinutes,
 } from "@/lib/jobs/model"
-import { lapsedOn } from "@/lib/jobs/words"
+import {
+  addHowItWent,
+  archivedIt,
+  decideHint,
+  dontClaim,
+  endedAs,
+  endingLabels,
+  fitWord,
+  frictionHeading,
+  frictionLabels,
+  frictionScale,
+  howDidItEnd,
+  howItWentHint,
+  howLong,
+  inAFewWords,
+  lapsedOn,
+  minutesRange,
+  notForMe,
+  notForMeWithWhy,
+  onToDecide,
+  passedIt,
+  passLabels,
+  sayItAloud,
+  sayWhyAloud,
+  sayWhyNot,
+  sendAfterAll,
+  sendIt,
+  steps,
+  whatGotInTheWay,
+  whatHappened,
+  whatTheyWant,
+  whereIFit,
+  whyNot,
+} from "@/lib/jobs/words"
 import {
   Gaps,
   postingLine,
   resumeLabel,
-  Scores,
   sectionHeading,
 } from "@/components/job-reading"
 
@@ -61,43 +89,13 @@ import {
   VoiceNotes,
 } from "./parts"
 
-const STEPS = ["Review", "Decide", "Résumé", "Apply", "Debrief"] as const
-
-const PASS_LABELS: Readonly<Record<PassReason, string>> = {
-  role: "Role",
-  "customer-facing": "Customer-facing",
-  seniority: "Seniority",
-  pay: "Pay",
-  location: "Location",
-  company: "Company",
-  closed: "Posting closed",
-  other: "Other",
-}
-
-const FRICTION_LABELS: Readonly<Record<FrictionChip, string>> = {
-  "account-wall": "Account wall",
-  "company-ats": "Sent to company ATS",
-  "retyped-resume": "Re-typed my résumé",
-  assessment: "Assessment",
-  "cover-letter": "Cover letter",
-  "long-questionnaire": "Long questionnaire",
-  "form-broke": "Form broke",
-}
-
 const EMPTY_DEBRIEF: DebriefDraft = {
   form: "debrief",
   minutes: null,
   friction: null,
   chips: [],
   what: "",
-  result: null,
 }
-
-const RESULTS: ReadonlyArray<readonly [DebriefResult, string]> = [
-  ["submitted", "Submitted"],
-  ["gave-up", "Gave up"],
-  ["closed", "Couldn’t: posting closed"],
-]
 
 /** A step's pick, and what moves the screen on once it records. */
 type StepProps = { pickRef: PickRef; advance: () => void }
@@ -108,48 +106,64 @@ function toggle<T>(list: ReadonlyArray<T>, value: T): Array<T> {
     : [...list, value]
 }
 
-const Review = ({
+/** What the posting wants and where I fit, in words, with no verdict asked. */
+const Read = ({
   pick,
+  pickRef,
   onNext,
 }: {
   pick: Pick
+  pickRef: PickRef
   onNext: () => void
-}): JSX.Element => (
-  <div className="flex flex-col gap-4">
-    <Scores scores={pick.scores} />
-    <section className="flex flex-col gap-1">
-      <h3 className={sectionHeading}>What they want</h3>
-      <p className="text-sm leading-relaxed">{pick.wants}</p>
-    </section>
-    <section className="flex flex-col gap-2">
-      <h3 className={sectionHeading}>Where I fit</h3>
-      <ul className="flex flex-col gap-2">
-        {pick.fits.map((fit) => (
-          <li
-            key={fit.title}
-            className="bg-muted flex flex-col gap-0.5 rounded-xl p-3"
-          >
-            <span className="text-sm font-semibold">{fit.title}</span>
-            <span className="text-sm">{fit.detail}</span>
-            <span className="text-muted-foreground font-mono text-xs">
-              {fit.source}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </section>
-    <Gaps gaps={pick.gaps} />
-    {pick.dontClaim.length > 0 && (
-      <section className="border-destructive/30 bg-destructive/5 flex flex-col gap-1 rounded-xl border p-3">
-        <h3 className={cn(sectionHeading, "text-destructive")}>Don’t claim</h3>
-        <p className="text-sm">{pick.dontClaim.join(" · ")}</p>
+}): JSX.Element => {
+  const { day, pickId, fingerprint } = pickRef
+  useEffect(() => {
+    phoneJobs().read({ day, pickId, fingerprint })
+  }, [day, pickId, fingerprint])
+  return (
+    <div className="flex flex-col gap-4">
+      <section className="bg-muted flex flex-col gap-1 rounded-xl p-3">
+        <span className="text-sm font-semibold">
+          {fitWord(pick.scores.fit)}
+        </span>
+        <span className="text-sm">{pick.scores.fitWhy}</span>
       </section>
-    )}
-    <Button type="button" size="lg" onClick={onNext}>
-      Decide
-    </Button>
-  </div>
-)
+      <section className="flex flex-col gap-1">
+        <h3 className={sectionHeading}>{whatTheyWant}</h3>
+        <p className="text-sm leading-relaxed">{pick.wants}</p>
+      </section>
+      <section className="flex flex-col gap-2">
+        <h3 className={sectionHeading}>{whereIFit}</h3>
+        <ul className="flex flex-col gap-2">
+          {pick.fits.map((fit) => (
+            <li
+              key={fit.title}
+              className="bg-muted flex flex-col gap-0.5 rounded-xl p-3"
+            >
+              <span className="text-sm font-semibold">{fit.title}</span>
+              <span className="text-sm">{fit.detail}</span>
+              <span className="text-muted-foreground font-mono text-xs">
+                {fit.source}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+      <Gaps gaps={pick.gaps} />
+      {pick.dontClaim.length > 0 && (
+        <section className="border-destructive/30 bg-destructive/5 flex flex-col gap-1 rounded-xl border p-3">
+          <h3 className={cn(sectionHeading, "text-destructive")}>
+            {dontClaim}
+          </h3>
+          <p className="text-sm">{pick.dontClaim.join(" · ")}</p>
+        </section>
+      )}
+      <Button type="button" size="lg" variant="outline" onClick={onNext}>
+        {onToDecide}
+      </Button>
+    </div>
+  )
+}
 
 const Decide = ({
   state,
@@ -163,7 +177,7 @@ const Decide = ({
   const jobs = phoneJobs()
   const owner = pickOwner(pickRef.day, pickRef.pickId, "pass")
   const draft = draftOf(useJobs().drafts, owner, "pass")
-  const passing = draft !== null
+  const saying = draft !== null
   const reasons = draft?.reasons ?? []
   const note = draft?.note ?? ""
   const keep = (change: Partial<Omit<PassDraft, "form">>): void => {
@@ -174,20 +188,26 @@ const Decide = ({
   const today = pacificDay(useMinuteClock())
   const decision = decisionOf(state, pickRef.day, pickRef.pickId)
   const standing = standingOf(state, pickRef.day, pickRef.pickId, today)
+  const send = (): void => {
+    if (jobs.record({ type: "taken", ...pickRef })) advance()
+  }
+  const pass = (): void => {
+    if (busy) return
+    const kept = jobs.record({
+      type: "passed",
+      ...pickRef,
+      reasons,
+      note: note.trim(),
+      voice: voice.map((v) => v.id),
+    })
+    if (kept) advance()
+  }
   if (decision === "passed") {
     return (
       <div className="flex flex-col gap-3">
-        <p className="bg-muted rounded-xl p-3 text-sm">
-          Passed. The reason goes out with today’s decisions.
-        </p>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => {
-            if (jobs.record({ type: "taken", ...pickRef })) advance()
-          }}
-        >
-          Take it after all
+        <p className="bg-muted rounded-xl p-3 text-sm">{passedIt}</p>
+        <Button type="button" variant="outline" onClick={send}>
+          {sendAfterAll}
         </Button>
       </div>
     )
@@ -195,10 +215,7 @@ const Decide = ({
   return (
     <div className="flex flex-col gap-4">
       {decision === "archived" && (
-        <p className="bg-muted rounded-xl p-3 text-sm">
-          Archived with its digest, unreviewed. Taking or passing it now
-          replaces that.
-        </p>
+        <p className="bg-muted rounded-xl p-3 text-sm">{archivedIt}</p>
       )}
       {standing.kind === "lapsed" && (
         <p className="bg-muted rounded-xl p-3 text-sm">
@@ -206,38 +223,30 @@ const Decide = ({
         </p>
       )}
       <div className="grid grid-cols-2 gap-2">
-        <Button
-          type="button"
-          size="lg"
-          onClick={() => {
-            if (jobs.record({ type: "taken", ...pickRef })) advance()
-          }}
-        >
-          Take it
+        <Button type="button" size="lg" onClick={send}>
+          {sendIt}
         </Button>
         <Button
           type="button"
           size="lg"
-          variant={passing ? "destructive" : "outline"}
-          aria-pressed={passing}
-          onClick={() => {
-            if (!passing) keep({})
-          }}
+          variant="outline"
+          disabled={busy}
+          onClick={pass}
         >
-          Pass
+          {notForMe}
         </Button>
       </div>
-      {passing ? (
+      {saying ? (
         <section className="flex flex-col gap-3">
-          <h3 className={sectionHeading}>Why pass?</h3>
+          <h3 className={sectionHeading}>{whyNot}</h3>
           <Chips
-            label="Why pass"
-            options={PASS_REASONS.map((r) => [r, PASS_LABELS[r]] as const)}
+            label={whyNot}
+            options={PASS_REASONS.map((r) => [r, passLabels[r]] as const)}
             pressed={(r) => reasons.includes(r)}
             onToggle={(r) => keep({ reasons: toggle(reasons, r) })}
           />
           <Label htmlFor="pass-note" className={sectionHeading}>
-            In a few words
+            {inAFewWords}
           </Label>
           <Textarea
             id="pass-note"
@@ -246,34 +255,28 @@ const Decide = ({
             value={note}
             onChange={(e) => keep({ note: e.target.value })}
           />
-          <VoiceNotes
-            owner={owner}
-            notes={voice}
-            hint="Or say why, up to a minute"
-          />
+          <VoiceNotes owner={owner} notes={voice} hint={sayWhyAloud} />
           <Button
             type="button"
+            variant="destructive"
             disabled={busy}
-            onClick={() => {
-              if (busy) return
-              const kept = jobs.record({
-                type: "passed",
-                ...pickRef,
-                reasons,
-                note: note.trim(),
-                voice: voice.map((v) => v.id),
-              })
-              if (kept) advance()
-            }}
+            onClick={pass}
           >
-            Pass and keep the reason
+            {notForMeWithWhy}
           </Button>
         </section>
       ) : (
-        <p className="text-muted-foreground text-sm">
-          Taking it moves on to the résumé. Passing keeps the reason for
-          tomorrow’s run, so it stops sending ones like it.
-        </p>
+        <>
+          <p className="text-muted-foreground text-sm">{decideHint}</p>
+          <Button
+            type="button"
+            variant="ghost"
+            className="self-start"
+            onClick={() => keep({})}
+          >
+            {sayWhyNot}
+          </Button>
+        </>
       )}
     </div>
   )
@@ -559,7 +562,12 @@ const FitNote = ({
   )
 }
 
-const Debrief = ({
+/**
+ * How applying ended, in one tap. How long it took, the friction, what got in
+ * the way and what happened are kept with it only once I open them; the timed
+ * minutes are offered there, never sent unseen.
+ */
+const Ending = ({
   state,
   pickRef,
   advance,
@@ -568,114 +576,129 @@ const Debrief = ({
   const now = useMinuteClock()
   const timed = timedMinutes(state, pickRef.day, pickRef.pickId, now)
   const owner = pickOwner(pickRef.day, pickRef.pickId, "debrief")
-  const draft = draftOf(useJobs().drafts, owner, "debrief") ?? EMPTY_DEBRIEF
-  const { minutes, friction, chips, what, result } = draft
+  const draft = draftOf(useJobs().drafts, owner, "debrief")
+  const adding = draft !== null
+  const { minutes, friction, chips, what } = draft ?? EMPTY_DEBRIEF
   const shownMinutes = minutes ?? (timed === null ? "" : String(timed))
   // The minutes on show are kept with the first change, so the clock moving
   // on can't empty them mid-form.
   const keep = (change: Partial<Omit<DebriefDraft, "form">>): void => {
-    jobs.draft(owner, { ...draft, minutes: shownMinutes, ...change })
+    jobs.draft(owner, {
+      ...EMPTY_DEBRIEF,
+      ...draft,
+      minutes: shownMinutes,
+      ...change,
+    })
   }
   const voice = draftVoice(state, owner)
   const busy = useVoiceBusy(owner)
   const parsedMinutes = Number.parseInt(shownMinutes, 10)
   const minutesFit = parsedMinutes >= 1 && parsedMinutes <= MAX_DEBRIEF_MINUTES
-  const ready = friction !== null && result !== null && minutesFit
+  const said = adding && shownMinutes.trim() !== ""
+  const ready = !busy && (!said || minutesFit)
   return (
     <div className="flex flex-col gap-4">
       <section className="flex flex-col gap-2">
-        <Label htmlFor="debrief-minutes" className={sectionHeading}>
-          How long it took, in minutes
-        </Label>
-        <Input
-          id="debrief-minutes"
-          inputMode="numeric"
-          className="w-28"
-          value={shownMinutes}
-          onChange={(e) => keep({ minutes: e.target.value })}
-        />
-        {!minutesFit && shownMinutes !== "" && (
-          <span className="text-muted-foreground text-xs">
-            From 1 to {MAX_DEBRIEF_MINUTES} minutes.
-          </span>
-        )}
+        <h3 className={sectionHeading}>{howDidItEnd}</h3>
+        {DEBRIEF_RESULTS.map((result) => (
+          <Button
+            key={result}
+            type="button"
+            size="lg"
+            variant={result === "submitted" ? "default" : "outline"}
+            disabled={!ready}
+            onClick={() => {
+              if (!ready) return
+              const kept = jobs.record({
+                type: "debrief",
+                ...pickRef,
+                minutes: said ? parsedMinutes : null,
+                friction,
+                chips,
+                what: what.trim(),
+                voice: voice.map((v) => v.id),
+                result,
+              })
+              if (kept) advance()
+            }}
+          >
+            {endingLabels[result]}
+          </Button>
+        ))}
       </section>
-      <section className="flex flex-col gap-2">
-        <h3 className={sectionHeading}>Friction</h3>
-        <div
-          role="group"
-          aria-label="Friction"
-          className="grid grid-cols-5 gap-2"
-        >
-          {[1, 2, 3, 4, 5].map((n) => (
-            <Button
-              key={n}
-              type="button"
-              variant={friction === n ? "default" : "outline"}
-              aria-pressed={friction === n}
-              onClick={() => keep({ friction: n })}
+      {adding ? (
+        <>
+          <p className="text-muted-foreground text-xs">{howItWentHint}</p>
+          <section className="flex flex-col gap-2">
+            <Label htmlFor="debrief-minutes" className={sectionHeading}>
+              {howLong}
+            </Label>
+            <Input
+              id="debrief-minutes"
+              inputMode="numeric"
+              className="w-28"
+              value={shownMinutes}
+              onChange={(e) => keep({ minutes: e.target.value })}
+            />
+            {said && !minutesFit && (
+              <span className="text-muted-foreground text-xs">
+                {minutesRange(MAX_DEBRIEF_MINUTES)}
+              </span>
+            )}
+          </section>
+          <section className="flex flex-col gap-2">
+            <h3 className={sectionHeading}>{frictionHeading}</h3>
+            <div
+              role="group"
+              aria-label={frictionHeading}
+              className="grid grid-cols-5 gap-2"
             >
-              {n}
-            </Button>
-          ))}
-        </div>
-        <span className="text-muted-foreground text-xs">
-          1 smooth · 5 nearly gave up
-        </span>
-        <Chips
-          label="What got in the way"
-          options={FRICTION.map((c) => [c, FRICTION_LABELS[c]] as const)}
-          pressed={(c) => chips.includes(c)}
-          onToggle={(c) => keep({ chips: toggle(chips, c) })}
-        />
-      </section>
-      <section className="flex flex-col gap-2">
-        <Label htmlFor="debrief-what" className={sectionHeading}>
-          What happened
-        </Label>
-        <Textarea
-          id="debrief-what"
-          rows={3}
-          maxLength={MAX_NOTE}
-          value={what}
-          onChange={(e) => keep({ what: e.target.value })}
-        />
-        <VoiceNotes
-          owner={owner}
-          notes={voice}
-          hint="Or say it, up to a minute"
-        />
-      </section>
-      <section className="flex flex-col gap-2">
-        <h3 className={sectionHeading}>Result</h3>
-        <Chips
-          label="Result"
-          options={RESULTS}
-          pressed={(r) => result === r}
-          onToggle={(r) => keep({ result: r })}
-        />
-      </section>
-      <Button
-        type="button"
-        size="lg"
-        disabled={!ready || busy}
-        onClick={() => {
-          if (!ready || busy) return
-          const kept = jobs.record({
-            type: "debrief",
-            ...pickRef,
-            minutes: parsedMinutes,
-            friction,
-            chips,
-            what: what.trim(),
-            voice: voice.map((v) => v.id),
-            result,
-          })
-          if (kept) advance()
-        }}
-      >
-        Keep this debrief
-      </Button>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <Button
+                  key={n}
+                  type="button"
+                  variant={friction === n ? "default" : "outline"}
+                  aria-pressed={friction === n}
+                  onClick={() => keep({ friction: friction === n ? null : n })}
+                >
+                  {n}
+                </Button>
+              ))}
+            </div>
+            <span className="text-muted-foreground text-xs">
+              {frictionScale}
+            </span>
+            <Chips
+              label={whatGotInTheWay}
+              options={FRICTION.map((c) => [c, frictionLabels[c]] as const)}
+              pressed={(c) => chips.includes(c)}
+              onToggle={(c) => keep({ chips: toggle(chips, c) })}
+            />
+          </section>
+          <section className="flex flex-col gap-2">
+            <Label htmlFor="debrief-what" className={sectionHeading}>
+              {whatHappened}
+            </Label>
+            <Textarea
+              id="debrief-what"
+              rows={3}
+              maxLength={MAX_NOTE}
+              value={what}
+              onChange={(e) => keep({ what: e.target.value })}
+            />
+            <VoiceNotes owner={owner} notes={voice} hint={sayItAloud} />
+          </section>
+        </>
+      ) : (
+        <Button
+          type="button"
+          variant="ghost"
+          className="self-start"
+          onClick={() => keep({})}
+        >
+          {addHowItWent}
+        </Button>
+      )}
     </div>
   )
 }
@@ -722,7 +745,7 @@ export const PickFlow = ({
         <span className="text-xs">{resumeLabel(pick.resume)}</span>
       </header>
       <nav aria-label="Steps" className="grid grid-cols-5 gap-1">
-        {STEPS.map((label, i) => (
+        {steps.map((label, i) => (
           <button
             key={label}
             type="button"
@@ -744,11 +767,10 @@ export const PickFlow = ({
       <Problem />
       {progress.kind === "done" && shown === 4 ? (
         <p className="bg-muted rounded-xl p-3 text-sm">
-          Debriefed: {progress.result}. Add replies and interviews under Record
-          as they come.
+          {endedAs(progress.result)}
         </p>
       ) : shown === 0 ? (
-        <Review pick={pick} onNext={() => setViewed(1)} />
+        <Read pick={pick} pickRef={pickRef} onNext={() => setViewed(1)} />
       ) : shown === 1 ? (
         <Decide state={state} pickRef={pickRef} advance={follow} />
       ) : shown === 2 ? (
@@ -765,7 +787,7 @@ export const PickFlow = ({
           }
         />
       ) : (
-        <Debrief state={state} pickRef={pickRef} advance={follow} />
+        <Ending state={state} pickRef={pickRef} advance={follow} />
       )}
     </div>
   )

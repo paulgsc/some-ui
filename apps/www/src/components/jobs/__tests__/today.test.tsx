@@ -30,6 +30,8 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   vi.useRealTimers()
+  vi.doUnmock("@/lib/build-profile")
+  vi.doUnmock("@tanstack/react-router")
   vi.resetModules()
 })
 
@@ -113,6 +115,38 @@ describe("Today, opened", () => {
     expect(document.body.textContent).not.toMatch(/0\.\d\d/)
     const counts = screen.getByText(/Still open on this phone/)
     expect(counts.closest("details")?.open).toBe(false)
+  })
+
+  it("on the phone, offers an untouched pick to read or send, and a started one to open", async () => {
+    vi.doMock("@/lib/build-profile", () => ({
+      hasAudience: (): boolean => true,
+    }))
+    vi.doMock("@tanstack/react-router", () => ({
+      Link: ({
+        children,
+        onClick,
+      }: {
+        children: React.ReactNode
+        onClick?: () => void
+      }): React.JSX.Element => (
+        <button type="button" onClick={onClick}>
+          {children}
+        </button>
+      ),
+    }))
+    await showToday("2026-10-22T14:00:00Z", "2026-10-22")
+    expect(screen.getByText("Read it")).toBeTruthy()
+    const { phoneJobs } = await import("@/lib/jobs")
+    act(() => {
+      fireEvent.click(screen.getByText("Send it"))
+    })
+    expect(
+      phoneJobs()
+        .getSnapshot()
+        .state.log.map((e) => e.type)
+    ).toEqual(["taken"])
+    expect(screen.queryByText("Send it")).toBeNull()
+    expect(screen.getByText("Open it")).toBeTruthy()
   })
 
   it("ticks the résumé as ready only once I have its PDF", async () => {

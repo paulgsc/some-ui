@@ -34,8 +34,12 @@ export function nextPick(
   return fresh[0] ?? null
 }
 
-/** What counts as something done: a step on a pick, a scout, a reply logged. */
+/**
+ * What counts as something done: a step on a pick, a posting read, a scout,
+ * a reply logged.
+ */
 const DONE: ReadonlySet<JobEvent["type"]> = new Set([
+  "read",
   "taken",
   "passed",
   "resume-ready",

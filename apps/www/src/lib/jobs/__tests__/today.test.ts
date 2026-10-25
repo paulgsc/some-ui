@@ -92,5 +92,7 @@ describe("doneOn", () => {
     state = record(state, { type: "apply-opened", ...refOf(NEWER, 0) }, today)
     state = record(state, { type: "apply-opened", ...refOf(NEWER, 0) }, today)
     expect(doneOn(state, "2026-10-18", dayOf)).toBe(2)
+    state = record(state, { type: "read", ...refOf(NEWER, 1) }, today)
+    expect(doneOn(state, "2026-10-18", dayOf)).toBe(3)
   })
 })

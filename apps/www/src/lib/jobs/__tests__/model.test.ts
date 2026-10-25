@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import type { Draft, JobsState, PickRef, VoiceNote } from "@/lib/jobs/model"
 import {
   applicationsOf,
+  decisionOf,
   DIGESTS_KEPT,
   draftVoice,
   EMPTY,
@@ -107,12 +108,20 @@ describe("step", () => {
     expect(openOf(state, DAY).filter((o) => o.day === old.day)).toHaveLength(2)
   })
 
-  it("lets go of a digest whose picks all lapsed, once newer ones fill the phone (J5)", () => {
+  it("lets go of a digest whose picks all lapsed, once newer ones fill the phone, read or not (J5)", () => {
+    const old = digest("2026-08-01")
     let state = step(EMPTY, {
       type: "opened",
-      digest: digest("2026-08-01"),
+      digest: old,
       at: "2026-08-01T15:00:00Z",
     })
+    state = record(state, {
+      type: "read",
+      day: old.day,
+      pickId: old.picks[0].id,
+      fingerprint: old.picks[0].fingerprint,
+    })
+    expect(state.log).toHaveLength(1)
     for (let i = 1; i <= DIGESTS_KEPT + 2; i += 1) {
       const day = `2026-09-${String(i).padStart(2, "0")}`
       state = step(state, {
@@ -202,20 +211,35 @@ describe("step", () => {
     expect(step(opened, { type: "record-all", events: bad })).toBe(opened)
   })
 
-  it("refuses a debrief job-desk would refuse", () => {
+  it("refuses a debrief job-desk would refuse, and takes one that leaves minutes and friction unsaid", () => {
     const taken = record(opened, { type: "taken", ...ref() })
-    const debrief = (minutes: number): Draft => ({
+    const debrief = (
+      minutes: number | null,
+      friction: number | null = 3
+    ): Draft => ({
       type: "debrief",
       ...ref(),
       minutes,
-      friction: 3,
+      friction,
       chips: [],
       what: "",
       voice: [],
       result: "submitted",
     })
     expect(record(taken, debrief(1_440))).toBe(taken)
+    expect(record(taken, debrief(0))).toBe(taken)
+    expect(record(taken, debrief(45, 6))).toBe(taken)
     expect(record(taken, debrief(45)).log).toHaveLength(2)
+    expect(record(taken, debrief(null, null)).log).toHaveLength(2)
+  })
+
+  it("takes a reading of any opened pick, taken or not, and moves nothing", () => {
+    const read = record(opened, { type: "read", ...ref() })
+    expect(read.log).toHaveLength(1)
+    expect(decisionOf(read, ref().day, ref().pickId)).toBeNull()
+    expect(progressOf(read, ref().day, ref().pickId)).toEqual(
+      progressOf(opened, ref().day, ref().pickId)
+    )
   })
 
   it("refuses what home would refuse to keep", () => {

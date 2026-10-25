@@ -172,7 +172,11 @@ For each new file:
      pick's `dontClaim`, or a phone number or address. A pick no longer open
      gets no redraft: say so in the summary.
    - **Debriefs and outcomes:** how applying went and what came of it. Report
-     them in the summary. Once there are 30 or more outcomes, compare them with
+     them in the summary. A debrief's `result` is always there, but its
+     `minutes` and `friction` may be `null`: I ended it in one tap and didn't
+     say. Leave those out of any count or average and say how many went
+     unsaid; never read a missing one as zero minutes or as smooth. Once
+     there are 30 or more outcomes, compare them with
      the odds each pick was given and say in the summary whether the rubric
      reads high or low. Don't change the rubric yourself.
 

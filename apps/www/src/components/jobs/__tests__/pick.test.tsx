@@ -29,8 +29,8 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { phoneJobs } from "@/lib/jobs"
 import { digest, ports } from "@/lib/jobs/__tests__/fixture"
-import type { PickRef } from "@/lib/jobs/model"
-import type { JobsRuntime } from "@/lib/jobs/runtime"
+import type { JobEvent, PickRef } from "@/lib/jobs/model"
+import type { JobsPorts, JobsRuntime } from "@/lib/jobs/runtime"
 import { createJobsRuntime } from "@/lib/jobs/runtime"
 
 vi.mock("@/lib/jobs", () => ({ phoneJobs: vi.fn(), copyText: vi.fn() }))
@@ -90,12 +90,15 @@ const DAY = "2026-10-18"
 /** When the runtime stamps every event (`ports().now`). */
 const STAMPED = Date.parse("2026-10-18T22:00:00Z")
 
-/** A runtime holding `DAY`'s digest, its first pick with a kit to paste. */
-async function runtimeWithDigest(): Promise<{
+/**
+ * A runtime holding `DAY`'s digest, its first pick with a kit to paste, on
+ * the fixture's day unless `overrides` move its clock.
+ */
+async function runtimeWithDigest(overrides: Partial<JobsPorts> = {}): Promise<{
   jobs: JobsRuntime
   relaunch: () => JobsRuntime
 }> {
-  const p = ports()
+  const p = ports(overrides)
   const day = digest(DAY)
   day.picks[0].kit.fields = [{ label: "Email", value: "me@example.com" }]
   const jobs = createJobsRuntime(p)
@@ -151,30 +154,33 @@ describe("a pick left for the posting and come back to (JB1)", () => {
     await showPick(0, relaunch())
     expect(screen.getByText("me@example.com")).toBeTruthy()
     fireEvent.click(screen.getByText("Done with their form"))
-    expect(screen.getByLabelText("How long it took, in minutes")).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Sent" })).toBeTruthy()
   })
 
-  it("offers the minutes only for a recent sitting, and keeps them once the form is touched", async () => {
+  it("offers the minutes only for a recent sitting, and keeps them once the form is opened", async () => {
     vi.useFakeTimers({ toFake: ["Date"] })
     const { jobs } = await runtimeWithDigest()
-    readyToApply(jobs, 0)
-    jobs.record({ type: "apply-opened", ...refOf(jobs, 0) })
+    for (const i of [0, 1]) {
+      readyToApply(jobs, i)
+      jobs.record({ type: "apply-opened", ...refOf(jobs, i) })
+    }
     const minutes = (): string =>
       screen
         .getByLabelText("How long it took, in minutes")
         .getAttribute("value") ?? ""
-    const debriefAt = async (afterMinutes: number): Promise<void> => {
+    const endingAt = async (i: number, afterMinutes: number): Promise<void> => {
       cleanup()
       vi.setSystemTime(STAMPED + afterMinutes * 60_000)
-      await showPick(0, jobs)
-      fireEvent.click(screen.getByText("Debrief"))
+      await showPick(i, jobs)
+      fireEvent.click(screen.getByText("Ending"))
+      const add = screen.queryByText("Add how it went")
+      if (add) fireEvent.click(add)
     }
-    await debriefAt(14 * 60)
+    await endingAt(1, 14 * 60)
     expect(minutes()).toBe("")
-    await debriefAt(115)
+    await endingAt(0, 115)
     expect(minutes()).toBe("115")
-    fireEvent.click(screen.getByRole("button", { name: "2" }))
-    await debriefAt(125)
+    await endingAt(0, 125)
     expect(minutes()).toBe("115")
   })
 
@@ -187,7 +193,9 @@ describe("a pick left for the posting and come back to (JB1)", () => {
 
     await showPick(0, jobs)
     fireEvent.click(screen.getAllByRole("button", { name: "Decide" })[0])
-    fireEvent.click(screen.getByRole("button", { name: "Pass" }))
+    fireEvent.click(
+      screen.getByRole("button", { name: "Not for me, and say why" })
+    )
     fireEvent.click(screen.getByRole("button", { name: "Seniority" }))
     fireEvent.change(screen.getByLabelText("In a few words"), {
       target: { value: "Wants a staff engineer" },
@@ -198,6 +206,7 @@ describe("a pick left for the posting and come back to (JB1)", () => {
       target: { value: "I ran their stack" },
     })
     fireEvent.click(screen.getByText("Done with their form"))
+    fireEvent.click(screen.getByText("Add how it went"))
     fireEvent.change(screen.getByLabelText("What happened"), {
       target: { value: "Workday wanted an account" },
     })
@@ -215,7 +224,7 @@ describe("a pick left for the posting and come back to (JB1)", () => {
         .getByRole("button", { name: "Seniority" })
         .getAttribute("aria-pressed")
     ).toBe("true")
-    fireEvent.click(screen.getByText("Take it"))
+    fireEvent.click(screen.getByText("Send it"))
     fireEvent.click(screen.getAllByRole("button", { name: "Decide" })[0])
     expect(screen.queryByLabelText("In a few words")).toBeNull()
     cleanup()
@@ -230,5 +239,115 @@ describe("a pick left for the posting and come back to (JB1)", () => {
       "value",
       "Workday wanted an account"
     )
+  })
+})
+
+/** The events of `type` the record holds for pick `i`. */
+const eventsOf = (
+  jobs: JobsRuntime,
+  i: number,
+  type: JobEvent["type"]
+): ReadonlyArray<JobEvent> =>
+  jobs
+    .getSnapshot()
+    .state.log.filter(
+      (e) =>
+        e.type === type && "pickId" in e && e.pickId === refOf(jobs, i).pickId
+    )
+
+describe("a pick read, decided and ended in a tap each (S1′)", () => {
+  it("ends a pick with only how it ended, and the ending survives a reload", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(STAMPED)
+    const { jobs, relaunch } = await runtimeWithDigest()
+    readyToApply(jobs, 0)
+    jobs.record({ type: "apply-opened", ...refOf(jobs, 0) })
+    await showPick(0, jobs)
+    fireEvent.click(screen.getByText("Done with their form"))
+    fireEvent.click(screen.getByRole("button", { name: "Sent" }))
+    expect(eventsOf(jobs, 0, "debrief")).toMatchObject([
+      {
+        minutes: null,
+        friction: null,
+        chips: [],
+        what: "",
+        voice: [],
+        result: "submitted",
+      },
+    ])
+    cleanup()
+    const again = relaunch()
+    expect(eventsOf(again, 0, "debrief")).toMatchObject([
+      { minutes: null, friction: null, result: "submitted" },
+    ])
+    await showPick(0, again)
+    expect(screen.getByText(/^Ended: Sent\./)).toBeTruthy()
+  })
+
+  it("keeps how long it took only when I opened how it went", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(STAMPED + 20 * 60_000)
+    const { jobs } = await runtimeWithDigest()
+    readyToApply(jobs, 0)
+    jobs.record({ type: "apply-opened", ...refOf(jobs, 0) })
+    await showPick(0, jobs)
+    fireEvent.click(screen.getByText("Done with their form"))
+    fireEvent.click(screen.getByText("Add how it went"))
+    fireEvent.click(screen.getByRole("button", { name: "4" }))
+    fireEvent.click(screen.getByRole("button", { name: "Stopped partway" }))
+    expect(eventsOf(jobs, 0, "debrief")).toMatchObject([
+      { minutes: 20, friction: 4, result: "gave-up" },
+    ])
+  })
+
+  it("holds back the ending while the minutes typed don't fit, and takes an emptied box as unsaid", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(STAMPED)
+    const { jobs } = await runtimeWithDigest()
+    readyToApply(jobs, 0)
+    jobs.record({ type: "apply-opened", ...refOf(jobs, 0) })
+    await showPick(0, jobs)
+    fireEvent.click(screen.getByText("Done with their form"))
+    fireEvent.click(screen.getByText("Add how it went"))
+    const box = screen.getByLabelText("How long it took, in minutes")
+    fireEvent.change(box, { target: { value: "0" } })
+    expect(screen.getByRole("button", { name: "Sent" })).toHaveProperty(
+      "disabled",
+      true
+    )
+    fireEvent.change(box, { target: { value: "" } })
+    fireEvent.click(screen.getByRole("button", { name: "Sent" }))
+    expect(eventsOf(jobs, 0, "debrief")).toMatchObject([{ minutes: null }])
+  })
+
+  it("passes on a pick with no reason", async () => {
+    const { jobs } = await runtimeWithDigest()
+    await showPick(0, jobs)
+    fireEvent.click(screen.getByText("On to deciding"))
+    fireEvent.click(screen.getByRole("button", { name: "Not for me" }))
+    expect(eventsOf(jobs, 0, "passed")).toMatchObject([
+      { reasons: [], note: "", voice: [] },
+    ])
+  })
+
+  it("records a reading once a day, with no decision, and moves nothing", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(STAMPED)
+    // The phone's clock, read as UTC days.
+    const { jobs } = await runtimeWithDigest({
+      now: () => new Date(),
+      dayOf: (at) => at.toISOString().slice(0, 10),
+    })
+    await showPick(0, jobs)
+    expect(screen.getByText("What they want")).toBeTruthy()
+    expect(screen.queryByRole("button", { name: "Send it" })).toBeNull()
+    cleanup()
+    await showPick(0, jobs)
+    expect(eventsOf(jobs, 0, "read")).toHaveLength(1)
+    expect(eventsOf(jobs, 0, "taken")).toHaveLength(0)
+    cleanup()
+    vi.setSystemTime(STAMPED + 24 * 60 * 60_000)
+    await showPick(0, jobs)
+    expect(eventsOf(jobs, 0, "read")).toHaveLength(2)
   })
 })

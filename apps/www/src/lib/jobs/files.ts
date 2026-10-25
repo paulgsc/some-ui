@@ -20,6 +20,7 @@ import {
   decisionOf,
   deliveredThrough,
   fitNotesOf,
+  isPickStep,
   sharesOn,
   untouchedReported,
 } from "./model"
@@ -106,7 +107,7 @@ export function decisionsFile(
   const fresh = since(state, "decisions")
   const touched = new Map<string, { day: string; pickId: string }>()
   for (const e of fresh) {
-    if ("pickId" in e) touched.set(`${e.day}/${e.pickId}`, e)
+    if (isPickStep(e)) touched.set(`${e.day}/${e.pickId}`, e)
   }
 
   const picks: Decisions["picks"] = []
