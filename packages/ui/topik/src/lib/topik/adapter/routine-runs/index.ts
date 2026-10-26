@@ -37,8 +37,21 @@ export type RoutineRun = {
   }>
   /** What it could not do, each a sentence. */
   problems: ReadonlyArray<string>
+  /**
+   * What became of the voice notes in what it found: how many reflections and
+   * drama requests wait for home to hear one, how many it answered without
+   * one home never heard, and whether it could read what home heard at all.
+   * Null for a run from before it said so, which says nothing either way.
+   */
+  voice: VoiceTally | null
   /** By when its next run should have reported; absent, a day and two hours on. */
   nextBy: string | null
+}
+
+export type VoiceTally = {
+  waiting: number
+  missed: number
+  unread: boolean
 }
 
 /** Any offset is taken, and kept as UTC, so instants compare as text. */
@@ -64,6 +77,10 @@ const RunSchema = z.object({
     })
   ),
   problems: z.array(z.string().min(1)).default([]),
+  voice: z
+    .object({ waiting: Count, missed: Count, unread: z.boolean() })
+    .nullish()
+    .transform((voice) => voice ?? null),
   nextBy: Instant.nullish(),
 })
 

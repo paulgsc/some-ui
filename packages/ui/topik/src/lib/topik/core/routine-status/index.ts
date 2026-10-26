@@ -8,6 +8,10 @@
  * The phone can say the routine went quiet only from what home told it after
  * the run was due: a look made before then, away from home, says only when
  * it last looked.
+ *
+ * Two axes, never folded into one: the shape says what the last run did,
+ * and `voice` says, beside it, what became of the voice notes in what it
+ * found. Each state on either axis has its own mark and its own words.
  */
 
 import { counted, dayWords } from "@some-ui/core-utils"
@@ -28,10 +32,23 @@ export type RoutineShape =
   | "unheard"
   /** Home has heard of no run since the last one was due. */
   | "quiet"
-  /** Its last run could not finish. */
-  | "trouble"
+  /** Its last run answered some of what it found and left the rest. */
+  | "partly"
+  /** Its last run ended early. */
+  | "stopped"
   /** Its run is due, and this phone hasn't looked at home since. */
   | "away"
+
+/** What became of the voice notes in what the last run found. */
+export type VoiceShape =
+  /** Something waits for home to hear its voice note. */
+  | "waiting"
+  /** Something was answered without a voice note home never heard. */
+  | "missed"
+  /** The run couldn't read what home heard, so every voice note waits. */
+  | "unread"
+
+export type VoiceView = { shape: VoiceShape; line: string }
 
 export type RoutineView = {
   shape: RoutineShape
@@ -39,7 +56,16 @@ export type RoutineView = {
   word: string
   /** The sentence the mark stands for. */
   line: string
+  /** One per voice state the last run reported, in `VOICE_ORDER`; none when it reported none. */
+  voice: ReadonlyArray<VoiceView>
 }
+
+/** The voice marks in the order they show. */
+export const VOICE_ORDER: ReadonlyArray<VoiceShape> = [
+  "unread",
+  "missed",
+  "waiting",
+]
 
 /** A run is due again a day and two hours after it started, unless it says otherwise. */
 const DUE_AFTER_MS = 26 * 60 * 60 * 1000
@@ -85,7 +111,8 @@ function foundOf(found: RoutineRun["found"]): string | null {
 export const ROUTINE_WORDS = {
   title: "The routine",
   /** The mark's button name: what it opens. */
-  open: (view: RoutineView): string => `The routine: ${view.line}`,
+  open: (view: RoutineView): string =>
+    [`The routine: ${view.line}`, ...view.voice.map((v) => v.line)].join(" "),
   what: "Each morning the routine answers what you shared: a word set for each study reflection, a drama for each drama prompt. With nothing new to answer, it adds nothing.",
   history: "Its runs",
   legend: "What the mark says",
@@ -98,11 +125,47 @@ export const ROUTINE_WORDS = {
     opened: "It ran, and you've opened all it left.",
     rested: "It ran with nothing to answer.",
     quiet: "Home has no word of a run since one was due.",
-    trouble: "Its last run couldn't finish.",
+    partly: "Its last run answered some of what it found and left the rest.",
+    stopped: "Its last run ended early.",
     away: "A run is due, and this phone hasn't looked at home since.",
     unheard: "No run heard of yet.",
   } satisfies Record<RoutineShape, string>,
+  /** Each voice mark, as the legend says it. */
+  voiceShapes: {
+    waiting: "Something you shared waits for home to hear its voice note.",
+    missed:
+      "Something was answered without its voice note, because home never heard it.",
+    unread:
+      "The routine couldn't read what home heard in your voice notes, so they wait.",
+  } satisfies Record<VoiceShape, string>,
 } as const
+
+/** "One thing you shared", "3 things you shared". */
+const things = (n: number): string =>
+  n === 1 ? "One thing you shared" : `${n} things you shared`
+
+/** What the run said of its voice notes, one view per state it reported. */
+function voiceOf(run: RoutineRun): ReadonlyArray<VoiceView> {
+  const { voice } = run
+  if (voice === null) return []
+  const lines: Record<VoiceShape, string | null> = {
+    unread: voice.unread
+      ? "The routine couldn't read what home heard in your voice notes, so they wait for its next run."
+      : null,
+    missed:
+      voice.missed === 0
+        ? null
+        : `${things(voice.missed)} ${voice.missed === 1 ? "was" : "were"} answered without a voice note home never heard. Voice notes reach home only while this phone keeps them there.`,
+    waiting:
+      voice.waiting === 0
+        ? null
+        : `${things(voice.waiting)} ${voice.waiting === 1 ? "waits" : "wait"} for home to hear a voice note.`,
+  }
+  return VOICE_ORDER.flatMap((shape) => {
+    const line = lines[shape]
+    return line === null ? [] : [{ shape, line }]
+  })
+}
 
 /** What the mark says now, given what the phone holds and has opened. */
 export function routineView(
@@ -117,8 +180,10 @@ export function routineView(
       shape: "unheard",
       word: "Not yet",
       line: "No run of the routine heard of yet. It answers your reflections each morning.",
+      voice: [],
     }
   }
+  const voice = voiceOf(last)
   const due = dueBy(last)
   if (now.toISOString() > due) {
     if (held.lookedAt < due) {
@@ -126,21 +191,33 @@ export function routineView(
         shape: "away",
         word: "Away",
         line: `This phone last looked at home ${when(held.lookedAt, today)}. The routine last ran ${when(last.startedAt, today)}.`,
+        voice,
       }
     }
     return {
       shape: "quiet",
       word: "Quiet",
       line: `Home has no word of a run since ${when(last.startedAt, today)}. The routine may not have run.`,
+      voice,
     }
   }
   if (last.outcome !== "done") {
     const why = last.problems.at(0)
-    return {
-      shape: "trouble",
-      word: last.outcome === "stopped" ? "Stopped" : "Partly",
-      line: `The routine ran ${when(last.startedAt, today)} and couldn't finish${why === undefined ? "." : `: ${why}`}`,
-    }
+    const ran = `The routine ran ${when(last.startedAt, today)}`
+    const said = why === undefined ? "." : `: ${why}`
+    return last.outcome === "stopped"
+      ? {
+          shape: "stopped",
+          word: "Stopped",
+          line: `${ran} and ended early${said}`,
+          voice,
+        }
+      : {
+          shape: "partly",
+          word: "Partly",
+          line: `${ran} and left some of what it found${said}`,
+          voice,
+        }
   }
   const waiting = held.runs
     .flatMap((run) => run.added)
@@ -150,6 +227,7 @@ export function routineView(
       shape: "fresh",
       word: `${waiting.length} new`,
       line: `New from the routine: ${whatOf(waiting)}, not opened yet. It last ran ${when(last.startedAt, today)}.`,
+      voice,
     }
   }
   if (last.added.length === 0) {
@@ -157,12 +235,14 @@ export function routineView(
       shape: "rested",
       word: "Nothing new",
       line: `The routine ran ${when(last.startedAt, today)} with nothing to answer. It writes new words from your study reflections, and there were none since its last run.`,
+      voice,
     }
   }
   return {
     shape: "opened",
     word: "All opened",
     line: `You've opened all the routine left. It last ran ${when(last.startedAt, today)}.`,
+    voice,
   }
 }
 
@@ -175,7 +255,9 @@ export function runLine(run: RoutineRun, today: string): string {
         ? "Nothing to answer."
         : `Found ${found}, and added nothing.`
       : `Added ${whatOf(run.added)}: ${run.added.map((file) => file.title).join("; ")}.`
-  const problems = run.problems.length === 0 ? "" : ` ${run.problems.join(" ")}`
+  const problems = [...run.problems, ...voiceOf(run).map((v) => v.line)]
+    .map((sentence) => ` ${sentence}`)
+    .join("")
   const outcome =
     run.outcome === "done"
       ? ""

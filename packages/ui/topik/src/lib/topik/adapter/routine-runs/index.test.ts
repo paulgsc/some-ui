@@ -46,7 +46,8 @@ describe("parseRoutineRuns", () => {
             "run-reflections-20261024T160208Z.json",
             run("2026-10-24T16:02:08Z", {
               outcome: "partly",
-              problems: ["One voice note couldn't be heard."],
+              problems: ["One drama couldn't be made playable."],
+              voice: { waiting: 1, missed: 0, unread: false },
               nextBy: "2026-10-25T17:00:00Z",
             })
           ),
@@ -69,7 +70,8 @@ describe("parseRoutineRuns", () => {
               title: "TOPIK 2 · 로맨스 · 첫 만남",
             },
           ],
-          problems: ["One voice note couldn't be heard."],
+          problems: ["One drama couldn't be made playable."],
+          voice: { waiting: 1, missed: 0, unread: false },
           nextBy: "2026-10-25T17:00:00.000Z",
         },
       ],
@@ -144,6 +146,7 @@ describe("createRunLog", () => {
       found: { reflections: 0, prompts: 0 },
       finishedAt: null,
       problems: [],
+      voice: null,
       nextBy: null,
       outcome: "done",
       added: [],
@@ -164,6 +167,37 @@ describe("createRunLog", () => {
     ])
     expect(again.lookedAt).toBe(AT)
     expect(again.since).toBe("2026-10-23T18:00:00.000Z")
+  })
+
+  it("reads runs kept before they said what became of their voice notes as saying nothing of it", () => {
+    const storage = memoryStorage()
+    const before = {
+      name: "run-a.json",
+      startedAt: "2026-10-23T16:00:00.000Z",
+      finishedAt: null,
+      outcome: "partly",
+      found: { reflections: 1, prompts: 0 },
+      added: [],
+      problems: [],
+      nextBy: null,
+    }
+    storage.setItem(
+      ROUTINE_RUNS_KEY,
+      JSON.stringify({
+        version: 1,
+        homes: { home: { runs: [before], lookedAt: AT, since: AT } },
+      })
+    )
+    expect(createRunLog(storage).held("home").runs).toEqual([
+      { ...before, voice: null },
+    ])
+    // From home too: a run that says nothing of them reads as null.
+    expect(
+      parseRoutineRuns({
+        runs: [held("run-b.json", run("2026-10-24T16:00:00Z"))],
+        at: AT,
+      })?.runs[0]?.voice
+    ).toBeNull()
   })
 
   it("keeps what another page on this device kept since it read", () => {
