@@ -3,7 +3,9 @@
  *
  * JB2's screen half (`lib/jobs/journey`): the title bar renders every state
  * of the union, and its pop-up says the state's words, draws its road and
- * lists every state, its own picked out. How the pop-up closes, whether it
+ * lists every state, its own picked out, each drawn in a form no other
+ * state of its set shares; the morning run's card (RUN1) lists its own set
+ * the same way. How the pop-up closes, whether it
  * fits a phone's window and whether its colors read are a real browser's to
  * say (`tests/ui-fit/jobs-status-fit.spec.ts`).
  */
@@ -18,8 +20,11 @@ import {
   vi,
 } from "vitest"
 
+import type { Morning, MorningId } from "@/lib/jobs/morning"
+import { MORNING_IDS, morningLabel, morningSaid } from "@/lib/jobs/morning"
 import type { JourneyId } from "@/lib/journey"
 import { journey, JOURNEY_IDS, journeySaid, stateTitle } from "@/lib/journey"
+import { MorningCard } from "@/components/jobs/morning-card"
 import { JourneyStatus } from "@/components/journey-status"
 
 const NOW = new Date("2026-10-24T21:30:00Z")
@@ -73,6 +78,17 @@ const icon = (id: JourneyId): HTMLElement =>
     name: `${journeySaid(sample(id), "them", NOW).title}. Show where they are`,
   })
 
+/** Each list line's icon as drawn, its colours left out, so only its form is compared. */
+function forms(popup: HTMLElement): Array<string> {
+  return [...popup.querySelectorAll("li")].map((li) => {
+    const icon = li.querySelector("[data-sign]")?.cloneNode(true)
+    if (!(icon instanceof Element)) throw new Error("a list line has no icon")
+    for (const el of [icon, ...icon.querySelectorAll("*")])
+      el.removeAttribute("class")
+    return icon.outerHTML
+  })
+}
+
 describe("JourneyStatus", () => {
   it.each(JOURNEY_IDS)(
     "wears %s: its icon, its words and its road",
@@ -100,6 +116,44 @@ describe("JourneyStatus", () => {
     expect([...states].map((li) => li.textContent)).toEqual(
       JOURNEY_IDS.map((each) => stateTitle(each, "them"))
     )
+  })
+
+  it("draws every state in its pop-up, each in a form no other shares", async () => {
+    show("with-home")
+    await open("with-home")
+    const drawn = forms(screen.getByRole("dialog"))
+    expect(drawn).toHaveLength(JOURNEY_IDS.length)
+    expect(new Set(drawn).size).toBe(drawn.length)
+  })
+
+  it("draws every state of the morning run, each in a form no other shares", async () => {
+    const morning = (id: MorningId): Morning => ({
+      id,
+      picked: 2,
+      undecided: 1,
+      seen: 12,
+      lookedAt: null,
+      problem: null,
+      unrecorded: false,
+    })
+    for (const id of MORNING_IDS) {
+      render(<MorningCard morning={morning(id)} runs={[]} now={NOW} />)
+      const said = morningSaid(morning(id), NOW)
+      fireEvent.click(screen.getByRole("button", { name: morningLabel(said) }))
+      await act(() => new Promise((done) => setTimeout(done, 0)))
+      const popup = screen.getByRole("dialog")
+      const drawn = forms(popup)
+      expect(drawn).toHaveLength(MORNING_IDS.length)
+      expect(new Set(drawn).size).toBe(drawn.length)
+      // The bar wears the same form its own line shows.
+      const bar = document.querySelector("[data-journey-chip]")
+      expect(bar?.getAttribute("data-sign")).toBe(
+        popup
+          .querySelector('li[aria-current="true"] [data-sign]')
+          ?.getAttribute("data-sign")
+      )
+      cleanup()
+    }
   })
 
   it("shows no icon before anything was offered", () => {

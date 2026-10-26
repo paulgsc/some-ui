@@ -204,6 +204,28 @@ describe("Practice's sharing mark", () => {
     expect(screen.queryByText("Stop sending...")).toBeNull()
   })
 
+  it("draws each mark in its legend in a form no other shares", async () => {
+    const { MARK_WORDS } = await import("@/lib/home-link/words")
+    await mount()
+    fireEvent.click(mark())
+    const legend = screen.getByRole("region", { name: MARK_WORDS.title })
+    const forms = [...legend.querySelectorAll("li svg")].map((svg) => {
+      const copy = svg.cloneNode(true)
+      if (!(copy instanceof Element)) throw new Error("no mark")
+      for (const el of [copy, ...copy.querySelectorAll("*")])
+        for (const name of ["class", "data-where", "data-how"])
+          el.removeAttribute(name)
+      return copy.outerHTML
+    })
+    // Practice can't stop short, so neither away nor bringing back is drawn.
+    expect(forms).toHaveLength(
+      Object.keys(MARK_WORDS.where).length +
+        Object.keys(MARK_WORDS.how).length -
+        2
+    )
+    expect(new Set(forms).size).toBe(forms.length)
+  })
+
   it("sends once kept, and says when home didn't answer", async () => {
     keptBefore()
     await mount()

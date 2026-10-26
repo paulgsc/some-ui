@@ -1,8 +1,9 @@
 /**
  * A card's title bar that wears a state (`StatusBar`): the state's color
- * across the bar, and at its right the stop it is at, badged "!" when
- * stopped and checked when read. Pressing the icon opens a pop-up with the
- * state's words, its road, and every state, its own picked out; it closes on
+ * across the bar, and at its right the stop it is at, with its sign at the
+ * icon's corner (`lib/journey`'s `Sign`). Pressing the icon opens a pop-up
+ * with the state's words, its road, and every state drawn with its own icon,
+ * its own picked out; it closes on
  * any press or focus elsewhere, and on Escape (Radix's popover). When the
  * state changes, the bar's color moves with it; nothing loops. Colors come
  * from the theme's tokens, so each holds in every theme.
@@ -12,7 +13,18 @@ import { useRef, useState } from "react"
 import { cn } from "@some-ui/core-utils"
 import { Popover, PopoverContent, PopoverTrigger } from "@some-ui/shared"
 import type { LucideIcon } from "lucide-react"
-import { Check, Folder, House, Inbox, Smartphone, Sunrise } from "lucide-react"
+import {
+  Check,
+  Clock3,
+  Contrast,
+  Ellipsis,
+  Folder,
+  House,
+  Inbox,
+  Minus,
+  Smartphone,
+  Sunrise,
+} from "lucide-react"
 
 import type {
   Journey,
@@ -22,6 +34,7 @@ import type {
   Noun,
   Road,
   Said,
+  Sign,
   Stop,
 } from "@/lib/journey"
 import {
@@ -31,6 +44,7 @@ import {
   journeySaid,
   roadOf,
   roadSaid,
+  signOf,
   stateTitle,
   STOP_NAMES,
   stopOf,
@@ -45,32 +59,61 @@ const STOP_ICONS: Readonly<Record<Stop, LucideIcon>> = {
   run: Sunrise,
 }
 
-/** Each kind of state's colors: the bar, the icon's chip, the list's swatch. */
+/** Each kind of state's colors: the bar, the icon's chip, its sign. */
 const THEMES: Readonly<
-  Record<JourneyTheme, { bar: string; chip: string; swatch: string }>
+  Record<JourneyTheme, { bar: string; chip: string; sign: string }>
 > = {
   waiting: {
     bar: "bg-muted border-border",
     chip: "bg-background text-foreground border border-border",
-    swatch: "bg-muted-foreground",
+    sign: "bg-background text-foreground border border-foreground",
   },
   moving: {
     bar: "bg-warning/10 border-warning/40",
     chip: "bg-warning text-warning-foreground",
-    swatch: "bg-warning",
+    sign: "bg-background text-foreground border border-warning",
   },
   read: {
     bar: "bg-success/10 border-success/30",
     chip: "bg-success text-success-foreground",
-    swatch: "bg-success",
+    sign: "bg-background text-success border border-success",
   },
   // Not `destructive-foreground`: in the dark theme that pair is under 3:1
   // for an icon (`tests/ui-fit/jobs-status-fit.spec.ts`).
   stopped: {
     bar: "bg-destructive/10 border-destructive/40",
     chip: "bg-destructive text-background",
-    swatch: "bg-destructive",
+    sign: "bg-background text-destructive border border-destructive",
   },
+}
+
+/** A sign no icon set has, drawn as the rest are: a stroke on a 24 grid. */
+const Stroke = ({ d }: { d: string }): JSX.Element => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={3.5}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="size-2.5"
+  >
+    <path d={d} />
+  </svg>
+)
+
+/** What each sign draws: none for `none`, so the bare icon is a form too. */
+const SIGN_GLYPHS: Readonly<Record<Exclude<Sign, "none">, ReactNode>> = {
+  done: <Check className="size-2.5" strokeWidth={3} />,
+  stopped: <Stroke d="M12 4.5v10M12 19.5v.01" />,
+  partly: <Contrast className="size-2.5" strokeWidth={3} />,
+  "under-way": <Ellipsis className="size-2.5" strokeWidth={3} />,
+  later: <Clock3 className="size-2.5" strokeWidth={3} />,
+  unknown: (
+    <Stroke d="M8.5 8.5a3.5 3.5 0 1 1 4.9 3.2c-.8.4-1.4 1.1-1.4 2v.8M12 19.5v.01" />
+  ),
+  nothing: <Minus className="size-2.5" strokeWidth={3} />,
+  full: <span className="size-1.5 rounded-full bg-current" />,
 }
 
 const MARKS: Readonly<Record<Mark, string>> = {
@@ -87,7 +130,7 @@ const LEGS: Readonly<Record<Leg, string>> = {
   ahead: "border-border",
 }
 
-/** The "!" of a stop, or the check of a read, at an icon's corner. */
+/** A sign at an icon's corner: a stop's "!" on the road, or a state's sign. */
 const CornerBadge = ({
   tone,
   children,
@@ -164,6 +207,41 @@ type Listed = {
   readonly id: string
   readonly title: string
   readonly theme: JourneyTheme
+  readonly at: Stop
+  readonly sign: Sign
+}
+
+/** A state's icon: its stop on its theme's chip, its sign at the corner. */
+const StateIcon = ({
+  at,
+  sign,
+  theme,
+  small = false,
+}: {
+  at: Stop
+  sign: Sign
+  theme: JourneyTheme
+  /** The pop-up list's size, not the bar's. */
+  small?: boolean
+}): JSX.Element => {
+  const Icon = STOP_ICONS[at]
+  return (
+    <span
+      aria-hidden
+      data-journey-chip={small ? undefined : ""}
+      data-sign={sign}
+      className={cn(
+        "relative flex shrink-0 items-center justify-center transition-colors duration-200 motion-reduce:transition-none",
+        small ? "size-6 rounded-md" : "size-8 rounded-lg",
+        THEMES[theme].chip
+      )}
+    >
+      <Icon className={small ? "size-3.5" : "size-4.5"} />
+      {sign !== "none" && (
+        <CornerBadge tone={THEMES[theme].sign}>{SIGN_GLYPHS[sign]}</CornerBadge>
+      )}
+    </span>
+  )
 }
 
 /** The pop-up's list: every state, the card's own picked out. */
@@ -179,19 +257,16 @@ const EveryState = ({
       {everyState}
     </span>
     <ul className="flex flex-col gap-0.5">
-      {every.map(({ id, title, theme }) => (
+      {every.map(({ id, title, theme, at, sign }) => (
         <li
           key={id}
           aria-current={id === current ? "true" : undefined}
           className={cn(
-            "grid grid-cols-[0.625rem_minmax(0,1fr)] items-center gap-2 rounded-md px-2 py-1 text-[0.8125rem] leading-snug",
+            "grid grid-cols-[1.5rem_minmax(0,1fr)] items-center gap-2.5 rounded-md px-2 py-1 text-[0.8125rem] leading-snug",
             id === current && "bg-muted font-semibold"
           )}
         >
-          <span
-            aria-hidden
-            className={cn("size-2.5 rounded-sm", THEMES[theme].swatch)}
-          />
+          <StateIcon at={at} sign={sign} theme={theme} small />
           <span className="break-words">{title}</span>
         </li>
       ))}
@@ -203,8 +278,9 @@ const EveryState = ({
 export type BarState = {
   readonly id: string
   readonly theme: JourneyTheme
-  /** The stop its icon shows. */
+  /** The stop its icon shows, and the sign at its corner. */
   readonly at: Stop
+  readonly sign: Sign
   readonly said: Said
   /** The icon's spoken name. */
   readonly label: string
@@ -244,7 +320,6 @@ const StatusBar = ({
       box.top + box.height / 2 > window.innerHeight / 2 ? "top" : "bottom"
     )
   }
-  const Icon = state === null ? null : STOP_ICONS[state.at]
   return (
     <div
       data-journey={state?.id ?? "none"}
@@ -258,7 +333,7 @@ const StatusBar = ({
       <Heading className="min-w-0 break-words text-base font-semibold">
         {title}
       </Heading>
-      {state !== null && Icon && (
+      {state !== null && (
         <Popover onOpenChange={aim}>
           <PopoverTrigger asChild>
             <button
@@ -267,25 +342,7 @@ const StatusBar = ({
               aria-label={state.label}
               className="focus-visible:ring-ring flex size-11 shrink-0 items-center justify-center rounded-lg focus-visible:outline-none focus-visible:ring-2"
             >
-              <span
-                data-journey-chip=""
-                className={cn(
-                  "relative flex size-8 items-center justify-center rounded-lg transition-colors duration-200 motion-reduce:transition-none",
-                  THEMES[state.theme].chip
-                )}
-              >
-                <Icon aria-hidden className="size-4.5" />
-                {state.theme === "stopped" && (
-                  <CornerBadge tone="bg-background text-destructive border border-destructive">
-                    !
-                  </CornerBadge>
-                )}
-                {state.theme === "read" && (
-                  <CornerBadge tone="bg-background text-success border border-success">
-                    <Check className="size-2.5" strokeWidth={3} />
-                  </CornerBadge>
-                )}
-              </span>
+              <StateIcon at={state.at} sign={state.sign} theme={state.theme} />
             </button>
           </PopoverTrigger>
           <PopoverContent
@@ -344,6 +401,7 @@ export function journeyBarState(
     id: journey.id,
     theme: themeOf(journey.id),
     at: stopOf(journey.id),
+    sign: signOf(journey.id),
     said,
     label: iconLabel(said, noun),
     road: roadOf(journey),
@@ -351,6 +409,8 @@ export function journeyBarState(
       id,
       title: stateTitle(id, noun),
       theme: themeOf(id),
+      at: stopOf(id),
+      sign: signOf(id),
     })),
   }
 }

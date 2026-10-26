@@ -18,6 +18,8 @@ import {
   morningOf,
   morningRoad,
   morningSaid,
+  morningSign,
+  morningStop,
   offersDrive,
   runSaid,
 } from "@/lib/jobs/morning"
@@ -102,8 +104,14 @@ const CASES: Readonly<
   },
   // Heard from home before the run was due, so home's answer says nothing yet.
   away: { state: lookedAt("2026-10-22T16:00:00Z"), kept: true, now: AFTER },
-  trouble: {
+  stopped: {
     state: told(lookedAt("2026-10-22T16:30:00Z"), [STOPPED]),
+    kept: true,
+    now: AFTER,
+  },
+  partly: { state: told(holding(), [PARTLY]), kept: true, now: AFTER },
+  "partly-in-drive": {
+    state: told(lookedAt("2026-10-22T16:30:00Z"), [PARTLY]),
     kept: true,
     now: AFTER,
   },
@@ -135,21 +143,24 @@ describe("this morning's run", () => {
     expect(morningOf(holding(), true, late).id).toBe("picked")
   })
 
-  it("says a stopped run couldn't finish, with its first reason, however early", () => {
+  it("says a stopped run stopped, with its first reason, however early", () => {
     const heard = told(lookedAt("2026-10-22T15:05:00Z"), [STOPPED])
     for (const now of [RUNNING, AFTER]) {
       const m = morningOf(heard, true, now)
-      expect(m).toMatchObject({ id: "trouble", problem: STOPPED.problems[0] })
+      expect(m).toMatchObject({ id: "stopped", problem: STOPPED.problems[0] })
       expect(morningSaid(m, now)).toEqual({
-        title: "This morning’s run couldn’t finish",
+        title: "This morning’s run stopped",
         line: STOPPED.problems[0],
       })
     }
   })
 
-  it("says a run that left something undone couldn't finish, and what it still picked", () => {
+  it("says a run that left something undone did only part of it, and what it still picked", () => {
     const m = morningOf(told(holding(), [PARTLY]), true, AFTER)
-    expect(m).toMatchObject({ id: "trouble", picked: 2, seen: 12 })
+    expect(m).toMatchObject({ id: "partly", picked: 2, seen: 12 })
+    expect(morningSaid(m, AFTER).title).toBe(
+      "This morning’s run did only part of it"
+    )
     expect(morningSaid(m, AFTER).line).toBe(
       "One voice note couldn’t be heard. It still read 12 postings and picked 2."
     )
@@ -158,10 +169,10 @@ describe("this morning's run", () => {
   it("offers Drive for a run whose picks are there but not on this phone", () => {
     const heard = told(lookedAt("2026-10-22T16:30:00Z"), [PARTLY])
     const m = morningOf(heard, true, AFTER)
-    expect(m).toMatchObject({ id: "trouble", inDrive: true })
+    expect(m.id).toBe("partly-in-drive")
     expect(offersDrive(m)).toBe(true)
     expect(morningSaid(m, AFTER).line).toBe(
-      "One voice note couldn’t be heard. Its picks are in Drive; open them from there."
+      "One voice note couldn’t be heard. Its picks are in Drive, not on this phone; open them from there."
     )
     // A stopped run put nothing in Drive, and picks this phone holds need none.
     const stopped = morningOf(told(heard, [STOPPED]), true, AFTER)
@@ -198,6 +209,13 @@ describe("this morning's run", () => {
     )
     const keepsNone = morningOf(lookedAt(at), true, AFTER)
     expect(keepsNone).toMatchObject({ id: "quiet", unrecorded: false })
+  })
+
+  it("gives each state a form of its own: its icon's stop and sign", () => {
+    const forms = MORNING_IDS.map(
+      (id) => `${morningStop(id)} ${morningSign(id)}`
+    )
+    expect(new Set(forms).size).toBe(MORNING_IDS.length)
   })
 
   it("draws a whole road for every state", () => {

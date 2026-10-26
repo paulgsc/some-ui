@@ -36,6 +36,26 @@ export type JourneyId = (typeof JOURNEY_IDS)[number]
 /** The four kinds of state, each its own color. */
 export type JourneyTheme = "waiting" | "moving" | "read" | "stopped"
 
+/**
+ * The sign at the corner of a state's icon: how it stands at its stop, one
+ * thing each. With the stop, it is the state's form, which no two states of
+ * one set share (`__tests__/journey.test.ts`): the theme's colour comes on
+ * top of it, never instead of it.
+ */
+export const SIGNS = [
+  "none",
+  "done",
+  "stopped",
+  "partly",
+  "under-way",
+  "later",
+  "unknown",
+  "nothing",
+  "full",
+] as const
+
+export type Sign = (typeof SIGNS)[number]
+
 /** A stop as the road draws it. */
 export type Mark = "reached" | "stopped" | "unconfirmed" | "ahead"
 
@@ -103,6 +123,7 @@ const SHAPES: Readonly<
     {
       theme: JourneyTheme
       at: Stop
+      sign: Sign
       marks: ReadonlyArray<Mark>
       legs: ReadonlyArray<Leg>
     }
@@ -111,60 +132,70 @@ const SHAPES: Readonly<
   "on-phone": {
     theme: "waiting",
     at: "phone",
+    sign: "none",
     marks: [R, A, A, A],
     legs: ["under-way", "ahead", "ahead"],
   },
   "with-home": {
     theme: "moving",
     at: "home",
+    sign: "under-way",
     marks: [R, R, A, A],
     legs: ["passed", "under-way", "ahead"],
   },
   "in-mailbox": {
     theme: "moving",
     at: "mailbox",
+    sign: "under-way",
     marks: [R, R, R, A],
     legs: ["passed", "passed", "under-way"],
   },
   read: {
     theme: "read",
     at: "run",
+    sign: "done",
     marks: [R, R, R, R],
     legs: ["passed", "passed", "passed"],
   },
   "missed-run": {
     theme: "stopped",
     at: "run",
+    sign: "stopped",
     marks: [R, R, A, S],
     legs: ["passed", "broken", "broken"],
   },
   "home-refused": {
     theme: "stopped",
     at: "home",
+    sign: "stopped",
     marks: [R, S, A, A],
     legs: ["broken", "ahead", "ahead"],
   },
   "mailbox-refused": {
     theme: "stopped",
     at: "mailbox",
+    sign: "stopped",
     marks: [R, R, S, A],
     legs: ["passed", "broken", "ahead"],
   },
   "needs-sheet": {
     theme: "waiting",
     at: "drive",
+    sign: "none",
     marks: [R, A, A],
     legs: ["under-way", "ahead"],
   },
   "sheet-unconfirmed": {
     theme: "waiting",
     at: "drive",
+    sign: "unknown",
     marks: [R, U, A],
     legs: ["under-way", "ahead"],
   },
   "in-drive": {
     theme: "moving",
     at: "drive",
+    sign: "under-way",
     marks: [R, R, A],
     legs: ["passed", "under-way"],
   },
@@ -177,6 +208,11 @@ export function themeOf(id: JourneyId): JourneyTheme {
 /** The stop the file is at: the icon its card shows. */
 export function stopOf(id: JourneyId): Stop {
   return SHAPES[id].at
+}
+
+/** The sign at the corner of `id`'s icon. */
+export function signOf(id: JourneyId): Sign {
+  return SHAPES[id].sign
 }
 
 /** The whole road, drawn for `j`. A file read via Drive took Drive's road. */

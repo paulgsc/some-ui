@@ -14,6 +14,7 @@ import {
   morningLabel,
   morningRoad,
   morningSaid,
+  morningSign,
   morningStop,
   morningTheme,
   RUNS_HEADING,
@@ -64,6 +65,7 @@ export const MorningCard = ({
         id: morning.id,
         theme: morningTheme(morning.id),
         at: morningStop(morning.id),
+        sign: morningSign(morning.id),
         said,
         label: morningLabel(said),
         road: morningRoad(morning.id),
@@ -71,6 +73,8 @@ export const MorningCard = ({
           id,
           title: MORNING_LEGEND[id],
           theme: morningTheme(id),
+          at: morningStop(id),
+          sign: morningSign(id),
         })),
       }}
     >

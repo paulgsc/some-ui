@@ -336,8 +336,65 @@ export function historyLines(
   })
 }
 
-/** The header mark's shape: where a record is kept, at a glance. */
-export type Shape = "phone" | "partly" | "kept" | "waiting" | "trouble"
+/**
+ * The header mark's two axes, each its own mark, which no two states of a
+ * lane share (`__tests__/words.test.ts`, the glyph's own test): where a record
+ * is kept, and how the last exchange with home went, if it says anything.
+ */
+export const WHERE_ORDER = [
+  "checking",
+  "phone",
+  "partly",
+  "kept",
+  "away",
+] as const
+
+export type Where = (typeof WHERE_ORDER)[number]
+
+export const HOW_ORDER = [
+  "current",
+  "waiting",
+  "sending",
+  "bringing",
+  "no-answer",
+  "busy",
+  "forgotten",
+  "unpaired",
+  "full",
+  "no-room",
+  "refused",
+  "fault",
+  "failed",
+] as const
+
+export type How = (typeof HOW_ORDER)[number]
+
+/** What each mark means, as the sheet's legend says it. */
+export const MARK_WORDS = {
+  title: "What the marks mean",
+  where: {
+    checking: "Checking where it is kept",
+    phone: "Kept on this phone alone",
+    partly: "Some of it on home; new ones stay on this phone",
+    kept: "Kept on home: new ones go there",
+    away: "On home, and not sent any more; this phone holds what home hadn't confirmed",
+  } satisfies Record<Where, string>,
+  how: {
+    current: "Home has all of it",
+    waiting: "Some waits on this phone, and goes next time",
+    sending: "Going to home now",
+    bringing: "Coming back to this phone now",
+    "no-answer": "Home didn't answer",
+    busy: "Home was busy",
+    forgotten: "Home no longer knows this phone: pair it again",
+    unpaired: "This phone isn't paired with home",
+    full: "Home's shelf is full",
+    "no-room": "This phone has no room for copies home doesn't have yet",
+    refused: "Home didn't take some of it",
+    fault: "Something on this phone went wrong",
+    failed: "Something went wrong on the way to home",
+  } satisfies Record<How, string>,
+} as const
 
 export type LaneFacts = Omit<LaneCounts, "away" | "offered"> & {
   /** The link has read the phone's own record of its pairing. */
@@ -351,7 +408,9 @@ export type LaneFacts = Omit<LaneCounts, "away" | "offered"> & {
 }
 
 export type LaneView = {
-  shape: Shape
+  where: Where
+  /** How the last exchange went; null when there is none to tell. */
+  how: How | null
   /** Beside the mark. */
   word: string
   /** What the sheet says first, and the mark's spoken label. */
@@ -415,8 +474,14 @@ export function laneView(
       ? [words.unread]
       : []),
   ]
-  const show = (shape: Shape, word: string, line: string): LaneView => ({
-    shape,
+  const show = (
+    where: Where,
+    how: How | null,
+    word: string,
+    line: string
+  ): LaneView => ({
+    where,
+    how,
     word,
     line,
     rows,
@@ -424,107 +489,146 @@ export function laneView(
   })
 
   if (!facts.known) {
-    return show("partly", "Checking", "Checking where this is kept.")
+    return show("checking", null, "Checking", "Checking where this is kept.")
   }
   if (!kept) {
     if (facts.away !== null && words.away !== null) {
       const { back } = facts.away
       const held = words.away(facts.away.waiting)
       if (back.running) {
-        return show("waiting", "Bringing back", "Bringing it back from home.")
+        return show(
+          "away",
+          "bringing",
+          "Bringing back",
+          "Bringing it back from home."
+        )
       }
       if (back.last?.kind === "unreachable") {
-        return show("trouble", "On home", `Home didn't answer. ${held}`)
+        return show(
+          "away",
+          "no-answer",
+          "On home",
+          `Home didn't answer. ${held}`
+        )
       }
       if (back.last?.kind === "failed" && back.last.why === "busy") {
-        return show("trouble", "On home", `Home is busy right now. ${held}`)
+        return show(
+          "away",
+          "busy",
+          "On home",
+          `Home is busy right now. ${held}`
+        )
       }
       if (back.last?.kind === "forgotten") {
         return show(
-          "trouble",
+          "away",
+          "forgotten",
           "Pair again",
           `Home no longer knows this phone. ${held}`
         )
       }
       if (back.last?.kind === "failed") {
         return show(
-          "trouble",
+          "away",
+          "failed",
           "On home",
           `Something went wrong bringing it back. ${held}`
         )
       }
-      return show("partly", "On home", held)
+      return show("away", null, "On home", held)
     }
     const some =
       facts.stopped.size > 0 || Object.values(facts.held).some((n) => n > 0)
     return some
-      ? show("partly", "Partly on home", words.partly)
-      : show("phone", "Phone only", words.phoneOnly)
+      ? show("partly", null, "Partly on home", words.partly)
+      : show("phone", null, "Phone only", words.phoneOnly)
   }
 
   const later =
     facts.waiting > 0
       ? ` ${words.waits(facts.waiting)} on this phone and go${facts.waiting === 1 ? "es" : ""} next time.`
       : ""
-  if (facts.run.running) return show("waiting", "Sending", "Sending to home.")
+  if (facts.run.running) {
+    return show("kept", "sending", "Sending", "Sending to home.")
+  }
 
   const last = facts.run.last
   if (last?.kind === "forgotten") {
     return show(
-      "trouble",
+      "kept",
+      "forgotten",
       "Pair again",
       "Home no longer knows this phone. Pair it again in Settings, then choose to keep sending again."
     )
   }
   if (last?.kind === "unreachable") {
-    return show("trouble", "No answer", `Home didn't answer.${later}`)
+    return show("kept", "no-answer", "No answer", `Home didn't answer.${later}`)
+  }
+  if (last?.kind === "unpaired") {
+    return show(
+      "kept",
+      "unpaired",
+      "Not paired",
+      `This phone isn't paired with home now. Pair it in Settings.${later}`
+    )
   }
   if (last?.kind === "failed") {
     if (last.why === "busy") {
-      return show("trouble", "Home busy", `Home is busy right now.${later}`)
+      return show(
+        "kept",
+        "busy",
+        "Home busy",
+        `Home is busy right now.${later}`
+      )
     }
     if (last.why === "full") {
       return show(
-        "trouble",
+        "kept",
+        "full",
         "Shelf full",
         "Home's shelf is full, so some kept items didn't fit."
       )
     }
     if (last.why === NO_ROOM) {
       return show(
-        "trouble",
+        "kept",
+        "no-room",
         "No room",
         `This phone has no room left for copies home doesn't have yet.${later}`
       )
     }
     if (last.why === "refused") {
       return show(
-        "trouble",
+        "kept",
+        "refused",
         "Not all taken",
         "Home didn't take some kept items."
       )
     }
     if (last.why === "fault") {
       return show(
-        "trouble",
+        "kept",
+        "fault",
         "Didn't go",
         `Something on this phone went wrong.${later}`
       )
     }
     return show(
-      "trouble",
+      "kept",
+      "failed",
       "Didn't go",
       `Something went wrong sending to home.${later}`
     )
   }
   if (facts.waiting > 0) {
     return show(
+      "kept",
       "waiting",
       `${facts.waiting} waiting`,
       `${words.waits(facts.waiting)} on this phone. ${facts.waiting === 1 ? "It goes" : "They go"} to home ${words.whileOpen}.`
     )
   }
-  return show("kept", "On home", "Kept on home. Up to date.")
+  return show("kept", "current", "On home", "Kept on home. Up to date.")
 }
 
 /**

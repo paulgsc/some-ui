@@ -5,8 +5,11 @@
  * with what is on home, since when, the way to keep sending and the way to
  * stop. Its words are `lib/home-link/words`'s alone. It mounts the lane's
  * watch (`useLaneHome`), so a lane sends only while its mark shows.
+ * It draws `laneView`'s two axes, where it is kept and how the last exchange
+ * went, each a mark of its own; no two states share one
+ * (`__tests__/device-home-glyph.test.tsx`), and the sheet's legend draws each.
  */
-import type { JSX } from "react"
+import type { JSX, ReactNode } from "react"
 import { useState } from "react"
 import { cn } from "@some-ui/core-utils"
 import {
@@ -18,6 +21,22 @@ import {
   SheetTitle,
 } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
+import type { LucideIcon } from "lucide-react"
+import {
+  Archive,
+  ArrowDown,
+  ArrowUp,
+  Ban,
+  Check,
+  CircleX,
+  Ellipsis,
+  HardDrive,
+  Hourglass,
+  TriangleAlert,
+  Unlink,
+  Unplug,
+  WifiOff,
+} from "lucide-react"
 
 import { useHomeLink } from "@/lib/home-link"
 import { jobsLane } from "@/lib/home-link/jobs"
@@ -35,18 +54,29 @@ import {
 } from "@/lib/home-link/lanes"
 import { practiceLane } from "@/lib/home-link/practice"
 import { useVoiceHome } from "@/lib/home-link/voice"
-import type { Shape } from "@/lib/home-link/words"
-import { laneView, SHEET, WORDS } from "@/lib/home-link/words"
+import type { How, LaneWords, Where } from "@/lib/home-link/words"
+import {
+  HOW_ORDER,
+  laneView,
+  MARK_WORDS,
+  SHEET,
+  WHERE_ORDER,
+  WORDS,
+} from "@/lib/home-link/words"
 import type { WingId } from "@/lib/wings"
 
 const HOUSE = "M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"
 
-/** Each shape differs in form, not only in colour. */
-const ShapeMark = ({
-  shape,
+/**
+ * Where a record is kept, each in a form of its own: a phone for only here, a
+ * dashed house for partly, a house for kept, a house holding a phone for on
+ * home and not sent any more, and a dotted ring while it isn't known yet.
+ */
+const WhereMark = ({
+  where,
   className,
 }: {
-  shape: Shape
+  where: Where
   className?: string
 }): JSX.Element => (
   <svg
@@ -57,41 +87,141 @@ const ShapeMark = ({
     strokeLinecap="round"
     strokeLinejoin="round"
     aria-hidden
+    data-where={where}
     className={className}
   >
-    {shape === "phone" ? (
+    {where === "phone" ? (
       <>
         <rect x="7" y="2.5" width="10" height="19" rx="2" />
         <path d="M11 18.5h2" />
       </>
+    ) : where === "checking" ? (
+      <circle cx="12" cy="12" r="8" strokeDasharray="0.1 3.6" />
     ) : (
       <path
         d={HOUSE}
-        strokeDasharray={shape === "partly" ? "3 2.4" : undefined}
+        strokeDasharray={where === "partly" ? "3 2.4" : undefined}
       />
     )}
-    {shape === "kept" ? <path d="m9 14.5 2 2 4-4.5" /> : null}
-    {shape === "waiting" ? (
-      <>
-        <path d="M12 17.5v-5" />
-        <path d="m9.5 14.5 2.5-2.5 2.5 2.5" />
-      </>
-    ) : null}
-    {shape === "trouble" ? (
-      <>
-        <path d="M12 11.5v3.5" />
-        <path d="M12 17.8v.2" />
-      </>
+    {where === "away" ? (
+      <rect x="10" y="12" width="4" height="6.5" rx="0.8" />
     ) : null}
   </svg>
 )
 
-const TONE: Record<Shape, string> = {
+/** How the last exchange went, beside where: one icon for each. */
+const HOW_ICONS: Readonly<Record<How, LucideIcon>> = {
+  current: Check,
+  waiting: ArrowUp,
+  sending: Ellipsis,
+  bringing: ArrowDown,
+  "no-answer": WifiOff,
+  busy: Hourglass,
+  forgotten: Unlink,
+  unpaired: Unplug,
+  full: Archive,
+  "no-room": HardDrive,
+  refused: Ban,
+  fault: TriangleAlert,
+  failed: CircleX,
+}
+
+const HowMark = ({
+  how,
+  className,
+}: {
+  how: How
+  className?: string
+}): JSX.Element => {
+  const Icon = HOW_ICONS[how]
+  return <Icon aria-hidden data-how={how} className={className} />
+}
+
+const WHERE_TONE: Record<Where, string> = {
+  checking: "text-muted-foreground",
   phone: "text-muted-foreground",
   partly: "text-muted-foreground",
   kept: "text-success",
+  away: "text-success",
+}
+
+const HOW_TONE: Record<How, string> = {
+  current: "text-success",
   waiting: "text-success",
-  trouble: "text-warning",
+  sending: "text-success",
+  bringing: "text-success",
+  "no-answer": "text-warning",
+  busy: "text-warning",
+  forgotten: "text-warning",
+  unpaired: "text-warning",
+  full: "text-warning",
+  "no-room": "text-warning",
+  refused: "text-warning",
+  fault: "text-warning",
+  failed: "text-warning",
+}
+
+/** The tone a lane's words wear: how it went, if that says anything. */
+const toneOf = (where: Where, how: How | null): string =>
+  how === null ? WHERE_TONE[where] : HOW_TONE[how]
+
+/** Marks the lane can show: away and bringing back only where it can stop short. */
+const shown = (
+  words: LaneWords
+): { where: ReadonlyArray<Where>; how: ReadonlyArray<How> } =>
+  words.away === null
+    ? {
+        where: WHERE_ORDER.filter((w) => w !== "away"),
+        how: HOW_ORDER.filter((h) => h !== "bringing"),
+      }
+    : { where: WHERE_ORDER, how: HOW_ORDER }
+
+const LegendLine = ({
+  mark,
+  children,
+}: {
+  mark: ReactNode
+  children: ReactNode
+}): JSX.Element => (
+  <li className="flex items-center gap-3 text-sm">
+    {mark}
+    <span className="text-muted-foreground">{children}</span>
+  </li>
+)
+
+/** Every mark the lane can show, and what each means. */
+const Legend = ({ words }: { words: LaneWords }): JSX.Element => {
+  const { where, how } = shown(words)
+  return (
+    <section aria-label={MARK_WORDS.title} className="rounded-2xl border p-3">
+      <h3 className="text-sm font-medium">{MARK_WORDS.title}</h3>
+      <ul className="mt-2 flex flex-col gap-2">
+        {where.map((w) => (
+          <LegendLine
+            key={w}
+            mark={
+              <WhereMark
+                where={w}
+                className={cn("size-5 shrink-0", WHERE_TONE[w])}
+              />
+            }
+          >
+            {MARK_WORDS.where[w]}
+          </LegendLine>
+        ))}
+        {how.map((h) => (
+          <LegendLine
+            key={h}
+            mark={
+              <HowMark how={h} className={cn("size-5 shrink-0", HOW_TONE[h])} />
+            }
+          >
+            {MARK_WORDS.how[h]}
+          </LegendLine>
+        ))}
+      </ul>
+    </section>
+  )
 }
 
 const BIG = "h-12 rounded-2xl text-base"
@@ -141,16 +271,20 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
         }}
         className={cn(
           "hover:bg-accent flex h-10 items-center gap-1.5 rounded-md px-2 text-xs font-medium",
-          TONE[view.shape]
+          toneOf(view.where, view.how)
         )}
       >
-        <ShapeMark
-          shape={view.shape}
+        <WhereMark
+          where={view.where}
           className={cn(
             "size-5 shrink-0",
+            WHERE_TONE[view.where],
             (run.running || back.running) && "motion-safe:animate-pulse"
           )}
         />
+        {view.how !== null ? (
+          <HowMark how={view.how} className="size-4 shrink-0" />
+        ) : null}
         <span>{view.word}</span>
       </button>
       <Sheet open={open} onOpenChange={setOpen}>
@@ -162,7 +296,7 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
             <SheetDescription
               className={cn(
                 "text-base break-words",
-                pane === "kept" && TONE[view.shape]
+                pane === "kept" && toneOf(view.where, view.how)
               )}
             >
               {pane === "stop"
@@ -287,6 +421,7 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
                 </Button>
               )}
               <p className="text-muted-foreground text-sm">{words.footnote}</p>
+              <Legend words={words} />
               <Link
                 to="/settings"
                 onClick={() => setOpen(false)}
