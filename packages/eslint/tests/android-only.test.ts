@@ -108,7 +108,7 @@ describe("findAndroidOnlyViolations: tokens", () => {
 describe("findAndroidOnlyViolations: scope", () => {
   it("scans source and markup, not prose", () => {
     const token = "iPhone apple-touch-icon webkitAudioContext"
-    for (const path of ["CLAUDE.md", "docs/canon/x.typ", "image.png"]) {
+    for (const path of ["CLAUDE.md", "docs/x.typ", "image.png"]) {
       expect(scan({ [path]: token })).toEqual([])
     }
     for (const path of [

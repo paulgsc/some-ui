@@ -230,7 +230,7 @@ jobs:
       # produce its own justification" as a CI failure, the fourth of this
       # repo's data-as-CI-input guardrails (scripts/check-wasm-bindgen-boundary.sh,
       # scripts/check-mutation-boundary.sh, docs/canon/scripts/check-citations.sh
-      # are the other three). Turbo-filtered, same shape as the Knip step
+      # are the other three; the last runs in the `canon` job below). Turbo-filtered, same shape as the Knip step
       # below: a workspace opts in by declaring a `lint:corpus` script — only
       # packages/ui/leetype declares one today.
       - name: Corpus lint (affected packages)
@@ -567,6 +567,21 @@ jobs:
       - name: Check the Android-only tokens
         run: nix develop .#ci --command node scripts/check-android-only.ts
 
+  # ── Canon citations (repo-wide) ────────────────────────────────────────
+  # CN1 (docs/canon/scripts/check-citations.sh): every canon lives in
+  # docs/canon and every cited canon path resolves. No `changes` gate: a
+  # citation can land in any file type, a markdown edit included. No install
+  # and no Nix: the script is bash and git.
+  canon:
+    name: Canon citations
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check canon citations
+        run: bash docs/canon/scripts/check-citations.sh
+
   # ── Change-kind record (repo-wide) ─────────────────────────────────────
   # scripts/check-commit-trailers.ts over every commit the PR adds; the
   # commit-msg hook runs it only where husky is installed. Full history, so
@@ -625,6 +640,7 @@ jobs:
         workflows,
         policy-docs,
         android-only,
+        canon,
         commit-trailers,
         toolchain,
       ]

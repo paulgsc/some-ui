@@ -4,7 +4,9 @@
 repository.** A canon filed next to the source it governs is unreachable by
 the other workspaces that depend on the same derivation; every canon here is
 cited by at least two workspaces, and several are cited by CI boundary
-scripts. Adding a `.typ` file anywhere else fails `pnpm canon:check`.
+scripts. Adding a canon anywhere else fails `pnpm canon:check`: a canon is a
+`.typ` file that opens with the `//  CANON <numeral> — <title>` banner, as each
+file here does. Other typst, such as the résumé's sources, is not a canon.
 
 ## What a canon is
 
