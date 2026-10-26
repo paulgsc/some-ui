@@ -210,10 +210,15 @@ export function buildTreePrompt(request: TreeRequest): string {
  * telling an agent what to write and its name (docs/makjang/README.md, "The
  * file contract"). The stamp is the moment in UTC to the millisecond, so
  * neither a clock change nor two quick shares make two exports share a name.
+ *
+ * `notes` are the voice notes shared beside it, in the order they were said
+ * (`voiceNoteName`), each named by its id in the export's `notes` line (the
+ * README's "The file contract"). A typed scene has none.
  */
 export function nextSceneFile(
   prompt: string,
-  at: Date
+  at: Date,
+  notes: ReadonlyArray<{ id: string; name: string }>
 ): { name: string; text: string; stamp: string; at: string } {
   const stamp = sceneStamp(at)
   return {
@@ -223,9 +228,26 @@ export function nextSceneFile(
     text: [
       `> **For an agent:** follow the prompt below. If it names voice notes (\`Scene, spoken\`), they are the audio files beside this one: listen to them first. Write the drama it asks for as one JSON file next to this one, named \`${stamp}.json\`, holding the bare JSON, not the fenced block **Output** asks for. Write nothing else, and do not change this file.`,
       "",
+      ...(notes.length > 0 ? [noteIdsLine(notes), ""] : []),
       prompt,
     ].join("\n"),
   }
+}
+
+/**
+ * `<!-- notes: {"<file name>":"<id>",...} -->`: a comment, so a rendered
+ * prompt shows nothing of it. `<` and `>` are escaped as JSON allows, so no
+ * id can end the comment early.
+ */
+const noteIdsLine = (
+  notes: ReadonlyArray<{ id: string; name: string }>
+): string => {
+  const ids = JSON.stringify(
+    Object.fromEntries(notes.map(({ id, name }) => [name, id]))
+  )
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+  return `<!-- notes: ${ids} -->`
 }
 
 /** The name every file of one share starts with. */
