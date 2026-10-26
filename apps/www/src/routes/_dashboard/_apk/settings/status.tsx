@@ -6,7 +6,7 @@ import { StatusBoard } from "@/components/settings/status-board"
 
 const StatusPage = (): JSX.Element => (
   <SettingsPage id="status">
-    <StatusBoard />
+    {import.meta.env.VITE_DEVICE_BACKEND === "true" ? <StatusBoard /> : null}
   </SettingsPage>
 )
 
