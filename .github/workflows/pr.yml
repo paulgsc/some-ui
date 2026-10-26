@@ -567,6 +567,23 @@ jobs:
       - name: Check the Android-only tokens
         run: nix develop .#ci --command node scripts/check-android-only.ts
 
+  # ── Canon citations (repo-wide) ────────────────────────────────────────
+  # CN1 (docs/canon/scripts/check-citations.sh): every canon lives in
+  # docs/canon and every cited canon path resolves. No `changes` gate: a
+  # citation can land in any file type, a markdown edit included. No install
+  # and no Nix: the script is bash and git.
+  canon:
+    name: Canon citations
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check canon citations
+        run: bash docs/canon/scripts/check-citations.sh
+      - name: Self-test the canon check
+        run: bash docs/canon/scripts/check-citations.test.sh
+
   # ── Change-kind record (repo-wide) ─────────────────────────────────────
   # scripts/check-commit-trailers.ts over every commit the PR adds; the
   # commit-msg hook runs it only where husky is installed. Full history, so
@@ -625,6 +642,7 @@ jobs:
         workflows,
         policy-docs,
         android-only,
+        canon,
         commit-trailers,
         toolchain,
       ]

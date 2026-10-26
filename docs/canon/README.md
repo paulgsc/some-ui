@@ -4,7 +4,9 @@
 repository.** A canon filed next to the source it governs is unreachable by
 the other workspaces that depend on the same derivation; every canon here is
 cited by at least two workspaces, and several are cited by CI boundary
-scripts. Adding a `.typ` file anywhere else fails `pnpm canon:check`.
+scripts. Adding a canon anywhere else fails `pnpm check:canon`: a canon is a
+`.typ` file that opens with the `//  CANON <numeral> — <title>` banner, as each
+file here does. Other typst, such as the résumé's sources, is not a canon.
 
 ## What a canon is
 
@@ -69,18 +71,15 @@ numbered items so that older citations keep resolving.
 ## Commands
 
 ```sh
-pnpm --filter @some-ui/canon canon:check   # invariants C1/C2
+pnpm check:canon                           # invariants C1/C2, from the root
 pnpm --filter @some-ui/canon canon:build   # render PDFs, if typst is installed
-
-# or directly, the way CI would call them:
-bash docs/canon/scripts/check-citations.sh
-bash docs/canon/scripts/build.sh
 ```
 
 Both are bash, alongside the repository's other guardrails
 (`scripts/check-wasm-bindgen-boundary.sh`,
-`scripts/check-mutation-boundary.sh`) — `check-citations.sh` is the third of
-that family and is the one worth wiring into CI.
+`scripts/check-mutation-boundary.sh`). Root `pnpm lint` runs the check, and
+`pr.yml`'s `canon` job runs it and its self-test,
+`scripts/check-citations.test.sh`, on every PR.
 
 `canon:build` is a local convenience and is intentionally **not** a turbo
 task: `typst` is not a repository dependency, and the `.typ` sources are the

@@ -118,7 +118,7 @@ describe("lastOwnChange", () => {
     expect(workspaceRootOf("packages/core-utils/src/x.ts")).toBe(
       "packages/core-utils"
     )
-    expect(workspaceRootOf("docs/canon/x.typ")).toBe("docs/canon")
+    expect(workspaceRootOf("docs/canon/x.md")).toBe("docs/canon")
     expect(workspaceRootOf("scripts/x.ts")).toBeUndefined()
   })
 
