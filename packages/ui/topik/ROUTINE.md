@@ -109,7 +109,10 @@ yet, so that reflection waits for the next run."
 
 A note reaches home only while the phone keeps voice notes on home, and a
 drama prompt's notes are sent once, when it is shared. So once its voice file
-(or, without one, the reflection's file) has been in Drive for two days, stop
+(or, without one, the reflection's file) has been in Drive for two days, and
+nothing is coming back for it (this run asked none back for it, and
+`GET "$JOBS_MAILBOX_URL/v1/transcript/wanted"` lists no open ask for it: a
+reflection's by its note's name, and for a drama prompt any open ask), stop
 waiting: answer the reflection or prompt from what it says in writing, and
 add the problem "Home never heard one voice note from your study reflection
 (or drama request), so it was answered without it. Voice notes reach home
