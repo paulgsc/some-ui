@@ -132,7 +132,7 @@ export function narration(
         ? ` Of last week's ${counted(settled.length, "call")}, ${kept} went our way.`
         : ""
       return top
-        ? `The rest of the league moved them ${points(share.league)} points. The biggest: ${said(season, top.winner, top.loser)}, ${points(top.leverage)}.${callLine}`
+        ? `The rest of the league moved them ${points(share.league)} points. The result that mattered most: ${said(season, top.winner, top.loser)}, ${points(top.leverage)} points against the other result.${callLine}`
         : "Nothing else in the league could matter this week."
     }
     case "after": {
@@ -166,7 +166,7 @@ export function narration(
     case "next": {
       const top = week.next[0]
       return top
-        ? `Next week, root for the ${n(top.rootFor)} against the ${n(top.rootFor === top.home ? top.away : top.home)}. It swings ${(top.swing * 100).toFixed(1)} points.`
+        ? `Next week, root for the ${n(top.rootFor)} against the ${n(top.rootFor === top.home ? top.away : top.home)}. The two results are ${(top.swing * 100).toFixed(1)} points of the ways in apart.`
         : ""
     }
     case "benchmark": {

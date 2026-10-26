@@ -134,7 +134,7 @@ export const Law = ({ season, week }: SlideProps): JSX.Element => {
             >
               {points(top.leverage)} points
             </b>{" "}
-            for the {nameOf(season, season.team)}
+            for the {nameOf(season, season.team)}, against the other result
           </span>
         </Reveal>
       ) : null}

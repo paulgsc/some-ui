@@ -266,7 +266,10 @@ export const League = ({ season, week }: SlideProps): JSX.Element => {
         at={2.6}
         className="pd-small text-muted-foreground flex flex-wrap gap-x-[3cqw]"
       >
-        <span>points: how much of the share of ways in each result moved</span>
+        <span>
+          each result: the ways in as it went, against the ways in had it gone
+          the other way, in points
+        </span>
         <span>★ decided a path</span>
       </Reveal>
     </>

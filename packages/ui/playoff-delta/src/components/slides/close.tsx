@@ -146,7 +146,8 @@ export const Next = ({ season, week }: SlideProps): JSX.Element => {
                 {nameOf(season, other)}
               </span>
               <span className="pd-small text-muted-foreground">
-                worth {(g.swing * 100).toFixed(1)} points of the ways in
+                {(g.swing * 100).toFixed(1)} points of the ways in between the
+                two results
               </span>
             </Reveal>
           )
