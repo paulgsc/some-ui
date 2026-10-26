@@ -61,8 +61,8 @@
       "share": {
         "before": 0.522,
         "after": 0.6152,
-        "own": 0.0997,
-        "league": -0.0065,
+        "own": 0.1002,
+        "league": -0.0069,
         "exact": false
       },
       "pending": {
@@ -139,19 +139,19 @@
           "home": "TEN",
           "away": "LAR",
           "rootFor": "TEN",
-          "swing": 0.0185
+          "swing": 0.0183
         },
         {
           "home": "PIT",
           "away": "SEA",
           "rootFor": "PIT",
-          "swing": 0.0173
+          "swing": 0.016
         },
         {
-          "home": "ARI",
-          "away": "CAR",
-          "rootFor": "CAR",
-          "swing": 0.0117
+          "home": "KC",
+          "away": "PHI",
+          "rootFor": "KC",
+          "swing": 0.0107
         }
       ],
       "path": {
@@ -244,93 +244,7 @@
         },
         "wildCard": {
           "above": [],
-          "pigeonhole": {
-            "teams": [
-              {
-                "team": "PHI",
-                "wins": 1,
-                "room": 2
-              },
-              {
-                "team": "DAL",
-                "wins": 0,
-                "room": 3
-              },
-              {
-                "team": "WAS",
-                "wins": 1,
-                "room": 2
-              },
-              {
-                "team": "NYG",
-                "wins": 0,
-                "room": 3
-              },
-              {
-                "team": "DET",
-                "wins": 0,
-                "room": 3
-              },
-              {
-                "team": "GB",
-                "wins": 1,
-                "room": 2
-              },
-              {
-                "team": "MIN",
-                "wins": 1,
-                "room": 2
-              },
-              {
-                "team": "CHI",
-                "wins": 0,
-                "room": 3
-              },
-              {
-                "team": "TB",
-                "wins": 1,
-                "room": 2
-              },
-              {
-                "team": "ATL",
-                "wins": 0,
-                "room": 3
-              },
-              {
-                "team": "NO",
-                "wins": 0,
-                "room": 3
-              },
-              {
-                "team": "CAR",
-                "wins": 0,
-                "room": 3
-              },
-              {
-                "team": "SF",
-                "wins": 1,
-                "room": 2
-              },
-              {
-                "team": "LAR",
-                "wins": 1,
-                "room": 2
-              },
-              {
-                "team": "SEA",
-                "wins": 0,
-                "room": 3
-              },
-              {
-                "team": "ARI",
-                "wins": 1,
-                "room": 2
-              }
-            ],
-            "games": 89
-          },
-          "mustPass": 2,
-          "seedAtBest": 7,
+          "pigeonhole": null,
           "cases": 1129
         }
       },
@@ -427,8 +341,8 @@
       "share": {
         "before": 0.6152,
         "after": 0.6796,
-        "own": 0.0931,
-        "league": -0.0287,
+        "own": 0.0928,
+        "league": -0.0285,
         "exact": false
       },
       "pending": {
@@ -512,19 +426,19 @@
           "home": "BAL",
           "away": "DET",
           "rootFor": "BAL",
-          "swing": 0.0135
-        },
-        {
-          "home": "MIN",
-          "away": "CIN",
-          "rootFor": "CIN",
-          "swing": 0.012
+          "swing": 0.0118
         },
         {
           "home": "WAS",
           "away": "LV",
           "rootFor": "LV",
-          "swing": 0.0111
+          "swing": 0.0114
+        },
+        {
+          "home": "MIN",
+          "away": "CIN",
+          "rootFor": "CIN",
+          "swing": 0.0113
         }
       ],
       "path": {
@@ -617,93 +531,7 @@
         },
         "wildCard": {
           "above": [],
-          "pigeonhole": {
-            "teams": [
-              {
-                "team": "PHI",
-                "wins": 2,
-                "room": 1
-              },
-              {
-                "team": "DAL",
-                "wins": 1,
-                "room": 2
-              },
-              {
-                "team": "WAS",
-                "wins": 1,
-                "room": 2
-              },
-              {
-                "team": "NYG",
-                "wins": 0,
-                "room": 3
-              },
-              {
-                "team": "DET",
-                "wins": 1,
-                "room": 2
-              },
-              {
-                "team": "GB",
-                "wins": 2,
-                "room": 1
-              },
-              {
-                "team": "MIN",
-                "wins": 1,
-                "room": 2
-              },
-              {
-                "team": "CHI",
-                "wins": 0,
-                "room": 3
-              },
-              {
-                "team": "TB",
-                "wins": 2,
-                "room": 1
-              },
-              {
-                "team": "ATL",
-                "wins": 1,
-                "room": 2
-              },
-              {
-                "team": "NO",
-                "wins": 0,
-                "room": 3
-              },
-              {
-                "team": "CAR",
-                "wins": 0,
-                "room": 3
-              },
-              {
-                "team": "SF",
-                "wins": 2,
-                "room": 1
-              },
-              {
-                "team": "LAR",
-                "wins": 2,
-                "room": 1
-              },
-              {
-                "team": "SEA",
-                "wins": 1,
-                "room": 2
-              },
-              {
-                "team": "ARI",
-                "wins": 2,
-                "room": 1
-              }
-            ],
-            "games": 83
-          },
-          "mustPass": 2,
-          "seedAtBest": 7,
+          "pigeonhole": null,
           "cases": 230
         }
       },
@@ -800,8 +628,8 @@
       "share": {
         "before": 0.6796,
         "after": 0.7669,
-        "own": 0.0918,
-        "league": -0.0045,
+        "own": 0.0931,
+        "league": -0.0058,
         "exact": false
       },
       "pending": {
@@ -892,19 +720,19 @@
           "home": "LAR",
           "away": "IND",
           "rootFor": "IND",
-          "swing": 0.0131
+          "swing": 0.0153
         },
         {
-          "home": "LV",
-          "away": "CHI",
-          "rootFor": "LV",
-          "swing": 0.0123
+          "home": "DET",
+          "away": "CLE",
+          "rootFor": "CLE",
+          "swing": 0.0106
         },
         {
-          "home": "NE",
-          "away": "CAR",
-          "rootFor": "NE",
-          "swing": 0.0093
+          "home": "PIT",
+          "away": "MIN",
+          "rootFor": "PIT",
+          "swing": 0.0103
         }
       ],
       "path": {
@@ -997,93 +825,7 @@
         },
         "wildCard": {
           "above": [],
-          "pigeonhole": {
-            "teams": [
-              {
-                "team": "PHI",
-                "wins": 3,
-                "room": 0
-              },
-              {
-                "team": "DAL",
-                "wins": 1,
-                "room": 2
-              },
-              {
-                "team": "WAS",
-                "wins": 2,
-                "room": 1
-              },
-              {
-                "team": "NYG",
-                "wins": 0,
-                "room": 3
-              },
-              {
-                "team": "DET",
-                "wins": 2,
-                "room": 1
-              },
-              {
-                "team": "GB",
-                "wins": 2,
-                "room": 1
-              },
-              {
-                "team": "MIN",
-                "wins": 2,
-                "room": 1
-              },
-              {
-                "team": "CHI",
-                "wins": 1,
-                "room": 2
-              },
-              {
-                "team": "TB",
-                "wins": 3,
-                "room": 0
-              },
-              {
-                "team": "ATL",
-                "wins": 1,
-                "room": 2
-              },
-              {
-                "team": "NO",
-                "wins": 0,
-                "room": 3
-              },
-              {
-                "team": "CAR",
-                "wins": 1,
-                "room": 2
-              },
-              {
-                "team": "SF",
-                "wins": 3,
-                "room": 0
-              },
-              {
-                "team": "LAR",
-                "wins": 2,
-                "room": 1
-              },
-              {
-                "team": "SEA",
-                "wins": 2,
-                "room": 1
-              },
-              {
-                "team": "ARI",
-                "wins": 2,
-                "room": 1
-              }
-            ],
-            "games": 78
-          },
-          "mustPass": 2,
-          "seedAtBest": 7,
+          "pigeonhole": null,
           "cases": 43
         }
       },
@@ -1272,19 +1014,19 @@
           "home": "ARI",
           "away": "TEN",
           "rootFor": "TEN",
-          "swing": 0.02
+          "swing": 0.0171
         },
         {
           "home": "CIN",
           "away": "DET",
           "rootFor": "CIN",
-          "swing": 0.017
+          "swing": 0.014
         },
         {
           "home": "CLE",
           "away": "MIN",
           "rootFor": "CLE",
-          "swing": 0.0165
+          "swing": 0.0134
         }
       ],
       "path": {
@@ -1377,93 +1119,7 @@
         },
         "wildCard": {
           "above": [],
-          "pigeonhole": {
-            "teams": [
-              {
-                "team": "PHI",
-                "wins": 4,
-                "room": 0
-              },
-              {
-                "team": "DAL",
-                "wins": 1,
-                "room": 2
-              },
-              {
-                "team": "WAS",
-                "wins": 2,
-                "room": 2
-              },
-              {
-                "team": "NYG",
-                "wins": 1,
-                "room": 3
-              },
-              {
-                "team": "DET",
-                "wins": 3,
-                "room": 1
-              },
-              {
-                "team": "GB",
-                "wins": 2,
-                "room": 1
-              },
-              {
-                "team": "MIN",
-                "wins": 2,
-                "room": 2
-              },
-              {
-                "team": "CHI",
-                "wins": 2,
-                "room": 2
-              },
-              {
-                "team": "TB",
-                "wins": 3,
-                "room": 1
-              },
-              {
-                "team": "ATL",
-                "wins": 2,
-                "room": 2
-              },
-              {
-                "team": "NO",
-                "wins": 0,
-                "room": 4
-              },
-              {
-                "team": "CAR",
-                "wins": 1,
-                "room": 3
-              },
-              {
-                "team": "SF",
-                "wins": 3,
-                "room": 1
-              },
-              {
-                "team": "LAR",
-                "wins": 3,
-                "room": 1
-              },
-              {
-                "team": "SEA",
-                "wins": 3,
-                "room": 1
-              },
-              {
-                "team": "ARI",
-                "wins": 2,
-                "room": 2
-              }
-            ],
-            "games": 74
-          },
-          "mustPass": 2,
-          "seedAtBest": 7,
+          "pigeonhole": null,
           "cases": 946
         }
       },
@@ -1615,8 +1271,8 @@
       "share": {
         "before": 0.6688,
         "after": 0.7669,
-        "own": 0.1032,
-        "league": -0.0052,
+        "own": 0.1028,
+        "league": -0.0047,
         "exact": false
       },
       "pending": {
@@ -1697,22 +1353,22 @@
       ],
       "next": [
         {
-          "home": "JAX",
-          "away": "SEA",
-          "rootFor": "JAX",
-          "swing": 0.0214
-        },
-        {
           "home": "BAL",
           "away": "LAR",
           "rootFor": "BAL",
-          "swing": 0.0166
+          "swing": 0.0195
+        },
+        {
+          "home": "JAX",
+          "away": "SEA",
+          "rootFor": "JAX",
+          "swing": 0.0195
         },
         {
           "home": "IND",
           "away": "ARI",
           "rootFor": "IND",
-          "swing": 0.0141
+          "swing": 0.0145
         }
       ],
       "path": {
@@ -1805,93 +1461,7 @@
         },
         "wildCard": {
           "above": [],
-          "pigeonhole": {
-            "teams": [
-              {
-                "team": "PHI",
-                "wins": 4,
-                "room": 0
-              },
-              {
-                "team": "DAL",
-                "wins": 2,
-                "room": 1
-              },
-              {
-                "team": "WAS",
-                "wins": 3,
-                "room": 1
-              },
-              {
-                "team": "NYG",
-                "wins": 1,
-                "room": 3
-              },
-              {
-                "team": "DET",
-                "wins": 4,
-                "room": 0
-              },
-              {
-                "team": "GB",
-                "wins": 2,
-                "room": 1
-              },
-              {
-                "team": "MIN",
-                "wins": 3,
-                "room": 1
-              },
-              {
-                "team": "CHI",
-                "wins": 2,
-                "room": 2
-              },
-              {
-                "team": "TB",
-                "wins": 4,
-                "room": 0
-              },
-              {
-                "team": "ATL",
-                "wins": 2,
-                "room": 2
-              },
-              {
-                "team": "NO",
-                "wins": 1,
-                "room": 3
-              },
-              {
-                "team": "CAR",
-                "wins": 2,
-                "room": 2
-              },
-              {
-                "team": "SF",
-                "wins": 4,
-                "room": 0
-              },
-              {
-                "team": "LAR",
-                "wins": 3,
-                "room": 1
-              },
-              {
-                "team": "SEA",
-                "wins": 3,
-                "room": 1
-              },
-              {
-                "team": "ARI",
-                "wins": 2,
-                "room": 2
-              }
-            ],
-            "games": 71
-          },
-          "mustPass": 2,
-          "seedAtBest": 7,
+          "pigeonhole": null,
           "cases": 125
         }
       },
@@ -1998,8 +1568,8 @@
       "share": {
         "before": 0.7669,
         "after": 0.6656,
-        "own": -0.0881,
-        "league": -0.0131,
+        "own": -0.0863,
+        "league": -0.015,
         "exact": false
       },
       "pending": {
@@ -2087,22 +1657,22 @@
       ],
       "next": [
         {
-          "home": "SEA",
-          "away": "HOU",
-          "rootFor": "HOU",
-          "swing": 0.0252
-        },
-        {
           "home": "JAX",
           "away": "LAR",
           "rootFor": "JAX",
-          "swing": 0.0233
+          "swing": 0.0239
+        },
+        {
+          "home": "SEA",
+          "away": "HOU",
+          "rootFor": "HOU",
+          "swing": 0.0237
         },
         {
           "home": "NYJ",
           "away": "CAR",
           "rootFor": "NYJ",
-          "swing": 0.0148
+          "swing": 0.0136
         }
       ],
       "path": {
@@ -2273,10 +1843,9 @@
                 "room": 2
               }
             ],
-            "games": 59
+            "games": 59,
+            "mustPass": 3
           },
-          "mustPass": 3,
-          "seedAtBest": 8,
           "cases": 1
         }
       },
@@ -2373,8 +1942,8 @@
       "share": {
         "before": 0.6656,
         "after": 0.7409,
-        "own": 0.1066,
-        "league": -0.0313,
+        "own": 0.1087,
+        "league": -0.0334,
         "exact": false
       },
       "pending": {
@@ -2458,19 +2027,19 @@
           "home": "BAL",
           "away": "CHI",
           "rootFor": "BAL",
-          "swing": 0.0252
-        },
-        {
-          "home": "LAC",
-          "away": "MIN",
-          "rootFor": "LAC",
-          "swing": 0.0171
+          "swing": 0.0193
         },
         {
           "home": "PIT",
           "away": "GB",
           "rootFor": "PIT",
-          "swing": 0.016
+          "swing": 0.0152
+        },
+        {
+          "home": "LAC",
+          "away": "MIN",
+          "rootFor": "LAC",
+          "swing": 0.015
         }
       ],
       "path": {
@@ -2563,93 +2132,7 @@
         },
         "wildCard": {
           "above": [],
-          "pigeonhole": {
-            "teams": [
-              {
-                "team": "PHI",
-                "wins": 5,
-                "room": 0
-              },
-              {
-                "team": "DAL",
-                "wins": 3,
-                "room": 1
-              },
-              {
-                "team": "WAS",
-                "wins": 3,
-                "room": 2
-              },
-              {
-                "team": "NYG",
-                "wins": 2,
-                "room": 3
-              },
-              {
-                "team": "DET",
-                "wins": 5,
-                "room": 0
-              },
-              {
-                "team": "GB",
-                "wins": 4,
-                "room": 0
-              },
-              {
-                "team": "MIN",
-                "wins": 3,
-                "room": 2
-              },
-              {
-                "team": "CHI",
-                "wins": 4,
-                "room": 1
-              },
-              {
-                "team": "TB",
-                "wins": 5,
-                "room": 0
-              },
-              {
-                "team": "ATL",
-                "wins": 3,
-                "room": 2
-              },
-              {
-                "team": "NO",
-                "wins": 1,
-                "room": 4
-              },
-              {
-                "team": "CAR",
-                "wins": 4,
-                "room": 1
-              },
-              {
-                "team": "SF",
-                "wins": 5,
-                "room": 0
-              },
-              {
-                "team": "LAR",
-                "wins": 5,
-                "room": 0
-              },
-              {
-                "team": "SEA",
-                "wins": 5,
-                "room": 0
-              },
-              {
-                "team": "ARI",
-                "wins": 2,
-                "room": 3
-              }
-            ],
-            "games": 61
-          },
-          "mustPass": 1,
-          "seedAtBest": 6,
+          "pigeonhole": null,
           "cases": 1533
         }
       },
@@ -2774,8 +2257,8 @@
       "share": {
         "before": 0.7409,
         "after": 0.6853,
-        "own": -0.0937,
-        "league": 0.0381,
+        "own": -0.0931,
+        "league": 0.0375,
         "exact": false
       },
       "pending": {
@@ -2859,19 +2342,19 @@
           "home": "CIN",
           "away": "CHI",
           "rootFor": "CIN",
-          "swing": 0.0285
+          "swing": 0.0248
         },
         {
           "home": "LAR",
           "away": "NO",
           "rootFor": "NO",
-          "swing": 0.0201
+          "swing": 0.0221
         },
         {
-          "home": "NE",
-          "away": "ATL",
-          "rootFor": "NE",
-          "swing": 0.0147
+          "home": "WAS",
+          "away": "SEA",
+          "rootFor": "WAS",
+          "swing": 0.0143
         }
       ],
       "path": {
@@ -2964,78 +2447,7 @@
         },
         "wildCard": {
           "above": ["PHI", "GB", "TB"],
-          "pigeonhole": {
-            "teams": [
-              {
-                "team": "DAL",
-                "wins": 3,
-                "room": 1
-              },
-              {
-                "team": "WAS",
-                "wins": 3,
-                "room": 2
-              },
-              {
-                "team": "NYG",
-                "wins": 2,
-                "room": 3
-              },
-              {
-                "team": "DET",
-                "wins": 5,
-                "room": 0
-              },
-              {
-                "team": "MIN",
-                "wins": 3,
-                "room": 2
-              },
-              {
-                "team": "CHI",
-                "wins": 4,
-                "room": 1
-              },
-              {
-                "team": "ATL",
-                "wins": 3,
-                "room": 2
-              },
-              {
-                "team": "NO",
-                "wins": 1,
-                "room": 4
-              },
-              {
-                "team": "CAR",
-                "wins": 4,
-                "room": 1
-              },
-              {
-                "team": "SF",
-                "wins": 5,
-                "room": 0
-              },
-              {
-                "team": "LAR",
-                "wins": 5,
-                "room": 0
-              },
-              {
-                "team": "SEA",
-                "wins": 5,
-                "room": 0
-              },
-              {
-                "team": "ARI",
-                "wins": 2,
-                "room": 3
-              }
-            ],
-            "games": 40
-          },
-          "mustPass": 2,
-          "seedAtBest": 7,
+          "pigeonhole": null,
           "cases": 75
         }
       },
@@ -3129,8 +2541,8 @@
       "share": {
         "before": 0.6853,
         "after": 0.7774,
-        "own": 0.1095,
-        "league": -0.0174,
+        "own": 0.1087,
+        "league": -0.0166,
         "exact": false
       },
       "pending": {
@@ -3200,19 +2612,19 @@
           "home": "CHI",
           "away": "NYG",
           "rootFor": "NYG",
-          "swing": 0.0244
-        },
-        {
-          "home": "MIN",
-          "away": "BAL",
-          "rootFor": "BAL",
-          "swing": 0.0222
+          "swing": 0.0233
         },
         {
           "home": "WAS",
           "away": "DET",
           "rootFor": "WAS",
-          "swing": 0.0184
+          "swing": 0.0207
+        },
+        {
+          "home": "CAR",
+          "away": "NO",
+          "rootFor": "NO",
+          "swing": 0.0206
         }
       ],
       "path": {
@@ -3379,8 +2791,8 @@
       "share": {
         "before": 0.7774,
         "after": 0.6887,
-        "own": -0.1033,
-        "league": 0.0146,
+        "own": -0.104,
+        "league": 0.0153,
         "exact": false
       },
       "pending": {
@@ -3457,19 +2869,19 @@
           "home": "NYG",
           "away": "GB",
           "rootFor": "NYG",
-          "swing": 0.0352
+          "swing": 0.0358
         },
         {
           "home": "PHI",
           "away": "DET",
           "rootFor": "PHI",
-          "swing": 0.033
+          "swing": 0.031
         },
         {
           "home": "LV",
           "away": "DAL",
           "rootFor": "LV",
-          "swing": 0.0168
+          "swing": 0.0202
         }
       ],
       "path": {
@@ -3623,8 +3035,8 @@
       "share": {
         "before": 0.6887,
         "after": 0.7973,
-        "own": 0.1225,
-        "league": -0.0139,
+        "own": 0.1243,
+        "league": -0.0157,
         "exact": false
       },
       "pending": {
@@ -3701,19 +3113,19 @@
           "home": "DET",
           "away": "NYG",
           "rootFor": "NYG",
-          "swing": 0.0419
+          "swing": 0.0409
         },
         {
           "home": "DAL",
           "away": "PHI",
           "rootFor": "PHI",
-          "swing": 0.0275
+          "swing": 0.0255
         },
         {
-          "home": "TEN",
-          "away": "SEA",
-          "rootFor": "TEN",
-          "swing": 0.0248
+          "home": "CHI",
+          "away": "PIT",
+          "rootFor": "PIT",
+          "swing": 0.0255
         }
       ],
       "path": {
@@ -3880,8 +3292,8 @@
       "share": {
         "before": 0.7973,
         "after": 0.8424,
-        "own": 0.1077,
-        "league": -0.0625,
+        "own": 0.1098,
+        "league": -0.0646,
         "exact": false
       },
       "pending": {
@@ -3958,19 +3370,19 @@
           "home": "DAL",
           "away": "KC",
           "rootFor": "KC",
-          "swing": 0.0288
+          "swing": 0.03
         },
         {
           "home": "DET",
           "away": "GB",
           "rootFor": "GB",
-          "swing": 0.0259
+          "swing": 0.023
         },
         {
-          "home": "SEA",
-          "away": "MIN",
-          "rootFor": "MIN",
-          "swing": 0.019
+          "home": "PHI",
+          "away": "CHI",
+          "rootFor": "PHI",
+          "swing": 0.0176
         }
       ],
       "path": {
@@ -4137,8 +3549,8 @@
       "share": {
         "before": 0.8424,
         "after": 0.9244,
-        "own": 0.092,
-        "league": -0.01,
+        "own": 0.0921,
+        "league": -0.0101,
         "exact": false
       },
       "pending": {
@@ -4229,19 +3641,19 @@
           "home": "DET",
           "away": "DAL",
           "rootFor": "DAL",
-          "swing": 0.0143
+          "swing": 0.0148
         },
         {
           "home": "ARI",
           "away": "LAR",
           "rootFor": "ARI",
-          "swing": 0.0132
+          "swing": 0.0147
         },
         {
           "home": "LAC",
           "away": "PHI",
           "rootFor": "LAC",
-          "swing": 0.0113
+          "swing": 0.013
         }
       ],
       "path": {
@@ -4458,13 +3870,13 @@
           "home": "LAR",
           "away": "DET",
           "rootFor": "LAR",
-          "swing": 0.0712
+          "swing": 0.0685
         },
         {
           "home": "CHI",
           "away": "CLE",
           "rootFor": "CLE",
-          "swing": 0.033
+          "swing": 0.0292
         },
         {
           "home": "DAL",
@@ -4637,8 +4049,8 @@
       "share": {
         "before": 0.9061,
         "after": 0.9859,
-        "own": 0.0658,
-        "league": 0.014,
+        "own": 0.065,
+        "league": 0.0148,
         "exact": false
       },
       "pending": {
@@ -4729,19 +4141,13 @@
           "home": "DET",
           "away": "PIT",
           "rootFor": "PIT",
-          "swing": 0.0284
+          "swing": 0.028
         },
         {
           "home": "CHI",
           "away": "GB",
           "rootFor": "CHI",
-          "swing": 0.0041
-        },
-        {
-          "home": "SEA",
-          "away": "LAR",
-          "rootFor": "LAR",
-          "swing": 0.0014
+          "swing": 0.0038
         }
       ],
       "path": {

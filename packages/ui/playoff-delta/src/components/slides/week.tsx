@@ -467,15 +467,15 @@ function wildCardLine(season: StorySeason, wc: WildCard, wins: number): string {
     .filter((t) => t !== season.team)
   const among =
     others.length > 5 ? "across the conference" : `of ${others.join(", ")}`
+  const closed = wc.pigeonhole
+    ? `Besides the division winners, ${among}, at least ${counted(wc.pigeonhole.mustPass, "more team")} must finish above us. That leaves no wild card.`
+    : wc.cases > 0
+      ? `The engine checked ${counted(wc.cases, "placement")} of who else finishes above us; none fits.`
+      : "That alone leaves no wild card."
   return [
     "A wild card:",
     wc.above.length ? `${wc.above.join(", ")} already past ${wins}.` : "",
-    wc.pigeonhole
-      ? `Besides the division winners, ${among}, at least ${counted(wc.mustPass, "more team")} must finish above us.`
-      : "",
-    wc.seedAtBest > 7
-      ? "No wild card is left."
-      : `The engine checked ${counted(wc.cases, "placement")} of who else finishes above us; none fits.`,
+    closed,
   ]
     .filter(Boolean)
     .join(" ")

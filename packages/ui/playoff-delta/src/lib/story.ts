@@ -120,10 +120,15 @@ const StoryWeekSchema = z.object({
       ]),
       wildCard: z.object({
         above: z.array(Code),
-        pigeonhole: Pigeonhole.nullable(),
-        mustPass: z.number().int(),
-        /** The best wild card left; past 7, none. */
-        seedAtBest: z.number().int(),
+        /**
+         * A group that closes the wild card on its own: `mustPass` of it,
+         * besides the division winners, must finish above. Null when the
+         * proof is the search.
+         */
+        pigeonhole: Pigeonhole.extend({
+          mustPass: z.number().int().min(1),
+        }).nullable(),
+        /** Placements the search tried, none fitting; 0 when the teams already above close it. */
         cases: z.number().int(),
       }),
     })
