@@ -11,7 +11,12 @@
 import type { JSX, ReactNode } from "react"
 import { useRef, useState } from "react"
 import { cn } from "@some-ui/core-utils"
-import { Popover, PopoverContent, PopoverTrigger } from "@some-ui/shared"
+import {
+  MarkLegend,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@some-ui/shared"
 import type { LucideIcon } from "lucide-react"
 import {
   Check,
@@ -30,6 +35,7 @@ import type {
   Journey,
   JourneyTheme,
   Leg,
+  Listed,
   Mark,
   Noun,
   Road,
@@ -38,14 +44,13 @@ import type {
   Stop,
 } from "@/lib/journey"
 import {
+  everyJourney,
   everyState,
   iconLabel,
-  JOURNEY_IDS,
   journeySaid,
   roadOf,
   roadSaid,
   signOf,
-  stateTitle,
   STOP_NAMES,
   stopOf,
   themeOf,
@@ -210,14 +215,6 @@ const JourneyTrack = ({ road }: { road: Road }): JSX.Element => (
 )
 
 /** One state of a closed set, as the pop-up's list names it. */
-type Listed = {
-  readonly id: string
-  readonly title: string
-  readonly theme: JourneyTheme
-  readonly at: Stop
-  readonly sign: Sign
-}
-
 /** A state's icon: its stop on its theme's chip, its sign at the corner. */
 /** The tone a state's words wear beside its icon, where no bar does. */
 export const themeText = (theme: JourneyTheme): string => THEMES[theme].text
@@ -415,15 +412,27 @@ export function journeyBarState(
     said,
     label: iconLabel(said, noun),
     road: roadOf(journey),
-    every: JOURNEY_IDS.map((id) => ({
-      id,
-      title: stateTitle(id, noun),
-      theme: themeOf(id),
-      at: stopOf(id),
-      sign: signOf(id),
-    })),
+    every: everyJourney(noun),
   }
 }
+
+/** A legend of `states`: each one's icon, and its name. */
+export const JourneyLegend = ({
+  title,
+  states,
+}: {
+  title: string
+  states: ReadonlyArray<Listed>
+}): JSX.Element => (
+  <MarkLegend
+    title={title}
+    lines={states.map((s) => ({
+      key: s.id,
+      mark: <StateIcon at={s.at} sign={s.sign} theme={s.theme} small />,
+      text: s.title,
+    }))}
+  />
+)
 
 export type JourneyStatusProps = {
   /** The card's name: what the file holds. */

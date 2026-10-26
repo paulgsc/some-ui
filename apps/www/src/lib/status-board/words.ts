@@ -24,6 +24,8 @@ export const BOARD_WORDS = {
   /** When its last send reached home. */
   lastWent: (when: string): string => `Last went to home ${when}.`,
   morning: "This morning's jobs run",
+  filesLegend: "Where Jobs' files are",
+  routine: "The reflections routine",
   /** A choice made before this phone kept its choices: its own mark knows. */
   unsure: "Not known here",
   /** The sharing marks' legend: their two axes. */

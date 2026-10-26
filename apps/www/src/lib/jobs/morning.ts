@@ -24,7 +24,15 @@ import { assertNever, counted } from "@some-ui/core-utils"
 import type { JobsRun } from "@some-ui/job-desk"
 import { pacificDay, PICKS_PER_DAY } from "@some-ui/job-desk"
 
-import type { JourneyTheme, Mark, Road, Said, Sign, Stop } from "@/lib/journey"
+import type {
+  JourneyTheme,
+  Listed,
+  Mark,
+  Road,
+  Said,
+  Sign,
+  Stop,
+} from "@/lib/journey"
 import { whenSaid } from "@/lib/journey"
 
 import type { JobsState } from "./model"
@@ -359,6 +367,17 @@ export const MORNING_LEGEND: Readonly<Record<MorningId, string>> = {
   away: "Not checked with home since the run",
   quiet: "No word of this morning’s run",
   "not-kept": "Today’s picks are in Drive",
+}
+
+/** Every state the morning can be in, each with its legend's line. */
+export function everyMorning(): ReadonlyArray<Listed> {
+  return MORNING_IDS.map((id) => ({
+    id,
+    title: MORNING_LEGEND[id],
+    theme: morningTheme(id),
+    at: morningStop(id),
+    sign: morningSign(id),
+  }))
 }
 
 /** The icon's spoken name: what the run did, and what pressing it shows. */

@@ -24,6 +24,7 @@ import { eventJourney, kindJourney } from "@/lib/jobs/journey"
 import { draftVoice, SCOUT_OWNER } from "@/lib/jobs/model"
 import {
   cantOpenLink,
+  FILE_NAMES,
   postingTextHint,
   postingTextLabel,
 } from "@/lib/jobs/words"
@@ -224,7 +225,9 @@ export const JobsScout = (): JSX.Element => {
       </section>
       {scouts.length > 0 && (
         <section className="flex flex-col gap-2">
-          <h2 className={sectionHeading}>My scouts · {scouts.length}</h2>
+          <h2 className={sectionHeading}>
+            {FILE_NAMES.scouts} · {scouts.length}
+          </h2>
           <ul className="flex flex-col gap-2">
             {newestFirst.map(({ scout, journey }) => {
               const verdict = verdicts.get(scout.id)

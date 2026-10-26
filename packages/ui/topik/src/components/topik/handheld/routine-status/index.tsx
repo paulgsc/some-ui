@@ -8,8 +8,8 @@
  */
 
 import type { JSX } from "react"
-import { useState } from "react"
-import { cn } from "@some-ui/core-utils"
+import { useMemo, useState, useSyncExternalStore } from "react"
+import { cn, dayOf } from "@some-ui/core-utils"
 import {
   Button,
   MarkLegend,
@@ -19,7 +19,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@some-ui/shared"
-import type { HeldRuns } from "@topik/lib/topik/adapter/routine-runs"
+import { createOpenedStore } from "@topik/lib/topik/adapter/routine-files"
+import type { HeldRuns, RunLog } from "@topik/lib/topik/adapter/routine-runs"
+import { sharedRunLog } from "@topik/lib/topik/adapter/routine-runs"
 import type {
   RoutineShape,
   RoutineView,
@@ -27,6 +29,7 @@ import type {
 } from "@topik/lib/topik/core/routine-status"
 import {
   ROUTINE_WORDS,
+  routineView,
   runLine,
   SHAPE_ORDER,
   VOICE_ORDER,
@@ -146,6 +149,100 @@ const VoiceMark = ({
   </svg>
 )
 
+/** What the routine's last run did as its tone: the board's word wears it. */
+export const routineTone = (shape: RoutineShape): string => TONE[shape]
+
+/** The routine's mark and, beside it, its voice notes' marks, as the handheld draws them. */
+export const RoutineMarks = ({
+  shape,
+  voice,
+  small = false,
+}: {
+  shape: RoutineShape
+  voice: ReadonlyArray<VoiceShape>
+  small?: boolean
+}): JSX.Element => (
+  <>
+    <RoutineMark
+      shape={shape}
+      className={cn(small ? "size-5" : "size-6", "shrink-0", TONE[shape])}
+    />
+    {voice.map((v) => (
+      <VoiceMark
+        key={v}
+        shape={v}
+        className={cn(small ? "size-4" : "size-5", "shrink-0", VOICE_TONE[v])}
+      />
+    ))}
+  </>
+)
+
+/** What each of the routine's marks means. */
+export const RoutineLegend = ({
+  title = ROUTINE_WORDS.legend,
+  className,
+}: {
+  /** Its heading: on a page beside other legends, the routine's name. */
+  title?: string
+  className?: string
+}): JSX.Element => (
+  <MarkLegend
+    title={title}
+    {...(className === undefined ? {} : { className })}
+    lines={[
+      ...SHAPE_ORDER.map((shape) => ({
+        key: shape,
+        mark: (
+          <RoutineMark
+            shape={shape}
+            className={cn("size-5 shrink-0", TONE[shape])}
+          />
+        ),
+        text: ROUTINE_WORDS.shapes[shape],
+      })),
+      ...VOICE_ORDER.map((shape) => ({
+        key: shape,
+        mark: (
+          <VoiceMark
+            shape={shape}
+            className={cn("size-5 shrink-0", VOICE_TONE[shape])}
+          />
+        ),
+        text: ROUTINE_WORDS.voiceShapes[shape],
+      })),
+    ]}
+  />
+)
+
+const NO_SUBSCRIBE = (): (() => void) => () => {}
+const NO_LOG = (): null => null
+
+/** What the phone holds of the routine's runs from this home, or null with no log. */
+export function useHeldRuns(log: RunLog, key: string): HeldRuns
+export function useHeldRuns(
+  log: RunLog | undefined,
+  key: string
+): HeldRuns | null
+export function useHeldRuns(
+  log: RunLog | undefined,
+  key: string
+): HeldRuns | null {
+  return useSyncExternalStore(
+    log?.subscribe ?? NO_SUBSCRIBE,
+    log === undefined ? NO_LOG : (): HeldRuns => log.held(key)
+  )
+}
+
+/**
+ * The routine's mark as the handheld would show it now, read from what this
+ * phone kept of home `key`'s runs and what it has opened.
+ */
+export function useRoutineStatus(key: string, now: Date): RoutineView {
+  const held = useHeldRuns(sharedRunLog(), key)
+  const opened = useMemo(() => createOpenedStore(), [])
+  return routineView(held, opened.opened(), now, dayOf(now))
+}
+
 export const RoutineStatus = ({
   view,
   held,
@@ -166,17 +263,10 @@ export const RoutineStatus = ({
         onClick={() => setOpen(true)}
         className="bg-card border-border flex min-h-12 shrink-0 items-center gap-3 rounded-2xl border px-4 py-2.5 text-left"
       >
-        <RoutineMark
+        <RoutineMarks
           shape={view.shape}
-          className={cn("size-6 shrink-0", TONE[view.shape])}
+          voice={view.voice.map(({ shape }) => shape)}
         />
-        {view.voice.map(({ shape }) => (
-          <VoiceMark
-            key={shape}
-            shape={shape}
-            className={cn("size-5 shrink-0", VOICE_TONE[shape])}
-          />
-        ))}
         <span className="min-w-0 flex-1">
           <span className={cn("block text-sm font-semibold", TONE[view.shape])}>
             {view.word}
@@ -241,32 +331,7 @@ export const RoutineStatus = ({
               )}
             </section>
           )}
-          <MarkLegend
-            title={ROUTINE_WORDS.legend}
-            className="mt-4"
-            lines={[
-              ...SHAPE_ORDER.map((shape) => ({
-                key: shape,
-                mark: (
-                  <RoutineMark
-                    shape={shape}
-                    className={cn("size-5 shrink-0", TONE[shape])}
-                  />
-                ),
-                text: ROUTINE_WORDS.shapes[shape],
-              })),
-              ...VOICE_ORDER.map((shape) => ({
-                key: shape,
-                mark: (
-                  <VoiceMark
-                    shape={shape}
-                    className={cn("size-5 shrink-0", VOICE_TONE[shape])}
-                  />
-                ),
-                text: ROUTINE_WORDS.voiceShapes[shape],
-              })),
-            ]}
-          />
+          <RoutineLegend className="mt-4" />
           <Button
             size="lg"
             className="mt-5 h-12 w-full rounded-2xl text-base"

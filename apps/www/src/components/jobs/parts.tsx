@@ -246,11 +246,14 @@ const KeptOnHomeContext = createContext(false)
 
 export const KeptOnHome = KeptOnHomeContext.Provider
 
-/** What the Jobs cards read their state from (`lib/jobs/journey`). */
-export function useJourneyContext(): JourneyContext {
+/**
+ * What the Jobs cards read their state from (`lib/jobs/journey`); `kept`
+ * where a page outside the wing knows it, the wing's layout's otherwise.
+ */
+export function useJourneyContext(kept?: boolean): JourneyContext {
   const { state } = useJobs()
-  const kept = useContext(KeptOnHomeContext)
-  return { state, kept, outgoing: phoneJobs().keeping.outgoing }
+  const wing = useContext(KeptOnHomeContext)
+  return { state, kept: kept ?? wing, outgoing: phoneJobs().keeping.outgoing }
 }
 
 /** A card whose title bar wears where its file is, and what it holds. */

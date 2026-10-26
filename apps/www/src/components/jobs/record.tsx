@@ -13,6 +13,7 @@ import { phoneJobs } from "@/lib/jobs"
 import { kindJourney } from "@/lib/jobs/journey"
 import type { Outcome } from "@/lib/jobs/model"
 import { applicationsOf, lastDelivered } from "@/lib/jobs/model"
+import { FILE_NAMES } from "@/lib/jobs/words"
 import { sectionHeading } from "@/components/job-reading"
 
 import {
@@ -63,7 +64,7 @@ export const JobsRecord = (): JSX.Element => {
       <p className="text-muted-foreground text-xs">
         Nothing here is edited or deleted, only added to.
       </p>
-      <JourneyCard title="Today’s decisions" journey={journey} noun="them">
+      <JourneyCard title={FILE_NAMES.decisions} journey={journey} noun="them">
         <p className="text-muted-foreground px-3.5 py-3 text-xs">
           The morning run reads these and your voice notes.
           {last ? ` Last sent ${last.day}.` : ""}
