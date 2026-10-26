@@ -103,9 +103,8 @@ A note home hasn't heard is one with no transcript to use (for a drama prompt,
 fewer distinct notes than voice files beside it), including one asked back
 this run. Its reflection or prompt waits, so what was said is read once home
 has heard it: don't answer it this run, and skip it in step 3 or 7 so it
-doesn't use up that step's limit. Add one problem for it, in the owner's
-terms, such as "Home hasn't heard one voice note from your study reflection
-yet, so that reflection waits for the next run."
+doesn't use up that step's limit. Count it in the run record's
+`voice.waiting` (step 12).
 
 A note reaches home only while the phone keeps voice notes on home, and a
 drama prompt's notes are sent once, when it is shared. So once its voice file
@@ -114,13 +113,12 @@ nothing is coming back for it (this run asked none back for it, and
 `GET "$JOBS_MAILBOX_URL/v1/transcript/wanted"` lists no open ask for it: a
 reflection's by its note's name, and for a drama prompt any open ask), stop
 waiting: answer the reflection or prompt from what it says in writing, and
-add the problem "Home never heard one voice note from your study reflection
-(or drama request), so it was answered without it. Voice notes reach home
-only while your phone keeps them on home." For a prompt with nothing written
+count it in `voice.missed`. For a prompt with nothing written
 but its notes, write the drama its request block describes.
 
 If the transcript listing isn't the object 10b describes, every voice note
-waits, whatever its age, with one problem for them all. If 2a skipped the
+waits, whatever its age, and `voice.unread` is `true`; those notes count in
+neither `waiting` nor `missed`, since whether home heard them is unknown. If 2a skipped the
 mailbox, they wait the same way, and that goes in the summary only, since
 step 12 doesn't run. Voice notes never go to the mailbox from this run.
 
@@ -387,6 +385,7 @@ writes only to the mailbox.
     }
   ],
   "problems": ["<one plain sentence per thing you could not do>"],
+  "voice": { "waiting": 0, "missed": 0, "unread": false },
   "nextBy": "<tomorrow 10:00 America/Los_Angeles, as ISO-8601 UTC>"
 }
 ```
@@ -402,7 +401,15 @@ writes only to the mailbox.
   why, such as "One drama couldn't be made playable, so that prompt waits for
   the next run." The phone shows the first one, so put the one that matters
   most first. Never quote a note, and never name a status code, a token, a
-  URL, a file id or a tool. `[]` when there were none.
+  URL, a file id or a tool. `[]` when there were none. What became of the
+  voice notes goes in `voice`, never here: the phone says each of those
+  states in its own words and with its own mark.
+- `voice`: what became of the voice notes in what you found ("Voice notes"):
+  `waiting`, how many reflections and drama requests wait for home to hear
+  one; `missed`, how many you answered without one home never heard; and
+  `unread`, whether the transcript listing couldn't be read. Write it on
+  every run, zeros and `false` included, so a run that says nothing of them
+  is never mistaken for one where all was heard.
 - `nextBy`: compute it with `node` (`Intl` knows daylight saving), not by hand.
 
 Put it as

@@ -2,11 +2,16 @@ import type {
   HeldRuns,
   RoutineRun,
 } from "@topik/lib/topik/adapter/routine-runs"
-import type { RoutineShape } from "@topik/lib/topik/core/routine-status"
+import type {
+  RoutineShape,
+  RoutineView,
+} from "@topik/lib/topik/core/routine-status"
 import {
   ROUTINE_WORDS,
   routineView,
   runLine,
+  SHAPE_ORDER,
+  VOICE_ORDER,
 } from "@topik/lib/topik/core/routine-status"
 import { MACHINERY } from "@topik/lib/topik/read-aloud/__tests__/machinery"
 import { describe, expect, it } from "vitest"
@@ -30,6 +35,7 @@ const run = (over: Partial<RoutineRun> = {}): RoutineRun => ({
   found: { reflections: 1, prompts: 1 },
   added: [SCENE, DRAMA],
   problems: [],
+  voice: null,
   nextBy: null,
   ...over,
 })
@@ -88,15 +94,72 @@ describe("what the routine's mark says", () => {
     expect(rested.line).toContain("there were none since its last run")
   })
 
-  it("says trouble, with the routine's own sentence, when its last run couldn't finish", () => {
-    const view = routineView(
+  it("tells a run that ended early from one that left some, each with the routine's own sentence", () => {
+    const stopped = routineView(
       held([run({ outcome: "stopped", problems: ["Drive wasn't there."] })]),
       new Set(),
       NOW,
       TODAY
     )
-    expect(view.shape).toBe("trouble")
-    expect(view.line).toMatch(/couldn't finish: Drive wasn't there\.$/)
+    expect(stopped.shape).toBe("stopped")
+    expect(stopped.line).toMatch(/ended early: Drive wasn't there\.$/)
+    const partly = routineView(
+      held([run({ outcome: "partly", problems: ["A drama wouldn't play."] })]),
+      new Set(),
+      NOW,
+      TODAY
+    )
+    expect(partly.shape).toBe("partly")
+    expect(partly.line).toMatch(
+      /left some of what it found: A drama wouldn't play\.$/
+    )
+  })
+
+  it("says each voice-note state on its own, beside whatever the run did", () => {
+    const view = (
+      voice: RoutineRun["voice"],
+      outcome: RoutineRun["outcome"] = "done"
+    ): RoutineView =>
+      routineView(held([run({ voice, outcome })]), new Set(), NOW, TODAY)
+    // A run from before it said: nothing either way.
+    expect(view(null).voice).toEqual([])
+    expect(view({ waiting: 0, missed: 0, unread: false }).voice).toEqual([])
+    const all = view({ waiting: 2, missed: 1, unread: true }, "partly")
+    expect(all.shape).toBe("partly")
+    expect(all.voice.map((v) => v.shape)).toEqual([
+      "unread",
+      "missed",
+      "waiting",
+    ])
+    expect(all.voice.map((v) => v.line)).toEqual([
+      "The routine couldn't read what home heard in your voice notes, so they wait for its next run.",
+      "One thing you shared was answered without its voice note, because home never heard it. Voice notes reach home only while this phone keeps them there.",
+      "2 things you shared wait for home to hear a voice note.",
+    ])
+    // A note answered without still leaves a done run done, and says so.
+    const missed = view({ waiting: 0, missed: 2, unread: false })
+    expect(missed.shape).toBe("fresh")
+    expect(missed.voice.map((v) => v.shape)).toEqual(["missed"])
+    expect(ROUTINE_WORDS.open(missed)).toContain(
+      "2 things you shared were answered without their voice notes, because home never heard them."
+    )
+    // A tally this build can't read is said as such, never as nothing.
+    expect(view("garbled").voice.map((v) => v.shape)).toEqual(["garbled"])
+  })
+
+  it("orders every mark once, so each reaches the legend", () => {
+    expect([...SHAPE_ORDER].sort()).toEqual(
+      Object.keys(ROUTINE_WORDS.shapes).sort()
+    )
+    expect([...VOICE_ORDER].sort()).toEqual(
+      Object.keys(ROUTINE_WORDS.voiceShapes).sort()
+    )
+  })
+
+  it("says the voice states in the run's history row too", () => {
+    expect(
+      runLine(run({ voice: { waiting: 1, missed: 0, unread: false } }), TODAY)
+    ).toMatch(/One thing you shared waits for home to hear a voice note\.$/)
   })
 
   it("is quiet only when home answered after a run was due and told of none", () => {
@@ -153,6 +216,14 @@ describe("what the routine's mark says", () => {
       routineView(held([run()]), new Set(), NOW, TODAY),
       routineView(held([run({ added: [] })]), new Set(), NOW, TODAY),
       routineView(held([run({ outcome: "partly" })]), new Set(), NOW, TODAY),
+      routineView(held([run({ outcome: "stopped" })]), new Set(), NOW, TODAY),
+      routineView(
+        held([run({ voice: { waiting: 1, missed: 2, unread: true } })]),
+        new Set(),
+        NOW,
+        TODAY
+      ),
+      routineView(held([run({ voice: "garbled" })]), new Set(), NOW, TODAY),
       routineView(held([run()], lookedAt), new Set(), late, TODAY),
       routineView(held([run()]), new Set(), late, TODAY),
       routineView(
@@ -167,8 +238,10 @@ describe("what the routine's mark says", () => {
         view.word,
         view.line,
         ROUTINE_WORDS.open(view),
+        ...view.voice.map((v) => v.line),
       ]),
       ...Object.values(ROUTINE_WORDS.shapes),
+      ...Object.values(ROUTINE_WORDS.voiceShapes),
       ROUTINE_WORDS.title,
       ROUTINE_WORDS.what,
       ROUTINE_WORDS.history,
