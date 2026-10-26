@@ -12,14 +12,13 @@ import type { LaneFacts } from "@/lib/home-link/words"
 import * as words from "@/lib/home-link/words"
 import {
   historyLines,
-  HOW_ORDER,
   laneView,
   lastLook,
   ROUTINE_READS,
   ROUTINE_TELLS_OPENED,
-  WHERE_ORDER,
   WORDS,
 } from "@/lib/home-link/words"
+import { HOW_ORDER, WHERE_ORDER } from "@/lib/sharing-marks"
 
 import { MACHINERY } from "./machinery"
 

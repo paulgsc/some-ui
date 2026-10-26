@@ -206,7 +206,7 @@ describe("Practice's sharing mark", () => {
   })
 
   it("draws each mark in its legend in a form no other shares", async () => {
-    const { MARK_WORDS } = await import("@/lib/home-link/words")
+    const { MARK_WORDS } = await import("@/lib/sharing-marks")
     await mount()
     fireEvent.click(mark())
     const legend = screen.getByRole("region", { name: MARK_WORDS.title })

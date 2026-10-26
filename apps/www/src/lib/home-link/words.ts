@@ -8,6 +8,7 @@
  */
 import { counted } from "@some-ui/core-utils"
 
+import type { How, Where } from "@/lib/sharing-marks"
 import type { Unsendable } from "@/lib/voice-home/model"
 import { NO_ROOM } from "@/lib/voice-home/model"
 
@@ -335,66 +336,6 @@ export function historyLines(
     })
   })
 }
-
-/**
- * The header mark's two axes, each its own mark, which no two states of a
- * lane share (`__tests__/words.test.ts`, the glyph's own test): where a record
- * is kept, and how the last exchange with home went, if it says anything.
- */
-export const WHERE_ORDER = [
-  "checking",
-  "phone",
-  "partly",
-  "kept",
-  "away",
-] as const
-
-export type Where = (typeof WHERE_ORDER)[number]
-
-export const HOW_ORDER = [
-  "current",
-  "waiting",
-  "sending",
-  "bringing",
-  "no-answer",
-  "busy",
-  "forgotten",
-  "unpaired",
-  "full",
-  "no-room",
-  "refused",
-  "fault",
-  "failed",
-] as const
-
-export type How = (typeof HOW_ORDER)[number]
-
-/** What each mark means, as the sheet's legend says it. */
-export const MARK_WORDS = {
-  title: "What the marks mean",
-  where: {
-    checking: "Checking where it is kept",
-    phone: "Kept on this phone alone",
-    partly: "Some of it on home; new ones stay on this phone",
-    kept: "Kept on home: new ones go there",
-    away: "On home, and not sent any more; this phone holds what home hadn't confirmed",
-  } satisfies Record<Where, string>,
-  how: {
-    current: "Home has all of it",
-    waiting: "Some waits on this phone, and goes next time",
-    sending: "Going to home now",
-    bringing: "Coming back to this phone now",
-    "no-answer": "Home didn't answer",
-    busy: "Home was busy",
-    forgotten: "Home no longer knows this phone: pair it again",
-    unpaired: "This phone isn't paired with home",
-    full: "Home's shelf is full",
-    "no-room": "This phone has no room for copies home doesn't have yet",
-    refused: "Home didn't take some of it",
-    fault: "Something on this phone went wrong",
-    failed: "Something went wrong on the way to home",
-  } satisfies Record<How, string>,
-} as const
 
 export type LaneFacts = Omit<LaneCounts, "away" | "offered"> & {
   /** The link has read the phone's own record of its pairing. */

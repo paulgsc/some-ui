@@ -46,6 +46,7 @@ import { Route as DashboardApkJobsScoutRouteImport } from './routes/_dashboard/_
 import { Route as DashboardApkPracticeIndexRouteImport } from './routes/_dashboard/_apk/practice/index'
 import { Route as DashboardApkSettingsHomeRouteImport } from './routes/_dashboard/_apk/settings/home'
 import { Route as DashboardApkSettingsPhoneRouteImport } from './routes/_dashboard/_apk/settings/phone'
+import { Route as DashboardApkSettingsStatusRouteImport } from './routes/_dashboard/_apk/settings/status'
 import { Route as DashboardApkJobsPickDayPickIdRouteImport } from './routes/_dashboard/_apk/jobs/pick/$day/$pickId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -237,6 +238,12 @@ const DashboardApkSettingsPhoneRoute =
     path: '/settings/phone',
     getParentRoute: () => DashboardApkRoute,
   } as any)
+const DashboardApkSettingsStatusRoute =
+  DashboardApkSettingsStatusRouteImport.update({
+    id: '/settings/status',
+    path: '/settings/status',
+    getParentRoute: () => DashboardApkRoute,
+  } as any)
 const DashboardApkJobsPickDayPickIdRoute =
   DashboardApkJobsPickDayPickIdRouteImport.update({
     id: '/pick/$day/$pickId',
@@ -276,6 +283,7 @@ export interface FileRoutesByFullPath {
   '/jobs/scout': typeof DashboardApkJobsScoutRoute
   '/settings/home': typeof DashboardApkSettingsHomeRoute
   '/settings/phone': typeof DashboardApkSettingsPhoneRoute
+  '/settings/status': typeof DashboardApkSettingsStatusRoute
   '/aph/': typeof DashboardApkAphIndexRoute
   '/jobs/': typeof DashboardApkJobsIndexRoute
   '/practice/': typeof DashboardApkPracticeIndexRoute
@@ -311,6 +319,7 @@ export interface FileRoutesByTo {
   '/jobs/scout': typeof DashboardApkJobsScoutRoute
   '/settings/home': typeof DashboardApkSettingsHomeRoute
   '/settings/phone': typeof DashboardApkSettingsPhoneRoute
+  '/settings/status': typeof DashboardApkSettingsStatusRoute
   '/aph': typeof DashboardApkAphIndexRoute
   '/jobs': typeof DashboardApkJobsIndexRoute
   '/practice': typeof DashboardApkPracticeIndexRoute
@@ -352,6 +361,7 @@ export interface FileRoutesById {
   '/_dashboard/_apk/jobs/scout': typeof DashboardApkJobsScoutRoute
   '/_dashboard/_apk/settings/home': typeof DashboardApkSettingsHomeRoute
   '/_dashboard/_apk/settings/phone': typeof DashboardApkSettingsPhoneRoute
+  '/_dashboard/_apk/settings/status': typeof DashboardApkSettingsStatusRoute
   '/_dashboard/_apk/aph/': typeof DashboardApkAphIndexRoute
   '/_dashboard/_apk/jobs/': typeof DashboardApkJobsIndexRoute
   '/_dashboard/_apk/practice/': typeof DashboardApkPracticeIndexRoute
@@ -391,6 +401,7 @@ export interface FileRouteTypes {
     | '/jobs/scout'
     | '/settings/home'
     | '/settings/phone'
+    | '/settings/status'
     | '/aph/'
     | '/jobs/'
     | '/practice/'
@@ -426,6 +437,7 @@ export interface FileRouteTypes {
     | '/jobs/scout'
     | '/settings/home'
     | '/settings/phone'
+    | '/settings/status'
     | '/aph'
     | '/jobs'
     | '/practice'
@@ -466,6 +478,7 @@ export interface FileRouteTypes {
     | '/_dashboard/_apk/jobs/scout'
     | '/_dashboard/_apk/settings/home'
     | '/_dashboard/_apk/settings/phone'
+    | '/_dashboard/_apk/settings/status'
     | '/_dashboard/_apk/aph/'
     | '/_dashboard/_apk/jobs/'
     | '/_dashboard/_apk/practice/'
@@ -742,6 +755,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardApkSettingsPhoneRouteImport
       parentRoute: typeof DashboardApkRoute
     }
+    '/_dashboard/_apk/settings/status': {
+      id: '/_dashboard/_apk/settings/status'
+      path: '/settings/status'
+      fullPath: '/settings/status'
+      preLoaderRoute: typeof DashboardApkSettingsStatusRouteImport
+      parentRoute: typeof DashboardApkRoute
+    }
     '/_dashboard/_apk/jobs/pick/$day/$pickId': {
       id: '/_dashboard/_apk/jobs/pick/$day/$pickId'
       path: '/pick/$day/$pickId'
@@ -795,6 +815,7 @@ interface DashboardApkRouteChildren {
   DashboardApkSoundbitesRoute: typeof DashboardApkSoundbitesRoute
   DashboardApkSettingsHomeRoute: typeof DashboardApkSettingsHomeRoute
   DashboardApkSettingsPhoneRoute: typeof DashboardApkSettingsPhoneRoute
+  DashboardApkSettingsStatusRoute: typeof DashboardApkSettingsStatusRoute
   DashboardApkPracticeIndexRoute: typeof DashboardApkPracticeIndexRoute
 }
 
@@ -806,6 +827,7 @@ const DashboardApkRouteChildren: DashboardApkRouteChildren = {
   DashboardApkSoundbitesRoute: DashboardApkSoundbitesRoute,
   DashboardApkSettingsHomeRoute: DashboardApkSettingsHomeRoute,
   DashboardApkSettingsPhoneRoute: DashboardApkSettingsPhoneRoute,
+  DashboardApkSettingsStatusRoute: DashboardApkSettingsStatusRoute,
   DashboardApkPracticeIndexRoute: DashboardApkPracticeIndexRoute,
 }
 

@@ -212,7 +212,7 @@ type Listed = {
 }
 
 /** A state's icon: its stop on its theme's chip, its sign at the corner. */
-const StateIcon = ({
+export const StateIcon = ({
   at,
   sign,
   theme,

@@ -3,14 +3,14 @@
  * belongs to no wing, one page each (`/settings/<id>`), in the words the desk
  * shows (paulgsc/some-ui#2107, SM1).
  *
- * The phone's two pages are "apk" pages, so the build is asked `hasAudience`
+ * The phone's three pages are "apk" pages, so the build is asked `hasAudience`
  * here, where they are offered (A3, packages/some-vite-config/AUDIENCES.md).
  */
 
 import { hasAudience } from "@/lib/build-profile"
 import { VIEWER_BUILD } from "@/lib/data-mode"
 
-export type ConcernId = "phone" | "home" | "appearance" | "account"
+export type ConcernId = "status" | "phone" | "home" | "appearance" | "account"
 
 export type Concern = {
   readonly id: ConcernId
@@ -24,6 +24,11 @@ export const pageOf = (id: ConcernId): `/settings/${ConcernId}` =>
   `/settings/${id}`
 
 const CONCERNS: Readonly<Record<ConcernId, Concern>> = {
+  status: {
+    id: "status",
+    title: "How it's running",
+    lead: "Everything this phone runs, how each last went, and what needs you.",
+  },
   phone: {
     id: "phone",
     title: "This phone",
@@ -54,7 +59,9 @@ export type DeskBuild = {
 export function concernsHere(
   build: DeskBuild = { phone: hasAudience("apk"), viewer: VIEWER_BUILD }
 ): ReadonlyArray<Concern> {
-  if (build.phone) return [CONCERNS.phone, CONCERNS.home, CONCERNS.appearance]
+  if (build.phone) {
+    return [CONCERNS.status, CONCERNS.phone, CONCERNS.home, CONCERNS.appearance]
+  }
   if (build.viewer) return [CONCERNS.appearance]
   return [CONCERNS.appearance, CONCERNS.account]
 }

@@ -8,6 +8,9 @@
  * aph's record comes back to the phone as it stops, which only aph's own
  * screens can do (`@some-ui/aph` is theirs), so its row says where to stop
  * instead of offering it here.
+ *
+ * The status page's rows for the same records come from here too
+ * (`useLaneRows`), read without a watch of their own.
  */
 import type { JSX, ReactNode } from "react"
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
@@ -18,21 +21,30 @@ import type { Scope } from "@/lib/home-link/consent-model"
 import { everChosen } from "@/lib/home-link/consent-model"
 import { phoneConsent } from "@/lib/home-link/consent-runtime"
 import { jobsLane } from "@/lib/home-link/jobs"
+import type { KeptState } from "@/lib/home-link/kept-model"
 import { INITIAL_KEPT } from "@/lib/home-link/kept-model"
 import type { Lane, LaneCounts, LaneId } from "@/lib/home-link/lanes"
-import { pairingOf, stopOnHome, useLaneChoices } from "@/lib/home-link/lanes"
+import {
+  pairingOf,
+  stopOnHome,
+  useLaneChoices,
+  useLaneRun,
+} from "@/lib/home-link/lanes"
 import { practiceLane } from "@/lib/home-link/practice"
-import { voiceLane } from "@/lib/home-link/voice"
+import { useUnsendable, voiceLane } from "@/lib/home-link/voice"
 import {
   fullDay,
   historyLines,
   laneView,
   LEDGER,
   SHEET,
+  unsentLines,
   WORDS,
 } from "@/lib/home-link/words"
 import { phoneJobs } from "@/lib/jobs"
 import { NOTICE_WORDS, noticeSaid } from "@/lib/jobs/words"
+import type { BoardPage, BoardRow } from "@/lib/status-board"
+import { BOARD_WORDS } from "@/lib/status-board/words"
 import { useJobs } from "@/components/jobs/parts"
 
 const APH_SCOPES = { scopes: ["aph"] } as const
@@ -213,6 +225,86 @@ const VoiceRow = (): JSX.Element => (
     unsure={false}
   />
 )
+
+/** Each record's own screen, for its row on the status page. */
+const PAGES: Readonly<Record<LaneId, BoardPage>> = {
+  practice: "practice",
+  aph: "aph",
+  jobs: "jobs",
+  voice: "home-settings",
+}
+
+/**
+ * One record kept on home, as the status page shows it. `run` is null for
+ * aph, whose runs only its own screens watch: its row says where, not how.
+ */
+function laneRow(
+  id: LaneId,
+  counts: LaneCounts,
+  choices: ReturnType<typeof useLaneChoices>,
+  run: KeptState | null,
+  known: boolean,
+  more: ReadonlyArray<string> = []
+): BoardRow {
+  const view = laneView(WORDS[id], {
+    ...counts,
+    known,
+    ...choices,
+    run: run ?? INITIAL_KEPT,
+    away: null,
+  })
+  const elsewhere = run === null && choices.shared.size > 0
+  return {
+    id,
+    group: "home",
+    name: LEDGER.names[id],
+    word: view.word,
+    line: elsewhere ? BOARD_WORDS.aphElsewhere : view.line,
+    more,
+    mark: {
+      kind: "lane",
+      where: view.where,
+      how: run === null ? null : view.how,
+    },
+    page: PAGES[id],
+  }
+}
+
+/**
+ * Each record kept on home as the status page shows it (#2165): where it is
+ * kept and how its last send went, read without a watch of its own
+ * (`useLaneRun`), so nothing is sent from the page. Voice notes add what
+ * this phone can't send (LA14).
+ */
+export function useLaneRows(): ReadonlyArray<BoardRow> {
+  const known = useHomeLink().link.kind !== "reading"
+  const unsent = unsentLines(useUnsendable())
+  return [
+    laneRow(
+      "practice",
+      practiceLane.useCounts(),
+      useLaneChoices(practiceLane),
+      useLaneRun(practiceLane),
+      known
+    ),
+    laneRow("aph", NO_COUNTS, useLaneChoices(APH_SCOPES), null, known),
+    laneRow(
+      "jobs",
+      jobsLane.useCounts(),
+      useLaneChoices(jobsLane),
+      useLaneRun(jobsLane),
+      known
+    ),
+    laneRow(
+      "voice",
+      voiceLane.useCounts(),
+      useLaneChoices(voiceLane),
+      useLaneRun(voiceLane),
+      known,
+      unsent
+    ),
+  ]
+}
 
 export const SharingLedger = (): JSX.Element => {
   const consent = phoneConsent()
