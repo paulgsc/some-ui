@@ -196,6 +196,7 @@ export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
       if (last && ids.includes(last.id)) last = null
       // The list first: audio whose entry stays would leave a silent take.
       if (ports.takes.remove(ids)) {
+        // Ignored: audio no take names is cleared by the next sweep.
         ports.audio.remove(ids).catch(() => undefined)
       }
       publish()

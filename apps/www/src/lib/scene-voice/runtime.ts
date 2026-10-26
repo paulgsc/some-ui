@@ -99,6 +99,8 @@ export function createSceneVoice(ports: SceneVoicePorts): SceneVoice {
     leave: note.leave,
     remove: (ids): void => {
       if (!ports.notes.remove(ids)) return
+      // Ignored: audio no note names is cleared by the next sweep
+      // (`sweepSceneVoice`).
       ports.audio.remove(ids).catch(() => undefined)
       quiet = true
       publish()

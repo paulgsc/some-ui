@@ -7,6 +7,7 @@
  * test says.
  */
 
+import { FOREIGN_FAILURE_TAG } from "@some-ui/intent-kit"
 import type { SpeechAdapter } from "@some-ui/speech"
 import { SpeechQueueManager } from "@some-ui/speech"
 import type { ISessionMachine } from "@topik/lib/topik/core/session-types"
@@ -158,12 +159,13 @@ type Callbacks = {
   onSpeechEnd: Mock<(messageId: string) => void>
   onSpeechStopped: Mock<(messageId: string) => void>
   onMessageComplete: Mock<(messageId: string) => void>
-  onError: Mock<(error: Error, messageId: string) => void>
 }
 
 type Setup = Session & {
   handler: ReturnType<typeof createTTSEffectHandler>
   callbacks: Callbacks
+  /** Failures reported (`reportFailure`) since setup. */
+  reported: () => number
 }
 
 function setup(): Setup {
@@ -173,16 +175,20 @@ function setup(): Setup {
     onSpeechEnd: vi.fn(),
     onSpeechStopped: vi.fn(),
     onMessageComplete: vi.fn(),
-    onError: vi.fn(),
   }
-  vi.spyOn(console, "error").mockImplementation(() => undefined)
+  const logged = vi
+    .spyOn(globalThis.console, "error")
+    .mockImplementation(() => undefined)
+  logged.mockClear()
+  const reported = (): number =>
+    logged.mock.calls.filter(([tag]) => tag === FOREIGN_FAILURE_TAG).length
   const handler = createTTSEffectHandler({
     speaker: session.manager.speakerFor("topik"),
     componentId: "c1",
     machine: fakeMachine,
     ...callbacks,
   })
-  return Object.assign(session, { handler, callbacks })
+  return Object.assign(session, { handler, callbacks, reported })
 }
 
 describe("TTSEffectHandler - serial queue", () => {
@@ -267,7 +273,7 @@ describe("TTSEffectHandler - a line ends exactly once", () => {
     await settle()
 
     expect(t.callbacks.onSpeechEnd).toHaveBeenCalledTimes(1)
-    expect(t.callbacks.onError).toHaveBeenCalledTimes(1)
+    expect(t.reported()).toBe(1)
   })
 
   it("ends a stopped line once, as the stop's own, and reports no failure", async () => {
@@ -279,7 +285,7 @@ describe("TTSEffectHandler - a line ends exactly once", () => {
     await settle()
 
     expect(t.callbacks.onSpeechEnd).toHaveBeenCalledTimes(1)
-    expect(t.callbacks.onError).not.toHaveBeenCalled()
+    expect(t.reported()).toBe(0)
   })
 })
 

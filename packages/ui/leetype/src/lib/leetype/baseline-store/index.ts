@@ -124,7 +124,7 @@ export function saveBaseline(baseline: Baseline): void {
       JSON.stringify({ version: SCHEMA_VERSION, baseline })
     )
   } catch {
-    // Quota exceeded or storage disabled: a permanent cold start is playable.
+    // Ignored: quota exceeded or storage disabled: a permanent cold start is playable.
   }
 }
 
@@ -133,7 +133,7 @@ export function clearBaseline(): void {
   try {
     localStorage.removeItem(STORAGE_KEY)
   } catch {
-    // As above: nothing to do, and nothing lost.
+    // Ignored: as above: nothing to do, and nothing lost.
   }
 }
 

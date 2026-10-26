@@ -60,7 +60,7 @@ export function createSpeechLedger(): SpeechLedger {
       rejectFn = reject
     })
 
-    // A rejection raised while nothing is awaiting yet (a flush in the same
+    // Ignored: a rejection raised while nothing is awaiting yet (a flush in the same
     // tick as `open`, say) would otherwise surface as an unhandled rejection
     // and, under `--unhandled-rejections=strict`, take the process down.
     // The caller's own `.catch`/`await` is unaffected: attaching a handler

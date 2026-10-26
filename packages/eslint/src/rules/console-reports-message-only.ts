@@ -20,6 +20,11 @@ import { isGlobal, PAGE_LIFETIME_TARGETS } from "./require-scoped-lifetime.js"
  *
  * `no-console` still asks for a visible disable at the call. Whether an
  * error's message can carry a token is MB3's reading.
+ *
+ * `why`, optional, is what the `outside` message cites in place of MB3: the
+ * same rule holds FT1 (docs/monorepo-boundaries.md) with `reportFailure` as
+ * the reporter, where the reason `console` is no way to report is that a
+ * release build strips it (`failureLogConfig`, log-guard.config.ts).
  */
 export const consoleReportsMessageOnly: Rule.RuleModule = {
   meta: {
@@ -31,14 +36,17 @@ export const consoleReportsMessageOnly: Rule.RuleModule = {
     schema: [
       {
         type: "object",
-        properties: { reporter: { type: "string", minLength: 1 } },
+        properties: {
+          reporter: { type: "string", minLength: 1 },
+          why: { type: "string", minLength: 1 },
+        },
         required: ["reporter"],
         additionalProperties: false,
       },
     ],
     messages: {
       outside:
-        "`console` is used only inside `{{reporter}}`: report a failure through it (apps/mailbox README, MB3).",
+        "`console` is used only inside `{{reporter}}`: report a failure through it ({{why}}).",
       argument:
         "`{{reporter}}` logs a string or the error's `message`, never a request, a header or a body (apps/mailbox README, MB3).",
     },
@@ -46,7 +54,11 @@ export const consoleReportsMessageOnly: Rule.RuleModule = {
   create(context) {
     const reporter = stringOption(context.options[0], "reporter")
     if (reporter === null) return {}
-    const data = { reporter }
+    const data = {
+      reporter,
+      why:
+        stringOption(context.options[0], "why") ?? "apps/mailbox README, MB3",
+    }
     const isPageGlobal = (node: ESTree.Node): boolean =>
       node.type === "Identifier" &&
       PAGE_LIFETIME_TARGETS.has(node.name) &&

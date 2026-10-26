@@ -10,7 +10,7 @@ apply to any agent working here, not only Claude.
   `L3`) and four parts: Claim, Falsified by, Scope, Why not enforced (format:
   `CLAUDE.md`, "Gray-area invariants: declare them falsifiable"). The sets: L1–L8 in
   `extensions/common/GOOD_CITIZEN.md`, A1–A4 in `packages/some-vite-config/AUDIENCES.md`,
-  LP1–LP3 in `extensions/some-drama/README.md`, R1 and F1 in `docs/monorepo-boundaries.md`.
+  LP1–LP3 in `extensions/some-drama/README.md`, R1, F1 and FT2 in `docs/monorepo-boundaries.md`.
   For a hunk inside an invariant's Scope, evaluate only its **Falsified by** line, against
   the hunk, the file it changes (after the diff), and any files that line names:
   - **nothing matches:** no comment, and no search of other states or call paths for a

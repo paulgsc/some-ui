@@ -167,10 +167,7 @@ export function useSession(
       onSpeechStart: handleSpeechStart,
       onSpeechEnd: handleSpeechEnd,
       onSpeechStopped: handleSpeechStopped,
-      onError: (error, effect) => {
-        // eslint-disable-next-line no-console
-        console.error("[Executor] Error:", effect, error)
-      },
+      // A failed effect is reported by the executor itself.
     })
 
     return (): void => {

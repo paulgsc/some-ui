@@ -33,7 +33,7 @@ export function markBeforeDiscard(key: string, prefix: string): void {
     // eslint-disable-next-line extension-charter/no-raw-storage -- runs inside the target page, not extension code; see docstring above.
     sessionStorage.setItem(key, "1")
   } catch {
-    // Storage unavailable (e.g. a sandboxed frame) — resume just won't veil.
+    // Ignored: storage unavailable (e.g. a sandboxed frame) — resume just won't veil.
   }
   // Idempotent: a repeated suspend attempt against a tab snapshot that was
   // never re-queried (so still reports discarded:false) must not re-stack the
@@ -54,7 +54,7 @@ export function unmarkAfterDiscard(key: string, prefix: string): void {
     // eslint-disable-next-line extension-charter/no-raw-storage -- runs inside the target page, mirrors markBeforeDiscard.
     sessionStorage.removeItem(key)
   } catch {
-    // Storage unavailable — nothing to clear.
+    // Ignored: storage unavailable — nothing to clear.
   }
   // Strip every stacked occurrence, not just one — belt-and-suspenders
   // alongside markBeforeDiscard's own idempotency guard.

@@ -68,7 +68,8 @@ async function sendToTab(tabId: number, msg: ExtensionMessage): Promise<void> {
   try {
     await ext.tabs.sendMessage(tabId, msg)
   } catch {
-    // intentionally ignored
+    // Ignored: a tab with no content script (a browser page, one still
+    // loading) has nobody to tell.
   }
 }
 
@@ -91,7 +92,7 @@ function syncLegacyStyleMenu(style: LegacyStyle): void {
     void ext.contextMenus
       .update(id, { checked: candidate === style })
       .catch(() => {
-        // Menu may not exist yet (e.g. Chrome, which has no "tab" context and
+        // Ignored: the menu may not exist (Chrome, which has no "tab" context and
         // may have failed to create these items) — nothing to reconcile.
       })
   }
@@ -252,14 +253,14 @@ async function syncFrameScript(): Promise<void> {
         try {
           await ext.scripting.updateContentScripts([frameScript])
         } catch {
-          // Still unsupported here.
+          // Ignored: still unsupported here.
         }
       }
     } else if (registered.length > 0) {
       await ext.scripting.unregisterContentScripts({ ids: [FRAME_SCRIPT_ID] })
     }
   } catch {
-    // A concurrent sync already (un)registered it — the next flag change or
+    // Ignored: a concurrent sync already (un)registered it — the next flag change or
     // worker start reconciles again.
   }
 }

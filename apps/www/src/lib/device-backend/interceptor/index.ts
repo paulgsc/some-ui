@@ -8,6 +8,8 @@
  * ready (opened, migrated, seeded), so the first `/auth/session` probe cannot
  * race the schema.
  */
+import { reportFailure, toIntentError } from "@some-ui/intent-kit"
+
 import type { DeviceContext, DeviceRouter } from "@/lib/device-backend/router"
 import { errorResponse } from "@/lib/device-backend/router"
 import { DeviceStorageError } from "@/lib/device-backend/sql"
@@ -73,10 +75,16 @@ export function createDeviceFetch(
           { message: error.error.summary }
         )
       }
-      // A handler bug answers like a server fault, naming the route, not like
-      // "file_host unreachable".
-      // eslint-disable-next-line no-console -- visible in a dev build's WebView inspector; the production minifier drops it
-      console.error("device backend:", method, path, error)
+      // A handler bug answers like a server fault, not like "file_host
+      // unreachable", and reaches the phone's own log naming the route
+      // (`reportFailure`, which a release build keeps; FT1).
+      reportFailure({
+        port: "device backend",
+        error: {
+          ...toIntentError(error),
+          summary: `${method} ${path} failed.`,
+        },
+      })
       return errorResponse(500, "operation_error")
     }
   }

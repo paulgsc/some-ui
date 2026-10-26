@@ -397,12 +397,16 @@ export function handOffExport(
   at = new Date()
 ): void {
   if (sent.length > 0) handOff(sent, at)
+  // Ignored: a soundbite the store would not let go stays on the list,
+  // where its own delete still lets it go (above).
   if (soundbites.length > 0) store.remove(soundbites).catch(() => undefined)
   if (takes.length > 0) letGoLensTakes(takes)
   letGoLeetypeTakes(leetype)
   if (lens.length > 0) {
     import("@some-ui/topik")
       .then(({ letGoLensRecord }) => letGoLensRecord(lens))
+      // Ignored: entries that fail to go stay in the record for the next
+      // export (above).
       .catch(() => undefined)
   }
 }

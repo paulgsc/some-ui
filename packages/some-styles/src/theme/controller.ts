@@ -110,7 +110,7 @@ export function writeStoredPreference(
   try {
     storage?.setItem(THEME_STORAGE_KEY, preference)
   } catch {
-    // Non-fatal: persistence is best-effort.
+    // Ignored: non-fatal: persistence is best-effort.
   }
 }
 

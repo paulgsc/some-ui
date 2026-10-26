@@ -319,6 +319,7 @@ void (async () => {
       selectedTabIds: new Set(storage.filteredTabIds),
     })
   } catch {
-    // Gracefully handle UI initialization failure silently per lint rules
+    // Ignored: the popup stays on its empty first state, which is what the
+    // person sees; reopening it tries again.
   }
 })()

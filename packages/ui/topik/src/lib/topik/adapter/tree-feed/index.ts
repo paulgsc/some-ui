@@ -89,7 +89,7 @@ export function createServedPointStore(
           JSON.stringify({ lessonId, point })
         )
       } catch {
-        // Quota, privacy mode: the place is lost, and the tree still plays.
+        // Ignored: quota, privacy mode: the place is lost, and the tree still plays.
       }
     },
   }

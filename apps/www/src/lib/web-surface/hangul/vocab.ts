@@ -1,6 +1,7 @@
 import { useEffect } from "react"
 import { ApiError, createDataSource } from "@some-ui/fetch-kit"
 import type { WordEntry } from "@some-ui/honeycomb"
+import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 
 import { DATA_MODE, FETCHES_CONTENT } from "@/lib/data-mode"
 import { PUBLIC_READ } from "@/lib/file-host-config"
@@ -37,7 +38,7 @@ const hangulVocabSource = createDataSource<HangulVocabParams, Array<WordEntry>>(
  *   developer-populated from `packages/some-content/public/hangul/words`). A
  *   404, common on a fresh checkout, resolves quietly to `undefined`; any
  *   other failure (malformed JSON, a schema mismatch) is also non-fatal but
- *   logged loudly.
+ *   reported (`reportFailure`).
  *
  * `undefined` means "no override": pass it straight to `HangulHexGrid`'s
  * `words`, whose default (`HANGUL_WORDS`) takes over. `topic` is unused by
@@ -58,11 +59,13 @@ export function useHangulVocab(
     // A missing file is steady state; only warn when a file exists but
     // couldn't be used.
     if (error instanceof ApiError && error.status === 404) return
-    // eslint-disable-next-line no-console
-    console.warn(
-      `[hangul-vocab] Failed to load "${topic}.json" - falling back to the bundled demo seed.`,
-      error
-    )
+    reportFailure({
+      port: `hangul vocab (${topic}.json)`,
+      error: {
+        ...toIntentError(error),
+        summary: "The word list could not be used; the demo words stand in.",
+      },
+    })
   }, [isError, error, topic])
 
   return data

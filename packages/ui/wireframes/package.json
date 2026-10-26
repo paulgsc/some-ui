@@ -4,6 +4,7 @@
   },
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
+    "@some-ui/intent-kit": "workspace:*",
     "@some-ui/shared": "workspace:*",
     "@some-ui/types": "workspace:*",
     "lucide-react": "catalog:",

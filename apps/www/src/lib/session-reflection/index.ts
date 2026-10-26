@@ -96,7 +96,8 @@ function migrateLegacy(now: number): void {
   try {
     localStorage.removeItem(LEGACY_KEY)
   } catch {
-    // Read again next time, as above.
+    // Ignored: the old list is read again next time, and the move is
+    // idempotent (above).
   }
 }
 

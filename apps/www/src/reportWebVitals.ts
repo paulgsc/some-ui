@@ -9,7 +9,7 @@ const reportWebVitals = (onPerfEntry?: () => void): void => {
         onTTFB(onPerfEntry)
       })
       .catch(() => {
-        // Reporting is best-effort; a failed dynamic import (e.g. offline)
+        // Ignored: reporting is best effort; a failed dynamic import (offline)
         // shouldn't surface as an unhandled rejection.
       })
   }

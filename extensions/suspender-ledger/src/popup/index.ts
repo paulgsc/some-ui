@@ -384,6 +384,6 @@ void (async () => {
     ])
     setState({ tab, prefs, shortcuts, discardReasons })
   } catch {
-    // Popup hydration is best-effort; a failure leaves the default shell.
+    // Ignored: popup hydration is best-effort; a failure leaves the default shell.
   }
 })()
