@@ -3,6 +3,7 @@ import { z } from "zod"
 import {
   HttpsUrlSchema,
   IdSchema,
+  NoteIdsSchema,
   parseWith,
   text,
   TrackedSchema,
@@ -40,6 +41,7 @@ export const ScoutsSchema = z.object({
         .and(TrackedSchema)
     )
     .min(1),
+  notes: NoteIdsSchema,
 })
 
 export type Scouts = z.infer<typeof ScoutsSchema>

@@ -112,6 +112,7 @@ export function decisionsFile(
 
   const picks: Decisions["picks"] = []
   const voice: Array<{ id: string; name: string }> = []
+  const notes: Record<string, string> = {}
   const heard = holds(state)
   for (const digest of state.digests) {
     const stale = digest.day < day && !untouchedReported(state, digest.day)
@@ -134,8 +135,11 @@ export function decisionsFile(
       // audio is never released unsent (`releasedVoice`).
       const fit = fitNotesOf(state, digest.day, pick.id)
       const names = pickVoice(state, digest.day, pick.id)
-      const nameOf = (id: string): string =>
-        names.find((n) => n.id === id)?.name ?? id
+      const nameOf = (id: string): string => {
+        const name = names.find((n) => n.id === id)?.name ?? id
+        notes[name] = id
+        return name
+      }
       const freshVoice = fresh.flatMap((e) =>
         carriesPickVoice(e) && e.day === digest.day && e.pickId === pick.id
           ? e.voice
@@ -218,6 +222,7 @@ export function decisionsFile(
     digestDay: newestDay(picks) ?? state.digests.at(-1)?.day ?? day,
     sharedAt: at,
     picks,
+    notes,
     disagreements,
     outcomes,
   })
@@ -239,17 +244,20 @@ export function scoutsFile(state: JobsState, at: Date): Outgoing {
   if (fresh.length === 0) return null
   const stamp = stampOf(at)
   const voice: Array<{ id: string; name: string }> = []
+  const notes: Record<string, string> = {}
   const heard = holds(state)
   const scouts: Scouts["scouts"] = fresh.map((e) => {
     // By the scout, never the share: a retry names the same audio the same.
     const names = voiceNames(state.voice, e.voice, e.scout.id, 1)
     voice.push(...names.filter((n) => heard(n.id)))
+    for (const { id, name } of names) notes[name] = id
     return { ...e.scout, voice: names.map((n) => n.name), addedAt: e.at }
   })
   const parsed = ScoutsSchema.safeParse({
     schema: "some-ui.job-scouts/1",
     sharedAt: at.toISOString(),
     scouts,
+    notes,
   })
   if (!parsed.success) return unshareable("scouts", parsed.error.issues)
   const file: Scouts = parsed.data

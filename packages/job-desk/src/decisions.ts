@@ -4,6 +4,7 @@ import {
   EventIdSchema,
   FingerprintSchema,
   IdSchema,
+  NoteIdsSchema,
   parseWith,
   text,
   VoiceFileSchema,
@@ -131,6 +132,7 @@ export const DecisionsSchema = z.object({
         .default([]),
     })
   ),
+  notes: NoteIdsSchema,
   /** Set-aside postings I'd have picked, and why. */
   disagreements: z.array(
     z.object({ id: EventIdSchema, fingerprint: FingerprintSchema, note: text })

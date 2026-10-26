@@ -108,9 +108,9 @@ can repeat one already read:
   some digest names in `read` already carried is not new: skip it;
 - a scout some digest already answered in `scouts` is not new: skip it;
 - a voice note is new until some digest lists it in `transcribed`, even when an
-  earlier file named it, since its audio may not have arrived the first time.
-  So also transcribe each note a file already read names whose audio is now
-  in `Decisions/` or `Scout/` and no digest lists, and take it in with the
+  earlier file named it, since home may not have heard it the first time.
+  So also look for home's transcript of each note a file already read names
+  and no digest lists (below, "Home's transcripts"), and take it in with the
   entry that names it.
 
 If the mailbox is usable (§0.4), it is a second place to look. List its
@@ -139,8 +139,8 @@ doesn't match is skipped and named in the summary. Then merge the two sources
 by file name: a name in both is one file, and if the bytes differ, use Drive's
 and say so in the summary. Home is the only one that can put a file in these
 mailbox folders, so the owner check in §0.1 doesn't apply to them. They never
-name voice notes (home holds no audio), so a voice note is found in Drive only,
-as above.
+name voice notes, so a voice note is named by a Drive file only, as above;
+what I said in it comes from home's transcript (below).
 
 The listings show live files only. A file that has been in the mailbox for
 months moves home (it is archived), and reading it answers `410`.
@@ -164,8 +164,8 @@ For each new file:
 
 1. Check it with the checker (step 8). One that fails is skipped and named in
    the summary, never guessed at.
-2. Transcribe every voice note it names (below, "The transcriber"). If it
-   can't, carry on without the note and say so.
+2. Read home's transcript of every voice note it names (below, "Home's
+   transcripts").
 3. Take it in:
    - **Passed picks:** the reasons and notes tell me what to stop sending. A
      reason given twice is a rule for this run.
@@ -202,56 +202,42 @@ the newest entry is the decision that stands.
 A posting picked in any earlier digest, or named in any decisions file, is
 never picked again, unless a disagreement brought it back.
 
-### The transcriber
+### Home's transcripts
 
-Voice notes are webm (or ogg, m4a) files beside the file that names them.
-Transcribe them in this run's own container, in a scratch directory outside
-the checkout. Set it up once per run:
+Home transcribes my voice notes and leaves the text in the mailbox's
+`transcript` folder; install no speech model and download no note's audio.
 
-```sh
-python3 -m venv /tmp/whisper && /tmp/whisper/bin/pip install -q faster-whisper
-apt-get update -qq && apt-get install -y --no-install-recommends ffmpeg
-```
+Each Decisions and Scout file names its voice notes by file name in its
+`voice` lists, and gives the phone's id for each in `notes`
+(`{"<file name>": "<note id>"}`).
 
-Take one note at a time: bring it in, decode it, convert it and transcribe
-it, keeping its transcript, before the next. Bring it into the container with
-the Google Drive connector's `download_file_content`, by the note's file id. A
-note is too large for the conversation, so the tool saves its result to a file
-and names that file's path: JSON whose `content` is the audio in base64.
-Decode it from there, and never paste a saved note's base64 into a command.
-The audio may be webm, ogg or m4a; ffmpeg reads the format from the file
-itself:
+If the mailbox is usable (§0.4), list the folder once per run, paged as
+§2 pages the decisions folder:
 
 ```sh
-python3 -I -c 'import base64, json, sys; open(sys.argv[2], "wb").write(base64.b64decode(json.load(open(sys.argv[1]))["content"]))' <saved file> /tmp/whisper/note.audio
-ffmpeg -loglevel error -y -i /tmp/whisper/note.audio -ar 16000 -ac 1 /tmp/whisper/note.wav
+curl -sS --max-time 30 -H "Authorization: Bearer $JOBS_MAILBOX_TOKEN" \
+  "$JOBS_MAILBOX_URL/v1/transcript/items?after=0&limit=50"
 ```
 
-A note small enough to come back inline is a few seconds long, and the one
-place base64 goes into a command: write the whole JSON result with a quoted
-heredoc (`<<'EOF'`) to `/tmp/whisper/note.json` and run the same one-liner
-with that as `<saved file>`.
+and `transcript/archived` the same way, for a note older than a month.
+For each voice note this run takes in:
 
-Then transcribe the wav with this script, saved outside the checkout as
-`/tmp/whisper/transcribe.py` and run as
-`/tmp/whisper/bin/python -I /tmp/whisper/transcribe.py /tmp/whisper/note.wav`.
-It passes the audio as a float32 array, never the path (the installed `av`
-breaks on a path), and `vad_filter` keeps silence from coming back as "You"
-or "Thank you.":
+1. Find its id in the file's `notes`. A file from before the phone gave ids
+   names none: take that note in without its words, say so in the summary,
+   and count it done (step 4), since no transcript will ever name it.
+2. Of the names `transcript-<that id>-<n>.json`, take the one with the
+   highest `<n>`. Fetch it as §2 fetches a decisions file (an archived one is
+   asked for with `wanted`, as there), and check its `sha256`. It must be
+   JSON with `"schema": "some-ui.voice-transcript/1"` and `note` equal to the
+   id. One that isn't is skipped and named in the summary.
+3. Its `text` is what I said, in `language` (`en`, `ko`); read it with the
+   entry that names the note.
+4. List the note's file name in the digest's `transcribed` (§8).
 
-```python
-import sys, wave
-import numpy as np
-from faster_whisper import WhisperModel
-
-with wave.open(sys.argv[1]) as w:
-    pcm = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16)
-model = WhisperModel("small.en", device="cpu", compute_type="int8")
-segments, _ = model.transcribe(pcm.astype(np.float32) / 32768, vad_filter=True)
-print(" ".join(s.text.strip() for s in segments))
-```
-
-An empty transcript is a note with nothing said: say so in the summary.
+A note with an id but no transcript yet hasn't been heard by home. Take its
+entry in from its written words alone, leave it out of `transcribed`, and
+say in the summary, in my terms, that home hasn't heard it yet, so the next
+run reads it. The same holds for every note when the mailbox isn't usable.
 
 ### The queue
 
@@ -637,9 +623,8 @@ shorter limit, first person, the gaps) is yours to hold.
    and `review` §3 to §5 gave it, and a scout that became a pick its
    `pickId` from step 1.
 3. `read` names every Decisions and Scout file this run took in, from Drive or
-   the mailbox, and `transcribed` every voice note it transcribed, by its file
-   name. `redrafts` holds each
-   redraft §2 wrote.
+   the mailbox, and `transcribed` every voice note §2 ("Home's transcripts")
+   counts done, by its file name. `redrafts` holds each redraft §2 wrote.
 4. Save the digest as bare JSON to a scratch file and check it from the repo
    root (run `pnpm install` first if `node_modules` is missing):
 
@@ -710,7 +695,9 @@ so it is written even when nothing else was. The shape is `JobsRunSchema` in
       "title": "2 picks from 7 postings"
     }
   ],
-  "problems": ["One voice note couldn't be heard, so it waits for tomorrow."]
+  "problems": [
+    "Home hasn't heard one voice note yet, so it waits for tomorrow."
+  ]
 }
 ```
 
@@ -719,7 +706,7 @@ so it is written even when nothing else was. The shape is `JobsRunSchema` in
   that wouldn't pass its check, a failed upload). It is `partly` when the
   digest reached Drive but something this run set out to do wasn't done: a
   file the checker turned down or whose bytes didn't match, a voice note
-  that couldn't be transcribed, a form that couldn't be read, a résumé PR
+  home hasn't heard yet, a form that couldn't be read, a résumé PR
   whose checks failed, a mailbox that turned the digest down. Otherwise it is
   `done`. Picking nothing is `done`: weak postings or full places are what
   the run found, not something it failed at.

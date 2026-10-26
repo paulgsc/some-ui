@@ -264,7 +264,7 @@ export const DigestSchema = z.object({
     .default([]),
   /** The Drive files this run read: decisions and scouts, by name. */
   read: z.array(text),
-  /** The voice notes this run transcribed, by file name. */
+  /** The voice notes this run is done with, by file name (ROUTINE.md §2, "Home's transcripts"). */
   transcribed: z.array(text),
   /** The commits the fits were checked at. */
   evidence: z.object({ someUi: CommitSchema, server: CommitSchema }),

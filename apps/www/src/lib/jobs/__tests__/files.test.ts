@@ -62,7 +62,7 @@ describe("decisionsFile", () => {
     result: "submitted",
   })
 
-  it("says each pick as it stands, and names its voice notes", () => {
+  it("says each pick as it stands, and names its voice notes with the phone's id for each", () => {
     const file = fileOf(
       decisionsFile(state, "2026-10-18", "2026-10-18T22:00:00Z")
     )
@@ -84,6 +84,7 @@ describe("decisionsFile", () => {
     expect(file.voice).toEqual([
       { id: "v1", name: "2026-10-18_tid-7f2a_voice-1.webm" },
     ])
+    expect(json.notes).toEqual({ "2026-10-18_tid-7f2a_voice-1.webm": "v1" })
   })
 
   it("carries a pick's fit notes and sends their audio, whatever its decision", () => {
@@ -118,6 +119,7 @@ describe("decisionsFile", () => {
       id: "v2",
       name: "2026-10-18_tid-7f2a_voice-2.webm",
     })
+    expect(json.notes).toEqual({ "2026-10-18_tid-7f2a_voice-2.webm": "v2" })
   })
 
   it("sends no voice note the pick as written doesn't name", () => {
@@ -126,6 +128,7 @@ describe("decisionsFile", () => {
       decisionsFile(changed, "2026-10-18", "2026-10-18T22:00:00Z")
     )
     const json = JSON.parse(file.json)
+    expect(json.notes).toEqual({})
     expect(json.picks[1]).toEqual(
       expect.objectContaining({ decision: "taken", voice: [] })
     )
@@ -385,6 +388,9 @@ describe("scoutsFile", () => {
     const retried = fileOf(scoutsFile(state, new Date(2026, 9, 19, 8, 0, 0)))
     expect(retried.name).not.toBe(file.name)
     expect(retried.voice).toEqual(file.voice)
+    expect(JSON.parse(file.json).notes).toEqual({
+      "sc-a1b2c3_voice-1.webm": "v9",
+    })
     expect(JSON.parse(file.json).scouts[0]).toMatchObject({
       id: "sc-a1b2c3",
       addedAt: "2026-10-18T20:00:00Z",
@@ -467,6 +473,10 @@ describe("a log home restored", () => {
     expect(JSON.parse(file.json).scouts[0].voice).toEqual([
       "sc-a1b2c3_voice-1.webm",
     ])
+    // Its audio stayed on another phone, but home may have heard it there.
+    expect(JSON.parse(file.json).notes).toEqual({
+      "sc-a1b2c3_voice-1.webm": "v9",
+    })
     expect(file.voice).toEqual([])
   })
 })
