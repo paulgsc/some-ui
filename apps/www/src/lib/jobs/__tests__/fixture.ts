@@ -113,7 +113,7 @@ export function digest(day: string): Digest {
     ],
     scouts: [],
     read: [],
-    transcribed: [],
+    notesDone: [],
     evidence: { someUi: "cb503cb", server: "9226240" },
   }
 }
