@@ -2,7 +2,7 @@
  * The data contract: one regular-season week, from one team's point of view,
  * already computed. This package only renders it. Whatever produces it (a
  * server engine, a weekly job) owns the math: the paths, the flips that moved
- * them, the rivals' worst cases. `StorySeasonSchema` is the one door data comes
+ * them, what the rivals' breaks were worth. `StorySeasonSchema` is the one door data comes
  * in through (`parseStorySeason` for bare data), so a malformed feed fails
  * there rather than mid-render.
  *
@@ -86,7 +86,7 @@ const StoryWeekSchema = z.object({
     spoilers: z.array(Result),
     forced: z.array(Result),
   }),
-  /** The way in that is left, with everyone else as bad as they could be. */
+  /** One way in that is left: these teams' records the rest of the way. */
   path: z
     .object({
       extraWins: z.number().int(),
@@ -197,13 +197,6 @@ export const blewIt = (r: StoryResult): boolean =>
   r.collapse !== undefined &&
   (r.collapse.led || r.collapse.peakWinProbability >= 0.5)
 
-/**
- * Orders claims: fewer total wins needed, then a better seed; out sits one
- * win past a perfect season. Lower is better, and differences scale with wins.
- */
-export const floorKey = (c: StoryClaim, seasonLength: number): number =>
-  c.in ? (c.wins + c.extraWins) * 10 + c.seed : (seasonLength + 1) * 10
-
 /** Is the cell (x more wins, seed s) an open path? */
 export const isOpen = (
   paths: ReadonlyArray<number | null>,
@@ -236,3 +229,42 @@ export function cellChanges(
     })
   )
 }
+
+export type Verdict =
+  | "Better."
+  | "Worse."
+  | "Held."
+  | "Absorbed."
+  | "Still out."
+
+/** What the week did to the paths, from the grid's cell changes (PDS1). */
+export function weekVerdict(week: StoryWeek): Verdict {
+  const was = claimOf(week.paths.before, week.paths.winsBefore).in
+  if (!claimOf(week.paths.after, week.paths.winsAfter).in)
+    return was ? "Absorbed." : "Still out."
+  const changes = cellChanges(week).flat()
+  if (changes.includes("pruned")) return "Worse."
+  if (changes.includes("opened")) return "Better."
+  return "Held."
+}
+
+/**
+ * What the data proves about a result for the team (PDS2): `true` it helped,
+ * `false` it hurt, `null` nothing proven. Against the other conference, a
+ * conference team's loss takes a win out of the race; a tie (no reading) has
+ * no sign.
+ */
+export function provenSign(week: StoryWeek, r: StoryResult): boolean | null {
+  if (r.moved) return r.moved === "helped"
+  const exported = week.templates.exported.some(
+    (x) => x.team === r.team && x.opponent === r.opponent
+  )
+  return exported && r.yourWay !== null ? !r.won : null
+}
+
+/** Each of a template's results, signed by {@link provenSign}. */
+export const templateSigns = (
+  week: StoryWeek,
+  k: TemplateKey
+): ReadonlyArray<boolean | null> =>
+  week.templates[k].map((r) => provenSign(week, r))

@@ -1,19 +1,21 @@
 import type { JSX } from "react"
 import { PathGrid } from "@playoff-delta/components/path-grid"
 import { SymbolGlyph } from "@playoff-delta/components/symbol"
-import { HOW, WHO } from "@playoff-delta/lib/slides"
+import { HOW, REST_OF_LEAGUE, WHO } from "@playoff-delta/lib/slides"
 import {
   blewIt,
   cellChanges,
   claimOf,
-  floorKey,
   floorRecord,
   isOpen,
   nameOf,
   SEEDS,
   sinceLabel,
+  templateSigns,
+  weekVerdict,
   type StoryClaim,
   type StoryResult,
+  type StoryWeek,
   type TemplateKey,
 } from "@playoff-delta/lib/story"
 import { GAME_LOST, symbolFor } from "@playoff-delta/lib/symbols"
@@ -142,50 +144,54 @@ export const Game = ({ season, week }: SlideProps): JSX.Element => {
   )
 }
 
-function chipClass(r: StoryResult): string {
-  if (r.yourWay === true) return "pd-chip--hit"
-  if (r.yourWay === false) return "pd-chip--miss"
+function chipClass(sign: boolean | null): string {
+  if (sign === true) return "pd-chip--hit"
+  if (sign === false) return "pd-chip--miss"
   return ""
 }
 
 const Chip = ({
   k,
   r,
+  sign,
   at,
   you,
 }: {
   k: TemplateKey
   r: StoryResult
+  sign: boolean | null
   at: number
   you: string
 }): JSX.Element => {
   const verb = r.won ? "beat" : "lost to"
   const opponent = r.opponent === you ? "you" : r.opponent
   return (
-    <span className={`pd-chip ${chipClass(r)}`} style={delay(at)}>
+    <span className={`pd-chip ${chipClass(sign)}`} style={delay(at)}>
       <b>{r.team}</b>
       {k === "spoilers" ? <small className="uppercase">out</small> : null}
       {verb} {opponent}
       {blewIt(r) ? <span title="lost from ahead">↯ blew it</span> : null}
-      {r.moved ? <span title="moved the paths">★</span> : null}
+      {r.moved ? <span title="decided a path">★</span> : null}
     </span>
   )
 }
 
 const TemplateCard = ({
   k,
-  results,
+  week,
   at,
   you,
 }: {
   k: TemplateKey
-  results: ReadonlyArray<StoryResult>
+  week: StoryWeek
   at: number
   you: string
 }): JSX.Element => {
   const s = symbolFor(k)
-  const scored = results.filter((r) => r.yourWay !== null)
-  const hits = scored.filter((r) => r.yourWay).length
+  const results = week.templates[k]
+  const signs = templateSigns(week, k)
+  const scored = signs.filter((v) => v !== null)
+  const hits = scored.filter((v) => v).length
   const tone = !results.length
     ? "pd-card--none"
     : scored.length && hits === scored.length
@@ -196,8 +202,10 @@ const TemplateCard = ({
   const count = !results.length
     ? "none this week"
     : k === "forced"
-      ? `${counted(results.length, "game")}${scored.length ? ` · ${hits} of ${scored.length} that mattered ${s.verb}` : ""}`
-      : `${hits} of ${scored.length} ${s.verb}`
+      ? `${counted(results.length, "game")}${scored.length ? ` · ${hits} of ${scored.length} that mattered went your way` : ""}`
+      : scored.length
+        ? `${hits} of ${scored.length} went your way`
+        : "none decided"
   return (
     <Reveal at={at} className={`pd-card ${tone}`}>
       <div className="flex items-center gap-[2.5cqw]">
@@ -219,6 +227,7 @@ const TemplateCard = ({
               key={`${r.team}-${r.opponent}`}
               k={k}
               r={r}
+              sign={signs[i] ?? null}
               at={at + 0.3 + i * 0.12}
               you={you}
             />
@@ -249,7 +258,7 @@ const Family = ({
           <TemplateCard
             key={k}
             k={k}
-            results={week.templates[k]}
+            week={week}
             at={0.2 + i * 0.6}
             you={season.team}
           />
@@ -261,7 +270,7 @@ const Family = ({
       >
         <span className="text-success font-bold">● went your way</span>
         <span className="text-destructive font-bold">● didn&apos;t</span>
-        <span>★ moved the paths</span>
+        <span>★ decided a path</span>
       </Reveal>
     </>
   )
@@ -286,15 +295,7 @@ export const After = ({ season, week }: SlideProps): JSX.Element => {
   const pruned = changes.filter((c) => c === "pruned").length
   const opened = changes.filter((c) => c === "opened").length
   const open = changes.filter((c) => c === "open" || c === "opened").length
-  const word = !a.in
-    ? b.in
-      ? "Absorbed."
-      : "Still out."
-    : floorKey(a, season.seasonLength) < floorKey(b, season.seasonLength)
-      ? "Better."
-      : floorKey(a, season.seasonLength) > floorKey(b, season.seasonLength)
-        ? "Worse."
-        : "Held."
+  const word = weekVerdict(week)
   return (
     <>
       <Kicker>After week {week.week}</Kicker>
@@ -332,7 +333,7 @@ export const Path = ({ season, week }: SlideProps): JSX.Element => {
   if (!p)
     return (
       <>
-        <Kicker>The path</Kicker>
+        <Kicker>One way in</Kicker>
         <h2 className="pd-q">No path left.</h2>
         <p className="pd-say text-muted-foreground">
           From here, no way the season plays out gets the{" "}
@@ -343,9 +344,10 @@ export const Path = ({ season, week }: SlideProps): JSX.Element => {
   const lead = p.extraWins === 0 ? "never win again" : `win ${p.extraWins} more`
   return (
     <>
-      <Kicker>The path</Kicker>
+      <Kicker>One way in</Kicker>
       <h2 className="pd-q">
-        {nameOf(season, season.team)} {lead}, and still get in as #{p.seed}. If:
+        {nameOf(season, season.team)} {lead}, and still get in as #{p.seed}. One
+        way:
       </h2>
       <div className="flex flex-col gap-[2cqw]">
         {p.needs.map((n, i) => (
@@ -386,7 +388,7 @@ export const Path = ({ season, week }: SlideProps): JSX.Element => {
         at={0.6 + p.needs.length * 0.35}
         className="pd-say text-muted-foreground"
       >
-        the rest of the way. Everyone else, as bad as they could be.
+        the rest of the way, {REST_OF_LEAGUE}
       </Reveal>
     </>
   )

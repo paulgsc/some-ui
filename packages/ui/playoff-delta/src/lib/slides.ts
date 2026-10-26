@@ -12,7 +12,9 @@ import {
   claimOf,
   floorRecord,
   nameOf,
+  provenSign,
   sinceLabel,
+  templateSigns,
   type StorySeason,
   type StoryWeek,
   type TemplateKey,
@@ -60,6 +62,10 @@ export const HOLD_MS: Readonly<Record<SlideId, number>> = {
   benchmark: 6000,
   outro: 4500,
 }
+
+/** What the path's records leave out: it is one way in. */
+export const REST_OF_LEAGUE =
+  "and the rest of the league as this way has it. There may be others."
 
 export const WHO: ReadonlyArray<TemplateKey> = ["division", "rivals", "above"]
 export const HOW: ReadonlyArray<TemplateKey> = [
@@ -112,7 +118,7 @@ export function narration(
     }
     case "who": {
       const fell = WHO.flatMap((k) => week.templates[k]).filter(
-        (r) => r.yourWay
+        (r) => !r.won && provenSign(week, r) === true
       )
       const names = [...new Set(fell.map((r) => n(r.team)))]
       return names.length
@@ -120,19 +126,19 @@ export function narration(
         : "Who fell? None of the usual suspects."
     }
     case "how": {
-      const exp = week.templates.exported
-      const out = exp.filter((r) => r.yourWay).length
-      return `${counted(out, "conference team")} lost to the other conference, ${counted(week.templates.spoilers.filter((r) => r.yourWay).length, "spoiler")}, and ${counted(week.templates.forced.length, "forced game")}.`
+      const helped = (k: TemplateKey): number =>
+        templateSigns(week, k).filter((v) => v === true).length
+      return `${counted(helped("exported"), "conference team")} lost to the other conference, ${counted(helped("spoilers"), "spoiler")} went your way, and ${counted(week.templates.forced.length, "forced game")}.`
     }
     case "after": {
       return `After week ${week.week}, ${claimLine(season, week.paths.after, week.paths.winsAfter)}.`
     }
     case "path": {
       return week.path
-        ? `Here's the path: ${week.path.needs
+        ? `Here's one way in: ${week.path.needs
             .slice(0, 3)
             .map((x) => `the ${n(x.team)} go ${x.rest.w} and ${x.rest.l}`)
-            .join(", ")}. Everyone else, as bad as they could be.`
+            .join(", ")}, ${REST_OF_LEAGUE}`
         : "There's no path left."
     }
     case "rivals": {

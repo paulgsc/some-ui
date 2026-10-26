@@ -13,7 +13,7 @@ left) close them for good.
 ## What this package is, and is not
 
 It renders. It does not compute. The paths, the results that moved them,
-and the rivals' worst cases come in as one JSON season, validated by
+and what the rivals' breaks were worth come in as one JSON season, validated by
 `StorySeasonSchema` (`src/lib/story.ts`, the contract), and a malformed
 feed fails there rather than mid-render. Where no season is given, the stage
 plays `src/fixtures/invented-season.json`: an invented
@@ -42,7 +42,14 @@ Seven event types exist before any week is played; each week only fills them
 a contender, an eliminated team, a named rival, your division, your
 conference, and the win that travels from loser to winner), keeps one hue
 from the active theme's `--chart-1..5`, and one motion. Results on a card:
-green went your way, red didn't, ★ moved the paths, ↯ lost from ahead.
+green helped, red hurt, ★ decided a path (the other result would have changed
+the paths), ↯ lost from ahead.
+
+## What the stage promises
+
+Each is held by the test that names it: PDS1, the verdict, and PDS2, the
+colours, in `src/lib/__tests__/story.test.ts`; PDS3, the path and rivals
+words, in `src/components/slides/__tests__/words.test.tsx`.
 
 ## Recording
 
