@@ -113,7 +113,7 @@ const PRINCIPLES: ReadonlyArray<Principle> = [
   {
     term: "Local-first",
     gloss:
-      "The work happens on hardware you own, your devices and your own server, for as long as you keep it.",
+      "The work happens on hardware you own (your devices and your own server), for as long as you keep it.",
     icon: WifiOff,
   },
   {

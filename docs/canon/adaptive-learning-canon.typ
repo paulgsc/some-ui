@@ -2904,12 +2904,13 @@ also survives its relaxation.
   (*home*). For that deployment, and no other, Axiom 7.1 (i), (iii) and (iv)
   and Remarks 7.3 and 7.6 are amended. Home is not a third party. It is the
   owner's own storage, in the same role as the device, and anything a learner
-  writes may be kept there: belief, the evidence ring, reports, the practice
-  record, the pace, the sentence tally, reflections and recordings. A record
-  on home is appended to, never rewritten. The device keeps what home has not
-  yet confirmed, and what the owner keeps for use away from home. Sending to
-  home is the default and asks nothing of the owner. Theorem 7.2 holds with
-  home in the role of local storage, and the record then outlives the device.
+  writes may be kept there: the deviations, the evidence ring, reports, the
+  practice record, the pace, the sentence tally, reflections and recordings.
+  The device keeps what home has not yet confirmed, and what the owner keeps
+  for use away from home. Sending to home is the default and asks nothing of
+  the owner. Theorem 7.2 holds with home in the role of local storage, and the
+  record then outlives the device. Proposition 7.2 covers the device's own
+  writes only: nothing written for home is let go until home confirms it.
 
   The boundary is the edge of the owner's devices and home. Beyond it are a
   document service, the mailbox the routines read and the model that reads
