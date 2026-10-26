@@ -212,16 +212,13 @@ export function buildTreePrompt(request: TreeRequest): string {
  * neither a clock change nor two quick shares make two exports share a name.
  *
  * `notes` are the voice notes shared beside it, in the order they were said
- * (`voiceNoteName`). Under the note, a `notes` line names the phone's id for
- * each, by its file name, as a Jobs file's `notes` map does: home files its
- * transcript of a note under that id, so the reflections run finds it by
- * name (topik's ROUTINE.md, "Voice notes"). A typed scene has no such line,
- * nor does any export from before it.
+ * (`voiceNoteName`), each named by its id in the export's `notes` line (the
+ * README's "The file contract"). A typed scene has none.
  */
 export function nextSceneFile(
   prompt: string,
   at: Date,
-  notes: ReadonlyArray<{ id: string; name: string }> = []
+  notes: ReadonlyArray<{ id: string; name: string }>
 ): { name: string; text: string; stamp: string; at: string } {
   const stamp = sceneStamp(at)
   return {
@@ -238,9 +235,9 @@ export function nextSceneFile(
 }
 
 /**
- * `<!-- notes: {"<file name>":"<id>",...} -->`, the notes in the order they
- * were said: a comment, so a rendered prompt shows nothing of it. `<` and `>`
- * are escaped as JSON allows, so no id can end the comment early.
+ * `<!-- notes: {"<file name>":"<id>",...} -->`: a comment, so a rendered
+ * prompt shows nothing of it. `<` and `>` are escaped as JSON allows, so no
+ * id can end the comment early.
  */
 const noteIdsLine = (
   notes: ReadonlyArray<{ id: string; name: string }>

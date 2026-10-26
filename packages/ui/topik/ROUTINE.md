@@ -85,13 +85,10 @@ Once per run, list the folder, live and archived, as 10b lists a folder. Then:
   files beside the prompt, said in the order of `<n>`, which is the order its
   `Scene, spoken` line names them. The prompt names each one's id in a line
   under its agent note, `<!-- notes: {"<voice file name>":"<id>",...} -->`
-  (the JSON between `notes: ` and ` -->`; the Jobs files' `notes` map). A
-  note's transcript is the live `transcript-<id>-<n>.json` with the highest
-  `<n>`, as a reflection's is, and you read the notes in the order the prompt
-  names them.
+  (the JSON between `notes: ` and ` -->`). Each note's transcript is found by
+  its id, as a reflection's is.
 - **A drama prompt shared before the phone named ids** has voice files beside
-  it and no `notes` line. This route is only for those older prompts. Their
-  notes went home under the prompt's stamp, but their names don't carry it:
+  it and no `notes` line. Their notes went home under the prompt's stamp, but their names don't carry it:
   fetch each live transcript no reflection or prompt claims by id, once per
   run, and match an older prompt to the ones whose body has `"of": "scene"`
   and `"ref": "drama-<stamp>"`, one note per distinct `note` (the highest
@@ -104,7 +101,7 @@ Once per run, list the folder, live and archived, as 10b lists a folder. Then:
 - **Archived:** a note with an id (a reflection's, or one a prompt's `notes`
   line names) with no live transcript but an archived one is asked back by
   its own name (`PUT "$JOBS_MAILBOX_URL/v1/transcript/wanted/<name>"`, no
-  body, the highest `<n>`), so a prompt asks back only its own transcripts.
+  body, the highest `<n>`).
   For an older prompt with too few matches, ask back the archived transcripts
   put (their `putAt`) between a day before the prompt's stamp and seven days
   after it, at most ten a run; a later run matches them by body.
@@ -277,7 +274,8 @@ file it, and still write the pair.
    read what home heard in each voice note beside it, in the order the prompt
    names them ("Voice notes" above; one home hasn't heard makes the prompt
    wait) before you write anything. Those transcripts stand in for the
-   prompt's "listen to them first": the spoken scene is what the learner asked for. Then do what the prompt asks: write the drama as one scene tree,
+   prompt's "listen to them first": the spoken scene is what the learner
+   asked for. Then do what the prompt asks: write the drama as one scene tree,
    following the prompt exactly (it carries the tree prompt, the request, and
    the last drama to continue from). If the prompt names a last drama, read
    that drama's `.json` from `Dramas/played/` or `Dramas/requests/` to keep its

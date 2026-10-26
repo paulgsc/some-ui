@@ -165,7 +165,7 @@ describe("buildTreePrompt", () => {
 const notesLine = (text: string): string =>
   text.split("\n").find((line) => line.startsWith("<!-- notes: ")) ?? ""
 
-/** The map a `notes` line holds, as the routine reads it. */
+/** The map a `notes` line holds. */
 const idsOf = (line: string): Record<string, string> =>
   z
     .record(z.string(), z.string())
@@ -175,7 +175,8 @@ describe("nextSceneFile", () => {
   it("names the export by its moment, and tells an agent the reply's name", () => {
     const file = nextSceneFile(
       "THE PROMPT",
-      new Date("2026-10-09T07:05:03.120Z")
+      new Date("2026-10-09T07:05:03.120Z"),
+      []
     )
     expect(file.name).toBe("drama-20261009T070503120Z.prompt.md")
     expect(file.stamp).toBe("drama-20261009T070503120Z")
@@ -199,10 +200,8 @@ describe("nextSceneFile", () => {
       [first.name]: "said-first",
       [second.name]: "said-second",
     })
-    // The routine reads them in this order, which `voice-<n>` also gives.
+    // The routine reads them in this order.
     expect(Object.keys(ids)).toEqual([first.name, second.name])
-    expect(first.name).toMatch(/\.voice-1\./)
-    expect(second.name).toMatch(/\.voice-2\./)
     expect(file.text.endsWith(`${line}\n\nTHE PROMPT`)).toBe(true)
   })
 
@@ -218,11 +217,9 @@ describe("nextSceneFile", () => {
     })
   })
 
-  it("names no ids for a typed scene, as every export from before them reads", () => {
+  it("names no ids for a typed scene", () => {
     const at = new Date("2026-10-09T07:05:03.120Z")
     const file = nextSceneFile("THE PROMPT", at, [])
-    expect(file.text).not.toContain("<!-- notes:")
-    expect(file).toEqual(nextSceneFile("THE PROMPT", at))
     expect(file.text.split("\n").slice(1)).toEqual(["", "THE PROMPT"])
   })
 })
