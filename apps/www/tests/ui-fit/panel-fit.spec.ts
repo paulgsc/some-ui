@@ -115,6 +115,8 @@ const PANEL_STAGES: ReadonlyArray<PanelId> = [
   "topik-read-aloud-ready",
   "topik-read-aloud-summary-full",
   "topik-read-aloud-sitting-over",
+  // The start screen with the routine's feed and its search.
+  "topik-routine-feed",
   // "What are you hungry for?": its question screen, and a snack served at
   // its longest.
   "topik-portion-ask",

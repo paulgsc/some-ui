@@ -1,7 +1,7 @@
 {
   "name": "www",
   "private": true,
-  "version": "0.1.48",
+  "version": "0.1.53",
   "type": "module",
   "scripts": {
     "dev": "node scripts/sync-resume.mjs && vite",
@@ -80,6 +80,6 @@
     "@playwright/test": "1.62.1",
     "@some-ui/contract-harness": "workspace:*",
     "@vitejs/plugin-react": "^6.1.2",
-    "vite": "^8.3.4"
+    "vite": "^8.3.5"
   }
 }

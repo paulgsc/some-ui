@@ -10,13 +10,16 @@
  *
  * Read-aloud reads the word sets the learner added from storage
  * (`read-aloud/added-sets`). A set not opened yet waits
- * under "Ready for you", above everything else, and opens on its own words.
+ * under "Ready for you" and opens on its own words.
  *
  * What the reflections routine left on home (`adapter/routine-files`) is
- * listed under "From the routine", at the top, the ones not opened yet
- * first: a word set pair is added as two picked files are, a drama starts
- * as a picked scene does. An opened one stays listed, marked opened, since
- * home's list is the only way back to it.
+ * listed under "From the routine", at the top, as feed cards
+ * (`core/lesson-feed`): the first few, the ones not opened yet first, and
+ * the rest a search away. A scene offers its read-aloud set and its grammar
+ * lens set as two sessions: either press adds the pair as two picked files
+ * are, and opens that set. Its sets are not listed again under "Ready for
+ * you". A drama starts as a picked scene does. An opened one stays listed,
+ * marked opened, since home's list is the only way back to it.
  *
  * "What are you hungry for?" (`PortionMenu`, `core/portion`) serves one
  * thing of the size asked for from all of the above: a bite or a snack is
@@ -38,10 +41,7 @@ import { Button, KeepOnShelf, KeptShelf } from "@some-ui/shared"
 import { CastSheet } from "@topik/components/topik/handheld/cast-sheet"
 import { DramaLesson } from "@topik/components/topik/handheld/drama-lesson"
 import { GenerateLesson } from "@topik/components/topik/handheld/generate-lesson"
-import type {
-  RoutineCard,
-  StorageNote,
-} from "@topik/components/topik/handheld/material-list"
+import type { StorageNote } from "@topik/components/topik/handheld/material-list"
 import { MaterialList } from "@topik/components/topik/handheld/material-list"
 import { PortionMenu } from "@topik/components/topik/handheld/portion-menu"
 import { RoutineStatus } from "@topik/components/topik/handheld/routine-status"
@@ -64,10 +64,7 @@ import type { PortionOrderStore } from "@topik/lib/topik/adapter/portion-order"
 import { createPortionOrderStore } from "@topik/lib/topik/adapter/portion-order"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
-import type {
-  OpenedStore,
-  RoutineFile,
-} from "@topik/lib/topik/adapter/routine-files"
+import type { OpenedStore } from "@topik/lib/topik/adapter/routine-files"
 import {
   createOpenedStore,
   openedKey,
@@ -100,6 +97,8 @@ import type { DramaLesson as Tree } from "@topik/lib/topik/core/drama"
 import { titleOf } from "@topik/lib/topik/core/drama"
 import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
 import type { Seed } from "@topik/lib/topik/core/feed-card"
+import type { LessonSession } from "@topik/lib/topik/core/lesson-feed"
+import { lessonItems } from "@topik/lib/topik/core/lesson-feed"
 import type { Dish } from "@topik/lib/topik/core/portion"
 import {
   holdingsOf,
@@ -120,6 +119,7 @@ import {
   setLevel,
   wordsLeaving,
 } from "@topik/lib/topik/read-aloud/added-sets"
+import type { SetPractice } from "@topik/lib/topik/read-aloud/content"
 import type { Tally } from "@topik/lib/topik/read-aloud/tally"
 import { ChevronLeft, Loader2, Music, Users } from "lucide-react"
 
@@ -313,28 +313,28 @@ export const HandheldLesson = ({
   // returns to the material list it was opened from. `set` is the added set
   // it reads on its own, or null for every word the phone has.
   // `lines`: a bite or a snack, read from those lines of the set alone.
+  // `practice`: the session it opens on, where the set serves both.
   const [reading, setReading] = useState<{
     set: string | null
     begin?: boolean
     lines?: ReadonlyArray<string>
+    practice?: SetPractice
   } | null>(null)
   const routine = useRoutineFiles(routineFeed)
   const [opened] = useState(() => routineOpened ?? createOpenedStore())
   const [openedKeys, setOpenedKeys] = useState(opened.opened)
   const heldRuns = useHeldRuns(routineFeed?.runs, routineFeed?.key ?? "")
   const [routineNote, setRoutineNote] = useState<StorageNote | null>(null)
-  const routineCards = useMemo(() => {
-    const cards = (routine.data ?? []).map((file) =>
-      routineCardOf(file, openedKeys.has(openedKey(file)))
-    )
-    return [
-      ...cards.filter((card) => !card.opened),
-      ...cards.filter((card) => card.opened),
-    ]
-  }, [routine.data, openedKeys])
+  const routineItems = useMemo(
+    () => lessonItems(routine.data ?? [], openedKeys, added),
+    [routine.data, openedKeys, added]
+  )
   // A pair's sets the phone already holds are left as they are, record and
-  // all; the rest are added, and the pair opens reading its first set.
-  const openRoutineScene = (decks: ReadonlyArray<unknown>): boolean => {
+  // all; the rest are added, and the pair opens on `session`, else its first.
+  const openRoutineScene = (
+    decks: ReadonlyArray<unknown>,
+    session: LessonSession | undefined
+  ): boolean => {
     const texts = decks.map((deck) => JSON.stringify(deck))
     const ids = texts.map((text) => {
       const intake = intakeSet(text, added)
@@ -349,18 +349,28 @@ export const HandheldLesson = ({
       if (next === null) return false
       held = next
     }
-    const first = ids[0]
-    if (first == null) return false
-    keepSets(openSet(held, first, now().toISOString()))
-    setReading({ set: first, begin: true })
+    const chosen = session?.id ?? ids[0]
+    if (chosen == null) return false
+    keepSets(openSet(held, chosen, now().toISOString()))
+    setReading({
+      set: chosen,
+      begin: true,
+      ...(session ? { practice: session.practice } : {}),
+    })
     return true
   }
-  const openRoutine = (key: string): void => {
+  /** Opens a scene on the set `setId`, else its read-aloud set; a drama plays. */
+  const openRoutine = (key: string, setId?: string): void => {
     const file = routine.data?.find((candidate) => openedKey(candidate) === key)
     if (file === undefined) return
     setRoutineNote(null)
     if (file.kind === "scene") {
-      if (!openRoutineScene(file.decks)) return
+      const sessions =
+        routineItems.find((item) => item.key === key)?.sessions ?? []
+      const session =
+        sessions.find((one) => one.id === setId) ??
+        sessions.find((one) => one.practice === "read-aloud")
+      if (!openRoutineScene(file.decks, session)) return
     } else {
       startTree(file.tree)
     }
@@ -375,8 +385,8 @@ export const HandheldLesson = ({
   const canRead = speaker?.available === true
   /** Opens the next lesson; false when there is none to open. */
   const openNext = (): boolean => {
-    const fromRoutine = routineCards.find(
-      (card) => !card.opened && (card.kind === "drama" || canRead)
+    const fromRoutine = routineItems.find(
+      (item) => !item.opened && (item.kind === "drama" || canRead)
     )
     if (fromRoutine) {
       openRoutine(fromRoutine.key)
@@ -464,6 +474,7 @@ export const HandheldLesson = ({
           paused={paused}
           onExit={() => setReading(null)}
           initialBegin={reading.begin === true}
+          {...(reading.practice ? { initialPractice: reading.practice } : {})}
         />
       </div>
     )
@@ -696,7 +707,11 @@ export const HandheldLesson = ({
         addedSets={added.length}
         readySets={readySets(added).flatMap(({ deck }) => {
           const own = resolved.sets.get(deck.id)
-          return own
+          // A routine scene's set is on its card under "From the routine".
+          const onCard = routineItems.some((item) =>
+            item.sessions.some((session) => session.id === deck.id)
+          )
+          return own && !onCard
             ? [
                 {
                   id: deck.id,
@@ -723,7 +738,7 @@ export const HandheldLesson = ({
         setFileHint={wordSetHint}
         setNote={setNote}
         onOrder={openMenu}
-        fromRoutine={routineCards}
+        fromRoutine={routineItems}
         routineNote={routineNote}
         onOpenRoutine={openRoutine}
         {...(heldRuns === null
@@ -769,23 +784,4 @@ function useHeldRuns(log: RunLog | undefined, key: string): HeldRuns | null {
     log?.subscribe ?? NO_SUBSCRIBE,
     log === undefined ? NO_LOG : (): HeldRuns => log.held(key)
   )
-}
-
-/** A routine file as its card shows it; a drama names its own title and level. */
-function routineCardOf(file: RoutineFile, opened: boolean): RoutineCard {
-  return file.kind === "scene"
-    ? {
-        key: openedKey(file),
-        kind: "scene",
-        title: file.title,
-        details: "Word sets: read aloud and grammar lens",
-        opened,
-      }
-    : {
-        key: openedKey(file),
-        kind: "drama",
-        title: titleOf(file.tree),
-        details: `Drama · TOPIK ${file.tree.level}`,
-        opened,
-      }
 }

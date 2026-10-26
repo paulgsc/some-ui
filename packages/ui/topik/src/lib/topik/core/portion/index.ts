@@ -522,7 +522,7 @@ export const PORTION_WORDS = {
       }
       case "meal": {
         return dish.lines === null
-          ? "The routine's scene: it opens on its read-aloud set, and its grammar lens set waits under “Ready for you”."
+          ? "The routine's scene, read aloud. Its grammar lens is the other button on its card, under “From the routine”."
           : `Every sentence ${from(dish.title)}, ${dish.lines} in all, read aloud.`
       }
       case "dessert": {

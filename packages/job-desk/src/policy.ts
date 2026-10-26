@@ -124,3 +124,37 @@ export const QUERIES: {
  */
 export const EXCLUDED_TITLE =
   /\b(support|help ?desk|call cent(?:er|re)|customer|client success|account (?:executive|manager)|sales|implementation|onboarding specialist)\b/i
+
+/**
+ * The hosts whose links the run opens itself, by source (ROUTINE.md §3): the
+ * Greenhouse, Lever and Ashby boards it searches, and Hacker News, whose
+ * "Who is hiring?" posts it reads. Anywhere else, Indeed, LinkedIn and most
+ * careers pages among them, answers an agent with a bot check or not at all,
+ * so a scout from there needs the posting's own text (`linkReach`).
+ */
+export const RUN_HOSTS = {
+  greenhouse: ["job-boards.greenhouse.io", "boards.greenhouse.io"],
+  lever: ["jobs.lever.co"],
+  ashby: ["jobs.ashbyhq.com"],
+  hackerNews: ["news.ycombinator.com"],
+} as const satisfies Readonly<Record<string, ReadonlyArray<string>>>
+
+const RUN_HOST_SET: ReadonlySet<string> = new Set(
+  Object.values(RUN_HOSTS).flat()
+)
+
+/**
+ * Whether the run can open a link: `"opens"` when its host is one of
+ * `RUN_HOSTS` exactly (a subdomain, or a longer name ending in one, is not),
+ * `"cannot-open"` for any other host, and null when it isn't an https link,
+ * the only kind a scout keeps (`HttpsUrlSchema`).
+ */
+export function linkReach(url: string): "opens" | "cannot-open" | null {
+  try {
+    const { protocol, hostname } = new URL(url.trim())
+    if (protocol !== "https:") return null
+    return RUN_HOST_SET.has(hostname) ? "opens" : "cannot-open"
+  } catch {
+    return null
+  }
+}

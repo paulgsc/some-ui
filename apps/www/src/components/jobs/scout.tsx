@@ -1,13 +1,15 @@
 /**
  * Jobs › Scout: postings I found myself, for the morning run's second
- * opinion, each card wearing where it is on its way to that run. Some sites, Indeed among them, refuse agents, so the posting's text
- * can come along.
+ * opinion, each card wearing where it is on its way to that run. The run
+ * opens only the hosts it reads (`linkReach`), so a link from anywhere else
+ * waits for the posting's own text.
  */
 import type { JSX } from "react"
 import { useState } from "react"
 import type { AdjacentFamily, Digest, Track } from "@some-ui/job-desk"
 import {
   ADJACENT_FAMILIES,
+  linkReach,
   MAX_NOTE,
   MAX_POSTING_TEXT,
   MAX_SCOUT_TITLE,
@@ -20,6 +22,11 @@ import { ExternalLink } from "lucide-react"
 import { phoneJobs } from "@/lib/jobs"
 import { eventJourney, kindJourney } from "@/lib/jobs/journey"
 import { draftVoice, SCOUT_OWNER } from "@/lib/jobs/model"
+import {
+  cantOpenLink,
+  postingTextHint,
+  postingTextLabel,
+} from "@/lib/jobs/words"
 import { themeOf } from "@/lib/journey"
 import { Gaps, Scores, sectionHeading } from "@/components/job-reading"
 
@@ -112,7 +119,11 @@ export const JobsScout = (): JSX.Element => {
     state.digests.flatMap((d) => d.scouts.map((s) => [s.scoutId, s] as const))
   )
   const link = httpsLink(url.trim())
-  const ready = link !== null && title.trim() !== ""
+  const needsText = linkReach(url) === "cannot-open"
+  const ready =
+    link !== null &&
+    title.trim() !== "" &&
+    (!needsText || postingText.trim() !== "")
   const busy = useVoiceBusy(SCOUT_OWNER)
 
   const add = (): void => {
@@ -147,8 +158,14 @@ export const JobsScout = (): JSX.Element => {
           maxLength={MAX_URL}
           placeholder="https://jobs.lever.co/…"
           value={url}
+          aria-describedby={needsText ? "scout-url-hint" : undefined}
           onChange={(e) => setUrl(e.target.value)}
         />
+        {needsText && (
+          <p id="scout-url-hint" className="text-muted-foreground text-sm">
+            {cantOpenLink}
+          </p>
+        )}
         <Label htmlFor="scout-title" className={sectionHeading}>
           Title and company
         </Label>
@@ -185,12 +202,12 @@ export const JobsScout = (): JSX.Element => {
           onChange={(e) => setWhy(e.target.value)}
         />
         <Label htmlFor="scout-text" className={sectionHeading}>
-          Posting text, optional
+          {postingTextLabel(needsText)}
         </Label>
         <Textarea
           id="scout-text"
           rows={3}
-          placeholder="Paste the description: the run can’t open Indeed or LinkedIn links."
+          placeholder={postingTextHint}
           maxLength={MAX_POSTING_TEXT}
           value={postingText}
           onChange={(e) => setPostingText(e.target.value)}

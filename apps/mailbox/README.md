@@ -140,7 +140,9 @@ scene folder's name>","decks":[<read-aloud deck>,<lens deck>]}`, each deck exact
   not do. `routine` names the routine, as the file's name does, and decides what `found` counts:
   the reflections routine's (`{"reflections","prompts"}`, read by Topik's
   `adapter/routine-runs`) or the jobs routine's (`{"postings","scouts","decisions"}`, its
-  `added` today's `brief`; `@some-ui/job-desk`'s `JobsRunSchema`, `ROUTINE.md` §9). Each reader
+  `added` today's `brief`; `@some-ui/job-desk`'s `JobsRunSchema`, `ROUTINE.md` §9). The
+  reflections routine's also carries `"voice":{"waiting","missed","unread"}`, what became of the
+  voice notes in what it found (topik's `ROUTINE.md`, step 12). Each reader
   leaves out the other routine's runs. **An opened
   filing** is `{"schema":"some-ui.routine-opened/1","opened":["scene/<name>","drama/<name>"],
 "at"}`: every listed lesson the phone had opened when it filed, as home builds it

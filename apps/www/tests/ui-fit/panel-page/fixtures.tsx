@@ -18,7 +18,7 @@ import type { ComponentProps, JSX } from "react"
 import { HANDHELD_MAX_HEIGHT } from "@some-ui/react-hooks"
 import { SpeechProvider } from "@some-ui/speech"
 import { webSpeech } from "@some-ui/speech/web-speech"
-import type { Dish, ReadAloudDeck } from "@some-ui/topik"
+import type { Dish, LessonItem, ReadAloudDeck } from "@some-ui/topik"
 // This page is its own build (`build:fit`) and in no shipped bundle, so the
 // eager edge the rule guards against costs nothing here, and the quiz stages
 // are reachable through no lazy entry.
@@ -27,6 +27,7 @@ import {
   DramaLesson,
   intakeTree,
   lastDramaOf,
+  MaterialList,
   PoolNote,
   PortionAsk,
   PortionServed,
@@ -190,6 +191,42 @@ const fitTree = ((): ComponentProps<typeof DramaLesson>["lesson"] => {
   }
   return intake.lesson
 })()
+
+/** A routine scene at `level` and `genre`, its read-aloud set opened or not. */
+const fitScene = (
+  at: number,
+  level: number,
+  genre: string,
+  name: string,
+  opened = false
+): LessonItem => ({
+  key: `scene/scene-${at}.json`,
+  kind: "scene",
+  name,
+  level,
+  genre,
+  premise: undefined,
+  opened,
+  sessions: [
+    { practice: "read-aloud", id: `set-${at}`, size: "12 words", opened },
+    { practice: "lens", id: `set-${at}-lens`, size: "6 lines", opened: false },
+  ],
+})
+
+/** More than the first few, at two levels: the search and the filter show. */
+const FIT_ROUTINE: ReadonlyArray<LessonItem> = [
+  {
+    ...fitScene(0, 2, "comedy", "What is this test"),
+    premise:
+      "Two friends meet before the exam and argue about what it even tests.",
+  },
+  fitScene(1, 1, "thriller", "The clock keeps running"),
+  fitScene(2, 2, "historical", "Rice cakes on the road"),
+  fitScene(3, 2, "family", "Holiday food with grandmother", true),
+  fitScene(4, 2, "makjang", "The same secret again", true),
+  fitScene(5, 2, "revenge", "Where the stress goes", true),
+  fitScene(6, 1, "romance", "A video lesson for two", true),
+]
 
 /**
  * A card in the box the handheld gives it: a flex column under its header
@@ -454,6 +491,23 @@ export const PANEL_FIXTURES = {
       short={short}
       onStart={noop}
       onStop={noop}
+    />
+  )),
+
+  // The start screen with the routine's feed: more than the first few, so
+  // the search shows, each scene a card with a session per set.
+  "topik-routine-feed": handheldStage(() => (
+    <MaterialList
+      level={2}
+      onLevel={noop}
+      dramas={[]}
+      onPlay={noop}
+      onSeed={noop}
+      loading={false}
+      error={null}
+      onReload={noop}
+      fromRoutine={FIT_ROUTINE}
+      onOpenRoutine={noop}
     />
   )),
 

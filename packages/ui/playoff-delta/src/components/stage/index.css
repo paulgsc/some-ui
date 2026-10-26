@@ -174,26 +174,6 @@
     stroke-width: 2.4;
   }
 
-  .pd-p-out {
-    fill: none;
-    stroke: var(--muted-foreground);
-    stroke-dasharray: 3 3;
-    stroke-width: 2;
-  }
-
-  .pd-p-ring {
-    fill: none;
-    opacity: 0.7;
-    stroke: var(--tone);
-    stroke-width: 1.4;
-  }
-
-  .pd-p-division {
-    fill: none;
-    stroke: var(--muted-foreground);
-    stroke-width: 1.6;
-  }
-
   .pd-p-conference {
     fill: none;
     stroke: var(--muted-foreground);
@@ -203,12 +183,6 @@
 
   .pd-p-win {
     fill: var(--tone);
-  }
-
-  .pd-p-line {
-    stroke: var(--muted-foreground);
-    stroke-dasharray: 2 3;
-    stroke-width: 1;
   }
 
   /* One pass where a symbol is used; forever where it is introduced. */
@@ -237,24 +211,8 @@
     animation-name: pd-lose;
   }
 
-  .pd-m-drop {
-    animation-name: pd-drop;
-  }
-
-  .pd-m-fly-out {
-    animation-name: pd-fly-out;
-  }
-
-  .pd-m-fall {
-    animation-name: pd-fall;
-  }
-
   .pd-m-export {
     animation-name: pd-export;
-  }
-
-  .pd-m-waste {
-    animation-name: pd-waste;
   }
 
   .pd-m-bounce {
@@ -262,29 +220,73 @@
   }
 
   /* ------------------------------------------------------------ results */
-  .pd-chip {
-    animation: pd-rise 0.35s var(--d, 0s) ease-out both;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    color: var(--muted-foreground);
-    display: inline-flex;
-    font-size: 3.2cqw;
-    gap: 1.2cqw;
-    padding: 0.7cqw 2cqw;
+
+  /* A result's leverage: a bar out from the middle, right and green when it
+     helped, left and red when it hurt, its length the result's share of the
+     week's largest. */
+  .pd-lev {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: 2.2cqw;
   }
 
-  .pd-chip b {
-    color: var(--foreground);
+  .pd-lev > i {
+    animation: pd-grow 0.8s var(--d, 0s) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    border-radius: 0.6cqw;
+    display: block;
+    height: 100%;
   }
 
-  .pd-chip--hit {
-    background: color-mix(in oklab, var(--success) 12%, transparent);
-    border-color: color-mix(in oklab, var(--success) 60%, transparent);
+  .pd-lev--up > i {
+    background: var(--success);
+    grid-column: 2;
+    justify-self: start;
+    transform-origin: left;
   }
 
-  .pd-chip--miss {
-    background: color-mix(in oklab, var(--destructive) 9%, transparent);
-    border-color: color-mix(in oklab, var(--destructive) 55%, transparent);
+  .pd-lev--down > i {
+    background: var(--destructive);
+    grid-column: 1;
+    justify-self: end;
+    transform-origin: right;
+  }
+
+  /* The pigeonhole: a column per team, filled to its wins, with the line
+     every one of them must stay under. */
+  .pd-buckets {
+    align-items: end;
+    display: flex;
+    gap: 2.4cqw;
+    height: 46cqw;
+    position: relative;
+  }
+
+  .pd-bucket {
+    background: var(--muted);
+    border-radius: 1cqw 1cqw 0 0;
+    display: flex;
+    flex: 1;
+    flex-direction: column-reverse;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .pd-bucket > i {
+    animation: pd-rise-in 0.8s var(--d, 0s) ease-out both;
+    background: var(--muted-foreground);
+    display: block;
+    transform-origin: bottom;
+  }
+
+  .pd-bucket > i.pd-bucket__room {
+    background: color-mix(in oklab, var(--success) 35%, transparent);
+  }
+
+  .pd-buckets__line {
+    border-top: 0.5cqw dashed var(--destructive);
+    left: 0;
+    position: absolute;
+    right: 0;
   }
 
   .pd-card {
@@ -295,19 +297,6 @@
     flex-direction: column;
     gap: 2cqw;
     padding: 2.6cqw 3cqw;
-  }
-
-  .pd-card--all {
-    border-color: color-mix(in oklab, var(--success) 55%, transparent);
-  }
-
-  .pd-card--zero {
-    border-color: color-mix(in oklab, var(--destructive) 45%, transparent);
-  }
-
-  .pd-card--none {
-    border-style: dashed;
-    opacity: 0.6;
   }
 
   /* ------------------------------------------------------------ paths grid */
@@ -463,6 +452,16 @@
     }
   }
 
+  @keyframes pd-rise-in {
+    from {
+      transform: scaleY(0);
+    }
+
+    to {
+      transform: none;
+    }
+  }
+
   @keyframes pd-grow {
     from {
       transform: scaleX(0);
@@ -519,56 +518,6 @@
     }
   }
 
-  @keyframes pd-drop {
-    0%,
-    20% {
-      opacity: 1;
-      transform: none;
-    }
-
-    70%,
-    100% {
-      opacity: 0.3;
-      transform: translateY(16px);
-    }
-  }
-
-  @keyframes pd-fly-out {
-    0%,
-    20% {
-      opacity: 0;
-      transform: none;
-    }
-
-    30% {
-      opacity: 1;
-    }
-
-    80% {
-      opacity: 1;
-      transform: translate(26px, -30px);
-    }
-
-    100% {
-      opacity: 0;
-      transform: translate(26px, -30px);
-    }
-  }
-
-  @keyframes pd-fall {
-    0%,
-    20% {
-      opacity: 1;
-      transform: none;
-    }
-
-    70%,
-    100% {
-      opacity: 0.45;
-      transform: translateY(30px);
-    }
-  }
-
   @keyframes pd-export {
     0%,
     15% {
@@ -584,28 +533,6 @@
     100% {
       opacity: 1;
       transform: translateX(32px);
-    }
-  }
-
-  @keyframes pd-waste {
-    0%,
-    15% {
-      opacity: 0;
-      transform: none;
-    }
-
-    25% {
-      opacity: 1;
-    }
-
-    65% {
-      opacity: 1;
-      transform: translateX(-28px);
-    }
-
-    100% {
-      opacity: 0;
-      transform: translateX(-28px) scale(0.2);
     }
   }
 
