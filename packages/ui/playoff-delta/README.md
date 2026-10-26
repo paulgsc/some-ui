@@ -10,7 +10,7 @@ Two questions every week:
 - **How bad can we be, and still make the playoffs?** If the team won only
   so many more games, could it still get in, and as which seed? The answer
   only holds or gets worse as results come in: each result rules out ways
-  the season can end.
+  the season can end (a tied game aside, which can open one).
 - **Of all the ways the season can still go, how many get us in?** The share
   of ways in moves both ways. Over all the ways a week could go its expected
   change is zero, so its sign is the week's luck, and it splits into the
@@ -45,8 +45,9 @@ outro.
 
 ## The algebra
 
-The stage teaches four laws (`src/lib/laws.ts`), one a week, chosen by the
-week's biggest league result:
+The stage teaches four laws (`src/lib/laws.ts`). The week's rule is one of
+the first three, picked by the week's biggest league result (the four kinds
+on a bye); the pigeonhole is the boundary slide's:
 
 1. **Conservation.** Every game hands out exactly one win.
 2. **Four kinds of game** (`src/lib/symbols.ts`, a glyph each): ours, theirs

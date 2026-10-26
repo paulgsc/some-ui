@@ -67,8 +67,8 @@ describe("cellChanges", () => {
   })
 
   it("does not shift on a bye", () => {
-    const row = cellChanges(shaped(null, [6, 3], [6, 3]))[1]
-    expect(row?.[2]).toBe("open")
+    // Shifted, row 0 would read last week's row 1, where #3 was open.
+    expect(cellChanges(shaped(null, [6, 3], [6, 3]))[0]?.[2]).toBe("closed")
   })
 
   it("marks a closed path", () => {
@@ -121,15 +121,17 @@ describe("lawOf", () => {
 
   it("follows the league's biggest result", () => {
     const own = result({ kind: "own", winner: "SF", leverage: 0.2 })
-    expect(lawOf(shaped(g, [own, result({ kind: "exported" })]))).toBe(
-      "conservation"
-    )
-    expect(lawOf(shaped(g, [own, result({ kind: "inside" })]))).toBe("room")
+    const exported = result({ kind: "exported", leverage: -0.03 })
+    const inside = result({ kind: "inside", leverage: 0.01 })
+    expect(lawOf(shaped(g, [own, exported, inside]))).toBe("conservation")
+    expect(
+      lawOf(shaped(g, [own, { ...inside, leverage: 0.04 }, exported]))
+    ).toBe("room")
   })
 })
 
 describe("calls", () => {
-  it("settles last week's calls with this week's results", () => {
+  it("settles last week's calls this week's results decided", () => {
     const [a, b] = SAMPLE_SEASON.weeks
     if (!a || !b) throw new Error("two weeks")
     const season: StorySeason = {
@@ -137,7 +139,10 @@ describe("calls", () => {
       weeks: [
         {
           ...a,
-          next: [{ home: "TEN", away: "LAR", rootFor: "TEN", swing: 0.02 }],
+          next: [
+            { home: "TEN", away: "LAR", rootFor: "TEN", swing: 0.02 },
+            { home: "NYG", away: "WAS", rootFor: "WAS", swing: 0.01 },
+          ],
         },
         {
           ...b,
@@ -145,9 +150,7 @@ describe("calls", () => {
         },
       ],
     }
-    const settled = calls(season, b)
-    expect(settled).toHaveLength(1)
-    expect(settled[0]?.result?.winner).toBe("LAR")
+    expect(calls(season, b).map((c) => c.result.winner)).toEqual(["LAR"])
     expect(calls(season, a)).toEqual([])
   })
 })

@@ -8,7 +8,7 @@ import { leagueResults, type StoryWeek } from "./story"
 
 export type LawKey = "conservation" | "kinds" | "room" | "pigeonhole"
 
-export type Law = {
+type Law = {
   readonly name: string
   /** The law, in one sentence. */
   readonly rule: string
@@ -25,7 +25,7 @@ export const LAWS: Readonly<Record<LawKey, Law>> = {
   kinds: {
     name: "Four kinds of game",
     rule: "Ours, theirs against the other conference, the other conference against itself, and theirs against each other.",
-    then: "Our win always helps. Their loss to the other conference helps or does nothing. The other conference playing itself never matters. Their games against each other can go either way.",
+    then: "Our win never hurts. Their loss to the other conference helps or does nothing. The other conference playing itself never matters. Their games against each other can go either way.",
   },
   room: {
     name: "Who can afford the win",
@@ -39,11 +39,14 @@ export const LAWS: Readonly<Record<LawKey, Law>> = {
   },
 }
 
+/** The laws a week can show; the pigeonhole is the boundary slide's. */
+export type WeekLaw = Exclude<LawKey, "pigeonhole">
+
 /**
  * The law this week shows: on a bye, the four kinds (only the league moved);
  * otherwise the kind of the league's biggest result.
  */
-export function lawOf(week: StoryWeek): LawKey {
+export function lawOf(week: StoryWeek): WeekLaw {
   const top = leagueResults(week)[0]
   if (week.game === null || top === undefined) return "kinds"
   return top.kind === "exported" ? "conservation" : "room"

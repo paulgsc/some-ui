@@ -4,6 +4,7 @@ import { SymbolGlyph } from "@playoff-delta/components/symbol"
 import { LAWS } from "@playoff-delta/lib/laws"
 import { MODEL, REST_OF_LEAGUE } from "@playoff-delta/lib/slides"
 import {
+  against,
   blewIt,
   calls,
   cellChanges,
@@ -14,6 +15,7 @@ import {
   nameOf,
   percent,
   points,
+  roomOf,
   SEEDS,
   shareVerdict,
   sinceLabel,
@@ -26,7 +28,7 @@ import {
 import { GAME_LOST, symbolFor } from "@playoff-delta/lib/symbols"
 import { counted } from "@some-ui/core-utils"
 
-import { delay, Kicker, Reveal, type SlideProps } from "./shared"
+import { delay, Kicker, Reveal, tone, type SlideProps } from "./shared"
 
 function verdict(c: StoryClaim): { big: string; line: string } {
   if (!c.in) return { big: "Out.", line: "every path is closed" }
@@ -56,13 +58,18 @@ const Floor = ({
 /** "61.5% of the ways in", with how the share was counted. */
 const ShareLine = ({
   share,
+  games,
   exact,
 }: {
   share: number
+  /** Games left in the league: 2 to that many ways the rest can go. */
+  games: number
   exact: boolean
 }): JSX.Element => (
   <span className="pd-mono pd-small text-muted-foreground">
-    {percent(share)} of the ways {exact ? "" : "sampled "}get in
+    of the 2<sup>{games}</sup> ways the rest of the season can go,{" "}
+    <b className="text-foreground">{percent(share)}</b> get in
+    {exact ? "" : " (by a sample)"}
   </span>
 )
 
@@ -92,7 +99,11 @@ export const Before = ({ season, week }: SlideProps): JSX.Element => {
         </b>
       </Floor>
       <Reveal at={1.3}>
-        <ShareLine share={week.share.before} exact={week.share.exact} />
+        <ShareLine
+          share={week.share.before}
+          games={week.pending.before}
+          exact={week.share.exact}
+        />
       </Reveal>
     </>
   )
@@ -161,11 +172,7 @@ export const Game = ({ season, week }: SlideProps): JSX.Element => {
       </Reveal>
       <Reveal at={1.5} className="pd-say">
         That alone:{" "}
-        <b
-          className={week.share.own >= 0 ? "text-success" : "text-destructive"}
-        >
-          {points(week.share.own)} points
-        </b>{" "}
+        <b className={tone(week.share.own)}>{points(week.share.own)} points</b>{" "}
         of the ways in.
       </Reveal>
     </>
@@ -193,21 +200,11 @@ const ResultRow = ({
         </span>
         <span className="pd-mono pd-small text-muted-foreground whitespace-nowrap">
           {r.kind === "exported" ? "other conference" : "inside"} ·{" "}
-          <b
-            className={
-              r.leverage > 0
-                ? "text-success"
-                : r.leverage < 0
-                  ? "text-destructive"
-                  : ""
-            }
-          >
-            {points(r.leverage)}
-          </b>
+          <b className={tone(r.leverage)}>{points(r.leverage)}</b>
         </span>
       </div>
       <div
-        className={`pd-lev ${r.leverage >= 0 ? "pd-lev--up" : "pd-lev--down"}`}
+        className={`pd-lev ${r.leverage > 0 ? "pd-lev--up" : "pd-lev--down"}`}
       >
         <i style={{ ...delay(at + 0.2), width: `${width}%` }} />
       </div>
@@ -221,16 +218,12 @@ const SHOWN = 6
 export const League = ({ season, week }: SlideProps): JSX.Element => {
   const shown = leagueResults(week).slice(0, SHOWN)
   const scale = Math.max(...shown.map((r) => Math.abs(r.leverage)), 0)
-  const settled = calls(season, week).filter((c) => c.result)
+  const settled = calls(season, week)
   return (
     <>
       <Kicker>The rest of the league</Kicker>
       <h2 className="pd-q">
-        <span
-          className={
-            week.share.league >= 0 ? "text-success" : "text-destructive"
-          }
-        >
+        <span className={tone(week.share.league)}>
           {points(week.share.league)} points
         </span>{" "}
         from everyone else.
@@ -252,11 +245,11 @@ export const League = ({ season, week }: SlideProps): JSX.Element => {
           </span>
           {settled.map((c) => (
             <span key={`${c.home}-${c.away}`} className="pd-say">
-              {c.result?.winner === c.rootFor ? "✓" : "✗"} <b>{c.rootFor}</b>{" "}
-              over {c.rootFor === c.home ? c.away : c.home}
+              {c.result.winner === c.rootFor ? "✓" : "✗"} <b>{c.rootFor}</b>{" "}
+              over {against(c)}
               <span className="text-muted-foreground">
                 {" "}
-                · {c.result?.winner} won, {points(c.result?.leverage ?? 0)}
+                · {c.result.winner} won, {points(c.result.leverage)}
               </span>
             </span>
           ))}
@@ -422,7 +415,7 @@ const Buckets = ({
 }): JSX.Element => {
   const top = Math.max(line, ...teams.map((t) => t.wins + t.room)) + 1
   const pct = (wins: number): string => `${(wins / top) * 100}%`
-  const room = teams.reduce((sum, t) => sum + t.room, 0)
+  const room = roomOf(teams)
   return (
     <div className="flex flex-col gap-[1.5cqw]">
       <div
@@ -482,7 +475,7 @@ function wildCardLine(season: StorySeason, wc: WildCard, wins: number): string {
       : "",
     wc.seedAtBest > 7
       ? "No wild card is left."
-      : `The engine checked ${wc.cases.toLocaleString("en-US")} ways of choosing who else finishes above us; none fits.`,
+      : `The engine checked ${counted(wc.cases, "placement")} of who else finishes above us; none fits.`,
   ]
     .filter(Boolean)
     .join(" ")
@@ -491,10 +484,7 @@ function wildCardLine(season: StorySeason, wc: WildCard, wins: number): string {
 export const Boundary = ({ season, week }: SlideProps): JSX.Element => {
   const b = week.boundary
   if (!b) return <Kicker>Why one fewer win can&apos;t work</Kicker>
-  const room =
-    b.division.kind === "pigeonhole"
-      ? b.division.teams.reduce((sum, t) => sum + t.room, 0)
-      : 0
+  const room = b.division.kind === "pigeonhole" ? roomOf(b.division.teams) : 0
   return (
     <>
       <Kicker>Why {b.wins} wins can&apos;t work</Kicker>
@@ -517,8 +507,8 @@ export const Boundary = ({ season, week }: SlideProps): JSX.Element => {
           <Reveal at={1.6} className="pd-say">
             The division: they still play{" "}
             <b>{counted(b.division.games, "game")}</b> among themselves, with
-            room for <b>{counted(room, "win")}</b> under the line. Someone
-            passes us.
+            room for <b>{counted(room, "win")}</b> under the line.{" "}
+            {LAWS.pigeonhole.then}
           </Reveal>
         </>
       )}

@@ -10,6 +10,7 @@ import { assertNever } from "@some-ui/intent-kit"
 
 import { lawOf, LAWS } from "./laws"
 import {
+  against,
   calls,
   claimOf,
   floorRecord,
@@ -17,8 +18,10 @@ import {
   nameOf,
   percent,
   points,
+  roomOf,
   shareVerdict,
   sinceLabel,
+  size,
   type StorySeason,
   type StoryWeek,
 } from "./story"
@@ -90,7 +93,7 @@ function claimLine(
   return `they need ${counted(c.extraWins, "more win")}, then as high as the number ${c.seed} seed. That's a ${floorRecord(c, season.seasonLength)} team`
 }
 
-/** "SF beat DET" or "DET lost to the Niners", as the voiceover says it. */
+/** "the Niners beat the Lions", as the voiceover says a result. */
 const said = (season: StorySeason, winner: string, loser: string): string =>
   `the ${nameOf(season, winner)} beat the ${nameOf(season, loser)}`
 
@@ -116,9 +119,7 @@ export function narration(
     case "game": {
       if (week.game === null)
         return `Week ${week.week} is a bye. The ${name} don't play, so only the league moves.`
-      return week.game.won
-        ? `Week ${week.week}: the ${name} beat the ${n(week.game.opponent)}. That alone moved them ${points(share.own)} points.`
-        : `Week ${week.week}: the ${name} lost to the ${n(week.game.opponent)}. That alone moved them ${points(share.own)} points.`
+      return `Week ${week.week}: the ${name} ${week.game.won ? "beat" : "lost to"} the ${n(week.game.opponent)}. That alone moved them ${points(share.own)} points.`
     }
     case "law": {
       const law = LAWS[lawOf(week)]
@@ -126,8 +127,8 @@ export function narration(
     }
     case "league": {
       const top = leagueResults(week)[0]
-      const settled = calls(season, week).filter((c) => c.result)
-      const kept = settled.filter((c) => c.result?.winner === c.rootFor).length
+      const settled = calls(season, week)
+      const kept = settled.filter((c) => c.result.winner === c.rootFor).length
       const callLine = settled.length
         ? ` Of last week's ${counted(settled.length, "call")}, ${kept} went our way.`
         : ""
@@ -139,13 +140,13 @@ export function narration(
       return `${shareVerdict(week)} After week ${week.week}, ${claimLine(season, week.paths.after, week.paths.winsAfter)}. The share of ways in went from ${percent(share.before)} to ${percent(share.after)}.`
     }
     case "path": {
-      return week.path
-        ? `Here's one way in: ${week.path.needs
-            .filter((x) => !x.free)
-            .slice(0, 3)
-            .map((x) => `the ${n(x.team)} go ${x.rest.w} and ${x.rest.l}`)
-            .join(", ")}, ${REST_OF_LEAGUE}`
-        : "There's no path left."
+      if (!week.path) return "There's no path left."
+      const held = week.path.needs
+        .filter((x) => !x.free)
+        .slice(0, 3)
+        .map((x) => `the ${n(x.team)} go ${x.rest.w} and ${x.rest.l}`)
+        .join(", ")
+      return `Here's one way in${held ? `: ${held}` : ""}, ${REST_OF_LEAGUE}`
     }
     case "boundary": {
       const b = week.boundary
@@ -153,9 +154,8 @@ export function narration(
       const lead = `Why can't ${b.wins} wins work? ${LAWS.pigeonhole.rule}`
       if (b.division.kind === "above")
         return `${lead} The ${n(b.division.team)} are already past ${b.wins} wins, so the division is gone.`
-      const room = b.division.teams.reduce((sum, t) => sum + t.room, 0)
       const teams = b.division.teams.map((t) => `the ${n(t.team)}`).join(", ")
-      return `${lead} ${teams} still play ${counted(b.division.games, "game")} among themselves, with room for only ${counted(room, "win")} under our line. Someone passes us.`
+      return `${lead} ${teams} still play ${counted(b.division.games, "game")} among themselves, with room for only ${counted(roomOf(b.division.teams), "win")} under our line. ${LAWS.pigeonhole.then}`
     }
     case "rivals": {
       return `Futility points: ${week.points.week.scored} of ${week.points.week.possible} this week, ${week.points.season.scored} of ${week.points.season.possible} on the season.`
@@ -166,7 +166,7 @@ export function narration(
     case "next": {
       const top = week.next[0]
       return top
-        ? `Next week, root for the ${n(top.rootFor)} against the ${n(top.rootFor === top.home ? top.away : top.home)}. The two results are ${(top.swing * 100).toFixed(1)} points of the ways in apart.`
+        ? `Next week, root for the ${n(top.rootFor)} against the ${n(against(top))}. The two results are ${size(top.swing)} points of the ways in apart.`
         : ""
     }
     case "benchmark": {

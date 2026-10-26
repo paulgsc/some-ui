@@ -1,10 +1,10 @@
 import type { JSX } from "react"
 import { SymbolGlyph } from "@playoff-delta/components/symbol"
-import { lawOf, LAWS } from "@playoff-delta/lib/laws"
+import { lawOf, LAWS, type WeekLaw } from "@playoff-delta/lib/laws"
 import { leagueResults, nameOf, points } from "@playoff-delta/lib/story"
 import { symbolFor, type SymbolKey } from "@playoff-delta/lib/symbols"
 
-import { Kicker, Reveal, type SlideProps } from "./shared"
+import { Kicker, Reveal, tone, type SlideProps } from "./shared"
 
 export const Hook = (): JSX.Element => {
   return (
@@ -77,14 +77,18 @@ export const Test = ({ season, week }: SlideProps): JSX.Element => {
   )
 }
 
+/** The kinds of game each week's law draws. */
+const GLYPHS: Readonly<Record<WeekLaw, ReadonlyArray<SymbolKey>>> = {
+  conservation: ["exported"],
+  kinds: ["game", "exported", "outside", "inside"],
+  room: ["inside"],
+}
+
 export const Law = ({ season, week }: SlideProps): JSX.Element => {
   const key = lawOf(week)
   const law = LAWS[key]
   const top = leagueResults(week)[0]
-  const kinds: ReadonlyArray<SymbolKey> =
-    key === "kinds"
-      ? ["game", "exported", "outside", "inside"]
-      : [key === "conservation" ? "exported" : "inside"]
+  const kinds = GLYPHS[key]
   return (
     <>
       <Kicker>This week&apos;s rule</Kicker>
@@ -127,13 +131,7 @@ export const Law = ({ season, week }: SlideProps): JSX.Element => {
           </span>
           <span className="pd-say">
             <b>{top.winner}</b> beat {top.loser}:{" "}
-            <b
-              className={
-                top.leverage >= 0 ? "text-success" : "text-destructive"
-              }
-            >
-              {points(top.leverage)} points
-            </b>{" "}
+            <b className={tone(top.leverage)}>{points(top.leverage)} points</b>{" "}
             for the {nameOf(season, season.team)}, against the other result
           </span>
         </Reveal>

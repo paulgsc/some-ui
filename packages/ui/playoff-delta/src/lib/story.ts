@@ -1,23 +1,17 @@
 /**
  * The data contract (version 2): one regular-season week, from one team's
- * point of view, already computed. This package only renders it. Whatever
- * produces it (paulgsc/server's `crates/playoff_delta`, run by a weekly job)
- * owns the math. `StorySeasonSchema` is the one door data comes in through
- * (`parseStorySeason` for bare data), so a malformed feed fails there rather
- * than mid-render.
+ * point of view, already computed. This package only renders it; whatever
+ * produces it (paulgsc/server's `crates/playoff_delta`, whose README defines
+ * every field) owns the math. `StorySeasonSchema` is the one door data comes
+ * in through (`parseStorySeason` for bare data), so a malformed feed fails
+ * there rather than mid-render.
  *
- * Two questions, every week:
- * - **Is there a way in?** A "path" is a way into the playoffs: win x more
- *   games and get in as seed s or better. `paths[x]` is the best seed
- *   reachable winning exactly x more (null: no way in with x); x = 0 reads
- *   "even if they never win again". The "claim" is the first row with a way
- *   in, and the "floor" the final record it implies. A result can only remove
- *   ways, so this answer holds or gets worse.
- * - **How often?** The "share": of the ways the rest of the season can go,
- *   each counted once, the share in which the team gets in. Its weekly change
- *   splits into the team's own result and the league's, and each result's
- *   "leverage" is the share as it happened minus the share had it gone the
- *   other way.
+ * Vocabulary: a "path" is a way in, win x more games and get in as seed s or
+ * better (`paths[x]`, null: none); the "claim" is the first row with one, and
+ * the "floor" the final record it implies. The "share" is the share of the
+ * ways the rest of the season can go in which the team gets in, and a
+ * result's "leverage" the share as it went minus the share had it gone the
+ * other way.
  */
 
 import { z } from "zod"
@@ -122,11 +116,7 @@ const StoryWeekSchema = z.object({
       wins: z.number().int(),
       division: z.discriminatedUnion("kind", [
         z.object({ kind: z.literal("above"), team: Code }),
-        z.object({
-          kind: z.literal("pigeonhole"),
-          teams: z.array(Bucket),
-          games: z.number().int(),
-        }),
+        Pigeonhole.extend({ kind: z.literal("pigeonhole") }),
       ]),
       wildCard: z.object({
         above: z.array(Code),
@@ -166,7 +156,7 @@ const StoryWeekSchema = z.object({
       }),
     ])
   ),
-  /** Futility: rivals' losses to anyone but each other. */
+  /** Futility: division mates' and rivals' losses to anyone outside that group. */
   points: z.object({
     week: z.object({ scored: z.number().int(), possible: z.number().int() }),
     season: z.object({ scored: z.number().int(), possible: z.number().int() }),
@@ -275,12 +265,29 @@ export function cellChanges(
 /** A share as a percentage: "61.5%". */
 export const percent = (share: number): string => `${(share * 100).toFixed(1)}%`
 
+/** A share or a change in it as unsigned points: "9.3". */
+export const size = (change: number): string =>
+  Math.abs(change * 100).toFixed(1)
+
+/** The sign a change shows as, after rounding to points: 0 when "0.0". */
+export function signOf(change: number): -1 | 0 | 1 {
+  if (size(change) === "0.0") return 0
+  return change > 0 ? 1 : -1
+}
+
 /** A change in share as signed points: "+9.3", "−2.9", "0.0". */
 export function points(change: number): string {
-  const p = Math.abs(change * 100).toFixed(1)
-  if (p === "0.0") return "0.0"
-  return change > 0 ? `+${p}` : `−${p}`
+  const sign = signOf(change)
+  return sign === 0 ? "0.0" : `${sign > 0 ? "+" : "−"}${size(change)}`
 }
+
+/** Wins a pigeonhole's teams can still take under the line, together. */
+export const roomOf = (teams: ReadonlyArray<StoryBucket>): number =>
+  teams.reduce((sum, t) => sum + t.room, 0)
+
+/** The side of a next-week game the call roots against. */
+export const against = (g: StoryWeek["next"][number]): string =>
+  g.rootFor === g.home ? g.away : g.home
 
 /** A week's share moving less than this (half a point) "held". */
 const HELD = 0.005
@@ -292,11 +299,7 @@ export type Verdict =
   | "Absorbed."
   | "Still out."
 
-/**
- * How the week went: the share's change, unless no way in is left. Expected
- * to be zero over all the ways the week could have gone, so its sign is the
- * week's luck.
- */
+/** How the week went: the share's change, unless no way in is left. */
 export function shareVerdict(week: StoryWeek): Verdict {
   if (!claimOf(week.paths.after, week.paths.winsAfter).in)
     return claimOf(week.paths.before, week.paths.winsBefore).in
@@ -307,31 +310,28 @@ export function shareVerdict(week: StoryWeek): Verdict {
   return change > 0 ? "Better." : "Worse."
 }
 
-/** The league's results this week: every one but the team's own. */
+/**
+ * The league's results this week that mattered: every one but the team's
+ * own, but for those worth "0.0" points (a team that is in or out whatever
+ * happens).
+ */
 export const leagueResults = (week: StoryWeek): ReadonlyArray<StoryResult> =>
-  week.results.filter((r) => r.kind !== "own")
+  week.results.filter((r) => r.kind !== "own" && signOf(r.leverage) !== 0)
 
-export type Call = {
-  readonly home: string
-  readonly away: string
-  readonly rootFor: string
-  /** Who won it, and what it was worth; undefined if it did not count. */
-  readonly result: StoryResult | undefined
-}
+type Call = StoryWeek["next"][number] & { readonly result: StoryResult }
 
-/** Last week's "root for" calls, settled by this week's results. */
+/** Last week's "root for" calls that this week's results settled. */
 export function calls(
   season: StorySeason,
   week: StoryWeek
 ): ReadonlyArray<Call> {
   const last = season.weeks.find((w) => w.week === week.week - 1)
-  if (!last) return []
-  return last.next.map((n) => ({
-    ...n,
-    result: week.results.find(
+  return (last?.next ?? []).flatMap((n) => {
+    const result = week.results.find(
       (r) =>
         (r.winner === n.home && r.loser === n.away) ||
         (r.winner === n.away && r.loser === n.home)
-    ),
-  }))
+    )
+    return result ? [{ ...n, result }] : []
+  })
 }

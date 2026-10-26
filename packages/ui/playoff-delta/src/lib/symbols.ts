@@ -44,7 +44,7 @@ const SYMBOLS: ReadonlyArray<SymbolDef> = [
   {
     key: "game",
     name: "Our game",
-    rule: "A win always helps.",
+    rule: "A win never hurts.",
     hue: 4,
     parts: [
       { kind: "team", x: 46, y: 32, motion: "lose" },

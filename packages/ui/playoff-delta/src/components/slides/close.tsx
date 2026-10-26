@@ -1,9 +1,11 @@
 import type { JSX } from "react"
 import {
+  against,
   claimOf,
   floorRecord,
   nameOf,
   percent,
+  size,
   type StoryClaim,
 } from "@playoff-delta/lib/story"
 
@@ -82,7 +84,8 @@ export const Rivals = ({ season, week }: SlideProps): JSX.Element => {
         </div>
       </Reveal>
       <Reveal at={0.6 + n * 1.2} className="pd-small text-muted-foreground">
-        A point for each rival loss to anyone but another rival.
+        A point for each loss by a division mate or rival to anyone outside that
+        group.
       </Reveal>
     </>
   )
@@ -131,7 +134,7 @@ export const Next = ({ season, week }: SlideProps): JSX.Element => {
       <h2 className="pd-q">Who to root for.</h2>
       <div className="flex flex-col gap-[2.5cqw]">
         {week.next.map((g, i) => {
-          const other = g.rootFor === g.home ? g.away : g.home
+          const other = against(g)
           return (
             <Reveal
               key={`${g.home}-${g.away}`}
@@ -146,8 +149,7 @@ export const Next = ({ season, week }: SlideProps): JSX.Element => {
                 {nameOf(season, other)}
               </span>
               <span className="pd-small text-muted-foreground">
-                {(g.swing * 100).toFixed(1)} points of the ways in between the
-                two results
+                {size(g.swing)} points of the ways in between the two results
               </span>
             </Reveal>
           )
