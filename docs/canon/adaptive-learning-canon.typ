@@ -2896,6 +2896,31 @@ also survives its relaxation.
   in on; the export document of Def. 7.2 remains the way to carry the rest.
 ]
 
+#remark("7.7", name: "The owner's deployment")[
+  Remarks 7.3 and 7.6 bound what the application sends for learners the
+  project does not know. One deployment is not that: the application as its
+  owner runs it, the only person who signs in, on their own devices and
+  against a file host on their own home network that they administer
+  (*home*). For that deployment, and no other, Axiom 7.1 (i), (iii) and (iv)
+  and Remarks 7.3 and 7.6 are amended. Home is not a third party. It is the
+  owner's own storage, in the same role as the device, and anything a learner
+  writes may be kept there: the deviations, the evidence ring, reports, the
+  practice record, the pace, the sentence tally, reflections and recordings.
+  The device keeps what home has not yet confirmed, and what the owner keeps
+  for use away from home. Sending to home is the default and asks nothing of
+  the owner. Theorem 7.2 holds with home in the role of local storage, and the
+  record then outlives the device. Proposition 7.2 covers the device's own
+  writes only: nothing written for home is let go until home confirms it.
+
+  The boundary is the edge of the owner's devices and home. Beyond it are a
+  document service, the mailbox the routines read and the model that reads
+  it, and only what a routine needs crosses, by the carrier that keeps the
+  least for the shortest time. Nothing on the device is let go because
+  something beyond the boundary says it holds a copy. Axiom 7.1 (ii) is
+  unchanged, and Remarks 7.3 and 7.6 keep their full force for the Pages
+  build and for every learner who is not the owner.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Semantic Boundary
 // ═══════════════════════════════════════════════════════════════════════════

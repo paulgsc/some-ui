@@ -8,7 +8,37 @@ that only reads a snapshot (`use-authority.ts`). The reasoning for that shape is
 `docs/monorepo-boundaries.md`, "Inside a React package: the component is not the
 coordinator" (R1). What an account may hold is the canon's Remark 7.6
 (`docs/canon/adaptive-learning-canon.typ`); this document is how the browser
-keeps to it.
+keeps to it. Remark 7.7 amends it for the owner (below).
+
+## The owner's deployment
+
+The owner is the only person who signs in, and home (`file_host` on the owner's
+home network) is the owner's own storage, as private as the phone (canon
+Remark 7.7, #2174). The frame the HOME-FIRST stories move the code toward:
+
+- **Sending to home is the default and asks nothing.** The phone writes
+  locally first, drains to home through an outbox, and lets go only what
+  home has read back.
+- **A third party is anything beyond the owner's devices and home:** Drive,
+  the Jobs mailbox on Cloudflare, the model that reads it. Only what a
+  routine needs goes there, by the carrier that keeps the least for the
+  shortest time.
+- **Nothing is let go because a third party has a copy.**
+- **Drive stays only where nothing else reaches:** refreshing a digest, word
+  set or drama away from home, Build Journal audio, and makjang's loop
+  through a learner's own drive, which serves other learners.
+
+Each invariant below still describes the code, and holds until the change that
+moves its code retires or rewords it in the same PR; a hunk that moves code
+toward this frame without doing so is a finding.
+
+| Invariant                                                                     | Moved by               |
+| ----------------------------------------------------------------------------- | ---------------------- |
+| LA7 (a reflection reaches no server)                                          | HF3, #2178             |
+| LA8's "only on a tap"; LA9–LA11 and LA13's consent; LA12 (consent to read)    | HF8, #2182             |
+| LA6's reporting reset on every sign-in, on the owner's `lan` build            | HF8, #2182             |
+| LA13's scene notes copied only once a drama prompt is shared                  | HF2, #2177             |
+| LA14's "let go once a share arrived in Drive", and every share sheet's let-go | HF1, #2176; HF2, #2177 |
 
 ## The two questions
 
@@ -1108,6 +1138,8 @@ was silent, so the run ended as if all had gone.
   arrived. The phone's Home server block
   syncs, pairs, unpairs and sends to home on a tap (LA8), and Korean reads
   the routine's files from home once its person chose to show them (LA12). These are explicit actions on
-  the account path or by the learner, not defaults.
+  the account path or by the learner, not defaults. The share sheet and the
+  speech provider reach beyond home, and the share sheet's "arrived" is the
+  receiver's copy, not home's (HF1, #2176).
 - **The server's side.** What `file_host` stores and logs is
   `paulgsc/server` `docs/identity.md`.
