@@ -192,36 +192,41 @@ const fitTree = ((): ComponentProps<typeof DramaLesson>["lesson"] => {
   return intake.lesson
 })()
 
-/** The routine's lessons, as the phone listed them on 2026-10-26. */
-const FIT_ROUTINE: ReadonlyArray<LessonItem> = [
-  [2, "comedy", "What is this test"],
-  [1, "thriller", "The clock keeps running"],
-  [2, "historical", "Rice cakes on the road"],
-  [2, "family", "Holiday food with grandmother"],
-  [2, "makjang", "The same secret again"],
-  [2, "revenge", "Where the stress goes"],
-  [1, "romance", "A video lesson for two"],
-].map(([level, genre, name], at) => ({
+/** A routine scene at `level` and `genre`, its read-aloud set opened or not. */
+const fitScene = (
+  at: number,
+  level: number,
+  genre: string,
+  name: string,
+  opened = false
+): LessonItem => ({
   key: `scene/scene-${at}.json`,
   kind: "scene",
-  name: String(name),
-  level: Number(level),
-  genre: String(genre),
-  premise:
-    at === 0
-      ? "Two friends meet before the exam and argue about what it even tests."
-      : undefined,
-  opened: at > 2,
+  name,
+  level,
+  genre,
+  premise: undefined,
+  opened,
   sessions: [
-    {
-      practice: "read-aloud",
-      id: `set-${at}`,
-      size: "12 words",
-      opened: at > 2,
-    },
+    { practice: "read-aloud", id: `set-${at}`, size: "12 words", opened },
     { practice: "lens", id: `set-${at}-lens`, size: "6 lines", opened: false },
   ],
-}))
+})
+
+/** More than the first few, at two levels: the search and the filter show. */
+const FIT_ROUTINE: ReadonlyArray<LessonItem> = [
+  {
+    ...fitScene(0, 2, "comedy", "What is this test"),
+    premise:
+      "Two friends meet before the exam and argue about what it even tests.",
+  },
+  fitScene(1, 1, "thriller", "The clock keeps running"),
+  fitScene(2, 2, "historical", "Rice cakes on the road"),
+  fitScene(3, 2, "family", "Holiday food with grandmother", true),
+  fitScene(4, 2, "makjang", "The same secret again", true),
+  fitScene(5, 2, "revenge", "Where the stress goes", true),
+  fitScene(6, 1, "romance", "A video lesson for two", true),
+]
 
 /**
  * A card in the box the handheld gives it: a flex column under its header

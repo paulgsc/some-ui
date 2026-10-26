@@ -8,8 +8,9 @@
  * The deck is every added set as one (`added-sets`), or one added set on
  * its own. A set offers its own practice only: a lens set opens on the
  * grammar lens, and a read-aloud set offers no lens. Every set as one
- * offers both, the lens asking about `lensDeck`'s lines, and opens on the
- * one the host asks for (`initialPractice`). The drill's level
+ * offers both, the lens asking about `lensDeck`'s lines. A set that serves
+ * both opens on the practice the host asks for (`initialPractice`). The
+ * drill's level
  * is the one the host passes: the level held on the material list, or the
  * set's own, capped at the drill's highest (TOPIK 3), since that is where
  * its vocabulary stops.

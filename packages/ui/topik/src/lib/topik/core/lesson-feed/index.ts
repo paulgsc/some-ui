@@ -10,12 +10,16 @@
  * total.
  */
 
+import { counted } from "@some-ui/core-utils"
 import type { RoutineFile } from "@topik/lib/topik/adapter/routine-files"
 import { openedKey } from "@topik/lib/topik/adapter/routine-files"
 import { titleOf } from "@topik/lib/topik/core/drama"
 import { GENRES } from "@topik/lib/topik/core/feed-card"
 import type { AddedSet } from "@topik/lib/topik/read-aloud/added-sets"
-import type { SetPractice } from "@topik/lib/topik/read-aloud/content"
+import type {
+  ParsedDeck,
+  SetPractice,
+} from "@topik/lib/topik/read-aloud/content"
 import {
   parseReadAloudDeck,
   setGenreKo,
@@ -53,16 +57,19 @@ export const FEED_FIRST = 3
 
 const LEVEL = /^TOPIK ([1-6])$/
 
-const count = (n: number, one: string): string =>
-  `${n} ${one}${n === 1 ? "" : "s"}`
+/** What a set holds: a lens set's lines, any other set's words. */
+export const setSize = (
+  practice: SetPractice | undefined,
+  words: number,
+  lines: number
+): string =>
+  practice === "lens" ? counted(lines, "line") : counted(words, "word")
 
 /** A genre named in English or Korean, as its key. */
-const genreKeyOf = (part: string): string | undefined => {
-  const lower = part.toLowerCase()
-  if (setGenreKo(lower) !== undefined) return lower
-  if (part === "일상") return "everyday"
-  return GENRES.find(({ ko }) => ko === part)?.genre
-}
+const genreKeyOf = (part: string): string | undefined =>
+  [...GENRES.map(({ genre }) => genre), "everyday"].find(
+    (key) => key === part.toLowerCase() || setGenreKo(key) === part
+  )
 
 /** `TOPIK 2 · comedy · What is this test`, the scene folder's name, read. */
 function partsOf(title: string): {
@@ -87,12 +94,11 @@ function partsOf(title: string): {
  * sets did is named by its place, since a scene holds the read-aloud set
  * first and the lens set second. A set that can't be read offers nothing.
  */
-export function sessionsOf(
-  decks: ReadonlyArray<unknown>,
+function sessionsOf(
+  decks: ReadonlyArray<ParsedDeck>,
   added: ReadonlyArray<AddedSet>
 ): Array<LessonSession> {
-  return decks.flatMap((raw, at): Array<LessonSession> => {
-    const parsed = parseReadAloudDeck(raw)
+  return decks.flatMap((parsed, at): Array<LessonSession> => {
     if (!parsed.ok) return []
     const { deck } = parsed
     const practice = deck.practice ?? (at === 0 ? "read-aloud" : "lens")
@@ -100,10 +106,7 @@ export function sessionsOf(
       {
         practice,
         id: deck.id,
-        size:
-          practice === "lens"
-            ? count(deck.lines.length, "line")
-            : count(deck.words.length, "word"),
+        size: setSize(practice, deck.words.length, deck.lines.length),
         opened: added.some(
           (set) => set.deck.id === deck.id && set.openedAt !== null
         ),
@@ -131,8 +134,8 @@ export function lessonItemOf(
     }
   }
   const { level, genre, name } = partsOf(file.title)
-  const context = file.decks
-    .map((raw) => parseReadAloudDeck(raw))
+  const decks = file.decks.map((raw) => parseReadAloudDeck(raw))
+  const context = decks
     .flatMap((parsed) =>
       parsed.ok && parsed.deck.context ? [parsed.deck.context] : []
     )
@@ -145,23 +148,31 @@ export function lessonItemOf(
     genre: genre ?? context?.genre,
     premise: context?.premise,
     opened,
-    sessions: sessionsOf(file.decks, added),
+    sessions: sessionsOf(decks, added),
   }
 }
 
-/** The routine's files as the feed lists them: the ones not opened first. */
+/**
+ * Where an item stands on the list: not opened, then a scene with a set not
+ * opened yet (its other button still waits), then the rest.
+ */
+const standing = (item: LessonItem): number =>
+  !item.opened ? 0 : item.sessions.some((session) => !session.opened) ? 1 : 2
+
+/**
+ * The routine's files as the feed lists them: the ones not opened first,
+ * then the scenes with a set still to open, each group in home's order.
+ */
 export function lessonItems(
   files: ReadonlyArray<RoutineFile>,
   opened: ReadonlySet<string>,
   added: ReadonlyArray<AddedSet>
 ): Array<LessonItem> {
-  const items = files.map((file) =>
-    lessonItemOf(file, opened.has(openedKey(file)), added)
-  )
-  return [
-    ...items.filter((item) => !item.opened),
-    ...items.filter((item) => item.opened),
-  ]
+  return files
+    .map((file) => lessonItemOf(file, opened.has(openedKey(file)), added))
+    .map((item, at) => ({ item, at }))
+    .sort((a, b) => standing(a.item) - standing(b.item) || a.at - b.at)
+    .map(({ item }) => item)
 }
 
 /** Everything a search can find an item by, lower-cased. */
@@ -227,7 +238,7 @@ export const LESSON_FEED_WORDS = {
   /** Under the first few, while more wait. */
   more: (shown: number, total: number): string =>
     `${shown} of ${total} shown, the ones not opened first. Search for the rest.`,
-  found: (n: number): string => `${count(n, "lesson")} found.`,
+  found: (n: number): string => `${counted(n, "lesson")} found.`,
   none: (query: string): string =>
     `Nothing from the routine matches “${query.trim()}”.`,
 } as const

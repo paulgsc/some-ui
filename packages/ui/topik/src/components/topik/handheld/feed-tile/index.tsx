@@ -21,7 +21,6 @@ type FeedTileProps = {
   premise?: string
   /** Not opened yet: tinted, as everything new on the list is. */
   fresh?: boolean
-  /** Its buttons, in a row under the rest. */
   children: ReactNode
 }
 
@@ -75,7 +74,7 @@ export const FeedTile = ({
   </li>
 )
 
-/** The thumbnail's slot: the kind's mark, and the genre's Korean name. */
+/** The thumbnail's slot. */
 export const FeedThumb = ({
   kind,
   genreKo,

@@ -97,7 +97,8 @@ import type { DramaLesson as Tree } from "@topik/lib/topik/core/drama"
 import { titleOf } from "@topik/lib/topik/core/drama"
 import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
 import type { Seed } from "@topik/lib/topik/core/feed-card"
-import { lessonItems, sessionsOf } from "@topik/lib/topik/core/lesson-feed"
+import type { LessonSession } from "@topik/lib/topik/core/lesson-feed"
+import { lessonItems } from "@topik/lib/topik/core/lesson-feed"
 import type { Dish } from "@topik/lib/topik/core/portion"
 import {
   holdingsOf,
@@ -329,10 +330,10 @@ export const HandheldLesson = ({
     [routine.data, openedKeys, added]
   )
   // A pair's sets the phone already holds are left as they are, record and
-  // all; the rest are added, and the pair opens on the set of `practice`.
+  // all; the rest are added, and the pair opens on `session`, else its first.
   const openRoutineScene = (
     decks: ReadonlyArray<unknown>,
-    practice: SetPractice
+    session: LessonSession | undefined
   ): boolean => {
     const texts = decks.map((deck) => JSON.stringify(deck))
     const ids = texts.map((text) => {
@@ -348,23 +349,28 @@ export const HandheldLesson = ({
       if (next === null) return false
       held = next
     }
-    const chosen =
-      sessionsOf(decks, held).find((session) => session.practice === practice)
-        ?.id ?? ids[0]
+    const chosen = session?.id ?? ids[0]
     if (chosen == null) return false
     keepSets(openSet(held, chosen, now().toISOString()))
-    setReading({ set: chosen, begin: true, practice })
+    setReading({
+      set: chosen,
+      begin: true,
+      ...(session ? { practice: session.practice } : {}),
+    })
     return true
   }
-  const openRoutine = (
-    key: string,
-    practice: SetPractice = "read-aloud"
-  ): void => {
+  /** Opens a scene on the set `setId`, else its read-aloud set; a drama plays. */
+  const openRoutine = (key: string, setId?: string): void => {
     const file = routine.data?.find((candidate) => openedKey(candidate) === key)
     if (file === undefined) return
     setRoutineNote(null)
     if (file.kind === "scene") {
-      if (!openRoutineScene(file.decks, practice)) return
+      const sessions =
+        routineItems.find((item) => item.key === key)?.sessions ?? []
+      const session =
+        sessions.find((one) => one.id === setId) ??
+        sessions.find((one) => one.practice === "read-aloud")
+      if (!openRoutineScene(file.decks, session)) return
     } else {
       startTree(file.tree)
     }

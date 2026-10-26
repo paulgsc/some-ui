@@ -16,12 +16,10 @@ import {
   LESSON_FEED_WORDS,
   levelsHeld,
   searchLessons,
+  setSize,
 } from "@topik/lib/topik/core/lesson-feed"
 import { PORTION_WORDS } from "@topik/lib/topik/core/portion"
-import type {
-  ReadAloudDeck,
-  SetPractice,
-} from "@topik/lib/topik/read-aloud/content"
+import type { ReadAloudDeck } from "@topik/lib/topik/read-aloud/content"
 import {
   readAloudLevelFor,
   setGenreKo,
@@ -88,16 +86,14 @@ type MaterialListProps = {
   /** What came of the last word set picked, until the next. */
   setNote?: StorageNote | null
   /**
-   * What the reflections routine left on home, the ones not opened yet
-   * first (`core/lesson-feed`): "From the routine", at the top, the first
-   * few shown and the rest a search away. Absent where the host reaches no
-   * home.
+   * What the reflections routine left on home (`core/lesson-feed`): "From
+   * the routine", at the top. Absent where the host reaches no home.
    */
   fromRoutine?: ReadonlyArray<LessonItem>
   /** What came of the last one opened. */
   routineNote?: StorageNote | null
-  /** A scene opens on the set of `practice`; a drama plays. */
-  onOpenRoutine?: (key: string, practice?: SetPractice) => void
+  /** A scene opens on the set `setId`; a drama plays. */
+  onOpenRoutine?: (key: string, setId?: string) => void
   /** The routine's mark (`RoutineStatus`), shown with or without its files. */
   routineStatus?: JSX.Element
   /** Opens "What are you hungry for?"; absent where it isn't offered. */
@@ -112,12 +108,6 @@ type ReadyCard = Pick<ReadAloudDeck, "from" | "practice" | "context"> & {
   lines: number
   level: number
 }
-
-/** What a set holds: a lens set's lines, any other set's words. */
-const sizeOf = (card: ReadyCard): string =>
-  card.practice === "lens"
-    ? `${card.lines} line${card.lines === 1 ? "" : "s"}`
-    : `${card.words} word${card.words === 1 ? "" : "s"}`
 
 /** TOPIK 2 · Grammar lens · 로맨스 · its title. */
 const setLineOf = (card: ReadyCard): string =>
@@ -272,8 +262,9 @@ const RoutineTile = ({
   onOpen,
 }: {
   item: LessonItem
-  onOpen: (key: string, practice?: SetPractice) => void
+  onOpen: (key: string, setId?: string) => void
 }): JSX.Element => {
+  const sizeId = useId()
   const genreKo = item.genre === undefined ? undefined : setGenreKo(item.genre)
   return (
     <FeedTile
@@ -310,7 +301,8 @@ const RoutineTile = ({
             data-slot="lesson-session"
             className="h-auto min-h-11 min-w-0 flex-1 flex-col gap-0 rounded-xl py-1.5"
             aria-label={`${LESSON_FEED_WORDS.practice[session.practice]}: ${item.name}`}
-            onClick={() => onOpen(item.key, session.practice)}
+            aria-describedby={`${sizeId}-${at}`}
+            onClick={() => onOpen(item.key, session.id)}
           >
             <span className="flex items-center gap-2">
               {session.practice === "lens" ? (
@@ -320,7 +312,10 @@ const RoutineTile = ({
               )}
               {LESSON_FEED_WORDS.practice[session.practice]}
             </span>
-            <span className="text-xs font-normal opacity-80">
+            <span
+              id={`${sizeId}-${at}`}
+              className="text-xs font-normal opacity-80"
+            >
               {session.opened
                 ? `${session.size} · ${LESSON_FEED_WORDS.opened}`
                 : session.size}
@@ -343,7 +338,7 @@ const FromRoutine = ({
 }: {
   items: ReadonlyArray<LessonItem>
   note: StorageNote | null
-  onOpen: (key: string, practice?: SetPractice) => void
+  onOpen: (key: string, setId?: string) => void
 }): JSX.Element => {
   const [query, setQuery] = useState("")
   const shown = searchLessons(items, query)
@@ -421,7 +416,7 @@ const ReadyCardButton = ({
       <BookOpenText className="text-primary size-6 shrink-0" />
       <span className="min-w-0 flex-1">
         <span className="block font-semibold">
-          {sizeOf(card)}
+          {setSize(card.practice, card.words, card.lines)}
           <span className="text-primary ml-2 text-xs font-bold tracking-wider uppercase">
             New
           </span>
@@ -587,13 +582,17 @@ export const MaterialList = ({
   // The level shown alone; null shows every level.
   const [only, setOnly] = useState<number | null>(null)
   const dramaCards = dramas.map((item) => cardOf(item))
+  // Only what is shown is counted, so no level offered shows nothing.
   const held = levelsHeld([
-    ...fromRoutine.map((item) => item.level),
-    ...readySets.map((card) => card.level),
+    ...(onOpenRoutine ? fromRoutine.map((item) => item.level) : []),
+    ...(onReadAloud && onOpenSet ? readySets.map((card) => card.level) : []),
     ...dramaCards.map((card) => card.level),
   ])
   // A level picked, then gone from the list (a new home's answer), shows all.
-  const showing = held.some(({ level: at }) => at === only) ? only : null
+  // With no row to pick from, or a level picked then gone from the list (a
+  // new home's answer), every level shows.
+  const showing =
+    held.length > 1 && held.some(({ level: at }) => at === only) ? only : null
   const atLevel = (at: number | undefined): boolean =>
     showing === null || at === showing
   const routineShown = fromRoutine.filter((item) => atLevel(item.level))

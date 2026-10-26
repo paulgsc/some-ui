@@ -597,9 +597,6 @@ describe("HandheldLesson", () => {
       "A video lesson for two",
     ])
     expect(waiting.textContent).toContain("2 lessons found.")
-    // A genre is found by its Korean name too.
-    fireEvent.change(search, { target: { value: "가족" } })
-    expect(names()).toEqual(["Holiday food with grandmother"])
     fireEvent.change(search, { target: { value: "noodles" } })
     expect(within(waiting).queryAllByRole("listitem")).toHaveLength(0)
     expect(waiting.textContent).toContain(

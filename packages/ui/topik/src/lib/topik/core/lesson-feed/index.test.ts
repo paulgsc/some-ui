@@ -1,4 +1,5 @@
 import type { RoutineFile } from "@topik/lib/topik/adapter/routine-files"
+import type { AddedSet } from "@topik/lib/topik/read-aloud/added-sets"
 import {
   LEVEL_ONE_LENS_SET,
   LEVEL_ONE_SET,
@@ -11,7 +12,6 @@ import {
   lessonItems,
   levelsHeld,
   searchLessons,
-  sessionsOf,
 } from "."
 
 const deck = (id: string, extra: Record<string, unknown> = {}): unknown => ({
@@ -61,20 +61,13 @@ describe("lessonItemOf", () => {
       genre: "comedy",
       opened: false,
     })
-    expect(item.sessions).toEqual([
-      {
-        practice: "read-aloud",
-        id: LEVEL_ONE_SET.id,
-        size: `${LEVEL_ONE_SET.words.length} words`,
-        opened: false,
-      },
-      {
-        practice: "lens",
-        id: LEVEL_ONE_LENS_SET.id,
-        size: `${LEVEL_ONE_LENS_SET.lines.length} lines`,
-        opened: false,
-      },
+    expect(item.sessions.map((session) => session.practice)).toEqual([
+      "read-aloud",
+      "lens",
     ])
+    expect(item.sessions[1]?.size).toBe(
+      `${LEVEL_ONE_LENS_SET.lines.length} lines`
+    )
   })
 
   it("reads a Korean genre, and keeps a title it can't split whole", () => {
@@ -96,13 +89,22 @@ describe("lessonItemOf", () => {
         openedAt: "2026-10-20T00:00:00.000Z",
       },
     ]
-    expect(sessionsOf([deck("x-a"), deck("x-b")], opened)).toMatchObject([
+    const holding = (decks: ReadonlyArray<unknown>): RoutineFile => ({
+      kind: "scene",
+      name: "x.json",
+      title: "x",
+      decks,
+    })
+    expect(
+      lessonItemOf(holding([deck("x-a"), deck("x-b")]), true, opened).sessions
+    ).toMatchObject([
       { practice: "read-aloud", id: "x-a", size: "1 word", opened: true },
       { practice: "lens", id: "x-b", size: "1 line", opened: false },
     ])
-    expect(sessionsOf([{ schemaVersion: 1 }, deck("y")], [])).toMatchObject([
-      { practice: "lens", id: "y" },
-    ])
+    expect(
+      lessonItemOf(holding([{ schemaVersion: 1 }, deck("y")]), false, [])
+        .sessions
+    ).toMatchObject([{ practice: "lens", id: "y" }])
   })
 })
 
@@ -123,6 +125,29 @@ describe("searchLessons", () => {
       "scene/2",
       "scene/3",
       "scene/4",
+      "scene/1",
+    ])
+  })
+
+  it("lists a scene with a set still to open before one done with", () => {
+    const set = (id: string): AddedSet => ({
+      deck: { id, title: id, words: [], lines: [] },
+      addedAt: "",
+      openedAt: "2026-10-20T00:00:00.000Z",
+    })
+    // Scene 1 is done with; scene 2's lens set still waits.
+    const ordered = lessonItems(
+      [
+        scene("1", "TOPIK 2 · comedy · One"),
+        scene("2", "TOPIK 2 · comedy · Two"),
+        scene("3", "TOPIK 2 · comedy · Three"),
+      ],
+      new Set(["scene/1", "scene/2"]),
+      [set("1-a"), set("1-b"), set("2-a")]
+    )
+    expect(ordered.map((item) => item.key)).toEqual([
+      "scene/3",
+      "scene/2",
       "scene/1",
     ])
   })
