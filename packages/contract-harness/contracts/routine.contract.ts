@@ -10,13 +10,10 @@
  * verbatim; `at`, when home answered), checked by hand against it. Each file is pinned no deeper than an object: the
  * routine writes it, and topik's intake is what holds it.
  *
- * Per person, so `session` contracts. `routine.opened_refused` is the one
- * that writes (`apps/www/src/lib/home-link/routine.ts`'s `tellOpened`, the
- * server's `Opened`: `opened`, each `scene/<name>.json` or
- * `drama/<name>.json`, at most 100, and nothing else). It sends a name
- * that is no lesson's, so home files nothing: an accepted filing would
- * become the newest `opened` file, which the routine reads to count the
- * lessons still unopened.
+ * Per person, so `session` contracts. An accepted `PUT /routine/opened`
+ * (`tellOpened`) would become the newest `opened` file, which the routine
+ * counts unopened lessons from, so that write is pinned by a refusal, which
+ * files nothing.
  */
 
 import { z } from "zod"
