@@ -8,13 +8,13 @@
  */
 import { counted } from "@some-ui/core-utils"
 
+import type { Unsendable } from "@/lib/voice-home/model"
 import { NO_ROOM } from "@/lib/voice-home/model"
 
 import type { ConsentLog, Scope, Shared } from "./consent-model"
 import type { KeptState } from "./kept-model"
 import type { LaneCounts, LaneId } from "./lanes"
 import type { LastRead } from "./routine-model"
-import type { Unsendable } from "./voice-copy"
 
 /** One row of a lane's sheet: what one scope is called, and one of it. */
 type Row = {
@@ -494,7 +494,7 @@ export function laneView(
       return show(
         "trouble",
         "No room",
-        `This phone has no room for more copies until home takes the ones waiting.${later}`
+        `This phone has no room left for copies home doesn't have yet.${later}`
       )
     }
     if (last.why === "refused") {
@@ -521,7 +521,7 @@ export function laneView(
     return show(
       "waiting",
       `${facts.waiting} waiting`,
-      `${words.waits(facts.waiting)} on this phone. They go to home ${words.whileOpen}.`
+      `${words.waits(facts.waiting)} on this phone. ${facts.waiting === 1 ? "It goes" : "They go"} to home ${words.whileOpen}.`
     )
   }
   return show("kept", "On home", "Kept on home. Up to date.")

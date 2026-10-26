@@ -1,9 +1,9 @@
 /**
  * The store of voice notes on their way home (`../runtime`): a note's audio
  * copied once, before the record names it; a shelf with no room leaving it
- * to wait, and each copy saying how it ended; a copy kept until home holds its note, and kept for good when
- * home refuses it; the record read back on the next launch; and the sweep
- * clearing only copies nothing names.
+ * to wait, and each copy saying how it ended; a copy kept until home holds
+ * its note, and kept for good when home refuses it; the record read back on
+ * the next launch; and the sweep clearing only copies nothing names.
  */
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import type { BlobShelf } from "@some-ui/voice-capture"

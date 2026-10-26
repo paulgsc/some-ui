@@ -2,9 +2,8 @@
  * @vitest-environment jsdom
  *
  * Settings' voice notes and home, once kept (LA14): it never says notes wait
- * for one this phone can't send. It names why instead: let go once a share
- * arrived in Drive, gone from this phone, no room for a copy, or this
- * phone's own failure, each with Send now where trying again can help.
+ * for one this phone can't send, and names why instead. How a failed run is
+ * said is `laneView`'s (`lib/home-link/__tests__/words.test.ts`).
  */
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -12,8 +11,8 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import type { KeptState } from "@/lib/home-link/kept-model"
 import { INITIAL_KEPT } from "@/lib/home-link/kept-model"
 import type { LaneCounts } from "@/lib/home-link/lanes"
-import type { Unsendable } from "@/lib/home-link/voice-copy"
 import { SHEET, VOICE_UNSENT } from "@/lib/home-link/words"
+import type { Unsendable } from "@/lib/voice-home/model"
 import { VoiceHomeChoice } from "@/components/settings/device-voice-home"
 
 const lane = vi.hoisted(
@@ -57,14 +56,9 @@ afterEach(() => {
   lane.unsent = { inDrive: 0, gone: 0 }
 })
 
-const ran = (last: KeptState["last"]): KeptState => ({
-  ...INITIAL_KEPT,
-  last,
-})
-
 describe("Settings' voice notes, kept on home", () => {
   it("names notes it can't send, and says nothing waits when nothing else does", () => {
-    lane.run = ran({ kind: "synced", at: 1 })
+    lane.run = { ...INITIAL_KEPT, last: { kind: "synced", at: 1 } }
     lane.unsent = { inDrive: 2, gone: 1 }
     render(<VoiceHomeChoice />)
     expect(screen.getByRole("status").textContent).toBe(
@@ -74,24 +68,5 @@ describe("Settings' voice notes, kept on home", () => {
     expect(screen.getByText(VOICE_UNSENT.gone(1))).toBeTruthy()
     expect(screen.queryByText(/wait/)).toBeNull()
     expect(screen.queryByRole("button", { name: SHEET.sendNow })).toBeNull()
-  })
-
-  it("says a copy found no room on this phone, with what waits and Send now", () => {
-    lane.run = ran({ kind: "failed", why: "room" })
-    lane.waiting = 2
-    render(<VoiceHomeChoice />)
-    expect(screen.getByRole("status").textContent).toBe(
-      "This phone has no room for more copies until home takes the ones waiting. 2 voice notes wait on this phone and go next time."
-    )
-    expect(screen.getByRole("button", { name: SHEET.sendNow })).toBeTruthy()
-  })
-
-  it("says a copy that failed as this phone's fault, not as waiting", () => {
-    lane.run = ran({ kind: "failed", why: "fault" })
-    lane.waiting = 1
-    render(<VoiceHomeChoice />)
-    expect(screen.getByRole("status").textContent).toBe(
-      "Something on this phone went wrong. 1 voice note waits on this phone and goes next time."
-    )
   })
 })

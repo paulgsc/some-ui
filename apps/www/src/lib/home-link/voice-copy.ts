@@ -36,7 +36,7 @@ import { reflections } from "@/lib/session-reflection"
 import type { Reflection } from "@/lib/session-reflection/policy"
 import { phoneVoiceHome } from "@/lib/voice-home"
 import { exchangeVoice } from "@/lib/voice-home/home"
-import type { CopyPass, VoiceOut } from "@/lib/voice-home/model"
+import type { CopyPass, Unsendable, VoiceOut } from "@/lib/voice-home/model"
 import { NO_PASS, passWith, runEnd } from "@/lib/voice-home/model"
 
 import { phoneConsent } from "./consent-runtime"
@@ -120,14 +120,6 @@ export function jobsNotes(state: JobsState): JobsVoice {
     onPhone: all.filter((note) => !released.has(note.id)),
     inDrive: all.filter((note) => released.has(note.id)),
   }
-}
-
-/** What this phone holds and can't send home, by why (LA14). */
-export type Unsendable = {
-  /** Jobs notes let go once their share arrived in Drive, before a copy was made. */
-  readonly inDrive: number
-  /** Notes the last copy pass found no audio for. */
-  readonly gone: number
 }
 
 /** What this phone can't send home, from the Jobs record and the last copy pass. */
@@ -241,7 +233,8 @@ function copySoon(): void {
   copying = copyAll()
     .catch((error: unknown): CopyPass => {
       reported(error)
-      return { ...NO_PASS, faults: 1 }
+      // What the last pass found gone stays gone.
+      return { ...lastPass, roomless: 0, faults: 1 }
     })
     .then((pass) => {
       lastPass = pass

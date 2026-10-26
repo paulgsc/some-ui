@@ -11,11 +11,11 @@ import { useEffect, useSyncExternalStore } from "react"
 import { phoneJobs } from "@/lib/jobs"
 import { reflections } from "@/lib/session-reflection"
 import { phoneVoiceHome } from "@/lib/voice-home"
+import type { Unsendable } from "@/lib/voice-home/model"
 
 import type { KeptState } from "./kept-model"
 import type { Lane, LaneCounts } from "./lanes"
 import { useLaneHome } from "./lanes"
-import type { Unsendable } from "./voice-copy"
 import {
   candidates,
   copyPasses,

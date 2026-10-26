@@ -206,6 +206,28 @@ describe("each lane's sharing words", () => {
     )
   })
 
+  it("says a voice note this phone had no room or failed to copy as the phone's, with what waits (LA14)", () => {
+    const ran = (why: string, waiting: number): LaneFacts =>
+      facts({
+        shared: KEPT,
+        waiting,
+        run: { ...INITIAL_KEPT, last: { kind: "failed", why } },
+      })
+    expect(laneView(WORDS.voice, ran("room", 2), day)).toMatchObject({
+      shape: "trouble",
+      word: "No room",
+      line: "This phone has no room left for copies home doesn't have yet. 2 voice notes wait on this phone and go next time.",
+    })
+    expect(laneView(WORDS.voice, ran("fault", 1), day).line).toBe(
+      "Something on this phone went wrong. 1 voice note waits on this phone and goes next time."
+    )
+    expect(
+      laneView(WORDS.voice, facts({ shared: KEPT, waiting: 1 }), day).line
+    ).toBe(
+      "1 voice note waits on this phone. It goes to home while the app is open."
+    )
+  })
+
   it("says home was busy, with what waits, for every lane", () => {
     const busy = facts({
       shared: KEPT,

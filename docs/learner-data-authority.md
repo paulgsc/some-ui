@@ -1067,13 +1067,17 @@ was silent, so the run ended as if all had gone.
   none.
 - _Proof:_ `lib/home-link/__tests__/voice-copy.test.ts` (a released Jobs
   note is no candidate, and is counted in Drive until home has a copy; a
-  gone note is counted until settled); `lib/voice-home/__tests__/model.test.ts`
-  ("how a run ends after a copy pass (LA14)": every pair of note ends, with
-  and without a gone note, against every exchange end);
-  `lib/voice-home/__tests__/runtime.test.ts` (`copy` says `roomless` and
-  `unkept`); `components/settings/__tests__/device-voice-home.test.tsx` (the
-  lines Settings shows for each); `lib/home-link/__tests__/words.test.ts` (none
-  of them names the machinery).
+  gone note is counted until settled); `lib/home-link/__tests__/voice-send.test.ts`
+  (`sendVoice` and the lane's count over fake stores: a gone note fails no
+  run and stops waiting, no room fails the run and waits until it fits, a
+  read that throws fails it as the phone's fault and the pass goes on);
+  `lib/voice-home/__tests__/model.test.ts` ("how a run ends after a copy pass
+  (LA14)": every pair of note ends, with and without a gone note, against
+  every exchange end); `lib/voice-home/__tests__/runtime.test.ts` (`copy`
+  says `roomless` and `unkept`); `lib/home-link/__tests__/words.test.ts` (each
+  failed run's line, and none naming the machinery); and
+  `components/settings/__tests__/device-voice-home.test.tsx` (Settings shows
+  the notes it can't send).
 - _Tolerance:_ a scene note's copy is offered once, at its share, so one that
   fails there goes to the native log and is not named in Settings (LA13's
   Tolerance). A pass under way when Send now is pressed is the one the run

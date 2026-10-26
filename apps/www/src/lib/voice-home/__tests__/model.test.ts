@@ -116,8 +116,7 @@ describe("how a run ends after a copy pass (LA14)", () => {
   const passOf = (ends: ReadonlyArray<CopyEnd | "fault">): CopyPass =>
     ends.reduce(passWith, NO_PASS)
 
-  it("fails a run that sent everything only for a note it could still copy, the phone's fault first", () => {
-    // Every pair of note ends, each with a note gone or not.
+  it("fails a run that sent everything only for a note it could still copy, the phone's fault first, and never for one gone", () => {
     for (const a of ENDS) {
       for (const b of ENDS) {
         for (const gone of [new Set<string>(), new Set(["g1"])]) {
@@ -138,11 +137,5 @@ describe("how a run ends after a copy pass (LA14)", () => {
         }
       }
     }
-  })
-
-  it("fails nothing for a note whose audio is gone", () => {
-    expect(
-      runEnd({ ...NO_PASS, gone: new Set(["g1", "g2"]) }, { kind: "synced" })
-    ).toEqual({ kind: "synced" })
   })
 })
