@@ -1,9 +1,19 @@
 import type { CSSProperties, JSX, ReactNode } from "react"
-import type { StorySeason, StoryWeek } from "@playoff-delta/lib/story"
+import {
+  signOf,
+  type StorySeason,
+  type StoryWeek,
+} from "@playoff-delta/lib/story"
 
 export type SlideProps = {
   season: StorySeason
   week: StoryWeek
+}
+
+/** The colour a change in share shows in, by its rounded sign. */
+export const tone = (change: number): string => {
+  const sign = signOf(change)
+  return sign > 0 ? "text-success" : sign < 0 ? "text-destructive" : ""
 }
 
 /** A reveal delay, as the CSS custom property the reveals read. */

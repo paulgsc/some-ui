@@ -1,9 +1,11 @@
 import type { JSX } from "react"
 import {
+  against,
   claimOf,
-  floorKey,
   floorRecord,
   nameOf,
+  percent,
+  size,
   type StoryClaim,
 } from "@playoff-delta/lib/story"
 
@@ -23,46 +25,31 @@ export const Rivals = ({ season, week }: SlideProps): JSX.Element => {
       <h2 className="pd-q">How close to rock bottom?</h2>
       <div className="flex flex-col gap-[3cqw]">
         {week.rivals.map((r, i) => {
-          const b = floorKey(r.before, season.seasonLength)
-          const a = floorKey(r.after, season.seasonLength)
-          const w = floorKey(r.worst, season.seasonLength)
-          const pct =
-            w <= b
-              ? null
-              : Math.round(Math.max(0, Math.min(1, (a - b) / (w - b))) * 100)
           const at = 0.3 + i * 1.2
           return (
             <Reveal key={r.team} at={at} className="pd-card">
               <div className="flex items-baseline justify-between">
                 <b className="text-[5cqw]">{nameOf(season, r.team)}</b>
                 <span
-                  className={`pd-mono pd-small font-bold ${r.game.won ? "text-destructive" : "text-success"}`}
+                  className={`pd-mono pd-small font-bold ${r.game === null ? "text-muted-foreground" : r.game.won ? "text-destructive" : "text-success"}`}
                 >
-                  {r.game.won ? "W" : "L"} vs {r.game.opponent}
+                  {r.game === null
+                    ? "bye"
+                    : `${r.game.won ? "W" : "L"} vs ${r.game.opponent}`}
                 </span>
               </div>
-              {[
-                { k: "last week", c: r.before, cls: "" },
-                { k: "now", c: r.after, cls: "" },
-                {
-                  k: "worst possible",
-                  c: r.worst,
-                  cls: "text-muted-foreground",
-                },
-              ].map(({ k, c, cls }) => (
-                <div key={k} className="pd-small flex justify-between">
-                  <span className="text-muted-foreground">{k}</span>
-                  <b className={cls}>{label(c)}</b>
-                </div>
-              ))}
-              <div className="pd-bar">
-                <i style={{ ...delay(at + 0.3), width: `${pct ?? 0}%` }} />
+              <div className="pd-small flex justify-between">
+                <span className="text-muted-foreground">their floor</span>
+                <b>
+                  {label(r.before)} → {label(r.after)}
+                </b>
               </div>
-              <span className="pd-small text-muted-foreground">
-                {pct === null
-                  ? "nothing could have hurt them more"
-                  : `${pct}% as bad as it could have been`}
-              </span>
+              <div className="pd-small flex justify-between">
+                <span className="text-muted-foreground">their ways in</span>
+                <b>
+                  {percent(r.share.before)} → {percent(r.share.after)}
+                </b>
+              </div>
             </Reveal>
           )
         })}
@@ -95,6 +82,10 @@ export const Rivals = ({ season, week }: SlideProps): JSX.Element => {
             </small>
           </b>
         </div>
+      </Reveal>
+      <Reveal at={0.6 + n * 1.2} className="pd-small text-muted-foreground">
+        A point for each loss by a division mate or rival to anyone outside that
+        group.
       </Reveal>
     </>
   )
@@ -131,6 +122,38 @@ export const Collisions = ({ week }: SlideProps): JSX.Element => {
             )}
           </Reveal>
         ))}
+      </div>
+    </>
+  )
+}
+
+export const Next = ({ season, week }: SlideProps): JSX.Element => {
+  return (
+    <>
+      <Kicker>Next week</Kicker>
+      <h2 className="pd-q">Who to root for.</h2>
+      <div className="flex flex-col gap-[2.5cqw]">
+        {week.next.map((g, i) => {
+          const other = against(g)
+          return (
+            <Reveal
+              key={`${g.home}-${g.away}`}
+              at={0.3 + i * 0.5}
+              className="pd-card"
+            >
+              <span className="pd-mono pd-small text-muted-foreground">
+                {g.away} @ {g.home}
+              </span>
+              <span className="pd-say">
+                Root for the <b>{nameOf(season, g.rootFor)}</b> over the{" "}
+                {nameOf(season, other)}
+              </span>
+              <span className="pd-small text-muted-foreground">
+                {size(g.swing)} points of the ways in between the two results
+              </span>
+            </Reveal>
+          )
+        })}
       </div>
     </>
   )
@@ -216,6 +239,9 @@ export const Outro = ({ season, week }: SlideProps): JSX.Element => {
         Week {week.week} · {nameOf(season, season.team)} · floor{" "}
         {floorRecord(a, season.seasonLength)}
         {a.in ? ` · #${a.seed}` : ""}
+      </span>
+      <span className="pd-say text-muted-foreground">
+        in {percent(week.share.after)} of the ways the season can go
       </span>
       <span className="pd-say text-muted-foreground">
         futility points: {week.points.season.scored} of{" "}

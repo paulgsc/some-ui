@@ -1,7 +1,7 @@
 /**
- * What Jobs' Today says is said in the person's terms, and none of it names
- * the machinery. Every word in the table is sampled here, so a new one
- * cannot skip the check.
+ * What Jobs' Today and its scout form say is said in the person's terms, and
+ * none of it names the machinery. Every word in the table is sampled here, so
+ * a new one cannot skip the check.
  */
 import { describe, expect, it } from "vitest"
 
@@ -107,6 +107,9 @@ const SAID: Readonly<Record<keyof typeof words, ReadonlyArray<string>>> = {
   whatHappened: [words.whatHappened],
   sayItAloud: [words.sayItAloud],
   endedAs: (["submitted", "gave-up", "closed"] as const).map(words.endedAs),
+  cantOpenLink: [words.cantOpenLink],
+  postingTextLabel: [true, false].map(words.postingTextLabel),
+  postingTextHint: [words.postingTextHint],
 }
 
 describe("Jobs' words", () => {

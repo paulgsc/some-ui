@@ -32,6 +32,14 @@ open-book quiz into a closed-book one; the canon names that a valuation change
 (Prop. 9.4) and declares the handheld valuation instead (Cor. 4.4, as the
 drama amends it in v1.13: Rem. 4.12, 4.13).
 
+## The daily reflections run
+
+[`ROUTINE.md`](./ROUTINE.md) is the instructions of the scheduled task that
+answers what the owner shares from the phone into Drive. Its checkers are
+`pnpm --filter @some-ui/topik check:deck <file>` and `check:drama <file>`,
+after topik's dependencies are built; each prints `[]` when the phone would
+take the file.
+
 > [!IMPORTANT] > **Canon-governed workspace — read the canon before editing this package.**
 >
 > - [`docs/canon/adaptive-learning-canon.typ`](../../../docs/canon/adaptive-learning-canon.typ) — _The Unobservable Learner_ — the `{batch, message, question}` cursor is content position, not learner state (P.2); positional identity orphans persisted belief on any content revision (Thm. 1.1); batch-level pass/fail discards the per-item distribution (Rem. 4.3). The session machine's pure-reducer shape is _endorsed_ by the canon (§10) — it is the state it carries that changes

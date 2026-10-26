@@ -23,7 +23,10 @@ database), beside Drive. `ROUTINE.md` §0.4 says how the routine uses it, and
 `apps/mailbox/README.md` who may put and read what.
 
 - `src/policy.ts` sets how many picks each track gets, where to search, the
-  queries, and the titles never picked. The owner set it on 2026-10-17.
+  queries, and the titles never picked. The owner set it on 2026-10-17. Its
+  `RUN_HOSTS` are the hosts whose links the run opens itself; with a link
+  anywhere else, the scout form asks for the posting's own text
+  (`linkReach`).
 - `ROUTINE.md` is the routine's instructions. The scheduled task's prompt
   points at it, so a change to the run is a reviewed change here.
 - `src/sample.digest.json` (`sampleDigest()`) is a complete digest on made-up
@@ -42,3 +45,35 @@ database), beside Drive. `ROUTINE.md` §0.4 says how the routine uses it, and
 
 The files are append-only by convention: a later one adds to what an earlier
 one said, and the routine never replaces a digest.
+
+## A ChatGPT prompt for scouts
+
+When ChatGPT recommends a job, I file it as a scout (Jobs › Scout). When the
+run can't read a scout's posting on a board, it takes the company, title,
+location and posted date from the text I pasted, never from a summary, and it
+scores my fit against the résumé itself (`ROUTINE.md` §3). So I keep this
+prompt in ChatGPT: it hands me the posting first, and its own fit analysis
+after, which stays out of the scout.
+
+```text
+When you recommend a job to me, start with one block I can paste as it is,
+with these lines in this order:
+
+Title:
+Company:
+Location:
+Posted: the date the posting shows, or "not shown"
+Pay: as the posting states it, or "not shown"
+Link:
+Description: the posting's description, word for word as its page shows
+it, with nothing summarized, shortened or added
+
+Take every line from the posting itself. If you can't see the posting's own
+text, say so instead of writing the block.
+
+After the block, give your analysis of how I fit, apart from it. I don't
+paste that part.
+```
+
+The link goes in the form's Link, the title and company in Title and company,
+and the whole block in Posting text.
