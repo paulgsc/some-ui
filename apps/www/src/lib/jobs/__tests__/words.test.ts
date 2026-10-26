@@ -29,6 +29,7 @@ const SAID: Readonly<Record<keyof typeof words, ReadonlyArray<string>>> = {
   notToday: [words.notToday(DAY)],
   newerHeld: [words.newerHeld(DAY)],
   openFromDrive: [words.openFromDrive],
+  FILE_NAMES: Object.values(words.FILE_NAMES),
   doneToday: [1, 4].map(words.doneToday),
   pickedForYou: [words.pickedForYou],
   fitWord: [0.9, 0.6, 0.3].map(words.fitWord),

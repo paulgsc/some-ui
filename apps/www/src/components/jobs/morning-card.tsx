@@ -9,8 +9,7 @@ import type { JobsRun } from "@some-ui/job-desk"
 
 import type { Morning } from "@/lib/jobs/morning"
 import {
-  MORNING_IDS,
-  MORNING_LEGEND,
+  everyMorning,
   morningLabel,
   morningRoad,
   morningSaid,
@@ -69,13 +68,7 @@ export const MorningCard = ({
         said,
         label: morningLabel(said),
         road: morningRoad(morning.id),
-        every: MORNING_IDS.map((id) => ({
-          id,
-          title: MORNING_LEGEND[id],
-          theme: morningTheme(id),
-          at: morningStop(id),
-          sign: morningSign(id),
-        })),
+        every: everyMorning(),
       }}
     >
       <div className="flex flex-col gap-3 px-3.5 py-3">

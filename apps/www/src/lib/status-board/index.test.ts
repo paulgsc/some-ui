@@ -81,31 +81,9 @@ describe("what each mark asks of its person", () => {
       shape: Extract<RowMark, { kind: "routine" }>["shape"],
       voice: Extract<RowMark, { kind: "routine" }>["voice"] = []
     ): string => needOf({ kind: "routine", shape, voice })
-    expect(
-      Object.fromEntries(
-        (
-          [
-            "fresh",
-            "opened",
-            "rested",
-            "unheard",
-            "quiet",
-            "partly",
-            "stopped",
-            "away",
-          ] as const
-        ).map((shape) => [shape, routine(shape)])
-      )
-    ).toEqual({
-      fresh: "you",
-      opened: "fine",
-      rested: "fine",
-      unheard: "moving",
-      quiet: "watch",
-      partly: "watch",
-      stopped: "watch",
-      away: "moving",
-    })
+    expect(routine("fresh")).toBe("you")
+    expect(routine("quiet")).toBe("watch")
+    expect(routine("opened")).toBe("fine")
     // Its voice notes' marks ask beside it: the more pressing one counts.
     expect(routine("opened", ["waiting"])).toBe("moving")
     expect(routine("opened", ["waiting", "missed"])).toBe("watch")

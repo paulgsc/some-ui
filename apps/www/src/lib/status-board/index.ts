@@ -19,6 +19,7 @@ import {
   morningStop,
   morningTheme,
 } from "@/lib/jobs/morning"
+import { FILE_NAMES } from "@/lib/jobs/words"
 import type { Journey, JourneyTheme, Sign, Stop } from "@/lib/journey"
 import { journeySaid, signOf, stopOf, themeOf } from "@/lib/journey"
 import type { How, Where } from "@/lib/sharing-marks"
@@ -110,7 +111,6 @@ const LOOK_NEEDS: Readonly<Record<Look, Need>> = {
   off: "off",
 }
 
-/** Something new waits to be opened; an early end or a quiet home is watched. */
 const ROUTINE_NEEDS: Readonly<Record<RoutineShape, Need>> = {
   fresh: "you",
   partly: "watch",
@@ -193,7 +193,7 @@ export function journeyRow(kind: ShareKind, j: Journey, now: Date): BoardRow {
   return {
     id: kind,
     group: "jobs",
-    name: BOARD_WORDS.files[kind],
+    name: FILE_NAMES[kind],
     word: said.title,
     line: said.line,
     more: [],

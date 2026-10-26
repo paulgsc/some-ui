@@ -218,6 +218,11 @@ const NO_SUBSCRIBE = (): (() => void) => () => {}
 const NO_LOG = (): null => null
 
 /** What the phone holds of the routine's runs from this home, or null with no log. */
+export function useHeldRuns(log: RunLog, key: string): HeldRuns
+export function useHeldRuns(
+  log: RunLog | undefined,
+  key: string
+): HeldRuns | null
 export function useHeldRuns(
   log: RunLog | undefined,
   key: string
@@ -230,12 +235,10 @@ export function useHeldRuns(
 
 /**
  * The routine's mark as the handheld would show it now, read from what this
- * phone kept of home `key`'s runs and what it has opened, for a page beside
- * Korean's own (the Android app's status page).
+ * phone kept of home `key`'s runs and what it has opened.
  */
 export function useRoutineStatus(key: string, now: Date): RoutineView {
-  const log = sharedRunLog()
-  const held = useSyncExternalStore(log.subscribe, () => log.held(key))
+  const held = useHeldRuns(sharedRunLog(), key)
   const opened = useMemo(() => createOpenedStore(), [])
   return routineView(held, opened.opened(), now, dayOf(now))
 }

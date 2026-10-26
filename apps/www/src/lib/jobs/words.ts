@@ -9,7 +9,13 @@ import { assertNever, counted, formatDay } from "@some-ui/core-utils"
 import type { Track } from "@some-ui/job-desk"
 import { LAPSE_DAYS } from "@some-ui/job-desk"
 
-import type { DebriefResult, FrictionChip, PassReason, Standing } from "./model"
+import type {
+  DebriefResult,
+  FrictionChip,
+  PassReason,
+  ShareKind,
+  Standing,
+} from "./model"
 import type { NoticeState } from "./notice"
 import type { NoticeView } from "./runtime"
 
@@ -23,6 +29,12 @@ export const newerHeld = (day: string): string =>
 
 /** The file picker, where Drive is a way in (`lib/jobs/morning`). */
 export const openFromDrive = "Open picks from Drive"
+
+/** Each kind of file Jobs sends its run, as its card and the status page name it. */
+export const FILE_NAMES = {
+  decisions: "Today’s decisions",
+  scouts: "My scouts",
+} as const satisfies Record<ShareKind, string>
 
 /** What I have done in Jobs today, once there is something: never what is left. */
 export const doneToday = (count: number): string =>

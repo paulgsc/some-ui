@@ -2,9 +2,8 @@
  * The status page (#2165): every process this phone runs, how it last went,
  * and which need their person. A glance strip of every mark, then one row
  * per process: the ones that need you first, the rest by context. Each row
- * draws its own surface's mark (`../sharing-marks`, J0's `StateIcon`,
- * topik's `RoutineMarks`) and
- * says its surface's words; `lib/status-board` only orders them. Each row
+ * draws its own surface's mark and says its surface's words
+ * (`lib/status-board` names each); that module only orders them. Each row
  * opens the page that owns it. It reads; it sends nothing.
  */
 import type { JSX } from "react"
@@ -24,18 +23,9 @@ import { ChevronRight, EyeOff } from "lucide-react"
 
 import { hasAudience } from "@/lib/build-profile"
 import { useMinuteClock } from "@/lib/clock"
-import { phoneJobs } from "@/lib/jobs"
-import type { JourneyContext } from "@/lib/jobs/journey"
 import { kindJourney } from "@/lib/jobs/journey"
-import {
-  MORNING_IDS,
-  MORNING_LEGEND,
-  morningOf,
-  morningSign,
-  morningStop,
-  morningTheme,
-} from "@/lib/jobs/morning"
-import { JOURNEY_IDS, signOf, stateTitle, stopOf, themeOf } from "@/lib/journey"
+import { everyMorning, morningOf } from "@/lib/jobs/morning"
+import { everyJourney } from "@/lib/journey"
 import type { How } from "@/lib/sharing-marks"
 import { MARK_WORDS } from "@/lib/sharing-marks"
 import type { BoardPage, BoardRow, Look, RowMark } from "@/lib/status-board"
@@ -47,8 +37,12 @@ import {
   routineRow,
 } from "@/lib/status-board"
 import { BOARD_WORDS, LOOK_WORDS } from "@/lib/status-board/words"
-import { useJobs } from "@/components/jobs/parts"
-import { StateIcon, themeText } from "@/components/journey-status"
+import { useJourneyContext } from "@/components/jobs/parts"
+import {
+  JourneyLegend,
+  StateIcon,
+  themeText,
+} from "@/components/journey-status"
 import { useHomeRoutineFiles } from "@/components/player/device-routine-files"
 import { useLookRow } from "@/components/settings/device-routine-reads"
 import { useLaneRows } from "@/components/settings/device-sharing-ledger"
@@ -244,35 +238,10 @@ const Legends = (): JSX.Element => (
     </summary>
     <div className="mt-3 space-y-4">
       <SharingLegend away={false} title={BOARD_WORDS.sharingLegend} />
-      <MarkLegend
-        title={BOARD_WORDS.morning}
-        lines={MORNING_IDS.map((id) => ({
-          key: id,
-          mark: (
-            <StateIcon
-              at={morningStop(id)}
-              sign={morningSign(id)}
-              theme={morningTheme(id)}
-              small
-            />
-          ),
-          text: MORNING_LEGEND[id],
-        }))}
-      />
-      <MarkLegend
+      <JourneyLegend title={BOARD_WORDS.morning} states={everyMorning()} />
+      <JourneyLegend
         title={BOARD_WORDS.filesLegend}
-        lines={JOURNEY_IDS.map((id) => ({
-          key: id,
-          mark: (
-            <StateIcon
-              at={stopOf(id)}
-              sign={signOf(id)}
-              theme={themeOf(id)}
-              small
-            />
-          ),
-          text: stateTitle(id, "them"),
-        }))}
+        states={everyJourney("them")}
       />
       <RoutineLegend title={BOARD_WORDS.routine} />
       <MarkLegend
@@ -295,18 +264,13 @@ const Legends = (): JSX.Element => (
 export const StatusBoard = (): JSX.Element => {
   const lanes = useLaneRows()
   const look = useLookRow()
-  const { state } = useJobs()
+  const files = useJourneyContext(lanes.jobsKept)
   const now = useMinuteClock()
   const routineFiles = useHomeRoutineFiles()
   const routine = useRoutineStatus(routineFiles?.key ?? "", now)
-  const files: JourneyContext = {
-    state,
-    kept: lanes.jobsKept,
-    outgoing: phoneJobs().keeping.outgoing,
-  }
   const rows = [
     ...lanes.rows,
-    morningRow(morningOf(state, lanes.jobsKept, now), now),
+    morningRow(morningOf(files.state, lanes.jobsKept, now), now),
     ...(["decisions", "scouts"] as const).flatMap((kind) => {
       const j = kindJourney(files, kind)
       return j === null ? [] : [journeyRow(kind, j, now)]

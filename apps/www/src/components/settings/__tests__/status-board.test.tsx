@@ -3,9 +3,8 @@
  *
  * The status page (#2165): one glance mark per process, the ones that need
  * their person lifted into "Needs you", every row a way to the page that
- * owns it. What each row says is its surface's own (`laneView`, `morningOf`,
- * `kindJourney`, topik's `useRoutineStatus`, `lastLook`), held by their
- * tests; the order is `lib/status-board`'s.
+ * owns it. What each row says is its surface's own (`lib/status-board`
+ * names each), held by their tests; the order is `lib/status-board`'s.
  */
 import type * as ReactRouterModule from "@tanstack/react-router"
 import { cleanup, render, screen, within } from "@testing-library/react"
@@ -46,7 +45,11 @@ vi.mock("@/lib/jobs/journey", async (importOriginal) => ({
     kind === "decisions" ? journey("needs-sheet", { why: "not-kept" }) : null,
 }))
 vi.mock("@/components/jobs/parts", () => ({
-  useJobs: (): unknown => ({ state: EMPTY }),
+  useJourneyContext: (kept: boolean): unknown => ({
+    state: EMPTY,
+    kept,
+    outgoing: (): null => null,
+  }),
 }))
 vi.mock("@/lib/build-profile", async (importOriginal) => ({
   ...(await importOriginal<object>()),

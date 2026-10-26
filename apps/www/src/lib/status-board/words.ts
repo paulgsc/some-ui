@@ -5,8 +5,6 @@
  * (`lib/home-link/words`, `lib/jobs/morning`); these never repeat them, and
  * name no machinery (`./index.test.ts`).
  */
-import type { ShareKind } from "@/lib/jobs/model"
-
 import type { GroupId, Look } from "."
 
 export const BOARD_WORDS = {
@@ -26,12 +24,6 @@ export const BOARD_WORDS = {
   /** When its last send reached home. */
   lastWent: (when: string): string => `Last went to home ${when}.`,
   morning: "This morning's jobs run",
-  /** Each kind of file Jobs sends to its run, as its card names it. */
-  files: {
-    decisions: "Today’s decisions",
-    scouts: "Scouts",
-  } satisfies Record<ShareKind, string>,
-  /** The Jobs files' legend: every place they can be. */
   filesLegend: "Where Jobs' files are",
   routine: "The reflections routine",
   /** A choice made before this phone kept its choices: its own mark knows. */

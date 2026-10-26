@@ -354,6 +354,26 @@ export function journeySaid(j: Journey, noun: Noun, now: Date): Said {
   }
 }
 
+/** A state as a list of every state names it. */
+export type Listed = {
+  readonly id: string
+  readonly title: string
+  readonly theme: JourneyTheme
+  readonly at: Stop
+  readonly sign: Sign
+}
+
+/** Every state a file's journey can be in, each with its name. */
+export function everyJourney(noun: Noun): ReadonlyArray<Listed> {
+  return JOURNEY_IDS.map((id) => ({
+    id,
+    title: stateTitle(id, noun),
+    theme: themeOf(id),
+    at: stopOf(id),
+    sign: signOf(id),
+  }))
+}
+
 /** Each state's name, for the pop-up's list of every state. */
 export function stateTitle(id: JourneyId, noun: Noun): string {
   return journeySaid(journey(id), noun, new Date(0)).title
