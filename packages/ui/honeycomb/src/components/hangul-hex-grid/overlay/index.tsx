@@ -165,17 +165,13 @@ export const HangulHexGrid = ({
   const { gameStatus, isGameOver, timeRemainingMs, progress } = useGameTimer({
     gameBridge,
     isInitialized,
-    onComplete: (status) => {
+    onComplete: () => {
       playSound("game_complete")
       setIsPaused(true)
-      // eslint-disable-next-line no-console
-      console.log("🎉 Game completed!", status)
     },
-    onTimeout: (status) => {
+    onTimeout: () => {
       playSound("game_timeout")
       setIsPaused(true)
-      // eslint-disable-next-line no-console
-      console.log("⏰ Time ran out!", status)
     },
   })
 

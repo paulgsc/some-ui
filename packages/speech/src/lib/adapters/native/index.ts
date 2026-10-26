@@ -276,6 +276,8 @@ export function createNativeSpeechAdapter(
   }
 
   const stopEngine = (): void => {
+    // Ignored: the line is settled as stopped for its caller either way, and
+    // there is no other way to stop the engine to fall back on.
     void engine.stop().catch(() => undefined)
   }
 

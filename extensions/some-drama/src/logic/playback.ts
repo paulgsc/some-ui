@@ -106,6 +106,8 @@ export function livePublisher(
       sent = live
       await send(live)
     })
+    // Ignored: the caller hears `run`'s failure; the tail only keeps calls in
+    // order past it.
     tail = run.catch(() => undefined)
     return run
   }

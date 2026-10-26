@@ -33,7 +33,7 @@ async function read(): Promise<void> {
       full,
     }
   } catch {
-    // Not shown this time; the next refresh tries again.
+    // Ignored: not shown this time; the next refresh tries again.
   }
   for (const listener of listeners) listener()
 }
@@ -73,7 +73,7 @@ export const deviceStorage = {
       const { context } = await deviceBackend()
       await dismissPruneNotice(context.db, shown)
     } catch {
-      // Still shown; dismissing again tries again.
+      // Ignored: still shown; dismissing again tries again.
     }
     await read()
   },

@@ -61,7 +61,8 @@ const discloseEndpoint = (): void => {
     "published-port": "HTTP page, straight to the published TTS port",
     unavailable: "no window to derive one from",
   }
-  // eslint-disable-next-line no-console
+  // Not a failure, and dev only (the guard above): FT1 does not apply.
+  // eslint-disable-next-line no-console, log-guard/console-reports-message-only -- a dev-only notice
   console.info(
     `[www] speech endpoint: ${endpoint ?? "(none)"} - ${explanation[source]}`
   )

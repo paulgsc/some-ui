@@ -801,7 +801,7 @@ export function createShadowScopeTheming(
     // fresh one regardless of what state that round settles into."
     const wasInFlight = inFlight.has(id)
     const prior = inFlight.get(id) ?? Promise.resolve()
-    // A prior round's own rejection (projectOnce() itself never throws —
+    // Ignored: a prior round's own rejection (projectOnce() itself never throws —
     // every fallible step resolves the scope to FAILED_HELD instead — but
     // defend the queue's own continuity regardless of what future code
     // does) must not abort every future call chained onto this same id.
@@ -809,6 +809,8 @@ export function createShadowScopeTheming(
       .catch(() => {})
       .then(() => projectOnce(id, wasInFlight))
     inFlight.set(id, current)
+    // Ignored: the caller of a later round chains on `current` and hears it;
+    // this only drops the entry once it settles.
     void current
       .catch(() => {})
       .finally(() => {

@@ -182,6 +182,7 @@ export function shelveTake(
     () => {
       ports.saving(id, false)
       const listed = list()
+      // Ignored: audio no note names is cleared by its owner's sweep.
       if (!listed) ports.audio.remove([id]).catch(() => undefined)
       saved(listed ? "kept" : "failed")
     },

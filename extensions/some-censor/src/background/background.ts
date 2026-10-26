@@ -46,6 +46,8 @@ ext.runtime.onInstalled.addListener((): void => {
         ext.contextMenus.create({ ...item, contexts: CONTEXTS })
       }
     })
+    // Ignored: the menus are a shortcut. On Chrome the "tab" context does not
+    // exist (above), and the popup and settings page carry every command.
     .catch(() => undefined)
 })
 
@@ -71,6 +73,8 @@ firefoxMenus.onShown?.addListener((info): void => {
       }
       await firefoxMenus.refresh?.()
     })
+    // Ignored: a menu that could not refresh shows its last state until it
+    // is opened again.
     .catch(() => undefined)
 })
 

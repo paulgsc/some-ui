@@ -98,7 +98,7 @@ export function rememberSent(
   try {
     storage?.setItem(SENT_KEY, JSON.stringify(next))
   } catch {
-    // Full: the next send carries these again, and home says unchanged.
+    // Ignored: storage full: the next send carries these again, and home says unchanged.
   }
   return next
 }

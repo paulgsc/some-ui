@@ -533,6 +533,10 @@ const number: NumberMode = {
           }
           return true
         } catch {
+          // A tab whose URL does not parse is kept, the safe side for a tab
+          // nobody could read, and recorded like every other skip, by origin
+          // only: the error's own text would carry the full URL.
+          skipped(tb, "unreadable-url")
           return false
         }
       })

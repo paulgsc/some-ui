@@ -49,8 +49,13 @@ export {
 export { default as oneOwnerConfig } from "./one-owner.config.js"
 export {
   default as logGuardConfig,
+  failureLogConfig,
   logGuardPlugin,
 } from "./log-guard.config.js"
+export {
+  default as catchGuardConfig,
+  catchGuardPlugin,
+} from "./catch-guard.config.js"
 export {
   default as themeProtocolConfig,
   paletteRatchet,

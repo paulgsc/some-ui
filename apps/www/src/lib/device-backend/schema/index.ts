@@ -190,7 +190,8 @@ export async function migrate(db: SqlDriver): Promise<void> {
       try {
         await db.exec("VACUUM")
       } catch {
-        // Best effort, as above.
+        // Ignored: best effort, as above: the app opens, and the next start
+        // vacuums again.
       }
     }
   }

@@ -55,7 +55,7 @@ export function browserPorts(
         JSON.stringify({ ...readRemembered(storage), ...next })
       )
     } catch {
-      // Private mode or a full quota: the setting lasts this page load.
+      // Ignored: private mode or a full quota: the setting lasts this page load.
     }
   }
   return {

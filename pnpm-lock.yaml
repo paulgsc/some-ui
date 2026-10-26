@@ -1205,6 +1205,9 @@ importers:
       '@some-ui/hangul-game-core':
         specifier: 0.0.5
         version: 0.0.5
+      '@some-ui/intent-kit':
+        specifier: workspace:*
+        version: link:../../intent-kit
       '@some-ui/react-hooks':
         specifier: workspace:*
         version: link:../../react-hooks
@@ -1546,6 +1549,9 @@ importers:
       '@some-ui/core-utils':
         specifier: workspace:*
         version: link:../../core-utils
+      '@some-ui/intent-kit':
+        specifier: workspace:*
+        version: link:../../intent-kit
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../shared

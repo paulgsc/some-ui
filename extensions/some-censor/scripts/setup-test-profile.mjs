@@ -61,7 +61,7 @@ for (const name of ["parent.lock", ".parentlock"]) {
   try {
     rmSync(p, { force: true })
   } catch {
-    // A lock still held means Firefox is running; it says so itself.
+    // Ignored: a lock still held means Firefox is running; it says so itself.
   }
 }
 

@@ -213,4 +213,13 @@ export default defineConfig([
       ],
     },
   },
+
+  // FT1 (docs/monorepo-boundaries.md) holds every failure in `src/` to
+  // `reportFailure`. One reader is left out, for now only: its two
+  // `console.warn` go when U2 (#2110) moves it onto the kept-record reader.
+  // Delete this block with them.
+  {
+    files: ["src/hooks/use-local-storage/index.ts"],
+    rules: { "log-guard/console-reports-message-only": "off" },
+  },
 ])

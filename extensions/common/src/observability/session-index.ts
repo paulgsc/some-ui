@@ -346,7 +346,7 @@ export function createSessionIndex<E extends IndexedEntry>(
       try {
         await area.set({ [indexKey(entry.sessionId)]: entry })
       } catch {
-        // Best-effort: diagnostics degrading must never affect the extension.
+        // Ignored: best-effort: diagnostics degrading must never affect the extension.
       }
     },
 
@@ -356,7 +356,8 @@ export function createSessionIndex<E extends IndexedEntry>(
       try {
         await area.remove([indexKey(sessionId), payloadKey(sessionId)])
       } catch {
-        // Best-effort.
+        // Ignored: best effort, as for put: diagnostics degrading must never
+        // affect the extension.
       }
     },
 

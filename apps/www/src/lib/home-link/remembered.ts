@@ -13,6 +13,6 @@ export function remember(key: string, value: string): void {
   try {
     localStorageOrNull()?.setItem(key, value)
   } catch {
-    // Full: not kept, and nothing depends on it.
+    // Ignored: storage full: not kept, and nothing depends on it.
   }
 }

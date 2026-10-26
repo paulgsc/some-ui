@@ -1,7 +1,19 @@
 import { consoleReportsMessageOnly } from "@eslint/rules/index.js"
 import { defineConfig } from "eslint/config"
 
-/** Opt-in, for a workspace whose reporter is `report` (apps/mailbox, MB3). */
+/**
+ * `console-reports-message-only`, in two settings:
+ *
+ *   - the default export, opt-in, for a workspace whose reporter is
+ *     `report` (apps/mailbox, MB3);
+ *   - `failureLogConfig`, in every preset's `src/`: the reporter is
+ *     `reportFailure` (@some-ui/intent-kit), which lives in no workspace
+ *     that is held to it but its own, so `console` is reported everywhere
+ *     else. FT1 (docs/monorepo-boundaries.md): www's release build strips
+ *     `console`, and the phone's console reaches nothing, so a failure that
+ *     only reaches `console` leaves no trace on a shipped build. A disable
+ *     of `no-console` does not silence it.
+ */
 export const logGuardPlugin = {
   meta: { name: "log-guard", version: "0.0.1" },
   rules: {
@@ -18,6 +30,23 @@ export default defineConfig([
       "log-guard/console-reports-message-only": [
         "error",
         { reporter: "report" },
+      ],
+    },
+  },
+])
+
+export const failureLogConfig = defineConfig([
+  {
+    files: ["src/**/*.{js,mjs,ts,tsx,jsx}"],
+    ignores: ["**/*.test.*", "**/*.spec.*", "**/__tests__/**"],
+    plugins: { "log-guard": logGuardPlugin },
+    rules: {
+      "log-guard/console-reports-message-only": [
+        "error",
+        {
+          reporter: "reportFailure",
+          why: "a release build strips `console`, and the phone's console reaches nothing (docs/monorepo-boundaries.md, FT1)",
+        },
       ],
     },
   },

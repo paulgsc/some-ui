@@ -143,6 +143,8 @@ export function createWatchHold(
     }
     vendorTitle = null
     for (const media of paused) {
+      // Ignored: the page may refuse to resume it (autoplay rules); its own
+      // controls still play it.
       if (media.isConnected) void media.play().catch(() => undefined)
     }
     paused = new Set()

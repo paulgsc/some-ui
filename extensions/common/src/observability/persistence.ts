@@ -88,7 +88,7 @@ export function extensionStoragePersistence(
       try {
         await area.set({ [key]: fitToBudget(state, maxBytes) })
       } catch {
-        // Same contract as load: observability degrades, the extension does not.
+        // Ignored: same contract as load: observability degrades, the extension does not.
       }
     },
 
@@ -96,7 +96,8 @@ export function extensionStoragePersistence(
       try {
         await area.remove(key)
       } catch {
-        // ignore
+        // Ignored: same contract as load: observability degrades, the extension
+        // does not.
       }
     },
   }

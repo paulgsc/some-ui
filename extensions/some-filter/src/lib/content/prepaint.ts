@@ -162,7 +162,7 @@ export function enablePrepaint(): void {
   try {
     veil.showPopover()
   } catch {
-    // Popover unsupported or element not eligible — the fixed/max-z fallback
+    // Ignored: popover unsupported or element not eligible — the fixed/max-z fallback
     // styling in prepaint.css keeps the veil covering the viewport regardless.
   }
 
@@ -192,7 +192,7 @@ export function disablePrepaint(): void {
   try {
     veil.hidePopover()
   } catch {
-    // not open / unsupported — removal below still tears it down
+    // Ignored: not open / unsupported — removal below still tears it down
   }
   veil.remove()
 }

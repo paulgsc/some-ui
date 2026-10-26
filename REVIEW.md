@@ -14,8 +14,9 @@ not"; the build-audience invariants A1–A4 are in `packages/some-vite-config/AU
 and some-drama's live-playback invariants LP1–LP3 in `extensions/some-drama/README.md` → "Live
 playback: what is enforced, and what is not"; R1 (coordination in React modules) in
 `docs/monorepo-boundaries.md` → "Inside a React package: the component is not the
-coordinator", and F1 (waits on foreign APIs) beside it in "A port translates: the foreign
-boundary". Modules they govern carry a one-line summary per
+coordinator", F1 (waits on foreign APIs) beside it in "A port translates: the foreign
+boundary", and FT2 (a catch that drops its error says why) in "A failure reaches the
+log". Modules they govern carry a one-line summary per
 ID in their doc comment.
 
 When a hunk falls inside an invariant's **Scope**:

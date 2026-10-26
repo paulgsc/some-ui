@@ -287,6 +287,8 @@ function queue(): <T>(work: () => Promise<T>) => Promise<T> {
   let tail: Promise<unknown> = Promise.resolve()
   return <T>(work: () => Promise<T>): Promise<T> => {
     const run = tail.then(work, work)
+    // Ignored: the caller hears `run`'s failure; the tail only keeps the
+    // queue moving past it.
     tail = run.catch(() => undefined)
     return run
   }
@@ -465,7 +467,7 @@ async function broadcast(
       try {
         await browser.tabs.sendMessage(tab.id, msg)
       } catch {
-        // Tab has no content script — expected
+        // Ignored: tab has no content script — expected
       }
     })
   )
@@ -819,6 +821,9 @@ async function handlePlaybackChanged(
 ): Promise<void> {
   // Answered at once: the source tab has nothing to wait for.
   sendResponse({ ok: true })
+  // Ignored: neither half rejects today (a source tab that fails to answer
+  // counts as none, and `broadcast` skips a tab it cannot reach); this keeps
+  // a future throw from going unhandled in the background page.
   await publishLivePlayback().catch(() => undefined)
 }
 
@@ -900,12 +905,17 @@ browser.runtime.onMessage.addListener(
 // publishLivePlayback (K asks; N sends only if the prediction broke, i.e. the
 // closed tab was the source).
 browser.tabs.onRemoved.addListener((tabId) => {
+  // Ignored: an entry left for a closed tab goes at the next startup
+  // (below), and Firefox does not reuse a tab id before then.
   void setTabHidden(tabId, false).catch(() => undefined)
   // It may have been the source; closing it sends no media event.
+  // Ignored: as in handlePlaybackChanged, nothing in it rejects today.
   void publishLivePlayback().catch(() => undefined)
 })
 
 browser.runtime.onStartup.addListener(() => {
+  // Ignored: storage that refuses this removal refuses the toggle's own
+  // writes too; the next startup tries again.
   void hiddenTabsSerialized(() =>
     browser.storage.local.remove(HIDDEN_TABS_KEY)
   ).catch(() => undefined)

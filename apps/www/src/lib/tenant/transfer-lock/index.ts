@@ -50,7 +50,7 @@ function readLease(storage: StorageAdapter): Lease | null {
       return { token: parsed.token, at: parsed.at }
     }
   } catch {
-    // Unreadable: nobody holds it.
+    // Ignored: unreadable: nobody holds it.
   }
   return null
 }

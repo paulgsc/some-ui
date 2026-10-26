@@ -29,6 +29,7 @@ export function failureLine(failure: ForeignFailure): string {
 /** Writes one line; best effort, since a log that fails has nowhere to say so. */
 export function writeNativeLog(line: string, level: Level = "info"): void {
   // Unbounded (F1, scripts/foreign-boundary.allowlist): nobody waits on it.
+  // Ignored: a log that fails has nowhere to say so.
   void NativeLog.write({ line, level }).catch(() => undefined)
 }
 

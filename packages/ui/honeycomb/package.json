@@ -24,6 +24,7 @@
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
     "@some-ui/hangul-game-core": "0.0.5",
+    "@some-ui/intent-kit": "workspace:*",
     "@some-ui/react-hooks": "workspace:*",
     "@some-ui/some-hexagon": "0.0.5",
     "@some-ui/speech": "workspace:*",
