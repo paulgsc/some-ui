@@ -53,6 +53,19 @@ describe("parseDigest", () => {
       expect(parsed.problem).toMatch(/^Not a digest: picks\.0\.scores\.fit/)
   })
 
+  it("reads an older digest's `transcribed` as `notesDone`", () => {
+    const { notesDone: _, ...older } = sample()
+    const notes = ["2026-10-18_tid-7f2a_voice-1.webm"]
+    const parsed = parseDigest(JSON.stringify({ ...older, transcribed: notes }))
+    expect(parsed).toMatchObject({ ok: true, value: { notesDone: notes } })
+    // A digest that has both keeps its own `notesDone`.
+    const both = { ...older, notesDone: [], transcribed: notes }
+    expect(parseDigest(JSON.stringify(both))).toMatchObject({
+      ok: true,
+      value: { notesDone: [] },
+    })
+  })
+
   it("takes an apply link longer than home keeps a scout's", () => {
     const digest = sample()
     digest.picks[0]!.posting.applyUrl = `https://apply.example/?r=${"a".repeat(3_000)}`

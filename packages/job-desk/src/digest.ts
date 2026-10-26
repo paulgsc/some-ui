@@ -160,7 +160,7 @@ const PickSchema = z
 
 export type Pick = z.infer<typeof PickSchema>
 
-export const DigestSchema = z.object({
+const DigestFields = z.object({
   schema: z.literal("some-ui.job-digest/1"),
   /** The local day it is for: `digest-<day>.json`. */
   day: z.iso.date(),
@@ -265,10 +265,24 @@ export const DigestSchema = z.object({
   /** The Drive files this run read: decisions and scouts, by name. */
   read: z.array(text),
   /** The voice notes this run is done with, by file name (ROUTINE.md §2, "Home's transcripts"). */
-  transcribed: z.array(text),
+  notesDone: z.array(text),
   /** The commits the fits were checked at. */
   evidence: z.object({ someUi: CommitSchema, server: CommitSchema }),
 })
+
+/**
+ * A digest from before `notesDone` named the same list `transcribed`: it
+ * reads as `notesDone`, so no digest kept in Drive, the mailbox or on the
+ * phone needs rewriting.
+ */
+function renamed(raw: unknown): unknown {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return raw
+  if ("notesDone" in raw || !("transcribed" in raw)) return raw
+  const { transcribed, ...rest } = raw
+  return { ...rest, notesDone: transcribed }
+}
+
+export const DigestSchema = z.preprocess(renamed, DigestFields)
 
 export type Digest = z.infer<typeof DigestSchema>
 

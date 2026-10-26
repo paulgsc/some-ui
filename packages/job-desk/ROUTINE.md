@@ -107,7 +107,8 @@ can repeat one already read:
 - a pick's decision, a debrief, an outcome or a disagreement whose `id` a file
   some digest names in `read` already carried is not new: skip it;
 - a scout some digest already answered in `scouts` is not new: skip it;
-- a voice note is new until some digest lists it in `transcribed`, even when an
+- a voice note is new until some digest lists it in `notesDone` (an older
+  digest names that list `transcribed`: read both), even when an
   earlier file named it, since home may not have heard it the first time.
   So also look for home's transcript of each note a file already read names
   and no digest lists (below, "Home's transcripts"), and take it in with the
@@ -232,10 +233,10 @@ For each voice note this run takes in:
    id. One that isn't is skipped and named in the summary.
 3. Its `text` is what I said, in `language` (`en`, `ko`); read it with the
    entry that names the note.
-4. List the note's file name in the digest's `transcribed` (§8).
+4. List the note's file name in the digest's `notesDone` (§8).
 
 A note with an id but no transcript yet hasn't been heard by home. Take its
-entry in from its written words alone, leave it out of `transcribed`, and
+entry in from its written words alone, leave it out of `notesDone`, and
 say in the summary, in my terms, that home hasn't heard it yet, so the next
 run reads it. The same holds for every note when the mailbox isn't usable.
 
@@ -623,7 +624,7 @@ shorter limit, first person, the gaps) is yours to hold.
    and `review` §3 to §5 gave it, and a scout that became a pick its
    `pickId` from step 1.
 3. `read` names every Decisions and Scout file this run took in, from Drive or
-   the mailbox, and `transcribed` every voice note §2 ("Home's transcripts")
+   the mailbox, and `notesDone` every voice note §2 ("Home's transcripts")
    counts done, by its file name. `redrafts` holds each redraft §2 wrote.
 4. Save the digest as bare JSON to a scratch file and check it from the repo
    root (run `pnpm install` first if `node_modules` is missing):
