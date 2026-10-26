@@ -1,14 +1,16 @@
 /**
  * What this morning's run did, as this phone knows it (RUN1, #2052): one
- * closed set of states, each with one theme, one stop for its icon, one road
- * and one set of words, drawn by Today's title bar in J0's language
- * (`components/journey-status`). Pure, and the one place these words live,
+ * closed set of states, each with one theme, one form for its icon
+ * (`lib/journey`'s `Sign`), one road and one set of words, drawn by Today's
+ * title bar in J0's language (`components/journey-status`). Pure, and the one place these words live,
  * so they say what the run did and what this phone holds, never how it
  * travels (`__tests__/morning.test.ts`).
  *
  * Every run leaves a record of itself, a stopped one included (RUN2), which
  * home keeps and this phone reads (RUN3): a run that couldn't do all it set
- * out to is `trouble`, with the first reason it gave, whatever else is held.
+ * out to is `stopped` or `partly`, as it says, with the first reason it gave,
+ * whatever else is held; `partly-in-drive` is a partly run whose picks this phone
+ * holds none of, so Drive is the way in (a stopped run adds none, `run.ts`).
  * Of two records one morning (a re-run), the one that added the picks
  * speaks, so a re-run that stops because the picks were in doesn't turn a
  * good morning into trouble. `quiet` is home answering, after the run was
@@ -22,7 +24,7 @@ import { assertNever, counted } from "@some-ui/core-utils"
 import type { JobsRun } from "@some-ui/job-desk"
 import { pacificDay, PICKS_PER_DAY } from "@some-ui/job-desk"
 
-import type { JourneyTheme, Mark, Road, Said, Stop } from "@/lib/journey"
+import type { JourneyTheme, Mark, Road, Said, Sign, Stop } from "@/lib/journey"
 import { whenSaid } from "@/lib/journey"
 
 import type { JobsState } from "./model"
@@ -42,7 +44,9 @@ export const MORNING_IDS = [
   "decided",
   "rested",
   "full",
-  "trouble",
+  "stopped",
+  "partly",
+  "partly-in-drive",
   "before",
   "running",
   "away",
@@ -62,15 +66,10 @@ export type Morning = {
   readonly seen: number
   /** When this phone last heard from home (ISO), or null. */
   readonly lookedAt: string | null
-  /** For `trouble`: the first reason the run gave, as it wrote it. */
+  /** For `stopped`, `partly` and `partly-in-drive`: the run's first reason, as it wrote it. */
   readonly problem: string | null
   /** For `quiet`: home keeps the runs' records, and holds none this morning. */
   readonly unrecorded: boolean
-  /**
-   * For `trouble`: the run put today's picks in Drive, and this phone doesn't
-   * hold them, so Drive is the way in.
-   */
-  readonly inDrive: boolean
 }
 
 const STARTS = RUN_STARTS.hour * 60 + RUN_STARTS.minute
@@ -103,7 +102,6 @@ export function morningOf(state: JobsState, kept: boolean, now: Date): Morning {
     lookedAt,
     problem: null,
     unrecorded: false,
-    inDrive: false,
   }
   if (digest !== null) {
     const picked = digest.picks.length
@@ -112,7 +110,7 @@ export function morningOf(state: JobsState, kept: boolean, now: Date): Morning {
     ).length
     const counts = { ...base, picked, undecided, seen: digest.seen }
     if (run !== null && run.outcome !== "done") {
-      return { ...counts, id: "trouble", problem: run.problems[0] ?? null }
+      return { ...counts, id: run.outcome, problem: run.problems[0] ?? null }
     }
     if (picked > 0) {
       return { id: undecided > 0 ? "picked" : "decided", ...counts }
@@ -122,9 +120,8 @@ export function morningOf(state: JobsState, kept: boolean, now: Date): Morning {
   if (run !== null && run.outcome !== "done") {
     return {
       ...base,
-      id: "trouble",
+      id: run.added.length > 0 ? "partly-in-drive" : run.outcome,
       problem: run.problems[0] ?? null,
-      inDrive: run.added.length > 0,
     }
   }
   const minutes = pacificMinutes(now)
@@ -138,7 +135,12 @@ export function morningOf(state: JobsState, kept: boolean, now: Date): Morning {
 
 /** Whether `m` offers the picker: where Drive is a real way in. */
 export function offersDrive(m: Morning): boolean {
-  return m.id === "away" || m.id === "quiet" || m.id === "not-kept" || m.inDrive
+  return (
+    m.id === "away" ||
+    m.id === "quiet" ||
+    m.id === "not-kept" ||
+    m.id === "partly-in-drive"
+  )
 }
 
 /** The road a run's picks take: home's, or Drive's by the share sheet. */
@@ -155,27 +157,38 @@ const HERE: Road = {
   legs: ["passed", "passed", "passed"],
 }
 
-/** Each state's theme, the stop its icon shows, and its road. */
+/** Its record came home; what it set out to do stopped at the run. */
+const BROKE: Road = {
+  stops: HOME_ROAD,
+  marks: ["stopped", A, A, R],
+  legs: ["broken", "ahead", "ahead"],
+}
+
+/** Each state's theme, the stop and sign its icon shows, and its road. */
 const SHAPES: Readonly<
-  Record<MorningId, { theme: JourneyTheme; at: Stop; road: Road }>
+  Record<MorningId, { theme: JourneyTheme; at: Stop; sign: Sign; road: Road }>
 > = {
-  picked: { theme: "waiting", at: "phone", road: HERE },
-  decided: { theme: "read", at: "phone", road: HERE },
-  rested: { theme: "read", at: "run", road: HERE },
-  full: { theme: "waiting", at: "run", road: HERE },
-  // Its record came home; what it set out to do stopped at the run.
-  trouble: {
+  picked: { theme: "waiting", at: "phone", sign: "none", road: HERE },
+  decided: { theme: "read", at: "phone", sign: "done", road: HERE },
+  rested: { theme: "read", at: "run", sign: "nothing", road: HERE },
+  full: { theme: "waiting", at: "run", sign: "full", road: HERE },
+  stopped: { theme: "stopped", at: "run", sign: "stopped", road: BROKE },
+  partly: { theme: "stopped", at: "run", sign: "partly", road: BROKE },
+  // What it did reached Drive, not home.
+  "partly-in-drive": {
     theme: "stopped",
-    at: "run",
+    at: "drive",
+    sign: "partly",
     road: {
-      stops: HOME_ROAD,
-      marks: ["stopped", A, A, R],
-      legs: ["broken", "ahead", "ahead"],
+      stops: DRIVE_ROAD,
+      marks: ["stopped", R, A],
+      legs: ["passed", "ahead"],
     },
   },
   before: {
     theme: "moving",
     at: "run",
+    sign: "later",
     road: {
       stops: HOME_ROAD,
       marks: [A, A, A, A],
@@ -185,6 +198,7 @@ const SHAPES: Readonly<
   running: {
     theme: "moving",
     at: "run",
+    sign: "under-way",
     road: {
       stops: HOME_ROAD,
       marks: [U, A, A, A],
@@ -194,6 +208,7 @@ const SHAPES: Readonly<
   away: {
     theme: "waiting",
     at: "home",
+    sign: "later",
     road: {
       stops: HOME_ROAD,
       marks: [U, A, A, R],
@@ -203,6 +218,7 @@ const SHAPES: Readonly<
   quiet: {
     theme: "stopped",
     at: "home",
+    sign: "unknown",
     road: {
       stops: HOME_ROAD,
       marks: [U, U, R, R],
@@ -212,6 +228,7 @@ const SHAPES: Readonly<
   "not-kept": {
     theme: "waiting",
     at: "drive",
+    sign: "none",
     road: { stops: DRIVE_ROAD, marks: [U, A, R], legs: ["ahead", "ahead"] },
   },
 }
@@ -222,6 +239,10 @@ export function morningTheme(id: MorningId): JourneyTheme {
 
 export function morningStop(id: MorningId): Stop {
   return SHAPES[id].at
+}
+
+export function morningSign(id: MorningId): Sign {
+  return SHAPES[id].sign
 }
 
 export function morningRoad(id: MorningId): Road {
@@ -260,14 +281,27 @@ export function morningSaid(m: Morning, now: Date): Said {
         line: "The run picked none: every place was held by a pick still open. Pass on one, or send it and say how it went, and the next run fills its place.",
       }
     }
-    case "trouble": {
+    case "stopped":
+    case "partly":
+    case "partly-in-drive": {
       const why = m.problem ?? "It didn’t say why."
-      const still = m.inDrive
-        ? " Its picks are in Drive; open them from there."
-        : m.seen === 0 && m.picked === 0
+      if (m.id === "partly-in-drive") {
+        return {
+          title: "This morning’s run did part of it, in Drive",
+          line: `${why} Its picks are in Drive, not on this phone; open them from there.`,
+        }
+      }
+      const still =
+        m.seen === 0 && m.picked === 0
           ? ""
           : ` It still read ${postings(m.seen)} and picked ${m.picked}.`
-      return { title: "This morning’s run couldn’t finish", line: why + still }
+      return {
+        title:
+          m.id === "stopped"
+            ? "This morning’s run stopped"
+            : "This morning’s run did only part of it",
+        line: why + still,
+      }
     }
     case "before": {
       return {
@@ -317,7 +351,9 @@ export const MORNING_LEGEND: Readonly<Record<MorningId, string>> = {
   decided: "You’ve decided this morning’s picks",
   rested: "The run picked none today",
   full: "Your places were full, so it picked none",
-  trouble: "The run couldn’t finish, and says why",
+  stopped: "The run stopped, and says why",
+  partly: "The run did only part of it, and says why",
+  "partly-in-drive": "The run did part of it, and its picks are only in Drive",
   before: "Today’s run hasn’t started",
   running: "Today’s run is under way",
   away: "Not checked with home since the run",

@@ -12,10 +12,12 @@ import type { LaneFacts } from "@/lib/home-link/words"
 import * as words from "@/lib/home-link/words"
 import {
   historyLines,
+  HOW_ORDER,
   laneView,
   lastLook,
   ROUTINE_READS,
   ROUTINE_TELLS_OPENED,
+  WHERE_ORDER,
   WORDS,
 } from "@/lib/home-link/words"
 
@@ -140,7 +142,7 @@ describe("each lane's sharing words", () => {
 
   it("says phone only until something has gone home", () => {
     const view = laneView(WORDS.practice, facts({ waiting: 2 }), day)
-    expect(view.shape).toBe("phone")
+    expect(view).toMatchObject({ where: "phone", how: null })
     expect(view.rows.map((row) => row.text)).toEqual([
       "Only on this phone",
       "Only on this phone",
@@ -153,7 +155,7 @@ describe("each lane's sharing words", () => {
       facts({ held: { sessions: 3, shelf: 0 } }),
       day
     )
-    expect(view.shape).toBe("partly")
+    expect(view).toMatchObject({ where: "partly", how: null })
     expect(view.rows[0]?.text).toBe("3 sessions on home · new ones stay here")
   })
 
@@ -163,7 +165,7 @@ describe("each lane's sharing words", () => {
       facts({ stopped: new Map([["jobs", 5]]), held: { jobs: 4 } }),
       day
     )
-    expect(view.shape).toBe("partly")
+    expect(view).toMatchObject({ where: "partly", how: null })
     expect(view.rows[0]?.text).toBe(
       "Sent to home until 18 Oct · 4 events there · new ones stay here"
     )
@@ -180,7 +182,11 @@ describe("each lane's sharing words", () => {
       }),
       day
     )
-    expect(view).toMatchObject({ shape: "kept", word: "On home" })
+    expect(view).toMatchObject({
+      where: "kept",
+      how: "current",
+      word: "On home",
+    })
     expect(view.rows.map((row) => row.text)).toEqual([
       "Kept on home since 18 Oct · 3 sessions there",
       "Kept on home since 18 Oct · 1 kept item there · 2 kept items home didn't take",
@@ -198,7 +204,8 @@ describe("each lane's sharing words", () => {
       run: { ...INITIAL_KEPT, last: { kind: "failed", why: "fault" } },
     })
     expect(laneView(WORDS.jobs, fault, day)).toMatchObject({
-      shape: "trouble",
+      where: "kept",
+      how: "fault",
       word: "Didn't go",
     })
     expect(laneView(WORDS.jobs, fault, day).line).toMatch(
@@ -214,7 +221,8 @@ describe("each lane's sharing words", () => {
         run: { ...INITIAL_KEPT, last: { kind: "failed", why } },
       })
     expect(laneView(WORDS.voice, ran("room", 2), day)).toMatchObject({
-      shape: "trouble",
+      where: "kept",
+      how: "no-room",
       word: "No room",
       line: "This phone has no room left for copies home doesn't have yet. 2 voice notes wait on this phone and go next time.",
     })
@@ -235,7 +243,8 @@ describe("each lane's sharing words", () => {
       run: { ...INITIAL_KEPT, last: { kind: "failed", why: "busy" } },
     })
     expect(laneView(WORDS.practice, busy, day)).toMatchObject({
-      shape: "trouble",
+      where: "kept",
+      how: "busy",
       word: "Home busy",
       line: "Home is busy right now. 2 sessions wait on this phone and go next time.",
     })
@@ -253,7 +262,8 @@ describe("each lane's sharing words", () => {
       },
     })
     expect(laneView(WORDS.aph, away, day)).toMatchObject({
-      shape: "trouble",
+      where: "away",
+      how: "no-answer",
       line: "Home didn't answer. Sending to home is off. Home holds aph; this phone holds only the 2 changes home hadn't confirmed.",
     })
   })
@@ -316,5 +326,61 @@ describe("the routine's files in Korean", () => {
     ).toEqual([])
     expect(ROUTINE_READS.on("18 Oct")).toBe("Shown in Korean since 18 Oct.")
     expect(ROUTINE_READS.stopMore).toBe("What you opened stays on this phone.")
+  })
+
+  it("gives every state of the mark its own pair of marks, and every mark a state", () => {
+    const last = (run: KeptRun): KeptState => ({ ...INITIAL_KEPT, last: run })
+    const kept = (run: KeptState, waiting = 0): LaneFacts =>
+      facts({ shared: KEPT, waiting, run })
+    const away = (back: KeptState): LaneFacts =>
+      facts({ stopped: new Map([["aph", 5]]), away: { waiting: 2, back } })
+    // One of each branch `laneView` can take.
+    const states: ReadonlyArray<LaneFacts> = [
+      facts({ known: false }),
+      facts(),
+      facts({ held: { aph: 3 } }),
+      away(INITIAL_KEPT),
+      away({ ...INITIAL_KEPT, running: true }),
+      away(last({ kind: "unreachable", at: 1 })),
+      away(last({ kind: "failed", why: "busy" })),
+      away(last({ kind: "forgotten" })),
+      away(last({ kind: "failed", why: "an entry" })),
+      kept(last({ kind: "synced", at: 1 })),
+      kept(INITIAL_KEPT, 2),
+      kept({ ...INITIAL_KEPT, running: true }),
+      kept(last({ kind: "forgotten" })),
+      kept(last({ kind: "unreachable", at: 1 })),
+      kept(last({ kind: "unpaired" })),
+      kept(last({ kind: "failed", why: "busy" })),
+      kept(last({ kind: "failed", why: "full" })),
+      kept(last({ kind: "failed", why: "room" })),
+      kept(last({ kind: "failed", why: "refused" })),
+      kept(last({ kind: "failed", why: "fault" })),
+      kept(last({ kind: "failed", why: "an entry" })),
+    ]
+    const views = states.map((f) => laneView(WORDS.aph, f, day))
+    const marks = views.map((v) => `${v.where} ${v.how ?? "-"}`)
+    expect(new Set(marks).size).toBe(states.length)
+    expect(new Set(views.map((v) => v.line)).size).toBe(states.length)
+    expect(new Set(views.map((v) => v.where))).toEqual(new Set(WHERE_ORDER))
+    expect(new Set(views.flatMap((v) => v.how ?? []))).toEqual(
+      new Set(HOW_ORDER)
+    )
+  })
+
+  it("says a kept record on a phone that isn't paired now, never up to date", () => {
+    const view = laneView(
+      WORDS.jobs,
+      facts({
+        shared: KEPT,
+        waiting: 1,
+        run: { ...INITIAL_KEPT, last: { kind: "unpaired" } },
+      }),
+      day
+    )
+    expect(view).toMatchObject({ how: "unpaired", word: "Not paired" })
+    expect(view.line).toBe(
+      "This phone isn't paired with home now. Pair it in Settings. 1 event waits on this phone and goes next time."
+    )
   })
 })

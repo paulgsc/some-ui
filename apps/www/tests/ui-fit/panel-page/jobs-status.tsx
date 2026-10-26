@@ -91,7 +91,6 @@ export const JobsStatusFixture = (): JSX.Element => (
           lookedAt: SINCE,
           problem: PROBLEM,
           unrecorded: false,
-          inDrive: id === "trouble",
         }}
         runs={RUNS}
         now={NOW}
