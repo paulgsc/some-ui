@@ -32,6 +32,8 @@ const LOCAL_ROUTES = [
   "/sessions",
   "/sessions/new",
   "/settings",
+  "/settings/appearance",
+  "/settings/account",
   "/practice/settings",
   "/profile",
   "/extensions",
@@ -237,6 +239,8 @@ test.describe("the lan build, with an account", () => {
       "/app",
       "/sessions",
       "/settings",
+      "/settings/appearance",
+      "/settings/account",
       "/practice/settings",
     ]) {
       await page.goto(`${app().origin}${route}`)
@@ -311,6 +315,7 @@ test.describe("the Pages build", () => {
       "extensions",
       "sessions",
       "settings",
+      "settings/appearance",
       "practice/settings",
     ]) {
       await page.goto(`${app().origin}${BASE}${route}`)

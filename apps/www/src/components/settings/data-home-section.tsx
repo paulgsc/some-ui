@@ -5,7 +5,7 @@
  * Which of the four screens this is follows `lib/authority`:
  *
  * - **No server**: not reached; the Pages build shows a viewer the front
- *   desk's own sample-data note instead (`routes/_dashboard/settings.tsx`).
+ *   desk's own sample-data note instead (`routes/_dashboard/settings/index.tsx`).
  * - **On this device**: nothing about the sessions is sent anywhere and no
  *   account is needed. One button to keep an account (the passkey screen).
  * - **On the account**: the account's controls, and, if the device holds
@@ -14,7 +14,8 @@
  * - **Account session ended**: say so, in place, and offer to sign in or to
  *   carry on here. Nothing is lost either way.
  *
- * The Android build shows `DeviceSection` instead.
+ * It is Settings → Account (`/settings/account`); the Android build has
+ * Settings → This phone and Home instead.
  */
 
 import type { JSX } from "react"

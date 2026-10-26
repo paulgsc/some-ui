@@ -94,7 +94,7 @@ export const MOBILE_ROUTE_FILES = [
   "apps/www/src/routes/_dashboard/_apk/**",
   "apps/www/src/routes/_dashboard/practice/settings.tsx*",
   "apps/www/src/routes/_dashboard/sessions/**",
-  "apps/www/src/routes/_dashboard/settings.tsx*",
+  "apps/www/src/routes/_dashboard/settings/**",
   "apps/www/src/routes/auth.tsx*",
 ] as const
 

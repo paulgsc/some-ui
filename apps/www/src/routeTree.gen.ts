@@ -21,7 +21,6 @@ import { Route as DashboardAppRouteImport } from './routes/_dashboard/app'
 import { Route as DashboardJobRunRouteImport } from './routes/_dashboard/job-run'
 import { Route as DashboardProfileRouteImport } from './routes/_dashboard/profile'
 import { Route as DashboardResumeRouteImport } from './routes/_dashboard/resume'
-import { Route as DashboardSettingsRouteImport } from './routes/_dashboard/settings'
 import { Route as DashboardApkAphRouteImport } from './routes/_dashboard/_apk/aph'
 import { Route as DashboardApkFoyerRouteImport } from './routes/_dashboard/_apk/foyer'
 import { Route as DashboardApkJobsRouteImport } from './routes/_dashboard/_apk/jobs'
@@ -34,6 +33,9 @@ import { Route as DashboardPracticeSettingsRouteImport } from './routes/_dashboa
 import { Route as DashboardSessionsIndexRouteImport } from './routes/_dashboard/sessions/index'
 import { Route as DashboardSessionsSessionIdRouteImport } from './routes/_dashboard/sessions/$sessionId'
 import { Route as DashboardSessionsNewRouteImport } from './routes/_dashboard/sessions/new'
+import { Route as DashboardSettingsIndexRouteImport } from './routes/_dashboard/settings/index'
+import { Route as DashboardSettingsAccountRouteImport } from './routes/_dashboard/settings/account'
+import { Route as DashboardSettingsAppearanceRouteImport } from './routes/_dashboard/settings/appearance'
 import { Route as DashboardApkAphIndexRouteImport } from './routes/_dashboard/_apk/aph/index'
 import { Route as DashboardApkAphHistoryRouteImport } from './routes/_dashboard/_apk/aph/history'
 import { Route as DashboardApkAphSettingsRouteImport } from './routes/_dashboard/_apk/aph/settings'
@@ -42,6 +44,8 @@ import { Route as DashboardApkJobsIndexRouteImport } from './routes/_dashboard/_
 import { Route as DashboardApkJobsRecordRouteImport } from './routes/_dashboard/_apk/jobs/record'
 import { Route as DashboardApkJobsScoutRouteImport } from './routes/_dashboard/_apk/jobs/scout'
 import { Route as DashboardApkPracticeIndexRouteImport } from './routes/_dashboard/_apk/practice/index'
+import { Route as DashboardApkSettingsHomeRouteImport } from './routes/_dashboard/_apk/settings/home'
+import { Route as DashboardApkSettingsPhoneRouteImport } from './routes/_dashboard/_apk/settings/phone'
 import { Route as DashboardApkJobsPickDayPickIdRouteImport } from './routes/_dashboard/_apk/jobs/pick/$day/$pickId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -99,11 +103,6 @@ const DashboardProfileRoute = DashboardProfileRouteImport.update({
 const DashboardResumeRoute = DashboardResumeRouteImport.update({
   id: '/resume',
   path: '/resume',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardApkAphRoute = DashboardApkAphRouteImport.update({
@@ -168,6 +167,23 @@ const DashboardSessionsNewRoute = DashboardSessionsNewRouteImport.update({
   path: '/sessions/new',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardSettingsIndexRoute = DashboardSettingsIndexRouteImport.update({
+  id: '/settings/',
+  path: '/settings/',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardSettingsAccountRoute =
+  DashboardSettingsAccountRouteImport.update({
+    id: '/settings/account',
+    path: '/settings/account',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardSettingsAppearanceRoute =
+  DashboardSettingsAppearanceRouteImport.update({
+    id: '/settings/appearance',
+    path: '/settings/appearance',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const DashboardApkAphIndexRoute = DashboardApkAphIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -209,6 +225,18 @@ const DashboardApkPracticeIndexRoute =
     path: '/practice/',
     getParentRoute: () => DashboardApkRoute,
   } as any)
+const DashboardApkSettingsHomeRoute =
+  DashboardApkSettingsHomeRouteImport.update({
+    id: '/settings/home',
+    path: '/settings/home',
+    getParentRoute: () => DashboardApkRoute,
+  } as any)
+const DashboardApkSettingsPhoneRoute =
+  DashboardApkSettingsPhoneRouteImport.update({
+    id: '/settings/phone',
+    path: '/settings/phone',
+    getParentRoute: () => DashboardApkRoute,
+  } as any)
 const DashboardApkJobsPickDayPickIdRoute =
   DashboardApkJobsPickDayPickIdRouteImport.update({
     id: '/pick/$day/$pickId',
@@ -226,7 +254,6 @@ export interface FileRoutesByFullPath {
   '/job-run': typeof DashboardJobRunRoute
   '/profile': typeof DashboardProfileRoute
   '/resume': typeof DashboardResumeRoute
-  '/settings': typeof DashboardSettingsRoute
   '/aph': typeof DashboardApkAphRouteWithChildren
   '/foyer': typeof DashboardApkFoyerRoute
   '/jobs': typeof DashboardApkJobsRouteWithChildren
@@ -238,12 +265,17 @@ export interface FileRoutesByFullPath {
   '/practice/settings': typeof DashboardPracticeSettingsRoute
   '/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
   '/sessions/new': typeof DashboardSessionsNewRoute
+  '/settings/account': typeof DashboardSettingsAccountRoute
+  '/settings/appearance': typeof DashboardSettingsAppearanceRoute
   '/sessions/': typeof DashboardSessionsIndexRoute
+  '/settings/': typeof DashboardSettingsIndexRoute
   '/aph/history': typeof DashboardApkAphHistoryRoute
   '/aph/settings': typeof DashboardApkAphSettingsRoute
   '/aph/trend': typeof DashboardApkAphTrendRoute
   '/jobs/record': typeof DashboardApkJobsRecordRoute
   '/jobs/scout': typeof DashboardApkJobsScoutRoute
+  '/settings/home': typeof DashboardApkSettingsHomeRoute
+  '/settings/phone': typeof DashboardApkSettingsPhoneRoute
   '/aph/': typeof DashboardApkAphIndexRoute
   '/jobs/': typeof DashboardApkJobsIndexRoute
   '/practice/': typeof DashboardApkPracticeIndexRoute
@@ -259,7 +291,6 @@ export interface FileRoutesByTo {
   '/job-run': typeof DashboardJobRunRoute
   '/profile': typeof DashboardProfileRoute
   '/resume': typeof DashboardResumeRoute
-  '/settings': typeof DashboardSettingsRoute
   '/foyer': typeof DashboardApkFoyerRoute
   '/journal': typeof DashboardApkJournalRoute
   '/soundbites': typeof DashboardApkSoundbitesRoute
@@ -269,12 +300,17 @@ export interface FileRoutesByTo {
   '/practice/settings': typeof DashboardPracticeSettingsRoute
   '/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
   '/sessions/new': typeof DashboardSessionsNewRoute
+  '/settings/account': typeof DashboardSettingsAccountRoute
+  '/settings/appearance': typeof DashboardSettingsAppearanceRoute
   '/sessions': typeof DashboardSessionsIndexRoute
+  '/settings': typeof DashboardSettingsIndexRoute
   '/aph/history': typeof DashboardApkAphHistoryRoute
   '/aph/settings': typeof DashboardApkAphSettingsRoute
   '/aph/trend': typeof DashboardApkAphTrendRoute
   '/jobs/record': typeof DashboardApkJobsRecordRoute
   '/jobs/scout': typeof DashboardApkJobsScoutRoute
+  '/settings/home': typeof DashboardApkSettingsHomeRoute
+  '/settings/phone': typeof DashboardApkSettingsPhoneRoute
   '/aph': typeof DashboardApkAphIndexRoute
   '/jobs': typeof DashboardApkJobsIndexRoute
   '/practice': typeof DashboardApkPracticeIndexRoute
@@ -294,7 +330,6 @@ export interface FileRoutesById {
   '/_dashboard/job-run': typeof DashboardJobRunRoute
   '/_dashboard/profile': typeof DashboardProfileRoute
   '/_dashboard/resume': typeof DashboardResumeRoute
-  '/_dashboard/settings': typeof DashboardSettingsRoute
   '/_dashboard/_apk/aph': typeof DashboardApkAphRouteWithChildren
   '/_dashboard/_apk/foyer': typeof DashboardApkFoyerRoute
   '/_dashboard/_apk/jobs': typeof DashboardApkJobsRouteWithChildren
@@ -306,12 +341,17 @@ export interface FileRoutesById {
   '/_dashboard/practice/settings': typeof DashboardPracticeSettingsRoute
   '/_dashboard/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
   '/_dashboard/sessions/new': typeof DashboardSessionsNewRoute
+  '/_dashboard/settings/account': typeof DashboardSettingsAccountRoute
+  '/_dashboard/settings/appearance': typeof DashboardSettingsAppearanceRoute
   '/_dashboard/sessions/': typeof DashboardSessionsIndexRoute
+  '/_dashboard/settings/': typeof DashboardSettingsIndexRoute
   '/_dashboard/_apk/aph/history': typeof DashboardApkAphHistoryRoute
   '/_dashboard/_apk/aph/settings': typeof DashboardApkAphSettingsRoute
   '/_dashboard/_apk/aph/trend': typeof DashboardApkAphTrendRoute
   '/_dashboard/_apk/jobs/record': typeof DashboardApkJobsRecordRoute
   '/_dashboard/_apk/jobs/scout': typeof DashboardApkJobsScoutRoute
+  '/_dashboard/_apk/settings/home': typeof DashboardApkSettingsHomeRoute
+  '/_dashboard/_apk/settings/phone': typeof DashboardApkSettingsPhoneRoute
   '/_dashboard/_apk/aph/': typeof DashboardApkAphIndexRoute
   '/_dashboard/_apk/jobs/': typeof DashboardApkJobsIndexRoute
   '/_dashboard/_apk/practice/': typeof DashboardApkPracticeIndexRoute
@@ -329,7 +369,6 @@ export interface FileRouteTypes {
     | '/job-run'
     | '/profile'
     | '/resume'
-    | '/settings'
     | '/aph'
     | '/foyer'
     | '/jobs'
@@ -341,12 +380,17 @@ export interface FileRouteTypes {
     | '/practice/settings'
     | '/sessions/$sessionId'
     | '/sessions/new'
+    | '/settings/account'
+    | '/settings/appearance'
     | '/sessions/'
+    | '/settings/'
     | '/aph/history'
     | '/aph/settings'
     | '/aph/trend'
     | '/jobs/record'
     | '/jobs/scout'
+    | '/settings/home'
+    | '/settings/phone'
     | '/aph/'
     | '/jobs/'
     | '/practice/'
@@ -362,7 +406,6 @@ export interface FileRouteTypes {
     | '/job-run'
     | '/profile'
     | '/resume'
-    | '/settings'
     | '/foyer'
     | '/journal'
     | '/soundbites'
@@ -372,12 +415,17 @@ export interface FileRouteTypes {
     | '/practice/settings'
     | '/sessions/$sessionId'
     | '/sessions/new'
+    | '/settings/account'
+    | '/settings/appearance'
     | '/sessions'
+    | '/settings'
     | '/aph/history'
     | '/aph/settings'
     | '/aph/trend'
     | '/jobs/record'
     | '/jobs/scout'
+    | '/settings/home'
+    | '/settings/phone'
     | '/aph'
     | '/jobs'
     | '/practice'
@@ -396,7 +444,6 @@ export interface FileRouteTypes {
     | '/_dashboard/job-run'
     | '/_dashboard/profile'
     | '/_dashboard/resume'
-    | '/_dashboard/settings'
     | '/_dashboard/_apk/aph'
     | '/_dashboard/_apk/foyer'
     | '/_dashboard/_apk/jobs'
@@ -408,12 +455,17 @@ export interface FileRouteTypes {
     | '/_dashboard/practice/settings'
     | '/_dashboard/sessions/$sessionId'
     | '/_dashboard/sessions/new'
+    | '/_dashboard/settings/account'
+    | '/_dashboard/settings/appearance'
     | '/_dashboard/sessions/'
+    | '/_dashboard/settings/'
     | '/_dashboard/_apk/aph/history'
     | '/_dashboard/_apk/aph/settings'
     | '/_dashboard/_apk/aph/trend'
     | '/_dashboard/_apk/jobs/record'
     | '/_dashboard/_apk/jobs/scout'
+    | '/_dashboard/_apk/settings/home'
+    | '/_dashboard/_apk/settings/phone'
     | '/_dashboard/_apk/aph/'
     | '/_dashboard/_apk/jobs/'
     | '/_dashboard/_apk/practice/'
@@ -515,13 +567,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardResumeRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/_dashboard/settings': {
-      id: '/_dashboard/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof DashboardSettingsRouteImport
-      parentRoute: typeof DashboardRoute
-    }
     '/_dashboard/_apk/aph': {
       id: '/_dashboard/_apk/aph'
       path: '/aph'
@@ -606,6 +651,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardSessionsNewRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/_dashboard/settings/': {
+      id: '/_dashboard/settings/'
+      path: '/settings'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof DashboardSettingsIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/settings/account': {
+      id: '/_dashboard/settings/account'
+      path: '/settings/account'
+      fullPath: '/settings/account'
+      preLoaderRoute: typeof DashboardSettingsAccountRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/settings/appearance': {
+      id: '/_dashboard/settings/appearance'
+      path: '/settings/appearance'
+      fullPath: '/settings/appearance'
+      preLoaderRoute: typeof DashboardSettingsAppearanceRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/_dashboard/_apk/aph/': {
       id: '/_dashboard/_apk/aph/'
       path: '/'
@@ -662,6 +728,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardApkPracticeIndexRouteImport
       parentRoute: typeof DashboardApkRoute
     }
+    '/_dashboard/_apk/settings/home': {
+      id: '/_dashboard/_apk/settings/home'
+      path: '/settings/home'
+      fullPath: '/settings/home'
+      preLoaderRoute: typeof DashboardApkSettingsHomeRouteImport
+      parentRoute: typeof DashboardApkRoute
+    }
+    '/_dashboard/_apk/settings/phone': {
+      id: '/_dashboard/_apk/settings/phone'
+      path: '/settings/phone'
+      fullPath: '/settings/phone'
+      preLoaderRoute: typeof DashboardApkSettingsPhoneRouteImport
+      parentRoute: typeof DashboardApkRoute
+    }
     '/_dashboard/_apk/jobs/pick/$day/$pickId': {
       id: '/_dashboard/_apk/jobs/pick/$day/$pickId'
       path: '/pick/$day/$pickId'
@@ -713,6 +793,8 @@ interface DashboardApkRouteChildren {
   DashboardApkJobsRoute: typeof DashboardApkJobsRouteWithChildren
   DashboardApkJournalRoute: typeof DashboardApkJournalRoute
   DashboardApkSoundbitesRoute: typeof DashboardApkSoundbitesRoute
+  DashboardApkSettingsHomeRoute: typeof DashboardApkSettingsHomeRoute
+  DashboardApkSettingsPhoneRoute: typeof DashboardApkSettingsPhoneRoute
   DashboardApkPracticeIndexRoute: typeof DashboardApkPracticeIndexRoute
 }
 
@@ -722,6 +804,8 @@ const DashboardApkRouteChildren: DashboardApkRouteChildren = {
   DashboardApkJobsRoute: DashboardApkJobsRouteWithChildren,
   DashboardApkJournalRoute: DashboardApkJournalRoute,
   DashboardApkSoundbitesRoute: DashboardApkSoundbitesRoute,
+  DashboardApkSettingsHomeRoute: DashboardApkSettingsHomeRoute,
+  DashboardApkSettingsPhoneRoute: DashboardApkSettingsPhoneRoute,
   DashboardApkPracticeIndexRoute: DashboardApkPracticeIndexRoute,
 }
 
@@ -752,11 +836,13 @@ interface DashboardRouteChildren {
   DashboardJobRunRoute: typeof DashboardJobRunRoute
   DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardResumeRoute: typeof DashboardResumeRoute
-  DashboardSettingsRoute: typeof DashboardSettingsRoute
   DashboardPracticeSettingsRoute: typeof DashboardPracticeSettingsRoute
   DashboardSessionsSessionIdRoute: typeof DashboardSessionsSessionIdRoute
   DashboardSessionsNewRoute: typeof DashboardSessionsNewRoute
+  DashboardSettingsAccountRoute: typeof DashboardSettingsAccountRoute
+  DashboardSettingsAppearanceRoute: typeof DashboardSettingsAppearanceRoute
   DashboardSessionsIndexRoute: typeof DashboardSessionsIndexRoute
+  DashboardSettingsIndexRoute: typeof DashboardSettingsIndexRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
@@ -766,11 +852,13 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardJobRunRoute: DashboardJobRunRoute,
   DashboardProfileRoute: DashboardProfileRoute,
   DashboardResumeRoute: DashboardResumeRoute,
-  DashboardSettingsRoute: DashboardSettingsRoute,
   DashboardPracticeSettingsRoute: DashboardPracticeSettingsRoute,
   DashboardSessionsSessionIdRoute: DashboardSessionsSessionIdRoute,
   DashboardSessionsNewRoute: DashboardSessionsNewRoute,
+  DashboardSettingsAccountRoute: DashboardSettingsAccountRoute,
+  DashboardSettingsAppearanceRoute: DashboardSettingsAppearanceRoute,
   DashboardSessionsIndexRoute: DashboardSessionsIndexRoute,
+  DashboardSettingsIndexRoute: DashboardSettingsIndexRoute,
 }
 
 const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
