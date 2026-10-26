@@ -4,7 +4,9 @@
  * docs/learner-data-authority.md): two presses to show them, the second
  * keeping the words the first showed, and two to stop. Its words are
  * `lib/home-link/words`'s alone; it sends nothing. Korean's own list reads
- * home (`components/player/device-routine-files.ts`).
+ * home (`components/player/device-routine-files.ts`). The status page's
+ * row for that look comes from here too (`useLookRow`): LA8 lets only the
+ * modules on its allowlist read the home link, and this is one.
  */
 import type { JSX } from "react"
 import { useState, useSyncExternalStore } from "react"
@@ -14,6 +16,33 @@ import { hostOf, useHomeLink } from "@/lib/home-link"
 import { routineReads } from "@/lib/home-link/routine"
 import { shownNow } from "@/lib/home-link/routine-model"
 import { fullDay, lastLook, ROUTINE_READS } from "@/lib/home-link/words"
+import type { BoardRow } from "@/lib/status-board"
+import { lookOf } from "@/lib/status-board"
+import { LOOK_WORDS } from "@/lib/status-board/words"
+
+/**
+ * Korean's look at the routine's files on home, as the status page shows
+ * it (#2165): off, not yet, or how the last look went. None while the phone
+ * isn't paired, since there is no home to look at.
+ */
+export function useLookRow(): BoardRow | null {
+  const { link } = useHomeLink()
+  const reads = routineReads()
+  const { log, read } = useSyncExternalStore(reads.subscribe, reads.getSnapshot)
+  if (link.kind !== "paired") return null
+  const shown = shownNow(log, link.id) !== null
+  const look = lookOf(shown, read.last)
+  return {
+    id: "korean-look",
+    group: "korean",
+    name: LOOK_WORDS.name,
+    word: LOOK_WORDS.words[look],
+    line: shown ? lastLook(read.last) : ROUTINE_READS.off,
+    more: [],
+    mark: { kind: "look", look },
+    page: "home-settings",
+  }
+}
 
 export const DeviceRoutineReads = (): JSX.Element | null => {
   const { link } = useHomeLink()

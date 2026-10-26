@@ -12,6 +12,7 @@ import { useState } from "react"
 import { cn } from "@some-ui/core-utils"
 import {
   Button,
+  MarkLegend,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -240,31 +241,32 @@ export const RoutineStatus = ({
               )}
             </section>
           )}
-          <section aria-label={ROUTINE_WORDS.legend} className="mt-4">
-            <h3 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
-              {ROUTINE_WORDS.legend}
-            </h3>
-            <ul className="mt-2 flex flex-col gap-2">
-              {SHAPE_ORDER.map((shape) => (
-                <li key={shape} className="flex items-center gap-3 text-sm">
+          <MarkLegend
+            title={ROUTINE_WORDS.legend}
+            className="mt-4"
+            lines={[
+              ...SHAPE_ORDER.map((shape) => ({
+                key: shape,
+                mark: (
                   <RoutineMark
                     shape={shape}
                     className={cn("size-5 shrink-0", TONE[shape])}
                   />
-                  {ROUTINE_WORDS.shapes[shape]}
-                </li>
-              ))}
-              {VOICE_ORDER.map((shape) => (
-                <li key={shape} className="flex items-center gap-3 text-sm">
+                ),
+                text: ROUTINE_WORDS.shapes[shape],
+              })),
+              ...VOICE_ORDER.map((shape) => ({
+                key: shape,
+                mark: (
                   <VoiceMark
                     shape={shape}
                     className={cn("size-5 shrink-0", VOICE_TONE[shape])}
                   />
-                  {ROUTINE_WORDS.voiceShapes[shape]}
-                </li>
-              ))}
-            </ul>
-          </section>
+                ),
+                text: ROUTINE_WORDS.voiceShapes[shape],
+              })),
+            ]}
+          />
           <Button
             size="lg"
             className="mt-5 h-12 w-full rounded-2xl text-base"

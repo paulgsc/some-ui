@@ -230,6 +230,16 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "where a file the phone sent is now, and the title bar that wears it (J0): only the Android app's Jobs cards send files to say it of (src/components/jobs)",
     },
     {
+      modules: [
+        "apps/www/src/lib/status-board/**",
+        "apps/www/src/lib/sharing-marks/**",
+        "apps/www/src/components/sharing-marks.tsx",
+        "apps/www/src/components/settings/status-board.tsx",
+      ],
+      profiles: [MOBILE_PROFILE],
+      why: "the status page (#2165) and the sharing marks it draws: what this phone keeps and sends, which only the Android app does (src/routes/_dashboard/_apk/settings/status.tsx, src/components/device-home-glyph.tsx)",
+    },
+    {
       modules: DEVICE_MODULES,
       profiles: [MOBILE_PROFILE],
       why: "native-only code, which runs only in the Android app (src/lib/device-backend, src/vite-env.d.ts on VITE_DEVICE_BACKEND)",

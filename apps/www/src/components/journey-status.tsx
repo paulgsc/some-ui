@@ -59,21 +59,27 @@ const STOP_ICONS: Readonly<Record<Stop, LucideIcon>> = {
   run: Sunrise,
 }
 
-/** Each kind of state's colors: the bar, the icon's chip, its sign. */
+/** Each kind of state's colors: the bar, the icon's chip, its sign, its words. */
 const THEMES: Readonly<
-  Record<JourneyTheme, { bar: string; chip: string; sign: string }>
+  Record<
+    JourneyTheme,
+    { bar: string; chip: string; sign: string; text: string }
+  >
 > = {
   waiting: {
+    text: "text-foreground",
     bar: "bg-muted border-border",
     chip: "bg-background text-foreground border border-border",
     sign: "bg-background text-foreground border border-foreground",
   },
   moving: {
+    text: "text-warning",
     bar: "bg-warning/10 border-warning/40",
     chip: "bg-warning text-warning-foreground",
     sign: "bg-background text-foreground border border-warning",
   },
   read: {
+    text: "text-success",
     bar: "bg-success/10 border-success/30",
     chip: "bg-success text-success-foreground",
     sign: "bg-background text-success border border-success",
@@ -81,6 +87,7 @@ const THEMES: Readonly<
   // Not `destructive-foreground`: in the dark theme that pair is under 3:1
   // for an icon (`tests/ui-fit/jobs-status-fit.spec.ts`).
   stopped: {
+    text: "text-destructive",
     bar: "bg-destructive/10 border-destructive/40",
     chip: "bg-destructive text-background",
     sign: "bg-background text-destructive border border-destructive",
@@ -212,7 +219,10 @@ type Listed = {
 }
 
 /** A state's icon: its stop on its theme's chip, its sign at the corner. */
-const StateIcon = ({
+/** The tone a state's words wear beside its icon, where no bar does. */
+export const themeText = (theme: JourneyTheme): string => THEMES[theme].text
+
+export const StateIcon = ({
   at,
   sign,
   theme,

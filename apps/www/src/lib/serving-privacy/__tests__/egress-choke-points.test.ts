@@ -51,7 +51,8 @@ const HOME_LINK_CALLERS = new Set([
   // LA13: Settings' choice to keep voice notes on home.
   "components/settings/device-voice-home.tsx",
   // Settings' ledger of what is shared: it reads the choices, and stops
-  // Practice and the Jobs record on a second press (LA9).
+  // Practice and the Jobs record on a second press (LA9); the status page's
+  // rows for the same records are read here too, sending nothing.
   "components/settings/device-sharing-ledger.tsx",
   // LA9 to LA11: the mark of a record kept on home, in the header, which
   // mounts its lane's watch, and what hands aph's lane to it.
