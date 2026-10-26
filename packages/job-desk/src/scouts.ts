@@ -41,10 +41,6 @@ export const ScoutsSchema = z.object({
         .and(TrackedSchema)
     )
     .min(1),
-  /**
-   * The phone's id for each voice note the file names, by file name: how
-   * the run finds home's transcript of it (ROUTINE.md §2).
-   */
   notes: NoteIdsSchema,
 })
 

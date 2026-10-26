@@ -165,8 +165,7 @@ For each new file:
 1. Check it with the checker (step 8). One that fails is skipped and named in
    the summary, never guessed at.
 2. Read home's transcript of every voice note it names (below, "Home's
-   transcripts"). A note home hasn't heard yet is taken in from the file's
-   written words alone, and said in the summary.
+   transcripts").
 3. Take it in:
    - **Passed picks:** the reasons and notes tell me what to stop sending. A
      reason given twice is a rule for this run.
@@ -205,18 +204,12 @@ never picked again, unless a disagreement brought it back.
 
 ### Home's transcripts
 
-Home hears my voice notes for me. The phone sends each one home, home
-transcribes it on its own machine, and puts what it heard in the mailbox's
-`transcript` folder, text only. So this run reads what I said; it never
-hears a note itself. Install no speech model and download no note's audio,
-not even when a note has no transcript: that note waits for a later run.
+Home transcribes my voice notes and leaves the text in the mailbox's
+`transcript` folder; install no speech model and download no note's audio.
 
 Each Decisions and Scout file names its voice notes by file name in its
 `voice` lists, and gives the phone's id for each in `notes`
-(`{"<file name>": "<note id>"}`). Home names each transcript for its note's
-id: `transcript-<note id>-<n>.json`, where `<n>` counts that note's
-transcripts from 1 and a higher one is newer (a better model heard it
-again).
+(`{"<file name>": "<note id>"}`).
 
 If the mailbox is usable (§0.4), list the folder once per run, paged as
 §2 pages the decisions folder:
@@ -237,9 +230,8 @@ For each voice note this run takes in:
    asked for with `wanted`, as there), and check its `sha256`. It must be
    JSON with `"schema": "some-ui.voice-transcript/1"` and `note` equal to the
    id. One that isn't is skipped and named in the summary.
-3. Its `text` is what I said, in `language` (Whisper's code: `en`, `ko`).
-   Read it with the entry that names the note. `of`, `ref` and `at` say what
-   the note was for and when I recorded it; `heardAt`, when home heard it.
+3. Its `text` is what I said, in `language` (`en`, `ko`); read it with the
+   entry that names the note.
 4. List the note's file name in the digest's `transcribed` (§8).
 
 A note with an id but no transcript yet hasn't been heard by home. Take its
@@ -631,10 +623,8 @@ shorter limit, first person, the gaps) is yours to hold.
    and `review` §3 to §5 gave it, and a scout that became a pick its
    `pickId` from step 1.
 3. `read` names every Decisions and Scout file this run took in, from Drive or
-   the mailbox, and `transcribed` every voice note it is done with, by its file
-   name: one whose transcript from home it read, or one whose file gives no
-   id for it (§2, "Home's transcripts"). `redrafts` holds each
-   redraft §2 wrote.
+   the mailbox, and `transcribed` every voice note §2 ("Home's transcripts")
+   counts done, by its file name. `redrafts` holds each redraft §2 wrote.
 4. Save the digest as bare JSON to a scratch file and check it from the repo
    root (run `pnpm install` first if `node_modules` is missing):
 

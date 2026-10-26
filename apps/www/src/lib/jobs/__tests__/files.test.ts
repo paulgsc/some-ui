@@ -84,7 +84,6 @@ describe("decisionsFile", () => {
     expect(file.voice).toEqual([
       { id: "v1", name: "2026-10-18_tid-7f2a_voice-1.webm" },
     ])
-    // How the run finds home's transcript of each (ROUTINE.md §2).
     expect(json.notes).toEqual({ "2026-10-18_tid-7f2a_voice-1.webm": "v1" })
   })
 

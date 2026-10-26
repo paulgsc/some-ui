@@ -40,16 +40,15 @@ export const VoiceFileSchema = z
   .regex(/^[\w.-]+\.(?:webm|ogg|opus|m4a|mp4|aac|mp3|wav)$/)
 
 /**
- * The phone's own id for a voice note: what home keeps it under, and what
- * the mailbox names home's transcript of it by (`transcript-<id>-<n>.json`,
- * ROUTINE.md §2, "Home's transcripts"). Home's rule for a note id
- * (paulgsc/server `voice_repo::is_name`).
+ * The phone's own id for a voice note, by home's rule for one (paulgsc/server
+ * `voice_repo::is_name`; the mailbox's `NOTE_ID` holds the same).
  */
 const NoteIdSchema = z.string().regex(/^[A-Za-z0-9_.:-]{1,64}$/)
 
 /**
- * Each voice note a file names, by its file name, to the phone's id for it.
- * Files before it had none.
+ * Each voice note a file names, by its file name, to the phone's id for it:
+ * how the run finds home's transcript of it (ROUTINE.md §2). Absent in a
+ * file that names no ids.
  */
 export const NoteIdsSchema = z.record(VoiceFileSchema, NoteIdSchema).default({})
 

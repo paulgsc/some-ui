@@ -2,9 +2,7 @@
  * The files the phone shares back to Drive, made from the record: what the
  * log holds since the last share of their kind that arrived. `@some-ui/job-desk`
  * owns the shapes, and each file is checked with it before it is offered, so
- * the routine never reads one the phone could not. Each names its voice
- * notes by file name and gives the phone's id for each (`notes`), which is
- * how the routine finds what home heard in it (job-desk ROUTINE.md §2).
+ * the routine never reads one the phone could not.
  */
 import { extensionOf } from "@some-ui/core-utils"
 import type { Decisions, Scouts } from "@some-ui/job-desk"

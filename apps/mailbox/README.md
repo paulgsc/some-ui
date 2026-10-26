@@ -122,8 +122,7 @@ role, and it is the owner's call, so it is not built.
   must differ for every transcript of the note across every model (home decides it once, as the
   note's next, when it files the transcript; never its `attempt`, which starts again at 1 for
   each model), so a better model's transcript goes under a new name rather than meeting a `409`,
-  and the highest `<n>` is the newest. The morning routine reads it by the note's id, which the
-  phone's decisions and scouts files give for each voice note they name (`notes`). Anything else, an audio file's name included,
+  and the highest `<n>` is the newest. Anything else, an audio file's name included,
   is `422`.
 - **Content type** `application/json` (parameters such as `charset` are ignored), and the body
   must be UTF-8 JSON with no byte-order mark.

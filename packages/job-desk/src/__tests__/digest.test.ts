@@ -619,58 +619,72 @@ describe("fingerprint", () => {
 })
 
 describe("the files the phone shares back", () => {
-  it("parses a day's decisions", () => {
-    const parsed = parseDecisions(
-      JSON.stringify({
-        schema: "some-ui.job-decisions/1",
+  const decisions = {
+    schema: "some-ui.job-decisions/1",
+    day: "2026-10-18",
+    digestDay: "2026-10-18",
+    sharedAt: "2026-10-18T22:10:00Z",
+    picks: [
+      {
         day: "2026-10-18",
-        digestDay: "2026-10-18",
-        sharedAt: "2026-10-18T22:10:00Z",
-        picks: [
-          {
-            day: "2026-10-18",
-            pickId: "tid-7f2a",
-            fingerprint: "tidewater analytics|data analyst|remote",
-            id: "4f1a2b3c-5d6e-4f70-8a9b-0c1d2e3f4a5b",
-            decision: "taken",
-            reasons: [],
-            note: "",
-            voice: [],
-            debrief: {
-              id: "0b3c9a52-6f1e-4d2a-9a43-8a1f0c7e2b11",
-              minutes: 23,
-              friction: 3,
-              frictionChips: ["company-ats"],
-              what: "Indeed sent me to Workday.",
-              voice: ["2026-10-18_tid-7f2a_voice-1.webm"],
-              result: "submitted",
-            },
-          },
-          {
-            day: "2026-10-18",
-            pickId: "nor-0b77",
-            fingerprint: "northwind avionics|software engineer|remote",
-            id: "9e8d7c6b-5a49-4382-a1b0-c9d8e7f6a5b4",
-            decision: "passed",
-            reasons: ["seniority"],
-            note: "Clearance for most contracts",
-            voice: [],
-            debrief: null,
-          },
-        ],
-        disagreements: [],
-        outcomes: [
-          {
-            id: "7d2e1f40-3b5a-4c8e-b1d9-2e6f8a0c4d53",
-            fingerprint: "tidewater analytics|data analyst|remote",
-            event: "reply",
-            on: "2026-10-20",
-            note: "",
-          },
-        ],
-      })
-    )
-    expect(parsed.ok).toBe(true)
+        pickId: "tid-7f2a",
+        fingerprint: "tidewater analytics|data analyst|remote",
+        id: "4f1a2b3c-5d6e-4f70-8a9b-0c1d2e3f4a5b",
+        decision: "taken",
+        reasons: [],
+        note: "",
+        voice: [],
+        debrief: {
+          id: "0b3c9a52-6f1e-4d2a-9a43-8a1f0c7e2b11",
+          minutes: 23,
+          friction: 3,
+          frictionChips: ["company-ats"],
+          what: "Indeed sent me to Workday.",
+          voice: ["2026-10-18_tid-7f2a_voice-1.webm"],
+          result: "submitted",
+        },
+      },
+      {
+        day: "2026-10-18",
+        pickId: "nor-0b77",
+        fingerprint: "northwind avionics|software engineer|remote",
+        id: "9e8d7c6b-5a49-4382-a1b0-c9d8e7f6a5b4",
+        decision: "passed",
+        reasons: ["seniority"],
+        note: "Clearance for most contracts",
+        voice: [],
+        debrief: null,
+      },
+    ],
+    disagreements: [],
+    outcomes: [
+      {
+        id: "7d2e1f40-3b5a-4c8e-b1d9-2e6f8a0c4d53",
+        fingerprint: "tidewater analytics|data analyst|remote",
+        event: "reply",
+        on: "2026-10-20",
+        note: "",
+      },
+    ],
+  }
+
+  it("parses a day's decisions, one from before notes had ids included", () => {
+    expect(parseDecisions(JSON.stringify(decisions))).toMatchObject({
+      ok: true,
+      value: { notes: {} },
+    })
+  })
+
+  it("refuses a note name that isn't a voice file, or an id home wouldn't keep", () => {
+    for (const notes of [
+      { "notes.txt": "n1" },
+      { "x_voice-1.webm": "an id/with a slash" },
+      { "x_voice-1.webm": "" },
+    ]) {
+      expect(parseDecisions(JSON.stringify({ ...decisions, notes })).ok).toBe(
+        false
+      )
+    }
   })
 
   it("parses a scout and wants at least one", () => {
