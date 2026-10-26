@@ -3,11 +3,8 @@
  * (`core/routine-status`): when it last ran and whether it brought anything
  * new, at a glance, and a sheet with its runs as home told them and what
  * each mark means. Its words are `ROUTINE_WORDS`' alone.
- *
- * The marks are built from parts that each say one thing: the ring says
- * whether home has word of the run (solid) or not (broken), the glyph inside
- * says what the run did, and a voice mark beside it says what became of the
- * voice notes. No two states share a mark.
+ * The two axes it draws are `core/routine-status`'s; no two states share a mark
+ * (`index.test.tsx`).
  */
 
 import type { JSX } from "react"
@@ -30,6 +27,7 @@ import type {
 import {
   ROUTINE_WORDS,
   runLine,
+  SHAPE_ORDER,
   VOICE_ORDER,
 } from "@topik/lib/topik/core/routine-status"
 
@@ -51,24 +49,15 @@ const VOICE_TONE: Record<VoiceShape, string> = {
   waiting: "text-muted-foreground",
   missed: "text-warning",
   unread: "text-warning",
+  garbled: "text-warning",
 }
-
-const LEGEND: ReadonlyArray<RoutineShape> = [
-  "fresh",
-  "opened",
-  "rested",
-  "partly",
-  "stopped",
-  "quiet",
-  "away",
-  "unheard",
-]
 
 /**
  * A sun for the morning run. Each shape differs in form, not only in
  * colour: rays for something new, a check for all opened, a flat line for
  * nothing to answer, a half for some left, a square for ended early, and a
- * broken ring for no word.
+ * broken ring for no word: with a mark for quiet, clock hands for away, and
+ * nothing inside for none heard yet.
  */
 const RoutineMark = ({
   shape,
@@ -109,6 +98,7 @@ const RoutineMark = ({
     {shape === "stopped" ? (
       <rect x="9.6" y="9.6" width="4.8" height="4.8" rx="0.6" />
     ) : null}
+    {shape === "away" ? <path d="M12 9.4V12l1.8 1.3" /> : null}
     {shape === "quiet" ? (
       <>
         <path d="M12 9v3.2" />
@@ -121,7 +111,8 @@ const RoutineMark = ({
 /**
  * What became of the voice notes, beside the routine's mark: a speech
  * bubble, with three dots while one waits for home, a slash for one home
- * never heard, and a question mark when what home heard couldn't be read.
+ * never heard, a question mark when what home heard couldn't be read, and a
+ * zigzag when the run's own word on them couldn't be read.
  */
 const VoiceMark = ({
   shape,
@@ -144,6 +135,7 @@ const VoiceMark = ({
     <path d="M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5h-8l-4 3.5v-3.5H5A1.5 1.5 0 0 1 3.5 15V7A1.5 1.5 0 0 1 5 5.5z" />
     {shape === "waiting" ? <path d="M8.5 11h.1M12 11h.1M15.5 11h.1" /> : null}
     {shape === "missed" ? <path d="m8.5 14.5 7-7" /> : null}
+    {shape === "garbled" ? <path d="m8 11.5 2-2 2 2.5 2-2.5 2 2" /> : null}
     {shape === "unread" ? (
       <>
         <path d="M10.2 9.2a1.9 1.9 0 1 1 2.6 1.8c-.5.2-.8.6-.8 1.1v.4" />
@@ -253,7 +245,7 @@ export const RoutineStatus = ({
               {ROUTINE_WORDS.legend}
             </h3>
             <ul className="mt-2 flex flex-col gap-2">
-              {LEGEND.map((shape) => (
+              {SHAPE_ORDER.map((shape) => (
                 <li key={shape} className="flex items-center gap-3 text-sm">
                   <RoutineMark
                     shape={shape}

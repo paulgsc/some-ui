@@ -47,8 +47,10 @@ export type VoiceShape =
   | "missed"
   /** The run couldn't read what home heard, so every voice note waits. */
   | "unread"
+  /** The run's word on its voice notes couldn't be read here. */
+  | "garbled"
 
-export type VoiceView = { shape: VoiceShape; line: string }
+type VoiceView = { shape: VoiceShape; line: string }
 
 export type RoutineView = {
   shape: RoutineShape
@@ -60,11 +62,24 @@ export type RoutineView = {
   voice: ReadonlyArray<VoiceView>
 }
 
-/** The voice marks in the order they show. */
+/** The voice marks in the order they show, each once (`index.test.ts`). */
 export const VOICE_ORDER: ReadonlyArray<VoiceShape> = [
+  "garbled",
   "unread",
   "missed",
   "waiting",
+]
+
+/** The routine's marks in the order the legend shows them, each once. */
+export const SHAPE_ORDER: ReadonlyArray<RoutineShape> = [
+  "fresh",
+  "opened",
+  "rested",
+  "partly",
+  "stopped",
+  "quiet",
+  "away",
+  "unheard",
 ]
 
 /** A run is due again a day and two hours after it started, unless it says otherwise. */
@@ -108,6 +123,10 @@ function foundOf(found: RoutineRun["found"]): string | null {
   return parts.every((part) => part === null) ? null : joined(parts)
 }
 
+/** "One thing you shared", "3 things you shared". */
+const things = (n: number): string =>
+  n === 1 ? "One thing you shared" : `${n} things you shared`
+
 export const ROUTINE_WORDS = {
   title: "The routine",
   /** The mark's button name: what it opens. */
@@ -137,30 +156,40 @@ export const ROUTINE_WORDS = {
       "Something was answered without its voice note, because home never heard it.",
     unread:
       "The routine couldn't read what home heard in your voice notes, so they wait.",
+    garbled: "The routine's word on your voice notes couldn't be read here.",
   } satisfies Record<VoiceShape, string>,
+  /** What the run said of its voice notes, each state it reported as a sentence. */
+  voiceLines: (
+    voice: Exclude<RoutineRun["voice"], null>
+  ): Record<VoiceShape, string | null> =>
+    voice === "garbled"
+      ? {
+          garbled:
+            "The routine said what became of your voice notes, but this phone couldn't read it.",
+          unread: null,
+          missed: null,
+          waiting: null,
+        }
+      : {
+          garbled: null,
+          unread: voice.unread
+            ? "The routine couldn't read what home heard in your voice notes, so they wait for its next run."
+            : null,
+          missed:
+            voice.missed === 0
+              ? null
+              : `${things(voice.missed)} ${voice.missed === 1 ? "was answered without its voice note" : "were answered without their voice notes"}, because home never heard ${voice.missed === 1 ? "it" : "them"}. Voice notes reach home only while this phone keeps them there.`,
+          waiting:
+            voice.waiting === 0
+              ? null
+              : `${things(voice.waiting)} ${voice.waiting === 1 ? "waits" : "wait"} for home to hear a voice note.`,
+        },
 } as const
-
-/** "One thing you shared", "3 things you shared". */
-const things = (n: number): string =>
-  n === 1 ? "One thing you shared" : `${n} things you shared`
 
 /** What the run said of its voice notes, one view per state it reported. */
 function voiceOf(run: RoutineRun): ReadonlyArray<VoiceView> {
-  const { voice } = run
-  if (voice === null) return []
-  const lines: Record<VoiceShape, string | null> = {
-    unread: voice.unread
-      ? "The routine couldn't read what home heard in your voice notes, so they wait for its next run."
-      : null,
-    missed:
-      voice.missed === 0
-        ? null
-        : `${things(voice.missed)} ${voice.missed === 1 ? "was" : "were"} answered without a voice note home never heard. Voice notes reach home only while this phone keeps them there.`,
-    waiting:
-      voice.waiting === 0
-        ? null
-        : `${things(voice.waiting)} ${voice.waiting === 1 ? "waits" : "wait"} for home to hear a voice note.`,
-  }
+  if (run.voice === null) return []
+  const lines = ROUTINE_WORDS.voiceLines(run.voice)
   return VOICE_ORDER.flatMap((shape) => {
     const line = lines[shape]
     return line === null ? [] : [{ shape, line }]

@@ -38,17 +38,16 @@ export type RoutineRun = {
   /** What it could not do, each a sentence. */
   problems: ReadonlyArray<string>
   /**
-   * What became of the voice notes in what it found: how many reflections and
-   * drama requests wait for home to hear one, how many it answered without
-   * one home never heard, and whether it could read what home heard at all.
-   * Null for a run from before it said so, which says nothing either way.
+   * What became of the voice notes in what it found (topik's `ROUTINE.md`,
+   * step 12). Null for a run from before it said, which says nothing either
+   * way; `garbled` for a tally this build can't read, which keeps the run.
    */
-  voice: VoiceTally | null
+  voice: VoiceTally | "garbled" | null
   /** By when its next run should have reported; absent, a day and two hours on. */
   nextBy: string | null
 }
 
-export type VoiceTally = {
+type VoiceTally = {
   waiting: number
   missed: number
   unread: boolean
@@ -59,6 +58,11 @@ const Instant = z.iso
   .datetime({ offset: true })
   .transform((at) => new Date(at).toISOString())
 const Count = z.number().int().nonnegative()
+const VoiceSchema = z.object({
+  waiting: Count,
+  missed: Count,
+  unread: z.boolean(),
+})
 
 const RunSchema = z.object({
   schema: z.literal("some-ui.routine-run/1"),
@@ -78,9 +82,13 @@ const RunSchema = z.object({
   ),
   problems: z.array(z.string().min(1)).default([]),
   voice: z
-    .object({ waiting: Count, missed: Count, unread: z.boolean() })
-    .nullish()
-    .transform((voice) => voice ?? null),
+    .unknown()
+    .optional()
+    .transform((raw): VoiceTally | "garbled" | null => {
+      if (raw === undefined || raw === null) return null
+      const tally = VoiceSchema.safeParse(raw)
+      return tally.success ? tally.data : "garbled"
+    }),
   nextBy: Instant.nullish(),
 })
 

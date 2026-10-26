@@ -10,6 +10,8 @@ import {
   ROUTINE_WORDS,
   routineView,
   runLine,
+  SHAPE_ORDER,
+  VOICE_ORDER,
 } from "@topik/lib/topik/core/routine-status"
 import { MACHINERY } from "@topik/lib/topik/read-aloud/__tests__/machinery"
 import { describe, expect, it } from "vitest"
@@ -131,7 +133,7 @@ describe("what the routine's mark says", () => {
     ])
     expect(all.voice.map((v) => v.line)).toEqual([
       "The routine couldn't read what home heard in your voice notes, so they wait for its next run.",
-      "One thing you shared was answered without a voice note home never heard. Voice notes reach home only while this phone keeps them there.",
+      "One thing you shared was answered without its voice note, because home never heard it. Voice notes reach home only while this phone keeps them there.",
       "2 things you shared wait for home to hear a voice note.",
     ])
     // A note answered without still leaves a done run done, and says so.
@@ -139,9 +141,22 @@ describe("what the routine's mark says", () => {
     expect(missed.shape).toBe("fresh")
     expect(missed.voice.map((v) => v.shape)).toEqual(["missed"])
     expect(ROUTINE_WORDS.open(missed)).toContain(
-      "2 things you shared were answered without"
+      "2 things you shared were answered without their voice notes, because home never heard them."
     )
-    // The history row says them too.
+    // A tally this build can't read is said as such, never as nothing.
+    expect(view("garbled").voice.map((v) => v.shape)).toEqual(["garbled"])
+  })
+
+  it("orders every mark once, so each reaches the legend", () => {
+    expect([...SHAPE_ORDER].sort()).toEqual(
+      Object.keys(ROUTINE_WORDS.shapes).sort()
+    )
+    expect([...VOICE_ORDER].sort()).toEqual(
+      Object.keys(ROUTINE_WORDS.voiceShapes).sort()
+    )
+  })
+
+  it("says the voice states in the run's history row too", () => {
     expect(
       runLine(run({ voice: { waiting: 1, missed: 0, unread: false } }), TODAY)
     ).toMatch(/One thing you shared waits for home to hear a voice note\.$/)
@@ -208,6 +223,7 @@ describe("what the routine's mark says", () => {
         NOW,
         TODAY
       ),
+      routineView(held([run({ voice: "garbled" })]), new Set(), NOW, TODAY),
       routineView(held([run()], lookedAt), new Set(), late, TODAY),
       routineView(held([run()]), new Set(), late, TODAY),
       routineView(

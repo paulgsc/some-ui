@@ -191,13 +191,18 @@ describe("createRunLog", () => {
     expect(createRunLog(storage).held("home").runs).toEqual([
       { ...before, voice: null },
     ])
-    // From home too: a run that says nothing of them reads as null.
-    expect(
+  })
+
+  it("keeps a run whose voice tally it can't read, and says the tally is garbled", () => {
+    const voiceOf = (voice: unknown): unknown =>
       parseRoutineRuns({
-        runs: [held("run-b.json", run("2026-10-24T16:00:00Z"))],
+        runs: [held("run-b.json", run("2026-10-24T16:00:00Z", { voice }))],
         at: AT,
       })?.runs[0]?.voice
-    ).toBeNull()
+    expect(voiceOf(undefined)).toBeNull()
+    expect(voiceOf({ waiting: 1, missed: 0 })).toBe("garbled")
+    expect(voiceOf({ waiting: -1, missed: 0, unread: false })).toBe("garbled")
+    expect(voiceOf({ waiting: 0, missed: 0, unread: "false" })).toBe("garbled")
   })
 
   it("keeps what another page on this device kept since it read", () => {

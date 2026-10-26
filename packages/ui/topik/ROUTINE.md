@@ -117,7 +117,8 @@ count it in `voice.missed`. For a prompt with nothing written
 but its notes, write the drama its request block describes.
 
 If the transcript listing isn't the object 10b describes, every voice note
-waits, whatever its age, and `voice.unread` is `true`. If 2a skipped the
+waits, whatever its age, and `voice.unread` is `true`; those notes count in
+neither `waiting` nor `missed`, since whether home heard them is unknown. If 2a skipped the
 mailbox, they wait the same way, and that goes in the summary only, since
 step 12 doesn't run. Voice notes never go to the mailbox from this run.
 
