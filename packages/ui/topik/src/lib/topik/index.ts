@@ -1,11 +1,8 @@
 /**
  * Session State Machine - Public API
  *
- * The barrel the package's components import. A module inside
- * src/lib/topik imports the leaf module that declares a name instead (README,
- * "Module Structure"; eslint.config.js bans this file there): it re-exports
- * core and the React adapter together, so a core module importing it would
- * reach React and close a cycle back to itself.
+ * The barrel the package's components import; modules inside src/lib/topik
+ * import leaf modules instead (eslint.config.js says why).
  */
 
 // CORE TYPES

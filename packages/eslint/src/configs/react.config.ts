@@ -147,7 +147,9 @@ export default defineConfig([
       // A cycle within one workspace (IC1). `ignoreExternal` stops the walk
       // at node_modules and at other workspaces, which turbo already holds
       // acyclic: no path back into this package runs through them, and
-      // walking them was most of the rule's time (apps/www: 37s to 10s).
+      // walking them was most of the rule's time (apps/www: 37s to 10s). A
+      // dynamic `import()` back edge counts too: move what both ends share
+      // into a third module.
       "import/no-cycle": ["error", { ignoreExternal: true }],
       "import/named": "error",
       "import/export": "error",
@@ -225,6 +227,17 @@ export default defineConfig([
         ...reactImportBanSelectors,
         ...parentRelativeDynamicImportSelectors,
       ],
+    },
+  },
+  {
+    // tsc reports a missing named import and a duplicate export in
+    // TypeScript. With import-x reading .ts and .tsx (IC1) these two would
+    // repeat it, at about 5s of apps/www's lint, and fail on export shapes
+    // its export map cannot read that tsc accepts.
+    files: ["**/*.{ts,tsx}"],
+    rules: {
+      "import/named": "off",
+      "import/export": "off",
     },
   },
 ])

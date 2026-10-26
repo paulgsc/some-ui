@@ -248,14 +248,6 @@ describe("lint: react-hooks/exhaustive-deps (severity escalated to error)", () =
  *   config's own resolvers (`@lint-fixtures/*` is in this package's
  *   tsconfig paths).
  *
- * A dynamic `import()` back edge is a cycle here too (study-nudge's lazy
- * `./native` was one): move what both ends share into a third module.
- *
- * The rule was configured at error and reported nothing (#2109): import-x
- * builds no export map for an extension outside its `import-x/extensions`
- * setting, whose default is .js/.mjs/.cjs, so every .ts and .tsx edge was
- * skipped. A config test (react.config.test.ts) saw only the severity; this
- * one fails if the rule goes silent again.
  */
 describe("lint: import/no-cycle walks the module graph (IC1)", () => {
   const CYCLE = "tests/lint-fixtures/import-cycle"
@@ -287,7 +279,7 @@ describe("lint: import/no-cycle walks the module graph (IC1)", () => {
   })
 
   it("resolves every fixture import, so a silent pass is not a missing file", async () => {
-    for (const name of ["clock.ts", "typed-clock.ts"]) {
+    for (const name of ["typed-clock.ts", "typed-ticker.ts"]) {
       expectNoMessageForRule(
         await lintFixture(name),
         "import/no-unresolved",
