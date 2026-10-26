@@ -23,8 +23,9 @@ one that never finished.
 
 The shapes are this package's schemas, and `src/sample.digest.json`
 is a complete digest to copy. The limits (picks per track, open picks,
-places, queries, excluded titles, posting age) are `src/policy.ts`. When this file and the
-policy disagree, the policy wins and this file is the bug.
+places, queries, excluded titles, posting age, the hosts the run opens) are
+`src/policy.ts`. When this file and the policy disagree, the policy wins and
+this file is the bug.
 
 ## 0. Before anything
 
@@ -317,10 +318,9 @@ pages refuse agents.
 1. **Find on the boards.** For every query in `QUERIES` (the software list,
    then each adjacent family's) of a track with a free slot (§2, "The
    queue"), and every place in `LOCATIONS`, run one web search for the
-   query and the place, unquoted, with the search limited to
-   the domains `job-boards.greenhouse.io`, `boards.greenhouse.io`,
-   `jobs.lever.co` and `jobs.ashbyhq.com`. Keep only results that name one
-   posting, and drop any query string and a trailing `/apply` or
+   query and the place, unquoted, with the search limited to the
+   Greenhouse, Lever and Ashby hosts in `RUN_HOSTS`. Keep only results that
+   name one posting, and drop any query string and a trailing `/apply` or
    `/application`. Keep the slug's case: Lever's is case-sensitive.
 
    - Greenhouse: `…greenhouse.io/<board>/jobs/<id>`;
@@ -399,8 +399,10 @@ distinct postings left.
 
 **Scouts.** Each new scout from step 2 is a posting I found myself, and a
 candidate like the rest, on the track and family I filed it under. When its
-link is on a board above, read it there. Otherwise search those boards for
-its title words and company, and read the match. Count each one found in
+link's host is one of `RUN_HOSTS`, read it there.
+A link anywhere else can't be opened, and the phone asks for the posting's
+text with one (`linkReach`): search the boards above for its title words and
+company instead, and read the match. Count each one found in
 `seen`, once per fingerprint. When neither turns it up, its `postingText`
 (what I pasted) stands in for the description and its link for the apply
 link: take the company, title, location and posted date from that text, never

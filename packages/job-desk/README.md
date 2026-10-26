@@ -23,7 +23,10 @@ database), beside Drive. `ROUTINE.md` §0.4 says how the routine uses it, and
 `apps/mailbox/README.md` who may put and read what.
 
 - `src/policy.ts` sets how many picks each track gets, where to search, the
-  queries, and the titles never picked. The owner set it on 2026-10-17.
+  queries, and the titles never picked. The owner set it on 2026-10-17. Its
+  `RUN_HOSTS` are the hosts whose links the run opens itself; with a link
+  anywhere else, the scout form asks for the posting's own text
+  (`linkReach`).
 - `ROUTINE.md` is the routine's instructions. The scheduled task's prompt
   points at it, so a change to the run is a reviewed change here.
 - `src/sample.digest.json` (`sampleDigest()`) is a complete digest on made-up

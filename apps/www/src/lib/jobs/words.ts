@@ -1,7 +1,7 @@
 /**
- * What Jobs' Today and a pick say, in the person's terms: what is on this
- * phone, what brings the rest, what is ready, what I have done and how a pick
- * went, never the machinery
+ * What Jobs' Today, a pick and the scout form say, in the person's terms: what
+ * is on this phone, what brings the rest, what is ready, what I have done, how
+ * a pick went and what a scout needs, never the machinery
  * behind it (`__tests__/words.test.ts` holds it to the list in
  * `lib/home-link/__tests__/machinery.ts`).
  */
@@ -274,6 +274,17 @@ export const sayItAloud = "Or say it, up to a minute"
 
 export const endedAs = (result: DebriefResult): string =>
   `Ended: ${endingLabels[result]}. Add replies and interviews under Record as they come.`
+
+/** Under a scout's link whose host the morning run can't open (`linkReach`). */
+export const cantOpenLink =
+  "The run can’t open this link: paste the posting itself"
+
+/** The posting text's label: needed for a link the run can't open. */
+export const postingTextLabel = (needed: boolean): string =>
+  needed ? "Posting text" : "Posting text, optional"
+
+export const postingTextHint =
+  "Paste the posting itself, its description word for word"
 
 /** The arrival notice's control (`./notice`, Settings' Jobs row). */
 export const NOTICE_WORDS = {
