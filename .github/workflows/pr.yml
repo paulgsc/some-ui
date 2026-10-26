@@ -230,7 +230,7 @@ jobs:
       # produce its own justification" as a CI failure, the fourth of this
       # repo's data-as-CI-input guardrails (scripts/check-wasm-bindgen-boundary.sh,
       # scripts/check-mutation-boundary.sh, docs/canon/scripts/check-citations.sh
-      # are the other three; the last runs in the `canon` job below). Turbo-filtered, same shape as the Knip step
+      # are the other three). Turbo-filtered, same shape as the Knip step
       # below: a workspace opts in by declaring a `lint:corpus` script — only
       # packages/ui/leetype declares one today.
       - name: Corpus lint (affected packages)
@@ -581,6 +581,8 @@ jobs:
       - uses: actions/checkout@v7
       - name: Check canon citations
         run: bash docs/canon/scripts/check-citations.sh
+      - name: Self-test the canon check
+        run: bash docs/canon/scripts/check-citations.test.sh
 
   # ── Change-kind record (repo-wide) ─────────────────────────────────────
   # scripts/check-commit-trailers.ts over every commit the PR adds; the

@@ -22,8 +22,9 @@ set -euo pipefail
 # Promise CN1: this script exits 0 exactly when C1 and C2 hold, over every
 # tracked `.typ` file (canon or other typst, in docs/canon or elsewhere) and
 # every tracked text file that names a docs/canon path (source, docs, tests).
-# Proof: root `pnpm check:canon`, run by pr.yml's `canon` job, which CI Gate
-# needs, so a regression fails a PR.
+# Proof: check-citations.test.sh runs this script over a scratch repository
+# holding each cell of that family, and pr.yml's `canon` job, which CI Gate
+# needs, runs both.
 
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
@@ -31,9 +32,9 @@ cd "$repo_root"
 violations=0
 
 # ── C1: no canon outside docs/canon ──────────────────────────────────────
-is_canon() { head -n 5 "$1" | grep -qE '^//[[:space:]]+CANON [IVXLC]+ — '; }
+is_canon() { awk 'NR > 5 { exit } /^\/\/[[:space:]]+CANON [IVXLC]+ — / { found = 1; exit } END { exit !found }' "$1"; }
 
-while IFS= read -r file; do
+while IFS= read -r -d '' file; do
   case "$file" in
     docs/canon/*)
       if ! is_canon "$file"; then
@@ -48,7 +49,7 @@ while IFS= read -r file; do
       fi
       ;;
   esac
-done < <(git ls-files '*.typ')
+done < <(git ls-files -z '*.typ')
 
 # ── C2: every cited canon path exists ────────────────────────────────────
 cited=0
