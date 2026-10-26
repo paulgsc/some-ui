@@ -7,8 +7,11 @@
  * A note's audio is copied here when its person keeps voice notes on home,
  * so letting it go from the screen it was recorded on never loses it before
  * home has it. The copy goes once home holds the note; `held` and `refused`
- * only grow, so a note is never copied twice.
+ * only grow, so a note is never copied twice. A copy pass says what it
+ * could not copy (`CopyPass`), and the run after it says why (`runEnd`,
+ * LA14).
  */
+import type { HomeExchanged } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/core-utils"
 
 import { isRecord } from "@/lib/device-backend/common"
@@ -106,6 +109,64 @@ export function stepVoiceHome(
       return assertNever(event)
     }
   }
+}
+
+/**
+ * How copying one note for home ended (`./runtime`'s `copy`): copied (or
+ * already), no room on the copies' shelf, or storage that would not keep
+ * the record naming it.
+ */
+export type CopyEnd = "copied" | "roomless" | "unkept"
+
+/** What one copy pass (`lib/home-link/voice-copy`) could not copy, and why. */
+export type CopyPass = {
+  /** Notes whose audio is gone from this phone: they can never go home. */
+  readonly gone: ReadonlySet<string>
+  /** Notes the copies' shelf had no room for. */
+  readonly roomless: number
+  /** Notes this phone failed to copy: storage that would not keep, or an error. */
+  readonly faults: number
+}
+
+export const NO_PASS: CopyPass = { gone: new Set(), roomless: 0, faults: 0 }
+
+/** `pass` with one note's end counted. */
+export function passWith(pass: CopyPass, end: CopyEnd | "fault"): CopyPass {
+  switch (end) {
+    case "copied": {
+      return pass
+    }
+    case "roomless": {
+      return { ...pass, roomless: pass.roomless + 1 }
+    }
+    case "unkept":
+    case "fault": {
+      return { ...pass, faults: pass.faults + 1 }
+    }
+    default: {
+      return assertNever(end)
+    }
+  }
+}
+
+/** Why a run fails when the phone had no room to copy a note (`lib/home-link/words`). */
+export const NO_ROOM = "room"
+
+/**
+ * How the voice lane's run ends: as its exchange did, unless that sent all
+ * it had and the pass before it left notes it could still copy uncopied.
+ * Then the run fails, saying why: this phone's fault before its lack of
+ * room. A note whose audio is gone fails nothing, since no run could send
+ * it; Settings names it instead.
+ */
+export function runEnd(
+  pass: CopyPass,
+  exchanged: HomeExchanged
+): HomeExchanged {
+  if (exchanged.kind !== "synced") return exchanged
+  if (pass.faults > 0) return { kind: "failed", why: "fault" }
+  if (pass.roomless > 0) return { kind: "failed", why: NO_ROOM }
+  return exchanged
 }
 
 const isString = (value: unknown): value is string => typeof value === "string"

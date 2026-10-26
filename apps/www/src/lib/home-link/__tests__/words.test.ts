@@ -47,6 +47,7 @@ const runs: Array<KeptState> = [
       { kind: "failed", why: "full" },
       { kind: "failed", why: "refused" },
       { kind: "failed", why: "fault" },
+      { kind: "failed", why: "room" },
       { kind: "failed", why: "an entry: home answered 500" },
     ] satisfies Array<KeptRun>
   ).map((last) => ({ ...INITIAL_KEPT, last })),

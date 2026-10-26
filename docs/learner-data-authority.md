@@ -988,7 +988,8 @@ watch started only from the lane's hook and a shared prompt heard only by it
   notes, heard through `onPromptShared`, which `shareDramaPrompt` tells
   only once its share succeeded as shared); the
   lane's runs are asked for as LA9 says, its exchange is `sendVoice` (a copy
-  pass, then `exchangeVoice` over the store's `keeping`), and a copy goes only once home holds its note.
+  pass, then `exchangeVoice` over the store's `keeping`, its end read with
+  the pass's by `runEnd`, LA14), and a copy goes only once home holds its note.
   Letting a note go where it was recorded never removes its copy.
 - _Falsified by:_ a hunk LA9's falsifier names for the shared files; a hunk
   to `lib/home-link/voice-copy.ts` that calls `copy` from anywhere but
@@ -996,7 +997,8 @@ watch started only from the lane's hook and a shared prompt heard only by it
   check (`copyAll`'s before every note and again after its audio is read),
   starts `copySoon` from anything but `watchVoiceNotes`, its subscriptions
   and `sendVoice`, makes `sendVoice` anything but a copy pass and then
-  `exchangeVoice` over `phoneVoiceHome().keeping`, or makes `VOICE_SCOPES` anything but `voice`; a hunk to
+  `exchangeVoice` over `phoneVoiceHome().keeping`, whose end only `runEnd`
+  may change, or makes `VOICE_SCOPES` anything but `voice`; a hunk to
   `lib/home-link/lanes.ts` that makes `keptNow` anything but the lane's
   scopes in `sharedNow` of the log under `pairingOf`; a hunk to
   `lib/home-link/voice.ts` that makes the lane's `exchange` anything but
@@ -1025,7 +1027,9 @@ watch started only from the lane's hook and a shared prompt heard only by it
   let go meanwhile, and a scene note is never offered again; a note on
   Android 7, whose native request sends no body, waits and is never sent,
   and Settings says sending went wrong. A reflection that leaves the bounded
-  list before it is copied is not copied either.
+  list before it is copied is not copied either. A Jobs note let go once its
+  share arrived in Drive before a copy was made, and a note whose audio is
+  gone, are never copied, and Settings says so (LA14).
 - _Why not enforced:_ which files call the copy, the watch and the shared
   prompt's listener is pinned (`egress-choke-points`). Whether each call
   copies only while voice notes are kept is a reading of its guard, which a
@@ -1039,6 +1043,41 @@ watch started only from the lane's hook and a shared prompt heard only by it
   `_dashboard.tsx` mounts under `VITE_DEVICE_BACKEND`; `shelf.remove` in the
   runtime only on `held` and in `sweep`, which keeps waiting and refused
   copies.
+
+### LA14: Settings never says a voice note waits that this phone cannot send
+
+A promise held by tests (paulgsc/some-ui#2088, `Change-Kind: defect`,
+widening LA13): on the owner's phone Settings said "2 voice notes wait on this
+phone" for good, with Send now changing nothing. They were Jobs notes whose
+audio the Jobs runtime let go once their share arrived in Drive (`arrived()`,
+`releasedVoice`), still offered by `jobsNotes`; and every copy that failed
+was silent, so the run ended as if all had gone.
+
+- _Claim:_ while voice notes are kept on home, the count Settings says waits
+  (`voiceLane.useCounts`) is only notes this phone can still copy or send;
+  one it can never send is named with why (`unsentLines`: let go once a share
+  arrived in Drive, gone from this phone), and a run whose copy pass left a
+  note it could copy uncopied ends failed with why (`runEnd`: this phone's
+  fault, `fault`, before its lack of room, `room`), which `laneView` words.
+- _Family:_ every source state of a note: still on the phone; a Jobs note
+  let go after an arrived share, copied before or not; its audio gone; its
+  copy refused by the shelf (no room), by storage that won't keep the record,
+  or by an error; and every outcome of the exchange after the pass (sent all,
+  home forgot the phone, home answered otherwise), with a run before it or
+  none.
+- _Proof:_ `lib/home-link/__tests__/voice-copy.test.ts` (a released Jobs
+  note is no candidate, and is counted in Drive until home has a copy; a
+  gone note is counted until settled); `lib/voice-home/__tests__/model.test.ts`
+  ("how a run ends after a copy pass (LA14)": every pair of note ends, with
+  and without a gone note, against every exchange end);
+  `lib/voice-home/__tests__/runtime.test.ts` (`copy` says `roomless` and
+  `unkept`); `components/settings/__tests__/device-voice-home.test.tsx` (the
+  lines Settings shows for each); `lib/home-link/__tests__/words.test.ts` (none
+  of them names the machinery).
+- _Tolerance:_ a scene note's copy is offered once, at its share, so one that
+  fails there goes to the native log and is not named in Settings (LA13's
+  Tolerance). A pass under way when Send now is pressed is the one the run
+  waits on, so a note changed during it is counted by the next run.
 
 ## Not covered, on purpose
 

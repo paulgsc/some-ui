@@ -4,7 +4,8 @@
  * so no header mark offers it, and Settings shows it inline, as its ledger
  * shows every lane. Two presses, the second keeping the offer's words with
  * the choice; once kept, how sending is going, as a mark's sheet says it
- * (`laneView`, its run included), and Send now. Stopping is the ledger's
+ * (`laneView`, its run included), what this phone can't send and why
+ * (LA14), and Send now. Stopping is the ledger's
  * (`./device-sharing-ledger`). Its words are `lib/home-link/words`'s alone.
  */
 import type { JSX } from "react"
@@ -19,8 +20,8 @@ import {
   useLaneChoices,
   useLaneRun,
 } from "@/lib/home-link/lanes"
-import { voiceLane } from "@/lib/home-link/voice"
-import { laneView, SHEET, WORDS } from "@/lib/home-link/words"
+import { useUnsendable, voiceLane } from "@/lib/home-link/voice"
+import { laneView, SHEET, unsentLines, WORDS } from "@/lib/home-link/words"
 
 const words = WORDS.voice
 
@@ -28,6 +29,7 @@ export const VoiceHomeChoice = (): JSX.Element | null => {
   const { shared, stopped } = useLaneChoices(voiceLane)
   const counts = voiceLane.useCounts()
   const run = useLaneRun(voiceLane)
+  const unsent = unsentLines(useUnsendable())
   const pairing = pairingOf(useHomeLink())
   const [asking, setAsking] = useState(false)
   const [refused, setRefused] = useState(false)
@@ -56,7 +58,7 @@ export const VoiceHomeChoice = (): JSX.Element | null => {
         <p className="text-muted-foreground text-xs" role="status">
           {view.line}
         </p>
-        {[...view.notes, words.footnote].map((note) => (
+        {[...view.notes, ...unsent, words.footnote].map((note) => (
           <p key={note} className="text-muted-foreground text-xs">
             {note}
           </p>

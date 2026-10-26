@@ -14,7 +14,7 @@ import type { BlobShelf } from "@some-ui/voice-capture"
 import { ShelfFullError } from "@some-ui/voice-capture"
 
 import type { Encoded, VoiceHomePort } from "./home"
-import type { VoiceHomeEvent, VoiceHomeState, VoiceOut } from "./model"
+import type { CopyEnd, VoiceHomeEvent, VoiceHomeState, VoiceOut } from "./model"
 import {
   INITIAL_VOICE_HOME,
   parseVoiceHome,
@@ -37,11 +37,12 @@ export type VoiceHome = {
   /** `note` has nothing more to do here: copied, held or refused. */
   settled: (id: string) => boolean
   /**
-   * Copies `note`'s audio for home, once. A shelf with no room leaves it
-   * `roomless`, and storage that won't keep the record leaves it uncopied:
-   * either is tried again when the note is offered again.
+   * Copies `note`'s audio for home, once, and says how that ended. A shelf
+   * with no room leaves it `roomless`, and storage that won't keep the
+   * record leaves it uncopied (`unkept`): either is tried again when the
+   * note is offered again. Throws what the shelf throws but its lack of room.
    */
-  copy: (note: VoiceOut, audio: Blob) => Promise<void>
+  copy: (note: VoiceOut, audio: Blob) => Promise<CopyEnd>
   /** What `./home`'s exchange reads and answers through. */
   keeping: VoiceHomePort
   /** Clears copies the record names neither waiting nor refused. Best effort. */
@@ -85,15 +86,19 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
       }
     },
     settled: (id) => settled(state, id),
-    async copy(note, audio): Promise<void> {
-      if (settled(state, note.id) || copying.has(note.id)) return
+    async copy(note, audio): Promise<CopyEnd> {
+      // A copy under way is another caller's to say how it ended.
+      if (settled(state, note.id) || copying.has(note.id)) return "copied"
       copying.add(note.id)
       try {
         await shelf.put(note.id, audio)
-        if (!apply({ kind: "copied", note })) await shelf.remove([note.id])
+        if (apply({ kind: "copied", note })) return "copied"
+        await shelf.remove([note.id])
+        return "unkept"
       } catch (error) {
         if (!(error instanceof ShelfFullError)) throw error
         apply({ kind: "roomless", id: note.id })
+        return "roomless"
       } finally {
         copying.delete(note.id)
       }

@@ -1,5 +1,5 @@
 /**
- * Every word a record kept on home shows (LA9 to LA11, LA13): each lane's mark in
+ * Every word a record kept on home shows (LA9 to LA11, LA13, LA14): each lane's mark in
  * the header, its sheet, and the choice to keep sending; and Settings'
  * choice to show the routine's files in Korean (LA12). Pure, and the one
  * place those words live, so they stay in the person's terms (what is kept
@@ -8,10 +8,13 @@
  */
 import { counted } from "@some-ui/core-utils"
 
+import { NO_ROOM } from "@/lib/voice-home/model"
+
 import type { ConsentLog, Scope, Shared } from "./consent-model"
 import type { KeptState } from "./kept-model"
 import type { LaneCounts, LaneId } from "./lanes"
 import type { LastRead } from "./routine-model"
+import type { Unsendable } from "./voice-copy"
 
 /** One row of a lane's sheet: what one scope is called, and one of it. */
 type Row = {
@@ -191,6 +194,24 @@ export const SHEET = {
   bringBack: "Bring it back to this phone",
   settings: "Send, free space and pairing: Settings",
 } as const
+
+const they = (n: number): string => (n === 1 ? "it" : "they")
+
+/** The voice notes this phone holds and can't send home, by why (LA14). */
+export const VOICE_UNSENT = {
+  inDrive: (n: number): string =>
+    `This phone let go of ${counted(n, "Jobs voice note")} once a share arrived in Drive, so ${they(n)} can't go to home.`,
+  gone: (n: number): string =>
+    `${counted(n, "voice note")} ${n === 1 ? "isn't" : "aren't"} on this phone any more, so ${they(n)} can't go to home.`,
+} as const
+
+/** What Settings says of the voice notes it can't send, if any. */
+export function unsentLines({ inDrive, gone }: Unsendable): Array<string> {
+  return [
+    ...(inDrive > 0 ? [VOICE_UNSENT.inDrive(inDrive)] : []),
+    ...(gone > 0 ? [VOICE_UNSENT.gone(gone)] : []),
+  ]
+}
 
 /** The send confirm's box, and the words stored with the choice. */
 export const KEEP_SENDING = "Keep sending these to home from now on"
@@ -443,7 +464,7 @@ export function laneView(
 
   const later =
     facts.waiting > 0
-      ? ` ${words.waits(facts.waiting)} on this phone and go next time.`
+      ? ` ${words.waits(facts.waiting)} on this phone and go${facts.waiting === 1 ? "es" : ""} next time.`
       : ""
   if (facts.run.running) return show("waiting", "Sending", "Sending to home.")
 
@@ -467,6 +488,13 @@ export function laneView(
         "trouble",
         "Shelf full",
         "Home's shelf is full, so some kept items didn't fit."
+      )
+    }
+    if (last.why === NO_ROOM) {
+      return show(
+        "trouble",
+        "No room",
+        `This phone has no room for more copies until home takes the ones waiting.${later}`
       )
     }
     if (last.why === "refused") {
