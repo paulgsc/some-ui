@@ -42,19 +42,16 @@ export type JourneyTheme = "waiting" | "moving" | "read" | "stopped"
  * one set share (`__tests__/journey.test.ts`): the theme's colour comes on
  * top of it, never instead of it.
  */
-export const SIGNS = [
-  "none",
-  "done",
-  "stopped",
-  "partly",
-  "under-way",
-  "later",
-  "unknown",
-  "nothing",
-  "full",
-] as const
-
-export type Sign = (typeof SIGNS)[number]
+export type Sign =
+  | "none"
+  | "done"
+  | "stopped"
+  | "partly"
+  | "under-way"
+  | "later"
+  | "unknown"
+  | "nothing"
+  | "full"
 
 /** A stop as the road draws it. */
 export type Mark = "reached" | "stopped" | "unconfirmed" | "ahead"
