@@ -1,24 +1,31 @@
 /**
- * The data contract: one regular-season week, from one team's point of view,
- * already computed. This package only renders it. Whatever produces it (a
- * server engine, a weekly job) owns the math: the paths, the flips that moved
- * them, what the rivals' breaks were worth. `StorySeasonSchema` is the one door data comes
- * in through (`parseStorySeason` for bare data), so a malformed feed fails
- * there rather than mid-render.
+ * The data contract (version 2): one regular-season week, from one team's
+ * point of view, already computed. This package only renders it. Whatever
+ * produces it (paulgsc/server's `crates/playoff_delta`, run by a weekly job)
+ * owns the math. `StorySeasonSchema` is the one door data comes in through
+ * (`parseStorySeason` for bare data), so a malformed feed fails there rather
+ * than mid-render.
  *
- * Vocabulary:
- * - a "path" is a way into the playoffs: win x more games and get in as seed
- *   s or better. `paths[x]` is the best seed reachable winning exactly x more
- *   (null: no way in with x). x = 0 reads "even if they never win again".
- * - a "claim" is the headline of a paths row: the fewest more wins that still
- *   get in, and the best seed with exactly that many.
- * - the "floor" is the final record that claim implies.
+ * Two questions, every week:
+ * - **Is there a way in?** A "path" is a way into the playoffs: win x more
+ *   games and get in as seed s or better. `paths[x]` is the best seed
+ *   reachable winning exactly x more (null: no way in with x); x = 0 reads
+ *   "even if they never win again". The "claim" is the first row with a way
+ *   in, and the "floor" the final record it implies. A result can only remove
+ *   ways, so this answer holds or gets worse.
+ * - **How often?** The "share": of the ways the rest of the season can go,
+ *   each counted once, the share in which the team gets in. Its weekly change
+ *   splits into the team's own result and the league's, and each result's
+ *   "leverage" is the share as it happened minus the share had it gone the
+ *   other way.
  */
 
 import { z } from "zod"
 
 const Code = z.string().min(2).max(3)
 const Record = z.object({ w: z.number().int(), l: z.number().int() })
+const Share = z.number().min(0).max(1)
+const Change = z.number().min(-1).max(1)
 
 /** Best seed reachable winning exactly x more games, for x = 0..n. */
 const Paths = z.array(z.number().int().min(1).max(7).nullable()).min(1)
@@ -33,76 +40,111 @@ const Claim = z.discriminatedUnion("in", [
   z.object({ in: z.literal(false), wins: z.number().int() }),
 ])
 
-/** Did a result move the paths, and which way. */
-const Moved = z.enum(["helped", "hurt"]).nullable()
-
 const Result = z.object({
-  team: Code,
-  opponent: Code,
-  won: z.boolean(),
-  /** Did this result go the favorite's way (null: either way was the same). */
-  yourWay: z.boolean().nullable(),
-  moved: Moved,
-  /**
-   * The loser's best moment in the game, when the feed has it: its peak win
-   * probability (0-1) and whether it ever led. A loss from a winning position
-   * is the sweeter kind; absent, nothing is shown.
-   */
+  winner: Code,
+  loser: Code,
+  /** The team's own game, a conference team against the other conference, or two conference teams. */
+  kind: z.enum(["own", "exported", "inside"]),
+  leverage: Change,
+  /** Did the other result change the paths, and which way. */
+  moved: z.enum(["helped", "hurt"]).nullable(),
+  /** The loser's best moment in the game, when the feed has it. */
   collapse: z
     .object({ peakWinProbability: z.number().min(0).max(1), led: z.boolean() })
     .optional(),
 })
 
-/** The six result templates (the seventh symbol is your own game). */
-export type TemplateKey =
-  | "division"
-  | "rivals"
-  | "above"
-  | "exported"
-  | "spoilers"
-  | "forced"
+const Bucket = z.object({
+  team: Code,
+  wins: z.number().int(),
+  /** More wins it can take without passing the team's line. */
+  room: z.number().int(),
+})
+const Pigeonhole = z.object({
+  teams: z.array(Bucket),
+  /** Games still to play among them. */
+  games: z.number().int(),
+})
 
 const StoryWeekSchema = z.object({
   week: z.number().int().min(1),
   /** Wins and record going into the week. */
   record: Record,
-  game: z.object({
-    opponent: Code,
-    won: z.boolean(),
-    relation: z.enum(["division", "rival", "conference", "other"]),
-  }),
+  /** Null on the team's bye. */
+  game: z
+    .object({
+      opponent: Code,
+      won: z.boolean(),
+      relation: z.enum(["division", "rival", "conference", "other"]),
+    })
+    .nullable(),
   paths: z.object({
     before: Paths,
     after: Paths,
     winsBefore: z.number().int(),
     winsAfter: z.number().int(),
   }),
-  /** Every result this week, sorted into the fixed templates. */
-  templates: z.object({
-    division: z.array(Result),
-    rivals: z.array(Result),
-    above: z.array(Result),
-    exported: z.array(Result),
-    spoilers: z.array(Result),
-    forced: z.array(Result),
+  share: z.object({
+    before: Share,
+    after: Share,
+    own: Change,
+    league: Change,
+    /** Every way was counted, not a sample. */
+    exact: z.boolean(),
   }),
-  /** One way in that is left: these teams' records the rest of the way. */
+  /** Games left in the league. */
+  pending: z.object({ before: z.number().int(), after: z.number().int() }),
+  /** Every result this week that can matter, most leverage first. */
+  results: z.array(Result),
+  /** Next week's games that matter most. */
+  next: z.array(
+    z.object({ home: Code, away: Code, rootFor: Code, swing: Share })
+  ),
+  /** One way in that is left, and these teams' records the rest of the way. */
   path: z
     .object({
       extraWins: z.number().int(),
       seed: z.number().int(),
       needs: z.array(
-        z.object({ team: Code, rest: Record, rival: z.boolean() })
+        z.object({
+          team: Code,
+          rest: Record,
+          rival: z.boolean(),
+          /** This way lets the team finish above: its record is one choice. */
+          free: z.boolean(),
+        })
       ),
+    })
+    .nullable(),
+  /** Why one fewer final win can't get in, while the claim needs a win. */
+  boundary: z
+    .object({
+      wins: z.number().int(),
+      division: z.discriminatedUnion("kind", [
+        z.object({ kind: z.literal("above"), team: Code }),
+        z.object({
+          kind: z.literal("pigeonhole"),
+          teams: z.array(Bucket),
+          games: z.number().int(),
+        }),
+      ]),
+      wildCard: z.object({
+        above: z.array(Code),
+        pigeonhole: Pigeonhole.nullable(),
+        mustPass: z.number().int(),
+        /** The best wild card left; past 7, none. */
+        seedAtBest: z.number().int(),
+        cases: z.number().int(),
+      }),
     })
     .nullable(),
   rivals: z.array(
     z.object({
       team: Code,
-      game: z.object({ opponent: Code, won: z.boolean() }),
+      game: z.object({ opponent: Code, won: z.boolean() }).nullable(),
       before: Claim,
       after: Claim,
-      worst: Claim,
+      share: z.object({ before: Share, after: Share }),
     })
   ),
   collisions: z.array(
@@ -124,6 +166,7 @@ const StoryWeekSchema = z.object({
       }),
     ])
   ),
+  /** Futility: rivals' losses to anyone but each other. */
   points: z.object({
     week: z.object({ scored: z.number().int(), possible: z.number().int() }),
     season: z.object({ scored: z.number().int(), possible: z.number().int() }),
@@ -139,14 +182,16 @@ const StoryWeekSchema = z.object({
 })
 
 export const StorySeasonSchema = z.object({
-  version: z.literal(1),
-  /** Shown on screen: "Invented season", "2025". */
+  version: z.literal(2),
+  /** Shown on screen: "2025". */
   label: z.string(),
   seasonLength: z.number().int().min(1),
   team: Code,
   rivals: z.array(Code),
   names: z.record(z.string(), z.string()),
   conference: z.string(),
+  /** The most ways a sampled share counts. */
+  ways: z.number().int().min(1),
   weeks: z.array(StoryWeekSchema).min(1),
 })
 
@@ -155,6 +200,7 @@ export type StoryResult = z.infer<typeof Result>
 export type StoryWeek = z.infer<typeof StoryWeekSchema>
 export type StorySeason = z.infer<typeof StorySeasonSchema>
 export type StoryPaths = z.infer<typeof Paths>
+export type StoryBucket = z.infer<typeof Bucket>
 
 export const parseStorySeason = (data: unknown): StorySeason =>
   StorySeasonSchema.parse(data)
@@ -188,12 +234,8 @@ export function floorRecord(c: StoryClaim, seasonLength: number): string {
   return `${w}–${seasonLength - w}`
 }
 
-/**
- * A loss from ahead: the loser led, or was the likelier winner at some point.
- * Reads the loser's side only, so it marks a result for whoever lost it.
- */
+/** A loss from ahead: the loser led, or was the likelier winner at some point. */
 export const blewIt = (r: StoryResult): boolean =>
-  !r.won &&
   r.collapse !== undefined &&
   (r.collapse.led || r.collapse.peakWinProbability >= 0.5)
 
@@ -217,7 +259,7 @@ export function cellChanges(
   week: StoryWeek
 ): ReadonlyArray<ReadonlyArray<CellChange>> {
   const { before, after } = week.paths
-  const shift = week.game.won ? 1 : 0
+  const shift = week.game?.won ? 1 : 0
   return after.map((_, x) =>
     SEEDS.map((s): CellChange => {
       const now = isOpen(after, x, s)
@@ -230,6 +272,19 @@ export function cellChanges(
   )
 }
 
+/** A share as a percentage: "61.5%". */
+export const percent = (share: number): string => `${(share * 100).toFixed(1)}%`
+
+/** A change in share as signed points: "+9.3", "−2.9", "0.0". */
+export function points(change: number): string {
+  const p = Math.abs(change * 100).toFixed(1)
+  if (p === "0.0") return "0.0"
+  return change > 0 ? `+${p}` : `−${p}`
+}
+
+/** A week's share moving less than this (half a point) "held". */
+const HELD = 0.005
+
 export type Verdict =
   | "Better."
   | "Worse."
@@ -237,34 +292,46 @@ export type Verdict =
   | "Absorbed."
   | "Still out."
 
-/** What the week did to the paths, from the grid's cell changes (PDS1). */
-export function weekVerdict(week: StoryWeek): Verdict {
-  const was = claimOf(week.paths.before, week.paths.winsBefore).in
-  if (!claimOf(week.paths.after, week.paths.winsAfter).in)
-    return was ? "Absorbed." : "Still out."
-  const changes = cellChanges(week).flat()
-  if (changes.includes("pruned")) return "Worse."
-  if (changes.includes("opened")) return "Better."
-  return "Held."
-}
-
 /**
- * What the data proves about a result for the team (PDS2): `true` it helped,
- * `false` it hurt, `null` nothing proven. Against the other conference, a
- * conference team's loss takes a win out of the race; a tie (no reading) has
- * no sign.
+ * How the week went: the share's change, unless no way in is left. Expected
+ * to be zero over all the ways the week could have gone, so its sign is the
+ * week's luck.
  */
-export function provenSign(week: StoryWeek, r: StoryResult): boolean | null {
-  if (r.moved) return r.moved === "helped"
-  const exported = week.templates.exported.some(
-    (x) => x.team === r.team && x.opponent === r.opponent
-  )
-  return exported && r.yourWay !== null ? !r.won : null
+export function shareVerdict(week: StoryWeek): Verdict {
+  if (!claimOf(week.paths.after, week.paths.winsAfter).in)
+    return claimOf(week.paths.before, week.paths.winsBefore).in
+      ? "Absorbed."
+      : "Still out."
+  const change = week.share.after - week.share.before
+  if (Math.abs(change) < HELD) return "Held."
+  return change > 0 ? "Better." : "Worse."
 }
 
-/** Each of a template's results, signed by {@link provenSign}. */
-export const templateSigns = (
-  week: StoryWeek,
-  k: TemplateKey
-): ReadonlyArray<boolean | null> =>
-  week.templates[k].map((r) => provenSign(week, r))
+/** The league's results this week: every one but the team's own. */
+export const leagueResults = (week: StoryWeek): ReadonlyArray<StoryResult> =>
+  week.results.filter((r) => r.kind !== "own")
+
+export type Call = {
+  readonly home: string
+  readonly away: string
+  readonly rootFor: string
+  /** Who won it, and what it was worth; undefined if it did not count. */
+  readonly result: StoryResult | undefined
+}
+
+/** Last week's "root for" calls, settled by this week's results. */
+export function calls(
+  season: StorySeason,
+  week: StoryWeek
+): ReadonlyArray<Call> {
+  const last = season.weeks.find((w) => w.week === week.week - 1)
+  if (!last) return []
+  return last.next.map((n) => ({
+    ...n,
+    result: week.results.find(
+      (r) =>
+        (r.winner === n.home && r.loser === n.away) ||
+        (r.winner === n.away && r.loser === n.home)
+    ),
+  }))
+}

@@ -3,6 +3,7 @@ import {
   claimOf,
   floorRecord,
   nameOf,
+  percent,
   type StoryClaim,
 } from "@playoff-delta/lib/story"
 
@@ -28,25 +29,25 @@ export const Rivals = ({ season, week }: SlideProps): JSX.Element => {
               <div className="flex items-baseline justify-between">
                 <b className="text-[5cqw]">{nameOf(season, r.team)}</b>
                 <span
-                  className={`pd-mono pd-small font-bold ${r.game.won ? "text-destructive" : "text-success"}`}
+                  className={`pd-mono pd-small font-bold ${r.game === null ? "text-muted-foreground" : r.game.won ? "text-destructive" : "text-success"}`}
                 >
-                  {r.game.won ? "W" : "L"} vs {r.game.opponent}
+                  {r.game === null
+                    ? "bye"
+                    : `${r.game.won ? "W" : "L"} vs ${r.game.opponent}`}
                 </span>
               </div>
-              {[
-                { k: "last week", c: r.before, cls: "" },
-                { k: "now", c: r.after, cls: "" },
-                {
-                  k: "each break reversed",
-                  c: r.worst,
-                  cls: "text-muted-foreground",
-                },
-              ].map(({ k, c, cls }) => (
-                <div key={k} className="pd-small flex justify-between">
-                  <span className="text-muted-foreground">{k}</span>
-                  <b className={cls}>{label(c)}</b>
-                </div>
-              ))}
+              <div className="pd-small flex justify-between">
+                <span className="text-muted-foreground">their floor</span>
+                <b>
+                  {label(r.before)} → {label(r.after)}
+                </b>
+              </div>
+              <div className="pd-small flex justify-between">
+                <span className="text-muted-foreground">their ways in</span>
+                <b>
+                  {percent(r.share.before)} → {percent(r.share.after)}
+                </b>
+              </div>
             </Reveal>
           )
         })}
@@ -79,6 +80,9 @@ export const Rivals = ({ season, week }: SlideProps): JSX.Element => {
             </small>
           </b>
         </div>
+      </Reveal>
+      <Reveal at={0.6 + n * 1.2} className="pd-small text-muted-foreground">
+        A point for each rival loss to anyone but another rival.
       </Reveal>
     </>
   )
@@ -115,6 +119,38 @@ export const Collisions = ({ week }: SlideProps): JSX.Element => {
             )}
           </Reveal>
         ))}
+      </div>
+    </>
+  )
+}
+
+export const Next = ({ season, week }: SlideProps): JSX.Element => {
+  return (
+    <>
+      <Kicker>Next week</Kicker>
+      <h2 className="pd-q">Who to root for.</h2>
+      <div className="flex flex-col gap-[2.5cqw]">
+        {week.next.map((g, i) => {
+          const other = g.rootFor === g.home ? g.away : g.home
+          return (
+            <Reveal
+              key={`${g.home}-${g.away}`}
+              at={0.3 + i * 0.5}
+              className="pd-card"
+            >
+              <span className="pd-mono pd-small text-muted-foreground">
+                {g.away} @ {g.home}
+              </span>
+              <span className="pd-say">
+                Root for the <b>{nameOf(season, g.rootFor)}</b> over the{" "}
+                {nameOf(season, other)}
+              </span>
+              <span className="pd-small text-muted-foreground">
+                worth {(g.swing * 100).toFixed(1)} points of the ways in
+              </span>
+            </Reveal>
+          )
+        })}
       </div>
     </>
   )
@@ -200,6 +236,9 @@ export const Outro = ({ season, week }: SlideProps): JSX.Element => {
         Week {week.week} · {nameOf(season, season.team)} · floor{" "}
         {floorRecord(a, season.seasonLength)}
         {a.in ? ` · #${a.seed}` : ""}
+      </span>
+      <span className="pd-say text-muted-foreground">
+        in {percent(week.share.after)} of the ways the season can go
       </span>
       <span className="pd-say text-muted-foreground">
         futility points: {week.points.season.scored} of{" "}
