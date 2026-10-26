@@ -8,31 +8,37 @@
 import { counted } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/intent-kit"
 
+import { lawOf, LAWS } from "./laws"
 import {
+  against,
+  calls,
   claimOf,
   floorRecord,
+  leagueResults,
   nameOf,
-  provenSign,
+  percent,
+  points,
+  roomOf,
+  shareVerdict,
   sinceLabel,
-  templateSigns,
+  size,
   type StorySeason,
   type StoryWeek,
-  type TemplateKey,
 } from "./story"
 
 const SLIDE_IDS = [
   "hook",
   "test",
-  "alphabet",
-  "grammar",
   "before",
   "game",
-  "who",
-  "how",
+  "law",
+  "league",
   "after",
   "path",
+  "boundary",
   "rivals",
   "collisions",
+  "next",
   "benchmark",
   "outro",
 ] as const
@@ -40,25 +46,29 @@ export type SlideId = (typeof SLIDE_IDS)[number]
 
 /** Slides with nothing to show this week are skipped, not shown empty. */
 export function slidesFor(week: StoryWeek): ReadonlyArray<SlideId> {
-  return SLIDE_IDS.filter(
-    (id) => id !== "collisions" || week.collisions.length > 0
-  )
+  return SLIDE_IDS.filter((id) => {
+    if (id === "league") return leagueResults(week).length > 0
+    if (id === "boundary") return week.boundary !== null
+    if (id === "collisions") return week.collisions.length > 0
+    if (id === "next") return week.next.length > 0
+    return true
+  })
 }
 
 /** Milliseconds a slide holds when playing unattended: its reveal, then a beat. */
 export const HOLD_MS: Readonly<Record<SlideId, number>> = {
-  hook: 6000,
+  hook: 6500,
   test: 5500,
-  alphabet: 5000,
-  grammar: 7000,
-  before: 5000,
-  game: 4500,
-  who: 6500,
-  how: 6500,
-  after: 6500,
+  before: 5500,
+  game: 5000,
+  law: 7000,
+  league: 7500,
+  after: 7500,
   path: 6500,
+  boundary: 8000,
   rivals: 7000,
   collisions: 6000,
+  next: 6000,
   benchmark: 6000,
   outro: 4500,
 }
@@ -67,12 +77,9 @@ export const HOLD_MS: Readonly<Record<SlideId, number>> = {
 export const REST_OF_LEAGUE =
   "and the rest of the league as this way has it. There may be others."
 
-export const WHO: ReadonlyArray<TemplateKey> = ["division", "rivals", "above"]
-export const HOW: ReadonlyArray<TemplateKey> = [
-  "exported",
-  "spoilers",
-  "forced",
-]
+/** The model every number is read under, said once a week. */
+export const MODEL =
+  "Each way the rest of the season can go counts once. Standings only: a tie goes to us."
 
 function claimLine(
   season: StorySeason,
@@ -82,9 +89,13 @@ function claimLine(
   const c = claimOf(paths, wins)
   if (!c.in) return "every path is closed"
   if (c.extraWins === 0)
-    return `even if they never win again, they're in, as high as the number ${c.seed} seed`
+    return `even if they never win again, a way in remains, as high as the number ${c.seed} seed`
   return `they need ${counted(c.extraWins, "more win")}, then as high as the number ${c.seed} seed. That's a ${floorRecord(c, season.seasonLength)} team`
 }
+
+/** "the Niners beat the Lions", as the voiceover says a result. */
+const said = (season: StorySeason, winner: string, loser: string): string =>
+  `the ${nameOf(season, winner)} beat the ${nameOf(season, loser)}`
 
 /** The voiceover line for one slide. */
 export function narration(
@@ -94,58 +105,69 @@ export function narration(
 ): string {
   const name = nameOf(season, season.team)
   const n = (code: string): string => nameOf(season, code)
-  const { record } = week
+  const { record, share } = week
   switch (id) {
     case "hook": {
-      return "Most fans ask one question: did we win? We ask a different one. How bad can we be, and still make the playoffs?"
+      return "Most fans ask one question: did we win? We ask two. How bad can we be, and still make the playoffs? And of all the ways the season can still go, how many get us in?"
     }
     case "test": {
       return `The ${name} are ${record.w} and ${record.l}. Freeze the season: if they never win again, they finish ${record.w} and ${season.seasonLength - record.w}. Can that team still make the playoffs?`
     }
-    case "alphabet": {
-      return "Seven shapes tell every story: you, a contender, an eliminated team, a named rival, your division, your conference, and a win moving to the winner."
-    }
-    case "grammar": {
-      return "And every week, we watch the same seven things."
-    }
     case "before": {
-      return `${sinceLabel(week.week)}, ${claimLine(season, week.paths.before, week.paths.winsBefore)}.`
+      return `${sinceLabel(week.week)}, ${claimLine(season, week.paths.before, week.paths.winsBefore)}. And ${percent(share.before)} of the ways the season can go get them in.`
     }
     case "game": {
-      return week.game.won
-        ? `Week ${week.week}: the ${name} beat the ${n(week.game.opponent)}. A win moves every path one win closer.`
-        : `Week ${week.week}: the ${name} lost to the ${n(week.game.opponent)}. A loss can't open a path, so it's up to the rest of the league.`
+      if (week.game === null)
+        return `Week ${week.week} is a bye. The ${name} don't play, so only the league moves.`
+      return `Week ${week.week}: the ${name} ${week.game.won ? "beat" : "lost to"} the ${n(week.game.opponent)}. That alone moved them ${points(share.own)} points.`
     }
-    case "who": {
-      const fell = WHO.flatMap((k) => week.templates[k]).filter(
-        (r) => !r.won && provenSign(week, r) === true
-      )
-      const names = [...new Set(fell.map((r) => n(r.team)))]
-      return names.length
-        ? `Who fell? ${names.join(", ")}.`
-        : "Who fell? None of the usual suspects."
+    case "law": {
+      const law = LAWS[lawOf(week)]
+      return `${law.name}. ${law.rule} ${law.then}`
     }
-    case "how": {
-      const helped = (k: TemplateKey): number =>
-        templateSigns(week, k).filter((v) => v === true).length
-      return `${counted(helped("exported"), "conference team")} lost to the other conference, ${counted(helped("spoilers"), "spoiler")} went your way, and ${counted(week.templates.forced.length, "forced game")}.`
+    case "league": {
+      const top = leagueResults(week)[0]
+      const settled = calls(season, week)
+      const kept = settled.filter((c) => c.result.winner === c.rootFor).length
+      const callLine = settled.length
+        ? ` Of last week's ${counted(settled.length, "call")}, ${kept} went our way.`
+        : ""
+      return top
+        ? `The rest of the league moved them ${points(share.league)} points. The result that mattered most: ${said(season, top.winner, top.loser)}, ${points(top.leverage)} points against the other result.${callLine}`
+        : "Nothing else in the league could matter this week."
     }
     case "after": {
-      return `After week ${week.week}, ${claimLine(season, week.paths.after, week.paths.winsAfter)}.`
+      return `${shareVerdict(week)} After week ${week.week}, ${claimLine(season, week.paths.after, week.paths.winsAfter)}. The share of ways in went from ${percent(share.before)} to ${percent(share.after)}.`
     }
     case "path": {
-      return week.path
-        ? `Here's one way in: ${week.path.needs
-            .slice(0, 3)
-            .map((x) => `the ${n(x.team)} go ${x.rest.w} and ${x.rest.l}`)
-            .join(", ")}, ${REST_OF_LEAGUE}`
-        : "There's no path left."
+      if (!week.path) return "There's no path left."
+      const held = week.path.needs
+        .filter((x) => !x.free)
+        .slice(0, 3)
+        .map((x) => `the ${n(x.team)} go ${x.rest.w} and ${x.rest.l}`)
+        .join(", ")
+      return `Here's one way in${held ? `: ${held}` : ""}, ${REST_OF_LEAGUE}`
+    }
+    case "boundary": {
+      const b = week.boundary
+      if (!b) return ""
+      const lead = `Why can't ${b.wins} wins work? ${LAWS.pigeonhole.rule}`
+      if (b.division.kind === "above")
+        return `${lead} The ${n(b.division.team)} are already past ${b.wins} wins, so the division is gone.`
+      const teams = b.division.teams.map((t) => `the ${n(t.team)}`).join(", ")
+      return `${lead} ${teams} still play ${counted(b.division.games, "game")} among themselves, with room for only ${counted(roomOf(b.division.teams), "win")} under our line. ${LAWS.pigeonhole.then}`
     }
     case "rivals": {
       return `Futility points: ${week.points.week.scored} of ${week.points.week.possible} this week, ${week.points.season.scored} of ${week.points.season.possible} on the season.`
     }
     case "collisions": {
       return "And here's where rooting gets messy."
+    }
+    case "next": {
+      const top = week.next[0]
+      return top
+        ? `Next week, root for the ${n(top.rootFor)} against the ${n(against(top))}. The two results are ${size(top.swing)} points of the ways in apart.`
+        : ""
     }
     case "benchmark": {
       const low = week.benchmark.lowestBar

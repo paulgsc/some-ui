@@ -1,13 +1,15 @@
+import { lawOf } from "@playoff-delta/lib/laws"
 import { SAMPLE_SEASON } from "@playoff-delta/lib/sample"
-import { HOW, WHO } from "@playoff-delta/lib/slides"
 import {
   blewIt,
+  calls,
   cellChanges,
   claimOf,
   floorRecord,
-  provenSign,
-  weekVerdict,
+  points,
+  shareVerdict,
   type StoryResult,
+  type StorySeason,
   type StoryWeek,
 } from "@playoff-delta/lib/story"
 import { describe, expect, it } from "vitest"
@@ -17,6 +19,15 @@ const week = (n: number): StoryWeek => {
   if (!w) throw new Error(`no week ${n}`)
   return w
 }
+
+const result = (over: Partial<StoryResult>): StoryResult => ({
+  winner: "PHI",
+  loser: "DET",
+  kind: "inside",
+  leverage: 0,
+  moved: null,
+  ...over,
+})
 
 describe("claimOf", () => {
   it("is the first row with a way in", () => {
@@ -40,148 +51,124 @@ describe("claimOf", () => {
 })
 
 describe("cellChanges", () => {
+  const shaped = (
+    game: StoryWeek["game"],
+    before: Array<number | null>,
+    after: Array<number | null>
+  ): StoryWeek => ({
+    ...week(2),
+    game,
+    paths: { ...week(2).paths, before, after },
+  })
+  const won = { opponent: "NO", won: true, relation: "conference" } as const
+
   it("shifts a row after a win: last week's +1 is this week's 0", () => {
-    const w = week(9)
-    expect(w.game.won).toBe(true)
-    const zeroRow = cellChanges(w)[0]
-    // #6 and #7 were open with one more win, and stay open with none.
-    expect(zeroRow?.[5]).toBe("open")
-    expect(zeroRow?.[6]).toBe("open")
+    expect(cellChanges(shaped(won, [null, 6], [6]))[0]?.[5]).toBe("open")
   })
 
-  it("closes every path in the week that absorbs", () => {
-    const changes = cellChanges(week(16)).flat()
-    expect(changes.some((c) => c === "pruned")).toBe(true)
-    expect(changes.every((c) => c === "pruned" || c === "closed")).toBe(true)
+  it("does not shift on a bye", () => {
+    // Shifted, row 0 would read last week's row 1, where #3 was open.
+    expect(cellChanges(shaped(null, [6, 3], [6, 3]))[0]?.[2]).toBe("closed")
+  })
+
+  it("marks a closed path", () => {
+    expect(cellChanges(shaped(null, [5], [6]))[0]?.[4]).toBe("pruned")
+  })
+})
+
+describe("shareVerdict", () => {
+  const shaped = (before: number, after: number, out = false): StoryWeek => ({
+    ...week(2),
+    paths: { ...week(2).paths, after: out ? [null] : [5] },
+    share: { ...week(2).share, before, after },
+  })
+
+  it.each([
+    [0.6, 0.7, "Better."],
+    [0.7, 0.6, "Worse."],
+    [0.6, 0.604, "Held."],
+    [0.6, 0.596, "Held."],
+  ] as const)("%f to %f: %s", (before, after, verdict) => {
+    expect(shareVerdict(shaped(before, after))).toBe(verdict)
+  })
+
+  it("says the paths closed for good, whatever the share did", () => {
+    expect(shareVerdict(shaped(0.01, 0, true))).toBe("Absorbed.")
+  })
+})
+
+describe("points", () => {
+  it("signs a change in share as points", () => {
+    expect(points(0.093)).toBe("+9.3")
+    expect(points(-0.029)).toBe("−2.9")
+    expect(points(0.0002)).toBe("0.0")
+  })
+})
+
+describe("lawOf", () => {
+  const shaped = (
+    game: StoryWeek["game"],
+    results: Array<StoryResult>
+  ): StoryWeek => ({ ...week(2), game, results })
+  const g = week(2).game
+
+  it("is the four kinds on a bye or a week with no league result", () => {
+    expect(lawOf(shaped(null, [result({})]))).toBe("kinds")
+    expect(lawOf(shaped(g, [result({ kind: "own", winner: "SF" })]))).toBe(
+      "kinds"
+    )
+  })
+
+  it("follows the league's biggest result", () => {
+    const own = result({ kind: "own", winner: "SF", leverage: 0.2 })
+    const exported = result({ kind: "exported", leverage: -0.03 })
+    const inside = result({ kind: "inside", leverage: 0.01 })
+    expect(lawOf(shaped(g, [own, exported, inside]))).toBe("conservation")
+    expect(
+      lawOf(shaped(g, [own, { ...inside, leverage: 0.04 }, exported]))
+    ).toBe("room")
+  })
+})
+
+describe("calls", () => {
+  it("settles last week's calls this week's results decided", () => {
+    const [a, b] = SAMPLE_SEASON.weeks
+    if (!a || !b) throw new Error("two weeks")
+    const season: StorySeason = {
+      ...SAMPLE_SEASON,
+      weeks: [
+        {
+          ...a,
+          next: [
+            { home: "TEN", away: "LAR", rootFor: "TEN", swing: 0.02 },
+            { home: "NYG", away: "WAS", rootFor: "WAS", swing: 0.01 },
+          ],
+        },
+        {
+          ...b,
+          results: [result({ winner: "LAR", loser: "TEN", leverage: -0.016 })],
+        },
+      ],
+    }
+    expect(calls(season, b).map((c) => c.result.winner)).toEqual(["LAR"])
+    expect(calls(season, a)).toEqual([])
   })
 })
 
 describe("blewIt", () => {
-  const base: StoryResult = {
-    team: "SEA",
-    opponent: "ARI",
-    won: false,
-    yourWay: true,
-    moved: null,
-  }
-
   it("marks a loss from ahead", () => {
     expect(
-      blewIt({ ...base, collapse: { peakWinProbability: 0.3, led: true } })
+      blewIt(result({ collapse: { peakWinProbability: 0.3, led: true } }))
     ).toBe(true)
     expect(
-      blewIt({ ...base, collapse: { peakWinProbability: 0.7, led: false } })
+      blewIt(result({ collapse: { peakWinProbability: 0.7, led: false } }))
     ).toBe(true)
   })
 
-  it("leaves a loss that was never close, a win, or no data alone", () => {
+  it("leaves a loss that was never close, or no data, alone", () => {
     expect(
-      blewIt({ ...base, collapse: { peakWinProbability: 0.2, led: false } })
+      blewIt(result({ collapse: { peakWinProbability: 0.2, led: false } }))
     ).toBe(false)
-    expect(
-      blewIt({
-        ...base,
-        won: true,
-        collapse: { peakWinProbability: 0.9, led: true },
-      })
-    ).toBe(false)
-    expect(blewIt(base)).toBe(false)
-  })
-})
-
-/**
- * PDS1: the week's verdict names what the week did to the paths: "Worse."
- * when a path open last week is closed (rows matched by final wins), else
- * "Better." when one opened, else "Held."; "Absorbed." or "Still out." when
- * none is left. Family: the team's own result (won, lost) x what the cells
- * did (one closed, one opened, both, neither) x a way in before and after.
- * A win that only lifts the floor the team has banked is "neither".
- */
-describe("weekVerdict (PDS1)", () => {
-  type Paths = ReadonlyArray<number | null>
-  const shaped = (won: boolean, before: Paths, after: Paths): StoryWeek => {
-    const w = week(9)
-    return {
-      ...w,
-      game: { ...w.game, won },
-      paths: {
-        ...w.paths,
-        before: [...before],
-        after: [...after],
-      },
-    }
-  }
-
-  it.each([
-    [true, [3, 3, 1, 1, 1], [3, 1, 1, 1, 1], "Held."],
-    [true, [null, 4, 3, 2, 1], [4, 3, 2, 1, 1], "Held."],
-    [false, [null, 4, 3, 2, 1], [null, 4, 3, 2, 1], "Held."],
-    [true, [null, 4, 3, 2, 1], [null, null, 4, 2, 1], "Worse."],
-    [false, [7, 5, 1, 1, 1], [7, 5, 2, 1, 1], "Worse."],
-    [false, [null, 5], [5, 5], "Better."],
-    [true, [null, null, 5], [5, 5], "Better."],
-    [false, [null, null], [5, 5], "Better."],
-    [false, [null, 3], [5, 4], "Worse."],
-    [true, [null, null, 3], [5, 4], "Worse."],
-    [false, [null, 5], [null, null], "Absorbed."],
-    [true, [null, 5, 4], [null, null], "Absorbed."],
-    [true, [null, null], [null, null], "Still out."],
-    [false, [null, null], [null, null], "Still out."],
-  ] as const)("won %s, %j then %j: %s", (won, before, after, verdict) => {
-    expect(weekVerdict(shaped(won, before, after))).toBe(verdict)
-  })
-})
-
-/**
- * PDS2: a result's colour is what the data proves: the engine's verdict when
- * it has one; else, against the other conference, the conference team's
- * loss helps and its win hurts; else no colour. Family: the template it
- * sits in x the engine's verdict (helped, hurt, none) x won or lost x the
- * feed's reading (true, false, none: a tie) x against the other conference
- * or not.
- */
-describe("provenSign (PDS2)", () => {
-  const empty = {
-    division: [],
-    rivals: [],
-    above: [],
-    exported: [],
-    spoilers: [],
-    forced: [],
-  }
-
-  it("is the engine's verdict, else conservation's sign, else nothing", () => {
-    for (const k of [...WHO, ...HOW])
-      for (const moved of ["helped", "hurt", null] as const)
-        for (const won of [true, false])
-          for (const yourWay of [true, false, null])
-            for (const outside of [true, false]) {
-              if (k === "exported" && !outside) continue
-              const r: StoryResult = {
-                team: "PHI",
-                opponent: "KC",
-                won,
-                yourWay,
-                moved,
-              }
-              const w: StoryWeek = {
-                ...week(9),
-                templates: {
-                  ...empty,
-                  [k]: [r],
-                  ...(outside ? { exported: [r] } : {}),
-                },
-              }
-              const expected =
-                moved !== null
-                  ? moved === "helped"
-                  : outside && yourWay !== null
-                    ? !won
-                    : null
-              expect(
-                provenSign(w, r),
-                JSON.stringify({ k, moved, won, yourWay, outside })
-              ).toBe(expected)
-            }
+    expect(blewIt(result({}))).toBe(false)
   })
 })
