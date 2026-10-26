@@ -45,6 +45,7 @@ function decisions(
     digestDay: digest.day,
     sharedAt,
     picks,
+    notes: {},
     disagreements: [],
     outcomes: [],
   }

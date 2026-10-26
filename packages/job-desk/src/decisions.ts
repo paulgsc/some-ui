@@ -4,6 +4,7 @@ import {
   EventIdSchema,
   FingerprintSchema,
   IdSchema,
+  NoteIdsSchema,
   parseWith,
   text,
   VoiceFileSchema,
@@ -131,6 +132,11 @@ export const DecisionsSchema = z.object({
         .default([]),
     })
   ),
+  /**
+   * The phone's id for each voice note the file names, by file name: how
+   * the run finds home's transcript of it (ROUTINE.md §2).
+   */
+  notes: NoteIdsSchema,
   /** Set-aside postings I'd have picked, and why. */
   disagreements: z.array(
     z.object({ id: EventIdSchema, fingerprint: FingerprintSchema, note: text })

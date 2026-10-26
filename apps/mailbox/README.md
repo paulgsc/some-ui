@@ -119,9 +119,11 @@ role, and it is the owner's call, so it is not built.
   `transcript-<note>-<n>.json`, named for the note's id (1 to 64 letters, digits, `-`, `_`, `.`
   or `:`, as home's `PUT /api/v1/voice-notes/:id` takes it, sent unencoded: the Worker does not
   decode `%3A`) and `<n>`, home's number for that transcript, from 1 with no leading zero. `<n>`
-  must differ for every transcript of the note across every model (the row's own number, never
-  its `attempt`, which starts again at 1 for each model), so a better model's transcript goes
-  under a new name rather than meeting a `409`. Anything else, an audio file's name included,
+  must differ for every transcript of the note across every model (home decides it once, as the
+  note's next, when it files the transcript; never its `attempt`, which starts again at 1 for
+  each model), so a better model's transcript goes under a new name rather than meeting a `409`,
+  and the highest `<n>` is the newest. The morning routine reads it by the note's id, which the
+  phone's decisions and scouts files give for each voice note they name (`notes`). Anything else, an audio file's name included,
   is `422`.
 - **Content type** `application/json` (parameters such as `charset` are ignored), and the body
   must be UTF-8 JSON with no byte-order mark.
