@@ -1,7 +1,7 @@
 /**
- * The Android app's stand-in for the account section: what is on this phone,
- * and the Home server block, the one place on the phone that sends anything
- * to the home server (LA8, docs/learner-data-authority.md).
+ * The Android app's Home page (Settings → Home, paulgsc/some-ui#2107): the
+ * Home server block, the one place on the phone that sends anything to the
+ * home server (LA8, docs/learner-data-authority.md).
  *
  * Every hop is a tap here, and names where it goes (LA8); `lib/home-link`
  * owns the work, and this component only shows it. The choice to show the
@@ -43,10 +43,6 @@ import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { DeviceRoutineReads } from "@/components/settings/device-routine-reads"
 import { SharingLedger } from "@/components/settings/device-sharing-ledger"
-import {
-  DeviceArchive,
-  DeviceStorageSummary,
-} from "@/components/settings/device-storage"
 import { VoiceHomeChoice } from "@/components/settings/device-voice-home"
 
 const HOME_KEY = "some-ui.device.home-server.v1"
@@ -365,19 +361,8 @@ export const DeviceSection = (): JSX.Element => {
   })
 
   return (
-    <section className="space-y-4" aria-labelledby="device-heading">
-      <div className="space-y-1">
-        <Label id="device-heading">This phone</Label>
-        <p className="text-muted-foreground text-sm">
-          Saved on this phone, and works offline. Lessons sync from your home
-          server.
-        </p>
-      </div>
-
-      <DeviceStorageSummary />
-      <DeviceArchive />
-
-      <div className="space-y-2" aria-labelledby="home-heading">
+    <section className="space-y-4" aria-labelledby="home-heading">
+      <div className="space-y-2">
         <Label id="home-heading" htmlFor="home-server">
           Home server
         </Label>

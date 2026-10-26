@@ -62,7 +62,7 @@ test("a passkey is the whole account: create, sign out, sign in, delete", async 
   await page.reload()
   await expect(page).toHaveURL(/\/app$/)
 
-  await page.goto(`${base}/settings`)
+  await page.goto(`${base}/settings/account`)
   await page.getByRole("button", { name: /^sign out$/i }).click()
   await expect(page).toHaveURL(/\/auth/)
   expect(await session()).toBeUndefined()
@@ -71,7 +71,7 @@ test("a passkey is the whole account: create, sign out, sign in, delete", async 
   await signIn(page)
   await expect(page).toHaveURL(/\/app$/)
 
-  await page.goto(`${base}/settings`)
+  await page.goto(`${base}/settings/account`)
   await page.getByRole("button", { name: /^delete account$/i }).click()
   await page.getByRole("button", { name: /yes, delete my account/i }).click()
   await expect(page).toHaveURL(/\/auth/)

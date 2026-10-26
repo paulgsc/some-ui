@@ -90,10 +90,6 @@ vi.mock("@/lib/tenant/queries", () => ({
 vi.mock("@/components/settings/device-sharing-ledger", () => ({
   SharingLedger: (): null => null,
 }))
-vi.mock("@/components/settings/device-storage", () => ({
-  DeviceStorageSummary: (): null => null,
-  DeviceArchive: (): null => null,
-}))
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 afterEach(() => {
