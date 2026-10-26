@@ -49,8 +49,8 @@ is the bug.
 
 2a. The mailbox. `JOBS_MAILBOX_URL` (no trailing slash) and
 `JOBS_MAILBOX_TOKEN` are set in this environment. If either is unset or empty,
-skip every mailbox step (6a, 10a, part D, 10b, 12), carry on with Drive alone,
-and say so in the summary. Otherwise check it once:
+skip every mailbox step (6a, 10a, part D, 10b, 12, and "Voice notes" waits),
+carry on with Drive alone, and say so in the summary. Otherwise check it once:
 
 ```sh
 curl -sS --max-time 30 -o /dev/null -w '%{http_code}\n' \
@@ -75,33 +75,51 @@ Each transcript is a file in the mailbox's `transcript` folder,
 `note` is the phone's id for the note, and `language` is Whisper's code (`en`
 or `ko`).
 
-List the folder once per run, live and archived, as 10b lists a folder. For a
-note, take its transcript with the highest `<n>` (home's newest hearing of it),
-fetch it with `GET "$JOBS_MAILBOX_URL/v1/transcript/items/<name>"`, check the
-bytes' SHA-256 against the listing's `sha256` and the body's `schema` and
-`note`, and read its `text`. A transcript listed only as archived is asked back
-(`PUT "$JOBS_MAILBOX_URL/v1/transcript/wanted/<name>"`, no body) and counts as
-not heard this run.
+Once per run, list the folder, live and archived, as 10b lists a folder. Then:
 
-- A reflection's voice note is an entry in `<base>.json` whose `kind` is
-  `voice` (its audio, if the phone shared it, is the `<base>_voice-*` file the
-  entry's `file` names); its `id` is the note's id.
-- A drama prompt's spoken scene notes (`drama-<stamp>.voice-<n>.<ext>` beside
-  the prompt) went home under the prompt's stamp: their transcripts are the
-  ones whose body has `"of": "scene"` and `"ref": "drama-<stamp>"`, one note per
-  distinct `note`. When there are several, read them in `at` order and say in
-  the summary that their order may not be the order they were said in.
+- **A reflection's note** is an entry in `<base>.json` whose `kind` is `voice`
+  (its audio, if the phone shared it, is the `<base>_voice-*` file the entry's
+  `file` names); its `id` is the note's id. Its transcript is the live
+  `transcript-<id>-<n>.json` with the highest `<n>`, compared as a number.
+- **A drama prompt's scene notes** (`drama-<stamp>.voice-<n>.<ext>` beside the
+  prompt) went home under the prompt's stamp, but their names don't carry it.
+  Fetch each live transcript no reflection claims, once per run, and match a
+  prompt to the ones whose body has `"of": "scene"` and
+  `"ref": "drama-<stamp>"`, one note per distinct `note` (the highest `<n>` of
+  each). They all carry the prompt's time, so their order is unknown: say so in
+  the summary when there are several.
+- **Each transcript you use:** fetch it with
+  `GET "$JOBS_MAILBOX_URL/v1/transcript/items/<name>"`, check the bytes' SHA-256
+  against the listing's `sha256` and the body's `schema` and `note`, and read
+  its `text`.
+- **Archived:** a reflection's note with no live transcript but an archived
+  one is asked back (`PUT "$JOBS_MAILBOX_URL/v1/transcript/wanted/<name>"`, no
+  body, the highest `<n>`). For a drama prompt with too few matches, ask back
+  the archived transcripts put (their `putAt`) between a day before the
+  prompt's stamp and seven days after it, at most ten a run; a later run
+  matches them by body.
 
-A note home hasn't heard is one with no transcript (for a drama prompt, fewer
-distinct notes than voice files beside it), one whose transcript fails the
-check, or one asked back this run. Its reflection or prompt waits: don't
-answer it this run, so what was said is read once home has heard it, and
-don't count it toward that part's limit for the run. Count it
-in `found` (step 12), make the outcome `partly`, and add one problem in the
-owner's terms, such as "Home hasn't heard one voice note from your study
-reflection yet, so that reflection waits for the next run." The phone shows
-it. If 2a skipped the mailbox, every voice note waits the same way. Voice
-notes never go to the mailbox from this run.
+A note home hasn't heard is one with no transcript to use (for a drama prompt,
+fewer distinct notes than voice files beside it), including one asked back
+this run. Its reflection or prompt waits, so what was said is read once home
+has heard it: don't answer it this run, and skip it in step 3 or 7 so it
+doesn't use up that step's limit. Add one problem for it, in the owner's
+terms, such as "Home hasn't heard one voice note from your study reflection
+yet, so that reflection waits for the next run."
+
+A note reaches home only while the phone keeps voice notes on home, and a
+drama prompt's notes are sent once, when it is shared. So once its voice file
+(or, without one, the reflection's file) has been in Drive for two days, stop
+waiting: answer the reflection or prompt from what it says in writing, and
+add the problem "Home never heard one voice note from your study reflection
+(or drama request), so it was answered without it. Voice notes reach home
+only while your phone keeps them on home." For a prompt with nothing written
+but its notes, write the drama its request block describes.
+
+If the transcript listing isn't the object 10b describes, every voice note
+waits, whatever its age, with one problem for them all. If 2a skipped the
+mailbox, they wait the same way, and that goes in the summary only, since
+step 12 doesn't run. Voice notes never go to the mailbox from this run.
 
 ## Part A: word sets
 
@@ -115,7 +133,8 @@ notes never go to the mailbox from this run.
    `Read aloud/sets` or under `Read aloud/archive/`: a retired scene stays
    answered and is never written again. A folder whose description is
    `stock: <base>` (part D) answers no reflection. Take the unanswered ones,
-   newest first, at most three this run. If there are none, go to part B.
+   newest first, skipping any that wait on a voice note ("Voice notes"), at
+   most three this run. If there are none, go to part B.
 
 4. For each: read the reflection JSON and what home heard in each of its voice
    notes ("Voice notes" above; one home hasn't heard makes the reflection
@@ -240,13 +259,14 @@ file it, and still write the pair.
 
 7. List `Dramas/requests` (folder id in the SOP). A prompt is
    `drama-<stamp>.prompt.md`; it is answered when `drama-<stamp>.json` sits
-   beside it. Take the unanswered ones, oldest first, at most two this run. If
-   there are none, go to part D.
+   beside it. Take the unanswered ones, oldest first, skipping any that wait
+   on a voice note, at most two this run. If there are none, go to part D.
 
 8. For each: read the prompt (download_file_content; it is plain markdown) and
    read what home heard in each voice note beside it ("Voice notes" above; one
-   home hasn't heard makes the prompt wait) before you write anything: the spoken scene is what the learner asked
-   for. Then do what the prompt asks: write the drama as one scene tree,
+   home hasn't heard makes the prompt wait) before you write anything. Those
+   transcripts stand in for the prompt's "listen to them first": the spoken
+   scene is what the learner asked for. Then do what the prompt asks: write the drama as one scene tree,
    following the prompt exactly (it carries the tree prompt, the request, and
    the last drama to continue from). If the prompt names a last drama, read
    that drama's `.json` from `Dramas/played/` or `Dramas/requests/` to keep its
@@ -376,8 +396,9 @@ writes only to the mailbox.
   asked for (finding nothing counts as done); `partly` when something was left
   for a later run, skipped or failed; `stopped` when the run ended early.
 - `problems`: written for the owner, in their terms: what was not done, and
-  why, such as "Home hasn't heard one voice note from your study reflection
-  yet, so that reflection waits for the next run." Never quote a note, and never name a status code, a token, a
+  why, such as "One drama couldn't be made playable, so that prompt waits for
+  the next run." The phone shows the first one, so put the one that matters
+  most first. Never quote a note, and never name a status code, a token, a
   URL, a file id or a tool. `[]` when there were none.
 - `nextBy`: compute it with `node` (`Intl` knows daylight saving), not by hand.
 
