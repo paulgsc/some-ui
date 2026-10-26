@@ -14,6 +14,7 @@ import {
   nameOf,
   provenSign,
   sinceLabel,
+  templateSigns,
   type StorySeason,
   type StoryWeek,
   type TemplateKey,
@@ -61,6 +62,10 @@ export const HOLD_MS: Readonly<Record<SlideId, number>> = {
   benchmark: 6000,
   outro: 4500,
 }
+
+/** What the path's records leave out: it is one way in. */
+export const REST_OF_LEAGUE =
+  "and the rest of the league as this way has it. There may be others."
 
 export const WHO: ReadonlyArray<TemplateKey> = ["division", "rivals", "above"]
 export const HOW: ReadonlyArray<TemplateKey> = [
@@ -122,7 +127,7 @@ export function narration(
     }
     case "how": {
       const helped = (k: TemplateKey): number =>
-        week.templates[k].filter((r) => provenSign(week, r) === true).length
+        templateSigns(week, k).filter((v) => v === true).length
       return `${counted(helped("exported"), "conference team")} lost to the other conference, ${counted(helped("spoilers"), "spoiler")} went your way, and ${counted(week.templates.forced.length, "forced game")}.`
     }
     case "after": {
@@ -133,9 +138,7 @@ export function narration(
         ? `Here's one way in: ${week.path.needs
             .slice(0, 3)
             .map((x) => `the ${n(x.team)} go ${x.rest.w} and ${x.rest.l}`)
-            .join(
-              ", "
-            )}, and the rest of the league as this way has it. There may be others.`
+            .join(", ")}, ${REST_OF_LEAGUE}`
         : "There's no path left."
     }
     case "rivals": {

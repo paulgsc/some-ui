@@ -1,7 +1,7 @@
 import type { JSX } from "react"
 import { PathGrid } from "@playoff-delta/components/path-grid"
 import { SymbolGlyph } from "@playoff-delta/components/symbol"
-import { HOW, WHO } from "@playoff-delta/lib/slides"
+import { HOW, REST_OF_LEAGUE, WHO } from "@playoff-delta/lib/slides"
 import {
   blewIt,
   cellChanges,
@@ -9,9 +9,9 @@ import {
   floorRecord,
   isOpen,
   nameOf,
-  provenSign,
   SEEDS,
   sinceLabel,
+  templateSigns,
   weekVerdict,
   type StoryClaim,
   type StoryResult,
@@ -153,30 +153,25 @@ function chipClass(sign: boolean | null): string {
 const Chip = ({
   k,
   r,
-  week,
+  sign,
   at,
   you,
 }: {
   k: TemplateKey
   r: StoryResult
-  week: StoryWeek
+  sign: boolean | null
   at: number
   you: string
 }): JSX.Element => {
   const verb = r.won ? "beat" : "lost to"
   const opponent = r.opponent === you ? "you" : r.opponent
   return (
-    <span
-      className={`pd-chip ${chipClass(provenSign(week, r))}`}
-      style={delay(at)}
-    >
+    <span className={`pd-chip ${chipClass(sign)}`} style={delay(at)}>
       <b>{r.team}</b>
       {k === "spoilers" ? <small className="uppercase">out</small> : null}
       {verb} {opponent}
       {blewIt(r) ? <span title="lost from ahead">↯ blew it</span> : null}
-      {r.moved ? (
-        <span title="the other result would have changed the paths">★</span>
-      ) : null}
+      {r.moved ? <span title="decided a path">★</span> : null}
     </span>
   )
 }
@@ -194,7 +189,7 @@ const TemplateCard = ({
 }): JSX.Element => {
   const s = symbolFor(k)
   const results = week.templates[k]
-  const signs = results.map((r) => provenSign(week, r))
+  const signs = templateSigns(week, k)
   const scored = signs.filter((v) => v !== null)
   const hits = scored.filter((v) => v).length
   const tone = !results.length
@@ -232,7 +227,7 @@ const TemplateCard = ({
               key={`${r.team}-${r.opponent}`}
               k={k}
               r={r}
-              week={week}
+              sign={signs[i] ?? null}
               at={at + 0.3 + i * 0.12}
               you={you}
             />
@@ -393,8 +388,7 @@ export const Path = ({ season, week }: SlideProps): JSX.Element => {
         at={0.6 + p.needs.length * 0.35}
         className="pd-say text-muted-foreground"
       >
-        the rest of the way, and the rest of the league as this way has it.
-        There may be others.
+        the rest of the way, {REST_OF_LEAGUE}
       </Reveal>
     </>
   )

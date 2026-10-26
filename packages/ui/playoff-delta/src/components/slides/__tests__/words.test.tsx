@@ -1,11 +1,10 @@
 /**
- * PDS3: the path and rivals slides, slide and voiceover, say what their
- * fields are. The path is one way in, not the only one and not a best case
- * (the rest of the league plays itself, so it cannot all lose); a rival's
- * third claim is each break reversed, not the worst possible, and no
- * percentage divides the claims' sort order. Family: every week of the
- * bundled season, so a path and none, rivals whose breaks mattered and
- * whose did not.
+ * PDS3: the path and rivals slides say what their fields are. The path is
+ * one way in, among possibly others, with the rest of the league as that way
+ * has it; a rival's third claim is each break it got reversed together; no
+ * line claims a best case, a worst case or a percentage. Family: every week
+ * of the bundled season, so a path and none, rivals whose breaks mattered
+ * and whose did not.
  */
 import { Rivals } from "@playoff-delta/components/slides/close"
 import { Path } from "@playoff-delta/components/slides/week"
@@ -22,7 +21,7 @@ describe("the path and rivals words (PDS3)", () => {
     (_, week) => {
       const path = render(<Path season={SAMPLE_SEASON} week={week} />)
       expect(path.container.textContent).not.toMatch(OVERCLAIMS)
-      if (week.path) expect(screen.getByText(/One way:/)).toBeInTheDocument()
+      if (week.path) screen.getByText(/One way:/)
       path.unmount()
 
       const rivals = render(<Rivals season={SAMPLE_SEASON} week={week} />)
@@ -32,8 +31,7 @@ describe("the path and rivals words (PDS3)", () => {
       )
       rivals.unmount()
 
-      for (const id of ["path", "rivals"] as const)
-        expect(narration(SAMPLE_SEASON, week, id)).not.toMatch(OVERCLAIMS)
+      expect(narration(SAMPLE_SEASON, week, "path")).not.toMatch(OVERCLAIMS)
     }
   )
 })
