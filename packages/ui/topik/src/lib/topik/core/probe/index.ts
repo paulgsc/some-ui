@@ -7,7 +7,7 @@
  */
 
 import { fnv1a, shuffledBySeed } from "@some-ui/core-utils"
-import type { Probe, ProbeOption } from "@topik/lib/topik"
+import type { Probe, ProbeOption } from "@topik/lib/topik/entity/topik-types"
 
 /**
  * Options in a stable, seeded order. Authors tend to write the valid reply

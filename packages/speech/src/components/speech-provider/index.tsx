@@ -17,7 +17,6 @@
 
 import type { JSX, ReactNode } from "react"
 import {
-  createContext,
   useContext,
   useEffect,
   useId,
@@ -25,15 +24,12 @@ import {
   useReducer,
   useState,
 } from "react"
+import type { SpeechSession } from "@speech/components/speech-session"
+import { SpeechSessionContext } from "@speech/components/speech-session"
 import { SpeechStatusAnnouncer } from "@speech/components/speech-status"
-import type {
-  SpeechAdapter,
-  SpeechConfig,
-  VoiceReport,
-} from "@speech/lib/adapters"
+import type { SpeechConfig, VoiceReport } from "@speech/lib/adapters"
 import { createSpeechAdapter } from "@speech/lib/adapters"
 import type { SpokenLanguage } from "@speech/lib/language"
-import type { SpeechQueueManager } from "@speech/lib/queue"
 import { initializeSpeechQueue, releaseSpeechQueue } from "@speech/lib/queue"
 import type {
   PreviewOptions,
@@ -41,13 +37,6 @@ import type {
   SpeechOutcome,
 } from "@speech/lib/speaker"
 import type { SpeechNotifier } from "@speech/lib/status"
-
-export type SpeechSession = {
-  readonly adapter: SpeechAdapter
-  readonly manager: SpeechQueueManager
-}
-
-const SpeechSessionContext = createContext<SpeechSession | null>(null)
 
 export type SpeechProviderProps = {
   children: ReactNode
@@ -161,14 +150,6 @@ export const SpeechProvider = ({
       {children}
     </SpeechSessionContext.Provider>
   )
-}
-
-export function useSpeechSession(): SpeechSession {
-  const session = useContext(SpeechSessionContext)
-  if (!session) {
-    throw new Error("useSpeechSession must be used within a <SpeechProvider>")
-  }
-  return session
 }
 
 /**

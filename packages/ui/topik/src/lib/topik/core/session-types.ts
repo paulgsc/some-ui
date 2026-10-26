@@ -1,10 +1,10 @@
 /** Framework-agnostic types for the session state machine. */
 
 import type {
-  ConversationBatch,
   TopikManifestFile,
   TopikMetadata,
-} from "@topik/lib/topik"
+} from "@topik/lib/topik/entity/topik-metadata"
+import type { ConversationBatch } from "@topik/lib/topik/entity/topik-types"
 
 type SessionPhase =
   | "selecting" // User is choosing content

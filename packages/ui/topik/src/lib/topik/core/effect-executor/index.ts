@@ -1,8 +1,10 @@
 /** Runs the effects the FSM reducer emits: I/O, timers, queries, speech. */
 
 import type { Speaker } from "@some-ui/speech"
-import type { Message } from "@topik/lib/topik"
-import { actions, getCurrentMessage } from "@topik/lib/topik"
+import {
+  actions,
+  getCurrentMessage,
+} from "@topik/lib/topik/core/session-selectors"
 import type {
   IQueryBridge,
   ISessionMachine,
@@ -11,6 +13,7 @@ import type {
 } from "@topik/lib/topik/core/session-types"
 import type { TTSEffectHandler } from "@topik/lib/topik/core/tts-effect-handler"
 import { createTTSEffectHandler } from "@topik/lib/topik/core/tts-effect-handler"
+import type { Message } from "@topik/lib/topik/entity/topik-types"
 
 // EXECUTOR CONFIGURATION
 

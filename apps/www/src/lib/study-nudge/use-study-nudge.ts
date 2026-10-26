@@ -29,10 +29,9 @@ import { useSessions, useSettings } from "@/lib/tenant"
 
 import type { NudgeDecision, NudgePreferences } from "./index"
 import { decideNudge, DEFAULT_NUDGE_PREFERENCES } from "./index"
+import { readLastNudgeAt, recordNudgeShown } from "./nudge-record"
 import {
-  readLastNudgeAt,
   reconcilePushSubscription,
-  recordNudgeShown,
   registerNudgeWorker,
   showNudge,
 } from "./service-worker"

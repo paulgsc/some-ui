@@ -48,8 +48,8 @@ import {
 } from "@some-ui/makjang"
 import type { FeelingKey } from "@some-ui/styles/theme"
 import { isFeelingKey } from "@some-ui/styles/theme"
-import type { Probe, ProbeOption } from "@topik/lib/topik"
 import { bitesBack } from "@topik/lib/topik/core/probe"
+import type { Probe, ProbeOption } from "@topik/lib/topik/entity/topik-types"
 
 /** Audio only, Hangul, gloss: canon Cor. 4.4's ladder. */
 export type Rung = 0 | 1 | 2

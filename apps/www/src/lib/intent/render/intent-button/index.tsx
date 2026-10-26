@@ -25,7 +25,7 @@ import { matchIntent } from "@some-ui/intent-kit"
 import type { ButtonProps } from "@some-ui/shared"
 import { Button } from "@some-ui/shared"
 
-import { IntentFailure } from "@/lib/intent/render"
+import { IntentFailure } from "@/lib/intent/render/intent-failure"
 
 export type IntentButtonProps<TStep extends string = never> = {
   state: Intent<unknown, TStep>

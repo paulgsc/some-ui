@@ -1,1 +1,0 @@
-export { useSessionConfig } from "./context"

@@ -23,8 +23,8 @@ import { LocalNotifications } from "@capacitor/local-notifications"
 import { hasAudience } from "@/lib/build-profile"
 
 import type { NudgeDecision } from "./index"
+import { recordNudgeShown, setNativeNudgePermission } from "./nudge-record"
 import type { ScheduledNudge } from "./schedule"
-import { recordNudgeShown, setNativeNudgePermission } from "./service-worker"
 
 const NUDGE_ID = 1001
 const TEST_NUDGE_ID = 1002

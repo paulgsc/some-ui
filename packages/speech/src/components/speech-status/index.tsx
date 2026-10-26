@@ -19,7 +19,7 @@
 
 import type { JSX } from "react"
 import { useEffect, useEffectEvent, useMemo, useState } from "react"
-import { useSpeechSession } from "@speech/components/speech-provider"
+import { useSpeechSession } from "@speech/components/speech-session"
 import { useQueueStore } from "@speech/lib/hooks/use-queue-store"
 import type { SpeechQueueState } from "@speech/lib/queue"
 import type {

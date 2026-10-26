@@ -4,13 +4,15 @@
  * component definition style (arrow functions), nested components
  * (allowAsProps:false), useless fragments (allowExpressions:true),
  * exhaustive-deps at error, alt-text on the `Image` alias, and the
- * config's own no-restricted-syntax selectors. Plugin defaults and rules
- * that need a real module graph are left to upstream.
+ * config's own no-restricted-syntax selectors, and import/no-cycle on a
+ * real module graph (IC1, below). Plugin defaults are left to upstream.
  *
  * react.config.ts has no TypeScript parser: production composes it with
  * typescript.config.ts. Snippets with TS syntax use `tsReactConfig`.
  */
 
+import { readFileSync } from "node:fs"
+import path from "node:path"
 import reactConfig from "@eslint/configs/react.config.js"
 import tseslint from "typescript-eslint"
 import { describe, expect, it } from "vitest"
@@ -19,6 +21,7 @@ import {
   expectNoMessageForRule,
   expectSnippet,
   lintSnippet,
+  PACKAGE_ROOT,
 } from "./helpers/eslint-resolver.js"
 
 const tsReactConfig = [...tseslint.configs.recommended, ...reactConfig]
@@ -227,5 +230,61 @@ describe("lint: react-hooks/exhaustive-deps (severity escalated to error)", () =
       "react-hooks/exhaustive-deps",
       "useEffect with correct deps"
     )
+  })
+})
+
+/**
+ * IC1: a runtime import cycle inside a workspace fails lint.
+ *
+ * - Claim: under react.config.ts, import/no-cycle reports a module that sits
+ *   in a runtime import cycle, and only a runtime one.
+ * - Family: the source extension of each module in the cycle (.ts and
+ *   .tsx), how the edges are written (a scoped-looking workspace path
+ *   alias, as every workspace imports its own modules since `../` is
+ *   banned, which `ignoreExternal` must not read as a package), and whether
+ *   the back edge is a value or a type-only import.
+ * - Proof: these cases, on real files in tests/lint-fixtures/import-cycle
+ *   (a .ts and a .tsx module importing each other), resolved through the
+ *   config's own resolvers (`@lint-fixtures/*` is in this package's
+ *   tsconfig paths).
+ *
+ */
+describe("lint: import/no-cycle walks the module graph (IC1)", () => {
+  const CYCLE = "tests/lint-fixtures/import-cycle"
+  const lintFixture = async (
+    name: string
+  ): Promise<Awaited<ReturnType<typeof lintSnippet>>> => {
+    const file = `${CYCLE}/${name}`
+    const code = readFileSync(path.join(PACKAGE_ROOT, file), "utf8")
+    return lintSnippet(tsReactConfig, code, file)
+  }
+
+  it.each(["clock.ts", "ticker.tsx"])(
+    "reports %s, one end of a two-module alias cycle",
+    async (name) => {
+      const cycles = (await lintFixture(name)).filter(
+        (m) => m.ruleId === "import/no-cycle"
+      )
+      expect(cycles).toHaveLength(1)
+      expect(cycles[0]?.severity).toBe(2)
+    }
+  )
+
+  it("does not report a cycle whose back edge is type-only", async () => {
+    expectNoMessageForRule(
+      await lintFixture("typed-clock.ts"),
+      "import/no-cycle",
+      "typed-clock.ts, whose importer imports it back as a type"
+    )
+  })
+
+  it("resolves every fixture import, so a silent pass is not a missing file", async () => {
+    for (const name of ["typed-clock.ts", "typed-ticker.ts"]) {
+      expectNoMessageForRule(
+        await lintFixture(name),
+        "import/no-unresolved",
+        name
+      )
+    }
   })
 })

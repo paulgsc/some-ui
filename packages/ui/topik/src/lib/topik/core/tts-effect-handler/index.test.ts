@@ -9,8 +9,8 @@
 
 import type { SpeechAdapter } from "@some-ui/speech"
 import { SpeechQueueManager } from "@some-ui/speech"
-import type { Message } from "@topik/lib/topik"
 import type { ISessionMachine } from "@topik/lib/topik/core/session-types"
+import type { Message } from "@topik/lib/topik/entity/topik-types"
 import type { Mock } from "vitest"
 import { describe, expect, it, vi } from "vitest"
 

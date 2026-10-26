@@ -1,15 +1,15 @@
 import { createContext, useContext } from "react"
 import type { ShelfPort } from "@some-ui/shared"
 import type { Speaker } from "@some-ui/speech"
-import type {
-  ITopikMetadataRepository,
-  ITopikRepository,
-} from "@topik/lib/topik"
 import type { LensTakes } from "@topik/lib/topik/adapter/lens-takes"
 import type { FileShare } from "@topik/lib/topik/adapter/next-scene-share"
 import type { RoutineFeed } from "@topik/lib/topik/adapter/routine-files"
 import type { SceneVoice } from "@topik/lib/topik/adapter/scene-voice"
 import type { TreeFeed } from "@topik/lib/topik/adapter/tree-feed"
+import type {
+  ITopikMetadataRepository,
+  ITopikRepository,
+} from "@topik/lib/topik/core/session-types"
 
 export type SessionConfig = {
   topikRepository: ITopikRepository

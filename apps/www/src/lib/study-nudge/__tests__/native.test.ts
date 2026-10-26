@@ -37,7 +37,7 @@ const {
   scheduleNativeNudge,
   showNativeTestNudge,
 } = await import("@/lib/study-nudge/native")
-const { readLastNudgeAt } = await import("@/lib/study-nudge/service-worker")
+const { readLastNudgeAt } = await import("@/lib/study-nudge/nudge-record")
 
 const DUE = new Date(2026, 8, 30, 14, 0, 0)
 const NUDGE = {

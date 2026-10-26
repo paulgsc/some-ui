@@ -1,5 +1,5 @@
-import type { TopikManifestFile } from "@topik/lib/topik"
-import { TopikManifestSchema } from "@topik/lib/topik"
+import type { TopikManifestFile } from "@topik/lib/topik/entity/topik-metadata"
+import { TopikManifestSchema } from "@topik/lib/topik/entity/topik-metadata"
 import { describe, expect, it, vi } from "vitest"
 
 import { TopikMetadataRepository } from "."

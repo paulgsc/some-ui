@@ -29,9 +29,9 @@
  */
 
 import type { Speaker, SpeechOutcome, Urgency } from "@some-ui/speech"
-import type { Message } from "@topik/lib/topik"
 import type { ISessionMachine } from "@topik/lib/topik/core/session-types"
 import { SPOKEN_LANGUAGE } from "@topik/lib/topik/core/spoken-language"
+import type { Message } from "@topik/lib/topik/entity/topik-types"
 
 // TTS EFFECT HANDLER CONFIG
 
