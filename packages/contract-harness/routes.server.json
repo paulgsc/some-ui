@@ -229,6 +229,27 @@
     },
     {
       "method": "GET",
+      "path": "/korean/:kind",
+      "full_path": "/api/v1/korean/:kind",
+      "versioned": true,
+      "module": "korean"
+    },
+    {
+      "method": "DELETE",
+      "path": "/korean/:kind/:key",
+      "full_path": "/api/v1/korean/:kind/:key",
+      "versioned": true,
+      "module": "korean"
+    },
+    {
+      "method": "PUT",
+      "path": "/korean/:kind/:key",
+      "full_path": "/api/v1/korean/:kind/:key",
+      "versioned": true,
+      "module": "korean"
+    },
+    {
+      "method": "GET",
       "path": "/leetype/rounds",
       "full_path": "/api/v1/leetype/rounds",
       "versioned": true,
