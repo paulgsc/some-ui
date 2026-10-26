@@ -45,7 +45,7 @@ export const VoiceFileSchema = z
  * ROUTINE.md §2, "Home's transcripts"). Home's rule for a note id
  * (paulgsc/server `voice_repo::is_name`).
  */
-export const NoteIdSchema = z.string().regex(/^[A-Za-z0-9_.:-]{1,64}$/)
+const NoteIdSchema = z.string().regex(/^[A-Za-z0-9_.:-]{1,64}$/)
 
 /**
  * Each voice note a file names, by its file name, to the phone's id for it.
