@@ -2,6 +2,7 @@ import { FEELING_KEYS } from "@some-ui/styles/theme"
 import { FIGURE_KEYS } from "@topik/lib/topik/core/cast"
 import type { LastDrama } from "@topik/lib/topik/core/last-drama"
 import { describe, expect, it } from "vitest"
+import { z } from "zod"
 
 import {
   buildLessonPrompt,
@@ -160,6 +161,16 @@ describe("buildTreePrompt", () => {
   })
 })
 
+/** The export's `notes` line; empty when it has none. */
+const notesLine = (text: string): string =>
+  text.split("\n").find((line) => line.startsWith("<!-- notes: ")) ?? ""
+
+/** The map a `notes` line holds, as the routine reads it. */
+const idsOf = (line: string): Record<string, string> =>
+  z
+    .record(z.string(), z.string())
+    .parse(JSON.parse(line.slice("<!-- notes: ".length, -" -->".length)))
+
 describe("nextSceneFile", () => {
   it("names the export by its moment, and tells an agent the reply's name", () => {
     const file = nextSceneFile(
@@ -171,5 +182,47 @@ describe("nextSceneFile", () => {
     expect(file.at).toBe("2026-10-09T07:05:03.120Z")
     expect(file.text).toContain("`drama-20261009T070503120Z.json`")
     expect(file.text.endsWith("\nTHE PROMPT")).toBe(true)
+  })
+
+  it("names each voice note's id by its file name, in the order they were said", () => {
+    const at = new Date("2026-10-09T07:05:03.120Z")
+    const first = { id: "said-first", name: voiceNoteName(at, 0, "audio/mp4") }
+    const second = {
+      id: "said-second",
+      name: voiceNoteName(at, 1, "audio/webm;codecs=opus"),
+    }
+    const file = nextSceneFile("THE PROMPT", at, [first, second])
+    const line = notesLine(file.text)
+    expect(line).toMatch(/^<!-- notes: \{.*\} -->$/)
+    const ids = idsOf(line)
+    expect(ids).toEqual({
+      [first.name]: "said-first",
+      [second.name]: "said-second",
+    })
+    // The routine reads them in this order, which `voice-<n>` also gives.
+    expect(Object.keys(ids)).toEqual([first.name, second.name])
+    expect(first.name).toMatch(/\.voice-1\./)
+    expect(second.name).toMatch(/\.voice-2\./)
+    expect(file.text.endsWith(`${line}\n\nTHE PROMPT`)).toBe(true)
+  })
+
+  it("keeps the line a comment whatever an id holds", () => {
+    const at = new Date("2026-10-09T07:05:03.120Z")
+    const file = nextSceneFile("THE PROMPT", at, [
+      { id: "x--><b>", name: voiceNoteName(at, 0, "audio/mp4") },
+    ])
+    const line = notesLine(file.text)
+    expect(line.indexOf("-->")).toBe(line.length - "-->".length)
+    expect(idsOf(line)).toEqual({
+      [voiceNoteName(at, 0, "audio/mp4")]: "x--><b>",
+    })
+  })
+
+  it("names no ids for a typed scene, as every export from before them reads", () => {
+    const at = new Date("2026-10-09T07:05:03.120Z")
+    const file = nextSceneFile("THE PROMPT", at, [])
+    expect(file.text).not.toContain("<!-- notes:")
+    expect(file).toEqual(nextSceneFile("THE PROMPT", at))
+    expect(file.text.split("\n").slice(1)).toEqual(["", "THE PROMPT"])
   })
 })

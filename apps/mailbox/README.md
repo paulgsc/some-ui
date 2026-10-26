@@ -153,8 +153,8 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   `docs/identity.md` invariant 18), so no spoken answer's ticks, nothing said or typed, and no
   audio. **A transcript** is `{"schema":"some-ui.voice-transcript/1","note","of","ref","at",
 "text","language","model","heardAt"}`: the note's phone id (the id in its exported file name,
-  `<base>_voice-<at>-<id>`, and in a Jobs voice entry), what it belongs to (`of` is `reflection`
-  with `ref` its session, `jobs` with the pick or scout, or `scene` with the drama prompt's
+  `<base>_voice-<at>-<id>`, in a Jobs voice entry, and in a drama prompt's `notes` line), what
+  it belongs to (`of` is `reflection` with `ref` its session, `jobs` with the pick or scout, or `scene` with the drama prompt's
   stamp), when it was recorded, what home heard, the language heard (Whisper's code, `en` or
   `ko`), the model that heard it, and when. Unlike the other folders, the Worker holds this
   shape itself, because the one thing a transcript must never be is audio: a body with any

@@ -865,6 +865,12 @@ the prompt names (`drama-<stamp>.voice-<n>.<ext>`, beside it), then write the
 drama the prompt asks for as one JSON file next to this one, named `drama-<stamp>.json` (the
 export's name with `.prompt.md` replaced by `.json`), holding the bare JSON
 with no code fence.
+An export with voice notes also carries, under that note, a comment line naming
+the phone's id for each note by its file name, in the order they were said:
+`<!-- notes: {"drama-<stamp>.voice-1.<ext>":"<id>",...} -->`. Home files what it
+heard in a note under that id, so the reflections run finds each transcript by
+name (topik's `ROUTINE.md`, "Voice notes"). An export from before the line has
+none, and the run still answers it.
 So the learner's one-time agent setup is generic. The routine to give an
 agent connected to the drive's folder (a Claude Cowork routine with a Drive
 connector, say):

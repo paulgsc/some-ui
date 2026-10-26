@@ -48,7 +48,7 @@ export const SharePrompt = ({
       name: voiceNoteName(at, index, mimeType),
     }))
     const text = prompt(named.map(({ name }) => name))
-    start({ ...nextSceneFile(text, at), notes: named }, () =>
+    start({ ...nextSceneFile(text, at, named), notes: named }, () =>
       onShared(
         text,
         named.map(({ id }) => id)

@@ -81,28 +81,38 @@ Once per run, list the folder, live and archived, as 10b lists a folder. Then:
   (its audio, if the phone shared it, is the `<base>_voice-*` file the entry's
   `file` names); its `id` is the note's id. Its transcript is the live
   `transcript-<id>-<n>.json` with the highest `<n>`, compared as a number.
-- **A drama prompt's scene notes** (`drama-<stamp>.voice-<n>.<ext>` beside the
-  prompt) went home under the prompt's stamp, but their names don't carry it.
-  Fetch each live transcript no reflection claims, once per run, and match a
-  prompt to the ones whose body has `"of": "scene"` and
-  `"ref": "drama-<stamp>"`, one note per distinct `note` (the highest `<n>` of
-  each). They all carry the prompt's time, so their order is unknown: say so in
-  the summary when there are several.
+- **A drama prompt's scene notes** are the `drama-<stamp>.voice-<n>.<ext>`
+  files beside the prompt, said in the order of `<n>`, which is the order its
+  `Scene, spoken` line names them. The prompt names each one's id in a line
+  under its agent note, `<!-- notes: {"<voice file name>":"<id>",...} -->`
+  (the JSON between `notes: ` and ` -->`; the Jobs files' `notes` map). A
+  note's transcript is the live `transcript-<id>-<n>.json` with the highest
+  `<n>`, as a reflection's is, and you read the notes in the order the prompt
+  names them.
+- **A drama prompt shared before the phone named ids** has voice files beside
+  it and no `notes` line. This route is only for those older prompts. Their
+  notes went home under the prompt's stamp, but their names don't carry it:
+  fetch each live transcript no reflection or prompt claims by id, once per
+  run, and match an older prompt to the ones whose body has `"of": "scene"`
+  and `"ref": "drama-<stamp>"`, one note per distinct `note` (the highest
+  `<n>` of each). They all carry the prompt's time, so their order is
+  unknown: say so in the summary when there are several.
 - **Each transcript you use:** fetch it with
   `GET "$JOBS_MAILBOX_URL/v1/transcript/items/<name>"`, check the bytes' SHA-256
   against the listing's `sha256` and the body's `schema` and `note`, and read
   its `text`.
-- **Archived:** a reflection's note with no live transcript but an archived
-  one is asked back (`PUT "$JOBS_MAILBOX_URL/v1/transcript/wanted/<name>"`, no
-  body, the highest `<n>`). For a drama prompt with too few matches, ask back
-  the archived transcripts put (their `putAt`) between a day before the
-  prompt's stamp and seven days after it, at most ten a run; a later run
-  matches them by body.
+- **Archived:** a note with an id (a reflection's, or one a prompt's `notes`
+  line names) with no live transcript but an archived one is asked back by
+  its own name (`PUT "$JOBS_MAILBOX_URL/v1/transcript/wanted/<name>"`, no
+  body, the highest `<n>`), so a prompt asks back only its own transcripts.
+  For an older prompt with too few matches, ask back the archived transcripts
+  put (their `putAt`) between a day before the prompt's stamp and seven days
+  after it, at most ten a run; a later run matches them by body.
 
-A note home hasn't heard is one with no transcript to use (for a drama prompt,
-fewer distinct notes than voice files beside it), including one asked back
-this run. Its reflection or prompt waits, so what was said is read once home
-has heard it: don't answer it this run, and skip it in step 3 or 7 so it
+A note home hasn't heard is one with no transcript to use (for an older drama
+prompt, fewer distinct notes than voice files beside it), including one asked
+back this run. Its reflection or prompt waits, so what was said is read once
+home has heard it: don't answer it this run, and skip it in step 3 or 7 so it
 doesn't use up that step's limit. Count it in the run record's
 `voice.waiting` (step 12).
 
@@ -111,8 +121,8 @@ drama prompt's notes are sent once, when it is shared. So once its voice file
 (or, without one, the reflection's file) has been in Drive for two days, and
 nothing is coming back for it (this run asked none back for it, and
 `GET "$JOBS_MAILBOX_URL/v1/transcript/wanted"` lists no open ask for it: a
-reflection's by its note's name, and for a drama prompt any open ask), stop
-waiting: answer the reflection or prompt from what it says in writing, and
+note with an id by its transcript's name, and for an older drama prompt any
+open ask), stop waiting: answer the reflection or prompt from what it says in writing, and
 count it in `voice.missed`. For a prompt with nothing written
 but its notes, write the drama its request block describes.
 
@@ -264,10 +274,10 @@ file it, and still write the pair.
    on a voice note, at most two this run. If there are none, go to part D.
 
 8. For each: read the prompt (download_file_content; it is plain markdown) and
-   read what home heard in each voice note beside it ("Voice notes" above; one
-   home hasn't heard makes the prompt wait) before you write anything. Those
-   transcripts stand in for the prompt's "listen to them first": the spoken
-   scene is what the learner asked for. Then do what the prompt asks: write the drama as one scene tree,
+   read what home heard in each voice note beside it, in the order the prompt
+   names them ("Voice notes" above; one home hasn't heard makes the prompt
+   wait) before you write anything. Those transcripts stand in for the
+   prompt's "listen to them first": the spoken scene is what the learner asked for. Then do what the prompt asks: write the drama as one scene tree,
    following the prompt exactly (it carries the tree prompt, the request, and
    the last drama to continue from). If the prompt names a last drama, read
    that drama's `.json` from `Dramas/played/` or `Dramas/requests/` to keep its
