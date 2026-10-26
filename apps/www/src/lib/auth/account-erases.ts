@@ -51,7 +51,7 @@ export const ACCOUNT_ERASES = {
     },
     {
       label: "Korean's word sets and reading records",
-      text: "Every word set your phone sent home, and what you recorded as you read: each word's pace, each sentence's tally, the grammar lens's notes, your practice record, where you left off and your answers at a sitting's end, every change to them included.",
+      text: "Every word set your phone sent home, and what it kept as you read: how long each word is given, how often each sentence was shown and read to the end, your grammar lens answers, your practice record, where you left off and your answers at a sitting's end, every change to them included.",
     },
     {
       label: "Voice notes",
