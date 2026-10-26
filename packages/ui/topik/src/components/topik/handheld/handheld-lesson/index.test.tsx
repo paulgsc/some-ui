@@ -943,7 +943,8 @@ describe("HandheldLesson", () => {
       // The last drama was at TOPIK 4, and nothing listed is.
       lastDrama: holding(),
       routineFeed: {
-        list: () => Promise.resolve([scene(1, 2), scene(2, 1), scene(3, 2)]),
+        list: () =>
+          Promise.resolve([scene(1, 2), scene(2, 1), scene(3, 2), scene(4, 2)]),
       },
     })
     const waiting = await screen.findByRole("region", {
@@ -954,10 +955,20 @@ describe("HandheldLesson", () => {
       within(levels)
         .getAllByRole("radio")
         .map((radio) => radio.textContent)
-    ).toEqual(["All", "TOPIK 11", "TOPIK 22"])
+    ).toEqual(["All", "TOPIK 11", "TOPIK 23"])
     expect(within(waiting).getAllByRole("listitem")).toHaveLength(3)
 
+    // A query held while a level of fewer than the first few is picked keeps
+    // its field, so it can be cleared.
+    fireEvent.change(within(waiting).getByRole("searchbox"), {
+      target: { value: "Scene 3" },
+    })
     fireEvent.click(within(levels).getByRole("radio", { name: "TOPIK 1" }))
+    const routine = screen.getByRole("region", { name: "From the routine" })
+    expect(within(routine).queryAllByRole("listitem")).toHaveLength(0)
+    fireEvent.change(within(routine).getByRole("searchbox"), {
+      target: { value: "" },
+    })
     expect(
       within(screen.getByRole("region", { name: "From the routine" }))
         .getAllByRole("listitem")

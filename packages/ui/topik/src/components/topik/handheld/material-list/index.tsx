@@ -361,7 +361,8 @@ const FromRoutine = ({
       className="flex flex-col gap-2"
     >
       <Heading>{LESSON_FEED_WORDS.heading}</Heading>
-      {items.length > FEED_FIRST && (
+      {/* Kept while a query is held, so a level picked under it can clear it. */}
+      {(items.length > FEED_FIRST || query !== "") && (
         <div role="search" className="relative">
           <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
