@@ -18,7 +18,7 @@ import type { ComponentProps, JSX } from "react"
 import { HANDHELD_MAX_HEIGHT } from "@some-ui/react-hooks"
 import { SpeechProvider } from "@some-ui/speech"
 import { webSpeech } from "@some-ui/speech/web-speech"
-import type { Dish, ReadAloudDeck } from "@some-ui/topik"
+import type { Dish, LessonItem, ReadAloudDeck } from "@some-ui/topik"
 // This page is its own build (`build:fit`) and in no shipped bundle, so the
 // eager edge the rule guards against costs nothing here, and the quiz stages
 // are reachable through no lazy entry.
@@ -27,6 +27,7 @@ import {
   DramaLesson,
   intakeTree,
   lastDramaOf,
+  MaterialList,
   PoolNote,
   PortionAsk,
   PortionServed,
@@ -190,6 +191,37 @@ const fitTree = ((): ComponentProps<typeof DramaLesson>["lesson"] => {
   }
   return intake.lesson
 })()
+
+/** The routine's lessons, as the phone listed them on 2026-10-26. */
+const FIT_ROUTINE: ReadonlyArray<LessonItem> = [
+  [2, "comedy", "What is this test"],
+  [1, "thriller", "The clock keeps running"],
+  [2, "historical", "Rice cakes on the road"],
+  [2, "family", "Holiday food with grandmother"],
+  [2, "makjang", "The same secret again"],
+  [2, "revenge", "Where the stress goes"],
+  [1, "romance", "A video lesson for two"],
+].map(([level, genre, name], at) => ({
+  key: `scene/scene-${at}.json`,
+  kind: "scene",
+  name: String(name),
+  level: Number(level),
+  genre: String(genre),
+  premise:
+    at === 0
+      ? "Two friends meet before the exam and argue about what it even tests."
+      : undefined,
+  opened: at > 2,
+  sessions: [
+    {
+      practice: "read-aloud",
+      id: `set-${at}`,
+      size: "12 words",
+      opened: at > 2,
+    },
+    { practice: "lens", id: `set-${at}-lens`, size: "6 lines", opened: false },
+  ],
+}))
 
 /**
  * A card in the box the handheld gives it: a flex column under its header
@@ -454,6 +486,23 @@ export const PANEL_FIXTURES = {
       short={short}
       onStart={noop}
       onStop={noop}
+    />
+  )),
+
+  // The start screen with the routine's feed: more than the first few, so
+  // the search shows, each scene a card with a session per set.
+  "topik-routine-feed": handheldStage(() => (
+    <MaterialList
+      level={2}
+      onLevel={noop}
+      dramas={[]}
+      onPlay={noop}
+      onSeed={noop}
+      loading={false}
+      error={null}
+      onReload={noop}
+      fromRoutine={FIT_ROUTINE}
+      onOpenRoutine={noop}
     />
   )),
 

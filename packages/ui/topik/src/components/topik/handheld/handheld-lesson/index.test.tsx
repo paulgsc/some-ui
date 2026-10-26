@@ -250,10 +250,11 @@ describe("HandheldLesson", () => {
     renderLesson({
       speaker: voice(() => Promise.resolve({ kind: "heard" })),
       readAloudStore: store,
+      // The last drama was at TOPIK 4.
+      lastDrama: holding(),
     })
     const card = await screen.findByRole("button", { name: /Read aloud/ })
     expect(card.textContent).toContain("2 word sets")
-    fireEvent.click(screen.getByRole("radio", { name: "TOPIK 5" }))
     expect(card.textContent).toContain("TOPIK 3, the highest it reads")
     fireEvent.click(card)
     expect(
@@ -349,7 +350,7 @@ describe("HandheldLesson", () => {
     decks,
   })
 
-  it("lists what the routine left on home, adds a word set pair and starts a drama, then marks both opened", async () => {
+  it("lists what the routine left as cards: a scene's read-aloud press adds the pair and reads, a drama plays, and both are marked opened", async () => {
     const store = createReadAloudStore(memoryStorage())
     const opened = createOpenedStore(memoryStorage())
     const files: ReadonlyArray<RoutineFile> = [
@@ -376,12 +377,24 @@ describe("HandheldLesson", () => {
     const waiting = await screen.findByRole("region", {
       name: "From the routine",
     })
-    expect(within(waiting).getAllByRole("button")).toHaveLength(2)
+    // The scene offers each of its sets; the drama plays.
+    expect(
+      within(waiting)
+        .getAllByRole("button")
+        .map((button) => button.getAttribute("aria-label"))
+    ).toEqual([
+      `Play it: ${workedLesson().title ?? ""}`,
+      "Read aloud: 약속",
+      "Grammar lens: 약속",
+    ])
+    const scene = within(waiting).getAllByRole("listitem")[1]
+    expect(scene?.textContent).toContain("TOPIK 2")
+    expect(scene?.textContent).toContain("일상")
 
     fireEvent.click(
-      within(waiting).getByRole("button", { name: /TOPIK 2 · 일상 · 약속/ })
+      within(waiting).getByRole("button", { name: "Read aloud: 약속" })
     )
-    // One press adds the pair and starts reading its first set.
+    // One press adds the pair and starts reading its read-aloud set.
     expect(
       await screen.findByRole("button", { name: "Stop reading aloud" })
     ).toBeTruthy()
@@ -396,14 +409,21 @@ describe("HandheldLesson", () => {
     expect(
       await screen.findByText('Added "Plans" and "Plans, lens".')
     ).toBeTruthy()
-    // Still listed, after the one not opened yet.
+    // Still listed, after the one not opened yet, and its lens set is on
+    // its card, not listed again.
     const after = screen.getByRole("region", { name: "From the routine" })
-    const buttons = within(after).getAllByRole("button")
     expect(
-      buttons.map((button) => button.textContent.includes("Opened"))
+      within(after)
+        .getAllByRole("listitem")
+        .map((card) => card.textContent.includes("Opened"))
     ).toEqual([false, true])
+    expect(
+      within(after).getByRole("button", { name: "Read aloud: 약속" })
+        .textContent
+    ).toContain("1 word · Opened")
+    expect(screen.queryByRole("region", { name: "Ready for you" })).toBeNull()
 
-    fireEvent.click(screen.getByRole("button", { name: /Drama · TOPIK/ }))
+    fireEvent.click(screen.getByRole("button", { name: /^Play it: / }))
     expect(await screen.findByText("숨 막히는 긴장감")).toBeTruthy()
     expect([...opened.opened()].sort()).toEqual([
       "drama/drama-20261013T145200123Z.json",
@@ -450,7 +470,7 @@ describe("HandheldLesson", () => {
     )
   })
 
-  it("opens an opened pair on its first set, leaving the sets the phone holds as they are", async () => {
+  it("opens an opened pair again, leaving the sets the phone holds as they are", async () => {
     const store = createReadAloudStore(memoryStorage())
     const decks = [
       routineDeck("plans-2", "Plans"),
@@ -464,7 +484,9 @@ describe("HandheldLesson", () => {
     const waiting = await screen.findByRole("region", {
       name: "From the routine",
     })
-    fireEvent.click(within(waiting).getByRole("button"))
+    fireEvent.click(
+      within(waiting).getByRole("button", { name: "Read aloud: 약속" })
+    )
     click("Stop reading aloud")
     await screen.findByText('Added "Plans" and "Plans, lens".')
     const addedAt = store.sets().map((set) => set.addedAt)
@@ -472,7 +494,7 @@ describe("HandheldLesson", () => {
     fireEvent.click(
       within(
         screen.getByRole("region", { name: "From the routine" })
-      ).getByRole("button", { name: /Opened/ })
+      ).getByRole("button", { name: "Read aloud: 약속" })
     )
     expect(
       document.querySelector('[data-slot="read-aloud-level"]')
@@ -481,6 +503,108 @@ describe("HandheldLesson", () => {
     expect(
       store.sets().find((set) => set.deck.id === "plans-2")?.openedAt
     ).not.toBeNull()
+  })
+
+  it("opens a scene on its grammar lens set from the lens's own button", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    const opened = createOpenedStore(memoryStorage())
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: store,
+      routineOpened: opened,
+      routineFeed: {
+        list: () =>
+          Promise.resolve([
+            routineScene([
+              { schemaVersion: 1, ...LEVEL_ONE_SET },
+              { schemaVersion: 1, ...LEVEL_ONE_LENS_SET },
+            ]),
+          ]),
+      },
+    })
+    const waiting = await screen.findByRole("region", {
+      name: "From the routine",
+    })
+    const lens = within(waiting).getByRole("button", {
+      name: "Grammar lens: 약속",
+    })
+    expect(lens.textContent).toContain(
+      `${LEVEL_ONE_LENS_SET.lines.length} lines`
+    )
+    fireEvent.click(lens)
+    expect(document.querySelector('[data-slot="lens-card"]')).not.toBeNull()
+    expect(
+      store.sets().find((set) => set.deck.id === LEVEL_ONE_LENS_SET.id)
+        ?.openedAt
+    ).not.toBeNull()
+    expect(
+      store.sets().find((set) => set.deck.id === LEVEL_ONE_SET.id)?.openedAt
+    ).toBeNull()
+    expect([...opened.opened()]).toEqual([
+      "scene/scene-2026-10-13_morning_session-.json",
+    ])
+  })
+
+  it("shows the routine's first few, and finds the rest by level, genre or title", async () => {
+    const scene = (n: number, title: string): RoutineFile => ({
+      kind: "scene",
+      name: `scene-${n}.json`,
+      title,
+      decks: [
+        routineDeck(`set-${n}`, `Set ${n}`),
+        routineDeck(`set-${n}-lens`, `Set ${n}, lens`),
+      ],
+    })
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: createReadAloudStore(memoryStorage()),
+      routineFeed: {
+        list: () =>
+          Promise.resolve([
+            scene(1, "TOPIK 2 · comedy · What is this test"),
+            scene(2, "TOPIK 1 · thriller · The clock keeps running"),
+            scene(3, "TOPIK 2 · historical · Rice cakes on the road"),
+            scene(4, "TOPIK 2 · family · Holiday food with grandmother"),
+            scene(5, "TOPIK 1 · romance · A video lesson for two"),
+          ]),
+      },
+    })
+    const waiting = await screen.findByRole("region", {
+      name: "From the routine",
+    })
+    const names = (): Array<string> =>
+      within(waiting)
+        .getAllByRole("listitem")
+        .map(
+          (card) =>
+            card.querySelector('[data-slot="feed-title"]')?.textContent ?? ""
+        )
+    expect(names()).toEqual([
+      "What is this test",
+      "The clock keeps running",
+      "Rice cakes on the road",
+    ])
+    expect(waiting.textContent).toContain(
+      "3 of 5 shown, the ones not opened first. Search for the rest."
+    )
+
+    const search = within(waiting).getByRole("searchbox", {
+      name: "Search the routine's lessons",
+    })
+    fireEvent.change(search, { target: { value: "topik 1" } })
+    expect(names()).toEqual([
+      "The clock keeps running",
+      "A video lesson for two",
+    ])
+    expect(waiting.textContent).toContain("2 lessons found.")
+    // A genre is found by its Korean name too.
+    fireEvent.change(search, { target: { value: "가족" } })
+    expect(names()).toEqual(["Holiday food with grandmother"])
+    fireEvent.change(search, { target: { value: "noodles" } })
+    expect(within(waiting).queryAllByRole("listitem")).toHaveLength(0)
+    expect(waiting.textContent).toContain(
+      "Nothing from the routine matches “noodles”."
+    )
   })
 
   it("adds neither set of a pair the phone has no room for, and says what it holds", async () => {
@@ -510,7 +634,9 @@ describe("HandheldLesson", () => {
     const waiting = await screen.findByRole("region", {
       name: "From the routine",
     })
-    fireEvent.click(within(waiting).getByRole("button"))
+    fireEvent.click(
+      within(waiting).getByRole("button", { name: "Grammar lens: 약속" })
+    )
     expect(
       waiting.querySelector('[data-slot="routine-note"]')?.textContent
     ).toBe(
@@ -638,7 +764,7 @@ describe("HandheldLesson", () => {
     const kept = await screen.findByRole("region", {
       name: "From the routine",
     })
-    expect(within(kept).getByRole("button").textContent).toContain("약속")
+    expect(within(kept).getByRole("listitem").textContent).toContain("약속")
   })
 
   it("opens on the next lesson when asked: the routine's newest not opened, from what the phone kept, else a set added and not opened", async () => {
@@ -801,22 +927,62 @@ describe("HandheldLesson", () => {
     )
   })
 
-  it("holds the level of the last drama until the learner chooses another", async () => {
-    renderLesson({ lastDrama: holding() })
-    const level = (value: number): string | null =>
-      screen
-        .getByRole("radio", { name: `TOPIK ${value}` })
-        .getAttribute("aria-checked")
-    await writeYourOwnButton()
-    expect(level(4)).toBe("true")
-    fireEvent.click(screen.getByRole("radio", { name: "TOPIK 2" }))
-    expect(level(2)).toBe("true")
-    // The prompt is asked at the level held.
+  it("offers only the levels the list holds, shows one alone, and holds it", async () => {
+    const scene = (n: number, level: number): RoutineFile => ({
+      kind: "scene",
+      name: `scene-${n}.json`,
+      title: `TOPIK ${level} · comedy · Scene ${n}`,
+      decks: [
+        routineDeck(`set-${n}`, `Set ${n}`),
+        routineDeck(`set-${n}-lens`, `Set ${n}, lens`),
+      ],
+    })
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: createReadAloudStore(memoryStorage()),
+      // The last drama was at TOPIK 4, and nothing listed is.
+      lastDrama: holding(),
+      routineFeed: {
+        list: () => Promise.resolve([scene(1, 2), scene(2, 1), scene(3, 2)]),
+      },
+    })
+    const waiting = await screen.findByRole("region", {
+      name: "From the routine",
+    })
+    const levels = screen.getByRole("radiogroup", { name: "Show level" })
+    expect(
+      within(levels)
+        .getAllByRole("radio")
+        .map((radio) => radio.textContent)
+    ).toEqual(["All", "TOPIK 11", "TOPIK 22"])
+    expect(within(waiting).getAllByRole("listitem")).toHaveLength(3)
+
+    fireEvent.click(within(levels).getByRole("radio", { name: "TOPIK 1" }))
+    expect(
+      within(screen.getByRole("region", { name: "From the routine" }))
+        .getAllByRole("listitem")
+        .map((card) => card.textContent)
+    ).toEqual([expect.stringContaining("Scene 2")])
+    // The prompt is asked at the level picked.
     await writeYourOwn()
     openLevelAndGenre()
     expect(
       screen
-        .getByRole("radio", { name: "TOPIK 2" })
+        .getByRole("radio", { name: "TOPIK 1" })
+        .getAttribute("aria-checked")
+    ).toBe("true")
+  })
+
+  it("offers no level to pick where everything listed is at one", async () => {
+    renderLesson({ lastDrama: holding() })
+    await writeYourOwnButton()
+    expect(screen.queryByRole("radiogroup", { name: "Show level" })).toBeNull()
+    // The prompt is asked at the level of the last drama.
+    await writeYourOwn()
+    openLevelAndGenre()
+    expect(
+      screen
+        .getByRole("radio", { name: "TOPIK 4" })
         .getAttribute("aria-checked")
     ).toBe("true")
   })

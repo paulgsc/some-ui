@@ -8,7 +8,8 @@
  * The deck is every added set as one (`added-sets`), or one added set on
  * its own. A set offers its own practice only: a lens set opens on the
  * grammar lens, and a read-aloud set offers no lens. Every set as one
- * offers both, the lens asking about `lensDeck`'s lines. The drill's level
+ * offers both, the lens asking about `lensDeck`'s lines, and opens on the
+ * one the host asks for (`initialPractice`). The drill's level
  * is the one the host passes: the level held on the material list, or the
  * set's own, capped at the drill's highest (TOPIK 3), since that is where
  * its vocabulary stops.
@@ -26,7 +27,10 @@ import type { LensRecordStore } from "@topik/lib/topik/adapter/lens-record-store
 import type { LensTakes } from "@topik/lib/topik/adapter/lens-takes"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
-import type { ReadAloudDeck } from "@topik/lib/topik/read-aloud/content"
+import type {
+  ReadAloudDeck,
+  SetPractice,
+} from "@topik/lib/topik/read-aloud/content"
 import { readAloudLevelFor } from "@topik/lib/topik/read-aloud/content"
 import { toggled } from "@topik/lib/topik/read-aloud/feedback"
 import { lensLines } from "@topik/lib/topik/read-aloud/lens/items"
@@ -53,6 +57,8 @@ type ReadAloudScreenProps = {
   onExit: () => void
   /** As `useReadAloud`'s. */
   initialBegin?: boolean
+  /** Where a set that serves both opens; read once, on mount. */
+  initialPractice?: SetPractice
   /** Test seam: the clock, which also dates the record. */
   now?: () => number
 }
@@ -69,6 +75,7 @@ export const ReadAloudScreen = ({
   paused,
   onExit,
   initialBegin,
+  initialPractice = "read-aloud",
   now = Date.now,
 }: ReadAloudScreenProps): JSX.Element => {
   const level = readAloudLevelFor(topikLevel)
@@ -108,7 +115,7 @@ export const ReadAloudScreen = ({
     latest.current = next
     setTally({ rows: next, kept: store.saveTally(next) })
   }
-  const [practice, setPractice] = useState<"read-aloud" | "lens">("read-aloud")
+  const [practice, setPractice] = useState<SetPractice>(initialPractice)
 
   if (practice === "lens" || deck.practice === "lens") {
     return (
