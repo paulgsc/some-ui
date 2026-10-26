@@ -30,8 +30,8 @@
  *   look or telling settles, while its choice is still the one shown, and
  *   the next open tells them all again.
  */
-import type { HomeAnswer } from "@some-ui/core-utils"
-import { localStorageOrNull } from "@some-ui/core-utils"
+import type { HomeAnswer, KeyedStorage } from "@some-ui/core-utils"
+import { jsonOf, localStorageOrNull } from "@some-ui/core-utils"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 
 import { ForeignCallError } from "@/lib/intent/foreign"
@@ -65,7 +65,7 @@ export type RoutinePorts = {
   /** The app is in front. */
   visible: () => boolean
   now: () => number
-  storage: Pick<Storage, "getItem" | "setItem"> | null
+  storage: KeyedStorage | null
   /** Calls `listener` when the link changes (an unpairing, a new pairing). */
   onLink: (listener: () => void) => () => void
 }
@@ -102,12 +102,8 @@ function answerOf(answer: HomeAnswer): { files: unknown } | { ended: Ended } {
   if (answer.status === 401) return { ended: "forgotten" }
   if (answer.status === 429) return { ended: "busy" }
   if (answer.status !== 200) return { ended: "failed" }
-  try {
-    const files: unknown = JSON.parse(answer.body)
-    return { files }
-  } catch {
-    return { ended: "failed" }
-  }
+  const files = jsonOf(answer.body)
+  return files === undefined ? { ended: "failed" } : { files }
 }
 
 export function createRoutineReads(ports: RoutinePorts): RoutineReads {

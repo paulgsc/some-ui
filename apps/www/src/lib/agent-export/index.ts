@@ -17,7 +17,12 @@
  * Phone-only: rendered only in the device build, so no other profile ships it
  * (`build.paths.ts`).
  */
-import { extensionOf, localStorageOrNull } from "@some-ui/core-utils"
+import {
+  extensionOf,
+  jsonOf,
+  localStorageOrNull,
+  openKept,
+} from "@some-ui/core-utils"
 import type { SessionSummary } from "@some-ui/leetype"
 import type { Soundbite, SoundbiteStore } from "@some-ui/soundbites"
 import type {
@@ -309,19 +314,16 @@ const ROUND_LEDGER_KEY = "leetype:ledger"
 
 /** The retired round ledger's stored value, as stored, so it is not lost (#1941). */
 function leetypeRoundLedger(): unknown {
-  let raw: string | null
-  try {
-    raw = localStorageOrNull()?.getItem(ROUND_LEDGER_KEY) ?? null
-  } catch {
-    return null
-  }
-  if (raw === null) return null
-  try {
-    const stored: unknown = JSON.parse(raw)
-    return stored
-  } catch {
-    return raw
-  }
+  // Read whatever it holds: JSON as JSON, anything else as the text.
+  return openKept<unknown>(
+    localStorageOrNull(),
+    ROUND_LEDGER_KEY,
+    (raw) => {
+      const stored = jsonOf(raw)
+      return { value: stored === undefined ? raw : stored, whole: true }
+    },
+    null
+  ).value
 }
 
 /** The grammar lens's record, loaded as the practice record is; null if it can't be. */

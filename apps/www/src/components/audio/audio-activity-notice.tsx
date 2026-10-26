@@ -9,19 +9,18 @@
  */
 
 import type { JSX } from "react"
+import { useSyncExternalStore } from "react"
 import type { ActivityDefinition } from "@some-ui/activity-catalog"
 import { cn } from "@some-ui/core-utils"
 import { Alert, AlertDescription, AlertTitle, Button } from "@some-ui/shared"
 
+import { audioNotice } from "@/lib/audio-notice"
 import {
   setAllEnabled,
   setChannelEnabled,
   summarizeAudio,
 } from "@/lib/audio-preferences"
 import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"
-import { useLocalStorage } from "@/hooks/use-local-storage"
-
-const STORAGE_PREFIX = "some-ui.audio.activity-notice.v1"
 
 export type AudioActivityNoticeProps = {
   activity: ActivityDefinition
@@ -37,10 +36,12 @@ export const AudioActivityNotice = ({
   className,
 }: AudioActivityNoticeProps): JSX.Element | null => {
   const { preferences, update, isReady } = useAudioPreferences()
-  const { value: acknowledged, setValue: setAcknowledged } = useLocalStorage(
-    `${STORAGE_PREFIX}.${activity.id}`,
-    false
+  const acknowledged = useSyncExternalStore(audioNotice.subscribe, () =>
+    audioNotice.answered(activity.id)
   )
+  const setAcknowledged = (): void => {
+    audioNotice.answer(activity.id)
+  }
 
   const audio = activity.audio
   if (!audio || acknowledged || !isReady) return null
@@ -56,12 +57,12 @@ export const AudioActivityNotice = ({
       preferences
     )
     update(next)
-    setAcknowledged(true)
+    setAcknowledged()
   }
 
   const continueMuted = (): void => {
     update(setAllEnabled(preferences, false))
-    setAcknowledged(true)
+    setAcknowledged()
   }
 
   return (
@@ -79,7 +80,7 @@ export const AudioActivityNotice = ({
         <div className={cn("flex flex-wrap items-center gap-2")}>
           {alreadyOn ? (
             <>
-              <Button size="sm" onClick={() => setAcknowledged(true)}>
+              <Button size="sm" onClick={() => setAcknowledged()}>
                 Got it
               </Button>
               <Button size="sm" variant="ghost" onClick={continueMuted}>
@@ -94,7 +95,7 @@ export const AudioActivityNotice = ({
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => setAcknowledged(true)}
+                onClick={() => setAcknowledged()}
               >
                 Continue muted
               </Button>

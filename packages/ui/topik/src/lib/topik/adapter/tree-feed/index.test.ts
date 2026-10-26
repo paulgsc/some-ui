@@ -1,3 +1,4 @@
+import { inMemoryStorage } from "@some-ui/core-utils"
 import { workedLesson } from "@topik/lib/topik/generation/tree-intake/worked-example"
 import { describe, expect, it } from "vitest"
 
@@ -61,13 +62,7 @@ describe("createTreeFeed", () => {
 })
 
 describe("createServedPointStore", () => {
-  const memory = (): Pick<Storage, "getItem" | "setItem"> => {
-    const data = new Map<string, string>()
-    return {
-      getItem: (key) => data.get(key) ?? null,
-      setItem: (key, value) => void data.set(key, value),
-    }
-  }
+  const memory = inMemoryStorage
 
   it("keeps the place of the tree played last, by its id", () => {
     const storage = memory()
@@ -101,6 +96,9 @@ describe("createServedPointStore", () => {
       },
       setItem: (): void => {
         throw new Error("QuotaExceededError")
+      },
+      removeItem: (): void => {
+        throw new Error("SecurityError")
       },
     }
     const points = createServedPointStore(refusing)

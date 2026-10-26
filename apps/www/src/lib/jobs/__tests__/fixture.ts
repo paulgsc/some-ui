@@ -1,10 +1,10 @@
+import { inMemoryStorage } from "@some-ui/core-utils"
 import type { Digest, JobsRun, Pick } from "@some-ui/job-desk"
 import { digestFileName, fingerprint } from "@some-ui/job-desk"
 import type { BlobShelf } from "@some-ui/voice-capture"
 import { vi } from "vitest"
 
 import type { JobsPorts } from "@/lib/jobs/runtime"
-import { createInMemoryStorage } from "@/lib/tenant/storage"
 
 function pick(id: string, company: string, adjacent: boolean): Pick {
   const posting = {
@@ -140,7 +140,7 @@ function memoryShelf(): BlobShelf & { blobs: Map<string, Blob> } {
 export function ports(overrides: Partial<JobsPorts> = {}): JobsPorts {
   let n = 0
   return {
-    storage: createInMemoryStorage(),
+    storage: inMemoryStorage(),
     audio: memoryShelf(),
     saving: () => undefined,
     isSaving: () => false,

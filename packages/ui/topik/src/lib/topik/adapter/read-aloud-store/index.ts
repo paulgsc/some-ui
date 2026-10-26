@@ -12,24 +12,31 @@
  * handheld lesson's resume point; the tally is a row per sentence, which the
  * mark on a sentence reads. Losing
  * any of them costs exactly that and nothing else (Thm. 7.2), which is why
- * every failure below is silent: eviction, a full quota, a private window, a
- * document an older build wrote. Only the answers and the tally say whether
- * the phone kept them, since the learner is told. Everything read is parsed,
- * not trusted, and nothing here sends any of it anywhere
- * (`readAloudPracticeRecord` below).
+ * every failure below is silent: eviction, a full quota, a private window.
+ * Only the answers and the tally say whether the phone kept them, since the
+ * learner is told. Everything read is parsed, not trusted, through
+ * core-utils' `openKept`: a document an older build wrote, or one that does
+ * not parse, is copied aside under `<key>:unreadable:` before anything is
+ * written over it, and nothing is written over one that could not be. Nothing
+ * here sends any of it anywhere (`readAloudPracticeRecord` below).
  */
 
-import { localStorageOrNull } from "@some-ui/core-utils"
-import type { StorageLike } from "@topik/lib/topik/adapter/storage"
+import type { KeyedStorage, Salvaged } from "@some-ui/core-utils"
+import {
+  jsonOf,
+  localStorageOrNull,
+  openKept,
+  writeKept,
+} from "@some-ui/core-utils"
 import type { AddedSet } from "@topik/lib/topik/read-aloud/added-sets"
 import {
-  parseAddedSets,
+  readAddedSets,
   storedSet,
 } from "@topik/lib/topik/read-aloud/added-sets"
 import type { ReadAloudLevel } from "@topik/lib/topik/read-aloud/content"
 import type { ReadAloudFeedback } from "@topik/lib/topik/read-aloud/feedback"
 import {
-  parseFeedback,
+  readFeedback,
   storedFeedback,
 } from "@topik/lib/topik/read-aloud/feedback"
 import type {
@@ -40,13 +47,18 @@ import type {
 import {
   addRep,
   addSet,
-  parsePaceBook,
-  parsePracticeRecord,
+  emptyRecord,
   prunePaceBook,
+  readPaceBook,
+  readPracticeRecord,
 } from "@topik/lib/topik/read-aloud/records"
 import type { SetProgress } from "@topik/lib/topik/read-aloud/set-machine"
 import type { Tally } from "@topik/lib/topik/read-aloud/tally"
-import { parseTally, storedTally } from "@topik/lib/topik/read-aloud/tally"
+import {
+  emptyTally,
+  readTally,
+  storedTally,
+} from "@topik/lib/topik/read-aloud/tally"
 import { z } from "zod"
 
 export const READ_ALOUD_STORAGE_KEYS = {
@@ -137,44 +149,67 @@ const ProgressDocumentSchema = z.object({
   }),
 })
 
-export function createReadAloudStore(
-  storage: StorageLike | null = localStorageOrNull()
-): ReadAloudStore {
-  const read = (key: string): unknown => {
-    try {
-      const raw = storage?.getItem(key)
-      if (!raw) return null
-      const parsed: unknown = JSON.parse(raw)
-      return parsed
-    } catch {
-      return null
-    }
-  }
+type ProgressDocument = z.infer<typeof ProgressDocumentSchema>
 
-  const write = (key: string, value: unknown): boolean => {
-    try {
-      if (!storage) return false
-      storage.setItem(key, JSON.stringify(value))
-      return true
-    } catch {
-      // Quota, privacy mode: what was lost is a pace, a count or an answer the
-      // learner is told of.
-      return false
-    }
+function readProgress(raw: unknown): Salvaged<ProgressDocument | null> | null {
+  if (raw === null) return { value: null, whole: true }
+  const parsed = ProgressDocumentSchema.safeParse(raw)
+  return parsed.success ? { value: parsed.data, whole: true } : null
+}
+
+/** A reader of a stored document, on its text. */
+type Reader<T> = (raw: string) => Salvaged<T> | null
+
+/** `read` over the text's JSON; text that is not JSON is not readable. */
+function onJson<T>(read: (value: unknown) => Salvaged<T> | null): Reader<T> {
+  return (raw) => {
+    const value = jsonOf(raw)
+    return value === undefined ? null : read(value)
   }
+}
+
+const READERS = {
+  paces: onJson(readPaceBook),
+  record: onJson(readPracticeRecord),
+  progress: onJson(readProgress),
+  sets: onJson(readAddedSets),
+  feedback: onJson(readFeedback),
+  tally: onJson(readTally),
+}
+
+export function createReadAloudStore(
+  storage: KeyedStorage | null = localStorageOrNull()
+): ReadAloudStore {
+  const read = <T>(key: string, reader: Reader<T>, fallback: T): T =>
+    openKept(storage, key, reader, fallback).value
+
+  /**
+   * Whether the phone kept `value`; never over a document that could not be
+   * read and copied aside. Quota, privacy mode: what was lost is a pace, a
+   * count or an answer the learner is told of.
+   */
+  const write = <T>(key: string, reader: Reader<T>, value: unknown): boolean =>
+    writeKept(storage, key, value, reader)
 
   const paces = (): PaceBook =>
-    parsePaceBook(read(READ_ALOUD_STORAGE_KEYS.paces))
+    read(READ_ALOUD_STORAGE_KEYS.paces, READERS.paces, {})
   const record = (): PracticeRecord =>
-    parsePracticeRecord(read(READ_ALOUD_STORAGE_KEYS.record))
+    read(READ_ALOUD_STORAGE_KEYS.record, READERS.record, emptyRecord())
 
   return {
     paces,
     savePace: (wordId, pace): void => {
-      write(READ_ALOUD_STORAGE_KEYS.paces, { ...paces(), [wordId]: pace })
+      write(READ_ALOUD_STORAGE_KEYS.paces, READERS.paces, {
+        ...paces(),
+        [wordId]: pace,
+      })
     },
     prunePaces: (wordIds): void => {
-      write(READ_ALOUD_STORAGE_KEYS.paces, prunePaceBook(paces(), wordIds))
+      write(
+        READ_ALOUD_STORAGE_KEYS.paces,
+        READERS.paces,
+        prunePaceBook(paces(), wordIds)
+      )
     },
     record,
     count: (event, day): PracticeRecord => {
@@ -182,39 +217,45 @@ export function createReadAloudStore(
         event.type === "rep"
           ? addRep(record(), day, event.creditMs)
           : addSet(record(), day)
-      write(READ_ALOUD_STORAGE_KEYS.record, next)
+      write(READ_ALOUD_STORAGE_KEYS.record, READERS.record, next)
       return next
     },
     progress: (level, deckId): SetProgress | null => {
-      const parsed = ProgressDocumentSchema.safeParse(
-        read(READ_ALOUD_STORAGE_KEYS.progress)
+      const kept = read(
+        READ_ALOUD_STORAGE_KEYS.progress,
+        READERS.progress,
+        null
       )
-      return parsed.success &&
-        parsed.data.level === level &&
-        parsed.data.deck === deckId
-        ? parsed.data.progress
+      return kept !== null && kept.level === level && kept.deck === deckId
+        ? kept.progress
         : null
     },
     saveProgress: (level, deckId, progress): void => {
       write(
         READ_ALOUD_STORAGE_KEYS.progress,
+        READERS.progress,
         progress && progress.queue.length > 0
           ? { version: 1, level, deck: deckId, progress }
           : null
       )
     },
     sets: (): Array<AddedSet> =>
-      parseAddedSets(read(READ_ALOUD_STORAGE_KEYS.sets)),
+      read(READ_ALOUD_STORAGE_KEYS.sets, READERS.sets, []),
     saveSets: (sets): void => {
-      write(READ_ALOUD_STORAGE_KEYS.sets, sets.map(storedSet))
+      write(READ_ALOUD_STORAGE_KEYS.sets, READERS.sets, sets.map(storedSet))
     },
     feedback: (): ReadAloudFeedback | null =>
-      parseFeedback(read(READ_ALOUD_STORAGE_KEYS.feedback)),
+      read(READ_ALOUD_STORAGE_KEYS.feedback, READERS.feedback, null),
     saveFeedback: (feedback): boolean =>
-      write(READ_ALOUD_STORAGE_KEYS.feedback, storedFeedback(feedback)),
-    tally: (): Tally => parseTally(read(READ_ALOUD_STORAGE_KEYS.tally)),
+      write(
+        READ_ALOUD_STORAGE_KEYS.feedback,
+        READERS.feedback,
+        storedFeedback(feedback)
+      ),
+    tally: (): Tally =>
+      read(READ_ALOUD_STORAGE_KEYS.tally, READERS.tally, emptyTally()),
     saveTally: (tally): boolean =>
-      write(READ_ALOUD_STORAGE_KEYS.tally, storedTally(tally)),
+      write(READ_ALOUD_STORAGE_KEYS.tally, READERS.tally, storedTally(tally)),
   }
 }
 

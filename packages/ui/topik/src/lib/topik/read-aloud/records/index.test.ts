@@ -4,9 +4,9 @@ import {
   addSet,
   dayKey,
   emptyRecord,
-  parsePaceBook,
-  parsePracticeRecord,
   prunePaceBook,
+  readPaceBook,
+  readPracticeRecord,
   recentCounts,
   RECORD_DAYS,
 } from "@topik/lib/topik/read-aloud/records"
@@ -66,19 +66,20 @@ describe("recentCounts", () => {
   })
 })
 
-describe("parsePracticeRecord", () => {
+describe("readPracticeRecord", () => {
   const stored: PracticeRecord = addSet(
     addRep(emptyRecord(), "2026-09-01", 9000),
     "2026-09-01"
   )
 
   it("round-trips a stored record", () => {
-    expect(parsePracticeRecord(JSON.parse(JSON.stringify(stored)))).toEqual(
-      stored
-    )
+    expect(readPracticeRecord(JSON.parse(JSON.stringify(stored)))).toEqual({
+      value: stored,
+      whole: true,
+    })
   })
 
-  it("discards a malformed record whole", () => {
+  it("reads nothing of a malformed record", () => {
     for (const raw of [
       null,
       "record",
@@ -90,27 +91,28 @@ describe("parsePracticeRecord", () => {
       },
       { ...stored, days: [...stored.days, ...stored.days] },
     ]) {
-      expect(parsePracticeRecord(raw)).toEqual(emptyRecord())
+      expect(readPracticeRecord(raw)).toBeNull()
     }
   })
 })
 
 describe("the pace book (Cor. 4.6 (iii))", () => {
-  it("keeps each entry that parses and drops the rest", () => {
+  it("keeps each entry that parses, and says it left the rest out", () => {
     expect(
-      parsePaceBook({
+      readPaceBook({
         juda: { factor: 1.2, seen: 3 },
         hana: { factor: 9, seen: 1 },
         jan: { factor: 1, seen: -1 },
         keopi: "fast",
       })
-    ).toEqual({ juda: { factor: 1.2, seen: 3 } })
-    expect(parsePaceBook(["juda"])).toEqual({})
-    const book = parsePaceBook(
+    ).toEqual({ value: { juda: { factor: 1.2, seen: 3 } }, whole: false })
+    expect(readPaceBook({ juda: { factor: 1.2, seen: 3 } })?.whole).toBe(true)
+    expect(readPaceBook(["juda"])?.value ?? {}).toEqual({})
+    const book = readPaceBook(
       JSON.parse('{"__proto__": {"factor": 1, "seen": 1}}')
-    )
+    )?.value
     expect(Object.getPrototypeOf(book)).toBe(Object.prototype)
-    expect(parsePaceBook(undefined)).toEqual({})
+    expect(readPaceBook(undefined)).toBeNull()
   })
 
   it("is bounded by the vocabulary (Rem. 7.5)", () => {

@@ -5,6 +5,7 @@
  * (paulgsc/server#432); a home that mints its own still gets no duplicate,
  * by the content match the browser's transfer uses.
  */
+import { inMemoryStorage } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
 import { FileHostResponseError } from "@/lib/file-host-config/client"
@@ -14,7 +15,6 @@ import type {
   SessionsStore,
   UpdateSessionInput,
 } from "@/lib/tenant/sessions-repository"
-import { createInMemoryStorage } from "@/lib/tenant/storage"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 const SESSION = {
@@ -100,14 +100,14 @@ function home({
 describe("a phone's copy names each create's id", () => {
   it("creates under an id it names", async () => {
     const there = home({ named: true })
-    await copySessionsTo([SESSION], there, createInMemoryStorage())
+    await copySessionsTo([SESSION], there, inMemoryStorage())
     expect(there.creates).toEqual([expect.stringMatching(/^session-/)])
     expect([...there.held.keys()]).toEqual(there.creates)
   })
 
   it("finds a create whose answer was lost by its id, and makes one session", async () => {
     const there = home({ named: true, lose: 1 })
-    const receipt = createInMemoryStorage()
+    const receipt = inMemoryStorage()
     const lost = await copySessionsTo([SESSION], there, receipt)
     expect(lost.outcome.kind).toBe("partial")
     const again = await copySessionsTo([SESSION], there, receipt)
@@ -119,7 +119,7 @@ describe("a phone's copy names each create's id", () => {
 
   it("sends a lost create again under the same id", async () => {
     const there = home({ named: true, lose: 1 })
-    const receipt = createInMemoryStorage()
+    const receipt = inMemoryStorage()
     await copySessionsTo([SESSION], there, receipt)
     there.held.clear()
     await copySessionsTo([SESSION], there, receipt)
@@ -130,7 +130,7 @@ describe("a phone's copy names each create's id", () => {
 
   it("makes no duplicate on a home that mints its own ids", async () => {
     const there = home({ named: false, lose: 1 })
-    const receipt = createInMemoryStorage()
+    const receipt = inMemoryStorage()
     await copySessionsTo([SESSION], there, receipt)
     const again = await copySessionsTo([SESSION], there, receipt)
     expect(again.outcome).toEqual({ kind: "copied", copied: 1 })
@@ -140,7 +140,7 @@ describe("a phone's copy names each create's id", () => {
 
   it("never takes another session's named id for its own by content", async () => {
     const there = home({ named: true, lose: 1 })
-    const receipt = createInMemoryStorage()
+    const receipt = inMemoryStorage()
     const twin = { ...SESSION, id: "local-2" }
     await copySessionsTo([SESSION], there, receipt)
     // The twin's create never landed: home holds only the first's, by its id.
@@ -161,7 +161,7 @@ describe("a phone's copy names each create's id", () => {
       there.creates.push(input.id)
       return Promise.reject(new FileHostResponseError(409, "/sessions", null))
     }
-    const receipt = createInMemoryStorage()
+    const receipt = inMemoryStorage()
     await copySessionsTo([SESSION], there, receipt)
     await copySessionsTo([SESSION], there, receipt)
     expect(there.creates).toHaveLength(2)

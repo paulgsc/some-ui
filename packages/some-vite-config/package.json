@@ -68,6 +68,10 @@
       "types": "./dist/esm/src/vitest/memory-storage.d.ts",
       "import": "./dist/esm/src/vitest/memory-storage.js"
     },
+    "./vitest/kept-records": {
+      "types": "./dist/esm/src/vitest/kept-records.d.ts",
+      "import": "./dist/esm/src/vitest/kept-records.js"
+    },
     "./vitest/source-graph": {
       "types": "./dist/esm/src/vitest/source-graph.d.ts",
       "import": "./dist/esm/src/vitest/source-graph.js"

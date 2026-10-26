@@ -1,3 +1,5 @@
+import { inMemoryStorage } from "@some-ui/core-utils"
+import type { KeyedStorage } from "@some-ui/core-utils"
 import { describe, expect, it, vi } from "vitest"
 
 import { isFile } from "@/lib/jobs/files"
@@ -5,8 +7,6 @@ import type { PickRef } from "@/lib/jobs/model"
 import type { NoticeAsked, NoticePort } from "@/lib/jobs/runtime"
 import { createJobsRuntime } from "@/lib/jobs/runtime"
 import { STORAGE_KEY } from "@/lib/jobs/stored"
-import type { StorageAdapter } from "@/lib/tenant/storage"
-import { createInMemoryStorage } from "@/lib/tenant/storage"
 
 import { digest, ports, run } from "./fixture"
 
@@ -88,7 +88,7 @@ describe("createJobsRuntime", () => {
   })
 
   it("refuses every change when the storage can't be read", () => {
-    const blocked: StorageAdapter = {
+    const blocked: KeyedStorage = {
       getItem: () => {
         throw new Error("blocked")
       },
@@ -105,9 +105,9 @@ describe("createJobsRuntime", () => {
   })
 
   it("says nothing of a reading, kept or not, and leaves what the next change I make says", () => {
-    const memory = createInMemoryStorage()
+    const memory = inMemoryStorage()
     let full = false
-    const storage: StorageAdapter = {
+    const storage: KeyedStorage = {
       ...memory,
       setItem: (key, value) => {
         if (full) throw new Error("full")

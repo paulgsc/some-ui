@@ -8,7 +8,7 @@
  *
  * What did not go goes on the next ask.
  */
-import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
+import type { HomeCall, HomeExchanged, KeyedStorage } from "@some-ui/core-utils"
 import { unexpectedAnswer } from "@some-ui/core-utils"
 
 import type { Kept } from "@/lib/device-backend/handlers/shelf"
@@ -47,7 +47,7 @@ export type StandingPorts = {
   shared: () => ReadonlySet<Scope>
   /** The pairing this send goes under (the link's id for it). */
   pairing: string
-  storage: Pick<Storage, "getItem" | "setItem"> | null
+  storage: KeyedStorage | null
   /** The sessions copy (`./sessions`'s `copyHome`); a seam for tests. */
   copy?: (
     send: HomeCall,

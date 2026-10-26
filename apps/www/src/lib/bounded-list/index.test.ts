@@ -40,11 +40,14 @@ describe("boundedList", () => {
     expect(list.read()).toEqual([1])
   })
 
-  it("reads what it cannot trust as absent", () => {
+  it("moves what it cannot read aside before the next write, and keeps what it can", () => {
     localStorage.setItem("test:list", "{not json")
     expect(list.read()).toEqual([])
+    expect(list.put(5, is(5))).toBe(true)
+    expect(localStorage.getItem("test:list:unreadable:1")).toBe("{not json")
 
     localStorage.setItem("test:list", JSON.stringify([1, "two", 3]))
     expect(list.read()).toEqual([1, 3])
+    expect(localStorage.getItem("test:list:unreadable:2")).toBe('[1,"two",3]')
   })
 })

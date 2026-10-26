@@ -13,6 +13,8 @@
  * closes does nothing), and push has to show through the worker anyway.
  */
 
+import { localStorageOrNull } from "@some-ui/core-utils"
+
 import type { FileHostTransport } from "@/lib/file-host-config/client"
 import {
   createFileHostTransport,
@@ -150,18 +152,16 @@ export async function showTestNudge(
 }
 
 export function readLastNudgeAt(): string | null {
-  if (typeof window === "undefined") return null
   try {
-    return window.localStorage.getItem(LAST_NUDGE_KEY)
+    return localStorageOrNull()?.getItem(LAST_NUDGE_KEY) ?? null
   } catch {
     return null
   }
 }
 
 export function recordNudgeShown(at: Date): void {
-  if (typeof window === "undefined") return
   try {
-    window.localStorage.setItem(LAST_NUDGE_KEY, at.toISOString())
+    localStorageOrNull()?.setItem(LAST_NUDGE_KEY, at.toISOString())
   } catch {
     // A refused write (private mode, quota) costs a cooldown, not the feature.
   }

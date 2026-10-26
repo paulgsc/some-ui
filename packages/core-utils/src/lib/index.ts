@@ -17,11 +17,21 @@ export {
   stoppedOnHome,
   unexpectedAnswer,
 } from "./home-exchange"
-export type { KeyedStorage, OpenedRecord } from "./storage"
+export type { Kept, KeyedStorage, OpenedRecord, Salvaged } from "./storage"
 export {
+  inMemoryStorage,
+  jsonOf,
   localStorageOrNull,
+  openKept,
   openRecord,
+  openSalvaged,
   quarantine,
+  readWhole,
+  removeRecord,
+  salvageEntries,
+  salvageList,
+  sessionStorageOrNull,
+  writeKept,
   writeRecord,
 } from "./storage"
 export type { AudioContextConstructor } from "./audio-context"

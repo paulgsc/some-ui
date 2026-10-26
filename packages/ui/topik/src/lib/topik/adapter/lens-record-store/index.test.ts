@@ -104,10 +104,16 @@ describe("the lens record store", () => {
     ])
   })
 
-  it("says it keeps nothing new over a record it cannot read, or after a refused write", () => {
+  it("says it keeps nothing new over a record it cannot read and cannot copy aside, or after a refused write", () => {
     const storage = memoryStorage()
     storage.map.set(LENS_RECORD_KEY, '{"version":2,"entries":[]}')
+    storage.full = true
     expect(createLensRecordStore(storage).full()).toBe(true)
+    storage.full = false
+    expect(createLensRecordStore(storage).full()).toBe(false)
+    expect(storage.map.get(`${LENS_RECORD_KEY}:unreadable:1`)).toBe(
+      '{"version":2,"entries":[]}'
+    )
     storage.map.clear()
     const store = createLensRecordStore(storage)
     expect(store.full()).toBe(false)
@@ -144,7 +150,7 @@ describe("the lens record store", () => {
     expect(storage.map.get(LENS_RECORD_KEY)).toContain('"pitch"')
   })
 
-  it("keeps what it cannot parse, and writes over no record it cannot read", () => {
+  it("keeps what it cannot parse, and copies a record it cannot read aside before writing", () => {
     const storage = memoryStorage()
     const unknown = { ...entry(NOW), shown: ["no-such-mistake"] }
     storage.map.set(
@@ -158,12 +164,17 @@ describe("the lens record store", () => {
       version: 1,
       entries: [unknown],
     })
-    for (const unreadable of ["{not json", '{"version":2,"entries":[]}']) {
+    for (const [n, unreadable] of [
+      [1, "{not json"],
+      [2, '{"version":2,"entries":[]}'],
+    ] as const) {
       storage.map.set(LENS_RECORD_KEY, unreadable)
       expect(lensRecordForExport(storage).entries).toEqual([])
       createLensRecordStore(storage).add(entry(NOW))
-      letGoLensRecord([entry(NOW)], storage)
-      expect(storage.map.get(LENS_RECORD_KEY)).toBe(unreadable)
+      expect(storage.map.get(`${LENS_RECORD_KEY}:unreadable:${n}`)).toBe(
+        unreadable
+      )
+      expect(lensRecordForExport(storage).entries).toEqual([entry(NOW)])
     }
   })
 })

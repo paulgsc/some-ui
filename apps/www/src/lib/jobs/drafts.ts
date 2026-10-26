@@ -6,11 +6,15 @@
  * go home or into a share, and a form's draft is cleared once the event
  * that settles it is recorded.
  */
-import { assertNever, quarantine } from "@some-ui/core-utils"
+import type { KeyedStorage } from "@some-ui/core-utils"
+import {
+  assertNever,
+  openKept,
+  salvageEntries,
+  writeKept,
+} from "@some-ui/core-utils"
 import { FRICTION, PASS_REASONS } from "@some-ui/job-desk"
 import { z } from "zod"
-
-import type { StorageAdapter } from "@/lib/tenant/storage"
 
 import type { Draft, FrictionChip, PassReason } from "./model"
 import { pickOwner } from "./model"
@@ -118,15 +122,11 @@ export function draftRecordedBy(event: Draft): string | null {
   }
 }
 
-/** Each entry of a kept value, or null when it isn't a map of entries. */
-function entriesOf(raw: string): ReadonlyArray<[string, unknown]> | null {
-  try {
-    const parsed = z.record(z.string(), z.unknown()).safeParse(JSON.parse(raw))
-    return parsed.success ? Object.entries(parsed.data) : null
-  } catch {
-    return null
-  }
-}
+/** The drafts, entry by entry: a draft it can't read is left out. */
+const readEntries = salvageEntries((value): FormDraft | null => {
+  const draft = FormDraftSchema.safeParse(value)
+  return draft.success ? draft.data : null
+})
 
 /**
  * The drafts kept on this phone, each entry read on its own, and whether
@@ -134,40 +134,18 @@ function entriesOf(raw: string): ReadonlyArray<[string, unknown]> | null {
  * aside, and when that fails (or the storage throws) nothing is written over
  * it, so the drafts last only while Jobs stays open.
  */
-export function readDrafts(storage: StorageAdapter): {
+export function readDrafts(storage: KeyedStorage): {
   drafts: FormDrafts
   writable: boolean
 } {
-  let raw: string | null
-  try {
-    raw = storage.getItem(DRAFTS_KEY)
-  } catch {
-    return { drafts: {}, writable: false }
-  }
-  if (raw === null) return { drafts: {}, writable: true }
-  const entries = entriesOf(raw)
-  const drafts: Record<string, FormDraft> = {}
-  for (const [owner, value] of entries ?? []) {
-    const draft = FormDraftSchema.safeParse(value)
-    if (draft.success) drafts[owner] = draft.data
-  }
-  const whole =
-    entries !== null && Object.keys(drafts).length === entries.length
-  return {
-    drafts,
-    writable: whole || quarantine(storage, raw, QUARANTINE_PREFIX),
-  }
+  const kept = openKept(storage, DRAFTS_KEY, readEntries, {}, QUARANTINE_PREFIX)
+  return { drafts: kept.value, writable: kept.writable }
 }
 
 /** False when the phone could not keep `drafts`. */
 export function writeDrafts(
-  storage: StorageAdapter,
+  storage: KeyedStorage,
   drafts: FormDrafts
 ): boolean {
-  try {
-    storage.setItem(DRAFTS_KEY, JSON.stringify(drafts))
-    return true
-  } catch {
-    return false
-  }
+  return writeKept(storage, DRAFTS_KEY, drafts, readEntries, QUARANTINE_PREFIX)
 }

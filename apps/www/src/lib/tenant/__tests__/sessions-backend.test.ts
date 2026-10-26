@@ -7,6 +7,7 @@
  * signing in uploads nothing.
  */
 
+import { inMemoryStorage } from "@some-ui/core-utils"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { authority, StaleAuthorityError } from "@/lib/authority"
@@ -20,7 +21,6 @@ import {
   createSessionsRepository,
   STORAGE_KEY,
 } from "@/lib/tenant/sessions-repository"
-import { createInMemoryStorage, writeJSON } from "@/lib/tenant/storage"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 const onDevice: SessionRecord = {
@@ -64,7 +64,7 @@ function wrap(
 /** The account's store, standing in for `file_host`. */
 function account(): { store: SessionsStore; calls: Array<string> } {
   const calls: Array<string> = []
-  const inner = createSessionsRepository(createInMemoryStorage())
+  const inner = createSessionsRepository(inMemoryStorage())
   const store = wrap(inner, {
     list: () => {
       calls.push("list")
@@ -96,8 +96,8 @@ describe("learning on the device", () => {
     const fetchSpy = vi.fn()
     vi.stubGlobal("fetch", fetchSpy)
     const remote = vi.fn(() => null)
-    const storage = createInMemoryStorage()
-    writeJSON(storage, STORAGE_KEY, [onDevice])
+    const storage = inMemoryStorage()
+    storage.setItem(STORAGE_KEY, JSON.stringify([onDevice]))
     const store = createSessionsBackend({ storage, remote })
 
     expect(await store.list()).toEqual([onDevice])
@@ -110,8 +110,8 @@ describe("learning on the device", () => {
 
   it("needs no session: signed out is the same as never having had one", async () => {
     authority.dispatch({ type: "session-learned", session: "signed-out" })
-    const storage = createInMemoryStorage()
-    writeJSON(storage, STORAGE_KEY, [onDevice])
+    const storage = inMemoryStorage()
+    storage.setItem(STORAGE_KEY, JSON.stringify([onDevice]))
     const store = createSessionsBackend({ storage, remote: () => null })
     expect(await store.list()).toEqual([onDevice])
   })
@@ -119,8 +119,8 @@ describe("learning on the device", () => {
 
 describe("removing a session", () => {
   it("forgets its autosave failure, which has nothing left to warn about", async () => {
-    const storage = createInMemoryStorage()
-    writeJSON(storage, STORAGE_KEY, [onDevice])
+    const storage = inMemoryStorage()
+    storage.setItem(STORAGE_KEY, JSON.stringify([onDevice]))
     const store = createSessionsBackend({ storage, remote: () => null })
     const failure = { kind: "unreachable" as const, summary: "not saved" }
     writeDurableFailure(onDevice.id, failure)
@@ -136,8 +136,8 @@ describe("removing a session", () => {
 
 describe("signing in uploads nothing", () => {
   it("serves the account's store and leaves this browser's sessions where they are", async () => {
-    const storage = createInMemoryStorage()
-    writeJSON(storage, STORAGE_KEY, [onDevice])
+    const storage = inMemoryStorage()
+    storage.setItem(STORAGE_KEY, JSON.stringify([onDevice]))
     const { store: remote, calls } = account()
     const store = createSessionsBackend({ storage, remote: () => remote })
 
@@ -153,8 +153,8 @@ describe("signing in uploads nothing", () => {
   })
 
   it("leaves the device's sessions alone however many calls follow the sign-in", async () => {
-    const storage = createInMemoryStorage()
-    writeJSON(storage, STORAGE_KEY, [onDevice])
+    const storage = inMemoryStorage()
+    storage.setItem(STORAGE_KEY, JSON.stringify([onDevice]))
     const { store: remote } = account()
     const create = vi.spyOn(remote, "create")
     const store = createSessionsBackend({ storage, remote: () => remote })
@@ -183,7 +183,7 @@ describe("a returning account user", () => {
       return Promise.resolve(true)
     })
     const store = createSessionsBackend({
-      storage: createInMemoryStorage(),
+      storage: inMemoryStorage(),
       settle,
       remote: () => remote,
     })
@@ -199,8 +199,8 @@ describe("a returning account user", () => {
       JSON.stringify({ choice: "account" })
     )
     authority.resetForTests()
-    const storage = createInMemoryStorage()
-    writeJSON(storage, STORAGE_KEY, [onDevice])
+    const storage = inMemoryStorage()
+    storage.setItem(STORAGE_KEY, JSON.stringify([onDevice]))
     const remote = vi.fn(() => null)
     const store = createSessionsBackend({
       storage,
@@ -218,8 +218,8 @@ describe("a returning account user", () => {
 
 describe("when the session ends", () => {
   it("falls back to the device and wipes nothing, then returns to the account", async () => {
-    const storage = createInMemoryStorage()
-    writeJSON(storage, STORAGE_KEY, [onDevice])
+    const storage = inMemoryStorage()
+    storage.setItem(STORAGE_KEY, JSON.stringify([onDevice]))
     const { store: remote, calls } = account()
     await remote.create(input)
     const store = createSessionsBackend({ storage, remote: () => remote })
@@ -242,8 +242,8 @@ describe("when the session ends", () => {
 
 describe("a result that outlives its authority", () => {
   it("is dropped, and the write stays where it was made", async () => {
-    const storage = createInMemoryStorage()
-    const slow = createSessionsRepository(createInMemoryStorage())
+    const storage = inMemoryStorage()
+    const slow = createSessionsRepository(inMemoryStorage())
     let release: () => void = () => undefined
     const gate = new Promise<void>((resolve) => {
       release = resolve

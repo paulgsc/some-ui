@@ -1,21 +1,24 @@
+import type { KeyedStorage } from "@some-ui/core-utils"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import {
   createReadAloudStore,
   READ_ALOUD_STORAGE_KEYS,
 } from "@topik/lib/topik/adapter/read-aloud-store"
-import type { StorageLike } from "@topik/lib/topik/adapter/storage"
 import { storedSet } from "@topik/lib/topik/read-aloud/added-sets"
 import { emptyRecord } from "@topik/lib/topik/read-aloud/records"
 import type { SetProgress } from "@topik/lib/topik/read-aloud/set-machine"
 import { noteRead, noteShown } from "@topik/lib/topik/read-aloud/tally"
 import { describe, expect, it } from "vitest"
 
-const refusing: StorageLike = {
+const refusing: KeyedStorage = {
   getItem: (): string | null => {
     throw new Error("denied")
   },
   setItem: (): void => {
     throw new Error("quota")
+  },
+  removeItem: (): void => {
+    throw new Error("denied")
   },
 }
 
@@ -96,7 +99,7 @@ describe("the read-aloud store", () => {
     expect(store.progress(2, "starter")).toBeNull()
   })
 
-  it("keeps the added word sets, and drops one that no longer parses", () => {
+  it("keeps the added word sets, and leaves out one that no longer parses", () => {
     const storage = memoryStorage()
     const store = createReadAloudStore(storage)
     const set = {

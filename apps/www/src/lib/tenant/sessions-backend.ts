@@ -20,6 +20,8 @@
  * (`sessions-transfer`; invariant LA2 in `lib/authority`).
  */
 
+import type { KeyedStorage } from "@some-ui/core-utils"
+
 import { resolveSessionIfChosen } from "@/lib/auth/session"
 import type { Authority } from "@/lib/authority"
 import { authority, StaleAuthorityError } from "@/lib/authority"
@@ -33,13 +35,12 @@ import type {
   UpdateSessionInput,
 } from "./sessions-repository"
 import { createSessionsRepository } from "./sessions-repository"
-import type { StorageAdapter } from "./storage"
 import { browserLocalStorage } from "./storage"
 import type { SessionRecord, SessionStatus } from "./types"
 
 /** What `createSessionsBackend` reads from the world; every part is a test seam. */
 export type SessionsBackendDeps = {
-  storage?: StorageAdapter
+  storage?: KeyedStorage
   /** Settles a returning account user's undecided authority. */
   settle?: () => Promise<unknown>
   /** The account store for the authority a call began under. `null`: nothing to talk to. */

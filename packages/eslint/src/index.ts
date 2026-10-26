@@ -12,6 +12,8 @@ import {
   fitsTheBoxPlugin,
   intentGuardConfig,
   intentGuardPlugin,
+  keptRecordConfig,
+  keptRecordPlugin,
   lazyRegistryConfig,
   lazyRegistryPlugin,
   logGuardConfig,
@@ -101,6 +103,9 @@ export { queryGuardConfig, queryGuardPlugin }
 // ── State seeded from a prop or the clock (#1659) ──────────────────────────
 export { ownerGuardConfig, ownerGuardPlugin }
 
+// ── A kept record read only through core-utils' storage owner (KR1) ───────
+export { keptRecordConfig, keptRecordPlugin }
+
 // ── One reporter, an error's message only (apps/mailbox, MB3) ─────────────
 export { logGuardConfig, logGuardPlugin }
 
@@ -145,11 +150,13 @@ export const extensionsRecommended: Config = [
  * reusable component is the thing that must inherit one. Enforcing the rules
  * everywhere would flag exactly the hosts that are doing it right, so the
  * preset is scoped by who extends it, the same way `appsRecommended` and
- * `extensionsRecommended` are.
+ * `extensionsRecommended` are. `keptRecordConfig` rides along: a UI package's
+ * stores read the page's storage only through core-utils (KR1).
  */
 export const uiRecommended: Config = [
   ...maishatuRecommended,
   ...themeProtocolConfig,
+  ...keptRecordConfig,
 ]
 
 /**

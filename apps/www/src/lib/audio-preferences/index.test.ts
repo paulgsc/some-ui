@@ -95,9 +95,9 @@ describe("channel updates", () => {
 
 describe("withAudioDefaults", () => {
   it("fills in a settings blob written before audio preferences existed", () => {
-    // What `readJSON` hands back for a browser holding the old shape. The
-    // failure this prevents is not a missing toggle - it is reading
-    // `.speech.enabled` off undefined and blanking the page.
+    // What the settings repository reads from a browser holding the old
+    // shape. The failure this prevents is not a missing toggle - it is
+    // reading `.speech.enabled` off undefined and blanking the page.
     expect(withAudioDefaults(undefined)).toEqual(DEFAULT_AUDIO_PREFERENCES)
   })
 

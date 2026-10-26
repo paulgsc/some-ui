@@ -9,6 +9,14 @@
  * share sheet (`lib/agent-export`), and leaves the phone for good when they do.
  * The import guard is `eslint.config.js`.
  */
+import {
+  jsonOf,
+  localStorageOrNull,
+  openRecord,
+  quarantine,
+  removeRecord,
+} from "@some-ui/core-utils"
+
 import { boundedList } from "@/lib/bounded-list"
 
 import type { Answers, Reflection } from "./policy"
@@ -67,22 +75,28 @@ const marks = boundedList(
     typeof Reflect.get(value, "sharedAt") === "string"
 )
 
+/** Followed by 1, 2 …: the old list, as stored, when not all of it moved over. */
+const LEGACY_PREFIX = `${LEGACY_KEY}:unreadable:`
+
 function migrateLegacy(now: number): void {
-  let raw: string | null
-  try {
-    raw = localStorage.getItem(LEGACY_KEY)
-  } catch {
-    return
-  }
-  if (raw === null) return
-  let rows: unknown
-  try {
-    rows = JSON.parse(raw)
-  } catch {
-    rows = []
-  }
+  const storage = localStorageOrNull()
+  if (storage === null) return
+  const opened = openRecord(
+    storage,
+    LEGACY_KEY,
+    (raw) => {
+      const rows = jsonOf(raw)
+      return Array.isArray(rows) ? rows : null
+    },
+    LEGACY_PREFIX
+  )
+  // Unreadable storage: read again next time. Moved: copied aside, nothing
+  // to move over.
+  if (opened.kind === "empty" || opened.kind === "unreadable") return
+  const rows: ReadonlyArray<unknown> =
+    opened.kind === "kept" ? opened.value : []
   const staleAt = new Date(now - STALE_AFTER_MS).toISOString()
-  const moved = fromLegacy(Array.isArray(rows) ? rows : [], staleAt)
+  const moved = fromLegacy(rows, staleAt)
   // Oldest first, so the list (newest first) keeps their order. The old list
   // goes only once every row is stored; otherwise it is read again next
   // time, and `legacy-<sessionId>` ids keep the move idempotent.
@@ -93,11 +107,19 @@ function migrateLegacy(now: number): void {
       list.put(reflection, (r) => r.id === reflection.id)
   }
   if (!movedAll) return
-  try {
-    localStorage.removeItem(LEGACY_KEY)
-  } catch {
-    // Read again next time, as above.
+  // A row it could not move over goes nowhere: the old list is copied
+  // aside first, as stored.
+  if (moved.length < rows.length) {
+    let raw: string | null
+    try {
+      raw = storage.getItem(LEGACY_KEY)
+    } catch {
+      return
+    }
+    if (raw !== null && !quarantine(storage, raw, LEGACY_PREFIX)) return
   }
+  // Unremoved, it is read again next time, as above.
+  removeRecord(storage, LEGACY_KEY)
 }
 
 let snapshot: ReflectionsSnapshot | null = null

@@ -4,7 +4,14 @@
  * replaced by the next: a convenience, and no record of what was studied.
  */
 
-import { localStorageOrNull } from "@some-ui/core-utils"
+import type { Kept, KeyedStorage } from "@some-ui/core-utils"
+import {
+  jsonOf,
+  localStorageOrNull,
+  openKept,
+  readWhole,
+  writeKept,
+} from "@some-ui/core-utils"
 import type { Order } from "@topik/lib/topik/core/portion"
 import { FRESHNESS, PORTIONS } from "@topik/lib/topik/core/portion"
 import { z } from "zod"
@@ -22,32 +29,26 @@ export type PortionOrderStore = {
   save: (order: Order) => void
 }
 
-/** A failed read is no order, and a failed write is lost. */
+const readOrder = readWhole((raw): Order | null => {
+  const parsed = OrderSchema.safeParse(jsonOf(raw))
+  return parsed.success
+    ? { portion: parsed.data.portion, freshness: parsed.data.freshness }
+    : null
+})
+
+/**
+ * A failed read is no order (one it cannot read is copied aside first), and
+ * a failed write is lost: the screen opens on its default next time.
+ */
 export function createPortionOrderStore(
-  storage: Pick<Storage, "getItem" | "setItem"> | null = localStorageOrNull()
+  storage: KeyedStorage | null = localStorageOrNull()
 ): PortionOrderStore {
+  const open = (): Kept<Order | null> =>
+    openKept<Order | null>(storage, PORTION_ORDER_KEY, readOrder, null)
   return {
-    last: (): Order | null => {
-      try {
-        const parsed = OrderSchema.safeParse(
-          JSON.parse(storage?.getItem(PORTION_ORDER_KEY) ?? "null")
-        )
-        return parsed.success
-          ? { portion: parsed.data.portion, freshness: parsed.data.freshness }
-          : null
-      } catch {
-        return null
-      }
-    },
+    last: (): Order | null => open().value,
     save: (order): void => {
-      try {
-        storage?.setItem(
-          PORTION_ORDER_KEY,
-          JSON.stringify({ version: 1, ...order })
-        )
-      } catch {
-        // Quota, privacy mode: the screen opens on its default next time.
-      }
+      writeKept(storage, PORTION_ORDER_KEY, { version: 1, ...order }, readOrder)
     },
   }
 }

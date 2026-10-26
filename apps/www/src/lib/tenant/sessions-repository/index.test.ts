@@ -1,17 +1,16 @@
 import type { SessionActivity } from "@some-ui/activity-catalog"
+import { inMemoryStorage } from "@some-ui/core-utils"
+import type { KeyedStorage } from "@some-ui/core-utils"
 import type { SceneConfig } from "@some-ui/types"
 import { beforeEach, describe, expect, it } from "vitest"
-
-import type { StorageAdapter } from "@/lib/tenant/storage"
-import { createInMemoryStorage } from "@/lib/tenant/storage"
 
 import { createSessionsRepository, SessionNotFoundError } from "."
 import type { CreateSessionInput } from "."
 
-let storage: StorageAdapter
+let storage: KeyedStorage
 
 beforeEach(() => {
-  storage = createInMemoryStorage()
+  storage = inMemoryStorage()
 })
 
 function scene(overrides: Partial<SceneConfig> = {}): SceneConfig {

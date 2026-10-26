@@ -1,9 +1,20 @@
 /**
- * A newest-first list in `localStorage`, never longer than `limit`. What it
- * cannot read (no storage, bad JSON, an item `isItem` rejects) reads as
- * absent, and a failed write is dropped and said so (`false`): a store built
- * on it decides whether that matters.
+ * A newest-first list in `localStorage`, never longer than `limit`, read and
+ * written through core-utils' `openKept`/`writeKept`: a value it cannot read
+ * whole (bad JSON, an item `isItem` rejects, such as an older shape) is
+ * copied aside under `<key>:unreadable:` before anything is written over it,
+ * and the items it could read stay. Where nothing can be read or copied
+ * aside (no storage, or a full one), every write is refused and said so
+ * (`false`): a store built on it decides whether that matters.
  */
+import type { Kept } from "@some-ui/core-utils"
+import {
+  localStorageOrNull,
+  openKept,
+  salvageList,
+  writeKept,
+} from "@some-ui/core-utils"
+
 export function boundedList<T>(
   key: string,
   limit: number,
@@ -17,26 +28,21 @@ export function boundedList<T>(
   put: (item: T, same: (other: T) => boolean) => boolean
   remove: (same: (other: T) => boolean) => boolean
 } {
-  const read = (): Array<T> => {
-    try {
-      const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? "[]")
-      return Array.isArray(parsed) ? parsed.filter(isItem) : []
-    } catch {
-      return []
-    }
-  }
-  const write = (items: Array<T>): boolean => {
-    try {
-      localStorage.setItem(key, JSON.stringify(items.slice(0, limit)))
-      return true
-    } catch {
-      // Full or missing storage: this write is lost, nothing else.
-      return false
-    }
+  const items = salvageList(isItem)
+  // Looked up on each call: the viewer's in-memory copy
+  // (`lib/demo/viewer-storage`) or a test's may replace it.
+  const open = (): Kept<Array<T>> =>
+    openKept(localStorageOrNull(), key, items, [])
+  const write = (next: Array<T>): boolean =>
+    writeKept(localStorageOrNull(), key, next.slice(0, limit), items)
+  const change = (next: (kept: Array<T>) => Array<T>): boolean => {
+    const kept = open()
+    return kept.writable && write(next(kept.value))
   }
   return {
-    read,
-    put: (item, same) => write([item, ...read().filter((x) => !same(x))]),
-    remove: (same) => write(read().filter((x) => !same(x))),
+    read: () => open().value,
+    put: (item, same) =>
+      change((kept) => [item, ...kept.filter((x) => !same(x))]),
+    remove: (same) => change((kept) => kept.filter((x) => !same(x))),
   }
 }

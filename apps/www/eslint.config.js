@@ -2,6 +2,7 @@ import {
   appsRecommended,
   compiledPackageStyleImportBanPattern,
   intentGuardConfig,
+  keptRecordConfig,
   ownerGuardConfig,
   parentRelativeImportPattern,
   queryGuardConfig,
@@ -15,7 +16,10 @@ import { defineConfig } from "eslint/config"
 // intentGuardConfig the intent boundary (`src/lib/intent/`; an effect from a
 // JSX handler must go through `useIntent`/`useAsyncIntent`), queryGuardConfig
 // the query hooks (`src/lib/tenant/`; no silently-defaulted `data`), and
-// ownerGuardConfig state seeded from a prop or the clock (frozen at mount).
+// ownerGuardConfig state seeded from a prop or the clock (frozen at mount),
+// and keptRecordConfig the page's storage, reached only through core-utils
+// (KR1, `src/lib/kept-records`) but by the tenant adapter and the viewer's
+// in-memory copies, which install it.
 //
 // LA1 (docs/learner-data-authority.md): the network globals are restricted in
 // `src/` so a request carrying learner state cannot be written beside the
@@ -79,6 +83,15 @@ export default defineConfig([
   ...intentGuardConfig,
   ...queryGuardConfig,
   ...ownerGuardConfig,
+  {
+    ...keptRecordConfig[0],
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: [
+      ...(keptRecordConfig[0]?.ignores ?? []),
+      "src/lib/tenant/storage.ts",
+      "src/lib/demo/viewer-storage.ts",
+    ],
+  },
 
   {
     files: ["src/**/*.{ts,tsx}"],

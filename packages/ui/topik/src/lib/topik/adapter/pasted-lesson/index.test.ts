@@ -1,3 +1,4 @@
+import { inMemoryStorage } from "@some-ui/core-utils"
 import { workedLesson } from "@topik/lib/topik/generation/tree-intake/worked-example"
 import { describe, expect, it } from "vitest"
 
@@ -8,19 +9,7 @@ import {
   RETIRED_KEYS,
 } from "."
 
-const memoryStorage = (): Storage => {
-  const data = new Map<string, string>()
-  return {
-    getItem: (key) => data.get(key) ?? null,
-    setItem: (key, value) => void data.set(key, value),
-    removeItem: (key) => void data.delete(key),
-    clear: () => data.clear(),
-    key: () => null,
-    get length(): number {
-      return data.size
-    },
-  }
-}
+const memoryStorage = inMemoryStorage
 
 /** Another tree, under another id. */
 const otherLesson = (): ReturnType<typeof workedLesson> => ({
@@ -65,6 +54,7 @@ describe("createPastedLessonStore", () => {
       setItem: (): void => {
         throw new Error("QuotaExceededError")
       },
+      removeItem: (): void => undefined,
     }
     const store = createPastedLessonStore(refusing)
     store.setTree(workedLesson())
@@ -98,6 +88,9 @@ describe("createPastedLessonStore", () => {
       },
       setItem: (): void => {
         throw new Error("quota")
+      },
+      removeItem: (): void => {
+        throw new Error("denied")
       },
     }
     const store = createPastedLessonStore(refusing)
@@ -155,6 +148,12 @@ describe("purgeRetiredLessons", () => {
   it("is silent where storage throws", () => {
     expect(() =>
       purgeRetiredLessons({
+        getItem: () => {
+          throw new Error("denied")
+        },
+        setItem: () => {
+          throw new Error("denied")
+        },
         removeItem: () => {
           throw new Error("denied")
         },

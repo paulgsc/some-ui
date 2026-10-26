@@ -62,6 +62,7 @@ describe("createSoundControl", () => {
       setItem: (): void => {
         throw new Error("quota")
       },
+      removeItem: (): void => undefined,
     })
     control.set(true)
     expect(control.state()).toBe("on")

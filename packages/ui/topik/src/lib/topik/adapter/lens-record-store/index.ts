@@ -19,8 +19,14 @@
  * cannot read at all is not written over.
  */
 
-import { localStorageOrNull } from "@some-ui/core-utils"
-import type { StorageLike } from "@topik/lib/topik/adapter/storage"
+import type { Kept, KeyedStorage } from "@some-ui/core-utils"
+import {
+  jsonOf,
+  localStorageOrNull,
+  openKept,
+  readWhole,
+  writeKept,
+} from "@some-ui/core-utils"
 import type { LensRecordEntry } from "@topik/lib/topik/read-aloud/lens/record"
 import type { MistakeId } from "@topik/lib/topik/read-aloud/mistakes"
 import { isMistakeId } from "@topik/lib/topik/read-aloud/mistakes"
@@ -107,20 +113,18 @@ const DocumentSchema = z.object({
   entries: z.array(z.unknown()),
 })
 
+const readDocument = readWhole((raw): Array<unknown> | null => {
+  const document = DocumentSchema.safeParse(jsonOf(raw))
+  return document.success ? document.data.entries : null
+})
+
 /**
- * Every entry as stored, parsed or not; `null` when a record is there but is
- * not one this build reads (a newer version, a damaged write), which is then
- * left as it is.
+ * Every entry as stored, parsed or not. A record this build does not read
+ * (a newer version, a damaged write) is copied aside first (`openKept`);
+ * `writable` false when that could not be done, and nothing is written.
  */
-function readStored(storage: StorageLike | null): Array<unknown> | null {
-  try {
-    const text = storage?.getItem(LENS_RECORD_KEY)
-    if (!text) return []
-    const document = DocumentSchema.safeParse(JSON.parse(text))
-    return document.success ? document.data.entries : null
-  } catch {
-    return null
-  }
+function readStored(storage: KeyedStorage | null): Kept<Array<unknown>> {
+  return openKept(storage, LENS_RECORD_KEY, readDocument, [])
 }
 
 const parsed = (stored: unknown): LensRecordEntry | null => {
@@ -133,28 +137,28 @@ const sameItem = (a: LensRecordEntry, b: LensRecordEntry): boolean =>
 
 /** Writes `entries` as the record; false if the storage would not. */
 function writeStored(
-  storage: StorageLike | null,
+  storage: KeyedStorage | null,
   entries: Array<unknown>
 ): boolean {
-  try {
-    storage?.setItem(LENS_RECORD_KEY, JSON.stringify({ version: 1, entries }))
-    return storage !== null
-  } catch {
-    // Quota, privacy mode: the export goes without the change.
-    return false
-  }
+  // Quota, privacy mode: the export goes without the change.
+  return writeKept(
+    storage,
+    LENS_RECORD_KEY,
+    { version: 1, entries },
+    readDocument
+  )
 }
 
 export function createLensRecordStore(
-  storage: StorageLike | null = localStorageOrNull()
+  storage: KeyedStorage | null = localStorageOrNull()
 ): LensRecordStore {
   // The last write the storage refused (quota, privacy mode), until one lands.
   let refused = false
   return {
     add: (entry): void => {
       const stored = readStored(storage)
-      if (!stored) return
-      const kept = stored.filter((candidate) => {
+      if (!stored.writable) return
+      const kept = stored.value.filter((candidate) => {
         const earlier = parsed(candidate)
         return !earlier || !sameItem(earlier, entry)
       })
@@ -163,16 +167,18 @@ export function createLensRecordStore(
     },
     full: (): boolean => {
       const stored = readStored(storage)
-      return refused || !stored || stored.length >= LENS_RECORD_MAX
+      return (
+        refused || !stored.writable || stored.value.length >= LENS_RECORD_MAX
+      )
     },
   }
 }
 
 /** The record as kept, for the learner's own export (Rem. 4.18). */
 export function lensRecordForExport(
-  storage: StorageLike | null = localStorageOrNull()
+  storage: KeyedStorage | null = localStorageOrNull()
 ): LensRecordExport {
-  const entries = (readStored(storage) ?? []).flatMap((stored) => {
+  const entries = readStored(storage).value.flatMap((stored) => {
     const entry = parsed(stored)
     return entry ? [entry] : []
   })
@@ -196,16 +202,16 @@ export function lensRecordForExport(
  */
 export function letGoLensRecord(
   sent: ReadonlyArray<LensRecordEntry>,
-  storage: StorageLike | null = localStorageOrNull()
+  storage: KeyedStorage | null = localStorageOrNull()
 ): number {
   const stored = readStored(storage)
-  if (!stored || sent.length === 0) return 0
+  if (!stored.writable || sent.length === 0) return 0
   const copied = new Set(sent.map((entry) => JSON.stringify(entry)))
-  const kept = stored.filter((candidate) => {
+  const kept = stored.value.filter((candidate) => {
     const entry = parsed(candidate)
     return !entry || !copied.has(JSON.stringify(entry))
   })
-  const left = stored.length - kept.length
+  const left = stored.value.length - kept.length
   if (left === 0) return 0
   return writeStored(storage, kept) ? left : 0
 }

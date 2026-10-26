@@ -23,8 +23,13 @@
  * a conversation lesson a build before that left here reads as nothing.
  */
 
-import { localStorageOrNull } from "@some-ui/core-utils"
-import type { StorageLike } from "@topik/lib/topik/adapter/storage"
+import type { KeyedStorage, Salvaged } from "@some-ui/core-utils"
+import {
+  jsonOf,
+  localStorageOrNull,
+  openKept,
+  sessionStorageOrNull,
+} from "@some-ui/core-utils"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
 import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
 import { intakeTree } from "@topik/lib/topik/generation/tree-intake"
@@ -49,6 +54,18 @@ const TreeDocumentSchema = z.object({
   point: z.unknown().optional(),
 })
 
+type TreeDocument = z.infer<typeof TreeDocumentSchema>
+
+/**
+ * The slot's document; an empty value is "nothing held". One that is not a
+ * tree document is copied aside within the session (`openKept`).
+ */
+function readSlot(raw: string): Salvaged<TreeDocument | null> | null {
+  if (raw === "") return { value: null, whole: true }
+  const parsed = TreeDocumentSchema.safeParse(jsonOf(raw))
+  return parsed.success ? { value: parsed.data, whole: true } : null
+}
+
 /** The held tree's id, read without the audits: it only keys the point. */
 const treeIdOf = (tree: unknown): unknown =>
   typeof tree === "object" && tree !== null && "id" in tree
@@ -71,19 +88,8 @@ export function treeOfDocument(document: unknown): DramaLesson | null {
   return intake.status === "checked" ? intake.lesson : null
 }
 
-/** `window.sessionStorage`, or null wherever touching it throws. */
-function sessionStorageOrNull(): Storage | null {
-  try {
-    return typeof window === "undefined" ? null : window.sessionStorage
-  } catch {
-    return null
-  }
-}
-
 export function createPastedLessonStore(
-  storage:
-    | (StorageLike & Partial<Pick<Storage, "removeItem">>)
-    | null = sessionStorageOrNull()
+  storage: KeyedStorage | null = sessionStorageOrNull()
 ): PastedLessonStore {
   // The point written last this visit; it goes with whatever slot it was in.
   let latest: { lessonId: string; point: unknown } | null = null
@@ -100,22 +106,15 @@ export function createPastedLessonStore(
       // writes may still read, so the old value must go, not merely fail
       // to be overwritten.
       try {
-        if (storage?.removeItem) storage.removeItem(PASTED_LESSON_KEY)
-        else storage?.setItem(PASTED_LESSON_KEY, "")
+        storage?.removeItem(PASTED_LESSON_KEY)
       } catch {
         // Storage refuses even that; there is nothing further to try.
       }
     }
   }
 
-  const read = (): unknown => {
-    try {
-      const raw = storage?.getItem(PASTED_LESSON_KEY)
-      return raw ? JSON.parse(raw) : null
-    } catch {
-      return null
-    }
-  }
+  const read = (): TreeDocument | null =>
+    openKept(storage, PASTED_LESSON_KEY, readSlot, null).value
 
   return {
     getTree: (): DramaLesson | null => treeOfDocument(read()),
@@ -123,28 +122,28 @@ export function createPastedLessonStore(
     points: {
       get: (lessonId): unknown => {
         if (latest?.lessonId === lessonId) return latest.point
-        const parsed = TreeDocumentSchema.safeParse(read())
-        return parsed.success && treeIdOf(parsed.data.tree) === lessonId
-          ? parsed.data.point
+        const held = read()
+        return held !== null && treeIdOf(held.tree) === lessonId
+          ? held.point
           : undefined
       },
       set: (lessonId, point): void => {
         // Kept in memory too: storage that refuses writes would otherwise
         // lose the place while the tree plays on from memory.
         latest = { lessonId, point }
-        const parsed = TreeDocumentSchema.safeParse(read())
-        if (!parsed.success || treeIdOf(parsed.data.tree) !== lessonId) return
+        const held = read()
+        if (held === null || treeIdOf(held.tree) !== lessonId) return
         try {
           storage?.setItem(
             PASTED_LESSON_KEY,
-            JSON.stringify({ ...parsed.data, point })
+            JSON.stringify({ ...held, point })
           )
         } catch {
           // The point lasts this visit, in `latest`.
         }
       },
     },
-    // An empty value is "nothing held": StorageLike has no removeItem.
+    // An empty value is "nothing held", as a removed one is.
     clear: (): void => write(""),
   }
 }
@@ -169,7 +168,7 @@ export const RETIRED_KEYS = [
  * silent; the handheld runs it on mount.
  */
 export function purgeRetiredLessons(
-  storage: Pick<Storage, "removeItem"> | null = localStorageOrNull()
+  storage: KeyedStorage | null = localStorageOrNull()
 ): void {
   for (const key of RETIRED_KEYS) {
     try {

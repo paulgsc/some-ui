@@ -47,6 +47,10 @@ export {
   ownerGuardPlugin,
 } from "./owner-guard.config.js"
 export {
+  default as keptRecordConfig,
+  keptRecordPlugin,
+} from "./kept-record.config.js"
+export {
   default as logGuardConfig,
   logGuardPlugin,
 } from "./log-guard.config.js"

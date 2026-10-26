@@ -19,6 +19,7 @@
  * one way a row leaves.
  */
 
+import type { Salvaged } from "@some-ui/core-utils"
 import { fnv1a } from "@some-ui/core-utils"
 import type { PaceBook } from "@topik/lib/topik/read-aloud/records"
 import { own, paceOf } from "@topik/lib/topik/read-aloud/records"
@@ -84,7 +85,7 @@ export function noteShown(tally: Tally, key: string, at: string): Tally {
  * The tally after a rep of the sentence `key` ran to the end. A sentence with
  * no row was cleared while its rep was held, and the rep then adds nothing: a
  * row would claim a showing the tally never saw. One already read as often as
- * it was shown adds nothing either, since `parseTally` would drop the row.
+ * it was shown adds nothing either: `readTally` would leave the row out.
  */
 export function noteRead(tally: Tally, key: string): Tally {
   const row = rowOf(tally, key)
@@ -132,17 +133,22 @@ export function storedTally(tally: Tally): { version: 1; rows: Tally } | null {
 }
 
 /**
- * The rows of a stored tally that parse. Each row stands on its own, so one
- * that does not parse is dropped alone, as a pace entry is; the key is a key
- * and nothing else, so none can reach a prototype.
+ * The rows of a stored tally that parse (`whole` when all did), or null for
+ * a value that is not one; `null` itself is the empty tally `storedTally`
+ * keeps. Each row stands on its own, so one that does not parse is left out
+ * alone, as a pace entry is; the key is a key and nothing else, so none can
+ * reach a prototype.
  */
-export function parseTally(raw: unknown): Tally {
+export function readTally(raw: unknown): Salvaged<Tally> | null {
+  if (raw === null) return { value: emptyTally(), whole: true }
   const parsed = TallySchema.safeParse(raw)
-  if (!parsed.success) return emptyTally()
-  return Object.fromEntries(
-    Object.entries(parsed.data.rows).flatMap(([key, row]) => {
+  if (!parsed.success) return null
+  const rows = Object.entries(parsed.data.rows)
+  const tally = Object.fromEntries(
+    rows.flatMap(([key, row]) => {
       const checked = RowSchema.safeParse(row)
       return checked.success ? [[key, checked.data] as const] : []
     })
   )
+  return { value: tally, whole: tallySize(tally) === rows.length }
 }

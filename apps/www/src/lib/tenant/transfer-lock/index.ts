@@ -11,8 +11,16 @@
  *   close it (`docs/learner-data-authority.md`, LA2).
  */
 
-import type { StorageAdapter } from "@/lib/tenant/storage"
-import { browserLocalStorage } from "@/lib/tenant/storage"
+import type { KeyedStorage } from "@some-ui/core-utils"
+import {
+  jsonOf,
+  openKept,
+  readWhole,
+  removeRecord,
+  writeKept,
+} from "@some-ui/core-utils"
+
+import { browserLocalStorage, NotKeptError } from "@/lib/tenant/storage"
 
 const LOCK_NAME = "some-ui.tenant.sessions.transfer"
 const LEASE_KEY = "some-ui.tenant.sessions.transfer.lease.v1"
@@ -29,30 +37,31 @@ export type LockResult<T> =
 export type LockDeps = {
   /** `navigator.locks`, or `undefined` where there is none. */
   locks?: LockManager | undefined
-  storage?: StorageAdapter
+  storage?: KeyedStorage
   now?: () => number
   wait?: (ms: number) => Promise<void>
 }
 
 type Lease = { token: string; at: number }
 
-function readLease(storage: StorageAdapter): Lease | null {
-  try {
-    const parsed: unknown = JSON.parse(storage.getItem(LEASE_KEY) ?? "null")
-    if (
-      typeof parsed === "object" &&
-      parsed !== null &&
-      "token" in parsed &&
-      typeof parsed.token === "string" &&
-      "at" in parsed &&
-      typeof parsed.at === "number"
-    ) {
-      return { token: parsed.token, at: parsed.at }
-    }
-  } catch {
-    // Unreadable: nobody holds it.
+const leaseOf = readWhole((raw): Lease | null => {
+  const parsed = jsonOf(raw)
+  if (
+    typeof parsed === "object" &&
+    parsed !== null &&
+    "token" in parsed &&
+    typeof parsed.token === "string" &&
+    "at" in parsed &&
+    typeof parsed.at === "number"
+  ) {
+    return { token: parsed.token, at: parsed.at }
   }
   return null
+})
+
+/** The lease as stored; unreadable (copied aside), nobody holds it. */
+function readLease(storage: KeyedStorage): Lease | null {
+  return openKept<Lease | null>(storage, LEASE_KEY, leaseOf, null).value
 }
 
 function defaultLocks(): LockManager | undefined {
@@ -91,20 +100,21 @@ export async function withTransferLock<T>(
   if (live !== null && now() - live.at < LEASE_TTL_MS) return { held: false }
 
   const token = `${String(now())}-${Math.random().toString(36).slice(2)}`
-  const write = (): void => {
-    storage.setItem(LEASE_KEY, JSON.stringify({ token, at: now() }))
-  }
-  write()
+  const write = (): boolean =>
+    writeKept(storage, LEASE_KEY, { token, at: now() }, leaseOf)
+  if (!write()) throw new NotKeptError()
   await wait(SETTLE_MS)
   if (readLease(storage)?.token !== token) return { held: false }
 
   const heartbeat = setInterval(() => {
+    // A renewal the device refuses lets the lease lapse after LEASE_TTL_MS,
+    // as a dead holder's does.
     if (readLease(storage)?.token === token) write()
   }, HEARTBEAT_MS)
   try {
     return { held: true, value: await run() }
   } finally {
     clearInterval(heartbeat)
-    if (readLease(storage)?.token === token) storage.removeItem(LEASE_KEY)
+    if (readLease(storage)?.token === token) removeRecord(storage, LEASE_KEY)
   }
 }

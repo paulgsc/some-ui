@@ -14,6 +14,8 @@
  * ends it with progress recorded (`stale`).
  */
 
+import type { KeyedStorage } from "@some-ui/core-utils"
+
 import type { Authority } from "@/lib/authority"
 import { authority, StaleAuthorityError } from "@/lib/authority"
 import { createFileHostTransport } from "@/lib/file-host-config/client"
@@ -21,7 +23,6 @@ import { createHttpSessionsRepository } from "@/lib/tenant/http-sessions-reposit
 import type { TransferOutcome } from "@/lib/tenant/sessions-copy"
 import { planTransfer, runTransfer } from "@/lib/tenant/sessions-copy"
 import type { SessionsStore } from "@/lib/tenant/sessions-repository"
-import type { StorageAdapter } from "@/lib/tenant/storage"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 import type { LockDeps } from "@/lib/tenant/transfer-lock"
 import { withTransferLock } from "@/lib/tenant/transfer-lock"
@@ -34,7 +35,7 @@ export type TransferPreview = {
 }
 
 export type TransferDeps = {
-  storage?: StorageAdapter
+  storage?: KeyedStorage
   /** How the cross-tab lock is taken. A test seam. */
   lock?: LockDeps
   /** The account's store for the authority a transfer began under. `null`: nothing to talk to. */

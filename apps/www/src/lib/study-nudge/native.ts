@@ -19,6 +19,7 @@
  * Only ever imported dynamically, and only by the device build.
  */
 import { LocalNotifications } from "@capacitor/local-notifications"
+import { localStorageOrNull } from "@some-ui/core-utils"
 
 import { hasAudience } from "@/lib/build-profile"
 
@@ -59,7 +60,7 @@ export async function requestNativePermission(): Promise<NotificationPermission>
 
 function readScheduledAt(): string | null {
   try {
-    return window.localStorage.getItem(SCHEDULED_KEY)
+    return localStorageOrNull()?.getItem(SCHEDULED_KEY) ?? null
   } catch {
     return null
   }
@@ -67,8 +68,9 @@ function readScheduledAt(): string | null {
 
 function writeScheduledAt(at: Date | null): void {
   try {
-    if (at === null) window.localStorage.removeItem(SCHEDULED_KEY)
-    else window.localStorage.setItem(SCHEDULED_KEY, at.toISOString())
+    const storage = localStorageOrNull()
+    if (at === null) storage?.removeItem(SCHEDULED_KEY)
+    else storage?.setItem(SCHEDULED_KEY, at.toISOString())
   } catch {
     // Loses one cooldown at worst; see `recordNudgeShown`.
   }

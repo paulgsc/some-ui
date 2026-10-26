@@ -35,18 +35,22 @@
  * Nothing here deletes, locally or remotely.
  */
 
-import { canonicalJson } from "@some-ui/core-utils"
+import type { KeyedStorage } from "@some-ui/core-utils"
+import {
+  canonicalJson,
+  openKept,
+  salvageEntries,
+  writeKept,
+} from "@some-ui/core-utils"
 
 import { StaleAuthorityError } from "@/lib/authority"
 import { FileHostResponseError } from "@/lib/file-host-config/client"
 import type { SessionsStore } from "@/lib/tenant/sessions-repository"
-import { STORAGE_KEY } from "@/lib/tenant/sessions-repository"
-import type { StorageAdapter } from "@/lib/tenant/storage"
+import { keptSessions } from "@/lib/tenant/sessions-repository"
 import {
   browserLocalStorage,
   generateId,
-  readJSON,
-  writeJSON,
+  NotKeptError,
 } from "@/lib/tenant/storage"
 import type { SessionRecord } from "@/lib/tenant/types"
 
@@ -68,10 +72,42 @@ type Copy = {
 /** Device session id -> every copy ever made of it, in any account. */
 type Receipt = Record<string, Array<Copy>>
 
-function readReceipt(storage: StorageAdapter): Receipt {
-  const stored = readJSON<Receipt | null>(storage, RECEIPT_KEY, null)
-  // A fresh object each time: callers write into it.
-  return typeof stored === "object" && stored !== null ? { ...stored } : {}
+/**
+ * A copy as kept. `remoteId` may be absent: a create answered without an id
+ * was kept that way, and is read as it always was.
+ */
+function isCopy(value: unknown): value is Copy {
+  if (typeof value !== "object" || value === null) return false
+  const remoteId: unknown = Reflect.get(value, "remoteId")
+  const named: unknown = Reflect.get(value, "named")
+  return (
+    (remoteId === undefined ||
+      remoteId === null ||
+      typeof remoteId === "string") &&
+    (named === undefined || typeof named === "string") &&
+    typeof Reflect.get(value, "complete") === "boolean"
+  )
+}
+
+const readCopies = salvageEntries((value): Array<Copy> | null =>
+  Array.isArray(value) && value.every(isCopy) ? value : null
+)
+
+/**
+ * The receipt, read afresh each time (callers write into it); a receipt it
+ * cannot read whole is copied aside first. `writable` false: nothing may be
+ * written over what is stored.
+ */
+function openReceipt(storage: KeyedStorage): {
+  receipt: Receipt
+  writable: boolean
+} {
+  const kept = openKept(storage, RECEIPT_KEY, readCopies, {})
+  return { receipt: { ...kept.value }, writable: kept.writable }
+}
+
+function readReceipt(storage: KeyedStorage): Receipt {
+  return openReceipt(storage).receipt
 }
 
 export type TransferPlan = {
@@ -124,13 +160,9 @@ function sameContent(a: SessionRecord, b: SessionRecord): boolean {
  */
 export async function planTransfer(
   remote: SessionsStore,
-  storage: StorageAdapter,
+  storage: KeyedStorage,
   isCurrent: () => boolean = () => true,
-  local: ReadonlyArray<SessionRecord> = readJSON<Array<SessionRecord>>(
-    storage,
-    STORAGE_KEY,
-    []
-  )
+  local: ReadonlyArray<SessionRecord> = keptSessions(storage)
 ): Promise<TransferPlan> {
   const receipt = readReceipt(storage)
   const create: Array<SessionRecord> = []
@@ -245,7 +277,7 @@ function restoration(
 export async function runTransfer(
   plan: TransferPlan,
   remote: SessionsStore,
-  storage: StorageAdapter,
+  storage: KeyedStorage,
   isCurrent: () => boolean = () => true,
   mint?: () => string
 ): Promise<Exclude<TransferOutcome, { kind: "not-on-account" }>> {
@@ -258,9 +290,11 @@ export async function runTransfer(
     localId: string,
     next: (known: Array<Copy>) => Array<Copy>
   ): void => {
-    const receipt = readReceipt(storage)
+    const { receipt, writable } = openReceipt(storage)
     receipt[localId] = next(receipt[localId] ?? [])
-    writeJSON(storage, RECEIPT_KEY, receipt)
+    if (!writable || !writeKept(storage, RECEIPT_KEY, receipt, readCopies)) {
+      throw new NotKeptError()
+    }
   }
 
   const remember = (localId: string, copy: Copy): void => {
@@ -365,7 +399,7 @@ export type CopyResult = {
 export async function copySessionsTo(
   local: ReadonlyArray<SessionRecord>,
   remote: SessionsStore,
-  storage: StorageAdapter = browserLocalStorage
+  storage: KeyedStorage = browserLocalStorage
 ): Promise<CopyResult> {
   const plan = await planTransfer(remote, storage, () => true, local)
   const outcome = await runTransfer(
@@ -430,7 +464,7 @@ export async function confirmHeld(
   local: ReadonlyArray<SessionRecord>,
   remote: SessionsStore,
   report: HeldReport,
-  storage: StorageAdapter = browserLocalStorage
+  storage: KeyedStorage = browserLocalStorage
 ): Promise<void> {
   const receipt = readReceipt(storage)
   for (const session of local) {

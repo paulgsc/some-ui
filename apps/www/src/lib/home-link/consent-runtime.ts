@@ -4,6 +4,7 @@
  * written whole. A log this phone cannot read is never written over: every
  * choice is then refused, and nothing is kept on home until it can be read.
  */
+import type { KeyedStorage } from "@some-ui/core-utils"
 import { localStorageOrNull } from "@some-ui/core-utils"
 
 import type { Choice, ConsentLog } from "./consent-model"
@@ -19,7 +20,7 @@ export type Consent = {
 }
 
 export function createConsent(
-  storage: Pick<Storage, "getItem" | "setItem"> | null,
+  storage: KeyedStorage | null,
   now: () => number
 ): Consent {
   let log: ConsentLog = []

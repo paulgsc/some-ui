@@ -86,6 +86,7 @@
         "src/vitest/index.ts",
         "src/vitest/vitest.setup.ts",
         "src/vitest/memory-storage.ts",
+        "src/vitest/kept-records.ts",
         "src/vitest/source-graph.ts"
       ]
     },

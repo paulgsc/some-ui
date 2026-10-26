@@ -1,4 +1,12 @@
-import { quantile } from "@some-ui/core-utils"
+import {
+  jsonOf,
+  localStorageOrNull,
+  openKept,
+  quantile,
+  readWhole,
+  removeRecord,
+  writeKept,
+} from "@some-ui/core-utils"
 import { z } from "zod"
 
 /**
@@ -48,11 +56,12 @@ export type Baseline = {
 
 /**
  * Reused key; an old-shape payload fails validation and reads as "not
- * calibrated", costing one warm-up.
+ * calibrated", costing one warm-up. It is copied aside (`openKept`) before
+ * the first baseline is saved over it.
  */
 const STORAGE_KEY = "leetyping_progress"
 
-/** Bumped whenever [`Baseline`] changes shape. Old payloads are discarded. */
+/** Bumped whenever [`Baseline`] changes shape. Old payloads are copied aside. */
 const SCHEMA_VERSION = 2
 
 /**
@@ -100,41 +109,43 @@ const StoredPayloadSchema = z.object({
   }),
 })
 
+const readPayload = readWhole((raw): Baseline | null => {
+  const parsed = StoredPayloadSchema.safeParse(jsonOf(raw))
+  return parsed.success ? parsed.data.baseline : null
+})
+
 /**
- * The stored baseline, or `null` when there is none. Any bad payload reads
- * as `null`, silently: a wrong answer costs one warm-up, a throw costs a
- * player who cannot start.
+ * The stored baseline, or `null` when there is none. A bad payload reads as
+ * `null`, silently: a wrong answer costs one warm-up, a throw costs a player
+ * who cannot start.
  */
 export function loadBaseline(): Baseline | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return null
-
-    const parsed = StoredPayloadSchema.safeParse(JSON.parse(raw))
-    return parsed.success ? parsed.data.baseline : null
-  } catch {
-    return null
-  }
+  return openKept<Baseline | null>(
+    localStorageOrNull(),
+    STORAGE_KEY,
+    readPayload,
+    null
+  ).value
 }
 
+/**
+ * Quota exceeded, storage disabled, or a payload that could not be copied
+ * aside: nothing is written, and a permanent cold start is playable.
+ */
 export function saveBaseline(baseline: Baseline): void {
-  try {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ version: SCHEMA_VERSION, baseline })
-    )
-  } catch {
-    // Quota exceeded or storage disabled: a permanent cold start is playable.
-  }
+  writeKept(
+    localStorageOrNull(),
+    STORAGE_KEY,
+    { version: SCHEMA_VERSION, baseline },
+    readPayload
+  )
 }
 
 /** Throw the sample away and warm up again. */
 export function clearBaseline(): void {
-  try {
-    localStorage.removeItem(STORAGE_KEY)
-  } catch {
-    // As above: nothing to do, and nothing lost.
-  }
+  const storage = localStorageOrNull()
+  // As above: nothing to do, and nothing lost.
+  if (storage !== null) removeRecord(storage, STORAGE_KEY)
 }
 
 /** The baseline to run the engine on, calibrated or not. */

@@ -1,4 +1,13 @@
 /** The one authority instance, wired to this build's flags and to browser storage. */
+import type { KeyedStorage } from "@some-ui/core-utils"
+import {
+  jsonOf,
+  localStorageOrNull,
+  openKept,
+  readWhole,
+  writeKept,
+} from "@some-ui/core-utils"
+
 import { DATA_MODE } from "@/lib/data-mode"
 
 import type { AuthorityPorts } from "./runtime"
@@ -22,48 +31,44 @@ function isChoice(value: unknown): value is Choice {
 
 type Remembered = { choice: Choice | null; reporting: boolean }
 
-/** What this browser remembered. Unreadable or absent storage is "nothing". */
-function readRemembered(storage: Storage | undefined): Remembered {
-  try {
-    const raw = storage?.getItem(STORAGE_KEY)
-    if (raw === null || raw === undefined) {
-      return { choice: null, reporting: false }
-    }
-    const parsed: unknown = JSON.parse(raw)
-    if (typeof parsed !== "object" || parsed === null) {
-      return { choice: null, reporting: false }
-    }
-    const choice = "choice" in parsed ? parsed.choice : undefined
-    const reporting = "reporting" in parsed ? parsed.reporting : undefined
-    return {
-      choice: isChoice(choice) ? choice : null,
-      reporting: reporting === true,
-    }
-  } catch {
-    return { choice: null, reporting: false }
+const NOTHING: Remembered = { choice: null, reporting: false }
+
+/** Each fact read on its own; a value that is not an object is moved aside. */
+const readRemembered = readWhole((raw): Remembered | null => {
+  const parsed = jsonOf(raw)
+  if (typeof parsed !== "object" || parsed === null) return null
+  const choice = "choice" in parsed ? parsed.choice : undefined
+  const reporting = "reporting" in parsed ? parsed.reporting : undefined
+  return {
+    choice: isChoice(choice) ? choice : null,
+    reporting: reporting === true,
   }
+})
+
+/** What this browser remembered. Unreadable or absent storage is "nothing". */
+function remembered(storage: KeyedStorage | null): Remembered {
+  return openKept(storage, STORAGE_KEY, readRemembered, NOTHING).value
 }
 
 /** Browser storage as the runtime's port. Both facts share one record. */
 export function browserPorts(
-  storage: Storage | undefined = safeStorage()
+  storage: KeyedStorage | null = localStorageOrNull()
 ): AuthorityPorts {
+  // Private mode or a full quota: the setting lasts this page load.
   const write = (next: Partial<Remembered>): void => {
-    try {
-      storage?.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ ...readRemembered(storage), ...next })
-      )
-    } catch {
-      // Private mode or a full quota: the setting lasts this page load.
-    }
+    writeKept(
+      storage,
+      STORAGE_KEY,
+      { ...remembered(storage), ...next },
+      readRemembered
+    )
   }
   return {
-    readChoice: (): Choice | null => readRemembered(storage).choice,
+    readChoice: (): Choice | null => remembered(storage).choice,
     writeChoice: (choice): void => {
       write({ choice })
     },
-    readReporting: (): boolean => readRemembered(storage).reporting,
+    readReporting: (): boolean => remembered(storage).reporting,
     writeReporting: (reporting): void => {
       write({ reporting })
     },
@@ -78,14 +83,6 @@ export function browserPorts(
         window.removeEventListener("storage", onStorage)
       }
     },
-  }
-}
-
-function safeStorage(): Storage | undefined {
-  try {
-    return typeof window === "undefined" ? undefined : window.localStorage
-  } catch {
-    return undefined
   }
 }
 

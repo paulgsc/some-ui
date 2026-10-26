@@ -11,10 +11,16 @@
  * pasted one is on its way out of storage (`adapter/pasted-lesson`).
  */
 
-import { localStorageOrNull } from "@some-ui/core-utils"
+import type { Kept, KeyedStorage } from "@some-ui/core-utils"
+import {
+  jsonOf,
+  localStorageOrNull,
+  openKept,
+  readWhole,
+  writeKept,
+} from "@some-ui/core-utils"
 import type { TopikMetadata } from "@topik/lib/topik"
 import { TopikManifestSchema } from "@topik/lib/topik"
-import type { StorageLike } from "@topik/lib/topik/adapter/storage"
 import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
 import type { TreeIntake } from "@topik/lib/topik/generation/tree-intake"
 import { intakeTree } from "@topik/lib/topik/generation/tree-intake"
@@ -62,35 +68,32 @@ export const SERVED_DRAMA_POINT_KEY = "topik:served-drama-point"
 
 const HeldPointSchema = z.object({ lessonId: z.string(), point: z.unknown() })
 
+type HeldPoint = z.infer<typeof HeldPointSchema>
+
+const readHeld = readWhole((raw): HeldPoint | null => {
+  const held = HeldPointSchema.safeParse(jsonOf(raw))
+  return held.success ? held.data : null
+})
+
 /**
  * Where the served tree played last is in it, on this device: one slot,
  * keyed by the tree's id so another
  * tree starts from its opening. Unvalidated, as `DramaPointStore` says.
  */
 export function createServedPointStore(
-  storage: StorageLike | null = localStorageOrNull()
+  storage: KeyedStorage | null = localStorageOrNull()
 ): DramaPointStore {
+  const open = (): Kept<HeldPoint | null> =>
+    openKept<HeldPoint | null>(storage, SERVED_DRAMA_POINT_KEY, readHeld, null)
   return {
     get: (lessonId): unknown => {
-      try {
-        const raw = storage?.getItem(SERVED_DRAMA_POINT_KEY)
-        const held = HeldPointSchema.safeParse(raw ? JSON.parse(raw) : null)
-        return held.success && held.data.lessonId === lessonId
-          ? held.data.point
-          : undefined
-      } catch {
-        return undefined
-      }
+      const held = open().value
+      return held?.lessonId === lessonId ? held.point : undefined
     },
     set: (lessonId, point): void => {
-      try {
-        storage?.setItem(
-          SERVED_DRAMA_POINT_KEY,
-          JSON.stringify({ lessonId, point })
-        )
-      } catch {
-        // Quota, privacy mode: the place is lost, and the tree still plays.
-      }
+      // Quota, privacy mode, or a slot that could not be copied aside: the
+      // place is lost, and the tree still plays.
+      writeKept(storage, SERVED_DRAMA_POINT_KEY, { lessonId, point }, readHeld)
     },
   }
 }

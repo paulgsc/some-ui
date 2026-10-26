@@ -10,8 +10,8 @@ import { totalDurationOfScenes } from "@some-ui/activity-catalog"
 import { VIEWER_BUILD } from "@/lib/data-mode"
 import { OFFERED_ACTIVITIES } from "@/lib/playable"
 import { basicSession } from "@/lib/quick-start"
-import { STORAGE_KEY as SESSIONS_KEY } from "@/lib/tenant/sessions-repository"
-import { browserLocalStorage, writeJSON } from "@/lib/tenant/storage"
+import { keepSessions } from "@/lib/tenant/sessions-repository"
+import { browserLocalStorage } from "@/lib/tenant/storage"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 /** When the samples were "made": fixed, so the demo reads the same each visit. */
@@ -41,5 +41,5 @@ export function demoSessions(): Array<SessionRecord> {
 
 /** On the Pages build, gives a viewer's fresh storage its sample drafts. */
 export function seedDemo(): void {
-  if (VIEWER_BUILD) writeJSON(browserLocalStorage, SESSIONS_KEY, demoSessions())
+  if (VIEWER_BUILD) keepSessions(browserLocalStorage, demoSessions())
 }

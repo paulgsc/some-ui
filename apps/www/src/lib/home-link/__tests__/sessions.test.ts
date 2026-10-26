@@ -8,7 +8,8 @@
  * `file_host` does.
  */
 import { openNodeSqlite } from "@/test-support/node-sqlite-driver"
-import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
+import { inMemoryStorage } from "@some-ui/core-utils"
+import type { HomeAnswer, HomeCall, KeyedStorage } from "@some-ui/core-utils"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -28,8 +29,6 @@ import {
 import { createHttpSessionsRepository } from "@/lib/tenant/http-sessions-repository"
 import { copySessionsTo } from "@/lib/tenant/sessions-copy"
 import type * as TenantStorage from "@/lib/tenant/storage"
-import type { StorageAdapter } from "@/lib/tenant/storage"
-import { createInMemoryStorage } from "@/lib/tenant/storage"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 const BASE = "https://home.example/api/v1"
@@ -42,7 +41,7 @@ const PAIRED = { base: BASE, id: "pairing-1" }
 type Phone = {
   sessions: Array<SessionRecord>
   send: HomeCall | null
-  receipt: StorageAdapter | null
+  receipt: KeyedStorage | null
 }
 
 const phone = vi.hoisted(
@@ -97,11 +96,11 @@ vi.mock("@/lib/device-backend/storage-view", () => ({
 }))
 vi.mock("@/lib/tenant/storage", async (actual) => {
   const real = await actual<typeof TenantStorage>()
-  const current = (): StorageAdapter => {
+  const current = (): KeyedStorage => {
     if (phone.receipt === null) throw new Error("no receipt")
     return phone.receipt
   }
-  const browserLocalStorage: StorageAdapter = {
+  const browserLocalStorage: KeyedStorage = {
     getItem: (key) => current().getItem(key),
     setItem: (key, value) => {
       current().setItem(key, value)
@@ -114,14 +113,14 @@ vi.mock("@/lib/tenant/storage", async (actual) => {
 })
 
 let home: DeviceBackend
-let receipt: StorageAdapter
+let receipt: KeyedStorage
 let sent: Array<string>
 
 beforeEach(async () => {
   home = await openDeviceBackend(openNodeSqlite(), () =>
     Date.parse("2026-10-15T08:00:00Z")
   )
-  receipt = createInMemoryStorage()
+  receipt = inMemoryStorage()
   sent = []
   phone.sessions = []
   phone.send = send

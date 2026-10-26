@@ -1,13 +1,13 @@
+import type { KeyedStorage } from "@some-ui/core-utils"
+import { openKept, salvageList, writeKept } from "@some-ui/core-utils"
 import type { SceneConfig } from "@some-ui/types"
 
-import type { StorageAdapter } from "@/lib/tenant/storage"
 import {
   browserLocalStorage,
   delay,
   generateId,
   MOCK_LATENCY_MS,
-  readJSON,
-  writeJSON,
+  NotKeptError,
 } from "@/lib/tenant/storage"
 import type {
   SessionRecord,
@@ -17,6 +17,51 @@ import type {
 
 /** Also read by `sessions-copy`, which copies what is under it when the person asks. */
 export const STORAGE_KEY = "some-ui.tenant.sessions.v1"
+
+const SESSION_STATUSES: ReadonlyArray<SessionStatus> = [
+  "draft",
+  "scheduled",
+  "active",
+  "paused",
+  "completed",
+]
+
+/**
+ * A stored session, by the fields every one has carried since the store
+ * began (#519). One without them is an older or foreign shape: the list it
+ * sits in is copied aside before the next write (`openKept`).
+ */
+function isSessionRecord(value: unknown): value is SessionRecord {
+  if (typeof value !== "object" || value === null) return false
+  const field = (key: keyof SessionRecord): unknown => Reflect.get(value, key)
+  return (
+    typeof field("id") === "string" &&
+    typeof field("name") === "string" &&
+    SESSION_STATUSES.some((status) => status === field("status")) &&
+    Array.isArray(field("activities")) &&
+    Array.isArray(field("scenes")) &&
+    typeof field("createdAt") === "string" &&
+    typeof field("updatedAt") === "string"
+  )
+}
+
+const readSessions = salvageList(isSessionRecord)
+
+/** The sessions kept on this device, as `sessions-copy` reads them too. */
+export function keptSessions(storage: KeyedStorage): Array<SessionRecord> {
+  return openKept(storage, STORAGE_KEY, readSessions, []).value
+}
+
+/**
+ * Keeps `sessions` as the device's; false when the device would not, or
+ * when what is stored could not be read and copied aside first.
+ */
+export function keepSessions(
+  storage: KeyedStorage,
+  sessions: ReadonlyArray<SessionRecord>
+): boolean {
+  return writeKept(storage, STORAGE_KEY, sessions, readSessions)
+}
 
 export type CreateSessionInput = {
   /**
@@ -72,16 +117,17 @@ export class SessionNotFoundError extends Error {
  */
 export class SessionsRepository implements SessionsStore {
   constructor(
-    private readonly storage: StorageAdapter,
+    private readonly storage: KeyedStorage,
     private readonly latencyMs: number
   ) {}
 
   private readAll(): Array<SessionRecord> {
-    return readJSON(this.storage, STORAGE_KEY, [])
+    return keptSessions(this.storage)
   }
 
+  /** Throws `NotKeptError` rather than write over what it could not read. */
   private writeAll(sessions: Array<SessionRecord>): void {
-    writeJSON(this.storage, STORAGE_KEY, sessions)
+    if (!keepSessions(this.storage, sessions)) throw new NotKeptError()
   }
 
   async list(): Promise<Array<SessionRecord>> {
@@ -183,7 +229,7 @@ export class SessionsRepository implements SessionsStore {
 }
 
 export function createSessionsRepository(
-  storage: StorageAdapter = browserLocalStorage,
+  storage: KeyedStorage = browserLocalStorage,
   latencyMs: number = MOCK_LATENCY_MS
 ): SessionsRepository {
   return new SessionsRepository(storage, latencyMs)
