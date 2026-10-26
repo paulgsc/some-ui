@@ -7,19 +7,24 @@
  * - a reflection said aloud (`lib/reflection-voice`): `reflection`, its
  *   session, when it was said;
  * - a Jobs voice note (`lib/jobs`), once an event names it: `jobs`, the
- *   pick (`<day>:<pick>`) or scout, when that event was made;
+ *   pick (`<day>:<pick>`) or scout, when that event was made; never one
+ *   whose audio was let go once its share arrived in Drive;
  * - the drama's next scene said aloud (`lib/scene-voice`), when its prompt
  *   is shared (`onPromptShared`): `scene`, the prompt's stamp, when the
  *   prompt was made.
  *
  * Copying deletes nothing where the note was recorded; letting it go there
- * leaves the copy, which goes once home holds the note.
+ * leaves the copy, which goes once home holds the note. Each pass says what
+ * it could not copy and why (`copyPasses`), so Settings never counts as
+ * waiting a note this phone cannot send (LA14).
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/core-utils"
+import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 
 import { jobVoiceAudio, phoneJobs } from "@/lib/jobs"
-import type { JobEvent, VoiceNote } from "@/lib/jobs/model"
+import type { JobEvent, JobsState } from "@/lib/jobs/model"
+import { releasedVoice } from "@/lib/jobs/model"
 import {
   isSaving,
   onAudioSettled,
@@ -31,7 +36,8 @@ import { reflections } from "@/lib/session-reflection"
 import type { Reflection } from "@/lib/session-reflection/policy"
 import { phoneVoiceHome } from "@/lib/voice-home"
 import { exchangeVoice } from "@/lib/voice-home/home"
-import type { VoiceOut } from "@/lib/voice-home/model"
+import type { CopyPass, Unsendable, VoiceOut } from "@/lib/voice-home/model"
+import { NO_PASS, passWith, runEnd } from "@/lib/voice-home/model"
 
 import { phoneConsent } from "./consent-runtime"
 import { homeLink } from "./index"
@@ -82,17 +88,24 @@ function jobsRef(event: JobEvent): string | null {
   }
 }
 
+/** The Jobs record's voice notes, as home is told them (`jobsNotes`). */
+export type JobsVoice = {
+  /** Those whose audio this phone keeps. */
+  readonly onPhone: Array<VoiceOut>
+  /** Those whose audio it let go once their share arrived in Drive (`releasedVoice`). */
+  readonly inDrive: Array<VoiceOut>
+}
+
 /**
  * Each voice note the Jobs record names, as home is told it, by the first
- * event that names it; a note whose entry is gone (let go) is left out.
+ * event that names it; a note whose entry is gone (let go) is left out. A
+ * note let go once its share arrived keeps its entry, since the log still
+ * names it, but not its audio, so it can never be copied (LA14).
  */
-export function jobsNotes(
-  log: ReadonlyArray<JobEvent>,
-  voice: ReadonlyArray<VoiceNote>
-): Array<VoiceOut> {
-  const types = new Map(voice.map((note) => [note.id, note.mimeType]))
+export function jobsNotes(state: JobsState): JobsVoice {
+  const types = new Map(state.voice.map((note) => [note.id, note.mimeType]))
   const notes = new Map<string, VoiceOut>()
-  for (const event of log) {
+  for (const event of state.log) {
     const ref = jobsRef(event)
     if (ref === null || !("voice" in event)) continue
     for (const id of event.voice) {
@@ -101,7 +114,24 @@ export function jobsNotes(
       notes.set(id, { id, of: "jobs", ref, at: event.at, contentType })
     }
   }
-  return [...notes.values()]
+  const released = releasedVoice(state)
+  const all = [...notes.values()]
+  return {
+    onPhone: all.filter((note) => !released.has(note.id)),
+    inDrive: all.filter((note) => released.has(note.id)),
+  }
+}
+
+/** What this phone can't send home, from the Jobs record and the last copy pass. */
+export function unsendable(
+  jobs: JobsState,
+  pass: CopyPass,
+  settled: (id: string) => boolean
+): Unsendable {
+  return {
+    inDrive: jobsNotes(jobs).inDrive.filter((note) => !settled(note.id)).length,
+    gone: [...pass.gone].filter((id) => !settled(id)).length,
+  }
 }
 
 /** One note on this phone that could go home, and where its audio is. */
@@ -125,28 +155,73 @@ export function candidates(): Array<Candidate> {
             },
           ]
     })
-  const { log, voice } = phoneJobs().getSnapshot().state
-  const named = jobsNotes(log, voice).map((note) => ({
-    note,
-    audio: (): Promise<Blob | null> => jobVoiceAudio().get(note.id),
-  }))
+  const named = jobsNotes(phoneJobs().getSnapshot().state).onPhone.map(
+    (note) => ({
+      note,
+      audio: (): Promise<Blob | null> => jobVoiceAudio().get(note.id),
+    })
+  )
   return [...said, ...named]
 }
 
-/** Copies each note not yet copied, held or refused, while voice notes are kept on home. */
-async function copyAll(): Promise<void> {
+/** One note this phone failed to copy, to the native log (once per pass). */
+function reported(error: unknown): void {
+  reportFailure({
+    port: "voice notes (copy for home)",
+    error: {
+      ...toIntentError(error),
+      summary: "A voice note couldn't be copied for home.",
+    },
+  })
+}
+
+/**
+ * Copies each note not yet copied, held or refused, while voice notes are
+ * kept on home, and says what it could not copy and why: a note whose
+ * audio is gone, one with no room, one this phone failed to copy. A failure
+ * goes on to the next note.
+ */
+async function copyAll(): Promise<CopyPass> {
   const home = phoneVoiceHome()
+  let pass = NO_PASS
+  const gone = new Set<string>()
+  let failed = false
   for (const { note, audio } of candidates()) {
-    if (!keptNow(VOICE_SCOPES)) return
+    if (!keptNow(VOICE_SCOPES)) break
     if (home.settled(note.id)) continue
-    const blob = await audio()
-    // A stop can land while the audio is read.
-    if (blob !== null && keptNow(VOICE_SCOPES)) await home.copy(note, blob)
+    try {
+      const blob = await audio()
+      if (blob === null) {
+        gone.add(note.id)
+        continue
+      }
+      // A stop can land while the audio is read.
+      if (!keptNow(VOICE_SCOPES)) break
+      pass = passWith(pass, await home.copy(note, blob))
+    } catch (error) {
+      if (!failed) reported(error)
+      failed = true
+      pass = passWith(pass, "fault")
+    }
   }
+  return { ...pass, gone }
 }
 
 let copying: Promise<void> | null = null
 let again = false
+let lastPass = NO_PASS
+const passListeners = new Set<() => void>()
+
+/** What the last copy pass could not copy, for the lane's counts (`./voice`). */
+export const copyPasses = {
+  getSnapshot: (): CopyPass => lastPass,
+  subscribe(listener: () => void): () => void {
+    passListeners.add(listener)
+    return (): void => {
+      passListeners.delete(listener)
+    }
+  },
+}
 
 /** One copy pass at a time; a change during one asks for one more after it. */
 function copySoon(): void {
@@ -156,7 +231,15 @@ function copySoon(): void {
     return
   }
   copying = copyAll()
-    .catch(() => undefined)
+    .catch((error: unknown): CopyPass => {
+      reported(error)
+      // What the last pass found gone stays gone.
+      return { ...lastPass, roomless: 0, faults: 1 }
+    })
+    .then((pass) => {
+      lastPass = pass
+      for (const listener of passListeners) listener()
+    })
     .finally(() => {
       copying = null
       if (again) {
@@ -169,18 +252,22 @@ function copySoon(): void {
 /**
  * The voice lane's exchange: a copy pass first, so a note the watch could
  * not copy yet (no room, storage that would not keep its record) is tried
- * again, then each copy waiting sent (`exchangeVoice`).
+ * again, then each copy waiting sent (`exchangeVoice`). A run that sent all
+ * it had still fails, saying why, if that pass left a note it could copy
+ * uncopied (`runEnd`, LA14).
  */
 export async function sendVoice(send: HomeCall): Promise<HomeExchanged> {
   copySoon()
-  await copying
-  return exchangeVoice(phoneVoiceHome().keeping, send)
+  const running = copying
+  if (running !== null) await running
+  const pass = running === null ? NO_PASS : lastPass
+  return runEnd(pass, await exchangeVoice(phoneVoiceHome().keeping, send))
 }
 
 /**
  * A drama prompt was shared with these notes: each is copied for home under
  * the prompt's stamp, while voice notes are kept on home. Best effort, and
- * nothing waits on it.
+ * nothing waits on it; a failure goes to the native log.
  */
 function copySceneNotes({ stamp, at, notes }: SharedPrompt): void {
   if (!keptNow(VOICE_SCOPES)) return
@@ -188,7 +275,7 @@ function copySceneNotes({ stamp, at, notes }: SharedPrompt): void {
   for (const { id, mimeType, audio } of notes) {
     home
       .copy({ id, of: "scene", ref: stamp, at, contentType: mimeType }, audio)
-      .catch(() => undefined)
+      .catch(reported)
   }
 }
 

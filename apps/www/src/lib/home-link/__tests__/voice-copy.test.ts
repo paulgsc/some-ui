@@ -2,12 +2,20 @@
  * What each voice note is told home as (`../voice-copy`, LA13): a spoken
  * reflection by its session, and a Jobs note by the first event that names
  * it, with times that never move between tries (home takes a replay only as
- * it was first described). A scene note's stamp is topik's `promptOfFile`.
+ * it was first described), never one let go once its share arrived in
+ * Drive; and what this phone can't send, by why (LA14). A scene note's stamp
+ * is topik's `promptOfFile`.
  */
 import { describe, expect, it } from "vitest"
 
-import { jobsNotes, reflectionNote } from "@/lib/home-link/voice-copy"
-import type { JobEvent, VoiceNote } from "@/lib/jobs/model"
+import {
+  jobsNotes,
+  reflectionNote,
+  unsendable,
+} from "@/lib/home-link/voice-copy"
+import type { JobEvent, JobsState, VoiceNote } from "@/lib/jobs/model"
+import { EMPTY } from "@/lib/jobs/model"
+import { NO_PASS } from "@/lib/voice-home/model"
 
 const PICK = { day: "2026-10-25", pickId: "acme-sre", fingerprint: "f" }
 const voice = (id: string, owner = "draft"): VoiceNote => ({
@@ -92,9 +100,13 @@ describe("what each voice note is told home as", () => {
         ...PICK,
       },
     ]
-    expect(
-      jobsNotes(log, [voice("v1"), voice("v2"), voice("draft-only")])
-    ).toEqual([
+    const state = (events: ReadonlyArray<JobEvent>): JobsState => ({
+      ...EMPTY,
+      log: events,
+      voice: [voice("v1"), voice("v2"), voice("draft-only")],
+    })
+    expect(jobsNotes(state(log)).inDrive).toEqual([])
+    expect(jobsNotes(state(log)).onPhone).toEqual([
       {
         id: "v1",
         of: "jobs",
@@ -110,5 +122,73 @@ describe("what each voice note is told home as", () => {
         contentType: "audio/webm",
       },
     ])
+  })
+
+  it("leaves out a Jobs note let go once its share arrived, and counts it as in Drive until home has a copy", () => {
+    const log: Array<JobEvent> = [
+      {
+        id: "e1",
+        at: "2026-10-25T08:00:00.000Z",
+        type: "passed",
+        reasons: [],
+        note: "",
+        voice: ["v1"],
+        ...PICK,
+      },
+      {
+        id: "e2",
+        at: "2026-10-25T09:00:00.000Z",
+        type: "scout",
+        scout: {
+          id: "sc-1a2b3c4d",
+          url: "https://example.com/job",
+          title: "SRE",
+          why: "",
+          postingText: null,
+          track: "software",
+          family: null,
+        },
+        voice: ["v2"],
+      },
+      {
+        id: "e3",
+        at: "2026-10-25T10:00:00.000Z",
+        type: "shared",
+        kind: "decisions",
+        day: "2026-10-25",
+        file: "decisions-2026-10-25.json",
+        through: 2,
+        voice: ["v1"],
+      },
+    ]
+    const arrived: JobEvent = {
+      id: "e4",
+      at: "2026-10-25T11:00:00.000Z",
+      type: "arrived",
+      shareId: "e3",
+    }
+    const state = (events: ReadonlyArray<JobEvent>): JobsState => ({
+      ...EMPTY,
+      log: events,
+      voice: [voice("v1"), voice("v2")],
+    })
+    // Shared, not yet arrived: its audio is still on the phone.
+    expect(jobsNotes(state(log)).onPhone.map((n) => n.id)).toEqual(["v1", "v2"])
+    const after = state([...log, arrived])
+    expect(jobsNotes(after).onPhone.map((n) => n.id)).toEqual(["v2"])
+    expect(jobsNotes(after).inDrive.map((n) => n.id)).toEqual(["v1"])
+
+    const none = (): boolean => false
+    expect(unsendable(after, NO_PASS, none)).toEqual({ inDrive: 1, gone: 0 })
+    // Copied before its audio went: on its way home, so nothing to say.
+    expect(unsendable(after, NO_PASS, (id) => id === "v1")).toEqual({
+      inDrive: 0,
+      gone: 0,
+    })
+    const pass = { ...NO_PASS, gone: new Set(["r1", "r2"]) }
+    expect(unsendable(state(log), pass, (id) => id === "r2")).toEqual({
+      inDrive: 0,
+      gone: 1,
+    })
   })
 })

@@ -1,9 +1,9 @@
 /**
  * The store of voice notes on their way home (`../runtime`): a note's audio
  * copied once, before the record names it; a shelf with no room leaving it
- * to wait; a copy kept until home holds its note, and kept for good when
- * home refuses it; the record read back on the next launch; and the sweep
- * clearing only copies nothing names.
+ * to wait, and each copy saying how it ended; a copy kept until home holds
+ * its note, and kept for good when home refuses it; the record read back on
+ * the next launch; and the sweep clearing only copies nothing names.
  */
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import type { BlobShelf } from "@some-ui/voice-capture"
@@ -62,8 +62,8 @@ describe("the voice notes on their way home", () => {
   it("leaves a note with no room waiting, and copies it once there is room", async () => {
     const s = shelf(1)
     const home = createVoiceHome({ storage: memoryStorage(), shelf: s, encode })
-    await home.copy(note("n1"), new Blob(["a"]))
-    await home.copy(note("n2"), new Blob(["b"]))
+    expect(await home.copy(note("n1"), new Blob(["a"]))).toBe("copied")
+    expect(await home.copy(note("n2"), new Blob(["b"]))).toBe("roomless")
     expect(home.getSnapshot()).toMatchObject({
       waiting: [note("n1")],
       roomless: ["n2"],
@@ -120,7 +120,7 @@ describe("the voice notes on their way home", () => {
     ]) {
       const s = shelf()
       const home = createVoiceHome({ storage, shelf: s, encode })
-      await home.copy(note("n1"), new Blob(["a"]))
+      expect(await home.copy(note("n1"), new Blob(["a"]))).toBe("unkept")
       expect(home.getSnapshot().waiting).toEqual([])
       expect(home.settled("n1")).toBe(false)
       expect(s.held.size).toBe(0)

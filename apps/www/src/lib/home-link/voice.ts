@@ -11,13 +11,16 @@ import { useEffect, useSyncExternalStore } from "react"
 import { phoneJobs } from "@/lib/jobs"
 import { reflections } from "@/lib/session-reflection"
 import { phoneVoiceHome } from "@/lib/voice-home"
+import type { Unsendable } from "@/lib/voice-home/model"
 
 import type { KeptState } from "./kept-model"
 import type { Lane, LaneCounts } from "./lanes"
 import { useLaneHome } from "./lanes"
 import {
   candidates,
+  copyPasses,
   sendVoice,
+  unsendable,
   VOICE_SCOPES,
   watchVoiceNotes,
 } from "./voice-copy"
@@ -35,7 +38,14 @@ export const voiceLane: Lane = {
     useSyncExternalStore(reflections.subscribe, reflections.getSnapshot)
     const jobs = phoneJobs()
     useSyncExternalStore(jobs.subscribe, jobs.getSnapshot)
-    const onPhone = candidates().filter(({ note }) => !home.settled(note.id))
+    const { gone } = useSyncExternalStore(
+      copyPasses.subscribe,
+      copyPasses.getSnapshot
+    )
+    // A note whose audio is gone can't go, so it isn't waiting (LA14).
+    const onPhone = candidates().filter(
+      ({ note }) => !home.settled(note.id) && !gone.has(note.id)
+    )
     return {
       held: { voice: state.held.length },
       refused: { voice: state.refused.length },
@@ -47,6 +57,22 @@ export const voiceLane: Lane = {
       offered: state.waiting.length + onPhone.length,
     }
   },
+}
+
+/**
+ * The voice notes this phone holds and can't send home, by why (LA14), as
+ * Settings names them (`unsentLines`).
+ */
+export function useUnsendable(): Unsendable {
+  const home = phoneVoiceHome()
+  useSyncExternalStore(home.subscribe, home.getSnapshot)
+  const jobs = phoneJobs()
+  const { state } = useSyncExternalStore(jobs.subscribe, jobs.getSnapshot)
+  const pass = useSyncExternalStore(
+    copyPasses.subscribe,
+    copyPasses.getSnapshot
+  )
+  return unsendable(state, pass, home.settled)
 }
 
 /**
