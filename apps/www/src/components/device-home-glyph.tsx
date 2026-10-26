@@ -288,7 +288,16 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
         <span>{view.word}</span>
       </button>
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="bottom" className="rounded-t-3xl px-5 pt-6 pb-8">
+        <SheetContent
+          side="bottom"
+          data-scroll-intent="long-form"
+          className={
+            // scroll-intent: long-form — the rows, the choices and the
+            // legend outgrow a phone, held sideways most of all, so the
+            // sheet scrolls.
+            "max-h-[85dvh] overflow-y-auto rounded-t-3xl px-5 pt-6 pb-8"
+          }
+        >
           <SheetHeader className="px-0 text-left">
             <SheetTitle className="text-xl">
               {pane === "stop" ? SHEET.stopTitle : words.title}
