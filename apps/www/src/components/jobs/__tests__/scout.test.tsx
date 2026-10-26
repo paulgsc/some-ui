@@ -3,10 +3,18 @@
  *
  * The Scout view answers each scout with the run's verdict, and a scout the
  * run found but didn't pick with its scores, its gaps and the résumé to
- * build for it anyway.
+ * build for it anyway. Its form asks for the posting's text with a link the
+ * run can't open.
  */
 
-import { act, cleanup, render, screen, within } from "@testing-library/react"
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@/lib/jobs", async () => {
@@ -176,5 +184,47 @@ describe("a scouts share nobody confirmed, that a run read (JB2)", () => {
       "read"
     )
     expect(screen.getByRole("button", { name: "It arrived" })).toBeTruthy()
+  })
+})
+
+describe("the scout form, with a link the run can't open (SC1)", () => {
+  it("says so as the link is typed, and waits for the posting's text", async () => {
+    const { phoneJobs } = await import("@/lib/jobs")
+    const { JobsScout } = await import("@/components/jobs/scout")
+    render(<JobsScout />)
+    const add = (): HTMLButtonElement =>
+      screen.getByRole("button", { name: "Add to my scouts" })
+    const cantOpen = "The run can’t open this link: paste the posting itself"
+    fireEvent.change(screen.getByLabelText("Title and company"), {
+      target: { value: "Junior Software Engineer · Tarpon Health" },
+    })
+
+    fireEvent.change(screen.getByLabelText("Link"), {
+      target: { value: "https://jobs.lever.co/acme/1" },
+    })
+    expect(screen.queryByText(cantOpen)).toBeNull()
+    expect(screen.getByLabelText("Posting text, optional")).toBeTruthy()
+    expect(add().disabled).toBe(false)
+
+    fireEvent.change(screen.getByLabelText("Link"), {
+      target: { value: "https://jobs.gusto.com/postings/tarpon-health-1" },
+    })
+    expect(screen.getByText(cantOpen)).toBeTruthy()
+    expect(add().disabled).toBe(true)
+
+    fireEvent.change(screen.getByLabelText("Posting text"), {
+      target: { value: "Junior Software Engineer\nTarpon Health · Remote" },
+    })
+    expect(add().disabled).toBe(false)
+    fireEvent.click(add())
+    // Earlier tests' scouts stay in the mocked runtime; this one is newest.
+    const filed = phoneJobs()
+      .getSnapshot()
+      .state.log.flatMap((e) => (e.type === "scout" ? [e.scout] : []))
+      .at(-1)
+    expect(filed?.url).toBe("https://jobs.gusto.com/postings/tarpon-health-1")
+    expect(filed?.postingText).toBe(
+      "Junior Software Engineer\nTarpon Health · Remote"
+    )
   })
 })
