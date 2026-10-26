@@ -399,12 +399,14 @@ distinct postings left.
 
 **Scouts.** Each new scout from step 2 is a posting I found myself, and a
 candidate like the rest, on the track and family I filed it under. When its
-link's host is one of `RUN_HOSTS`, read it there: a Hacker News link
-`…/item?id=<id>` through `https://hn.algolia.com/api/v1/items/<id>`, its
-`text` the description (a link to the "Who is hiring?" thread itself is not
-one posting). A link anywhere else can't be opened: search the boards above
-for its title words and company instead, and read the match. Count each one found in
-`seen`, once per fingerprint. When neither turns it up, its `postingText`
+link's host is one of `RUN_HOSTS`, read it there. A Hacker News link
+`…/item?id=<id>` is read through `https://hn.algolia.com/api/v1/items/<id>`,
+its `text` standing for `comment_text`, and is otherwise a Hacker News post as
+in step 3; only a top-level post under a "Who is hiring?" story is one posting,
+so the story itself or a reply is searched for as below. A link anywhere
+else can't be opened: search the boards above for its title words and company
+instead, and read the match. Count each one found in `seen`, once per
+fingerprint. When neither turns it up, its `postingText`
 (what I pasted) stands in for the description and its link for the apply
 link: take the company, title, location and posted date from that text, never
 a guess. One whose text names no location or no posted date can't be
