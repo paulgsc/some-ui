@@ -44,7 +44,10 @@ import { GenerateLesson } from "@topik/components/topik/handheld/generate-lesson
 import type { StorageNote } from "@topik/components/topik/handheld/material-list"
 import { MaterialList } from "@topik/components/topik/handheld/material-list"
 import { PortionMenu } from "@topik/components/topik/handheld/portion-menu"
-import { RoutineStatus } from "@topik/components/topik/handheld/routine-status"
+import {
+  RoutineStatus,
+  useHeldRuns,
+} from "@topik/components/topik/handheld/routine-status"
 import { SharePrompt } from "@topik/components/topik/handheld/share-prompt"
 import { ReadAloudScreen } from "@topik/components/topik/read-aloud/read-aloud-screen"
 import { useSessionConfig } from "@topik/lib/topik/adapter/context/session-config-context"
@@ -69,7 +72,6 @@ import {
   createOpenedStore,
   openedKey,
 } from "@topik/lib/topik/adapter/routine-files"
-import type { HeldRuns, RunLog } from "@topik/lib/topik/adapter/routine-runs"
 import { useRoutineFiles } from "@topik/lib/topik/adapter/server/routine-files-queries"
 import { useTopikManifest } from "@topik/lib/topik/adapter/server/topik-metadata-queries"
 import {
@@ -772,16 +774,5 @@ export const HandheldLesson = ({
         />
       )}
     </div>
-  )
-}
-
-const NO_SUBSCRIBE = (): (() => void) => () => {}
-const NO_LOG = (): null => null
-
-/** What the phone holds of the routine's runs from this home, or null with no log. */
-function useHeldRuns(log: RunLog | undefined, key: string): HeldRuns | null {
-  return useSyncExternalStore(
-    log?.subscribe ?? NO_SUBSCRIBE,
-    log === undefined ? NO_LOG : (): HeldRuns => log.held(key)
   )
 }

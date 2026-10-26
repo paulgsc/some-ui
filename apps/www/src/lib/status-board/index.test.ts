@@ -75,6 +75,42 @@ describe("what each mark asks of its person", () => {
     expect(needOf({ kind: "look", look: "unreachable" })).toBe("watch")
     expect(needOf({ kind: "look", look: "off" })).toBe("off")
   })
+
+  it("lifts what the routine brought for you, and watches an early end, a quiet home or a lost voice note", () => {
+    const routine = (
+      shape: Extract<RowMark, { kind: "routine" }>["shape"],
+      voice: Extract<RowMark, { kind: "routine" }>["voice"] = []
+    ): string => needOf({ kind: "routine", shape, voice })
+    expect(
+      Object.fromEntries(
+        (
+          [
+            "fresh",
+            "opened",
+            "rested",
+            "unheard",
+            "quiet",
+            "partly",
+            "stopped",
+            "away",
+          ] as const
+        ).map((shape) => [shape, routine(shape)])
+      )
+    ).toEqual({
+      fresh: "you",
+      opened: "fine",
+      rested: "fine",
+      unheard: "moving",
+      quiet: "watch",
+      partly: "watch",
+      stopped: "watch",
+      away: "moving",
+    })
+    // Its voice notes' marks ask beside it: the more pressing one counts.
+    expect(routine("opened", ["waiting"])).toBe("moving")
+    expect(routine("opened", ["waiting", "missed"])).toBe("watch")
+    expect(routine("fresh", ["garbled"])).toBe("you")
+  })
 })
 
 describe("the board", () => {

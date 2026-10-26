@@ -2,18 +2,31 @@
  * The status page (#2165): every process this phone runs, how it last went,
  * and which need their person. A glance strip of every mark, then one row
  * per process: the ones that need you first, the rest by context. Each row
- * draws its own surface's mark (`../sharing-marks`, J0's `StateIcon`) and
+ * draws its own surface's mark (`../sharing-marks`, J0's `StateIcon`,
+ * topik's `RoutineMarks`) and
  * says its surface's words; `lib/status-board` only orders them. Each row
  * opens the page that owns it. It reads; it sends nothing.
  */
 import type { JSX } from "react"
 import { cn } from "@some-ui/core-utils"
 import { MarkLegend } from "@some-ui/shared"
+// Only the status route imports this module, and route splitting makes that
+// route its own lazy chunk, so this static edge costs no host anything eagerly.
+// eslint-disable-next-line lazy-registry/no-eager-registry-import
+import {
+  RoutineLegend,
+  RoutineMarks,
+  routineTone,
+  useRoutineStatus,
+} from "@some-ui/topik"
 import { Link } from "@tanstack/react-router"
 import { ChevronRight, EyeOff } from "lucide-react"
 
 import { hasAudience } from "@/lib/build-profile"
 import { useMinuteClock } from "@/lib/clock"
+import { phoneJobs } from "@/lib/jobs"
+import type { JourneyContext } from "@/lib/jobs/journey"
+import { kindJourney } from "@/lib/jobs/journey"
 import {
   MORNING_IDS,
   MORNING_LEGEND,
@@ -22,13 +35,21 @@ import {
   morningStop,
   morningTheme,
 } from "@/lib/jobs/morning"
+import { JOURNEY_IDS, signOf, stateTitle, stopOf, themeOf } from "@/lib/journey"
 import type { How } from "@/lib/sharing-marks"
 import { MARK_WORDS } from "@/lib/sharing-marks"
 import type { BoardPage, BoardRow, Look, RowMark } from "@/lib/status-board"
-import { boardOf, glanceOf, morningRow } from "@/lib/status-board"
+import {
+  boardOf,
+  glanceOf,
+  journeyRow,
+  morningRow,
+  routineRow,
+} from "@/lib/status-board"
 import { BOARD_WORDS, LOOK_WORDS } from "@/lib/status-board/words"
 import { useJobs } from "@/components/jobs/parts"
 import { StateIcon, themeText } from "@/components/journey-status"
+import { useHomeRoutineFiles } from "@/components/player/device-routine-files"
 import { useLookRow } from "@/components/settings/device-routine-reads"
 import { useLaneRows } from "@/components/settings/device-sharing-ledger"
 import {
@@ -86,12 +107,21 @@ const toneOfMark = (mark: RowMark): string =>
     ? toneOf(mark.where, mark.how)
     : mark.kind === "journey"
       ? themeText(mark.theme)
-      : lookTone(mark.look)
+      : mark.kind === "routine"
+        ? routineTone(mark.shape)
+        : lookTone(mark.look)
 
 /** A row's mark, as its own surface draws it. */
 const RowMarkView = ({ mark }: { mark: RowMark }): JSX.Element => {
   if (mark.kind === "journey") {
     return <StateIcon at={mark.at} sign={mark.sign} theme={mark.theme} small />
+  }
+  if (mark.kind === "routine") {
+    return (
+      <span className="flex shrink-0 items-center gap-1">
+        <RoutineMarks shape={mark.shape} voice={mark.voice} small />
+      </span>
+    )
   }
   if (mark.kind === "look") {
     return (
@@ -230,6 +260,22 @@ const Legends = (): JSX.Element => (
         }))}
       />
       <MarkLegend
+        title={BOARD_WORDS.filesLegend}
+        lines={JOURNEY_IDS.map((id) => ({
+          key: id,
+          mark: (
+            <StateIcon
+              at={stopOf(id)}
+              sign={signOf(id)}
+              theme={themeOf(id)}
+              small
+            />
+          ),
+          text: stateTitle(id, "them"),
+        }))}
+      />
+      <RoutineLegend title={BOARD_WORDS.routine} />
+      <MarkLegend
         title={LOOK_WORDS.name}
         lines={LOOKS.map((look) => ({
           key: look,
@@ -251,9 +297,22 @@ export const StatusBoard = (): JSX.Element => {
   const look = useLookRow()
   const { state } = useJobs()
   const now = useMinuteClock()
+  const routineFiles = useHomeRoutineFiles()
+  const routine = useRoutineStatus(routineFiles?.key ?? "", now)
+  const files: JourneyContext = {
+    state,
+    kept: lanes.jobsKept,
+    outgoing: phoneJobs().keeping.outgoing,
+  }
   const rows = [
     ...lanes.rows,
     morningRow(morningOf(state, lanes.jobsKept, now), now),
+    ...(["decisions", "scouts"] as const).flatMap((kind) => {
+      const j = kindJourney(files, kind)
+      return j === null ? [] : [journeyRow(kind, j, now)]
+    }),
+    // The routine's runs reach this phone only while Korean shows its files.
+    ...(routineFiles === undefined ? [] : [routineRow(routine)]),
     ...(look === null ? [] : [look]),
   ]
   const board = boardOf(rows)

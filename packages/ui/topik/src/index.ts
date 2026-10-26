@@ -106,6 +106,19 @@ export { SetCard } from "./components/topik/read-aloud/set-card"
 export { MaterialList } from "./components/topik/handheld/material-list"
 export type { LessonItem } from "./lib/topik/core/lesson-feed"
 
+/** The routine's marks and how it stands, for the Android app's status page. */
+export {
+  RoutineLegend,
+  RoutineMarks,
+  routineTone,
+  useRoutineStatus,
+} from "./components/topik/handheld/routine-status"
+export type {
+  RoutineShape,
+  RoutineView,
+  VoiceShape,
+} from "./lib/topik/core/routine-status"
+
 /** "What are you hungry for?"'s two screens; the panel-fit page mounts them. */
 export {
   PortionAsk,

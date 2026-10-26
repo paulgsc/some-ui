@@ -1,14 +1,17 @@
 /**
  * The status page (#2165): every process this phone runs, how it last went,
  * and which need their person, in one place. Each row carries its own
- * surface's mark and words (`laneView`, `morningOf`, `lastLook`), never a
+ * surface's mark and words (`laneView`, `morningOf`, `kindJourney`,
+ * topik's `useRoutineStatus`, `lastLook`), never a
  * copy. This module orders them: a row that needs its person is lifted
  * into one group at the top, by a fixed rule on its mark (`needOf`), and
  * the rest stay in their context's group. Pure; its words are `./words`.
  */
 import { assertNever } from "@some-ui/core-utils"
+import type { RoutineShape, RoutineView, VoiceShape } from "@some-ui/topik"
 
 import type { LastRead } from "@/lib/home-link/routine-model"
+import type { ShareKind } from "@/lib/jobs/model"
 import type { Morning } from "@/lib/jobs/morning"
 import {
   morningSaid,
@@ -16,7 +19,8 @@ import {
   morningStop,
   morningTheme,
 } from "@/lib/jobs/morning"
-import type { JourneyTheme, Sign, Stop } from "@/lib/journey"
+import type { Journey, JourneyTheme, Sign, Stop } from "@/lib/journey"
+import { journeySaid, signOf, stopOf, themeOf } from "@/lib/journey"
 import type { How, Where } from "@/lib/sharing-marks"
 
 import { BOARD_WORDS } from "./words"
@@ -49,6 +53,11 @@ export type RowMark =
       readonly theme: JourneyTheme
     }
   | { readonly kind: "look"; readonly look: Look }
+  | {
+      readonly kind: "routine"
+      readonly shape: RoutineShape
+      readonly voice: ReadonlyArray<VoiceShape>
+    }
 
 /** The page that owns a row's process, where its row leads. */
 export type BoardPage = "practice" | "aph" | "jobs" | "home-settings"
@@ -101,6 +110,29 @@ const LOOK_NEEDS: Readonly<Record<Look, Need>> = {
   off: "off",
 }
 
+/** Something new waits to be opened; an early end or a quiet home is watched. */
+const ROUTINE_NEEDS: Readonly<Record<RoutineShape, Need>> = {
+  fresh: "you",
+  partly: "watch",
+  stopped: "watch",
+  quiet: "watch",
+  away: "moving",
+  unheard: "moving",
+  opened: "fine",
+  rested: "fine",
+}
+
+const VOICE_NEEDS: Readonly<Record<VoiceShape, Need>> = {
+  waiting: "moving",
+  missed: "watch",
+  unread: "watch",
+  garbled: "watch",
+}
+
+/** The more pressing of two needs. */
+const most = (a: Need, b: Need): Need =>
+  NEED_ORDER.indexOf(a) <= NEED_ORDER.indexOf(b) ? a : b
+
 /** What `mark` asks of its person: the one rule the board orders by. */
 export function needOf(mark: RowMark): Need {
   switch (mark.kind) {
@@ -116,6 +148,12 @@ export function needOf(mark: RowMark): Need {
     }
     case "look": {
       return LOOK_NEEDS[mark.look]
+    }
+    case "routine": {
+      return mark.voice.reduce<Need>(
+        (need, voice) => most(need, VOICE_NEEDS[voice]),
+        ROUTINE_NEEDS[mark.shape]
+      )
     }
     default: {
       return assertNever(mark)
@@ -146,6 +184,44 @@ export function morningRow(m: Morning, now: Date): BoardRow {
       theme: morningTheme(m.id),
     },
     page: "jobs",
+  }
+}
+
+/** Where a kind of Jobs file is now (J0), as its card in Jobs wears it. */
+export function journeyRow(kind: ShareKind, j: Journey, now: Date): BoardRow {
+  const said = journeySaid(j, "them", now)
+  return {
+    id: kind,
+    group: "jobs",
+    name: BOARD_WORDS.files[kind],
+    word: said.title,
+    line: said.line,
+    more: [],
+    mark: {
+      kind: "journey",
+      at: stopOf(j.id),
+      sign: signOf(j.id),
+      theme: themeOf(j.id),
+    },
+    page: "jobs",
+  }
+}
+
+/** The reflections routine, as Korean's start screen says it. */
+export function routineRow(view: RoutineView): BoardRow {
+  return {
+    id: "routine",
+    group: "korean",
+    name: BOARD_WORDS.routine,
+    word: view.word,
+    line: view.line,
+    more: view.voice.map((voice) => voice.line),
+    mark: {
+      kind: "routine",
+      shape: view.shape,
+      voice: view.voice.map((voice) => voice.shape),
+    },
+    page: "practice",
   }
 }
 
