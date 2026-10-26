@@ -5,9 +5,8 @@
  * with what is on home, since when, the way to keep sending and the way to
  * stop. Its words are `lib/home-link/words`'s alone. It mounts the lane's
  * watch (`useLaneHome`), so a lane sends only while its mark shows.
- * It draws `laneView`'s two axes, where it is kept and how the last exchange
- * went, each a mark of its own; no two states share one
- * (`__tests__/device-home-glyph.test.tsx`), and the sheet's legend draws each.
+ * It draws `laneView`'s `where` and `how` marks, and the sheet's legend draws
+ * each (`__tests__/device-home-glyph.test.tsx`).
  */
 import type { JSX, ReactNode } from "react"
 import { useState } from "react"
@@ -109,7 +108,7 @@ const WhereMark = ({
   </svg>
 )
 
-/** How the last exchange went, beside where: one icon for each. */
+/** How the last exchange went, drawn beside where. */
 const HOW_ICONS: Readonly<Record<How, LucideIcon>> = {
   current: Check,
   waiting: ArrowUp,

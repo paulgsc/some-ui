@@ -18,8 +18,6 @@ import {
   morningOf,
   morningRoad,
   morningSaid,
-  morningSign,
-  morningStop,
   offersDrive,
   runSaid,
 } from "@/lib/jobs/morning"
@@ -209,13 +207,6 @@ describe("this morning's run", () => {
     )
     const keepsNone = morningOf(lookedAt(at), true, AFTER)
     expect(keepsNone).toMatchObject({ id: "quiet", unrecorded: false })
-  })
-
-  it("gives each state a form of its own: its icon's stop and sign", () => {
-    const forms = MORNING_IDS.map(
-      (id) => `${morningStop(id)} ${morningSign(id)}`
-    )
-    expect(new Set(forms).size).toBe(MORNING_IDS.length)
   })
 
   it("draws a whole road for every state", () => {

@@ -1,8 +1,8 @@
 /**
  * What this morning's run did, as this phone knows it (RUN1, #2052): one
- * closed set of states, each with one theme, one form for its icon (its stop
- * and its sign, which no two states share), one road and one set of words, drawn by Today's title bar in J0's language
- * (`components/journey-status`). Pure, and the one place these words live,
+ * closed set of states, each with one theme, one form for its icon
+ * (`lib/journey`'s `Sign`), one road and one set of words, drawn by Today's
+ * title bar in J0's language (`components/journey-status`). Pure, and the one place these words live,
  * so they say what the run did and what this phone holds, never how it
  * travels (`__tests__/morning.test.ts`).
  *
@@ -282,8 +282,15 @@ export function morningSaid(m: Morning, now: Date): Said {
       }
     }
     case "stopped":
-    case "partly": {
+    case "partly":
+    case "partly-in-drive": {
       const why = m.problem ?? "It didn’t say why."
+      if (m.id === "partly-in-drive") {
+        return {
+          title: "This morning’s run did part of it, in Drive",
+          line: `${why} Its picks are in Drive, not on this phone; open them from there.`,
+        }
+      }
       const still =
         m.seen === 0 && m.picked === 0
           ? ""
@@ -294,13 +301,6 @@ export function morningSaid(m: Morning, now: Date): Said {
             ? "This morning’s run stopped"
             : "This morning’s run did only part of it",
         line: why + still,
-      }
-    }
-    case "partly-in-drive": {
-      const why = m.problem ?? "It didn’t say why."
-      return {
-        title: "This morning’s run did part of it, in Drive",
-        line: `${why} Its picks are in Drive, not on this phone; open them from there.`,
       }
     }
     case "before": {

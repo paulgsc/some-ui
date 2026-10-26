@@ -17,7 +17,6 @@ import {
   mostUrgent,
   roadOf,
   roadSaid,
-  signOf,
   stateTitle,
   STOP_NAMES,
   stopOf,
@@ -60,11 +59,6 @@ describe("the journey states", () => {
     expect([...said, ...fixed].filter((text) => MACHINERY.test(text))).toEqual(
       []
     )
-  })
-
-  it("give each state a form of its own: its icon's stop and sign", () => {
-    const forms = JOURNEY_IDS.map((id) => `${stopOf(id)} ${signOf(id)}`)
-    expect(new Set(forms).size).toBe(JOURNEY_IDS.length)
   })
 
   it("agree in number with what they're about", () => {

@@ -7,6 +7,7 @@
  * stop to the log and nothing more goes.
  */
 
+import { markForm } from "@/test-support/mark-form"
 import { sessionRecord } from "@/test-support/session-record"
 import type { AphStore, AphWhere } from "@some-ui/aph"
 import type * as ReactRouterModule from "@tanstack/react-router"
@@ -209,14 +210,7 @@ describe("Practice's sharing mark", () => {
     await mount()
     fireEvent.click(mark())
     const legend = screen.getByRole("region", { name: MARK_WORDS.title })
-    const forms = [...legend.querySelectorAll("li svg")].map((svg) => {
-      const copy = svg.cloneNode(true)
-      if (!(copy instanceof Element)) throw new Error("no mark")
-      for (const el of [copy, ...copy.querySelectorAll("*")])
-        for (const name of ["class", "data-where", "data-how"])
-          el.removeAttribute(name)
-      return copy.outerHTML
-    })
+    const forms = [...legend.querySelectorAll("li svg")].map(markForm)
     // Practice can't stop short, so neither away nor bringing back is drawn.
     expect(forms).toHaveLength(
       Object.keys(MARK_WORDS.where).length +
