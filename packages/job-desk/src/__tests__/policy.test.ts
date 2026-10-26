@@ -1,23 +1,14 @@
 /**
  * `linkReach` tells a link the run opens itself from one it can't, by its
- * host alone: exactly one of `RUN_HOSTS`, whichever the scheme.
+ * host alone: exactly one of `RUN_HOSTS`, over https.
  */
 import { linkReach, RUN_HOSTS } from "@job-desk/policy"
 import { describe, expect, it } from "vitest"
 
 describe("linkReach", () => {
-  it("opens every host in RUN_HOSTS, over https and http alike", () => {
-    const hosts = Object.values(RUN_HOSTS).flat()
-    expect(hosts).toEqual([
-      "job-boards.greenhouse.io",
-      "boards.greenhouse.io",
-      "jobs.lever.co",
-      "jobs.ashbyhq.com",
-      "news.ycombinator.com",
-    ])
-    for (const host of hosts) {
+  it("opens every host in RUN_HOSTS", () => {
+    for (const host of Object.values(RUN_HOSTS).flat()) {
       expect(linkReach(`https://${host}/acme/1`)).toBe("opens")
-      expect(linkReach(`http://${host}/acme/1`)).toBe("opens")
     }
   })
 
@@ -25,7 +16,6 @@ describe("linkReach", () => {
     expect(linkReach("  https://JOBS.Lever.co/Acme/1?lever-source=x  ")).toBe(
       "opens"
     )
-    expect(linkReach("https://news.ycombinator.com/item?id=1")).toBe("opens")
   })
 
   it("can't open any other host", () => {
@@ -34,7 +24,6 @@ describe("linkReach", () => {
       "https://www.indeed.com/viewjob?jk=1",
       "https://www.linkedin.com/jobs/view/1",
       "https://acme.wd5.myworkdayjobs.com/careers/job/1",
-      "http://example.com",
     ]) {
       expect(linkReach(url)).toBe("cannot-open")
     }
@@ -53,12 +42,13 @@ describe("linkReach", () => {
     }
   })
 
-  it("has no answer for what isn't a web link", () => {
+  it("has no answer for what isn't an https link", () => {
     for (const url of [
       "",
       "   ",
       "jobs.lever.co/acme/1",
       "not a link",
+      "http://jobs.lever.co/acme/1",
       "ftp://jobs.lever.co/acme/1",
       "mailto:jobs@lever.co",
     ]) {

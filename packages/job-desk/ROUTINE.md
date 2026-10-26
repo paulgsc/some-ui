@@ -399,10 +399,11 @@ distinct postings left.
 
 **Scouts.** Each new scout from step 2 is a posting I found myself, and a
 candidate like the rest, on the track and family I filed it under. When its
-link's host is one of `RUN_HOSTS`, read it there.
-A link anywhere else can't be opened, and the phone asks for the posting's
-text with one (`linkReach`): search the boards above for its title words and
-company instead, and read the match. Count each one found in
+link's host is one of `RUN_HOSTS`, read it there: a Hacker News link
+`…/item?id=<id>` through `https://hn.algolia.com/api/v1/items/<id>`, its
+`text` the description (a link to the "Who is hiring?" thread itself is not
+one posting). A link anywhere else can't be opened: search the boards above
+for its title words and company instead, and read the match. Count each one found in
 `seen`, once per fingerprint. When neither turns it up, its `postingText`
 (what I pasted) stands in for the description and its link for the apply
 link: take the company, title, location and posted date from that text, never

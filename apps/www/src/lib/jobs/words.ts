@@ -283,6 +283,7 @@ export const cantOpenLink =
 export const postingTextLabel = (needed: boolean): string =>
   needed ? "Posting text" : "Posting text, optional"
 
+/** The posting text's placeholder. */
 export const postingTextHint =
   "Paste the posting itself, its description word for word"
 

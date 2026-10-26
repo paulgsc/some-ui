@@ -146,14 +146,13 @@ const RUN_HOST_SET: ReadonlySet<string> = new Set(
 /**
  * Whether the run can open a link: `"opens"` when its host is one of
  * `RUN_HOSTS` exactly (a subdomain, or a longer name ending in one, is not),
- * `"cannot-open"` for any other host, and null when it isn't an http or https
- * link at all. The scheme doesn't decide it: the run reads a board by its
- * slug, whichever the link names.
+ * `"cannot-open"` for any other host, and null when it isn't an https link,
+ * the only kind a scout keeps (`HttpsUrlSchema`).
  */
 export function linkReach(url: string): "opens" | "cannot-open" | null {
   try {
     const { protocol, hostname } = new URL(url.trim())
-    if (protocol !== "https:" && protocol !== "http:") return null
+    if (protocol !== "https:") return null
     return RUN_HOST_SET.has(hostname) ? "opens" : "cannot-open"
   } catch {
     return null
