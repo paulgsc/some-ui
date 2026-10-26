@@ -49,4 +49,13 @@ describe("what deleting the account says", () => {
     expect(left).toMatch(/still in the mailbox stay/)
     expect(left).toMatch(/never what was in it/)
   })
+
+  it("says a voice note goes with what home heard in it, the copy filed for the mailbox included", () => {
+    expect(textOf(goes, "Voice notes")).toMatch(
+      /sound included, and what home heard/
+    )
+    expect(textOf(goes, "Filed with home for the mailbox")).toMatch(
+      /what home heard in your voice notes/
+    )
+  })
 })

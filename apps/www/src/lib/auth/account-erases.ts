@@ -43,7 +43,7 @@ export const ACCOUNT_ERASES = {
     },
     {
       label: "Filed with home for the mailbox",
-      text: "The decisions and scouts you filed with home, which lessons you opened, and home's note of each one it passed on.",
+      text: "The decisions and scouts you filed with home, which lessons you opened, what home heard in your voice notes, and home's note of each one it passed on.",
     },
     {
       label: "LeetType sessions",
@@ -51,7 +51,7 @@ export const ACCOUNT_ERASES = {
     },
     {
       label: "Voice notes",
-      text: "Each voice note your phone sent home, its sound included.",
+      text: "Each voice note your phone sent home, its sound included, and what home heard in it.",
     },
     {
       label: "What your phones share",
