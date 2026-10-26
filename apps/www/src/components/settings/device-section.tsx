@@ -1,8 +1,7 @@
 /**
  * The Android app's Home page (Settings → Home, paulgsc/some-ui#2107): the
  * Home server block, the one place on the phone that sends anything to the
- * home server (LA8, docs/learner-data-authority.md). What the phone keeps on
- * itself is Settings → This phone's (`components/settings/device-storage`).
+ * home server (LA8, docs/learner-data-authority.md).
  *
  * Every hop is a tap here, and names where it goes (LA8); `lib/home-link`
  * owns the work, and this component only shows it. The choice to show the

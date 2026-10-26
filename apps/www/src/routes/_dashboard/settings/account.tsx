@@ -9,17 +9,18 @@ import {
 } from "@/components/settings/settings-page"
 
 /**
- * The front desk's Account page, the web's: where sessions are kept, the
- * sign-in, the phones. Outside settings' own outcome, so signing out works
- * when settings don't load. The Android app has no account (its home is
- * Settings → Home), and a viewer's build none at all, so both are sent back
- * to the desk, which offers neither.
+ * Outside settings' own outcome, so signing out works when settings don't
+ * load. The Android app and a viewer's build have no account, so both are
+ * sent back to the desk; the inline check keeps the account's code out of
+ * the Android app's bundle (`check:bundle-paths`), as this route ships there.
  */
 const AccountPage = (): JSX.Element => (
   <SettingsPage id="account">
-    <SettingsBlock>
-      <DataHomeSection />
-    </SettingsBlock>
+    {import.meta.env.VITE_DEVICE_BACKEND === "true" ? null : (
+      <SettingsBlock>
+        <DataHomeSection />
+      </SettingsBlock>
+    )}
   </SettingsPage>
 )
 

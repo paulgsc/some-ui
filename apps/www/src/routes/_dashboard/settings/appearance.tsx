@@ -7,7 +7,6 @@ import {
 } from "@/components/settings/settings-page"
 import { ThemeField } from "@/components/settings/theme-field"
 
-/** The front desk's Appearance page: the theme, on every build. */
 const AppearancePage = (): JSX.Element => (
   <SettingsPage id="appearance">
     <SettingsBlock>

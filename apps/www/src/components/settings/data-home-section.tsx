@@ -14,8 +14,7 @@
  * - **Account session ended**: say so, in place, and offer to sign in or to
  *   carry on here. Nothing is lost either way.
  *
- * It is Settings → Account (`/settings/account`); the Android build has
- * Settings → This phone and Home instead.
+ * It is Settings → Account (`/settings/account`).
  */
 
 import type { JSX } from "react"

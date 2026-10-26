@@ -10,11 +10,6 @@ import {
   SettingsPage,
 } from "@/components/settings/settings-page"
 
-/**
- * The front desk's This phone page, the Android app's: what the phone keeps
- * and how much room it has left, and copying finished sessions off it. Home
- * is its own page (Settings → Home).
- */
 const PhonePage = (): JSX.Element => (
   <SettingsPage id="phone">
     {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (

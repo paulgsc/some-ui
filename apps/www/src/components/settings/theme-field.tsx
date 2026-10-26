@@ -14,7 +14,6 @@ import {
   SYSTEM_PREFERENCE,
 } from "@some-ui/styles/theme"
 
-/** "System" plus every selectable palette from the shared design system. */
 const THEME_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
   { value: SYSTEM_PREFERENCE, label: "Match system" },
   ...SESSION_THEMES.map((theme) => ({ value: theme.id, label: theme.label })),
