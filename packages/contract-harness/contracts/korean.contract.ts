@@ -1,14 +1,10 @@
 /**
  * The owner's Korean record (paulgsc/server `routes/korean.rs` and
- * `handlers/korean.rs`): the word sets the phone studies on and what it
- * records as they are read, one kind per store the phone keeps
- * (`korean_repo::Kind`: `set`, `pace`, `tally`, `lens`, `record`,
- * `progress`, `feedback`). Epic #2100.
+ * `handlers/korean.rs`), one kind per `korean_repo::Kind`. Epic #2100.
  *
- * Hand-written: `KoreanEntrySchema` is checked by hand against the server's
- * `korean_repo::Entry` (camelCase: the key, its standing revision, the body
- * the phone sent verbatim, and when that revision was written). The body is
- * never parsed by home, so it stays `unknown` here too.
+ * Hand-written, transcribed from the server's `korean_repo::Entry`: no client
+ * in this repo reads `/korean` yet. Home never parses an entry's body, so it
+ * stays `unknown` here too.
  *
  * Every route is per person, so every contract is a `session` contract. The
  * record is append-only, so no probe may keep anything: both writes are
