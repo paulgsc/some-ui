@@ -50,6 +50,10 @@ export const ACCOUNT_ERASES = {
       text: "Each session you played: your picks, how long each took, and how it ended.",
     },
     {
+      label: "Korean's word sets and reading records",
+      text: "Every word set your phone sent home, and what you recorded as you read: each word's pace, each sentence's tally, the grammar lens's notes, your practice record, where you left off and your answers at a sitting's end, every change to them included.",
+    },
+    {
       label: "Voice notes",
       text: "Each voice note your phone sent home, its sound included, and what home heard in it.",
     },
