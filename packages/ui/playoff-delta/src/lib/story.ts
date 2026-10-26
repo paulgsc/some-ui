@@ -197,13 +197,6 @@ export const blewIt = (r: StoryResult): boolean =>
   r.collapse !== undefined &&
   (r.collapse.led || r.collapse.peakWinProbability >= 0.5)
 
-/**
- * Orders claims: fewer total wins needed, then a better seed; out sits one
- * win past a perfect season. Lower is better, and differences scale with wins.
- */
-export const floorKey = (c: StoryClaim, seasonLength: number): number =>
-  c.in ? (c.wins + c.extraWins) * 10 + c.seed : (seasonLength + 1) * 10
-
 /** Is the cell (x more wins, seed s) an open path? */
 export const isOpen = (
   paths: ReadonlyArray<number | null>,
@@ -235,4 +228,44 @@ export function cellChanges(
       return now ? "open" : "closed"
     })
   )
+}
+
+export type Verdict =
+  | "Better."
+  | "Worse."
+  | "Held."
+  | "Absorbed."
+  | "Still out."
+
+/**
+ * What the week did to the paths (PDS1), read off the grid's own cell
+ * changes, so rows compare by final wins: "Worse." when a path open last week
+ * is closed (that wins over one opening, which only a tied game allows),
+ * "Better." when one opened, "Held." otherwise. A win of the team's own that
+ * only lifts the floor it has banked closes nothing.
+ */
+export function weekVerdict(week: StoryWeek): Verdict {
+  const was = claimOf(week.paths.before, week.paths.winsBefore).in
+  if (!claimOf(week.paths.after, week.paths.winsAfter).in)
+    return was ? "Absorbed." : "Still out."
+  const changes = cellChanges(week).flat()
+  if (changes.includes("pruned")) return "Worse."
+  if (changes.includes("opened")) return "Better."
+  return "Held."
+}
+
+/**
+ * What the data proves about a result for the team (PDS2): `true` it helped,
+ * `false` it hurt, `null` nothing shown. The engine's own verdict (`moved`)
+ * when it has one. Otherwise only a result against the other conference has
+ * a sign: its loser's loss leaves the conference with one win fewer, which
+ * never hurts. Inside the conference a win changes hands, and which side is
+ * better depends on who could afford it, so the fan's reading is not shown.
+ */
+export function provenSign(week: StoryWeek, r: StoryResult): boolean | null {
+  if (r.moved) return r.moved === "helped"
+  const exported = week.templates.exported.some(
+    (x) => x.team === r.team && x.opponent === r.opponent
+  )
+  return exported ? r.yourWay : null
 }

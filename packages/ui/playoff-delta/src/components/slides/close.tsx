@@ -1,7 +1,6 @@
 import type { JSX } from "react"
 import {
   claimOf,
-  floorKey,
   floorRecord,
   nameOf,
   type StoryClaim,
@@ -23,13 +22,6 @@ export const Rivals = ({ season, week }: SlideProps): JSX.Element => {
       <h2 className="pd-q">How close to rock bottom?</h2>
       <div className="flex flex-col gap-[3cqw]">
         {week.rivals.map((r, i) => {
-          const b = floorKey(r.before, season.seasonLength)
-          const a = floorKey(r.after, season.seasonLength)
-          const w = floorKey(r.worst, season.seasonLength)
-          const pct =
-            w <= b
-              ? null
-              : Math.round(Math.max(0, Math.min(1, (a - b) / (w - b))) * 100)
           const at = 0.3 + i * 1.2
           return (
             <Reveal key={r.team} at={at} className="pd-card">
@@ -45,7 +37,7 @@ export const Rivals = ({ season, week }: SlideProps): JSX.Element => {
                 { k: "last week", c: r.before, cls: "" },
                 { k: "now", c: r.after, cls: "" },
                 {
-                  k: "worst possible",
+                  k: "each break reversed",
                   c: r.worst,
                   cls: "text-muted-foreground",
                 },
@@ -55,14 +47,6 @@ export const Rivals = ({ season, week }: SlideProps): JSX.Element => {
                   <b className={cls}>{label(c)}</b>
                 </div>
               ))}
-              <div className="pd-bar">
-                <i style={{ ...delay(at + 0.3), width: `${pct ?? 0}%` }} />
-              </div>
-              <span className="pd-small text-muted-foreground">
-                {pct === null
-                  ? "nothing could have hurt them more"
-                  : `${pct}% as bad as it could have been`}
-              </span>
             </Reveal>
           )
         })}

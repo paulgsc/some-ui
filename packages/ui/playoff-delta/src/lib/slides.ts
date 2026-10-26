@@ -12,6 +12,7 @@ import {
   claimOf,
   floorRecord,
   nameOf,
+  provenSign,
   sinceLabel,
   type StorySeason,
   type StoryWeek,
@@ -112,7 +113,7 @@ export function narration(
     }
     case "who": {
       const fell = WHO.flatMap((k) => week.templates[k]).filter(
-        (r) => r.yourWay
+        (r) => !r.won && provenSign(week, r) === true
       )
       const names = [...new Set(fell.map((r) => n(r.team)))]
       return names.length
@@ -120,19 +121,21 @@ export function narration(
         : "Who fell? None of the usual suspects."
     }
     case "how": {
-      const exp = week.templates.exported
-      const out = exp.filter((r) => r.yourWay).length
-      return `${counted(out, "conference team")} lost to the other conference, ${counted(week.templates.spoilers.filter((r) => r.yourWay).length, "spoiler")}, and ${counted(week.templates.forced.length, "forced game")}.`
+      const helped = (k: TemplateKey): number =>
+        week.templates[k].filter((r) => provenSign(week, r) === true).length
+      return `${counted(helped("exported"), "conference team")} lost to the other conference, ${counted(helped("spoilers"), "spoiler")} went your way, and ${counted(week.templates.forced.length, "forced game")}.`
     }
     case "after": {
       return `After week ${week.week}, ${claimLine(season, week.paths.after, week.paths.winsAfter)}.`
     }
     case "path": {
       return week.path
-        ? `Here's the path: ${week.path.needs
+        ? `Here's one way in: ${week.path.needs
             .slice(0, 3)
             .map((x) => `the ${n(x.team)} go ${x.rest.w} and ${x.rest.l}`)
-            .join(", ")}. Everyone else, as bad as they could be.`
+            .join(
+              ", "
+            )}, and the rest of the league as this way has it. There may be others.`
         : "There's no path left."
     }
     case "rivals": {

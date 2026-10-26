@@ -53,8 +53,6 @@ export type SymbolDef = {
   /** Index into the theme's --chart-1..5, or the foreground for neutral ones. */
   readonly hue: 1 | 2 | 3 | 4 | 5 | "neutral"
   readonly parts: ReadonlyArray<Primitive>
-  /** Count wording for this week's instances: "2 of 3 fell". */
-  readonly verb: string
 }
 
 export const SYMBOLS: ReadonlyArray<SymbolDef> = [
@@ -63,7 +61,6 @@ export const SYMBOLS: ReadonlyArray<SymbolDef> = [
     name: "Your game",
     rule: "Win and every path moves one win closer.",
     hue: 4,
-    verb: "won",
     parts: [
       { kind: "team", x: 46, y: 32, motion: "lose" },
       { kind: "you", x: 18, y: 32, motion: "pulse" },
@@ -75,7 +72,6 @@ export const SYMBOLS: ReadonlyArray<SymbolDef> = [
     name: "Division rivals",
     rule: "Every division loss is one you never have to make up.",
     hue: 2,
-    verb: "fell",
     parts: [
       { kind: "division", x: 8, y: 10, w: 48, h: 44 },
       { kind: "you", x: 21, y: 23 },
@@ -90,7 +86,6 @@ export const SYMBOLS: ReadonlyArray<SymbolDef> = [
     name: "Named rivals",
     rule: "The teams you most want to fall.",
     hue: 5,
-    verb: "fell",
     parts: [
       { kind: "rival", x: 32, y: 28, motion: "drop" },
       { kind: "win", x: 32, y: 28, motion: "fly-out" },
@@ -101,7 +96,6 @@ export const SYMBOLS: ReadonlyArray<SymbolDef> = [
     name: "Teams above you",
     rule: "A loss from above shrinks the gap to the seed.",
     hue: 1,
-    verb: "fell",
     parts: [
       { kind: "line", y: 34 },
       { kind: "you", x: 22, y: 34 },
@@ -113,7 +107,6 @@ export const SYMBOLS: ReadonlyArray<SymbolDef> = [
     name: "Exported wins",
     rule: "A conference team loses to the other conference. The win leaves the race.",
     hue: 3,
-    verb: "exported",
     parts: [
       { kind: "conference", x: 4, y: 10, w: 36, h: 44 },
       { kind: "team", x: 22, y: 32, motion: "lose" },
@@ -126,7 +119,6 @@ export const SYMBOLS: ReadonlyArray<SymbolDef> = [
     name: "Spoilers",
     rule: "An eliminated team beats a contender. The win is wasted, the loss isn't.",
     hue: 2,
-    verb: "spoiled",
     parts: [
       { kind: "conference", x: 4, y: 8, w: 56, h: 48 },
       { kind: "out", x: 18, y: 32 },
@@ -139,7 +131,6 @@ export const SYMBOLS: ReadonlyArray<SymbolDef> = [
     name: "Forced games",
     rule: "Two contenders meet. Someone has to win.",
     hue: "neutral",
-    verb: "went your way",
     parts: [
       { kind: "conference", x: 4, y: 8, w: 56, h: 48 },
       { kind: "team", x: 20, y: 36 },

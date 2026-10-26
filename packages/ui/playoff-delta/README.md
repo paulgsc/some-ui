@@ -42,7 +42,27 @@ Seven event types exist before any week is played; each week only fills them
 a contender, an eliminated team, a named rival, your division, your
 conference, and the win that travels from loser to winner), keeps one hue
 from the active theme's `--chart-1..5`, and one motion. Results on a card:
-green went your way, red didn't, ★ moved the paths, ↯ lost from ahead.
+green helped, red hurt, ★ the other result would have changed the paths, ↯
+lost from ahead.
+
+## What the stage promises
+
+Each is held by the test that names it.
+
+- **PDS1, the verdict** (`weekVerdict`, `src/lib/__tests__/story.test.ts`):
+  "Worse." only when a path open last week is closed, rows compared by final
+  wins; "Better." only when one opened, which takes a tied game; "Held."
+  otherwise. A win of the team's own that only lifts the floor it has banked
+  closes nothing.
+- **PDS2, the colours** (`provenSign`, same file): a result is coloured by the
+  engine's own verdict when it has one; otherwise only a result against the
+  other conference is, since a win leaving the conference never hurts. Inside
+  the conference a win changes hands, and which way helps depends on who
+  could afford it, so a result with no verdict there has no colour.
+- **PDS3, the path and rivals words**
+  (`src/components/slides/__tests__/words.test.tsx`): the path is one way in,
+  not the only one or a best case; a rival's third claim is each break it got
+  reversed together, not the worst possible.
 
 ## Recording
 
