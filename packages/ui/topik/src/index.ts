@@ -102,6 +102,10 @@ export { PoolNote } from "./components/topik/read-aloud/pool-note"
 export { RepCard } from "./components/topik/read-aloud/rep-card"
 export { SetCard } from "./components/topik/read-aloud/set-card"
 
+/** The handheld start screen, with the routine's feed; the panel-fit page mounts it. */
+export { MaterialList } from "./components/topik/handheld/material-list"
+export type { LessonItem } from "./lib/topik/core/lesson-feed"
+
 /** "What are you hungry for?"'s two screens; the panel-fit page mounts them. */
 export {
   PortionAsk,
