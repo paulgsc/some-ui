@@ -67,17 +67,41 @@ stops the run and never changes what goes to Drive. Use only `curl` with that
 
 ### Voice notes
 
-In all parts, transcribe each voice note with this package's transcriber and
-the note's Drive file id: `bash packages/ui/topik/scripts/transcribe.sh
-<fileId>` from the repo root. Don't download a note through the connector; the
-transcriber downloads it itself as the read-only service account
-`drive-reader`, using the key the owner stored in this environment
-(`DRIVE_SA_KEY_B64`), and checks the byte count against Drive. Never print or
-log that key. It prints `[language probability, duration, bytes] text`. Its
-first call installs the speech model outside the checkout (about 1 GB, under a
-minute); later calls take seconds. If it prints NO-AUDIO or fails, skip that
-reflection or prompt and quote the error in the summary. Voice notes never go
-to the mailbox.
+Home hears the voice notes, and the run reads what home heard: never the
+audio. Install no speech model and download no note's audio, in any part.
+Each transcript is a file in the mailbox's `transcript` folder,
+`transcript-<note>-<n>.json`, holding
+`{"schema":"some-ui.voice-transcript/1","note","of","ref","at","text","language","model","heardAt"}`:
+`note` is the phone's id for the note, and `language` is Whisper's code (`en`
+or `ko`).
+
+List the folder once per run, live and archived, as 10b lists a folder. For a
+note, take its transcript with the highest `<n>` (home's newest hearing of it),
+fetch it with `GET "$JOBS_MAILBOX_URL/v1/transcript/items/<name>"`, check the
+bytes' SHA-256 against the listing's `sha256` and the body's `schema` and
+`note`, and read its `text`. A transcript listed only as archived is asked back
+(`PUT "$JOBS_MAILBOX_URL/v1/transcript/wanted/<name>"`, no body) and counts as
+not heard this run.
+
+- A reflection's voice note is an entry in `<base>.json` whose `kind` is
+  `voice` (its audio, if the phone shared it, is the `<base>_voice-*` file the
+  entry's `file` names); its `id` is the note's id.
+- A drama prompt's spoken scene notes (`drama-<stamp>.voice-<n>.<ext>` beside
+  the prompt) went home under the prompt's stamp: their transcripts are the
+  ones whose body has `"of": "scene"` and `"ref": "drama-<stamp>"`, one note per
+  distinct `note`. When there are several, read them in `at` order and say in
+  the summary that their order may not be the order they were said in.
+
+A note home hasn't heard is one with no transcript (for a drama prompt, fewer
+distinct notes than voice files beside it), one whose transcript fails the
+check, or one asked back this run. Its reflection or prompt waits: don't
+answer it this run, so what was said is read once home has heard it, and
+don't count it toward that part's limit for the run. Count it
+in `found` (step 12), make the outcome `partly`, and add one problem in the
+owner's terms, such as "Home hasn't heard one voice note from your study
+reflection yet, so that reflection waits for the next run." The phone shows
+it. If 2a skipped the mailbox, every voice note waits the same way. Voice
+notes never go to the mailbox from this run.
 
 ## Part A: word sets
 
@@ -93,8 +117,9 @@ to the mailbox.
    `stock: <base>` (part D) answers no reflection. Take the unanswered ones,
    newest first, at most three this run. If there are none, go to part B.
 
-4. For each: read the reflection JSON and transcribe every voice note beside it
-   named `<base>_voice-*`. Do part C for it now, before you write anything,
+4. For each: read the reflection JSON and what home heard in each of its voice
+   notes ("Voice notes" above; one home hasn't heard makes the reflection
+   wait). Do part C for it now, before you write anything,
    then choose its context and write the pair, both following the deck prompt
    exactly:
 
@@ -203,8 +228,9 @@ or workspaces, file an `epic` issue for the whole and its steps as sub-issues
 of it (`sub_issue_write`). At most four new issues a run: file the clearest,
 and list the rest in the summary for the owner.
 
-C5. Start no session yourself and don't comment on the issues you file: the
-`from-reflection` label is what a later session finds them by.
+C5. Start no session yourself and don't comment on the issues you file. Now
+and then the owner has a session reconcile the open `from-reflection` issues
+and fold them into the Residual Ledger; the label is how it finds them.
 
 C6. If the GitHub tools are not available, or a call is refused, file nothing
 more: put each piece of feedback, paraphrased, in the summary so the owner can
@@ -218,8 +244,8 @@ file it, and still write the pair.
    there are none, go to part D.
 
 8. For each: read the prompt (download_file_content; it is plain markdown) and
-   transcribe every voice note it names, `drama-<stamp>.voice-<n>.<ext>` beside
-   it, before you write anything: the spoken scene is what the learner asked
+   read what home heard in each voice note beside it ("Voice notes" above; one
+   home hasn't heard makes the prompt wait) before you write anything: the spoken scene is what the learner asked
    for. Then do what the prompt asks: write the drama as one scene tree,
    following the prompt exactly (it carries the tree prompt, the request, and
    the last drama to continue from). If the prompt names a last drama, read
@@ -266,7 +292,7 @@ D3. If fewer than 3 are unopened, write 3 minus that many stock scenes, at most
 3 this run. A stock scene is a word set pair written, checked, uploaded and put
 exactly as in steps 4 to 6a, with these differences:
 
-- it answers no reflection: there is no note to transcribe and no part C; its
+- it answers no reflection: there is no voice note and no part C; its
   base is `<today>_stock_<n>` (today as YYYY-MM-DD, America/Los_Angeles; n = 1,
   2 or 3, the first not already used by a folder in `Read aloud/sets` or a name
   in the mailbox's `scene` folder);
@@ -350,8 +376,8 @@ writes only to the mailbox.
   asked for (finding nothing counts as done); `partly` when something was left
   for a later run, skipped or failed; `stopped` when the run ended early.
 - `problems`: written for the owner, in their terms: what was not done, and
-  why, such as "One voice note couldn't be heard, so that reflection waits for
-  the next run." Never quote a note, and never name a status code, a token, a
+  why, such as "Home hasn't heard one voice note from your study reflection
+  yet, so that reflection waits for the next run." Never quote a note, and never name a status code, a token, a
   URL, a file id or a tool. `[]` when there were none.
 - `nextBy`: compute it with `node` (`Intl` knows daylight saving), not by hand.
 
@@ -370,6 +396,7 @@ and is not retried.
     continues; each mailbox put (name and status code), and if the mailbox was
     skipped, why; part D's count of unopened lessons and each stock scene
     written (folder name, genre, premise, level); the run record's put and its
-    status code; what each voice note said (its transcript line as printed);
+    status code; for each voice note, its transcript's name and `text`, or that
+    home hasn't heard it;
     and anything you skipped and why. If nothing was new anywhere, say so in
     one line.
