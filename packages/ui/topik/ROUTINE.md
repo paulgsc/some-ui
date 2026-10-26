@@ -22,8 +22,7 @@ If the Google Drive connector is not available, stop and say so in the summary.
 The scheduled task's prompt points at this file, so a change to the run is a
 reviewed change here. The decks' shape and length are `deck-prompt.md`'s
 (step 2). When this file and that prompt disagree, the prompt wins and this file
-is the bug. The scripts it runs are this package's: `scripts/check-deck.mjs`,
-`scripts/check-drama.mjs` and `scripts/transcribe.sh`.
+is the bug.
 
 ## Before anything
 
@@ -34,9 +33,10 @@ is the bug. The scripts it runs are this package's: `scripts/check-deck.mjs`,
    Check every Drive result's owner is paulgathondudev@gmail.com; if not, stop.
 
 2. In the repo, on `origin/main`
-   (`git fetch origin main && git checkout --detach origin/main`), run `pnpm install` from the repo root if
-   `packages/ui/topik/node_modules/zod` or `packages/ui/topik/node_modules/vite`
-   is missing. Then read this file, `packages/some-content/prompts/read-aloud-generator/index.md`
+   (`git fetch origin main && git checkout --detach origin/main`), run
+   `pnpm install` from the repo root, then build what the checkers load:
+   `npx turbo run build --filter="@some-ui/topik^..."` (topik's dependencies,
+   under a minute). Then read this file, `packages/some-content/prompts/read-aloud-generator/index.md`
    (all of it), the deck prompt
    `packages/ui/topik/src/lib/topik/read-aloud/deck-prompt.md` (all of it: the
    practice, the context and its genres, the levels and how many lines each
@@ -107,10 +107,10 @@ to the mailbox.
      session was studied at (TOPIK 1-2 -> read-aloud level 1-2, higher -> 3);
    - the read-aloud deck: `practice: "read-aloud"`, one pool sized for a
      sitting, as many lines as the deck prompt's table gives the deck's level
-     and a few over (50–60 at level 1, about 50 at level 2, about 40 at
-     level 3), no `lens` on any line, `id` kebab-case and unique (e.g. a slug of
+     and a few over, no `lens` on any line, `id` kebab-case and unique (e.g. a slug of
      the title plus the reflection's date);
-   - the lens deck: `practice: "lens"`, about 8 lines, every one with a `lens`
+   - the lens deck: `practice: "lens"`, about 8 lines (the deck prompt leaves a
+     lens deck's size to the request, and this is the run's), every one with a `lens`
      (misforms from the mistake catalogue, each wrong in its line, with
      `decides`, and a cue and situations where they help), `id` the read-aloud
      deck's plus `-lens`;
@@ -134,8 +134,8 @@ to the mailbox.
    must be `[]`; anything else lists findings: fix every one and re-check;
    never upload a deck with findings. Its second line must show the practice
    you meant, your context, and the lines the app kept: for a read-aloud deck,
-   at least the count the deck prompt gives its level (50 at level 1 or 2, 40
-   at level 3) and `lens lines: 0`; for a lens deck, `lens lines: N of N` with
+   at least the count the deck prompt's table gives its level and
+   `lens lines: 0`; for a lens deck, `lens lines: N of N` with
    N at least 6.
 
 6. If the reflection has no scene folder yet, create it in `Read aloud/sets`

@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
 # usage: bash packages/ui/topik/scripts/transcribe.sh <driveFileId>
-# Downloads one voice note as the read-only service account drive-reader
-# (DRIVE_SA_KEY_B64), checks its byte count against Drive, and prints
-# `[language probability, duration, bytes] text`. Fails with NO-AUDIO when the
-# note can't be fetched. The first call installs faster-whisper, google-auth and
-# the small speech model (about 1 GB, under a minute) outside the checkout;
-# later calls take seconds. Never prints the key.
+# ROUTINE.md, "Voice notes", says what it prints and how it fails.
 set -euo pipefail
 D="${TMPDIR:-/tmp}/stt"; mkdir -p "$D"
 [ -x "$D/venv/bin/python" ] || python3 -m venv "$D/venv"

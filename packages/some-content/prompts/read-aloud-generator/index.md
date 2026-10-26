@@ -37,9 +37,7 @@ with the genre and the premise.
 - Check the reply with `pnpm --filter @some-ui/topik check:deck <file>`,
   which runs `parseReadAloudDeck` (exported from `@some-ui/topik`) on it.
   Every finding it reports is something the app would drop, so fix the deck or
-  regenerate rather than shipping it with findings. The script loads the
-  source through Vite with topik's `@topik` alias, since plain `node` cannot
-  resolve the alias that `content` imports the mistake catalogue by.
+  regenerate rather than shipping it with findings.
 
 The daily reflections run, which writes the decks that answer study
 reflections, follows topik's

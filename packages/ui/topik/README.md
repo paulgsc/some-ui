@@ -35,22 +35,10 @@ drama amends it in v1.13: Rem. 4.12, 4.13).
 ## The daily reflections run
 
 [`ROUTINE.md`](./ROUTINE.md) is the instructions of the scheduled task that
-answers what the owner shares from the phone into Drive: a pair of word sets
-for each study reflection, a drama for each drama prompt, an issue for what a
-reflection says about the app, and a record of each run in the mailbox. The
-task's prompt points at it, so a change to the run is a reviewed change here.
-Its scripts:
-
-- `pnpm --filter @some-ui/topik check:deck <file>` checks a read-aloud or lens
-  deck with the app's own `parseReadAloudDeck` and prints `[]` when the phone
-  would keep every line, then the deck's practice, context, line count and lens
-  lines.
-- `pnpm --filter @some-ui/topik check:drama <file>` checks a drama with the
-  app's own `intakeTree` and prints `[]` when the phone would accept it.
-- `scripts/transcribe.sh <driveFileId>` downloads one voice note as a read-only
-  service account and transcribes it.
-
-Neither checker needs a build: each loads the source through Vite.
+answers what the owner shares from the phone into Drive. Its checkers are
+`pnpm --filter @some-ui/topik check:deck <file>` and `check:drama <file>`,
+after topik's dependencies are built; each prints `[]` when the phone would
+take the file.
 
 > [!IMPORTANT] > **Canon-governed workspace — read the canon before editing this package.**
 >

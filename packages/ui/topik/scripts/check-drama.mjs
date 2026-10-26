@@ -1,28 +1,18 @@
 #!/usr/bin/env node
-// usage, from packages/ui/topik: pnpm check:drama <drama.json>
-// Prints [] when the app would accept the drama. Exits 0 only when it prints [].
-// Loads the app's own intakeTree through topik's Vite config, so it needs no
-// build.
-import { readFileSync } from "node:fs"
-import { createServer } from "vite"
+// usage: pnpm --filter @some-ui/topik check:drama <drama.json>
+// Prints [] when the app's own intakeTree finds nothing in the drama, else
+// every finding by path, warnings included: the phone's routine list takes
+// only a drama with none (`adapter/routine-files`). Exits 0 only on [].
+import { readArg, withSource } from "./source.mjs"
 
-const vite = await createServer({
-  configFile: "vite.config.ts",
-  server: { middlewareMode: true, hmr: false },
-  appType: "custom",
-  logLevel: "error",
-})
-try {
-  const { intakeTree } = await vite.ssrLoadModule(
-    "/src/lib/topik/generation/tree-intake/index.ts"
-  )
-  const r = intakeTree(readFileSync(process.argv[2], "utf8"))
-  const errors =
-    r.status === "checked"
-      ? r.findings.filter((f) => f.severity === "error")
-      : null
-  process.stdout.write(`${JSON.stringify(errors ?? r)}\n`)
-  process.exitCode = errors && errors.length === 0 ? 0 : 1
-} finally {
-  await vite.close()
-}
+const raw = readArg("pnpm --filter @some-ui/topik check:drama <drama.json>")
+await withSource(
+  "/src/lib/topik/generation/tree-intake/index.ts",
+  ({ intakeTree }) => {
+    const r = intakeTree(raw)
+    process.stdout.write(
+      `${JSON.stringify(r.status === "checked" ? r.findings : r)}\n`
+    )
+    process.exitCode = r.status === "checked" && r.findings.length === 0 ? 0 : 1
+  }
+)
