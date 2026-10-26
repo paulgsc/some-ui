@@ -4,8 +4,9 @@
  * The voice lane's run end to end over fake stores (LA14): a copy pass, then
  * the exchange. A note whose audio is gone fails no run and stops counting
  * as waiting; one with no room fails the run as the phone's lack of room,
- * still waits, and goes once there is room; one the phone fails to copy
- * fails the run as the phone's fault.
+ * still waits, and goes once there is room; one the phone fails to copy,
+ * or whose record storage won't keep, fails the run as the phone's fault;
+ * and a Jobs note let go once its share arrived is never offered.
  */
 import type { HomeCall } from "@some-ui/core-utils"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
@@ -14,7 +15,7 @@ import { ShelfFullError } from "@some-ui/voice-capture"
 import { renderHook } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
-import { voiceLane } from "@/lib/home-link/voice"
+import { useUnsendable, voiceLane } from "@/lib/home-link/voice"
 import { sendVoice } from "@/lib/home-link/voice-copy"
 import type { JobEvent, JobsState } from "@/lib/jobs/model"
 import { EMPTY } from "@/lib/jobs/model"
@@ -92,8 +93,15 @@ function shelf(room: number): BlobShelf {
   }
 }
 
-/** A Jobs record naming `ids`, each with its audio on this phone or not. */
-function record(ids: ReadonlyArray<string>): { state: JobsState } {
+/**
+ * A Jobs record naming `ids`, each with its audio on this phone or not;
+ * `arrived`, with a decisions share of them that arrived in Drive, so the
+ * record let their audio go.
+ */
+function record(
+  ids: ReadonlyArray<string>,
+  arrived = false
+): { state: JobsState } {
   const passed: JobEvent = {
     id: "e1",
     at: "2026-10-25T08:00:00.000Z",
@@ -105,10 +113,28 @@ function record(ids: ReadonlyArray<string>): { state: JobsState } {
     pickId: "acme-sre",
     fingerprint: "f",
   }
+  const shared: ReadonlyArray<JobEvent> = [
+    {
+      id: "e2",
+      at: "2026-10-25T09:00:00.000Z",
+      type: "shared",
+      kind: "decisions",
+      day: "2026-10-25",
+      file: "decisions-2026-10-25.json",
+      through: 1,
+      voice: ids,
+    },
+    {
+      id: "e3",
+      at: "2026-10-25T10:00:00.000Z",
+      type: "arrived",
+      shareId: "e2",
+    },
+  ]
   return {
     state: {
       ...EMPTY,
-      log: [passed],
+      log: arrived ? [passed, ...shared] : [passed],
       voice: ids.map((id) => ({
         id,
         mimeType: "audio/webm",
@@ -128,13 +154,17 @@ const send: HomeCall = (_method, path) => {
   })
 }
 
-function setUp(room: number, audio: Record<string, Blob | Error | null>): void {
-  fakes.jobs = record(Object.keys(audio))
+function setUp(
+  room: number,
+  audio: Record<string, Blob | Error | null>,
+  { arrived = false, storage = memoryStorage() } = {}
+): void {
+  fakes.jobs = record(Object.keys(audio), arrived)
   fakes.audio = new Map(
     Object.entries(audio).flatMap(([id, a]) => (a === null ? [] : [[id, a]]))
   )
   fakes.home = createVoiceHome({
-    storage: memoryStorage(),
+    storage,
     shelf: shelf(room),
     encode: () => Promise.resolve({ base64: "", sha256: "s" }),
   })
@@ -162,5 +192,27 @@ describe("the voice lane's run, after its copy pass (LA14)", () => {
     expect(await sendVoice(send)).toEqual({ kind: "failed", why: "fault" })
     expect(fakes.home?.getSnapshot().held).toEqual(["v2"])
     expect(waiting()).toBe(1)
+  })
+
+  it("fails as the phone's fault when storage won't keep a copy's record, and the note still waits", async () => {
+    const storage = {
+      ...memoryStorage(),
+      setItem: (): void => {
+        throw new Error("quota")
+      },
+    }
+    setUp(5, { v1: new Blob(["a"]) }, { storage })
+    expect(await sendVoice(send)).toEqual({ kind: "failed", why: "fault" })
+    expect(waiting()).toBe(1)
+  })
+
+  it("never offers a Jobs note let go once its share arrived, and names it instead", async () => {
+    setUp(5, { r1: null, r2: null }, { arrived: true })
+    expect(await sendVoice(send)).toEqual({ kind: "synced" })
+    expect(waiting()).toBe(0)
+    expect(renderHook(() => useUnsendable()).result.current).toEqual({
+      inDrive: 2,
+      gone: 0,
+    })
   })
 })

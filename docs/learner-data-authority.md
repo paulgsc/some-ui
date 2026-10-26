@@ -1070,7 +1070,10 @@ was silent, so the run ended as if all had gone.
   gone note is counted until settled); `lib/home-link/__tests__/voice-send.test.ts`
   (`sendVoice` and the lane's count over fake stores: a gone note fails no
   run and stops waiting, no room fails the run and waits until it fits, a
-  read that throws fails it as the phone's fault and the pass goes on);
+  read that throws or storage that won't keep the record fails it as the
+  phone's fault and the pass goes on, and a Jobs note let go once its share
+  arrived is never offered and is named instead; each before any run and
+  after one);
   `lib/voice-home/__tests__/model.test.ts` ("how a run ends after a copy pass
   (LA14)": every pair of note ends, with and without a gone note, against
   every exchange end); `lib/voice-home/__tests__/runtime.test.ts` (`copy`
