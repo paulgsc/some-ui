@@ -11,6 +11,7 @@ export const tab = (over: Partial<chrome.tabs.Tab> = {}): chrome.tabs.Tab => ({
   autoDiscardable: true,
   pinned: false,
   highlighted: false,
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- `chrome.tabs.Tab` still requires `selected`
   selected: false,
   incognito: false,
   windowId: 1,
