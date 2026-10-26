@@ -5,7 +5,8 @@
  * keeping the words the first showed, and two to stop. Its words are
  * `lib/home-link/words`'s alone; it sends nothing. Korean's own list reads
  * home (`components/player/device-routine-files.ts`). The status page's
- * row for that look comes from here too (`useLookRow`).
+ * row for that look comes from here too (`useLookRow`): LA8 lets only the
+ * modules on its allowlist read the home link, and this is one.
  */
 import type { JSX } from "react"
 import { useState, useSyncExternalStore } from "react"

@@ -5,6 +5,8 @@
  * phone's own choices and sends nothing on its own, says each record's
  * state in its own words, stops Practice and the Jobs record on a second
  * press, which tells home only that, and sends aph's stop to aph's own mark.
+ * The status page's rows for the same records (#2165) claim nothing this
+ * launch hasn't seen.
  */
 import {
   act,
@@ -221,5 +223,49 @@ describe("the sharing ledger", () => {
     await mount()
     expect(screen.getByText(/tap the mark at the top of aph/)).toBeTruthy()
     expect(screen.queryByRole("button", { name: "Stop sending..." })).toBeNull()
+  })
+})
+
+/** The status page's rows, as `useLaneRows` gives them now. */
+async function rows(): Promise<{
+  rows: ReadonlyArray<{ id: string; line: string; mark: unknown }>
+  jobsKept: boolean
+}> {
+  const { useLaneRows } = await import(
+    "@/components/settings/device-sharing-ledger"
+  )
+  const seen: Array<ReturnType<typeof useLaneRows>> = []
+  const Probe = (): null => {
+    seen.push(useLaneRows())
+    return null
+  }
+  render(<Probe />)
+  await act(() => Promise.resolve())
+  const last = seen.at(-1)
+  if (last === undefined) throw new Error("no rows")
+  return last
+}
+
+describe("the status page's rows", () => {
+  it("says a kept record shows how it went once its screen opens, never up to date", async () => {
+    logged({ kind: "kept", scopes: ["sessions", "shelf"] })
+    const practice = (await rows()).rows.find((r) => r.id === "practice")
+    expect(practice).toMatchObject({
+      line: "How its last send went shows once Practice opens.",
+      mark: { kind: "lane", where: "kept", how: null },
+    })
+  })
+
+  it("claims nothing for aph or Jobs under a pairing made before choices were kept", async () => {
+    home.earlier = true
+    home.jobsKept = true
+    const board = await rows()
+    for (const id of ["aph", "jobs"]) {
+      expect(board.rows.find((r) => r.id === id)).toMatchObject({
+        line: expect.stringMatching(/own mark\.$/),
+        mark: { kind: "lane", where: "checking", how: null },
+      })
+    }
+    expect(board.jobsKept).toBe(true)
   })
 })

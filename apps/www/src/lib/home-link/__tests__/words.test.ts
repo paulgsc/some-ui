@@ -18,7 +18,7 @@ import {
   ROUTINE_TELLS_OPENED,
   WORDS,
 } from "@/lib/home-link/words"
-import { HOW_ORDER, WHERE_ORDER } from "@/lib/sharing-marks"
+import { HOW_ORDER, MARK_WORDS, WHERE_ORDER } from "@/lib/sharing-marks"
 
 import { MACHINERY } from "./machinery"
 
@@ -123,7 +123,8 @@ describe("each lane's sharing words", () => {
         ]
       })
     )
-    const fixed = Object.values(words).flatMap(stringsOf)
+    // The sharing marks' words live outside the link (`lib/sharing-marks`).
+    const fixed = [...Object.values(words), MARK_WORDS].flatMap(stringsOf)
 
     const named = [...said, ...fixed].filter((text) => MACHINERY.test(text))
     expect(fixed.length).toBeGreaterThan(30)

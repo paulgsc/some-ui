@@ -2,7 +2,7 @@
  * The status page (#2165): every process this phone runs, how it last went,
  * and which need their person. A glance strip of every mark, then one row
  * per process: the ones that need you first, the rest by context. Each row
- * draws its own surface's mark (`./sharing-marks`, J0's `StateIcon`) and
+ * draws its own surface's mark (`../sharing-marks`, J0's `StateIcon`) and
  * says its surface's words; `lib/status-board` only orders them. Each row
  * opens the page that owns it. It reads; it sends nothing.
  */
@@ -22,13 +22,13 @@ import {
   morningStop,
   morningTheme,
 } from "@/lib/jobs/morning"
-import type { JourneyTheme } from "@/lib/journey"
 import type { How } from "@/lib/sharing-marks"
+import { MARK_WORDS } from "@/lib/sharing-marks"
 import type { BoardPage, BoardRow, Look, RowMark } from "@/lib/status-board"
 import { boardOf, glanceOf, morningRow } from "@/lib/status-board"
 import { BOARD_WORDS, LOOK_WORDS } from "@/lib/status-board/words"
 import { useJobs } from "@/components/jobs/parts"
-import { StateIcon } from "@/components/journey-status"
+import { StateIcon, themeText } from "@/components/journey-status"
 import { useLookRow } from "@/components/settings/device-routine-reads"
 import { useLaneRows } from "@/components/settings/device-sharing-ledger"
 import {
@@ -39,6 +39,17 @@ import {
   WHERE_TONE,
   WhereMark,
 } from "@/components/sharing-marks"
+
+/** Every look, in the order its legend says them. */
+const LOOKS: ReadonlyArray<Look> = [
+  "read",
+  "busy",
+  "unreachable",
+  "forgotten",
+  "failed",
+  "not-yet",
+  "off",
+]
 
 /** A look home answered is an exchange, drawn as the sharing mark's `how`. */
 const LOOK_HOW: Readonly<Record<Exclude<Look, "off" | "not-yet">, How>> = {
@@ -70,18 +81,11 @@ const LookMark = ({
     <HowMark how={LOOK_HOW[look]} className={className} />
   )
 
-const THEME_TONE: Readonly<Record<JourneyTheme, string>> = {
-  waiting: "text-foreground",
-  moving: "text-warning",
-  read: "text-success",
-  stopped: "text-destructive",
-}
-
 const toneOfMark = (mark: RowMark): string =>
   mark.kind === "lane"
     ? toneOf(mark.where, mark.how)
     : mark.kind === "journey"
-      ? THEME_TONE[mark.theme]
+      ? themeText(mark.theme)
       : lookTone(mark.look)
 
 /** A row's mark, as its own surface draws it. */
@@ -153,7 +157,6 @@ const Row = ({ row }: { row: BoardRow }): JSX.Element => {
       {LINKED ? (
         <Link
           to={PAGES[row.page]}
-          aria-label={`${BOARD_WORDS.open(row.name)}. ${row.word}. ${row.line}`}
           className={cn(
             ROW,
             "hover:bg-accent focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none"
@@ -207,10 +210,10 @@ const Group = ({
 const Legends = (): JSX.Element => (
   <details className="rounded-xl border p-3">
     <summary className="cursor-pointer text-sm font-medium">
-      {BOARD_WORDS.legend}
+      {MARK_WORDS.title}
     </summary>
     <div className="mt-3 space-y-4">
-      <SharingLegend away title={BOARD_WORDS.sharingLegend} />
+      <SharingLegend away={false} title={BOARD_WORDS.sharingLegend} />
       <MarkLegend
         title={BOARD_WORDS.morning}
         lines={MORNING_IDS.map((id) => ({
@@ -228,7 +231,7 @@ const Legends = (): JSX.Element => (
       />
       <MarkLegend
         title={LOOK_WORDS.name}
-        lines={(["off", "not-yet"] as const).map((look) => ({
+        lines={LOOKS.map((look) => ({
           key: look,
           mark: (
             <LookMark
@@ -236,7 +239,7 @@ const Legends = (): JSX.Element => (
               className={cn("size-5 shrink-0", lookTone(look))}
             />
           ),
-          text: look === "off" ? LOOK_WORDS.off : LOOK_WORDS.notYet,
+          text: LOOK_WORDS.legend[look],
         }))}
       />
     </div>
@@ -248,13 +251,9 @@ export const StatusBoard = (): JSX.Element => {
   const look = useLookRow()
   const { state } = useJobs()
   const now = useMinuteClock()
-  const kept = lanes.some(
-    (row) =>
-      row.id === "jobs" && row.mark.kind === "lane" && row.mark.where === "kept"
-  )
   const rows = [
-    ...lanes,
-    morningRow(morningOf(state, kept, now), now),
+    ...lanes.rows,
+    morningRow(morningOf(state, lanes.jobsKept, now), now),
     ...(look === null ? [] : [look]),
   ]
   const board = boardOf(rows)

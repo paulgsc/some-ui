@@ -10,7 +10,8 @@
  * instead of offering it here.
  *
  * The status page's rows for the same records come from here too
- * (`useLaneRows`), read without a watch of their own.
+ * (`useLaneRows`), read without a watch of their own: LA8 lets only the
+ * modules on its allowlist read the lanes, and this is one.
  */
 import type { JSX, ReactNode } from "react"
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
@@ -37,6 +38,7 @@ import {
   historyLines,
   laneView,
   LEDGER,
+  lookedAt,
   SHEET,
   unsentLines,
   WORDS,
@@ -237,6 +239,11 @@ const PAGES: Readonly<Record<LaneId, BoardPage>> = {
 /**
  * One record kept on home, as the status page shows it. `run` is null for
  * aph, whose runs only its own screens watch: its row says where, not how.
+ * A run is held only while the app is open and its lane's watch has run
+ * (its wing's mark; voice notes' everywhere), so a kept lane with no run
+ * this launch says where it will show, never "up to date". An `unsure`
+ * choice (made before this phone kept its choices) is said as the ledger
+ * says it: its own screen's mark knows.
  */
 function laneRow(
   id: LaneId,
@@ -244,8 +251,21 @@ function laneRow(
   choices: ReturnType<typeof useLaneChoices>,
   run: KeptState | null,
   known: boolean,
+  unsure: boolean,
   more: ReadonlyArray<string> = []
 ): BoardRow {
+  if (unsure) {
+    return {
+      id,
+      group: "home",
+      name: LEDGER.names[id],
+      word: BOARD_WORDS.unsure,
+      line: LEDGER.unsure(LEDGER.opens[id]),
+      more,
+      mark: { kind: "lane", where: "checking", how: null },
+      page: PAGES[id],
+    }
+  }
   const view = laneView(WORDS[id], {
     ...counts,
     known,
@@ -253,57 +273,92 @@ function laneRow(
     run: run ?? INITIAL_KEPT,
     away: null,
   })
-  const elsewhere = run === null && choices.shared.size > 0
+  const kept = choices.shared.size > 0
+  const unseen = kept && (run === null || (run.last === null && !run.running))
+  const last = run?.last
   return {
     id,
     group: "home",
     name: LEDGER.names[id],
     word: view.word,
-    line: elsewhere ? BOARD_WORDS.aphElsewhere : view.line,
-    more,
-    mark: {
-      kind: "lane",
-      where: view.where,
-      how: run === null ? null : view.how,
-    },
+    line: unseen ? BOARD_WORDS.unseen(LEDGER.opens[id]) : view.line,
+    more:
+      last?.kind === "synced"
+        ? [BOARD_WORDS.lastWent(lookedAt(last.at)), ...more]
+        : more,
+    mark: { kind: "lane", where: view.where, how: unseen ? null : view.how },
     page: PAGES[id],
   }
+}
+
+/**
+ * Paired by an earlier build, and `scope` never in the log: its choice is
+ * one only its own screens know (`lanes.ts`'s `enterEarlier`).
+ */
+function useUnlogged(): (scope: Scope) => boolean {
+  const consent = phoneConsent()
+  const log = useSyncExternalStore(consent.subscribe, consent.getSnapshot)
+  const { link } = useHomeLink()
+  return (scope) =>
+    link.kind === "paired" && link.earlier && !everChosen(log, scope)
 }
 
 /**
  * Each record kept on home as the status page shows it (#2165): where it is
  * kept and how its last send went, read without a watch of its own
  * (`useLaneRun`), so nothing is sent from the page. Voice notes add what
- * this phone can't send (LA14).
+ * this phone can't send (LA14). `jobsKept`: whether the Jobs record is
+ * kept on home, its choice from before the log included, as the morning
+ * run's words need it.
  */
-export function useLaneRows(): ReadonlyArray<BoardRow> {
+export function useLaneRows(): {
+  rows: ReadonlyArray<BoardRow>
+  jobsKept: boolean
+} {
   const known = useHomeLink().link.kind !== "reading"
   const unsent = unsentLines(useUnsendable())
-  return [
-    laneRow(
-      "practice",
-      practiceLane.useCounts(),
-      useLaneChoices(practiceLane),
-      useLaneRun(practiceLane),
-      known
-    ),
-    laneRow("aph", NO_COUNTS, useLaneChoices(APH_SCOPES), null, known),
-    laneRow(
-      "jobs",
-      jobsLane.useCounts(),
-      useLaneChoices(jobsLane),
-      useLaneRun(jobsLane),
-      known
-    ),
-    laneRow(
-      "voice",
-      voiceLane.useCounts(),
-      useLaneChoices(voiceLane),
-      useLaneRun(voiceLane),
-      known,
-      unsent
-    ),
-  ]
+  const unlogged = useUnlogged()
+  const jobs = useLaneChoices(jobsLane)
+  // Read in render: `useCounts` below subscribes to the same Jobs store.
+  const jobsEarlier = unlogged("jobs") && jobsLane.keptBefore?.() === true
+  return {
+    rows: [
+      laneRow(
+        "practice",
+        practiceLane.useCounts(),
+        useLaneChoices(practiceLane),
+        useLaneRun(practiceLane),
+        known,
+        false
+      ),
+      laneRow(
+        "aph",
+        NO_COUNTS,
+        useLaneChoices(APH_SCOPES),
+        null,
+        known,
+        unlogged("aph")
+      ),
+      laneRow(
+        "jobs",
+        jobsLane.useCounts(),
+        jobs,
+        useLaneRun(jobsLane),
+        known,
+        jobsEarlier
+      ),
+      laneRow(
+        "voice",
+        voiceLane.useCounts(),
+        useLaneChoices(voiceLane),
+        useLaneRun(voiceLane),
+        known,
+        false,
+        unsent
+      ),
+    ],
+    jobsKept: jobs.shared.size > 0 || jobsEarlier,
+  }
 }
 
 export const SharingLedger = (): JSX.Element => {
@@ -312,9 +367,7 @@ export const SharingLedger = (): JSX.Element => {
   const link = useHomeLink()
   const pairing = pairingOf(link)
   const history = historyLines(log, pairing)
-  /** Paired by an earlier build, and `scope` never in the log. */
-  const unlogged = (scope: Scope): boolean =>
-    link.link.kind === "paired" && link.link.earlier && !everChosen(log, scope)
+  const unlogged = useUnlogged()
   return (
     <section className="space-y-3" aria-labelledby="ledger-heading">
       <div className="space-y-1">

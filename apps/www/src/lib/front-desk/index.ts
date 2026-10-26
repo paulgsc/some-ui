@@ -3,7 +3,7 @@
  * belongs to no wing, one page each (`/settings/<id>`), in the words the desk
  * shows (paulgsc/some-ui#2107, SM1).
  *
- * The phone's three pages are "apk" pages, so the build is asked `hasAudience`
+ * The phone's pages are "apk" pages, so the build is asked `hasAudience`
  * here, where they are offered (A3, packages/some-vite-config/AUDIENCES.md).
  */
 

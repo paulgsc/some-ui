@@ -106,7 +106,10 @@ export function needOf(mark: RowMark): Need {
   switch (mark.kind) {
     case "lane": {
       if (mark.how !== null) return LANE_NEEDS[mark.how]
-      return mark.where === "checking" ? "moving" : "off"
+      // Kept, with its last send shown elsewhere: it says once seen.
+      return mark.where === "checking" || mark.where === "kept"
+        ? "moving"
+        : "off"
     }
     case "journey": {
       return THEME_NEEDS[mark.theme]

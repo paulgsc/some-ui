@@ -3,9 +3,8 @@
  *
  * The status page (#2165): one glance mark per process, the ones that need
  * their person lifted into "Needs you", every row a way to the page that
- * owns it, and no Korean row on a phone with no home to look at. What each
- * row says is its surface's own (`laneView`, `morningOf`, `lastLook`), held
- * by their tests; the order is `lib/status-board`'s.
+ * owns it. What each row says is its surface's own (`laneView`, `morningOf`,
+ * `lastLook`), held by their tests; the order is `lib/status-board`'s.
  */
 import type * as ReactRouterModule from "@tanstack/react-router"
 import { cleanup, render, screen, within } from "@testing-library/react"
@@ -22,7 +21,7 @@ const sources = vi.hoisted((): { lanes: Array<unknown>; look: unknown } => ({
 }))
 
 vi.mock("@/components/settings/device-sharing-ledger", () => ({
-  useLaneRows: (): Array<unknown> => sources.lanes,
+  useLaneRows: (): unknown => ({ rows: sources.lanes, jobsKept: false }),
 }))
 vi.mock("@/components/settings/device-routine-reads", () => ({
   useLookRow: (): unknown => sources.look,
@@ -85,24 +84,15 @@ describe("StatusBoard", () => {
     // The plain-link stub keeps `to`, as the page names where each row goes.
     const links = (name: string): Array<[string | null, string | null]> =>
       [...screen.getByRole("region", { name }).querySelectorAll("a")].map(
-        (a) => [a.getAttribute("aria-label"), a.getAttribute("to")]
+        (a) => [a.textContent, a.getAttribute("to")]
       )
     // Voice notes on an unpaired phone, and today's picks waiting in Drive.
     const lifted = links(BOARD_WORDS.needsYou)
     expect(lifted.map(([, to]) => to)).toEqual(["/settings/home", "/jobs"])
-    expect(lifted[0]?.[0]).toMatch(/^Voice notes: open/)
+    expect(lifted[0]?.[0]).toMatch(/^Voice notes/)
     expect(links(BOARD_WORDS.groups.home)).toEqual([
-      [expect.stringMatching(/^Practice: open/), "/practice"],
+      [expect.stringMatching(/^Practice/), "/practice"],
     ])
     expect(links(BOARD_WORDS.groups.korean)).toHaveLength(1)
-  })
-
-  it("shows no Korean row where there is no home to look at", () => {
-    sources.lanes = [lane("Practice", "current", "practice")]
-    sources.look = null
-    render(<StatusBoard />)
-    expect(
-      screen.queryByRole("region", { name: BOARD_WORDS.groups.korean })
-    ).toBeNull()
   })
 })

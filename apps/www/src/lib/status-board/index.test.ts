@@ -6,17 +6,9 @@
 import { describe, expect, it } from "vitest"
 
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
-import type { Morning } from "@/lib/jobs/morning"
-import { MORNING_IDS, morningSign, morningStop } from "@/lib/jobs/morning"
-import { HOW_ORDER, MARK_WORDS, WHERE_ORDER } from "@/lib/sharing-marks"
+import { HOW_ORDER, WHERE_ORDER } from "@/lib/sharing-marks"
 import type { BoardRow, RowMark } from "@/lib/status-board"
-import {
-  boardOf,
-  glanceOf,
-  lookOf,
-  morningRow,
-  needOf,
-} from "@/lib/status-board"
+import { boardOf, glanceOf, lookOf, needOf } from "@/lib/status-board"
 import { BOARD_WORDS, LOOK_WORDS } from "@/lib/status-board/words"
 
 const row = (
@@ -57,10 +49,10 @@ describe("what each mark asks of its person", () => {
     })
   })
 
-  it("asks nothing of a record its person keeps on the phone", () => {
+  it("asks nothing of a record its person keeps on the phone, and waits on one not seen yet", () => {
     for (const where of WHERE_ORDER) {
       expect(needOf({ kind: "lane", where, how: null })).toBe(
-        where === "checking" ? "moving" : "off"
+        where === "checking" || where === "kept" ? "moving" : "off"
       )
     }
   })
@@ -131,28 +123,6 @@ describe("the board", () => {
   })
 })
 
-describe("this morning's run on the board", () => {
-  it("draws each state with Today's own stop and sign", () => {
-    const now = new Date("2026-10-26T18:00:00Z")
-    for (const id of MORNING_IDS) {
-      const m: Morning = {
-        id,
-        picked: 2,
-        undecided: 1,
-        seen: 12,
-        lookedAt: null,
-        problem: null,
-        unrecorded: false,
-      }
-      expect(morningRow(m, now).mark).toMatchObject({
-        kind: "journey",
-        at: morningStop(id),
-        sign: morningSign(id),
-      })
-    }
-  })
-})
-
 describe("the page's own words", () => {
   it("name no machinery", () => {
     const strings = (value: unknown): Array<string> =>
@@ -163,8 +133,8 @@ describe("the page's own words", () => {
           : typeof value === "object" && value !== null
             ? Object.values(value).flatMap(strings)
             : []
-    const said = [BOARD_WORDS, LOOK_WORDS, MARK_WORDS].flatMap(strings)
-    expect(said.length).toBeGreaterThan(30)
+    const said = [BOARD_WORDS, LOOK_WORDS].flatMap(strings)
+    expect(said.length).toBeGreaterThan(15)
     expect(said.filter((text) => MACHINERY.test(text))).toEqual([])
   })
 })

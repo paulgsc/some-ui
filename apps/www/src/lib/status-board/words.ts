@@ -15,16 +15,19 @@ export const BOARD_WORDS = {
     jobs: "Jobs",
     korean: "Korean",
   } satisfies Record<GroupId, string>,
-  /** A row's link, by its name. */
-  open: (name: string): string => `${name}: open where it runs`,
-  /** aph's run shows only on aph's own screens, which hold its lane. */
-  aphElsewhere: "How its last send went shows in aph.",
+  /**
+   * A kept record whose last send this launch hasn't seen: its own screen's
+   * mark says how it went once that screen opens.
+   */
+  unseen: (opens: string): string =>
+    `How its last send went shows once ${opens} opens.`,
+  /** When its last send reached home. */
+  lastWent: (when: string): string => `Last went to home ${when}.`,
   morning: "This morning's jobs run",
-  legend: "What the marks mean",
+  /** A choice made before this phone kept its choices: its own mark knows. */
+  unsure: "Not known here",
   /** The sharing marks' legend: their two axes. */
   sharingLegend: "Where it's kept, and how it last went",
-  /** Nothing on the board: a phone that runs none of it yet. */
-  none: "Nothing runs on this phone yet. Pair it with home in Settings to start.",
 } as const
 
 /** Korean's look at what the routine left on home (LA12). */
@@ -39,7 +42,14 @@ export const LOOK_WORDS = {
     "not-yet": "Not yet",
     off: "Off",
   } satisfies Record<Look, string>,
-  /** Its legend's lines for the two looks the sharing marks don't draw. */
-  off: "Korean doesn't look at home: the choice is off",
-  notYet: "Korean looks the next time its list opens",
+  /** Its legend: what each look's mark means here. */
+  legend: {
+    read: "Korean looked at home, and home answered",
+    busy: "Home was busy when Korean looked",
+    unreachable: "Home didn't answer when Korean looked",
+    forgotten: "Home no longer knows this phone: pair it again",
+    failed: "Something went wrong when Korean looked",
+    "not-yet": "Korean looks the next time its list opens",
+    off: "Korean doesn't look at home: the choice is off",
+  } satisfies Record<Look, string>,
 } as const
