@@ -1,10 +1,12 @@
 import type {
+  SessionCursor,
+  SessionState,
+} from "@topik/lib/topik/core/session-types"
+import type {
   ConversationBatch,
   Message,
   Question,
-  SessionCursor,
-  SessionState,
-} from "@topik/lib/topik"
+} from "@topik/lib/topik/entity/topik-types"
 import { describe, expect, it } from "vitest"
 
 import {
@@ -17,7 +19,7 @@ import {
   getTopikMetadata,
   getVisibleMessages,
   selectors,
-} from "./session-selectors"
+} from "."
 
 function makeMessage(id: string): Message {
   return {

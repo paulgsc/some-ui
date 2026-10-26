@@ -9,9 +9,10 @@
  * lesson.
  */
 
-import type { ConversationBatch, TopikMetadata } from "@topik/lib/topik"
-import { TopikFileSchema } from "@topik/lib/topik"
 import { topikLevelOf } from "@topik/lib/topik/core/lesson-selection"
+import type { TopikMetadata } from "@topik/lib/topik/entity/topik-metadata"
+import type { ConversationBatch } from "@topik/lib/topik/entity/topik-types"
+import { TopikFileSchema } from "@topik/lib/topik/entity/topik-types"
 
 export type Intake =
   | {

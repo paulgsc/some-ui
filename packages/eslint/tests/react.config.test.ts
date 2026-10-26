@@ -78,6 +78,7 @@ describe("react.config — rule severities for .tsx files", () => {
     ["react/no-unstable-nested-components", { allowAsProps: false }],
     ["react/jsx-no-useless-fragment", { allowExpressions: true }],
     ["jsx-a11y/alt-text", { img: ["Image"] }],
+    ["import/no-cycle", { ignoreExternal: true }],
   ])("%s keeps its options", async (rule, options) => {
     const entry = (await rulesPromise)[rule]
     const opts = Array.isArray(entry) ? entry[1] : undefined

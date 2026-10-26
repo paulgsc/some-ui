@@ -34,13 +34,16 @@
 
 import type { Lesson, Scene } from "@some-ui/makjang"
 import { FEELING_KEYS, isFeelingKey } from "@some-ui/styles/theme"
-import type { Probe } from "@topik/lib/topik"
-import { GLOSS_RELATION, ProbeSchema } from "@topik/lib/topik"
 import { FIGURE_KEYS, isFigureKey } from "@topik/lib/topik/core/cast"
 import {
   diffUtterance,
   MIN_DIFF_SIMILARITY,
 } from "@topik/lib/topik/core/morph-diff"
+import type { Probe } from "@topik/lib/topik/entity/topik-types"
+import {
+  GLOSS_RELATION,
+  ProbeSchema,
+} from "@topik/lib/topik/entity/topik-types"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 
 export type TreeFinding = {

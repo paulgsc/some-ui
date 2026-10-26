@@ -5,11 +5,11 @@
 
 import type { UseQueryOptions, UseQueryResult } from "@tanstack/react-query"
 import { useQuery } from "@tanstack/react-query"
+import type { ITopikMetadataRepository } from "@topik/lib/topik/core/session-types"
 import type {
-  ITopikMetadataRepository,
   TopikManifest,
   TopikMetadata,
-} from "@topik/lib/topik"
+} from "@topik/lib/topik/entity/topik-metadata"
 
 // QUERY KEYS
 

@@ -1,7 +1,8 @@
 /**
  * The browser side of the study nudge: registering the worker, holding the
- * notification permission, raising a notification, and remembering when the
- * last one went out. Everything impure lives here so `./index` stays pure.
+ * notification permission, and raising a notification. Everything impure
+ * lives here or in `./nudge-record` (what this browser keeps about the last
+ * nudge) so `./index` stays pure.
  *
  * Every entry point is a no-op that resolves falsy where the API is missing
  * (jsdom, SSR, an insecure origin, Firefox private browsing) rather than
@@ -21,17 +22,12 @@ import {
 } from "@/lib/file-host-config/client"
 
 import type { NudgeDecision } from "./index"
+import { nativeNudgePermission } from "./nudge-record"
 
 /** Kept in step by hand with public/sw.js (a public/ asset that cannot
  * import from src/) and `nudge::payload` in paulgsc/server; a mismatch shows
  * up as notifications stacking rather than replacing. */
 const NUDGE_TAG = "some-ui.study-nudge"
-
-/**
- * Runtime state, not preference, so not in `UserSettings`: the cooldown is a
- * fact about this browser, where quiet hours are about the person.
- */
-const LAST_NUDGE_KEY = "some-ui.study-nudge.last-shown.v1"
 
 /**
  * `Notification` is absent in jsdom and on insecure origins; `serviceWorker`
@@ -49,21 +45,9 @@ export function nudgesSupported(): boolean {
   )
 }
 
-/**
- * The Android app's notification permission, as last read from the OS.
- * Android's answer is asynchronous and this module's is not, so `./native`
- * writes it here whenever it asks, and `useStudyNudge` asks on mount.
- */
-let nativePermission: NotificationPermission = "default"
-
-export function setNativeNudgePermission(
-  permission: NotificationPermission
-): void {
-  nativePermission = permission
-}
-
 export function nudgePermission(): NotificationPermission {
-  if (import.meta.env.VITE_DEVICE_BACKEND === "true") return nativePermission
+  if (import.meta.env.VITE_DEVICE_BACKEND === "true")
+    return nativeNudgePermission()
   if (!nudgesSupported()) return "denied"
   return Notification.permission
 }
@@ -147,24 +131,6 @@ export async function showTestNudge(
   if (import.meta.env.VITE_DEVICE_BACKEND !== "true") return showNudge(decision)
   const { showNativeTestNudge } = await import("./native")
   return showNativeTestNudge(decision).catch(() => false)
-}
-
-export function readLastNudgeAt(): string | null {
-  if (typeof window === "undefined") return null
-  try {
-    return window.localStorage.getItem(LAST_NUDGE_KEY)
-  } catch {
-    return null
-  }
-}
-
-export function recordNudgeShown(at: Date): void {
-  if (typeof window === "undefined") return
-  try {
-    window.localStorage.setItem(LAST_NUDGE_KEY, at.toISOString())
-  } catch {
-    // A refused write (private mode, quota) costs a cooldown, not the feature.
-  }
 }
 
 /* ────────────────────────────────────────────────────────────────────────

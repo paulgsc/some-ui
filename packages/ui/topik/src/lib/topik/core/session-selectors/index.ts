@@ -5,16 +5,18 @@
 import type {
   BatchMetadata,
   CatalogStatus,
-  ConversationBatch,
   FeedbackData,
-  Message,
-  Question,
   QuizStage,
   SessionCursor,
   SessionEvent,
   SessionState,
-  TopikMetadata,
-} from "@topik/lib/topik"
+} from "@topik/lib/topik/core/session-types"
+import type { TopikMetadata } from "@topik/lib/topik/entity/topik-metadata"
+import type {
+  ConversationBatch,
+  Message,
+  Question,
+} from "@topik/lib/topik/entity/topik-types"
 
 export const selectors = {
   getPhase(state: SessionState): SessionState["phase"] {

@@ -6,8 +6,8 @@
 
 import type { UseQueryResult } from "@tanstack/react-query"
 import { useQuery } from "@tanstack/react-query"
-import type { TopikMetadata } from "@topik/lib/topik"
 import type { TreeFeed } from "@topik/lib/topik/adapter/tree-feed"
+import type { TopikMetadata } from "@topik/lib/topik/entity/topik-metadata"
 import type { TreeIntake } from "@topik/lib/topik/generation/tree-intake"
 
 const treeFeedKeys = {

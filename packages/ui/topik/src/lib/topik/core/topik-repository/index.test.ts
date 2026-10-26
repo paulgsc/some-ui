@@ -1,5 +1,5 @@
-import type { TopikFile } from "@topik/lib/topik"
-import { TopikFileSchema } from "@topik/lib/topik"
+import type { TopikFile } from "@topik/lib/topik/entity/topik-types"
+import { TopikFileSchema } from "@topik/lib/topik/entity/topik-types"
 import { describe, expect, it, vi } from "vitest"
 
 import { TopikRepository } from "."

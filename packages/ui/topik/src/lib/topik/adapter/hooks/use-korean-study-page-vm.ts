@@ -1,22 +1,21 @@
 import { useId, useMemo } from "react"
-import type {
-  FeedbackData,
-  Message,
-  PlayState,
-  Question,
-  QuizStage,
-  TopikMetadata,
-} from "@topik/lib/topik"
+import { useSessionConfig } from "@topik/lib/topik/adapter/context/session-config-context"
+import { useSession } from "@topik/lib/topik/adapter/hooks/use-session"
 import {
   actions,
+  getAvailableTopiks,
   getCurrentBatch,
   getCurrentMessage,
   getVisibleMessages,
   selectors,
-  useSession,
-  useSessionConfig,
-} from "@topik/lib/topik"
-import { getAvailableTopiks } from "@topik/lib/topik/adapter/session-selectors"
+} from "@topik/lib/topik/core/session-selectors"
+import type {
+  FeedbackData,
+  PlayState,
+  QuizStage,
+} from "@topik/lib/topik/core/session-types"
+import type { TopikMetadata } from "@topik/lib/topik/entity/topik-metadata"
+import type { Message, Question } from "@topik/lib/topik/entity/topik-types"
 
 export type KoreanStudyPageVM = {
   header: {

@@ -8,21 +8,19 @@ import {
 } from "react"
 import type { Speaker } from "@some-ui/speech"
 import { useQueryClient } from "@tanstack/react-query"
+import { createQueryBridge } from "@topik/lib/topik/adapter/server"
+import type { EffectExecutor } from "@topik/lib/topik/core/effect-executor"
+import { createEffectExecutor } from "@topik/lib/topik/core/effect-executor"
+import { createSessionMachine } from "@topik/lib/topik/core/session-machine"
+import { actions } from "@topik/lib/topik/core/session-selectors"
 import type {
-  EffectExecutor,
   ISessionMachine,
   ITopikMetadataRepository,
   ITopikRepository,
-  Message,
   SessionEvent,
   SessionState,
-} from "@topik/lib/topik"
-import {
-  actions,
-  createEffectExecutor,
-  createSessionMachine,
-} from "@topik/lib/topik"
-import { createQueryBridge } from "@topik/lib/topik/adapter/server"
+} from "@topik/lib/topik/core/session-types"
+import type { Message } from "@topik/lib/topik/entity/topik-types"
 
 export type UseEnhancedSessionConfig = {
   repository: ITopikRepository

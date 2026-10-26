@@ -2,7 +2,8 @@
 
 import type { UseQueryOptions, UseQueryResult } from "@tanstack/react-query"
 import { useQuery } from "@tanstack/react-query"
-import type { ConversationBatch, ITopikRepository } from "@topik/lib/topik"
+import type { ITopikRepository } from "@topik/lib/topik/core/session-types"
+import type { ConversationBatch } from "@topik/lib/topik/entity/topik-types"
 
 // TYPES
 

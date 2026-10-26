@@ -123,6 +123,12 @@ if (event.type === "HYDRATION_SUCCESS") {
 
 ## Module Structure
 
+`index.ts` is the barrel the package's components import. A module inside
+`src/lib/topik` imports the leaf module that declares a name instead
+(`@topik/lib/topik/core/session-types`, say): the barrel re-exports core and
+the React adapter together, so importing it from core reaches React and closes
+a cycle back to the importer. `eslint.config.js` bans it there (#2109).
+
 ### Core Modules (Framework-Agnostic)
 
 1. **session-types.ts**

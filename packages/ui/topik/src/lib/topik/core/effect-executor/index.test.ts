@@ -1,15 +1,15 @@
 import type { SayOptions, Speaker, SpeechOutcome } from "@some-ui/speech"
 import type {
-  ConversationBatch,
-  ITopikRepository,
-  Message,
-  TopikMetadata,
-} from "@topik/lib/topik"
-import type {
   IQueryBridge,
   ISessionMachine,
+  ITopikRepository,
   SessionState,
 } from "@topik/lib/topik/core/session-types"
+import type { TopikMetadata } from "@topik/lib/topik/entity/topik-metadata"
+import type {
+  ConversationBatch,
+  Message,
+} from "@topik/lib/topik/entity/topik-types"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {

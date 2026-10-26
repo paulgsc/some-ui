@@ -6,11 +6,9 @@
  */
 
 import type { QueryClient } from "@tanstack/react-query"
-import type {
-  ConversationBatch,
-  IQueryBridge,
-  TopikManifestFile,
-} from "@topik/lib/topik"
+import type { IQueryBridge } from "@topik/lib/topik/core/session-types"
+import type { TopikManifestFile } from "@topik/lib/topik/entity/topik-metadata"
+import type { ConversationBatch } from "@topik/lib/topik/entity/topik-types"
 
 import { metadataKeys } from "./topik-metadata-queries"
 import { topikKeys } from "./topik-queries"
