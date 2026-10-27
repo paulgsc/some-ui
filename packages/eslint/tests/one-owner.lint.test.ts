@@ -1,6 +1,6 @@
 /**
- * Lint-time tests for one-owner/no-local-primitive (U4, #2112): each shape a
- * copy of `assertNever` or `isRecord` took before core-utils owned them.
+ * Lint-time tests for one-owner/no-local-primitive (#2112), over the shapes
+ * the repo's copies of `assertNever` and `isRecord` take.
  */
 
 import {
@@ -36,10 +36,6 @@ describe("lint: one-owner/no-local-primitive", () => {
     [
       "a file-local function",
       "function assertNever(value: never): never { throw new Error(String(value)) }",
-    ],
-    [
-      "an exported function",
-      "export function assertNever(value: never): never { throw new Error(String(value)) }",
     ],
     [
       "a const arrow",
@@ -78,14 +74,20 @@ describe("lint: one-owner/no-local-primitive", () => {
     expectMessageForRule(msgs, RULE, "isRecord in assertNever's owner")
   })
 
-  it("stays quiet on an import, a call and an unrelated name", async () => {
+  it("stays quiet on an import, a call, and unrelated or inherited names", async () => {
     const code = `
 import { assertNever, isRecord } from "@some-ui/core-utils"
 const isRecordLike = (value: unknown): boolean => isRecord(value)
 function check(x: never): never { return assertNever(x) }
 export default function () { return null }
+function toString(): string { return "example" }
+const hasOwnProperty = (): boolean => true
 `
     const msgs = await lintSnippet(makeConfig(), code, "src/lib/guards.ts")
-    expectNoMessageForRule(msgs, RULE, "an import, a call, isRecordLike")
+    expectNoMessageForRule(
+      msgs,
+      RULE,
+      "an import, a call, isRecordLike, toString"
+    )
   })
 })

@@ -2,8 +2,9 @@ import { noLocalPrimitive } from "@eslint/rules/index.js"
 import { defineConfig } from "eslint/config"
 
 /**
- * One owner per small primitive (U4, #2112). In maishatuRecommended, so every
- * preset carries it; extensions keep `@some-extension/common` as their owner.
+ * One owner per small primitive (#2112). Extensions are bundled on their own,
+ * so `@some-extension/common` is theirs. A copy that has to stay carries a
+ * disable that says why.
  */
 export const oneOwnerPlugin = {
   meta: { name: "one-owner", version: "0.0.1" },

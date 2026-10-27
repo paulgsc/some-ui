@@ -3,7 +3,7 @@ import type { FilterConfig } from "@filter/types/config"
 import type { ExtensionMessage } from "@filter/types/message"
 import type { GetTabFilterStateResponse } from "@filter/types/tab"
 
-// eslint-disable-next-line one-owner/no-local-primitive -- moves to @some-extension/common in the extensions slice (#2112)
+// eslint-disable-next-line one-owner/no-local-primitive -- not moved to @some-extension/common yet (#2112)
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null
 }

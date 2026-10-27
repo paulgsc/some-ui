@@ -1,17 +1,12 @@
 import type { Rule } from "eslint"
 import type * as ESTree from "estree"
 
-type Owners = Readonly<Record<string, ReadonlyArray<string>>>
-
 /**
  * U4 (#2112): a small primitive the repo owns once (`assertNever`,
  * `isRecord`) is imported from its owner, never defined again beside the
  * code that needs it. The `owners` option maps each name to the files
  * allowed to define it, as path suffixes; a function declaration, or a
  * `const` bound to a function, with that name anywhere else is reported.
- *
- * A copy that has to stay (a package the owner cannot reach, a copy that
- * means something else) carries a disable that says why.
  */
 export const noLocalPrimitive: Rule.RuleModule = {
   meta: {
@@ -39,12 +34,15 @@ export const noLocalPrimitive: Rule.RuleModule = {
     },
   },
   create(context) {
-    // context.options is any[] per @types/eslint
-    const owners: Owners = context.options[0]?.owners ?? {}
+    // context.options is any[] per @types/eslint; no-unsafe-assignment is off
+    const option: Record<string, ReadonlyArray<string>> = context.options[0]
+      ?.owners ?? {}
+    // A Map, so `toString` or `hasOwnProperty` never reads the prototype's.
+    const owners = new Map(Object.entries(option))
     const filename = context.filename.replaceAll("\\", "/")
 
     function check(node: Rule.Node, name: string): void {
-      const allowed = owners[name]
+      const allowed = owners.get(name)
       if (allowed === undefined) return
       if (allowed.some((suffix) => filename.endsWith(suffix))) return
       context.report({

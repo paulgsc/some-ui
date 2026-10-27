@@ -153,7 +153,7 @@ export async function copyDeviceSessionsAndRefresh(
   }
 }
 
-// eslint-disable-next-line one-owner/no-local-primitive -- imports core-utils' once U2's branch lands (#2112)
+// eslint-disable-next-line one-owner/no-local-primitive -- not moved: the open U2 branch (#2110) edits this file (#2112)
 function assertNever(value: never): never {
   throw new Error(`unhandled transfer outcome: ${JSON.stringify(value)}`)
 }
