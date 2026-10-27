@@ -1,15 +1,15 @@
+import { inMemoryStorage } from "@some-ui/core-utils"
+import type { KeyedStorage } from "@some-ui/core-utils"
 import { beforeEach, describe, expect, it } from "vitest"
 
-import type { StorageAdapter } from "@/lib/tenant/storage"
-import { createInMemoryStorage } from "@/lib/tenant/storage"
 import type { UserProfile } from "@/lib/tenant/types"
 
 import { createProfileRepository, DEFAULT_PROFILE } from "."
 
-let storage: StorageAdapter
+let storage: KeyedStorage
 
 beforeEach(() => {
-  storage = createInMemoryStorage()
+  storage = inMemoryStorage()
 })
 
 describe("ProfileRepository", () => {

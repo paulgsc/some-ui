@@ -7,6 +7,7 @@
  * Every word it shows is in `FEEDBACK_WORDS` (`index.test.ts`).
  */
 
+import type { Salvaged } from "@some-ui/core-utils"
 import { z } from "zod"
 
 export const FEEDBACK_KEYS = ["tooEasy", "tooManyRepeats"] as const
@@ -33,12 +34,21 @@ export function storedFeedback(
   return feedback && { version: 1, ...feedback }
 }
 
-/** The answers in a stored document, or null: parsed, not trusted. */
-export function parseFeedback(raw: unknown): ReadAloudFeedback | null {
+/**
+ * The answers in a stored document (null for none given, as `storedFeedback`
+ * keeps them), or null for a value that is not one: parsed, not trusted.
+ */
+export function readFeedback(
+  raw: unknown
+): Salvaged<ReadAloudFeedback | null> | null {
+  if (raw === null) return { value: null, whole: true }
   const parsed = FeedbackSchema.safeParse(raw)
   if (!parsed.success) return null
   const { tooEasy, tooManyRepeats } = parsed.data
-  return tooEasy || tooManyRepeats ? { tooEasy, tooManyRepeats } : null
+  return {
+    value: tooEasy || tooManyRepeats ? { tooEasy, tooManyRepeats } : null,
+    whole: true,
+  }
 }
 
 /** The answers after tapping `key`; null once neither is given. */

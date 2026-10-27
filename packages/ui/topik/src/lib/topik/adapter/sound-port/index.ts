@@ -18,6 +18,7 @@
  * package, and would make its own context too.
  */
 
+import type { KeyedStorage } from "@some-ui/core-utils"
 import {
   audioContextConstructor,
   localStorageOrNull,
@@ -36,7 +37,6 @@ import type { Presented, SoundPort } from "@some-ui/makjang"
 import type { Speaker } from "@some-ui/speech"
 import type { FeelingTone } from "@some-ui/styles/theme"
 import { feelingTone, isFeelingKey } from "@some-ui/styles/theme"
-import type { StorageLike } from "@topik/lib/topik/adapter/storage"
 import { sayKorean } from "@topik/lib/topik/adapter/voice-port"
 import { FEELING_WORDS } from "@topik/lib/topik/core/feeling"
 import { SPOKEN_LANGUAGE } from "@topik/lib/topik/core/spoken-language"
@@ -59,7 +59,7 @@ export const SOUND_STORAGE_KEY = "topik:drama-sound"
 
 /** Off unless this device was left on. */
 export function createSoundControl(
-  storage: StorageLike | null = localStorageOrNull()
+  storage: KeyedStorage | null = localStorageOrNull()
 ): SoundControl {
   const read = (): boolean => {
     try {

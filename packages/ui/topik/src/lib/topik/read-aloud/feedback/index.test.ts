@@ -3,7 +3,7 @@ import type { ReadAloudFeedback } from "@topik/lib/topik/read-aloud/feedback"
 import {
   FEEDBACK_KEYS,
   FEEDBACK_WORDS,
-  parseFeedback,
+  readFeedback,
   storedFeedback,
   toggled,
 } from "@topik/lib/topik/read-aloud/feedback"
@@ -31,16 +31,17 @@ describe("the sitting's answers", () => {
   })
 
   it("parses what it kept, and nothing it cannot trust", () => {
-    expect(parseFeedback(storedFeedback(feedback(true, true)))).toEqual(
-      feedback(true, true)
-    )
+    expect(readFeedback(storedFeedback(feedback(true, true)))).toEqual({
+      value: feedback(true, true),
+      whole: true,
+    })
     expect(storedFeedback(null)).toBeNull()
     for (const bad of [
       { version: 1, tooEasy: { at: "soon" }, tooManyRepeats: null },
       // Neither given is no answer at all.
       { version: 1, tooEasy: null, tooManyRepeats: null },
     ]) {
-      expect(parseFeedback(bad)).toBeNull()
+      expect(readFeedback(bad)?.value ?? null).toBeNull()
     }
   })
 

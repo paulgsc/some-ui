@@ -1,6 +1,6 @@
 import { noAnswer } from "@/test-support/no-answer"
 import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
-import { isRecord } from "@some-ui/core-utils"
+import { inMemoryStorage, isRecord } from "@some-ui/core-utils"
 import type { HomeEvent, HomeSession } from "@some-ui/leetype"
 import { describe, expect, it } from "vitest"
 
@@ -11,7 +11,6 @@ import {
   readSent,
   rememberSent,
 } from "@/lib/home-link/sent"
-import { createInMemoryStorage } from "@/lib/tenant/storage"
 
 function session(id: string): HomeSession {
   const at = "2026-10-24T20:00:00.000Z"
@@ -143,7 +142,7 @@ describe("sendLog", () => {
 
 describe("logToSend", () => {
   it("leaves out a session home read back as it is now", () => {
-    const store = createInMemoryStorage()
+    const store = inMemoryStorage()
     const [a, b] = [session("a"), session("b")]
     rememberSent(store, readSent(store, "p1"), {
       leetype: { a: digestOf(a) },

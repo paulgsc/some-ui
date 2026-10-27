@@ -1,3 +1,4 @@
+import { inMemoryStorage } from "@some-ui/core-utils"
 import { workedLesson } from "@topik/lib/topik/generation/tree-intake/worked-example"
 import { describe, expect, it } from "vitest"
 
@@ -61,16 +62,8 @@ describe("createTreeFeed", () => {
 })
 
 describe("createServedPointStore", () => {
-  const memory = (): Pick<Storage, "getItem" | "setItem"> => {
-    const data = new Map<string, string>()
-    return {
-      getItem: (key) => data.get(key) ?? null,
-      setItem: (key, value) => void data.set(key, value),
-    }
-  }
-
   it("keeps the place of the tree played last, by its id", () => {
-    const storage = memory()
+    const storage = inMemoryStorage()
     const points = createServedPointStore(storage)
     points.set("first-tea", { route: ["b"] })
     expect(createServedPointStore(storage).get("first-tea")).toEqual({
@@ -83,7 +76,7 @@ describe("createServedPointStore", () => {
   })
 
   it("keeps one tree saved under two keys in two places", () => {
-    const store = createServedPointStore(memory())
+    const store = createServedPointStore(inMemoryStorage())
     pointsFor(store, "tea-v1").set("first-tea", { route: ["b"] })
     expect(pointsFor(store, "tea-v1").get("first-tea")).toEqual({
       route: ["b"],
@@ -92,7 +85,7 @@ describe("createServedPointStore", () => {
   })
 
   it("reads nothing from a slot it cannot parse, and survives storage refusing", () => {
-    const storage = memory()
+    const storage = inMemoryStorage()
     storage.setItem(SERVED_DRAMA_POINT_KEY, "{")
     expect(createServedPointStore(storage).get("first-tea")).toBeUndefined()
     const refusing = {
@@ -101,6 +94,9 @@ describe("createServedPointStore", () => {
       },
       setItem: (): void => {
         throw new Error("QuotaExceededError")
+      },
+      removeItem: (): void => {
+        throw new Error("SecurityError")
       },
     }
     const points = createServedPointStore(refusing)

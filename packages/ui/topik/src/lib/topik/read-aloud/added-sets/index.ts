@@ -17,6 +17,7 @@
  * store`), and the handheld lesson offers the newest unopened ones first.
  */
 
+import type { Salvaged } from "@some-ui/core-utils"
 import { isRecord, jsonValues } from "@topik/lib/topik/generation/intake"
 import type {
   ReadAloudDeck,
@@ -239,11 +240,13 @@ export const storedSet = (set: AddedSet): unknown => ({
 
 /**
  * The stored list (`storedSet`'s), each deck parsed again on the way out: a
- * set an older build wrote, or one that no longer parses, is dropped alone.
+ * set an older build wrote, or one that no longer parses, is left out alone
+ * (`whole` false, so the store copies the list aside before writing over
+ * it); null for a value that is not a list.
  */
-export function parseAddedSets(raw: unknown): Array<AddedSet> {
-  if (!Array.isArray(raw)) return []
-  return raw.flatMap((entry) => {
+export function readAddedSets(raw: unknown): Salvaged<Array<AddedSet>> | null {
+  if (!Array.isArray(raw)) return null
+  const sets = raw.flatMap((entry): Array<AddedSet> => {
     const stored = StoredSetSchema.safeParse(entry)
     if (!stored.success) return []
     const parsed = parseReadAloudDeck(stored.data.deck)
@@ -256,4 +259,5 @@ export function parseAddedSets(raw: unknown): Array<AddedSet> {
       },
     ]
   })
+  return { value: sets, whole: sets.length === raw.length }
 }

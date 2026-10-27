@@ -1,5 +1,12 @@
 import type { KeyedStorage } from "@core-utils/lib/storage"
-import { openRecord, writeRecord } from "@core-utils/lib/storage"
+import {
+  openKept,
+  openRecord,
+  salvageEntries,
+  salvageList,
+  writeKept,
+  writeRecord,
+} from "@core-utils/lib/storage"
 import { memoryStorage as storage } from "@some-ui/vite-config/vitest/memory-storage"
 import { describe, expect, it } from "vitest"
 
@@ -72,5 +79,64 @@ describe("writeRecord", () => {
     const s = storage()
     s.full = true
     expect(writeRecord(s, KEY, '{"n":1}', parse)).toBe(false)
+  })
+})
+
+const isNumber = (value: unknown): value is number => typeof value === "number"
+const numbers = salvageList(isNumber)
+
+describe("openKept", () => {
+  it("keeps the entries it can read, once the whole value is copied aside", () => {
+    const s = storage([[KEY, '[1,"two",3]']])
+    expect(openKept(s, KEY, numbers, [])).toEqual({
+      value: [1, 3],
+      writable: true,
+    })
+    expect(s.map.get(`${KEY}:unreadable:1`)).toBe('[1,"two",3]')
+  })
+
+  it("moves aside a value that is not the record's kind at all", () => {
+    const s = storage([[KEY, '{"n":1}']])
+    expect(openKept(s, KEY, numbers, [])).toEqual({ value: [], writable: true })
+    expect(s.map.get(`${KEY}:unreadable:1`)).toBe('{"n":1}')
+  })
+
+  it("shows what it could read but writes nothing when it cannot copy it aside", () => {
+    const s = storage([[KEY, '[1,"two"]']])
+    s.full = true
+    expect(openKept(s, KEY, numbers, [])).toEqual({
+      value: [1],
+      writable: false,
+    })
+  })
+
+  it("is never writable without storage", () => {
+    expect(openKept(null, KEY, numbers, [7])).toEqual({
+      value: [7],
+      writable: false,
+    })
+  })
+})
+
+describe("writeKept", () => {
+  it("writes only what reads back whole, and says when it is refused", () => {
+    const s = storage()
+    expect(writeKept(s, KEY, [1, 2], numbers)).toBe(true)
+    expect(writeKept(s, KEY, [1, "two"], numbers)).toBe(false)
+    expect(s.map.get(KEY)).toBe("[1,2]")
+    s.full = true
+    expect(writeKept(s, KEY, [3], numbers)).toBe(false)
+    expect(writeKept(null, KEY, [3], numbers)).toBe(false)
+    expect(s.map.get(KEY)).toBe("[1,2]")
+  })
+})
+
+describe("salvageEntries", () => {
+  it("reads a map entry by entry, and nothing else", () => {
+    const read = salvageEntries((value) => (isNumber(value) ? value : null))
+    expect(read('{"a":1,"b":"x"}')).toEqual({ value: { a: 1 }, whole: false })
+    expect(read('{"a":1}')).toEqual({ value: { a: 1 }, whole: true })
+    expect(read("[1]")).toBeNull()
+    expect(read("{torn")).toBeNull()
   })
 })

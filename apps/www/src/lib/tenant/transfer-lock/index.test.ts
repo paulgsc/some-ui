@@ -5,9 +5,9 @@
  * plain-http listener uses; the Web Locks path is what everything else uses.
  */
 
+import { inMemoryStorage, jsonOf } from "@some-ui/core-utils"
 import { describe, expect, it, vi } from "vitest"
 
-import { createInMemoryStorage, readJSON } from "@/lib/tenant/storage"
 import type { LockDeps } from "@/lib/tenant/transfer-lock"
 import { withTransferLock } from "@/lib/tenant/transfer-lock"
 
@@ -85,7 +85,7 @@ describe("with Web Locks", () => {
 })
 
 describe("with a storage lease", () => {
-  const deps = (storage = createInMemoryStorage(), at = 1_000): LockDeps => ({
+  const deps = (storage = inMemoryStorage(), at = 1_000): LockDeps => ({
     locks: undefined,
     storage,
     now: () => at,
@@ -93,7 +93,7 @@ describe("with a storage lease", () => {
   })
 
   it("runs, holds the lease while it does, and gives it back", async () => {
-    const storage = createInMemoryStorage()
+    const storage = inMemoryStorage()
     const seen: Array<string | null> = []
     const result = await withTransferLock(() => {
       seen.push(storage.getItem("some-ui.tenant.sessions.transfer.lease.v1"))
@@ -108,7 +108,7 @@ describe("with a storage lease", () => {
   })
 
   it("tells a second tab it is busy while the first holds a live lease", async () => {
-    const storage = createInMemoryStorage()
+    const storage = inMemoryStorage()
     let release: () => void = () => undefined
     const first = withTransferLock(
       () =>
@@ -128,7 +128,7 @@ describe("with a storage lease", () => {
   })
 
   it("takes over a lease whose holder stopped renewing it", async () => {
-    const storage = createInMemoryStorage()
+    const storage = inMemoryStorage()
     storage.setItem(
       "some-ui.tenant.sessions.transfer.lease.v1",
       JSON.stringify({ token: "dead-tab", at: 1_000 })
@@ -142,7 +142,7 @@ describe("with a storage lease", () => {
   })
 
   it("gives way when a rival's write lands over its own before it reads back", async () => {
-    const storage = createInMemoryStorage()
+    const storage = inMemoryStorage()
     const rival = JSON.stringify({ token: "rival", at: 1_000 })
     const result = await withTransferLock(() => Promise.resolve("never"), {
       ...deps(storage),
@@ -159,7 +159,7 @@ describe("with a storage lease", () => {
   })
 
   it("releases when the run fails, and treats an unreadable lease as free", async () => {
-    const storage = createInMemoryStorage()
+    const storage = inMemoryStorage()
     storage.setItem("some-ui.tenant.sessions.transfer.lease.v1", "not json")
     await expect(
       withTransferLock(() => Promise.reject(new Error("boom")), deps(storage))
@@ -172,7 +172,7 @@ describe("with a storage lease", () => {
   it("renews the lease while a long transfer runs", async () => {
     vi.useFakeTimers()
     try {
-      const storage = createInMemoryStorage()
+      const storage = inMemoryStorage()
       let clock = 1_000
       const run = withTransferLock(
         () =>
@@ -184,12 +184,10 @@ describe("with a storage lease", () => {
       await vi.advanceTimersByTimeAsync(0)
       clock = 11_000
       await vi.advanceTimersByTimeAsync(10_000)
-      const renewed = readJSON<{ at: number }>(
-        storage,
-        "some-ui.tenant.sessions.transfer.lease.v1",
-        { at: -1 }
+      const renewed = jsonOf(
+        storage.getItem("some-ui.tenant.sessions.transfer.lease.v1") ?? "null"
       )
-      expect(renewed.at).toBe(11_000)
+      expect(renewed).toMatchObject({ at: 11_000 })
       await vi.advanceTimersByTimeAsync(20_000)
       await run
     } finally {

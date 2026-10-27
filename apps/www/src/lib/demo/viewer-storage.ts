@@ -7,13 +7,14 @@
  * theme script in `index.html` runs earlier still and may read a remembered
  * theme; what a viewer changes is not kept.
  */
+import { inMemoryStorage } from "@some-ui/core-utils"
+
 import { VIEWER_BUILD } from "@/lib/data-mode"
-import { createInMemoryStorage } from "@/lib/tenant/storage"
 
 if (VIEWER_BUILD && typeof window !== "undefined") {
   for (const name of ["localStorage", "sessionStorage"] as const) {
     Object.defineProperty(window, name, {
-      value: createInMemoryStorage(),
+      value: inMemoryStorage(),
       configurable: true,
     })
   }

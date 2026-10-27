@@ -4,7 +4,7 @@ import {
   markOf,
   noteRead,
   noteShown,
-  parseTally,
+  readTally,
   rowOf,
   storedTally,
   tallyKey,
@@ -148,18 +148,20 @@ describe("the sentence tally (Rem. 7.5)", () => {
 
   it("round-trips what it keeps, and keeps nothing for an empty tally", () => {
     const tally = noteRead(noteShown(emptyTally(), "cafe", MON), "cafe")
-    expect(parseTally(JSON.parse(JSON.stringify(storedTally(tally))))).toEqual(
-      tally
-    )
+    expect(readTally(JSON.parse(JSON.stringify(storedTally(tally))))).toEqual({
+      value: tally,
+      whole: true,
+    })
     expect(storedTally(emptyTally())).toBeNull()
   })
 
   it("keeps a row a clock set back wrote, with its last date before its first", () => {
     const set = noteShown(noteShown(emptyTally(), "cafe", WED), "cafe", MON)
     expect(rowOf(set, "cafe")).toMatchObject({ first: WED, last: MON })
-    expect(parseTally(JSON.parse(JSON.stringify(storedTally(set))))).toEqual(
-      set
-    )
+    expect(readTally(JSON.parse(JSON.stringify(storedTally(set))))).toEqual({
+      value: set,
+      whole: true,
+    })
     expect(tallySince(set)).toBe(WED)
   })
 
@@ -178,8 +180,8 @@ describe("the sentence tally (Rem. 7.5)", () => {
       ["a fraction", { ...good, shown: 1.5 }],
       ["a negative count", { ...good, read: -1 }],
       ["a string where a count goes", { ...good, shown: "2" }],
-    ])("drops a row with %s and keeps the rest", (_, bad) => {
-      expect(parseTally(rows(bad))).toEqual({ good })
+    ])("leaves out a row with %s and keeps the rest", (_, bad) => {
+      expect(readTally(rows(bad))).toEqual({ value: { good }, whole: false })
     })
 
     it.each([
@@ -189,7 +191,7 @@ describe("the sentence tally (Rem. 7.5)", () => {
       ["another version", { version: 2, rows: { good } }],
       ["rows that are not a record", { version: 1, rows: [good] }],
     ])("reads %s as an empty tally", (_, raw) => {
-      expect(parseTally(raw)).toEqual({})
+      expect(readTally(raw)?.value ?? {}).toEqual({})
     })
   })
 })

@@ -9,6 +9,14 @@
  * editing again is the retry.
  */
 
+import {
+  jsonOf,
+  localStorageOrNull,
+  openKept,
+  readWhole,
+  removeRecord,
+  writeKept,
+} from "@some-ui/core-utils"
 import type { IntentErrorKind } from "@some-ui/intent-kit"
 
 export type StoredAutosaveFailure = {
@@ -31,39 +39,35 @@ function isStoredAutosaveFailure(
   return true
 }
 
+const readFailure = readWhole((raw): StoredAutosaveFailure | null => {
+  const value = jsonOf(raw)
+  return isStoredAutosaveFailure(value) ? value : null
+})
+
 export function readDurableFailure(
   sessionId: string
 ): StoredAutosaveFailure | null {
-  if (typeof window === "undefined") return null
-  try {
-    const raw = window.localStorage.getItem(keyFor(sessionId))
-    if (!raw) return null
-    const parsed: unknown = JSON.parse(raw)
-    return isStoredAutosaveFailure(parsed) ? parsed : null
-  } catch {
-    return null
-  }
+  return openKept<StoredAutosaveFailure | null>(
+    localStorageOrNull(),
+    keyFor(sessionId),
+    readFailure,
+    null
+  ).value
 }
 
+/**
+ * Best-effort: on a storage failure the in-memory status still covers this
+ * mount; only surviving navigation is lost.
+ */
 export function writeDurableFailure(
   sessionId: string,
   failure: StoredAutosaveFailure
 ): void {
-  if (typeof window === "undefined") return
-  try {
-    window.localStorage.setItem(keyFor(sessionId), JSON.stringify(failure))
-  } catch {
-    // Ignored: best effort: on a storage failure the in-memory status still covers this
-    // mount; only surviving navigation is lost.
-  }
+  writeKept(localStorageOrNull(), keyFor(sessionId), failure, readFailure)
 }
 
 export function clearDurableFailure(sessionId: string): void {
-  if (typeof window === "undefined") return
-  try {
-    window.localStorage.removeItem(keyFor(sessionId))
-  } catch {
-    // Ignored: as in writeDurableFailure. At worst an earlier failure shows
-    // again when the editor next opens, until a save succeeds and clears it.
-  }
+  const storage = localStorageOrNull()
+  // As writeDurableFailure: best-effort.
+  if (storage !== null) removeRecord(storage, keyFor(sessionId))
 }

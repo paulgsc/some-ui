@@ -9,6 +9,7 @@
  * - when even that is impossible (the storage throws), the record opens
  *   read-only and refuses every change.
  */
+import type { KeyedStorage } from "@some-ui/core-utils"
 import { openRecord, writeRecord } from "@some-ui/core-utils"
 import {
   DEBRIEF_RESULTS,
@@ -23,8 +24,6 @@ import {
   TrackedSchema,
 } from "@some-ui/job-desk"
 import { z } from "zod"
-
-import type { StorageAdapter } from "@/lib/tenant/storage"
 
 import type { JobEvent, JobsState } from "./model"
 import { NO_NOTICE } from "./notice"
@@ -194,17 +193,14 @@ function parse(raw: string): JobsState | null {
   }
 }
 
-export function openStored(storage: StorageAdapter): Opened {
+export function openStored(storage: KeyedStorage): Opened {
   const opened = openRecord(storage, STORAGE_KEY, parse, QUARANTINE_PREFIX)
   if (opened.kind === "kept") return { kind: "kept", state: opened.value }
   return opened.kind === "moved" ? { kind: "empty" } : opened
 }
 
 /** Whether the phone kept `state`; false leaves the old value as it was. */
-export function writeStored(
-  storage: StorageAdapter,
-  state: JobsState
-): boolean {
+export function writeStored(storage: KeyedStorage, state: JobsState): boolean {
   try {
     const text = JSON.stringify({ v: VERSION, ...state })
     return writeRecord(storage, STORAGE_KEY, text, parse)

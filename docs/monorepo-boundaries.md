@@ -296,9 +296,7 @@ out on purpose: an extension, which is not in www's bundle and records what
 it decides in its own flight recorder, and apps/mailbox, whose own setting
 (MB3) replaces it. An exemption is a `log-guard` disable on the line, with a
 reason: `reportFailure`'s own line, and one dev-only notice in
-`apps/www/src/providers/tts.tsx`. Until U2 (#2110) deletes it,
-`apps/www/src/hooks/use-local-storage/index.ts` is turned off file-wide in
-`apps/www/eslint.config.js`.
+`apps/www/src/providers/tts.tsx`.
 
 A catch can also drop a failure without writing anything. One that does
 something with it (a fallback value, a `return false`) shows what it does;

@@ -14,7 +14,14 @@
  * model.
  */
 
-import { localStorageOrNull } from "@some-ui/core-utils"
+import type { Kept, KeyedStorage } from "@some-ui/core-utils"
+import {
+  jsonOf,
+  localStorageOrNull,
+  openKept,
+  readWhole,
+  writeKept,
+} from "@some-ui/core-utils"
 import type { LastDramaPort } from "@topik/lib/topik/core/drama-runtime"
 import type { LastDrama } from "@topik/lib/topik/core/last-drama"
 import {
@@ -83,11 +90,17 @@ export type LastDramaStore = LastDramaPort & {
   subscribe(listener: () => void): () => void
 }
 
+/**
+ * The stored record; a shape this build does not know is copied aside
+ * (`openKept`), not migrated.
+ */
+const readDocument = readWhole((raw): LastDrama | null => {
+  const parsed = DocumentSchema.safeParse(jsonOf(raw))
+  return parsed.success ? parsed.data.last : null
+})
+
 export function createLastDramaStore(
-  storage: Pick<
-    Storage,
-    "getItem" | "setItem" | "removeItem"
-  > | null = localStorageOrNull(),
+  storage: KeyedStorage | null = localStorageOrNull(),
   now: () => number = Date.now
 ): LastDramaStore {
   const listeners = new Set<() => void>()
@@ -96,15 +109,8 @@ export function createLastDramaStore(
     record: null,
   }
 
-  const parse = (raw: string | null): LastDrama | null => {
-    try {
-      // A shape this build does not know is discarded, not migrated.
-      const parsed = DocumentSchema.safeParse(JSON.parse(raw ?? "null"))
-      return parsed.success ? parsed.data.last : null
-    } catch {
-      return null
-    }
-  }
+  const open = (): Kept<LastDrama | null> =>
+    openKept<LastDrama | null>(storage, LAST_DRAMA_KEY, readDocument, null)
 
   const read = (): LastDrama | null => {
     let raw: string | null
@@ -113,7 +119,7 @@ export function createLastDramaStore(
     } catch {
       return null
     }
-    if (raw !== cached.raw) cached = { raw, record: parse(raw) }
+    if (raw !== cached.raw) cached = { raw, record: open().value }
     const { record } = cached
     return record && record.at >= now() - LAST_DRAMA_TTL_MS ? record : null
   }
@@ -127,12 +133,16 @@ export function createLastDramaStore(
   }
 
   const save = (record: LastDrama): void => {
-    try {
-      storage?.setItem(
+    // Nothing is written over a value that could not be copied aside.
+    if (!open().writable) return
+    if (
+      !writeKept(
+        storage,
         LAST_DRAMA_KEY,
-        JSON.stringify({ version: 1, last: record })
+        { version: 1, last: record },
+        readDocument
       )
-    } catch {
+    ) {
       // Quota, privacy mode: a lost record is one prompt's history. The one
       // before it is another play's, so it goes too.
       remove()
@@ -140,7 +150,9 @@ export function createLastDramaStore(
     for (const listener of listeners) listener()
   }
 
-  if (read() === null) remove()
+  // An expired record goes; an unreadable one was copied aside first, and
+  // one that could not be stays.
+  if (read() === null && open().writable) remove()
 
   return {
     get: read,

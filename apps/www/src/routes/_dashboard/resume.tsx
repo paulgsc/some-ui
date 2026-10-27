@@ -1,6 +1,7 @@
 import type { JSX, MouseEvent } from "react"
 import { useEffect, useState } from "react"
 import { useTheme } from "@/providers/theme"
+import { localStorageOrNull } from "@some-ui/core-utils"
 import { useMediaQuery } from "@some-ui/react-hooks"
 import { resumeData, ResumeDocument } from "@some-ui/resume"
 import {
@@ -30,9 +31,26 @@ const MOBILE_PREVIEW_QUERY = "(max-width: 767px)"
 // desktop window out of this branch; height alone would catch both.
 const TOUCH_LANDSCAPE_QUERY = "(max-height: 500px) and (pointer: coarse)"
 
+/** What this browser remembered under `key`; null where storage throws. */
+function remembered(key: string): string | null {
+  try {
+    return localStorageOrNull()?.getItem(key) ?? null
+  } catch {
+    return null
+  }
+}
+
+/** Remembers a choice; a refused write (private mode, quota) lasts the visit. */
+function remember(key: string, value: string): void {
+  try {
+    localStorageOrNull()?.setItem(key, value)
+  } catch {
+    // Ignored: the next visit opens on the default (above).
+  }
+}
+
 function initialComposition(): ResumeComposition {
-  if (typeof window === "undefined") return "backend"
-  const stored = localStorage.getItem(RESUME_COMPOSITION_KEY)
+  const stored = remembered(RESUME_COMPOSITION_KEY)
   return isResumeComposition(stored) ? stored : "backend"
 }
 
@@ -41,8 +59,7 @@ function isResumeTemplate(value: string | null): value is ResumeTemplate {
 }
 
 function initialTemplate(): ResumeTemplate {
-  if (typeof window === "undefined") return DEFAULT_TEMPLATE
-  const stored = localStorage.getItem(RESUME_TEMPLATE_KEY)
+  const stored = remembered(RESUME_TEMPLATE_KEY)
   return isResumeTemplate(stored) ? stored : DEFAULT_TEMPLATE
 }
 
@@ -89,7 +106,7 @@ const ResumeRoute = (): JSX.Element => {
     RESUME_TEMPLATES[0].label
 
   const selectComposition = (next: ResumeComposition): void => {
-    localStorage.setItem(RESUME_COMPOSITION_KEY, next)
+    remember(RESUME_COMPOSITION_KEY, next)
     setCompositionState(next)
     setMenu(null)
   }
@@ -105,7 +122,7 @@ const ResumeRoute = (): JSX.Element => {
   }
 
   const selectTemplate = (next: ResumeTemplate): void => {
-    localStorage.setItem(RESUME_TEMPLATE_KEY, next)
+    remember(RESUME_TEMPLATE_KEY, next)
     setTemplateState(next)
     setMenu(null)
   }

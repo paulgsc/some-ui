@@ -3,6 +3,7 @@
  * picked digest, a voice note's take, the share sheet) and decides which late
  * result is stale. Screens read `getSnapshot` and call the methods below.
  */
+import type { KeyedStorage } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/core-utils"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import { parseDigest } from "@some-ui/job-desk"
@@ -23,7 +24,6 @@ import {
 } from "@some-ui/voice-capture"
 
 import type { SharedFile } from "@/lib/share-files"
-import type { StorageAdapter } from "@/lib/tenant/storage"
 
 import type { FormDraft, FormDrafts } from "./drafts"
 import { draftRecordedBy, readDrafts, withDraft, writeDrafts } from "./drafts"
@@ -93,7 +93,7 @@ export type NoticePort = {
 type ShareDir = "job-decisions" | "job-scouts"
 
 export type JobsPorts = {
-  storage: StorageAdapter
+  storage: KeyedStorage
   audio: BlobShelf
   saving: (id: string, inFlight: boolean) => void
   isSaving: (id: string) => boolean

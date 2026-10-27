@@ -18,6 +18,7 @@
  * patched together from parts would show counts that never happened.
  */
 
+import type { Salvaged } from "@some-ui/core-utils"
 import { PACE_MAX, PACE_MIN } from "@topik/lib/topik/read-aloud/timing"
 import { z } from "zod"
 
@@ -47,17 +48,22 @@ const PaceEntrySchema = z.object({
   seen: z.number().int().min(0),
 })
 
-/** A stored pace book, keeping every entry that parses. */
-export function parsePaceBook(raw: unknown): PaceBook {
+/**
+ * The stored pace book, entry by entry (`whole` when every entry parsed), or
+ * null for a value that is not one.
+ */
+export function readPaceBook(raw: unknown): Salvaged<PaceBook> | null {
   const parsed = z.record(z.string(), z.unknown()).safeParse(raw)
-  if (!parsed.success) return {}
+  if (!parsed.success) return null
+  const entries = Object.entries(parsed.data)
   // Built from entries, never by assignment, so no id can reach a prototype.
-  return Object.fromEntries(
-    Object.entries(parsed.data).flatMap(([wordId, entry]) => {
+  const book = Object.fromEntries(
+    entries.flatMap(([wordId, entry]) => {
       const checked = PaceEntrySchema.safeParse(entry)
       return checked.success ? [[wordId, checked.data] as const] : []
     })
   )
+  return { value: book, whole: Object.keys(book).length === entries.length }
 }
 
 /** The pace book limited to words the vocabulary still names (Rem. 7.5). */
@@ -188,13 +194,18 @@ export function recentCounts(
     )
 }
 
-/** A stored record, or an empty one when it does not parse. */
-export function parsePracticeRecord(raw: unknown): PracticeRecord {
+/** The stored record, or null for a value that is not one. */
+export function readPracticeRecord(
+  raw: unknown
+): Salvaged<PracticeRecord> | null {
   const parsed = PracticeRecordSchema.safeParse(raw)
-  if (!parsed.success) return emptyRecord()
+  if (!parsed.success) return null
   const days = parsed.data.days
   if (new Set(days.map((entry) => entry.day)).size !== days.length) {
-    return emptyRecord()
+    return null
   }
-  return { version: 1, days: bounded(days), totals: parsed.data.totals }
+  return {
+    value: { version: 1, days: bounded(days), totals: parsed.data.totals },
+    whole: true,
+  }
 }

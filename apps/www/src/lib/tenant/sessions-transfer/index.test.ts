@@ -7,6 +7,8 @@
  * that 404s another account's session, as the real one does).
  */
 
+import type { KeyedStorage } from "@some-ui/core-utils"
+import { inMemoryStorage, jsonOf } from "@some-ui/core-utils"
 import { beforeEach, describe, expect, it } from "vitest"
 
 import { authority } from "@/lib/authority"
@@ -25,18 +27,12 @@ import {
   copyDeviceSessions,
   previewDeviceTransfer,
 } from "@/lib/tenant/sessions-transfer"
-import type { StorageAdapter } from "@/lib/tenant/storage"
-import {
-  createInMemoryStorage,
-  readJSON,
-  writeJSON,
-} from "@/lib/tenant/storage"
 import type { SessionRecord, SessionStatus } from "@/lib/tenant/types"
 
-let device: StorageAdapter
+let device: KeyedStorage
 
 beforeEach(() => {
-  device = createInMemoryStorage()
+  device = inMemoryStorage()
   window.localStorage.clear()
   authority.resetForTests()
 })
@@ -58,12 +54,12 @@ function onDevice(
 }
 
 function seed(sessions: Array<SessionRecord>): void {
-  writeJSON(device, STORAGE_KEY, sessions)
+  device.setItem(STORAGE_KEY, JSON.stringify(sessions))
 }
 
 /** One account's store. Another account is another call. */
 function account(): SessionsStore {
-  return createSessionsRepository(createInMemoryStorage(), 0)
+  return createSessionsRepository(inMemoryStorage(), 0)
 }
 
 /** A store that delegates to `inner`, with some methods replaced. */
@@ -446,12 +442,13 @@ describe("two tabs at once", () => {
       racing,
       device
     )
-    const receipt = readJSON<Record<string, unknown>>(
-      device,
-      "some-ui.tenant.sessions.transfers.v1",
-      {}
+    const receipt = jsonOf(
+      device.getItem("some-ui.tenant.sessions.transfers.v1") ?? "{}"
     )
-    expect(Object.keys(receipt).sort()).toEqual(["local-1", "local-2"])
+    expect(receipt).toEqual({
+      "local-1": expect.anything(),
+      "local-2": expect.anything(),
+    })
   })
 })
 

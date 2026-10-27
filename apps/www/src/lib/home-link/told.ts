@@ -17,36 +17,44 @@
  * them (as unchanged, the ones it heard). The run goes on, since that home
  * refuses nothing under a scope it does not know.
  */
-import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
-import { isRecord, readAs, unexpectedAnswer } from "@some-ui/core-utils"
+import type { HomeCall, HomeExchanged, KeyedStorage } from "@some-ui/core-utils"
+import {
+  isRecord,
+  jsonOf,
+  openKept,
+  readAs,
+  readWhole,
+  unexpectedAnswer,
+  writeKept,
+} from "@some-ui/core-utils"
 import { z } from "zod"
 
 import type { ConsentLog, Scope } from "./consent-model"
 
 const TOLD_KEY = "some-ui.home.told.v1"
 
-type Store = Pick<Storage, "getItem" | "setItem"> | null
+type Store = KeyedStorage | null
+
+type Told = { pairing: string; seq: number }
+
+const readToldRecord = readWhole((raw): Told | null => {
+  const parsed = jsonOf(raw)
+  return isRecord(parsed) &&
+    typeof parsed.pairing === "string" &&
+    typeof parsed.seq === "number"
+    ? { pairing: parsed.pairing, seq: parsed.seq }
+    : null
+})
 
 /** The last choice home heard under `pairing`, by its place in the log. */
 export function readTold(storage: Store, pairing: string): number {
-  try {
-    const parsed: unknown = JSON.parse(storage?.getItem(TOLD_KEY) ?? "null")
-    return isRecord(parsed) &&
-      parsed.pairing === pairing &&
-      typeof parsed.seq === "number"
-      ? parsed.seq
-      : 0
-  } catch {
-    return 0
-  }
+  const told = openKept<Told | null>(storage, TOLD_KEY, readToldRecord, null)
+  return told.value?.pairing === pairing ? told.value.seq : 0
 }
 
 function rememberTold(storage: Store, pairing: string, seq: number): void {
-  try {
-    storage?.setItem(TOLD_KEY, JSON.stringify({ pairing, seq }))
-  } catch {
-    // Ignored: unwritten, the next run tells home again; home answers it unchanged.
-  }
+  // Unwritten, the next run tells home again; home answers it unchanged.
+  writeKept(storage, TOLD_KEY, { pairing, seq }, readToldRecord)
 }
 
 /** Each change home has not heard under `pairing`, in the order made. */

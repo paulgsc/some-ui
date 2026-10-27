@@ -1,3 +1,4 @@
+import type { KeyedStorage } from "@some-ui/core-utils"
 import type { Speaker, SpeechOutcome } from "@some-ui/speech"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
@@ -7,7 +8,6 @@ import {
   createReadAloudStore,
   READ_ALOUD_STORAGE_KEYS,
 } from "@topik/lib/topik/adapter/read-aloud-store"
-import type { StorageLike } from "@topik/lib/topik/adapter/storage"
 import {
   REPO_SETS as DECK,
   LEVEL_ONE_LENS_SET,
@@ -149,12 +149,13 @@ describe("ReadAloudScreen, at the end of a sitting", () => {
       tooEasy: { at: new Date(NOON).toISOString() },
       tooManyRepeats: null,
     })
-    const storage: StorageLike = {
+    const storage: KeyedStorage = {
       getItem: (key) => base.getItem(key),
       setItem: (key, value) => {
         if (key === READ_ALOUD_STORAGE_KEYS.feedback) throw new Error("quota")
         base.setItem(key, value)
       },
+      removeItem: (key) => base.removeItem(key),
     }
     await sittingOver(createReadAloudStore(storage))
     const pressed = (name: string): string | null =>
@@ -469,12 +470,13 @@ describe("ReadAloudScreen's tally (Rem. 7.5)", () => {
 
   it("runs the drill on when the phone cannot keep the tally, and says so in the sheet", async () => {
     const base = memoryStorage()
-    const storage: StorageLike = {
+    const storage: KeyedStorage = {
       getItem: (key) => base.getItem(key),
       setItem: (key, value) => {
         if (key === READ_ALOUD_STORAGE_KEYS.tally) throw new Error("quota")
         base.setItem(key, value)
       },
+      removeItem: (key) => base.removeItem(key),
     }
     show(createReadAloudStore(storage))
     await toSentence()
@@ -512,12 +514,13 @@ describe("ReadAloudScreen's tally (Rem. 7.5)", () => {
   it("keeps what it holds, and says so, when the phone cannot clear it", () => {
     const base = memoryStorage()
     createReadAloudStore(base).saveTally(SEEN_YESTERDAY)
-    const storage: StorageLike = {
+    const storage: KeyedStorage = {
       getItem: (key) => base.getItem(key),
       setItem: (key, value) => {
         if (key === READ_ALOUD_STORAGE_KEYS.tally) throw new Error("quota")
         base.setItem(key, value)
       },
+      removeItem: (key) => base.removeItem(key),
     }
     show(createReadAloudStore(storage))
     fireEvent.click(

@@ -278,6 +278,12 @@ describe("lint: charter — no-zindex-escalation and no-raw-storage", () => {
       true,
     ],
     [
+      "fires on localStorage reached through window",
+      `window.localStorage.getItem("key")`,
+      STORAGE,
+      true,
+    ],
+    [
       "does NOT fire when using browser.storage.local",
       `browser.storage.local.set({ "boyo.key": "val" })`,
       STORAGE,

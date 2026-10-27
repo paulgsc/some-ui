@@ -3,7 +3,7 @@
  *
  * `ProfileRoute` must not show a skeleton forever once a read has failed.
  *
- * `profileRepository` is localStorage-backed (`readJSON` never rejects), so
+ * `profileRepository` is localStorage-backed (its `get` never rejects), so
  * there is no transport to sabotage; `useProfile` is mocked to hand the route
  * the terminal `UseQueryResult` shapes a failing source would produce. A
  * weaker proof than the fetch-sabotaged `/sessions` suite, but the only way

@@ -2,6 +2,7 @@ import {
   appsRecommended,
   compiledPackageStyleImportBanPattern,
   intentGuardConfig,
+  keptRecordConfig,
   ownerGuardConfig,
   parentRelativeImportPattern,
   queryGuardConfig,
@@ -15,7 +16,8 @@ import { defineConfig } from "eslint/config"
 // intentGuardConfig the intent boundary (`src/lib/intent/`; an effect from a
 // JSX handler must go through `useIntent`/`useAsyncIntent`), queryGuardConfig
 // the query hooks (`src/lib/tenant/`; no silently-defaulted `data`), and
-// ownerGuardConfig state seeded from a prop or the clock (frozen at mount).
+// ownerGuardConfig state seeded from a prop or the clock (frozen at mount),
+// and keptRecordConfig the page's storage (KR1; its exemptions are below).
 //
 // LA1 (docs/learner-data-authority.md): the network globals are restricted in
 // `src/` so a request carrying learner state cannot be written beside the
@@ -79,6 +81,15 @@ export default defineConfig([
   ...intentGuardConfig,
   ...queryGuardConfig,
   ...ownerGuardConfig,
+  {
+    ...keptRecordConfig[0],
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: [
+      ...(keptRecordConfig[0]?.ignores ?? []),
+      "src/lib/tenant/storage.ts",
+      "src/lib/demo/viewer-storage.ts",
+    ],
+  },
 
   {
     files: ["src/**/*.{ts,tsx}"],
@@ -212,14 +223,5 @@ export default defineConfig([
         { considerDefaultExhaustiveForUnions: false },
       ],
     },
-  },
-
-  // FT1 (docs/monorepo-boundaries.md) holds every failure in `src/` to
-  // `reportFailure`. One reader is left out, for now only: its two
-  // `console.warn` go when U2 (#2110) moves it onto the kept-record reader.
-  // Delete this block with them.
-  {
-    files: ["src/hooks/use-local-storage/index.ts"],
-    rules: { "log-guard/console-reports-message-only": "off" },
   },
 ])
