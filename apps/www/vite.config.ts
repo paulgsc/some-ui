@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process"
 import fs from "node:fs"
 import { resolve } from "node:path"
 import { createStylePlugins } from "@some-ui/styles/styles-build/dev-config"
@@ -166,6 +167,23 @@ function pagesConnectPolicy(): Plugin {
   }
 }
 
+/**
+ * The commit this build is made from, which `/assurance` names as the copy
+ * of the ledger it shows; empty where there is no git checkout (a Docker
+ * build context), and the page then says the commit is not known.
+ */
+function buildCommit(): string {
+  try {
+    return execFileSync("git", ["rev-parse", "HEAD"], {
+      cwd: import.meta.dirname,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim()
+  } catch {
+    return ""
+  }
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(
   ({ command, mode }): UserConfig => ({
@@ -281,17 +299,18 @@ export default defineConfig(
     // An explicit VITE_FILE_HOST_ENDPOINT still wins, from the shell or an
     // env file: Vite reads env files only after this config, so they are
     // loaded here to see one.
-    ...(command === "serve" &&
-    fileHost.source !== "container" &&
-    !loadEnv(mode, import.meta.dirname, "VITE_").VITE_FILE_HOST_ENDPOINT
-      ? {
-          define: {
+    define: {
+      "import.meta.env.VITE_BUILD_COMMIT": JSON.stringify(buildCommit()),
+      ...(command === "serve" &&
+      fileHost.source !== "container" &&
+      !loadEnv(mode, import.meta.dirname, "VITE_").VITE_FILE_HOST_ENDPOINT
+        ? {
             "import.meta.env.VITE_FILE_HOST_ENDPOINT": JSON.stringify(
               `${FILE_HOST_PROXY_PATH}/api/v1`
             ),
-          },
-        }
-      : {}),
+          }
+        : {}),
+    },
     resolve: {
       alias: {
         "@": resolve(import.meta.dirname, "./src"),

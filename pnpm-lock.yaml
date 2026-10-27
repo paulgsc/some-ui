@@ -455,6 +455,9 @@ importers:
       '@some-ui/aph':
         specifier: workspace:*
         version: link:../../packages/ui/aph
+      '@some-ui/assurance':
+        specifier: workspace:*
+        version: link:../../packages/assurance
       '@some-ui/auth':
         specifier: workspace:*
         version: link:../../packages/ui/auth
@@ -782,6 +785,15 @@ importers:
       fast-check:
         specifier: ^4.10.2
         version: 4.10.2
+
+  packages/assurance:
+    devDependencies:
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@some-ui/vite-config':
+        specifier: workspace:*
+        version: link:../some-vite-config
 
   packages/contract-harness:
     dependencies:

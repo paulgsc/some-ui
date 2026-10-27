@@ -551,6 +551,26 @@ time, by the PR or session that next touches one, against the code as it is then
 backfills them: most were written against a `main` that has since moved. Review enforces the
 rest (`REVIEW.md`, "Change kind: a defect PR proves its claim").
 
+## Operational assurance: the promises about outcomes and work
+
+Two properties are owed across this repo and `paulgsc/server`: nothing fails without the
+owner hearing of it, and nothing does work it does not need. `docs/operational-assurance.md` is
+the grammar (obligations, outcomes, verdicts, evidence classes, the requirement kinds
+OA1–OA7 and RE1–RE10). `packages/assurance/src/ledger.json` is the one record: each operation
+family and its objectives, each `holds` with its proof or `broken`/`unproven` with its issue.
+`/assurance` shows it to the owner and to anyone.
+
+When a change touches what an objective describes, edit the ledger in the same PR: a verdict
+that improves names its proof, a new route module is placed in a family or in
+`synchronous`, and anything that weakens a promise (a `holds` that stops holding, a looser
+bound, a changed requirement, a retirement) carries an amendment naming the owner's
+decision. Ask the owner before writing one; never weaken a promise to get a PR green. A new server
+route module fails the check on the route snapshot PR (`bot/server-route-snapshot`), which a
+server workflow rewrites on every merge: place the module in its own PR here first (a placed
+module the server does not serve yet is only a warning), then the snapshot goes green.
+
+Held by: `pnpm check:assurance`
+
 ## Cold-start footguns worth not re-discovering
 
 These bite during ordinary implementation work, **before any PR exists** — read this at the

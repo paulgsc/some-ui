@@ -44,5 +44,11 @@ apply to any agent working here, not only Claude.
   Safari. A hunk that adds code, a test, a fallback or a comment for them is blocking.
   `pnpm check:android-only` already fails the tokens `CLAUDE.md` lists; what stays is anything
   they do not reach (another spelling, a prose file, any other line that exists for them).
+- **The assurance ledger says what the code does.** `pnpm check:assurance` already holds
+  the ledger's shape, proofs, issues, route coverage and its ratchet. Blocking: a `holds` whose
+  proof does not reach its requirement, or a conclusion that drops its evidence's boundary; a
+  hunk that removes or renames what a proof or watch names, or changes what a requirement
+  describes, with the ledger unchanged; an amendment whose decision is not the owner's; a
+  route module listed as synchronous whose caller does not see the outcome in the answer.
 
 Full text: `REVIEW.md`.

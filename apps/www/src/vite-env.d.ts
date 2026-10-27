@@ -36,4 +36,10 @@ interface ImportMetaEnv {
    * browser's voice.
    */
   readonly VITE_TTS_ENDPOINT?: string
+
+  /**
+   * The commit this build is made from (`buildCommit` in vite.config.ts),
+   * empty when unknown. `/assurance` names it as the ledger's copy.
+   */
+  readonly VITE_BUILD_COMMIT?: string
 }

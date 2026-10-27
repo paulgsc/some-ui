@@ -160,7 +160,11 @@ export const ROOMS: ReadonlyArray<Room> = [
     roots: ["/resume-build"],
     nav: "Résumé build",
   },
-  { id: "landing", wing: "public", roots: ["/", "/mission", "/extensions"] },
+  {
+    id: "landing",
+    wing: "public",
+    roots: ["/", "/mission", "/assurance", "/extensions"],
+  },
   { id: "resume", wing: "public", roots: ["/resume"], nav: "Résumé" },
 ]
 

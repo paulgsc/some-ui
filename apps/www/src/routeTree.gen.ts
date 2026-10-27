@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardRouteImport } from './routes/_dashboard'
+import { Route as AssuranceRouteImport } from './routes/assurance'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ExtensionsRouteImport } from './routes/extensions'
 import { Route as MissionRouteImport } from './routes/mission'
@@ -56,6 +57,11 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/_dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AssuranceRoute = AssuranceRouteImport.update({
+  id: '/assurance',
+  path: '/assurance',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -253,6 +259,7 @@ const DashboardApkJobsPickDayPickIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/assurance': typeof AssuranceRoute
   '/auth': typeof AuthRoute
   '/extensions': typeof ExtensionsRoute
   '/mission': typeof MissionRoute
@@ -291,6 +298,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/assurance': typeof AssuranceRoute
   '/auth': typeof AuthRoute
   '/extensions': typeof ExtensionsRoute
   '/mission': typeof MissionRoute
@@ -329,6 +337,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_dashboard': typeof DashboardRouteWithChildren
+  '/assurance': typeof AssuranceRoute
   '/auth': typeof AuthRoute
   '/extensions': typeof ExtensionsRoute
   '/mission': typeof MissionRoute
@@ -371,6 +380,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/assurance'
     | '/auth'
     | '/extensions'
     | '/mission'
@@ -409,6 +419,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/assurance'
     | '/auth'
     | '/extensions'
     | '/mission'
@@ -446,6 +457,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_dashboard'
+    | '/assurance'
     | '/auth'
     | '/extensions'
     | '/mission'
@@ -488,6 +500,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRouteWithChildren
+  AssuranceRoute: typeof AssuranceRoute
   AuthRoute: typeof AuthRoute
   ExtensionsRoute: typeof ExtensionsRoute
   MissionRoute: typeof MissionRoute
@@ -508,6 +521,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/assurance': {
+      id: '/assurance'
+      path: '/assurance'
+      fullPath: '/assurance'
+      preLoaderRoute: typeof AssuranceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -890,6 +910,7 @@ const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRouteWithChildren,
+  AssuranceRoute: AssuranceRoute,
   AuthRoute: AuthRoute,
   ExtensionsRoute: ExtensionsRoute,
   MissionRoute: MissionRoute,

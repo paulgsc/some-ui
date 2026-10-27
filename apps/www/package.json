@@ -40,6 +40,7 @@
     "@radix-ui/react-accordion": "catalog:",
     "@some-ui/activity-catalog": "workspace:*",
     "@some-ui/aph": "workspace:*",
+    "@some-ui/assurance": "workspace:*",
     "@some-ui/auth": "workspace:*",
     "@some-ui/content-registry": "workspace:*",
     "@some-ui/core-utils": "workspace:*",
