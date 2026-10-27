@@ -110,6 +110,21 @@ const DEFAULT_OPTIONS: FetchOptions = {
   },
 }
 
+/** Wait `ms`, or reject with `signal`'s reason as soon as it aborts. */
+function backoff(ms: number, signal: AbortSignal | undefined): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const onAbort = (): void => {
+      clearTimeout(timer)
+      reject(signal?.reason)
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort)
+      resolve()
+    }, ms)
+    signal?.addEventListener("abort", onAbort, { once: true })
+  })
+}
+
 /** A fetch client with timeouts, retries and optional Zod validation. */
 export const createFetchClient = (
   defaultOptions: FetchOptions = {}
@@ -164,6 +179,14 @@ export const createFetchClient = (
     return data as T
   }
 
+  /**
+   * One call: at most `1 + retry.count` attempts, `retry` from the call only
+   * (the client's default never gates a retry), each attempt bounded by
+   * `timeout`. Promise FK1: once the caller's `signal` aborts, no further
+   * attempt starts, a waiting backoff ends, and the call rejects with the
+   * signal's reason (a cancellation), never with the 408 that only this
+   * client's own timeout means.
+   */
   async function executeFetch<T>(
     url: URL,
     fetchOptions: FetchOptions,
@@ -173,15 +196,21 @@ export const createFetchClient = (
     const {
       timeout,
       retry,
+      signal: callerSignal,
       responseAs = options.responseAs,
       ...restOptions
     } = fetchOptions
 
+    callerSignal?.throwIfAborted()
+
     const controller = new AbortController()
     const timeoutId = setTimeout(
       () => controller.abort(),
-      timeout || options.timeout
+      timeout ?? options.timeout
     )
+    const signal = callerSignal
+      ? AbortSignal.any([controller.signal, callerSignal])
+      : controller.signal
 
     try {
       // `body` is already serialized by `fetchWithSchema`; serializing again
@@ -213,7 +242,7 @@ export const createFetchClient = (
 
       const response = await fetch(url, {
         ...restOptions,
-        signal: controller.signal,
+        signal,
         headers,
         body,
       })
@@ -224,24 +253,20 @@ export const createFetchClient = (
         throw error
       }
 
+      // The caller stopped it: a cancellation, whichever rejection won.
+      callerSignal?.throwIfAborted()
+
       if (error instanceof DOMException && error.name === "AbortError") {
         throw new ApiError("Request timed out", 408, undefined, false, true)
       }
 
       const isNetworkError =
         error instanceof TypeError && error.message.includes("fetch")
-      if (
-        isNetworkError &&
-        retry &&
-        retryCount < (retry.count || options.retry?.count || 0)
-      ) {
-        const backoffFactor =
-          retry.backoffFactor || options.retry?.backoffFactor || 1
+      if (isNetworkError && retry && retryCount < retry.count) {
         const delay =
-          (retry.delay || options.retry?.delay || 1000) *
-          Math.pow(backoffFactor, retryCount)
+          retry.delay * Math.pow(retry.backoffFactor ?? 1, retryCount)
 
-        await new Promise((resolve) => setTimeout(resolve, delay))
+        await backoff(delay, callerSignal)
 
         return executeFetch<T>(url, fetchOptions, schema, retryCount + 1)
       }
