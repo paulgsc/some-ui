@@ -99,11 +99,6 @@ export class ApiError extends Error {
 const DEFAULT_OPTIONS: FetchOptions = {
   baseUrl: "",
   timeout: 10000, // 10 seconds
-  retry: {
-    count: 1,
-    delay: 1000,
-    backoffFactor: 1.5,
-  },
   credentials: "same-origin",
   headers: {
     "Content-Type": "application/json",
@@ -125,9 +120,12 @@ function backoff(ms: number, signal: AbortSignal | undefined): Promise<void> {
   })
 }
 
-/** A fetch client with timeouts, retries and optional Zod validation. */
+/**
+ * A fetch client with timeouts, retries and optional Zod validation. Retries
+ * and cancellation are per call (FK1), so the client's defaults take neither.
+ */
 export const createFetchClient = (
-  defaultOptions: FetchOptions = {}
+  defaultOptions: Omit<FetchOptions, "retry" | "signal"> = {}
 ): FetchClient => {
   const options = { ...DEFAULT_OPTIONS, ...defaultOptions }
 
@@ -181,7 +179,7 @@ export const createFetchClient = (
 
   /**
    * One call: at most `1 + retry.count` attempts, `retry` from the call only
-   * (the client's default never gates a retry), each attempt bounded by
+   * (the client has no default for it), each attempt bounded by
    * `timeout`. Promise FK1: once the caller's `signal` aborts, no further
    * attempt starts, a waiting backoff ends, and the call rejects with the
    * signal's reason (a cancellation), never with the 408 that only this
@@ -201,16 +199,18 @@ export const createFetchClient = (
       ...restOptions
     } = fetchOptions
 
-    callerSignal?.throwIfAborted()
+    if (callerSignal?.aborted) throw callerSignal.reason
 
+    // One controller for both stops, linked by hand: `AbortSignal.any` needs a
+    // WebView newer than the APK's floor (`linkSignals` in @some-ui/speech
+    // avoids it for the same reason).
     const controller = new AbortController()
+    const onCallerAbort = (): void => controller.abort()
+    callerSignal?.addEventListener("abort", onCallerAbort, { once: true })
     const timeoutId = setTimeout(
       () => controller.abort(),
-      timeout ?? options.timeout
+      timeout || options.timeout
     )
-    const signal = callerSignal
-      ? AbortSignal.any([controller.signal, callerSignal])
-      : controller.signal
 
     try {
       // `body` is already serialized by `fetchWithSchema`; serializing again
@@ -242,7 +242,7 @@ export const createFetchClient = (
 
       const response = await fetch(url, {
         ...restOptions,
-        signal,
+        signal: controller.signal,
         headers,
         body,
       })
@@ -254,7 +254,7 @@ export const createFetchClient = (
       }
 
       // The caller stopped it: a cancellation, whichever rejection won.
-      callerSignal?.throwIfAborted()
+      if (callerSignal?.aborted) throw callerSignal.reason
 
       if (error instanceof DOMException && error.name === "AbortError") {
         throw new ApiError("Request timed out", 408, undefined, false, true)
@@ -280,6 +280,7 @@ export const createFetchClient = (
       )
     } finally {
       clearTimeout(timeoutId)
+      callerSignal?.removeEventListener("abort", onCallerAbort)
     }
   }
 
