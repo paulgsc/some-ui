@@ -4,7 +4,6 @@
     "types": ["node"],
     "declarationDir": "./",
     "rootDir": ".",
-    "outDir": "./dist",
     "paths": {
       "@topik/*": ["./src/*"]
     }
