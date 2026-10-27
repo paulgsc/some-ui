@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react"
+import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 
 const AUDIO_EVENTS = [
   "match_correct",
@@ -92,6 +93,8 @@ export const useGameAudio = ({
           audio.currentTime = 0
           audio.muted = wasMuted
         })
+        // Ignored: still locked; a sound that then cannot play is reported
+        // where it is played (`playSound`).
         .catch(() => {})
     })
   }, [])
@@ -100,19 +103,19 @@ export const useGameAudio = ({
     (event: AudioEvent) => {
       if (!enabled) return
 
+      // Every event has an element from mount to unmount; none outside that
+      // window, when there is no game to hear it.
       const audio = audioMapRef.current.get(event)
-      if (!audio) {
-        // eslint-disable-next-line no-console
-        console.log("no audio found for event: ", event)
-        return
-      }
+      if (!audio) return
 
       audio.currentTime = 0
       audio.volume = volume
 
-      audio.play().catch((err) => {
-        // eslint-disable-next-line no-console
-        console.warn(`Playback blocked for ${event}:`, err)
+      audio.play().catch((error: unknown) => {
+        reportFailure({
+          port: `game sound (${event})`,
+          error: toIntentError(error),
+        })
       })
     },
     [enabled, volume]

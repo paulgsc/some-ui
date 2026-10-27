@@ -12,6 +12,7 @@ import type {
   CharacterWithLifetime,
   WordProgress,
 } from "@honeycomb/types/hangul-types"
+import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 
 type UseKeyboardInputProps = {
   gameBridge: WasmGameBridge | null
@@ -326,13 +327,11 @@ function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
         )
       }
     }
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error(
-      "[processGameEvent] Exception while processing event:",
-      event,
-      err
-    )
+  } catch (error) {
+    reportFailure({
+      port: `hangul game (${event.type})`,
+      error: toIntentError(error),
+    })
   }
 }
 

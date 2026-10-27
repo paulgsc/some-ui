@@ -260,6 +260,8 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       // tap, rather than leave it to expire.
       await ports
         .request({ method: "POST", url: `${base}/auth/sign-out`, token })
+        // Ignored: a sign-out home does not hear leaves that session to
+        // expire on its own; this phone kept nothing of it either way.
         .catch(() => undefined)
       return "not-kept"
     }

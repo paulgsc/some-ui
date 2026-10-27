@@ -109,7 +109,7 @@ export function resolveFileHostTarget(
         }
       }
     } catch {
-      // A malformed record is no record: fall through to the container.
+      // Ignored: a malformed record is no record: fall through to the container.
     }
   }
   return { target: CONTAINER_TARGET, source: "container" }

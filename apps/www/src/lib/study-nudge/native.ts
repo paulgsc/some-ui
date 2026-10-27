@@ -70,7 +70,7 @@ function writeScheduledAt(at: Date | null): void {
     if (at === null) window.localStorage.removeItem(SCHEDULED_KEY)
     else window.localStorage.setItem(SCHEDULED_KEY, at.toISOString())
   } catch {
-    // Loses one cooldown at worst; see `recordNudgeShown`.
+    // Ignored: loses one cooldown at worst; see `recordNudgeShown`.
   }
 }
 

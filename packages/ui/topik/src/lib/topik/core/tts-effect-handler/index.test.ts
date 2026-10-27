@@ -7,12 +7,13 @@
  * test says.
  */
 
+import { addFailureSink } from "@some-ui/intent-kit"
 import type { SpeechAdapter } from "@some-ui/speech"
 import { SpeechQueueManager } from "@some-ui/speech"
 import type { ISessionMachine } from "@topik/lib/topik/core/session-types"
 import type { Message } from "@topik/lib/topik/entity/topik-types"
 import type { Mock } from "vitest"
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { createTTSEffectHandler } from "."
 
@@ -158,13 +159,19 @@ type Callbacks = {
   onSpeechEnd: Mock<(messageId: string) => void>
   onSpeechStopped: Mock<(messageId: string) => void>
   onMessageComplete: Mock<(messageId: string) => void>
-  onError: Mock<(error: Error, messageId: string) => void>
 }
 
 type Setup = Session & {
   handler: ReturnType<typeof createTTSEffectHandler>
   callbacks: Callbacks
+  /** Failures reported (`reportFailure`) since setup. */
+  reported: () => number
 }
+
+const stopReporting: Array<() => void> = []
+afterEach(() => {
+  for (const stop of stopReporting.splice(0)) stop()
+})
 
 function setup(): Setup {
   const session = createSession()
@@ -173,16 +180,22 @@ function setup(): Setup {
     onSpeechEnd: vi.fn(),
     onSpeechStopped: vi.fn(),
     onMessageComplete: vi.fn(),
-    onError: vi.fn(),
   }
-  vi.spyOn(console, "error").mockImplementation(() => undefined)
+  vi.spyOn(globalThis.console, "error").mockImplementation(() => undefined)
+  let count = 0
+  stopReporting.push(
+    addFailureSink(() => {
+      count += 1
+    })
+  )
+  const reported = (): number => count
   const handler = createTTSEffectHandler({
     speaker: session.manager.speakerFor("topik"),
     componentId: "c1",
     machine: fakeMachine,
     ...callbacks,
   })
-  return Object.assign(session, { handler, callbacks })
+  return Object.assign(session, { handler, callbacks, reported })
 }
 
 describe("TTSEffectHandler - serial queue", () => {
@@ -267,7 +280,7 @@ describe("TTSEffectHandler - a line ends exactly once", () => {
     await settle()
 
     expect(t.callbacks.onSpeechEnd).toHaveBeenCalledTimes(1)
-    expect(t.callbacks.onError).toHaveBeenCalledTimes(1)
+    expect(t.reported()).toBe(1)
   })
 
   it("ends a stopped line once, as the stop's own, and reports no failure", async () => {
@@ -279,7 +292,7 @@ describe("TTSEffectHandler - a line ends exactly once", () => {
     await settle()
 
     expect(t.callbacks.onSpeechEnd).toHaveBeenCalledTimes(1)
-    expect(t.callbacks.onError).not.toHaveBeenCalled()
+    expect(t.reported()).toBe(0)
   })
 })
 

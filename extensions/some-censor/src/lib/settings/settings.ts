@@ -218,6 +218,8 @@ export function createSaver(
         const next = change(parseSettings(stored[SETTINGS_KEY]))
         await area.set(settingsWrite(stored, next, Date.now()))
       })
+      // Ignored: a failed save leaves storage as it was (above): the choice
+      // did not take, and the next one starts from what is stored.
       .catch(() => undefined)
   }
 }

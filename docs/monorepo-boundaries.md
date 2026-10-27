@@ -276,6 +276,65 @@ came first and stays: its four laws are the same idea inside one package.
 > database (`apps/www/src/lib/device-backend/capacitor-sqlite`) and its share
 > sheet (`apps/www/src/lib/share-files`).
 
+## A failure reaches the log
+
+www's release build strips `console.*` (`apps/www/build.minify.ts`), and the
+APK's console reaches nothing anyway, so a failure that only reaches
+`console` leaves no trace on a shipped build. `reportFailure`
+(`@some-ui/intent-kit`) survives both: its console line is kept, and on the
+phone it also goes to the native log (`adb logcat -s SomeUI`). It writes a
+log, not the screen: its `port` and `summary` say where and what for whoever
+reads that log.
+
+Promise FT1, held by lint: in every workspace's `src/` outside tests, a
+failure is reported through `reportFailure`, never `console` alone.
+`log-guard/console-reports-message-only`, set with `reportFailure` as its
+reporter (`failureLogConfig` in `packages/eslint/src/configs/log-guard.config.ts`,
+in every eslint-kit preset), reports every use of `console`, `globalThis.console`
+included, and a `no-console` disable does not silence it. Two settings opt
+out on purpose: an extension, which is not in www's bundle and records what
+it decides in its own flight recorder, and apps/mailbox, whose own setting
+(MB3) replaces it. An exemption is a `log-guard` disable on the line, with a
+reason: `reportFailure`'s own line, and one dev-only notice in
+`apps/www/src/providers/tts.tsx`. Until U2 (#2110) deletes it,
+`apps/www/src/hooks/use-local-storage/index.ts` is turned off file-wide in
+`apps/www/eslint.config.js`.
+
+A catch can also drop a failure without writing anything. One that does
+something with it (a fallback value, a `return false`) shows what it does;
+one that does nothing says why that is right:
+
+> **FT2: A catch that drops its error says why.**
+>
+> - _Claim:_ every `catch` clause with no statement, and every promise
+>   `.catch` whose handler does nothing (an empty body, or `undefined`, `null`
+>   or `void …`), carries a comment line starting `Ignored:` that says why
+>   dropping that error loses nothing a person or a log needs: what recovers
+>   the state (a sweep, a retry, the next read), or why there is nothing to
+>   recover.
+> - _Falsified by_ a hunk that writes or rewords an `Ignored:` line so it no
+>   longer says why ("ignore", "best effort" or "expected" with no
+>   consequence named); that changes what such a catch drops, or removes or
+>   weakens the recovery its line names (a sweep it cites deleted, or made to
+>   swallow its own failure), without updating the line; or that turns
+>   `catch-guard/require-ignored-reason` off, narrows it, or disables it on a
+>   line, in `packages/eslint/src/rules/require-ignored-reason.ts`,
+>   `packages/eslint/src/configs/catch-guard.config.ts`, the presets in
+>   `packages/eslint/src/index.ts`, or a workspace's `eslint.config.js`.
+> - _Scope:_ every workspace whose `eslint.config.js` spreads an eslint-kit
+>   preset, outside tests (`*.test.*`, `*.spec.*`, `__tests__/`, `tests/`,
+>   `e2e/`) and the paths a preset ignores (`public/`, `dist/`).
+> - _Why not enforced:_ that the line exists is a lint rule
+>   (`catch-guard/require-ignored-reason`). Whether what it says is true,
+>   that nothing a person or a log needed is lost, needs a person to read
+>   the catch and what it cites: no rule can tell a recovery that exists
+>   from one that is only named.
+>
+> True when declared: the rule passes on every workspace. Each of its 108
+> sites (62 comment-only clauses, 46 no-op handlers) was read against the
+> claim, and each sweep an `Ignored:` line cites as the recovery reports its
+> own failure.
+
 ## How this is enforced
 
 Partly. Be honest about which parts.
@@ -287,6 +346,9 @@ Partly. Be honest about which parts.
 - **Coordination in React** is counted, not judged: R1 above, by
   `pnpm check:react-coordination` (in root `pnpm lint` and its own pr.yml job
   that CI Gate requires).
+- **A failure reaches the log**: FT1 by `log-guard` in every preset; that
+  a silent catch says why is `catch-guard/require-ignored-reason`, and
+  whether it is true is FT2's, for review.
 - **Waits on foreign APIs** are counted, not judged: F1 above, by
   `pnpm check:foreign-boundary` (in root `pnpm lint`, and a step of the
   pr.yml job that runs R1's count). The laws of the boundary itself are a property

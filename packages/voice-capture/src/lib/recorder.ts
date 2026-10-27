@@ -104,6 +104,8 @@ function meter(stream: MediaStream): {
     const analyser = context.createAnalyser()
     analyser.fftSize = 512
     context.createMediaStreamSource(stream).connect(analyser)
+    // Ignored: a context that will not resume leaves the meter at zero; the
+    // recording does not depend on it.
     void context.resume().catch(() => undefined)
     const samples = new Uint8Array(analyser.fftSize)
     return {
@@ -117,6 +119,7 @@ function meter(stream: MediaStream): {
         // Speech sits around 0.05-0.2 RMS; stretch it across the meter.
         return Math.min(1, Math.sqrt(sum / samples.length) * 4)
       },
+      // Ignored: the meter is done either way.
       close: () => void context.close().catch(() => undefined),
     }
   } catch {

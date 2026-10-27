@@ -296,7 +296,7 @@ export function createOpenedStore(
           JSON.stringify({ version: 1, names: [...names] })
         )
       } catch {
-        // Quota, privacy mode: the file shows as not opened next time.
+        // Ignored: quota, privacy mode: the file shows as not opened next time.
       }
     },
   }

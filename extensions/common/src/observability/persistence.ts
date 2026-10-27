@@ -88,7 +88,8 @@ export function extensionStoragePersistence(
       try {
         await area.set({ [key]: fitToBudget(state, maxBytes) })
       } catch {
-        // Same contract as load: observability degrades, the extension does not.
+        // Ignored: the recorder keeps its state in memory; only the copy
+        // that would outlive this page is lost, and the next save writes it.
       }
     },
 
@@ -96,7 +97,8 @@ export function extensionStoragePersistence(
       try {
         await area.remove(key)
       } catch {
-        // ignore
+        // Ignored: the old recording stays stored, and the next save
+        // overwrites it; only debug storage is spent meanwhile.
       }
     },
   }

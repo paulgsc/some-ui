@@ -1,3 +1,4 @@
+import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import type {
   ActiveLifetime,
   OrchestratorCommand,
@@ -232,7 +233,7 @@ function sendCommand(
   command: OrchestratorCommand
 ): Promise<void> {
   if (!sender) {
-    warn(action)
+    notConnected(action)
     return Promise.resolve()
   }
   try {
@@ -242,9 +243,17 @@ function sendCommand(
   }
 }
 
-function warn(action: string): void {
-  // eslint-disable-next-line no-console
-  console.warn(`Cannot ${action}: orchestrator not connected`)
+/** A command with nowhere to go is dropped, and reported (FT1). */
+function notConnected(action: string): void {
+  reportFailure({
+    port: "orchestrator",
+    error: {
+      ...toIntentError(new Error(`${action}: not connected`)),
+      kind: "unavailable",
+      retryable: false,
+      summary: "The orchestrator is not connected.",
+    },
+  })
 }
 
 // Tick-aware selectors rerender every tick: use only for progress bars,

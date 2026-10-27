@@ -53,7 +53,7 @@ export async function withRoom<T>(
       try {
         fits = await room(growth + others)
       } catch {
-        // Not measured: a save is not refused for want of a number.
+        // Ignored: not measured: a save is not refused for want of a number.
       }
     }
     if (!fits) throw full()

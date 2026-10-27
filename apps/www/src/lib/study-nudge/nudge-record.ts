@@ -27,7 +27,7 @@ export function recordNudgeShown(at: Date): void {
   try {
     window.localStorage.setItem(LAST_NUDGE_KEY, at.toISOString())
   } catch {
-    // A refused write (private mode, quota) costs a cooldown, not the feature.
+    // Ignored: a refused write (private mode, quota) costs a cooldown, not the feature.
   }
 }
 

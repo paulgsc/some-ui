@@ -122,7 +122,7 @@ export function createLastDramaStore(
     try {
       storage?.removeItem(LAST_DRAMA_KEY)
     } catch {
-      // Privacy mode: there is nothing it could have kept.
+      // Ignored: privacy mode: there is nothing it could have kept.
     }
   }
 

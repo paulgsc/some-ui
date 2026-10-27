@@ -46,7 +46,7 @@ export function createPortionOrderStore(
           JSON.stringify({ version: 1, ...order })
         )
       } catch {
-        // Quota, privacy mode: the screen opens on its default next time.
+        // Ignored: quota, privacy mode: the screen opens on its default next time.
       }
     },
   }

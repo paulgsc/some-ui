@@ -6,6 +6,7 @@
  * LeetType's spoken answers (`lib/leetype-takes`) each keep one.
  * Phone-only (`build.paths.ts`).
  */
+import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import { SOUNDBITE_BITS_PER_SECOND } from "@some-ui/soundbites/contract"
 import { audioPlayer, micRecorder, savingShelf } from "@some-ui/voice-capture"
 
@@ -112,7 +113,12 @@ export function takesDesk(options: {
             stored.filter((id) => !kept.includes(id) && !shelf.isSaving(id))
           )
         })
-        .catch(() => undefined)
+        .catch((error: unknown) => {
+          reportFailure({
+            port: "takes desk sweep",
+            error: toIntentError(error),
+          })
+        })
     },
     forExport: (): ReturnType<TakesDesk["forExport"]> => {
       const audio = shelf.shelf()

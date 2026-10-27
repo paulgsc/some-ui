@@ -1,5 +1,6 @@
 import type { Rule } from "eslint"
-import type * as ESTree from "estree"
+
+import { commentBlockAbove } from "./comment-block.js"
 
 /** The two Charter §5/§8 rules whose exemptions must say what ends a resource. */
 const LIFETIME_RULES = new Set([
@@ -40,28 +41,14 @@ export const requireLifetimeComment: Rule.RuleModule = {
     const sourceCode = context.sourceCode
     return {
       Program(): void {
-        const comments = sourceCode.getAllComments()
-        // Line comments that are alone on their line, by line number.
-        const alone = new Map<number, ESTree.Comment>()
-        for (const comment of comments) {
-          if (comment.type !== "Line" || !comment.loc) continue
-          const line = comment.loc.start.line
-          const text = sourceCode.lines[line - 1] ?? ""
-          if (text.trimStart().startsWith("//")) alone.set(line, comment)
-        }
-        for (const comment of comments) {
+        const blockAbove = commentBlockAbove(sourceCode)
+        for (const comment of sourceCode.getAllComments()) {
           const rules = exemptedLifetimeRules(comment.value)
           if (rules.length === 0 || !comment.loc) continue
-          let line = comment.loc.start.line - 1
-          let found = false
-          for (let above = alone.get(line); above; above = alone.get(line)) {
-            if (above.value.trimStart().startsWith("Lifetime:")) {
-              found = true
-              break
-            }
-            line -= 1
-          }
-          if (found) continue
+          const named = blockAbove(comment.loc.start.line, (above) =>
+            above.value.trimStart().startsWith("Lifetime:")
+          )
+          if (named) continue
           context.report({
             loc: { start: comment.loc.start, end: comment.loc.end },
             messageId: "missing",

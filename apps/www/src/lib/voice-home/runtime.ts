@@ -10,6 +10,7 @@
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { openRecord, writeRecord } from "@some-ui/core-utils"
+import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import type { BlobShelf } from "@some-ui/voice-capture"
 import { ShelfFullError } from "@some-ui/voice-capture"
 
@@ -110,6 +111,8 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
       answered(event): void {
         apply(event)
         if (event.kind === "held") {
+          // Ignored: a copy home holds is named by no record once this step
+          // is kept, so the next `sweep` clears one that fails to go.
           shelf.remove([event.id]).catch(() => undefined)
         }
       },
@@ -125,7 +128,12 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
             ids.filter((id) => !named.has(id) && !copying.has(id))
           )
         })
-        .catch(() => undefined)
+        .catch((error: unknown) => {
+          reportFailure({
+            port: "voice copy sweep",
+            error: toIntentError(error),
+          })
+        })
     },
   }
 }

@@ -1,5 +1,6 @@
 import type { ComponentType, ReactNode } from "react"
 import { Component, Suspense } from "react"
+import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import type { ComponentRegistry } from "@some-ui/types"
 
 class ComponentErrorBoundary extends Component<
@@ -15,9 +16,8 @@ class ComponentErrorBoundary extends Component<
     return { hasError: true, error }
   }
 
-  componentDidCatch(error: Error, errorInfo: unknown): void {
-    // eslint-disable-next-line no-console
-    console.error("Component crashed:", error, errorInfo)
+  componentDidCatch(error: Error): void {
+    reportFailure({ port: "wireframe component", error: toIntentError(error) })
   }
 
   render(): ReactNode {

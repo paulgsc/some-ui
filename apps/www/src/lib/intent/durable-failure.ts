@@ -53,7 +53,7 @@ export function writeDurableFailure(
   try {
     window.localStorage.setItem(keyFor(sessionId), JSON.stringify(failure))
   } catch {
-    // Best-effort: on a storage failure the in-memory status still covers this
+    // Ignored: best effort: on a storage failure the in-memory status still covers this
     // mount; only surviving navigation is lost.
   }
 }
@@ -63,6 +63,7 @@ export function clearDurableFailure(sessionId: string): void {
   try {
     window.localStorage.removeItem(keyFor(sessionId))
   } catch {
-    // See writeDurableFailure.
+    // Ignored: as in writeDurableFailure. At worst an earlier failure shows
+    // again when the editor next opens, until a save succeeds and clears it.
   }
 }

@@ -87,6 +87,8 @@ export async function registerNudgeWorker(): Promise<ServiceWorkerRegistration |
     .register(`${import.meta.env.BASE_URL}sw.js`, {
       scope: import.meta.env.BASE_URL,
     })
+    // Ignored: no worker means no nudges, and every caller reads null as
+    // that.
     .catch(() => null)
   return registration
 }
@@ -363,7 +365,7 @@ export async function unsubscribeFromPush(deps: PushDeps = {}): Promise<void> {
   try {
     await subscription.unsubscribe()
   } catch {
-    // Keep going: the row is the part that matters.
+    // Ignored: keep going: the row is the part that matters.
   }
 
   const transport = defaultTransport(deps)
@@ -375,7 +377,7 @@ export async function unsubscribeFromPush(deps: PushDeps = {}): Promise<void> {
       body: JSON.stringify({ endpoint }),
     })
   } catch {
-    // The server prunes the row on its next 410; throwing would leave the
+    // Ignored: the server prunes the row on its next 410; throwing would leave the
     // settings toggle stuck on.
   }
 }
@@ -434,6 +436,6 @@ export async function dropLocalPushSubscription(): Promise<void> {
     const subscription = await registration?.pushManager.getSubscription()
     await subscription?.unsubscribe()
   } catch {
-    // Nothing to drop, or the browser refused. Either way no request leaves.
+    // Ignored: nothing to drop, or the browser refused. Either way no request leaves.
   }
 }

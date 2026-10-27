@@ -71,7 +71,9 @@ export function sweepSceneVoice(): void {
       const silent = listed.filter((id) => !stored.includes(id))
       if (silent.length > 0) phoneSceneVoice().remove(silent)
     })
-    .catch(() => undefined)
+    .catch((error: unknown) => {
+      reportFailure({ port: "scene voice sweep", error: toIntentError(error) })
+    })
 }
 
 const SHARE_PORT = "scene voice (share)"

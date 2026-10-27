@@ -45,7 +45,7 @@ function rememberTold(storage: Store, pairing: string, seq: number): void {
   try {
     storage?.setItem(TOLD_KEY, JSON.stringify({ pairing, seq }))
   } catch {
-    // Unwritten, the next run tells home again; home answers it unchanged.
+    // Ignored: unwritten, the next run tells home again; home answers it unchanged.
   }
 }
 

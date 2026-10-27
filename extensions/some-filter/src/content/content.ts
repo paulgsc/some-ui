@@ -81,7 +81,8 @@ function readCachedState(): TabState | null {
     const val = sessionStorage.getItem(STATE_CACHE_KEY)
     if (val === "auto" || val === "legacy" || val === "off") return val
   } catch {
-    // Unavailable in some contexts (e.g. storage-restricted private browsing).
+    // Ignored: storage unavailable (e.g. storage-restricted private browsing)
+    // is a cache miss: the tab paints as auto until the background answers.
   }
   return null
 }
@@ -91,7 +92,8 @@ function writeCachedState(state: TabState): void {
     // eslint-disable-next-line extension-charter/no-raw-storage
     sessionStorage.setItem(STATE_CACHE_KEY, state)
   } catch {
-    // Ignore write failures.
+    // Ignored: an unwritten cache is a miss next time, and the background
+    // answers instead.
   }
 }
 
@@ -724,7 +726,7 @@ function init(): void {
         }
       }
     } catch {
-      // background unavailable — cached/auto decision stands
+      // Ignored: background unavailable — cached/auto decision stands
     }
   })()
 
