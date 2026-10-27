@@ -11,6 +11,7 @@
  * Each is reached through a narrow function whose results come back as our
  * own events, and nothing here records the state of one of them.
  */
+import { assertNever } from "@some-ui/core-utils"
 import type { Playback, Player, StartRecording } from "@some-ui/voice-capture"
 import { takeRunner } from "@some-ui/voice-capture"
 
@@ -220,8 +221,4 @@ export function createSoundbites(
       }
     },
   }
-}
-
-function assertNever(value: never): never {
-  throw new Error(`unhandled soundbites effect: ${JSON.stringify(value)}`)
 }

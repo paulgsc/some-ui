@@ -1,3 +1,4 @@
+import { assertNever } from "@some-ui/core-utils"
 import type { SceneConfig } from "@some-ui/types"
 
 /**
@@ -87,10 +88,6 @@ function formatMinutes(totalMinutes: number): string {
   if (hours === 0) return `${minutes}m`
   if (minutes === 0) return `${hours}h`
   return `${hours}h ${minutes}m`
-}
-
-function assertNever(value: never): never {
-  throw new Error(`Unhandled DurationCheck state: ${JSON.stringify(value)}`)
 }
 
 /** Human-readable explanation of a non-"valid" `DurationCheck`, for display next to Save. */

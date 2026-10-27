@@ -8,8 +8,8 @@
  * Korean, else the provider's Korean default. A drama's characters of the
  * other gender are read in the provider's Korean voice of that gender.
  */
-
 import type { JSX } from "react"
+import { assertNever } from "@some-ui/core-utils"
 import {
   Label,
   Select,
@@ -66,10 +66,6 @@ function browserVoiceNow(report: VoiceReport): string {
       return assertNever(report.availability)
     }
   }
-}
-
-function assertNever(value: never): never {
-  throw new Error(`Unhandled voice availability: ${JSON.stringify(value)}`)
 }
 
 const LessonVoice = ({ value }: { value: HostedVoiceChoice }): JSX.Element => {

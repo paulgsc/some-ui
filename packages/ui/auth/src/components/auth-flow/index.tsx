@@ -18,7 +18,7 @@ import type {
   AuthFormStatusProps,
   OAuthProvider,
 } from "@auth/types/auth"
-import { assertNever } from "@auth/utils/error"
+import { assertNever } from "@some-ui/core-utils"
 import { Mail } from "lucide-react"
 
 export type AuthFlowProps = AuthFormStatusProps & {

@@ -4,6 +4,7 @@
  * an un-Korean voice (a browser reading Hangul in an English voice) can be
  * traced, with the fix on that device in hand.
  */
+import { assertNever } from "@some-ui/core-utils"
 import type { SpokenLanguage, VoiceReport } from "@some-ui/speech"
 
 /** What every lesson on this site is spoken in. */
@@ -141,8 +142,4 @@ function missingVoice(
       return assertNever(report.platform)
     }
   }
-}
-
-function assertNever(value: never): never {
-  throw new Error(`Unhandled voice report: ${JSON.stringify(value)}`)
 }
