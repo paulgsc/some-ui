@@ -427,6 +427,7 @@ export function createNativeSpeechAdapter(
   }
 }
 
+// eslint-disable-next-line one-owner/no-local-primitive -- imports core-utils' once U3's branch lands (#2112)
 function assertNever(value: never): never {
   throw new Error(`Unexpected device voice choice: ${JSON.stringify(value)}`)
 }

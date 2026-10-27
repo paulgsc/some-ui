@@ -511,6 +511,7 @@ function parseJson(
   }
 }
 
+// eslint-disable-next-line one-owner/no-local-primitive -- the deployed Worker has no core-utils dependency (#2112)
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }

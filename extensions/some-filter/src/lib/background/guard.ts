@@ -2,6 +2,7 @@ import { isLegacyStyle } from "@filter/lib/legacy-presets"
 import type { FilterConfig } from "@filter/types/config"
 import type { ExtensionMessage } from "@filter/types/message"
 
+// eslint-disable-next-line one-owner/no-local-primitive -- moves to @some-extension/common in the extensions slice (#2112)
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null
 }
