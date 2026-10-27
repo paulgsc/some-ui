@@ -81,7 +81,8 @@ function readCachedState(): TabState | null {
     const val = sessionStorage.getItem(STATE_CACHE_KEY)
     if (val === "auto" || val === "legacy" || val === "off") return val
   } catch {
-    // Ignored: unavailable in some contexts (e.g. storage-restricted private browsing).
+    // Ignored: storage unavailable (e.g. storage-restricted private browsing)
+    // is a cache miss: the tab paints as auto until the background answers.
   }
   return null
 }

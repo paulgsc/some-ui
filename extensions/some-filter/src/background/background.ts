@@ -253,7 +253,8 @@ async function syncFrameScript(): Promise<void> {
         try {
           await ext.scripting.updateContentScripts([frameScript])
         } catch {
-          // Ignored: still unsupported here.
+          // Ignored: the browser still rejects the key, so the compatible
+          // registration stays: every frame but fallback-origin ones is covered.
         }
       }
     } else if (registered.length > 0) {

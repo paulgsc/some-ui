@@ -346,7 +346,8 @@ export function createSessionIndex<E extends IndexedEntry>(
       try {
         await area.set({ [indexKey(entry.sessionId)]: entry })
       } catch {
-        // Ignored: best-effort: diagnostics degrading must never affect the extension.
+        // Ignored: the session goes unlisted on a debug page until its next
+        // touch rewrites the entry; a payload no entry lists goes at `compact`.
       }
     },
 
@@ -356,8 +357,8 @@ export function createSessionIndex<E extends IndexedEntry>(
       try {
         await area.remove([indexKey(sessionId), payloadKey(sessionId)])
       } catch {
-        // Ignored: best effort, as for put: diagnostics degrading must never
-        // affect the extension.
+        // Ignored: the entry and its recording stay stored until `compact`
+        // evicts them past the cap; only debug storage is spent meanwhile.
       }
     },
 
