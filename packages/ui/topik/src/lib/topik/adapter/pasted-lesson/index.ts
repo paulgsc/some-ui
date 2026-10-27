@@ -103,7 +103,9 @@ export function createPastedLessonStore(
         if (storage?.removeItem) storage.removeItem(PASTED_LESSON_KEY)
         else storage?.setItem(PASTED_LESSON_KEY, "")
       } catch {
-        // Ignored: storage refuses even that; there is nothing further to try.
+        // Ignored: storage that refuses even a removal keeps the replaced
+        // lesson, which a reload in this tab brings back until the tab closes
+        // (session storage); the new lesson still plays from memory now.
       }
     }
   }
