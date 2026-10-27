@@ -5,7 +5,7 @@
  *
  * - **Claim:** in apps/www and packages/ui, no store that keeps a record in
  *   the page's storage loses a value it cannot read whole: it reads through
- *   core-utils' `openKept` (or `openRecord`/`openSalvaged`) and writes through
+ *   core-utils' `openKept` (or `openRecord`) and writes through
  *   `writeKept` (or `writeRecord`), which copy such a value aside under a key
  *   of its own before anything is written over it and write nothing when it
  *   cannot be copied aside; or it leaves the value where it is and writes

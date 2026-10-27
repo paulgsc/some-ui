@@ -45,8 +45,7 @@ function remember(key: string, value: string): void {
   try {
     localStorageOrNull()?.setItem(key, value)
   } catch {
-    // Ignored: a refused write (private mode, quota) keeps the choice for
-    // this visit only; the next one opens on the default.
+    // Ignored: the next visit opens on the default (above).
   }
 }
 

@@ -2,9 +2,9 @@ import { noRawStorage } from "@eslint/rules/index.js"
 import { defineConfig } from "eslint/config"
 
 /**
- * KR1's guard (`apps/www/src/lib/kept-records`): in apps/www and
- * packages/ui, the page's storage is reached only through core-utils'
- * storage owner (`localStorageOrNull`, `sessionStorageOrNull`, and
+ * KR1's guard (`packages/some-vite-config/src/vitest/kept-records.ts`): in
+ * apps/www and packages/ui, the page's storage is reached only through
+ * core-utils' storage owner (`localStorageOrNull`, `sessionStorageOrNull`, and
  * `openKept`/`openRecord` to read a kept record), so no store reads one with
  * a parser of its own. The same rule as the extensions charter's, with a
  * remedy for this side; tests may touch storage directly.

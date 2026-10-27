@@ -1,5 +1,11 @@
 import type { KeyedStorage } from "@some-ui/core-utils"
-import { jsonOf, openKept, readWhole, writeKept } from "@some-ui/core-utils"
+import {
+  isRecord,
+  jsonOf,
+  openKept,
+  readWhole,
+  writeKept,
+} from "@some-ui/core-utils"
 import type { HostedVoiceChoice } from "@some-ui/speech"
 import { isTTSProvider, parseHostedVoiceChoice } from "@some-ui/speech"
 
@@ -39,9 +45,7 @@ type StoredSettings = Partial<UserSettings> & LegacyVoiceFields
  */
 const readSettings = readWhole((raw): StoredSettings | null => {
   const value = jsonOf(raw)
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? value
-    : null
+  return isRecord(value) ? value : null
 })
 
 /**

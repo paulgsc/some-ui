@@ -17,9 +17,7 @@ import { defineConfig } from "eslint/config"
 // JSX handler must go through `useIntent`/`useAsyncIntent`), queryGuardConfig
 // the query hooks (`src/lib/tenant/`; no silently-defaulted `data`), and
 // ownerGuardConfig state seeded from a prop or the clock (frozen at mount),
-// and keptRecordConfig the page's storage, reached only through core-utils
-// (KR1, `src/lib/kept-records`) but by the tenant adapter and the viewer's
-// in-memory copies, which install it.
+// and keptRecordConfig the page's storage (KR1; its exemptions are below).
 //
 // LA1 (docs/learner-data-authority.md): the network globals are restricted in
 // `src/` so a request carrying learner state cannot be written beside the

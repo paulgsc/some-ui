@@ -95,19 +95,10 @@ const readCopies = salvageEntries((value): Array<Copy> | null =>
 
 /**
  * The receipt, read afresh each time (callers write into it); a receipt it
- * cannot read whole is copied aside first. `writable` false: nothing may be
- * written over what is stored.
+ * cannot read whole is copied aside first.
  */
-function openReceipt(storage: KeyedStorage): {
-  receipt: Receipt
-  writable: boolean
-} {
-  const kept = openKept(storage, RECEIPT_KEY, readCopies, {})
-  return { receipt: { ...kept.value }, writable: kept.writable }
-}
-
 function readReceipt(storage: KeyedStorage): Receipt {
-  return openReceipt(storage).receipt
+  return { ...openKept(storage, RECEIPT_KEY, readCopies, {}).value }
 }
 
 export type TransferPlan = {
@@ -290,9 +281,9 @@ export async function runTransfer(
     localId: string,
     next: (known: Array<Copy>) => Array<Copy>
   ): void => {
-    const { receipt, writable } = openReceipt(storage)
+    const receipt = readReceipt(storage)
     receipt[localId] = next(receipt[localId] ?? [])
-    if (!writable || !writeKept(storage, RECEIPT_KEY, receipt, readCopies)) {
+    if (!writeKept(storage, RECEIPT_KEY, receipt, readCopies)) {
       throw new NotKeptError()
     }
   }

@@ -194,7 +194,6 @@ export function recentCounts(
     )
 }
 
-/** A stored record, or an empty one when it does not parse. */
 /** The stored record, or null for a value that is not one. */
 export function readPracticeRecord(
   raw: unknown

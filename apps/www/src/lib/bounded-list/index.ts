@@ -35,10 +35,8 @@ export function boundedList<T>(
     openKept(localStorageOrNull(), key, items, [])
   const write = (next: Array<T>): boolean =>
     writeKept(localStorageOrNull(), key, next.slice(0, limit), items)
-  const change = (next: (kept: Array<T>) => Array<T>): boolean => {
-    const kept = open()
-    return kept.writable && write(next(kept.value))
-  }
+  const change = (next: (kept: Array<T>) => Array<T>): boolean =>
+    write(next(open().value))
   return {
     read: () => open().value,
     put: (item, same) =>

@@ -9,8 +9,6 @@ import {
   RETIRED_KEYS,
 } from "."
 
-const memoryStorage = inMemoryStorage
-
 /** Another tree, under another id. */
 const otherLesson = (): ReturnType<typeof workedLesson> => ({
   ...workedLesson(),
@@ -19,7 +17,7 @@ const otherLesson = (): ReturnType<typeof workedLesson> => ({
 
 describe("createPastedLessonStore", () => {
   it("holds one tree, and a second paste replaces the first", () => {
-    const store = createPastedLessonStore(memoryStorage())
+    const store = createPastedLessonStore(inMemoryStorage())
     expect(store.getTree()).toBeNull()
     store.setTree(workedLesson())
     store.setTree(otherLesson())
@@ -27,7 +25,7 @@ describe("createPastedLessonStore", () => {
   })
 
   it("reads a conversation lesson an earlier build held as nothing", () => {
-    const storage = memoryStorage()
+    const storage = inMemoryStorage()
     storage.setItem(
       PASTED_LESSON_KEY,
       JSON.stringify({ version: 1, meta: { key: "local:a" }, batches: [] })
@@ -36,7 +34,7 @@ describe("createPastedLessonStore", () => {
   })
 
   it("reads a held tree back through both audits (MK4)", () => {
-    const storage = memoryStorage()
+    const storage = inMemoryStorage()
     const store = createPastedLessonStore(storage)
     store.setTree(workedLesson())
     const held: unknown = JSON.parse(storage.getItem(PASTED_LESSON_KEY) ?? "")
@@ -67,14 +65,14 @@ describe("createPastedLessonStore", () => {
   })
 
   it("forgets the lesson on clear", () => {
-    const store = createPastedLessonStore(memoryStorage())
+    const store = createPastedLessonStore(inMemoryStorage())
     store.setTree(workedLesson())
     store.clear()
     expect(store.getTree()).toBeNull()
   })
 
   it("reads nothing from a document it does not recognise", () => {
-    const storage = memoryStorage()
+    const storage = inMemoryStorage()
     storage.setItem(PASTED_LESSON_KEY, JSON.stringify({ version: 2 }))
     expect(createPastedLessonStore(storage).getTree()).toBeNull()
     storage.setItem(PASTED_LESSON_KEY, "{not json")
@@ -101,7 +99,7 @@ describe("createPastedLessonStore", () => {
 
 describe("a replacement storage refuses", () => {
   it("empties the slot rather than leave the tree it replaced", () => {
-    const storage = memoryStorage()
+    const storage = inMemoryStorage()
     const store = createPastedLessonStore(storage)
     store.setTree(workedLesson())
     const full: Storage = {
@@ -118,7 +116,7 @@ describe("a replacement storage refuses", () => {
   })
 
   it("removes the tree it replaced when storage takes no write at all", () => {
-    const storage = memoryStorage()
+    const storage = inMemoryStorage()
     const store = createPastedLessonStore(storage)
     store.setTree(workedLesson())
     // Reads and removals still work; every write is refused.
@@ -137,7 +135,7 @@ describe("a replacement storage refuses", () => {
 
 describe("purgeRetiredLessons", () => {
   it("deletes what the retired stores kept, and nothing else", () => {
-    const storage = memoryStorage()
+    const storage = inMemoryStorage()
     for (const key of RETIRED_KEYS) storage.setItem(key, "[]")
     storage.setItem(PASTED_LESSON_KEY, "kept")
     purgeRetiredLessons(storage)

@@ -25,7 +25,6 @@ export {
   localStorageOrNull,
   openKept,
   openRecord,
-  openSalvaged,
   quarantine,
   readWhole,
   removeRecord,

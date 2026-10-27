@@ -1,8 +1,9 @@
 /**
  * The one reader and writer of a kept record: what a person's use of the app
  * leaves on the device (CLAUDE.md, "Never lose the record"). Every store
- * reads its key through `openRecord` (or `openSalvaged`, for a value read
- * entry by entry) and writes through `writeRecord`, over `KeyedStorage`:
+ * reads its key through `openRecord` or `openKept` (for a value read entry
+ * by entry) and writes through `writeRecord` or `writeKept`, over
+ * `KeyedStorage`:
  *
  * - a value it cannot read, or can read only part of (an older shape, bad
  *   JSON), is copied aside under the store's prefix before anything may be
@@ -22,6 +23,7 @@
  */
 
 import { assertNever } from "./assert-never"
+import { isRecord } from "./is-record"
 
 /**
  * `window.localStorage`, or null wherever touching it throws (privacy mode,
@@ -129,7 +131,7 @@ export function quarantine(
  * under `quarantinePrefix` first, never overwritten, so a bad write or an
  * older shape loses nothing; the entries it could read stay `kept`.
  */
-export function openSalvaged<T>(
+function openSalvaged<T>(
   storage: KeyedStorage,
   key: string,
   read: (raw: string) => Salvaged<T> | null,
@@ -203,9 +205,7 @@ export function salvageEntries<T>(
 ): (raw: string) => Salvaged<Record<string, T>> | null {
   return (raw) => {
     const value = jsonOf(raw)
-    if (typeof value !== "object" || value === null || Array.isArray(value)) {
-      return null
-    }
+    if (!isRecord(value)) return null
     const entries = Object.entries(value)
     // Built from entries, never by assignment, so no key reaches a prototype.
     const kept = entries.flatMap(([key, entry]) => {
