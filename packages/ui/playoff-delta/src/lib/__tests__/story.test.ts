@@ -3,11 +3,7 @@ import { SAMPLE_SEASON } from "@playoff-delta/lib/sample"
 import {
   blewIt,
   calls,
-  cellChanges,
-  claimOf,
-  floorRecord,
   points,
-  shareVerdict,
   type StoryResult,
   type StorySeason,
   type StoryWeek,
@@ -25,76 +21,7 @@ const result = (over: Partial<StoryResult>): StoryResult => ({
   loser: "DET",
   kind: "inside",
   leverage: 0,
-  moved: null,
   ...over,
-})
-
-describe("claimOf", () => {
-  it("is the first row with a way in", () => {
-    expect(claimOf([null, 6, 2], 5)).toEqual({
-      in: true,
-      wins: 5,
-      extraWins: 1,
-      seed: 6,
-    })
-  })
-
-  it("is out when no row has one", () => {
-    expect(claimOf([null, null], 7)).toEqual({ in: false, wins: 7 })
-  })
-
-  it("reads 'never win again' as zero more wins", () => {
-    const c = claimOf([6, 3], 6)
-    expect(c.in && c.extraWins).toBe(0)
-    expect(floorRecord(c, 17)).toBe("6–11")
-  })
-})
-
-describe("cellChanges", () => {
-  const shaped = (
-    game: StoryWeek["game"],
-    before: Array<number | null>,
-    after: Array<number | null>
-  ): StoryWeek => ({
-    ...week(2),
-    game,
-    paths: { ...week(2).paths, before, after },
-  })
-  const won = { opponent: "NO", won: true, relation: "conference" } as const
-
-  it("shifts a row after a win: last week's +1 is this week's 0", () => {
-    expect(cellChanges(shaped(won, [null, 6], [6]))[0]?.[5]).toBe("open")
-  })
-
-  it("does not shift on a bye", () => {
-    // Shifted, row 0 would read last week's row 1, where #3 was open.
-    expect(cellChanges(shaped(null, [6, 3], [6, 3]))[0]?.[2]).toBe("closed")
-  })
-
-  it("marks a closed path", () => {
-    expect(cellChanges(shaped(null, [5], [6]))[0]?.[4]).toBe("pruned")
-  })
-})
-
-describe("shareVerdict", () => {
-  const shaped = (before: number, after: number, out = false): StoryWeek => ({
-    ...week(2),
-    paths: { ...week(2).paths, after: out ? [null] : [5] },
-    share: { ...week(2).share, before, after },
-  })
-
-  it.each([
-    [0.6, 0.7, "Better."],
-    [0.7, 0.6, "Worse."],
-    [0.6, 0.604, "Held."],
-    [0.6, 0.596, "Held."],
-  ] as const)("%f to %f: %s", (before, after, verdict) => {
-    expect(shareVerdict(shaped(before, after))).toBe(verdict)
-  })
-
-  it("says the paths closed for good, whatever the share did", () => {
-    expect(shareVerdict(shaped(0.01, 0, true))).toBe("Absorbed.")
-  })
 })
 
 describe("points", () => {

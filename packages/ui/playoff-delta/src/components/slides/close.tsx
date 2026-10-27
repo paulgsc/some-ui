@@ -1,253 +1,210 @@
-import type { JSX } from "react"
+import type { CSSProperties, JSX } from "react"
+import {
+  ended,
+  exitLine,
+  hindsight,
+  hindsightLine,
+  LUCK_WORDS,
+  luckBand,
+  pastExit,
+  seasonSoFar,
+  SETTLED,
+  SPREADS_SHOWN,
+  spreadsOf,
+  verdictOf,
+} from "@playoff-delta/lib/luck"
 import {
   against,
-  claimOf,
-  floorRecord,
   nameOf,
   percent,
+  signed,
   size,
-  type StoryClaim,
 } from "@playoff-delta/lib/story"
+import { counted } from "@some-ui/core-utils"
 
 import { delay, Kicker, Reveal, type SlideProps } from "./shared"
 
-/** A floor as a share of the season; out fills the bar. */
-const barWidth = (c: StoryClaim, seasonLength: number): number =>
-  c.in ? ((c.wins + c.extraWins) / seasonLength) * 100 : 100
-
-export const Rivals = ({ season, week }: SlideProps): JSX.Element => {
-  const label = (c: StoryClaim): string =>
-    c.in ? `${floorRecord(c, season.seasonLength)} · #${c.seed}` : "OUT"
-  const n = week.rivals.length
-  return (
-    <>
-      <Kicker>The rivals</Kicker>
-      <h2 className="pd-q">How close to rock bottom?</h2>
-      <div className="flex flex-col gap-[3cqw]">
-        {week.rivals.map((r, i) => {
-          const at = 0.3 + i * 1.2
-          return (
-            <Reveal key={r.team} at={at} className="pd-card">
-              <div className="flex items-baseline justify-between">
-                <b className="text-[5cqw]">{nameOf(season, r.team)}</b>
-                <span
-                  className={`pd-mono pd-small font-bold ${r.game === null ? "text-muted-foreground" : r.game.won ? "text-destructive" : "text-success"}`}
-                >
-                  {r.game === null
-                    ? "bye"
-                    : `${r.game.won ? "W" : "L"} vs ${r.game.opponent}`}
-                </span>
-              </div>
-              <div className="pd-small flex justify-between">
-                <span className="text-muted-foreground">their floor</span>
-                <b>
-                  {label(r.before)} → {label(r.after)}
-                </b>
-              </div>
-              <div className="pd-small flex justify-between">
-                <span className="text-muted-foreground">their ways in</span>
-                <b>
-                  {percent(r.share.before)} → {percent(r.share.after)}
-                </b>
-              </div>
-            </Reveal>
-          )
-        })}
-      </div>
-      <Reveal
-        at={0.3 + n * 1.2}
-        className="mt-auto grid grid-cols-2 gap-[3cqw]"
-      >
-        <div className="flex flex-col">
-          <span className="pd-mono text-muted-foreground text-[2.6cqw]">
-            futility points this week
-          </span>
-          <b className="text-[7cqw]">
-            {week.points.week.scored}
-            <small className="text-muted-foreground text-[3.6cqw]">
-              {" "}
-              of {week.points.week.possible}
-            </small>
-          </b>
-        </div>
-        <div className="flex flex-col">
-          <span className="pd-mono text-muted-foreground text-[2.6cqw]">
-            this season
-          </span>
-          <b className="text-[7cqw]">
-            {week.points.season.scored}
-            <small className="text-muted-foreground text-[3.6cqw]">
-              {" "}
-              of {week.points.season.possible}
-            </small>
-          </b>
-        </div>
-      </Reveal>
-      <Reveal at={0.6 + n * 1.2} className="pd-small text-muted-foreground">
-        A point for each loss by a division mate or rival to anyone outside that
-        group.
-      </Reveal>
-    </>
-  )
-}
-
-export const Collisions = ({ week }: SlideProps): JSX.Element => {
-  return (
-    <>
-      <Kicker>The collisions</Kicker>
-      <h2 className="pd-q">Where rooting gets messy.</h2>
-      <div className="flex flex-col gap-[2.5cqw]">
-        {week.collisions.slice(0, 4).map((c, i) => (
-          <Reveal
-            key={`${c.home}-${c.away}-${c.kind === "rival-vs-you" ? c.rival : "both"}`}
-            at={0.3 + i * 0.5}
-            className="pd-card border-dashed"
-          >
-            <span className="pd-mono pd-small text-muted-foreground">
-              {c.away} @ {c.home} · {c.winner} won
-            </span>
-            {c.kind === "rival-vs-rival" ? (
-              <span className="pd-say text-destructive">
-                Two rivals. One of them had to win.
-              </span>
-            ) : (
-              <>
-                <span className="pd-say text-destructive">
-                  worst for {c.rival}: <b>{c.worstForRival} wins</b>
-                </span>
-                <span className="pd-say text-success">
-                  best for you: <b>{c.bestForYou} wins</b>
-                </span>
-              </>
-            )}
-          </Reveal>
-        ))}
-      </div>
-    </>
-  )
-}
-
-export const Next = ({ season, week }: SlideProps): JSX.Element => {
+export const Stake = ({ season, week }: SlideProps): JSX.Element => {
+  const stake = week.stake
+  if (!stake) return <Kicker>Next week</Kicker>
   return (
     <>
       <Kicker>Next week</Kicker>
-      <h2 className="pd-q">Who to root for.</h2>
-      <div className="flex flex-col gap-[2.5cqw]">
-        {week.next.map((g, i) => {
-          const other = against(g)
-          return (
-            <Reveal
-              key={`${g.home}-${g.away}`}
-              at={0.3 + i * 0.5}
-              className="pd-card"
-            >
-              <span className="pd-mono pd-small text-muted-foreground">
-                {g.away} @ {g.home}
-              </span>
-              <span className="pd-say">
-                Root for the <b>{nameOf(season, g.rootFor)}</b> over the{" "}
-                {nameOf(season, other)}
-              </span>
-              <span className="pd-small text-muted-foreground">
-                {size(g.swing)} points of the ways in between the two results
-              </span>
-            </Reveal>
-          )
-        })}
+      <div>
+        <b className="pd-big block">±{size(stake.spread)}</b>
+        <span className="pd-say text-muted-foreground">
+          points of the ways in: how far next week usually moves us
+        </span>
       </div>
+      <Reveal at={0.5} className="pd-card">
+        <span className="pd-mono pd-small text-muted-foreground">our game</span>
+        <span className="pd-say">
+          {stake.opponent === null ? (
+            "A bye: only the league can move us."
+          ) : stake.own > 0 ? (
+            <>
+              vs {stake.opponent}: <b>{size(stake.own)} points</b> between a win
+              and a loss
+            </>
+          ) : (
+            `vs ${stake.opponent}: it can't move us either way.`
+          )}
+        </span>
+      </Reveal>
+      <div className="flex flex-col gap-[2cqw]">
+        {week.next.map((g, i) => (
+          <Reveal
+            key={`${g.home}-${g.away}`}
+            at={1 + i * 0.4}
+            className="pd-card"
+          >
+            <span className="pd-mono pd-small text-muted-foreground">
+              {g.away} @ {g.home} · {size(g.swing)} points apart
+            </span>
+            <span className="pd-say">
+              Root for the <b>{nameOf(season, g.rootFor)}</b> over the{" "}
+              {nameOf(season, against(g))}
+            </span>
+          </Reveal>
+        ))}
+      </div>
+      <Reveal at={2.4} className="pd-small text-muted-foreground">
+        One spread: the standard deviation of our share of the ways in over the
+        ways next week can go.
+        {stake.exact ? "" : " Sampled."}
+      </Reveal>
     </>
   )
 }
 
-export const Benchmark = ({ season, week }: SlideProps): JSX.Element => {
-  const me = claimOf(week.paths.after, week.paths.winsAfter)
-  const low = week.benchmark.lowestBar
-  const rows: ReadonlyArray<{
-    label: string
-    sub: string
-    c: StoryClaim
-    mine?: boolean
-  }> = [
-    { label: "You", sub: `after week ${week.week}`, c: me, mine: true },
-    {
-      label: "You, last season",
-      sub: `after week ${week.week}`,
-      c: week.benchmark.lastSeason,
-    },
-    {
-      label: `Lowest bar · ${low.team}`,
-      sub: nameOf(season, low.team),
-      c: { in: true, wins: low.wins, extraWins: 0, seed: low.seed },
-    },
-  ]
+/** The share as a bar, with the ends where following stops marked. */
+const ShareBar = ({ share }: { share: number }): JSX.Element => {
+  const settled: CSSProperties & Record<"--settled", string> = {
+    "--settled": `${SETTLED * 100}%`,
+  }
+  return (
+    <div className="flex flex-col gap-[1cqw]">
+      <div className="pd-bar pd-bar--settled" style={settled}>
+        <i style={{ ...delay(0.5), width: `${share * 100}%` }} />
+      </div>
+      <div className="pd-mono text-muted-foreground flex justify-between text-[2.4cqw]">
+        <span>{percent(SETTLED)}</span>
+        <span>{percent(1 - SETTLED)}</span>
+      </div>
+    </div>
+  )
+}
+
+export const Verdict = ({ season, week }: SlideProps): JSX.Element => {
+  const v = verdictOf(week)
+  const stopped = pastExit(season, week)
+  if (stopped !== null) {
+    const h = hindsight(season)
+    return (
+      <>
+        <Kicker>The verdict</Kicker>
+        <b className="pd-big block">Stopped.</b>
+        <span className="pd-say">
+          We stopped following after week {stopped}.
+        </span>
+        {h ? (
+          <Reveal at={0.6} className="pd-card">
+            <span className="pd-mono pd-small text-muted-foreground">
+              in hindsight
+            </span>
+            <span className="pd-say">{hindsightLine(h)}</span>
+          </Reveal>
+        ) : null}
+      </>
+    )
+  }
   return (
     <>
-      <Kicker>The benchmark</Kicker>
-      <h2 className="pd-q">How low is the bar?</h2>
-      <div className="flex flex-col gap-[3cqw]">
-        {rows.map((r, i) => {
-          const at = 0.5 + i * 1.1
+      <Kicker>The verdict</Kicker>
+      <div>
+        <b className="pd-big block">
+          {v.kind === "watch" ? `Watch week ${week.week + 1}.` : "Exit."}
+        </b>
+        <span className="pd-say text-muted-foreground">
+          {v.kind === "watch"
+            ? `${percent(week.share.after)} of the ways the season can go get them in.`
+            : `${percent(week.share.after)} of the ways in. ${exitLine(v.why)}`}
+        </span>
+      </div>
+      <Reveal at={0.4}>
+        <ShareBar share={week.share.after} />
+      </Reveal>
+      <Reveal at={1.2} className="pd-small text-muted-foreground">
+        We follow while the share of the ways in is between {percent(SETTLED)}{" "}
+        and {percent(1 - SETTLED)}, and stop for good once it leaves, or once it
+        is settled either way.
+      </Reveal>
+    </>
+  )
+}
+
+export const Season = ({ season, week }: SlideProps): JSX.Element => {
+  const { weeks, spreads, lights, made } = seasonSoFar(season, week)
+  return (
+    <>
+      <Kicker>The season so far</Kicker>
+      <div>
+        <b className="pd-big block">{LUCK_WORDS[luckBand(spreads)].big}</b>
+        <span className="pd-say text-muted-foreground">
+          {spreads === null
+            ? "Nothing elsewhere could move us."
+            : `${signed(spreads)} spreads over ${counted(weeks.length, "week")} followed`}
+        </span>
+      </div>
+      <div className="pd-strip" aria-hidden="true">
+        {weeks.map((w, i) => {
+          const z = spreadsOf(w) ?? 0
+          const height = `${(Math.min(Math.abs(z), SPREADS_SHOWN) / SPREADS_SHOWN) * 50}%`
           return (
-            <Reveal
-              key={r.label}
-              at={at}
-              className="flex flex-col gap-[1.5cqw]"
-            >
-              <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-baseline gap-[2cqw]">
-                <b className={`text-[4.2cqw] ${r.mine ? "text-success" : ""}`}>
-                  {r.label}
-                </b>
-                <span className="pd-small text-muted-foreground truncate">
-                  {r.sub}
-                </span>
-                <b className="pd-mono text-[4.2cqw]">
-                  {r.c.in ? floorRecord(r.c, season.seasonLength) : "OUT"}
-                </b>
-              </div>
-              <div className={`pd-bar ${r.mine ? "" : "pd-bar--neutral"}`}>
+            <div key={w.week} className="pd-strip__week">
+              <div className="pd-strip__bars">
                 <i
-                  style={{
-                    ...delay(at + 0.2),
-                    width: `${barWidth(r.c, season.seasonLength)}%`,
-                  }}
+                  className={z >= 0 ? "pd-strip__up" : "pd-strip__down"}
+                  style={{ ...delay(0.3 + i * 0.08), height }}
                 />
               </div>
-            </Reveal>
+              <span className="pd-mono text-muted-foreground text-[2.2cqw]">
+                {w.week}
+              </span>
+            </div>
           )
         })}
       </div>
-      <Reveal at={3.8} className="pd-say text-muted-foreground">
-        Shorter is better: the fewest wins that can still get in.
+      <Reveal at={1.6} className="pd-say">
+        <b>{made}</b> of {counted(lights, "light")} made
+      </Reveal>
+      <Reveal at={2} className="pd-small text-muted-foreground">
+        Each week, luck averages zero. Over many weeks, the total in spreads
+        usually lands within one of it.
       </Reveal>
     </>
   )
 }
 
 export const Outro = ({ season, week }: SlideProps): JSX.Element => {
-  const a = claimOf(week.paths.after, week.paths.winsAfter)
+  const over = ended(season, week)
   return (
     <>
       <div className="mt-auto flex flex-col gap-[1.5cqw]">
         <span className="pd-kicker">Playoff Delta</span>
         <b className="text-[13cqw] leading-[0.95] font-extrabold">
-          How bad
+          Worth
           <br />
-          can we be?
+          following?
         </b>
       </div>
       <span className="pd-say text-muted-foreground">
-        Week {week.week} · {nameOf(season, season.team)} · floor{" "}
-        {floorRecord(a, season.seasonLength)}
-        {a.in ? ` · #${a.seed}` : ""}
+        Week {week.week} · {nameOf(season, season.team)} · in{" "}
+        {percent(week.share.after)} of the ways the season can go
       </span>
-      <span className="pd-say text-muted-foreground">
-        in {percent(week.share.after)} of the ways the season can go
+      <span className="pd-kicker mt-auto">
+        {over ? "That's the series" : "Next week, we ask again"}
       </span>
-      <span className="pd-say text-muted-foreground">
-        futility points: {week.points.season.scored} of{" "}
-        {week.points.season.possible}
-      </span>
-      <span className="pd-kicker mt-auto">Next week, we ask again</span>
     </>
   )
 }
