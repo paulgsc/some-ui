@@ -74,6 +74,41 @@ describe("parseLedger", () => {
     expect(problems).toContain("synchronous: is a list")
   })
 
+  it("rejects a malformed measurement rather than leaving it out of the comparison", () => {
+    const comparison = {
+      what: "Steps",
+      x: "asks",
+      y: "steps",
+      limits: "Local.",
+      series: [
+        {
+          label: "today",
+          points: [
+            [1000, 12066],
+            [100000, "1200066"],
+          ],
+        },
+        { label: "with the index", points: [[1000, 312]] },
+      ],
+    }
+    const parsed = parseLedger({
+      ...ledgerOf([objective()]),
+      families: [
+        {
+          id: "f",
+          name: "F",
+          why: "W",
+          paths: [],
+          modules: ["jobs"],
+          objectives: [{ ...objective(), comparison }],
+        },
+      ],
+    })
+    expect(parsed.ok ? "" : parsed.problems.join("\n")).toContain(
+      "points[1]: is an [x, y] pair of numbers"
+    )
+  })
+
   it("reads what it can of a ledger another grammar wrote, for the ratchet's base", () => {
     const old = {
       ...ledgerOf([objective()]),

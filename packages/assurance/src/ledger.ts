@@ -372,14 +372,23 @@ function optionalComparison(
         item?.points,
         `${where}.comparison.series[${i}].points`,
         at
-      ).flatMap((p) =>
-        Array.isArray(p) &&
-        p.length === 2 &&
-        typeof p[0] === "number" &&
-        typeof p[1] === "number"
-          ? [[p[0], p[1]] as const]
-          : []
-      )
+      ).flatMap((p, n) => {
+        if (
+          Array.isArray(p) &&
+          p.length === 2 &&
+          typeof p[0] === "number" &&
+          typeof p[1] === "number"
+        )
+          return [[p[0], p[1]] as const]
+        // A dropped point would quietly change what the page shows.
+        at(
+          `${where}.comparison.series[${i}].points[${n}]`,
+          "is an [x, y] pair of numbers"
+        )
+        return []
+      })
+      if (!item || !text(item.label))
+        at(`${where}.comparison.series[${i}]`, "needs a label")
       return item && text(item.label) && points.length > 0
         ? [{ label: item.label, points }]
         : []
