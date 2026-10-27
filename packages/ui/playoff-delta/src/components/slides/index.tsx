@@ -1,24 +1,18 @@
 import type { ComponentType } from "react"
 import type { SlideId } from "@playoff-delta/lib/slides"
 
-import { Benchmark, Collisions, Next, Outro, Rivals } from "./close"
-import { Hook, Law, Test } from "./intro"
+import { Outro, Season, Stake, Verdict } from "./close"
+import { Hook, Law } from "./intro"
 import type { SlideProps } from "./shared"
-import { After, Before, Boundary, Game, League, Path } from "./week"
+import { Lights, Luck } from "./week"
 
 export const SLIDES: Readonly<Record<SlideId, ComponentType<SlideProps>>> = {
   hook: Hook,
-  test: Test,
-  before: Before,
-  game: Game,
+  lights: Lights,
   law: Law,
-  league: League,
-  after: After,
-  path: Path,
-  boundary: Boundary,
-  rivals: Rivals,
-  collisions: Collisions,
-  next: Next,
-  benchmark: Benchmark,
+  luck: Luck,
+  stake: Stake,
+  verdict: Verdict,
+  season: Season,
   outro: Outro,
 }

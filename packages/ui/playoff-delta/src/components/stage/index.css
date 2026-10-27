@@ -219,74 +219,133 @@
     animation-name: pd-bounce;
   }
 
-  /* ------------------------------------------------------------ results */
+  /* ------------------------------------------------------------ lights */
 
-  /* A result's leverage: a bar out from the middle, right and green when it
-     helped, left and red when it hurt, its length the result's share of the
-     week's largest. */
-  .pd-lev {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    height: 2.2cqw;
-  }
-
-  .pd-lev > i {
-    animation: pd-grow 0.8s var(--d, 0s) cubic-bezier(0.2, 0.8, 0.2, 1) both;
-    border-radius: 0.6cqw;
-    display: block;
-    height: 100%;
-  }
-
-  .pd-lev--up > i {
-    background: var(--success);
-    grid-column: 2;
-    justify-self: start;
-    transform-origin: left;
-  }
-
-  .pd-lev--down > i {
-    background: var(--destructive);
-    grid-column: 1;
-    justify-self: end;
-    transform-origin: right;
-  }
-
-  /* The pigeonhole: a column per team, filled to its wins, with the line
-     every one of them must stay under. */
-  .pd-buckets {
+  /* A week's results as lights: green made, red missed, sized by how far
+     each moved the share (--s), the team's own ringed. */
+  .pd-lights {
     align-items: end;
+    display: grid;
+    gap: 2.4cqw 1.6cqw;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .pd-light-cell {
+    align-items: center;
     display: flex;
-    gap: 2.4cqw;
-    height: 46cqw;
+    flex-direction: column;
+    gap: 0.6cqw;
+    text-align: center;
+  }
+
+  .pd-light {
+    animation: pd-pop 0.45s var(--d, 0s) both;
+    border-radius: 50%;
+    display: block;
+    height: var(--s);
+    width: var(--s);
+  }
+
+  .pd-light--made {
+    background: var(--success);
+    box-shadow: 0 0 2cqw color-mix(in oklab, var(--success) 55%, transparent);
+  }
+
+  .pd-light--missed {
+    background: var(--destructive);
+    box-shadow: 0 0 2cqw
+      color-mix(in oklab, var(--destructive) 45%, transparent);
+  }
+
+  .pd-light--own {
+    outline: 0.6cqw solid var(--foreground);
+    outline-offset: 0.6cqw;
+  }
+
+  /* Luck on a number line in spreads, -3 to +3, its mark sliding in. */
+  .pd-scale {
+    border-top: 0.4cqw solid var(--border);
+    height: 9cqw;
+    margin: 4cqw 2cqw 0;
     position: relative;
   }
 
-  .pd-bucket {
-    background: var(--muted);
-    border-radius: 1cqw 1cqw 0 0;
+  .pd-scale__tick {
+    border-left: 0.3cqw solid var(--border);
+    height: 2cqw;
+    position: absolute;
+    top: 0;
+  }
+
+  .pd-scale__tick > span {
+    left: 50%;
+    position: absolute;
+    top: 2.4cqw;
+    transform: translateX(-50%);
+  }
+
+  .pd-scale__mark {
+    animation: pd-pop 0.45s var(--d, 0s) both;
+    border-radius: 50%;
+    height: 5cqw;
+    position: absolute;
+    top: -2.7cqw;
+    transform: translateX(-50%);
+    width: 5cqw;
+  }
+
+  /* The weeks followed: a column per week, up when lucky, down when not,
+     from a middle line. */
+  .pd-strip {
+    align-items: stretch;
+    display: flex;
+    gap: 1cqw;
+    height: 34cqw;
+  }
+
+  .pd-strip__week {
+    align-items: center;
     display: flex;
     flex: 1;
-    flex-direction: column-reverse;
-    height: 100%;
-    overflow: hidden;
+    flex-direction: column;
+    gap: 1cqw;
   }
 
-  .pd-bucket > i {
-    animation: pd-rise-in 0.8s var(--d, 0s) ease-out both;
-    background: var(--muted-foreground);
-    display: block;
-    transform-origin: bottom;
+  .pd-strip__bars {
+    align-self: stretch;
+    flex: 1;
+    position: relative;
   }
 
-  .pd-bucket > i.pd-bucket__room {
-    background: color-mix(in oklab, var(--success) 35%, transparent);
-  }
-
-  .pd-buckets__line {
-    border-top: 0.5cqw dashed var(--destructive);
+  .pd-strip__bars::before {
+    border-top: 0.3cqw solid var(--border);
+    content: "";
     left: 0;
     position: absolute;
     right: 0;
+    top: 50%;
+  }
+
+  .pd-strip__up,
+  .pd-strip__down {
+    animation: pd-grow-y 0.7s var(--d, 0s) ease-out both;
+    border-radius: 0.6cqw;
+    display: block;
+    left: 15%;
+    position: absolute;
+    right: 15%;
+  }
+
+  .pd-strip__up {
+    background: var(--success);
+    bottom: 50%;
+    transform-origin: bottom;
+  }
+
+  .pd-strip__down {
+    background: var(--destructive);
+    top: 50%;
+    transform-origin: top;
   }
 
   .pd-card {
@@ -297,64 +356,6 @@
     flex-direction: column;
     gap: 2cqw;
     padding: 2.6cqw 3cqw;
-  }
-
-  /* ------------------------------------------------------------ paths grid */
-  .pd-grid {
-    align-items: center;
-    display: grid;
-    gap: 1.3cqw;
-    grid-template-columns: auto repeat(7, minmax(0, 1fr));
-    position: relative;
-  }
-
-  .pd-cell {
-    aspect-ratio: 1;
-    border-radius: calc(var(--radius) - 4px);
-    box-shadow: inset 0 0 0 1px var(--border);
-    display: block;
-    position: relative;
-  }
-
-  .pd-cell--open {
-    animation: pd-pop 0.35s var(--d, 0s) both;
-    background: var(--success);
-    box-shadow: none;
-  }
-
-  .pd-cell--opened {
-    animation: pd-bloom 0.9s calc(var(--d, 0s) + 0.6s) both;
-    background: var(--success);
-    box-shadow: 0 0 0 0.5cqw
-      color-mix(in oklab, var(--success) 45%, transparent);
-  }
-
-  .pd-cell--pruned {
-    animation: pd-prune 1s calc(var(--d, 0s) + 0.5s) both;
-  }
-
-  .pd-cell--pruned::after {
-    animation: pd-show 0.3s calc(var(--d, 0s) + 1.1s) both;
-    background: linear-gradient(
-      45deg,
-      transparent 45%,
-      var(--destructive) 45%,
-      var(--destructive) 55%,
-      transparent 55%
-    );
-    content: "";
-    inset: 22%;
-    position: absolute;
-  }
-
-  .pd-grid--absorbed .pd-cell {
-    animation: none;
-    background: transparent;
-    opacity: 0.4;
-  }
-
-  .pd-grid--absorbed .pd-cell--pruned {
-    opacity: 1;
   }
 
   /* ------------------------------------------------------------ bars */
@@ -373,8 +374,15 @@
     transform-origin: left;
   }
 
-  .pd-bar--neutral > i {
-    background: var(--muted-foreground);
+  /* The share against the ends where following stops: SETTLED of the way
+     in from each side, shaded. */
+  .pd-bar--settled {
+    background: linear-gradient(
+      90deg,
+      var(--border) 2%,
+      var(--muted) 2% 98%,
+      var(--border) 98%
+    );
   }
 
   /* ------------------------------------------------------------ keyframes */
@@ -412,47 +420,7 @@
     }
   }
 
-  @keyframes pd-bloom {
-    0% {
-      opacity: 0;
-      transform: scale(0.2);
-    }
-
-    60% {
-      opacity: 1;
-      transform: scale(1.15);
-    }
-
-    100% {
-      transform: none;
-    }
-  }
-
-  @keyframes pd-prune {
-    0% {
-      background: var(--success);
-    }
-
-    60% {
-      background: color-mix(in oklab, var(--destructive) 70%, transparent);
-    }
-
-    100% {
-      background: transparent;
-    }
-  }
-
-  @keyframes pd-show {
-    from {
-      opacity: 0;
-    }
-
-    to {
-      opacity: 1;
-    }
-  }
-
-  @keyframes pd-rise-in {
+  @keyframes pd-grow-y {
     from {
       transform: scaleY(0);
     }

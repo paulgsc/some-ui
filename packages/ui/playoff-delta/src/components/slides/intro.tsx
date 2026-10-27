@@ -1,6 +1,6 @@
 import type { JSX } from "react"
 import { SymbolGlyph } from "@playoff-delta/components/symbol"
-import { lawOf, LAWS, type WeekLaw } from "@playoff-delta/lib/laws"
+import { lawOf, LAWS, type LawKey } from "@playoff-delta/lib/laws"
 import { leagueResults, nameOf, points } from "@playoff-delta/lib/story"
 import { symbolFor, type SymbolKey } from "@playoff-delta/lib/symbols"
 
@@ -32,53 +32,21 @@ export const Hook = (): JSX.Element => {
           at={2.8}
           className="text-[9cqw] leading-[1.1] font-extrabold text-balance"
         >
-          How bad can we be, and still make the playoffs?
+          Did following them pay this week?
         </Reveal>
         <Reveal
           at={3.8}
           className="text-muted-foreground text-[5.5cqw] font-semibold text-balance"
         >
-          And of all the ways the season can still go, how many get us in?
+          And is next week worth following?
         </Reveal>
       </div>
     </>
   )
 }
 
-export const Test = ({ season, week }: SlideProps): JSX.Element => {
-  const { w, l } = week.record
-  const capped = `${w}–${season.seasonLength - w}`
-  return (
-    <>
-      <Kicker>The test</Kicker>
-      <h2 className="pd-q">Freeze the season.</h2>
-      <Reveal at={0.4} className="pd-card self-start">
-        <span className="pd-small text-muted-foreground">
-          {nameOf(season, season.team)} now
-        </span>
-        <b className="pd-big pd-mono">
-          {w}–{l}
-        </b>
-      </Reveal>
-      <Reveal
-        at={1}
-        className="pd-mono text-muted-foreground pd-small pl-[1.5cqw]"
-      >
-        never win again →
-      </Reveal>
-      <Reveal at={1.5} className="pd-card border-destructive/60 self-start">
-        <span className="pd-small text-muted-foreground">final record</span>
-        <b className="pd-big pd-mono text-destructive">{capped}</b>
-      </Reveal>
-      <Reveal at={2.3} className="pd-q">
-        Can a {capped} team still make the playoffs?
-      </Reveal>
-    </>
-  )
-}
-
 /** The kinds of game each week's law draws. */
-const GLYPHS: Readonly<Record<WeekLaw, ReadonlyArray<SymbolKey>>> = {
+const GLYPHS: Readonly<Record<LawKey, ReadonlyArray<SymbolKey>>> = {
   conservation: ["exported"],
   kinds: ["game", "exported", "outside", "inside"],
   room: ["inside"],

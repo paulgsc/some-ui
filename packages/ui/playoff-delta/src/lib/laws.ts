@@ -1,12 +1,13 @@
 /**
  * The algebra the stage teaches, one law at a time: each episode states the
- * law its week's biggest league result shows. The words for every law live
- * here, so the slide and the voiceover read the same lines.
+ * law its week's biggest league result shows, the rule behind why that light
+ * went the way it did. The words for every law live here, so the slide and
+ * the voiceover read the same lines.
  */
 
 import { leagueResults, type StoryWeek } from "./story"
 
-export type LawKey = "conservation" | "kinds" | "room" | "pigeonhole"
+export type LawKey = "conservation" | "kinds" | "room"
 
 type Law = {
   readonly name: string
@@ -32,21 +33,13 @@ export const LAWS: Readonly<Record<LawKey, Law>> = {
     rule: "When two conference teams meet, one of them gets the win.",
     then: "Which one is better for us depends on room: a team far below our line can take the win without passing us, a team close to it can't.",
   },
-  pigeonhole: {
-    name: "The pigeonhole",
-    rule: "Teams that still play each other must share out every one of those wins.",
-    then: "If the wins don't fit under our line, one of them passes us.",
-  },
 }
-
-/** The laws a week can show; the pigeonhole is the boundary slide's. */
-export type WeekLaw = Exclude<LawKey, "pigeonhole">
 
 /**
  * The law this week shows: on a bye, the four kinds (only the league moved);
  * otherwise the kind of the league's biggest result.
  */
-export function lawOf(week: StoryWeek): WeekLaw {
+export function lawOf(week: StoryWeek): LawKey {
   const top = leagueResults(week)[0]
   if (week.game === null || top === undefined) return "kinds"
   return top.kind === "exported" ? "conservation" : "room"

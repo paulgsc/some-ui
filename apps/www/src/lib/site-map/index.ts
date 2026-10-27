@@ -101,7 +101,7 @@ const DESTINATIONS: ReadonlyArray<Destination> = [
     to: "/playoff-delta",
     title: "Playoff Delta",
     blurb:
-      "One NFL team's week as a story: how bad can they be, and still make the playoffs?",
+      "One NFL team's week in numbers: did following them pay, and is next week worth following?",
     icon: Trophy,
     audience: "web",
     launcher: "showcase",

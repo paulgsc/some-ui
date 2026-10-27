@@ -10,17 +10,25 @@ import { assertNever } from "@some-ui/intent-kit"
 
 import { lawOf, LAWS } from "./laws"
 import {
+  ended,
+  exitLine,
+  exitWeek,
+  followed,
+  hindsight,
+  hindsightLine,
+  inSpreads,
+  lightsOf,
+  LUCK_WORDS,
+  luckBand,
+  seasonSpreads,
+  spreadsOf,
+  verdictOf,
+} from "./luck"
+import {
   against,
-  calls,
-  claimOf,
-  floorRecord,
-  leagueResults,
   nameOf,
   percent,
   points,
-  roomOf,
-  shareVerdict,
-  sinceLabel,
   size,
   type StorySeason,
   type StoryWeek,
@@ -28,70 +36,36 @@ import {
 
 const SLIDE_IDS = [
   "hook",
-  "test",
-  "before",
-  "game",
+  "lights",
   "law",
-  "league",
-  "after",
-  "path",
-  "boundary",
-  "rivals",
-  "collisions",
-  "next",
-  "benchmark",
+  "luck",
+  "stake",
+  "verdict",
+  "season",
   "outro",
 ] as const
 export type SlideId = (typeof SLIDE_IDS)[number]
 
 /** Slides with nothing to show this week are skipped, not shown empty. */
 export function slidesFor(week: StoryWeek): ReadonlyArray<SlideId> {
-  return SLIDE_IDS.filter((id) => {
-    if (id === "league") return leagueResults(week).length > 0
-    if (id === "boundary") return week.boundary !== null
-    if (id === "collisions") return week.collisions.length > 0
-    if (id === "next") return week.next.length > 0
-    return true
-  })
+  return SLIDE_IDS.filter((id) => id !== "stake" || week.stake !== null)
 }
 
 /** Milliseconds a slide holds when playing unattended: its reveal, then a beat. */
 export const HOLD_MS: Readonly<Record<SlideId, number>> = {
   hook: 6500,
-  test: 5500,
-  before: 5500,
-  game: 5000,
+  lights: 8000,
   law: 7000,
-  league: 7500,
-  after: 7500,
-  path: 6500,
-  boundary: 8000,
-  rivals: 7000,
-  collisions: 6000,
-  next: 6000,
-  benchmark: 6000,
+  luck: 7500,
+  stake: 7000,
+  verdict: 6500,
+  season: 7000,
   outro: 4500,
 }
-
-/** What the path's records leave out: it is one way in. */
-export const REST_OF_LEAGUE =
-  "and the rest of the league as this way has it. There may be others."
 
 /** The model every number is read under, said once a week. */
 export const MODEL =
   "Each way the rest of the season can go counts once. Standings only: a tie goes to us."
-
-function claimLine(
-  season: StorySeason,
-  paths: ReadonlyArray<number | null>,
-  wins: number
-): string {
-  const c = claimOf(paths, wins)
-  if (!c.in) return "every path is closed"
-  if (c.extraWins === 0)
-    return `even if they never win again, a way in remains, as high as the number ${c.seed} seed`
-  return `they need ${counted(c.extraWins, "more win")}, then as high as the number ${c.seed} seed. That's a ${floorRecord(c, season.seasonLength)} team`
-}
 
 /** "the Niners beat the Lions", as the voiceover says a result. */
 const said = (season: StorySeason, winner: string, loser: string): string =>
@@ -105,76 +79,72 @@ export function narration(
 ): string {
   const name = nameOf(season, season.team)
   const n = (code: string): string => nameOf(season, code)
-  const { record, share } = week
+  const { share } = week
   switch (id) {
     case "hook": {
-      return "Most fans ask one question: did we win? We ask two. How bad can we be, and still make the playoffs? And of all the ways the season can still go, how many get us in?"
+      return "Most fans ask one question: did we win? We ask two. Did following them pay this week? And is next week worth following?"
     }
-    case "test": {
-      return `The ${name} are ${record.w} and ${record.l}. Freeze the season: if they never win again, they finish ${record.w} and ${season.seasonLength - record.w}. Can that team still make the playoffs?`
-    }
-    case "before": {
-      return `${sinceLabel(week.week)}, ${claimLine(season, week.paths.before, week.paths.winsBefore)}. And ${percent(share.before)} of the ways the season can go get them in.`
-    }
-    case "game": {
-      if (week.game === null)
-        return `Week ${week.week} is a bye. The ${name} don't play, so only the league moves.`
-      return `Week ${week.week}: the ${name} ${week.game.won ? "beat" : "lost to"} the ${n(week.game.opponent)}. That alone moved them ${points(share.own)} points.`
+    case "lights": {
+      const lights = lightsOf(week)
+      const own = lights.find((l) => l.result.kind === "own")
+      const league = lights.filter((l) => l.result.kind !== "own")
+      const made = league.filter((l) => l.made).length
+      const lead = own
+        ? `Week ${week.week}: ${said(season, own.result.winner, own.result.loser)}. Their own light, ${points(own.result.leverage)} points.`
+        : `Week ${week.week} is a bye: only the league's lights.`
+      return league.length
+        ? `${lead} Of the league's ${counted(league.length, "result")} that could move us, ${made} went our way and ${league.length - made} didn't.`
+        : `${lead} Nothing else in the league could move us.`
     }
     case "law": {
       const law = LAWS[lawOf(week)]
       return `${law.name}. ${law.rule} ${law.then}`
     }
-    case "league": {
-      const top = leagueResults(week)[0]
-      const settled = calls(season, week)
-      const kept = settled.filter((c) => c.result.winner === c.rootFor).length
-      const callLine = settled.length
-        ? ` Of last week's ${counted(settled.length, "call")}, ${kept} went our way.`
-        : ""
-      return top
-        ? `The rest of the league moved them ${points(share.league)} points. The result that mattered most: ${said(season, top.winner, top.loser)}, ${points(top.leverage)} points against the other result.${callLine}`
-        : "Nothing else in the league could matter this week."
+    case "luck": {
+      const spreads = spreadsOf(week)
+      const words = LUCK_WORDS[luckBand(spreads)]
+      if (spreads === null) return `${words.big} ${words.line}`
+      return `${words.big} The league moved us ${points(share.league)} points. This week's results could move us about ${size(share.spread)}: that's ${inSpreads(spreads)} spreads.`
     }
-    case "after": {
-      return `${shareVerdict(week)} After week ${week.week}, ${claimLine(season, week.paths.after, week.paths.winsAfter)}. The share of ways in went from ${percent(share.before)} to ${percent(share.after)}.`
-    }
-    case "path": {
-      if (!week.path) return "There's no path left."
-      const held = week.path.needs
-        .filter((x) => !x.free)
-        .slice(0, 3)
-        .map((x) => `the ${n(x.team)} go ${x.rest.w} and ${x.rest.l}`)
-        .join(", ")
-      return `Here's one way in${held ? `: ${held}` : ""}, ${REST_OF_LEAGUE}`
-    }
-    case "boundary": {
-      const b = week.boundary
-      if (!b) return ""
-      const lead = `Why can't ${b.wins} wins work? ${LAWS.pigeonhole.rule}`
-      if (b.division.kind === "above")
-        return `${lead} The ${n(b.division.team)} are already past ${b.wins} wins, so the division is gone.`
-      const teams = b.division.teams.map((t) => `the ${n(t.team)}`).join(", ")
-      return `${lead} ${teams} still play ${counted(b.division.games, "game")} among themselves, with room for only ${counted(roomOf(b.division.teams), "win")} under our line. ${LAWS.pigeonhole.then}`
-    }
-    case "rivals": {
-      return `Futility points: ${week.points.week.scored} of ${week.points.week.possible} this week, ${week.points.season.scored} of ${week.points.season.possible} on the season.`
-    }
-    case "collisions": {
-      return "And here's where rooting gets messy."
-    }
-    case "next": {
+    case "stake": {
+      const stake = week.stake
+      if (!stake) return ""
       const top = week.next[0]
-      return top
-        ? `Next week, root for the ${n(top.rootFor)} against the ${n(against(top))}. The two results are ${size(top.swing)} points of the ways in apart.`
+      const ours =
+        stake.own > 0
+          ? `Our game is ${size(stake.own)} points between a win and a loss`
+          : "We have a bye"
+      const root = top
+        ? ` Root for the ${n(top.rootFor)} over the ${n(against(top))}.`
         : ""
+      return `Next week: ${ours}, and the whole week can move us about ${size(stake.spread)}.${root}`
     }
-    case "benchmark": {
-      const low = week.benchmark.lowestBar
-      return `The lowest bar in the league belongs to the ${n(low.team)}: ${counted(low.wins, "win")} could still get them in.`
+    case "verdict": {
+      const stopped = exitWeek(season)
+      if (stopped !== null && week.week > stopped) {
+        const h = hindsight(season)
+        return `We stopped following after week ${stopped}.${h ? ` ${hindsightLine(h)}` : ""}`
+      }
+      const v = verdictOf(week)
+      return v.kind === "watch"
+        ? `Verdict: watch week ${week.week + 1}. ${percent(share.after)} of the ways the season can go get them in.`
+        : `Verdict: we stop here. ${exitLine(v.why)}`
+    }
+    case "season": {
+      const weeks = followed(season, week)
+      const spreads = seasonSpreads(weeks)
+      const lit = weeks.flatMap(lightsOf)
+      const made = lit.filter((l) => l.made).length
+      const luck =
+        spreads === null
+          ? "nothing elsewhere could move us"
+          : `the league's luck adds up to ${inSpreads(spreads)} spreads`
+      return `Over ${counted(weeks.length, "week")} followed, ${luck}. ${made} of ${counted(lit.length, "light")} made.`
     }
     case "outro": {
-      return "Next week, we ask again."
+      return ended(season, week)
+        ? `That's the series for the ${name}.`
+        : "Next week, we ask again."
     }
     default: {
       return assertNever(id)

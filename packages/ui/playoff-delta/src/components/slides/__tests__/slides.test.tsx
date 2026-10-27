@@ -1,60 +1,57 @@
 /**
- * Every slide of every week of the bundled season renders, so a bye, a
- * boundary and a week without one are drawn, and so does a week the team
- * goes out (the bundled season has none, so one is made from its last).
- *
- * PDS3: the path slide says what its field is: one way in, among possibly
- * others, with the rest of the league as that way has it; a team the way
- * lets finish above is shown with no record required; no line claims a best
- * or worst case. Family: every week of the bundled season (free teams and
- * not) and the week out (no path), slide and voiceover.
+ * Every slide of every week of the bundled season renders, so a bye, the
+ * exit week and the weeks after it are drawn, and so does a week the team
+ * goes out (the bundled season has none, so one is made from its first).
  */
 import { SLIDES } from "@playoff-delta/components/slides"
-import { Path } from "@playoff-delta/components/slides/week"
 import { SAMPLE_SEASON } from "@playoff-delta/lib/sample"
 import { narration, slidesFor } from "@playoff-delta/lib/slides"
-import type { StoryWeek } from "@playoff-delta/lib/story"
+import type { StorySeason } from "@playoff-delta/lib/story"
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 
-const OVERCLAIMS = /as bad as (they|it) could|worst possible|best possible/i
-
-const last = SAMPLE_SEASON.weeks.at(-1)
-if (!last) throw new Error("no weeks")
-const OUT: StoryWeek = {
-  ...last,
-  paths: { ...last.paths, after: last.paths.after.map(() => null) },
-  path: null,
-  boundary: null,
+const first = SAMPLE_SEASON.weeks[0]
+if (!first) throw new Error("no weeks")
+const OUT: StorySeason = {
+  ...SAMPLE_SEASON,
+  weeks: [
+    {
+      ...first,
+      paths: { ...first.paths, after: first.paths.after.map(() => null) },
+      share: { ...first.share, after: 0 },
+    },
+  ],
 }
-const WEEKS = [
-  ...SAMPLE_SEASON.weeks.map((w) => [w.week, w] as const),
-  [0, OUT] as const,
+
+const CASES = [
+  ...SAMPLE_SEASON.weeks.map((w) => [w.week, SAMPLE_SEASON, w] as const),
+  [0, OUT, OUT.weeks[0] ?? first] as const,
 ]
 
 describe("every slide of the bundled season", () => {
-  it.each(WEEKS)("week %i renders, with a voiceover line", (_, week) => {
-    for (const id of slidesFor(week)) {
-      const Slide = SLIDES[id]
-      render(<Slide season={SAMPLE_SEASON} week={week} />).unmount()
-      expect(narration(SAMPLE_SEASON, week, id), id).not.toBe("")
+  it.each(CASES)(
+    "week %i renders, with a voiceover line",
+    (_, season, week) => {
+      for (const id of slidesFor(week)) {
+        const Slide = SLIDES[id]
+        render(<Slide season={season} week={week} />).unmount()
+        expect(narration(season, week, id), id).not.toBe("")
+      }
     }
+  )
+
+  it("says the week out is the exit", () => {
+    const [week] = OUT.weeks
+    if (!week) throw new Error("no week")
+    render(<SLIDES.verdict season={OUT} week={week} />)
+    screen.getByText("Exit.")
+    screen.getByText(/No way in is left\./)
   })
 
-  it("says the week out is over", () => {
-    render(<SLIDES.after season={SAMPLE_SEASON} week={OUT} />)
-    screen.getByText("Absorbed.")
-  })
-})
-
-describe("the path's words (PDS3)", () => {
-  it.each(WEEKS)("week %i", (_, week) => {
-    const view = render(<Path season={SAMPLE_SEASON} week={week} />)
-    expect(view.container.textContent).not.toMatch(OVERCLAIMS)
-    screen.getByText(week.path ? /One way:/ : /No path left/)
-    const free = week.path?.needs.filter((n) => n.free).length ?? 0
-    expect(screen.queryAllByText(/can finish above us/)).toHaveLength(free)
-    view.unmount()
-    expect(narration(SAMPLE_SEASON, week, "path")).not.toMatch(OVERCLAIMS)
+  it("says a week past the exit was not followed", () => {
+    const after = SAMPLE_SEASON.weeks.at(-1)
+    if (!after) throw new Error("no weeks")
+    render(<SLIDES.verdict season={SAMPLE_SEASON} week={after} />)
+    screen.getByText(/We stopped following after week 15/)
   })
 })

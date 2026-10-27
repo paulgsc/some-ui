@@ -89,13 +89,6 @@ const SYMBOLS: ReadonlyArray<SymbolDef> = [
   },
 ]
 
-/** Our game, lost: the same symbol with the roles swapped. */
-export const GAME_LOST: ReadonlyArray<Primitive> = [
-  { kind: "you", x: 46, y: 32, motion: "lose" },
-  { kind: "team", x: 18, y: 32, motion: "pulse" },
-  { kind: "win", x: 46, y: 32, motion: "to-winner" },
-]
-
 export function symbolFor(key: SymbolKey): SymbolDef {
   const found = SYMBOLS.find((s) => s.key === key)
   if (!found) throw new Error(`no symbol ${key}`)
