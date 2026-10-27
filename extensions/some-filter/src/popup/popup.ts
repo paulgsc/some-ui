@@ -11,6 +11,7 @@ import type {
   TabEntry,
   WindowGroup,
 } from "@filter/types/popup"
+import { isRecord } from "@some-extension/common/utils/guards"
 
 import "./popup.css"
 
@@ -62,12 +63,6 @@ function groupByWindow(entries: Array<TabEntry>): Array<WindowGroup> {
     windowIndex: windowIndex++,
     tabs,
   }))
-}
-
-// Runtime type guard helper to verify storage objects safely without 'as' assertions
-// eslint-disable-next-line one-owner/no-local-primitive -- not moved to @some-extension/common yet (#2112)
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null
 }
 
 async function getStorageState(): Promise<{
