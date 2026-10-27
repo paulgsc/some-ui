@@ -1,4 +1,4 @@
-import { assertNever } from "@honeycomb/utils/error"
+import { assertNever } from "@some-ui/core-utils"
 
 type HexGridFitStatus = "fit" | "shrunk" | "impossible"
 

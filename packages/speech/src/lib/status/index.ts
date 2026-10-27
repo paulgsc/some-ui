@@ -27,7 +27,7 @@
  * against arbitrary status sequences rather than hand-picked ones - the
  * failure mode here is precisely the interleaving nobody thought of.
  */
-
+import { assertNever } from "@some-ui/core-utils"
 import type { SpeechAdapter } from "@speech/lib/adapters/types"
 import type { SpeechQueueState } from "@speech/lib/queue"
 
@@ -139,10 +139,6 @@ function noticeFor(
       return assertNever(kind)
     }
   }
-}
-
-function assertNever(value: never): never {
-  throw new Error(`Unhandled speech notice kind: ${JSON.stringify(value)}`)
 }
 
 /**

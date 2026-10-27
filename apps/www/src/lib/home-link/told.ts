@@ -18,10 +18,8 @@
  * refuses nothing under a scope it does not know.
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
-import { readAs, unexpectedAnswer } from "@some-ui/core-utils"
+import { isRecord, readAs, unexpectedAnswer } from "@some-ui/core-utils"
 import { z } from "zod"
-
-import { isRecord } from "@/lib/device-backend/common"
 
 import type { ConsentLog, Scope } from "./consent-model"
 

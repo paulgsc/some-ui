@@ -17,7 +17,9 @@
  *
  * Saves are budgeted (`device-backend/storage`).
  */
-import { DEVICE_SUBJECT, isRecord, rfc3339 } from "@/lib/device-backend/common"
+import { isRecord } from "@some-ui/core-utils"
+
+import { DEVICE_SUBJECT, rfc3339 } from "@/lib/device-backend/common"
 import type { DeviceRoute } from "@/lib/device-backend/router"
 import {
   json,

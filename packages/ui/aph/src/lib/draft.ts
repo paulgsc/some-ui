@@ -7,7 +7,7 @@
  * I missed (`loggableDays`), "theirs" is a reported figure for an entry that
  * is waiting on one.
  */
-import { dayOf } from "@some-ui/core-utils"
+import { assertNever, dayOf } from "@some-ui/core-utils"
 
 import type { AphSettings, Entry, Review } from "./model"
 import {
@@ -121,10 +121,6 @@ export function stepDraft(draft: Draft, event: DraftEvent): Draft {
       return assertNever(event)
     }
   }
-}
-
-function assertNever(value: never): never {
-  throw new Error(`Unhandled draft event: ${JSON.stringify(value)}`)
 }
 
 export function draftDay(draft: Draft, today: string): string {

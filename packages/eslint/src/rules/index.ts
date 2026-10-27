@@ -20,6 +20,7 @@ export { noPlaybackPolling } from "./no-playback-polling.js"
 export { messageSentOnlyThrough } from "./message-sent-only-through.js"
 export { consoleReportsMessageOnly } from "./console-reports-message-only.js"
 export { noMountSnapshot } from "./no-mount-snapshot.js"
+export { noLocalPrimitive } from "./no-local-primitive.js"
 export {
   noFixedStatusColor,
   noStructuralPaletteColor,

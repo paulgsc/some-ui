@@ -13,9 +13,7 @@
  * under (`Under`): a stop, an unpairing or a new pairing leaves nothing of
  * it to show.
  */
-import { assertNever } from "@some-ui/core-utils"
-
-import { isRecord } from "@/lib/device-backend/common"
+import { assertNever, isRecord } from "@some-ui/core-utils"
 
 /** One choice, as made: shown or hidden, under which pairing, with the words pressed. */
 export type ReadChoice = {

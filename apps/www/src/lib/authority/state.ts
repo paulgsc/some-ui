@@ -28,6 +28,7 @@
  * account. Work begun under epoch N drops its result if the runtime has moved
  * on (`isCurrent`).
  */
+import { assertNever } from "@some-ui/core-utils"
 
 /** What this build can reach. Fixed per build, decided from the build flags. */
 export type Backend =
@@ -182,10 +183,6 @@ export function step(state: AuthorityState, event: AuthorityEvent): StepResult {
     state: sameState(state, result) ? state : result,
     authorityChanged: changed,
   }
-}
-
-function assertNever(value: never): never {
-  throw new Error(`unhandled authority event: ${JSON.stringify(value)}`)
 }
 
 function apply(state: AuthorityState, event: AuthorityEvent): AuthorityState {

@@ -326,6 +326,7 @@ export class TTSEffectHandler {
   }
 }
 
+// eslint-disable-next-line one-owner/no-local-primitive -- not moved: the open U3 branch (#2111) edits this file (#2112)
 function assertNever(value: never): never {
   throw new Error(`Unhandled speech outcome: ${JSON.stringify(value)}`)
 }

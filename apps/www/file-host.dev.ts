@@ -80,6 +80,7 @@ const nodeProbe: Probe = {
   },
 }
 
+// eslint-disable-next-line one-owner/no-local-primitive -- lets arrays through, and the open U3 branch (#2111) edits this file (#2112)
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null
 

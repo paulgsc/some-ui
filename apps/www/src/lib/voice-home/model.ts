@@ -12,9 +12,7 @@
  * LA14).
  */
 import type { HomeExchanged } from "@some-ui/core-utils"
-import { assertNever } from "@some-ui/core-utils"
-
-import { isRecord } from "@/lib/device-backend/common"
+import { assertNever, isRecord } from "@some-ui/core-utils"
 
 /** What a note is said for, as home's `PUT /voice-notes/:id` takes `of`. */
 type VoiceOf = "reflection" | "jobs" | "scene"

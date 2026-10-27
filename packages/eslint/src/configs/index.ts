@@ -46,6 +46,7 @@ export {
   default as ownerGuardConfig,
   ownerGuardPlugin,
 } from "./owner-guard.config.js"
+export { default as oneOwnerConfig } from "./one-owner.config.js"
 export {
   default as logGuardConfig,
   logGuardPlugin,

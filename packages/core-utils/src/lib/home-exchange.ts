@@ -5,6 +5,7 @@
  * phone's Jobs record (apps/www `lib/jobs/home`) each run their own exchange
  * over these.
  */
+import { isRecord } from "./is-record"
 
 /** What home answered: its status, and its body as text. */
 export type HomeAnswer = { status: number; body: string; etag?: string }
@@ -66,10 +67,6 @@ export function readAs<T>(schema: Parser<T>, text: string): T | null {
   } catch {
     return null
   }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
 /** A `422`'s reasons (`error.details`), as "field why; field why". */

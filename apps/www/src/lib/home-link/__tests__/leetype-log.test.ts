@@ -1,9 +1,9 @@
 import { noAnswer } from "@/test-support/no-answer"
 import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
+import { isRecord } from "@some-ui/core-utils"
 import type { HomeEvent, HomeSession } from "@some-ui/leetype"
 import { describe, expect, it } from "vitest"
 
-import { isRecord } from "@/lib/device-backend/common"
 import { emptyLogReport, sendLog } from "@/lib/home-link/leetype-log"
 import {
   digestOf,

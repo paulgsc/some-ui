@@ -14,6 +14,7 @@
  * Fire-and-forget: a lost signal costs accuracy; one that blocked a mutation
  * would stop someone starting a session because a LAN box is down.
  */
+import { assertNever } from "@some-ui/core-utils"
 
 import { DATA_MODE } from "@/lib/data-mode"
 import type { FileHostTransport } from "@/lib/file-host-config/client"
@@ -94,14 +95,6 @@ export function signalForTransition(
       return assertNever(next.status)
     }
   }
-}
-
-/**
- * Runtime backstop: an unknown status was written by something that is not
- * this schema, and guessing would put invented behaviour into the ledger.
- */
-function assertNever(value: never): never {
-  throw new Error(`unhandled session status: ${String(value)}`)
 }
 
 type ReportDeps = {

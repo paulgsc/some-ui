@@ -10,7 +10,7 @@ import type {
   MissedWord,
   WordProgress,
 } from "@honeycomb/types/hangul-types"
-import { assertNever } from "@honeycomb/utils/error"
+import { assertNever } from "@some-ui/core-utils"
 
 type UseGameLoopProps = {
   gameBridge: WasmGameBridge | null

@@ -72,6 +72,7 @@ export function jsonValues(text: string): Array<unknown> {
   })
 }
 
+// eslint-disable-next-line one-owner/no-local-primitive -- not moved: the open U3 branch (#2111) edits this file (#2112)
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value)
 

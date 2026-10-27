@@ -1,6 +1,6 @@
 import type { FC, ReactNode } from "react"
 import type { AuthStatus } from "@auth/types/auth"
-import { assertNever } from "@auth/utils/error"
+import { assertNever } from "@some-ui/core-utils"
 import { Skeleton } from "@some-ui/shared"
 
 export type AuthGateProps = {

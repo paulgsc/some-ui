@@ -59,6 +59,7 @@ const PREF_DEFAULTS: PopupPrefKeys = {
   pinned: false,
 }
 
+// eslint-disable-next-line one-owner/no-local-primitive -- not moved to @some-extension/common yet (#2112)
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null
 }
