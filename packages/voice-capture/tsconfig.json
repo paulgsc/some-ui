@@ -4,7 +4,6 @@
     "declarationDir": "./",
     "composite": true,
     "rootDir": "./src",
-    "outDir": "./dist",
     "paths": {
       "@voice-capture/*": ["./src/*"]
     }

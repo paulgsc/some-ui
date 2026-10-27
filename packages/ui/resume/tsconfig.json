@@ -3,7 +3,6 @@
   "compilerOptions": {
     "declarationDir": "./",
     "rootDir": "./src",
-    "outDir": "./dist",
     "paths": {
       "@resume/*": ["./src/react/*"]
     }
