@@ -26,6 +26,18 @@ function blobResponse(status = 200): Response {
 
 let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>
 
+/** A request that settles only when its signal aborts. */
+function hangsUntilAborted(): void {
+  fetchMock.mockImplementation(
+    (_url: string | URL | Request, init?: RequestInit) =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => {
+          reject(new DOMException("The operation was aborted.", "AbortError"))
+        })
+      })
+  )
+}
+
 beforeEach(() => {
   fetchMock = vi.fn()
   vi.stubGlobal("fetch", fetchMock)
@@ -172,14 +184,7 @@ describe("timeout handling", () => {
   })
 
   it("aborts and throws a 408 timeout ApiError when the request exceeds the timeout", async () => {
-    fetchMock.mockImplementation(
-      (_url: string | URL | Request, init?: RequestInit) =>
-        new Promise((_resolve, reject) => {
-          init?.signal?.addEventListener("abort", () => {
-            reject(new DOMException("The operation was aborted.", "AbortError"))
-          })
-        })
-    )
+    hangsUntilAborted()
     const client = createFetchClient()
 
     const promise = client.get(new URL("https://api.test/data"), {
@@ -203,8 +208,7 @@ describe("network error retry/backoff", () => {
 
   it("does not retry a network error unless the call opts into a retry policy", async () => {
     fetchMock.mockRejectedValue(new TypeError("Failed to fetch"))
-    // The client-level default retry config never gates retries on its own;
-    // only a per-call `retry` option does.
+    // The client has no retry default; only a per-call `retry` option retries.
 
     const client = createFetchClient()
 
@@ -260,6 +264,91 @@ describe("network error retry/backoff", () => {
         retry: { count: 3, delay: 10 },
       })
     ).rejects.toMatchObject({ isNetworkError: false })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+// Promise FK1 (`executeFetch`'s doc comment). Family: when the caller's
+// signal aborts (before the call, during an attempt, during a backoff, never)
+// × the call's retry count (absent, 0, n) × what an attempt meets (network
+// error, its own timeout). Absent and n are the retry block's cases above.
+describe("caller cancellation and the attempt budget (FK1)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  it("starts no attempt when the caller has already cancelled", async () => {
+    const caller = new AbortController()
+    caller.abort()
+
+    await expect(
+      createFetchClient().get(new URL("https://api.test/data"), {
+        signal: caller.signal,
+      })
+    ).rejects.toMatchObject({ name: "AbortError" })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("passes the caller's cancellation to the attempt in flight, as a cancellation, not a timeout", async () => {
+    hangsUntilAborted()
+    const caller = new AbortController()
+    const promise = createFetchClient().get(new URL("https://api.test/data"), {
+      signal: caller.signal,
+      timeout: 1000,
+    })
+    const assertion = expect(promise).rejects.toMatchObject({
+      name: "AbortError",
+    })
+
+    await vi.advanceTimersByTimeAsync(10)
+    caller.abort()
+    await assertion
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("still reports its own timeout as a timeout when the caller's signal never aborts", async () => {
+    hangsUntilAborted()
+    const caller = new AbortController()
+    const promise = createFetchClient().get(new URL("https://api.test/data"), {
+      signal: caller.signal,
+      timeout: 50,
+    })
+    const assertion = expect(promise).rejects.toMatchObject({
+      name: "ApiError",
+      status: 408,
+      isTimeoutError: true,
+    })
+
+    await vi.advanceTimersByTimeAsync(50)
+    await assertion
+  })
+
+  it("ends a waiting backoff when the caller cancels, and starts no further attempt", async () => {
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"))
+    const caller = new AbortController()
+    const promise = createFetchClient().get(new URL("https://api.test/data"), {
+      signal: caller.signal,
+      retry: { count: 3, delay: 1000 },
+    })
+    const assertion = expect(promise).rejects.toMatchObject({
+      name: "AbortError",
+    })
+
+    await vi.advanceTimersByTimeAsync(10)
+    caller.abort()
+    await assertion
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("makes exactly one attempt when the call asks for zero retries", async () => {
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"))
+
+    await expect(
+      createFetchClient().get(new URL("https://api.test/data"), {
+        retry: { count: 0, delay: 10 },
+      })
+    ).rejects.toMatchObject({ isNetworkError: true })
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 })

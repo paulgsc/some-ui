@@ -8,7 +8,8 @@
  * right URL internally and the caller never branches on, or is told,
  * which mode answered the request. Errors surface as the same `ApiError`
  * shape either way, so nothing about the underlying mode leaks into UI
- * copy or error handling.
+ * copy or error handling. A call the caller cancels rejects with its signal's
+ * reason instead (FK1).
  */
 
 import { apiClient } from "@fkit/lib/fetch-client"

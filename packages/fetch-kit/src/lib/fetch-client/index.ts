@@ -99,20 +99,33 @@ export class ApiError extends Error {
 const DEFAULT_OPTIONS: FetchOptions = {
   baseUrl: "",
   timeout: 10000, // 10 seconds
-  retry: {
-    count: 1,
-    delay: 1000,
-    backoffFactor: 1.5,
-  },
   credentials: "same-origin",
   headers: {
     "Content-Type": "application/json",
   },
 }
 
-/** A fetch client with timeouts, retries and optional Zod validation. */
+/** Wait `ms`, or reject with `signal`'s reason as soon as it aborts. */
+function backoff(ms: number, signal: AbortSignal | undefined): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const onAbort = (): void => {
+      clearTimeout(timer)
+      reject(signal?.reason)
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort)
+      resolve()
+    }, ms)
+    signal?.addEventListener("abort", onAbort, { once: true })
+  })
+}
+
+/**
+ * A fetch client with timeouts, retries and optional Zod validation. Retries
+ * and cancellation are per call (FK1), so the client's defaults take neither.
+ */
 export const createFetchClient = (
-  defaultOptions: FetchOptions = {}
+  defaultOptions: Omit<FetchOptions, "retry" | "signal"> = {}
 ): FetchClient => {
   const options = { ...DEFAULT_OPTIONS, ...defaultOptions }
 
@@ -164,6 +177,14 @@ export const createFetchClient = (
     return data as T
   }
 
+  /**
+   * One call: at most `1 + retry.count` attempts, `retry` from the call only
+   * (the client has no default for it), each attempt bounded by
+   * `timeout`. Promise FK1: once the caller's `signal` aborts, no further
+   * attempt starts, a waiting backoff ends, and the call rejects with the
+   * signal's reason (a cancellation), never with the 408 that only this
+   * client's own timeout means.
+   */
   async function executeFetch<T>(
     url: URL,
     fetchOptions: FetchOptions,
@@ -173,11 +194,19 @@ export const createFetchClient = (
     const {
       timeout,
       retry,
+      signal: callerSignal,
       responseAs = options.responseAs,
       ...restOptions
     } = fetchOptions
 
+    if (callerSignal?.aborted) throw callerSignal.reason
+
+    // One controller for both stops, linked by hand: `AbortSignal.any` needs a
+    // WebView newer than the APK's floor (`linkSignals` in @some-ui/speech
+    // avoids it for the same reason).
     const controller = new AbortController()
+    const onCallerAbort = (): void => controller.abort()
+    callerSignal?.addEventListener("abort", onCallerAbort, { once: true })
     const timeoutId = setTimeout(
       () => controller.abort(),
       timeout || options.timeout
@@ -224,24 +253,20 @@ export const createFetchClient = (
         throw error
       }
 
+      // The caller stopped it: a cancellation, whichever rejection won.
+      if (callerSignal?.aborted) throw callerSignal.reason
+
       if (error instanceof DOMException && error.name === "AbortError") {
         throw new ApiError("Request timed out", 408, undefined, false, true)
       }
 
       const isNetworkError =
         error instanceof TypeError && error.message.includes("fetch")
-      if (
-        isNetworkError &&
-        retry &&
-        retryCount < (retry.count || options.retry?.count || 0)
-      ) {
-        const backoffFactor =
-          retry.backoffFactor || options.retry?.backoffFactor || 1
+      if (isNetworkError && retry && retryCount < retry.count) {
         const delay =
-          (retry.delay || options.retry?.delay || 1000) *
-          Math.pow(backoffFactor, retryCount)
+          retry.delay * Math.pow(retry.backoffFactor ?? 1, retryCount)
 
-        await new Promise((resolve) => setTimeout(resolve, delay))
+        await backoff(delay, callerSignal)
 
         return executeFetch<T>(url, fetchOptions, schema, retryCount + 1)
       }
@@ -255,6 +280,7 @@ export const createFetchClient = (
       )
     } finally {
       clearTimeout(timeoutId)
+      callerSignal?.removeEventListener("abort", onCallerAbort)
     }
   }
 
