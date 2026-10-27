@@ -128,8 +128,6 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
             ids.filter((id) => !named.has(id) && !copying.has(id))
           )
         })
-        // The sweep is what clears copies a removal left; a sweep that fails
-        // is reported, or those copies would stay with no trace (FT1).
         .catch((error: unknown) => {
           reportFailure({
             port: "voice copy sweep",

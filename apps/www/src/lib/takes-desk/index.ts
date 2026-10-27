@@ -113,8 +113,6 @@ export function takesDesk(options: {
             stored.filter((id) => !kept.includes(id) && !shelf.isSaving(id))
           )
         })
-        // The sweep is what clears audio a removal left; a sweep that fails
-        // is reported, or that audio would stay with no trace (FT1).
         .catch((error: unknown) => {
           reportFailure({
             port: "takes desk sweep",

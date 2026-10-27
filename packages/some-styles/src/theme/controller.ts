@@ -110,7 +110,9 @@ export function writeStoredPreference(
   try {
     storage?.setItem(THEME_STORAGE_KEY, preference)
   } catch {
-    // Ignored: non-fatal: persistence is best-effort.
+    // Ignored: the chosen theme still applies to this page; only keeping it
+    // fails (storage full or blocked), so the next load starts from the last
+    // kept choice, or the system default when there is none.
   }
 }
 

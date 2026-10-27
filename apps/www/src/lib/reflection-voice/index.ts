@@ -96,8 +96,6 @@ export function sweepOrphans(): void {
       }
       if (silent.length > 0) reflections.letGo(silent)
     })
-    // The sweep is what clears audio a removal left; a sweep that fails is
-    // reported, or that audio would stay with no trace (FT1).
     .catch((error: unknown) => {
       reportFailure({
         port: "reflection voice sweep",

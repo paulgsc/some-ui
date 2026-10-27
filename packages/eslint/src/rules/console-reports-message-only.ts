@@ -21,10 +21,8 @@ import { isGlobal, PAGE_LIFETIME_TARGETS } from "./require-scoped-lifetime.js"
  * `no-console` still asks for a visible disable at the call. Whether an
  * error's message can carry a token is MB3's reading.
  *
- * `why`, optional, is what the `outside` message cites in place of MB3: the
- * same rule holds FT1 (docs/monorepo-boundaries.md) with `reportFailure` as
- * the reporter, where the reason `console` is no way to report is that a
- * release build strips it (`failureLogConfig`, log-guard.config.ts).
+ * `why`, optional, is what the `outside` message cites in place of MB3
+ * (FT1 sets it: `failureLogConfig`, log-guard.config.ts).
  */
 export const consoleReportsMessageOnly: Rule.RuleModule = {
   meta: {

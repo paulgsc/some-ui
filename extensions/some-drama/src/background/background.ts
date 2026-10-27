@@ -467,7 +467,8 @@ async function broadcast(
       try {
         await browser.tabs.sendMessage(tab.id, msg)
       } catch {
-        // Ignored: tab has no content script — expected
+        // Ignored: a tab without the content script has nothing listening for
+        // this broadcast, so there is nothing it misses.
       }
     })
   )
@@ -821,9 +822,8 @@ async function handlePlaybackChanged(
 ): Promise<void> {
   // Answered at once: the source tab has nothing to wait for.
   sendResponse({ ok: true })
-  // Ignored: neither half rejects today (a source tab that fails to answer
-  // counts as none, and `broadcast` skips a tab it cannot reach); this keeps
-  // a future throw from going unhandled in the background page.
+  // Ignored: neither half rejects: a source tab that fails to answer counts
+  // as none, and `broadcast` skips a tab it cannot reach.
   await publishLivePlayback().catch(() => undefined)
 }
 
@@ -909,7 +909,7 @@ browser.tabs.onRemoved.addListener((tabId) => {
   // (below), and Firefox does not reuse a tab id before then.
   void setTabHidden(tabId, false).catch(() => undefined)
   // It may have been the source; closing it sends no media event.
-  // Ignored: as in handlePlaybackChanged, nothing in it rejects today.
+  // Ignored: as in handlePlaybackChanged, neither half rejects.
   void publishLivePlayback().catch(() => undefined)
 })
 

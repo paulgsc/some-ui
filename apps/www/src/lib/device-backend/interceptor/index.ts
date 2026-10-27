@@ -76,8 +76,7 @@ export function createDeviceFetch(
         )
       }
       // A handler bug answers like a server fault, not like "file_host
-      // unreachable", and reaches the phone's own log naming the route
-      // (`reportFailure`, which a release build keeps; FT1).
+      // unreachable", and is reported naming the route (FT1).
       reportFailure({
         port: "device backend",
         error: {

@@ -2,8 +2,8 @@
  * Runs the effects the FSM reducer emits: I/O, timers, queries, speech.
  *
  * A failure is reported once, through `reportFailure` (FT1,
- * docs/monorepo-boundaries.md), which a release build keeps; the machine
- * hears it as an event and the session shows what failed.
+ * docs/monorepo-boundaries.md); the machine hears it as an event and the
+ * session shows what failed.
  */
 
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
@@ -79,7 +79,6 @@ export class EffectExecutor {
         onSpeechStopped: (messageId) => {
           this.config.onSpeechStopped?.(messageId)
         },
-        // A line that failed is reported by the handler itself.
       })
     }
   }

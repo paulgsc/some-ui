@@ -150,8 +150,7 @@ export function addFailureSink(sink: FailureSink): () => void {
  * that). A sink that throws is skipped, never fatal.
  */
 export function reportFailure(failure: ForeignFailure): void {
-  // The reporter FT1 sends every failure to (docs/monorepo-boundaries.md).
-  // eslint-disable-next-line log-guard/console-reports-message-only -- the one reporter; `globalThis` on purpose, above
+  // eslint-disable-next-line log-guard/console-reports-message-only -- FT1's one reporter (docs/monorepo-boundaries.md); `globalThis` on purpose, above
   globalThis.console.error(
     FOREIGN_FAILURE_TAG,
     `[${failure.port}] ${failure.error.kind}: ${failure.error.summary}`,

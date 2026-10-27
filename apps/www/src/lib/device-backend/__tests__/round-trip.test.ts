@@ -278,8 +278,6 @@ describe("content on the device", () => {
   })
 
   it("answers a handler's throw as a server fault, and reports it with the route", async () => {
-    // FT1: on the phone a console line reaches nothing, so the failure goes
-    // to `reportFailure`, whose sinks include the phone's own log.
     const reported: Array<ForeignFailure> = []
     const remove = addFailureSink((failure) => reported.push(failure))
     vi.spyOn(globalThis.console, "error").mockImplementation(() => undefined)

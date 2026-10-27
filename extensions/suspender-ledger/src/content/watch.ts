@@ -90,7 +90,8 @@ Object.defineProperty(window, "isReceivingFormInput", {
         return false
       }
     } catch {
-      // Ignored: a detached or cross-origin node can throw on access.
+      // Ignored: a detached or cross-origin node can throw on access; the
+      // last known `receivingInput` answers instead.
     }
     return receivingInput
   },

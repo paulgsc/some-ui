@@ -17,6 +17,7 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { ESLint } from "eslint"
 import type { Linter } from "eslint"
+import type { Config } from "typescript-eslint"
 
 // packages/eslint/, the cwd for all ESLint instances (three hops up).
 export const PACKAGE_ROOT = path.resolve(
@@ -47,6 +48,16 @@ function resolveSafePath(filePath: string): string {
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+/**
+ * A preset as ESLint's config type: typescript-eslint's `Config` (the
+ * presets' type) and eslint's `Linter.Config` describe the same flat config,
+ * with languageOptions types that do not line up; ESLint takes either at
+ * runtime.
+ */
+export const flat = (preset: Config): Array<Linter.Config> =>
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see above
+  preset as unknown as Array<Linter.Config>
 
 export type EffectiveRules = Record<string, Linter.RuleEntry>
 export type LintMessage = Linter.LintMessage

@@ -7,13 +7,13 @@
  * test says.
  */
 
-import { FOREIGN_FAILURE_TAG } from "@some-ui/intent-kit"
+import { addFailureSink } from "@some-ui/intent-kit"
 import type { SpeechAdapter } from "@some-ui/speech"
 import { SpeechQueueManager } from "@some-ui/speech"
 import type { ISessionMachine } from "@topik/lib/topik/core/session-types"
 import type { Message } from "@topik/lib/topik/entity/topik-types"
 import type { Mock } from "vitest"
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { createTTSEffectHandler } from "."
 
@@ -168,6 +168,11 @@ type Setup = Session & {
   reported: () => number
 }
 
+const stopReporting: Array<() => void> = []
+afterEach(() => {
+  for (const stop of stopReporting.splice(0)) stop()
+})
+
 function setup(): Setup {
   const session = createSession()
   const callbacks: Callbacks = {
@@ -176,12 +181,14 @@ function setup(): Setup {
     onSpeechStopped: vi.fn(),
     onMessageComplete: vi.fn(),
   }
-  const logged = vi
-    .spyOn(globalThis.console, "error")
-    .mockImplementation(() => undefined)
-  logged.mockClear()
-  const reported = (): number =>
-    logged.mock.calls.filter(([tag]) => tag === FOREIGN_FAILURE_TAG).length
+  vi.spyOn(globalThis.console, "error").mockImplementation(() => undefined)
+  let count = 0
+  stopReporting.push(
+    addFailureSink(() => {
+      count += 1
+    })
+  )
+  const reported = (): number => count
   const handler = createTTSEffectHandler({
     speaker: session.manager.speakerFor("topik"),
     componentId: "c1",

@@ -19,21 +19,14 @@ import typescriptParser from "@typescript-eslint/parser"
 import type { Linter } from "eslint"
 import { defineConfig } from "eslint/config"
 import globals from "globals"
-import type { Config } from "typescript-eslint"
 import { describe, expect, it } from "vitest"
 
 import {
   expectMessageForRule,
   expectNoMessageForRule,
+  flat,
   lintSnippet,
 } from "./helpers/eslint-resolver.js"
-
-// typescript-eslint's `Config` (the presets' type) and eslint's
-// `Linter.Config` describe the same flat config, with languageOptions types
-// that do not line up; ESLint takes either at runtime.
-const flat = (preset: Config): Array<Linter.Config> =>
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see above
-  preset as unknown as Array<Linter.Config>
 
 const TS_FILE = "src/index.ts"
 const RULE = "log-guard/console-reports-message-only"

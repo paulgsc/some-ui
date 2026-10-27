@@ -71,8 +71,6 @@ export function sweepSceneVoice(): void {
       const silent = listed.filter((id) => !stored.includes(id))
       if (silent.length > 0) phoneSceneVoice().remove(silent)
     })
-    // The sweep is what clears audio a removal left; a sweep that fails is
-    // reported, or that audio would stay with no trace (FT1).
     .catch((error: unknown) => {
       reportFailure({ port: "scene voice sweep", error: toIntentError(error) })
     })

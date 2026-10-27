@@ -9,8 +9,8 @@ const reportWebVitals = (onPerfEntry?: () => void): void => {
         onTTFB(onPerfEntry)
       })
       .catch(() => {
-        // Ignored: reporting is best effort; a failed dynamic import (offline)
-        // shouldn't surface as an unhandled rejection.
+        // Ignored: a failed dynamic import (offline) means no vitals this
+        // load, and nothing depends on them.
       })
   }
 }

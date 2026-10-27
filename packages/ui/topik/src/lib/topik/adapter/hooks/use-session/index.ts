@@ -167,7 +167,6 @@ export function useSession(
       onSpeechStart: handleSpeechStart,
       onSpeechEnd: handleSpeechEnd,
       onSpeechStopped: handleSpeechStopped,
-      // A failed effect is reported by the executor itself.
     })
 
     return (): void => {

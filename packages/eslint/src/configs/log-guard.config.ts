@@ -7,12 +7,9 @@ import { defineConfig } from "eslint/config"
  *   - the default export, opt-in, for a workspace whose reporter is
  *     `report` (apps/mailbox, MB3);
  *   - `failureLogConfig`, in every preset's `src/`: the reporter is
- *     `reportFailure` (@some-ui/intent-kit), which lives in no workspace
- *     that is held to it but its own, so `console` is reported everywhere
- *     else. FT1 (docs/monorepo-boundaries.md): www's release build strips
- *     `console`, and the phone's console reaches nothing, so a failure that
- *     only reaches `console` leaves no trace on a shipped build. A disable
- *     of `no-console` does not silence it.
+ *     `reportFailure` (@some-ui/intent-kit), and `console` is reported
+ *     everywhere, a `no-console` disable notwithstanding; `reportFailure`'s
+ *     own console line carries a disable. FT1, docs/monorepo-boundaries.md.
  */
 export const logGuardPlugin = {
   meta: { name: "log-guard", version: "0.0.1" },

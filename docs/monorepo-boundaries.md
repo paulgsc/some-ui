@@ -296,7 +296,9 @@ out on purpose: an extension, which is not in www's bundle and records what
 it decides in its own flight recorder, and apps/mailbox, whose own setting
 (MB3) replaces it. An exemption is a `log-guard` disable on the line, with a
 reason: `reportFailure`'s own line, and one dev-only notice in
-`apps/www/src/providers/tts.tsx`.
+`apps/www/src/providers/tts.tsx`. Until U2 (#2110) deletes it,
+`apps/www/src/hooks/use-local-storage/index.ts` is turned off file-wide in
+`apps/www/eslint.config.js`.
 
 A catch can also drop a failure without writing anything. One that does
 something with it (a fallback value, a `return false`) shows what it does;
@@ -328,13 +330,10 @@ one that does nothing says why that is right:
 >   the catch and what it cites: no rule can tell a recovery that exists
 >   from one that is only named.
 >
-> True when declared: the rule passes on every workspace. Its 108 sites
-> (62 comment-only clauses, 46 no-op handlers) were each read: the comment
-> already there was kept as the reason where it named one, ten that did not
-> ("ignore", "intentionally ignored", "see above") were rewritten from the
-> code, and five audio sweeps that swallowed their own failure (jobs,
-> reflection voice, scene voice, takes desk, voice copies) now report it,
-> since the sweep is the recovery each removal's `Ignored:` line names.
+> True when declared: the rule passes on every workspace. Each of its 108
+> sites (62 comment-only clauses, 46 no-op handlers) was read against the
+> claim, and each sweep an `Ignored:` line cites as the recovery reports its
+> own failure.
 
 ## How this is enforced
 

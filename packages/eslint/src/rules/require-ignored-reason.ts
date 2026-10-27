@@ -1,6 +1,8 @@
 import type { Rule } from "eslint"
 import type * as ESTree from "estree"
 
+import { commentBlockAbove } from "./comment-block.js"
+
 /**
  * Invariant FT2 in docs/monorepo-boundaries.md ("A failure reaches the
  * log"): a catch that drops its error without a statement says why, in a
@@ -57,27 +59,9 @@ export const requireIgnoredReason: Rule.RuleModule = {
         )
     }
 
-    // Line comments alone on their line, by line number; built on first use.
-    let alone: Map<number, ESTree.Comment> | null = null
-    const ignoredAbove = (line: number): boolean => {
-      if (alone === null) {
-        alone = new Map()
-        for (const comment of sourceCode.getAllComments()) {
-          if (comment.type !== "Line" || !comment.loc) continue
-          const at = comment.loc.start.line
-          const text = sourceCode.lines[at - 1] ?? ""
-          if (text.trimStart().startsWith("//")) alone.set(at, comment)
-        }
-      }
-      for (
-        let at = line - 1, above = alone.get(at);
-        above;
-        at -= 1, above = alone.get(at)
-      ) {
-        if (saysIgnored(above)) return true
-      }
-      return false
-    }
+    const blockAbove = commentBlockAbove(sourceCode)
+    const ignoredAbove = (line: number): boolean =>
+      blockAbove(line, saysIgnored)
 
     return {
       CatchClause(node): void {
