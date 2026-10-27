@@ -1,0 +1,17 @@
+{
+  "extends": "@some-ui/tsconfig/rollupconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "declarationDir": "./",
+    "composite": true,
+    "rootDir": "./src",
+    // scripts/check-assurance.ts runs these modules on Node's own type
+    // stripping, which resolves an import only by its real `.ts` name.
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "@assurance/*": ["./src/*"]
+    }
+  },
+  "include": ["src", "src/**/*.json"],
+  "exclude": ["node_modules", "build", "dist"]
+}

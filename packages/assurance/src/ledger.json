@@ -1,0 +1,624 @@
+{
+  "schema": "some-ui.assurance-ledger/1",
+  "families": [
+    {
+      "id": "routine-to-home",
+      "name": "What the routines make reaches home",
+      "why": "The morning Jobs run and the reflections routine put their files in the mailbox; home reads them every 15 minutes and keeps a checked copy, which is what the phone shows.",
+      "paths": [
+        "some-ui:apps/mailbox",
+        "server:apps/servers/file_host/src/mailbox",
+        "server:crates/mailbox_kit"
+      ],
+      "modules": ["jobs", "routine"],
+      "objectives": [
+        {
+          "id": "MI1",
+          "kind": "OA4",
+          "property": "outcome",
+          "claim": "When a mailbox pass goes wrong in more than one place, each one is reported.",
+          "requirement": "A pass's five independent phases (inbound, filing, outbound, asks, archive) each report their own failure in the log and in mailbox_poll_failing; a second failure is never hidden behind the first, and what the pass did keep is kept.",
+          "verdict": "holds",
+          "conclusion": "Every failed phase is now reported, each by name, in the log and on the dashboard's failing panel.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A pass with both its read and its hand-over failing reports both phases, in order.",
+              "ref": "server:apps/servers/file_host/src/mailbox/pass.rs"
+            },
+            {
+              "class": "structural",
+              "says": "Before server#523, the phases were joined with Result::and, so only the first failure reached the log and the metric.",
+              "ref": "server#523"
+            }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/mailbox/pass.rs#every_failed_phase_is_reported_not_only_the_first"
+          ],
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/lib/mailbox-panels.libsonnet"
+          },
+          "amendments": []
+        },
+        {
+          "id": "MI2",
+          "kind": "OA6",
+          "property": "outcome",
+          "claim": "A poller that has stopped reads as stopped, not as quiet.",
+          "requirement": "The poller stamps the start of every pass, so a dashboard can tell 'nothing new' (a recent stamp) from 'not running' (an old one), and 'switched off' from both.",
+          "verdict": "holds",
+          "conclusion": "The dashboard tells the three apart, but only for someone looking at it; nothing tells you (MI3).",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "mailbox_poll_last_attempt_timestamp_seconds moves when a pass starts; mailbox_poll_enabled says whether it should; the SINCE LAST READ panel turns red past two intervals.",
+              "ref": "server:apps/servers/file_host/src/metrics/mailbox.rs"
+            }
+          ],
+          "proof": ["server:scripts/check_metric_contract.py"],
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/mailbox.jsonnet"
+          },
+          "amendments": []
+        },
+        {
+          "id": "MI3",
+          "kind": "OA6",
+          "property": "outcome",
+          "claim": "If the poller stops, you are told within 18 minutes.",
+          "requirement": "An alert fires when no pass has started within the interval plus the pass budget plus 60 seconds (900 + 120 + 60 at today's settings), and when the metric itself is missing; its delivery to the owner is tested.",
+          "bound": { "value": 1080, "unit": "seconds", "tighter": "lower" },
+          "verdict": "broken",
+          "conclusion": "Nothing tells you: Prometheus has no alert rules, and the one provisioned Grafana alert is about logged errors.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "rule_files is commented out in prometheus.yml.",
+              "ref": "server:infra/prometheus/prometheus.yml"
+            },
+            {
+              "class": "structural",
+              "says": "The only provisioned alert counts tracing error events.",
+              "ref": "server:infra/grafana/provisioning/alerting/file-host-errors.yml"
+            }
+          ],
+          "tracked": "server#525",
+          "watch": { "by": "none" },
+          "amendments": []
+        },
+        {
+          "id": "MI4",
+          "kind": "OA2",
+          "property": "outcome",
+          "claim": "A file put in the mailbox is at home within 20 minutes while home is up, or it shows as late.",
+          "requirement": "From the Worker's commit to home's verified copy takes at most 20 minutes while home is available and the backlog is within one pass; past that, the oldest file still waiting is visible with its age, and time home was down is shown apart.",
+          "bound": { "value": 1200, "unit": "seconds", "tighter": "lower" },
+          "verdict": "unproven",
+          "conclusion": "Nothing measures how long a file waits, so whether this holds is unknown.",
+          "evidence": [
+            {
+              "class": "unknown",
+              "says": "No metric records the age of the oldest file the mailbox holds that home has not kept."
+            }
+          ],
+          "tracked": "server#525",
+          "watch": { "by": "none" },
+          "amendments": []
+        },
+        {
+          "id": "MI5",
+          "kind": "RE3",
+          "property": "work",
+          "claim": "A whole mailbox pass has a time limit and a request limit.",
+          "requirement": "One pass ends within 120 seconds and a shared request budget, with each phase keeping a reserve; what it could not do is deferred to the next pass and recorded.",
+          "bound": { "value": 120, "unit": "seconds", "tighter": "lower" },
+          "verdict": "broken",
+          "conclusion": "Each request has a 30-second limit but the pass has none: at today's constants a full pass may make up to 668 calls, about 5.5 hours of waiting in the worst case.",
+          "evidence": [
+            {
+              "class": "derived",
+              "says": "Inbound 4 × (10 pages + 20 gets) = 120, outbound 20, restore 8 × (1 + 50) = 408, archive 120: 668 calls, × 30 s ≈ 20,040 s.",
+              "ref": "server:apps/servers/file_host/src/mailbox/pass.rs"
+            }
+          ],
+          "tracked": "server#524",
+          "watch": { "by": "none" },
+          "amendments": []
+        },
+        {
+          "id": "MI6",
+          "kind": "RE7",
+          "property": "work",
+          "claim": "When there is nothing to do, the poller's own work stays small and counted.",
+          "requirement": "With no files and no asks, a day of passes makes at most 384 mailbox requests without archiving and 1,920 with it; a change that raises either needs an amendment.",
+          "bound": {
+            "value": 1920,
+            "unit": "requests a day",
+            "tighter": "lower"
+          },
+          "verdict": "unproven",
+          "conclusion": "The idle floor is known by arithmetic, not counted: no test runs a quiet day and counts the requests.",
+          "evidence": [
+            {
+              "class": "derived",
+              "says": "96 passes a day × 4 folder listings = 384; with archiving, + 8 wanted listings + 8 archive listings = 20 a pass, 1,920 a day.",
+              "ref": "server:apps/servers/file_host/src/mailbox/pass.rs"
+            }
+          ],
+          "tracked": "server#524",
+          "watch": { "by": "none" },
+          "amendments": []
+        }
+      ]
+    },
+    {
+      "id": "archive-restore",
+      "name": "Archived material can be asked for again",
+      "why": "Home archives what has sat in the mailbox for a while; a routine that needs an old file asks for it, and home puts it back.",
+      "paths": [
+        "some-ui:apps/mailbox",
+        "server:apps/servers/file_host/src/mailbox/pass.rs"
+      ],
+      "modules": [],
+      "objectives": [
+        {
+          "id": "MW1",
+          "kind": "RE4",
+          "property": "work",
+          "claim": "Finding what the routine asked for costs the same however many asks are waiting.",
+          "requirement": "Listing the oldest open asks in a folder reads in proportion to the page it returns, not to every ask in the folder.",
+          "verdict": "broken",
+          "conclusion": "Measured locally: the work grows tenfold with each tenfold backlog, and an index makes it flat. D1's own row counts are not measured yet.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "On the real migrations, the same 50 rows cost 12,066, 120,066 and 1,200,066 SQLite VM steps at 1k, 10k and 100k asks; 312 each with an index on (folder, asked_at, name). The query plan sorts every ask in a temporary B-tree.",
+              "ref": "some-ui#2203"
+            },
+            {
+              "class": "unknown",
+              "says": "D1 bills rows read, not VM steps, and the index adds a write and storage per ask; neither is measured on D1."
+            }
+          ],
+          "tracked": "some-ui#2203",
+          "watch": { "by": "none" },
+          "comparison": {
+            "what": "SQLite VM steps to list the 50 oldest open asks in one folder, local SQLite 3.53.1, same result rows",
+            "x": "open asks in the folder",
+            "y": "VM steps",
+            "series": [
+              {
+                "label": "today",
+                "points": [
+                  [1000, 12066],
+                  [10000, 120066],
+                  [100000, 1200066]
+                ]
+              },
+              {
+                "label": "with the index",
+                "points": [
+                  [1000, 312],
+                  [10000, 312],
+                  [100000, 312]
+                ]
+              }
+            ],
+            "limits": "Local SQLite steps, not D1's billed rows; excludes the index's extra write and storage per ask."
+          },
+          "amendments": []
+        },
+        {
+          "id": "MW2",
+          "kind": "RE1",
+          "property": "work",
+          "claim": "The mailbox's database work is counted in D1's own numbers, per operation.",
+          "requirement": "Each Worker operation totals D1's rows read and rows written from the statements it ran, and those totals are observable without any file's name or bytes.",
+          "verdict": "broken",
+          "conclusion": "D1 returns its row counts with every statement, and the Worker throws them away.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "The store's Db and Bound seam exposes rows and results only; d1Store drops meta.",
+              "ref": "some-ui:apps/mailbox/src/store.ts"
+            }
+          ],
+          "tracked": "some-ui#2204",
+          "watch": { "by": "none" },
+          "amendments": []
+        }
+      ]
+    },
+    {
+      "id": "app-requests",
+      "name": "A request the app makes stops when you stop it",
+      "why": "The shared fetch client carries the app's reads of lessons, word lists and the NFL data; a request it keeps making after you have moved on is work for nothing.",
+      "paths": ["some-ui:packages/fetch-kit"],
+      "modules": [],
+      "objectives": [
+        {
+          "id": "FK1",
+          "kind": "OA5",
+          "property": "outcome",
+          "claim": "A request stops when its caller cancels it, and 'no retries' means one try.",
+          "requirement": "A call makes at most 1 + its own retry count attempts; once the caller's signal aborts, no attempt starts, a waiting backoff ends, and the call rejects as cancelled, never as timed out.",
+          "verdict": "holds",
+          "conclusion": "Each way a cancel can arrive is tested, and zero retries makes one attempt. The app's query hooks do not pass React's cancel along yet (some-ui#2207).",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "Before #2202, an already-cancelled call still went out, a cancel mid-flight reached nothing, and retry count 0 made 2 attempts.",
+              "ref": "some-ui#2201"
+            }
+          ],
+          "proof": [
+            "some-ui:packages/fetch-kit/src/lib/fetch-client/index.test.ts#FK1"
+          ],
+          "watch": { "by": "none" },
+          "amendments": []
+        }
+      ]
+    },
+    {
+      "id": "voice-heard",
+      "name": "Voice notes sent home get heard",
+      "why": "The phone sends a voice note home; home transcribes it in the background, and the transcript is what the routine reads.",
+      "paths": [
+        "some-ui:apps/www/src/lib/voice-home",
+        "server:apps/servers/file_host/src/transcribe"
+      ],
+      "modules": ["voice"],
+      "objectives": [
+        {
+          "id": "VH1",
+          "kind": "OA2",
+          "property": "outcome",
+          "claim": "Every voice note sent home gets a transcript or a recorded reason it has none.",
+          "requirement": "Each note home holds gets a row; a failed hearing is recorded and retried a bounded number of times, then stays recorded as failed.",
+          "verdict": "holds",
+          "conclusion": "Every note gets a row, and a failure is retried a few times and then kept as failed.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A pass gives every note a row and retries a failure a few times.",
+              "ref": "server:apps/servers/file_host/src/transcribe/pass.rs"
+            }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/transcribe/pass.rs#every_note_gets_a_row_and_a_failure_is_retried_a_few_times"
+          ],
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/transcribe.jsonnet"
+          },
+          "amendments": []
+        },
+        {
+          "id": "VH2",
+          "kind": "RE3",
+          "property": "work",
+          "claim": "A transcription pass takes a bounded batch.",
+          "requirement": "One pass hears at most BATCH notes, each within its own deadline; the rest wait for the next pass.",
+          "verdict": "holds",
+          "conclusion": "A pass hears at most a batch, and the next pass takes the rest.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A pass over more than a batch hears exactly a batch.",
+              "ref": "server:apps/servers/file_host/src/transcribe/pass.rs"
+            }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/transcribe/pass.rs#a_pass_hears_at_most_a_batch"
+          ],
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/transcribe.jsonnet"
+          },
+          "amendments": []
+        }
+      ]
+    },
+    {
+      "id": "study-nudge",
+      "name": "Study nudges stay bounded",
+      "why": "Home decides when to nudge you to study from the phone's presence and signals, and sends the nudge by push.",
+      "paths": [
+        "some-ui:apps/www/src/lib/study-nudge",
+        "server:apps/servers/file_host/src/nudge",
+        "server:docs/study-nudge.md"
+      ],
+      "modules": ["presence", "signals", "push"],
+      "objectives": [
+        {
+          "id": "NW1",
+          "kind": "RE3",
+          "property": "work",
+          "claim": "A nudge pass ends on time, and what it did not reach waits for the next one.",
+          "requirement": "A waker pass reads at most BATCH due subjects and stops at its pass deadline; a subject it never reached is left untouched and still due.",
+          "verdict": "holds",
+          "conclusion": "Held by the waker's written scaling rules and their tests: a bounded batch, one deadline, nothing lost at the cut.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A pass that reaches its deadline leaves the subjects it never reached untouched and still due; subjects beyond a batch are finished by later passes.",
+              "ref": "server:apps/servers/file_host/src/nudge/waker.rs"
+            },
+            {
+              "class": "structural",
+              "says": "The scaling rules are written down: O(1) work per signal, an indexed range read, every pass bounded by BATCH and the deadline alone.",
+              "ref": "server:docs/study-nudge.md"
+            }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/nudge/waker.rs#a_pass_that_reaches_its_deadline_leaves_the_subjects_it_never_reached_untouched_and_still_due",
+            "server:apps/servers/file_host/src/nudge/waker.rs#behind_subjects_beyond_a_batch_are_finished_by_later_passes"
+          ],
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/dashboard.jsonnet"
+          },
+          "amendments": []
+        },
+        {
+          "id": "NW2",
+          "kind": "OA6",
+          "property": "outcome",
+          "claim": "If the nudge waker stops, you are told.",
+          "requirement": "An alert fires when no waker pass has started within its interval plus its pass deadline plus 60 seconds, and when its metrics are missing; its delivery is tested.",
+          "verdict": "broken",
+          "conclusion": "The dashboard shows when the waker last ran; nothing tells you when it stops.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "nudge_waker_last_attempt_timestamp_seconds exists, and no alert rule reads it.",
+              "ref": "server:infra/prometheus/prometheus.yml"
+            }
+          ],
+          "tracked": "server#525",
+          "watch": { "by": "dashboard" },
+          "amendments": []
+        }
+      ]
+    },
+    {
+      "id": "morning-run",
+      "name": "The morning run leaves an outcome",
+      "why": "The 7:52 Jobs routine runs off home, at Anthropic; a run that never starts leaves nothing behind unless something expects it.",
+      "paths": [
+        "some-ui:apps/www/src/lib/jobs",
+        "server:apps/servers/file_host/src/mailbox"
+      ],
+      "modules": [],
+      "objectives": [
+        {
+          "id": "RR1",
+          "kind": "OA6",
+          "property": "outcome",
+          "claim": "A morning run that never started shows as missing when you open Jobs, not as a quiet morning.",
+          "requirement": "When the run is due and home keeps run records but holds none for today, Today says home has no record of a run, apart from a run that found nothing.",
+          "verdict": "holds",
+          "conclusion": "Jobs tells a missing run apart from an empty one, once you open it.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "Today says home has no record of a run, only from a home that keeps them.",
+              "ref": "some-ui:apps/www/src/lib/jobs/morning.ts"
+            }
+          ],
+          "proof": [
+            "some-ui:apps/www/src/lib/jobs/__tests__/morning.test.ts#says home has no record of a run only from a home that keeps them"
+          ],
+          "watch": { "by": "none" },
+          "amendments": []
+        },
+        {
+          "id": "RR2",
+          "kind": "OA6",
+          "property": "outcome",
+          "claim": "If the morning run has not happened 30 minutes after it was due, you are told.",
+          "requirement": "Home expects each scheduled run by its time zone's clock, and an alert fires when none is recorded 30 minutes after it was due; its delivery is tested.",
+          "bound": { "value": 1800, "unit": "seconds", "tighter": "lower" },
+          "verdict": "broken",
+          "conclusion": "Nothing on home expects the run, so a missed run is noticed only when you open Jobs.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "Run records are written by the run itself; no schedule on home says when one is owed.",
+              "ref": "server:apps/servers/file_host/src/mailbox/pass.rs"
+            }
+          ],
+          "tracked": "server#525",
+          "watch": { "by": "none" },
+          "amendments": []
+        }
+      ]
+    },
+    {
+      "id": "the-checks",
+      "name": "The checks themselves",
+      "why": "Every promise above is only as good as the checks that hold it and what happens when one fails.",
+      "paths": [
+        "some-ui:.github/workflows/pr.yml",
+        "some-ui:scripts/check-assurance.ts",
+        "server:.github/workflows"
+      ],
+      "modules": [],
+      "objectives": [
+        {
+          "id": "GC1",
+          "kind": "OA7",
+          "property": "outcome",
+          "claim": "A failing check stops a merge, in both repositories.",
+          "requirement": "main in some-ui requires CI Gate, and main in the server requires one gate that waits on every check; a deliberately failing pull request is shown to be blocked in each.",
+          "verdict": "broken",
+          "conclusion": "Last read on 2026-10-26, main was unprotected in both repositories, so a red check informs but cannot stop a merge.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "GET /repos/paulgsc/{some-ui,server}/branches/main returned protected: false, and each repository's one ruleset had enforcement disabled (recon, 2026-10-26).",
+              "ref": "some-ui#2206"
+            }
+          ],
+          "tracked": "some-ui#2206",
+          "watch": { "by": "none" },
+          "amendments": []
+        },
+        {
+          "id": "GC2",
+          "kind": "OA1",
+          "property": "outcome",
+          "claim": "Every route the server serves is accounted for here.",
+          "requirement": "Every module in the server's route snapshot is in exactly one family or in the synchronous list, with a reason; a new module fails the check until someone places it.",
+          "verdict": "holds",
+          "conclusion": "check:assurance fails a server module that is in no family and not listed as synchronous.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "The coverage rule's test fails an unplaced and a stale module.",
+              "ref": "some-ui:packages/assurance/src/__tests__/rules.test.ts"
+            }
+          ],
+          "proof": [
+            "some-ui:packages/assurance/src/__tests__/rules.test.ts#GC2",
+            "some-ui:scripts/check-assurance.ts"
+          ],
+          "watch": { "by": "none" },
+          "amendments": []
+        },
+        {
+          "id": "GC3",
+          "kind": "OA7",
+          "property": "outcome",
+          "claim": "A promise cannot be quietly weakened.",
+          "requirement": "Against the base branch, an objective is never removed, and a holds that stops holding, a loosened bound, a changed requirement or kind, or a retirement each needs a new amendment naming the change and the owner's decision.",
+          "verdict": "holds",
+          "conclusion": "check:assurance compares this ledger with main's and fails each weakening that carries no amendment; the amendment then shows on this page.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "The ratchet's tests fail each weakening without an amendment and pass it with one.",
+              "ref": "some-ui:packages/assurance/src/__tests__/rules.test.ts"
+            }
+          ],
+          "proof": [
+            "some-ui:packages/assurance/src/__tests__/rules.test.ts#GC3",
+            "some-ui:scripts/check-assurance.ts"
+          ],
+          "watch": { "by": "none" },
+          "amendments": []
+        },
+        {
+          "id": "GC4",
+          "kind": "OA1",
+          "property": "outcome",
+          "claim": "The server's own checks hold its half of this ledger.",
+          "requirement": "Server CI reads this ledger, fails when a server path a holds names is missing, and fails a background task that belongs to no family.",
+          "verdict": "unproven",
+          "conclusion": "Nothing in the server reads this ledger yet, so a renamed server test would leave a proof here pointing at nothing.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "check:assurance checks only some-ui paths; server paths are taken as written."
+            }
+          ],
+          "tracked": "server#526",
+          "watch": { "by": "none" },
+          "amendments": []
+        }
+      ]
+    }
+  ],
+  "synchronous": [
+    {
+      "module": "activities",
+      "why": "Reads the activity catalogue; the answer is the outcome."
+    },
+    {
+      "module": "aph",
+      "why": "Reads and writes the APH log; each write answers with what it kept."
+    },
+    {
+      "module": "auth",
+      "why": "Pairing, passkeys and the account: each step answers at once, or the ceremony starts again."
+    },
+    {
+      "module": "curriculum",
+      "why": "Reads lessons; the answer is the outcome."
+    },
+    {
+      "module": "curriculum_operator",
+      "why": "The owner's lesson edits; each answers with what it kept."
+    },
+    {
+      "module": "health",
+      "why": "Answers whether the process is up; nothing is owed after."
+    },
+    {
+      "module": "korean",
+      "why": "Reads and writes Korean lists; each write answers with what it kept."
+    },
+    {
+      "module": "leetype",
+      "why": "Reads typing rounds; the answer is the outcome."
+    },
+    {
+      "module": "leetype_log",
+      "why": "Writes typing events; each answers with what it kept, and the phone reads it back."
+    },
+    {
+      "module": "leetype_operator",
+      "why": "The owner's round edits; each answers with what it kept."
+    },
+    {
+      "module": "mood_events",
+      "why": "Mood events in and out; each write answers with what it kept."
+    },
+    {
+      "module": "outcomes",
+      "why": "Records a study outcome; the answer is the outcome."
+    },
+    {
+      "module": "readiness",
+      "why": "Answers whether home and its dependencies are ready, with its build."
+    },
+    {
+      "module": "sessions",
+      "why": "Study sessions in and out; each write answers with what it kept."
+    },
+    {
+      "module": "sharing",
+      "why": "Reads and sets what is shared; each answers with the setting kept."
+    },
+    {
+      "module": "shelf",
+      "why": "Kept records in and out; the phone reads each copy back (home-link)."
+    },
+    {
+      "module": "subjects",
+      "why": "Reads the subject's own stats; the answer is the outcome."
+    },
+    {
+      "module": "sync",
+      "why": "A batch of records in; the answer says what was kept, and the phone reads it back."
+    },
+    {
+      "module": "tab_metadata",
+      "why": "Records what is playing now; nothing is owed after."
+    },
+    {
+      "module": "tabs",
+      "why": "Tabs in and out; each write answers with what it kept."
+    },
+    {
+      "module": "utterance",
+      "why": "Speaks a phrase and answers with the audio."
+    },
+    {
+      "module": "websocket",
+      "why": "A live connection; what it carries is owed only while it is open."
+    }
+  ]
+}

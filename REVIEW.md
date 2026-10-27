@@ -110,3 +110,24 @@ need, an Apple meta tag, a Safari-version workaround, an iPhone branch).
 `pnpm check:android-only` already fails the tokens `CLAUDE.md` lists (in "The phone and the
 desktop web are separate surfaces"), so do not re-check those. What stays for review is
 anything they do not reach: another spelling, a prose file, any other line that exists for them.
+
+## The assurance ledger says what the code does
+
+`packages/assurance/src/ledger.json` records each promise about outcomes and work with a
+verdict (`docs/operational-assurance.md`). `pnpm check:assurance` already fails its shape, a
+`holds` with no proof that exists, anything else with no issue, an unplaced server route
+module, and a weakening against the base branch with no amendment, so do not re-check those.
+Each of the following is a **blocking** finding:
+
+1. **A verdict the evidence does not carry.** A `holds` whose proof does not reach its
+   requirement (a test of one case for a claim about every pass, say), or a conclusion that
+   drops the boundary its evidence states (local SQLite steps called D1 rows).
+2. **Code that makes a ledger claim false, with the ledger unchanged.** A hunk that removes or
+   renames what a proof names, or the alert or dashboard a `watch` names, or that changes what an
+   objective's requirement describes, without the matching ledger edit. A `server:` path is not
+   checked until server#526, so a server PR that moves one is caught only here.
+3. **An amendment without the owner.** A new amendment whose `decision` does not link to the
+   owner deciding that change, or whose `change` does not say what the objective lost.
+4. **A route module called synchronous that is not.** A module added to `synchronous` whose
+   caller does not see the outcome in the answer (the work finishes later, in a pass or a
+   queue).

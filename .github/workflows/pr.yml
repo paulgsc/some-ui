@@ -554,6 +554,30 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         run: nix develop .#ci --command node scripts/check-policy-docs.ts --base "origin/$BASE_REF"
 
+  # ── Assurance ledger (repo-wide) ──────────────────────────────────────
+  # docs/operational-assurance.md: the ledger of promises about outcomes and
+  # work (packages/assurance/src/ledger.json). Its shape, proofs and issues,
+  # that every server route module is placed, and the ratchet against the
+  # base branch's ledger, so a promise is never weakened without an amendment.
+  # No `changes` gate: a change anywhere can remove a proof it names. No
+  # install (Node's type stripping).
+  assurance:
+    name: Assurance ledger
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/nix-setup
+      # The checkout is the merge ref alone, so fetch the base's tip for
+      # `--base` (the ratchet holds this ledger to the base's).
+      - name: Fetch the base branch
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: git fetch --no-tags --depth=1 origin "+$BASE_REF:refs/remotes/origin/$BASE_REF"
+      - name: Check the assurance ledger
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: nix develop .#ci --command node scripts/check-assurance.ts --base "origin/$BASE_REF"
+
   # ── Android only (repo-wide) ───────────────────────────────────────────
   # CLAUDE.md, "The phone and the desktop web are separate surfaces": a few
   # Apple-only tokens, listed in packages/eslint/src/android-only.ts, appear in
@@ -644,6 +668,7 @@ jobs:
         react-coordination,
         workflows,
         policy-docs,
+        assurance,
         android-only,
         canon,
         commit-trailers,

@@ -351,6 +351,12 @@ const Mission = (): JSX.Element => (
         >
           Résumé
         </Link>
+        <Link
+          to="/assurance"
+          className="text-primary font-medium underline-offset-4 hover:underline"
+        >
+          What it promises, and how I know
+        </Link>
         <a
           href="https://github.com/paulgsc/some-ui"
           target="_blank"
