@@ -9,9 +9,10 @@
  * lesson.
  */
 
-import type { ConversationBatch, TopikMetadata } from "@topik/lib/topik"
-import { TopikFileSchema } from "@topik/lib/topik"
 import { topikLevelOf } from "@topik/lib/topik/core/lesson-selection"
+import type { TopikMetadata } from "@topik/lib/topik/entity/topik-metadata"
+import type { ConversationBatch } from "@topik/lib/topik/entity/topik-types"
+import { TopikFileSchema } from "@topik/lib/topik/entity/topik-types"
 
 export type Intake =
   | {
@@ -71,6 +72,7 @@ export function jsonValues(text: string): Array<unknown> {
   })
 }
 
+// eslint-disable-next-line one-owner/no-local-primitive -- not moved: the open U3 branch (#2111) edits this file (#2112)
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value)
 

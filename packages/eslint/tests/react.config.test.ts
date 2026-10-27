@@ -31,8 +31,9 @@ describe("react.config — rule severities for .tsx files", () => {
   it.each<readonly [string, keyof typeof EXPECT]>([
     ["import/no-unresolved", "error"],
     ["import/no-cycle", "error"],
-    ["import/named", "error"],
-    ["import/export", "error"],
+    // tsc reports both in TypeScript; .js keeps them (glob targeting, below).
+    ["import/named", "off"],
+    ["import/export", "off"],
     ["import/no-anonymous-default-export", "error"],
     ["import/no-duplicates", "error"],
     ["import/no-extraneous-dependencies", "error"],
@@ -78,6 +79,7 @@ describe("react.config — rule severities for .tsx files", () => {
     ["react/no-unstable-nested-components", { allowAsProps: false }],
     ["react/jsx-no-useless-fragment", { allowExpressions: true }],
     ["jsx-a11y/alt-text", { img: ["Image"] }],
+    ["import/no-cycle", { ignoreExternal: true }],
   ])("%s keeps its options", async (rule, options) => {
     const entry = (await rulesPromise)[rule]
     const opts = Array.isArray(entry) ? entry[1] : undefined
@@ -98,5 +100,7 @@ describe("react.config — glob targeting", () => {
     const rules = await calculateConfig(reactConfig, JS)
     expectError(rules, "react-hooks/exhaustive-deps", ".js file")
     expectError(rules, "import/no-duplicates", ".js file")
+    expectError(rules, "import/named", ".js file")
+    expectError(rules, "import/export", ".js file")
   })
 })

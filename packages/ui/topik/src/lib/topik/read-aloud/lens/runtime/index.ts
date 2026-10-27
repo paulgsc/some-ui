@@ -210,7 +210,7 @@ export function createLensRuntime(
     try {
       options().record?.(entry)
     } catch {
-      // The record is the export's, and losing an entry costs nothing more
+      // Ignored: the record is the export's, and losing an entry costs nothing more
       // (Thm. 7.2): the session goes on.
     }
   }

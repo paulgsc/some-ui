@@ -2,12 +2,9 @@
   "extends": "@some-ui/tsconfig/rollupconfig.json",
   "compilerOptions": {
     "types": ["node"],
-    "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
-    "moduleResolution": "Bundler",
     "composite": true,
-    "outDir": "./dist",
     "strict": true,
     "allowJs": true,
     "noUnusedLocals": true,

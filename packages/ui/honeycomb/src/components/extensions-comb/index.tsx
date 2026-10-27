@@ -3,8 +3,7 @@ import type { CSSProperties, JSX, KeyboardEvent, ReactNode } from "react"
 import { HexGrid } from "@honeycomb/components/hex-grid"
 import { useHexgridWasm } from "@honeycomb/hooks/use-hexgrid-wasm"
 import type { HexPoint } from "@honeycomb/types/hex-grid"
-import { assertNever } from "@honeycomb/utils/error"
-import { cn } from "@some-ui/core-utils"
+import { assertNever, cn } from "@some-ui/core-utils"
 import type { LucideIcon } from "lucide-react"
 import {
   ArrowLeft,

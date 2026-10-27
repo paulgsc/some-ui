@@ -148,7 +148,7 @@ export function createWasmLoader<T>(
   function preload(): void {
     if (state === WasmLoaderState.Idle) {
       load().catch(() => {
-        // Failure is already recorded on the loader (getLastError/getState);
+        // Ignored: the failure is recorded on the loader (getLastError/getState);
         // preload() is fire-and-forget so nothing is awaiting this promise.
       })
     }

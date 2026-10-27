@@ -15,11 +15,13 @@ export { noLoadingElidedDefault } from "./no-loading-elided-default.js"
 export { requireNamedLifetime } from "./require-named-lifetime.js"
 export { requireScopedLifetime } from "./require-scoped-lifetime.js"
 export { requireLifetimeComment } from "./require-lifetime-comment.js"
+export { requireIgnoredReason } from "./require-ignored-reason.js"
 export { noDirectPageShowing } from "./no-direct-page-showing.js"
 export { noPlaybackPolling } from "./no-playback-polling.js"
 export { messageSentOnlyThrough } from "./message-sent-only-through.js"
 export { consoleReportsMessageOnly } from "./console-reports-message-only.js"
 export { noMountSnapshot } from "./no-mount-snapshot.js"
+export { noLocalPrimitive } from "./no-local-primitive.js"
 export {
   noFixedStatusColor,
   noStructuralPaletteColor,

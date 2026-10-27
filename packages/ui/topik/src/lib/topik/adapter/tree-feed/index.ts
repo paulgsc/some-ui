@@ -19,9 +19,9 @@ import {
   readWhole,
   writeKept,
 } from "@some-ui/core-utils"
-import type { TopikMetadata } from "@topik/lib/topik"
-import { TopikManifestSchema } from "@topik/lib/topik"
 import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
+import type { TopikMetadata } from "@topik/lib/topik/entity/topik-metadata"
+import { TopikManifestSchema } from "@topik/lib/topik/entity/topik-metadata"
 import type { TreeIntake } from "@topik/lib/topik/generation/tree-intake"
 import { intakeTree } from "@topik/lib/topik/generation/tree-intake"
 import { z } from "zod"

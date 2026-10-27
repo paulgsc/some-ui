@@ -1,4 +1,4 @@
-import type { TopikMetadata } from "@topik/lib/topik"
+import type { TopikMetadata } from "@topik/lib/topik/entity/topik-metadata"
 
 export function getRecommendedItems(
   items: Array<TopikMetadata>,

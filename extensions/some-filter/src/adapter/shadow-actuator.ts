@@ -195,7 +195,7 @@ function staticShadowLayer(): CSSStyleSheet {
     try {
       sheet.insertRule(rule, sheet.cssRules.length)
     } catch {
-      // One unparseable rule must not cost the other twenty-odd.
+      // Ignored: one unparseable rule must not cost the other twenty-odd.
       //
       // A document `<style>` drops a rule whose selector the engine cannot
       // parse and keeps the rest; `insertRule` throws instead, so an

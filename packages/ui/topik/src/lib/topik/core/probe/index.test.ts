@@ -1,4 +1,4 @@
-import type { Probe, ProbeOption } from "@topik/lib/topik"
+import type { Probe, ProbeOption } from "@topik/lib/topik/entity/topik-types"
 import { describe, expect, it } from "vitest"
 
 import { isCorrectChoice, orderedOptions } from "."

@@ -4,8 +4,8 @@
  * and the seed it gives the learner's own prompt. Pure and total.
  */
 
-import type { TopikMetadata } from "@topik/lib/topik"
 import { topikLevelOf } from "@topik/lib/topik/core/lesson-selection"
+import type { TopikMetadata } from "@topik/lib/topik/entity/topik-metadata"
 
 const GENRE_TAG = "genre:"
 

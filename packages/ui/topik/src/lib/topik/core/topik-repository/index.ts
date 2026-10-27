@@ -3,9 +3,9 @@
  * invalidation and lifecycle are TanStack Query's.
  */
 
-import type { ConversationBatch } from "@topik/lib/topik"
-import { TopikFileSchema } from "@topik/lib/topik"
 import type { ITopikRepository } from "@topik/lib/topik/core/session-types"
+import type { ConversationBatch } from "@topik/lib/topik/entity/topik-types"
+import { TopikFileSchema } from "@topik/lib/topik/entity/topik-types"
 
 // REPOSITORY IMPLEMENTATION
 

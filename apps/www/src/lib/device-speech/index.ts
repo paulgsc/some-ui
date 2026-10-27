@@ -80,6 +80,8 @@ export function deviceSpeechBackend(
 export function openVoiceInstall(): void {
   void native()
     .then((module) => module.openVoiceInstall())
+    // Ignored: the screen did not open, which the person sees; tapping
+    // again tries again.
     .catch(() => undefined)
 }
 

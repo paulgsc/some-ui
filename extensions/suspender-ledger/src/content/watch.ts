@@ -90,7 +90,8 @@ Object.defineProperty(window, "isReceivingFormInput", {
         return false
       }
     } catch {
-      // defensive: a detached/cross-origin node can throw on access — ignore.
+      // Ignored: a detached or cross-origin node can throw on access; the
+      // last known `receivingInput` answers instead.
     }
     return receivingInput
   },
@@ -146,14 +147,14 @@ addEventListener(
 /** Best-effort, fire-and-forget notification to the worker. */
 function notifyWorker(message: ContentToWorkerMessage): void {
   try {
-    // sendMessage rejects when no receiver exists or the context was
+    // Ignored: sendMessage rejects when no receiver exists or the context was
     // invalidated; neither is fatal for the page, so swallow it.
     // eslint-disable-next-line no-restricted-globals
     void Promise.resolve(chrome.runtime.sendMessage(message)).catch(
       () => undefined
     )
   } catch {
-    // runtime gone (extension reloaded) — nothing to do.
+    // Ignored: runtime gone (extension reloaded) — nothing to do.
   }
 }
 

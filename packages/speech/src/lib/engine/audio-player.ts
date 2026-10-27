@@ -143,7 +143,7 @@ export function createAudioPlayer(
         sourceNode.stop()
         sourceNode.disconnect()
       } catch {
-        // Already stopped, or never started - both are fine here.
+        // Ignored: already stopped, or never started - both are fine here.
       }
       sourceNode = null
     }
@@ -151,7 +151,7 @@ export function createAudioPlayer(
       try {
         gainNode.disconnect()
       } catch {
-        // Already disconnected.
+        // Ignored: already disconnected.
       }
       gainNode = null
     }
@@ -337,6 +337,8 @@ export function createAudioPlayer(
       ledger.flush(createAbortError("Audio player was disposed"))
       listeners.clear()
       if (context && context.state !== "closed") {
+        // Ignored: the player is disposed either way; a context that will not
+        // close is the browser's to collect.
         void context.close().catch(() => undefined)
       }
       context = null

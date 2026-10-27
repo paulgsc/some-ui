@@ -123,6 +123,10 @@ if (event.type === "HYDRATION_SUCCESS") {
 
 ## Module Structure
 
+`index.ts` is the barrel the package's components import. Modules inside
+`src/lib/topik` import the leaf module that declares a name instead;
+`eslint.config.js` bans the barrel there and says why.
+
 ### Core Modules (Framework-Agnostic)
 
 1. **session-types.ts**

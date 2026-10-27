@@ -3,7 +3,6 @@
   "compilerOptions": {
     "declarationDir": "./",
     "rootDir": ".",
-    "outDir": "./dist",
     "paths": {
       "@leetype/*": ["./src/*"],
       // The wasm package is consumed as a workspace crate whose dist/ only

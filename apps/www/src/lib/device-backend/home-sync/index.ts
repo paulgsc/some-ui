@@ -17,7 +17,9 @@
  * Lessons and runs are revalidated (`revalidated`); home being busy ends the
  * sync (`HomeBusyError`), with no retry.
  */
-import { isRecord, sha256Hex, stringsAt } from "@/lib/device-backend/common"
+import { isRecord } from "@some-ui/core-utils"
+
+import { sha256Hex, stringsAt } from "@/lib/device-backend/common"
 import type { HeldBody, LessonEntry } from "@/lib/device-backend/content-store"
 import {
   DEFAULT_LESSON_ACTIVITY,

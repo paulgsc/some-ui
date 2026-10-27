@@ -59,6 +59,7 @@ const PREF_DEFAULTS: PopupPrefKeys = {
   pinned: false,
 }
 
+// eslint-disable-next-line one-owner/no-local-primitive -- not moved to @some-extension/common yet (#2112)
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null
 }
@@ -384,6 +385,6 @@ void (async () => {
     ])
     setState({ tab, prefs, shortcuts, discardReasons })
   } catch {
-    // Popup hydration is best-effort; a failure leaves the default shell.
+    // Ignored: popup hydration is best-effort; a failure leaves the default shell.
   }
 })()

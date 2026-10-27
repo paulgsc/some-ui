@@ -4,6 +4,7 @@
  * a port and each result into an event. It decides nothing; which result
  * still counts and what the page shows are `step`'s.
  */
+import { assertNever } from "@some-ui/core-utils"
 import type { Playback, Player, StartRecording } from "@some-ui/voice-capture"
 import { takeRunner } from "@some-ui/voice-capture"
 import { TAKE_TICK_MS } from "@soundbites/lib/policy"
@@ -203,8 +204,4 @@ export function createJournal(ports: JournalPorts): JournalRuntime {
       }
     },
   }
-}
-
-function assertNever(value: never): never {
-  throw new Error(`unhandled journal effect: ${JSON.stringify(value)}`)
 }

@@ -36,6 +36,7 @@
  * `MediaRecorder.state`, `Audio.paused` or IndexedDB's state. Those reach us
  * only as events.
  */
+import { assertNever } from "@some-ui/core-utils"
 import type {
   RecordingFailure,
   Take,
@@ -586,8 +587,4 @@ export function step(state: SoundbitesState, event: SoundbitesEvent): Step {
       return assertNever(event)
     }
   }
-}
-
-function assertNever(value: never): never {
-  throw new Error(`unhandled soundbites event: ${JSON.stringify(value)}`)
 }

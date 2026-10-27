@@ -5,7 +5,6 @@
     "declarationDir": "./",
     "composite": true,
     "rootDir": "./src",
-    "outDir": "./dist",
     "paths": {
       "@makjang/*": ["./src/*"]
     }

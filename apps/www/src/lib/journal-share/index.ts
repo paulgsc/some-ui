@@ -59,5 +59,6 @@ export function letGoJournal(
   store: Pick<JournalStore, "letGo">,
   sent: JournalSent
 ): void {
+  // Ignored: one that fails leaves the episode on the tab (above).
   store.letGo(sent).catch(() => undefined)
 }

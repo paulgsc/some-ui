@@ -140,6 +140,8 @@ async function writeAndShare(
       const { Directory, Encoding, Filesystem } = await import(
         "@capacitor/filesystem"
       )
+      // Ignored: no folder from an earlier share is the usual case; writing
+      // the files below fails in its own words if the folder is unusable.
       await Filesystem.rmdir({
         path: dir,
         directory: Directory.Cache,

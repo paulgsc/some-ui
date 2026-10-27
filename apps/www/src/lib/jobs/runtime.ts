@@ -5,6 +5,7 @@
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/core-utils"
+import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import { parseDigest } from "@some-ui/job-desk"
 import {
   SOUNDBITE_MAX_MS,
@@ -513,6 +514,8 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
       const before = state.voice
       if (!commit({ type: "voice-dropped", ids })) return
       const gone = before.filter((n) => !state.voice.includes(n))
+      // Ignored: audio that fails to go is named by no note, and `sweep`
+      // clears it.
       ports.audio.remove(gone.map((n) => n.id)).catch(() => undefined)
     },
     outgoing: (kind) => sheetFile(kind, ports.now()),
@@ -562,6 +565,7 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
       ) {
         return
       }
+      // Ignored: released audio that fails to go is cleared by `sweep`.
       ports.audio.remove([...releasedVoice(state)]).catch(() => undefined)
     },
     sweep(): void {
@@ -577,7 +581,12 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
           )
           return ports.audio.remove(orphans)
         })
-        .catch(() => undefined)
+        .catch((error: unknown) => {
+          reportFailure({
+            port: "jobs voice sweep",
+            error: toIntentError(error),
+          })
+        })
     },
   }
 }

@@ -1,15 +1,17 @@
+import type { ForeignFailure } from "@some-ui/intent-kit"
+import { addFailureSink } from "@some-ui/intent-kit"
 import type { SayOptions, Speaker, SpeechOutcome } from "@some-ui/speech"
-import type {
-  ConversationBatch,
-  ITopikRepository,
-  Message,
-  TopikMetadata,
-} from "@topik/lib/topik"
 import type {
   IQueryBridge,
   ISessionMachine,
+  ITopikRepository,
   SessionState,
 } from "@topik/lib/topik/core/session-types"
+import type { TopikMetadata } from "@topik/lib/topik/entity/topik-metadata"
+import type {
+  ConversationBatch,
+  Message,
+} from "@topik/lib/topik/entity/topik-types"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {
@@ -407,23 +409,27 @@ describe("EffectExecutor", () => {
   })
 
   describe("error handling", () => {
-    it("routes a callback throw to onError instead of crashing execute()", () => {
-      const onError = vi.fn()
+    it("reports a callback throw instead of crashing execute()", () => {
+      vi.spyOn(globalThis.console, "error").mockImplementation(() => undefined)
+      const failures: Array<ForeignFailure> = []
+      const stop = addFailureSink((f) => failures.push(f))
       const boom = new Error("callback exploded")
       const { executor } = start(emptyActiveState(), {
         onBatchComplete: () => {
           throw boom
         },
-        onError,
       })
 
-      expect(() =>
-        executor.execute([{ type: "NOTIFY_BATCH_COMPLETE", batchIndex: 0 }])
-      ).not.toThrow()
-      expect(onError).toHaveBeenCalledWith(boom, {
-        type: "NOTIFY_BATCH_COMPLETE",
-        batchIndex: 0,
-      })
+      try {
+        expect(() =>
+          executor.execute([{ type: "NOTIFY_BATCH_COMPLETE", batchIndex: 0 }])
+        ).not.toThrow()
+      } finally {
+        stop()
+      }
+      expect(failures.map((f) => [f.port, f.error.cause])).toEqual([
+        ["topik session (NOTIFY_BATCH_COMPLETE)", boom],
+      ])
     })
   })
 

@@ -1,8 +1,17 @@
-/** Runs the effects the FSM reducer emits: I/O, timers, queries, speech. */
+/**
+ * Runs the effects the FSM reducer emits: I/O, timers, queries, speech.
+ *
+ * A failure is reported once, through `reportFailure` (FT1,
+ * docs/monorepo-boundaries.md); the machine hears it as an event and the
+ * session shows what failed.
+ */
 
+import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import type { Speaker } from "@some-ui/speech"
-import type { Message } from "@topik/lib/topik"
-import { actions, getCurrentMessage } from "@topik/lib/topik"
+import {
+  actions,
+  getCurrentMessage,
+} from "@topik/lib/topik/core/session-selectors"
 import type {
   IQueryBridge,
   ISessionMachine,
@@ -11,6 +20,7 @@ import type {
 } from "@topik/lib/topik/core/session-types"
 import type { TTSEffectHandler } from "@topik/lib/topik/core/tts-effect-handler"
 import { createTTSEffectHandler } from "@topik/lib/topik/core/tts-effect-handler"
+import type { Message } from "@topik/lib/topik/entity/topik-types"
 
 // EXECUTOR CONFIGURATION
 
@@ -35,7 +45,6 @@ export type EffectExecutorConfig = {
   onSpeechEnd?: (messageId: string) => void
   /** A line's audio stopped without it ending; see `TTSEffectHandlerConfig`. */
   onSpeechStopped?: (messageId: string) => void
-  onError?: (error: Error, effect: SessionEffect) => void
 }
 
 // EFFECT EXECUTOR
@@ -70,11 +79,6 @@ export class EffectExecutor {
         onSpeechStopped: (messageId) => {
           this.config.onSpeechStopped?.(messageId)
         },
-
-        onError: (error, messageId) => {
-          // eslint-disable-next-line no-console
-          console.error(`[Executor] TTS error for message ${messageId}:`, error)
-        },
       })
     }
   }
@@ -82,11 +86,9 @@ export class EffectExecutor {
   // PUBLIC API
 
   execute(effects: Array<SessionEffect>): void {
-    if (this.destroyed) {
-      // eslint-disable-next-line no-console
-      console.warn("[Executor] Ignoring effects - executor destroyed")
-      return
-    }
+    // Effects that arrive after `destroy` (a query answering once the session
+    // has gone) are late, and dropped on purpose: no failure, nothing to tell.
+    if (this.destroyed) return
 
     for (const effect of effects) {
       this._executeOne(effect)
@@ -94,11 +96,8 @@ export class EffectExecutor {
   }
 
   async speakMessage(message: Message): Promise<void> {
-    if (!this.ttsHandler) {
-      // eslint-disable-next-line no-console
-      console.warn("[Executor] TTS not enabled")
-      return
-    }
+    // No voice on this session (the host passed no speaker): nothing to say.
+    if (!this.ttsHandler) return
     await this.ttsHandler.speakManually(message)
   }
 
@@ -171,18 +170,19 @@ export class EffectExecutor {
           // Exhaustiveness check
           const _exhaustive: never = effect
           effect satisfies never
-          // eslint-disable-next-line no-console
-          console.warn("[Executor] Unknown effect type:", _exhaustive)
+          reportFailure({
+            port: "topik session",
+            error: toIntentError(
+              new Error(`unknown effect: ${JSON.stringify(_exhaustive)}`)
+            ),
+          })
         }
       }
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error("[Executor] error executing effects", error, effect)
-      if (this.config.onError)
-        this.config.onError(
-          error instanceof Error ? error : new Error(String(error)),
-          effect
-        )
+      reportFailure({
+        port: `topik session (${effect.type})`,
+        error: toIntentError(error),
+      })
     }
   }
 
@@ -199,8 +199,10 @@ export class EffectExecutor {
       effects = machine.dispatch({ type: "CATALOG_SUCCESS", data: data.topiks })
       this.execute(effects)
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error("[Executor] Catalog query failed:", error)
+      reportFailure({
+        port: "topik catalog query",
+        error: toIntentError(error),
+      })
       effects = machine.dispatch({
         type: "CATALOG_FAILURE",
         error: error instanceof Error ? error.message : String(error),
@@ -226,8 +228,10 @@ export class EffectExecutor {
 
       this.execute(effects) // This triggers the PLAY_AUDIO and START_TIMER
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error(`[Executor] Topik query failed: ${key}`, error)
+      reportFailure({
+        port: `topik query (${key})`,
+        error: toIntentError(error),
+      })
       effects = machine.dispatch({
         type: "HYDRATION_FAILURE",
         key,
@@ -262,17 +266,18 @@ export class EffectExecutor {
   // TTS EFFECTS
 
   private _playAudio(): void {
-    if (!this.ttsHandler) {
-      // eslint-disable-next-line no-console
-      console.warn("[Executor] TTS not enabled, skipping audio")
-      return
-    }
+    // No voice on this session: the lesson runs silent, as the host chose.
+    if (!this.ttsHandler) return
 
     const message = getCurrentMessage(this.config.machine.getState())
 
+    // The reducer asked for a line it holds none for: its state and its
+    // effects disagree.
     if (!message) {
-      // eslint-disable-next-line no-console
-      console.warn(`[Executor] Message not found`)
+      reportFailure({
+        port: "topik session (PLAY_AUDIO)",
+        error: toIntentError(new Error("no current message to play")),
+      })
       return
     }
 

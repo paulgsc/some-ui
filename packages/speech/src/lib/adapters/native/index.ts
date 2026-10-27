@@ -276,6 +276,8 @@ export function createNativeSpeechAdapter(
   }
 
   const stopEngine = (): void => {
+    // Ignored: the line is settled as stopped for its caller either way, and
+    // there is no other way to stop the engine to fall back on.
     void engine.stop().catch(() => undefined)
   }
 
@@ -427,6 +429,7 @@ export function createNativeSpeechAdapter(
   }
 }
 
+// eslint-disable-next-line one-owner/no-local-primitive -- not moved: the open U3 branch (#2111) edits this file (#2112)
 function assertNever(value: never): never {
   throw new Error(`Unexpected device voice choice: ${JSON.stringify(value)}`)
 }

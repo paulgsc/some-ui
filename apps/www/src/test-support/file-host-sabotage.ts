@@ -7,7 +7,7 @@
  * replaced, asserting on the DOM as a person reads it. A real browser and a
  * stopped `file_host` process are outside this suite's scope.
  */
-
+import { assertNever } from "@some-ui/core-utils"
 // This module is test-only support code (never imported by production
 // source) but doesn't itself match the repo's *.test.*/tests/** glob that
 // exempts this rule; see packages/eslint/src/configs/overrides-deps.config.ts.
@@ -25,10 +25,6 @@ export type SabotageMode =
 /** file_host's own error envelope; see client.ts's `errorCodeOf`. */
 function errorEnvelope(code: string, message: string): string {
   return JSON.stringify({ error: { code, message } })
-}
-
-function assertNever(mode: never): never {
-  throw new Error(`unhandled sabotage mode: ${String(mode)}`)
 }
 
 /**

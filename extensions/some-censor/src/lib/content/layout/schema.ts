@@ -94,6 +94,7 @@ const FIELDS: ReadonlyArray<string> = [
   "uploadDate",
 ]
 
+// eslint-disable-next-line one-owner/no-local-primitive -- rejects arrays, unlike @some-extension/common's (#2112)
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value)
 }

@@ -20,7 +20,7 @@
  * read it (an English Edge voice given Hangul answers with an HTTP 500).
  * Nothing falls back to "the first voice in the list".
  */
-
+import { assertNever } from "@some-ui/core-utils"
 import type { SpokenLanguage } from "@speech/lib/language"
 import type { VoicePart } from "@speech/lib/part"
 import type { TTSProvider, VoiceConfig } from "@speech/lib/types/tts-types"
@@ -132,10 +132,6 @@ export function parseHostedVoiceChoice(
       return assertNever(provider)
     }
   }
-}
-
-function assertNever(value: never): never {
-  throw new Error(`Unhandled TTS provider: ${JSON.stringify(value)}`)
 }
 
 /**

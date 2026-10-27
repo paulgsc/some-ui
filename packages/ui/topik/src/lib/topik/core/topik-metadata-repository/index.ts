@@ -1,10 +1,8 @@
 /** Lightweight metadata for topik selection, apart from batch loading. */
 
-import type {
-  ITopikMetadataRepository,
-  TopikManifestFile,
-} from "@topik/lib/topik"
-import { TopikManifestSchema } from "@topik/lib/topik"
+import type { ITopikMetadataRepository } from "@topik/lib/topik/core/session-types"
+import type { TopikManifestFile } from "@topik/lib/topik/entity/topik-metadata"
+import { TopikManifestSchema } from "@topik/lib/topik/entity/topik-metadata"
 
 // REPOSITORY IMPLEMENTATION
 

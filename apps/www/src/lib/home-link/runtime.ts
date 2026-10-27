@@ -27,8 +27,9 @@
  *   token.
  */
 import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
+import { isRecord } from "@some-ui/core-utils"
 
-import { isRecord, stringFieldOf } from "@/lib/device-backend/common"
+import { stringFieldOf } from "@/lib/device-backend/common"
 import type { HomeGet } from "@/lib/device-backend/home-sync"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import type { HomeRequest } from "@/lib/device-backend/native-http"
@@ -259,6 +260,8 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       // tap, rather than leave it to expire.
       await ports
         .request({ method: "POST", url: `${base}/auth/sign-out`, token })
+        // Ignored: a sign-out home does not hear leaves that session to
+        // expire on its own; this phone kept nothing of it either way.
         .catch(() => undefined)
       return "not-kept"
     }

@@ -3,6 +3,7 @@
  * microphone, its audio on a shelf of its own, and letting reflections go
  * with their audio. Phone-only (`build.paths.ts`).
  */
+import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import { SOUNDBITE_BITS_PER_SECOND } from "@some-ui/soundbites/contract"
 import type { VoiceNoteRuntime } from "@some-ui/voice-capture"
 import { micRecorder, savingShelf } from "@some-ui/voice-capture"
@@ -64,6 +65,7 @@ export function letGoReflections(ids: ReadonlyArray<string>): boolean {
   if (!reflections.letGo(ids)) return false
   reflectionAudio()
     .remove(ids)
+    // Ignored: audio that fails to go is left for `sweepOrphans` (above).
     .catch(() => undefined)
   return true
 }
@@ -94,5 +96,10 @@ export function sweepOrphans(): void {
       }
       if (silent.length > 0) reflections.letGo(silent)
     })
-    .catch(() => undefined)
+    .catch((error: unknown) => {
+      reportFailure({
+        port: "reflection voice sweep",
+        error: toIntentError(error),
+      })
+    })
 }

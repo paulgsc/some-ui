@@ -2,7 +2,6 @@
   "extends": "@some-ui/tsconfig/base.json",
   "compilerOptions": {
     "module": "ESNext",
-    "moduleResolution": "Bundler",
     "noEmit": true,
     "rootDir": ".",
     "types": ["node"]

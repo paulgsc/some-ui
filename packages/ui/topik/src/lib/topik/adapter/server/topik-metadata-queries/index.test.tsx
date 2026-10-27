@@ -1,7 +1,8 @@
 import type { JSX, ReactNode } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { renderHook, waitFor } from "@testing-library/react"
-import type { ITopikMetadataRepository, TopikManifest } from "@topik/lib/topik"
+import type { ITopikMetadataRepository } from "@topik/lib/topik/core/session-types"
+import type { TopikManifest } from "@topik/lib/topik/entity/topik-metadata"
 import { describe, expect, it, vi } from "vitest"
 
 import { useTopikMetadata, useTopikMetadataList } from "."

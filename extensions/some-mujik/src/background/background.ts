@@ -195,7 +195,7 @@ async function broadcastClear(): Promise<void> {
   const tabs = await browser.tabs.query({})
   for (const tab of tabs) {
     if (tab.id && tab.id !== sourceTabId) {
-      // Use catch to ignore errors when sending to tabs without our content script
+      // Ignored: a tab without our content script has nothing to clear.
       browser.tabs.sendMessage(tab.id, { type: "ytmo:clear" }).catch(() => {})
     }
   }

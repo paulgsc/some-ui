@@ -23,6 +23,7 @@
  * - **Opening a primer that would let takes go waits on the person.** One
  *   that keeps every take opens at once.
  */
+import { assertNever } from "@some-ui/core-utils"
 import type {
   RecordingFailure,
   Take,
@@ -755,8 +756,4 @@ export function step(state: JournalState, event: JournalEvent): Step {
       return assertNever(event)
     }
   }
-}
-
-function assertNever(value: never): never {
-  throw new Error(`unhandled journal event: ${JSON.stringify(value)}`)
 }

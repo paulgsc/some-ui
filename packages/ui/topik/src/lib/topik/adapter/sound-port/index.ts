@@ -82,7 +82,7 @@ export function createSoundControl(
       try {
         storage?.setItem(SOUND_STORAGE_KEY, on ? "on" : "off")
       } catch {
-        // Quota, privacy mode: it is on for this page, just not remembered.
+        // Ignored: quota, privacy mode: it is on for this page, just not remembered.
       }
       become(on ? "on" : "off")
     },
@@ -211,7 +211,7 @@ function schedule(
         try {
           source.stop()
         } catch {
-          // Already stopped.
+          // Ignored: already stopped.
         }
       }
       resolve()
@@ -247,6 +247,8 @@ function playTone(
       let open = true
       const close = (): void => {
         stopped.removeEventListener("abort", close)
+        // Ignored: the tone is over either way; a context that will not close
+        // is the browser's to collect.
         if (open) void context.close().catch(() => undefined)
         open = false
       }

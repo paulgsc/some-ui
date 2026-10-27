@@ -29,6 +29,9 @@ What follows from them:
   `apps/mobile/README.md`, say) even when only the owner uses the thing.
 - **Private only where the data is personal.** What serves A and holds PII stays on the
   home network (the `lan` audience, behind the passkey) and on the owner's own devices.
+  Home is the owner's own store, as private as the phone, and sending to it is to be the
+  default (#2182); Drive, the Jobs mailbox and a routine's model are third parties
+  (`docs/learner-data-authority.md`, "The owner's deployment").
 - **A comes first, and B shows A as it is.** Legibility effort goes to what really drives
   the workflow, and every surface does what it appears to do.
 - **A way in for every reader.** Something anyone can take in (a short demo video), the

@@ -124,6 +124,7 @@ export type Route = ReadonlyArray<string>
 export const isLine = (beat: Beat): beat is Line => "speaker" in beat
 
 /** A JSON object; for reading untrusted input. Not part of the public API. */
+// eslint-disable-next-line one-owner/no-local-primitive -- makjang has no core-utils dependency (#2112)
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value)
 

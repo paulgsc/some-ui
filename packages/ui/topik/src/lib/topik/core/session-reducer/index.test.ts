@@ -4,12 +4,12 @@
  * remaining branches (catalog lifecycle, quiz scoring, batch pass/fail, reset)
  * sit under plain behavioural `describe` blocks instead of an invented label.
  */
-import type { ConversationBatch } from "@topik/lib/topik"
 import type {
   BatchMetadata,
   SessionEvent,
   SessionState,
 } from "@topik/lib/topik/core/session-types"
+import type { ConversationBatch } from "@topik/lib/topik/entity/topik-types"
 import { describe, expect, it } from "vitest"
 
 import {

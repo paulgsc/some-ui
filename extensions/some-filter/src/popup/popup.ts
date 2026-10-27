@@ -11,6 +11,7 @@ import type {
   TabEntry,
   WindowGroup,
 } from "@filter/types/popup"
+import { isRecord } from "@some-extension/common/utils/guards"
 
 import "./popup.css"
 
@@ -62,11 +63,6 @@ function groupByWindow(entries: Array<TabEntry>): Array<WindowGroup> {
     windowIndex: windowIndex++,
     tabs,
   }))
-}
-
-// Runtime type guard helper to verify storage objects safely without 'as' assertions
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null
 }
 
 async function getStorageState(): Promise<{
@@ -319,6 +315,7 @@ void (async () => {
       selectedTabIds: new Set(storage.filteredTabIds),
     })
   } catch {
-    // Gracefully handle UI initialization failure silently per lint rules
+    // Ignored: the popup stays on its empty first state, which is what the
+    // person sees; reopening it tries again.
   }
 })()

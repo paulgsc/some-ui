@@ -1,7 +1,8 @@
 /**
  * The browser side of the study nudge: registering the worker, holding the
- * notification permission, raising a notification, and remembering when the
- * last one went out. Everything impure lives here so `./index` stays pure.
+ * notification permission, and raising a notification. Everything impure
+ * lives here or in `./nudge-record` (what this browser keeps about the last
+ * nudge) so `./index` stays pure.
  *
  * Every entry point is a no-op that resolves falsy where the API is missing
  * (jsdom, SSR, an insecure origin, Firefox private browsing) rather than
@@ -13,8 +14,6 @@
  * closes does nothing), and push has to show through the worker anyway.
  */
 
-import { localStorageOrNull } from "@some-ui/core-utils"
-
 import type { FileHostTransport } from "@/lib/file-host-config/client"
 import {
   createFileHostTransport,
@@ -23,17 +22,12 @@ import {
 } from "@/lib/file-host-config/client"
 
 import type { NudgeDecision } from "./index"
+import { nativeNudgePermission } from "./nudge-record"
 
 /** Kept in step by hand with public/sw.js (a public/ asset that cannot
  * import from src/) and `nudge::payload` in paulgsc/server; a mismatch shows
  * up as notifications stacking rather than replacing. */
 const NUDGE_TAG = "some-ui.study-nudge"
-
-/**
- * Runtime state, not preference, so not in `UserSettings`: the cooldown is a
- * fact about this browser, where quiet hours are about the person.
- */
-const LAST_NUDGE_KEY = "some-ui.study-nudge.last-shown.v1"
 
 /**
  * `Notification` is absent in jsdom and on insecure origins; `serviceWorker`
@@ -51,21 +45,9 @@ export function nudgesSupported(): boolean {
   )
 }
 
-/**
- * The Android app's notification permission, as last read from the OS.
- * Android's answer is asynchronous and this module's is not, so `./native`
- * writes it here whenever it asks, and `useStudyNudge` asks on mount.
- */
-let nativePermission: NotificationPermission = "default"
-
-export function setNativeNudgePermission(
-  permission: NotificationPermission
-): void {
-  nativePermission = permission
-}
-
 export function nudgePermission(): NotificationPermission {
-  if (import.meta.env.VITE_DEVICE_BACKEND === "true") return nativePermission
+  if (import.meta.env.VITE_DEVICE_BACKEND === "true")
+    return nativeNudgePermission()
   if (!nudgesSupported()) return "denied"
   return Notification.permission
 }
@@ -105,6 +87,8 @@ export async function registerNudgeWorker(): Promise<ServiceWorkerRegistration |
     .register(`${import.meta.env.BASE_URL}sw.js`, {
       scope: import.meta.env.BASE_URL,
     })
+    // Ignored: no worker means no nudges, and every caller reads null as
+    // that.
     .catch(() => null)
   return registration
 }
@@ -149,22 +133,6 @@ export async function showTestNudge(
   if (import.meta.env.VITE_DEVICE_BACKEND !== "true") return showNudge(decision)
   const { showNativeTestNudge } = await import("./native")
   return showNativeTestNudge(decision).catch(() => false)
-}
-
-export function readLastNudgeAt(): string | null {
-  try {
-    return localStorageOrNull()?.getItem(LAST_NUDGE_KEY) ?? null
-  } catch {
-    return null
-  }
-}
-
-export function recordNudgeShown(at: Date): void {
-  try {
-    localStorageOrNull()?.setItem(LAST_NUDGE_KEY, at.toISOString())
-  } catch {
-    // A refused write (private mode, quota) costs a cooldown, not the feature.
-  }
 }
 
 /* ────────────────────────────────────────────────────────────────────────
@@ -397,7 +365,7 @@ export async function unsubscribeFromPush(deps: PushDeps = {}): Promise<void> {
   try {
     await subscription.unsubscribe()
   } catch {
-    // Keep going: the row is the part that matters.
+    // Ignored: keep going: the row is the part that matters.
   }
 
   const transport = defaultTransport(deps)
@@ -409,7 +377,7 @@ export async function unsubscribeFromPush(deps: PushDeps = {}): Promise<void> {
       body: JSON.stringify({ endpoint }),
     })
   } catch {
-    // The server prunes the row on its next 410; throwing would leave the
+    // Ignored: the server prunes the row on its next 410; throwing would leave the
     // settings toggle stuck on.
   }
 }
@@ -468,6 +436,6 @@ export async function dropLocalPushSubscription(): Promise<void> {
     const subscription = await registration?.pushManager.getSubscription()
     await subscription?.unsubscribe()
   } catch {
-    // Nothing to drop, or the browser refused. Either way no request leaves.
+    // Ignored: nothing to drop, or the browser refused. Either way no request leaves.
   }
 }

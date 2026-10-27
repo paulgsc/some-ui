@@ -37,7 +37,7 @@ try {
     console.log("[link-content-assets] removed retired public/topiks link")
   }
 } catch {
-  // Nothing there, which is the expected state.
+  // Ignored: nothing there, which is the expected state.
 }
 
 for (const name of ["sfx", "hangul"]) {
@@ -50,7 +50,7 @@ for (const name of ["sfx", "hangul"]) {
   try {
     destStat = lstatSync(dest)
   } catch {
-    // dest doesn't exist yet - nothing to clean up before symlinking.
+    // Ignored: dest doesn't exist yet - nothing to clean up before symlinking.
   }
 
   if (destStat) {

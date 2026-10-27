@@ -80,6 +80,17 @@ const workspaceResolveTsconfig = path.resolve(
   "../../../tsconfig.workspace-resolve.json"
 )
 
+const importGraphExtensions = [
+  ".ts",
+  ".tsx",
+  ".mts",
+  ".cts",
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".cjs",
+]
+
 export default defineConfig([
   ...fixupConfigRules([
     { files, ...jsxA11yPlugin.flatConfigs.recommended },
@@ -108,6 +119,11 @@ export default defineConfig([
       react: {
         version: "detect",
       },
+      // The extensions import-x reads a module graph from. Its default is
+      // .js/.mjs/.cjs only, and it builds no export map for any other file:
+      // import/no-cycle then never walks a .ts or .tsx import and stays
+      // silent on every cycle (IC1, tests/react.lint.test.ts).
+      "import-x/extensions": importGraphExtensions,
       // Two independent resolver instances, tried in order, rather than one
       // instance with a multi-entry `project` array: eslint-import-resolver-
       // typescript caches a resolved tsconfig's ResolverFactory keyed only by
@@ -128,7 +144,13 @@ export default defineConfig([
     rules: {
       // ── Import rules ────────────────────────────────────────────────────
       "import/no-unresolved": "error",
-      "import/no-cycle": "error",
+      // A cycle within one workspace (IC1). `ignoreExternal` stops the walk
+      // at node_modules and at other workspaces, which turbo already holds
+      // acyclic: no path back into this package runs through them, and
+      // walking them was most of the rule's time (apps/www: 37s to 10s). A
+      // dynamic `import()` back edge counts too: move what both ends share
+      // into a third module.
+      "import/no-cycle": ["error", { ignoreExternal: true }],
       "import/named": "error",
       "import/export": "error",
       "import/no-anonymous-default-export": "error",
@@ -205,6 +227,17 @@ export default defineConfig([
         ...reactImportBanSelectors,
         ...parentRelativeDynamicImportSelectors,
       ],
+    },
+  },
+  {
+    // tsc reports a missing named import and a duplicate export in
+    // TypeScript. With import-x reading .ts and .tsx (IC1) these two would
+    // repeat it, at about 5s of apps/www's lint, and fail on export shapes
+    // its export map cannot read that tsc accepts.
+    files: ["**/*.{ts,tsx}"],
+    rules: {
+      "import/named": "off",
+      "import/export": "off",
     },
   },
 ])

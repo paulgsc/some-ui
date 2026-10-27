@@ -19,6 +19,7 @@
  */
 import type { HomeCall, HomeExchanged, KeyedStorage } from "@some-ui/core-utils"
 import {
+  isRecord,
   jsonOf,
   openKept,
   readAs,
@@ -27,8 +28,6 @@ import {
   writeKept,
 } from "@some-ui/core-utils"
 import { z } from "zod"
-
-import { isRecord } from "@/lib/device-backend/common"
 
 import type { ConsentLog, Scope } from "./consent-model"
 

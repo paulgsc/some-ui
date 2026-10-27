@@ -108,7 +108,9 @@ export function createPastedLessonStore(
       try {
         storage?.removeItem(PASTED_LESSON_KEY)
       } catch {
-        // Storage refuses even that; there is nothing further to try.
+        // Ignored: storage that refuses even a removal keeps the replaced
+        // lesson, which a reload in this tab brings back until the tab closes
+        // (session storage); the new lesson still plays from memory now.
       }
     }
   }
@@ -139,7 +141,7 @@ export function createPastedLessonStore(
             JSON.stringify({ ...held, point })
           )
         } catch {
-          // The point lasts this visit, in `latest`.
+          // Ignored: the point lasts this visit, in `latest`.
         }
       },
     },
@@ -174,7 +176,7 @@ export function purgeRetiredLessons(
     try {
       storage?.removeItem(key)
     } catch {
-      // Privacy mode: there is nothing it could have kept.
+      // Ignored: privacy mode: there is nothing it could have kept.
     }
   }
 }

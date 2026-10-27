@@ -1,7 +1,6 @@
 {
   "extends": "@some-ui/tsconfig/rollupconfig.json",
   "compilerOptions": {
-    "outDir": "dist",
     "moduleResolution": "NodeNext",
     "module": "NodeNext",
     "declaration": true,

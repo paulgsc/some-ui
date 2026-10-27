@@ -28,10 +28,11 @@
  *   clears that, so the line can auto-play again later.
  */
 
+import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import type { Speaker, SpeechOutcome, Urgency } from "@some-ui/speech"
-import type { Message } from "@topik/lib/topik"
 import type { ISessionMachine } from "@topik/lib/topik/core/session-types"
 import { SPOKEN_LANGUAGE } from "@topik/lib/topik/core/spoken-language"
+import type { Message } from "@topik/lib/topik/entity/topik-types"
 
 // TTS EFFECT HANDLER CONFIG
 
@@ -49,7 +50,6 @@ export type TTSEffectHandlerConfig = {
    * advance, as it does on `onSpeechEnd`.
    */
   onSpeechStopped?: (messageId: string) => void
-  onError?: (error: Error, messageId: string) => void
 }
 
 type Entry = {
@@ -282,9 +282,10 @@ export class TTSEffectHandler {
         // Ends the line, so the lesson is not left waiting on one that will
         // never be heard.
         this.line = null
-        // eslint-disable-next-line no-console
-        console.error(`[TTS] ❌ Error: ${id}`, outcome.error)
-        this.config.onError?.(outcome.error, id)
+        reportFailure({
+          port: `topik lesson line (${id})`,
+          error: toIntentError(outcome.error),
+        })
         this.config.onSpeechEnd?.(id)
         if (line.isAuto) this.markSpoken(id)
         return
@@ -326,6 +327,7 @@ export class TTSEffectHandler {
   }
 }
 
+// eslint-disable-next-line one-owner/no-local-primitive -- not moved: the open U3 branch (#2111) edits this file (#2112)
 function assertNever(value: never): never {
   throw new Error(`Unhandled speech outcome: ${JSON.stringify(value)}`)
 }

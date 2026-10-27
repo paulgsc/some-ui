@@ -5,6 +5,8 @@
  * phone does when a person creates a session or keeps a lesson.
  */
 import { openNodeSqlite } from "@/test-support/node-sqlite-driver"
+import type { ForeignFailure } from "@some-ui/intent-kit"
+import { addFailureSink } from "@some-ui/intent-kit"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { openDeviceBackend } from "@/lib/device-backend/backend"
@@ -59,6 +61,7 @@ beforeEach(async () => {
 })
 afterEach(() => {
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
 })
 
 /** A scene as the orchestrator stores it: its timing is snake_case. */
@@ -272,6 +275,37 @@ describe("content on the device", () => {
       "https://device.test/hangul/words/vocab.json",
       "https://elsewhere.test/api/file-host/api/v1/sessions",
     ])
+  })
+
+  it("answers a handler's throw as a server fault, and reports it with the route", async () => {
+    const reported: Array<ForeignFailure> = []
+    const remove = addFailureSink((failure) => reported.push(failure))
+    vi.spyOn(globalThis.console, "error").mockImplementation(() => undefined)
+    const boom = new Error("handler bug")
+    const fetchIn = createDeviceFetch(
+      new URL(BASE),
+      () =>
+        Promise.resolve({
+          ...backend,
+          router: { ...backend.router, handle: () => Promise.reject(boom) },
+        }),
+      () => Promise.reject(new Error("went to the network"))
+    )
+    try {
+      const answer = await fetchIn(`${BASE}/sessions`, { method: "POST" })
+      expect(answer.status).toBe(500)
+      expect(reported).toEqual([
+        {
+          port: "device backend",
+          error: expect.objectContaining({
+            summary: "POST /sessions failed.",
+            cause: boom,
+          }),
+        },
+      ])
+    } finally {
+      remove()
+    }
   })
 
   it.each([

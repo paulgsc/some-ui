@@ -103,6 +103,7 @@ function bindingNames(pattern: BindingPattern, into: Set<string>): void {
   }
 }
 
+// eslint-disable-next-line one-owner/no-local-primitive -- build tooling sits below core-utils in the build graph (#2112)
 function assertNever(value: never): never {
   throw new Error(
     `[build-audience] unexpected binding pattern: ${String(value)}`

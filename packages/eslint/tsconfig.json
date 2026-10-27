@@ -6,7 +6,10 @@
     // by its real `.ts` name; the build rewrites it to `.js`.
     "rewriteRelativeImportExtensions": true,
     "paths": {
-      "@eslint/*": ["./src/*"]
+      "@eslint/*": ["./src/*"],
+      // How react.lint.test.ts's import-cycle fixtures import each other: an
+      // alias, as every workspace's own modules do (IC1).
+      "@lint-fixtures/*": ["./tests/lint-fixtures/*"]
     }
   },
   "include": [

@@ -59,6 +59,7 @@ export type IntentArms<T, R, TStep extends string = never> = {
  * accepts by default (see `apps/www/src/lib/intent/index.ts`). `_value:
  * never` serves any exhaustively switched union.
  */
+// eslint-disable-next-line one-owner/no-local-primitive -- intent-kit has no core-utils dependency, and this message names matchIntent (#2112)
 export function assertNever(_value: never): never {
   // Reached only with a status this module doesn't know; `.status` cannot be
   // read off `never` without an assertion, so the message stays generic.

@@ -3,12 +3,12 @@ import { StrictMode } from "react"
 import type { Speaker } from "@some-ui/speech"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { act, renderHook } from "@testing-library/react"
+import { actions } from "@topik/lib/topik/core/session-selectors"
 import type {
   ITopikMetadataRepository,
   ITopikRepository,
-  TopikManifestFile,
-} from "@topik/lib/topik"
-import { actions } from "@topik/lib/topik"
+} from "@topik/lib/topik/core/session-types"
+import type { TopikManifestFile } from "@topik/lib/topik/entity/topik-metadata"
 import { describe, expect, it, vi } from "vitest"
 
 import { useSession } from "."

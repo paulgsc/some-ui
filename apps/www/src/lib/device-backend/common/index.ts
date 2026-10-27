@@ -2,6 +2,7 @@
  * What more than one device-backend handler needs: the one subject, the
  * timestamp formats `file_host` writes, and content hashing.
  */
+import { isRecord } from "@some-ui/core-utils"
 
 /**
  * The phone's one person: a fixed id (the server mints `subject-<32 hex>`
@@ -34,10 +35,6 @@ export async function sha256Hex(data: string | ArrayBuffer): Promise<string> {
   return Array.from(new Uint8Array(digest), (byte) =>
     byte.toString(16).padStart(2, "0")
   ).join("")
-}
-
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
 /** `field` of the JSON object in `body`, when it is a string; else `null`. */

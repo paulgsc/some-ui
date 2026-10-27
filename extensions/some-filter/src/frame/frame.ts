@@ -86,7 +86,7 @@ async function start(): Promise<void> {
     const data = await ext.storage.local.get([ENFORCEMENT_FLAG_KEY])
     flag = data[ENFORCEMENT_FLAG_KEY] === true
   } catch {
-    // Unreadable is off.
+    // Ignored: unreadable is off.
   }
   if (!flag) {
     // The registration outlived the flag (it is unregistered on the next
@@ -106,7 +106,7 @@ async function start(): Promise<void> {
         : (response.tabState ?? DEFAULT_TAB_STATE)
     }
   } catch {
-    // Background unavailable: auto is the default, and the handshake's own
+    // Ignored: background unavailable: auto is the default, and the handshake's own
     // liveness bound releases the veil if the background stays away.
   }
 

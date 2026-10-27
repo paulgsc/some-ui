@@ -3,11 +3,14 @@ import type { Config } from "typescript-eslint"
 
 import {
   baseConfig,
+  catchGuardConfig,
+  catchGuardPlugin,
   compiledPackageStyleImportBanPattern,
   depsOverrideConfig,
   extensionCharterPlugin,
   extensionsCharterConfig,
   extensionsSecurityConfig,
+  failureLogConfig,
   fitsTheBoxConfig,
   fitsTheBoxPlugin,
   intentGuardConfig,
@@ -18,6 +21,7 @@ import {
   lazyRegistryPlugin,
   logGuardConfig,
   logGuardPlugin,
+  oneOwnerConfig,
   ownerGuardConfig,
   ownerGuardPlugin,
   parentRelativeImportPattern,
@@ -53,8 +57,11 @@ export const maishatuRecommended: Config = defineConfig(
   ...reactPeerDependencyConfig,
   ...wasmLoaderGuardConfig,
   ...switchLintConfig,
+  ...oneOwnerConfig,
   ...tailwindIdiomConfig,
   ...fitsTheBoxConfig,
+  ...catchGuardConfig,
+  ...failureLogConfig,
   toolsOverrideConfig,
   testsOverrideConfig,
   depsOverrideConfig
@@ -70,6 +77,8 @@ export const maishatuNonStylistic: Config = defineConfig(
   ...reactPeerDependencyConfig,
   ...wasmLoaderGuardConfig,
   ...tailwindIdiomConfig,
+  ...catchGuardConfig,
+  ...failureLogConfig,
   toolsOverrideConfig,
   testsOverrideConfig
 )
@@ -106,8 +115,12 @@ export { ownerGuardConfig, ownerGuardPlugin }
 // ── A kept record read only through core-utils' storage owner (KR1) ───────
 export { keptRecordConfig, keptRecordPlugin }
 
-// ── One reporter, an error's message only (apps/mailbox, MB3) ─────────────
-export { logGuardConfig, logGuardPlugin }
+// ── One reporter, an error's message only (apps/mailbox, MB3); and, in
+// every preset's `src/`, failures through `reportFailure` (FT1) ───────────
+export { logGuardConfig, logGuardPlugin, failureLogConfig }
+
+// ── A catch that drops its error says why (FT2), in every preset ──────────
+export { catchGuardConfig, catchGuardPlugin }
 
 // ── Tailwind static-classname idiom rules ──────────────────────────────────
 export { fitsTheBoxConfig, fitsTheBoxPlugin }
@@ -139,6 +152,13 @@ export const extensionsRecommended: Config = [
   ...maishatuRecommended,
   ...extensionsSecurityConfig,
   ...extensionsCharterConfig,
+  // FT1 is www's: an extension is not in its bundle, and records what it
+  // decides in its own flight recorder (extensions/common/src/observability),
+  // so `no-console` alone holds its console use.
+  {
+    files: ["src/**/*.{js,mjs,ts,tsx,jsx}"],
+    rules: { "log-guard/console-reports-message-only": "off" },
+  },
 ]
 
 /**

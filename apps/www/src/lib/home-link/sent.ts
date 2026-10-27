@@ -13,6 +13,7 @@
 import type { KeyedStorage } from "@some-ui/core-utils"
 import {
   fnv1a,
+  isRecord,
   jsonOf,
   openKept,
   readWhole,
@@ -20,7 +21,7 @@ import {
 } from "@some-ui/core-utils"
 import type { HomeSession } from "@some-ui/leetype"
 
-import { isRecord, sha256Hex } from "@/lib/device-backend/common"
+import { sha256Hex } from "@/lib/device-backend/common"
 import type { Kept } from "@/lib/device-backend/handlers/shelf"
 import type { SessionRecord } from "@/lib/tenant/types"
 

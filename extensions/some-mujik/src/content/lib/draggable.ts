@@ -33,7 +33,8 @@ export function makeDraggable(
         posY = y
       }
     } catch {
-      /* ignore */
+      // Ignored: no stored position, or an unreadable one: the default place
+      // stands.
     }
   }
 
@@ -89,7 +90,7 @@ export function makeDraggable(
         // eslint-disable-next-line extension-charter/no-raw-storage
         localStorage.setItem(storageKey, JSON.stringify({ x: posX, y: posY }))
       } catch {
-        /* ignore */
+        // Ignored: storage refused: the position lasts this page.
       }
     }
   }
