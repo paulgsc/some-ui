@@ -822,8 +822,11 @@ async function handlePlaybackChanged(
 ): Promise<void> {
   // Answered at once: the source tab has nothing to wait for.
   sendResponse({ ok: true })
-  // Ignored: neither half rejects: a source tab that fails to answer counts
-  // as none, and `broadcast` skips a tab it cannot reach.
+  // Ignored: a call that fails (the watchlist read rejects) sends nothing
+  // and records nothing, so displays keep running the last report they got,
+  // which is wrong only if playback changed; the next playback event or tab
+  // closing asks again. A broadcast lost after the report is recorded is
+  // #2186.
   await publishLivePlayback().catch(() => undefined)
 }
 
@@ -909,7 +912,7 @@ browser.tabs.onRemoved.addListener((tabId) => {
   // (below), and Firefox does not reuse a tab id before then.
   void setTabHidden(tabId, false).catch(() => undefined)
   // It may have been the source; closing it sends no media event.
-  // Ignored: as in handlePlaybackChanged, neither half rejects.
+  // Ignored: as in handlePlaybackChanged: the next event asks again.
   void publishLivePlayback().catch(() => undefined)
 })
 
