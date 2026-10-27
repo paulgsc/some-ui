@@ -10,7 +10,9 @@
  * Bodies are stored and hashed as received, so a round's recorded runs (keyed
  * by content hash) keep matching.
  */
-import { isRecord, rfc3339, sha256Hex } from "@/lib/device-backend/common"
+import { isRecord } from "@some-ui/core-utils"
+
+import { rfc3339, sha256Hex } from "@/lib/device-backend/common"
 import type { SqlDriver, SqlValue } from "@/lib/device-backend/sql"
 import { num, one, text } from "@/lib/device-backend/sql"
 import { notePruned } from "@/lib/device-backend/storage"

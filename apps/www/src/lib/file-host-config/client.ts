@@ -17,6 +17,7 @@
  *    deadline fire" is read from `controller.signal.aborted`, not from which
  *    rejection won, because `fetch`'s own `AbortError` can reject first.
  */
+import { isRecord } from "@some-ui/core-utils"
 
 import { authority, StaleAuthorityError } from "@/lib/authority"
 
@@ -61,10 +62,6 @@ export class FileHostResponseError extends Error {
     )
     this.name = "FileHostResponseError"
   }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null
 }
 
 /** `{ error: { code, message } }` - `file_host`'s envelope for every failure. */

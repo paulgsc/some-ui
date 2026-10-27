@@ -27,8 +27,9 @@
  *   token.
  */
 import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
+import { isRecord } from "@some-ui/core-utils"
 
-import { isRecord, stringFieldOf } from "@/lib/device-backend/common"
+import { stringFieldOf } from "@/lib/device-backend/common"
 import type { HomeGet } from "@/lib/device-backend/home-sync"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import type { HomeRequest } from "@/lib/device-backend/native-http"

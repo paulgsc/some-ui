@@ -16,7 +16,6 @@
  * publishes through the round CRM takes the same intake; the compile check
  * reaches it once the server's runner exists.
  */
-
 import type { Monomial } from "@leetype/lib/leetype/cost"
 import { multiplyMonomials, ONE } from "@leetype/lib/leetype/cost"
 import type { AssembledRound } from "@leetype/lib/leetype/round-assembly"
@@ -26,6 +25,7 @@ import {
 } from "@leetype/lib/leetype/round-assembly"
 import type { Round } from "@leetype/types/authored-round"
 import { RoundSchema } from "@leetype/types/authored-round"
+import { isRecord } from "@some-ui/core-utils"
 
 export type RoundIntake =
   | { ok: true; round: Round; assembled: AssembledRound }
@@ -67,9 +67,6 @@ export function fencedBodies(text: string): Array<string> {
     from = close + FENCE.length
   }
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value)
 
 function jsonValues(text: string): Array<unknown> {
   const fenced = fencedBodies(text)

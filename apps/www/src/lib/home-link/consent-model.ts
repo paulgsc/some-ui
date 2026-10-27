@@ -11,7 +11,7 @@
  * (`pairing`, the link's id for it), and counts for that pairing alone: a
  * new pairing, even to the same address, starts with nothing kept.
  */
-import { isRecord } from "@/lib/device-backend/common"
+import { isRecord } from "@some-ui/core-utils"
 
 /** What a person can keep sending home. Closed: a new one is a reviewed diff. */
 const SCOPES = ["sessions", "shelf", "aph", "jobs", "voice"] as const

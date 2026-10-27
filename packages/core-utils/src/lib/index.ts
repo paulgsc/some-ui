@@ -4,6 +4,7 @@ export * from "./date-utils"
 export * from "./array-utils"
 export * from "./stats"
 export { assertNever } from "./assert-never"
+export { isRecord } from "./is-record"
 export type {
   HomeAnswer,
   HomeBytes,

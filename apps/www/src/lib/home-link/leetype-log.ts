@@ -7,10 +7,8 @@
  * only, and the phone keeps its whole log: nothing here lets an event go.
  */
 import type { HomeCall } from "@some-ui/core-utils"
-import { canonicalJson } from "@some-ui/core-utils"
+import { canonicalJson, isRecord } from "@some-ui/core-utils"
 import type { HomeSession } from "@some-ui/leetype"
-
-import { isRecord } from "@/lib/device-backend/common"
 
 import { digestOf } from "./sent"
 import type { EndedReport } from "./shelf"
