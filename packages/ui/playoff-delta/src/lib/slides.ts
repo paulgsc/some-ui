@@ -89,9 +89,12 @@ export function narration(
       const own = lights.find((l) => l.result.kind === "own")
       const league = lights.filter((l) => l.result.kind !== "own")
       const made = league.filter((l) => l.made).length
+      const game = week.game
       const lead = own
         ? `Week ${week.week}: ${said(season, own.result.winner, own.result.loser)}. Their own light, ${points(own.result.leverage)} points.`
-        : `Week ${week.week} is a bye: only the league's lights.`
+        : game
+          ? `Week ${week.week}: the ${name} ${game.won ? "beat" : "lost to"} the ${n(game.opponent)}, which couldn't move them.`
+          : `Week ${week.week} is a bye: only the league's lights.`
       return league.length
         ? `${lead} Of the league's ${counted(league.length, "result")} that could move us, ${made} went our way and ${league.length - made} didn't.`
         : `${lead} Nothing else in the league could move us.`
@@ -111,9 +114,11 @@ export function narration(
       if (!stake) return ""
       const top = week.next[0]
       const ours =
-        stake.own > 0
-          ? `Our game is ${size(stake.own)} points between a win and a loss`
-          : "We have a bye"
+        stake.opponent === null
+          ? "We have a bye"
+          : stake.own > 0
+            ? `Our game against the ${n(stake.opponent)} is ${size(stake.own)} points between a win and a loss`
+            : `Our game against the ${n(stake.opponent)} can't move us`
       const root = top
         ? ` Root for the ${n(top.rootFor)} over the ${n(against(top))}.`
         : ""

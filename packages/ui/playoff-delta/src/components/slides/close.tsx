@@ -35,12 +35,15 @@ export const Stake = ({ season, week }: SlideProps): JSX.Element => {
       <Reveal at={0.5} className="pd-card">
         <span className="pd-mono pd-small text-muted-foreground">our game</span>
         <span className="pd-say">
-          {stake.own > 0 ? (
+          {stake.opponent === null ? (
+            "A bye: only the league can move us."
+          ) : stake.own > 0 ? (
             <>
-              <b>{size(stake.own)} points</b> between a win and a loss
+              vs {stake.opponent}: <b>{size(stake.own)} points</b> between a win
+              and a loss
             </>
           ) : (
-            "A bye: only the league can move us."
+            `vs ${stake.opponent}: it can't move us either way.`
           )}
         </span>
       </Reveal>

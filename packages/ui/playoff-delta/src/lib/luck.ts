@@ -22,6 +22,7 @@ import { assertNever } from "@some-ui/intent-kit"
 import {
   leagueResults,
   percent,
+  signOf,
   wayIn,
   type StoryResult,
   type StorySeason,
@@ -36,9 +37,14 @@ export type Light = {
   readonly made: boolean
 }
 
-/** The week's lights: the team's own result first, then the league's, biggest first. */
+/**
+ * The week's lights: the team's own result first, then the league's, biggest
+ * first; a result worth "0.0" points is not a light, the team's own included.
+ */
 export function lightsOf(week: StoryWeek): ReadonlyArray<Light> {
-  const own = week.results.filter((r) => r.kind === "own")
+  const own = week.results.filter(
+    (r) => r.kind === "own" && signOf(r.leverage) !== 0
+  )
   return [...own, ...leagueResults(week)].map((result) => ({
     result,
     made: result.leverage > 0,

@@ -79,7 +79,9 @@ const StoryWeekSchema = z.object({
   /** What next week can do to the share, before it is played; null once no game is left. */
   stake: z
     .object({
-      /** The share if the team wins next week minus if it loses, unsigned; 0 on its bye. */
+      /** The team's opponent next week; null on its bye. */
+      opponent: Code.nullable(),
+      /** The share if the team wins next week minus if it loses, unsigned; 0 on its bye or a game that cannot move it. */
       own: Share,
       /** The share's standard deviation over the ways next week can go, its own game included. */
       spread: Share,

@@ -50,6 +50,28 @@ describe("lightsOf", () => {
   })
 })
 
+describe("a game that cannot move the share", () => {
+  // 2025: SF's wins in weeks 16 and 17 moved nothing, and its games after
+  // weeks 16 and 17 (CHI, SEA) had no stake; week 14 was its bye.
+  it("is no light, and is said as such", () => {
+    for (const n of [16, 17]) {
+      expect(lightsOf(week(n)).some((l) => l.result.kind === "own")).toBe(false)
+      expect(narration(SAMPLE_SEASON, week(n), "lights")).toMatch(
+        /couldn't move them/
+      )
+    }
+  })
+
+  it("is a game next week, not a bye", () => {
+    expect(week(16).stake).toMatchObject({ opponent: "CHI", own: 0 })
+    expect(narration(SAMPLE_SEASON, week(16), "stake")).toMatch(
+      /against the .+ can't move us/
+    )
+    expect(week(13).stake?.opponent).toBeNull()
+    expect(narration(SAMPLE_SEASON, week(13), "stake")).toMatch(/bye/)
+  })
+})
+
 describe("luckBand", () => {
   it.each([
     [null, "still"],

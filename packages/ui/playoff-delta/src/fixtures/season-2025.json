@@ -146,6 +146,7 @@
         }
       ],
       "stake": {
+        "opponent": "NO",
         "own": 0.1864,
         "spread": 0.0952,
         "exact": false
@@ -264,6 +265,7 @@
         }
       ],
       "stake": {
+        "opponent": "ARI",
         "own": 0.1883,
         "spread": 0.0968,
         "exact": false
@@ -388,6 +390,7 @@
         }
       ],
       "stake": {
+        "opponent": "JAX",
         "own": 0.1492,
         "spread": 0.0777,
         "exact": false
@@ -512,6 +515,7 @@
         }
       ],
       "stake": {
+        "opponent": "LAR",
         "own": 0.2061,
         "spread": 0.1046,
         "exact": false
@@ -630,6 +634,7 @@
         }
       ],
       "stake": {
+        "opponent": "TB",
         "own": 0.1709,
         "spread": 0.088,
         "exact": false
@@ -754,6 +759,7 @@
         }
       ],
       "stake": {
+        "opponent": "ATL",
         "own": 0.2169,
         "spread": 0.1118,
         "exact": false
@@ -872,6 +878,7 @@
         }
       ],
       "stake": {
+        "opponent": "HOU",
         "own": 0.1857,
         "spread": 0.095,
         "exact": false
@@ -990,6 +997,7 @@
         }
       ],
       "stake": {
+        "opponent": "NYG",
         "own": 0.2191,
         "spread": 0.1116,
         "exact": false
@@ -1096,6 +1104,7 @@
         }
       ],
       "stake": {
+        "opponent": "LAR",
         "own": 0.2072,
         "spread": 0.1063,
         "exact": false
@@ -1208,6 +1217,7 @@
         }
       ],
       "stake": {
+        "opponent": "ARI",
         "own": 0.2479,
         "spread": 0.1271,
         "exact": false
@@ -1320,6 +1330,7 @@
         }
       ],
       "stake": {
+        "opponent": "CAR",
         "own": 0.2188,
         "spread": 0.1136,
         "exact": false
@@ -1432,6 +1443,7 @@
         }
       ],
       "stake": {
+        "opponent": "CLE",
         "own": 0.1835,
         "spread": 0.0945,
         "exact": false
@@ -1556,6 +1568,7 @@
         }
       ],
       "stake": {
+        "opponent": null,
         "own": 0.0,
         "spread": 0.014,
         "exact": false
@@ -1652,6 +1665,7 @@
         }
       ],
       "stake": {
+        "opponent": "TEN",
         "own": 0.1312,
         "spread": 0.0794,
         "exact": false
@@ -1770,6 +1784,7 @@
         }
       ],
       "stake": {
+        "opponent": "IND",
         "own": 0.028,
         "spread": 0.0242,
         "exact": false
@@ -1869,6 +1884,7 @@
       ],
       "next": [],
       "stake": {
+        "opponent": "CHI",
         "own": 0.0,
         "spread": 0.0,
         "exact": true
@@ -1974,6 +1990,7 @@
       ],
       "next": [],
       "stake": {
+        "opponent": "SEA",
         "own": 0.0,
         "spread": 0.0,
         "exact": true
