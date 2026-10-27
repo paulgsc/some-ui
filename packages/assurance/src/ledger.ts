@@ -97,7 +97,7 @@ export type Ledger = {
   schema: typeof LEDGER_SCHEMA
   families: ReadonlyArray<Family>
   /** Every other server route module, and why it owes no later outcome. */
-  synchronous: ReadonlyArray<{ module: string; why: string }>
+  synchronous: ReadonlyArray<{ module: string; why: string; decision?: string }>
 }
 
 export type Parsed =
@@ -116,6 +116,38 @@ const WATCHES: ReadonlyArray<WatchBy> = ["none", "dashboard", "alert"]
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 
 type Json = Record<string, unknown>
+type At = (where: string, what: string) => void
+
+/** Every key each object may carry: anything else is a typo or a new field. */
+const KEYS = {
+  root: ["schema", "families", "synchronous"],
+  family: ["id", "name", "why", "paths", "modules", "objectives"],
+  objective: [
+    "id",
+    "kind",
+    "property",
+    "claim",
+    "requirement",
+    "bound",
+    "verdict",
+    "conclusion",
+    "evidence",
+    "proof",
+    "tracked",
+    "watch",
+    "comparison",
+    "amendments",
+    "retired",
+  ],
+  evidence: ["class", "says", "ref"],
+  watch: ["by", "ref"],
+  bound: ["value", "unit", "tighter"],
+  comparison: ["what", "x", "y", "series", "limits"],
+  series: ["label", "points"],
+  amendment: ["on", "change", "why", "decision"],
+  retired: ["on", "why"],
+  synchronous: ["module", "why", "decision"],
+} as const
 
 /**
  * Read the ledger, or every way it is not one. A reader that stopped at the
@@ -123,52 +155,73 @@ type Json = Record<string, unknown>
  */
 export function parseLedger(input: unknown): Parsed {
   const problems: Array<string> = []
-  const at = (where: string, what: string): void => {
+  const ledger = build(input, (where, what) => {
     problems.push(`${where}: ${what}`)
-  }
+  })
+  return ledger && problems.length === 0
+    ? { ok: true, ledger }
+    : {
+        ok: false,
+        problems: ledger ? problems : ["the ledger is not an object"],
+      }
+}
 
+/**
+ * What a ledger says, as far as it can be read, problems aside: for the base
+ * branch's copy, which an older (or newer) grammar wrote, so a change to the
+ * grammar does not turn the ratchet against its own pull request.
+ */
+export function readLedgerLeniently(input: unknown): Ledger | null {
+  return build(input, () => undefined)
+}
+
+function build(input: unknown, at: At): Ledger | null {
   const root = record(input)
-  if (!root) return { ok: false, problems: ["the ledger is not an object"] }
+  if (!root) return null
+  keys(root, KEYS.root, "ledger", at)
   if (root.schema !== LEDGER_SCHEMA) at("schema", `expected "${LEDGER_SCHEMA}"`)
 
-  const families = list(root.families).flatMap((raw, i) => {
+  const families = list(root.families, "families", at).flatMap((raw, i) => {
     const family = readFamily(raw, `families[${i}]`, at)
     return family ? [family] : []
   })
-  const synchronous = list(root.synchronous).flatMap((raw, i) => {
-    const entry = record(raw)
-    const where = `synchronous[${i}]`
-    if (!entry || !text(entry.module) || !text(entry.why)) {
-      at(where, "needs a module and why")
-      return []
+  const synchronous = list(root.synchronous, "synchronous", at).flatMap(
+    (raw, i) => {
+      const entry = record(raw)
+      const where = `synchronous[${i}]`
+      if (!entry || !text(entry.module) || !text(entry.why)) {
+        at(where, "needs a module and why")
+        return []
+      }
+      keys(entry, KEYS.synchronous, where, at)
+      return [
+        {
+          module: entry.module,
+          why: entry.why,
+          ...(text(entry.decision) ? { decision: entry.decision } : {}),
+        },
+      ]
     }
-    return [{ module: entry.module, why: entry.why }]
-  })
-
-  if (problems.length > 0) return { ok: false, problems }
-  return {
-    ok: true,
-    ledger: { schema: LEDGER_SCHEMA, families, synchronous },
-  }
+  )
+  return { schema: LEDGER_SCHEMA, families, synchronous }
 }
 
-function readFamily(
-  raw: unknown,
-  where: string,
-  at: (where: string, what: string) => void
-): Family | null {
+function readFamily(raw: unknown, where: string, at: At): Family | null {
   const family = record(raw)
   if (!family) {
     at(where, "is not an object")
     return null
   }
+  keys(family, KEYS.family, where, at)
   for (const key of ["id", "name", "why"] as const) {
     if (!text(family[key])) at(where, `needs a ${key}`)
   }
-  const objectives = list(family.objectives).flatMap((o, i) => {
-    const objective = readObjective(o, `${where}.objectives[${i}]`, at)
-    return objective ? [objective] : []
-  })
+  const objectives = list(family.objectives, `${where}.objectives`, at).flatMap(
+    (o, i) => {
+      const objective = readObjective(o, `${where}.objectives[${i}]`, at)
+      return objective ? [objective] : []
+    }
+  )
   if (objectives.length === 0) at(where, "has no objectives")
   return {
     id: str(family.id),
@@ -180,11 +233,7 @@ function readFamily(
   }
 }
 
-function readObjective(
-  raw: unknown,
-  where: string,
-  at: (where: string, what: string) => void
-): Objective | null {
+function readObjective(raw: unknown, where: string, at: At): Objective | null {
   const o = record(raw)
   if (!o) {
     at(where, "is not an object")
@@ -192,6 +241,7 @@ function readObjective(
   }
   const id = str(o.id)
   const here = id ? `${where} (${id})` : where
+  keys(o, KEYS.objective, here, at)
   for (const key of [
     "id",
     "kind",
@@ -206,8 +256,9 @@ function readObjective(
   const verdict = oneOf(o.verdict, VERDICTS)
   if (!verdict) at(here, `verdict is one of ${VERDICTS.join(", ")}`)
 
-  const evidence = list(o.evidence).flatMap((e, i) => {
+  const evidence = list(o.evidence, `${here}.evidence`, at).flatMap((e, i) => {
     const item = record(e)
+    if (item) keys(item, KEYS.evidence, `${here}.evidence[${i}]`, at)
     const kind = oneOf(item?.class, CLASSES)
     if (!item || !kind || !text(item.says)) {
       at(
@@ -227,33 +278,37 @@ function readObjective(
   if (evidence.length === 0) at(here, "has no evidence")
 
   const watch = record(o.watch)
+  if (watch) keys(watch, KEYS.watch, `${here}.watch`, at)
   const by = oneOf(watch?.by, WATCHES)
   if (!by) at(here, `watch.by is one of ${WATCHES.join(", ")}`)
 
-  const amendments = list(o.amendments).flatMap((a, i) => {
-    const item = record(a)
-    const ok =
-      item &&
-      DAY.test(str(item.on)) &&
-      text(item.change) &&
-      text(item.why) &&
-      text(item.decision)
-    if (!ok) {
-      at(
-        `${here}.amendments[${i}]`,
-        "needs on (YYYY-MM-DD), change, why and decision"
-      )
-      return []
+  const amendments = list(o.amendments, `${here}.amendments`, at).flatMap(
+    (a, i) => {
+      const item = record(a)
+      if (item) keys(item, KEYS.amendment, `${here}.amendments[${i}]`, at)
+      const ok =
+        item &&
+        DAY.test(str(item.on)) &&
+        text(item.change) &&
+        text(item.why) &&
+        text(item.decision)
+      if (!ok) {
+        at(
+          `${here}.amendments[${i}]`,
+          "needs on (YYYY-MM-DD), change, why and decision"
+        )
+        return []
+      }
+      return [
+        {
+          on: str(item.on),
+          change: str(item.change),
+          why: str(item.why),
+          decision: str(item.decision),
+        },
+      ]
     }
-    return [
-      {
-        on: str(item.on),
-        change: str(item.change),
-        why: str(item.why),
-        decision: str(item.decision),
-      },
-    ]
-  })
+  )
 
   return {
     id,
@@ -281,13 +336,10 @@ function readObjective(
   }
 }
 
-function optionalBound(
-  raw: unknown,
-  where: string,
-  at: (where: string, what: string) => void
-): { bound?: Bound } {
+function optionalBound(raw: unknown, where: string, at: At): { bound?: Bound } {
   if (raw === undefined) return {}
   const b = record(raw)
+  if (b) keys(b, KEYS.bound, `${where}.bound`, at)
   const tighter = str(b?.tighter)
   if (
     !b ||
@@ -307,24 +359,32 @@ function optionalBound(
 function optionalComparison(
   raw: unknown,
   where: string,
-  at: (where: string, what: string) => void
+  at: At
 ): { comparison?: Comparison } {
   if (raw === undefined) return {}
   const c = record(raw)
-  const series = list(c?.series).flatMap((s) => {
-    const item = record(s)
-    const points = list(item?.points).flatMap((p) =>
-      Array.isArray(p) &&
-      p.length === 2 &&
-      typeof p[0] === "number" &&
-      typeof p[1] === "number"
-        ? [[p[0], p[1]] as const]
+  if (c) keys(c, KEYS.comparison, `${where}.comparison`, at)
+  const series = list(c?.series, `${where}.comparison.series`, at).flatMap(
+    (s, i) => {
+      const item = record(s)
+      if (item) keys(item, KEYS.series, `${where}.comparison.series[${i}]`, at)
+      const points = list(
+        item?.points,
+        `${where}.comparison.series[${i}].points`,
+        at
+      ).flatMap((p) =>
+        Array.isArray(p) &&
+        p.length === 2 &&
+        typeof p[0] === "number" &&
+        typeof p[1] === "number"
+          ? [[p[0], p[1]] as const]
+          : []
+      )
+      return item && text(item.label) && points.length > 0
+        ? [{ label: item.label, points }]
         : []
-    )
-    return item && text(item.label) && points.length > 0
-      ? [{ label: item.label, points }]
-      : []
-  })
+    }
+  )
   if (
     !c ||
     !text(c.what) ||
@@ -347,10 +407,11 @@ function optionalComparison(
 function optionalRetired(
   raw: unknown,
   where: string,
-  at: (where: string, what: string) => void
+  at: At
 ): { retired?: { on: string; why: string } } {
   if (raw === undefined) return {}
   const r = record(raw)
+  if (r) keys(r, KEYS.retired, `${where}.retired`, at)
   if (!r || !DAY.test(str(r.on)) || !text(r.why)) {
     at(`${where}.retired`, "needs on (YYYY-MM-DD) and why")
     return {}
@@ -371,8 +432,21 @@ function oneOf<T extends string>(
   return options.find((option) => option === value) ?? null
 }
 
-function list(value: unknown): ReadonlyArray<unknown> {
-  return Array.isArray(value) ? value : []
+function list(value: unknown, where: string, at: At): ReadonlyArray<unknown> {
+  if (Array.isArray(value)) return value
+  at(where, "is a list")
+  return []
+}
+
+function keys(
+  value: Json,
+  allowed: ReadonlyArray<string>,
+  where: string,
+  at: At
+): void {
+  for (const key of Object.keys(value)) {
+    if (!allowed.includes(key)) at(where, `has an unknown field "${key}"`)
+  }
 }
 
 function text(value: unknown): value is string {
@@ -383,11 +457,7 @@ function str(value: unknown): string {
   return typeof value === "string" ? value : ""
 }
 
-function strings(
-  value: unknown,
-  where: string,
-  at: (where: string, what: string) => void
-): ReadonlyArray<string> {
+function strings(value: unknown, where: string, at: At): ReadonlyArray<string> {
   if (!Array.isArray(value) || !value.every(text)) {
     at(where, "is a list of non-empty strings")
     return []

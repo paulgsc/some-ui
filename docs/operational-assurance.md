@@ -102,36 +102,49 @@ JSON so the server's CI can read it as well (#2199, AS10). It holds:
 `scripts/check-assurance.ts`, rules in `packages/assurance/src/rules.ts`; in root `pnpm lint` and
 pr.yml's `assurance` job, which CI Gate needs.
 
-- **Shape:** every field above is present and of its kind; IDs are unique, promise-shaped, and are
-  not an ID an invariant already declares in a markdown file.
-- **Proof or issue:** a `holds` names at least one proof; each `some-ui:` proof path exists, and a
-  `#name` after it appears in that file. Anything else names a `tracked` issue. (A `server:` path is
-  checked by the server's CI, AS10.)
+- **Shape:** every field above is present and of its kind, a list is a list, and a field the
+  grammar does not know (a typo such as `retierd`) is an error. IDs are unique, promise-shaped,
+  and not an ID an invariant already declares in a markdown file.
+- **Proof or issue:** a `holds` names at least one proof, as `<repo>:<file>#<name>`. For
+  `some-ui:`, the file is tracked and the name (at least three characters) appears in it. Anything
+  else names a `tracked` issue. A `some-ui:` path in evidence, a watch or a family's `paths` exists.
+  **A `server:` path is not checked at all yet:** it is taken as written until the server's CI
+  reads this ledger (server#526, objective GC4).
+- **Decisions:** an amendment's `decision` links to a paulgsc issue, pull request or comment.
 - **Coverage (OA1):** every module in `packages/contract-harness/routes.server.json` is in exactly
-  one family's `modules` or in `synchronous`, and nothing there names a module the server no
-  longer serves.
-- **The ratchet**, against the base branch's ledger: no objective disappears (it retires instead);
-  a `holds` stays `holds`; a bound does not loosen; the requirement and kind do not change; a
-  retired objective stays retired; and amendments are only ever appended. Each of those changes is
-  allowed only with a new amendment on that objective, naming the change, why, and the owner's
-  decision (a link). An agent can still write one, but not silently: it is in the diff, in review
-  (`REVIEW.md`), and on the page, under the objective it weakens.
+  one family's `modules` or in `synchronous`. A module placed that the server does not serve is a
+  warning, not an error, so a module can be placed in its own PR ahead of the route snapshot that
+  brings it, and a stale one is visible.
+- **The ratchet**, against the base branch's ledger (read leniently, so a change to this grammar
+  can land): no objective disappears (it retires instead); a retired one stays retired;
+  amendments are only appended. Each of these needs a new amendment on the objective: a `holds`
+  that stops holding, a changed claim, requirement, kind or property, a weaker watch, a loosened
+  or dropped bound, a retirement. A route module that leaves a family for `synchronous` needs a
+  `decision` on its synchronous entry. An agent can still write an amendment, but not silently: it
+  is in the diff, in review (`REVIEW.md`), and on the page, under the objective it changes.
+- **What it cannot hold**, and review does: whether a conclusion's wording still matches its
+  evidence, whether a proof really reaches its requirement, and an objective moved between
+  families.
 
 ## What `/assurance` shows
 
 The page answers three questions separately, because each can be true while the others are not:
 
 1. **Did it improve?** The before and after, on the same workload and the same contract.
-2. **Is that what is running?** The commit the page was built from, against what is deployed.
+2. **Is that what is running?** Today the page names the commit it was built from. Comparing that
+   with what home and the Worker run comes with AS8.
 3. **Does it hold now?** Live state from home. Until AS8 lands, the page says it cannot see this,
    and that is an unknown, not a pass.
 
-The first screen is the promises, grouped by what the owner uses, with broken first. A row gives
-the claim, its verdict, and the gap or proof in one line. Opening it gives three depths: the
-conclusion in plain words; the comparison (a growth plot for work, a timeline for an obligation);
-the receipt (commit, evidence and proof links, tracked issue, amendments). The page also says what
-it does not know: the watches that are missing, and whether a failing check can block a merge yet
-(AS9). It shows counts per verdict, never one score: "nine of ten" hides the one that matters.
+The first screen is the promises, grouped by what the owner uses, broken first, retired last. A row
+gives the claim, its verdict, and where it stands in a sentence. Opening it gives three depths:
+what exactly it takes; the evidence with a before-and-after where something was measured (a growth
+plot today; an obligation's timeline comes with AS7 and AS8); the receipt (proof and issue links,
+who would notice, amendments). The page also says what it does not know: the watches that are
+missing, and whether a failing check can block a merge yet (AS9). It shows counts per verdict,
+never one score: "nine of ten" hides the one that matters.
 
-Its words follow CLAUDE.md's "State in the person's terms": they live in one table
-(`apps/www/src/lib/assurance/words.ts`) that a test holds to that rule.
+The page's own words follow CLAUDE.md's "State in the person's terms": they live in one table
+(`apps/www/src/lib/assurance/words.ts`) that a test holds to that rule. The ledger's claims and
+conclusions are about the machinery itself (a mailbox pass, a request budget), so they name it;
+they are written for the owner to read, in sentences, and review holds them to that.

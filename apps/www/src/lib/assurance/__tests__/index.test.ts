@@ -3,7 +3,6 @@
  * one score, every reference a link, and the ledger as committed shown whole.
  */
 import type { Ledger, Objective } from "@some-ui/assurance"
-import { LEDGER } from "@some-ui/assurance"
 import { describe, expect, it } from "vitest"
 
 import { assurancePageOf, linkOf } from "@/lib/assurance"
@@ -57,7 +56,7 @@ describe("assurancePageOf", () => {
     ])
   })
 
-  it("counts each verdict apart, and leaves a retired promise out", () => {
+  it("counts each verdict apart, and shows a retired promise last, counted in none", () => {
     const retired = {
       ...objective("A3", "broken"),
       retired: { on: "2026-10-27", why: "Gone." },
@@ -67,7 +66,12 @@ describe("assurancePageOf", () => {
       ""
     )
     expect(page.tally).toEqual({ holds: 1, unproven: 1, broken: 0 })
-    expect(page.families[0]?.rows).toHaveLength(2)
+    expect(page.families[0]?.rows.map((r) => r.objective.id)).toEqual([
+      "A2",
+      "A1",
+      "A3",
+    ])
+    expect(page.families[0]?.worst).toBe("unproven")
   })
 
   it("says merges are open until the promise that a failing check stops one holds", () => {
@@ -77,20 +81,6 @@ describe("assurancePageOf", () => {
     expect(
       assurancePageOf(ledger([objective("GC1", "holds")]), "").mergesBlocked
     ).toBe(true)
-  })
-
-  it("shows every promise in the ledger as committed, each with its proof or its issue", () => {
-    const page = assurancePageOf(LEDGER, "abc1234")
-    const rows = page.families.flatMap((f) => f.rows)
-    const live = LEDGER.families
-      .flatMap((f) => f.objectives)
-      .filter((o) => !o.retired)
-    expect(rows).toHaveLength(live.length)
-    for (const row of rows) {
-      if (row.objective.verdict === "holds")
-        expect(row.proofs.length).toBeGreaterThan(0)
-      else expect(row.tracked).not.toBeNull()
-    }
   })
 })
 

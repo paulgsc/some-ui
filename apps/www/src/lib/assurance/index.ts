@@ -99,16 +99,21 @@ export function assurancePageOf(ledger: Ledger, commit: string): AssurancePage {
   let mergesBlocked = false
   const families = ledger.families.map((family): FamilyView => {
     const live = family.objectives.filter((o) => !o.retired)
+    // A retired promise is shown after the rest, with the amendment that
+    // retired it, and counted in no verdict.
+    const retired = family.objectives.filter((o) => o.retired)
     for (const o of live) {
       tally[o.verdict] += 1
       if (o.watch.by === "alert") alerting += 1
       if (o.watch.by === "dashboard") dashboardOnly += 1
+      // GC1, "A failing check stops a merge": the page's own limit.
       if (o.id === "GC1") mergesBlocked = o.verdict === "holds"
     }
-    const rows = [...live]
-      .sort((a, b) => ORDER[a.verdict] - ORDER[b.verdict])
-      .map((o) => rowOf(o, commit))
-    const worst = rows[0]?.objective.verdict ?? "holds"
+    const ordered = [...live].sort(
+      (a, b) => ORDER[a.verdict] - ORDER[b.verdict]
+    )
+    const rows = [...ordered, ...retired].map((o) => rowOf(o, commit))
+    const worst = ordered[0]?.verdict ?? "holds"
     return { family, worst, rows }
   })
   families.sort((a, b) => ORDER[a.worst] - ORDER[b.worst])

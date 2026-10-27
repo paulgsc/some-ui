@@ -1,6 +1,12 @@
 import type { JSX } from "react"
 import type { Verdict } from "@some-ui/assurance"
-import { CircleCheck, CircleDashed, CircleX } from "lucide-react"
+import {
+  Archive,
+  ChevronRight,
+  CircleCheck,
+  CircleDashed,
+  CircleX,
+} from "lucide-react"
 
 import type { Link, Row } from "@/lib/assurance"
 import { ASSURANCE_WORDS } from "@/lib/assurance/words"
@@ -47,9 +53,9 @@ const Part = ({
 }): JSX.Element => {
   return (
     <section className="space-y-2">
-      <h4 className="text-muted-foreground text-[11px] font-medium tracking-[0.15em] uppercase">
+      <h3 className="text-muted-foreground text-[11px] font-medium tracking-[0.15em] uppercase">
         {heading}
-      </h4>
+      </h3>
       {children}
     </section>
   )
@@ -64,14 +70,25 @@ export const PromiseRow = ({ row }: { row: Row }): JSX.Element => {
   const { objective: o } = row
   return (
     <details className="group border-border/60 border-t py-4">
-      <summary className="grid cursor-pointer list-none gap-x-4 gap-y-1 sm:grid-cols-[8rem_1fr]">
-        <VerdictMark verdict={o.verdict} />
-        <div className="space-y-1">
-          <p className="font-medium text-pretty">{o.claim}</p>
-          <p className="text-muted-foreground text-sm leading-relaxed text-pretty">
+      <summary className="grid cursor-pointer list-none grid-cols-[1fr_auto] gap-x-4 gap-y-1 sm:grid-cols-[8rem_1fr_auto]">
+        {o.retired ? (
+          <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs font-medium">
+            <Archive className="size-4 shrink-0" aria-hidden />
+            {ASSURANCE_WORDS.retired}
+          </span>
+        ) : (
+          <VerdictMark verdict={o.verdict} />
+        )}
+        <ChevronRight
+          className="text-muted-foreground size-4 shrink-0 transition-transform group-open:rotate-90 sm:order-last"
+          aria-hidden
+        />
+        <span className="col-span-2 block space-y-1 sm:col-span-1">
+          <span className="block font-medium text-pretty">{o.claim}</span>
+          <span className="text-muted-foreground block text-sm leading-relaxed text-pretty">
             {o.conclusion}
-          </p>
-        </div>
+          </span>
+        </span>
       </summary>
       <div className="mt-5 space-y-6 sm:ml-[9rem]">
         <Part heading={ASSURANCE_WORDS.requirement}>
@@ -86,7 +103,10 @@ export const PromiseRow = ({ row }: { row: Row }): JSX.Element => {
         <Part heading={ASSURANCE_WORDS.evidenceHeading}>
           <ul className="space-y-2">
             {row.evidence.map(({ item, link }) => (
-              <li key={item.says} className="text-sm leading-relaxed">
+              <li
+                key={`${item.class}:${item.says}`}
+                className="text-sm leading-relaxed"
+              >
                 <span className="text-muted-foreground mr-2 text-xs font-medium">
                   {ASSURANCE_WORDS.evidenceClass[item.class]}
                 </span>

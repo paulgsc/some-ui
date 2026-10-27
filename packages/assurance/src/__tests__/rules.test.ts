@@ -1,10 +1,10 @@
-import { readFileSync } from "node:fs"
-import { LEDGER } from "@assurance/index"
 import type { Ledger, Objective } from "@assurance/ledger"
-import { parseLedger } from "@assurance/ledger"
+import { parseLedger, readLedgerLeniently } from "@assurance/ledger"
 import type { Surroundings } from "@assurance/rules"
 import { findLedgerViolations, findRatchetViolations } from "@assurance/rules"
 import { describe, expect, it } from "vitest"
+
+const DECISION = "https://github.com/paulgsc/some-ui/issues/1#issuecomment-1"
 
 const objective = (overrides: Partial<Objective> = {}): Objective => ({
   id: "ZZ1",
@@ -17,7 +17,7 @@ const objective = (overrides: Partial<Objective> = {}): Objective => ({
   conclusion: "It does.",
   evidence: [{ class: "measured", says: "A test shows it." }],
   proof: ["some-ui:src/thing.test.ts#arrives"],
-  watch: { by: "none" },
+  watch: { by: "dashboard" },
   amendments: [],
   ...overrides,
 })
@@ -35,31 +35,24 @@ const ledgerOf = (
 })
 
 const around = (overrides: Partial<Surroundings> = {}): Surroundings => ({
-  exists: (path) => path === "src/thing.test.ts",
+  isFile: (path) => path === "src/thing.test.ts",
+  exists: (path) => path === "src/thing.test.ts" || path === "src",
   contains: (_path, text) => text === "arrives",
   routeModules: ["jobs", "health"],
   declaredIds: new Set(["L3"]),
   ...overrides,
 })
 
-const messages = (
-  findings: ReadonlyArray<{ message: string }>
-): Array<string> => findings.map((f) => f.message)
-
-describe("the ledger as committed", () => {
-  it("parses, and every objective holds with a proof or names its issue", () => {
-    const parsed = parseLedger(
-      JSON.parse(
-        readFileSync(new URL("../ledger.json", import.meta.url), "utf8")
-      )
-    )
-    expect(parsed.ok ? [] : parsed.problems).toEqual([])
-    expect(LEDGER.families.length).toBeGreaterThan(0)
-  })
-})
+const errors = (
+  findings: ReadonlyArray<{ message: string; level: string }>
+): string =>
+  findings
+    .filter((f) => f.level === "error")
+    .map((f) => f.message)
+    .join("\n")
 
 describe("parseLedger", () => {
-  it("names every problem, not only the first", () => {
+  it("names every problem, not only the first, an unknown field and a wrong shape among them", () => {
     const parsed = parseLedger({
       schema: "other",
       families: [
@@ -69,45 +62,75 @@ describe("parseLedger", () => {
           why: "W",
           paths: [],
           modules: [],
-          objectives: [{ id: "A1" }],
+          objectives: [{ id: "A1", retierd: {} }],
         },
       ],
-      synchronous: [{}],
+      synchronous: {},
     })
-    expect(parsed.ok).toBe(false)
-    const problems = parsed.ok ? [] : parsed.problems
-    expect(problems.some((p) => p.startsWith("schema"))).toBe(true)
-    expect(problems.some((p) => p.includes("needs a claim"))).toBe(true)
-    expect(problems.some((p) => p.startsWith("synchronous[0]"))).toBe(true)
+    const problems = parsed.ok ? "" : parsed.problems.join("\n")
+    expect(problems).toContain("schema")
+    expect(problems).toContain("needs a claim")
+    expect(problems).toContain('unknown field "retierd"')
+    expect(problems).toContain("synchronous: is a list")
+  })
+
+  it("reads what it can of a ledger another grammar wrote, for the ratchet's base", () => {
+    const old = {
+      ...ledgerOf([objective()]),
+      schema: "some-ui.assurance-ledger/0",
+    }
+    expect(parseLedger(old).ok).toBe(false)
+    expect(readLedgerLeniently(old)?.families[0]?.objectives[0]?.id).toBe("ZZ1")
   })
 })
 
 describe("proof or issue", () => {
-  it("passes a holds whose proof exists and mentions its name", () => {
+  it("passes a holds whose proof is a tracked file that names it", () => {
     expect(findLedgerViolations(ledgerOf([objective()]), around())).toEqual([])
   })
 
   it.each([
     [{ proof: [] }, "names the proof"],
-    [{ proof: ["some-ui:src/gone.test.ts"] }, "does not exist"],
+    [{ proof: ["some-ui:src/gone.test.ts#arrives"] }, "not a tracked file"],
+    [{ proof: ["some-ui:src#arrives"] }, "not a tracked file"],
     [
       { proof: ["some-ui:src/thing.test.ts#elsewhere"] },
       'does not mention "elsewhere"',
     ],
-    [{ proof: ["src/thing.test.ts"] }, "some-ui:<path>"],
+    [{ proof: ["some-ui:src/thing.test.ts"] }, "some-ui:<file>#<name>"],
+    [{ proof: ["some-ui:src/thing.test.ts#ar"] }, "at least 3 characters"],
     [{ verdict: "broken" as const, proof: undefined }, "names the issue"],
     [{ verdict: "unproven" as const, tracked: "#12" }, "names the issue"],
     [{ id: "mi1" }, "area prefix"],
     [{ id: "L3" }, "already an invariant"],
     [{ kind: "OA9" }, "is not one of"],
+    [
+      {
+        evidence: [
+          { class: "measured" as const, says: "x", ref: "some-ui:gone.ts" },
+        ],
+      },
+      "evidence gone.ts does not exist",
+    ],
+    [
+      { watch: { by: "dashboard" as const, ref: "some-ui:gone.json" } },
+      "watch gone.json does not exist",
+    ],
+    [
+      {
+        amendments: [
+          { on: "2026-10-27", change: "c", why: "w", decision: "x" },
+        ],
+      },
+      "decision is a link",
+    ],
   ])("fails %o", (overrides, expected) => {
-    const found = messages(
-      findLedgerViolations(ledgerOf([objective(overrides)]), around())
-    )
-    expect(found.join("\n")).toContain(expected)
+    expect(
+      errors(findLedgerViolations(ledgerOf([objective(overrides)]), around()))
+    ).toContain(expected)
   })
 
-  it("takes a server proof as written, which the server's CI checks", () => {
+  it("takes a server proof's path as written, until the server checks it (server#526)", () => {
     const o = objective({ proof: ["server:src/pass.rs#a_test"] })
     expect(findLedgerViolations(ledgerOf([o]), around())).toEqual([])
   })
@@ -117,7 +140,7 @@ describe("proof or issue", () => {
       ledgerOf([objective(), objective()]),
       around()
     )
-    expect(messages(found)).toContain("ID is used twice")
+    expect(errors(found)).toContain("ID is used twice")
   })
 })
 
@@ -127,15 +150,16 @@ describe("coverage of the server's routes (GC2)", () => {
       ledgerOf([objective()]),
       around({ routeModules: ["jobs", "health", "voice"] })
     )
-    expect(messages(found).join("\n")).toContain('"voice" is in no family')
+    expect(errors(found)).toContain('"voice" is in no family')
   })
 
-  it("fails a module the server no longer serves", () => {
+  it("warns of a module the server does not serve, so one can be placed ahead of its snapshot", () => {
     const found = findLedgerViolations(
       ledgerOf([objective()]),
       around({ routeModules: ["jobs"] })
     )
-    expect(messages(found).join("\n")).toContain(
+    expect(errors(found)).toBe("")
+    expect(found.map((f) => f.message).join("\n")).toContain(
       '"health" is not one the server serves'
     )
   })
@@ -145,7 +169,7 @@ describe("coverage of the server's routes (GC2)", () => {
       ledgerOf([objective()], ["jobs"], ["jobs", "health"]),
       around()
     )
-    expect(messages(found).join("\n")).toContain('"jobs" is in both')
+    expect(errors(found)).toContain('"jobs" is in both')
   })
 })
 
@@ -154,7 +178,7 @@ describe("the ratchet against the base branch (GC3)", () => {
     on: "2026-10-27",
     change: "Loosened to 30 minutes.",
     why: "Home's disk is slower than measured.",
-    decision: "https://github.com/paulgsc/some-ui/issues/1#issuecomment-1",
+    decision: DECISION,
   }
 
   it.each([
@@ -164,15 +188,9 @@ describe("the ratchet against the base branch (GC3)", () => {
       "from holds to broken",
     ],
     [
-      "a loosened bound",
-      { bound: { value: 1800, unit: "seconds", tighter: "lower" as const } },
-      "loosened from 1200 to 1800",
-    ],
-    ["a dropped bound", { bound: undefined }, "bound was dropped"],
-    [
-      "a bound that measures something else",
-      { bound: { value: 1200, unit: "minutes", tighter: "lower" as const } },
-      "changed what it measures",
+      "a changed claim",
+      { claim: "A thing reaches home, eventually." },
+      "claim changed",
     ],
     [
       "a changed requirement",
@@ -180,6 +198,23 @@ describe("the ratchet against the base branch (GC3)", () => {
       "requirement changed",
     ],
     ["a changed kind", { kind: "OA6" }, "kind changed"],
+    ["a changed property", { property: "work" as const }, "property changed"],
+    [
+      "a weaker watch",
+      { watch: { by: "none" as const } },
+      "watch went from dashboard to none",
+    ],
+    [
+      "a loosened bound",
+      { bound: { value: 1800, unit: "seconds", tighter: "lower" as const } },
+      "loosened from 1200 to 1800",
+    ],
+    ["a dropped bound", { bound: undefined }, "bound was dropped"],
+    [
+      "a bound that measures something else",
+      { bound: { value: 1200, unit: "seconds", tighter: "higher" as const } },
+      "changed what it measures",
+    ],
     [
       "a retirement",
       { retired: { on: "2026-10-27", why: "Gone." } },
@@ -189,8 +224,9 @@ describe("the ratchet against the base branch (GC3)", () => {
     "fails %s with no new amendment, and passes it with one",
     (_name, change, expected) => {
       const base = ledgerOf([objective()])
-      const quiet = findRatchetViolations(base, ledgerOf([objective(change)]))
-      expect(messages(quiet).join("\n")).toContain(expected)
+      expect(
+        errors(findRatchetViolations(base, ledgerOf([objective(change)])))
+      ).toContain(expected)
 
       const amended = ledgerOf([
         objective({ ...change, amendments: [amendment] }),
@@ -199,19 +235,22 @@ describe("the ratchet against the base branch (GC3)", () => {
     }
   )
 
-  it("lets a bound tighten and a verdict improve without an amendment", () => {
+  it("lets a bound tighten, a watch strengthen and a verdict improve without an amendment", () => {
     const base = ledgerOf([
       objective({ verdict: "broken", tracked: "some-ui#1" }),
     ])
     const better = ledgerOf([
-      objective({ bound: { value: 600, unit: "seconds", tighter: "lower" } }),
+      objective({
+        bound: { value: 600, unit: "seconds", tighter: "lower" },
+        watch: { by: "alert" },
+      }),
     ])
     expect(findRatchetViolations(base, better)).toEqual([])
   })
 
-  it("never lets an objective disappear, even with an amendment elsewhere", () => {
+  it("never lets an objective disappear", () => {
     const found = findRatchetViolations(ledgerOf([objective()]), ledgerOf([]))
-    expect(messages(found).join("\n")).toContain("retires instead")
+    expect(errors(found)).toContain("retires instead")
   })
 
   it("never lets a retired objective come back, or an amendment be rewritten", () => {
@@ -225,14 +264,27 @@ describe("the ratchet against the base branch (GC3)", () => {
       amendments: [{ ...amendment, why: "Something else." }],
     })
     expect(
-      messages(
-        findRatchetViolations(ledgerOf([retired]), ledgerOf([back]))
-      ).join("\n")
+      errors(findRatchetViolations(ledgerOf([retired]), ledgerOf([back])))
     ).toContain("stays retired")
     expect(
-      messages(
-        findRatchetViolations(ledgerOf([retired]), ledgerOf([rewritten]))
-      ).join("\n")
+      errors(findRatchetViolations(ledgerOf([retired]), ledgerOf([rewritten])))
     ).toContain("only appended")
+  })
+
+  it("lets a module leave a family for synchronous only with a decision", () => {
+    const base = ledgerOf([objective()], ["jobs"], ["health"])
+    const quiet = ledgerOf([objective()], [], ["health", "jobs"])
+    expect(errors(findRatchetViolations(base, quiet))).toContain(
+      "left family f for synchronous"
+    )
+
+    const decided: Ledger = {
+      ...quiet,
+      synchronous: [
+        { module: "health", why: "At once." },
+        { module: "jobs", why: "At once.", decision: DECISION },
+      ],
+    }
+    expect(findRatchetViolations(base, decided)).toEqual([])
   })
 })

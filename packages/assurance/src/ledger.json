@@ -17,18 +17,23 @@
           "kind": "OA4",
           "property": "outcome",
           "claim": "When a mailbox pass goes wrong in more than one place, each one is reported.",
-          "requirement": "A pass's five independent phases (inbound, filing, outbound, asks, archive) each report their own failure in the log and in mailbox_poll_failing; a second failure is never hidden behind the first, and what the pass did keep is kept.",
+          "requirement": "When independent phases of one pass fail (inbound, filing, outbound, asks, archive), the log names each failed phase and its failure, and mailbox_poll_failing sets each distinct failure class; what the pass did keep is kept. Within the inbound phase, the folders after a failing one wait for the next pass.",
           "verdict": "holds",
-          "conclusion": "Every failed phase is now reported, each by name, in the log and on the dashboard's failing panel.",
+          "conclusion": "The log now names every phase that failed, not only the first. The dashboard's failing panel shows each kind of failure, not which phase it came from, and the test shows two phases failing together.",
           "evidence": [
             {
               "class": "measured",
-              "says": "A pass with both its read and its hand-over failing reports both phases, in order.",
+              "says": "A pass with both its read and its hand-over failing reports both phases, in order, and counts their one class once.",
               "ref": "server:apps/servers/file_host/src/mailbox/pass.rs"
             },
             {
               "class": "structural",
-              "says": "Before server#523, the phases were joined with Result::and, so only the first failure reached the log and the metric.",
+              "says": "mailbox_poll_failing is labelled by failure class, not by phase, so the panel cannot say which phase failed; the log line does.",
+              "ref": "server:apps/servers/file_host/src/metrics/mailbox.rs"
+            },
+            {
+              "class": "structural",
+              "says": "Before server#527, the phases were joined with Result::and, so only the first failure reached the log and the metric.",
               "ref": "server#523"
             }
           ],
@@ -47,21 +52,26 @@
           "property": "outcome",
           "claim": "A poller that has stopped reads as stopped, not as quiet.",
           "requirement": "The poller stamps the start of every pass, so a dashboard can tell 'nothing new' (a recent stamp) from 'not running' (an old one), and 'switched off' from both.",
-          "verdict": "holds",
-          "conclusion": "The dashboard tells the three apart, but only for someone looking at it; nothing tells you (MI3).",
+          "verdict": "unproven",
+          "conclusion": "The dashboard reads a stale pass stamp as red while home's server is up; if the server itself is down it shows no data rather than red, and no test holds either.",
           "evidence": [
             {
               "class": "structural",
               "says": "mailbox_poll_last_attempt_timestamp_seconds moves when a pass starts; mailbox_poll_enabled says whether it should; the SINCE LAST READ panel turns red past two intervals.",
               "ref": "server:apps/servers/file_host/src/metrics/mailbox.rs"
+            },
+            {
+              "class": "structural",
+              "says": "The metric contract check only shows the dashboard reads a metric the server emits, not when it moves or what the panel does with it.",
+              "ref": "server:scripts/check_metric_contract.py"
             }
           ],
-          "proof": ["server:scripts/check_metric_contract.py"],
           "watch": {
             "by": "dashboard",
             "ref": "server:infra/grafana/dashboards/mailbox.jsonnet"
           },
-          "amendments": []
+          "amendments": [],
+          "tracked": "server#525"
         },
         {
           "id": "MI3",
@@ -69,7 +79,11 @@
           "property": "outcome",
           "claim": "If the poller stops, you are told within 18 minutes.",
           "requirement": "An alert fires when no pass has started within the interval plus the pass budget plus 60 seconds (900 + 120 + 60 at today's settings), and when the metric itself is missing; its delivery to the owner is tested.",
-          "bound": { "value": 1080, "unit": "seconds", "tighter": "lower" },
+          "bound": {
+            "value": 1080,
+            "unit": "seconds",
+            "tighter": "lower"
+          },
           "verdict": "broken",
           "conclusion": "Nothing tells you: Prometheus has no alert rules, and the one provisioned Grafana alert is about logged errors.",
           "evidence": [
@@ -85,7 +99,9 @@
             }
           ],
           "tracked": "server#525",
-          "watch": { "by": "none" },
+          "watch": {
+            "by": "none"
+          },
           "amendments": []
         },
         {
@@ -94,7 +110,11 @@
           "property": "outcome",
           "claim": "A file put in the mailbox is at home within 20 minutes while home is up, or it shows as late.",
           "requirement": "From the Worker's commit to home's verified copy takes at most 20 minutes while home is available and the backlog is within one pass; past that, the oldest file still waiting is visible with its age, and time home was down is shown apart.",
-          "bound": { "value": 1200, "unit": "seconds", "tighter": "lower" },
+          "bound": {
+            "value": 1200,
+            "unit": "seconds",
+            "tighter": "lower"
+          },
           "verdict": "unproven",
           "conclusion": "Nothing measures how long a file waits, so whether this holds is unknown.",
           "evidence": [
@@ -104,7 +124,9 @@
             }
           ],
           "tracked": "server#525",
-          "watch": { "by": "none" },
+          "watch": {
+            "by": "none"
+          },
           "amendments": []
         },
         {
@@ -113,7 +135,11 @@
           "property": "work",
           "claim": "A whole mailbox pass has a time limit and a request limit.",
           "requirement": "One pass ends within 120 seconds and a shared request budget, with each phase keeping a reserve; what it could not do is deferred to the next pass and recorded.",
-          "bound": { "value": 120, "unit": "seconds", "tighter": "lower" },
+          "bound": {
+            "value": 120,
+            "unit": "seconds",
+            "tighter": "lower"
+          },
           "verdict": "broken",
           "conclusion": "Each request has a 30-second limit but the pass has none: at today's constants a full pass may make up to 668 calls, about 5.5 hours of waiting in the worst case.",
           "evidence": [
@@ -124,7 +150,9 @@
             }
           ],
           "tracked": "server#524",
-          "watch": { "by": "none" },
+          "watch": {
+            "by": "none"
+          },
           "amendments": []
         },
         {
@@ -148,7 +176,30 @@
             }
           ],
           "tracked": "server#524",
-          "watch": { "by": "none" },
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "MW2",
+          "kind": "RE1",
+          "property": "work",
+          "claim": "The mailbox's database work is counted in D1's own numbers, per operation.",
+          "requirement": "Each Worker operation totals D1's rows read and rows written from the statements it ran, and those totals are observable without any file's name or bytes.",
+          "verdict": "broken",
+          "conclusion": "D1 returns its row counts with every statement, and the Worker throws them away.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "The store's Db and Bound seam exposes rows and results only; d1Store drops meta.",
+              "ref": "some-ui:apps/mailbox/src/store.ts"
+            }
+          ],
+          "tracked": "some-ui#2204",
+          "watch": {
+            "by": "none"
+          },
           "amendments": []
         }
       ]
@@ -183,7 +234,9 @@
             }
           ],
           "tracked": "some-ui#2203",
-          "watch": { "by": "none" },
+          "watch": {
+            "by": "none"
+          },
           "comparison": {
             "what": "SQLite VM steps to list the 50 oldest open asks in one folder, local SQLite 3.53.1, same result rows",
             "x": "open asks in the folder",
@@ -208,25 +261,6 @@
             ],
             "limits": "Local SQLite steps, not D1's billed rows; excludes the index's extra write and storage per ask."
           },
-          "amendments": []
-        },
-        {
-          "id": "MW2",
-          "kind": "RE1",
-          "property": "work",
-          "claim": "The mailbox's database work is counted in D1's own numbers, per operation.",
-          "requirement": "Each Worker operation totals D1's rows read and rows written from the statements it ran, and those totals are observable without any file's name or bytes.",
-          "verdict": "broken",
-          "conclusion": "D1 returns its row counts with every statement, and the Worker throws them away.",
-          "evidence": [
-            {
-              "class": "structural",
-              "says": "The store's Db and Bound seam exposes rows and results only; d1Store drops meta.",
-              "ref": "some-ui:apps/mailbox/src/store.ts"
-            }
-          ],
-          "tracked": "some-ui#2204",
-          "watch": { "by": "none" },
           "amendments": []
         }
       ]
@@ -256,7 +290,9 @@
           "proof": [
             "some-ui:packages/fetch-kit/src/lib/fetch-client/index.test.ts#FK1"
           ],
-          "watch": { "by": "none" },
+          "watch": {
+            "by": "none"
+          },
           "amendments": []
         }
       ]
@@ -276,7 +312,7 @@
           "kind": "OA2",
           "property": "outcome",
           "claim": "Every voice note sent home gets a transcript or a recorded reason it has none.",
-          "requirement": "Each note home holds gets a row; a failed hearing is recorded and retried a bounded number of times, then stays recorded as failed.",
+          "requirement": "Each note home holds gets a row; a failed hearing is recorded and tried again on at most ATTEMPTS (3) passes, then stays recorded as failed, so no note is left without an outcome after three passes.",
           "verdict": "holds",
           "conclusion": "Every note gets a row, and a failure is retried a few times and then kept as failed.",
           "evidence": [
@@ -330,7 +366,7 @@
         "server:apps/servers/file_host/src/nudge",
         "server:docs/study-nudge.md"
       ],
-      "modules": ["presence", "signals", "push"],
+      "modules": ["presence", "signals", "push", "outcomes"],
       "objectives": [
         {
           "id": "NW1",
@@ -378,7 +414,9 @@
             }
           ],
           "tracked": "server#525",
-          "watch": { "by": "dashboard" },
+          "watch": {
+            "by": "dashboard"
+          },
           "amendments": []
         }
       ]
@@ -411,7 +449,9 @@
           "proof": [
             "some-ui:apps/www/src/lib/jobs/__tests__/morning.test.ts#says home has no record of a run only from a home that keeps them"
           ],
-          "watch": { "by": "none" },
+          "watch": {
+            "by": "none"
+          },
           "amendments": []
         },
         {
@@ -420,7 +460,11 @@
           "property": "outcome",
           "claim": "If the morning run has not happened 30 minutes after it was due, you are told.",
           "requirement": "Home expects each scheduled run by its time zone's clock, and an alert fires when none is recorded 30 minutes after it was due; its delivery is tested.",
-          "bound": { "value": 1800, "unit": "seconds", "tighter": "lower" },
+          "bound": {
+            "value": 1800,
+            "unit": "seconds",
+            "tighter": "lower"
+          },
           "verdict": "broken",
           "conclusion": "Nothing on home expects the run, so a missed run is noticed only when you open Jobs.",
           "evidence": [
@@ -431,7 +475,9 @@
             }
           ],
           "tracked": "server#525",
-          "watch": { "by": "none" },
+          "watch": {
+            "by": "none"
+          },
           "amendments": []
         }
       ]
@@ -463,7 +509,9 @@
             }
           ],
           "tracked": "some-ui#2206",
-          "watch": { "by": "none" },
+          "watch": {
+            "by": "none"
+          },
           "amendments": []
         },
         {
@@ -482,32 +530,36 @@
             }
           ],
           "proof": [
-            "some-ui:packages/assurance/src/__tests__/rules.test.ts#GC2",
-            "some-ui:scripts/check-assurance.ts"
+            "some-ui:packages/assurance/src/__tests__/rules.test.ts#coverage of the server's routes (GC2)",
+            "some-ui:scripts/check-assurance.ts#routeModules"
           ],
-          "watch": { "by": "none" },
+          "watch": {
+            "by": "none"
+          },
           "amendments": []
         },
         {
           "id": "GC3",
           "kind": "OA7",
           "property": "outcome",
-          "claim": "A promise cannot be quietly weakened.",
-          "requirement": "Against the base branch, an objective is never removed, and a holds that stops holding, a loosened bound, a changed requirement or kind, or a retirement each needs a new amendment naming the change and the owner's decision.",
+          "claim": "Loosening what a promise requires shows, with who decided it.",
+          "requirement": "Against the base branch, an objective is never removed, and each of these needs a new amendment linking the owner's decision: a holds that stops holding, a changed claim, requirement, kind or property, a weaker watch, a loosened or dropped bound, a retirement. A route module leaving a family for synchronous needs a decision too.",
           "verdict": "holds",
-          "conclusion": "check:assurance compares this ledger with main's and fails each weakening that carries no amendment; the amendment then shows on this page.",
+          "conclusion": "check:assurance fails each of those without an amendment, and the amendment shows on this page. Whether a conclusion's wording still matches its evidence, and whether a proof really reaches its requirement, are left to review.",
           "evidence": [
             {
               "class": "measured",
-              "says": "The ratchet's tests fail each weakening without an amendment and pass it with one.",
+              "says": "The ratchet's tests fail each of those changes without an amendment and pass it with one; a conclusion rewritten or a proof swapped is not among them.",
               "ref": "some-ui:packages/assurance/src/__tests__/rules.test.ts"
             }
           ],
           "proof": [
-            "some-ui:packages/assurance/src/__tests__/rules.test.ts#GC3",
-            "some-ui:scripts/check-assurance.ts"
+            "some-ui:packages/assurance/src/__tests__/rules.test.ts#the ratchet against the base branch (GC3)",
+            "some-ui:scripts/check-assurance.ts#findRatchetViolations"
           ],
-          "watch": { "by": "none" },
+          "watch": {
+            "by": "none"
+          },
           "amendments": []
         },
         {
@@ -521,11 +573,13 @@
           "evidence": [
             {
               "class": "structural",
-              "says": "check:assurance checks only some-ui paths; server paths are taken as written."
+              "says": "check:assurance checks only some-ui paths; a server path is taken as written, and nothing in the server reads this ledger."
             }
           ],
           "tracked": "server#526",
-          "watch": { "by": "none" },
+          "watch": {
+            "by": "none"
+          },
           "amendments": []
         }
       ]
@@ -575,10 +629,6 @@
     {
       "module": "mood_events",
       "why": "Mood events in and out; each write answers with what it kept."
-    },
-    {
-      "module": "outcomes",
-      "why": "Records a study outcome; the answer is the outcome."
     },
     {
       "module": "readiness",

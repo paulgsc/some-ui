@@ -6,7 +6,8 @@ import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
 
 function said(value: unknown): Array<string> {
   if (typeof value === "string") return [value]
-  if (typeof value === "function") return [String(value(3, 2))]
+  if (typeof value === "function")
+    return [String(value(0, 2)), String(value(3, 1))]
   if (typeof value === "object" && value !== null)
     return Object.values(value).flatMap(said)
   return []
@@ -19,7 +20,9 @@ describe("ASSURANCE_WORDS", () => {
     expect(words.filter((text) => MACHINERY.test(text))).toEqual([])
   })
 
-  it("says nothing tells me when none alert", () => {
-    expect(ASSURANCE_WORDS.watching(0, 4)).toMatch(/^None/)
+  it("says one promise in the singular", () => {
+    expect(ASSURANCE_WORDS.watching(1, 1)).toBe(
+      "1 tells me when it breaks; 1 shows only on a dashboard I have to open."
+    )
   })
 })

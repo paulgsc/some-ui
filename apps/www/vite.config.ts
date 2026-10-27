@@ -167,7 +167,6 @@ function pagesConnectPolicy(): Plugin {
   }
 }
 
-// https://vitejs.dev/config/
 /**
  * The commit this build is made from, which `/assurance` names as the copy
  * of the ledger it shows; empty where there is no git checkout (a Docker
@@ -185,6 +184,7 @@ function buildCommit(): string {
   }
 }
 
+// https://vitejs.dev/config/
 export default defineConfig(
   ({ command, mode }): UserConfig => ({
     // GitHub Pages serves this app under /<repo>/ instead of domain root;

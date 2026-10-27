@@ -10,6 +10,7 @@ export const ASSURANCE_WORDS = {
   eyebrow: "Promises",
   title: "What my tools promise about outcomes and work, and how I know",
   lead: "Two things should hold everywhere: nothing fails without my hearing of it, and nothing does work it doesn't need. Each promise below says whether it holds, the evidence either way, and what would make it hold. Broken ones come first.",
+  retired: "Retired",
   verdicts: {
     holds: "Holds",
     broken: "Broken",
@@ -27,10 +28,12 @@ export const ASSURANCE_WORDS = {
     blocked: "A failing check stops a merge in both places.",
     open: "A failing check does not yet stop a merge. Until it does, these checks warn and nothing more.",
   },
-  watching: (alerting: number, dashboardOnly: number): string =>
-    alerting === 0
-      ? `None of these promises tells me when it breaks. ${dashboardOnly} show on a dashboard I have to open.`
-      : `${alerting} tell me when they break; ${dashboardOnly} more show only on a dashboard I have to open.`,
+  watching: (alerting: number, dashboardOnly: number): string => {
+    const onDashboard = `${dashboardOnly} ${dashboardOnly === 1 ? "shows" : "show"}`
+    return alerting === 0
+      ? `None of these promises tells me when it breaks. ${onDashboard} on a dashboard I have to open.`
+      : `${alerting} ${alerting === 1 ? "tells" : "tell"} me when it breaks; ${onDashboard} only on a dashboard I have to open.`
+  },
   built: "Built from",
   builtUnknown: "Built from a copy whose commit is not known",
   requirement: "Exactly what it takes",

@@ -44,10 +44,8 @@ const Assurance = (): JSX.Element => (
         <p className="text-muted-foreground max-w-2xl leading-relaxed text-pretty">
           {W.lead}
         </p>
-        <dl
-          aria-label={W.tallyLabel}
-          className="flex flex-wrap gap-x-8 gap-y-3 pt-2"
-        >
+        <h2 className="sr-only">{W.tallyLabel}</h2>
+        <dl className="flex flex-wrap gap-x-8 gap-y-3 pt-2">
           {VERDICTS.map((verdict) => (
             <div key={verdict} className="flex items-center gap-2">
               <dt>

@@ -11,14 +11,19 @@
 // `origin/main` where it exists). Wired into the root `lint` script and
 // pr.yml's `assurance` job, which CI Gate needs. Runs on Node's built-in type
 // stripping, with no install (see scripts/check-test-layout.ts).
-import { existsSync, readFileSync } from "node:fs"
+import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
 // Relative imports on purpose: Node's type stripping resolves no path aliases.
 // eslint-disable-next-line no-restricted-imports
-import { parseLedger } from "../packages/assurance/src/ledger.ts"
+import {
+  parseLedger,
+  readLedgerLeniently,
+} from "../packages/assurance/src/ledger.ts"
 // eslint-disable-next-line no-restricted-imports
 import type { Ledger } from "../packages/assurance/src/ledger.ts"
+// eslint-disable-next-line no-restricted-imports
+import type { Finding } from "../packages/assurance/src/rules.ts"
 // eslint-disable-next-line no-restricted-imports
 import {
   findLedgerViolations,
@@ -57,18 +62,20 @@ function routeModules(root: string): Array<string> {
       ? Reflect.get(snapshot, "routes")
       : undefined
   if (!Array.isArray(routes)) throw new Error(`${ROUTES} has no routes`)
-  return routes.flatMap((route: unknown) => {
+  return routes.map((route: unknown, i) => {
     const module =
       typeof route === "object" && route !== null
         ? Reflect.get(route, "module")
         : undefined
-    return typeof module === "string" ? [module] : []
+    if (typeof module !== "string")
+      throw new Error(`${ROUTES} route ${i} has no module`)
+    return module
   })
 }
 
-function declaredIds(root: string): Set<string> {
+function declaredIds(root: string, files: ReadonlyArray<string>): Set<string> {
   const ids = new Set<string>()
-  for (const path of worktreeFiles(root)) {
+  for (const path of files) {
     if (!path.endsWith(".md")) continue
     const text = readFileSync(join(root, path), "utf8")
     for (const declaration of parseDeclarations(path, text))
@@ -77,28 +84,38 @@ function declaredIds(root: string): Set<string> {
   return ids
 }
 
-/** The base ref's ledger; null when the base has none to hold this one to. */
+/**
+ * The base ref's ledger, read leniently: an older grammar wrote it, and this
+ * PR may be the one changing the grammar. Null when the base has none.
+ */
 function baseLedger(root: string, ref: string): Ledger | null {
   if (gitOrNull(root, ["cat-file", "-e", `${ref}:${LEDGER}`]) === null)
     return null
   const text = gitOrNull(root, ["show", `${ref}:${LEDGER}`])
   if (text === null) throw new Error(`could not read ${LEDGER} at ${ref}`)
-  return read(text, `${LEDGER} at ${ref}`)
+  const ledger = readLedgerLeniently(JSON.parse(text))
+  if (!ledger) throw new Error(`${LEDGER} at ${ref} is not an object`)
+  return ledger
 }
 
 function main(): void {
   const root = repoRoot()
-  let findings: Array<{ id: string; message: string }>
+  let findings: Array<Finding>
   let held: string
   try {
     const ledger = read(readFileSync(join(root, LEDGER), "utf8"), LEDGER)
+    const files = worktreeFiles(root)
+    const tracked = new Set(files)
     findings = [
       ...findLedgerViolations(ledger, {
-        exists: (path) => existsSync(join(root, path)),
+        isFile: (path) => tracked.has(path),
+        exists: (path) =>
+          tracked.has(path) ||
+          files.some((file) => file.startsWith(`${path.replace(/\/$/, "")}/`)),
         contains: (path, text) =>
           readFileSync(join(root, path), "utf8").includes(text),
         routeModules: routeModules(root),
-        declaredIds: declaredIds(root),
+        declaredIds: declaredIds(root, files),
       }),
     ]
     const { ref, resolved } = resolveBaseRef(root, process.argv.slice(2))
@@ -115,10 +132,14 @@ function main(): void {
     return
   }
 
-  for (const { id, message } of findings) err(`[assurance] ${id}: ${message}`)
-  if (findings.length > 0) {
+  const errors = findings.filter((f) => f.level === "error")
+  for (const { id, message, level } of findings)
     err(
-      `[assurance] ${findings.length} finding(s). See docs/operational-assurance.md, "What \`pnpm check:assurance\` holds".`
+      `[assurance] ${level === "warning" ? "warning: " : ""}${id}: ${message}`
+    )
+  if (errors.length > 0) {
+    err(
+      `[assurance] ${errors.length} finding(s). See docs/operational-assurance.md, "What \`pnpm check:assurance\` holds".`
     )
     process.exitCode = 1
   } else {

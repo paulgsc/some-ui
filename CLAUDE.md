@@ -564,9 +564,10 @@ When a change touches what an objective describes, edit the ledger in the same P
 that improves names its proof, a new route module is placed in a family or in
 `synchronous`, and anything that weakens a promise (a `holds` that stops holding, a looser
 bound, a changed requirement, a retirement) carries an amendment naming the owner's
-decision. Ask the owner before writing one; never weaken a promise to get a PR green. A route
-snapshot PR (`bot/server-route-snapshot`) that brings a new server module fails the check until a
-commit on it places the module.
+decision. Ask the owner before writing one; never weaken a promise to get a PR green. A new server
+route module fails the check on the route snapshot PR (`bot/server-route-snapshot`), which a
+server workflow rewrites on every merge: place the module in its own PR here first (a placed
+module the server does not serve yet is only a warning), then the snapshot goes green.
 
 Held by: `pnpm check:assurance`
 

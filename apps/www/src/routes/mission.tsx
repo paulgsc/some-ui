@@ -325,9 +325,9 @@ const Mission = (): JSX.Element => (
           ))}
         </dl>
         <p className="text-muted-foreground mt-10 max-w-2xl text-sm leading-relaxed text-pretty">
-          TypeScript and Rust in a single monorepo, behind one merge gate that
-          scopes its work to what actually changed — and one release path that
-          versions, builds, and signs everything above.
+          TypeScript and Rust in a single monorepo, with one check over every
+          pull request that scopes its work to what actually changed — and one
+          release path that versions, builds, and signs everything above.
         </p>
       </section>
 
