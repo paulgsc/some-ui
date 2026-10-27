@@ -10,13 +10,12 @@
  * the record: lost, it only means sending again, which home answers as
  * unchanged.
  */
-import type { KeyedStorage } from "@some-ui/core-utils"
+import type { KeyedStorage, Salvaged } from "@some-ui/core-utils"
 import {
   fnv1a,
   isRecord,
   jsonOf,
   openKept,
-  readWhole,
   writeKept,
 } from "@some-ui/core-utils"
 import type { HomeSession } from "@some-ui/leetype"
@@ -45,28 +44,43 @@ const emptyFor = (pairing: string): Sent => ({
   leetype: {},
 })
 
-function stringsOf(value: unknown): Record<string, string> {
-  if (!isRecord(value)) return {}
-  return Object.fromEntries(
-    Object.entries(value).filter(
-      (entry): entry is [string, string] => typeof entry[1] === "string"
-    )
+/** The string entries of `value`, and whether every entry was one. */
+function stringsOf(value: unknown): Salvaged<Record<string, string>> {
+  if (value === undefined) return { value: {}, whole: true }
+  if (!isRecord(value)) return { value: {}, whole: false }
+  const entries = Object.entries(value)
+  const kept = entries.filter(
+    (entry): entry is [string, string] => typeof entry[1] === "string"
   )
+  return {
+    value: Object.fromEntries(kept),
+    whole: kept.length === entries.length,
+  }
 }
 
-/** Each kind's map, entry by entry; a value that is not an object is moved aside. */
-const readSentRecord = readWhole((raw): Sent | null => {
+/**
+ * Each kind's map, entry by entry: a value that is not an object is moved
+ * aside, and so is one with a map or entry it could not read, before
+ * anything is written over it.
+ */
+function readSentRecord(raw: string): Salvaged<Sent> | null {
   const parsed = jsonOf(raw)
   if (!isRecord(parsed) || typeof parsed.pairing !== "string") return null
-  const { sessions, shelf, refused, leetype } = parsed
+  const sessions = stringsOf(parsed.sessions)
+  const shelf = stringsOf(parsed.shelf)
+  const refused = stringsOf(parsed.refused)
+  const leetype = stringsOf(parsed.leetype)
   return {
-    pairing: parsed.pairing,
-    sessions: stringsOf(sessions),
-    shelf: stringsOf(shelf),
-    refused: stringsOf(refused),
-    leetype: stringsOf(leetype),
+    value: {
+      pairing: parsed.pairing,
+      sessions: sessions.value,
+      shelf: shelf.value,
+      refused: refused.value,
+      leetype: leetype.value,
+    },
+    whole: [sessions, shelf, refused, leetype].every((kind) => kind.whole),
   }
-})
+}
 
 /** What this phone knows home holds under `pairing`; nothing, for another. */
 export function readSent(storage: Store, pairing: string): Sent {

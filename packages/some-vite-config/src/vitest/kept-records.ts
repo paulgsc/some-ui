@@ -48,6 +48,8 @@ export type KeptStore = {
   readonly area?: "localStorage" | "sessionStorage"
   /** A stored value in an older or foreign shape its reader rejects. */
   readonly older: string
+  /** A stored value it can read only in part (some entries, not all). */
+  readonly partly?: string
   /** Why a refused write lets this store's one record go, if it does. */
   readonly refusedWriteRemoves?: string
   /**
@@ -127,10 +129,14 @@ export function describeKeptRecords(
         expect(await readOn(store, storage)).toEqual(kept)
       })
 
-      it.each([
+      const unreadable: Array<[string, string]> = [
         ["not JSON", "{torn"],
         ["an older shape", store.older],
-      ])("loses no value that is %s", async (_, raw) => {
+      ]
+      if (store.partly !== undefined) {
+        unreadable.push(["only partly readable", store.partly])
+      }
+      it.each(unreadable)("loses no value that is %s", async (_, raw) => {
         const storage = memoryStorage([[store.key, raw]])
         const handle = await opened(store, storage)
         await handle.read()

@@ -170,6 +170,8 @@ const stores: ReadonlyArray<KeptStore> = [
     name: "what this phone sent home",
     key: "some-ui.home.sent.v1",
     older: '{"sessions":{"s1":"h1"}}',
+    partly:
+      '{"pairing":"p1","sessions":{"s1":{"hash":"older"}},"shelf":{},"refused":{},"leetype":{}}',
     open: (storage): KeptHandle => ({
       write: (): unknown =>
         rememberSent(storage, readSent(storage, "p1"), {
