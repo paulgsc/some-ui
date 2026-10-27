@@ -12,15 +12,14 @@ import { lawOf, LAWS } from "./laws"
 import {
   ended,
   exitLine,
-  exitWeek,
-  followed,
   hindsight,
   hindsightLine,
-  inSpreads,
   lightsOf,
+  lightTally,
   LUCK_WORDS,
   luckBand,
-  seasonSpreads,
+  pastExit,
+  seasonSoFar,
   spreadsOf,
   verdictOf,
 } from "./luck"
@@ -29,6 +28,7 @@ import {
   nameOf,
   percent,
   points,
+  signed,
   size,
   type StorySeason,
   type StoryWeek,
@@ -85,18 +85,16 @@ export function narration(
       return "Most fans ask one question: did we win? We ask two. Did following them pay this week? And is next week worth following?"
     }
     case "lights": {
-      const lights = lightsOf(week)
-      const own = lights.find((l) => l.result.kind === "own")
-      const league = lights.filter((l) => l.result.kind !== "own")
-      const made = league.filter((l) => l.made).length
+      const own = lightsOf(week).find((l) => l.result.kind === "own")
+      const { made, missed } = lightTally(week)
       const game = week.game
       const lead = own
         ? `Week ${week.week}: ${said(season, own.result.winner, own.result.loser)}. Their own light, ${points(own.result.leverage)} points.`
         : game
           ? `Week ${week.week}: the ${name} ${game.won ? "beat" : "lost to"} the ${n(game.opponent)}, which couldn't move them.`
           : `Week ${week.week} is a bye: only the league's lights.`
-      return league.length
-        ? `${lead} Of the league's ${counted(league.length, "result")} that could move us, ${made} went our way and ${league.length - made} didn't.`
+      return made + missed
+        ? `${lead} Of the league's ${counted(made + missed, "result")} that could move us, ${made} went our way and ${missed} didn't.`
         : `${lead} Nothing else in the league could move us.`
     }
     case "law": {
@@ -107,7 +105,7 @@ export function narration(
       const spreads = spreadsOf(week)
       const words = LUCK_WORDS[luckBand(spreads)]
       if (spreads === null) return `${words.big} ${words.line}`
-      return `${words.big} The league moved us ${points(share.league)} points. This week's results could move us about ${size(share.spread)}: that's ${inSpreads(spreads)} spreads.`
+      return `${words.big} The league moved us ${points(share.league)} points. This week's results could move us about ${size(share.spread)}: that's ${signed(spreads)} spreads.`
     }
     case "stake": {
       const stake = week.stake
@@ -125,8 +123,8 @@ export function narration(
       return `Next week: ${ours}, and the whole week can move us about ${size(stake.spread)}.${root}`
     }
     case "verdict": {
-      const stopped = exitWeek(season)
-      if (stopped !== null && week.week > stopped) {
+      const stopped = pastExit(season, week)
+      if (stopped !== null) {
         const h = hindsight(season)
         return `We stopped following after week ${stopped}.${h ? ` ${hindsightLine(h)}` : ""}`
       }
@@ -136,15 +134,12 @@ export function narration(
         : `Verdict: we stop here. ${exitLine(v.why)}`
     }
     case "season": {
-      const weeks = followed(season, week)
-      const spreads = seasonSpreads(weeks)
-      const lit = weeks.flatMap(lightsOf)
-      const made = lit.filter((l) => l.made).length
+      const so = seasonSoFar(season, week)
       const luck =
-        spreads === null
+        so.spreads === null
           ? "nothing elsewhere could move us"
-          : `the league's luck adds up to ${inSpreads(spreads)} spreads`
-      return `Over ${counted(weeks.length, "week")} followed, ${luck}. ${made} of ${counted(lit.length, "light")} made.`
+          : `the league's luck adds up to ${signed(so.spreads)} spreads`
+      return `Over ${counted(so.weeks.length, "week")} followed, ${luck}. ${so.made} of ${counted(so.lights, "light")} made.`
     }
     case "outro": {
       return ended(season, week)

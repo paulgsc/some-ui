@@ -4,7 +4,6 @@ import {
   followed,
   hindsight,
   hindsightLine,
-  inSpreads,
   lightsOf,
   LUCK_DEFINED,
   LUCK_WORDS,
@@ -85,12 +84,6 @@ describe("luckBand", () => {
   ] as const)("%s spreads: %s", (spreads, band) => {
     expect(luckBand(spreads)).toBe(band)
   })
-
-  it("signs spreads after rounding", () => {
-    expect(inSpreads(1.24)).toBe("+1.2")
-    expect(inSpreads(-0.4)).toBe("−0.4")
-    expect(inSpreads(-0.01)).toBe("0.0")
-  })
 })
 
 describe("verdictOf", () => {
@@ -147,11 +140,17 @@ describe("the series on the bundled 2025 season", () => {
     )
   })
 
-  it("adds weeks' luck as a fair game's: changes over the root of summed variances", () => {
-    const weeks = followed(SAMPLE_SEASON, week(18))
-    const change = weeks.reduce((s, w) => s + w.share.league, 0)
-    const variance = weeks.reduce((s, w) => s + w.share.spread ** 2, 0)
-    expect(seasonSpreads(weeks)).toBeCloseTo(change / Math.sqrt(variance), 12)
+  it("adds weeks' luck as a fair game's: their variances add", () => {
+    const two = [week(2), week(3)].map((w, i) => ({
+      ...w,
+      share: {
+        ...w.share,
+        league: [0.03, 0.04][i] ?? 0,
+        spread: [0.03, 0.04][i] ?? 0,
+      },
+    }))
+    // (0.03 + 0.04) / √(0.03² + 0.04²) = 0.07 / 0.05
+    expect(seasonSpreads(two)).toBeCloseTo(1.4, 12)
     expect(seasonSpreads([])).toBeNull()
   })
 

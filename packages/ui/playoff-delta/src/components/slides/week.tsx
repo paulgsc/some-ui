@@ -1,10 +1,11 @@
 import type { CSSProperties, JSX } from "react"
 import {
-  inSpreads,
   lightsOf,
+  lightTally,
   LUCK_DEFINED,
   LUCK_WORDS,
   luckBand,
+  SPREADS_SHOWN,
   spreadsOf,
 } from "@playoff-delta/lib/luck"
 import { MODEL } from "@playoff-delta/lib/slides"
@@ -12,6 +13,7 @@ import {
   blewIt,
   calls,
   points,
+  signed,
   size,
   type StoryResult,
 } from "@playoff-delta/lib/story"
@@ -24,8 +26,7 @@ const diameter = (r: StoryResult, scale: number): string =>
 
 export const Lights = ({ season, week }: SlideProps): JSX.Element => {
   const lights = lightsOf(week)
-  const league = lights.filter((l) => l.result.kind !== "own")
-  const made = league.filter((l) => l.made).length
+  const { made, missed } = lightTally(week)
   const scale = Math.max(...lights.map((l) => Math.abs(l.result.leverage)), 0)
   const called = calls(season, week)
   const wasCalled = (r: StoryResult): boolean =>
@@ -34,8 +35,8 @@ export const Lights = ({ season, week }: SlideProps): JSX.Element => {
     <>
       <Kicker>Week {week.week} · the lights</Kicker>
       <h2 className="pd-q">
-        {league.length
-          ? `${made} made, ${league.length - made} missed.`
+        {made + missed
+          ? `${made} made, ${missed} missed.`
           : "Nothing else could move us."}
       </h2>
       <div className="pd-lights">
@@ -88,19 +89,17 @@ export const Lights = ({ season, week }: SlideProps): JSX.Element => {
   )
 }
 
-/** Spreads the scale shows either side of zero. */
-const REACH = 3
-
-/** A number line in spreads, from −3 to +3, with the week's mark on it. */
+/** A number line in spreads, with the week's mark on it, stopping at the edge. */
 const Scale = ({ spreads }: { spreads: number }): JSX.Element => {
-  const at = Math.max(-REACH, Math.min(REACH, spreads))
-  const left = (x: number): string => `${((x + REACH) / (2 * REACH)) * 100}%`
+  const reach = SPREADS_SHOWN
+  const at = Math.max(-reach, Math.min(reach, spreads))
+  const left = (x: number): string => `${((x + reach) / (2 * reach)) * 100}%`
   return (
-    <div className="pd-scale" aria-label={`${inSpreads(spreads)} spreads`}>
+    <div className="pd-scale" aria-label={`${signed(spreads)} spreads`}>
       {[-2, -1, 0, 1, 2].map((x) => (
         <span key={x} className="pd-scale__tick" style={{ left: left(x) }}>
           <span className="pd-mono text-muted-foreground text-[2.4cqw]">
-            {x === 0 ? "0" : inSpreads(x)}
+            {x === 0 ? "0" : signed(x)}
           </span>
         </span>
       ))}
@@ -138,7 +137,7 @@ export const Luck = ({ season, week }: SlideProps): JSX.Element => {
             </span>
             <span>a usual week ±{size(share.spread)}</span>
             <span>
-              <b>{inSpreads(spreads)}</b> spreads
+              <b>{signed(spreads)}</b> spreads
             </span>
           </Reveal>
         </>

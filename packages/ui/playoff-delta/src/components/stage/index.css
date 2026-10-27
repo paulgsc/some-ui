@@ -262,7 +262,6 @@
     outline-offset: 0.6cqw;
   }
 
-  /* Luck on a number line in spreads, -3 to +3, its mark sliding in. */
   .pd-scale {
     border-top: 0.4cqw solid var(--border);
     height: 9cqw;
@@ -374,14 +373,14 @@
     transform-origin: left;
   }
 
-  /* The share against the ends where following stops: SETTLED of the way
-     in from each side, shaded. */
+  /* The share against the ends where following stops, --settled in from
+     each side, shaded. */
   .pd-bar--settled {
     background: linear-gradient(
       90deg,
-      var(--border) 2%,
-      var(--muted) 2% 98%,
-      var(--border) 98%
+      var(--border) var(--settled),
+      var(--muted) var(--settled) calc(100% - var(--settled)),
+      var(--border) calc(100% - var(--settled))
     );
   }
 

@@ -4,7 +4,6 @@ import {
   blewIt,
   calls,
   points,
-  wayIn,
   type StoryResult,
   type StorySeason,
   type StoryWeek,
@@ -23,18 +22,6 @@ const result = (over: Partial<StoryResult>): StoryResult => ({
   kind: "inside",
   leverage: 0,
   ...over,
-})
-
-describe("wayIn", () => {
-  const shaped = (after: Array<number | null>): StoryWeek => ({
-    ...week(2),
-    paths: { ...week(2).paths, after },
-  })
-
-  it("is any seed in the row after the week", () => {
-    expect(wayIn(shaped([null, 6]))).toBe(true)
-    expect(wayIn(shaped([null, null]))).toBe(false)
-  })
 })
 
 describe("points", () => {

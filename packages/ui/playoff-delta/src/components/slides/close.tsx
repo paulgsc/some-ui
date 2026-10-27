@@ -1,21 +1,25 @@
-import type { JSX } from "react"
+import type { CSSProperties, JSX } from "react"
 import {
   ended,
   exitLine,
-  exitWeek,
-  followed,
   hindsight,
   hindsightLine,
-  inSpreads,
-  lightsOf,
   LUCK_WORDS,
   luckBand,
-  seasonSpreads,
+  pastExit,
+  seasonSoFar,
   SETTLED,
+  SPREADS_SHOWN,
   spreadsOf,
   verdictOf,
 } from "@playoff-delta/lib/luck"
-import { against, nameOf, percent, size } from "@playoff-delta/lib/story"
+import {
+  against,
+  nameOf,
+  percent,
+  signed,
+  size,
+} from "@playoff-delta/lib/story"
 import { counted } from "@some-ui/core-utils"
 
 import { delay, Kicker, Reveal, type SlideProps } from "./shared"
@@ -74,22 +78,27 @@ export const Stake = ({ season, week }: SlideProps): JSX.Element => {
 }
 
 /** The share as a bar, with the ends where following stops marked. */
-const ShareBar = ({ share }: { share: number }): JSX.Element => (
-  <div className="flex flex-col gap-[1cqw]">
-    <div className="pd-bar pd-bar--settled">
-      <i style={{ ...delay(0.5), width: `${share * 100}%` }} />
+const ShareBar = ({ share }: { share: number }): JSX.Element => {
+  const settled: CSSProperties & Record<"--settled", string> = {
+    "--settled": `${SETTLED * 100}%`,
+  }
+  return (
+    <div className="flex flex-col gap-[1cqw]">
+      <div className="pd-bar pd-bar--settled" style={settled}>
+        <i style={{ ...delay(0.5), width: `${share * 100}%` }} />
+      </div>
+      <div className="pd-mono text-muted-foreground flex justify-between text-[2.4cqw]">
+        <span>{percent(SETTLED)}</span>
+        <span>{percent(1 - SETTLED)}</span>
+      </div>
     </div>
-    <div className="pd-mono text-muted-foreground flex justify-between text-[2.4cqw]">
-      <span>{percent(SETTLED)}</span>
-      <span>{percent(1 - SETTLED)}</span>
-    </div>
-  </div>
-)
+  )
+}
 
 export const Verdict = ({ season, week }: SlideProps): JSX.Element => {
-  const stopped = exitWeek(season)
   const v = verdictOf(week)
-  if (stopped !== null && week.week > stopped) {
+  const stopped = pastExit(season, week)
+  if (stopped !== null) {
     const h = hindsight(season)
     return (
       <>
@@ -134,14 +143,8 @@ export const Verdict = ({ season, week }: SlideProps): JSX.Element => {
   )
 }
 
-/** Spreads a week's column reaches at full height. */
-const REACH = 3
-
 export const Season = ({ season, week }: SlideProps): JSX.Element => {
-  const weeks = followed(season, week)
-  const spreads = seasonSpreads(weeks)
-  const lit = weeks.flatMap(lightsOf)
-  const made = lit.filter((l) => l.made).length
+  const { weeks, spreads, lights, made } = seasonSoFar(season, week)
   return (
     <>
       <Kicker>The season so far</Kicker>
@@ -150,13 +153,13 @@ export const Season = ({ season, week }: SlideProps): JSX.Element => {
         <span className="pd-say text-muted-foreground">
           {spreads === null
             ? "Nothing elsewhere could move us."
-            : `${inSpreads(spreads)} spreads over ${counted(weeks.length, "week")} followed`}
+            : `${signed(spreads)} spreads over ${counted(weeks.length, "week")} followed`}
         </span>
       </div>
       <div className="pd-strip" aria-hidden="true">
         {weeks.map((w, i) => {
           const z = spreadsOf(w) ?? 0
-          const height = `${(Math.min(Math.abs(z), REACH) / REACH) * 50}%`
+          const height = `${(Math.min(Math.abs(z), SPREADS_SHOWN) / SPREADS_SHOWN) * 50}%`
           return (
             <div key={w.week} className="pd-strip__week">
               <div className="pd-strip__bars">
@@ -173,7 +176,7 @@ export const Season = ({ season, week }: SlideProps): JSX.Element => {
         })}
       </div>
       <Reveal at={1.6} className="pd-say">
-        <b>{made}</b> of {counted(lit.length, "light")} made
+        <b>{made}</b> of {counted(lights, "light")} made
       </Reveal>
       <Reveal at={2} className="pd-small text-muted-foreground">
         Each week, luck averages zero. Over many weeks, the total in spreads

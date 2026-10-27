@@ -76,7 +76,6 @@ export function luckBand(spreads: number | null): LuckBand {
   return "usual"
 }
 
-/** What each band says: the big word, and the line under it. */
 export const LUCK_WORDS: Readonly<
   Record<LuckBand, { readonly big: string; readonly line: string }>
 > = {
@@ -136,10 +135,10 @@ export function exitLine(why: ExitReason): string {
       return "No way in is left."
     }
     case "settled-in": {
-      return `At least ${100 - SETTLED * 100}% of the ways the season can go get them in. Past that, we stop following.`
+      return `At least ${percent(1 - SETTLED)} of the ways the season can go get them in. Past that, we stop following.`
     }
     case "settled-out": {
-      return `At most ${SETTLED * 100}% of the ways the season can go get them in. Below that, we stop following.`
+      return `At most ${percent(SETTLED)} of the ways the season can go get them in. Below that, we stop following.`
     }
     default: {
       return assertNever(why)
@@ -147,15 +146,30 @@ export function exitLine(why: ExitReason): string {
   }
 }
 
-/** The week the series ended, its first exit; null while it runs. */
-export function exitWeek(season: StorySeason): number | null {
-  return season.weeks.find((w) => verdictOf(w).kind === "exit")?.week ?? null
+/** The series' first exit, which ends it; null while it runs. */
+function firstExit(
+  season: StorySeason
+): { readonly week: StoryWeek; readonly why: ExitReason } | null {
+  for (const week of season.weeks) {
+    const v = verdictOf(week)
+    if (v.kind === "exit") return { week, why: v.why }
+  }
+  return null
 }
 
-/** Has the series ended by `week`: its exit is this week or earlier. */
+/** The week the series ended; null while it runs. */
+export const exitWeek = (season: StorySeason): number | null =>
+  firstExit(season)?.week.week ?? null
+
 export function ended(season: StorySeason, week: StoryWeek): boolean {
   const stopped = exitWeek(season)
   return stopped !== null && stopped <= week.week
+}
+
+/** The week the series ended on, when `week` comes after it; null otherwise. */
+export function pastExit(season: StorySeason, week: StoryWeek): number | null {
+  const stopped = exitWeek(season)
+  return stopped !== null && week.week > stopped ? stopped : null
 }
 
 /** The weeks followed up to `week`: through the exit, never past it. */
@@ -165,6 +179,16 @@ export function followed(
 ): ReadonlyArray<StoryWeek> {
   const last = Math.min(week.week, exitWeek(season) ?? week.week)
   return season.weeks.filter((w) => w.week <= last)
+}
+
+/** The league's lights this week, made and missed. */
+export function lightTally(week: StoryWeek): {
+  readonly made: number
+  readonly missed: number
+} {
+  const league = lightsOf(week).filter((l) => l.result.kind !== "own")
+  const made = league.filter((l) => l.made).length
+  return { made, missed: league.length - made }
 }
 
 /**
@@ -178,11 +202,33 @@ export function seasonSpreads(weeks: ReadonlyArray<StoryWeek>): number | null {
   return variance > 0 ? change / Math.sqrt(variance) : null
 }
 
+/** The season so far, through `week` or the exit: its luck and its lights. */
+export function seasonSoFar(
+  season: StorySeason,
+  week: StoryWeek
+): {
+  readonly weeks: ReadonlyArray<StoryWeek>
+  readonly spreads: number | null
+  readonly lights: number
+  readonly made: number
+} {
+  const weeks = followed(season, week)
+  const lit = weeks.flatMap(lightsOf)
+  return {
+    weeks,
+    spreads: seasonSpreads(weeks),
+    lights: lit.length,
+    made: lit.filter((l) => l.made).length,
+  }
+}
+
+/** Spreads either side of zero a slide draws before it stops at the edge. */
+export const SPREADS_SHOWN = 3
+
 export type Hindsight = {
   readonly stopped: number
   readonly share: number
   readonly reason: ExitReason
-  /** Did the team get in, the season over. */
   readonly gotIn: boolean
 }
 
@@ -193,16 +239,13 @@ export type Hindsight = {
  */
 export function hindsight(season: StorySeason): Hindsight | null {
   const last = season.weeks.at(-1)
-  const stopped = exitWeek(season)
-  if (last?.stake !== null || stopped === null || stopped === last.week)
+  const exit = firstExit(season)
+  if (last?.stake !== null || exit === null || exit.week.week === last.week)
     return null
-  const at = season.weeks.find((w) => w.week === stopped)
-  const verdict = at ? verdictOf(at) : null
-  if (!at || verdict?.kind !== "exit") return null
   return {
-    stopped,
-    share: at.share.after,
-    reason: verdict.why,
+    stopped: exit.week.week,
+    share: exit.week.share.after,
+    reason: exit.why,
     gotIn: last.share.after === 1,
   }
 }
@@ -215,11 +258,4 @@ export function hindsightLine(h: Hindsight): string {
   return h.gotIn
     ? `They got in. The ${percent(h.share)} of ways in left after week ${h.stopped} is what happened.`
     : `They missed. The ${percent(1 - h.share)} of ways out left after week ${h.stopped} is what happened.`
-}
-
-/** A number of spreads, signed: "+1.2", "−0.4", "0.0". */
-export function inSpreads(spreads: number): string {
-  const size = Math.abs(spreads).toFixed(1)
-  if (size === "0.0") return size
-  return `${spreads < 0 ? "−" : "+"}${size}`
 }

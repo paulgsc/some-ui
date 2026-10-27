@@ -10,8 +10,7 @@
  * better (`paths[x]`, null: none). The "share" is the share of the ways the
  * rest of the season can go in which the team gets in; a result's
  * "leverage" the share as it went minus the share had it gone the other way;
- * a week's "spread" how far its results could have moved the share (their
- * standard deviation over the ways they could have gone).
+ * a week's "spread" how far its results could have moved the share.
  */
 
 import { z } from "zod"
@@ -137,11 +136,15 @@ export function signOf(change: number): -1 | 0 | 1 {
   return change > 0 ? 1 : -1
 }
 
-/** A change in share as signed points: "+9.3", "−2.9", "0.0". */
-export function points(change: number): string {
-  const sign = signOf(change)
-  return sign === 0 ? "0.0" : `${sign > 0 ? "+" : "−"}${size(change)}`
+/** A number to one place, signed after rounding: "+9.3", "−2.9", "0.0". */
+export function signed(x: number): string {
+  const abs = Math.abs(x).toFixed(1)
+  if (abs === "0.0") return abs
+  return `${x < 0 ? "−" : "+"}${abs}`
 }
+
+/** A change in share as signed points: "+9.3", "−2.9", "0.0". */
+export const points = (change: number): string => signed(change * 100)
 
 /** The side of a next-week game the call roots against. */
 export const against = (g: StoryWeek["next"][number]): string =>
