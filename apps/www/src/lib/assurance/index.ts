@@ -106,7 +106,7 @@ export function assurancePageOf(ledger: Ledger, commit: string): AssurancePage {
       tally[o.verdict] += 1
       if (o.watch.by === "alert") alerting += 1
       if (o.watch.by === "dashboard") dashboardOnly += 1
-      // GC1, "A failing check stops a merge": the page's own limit.
+      // GC1, "A failing required check stops a merge": the page's own limit.
       if (o.id === "GC1") mergesBlocked = o.verdict === "holds"
     }
     const ordered = [...live].sort(

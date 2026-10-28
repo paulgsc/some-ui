@@ -671,7 +671,7 @@
             {
               "class": "measured",
               "says": "GET /repos/paulgsc/{some-ui,server}/rules/branches/main on 2026-10-28 required CI Gate in some-ui and the five named checks in the server.",
-              "ref": "some-ui#2211"
+              "ref": "https://github.com/paulgsc/some-ui/issues/2211#issuecomment-6483420143"
             },
             {
               "class": "structural",
@@ -692,7 +692,7 @@
             }
           ],
           "proof": [
-            "some-ui:scripts/check-branch-rules.ts#readBranchRules",
+            "some-ui:packages/assurance/src/branch-rules.ts#readBranchRules",
             "some-ui:packages/assurance/src/__tests__/branch-rules.test.ts#names each check main no longer requires"
           ]
         },
@@ -793,7 +793,8 @@
       "why": "An error on home that nobody hears of is a failure that is silent, however loudly it was logged; and a home that errors every time it is used is not working, even when each request answers.",
       "paths": [
         "server:apps/servers/file_host/src/metrics/observability.rs",
-        "server:infra/grafana/provisioning/alerting/file-host-errors.yml"
+        "server:infra/grafana/provisioning/alerting/file-host-errors.yml",
+        "server:infra/prometheus/prometheus.yml"
       ],
       "modules": [],
       "objectives": [
@@ -804,11 +805,11 @@
           "claim": "An error on home is never silent: it reaches you, named by what failed, and a record of it outlasts the session that saw it.",
           "requirement": "Every ERROR-level event on home is counted by its target and its name; an alert reaches the owner within 15 minutes and says what failed, its delivery tested; and a sanitised record, one open issue per fingerprint updated in place and holding no field value, survives for the next session.",
           "verdict": "broken",
-          "conclusion": "Home counts every error and alerts per module, but the count keeps only the module, so an alert cannot say what failed; nothing shows the alert reaches you, and nothing keeps a record past the session that saw it.",
+          "conclusion": "Home counts every error its log filter passes once tracing is up, and alerts per module, but the count keeps only the module, so an alert cannot say what failed; nothing shows the alert reaches you, and nothing keeps a record past the session that saw it.",
           "evidence": [
             {
               "class": "structural",
-              "says": "ErrorEventMetricsLayer counts every ERROR event into tracing_events_total by target alone.",
+              "says": "ErrorEventMetricsLayer counts every ERROR event the log filter passes into tracing_events_total, by target alone.",
               "ref": "server:apps/servers/file_host/src/metrics/observability.rs"
             },
             {
@@ -819,8 +820,8 @@
           ],
           "tracked": "server#546",
           "watch": {
-            "by": "alert",
-            "ref": "server:infra/grafana/provisioning/alerting/file-host-errors.yml"
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/lib/panels.libsonnet"
           },
           "amendments": []
         },
@@ -828,7 +829,7 @@
           "id": "ER2",
           "kind": "OA8",
           "property": "outcome",
-          "claim": "Home runs error-free: at least 99% of the hours in any 7 days have no error.",
+          "claim": "Home runs nearly error-free: at least 99% of the hours in any 7 days have no error.",
           "requirement": "Over every rolling 168 hours, at most 1% of hours hold an ERROR-level event on home, held by a rule proven to fire and an alert when the budget is spent.",
           "bound": {
             "value": 99,

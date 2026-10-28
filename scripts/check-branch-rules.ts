@@ -8,7 +8,7 @@
 // GitHub answers `rules/branches/main` for a public repository to anyone, but
 // the anonymous rate limit is per address and a shared runner's runs out, so
 // CI passes its token in GITHUB_TOKEN (as scripts/retention.ts reads it). A
-// 5xx or a lost answer is asked once more; an answer still missing fails as
+// 5xx or a lost answer is asked once more, after 2 s; an answer still missing fails as
 // unknown, never as a pass.
 
 // Relative imports on purpose: Node's type stripping resolves no path aliases.
@@ -22,6 +22,7 @@ import {
 
 const TIMEOUT_MS = 20_000
 const ATTEMPTS = 2
+const RETRY_AFTER_MS = 2_000
 
 const err = (line: string): void => void process.stderr.write(`${line}\n`)
 
@@ -29,6 +30,8 @@ async function rules(repo: string): Promise<unknown> {
   const token = process.env.GITHUB_TOKEN
   let last = ""
   for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+    if (attempt > 1)
+      await new Promise((resolve) => setTimeout(resolve, RETRY_AFTER_MS))
     try {
       const response = await fetch(
         `https://api.github.com/repos/${repo}/rules/branches/main`,
