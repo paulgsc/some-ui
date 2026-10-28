@@ -6682,7 +6682,7 @@
           {
             "home": "IND",
             "away": "SF",
-            "want": "IND",
+            "want": "SF",
             "price": 0.0,
             "error": 0.0
           }
@@ -7260,7 +7260,7 @@
             "away": "SF",
             "kind": "own",
             "winner": "SF",
-            "want": "IND",
+            "want": "SF",
             "price": 0.0,
             "error": 0.0
           }
@@ -7913,9 +7913,9 @@
               {
                 "home": "MIA",
                 "away": "TB",
-                "want": "MIA",
+                "want": "TB",
                 "price": 0.0,
-                "made": true
+                "made": false
               },
               {
                 "home": "CIN",
