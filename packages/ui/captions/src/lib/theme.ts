@@ -18,7 +18,6 @@ export type CaptionTheme = {
   readonly id: ThemeId
   readonly font: {
     readonly family: string
-    /** One of the weights the host page loads: 600 or 800. */
     readonly weight: 600 | 800
     /** At 1080x1920. */
     readonly sizePx: number

@@ -30,7 +30,8 @@ export type CaptionFrame =
       readonly layout: CaptionLayout
     }
 
-const clamp01 = (x: number): number => Math.max(0, Math.min(1, x))
+/** `x` held to the range 0 to 1. */
+export const clamp01 = (x: number): number => Math.max(0, Math.min(1, x))
 
 export function frameAt(
   captions: ReadonlyArray<Caption>,

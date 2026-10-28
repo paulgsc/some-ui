@@ -1,9 +1,9 @@
 /**
  * The preview's playback clock: the pure machine in `lib/clock`, driven over
  * two ports (the time now, and the next animation frame). It owns the one
- * pending frame, asks for the next only while playing, and drops it on pause
- * or stop, so no frame lands after the clock has stopped. The component reads
- * its snapshot and calls its methods; nothing here is React.
+ * pending frame, asks for the next only while playing, and drops it on pause,
+ * so no frame lands after the clock has stopped. The component reads its
+ * snapshot and calls its methods; nothing here is React.
  */
 
 import {
@@ -27,8 +27,6 @@ export type Clock = {
   readonly play: (durationMs: number) => void
   readonly pause: () => void
   readonly seek: (atMs: number, durationMs: number) => void
-  /** Stops playing and drops the pending frame. */
-  readonly stop: () => void
 }
 
 export function createClock(ports: ClockPorts, initialAtMs = 0): Clock {
@@ -68,7 +66,6 @@ export function createClock(ports: ClockPorts, initialAtMs = 0): Clock {
     pause: () => dispatch({ type: "pause", now: ports.now() }),
     seek: (atMs, durationMs) =>
       dispatch({ type: "seek", atMs, now: ports.now(), durationMs }),
-    stop: () => dispatch({ type: "pause", now: ports.now() }),
   }
 }
 

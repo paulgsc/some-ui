@@ -56,13 +56,4 @@ describe("the clock runtime", () => {
     expect(told).toBe(2)
     unsubscribe()
   })
-
-  it("drops the pending frame when stopped", () => {
-    const ports = fakePorts()
-    const clock = createClock(ports)
-    clock.play(1000)
-    clock.stop()
-    expect(ports.pending()).toBe(0)
-    expect(clock.getSnapshot().playing).toBe(false)
-  })
 })

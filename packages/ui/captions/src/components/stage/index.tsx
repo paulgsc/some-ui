@@ -1,6 +1,6 @@
 import type { CSSProperties, JSX } from "react"
 import type { CaptionFrame } from "@captions/lib/frame"
-import { popLook } from "@captions/lib/frame"
+import { clamp01, popLook } from "@captions/lib/frame"
 import { FRAME, SAFE_AREA, type Box } from "@captions/lib/layout"
 import type { CaptionTheme } from "@captions/lib/theme"
 
@@ -18,7 +18,7 @@ const placed = (box: Box): CSSProperties => ({
 
 /** A colour with an opacity, as #rrggbbaa. */
 const withAlpha = (hex: string, opacity: number): string =>
-  `${hex}${Math.round(Math.max(0, Math.min(1, opacity)) * 255)
+  `${hex}${Math.round(clamp01(opacity) * 255)
     .toString(16)
     .padStart(2, "0")}`
 

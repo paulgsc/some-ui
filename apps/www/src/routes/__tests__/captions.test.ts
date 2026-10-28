@@ -1,7 +1,7 @@
 /**
- * `/captions` reads where the preview opens from the URL: `?theme` as a
- * look's name and `?at` as whole milliseconds. Anything else is dropped, so
- * a mistyped link opens the default look at the start.
+ * `/captions` reads where the preview opens from the URL: `?theme` as text
+ * (the preview opens an unknown look on the default) and `?at` as whole
+ * milliseconds. Anything else is dropped.
  */
 
 import { Route } from "@/routes/captions"
@@ -22,8 +22,8 @@ describe("/captions' search", () => {
     expect(read({ at: 0 })).toEqual({ at: 0 })
   })
 
-  it("drops what is not a name or a whole time", () => {
-    expect(read({ theme: "<b>", at: "-1" })).toEqual({})
+  it("drops what is not text or a whole time", () => {
+    expect(read({ at: "-1" })).toEqual({})
     expect(read({ theme: 3, at: 2.5 })).toEqual({})
     expect(read({})).toEqual({})
   })

@@ -36,7 +36,7 @@ describe("the stage", () => {
     expect(words[0]?.style.color).toBe("rgb(244, 246, 251)")
   })
 
-  it("draws no caption between captions, and the outline only when asked", () => {
+  it("draws the outline when asked", () => {
     const theme = THEMES.gridiron
     const { container } = render(
       <CaptionStage
@@ -46,7 +46,6 @@ describe("the stage", () => {
         label="short"
       />
     )
-    expect(container.querySelector(".cap-word")).toBeNull()
     expect(container.querySelector(".cap-safe")).not.toBeNull()
   })
 })

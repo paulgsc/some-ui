@@ -2,32 +2,23 @@ import type { JSX } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 
 import { VIEWER_BUILD } from "@/lib/data-mode"
+import { wholeNumber } from "@/lib/search-params"
 import { CaptionsPreview } from "@/lib/web-surface"
 import { ViewerStrip } from "@/components/provenance-strip"
 
 /**
- * The shorts' subtitles preview (GWB11): where the owner tunes the look the
- * renderer burns into each short, on sample lines. Standalone (the
- * `mission.tsx` archetype), so no shell sits beside the frame. `?theme` and
- * `?at` (milliseconds into the sample) say where it opens. A viewer of the
- * Pages build gets the viewer strip above it. Web only: the preview comes
- * through the web surface's door, and the Android app's surface guard keeps
- * the phone off this path.
+ * The subtitles preview (GWB11). `?theme` names the look it opens on (the
+ * preview falls back to the default for an unknown one) and `?at` how far
+ * into the sample, in milliseconds.
  */
 
 type CaptionsSearch = { theme?: string; at?: number }
 
 function validateSearch(search: Record<string, unknown>): CaptionsSearch {
-  const { theme, at } = search
-  const ms =
-    typeof at === "number"
-      ? at
-      : typeof at === "string" && /^\d+$/.test(at)
-        ? Number(at)
-        : Number.NaN
+  const at = wholeNumber(search.at)
   return {
-    ...(typeof theme === "string" && /^[a-z-]+$/.test(theme) ? { theme } : {}),
-    ...(Number.isInteger(ms) && ms >= 0 ? { at: ms } : {}),
+    ...(typeof search.theme === "string" ? { theme: search.theme } : {}),
+    ...(at === undefined ? {} : { at }),
   }
 }
 

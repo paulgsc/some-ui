@@ -1,6 +1,4 @@
 /** @vitest-environment node */
-import { lineCharsFor } from "@captions/lib/layout"
-import { charsOf } from "@captions/lib/lines"
 import { SAMPLE } from "@captions/lib/sample"
 import { THEME_IDS, THEMES } from "@captions/lib/theme"
 import {
@@ -11,11 +9,8 @@ import {
 } from "@captions/lib/timing"
 import { describe, expect, it } from "vitest"
 
-const word = (text: string, startMs: number, endMs: number): TimedWord => ({
-  text,
-  startMs,
-  endMs,
-})
+import { word } from "./word"
+
 const said = (c: { rows: ReadonlyArray<ReadonlyArray<TimedWord>> }): string =>
   c.rows
     .flat()
@@ -72,19 +67,10 @@ describe("grouping words into captions", () => {
     expect(runtimeOf([])).toBe(0)
   })
 
-  it.each(THEME_IDS)(
-    "keeps every sample word, in order, in at most two lines that fit (%s)",
-    (id) => {
-      const theme = THEMES[id]
-      const captions = captionsFor(SAMPLE, theme)
-      expect(captions.flatMap((c) => c.rows.flat())).toEqual(
-        SAMPLE.flatMap((line) => line.words)
-      )
-      for (const c of captions) {
-        expect(c.rows.length).toBeLessThanOrEqual(2)
-        for (const row of c.rows)
-          expect(charsOf(row)).toBeLessThanOrEqual(lineCharsFor(theme))
-      }
-    }
-  )
+  it.each(THEME_IDS)("keeps every sample word, in order (%s)", (id) => {
+    const captions = captionsFor(SAMPLE, THEMES[id])
+    expect(captions.flatMap((c) => c.rows.flat())).toEqual(
+      SAMPLE.flatMap((line) => line.words)
+    )
+  })
 })

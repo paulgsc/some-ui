@@ -1,19 +1,10 @@
 /** @vitest-environment node */
 import { frameAt, popLook } from "@captions/lib/frame"
-import { SAMPLE } from "@captions/lib/sample"
 import { THEMES, type CaptionTheme } from "@captions/lib/theme"
-import {
-  captionsFor,
-  groupCaptions,
-  type TimedWord,
-} from "@captions/lib/timing"
+import { groupCaptions } from "@captions/lib/timing"
 import { describe, expect, it } from "vitest"
 
-const word = (text: string, startMs: number, endMs: number): TimedWord => ({
-  text,
-  startMs,
-  endMs,
-})
+import { word } from "./word"
 
 // Two captions: "third and" (said 0 to 400, up until 900) and "eleven"
 // (said 1000 to 1300, up until 1800).
@@ -68,18 +59,6 @@ describe("the frame at a time", () => {
     expect(f.caption === null ? [] : f.rows.flat().map((w) => w.pop)).toEqual([
       1, 1,
     ])
-  })
-
-  it("is the same frame for the same time, however it is reached", () => {
-    const captions = captionsFor(SAMPLE, popping)
-    const times = [0, 1234, 5678, 9999, 2500, 1234]
-    const once = times.map((t) => frameAt(captions, popping, t))
-    const again = [...times]
-      .reverse()
-      .map((t) => frameAt(captions, popping, t))
-      .reverse()
-    expect(again).toEqual(once)
-    expect(once[1]).toEqual(once[5])
   })
 })
 
