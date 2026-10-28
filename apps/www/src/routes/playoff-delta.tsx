@@ -2,6 +2,7 @@ import type { JSX } from "react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
 import { VIEWER_BUILD } from "@/lib/data-mode"
+import { wholeNumber } from "@/lib/search-params"
 import { PlayoffDeltaStage } from "@/lib/web-surface"
 import { ViewerStrip } from "@/components/provenance-strip"
 
@@ -17,16 +18,6 @@ type PlayoffDeltaSearch = {
   week?: number
   slide?: number
   record?: boolean
-}
-
-const wholeNumber = (value: unknown): number | undefined => {
-  const n =
-    typeof value === "number"
-      ? value
-      : typeof value === "string" && /^\d+$/.test(value)
-        ? Number(value)
-        : Number.NaN
-  return Number.isInteger(n) && n >= 0 ? n : undefined
 }
 
 function validateSearch(search: Record<string, unknown>): PlayoffDeltaSearch {

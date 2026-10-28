@@ -4,13 +4,15 @@ import type { ComponentRegistry } from "@some-ui/types"
 
 import { hasAudience } from "@/lib/build-profile"
 
+import type { CaptionsPreviewProps } from "./captions/preview"
 import type { LiveStageProps } from "./playoff-delta/stage"
 
 /**
  * The web surface's door (`doors` in build.profiles.ts): the one place
  * outside a gated route that may import a "web"-audience workspace, today
- * `@some-ui/honeycomb` and `@some-ui/playoff-delta`. What only the web has reaches shared code (the
- * session player, the extensions page) through here, and the Android app's
+ * `@some-ui/honeycomb`, `@some-ui/playoff-delta` and `@some-ui/captions`.
+ * What only the web has reaches shared code (the session player, the
+ * extensions page, a standalone page) through here, and the Android app's
  * build gets nothing.
  *
  *   A4  every export hands out a gated workspace only behind the guard
@@ -58,4 +60,15 @@ export const PlayoffDeltaStage: ComponentType<LiveStageProps> =
         () => import("./playoff-delta/stage"),
         "PlayoffDeltaLiveStage"
       ).Component
+    : Nothing
+
+/**
+ * The shorts' subtitles preview (`@some-ui/captions`, a desktop page for
+ * tuning the look the renderer records), with its font; nothing where the
+ * build has no web surface.
+ */
+export const CaptionsPreview: ComponentType<CaptionsPreviewProps> =
+  import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
+    ? lazyWithPreload(() => import("./captions/preview"), "CaptionsPreviewPage")
+        .Component
     : Nothing
