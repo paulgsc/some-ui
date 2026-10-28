@@ -1,5 +1,10 @@
 import type { BiteMoment, Said } from "@game-week/lib/bite"
-import { biteFields, line, MAX_LINE_CHARS } from "@game-week/lib/bite"
+import {
+  biteFields,
+  line,
+  MAX_LINE_CHARS,
+  pickedAfter,
+} from "@game-week/lib/bite"
 import { CATALOG_VERSION } from "@some-ui/game-scenarios"
 import { describe, expect, it } from "vitest"
 
@@ -38,11 +43,31 @@ describe("biteFields (GW4)", () => {
     })
   })
 
-  it("names the scenario exactly when not said first", () => {
+  it("names the scenario of every bite but one said first", () => {
     for (const said of SAYS) {
       const fields = biteFields(said, MOMENT, STARTED)
       expect("scenario" in fields).toBe(said.how !== "said-first")
     }
+  })
+
+  it("keeps a bite said first saying so when what it was about is picked after it", () => {
+    for (const picked of SAYS.slice(0, 3)) {
+      expect(pickedAfter(picked, MOMENT, STARTED)).toEqual({
+        ...biteFields(picked, MOMENT, STARTED),
+        how: "said-first",
+      })
+    }
+    expect(
+      pickedAfter(
+        { how: "offered", scenario: "in.third-long", context: "3rd & 9" },
+        MOMENT,
+        STARTED
+      )
+    ).toMatchObject({
+      how: "said-first",
+      scenario: "in.third-long",
+      context: "3rd & 9",
+    })
   })
 
   it("leaves out a context there was none of, an offer there was none of, and the offset", () => {

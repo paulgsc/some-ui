@@ -27,6 +27,14 @@ const bite = (id: string, holdUntil = T0 + 5_000): KeptBite => ({
   holdUntil,
 })
 
+/** What it was about, picked after it was said (paulgsc/server#536). */
+const PICKED = {
+  how: "said-first",
+  scenario: "in.third-long",
+  strip: "",
+  watching: "1",
+}
+
 function memoryStorage(refuse = false): KeyedStorage & {
   map: Map<string, string>
   refuse: boolean
@@ -77,10 +85,10 @@ describe("the record of game bites", () => {
     expect(
       stepGameBites(
         held,
-        { kind: "amended", id: "b1", fields: { how: "offered" }, holdUntil: 9 },
+        { kind: "amended", id: "b1", fields: PICKED, holdUntil: 9 },
         T0
       )
-    ).toEqual([{ ...bite("b1"), fields: { how: "offered" }, holdUntil: 9 }])
+    ).toEqual([{ ...bite("b1"), fields: PICKED, holdUntil: 9 }])
     expect(stepGameBites(held, { kind: "released", id: "b1" }, T0)).toEqual([
       { ...bite("b1"), holdUntil: T0 },
     ])
@@ -228,19 +236,54 @@ describe("createGameBites", () => {
       ...clock.ports,
     })
     const kept = store.keep(bite("b1", T0 + 600_000), new Blob(["x"]))
-    const answered = store.amend("b1", { how: "offered" }, T0 + 5_000)
+    const answered = store.amend("b1", PICKED, T0 + 5_000)
     await expect(kept).rejects.toThrow()
     await expect(answered).resolves.toBe("noted")
     storage.refuse = false
     await clock.show()
     expect(store.getSnapshot()).toEqual([
-      { ...bite("b1"), fields: { how: "offered" }, holdUntil: T0 + 5_000 },
+      { ...bite("b1"), fields: PICKED, holdUntil: T0 + 5_000 },
     ])
 
     storage.refuse = true
     await expect(store.keep(bite("b2"), new Blob(["y"]))).rejects.toThrow()
     await store.undo("b2")
     expect(store.unkept()).toBe(0)
+  })
+
+  // GB1 (promise, with packages/ui/game-week's machine table): the store
+  // keeps what a bite said first is amended with whole, so it stays
+  // `said-first` with or without the scenario picked after it, whether the
+  // keep landed or was refused and held to try again.
+  it("GB1: keeps an answered bite said first saying so, kept or held", async () => {
+    const answers = {
+      Later: bite("b1").fields,
+      "picked an offer card": { ...PICKED, seq: "41", context: "3rd & 9" },
+      "picked just happened": { ...PICKED, scenario: "in.big-play" },
+      "picked every scenario": { ...PICKED, scenario: "post.result" },
+    }
+    for (const refused of [false, true]) {
+      for (const fields of Object.values(answers)) {
+        const storage = memoryStorage(refused)
+        const clock = world()
+        const store = createGameBites({
+          storage,
+          shelf: memoryShelf(),
+          ...clock.ports,
+        })
+        await store
+          .keep(bite("b1", T0 + 600_000), new Blob(["x"]))
+          .catch(() => undefined)
+        await expect(store.amend("b1", fields, T0 + 5_000)).resolves.toBe(
+          "noted"
+        )
+        storage.refuse = false
+        await clock.show()
+        const kept = store.getSnapshot().map((each) => each.fields)
+        expect(kept).toEqual([fields])
+        expect(kept.map(({ how }) => how)).toEqual(["said-first"])
+      }
+    }
   })
 
   it("Undo throws away a bite it holds only while the bite's hold lasts", async () => {
@@ -271,9 +314,9 @@ describe("createGameBites", () => {
       })
       await store.keep(bite("b1"), new Blob(["x"])).catch(() => undefined)
       await clock.advance(5_000)
-      await expect(
-        store.amend("b1", { how: "offered" }, T0 + 10_000)
-      ).resolves.toBe("on-its-way")
+      await expect(store.amend("b1", PICKED, T0 + 10_000)).resolves.toBe(
+        "on-its-way"
+      )
       storage.refuse = false
       await clock.show()
       expect(store.getSnapshot()).toEqual([bite("b1")])

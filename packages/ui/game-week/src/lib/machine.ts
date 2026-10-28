@@ -26,8 +26,9 @@
  *   change it; the clock closes the question, leaving the bite said first
  *   and Later, and an answer that still arrives too late says so.
  * - **Every field is set at the stop** (GW4): `biteFields` from what the
- *   screen showed when talking started, or, for a scenario picked after
- *   saying it first, `pickedAfter` with the offer on screen at the stop.
+ *   screen showed when talking started. A pick after a bite said first
+ *   amends it with `pickedAfter`: the card picked, `seq` the offer on screen
+ *   at the stop, and `how` still `said-first` (GB1).
  * - **Nothing records while the page is gone.** Leaving, or the screen
  *   turning off, finishes a bite under way and keeps it; a microphone that
  *   opens after that is let go.
@@ -37,7 +38,7 @@ import type { RecordingFailure, Take } from "@some-ui/voice-capture"
 import { finishTake, openTake, stepTake } from "@some-ui/voice-capture"
 
 import type { BiteMoment, KeptBite, Said } from "./bite"
-import { biteFields } from "./bite"
+import { biteFields, pickedAfter } from "./bite"
 import type { Feed, Game, JustHappened, Offer, OfferCard } from "./feed"
 import type { ModeId } from "./modes"
 import { BITE_LIMITS, MODE_RULES, pregameFrom } from "./modes"
@@ -571,10 +572,11 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
         activity.offer === null || said.how === "every-scenario"
           ? activity.moment
           : { ...activity.moment, seq: activity.offer.seq }
+      // Picked after it was said: the bite still says it was said first.
       return settle(
         state,
         activity.bite,
-        biteFields(said, moment, activity.startedAt)
+        pickedAfter(said, moment, activity.startedAt)
       )
     }
 
