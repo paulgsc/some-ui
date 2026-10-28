@@ -499,10 +499,10 @@ function watched(
       watchDates,
       played: playedWith(state.played, merged),
       arriving: landed === "on its way" ? state.arriving : null,
-      stranded: skip
-        ? merged.videoId
-        : merged.videoId === state.stranded
-          ? state.stranded
+      // Stranded only while that page stays held: later evidence may show it.
+      stranded:
+        skip || (merged.videoId === state.stranded && view === "absent")
+          ? merged.videoId
           : null,
     },
     actions,

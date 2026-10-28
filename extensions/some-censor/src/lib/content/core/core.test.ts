@@ -962,6 +962,12 @@ describe("a page autoplay reached that is held (SK1)", () => {
     expect(again.state.stranded).toBeNull()
     const back = reduce(empty.state, watching("here", 7))
     expect(back.state.stranded, "the owner went back").toBeNull()
+    const shown = reduce(
+      empty.state,
+      watching("next", 7, { dates: ["3 hours ago"], title: "Next MV" })
+    )
+    expect(shown.state.watch?.view).toBe("whole")
+    expect(shown.state.stranded, "its title came later: it shows").toBeNull()
   })
 })
 
