@@ -7,15 +7,19 @@
  * mounts `useVoiceHome` on every screen, so notes go from any wing.
  */
 import { useEffect, useSyncExternalStore } from "react"
+import type { OutboxPort, OutboxView } from "@some-ui/game-week"
 
+import { phoneGameBites } from "@/lib/game-bites"
 import { phoneJobs } from "@/lib/jobs"
 import { reflections } from "@/lib/session-reflection"
 import { phoneVoiceHome } from "@/lib/voice-home"
-import type { Unsendable } from "@/lib/voice-home/model"
+import type { Unsendable, VoiceHomeState } from "@/lib/voice-home/model"
 
+import { phoneConsent } from "./consent-runtime"
+import { homeLink } from "./index"
 import type { KeptState } from "./kept-model"
 import type { Lane, LaneCounts } from "./lanes"
-import { useLaneHome } from "./lanes"
+import { keptNow, useLaneHome } from "./lanes"
 import {
   candidates,
   copyPasses,
@@ -34,10 +38,12 @@ export const voiceLane: Lane = {
   useCounts: (): LaneCounts => {
     const home = phoneVoiceHome()
     const state = useSyncExternalStore(home.subscribe, home.getSnapshot)
-    // Read so a reflection or Jobs note added renders the offer again.
+    // Read so a reflection, Jobs note or game bite added renders the offer again.
     useSyncExternalStore(reflections.subscribe, reflections.getSnapshot)
     const jobs = phoneJobs()
     useSyncExternalStore(jobs.subscribe, jobs.getSnapshot)
+    const bites = phoneGameBites()
+    useSyncExternalStore(bites.subscribe, bites.getSnapshot)
     const { gone } = useSyncExternalStore(
       copyPasses.subscribe,
       copyPasses.getSnapshot
@@ -82,4 +88,63 @@ export function useUnsendable(): Unsendable {
 export function useVoiceHome(): KeptState {
   useEffect(() => watchVoiceNotes(), [])
   return useLaneHome(voiceLane)
+}
+
+/*
+ * What of the game bites is still only on this phone (`@some-ui/game-week`'s
+ * `OutboxPort`), for the recorder to say in the person's terms: how many
+ * home does not hold yet, how many home said it can't take (each stays on
+ * this phone, its copy for home included), and whether this phone sends
+ * voice notes home at all. It reads, and sends nothing.
+ */
+
+/** The view from the bites' ids, what home answered, and whether they are sent. */
+export function outboxView(
+  ids: ReadonlyArray<string>,
+  home: VoiceHomeState,
+  sending: boolean
+): OutboxView {
+  const held = new Set(home.held)
+  const refused = new Set(home.refused.map(({ id }) => id))
+  return {
+    waiting: ids.filter((id) => !held.has(id) && !refused.has(id)).length,
+    refused: ids.filter((id) => refused.has(id)).length,
+    sending,
+  }
+}
+
+let last: OutboxView | null = null
+
+function sameView(a: OutboxView, b: OutboxView): boolean {
+  return (
+    a.waiting === b.waiting &&
+    a.refused === b.refused &&
+    a.sending === b.sending
+  )
+}
+
+export const gameOutbox: OutboxPort = {
+  getSnapshot(): OutboxView {
+    const next = outboxView(
+      phoneGameBites()
+        .getSnapshot()
+        .map(({ id }) => id),
+      phoneVoiceHome().getSnapshot(),
+      keptNow(VOICE_SCOPES)
+    )
+    // The same view while nothing changed, as `useSyncExternalStore` asks.
+    if (last === null || !sameView(last, next)) last = next
+    return last
+  },
+  subscribe(listener): () => void {
+    const stops = [
+      phoneGameBites().subscribe(listener),
+      phoneVoiceHome().subscribe(listener),
+      phoneConsent().subscribe(listener),
+      homeLink().subscribe(listener),
+    ]
+    return (): void => {
+      for (const stop of stops) stop()
+    }
+  },
 }

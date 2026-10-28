@@ -36,7 +36,9 @@ The wings:
   reminders.
 - **Self** (`/aph`): logging aph and reconciling it (below). One room, so no
   bar: aph's own strip (Log, History, Trend, Settings) is its navigation.
-- **Studio** (`/journal`): the Build Journal's voice takes. One room.
+- **Studio** (`/journal`): the Build Journal's voice takes, and **Game
+  day** (`/game-week`): a bite said while a game is on, kept on the phone
+  until home holds it. Its bar holds **Journal** and **Game day**.
 - **Jobs** (`/jobs`): the morning run's picks from Drive, worked through
   step by step (review, decide, résumé, apply, debrief), my own finds, and
   the record of each application. One room, so no bar: its strip (Today,
@@ -54,7 +56,7 @@ How that is enforced (www `src/lib/app-surface`, `src/lib/wings`):
 - `build:web` selects the `mobile` profile (`apps/www/build.profiles.ts`),
   which sets `MOBILE_APP` in the bundle.
 - `MOBILE_SURFACE` is an **allowlist**: `/foyer`, `/practice`, `/sessions`,
-  `/soundbites`, `/aph`, `/journal`, `/jobs` and `/settings`, typed against the route
+  `/soundbites`, `/aph`, `/journal`, `/game-week`, `/jobs` and `/settings`, typed against the route
   tree. (Also `/auth`, which the phone never shows since it is always signed
   in: should a device route ever answer 401, the account banner links there,
   and in this build it offers a reload, not a sign-in.) The root route

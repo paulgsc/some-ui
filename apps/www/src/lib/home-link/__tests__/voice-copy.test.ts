@@ -3,12 +3,14 @@
  * reflection by its session, and a Jobs note by the first event that names
  * it, with times that never move between tries (home takes a replay only as
  * it was first described), never one let go once its share arrived in
- * Drive; and what this phone can't send, by why (LA14). A scene note's stamp
- * is topik's `promptOfFile`.
+ * Drive; a game bite by its game, with every field it keeps; and what this
+ * phone can't send, by why (LA14). A scene note's stamp is topik's
+ * `promptOfFile`.
  */
 import { describe, expect, it } from "vitest"
 
 import {
+  gameNote,
   jobsNotes,
   reflectionNote,
   unsendable,
@@ -26,6 +28,28 @@ const voice = (id: string, owner = "draft"): VoiceNote => ({
 })
 
 describe("what each voice note is told home as", () => {
+  it("tells a game bite by its game and when it was kept, with every field it keeps", () => {
+    const fields = { how: "said-first", strip: "", watching: "1" }
+    expect(
+      gameNote({
+        id: "b1",
+        gameId: "401772981",
+        at: "2026-11-01T21:00:05.000Z",
+        contentType: "audio/webm;codecs=opus",
+        durationMs: 4000,
+        fields,
+        holdUntil: 0,
+      })
+    ).toEqual({
+      id: "b1",
+      of: "game",
+      ref: "401772981",
+      at: "2026-11-01T21:00:05.000Z",
+      contentType: "audio/webm;codecs=opus",
+      fields,
+    })
+  })
+
   it("tells a spoken reflection by its session and when it was said, and a written one not at all", () => {
     const spoken = {
       id: "r1",

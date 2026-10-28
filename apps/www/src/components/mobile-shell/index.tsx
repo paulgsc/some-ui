@@ -12,7 +12,7 @@ import type { ComponentType, JSX } from "react"
 import { cn } from "@some-ui/core-utils"
 import { BrandMark, HomeGlyph, StudyGlyph, TalkGlyph } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
-import { ChevronLeft, Settings } from "lucide-react"
+import { ChevronLeft, Clapperboard, Settings, Trophy } from "lucide-react"
 
 import { isOnMobileSurface } from "@/lib/app-surface"
 import { hasAudience } from "@/lib/build-profile"
@@ -24,6 +24,8 @@ const GLYPHS: Partial<Record<string, ComponentType<{ className?: string }>>> = {
   "practice-home": HomeGlyph,
   sessions: StudyGlyph,
   soundbites: TalkGlyph,
+  journal: Clapperboard,
+  "game-week": Trophy,
 }
 
 const TabLink = ({
@@ -74,7 +76,7 @@ export function barOf(pathname: string): ReadonlyArray<Room & { tab: string }> {
 }
 
 /**
- * The current wing's bar. A wing of one room (Self, Studio) has none: its
+ * The current wing's bar. A wing of one room (Self) has none: its
  * room's own views are the only navigation it needs. Outside every wing (the
  * foyer, the front desk) there is no bar either.
  */

@@ -31,6 +31,7 @@ const uiPackages = [
   "aph",
   "auth",
   "captions",
+  "game-week",
   "honeycomb",
   "leetype",
   "lesson-crm",

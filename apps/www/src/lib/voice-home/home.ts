@@ -58,6 +58,10 @@ function bodyOnly(body: string): boolean {
 
 function pathOf(note: VoiceOut): string {
   const query = new URLSearchParams({ of: note.of, ref: note.ref, at: note.at })
+  // A game bite's fields (`VoiceOut.fields`), which never name these three.
+  for (const [name, value] of Object.entries(note.fields ?? {})) {
+    if (!query.has(name)) query.set(name, value)
+  }
   return `/voice-notes/${encodeURIComponent(note.id)}?${query.toString()}`
 }
 

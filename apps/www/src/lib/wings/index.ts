@@ -90,7 +90,7 @@ export const WINGS: ReadonlyArray<Wing> = [
   {
     id: "studio",
     name: "Studio",
-    job: "Voice takes for the next Build Journal episode",
+    job: "Voice takes for the next Build Journal episode, and bites on game day",
     home: "/journal",
     settings: null,
     web: {
@@ -148,7 +148,8 @@ export const ROOMS: ReadonlyArray<Room> = [
   { id: "soundbites", wing: "practice", roots: ["/soundbites"], tab: "Bites" },
   { id: "profile", wing: "practice", roots: ["/profile"], nav: "Profile" },
   { id: "aph", wing: "self", roots: ["/aph"] },
-  { id: "journal", wing: "studio", roots: ["/journal"] },
+  { id: "journal", wing: "studio", roots: ["/journal"], tab: "Journal" },
+  { id: "game-week", wing: "studio", roots: ["/game-week"], tab: "Game day" },
   { id: "playoff-delta", wing: "studio", roots: ["/playoff-delta"] },
   { id: "captions", wing: "studio", roots: ["/captions"] },
   { id: "jobs", wing: "jobs", roots: ["/jobs"] },

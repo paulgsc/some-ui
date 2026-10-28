@@ -25,6 +25,7 @@ import { Route as DashboardProfileRouteImport } from './routes/_dashboard/profil
 import { Route as DashboardResumeRouteImport } from './routes/_dashboard/resume'
 import { Route as DashboardApkAphRouteImport } from './routes/_dashboard/_apk/aph'
 import { Route as DashboardApkFoyerRouteImport } from './routes/_dashboard/_apk/foyer'
+import { Route as DashboardApkGameWeekRouteImport } from './routes/_dashboard/_apk/game-week'
 import { Route as DashboardApkJobsRouteImport } from './routes/_dashboard/_apk/jobs'
 import { Route as DashboardApkJournalRouteImport } from './routes/_dashboard/_apk/journal'
 import { Route as DashboardApkSoundbitesRouteImport } from './routes/_dashboard/_apk/soundbites'
@@ -126,6 +127,11 @@ const DashboardApkAphRoute = DashboardApkAphRouteImport.update({
 const DashboardApkFoyerRoute = DashboardApkFoyerRouteImport.update({
   id: '/foyer',
   path: '/foyer',
+  getParentRoute: () => DashboardApkRoute,
+} as any)
+const DashboardApkGameWeekRoute = DashboardApkGameWeekRouteImport.update({
+  id: '/game-week',
+  path: '/game-week',
   getParentRoute: () => DashboardApkRoute,
 } as any)
 const DashboardApkJobsRoute = DashboardApkJobsRouteImport.update({
@@ -277,6 +283,7 @@ export interface FileRoutesByFullPath {
   '/resume': typeof DashboardResumeRoute
   '/aph': typeof DashboardApkAphRouteWithChildren
   '/foyer': typeof DashboardApkFoyerRoute
+  '/game-week': typeof DashboardApkGameWeekRoute
   '/jobs': typeof DashboardApkJobsRouteWithChildren
   '/journal': typeof DashboardApkJournalRoute
   '/soundbites': typeof DashboardApkSoundbitesRoute
@@ -316,6 +323,7 @@ export interface FileRoutesByTo {
   '/profile': typeof DashboardProfileRoute
   '/resume': typeof DashboardResumeRoute
   '/foyer': typeof DashboardApkFoyerRoute
+  '/game-week': typeof DashboardApkGameWeekRoute
   '/journal': typeof DashboardApkJournalRoute
   '/soundbites': typeof DashboardApkSoundbitesRoute
   '/lessons': typeof DashboardLanLessonsRoute
@@ -359,6 +367,7 @@ export interface FileRoutesById {
   '/_dashboard/resume': typeof DashboardResumeRoute
   '/_dashboard/_apk/aph': typeof DashboardApkAphRouteWithChildren
   '/_dashboard/_apk/foyer': typeof DashboardApkFoyerRoute
+  '/_dashboard/_apk/game-week': typeof DashboardApkGameWeekRoute
   '/_dashboard/_apk/jobs': typeof DashboardApkJobsRouteWithChildren
   '/_dashboard/_apk/journal': typeof DashboardApkJournalRoute
   '/_dashboard/_apk/soundbites': typeof DashboardApkSoundbitesRoute
@@ -401,6 +410,7 @@ export interface FileRouteTypes {
     | '/resume'
     | '/aph'
     | '/foyer'
+    | '/game-week'
     | '/jobs'
     | '/journal'
     | '/soundbites'
@@ -440,6 +450,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/resume'
     | '/foyer'
+    | '/game-week'
     | '/journal'
     | '/soundbites'
     | '/lessons'
@@ -482,6 +493,7 @@ export interface FileRouteTypes {
     | '/_dashboard/resume'
     | '/_dashboard/_apk/aph'
     | '/_dashboard/_apk/foyer'
+    | '/_dashboard/_apk/game-week'
     | '/_dashboard/_apk/jobs'
     | '/_dashboard/_apk/journal'
     | '/_dashboard/_apk/soundbites'
@@ -632,6 +644,13 @@ declare module '@tanstack/react-router' {
       path: '/foyer'
       fullPath: '/foyer'
       preLoaderRoute: typeof DashboardApkFoyerRouteImport
+      parentRoute: typeof DashboardApkRoute
+    }
+    '/_dashboard/_apk/game-week': {
+      id: '/_dashboard/_apk/game-week'
+      path: '/game-week'
+      fullPath: '/game-week'
+      preLoaderRoute: typeof DashboardApkGameWeekRouteImport
       parentRoute: typeof DashboardApkRoute
     }
     '/_dashboard/_apk/jobs': {
@@ -850,6 +869,7 @@ const DashboardApkJobsRouteWithChildren =
 interface DashboardApkRouteChildren {
   DashboardApkAphRoute: typeof DashboardApkAphRouteWithChildren
   DashboardApkFoyerRoute: typeof DashboardApkFoyerRoute
+  DashboardApkGameWeekRoute: typeof DashboardApkGameWeekRoute
   DashboardApkJobsRoute: typeof DashboardApkJobsRouteWithChildren
   DashboardApkJournalRoute: typeof DashboardApkJournalRoute
   DashboardApkSoundbitesRoute: typeof DashboardApkSoundbitesRoute
@@ -862,6 +882,7 @@ interface DashboardApkRouteChildren {
 const DashboardApkRouteChildren: DashboardApkRouteChildren = {
   DashboardApkAphRoute: DashboardApkAphRouteWithChildren,
   DashboardApkFoyerRoute: DashboardApkFoyerRoute,
+  DashboardApkGameWeekRoute: DashboardApkGameWeekRoute,
   DashboardApkJobsRoute: DashboardApkJobsRouteWithChildren,
   DashboardApkJournalRoute: DashboardApkJournalRoute,
   DashboardApkSoundbitesRoute: DashboardApkSoundbitesRoute,

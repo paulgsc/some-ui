@@ -62,6 +62,9 @@ const HOME_LINK_CALLERS = new Set([
   // port Korean reads them through.
   "components/settings/device-routine-reads.tsx",
   "components/player/device-routine-files.ts",
+  // LA13: game day's line of what of its bites waits on the phone for home
+  // (`gameOutbox`), which reads and sends nothing.
+  "routes/_dashboard/_apk/game-week.tsx",
 ])
 
 /**
