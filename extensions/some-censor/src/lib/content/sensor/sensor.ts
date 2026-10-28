@@ -49,6 +49,7 @@ import {
   extractUploadDate,
   readAutonav,
   readDescription,
+  readPlaylists,
   readUpNext,
   readWatch,
   tryExtract,
@@ -124,7 +125,10 @@ export type Sensor = {
   custodyOf(key: CardKey): ReadonlyArray<CustodyTarget>
   /** The shown watch page's description, where the face control goes. */
   description(): HTMLElement | null
-  /** The Up next card carrying `key`, the one a skip opens (#1966). */
+  /**
+   * The card carrying `key` where Skip looks first, the one a skip opens
+   * (#1966): a playlist row ahead of an Up next card, so a Mix goes on.
+   */
   upNextCard(key: CardKey): HTMLElement | null
   census(): SensorCensus
   /** How many elements are queued; O(1), unlike {@link census}. */
@@ -623,8 +627,9 @@ export function createSensor(ports: SensorPorts): Sensor {
    * the app's own listener sees it, so stopping it here, in the capture
    * phase on the window, keeps the page where it is. The one vendor event
    * the Sensor holds, and only on Core's answer; a navigation the owner
-   * starts carries no `autonav`, and is never held. Core is told, with Up
-   * next's videos in page order, so it can skip to one (#1966).
+   * starts carries no `autonav`, and is never held. Core is told, with the
+   * playlist's next rows and Up next's videos in that order, so it can skip
+   * to one (#1966).
    */
   function onYtNavigate(event: Event): void {
     const next = readAutonav(event)
@@ -633,11 +638,33 @@ export function createSensor(ports: SensorPorts): Sensor {
     ports.emit({ kind: "held", upNext: upNext(), t: ports.clock() })
   }
 
-  /** The cards held in the watch page's Up next, in page order. */
+  /**
+   * Where autoplay may go next, in the order Skip tries it: a playlist's
+   * rows after the page's own video, so a Mix plays on as a Mix, then the
+   * cards held in the watch page's Up next, in page order.
+   */
   function upNextCards(): Array<{ el: HTMLElement; key: CardKey }> {
-    const cards: Array<{ el: HTMLElement; key: CardKey }> = []
+    const own = readWatch(ports.doc)?.videoId ?? null
+    const ahead: Array<{ el: HTMLElement; key: CardKey }> = []
+    for (const playlist of readPlaylists(ports.doc)) {
+      const rows = cardsIn(playlist)
+      // After the last row that is the page's own: a Mix can repeat a video.
+      let at = -1
+      rows.forEach((row, i) => {
+        if (keyVideoId(row.key) === own) at = i
+      })
+      ahead.push(...rows.slice(at + 1))
+    }
     const list = readUpNext(ports.doc)
-    for (const el of list?.querySelectorAll<HTMLElement>(SEL) ?? []) {
+    return [...ahead, ...(list === null ? [] : cardsIn(list))]
+  }
+
+  /** The cards held inside `container`, in page order. */
+  function cardsIn(
+    container: HTMLElement
+  ): Array<{ el: HTMLElement; key: CardKey }> {
+    const cards: Array<{ el: HTMLElement; key: CardKey }> = []
+    for (const el of container.querySelectorAll<HTMLElement>(SEL)) {
       const key = identity.keyOf(el)
       if (key !== null) cards.push({ el, key })
     }

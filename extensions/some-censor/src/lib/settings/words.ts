@@ -79,7 +79,7 @@ export const AUTOPLAY_WORDS: Readonly<
   },
   skip: {
     label: "Skip it",
-    line: "It plays the next video in Up next that isn't held.",
+    line: "It plays the next video in the playlist or Up next that isn't held and hasn't played yet.",
   },
 }
 

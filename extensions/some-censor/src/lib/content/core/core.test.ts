@@ -792,6 +792,56 @@ describe("what autoplay may go on into (#1805)", () => {
       "the miniplayer plays over another page: it stops"
     ).toEqual([])
   })
+  it("never skips back to a video this tab has played (R10, SK1)", () => {
+    const watching = (videoId: string, t: number): CoreEvent => ({
+      kind: "watched",
+      watch: {
+        videoId: asVideoId(videoId),
+        short: false,
+        hydrated: true,
+        dates: ["21y ago"],
+        miniplayer: false,
+        title: null,
+        channelName: null,
+        artist: false,
+      },
+      t,
+    })
+    const held = (upNext: ReadonlyArray<string>): CoreEvent => ({
+      kind: "held",
+      upNext: upNext.map(asVideoId),
+      t: 9,
+    })
+    const plays = (actions: ReadonlyArray<Action>): Array<string> =>
+      actions.flatMap((a) => (a.kind === "play" ? [String(a.key)] : []))
+    // Two videos that each name the other first: A, then B, then A again.
+    const { state } = fold([
+      started,
+      { kind: "autoplay", autoplay: "skip", t: 1 },
+      watching("a", 2),
+      nav(2, 3),
+      watching("b", 4),
+      nav(3, 5),
+      seen(6, { uploadDate: OLD }, "a"),
+      seen(6, { uploadDate: OLD }, "c"),
+    ])
+    expect(state.played).toEqual(["a", "b"])
+    expect(plays(reduce(state, held(["a", "c"])).actions)).toEqual([
+      String(cardKey(asVideoId("c"))),
+    ])
+    expect(
+      plays(reduce(state, held(["a"])).actions),
+      "nothing new: it stops"
+    ).toEqual([])
+    const restarted = fold(
+      [
+        { kind: "stop", t: 7 },
+        { ...started, t: 8 },
+      ],
+      state
+    )
+    expect(restarted.state.played, "a new start forgets").toEqual([])
+  })
 })
 
 describe("the mode (R7, R9, #1966)", () => {

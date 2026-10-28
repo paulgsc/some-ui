@@ -114,7 +114,8 @@ The choices, besides an on/off switch and Diagnostics:
   | Cards still loading         | Not painted          | Blurred                      | Blurred                     |
 
 - **When autoplay reaches a held video:** stop (default), or skip to the next
-  video in Up next that isn't held.
+  video in the playlist or Up next that isn't held and hasn't played in this
+  tab.
 
 Modes never move the boundary. No counts, no history, no trusted channels, no
 languages setting (the owner dropped it on 2026-10-17: being music alone admits

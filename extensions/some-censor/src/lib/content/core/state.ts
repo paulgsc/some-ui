@@ -102,7 +102,19 @@ export type CoreState = {
   readonly autoplay: AutoplayRule
   /** B4's staleness signal, per session: how often the table had no answer. */
   readonly unknownShapes: Readonly<Record<UnknownShapeReason, number>>
+  /**
+   * The videos this tab's watch page has shown since `start`, newest last,
+   * at most {@link PLAYED_KEPT}: Skip never goes back to one (R10). A
+   * navigation keeps them.
+   */
+  readonly played: ReadonlyArray<VideoId>
 }
+
+/**
+ * How many played videos Skip remembers. A filter for where autoplay goes
+ * next, not a record: past this, the oldest are let go.
+ */
+export const PLAYED_KEPT = 200
 
 export const EMPTY_UNKNOWN_SHAPES: CoreState["unknownShapes"] = {
   "surface-uncrawled": 0,
@@ -123,6 +135,7 @@ export function initialState(session: SessionId): CoreState {
     rules: STANDARD_RULES,
     autoplay: "stop",
     unknownShapes: EMPTY_UNKNOWN_SHAPES,
+    played: [],
   }
 }
 
@@ -140,6 +153,7 @@ export type CoreSnapshot = {
   readonly rules: Rules
   readonly autoplay: AutoplayRule
   readonly unknownShapes: CoreState["unknownShapes"]
+  readonly played: ReadonlyArray<VideoId>
 }
 
 /**
@@ -163,9 +177,11 @@ export function admits(state: CoreState, videoId: VideoId): boolean {
 
 /**
  * Where autoplay goes instead of a video Core does not admit, under Skip
- * (#1966): the first of `upNext`, in page order, that Core admits and is
- * not the page's own video. None in the miniplayer, which plays over
- * another page, nor when there is no such video: autoplay stops.
+ * (#1966): the first of `upNext`, in the Sensor's order (the playlist's
+ * rows after the page's own, then the sidebar), that Core admits, is not
+ * the page's own video and has not played in this tab. None in the
+ * miniplayer, which plays over another page, nor when there is no such
+ * video: autoplay stops.
  */
 export function skipTo(
   state: CoreState,
@@ -175,7 +191,11 @@ export function skipTo(
   if (state.autoplay !== "skip" || watch === null) return null
   if (watch.observation.miniplayer) return null
   const own = watch.observation.videoId
-  return upNext.find((id) => id !== own && admits(state, id)) ?? null
+  return (
+    upNext.find(
+      (id) => id !== own && !state.played.includes(id) && admits(state, id)
+    ) ?? null
+  )
 }
 
 export function snapshot(state: CoreState): CoreSnapshot {
@@ -189,5 +209,6 @@ export function snapshot(state: CoreState): CoreSnapshot {
     rules: state.rules,
     autoplay: state.autoplay,
     unknownShapes: state.unknownShapes,
+    played: state.played,
   }
 }

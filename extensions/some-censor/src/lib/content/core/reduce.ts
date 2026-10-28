@@ -49,6 +49,10 @@
  *  R10 — Skip goes only where Core admits (#1966). A `held` token yields a
  *        `play` for the first Up next video `skipTo` names, and nothing
  *        when the owner's choice is to stop or no such video is shown.
+ *        Skip never goes back to a video the tab's watch page has shown
+ *        since `start` (`played`), so it cannot walk a loop of a few
+ *        videos that each name the other first (SK1). `played` is the tab's,
+ *        not the page's: `nav` keeps it, and only `start` empties it.
  *
  * R4 correlated the answers to Core's async requests; none are left, so it
  * is retired. The parenthesised M- and C- labels are kept so their
@@ -58,6 +62,7 @@
 
 import { decide, decideWatch, project } from "@censor/lib/content/fsm"
 import { plateOf } from "@censor/lib/content/plate/plate"
+import type { VideoId } from "@censor/types/ids"
 import { assertNever } from "@some-extension/common"
 
 import type { Action, CoreFact } from "./actions"
@@ -67,7 +72,7 @@ import { cardKey, keyVideoId } from "./keys"
 import type { Observation, WatchObservation } from "./observation"
 import { mergeObservation, mergeWatch } from "./observation"
 import type { CardState, CoreState, Rules, WatchState } from "./state"
-import { EMPTY_UNKNOWN_SHAPES, skipTo } from "./state"
+import { EMPTY_UNKNOWN_SHAPES, PLAYED_KEPT, skipTo } from "./state"
 
 export type Step = {
   readonly state: CoreState
@@ -139,6 +144,7 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
           rules: event.rules,
           autoplay: event.autoplay,
           unknownShapes: EMPTY_UNKNOWN_SHAPES,
+          played: [],
         },
         actions: [record({ kind: "session.start", session: event.session })],
       }
@@ -456,9 +462,24 @@ function watched(
     previous.observation.miniplayer !== merged.miniplayer ||
     previous.face !== next.face
   return {
-    state: { ...state, watch: next, watchDates },
+    state: {
+      ...state,
+      watch: next,
+      watchDates,
+      played: playedWith(state.played, merged),
+    },
     actions: moved ? [watchAction(next, state.rules)] : [],
   }
+}
+
+/** R10: the watch page's video, once, at the end of what Skip remembers. */
+function playedWith(
+  played: ReadonlyArray<VideoId>,
+  watch: WatchObservation
+): ReadonlyArray<VideoId> {
+  const id = watch.miniplayer ? null : watch.videoId
+  if (id === null || played.at(-1) === id) return played
+  return [...played.filter((p) => p !== id), id].slice(-PLAYED_KEPT)
 }
 
 /**

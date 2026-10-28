@@ -369,12 +369,14 @@ the Sensor holds one in the capture phase, before the app sees it, unless a
 card for that video is on the page and plated (Core's `admits`). A navigation
 the owner starts carries no `autonav` and is never held. A playlist's rows
 carry no date (sealed under `QD3`), so a playlist, Mix or queue stops after
-nearly every video. Under Skip (#1966), Core names the first video in Up
-next, in page order, that it admits and is not the page's own (`skipTo`,
-R10), and the Actuator opens that Up next card as a click would; with none,
-or in the miniplayer, autoplay stops. In a playlist or Mix, whose rows are
-held, Skip leaves the list for the first such Up next video.
-`watch.spec.ts` W10 and W13 prove both, locally.
+nearly every video. Under Skip (#1966), Core names the first video it admits
+that is not the page's own and has not played in this tab (`skipTo`, R10),
+trying the playlist's rows after the page's own video first and then Up next,
+in page order; the Actuator opens that row or card as a click would, so a row
+keeps the playlist playing. With none, or in the miniplayer, autoplay stops.
+Remembering what played is what keeps Skip from walking a loop of a few
+videos that each name the other first. `watch.spec.ts` W10 and W13 prove
+both, locally.
 
 A held video's watch page, reached by a link, is "Not here." and Back
 (#1805): `styles/content.css` renders no player, miniplayer, title or date

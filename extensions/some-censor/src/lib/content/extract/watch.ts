@@ -37,6 +37,9 @@ const OWNER_NAME = `${OWNER} ytd-channel-name yt-formatted-string`
 /** A reading that says nothing about the lane: nothing is read yet. */
 const NO_LANE = { title: null, channelName: null, artist: false } as const
 
+/** The playlist beside the watch page: a Mix's, or one someone made. */
+const PLAYLIST = "ytd-playlist-panel-renderer"
+
 /**
  * Where the watch page states the date: the info line under the title, in
  * runs ("444M views", "21y ago"), and its tooltip, one run joined by "•"
@@ -126,6 +129,15 @@ export function readUpNext(doc: Document): HTMLElement | null {
   return doc.querySelector<HTMLElement>(
     `${WATCH_PAGE} ytd-watch-next-secondary-results-renderer`
   )
+}
+
+/**
+ * The watch page's playlists, in page order: where a playlist's autoplay
+ * goes next, ahead of Up next. YouTube draws one for each layout, so there
+ * can be two.
+ */
+export function readPlaylists(doc: Document): Array<HTMLElement> {
+  return [...doc.querySelectorAll<HTMLElement>(`${WATCH_PAGE} ${PLAYLIST}`)]
 }
 
 /**
