@@ -62,6 +62,16 @@ describe("every slide of the bundled season", () => {
   })
 })
 
+describe("the podium", () => {
+  it("lists tied medalists a line each, and still says our place", () => {
+    const tied = SAMPLE_SEASON.weeks.find((w) => w.podium.medals.length > 3)
+    if (!tied) throw new Error("the bundled season has no tied podium")
+    render(<SLIDES.podium season={SAMPLE_SEASON} week={tied} />)
+    for (const m of tied.podium.medals) screen.getByText(m.team)
+    screen.getByText(/^SF$/)
+  })
+})
+
 describe("the legend", () => {
   it.each(LEGEND_SLIDES)("%s renders, with a voiceover line", (id) => {
     const Slide = LEGEND[id]

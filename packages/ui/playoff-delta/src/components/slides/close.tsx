@@ -45,36 +45,71 @@ const GAME_WORDS = {
   bye: "had a bye",
 } as const
 
+/** Medal cards that fit the frame; past that, ties are listed a line each. */
+const CARDS = 3
+const LINES = 8
+
 export const Podium = ({ season, week }: SlideProps): JSX.Element => {
   const { medals, place, eligible } = week.podium
+  const cards = medals.length <= CARDS
+  const listed = cards ? medals : medals.slice(0, LINES)
+  const step = cards ? 0.4 : 0.2
   return (
     <>
       <Kicker>Week {week.week} · the podium</Kicker>
       <h2 className="pd-q">Whose week came closest to its best?</h2>
       <div className="flex flex-col gap-[2cqw]">
-        {medals.map((m, i) => (
-          <Reveal key={m.team} at={0.4 + i * 0.4} className="pd-card pd-medal">
-            <span className="pd-mono pd-small text-muted-foreground">
-              {medalOf(m.place)} · {GAME_WORDS[m.game]}
-            </span>
-            <span className="pd-say">
-              <b>{m.team}</b>: better than <b>{worseOf100(m.rank)}</b> of every
-              100 of its ways ({percent(m.actual)}, best {percent(m.best)})
-            </span>
-            <span className="pd-mono flex flex-wrap gap-x-[2.5cqw] text-[2.6cqw]">
-              {m.pieces.map((p) => (
-                <span
-                  key={`${p.home}-${p.away}`}
-                  className={p.made ? "text-success" : "text-destructive"}
-                >
-                  {over(p.home, p.away, p.want)} {p.made ? "made" : "missed"}
-                </span>
-              ))}
-            </span>
+        {listed.map((m, i) =>
+          cards ? (
+            <Reveal
+              key={m.team}
+              at={0.4 + i * step}
+              className="pd-card pd-medal"
+            >
+              <span className="pd-mono pd-small text-muted-foreground">
+                {medalOf(m.place)} · {GAME_WORDS[m.game]}
+              </span>
+              <span className="pd-say">
+                <b>{m.team}</b>: better than <b>{worseOf100(m.rank)}</b> of
+                every 100 of its ways ({percent(m.actual)}, best{" "}
+                {percent(m.best)})
+              </span>
+              <span className="pd-mono flex flex-wrap gap-x-[2.5cqw] text-[2.6cqw]">
+                {m.pieces.map((p) => (
+                  <span
+                    key={`${p.home}-${p.away}`}
+                    className={p.made ? "text-success" : "text-destructive"}
+                  >
+                    {over(p.home, p.away, p.want)} {p.made ? "made" : "missed"}
+                  </span>
+                ))}
+              </span>
+            </Reveal>
+          ) : (
+            <Reveal
+              key={m.team}
+              at={0.4 + i * step}
+              className="pd-mono pd-small flex justify-between gap-[2cqw]"
+            >
+              <span className="shrink-0 whitespace-nowrap">
+                {medalOf(m.place)} · <b>{m.team}</b>
+              </span>
+              <span className="text-right">
+                {worseOf100(m.rank)} of 100 worse · {GAME_WORDS[m.game]}
+              </span>
+            </Reveal>
+          )
+        )}
+        {medals.length > listed.length ? (
+          <Reveal
+            at={0.4 + listed.length * step}
+            className="pd-small text-muted-foreground"
+          >
+            and {medals.length - listed.length} more, tied
           </Reveal>
-        ))}
+        ) : null}
       </div>
-      <Reveal at={0.6 + medals.length * 0.4} className="pd-say">
+      <Reveal at={0.6 + listed.length * step} className="pd-say">
         {place === null ? (
           <>
             <b>{season.team}</b> wasn&apos;t placed: its week couldn&apos;t move
@@ -87,11 +122,11 @@ export const Podium = ({ season, week }: SlideProps): JSX.Element => {
         )}
       </Reveal>
       <Reveal
-        at={1 + medals.length * 0.4}
+        at={1 + listed.length * step}
         className="pd-small text-muted-foreground"
       >
         Each team&apos;s week, ranked among its own ways. A team is placed when
-        its week could move it a point or more.
+        its week could move it a point or more; equal ranks share a place.
       </Reveal>
     </>
   )

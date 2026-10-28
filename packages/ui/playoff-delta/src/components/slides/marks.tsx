@@ -259,7 +259,13 @@ export const Bands = ({
           <div
             key={b.band}
             className={`pd-in pd-bands__band ${BAND_CLASS[b.band]}`}
-            style={{ ...delay(at + i * 0.15), flexGrow: widthOf(b.band) }}
+            // A zero basis, so a label's width never moves a boundary off
+            // the scale the rank's mark is placed on.
+            style={{
+              ...delay(at + i * 0.15),
+              flexGrow: widthOf(b.band),
+              flexBasis: 0,
+            }}
           >
             <span className="pd-mono">{b.phrase}</span>
           </div>
