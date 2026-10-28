@@ -190,6 +190,17 @@ _Amended by `QD15`:_ a lane video needs no age, only a date that proves a
 past upload: one the estimator cannot read could be live, so it is still
 outside. Everywhere else, unknown still means outside.
 
+_Amended by Music mix (owner, 2026-10-28):_ a row of a Mix's playlist carries
+no date at all, so this result held nearly every row, and a Mix stopped (or,
+under Skip, left the Mix) after a few songs. Under Music mix, a row of a Mix
+known to be music (one that has played a video whole in the lane, `QD15`;
+`core/reduce.ts` R11) that has no date is plated: the owner chose that a music
+radio plays on over that each row prove its age. A row whose date can be read
+is still decided by it, the watch page still decides by its own date, and
+every other mode, every other Mix and every other surface still holds an
+undated card. The cost is stated in the mode's own words: "Shown, even if
+recent".
+
 ---
 
 ### QD4 — Age is nonsemantic; the raw string is not
@@ -368,15 +379,15 @@ advance navigate by a `yt-navigate` marked `autonav`, naming the next video;
 the Sensor holds one in the capture phase, before the app sees it, unless a
 card for that video is on the page and plated (Core's `admits`). A navigation
 the owner starts carries no `autonav` and is never held. A playlist's rows
-carry no date (sealed under `QD3`), so a playlist, Mix or queue stops after
-nearly every video. Under Skip (#1966), Core names the first video it admits
-that is not the page's own and has not played in this tab (`skipTo`, R10),
-trying the playlist's rows after the page's own video first and then Up next,
-in page order; the Actuator opens that row or card as a click would, so a row
-keeps the playlist playing. With none, or in the miniplayer, autoplay stops.
-Remembering what played is what keeps Skip from walking a loop of a few
-videos that each name the other first. `watch.spec.ts` W10 and W13 prove
-both, locally.
+carry no date (sealed under `QD3`, except a music Mix's under Music mix), so a
+playlist, Mix or queue stops after nearly every video. Under Skip (#1966),
+Core names the first video it admits that is not the page's own and has not
+played in this tab (`skipTo`, R10), trying the playlist's rows after the
+page's own video first and then Up next, in page order; the Actuator opens
+that row or card as a click would, so a row keeps the playlist playing. With
+none, or in the miniplayer, autoplay stops. Remembering what played is what
+keeps Skip from walking a loop of a few videos that each name the other first.
+`watch.spec.ts` W10 and W13 prove both, locally.
 
 A held video's watch page, reached by a link, is "Not here." and Back
 (#1805): `styles/content.css` renders no player, miniplayer, title or date
@@ -442,12 +453,12 @@ when let go. Core keeps the face for that view only (R9): a navigation,
 another video or a view no longer plated takes it away, and nothing stores it.
 The control goes once used, with no message, and comes back when YouTube draws
 the description again. Strict offers no control at all, and choosing it takes
-a shown face away. Open shows the face at three seconds while still held, and
+a shown face away. Music mix shows the face at three seconds while still held, and
 the control stays as "Hide original": a press and release on it puts the plate
 back for that view. Switching to Standard with the face shown keeps it, with
 no control, until the view ends (#1966). `face.spec.ts` F1–F7 prove each,
-locally, and `core.test.ts` that Strict takes a shown face away and only Open
-hides one.
+locally, and `core.test.ts` that Strict takes a shown face away and only
+Music mix hides one.
 
 ---
 
@@ -522,7 +533,8 @@ locally.
 The owner's judgement is exercised on three choices, besides switching the
 extension on or off: the boundary `B`, a mode, and what autoplay does when it
 reaches a held video. A mode is a fixed bundle, strictest first: Strict,
-Standard or Open (`settings/modes.ts`). The owner picks a mode, never a row of
+Standard or Music mix (`settings/modes.ts`; Music mix was Open until
+2026-10-28). The owner picks a mode, never a row of
 one, so there is no single switch to tune and no Custom state. Modes never
 move `B`. (A languages setting was dropped on 2026-10-17 with the lane's
 title-script rule; see `QD15`.) No card, channel or page offers a disclosure
@@ -563,7 +575,7 @@ mechanism the thing on screen; the owner found that inauthentic.
 _Status: holds (#1803, #1805)._ The ladder and its hints are deleted, and a
 plated card carries no copy. A held watch page carries "Not here." and Back,
 and its tab title is "YouTube". A plated one carries the face control, its
-label the only copy, and it goes once used, except under Open, where it
+label the only copy, and it goes once used, except under Music mix, where it
 reads "Hide original" (#1966).
 
 ## 5. The temporal model
@@ -731,7 +743,8 @@ it can be parsed with certainty.
 - Playlist rows and many Shorts lockups carry **no date at all**. Under QD3
   those surfaces are permanently sealed. This is the correct outcome and should
   be documented as such rather than fixed — a surface that cannot prove its age
-  does not get the benefit of the doubt.
+  does not get the benefit of the doubt. The owner made one exception on
+  2026-10-28: a music Mix's rows under Music mix (`QD3`'s amendment).
 - A parsed date is often an **interval, not a point**: `"2 weeks ago"` names a
   bucket, not a day count, and treating its midpoint as exact can promote a
   card near either boundary prematurely. QD3's fail-closed direction extends

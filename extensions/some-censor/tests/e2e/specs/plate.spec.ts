@@ -17,7 +17,7 @@
  *      and off is plain YouTube.
  * P7 — The same for the page header's images and the player's overlays, read
  *      off the screen, each painting once the extension is off.
- * P8 — Open shows a community post's own image, never its author's photo
+ * P8 — Music mix shows a community post's own image, never its author's photo
  *      nor one under a plated card; Standard shows neither (#1966).
  */
 
@@ -270,7 +270,7 @@ test("P7: no header or player image paints, unless off", async ({
   }
 })
 
-test("P8: Open shows a post's image, never its author's photo", async ({
+test("P8: Music mix shows a post's image, never its author's photo", async ({
   fixture,
 }) => {
   const page = await fixture.goto("yt-channel-photos")
@@ -282,7 +282,7 @@ test("P8: Open shows a post's image, never its author's photo", async ({
   )
   expect(await vividPixels(image)).toBe(0)
 
-  await fixture.settings({ mode: "open" })
+  await fixture.settings({ mode: "mix" })
   await expect(page.locator("html")).toHaveAttribute("data-boyo-posts", "shown")
   expect(await vividPixels(image)).toBeGreaterThan(0)
   expect(await vividPixels(author)).toBe(0)

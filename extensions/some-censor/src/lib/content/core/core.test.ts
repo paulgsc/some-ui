@@ -44,6 +44,7 @@ function observation(
     uploadDate: "3 days ago",
     short: false,
     artist: false,
+    mix: null,
     surface: "home",
     renderer: "ytd-rich-item-renderer",
     shape: "known",
@@ -435,6 +436,7 @@ describe("the watch page (R8, #1805)", () => {
     title: "Me at the zoo",
     channelName: "jawed",
     artist: false,
+    mix: null,
   }
   const watched = (
     t: number,
@@ -671,6 +673,7 @@ describe("the listening lane (QD15, #1806)", () => {
         title: null,
         channelName: null,
         artist: false,
+        mix: null,
         ...overrides,
       },
       t: 2,
@@ -732,6 +735,7 @@ describe("what autoplay may go on into (#1805)", () => {
         title: "Me at the zoo",
         channelName: "jawed",
         artist: false,
+        mix: null,
       },
       t: 1,
     }
@@ -784,6 +788,7 @@ describe("what autoplay may go on into (#1805)", () => {
         title: "Me at the zoo",
         channelName: "jawed",
         artist: false,
+        mix: null,
       },
       t: 3,
     })
@@ -804,6 +809,7 @@ describe("what autoplay may go on into (#1805)", () => {
         title: null,
         channelName: null,
         artist: false,
+        mix: null,
       },
       t,
     })
@@ -841,6 +847,81 @@ describe("what autoplay may go on into (#1805)", () => {
       state
     )
     expect(restarted.state.played, "a new start forgets").toEqual([])
+  })
+})
+
+describe("a music Mix (R11)", () => {
+  const MIX = "RDsong"
+  const MUSIC_MIX = MODE_RULES.mix.core
+  const watching = (
+    videoId: string,
+    t: number,
+    overrides: Partial<WatchObservation> = {}
+  ): CoreEvent => ({
+    kind: "watched",
+    watch: {
+      videoId: asVideoId(videoId),
+      short: false,
+      hydrated: true,
+      dates: ["3 hours ago"],
+      miniplayer: false,
+      title: "Stay With Me MV",
+      channelName: null,
+      artist: false,
+      mix: MIX,
+      ...overrides,
+    },
+    t,
+  })
+  // A row of the Mix's playlist: no date, as YouTube draws one.
+  const row = (videoId: string, t: number, mix = MIX): CoreEvent =>
+    seen(t, { uploadDate: null, mix, title: "A song" }, videoId)
+  const mode = (rules = MUSIC_MIX): CoreEvent => ({
+    kind: "rules",
+    rules,
+    t: 1,
+  })
+
+  it("shows its rows with no date under Music mix once it plays music whole", () => {
+    const before = fold([started, mode(), row("next", 2)])
+    expect(viewOf(before.state, cardKey(asVideoId("next")))).toBe("absent")
+
+    const marked = reduce(before.state, watching("song", 3))
+    expect(marked.state.musicMixes).toEqual([MIX])
+    expect(viewOf(marked.state, cardKey(asVideoId("next")))).toBe("plated")
+    expect(kinds(marked.actions)).toContain("render")
+    expect(admits(marked.state, asVideoId("next"))).toBe(true)
+
+    // The tab's, not the page's: a navigation keeps it.
+    const after = fold([nav(2, 4), row("later", 5)], marked.state)
+    expect(viewOf(after.state, cardKey(asVideoId("later")))).toBe("plated")
+  })
+
+  it("holds them under every other mode, and in a Mix not known as music", () => {
+    const standard = fold([started, watching("song", 2), row("next", 3)])
+    expect(standard.state.musicMixes, "known whatever the mode").toEqual([MIX])
+    expect(viewOf(standard.state, cardKey(asVideoId("next")))).toBe("absent")
+    const switched = reduce(standard.state, mode())
+    expect(viewOf(switched.state, cardKey(asVideoId("next")))).toBe("plated")
+    const back = reduce(switched.state, mode(STANDARD_RULES))
+    expect(viewOf(back.state, cardKey(asVideoId("next")))).toBe("absent")
+
+    const other = fold([
+      started,
+      mode(),
+      watching("song", 2),
+      row("elsewhere", 3, "RDother"),
+    ])
+    expect(viewOf(other.state, cardKey(asVideoId("elsewhere")))).toBe("absent")
+
+    const notMusic = fold([
+      started,
+      mode(),
+      watching("talk", 2, { title: "A talk" }),
+      row("next", 3),
+    ])
+    expect(notMusic.state.musicMixes).toEqual([])
+    expect(viewOf(notMusic.state, cardKey(asVideoId("next")))).toBe("absent")
   })
 })
 
@@ -892,6 +973,7 @@ describe("the mode (R7, R9, #1966)", () => {
         title: "Me at the zoo",
         channelName: "jawed",
         artist: false,
+        mix: null,
       },
       t: 1,
     }
@@ -919,7 +1001,7 @@ describe("the mode (R7, R9, #1966)", () => {
       "release",
     ])
 
-    // Only Open lets the thumbnail be hidden again.
+    // Only Music mix lets the thumbnail be hidden again.
     const hide: CoreEvent = {
       kind: "face",
       videoId: asVideoId("vid_w"),
@@ -929,10 +1011,10 @@ describe("the mode (R7, R9, #1966)", () => {
     expect(reduce(faced.state, hide).actions, "not under Standard").toEqual([])
     const open = reduce(faced.state, {
       kind: "rules",
-      rules: MODE_RULES.open.core,
+      rules: MODE_RULES.mix.core,
       t: 7,
     })
-    expect(open.state.watch?.face, "Open keeps a shown face").toBe(true)
+    expect(open.state.watch?.face, "Music mix keeps a shown face").toBe(true)
     expect(offers(open.actions)).toEqual(["held"])
     const hidden = reduce(open.state, hide)
     expect(hidden.state.watch?.face).toBe(false)
@@ -956,6 +1038,7 @@ describe("the mode (R7, R9, #1966)", () => {
         title: "Untitled",
         channelName: "Ailee - Topic",
         artist: false,
+        mix: null,
         ...overrides,
       },
       t: 1,

@@ -47,8 +47,15 @@ export function boundaryDays(b: Boundary): number {
 }
 
 /** Fixed bundles of the rest, strictest first (`modes.ts`). */
-export const MODES = ["strict", "standard", "open"] as const
+export const MODES = ["strict", "standard", "mix"] as const
 export type Mode = (typeof MODES)[number]
+
+/**
+ * Names a mode had before, as stored records and the change log still
+ * carry them: Music mix was Open. Read as the mode they name now, and
+ * never rewritten, so the log stays as it was written.
+ */
+const FORMER_MODES: Readonly<Record<string, Mode>> = { open: "mix" }
 
 /** What autoplay does when its next video is held. */
 export const AUTOPLAYS = [
@@ -101,8 +108,13 @@ const oneOf =
     values.some((v) => v === value)
 
 const isBoundary = oneOf(BOUNDARIES)
-const isMode = oneOf(MODES)
 const isAutoplay = oneOf(AUTOPLAYS)
+
+/** A stored mode, under the name it has now, or null. */
+function modeOf(value: unknown): Mode | null {
+  if (oneOf(MODES)(value)) return value
+  return typeof value === "string" ? (FORMER_MODES[value] ?? null) : null
+}
 
 /** A record from any build, or none, as settings this build can apply. */
 export function parseSettings(raw: unknown): Settings {
@@ -110,7 +122,7 @@ export function parseSettings(raw: unknown): Settings {
   const { boundary, mode, autoplay, enabled } = raw
   return {
     boundary: isBoundary(boundary) ? boundary : DEFAULT_SETTINGS.boundary,
-    mode: isMode(mode) ? mode : DEFAULT_SETTINGS.mode,
+    mode: modeOf(mode) ?? DEFAULT_SETTINGS.mode,
     autoplay: isAutoplay(autoplay) ? autoplay : DEFAULT_SETTINGS.autoplay,
     enabled: typeof enabled === "boolean" ? enabled : DEFAULT_SETTINGS.enabled,
   }
@@ -128,14 +140,25 @@ export function parseBoundaryChanges(raw: unknown): Array<BoundaryChange> {
   )
 }
 
-/** The well-formed entries of the mode and autoplay log, oldest first. */
+/**
+ * The well-formed entries of the mode and autoplay log, oldest first, each
+ * mode under the name it has now.
+ */
 export function parseChoiceChanges(raw: unknown): Array<ChoiceChange> {
   if (!Array.isArray(raw)) return []
-  return raw.filter((e: unknown): e is ChoiceChange => {
-    if (!isRecord(e) || typeof e["at"] !== "number") return false
-    const { choice, from, to } = e
-    if (choice === "mode") return isMode(from) && isMode(to)
+  return raw.flatMap((e: unknown): Array<ChoiceChange> => {
+    if (!isRecord(e) || typeof e["at"] !== "number") return []
+    const { at, choice, from, to } = e
+    if (choice === "mode") {
+      const was = modeOf(from)
+      const now = modeOf(to)
+      return was === null || now === null
+        ? []
+        : [{ at, choice, from: was, to: now }]
+    }
     return choice === "autoplay" && isAutoplay(from) && isAutoplay(to)
+      ? [{ at, choice, from, to }]
+      : []
   })
 }
 

@@ -171,10 +171,10 @@ it("applies the stored mode to Core and to the page (#1966)", async () => {
   expect(root.getAttribute(LOADING_ATTRIBUTE)).toBe("blank")
   expect(root.getAttribute(POSTS_ATTRIBUTE)).toBe("hidden")
   const before = calls.length
-  change({ v: 1, boundary: "1y", mode: "open" })
+  change({ v: 1, boundary: "1y", mode: "mix" })
   expect(calls.slice(before)).toEqual([
     "boundary:365",
-    "rules:open",
+    "rules:mix",
     "autoplay:stop",
   ])
   expect(root.getAttribute(LOADING_ATTRIBUTE)).toBe("blurred")

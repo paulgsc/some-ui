@@ -595,7 +595,7 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
   visibility: visible !important;
 }
 
-/* Open shows a community post's own images (#1966). They are drawn in
+/* Music mix shows a community post's own images (#1966). They are drawn in
    `ytd-backstage-image-renderer`, one per image of a single or a
    multi-image post; the post's author photo is not in it, and stays
    hidden. A post inside an element stamped plated stays plated: the

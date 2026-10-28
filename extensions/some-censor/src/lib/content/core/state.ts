@@ -67,6 +67,11 @@ export type Rules = {
    * hold shows the thumbnail: let go, or still held (QD13).
    */
   readonly face: "none" | FaceWhen
+  /**
+   * A row of a music Mix's playlist with no date: held, as any card
+   * without one is (QD3), or shown on its plate (Music mix).
+   */
+  readonly undated: "held" | "mix"
 }
 
 /**
@@ -80,6 +85,7 @@ export const STANDARD_RULES: Rules = {
   signs: "all",
   fromMusic: "admitted",
   face: "release",
+  undated: "held",
 }
 
 export type CoreState = {
@@ -108,6 +114,11 @@ export type CoreState = {
    * navigation keeps them.
    */
   readonly played: ReadonlyArray<VideoId>
+  /**
+   * The Mixes (`RD…`) known to be music: each has played a video whole in
+   * the lane (QD15) since `start`. A navigation keeps them.
+   */
+  readonly musicMixes: ReadonlyArray<string>
 }
 
 /**
@@ -136,6 +147,7 @@ export function initialState(session: SessionId): CoreState {
     autoplay: "stop",
     unknownShapes: EMPTY_UNKNOWN_SHAPES,
     played: [],
+    musicMixes: [],
   }
 }
 
@@ -154,6 +166,7 @@ export type CoreSnapshot = {
   readonly autoplay: AutoplayRule
   readonly unknownShapes: CoreState["unknownShapes"]
   readonly played: ReadonlyArray<VideoId>
+  readonly musicMixes: ReadonlyArray<string>
 }
 
 /**
@@ -198,6 +211,22 @@ export function skipTo(
   )
 }
 
+/**
+ * Whether a card with no date is shown on its plate rather than held: only
+ * under Music mix, and only a row of a Mix known to be music.
+ */
+export function undatedShown(
+  state: Pick<CoreState, "musicMixes">,
+  rules: Rules,
+  observation: Observation
+): boolean {
+  return (
+    rules.undated === "mix" &&
+    observation.mix !== null &&
+    state.musicMixes.includes(observation.mix)
+  )
+}
+
 export function snapshot(state: CoreState): CoreSnapshot {
   return {
     phase: state.phase,
@@ -210,5 +239,6 @@ export function snapshot(state: CoreState): CoreSnapshot {
     autoplay: state.autoplay,
     unknownShapes: state.unknownShapes,
     played: state.played,
+    musicMixes: state.musicMixes,
   }
 }

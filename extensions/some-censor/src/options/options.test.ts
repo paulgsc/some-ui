@@ -33,19 +33,20 @@ const cards = (): Array<HTMLElement> => [
 ]
 
 it("shows the three modes, strictest first, the stored one pressed", async () => {
+  // Stored under the name Music mix had before.
   await mount({ v: 1, mode: "open" })
   await vi.waitFor(() => expect(cards()).toHaveLength(3))
   expect(
     cards().map((c) => c.querySelector(".mode-card__name")?.textContent)
-  ).toEqual(["Strict", "Standard", "Open"])
+  ).toEqual(["Strict", "Standard", "Music mix"])
   expect(cards().map((c) => c.getAttribute("aria-pressed"))).toEqual([
     "false",
     "false",
     "true",
   ])
-  // Each card lists the same five rows, so they read across.
+  // Each card lists the same six rows, so they read across.
   for (const card of cards()) {
-    expect(card.querySelectorAll(".mode-card__row")).toHaveLength(5)
+    expect(card.querySelectorAll(".mode-card__row")).toHaveLength(6)
   }
 })
 

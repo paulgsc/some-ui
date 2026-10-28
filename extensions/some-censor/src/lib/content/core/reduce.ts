@@ -53,6 +53,11 @@
  *        since `start` (`played`), so it cannot walk a loop of a few
  *        videos that each name the other first (SK1). `played` is the tab's,
  *        not the page's: `nav` keeps it, and only `start` empties it.
+ *  R11 — A Mix is music once it plays a video whole in the lane (QD15):
+ *        its id joins `musicMixes`, every card is re-decided, and under
+ *        Music mix its rows with no date are plated (QD3's amendment).
+ *        Like `played`, `musicMixes` is the tab's: `nav` keeps it, and only
+ *        `start` empties it.
  *
  * R4 correlated the answers to Core's async requests; none are left, so it
  * is retired. The parenthesised M- and C- labels are kept so their
@@ -72,7 +77,12 @@ import { cardKey, keyVideoId } from "./keys"
 import type { Observation, WatchObservation } from "./observation"
 import { mergeObservation, mergeWatch } from "./observation"
 import type { CardState, CoreState, Rules, WatchState } from "./state"
-import { EMPTY_UNKNOWN_SHAPES, PLAYED_KEPT, skipTo } from "./state"
+import {
+  EMPTY_UNKNOWN_SHAPES,
+  PLAYED_KEPT,
+  skipTo,
+  undatedShown,
+} from "./state"
 
 export type Step = {
   readonly state: CoreState
@@ -145,6 +155,7 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
           autoplay: event.autoplay,
           unknownShapes: EMPTY_UNKNOWN_SHAPES,
           played: [],
+          musicMixes: [],
         },
         actions: [record({ kind: "session.start", session: event.session })],
       }
@@ -303,6 +314,7 @@ function adopt(
       t,
       state.boundaryDays,
       state.rules.signs,
+      undatedShown(state, state.rules, observation),
       state.session
     ),
     firstSeenAt: t,
@@ -341,6 +353,7 @@ function reobserve(
     t,
     state.boundaryDays,
     state.rules.signs,
+    undatedShown(state, state.rules, merged),
     state.session
   )
   const next: CardState = { ...card, observation: merged, view, lastSeenAt: t }
@@ -461,7 +474,7 @@ function watched(
     previous.observation.videoId !== merged.videoId ||
     previous.observation.miniplayer !== merged.miniplayer ||
     previous.face !== next.face
-  return {
+  const step: Step = {
     state: {
       ...state,
       watch: next,
@@ -469,6 +482,20 @@ function watched(
       played: playedWith(state.played, merged),
     },
     actions: moved ? [watchAction(next, state.rules)] : [],
+  }
+  // R11: a Mix that plays music whole is a music Mix from now on.
+  const mix = merged.miniplayer ? null : merged.mix
+  if (mix === null || view !== "whole" || state.musicMixes.includes(mix)) {
+    return step
+  }
+  const marked = redecide(
+    { ...step.state, musicMixes: [...state.musicMixes, mix] },
+    state.boundaryDays,
+    state.rules
+  )
+  return {
+    state: marked.state,
+    actions: [...step.actions, ...marked.actions],
   }
 }
 
@@ -498,6 +525,7 @@ function redecide(state: CoreState, boundaryDays: number, rules: Rules): Step {
       card.lastSeenAt,
       boundaryDays,
       rules.signs,
+      undatedShown(state, rules, card.observation),
       state.session
     )
     const next: CardState = { ...card, view }

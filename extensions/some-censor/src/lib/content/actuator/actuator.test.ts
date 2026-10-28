@@ -489,7 +489,7 @@ describe("the poster and the face control (#1805, QD13)", () => {
     expect(control()).not.toBe(standard)
     key("keydown")
     vi.advanceTimersByTime(3_000)
-    expect(faced, "Open's reports still held").toEqual(["vid_w"])
+    expect(faced, "Music mix's reports still held").toEqual(["vid_w"])
   })
 
   it("offers no control under a mode without one, and takes one back (#1966)", () => {
@@ -534,7 +534,7 @@ describe("the poster and the face control (#1805, QD13)", () => {
     expect(faced).toEqual(["vid_w"])
   })
 
-  it("under Open, shows at three seconds held, then offers to hide (#1966)", () => {
+  it("under Music mix, shows at three seconds held, then offers to hide (#1966)", () => {
     const desc = description()
     actuator.realize([plated(desc, false, VIDEO, "held")])
     const held = control()
