@@ -1,4 +1,4 @@
-import { branchRuleProblems, requiredContexts } from "@assurance/branch-rules"
+import { readBranchRules } from "@assurance/branch-rules"
 import { describe, expect, it } from "vitest"
 
 const required = (
@@ -23,39 +23,51 @@ const someUi = [
 ]
 
 describe("GC1: the branch rules require the checks", () => {
-  it("passes when every check is required", () => {
-    expect(branchRuleProblems("paulgsc/some-ui", ["CI Gate"], someUi)).toEqual(
-      []
-    )
+  it("holds when every check is required", () => {
+    expect(readBranchRules("paulgsc/some-ui", ["CI Gate"], someUi)).toEqual({
+      verdict: "holds",
+    })
   })
 
   it("names each check main no longer requires", () => {
-    const body = [required("Rust lint")]
     expect(
-      branchRuleProblems("paulgsc/server", ["Rust lint", "rust_ci"], body)
-    ).toEqual(['paulgsc/server: main no longer requires "rust_ci"'])
+      readBranchRules(
+        "paulgsc/server",
+        ["Rust lint", "rust_ci"],
+        [required("Rust lint")]
+      )
+    ).toEqual({
+      verdict: "broken",
+      problems: ['paulgsc/server: main no longer requires "rust_ci"'],
+    })
   })
 
-  it("fails when the rules require no checks at all, as when the ruleset is off", () => {
-    expect(branchRuleProblems("paulgsc/some-ui", ["CI Gate"], [])).toEqual([
-      'paulgsc/some-ui: main no longer requires "CI Gate"',
-    ])
+  it("is broken when the rules require no checks at all, as when the ruleset is off", () => {
+    expect(readBranchRules("paulgsc/some-ui", ["CI Gate"], [])).toEqual({
+      verdict: "broken",
+      problems: ['paulgsc/some-ui: main no longer requires "CI Gate"'],
+    })
   })
 
   it("counts checks required by more than one ruleset", () => {
-    const contexts = requiredContexts([required("a"), required("b")])
-    expect(contexts && [...contexts].sort()).toEqual(["a", "b"])
+    expect(
+      readBranchRules(
+        "paulgsc/server",
+        ["a", "b"],
+        [required("a"), required("b")]
+      )
+    ).toEqual({ verdict: "holds" })
   })
 
-  it("fails, never passes, on an answer that is not a list of rules", () => {
+  it("is unknown, never holds, on an answer that is not a list of rules", () => {
     for (const body of [
       { message: "Not Found" },
       null,
       [null],
       [{ type: "required_status_checks", parameters: {} }],
     ])
-      expect(branchRuleProblems("paulgsc/some-ui", ["CI Gate"], body)).toEqual([
-        "paulgsc/some-ui: the branch rules could not be read",
-      ])
+      expect(
+        readBranchRules("paulgsc/some-ui", ["CI Gate"], body).verdict
+      ).toBe("unknown")
   })
 })

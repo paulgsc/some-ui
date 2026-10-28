@@ -133,8 +133,9 @@ pr.yml's `assurance` job, which CI Gate needs.
 in each repository still requires the checks that file lists. A repository setting can be switched
 off with no diff, so it runs on every pull request (pr.yml's `branch-rules` job, which CI Gate
 needs) and daily (`.github/workflows/branch-rules.yml`). It reads GitHub's `rules/branches/main`,
-which lists only active rules, so a ruleset turned off reads as nothing required. An
-answer it cannot get or cannot read fails it. It cannot see who may bypass the rules: the probe
+which lists only active rules, so a ruleset turned off reads as nothing required. A 5xx or
+lost answer is asked once more, and an answer it still cannot get or read fails it as unknown,
+not as broken. It cannot see who may bypass the rules: the probe
 pull requests (some-ui#2210, server#529) showed the owner's own account is refused, and a later
 bypass grant would show only to someone who looks.
 

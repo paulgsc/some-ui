@@ -1,9 +1,7 @@
 name: Branch rules
-# GC1 in packages/assurance/src/ledger.json: `main` in some-ui and in the
-# server still requires the checks packages/assurance/src/branch-rules.ts
-# names. pr.yml runs the same check on every pull request; this runs it daily
-# too, because a setting can be switched off with no diff and no pull request
-# to notice. A red run here means GC1 no longer holds.
+# GC1 (docs/operational-assurance.md, "What `pnpm check:branch-rules`
+# holds"): the check pr.yml runs on every pull request, daily as well. A red
+# run here means GC1 no longer holds or could not be confirmed.
 on:
   schedule:
     - cron: "41 6 * * *"
@@ -19,5 +17,5 @@ jobs:
       - uses: ./.github/actions/nix-setup
       - name: Check that main still requires its checks
         env:
-          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: nix develop .#ci --command node scripts/check-branch-rules.ts

@@ -1,11 +1,8 @@
 /**
- * GC1, "A failing check stops a merge": the checks each repository's `main`
- * must require, and what GitHub's branch rules say is required today.
- *
- * A repository setting can be switched off with no diff, so the ledger's
- * `holds` for GC1 rests on `scripts/check-branch-rules.ts` reading the rules
- * on every pull request and every day. The server's other checks gating a
- * merge is GC5, not this.
+ * GC1, "A failing required check stops a merge": the checks each
+ * repository's `main` must require, and whether GitHub's branch rules still
+ * require them (docs/operational-assurance.md, "What `pnpm
+ * check:branch-rules` holds"). The server's other checks are GC5.
  */
 
 /** Each repository, and the checks its `main` must require (GC1). */
@@ -31,7 +28,7 @@ export const REQUIRED_CHECKS: ReadonlyArray<{
  * `GET /repos/{owner}/{repo}/rules/branches/{branch}`, or null when the body
  * is not that endpoint's list of rules.
  */
-export function requiredContexts(body: unknown): Set<string> | null {
+function requiredContexts(body: unknown): Set<string> | null {
   if (!Array.isArray(body)) return null
   const contexts = new Set<string>()
   for (const rule of body) {
@@ -54,15 +51,27 @@ export function requiredContexts(body: unknown): Set<string> | null {
   return contexts
 }
 
-/** What is wrong with one repository's rules, one line each; empty when GC1 holds there. */
-export function branchRuleProblems(
+/**
+ * One repository's verdict: `holds`, the checks `main` no longer requires,
+ * or `unknown` when the answer is not a list of rules.
+ */
+export type BranchRules =
+  | { verdict: "holds" }
+  | { verdict: "broken"; problems: Array<string> }
+  | { verdict: "unknown"; problem: string }
+
+export function readBranchRules(
   repo: string,
   checks: ReadonlyArray<string>,
   body: unknown
-): Array<string> {
+): BranchRules {
   const contexts = requiredContexts(body)
-  if (!contexts) return [`${repo}: the branch rules could not be read`]
-  return checks
+  if (!contexts)
+    return { verdict: "unknown", problem: `${repo}: the rules are unreadable` }
+  const problems = checks
     .filter((check) => !contexts.has(check))
     .map((check) => `${repo}: main no longer requires "${check}"`)
+  return problems.length === 0
+    ? { verdict: "holds" }
+    : { verdict: "broken", problems }
 }

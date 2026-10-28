@@ -653,15 +653,15 @@
           "id": "GC1",
           "kind": "OA7",
           "property": "outcome",
-          "claim": "A failing check stops a merge, in both repositories.",
+          "claim": "A failing required check stops a merge, in both repositories.",
           "requirement": "main in some-ui requires CI Gate and main in the server requires its five named checks (Artifact retention, Rust lint, rust_ci, metric_contract_ci, Deny Checks Summary); a deliberately failing pull request is shown to be blocked in each, and a check fails if either repository stops requiring them.",
           "verdict": "holds",
-          "conclusion": "A failing required check stops a merge in both repositories, even through the owner's account; the branch-rules check reads both repositories' rules on every pull request and daily, and a run that finds a check no longer required is red only in Actions, where someone has to look.",
+          "conclusion": "A failing required check stops a merge in both repositories, as probes showed even through the owner's account; a check reads both repositories' rules on every pull request and daily, and its red run shows only in Actions. It cannot see a bypass granted later, and some-ui's extension and pedagogy checks, like the server's other checks (GC5), are not required.",
           "evidence": [
             {
               "class": "measured",
               "says": "A deliberately failing pull request was refused in each repository through the owner's account: \"Required status check \\\"CI Gate\\\" is failing\" and \"Required status check \\\"Artifact retention\\\" is failing\".",
-              "ref": "some-ui#2210"
+              "ref": "some-ui#2206"
             },
             {
               "class": "measured",
@@ -671,7 +671,7 @@
             {
               "class": "measured",
               "says": "GET /repos/paulgsc/{some-ui,server}/rules/branches/main on 2026-10-28 required CI Gate in some-ui and the five named checks in the server.",
-              "ref": "some-ui:packages/assurance/src/branch-rules.ts"
+              "ref": "some-ui#2211"
             },
             {
               "class": "structural",
@@ -686,13 +686,13 @@
           "amendments": [
             {
               "on": "2026-10-28",
-              "change": "The server's half is its five named required checks, not one gate that waits on every check; every server check gating a merge moved to GC5.",
+              "change": "The claim is to required checks; the server's half is its five named required checks, not one gate that waits on every check, which moved to GC5.",
               "why": "The server's checks span several workflows and a job cannot wait on another workflow's jobs, so one gate is real work (AS10), not a setting.",
               "decision": "https://github.com/paulgsc/some-ui/issues/2211#issuecomment-6483155448"
             }
           ],
           "proof": [
-            "some-ui:scripts/check-branch-rules.ts#branchRuleProblems",
+            "some-ui:scripts/check-branch-rules.ts#readBranchRules",
             "some-ui:packages/assurance/src/__tests__/branch-rules.test.ts#names each check main no longer requires"
           ]
         },

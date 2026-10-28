@@ -579,10 +579,8 @@ jobs:
         run: nix develop .#ci --command node scripts/check-assurance.ts --base "origin/$BASE_REF"
 
   # ── Branch rules (GC1) ─────────────────────────────────────────────────
-  # scripts/check-branch-rules.ts: `main` here and in the server still
-  # requires the checks GC1 names. A setting can be switched off with no diff,
-  # so this also runs daily (branch-rules.yml). No `changes` gate and no
-  # install (Node's type stripping). The token only raises GitHub's rate limit.
+  # scripts/check-branch-rules.ts; also daily in branch-rules.yml. No
+  # `changes` gate and no install (Node's type stripping).
   branch-rules:
     name: Branch rules
     runs-on: ubuntu-latest
@@ -593,7 +591,7 @@ jobs:
       - uses: ./.github/actions/nix-setup
       - name: Check that main still requires its checks
         env:
-          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: nix develop .#ci --command node scripts/check-branch-rules.ts
 
   # ── Android only (repo-wide) ───────────────────────────────────────────
