@@ -1,150 +1,252 @@
 /**
- * The story's fixed order of slides for one week, how long each holds when
- * playing on its own, and the voiceover line each one carries. The line is
- * written from the same week data the slide draws, so the narration script
- * and the screen state the same facts.
+ * The story's fixed order of slides, how long each holds when playing on its
+ * own, and the voiceover line each one carries. A line is written from the
+ * same week data the slide draws, so the narration and the screen state the
+ * same facts.
+ *
+ * Two kinds of episode: the **legend**, played once, teaches the vocabulary
+ * (`./words`); a **week** then uses it without teaching it again, one slide
+ * per question (`./reading`), opening on the week's ways.
  */
 
-import { counted } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/intent-kit"
 
-import { lawOf, LAWS } from "./laws"
 import {
   ended,
   exitLine,
   hindsight,
   hindsightLine,
-  lightsOf,
-  lightTally,
-  LUCK_WORDS,
-  luckBand,
   pastExit,
-  seasonSoFar,
-  spreadsOf,
+  seasonSpreads,
   verdictOf,
 } from "./luck"
 import {
-  against,
+  bandTally,
+  byMaterial,
+  callOf,
+  cleanRun,
+  costs,
+  leagueBand,
+  leagueClause,
+  ownPart,
+  piecesOf,
+  sentence,
+  stakesClause,
+  weekBand,
+  worseOf100,
+} from "./reading"
+import {
   nameOf,
   percent,
-  points,
   signed,
   size,
   type StorySeason,
   type StoryWeek,
 } from "./story"
+import {
+  BANDS,
+  CALLS,
+  live,
+  MATERIAL,
+  medalOf,
+  numberWord,
+  ordinal,
+  phraseOf,
+  PIECE_ORDER,
+  PIECES,
+  STAKES,
+  widthOf,
+} from "./words"
 
-const SLIDE_IDS = [
-  "hook",
-  "lights",
-  "law",
-  "luck",
+const WEEK_SLIDES = [
+  "best",
+  "road",
+  "given",
+  "rank",
+  "podium",
   "stake",
   "verdict",
   "season",
   "outro",
 ] as const
-export type SlideId = (typeof SLIDE_IDS)[number]
+export type WeekSlide = (typeof WEEK_SLIDES)[number]
+
+export const LEGEND_SLIDES = [
+  "legend",
+  "pieces",
+  "material",
+  "bands",
+  "calls",
+] as const
+export type LegendSlide = (typeof LEGEND_SLIDES)[number]
+
+export type SlideId = WeekSlide | LegendSlide
+
+export const isLegendSlide = (id: SlideId): id is LegendSlide =>
+  LEGEND_SLIDES.some((s) => s === id)
+
+/** The legend's place among the weeks: before the first. */
+export const LEGEND_WEEK = 0
 
 /** Slides with nothing to show this week are skipped, not shown empty. */
-export function slidesFor(week: StoryWeek): ReadonlyArray<SlideId> {
-  return SLIDE_IDS.filter((id) => id !== "stake" || week.stake !== null)
+export function slidesFor(week: StoryWeek): ReadonlyArray<WeekSlide> {
+  return WEEK_SLIDES.filter((id) => id !== "stake" || week.stake !== null)
 }
 
 /** Milliseconds a slide holds when playing unattended: its reveal, then a beat. */
 export const HOLD_MS: Readonly<Record<SlideId, number>> = {
-  hook: 6500,
-  lights: 8000,
-  law: 7000,
-  luck: 7500,
+  best: 7500,
+  road: 9000,
+  given: 8000,
+  rank: 7000,
+  podium: 8000,
   stake: 7000,
-  verdict: 6500,
+  verdict: 6000,
   season: 7000,
-  outro: 4500,
+  outro: 6000,
+  legend: 6500,
+  pieces: 10_000,
+  material: 8000,
+  bands: 8000,
+  calls: 8000,
 }
 
-/** The model every number is read under, said once a week. */
+/** The model every number is read under. */
 export const MODEL =
   "Each way the rest of the season can go counts once. Standings only: a tie goes to us."
 
-/** "the Niners beat the Lions", as the voiceover says a result. */
-const said = (season: StorySeason, winner: string, loser: string): string =>
-  `the ${nameOf(season, winner)} beat the ${nameOf(season, loser)}`
+/** The legend's voiceover, one line per slide. */
+export function legendLine(id: LegendSlide): string {
+  switch (id) {
+    case "legend": {
+      return "Every week there was a best way for it to go. Each short shows how close the week came, and who came closest. First, the words we use."
+    }
+    case "pieces": {
+      return PIECE_ORDER.map((k) => {
+        const p = PIECES[k]
+        return `${capital(p.noun)}: ${p.who.toLowerCase()} ${p.moves}`
+      }).join(" ")
+    }
+    case "material": {
+      return `A piece is ${MATERIAL.major.word} when it can move us ${MATERIAL.major.worth}, ${MATERIAL.minor.word} at ${MATERIAL.minor.worth}, and ${MATERIAL.idle.word} ${MATERIAL.idle.worth}. A piece is made when it goes the way the best week wanted, missed when it doesn't. Our result can wake a piece: idle before it, live after it.`
+    }
+    case "bands": {
+      return `Each week lands in a band: of the ways it could have gone, how many would have left us worse. ${BANDS.map((b) => `${b.phrase}: ${widthOf(b.band)} weeks in 100`).join(". ")}. A clean run misses nothing that mattered.`
+    }
+    case "calls": {
+      return `Next week is ${Object.values(STAKES)
+        .map((s) => `${s.phrase.toLowerCase()} when ${s.means}`)
+        .join(", ")}. Then the call: ${Object.values(CALLS)
+        .map((c) => `${c.phrase}, ${c.means}`)
+        .join("; ")}.`
+    }
+    default: {
+      return assertNever(id)
+    }
+  }
+}
 
-/** The voiceover line for one slide. */
+/** "Gold", from "gold". */
+const capital = (word: string): string =>
+  `${word.charAt(0).toUpperCase()}${word.slice(1)}`
+
+/** "SF over ATL": the side a piece wants, over the other. */
+export const over = (home: string, away: string, want: string): string =>
+  `${want} over ${want === home ? away : home}`
+
+/** The voiceover line for one slide of a week. */
 export function narration(
   season: StorySeason,
   week: StoryWeek,
-  id: SlideId
+  id: WeekSlide
 ): string {
-  const name = nameOf(season, season.team)
-  const n = (code: string): string => nameOf(season, code)
-  const { share } = week
+  const { ways } = week
   switch (id) {
-    case "hook": {
-      return "Most fans ask one question: did we win? We ask two. Did following them pay this week? And is next week worth following?"
+    case "best": {
+      const needed = piecesOf(week).filter((p) => live(p.game))
+      const own = needed.find((p) => p.game.kind === "own")
+      const league = needed.filter((p) => p.game.kind !== "own")
+      const parts = [
+        ...(own ? [`our light (a ${MATERIAL[own.material].word})`] : []),
+        ...(league.length > 0 ? [byMaterial(league)] : []),
+      ]
+      const lead = `Week ${week.week}. The best week we could have had: ${percent(ways.best)} of the ways in.`
+      return parts.length > 0
+        ? `${lead} It needed ${parts.join(" and ")}.`
+        : `${lead} No piece could move us a quarter point.`
     }
-    case "lights": {
-      const own = lightsOf(week).find((l) => l.result.kind === "own")
-      const { made, missed } = lightTally(week)
-      const game = week.game
-      const lead = own
-        ? `Week ${week.week}: ${said(season, own.result.winner, own.result.loser)}. Their own light, ${points(own.result.leverage)} points.`
-        : game
-          ? `Week ${week.week}: the ${name} ${game.won ? "beat" : "lost to"} the ${n(game.opponent)}, which couldn't move them.`
-          : `Week ${week.week} is a bye: only the league's lights.`
-      return made + missed
-        ? `${lead} Of the league's ${counted(made + missed, "result")} that could move us, ${made} went our way and ${missed} didn't.`
-        : `${lead} Nothing else in the league could move us.`
+    case "road": {
+      const c = costs(week)
+      const ours =
+        week.game === null || ownPart(week) === "tie"
+          ? ""
+          : ` Our light cost ${size(c.own)} points.`
+      return `Kickoff by kickoff, the best week still possible went from ${percent(ways.best)} to ${percent(ways.actual)}.${ours} The league cost ${size(c.league)}.`
     }
-    case "law": {
-      const law = LAWS[lawOf(week)]
-      return `${law.name}. ${law.rule} ${law.then}`
+    case "given": {
+      const part = ownPart(week)
+      const lead =
+        part === "bye" || part === "tie"
+          ? `With no result of ours, the week was the league's, and it ran ${phraseOf(leagueBand(week)).toLowerCase()}.`
+          : `Given our ${part === "made" ? "win" : part === "missed" ? "loss" : "result"}, the league ran ${phraseOf(leagueBand(week)).toLowerCase()}.`
+      return `${lead} ${leagueClause(week)}`
     }
-    case "luck": {
-      const spreads = spreadsOf(week)
-      const words = LUCK_WORDS[luckBand(spreads)]
-      if (spreads === null) return `${words.big} ${words.line}`
-      return `${words.big} The league moved us ${points(share.league)} points. This week's results could move us about ${size(share.spread)}: that's ${signed(spreads)} spreads.`
+    case "rank": {
+      const clean = cleanRun(week) ? " A clean run." : ""
+      return `${phraseOf(weekBand(week))}. Of every 100 ways the week could have gone, ${worseOf100(ways.rank)} would have left us worse.${clean}`
+    }
+    case "podium": {
+      const { medals, place, eligible } = week.podium
+      const said = medals
+        .map(
+          (m) =>
+            `${capital(medalOf(m.place))}, ${m.team}: better than ${worseOf100(m.rank)} of every 100 of its ways`
+        )
+        .join(". ")
+      const ours =
+        place === null
+          ? `${season.team} wasn't placed: its week couldn't move it a point.`
+          : `${season.team} came ${ordinal(place)} of ${eligible}.`
+      return `${said ? `${said}. ` : ""}${ours}`
     }
     case "stake": {
-      const stake = week.stake
+      const { stake } = week
       if (!stake) return ""
-      const top = week.next[0]
-      const ours =
-        stake.opponent === null
-          ? "We have a bye"
-          : stake.own > 0
-            ? `Our game against the ${n(stake.opponent)} is ${size(stake.own)} points between a win and a loss`
-            : `Our game against the ${n(stake.opponent)} can't move us`
-      const root = top
-        ? ` Root for the ${n(top.rootFor)} over the ${n(against(top))}.`
+      const top = stake.pieces
+        .filter((p) => live(p))
+        .sort((a, b) => b.price - a.price)
+        .slice(0, 2)
+      const root = top.length
+        ? ` Its best week needs ${top.map((p) => over(p.home, p.away, p.want)).join(", and ")}.`
         : ""
-      return `Next week: ${ours}, and the whole week can move us about ${size(stake.spread)}.${root}`
+      return `${stakesClause(week)}${root}`
     }
     case "verdict": {
       const stopped = pastExit(season, week)
       if (stopped !== null) {
         const h = hindsight(season)
-        return `We stopped following after week ${stopped}.${h ? ` ${hindsightLine(h)}` : ""}`
+        return `We stopped watching after week ${stopped}.${h ? ` ${hindsightLine(h)}` : ""}`
       }
       const v = verdictOf(week)
+      const call = CALLS[callOf(week)].phrase
       return v.kind === "watch"
-        ? `Verdict: watch week ${week.week + 1}. ${percent(share.after)} of the ways the season can go get them in.`
-        : `Verdict: we stop here. ${exitLine(v.why)}`
+        ? `${call}. ${percent(week.share.after)} of the ways the season can go get us in.`
+        : `${call}. ${exitLine(v.why)}`
     }
     case "season": {
-      const so = seasonSoFar(season, week)
-      const luck =
-        so.spreads === null
-          ? "nothing elsewhere could move us"
-          : `the league's luck adds up to ${signed(so.spreads)} spreads`
-      return `Over ${counted(so.weeks.length, "week")} followed, ${luck}. ${so.made} of ${counted(so.lights, "light")} made.`
+      const { weeks, bands } = bandTally(season, week)
+      const greens = bands.find((b) => b.band === "all-greens")?.count ?? 0
+      const reds = bands.find((b) => b.band === "all-reds")?.count ?? 0
+      const spreads = seasonSpreads(weeks)
+      const league =
+        spreads === null ? "" : ` The league alone: ${signed(spreads)} spreads.`
+      return `Over ${numberWord(weeks.length)} weeks followed: ${numberWord(greens)} all greens and ${numberWord(reds)} all reds, where counting expects one week in ten of each.${league}`
     }
     case "outro": {
-      return ended(season, week)
-        ? `That's the series for the ${name}.`
-        : "Next week, we ask again."
+      const last = ended(season, week)
+        ? `That's the series for the ${nameOf(season, season.team)}.`
+        : "Next week, we drive again."
+      return `${sentence(season, week)} ${last}`
     }
     default: {
       return assertNever(id)

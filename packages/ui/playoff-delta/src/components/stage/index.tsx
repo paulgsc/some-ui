@@ -5,11 +5,15 @@ import {
   type CSSProperties,
   type JSX,
 } from "react"
-import { SLIDES } from "@playoff-delta/components/slides"
+import { LEGEND, SLIDES } from "@playoff-delta/components/slides"
 import { clampSlide, initialPlayer, step } from "@playoff-delta/lib/player"
 import { SAMPLE_SEASON } from "@playoff-delta/lib/sample"
 import {
   HOLD_MS,
+  isLegendSlide,
+  LEGEND_SLIDES,
+  LEGEND_WEEK,
+  legendLine,
   narration,
   slidesFor,
   type SlideId,
@@ -51,6 +55,25 @@ const Segments = ({
   )
 }
 
+/** The slide `id` names: the legend's, or one of the week's. */
+const SlideAt = ({
+  season,
+  week,
+  id,
+}: {
+  season: StorySeason
+  week: StoryWeek | null
+  id: SlideId
+}): JSX.Element | null => {
+  if (isLegendSlide(id)) {
+    const Slide = LEGEND[id]
+    return <Slide />
+  }
+  if (week === null) return null
+  const Slide = SLIDES[id]
+  return <Slide season={season} week={week} />
+}
+
 const Frame = ({
   season,
   week,
@@ -63,7 +86,8 @@ const Frame = ({
   onNext,
 }: {
   season: StorySeason
-  week: StoryWeek
+  /** Null for the legend. */
+  week: StoryWeek | null
   ids: ReadonlyArray<SlideId>
   at: number
   running: boolean
@@ -73,8 +97,7 @@ const Frame = ({
   onBack?: () => void
   onNext?: () => void
 }): JSX.Element => {
-  const id = ids[at] ?? ids[0] ?? "hook"
-  const Slide = SLIDES[id]
+  const id = ids[at] ?? ids[0] ?? "legend"
   return (
     <div
       className={`pd-frame bg-background text-foreground ${fill ? "pd-frame--fill" : "border-border h-full max-w-full rounded-[calc(var(--radius)+0.75rem)] border"}`}
@@ -84,13 +107,13 @@ const Frame = ({
       <Segments ids={ids} at={at} running={running} />
       <div className="pd-meta">
         <span>
-          WEEK {week.week} · {season.team}
+          {week === null ? "THE LEGEND" : `WEEK ${week.week}`} · {season.team}
         </span>
         <span>{season.label}</span>
       </div>
       {/* keyed by slide so every reveal replays when the slide changes */}
-      <div key={`${week.week}-${id}`} className="pd-slide">
-        <Slide season={season} week={week} />
+      <div key={`${week?.week ?? LEGEND_WEEK}-${id}`} className="pd-slide">
+        <SlideAt season={season} week={week} id={id} />
       </div>
       {onBack && onNext ? (
         <div className="absolute inset-0 z-[1] grid grid-cols-[1fr_2fr]">
@@ -102,7 +125,19 @@ const Frame = ({
   )
 }
 
-/** One week's story; keyed by week, so a new week starts from its first slide. */
+/** The voiceover line for one slide of an episode. */
+const lineOf = (
+  season: StorySeason,
+  week: StoryWeek | null,
+  id: SlideId
+): string =>
+  isLegendSlide(id)
+    ? legendLine(id)
+    : week === null
+      ? ""
+      : narration(season, week, id)
+
+/** One episode's story (a week, or the legend); keyed by it, so a new one starts from its first slide. */
 const WeekStory = ({
   season,
   week,
@@ -111,12 +146,16 @@ const WeekStory = ({
   onWeekChange,
 }: {
   season: StorySeason
-  week: StoryWeek
+  /** Null for the legend. */
+  week: StoryWeek | null
   initialSlide: number
   record: boolean
   onWeekChange?: (week: number) => void
 }): JSX.Element => {
-  const ids = useMemo(() => slidesFor(week), [week])
+  const ids: ReadonlyArray<SlideId> = useMemo(
+    () => (week === null ? LEGEND_SLIDES : slidesFor(week)),
+    [week]
+  )
   const count = ids.length
   const [player, dispatch] = useReducer(
     step,
@@ -168,11 +207,11 @@ const WeekStory = ({
         running={false}
         fill
         script={JSON.stringify({
-          week: week.week,
+          week: week?.week ?? LEGEND_WEEK,
           slides: ids.map((slide) => ({
             slide,
             holdMs: HOLD_MS[slide],
-            line: narration(season, week, slide),
+            line: lineOf(season, week, slide),
           })),
         })}
       />
@@ -191,9 +230,10 @@ const WeekStory = ({
           <select
             aria-label="Week"
             className="border-border bg-card rounded-md border px-2 py-1 text-sm"
-            value={week.week}
+            value={week?.week ?? LEGEND_WEEK}
             onChange={(e) => onWeekChange?.(Number(e.target.value))}
           >
+            <option value={LEGEND_WEEK}>The legend</option>
             {season.weeks.map((w) => (
               <option key={w.week} value={w.week}>
                 Week {w.week}
@@ -228,6 +268,8 @@ const WeekStory = ({
 /**
  * The story for one team's season (the bundled sample until a real feed is
  * passed in), a week at a time, as a 9:16 stage meant to be screen-recorded.
+ * Week `LEGEND_WEEK` (0) is the legend episode, which teaches the words every
+ * week then uses.
  * `record` renders the one slide `initialSlide` names, filling the viewport,
  * with nothing to press: the recorder sizes the viewport (1080x1920) and
  * captures it.
@@ -240,12 +282,23 @@ export const PlayoffDeltaStage = ({
   onWeekChange,
 }: {
   season?: StorySeason
-  /** The week to show; the first in the season when absent or unknown. */
+  /** The week to show (0: the legend); the first in the season when absent or unknown. */
   week?: number
   initialSlide?: number
   record?: boolean
   onWeekChange?: (week: number) => void
 }): JSX.Element | null => {
+  if (week === LEGEND_WEEK)
+    return (
+      <WeekStory
+        key={LEGEND_WEEK}
+        season={season}
+        week={null}
+        initialSlide={initialSlide}
+        record={record}
+        onWeekChange={onWeekChange}
+      />
+    )
   const shown = season.weeks.find((w) => w.week === week) ?? season.weeks[0]
   if (!shown) return null
   return (

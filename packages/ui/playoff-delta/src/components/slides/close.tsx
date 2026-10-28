@@ -1,78 +1,142 @@
+/**
+ * The week's last three questions: whose week came closest to its best (5),
+ * what next week can do (6), and the call (7); then the season so far, and
+ * the week in one sentence.
+ */
 import type { CSSProperties, JSX } from "react"
 import {
   ended,
   exitLine,
   hindsight,
   hindsightLine,
-  LUCK_WORDS,
-  luckBand,
   pastExit,
-  seasonSoFar,
+  seasonSpreads,
   SETTLED,
-  SPREADS_SHOWN,
-  spreadsOf,
   verdictOf,
 } from "@playoff-delta/lib/luck"
 import {
-  against,
-  nameOf,
-  percent,
-  signed,
-  size,
-} from "@playoff-delta/lib/story"
-import { counted } from "@some-ui/core-utils"
+  bandTally,
+  callOf,
+  kindOf,
+  sentence,
+  weekBand,
+  worseOf100,
+} from "@playoff-delta/lib/reading"
+import { over } from "@playoff-delta/lib/slides"
+import { percent, signed, size } from "@playoff-delta/lib/story"
+import {
+  CALLS,
+  live,
+  materialOf,
+  medalOf,
+  ordinal,
+  phraseOf,
+  STAKES,
+  stakesOf,
+} from "@playoff-delta/lib/words"
 
+import { BAND_CLASS, PieceLight, priceNote } from "./marks"
 import { delay, Kicker, Reveal, type SlideProps } from "./shared"
 
-export const Stake = ({ season, week }: SlideProps): JSX.Element => {
-  const stake = week.stake
-  if (!stake) return <Kicker>Next week</Kicker>
+const GAME_WORDS = {
+  won: "won its game",
+  lost: "lost its game",
+  tie: "tied its game",
+  bye: "had a bye",
+} as const
+
+export const Podium = ({ season, week }: SlideProps): JSX.Element => {
+  const { medals, place, eligible } = week.podium
   return (
     <>
-      <Kicker>Next week</Kicker>
-      <div>
-        <b className="pd-big block">±{size(stake.spread)}</b>
-        <span className="pd-say text-muted-foreground">
-          points of the ways in: how far next week usually moves us
-        </span>
-      </div>
-      <Reveal at={0.5} className="pd-card">
-        <span className="pd-mono pd-small text-muted-foreground">our game</span>
-        <span className="pd-say">
-          {stake.opponent === null ? (
-            "A bye: only the league can move us."
-          ) : stake.own > 0 ? (
-            <>
-              vs {stake.opponent}: <b>{size(stake.own)} points</b> between a win
-              and a loss
-            </>
-          ) : (
-            `vs ${stake.opponent}: it can't move us either way.`
-          )}
-        </span>
-      </Reveal>
+      <Kicker>Week {week.week} · the podium</Kicker>
+      <h2 className="pd-q">Whose week came closest to its best?</h2>
       <div className="flex flex-col gap-[2cqw]">
-        {week.next.map((g, i) => (
-          <Reveal
-            key={`${g.home}-${g.away}`}
-            at={1 + i * 0.4}
-            className="pd-card"
-          >
+        {medals.map((m, i) => (
+          <Reveal key={m.team} at={0.4 + i * 0.4} className="pd-card pd-medal">
             <span className="pd-mono pd-small text-muted-foreground">
-              {g.away} @ {g.home} · {size(g.swing)} points apart
+              {medalOf(m.place)} · {GAME_WORDS[m.game]}
             </span>
             <span className="pd-say">
-              Root for the <b>{nameOf(season, g.rootFor)}</b> over the{" "}
-              {nameOf(season, against(g))}
+              <b>{m.team}</b>: better than <b>{worseOf100(m.rank)}</b> of every
+              100 of its ways ({percent(m.actual)}, best {percent(m.best)})
+            </span>
+            <span className="pd-mono flex flex-wrap gap-x-[2.5cqw] text-[2.6cqw]">
+              {m.pieces.map((p) => (
+                <span
+                  key={`${p.home}-${p.away}`}
+                  className={p.made ? "text-success" : "text-destructive"}
+                >
+                  {over(p.home, p.away, p.want)} {p.made ? "made" : "missed"}
+                </span>
+              ))}
             </span>
           </Reveal>
         ))}
       </div>
-      <Reveal at={2.4} className="pd-small text-muted-foreground">
-        One spread: the standard deviation of our share of the ways in over the
-        ways next week can go.
-        {stake.exact ? "" : " Sampled."}
+      <Reveal at={0.6 + medals.length * 0.4} className="pd-say">
+        {place === null ? (
+          <>
+            <b>{season.team}</b> wasn&apos;t placed: its week couldn&apos;t move
+            it a point.
+          </>
+        ) : (
+          <>
+            <b>{season.team}</b> came <b>{ordinal(place)}</b> of {eligible}.
+          </>
+        )}
       </Reveal>
+      <Reveal
+        at={1 + medals.length * 0.4}
+        className="pd-small text-muted-foreground"
+      >
+        Each team&apos;s week, ranked among its own ways. A team is placed when
+        its week could move it a point or more.
+      </Reveal>
+    </>
+  )
+}
+
+export const Stake = ({ season, week }: SlideProps): JSX.Element => {
+  const stake = week.stake
+  if (!stake) return <Kicker>Next week</Kicker>
+  const stakes = STAKES[stakesOf(stake.spread)]
+  const pieces = [...stake.pieces]
+    .filter((p) => live(p))
+    .sort((a, b) => b.price - a.price)
+    .slice(0, 6)
+  return (
+    <>
+      <Kicker>Next week</Kicker>
+      <div>
+        <b className="pd-big block">{stakes.phrase}</b>
+        <span className="pd-say text-muted-foreground">
+          ±{size(stake.spread)} points: how far next week usually moves us
+          {stake.opponent === null ? ". We have a bye." : "."}
+        </span>
+      </div>
+      <Reveal at={0.5} className="pd-small text-muted-foreground">
+        Its best week needs:
+      </Reveal>
+      <div className="pd-lights">
+        {pieces.map((p, i) => (
+          <PieceLight
+            key={`${p.home}-${p.away}`}
+            noun={kindOf(season, p.home, p.away)}
+            material={materialOf(p)}
+            price={p.price}
+            state="waiting"
+            label={over(p.home, p.away, p.want)}
+            note={priceNote(p.price)}
+            at={0.8 + i * 0.2}
+          />
+        ))}
+      </div>
+      {pieces.length === 0 ? (
+        <Reveal at={0.8} className="pd-say">
+          Every piece next week is idle.
+        </Reveal>
+      ) : null}
     </>
   )
 }
@@ -96,16 +160,15 @@ const ShareBar = ({ share }: { share: number }): JSX.Element => {
 }
 
 export const Verdict = ({ season, week }: SlideProps): JSX.Element => {
-  const v = verdictOf(week)
   const stopped = pastExit(season, week)
   if (stopped !== null) {
     const h = hindsight(season)
     return (
       <>
-        <Kicker>The verdict</Kicker>
+        <Kicker>The call</Kicker>
         <b className="pd-big block">Stopped.</b>
         <span className="pd-say">
-          We stopped following after week {stopped}.
+          We stopped watching after week {stopped}.
         </span>
         {h ? (
           <Reveal at={0.6} className="pd-card">
@@ -118,70 +181,72 @@ export const Verdict = ({ season, week }: SlideProps): JSX.Element => {
       </>
     )
   }
+  const v = verdictOf(week)
+  const call = CALLS[callOf(week)]
   return (
     <>
-      <Kicker>The verdict</Kicker>
+      <Kicker>The call</Kicker>
       <div>
-        <b className="pd-big block">
-          {v.kind === "watch" ? `Watch week ${week.week + 1}.` : "Exit."}
+        <b
+          className={`pd-big block ${call.kind === "proof" ? "pd-proof" : ""}`}
+        >
+          {call.phrase}.
         </b>
-        <span className="pd-say text-muted-foreground">
-          {v.kind === "watch"
-            ? `${percent(week.share.after)} of the ways the season can go get them in.`
-            : `${percent(week.share.after)} of the ways in. ${exitLine(v.why)}`}
+        <span className="pd-mono pd-small text-muted-foreground">
+          {call.kind === "proof" ? "proven" : "our rule"} · {call.means}
         </span>
       </div>
+      <Reveal at={0.3} className="pd-say">
+        {percent(week.share.after)} of the ways the season can go get us in.
+        {v.kind === "exit" ? ` ${exitLine(v.why)}` : ""}
+      </Reveal>
       <Reveal at={0.4}>
         <ShareBar share={week.share.after} />
-      </Reveal>
-      <Reveal at={1.2} className="pd-small text-muted-foreground">
-        We follow while the share of the ways in is between {percent(SETTLED)}{" "}
-        and {percent(1 - SETTLED)}, and stop for good once it leaves, or once it
-        is settled either way.
       </Reveal>
     </>
   )
 }
 
 export const Season = ({ season, week }: SlideProps): JSX.Element => {
-  const { weeks, spreads, lights, made } = seasonSoFar(season, week)
+  const { weeks, bands } = bandTally(season, week)
+  const spreads = seasonSpreads(weeks)
   return (
     <>
       <Kicker>The season so far</Kicker>
-      <div>
-        <b className="pd-big block">{LUCK_WORDS[luckBand(spreads)].big}</b>
-        <span className="pd-say text-muted-foreground">
-          {spreads === null
-            ? "Nothing elsewhere could move us."
-            : `${signed(spreads)} spreads over ${counted(weeks.length, "week")} followed`}
-        </span>
+      <div className="pd-weeks" aria-hidden="true">
+        {weeks.map((w, i) => (
+          <div
+            key={w.week}
+            className={`pd-in pd-weeks__week ${BAND_CLASS[weekBand(w)]}`}
+            style={delay(0.2 + i * 0.08)}
+          >
+            <span className="pd-mono">{w.week}</span>
+          </div>
+        ))}
       </div>
-      <div className="pd-strip" aria-hidden="true">
-        {weeks.map((w, i) => {
-          const z = spreadsOf(w) ?? 0
-          const height = `${(Math.min(Math.abs(z), SPREADS_SHOWN) / SPREADS_SHOWN) * 50}%`
-          return (
-            <div key={w.week} className="pd-strip__week">
-              <div className="pd-strip__bars">
-                <i
-                  className={z >= 0 ? "pd-strip__up" : "pd-strip__down"}
-                  style={{ ...delay(0.3 + i * 0.08), height }}
-                />
-              </div>
-              <span className="pd-mono text-muted-foreground text-[2.2cqw]">
-                {w.week}
+      <div className="flex flex-col gap-[1.2cqw]">
+        {bands.map((b, i) => (
+          <Reveal
+            key={b.band}
+            at={1.2 + i * 0.15}
+            className="pd-mono pd-small flex justify-between"
+          >
+            <span className={BAND_CLASS[b.band]}>{phraseOf(b.band)}</span>
+            <span>
+              <b>{b.count}</b>{" "}
+              <span className="text-muted-foreground">
+                (counting expects {b.expected.toFixed(1)})
               </span>
-            </div>
-          )
-        })}
+            </span>
+          </Reveal>
+        ))}
       </div>
-      <Reveal at={1.6} className="pd-say">
-        <b>{made}</b> of {counted(lights, "light")} made
-      </Reveal>
-      <Reveal at={2} className="pd-small text-muted-foreground">
-        Each week, luck averages zero. Over many weeks, the total in spreads
-        usually lands within one of it.
-      </Reveal>
+      {spreads === null ? null : (
+        <Reveal at={2.2} className="pd-say">
+          The league alone: <b>{signed(spreads)}</b> spreads over {weeks.length}{" "}
+          weeks.
+        </Reveal>
+      )}
     </>
   )
 }
@@ -191,19 +256,13 @@ export const Outro = ({ season, week }: SlideProps): JSX.Element => {
   return (
     <>
       <div className="mt-auto flex flex-col gap-[1.5cqw]">
-        <span className="pd-kicker">Playoff Delta</span>
-        <b className="text-[13cqw] leading-[0.95] font-extrabold">
-          Worth
-          <br />
-          following?
+        <span className="pd-kicker">Week {week.week} in one line</span>
+        <b className="text-[6.4cqw] leading-[1.2] font-bold text-balance">
+          {sentence(season, week)}
         </b>
       </div>
-      <span className="pd-say text-muted-foreground">
-        Week {week.week} · {nameOf(season, season.team)} · in{" "}
-        {percent(week.share.after)} of the ways the season can go
-      </span>
       <span className="pd-kicker mt-auto">
-        {over ? "That's the series" : "Next week, we ask again"}
+        {over ? "That's the series" : "Next week, we drive again"}
       </span>
     </>
   )

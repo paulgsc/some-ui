@@ -101,7 +101,7 @@ const DESTINATIONS: ReadonlyArray<Destination> = [
     to: "/playoff-delta",
     title: "Playoff Delta",
     blurb:
-      "One NFL team's week in numbers: did following them pay, and is next week worth following?",
+      "One NFL team's week in numbers: the best week it could have had, how close it came, and which teams came closest.",
     icon: Trophy,
     audience: "web",
     launcher: "showcase",

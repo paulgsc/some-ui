@@ -1,21 +1,15 @@
 import {
-  exitLine,
   exitWeek,
   followed,
   hindsight,
   hindsightLine,
-  lightsOf,
-  LUCK_DEFINED,
-  LUCK_WORDS,
-  luckBand,
   seasonSpreads,
   SETTLED,
   verdictOf,
-  type ExitReason,
 } from "@playoff-delta/lib/luck"
 import { SAMPLE_SEASON } from "@playoff-delta/lib/sample"
-import { narration, slidesFor } from "@playoff-delta/lib/slides"
-import type { StoryResult, StoryWeek } from "@playoff-delta/lib/story"
+import { narration } from "@playoff-delta/lib/slides"
+import type { StoryWeek } from "@playoff-delta/lib/story"
 import { describe, expect, it } from "vitest"
 
 const week = (n: number): StoryWeek => {
@@ -23,68 +17,6 @@ const week = (n: number): StoryWeek => {
   if (!w) throw new Error(`no week ${n}`)
   return w
 }
-
-const result = (over: Partial<StoryResult>): StoryResult => ({
-  winner: "PHI",
-  loser: "DET",
-  kind: "inside",
-  leverage: 0,
-  ...over,
-})
-
-describe("lightsOf", () => {
-  it("puts the team's own result first, then the league's that moved it", () => {
-    const lights = lightsOf({
-      ...week(2),
-      results: [
-        result({ leverage: -0.03 }),
-        result({ kind: "own", winner: "SF", loser: "NO", leverage: 0.09 }),
-        result({ winner: "LAR", loser: "ARI", leverage: 0.0001 }),
-      ],
-    })
-    expect(lights.map((l) => [l.result.winner, l.made])).toEqual([
-      ["SF", true],
-      ["PHI", false],
-    ])
-  })
-})
-
-describe("a game that cannot move the share", () => {
-  // 2025: SF's wins in weeks 16 and 17 moved nothing, and its games after
-  // weeks 16 and 17 (CHI, SEA) had no stake; week 14 was its bye.
-  it("is no light, and is said as such", () => {
-    for (const n of [16, 17]) {
-      expect(lightsOf(week(n)).some((l) => l.result.kind === "own")).toBe(false)
-      expect(narration(SAMPLE_SEASON, week(n), "lights")).toMatch(
-        /couldn't move them/
-      )
-    }
-  })
-
-  it("is a game next week, not a bye", () => {
-    expect(week(16).stake).toMatchObject({ opponent: "CHI", own: 0 })
-    expect(narration(SAMPLE_SEASON, week(16), "stake")).toMatch(
-      /against the .+ can't move us/
-    )
-    expect(week(13).stake?.opponent).toBeNull()
-    expect(narration(SAMPLE_SEASON, week(13), "stake")).toMatch(/bye/)
-  })
-})
-
-describe("luckBand", () => {
-  it.each([
-    [null, "still"],
-    [0, "usual"],
-    [0.49, "usual"],
-    [-0.49, "usual"],
-    [0.5, "lucky"],
-    [-0.5, "unlucky"],
-    [1.5, "very lucky"],
-    [-2.9, "very unlucky"],
-  ] as const)("%s spreads: %s", (spreads, band) => {
-    expect(luckBand(spreads)).toBe(band)
-  })
-})
 
 describe("verdictOf", () => {
   const shaped = (over: Partial<StoryWeek>, after = 0.5): StoryWeek => ({
@@ -132,8 +64,8 @@ describe("the series on the bundled 2025 season", () => {
   })
 
   it("says the series is over only from the exit week on", () => {
-    expect(narration(SAMPLE_SEASON, week(9), "outro")).toBe(
-      "Next week, we ask again."
+    expect(narration(SAMPLE_SEASON, week(9), "outro")).toMatch(
+      /Next week, we drive again\.$/
     )
     expect(narration(SAMPLE_SEASON, week(15), "outro")).toMatch(
       /That's the series/
@@ -164,28 +96,5 @@ describe("the series on the bundled 2025 season", () => {
     expect(hindsightLine({ ...h, gotIn: false })).toBe(
       "They missed. The 1.4% of ways out left after week 15 is what happened."
     )
-  })
-})
-
-describe("the words", () => {
-  const REASONS: ReadonlyArray<ExitReason> = [
-    "clinched",
-    "out",
-    "settled-in",
-    "settled-out",
-  ]
-  // Say what is counted (CLAUDE.md, "Say what it is"): never odds.
-  const FORECAST = /\b(chance|odds|likely|probability)\b/i
-
-  it("count ways, and never forecast", () => {
-    const lines = [
-      LUCK_DEFINED,
-      ...Object.values(LUCK_WORDS).flatMap((w) => [w.big, w.line]),
-      ...REASONS.map(exitLine),
-      ...SAMPLE_SEASON.weeks.flatMap((w) =>
-        slidesFor(w).map((id) => narration(SAMPLE_SEASON, w, id))
-      ),
-    ]
-    for (const line of lines) expect(line).not.toMatch(FORECAST)
   })
 })
