@@ -348,7 +348,7 @@ describe("say it first", () => {
     expect(s.state.undo).toEqual({ id: "b2", until: null })
   })
 
-  it("a pick rewrites what the bite is about, then Undo runs a few seconds", () => {
+  it("a pick adds what the bite was about, still said first, then Undo runs a few seconds", () => {
     const state = asking()
     const said: Said = {
       how: "just-happened",
@@ -363,7 +363,7 @@ describe("say it first", () => {
       id: "b2",
       holdUntil: state.now + UNDO_MS,
       fields: {
-        how: "just-happened",
+        how: "said-first",
         scenario: "in.big-play",
         context: "31-yard catch",
         seq: "41",
@@ -441,7 +441,7 @@ describe("say it first", () => {
     })
     const [amend] = next.effects
     expect(amend?.type === "amend" && amend.fields).toMatchObject({
-      how: "every-scenario",
+      how: "said-first",
       scenario: "post.result",
     })
   })

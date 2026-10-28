@@ -27,6 +27,14 @@ const bite = (id: string, holdUntil = T0 + 5_000): KeptBite => ({
   holdUntil,
 })
 
+/** What it was about, picked after it was said (paulgsc/server#536). */
+const PICKED = {
+  how: "said-first",
+  scenario: "in.third-long",
+  strip: "",
+  watching: "1",
+}
+
 function memoryStorage(refuse = false): KeyedStorage & {
   map: Map<string, string>
   refuse: boolean
@@ -77,10 +85,10 @@ describe("the record of game bites", () => {
     expect(
       stepGameBites(
         held,
-        { kind: "amended", id: "b1", fields: { how: "offered" }, holdUntil: 9 },
+        { kind: "amended", id: "b1", fields: PICKED, holdUntil: 9 },
         T0
       )
-    ).toEqual([{ ...bite("b1"), fields: { how: "offered" }, holdUntil: 9 }])
+    ).toEqual([{ ...bite("b1"), fields: PICKED, holdUntil: 9 }])
     expect(stepGameBites(held, { kind: "released", id: "b1" }, T0)).toEqual([
       { ...bite("b1"), holdUntil: T0 },
     ])
@@ -228,13 +236,13 @@ describe("createGameBites", () => {
       ...clock.ports,
     })
     const kept = store.keep(bite("b1", T0 + 600_000), new Blob(["x"]))
-    const answered = store.amend("b1", { how: "offered" }, T0 + 5_000)
+    const answered = store.amend("b1", PICKED, T0 + 5_000)
     await expect(kept).rejects.toThrow()
     await expect(answered).resolves.toBe("noted")
     storage.refuse = false
     await clock.show()
     expect(store.getSnapshot()).toEqual([
-      { ...bite("b1"), fields: { how: "offered" }, holdUntil: T0 + 5_000 },
+      { ...bite("b1"), fields: PICKED, holdUntil: T0 + 5_000 },
     ])
 
     storage.refuse = true
@@ -271,9 +279,9 @@ describe("createGameBites", () => {
       })
       await store.keep(bite("b1"), new Blob(["x"])).catch(() => undefined)
       await clock.advance(5_000)
-      await expect(
-        store.amend("b1", { how: "offered" }, T0 + 10_000)
-      ).resolves.toBe("on-its-way")
+      await expect(store.amend("b1", PICKED, T0 + 10_000)).resolves.toBe(
+        "on-its-way"
+      )
       storage.refuse = false
       await clock.show()
       expect(store.getSnapshot()).toEqual([bite("b1")])
