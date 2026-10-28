@@ -140,7 +140,7 @@ export const BandsLegend = (): JSX.Element => {
         ))}
       </div>
       <Reveal at={3.2} className="pd-say">
-        <b>{CLEAN_RUN}</b>: no major or minor piece missed.
+        <b>{CLEAN_RUN}</b>: a week with a major or minor piece that missed none.
       </Reveal>
     </>
   )

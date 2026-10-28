@@ -168,7 +168,7 @@ export function widthOf(band: Band): number {
   return Math.round((top - (BANDS[i]?.from ?? 0)) * 100)
 }
 
-/** Earned, and literal: no major or minor piece missed. */
+/** Earned, and literal: the week had a major or minor piece, and missed none. */
 export const CLEAN_RUN = "a clean run"
 
 export type Stakes = "rush-hour" | "traffic" | "empty-road"

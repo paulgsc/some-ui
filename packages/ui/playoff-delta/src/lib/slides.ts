@@ -172,7 +172,7 @@ export function narration(
       ]
       const lead = `Week ${week.week}. The best week we could have had: ${percent(ways.best)} of the ways in.`
       return parts.length > 0
-        ? `${lead} It needed ${parts.join(" and ")}.`
+        ? `${lead} It needed ${parts.join(", ")}.`
         : `${lead} No piece could move us a quarter point.`
     }
     case "road": {
@@ -180,7 +180,9 @@ export function narration(
       const ours =
         week.game === null || ownPart(week) === "tie"
           ? ""
-          : ` Our light cost ${size(c.own)} points.`
+          : c.own > 0.00005
+            ? ` Our light cost ${size(c.own)} points.`
+            : " Our light cost nothing."
       return `Kickoff by kickoff, the best week still possible went from ${percent(ways.best)} to ${percent(ways.actual)}.${ours} The league cost ${size(c.league)}.`
     }
     case "given": {

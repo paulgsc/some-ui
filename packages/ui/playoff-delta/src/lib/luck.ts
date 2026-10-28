@@ -46,16 +46,16 @@ export function verdictOf(week: StoryWeek): Verdict {
 export function exitLine(why: ExitReason): string {
   switch (why) {
     case "clinched": {
-      return "They're in, whatever happens."
+      return "We're in, whatever happens."
     }
     case "out": {
       return "No way in is left."
     }
     case "settled-in": {
-      return `At least ${percent(1 - SETTLED)} of the ways the season can go get them in. Past that, we stop following.`
+      return `At least ${percent(1 - SETTLED)} of the ways the season can go get us in. Past that, we stop watching.`
     }
     case "settled-out": {
-      return `At most ${percent(SETTLED)} of the ways the season can go get them in. Below that, we stop following.`
+      return `At most ${percent(SETTLED)} of the ways the season can go get us in. Below that, we stop watching.`
     }
     default: {
       return assertNever(why)
@@ -138,8 +138,8 @@ export function hindsight(season: StorySeason): Hindsight | null {
 export function hindsightLine(h: Hindsight): string {
   const expected = h.reason === "clinched" || h.reason === "settled-in"
   if (expected === h.gotIn)
-    return `${h.gotIn ? "They got in" : "They missed"}. Nothing after week ${h.stopped} changed it.`
+    return `${h.gotIn ? "We got in" : "We missed"}. Nothing after week ${h.stopped} changed it.`
   return h.gotIn
-    ? `They got in. The ${percent(h.share)} of ways in left after week ${h.stopped} is what happened.`
-    : `They missed. The ${percent(1 - h.share)} of ways out left after week ${h.stopped} is what happened.`
+    ? `We got in. The ${percent(h.share)} of ways in left after week ${h.stopped} is what happened.`
+    : `We missed. The ${percent(1 - h.share)} of ways out left after week ${h.stopped} is what happened.`
 }

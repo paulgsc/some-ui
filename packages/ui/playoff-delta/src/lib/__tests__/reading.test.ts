@@ -79,12 +79,17 @@ describe("our part", () => {
     expect(leagueBand(bye)).toBe(weekBand(bye))
   })
 
-  it("earns a clean run with no major or minor piece missed", () => {
+  it("earns a clean run with no major or minor piece missed, and only with one", () => {
     const ways = {
       ...WEEK7.ways,
       games: WEEK7.ways.games.map((g) => ({ ...g, winner: g.want })),
     }
     expect(cleanRun(without({ ways }))).toBe(true)
+    const still = {
+      ...ways,
+      games: ways.games.map((g) => ({ ...g, price: 0 })),
+    }
+    expect(cleanRun(without({ ways: still }))).toBe(false)
   })
 })
 

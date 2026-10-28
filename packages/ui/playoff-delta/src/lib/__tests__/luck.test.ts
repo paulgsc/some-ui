@@ -91,10 +91,10 @@ describe("the series on the bundled 2025 season", () => {
     expect(h).toMatchObject({ stopped: 15, reason: "settled-in", gotIn: true })
     if (!h) throw new Error("no hindsight")
     expect(hindsightLine(h)).toBe(
-      "They got in. Nothing after week 15 changed it."
+      "We got in. Nothing after week 15 changed it."
     )
     expect(hindsightLine({ ...h, gotIn: false })).toBe(
-      "They missed. The 1.4% of ways out left after week 15 is what happened."
+      "We missed. The 1.4% of ways out left after week 15 is what happened."
     )
   })
 })

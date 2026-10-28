@@ -131,9 +131,11 @@ export const weekBand = (week: StoryWeek): Band => bandOf(week.ways.rank)
 export const leagueBand = (week: StoryWeek): Band =>
   bandOf(week.ways.given?.rank ?? week.ways.rank)
 
-/** No major or minor piece of the week's best way missed. */
-export const cleanRun = (week: StoryWeek): boolean =>
-  piecesOf(week).every((p) => p.material === "idle" || p.made)
+/** The week's best way had a major or minor piece, and none was missed. */
+export const cleanRun = (week: StoryWeek): boolean => {
+  const liveOnes = piecesOf(week).filter((p) => p.material !== "idle")
+  return liveOnes.length > 0 && liveOnes.every((p) => p.made)
+}
 
 /**
  * The road's drops (question 2): what each result cost the best week still
