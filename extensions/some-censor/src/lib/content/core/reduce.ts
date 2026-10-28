@@ -508,15 +508,8 @@ function watched(
     actions,
   }
   // R11: a Mix that plays music whole is a music Mix from now on.
-  const mix = merged.miniplayer ? null : merged.mix
-  if (mix === null || view !== "whole" || state.musicMixes.includes(mix)) {
-    return step
-  }
-  const marked = redecide(
-    { ...step.state, musicMixes: [...state.musicMixes, mix] },
-    state.boundaryDays,
-    state.rules
-  )
+  if (withMusicMix(state.musicMixes, next) === state.musicMixes) return step
+  const marked = redecide(step.state, state.boundaryDays, state.rules)
   return {
     state: marked.state,
     actions: [...step.actions, ...marked.actions],
@@ -564,22 +557,7 @@ function playedWith(
  * goes or changes with the mode.
  */
 function redecide(state: CoreState, boundaryDays: number, rules: Rules): Step {
-  const cards = new Map<CardKey, CardState>()
   const actions: Array<Action> = []
-  for (const card of state.cards.values()) {
-    const view = decide(
-      card.observation,
-      card.lastSeenAt,
-      boundaryDays,
-      rules.signs,
-      undatedShown(state, rules, card.observation),
-      state.session
-    )
-    const next: CardState = { ...card, view }
-    cards.set(card.key, next)
-    if (view.kind !== card.view.kind)
-      actions.push(render(next), stateFact(next))
-  }
   let watch = state.watch
   if (watch !== null) {
     const view = decideWatch(
@@ -597,5 +575,38 @@ function redecide(state: CoreState, boundaryDays: number, rules: Rules): Step {
       actions.push(watchAction(watch, rules))
     }
   }
-  return { state: { ...state, boundaryDays, rules, cards, watch }, actions }
+  // R11: a page the new rules show whole marks its Mix, as a reading does.
+  const musicMixes = withMusicMix(state.musicMixes, watch)
+  const cards = new Map<CardKey, CardState>()
+  for (const card of state.cards.values()) {
+    const view = decide(
+      card.observation,
+      card.lastSeenAt,
+      boundaryDays,
+      rules.signs,
+      undatedShown({ musicMixes }, rules, card.observation),
+      state.session
+    )
+    const next: CardState = { ...card, view }
+    cards.set(card.key, next)
+    if (view.kind !== card.view.kind)
+      actions.push(render(next), stateFact(next))
+  }
+  return {
+    state: { ...state, boundaryDays, rules, cards, watch, musicMixes },
+    actions,
+  }
+}
+
+/** R11: the Mixes known to be music, with the page's own once it is whole. */
+function withMusicMix(
+  musicMixes: ReadonlyArray<string>,
+  watch: WatchState | null
+): ReadonlyArray<string> {
+  const mix =
+    watch?.observation.miniplayer === false ? watch.observation.mix : null
+  if (mix === null || watch?.view !== "whole" || musicMixes.includes(mix)) {
+    return musicMixes
+  }
+  return [...musicMixes, mix]
 }

@@ -1041,7 +1041,7 @@ describe("a music Mix (R11)", () => {
     expect(viewOf(after.state, cardKey(asVideoId("later")))).toBe("plated")
   })
 
-  it("holds them under every other mode, and in a Mix not known as music", () => {
+  it("holds them under every other mode, and in a Mix not known as music (MM1)", () => {
     const standard = fold([started, song("song", 2), row("next", 3)])
     expect(standard.state.musicMixes, "known whatever the mode").toEqual([MIX])
     expect(viewOf(standard.state, cardKey(asVideoId("next")))).toBe("absent")
@@ -1049,6 +1049,20 @@ describe("a music Mix (R11)", () => {
     expect(viewOf(switched.state, cardKey(asVideoId("next")))).toBe("plated")
     const back = reduce(switched.state, mode(STANDARD_RULES))
     expect(viewOf(back.state, cardKey(asVideoId("next")))).toBe("absent")
+
+    // Under Strict an MV title is not music; choosing Music mix makes the
+    // song whole, and that alone marks its Mix: no new reading comes.
+    const strict = fold([
+      started,
+      mode(STRICT),
+      song("song", 2),
+      row("next", 3),
+    ])
+    expect(strict.state.musicMixes).toEqual([])
+    const chosen = reduce(strict.state, mode())
+    expect(chosen.state.watch?.view).toBe("whole")
+    expect(chosen.state.musicMixes).toEqual([MIX])
+    expect(viewOf(chosen.state, cardKey(asVideoId("next")))).toBe("plated")
 
     const other = fold([
       started,
