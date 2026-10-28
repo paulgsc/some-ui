@@ -1,0 +1,13 @@
+{
+  "extends": "@some-ui/tsconfig/rollupconfig.json",
+  "compilerOptions": {
+    "declarationDir": "./",
+    "composite": true,
+    "rootDir": "./src",
+    "paths": {
+      "@game-scenarios/*": ["./src/*"]
+    }
+  },
+  "include": ["src", "src/**/*.json"],
+  "exclude": ["node_modules", "build", "dist"]
+}

@@ -1,0 +1,49 @@
+{
+  "name": "@some-ui/game-scenarios",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "The fixed set of NFL game-week scenarios a bite is said about: paulgsc/server's copy, with the icons and words some-ui draws them with.",
+  "license": "MIT",
+  "homepage": "https://pgdev.maishatu.com/?tab=github",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulgsc/some-ui"
+  },
+  "bugs": {
+    "url": "https://github.com/paulgsc/some-ui/issues"
+  },
+  "keywords": [],
+  "main": "./dist/@some-ui/game-scenarios.es.js",
+  "module": "./dist/@some-ui/game-scenarios.es.js",
+  "types": "./dist/@some-ui/game-scenarios.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/@some-ui/game-scenarios.d.ts",
+      "import": "./dist/@some-ui/game-scenarios.es.js",
+      "default": "./dist/@some-ui/game-scenarios.es.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "@some-ui/tsconfig": "workspace:*",
+    "@some-ui/vite-config": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && vite build",
+    "clean": "rm -rf .turbo node_modules .eslintcache && pnpm clean:build",
+    "clean:build": "rm -rf ./dist ./tsconfig.build.tsbuildinfo ./tsconfig.tsbuildinfo",
+    "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\"",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier . --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "sideEffects": [
+    "*.css"
+  ]
+}
