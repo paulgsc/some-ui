@@ -123,6 +123,41 @@ function viewOf(state: CoreState, key = K): string | undefined {
   return state.cards.get(key)?.view.kind
 }
 
+/** The watch page showing `videoId`, 21 years old unless `overrides` say. */
+function watching(
+  videoId: string,
+  t: number,
+  overrides: Partial<WatchObservation> = {}
+): CoreEvent {
+  const dates = overrides.dates ?? ["21y ago"]
+  return {
+    kind: "watched",
+    watch: {
+      videoId: asVideoId(videoId),
+      short: false,
+      hydrated: dates.length > 0,
+      dates,
+      miniplayer: false,
+      title: null,
+      channelName: null,
+      artist: false,
+      mix: null,
+      ...overrides,
+    },
+    t,
+  }
+}
+
+/** Autoplay held, with `upNext` where it may go instead. */
+const held = (upNext: ReadonlyArray<string>, t = 9): CoreEvent => ({
+  kind: "held",
+  upNext: upNext.map(asVideoId),
+  t,
+})
+
+const plays = (actions: ReadonlyArray<Action>): Array<string> =>
+  actions.flatMap((a) => (a.kind === "play" ? [String(a.key)] : []))
+
 const dateFacts = (actions: ReadonlyArray<Action>): Array<string | null> =>
   actions.flatMap((a) =>
     a.kind === "record" && a.fact.kind === "date.observed" ? [a.fact.raw] : []
@@ -746,14 +781,6 @@ describe("what autoplay may go on into (#1805)", () => {
       seen(1, { uploadDate: OLD }, "old"),
       seen(1, { uploadDate: OLD }, "older"),
     ]
-    const held = (upNext: ReadonlyArray<string>): CoreEvent => ({
-      kind: "held",
-      upNext: upNext.map(asVideoId),
-      t: 2,
-    })
-    const plays = (actions: ReadonlyArray<Action>): Array<string> =>
-      actions.flatMap((a) => (a.kind === "play" ? [String(a.key)] : []))
-
     const stopping = fold([started, page, ...cards])
     expect(
       plays(reduce(stopping.state, held(["recent", "old"])).actions),
@@ -798,28 +825,6 @@ describe("what autoplay may go on into (#1805)", () => {
     ).toEqual([])
   })
   it("never skips back to a video this tab has played (R10, SK1)", () => {
-    const watching = (videoId: string, t: number): CoreEvent => ({
-      kind: "watched",
-      watch: {
-        videoId: asVideoId(videoId),
-        short: false,
-        hydrated: true,
-        dates: ["21y ago"],
-        miniplayer: false,
-        title: null,
-        channelName: null,
-        artist: false,
-        mix: null,
-      },
-      t,
-    })
-    const held = (upNext: ReadonlyArray<string>): CoreEvent => ({
-      kind: "held",
-      upNext: upNext.map(asVideoId),
-      t: 9,
-    })
-    const plays = (actions: ReadonlyArray<Action>): Array<string> =>
-      actions.flatMap((a) => (a.kind === "play" ? [String(a.key)] : []))
     // Two videos that each name the other first: A, then B, then A again.
     const { state } = fold([
       started,
@@ -851,27 +856,6 @@ describe("what autoplay may go on into (#1805)", () => {
 })
 
 describe("a page autoplay reached that is held (SK1)", () => {
-  const page = (
-    videoId: string,
-    dates: ReadonlyArray<string>,
-    t: number,
-    overrides: Partial<WatchObservation> = {}
-  ): CoreEvent => ({
-    kind: "watched",
-    watch: {
-      videoId: asVideoId(videoId),
-      short: false,
-      hydrated: dates.length > 0,
-      dates,
-      miniplayer: false,
-      title: null,
-      channelName: null,
-      artist: false,
-      mix: null,
-      ...overrides,
-    },
-    t,
-  })
   const autoplayed = (videoId: string, t: number): CoreEvent => ({
     kind: "autoplayed",
     videoId: asVideoId(videoId),
@@ -883,7 +867,7 @@ describe("a page autoplay reached that is held (SK1)", () => {
   const onTheWay = [
     started,
     skip,
-    page("here", ["21y ago"], 2),
+    watching("here", 2),
     seen(2, { uploadDate: OLD }, "next"),
     autoplayed("next", 3),
   ]
@@ -892,16 +876,22 @@ describe("a page autoplay reached that is held (SK1)", () => {
     const { state } = fold(onTheWay)
     expect(state.arriving).toEqual({ from: "here", to: "next" })
     // The old page still up, then the new one pending: still on its way.
-    const old = reduce(state, page("here", ["21y ago"], 4))
+    const old = reduce(state, watching("here", 4))
     expect(skips(old.actions)).toBe(0)
-    const pending = reduce(old.state, page("next", [], 5))
+    const pending = reduce(old.state, watching("next", 5, { dates: [] }))
     expect(skips(pending.actions)).toBe(0)
-    const held = reduce(pending.state, page("next", ["3 hours ago"], 6))
+    const held = reduce(
+      pending.state,
+      watching("next", 6, { dates: ["3 hours ago"] })
+    )
     expect(held.state.watch?.view).toBe("absent")
     expect(skips(held.actions)).toBe(1)
     expect(held.state.arriving).toBeNull()
     expect(
-      skips(reduce(held.state, page("next", ["3 hours ago"], 7)).actions),
+      skips(
+        reduce(held.state, watching("next", 7, { dates: ["3 hours ago"] }))
+          .actions
+      ),
       "once"
     ).toBe(0)
   })
@@ -912,19 +902,27 @@ describe("a page autoplay reached that is held (SK1)", () => {
       { kind: "autoplay", autoplay: "stop", t: 4 },
     ])
     expect(
-      skips(reduce(stop.state, page("next", ["3 hours ago"], 5)).actions)
+      skips(
+        reduce(stop.state, watching("next", 5, { dates: ["3 hours ago"] }))
+          .actions
+      )
     ).toBe(0)
     const { state } = fold(onTheWay)
-    const shown = reduce(state, page("next", ["9 years ago"], 5))
+    const shown = reduce(state, watching("next", 5, { dates: ["9 years ago"] }))
     expect(skips(shown.actions)).toBe(0)
     expect(shown.state.arriving).toBeNull()
     expect(
       skips(
-        reduce(state, page("next", ["3 hours ago"], 5, { miniplayer: true }))
-          .actions
+        reduce(
+          state,
+          watching("next", 5, { dates: ["3 hours ago"], miniplayer: true })
+        ).actions
       )
     ).toBe(0)
-    const elsewhere = reduce(state, page("clicked", ["3 hours ago"], 5))
+    const elsewhere = reduce(
+      state,
+      watching("clicked", 5, { dates: ["3 hours ago"] })
+    )
     expect(skips(elsewhere.actions), "the owner went elsewhere").toBe(0)
     expect(elsewhere.state.arriving).toBeNull()
   })
@@ -933,7 +931,7 @@ describe("a page autoplay reached that is held (SK1)", () => {
     const { state } = fold([
       started,
       skip,
-      page("here", ["21y ago"], 2),
+      watching("here", 2),
       seen(2, { uploadDate: OLD }, "row"),
     ])
     const sent = reduce(state, {
@@ -942,34 +940,46 @@ describe("a page autoplay reached that is held (SK1)", () => {
       t: 3,
     })
     expect(sent.state.arriving).toEqual({ from: "here", to: "row" })
-    const held = reduce(sent.state, page("row", ["3 hours ago"], 4))
+    const held = reduce(
+      sent.state,
+      watching("row", 4, { dates: ["3 hours ago"] })
+    )
     expect(skips(held.actions)).toBe(1)
+  })
+  it("stays stranded on the held page until Skip finds somewhere to go", () => {
+    const { state } = fold(onTheWay)
+    const stuck = reduce(state, watching("next", 5, { dates: ["3 hours ago"] }))
+    expect(stuck.state.stranded).toBe("next")
+    // Up next not loaded yet: nothing admitted, still stranded.
+    const empty = reduce(stuck.state, held([], 6))
+    expect(plays(empty.actions)).toEqual([])
+    expect(empty.state.stranded).toBe("next")
+    const again = fold(
+      [seen(7, { uploadDate: OLD }, "later"), held(["later"], 8)],
+      empty.state
+    )
+    expect(plays(again.actions)).toEqual([String(cardKey(asVideoId("later")))])
+    expect(again.state.stranded).toBeNull()
+    const back = reduce(empty.state, watching("here", 7))
+    expect(back.state.stranded, "the owner went back").toBeNull()
   })
 })
 
 describe("a music Mix (R11)", () => {
   const MIX = "RDsong"
   const MUSIC_MIX = MODE_RULES.mix.core
-  const watching = (
+  /** The page of a song in the Mix, read as music by its title. */
+  const song = (
     videoId: string,
     t: number,
     overrides: Partial<WatchObservation> = {}
-  ): CoreEvent => ({
-    kind: "watched",
-    watch: {
-      videoId: asVideoId(videoId),
-      short: false,
-      hydrated: true,
+  ): CoreEvent =>
+    watching(videoId, t, {
       dates: ["3 hours ago"],
-      miniplayer: false,
       title: "Stay With Me MV",
-      channelName: null,
-      artist: false,
       mix: MIX,
       ...overrides,
-    },
-    t,
-  })
+    })
   // A row of the Mix's playlist: no date, as YouTube draws one.
   const row = (videoId: string, t: number, mix = MIX): CoreEvent =>
     seen(t, { uploadDate: null, mix, title: "A song" }, videoId)
@@ -983,7 +993,7 @@ describe("a music Mix (R11)", () => {
     const before = fold([started, mode(), row("next", 2)])
     expect(viewOf(before.state, cardKey(asVideoId("next")))).toBe("absent")
 
-    const marked = reduce(before.state, watching("song", 3))
+    const marked = reduce(before.state, song("song", 3))
     expect(marked.state.musicMixes).toEqual([MIX])
     expect(viewOf(marked.state, cardKey(asVideoId("next")))).toBe("plated")
     expect(kinds(marked.actions)).toContain("render")
@@ -995,7 +1005,7 @@ describe("a music Mix (R11)", () => {
   })
 
   it("holds them under every other mode, and in a Mix not known as music", () => {
-    const standard = fold([started, watching("song", 2), row("next", 3)])
+    const standard = fold([started, song("song", 2), row("next", 3)])
     expect(standard.state.musicMixes, "known whatever the mode").toEqual([MIX])
     expect(viewOf(standard.state, cardKey(asVideoId("next")))).toBe("absent")
     const switched = reduce(standard.state, mode())
@@ -1006,7 +1016,7 @@ describe("a music Mix (R11)", () => {
     const other = fold([
       started,
       mode(),
-      watching("song", 2),
+      song("song", 2),
       row("elsewhere", 3, "RDother"),
     ])
     expect(viewOf(other.state, cardKey(asVideoId("elsewhere")))).toBe("absent")
@@ -1014,7 +1024,7 @@ describe("a music Mix (R11)", () => {
     const notMusic = fold([
       started,
       mode(),
-      watching("talk", 2, { title: "A talk" }),
+      song("talk", 2, { title: "A talk" }),
       row("next", 3),
     ])
     expect(notMusic.state.musicMixes).toEqual([])

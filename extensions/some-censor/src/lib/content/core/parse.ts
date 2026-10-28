@@ -4,8 +4,9 @@
  * The extract layer reads a DOM subtree and is therefore the Sensor's
  * (Boundary Contract B3); what it *does* with each href is string logic
  * with no DOM in it, and that logic lives here so Core owns the meaning of
- * an id without ever touching the node it came from. `extract/video-id.ts`
- * and `extract/channel-id.ts` are its only callers.
+ * an id without ever touching the node it came from. `extract/video-id.ts`,
+ * `extract/channel-id.ts`, `extract/mix.ts` and `extract/watch.ts` are its
+ * only callers.
  */
 
 import { asChannelId, asVideoId } from "@censor/types/ids"
@@ -27,6 +28,15 @@ export function parseVideoHref(href: string): VideoId | null {
   if (path) return asVideoId(path)
 
   return null
+}
+
+/**
+ * The YouTube Mix one href plays in, from its `list=`: a Mix is the
+ * playlist YouTube generates from a video ("radio"), and its id starts `RD`.
+ */
+export function parseMixHref(href: string): string | null {
+  const [, mix] = href.match(/[?&]list=(RD[^&#]*)/) ?? []
+  return mix ?? null
 }
 
 /**

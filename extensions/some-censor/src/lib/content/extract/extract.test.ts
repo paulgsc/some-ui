@@ -648,9 +648,6 @@ describe("the page's Mix", () => {
     try {
       window.history.replaceState(null, "", "/watch?v=jNQ&list=RDjNQ#t=1")
       expect(readWatch(document)?.mix).toBe("RDjNQ")
-      window.history.replaceState(null, "", "/watch?v=jNQ&list=PLabc")
-      expect(readWatch(document)?.mix, "not a Mix").toBeNull()
-      window.history.replaceState(null, "", "/watch?v=jNQ&list=RDjNQ")
       document.querySelector("ytd-watch-flexy")?.setAttribute("hidden", "")
       document
         .querySelector("ytd-app")

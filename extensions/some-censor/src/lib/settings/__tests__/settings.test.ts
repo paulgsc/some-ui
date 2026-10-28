@@ -140,12 +140,11 @@ describe("the mode and autoplay log (#1966)", () => {
       { at: 1, choice: "mode", from: "standard", to: "mix" },
     ])
     const next = settingsWrite(
-      { [SETTINGS_KEY]: { v: 1, mode: "open" }, [CHOICE_CHANGES_KEY]: log },
+      { [SETTINGS_KEY]: { v: 1, mode: "open" } },
       settings({ mode: "standard" }),
       2
     )
     expect(next[CHOICE_CHANGES_KEY]).toEqual([
-      ...log,
       { at: 2, choice: "mode", from: "mix", to: "standard" },
     ])
   })

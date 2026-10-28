@@ -108,11 +108,12 @@ const oneOf =
     values.some((v) => v === value)
 
 const isBoundary = oneOf(BOUNDARIES)
+const isMode = oneOf(MODES)
 const isAutoplay = oneOf(AUTOPLAYS)
 
 /** A stored mode, under the name it has now, or null. */
 function modeOf(value: unknown): Mode | null {
-  if (oneOf(MODES)(value)) return value
+  if (isMode(value)) return value
   return typeof value === "string" ? (FORMER_MODES[value] ?? null) : null
 }
 

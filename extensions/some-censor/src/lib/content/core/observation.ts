@@ -38,8 +38,7 @@ export type Observation = {
   readonly artist: boolean
   /**
    * The Mix this card is a row of, as its link names it (`RD…`), or null
-   * for any card outside a Mix's playlist. What lets Music mix show a row
-   * with no date.
+   * for any card outside a Mix's playlist.
    */
   readonly mix: string | null
   readonly surface: BoyoSurface

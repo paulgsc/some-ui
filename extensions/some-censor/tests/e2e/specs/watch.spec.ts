@@ -27,7 +27,8 @@
  *       page admits instead; under Stop nothing opens (#1966).
  * W14 — Under Skip, when autoplay went on into a video whose own page turns
  *       out held, it moves on to the next video the page admits that has not
- *       played, rather than stopping at "Not here." (SK1).
+ *       played, rather than stopping at "Not here." (SK1). * W15 — Likewise when that page's Up next has nothing admitted yet and its
+ *       cards arrive after the page is held (SK1).
  */
 
 import { SWITCHED_OFF_ATTRIBUTE } from "@censor/lib/content/selectors"
@@ -436,5 +437,31 @@ test('W14: under Skip, a held page autoplay reached moves on, never "Not here."'
   await watchView(page, "pending")
   await setAge(page, "3 hours ago")
   await watchView(page, "absent")
+  await expect.poll(opened).toEqual(["/watch?v=older_next"])
+})
+
+test("W15: under Skip, a held page moves on once its Up next arrives", async ({
+  fixture,
+}) => {
+  await fixture.settings({ autoplay: "skip" })
+  const page = await fixture.goto("yt-watch-page")
+  await watchView(page, "plated")
+  await upNext(page, [["old_next", "9 years ago", "Chan"]])
+  await stamped(page, "old_next", "plated")
+  const opened = await recordOpened(page)
+
+  expect(await reaches(page, "old_next", "1")).toBe(true)
+  // The next page: an empty Up next, its own date recent.
+  await upNext(page, [])
+  await page.evaluate(() => {
+    for (const el of document.querySelectorAll("[video-id]")) {
+      el.setAttribute("video-id", "old_next")
+    }
+  })
+  await setAge(page, "3 hours ago")
+  await watchView(page, "absent")
+  await page.waitForTimeout(700)
+  expect(await opened(), "nothing to go to yet").toEqual([])
+  await upNext(page, [["older_next", "10 years ago", "Chan"]])
   await expect.poll(opened).toEqual(["/watch?v=older_next"])
 })

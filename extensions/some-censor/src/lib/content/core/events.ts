@@ -52,9 +52,8 @@ export type Token =
   | { readonly kind: "described"; readonly t: number }
   /**
    * The Sensor held autoplay's navigation into a video Core does not admit
-   * (#1805). `upNext` is where autoplay may go instead, in the order Skip
-   * tries it: the playlist's rows after the page's own video, then Up
-   * next's videos in page order.
+   * (#1805), or was asked where Skip may go from a held page (SK1).
+   * `upNext` is where autoplay may go instead, in the Sensor's order.
    */
   | {
       readonly kind: "held"

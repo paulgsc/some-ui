@@ -126,10 +126,7 @@ export type Sensor = {
   custodyOf(key: CardKey): ReadonlyArray<CustodyTarget>
   /** The shown watch page's description, where the face control goes. */
   description(): HTMLElement | null
-  /**
-   * The card carrying `key` where Skip looks first, the one a skip opens
-   * (#1966): a playlist row ahead of an Up next card, so a Mix goes on.
-   */
+  /** The card carrying `key` that a skip opens, first in Skip's order (#1966). */
   upNextCard(key: CardKey): HTMLElement | null
   /**
    * Tell Core where autoplay may go from the page shown, as a held autoplay
@@ -634,10 +631,10 @@ export function createSensor(ports: SensorPorts): Sensor {
    * the app's own listener sees it, so stopping it here, in the capture
    * phase on the window, keeps the page where it is. The one vendor event
    * the Sensor holds, and only on Core's answer; a navigation the owner
-   * starts carries no `autonav`, and is never held. Core is told, with the
-   * playlist's next rows and Up next's videos in that order, so it can skip
-   * to one (#1966); and of an autoplay it lets go on, so Skip can move on
-   * if that video's own page is held (SK1).
+   * starts carries no `autonav`, and is never held. Core is told, with
+   * where autoplay may go instead, so it can skip to one (#1966); and of an
+   * autoplay it lets go on, so Skip can move on if that video's own page is
+   * held (SK1).
    */
   function onYtNavigate(event: Event): void {
     const next = readAutonav(event)

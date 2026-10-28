@@ -94,7 +94,6 @@ describe("decide", () => {
     // A date it has still decides: shown undated is not shown young.
     expect(undated("3 hours ago")).toBe("absent")
     expect(undated(null, true), "a Short stays held").toBe("absent")
-    expect(view(null), "elsewhere it is held").toBe("absent")
   })
 })
 

@@ -110,13 +110,12 @@ export type CoreState = {
   readonly unknownShapes: Readonly<Record<UnknownShapeReason, number>>
   /**
    * The videos this tab's watch page has shown since `start`, newest last,
-   * at most {@link PLAYED_KEPT}: Skip never goes back to one (R10). A
-   * navigation keeps them.
+   * at most {@link PLAYED_KEPT}: Skip never goes back to one (R10).
    */
   readonly played: ReadonlyArray<VideoId>
   /**
    * The Mixes (`RD…`) known to be music: each has played a video whole in
-   * the lane (QD15) since `start`. A navigation keeps them.
+   * the lane (QD15) since `start` (R11).
    */
   readonly musicMixes: ReadonlyArray<string>
   /**
@@ -124,6 +123,12 @@ export type CoreState = {
    * the watch page shows that video decided or shows another one (SK1).
    */
   readonly arriving: Arrival | null
+  /**
+   * The held page Skip is to move on from and has found nowhere to go yet
+   * (SK1): its Up next may still be loading, so the runtime looks again
+   * while this names the page shown.
+   */
+  readonly stranded: VideoId | null
 }
 
 /** An autoplay on its way from the page's video to the next one. */
@@ -160,6 +165,7 @@ export function initialState(session: SessionId): CoreState {
     played: [],
     musicMixes: [],
     arriving: null,
+    stranded: null,
   }
 }
 
@@ -180,6 +186,7 @@ export type CoreSnapshot = {
   readonly played: ReadonlyArray<VideoId>
   readonly musicMixes: ReadonlyArray<string>
   readonly arriving: Arrival | null
+  readonly stranded: VideoId | null
 }
 
 /**
@@ -203,9 +210,8 @@ export function admits(state: CoreState, videoId: VideoId): boolean {
 
 /**
  * Where autoplay goes instead of a video Core does not admit, under Skip
- * (#1966): the first of `upNext`, in the Sensor's order (the playlist's
- * rows after the page's own, then the sidebar), that Core admits, is not
- * the page's own video and has not played in this tab. None in the
+ * (#1966): the first of `upNext`, in the Sensor's order, that Core admits,
+ * is not the page's own video and has not played in this tab. None in the
  * miniplayer, which plays over another page, nor when there is no such
  * video: autoplay stops.
  */
@@ -254,5 +260,6 @@ export function snapshot(state: CoreState): CoreSnapshot {
     played: state.played,
     musicMixes: state.musicMixes,
     arriving: state.arriving,
+    stranded: state.stranded,
   }
 }

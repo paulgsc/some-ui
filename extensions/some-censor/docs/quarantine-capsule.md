@@ -537,8 +537,7 @@ locally.
 The owner's judgement is exercised on three choices, besides switching the
 extension on or off: the boundary `B`, a mode, and what autoplay does when it
 reaches a held video. A mode is a fixed bundle, strictest first: Strict,
-Standard or Music mix (`settings/modes.ts`; Music mix was Open until
-2026-10-28). The owner picks a mode, never a row of
+Standard or Music mix (`settings/modes.ts`). The owner picks a mode, never a row of
 one, so there is no single switch to tune and no Custom state. Modes never
 move `B`. (A languages setting was dropped on 2026-10-17 with the lane's
 title-script rule; see `QD15`.) No card, channel or page offers a disclosure

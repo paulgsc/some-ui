@@ -55,7 +55,8 @@
  *        not the page's: `nav` keeps it, and only `start` empties it.
  *        And a page autoplay or Skip went on into that turns out held
  *        (admitted by its card, held by its own date) yields `skip`, so
- *        Skip moves on rather than stopping at "Not here.".
+ *        Skip moves on rather than stopping at "Not here."; until a `held`
+ *        finds somewhere to go, `stranded` names that page.
  *  R11 — A Mix is music once it plays a video whole in the lane (QD15):
  *        its id joins `musicMixes`, every card is re-decided, and under
  *        Music mix its rows with no date are plated (QD3's amendment).
@@ -161,6 +162,7 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
           played: [],
           musicMixes: [],
           arriving: null,
+          stranded: null,
         },
         actions: [record({ kind: "session.start", session: event.session })],
       }
@@ -270,7 +272,7 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
       const to = skipTo(state, event.upNext)
       if (to === null) return none(state)
       return {
-        state: { ...state, arriving: arrival(state, to) },
+        state: { ...state, arriving: arrival(state, to), stranded: null },
         actions: [{ kind: "play", key: cardKey(to) }],
       }
     }
@@ -497,6 +499,11 @@ function watched(
       watchDates,
       played: playedWith(state.played, merged),
       arriving: landed === "on its way" ? state.arriving : null,
+      stranded: skip
+        ? merged.videoId
+        : merged.videoId === state.stranded
+          ? state.stranded
+          : null,
     },
     actions,
   }

@@ -46,6 +46,14 @@ import { recordFact } from "./facts"
 import { createHealth } from "./health"
 import type { Health } from "./health"
 
+/**
+ * SK1: how often, and how many times, to look again for where Skip may go
+ * from a held page whose Up next had nothing admitted yet: it may still be
+ * loading. Five seconds in all.
+ */
+const SKIP_RETRY_MS = 500
+const SKIP_ATTEMPTS = 10
+
 export type RuntimePorts = {
   readonly doc: Document
   readonly win: Window
@@ -85,6 +93,7 @@ export function createRuntime(ports: RuntimePorts): Runtime {
   let actuator: Actuator | null = null
   let health: Health | null = null
   let firstScan: number | null = null
+  let skipRetry: ReturnType<typeof setTimeout> | null = null
 
   const sensorInstance = createSensor({
     doc: ports.doc,
@@ -141,13 +150,24 @@ export function createRuntime(ports: RuntimePorts): Runtime {
     state = step.state
     const bound = bind(step.actions)
     if (bound.length > 0) actuator?.realize(bound)
-    // SK1: the page autoplay reached is held; the Sensor reads where to go
-    // instead, and its `held` token is folded as one more event.
-    if (step.actions.some((a) => a.kind === "skip")) sensorInstance.skipOn()
+    if (step.actions.some((a) => a.kind === "skip")) skipOn(1)
     // A navigation is a new session (C2): occlusion ages from the page before
     // it must not count against the page after it.
     if (event.kind === "nav") health?.sessionStarted()
     publish()
+  }
+
+  /** SK1: ask the Sensor where Skip may go, and again while stranded. */
+  function skipOn(attempt: number): void {
+    if (skipRetry !== null) clearTimeout(skipRetry)
+    skipRetry = null
+    sensorInstance.skipOn()
+    if (state.stranded === null || attempt >= SKIP_ATTEMPTS) return
+    // Lifetime: cleared by stop(), and by the next skipOn().
+    skipRetry = setTimeout(() => {
+      skipRetry = null
+      if (state.stranded !== null) skipOn(attempt + 1)
+    }, SKIP_RETRY_MS)
   }
 
   registerDebugSource({
@@ -215,6 +235,8 @@ export function createRuntime(ports: RuntimePorts): Runtime {
       if (state.phase !== "running") return
       if (firstScan !== null) ports.win.cancelAnimationFrame(firstScan)
       firstScan = null
+      if (skipRetry !== null) clearTimeout(skipRetry)
+      skipRetry = null
       sensorInstance.stop()
       dispatch({ kind: "stop", t: clock() })
       health?.stop()
