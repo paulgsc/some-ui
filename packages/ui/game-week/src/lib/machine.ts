@@ -37,7 +37,7 @@ import type { RecordingFailure, Take } from "@some-ui/voice-capture"
 import { finishTake, openTake, stepTake } from "@some-ui/voice-capture"
 
 import type { BiteMoment, KeptBite, Said } from "./bite"
-import { biteFields, pickedAfter } from "./bite"
+import { biteFields } from "./bite"
 import type { Feed, Game, JustHappened, Offer, OfferCard } from "./feed"
 import type { ModeId } from "./modes"
 import { BITE_LIMITS, MODE_RULES, pregameFrom } from "./modes"
@@ -571,11 +571,10 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
         activity.offer === null || said.how === "every-scenario"
           ? activity.moment
           : { ...activity.moment, seq: activity.offer.seq }
-      // Picked after it was said: the bite still says it was said first.
       return settle(
         state,
         activity.bite,
-        pickedAfter(said, moment, activity.startedAt)
+        biteFields(said, moment, activity.startedAt)
       )
     }
 

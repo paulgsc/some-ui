@@ -73,9 +73,8 @@ export function line(text: string): string {
 
 /**
  * The bite's fields, by home's names: `how`, `strip`, `watching`,
- * `started`, `mode` and `catalog` always; `scenario` whenever `said` names
- * one (every bite but one said first); `seq` and `context` when there was
- * one. `offset` (home's clock
+ * `started`, `mode` and `catalog` always; `scenario` exactly when not said
+ * first; `seq` and `context` when there was one. `offset` (home's clock
  * minus the phone's) is left out until a live connection measures it (GW5).
  */
 export function biteFields(
@@ -96,18 +95,4 @@ export function biteFields(
   fields.mode = moment.mode
   fields.catalog = String(CATALOG_VERSION)
   return fields
-}
-
-/**
- * A bite said first, once what it was about is picked after it
- * (paulgsc/server#536): the picked card's `scenario` and `context`, and
- * `how` still `said-first`. Left for later, it keeps the fields it was
- * kept with, which name no scenario.
- */
-export function pickedAfter(
-  picked: Said,
-  moment: BiteMoment,
-  startedAt: number
-): Record<string, string> {
-  return { ...biteFields(picked, moment, startedAt), how: "said-first" }
 }
