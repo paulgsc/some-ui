@@ -654,21 +654,47 @@
           "kind": "OA7",
           "property": "outcome",
           "claim": "A failing check stops a merge, in both repositories.",
-          "requirement": "main in some-ui requires CI Gate, and main in the server requires one gate that waits on every check; a deliberately failing pull request is shown to be blocked in each.",
-          "verdict": "broken",
-          "conclusion": "Last read on 2026-10-26, main was unprotected in both repositories, so a red check informs but cannot stop a merge.",
+          "requirement": "main in some-ui requires CI Gate and main in the server requires its five named checks (Artifact retention, Rust lint, rust_ci, metric_contract_ci, Deny Checks Summary); a deliberately failing pull request is shown to be blocked in each, and a check fails if either repository stops requiring them.",
+          "verdict": "holds",
+          "conclusion": "A failing required check stops a merge in both repositories, even through the owner's account; the branch-rules check reads both repositories' rules on every pull request and daily, and a run that finds a check no longer required is red only in Actions, where someone has to look.",
           "evidence": [
             {
               "class": "measured",
-              "says": "GET /repos/paulgsc/{some-ui,server}/branches/main returned protected: false, and each repository's one ruleset had enforcement disabled (recon, 2026-10-26).",
-              "ref": "some-ui#2206"
+              "says": "A deliberately failing pull request was refused in each repository through the owner's account: \"Required status check \\\"CI Gate\\\" is failing\" and \"Required status check \\\"Artifact retention\\\" is failing\".",
+              "ref": "some-ui#2210"
+            },
+            {
+              "class": "measured",
+              "says": "The server's probe pull request, refused on a failing required check.",
+              "ref": "server#529"
+            },
+            {
+              "class": "measured",
+              "says": "GET /repos/paulgsc/{some-ui,server}/rules/branches/main on 2026-10-28 required CI Gate in some-ui and the five named checks in the server.",
+              "ref": "some-ui:packages/assurance/src/branch-rules.ts"
+            },
+            {
+              "class": "structural",
+              "says": "pr.yml's Branch rules job, which CI Gate needs, and the daily branch-rules.yml run the check.",
+              "ref": "some-ui:.github/workflows/branch-rules.yml"
             }
           ],
-          "tracked": "some-ui#2206",
           "watch": {
-            "by": "none"
+            "by": "dashboard",
+            "ref": "some-ui:.github/workflows/branch-rules.yml"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-10-28",
+              "change": "The server's half is its five named required checks, not one gate that waits on every check; every server check gating a merge moved to GC5.",
+              "why": "The server's checks span several workflows and a job cannot wait on another workflow's jobs, so one gate is real work (AS10), not a setting.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/2211#issuecomment-6483155448"
+            }
+          ],
+          "proof": [
+            "some-ui:scripts/check-branch-rules.ts#branchRuleProblems",
+            "some-ui:packages/assurance/src/__tests__/branch-rules.test.ts#names each check main no longer requires"
+          ]
         },
         {
           "id": "GC2",
@@ -730,6 +756,27 @@
             {
               "class": "structural",
               "says": "check:assurance checks only some-ui paths; a server path is taken as written, and nothing in the server reads this ledger."
+            }
+          ],
+          "tracked": "server#526",
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "GC5",
+          "kind": "OA7",
+          "property": "outcome",
+          "claim": "Every check the server runs on a pull request can stop its merge.",
+          "requirement": "main in the server requires one gate that waits on every pull request check, path-filtered ones such as Check some-ui against it included, and reads a skipped check as passed only where its paths did not change.",
+          "verdict": "broken",
+          "conclusion": "Only five named checks are required, so a red Check some-ui against it, Emit the route snapshot or infra_ci informs and does not stop a merge.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "GET /repos/paulgsc/server/rules/branches/main on 2026-10-28 required Artifact retention, Rust lint, rust_ci, metric_contract_ci and Deny Checks Summary, and nothing from routes.yml.",
+              "ref": "some-ui#2211"
             }
           ],
           "tracked": "server#526",

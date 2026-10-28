@@ -126,6 +126,17 @@ pr.yml's `assurance` job, which CI Gate needs.
   evidence, whether a proof really reaches its requirement, and an objective moved between
   families.
 
+## What `pnpm check:branch-rules` holds
+
+`scripts/check-branch-rules.ts`, rules in `packages/assurance/src/branch-rules.ts`: GC1, that `main`
+in each repository still requires the checks that file lists. A repository setting can be switched
+off with no diff, so it runs on every pull request (pr.yml's `branch-rules` job, which CI Gate
+needs) and daily (`.github/workflows/branch-rules.yml`). It reads GitHub's `rules/branches/main`,
+which lists only active rules, so a ruleset turned off reads as nothing required. An
+answer it cannot get or cannot read fails it. It cannot see who may bypass the rules: the probe
+pull requests (some-ui#2210, server#529) showed the owner's own account is refused, and a later
+bypass grant would show only to someone who looks.
+
 ## What `/assurance` shows
 
 The page answers three questions separately, because each can be true while the others are not:
@@ -141,7 +152,7 @@ gives the claim, its verdict, and where it stands in a sentence. Opening it give
 what exactly it takes; the evidence with a before-and-after where something was measured (a growth
 plot today; an obligation's timeline comes with AS7 and AS8); the receipt (proof and issue links,
 who would notice, amendments). The page also says what it does not know: the watches that are
-missing, and whether a failing check can block a merge yet (AS9). It shows counts per verdict,
+missing, and whether a failing check can block a merge (GC1). It shows counts per verdict,
 never one score: "nine of ten" hides the one that matters.
 
 The page's own words follow CLAUDE.md's "State in the person's terms": they live in one table
