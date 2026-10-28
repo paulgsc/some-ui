@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardRouteImport } from './routes/_dashboard'
 import { Route as AssuranceRouteImport } from './routes/assurance'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CaptionsRouteImport } from './routes/captions'
 import { Route as ExtensionsRouteImport } from './routes/extensions'
 import { Route as MissionRouteImport } from './routes/mission'
 import { Route as PlayoffDeltaRouteImport } from './routes/playoff-delta'
@@ -67,6 +68,11 @@ const AssuranceRoute = AssuranceRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CaptionsRoute = CaptionsRouteImport.update({
+  id: '/captions',
+  path: '/captions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExtensionsRoute = ExtensionsRouteImport.update({
@@ -261,6 +267,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/assurance': typeof AssuranceRoute
   '/auth': typeof AuthRoute
+  '/captions': typeof CaptionsRoute
   '/extensions': typeof ExtensionsRoute
   '/mission': typeof MissionRoute
   '/playoff-delta': typeof PlayoffDeltaRoute
@@ -300,6 +307,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/assurance': typeof AssuranceRoute
   '/auth': typeof AuthRoute
+  '/captions': typeof CaptionsRoute
   '/extensions': typeof ExtensionsRoute
   '/mission': typeof MissionRoute
   '/playoff-delta': typeof PlayoffDeltaRoute
@@ -339,6 +347,7 @@ export interface FileRoutesById {
   '/_dashboard': typeof DashboardRouteWithChildren
   '/assurance': typeof AssuranceRoute
   '/auth': typeof AuthRoute
+  '/captions': typeof CaptionsRoute
   '/extensions': typeof ExtensionsRoute
   '/mission': typeof MissionRoute
   '/playoff-delta': typeof PlayoffDeltaRoute
@@ -382,6 +391,7 @@ export interface FileRouteTypes {
     | '/'
     | '/assurance'
     | '/auth'
+    | '/captions'
     | '/extensions'
     | '/mission'
     | '/playoff-delta'
@@ -421,6 +431,7 @@ export interface FileRouteTypes {
     | '/'
     | '/assurance'
     | '/auth'
+    | '/captions'
     | '/extensions'
     | '/mission'
     | '/playoff-delta'
@@ -459,6 +470,7 @@ export interface FileRouteTypes {
     | '/_dashboard'
     | '/assurance'
     | '/auth'
+    | '/captions'
     | '/extensions'
     | '/mission'
     | '/playoff-delta'
@@ -502,6 +514,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRouteWithChildren
   AssuranceRoute: typeof AssuranceRoute
   AuthRoute: typeof AuthRoute
+  CaptionsRoute: typeof CaptionsRoute
   ExtensionsRoute: typeof ExtensionsRoute
   MissionRoute: typeof MissionRoute
   PlayoffDeltaRoute: typeof PlayoffDeltaRoute
@@ -535,6 +548,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/captions': {
+      id: '/captions'
+      path: '/captions'
+      fullPath: '/captions'
+      preLoaderRoute: typeof CaptionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/extensions': {
@@ -912,6 +932,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRouteWithChildren,
   AssuranceRoute: AssuranceRoute,
   AuthRoute: AuthRoute,
+  CaptionsRoute: CaptionsRoute,
   ExtensionsRoute: ExtensionsRoute,
   MissionRoute: MissionRoute,
   PlayoffDeltaRoute: PlayoffDeltaRoute,

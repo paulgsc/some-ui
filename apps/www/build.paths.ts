@@ -212,6 +212,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "the Playoff Delta stage's live season, a desktop recording stage for the vlog: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
     },
     {
+      modules: ["apps/www/src/lib/web-surface/captions/**"],
+      profiles: ["lan", "pages"],
+      why: "the shorts' subtitles preview and its font, a desktop page for tuning the look the renderer records: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
+    },
+    {
       modules: ["apps/www/src/lib/web-surface/hangul/**"],
       profiles: ["lan", "pages"],
       why: "Hangul Honeycomb's panel, a desktop keyboard game the phone has no counterpart for: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
@@ -299,6 +304,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
     },
     {
       profile: "lan",
+      modules: ["apps/www/src/lib/web-surface/captions/preview.tsx"],
+      why: "the subtitles preview renders through this; without it /captions renders nothing. Also what keeps its `exclusive` rule from passing by matching nothing",
+    },
+    {
+      profile: "lan",
       modules: ["apps/www/src/lib/web-surface/hangul/panel.tsx"],
       why: "the web builds play Hangul Honeycomb through this; without it the activity is offered and renders nothing. Also what keeps its `exclusive` rule from passing by matching nothing",
     },
@@ -344,6 +354,7 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       "assurance.tsx*",
       "extensions.tsx*",
       "playoff-delta.tsx*",
+      "captions.tsx*",
       "_dashboard/app.tsx*",
       "_dashboard/profile.tsx*",
       "_dashboard/resume.tsx*",

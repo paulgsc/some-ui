@@ -1,0 +1,18 @@
+{
+  "extends": "@some-ui/tsconfig/rollupconfig.json",
+  "compilerOptions": {
+    "declarationDir": "./",
+    "rootDir": ".",
+    "paths": {
+      "@captions/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "src",
+    "src/**/*.json",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "vitest.setup.ts"
+  ],
+  "exclude": ["node_modules", "build", "dist"]
+}

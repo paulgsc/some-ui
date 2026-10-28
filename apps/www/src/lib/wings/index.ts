@@ -150,6 +150,7 @@ export const ROOMS: ReadonlyArray<Room> = [
   { id: "aph", wing: "self", roots: ["/aph"] },
   { id: "journal", wing: "studio", roots: ["/journal"] },
   { id: "playoff-delta", wing: "studio", roots: ["/playoff-delta"] },
+  { id: "captions", wing: "studio", roots: ["/captions"] },
   { id: "jobs", wing: "jobs", roots: ["/jobs"] },
   { id: "job-run", wing: "jobs", roots: ["/job-run"], nav: "Morning run" },
   { id: "lessons", wing: "operate", roots: ["/lessons"], nav: "Lessons" },

@@ -1,0 +1,40 @@
+/* The captions stage: a 9:16 frame whose sizes are container units, so a
+   caption reads the same in a 400px preview as at 1080x1920. Where each
+   caption sits and how it looks come from the pure frame model
+   (lib/frame.ts) as inline styles; this file holds only the frame itself.
+   Every colour is a semantic token; a caption's own colours are its theme's. */
+
+@layer utilities {
+  .cap-stage {
+    aspect-ratio: 9 / 16;
+    container-type: inline-size;
+    overflow: hidden;
+    position: relative;
+    user-select: none;
+  }
+
+  .cap-safe {
+    border: 0.3cqw dashed var(--muted-foreground);
+    pointer-events: none;
+    position: absolute;
+  }
+
+  .cap-block {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    position: absolute;
+  }
+
+  .cap-row {
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .cap-word {
+    display: inline-block;
+    paint-order: stroke fill;
+    transform-origin: 50% 80%;
+  }
+}
