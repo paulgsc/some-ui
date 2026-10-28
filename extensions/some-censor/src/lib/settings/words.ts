@@ -14,6 +14,7 @@ export const MODE_ROWS = [
   "Original thumbnail",
   "Channel post images",
   "Cards still loading",
+  "Mix songs with no date",
 ] as const
 
 type ModeRow = (typeof MODE_ROWS)[number]
@@ -35,6 +36,7 @@ export const MODE_WORDS: Readonly<Record<Mode, ModeWords>> = {
       "Original thumbnail": "Never shown",
       "Channel post images": "Hidden",
       "Cards still loading": "Blank",
+      "Mix songs with no date": "Hidden",
     },
   },
   standard: {
@@ -46,17 +48,19 @@ export const MODE_WORDS: Readonly<Record<Mode, ModeWords>> = {
       "Original thumbnail": "After a 3-second hold",
       "Channel post images": "Hidden",
       "Cards still loading": "Blurred",
+      "Mix songs with no date": "Hidden",
     },
   },
-  open: {
-    name: "Open",
-    tag: "As Standard, with post images and a quicker thumbnail.",
+  mix: {
+    name: "Music mix",
+    tag: "For a music Mix: it plays on, songs with no date included.",
     rows: {
       "Music shown whole": "From artist channels, or OST and MV titles",
       "Autoplay from music": "Anything shown",
       "Original thumbnail": "At 3 seconds, and can be hidden again",
       "Channel post images": "Shown",
       "Cards still loading": "Blurred",
+      "Mix songs with no date": "Shown, even if recent",
     },
   },
 }
@@ -79,7 +83,7 @@ export const AUTOPLAY_WORDS: Readonly<
   },
   skip: {
     label: "Skip it",
-    line: "It plays the next video in Up next that isn't held.",
+    line: "It plays the next video in the playlist or Up next that isn't held and hasn't played yet.",
   },
 }
 

@@ -11,7 +11,7 @@
  *      progress.
  * F5 — When YouTube draws the description again, the control comes back.
  * F6 — Strict offers no control; Standard offers it again (#1966).
- * F7 — Under Open the face shows at three seconds, still held, and no key
+ * F7 — Under Music mix the face shows at three seconds, still held, and no key
  *      of that press reaches YouTube; "Hide original" then puts the plate
  *      back (#1966).
  */
@@ -146,10 +146,10 @@ test("F6: Strict offers no control", async ({ fixture }) => {
   await expect(page.locator(CONTROL)).toBeVisible()
 })
 
-test("F7: under Open the face shows while held, and can be hidden", async ({
+test("F7: under Music mix the face shows while held, and can be hidden", async ({
   fixture,
 }) => {
-  await fixture.settings({ mode: "open" })
+  await fixture.settings({ mode: "mix" })
   const page = await fixture.goto("yt-watch-page")
   await plated(page)
   const control = page.locator(CONTROL)

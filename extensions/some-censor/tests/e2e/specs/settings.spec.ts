@@ -197,16 +197,15 @@ test("S5: the settings page and the popup show the same choice", async ({
   const options = await context.newPage()
   await options.goto(`chrome-extension://${extensionId}/options.html`)
   // A card's name is all it says, and it says its mode's name first.
-  const open = options.getByRole("button", { name: /^Open/ })
+  const open = options.getByRole("button", { name: /^Music mix/ })
   await open.click()
   await expect(open).toHaveAttribute("aria-pressed", "true")
 
   const popup = await context.newPage()
   await popup.goto(`chrome-extension://${extensionId}/popup.html`)
-  await expect(popup.getByRole("button", { name: "Open" })).toHaveAttribute(
-    "aria-pressed",
-    "true"
-  )
+  await expect(
+    popup.getByRole("button", { name: "Music mix" })
+  ).toHaveAttribute("aria-pressed", "true")
   await popup.getByRole("button", { name: "Skip it" }).click()
   await expect(
     options.getByRole("button", { name: "Skip it" })

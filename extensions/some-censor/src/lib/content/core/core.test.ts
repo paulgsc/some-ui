@@ -23,7 +23,14 @@ import type {
   Observation,
   WatchObservation,
 } from "./index"
-import { admits, cardKey, initialState, reduce, snapshot } from "./index"
+import {
+  admits,
+  cardKey,
+  initialState,
+  isStranded,
+  reduce,
+  snapshot,
+} from "./index"
 import { STANDARD_RULES } from "./state"
 
 // SessionId is a branded number minted by the shell; the reducer only ever
@@ -44,6 +51,7 @@ function observation(
     uploadDate: "3 days ago",
     short: false,
     artist: false,
+    mix: null,
     surface: "home",
     renderer: "ytd-rich-item-renderer",
     shape: "known",
@@ -121,6 +129,41 @@ function kinds(actions: ReadonlyArray<Action>): Array<string> {
 function viewOf(state: CoreState, key = K): string | undefined {
   return state.cards.get(key)?.view.kind
 }
+
+/** The watch page showing `videoId`, 21 years old unless `overrides` say. */
+function watching(
+  videoId: string,
+  t: number,
+  overrides: Partial<WatchObservation> = {}
+): CoreEvent {
+  const dates = overrides.dates ?? ["21y ago"]
+  return {
+    kind: "watched",
+    watch: {
+      videoId: asVideoId(videoId),
+      short: false,
+      hydrated: dates.length > 0,
+      dates,
+      miniplayer: false,
+      title: null,
+      channelName: null,
+      artist: false,
+      mix: null,
+      ...overrides,
+    },
+    t,
+  }
+}
+
+/** Autoplay held, with `upNext` where it may go instead. */
+const held = (upNext: ReadonlyArray<string>, t = 9): CoreEvent => ({
+  kind: "held",
+  upNext: upNext.map(asVideoId),
+  t,
+})
+
+const plays = (actions: ReadonlyArray<Action>): Array<string> =>
+  actions.flatMap((a) => (a.kind === "play" ? [String(a.key)] : []))
 
 const dateFacts = (actions: ReadonlyArray<Action>): Array<string | null> =>
   actions.flatMap((a) =>
@@ -435,6 +478,7 @@ describe("the watch page (R8, #1805)", () => {
     title: "Me at the zoo",
     channelName: "jawed",
     artist: false,
+    mix: null,
   }
   const watched = (
     t: number,
@@ -671,6 +715,7 @@ describe("the listening lane (QD15, #1806)", () => {
         title: null,
         channelName: null,
         artist: false,
+        mix: null,
         ...overrides,
       },
       t: 2,
@@ -732,6 +777,7 @@ describe("what autoplay may go on into (#1805)", () => {
         title: "Me at the zoo",
         channelName: "jawed",
         artist: false,
+        mix: null,
       },
       t: 1,
     }
@@ -742,14 +788,6 @@ describe("what autoplay may go on into (#1805)", () => {
       seen(1, { uploadDate: OLD }, "old"),
       seen(1, { uploadDate: OLD }, "older"),
     ]
-    const held = (upNext: ReadonlyArray<string>): CoreEvent => ({
-      kind: "held",
-      upNext: upNext.map(asVideoId),
-      t: 2,
-    })
-    const plays = (actions: ReadonlyArray<Action>): Array<string> =>
-      actions.flatMap((a) => (a.kind === "play" ? [String(a.key)] : []))
-
     const stopping = fold([started, page, ...cards])
     expect(
       plays(reduce(stopping.state, held(["recent", "old"])).actions),
@@ -784,6 +822,7 @@ describe("what autoplay may go on into (#1805)", () => {
         title: "Me at the zoo",
         channelName: "jawed",
         artist: false,
+        mix: null,
       },
       t: 3,
     })
@@ -791,6 +830,256 @@ describe("what autoplay may go on into (#1805)", () => {
       plays(reduce(miniplayer.state, held(["old"])).actions),
       "the miniplayer plays over another page: it stops"
     ).toEqual([])
+  })
+  it("never skips back to a video this tab has played (R10, SK1)", () => {
+    // Two videos that each name the other first: A, then B, then A again.
+    const { state } = fold([
+      started,
+      { kind: "autoplay", autoplay: "skip", t: 1 },
+      watching("a", 2),
+      nav(2, 3),
+      watching("b", 4),
+      nav(3, 5),
+      seen(6, { uploadDate: OLD }, "a"),
+      seen(6, { uploadDate: OLD }, "c"),
+    ])
+    expect(state.played).toEqual(["a", "b"])
+    expect(plays(reduce(state, held(["a", "c"])).actions)).toEqual([
+      String(cardKey(asVideoId("c"))),
+    ])
+    expect(
+      plays(reduce(state, held(["a"])).actions),
+      "nothing new: it stops"
+    ).toEqual([])
+    const restarted = fold(
+      [
+        { kind: "stop", t: 7 },
+        { ...started, t: 8 },
+      ],
+      state
+    )
+    expect(restarted.state.played, "a new start forgets").toEqual([])
+  })
+})
+
+describe("a page autoplay reached that is held (SK1)", () => {
+  const autoplayed = (videoId: string, t: number): CoreEvent => ({
+    kind: "autoplayed",
+    videoId: asVideoId(videoId),
+    t,
+  })
+  const skips = (actions: ReadonlyArray<Action>): number =>
+    actions.filter((a) => a.kind === "skip").length
+  const skip: CoreEvent = { kind: "autoplay", autoplay: "skip", t: 1 }
+  const onTheWay = [
+    started,
+    skip,
+    watching("here", 2),
+    seen(2, { uploadDate: OLD }, "next"),
+    autoplayed("next", 3),
+  ]
+
+  it("moves on under Skip once the page it went on into is held by its own date", () => {
+    const { state } = fold(onTheWay)
+    expect(state.arriving).toEqual({ from: "here", to: "next" })
+    // The old page still up, then the new one pending: still on its way.
+    const old = reduce(state, watching("here", 4))
+    expect(skips(old.actions)).toBe(0)
+    const pending = reduce(old.state, watching("next", 5, { dates: [] }))
+    expect(skips(pending.actions)).toBe(0)
+    const held = reduce(
+      pending.state,
+      watching("next", 6, { dates: ["3 hours ago"] })
+    )
+    expect(held.state.watch?.view).toBe("absent")
+    expect(skips(held.actions)).toBe(1)
+    expect(held.state.arriving).toBeNull()
+    expect(
+      skips(
+        reduce(held.state, watching("next", 7, { dates: ["3 hours ago"] }))
+          .actions
+      ),
+      "once"
+    ).toBe(0)
+  })
+
+  it("stays put under Stop, on a page that shows, in the miniplayer, and on another video", () => {
+    const stop = fold([
+      ...onTheWay,
+      { kind: "autoplay", autoplay: "stop", t: 4 },
+    ])
+    expect(
+      skips(
+        reduce(stop.state, watching("next", 5, { dates: ["3 hours ago"] }))
+          .actions
+      )
+    ).toBe(0)
+    const { state } = fold(onTheWay)
+    const shown = reduce(state, watching("next", 5, { dates: ["9 years ago"] }))
+    expect(skips(shown.actions)).toBe(0)
+    expect(shown.state.arriving).toBeNull()
+    expect(
+      skips(
+        reduce(
+          state,
+          watching("next", 5, { dates: ["3 hours ago"], miniplayer: true })
+        ).actions
+      )
+    ).toBe(0)
+    const elsewhere = reduce(
+      state,
+      watching("clicked", 5, { dates: ["3 hours ago"] })
+    )
+    expect(skips(elsewhere.actions), "the owner went elsewhere").toBe(0)
+    expect(elsewhere.state.arriving).toBeNull()
+  })
+
+  it("moves on from a page Skip itself opened, too", () => {
+    const { state } = fold([
+      started,
+      skip,
+      watching("here", 2),
+      seen(2, { uploadDate: OLD }, "row"),
+    ])
+    const sent = reduce(state, {
+      kind: "held",
+      upNext: [asVideoId("row")],
+      t: 3,
+    })
+    expect(sent.state.arriving).toEqual({ from: "here", to: "row" })
+    const held = reduce(
+      sent.state,
+      watching("row", 4, { dates: ["3 hours ago"] })
+    )
+    expect(skips(held.actions)).toBe(1)
+  })
+  it("stays stranded on the held page until Skip finds somewhere to go", () => {
+    const { state } = fold(onTheWay)
+    const stuck = reduce(state, watching("next", 5, { dates: ["3 hours ago"] }))
+    expect(stuck.state.stranded).toBe("next")
+    // Up next not loaded yet: nothing admitted, still stranded.
+    const empty = reduce(stuck.state, held([], 6))
+    expect(plays(empty.actions)).toEqual([])
+    expect(empty.state.stranded).toBe("next")
+    const again = fold(
+      [seen(7, { uploadDate: OLD }, "later"), held(["later"], 8)],
+      empty.state
+    )
+    expect(plays(again.actions)).toEqual([String(cardKey(asVideoId("later")))])
+    expect(again.state.stranded).toBeNull()
+    const back = reduce(empty.state, watching("here", 7))
+    expect(back.state.stranded, "the owner went back").toBeNull()
+    const shown = reduce(
+      empty.state,
+      watching("next", 7, { dates: ["3 hours ago"], title: "Next MV" })
+    )
+    expect(shown.state.watch?.view).toBe("whole")
+    expect(shown.state.stranded, "its title came later: it shows").toBeNull()
+
+    // Stranded under Strict on a recent MV, then the mode admits it: no
+    // reading changes, so only the derived answer can see it.
+    const strict = fold(
+      [
+        { kind: "rules", rules: STRICT, t: 4 },
+        watching("next", 5, { dates: ["3 hours ago"], title: "Next MV" }),
+      ],
+      fold(onTheWay).state
+    )
+    expect(isStranded(strict.state)).toBe(true)
+    const standard = reduce(strict.state, {
+      kind: "rules",
+      rules: STANDARD_RULES,
+      t: 6,
+    })
+    expect(standard.state.watch?.view).toBe("whole")
+    expect(isStranded(standard.state), "the mode admits it").toBe(false)
+    const stopped = reduce(strict.state, {
+      kind: "autoplay",
+      autoplay: "stop",
+      t: 6,
+    })
+    expect(isStranded(stopped.state), "Stop chosen").toBe(false)
+  })
+})
+
+describe("a music Mix (R11)", () => {
+  const MIX = "RDsong"
+  const MUSIC_MIX = MODE_RULES.mix.core
+  /** The page of a song in the Mix, read as music by its title. */
+  const song = (
+    videoId: string,
+    t: number,
+    overrides: Partial<WatchObservation> = {}
+  ): CoreEvent =>
+    watching(videoId, t, {
+      dates: ["3 hours ago"],
+      title: "Stay With Me MV",
+      mix: MIX,
+      ...overrides,
+    })
+  // A row of the Mix's playlist: no date, as YouTube draws one.
+  const row = (videoId: string, t: number, mix = MIX): CoreEvent =>
+    seen(t, { uploadDate: null, mix, title: "A song" }, videoId)
+  const mode = (rules = MUSIC_MIX): CoreEvent => ({
+    kind: "rules",
+    rules,
+    t: 1,
+  })
+
+  it("shows its rows with no date under Music mix once it plays music whole", () => {
+    const before = fold([started, mode(), row("next", 2)])
+    expect(viewOf(before.state, cardKey(asVideoId("next")))).toBe("absent")
+
+    const marked = reduce(before.state, song("song", 3))
+    expect(marked.state.musicMixes).toEqual([MIX])
+    expect(viewOf(marked.state, cardKey(asVideoId("next")))).toBe("plated")
+    expect(kinds(marked.actions)).toContain("render")
+    expect(admits(marked.state, asVideoId("next"))).toBe(true)
+
+    // The tab's, not the page's: a navigation keeps it.
+    const after = fold([nav(2, 4), row("later", 5)], marked.state)
+    expect(viewOf(after.state, cardKey(asVideoId("later")))).toBe("plated")
+  })
+
+  it("holds them under every other mode, and in a Mix not known as music (MM1)", () => {
+    const standard = fold([started, song("song", 2), row("next", 3)])
+    expect(standard.state.musicMixes, "known whatever the mode").toEqual([MIX])
+    expect(viewOf(standard.state, cardKey(asVideoId("next")))).toBe("absent")
+    const switched = reduce(standard.state, mode())
+    expect(viewOf(switched.state, cardKey(asVideoId("next")))).toBe("plated")
+    const back = reduce(switched.state, mode(STANDARD_RULES))
+    expect(viewOf(back.state, cardKey(asVideoId("next")))).toBe("absent")
+
+    // Under Strict an MV title is not music; choosing Music mix makes the
+    // song whole, and that alone marks its Mix: no new reading comes.
+    const strict = fold([
+      started,
+      mode(STRICT),
+      song("song", 2),
+      row("next", 3),
+    ])
+    expect(strict.state.musicMixes).toEqual([])
+    const chosen = reduce(strict.state, mode())
+    expect(chosen.state.watch?.view).toBe("whole")
+    expect(chosen.state.musicMixes).toEqual([MIX])
+    expect(viewOf(chosen.state, cardKey(asVideoId("next")))).toBe("plated")
+
+    const other = fold([
+      started,
+      mode(),
+      song("song", 2),
+      row("elsewhere", 3, "RDother"),
+    ])
+    expect(viewOf(other.state, cardKey(asVideoId("elsewhere")))).toBe("absent")
+
+    const notMusic = fold([
+      started,
+      mode(),
+      song("talk", 2, { title: "A talk" }),
+      row("next", 3),
+    ])
+    expect(notMusic.state.musicMixes).toEqual([])
+    expect(viewOf(notMusic.state, cardKey(asVideoId("next")))).toBe("absent")
   })
 })
 
@@ -842,6 +1131,7 @@ describe("the mode (R7, R9, #1966)", () => {
         title: "Me at the zoo",
         channelName: "jawed",
         artist: false,
+        mix: null,
       },
       t: 1,
     }
@@ -869,7 +1159,7 @@ describe("the mode (R7, R9, #1966)", () => {
       "release",
     ])
 
-    // Only Open lets the thumbnail be hidden again.
+    // Only Music mix lets the thumbnail be hidden again.
     const hide: CoreEvent = {
       kind: "face",
       videoId: asVideoId("vid_w"),
@@ -879,10 +1169,10 @@ describe("the mode (R7, R9, #1966)", () => {
     expect(reduce(faced.state, hide).actions, "not under Standard").toEqual([])
     const open = reduce(faced.state, {
       kind: "rules",
-      rules: MODE_RULES.open.core,
+      rules: MODE_RULES.mix.core,
       t: 7,
     })
-    expect(open.state.watch?.face, "Open keeps a shown face").toBe(true)
+    expect(open.state.watch?.face, "Music mix keeps a shown face").toBe(true)
     expect(offers(open.actions)).toEqual(["held"])
     const hidden = reduce(open.state, hide)
     expect(hidden.state.watch?.face).toBe(false)
@@ -906,6 +1196,7 @@ describe("the mode (R7, R9, #1966)", () => {
         title: "Untitled",
         channelName: "Ailee - Topic",
         artist: false,
+        mix: null,
         ...overrides,
       },
       t: 1,

@@ -23,19 +23,19 @@ describe("menuItems", () => {
       "bc-on": true,
       "bc-mode-strict": false,
       "bc-mode-standard": true,
-      "bc-mode-open": false,
+      "bc-mode-mix": false,
       "bc-autoplay-stops": true,
     })
     expect(
       marks({
         ...DEFAULT_SETTINGS,
-        mode: "open",
+        mode: "mix",
         autoplay: "skip",
         enabled: false,
       })
     ).toMatchObject({
       "bc-on": false,
-      "bc-mode-open": true,
+      "bc-mode-mix": true,
       "bc-mode-standard": false,
       "bc-autoplay-stops": false,
     })
@@ -61,7 +61,7 @@ describe("menuItems", () => {
     const items = menuItems(DEFAULT_SETTINGS, DIAGNOSTICS)
     expect(
       items.filter((i) => i.parentId === "bc-mode").map((i) => i.title)
-    ).toEqual(["Strict", "Standard", "Open"])
+    ).toEqual(["Strict", "Standard", "Music mix"])
     expect(items.at(-1)).toEqual(DIAGNOSTICS)
   })
 })

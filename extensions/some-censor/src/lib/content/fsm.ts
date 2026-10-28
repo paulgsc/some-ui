@@ -68,16 +68,22 @@ type Evidence = MusicEvidence & {
  * the estimator places it at QM3 or QM4. Everything else is absent: no date,
  * a date the grammar cannot read, a live or upcoming card, anything younger
  * than the boundary, and every Short. Missing or invalidated evidence
- * therefore fails closed (doctrine §7).
+ * therefore fails closed (doctrine §7), with one exception the owner chose:
+ * when `undatedShown` (Music mix, a row of a music Mix), a card with no date
+ * at all is plated (QD3's amendment).
  */
 export function decide(
   evidence: Evidence,
   now: number,
   boundaryDays: number,
   signs: MusicSigns,
+  undatedShown: boolean,
   session: SessionId
 ): ViewState {
   if (evidence.short) return { kind: "absent", session }
+  if (undatedShown && evidence.uploadDate === null) {
+    return { kind: "plated", session }
+  }
   const e = estimate(evidence.uploadDate, now)
   if (e.kind === "aged" && isMusic(evidence, signs)) {
     return { kind: "whole", session }

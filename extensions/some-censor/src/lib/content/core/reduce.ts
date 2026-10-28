@@ -49,6 +49,19 @@
  *  R10 — Skip goes only where Core admits (#1966). A `held` token yields a
  *        `play` for the first Up next video `skipTo` names, and nothing
  *        when the owner's choice is to stop or no such video is shown.
+ *        Skip never goes back to a video the tab's watch page has shown
+ *        since `start` (`played`), so it cannot walk a loop of a few
+ *        videos that each name the other first (SK1). `played` is the tab's,
+ *        not the page's: `nav` keeps it, and only `start` empties it.
+ *        And a page autoplay or Skip went on into that turns out held
+ *        (admitted by its card, held by its own date) yields `skip`, so
+ *        Skip moves on rather than stopping at "Not here."; until a `held`
+ *        finds somewhere to go, `stranded` names that page.
+ *  R11 — A Mix is music once it plays a video whole in the lane (QD15):
+ *        its id joins `musicMixes`, every card is re-decided, and under
+ *        Music mix its rows with no date are plated (QD3's amendment).
+ *        Like `played`, `musicMixes` is the tab's: `nav` keeps it, and only
+ *        `start` empties it.
  *
  * R4 correlated the answers to Core's async requests; none are left, so it
  * is retired. The parenthesised M- and C- labels are kept so their
@@ -56,8 +69,10 @@
  * are `controller.ts`'s.
  */
 
+import type { WatchView } from "@censor/lib/content/fsm"
 import { decide, decideWatch, project } from "@censor/lib/content/fsm"
 import { plateOf } from "@censor/lib/content/plate/plate"
+import type { VideoId } from "@censor/types/ids"
 import { assertNever } from "@some-extension/common"
 
 import type { Action, CoreFact } from "./actions"
@@ -66,8 +81,13 @@ import type { CardKey } from "./keys"
 import { cardKey, keyVideoId } from "./keys"
 import type { Observation, WatchObservation } from "./observation"
 import { mergeObservation, mergeWatch } from "./observation"
-import type { CardState, CoreState, Rules, WatchState } from "./state"
-import { EMPTY_UNKNOWN_SHAPES, skipTo } from "./state"
+import type { Arrival, CardState, CoreState, Rules, WatchState } from "./state"
+import {
+  EMPTY_UNKNOWN_SHAPES,
+  PLAYED_KEPT,
+  skipTo,
+  undatedShown,
+} from "./state"
 
 export type Step = {
   readonly state: CoreState
@@ -139,6 +159,10 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
           rules: event.rules,
           autoplay: event.autoplay,
           unknownShapes: EMPTY_UNKNOWN_SHAPES,
+          played: [],
+          musicMixes: [],
+          arriving: null,
+          stranded: null,
         },
         actions: [record({ kind: "session.start", session: event.session })],
       }
@@ -238,12 +262,18 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
       return watched(state, event.watch, event.t)
     }
 
+    case "autoplayed": {
+      if (state.phase !== "running") return none(state)
+      return none({ ...state, arriving: arrival(state, event.videoId) })
+    }
+
     case "held": {
       if (state.phase !== "running") return none(state)
       const to = skipTo(state, event.upNext)
+      if (to === null) return none(state)
       return {
-        state,
-        actions: to === null ? [] : [{ kind: "play", key: cardKey(to) }],
+        state: { ...state, arriving: arrival(state, to), stranded: null },
+        actions: [{ kind: "play", key: cardKey(to) }],
       }
     }
 
@@ -297,6 +327,7 @@ function adopt(
       t,
       state.boundaryDays,
       state.rules.signs,
+      undatedShown(state, state.rules, observation),
       state.session
     ),
     firstSeenAt: t,
@@ -335,6 +366,7 @@ function reobserve(
     t,
     state.boundaryDays,
     state.rules.signs,
+    undatedShown(state, state.rules, merged),
     state.session
   )
   const next: CardState = { ...card, observation: merged, view, lastSeenAt: t }
@@ -455,10 +487,66 @@ function watched(
     previous.observation.videoId !== merged.videoId ||
     previous.observation.miniplayer !== merged.miniplayer ||
     previous.face !== next.face
-  return {
-    state: { ...state, watch: next, watchDates },
-    actions: moved ? [watchAction(next, state.rules)] : [],
+  const landed = arrived(state.arriving, merged, view)
+  const skip =
+    landed === "held" && state.autoplay === "skip" && !merged.miniplayer
+  const actions: Array<Action> = moved ? [watchAction(next, state.rules)] : []
+  if (skip) actions.push({ kind: "skip" })
+  const step: Step = {
+    state: {
+      ...state,
+      watch: next,
+      watchDates,
+      played: playedWith(state.played, merged),
+      arriving: landed === "on its way" ? state.arriving : null,
+      // Stranded only while that page stays held: later evidence may show it.
+      stranded:
+        skip || (merged.videoId === state.stranded && view === "absent")
+          ? merged.videoId
+          : null,
+    },
+    actions,
   }
+  // R11: a Mix that plays music whole is a music Mix from now on.
+  if (withMusicMix(state.musicMixes, next) === state.musicMixes) return step
+  const marked = redecide(step.state, state.boundaryDays, state.rules)
+  return {
+    state: marked.state,
+    actions: [...step.actions, ...marked.actions],
+  }
+}
+
+/** SK1: autoplay is going on from the page's video into `to`. */
+function arrival(state: CoreState, to: VideoId): Arrival {
+  return { from: state.watch?.observation.videoId ?? null, to }
+}
+
+/**
+ * SK1: whether the page now shows where autoplay went, and how: still on
+ * its way (the old page, or the new one pending), there and held, or
+ * settled (shown, or another video altogether).
+ */
+function arrived(
+  arriving: Arrival | null,
+  watch: WatchObservation,
+  view: WatchView
+): "on its way" | "held" | "settled" {
+  if (arriving === null) return "settled"
+  const id = watch.videoId
+  if (id === null || id === arriving.from) return "on its way"
+  if (id !== arriving.to) return "settled"
+  if (view === "pending") return "on its way"
+  return view === "absent" ? "held" : "settled"
+}
+
+/** R10: the watch page's video, once, at the end of what Skip remembers. */
+function playedWith(
+  played: ReadonlyArray<VideoId>,
+  watch: WatchObservation
+): ReadonlyArray<VideoId> {
+  const id = watch.miniplayer ? null : watch.videoId
+  if (id === null || played.at(-1) === id) return played
+  return [...played.filter((p) => p !== id), id].slice(-PLAYED_KEPT)
 }
 
 /**
@@ -469,21 +557,7 @@ function watched(
  * goes or changes with the mode.
  */
 function redecide(state: CoreState, boundaryDays: number, rules: Rules): Step {
-  const cards = new Map<CardKey, CardState>()
   const actions: Array<Action> = []
-  for (const card of state.cards.values()) {
-    const view = decide(
-      card.observation,
-      card.lastSeenAt,
-      boundaryDays,
-      rules.signs,
-      state.session
-    )
-    const next: CardState = { ...card, view }
-    cards.set(card.key, next)
-    if (view.kind !== card.view.kind)
-      actions.push(render(next), stateFact(next))
-  }
   let watch = state.watch
   if (watch !== null) {
     const view = decideWatch(
@@ -501,5 +575,38 @@ function redecide(state: CoreState, boundaryDays: number, rules: Rules): Step {
       actions.push(watchAction(watch, rules))
     }
   }
-  return { state: { ...state, boundaryDays, rules, cards, watch }, actions }
+  // R11: a page the new rules show whole marks its Mix, as a reading does.
+  const musicMixes = withMusicMix(state.musicMixes, watch)
+  const cards = new Map<CardKey, CardState>()
+  for (const card of state.cards.values()) {
+    const view = decide(
+      card.observation,
+      card.lastSeenAt,
+      boundaryDays,
+      rules.signs,
+      undatedShown({ musicMixes }, rules, card.observation),
+      state.session
+    )
+    const next: CardState = { ...card, view }
+    cards.set(card.key, next)
+    if (view.kind !== card.view.kind)
+      actions.push(render(next), stateFact(next))
+  }
+  return {
+    state: { ...state, boundaryDays, rules, cards, watch, musicMixes },
+    actions,
+  }
+}
+
+/** R11: the Mixes known to be music, with the page's own once it is whole. */
+function withMusicMix(
+  musicMixes: ReadonlyArray<string>,
+  watch: WatchState | null
+): ReadonlyArray<string> {
+  const mix =
+    watch?.observation.miniplayer === false ? watch.observation.mix : null
+  if (mix === null || watch?.view !== "whole" || musicMixes.includes(mix)) {
+    return musicMixes
+  }
+  return [...musicMixes, mix]
 }

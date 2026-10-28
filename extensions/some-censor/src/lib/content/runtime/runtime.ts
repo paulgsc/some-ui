@@ -22,7 +22,11 @@ import { createActuator } from "@censor/lib/content/actuator/index"
 import type { Action, CoreFact } from "@censor/lib/content/core/actions"
 import type { CoreEvent } from "@censor/lib/content/core/events"
 import { reduce } from "@censor/lib/content/core/reduce"
-import { admits, initialState } from "@censor/lib/content/core/state"
+import {
+  admits,
+  initialState,
+  isStranded,
+} from "@censor/lib/content/core/state"
 import type {
   AutoplayRule,
   CoreState,
@@ -45,6 +49,14 @@ import { mkSession } from "@some-extension/common"
 import { recordFact } from "./facts"
 import { createHealth } from "./health"
 import type { Health } from "./health"
+
+/**
+ * SK1: how often, and how many times, to look again for where Skip may go
+ * from a held page whose Up next had nothing admitted yet: it may still be
+ * loading. Five seconds in all.
+ */
+const SKIP_RETRY_MS = 500
+const SKIP_ATTEMPTS = 10
 
 export type RuntimePorts = {
   readonly doc: Document
@@ -85,6 +97,7 @@ export function createRuntime(ports: RuntimePorts): Runtime {
   let actuator: Actuator | null = null
   let health: Health | null = null
   let firstScan: number | null = null
+  let skipRetry: ReturnType<typeof setTimeout> | null = null
 
   const sensorInstance = createSensor({
     doc: ports.doc,
@@ -114,6 +127,9 @@ export function createRuntime(ports: RuntimePorts): Runtime {
       if (action.kind === "record") {
         if (action.fact.kind === "navigation") notifyNavigation()
         onFact(action.fact)
+      } else if (action.kind === "skip") {
+        // Answered after the Actuator has the rest (`dispatch`).
+        continue
       } else if (action.kind === "play") {
         const el = sensorInstance.upNextCard(action.key)
         bound.push({
@@ -138,10 +154,24 @@ export function createRuntime(ports: RuntimePorts): Runtime {
     state = step.state
     const bound = bind(step.actions)
     if (bound.length > 0) actuator?.realize(bound)
+    if (step.actions.some((a) => a.kind === "skip")) skipOn(1)
     // A navigation is a new session (C2): occlusion ages from the page before
     // it must not count against the page after it.
     if (event.kind === "nav") health?.sessionStarted()
     publish()
+  }
+
+  /** SK1: ask the Sensor where Skip may go, and again while stranded. */
+  function skipOn(attempt: number): void {
+    if (skipRetry !== null) clearTimeout(skipRetry)
+    skipRetry = null
+    sensorInstance.skipOn()
+    if (!isStranded(state) || attempt >= SKIP_ATTEMPTS) return
+    // Lifetime: cleared by stop(), and by the next skipOn().
+    skipRetry = setTimeout(() => {
+      skipRetry = null
+      if (isStranded(state)) skipOn(attempt + 1)
+    }, SKIP_RETRY_MS)
   }
 
   registerDebugSource({
@@ -209,6 +239,8 @@ export function createRuntime(ports: RuntimePorts): Runtime {
       if (state.phase !== "running") return
       if (firstScan !== null) ports.win.cancelAnimationFrame(firstScan)
       firstScan = null
+      if (skipRetry !== null) clearTimeout(skipRetry)
+      skipRetry = null
       sensorInstance.stop()
       dispatch({ kind: "stop", t: clock() })
       health?.stop()

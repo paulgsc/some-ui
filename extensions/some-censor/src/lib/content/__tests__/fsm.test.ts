@@ -28,6 +28,7 @@ function view(
     NOW,
     boundaryDays,
     "all",
+    false,
     session
   ).kind
 }
@@ -70,12 +71,29 @@ describe("decide", () => {
         NOW,
         DEFAULT_BOUNDARY_DAYS,
         "all",
+        false,
         session
       )
     ).toEqual({
       kind: "absent",
       session,
     })
+  })
+
+  it("plates a card with no date only where an undated card is shown (Music mix)", () => {
+    const undated = (uploadDate: string | null, short = false): string =>
+      decide(
+        { ...NO_MUSIC, uploadDate, short },
+        NOW,
+        DEFAULT_BOUNDARY_DAYS,
+        "all",
+        true,
+        session
+      ).kind
+    expect(undated(null)).toBe("plated")
+    // A date it has still decides: shown undated is not shown young.
+    expect(undated("3 hours ago")).toBe("absent")
+    expect(undated(null, true), "a Short stays held").toBe("absent")
   })
 })
 
@@ -92,6 +110,7 @@ describe("decideWatch (#1805)", () => {
         dates,
         miniplayer: false,
         ...NO_MUSIC,
+        mix: null,
       },
       NOW,
       DEFAULT_BOUNDARY_DAYS,
@@ -127,6 +146,7 @@ describe("the listening lane (QD15, #1806)", () => {
       NOW,
       DEFAULT_BOUNDARY_DAYS,
       signs,
+      false,
       session
     ).kind
 
@@ -167,6 +187,7 @@ describe("the listening lane (QD15, #1806)", () => {
       dates: ["3 days ago"],
       miniplayer: false,
       ...NO_MUSIC,
+      mix: null,
     }
     expect(
       decideWatch({ ...page, title: OST }, NOW, DEFAULT_BOUNDARY_DAYS, "all")
@@ -183,6 +204,7 @@ describe("the listening lane (QD15, #1806)", () => {
       miniplayer: false,
       ...NO_MUSIC,
       title: OST,
+      mix: null,
     }
     expect(decideWatch(page, NOW, DEFAULT_BOUNDARY_DAYS, "channel")).toBe(
       "absent"

@@ -56,7 +56,7 @@ present by definition, and a Short carries no date (`QD3`).
 - Held continuously for **3 seconds** (pointer, or Space/Enter held), it
   replaces the poster plate with the real thumbnail. Releasing early cancels.
 - Strict offers no control, and choosing Strict takes a shown thumbnail
-  away (§7, `QD13`). Open shows it at three seconds, still held, and the
+  away (§7, `QD13`). Music mix shows it at three seconds, still held, and the
   control then reads "Hide original"; a press and release puts the plate back.
 - It lasts for that view. Navigation forgets it, and nothing is persisted.
 - No progress colour, reward animation or memory of having done it. Anything
@@ -105,16 +105,24 @@ The choices, besides an on/off switch and Diagnostics:
 - **A mode**, one of three fixed bundles, strictest first. The owner picks a
   mode, never a row of one:
 
-  | Row                         | Strict               | Standard (default)           | Open                        |
-  | --------------------------- | -------------------- | ---------------------------- | --------------------------- |
-  | Music shown whole           | From artist channels | Those, or an OST or MV title | As Standard                 |
-  | Autoplay from a music video | Into music only      | Into anything shown          | Into anything shown         |
-  | Original thumbnail          | Never offered        | After a 3-second hold        | At 3 seconds, can be hidden |
-  | Channel post images         | Hidden               | Hidden                       | Shown                       |
-  | Cards still loading         | Not painted          | Blurred                      | Blurred                     |
+  | Row                         | Strict               | Standard (default)           | Music mix                     |
+  | --------------------------- | -------------------- | ---------------------------- | ----------------------------- |
+  | Music shown whole           | From artist channels | Those, or an OST or MV title | As Standard                   |
+  | Autoplay from a music video | Into music only      | Into anything shown          | Into anything shown           |
+  | Original thumbnail          | Never offered        | After a 3-second hold        | At 3 seconds, can be hidden   |
+  | Channel post images         | Hidden               | Hidden                       | Shown                         |
+  | Cards still loading         | Not painted          | Blurred                      | Blurred                       |
+  | Mix songs with no date      | Hidden               | Hidden                       | Shown, in a music Mix (`QD3`) |
+
+  Music mix is the mode for listening to a Mix started from a music video
+  (2026-10-28). A Mix's rows carry no date, so every other mode holds them and
+  the Mix stops after a few songs; Music mix shows them on their plates once
+  the Mix has played a video whole in the lane, so it plays on, recent songs
+  included. It was Open until then, and a stored "open" still reads as it.
 
 - **When autoplay reaches a held video:** stop (default), or skip to the next
-  video in Up next that isn't held.
+  video in the playlist or Up next that isn't held and hasn't played in this
+  tab.
 
 Modes never move the boundary. No counts, no history, no trusted channels, no
 languages setting (the owner dropped it on 2026-10-17: being music alone admits

@@ -36,6 +36,11 @@ export type Observation = {
   readonly short: boolean
   /** The channel carries YouTube's official-artist badge (QD15). */
   readonly artist: boolean
+  /**
+   * The Mix this card is a row of, as its link names it (`RD…`), or null
+   * for any card outside a Mix's playlist.
+   */
+  readonly mix: string | null
   readonly surface: BoyoSurface
   /** The anchor element's tag, lower-case. Diagnostics only. */
   readonly renderer: string
@@ -71,6 +76,8 @@ export type WatchObservation = {
   readonly title: string | null
   readonly channelName: string | null
   readonly artist: boolean
+  /** The Mix the page plays in (`RD…`), or null outside one. */
+  readonly mix: string | null
 }
 
 /**
@@ -118,6 +125,7 @@ export function mergeObservation(
     // The latest reading only: a stale badge must not keep a video in the
     // lane (QD15), and losing one only holds it.
     artist: next.artist,
+    mix: next.mix ?? previous.mix,
     surface: next.surface,
     renderer: next.renderer,
     // Once the table has named a shape it stays named; a later unknown reading

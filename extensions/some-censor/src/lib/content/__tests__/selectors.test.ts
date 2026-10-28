@@ -159,7 +159,7 @@ describe("the stylesheet and the catalogue agree", () => {
     )
   })
 
-  it("shows a post's own images under Open, unless plated (#1966)", () => {
+  it("shows a post's own images under Music mix, unless plated (#1966)", () => {
     // One rule, in exactly this form: P8 renders it, locally only.
     const rules = premaskRulesIn(CSS, "visibility: visible !important").filter(
       (r) => r.includes(POSTS_ATTRIBUTE)

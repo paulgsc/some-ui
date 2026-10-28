@@ -586,6 +586,7 @@ describe("the watch page (#1805)", () => {
     title: null,
     channelName: null,
     artist: false,
+    mix: null,
   })
 
   it("announces the page's video when what is read of it changes, and only then", async () => {
@@ -714,6 +715,20 @@ describe("autoplay (#1805)", () => {
     expect(navigate(autoplay("old"))).toBe(true)
   })
 
+  it("tells Core of an autoplay it lets go on, and where to go when asked (SK1)", () => {
+    admitted.add("old")
+    tokens = []
+    navigate(autoplay("old"))
+    expect(tokens).toEqual([{ kind: "autoplayed", videoId: "old", t: now }])
+    tokens = []
+    sensor.skipOn()
+    expect(tokens).toEqual([{ kind: "held", upNext: [], t: now }])
+    sensor.stop()
+    tokens = []
+    sensor.skipOn()
+    expect(tokens, "nothing once stopped").toEqual([])
+  })
+
   it("never holds a navigation the owner asked for", () => {
     expect(navigate({ endpoint: { watchEndpoint: { videoId: "held" } } })).toBe(
       true
@@ -755,6 +770,36 @@ describe("autoplay (#1805)", () => {
     for (const id of ["in-a-panel", "elsewhere"]) {
       expect(sensor.upNextCard(cardKey(asVideoId(id))), id).toBeNull()
     }
+  })
+
+  it("puts a playlist's rows after the page's own video ahead of Up next (SK1)", async () => {
+    const row = (videoId: string): HTMLElement => {
+      const el = document.createElement("ytd-playlist-panel-video-renderer")
+      el.innerHTML = `<a id="wc-endpoint" href="/watch?v=${videoId}&amp;list=RDmix&amp;index=1"><span id="video-title">Row ${videoId}</span><span id="byline">Chan</span></a>`
+      return el
+    }
+    const manager = document.createElement("ytd-page-manager")
+    manager.innerHTML = `<ytd-watch-flexy video-id="here"><div id="secondary">
+      <ytd-playlist-panel-renderer id="playlist"><div id="items"></div></ytd-playlist-panel-renderer>
+      <div id="related"><ytd-watch-next-secondary-results-renderer></ytd-watch-next-secondary-results-renderer></div>
+    </div></ytd-watch-flexy>`
+    manager
+      .querySelector("#items")
+      ?.append(row("before"), row("here"), row("after"), row("last"))
+    manager
+      .querySelector("ytd-watch-next-secondary-results-renderer")
+      ?.append(lockup("side"), lockup("after"))
+    document.body.append(manager)
+    await tick()
+    tokens = []
+    navigate(autoplay("held"))
+    expect(tokens).toEqual([
+      { kind: "held", upNext: ["after", "last", "side"], t: now },
+    ])
+    // The row, not the sidebar's copy: opening it keeps the Mix playing.
+    expect(sensor.upNextCard(cardKey(asVideoId("after")))?.tagName).toBe(
+      "YTD-PLAYLIST-PANEL-VIDEO-RENDERER"
+    )
   })
 })
 

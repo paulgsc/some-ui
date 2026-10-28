@@ -67,6 +67,11 @@ export type Rules = {
    * hold shows the thumbnail: let go, or still held (QD13).
    */
   readonly face: "none" | FaceWhen
+  /**
+   * A row of a music Mix's playlist with no date: held, as any card
+   * without one is (QD3), or shown on its plate (Music mix).
+   */
+  readonly undated: "held" | "mix"
 }
 
 /**
@@ -80,6 +85,7 @@ export const STANDARD_RULES: Rules = {
   signs: "all",
   fromMusic: "admitted",
   face: "release",
+  undated: "held",
 }
 
 export type CoreState = {
@@ -102,7 +108,40 @@ export type CoreState = {
   readonly autoplay: AutoplayRule
   /** B4's staleness signal, per session: how often the table had no answer. */
   readonly unknownShapes: Readonly<Record<UnknownShapeReason, number>>
+  /**
+   * The videos this tab's watch page has shown since `start`, newest last,
+   * at most {@link PLAYED_KEPT}: Skip never goes back to one (R10).
+   */
+  readonly played: ReadonlyArray<VideoId>
+  /**
+   * The Mixes (`RD…`) known to be music: each has played a video whole in
+   * the lane (QD15) since `start` (R11).
+   */
+  readonly musicMixes: ReadonlyArray<string>
+  /**
+   * Where autoplay, or Skip, last went on to, and from which video, until
+   * the watch page shows that video decided or shows another one (SK1).
+   */
+  readonly arriving: Arrival | null
+  /**
+   * The held page Skip is to move on from and has found nowhere to go yet
+   * (SK1). Read it through {@link isStranded}, which also asks whether that
+   * page is still the one shown, still held, and Skip still the choice.
+   */
+  readonly stranded: VideoId | null
 }
+
+/** An autoplay on its way from the page's video to the next one. */
+export type Arrival = {
+  readonly from: VideoId | null
+  readonly to: VideoId
+}
+
+/**
+ * How many played videos Skip remembers. A filter for where autoplay goes
+ * next, not a record: past this, the oldest are let go.
+ */
+export const PLAYED_KEPT = 200
 
 export const EMPTY_UNKNOWN_SHAPES: CoreState["unknownShapes"] = {
   "surface-uncrawled": 0,
@@ -123,6 +162,10 @@ export function initialState(session: SessionId): CoreState {
     rules: STANDARD_RULES,
     autoplay: "stop",
     unknownShapes: EMPTY_UNKNOWN_SHAPES,
+    played: [],
+    musicMixes: [],
+    arriving: null,
+    stranded: null,
   }
 }
 
@@ -140,6 +183,10 @@ export type CoreSnapshot = {
   readonly rules: Rules
   readonly autoplay: AutoplayRule
   readonly unknownShapes: CoreState["unknownShapes"]
+  readonly played: ReadonlyArray<VideoId>
+  readonly musicMixes: ReadonlyArray<string>
+  readonly arriving: Arrival | null
+  readonly stranded: VideoId | null
 }
 
 /**
@@ -163,9 +210,10 @@ export function admits(state: CoreState, videoId: VideoId): boolean {
 
 /**
  * Where autoplay goes instead of a video Core does not admit, under Skip
- * (#1966): the first of `upNext`, in page order, that Core admits and is
- * not the page's own video. None in the miniplayer, which plays over
- * another page, nor when there is no such video: autoplay stops.
+ * (#1966): the first of `upNext`, in the Sensor's order, that Core admits,
+ * is not the page's own video and has not played in this tab. None in the
+ * miniplayer, which plays over another page, nor when there is no such
+ * video: autoplay stops.
  */
 export function skipTo(
   state: CoreState,
@@ -175,7 +223,45 @@ export function skipTo(
   if (state.autoplay !== "skip" || watch === null) return null
   if (watch.observation.miniplayer) return null
   const own = watch.observation.videoId
-  return upNext.find((id) => id !== own && admits(state, id)) ?? null
+  return (
+    upNext.find(
+      (id) => id !== own && !state.played.includes(id) && admits(state, id)
+    ) ?? null
+  )
+}
+
+/**
+ * SK1: whether Skip still has to move on from the page shown: the page it
+ * was stranded on, shown outside the miniplayer and still held, with Skip
+ * still the owner's choice. A later reading, a new mode or boundary, or a
+ * change of autoplay can each end it without touching `stranded`.
+ */
+export function isStranded(state: CoreState): boolean {
+  const watch = state.watch
+  return (
+    state.stranded !== null &&
+    state.autoplay === "skip" &&
+    watch !== null &&
+    watch.view === "absent" &&
+    !watch.observation.miniplayer &&
+    watch.observation.videoId === state.stranded
+  )
+}
+
+/**
+ * Whether a card with no date is shown on its plate rather than held: only
+ * under Music mix, and only a row of a Mix known to be music.
+ */
+export function undatedShown(
+  state: Pick<CoreState, "musicMixes">,
+  rules: Rules,
+  observation: Observation
+): boolean {
+  return (
+    rules.undated === "mix" &&
+    observation.mix !== null &&
+    state.musicMixes.includes(observation.mix)
+  )
 }
 
 export function snapshot(state: CoreState): CoreSnapshot {
@@ -189,5 +275,9 @@ export function snapshot(state: CoreState): CoreSnapshot {
     rules: state.rules,
     autoplay: state.autoplay,
     unknownShapes: state.unknownShapes,
+    played: state.played,
+    musicMixes: state.musicMixes,
+    arriving: state.arriving,
+    stranded: state.stranded,
   }
 }

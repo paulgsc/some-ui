@@ -19,6 +19,7 @@ import {
   extractIsArtist,
   extractIsShort,
   extractMeta,
+  extractMix,
   extractTitle,
   extractUploadDate,
   readAutonav,
@@ -248,6 +249,30 @@ describe("tryExtract", () => {
     expect(
       tryExtract(make("ytd-playlist-panel-video-renderer", PANEL_ROW))
     ).toEqual({ kind: "full", videoId: "panel_1", channelId: "Panel Channel" })
+  })
+
+  it("names the Mix a playlist row belongs to, and none for any other card", () => {
+    expect(
+      extractMix(make("ytd-playlist-panel-video-renderer", PANEL_ROW))
+    ).toBe("RDmix_1")
+    // A playlist someone made is not a Mix.
+    expect(
+      extractMix(
+        make(
+          "ytd-playlist-panel-video-renderer",
+          '<a href="/watch?v=p_1&amp;list=PLabc&amp;index=2"></a>'
+        )
+      )
+    ).toBeNull()
+    // A Mix's own card elsewhere proves no date, and names none.
+    expect(
+      extractMix(
+        make(
+          "yt-lockup-view-model",
+          '<a href="/watch?v=m_1&amp;list=RDm_1&amp;start_radio=1"></a>'
+        )
+      )
+    ).toBeNull()
   })
 
   it("takes no channel id from a link whose href names none", () => {
@@ -543,6 +568,7 @@ describe("readWatch (#1805)", () => {
       title: "Me at the zoo",
       channelName: null,
       artist: false,
+      mix: null,
     })
   })
 
@@ -559,6 +585,7 @@ describe("readWatch (#1805)", () => {
       title: null,
       channelName: null,
       artist: false,
+      mix: null,
     })
   })
 
@@ -609,7 +636,30 @@ describe("readWatch (#1805)", () => {
       title: null,
       channelName: null,
       artist: false,
+      mix: null,
     })
+  })
+})
+
+describe("the page's Mix", () => {
+  it("reads the Mix the shown watch page plays in from its address", () => {
+    document.body.innerHTML = `<ytd-app><ytd-page-manager><ytd-watch-flexy video-id="jNQ"></ytd-watch-flexy></ytd-page-manager></ytd-app>`
+    const before = window.location.href
+    try {
+      window.history.replaceState(null, "", "/watch?v=jNQ&list=RDjNQ#t=1")
+      expect(readWatch(document)?.mix).toBe("RDjNQ")
+      document.querySelector("ytd-watch-flexy")?.setAttribute("hidden", "")
+      document
+        .querySelector("ytd-app")
+        ?.setAttribute("miniplayer-is-active", "")
+      expect(
+        readWatch(document)?.mix,
+        "the miniplayer's page is not the address's"
+      ).toBeNull()
+    } finally {
+      window.history.replaceState(null, "", before)
+      document.body.innerHTML = ""
+    }
   })
 })
 

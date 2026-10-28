@@ -100,17 +100,17 @@ describe("the mode and autoplay log (#1966)", () => {
     expect(first[BOUNDARY_CHANGES_KEY]).toBeUndefined()
     const next = settingsWrite(
       first,
-      settings({ mode: "open", autoplay: "skip" }),
+      settings({ mode: "mix", autoplay: "skip" }),
       9
     )
     expect(parseChoiceChanges(next[CHOICE_CHANGES_KEY])).toEqual([
       { at: 5, choice: "mode", from: "standard", to: "strict" },
-      { at: 9, choice: "mode", from: "strict", to: "open" },
+      { at: 9, choice: "mode", from: "strict", to: "mix" },
       { at: 9, choice: "autoplay", from: "stop", to: "skip" },
     ])
     const same = settingsWrite(
       next,
-      settings({ mode: "open", autoplay: "skip", enabled: false }),
+      settings({ mode: "mix", autoplay: "skip", enabled: false }),
       12
     )
     expect(same[CHOICE_CHANGES_KEY]).toBeUndefined()
@@ -118,10 +118,10 @@ describe("the mode and autoplay log (#1966)", () => {
 
   it("keeps entries it cannot read, and reads only well-formed ones", () => {
     const stored = { [CHOICE_CHANGES_KEY]: [{ odd: true }] }
-    const next = settingsWrite(stored, settings({ mode: "open" }), 3)
+    const next = settingsWrite(stored, settings({ mode: "mix" }), 3)
     expect(next[CHOICE_CHANGES_KEY]).toEqual([
       { odd: true },
-      { at: 3, choice: "mode", from: "standard", to: "open" },
+      { at: 3, choice: "mode", from: "standard", to: "mix" },
     ])
     expect(
       parseChoiceChanges([
@@ -131,6 +131,22 @@ describe("the mode and autoplay log (#1966)", () => {
         { at: "1", choice: "mode", from: "strict", to: "open" },
       ])
     ).toEqual([])
+  })
+
+  it("reads Open, Music mix's former name, as Music mix, and rewrites no entry", () => {
+    expect(parseSettings({ v: 1, mode: "open" }).mode).toBe("mix")
+    const log = [{ at: 1, choice: "mode", from: "standard", to: "open" }]
+    expect(parseChoiceChanges(log)).toEqual([
+      { at: 1, choice: "mode", from: "standard", to: "mix" },
+    ])
+    const next = settingsWrite(
+      { [SETTINGS_KEY]: { v: 1, mode: "open" } },
+      settings({ mode: "standard" }),
+      2
+    )
+    expect(next[CHOICE_CHANGES_KEY]).toEqual([
+      { at: 2, choice: "mode", from: "mix", to: "standard" },
+    ])
   })
 })
 

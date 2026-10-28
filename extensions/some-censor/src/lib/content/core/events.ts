@@ -52,11 +52,22 @@ export type Token =
   | { readonly kind: "described"; readonly t: number }
   /**
    * The Sensor held autoplay's navigation into a video Core does not admit
-   * (#1805). `upNext` is the Up next videos it read, in page order.
+   * (#1805), or was asked where Skip may go from a held page (SK1).
+   * `upNext` is where autoplay may go instead, in the Sensor's order.
    */
   | {
       readonly kind: "held"
       readonly upNext: ReadonlyArray<VideoId>
+      readonly t: number
+    }
+  /**
+   * The Sensor let an autoplay go on into `videoId`, which Core admitted
+   * (#1805). If that video's own page turns out held, Skip moves on from it
+   * (SK1).
+   */
+  | {
+      readonly kind: "autoplayed"
+      readonly videoId: VideoId
       readonly t: number
     }
   /**

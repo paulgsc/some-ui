@@ -27,12 +27,17 @@ const STANDARD_PAGE: PageRules = { posts: "hidden", loading: "blurred" }
 
 export const MODE_RULES: Readonly<Record<Mode, ModeRules>> = {
   strict: {
-    core: { signs: "channel", fromMusic: "music", face: "none" },
+    core: {
+      signs: "channel",
+      fromMusic: "music",
+      face: "none",
+      undated: "held",
+    },
     page: { ...STANDARD_PAGE, loading: "blank" },
   },
   standard: { core: STANDARD_RULES, page: STANDARD_PAGE },
-  open: {
-    core: { ...STANDARD_RULES, face: "held" },
+  mix: {
+    core: { ...STANDARD_RULES, face: "held", undated: "mix" },
     page: { ...STANDARD_PAGE, posts: "shown" },
   },
 }

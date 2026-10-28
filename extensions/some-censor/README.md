@@ -13,7 +13,7 @@ resulting actions to the Actuator. The Layout table and Core are pure; the
 Sensor turns the vendor DOM into the tokens Core sees, and the Actuator is the
 only writer to it. The one vendor event the Sensor holds, on Core's answer, is
 an autoplay into a video Core does not admit (#1805); under Skip, Core then
-names the Up next video the Actuator opens instead (#1966).
+names the playlist row or Up next video the Actuator opens instead (#1966).
 
 Four stages, each owning exactly one concern, in a straight line from
 observation to write:
