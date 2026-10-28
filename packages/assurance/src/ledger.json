@@ -358,6 +358,171 @@
       ]
     },
     {
+      "id": "game-feed",
+      "name": "Home follows the games of the week",
+      "why": "Home polls ESPN's public NFL feed in the background, keeping every answer and appending each game's plays to a log, so the phone's game-day bites can later be matched to the play they are about. No route serves it yet.",
+      "paths": [
+        "server:apps/servers/file_host/src/game_feed",
+        "server:crates/nfl_feed",
+        "server:crates/db/game_feed"
+      ],
+      "modules": [],
+      "objectives": [
+        {
+          "id": "GA1",
+          "kind": "OA4",
+          "property": "outcome",
+          "claim": "Every answer ESPN gives is kept and counted by what it was, and a fetch with no answer is counted by why.",
+          "requirement": "Each response, a 429, another refusal or an unreadable body included, is kept raw before it is read, in the transaction that appends the plays read from it, and is never updated or deleted; a fetch with no answer stores nothing and is counted in game_feed_fetches_total by kind (timeout, connect, transport).",
+          "verdict": "holds",
+          "conclusion": "Every answer is kept and every fetch is counted by its kind, in the store and pass tests; a storage failure ends the pass, so what was due after it waits for the next one, and FAILING shows that.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "Seven responses, a 429 and an HTML page among them, are all kept, read by kind, and replay to the same play log.",
+              "ref": "server:crates/db/game_feed/src/lib.rs"
+            },
+            {
+              "class": "measured",
+              "says": "Kept responses and plays refuse UPDATE and DELETE.",
+              "ref": "server:crates/db/game_feed/src/lib.rs"
+            },
+            {
+              "class": "measured",
+              "says": "A 429, a timeout and an HTML page are each counted by kind in one run of passes; the three answers are kept and the timeout stores nothing.",
+              "ref": "server:apps/servers/file_host/src/game_feed/pass.rs"
+            }
+          ],
+          "proof": [
+            "server:crates/db/game_feed/src/lib.rs#a_game_is_logged_once_revised_by_a_new_row_and_replays_to_the_same_log",
+            "server:crates/db/game_feed/src/lib.rs#nothing_kept_is_rewritten_or_deleted",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_refusal_or_no_answer_backs_off_to_the_cap_and_a_good_answer_resets_it"
+          ],
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/game-feed.jsonnet"
+          },
+          "amendments": []
+        },
+        {
+          "id": "GA2",
+          "kind": "RE2",
+          "property": "work",
+          "claim": "A fetch that keeps failing is asked less and less often, one target at a time.",
+          "requirement": "After a 429, any other refusal, an unreadable body or no answer, that target (the scoreboard, or one game's summary) waits its own cadence doubled per failure in a row, to at most GAME_FEED_BACKOFF_CAP_SECONDS (900), before it is asked again; its next good answer resets it.",
+          "verdict": "holds",
+          "conclusion": "The pass test shows the scoreboard backing off to the cap and resetting on a good answer, and a summary doubling from its 15 s cadence; nothing bounds how many times a target is retried in all, only how often.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "600 s doubled is capped at 900 s, the next waits 900 s more, a good answer resets the count, and a live summary waits 30 s then 60 s.",
+              "ref": "server:apps/servers/file_host/src/game_feed/pass.rs"
+            }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_refusal_or_no_answer_backs_off_to_the_cap_and_a_good_answer_resets_it"
+          ],
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/game-feed.jsonnet"
+          },
+          "amendments": []
+        },
+        {
+          "id": "GA3",
+          "kind": "RE3",
+          "property": "work",
+          "claim": "Home fetches a game only while there is something to learn about it.",
+          "requirement": "A wake with nothing due fetches nothing; a game's summary is fetched every live cadence (15 s) from kickoff until a summary of it says final, then never again, a restart included; a completed game first seen late is still fetched until its final summary is kept; a game still called pre or postponed is fetched only within its grace (4 h after kickoff, and 8 h once over without completing).",
+          "verdict": "holds",
+          "conclusion": "The pass tests follow a game from kickoff to its final fetch and then see no fetch, see a restart skip a game it holds final, and see a late-seen completed game and a postponed one handled; each game's fetches are bounded by its length plus the graces, at one per 15 s.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "Before kickoff only the scoreboard is fetched, a wake inside a cadence fetches nothing, and after the final summary the game is never asked again.",
+              "ref": "server:apps/servers/file_host/src/game_feed/pass.rs"
+            },
+            {
+              "class": "measured",
+              "says": "A restarted worker fetches only the scoreboard for a game home already holds final; a completed game first seen a day later is fetched once.",
+              "ref": "server:apps/servers/file_host/src/game_feed/pass.rs"
+            },
+            {
+              "class": "measured",
+              "says": "A postponed game is left after the post grace, and one still called pre past its grace waits for the scoreboard.",
+              "ref": "server:apps/servers/file_host/src/game_feed/pass.rs"
+            }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_game_is_followed_from_kickoff_to_its_final_fetch_and_then_left",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_restart_does_not_fetch_a_game_it_already_holds_final",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_completed_game_first_seen_long_after_is_still_fetched",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_game_is_left_only_once_its_own_summary_is_final",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_postponed_game_is_left_after_the_post_grace",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_game_long_past_kickoff_still_called_pre_waits_for_the_scoreboard"
+          ],
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/game-feed.jsonnet"
+          },
+          "amendments": []
+        },
+        {
+          "id": "GA4",
+          "kind": "OA6",
+          "property": "outcome",
+          "claim": "A game feed that has stopped reads as stopped, not as a quiet week.",
+          "requirement": "Every wake stamps game_feed_last_attempt_timestamp_seconds, whether or not anything is due, so a dashboard tells 'nothing to fetch' (a recent stamp) from 'not running' (an old one), and game_feed_enabled tells 'switched off' from both; an alert tells the owner when the stamp goes stale.",
+          "verdict": "unproven",
+          "conclusion": "The dashboard's SINCE LAST LOOK turns red after 60 s without a wake and stays green through a quiet week; if home's server is down it shows no data rather than red, nothing tells you, and no test holds either.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "The worker stamps the start of every wake before its pass; the SINCE LAST LOOK panel reads time() minus that stamp and turns red at 60 s.",
+              "ref": "server:infra/grafana/dashboards/lib/game-feed-panels.libsonnet"
+            },
+            {
+              "class": "structural",
+              "says": "No alert rule reads the stamp: Prometheus has no rule files, as for the mailbox poller.",
+              "ref": "server:infra/prometheus/prometheus.yml"
+            }
+          ],
+          "tracked": "server#525",
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/game-feed.jsonnet"
+          },
+          "amendments": []
+        },
+        {
+          "id": "GA5",
+          "kind": "RE9",
+          "property": "work",
+          "claim": "What the game feed keeps grows by a model the owner chose.",
+          "requirement": "The bytes kept per followed game and per week are stated and bounded by a model the owner decided, and the play log is never traded for space.",
+          "verdict": "unproven",
+          "conclusion": "Every response is kept whole, so a live game's summary, up to about 160 KB, is stored every 15 s: roughly 1 GB per Sunday slate, with no model chosen yet between content-addressed bodies and following fewer games.",
+          "evidence": [
+            {
+              "class": "derived",
+              "says": "About 840 summaries per game (3.5 h at one per 15 s) at a mean near 100 KB, across 13 Sunday games, is about 1.1 GB; the final summary fixture is 159 KB.",
+              "ref": "server:crates/nfl_feed/testdata"
+            },
+            {
+              "class": "structural",
+              "says": "game_feed_response keeps every body raw and refuses DELETE, so nothing kept is ever reclaimed.",
+              "ref": "server:crates/db/game_feed"
+            }
+          ],
+          "tracked": "server#534",
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        }
+      ]
+    },
+    {
       "id": "study-nudge",
       "name": "Study nudges stay bounded",
       "why": "Home decides when to nudge you to study from the phone's presence and signals, and sends the nudge by push.",
