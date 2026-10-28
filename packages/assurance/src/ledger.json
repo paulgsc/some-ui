@@ -786,6 +786,76 @@
           "amendments": []
         }
       ]
+    },
+    {
+      "id": "home-errors",
+      "name": "Home tells me when something goes wrong",
+      "why": "An error on home that nobody hears of is a failure that is silent, however loudly it was logged; and a home that errors every time it is used is not working, even when each request answers.",
+      "paths": [
+        "server:apps/servers/file_host/src/metrics/observability.rs",
+        "server:infra/grafana/provisioning/alerting/file-host-errors.yml"
+      ],
+      "modules": [],
+      "objectives": [
+        {
+          "id": "ER1",
+          "kind": "OA8",
+          "property": "outcome",
+          "claim": "An error on home is never silent: it reaches you, named by what failed, and a record of it outlasts the session that saw it.",
+          "requirement": "Every ERROR-level event on home is counted by its target and its name; an alert reaches the owner within 15 minutes and says what failed, its delivery tested; and a sanitised record, one open issue per fingerprint updated in place and holding no field value, survives for the next session.",
+          "verdict": "broken",
+          "conclusion": "Home counts every error and alerts per module, but the count keeps only the module, so an alert cannot say what failed; nothing shows the alert reaches you, and nothing keeps a record past the session that saw it.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "ErrorEventMetricsLayer counts every ERROR event into tracing_events_total by target alone.",
+              "ref": "server:apps/servers/file_host/src/metrics/observability.rs"
+            },
+            {
+              "class": "structural",
+              "says": "The one error alert sends Slack a message per target; whether its webhook is set on home has not been shown.",
+              "ref": "server:infra/grafana/provisioning/alerting/file-host-errors.yml"
+            }
+          ],
+          "tracked": "server#546",
+          "watch": {
+            "by": "alert",
+            "ref": "server:infra/grafana/provisioning/alerting/file-host-errors.yml"
+          },
+          "amendments": []
+        },
+        {
+          "id": "ER2",
+          "kind": "OA8",
+          "property": "outcome",
+          "claim": "Home runs error-free: at least 99% of the hours in any 7 days have no error.",
+          "requirement": "Over every rolling 168 hours, at most 1% of hours hold an ERROR-level event on home, held by a rule proven to fire and an alert when the budget is spent.",
+          "bound": {
+            "value": 99,
+            "unit": "percent of hours without an error",
+            "tighter": "higher"
+          },
+          "verdict": "broken",
+          "conclusion": "Every use of the app logs an error: traces are sent every 5 s to a collector that does not exist, reproduced against a real file_host on 2026-10-28; and no rule counts the hours.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A real file_host with no collector logged BatchSpanProcessor.ExportError at ERROR every 5 s while it served requests, and tracing_events_total{target=\"opentelemetry_sdk\"} counted each.",
+              "ref": "server#545"
+            },
+            {
+              "class": "structural",
+              "says": "Prometheus has no rule files, so nothing counts error hours.",
+              "ref": "server:infra/prometheus/prometheus.yml"
+            }
+          ],
+          "tracked": "server#546",
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        }
+      ]
     }
   ],
   "synchronous": [

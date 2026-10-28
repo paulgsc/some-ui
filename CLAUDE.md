@@ -556,7 +556,7 @@ rest (`REVIEW.md`, "Change kind: a defect PR proves its claim").
 Two properties are owed across this repo and `paulgsc/server`: nothing fails without the
 owner hearing of it, and nothing does work it does not need. `docs/operational-assurance.md` is
 the grammar (obligations, outcomes, verdicts, evidence classes, the requirement kinds
-OA1–OA7 and RE1–RE10). `packages/assurance/src/ledger.json` is the one record: each operation
+OA1–OA8 and RE1–RE10). `packages/assurance/src/ledger.json` is the one record: each operation
 family and its objectives, each `holds` with its proof or `broken`/`unproven` with its issue.
 `/assurance` shows it to the owner and to anyone.
 

@@ -29,7 +29,7 @@ export type Surroundings = {
 }
 
 const ID = /^[A-Z]{1,4}\d+$/
-const KIND = /^(OA[1-7]|RE([1-9]|10))$/
+const KIND = /^(OA[1-8]|RE([1-9]|10))$/
 const ISSUE = /^(some-ui|server)#\d+$/
 /** A file and a name in it: a test's title, a function, a promise's ID. */
 const PROOF = /^(some-ui|server):([^#\s]+)#(.{3,})$/
@@ -72,7 +72,7 @@ export function findLedgerViolations(
       if (around.declaredIds.has(o.id))
         flag(o.id, "ID is already an invariant declared in a markdown file")
       if (!KIND.test(o.kind))
-        flag(o.id, `kind "${o.kind}" is not one of OA1–OA7, RE1–RE10`)
+        flag(o.id, `kind "${o.kind}" is not one of OA1–OA8, RE1–RE10`)
       for (const f of proofOrIssue(o, around)) flag(o.id, f)
       for (const e of o.evidence) somePath(o.id, "evidence", e.ref)
       somePath(o.id, "watch", o.watch.ref)

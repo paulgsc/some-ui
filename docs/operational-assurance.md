@@ -59,7 +59,7 @@ shown; "the cheapest possible" cannot be, from these repositories, and nothing h
 
 ## The requirement kinds
 
-Each objective names the kind it instantiates. These are the kinds, from the recon of 2026-10-27;
+Each objective names the kind it instantiates. These are the kinds, from the recon of 2026-10-27 (OA8 added 2026-10-28, #2199 AS12);
 a new kind is added here first.
 
 | Kind | Property          | Requirement                                                                                                                              |
@@ -71,6 +71,7 @@ a new kind is added here first.
 | OA5  | No silent failure | A cancel stops new effects at once; work already started is settled or reported as unknown.                                              |
 | OA6  | No silent failure | Work that should have happened and did not, and a watcher that stopped watching, each read apart from a quiet, healthy system.           |
 | OA7  | No silent failure | A release's evidence is complete: a skipped, empty or timed-out check reads as unproven, never as passed.                                |
+| OA8  | No silent failure | Every error is counted and named, reaches the owner, and leaves a bounded, sanitised record; errors stay within a stated budget.         |
 | RE1  | No wasted work    | Every external call's work is attributable to the operation that caused it, with the provider's own counts where it gives them.          |
 | RE2  | No wasted work    | Attempts obey one budget per operation; an explicit zero retries means one attempt.                                                      |
 | RE3  | No wasted work    | Every family has finite bounds on its requests, bytes, work and time for a whole operation, shared by its parts.                         |

@@ -62,7 +62,7 @@ export type Amendment = {
 
 export type Objective = {
   id: string
-  /** The requirement kind it instantiates (OA1–OA7, RE1–RE10). */
+  /** The requirement kind it instantiates (OA1–OA8, RE1–RE10). */
   kind: string
   property: Property
   claim: string
