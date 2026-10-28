@@ -348,7 +348,7 @@ describe("say it first", () => {
     expect(s.state.undo).toEqual({ id: "b2", until: null })
   })
 
-  it("a pick rewrites what the bite is about, then Undo runs a few seconds", () => {
+  it("a pick adds what the bite was about, still said first, then Undo runs a few seconds", () => {
     const state = asking()
     const said: Said = {
       how: "just-happened",
@@ -363,21 +363,13 @@ describe("say it first", () => {
       id: "b2",
       holdUntil: state.now + UNDO_MS,
       fields: {
-        how: "just-happened",
+        how: "said-first",
         scenario: "in.big-play",
         context: "31-yard catch",
         seq: "41",
       },
     })
     expect(next.state.undo).toEqual({ id: "b2", until: state.now + UNDO_MS })
-  })
-
-  it("Later leaves it said first, for home to work out", () => {
-    const state = asking()
-    const next = step(state, { type: "answer", said: null })
-    const [amend] = next.effects
-    expect(amend?.type === "amend" && amend.fields.how).toBe("said-first")
-    expect(amend?.type === "amend" && "scenario" in amend.fields).toBe(false)
   })
 
   it("Undo while asking throws it away", () => {
@@ -433,18 +425,116 @@ describe("say it first", () => {
       until: T0 + 7_000 + UNDO_MS,
     })
   })
+})
 
-  it("a pick from every scenario names no offer", () => {
-    const next = step(asking(), {
-      type: "answer",
-      said: { how: "every-scenario", scenario: "post.result", context: "" },
-    })
-    const [amend] = next.effects
-    expect(amend?.type === "amend" && amend.fields).toMatchObject({
+// GB1 (promise): every bite the recorder keeps carries the `how` it was
+// chosen by, and a bite said first stays `said-first` whatever follows the
+// stop. Family: how the bite started (offered, just happened, every
+// scenario, said first) x what followed (for a bite said first: a pick from
+// an offer card, from just happened or from every scenario, Later, the hold
+// running out, the page left, a keep that failed and was then answered; for
+// the rest: kept, the page left, a keep that failed). The bite's record is
+// the keep's fields with each amend's fields put in their place, as the
+// store's `amended` does (apps/www/src/lib/game-bites, whose GB1 test holds
+// that side).
+describe("GB1: every bite keeps how it was chosen", () => {
+  const PICKS = {
+    "picked an offer card": THIRD,
+    "picked just happened": {
+      how: "just-happened",
+      scenario: "in.big-play",
+      context: "31-yard catch",
+    },
+    "picked every scenario": {
       how: "every-scenario",
       scenario: "post.result",
-    })
-  })
+      context: "",
+    },
+  } as const satisfies Record<string, Said>
+
+  const STARTS: ReadonlyArray<Said> = [
+    THIRD,
+    PICKS["picked just happened"],
+    PICKS["picked every scenario"],
+    { how: "said-first" },
+  ]
+
+  type After = {
+    readonly stop: GameWeekEvent
+    readonly then: ReadonlyArray<GameWeekEvent>
+    /** The scenario the bite ends up naming, for a bite said first. */
+    readonly picked: Said | null
+  }
+
+  const done: GameWeekEvent = { type: "done" }
+  const KEPT: After = { stop: done, then: [], picked: null }
+  const LEFT: After = { stop: { type: "left" }, then: [], picked: null }
+  const KEEP_FAILED: After = {
+    stop: done,
+    then: [{ type: "keepFailed", id: "b9" }],
+    picked: null,
+  }
+
+  const AFTER_SAID_FIRST: Record<string, After> = {
+    ...Object.fromEntries(
+      Object.entries(PICKS).map(([name, said]) => [
+        name,
+        { stop: done, then: [{ type: "answer", said }], picked: said },
+      ])
+    ),
+    Later: { stop: done, then: [{ type: "answer", said: null }], picked: null },
+    "the hold ran out": {
+      stop: done,
+      then: [{ type: "clock", now: T0 + 5_000 + ASK_HOLD_MS }],
+      picked: null,
+    },
+    "the page was left": LEFT,
+    "a keep failed, then a pick": {
+      stop: done,
+      then: [
+        { type: "keepFailed", id: "b9" },
+        { type: "answer", said: THIRD },
+      ],
+      picked: THIRD,
+    },
+  }
+
+  /** What the store ends up holding of the bite `b9`. */
+  function recorded(said: Said, after: After): Record<string, string> {
+    const { all } = run(
+      recording(said),
+      after.stop,
+      { type: "taken", take: take(), id: "b9", at: T0 + 5_000 },
+      ...after.then
+    )
+    const keeps = all.filter((e) => e.type === "keep")
+    expect(keeps).toHaveLength(1)
+    let fields = keeps[0]?.type === "keep" ? keeps[0].bite.fields : {}
+    for (const effect of all)
+      if (effect.type === "amend" && effect.id === "b9") fields = effect.fields
+    return { ...fields }
+  }
+
+  for (const said of STARTS) {
+    const afters: Record<string, After> =
+      said.how === "said-first"
+        ? AFTER_SAID_FIRST
+        : {
+            kept: KEPT,
+            "the page was left": LEFT,
+            "a keep failed": KEEP_FAILED,
+          }
+    for (const [name, after] of Object.entries(afters)) {
+      it(`${said.how}, ${name}: says ${said.how}`, () => {
+        const fields = recorded(said, after)
+        expect(fields.how).toBe(said.how)
+        const named = said.how === "said-first" ? after.picked : said
+        if (named === null || named.how === "said-first")
+          expect("scenario" in fields).toBe(false)
+        else expect(fields.scenario).toBe(named.scenario)
+      })
+    }
+  }
 })
 
 describe("with no offer for the game", () => {
