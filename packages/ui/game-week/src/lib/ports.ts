@@ -10,29 +10,45 @@ import type { KeptBite } from "./bite"
 import type { ModeId } from "./modes"
 import { DEFAULT_MODE, isModeId } from "./modes"
 
+/** What became of an answer: noted, or too late, the bite already on its way. */
+type AmendOutcome = "noted" | "on-its-way"
+
 /**
  * Where bites wait on the phone until home holds them (GW3). Calls run in
  * the order they are made, so an `amend` or `undo` made right after a
  * `keep` finds the bite. Every call rejects, changing nothing, when it
  * cannot do what it says. Nothing here lets a bite go but `undo`, and that
  * only while the bite is held back.
+ *
+ * A bite `keep` rejects is held by the store and tried again; `amend`,
+ * `release` and `undo` reach it there, and `isKept` turns true, with the
+ * listeners called, once a try succeeds.
  */
 export type BiteStore = {
-  /** Keeps `bite` and its audio, both or neither, held back until `bite.holdUntil`. */
+  /**
+   * Keeps `bite` and its audio, both or neither, held back until
+   * `bite.holdUntil`. Rejects when it could not, and holds the bite to try
+   * again.
+   */
   keep: (bite: KeptBite, audio: Blob) => Promise<void>
   /**
    * Says again what a held-back bite is about, held back until `holdUntil`.
-   * Rejects once the bite is no longer held back.
+   * Resolves `"on-its-way"`, changing nothing, once the bite is no longer
+   * held back.
    */
   amend: (
     id: string,
     fields: Readonly<Record<string, string>>,
     holdUntil: number
-  ) => Promise<void>
+  ) => Promise<AmendOutcome>
   /** Lets a held-back bite start on its way home now. */
   release: (id: string) => Promise<void>
   /** Throws a held-back bite away; rejects once it is no longer held back. */
   undo: (id: string) => Promise<void>
+  /** Whether the bite `id` is kept on this phone, not only held to try again. */
+  isKept: (id: string) => boolean
+  /** Calls `listener` after each change to what is kept; returns the unsubscribe. */
+  subscribe: (listener: () => void) => () => void
 }
 
 /** What of the kept bites is still only on this phone, in the person's terms. */

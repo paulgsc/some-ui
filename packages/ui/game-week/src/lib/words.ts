@@ -43,6 +43,10 @@ export const NOTICES = {
   tooLateToUndo: "Too late to undo: that bite is on its way home.",
   notNoted:
     "Couldn't note what that was about. Home works it out from what you said.",
+  keptNow: "That bite is kept on this phone now.",
+  askClosed: "Noted as Later: home works it out from what you said.",
+  tooLateToNote:
+    "Too late to note what that was about: that bite is on its way home as Later.",
   pickFirst: "Pick a game first.",
   notStarted: "The screen went away before the microphone opened.",
 } as const

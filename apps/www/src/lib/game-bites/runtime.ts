@@ -9,8 +9,9 @@
  * back. A bite the phone could not keep is held here, by the store and not
  * by the screen that recorded it, and tried again on a timer and whenever
  * the page comes back, for as long as the page is loaded (`unkept`); Undo,
- * and what it was about, apply to it as they do to a kept one. Calls run
- * one after another, in the order made.
+ * and what it was about, apply to it as they do to a kept one, and the
+ * listeners hear when a try keeps it (`isKept`). Calls run one after
+ * another, in the order made.
  *
  * Nothing here lets a bite go but Undo while it is held back, and nothing
  * deletes audio a record might name: there is no sweep. The record lives in
@@ -59,7 +60,6 @@ export type GameBitesPorts = {
 
 export type GameBites = BiteStore & {
   getSnapshot: () => ReadonlyArray<KeptBite>
-  subscribe: (listener: () => void) => () => void
   /** The bites that may start on their way home now. */
   ready: () => ReadonlyArray<KeptBite>
   /** Bites the phone could not keep yet, held by this page load. */
@@ -68,9 +68,12 @@ export type GameBites = BiteStore & {
 }
 
 class BiteRefusedError extends Error {
+  readonly why: string
+
   constructor(why: string) {
     super(`game bite not changed: ${why}`)
     this.name = "BiteRefusedError"
+    this.why = why
   }
 }
 
@@ -265,6 +268,7 @@ export function createGameBites(ports: GameBitesPorts): GameBites {
     },
     ready: () => bites.filter((bite) => isReady(bite, ports.now())),
     unkept: () => held.length,
+    isKept: (id) => bites.some((bite) => bite.id === id),
     audio: (id) => shelf.get(id),
     keep: (bite, audio) =>
       inTurn(async () => {
@@ -281,8 +285,14 @@ export function createGameBites(ports: GameBitesPorts): GameBites {
       }),
     amend: (id, fields, holdUntil) =>
       inTurn(() => {
-        change({ kind: "amended", id, fields, holdUntil })
-        return Promise.resolve()
+        try {
+          change({ kind: "amended", id, fields, holdUntil })
+        } catch (error) {
+          if (error instanceof BiteRefusedError && error.why === "on-its-way")
+            return Promise.resolve("on-its-way" as const)
+          throw error
+        }
+        return Promise.resolve("noted" as const)
       }),
     release: (id) =>
       inTurn(() => {

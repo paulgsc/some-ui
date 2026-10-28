@@ -152,7 +152,7 @@ describe("keeping a bite (GW3, GW4)", () => {
     })
     expect(next.state.activity.kind).toBe("idle")
     expect(next.state.keeping).toEqual([
-      { id: "b1", holdUntil: T0 + 5_000 + UNDO_MS },
+      { id: "b1", holdUntil: T0 + 5_000 + UNDO_MS, held: false },
     ])
     const keep = next.effects.find((e) => e.type === "keep")
     expect(keep?.type === "keep" && keep.bite).toMatchObject({
@@ -176,18 +176,50 @@ describe("keeping a bite (GW3, GW4)", () => {
     expect(next.state.notice).toBe(NOTICES.tooShort)
   })
 
+  const failed = (): GameWeekState =>
+    run(
+      stopped(),
+      { type: "taken", take: take(), id: "b1", at: T0 + 5_000 },
+      { type: "keepFailed", id: "b1" }
+    ).state
+
   it("leaves a bite the store could not keep to the store, and says so", () => {
-    const taken = step(stopped(), {
-      type: "taken",
-      take: take(),
-      id: "b1",
-      at: T0 + 5_000,
-    })
-    const failed = step(taken.state, { type: "keepFailed", id: "b1" })
-    expect(failed.effects).toEqual([])
-    expect(failed.state.keeping).toEqual([])
-    expect(failed.state.undo).toBeNull()
-    expect(failed.state.notice).toBe(NOTICES.notKept)
+    const state = failed()
+    expect(state.keeping).toEqual([
+      { id: "b1", holdUntil: T0 + 5_000 + UNDO_MS, held: true },
+    ])
+    expect(state.notice).toBe(NOTICES.notKept)
+  })
+
+  it("offers Undo on a bite the store holds, until the store's hold ends", () => {
+    const state = failed()
+    expect(state.undo).toEqual({ id: "b1", until: T0 + 5_000 + UNDO_MS })
+    const undone = step(state, { type: "undo" })
+    expect(undone.effects).toEqual([{ type: "undo", id: "b1" }])
+    expect(undone.state.keeping).toEqual([])
+    expect(undone.state.notice).toBe(NOTICES.thrownAway)
+    const late = step(state, { type: "clock", now: T0 + 5_000 + UNDO_MS })
+    expect(late.state.undo).toBeNull()
+    expect(step(late.state, { type: "undo" }).effects).toEqual([])
+  })
+
+  it("hears when a later try keeps a held bite, and leaves its Undo as it was", () => {
+    const state = failed()
+    const kept = step(state, { type: "kept", id: "b1" })
+    expect(kept.effects).toEqual([])
+    expect(kept.state.keeping).toEqual([])
+    expect(kept.state.undo).toEqual(state.undo)
+    expect(kept.state.notice).toBe(NOTICES.keptNow)
+  })
+
+  it("offers no Undo on a keep that lands after its hold ran out", () => {
+    const late = run(
+      stopped(),
+      { type: "taken", take: take(), id: "b1", at: T0 + 5_000 },
+      { type: "clock", now: T0 + 5_000 + UNDO_MS },
+      { type: "keepFailed", id: "b1" }
+    ).state
+    expect(late.undo).toBeNull()
   })
 })
 
@@ -271,8 +303,49 @@ describe("say it first", () => {
       41
     )
     expect(state.undo).toEqual({ id: "b2", until: null })
-    // An open question never times out on the clock.
-    expect(step(state, { type: "clock", now: T0 + 60_000 }).effects).toEqual([])
+    // An open question lasts as long as the bite's hold.
+    const later = step(state, { type: "clock", now: T0 + 60_000 })
+    expect(later.effects).toEqual([])
+    expect(later.state.activity.kind).toBe("asking")
+  })
+
+  it("closes the question and Undo when the bite's hold runs out, leaving it Later", () => {
+    const ends = T0 + 5_000 + ASK_HOLD_MS
+    const state = asking()
+    expect(
+      step(state, { type: "clock", now: ends - 1 }).state.activity.kind
+    ).toBe("asking")
+    const closed = step(state, { type: "clock", now: ends })
+    // The store already let it go as it was: nothing to amend or release.
+    expect(closed.effects).toEqual([])
+    expect(closed.state.activity.kind).toBe("idle")
+    expect(closed.state.undo).toBeNull()
+    expect(closed.state.notice).toBe(NOTICES.askClosed)
+    expect(step(closed.state, { type: "undo" }).effects).toEqual([])
+    expect(step(closed.state, { type: "answer", said: THIRD }).effects).toEqual(
+      []
+    )
+  })
+
+  it("says so when an answer is refused as too late, not dropping it silently", () => {
+    const answered = step(asking(), { type: "answer", said: THIRD }).state
+    expect(
+      step(answered, { type: "amendFailed", onItsWay: true }).state.notice
+    ).toBe(NOTICES.tooLateToNote)
+    expect(
+      step(answered, { type: "amendFailed", onItsWay: false }).state.notice
+    ).toBe(NOTICES.notNoted)
+  })
+
+  it("keeps Undo open on a bite the store holds while it asks", () => {
+    const s = run(
+      recording({ how: "said-first" }),
+      { type: "done" },
+      { type: "taken", take: take(), id: "b2", at: T0 + 5_000 },
+      { type: "keepFailed", id: "b2" }
+    )
+    expect(s.state.activity.kind).toBe("asking")
+    expect(s.state.undo).toEqual({ id: "b2", until: null })
   })
 
   it("a pick rewrites what the bite is about, then Undo runs a few seconds", () => {
@@ -339,9 +412,9 @@ describe("say it first", () => {
     // to the bite it holds.
     expect(s.effects).toEqual([])
     expect(s.state.notice).toBe(NOTICES.notKept)
-    expect(step(s.state, { type: "amendFailed" }).state.notice).toBe(
-      NOTICES.notKept
-    )
+    expect(
+      step(s.state, { type: "amendFailed", onItsWay: false }).state.notice
+    ).toBe(NOTICES.notKept)
   })
 
   it("an answer while keeping moves the hold Undo ends at", () => {
@@ -353,7 +426,7 @@ describe("say it first", () => {
       { type: "answer", said: null }
     ).state
     expect(answered.keeping).toEqual([
-      { id: "b2", holdUntil: T0 + 7_000 + UNDO_MS },
+      { id: "b2", holdUntil: T0 + 7_000 + UNDO_MS, held: false },
     ])
     expect(step(answered, { type: "kept", id: "b2" }).state.undo).toEqual({
       id: "b2",

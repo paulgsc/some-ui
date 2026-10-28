@@ -25,9 +25,11 @@ function ports(feed = fixtureFeed(() => NOW)): GameWeekPorts {
       }),
     store: {
       keep: () => Promise.resolve(),
-      amend: () => Promise.resolve(),
+      amend: () => Promise.resolve("noted"),
       release: () => Promise.resolve(),
       undo: () => Promise.resolve(),
+      isKept: () => true,
+      subscribe: () => () => undefined,
     },
     feed,
     prefs: storedPrefs(null),

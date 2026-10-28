@@ -5,9 +5,10 @@
  * nothing: whether a result still matters is `step`'s. Plain TypeScript, so
  * deleting React deletes none of this.
  *
- * What it starts it also ends: the page clock and the feed run while the
- * page is attached. A take under way when the page is left is finished and
- * kept, and its keep still runs after the detach: the bite outlives the page.
+ * What it starts it also ends: the page clock, the feed and the store's
+ * word on bites it held run while the page is attached. A take under way
+ * when the page is left is finished and kept, and its keep still runs after
+ * the detach: the bite outlives the page.
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { StartRecording } from "@some-ui/voice-capture"
@@ -79,6 +80,14 @@ export function createGameWeek(ports: GameWeekPorts): GameWeekRuntime {
       )
   )
 
+  /** Tells `step` of each bite the store held and has since kept. */
+  function reconcile(): void {
+    const kept = state.keeping
+      .filter(({ id, held }) => held && ports.store.isKept(id))
+      .map(({ id }) => id)
+    for (const id of kept) dispatch({ type: "kept", id })
+  }
+
   function run(effect: GameWeekEffect): void {
     switch (effect.type) {
       case "openMic":
@@ -98,9 +107,13 @@ export function createGameWeek(ports: GameWeekPorts): GameWeekRuntime {
         return
       }
       case "amend": {
-        ports.store
-          .amend(effect.id, effect.fields, effect.holdUntil)
-          .catch(() => dispatch({ type: "amendFailed" }))
+        ports.store.amend(effect.id, effect.fields, effect.holdUntil).then(
+          (outcome) => {
+            if (outcome === "on-its-way")
+              dispatch({ type: "amendFailed", onItsWay: true })
+          },
+          () => dispatch({ type: "amendFailed", onItsWay: false })
+        )
         return
       }
       case "release": {
@@ -135,19 +148,24 @@ export function createGameWeek(ports: GameWeekPorts): GameWeekRuntime {
     },
     dispatch,
     attach(): () => void {
-      const unwatchPage = ports.onVisibility((hidden) =>
+      const unwatchPage = ports.onVisibility((hidden) => {
         dispatch({ type: hidden ? "hidden" : "shown" })
-      )
+        // Back from the background: what ran out meanwhile closes now.
+        if (!hidden) dispatch({ type: "clock", now: ports.now() })
+      })
       dispatch({ type: "arrived" })
       const unwatchFeed = ports.feed.watch((feed) =>
         dispatch({ type: "fed", feed })
       )
+      const unwatchStore = ports.store.subscribe(reconcile)
+      reconcile()
       const clock = setInterval(
         () => dispatch({ type: "clock", now: ports.now() }),
         PAGE_TICK_MS
       )
       return () => {
         clearInterval(clock)
+        unwatchStore()
         unwatchFeed()
         unwatchPage()
         dispatch({ type: "left" })

@@ -206,10 +206,13 @@ describe("createGameBites", () => {
       await expect(store.keep(bite("b1"), new Blob(["x"]))).rejects.toThrow()
       await clock.advance(RETRY_MS)
       expect(store.unkept()).toBe(1)
+      expect(store.isKept("b1")).toBe(false)
       storage.refuse = false
+      heard = 0
       if (comeBack === "timer") await clock.advance(RETRY_MS)
       else await clock.show()
       expect(store.unkept()).toBe(0)
+      expect(store.isKept("b1")).toBe(true)
       expect(store.getSnapshot().map(({ id }) => id)).toEqual(["b1"])
       expect(shelf.blobs.has("b1")).toBe(true)
       expect(heard).toBeGreaterThan(0)
@@ -227,7 +230,7 @@ describe("createGameBites", () => {
     const kept = store.keep(bite("b1", T0 + 600_000), new Blob(["x"]))
     const answered = store.amend("b1", { how: "offered" }, T0 + 5_000)
     await expect(kept).rejects.toThrow()
-    await expect(answered).resolves.toBeUndefined()
+    await expect(answered).resolves.toBe("noted")
     storage.refuse = false
     await clock.show()
     expect(store.getSnapshot()).toEqual([
@@ -238,6 +241,44 @@ describe("createGameBites", () => {
     await expect(store.keep(bite("b2"), new Blob(["y"]))).rejects.toThrow()
     await store.undo("b2")
     expect(store.unkept()).toBe(0)
+  })
+
+  it("Undo throws away a bite it holds only while the bite's hold lasts", async () => {
+    const storage = memoryStorage(true)
+    const clock = world()
+    const store = createGameBites({
+      storage,
+      shelf: memoryShelf(),
+      ...clock.ports,
+    })
+    await expect(store.keep(bite("b1"), new Blob(["x"]))).rejects.toThrow()
+    await clock.advance(5_000)
+    await expect(store.undo("b1")).rejects.toThrow()
+    expect(store.unkept()).toBe(1)
+    storage.refuse = false
+    await clock.show()
+    expect(store.isKept("b1")).toBe(true)
+  })
+
+  it("answers an answer that comes after the hold as too late, changing nothing", async () => {
+    for (const keptFirst of [true, false]) {
+      const storage = memoryStorage(!keptFirst)
+      const clock = world()
+      const store = createGameBites({
+        storage,
+        shelf: memoryShelf(),
+        ...clock.ports,
+      })
+      await store.keep(bite("b1"), new Blob(["x"])).catch(() => undefined)
+      await clock.advance(5_000)
+      await expect(
+        store.amend("b1", { how: "offered" }, T0 + 10_000)
+      ).resolves.toBe("on-its-way")
+      storage.refuse = false
+      await clock.show()
+      expect(store.getSnapshot()).toEqual([bite("b1")])
+      await expect(store.amend("b9", {}, T0 + 10_000)).rejects.toThrow()
+    }
   })
 
   it("runs calls in the order made: an Undo right after a keep finds the bite", async () => {
