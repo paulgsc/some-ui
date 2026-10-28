@@ -25,9 +25,9 @@ export type LiveStageProps = Omit<
  * The stage playing this season's real numbers (`./feed`), validated against
  * the contract.
  *
- * - **Pages:** no request; plays the bundled invented season.
+ * - **Pages:** no request; plays the bundled 2025 season.
  * - **Elsewhere:** renders nothing until the file answers, so a recording
- *   never opens on the wrong numbers; on failure, falls back to the invented
+ *   never opens on the wrong numbers; on failure, falls back to the bundled
  *   season, except in record mode, which stays blank.
  */
 export const PlayoffDeltaLiveStage = (
@@ -42,7 +42,7 @@ export const PlayoffDeltaLiveStage = (
   )
   if (FETCHES_CONTENT && isPending) return null
   // A recording never falls back: with no frame, the recorder fails instead
-  // of writing clips of the invented season.
+  // of writing clips of the bundled season.
   if (FETCHES_CONTENT && props.record === true && data === undefined)
     return null
   return <PlayoffDeltaStage season={data} {...props} />

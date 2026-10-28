@@ -262,89 +262,158 @@
     outline-offset: 0.6cqw;
   }
 
-  .pd-scale {
-    border-top: 0.4cqw solid var(--border);
+  /* A piece not yet played: its light is a ring in the foreground. */
+  .pd-light--waiting {
+    background: transparent;
+    border: 0.6cqw solid var(--foreground);
+  }
+
+  /* An idle piece is too small to tell from zero: drawn faint. */
+  .pd-light--idle {
+    opacity: 0.35;
+  }
+
+  /* The road: the week's pieces in kickoff order, one column each. */
+  .pd-road {
+    align-items: end;
+    display: grid;
+    gap: 2cqw 1cqw;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  /* ------------------------------------------------------------ the ways */
+
+  /* The week's ways on a share axis: each row of the road drawn over the
+     last, a point of share per grid line. */
+  .pd-ways rect {
+    fill: var(--muted-foreground);
+  }
+
+  .pd-ways__row {
+    animation-name: pd-fade;
+  }
+
+  .pd-ways__grid {
+    stroke: var(--border);
+    stroke-width: 0.2;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .pd-ways__mark {
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .pd-ways__mark--best,
+  .pd-ways__key--best {
+    color: var(--success);
+    stroke: var(--success);
+  }
+
+  .pd-ways__mark--mean,
+  .pd-ways__key--mean {
+    color: var(--muted-foreground);
+    stroke: var(--muted-foreground);
+    stroke-dasharray: 3 3;
+  }
+
+  .pd-ways__mark--actual,
+  .pd-ways__key--actual {
+    color: var(--foreground);
+    stroke: var(--foreground);
+  }
+
+  /* ------------------------------------------------------------ bands */
+
+  /* The five bands, worst on the left, at their fixed widths. */
+  .pd-bands {
+    border-radius: 1cqw;
+    display: flex;
     height: 9cqw;
-    margin: 4cqw 2cqw 0;
+    overflow: visible;
     position: relative;
   }
 
-  .pd-scale__tick {
-    border-left: 0.3cqw solid var(--border);
-    height: 2cqw;
-    position: absolute;
-    top: 0;
-  }
-
-  .pd-scale__tick > span {
-    left: 50%;
-    position: absolute;
-    top: 2.4cqw;
-    transform: translateX(-50%);
-  }
-
-  .pd-scale__mark {
-    animation: pd-pop 0.45s var(--d, 0s) both;
-    border-radius: 50%;
-    height: 5cqw;
-    position: absolute;
-    top: -2.7cqw;
-    transform: translateX(-50%);
-    width: 5cqw;
-  }
-
-  /* The weeks followed: a column per week, up when lucky, down when not,
-     from a middle line. */
-  .pd-strip {
-    align-items: stretch;
-    display: flex;
-    gap: 1cqw;
-    height: 34cqw;
-  }
-
-  .pd-strip__week {
+  .pd-bands__band {
     align-items: center;
+    background: color-mix(in oklab, currentcolor 18%, transparent);
+    border-inline: 0.3cqw solid var(--background);
     display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: 1cqw;
+    font-size: 2.2cqw;
+    justify-content: center;
+    min-width: 0;
+    overflow: hidden;
+    text-align: center;
   }
 
-  .pd-strip__bars {
-    align-self: stretch;
-    flex: 1;
-    position: relative;
-  }
-
-  .pd-strip__bars::before {
-    border-top: 0.3cqw solid var(--border);
-    content: "";
-    left: 0;
+  .pd-bands__mark {
+    animation: pd-pop 0.45s var(--d, 0s) both;
+    background: var(--foreground);
+    border-radius: 0.4cqw;
+    bottom: -1.5cqw;
     position: absolute;
-    right: 0;
-    top: 50%;
+    top: -1.5cqw;
+    transform: translateX(-50%);
+    width: 1cqw;
   }
 
-  .pd-strip__up,
-  .pd-strip__down {
-    animation: pd-grow-y 0.7s var(--d, 0s) ease-out both;
-    border-radius: 0.6cqw;
-    display: block;
-    left: 15%;
-    position: absolute;
-    right: 15%;
+  .pd-band--all-greens {
+    color: var(--success);
   }
 
-  .pd-strip__up {
-    background: var(--success);
-    bottom: 50%;
-    transform-origin: bottom;
+  .pd-band--mostly-green {
+    color: color-mix(in oklch, var(--success) 60%, var(--foreground));
   }
 
-  .pd-strip__down {
-    background: var(--destructive);
-    top: 50%;
-    transform-origin: top;
+  .pd-band--stop-and-go {
+    color: var(--muted-foreground);
+  }
+
+  .pd-band--mostly-red {
+    color: color-mix(in oklch, var(--destructive) 60%, var(--foreground));
+  }
+
+  .pd-band--all-reds {
+    color: var(--destructive);
+  }
+
+  /* Earned, so it reads as a stamp. */
+  .pd-badge {
+    border: 0.4cqw solid currentcolor;
+    border-radius: 999px;
+    color: var(--success);
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 3cqw;
+    letter-spacing: 0.08em;
+    margin-top: 1.5cqw;
+    padding: 0.6cqw 2.4cqw;
+    text-transform: uppercase;
+  }
+
+  /* A proof (arrived, dead end) is underlined twice; a policy is plain. */
+  .pd-proof {
+    text-decoration: underline double;
+    text-decoration-thickness: 0.4cqw;
+    text-underline-offset: 1.2cqw;
+  }
+
+  /* The weeks followed, a chip each in its band's colour. */
+  .pd-weeks {
+    display: grid;
+    gap: 1.2cqw;
+    grid-template-columns: repeat(9, minmax(0, 1fr));
+  }
+
+  .pd-weeks__week {
+    align-items: center;
+    aspect-ratio: 1;
+    background: color-mix(in oklab, currentcolor 22%, transparent);
+    border: 0.4cqw solid currentcolor;
+    border-radius: 1cqw;
+    display: flex;
+    font-size: 2.8cqw;
+    justify-content: center;
   }
 
   .pd-card {
@@ -419,13 +488,9 @@
     }
   }
 
-  @keyframes pd-grow-y {
+  @keyframes pd-fade {
     from {
-      transform: scaleY(0);
-    }
-
-    to {
-      transform: none;
+      opacity: 0;
     }
   }
 

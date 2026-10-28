@@ -1,167 +1,253 @@
-import type { CSSProperties, JSX } from "react"
+/**
+ * The week's first four questions, on its ways: the best week (1), the road
+ * from best to actual in kickoff order (2), what our result left the league
+ * to do (3), and the week's band among all its ways (4).
+ */
+import type { JSX } from "react"
+import { SPREADS_DEFINED, spreadsOf } from "@playoff-delta/lib/luck"
 import {
-  lightsOf,
-  lightTally,
-  LUCK_DEFINED,
-  LUCK_WORDS,
-  luckBand,
-  SPREADS_SHOWN,
-  spreadsOf,
-} from "@playoff-delta/lib/luck"
-import { MODEL } from "@playoff-delta/lib/slides"
+  cleanRun,
+  costs,
+  leagueBand,
+  leagueClause,
+  leaguePieces,
+  ownPart,
+  piecesOf,
+  weekBand,
+  woke,
+  worseOf100,
+  type PieceRead,
+} from "@playoff-delta/lib/reading"
+import { MODEL, over } from "@playoff-delta/lib/slides"
+import { percent, signed, size } from "@playoff-delta/lib/story"
+import { CLEAN_RUN, phraseOf } from "@playoff-delta/lib/words"
+
 import {
-  blewIt,
-  calls,
-  points,
-  signed,
-  size,
-  type StoryResult,
-} from "@playoff-delta/lib/story"
+  BAND_CLASS,
+  Bands,
+  LIGHTS_SHOWN,
+  PieceLight,
+  priceNote,
+  Strip,
+} from "./marks"
+import { Kicker, Reveal, type SlideProps } from "./shared"
 
-import { delay, Kicker, Reveal, tone, type SlideProps } from "./shared"
+const label = (p: PieceRead): string =>
+  over(p.game.home, p.game.away, p.piece.want)
 
-/** A light's diameter, in container widths, by its share of the week's biggest. */
-const diameter = (r: StoryResult, scale: number): string =>
-  `${6 + 8 * (scale > 0 ? Math.sqrt(Math.abs(r.leverage) / scale) : 0)}cqw`
-
-export const Lights = ({ season, week }: SlideProps): JSX.Element => {
-  const lights = lightsOf(week)
-  const { made, missed } = lightTally(week)
-  const scale = Math.max(...lights.map((l) => Math.abs(l.result.leverage)), 0)
-  const called = calls(season, week)
-  const wasCalled = (r: StoryResult): boolean =>
-    called.some((c) => c.result === r)
+export const Best = ({ week }: SlideProps): JSX.Element => {
+  const { ways } = week
+  const pieces = piecesOf(week)
+  const live = [...pieces]
+    .filter((p) => p.material !== "idle")
+    .sort((a, b) => b.piece.price - a.piece.price)
+  const shown = live.slice(0, LIGHTS_SHOWN)
+  const more = live.length - shown.length
+  const idle = pieces.length - live.length
   return (
     <>
-      <Kicker>Week {week.week} · the lights</Kicker>
-      <h2 className="pd-q">
-        {made + missed
-          ? `${made} made, ${missed} missed.`
-          : "Nothing else could move us."}
-      </h2>
-      <div className="pd-lights">
-        {lights.map((l, i) => {
-          const style: CSSProperties & Record<"--s", string> = {
-            ...delay(0.3 + i * 0.15),
-            "--s": diameter(l.result, scale),
-          }
-          const own = l.result.kind === "own"
-          return (
-            <div
-              key={`${l.result.winner}-${l.result.loser}`}
-              className="pd-light-cell"
-            >
-              <i
-                role="img"
-                aria-label={`${l.result.winner} beat ${l.result.loser}: ${l.made ? "made" : "missed"}`}
-                className={`pd-light ${l.made ? "pd-light--made" : "pd-light--missed"} ${own ? "pd-light--own" : ""}`}
-                style={style}
-              />
-              <span className="pd-mono pd-small">
-                <b>{l.result.winner}</b>
-                {blewIt(l.result) ? (
-                  <span title="lost from ahead"> ↯</span>
-                ) : null}
-              </span>
-              <span className="pd-mono text-muted-foreground text-[2.6cqw]">
-                over {l.result.loser}
-              </span>
-              <b className={`pd-mono text-[2.8cqw] ${tone(l.result.leverage)}`}>
-                {points(l.result.leverage)}
-              </b>
-              {own ? (
-                <span className="pd-kicker text-[2.4cqw]">ours</span>
-              ) : wasCalled(l.result) ? (
-                <span className="text-muted-foreground text-[2.4cqw]">
-                  called
-                </span>
-              ) : null}
-            </div>
-          )
-        })}
+      <Kicker>Week {week.week} · the best week</Kicker>
+      <div>
+        <b className="pd-big block">{percent(ways.best)}</b>
+        <span className="pd-say text-muted-foreground">
+          of the ways in, the best any way this week could leave us
+        </span>
       </div>
-      <Reveal at={2.4} className="pd-small text-muted-foreground">
-        A light is a result that could move our share of the ways in: green when
-        it went our way, red when it didn&apos;t, bigger the further it moved
-        us. Each is measured alone, so they don&apos;t add up to the week.
+      <Reveal at={0.4}>
+        <Strip
+          low={ways.worst}
+          high={ways.best}
+          rows={ways.strip.slice(0, 1)}
+          marks={[
+            {
+              at: ways.mean[0] ?? ways.best,
+              label: `now ${percent(ways.mean[0] ?? 0)}`,
+              tone: "mean",
+              reveal: 0.9,
+            },
+            {
+              at: ways.best,
+              label: `best ${percent(ways.best)}`,
+              tone: "best",
+              reveal: 1.2,
+            },
+          ]}
+        />
+      </Reveal>
+      <Reveal at={1.6} className="pd-small text-muted-foreground">
+        It needed:
+      </Reveal>
+      <div className="pd-lights">
+        {shown.map((p, i) => (
+          <PieceLight
+            key={`${p.game.home}-${p.game.away}`}
+            noun={p.game.kind}
+            material={p.material}
+            price={p.piece.price}
+            state="waiting"
+            label={label(p)}
+            note={priceNote(p.piece.price)}
+            at={1.8 + i * 0.15}
+          />
+        ))}
+      </div>
+      <Reveal at={2.6} className="pd-small text-muted-foreground">
+        {more > 0 ? `${more} more major or minor. ` : ""}
+        {idle > 0
+          ? `${idle} more ${idle === 1 ? "game was" : "games were"} idle. `
+          : ""}
+        {ways.games.length} games, so{" "}
+        {Math.pow(2, ways.games.length).toLocaleString("en-US")} ways the week
+        could go.
       </Reveal>
     </>
   )
 }
 
-/** A number line in spreads, with the week's mark on it, stopping at the edge. */
-const Scale = ({ spreads }: { spreads: number }): JSX.Element => {
-  const reach = SPREADS_SHOWN
-  const at = Math.max(-reach, Math.min(reach, spreads))
-  const left = (x: number): string => `${((x + reach) / (2 * reach)) * 100}%`
+export const Road = ({ week }: SlideProps): JSX.Element => {
+  const { ways } = week
+  const pieces = piecesOf(week)
+  const c = costs(week)
+  const step = 0.45
+  const start = 0.8
   return (
-    <div className="pd-scale" aria-label={`${signed(spreads)} spreads`}>
-      {[-2, -1, 0, 1, 2].map((x) => (
-        <span key={x} className="pd-scale__tick" style={{ left: left(x) }}>
-          <span className="pd-mono text-muted-foreground text-[2.4cqw]">
-            {x === 0 ? "0" : signed(x)}
-          </span>
+    <>
+      <Kicker>Week {week.week} · the road</Kicker>
+      <div>
+        <b className="pd-big block">
+          {percent(ways.best)} → {percent(ways.actual)}
+        </b>
+        <span className="pd-say text-muted-foreground">
+          the best week still possible, kickoff by kickoff
         </span>
-      ))}
-      <i
-        className={`pd-scale__mark ${spreads >= 0 ? "bg-success" : "bg-destructive"}`}
-        style={{ ...delay(0.8), left: left(at) }}
+      </div>
+      <Strip
+        low={ways.worst}
+        high={ways.best}
+        rows={ways.strip}
+        start={start}
+        step={step}
+        marks={[
+          {
+            at: ways.best,
+            label: `best ${percent(ways.best)}`,
+            tone: "best",
+            reveal: 0.4,
+          },
+          {
+            at: ways.actual,
+            label: `ours ${percent(ways.actual)}`,
+            tone: "actual",
+            reveal: start + pieces.length * step,
+          },
+        ]}
       />
-    </div>
+      <div className="pd-road">
+        {pieces.map((p, i) => {
+          const drop = c.drops[i] ?? 0
+          return (
+            <PieceLight
+              key={`${p.game.home}-${p.game.away}`}
+              noun={p.game.kind}
+              material={p.material}
+              price={p.piece.price}
+              state={p.made ? "made" : "missed"}
+              label={p.game.winner}
+              note={drop > 0.00005 ? `−${size(drop)}` : "·"}
+              at={start + (i + 1) * step}
+              compact
+            />
+          )
+        })}
+      </div>
+      <Reveal
+        at={start + pieces.length * step + 0.3}
+        className="pd-mono pd-small flex flex-wrap gap-x-[3cqw]"
+      >
+        {ownPart(week) === "bye" || ownPart(week) === "tie" ? null : (
+          <span>
+            our light <b className="text-destructive">−{size(c.own)}</b>
+          </span>
+        )}
+        <span>
+          the league <b className="text-destructive">−{size(c.league)}</b>
+        </span>
+      </Reveal>
+    </>
   )
 }
 
-export const Luck = ({ season, week }: SlideProps): JSX.Element => {
-  const spreads = spreadsOf(week)
-  const words = LUCK_WORDS[luckBand(spreads)]
-  const { share } = week
+export const Given = ({ week }: SlideProps): JSX.Element => {
+  const part = ownPart(week)
+  const band = leagueBand(week)
+  const key = (p: PieceRead): string => `${p.game.home}-${p.game.away}`
+  const awake = new Set(woke(week).map(key))
+  const shown = [...leaguePieces(week)]
+    .filter((p) => p.material !== "idle")
+    .sort((a, b) => b.piece.price - a.piece.price)
+    .slice(0, LIGHTS_SHOWN)
+  const lead =
+    part === "bye" || part === "tie"
+      ? "no result of ours: the week was the league's"
+      : `given our ${part === "made" ? "win" : part === "missed" ? "loss" : "result"}`
   return (
     <>
-      <Kicker>Luck</Kicker>
+      <Kicker>Week {week.week} · the league</Kicker>
       <div>
-        <b className="pd-big block">{words.big}</b>
-        <span className="pd-say text-muted-foreground">{words.line}</span>
+        <span className="pd-say text-muted-foreground">{lead}, it ran</span>
+        <b className={`pd-big block ${BAND_CLASS[band]}`}>
+          {phraseOf(band).toLowerCase()}
+        </b>
       </div>
-      {spreads === null ? null : (
-        <>
-          <Reveal at={0.4}>
-            <Scale spreads={spreads} />
-          </Reveal>
-          <Reveal
-            at={1.2}
-            className="pd-mono pd-small flex flex-wrap gap-x-[3cqw]"
-          >
-            <span>
-              the league{" "}
-              <b className={tone(share.league)}>{points(share.league)}</b>
-            </span>
-            <span>a usual week ±{size(share.spread)}</span>
-            <span>
-              <b>{signed(spreads)}</b> spreads
-            </span>
-          </Reveal>
-        </>
-      )}
-      <Reveal at={1.6} className="pd-card">
-        <span className="pd-mono pd-small text-muted-foreground">
-          {week.game ? "our own game: our light, not luck" : "our bye"}
-        </span>
-        <span className="pd-say">
-          {week.game ? (
-            <>
-              <b className={tone(share.own)}>{points(share.own)} points</b> of
-              the ways in
-            </>
-          ) : (
-            "Only the league moved us."
-          )}
-        </span>
+      <Reveal at={0.5} className="pd-say">
+        {leagueClause(week)}
       </Reveal>
-      <Reveal at={2.2} className="pd-small text-muted-foreground">
-        {LUCK_DEFINED} {MODEL}
-        {share.exact
+      <div className="pd-lights">
+        {shown.map((p, i) => (
+          <PieceLight
+            key={`${p.game.home}-${p.game.away}`}
+            noun={p.game.kind}
+            material={p.material}
+            price={p.piece.price}
+            state={p.made ? "made" : "missed"}
+            label={label(p)}
+            note={awake.has(key(p)) ? "woke" : priceNote(p.piece.price)}
+            at={1 + i * 0.2}
+          />
+        ))}
+      </div>
+    </>
+  )
+}
+
+export const Rank = ({ week }: SlideProps): JSX.Element => {
+  const band = weekBand(week)
+  const spreads = spreadsOf(week)
+  return (
+    <>
+      <Kicker>Week {week.week} · how it went</Kicker>
+      <div>
+        <b className={`pd-big block ${BAND_CLASS[band]}`}>{phraseOf(band)}</b>
+        {cleanRun(week) ? (
+          <span className="pd-badge pd-in">{CLEAN_RUN.phrase}</span>
+        ) : null}
+      </div>
+      <Reveal at={0.3} className="pd-say">
+        Of every 100 ways the week could have gone,{" "}
+        <b>{worseOf100(week.ways.rank)}</b> would have left us worse.
+      </Reveal>
+      <Bands rank={week.ways.rank} at={0.6} />
+      {spreads === null ? null : (
+        <Reveal at={2.2} className="pd-mono pd-small">
+          the league alone: <b>{signed(spreads)}</b> spreads (±
+          {size(week.share.spread)} points is one)
+        </Reveal>
+      )}
+      <Reveal at={2.6} className="pd-small text-muted-foreground">
+        {SPREADS_DEFINED} {MODEL}
+        {week.ways.exact
           ? " Every way was counted."
-          : ` ${season.ways.toLocaleString("en-US")} ways sampled.`}
+          : " The rest of the season was sampled."}
       </Reveal>
     </>
   )

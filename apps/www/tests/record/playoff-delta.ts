@@ -8,6 +8,9 @@
  *   pnpm --filter www build
  *   pnpm --filter www record:playoff-delta --week 9 [--theme mochi] [--out out/playoff-delta]
  *
+ * `--week 0` records the legend episode, which teaches the words every week
+ * uses.
+ *
  * It serves the built app (never `vite dev`: the dev tools would be in the
  * frame) and drives `/playoff-delta?record`, which renders one slide with
  * nothing to press and publishes the week's script on the frame.

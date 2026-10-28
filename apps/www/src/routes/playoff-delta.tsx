@@ -8,8 +8,8 @@ import { ViewerStrip } from "@/components/provenance-strip"
 
 /**
  * Playoff Delta's recording stage. Standalone (the `mission.tsx` archetype),
- * so no shell sits in the frame; `?week`, `?slide` and `?record` reach the
- * stage as they are. A viewer of the Pages build, who reaches it from the
+ * so no shell sits in the frame; `?week` (0: the legend episode), `?slide`
+ * and `?record` reach the stage as they are. A viewer of the Pages build, who reaches it from the
  * foyer, gets the viewer strip above it; the owner records elsewhere. Web only: the stage comes through the web surface's
  * door, and the Android app's surface guard keeps the phone off this path.
  */
