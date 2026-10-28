@@ -15,17 +15,25 @@ import type { HomeExchanged } from "@some-ui/core-utils"
 import { assertNever, isRecord } from "@some-ui/core-utils"
 
 /** What a note is said for, as home's `PUT /voice-notes/:id` takes `of`. */
-type VoiceOf = "reflection" | "jobs" | "scene"
+type VoiceOf = "reflection" | "jobs" | "scene" | "game"
 
 /** One note as home is told it: what it belongs to, and when it was recorded. */
 export type VoiceOut = {
   readonly id: string
   readonly of: VoiceOf
-  /** The reflection's session, the Jobs pick or scout, the drama prompt's stamp. */
+  /**
+   * The reflection's session, the Jobs pick or scout, the drama prompt's
+   * stamp, the game's ESPN id.
+   */
   readonly ref: string
   /** When it was recorded (a scene note: when its prompt was shared), ISO 8601. */
   readonly at: string
   readonly contentType: string
+  /**
+   * A game bite's own fields, by the names home reads them
+   * (`@some-ui/game-week`'s `biteFields`): sent beside `of`, `ref` and `at`.
+   */
+  readonly fields?: Readonly<Record<string, string>>
 }
 
 type VoiceRefusal = { readonly id: string; readonly why: string }
@@ -177,7 +185,22 @@ export function runEnd(
 
 const isString = (value: unknown): value is string => typeof value === "string"
 
-const OFS: ReadonlySet<unknown> = new Set(["reflection", "jobs", "scene"])
+const OFS: ReadonlySet<unknown> = new Set([
+  "reflection",
+  "jobs",
+  "scene",
+  "game",
+])
+
+/** Extra fields a note's own query carries, never one of `of`, `ref` or `at`. */
+function isFields(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    Object.entries(value).every(
+      ([key, field]) => !["of", "ref", "at"].includes(key) && isString(field)
+    )
+  )
+}
 
 function isOut(value: unknown): value is VoiceOut {
   return (
@@ -186,7 +209,8 @@ function isOut(value: unknown): value is VoiceOut {
     OFS.has(value.of) &&
     isString(value.ref) &&
     isString(value.at) &&
-    isString(value.contentType)
+    isString(value.contentType) &&
+    (value.fields === undefined || isFields(value.fields))
   )
 }
 

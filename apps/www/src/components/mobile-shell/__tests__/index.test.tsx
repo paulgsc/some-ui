@@ -58,8 +58,16 @@ describe("MobileNav", () => {
     ).toBe("page")
   })
 
+  it("holds Studio's two rooms: the Build Journal and game day", () => {
+    render(<MobileNav pathname="/game-week" />)
+
+    expect(targetOf("Journal")).toBe("/journal")
+    expect(targetOf("Game day")).toBe("/game-week")
+    expect(screen.queryByText("Bites")).toBeNull()
+  })
+
   it("has no bar in a wing of one room, or outside every wing", () => {
-    for (const pathname of ["/aph", "/journal", "/foyer", "/settings"]) {
+    for (const pathname of ["/aph", "/foyer", "/settings"]) {
       const { container } = render(<MobileNav pathname={pathname} />)
       expect(container.querySelector("nav"), pathname).toBeNull()
       cleanup()

@@ -52,7 +52,9 @@ export function blobShelf({
           const frees = replaced instanceof Blob ? replaced.size : 0
           if (
             blob.size - frees > claim ||
-            (await bytesBesides(blobs, id)) + blob.size > maxBytes
+            // An uncapped shelf reads no other blob: only the room bounds it.
+            (Number.isFinite(maxBytes) &&
+              (await bytesBesides(blobs, id)) + blob.size > maxBytes)
           ) {
             tx.abort()
             throw new ShelfFullError()

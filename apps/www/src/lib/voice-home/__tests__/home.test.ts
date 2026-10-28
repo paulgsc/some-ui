@@ -94,6 +94,20 @@ describe("sending voice notes home", () => {
     expect(p.current()).toMatchObject({ waiting: [], held: ["n1", "n2"] })
   })
 
+  it("sends a game bite with every field it keeps, beside what it belongs to", async () => {
+    const bite: VoiceOut = {
+      ...note("b1"),
+      of: "game",
+      ref: "401772981",
+      fields: { how: "offered", scenario: "in.third-long", strip: "Q3 8:42" },
+    }
+    const h = home()
+    await exchangeVoice(port([bite]), h.send)
+    expect(h.sent.map(({ path }) => path)).toEqual([
+      "/voice-notes/b1?of=game&ref=401772981&at=2026-10-25T03%3A10%3A00.000Z&how=offered&scenario=in.third-long&strip=Q3+8%3A42",
+    ])
+  })
+
   it("takes a replay home answers unchanged as held, and sends nothing held again", async () => {
     const p = port([note("n1")])
     const replay = home((id, body) => ({

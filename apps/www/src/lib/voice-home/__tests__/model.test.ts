@@ -83,16 +83,28 @@ describe("the record of voice notes on their way home", () => {
   })
 
   it("reads back what it stored, and nothing else", () => {
-    const state = stepVoiceHome(copied(INITIAL_VOICE_HOME, NOTE), {
-      kind: "roomless",
-      id: "n3",
-    })
+    const bite: VoiceOut = {
+      ...NOTE,
+      id: "b1",
+      of: "game",
+      ref: "401772981",
+      fields: { how: "said-first", strip: "", watching: "1" },
+    }
+    const state = stepVoiceHome(
+      copied(copied(INITIAL_VOICE_HOME, NOTE), bite),
+      {
+        kind: "roomless",
+        id: "n3",
+      }
+    )
     expect(parseVoiceHome(JSON.stringify(state))).toEqual(state)
     for (const raw of [
       "not json",
       "[]",
       JSON.stringify({ ...state, held: [1] }),
       JSON.stringify({ ...state, waiting: [{ ...NOTE, of: "diary" }] }),
+      JSON.stringify({ ...state, waiting: [{ ...bite, fields: { how: 1 } }] }),
+      JSON.stringify({ ...state, waiting: [{ ...bite, fields: { of: "x" } }] }),
       JSON.stringify({ ...state, refused: [{ id: "n" }] }),
       JSON.stringify({ waiting: [], held: [], refused: [] }),
     ]) {

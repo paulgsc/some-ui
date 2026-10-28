@@ -109,6 +109,7 @@ const DEVICE_MODULES = [
   `${SPEECH_ENTRY}/native.es.js`,
   "apps/www/src/lib/agent-export/**",
   "apps/www/src/lib/drive-filing/**",
+  "apps/www/src/lib/game-bites/**",
   "apps/www/src/lib/home-link/**",
   "apps/www/src/lib/jobs/**",
   "apps/www/src/lib/journal-share/**",
@@ -220,6 +221,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       modules: ["apps/www/src/lib/web-surface/hangul/**"],
       profiles: ["lan", "pages"],
       why: "Hangul Honeycomb's panel, a desktop keyboard game the phone has no counterpart for: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
+    },
+    {
+      modules: ["packages/game-scenarios/dist/@some-ui/game-scenarios.es.js"],
+      profiles: [MOBILE_PROFILE],
+      why: "the game-week scenario set, which only the phone's game-day recorder draws (`@some-ui/game-week`, src/routes/_dashboard/_apk/game-week.tsx)",
     },
     {
       modules: ["apps/www/src/components/reflection/copy.ts"],

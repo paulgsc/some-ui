@@ -54,8 +54,8 @@ export const ACCOUNT_ERASES = {
       text: "Every word set your phone sent home, and what it kept as you read: how long each word is given, how often each sentence was shown and read to the end, your grammar lens answers, your practice record, where you left off and your answers at a sitting's end, every change to them included.",
     },
     {
-      label: "Voice notes",
-      text: "Each voice note your phone sent home, its sound included, and what home heard in it.",
+      label: "Voice notes, game bites included",
+      text: "Each voice note your phone sent home, its sound included, and what home heard in it; for a game-day bite, also what it was about and what the screen showed as you said it.",
     },
     {
       label: "What your phones share",

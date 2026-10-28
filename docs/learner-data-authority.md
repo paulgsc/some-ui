@@ -70,7 +70,7 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 | `/signals`, `/presence/lease`               | never                                        | never                                                                                                                                                                                                                                                                                                          | sent                                       |
 | Push subscription                           | never                                        | never                                                                                                                                                                                                                                                                                                          | the account's, on the person's own taps    |
 | Reflections                                 | on the device (at most 20), never sent       | never sent, but a spoken one's audio, once its person keeps voice notes on home (LA7, LA13)                                                                                                                                                                                                                    | the same                                   |
-| Voice notes (the phone's)                   | on the phone, never sent                     | once its person keeps voice notes on home (Settings), each spoken reflection, Jobs voice note an event names and scene note of a shared drama prompt copied and sent to the paired home while the app is open, the copy kept until home holds it; stopped from Settings (LA13)                                 | the same                                   |
+| Voice notes (the phone's)                   | on the phone, never sent                     | once its person keeps voice notes on home (Settings), each spoken reflection, Jobs voice note an event names, game bite and scene note of a shared drama prompt copied and sent to the paired home while the app is open, the copy kept until home holds it; stopped from Settings (LA13)                      | the same                                   |
 | Shelf                                       | never                                        | the account's, on the person's own taps                                                                                                                                                                                                                                                                        | the same                                   |
 | aph (the phone's)                           | on the phone, never sent                     | once its person keeps it on home, on the paired home, synced while aph is open; the phone keeps only what home has not confirmed; stopped from aph's mark, which brings it back (LA9)                                                                                                                          | the same                                   |
 | Jobs record (the phone's)                   | on the phone, never sent                     | once its person keeps it on home, a copy on the paired home, synced while the Jobs wing is open; its decisions and scouts files without voice, filed with home, which hands them to the Jobs mailbox on Cloudflare; the phone keeps its whole log; stopped from the wing's mark or Settings (LA10)             | the same                                   |
@@ -996,7 +996,9 @@ Which notes go, and what each is told home as, is enforced by test
 (`lib/home-link/__tests__/voice-copy.test.ts`): a spoken reflection by its session
 and when it was said, a written one never; a Jobs voice note by the first pick
 or scout event that names it, a draft's never; a scene note by its drama
-prompt's stamp, when that prompt is shared. That a note's audio is copied
+prompt's stamp, when that prompt is shared; a game bite
+(`lib/game-bites`) by its game, with every field it keeps, once its hold
+(Undo, and what a bite said first was about) has run out. That a note's audio is copied
 once, before the record names it, that the copy goes once home holds the
 note and stays when home refused it, and that a copy nothing names is swept
 (`lib/voice-home/__tests__/runtime.test.ts`); that a note counts as home's
@@ -1012,8 +1014,8 @@ watch started only from the lane's hook and a shared prompt heard only by it
 
 - _Claim:_ a voice note's audio is copied for home (`phoneVoiceHome().copy`)
   only while the consent log keeps `voice` under the paired home's id
-  (`keptNow(VOICE_SCOPES)`), and only from `copyAll` (each spoken reflection
-  and named Jobs note on the phone, from `watchVoiceNotes`, which only
+  (`keptNow(VOICE_SCOPES)`), and only from `copyAll` (each spoken reflection,
+  named Jobs note and game bite past its hold on the phone, from `watchVoiceNotes`, which only
   `useVoiceHome`'s effect starts, and from the lane's exchange, `sendVoice`) and `copySceneNotes` (a drama prompt's
   notes, heard through `onPromptShared`, which `shareDramaPrompt` tells
   only once its share succeeded as shared); the

@@ -4,7 +4,11 @@
  * runtime meets the browser's own machines, each wrapped so that what comes
  * back is a result, never a state we then claim to know.
  */
-import { audioPlayer, micRecorder } from "@some-ui/voice-capture"
+import {
+  audioPlayer,
+  micRecorder,
+  onPageVisibility,
+} from "@some-ui/voice-capture"
 
 import type { JournalPorts } from "./journal/runtime"
 import type { JournalStore } from "./journal/store"
@@ -13,14 +17,6 @@ import { SOUNDBITE_BITS_PER_SECOND } from "./policy"
 import type { SoundbitesPorts } from "./runtime"
 import type { SoundbiteStore } from "./store"
 import { indexedDbSoundbiteStore } from "./store"
-
-function onPageVisibility(listener: (hidden: boolean) => void): () => void {
-  const onChange = (): void => listener(document.visibilityState === "hidden")
-  document.addEventListener("visibilitychange", onChange)
-  // Now, not only on the next change: a page can mount already hidden.
-  onChange()
-  return () => document.removeEventListener("visibilitychange", onChange)
-}
 
 /** One store per page load, so the database opens once. */
 let store: SoundbiteStore | null = null

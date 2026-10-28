@@ -20,7 +20,7 @@
       "reason": "The Home server block (Settings -> This phone; www lib/home-link, LA8): the sync from home fetches lessons from the LAN file_host, and pairing, unpairing, sending the shelf and copying sessions (each after a confirm naming the count and the host) reach the person's own home server, each on a tap."
     },
     "android.permission.RECORD_AUDIO": {
-      "reason": "Soundbites (/soundbites in the Practice wing, reached from Practice's Home -> Not today? Say why): the person records, on the phone, why a session did not happen. The WebView's getUserMedia, asked for by Capacitor's BridgeWebChromeClient on the first tap to talk. The Build Journal (/journal, the Studio wing's Home) records its voice takes the same way, and voice reflections (Reflect, in any session) too, as audio kept on the phone (apps/www src/lib/reflection-voice)."
+      "reason": "Soundbites (/soundbites in the Practice wing, reached from Practice's Home -> Not today? Say why): the person records, on the phone, why a session did not happen. The WebView's getUserMedia, asked for by Capacitor's BridgeWebChromeClient on the first tap to talk. The Build Journal (/journal, the Studio wing's Home) records its voice takes the same way, and so does Game day (/game-week, in the Studio wing), where the person says a short bite about the game they are watching, and voice reflections (Reflect, in any session) too, as audio kept on the phone (apps/www src/lib/reflection-voice)."
     },
     "android.permission.MODIFY_AUDIO_SETTINGS": {
       "reason": "Soundbites: Capacitor's BridgeWebChromeClient requests it with RECORD_AUDIO for any WebView audio capture. Install-time, no prompt."

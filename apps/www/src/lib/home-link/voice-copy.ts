@@ -11,7 +11,10 @@
  *   whose audio was let go once its share arrived in Drive;
  * - the drama's next scene said aloud (`lib/scene-voice`), when its prompt
  *   is shared (`onPromptShared`): `scene`, the prompt's stamp, when the
- *   prompt was made.
+ *   prompt was made;
+ * - a game bite (`lib/game-bites`), once Undo and the question of what it
+ *   was about are closed: `game`, the game's ESPN id, when it was kept, and
+ *   every field it keeps.
  *
  * Copying deletes nothing where the note was recorded; letting it go there
  * leaves the copy, which goes once home holds the note. Each pass says what
@@ -20,8 +23,10 @@
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/core-utils"
+import type { KeptBite } from "@some-ui/game-week"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 
+import { phoneGameBites } from "@/lib/game-bites"
 import { jobVoiceAudio, phoneJobs } from "@/lib/jobs"
 import type { JobEvent, JobsState } from "@/lib/jobs/model"
 import { releasedVoice } from "@/lib/jobs/model"
@@ -161,7 +166,24 @@ export function candidates(): Array<Candidate> {
       audio: (): Promise<Blob | null> => jobVoiceAudio().get(note.id),
     })
   )
-  return [...said, ...named]
+  const bites = phoneGameBites()
+  const game = bites.ready().map((bite) => ({
+    note: gameNote(bite),
+    audio: (): Promise<Blob | null> => bites.audio(bite.id),
+  }))
+  return [...said, ...named, ...game]
+}
+
+/** A game bite, as home is told it. */
+export function gameNote(bite: KeptBite): VoiceOut {
+  return {
+    id: bite.id,
+    of: "game",
+    ref: bite.gameId,
+    at: bite.at,
+    contentType: bite.contentType,
+    fields: bite.fields,
+  }
 }
 
 /** One note this phone failed to copy, to the native log (once per pass). */
@@ -292,7 +314,9 @@ export function watchVoiceNotes(): () => void {
         reflections.subscribe(copySoon),
         // A spoken reflection is listed before its audio is written.
         onAudioSettled(copySoon),
-        phoneJobs().subscribe(copySoon)
+        phoneJobs().subscribe(copySoon),
+        // A bite's release (Undo closed) is a change to its record.
+        phoneGameBites().subscribe(copySoon)
       )
     }
     copySoon()

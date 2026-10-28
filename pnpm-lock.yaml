@@ -476,6 +476,9 @@ importers:
       '@some-ui/fetch-kit':
         specifier: workspace:*
         version: link:../../packages/fetch-kit
+      '@some-ui/game-week':
+        specifier: workspace:*
+        version: link:../../packages/ui/game-week
       '@some-ui/honeycomb':
         specifier: workspace:*
         version: link:../../packages/ui/honeycomb
@@ -1239,6 +1242,43 @@ importers:
       '@some-ui/vite-config':
         specifier: workspace:*
         version: link:../../some-vite-config
+
+  packages/ui/game-week:
+    dependencies:
+      '@some-ui/core-utils':
+        specifier: workspace:*
+        version: link:../../core-utils
+      '@some-ui/game-scenarios':
+        specifier: workspace:*
+        version: link:../../game-scenarios
+      '@some-ui/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@some-ui/soundbites':
+        specifier: workspace:*
+        version: link:../soundbites
+      '@some-ui/voice-capture':
+        specifier: workspace:*
+        version: link:../../voice-capture
+      lucide-react:
+        specifier: 'catalog:'
+        version: 0.562.0(react@19.2.8)
+      react:
+        specifier: ^19.2.0
+        version: 19.2.8
+      react-dom:
+        specifier: ^19.2.0
+        version: 19.2.8(react@19.2.8)
+    devDependencies:
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../../tsconfig
+      '@some-ui/vite-config':
+        specifier: workspace:*
+        version: link:../../some-vite-config
+      '@types/react':
+        specifier: ^19.0.4
+        version: 19.2.17
 
   packages/ui/honeycomb:
     dependencies:
