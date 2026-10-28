@@ -26,7 +26,8 @@
  *   change it; the clock closes the question, leaving the bite said first
  *   and Later, and an answer that still arrives too late says so.
  * - **Every field is set at the stop** (GW4): `biteFields` from what the
- *   screen showed when talking started.
+ *   screen showed when talking started, or, for a scenario picked after
+ *   saying it first, `pickedAfter` with the offer on screen at the stop.
  * - **Nothing records while the page is gone.** Leaving, or the screen
  *   turning off, finishes a bite under way and keeps it; a microphone that
  *   opens after that is let go.

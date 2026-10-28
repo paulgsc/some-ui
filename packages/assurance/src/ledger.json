@@ -372,10 +372,10 @@
           "id": "GA1",
           "kind": "OA4",
           "property": "outcome",
-          "claim": "Every answer ESPN gives is kept and counted by what it was, and a fetch with no answer is counted by why.",
+          "claim": "On a working store, every answer ESPN gives is kept and counted by what it was, and a fetch with no answer is counted by why.",
           "requirement": "Each response, a 429, another refusal or an unreadable body included, is kept raw before it is read, in the transaction that appends the plays read from it, and is never updated or deleted; a fetch with no answer stores nothing and is counted in game_feed_fetches_total by kind (timeout, connect, transport).",
           "verdict": "holds",
-          "conclusion": "Every answer is kept and every fetch is counted by its kind, in the store and pass tests; a storage failure ends the pass, so what was due after it waits for the next one, and FAILING shows that.",
+          "conclusion": "Every answer is kept and every fetch is counted by its kind, in the store and pass tests, while the store works. A storage failure ends the pass: the answer it failed on is not kept, the fetches the pass had already made are not counted (the pass reports no counts), and FAILING shows it; what was due after it waits for the next pass.",
           "evidence": [
             {
               "class": "measured",
@@ -410,17 +410,15 @@
           "property": "work",
           "claim": "A fetch that keeps failing is asked less and less often, one target at a time.",
           "requirement": "After a 429, any other refusal, an unreadable body or no answer, that target (the scoreboard, or one game's summary) waits its own cadence doubled per failure in a row, to at most GAME_FEED_BACKOFF_CAP_SECONDS (900), before it is asked again; its next good answer resets it.",
-          "verdict": "holds",
-          "conclusion": "The pass test shows the scoreboard backing off to the cap and resetting on a good answer, and a summary doubling from its 15 s cadence; nothing bounds how many times a target is retried in all, only how often.",
+          "verdict": "unproven",
+          "conclusion": "The pass test shows each target spacing its retries out, doubling to the cap and resetting on a good answer, but that is a spacing rule, not a budget: nothing bounds how many times a target is retried in all, so RE2 is not held.",
+          "tracked": "server#534",
           "evidence": [
             {
               "class": "measured",
               "says": "600 s doubled is capped at 900 s, the next waits 900 s more, a good answer resets the count, and a live summary waits 30 s then 60 s.",
               "ref": "server:apps/servers/file_host/src/game_feed/pass.rs"
             }
-          ],
-          "proof": [
-            "server:apps/servers/file_host/src/game_feed/pass.rs#a_refusal_or_no_answer_backs_off_to_the_cap_and_a_good_answer_resets_it"
           ],
           "watch": {
             "by": "dashboard",
@@ -434,8 +432,9 @@
           "property": "work",
           "claim": "Home fetches a game only while there is something to learn about it.",
           "requirement": "A wake with nothing due fetches nothing; a game's summary is fetched every live cadence (15 s) from kickoff until a summary of it says final, then never again, a restart included; a completed game first seen late is still fetched until its final summary is kept; a game still called pre or postponed is fetched only within its grace (4 h after kickoff, and 8 h once over without completing).",
-          "verdict": "holds",
-          "conclusion": "The pass tests follow a game from kickoff to its final fetch and then see no fetch, see a restart skip a game it holds final, and see a late-seen completed game and a postponed one handled; each game's fetches are bounded by its length plus the graces, at one per 15 s.",
+          "verdict": "unproven",
+          "conclusion": "The pass tests follow a game from kickoff to its final fetch and then see no fetch, see a restart skip a game it holds final, and see a late-seen completed game and a postponed one handled. Not bounded: a game the scoreboard calls completed whose own summary never reads final is fetched for as long as that lasts (every 15 s while answers parse, every 900 s while they fail), and a response's bytes are read without a limit.",
+          "tracked": "server#534",
           "evidence": [
             {
               "class": "measured",
@@ -452,14 +451,6 @@
               "says": "A postponed game is left after the post grace, and one still called pre past its grace waits for the scoreboard.",
               "ref": "server:apps/servers/file_host/src/game_feed/pass.rs"
             }
-          ],
-          "proof": [
-            "server:apps/servers/file_host/src/game_feed/pass.rs#a_game_is_followed_from_kickoff_to_its_final_fetch_and_then_left",
-            "server:apps/servers/file_host/src/game_feed/pass.rs#a_restart_does_not_fetch_a_game_it_already_holds_final",
-            "server:apps/servers/file_host/src/game_feed/pass.rs#a_completed_game_first_seen_long_after_is_still_fetched",
-            "server:apps/servers/file_host/src/game_feed/pass.rs#a_game_is_left_only_once_its_own_summary_is_final",
-            "server:apps/servers/file_host/src/game_feed/pass.rs#a_postponed_game_is_left_after_the_post_grace",
-            "server:apps/servers/file_host/src/game_feed/pass.rs#a_game_long_past_kickoff_still_called_pre_waits_for_the_scoreboard"
           ],
           "watch": {
             "by": "dashboard",
