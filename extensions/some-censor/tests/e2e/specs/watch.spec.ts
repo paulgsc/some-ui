@@ -25,6 +25,9 @@
  *       music video, never into a plated one; Standard's goes on (#1966).
  * W13 — Under Skip, a held autoplay opens the first video in Up next the
  *       page admits instead; under Stop nothing opens (#1966).
+ * W14 — Under Skip, when autoplay went on into a video whose own page turns
+ *       out held, it moves on to the next video the page admits that has not
+ *       played, rather than stopping at "Not here." (SK1).
  */
 
 import { SWITCHED_OFF_ATTRIBUTE } from "@censor/lib/content/selectors"
@@ -285,6 +288,29 @@ function reaches(
   )
 }
 
+/**
+ * Keep every link the page opens from leaving the fixture, and read back
+ * which ones it opened.
+ */
+async function recordOpened(page: Page): Promise<() => Promise<unknown>> {
+  await page.evaluate(() => {
+    const opened: Array<string> = []
+    Reflect.set(window, "__OPENED__", opened)
+    window.addEventListener(
+      "click",
+      (event) => {
+        const link =
+          event.target instanceof Element ? event.target.closest("a") : null
+        if (link === null) return
+        event.preventDefault()
+        opened.push(link.getAttribute("href") ?? "")
+      },
+      { capture: true }
+    )
+  })
+  return () => page.evaluate((): unknown => Reflect.get(window, "__OPENED__"))
+}
+
 test("W10: autoplay goes on only into a video the page admits", async ({
   fixture,
 }) => {
@@ -369,24 +395,7 @@ test("W13: Skip opens the next admitted video in Up next", async ({
   ])
   await stamped(page, "new_next", "absent")
   await stamped(page, "old_next", "plated")
-  // Every link the page opens, kept from leaving the fixture.
-  await page.evaluate(() => {
-    const opened: Array<string> = []
-    Reflect.set(window, "__OPENED__", opened)
-    window.addEventListener(
-      "click",
-      (event) => {
-        const link =
-          event.target instanceof Element ? event.target.closest("a") : null
-        if (link === null) return
-        event.preventDefault()
-        opened.push(link.getAttribute("href") ?? "")
-      },
-      { capture: true }
-    )
-  })
-  const opened = (): Promise<unknown> =>
-    page.evaluate((): unknown => Reflect.get(window, "__OPENED__"))
+  const opened = await recordOpened(page)
 
   expect(await reaches(page, "new_next", "1")).toBe(false)
   await page.waitForTimeout(200)
@@ -400,4 +409,32 @@ test("W13: Skip opens the next admitted video in Up next", async ({
     })
     .toContain("/watch?v=old_next")
   expect(await opened()).not.toContain("/watch?v=new_next")
+})
+
+test('W14: under Skip, a held page autoplay reached moves on, never "Not here."', async ({
+  fixture,
+}) => {
+  await fixture.settings({ autoplay: "skip" })
+  const page = await fixture.goto("yt-watch-page")
+  await watchView(page, "plated")
+  await upNext(page, [
+    ["old_next", "9 years ago", "Chan"],
+    ["older_next", "10 years ago", "Chan"],
+  ])
+  await stamped(page, "old_next", "plated")
+  await stamped(page, "older_next", "plated")
+  const opened = await recordOpened(page)
+
+  // Its card admits it, so autoplay goes on into it.
+  expect(await reaches(page, "old_next", "1")).toBe(true)
+  // Its own page then dates it 3 hours ago: held.
+  await page.evaluate(() => {
+    for (const el of document.querySelectorAll("[video-id]")) {
+      el.setAttribute("video-id", "old_next")
+    }
+  })
+  await watchView(page, "pending")
+  await setAge(page, "3 hours ago")
+  await watchView(page, "absent")
+  await expect.poll(opened).toEqual(["/watch?v=older_next"])
 })

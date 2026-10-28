@@ -850,6 +850,103 @@ describe("what autoplay may go on into (#1805)", () => {
   })
 })
 
+describe("a page autoplay reached that is held (SK1)", () => {
+  const page = (
+    videoId: string,
+    dates: ReadonlyArray<string>,
+    t: number,
+    overrides: Partial<WatchObservation> = {}
+  ): CoreEvent => ({
+    kind: "watched",
+    watch: {
+      videoId: asVideoId(videoId),
+      short: false,
+      hydrated: dates.length > 0,
+      dates,
+      miniplayer: false,
+      title: null,
+      channelName: null,
+      artist: false,
+      mix: null,
+      ...overrides,
+    },
+    t,
+  })
+  const autoplayed = (videoId: string, t: number): CoreEvent => ({
+    kind: "autoplayed",
+    videoId: asVideoId(videoId),
+    t,
+  })
+  const skips = (actions: ReadonlyArray<Action>): number =>
+    actions.filter((a) => a.kind === "skip").length
+  const skip: CoreEvent = { kind: "autoplay", autoplay: "skip", t: 1 }
+  const onTheWay = [
+    started,
+    skip,
+    page("here", ["21y ago"], 2),
+    seen(2, { uploadDate: OLD }, "next"),
+    autoplayed("next", 3),
+  ]
+
+  it("moves on under Skip once the page it went on into is held by its own date", () => {
+    const { state } = fold(onTheWay)
+    expect(state.arriving).toEqual({ from: "here", to: "next" })
+    // The old page still up, then the new one pending: still on its way.
+    const old = reduce(state, page("here", ["21y ago"], 4))
+    expect(skips(old.actions)).toBe(0)
+    const pending = reduce(old.state, page("next", [], 5))
+    expect(skips(pending.actions)).toBe(0)
+    const held = reduce(pending.state, page("next", ["3 hours ago"], 6))
+    expect(held.state.watch?.view).toBe("absent")
+    expect(skips(held.actions)).toBe(1)
+    expect(held.state.arriving).toBeNull()
+    expect(
+      skips(reduce(held.state, page("next", ["3 hours ago"], 7)).actions),
+      "once"
+    ).toBe(0)
+  })
+
+  it("stays put under Stop, on a page that shows, in the miniplayer, and on another video", () => {
+    const stop = fold([
+      ...onTheWay,
+      { kind: "autoplay", autoplay: "stop", t: 4 },
+    ])
+    expect(
+      skips(reduce(stop.state, page("next", ["3 hours ago"], 5)).actions)
+    ).toBe(0)
+    const { state } = fold(onTheWay)
+    const shown = reduce(state, page("next", ["9 years ago"], 5))
+    expect(skips(shown.actions)).toBe(0)
+    expect(shown.state.arriving).toBeNull()
+    expect(
+      skips(
+        reduce(state, page("next", ["3 hours ago"], 5, { miniplayer: true }))
+          .actions
+      )
+    ).toBe(0)
+    const elsewhere = reduce(state, page("clicked", ["3 hours ago"], 5))
+    expect(skips(elsewhere.actions), "the owner went elsewhere").toBe(0)
+    expect(elsewhere.state.arriving).toBeNull()
+  })
+
+  it("moves on from a page Skip itself opened, too", () => {
+    const { state } = fold([
+      started,
+      skip,
+      page("here", ["21y ago"], 2),
+      seen(2, { uploadDate: OLD }, "row"),
+    ])
+    const sent = reduce(state, {
+      kind: "held",
+      upNext: [asVideoId("row")],
+      t: 3,
+    })
+    expect(sent.state.arriving).toEqual({ from: "here", to: "row" })
+    const held = reduce(sent.state, page("row", ["3 hours ago"], 4))
+    expect(skips(held.actions)).toBe(1)
+  })
+})
+
 describe("a music Mix (R11)", () => {
   const MIX = "RDsong"
   const MUSIC_MIX = MODE_RULES.mix.core

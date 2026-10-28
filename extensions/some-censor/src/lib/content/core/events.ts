@@ -62,6 +62,16 @@ export type Token =
       readonly t: number
     }
   /**
+   * The Sensor let an autoplay go on into `videoId`, which Core admitted
+   * (#1805). If that video's own page turns out held, Skip moves on from it
+   * (SK1).
+   */
+  | {
+      readonly kind: "autoplayed"
+      readonly videoId: VideoId
+      readonly t: number
+    }
+  /**
    * The page's own video, as the watch page or a Short shows it, or null
    * when neither is shown (#1805). Re-sent whenever the reading changes.
    */

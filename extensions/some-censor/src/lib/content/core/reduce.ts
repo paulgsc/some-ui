@@ -53,6 +53,9 @@
  *        since `start` (`played`), so it cannot walk a loop of a few
  *        videos that each name the other first (SK1). `played` is the tab's,
  *        not the page's: `nav` keeps it, and only `start` empties it.
+ *        And a page autoplay or Skip went on into that turns out held
+ *        (admitted by its card, held by its own date) yields `skip`, so
+ *        Skip moves on rather than stopping at "Not here.".
  *  R11 — A Mix is music once it plays a video whole in the lane (QD15):
  *        its id joins `musicMixes`, every card is re-decided, and under
  *        Music mix its rows with no date are plated (QD3's amendment).
@@ -65,6 +68,7 @@
  * are `controller.ts`'s.
  */
 
+import type { WatchView } from "@censor/lib/content/fsm"
 import { decide, decideWatch, project } from "@censor/lib/content/fsm"
 import { plateOf } from "@censor/lib/content/plate/plate"
 import type { VideoId } from "@censor/types/ids"
@@ -76,7 +80,7 @@ import type { CardKey } from "./keys"
 import { cardKey, keyVideoId } from "./keys"
 import type { Observation, WatchObservation } from "./observation"
 import { mergeObservation, mergeWatch } from "./observation"
-import type { CardState, CoreState, Rules, WatchState } from "./state"
+import type { Arrival, CardState, CoreState, Rules, WatchState } from "./state"
 import {
   EMPTY_UNKNOWN_SHAPES,
   PLAYED_KEPT,
@@ -156,6 +160,7 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
           unknownShapes: EMPTY_UNKNOWN_SHAPES,
           played: [],
           musicMixes: [],
+          arriving: null,
         },
         actions: [record({ kind: "session.start", session: event.session })],
       }
@@ -255,12 +260,18 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
       return watched(state, event.watch, event.t)
     }
 
+    case "autoplayed": {
+      if (state.phase !== "running") return none(state)
+      return none({ ...state, arriving: arrival(state, event.videoId) })
+    }
+
     case "held": {
       if (state.phase !== "running") return none(state)
       const to = skipTo(state, event.upNext)
+      if (to === null) return none(state)
       return {
-        state,
-        actions: to === null ? [] : [{ kind: "play", key: cardKey(to) }],
+        state: { ...state, arriving: arrival(state, to) },
+        actions: [{ kind: "play", key: cardKey(to) }],
       }
     }
 
@@ -474,14 +485,20 @@ function watched(
     previous.observation.videoId !== merged.videoId ||
     previous.observation.miniplayer !== merged.miniplayer ||
     previous.face !== next.face
+  const landed = arrived(state.arriving, merged, view)
+  const skip =
+    landed === "held" && state.autoplay === "skip" && !merged.miniplayer
+  const actions: Array<Action> = moved ? [watchAction(next, state.rules)] : []
+  if (skip) actions.push({ kind: "skip" })
   const step: Step = {
     state: {
       ...state,
       watch: next,
       watchDates,
       played: playedWith(state.played, merged),
+      arriving: landed === "on its way" ? state.arriving : null,
     },
-    actions: moved ? [watchAction(next, state.rules)] : [],
+    actions,
   }
   // R11: a Mix that plays music whole is a music Mix from now on.
   const mix = merged.miniplayer ? null : merged.mix
@@ -497,6 +514,29 @@ function watched(
     state: marked.state,
     actions: [...step.actions, ...marked.actions],
   }
+}
+
+/** SK1: autoplay is going on from the page's video into `to`. */
+function arrival(state: CoreState, to: VideoId): Arrival {
+  return { from: state.watch?.observation.videoId ?? null, to }
+}
+
+/**
+ * SK1: whether the page now shows where autoplay went, and how: still on
+ * its way (the old page, or the new one pending), there and held, or
+ * settled (shown, or another video altogether).
+ */
+function arrived(
+  arriving: Arrival | null,
+  watch: WatchObservation,
+  view: WatchView
+): "on its way" | "held" | "settled" {
+  if (arriving === null) return "settled"
+  const id = watch.videoId
+  if (id === null || id === arriving.from) return "on its way"
+  if (id !== arriving.to) return "settled"
+  if (view === "pending") return "on its way"
+  return view === "absent" ? "held" : "settled"
 }
 
 /** R10: the watch page's video, once, at the end of what Skip remembers. */

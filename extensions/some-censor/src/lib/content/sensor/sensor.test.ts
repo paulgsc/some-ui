@@ -715,6 +715,20 @@ describe("autoplay (#1805)", () => {
     expect(navigate(autoplay("old"))).toBe(true)
   })
 
+  it("tells Core of an autoplay it lets go on, and where to go when asked (SK1)", () => {
+    admitted.add("old")
+    tokens = []
+    navigate(autoplay("old"))
+    expect(tokens).toEqual([{ kind: "autoplayed", videoId: "old", t: now }])
+    tokens = []
+    sensor.skipOn()
+    expect(tokens).toEqual([{ kind: "held", upNext: [], t: now }])
+    sensor.stop()
+    tokens = []
+    sensor.skipOn()
+    expect(tokens, "nothing once stopped").toEqual([])
+  })
+
   it("never holds a navigation the owner asked for", () => {
     expect(navigate({ endpoint: { watchEndpoint: { videoId: "held" } } })).toBe(
       true

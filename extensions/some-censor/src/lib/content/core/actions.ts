@@ -52,6 +52,12 @@ export type Action =
    * to it (#1966).
    */
   | { readonly kind: "play"; readonly key: CardKey }
+  /**
+   * Move on from the page autoplay or Skip went on into, which turned out
+   * held (SK1): the Sensor reads where autoplay may go and tells Core, as
+   * it does for an autoplay it holds.
+   */
+  | { readonly kind: "skip" }
   /** A fact for the flight recorder; the runtime forwards it. */
   | { readonly kind: "record"; readonly fact: CoreFact }
 

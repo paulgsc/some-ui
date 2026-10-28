@@ -387,7 +387,11 @@ page's own video first and then Up next, in page order; the Actuator opens
 that row or card as a click would, so a row keeps the playlist playing. With
 none, or in the miniplayer, autoplay stops. Remembering what played is what
 keeps Skip from walking a loop of a few videos that each name the other first.
-`watch.spec.ts` W10 and W13 prove both, locally.
+A card can admit a video whose own page then holds it (a Mix row shown with
+no date, whose page dates it last week): under Skip, a page autoplay or Skip
+went on into that turns out held moves on the same way (SK1), instead of
+stopping at "Not here." with the video paused. `watch.spec.ts` W10, W13 and
+W14 prove these, locally.
 
 A held video's watch page, reached by a link, is "Not here." and Back
 (#1805): `styles/content.css` renders no player, miniplayer, title or date

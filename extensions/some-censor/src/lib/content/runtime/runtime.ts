@@ -114,6 +114,9 @@ export function createRuntime(ports: RuntimePorts): Runtime {
       if (action.kind === "record") {
         if (action.fact.kind === "navigation") notifyNavigation()
         onFact(action.fact)
+      } else if (action.kind === "skip") {
+        // Answered after the Actuator has the rest (`dispatch`).
+        continue
       } else if (action.kind === "play") {
         const el = sensorInstance.upNextCard(action.key)
         bound.push({
@@ -138,6 +141,9 @@ export function createRuntime(ports: RuntimePorts): Runtime {
     state = step.state
     const bound = bind(step.actions)
     if (bound.length > 0) actuator?.realize(bound)
+    // SK1: the page autoplay reached is held; the Sensor reads where to go
+    // instead, and its `held` token is folded as one more event.
+    if (step.actions.some((a) => a.kind === "skip")) sensorInstance.skipOn()
     // A navigation is a new session (C2): occlusion ages from the page before
     // it must not count against the page after it.
     if (event.kind === "nav") health?.sessionStarted()

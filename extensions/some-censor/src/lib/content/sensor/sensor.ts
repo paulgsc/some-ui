@@ -131,6 +131,11 @@ export type Sensor = {
    * (#1966): a playlist row ahead of an Up next card, so a Mix goes on.
    */
   upNextCard(key: CardKey): HTMLElement | null
+  /**
+   * Tell Core where autoplay may go from the page shown, as a held autoplay
+   * does: the page autoplay reached is held, and Skip moves on (SK1).
+   */
+  skipOn(): void
   census(): SensorCensus
   /** How many elements are queued; O(1), unlike {@link census}. */
   readonly queued: number
@@ -631,12 +636,22 @@ export function createSensor(ports: SensorPorts): Sensor {
    * the Sensor holds, and only on Core's answer; a navigation the owner
    * starts carries no `autonav`, and is never held. Core is told, with the
    * playlist's next rows and Up next's videos in that order, so it can skip
-   * to one (#1966).
+   * to one (#1966); and of an autoplay it lets go on, so Skip can move on
+   * if that video's own page is held (SK1).
    */
   function onYtNavigate(event: Event): void {
     const next = readAutonav(event)
-    if (next === null || ports.admits(next)) return
+    if (next === null) return
+    if (ports.admits(next)) {
+      ports.emit({ kind: "autoplayed", videoId: next, t: ports.clock() })
+      return
+    }
     event.stopImmediatePropagation()
+    skipOn()
+  }
+
+  /** Tell Core where autoplay may go instead of where it was going. */
+  function skipOn(): void {
     ports.emit({ kind: "held", upNext: upNext(), t: ports.clock() })
   }
 
@@ -771,6 +786,10 @@ export function createSensor(ports: SensorPorts): Sensor {
 
     upNextCard(key: CardKey): HTMLElement | null {
       return upNextCards().find((card) => card.key === key)?.el ?? null
+    },
+
+    skipOn(): void {
+      if (running) skipOn()
     },
 
     census(): SensorCensus {

@@ -119,6 +119,17 @@ export type CoreState = {
    * the lane (QD15) since `start`. A navigation keeps them.
    */
   readonly musicMixes: ReadonlyArray<string>
+  /**
+   * Where autoplay, or Skip, last went on to, and from which video, until
+   * the watch page shows that video decided or shows another one (SK1).
+   */
+  readonly arriving: Arrival | null
+}
+
+/** An autoplay on its way from the page's video to the next one. */
+export type Arrival = {
+  readonly from: VideoId | null
+  readonly to: VideoId
 }
 
 /**
@@ -148,6 +159,7 @@ export function initialState(session: SessionId): CoreState {
     unknownShapes: EMPTY_UNKNOWN_SHAPES,
     played: [],
     musicMixes: [],
+    arriving: null,
   }
 }
 
@@ -167,6 +179,7 @@ export type CoreSnapshot = {
   readonly unknownShapes: CoreState["unknownShapes"]
   readonly played: ReadonlyArray<VideoId>
   readonly musicMixes: ReadonlyArray<string>
+  readonly arriving: Arrival | null
 }
 
 /**
@@ -240,5 +253,6 @@ export function snapshot(state: CoreState): CoreSnapshot {
     unknownShapes: state.unknownShapes,
     played: state.played,
     musicMixes: state.musicMixes,
+    arriving: state.arriving,
   }
 }
