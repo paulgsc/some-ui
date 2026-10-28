@@ -23,7 +23,14 @@ import type {
   Observation,
   WatchObservation,
 } from "./index"
-import { admits, cardKey, initialState, reduce, snapshot } from "./index"
+import {
+  admits,
+  cardKey,
+  initialState,
+  isStranded,
+  reduce,
+  snapshot,
+} from "./index"
 import { STANDARD_RULES } from "./state"
 
 // SessionId is a branded number minted by the shell; the reducer only ever
@@ -968,6 +975,30 @@ describe("a page autoplay reached that is held (SK1)", () => {
     )
     expect(shown.state.watch?.view).toBe("whole")
     expect(shown.state.stranded, "its title came later: it shows").toBeNull()
+
+    // Stranded under Strict on a recent MV, then the mode admits it: no
+    // reading changes, so only the derived answer can see it.
+    const strict = fold(
+      [
+        { kind: "rules", rules: STRICT, t: 4 },
+        watching("next", 5, { dates: ["3 hours ago"], title: "Next MV" }),
+      ],
+      fold(onTheWay).state
+    )
+    expect(isStranded(strict.state)).toBe(true)
+    const standard = reduce(strict.state, {
+      kind: "rules",
+      rules: STANDARD_RULES,
+      t: 6,
+    })
+    expect(standard.state.watch?.view).toBe("whole")
+    expect(isStranded(standard.state), "the mode admits it").toBe(false)
+    const stopped = reduce(strict.state, {
+      kind: "autoplay",
+      autoplay: "stop",
+      t: 6,
+    })
+    expect(isStranded(stopped.state), "Stop chosen").toBe(false)
   })
 })
 

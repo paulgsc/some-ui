@@ -22,7 +22,11 @@ import { createActuator } from "@censor/lib/content/actuator/index"
 import type { Action, CoreFact } from "@censor/lib/content/core/actions"
 import type { CoreEvent } from "@censor/lib/content/core/events"
 import { reduce } from "@censor/lib/content/core/reduce"
-import { admits, initialState } from "@censor/lib/content/core/state"
+import {
+  admits,
+  initialState,
+  isStranded,
+} from "@censor/lib/content/core/state"
 import type {
   AutoplayRule,
   CoreState,
@@ -162,11 +166,11 @@ export function createRuntime(ports: RuntimePorts): Runtime {
     if (skipRetry !== null) clearTimeout(skipRetry)
     skipRetry = null
     sensorInstance.skipOn()
-    if (state.stranded === null || attempt >= SKIP_ATTEMPTS) return
+    if (!isStranded(state) || attempt >= SKIP_ATTEMPTS) return
     // Lifetime: cleared by stop(), and by the next skipOn().
     skipRetry = setTimeout(() => {
       skipRetry = null
-      if (state.stranded !== null) skipOn(attempt + 1)
+      if (isStranded(state)) skipOn(attempt + 1)
     }, SKIP_RETRY_MS)
   }
 

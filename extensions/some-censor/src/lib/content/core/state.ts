@@ -125,8 +125,8 @@ export type CoreState = {
   readonly arriving: Arrival | null
   /**
    * The held page Skip is to move on from and has found nowhere to go yet
-   * (SK1): its Up next may still be loading, so the runtime looks again
-   * while this names the page shown.
+   * (SK1). Read it through {@link isStranded}, which also asks whether that
+   * page is still the one shown, still held, and Skip still the choice.
    */
   readonly stranded: VideoId | null
 }
@@ -227,6 +227,24 @@ export function skipTo(
     upNext.find(
       (id) => id !== own && !state.played.includes(id) && admits(state, id)
     ) ?? null
+  )
+}
+
+/**
+ * SK1: whether Skip still has to move on from the page shown: the page it
+ * was stranded on, shown outside the miniplayer and still held, with Skip
+ * still the owner's choice. A later reading, a new mode or boundary, or a
+ * change of autoplay can each end it without touching `stranded`.
+ */
+export function isStranded(state: CoreState): boolean {
+  const watch = state.watch
+  return (
+    state.stranded !== null &&
+    state.autoplay === "skip" &&
+    watch !== null &&
+    watch.view === "absent" &&
+    !watch.observation.miniplayer &&
+    watch.observation.videoId === state.stranded
   )
 }
 
