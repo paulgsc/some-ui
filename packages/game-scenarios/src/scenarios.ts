@@ -35,7 +35,3 @@ function join(entry: CatalogEntry): Scenario {
 
 /** Every scenario, in the catalog's order. */
 export const SCENARIOS: ReadonlyArray<Scenario> = CATALOG.scenarios.map(join)
-
-export function scenarioById(id: string): Scenario | undefined {
-  return SCENARIOS.find((s) => s.id === id)
-}

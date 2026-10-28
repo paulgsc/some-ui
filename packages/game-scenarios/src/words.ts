@@ -2,10 +2,6 @@
  * What the screen says about each scenario beyond its name: the phase
  * headings, and a label for each outcome home can fill in. The name and what
  * a scenario covers come from the catalog itself (`catalog.ts`).
- *
- * Keyed by every id in the catalog's copy; `__tests__/catalog.test.ts` fails
- * when an id or an outcome has no words here, or words name one the copy does
- * not have.
  */
 import type { Phase } from "@game-scenarios/catalog"
 

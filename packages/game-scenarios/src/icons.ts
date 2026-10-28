@@ -1,18 +1,9 @@
 /**
  * Each scenario's icon: 24x24 stroke paths (stroke 1.75, round caps and
- * joins), from the Game Week Bites canvas. Where a meaning recurs, the icon
- * is composed from the same primitive, as Playoff Delta's glyphs are
- * (`packages/ui/playoff-delta/src/lib/symbols.ts`), so it reads the same in
- * every icon and every short:
- *
- *   EYE         you, watching
- *   NOT         not watching (a slash across the eye)
- *   FOR_US      went our way (an arrow up, on the right)
- *   AGAINST_US  went against us (an arrow down, on the right)
- *   FORK        the paths to the playoffs
- *   CLOCK       a clock
- *
- * The rest are one scenario's own drawing.
+ * joins), from the Game Week Bites canvas. A meaning that recurs is drawn by
+ * the same primitive, as Playoff Delta's glyphs are
+ * (`packages/ui/playoff-delta/src/lib/symbols.ts`): `NOT` is a slash across
+ * the eye, `FOR_US` and `AGAINST_US` an arrow up or down on the right.
  */
 import type { ScenarioId } from "@game-scenarios/words"
 

@@ -1,15 +1,4 @@
-/**
- * The game-week scenario set, read from paulgsc/server's dump
- * (`crates/game_scenarios`, `dump-game-scenarios`). The server is the source
- * of truth: the scenario engine compiles against it, and its
- * `scripts/check_client_fixtures.py` fails when `game-scenarios.snapshot.json`
- * and a fresh dump differ. Never edit the copy by hand; regenerate it:
- *
- *   cargo run -q --bin dump-game-scenarios > packages/game-scenarios/src/game-scenarios.snapshot.json
- *
- * Every game is read through one team, "us": an outcome "for us" is the one
- * that team wants.
- */
+/** The game-week scenario set: paulgsc/server's dump, copied (see the README). */
 import snapshot from "./game-scenarios.snapshot.json"
 
 export const PHASES = ["pre", "in", "post", "you"] as const
