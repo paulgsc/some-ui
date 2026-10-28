@@ -25,7 +25,8 @@ export const ASSURANCE_WORDS = {
   limitsHeading: "What this page cannot see",
   live: "Whether each promise holds right now, on home. This page shows what was true of the code it was built from.",
   merges: {
-    blocked: "A failing check stops a merge in both places.",
+    blocked:
+      "A failing check stops a merge in both places, apart from a few checks that still only warn.",
     open: "A failing check does not yet stop a merge. Until it does, these checks warn and nothing more.",
   },
   watching: (alerting: number, dashboardOnly: number): string => {

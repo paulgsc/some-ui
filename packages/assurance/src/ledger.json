@@ -653,22 +653,48 @@
           "id": "GC1",
           "kind": "OA7",
           "property": "outcome",
-          "claim": "A failing check stops a merge, in both repositories.",
-          "requirement": "main in some-ui requires CI Gate, and main in the server requires one gate that waits on every check; a deliberately failing pull request is shown to be blocked in each.",
-          "verdict": "broken",
-          "conclusion": "Last read on 2026-10-26, main was unprotected in both repositories, so a red check informs but cannot stop a merge.",
+          "claim": "A failing required check stops a merge, in both repositories.",
+          "requirement": "main in some-ui requires CI Gate and main in the server requires its five named checks (Artifact retention, Rust lint, rust_ci, metric_contract_ci, Deny Checks Summary); a deliberately failing pull request is shown to be blocked in each, and a check fails if either repository stops requiring them.",
+          "verdict": "holds",
+          "conclusion": "A failing required check stops a merge in both repositories, as probes showed even through the owner's account; a check reads both repositories' rules on every pull request and daily, and its red run shows only in Actions. It cannot see a bypass granted later, and some-ui's extension and pedagogy checks, like the server's other checks (GC5), are not required.",
           "evidence": [
             {
               "class": "measured",
-              "says": "GET /repos/paulgsc/{some-ui,server}/branches/main returned protected: false, and each repository's one ruleset had enforcement disabled (recon, 2026-10-26).",
+              "says": "A deliberately failing pull request was refused in each repository through the owner's account: \"Required status check \\\"CI Gate\\\" is failing\" and \"Required status check \\\"Artifact retention\\\" is failing\".",
               "ref": "some-ui#2206"
+            },
+            {
+              "class": "measured",
+              "says": "The server's probe pull request, refused on a failing required check.",
+              "ref": "server#529"
+            },
+            {
+              "class": "measured",
+              "says": "GET /repos/paulgsc/{some-ui,server}/rules/branches/main on 2026-10-28 required CI Gate in some-ui and the five named checks in the server.",
+              "ref": "https://github.com/paulgsc/some-ui/issues/2211#issuecomment-6483420143"
+            },
+            {
+              "class": "structural",
+              "says": "pr.yml's Branch rules job, which CI Gate needs, and the daily branch-rules.yml run the check.",
+              "ref": "some-ui:.github/workflows/branch-rules.yml"
             }
           ],
-          "tracked": "some-ui#2206",
           "watch": {
-            "by": "none"
+            "by": "dashboard",
+            "ref": "some-ui:.github/workflows/branch-rules.yml"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-10-28",
+              "change": "The claim is to required checks; the server's half is its five named required checks, not one gate that waits on every check, which moved to GC5.",
+              "why": "The server's checks span several workflows and a job cannot wait on another workflow's jobs, so one gate is real work (AS10), not a setting.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/2211#issuecomment-6483155448"
+            }
+          ],
+          "proof": [
+            "some-ui:packages/assurance/src/branch-rules.ts#readBranchRules",
+            "some-ui:packages/assurance/src/__tests__/branch-rules.test.ts#names each check main no longer requires"
+          ]
         },
         {
           "id": "GC2",
@@ -733,6 +759,98 @@
             }
           ],
           "tracked": "server#526",
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "GC5",
+          "kind": "OA7",
+          "property": "outcome",
+          "claim": "Every check the server runs on a pull request can stop its merge.",
+          "requirement": "main in the server requires one gate that waits on every pull request check, path-filtered ones such as Check some-ui against it included, and reads a skipped check as passed only where its paths did not change.",
+          "verdict": "broken",
+          "conclusion": "Only five named checks are required, so a red Check some-ui against it, Emit the route snapshot or infra_ci informs and does not stop a merge.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "GET /repos/paulgsc/server/rules/branches/main on 2026-10-28 required Artifact retention, Rust lint, rust_ci, metric_contract_ci and Deny Checks Summary, and nothing from routes.yml.",
+              "ref": "some-ui#2211"
+            }
+          ],
+          "tracked": "server#526",
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        }
+      ]
+    },
+    {
+      "id": "home-errors",
+      "name": "Home tells me when something goes wrong",
+      "why": "An error on home that nobody hears of is a failure that is silent, however loudly it was logged; and a home that errors every time it is used is not working, even when each request answers.",
+      "paths": [
+        "server:apps/servers/file_host/src/metrics/observability.rs",
+        "server:infra/grafana/provisioning/alerting/file-host-errors.yml",
+        "server:infra/prometheus/prometheus.yml"
+      ],
+      "modules": [],
+      "objectives": [
+        {
+          "id": "ER1",
+          "kind": "OA8",
+          "property": "outcome",
+          "claim": "An error on home is never silent: it reaches you, named by what failed, and a record of it outlasts the session that saw it.",
+          "requirement": "Every ERROR-level event on home is counted by its target and its name; an alert reaches the owner within 15 minutes and says what failed, its delivery tested; and a sanitised record, one open issue per fingerprint updated in place and holding no field value, survives for the next session.",
+          "verdict": "broken",
+          "conclusion": "Home counts every error its log filter passes once tracing is up, and alerts per module, but the count keeps only the module, so an alert cannot say what failed; nothing shows the alert reaches you, and nothing keeps a record past the session that saw it.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "ErrorEventMetricsLayer counts every ERROR event the log filter passes into tracing_events_total, by target alone.",
+              "ref": "server:apps/servers/file_host/src/metrics/observability.rs"
+            },
+            {
+              "class": "structural",
+              "says": "The one error alert sends Slack a message per target; whether its webhook is set on home has not been shown.",
+              "ref": "server:infra/grafana/provisioning/alerting/file-host-errors.yml"
+            }
+          ],
+          "tracked": "server#546",
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/lib/panels.libsonnet"
+          },
+          "amendments": []
+        },
+        {
+          "id": "ER2",
+          "kind": "OA8",
+          "property": "outcome",
+          "claim": "Home runs nearly error-free: at least 99% of the hours in any 7 days have no error.",
+          "requirement": "Over every rolling 168 hours, at most 1% of hours hold an ERROR-level event on home, held by a rule proven to fire and an alert when the budget is spent.",
+          "bound": {
+            "value": 99,
+            "unit": "percent of hours without an error",
+            "tighter": "higher"
+          },
+          "verdict": "broken",
+          "conclusion": "Every use of the app logs an error: traces are sent every 5 s to a collector that does not exist, reproduced against a real file_host on 2026-10-28; and no rule counts the hours.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A real file_host with no collector logged BatchSpanProcessor.ExportError at ERROR every 5 s while it served requests, and tracing_events_total{target=\"opentelemetry_sdk\"} counted each.",
+              "ref": "server#545"
+            },
+            {
+              "class": "structural",
+              "says": "Prometheus has no rule files, so nothing counts error hours.",
+              "ref": "server:infra/prometheus/prometheus.yml"
+            }
+          ],
+          "tracked": "server#546",
           "watch": {
             "by": "none"
           },

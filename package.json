@@ -30,6 +30,7 @@
     "knip": "knip --no-progress --reporter compact",
     "check:android-only": "node scripts/check-android-only.ts",
     "check:assurance": "node scripts/check-assurance.ts",
+    "check:branch-rules": "node scripts/check-branch-rules.ts",
     "check:bundle-paths": "scripts/with-limits.sh turbo run check:bundle-paths --filter=www",
     "check:canon": "bash docs/canon/scripts/check-citations.sh",
     "check:catalog": "node scripts/check-catalog-drift.mjs",

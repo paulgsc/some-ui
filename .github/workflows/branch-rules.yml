@@ -1,0 +1,21 @@
+name: Branch rules
+# GC1 (docs/operational-assurance.md, "What `pnpm check:branch-rules`
+# holds"): the check pr.yml runs on every pull request, daily as well. A red
+# run here means GC1 no longer holds or could not be confirmed.
+on:
+  schedule:
+    - cron: "41 6 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  branch-rules:
+    name: Branch rules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/nix-setup
+      - name: Check that main still requires its checks
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: nix develop .#ci --command node scripts/check-branch-rules.ts

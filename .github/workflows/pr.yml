@@ -578,6 +578,22 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         run: nix develop .#ci --command node scripts/check-assurance.ts --base "origin/$BASE_REF"
 
+  # ── Branch rules (GC1) ─────────────────────────────────────────────────
+  # scripts/check-branch-rules.ts; also daily in branch-rules.yml. No
+  # `changes` gate and no install (Node's type stripping).
+  branch-rules:
+    name: Branch rules
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/nix-setup
+      - name: Check that main still requires its checks
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: nix develop .#ci --command node scripts/check-branch-rules.ts
+
   # ── Android only (repo-wide) ───────────────────────────────────────────
   # CLAUDE.md, "The phone and the desktop web are separate surfaces": a few
   # Apple-only tokens, listed in packages/eslint/src/android-only.ts, appear in
@@ -669,6 +685,7 @@ jobs:
         workflows,
         policy-docs,
         assurance,
+        branch-rules,
         android-only,
         canon,
         commit-trailers,

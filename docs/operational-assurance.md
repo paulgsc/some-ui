@@ -59,7 +59,7 @@ shown; "the cheapest possible" cannot be, from these repositories, and nothing h
 
 ## The requirement kinds
 
-Each objective names the kind it instantiates. These are the kinds, from the recon of 2026-10-27;
+Each objective names the kind it instantiates. These are the kinds, from the recon of 2026-10-27 (OA8 added 2026-10-28, AS12, server#546);
 a new kind is added here first.
 
 | Kind | Property          | Requirement                                                                                                                              |
@@ -71,6 +71,7 @@ a new kind is added here first.
 | OA5  | No silent failure | A cancel stops new effects at once; work already started is settled or reported as unknown.                                              |
 | OA6  | No silent failure | Work that should have happened and did not, and a watcher that stopped watching, each read apart from a quiet, healthy system.           |
 | OA7  | No silent failure | A release's evidence is complete: a skipped, empty or timed-out check reads as unproven, never as passed.                                |
+| OA8  | No silent failure | Every error is counted, named and reaches the owner, with a bounded, sanitised record; a stated budget reads chronic errors apart.       |
 | RE1  | No wasted work    | Every external call's work is attributable to the operation that caused it, with the provider's own counts where it gives them.          |
 | RE2  | No wasted work    | Attempts obey one budget per operation; an explicit zero retries means one attempt.                                                      |
 | RE3  | No wasted work    | Every family has finite bounds on its requests, bytes, work and time for a whole operation, shared by its parts.                         |
@@ -126,6 +127,18 @@ pr.yml's `assurance` job, which CI Gate needs.
   evidence, whether a proof really reaches its requirement, and an objective moved between
   families.
 
+## What `pnpm check:branch-rules` holds
+
+`scripts/check-branch-rules.ts`, rules in `packages/assurance/src/branch-rules.ts`: GC1, that `main`
+in each repository still requires the checks that file lists. A repository setting can be switched
+off with no diff, so it runs on every pull request (pr.yml's `branch-rules` job, which CI Gate
+needs) and daily (`.github/workflows/branch-rules.yml`). It reads GitHub's `rules/branches/main`,
+which lists only active rules, so a ruleset turned off reads as nothing required. A 5xx or
+lost answer is asked once more, and an answer it still cannot get or read fails it as unknown,
+not as broken. It cannot see who may bypass the rules: the probe
+pull requests (some-ui#2210, server#529) showed the owner's own account is refused, and a later
+bypass grant would show only to someone who looks.
+
 ## What `/assurance` shows
 
 The page answers three questions separately, because each can be true while the others are not:
@@ -141,7 +154,7 @@ gives the claim, its verdict, and where it stands in a sentence. Opening it give
 what exactly it takes; the evidence with a before-and-after where something was measured (a growth
 plot today; an obligation's timeline comes with AS7 and AS8); the receipt (proof and issue links,
 who would notice, amendments). The page also says what it does not know: the watches that are
-missing, and whether a failing check can block a merge yet (AS9). It shows counts per verdict,
+missing, and whether a failing check can block a merge (GC1). It shows counts per verdict,
 never one score: "nine of ten" hides the one that matters.
 
 The page's own words follow CLAUDE.md's "State in the person's terms": they live in one table
