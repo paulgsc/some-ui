@@ -9,7 +9,7 @@ export type {
   Offer,
   OfferCard,
 } from "./lib/feed"
-export { awayFeed, fixtureFeed } from "./lib/feed"
+export { noGamesFeed, fixtureFeed } from "./lib/feed"
 export type { BiteStore, OutboxPort, OutboxView, PrefsPort } from "./lib/ports"
 export { storedPrefs } from "./lib/ports"
 export type { GameWeekPorts } from "./lib/runtime"

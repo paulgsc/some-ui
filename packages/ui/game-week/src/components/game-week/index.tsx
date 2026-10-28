@@ -7,10 +7,10 @@
  * order is `lib/machine.ts`; the microphone, the store and home's feed are
  * `lib/runtime.ts`. It owns one runtime for as long as it is mounted
  * (docs/monorepo-boundaries.md, "Inside a React package"). The legend and
- * the modes are panels this screen opens over itself: which is open is the
+ * the modes open in the shared sheet over this screen: which is open is the
  * screen's own, and nothing outside it depends on it.
  */
-import type { JSX, ReactNode } from "react"
+import type { JSX } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import type { Said } from "@game-week/lib/bite"
 import type { Game, JustHappened, OfferCard } from "@game-week/lib/feed"
@@ -28,15 +28,20 @@ import {
   MINUTE_LINE,
   MODE_WORDS,
   outboxLine,
-  strandedLine,
   WORDS,
 } from "@game-week/lib/words"
 import { cn } from "@some-ui/core-utils"
 import type { ScenarioId } from "@some-ui/game-scenarios"
 import { PHASE_TITLES, PHASES, SCENARIOS } from "@some-ui/game-scenarios"
-import { Button } from "@some-ui/shared"
+import {
+  Button,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@some-ui/shared"
 import { RECORDING_FAILURE_COPY } from "@some-ui/voice-capture"
-import { Eye, EyeOff, List, Mic, Settings2, X } from "lucide-react"
+import { Eye, EyeOff, List, Mic, Settings2 } from "lucide-react"
 
 import { ScenarioIcon, scenarioOf } from "./scenario-icon"
 
@@ -369,42 +374,6 @@ const Asking = ({
   </section>
 )
 
-const Sheet = ({
-  title,
-  onClose,
-  children,
-}: {
-  title: string
-  onClose: () => void
-  children: ReactNode
-}): JSX.Element => (
-  <div
-    role="dialog"
-    aria-modal="true"
-    aria-label={title}
-    data-scroll-intent
-    className={
-      // scroll-intent: a full-screen list of every scenario, read by scrolling
-      "bg-background fixed inset-0 z-50 overflow-y-auto px-4 pt-4 pb-8"
-    }
-  >
-    <div className="mx-auto max-w-md space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold uppercase tracking-wide">{title}</h2>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          aria-label={WORDS.close}
-        >
-          <X className="size-5" aria-hidden />
-        </Button>
-      </div>
-      {children}
-    </div>
-  </div>
-)
-
 const Legend = ({
   onPick,
 }: {
@@ -573,7 +542,7 @@ export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
       ) : (
         <>
           {view === null ? (
-            <p className="text-muted-foreground text-sm">{WORDS.away}</p>
+            <p className="text-muted-foreground text-sm">{WORDS.noOffer}</p>
           ) : (
             <Offers view={view} now={now} onSay={say} />
           )}
@@ -620,44 +589,42 @@ export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
         )}
       </div>
 
-      {state.stranded.length > 0 && (
-        <ul className="space-y-2">
-          {state.stranded.map(({ bite }) => (
-            <li
-              key={bite.id}
-              className="border-warning/50 bg-warning/5 flex items-center gap-3 rounded-xl border p-3 text-sm"
-            >
-              <span className="min-w-0 flex-1">
-                {strandedLine(bite.durationMs)}
-              </span>
-              <Button
-                size="sm"
-                onClick={() => dispatch({ type: "keepAgain", id: bite.id })}
-              >
-                {WORDS.keepAgain}
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-
       {outboxWords !== "" && (
         <p className="text-muted-foreground text-xs">{outboxWords}</p>
       )}
 
-      {panel === "legend" && (
-        <Sheet title={WORDS.legendTitle} onClose={() => setPanel("none")}>
-          <Legend onPick={pickFromLegend} />
-        </Sheet>
-      )}
-      {panel === "modes" && (
-        <Sheet title={WORDS.settingsTitle} onClose={() => setPanel("none")}>
-          <Modes
-            state={state}
-            onPick={(mode) => dispatch({ type: "pickMode", mode })}
-          />
-        </Sheet>
-      )}
+      <Sheet
+        open={panel !== "none"}
+        onOpenChange={(open) => {
+          if (!open) setPanel("none")
+        }}
+      >
+        <SheetContent
+          side="bottom"
+          aria-describedby={undefined}
+          data-scroll-intent
+          className={
+            // scroll-intent: a full-screen list of every scenario, read by scrolling
+            "h-dvh overflow-y-auto px-4 pt-4 pb-8"
+          }
+        >
+          <div className="mx-auto max-w-md space-y-4">
+            <SheetHeader className="text-left">
+              <SheetTitle className="text-xl font-bold uppercase tracking-wide">
+                {panel === "modes" ? WORDS.settingsTitle : WORDS.legendTitle}
+              </SheetTitle>
+            </SheetHeader>
+            {panel === "modes" ? (
+              <Modes
+                state={state}
+                onPick={(mode) => dispatch({ type: "pickMode", mode })}
+              />
+            ) : (
+              <Legend onPick={pickFromLegend} />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

@@ -1,7 +1,9 @@
 /**
  * The game bites kept on this phone (`../model`, `../runtime`): a bite is
- * kept whole or not at all, nothing lets it go but Undo while it is held
- * back, and an unreadable record is moved aside, never written over (GW3).
+ * kept whole or not at all, one the phone could not keep is held by the
+ * store and tried again, nothing lets it go but Undo while it is held back,
+ * no audio a record might name is deleted, and an unreadable record is
+ * moved aside, never written over (GW3).
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import type { KeptBite } from "@some-ui/game-week"
@@ -10,7 +12,8 @@ import { ShelfFullError } from "@some-ui/voice-capture"
 import { describe, expect, it } from "vitest"
 
 import { isReady, parseGameBites, stepGameBites } from "@/lib/game-bites/model"
-import { createGameBites } from "@/lib/game-bites/runtime"
+import type { GameBitesPorts } from "@/lib/game-bites/runtime"
+import { createGameBites, RETRY_MS } from "@/lib/game-bites/runtime"
 
 const T0 = Date.UTC(2026, 10, 1, 21)
 
@@ -26,13 +29,15 @@ const bite = (id: string, holdUntil = T0 + 5_000): KeptBite => ({
 
 function memoryStorage(refuse = false): KeyedStorage & {
   map: Map<string, string>
+  refuse: boolean
 } {
   const map = new Map<string, string>()
   return {
     map,
+    refuse,
     getItem: (key): string | null => map.get(key) ?? null,
-    setItem: (key, value): void => {
-      if (refuse) throw new Error("quota")
+    setItem(key, value): void {
+      if (this.refuse) throw new Error("quota")
       map.set(key, value)
     },
     removeItem: (key): void => void map.delete(key),
@@ -111,35 +116,128 @@ describe("the record of game bites", () => {
   })
 })
 
+/** A clock the test moves, with the timers it runs and the page's visibility. */
+function world(start = T0): {
+  ports: Pick<GameBitesPorts, "now" | "after" | "onVisibility">
+  advance: (ms: number) => Promise<void>
+  show: () => Promise<void>
+} {
+  let now = start
+  let timers: Array<{ at: number; run: () => void }> = []
+  const visibility = new Set<(hidden: boolean) => void>()
+  const settle = async (): Promise<void> => {
+    for (let i = 0; i < 20; i += 1) await Promise.resolve()
+  }
+  return {
+    ports: {
+      now: () => now,
+      after: (ms, run): (() => void) => {
+        const timer = { at: now + ms, run }
+        timers.push(timer)
+        return (): void => {
+          timers = timers.filter((each) => each !== timer)
+        }
+      },
+      onVisibility: (listener): (() => void) => {
+        visibility.add(listener)
+        listener(false)
+        return () => visibility.delete(listener)
+      },
+    },
+    async advance(ms): Promise<void> {
+      now += ms
+      const due = timers.filter(({ at }) => at <= now)
+      timers = timers.filter(({ at }) => at > now)
+      for (const { run } of due) run()
+      await settle()
+    },
+    async show(): Promise<void> {
+      for (const listener of visibility) listener(false)
+      await settle()
+    },
+  }
+}
+
 describe("createGameBites", () => {
   it("keeps the audio and the record together, and a later launch reads them", async () => {
     const storage = memoryStorage()
     const shelf = memoryShelf()
-    const store = createGameBites({ storage, shelf, now: () => T0 })
+    const store = createGameBites({ storage, shelf, ...world().ports })
     await store.keep(bite("b1"), new Blob(["said"]))
-    const again = createGameBites({ storage, shelf, now: () => T0 + 10_000 })
+    const again = createGameBites({
+      storage,
+      shelf,
+      ...world(T0 + 10_000).ports,
+    })
     expect(again.getSnapshot()).toEqual([bite("b1")])
     expect(again.ready().map(({ id }) => id)).toEqual(["b1"])
     await expect(again.audio("b1")).resolves.toBeInstanceOf(Blob)
   })
 
-  it("keeps nothing it cannot keep whole, and says so", async () => {
+  it("keeps nothing it cannot keep whole, and holds the bite to try again", async () => {
     const refusing = memoryShelf()
     const noRecord = createGameBites({
       storage: memoryStorage(true),
       shelf: refusing,
-      now: () => T0,
+      ...world().ports,
     })
     await expect(noRecord.keep(bite("b1"), new Blob(["x"]))).rejects.toThrow()
     expect(refusing.blobs.size).toBe(0)
+    expect(noRecord.unkept()).toBe(1)
 
     const full = createGameBites({
       storage: memoryStorage(),
       shelf: memoryShelf(true),
-      now: () => T0,
+      ...world().ports,
     })
     await expect(full.keep(bite("b1"), new Blob(["x"]))).rejects.toThrow()
     expect(full.getSnapshot()).toEqual([])
+    expect(full.unkept()).toBe(1)
+  })
+
+  it("keeps a held bite once the phone can, on its timer or when the page comes back", async () => {
+    for (const comeBack of ["timer", "shown"] as const) {
+      const storage = memoryStorage(true)
+      const shelf = memoryShelf()
+      const clock = world()
+      const store = createGameBites({ storage, shelf, ...clock.ports })
+      let heard = 0
+      store.subscribe(() => (heard += 1))
+      await expect(store.keep(bite("b1"), new Blob(["x"]))).rejects.toThrow()
+      await clock.advance(RETRY_MS)
+      expect(store.unkept()).toBe(1)
+      storage.refuse = false
+      if (comeBack === "timer") await clock.advance(RETRY_MS)
+      else await clock.show()
+      expect(store.unkept()).toBe(0)
+      expect(store.getSnapshot().map(({ id }) => id)).toEqual(["b1"])
+      expect(shelf.blobs.has("b1")).toBe(true)
+      expect(heard).toBeGreaterThan(0)
+    }
+  })
+
+  it("applies an answer and Undo to a bite it holds (A6)", async () => {
+    const storage = memoryStorage(true)
+    const clock = world()
+    const store = createGameBites({
+      storage,
+      shelf: memoryShelf(),
+      ...clock.ports,
+    })
+    const kept = store.keep(bite("b1", T0 + 600_000), new Blob(["x"]))
+    const answered = store.amend("b1", { how: "offered" }, T0 + 5_000)
+    await expect(kept).rejects.toThrow()
+    await expect(answered).resolves.toBeUndefined()
+    storage.refuse = false
+    await clock.show()
+    expect(store.getSnapshot()).toEqual([
+      { ...bite("b1"), fields: { how: "offered" }, holdUntil: T0 + 5_000 },
+    ])
+
+    storage.refuse = true
+    await expect(store.keep(bite("b2"), new Blob(["y"]))).rejects.toThrow()
+    await store.undo("b2")
+    expect(store.unkept()).toBe(0)
   })
 
   it("runs calls in the order made: an Undo right after a keep finds the bite", async () => {
@@ -147,7 +245,7 @@ describe("createGameBites", () => {
     const store = createGameBites({
       storage: memoryStorage(),
       shelf,
-      now: () => T0,
+      ...world().ports,
     })
     const kept = store.keep(bite("b1"), new Blob(["x"]))
     const undone = store.undo("b1")
@@ -157,19 +255,36 @@ describe("createGameBites", () => {
   })
 
   it("holds a bite back until released, then never lets it go", async () => {
-    let now = T0
+    const clock = world()
     const store = createGameBites({
       storage: memoryStorage(),
       shelf: memoryShelf(),
-      now: () => now,
+      ...clock.ports,
     })
     await store.keep(bite("b1"), new Blob(["x"]))
     expect(store.ready()).toEqual([])
     await store.release("b1")
     expect(store.ready().map(({ id }) => id)).toEqual(["b1"])
-    now += 1
+    await clock.advance(1)
     await expect(store.undo("b1")).rejects.toThrow()
     expect(store.getSnapshot().map(({ id }) => id)).toEqual(["b1"])
+  })
+
+  it("wakes its listeners when a hold runs out on its own (A4)", async () => {
+    const clock = world()
+    const store = createGameBites({
+      storage: memoryStorage(),
+      shelf: memoryShelf(),
+      ...clock.ports,
+    })
+    await store.keep(bite("b1"), new Blob(["x"]))
+    let heard = 0
+    store.subscribe(() => (heard += 1))
+    await clock.advance(4_999)
+    expect(heard).toBe(0)
+    await clock.advance(1)
+    expect(heard).toBe(1)
+    expect(store.ready().map(({ id }) => id)).toEqual(["b1"])
   })
 
   it("moves an unreadable record aside rather than writing over it", () => {
@@ -178,7 +293,7 @@ describe("createGameBites", () => {
     const store = createGameBites({
       storage,
       shelf: memoryShelf(),
-      now: () => T0,
+      ...world().ports,
     })
     expect(store.getSnapshot()).toEqual([])
     expect(
@@ -188,17 +303,52 @@ describe("createGameBites", () => {
     ).toBe(true)
   })
 
-  it("sweeps audio no bite names, and keeps what one does", async () => {
+  it("deletes no audio a record might name, however the record opened (A2)", async () => {
+    const opens: Array<[string, () => KeyedStorage | null]> = [
+      ["empty", (): KeyedStorage => memoryStorage()],
+      [
+        "moved",
+        (): KeyedStorage => {
+          const storage = memoryStorage()
+          storage.map.set("some-ui:game-bites", "[{broken")
+          return storage
+        },
+      ],
+      [
+        "unreadable",
+        (): KeyedStorage => ({
+          getItem: (): string => {
+            throw new Error("blocked")
+          },
+          setItem: (): void => undefined,
+          removeItem: (): void => undefined,
+        }),
+      ],
+      ["no storage", (): null => null],
+    ]
+    for (const [how, storage] of opens) {
+      const shelf = memoryShelf()
+      shelf.blobs.set("b1", new Blob(["said"]))
+      const store = createGameBites({
+        storage: storage(),
+        shelf,
+        ...world().ports,
+      })
+      await store.release("b9").catch(() => undefined)
+      expect([...shelf.blobs.keys()], how).toEqual(["b1"])
+    }
+  })
+
+  it("adds a bite whose audio was written when the app stopped before its record (A3)", async () => {
+    const storage = memoryStorage()
     const shelf = memoryShelf()
-    const store = createGameBites({
-      storage: memoryStorage(),
-      shelf,
-      now: () => T0,
-    })
-    await store.keep(bite("b1"), new Blob(["x"]))
-    shelf.blobs.set("orphan", new Blob(["y"]))
-    store.sweep()
+    storage.map.set("some-ui:game-bites.keeping", JSON.stringify([bite("b1")]))
+    shelf.blobs.set("b1", new Blob(["said"]))
+    shelf.blobs.set("named-by-nothing", new Blob(["kept anyway"]))
+    const store = createGameBites({ storage, shelf, ...world().ports })
     await store.release("b1")
-    expect([...shelf.blobs.keys()]).toEqual(["b1"])
+    expect(store.getSnapshot().map(({ id }) => id)).toEqual(["b1"])
+    expect([...shelf.blobs.keys()]).toEqual(["b1", "named-by-nothing"])
+    expect(storage.map.get("some-ui:game-bites.keeping")).toBe("[]")
   })
 })

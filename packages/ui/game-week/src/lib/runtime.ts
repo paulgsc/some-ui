@@ -93,7 +93,7 @@ export function createGameWeek(ports: GameWeekPorts): GameWeekRuntime {
         const { bite, audio } = effect
         ports.store.keep(bite, audio).then(
           () => dispatch({ type: "kept", id: bite.id }),
-          () => dispatch({ type: "keepFailed", bite, audio })
+          () => dispatch({ type: "keepFailed", id: bite.id })
         )
         return
       }

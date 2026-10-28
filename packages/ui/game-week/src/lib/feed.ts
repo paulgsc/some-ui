@@ -4,8 +4,9 @@
  * the scenarios that can be happening now, and what just happened). Home's
  * scenario engine (GWB3) makes the offers and a live connection (GWB4)
  * carries them; until then `fixtureFeed` stands in for both in development
- * and tests, and the Android app gets `awayFeed`: no offers, as away from
- * home. A real source plugs in as another `FeedPort`.
+ * and tests, and the Android app gets `noGamesFeed`: no games, so nothing
+ * can be recorded there yet, and the screen says so. A real source plugs in
+ * as another `FeedPort`.
  */
 import type { ScenarioId } from "@some-ui/game-scenarios"
 
@@ -64,8 +65,8 @@ export type FeedPort = {
   watch: (listener: (feed: Feed) => void) => () => void
 }
 
-/** No games and no offers: the phone has no word from home. */
-export const awayFeed: FeedPort = {
+/** No games and no offers: home has sent no week yet. */
+export const noGamesFeed: FeedPort = {
   watch(listener): () => void {
     listener({ games: [], offer: null })
     return () => undefined

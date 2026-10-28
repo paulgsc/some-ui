@@ -1,6 +1,7 @@
 export type { BlobShelf } from "./lib/blob-shelf"
 export { blobShelf, savingShelf, ShelfFullError } from "./lib/blob-shelf"
 export { bytesBesides, bytesOf, connection, done, result } from "./lib/idb"
+export { onPageVisibility } from "./lib/page"
 export type { StorageRoom } from "./lib/room"
 export { claimedRoom, setStorageRoom, withRoom } from "./lib/room"
 export type { Playback, Player } from "./lib/player"

@@ -17,7 +17,9 @@
  * - **A bite is kept the moment it stops** (GW3): `keep` leaves with the
  *   step that read the take, held back from home only while Undo, or the
  *   question of what a bite said first was about, is open. A keep that
- *   fails holds the bite and its audio here until the person keeps it again.
+ *   fails is the store's to hold and try again (`BiteStore.keep`), apart
+ *   from this screen, so leaving it loses nothing; an answer or Undo still
+ *   reaches the bite there.
  * - **Every field is set at the stop** (GW4): `biteFields` from what the
  *   screen showed when talking started.
  * - **Nothing records while the page is gone.** Leaving, or the screen
@@ -98,12 +100,13 @@ export type GameWeekState = {
   readonly offer: Offer | null
   readonly prefs: Prefs
   readonly activity: Activity
-  /** Bites handed to the store and not yet answered. */
-  readonly keeping: ReadonlyArray<string>
-  /** Bites the store could not keep, held here until kept again. */
-  readonly stranded: ReadonlyArray<{
-    readonly bite: KeptBite
-    readonly audio: Blob
+  /**
+   * Bites handed to the store and not yet answered, each with the hold the
+   * store has for it (an answer given meanwhile moves it): Undo's end.
+   */
+  readonly keeping: ReadonlyArray<{
+    readonly id: string
+    readonly holdUntil: number
   }>
   /**
    * The bite Undo would throw away, and until when; `until` is null while
@@ -120,7 +123,6 @@ export type GameWeekIntent =
   | { readonly type: "done" }
   | { readonly type: "answer"; readonly said: Said | null }
   | { readonly type: "undo" }
-  | { readonly type: "keepAgain"; readonly id: string }
   | { readonly type: "pickGame"; readonly gameId: string }
   | { readonly type: "toggleWatching"; readonly gameId: string }
   | { readonly type: "pickMode"; readonly mode: ModeId }
@@ -144,11 +146,7 @@ type GameWeekSignal =
     }
   | { readonly type: "takeFailed" }
   | { readonly type: "kept"; readonly id: string }
-  | {
-      readonly type: "keepFailed"
-      readonly bite: KeptBite
-      readonly audio: Blob
-    }
+  | { readonly type: "keepFailed"; readonly id: string }
   | { readonly type: "amendFailed" }
   | { readonly type: "undoFailed" }
 
@@ -186,7 +184,6 @@ export function initialState(prefs: Prefs, now: number): GameWeekState {
     prefs,
     activity: { kind: "idle" },
     keeping: [],
-    stranded: [],
     undo: null,
     blocked: null,
     notice: "",
@@ -227,7 +224,8 @@ export function offerView(state: GameWeekState): OfferView | null {
   const justHappened = offer.justHappened
     .filter((each) => {
       const age = now - Date.parse(each.at)
-      return age >= 0 && age <= rules.justHappened.keepMs
+      // Home's clock can run a little ahead of the phone's: just now.
+      return Math.max(0, age) <= rules.justHappened.keepMs
     })
     .sort((a, b) => b.at.localeCompare(a.at))
     .slice(0, rules.justHappened.count)
@@ -298,13 +296,16 @@ function settle(
   fields: Readonly<Record<string, string>>
 ): Step {
   const holdUntil = state.now + UNDO_MS
-  const kept = !state.keeping.includes(bite.id)
+  const kept = !state.keeping.some(({ id }) => id === bite.id)
   return {
     state: {
       ...state,
       activity: { kind: "idle" },
       // Undo stays offered a few seconds more; a bite not yet kept gets
-      // its Undo once it is.
+      // its Undo once it is, until the hold this answer gave it.
+      keeping: state.keeping.map((each) =>
+        each.id === bite.id ? { id: bite.id, holdUntil } : each
+      ),
       undo: kept ? { id: bite.id, until: holdUntil } : state.undo,
     },
     effects: [{ type: "amend", id: bite.id, fields, holdUntil }],
@@ -439,7 +440,7 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
       const kept = {
         ...state,
         now: event.at,
-        keeping: [...state.keeping, bite.id],
+        keeping: [...state.keeping, { id: bite.id, holdUntil: bite.holdUntil }],
         notice: keptLine(bite.durationMs),
       }
       const keep: GameWeekEffect = { type: "keep", bite, audio: take.blob }
@@ -473,53 +474,33 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
     }
 
     case "kept": {
-      const keeping = state.keeping.filter((id) => id !== event.id)
-      const settled = { ...state, keeping }
+      const entry = state.keeping.find(({ id }) => id === event.id)
+      if (entry === undefined) return stay(state)
+      const settled = {
+        ...state,
+        keeping: state.keeping.filter((each) => each !== entry),
+      }
       if (activity.kind === "asking" && activity.bite.id === event.id)
         return stay({ ...settled, undo: { id: event.id, until: null } })
       const closed = closeUndo(settled)
       return {
         state: {
           ...closed.state,
-          undo: { id: event.id, until: state.now + UNDO_MS },
+          // The store's own hold: Undo is offered exactly while it takes one.
+          undo: { id: event.id, until: entry.holdUntil },
         },
         effects: closed.effects,
       }
     }
 
     case "keepFailed": {
-      const { id } = event.bite
+      // The store holds the bite and tries again; an answer still being
+      // asked reaches it there, so the question stays open.
       return stay({
         ...state,
-        keeping: state.keeping.filter((each) => each !== id),
-        stranded: [
-          ...state.stranded.filter((each) => each.bite.id !== id),
-          { bite: event.bite, audio: event.audio },
-        ],
-        // A bite said first that could not be kept asks nothing more: it is
-        // held as it is, and kept again from the list.
-        activity:
-          activity.kind === "asking" && activity.bite.id === id
-            ? { kind: "idle" }
-            : activity,
+        keeping: state.keeping.filter(({ id }) => id !== event.id),
         notice: NOTICES.notKept,
       })
-    }
-
-    case "keepAgain": {
-      const stranded = state.stranded.find((each) => each.bite.id === event.id)
-      if (stranded === undefined) return stay(state)
-      // Held back only for Undo from now: what it was about was settled.
-      const bite = { ...stranded.bite, holdUntil: state.now + UNDO_MS }
-      return {
-        state: {
-          ...state,
-          stranded: state.stranded.filter((each) => each !== stranded),
-          keeping: [...state.keeping, bite.id],
-          notice: "",
-        },
-        effects: [{ type: "keep", bite, audio: stranded.audio }],
-      }
     }
 
     case "answer": {
@@ -559,6 +540,8 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
     }
 
     case "amendFailed": {
+      // That the bite itself isn't kept yet is the news that matters more.
+      if (state.notice === NOTICES.notKept) return stay(state)
       return stay({ ...state, notice: NOTICES.notNoted })
     }
 

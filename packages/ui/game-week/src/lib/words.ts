@@ -13,9 +13,10 @@ export const WORDS = {
   watching: "Watching",
   notWatching: "Not watching",
   everyScenario: "Every scenario",
-  away: "Away from home: say it first or pick from every scenario. Your bites wait on this phone.",
+  noOffer:
+    "Nothing offered for this game yet: say it first, or pick from every scenario. Your bites wait on this phone.",
   noGames:
-    "No games this week yet. They show here once home has the week's schedule.",
+    "Recording opens once home sends this week's games. Until then, every scenario is listed under Every scenario.",
   likeliest: "Likeliest now",
   alsoNow: "Could also be",
   justHappened: "Just happened",
@@ -26,9 +27,7 @@ export const WORDS = {
   askTitle: "What was that about?",
   later: "Later: home works it out from what I said",
   undo: "Undo",
-  keepAgain: "Keep it again",
   settingsTitle: "How much to show",
-  close: "Close",
   legendTitle: "Every scenario",
   legendLede: "Tap one to talk about it.",
   recordingLabel: "Saying it",
@@ -39,7 +38,7 @@ export const NOTICES = {
   tooShort: "Too short to keep. Tap, talk, then tap Done.",
   notTaken: "That one couldn't be kept. Try again?",
   notKept:
-    "That bite couldn't be kept on this phone yet. It's held here until you keep it again.",
+    "That bite couldn't be kept on this phone yet. The app holds it and keeps trying while it's open.",
   thrownAway: "Thrown away. Nothing kept.",
   tooLateToUndo: "Too late to undo: that bite is on its way home.",
   notNoted:
@@ -51,11 +50,6 @@ export const NOTICES = {
 /** What a kept bite's toast says. */
 export function keptLine(durationMs: number): string {
   return `Kept, ${seconds(durationMs)}.`
-}
-
-/** A bite the phone couldn't keep yet, as its row says it. */
-export function strandedLine(durationMs: number): string {
-  return `A ${seconds(durationMs)} bite, held here until it's kept.`
 }
 
 /** `ms` as whole seconds, "4 s". */
@@ -117,6 +111,13 @@ export const MINUTE_LINE = "Every bite stops at one minute."
 /** What the outbox line under the screen says, or "" when nothing waits. */
 export function outboxLine(view: OutboxView): string {
   const lines: Array<string> = []
+  if (view.notKept > 0) {
+    lines.push(
+      view.notKept === 1
+        ? "1 bite couldn't be kept on this phone yet. The app keeps trying while it's open."
+        : `${view.notKept} bites couldn't be kept on this phone yet. The app keeps trying while it's open.`
+    )
+  }
   if (view.waiting > 0) {
     const bites =
       view.waiting === 1 ? "1 bite waits" : `${view.waiting} bites wait`

@@ -11,7 +11,6 @@ import {
   MODE_WORDS,
   NOTICES,
   outboxLine,
-  strandedLine,
   WORDS,
 } from "@game-week/lib/words"
 import { describe, expect, it } from "vitest"
@@ -20,9 +19,13 @@ const MACHINERY =
   /\b(grant|consent|scope|sync\w*|server|request|response|status|error|api|http\w*|https?:|\d{3}\b|token|queue|retry|null|undefined|lane|pull\w*|outbox|upload\w*|socket|offset|seq|catalog|fixture|feed|store|idb|indexeddb|blob)\b/i
 
 function everyPhrase(): Array<string> {
-  const views = [0, 1, 3].flatMap((waiting) =>
-    [0, 1, 2].flatMap((refused) =>
-      [true, false].map((sending) => outboxLine({ waiting, refused, sending }))
+  const views = [0, 1, 2].flatMap((notKept) =>
+    [0, 1, 3].flatMap((waiting) =>
+      [0, 1, 2].flatMap((refused) =>
+        [true, false].map((sending) =>
+          outboxLine({ notKept, waiting, refused, sending })
+        )
+      )
     )
   )
   return [
@@ -35,7 +38,6 @@ function everyPhrase(): Array<string> {
     ]),
     MINUTE_LINE,
     keptLine(4_200),
-    strandedLine(4_200),
     ago(40_000),
     ago(150_000),
     ...views,
@@ -47,16 +49,20 @@ describe("the recorder's words", () => {
     expect(phrase).not.toMatch(MACHINERY)
   })
 
-  it("says what waits, and what home couldn't take, in counts", () => {
-    expect(outboxLine({ waiting: 0, refused: 0, sending: true })).toBe("")
-    expect(outboxLine({ waiting: 1, refused: 0, sending: true })).toBe(
+  it("says what isn't kept yet, what waits, and what home couldn't take, in counts", () => {
+    const none = { notKept: 0, waiting: 0, refused: 0, sending: true }
+    expect(outboxLine(none)).toBe("")
+    expect(outboxLine({ ...none, waiting: 1 })).toBe(
       "1 bite waits on this phone until home has it."
     )
-    expect(outboxLine({ waiting: 3, refused: 2, sending: true })).toBe(
+    expect(outboxLine({ ...none, waiting: 3, refused: 2 })).toBe(
       "3 bites wait on this phone until home has them. Home couldn't take 2 bites. They stay on this phone."
     )
-    expect(outboxLine({ waiting: 2, refused: 0, sending: false })).toMatch(
+    expect(outboxLine({ ...none, waiting: 2, sending: false })).toMatch(
       /keep voice notes on home/
+    )
+    expect(outboxLine({ ...none, notKept: 2, waiting: 1 })).toBe(
+      "2 bites couldn't be kept on this phone yet. The app keeps trying while it's open. 1 bite waits on this phone until home has it."
     )
   })
 

@@ -37,6 +37,11 @@ export type BiteStore = {
 
 /** What of the kept bites is still only on this phone, in the person's terms. */
 export type OutboxView = {
+  /**
+   * Recorded here but not kept yet: the phone's storage refused them, and
+   * the app holds them and tries again while it is open.
+   */
+  readonly notKept: number
   /** Kept here, not yet held by home. */
   readonly waiting: number
   /** Home said it can't take these; each stays on this phone. */

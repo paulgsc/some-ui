@@ -151,7 +151,9 @@ describe("keeping a bite (GW3, GW4)", () => {
       at: T0 + 5_000,
     })
     expect(next.state.activity.kind).toBe("idle")
-    expect(next.state.keeping).toEqual(["b1"])
+    expect(next.state.keeping).toEqual([
+      { id: "b1", holdUntil: T0 + 5_000 + UNDO_MS },
+    ])
     const keep = next.effects.find((e) => e.type === "keep")
     expect(keep?.type === "keep" && keep.bite).toMatchObject({
       id: "b1",
@@ -174,31 +176,18 @@ describe("keeping a bite (GW3, GW4)", () => {
     expect(next.state.notice).toBe(NOTICES.tooShort)
   })
 
-  it("holds a bite the store could not keep, until it is kept again", () => {
+  it("leaves a bite the store could not keep to the store, and says so", () => {
     const taken = step(stopped(), {
       type: "taken",
       take: take(),
       id: "b1",
       at: T0 + 5_000,
     })
-    const keep = taken.effects.find((e) => e.type === "keep")
-    if (keep?.type !== "keep") throw new Error("no keep")
-    const failed = step(taken.state, {
-      type: "keepFailed",
-      bite: keep.bite,
-      audio: keep.audio,
-    })
-    expect(failed.state.stranded.map((s) => s.bite.id)).toEqual(["b1"])
+    const failed = step(taken.state, { type: "keepFailed", id: "b1" })
+    expect(failed.effects).toEqual([])
+    expect(failed.state.keeping).toEqual([])
+    expect(failed.state.undo).toBeNull()
     expect(failed.state.notice).toBe(NOTICES.notKept)
-    const again = step(failed.state, { type: "keepAgain", id: "b1" })
-    expect(again.state.stranded).toEqual([])
-    expect(again.effects).toEqual([
-      {
-        type: "keep",
-        bite: { ...keep.bite, holdUntil: T0 + 5_000 + UNDO_MS },
-        audio: keep.audio,
-      },
-    ])
   })
 })
 
@@ -232,6 +221,17 @@ describe("Undo", () => {
     const next = step(kept(), { type: "say", said: THIRD })
     expect(next.effects).toContainEqual({ type: "release", id: "b1" })
     expect(next.state.undo).toBeNull()
+  })
+
+  it("is offered until the store's hold ends, however late the keep lands", () => {
+    const late = run(
+      recording(),
+      { type: "done" },
+      { type: "taken", take: take(), id: "b1", at: T0 + 5_000 },
+      { type: "clock", now: T0 + 8_000 },
+      { type: "kept", id: "b1" }
+    ).state
+    expect(late.undo).toEqual({ id: "b1", until: T0 + 5_000 + UNDO_MS })
   })
 
   it("says so when the bite had already gone", () => {
@@ -327,6 +327,40 @@ describe("say it first", () => {
     expect(step(s.state, { type: "kept", id: "b2" }).state.undo?.id).toBe("b2")
   })
 
+  it("an answer given while the keep fails reaches the store, and the screen says the bite isn't kept", () => {
+    const s = run(
+      recording({ how: "said-first" }),
+      { type: "done" },
+      { type: "taken", take: take(), id: "b2", at: T0 + 5_000 },
+      { type: "answer", said: null },
+      { type: "keepFailed", id: "b2" }
+    )
+    // The amend left with the answer, after the keep: the store applies it
+    // to the bite it holds.
+    expect(s.effects).toEqual([])
+    expect(s.state.notice).toBe(NOTICES.notKept)
+    expect(step(s.state, { type: "amendFailed" }).state.notice).toBe(
+      NOTICES.notKept
+    )
+  })
+
+  it("an answer while keeping moves the hold Undo ends at", () => {
+    const answered = run(
+      recording({ how: "said-first" }),
+      { type: "done" },
+      { type: "taken", take: take(), id: "b2", at: T0 + 5_000 },
+      { type: "clock", now: T0 + 7_000 },
+      { type: "answer", said: null }
+    ).state
+    expect(answered.keeping).toEqual([
+      { id: "b2", holdUntil: T0 + 7_000 + UNDO_MS },
+    ])
+    expect(step(answered, { type: "kept", id: "b2" }).state.undo).toEqual({
+      id: "b2",
+      until: T0 + 7_000 + UNDO_MS,
+    })
+  })
+
   it("a pick from every scenario names no offer", () => {
     const next = step(asking(), {
       type: "answer",
@@ -340,7 +374,7 @@ describe("say it first", () => {
   })
 })
 
-describe("away from home", () => {
+describe("with no offer for the game", () => {
   const away = here(INITIAL_PREFS, { games: FEED.games, offer: null })
 
   it("offers nothing", () => {
@@ -397,6 +431,27 @@ describe("modes (GW25)", () => {
       "in.big-play",
       "in.injury",
       "in.kick",
+    ])
+  })
+
+  it("shows what just happened by home's clock running ahead as just now", () => {
+    const { offer } = FEED
+    if (offer === null) throw new Error("the fixture offers")
+    const ahead = {
+      ...FEED,
+      offer: {
+        ...offer,
+        justHappened: [
+          {
+            scenario: "in.sack" as const,
+            context: "Sacked on 3rd down",
+            at: new Date(T0 + 2_000).toISOString(),
+          },
+        ],
+      },
+    }
+    expect(view("light", ahead)?.justHappened.map((j) => j.scenario)).toEqual([
+      "in.sack",
     ])
   })
 

@@ -93,13 +93,18 @@ export function useVoiceHome(): KeptState {
 /*
  * What of the game bites is still only on this phone (`@some-ui/game-week`'s
  * `OutboxPort`), for the recorder to say in the person's terms: how many
+ * the phone could not keep yet (held while the app is open), how many
  * home does not hold yet, how many home said it can't take (each stays on
  * this phone, its copy for home included), and whether this phone sends
  * voice notes home at all. It reads, and sends nothing.
  */
 
-/** The view from the bites' ids, what home answered, and whether they are sent. */
+/**
+ * The view from the bites not kept yet, the kept bites' ids, what home
+ * answered, and whether they are sent.
+ */
 export function outboxView(
+  notKept: number,
   ids: ReadonlyArray<string>,
   home: VoiceHomeState,
   sending: boolean
@@ -107,6 +112,7 @@ export function outboxView(
   const held = new Set(home.held)
   const refused = new Set(home.refused.map(({ id }) => id))
   return {
+    notKept,
     waiting: ids.filter((id) => !held.has(id) && !refused.has(id)).length,
     refused: ids.filter((id) => refused.has(id)).length,
     sending,
@@ -117,6 +123,7 @@ let last: OutboxView | null = null
 
 function sameView(a: OutboxView, b: OutboxView): boolean {
   return (
+    a.notKept === b.notKept &&
     a.waiting === b.waiting &&
     a.refused === b.refused &&
     a.sending === b.sending
@@ -125,10 +132,10 @@ function sameView(a: OutboxView, b: OutboxView): boolean {
 
 export const gameOutbox: OutboxPort = {
   getSnapshot(): OutboxView {
+    const bites = phoneGameBites()
     const next = outboxView(
-      phoneGameBites()
-        .getSnapshot()
-        .map(({ id }) => id),
+      bites.unkept(),
+      bites.getSnapshot().map(({ id }) => id),
       phoneVoiceHome().getSnapshot(),
       keptNow(VOICE_SCOPES)
     )

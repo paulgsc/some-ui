@@ -4,6 +4,7 @@ import type { BiteStore } from "@game-week/lib/ports"
 import { INITIAL_PREFS, parsePrefs, storedPrefs } from "@game-week/lib/ports"
 import type { GameWeekPorts } from "@game-week/lib/runtime"
 import { createGameWeek } from "@game-week/lib/runtime"
+import { NOTICES } from "@game-week/lib/words"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { T0 } from "./fixture"
@@ -85,7 +86,7 @@ describe("createGameWeek", () => {
     })
   })
 
-  it("holds a bite the store refused, for keeping again", async () => {
+  it("leaves a bite the store refused to the store, and says so", async () => {
     vi.useFakeTimers()
     const runtime = createGameWeek(ports(memoryStore(true)))
     const detach = runtime.attach()
@@ -93,9 +94,8 @@ describe("createGameWeek", () => {
     await vi.advanceTimersByTimeAsync(0)
     runtime.dispatch({ type: "done" })
     await vi.advanceTimersByTimeAsync(0)
-    expect(runtime.getSnapshot().stranded.map((s) => s.bite.id)).toEqual([
-      "bite-1",
-    ])
+    expect(runtime.getSnapshot().keeping).toEqual([])
+    expect(runtime.getSnapshot().notice).toBe(NOTICES.notKept)
     detach()
   })
 })
