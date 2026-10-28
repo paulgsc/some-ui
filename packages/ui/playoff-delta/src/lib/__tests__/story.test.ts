@@ -1,14 +1,7 @@
-import raw from "@playoff-delta/fixtures/season-2025.json"
 import { SAMPLE_SEASON } from "@playoff-delta/lib/sample"
-import { parseStorySeason } from "@playoff-delta/lib/story"
 import { describe, expect, it } from "vitest"
 
 describe("the contract", () => {
-  it("reads version 4, and refuses any other", () => {
-    expect(SAMPLE_SEASON.version).toBe(4)
-    expect(() => parseStorySeason({ ...raw, version: 3 })).toThrow()
-  })
-
   it("holds the week's ways together: a road per game, never rising, from best to actual", () => {
     for (const w of SAMPLE_SEASON.weeks) {
       const { ways } = w

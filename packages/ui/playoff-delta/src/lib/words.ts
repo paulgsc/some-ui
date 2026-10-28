@@ -168,8 +168,11 @@ export function widthOf(band: Band): number {
   return Math.round((top - (BANDS[i]?.from ?? 0)) * 100)
 }
 
-/** Earned, and literal: the week had a major or minor piece, and missed none. */
-export const CLEAN_RUN = "a clean run"
+/** Earned, and literal. */
+export const CLEAN_RUN = {
+  phrase: "a clean run",
+  means: "a week with a major or minor piece that missed none",
+} as const
 
 export type Stakes = "rush-hour" | "traffic" | "empty-road"
 

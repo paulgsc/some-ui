@@ -229,7 +229,7 @@ export const Rank = ({ week }: SlideProps): JSX.Element => {
       <div>
         <b className={`pd-big block ${BAND_CLASS[band]}`}>{phraseOf(band)}</b>
         {cleanRun(week) ? (
-          <span className="pd-badge pd-in">{CLEAN_RUN}</span>
+          <span className="pd-badge pd-in">{CLEAN_RUN.phrase}</span>
         ) : null}
       </div>
       <Reveal at={0.3} className="pd-say">

@@ -46,6 +46,7 @@ import {
 import {
   BANDS,
   CALLS,
+  CLEAN_RUN,
   live,
   MATERIAL,
   medalOf,
@@ -55,6 +56,7 @@ import {
   PIECE_ORDER,
   PIECES,
   STAKES,
+  VERBS,
   widthOf,
 } from "./words"
 
@@ -128,10 +130,10 @@ export function legendLine(id: LegendSlide): string {
       }).join(" ")
     }
     case "material": {
-      return `A piece is ${MATERIAL.major.word} when it can move us ${MATERIAL.major.worth}, ${MATERIAL.minor.word} at ${MATERIAL.minor.worth}, and ${MATERIAL.idle.word} ${MATERIAL.idle.worth}. A piece is made when it goes the way the best week wanted, missed when it doesn't. Our result can wake a piece: idle before it, live after it.`
+      return `A piece is ${MATERIAL.major.word} when it can move us ${MATERIAL.major.worth}, ${MATERIAL.minor.word} at ${MATERIAL.minor.worth}, and ${MATERIAL.idle.word} ${MATERIAL.idle.worth}. ${(["made", "missed", "woke"] as const).map((v) => `${capital(VERBS[v].word)}: ${VERBS[v].means}.`).join(" ")}`
     }
     case "bands": {
-      return `Each week lands in a band: of the ways it could have gone, how many would have left us worse. ${BANDS.map((b) => `${b.phrase}: ${widthOf(b.band)} weeks in 100`).join(". ")}. A clean run misses nothing that mattered.`
+      return `Each week lands in a band: of the ways it could have gone, how many would have left us worse. ${BANDS.map((b) => `${b.phrase}: ${widthOf(b.band)} weeks in 100`).join(". ")}. ${capital(CLEAN_RUN.phrase)}: ${CLEAN_RUN.means}.`
     }
     case "calls": {
       return `Next week is ${Object.values(STAKES)

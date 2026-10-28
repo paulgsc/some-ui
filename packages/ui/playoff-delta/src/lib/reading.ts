@@ -241,7 +241,7 @@ function callClause(season: StorySeason, week: StoryWeek): string {
  */
 export function sentence(season: StorySeason, week: StoryWeek): string {
   const band = phraseOf(weekBand(week))
-  const clean = cleanRun(week) ? `, ${CLEAN_RUN}` : ""
+  const clean = cleanRun(week) ? `, ${CLEAN_RUN.phrase}` : ""
   return [
     `${band}${clean}.`,
     `${OWN_WORDS[ownPart(week)]}; the league ran ${phraseOf(leagueBand(week)).toLowerCase()}.`,

@@ -11,12 +11,6 @@
  * rest of the season can go in which the team gets in; a result's
  * "leverage" the share as it went minus the share had it gone the other way;
  * a week's "spread" how far its results could have moved the share.
- *
- * Version 4 adds the week's ways (`Ways`): every way the week's results could
- * have gone, each counted against the same rests of the season, so the best
- * week, each game's price, the road from best to actual and the week's rank
- * all come from one table and add up; the league's podium (`Podium`); and
- * next week's best way (`stake.pieces`).
  */
 
 import { z } from "zod"
