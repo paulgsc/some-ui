@@ -68,7 +68,7 @@ What follows from them:
   session delete, the `reflection-voice` and `scene-voice` budgets, the Build Journal takes
   store in `packages/ui/soundbites`, the "let it go" steps), so an append-only claim would
   be false on landing. Declaring it, with a tag at each discard site, waits on the owner's
-  call about those sites.
+  call about those sites, which `docs/discard-sites.md` lists with each ruling so far (#2265).
 
 `/mission` (`apps/www/src/routes/mission.tsx`) says the same to the viewer.
 

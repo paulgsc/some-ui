@@ -201,6 +201,43 @@
             "by": "none"
           },
           "amendments": []
+        },
+        {
+          "id": "MI7",
+          "kind": "RE9",
+          "property": "work",
+          "claim": "What the routines leave grows by a stated model, and home keeps every file.",
+          "requirement": "The mailbox keeps a file's bytes only until home holds it and it has been live 30 days; home keeps a row per file put, per file handed over and per Jobs event, for good; the bytes this adds per file and per day are stated from measurement.",
+          "verdict": "unproven",
+          "conclusion": "Each file the routines put is kept on home for good and leaves the mailbox once home holds it; how many bytes a day that adds has not been measured yet.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "The mailbox drops a live file's bytes only after its archive row exists and home holds it (DROP_BYTES_SQL).",
+              "ref": "some-ui:apps/mailbox/src/store.ts"
+            },
+            {
+              "class": "structural",
+              "says": "mailbox_item, mailbox_outgoing and mailbox_handed refuse UPDATE and DELETE; their rows go only with their account.",
+              "ref": "server:migrations/20261023000100_create_mailbox_copy.up.sql"
+            },
+            {
+              "class": "structural",
+              "says": "jobs_event refuses UPDATE and DELETE; its rows go only with their account.",
+              "ref": "server:migrations/20261018000100_create_jobs_record.up.sql"
+            },
+            {
+              "class": "unknown",
+              "says": "Home samples every table's bytes once a day (storage_sample, server#551), but no samples have been read yet: they start once file-host is restarted on the box.",
+              "ref": "server:docs/storage.md"
+            }
+          ],
+          "tracked": "some-ui#2266",
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/storage.jsonnet"
+          },
+          "amendments": []
         }
       ]
     },
@@ -260,6 +297,33 @@
               }
             ],
             "limits": "Local SQLite steps, not D1's billed rows; excludes the index's extra write and storage per ask."
+          },
+          "amendments": []
+        },
+        {
+          "id": "MW3",
+          "kind": "RE9",
+          "property": "work",
+          "claim": "What archiving keeps grows by a small row per archived file in the mailbox, and by the file's bytes on home.",
+          "requirement": "The mailbox's archived and restored tables grow by one row per file archived or put back, an ask leaves once it is answered, and home's mailbox_archive keeps a row per archived file; the rate is stated from measurement.",
+          "verdict": "unproven",
+          "conclusion": "The mailbox's archive index only grows, by a small row per archived file, home keeps each archived file's bytes (up to 1 MiB) for good, and an answered ask leaves; neither rate has been measured yet.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "archived and restored are append-only; an ask's row goes when the file is put back (CLOSE_ASK_SQL).",
+              "ref": "some-ui:apps/mailbox/src/store.ts"
+            },
+            {
+              "class": "unknown",
+              "says": "Home samples every table's bytes once a day (storage_sample, server#551), but no samples have been read yet: they start once file-host is restarted on the box.",
+              "ref": "server:docs/storage.md"
+            }
+          ],
+          "tracked": "some-ui#2266",
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/storage.jsonnet"
           },
           "amendments": []
         }
@@ -352,6 +416,38 @@
           "watch": {
             "by": "dashboard",
             "ref": "server:infra/grafana/dashboards/transcribe.jsonnet"
+          },
+          "amendments": []
+        },
+        {
+          "id": "VH3",
+          "kind": "RE9",
+          "property": "work",
+          "claim": "Voice notes on home grow by a stated model, and their audio is kept for good.",
+          "requirement": "Home keeps each voice note's audio and transcript for good (owner, 2026-10-25); its growth per note and per day is stated from measurement, and the phone keeps its copy only until home holds it.",
+          "verdict": "unproven",
+          "conclusion": "Each note's audio is kept on home for good and the phone lets its copy go once home holds it; how fast the audio grows, and when it should move off the box (about 20 GB was the plan), is not measured yet.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "voice_note_audio is deleted only by its account's deletion trigger, and a trigger refuses UPDATE: audio is kept for good.",
+              "ref": "server:migrations/20261025000100_create_voice_note.up.sql"
+            },
+            {
+              "class": "structural",
+              "says": "The phone's copy of a note leaves once home holds it (voice-home).",
+              "ref": "some-ui:apps/www/src/lib/voice-home"
+            },
+            {
+              "class": "unknown",
+              "says": "Home samples every table's bytes once a day (storage_sample, server#551), but no samples have been read yet: they start once file-host is restarted on the box.",
+              "ref": "server:docs/storage.md"
+            }
+          ],
+          "tracked": "some-ui#2266",
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/storage.jsonnet"
           },
           "amendments": []
         }
@@ -492,22 +588,28 @@
           "claim": "What the game feed keeps grows by a model the owner chose.",
           "requirement": "The bytes kept per followed game and per week are stated and bounded by a model the owner decided, and the play log is never traded for space.",
           "verdict": "unproven",
-          "conclusion": "Every response is kept whole, so a live game's summary, up to about 160 KB, is stored every 15 s: roughly 1 GB per Sunday slate, with no model chosen yet between content-addressed bodies and following fewer games.",
+          "conclusion": "Since server#555, each distinct answer ESPN gives is kept once and every fetch keeps only a small row naming it, with nothing deleted and no cap on the games followed, as the owner chose; how many distinct bodies a real Sunday leaves is not measured yet.",
           "evidence": [
             {
-              "class": "derived",
-              "says": "About 840 summaries per game (3.5 h at one per 15 s) at a mean near 100 KB, across 13 Sunday games, is about 1.1 GB; the final summary fixture is 159 KB.",
-              "ref": "server:crates/nfl_feed/testdata"
+              "class": "structural",
+              "says": "game_feed_body keeps each distinct body once by its SHA-256, written with INSERT OR IGNORE and refusing UPDATE and DELETE; a response row keeps the hash and size only.",
+              "ref": "server:migrations/20261029000200_store_each_game_feed_body_once.up.sql"
             },
             {
-              "class": "structural",
-              "says": "game_feed_response keeps every body raw and refuses DELETE, so nothing kept is ever reclaimed.",
-              "ref": "server:crates/db/game_feed"
+              "class": "derived",
+              "says": "ESPN caches a summary for 5 s and a play comes about every 40 s, so most of a live game's 840 fetches (one per 15 s for 3.5 h) repeat the body before; without the dedupe the same slate was about 1.1 GB.",
+              "ref": "server:apps/servers/file_host/docs/game-feed.md"
+            },
+            {
+              "class": "unknown",
+              "says": "The ratio of response rows to bodies on a real Sunday, and their bytes from storage_sample, are not read yet: the feed is off.",
+              "ref": "server:docs/storage.md"
             }
           ],
           "tracked": "server#534",
           "watch": {
-            "by": "none"
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/storage.jsonnet"
           },
           "amendments": []
         }
@@ -574,6 +676,33 @@
             "by": "dashboard"
           },
           "amendments": []
+        },
+        {
+          "id": "NW3",
+          "kind": "RE9",
+          "property": "work",
+          "claim": "What the study nudge keeps stays within its stated horizons.",
+          "requirement": "intervention_log keeps 90 days, activity_outcome a year (owner, 2026-10-28), presence leases at most 16 per person, and the charge and gate one row per person and class, whether or not the nudge is on.",
+          "verdict": "broken",
+          "conclusion": "The horizons are written into the sweeps, but the sweeps run only while the nudge is on, so with it off the two logs keep growing.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "The nudge waker, which runs prune_intervention_log and OutcomeRepository::prune, is spawned only while NUDGE_ENABLED is on, so with it off both logs keep every row (server#556).",
+              "ref": "server:apps/servers/file_host/src/main.rs"
+            },
+            {
+              "class": "structural",
+              "says": "Presence leases are trimmed to the 16 newest per person on every write, on home and on the phone.",
+              "ref": "some-ui:apps/www/src/lib/device-backend/handlers/account/index.ts"
+            }
+          ],
+          "tracked": "server#556",
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/storage.jsonnet"
+          },
+          "amendments": []
         }
       ]
     },
@@ -633,6 +762,33 @@
           "tracked": "server#525",
           "watch": {
             "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "RR3",
+          "kind": "RE9",
+          "property": "work",
+          "claim": "What the Jobs notice keeps stays small.",
+          "requirement": "One row per phone registered for the notice, gone when it withdraws, and one row per notice sent; the rate is stated from measurement.",
+          "verdict": "unproven",
+          "conclusion": "A phone's registration is one row that leaves when the phone withdraws; the record of notices sent grows by a row per notice, unmeasured.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "jobs_notice_device is deleted on withdrawal (forget); jobs_notice_sent only grows.",
+              "ref": "server:crates/db/notice/src/lib.rs"
+            },
+            {
+              "class": "unknown",
+              "says": "Home samples every table's bytes once a day (storage_sample, server#551), but no samples have been read yet: they start once file-host is restarted on the box.",
+              "ref": "server:docs/storage.md"
+            }
+          ],
+          "tracked": "some-ui#2266",
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/storage.jsonnet"
           },
           "amendments": []
         }
@@ -857,6 +1013,56 @@
           "amendments": []
         }
       ]
+    },
+    {
+      "id": "what-is-kept",
+      "name": "What I keep, on home and on the phone",
+      "why": "Sessions, study records, takes and notes are the evidence of growth over time, so what is kept grows by a stated model, and none of it is given up for space without the owner's say.",
+      "paths": [
+        "some-ui:apps/www/src/lib/device-backend/storage",
+        "some-ui:docs/discard-sites.md",
+        "server:docs/storage.md"
+      ],
+      "modules": [],
+      "objectives": [
+        {
+          "id": "KP1",
+          "kind": "RE9",
+          "property": "work",
+          "claim": "Everything I keep grows by a stated model, and none of it is given up for space without my say.",
+          "requirement": "Every table and store is listed with its class, growth and horizon (the ledger's stores); every place that discards or rewrites what is kept carries the owner's ruling (docs/discard-sites.md); and no one store can take the phone's room from the others.",
+          "verdict": "broken",
+          "conclusion": "Every table and store is listed with how it grows, but some places still drop old takes, stops and practice days with no ruling from me, game bites have no cap, and the other caps do not keep one store from taking most of the phone's room: voice-home's alone is about 91% of it.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "docs/discard-sites.md lists every place either repository deletes or rewrites what it keeps; many carry no ruling yet.",
+              "ref": "some-ui:docs/discard-sites.md"
+            },
+            {
+              "class": "structural",
+              "says": "Game bites' audio store has no cap (maxBytes is Infinity) and never leaves the phone, so it can fill the 25 MiB pool, after which every other save is refused (some-ui#2264).",
+              "ref": "some-ui:apps/www/src/lib/game-bites"
+            },
+            {
+              "class": "structural",
+              "says": "The phone's audio caps add up to 2.17 times the 25 MiB pool, and voice-home's alone (24 MB) is about 91% of it; a save past the pool is refused, so nothing is lost, but one store can leave the others no room.",
+              "ref": "some-ui:apps/www/src/lib/device-backend/storage/index.ts"
+            },
+            {
+              "class": "unknown",
+              "says": "Home samples every table's bytes once a day (storage_sample, server#551), but no samples have been read yet: they start once file-host is restarted on the box.",
+              "ref": "server:docs/storage.md"
+            }
+          ],
+          "tracked": "some-ui#2265",
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/storage.jsonnet"
+          },
+          "amendments": []
+        }
+      ]
     }
   ],
   "synchronous": [
@@ -943,6 +1149,663 @@
     {
       "module": "websocket",
       "why": "A live connection; what it carries is owed only while it is open."
+    }
+  ],
+  "stores": [
+    {
+      "store": "mailbox:archived",
+      "class": "record",
+      "growth": "Per file archived: name, size, hash and dates, no body (a restored file archived again adds a row); append-only, triggers abort UPDATE and DELETE.",
+      "family": "archive-restore"
+    },
+    {
+      "store": "mailbox:item",
+      "class": "cache",
+      "growth": "Per file the routine or home puts (folders brief, decisions, scout, scene, drama, run, leetype, transcript ...), body <= MAX_BODY_BYTES = 1,048,576; a few KB a day per README; bytes leave once archived.",
+      "horizon": "a file's bytes are deleted once it has been live >= 30 days (ARCHIVE_MIN_AGE_DAYS) and home has archived them (home waits MAILBOX_ARCHIVE_DAYS, >= 30); metadata moves to `archived`",
+      "family": "routine-to-home"
+    },
+    {
+      "store": "mailbox:restored",
+      "class": "record",
+      "growth": "Per file put back from home: (new seq, restored_at); append-only.",
+      "family": "archive-restore"
+    },
+    {
+      "store": "mailbox:wanted",
+      "class": "cache",
+      "growth": "bounded: one row per open ask (folder, name) for an archived file; deleted when the file is back.",
+      "horizon": "deleted when home puts the file back (CLOSE_ASK_SQL)",
+      "family": "archive-restore"
+    },
+    {
+      "store": "phone:aph-left",
+      "class": "record",
+      "growth": "Per clash when aph comes back to this phone (a home record whose waiting changes clashed with home's): one verbatim copy each; no cap (`aph:home:left:<n>`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:aph-record",
+      "class": "record",
+      "growth": "Per entry revision; once opted in the phone keeps only what home has not yet confirmed.",
+      "horizon": "a change leaves once home answers with it",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:audio-notice-answers",
+      "class": "record",
+      "growth": "bounded: one key per activity whose first-use audio notice the person answered, each holding true (`some-ui.audio.activity-notice.v1.<activityId>`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:autosave-failures",
+      "class": "telemetry",
+      "growth": "Per session whose last autosave failed: one small record (kind, summary), at most one per session (`some-ui:autosave-failure:<sessionId>`).",
+      "horizon": "cleared when that session's editor next saves (use-live-layout-editor), or when the session is removed through the sessions store (remove/removeMany)",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:curriculum",
+      "class": "cache",
+      "growth": "Per lesson synced from home (copy of server curriculum); bounded by what home lists.",
+      "horizon": "lessons home no longer lists are removed at sync (removeLessonsExcept)",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:data-authority",
+      "class": "record",
+      "growth": "bounded: one value (the data authority chosen and the reporting flag), replaced on each change (`some-ui.authority.v1`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:device_home_answer",
+      "class": "cache",
+      "growth": "bounded: one row per address home-sync reads (ETag plus body or hash), upserted.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:device_leetype_session_file",
+      "class": "record",
+      "growth": "Per LeetType session file the person picks from storage (whole body kept); nothing lets them go yet (#1921), counts toward the pool.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:device_round_from_home",
+      "class": "derived",
+      "growth": "bounded: one row per round home wrote (cascade with leetype_round).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:device_storage_notice",
+      "class": "telemetry",
+      "growth": "bounded: one row (id = 1), the count of rounds removed not yet shown.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:game-bites",
+      "class": "record",
+      "growth": "Per game bite (up to a minute at 32 kbps, ~240 KB): no cap of its own (maxBytes = +Infinity), only the 25 MiB pool refuses; bites stay on the phone even after home holds them.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:game-week-prefs",
+      "class": "record",
+      "growth": "Per game the person marks as not watching (notWatching), plus one mode and the last game picked; no cap (`some-ui:game-week.prefs`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:home-consent",
+      "class": "record",
+      "growth": "Per sharing choice the person makes (one event each, with its words), append-only: nothing written is rewritten; no cap (`some-ui.home.consent.v1`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:home-last-send",
+      "class": "telemetry",
+      "growth": "bounded: one line (time and outcome of the last Send to home), replaced by each send (`some-ui.device.last-send.v1`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:home-last-sync",
+      "class": "telemetry",
+      "growth": "bounded: one line (time, home and outcome of the last lesson sync from home), replaced by each successful sync (`some-ui.device.last-sync.v1`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:home-sent",
+      "class": "cache",
+      "growth": "Per finished session, kept shelf item and LeetType session home holds or refused (one digest or updatedAt each), for one pairing; no cap (`some-ui.home.sent.v1`).",
+      "horizon": "a new pairing starts it over (the next write replaces the old pairing's record); a refused digest leaves when home later holds the item, and refused digests of items no longer kept are dropped (home-link/standing.ts)",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:home-told",
+      "class": "cache",
+      "growth": "bounded: one {pairing, seq}, the last sharing choice home heard, replaced as each is told (`some-ui.home.told.v1`).",
+      "horizon": "replaced by each choice told and by a new pairing",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:job-voice",
+      "class": "record",
+      "growth": "bounded: JOB_VOICE_MAX_BYTES = 40 x 240,000 = 9,600,000 B of Jobs voice notes.",
+      "horizon": "a note leaves once the share it went out in has arrived (Drive)",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:jobs-drafts",
+      "class": "record",
+      "growth": "Per Jobs form (pass, fit note, debrief) with unsaved typing: one draft each, keyed by the pick's owner; no cap (`some-ui:jobs:drafts`).",
+      "horizon": "a form's draft is cleared once the event that settles it is recorded",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:jobs-record",
+      "class": "record",
+      "growth": "Per Jobs event, an append-only log on the phone; copied to home's jobs_event once opted in, and the phone keeps its whole log.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:journal",
+      "class": "record",
+      "growth": "bounded: one episode; JOURNAL_TAKES_MAX_BYTES = 2 x 180 s x 4,000 B/s = 1,440,000 B; one take per cut.",
+      "horizon": "the episode is let go once shared, discarded, replaced by another primer, or JOURNAL_IDLE_MS = 7 days without a take",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:last-drama",
+      "class": "record",
+      "growth": "bounded: one record, the last drama played to an ending (scenes, tries, the person's review), replaced by the next (`topik:last-drama`).",
+      "horizon": "deleted once older than LAST_DRAMA_TTL_MS = 30 days (when a store is made); the review's free text is removed by forgetNext once a prompt has carried it",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:learner_shelf",
+      "class": "record",
+      "growth": "bounded: 20 items per activity (SHELF_CAP, copied from the server), a 21st refused (409), never evicted.",
+      "family": "what-is-kept",
+      "horizon": "An item the learner removes goes (the shelf handler's DELETE)."
+    },
+    {
+      "store": "phone:leetype-baseline",
+      "class": "derived",
+      "growth": "bounded: one blended typing-speed sample, replaced on each calibration (`leetyping_progress`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:leetype-round-ledger",
+      "class": "record",
+      "growth": "bounded: whatever the retired round ledger held when a build before #1941 stopped writing it; nothing writes it now (`leetype:ledger`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:leetype-session-log",
+      "class": "record",
+      "growth": "Per event of a phone LeetType session; the phone lets go of what home holds after Send to home.",
+      "horizon": "a finished session's log leaves once home holds it",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:leetype-takes",
+      "class": "record",
+      "growth": "bounded: 40 spoken answers, each <= 60 s: 40 x 60 x 4,000 = 9,600,000 B; past 40 refused.",
+      "horizon": "takes and notes leave with a confirmed study-context export (letGo); never sent home (#1934)",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:leetype_round",
+      "class": "cache",
+      "growth": "Per round synced from home; bounded by home's listing.",
+      "horizon": "rounds home no longer lists are removed at sync (removeRoundsExcept); rounds an earlier build seeded were removed once (removeSeededRounds, noted to the person)",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:leetype_round_run",
+      "class": "derived",
+      "growth": "bounded: <= 12 per round (upsert on round_id, variant, bounds).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:leetype_round_witness",
+      "class": "derived",
+      "growth": "bounded: <= 5 per round, rewritten from the round body.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:lens-record",
+      "class": "record",
+      "growth": "Per grammar-lens item seen (session, line, showing): one entry each, rewritten in place for the same item; LENS_RECORD_MAX = 1,000 entries (about 700 KB), a new one past it refused, never evicted (`topik:lens-record`).",
+      "horizon": "entries leave once the person says a study-context export carrying them arrived (letGoLensRecord), and only if unchanged since that copy",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:lens-takes",
+      "class": "record",
+      "growth": "bounded: LENS_TAKES_MAX = 40 takes, each <= 30 s: 40 x 30 x 4,000 = 4,800,000 B; past 40 refused, never evicted.",
+      "horizon": "takes leave once the person says a study-context export carrying them arrived (letGo)",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:nudge-last-shown",
+      "class": "telemetry",
+      "growth": "bounded: one timestamp, when the last study nudge went out, replaced each time (`some-ui.study-nudge.last-shown.v1`).",
+      "family": "study-nudge"
+    },
+    {
+      "store": "phone:nudge-scheduled-at",
+      "class": "telemetry",
+      "growth": "bounded: one timestamp, when the pending native nudge is due (`some-ui.study-nudge.native-scheduled-at.v1`).",
+      "horizon": "removed when no nudge is pending (written null on coming back or cancelling)",
+      "family": "study-nudge"
+    },
+    {
+      "store": "phone:pasted-lesson",
+      "class": "cache",
+      "growth": "bounded: one slot in sessionStorage, the scene tree pasted this session with its resume point; another paste replaces it (`topik:pasted-lesson`).",
+      "horizon": "gone when the app's page session ends (sessionStorage); clear() empties it; replaced by the next paste",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:portion-order",
+      "class": "record",
+      "growth": "bounded: one order (portion and freshness) last asked for on 'What are you hungry for?', replaced by the next (`topik:portion-order`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:presence_leases",
+      "class": "telemetry",
+      "growth": "bounded: 16 contexts (MAX_LEASES_PER_SUBJECT), oldest trimmed.",
+      "horizon": "trimmed to 16 newest",
+      "family": "study-nudge"
+    },
+    {
+      "store": "phone:read-aloud-feedback",
+      "class": "record",
+      "growth": "bounded: the two end-of-sitting answers ('Too easy', 'Too many repeats'), each null or a time (`topik:read-aloud-feedback`).",
+      "horizon": "an answer toggled off is cleared; with neither given the key holds null",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:read-aloud-pace-book",
+      "class": "record",
+      "growth": "Per word with a pace; pruned to words the vocabulary still names.",
+      "horizon": "a word's pace goes when a re-picked set drops it",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:read-aloud-progress",
+      "class": "record",
+      "growth": "bounded: one unfinished read-aloud set (level, deck, queue), replaced by a set from another deck or level (`topik:read-aloud-progress`).",
+      "horizon": "written null once the set's queue is empty (finished)",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:read-aloud-record",
+      "class": "record",
+      "growth": "bounded: per-day counts for RECORD_DAYS = 60 days; totals keep everything.",
+      "horizon": "days older than the newest 60 are dropped (totals kept)",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:read-aloud-tally",
+      "class": "record",
+      "growth": "Per read-aloud sentence shown: one row (first and last shown, times shown and read); grows with the sentences the phone has been given, not with reps; no cap (`topik:read-aloud-tally`).",
+      "horizon": "only when the person clears the tally on purpose",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:read-aloud-word-sets",
+      "class": "record",
+      "growth": "bounded: ADDED_SET_LIMIT = 50 sets; a 51st is refused, not evicted.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:reflection-audio",
+      "class": "record",
+      "growth": "bounded: REFLECTION_LIMIT = 20 reflections across all sessions; REFLECTION_AUDIO_MAX_BYTES = 20 x 240,000 = 4,800,000 B; a 21st is refused (\"nothing is dropped to make room\").",
+      "horizon": "none automatic; room comes back by sharing or letting go",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:reflections-shared",
+      "class": "telemetry",
+      "growth": "bounded: SHARED_LIMIT = 50 marks; \"old ones may fall off\".",
+      "horizon": "the oldest beyond 50 fall off",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:routine-answers",
+      "class": "cache",
+      "growth": "bounded: one answer per home read (home's last GET /routine/files answer, as it came), replaced by a newer one (`topik:routine-answers`).",
+      "horizon": "replaced by each newer answer from the same home",
+      "family": "routine-to-home"
+    },
+    {
+      "store": "phone:routine-opened",
+      "class": "record",
+      "growth": "Per routine file opened on the phone (folder/name), append-only: a few names a day; no cap (`topik:routine-opened`).",
+      "family": "routine-to-home"
+    },
+    {
+      "store": "phone:routine-reads",
+      "class": "record",
+      "growth": "Per choice to show or hide the routine's files on the phone (one event each), append-only; no cap (`some-ui.home.reads.v1`).",
+      "family": "routine-to-home"
+    },
+    {
+      "store": "phone:routine-runs",
+      "class": "telemetry",
+      "growth": "Per routine run home reported (a few hundred bytes, about one a day), per home read: added once by name, never rewritten or dropped; no cap (`topik:routine-runs`).",
+      "family": "routine-to-home"
+    },
+    {
+      "store": "phone:scene-voice",
+      "class": "record",
+      "growth": "bounded: SCENE_NOTES_MAX = 5 notes per draft, SCENE_AUDIO_MAX_BYTES = 5 x 240,000 = 1,200,000 B.",
+      "horizon": "notes leave when the draft is shared and let go; sweepSceneVoice drops audio no note names and notes whose audio never landed",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:served-drama-point",
+      "class": "record",
+      "growth": "bounded: one slot, the place in the served scene tree played last (tree id and point), replaced when another tree plays (`topik:served-drama-point`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:session-stops",
+      "class": "record",
+      "growth": "bounded: STOP_LIMIT = 20 newest stops and 20 sessions' path counts (boundedList).",
+      "horizon": "older than the 20 newest are dropped",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:sessions",
+      "class": "record",
+      "growth": "Per study session on the phone (SQLite copy of server sessions), one row each; counts toward the 25 MiB pool; finished sessions leave once home or an archive holds them.",
+      "horizon": "a finished session (completed, not today's: mayLeavePhone) leaves once home reads it back (Send to host) or the person says an archive share arrived; the person may delete any session; over budget the app names the oldest finished one and removes it on a yes",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:sessions-copy-receipt",
+      "class": "cache",
+      "growth": "Per phone session copied to home: the ids home's copies were made under (and any unconfirmed attempt), per account asked; no cap (`some-ui.tenant.sessions.transfers.v1`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:soundbites",
+      "class": "record",
+      "growth": "bounded: SOUNDBITE_LIMIT = 6 takes, each <= 1 min at 32 kbps (240,000 B), SOUNDBITES_MAX_BYTES = 1,440,000 B; a 7th replaces the oldest (or the one picked).",
+      "horizon": "the 7th take displaces the oldest kept (or the one the person picked)",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:tenant-settings",
+      "class": "record",
+      "growth": "bounded: one settings object for the phone (voice, audio, study settings), replaced on each save (`some-ui.tenant.settings.v1`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:unreadable-copies",
+      "class": "record",
+      "growth": "Per distinct unreadable value found under any kept key: one verbatim copy at the first free <prefix><n> (core-utils quarantine; identical copies are not repeated); no cap (`<key>:unreadable:<n> (also some-ui:voice-home.unreadable.<n>, some-ui:game-bites.unreadable.<n>, some-ui:game-bites.keeping.unreadable.<n>, some-ui:game-week.prefs.unreadable.<n>, aph:state:unreadable:<n>, aph:home:unreadable:<n>)`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:voice-home",
+      "class": "cache",
+      "growth": "bounded: VOICE_HOME_MAX_BYTES = 100 x 240,000 = 24,000,000 B of copies of voice notes not yet held by home.",
+      "horizon": "A copy leaves once home holds the note; a copy home refuses stays on the phone for good (voice-home runtime's sweep keeps it), still counted in the pool.",
+      "family": "voice-heard"
+    },
+    {
+      "store": "server:account",
+      "class": "record",
+      "growth": "Per account created (one row: subject id and WebAuthn user handle); new accounts per day capped in memory.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:activities",
+      "class": "cache",
+      "growth": "bounded: the activity catalogue (4 rows seeded; CATALOG_CEILING = 500); a copy of packages/activity-catalog's catalog.ts, seeded by migration.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:activity_outcome",
+      "class": "record",
+      "growth": "Per activity block played (one row per block, idempotent on (session_id, block_index)); \"a daily learner writes a few thousand rows a year\" (outcome_repo constant doc); steady state is rate x 1 year.",
+      "horizon": "365 days from ended_at, pruned by OutcomeRepository::prune (crates/db/outcome/src/repository.rs) from the waker's sweep_history (apps/servers/file_host/src/nudge/waker.rs), at most RETENTION_SWEEP_LIMIT=500 rows per pass; only while NUDGE_ENABLED is on",
+      "family": "study-nudge"
+    },
+    {
+      "store": "server:aph_entry",
+      "class": "record",
+      "growth": "Per revision of an aph entry (append-only; each change adds a revision), body <= ENTRY_BODY_CEILING = 4 KiB.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:aph_settings",
+      "class": "record",
+      "growth": "Per settings revision (append-only), body <= SETTINGS_BODY_CEILING = 16 KiB.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:auth_session",
+      "class": "cache",
+      "growth": "bounded: at most MAX_SESSIONS_PER_SUBJECT = 32 per account (a new one past it ends the one closest to expiring); 30-day sliding expiry.",
+      "horizon": "expires_at (30 days, slid on GET /auth/session); expired rows are deleted when someone next signs in (create_session), not on a timer",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:curriculum",
+      "class": "cache",
+      "growth": "Per TOPIK lesson imported by import-curriculum from paulgsc/some-ui packages/some-content; body is the lesson file, up to LESSON_BYTES_CEILING = 1 MiB; never deleted (retired_at unlists).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:curriculum_publication",
+      "class": "derived",
+      "growth": "Per publication detected (a new activity row or version bump, a new or changed lesson), plus up to MANIFEST_CEILING baseline rows on a corpus's first import; small rows, append-only, nothing deletes.",
+      "family": "study-nudge"
+    },
+    {
+      "store": "server:engagement_charge",
+      "class": "derived",
+      "growth": "bounded: one row per (subject, engagement class), upserted with level/as_of on every signal.",
+      "family": "study-nudge"
+    },
+    {
+      "store": "server:engagement_gate",
+      "class": "derived",
+      "growth": "bounded: one row per subject (eligible_at, last intervention, curriculum_epoch), upserted.",
+      "family": "study-nudge"
+    },
+    {
+      "store": "server:game_bite",
+      "class": "record",
+      "growth": "Per game bite (a voice note said while watching an NFL game): scenario, screen text, timing; append-only.",
+      "family": "voice-heard"
+    },
+    {
+      "store": "server:game_feed_body",
+      "class": "record",
+      "growth": "One row per distinct ESPN body, keyed by its SHA-256 (server#544): a live game's summary repeats between plays, so far fewer rows than fetches.",
+      "family": "game-feed"
+    },
+    {
+      "store": "server:game_feed_play",
+      "class": "derived",
+      "growth": "Per new version of a play seen in a summary (a revision is a new row); append-only, triggers abort UPDATE and DELETE.",
+      "family": "game-feed"
+    },
+    {
+      "store": "server:game_feed_response",
+      "class": "record",
+      "growth": "A small row per fetch the worker makes (kind, game, URL, time, status, hash, size), about 840 per followed live game at one per 15 s; the bytes are in game_feed_body.",
+      "family": "game-feed"
+    },
+    {
+      "store": "server:intervention_log",
+      "class": "telemetry",
+      "growth": "Per nudge the waker decides to send: one small row (JSON StudyAction), at most one per subject per REFRACTORY (20 h); steady state is rate x 90 days.",
+      "horizon": "90 days from decided_at, pruned by EngagementRepository::prune_intervention_log (crates/db/engagement/src/repository.rs) from waker sweep_history, <=500 rows per pass, only while NUDGE_ENABLED; release() also deletes a claimed row nothing was delivered for",
+      "family": "study-nudge"
+    },
+    {
+      "store": "server:jobs_event",
+      "class": "record",
+      "growth": "Per Jobs event the phone records (pick taken/passed, applied, outcome, share...), append-only, body <= EVENT_BODY_CEILING = 256 KiB.",
+      "family": "routine-to-home"
+    },
+    {
+      "store": "server:jobs_notice_device",
+      "class": "cache",
+      "growth": "Per phone install that asked for the arrival notice (FCM token, <= 4096 chars).",
+      "horizon": "deleted when the phone withdraws (DELETE /jobs/notice) or FCM says UNREGISTERED",
+      "family": "morning-run"
+    },
+    {
+      "store": "server:jobs_notice_sent",
+      "class": "telemetry",
+      "growth": "Per morning-run record home noticed: one tiny row (said, device count); append-only.",
+      "family": "morning-run"
+    },
+    {
+      "store": "server:korean_entry",
+      "class": "record",
+      "growth": "Per revision of a Korean entry (word sets, paces, tallies, lens, record, progress, feedback); removal is a NULL-body revision; body <= BODY_CEILING = 256 KiB; append-only.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:learner_shelf",
+      "class": "record",
+      "growth": "bounded: SHELF_CAP = 20 items per subject per activity (topik, leetype), each body <= SHELF_BODY_CEILING = 256 KiB, so <= 10 MiB per subject; over the cap a new key is refused (409), never evicted.",
+      "family": "what-is-kept",
+      "horizon": "An item the learner removes goes (DELETE /shelf/:activity/:key), and keeping it again replaces its body."
+    },
+    {
+      "store": "server:leetype_round",
+      "class": "cache",
+      "growth": "Per LeetType round imported from the client's corpus; body up to ROUND_BYTES_CEILING = 256 KiB; never deleted (retired_at unlists).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:leetype_round_run",
+      "class": "derived",
+      "growth": "bounded: per round at most 6 variants (A, d0..d4) x 2 bounds = 12 rows, replaced as a set by the offline record-leetype-runs command.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:leetype_round_witness",
+      "class": "derived",
+      "growth": "bounded: one row per member of a round's option set, at most MAX_DIFF_OPTIONS = 5 per round; rewritten wholesale from the body.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:leetype_session_event",
+      "class": "record",
+      "growth": "Per event of a LeetType phone session sent home (append-only), body <= EVENT_BODY_CEILING = 256 KiB.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:mailbox_archive",
+      "class": "record",
+      "growth": "Per mailbox file home archives (live in the mailbox for MAILBOX_ARCHIVE_DAYS, >= 30): the bytes, <= 1 MiB each; one body per name; append-only.",
+      "family": "archive-restore"
+    },
+    {
+      "store": "server:mailbox_handed",
+      "class": "telemetry",
+      "growth": "Per hand-off attempt home made that got an answer it keeps (added/unchanged/conflict/refused); tiny rows, no key, append-only.",
+      "family": "routine-to-home"
+    },
+    {
+      "store": "server:mailbox_item",
+      "class": "record",
+      "growth": "Per file home reads from the Jobs mailbox (digests, run records, scene/drama lessons, ...): its bytes verbatim, each <= 1 MiB (mailbox MAX_BODY_BYTES); append-only.",
+      "family": "routine-to-home"
+    },
+    {
+      "store": "server:mailbox_outgoing",
+      "class": "record",
+      "growth": "Per file the phone (or the poller, for transcripts) files for the mailbox (decisions, scout, transcript), bytes verbatim; append-only.",
+      "family": "routine-to-home"
+    },
+    {
+      "store": "server:mailbox_transcript",
+      "class": "derived",
+      "growth": "Per heard transcript the poller files for the mailbox: (note, model, n); tiny rows; append-only.",
+      "family": "voice-heard"
+    },
+    {
+      "store": "server:mood_events",
+      "class": "record",
+      "growth": "Per mood event entered through the unauthenticated /mood_events routes (team, week, label, delta, mood); rows are mutable and re-indexed on delete.",
+      "family": "what-is-kept",
+      "horizon": "An event deleted by id goes, and an edit overwrites it in place."
+    },
+    {
+      "store": "server:passkey",
+      "class": "record",
+      "growth": "bounded: at most MAX_PASSKEYS_PER_SUBJECT = 16 per account; a 17th is refused, never evicted; the signature counter is updated in place.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:presence_leases",
+      "class": "telemetry",
+      "growth": "bounded: at most MAX_LEASES_PER_SUBJECT = 16 contexts per subject; a renewal upserts observed_at, a 17th context trims the oldest.",
+      "horizon": "no time horizon (freshness is computed at read); trimmed to the 16 newest contexts per subject by PresenceLeaseRepository::observe",
+      "family": "study-nudge"
+    },
+    {
+      "store": "server:push_subscriptions",
+      "class": "cache",
+      "growth": "Per browser that subscribed to web push (endpoint is the key); upserted; tiny rows.",
+      "horizon": "deleted on the push service's 410 Gone or an unsubscribe (delete_by_endpoint); no time horizon",
+      "family": "study-nudge"
+    },
+    {
+      "store": "server:sessions",
+      "class": "record",
+      "growth": "Per study session composed by the owner or provisioned by the waker: one row each, scalars plus JSON activities/scenes/layout (no stated size; small JSON); rows are mutable (upsert).",
+      "family": "what-is-kept",
+      "horizon": "A session the owner deletes goes (SessionRepository::delete, delete_many), and an edit overwrites it in place; see docs/discard-sites.md."
+    },
+    {
+      "store": "server:sharing_choice",
+      "class": "record",
+      "growth": "Per change of a sharing choice per pairing and scope (append-only, \"with no cap\"); tiny rows.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:storage_sample",
+      "class": "telemetry",
+      "growth": "Per UTC day: one row per table and index plus database, wal and disk_free, about 80 rows a day (\"a few MB a year\", docs/storage.md); append-only, triggers abort UPDATE, DELETE and REPLACE.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:tabs",
+      "class": "cache",
+      "growth": "Per distinct URL captured by the browser extension (upsert by URL hash), with the page's extracted content as a JSON blob; no subject column.",
+      "horizon": "30-day prune_stale on last_seen_at behind POST /tabs/prune, \"which nothing calls\" (docs/identity.md); otherwise deleted only by DELETE /tabs/:tab_id or /tabs/batch",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:voice_note",
+      "class": "record",
+      "growth": "Per voice note sent home (reflection, jobs, scene, game): one small metadata row; append-only.",
+      "family": "voice-heard"
+    },
+    {
+      "store": "server:voice_note_audio",
+      "class": "record",
+      "growth": "Per voice note: its audio bytes, about 240 KB a minute at the phone's 32 kbps (migration), at most NOTE_CEILING = 1 MiB per note; append-only, kept for good; the migration says the bytes move out of the DB once they pass about 20 GB.",
+      "family": "voice-heard"
+    },
+    {
+      "store": "server:voice_transcript",
+      "class": "derived",
+      "growth": "Per transcription attempt per note per model: one ending (heard/silent) per note and model plus up to ATTEMPTS = 3 failures; text only; append-only.",
+      "family": "voice-heard"
     }
   ]
 }

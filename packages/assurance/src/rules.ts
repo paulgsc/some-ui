@@ -37,6 +37,7 @@ const PROOF = /^(some-ui|server):([^#\s]+)#(.{3,})$/
 const DECISION =
   /^https:\/\/github\.com\/paulgsc\/(some-ui|server)\/(issues|pull)\/\d+(#[\w-]+)?$/
 const LEDGER = "ledger"
+const STORE = /^(server|mailbox|phone):[a-z0-9][a-z0-9_.-]*$/
 const WATCH_ORDER: Record<WatchBy, number> = { none: 0, dashboard: 1, alert: 2 }
 
 /** The ledger on its own: shape beyond parsing, proofs, issues, coverage. */
@@ -88,6 +89,32 @@ export function findLedgerViolations(
   for (const entry of ledger.synchronous) {
     if (entry.decision !== undefined && !DECISION.test(entry.decision))
       flag(entry.module, "decision is a link to where the owner decided")
+  }
+
+  // RE9: whatever is kept is answered for by a family that states its growth.
+  const stores = new Set<string>()
+  const keeping = new Set<string>()
+  for (const entry of ledger.stores) {
+    if (!STORE.test(entry.store))
+      flag(
+        entry.store,
+        "a store is server:, mailbox: or phone: and a lowercase name"
+      )
+    if (stores.has(entry.store)) flag(entry.store, "store is listed twice")
+    stores.add(entry.store)
+    if (!familyIds.has(entry.family))
+      flag(entry.store, `family "${entry.family}" is not a family here`)
+    keeping.add(entry.family)
+  }
+  for (const family of ledger.families) {
+    const states = family.objectives.some(
+      (o) => o.kind === "RE9" && o.retired === undefined
+    )
+    if (keeping.has(family.id) && !states)
+      flag(
+        family.id,
+        "keeps data, so it has an RE9 objective stating how it grows"
+      )
   }
 
   const owners = new Map<string, string>()

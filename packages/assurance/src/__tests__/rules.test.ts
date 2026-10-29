@@ -32,6 +32,7 @@ const ledgerOf = (
     { id: "f", name: "F", why: "Why.", paths: [], modules, objectives },
   ],
   synchronous: synchronous.map((module) => ({ module, why: "At once." })),
+  stores: [],
 })
 
 const around = (overrides: Partial<Surroundings> = {}): Surroundings => ({
@@ -205,6 +206,50 @@ describe("coverage of the server's routes (GC2)", () => {
       around()
     )
     expect(errors(found)).toContain('"jobs" is in both')
+  })
+})
+
+describe("what is kept (RE9)", () => {
+  const keeps = (
+    objectives: ReadonlyArray<Objective>,
+    stores: Ledger["stores"]
+  ): string =>
+    errors(findLedgerViolations({ ...ledgerOf(objectives), stores }, around()))
+  const store = (name: string, family = "f"): Ledger["stores"][number] => ({
+    store: name,
+    class: "record",
+    growth: "A row per session.",
+    family,
+  })
+  const re9 = objective({ id: "ZZ2", kind: "RE9", property: "work" })
+
+  it("passes a store claimed by a family that states its growth", () => {
+    expect(keeps([objective(), re9], [store("server:sessions")])).toBe("")
+  })
+
+  it("fails a family that keeps data with no live RE9 objective", () => {
+    expect(keeps([objective()], [store("server:sessions")])).toContain(
+      "keeps data, so it has an RE9 objective"
+    )
+    const retired = { ...re9, retired: { on: "2026-10-29", why: "Gone." } }
+    expect(keeps([objective(), retired], [store("server:sessions")])).toContain(
+      "keeps data, so it has an RE9 objective"
+    )
+  })
+
+  it("fails a store named twice, one whose family is not here, and one not named by its place", () => {
+    const found = keeps(
+      [objective(), re9],
+      [
+        store("server:sessions"),
+        store("server:sessions"),
+        store("phone:takes", "nowhere"),
+        store("disk:Sessions"),
+      ]
+    )
+    expect(found).toContain("store is listed twice")
+    expect(found).toContain('family "nowhere" is not a family here')
+    expect(found).toContain("server:, mailbox: or phone:")
   })
 })
 
