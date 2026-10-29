@@ -1,9 +1,8 @@
 import {
-  jsonOf,
   localStorageOrNull,
   openKept,
   quantile,
-  readWhole,
+  readJson,
   removeRecord,
   writeKept,
 } from "@some-ui/core-utils"
@@ -109,8 +108,8 @@ const StoredPayloadSchema = z.object({
   }),
 })
 
-const readPayload = readWhole((raw): Baseline | null => {
-  const parsed = StoredPayloadSchema.safeParse(jsonOf(raw))
+const readPayload = readJson((value): Baseline | null => {
+  const parsed = StoredPayloadSchema.safeParse(value)
   return parsed.success ? parsed.data.baseline : null
 })
 

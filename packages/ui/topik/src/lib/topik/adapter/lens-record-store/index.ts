@@ -21,10 +21,9 @@
 
 import type { Kept, KeyedStorage } from "@some-ui/core-utils"
 import {
-  jsonOf,
   localStorageOrNull,
   openKept,
-  readWhole,
+  readJson,
   writeKept,
 } from "@some-ui/core-utils"
 import type { LensRecordEntry } from "@topik/lib/topik/read-aloud/lens/record"
@@ -113,8 +112,8 @@ const DocumentSchema = z.object({
   entries: z.array(z.unknown()),
 })
 
-const readDocument = readWhole((raw): Array<unknown> | null => {
-  const document = DocumentSchema.safeParse(jsonOf(raw))
+const readDocument = readJson((value): Array<unknown> | null => {
+  const document = DocumentSchema.safeParse(value)
   return document.success ? document.data.entries : null
 })
 

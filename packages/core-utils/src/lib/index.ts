@@ -26,6 +26,7 @@ export {
   openKept,
   openRecord,
   quarantine,
+  readJson,
   readWhole,
   removeRecord,
   salvageEntries,

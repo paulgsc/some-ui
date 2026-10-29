@@ -1,11 +1,5 @@
-import type { KeyedStorage } from "@some-ui/core-utils"
-import {
-  isRecord,
-  jsonOf,
-  openKept,
-  readWhole,
-  writeKept,
-} from "@some-ui/core-utils"
+import type { KeyedStorage, Salvaged } from "@some-ui/core-utils"
+import { openKept, writeKept } from "@some-ui/core-utils"
 import type { HostedVoiceChoice } from "@some-ui/speech"
 import { isTTSProvider, parseHostedVoiceChoice } from "@some-ui/speech"
 
@@ -14,6 +8,7 @@ import {
   withAudioDefaults,
 } from "@/lib/audio-preferences"
 import { DEFAULT_NUDGE_PREFERENCES, withNudgeDefaults } from "@/lib/study-nudge"
+import { readJsonObject } from "@/lib/tenant/json-object"
 import {
   browserLocalStorage,
   delay,
@@ -43,10 +38,8 @@ type StoredSettings = Partial<UserSettings> & LegacyVoiceFields
  * Stored settings are a JSON object, read field by field in `get`; anything
  * else is moved aside.
  */
-const readSettings = readWhole((raw): StoredSettings | null => {
-  const value = jsonOf(raw)
-  return isRecord(value) ? value : null
-})
+const readSettings: (raw: string) => Salvaged<StoredSettings> | null =
+  readJsonObject
 
 /**
  * The stored voice, as a choice. Storage holds strings whatever the type

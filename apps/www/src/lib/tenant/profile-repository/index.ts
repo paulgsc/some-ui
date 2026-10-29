@@ -1,12 +1,7 @@
-import type { KeyedStorage } from "@some-ui/core-utils"
-import {
-  isRecord,
-  jsonOf,
-  openKept,
-  readWhole,
-  writeKept,
-} from "@some-ui/core-utils"
+import type { KeyedStorage, Salvaged } from "@some-ui/core-utils"
+import { openKept, writeKept } from "@some-ui/core-utils"
 
+import { readJsonObject } from "@/lib/tenant/json-object"
 import {
   browserLocalStorage,
   delay,
@@ -18,10 +13,8 @@ import type { UserProfile } from "@/lib/tenant/types"
 const STORAGE_KEY = "some-ui.tenant.profile.v1"
 
 /** A stored profile is a JSON object; anything else is moved aside. */
-const readProfile = readWhole((raw): Partial<UserProfile> | null => {
-  const value = jsonOf(raw)
-  return isRecord(value) ? value : null
-})
+const readProfile: (raw: string) => Salvaged<Partial<UserProfile>> | null =
+  readJsonObject
 
 export const DEFAULT_PROFILE: UserProfile = {
   id: "local-tenant",

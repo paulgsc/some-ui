@@ -5,10 +5,9 @@
  * page load.
  */
 import {
-  jsonOf,
   localStorageOrNull,
   openKept,
-  readWhole,
+  readJson,
   writeKept,
 } from "@some-ui/core-utils"
 
@@ -16,8 +15,7 @@ const PREFIX = "some-ui.audio.activity-notice.v1"
 
 const keyOf = (activityId: string): string => `${PREFIX}.${activityId}`
 
-const readAnswered = readWhole((raw): boolean | null => {
-  const value = jsonOf(raw)
+const readAnswered = readJson((value): boolean | null => {
   return typeof value === "boolean" ? value : null
 })
 

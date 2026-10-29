@@ -6,6 +6,7 @@
  * over these.
  */
 import { isRecord } from "./is-record"
+import { jsonOf } from "./storage"
 
 /** What home answered: its status, and its body as text. */
 export type HomeAnswer = { status: number; body: string; etag?: string }
@@ -61,12 +62,10 @@ type Parser<T> = {
 
 /** `text` as `schema` reads it, or null. */
 export function readAs<T>(schema: Parser<T>, text: string): T | null {
-  try {
-    const read = schema.safeParse(JSON.parse(text))
-    return read.success ? read.data : null
-  } catch {
-    return null
-  }
+  const value = jsonOf(text)
+  if (value === undefined) return null
+  const read = schema.safeParse(value)
+  return read.success ? read.data : null
 }
 
 /** A `422`'s reasons (`error.details`), as "field why; field why". */

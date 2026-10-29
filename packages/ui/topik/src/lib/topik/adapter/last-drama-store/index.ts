@@ -16,10 +16,9 @@
 
 import type { Kept, KeyedStorage } from "@some-ui/core-utils"
 import {
-  jsonOf,
   localStorageOrNull,
   openKept,
-  readWhole,
+  readJson,
   writeKept,
 } from "@some-ui/core-utils"
 import type { LastDramaPort } from "@topik/lib/topik/core/drama-runtime"
@@ -94,8 +93,8 @@ export type LastDramaStore = LastDramaPort & {
  * The stored record; a shape this build does not know is copied aside
  * (`openKept`), not migrated.
  */
-const readDocument = readWhole((raw): LastDrama | null => {
-  const parsed = DocumentSchema.safeParse(jsonOf(raw))
+const readDocument = readJson((value): LastDrama | null => {
+  const parsed = DocumentSchema.safeParse(value)
   return parsed.success ? parsed.data.last : null
 })
 

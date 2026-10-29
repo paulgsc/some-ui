@@ -1,10 +1,9 @@
 /** The one authority instance, wired to this build's flags and to browser storage. */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import {
-  jsonOf,
   localStorageOrNull,
   openKept,
-  readWhole,
+  readJson,
   writeKept,
 } from "@some-ui/core-utils"
 
@@ -34,8 +33,7 @@ type Remembered = { choice: Choice | null; reporting: boolean }
 const NOTHING: Remembered = { choice: null, reporting: false }
 
 /** Each fact read on its own; a value that is not an object is moved aside. */
-const readRemembered = readWhole((raw): Remembered | null => {
-  const parsed = jsonOf(raw)
+const readRemembered = readJson((parsed): Remembered | null => {
   if (typeof parsed !== "object" || parsed === null) return null
   const choice = "choice" in parsed ? parsed.choice : undefined
   const reporting = "reporting" in parsed ? parsed.reporting : undefined
