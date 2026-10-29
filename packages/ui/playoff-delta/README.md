@@ -39,7 +39,7 @@ text, with no logos and no game footage (owner, 2026-10-27).
 
 It renders. It does not compute. The paths, the shares, the week's ways,
 the podium and the proofs come in as one JSON season, validated by
-`StorySeasonSchema` (`src/lib/story.ts`, contract version 4), and a malformed
+`StorySeasonSchema` (`src/lib/story.ts`, contract version 5), and a malformed
 feed fails there rather than mid-render. Where no season is given, the stage
 plays `src/fixtures/season-2025.json`: the 2025 season as the engine
 evaluates it.
@@ -97,8 +97,5 @@ and `voiceover.md`; its header has the options.
   goes to us, in the paths, the share and the clinch.
 - **A full clinch proof** (paulgsc/server#521): `clinched` is two short
   proofs today, so an exit can come a week or two later than it could.
-- **Next week's pieces carry no kind** in the contract; the stage names
-  them from the crossroads it has seen (`raceOf`), so a team not yet seen at
-  one reads as outside our race.
 - **A landscape cut.** For long-form video, the portrait frame centered in a
   16:9 canvas with a side panel; a layout, not a redesign.

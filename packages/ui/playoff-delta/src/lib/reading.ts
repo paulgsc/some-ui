@@ -18,13 +18,7 @@
 import { assertNever } from "@some-ui/intent-kit"
 
 import { followed, pastExit, verdictOf } from "./luck"
-import type {
-  StoryKind,
-  StoryPiece,
-  StorySeason,
-  StoryWeek,
-  WayGame,
-} from "./story"
+import type { StoryPiece, StorySeason, StoryWeek, WayGame } from "./story"
 import {
   bandOf,
   BANDS,
@@ -63,33 +57,6 @@ const read = (game: WayGame, piece: StoryPiece): PieceRead => ({
 /** The week's games against its best way (question 1), in kickoff order. */
 export const piecesOf = (week: StoryWeek): ReadonlyArray<PieceRead> =>
   week.ways.games.map((g) => read(g, g))
-
-/**
- * The teams in our race: every side of a crossroads any week has shown, and
- * us. Next week's pieces carry no kind of their own, so this is how one is
- * named; a team not yet seen at a crossroads reads as outside it.
- */
-function raceOf(season: StorySeason): ReadonlySet<string> {
-  const race = new Set([season.team])
-  for (const w of season.weeks)
-    for (const g of w.ways.games)
-      if (g.kind === "inside") {
-        race.add(g.home)
-        race.add(g.away)
-      }
-  return race
-}
-
-/** What kind of piece a game between `home` and `away` is, for us. */
-export function kindOf(
-  season: StorySeason,
-  home: string,
-  away: string
-): StoryKind {
-  if (home === season.team || away === season.team) return "own"
-  const race = raceOf(season)
-  return race.has(home) && race.has(away) ? "inside" : "exported"
-}
 
 /** Our part this week. */
 export type OwnPart = "made" | "missed" | "idle" | "bye" | "tie"

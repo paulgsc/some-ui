@@ -17,7 +17,6 @@ import {
 import {
   bandTally,
   callOf,
-  kindOf,
   sentence,
   weekBand,
   worseOf100,
@@ -132,7 +131,7 @@ export const Podium = ({ season, week }: SlideProps): JSX.Element => {
   )
 }
 
-export const Stake = ({ season, week }: SlideProps): JSX.Element => {
+export const Stake = ({ week }: SlideProps): JSX.Element => {
   const stake = week.stake
   if (!stake) return <Kicker>Next week</Kicker>
   const stakes = STAKES[stakesOf(stake.spread)]
@@ -157,7 +156,7 @@ export const Stake = ({ season, week }: SlideProps): JSX.Element => {
         {pieces.map((p, i) => (
           <PieceLight
             key={`${p.home}-${p.away}`}
-            noun={kindOf(season, p.home, p.away)}
+            noun={p.kind}
             material={materialOf(p)}
             price={p.price}
             state="waiting"

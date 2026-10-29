@@ -1,5 +1,5 @@
 /**
- * The data contract (version 4): one regular-season week, from one team's
+ * The data contract (version 5): one regular-season week, from one team's
  * point of view, already computed. This package only renders it; whatever
  * produces it (paulgsc/server's `crates/playoff_delta`, whose README defines
  * every field) owns the math. `StorySeasonSchema` is the one door data comes
@@ -8,9 +8,8 @@
  *
  * Vocabulary: a "path" is a way in, win x more games and get in as seed s or
  * better (`paths[x]`, null: none). The "share" is the share of the ways the
- * rest of the season can go in which the team gets in; a result's
- * "leverage" the share as it went minus the share had it gone the other way;
- * a week's "spread" how far its results could have moved the share.
+ * rest of the season can go in which the team gets in; a week's "spread"
+ * how far its results could have moved the share.
  */
 
 import { z } from "zod"
@@ -19,22 +18,11 @@ const Code = z.string().min(2).max(3)
 const Record = z.object({ w: z.number().int(), l: z.number().int() })
 const Share = z.number().min(0).max(1)
 const Change = z.number().min(-1).max(1)
+/** The team's own game, a conference team against the other conference, or two conference teams. */
 const Kind = z.enum(["own", "exported", "inside"])
 
 /** Best seed reachable winning exactly x more games, for x = 0..n. */
 const Paths = z.array(z.number().int().min(1).max(7).nullable()).min(1)
-
-const Result = z.object({
-  winner: Code,
-  loser: Code,
-  /** The team's own game, a conference team against the other conference, or two conference teams. */
-  kind: Kind,
-  leverage: Change,
-  /** The loser's best moment in the game, when the feed has it. */
-  collapse: z
-    .object({ peakWinProbability: z.number().min(0).max(1), led: z.boolean() })
-    .optional(),
-})
 
 /** A game's place in the week's best way. */
 const Piece = z.object({
@@ -175,12 +163,6 @@ const StoryWeekSchema = z.object({
   }),
   /** Games left in the league. */
   pending: z.object({ before: z.number().int(), after: z.number().int() }),
-  /** Every result this week that can matter, most leverage first. */
-  results: z.array(Result),
-  /** Next week's games that matter most. */
-  next: z.array(
-    z.object({ home: Code, away: Code, rootFor: Code, swing: Share })
-  ),
   /** What next week can do to the share, before it is played; null once no game is left. */
   stake: z
     .object({
@@ -192,7 +174,7 @@ const StoryWeekSchema = z.object({
       spread: Share,
       exact: z.boolean(),
       /** Next week's best way: its games with a side in the conference, in kickoff order, each with its piece. */
-      pieces: z.array(Piece.extend({ home: Code, away: Code })),
+      pieces: z.array(Piece.extend({ home: Code, away: Code, kind: Kind })),
     })
     .nullable(),
   /** Proven: every way the rest of the season can go gets the team in. False is "not proven". */
@@ -202,7 +184,7 @@ const StoryWeekSchema = z.object({
 })
 
 export const StorySeasonSchema = z.object({
-  version: z.literal(4),
+  version: z.literal(5),
   /** Shown on screen: "2025". */
   label: z.string(),
   seasonLength: z.number().int().min(1),
