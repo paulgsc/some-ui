@@ -2,15 +2,21 @@
  * The send's line: what changed, in a few words, then why it stopped if it
  * did. Says nothing about what was already there.
  */
+import { noAnswer } from "@/test-support/no-answer"
+import type { HomeCall } from "@some-ui/core-utils"
+import { inMemoryStorage } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import { emptyLogReport } from "@/lib/home-link/leetype-log"
-import type { SendOutcome } from "@/lib/home-link/send"
-import { describeSend } from "@/lib/home-link/send"
+import type { SendOutcome, SendPorts } from "@/lib/home-link/send"
+import { describeSend, onPhone, sendHome } from "@/lib/home-link/send"
+import { digestOf, readSent } from "@/lib/home-link/sent"
 import { HomeForgotPhoneError } from "@/lib/home-link/sessions"
 import { emptyReport } from "@/lib/home-link/shelf"
 import { emptyHeldReport } from "@/lib/tenant/sessions-copy"
+
+import { home, session } from "./fake-home"
 
 function outcome(over: Partial<SendOutcome> = {}): SendOutcome {
   return {
@@ -129,5 +135,127 @@ describe("describeSend", () => {
         "home.example"
       )
     ).toBe("Stopped: send again to carry on.")
+  })
+})
+
+/** One paired run with only the case's phone data and home answers. */
+function ports(send: HomeCall, over: Partial<SendPorts> = {}): SendPorts {
+  return {
+    storage: inMemoryStorage(),
+    read: () => Promise.resolve({ local: [], kept: [] }),
+    logGoing: () => Promise.resolve([session("a")]),
+    run: async (r) => ({ kind: "done", value: await r(send) }),
+    copy: () =>
+      Promise.resolve({
+        copy: { outcome: { kind: "copied", copied: 0 }, alreadyThere: 0 },
+        ended: null,
+      }),
+    ...over,
+  }
+}
+
+const TARGET = { base: "http://home.example", id: "p1" }
+const NOW = new Date("2026-10-29T12:00:00.000Z")
+const KEPT = { activity: "topik", key: "a", body: '{ "a": 1 }' }
+const withKept: SendPorts["read"] = () =>
+  Promise.resolve({ local: [], kept: [KEPT] })
+const logPuts = (h: ReturnType<typeof home>): Array<string> =>
+  h.calls
+    .filter(
+      ([method, path]) =>
+        method === "PUT" && path.startsWith("/leetype/sessions/")
+    )
+    .map(([, path]) => path)
+
+describe("sendHome's wiring", () => {
+  it("sends no LeetType when the sessions copy is partial", async () => {
+    const h = home()
+    const p = ports(h.send, {
+      copy: () =>
+        Promise.resolve({
+          copy: {
+            outcome: {
+              kind: "partial",
+              copied: 0,
+              remaining: 1,
+              error: new SyncStoppedError(),
+            },
+            alreadyThere: 0,
+          },
+          ended: null,
+        }),
+    })
+    await sendHome(TARGET, undefined, NOW, p)
+    expect(logPuts(h)).toEqual([])
+  })
+
+  it("sends no shelf or LeetType when the sessions confirm ended early", async () => {
+    const h = home()
+    const p = ports(h.send, {
+      read: withKept,
+      copy: () =>
+        Promise.resolve({
+          copy: { outcome: { kind: "copied", copied: 0 }, alreadyThere: 0 },
+          ended: new SyncStoppedError(),
+        }),
+    })
+    await sendHome(TARGET, undefined, NOW, p)
+    expect(h.calls.filter(([, path]) => path.startsWith("/shelf/"))).toEqual([])
+    expect(logPuts(h)).toEqual([])
+  })
+
+  it("sends no LeetType when the shelf ended forgotten", async () => {
+    const h = home([{ status: 401, body: "" }])
+    await sendHome(TARGET, undefined, NOW, ports(h.send, { read: withKept }))
+    expect(h.calls.map(([, path]) => path)).toEqual(["/shelf/topik/a"])
+    expect(logPuts(h)).toEqual([])
+  })
+
+  it("sends no LeetType when the shelf ended unreachable", async () => {
+    const h = home([noAnswer()])
+    await sendHome(TARGET, undefined, NOW, ports(h.send, { read: withKept }))
+    expect(h.calls.map(([, path]) => path)).toEqual(["/shelf/topik/a"])
+    expect(logPuts(h)).toEqual([])
+  })
+
+  it("puts LeetType after a clean sessions copy and shelf", async () => {
+    const h = home([{ status: 200, body: '{"change":"kept"}' }])
+    await sendHome(TARGET, undefined, NOW, ports(h.send, { read: withKept }))
+    expect(h.calls[0]?.[1]).toBe("/shelf/topik/a")
+    expect(logPuts(h)).toEqual([
+      "/leetype/sessions/a/events/a-1",
+      "/leetype/sessions/a/events/a-2",
+    ])
+  })
+
+  it("remembers the digest of the LeetType session home read back", async () => {
+    const h = home()
+    const p = ports(h.send)
+    await sendHome(TARGET, undefined, NOW, p)
+    expect(readSent(p.storage, TARGET.id).leetype["a"]).toBe(
+      digestOf(session("a"))
+    )
+  })
+
+  it("counts LeetType in onPhone's total and words", async () => {
+    const p = ports(home().send, {
+      logGoing: () => Promise.resolve([session("a"), session("b")]),
+    })
+    expect(await onPhone(TARGET.id, p)).toMatchObject({
+      leetype: 2,
+      total: 2,
+      what: "2 LeetType sessions",
+    })
+  })
+
+  it("is not ok when home's LeetType read-back differs", async () => {
+    const changed = {
+      session: "a",
+      events: [{ ...session("a").events[0], declaredMinutes: 11 }],
+    }
+    const h = home([], [{ status: 200, body: JSON.stringify(changed) }])
+    const result = await sendHome(TARGET, undefined, NOW, ports(h.send))
+    expect(result.ok).toBe(false)
+    expect(result.line).toContain("kept here: home's copy didn't match")
   })
 })

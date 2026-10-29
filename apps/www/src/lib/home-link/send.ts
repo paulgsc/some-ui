@@ -7,6 +7,7 @@
  * stay too; `./sent` knows what it holds). One run, so one Stop ends all
  * three, and one line says how it went.
  */
+import type { HomeCall, KeyedStorage } from "@some-ui/core-utils"
 import { counted, localStorageOrNull } from "@some-ui/core-utils"
 import type { HomeSession } from "@some-ui/leetype"
 
@@ -22,6 +23,7 @@ import { emptyHeldReport } from "@/lib/tenant/sessions-copy"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 import { hostOf } from "./address"
+import type { HomeLink } from "./index"
 import { homeLink } from "./index"
 import type { LogReport } from "./leetype-log"
 import { emptyLogReport, sendLog } from "./leetype-log"
@@ -46,6 +48,35 @@ const sessions = (n: number): string => counted(n, "session")
 const items = (n: number): string => counted(n, "kept item")
 const leetype = (n: number): string => counted(n, "LeetType session")
 
+/** What `sendHome` and `onPhone` read and call; the defaults are the phone's own. A seam for tests. */
+export type SendPorts = {
+  /** This phone's sessions and kept items (`readPhone`). */
+  read: () => Promise<{ local: Array<SessionRecord>; kept: Array<Kept> }>
+  /** The finished LeetType sessions a send under `pairing` carries (`logGoing`). */
+  logGoing: (pairing: string) => Promise<Array<HomeSession>>
+  /** Where `./sent` remembers what home holds. */
+  storage: KeyedStorage | null
+  /** Runs one send on the paired link: `homeLink().send`. */
+  run: HomeLink["send"]
+  /** The sessions copy and its confirm (`./sessions`'s `copyAndConfirm`). */
+  copy: typeof copyAndConfirm
+}
+
+/**
+ * The phone's own ports, also available to callers supplying selected overrides.
+ * @public
+ */
+export function sendPorts(): SendPorts {
+  const storage = localStorageOrNull()
+  return {
+    read: readPhone,
+    logGoing: (pairing) => logGoing(pairing, storage),
+    storage,
+    run: <T>(r: (send: HomeCall) => Promise<T>) => homeLink().send(r),
+    copy: copyAndConfirm,
+  }
+}
+
 /** This phone's sessions and kept items. Reads only this phone. */
 export async function readPhone(): Promise<{
   local: Array<SessionRecord>
@@ -61,7 +92,10 @@ export async function readPhone(): Promise<{
  * sessions, in their home form: what home doesn't hold as it is now; none
  * when the session log can't be read. Reads only this phone.
  */
-async function logGoing(pairing: string): Promise<Array<HomeSession>> {
+async function logGoing(
+  pairing: string,
+  storage: KeyedStorage | null
+): Promise<Array<HomeSession>> {
   const { createSessionLogStore, finishedSessions } = await import(
     "@some-ui/leetype"
   )
@@ -69,7 +103,7 @@ async function logGoing(pairing: string): Promise<Array<HomeSession>> {
   if (store.readOnly) return []
   return logToSend(
     finishedSessions(store.getSnapshot().log),
-    readSent(localStorageOrNull(), pairing)
+    readSent(storage, pairing)
   )
 }
 
@@ -91,19 +125,23 @@ export type ToSend = {
  */
 function keptToSend(
   kept: ReadonlyArray<Kept>,
-  pairing: string
+  pairing: string,
+  storage: KeyedStorage | null
 ): ReturnType<typeof shelfToSend> {
-  return shelfToSend(kept, readSent(localStorageOrNull(), pairing), "again")
+  return shelfToSend(kept, readSent(storage, pairing), "again")
 }
 
 /**
  * What a send under `pairing` would carry, for its confirm. Reads only
  * this phone.
  */
-export async function onPhone(pairing: string): Promise<ToSend> {
-  const { local, kept } = await readPhone()
-  const going = (await keptToSend(kept, pairing)).changed
-  const log = await logGoing(pairing)
+export async function onPhone(
+  pairing: string,
+  ports: SendPorts = sendPorts()
+): Promise<ToSend> {
+  const { local, kept } = await ports.read()
+  const going = (await keptToSend(kept, pairing, ports.storage)).changed
+  const log = await ports.logGoing(pairing)
   const parts = [
     ...(local.length > 0 ? [sessions(local.length)] : []),
     ...(going.length > 0 ? [items(going.length)] : []),
@@ -202,9 +240,9 @@ function rememberHeld(
   pairing: string,
   copy: CopyResult | null,
   local: ReadonlyArray<SessionRecord>,
-  heard: Record<"held" | "refused" | "leetype", Record<string, string>>
+  heard: Record<"held" | "refused" | "leetype", Record<string, string>>,
+  storage: KeyedStorage | null
 ): void {
-  const storage = localStorageOrNull()
   const finished = local.filter((s) => s.status === "completed")
   const sessions = copy?.outcome.kind === "copied" ? sessionsHeld(finished) : {}
   rememberSent(storage, readSent(storage, pairing), {
@@ -229,15 +267,16 @@ export function lastSend(): string {
 export async function sendHome(
   { base, id }: { base: string; id: string },
   refresh: () => unknown = () => undefined,
-  now = new Date()
+  now = new Date(),
+  ports: SendPorts = sendPorts()
 ): Promise<SyncResult> {
   const host = hostOf(base)
   let local: Array<SessionRecord>
   let kept: Array<Kept>
   let going: Array<HomeSession>
   try {
-    ;({ local, kept } = await readPhone())
-    going = await logGoing(id)
+    ;({ local, kept } = await ports.read())
+    going = await ports.logGoing(id)
   } catch (error) {
     return { ok: false, line: `Couldn't read this phone: ${String(error)}` }
   }
@@ -254,16 +293,17 @@ export async function sendHome(
     "held" | "refused" | "leetype",
     Record<string, string>
   > = { held: {}, refused: {}, leetype: {} }
-  const run = await homeLink().send(async (link) => {
+  const run = await ports.run(async (link) => {
     const noticed = noticingBusy(link)
     seen = noticed.seen
     const { send } = noticed
     try {
-      const step = await copyAndConfirm(send, local, leaving, held)
+      const { copy } = ports
+      const step = await copy(send, local, leaving, held)
       ran.copy = step.copy
       ran.ended = step.ended
       if (step.ended !== null || step.copy.outcome.kind !== "copied") return
-      const { changed, digests } = await keptToSend(kept, id)
+      const { changed, digests } = await keptToSend(kept, id, ports.storage)
       await sendKept(changed, send, shelf, (item, answer) => {
         const key = shelfKeyOf(item)
         heard[answer][key] = digests[key] ?? ""
@@ -278,7 +318,7 @@ export async function sendHome(
     }
   })
   if (run === null) return { ok: false, line: "" }
-  rememberHeld(id, ran.copy, local, heard)
+  rememberHeld(id, ran.copy, local, heard, ports.storage)
 
   let freed = 0
   let freeing = ""
