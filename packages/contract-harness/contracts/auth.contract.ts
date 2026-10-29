@@ -26,7 +26,6 @@ import { defineContract } from "../src/contract"
 
 const base64url = z.string().regex(/^[A-Za-z0-9_-]+$/)
 
-/** How long the browser may take, in ms. */
 const timeout = z.number().int().positive()
 
 const RegistrationStartedSchema = z.object({

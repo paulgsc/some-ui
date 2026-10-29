@@ -21,9 +21,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 /**
  * `paulgsc/server`'s `nudge::waker::materialize_provisioned_session` (RCM5),
  * as `cargo run --bin dump-provisioned-session` prints it (paulgsc/server#282).
- * Every server PR's `routes.yml` compares this copy with that dump
- * (`scripts/check_client_fixtures.py`), so a copy that falls behind fails
- * there, by field.
+ * A server PR that touches what file_host is built from runs `routes.yml`,
+ * which compares this copy with that dump (`scripts/check_client_fixtures.py`).
+ * A difference that script does not list as known fails it, by field.
  */
 const rawFixture = readFileSync(
   join(__dirname, "testdata/provisioned-session.snapshot.json"),

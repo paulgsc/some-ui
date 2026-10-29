@@ -22,9 +22,10 @@
  *
  * The server keeps its copy in
  * `paulgsc/server@crates/db/activity/testdata/activity_catalog.snapshot.json`.
- * Every server PR's `routes.yml` runs this script and compares the output
- * with that copy (`scripts/check_client_fixtures.py`), so a copy that falls
- * behind fails there, by field.
+ * A server PR that touches what file_host is built from runs `routes.yml`,
+ * which runs this script and compares the output with that copy
+ * (`scripts/check_client_fixtures.py`). A difference that script does not
+ * list as known fails it, by field.
  */
 import {
   ACTIVITY_CATALOG,
