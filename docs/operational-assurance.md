@@ -92,6 +92,11 @@ JSON so the server's CI can read it as well (#2199, AS10). It holds:
   (`some-ui:` or `server:` prefixed), the server route `modules` it owns, and its `objectives`.
 - `synchronous`: every server route module that is not part of an asynchronous family, each with
   the reason. A request whose caller sees the outcome at once owes no later outcome.
+- `stores`: every table and store the system keeps (home's tables as `server:`, the mailbox's D1
+  tables as `mailbox:`, the phone's tables and stores as `phone:`), each with its `class`
+  (`record`, `derived`, `cache` or `telemetry`), its `growth`, its `horizon` when something
+  deletes from it, and the `family` that answers for its growth (RE9). Where each one is
+  discarded or rewritten, with the owner's ruling, is `docs/discard-sites.md`.
 - Each objective: `id`, `kind`, `claim`, `requirement`, optional `bound` (`value`, `unit`, and
   which way is `tighter`), `verdict`, `conclusion` (one plain sentence, its boundary included),
   `evidence` (each with its `class`, what it `says` and a `ref`), `proof` (when it holds) or
@@ -112,6 +117,9 @@ pr.yml's `assurance` job, which CI Gate needs.
   **A `server:` path is not checked at all yet:** it is taken as written until the server's CI
   reads this ledger (server#526, objective GC4).
 - **Decisions:** an amendment's `decision` links to a paulgsc issue, pull request or comment.
+- **What is kept (RE9):** a store is named `server:`, `mailbox:` or `phone:` and listed once, its
+  family exists, and a family that keeps data has a live RE9 objective. That every table a
+  migration makes is listed is STORAGE5 (#2226), not yet held.
 - **Coverage (OA1):** every module in `packages/contract-harness/routes.server.json` is in exactly
   one family's `modules` or in `synchronous`. A module placed that the server does not serve is a
   warning, not an error, so a module can be placed in its own PR ahead of the route snapshot that

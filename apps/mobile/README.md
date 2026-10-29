@@ -156,7 +156,10 @@ writes inside `withRoom` (`@some-ui/voice-capture`, installed at boot by
 `roomOn`), which claims the write's growth until it settles, so two saves at
 once cannot both pass on one measurement. A store keeps its
 own cap besides, which is its own rule: no store keeps space free for
-itself, so a new one costs nothing until it holds something. There is no
+itself, so a new one costs nothing until it holds something. The caps add
+up to more than the budget (2.17 times it; `voice-home` alone is 24 of its
+25 MiB), which is safe only because a save past the budget is refused, and
+game bites have no cap yet (#2264). There is no
 size per table. LeetType's session files, picked from storage, count toward
 it too, and nothing lets them go yet (#1921); each stays where it was picked
 from.

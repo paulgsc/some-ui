@@ -93,11 +93,32 @@ export type Family = {
   objectives: ReadonlyArray<Objective>
 }
 
+/**
+ * What a kept table or store is: the owner's own history (`record`),
+ * recomputable from records (`derived`), a copy of something held elsewhere
+ * (`cache`), or measurements about the system (`telemetry`).
+ */
+export type StoreClass = "record" | "derived" | "cache" | "telemetry"
+
+/** One place data is kept, and the family that answers for its growth (RE9). */
+export type Store = {
+  /** `server:<table>`, `mailbox:<table>` (the Worker's D1) or `phone:<store>`. */
+  store: string
+  class: StoreClass
+  /** What it grows by, per what unit; or the bound that holds it constant. */
+  growth: string
+  /** What deletes from it, and when; absent when nothing does. */
+  horizon?: string
+  family: string
+}
+
 export type Ledger = {
   schema: typeof LEDGER_SCHEMA
   families: ReadonlyArray<Family>
   /** Every other server route module, and why it owes no later outcome. */
   synchronous: ReadonlyArray<{ module: string; why: string; decision?: string }>
+  /** Every table and store the system keeps (STORAGE3, #2225). */
+  stores: ReadonlyArray<Store>
 }
 
 export type Parsed =
@@ -113,6 +134,12 @@ const CLASSES: ReadonlyArray<EvidenceClass> = [
   "unknown",
 ]
 const WATCHES: ReadonlyArray<WatchBy> = ["none", "dashboard", "alert"]
+const STORE_CLASSES: ReadonlyArray<StoreClass> = [
+  "record",
+  "derived",
+  "cache",
+  "telemetry",
+]
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 
 type Json = Record<string, unknown>
@@ -120,7 +147,7 @@ type At = (where: string, what: string) => void
 
 /** Every key each object may carry: anything else is a typo or a new field. */
 const KEYS = {
-  root: ["schema", "families", "synchronous"],
+  root: ["schema", "families", "synchronous", "stores"],
   family: ["id", "name", "why", "paths", "modules", "objectives"],
   objective: [
     "id",
@@ -147,6 +174,7 @@ const KEYS = {
   amendment: ["on", "change", "why", "decision"],
   retired: ["on", "why"],
   synchronous: ["module", "why", "decision"],
+  store: ["store", "class", "growth", "horizon", "family"],
 } as const
 
 /**
@@ -203,7 +231,35 @@ function build(input: unknown, at: At): Ledger | null {
       ]
     }
   )
-  return { schema: LEDGER_SCHEMA, families, synchronous }
+  const stores = list(root.stores, "stores", at).flatMap((raw, i) => {
+    const entry = record(raw)
+    const where = `stores[${i}]`
+    const kind = oneOf(entry?.class, STORE_CLASSES)
+    if (
+      !entry ||
+      !text(entry.store) ||
+      !kind ||
+      !text(entry.growth) ||
+      !text(entry.family)
+    ) {
+      at(
+        where,
+        `needs a store, a class (${STORE_CLASSES.join(", ")}), growth and a family`
+      )
+      return []
+    }
+    keys(entry, KEYS.store, where, at)
+    return [
+      {
+        store: entry.store,
+        class: kind,
+        growth: entry.growth,
+        ...(text(entry.horizon) ? { horizon: entry.horizon } : {}),
+        family: entry.family,
+      },
+    ]
+  })
+  return { schema: LEDGER_SCHEMA, families, synchronous, stores }
 }
 
 function readFamily(raw: unknown, where: string, at: At): Family | null {
