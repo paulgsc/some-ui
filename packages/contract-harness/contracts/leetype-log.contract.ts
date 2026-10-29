@@ -31,7 +31,7 @@ const ABSENT_SESSION = "contract-harness-does-not-exist"
 export const contracts = [
   defineContract({
     id: "leetype-log.session_events",
-    module: "leetype",
+    module: "leetype_log",
     session: true,
     method: "GET",
     path: "/leetype/sessions/:session/events",
@@ -43,7 +43,7 @@ export const contracts = [
 
   defineContract({
     id: "leetype-log.event_refused",
-    module: "leetype",
+    module: "leetype_log",
     session: true,
     method: "PUT",
     path: "/leetype/sessions/:session/events/:id",

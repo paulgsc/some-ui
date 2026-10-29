@@ -2,6 +2,7 @@
   "id": "session-fixture-provisioned",
   "name": "Hangul Honeycomb + TOPIK Study",
   "status": "scheduled",
+  "origin": "system",
   "activities": [
     {
       "activityId": "honeycomb",

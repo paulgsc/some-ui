@@ -83,11 +83,14 @@ const ActivityConfigValuesSchema = z.record(
   z.union([z.string(), z.number()])
 )
 
-/** `ActivityAudio` in `types.ts`. Absent means the activity is silent. */
+/**
+ * `ActivityAudio` in `types.ts`. Absent means the activity is silent. Its
+ * `required` is left out: no catalogued activity sets it, so the wire never
+ * carries it, and one that starts to shows as an unknown field.
+ */
 const ActivityAudioSchema = z.object({
   channels: z.array(z.enum(["speech", "effects"])),
   blurb: z.string(),
-  required: z.boolean().optional(),
 })
 
 /**
