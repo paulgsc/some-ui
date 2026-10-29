@@ -1179,6 +1179,12 @@
       "family": "archive-restore"
     },
     {
+      "store": "phone:aph-left",
+      "class": "record",
+      "growth": "Per clash when aph comes back to this phone (a home record whose waiting changes clashed with home's): one verbatim copy each; no cap (`aph:home:left:<n>`).",
+      "family": "what-is-kept"
+    },
+    {
       "store": "phone:aph-record",
       "class": "record",
       "growth": "Per entry revision; once opted in the phone keeps only what home has not yet confirmed.",
@@ -1186,10 +1192,29 @@
       "family": "what-is-kept"
     },
     {
+      "store": "phone:audio-notice-answers",
+      "class": "record",
+      "growth": "bounded: one key per activity whose first-use audio notice the person answered, each holding true (`some-ui.audio.activity-notice.v1.<activityId>`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:autosave-failures",
+      "class": "telemetry",
+      "growth": "Per session whose last autosave failed: one small record (kind, summary), at most one per session (`some-ui:autosave-failure:<sessionId>`).",
+      "horizon": "cleared when that session's editor next saves (use-live-layout-editor), or when the session is removed through the sessions store (remove/removeMany)",
+      "family": "what-is-kept"
+    },
+    {
       "store": "phone:curriculum",
       "class": "cache",
       "growth": "Per lesson synced from home (copy of server curriculum); bounded by what home lists.",
       "horizon": "lessons home no longer lists are removed at sync (removeLessonsExcept)",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:data-authority",
+      "class": "record",
+      "growth": "bounded: one value (the data authority chosen and the reporting flag), replaced on each change (`some-ui.authority.v1`).",
       "family": "what-is-kept"
     },
     {
@@ -1223,10 +1248,55 @@
       "family": "what-is-kept"
     },
     {
+      "store": "phone:game-week-prefs",
+      "class": "record",
+      "growth": "Per game the person marks as not watching (notWatching), plus one mode and the last game picked; no cap (`some-ui:game-week.prefs`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:home-consent",
+      "class": "record",
+      "growth": "Per sharing choice the person makes (one event each, with its words), append-only: nothing written is rewritten; no cap (`some-ui.home.consent.v1`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:home-last-send",
+      "class": "telemetry",
+      "growth": "bounded: one line (time and outcome of the last Send to home), replaced by each send (`some-ui.device.last-send.v1`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:home-last-sync",
+      "class": "telemetry",
+      "growth": "bounded: one line (time, home and outcome of the last lesson sync from home), replaced by each successful sync (`some-ui.device.last-sync.v1`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:home-sent",
+      "class": "cache",
+      "growth": "Per finished session, kept shelf item and LeetType session home holds or refused (one digest or updatedAt each), for one pairing; no cap (`some-ui.home.sent.v1`).",
+      "horizon": "a new pairing starts it over (the next write replaces the old pairing's record); a refused digest leaves when home later holds the item, and refused digests of items no longer kept are dropped (home-link/standing.ts)",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:home-told",
+      "class": "cache",
+      "growth": "bounded: one {pairing, seq}, the last sharing choice home heard, replaced as each is told (`some-ui.home.told.v1`).",
+      "horizon": "replaced by each choice told and by a new pairing",
+      "family": "what-is-kept"
+    },
+    {
       "store": "phone:job-voice",
       "class": "record",
       "growth": "bounded: JOB_VOICE_MAX_BYTES = 40 x 240,000 = 9,600,000 B of Jobs voice notes.",
       "horizon": "a note leaves once the share it went out in has arrived (Drive)",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:jobs-drafts",
+      "class": "record",
+      "growth": "Per Jobs form (pass, fit note, debrief) with unsaved typing: one draft each, keyed by the pick's owner; no cap (`some-ui:jobs:drafts`).",
+      "horizon": "a form's draft is cleared once the event that settles it is recorded",
       "family": "what-is-kept"
     },
     {
@@ -1243,11 +1313,30 @@
       "family": "what-is-kept"
     },
     {
+      "store": "phone:last-drama",
+      "class": "record",
+      "growth": "bounded: one record, the last drama played to an ending (scenes, tries, the person's review), replaced by the next (`topik:last-drama`).",
+      "horizon": "deleted once older than LAST_DRAMA_TTL_MS = 30 days (when a store is made); the review's free text is removed by forgetNext once a prompt has carried it",
+      "family": "what-is-kept"
+    },
+    {
       "store": "phone:learner_shelf",
       "class": "record",
       "growth": "bounded: 20 items per activity (SHELF_CAP, copied from the server), a 21st refused (409), never evicted.",
       "family": "what-is-kept",
       "horizon": "An item the learner removes goes (the shelf handler's DELETE)."
+    },
+    {
+      "store": "phone:leetype-baseline",
+      "class": "derived",
+      "growth": "bounded: one blended typing-speed sample, replaced on each calibration (`leetyping_progress`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:leetype-round-ledger",
+      "class": "record",
+      "growth": "bounded: whatever the retired round ledger held when a build before #1941 stopped writing it; nothing writes it now (`leetype:ledger`).",
+      "family": "what-is-kept"
     },
     {
       "store": "phone:leetype-session-log",
@@ -1283,10 +1372,43 @@
       "family": "what-is-kept"
     },
     {
+      "store": "phone:lens-record",
+      "class": "record",
+      "growth": "Per grammar-lens item seen (session, line, showing): one entry each, rewritten in place for the same item; LENS_RECORD_MAX = 1,000 entries (about 700 KB), a new one past it refused, never evicted (`topik:lens-record`).",
+      "horizon": "entries leave once the person says a study-context export carrying them arrived (letGoLensRecord), and only if unchanged since that copy",
+      "family": "what-is-kept"
+    },
+    {
       "store": "phone:lens-takes",
       "class": "record",
       "growth": "bounded: LENS_TAKES_MAX = 40 takes, each <= 30 s: 40 x 30 x 4,000 = 4,800,000 B; past 40 refused, never evicted.",
       "horizon": "takes leave once the person says a study-context export carrying them arrived (letGo)",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:nudge-last-shown",
+      "class": "telemetry",
+      "growth": "bounded: one timestamp, when the last study nudge went out, replaced each time (`some-ui.study-nudge.last-shown.v1`).",
+      "family": "study-nudge"
+    },
+    {
+      "store": "phone:nudge-scheduled-at",
+      "class": "telemetry",
+      "growth": "bounded: one timestamp, when the pending native nudge is due (`some-ui.study-nudge.native-scheduled-at.v1`).",
+      "horizon": "removed when no nudge is pending (written null on coming back or cancelling)",
+      "family": "study-nudge"
+    },
+    {
+      "store": "phone:pasted-lesson",
+      "class": "cache",
+      "growth": "bounded: one slot in sessionStorage, the scene tree pasted this session with its resume point; another paste replaces it (`topik:pasted-lesson`).",
+      "horizon": "gone when the app's page session ends (sessionStorage); clear() empties it; replaced by the next paste",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:portion-order",
+      "class": "record",
+      "growth": "bounded: one order (portion and freshness) last asked for on 'What are you hungry for?', replaced by the next (`topik:portion-order`).",
       "family": "what-is-kept"
     },
     {
@@ -1297,6 +1419,13 @@
       "family": "study-nudge"
     },
     {
+      "store": "phone:read-aloud-feedback",
+      "class": "record",
+      "growth": "bounded: the two end-of-sitting answers ('Too easy', 'Too many repeats'), each null or a time (`topik:read-aloud-feedback`).",
+      "horizon": "an answer toggled off is cleared; with neither given the key holds null",
+      "family": "what-is-kept"
+    },
+    {
       "store": "phone:read-aloud-pace-book",
       "class": "record",
       "growth": "Per word with a pace; pruned to words the vocabulary still names.",
@@ -1304,10 +1433,24 @@
       "family": "what-is-kept"
     },
     {
+      "store": "phone:read-aloud-progress",
+      "class": "record",
+      "growth": "bounded: one unfinished read-aloud set (level, deck, queue), replaced by a set from another deck or level (`topik:read-aloud-progress`).",
+      "horizon": "written null once the set's queue is empty (finished)",
+      "family": "what-is-kept"
+    },
+    {
       "store": "phone:read-aloud-record",
       "class": "record",
       "growth": "bounded: per-day counts for RECORD_DAYS = 60 days; totals keep everything.",
       "horizon": "days older than the newest 60 are dropped (totals kept)",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:read-aloud-tally",
+      "class": "record",
+      "growth": "Per read-aloud sentence shown: one row (first and last shown, times shown and read); grows with the sentences the phone has been given, not with reps; no cap (`topik:read-aloud-tally`).",
+      "horizon": "only when the person clears the tally on purpose",
       "family": "what-is-kept"
     },
     {
@@ -1331,10 +1474,41 @@
       "family": "what-is-kept"
     },
     {
+      "store": "phone:routine-answers",
+      "class": "cache",
+      "growth": "bounded: one answer per home read (home's last GET /routine/files answer, as it came), replaced by a newer one (`topik:routine-answers`).",
+      "horizon": "replaced by each newer answer from the same home",
+      "family": "routine-to-home"
+    },
+    {
+      "store": "phone:routine-opened",
+      "class": "record",
+      "growth": "Per routine file opened on the phone (folder/name), append-only: a few names a day; no cap (`topik:routine-opened`).",
+      "family": "routine-to-home"
+    },
+    {
+      "store": "phone:routine-reads",
+      "class": "record",
+      "growth": "Per choice to show or hide the routine's files on the phone (one event each), append-only; no cap (`some-ui.home.reads.v1`).",
+      "family": "routine-to-home"
+    },
+    {
+      "store": "phone:routine-runs",
+      "class": "telemetry",
+      "growth": "Per routine run home reported (a few hundred bytes, about one a day), per home read: added once by name, never rewritten or dropped; no cap (`topik:routine-runs`).",
+      "family": "routine-to-home"
+    },
+    {
       "store": "phone:scene-voice",
       "class": "record",
       "growth": "bounded: SCENE_NOTES_MAX = 5 notes per draft, SCENE_AUDIO_MAX_BYTES = 5 x 240,000 = 1,200,000 B.",
       "horizon": "notes leave when the draft is shared and let go; sweepSceneVoice drops audio no note names and notes whose audio never landed",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:served-drama-point",
+      "class": "record",
+      "growth": "bounded: one slot, the place in the served scene tree played last (tree id and point), replaced when another tree plays (`topik:served-drama-point`).",
       "family": "what-is-kept"
     },
     {
@@ -1352,10 +1526,28 @@
       "family": "what-is-kept"
     },
     {
+      "store": "phone:sessions-copy-receipt",
+      "class": "cache",
+      "growth": "Per phone session copied to home: the ids home's copies were made under (and any unconfirmed attempt), per account asked; no cap (`some-ui.tenant.sessions.transfers.v1`).",
+      "family": "what-is-kept"
+    },
+    {
       "store": "phone:soundbites",
       "class": "record",
       "growth": "bounded: SOUNDBITE_LIMIT = 6 takes, each <= 1 min at 32 kbps (240,000 B), SOUNDBITES_MAX_BYTES = 1,440,000 B; a 7th replaces the oldest (or the one picked).",
       "horizon": "the 7th take displaces the oldest kept (or the one the person picked)",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:tenant-settings",
+      "class": "record",
+      "growth": "bounded: one settings object for the phone (voice, audio, study settings), replaced on each save (`some-ui.tenant.settings.v1`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:unreadable-copies",
+      "class": "record",
+      "growth": "Per distinct unreadable value found under any kept key: one verbatim copy at the first free <prefix><n> (core-utils quarantine; identical copies are not repeated); no cap (`<key>:unreadable:<n> (also some-ui:voice-home.unreadable.<n>, some-ui:game-bites.unreadable.<n>, some-ui:game-bites.keeping.unreadable.<n>, some-ui:game-week.prefs.unreadable.<n>, aph:state:unreadable:<n>, aph:home:unreadable:<n>)`).",
       "family": "what-is-kept"
     },
     {
