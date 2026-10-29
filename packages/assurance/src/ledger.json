@@ -906,8 +906,8 @@
           "property": "outcome",
           "claim": "The server's own checks hold its half of this ledger.",
           "requirement": "Server CI reads this ledger, fails when a server path a holds names is missing, and fails a background task that belongs to no family.",
-          "verdict": "holds",
-          "conclusion": "The server's Assurance ledger job reads this ledger from main on every server pull request and fails a server proof or path that is gone and a background task in no family; one task waiting on the owner's placement, the 10 s gauge sweep, only warns.",
+          "verdict": "broken",
+          "conclusion": "The server's Assurance ledger job reads this ledger from main on every server pull request and fails a server proof or path that is gone and a background task in no family, except the 10 s gauge sweep, which only warns until the owner places it in a family.",
           "evidence": [
             {
               "class": "measured",
@@ -924,10 +924,7 @@
             "by": "none"
           },
           "amendments": [],
-          "proof": [
-            "server:scripts/check_assurance_ledger.py#check_proofs_and_paths",
-            "server:scripts/check_assurance_ledger.py#check_tasks"
-          ]
+          "tracked": "some-ui#2272"
         },
         {
           "id": "GC5",
