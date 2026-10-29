@@ -218,8 +218,13 @@
             },
             {
               "class": "structural",
-              "says": "mailbox_item, mailbox_outgoing, mailbox_handed and jobs_event only grow: nothing deletes from them.",
-              "ref": "server:apps/servers/file_host/src/mailbox"
+              "says": "mailbox_item, mailbox_outgoing and mailbox_handed refuse UPDATE and DELETE; their rows go only with their account.",
+              "ref": "server:migrations/20261023000100_create_mailbox_copy.up.sql"
+            },
+            {
+              "class": "structural",
+              "says": "jobs_event refuses UPDATE and DELETE; its rows go only with their account.",
+              "ref": "server:migrations/20261018000100_create_jobs_record.up.sql"
             },
             {
               "class": "unknown",
@@ -299,10 +304,10 @@
           "id": "MW3",
           "kind": "RE9",
           "property": "work",
-          "claim": "What archiving keeps grows by one small row per archived file.",
+          "claim": "What archiving keeps grows by a small row per archived file in the mailbox, and by the file's bytes on home.",
           "requirement": "The mailbox's archived and restored tables grow by one row per file archived or put back, an ask leaves once it is answered, and home's mailbox_archive keeps a row per archived file; the rate is stated from measurement.",
           "verdict": "unproven",
-          "conclusion": "The archive's index only grows, by a small row per archived file, and an answered ask leaves; that rate has not been measured yet.",
+          "conclusion": "The mailbox's archive index only grows, by a small row per archived file, home keeps each archived file's bytes (up to 1 MiB) for good, and an answered ask leaves; neither rate has been measured yet.",
           "evidence": [
             {
               "class": "structural",
@@ -425,7 +430,7 @@
           "evidence": [
             {
               "class": "structural",
-              "says": "voice_note_audio refuses DELETE except with its account: audio is kept for good.",
+              "says": "voice_note_audio is deleted only by its account's deletion trigger, and a trigger refuses UPDATE: audio is kept for good.",
               "ref": "server:migrations/20261025000100_create_voice_note.up.sql"
             },
             {
@@ -601,9 +606,10 @@
               "ref": "server:docs/storage.md"
             }
           ],
-          "tracked": "some-ui#2266",
+          "tracked": "server#534",
           "watch": {
-            "by": "none"
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/storage.jsonnet"
           },
           "amendments": []
         }
@@ -677,13 +683,13 @@
           "property": "work",
           "claim": "What the study nudge keeps stays within its stated horizons.",
           "requirement": "intervention_log keeps 90 days, activity_outcome a year (owner, 2026-10-28), presence leases at most 16 per person, and the charge and gate one row per person and class, whether or not the nudge is on.",
-          "verdict": "unproven",
+          "verdict": "broken",
           "conclusion": "The horizons are written into the sweeps, but the sweeps run only while the nudge is on, so with it off the two logs keep growing.",
           "evidence": [
             {
               "class": "structural",
-              "says": "prune_intervention_log and OutcomeRepository::prune run from the nudge waker only, so NUDGE_ENABLED=false stops both.",
-              "ref": "server#556"
+              "says": "The nudge waker, which runs prune_intervention_log and OutcomeRepository::prune, is spawned only while NUDGE_ENABLED is on, so with it off both logs keep every row (server#556).",
+              "ref": "server:apps/servers/file_host/src/main.rs"
             },
             {
               "class": "structural",
@@ -1026,7 +1032,7 @@
           "claim": "Everything I keep grows by a stated model, and none of it is given up for space without my say.",
           "requirement": "Every table and store is listed with its class, growth and horizon (the ledger's stores); every place that discards or rewrites what is kept carries the owner's ruling (docs/discard-sites.md); and no one store can take the phone's room from the others.",
           "verdict": "broken",
-          "conclusion": "Every table and store is listed with how it grows, but some places still drop old takes, stops and practice days with no ruling from me, and game bites have no cap, so they can fill the phone's room.",
+          "conclusion": "Every table and store is listed with how it grows, but some places still drop old takes, stops and practice days with no ruling from me, game bites have no cap, and the other caps do not keep one store from taking most of the phone's room: voice-home's alone is about 91% of it.",
           "evidence": [
             {
               "class": "structural",
@@ -1040,7 +1046,7 @@
             },
             {
               "class": "structural",
-              "says": "The phone's other audio caps add up to 2.17 times the 25 MiB pool; that is safe only because a save past the pool is refused.",
+              "says": "The phone's audio caps add up to 2.17 times the 25 MiB pool, and voice-home's alone (24 MB) is about 91% of it; a save past the pool is refused, so nothing is lost, but one store can leave the others no room.",
               "ref": "some-ui:apps/www/src/lib/device-backend/storage/index.ts"
             },
             {
@@ -1148,7 +1154,7 @@
   "stores": [
     {
       "store": "mailbox:archived",
-      "class": "telemetry",
+      "class": "record",
       "growth": "Per file archived: name, size, hash and dates, no body (a restored file archived again adds a row); append-only, triggers abort UPDATE and DELETE.",
       "family": "archive-restore"
     },
@@ -1161,7 +1167,7 @@
     },
     {
       "store": "mailbox:restored",
-      "class": "telemetry",
+      "class": "record",
       "growth": "Per file put back from home: (new seq, restored_at); append-only.",
       "family": "archive-restore"
     },
@@ -1226,7 +1232,7 @@
     {
       "store": "phone:jobs-record",
       "class": "record",
-      "growth": "Per Jobs event, append-only log on the phone; drained to home's jobs_event once opted in.",
+      "growth": "Per Jobs event, an append-only log on the phone; copied to home's jobs_event once opted in, and the phone keeps its whole log.",
       "family": "what-is-kept"
     },
     {
@@ -1240,7 +1246,8 @@
       "store": "phone:learner_shelf",
       "class": "record",
       "growth": "bounded: 20 items per activity (SHELF_CAP, copied from the server), a 21st refused (409), never evicted.",
-      "family": "what-is-kept"
+      "family": "what-is-kept",
+      "horizon": "An item the learner removes goes (the shelf handler's DELETE)."
     },
     {
       "store": "phone:leetype-session-log",
@@ -1428,7 +1435,7 @@
     },
     {
       "store": "server:game_feed_body",
-      "class": "cache",
+      "class": "record",
       "growth": "One row per distinct ESPN body, keyed by its SHA-256 (server#544): a live game's summary repeats between plays, so far fewer rows than fetches.",
       "family": "game-feed"
     },
@@ -1440,7 +1447,7 @@
     },
     {
       "store": "server:game_feed_response",
-      "class": "cache",
+      "class": "record",
       "growth": "A small row per fetch the worker makes (kind, game, URL, time, status, hash, size), about 840 per followed live game at one per 15 s; the bytes are in game_feed_body.",
       "family": "game-feed"
     },
@@ -1478,9 +1485,10 @@
     },
     {
       "store": "server:learner_shelf",
-      "class": "cache",
+      "class": "record",
       "growth": "bounded: SHELF_CAP = 20 items per subject per activity (topik, leetype), each body <= SHELF_BODY_CEILING = 256 KiB, so <= 10 MiB per subject; over the cap a new key is refused (409), never evicted.",
-      "family": "what-is-kept"
+      "family": "what-is-kept",
+      "horizon": "An item the learner removes goes (DELETE /shelf/:activity/:key), and keeping it again replaces its body."
     },
     {
       "store": "server:leetype_round",
@@ -1540,7 +1548,8 @@
       "store": "server:mood_events",
       "class": "record",
       "growth": "Per mood event entered through the unauthenticated /mood_events routes (team, week, label, delta, mood); rows are mutable and re-indexed on delete.",
-      "family": "what-is-kept"
+      "family": "what-is-kept",
+      "horizon": "An event deleted by id goes, and an edit overwrites it in place."
     },
     {
       "store": "server:passkey",
@@ -1566,7 +1575,8 @@
       "store": "server:sessions",
       "class": "record",
       "growth": "Per study session composed by the owner or provisioned by the waker: one row each, scalars plus JSON activities/scenes/layout (no stated size; small JSON); rows are mutable (upsert).",
-      "family": "what-is-kept"
+      "family": "what-is-kept",
+      "horizon": "A session the owner deletes goes (SessionRepository::delete, delete_many), and an edit overwrites it in place; see docs/discard-sites.md."
     },
     {
       "store": "server:sharing_choice",

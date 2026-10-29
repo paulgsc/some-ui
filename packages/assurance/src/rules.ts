@@ -37,7 +37,6 @@ const PROOF = /^(some-ui|server):([^#\s]+)#(.{3,})$/
 const DECISION =
   /^https:\/\/github\.com\/paulgsc\/(some-ui|server)\/(issues|pull)\/\d+(#[\w-]+)?$/
 const LEDGER = "ledger"
-/** `server:<table>`, `mailbox:<table>` or `phone:<store>`. */
 const STORE = /^(server|mailbox|phone):[a-z0-9][a-z0-9_.-]*$/
 const WATCH_ORDER: Record<WatchBy, number> = { none: 0, dashboard: 1, alert: 2 }
 

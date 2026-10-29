@@ -94,7 +94,8 @@ JSON so the server's CI can read it as well (#2199, AS10). It holds:
   the reason. A request whose caller sees the outcome at once owes no later outcome.
 - `stores`: every table and store the system keeps (home's tables as `server:`, the mailbox's D1
   tables as `mailbox:`, the phone's tables and stores as `phone:`), each with its `class`
-  (`record`, `derived`, `cache` or `telemetry`), its `growth`, its `horizon` when something
+  (`record`, `derived`, `cache` or `telemetry`), its `growth` (per what it grows, or, starting
+  `bounded:`, the bound that keeps it constant), its `horizon` when something
   deletes from it, and the `family` that answers for its growth (RE9). Where each one is
   discarded or rewritten, with the owner's ruling, is `docs/discard-sites.md`.
 - Each objective: `id`, `kind`, `claim`, `requirement`, optional `bound` (`value`, `unit`, and

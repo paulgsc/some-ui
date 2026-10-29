@@ -157,7 +157,7 @@ writes inside `withRoom` (`@some-ui/voice-capture`, installed at boot by
 once cannot both pass on one measurement. A store keeps its
 own cap besides, which is its own rule: no store keeps space free for
 itself, so a new one costs nothing until it holds something. The caps add
-up to more than the budget (2.17 times it; `voice-home` alone is 24 of its
+up to more than the budget (2.17 times it; `voice-home` alone is 24 MB of its
 25 MiB), which is safe only because a save past the budget is refused, and
 game bites have no cap yet (#2264). There is no
 size per table. LeetType's session files, picked from storage, count toward

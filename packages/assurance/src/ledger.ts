@@ -105,7 +105,7 @@ type Store = {
   /** `server:<table>`, `mailbox:<table>` (the Worker's D1) or `phone:<store>`. */
   store: string
   class: StoreClass
-  /** What it grows by, per what unit; or the bound that holds it constant. */
+  /** What it grows by, per what unit; or, starting `bounded:`, the bound that keeps it constant. */
   growth: string
   /** What deletes from it, and when; absent when nothing does. */
   horizon?: string
