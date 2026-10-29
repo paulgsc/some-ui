@@ -116,8 +116,10 @@ pr.yml's `assurance` job, which CI Gate needs.
   `some-ui:`, the file is tracked and the name (at least three characters) appears in it. Anything
   else names a `tracked` issue. A `some-ui:` path in evidence, a watch or a family's `paths` exists.
   **A `server:` path is checked by the server, not here:** its `Assurance ledger` job reads this
-  ledger from `main` on every server pull request and fails a `server:` proof, path or ref that
-  is gone (server#557, objective GC4; the server's `docs/assurance.md`).
+  ledger from `main` on every server pull request and fails a `holds`' `server:` proof, or a
+  `server:` path or ref, that is gone (server#557, objective GC4; the server's `docs/assurance.md`).
+  It runs only on server pull requests and does not stop a merge until `PR gate` is required
+  there (GC5, #2270), so a wrong `server:` path written here first shows on the next server PR.
 - **Decisions:** an amendment's `decision` links to a paulgsc issue, pull request or comment.
 - **What is kept (RE9):** a store is named `server:`, `mailbox:` or `phone:` and listed once, its
   family exists, and a family that keeps data has a live RE9 objective. Every table the mailbox's

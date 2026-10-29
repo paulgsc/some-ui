@@ -907,16 +907,16 @@
           "claim": "The server's own checks hold its half of this ledger.",
           "requirement": "Server CI reads this ledger, fails when a server path a holds names is missing, and fails a background task that belongs to no family.",
           "verdict": "broken",
-          "conclusion": "The server's Assurance ledger job reads this ledger from main on every server pull request and fails a server proof or path that is gone and a background task in no family, except the 10 s gauge sweep, which only warns until the owner places it in a family.",
+          "conclusion": "The server's Assurance ledger job reads this ledger from main on every server pull request and fails a server proof or path that is gone and a background task in file_host that no family covers, except the 10 s gauge sweep, which only warns until the owner places it; until main requires PR gate (GC5), a red run informs and does not stop a merge.",
           "evidence": [
             {
               "class": "measured",
-              "says": "Its first runs, on server#557, read some-ui main: all 8 server proofs and every server path exist, 13 spawn sites in 12 files are placed or listed, and the 40 tables the migrations leave match the 40 server stores.",
-              "ref": "server:.github/workflows/assurance.yml"
+              "says": "Its run on server#557's merged head read some-ui main: all 8 server proofs and every server path exist; of 12 files that spawn tasks, 6 are placed, 4 are listed as not background with exact counts, and 2 were known unplaced and warned; the 40 tables the migrations leave match the 40 server stores.",
+              "ref": "https://github.com/paulgsc/server/actions/runs/40960557350"
             },
             {
               "class": "structural",
-              "says": "A known unplaced task (metrics/periodic.rs) warns until a family's paths cover it; any other unplaced task fails.",
+              "says": "A known unplaced file (metrics/periodic.rs) warns for every spawn in it until a family's paths cover it, and the not-background files fail only when their spawn count changes; any other unplaced file fails. Only file_host's src is scanned, lexically.",
               "ref": "server:docs/assurance.md"
             }
           ],
