@@ -906,19 +906,28 @@
           "property": "outcome",
           "claim": "The server's own checks hold its half of this ledger.",
           "requirement": "Server CI reads this ledger, fails when a server path a holds names is missing, and fails a background task that belongs to no family.",
-          "verdict": "unproven",
-          "conclusion": "Nothing in the server reads this ledger yet, so a renamed server test would leave a proof here pointing at nothing.",
+          "verdict": "holds",
+          "conclusion": "The server's Assurance ledger job reads this ledger from main on every server pull request and fails a server proof or path that is gone and a background task in no family; one task waiting on the owner's placement, the 10 s gauge sweep, only warns.",
           "evidence": [
             {
+              "class": "measured",
+              "says": "Its first runs, on server#557, read some-ui main: all 8 server proofs and every server path exist, 13 spawn sites in 12 files are placed or listed, and the 40 tables the migrations leave match the 40 server stores.",
+              "ref": "server:.github/workflows/assurance.yml"
+            },
+            {
               "class": "structural",
-              "says": "check:assurance checks only some-ui paths; a server path is taken as written, and nothing in the server reads this ledger."
+              "says": "A known unplaced task (metrics/periodic.rs) warns until a family's paths cover it; any other unplaced task fails.",
+              "ref": "server:docs/assurance.md"
             }
           ],
-          "tracked": "server#526",
           "watch": {
             "by": "none"
           },
-          "amendments": []
+          "amendments": [],
+          "proof": [
+            "server:scripts/check_assurance_ledger.py#check_proofs_and_paths",
+            "server:scripts/check_assurance_ledger.py#check_tasks"
+          ]
         },
         {
           "id": "GC5",
@@ -927,15 +936,20 @@
           "claim": "Every check the server runs on a pull request can stop its merge.",
           "requirement": "main in the server requires one gate that waits on every pull request check, path-filtered ones such as Check some-ui against it included, and reads a skipped check as passed only where its paths did not change.",
           "verdict": "broken",
-          "conclusion": "Only five named checks are required, so a red Check some-ui against it, Emit the route snapshot or infra_ci informs and does not stop a merge.",
+          "conclusion": "PR gate now waits on every server pull request check (server#557), but main still requires only five named checks, so until the owner requires PR gate a red Check some-ui against it, Emit the route snapshot, infra_ci or Assurance ledger informs and does not stop a merge.",
           "evidence": [
             {
               "class": "measured",
               "says": "GET /repos/paulgsc/server/rules/branches/main on 2026-10-28 required Artifact retention, Rust lint, rust_ci, metric_contract_ci and Deny Checks Summary, and nothing from routes.yml.",
               "ref": "some-ui#2211"
+            },
+            {
+              "class": "structural",
+              "says": "PR gate (gate.yml, pr_gate.py) waits on every other check of the head commit, path-filtered ones included, and fails on any that fails or never appears.",
+              "ref": "server:scripts/pr_gate.py"
             }
           ],
-          "tracked": "server#526",
+          "tracked": "some-ui#2270",
           "watch": {
             "by": "none"
           },
@@ -1021,7 +1035,8 @@
       "paths": [
         "some-ui:apps/www/src/lib/device-backend/storage",
         "some-ui:docs/discard-sites.md",
-        "server:docs/storage.md"
+        "server:docs/storage.md",
+        "server:apps/servers/file_host/src/storage.rs"
       ],
       "modules": [],
       "objectives": [

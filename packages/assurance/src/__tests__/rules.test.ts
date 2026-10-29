@@ -171,7 +171,7 @@ describe("proof or issue", () => {
     ).toContain(expected)
   })
 
-  it("takes a server proof's path as written, until the server checks it (server#526)", () => {
+  it("takes a server proof's path as written: the server's own CI checks it (server#557)", () => {
     const o = objective({ proof: ["server:src/pass.rs#a_test"] })
     expect(findLedgerViolations(ledgerOf([o]), around())).toEqual([])
   })
