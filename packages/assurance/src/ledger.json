@@ -1554,7 +1554,7 @@
       "store": "phone:voice-home",
       "class": "cache",
       "growth": "bounded: VOICE_HOME_MAX_BYTES = 100 x 240,000 = 24,000,000 B of copies of voice notes not yet held by home.",
-      "horizon": "a copy leaves once home holds the note (or refuses it)",
+      "horizon": "A copy leaves once home holds the note; a copy home refuses stays on the phone for good (voice-home runtime's sweep keeps it), still counted in the pool.",
       "family": "voice-heard"
     },
     {
