@@ -13,9 +13,8 @@
 
 import type { KeyedStorage } from "@some-ui/core-utils"
 import {
-  jsonOf,
   openKept,
-  readWhole,
+  readJson,
   removeRecord,
   writeKept,
 } from "@some-ui/core-utils"
@@ -44,8 +43,7 @@ export type LockDeps = {
 
 type Lease = { token: string; at: number }
 
-const leaseOf = readWhole((raw): Lease | null => {
-  const parsed = jsonOf(raw)
+const leaseOf = readJson((parsed): Lease | null => {
   if (
     typeof parsed === "object" &&
     parsed !== null &&

@@ -1,7 +1,9 @@
+import { readAs } from "@core-utils/lib/home-exchange"
 import type { KeyedStorage } from "@core-utils/lib/storage"
 import {
   openKept,
   openRecord,
+  readJson,
   salvageEntries,
   salvageList,
   writeKept,
@@ -138,5 +140,39 @@ describe("salvageEntries", () => {
     expect(read('{"a":1}')).toEqual({ value: { a: 1 }, whole: true })
     expect(read("[1]")).toBeNull()
     expect(read("{torn")).toBeNull()
+  })
+})
+
+describe("readJson", () => {
+  it("passes parsed JSON to the parser and reads its result whole", () => {
+    const read = readJson((value) => {
+      expect(value).toEqual({ n: 3 })
+      return 3
+    })
+    expect(read('{"n":3}')).toEqual({ value: 3, whole: true })
+  })
+
+  it("returns null when the parser rejects the value", () => {
+    expect(readJson(() => null)("false")).toBeNull()
+  })
+
+  it("passes undefined to the parser for text that is not JSON", () => {
+    const read = readJson((value) => {
+      expect(value).toBeUndefined()
+      return 7
+    })
+    expect(read("not json")).toEqual({ value: 7, whole: true })
+  })
+})
+
+describe("readAs", () => {
+  it("rejects invalid JSON even when the schema accepts undefined", () => {
+    const schema = {
+      safeParse: (value: unknown): { success: true; data: unknown } => ({
+        success: true,
+        data: value,
+      }),
+    }
+    expect(readAs(schema, "not json")).toBeNull()
   })
 })

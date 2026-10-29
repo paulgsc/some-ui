@@ -10,10 +10,9 @@
  */
 
 import {
-  jsonOf,
   localStorageOrNull,
   openKept,
-  readWhole,
+  readJson,
   removeRecord,
   writeKept,
 } from "@some-ui/core-utils"
@@ -39,8 +38,7 @@ function isStoredAutosaveFailure(
   return true
 }
 
-const readFailure = readWhole((raw): StoredAutosaveFailure | null => {
-  const value = jsonOf(raw)
+const readFailure = readJson((value): StoredAutosaveFailure | null => {
   return isStoredAutosaveFailure(value) ? value : null
 })
 

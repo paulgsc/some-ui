@@ -180,6 +180,13 @@ export function readWhole<T>(
   }
 }
 
+/** `readWhole` over `jsonOf`: `parse` gets the stored value as JSON (`undefined` when it is not JSON). */
+export function readJson<T>(
+  parse: (value: unknown) => T | null
+): (raw: string) => Salvaged<T> | null {
+  return readWhole((raw) => parse(jsonOf(raw)))
+}
+
 /**
  * Reads a JSON array entry by entry: the entries `isItem` accepts, `whole`
  * when it accepted all of them; null for a value that is not a JSON array.

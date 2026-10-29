@@ -6,10 +6,9 @@
 
 import type { Kept, KeyedStorage } from "@some-ui/core-utils"
 import {
-  jsonOf,
   localStorageOrNull,
   openKept,
-  readWhole,
+  readJson,
   writeKept,
 } from "@some-ui/core-utils"
 import type { Order } from "@topik/lib/topik/core/portion"
@@ -29,8 +28,8 @@ export type PortionOrderStore = {
   save: (order: Order) => void
 }
 
-const readOrder = readWhole((raw): Order | null => {
-  const parsed = OrderSchema.safeParse(jsonOf(raw))
+const readOrder = readJson((value): Order | null => {
+  const parsed = OrderSchema.safeParse(value)
   return parsed.success
     ? { portion: parsed.data.portion, freshness: parsed.data.freshness }
     : null

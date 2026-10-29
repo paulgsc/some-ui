@@ -13,10 +13,9 @@
 
 import type { Kept, KeyedStorage } from "@some-ui/core-utils"
 import {
-  jsonOf,
   localStorageOrNull,
   openKept,
-  readWhole,
+  readJson,
   writeKept,
 } from "@some-ui/core-utils"
 import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
@@ -70,8 +69,8 @@ const HeldPointSchema = z.object({ lessonId: z.string(), point: z.unknown() })
 
 type HeldPoint = z.infer<typeof HeldPointSchema>
 
-const readHeld = readWhole((raw): HeldPoint | null => {
-  const held = HeldPointSchema.safeParse(jsonOf(raw))
+const readHeld = readJson((value): HeldPoint | null => {
+  const held = HeldPointSchema.safeParse(value)
   return held.success ? held.data : null
 })
 

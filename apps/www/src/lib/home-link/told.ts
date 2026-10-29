@@ -20,10 +20,9 @@
 import type { HomeCall, HomeExchanged, KeyedStorage } from "@some-ui/core-utils"
 import {
   isRecord,
-  jsonOf,
   openKept,
   readAs,
-  readWhole,
+  readJson,
   unexpectedAnswer,
   writeKept,
 } from "@some-ui/core-utils"
@@ -37,8 +36,7 @@ type Store = KeyedStorage | null
 
 type Told = { pairing: string; seq: number }
 
-const readToldRecord = readWhole((raw): Told | null => {
-  const parsed = jsonOf(raw)
+const readToldRecord = readJson((parsed): Told | null => {
   return isRecord(parsed) &&
     typeof parsed.pairing === "string" &&
     typeof parsed.seq === "number"
