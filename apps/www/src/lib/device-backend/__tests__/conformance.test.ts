@@ -111,7 +111,9 @@ describe("device backend conformance", () => {
 
   it("has a contract for every route it serves (DV1)", () => {
     const contracted = new Set(
-      allContracts.map((contract) => `${contract.method} ${contract.path}`)
+      allContracts
+        .filter((contract) => contract.versioned !== false)
+        .map((contract) => `${contract.method} ${contract.path}`)
     )
     const uncovered = DEVICE_ROUTES.map(
       (route) => `${route.method} ${route.path}`

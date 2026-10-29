@@ -38,7 +38,9 @@ type FieldType = "string" | "number" | "integer"
 
 /**
  * `StudySignal` (paulgsc/server `crates/study_domain`): each kind and the
- * fields its variant requires. `f64` takes any number, `i64` only an integer.
+ * fields its variant requires. `f64` takes any number, `i64` only an integer
+ * in its range; an integer spelled as a float (`1.0`) is lost to `JSON.parse`,
+ * so the phone accepts what serde would refuse there.
  */
 const SIGNAL_FIELDS: Readonly<
   Record<string, Readonly<Record<string, FieldType>>>
@@ -55,7 +57,12 @@ const SIGNAL_FIELDS: Readonly<
 function fits(value: unknown, type: FieldType): boolean {
   if (type === "string") return typeof value === "string"
   if (type === "number") return typeof value === "number"
-  return Number.isInteger(value)
+  return (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= -(2 ** 63) &&
+    value < 2 ** 63
+  )
 }
 
 /** Why serde would refuse `signal`, or `null` when it reads as a `StudySignal`. */

@@ -180,9 +180,8 @@ async function write(db: SqlDriver, session: Stored): Promise<void> {
 }
 
 /**
- * `insert_if_absent`: makes `session` unless its id is taken, and answers
- * with the session as it is now, or `null` when another subject holds the
- * id. Run inside the caller's transaction (`budgeted` opens it).
+ * `insert_if_absent`; `null` when another subject holds the id. Runs in
+ * `budgeted`'s transaction.
  */
 async function insertIfAbsent(
   db: SqlDriver,

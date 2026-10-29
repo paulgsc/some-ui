@@ -8,10 +8,7 @@
  * client's `SessionRecord` (`apps/www/src/lib/tenant/types.ts`), checked by
  * hand against the server's, which serialises `camelCase`.
  *
- * Per person, so every contract is a `session` contract. The writes name ids
- * no one holds, so a miss is the answer under test, with two exceptions: a
- * create makes a draft, and a create under a named id makes that one draft
- * however often it is sent.
+ * Per person, so every contract is a `session` contract.
  */
 
 import { z } from "zod"
@@ -88,7 +85,7 @@ export const contracts = [
     path: "/sessions/:id",
     summary:
       "one session, or a 404 the client maps to null rather than to an outage",
-    request: { path: { id: "session-does-not-exist" } },
+    request: { path: { id: ABSENT_ID } },
     // The 404 is as much the contract as the 200. `HttpSessionsRepository.get`
     // returns null on it and `update`/`duplicate` raise SessionNotFoundError;
     // a 500 in its place would have the app reporting an outage for a session
@@ -123,9 +120,9 @@ export const contracts = [
     summary:
       "a create that names its id makes the session under that id, and the same create sent again answers with it",
     mutates: true,
-    // `sessions-copy` names the id of each session it copies, so a copy whose
-    // answer was lost can be sent again without making a second session. A
-    // store that minted its own id here would make one per attempt.
+    // `sessions-copy` names the id of each session it copies. Against a live
+    // server the probe session stays after the first run, and later runs get
+    // it back as held: one someone has since edited fails the draft schema.
     request: { body: { id: NAMED_ID, ...DRAFT } },
     expect: {
       status: 200,

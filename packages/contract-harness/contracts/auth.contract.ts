@@ -18,9 +18,9 @@
  *
  * A `finish` needs an authenticator's signature over the challenge, which a
  * harness cannot make, so each is pinned by its refusal of a body with no
- * ceremony, which signs nobody in and adds no passkey. Where passkeys are not
- * configured (the phone, a deployment without `WEBAUTHN_RP_ID`), every
- * ceremony is `503 feature_not_configured` instead.
+ * ceremony, which signs nobody in and adds no passkey: `file_host` refuses
+ * that body (422) before it reads its passkey configuration. The phone has
+ * no passkeys and answers every ceremony `503 feature_not_configured`.
  */
 
 import { z } from "zod"

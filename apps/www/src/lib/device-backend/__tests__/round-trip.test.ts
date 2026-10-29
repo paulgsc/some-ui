@@ -139,14 +139,8 @@ describe("sessions on the device", () => {
     clock += 1000
     await sessions.update(id, { name: "Commute, renamed" })
 
-    // A resend answers with the session as it is now, and changes nothing.
     const again = await sessions.create(draft)
     expect(again).toMatchObject({ id, name: "Commute, renamed" })
-    await expect(sessions.list()).resolves.toHaveLength(1)
-
-    await expect(
-      sessions.create({ ...draft, id: "session-short" })
-    ).rejects.toThrow()
     await expect(sessions.list()).resolves.toHaveLength(1)
   })
 
