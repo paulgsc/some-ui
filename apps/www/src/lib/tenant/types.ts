@@ -58,6 +58,12 @@ export type SessionRecord = {
   id: string
   name: string
   status: SessionStatus
+  /**
+   * Who made it: the person (`user`), or home proposing it (`system`, until
+   * the person opens or edits it). Home always sends it; a session this
+   * device kept before it did has none.
+   */
+  origin?: "user" | "system"
   /** Friendly source config - lets a draft/scheduled session round-trip back into the composer. */
   activities: Array<StoredSessionActivity>
   /** Finalized, playable scenes - the source of truth once Advanced editing may have touched them. */

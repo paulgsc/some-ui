@@ -20,9 +20,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 
 /**
  * `paulgsc/server`'s `nudge::waker::materialize_provisioned_session` (RCM5),
- * dumped by hand with `cargo run --bin dump-provisioned-session`
- * (paulgsc/server#282). Regenerate it when the seed migration, the
- * recommender's rules, or the naming/duration logic change.
+ * as `cargo run --bin dump-provisioned-session` prints it (paulgsc/server#282).
+ * A server PR that touches what file_host is built from runs `routes.yml`,
+ * which compares this copy with that dump (`scripts/check_client_fixtures.py`).
+ * A difference that script does not list as known fails it, by field.
  */
 const rawFixture = readFileSync(
   join(__dirname, "testdata/provisioned-session.snapshot.json"),
@@ -130,6 +131,7 @@ describe("a server-provisioned session round-trips into the client's SessionReco
   it("deserialises into a well-formed SessionRecord", () => {
     expect(record.id).toMatch(/^session-/)
     expect(record.status).toBe("scheduled")
+    expect(record.origin).toBe("system")
     expect(record.layoutMode).toBe("basic")
     expect(record.activities.length).toBeGreaterThan(0)
   })

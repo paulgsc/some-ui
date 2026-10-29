@@ -12,7 +12,9 @@
  * discoverable credential so sign-in names no account, user verification,
  * and the fixed `user.name`. A server that drifted on any of them would
  * still work, and would quietly ask browsers for more than it says it
- * does, so the literals are the point.
+ * does, so the literals are the point. The extensions are pinned for the
+ * same reason: they are what webauthn-rs asks of the authenticator
+ * (`start_passkey_registration`, `start_discoverable_authentication`).
  *
  * Only the `start` halves are probed. A `finish` needs an authenticator's
  * signature over the challenge, which a harness cannot make.
@@ -23,6 +25,8 @@ import { z } from "zod"
 import { defineContract } from "../src/contract"
 
 const base64url = z.string().regex(/^[A-Za-z0-9_-]+$/)
+
+const timeout = z.number().int().positive()
 
 const RegistrationStartedSchema = z.object({
   ceremony: base64url,
@@ -35,12 +39,24 @@ const RegistrationStartedSchema = z.object({
         name: z.literal("Some UI"),
         displayName: z.literal("Some UI"),
       }),
+      // ES256, then RS256.
+      pubKeyCredParams: z.tuple([
+        z.object({ type: z.literal("public-key"), alg: z.literal(-7) }),
+        z.object({ type: z.literal("public-key"), alg: z.literal(-257) }),
+      ]),
       attestation: z.literal("none"),
       authenticatorSelection: z.object({
         residentKey: z.literal("required"),
         requireResidentKey: z.literal(true),
         userVerification: z.literal("required"),
       }),
+      extensions: z.object({
+        credProps: z.literal(true),
+        credentialProtectionPolicy: z.literal("userVerificationRequired"),
+        enforceCredentialProtectionPolicy: z.literal(false),
+        uvm: z.literal(true),
+      }),
+      timeout,
     }),
   }),
 })
@@ -55,6 +71,8 @@ const SignInStartedSchema = z.object({
       // passkeys it holds for the site.
       allowCredentials: z.array(z.unknown()).length(0),
       userVerification: z.literal("required"),
+      extensions: z.object({ uvm: z.literal(true) }),
+      timeout,
     }),
   }),
 })

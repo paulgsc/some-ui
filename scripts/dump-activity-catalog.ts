@@ -20,14 +20,12 @@
  *
  *   pnpm dump:activity-catalog > activity-catalog.snapshot.json
  *
- * Then copy the file by hand into
+ * The server keeps its copy in
  * `paulgsc/server@crates/db/activity/testdata/activity_catalog.snapshot.json`.
- * There is no automated bridge between the two repos for this yet — the same
- * by-hand discipline `packages/contract-harness/routes.server.json` already
- * runs on for the route inventory (see that package's README), pending
- * whatever story eventually gives either snapshot one (server-side #267 is
- * the candidate for the route inventory; nothing analogous is scoped for
- * this one yet).
+ * A server PR that touches what file_host is built from runs `routes.yml`,
+ * which runs this script and compares the output with that copy
+ * (`scripts/check_client_fixtures.py`). A difference that script does not
+ * list as known fails it, by field.
  */
 import {
   ACTIVITY_CATALOG,

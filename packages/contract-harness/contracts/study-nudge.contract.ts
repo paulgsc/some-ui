@@ -89,16 +89,16 @@ const PresenceLeaseSchema = z.object({
  * `SessionRecord`, which serialises `camelCase` because the client's type is
  * the contract and the server is the side that moved.
  *
- * The optional fields really are absent rather than null — the server marks
- * them `skip_serializing_if = "Option::is_none"` — so against a store with no
- * started sessions the harness will report them as phantom fields. That is a
- * true statement about the sample, not a defect in the contract, and it is
- * exactly the `no-samples` caveat the README warns about.
+ * The optional fields really are absent rather than null: the server marks
+ * them `skip_serializing_if = "Option::is_none"`. Against a store with no
+ * started session the harness reports them as phantom fields, a fact about
+ * the sample rather than the contract.
  */
 const SessionRecordSchema = z.object({
   id: z.string(),
   name: z.string(),
   status: z.enum(["draft", "scheduled", "active", "paused", "completed"]),
+  origin: z.enum(["user", "system"]),
   activities: z.array(z.unknown()),
   scenes: z.array(z.unknown()),
   layoutMode: z.enum(["basic", "advanced"]),
@@ -110,6 +110,18 @@ const SessionRecordSchema = z.object({
   completedAt: z.string().optional(),
   finalElapsedMs: z.number().optional(),
 })
+
+/**
+ * What `POST /sessions` answers: a draft nobody has started, so none of the
+ * fields a start, a finish or the live editor would set. One that arrived
+ * with them would show as an unknown field.
+ */
+const CreatedSessionSchema = SessionRecordSchema.omit({
+  layout: true,
+  startedAt: true,
+  completedAt: true,
+  finalElapsedMs: true,
+}).extend({ status: z.literal("draft"), origin: z.literal("user") })
 
 /**
  * A structurally valid subscription that no push service will ever accept.
@@ -261,6 +273,6 @@ export const contracts = [
         layoutMode: "basic",
       },
     },
-    expect: { status: 200, schema: SessionRecordSchema },
+    expect: { status: 200, schema: CreatedSessionSchema },
   }),
 ]
