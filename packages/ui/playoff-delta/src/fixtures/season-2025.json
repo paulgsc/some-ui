@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "label": "2025",
   "seasonLength": 17,
   "team": "SF",
@@ -69,82 +69,6 @@
         "before": 272,
         "after": 256
       },
-      "results": [
-        {
-          "winner": "SF",
-          "loser": "SEA",
-          "kind": "own",
-          "leverage": 0.1975
-        },
-        {
-          "winner": "LAR",
-          "loser": "HOU",
-          "kind": "exported",
-          "leverage": -0.0177
-        },
-        {
-          "winner": "JAX",
-          "loser": "CAR",
-          "kind": "exported",
-          "leverage": 0.0099
-        },
-        {
-          "winner": "ARI",
-          "loser": "NO",
-          "kind": "inside",
-          "leverage": -0.009
-        },
-        {
-          "winner": "TB",
-          "loser": "ATL",
-          "kind": "inside",
-          "leverage": 0.0006
-        },
-        {
-          "winner": "PHI",
-          "loser": "DAL",
-          "kind": "inside",
-          "leverage": 0.0003
-        },
-        {
-          "winner": "GB",
-          "loser": "DET",
-          "kind": "inside",
-          "leverage": -0.0002
-        },
-        {
-          "winner": "MIN",
-          "loser": "CHI",
-          "kind": "inside",
-          "leverage": -0.0002
-        },
-        {
-          "winner": "WAS",
-          "loser": "NYG",
-          "kind": "inside",
-          "leverage": 0.0001
-        }
-      ],
-      "next": [
-        {
-          "home": "TEN",
-          "away": "LAR",
-          "rootFor": "TEN",
-          "swing": 0.0183
-        },
-        {
-          "home": "PIT",
-          "away": "SEA",
-          "rootFor": "PIT",
-          "swing": 0.016
-        },
-        {
-          "home": "KC",
-          "away": "PHI",
-          "rootFor": "KC",
-          "swing": 0.0107
-        }
-      ],
       "stake": {
         "opponent": "NO",
         "own": 0.1864,
@@ -154,6 +78,7 @@
           {
             "home": "GB",
             "away": "WAS",
+            "kind": "inside",
             "want": "WAS",
             "price": 0.0006,
             "error": 0.0003
@@ -161,6 +86,7 @@
           {
             "home": "PIT",
             "away": "SEA",
+            "kind": "exported",
             "want": "PIT",
             "price": 0.0151,
             "error": 0.0006
@@ -168,6 +94,7 @@
           {
             "home": "TEN",
             "away": "LAR",
+            "kind": "exported",
             "want": "TEN",
             "price": 0.0153,
             "error": 0.0001
@@ -175,6 +102,7 @@
           {
             "home": "DAL",
             "away": "NYG",
+            "kind": "inside",
             "want": "NYG",
             "price": 0.0002,
             "error": 0.0002
@@ -182,6 +110,7 @@
           {
             "home": "DET",
             "away": "CHI",
+            "kind": "inside",
             "want": "DET",
             "price": 0.0,
             "error": 0.0001
@@ -189,6 +118,7 @@
           {
             "home": "NO",
             "away": "SF",
+            "kind": "own",
             "want": "SF",
             "price": 0.1801,
             "error": 0.0015
@@ -196,6 +126,7 @@
           {
             "home": "ARI",
             "away": "CAR",
+            "kind": "inside",
             "want": "CAR",
             "price": 0.0064,
             "error": 0.0017
@@ -203,6 +134,7 @@
           {
             "home": "KC",
             "away": "PHI",
+            "kind": "exported",
             "want": "KC",
             "price": 0.0086,
             "error": 0.0009
@@ -210,6 +142,7 @@
           {
             "home": "MIN",
             "away": "ATL",
+            "kind": "inside",
             "want": "ATL",
             "price": 0.0009,
             "error": 0.0009
@@ -217,6 +150,7 @@
           {
             "home": "HOU",
             "away": "TB",
+            "kind": "exported",
             "want": "HOU",
             "price": 0.0078,
             "error": 0.0002
@@ -517,88 +451,6 @@
         "before": 256,
         "after": 240
       },
-      "results": [
-        {
-          "winner": "SF",
-          "loser": "NO",
-          "kind": "own",
-          "leverage": 0.1919
-        },
-        {
-          "winner": "LAR",
-          "loser": "TEN",
-          "kind": "exported",
-          "leverage": -0.0161
-        },
-        {
-          "winner": "SEA",
-          "loser": "PIT",
-          "kind": "exported",
-          "leverage": -0.014
-        },
-        {
-          "winner": "PHI",
-          "loser": "KC",
-          "kind": "exported",
-          "leverage": -0.01
-        },
-        {
-          "winner": "TB",
-          "loser": "HOU",
-          "kind": "exported",
-          "leverage": -0.0093
-        },
-        {
-          "winner": "ARI",
-          "loser": "CAR",
-          "kind": "inside",
-          "leverage": -0.0074
-        },
-        {
-          "winner": "ATL",
-          "loser": "MIN",
-          "kind": "inside",
-          "leverage": 0.003
-        },
-        {
-          "winner": "GB",
-          "loser": "WAS",
-          "kind": "inside",
-          "leverage": 0.0021
-        },
-        {
-          "winner": "DAL",
-          "loser": "NYG",
-          "kind": "inside",
-          "leverage": -0.0005
-        },
-        {
-          "winner": "DET",
-          "loser": "CHI",
-          "kind": "inside",
-          "leverage": -0.0001
-        }
-      ],
-      "next": [
-        {
-          "home": "BAL",
-          "away": "DET",
-          "rootFor": "BAL",
-          "swing": 0.0118
-        },
-        {
-          "home": "WAS",
-          "away": "LV",
-          "rootFor": "LV",
-          "swing": 0.0114
-        },
-        {
-          "home": "MIN",
-          "away": "CIN",
-          "rootFor": "CIN",
-          "swing": 0.0113
-        }
-      ],
       "stake": {
         "opponent": "ARI",
         "own": 0.1883,
@@ -608,6 +460,7 @@
           {
             "home": "CLE",
             "away": "GB",
+            "kind": "exported",
             "want": "CLE",
             "price": 0.0083,
             "error": 0.0
@@ -615,6 +468,7 @@
           {
             "home": "PHI",
             "away": "LAR",
+            "kind": "inside",
             "want": "PHI",
             "price": 0.0044,
             "error": 0.0
@@ -622,6 +476,7 @@
           {
             "home": "WAS",
             "away": "LV",
+            "kind": "exported",
             "want": "LV",
             "price": 0.0098,
             "error": 0.0001
@@ -629,6 +484,7 @@
           {
             "home": "MIN",
             "away": "CIN",
+            "kind": "exported",
             "want": "CIN",
             "price": 0.0095,
             "error": 0.0003
@@ -636,6 +492,7 @@
           {
             "home": "TB",
             "away": "NYJ",
+            "kind": "exported",
             "want": "NYJ",
             "price": 0.0078,
             "error": 0.0002
@@ -643,6 +500,7 @@
           {
             "home": "CAR",
             "away": "ATL",
+            "kind": "inside",
             "want": "CAR",
             "price": 0.0013,
             "error": 0.0007
@@ -650,6 +508,7 @@
           {
             "home": "SEA",
             "away": "NO",
+            "kind": "inside",
             "want": "NO",
             "price": 0.0043,
             "error": 0.0007
@@ -657,6 +516,7 @@
           {
             "home": "CHI",
             "away": "DAL",
+            "kind": "inside",
             "want": "CHI",
             "price": 0.0029,
             "error": 0.0002
@@ -664,6 +524,7 @@
           {
             "home": "SF",
             "away": "ARI",
+            "kind": "own",
             "want": "SF",
             "price": 0.1793,
             "error": 0.0032
@@ -671,6 +532,7 @@
           {
             "home": "NYG",
             "away": "KC",
+            "kind": "exported",
             "want": "KC",
             "price": 0.0071,
             "error": 0.0002
@@ -678,6 +540,7 @@
           {
             "home": "BAL",
             "away": "DET",
+            "kind": "exported",
             "want": "BAL",
             "price": 0.0079,
             "error": 0.0002
@@ -998,94 +861,6 @@
         "before": 240,
         "after": 224
       },
-      "results": [
-        {
-          "winner": "SF",
-          "loser": "ARI",
-          "kind": "own",
-          "leverage": 0.1891
-        },
-        {
-          "winner": "CLE",
-          "loser": "GB",
-          "kind": "exported",
-          "leverage": 0.0107
-        },
-        {
-          "winner": "DET",
-          "loser": "BAL",
-          "kind": "exported",
-          "leverage": -0.0094
-        },
-        {
-          "winner": "WAS",
-          "loser": "LV",
-          "kind": "exported",
-          "leverage": -0.0094
-        },
-        {
-          "winner": "MIN",
-          "loser": "CIN",
-          "kind": "exported",
-          "leverage": -0.0091
-        },
-        {
-          "winner": "SEA",
-          "loser": "NO",
-          "kind": "inside",
-          "leverage": -0.0079
-        },
-        {
-          "winner": "KC",
-          "loser": "NYG",
-          "kind": "exported",
-          "leverage": 0.0079
-        },
-        {
-          "winner": "TB",
-          "loser": "NYJ",
-          "kind": "exported",
-          "leverage": -0.0068
-        },
-        {
-          "winner": "PHI",
-          "loser": "LAR",
-          "kind": "inside",
-          "leverage": 0.0058
-        },
-        {
-          "winner": "CHI",
-          "loser": "DAL",
-          "kind": "inside",
-          "leverage": 0.0029
-        },
-        {
-          "winner": "CAR",
-          "loser": "ATL",
-          "kind": "inside",
-          "leverage": 0.0025
-        }
-      ],
-      "next": [
-        {
-          "home": "LAR",
-          "away": "IND",
-          "rootFor": "IND",
-          "swing": 0.0153
-        },
-        {
-          "home": "DET",
-          "away": "CLE",
-          "rootFor": "CLE",
-          "swing": 0.0106
-        },
-        {
-          "home": "PIT",
-          "away": "MIN",
-          "rootFor": "PIT",
-          "swing": 0.0103
-        }
-      ],
       "stake": {
         "opponent": "JAX",
         "own": 0.1492,
@@ -1095,6 +870,7 @@
           {
             "home": "ARI",
             "away": "SEA",
+            "kind": "inside",
             "want": "SEA",
             "price": 0.0005,
             "error": 0.0
@@ -1102,6 +878,7 @@
           {
             "home": "PIT",
             "away": "MIN",
+            "kind": "exported",
             "want": "PIT",
             "price": 0.0092,
             "error": 0.0004
@@ -1109,6 +886,7 @@
           {
             "home": "BUF",
             "away": "NO",
+            "kind": "exported",
             "want": "BUF",
             "price": 0.0051,
             "error": 0.0001
@@ -1116,6 +894,7 @@
           {
             "home": "NE",
             "away": "CAR",
+            "kind": "exported",
             "want": "NE",
             "price": 0.0084,
             "error": 0.0001
@@ -1123,6 +902,7 @@
           {
             "home": "NYG",
             "away": "LAC",
+            "kind": "exported",
             "want": "LAC",
             "price": 0.0049,
             "error": 0.0003
@@ -1130,6 +910,7 @@
           {
             "home": "DET",
             "away": "CLE",
+            "kind": "exported",
             "want": "CLE",
             "price": 0.0076,
             "error": 0.0002
@@ -1137,6 +918,7 @@
           {
             "home": "TB",
             "away": "PHI",
+            "kind": "inside",
             "want": "TB",
             "price": 0.0025,
             "error": 0.0005
@@ -1144,6 +926,7 @@
           {
             "home": "ATL",
             "away": "WAS",
+            "kind": "inside",
             "want": "WAS",
             "price": 0.0009,
             "error": 0.0001
@@ -1151,6 +934,7 @@
           {
             "home": "SF",
             "away": "JAX",
+            "kind": "own",
             "want": "SF",
             "price": 0.1385,
             "error": 0.0
@@ -1158,6 +942,7 @@
           {
             "home": "LAR",
             "away": "IND",
+            "kind": "exported",
             "want": "IND",
             "price": 0.0101,
             "error": 0.0012
@@ -1165,6 +950,7 @@
           {
             "home": "LV",
             "away": "CHI",
+            "kind": "exported",
             "want": "LV",
             "price": 0.008,
             "error": 0.0007
@@ -1172,6 +958,7 @@
           {
             "home": "DAL",
             "away": "GB",
+            "kind": "inside",
             "want": "GB",
             "price": 0.0011,
             "error": 0.0
@@ -1508,94 +1295,6 @@
         "before": 224,
         "after": 208
       },
-      "results": [
-        {
-          "winner": "JAX",
-          "loser": "SF",
-          "kind": "own",
-          "leverage": -0.1581
-        },
-        {
-          "winner": "LAR",
-          "loser": "IND",
-          "kind": "exported",
-          "leverage": -0.0187
-        },
-        {
-          "winner": "PIT",
-          "loser": "MIN",
-          "kind": "exported",
-          "leverage": 0.014
-        },
-        {
-          "winner": "DET",
-          "loser": "CLE",
-          "kind": "exported",
-          "leverage": -0.0132
-        },
-        {
-          "winner": "CHI",
-          "loser": "LV",
-          "kind": "exported",
-          "leverage": -0.0114
-        },
-        {
-          "winner": "NE",
-          "loser": "CAR",
-          "kind": "exported",
-          "leverage": 0.0085
-        },
-        {
-          "winner": "NYG",
-          "loser": "LAC",
-          "kind": "exported",
-          "leverage": -0.0077
-        },
-        {
-          "winner": "ATL",
-          "loser": "WAS",
-          "kind": "inside",
-          "leverage": 0.0066
-        },
-        {
-          "winner": "BUF",
-          "loser": "NO",
-          "kind": "exported",
-          "leverage": 0.0051
-        },
-        {
-          "winner": "PHI",
-          "loser": "TB",
-          "kind": "inside",
-          "leverage": -0.0024
-        },
-        {
-          "winner": "SEA",
-          "loser": "ARI",
-          "kind": "inside",
-          "leverage": -0.0003
-        }
-      ],
-      "next": [
-        {
-          "home": "ARI",
-          "away": "TEN",
-          "rootFor": "TEN",
-          "swing": 0.0171
-        },
-        {
-          "home": "CIN",
-          "away": "DET",
-          "rootFor": "CIN",
-          "swing": 0.014
-        },
-        {
-          "home": "CLE",
-          "away": "MIN",
-          "rootFor": "CLE",
-          "swing": 0.0134
-        }
-      ],
       "stake": {
         "opponent": "LAR",
         "own": 0.2061,
@@ -1605,6 +1304,7 @@
           {
             "home": "LAR",
             "away": "SF",
+            "kind": "own",
             "want": "SF",
             "price": 0.1857,
             "error": 0.0002
@@ -1612,6 +1312,7 @@
           {
             "home": "CLE",
             "away": "MIN",
+            "kind": "exported",
             "want": "CLE",
             "price": 0.0103,
             "error": 0.0007
@@ -1619,6 +1320,7 @@
           {
             "home": "NYJ",
             "away": "DAL",
+            "kind": "exported",
             "want": "NYJ",
             "price": 0.009,
             "error": 0.0002
@@ -1626,6 +1328,7 @@
           {
             "home": "PHI",
             "away": "DEN",
+            "kind": "exported",
             "want": "DEN",
             "price": 0.0046,
             "error": 0.0013
@@ -1633,6 +1336,7 @@
           {
             "home": "NO",
             "away": "NYG",
+            "kind": "inside",
             "want": "NO",
             "price": 0.0043,
             "error": 0.0007
@@ -1640,6 +1344,7 @@
           {
             "home": "CAR",
             "away": "MIA",
+            "kind": "exported",
             "want": "MIA",
             "price": 0.0068,
             "error": 0.0001
@@ -1647,6 +1352,7 @@
           {
             "home": "SEA",
             "away": "TB",
+            "kind": "inside",
             "want": "TB",
             "price": 0.0052,
             "error": 0.0005
@@ -1654,6 +1360,7 @@
           {
             "home": "ARI",
             "away": "TEN",
+            "kind": "exported",
             "want": "TEN",
             "price": 0.0131,
             "error": 0.0013
@@ -1661,6 +1368,7 @@
           {
             "home": "CIN",
             "away": "DET",
+            "kind": "exported",
             "want": "CIN",
             "price": 0.0105,
             "error": 0.0012
@@ -1668,6 +1376,7 @@
           {
             "home": "LAC",
             "away": "WAS",
+            "kind": "exported",
             "want": "LAC",
             "price": 0.0076,
             "error": 0.0003
@@ -2004,88 +1713,6 @@
         "before": 208,
         "after": 194
       },
-      "results": [
-        {
-          "winner": "SF",
-          "loser": "LAR",
-          "kind": "own",
-          "leverage": 0.2085
-        },
-        {
-          "winner": "TEN",
-          "loser": "ARI",
-          "kind": "exported",
-          "leverage": 0.0168
-        },
-        {
-          "winner": "TB",
-          "loser": "SEA",
-          "kind": "inside",
-          "leverage": 0.0111
-        },
-        {
-          "winner": "DET",
-          "loser": "CIN",
-          "kind": "exported",
-          "leverage": -0.0111
-        },
-        {
-          "winner": "MIN",
-          "loser": "CLE",
-          "kind": "exported",
-          "leverage": -0.0104
-        },
-        {
-          "winner": "WAS",
-          "loser": "LAC",
-          "kind": "exported",
-          "leverage": -0.0098
-        },
-        {
-          "winner": "DAL",
-          "loser": "NYJ",
-          "kind": "exported",
-          "leverage": -0.0095
-        },
-        {
-          "winner": "DEN",
-          "loser": "PHI",
-          "kind": "exported",
-          "leverage": 0.0082
-        },
-        {
-          "winner": "CAR",
-          "loser": "MIA",
-          "kind": "exported",
-          "leverage": -0.0056
-        },
-        {
-          "winner": "NO",
-          "loser": "NYG",
-          "kind": "inside",
-          "leverage": 0.0041
-        }
-      ],
-      "next": [
-        {
-          "home": "BAL",
-          "away": "LAR",
-          "rootFor": "BAL",
-          "swing": 0.0195
-        },
-        {
-          "home": "JAX",
-          "away": "SEA",
-          "rootFor": "JAX",
-          "swing": 0.0195
-        },
-        {
-          "home": "IND",
-          "away": "ARI",
-          "rootFor": "IND",
-          "swing": 0.0145
-        }
-      ],
       "stake": {
         "opponent": "TB",
         "own": 0.1709,
@@ -2095,6 +1722,7 @@
           {
             "home": "NYG",
             "away": "PHI",
+            "kind": "inside",
             "want": "NYG",
             "price": 0.0026,
             "error": 0.002
@@ -2102,6 +1730,7 @@
           {
             "home": "BAL",
             "away": "LAR",
+            "kind": "exported",
             "want": "BAL",
             "price": 0.0128,
             "error": 0.0016
@@ -2109,6 +1738,7 @@
           {
             "home": "IND",
             "away": "ARI",
+            "kind": "exported",
             "want": "IND",
             "price": 0.0103,
             "error": 0.0008
@@ -2116,6 +1746,7 @@
           {
             "home": "JAX",
             "away": "SEA",
+            "kind": "exported",
             "want": "JAX",
             "price": 0.013,
             "error": 0.0001
@@ -2123,6 +1754,7 @@
           {
             "home": "NO",
             "away": "NE",
+            "kind": "exported",
             "want": "NE",
             "price": 0.0024,
             "error": 0.0002
@@ -2130,6 +1762,7 @@
           {
             "home": "CAR",
             "away": "DAL",
+            "kind": "inside",
             "want": "CAR",
             "price": 0.0023,
             "error": 0.001
@@ -2137,6 +1770,7 @@
           {
             "home": "GB",
             "away": "CIN",
+            "kind": "exported",
             "want": "CIN",
             "price": 0.0058,
             "error": 0.0002
@@ -2144,6 +1778,7 @@
           {
             "home": "TB",
             "away": "SF",
+            "kind": "own",
             "want": "SF",
             "price": 0.1501,
             "error": 0.0017
@@ -2151,6 +1786,7 @@
           {
             "home": "KC",
             "away": "DET",
+            "kind": "exported",
             "want": "KC",
             "price": 0.0054,
             "error": 0.0013
@@ -2158,6 +1794,7 @@
           {
             "home": "ATL",
             "away": "BUF",
+            "kind": "exported",
             "want": "BUF",
             "price": 0.0062,
             "error": 0.0
@@ -2165,6 +1802,7 @@
           {
             "home": "WAS",
             "away": "CHI",
+            "kind": "inside",
             "want": "WAS",
             "price": 0.0006,
             "error": 0.0022
@@ -2483,94 +2121,6 @@
         "before": 194,
         "after": 179
       },
-      "results": [
-        {
-          "winner": "TB",
-          "loser": "SF",
-          "kind": "own",
-          "leverage": -0.1777
-        },
-        {
-          "winner": "LAR",
-          "loser": "BAL",
-          "kind": "exported",
-          "leverage": -0.0232
-        },
-        {
-          "winner": "SEA",
-          "loser": "JAX",
-          "kind": "exported",
-          "leverage": -0.0229
-        },
-        {
-          "winner": "IND",
-          "loser": "ARI",
-          "kind": "exported",
-          "leverage": 0.0168
-        },
-        {
-          "winner": "KC",
-          "loser": "DET",
-          "kind": "exported",
-          "leverage": 0.0154
-        },
-        {
-          "winner": "GB",
-          "loser": "CIN",
-          "kind": "exported",
-          "leverage": -0.015
-        },
-        {
-          "winner": "ATL",
-          "loser": "BUF",
-          "kind": "exported",
-          "leverage": -0.0125
-        },
-        {
-          "winner": "NE",
-          "loser": "NO",
-          "kind": "exported",
-          "leverage": 0.0053
-        },
-        {
-          "winner": "NYG",
-          "loser": "PHI",
-          "kind": "inside",
-          "leverage": 0.005
-        },
-        {
-          "winner": "CHI",
-          "loser": "WAS",
-          "kind": "inside",
-          "leverage": -0.0024
-        },
-        {
-          "winner": "CAR",
-          "loser": "DAL",
-          "kind": "inside",
-          "leverage": 0.0014
-        }
-      ],
-      "next": [
-        {
-          "home": "JAX",
-          "away": "LAR",
-          "rootFor": "JAX",
-          "swing": 0.0239
-        },
-        {
-          "home": "SEA",
-          "away": "HOU",
-          "rootFor": "HOU",
-          "swing": 0.0237
-        },
-        {
-          "home": "NYJ",
-          "away": "CAR",
-          "rootFor": "NYJ",
-          "swing": 0.0136
-        }
-      ],
       "stake": {
         "opponent": "ATL",
         "own": 0.2169,
@@ -2580,6 +2130,7 @@
           {
             "home": "JAX",
             "away": "LAR",
+            "kind": "exported",
             "want": "JAX",
             "price": 0.018,
             "error": 0.0025
@@ -2587,6 +2138,7 @@
           {
             "home": "NYJ",
             "away": "CAR",
+            "kind": "exported",
             "want": "NYJ",
             "price": 0.0109,
             "error": 0.0007
@@ -2594,6 +2146,7 @@
           {
             "home": "MIN",
             "away": "PHI",
+            "kind": "inside",
             "want": "PHI",
             "price": 0.0044,
             "error": 0.0003
@@ -2601,6 +2154,7 @@
           {
             "home": "CHI",
             "away": "NO",
+            "kind": "inside",
             "want": "NO",
             "price": 0.0091,
             "error": 0.0004
@@ -2608,6 +2162,7 @@
           {
             "home": "DEN",
             "away": "NYG",
+            "kind": "exported",
             "want": "DEN",
             "price": 0.0067,
             "error": 0.0002
@@ -2615,6 +2170,7 @@
           {
             "home": "DAL",
             "away": "WAS",
+            "kind": "inside",
             "want": "WAS",
             "price": 0.0006,
             "error": 0.0016
@@ -2622,6 +2178,7 @@
           {
             "home": "ARI",
             "away": "GB",
+            "kind": "inside",
             "want": "GB",
             "price": 0.0021,
             "error": 0.0017
@@ -2629,6 +2186,7 @@
           {
             "home": "SF",
             "away": "ATL",
+            "kind": "own",
             "want": "SF",
             "price": 0.2032,
             "error": 0.0062
@@ -2636,6 +2194,7 @@
           {
             "home": "DET",
             "away": "TB",
+            "kind": "inside",
             "want": "TB",
             "price": 0.0051,
             "error": 0.0004
@@ -2643,6 +2202,7 @@
           {
             "home": "SEA",
             "away": "HOU",
+            "kind": "exported",
             "want": "HOU",
             "price": 0.0165,
             "error": 0.0002
@@ -2981,88 +2541,6 @@
         "before": 179,
         "after": 164
       },
-      "results": [
-        {
-          "winner": "SF",
-          "loser": "ATL",
-          "kind": "own",
-          "leverage": 0.2239
-        },
-        {
-          "winner": "SEA",
-          "loser": "HOU",
-          "kind": "exported",
-          "leverage": -0.0235
-        },
-        {
-          "winner": "LAR",
-          "loser": "JAX",
-          "kind": "exported",
-          "leverage": -0.0222
-        },
-        {
-          "winner": "CHI",
-          "loser": "NO",
-          "kind": "inside",
-          "leverage": -0.0164
-        },
-        {
-          "winner": "CAR",
-          "loser": "NYJ",
-          "kind": "exported",
-          "leverage": -0.0117
-        },
-        {
-          "winner": "DET",
-          "loser": "TB",
-          "kind": "inside",
-          "leverage": -0.0089
-        },
-        {
-          "winner": "DEN",
-          "loser": "NYG",
-          "kind": "exported",
-          "leverage": 0.0076
-        },
-        {
-          "winner": "PHI",
-          "loser": "MIN",
-          "kind": "inside",
-          "leverage": 0.0071
-        },
-        {
-          "winner": "GB",
-          "loser": "ARI",
-          "kind": "inside",
-          "leverage": -0.0065
-        },
-        {
-          "winner": "DAL",
-          "loser": "WAS",
-          "kind": "inside",
-          "leverage": -0.0017
-        }
-      ],
-      "next": [
-        {
-          "home": "BAL",
-          "away": "CHI",
-          "rootFor": "BAL",
-          "swing": 0.0193
-        },
-        {
-          "home": "PIT",
-          "away": "GB",
-          "rootFor": "PIT",
-          "swing": 0.0152
-        },
-        {
-          "home": "LAC",
-          "away": "MIN",
-          "rootFor": "LAC",
-          "swing": 0.015
-        }
-      ],
       "stake": {
         "opponent": "HOU",
         "own": 0.1857,
@@ -3072,6 +2550,7 @@
           {
             "home": "LAC",
             "away": "MIN",
+            "kind": "exported",
             "want": "LAC",
             "price": 0.011,
             "error": 0.0005
@@ -3079,6 +2558,7 @@
           {
             "home": "BAL",
             "away": "CHI",
+            "kind": "exported",
             "want": "BAL",
             "price": 0.014,
             "error": 0.0001
@@ -3086,6 +2566,7 @@
           {
             "home": "HOU",
             "away": "SF",
+            "kind": "own",
             "want": "SF",
             "price": 0.1595,
             "error": 0.0021
@@ -3093,6 +2574,7 @@
           {
             "home": "PHI",
             "away": "NYG",
+            "kind": "inside",
             "want": "NYG",
             "price": 0.0021,
             "error": 0.0015
@@ -3100,6 +2582,7 @@
           {
             "home": "ATL",
             "away": "MIA",
+            "kind": "exported",
             "want": "MIA",
             "price": 0.0087,
             "error": 0.001
@@ -3107,6 +2590,7 @@
           {
             "home": "CAR",
             "away": "BUF",
+            "kind": "exported",
             "want": "BUF",
             "price": 0.0079,
             "error": 0.0005
@@ -3114,6 +2598,7 @@
           {
             "home": "NO",
             "away": "TB",
+            "kind": "inside",
             "want": "NO",
             "price": 0.0065,
             "error": 0.0007
@@ -3121,6 +2606,7 @@
           {
             "home": "DEN",
             "away": "DAL",
+            "kind": "exported",
             "want": "DEN",
             "price": 0.0082,
             "error": 0.0017
@@ -3128,6 +2614,7 @@
           {
             "home": "PIT",
             "away": "GB",
+            "kind": "exported",
             "want": "PIT",
             "price": 0.0107,
             "error": 0.0001
@@ -3135,6 +2622,7 @@
           {
             "home": "KC",
             "away": "WAS",
+            "kind": "exported",
             "want": "KC",
             "price": 0.0057,
             "error": 0.0015
@@ -3453,88 +2941,6 @@
         "before": 164,
         "after": 151
       },
-      "results": [
-        {
-          "winner": "HOU",
-          "loser": "SF",
-          "kind": "own",
-          "leverage": -0.1744
-        },
-        {
-          "winner": "BAL",
-          "loser": "CHI",
-          "kind": "exported",
-          "leverage": 0.024
-        },
-        {
-          "winner": "LAC",
-          "loser": "MIN",
-          "kind": "exported",
-          "leverage": 0.0209
-        },
-        {
-          "winner": "BUF",
-          "loser": "CAR",
-          "kind": "exported",
-          "leverage": 0.0202
-        },
-        {
-          "winner": "DEN",
-          "loser": "DAL",
-          "kind": "exported",
-          "leverage": 0.0195
-        },
-        {
-          "winner": "MIA",
-          "loser": "ATL",
-          "kind": "exported",
-          "leverage": 0.0171
-        },
-        {
-          "winner": "GB",
-          "loser": "PIT",
-          "kind": "exported",
-          "leverage": -0.0156
-        },
-        {
-          "winner": "KC",
-          "loser": "WAS",
-          "kind": "exported",
-          "leverage": 0.0127
-        },
-        {
-          "winner": "TB",
-          "loser": "NO",
-          "kind": "inside",
-          "leverage": -0.0091
-        },
-        {
-          "winner": "PHI",
-          "loser": "NYG",
-          "kind": "inside",
-          "leverage": -0.0033
-        }
-      ],
-      "next": [
-        {
-          "home": "CIN",
-          "away": "CHI",
-          "rootFor": "CIN",
-          "swing": 0.0248
-        },
-        {
-          "home": "LAR",
-          "away": "NO",
-          "rootFor": "NO",
-          "swing": 0.0221
-        },
-        {
-          "home": "WAS",
-          "away": "SEA",
-          "rootFor": "WAS",
-          "swing": 0.0143
-        }
-      ],
       "stake": {
         "opponent": "NYG",
         "own": 0.2191,
@@ -3544,6 +2950,7 @@
           {
             "home": "NE",
             "away": "ATL",
+            "kind": "exported",
             "want": "NE",
             "price": 0.0095,
             "error": 0.0005
@@ -3551,6 +2958,7 @@
           {
             "home": "CIN",
             "away": "CHI",
+            "kind": "exported",
             "want": "CIN",
             "price": 0.0181,
             "error": 0.0007
@@ -3558,6 +2966,7 @@
           {
             "home": "NYG",
             "away": "SF",
+            "kind": "own",
             "want": "SF",
             "price": 0.205,
             "error": 0.0036
@@ -3565,6 +2974,7 @@
           {
             "home": "DET",
             "away": "MIN",
+            "kind": "inside",
             "want": "MIN",
             "price": 0.002,
             "error": 0.0007
@@ -3572,6 +2982,7 @@
           {
             "home": "GB",
             "away": "CAR",
+            "kind": "inside",
             "want": "GB",
             "price": 0.0052,
             "error": 0.0025
@@ -3579,6 +2990,7 @@
           {
             "home": "LAR",
             "away": "NO",
+            "kind": "inside",
             "want": "NO",
             "price": 0.0154,
             "error": 0.0012
@@ -3586,6 +2998,7 @@
           {
             "home": "WAS",
             "away": "SEA",
+            "kind": "inside",
             "want": "WAS",
             "price": 0.009,
             "error": 0.0009
@@ -3593,6 +3006,7 @@
           {
             "home": "DAL",
             "away": "ARI",
+            "kind": "inside",
             "want": "ARI",
             "price": 0.0082,
             "error": 0.0001
@@ -3914,76 +3328,6 @@
         "before": 151,
         "after": 137
       },
-      "results": [
-        {
-          "winner": "SF",
-          "loser": "NYG",
-          "kind": "own",
-          "leverage": 0.2238
-        },
-        {
-          "winner": "CHI",
-          "loser": "CIN",
-          "kind": "exported",
-          "leverage": -0.0222
-        },
-        {
-          "winner": "LAR",
-          "loser": "NO",
-          "kind": "inside",
-          "leverage": -0.0192
-        },
-        {
-          "winner": "SEA",
-          "loser": "WAS",
-          "kind": "inside",
-          "leverage": -0.0135
-        },
-        {
-          "winner": "NE",
-          "loser": "ATL",
-          "kind": "exported",
-          "leverage": 0.0129
-        },
-        {
-          "winner": "ARI",
-          "loser": "DAL",
-          "kind": "inside",
-          "leverage": 0.0081
-        },
-        {
-          "winner": "MIN",
-          "loser": "DET",
-          "kind": "inside",
-          "leverage": 0.0071
-        },
-        {
-          "winner": "CAR",
-          "loser": "GB",
-          "kind": "inside",
-          "leverage": -0.0022
-        }
-      ],
-      "next": [
-        {
-          "home": "CHI",
-          "away": "NYG",
-          "rootFor": "NYG",
-          "swing": 0.0233
-        },
-        {
-          "home": "WAS",
-          "away": "DET",
-          "rootFor": "WAS",
-          "swing": 0.0207
-        },
-        {
-          "home": "CAR",
-          "away": "NO",
-          "rootFor": "NO",
-          "swing": 0.0206
-        }
-      ],
       "stake": {
         "opponent": "LAR",
         "own": 0.2072,
@@ -3993,6 +3337,7 @@
           {
             "home": "IND",
             "away": "ATL",
+            "kind": "exported",
             "want": "IND",
             "price": 0.0051,
             "error": 0.0014
@@ -4000,6 +3345,7 @@
           {
             "home": "MIN",
             "away": "BAL",
+            "kind": "exported",
             "want": "BAL",
             "price": 0.0115,
             "error": 0.0
@@ -4007,6 +3353,7 @@
           {
             "home": "CHI",
             "away": "NYG",
+            "kind": "inside",
             "want": "NYG",
             "price": 0.0142,
             "error": 0.0011
@@ -4014,6 +3361,7 @@
           {
             "home": "TB",
             "away": "NE",
+            "kind": "exported",
             "want": "NE",
             "price": 0.0065,
             "error": 0.0004
@@ -4021,6 +3369,7 @@
           {
             "home": "CAR",
             "away": "NO",
+            "kind": "inside",
             "want": "NO",
             "price": 0.0134,
             "error": 0.0006
@@ -4028,6 +3377,7 @@
           {
             "home": "SEA",
             "away": "ARI",
+            "kind": "inside",
             "want": "SEA",
             "price": 0.0023,
             "error": 0.0001
@@ -4035,6 +3385,7 @@
           {
             "home": "WAS",
             "away": "DET",
+            "kind": "inside",
             "want": "WAS",
             "price": 0.0103,
             "error": 0.0005
@@ -4042,6 +3393,7 @@
           {
             "home": "SF",
             "away": "LAR",
+            "kind": "own",
             "want": "SF",
             "price": 0.1755,
             "error": 0.003
@@ -4049,6 +3401,7 @@
           {
             "home": "GB",
             "away": "PHI",
+            "kind": "inside",
             "want": "PHI",
             "price": 0.006,
             "error": 0.0001
@@ -4332,82 +3685,6 @@
         "before": 137,
         "after": 123
       },
-      "results": [
-        {
-          "winner": "LAR",
-          "loser": "SF",
-          "kind": "own",
-          "leverage": -0.2037
-        },
-        {
-          "winner": "CHI",
-          "loser": "NYG",
-          "kind": "inside",
-          "leverage": -0.0335
-        },
-        {
-          "winner": "BAL",
-          "loser": "MIN",
-          "kind": "exported",
-          "leverage": 0.0304
-        },
-        {
-          "winner": "DET",
-          "loser": "WAS",
-          "kind": "inside",
-          "leverage": -0.0283
-        },
-        {
-          "winner": "PHI",
-          "loser": "GB",
-          "kind": "inside",
-          "leverage": 0.0241
-        },
-        {
-          "winner": "NO",
-          "loser": "CAR",
-          "kind": "inside",
-          "leverage": 0.0234
-        },
-        {
-          "winner": "IND",
-          "loser": "ATL",
-          "kind": "exported",
-          "leverage": 0.0106
-        },
-        {
-          "winner": "NE",
-          "loser": "TB",
-          "kind": "exported",
-          "leverage": 0.0104
-        },
-        {
-          "winner": "SEA",
-          "loser": "ARI",
-          "kind": "inside",
-          "leverage": -0.0078
-        }
-      ],
-      "next": [
-        {
-          "home": "NYG",
-          "away": "GB",
-          "rootFor": "NYG",
-          "swing": 0.0358
-        },
-        {
-          "home": "PHI",
-          "away": "DET",
-          "rootFor": "PHI",
-          "swing": 0.031
-        },
-        {
-          "home": "LV",
-          "away": "DAL",
-          "rootFor": "LV",
-          "swing": 0.0202
-        }
-      ],
       "stake": {
         "opponent": "ARI",
         "own": 0.2479,
@@ -4417,6 +3694,7 @@
           {
             "home": "MIA",
             "away": "WAS",
+            "kind": "exported",
             "want": "MIA",
             "price": 0.0026,
             "error": 0.0002
@@ -4424,6 +3702,7 @@
           {
             "home": "BUF",
             "away": "TB",
+            "kind": "exported",
             "want": "BUF",
             "price": 0.0073,
             "error": 0.0009
@@ -4431,6 +3710,7 @@
           {
             "home": "NYG",
             "away": "GB",
+            "kind": "inside",
             "want": "NYG",
             "price": 0.0253,
             "error": 0.0031
@@ -4438,6 +3718,7 @@
           {
             "home": "MIN",
             "away": "CHI",
+            "kind": "inside",
             "want": "MIN",
             "price": 0.0018,
             "error": 0.0003
@@ -4445,6 +3726,7 @@
           {
             "home": "ATL",
             "away": "CAR",
+            "kind": "inside",
             "want": "ATL",
             "price": 0.0095,
             "error": 0.0015
@@ -4452,6 +3734,7 @@
           {
             "home": "LAR",
             "away": "SEA",
+            "kind": "inside",
             "want": "SEA",
             "price": 0.0018,
             "error": 0.0018
@@ -4459,6 +3742,7 @@
           {
             "home": "ARI",
             "away": "SF",
+            "kind": "own",
             "want": "SF",
             "price": 0.2323,
             "error": 0.0022
@@ -4466,6 +3750,7 @@
           {
             "home": "PHI",
             "away": "DET",
+            "kind": "inside",
             "want": "PHI",
             "price": 0.024,
             "error": 0.0018
@@ -4473,6 +3758,7 @@
           {
             "home": "LV",
             "away": "DAL",
+            "kind": "exported",
             "want": "LV",
             "price": 0.0176,
             "error": 0.002
@@ -4778,82 +4064,6 @@
         "before": 123,
         "after": 108
       },
-      "results": [
-        {
-          "winner": "SF",
-          "loser": "ARI",
-          "kind": "own",
-          "leverage": 0.2523
-        },
-        {
-          "winner": "PHI",
-          "loser": "DET",
-          "kind": "inside",
-          "leverage": 0.033
-        },
-        {
-          "winner": "GB",
-          "loser": "NYG",
-          "kind": "inside",
-          "leverage": -0.0318
-        },
-        {
-          "winner": "DAL",
-          "loser": "LV",
-          "kind": "exported",
-          "leverage": -0.0201
-        },
-        {
-          "winner": "BUF",
-          "loser": "TB",
-          "kind": "exported",
-          "leverage": 0.0137
-        },
-        {
-          "winner": "CHI",
-          "loser": "MIN",
-          "kind": "inside",
-          "leverage": -0.0122
-        },
-        {
-          "winner": "CAR",
-          "loser": "ATL",
-          "kind": "inside",
-          "leverage": -0.01
-        },
-        {
-          "winner": "LAR",
-          "loser": "SEA",
-          "kind": "inside",
-          "leverage": -0.0031
-        },
-        {
-          "winner": "MIA",
-          "loser": "WAS",
-          "kind": "exported",
-          "leverage": 0.0021
-        }
-      ],
-      "next": [
-        {
-          "home": "DET",
-          "away": "NYG",
-          "rootFor": "NYG",
-          "swing": 0.0409
-        },
-        {
-          "home": "DAL",
-          "away": "PHI",
-          "rootFor": "PHI",
-          "swing": 0.0255
-        },
-        {
-          "home": "CHI",
-          "away": "PIT",
-          "rootFor": "PIT",
-          "swing": 0.0255
-        }
-      ],
       "stake": {
         "opponent": "CAR",
         "own": 0.2188,
@@ -4863,6 +4073,7 @@
           {
             "home": "TEN",
             "away": "SEA",
+            "kind": "exported",
             "want": "TEN",
             "price": 0.0073,
             "error": 0.0021
@@ -4870,6 +4081,7 @@
           {
             "home": "DET",
             "away": "NYG",
+            "kind": "inside",
             "want": "NYG",
             "price": 0.0202,
             "error": 0.0014
@@ -4877,6 +4089,7 @@
           {
             "home": "GB",
             "away": "MIN",
+            "kind": "inside",
             "want": "MIN",
             "price": 0.0063,
             "error": 0.0002
@@ -4884,6 +4097,7 @@
           {
             "home": "CHI",
             "away": "PIT",
+            "kind": "exported",
             "want": "PIT",
             "price": 0.0089,
             "error": 0.0009
@@ -4891,6 +4105,7 @@
           {
             "home": "ARI",
             "away": "JAX",
+            "kind": "exported",
             "want": "JAX",
             "price": 0.0018,
             "error": 0.0001
@@ -4898,6 +4113,7 @@
           {
             "home": "DAL",
             "away": "PHI",
+            "kind": "inside",
             "want": "PHI",
             "price": 0.0165,
             "error": 0.0007
@@ -4905,6 +4121,7 @@
           {
             "home": "NO",
             "away": "ATL",
+            "kind": "inside",
             "want": "NO",
             "price": 0.0004,
             "error": 0.0001
@@ -4912,6 +4129,7 @@
           {
             "home": "LAR",
             "away": "TB",
+            "kind": "inside",
             "want": "LAR",
             "price": 0.0004,
             "error": 0.0002
@@ -4919,6 +4137,7 @@
           {
             "home": "SF",
             "away": "CAR",
+            "kind": "own",
             "want": "SF",
             "price": 0.1699,
             "error": 0.0017
@@ -5225,82 +4444,6 @@
         "before": 108,
         "after": 94
       },
-      "results": [
-        {
-          "winner": "SF",
-          "loser": "CAR",
-          "kind": "own",
-          "leverage": 0.2513
-        },
-        {
-          "winner": "DET",
-          "loser": "NYG",
-          "kind": "inside",
-          "leverage": -0.0442
-        },
-        {
-          "winner": "CHI",
-          "loser": "PIT",
-          "kind": "exported",
-          "leverage": -0.0306
-        },
-        {
-          "winner": "GB",
-          "loser": "MIN",
-          "kind": "inside",
-          "leverage": -0.0274
-        },
-        {
-          "winner": "SEA",
-          "loser": "TEN",
-          "kind": "exported",
-          "leverage": -0.0274
-        },
-        {
-          "winner": "DAL",
-          "loser": "PHI",
-          "kind": "inside",
-          "leverage": -0.0203
-        },
-        {
-          "winner": "LAR",
-          "loser": "TB",
-          "kind": "inside",
-          "leverage": -0.0138
-        },
-        {
-          "winner": "JAX",
-          "loser": "ARI",
-          "kind": "exported",
-          "leverage": 0.0008
-        },
-        {
-          "winner": "ATL",
-          "loser": "NO",
-          "kind": "inside",
-          "leverage": -0.0005
-        }
-      ],
-      "next": [
-        {
-          "home": "DAL",
-          "away": "KC",
-          "rootFor": "KC",
-          "swing": 0.03
-        },
-        {
-          "home": "DET",
-          "away": "GB",
-          "rootFor": "GB",
-          "swing": 0.023
-        },
-        {
-          "home": "PHI",
-          "away": "CHI",
-          "rootFor": "PHI",
-          "swing": 0.0176
-        }
-      ],
       "stake": {
         "opponent": "CLE",
         "own": 0.1835,
@@ -5310,6 +4453,7 @@
           {
             "home": "DET",
             "away": "GB",
+            "kind": "inside",
             "want": "GB",
             "price": 0.0089,
             "error": 0.0016
@@ -5317,6 +4461,7 @@
           {
             "home": "DAL",
             "away": "KC",
+            "kind": "exported",
             "want": "KC",
             "price": 0.0189,
             "error": 0.0021
@@ -5324,6 +4469,7 @@
           {
             "home": "PHI",
             "away": "CHI",
+            "kind": "inside",
             "want": "PHI",
             "price": 0.008,
             "error": 0.0003
@@ -5331,6 +4477,7 @@
           {
             "home": "MIA",
             "away": "NO",
+            "kind": "exported",
             "want": "MIA",
             "price": 0.0,
             "error": 0.0
@@ -5338,6 +4485,7 @@
           {
             "home": "NYJ",
             "away": "ATL",
+            "kind": "exported",
             "want": "NYJ",
             "price": 0.0002,
             "error": 0.0001
@@ -5345,6 +4493,7 @@
           {
             "home": "CLE",
             "away": "SF",
+            "kind": "own",
             "want": "SF",
             "price": 0.146,
             "error": 0.0031
@@ -5352,6 +4501,7 @@
           {
             "home": "TB",
             "away": "ARI",
+            "kind": "inside",
             "want": "ARI",
             "price": 0.0015,
             "error": 0.0003
@@ -5359,6 +4509,7 @@
           {
             "home": "CAR",
             "away": "LAR",
+            "kind": "inside",
             "want": "CAR",
             "price": 0.0025,
             "error": 0.0004
@@ -5366,6 +4517,7 @@
           {
             "home": "SEA",
             "away": "MIN",
+            "kind": "inside",
             "want": "MIN",
             "price": 0.0045,
             "error": 0.0
@@ -5373,6 +4525,7 @@
           {
             "home": "WAS",
             "away": "DEN",
+            "kind": "exported",
             "want": "WAS",
             "price": 0.0,
             "error": 0.0
@@ -5380,6 +4533,7 @@
           {
             "home": "NE",
             "away": "NYG",
+            "kind": "exported",
             "want": "NE",
             "price": 0.0,
             "error": 0.0
@@ -5686,94 +4840,6 @@
         "before": 94,
         "after": 78
       },
-      "results": [
-        {
-          "winner": "SF",
-          "loser": "CLE",
-          "kind": "own",
-          "leverage": 0.2006
-        },
-        {
-          "winner": "DAL",
-          "loser": "KC",
-          "kind": "exported",
-          "leverage": -0.0177
-        },
-        {
-          "winner": "GB",
-          "loser": "DET",
-          "kind": "inside",
-          "leverage": 0.015
-        },
-        {
-          "winner": "SEA",
-          "loser": "MIN",
-          "kind": "inside",
-          "leverage": -0.0113
-        },
-        {
-          "winner": "CAR",
-          "loser": "LAR",
-          "kind": "inside",
-          "leverage": 0.0079
-        },
-        {
-          "winner": "CHI",
-          "loser": "PHI",
-          "kind": "inside",
-          "leverage": -0.0065
-        },
-        {
-          "winner": "TB",
-          "loser": "ARI",
-          "kind": "inside",
-          "leverage": -0.0013
-        },
-        {
-          "winner": "NYJ",
-          "loser": "ATL",
-          "kind": "exported",
-          "leverage": 0.0004
-        },
-        {
-          "winner": "MIA",
-          "loser": "NO",
-          "kind": "exported",
-          "leverage": 0.0
-        },
-        {
-          "winner": "NE",
-          "loser": "NYG",
-          "kind": "exported",
-          "leverage": 0.0
-        },
-        {
-          "winner": "DEN",
-          "loser": "WAS",
-          "kind": "exported",
-          "leverage": 0.0
-        }
-      ],
-      "next": [
-        {
-          "home": "DET",
-          "away": "DAL",
-          "rootFor": "DAL",
-          "swing": 0.0148
-        },
-        {
-          "home": "ARI",
-          "away": "LAR",
-          "rootFor": "ARI",
-          "swing": 0.0147
-        },
-        {
-          "home": "LAC",
-          "away": "PHI",
-          "rootFor": "LAC",
-          "swing": 0.013
-        }
-      ],
       "stake": {
         "opponent": null,
         "own": 0.0,
@@ -5783,6 +4849,7 @@
           {
             "home": "DET",
             "away": "DAL",
+            "kind": "inside",
             "want": "DAL",
             "price": 0.0189,
             "error": 0.001
@@ -5790,6 +4857,7 @@
           {
             "home": "MIN",
             "away": "WAS",
+            "kind": "inside",
             "want": "MIN",
             "price": 0.0,
             "error": 0.0
@@ -5797,6 +4865,7 @@
           {
             "home": "TB",
             "away": "NO",
+            "kind": "inside",
             "want": "NO",
             "price": 0.0024,
             "error": 0.0004
@@ -5804,6 +4873,7 @@
           {
             "home": "ATL",
             "away": "SEA",
+            "kind": "inside",
             "want": "ATL",
             "price": 0.0041,
             "error": 0.0008
@@ -5811,6 +4881,7 @@
           {
             "home": "GB",
             "away": "CHI",
+            "kind": "inside",
             "want": "CHI",
             "price": 0.0024,
             "error": 0.0009
@@ -5818,6 +4889,7 @@
           {
             "home": "ARI",
             "away": "LAR",
+            "kind": "inside",
             "want": "ARI",
             "price": 0.008,
             "error": 0.0001
@@ -5825,6 +4897,7 @@
           {
             "home": "LAC",
             "away": "PHI",
+            "kind": "exported",
             "want": "LAC",
             "price": 0.0164,
             "error": 0.0023
@@ -6157,70 +5230,6 @@
         "before": 78,
         "after": 64
       },
-      "results": [
-        {
-          "winner": "DET",
-          "loser": "DAL",
-          "kind": "inside",
-          "leverage": -0.0301
-        },
-        {
-          "winner": "LAR",
-          "loser": "ARI",
-          "kind": "inside",
-          "leverage": -0.0195
-        },
-        {
-          "winner": "SEA",
-          "loser": "ATL",
-          "kind": "inside",
-          "leverage": -0.0097
-        },
-        {
-          "winner": "LAC",
-          "loser": "PHI",
-          "kind": "exported",
-          "leverage": 0.005
-        },
-        {
-          "winner": "NO",
-          "loser": "TB",
-          "kind": "inside",
-          "leverage": 0.0017
-        },
-        {
-          "winner": "GB",
-          "loser": "CHI",
-          "kind": "inside",
-          "leverage": -0.0011
-        },
-        {
-          "winner": "MIN",
-          "loser": "WAS",
-          "kind": "inside",
-          "leverage": 0.0
-        }
-      ],
-      "next": [
-        {
-          "home": "LAR",
-          "away": "DET",
-          "rootFor": "LAR",
-          "swing": 0.0685
-        },
-        {
-          "home": "CHI",
-          "away": "CLE",
-          "rootFor": "CLE",
-          "swing": 0.0292
-        },
-        {
-          "home": "DAL",
-          "away": "MIN",
-          "rootFor": "MIN",
-          "swing": 0.0106
-        }
-      ],
       "stake": {
         "opponent": "TEN",
         "own": 0.1312,
@@ -6230,6 +5239,7 @@
           {
             "home": "TB",
             "away": "ATL",
+            "kind": "inside",
             "want": "TB",
             "price": 0.0,
             "error": 0.0
@@ -6237,6 +5247,7 @@
           {
             "home": "HOU",
             "away": "ARI",
+            "kind": "exported",
             "want": "HOU",
             "price": 0.0,
             "error": 0.0
@@ -6244,6 +5255,7 @@
           {
             "home": "PHI",
             "away": "LV",
+            "kind": "exported",
             "want": "PHI",
             "price": 0.0,
             "error": 0.0
@@ -6251,6 +5263,7 @@
           {
             "home": "NYG",
             "away": "WAS",
+            "kind": "inside",
             "want": "NYG",
             "price": 0.0,
             "error": 0.0
@@ -6258,6 +5271,7 @@
           {
             "home": "CHI",
             "away": "CLE",
+            "kind": "exported",
             "want": "CLE",
             "price": 0.0081,
             "error": 0.0002
@@ -6265,6 +5279,7 @@
           {
             "home": "DEN",
             "away": "GB",
+            "kind": "exported",
             "want": "DEN",
             "price": 0.0025,
             "error": 0.0002
@@ -6272,6 +5287,7 @@
           {
             "home": "NO",
             "away": "CAR",
+            "kind": "inside",
             "want": "NO",
             "price": 0.0,
             "error": 0.0
@@ -6279,6 +5295,7 @@
           {
             "home": "SF",
             "away": "TEN",
+            "kind": "own",
             "want": "SF",
             "price": 0.0705,
             "error": 0.0002
@@ -6286,6 +5303,7 @@
           {
             "home": "LAR",
             "away": "DET",
+            "kind": "inside",
             "want": "LAR",
             "price": 0.0189,
             "error": 0.0007
@@ -6293,6 +5311,7 @@
           {
             "home": "SEA",
             "away": "IND",
+            "kind": "exported",
             "want": "SEA",
             "price": 0.0,
             "error": 0.0
@@ -6300,6 +5319,7 @@
           {
             "home": "DAL",
             "away": "MIN",
+            "kind": "inside",
             "want": "MIN",
             "price": 0.0016,
             "error": 0.0002
@@ -6528,88 +5548,6 @@
         "before": 64,
         "after": 48
       },
-      "results": [
-        {
-          "winner": "SF",
-          "loser": "TEN",
-          "kind": "own",
-          "leverage": 0.0877
-        },
-        {
-          "winner": "LAR",
-          "loser": "DET",
-          "kind": "inside",
-          "leverage": 0.0353
-        },
-        {
-          "winner": "CHI",
-          "loser": "CLE",
-          "kind": "exported",
-          "leverage": -0.0081
-        },
-        {
-          "winner": "MIN",
-          "loser": "DAL",
-          "kind": "inside",
-          "leverage": 0.006
-        },
-        {
-          "winner": "DEN",
-          "loser": "GB",
-          "kind": "exported",
-          "leverage": 0.0019
-        },
-        {
-          "winner": "HOU",
-          "loser": "ARI",
-          "kind": "exported",
-          "leverage": 0.0
-        },
-        {
-          "winner": "PHI",
-          "loser": "LV",
-          "kind": "exported",
-          "leverage": 0.0
-        },
-        {
-          "winner": "WAS",
-          "loser": "NYG",
-          "kind": "inside",
-          "leverage": 0.0
-        },
-        {
-          "winner": "ATL",
-          "loser": "TB",
-          "kind": "inside",
-          "leverage": 0.0
-        },
-        {
-          "winner": "NO",
-          "loser": "CAR",
-          "kind": "inside",
-          "leverage": 0.0
-        },
-        {
-          "winner": "SEA",
-          "loser": "IND",
-          "kind": "exported",
-          "leverage": 0.0
-        }
-      ],
-      "next": [
-        {
-          "home": "DET",
-          "away": "PIT",
-          "rootFor": "PIT",
-          "swing": 0.028
-        },
-        {
-          "home": "CHI",
-          "away": "GB",
-          "rootFor": "CHI",
-          "swing": 0.0038
-        }
-      ],
       "stake": {
         "opponent": "IND",
         "own": 0.028,
@@ -6619,6 +5557,7 @@
           {
             "home": "SEA",
             "away": "LAR",
+            "kind": "inside",
             "want": "SEA",
             "price": 0.0,
             "error": 0.0
@@ -6626,6 +5565,7 @@
           {
             "home": "WAS",
             "away": "PHI",
+            "kind": "inside",
             "want": "WAS",
             "price": 0.0,
             "error": 0.0
@@ -6633,6 +5573,7 @@
           {
             "home": "CHI",
             "away": "GB",
+            "kind": "inside",
             "want": "CHI",
             "price": 0.0,
             "error": 0.0
@@ -6640,6 +5581,7 @@
           {
             "home": "DAL",
             "away": "LAC",
+            "kind": "exported",
             "want": "DAL",
             "price": 0.0,
             "error": 0.0
@@ -6647,6 +5589,7 @@
           {
             "home": "NYG",
             "away": "MIN",
+            "kind": "inside",
             "want": "NYG",
             "price": 0.0,
             "error": 0.0
@@ -6654,6 +5597,7 @@
           {
             "home": "NO",
             "away": "NYJ",
+            "kind": "exported",
             "want": "NO",
             "price": 0.0,
             "error": 0.0
@@ -6661,6 +5605,7 @@
           {
             "home": "CAR",
             "away": "TB",
+            "kind": "inside",
             "want": "CAR",
             "price": 0.0,
             "error": 0.0
@@ -6668,6 +5613,7 @@
           {
             "home": "ARI",
             "away": "ATL",
+            "kind": "inside",
             "want": "ARI",
             "price": 0.0,
             "error": 0.0
@@ -6675,6 +5621,7 @@
           {
             "home": "DET",
             "away": "PIT",
+            "kind": "exported",
             "want": "DET",
             "price": 0.0,
             "error": 0.0
@@ -6682,6 +5629,7 @@
           {
             "home": "IND",
             "away": "SF",
+            "kind": "own",
             "want": "SF",
             "price": 0.0,
             "error": 0.0
@@ -7023,69 +5971,6 @@
         "before": 48,
         "after": 32
       },
-      "results": [
-        {
-          "winner": "SF",
-          "loser": "IND",
-          "kind": "own",
-          "leverage": 0.0
-        },
-        {
-          "winner": "LAC",
-          "loser": "DAL",
-          "kind": "exported",
-          "leverage": 0.0
-        },
-        {
-          "winner": "PHI",
-          "loser": "WAS",
-          "kind": "inside",
-          "leverage": 0.0
-        },
-        {
-          "winner": "MIN",
-          "loser": "NYG",
-          "kind": "inside",
-          "leverage": 0.0
-        },
-        {
-          "winner": "PIT",
-          "loser": "DET",
-          "kind": "exported",
-          "leverage": 0.0
-        },
-        {
-          "winner": "CHI",
-          "loser": "GB",
-          "kind": "inside",
-          "leverage": 0.0
-        },
-        {
-          "winner": "NO",
-          "loser": "NYJ",
-          "kind": "exported",
-          "leverage": 0.0
-        },
-        {
-          "winner": "CAR",
-          "loser": "TB",
-          "kind": "inside",
-          "leverage": 0.0
-        },
-        {
-          "winner": "SEA",
-          "loser": "LAR",
-          "kind": "inside",
-          "leverage": 0.0
-        },
-        {
-          "winner": "ATL",
-          "loser": "ARI",
-          "kind": "inside",
-          "leverage": 0.0
-        }
-      ],
-      "next": [],
       "stake": {
         "opponent": "CHI",
         "own": 0.0,
@@ -7095,6 +5980,7 @@
           {
             "home": "WAS",
             "away": "DAL",
+            "kind": "inside",
             "want": "WAS",
             "price": 0.0,
             "error": 0.0
@@ -7102,6 +5988,7 @@
           {
             "home": "MIN",
             "away": "DET",
+            "kind": "inside",
             "want": "MIN",
             "price": 0.0,
             "error": 0.0
@@ -7109,6 +5996,7 @@
           {
             "home": "GB",
             "away": "BAL",
+            "kind": "exported",
             "want": "GB",
             "price": 0.0,
             "error": 0.0
@@ -7116,6 +6004,7 @@
           {
             "home": "MIA",
             "away": "TB",
+            "kind": "exported",
             "want": "MIA",
             "price": 0.0,
             "error": 0.0
@@ -7123,6 +6012,7 @@
           {
             "home": "CIN",
             "away": "ARI",
+            "kind": "exported",
             "want": "CIN",
             "price": 0.0,
             "error": 0.0
@@ -7130,6 +6020,7 @@
           {
             "home": "TEN",
             "away": "NO",
+            "kind": "exported",
             "want": "TEN",
             "price": 0.0,
             "error": 0.0
@@ -7137,6 +6028,7 @@
           {
             "home": "CAR",
             "away": "SEA",
+            "kind": "inside",
             "want": "CAR",
             "price": 0.0,
             "error": 0.0
@@ -7144,6 +6036,7 @@
           {
             "home": "LV",
             "away": "NYG",
+            "kind": "exported",
             "want": "LV",
             "price": 0.0,
             "error": 0.0
@@ -7151,6 +6044,7 @@
           {
             "home": "BUF",
             "away": "PHI",
+            "kind": "exported",
             "want": "BUF",
             "price": 0.0,
             "error": 0.0
@@ -7158,6 +6052,7 @@
           {
             "home": "SF",
             "away": "CHI",
+            "kind": "own",
             "want": "SF",
             "price": 0.0,
             "error": 0.0
@@ -7165,6 +6060,7 @@
           {
             "home": "ATL",
             "away": "LAR",
+            "kind": "inside",
             "want": "ATL",
             "price": 0.0,
             "error": 0.0
@@ -7477,75 +6373,6 @@
         "before": 32,
         "after": 16
       },
-      "results": [
-        {
-          "winner": "PHI",
-          "loser": "BUF",
-          "kind": "exported",
-          "leverage": 0.0
-        },
-        {
-          "winner": "MIA",
-          "loser": "TB",
-          "kind": "exported",
-          "leverage": 0.0
-        },
-        {
-          "winner": "CIN",
-          "loser": "ARI",
-          "kind": "exported",
-          "leverage": 0.0
-        },
-        {
-          "winner": "NO",
-          "loser": "TEN",
-          "kind": "exported",
-          "leverage": 0.0
-        },
-        {
-          "winner": "NYG",
-          "loser": "LV",
-          "kind": "exported",
-          "leverage": 0.0
-        },
-        {
-          "winner": "DAL",
-          "loser": "WAS",
-          "kind": "inside",
-          "leverage": 0.0
-        },
-        {
-          "winner": "BAL",
-          "loser": "GB",
-          "kind": "exported",
-          "leverage": 0.0
-        },
-        {
-          "winner": "MIN",
-          "loser": "DET",
-          "kind": "inside",
-          "leverage": 0.0
-        },
-        {
-          "winner": "ATL",
-          "loser": "LAR",
-          "kind": "inside",
-          "leverage": 0.0
-        },
-        {
-          "winner": "SEA",
-          "loser": "CAR",
-          "kind": "inside",
-          "leverage": 0.0
-        },
-        {
-          "winner": "SF",
-          "loser": "CHI",
-          "kind": "own",
-          "leverage": 0.0
-        }
-      ],
-      "next": [],
       "stake": {
         "opponent": "SEA",
         "own": 0.0,
@@ -7555,6 +6382,7 @@
           {
             "home": "TB",
             "away": "CAR",
+            "kind": "inside",
             "want": "TB",
             "price": 0.0,
             "error": 0.0
@@ -7562,6 +6390,7 @@
           {
             "home": "SF",
             "away": "SEA",
+            "kind": "own",
             "want": "SF",
             "price": 0.0,
             "error": 0.0
@@ -7569,6 +6398,7 @@
           {
             "home": "NYG",
             "away": "DAL",
+            "kind": "inside",
             "want": "NYG",
             "price": 0.0,
             "error": 0.0
@@ -7576,6 +6406,7 @@
           {
             "home": "MIN",
             "away": "GB",
+            "kind": "inside",
             "want": "MIN",
             "price": 0.0,
             "error": 0.0
@@ -7583,6 +6414,7 @@
           {
             "home": "ATL",
             "away": "NO",
+            "kind": "inside",
             "want": "ATL",
             "price": 0.0,
             "error": 0.0
@@ -7590,6 +6422,7 @@
           {
             "home": "PHI",
             "away": "WAS",
+            "kind": "inside",
             "want": "PHI",
             "price": 0.0,
             "error": 0.0
@@ -7597,6 +6430,7 @@
           {
             "home": "CHI",
             "away": "DET",
+            "kind": "inside",
             "want": "CHI",
             "price": 0.0,
             "error": 0.0
@@ -7604,6 +6438,7 @@
           {
             "home": "LAR",
             "away": "ARI",
+            "kind": "inside",
             "want": "LAR",
             "price": 0.0,
             "error": 0.0
@@ -7992,57 +6827,6 @@
         "before": 16,
         "after": 0
       },
-      "results": [
-        {
-          "winner": "WAS",
-          "loser": "PHI",
-          "kind": "inside",
-          "leverage": 0.0
-        },
-        {
-          "winner": "NYG",
-          "loser": "DAL",
-          "kind": "inside",
-          "leverage": 0.0
-        },
-        {
-          "winner": "MIN",
-          "loser": "GB",
-          "kind": "inside",
-          "leverage": 0.0
-        },
-        {
-          "winner": "DET",
-          "loser": "CHI",
-          "kind": "inside",
-          "leverage": 0.0
-        },
-        {
-          "winner": "TB",
-          "loser": "CAR",
-          "kind": "inside",
-          "leverage": 0.0
-        },
-        {
-          "winner": "ATL",
-          "loser": "NO",
-          "kind": "inside",
-          "leverage": 0.0
-        },
-        {
-          "winner": "SEA",
-          "loser": "SF",
-          "kind": "own",
-          "leverage": 0.0
-        },
-        {
-          "winner": "LAR",
-          "loser": "ARI",
-          "kind": "inside",
-          "leverage": 0.0
-        }
-      ],
-      "next": [],
       "stake": null,
       "clinched": true,
       "ways": {

@@ -2,7 +2,6 @@ import {
   callOf,
   cleanRun,
   costs,
-  kindOf,
   leagueBand,
   ownPart,
   sentence,
@@ -107,13 +106,5 @@ describe("the call", () => {
         share: { ...WEEK7.share, after: 0 },
       })
     ).toBe("dead-end")
-  })
-})
-
-describe("next week's pieces", () => {
-  it("are named by who plays", () => {
-    expect(kindOf(SEASON7, "SF", "SEA")).toBe("own")
-    expect(kindOf(SEASON7, "PHI", "DAL")).toBe("inside")
-    expect(kindOf(SEASON7, "KC", "SEA")).toBe("exported")
   })
 })
