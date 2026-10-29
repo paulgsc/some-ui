@@ -14,6 +14,7 @@
 // stripping, with no install (see scripts/check-test-layout.ts).
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
+import { DatabaseSync } from "node:sqlite"
 
 // Relative imports on purpose: Node's type stripping resolves no path aliases.
 // eslint-disable-next-line no-restricted-imports
@@ -77,7 +78,12 @@ function routeModules(root: string): Array<string> {
   })
 }
 
-/** The mailbox's D1 tables after every migration, in the order wrangler runs them. */
+/**
+ * The mailbox's D1 tables after every migration, in file-name order (which is
+ * wrangler's while the names are zero-padded to one width). Read by
+ * `tablesLeft`, and checked against SQLite itself running the same files: a
+ * reader that disagrees with SQLite is wrong, and says so.
+ */
 function mailboxTables(root: string): Array<string> {
   const dir = join(root, MAILBOX_MIGRATIONS)
   const sql = readdirSync(dir)
@@ -85,7 +91,30 @@ function mailboxTables(root: string): Array<string> {
     .sort()
     .map((name) => readFileSync(join(dir, name), "utf8"))
     .join("\n")
-  return tablesLeft(sql)
+  const read = tablesLeft(sql).sort()
+  const db = new DatabaseSync(":memory:")
+  db.exec(sql)
+  const applied = db
+    .prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
+    )
+    .all()
+    .map((row) => String(row.name).toLowerCase())
+    .sort()
+  db.close()
+  if (read.join() !== applied.join())
+    throw new Error(
+      `${MAILBOX_MIGRATIONS} read wrongly: SQLite leaves ${applied.join(", ")}, the reader found ${read.join(", ")}`
+    )
+  return read
+}
+
+/** The phone's tables; none read means the schema moved or was misread. */
+function phoneTables(root: string): Array<string> {
+  const tables = tablesLeft(readFileSync(join(root, PHONE_SCHEMA), "utf8"))
+  if (tables.length === 0)
+    throw new Error(`${PHONE_SCHEMA} read no tables: it moved, or was misread`)
+  return tables
 }
 
 function declaredIds(root: string, files: ReadonlyArray<string>): Set<string> {
@@ -133,7 +162,7 @@ function main(): void {
         declaredIds: declaredIds(root, files),
         keptTables: {
           mailbox: mailboxTables(root),
-          phone: tablesLeft(readFileSync(join(root, PHONE_SCHEMA), "utf8")),
+          phone: phoneTables(root),
         },
       }),
     ]

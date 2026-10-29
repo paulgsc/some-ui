@@ -123,10 +123,12 @@ export function findLedgerViolations(
     }
   }
   const mailbox = new Set(around.keptTables.mailbox)
-  for (const entry of ledger.stores) {
-    const [place, table = ""] = entry.store.split(/:(.*)/s)
-    if (place === "mailbox" && !mailbox.has(table))
-      flag(entry.store, "no mailbox migration leaves this table standing")
+  for (const { store } of ledger.stores) {
+    if (
+      store.startsWith("mailbox:") &&
+      !mailbox.has(store.slice("mailbox:".length))
+    )
+      flag(store, "no mailbox migration leaves this table standing")
   }
   for (const family of ledger.families) {
     const states = family.objectives.some(
@@ -202,23 +204,36 @@ function proofOrIssue(o: Objective, around: Surroundings): Array<string> {
 
 /**
  * The tables a run of SQL migrations leaves standing, in order: `CREATE
- * TABLE` adds one, `DROP TABLE` removes it, `ALTER TABLE … RENAME TO`
- * renames it. Comments are dropped first, so prose naming a table is not one.
+ * [VIRTUAL] TABLE` adds one (a `TEMP` table is no store), `DROP TABLE`
+ * removes it, `ALTER TABLE … RENAME TO` renames it. Strings and comments
+ * (`--`, `//`, `/* … *\/`) are blanked in one leftmost pass first, so neither
+ * prose nor a `GLOB 'image/*'` reads as SQL. Names are lower-cased, as SQLite
+ * compares them, and a schema prefix (`main.`) is dropped.
  */
 export function tablesLeft(sql: string): Array<string> {
-  const code = sql
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/(--|\/\/)[^\n]*/g, "")
+  const code = sql.replace(
+    /'(?:[^']|'')*'|--[^\n]*|\/\/[^\n]*|\/\*[\s\S]*?\*\//g,
+    (match) => (match.startsWith("'") ? "''" : " ")
+  )
+  const name = String.raw`(?:"[^"]+"|\x60[^\x60]+\x60|\[[^\]]+\]|\w+)`
+  const qualified = String.raw`(?:${name}\s*\.\s*)?(${name})`
+  const statement = new RegExp(
+    String.raw`\b(CREATE\s+(?:(TEMP|TEMPORARY)\s+)?(?:VIRTUAL\s+)?TABLE(?:\s+IF\s+NOT\s+EXISTS)?|DROP\s+TABLE(?:\s+IF\s+EXISTS)?|ALTER\s+TABLE)\s+${qualified}(?:\s+RENAME\s+TO\s+${qualified})?`,
+    "gi"
+  )
+  const bare = (raw: string): string =>
+    raw.replace(/^["`[]|["`\]]$/g, "").toLowerCase()
   const tables = new Set<string>()
-  const statement =
-    /\b(CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?|DROP\s+TABLE(?:\s+IF\s+EXISTS)?|ALTER\s+TABLE)\s+["`]?(\w+)["`]?(?:\s+RENAME\s+TO\s+["`]?(\w+)["`]?)?/gi
-  for (const [, verb = "", table = "", renamed] of code.matchAll(statement)) {
+  for (const [, verb = "", temp, table = "", renamed] of code.matchAll(
+    statement
+  )) {
     const what = verb.toUpperCase()
-    if (what.startsWith("CREATE")) tables.add(table)
-    else if (what.startsWith("DROP")) tables.delete(table)
+    if (what.startsWith("CREATE")) {
+      if (temp === undefined) tables.add(bare(table))
+    } else if (what.startsWith("DROP")) tables.delete(bare(table))
     else if (renamed !== undefined) {
-      tables.delete(table)
-      tables.add(renamed)
+      tables.delete(bare(table))
+      tables.add(bare(renamed))
     }
   }
   return [...tables]

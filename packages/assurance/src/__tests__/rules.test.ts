@@ -274,6 +274,38 @@ describe("every mailbox and phone table is a store (STORAGE5)", () => {
     expect(tablesLeft(sql).sort()).toEqual(["archived", "item"])
   })
 
+  it("reads past a /* in a string or a line comment, and not into a string", () => {
+    const sql = `
+      // copies migrations/*.up.sql
+      CREATE TABLE a (ct TEXT CHECK (ct GLOB 'image/*'));
+      CREATE TABLE b (x);
+      INSERT INTO a VALUES ('CREATE TABLE fake (x); */');
+      CREATE TABLE c (y CHECK (y GLOB '*/*'));
+    `
+    expect(tablesLeft(sql).sort()).toEqual(["a", "b", "c"])
+  })
+
+  it("keeps virtual tables, not temporary ones, by their bare lower-cased names", () => {
+    const sql = `
+      CREATE VIRTUAL TABLE fts USING fts5(body);
+      CREATE TEMP TABLE scratch (x);
+      CREATE TABLE "my-table" (x);
+      CREATE TABLE [bracketed] (x);
+      CREATE TABLE main.qualified (x);
+      DROP TABLE main.qualified;
+      CREATE TABLE Item (x);
+      DROP TABLE item;
+      CREATE TABLE A (x);
+      ALTER TABLE a RENAME TO B;
+    `
+    expect(tablesLeft(sql).sort()).toEqual([
+      "b",
+      "bracketed",
+      "fts",
+      "my-table",
+    ])
+  })
+
   const kept = (
     stores: ReadonlyArray<string>,
     keptTables: Surroundings["keptTables"]
