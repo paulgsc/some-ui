@@ -26,6 +26,13 @@ export type Surroundings = {
   routeModules: ReadonlyArray<string>
   /** IDs an invariant already declares in a markdown file. */
   declaredIds: ReadonlySet<string>
+  /**
+   * The tables the mailbox's D1 migrations and the phone's schema leave
+   * standing (`tablesLeft`), each of which a store lists (STORAGE5). The
+   * mailbox keeps nothing else, so its stores are exactly these; the phone
+   * also keeps audio and records outside its database.
+   */
+  keptTables: { mailbox: ReadonlyArray<string>; phone: ReadonlyArray<string> }
 }
 
 const ID = /^[A-Z]{1,4}\d+$/
@@ -106,6 +113,23 @@ export function findLedgerViolations(
       flag(entry.store, `family "${entry.family}" is not a family here`)
     keeping.add(entry.family)
   }
+  for (const [place, tables] of Object.entries(around.keptTables)) {
+    for (const table of tables) {
+      if (!stores.has(`${place}:${table}`))
+        flag(
+          `${place}:${table}`,
+          `a ${place} table no store lists: add it to the ledger's stores with its class, growth and family`
+        )
+    }
+  }
+  const mailbox = new Set(around.keptTables.mailbox)
+  for (const { store } of ledger.stores) {
+    if (
+      store.startsWith("mailbox:") &&
+      !mailbox.has(store.slice("mailbox:".length))
+    )
+      flag(store, "no mailbox migration leaves this table standing")
+  }
   for (const family of ledger.families) {
     const states = family.objectives.some(
       (o) => o.kind === "RE9" && o.retired === undefined
@@ -176,6 +200,43 @@ function proofOrIssue(o: Objective, around: Surroundings): Array<string> {
     )
   }
   return out
+}
+
+/**
+ * The tables a run of SQL migrations leaves standing, in order: `CREATE
+ * [VIRTUAL] TABLE` adds one (a `TEMP` table is no store), `DROP TABLE`
+ * removes it, `ALTER TABLE … RENAME TO` renames it. Strings and comments
+ * (`--`, `//`, `/* … *\/`) are blanked in one leftmost pass first, so neither
+ * prose nor a `GLOB 'image/*'` reads as SQL. Names are lower-cased, as SQLite
+ * compares them, and a schema prefix (`main.`) is dropped.
+ */
+export function tablesLeft(sql: string): Array<string> {
+  const code = sql.replace(
+    /'(?:[^']|'')*'|--[^\n]*|\/\/[^\n]*|\/\*[\s\S]*?\*\//g,
+    (match) => (match.startsWith("'") ? "''" : " ")
+  )
+  const name = String.raw`(?:"[^"]+"|\x60[^\x60]+\x60|\[[^\]]+\]|\w+)`
+  const qualified = String.raw`(?:${name}\s*\.\s*)?(${name})`
+  const statement = new RegExp(
+    String.raw`\b(CREATE\s+(?:(TEMP|TEMPORARY)\s+)?(?:VIRTUAL\s+)?TABLE(?:\s+IF\s+NOT\s+EXISTS)?|DROP\s+TABLE(?:\s+IF\s+EXISTS)?|ALTER\s+TABLE)\s+${qualified}(?:\s+RENAME\s+TO\s+${qualified})?`,
+    "gi"
+  )
+  const bare = (raw: string): string =>
+    raw.replace(/^["`[]|["`\]]$/g, "").toLowerCase()
+  const tables = new Set<string>()
+  for (const [, verb = "", temp, table = "", renamed] of code.matchAll(
+    statement
+  )) {
+    const what = verb.toUpperCase()
+    if (what.startsWith("CREATE")) {
+      if (temp === undefined) tables.add(bare(table))
+    } else if (what.startsWith("DROP")) tables.delete(bare(table))
+    else if (renamed !== undefined) {
+      tables.delete(bare(table))
+      tables.add(bare(renamed))
+    }
+  }
+  return [...tables]
 }
 
 /**

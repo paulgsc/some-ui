@@ -1,7 +1,11 @@
 import type { Ledger, Objective } from "@assurance/ledger"
 import { parseLedger, readLedgerLeniently } from "@assurance/ledger"
 import type { Surroundings } from "@assurance/rules"
-import { findLedgerViolations, findRatchetViolations } from "@assurance/rules"
+import {
+  findLedgerViolations,
+  findRatchetViolations,
+  tablesLeft,
+} from "@assurance/rules"
 import { describe, expect, it } from "vitest"
 
 const DECISION = "https://github.com/paulgsc/some-ui/issues/1#issuecomment-1"
@@ -41,6 +45,7 @@ const around = (overrides: Partial<Surroundings> = {}): Surroundings => ({
   contains: (_path, text) => text === "arrives",
   routeModules: ["jobs", "health"],
   declaredIds: new Set(["L3"]),
+  keptTables: { mailbox: [], phone: [] },
   ...overrides,
 })
 
@@ -250,6 +255,95 @@ describe("what is kept (RE9)", () => {
     expect(found).toContain("store is listed twice")
     expect(found).toContain('family "nowhere" is not a family here')
     expect(found).toContain("server:, mailbox: or phone:")
+  })
+})
+
+describe("every mailbox and phone table is a store (STORAGE5)", () => {
+  it("reads the tables a run of migrations leaves standing, comments aside", () => {
+    const sql = `
+      -- CREATE TABLE in_a_comment (x);
+      CREATE TABLE item (id TEXT);
+      /* DROP TABLE item; */
+      CREATE TABLE IF NOT EXISTS "archived" (id TEXT);
+      CREATE TABLE item_next (id TEXT);
+      DROP TABLE item;
+      ALTER TABLE item_next RENAME TO item;
+      ALTER TABLE archived ADD COLUMN at TEXT;
+      CREATE TABLE gone (x); DROP TABLE IF EXISTS gone;
+    `
+    expect(tablesLeft(sql).sort()).toEqual(["archived", "item"])
+  })
+
+  it("reads past a /* in a string or a line comment, and not into a string", () => {
+    const sql = `
+      // copies migrations/*.up.sql
+      CREATE TABLE a (ct TEXT CHECK (ct GLOB 'image/*'));
+      CREATE TABLE b (x);
+      INSERT INTO a VALUES ('CREATE TABLE fake (x); */');
+      CREATE TABLE c (y CHECK (y GLOB '*/*'));
+    `
+    expect(tablesLeft(sql).sort()).toEqual(["a", "b", "c"])
+  })
+
+  it("keeps virtual tables, not temporary ones, by their bare lower-cased names", () => {
+    const sql = `
+      CREATE VIRTUAL TABLE fts USING fts5(body);
+      CREATE TEMP TABLE scratch (x);
+      CREATE TABLE "my-table" (x);
+      CREATE TABLE [bracketed] (x);
+      CREATE TABLE main.qualified (x);
+      DROP TABLE main.qualified;
+      CREATE TABLE Item (x);
+      DROP TABLE item;
+      CREATE TABLE A (x);
+      ALTER TABLE a RENAME TO B;
+    `
+    expect(tablesLeft(sql).sort()).toEqual([
+      "b",
+      "bracketed",
+      "fts",
+      "my-table",
+    ])
+  })
+
+  const kept = (
+    stores: ReadonlyArray<string>,
+    keptTables: Surroundings["keptTables"]
+  ): string =>
+    findLedgerViolations(
+      {
+        ...ledgerOf([objective(), objective({ id: "ZZ2", kind: "RE9" })]),
+        stores: stores.map((store) => ({
+          store,
+          class: "record",
+          growth: "A row each.",
+          family: "f",
+        })),
+      },
+      around({ keptTables })
+    )
+      .map((f) => `${f.id}: ${f.message}`)
+      .join("\n")
+
+  it("passes when every table is listed, and the phone keeps stores beyond its tables", () => {
+    expect(
+      kept(["mailbox:item", "phone:sessions", "phone:some-takes"], {
+        mailbox: ["item"],
+        phone: ["sessions"],
+      })
+    ).toBe("")
+  })
+
+  it("names a table no store lists, and a mailbox store no migration makes", () => {
+    const found = kept(["mailbox:ghost"], {
+      mailbox: ["item"],
+      phone: ["sessions"],
+    })
+    expect(found).toContain("mailbox:item: a mailbox table no store lists")
+    expect(found).toContain("phone:sessions: a phone table no store lists")
+    expect(found).toContain(
+      "mailbox:ghost: no mailbox migration leaves this table standing"
+    )
   })
 })
 
