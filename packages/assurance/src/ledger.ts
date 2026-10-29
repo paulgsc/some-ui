@@ -98,10 +98,10 @@ export type Family = {
  * recomputable from records (`derived`), a copy of something held elsewhere
  * (`cache`), or measurements about the system (`telemetry`).
  */
-export type StoreClass = "record" | "derived" | "cache" | "telemetry"
+type StoreClass = "record" | "derived" | "cache" | "telemetry"
 
 /** One place data is kept, and the family that answers for its growth (RE9). */
-export type Store = {
+type Store = {
   /** `server:<table>`, `mailbox:<table>` (the Worker's D1) or `phone:<store>`. */
   store: string
   class: StoreClass
