@@ -22,7 +22,7 @@
  */
 import { assertNever, counted } from "@some-ui/core-utils"
 import type { JobsRun } from "@some-ui/job-desk"
-import { pacificDay, PICKS_PER_DAY } from "@some-ui/job-desk"
+import { pacificDay, pacificMinutes, PICKS_PER_DAY } from "@some-ui/job-desk"
 
 import type {
   JourneyTheme,
@@ -36,7 +36,7 @@ import type {
 import { whenSaid } from "@/lib/journey"
 
 import type { JobsState } from "./model"
-import { decisionOf, digestOf, pacificMinutes, placesFull } from "./model"
+import { decisionOf, digestOf, placesFull } from "./model"
 
 /** When the scheduled run starts, Pacific (`packages/job-desk/ROUTINE.md`). */
 const RUN_STARTS = { hour: 7, minute: 52 }
