@@ -109,6 +109,7 @@ describe("calendar days", () => {
   it("dayOf reads the local calendar day, padded", () => {
     expect(dayOf(new Date(2026, 0, 5))).toBe("2026-01-05")
     expect(dayOf(new Date(2026, 11, 31))).toBe("2026-12-31")
+    expect(dayOf(new Date(2026, 8, 5, 23, 59))).toBe("2026-09-05")
   })
 
   it.each([

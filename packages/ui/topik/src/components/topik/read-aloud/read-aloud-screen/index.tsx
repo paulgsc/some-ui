@@ -21,6 +21,7 @@
 
 import type { JSX } from "react"
 import { useRef, useState } from "react"
+import { dayOf } from "@some-ui/core-utils"
 import type { Speaker } from "@some-ui/speech"
 import { LensSession } from "@topik/components/topik/read-aloud/lens-session"
 import { ReadAloudSession } from "@topik/components/topik/read-aloud/read-aloud-session"
@@ -35,7 +36,6 @@ import type {
 import { readAloudLevelFor } from "@topik/lib/topik/read-aloud/content"
 import { toggled } from "@topik/lib/topik/read-aloud/feedback"
 import { lensLines } from "@topik/lib/topik/read-aloud/lens/items"
-import { dayKey } from "@topik/lib/topik/read-aloud/records"
 import { drawnFrom } from "@topik/lib/topik/read-aloud/set-builder"
 import type { Tally } from "@topik/lib/topik/read-aloud/tally"
 import { noteRead, noteShown } from "@topik/lib/topik/read-aloud/tally"
@@ -145,7 +145,7 @@ export const ReadAloudScreen = ({
       paces={loaded.paces}
       resume={loaded.resume}
       now={now}
-      record={{ record, today: dayKey(new Date(now())) }}
+      record={{ record, today: dayOf(new Date(now())) }}
       short={short}
       paused={paused}
       initialBegin={initialBegin}
@@ -162,7 +162,7 @@ export const ReadAloudScreen = ({
       onProgress={(progress) => store.saveProgress(level, deck.id, progress)}
       tally={{
         rows: tally.rows,
-        today: dayKey(new Date(now())),
+        today: dayOf(new Date(now())),
         kept: tally.kept,
         onClear: () => {
           const cleared = store.saveTally({})

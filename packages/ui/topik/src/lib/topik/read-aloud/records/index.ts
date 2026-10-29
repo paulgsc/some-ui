@@ -18,7 +18,7 @@
  * patched together from parts would show counts that never happened.
  */
 
-import type { Salvaged } from "@some-ui/core-utils"
+import { dayOf, type Salvaged } from "@some-ui/core-utils"
 import { PACE_MAX, PACE_MIN } from "@topik/lib/topik/read-aloud/timing"
 import { z } from "zod"
 
@@ -124,13 +124,6 @@ export const emptyRecord = (): PracticeRecord => ({
   totals: { ...ZERO },
 })
 
-/** A local date as the record keys it. */
-export function dayKey(date: Date): string {
-  const month = String(date.getMonth() + 1).padStart(2, "0")
-  const day = String(date.getDate()).padStart(2, "0")
-  return `${date.getFullYear()}-${month}-${day}`
-}
-
 /** Days in order, the oldest dropped beyond `RECORD_DAYS`. */
 const bounded = (days: Array<PracticeDay>): Array<PracticeDay> =>
   [...days]
@@ -179,7 +172,7 @@ export function recentCounts(
   days: number
 ): PracticeCounts {
   const [year, month, date] = today.split("-").map(Number)
-  const first = dayKey(
+  const first = dayOf(
     new Date(year ?? 0, (month ?? 1) - 1, (date ?? 1) - (days - 1))
   )
   return record.days
