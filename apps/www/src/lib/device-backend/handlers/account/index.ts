@@ -61,7 +61,10 @@ function fits(value: unknown, type: FieldType): boolean {
 /** Why serde would refuse `signal`, or `null` when it reads as a `StudySignal`. */
 function signalRefusal(signal: Record<string, unknown>): string | null {
   const kind = signal.kind
-  const fields = typeof kind === "string" ? SIGNAL_FIELDS[kind] : undefined
+  const fields =
+    typeof kind === "string" && Object.hasOwn(SIGNAL_FIELDS, kind)
+      ? SIGNAL_FIELDS[kind]
+      : undefined
   if (fields === undefined) return "unknown variant `kind`"
   for (const [field, type] of Object.entries(fields)) {
     if (!(field in signal)) return `missing field \`${field}\``

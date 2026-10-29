@@ -200,4 +200,18 @@ export const contracts = [
     request: { body: { kind: "session-started" } },
     expect: { status: 422 },
   }),
+
+  defineContract({
+    id: "signals.unknown_kind_refused",
+    module: "signals",
+    session: true,
+    method: "POST",
+    path: "/signals",
+    summary: "a kind that is not a signal's is a 422",
+    mutates: true,
+    // A name every object inherits, so a store that looks kinds up in a
+    // plain object finds something and is caught here.
+    request: { body: { kind: "constructor" } },
+    expect: { status: 422 },
+  }),
 ]
