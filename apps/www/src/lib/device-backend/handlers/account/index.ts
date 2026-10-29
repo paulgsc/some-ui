@@ -9,8 +9,8 @@
  * **Signals and presence** keep their wire shapes (snake_case) and
  * `presence_leases` is written, and trimmed to the server's cap, as the server
  * does it. The engagement fold is not ported (the client's policy decides on
- * the device), so `/signals` validates and answers `eligible_at: now` without
- * storing.
+ * the device), so `/signals` checks each kind's fields as the server's
+ * `StudySignal` does and answers `eligible_at: now` without storing.
  *
  * **Push** answers `503 feature_not_configured`: no VAPID identity, which the
  * client reads as "fall back" (`FileHostNotConfiguredError`).
@@ -34,15 +34,41 @@ const MAX_LEASES_PER_SUBJECT = 16
 /** How far ahead the device's always-live session says it runs. */
 const SESSION_HORIZON_MS = 30 * 24 * 60 * 60 * 1000
 
-const SIGNAL_KINDS = [
-  "session-provisioned",
-  "session-started",
-  "session-completed",
-  "session-abandoned",
-  "scored-below-target",
-  "curriculum-updated",
-  "app-updated",
-]
+type FieldType = "string" | "number" | "integer"
+
+/**
+ * `StudySignal` (paulgsc/server `crates/study_domain`): each kind and the
+ * fields its variant requires. `f64` takes any number, `i64` only an integer.
+ */
+const SIGNAL_FIELDS: Readonly<
+  Record<string, Readonly<Record<string, FieldType>>>
+> = {
+  "session-provisioned": { session_id: "string" },
+  "session-started": { session_id: "string" },
+  "session-completed": { session_id: "string", score: "number" },
+  "session-abandoned": { session_id: "string", elapsed_ms: "integer" },
+  "scored-below-target": { activity_id: "string", score: "number" },
+  "curriculum-updated": { curriculum_id: "string" },
+  "app-updated": { version: "string" },
+}
+
+function fits(value: unknown, type: FieldType): boolean {
+  if (type === "string") return typeof value === "string"
+  if (type === "number") return typeof value === "number"
+  return Number.isInteger(value)
+}
+
+/** Why serde would refuse `signal`, or `null` when it reads as a `StudySignal`. */
+function signalRefusal(signal: Record<string, unknown>): string | null {
+  const kind = signal.kind
+  const fields = typeof kind === "string" ? SIGNAL_FIELDS[kind] : undefined
+  if (fields === undefined) return "unknown variant `kind`"
+  for (const [field, type] of Object.entries(fields)) {
+    if (!(field in signal)) return `missing field \`${field}\``
+    if (!fits(signal[field], type)) return `invalid type for \`${field}\``
+  }
+  return null
+}
 
 const notConfigured = (): Promise<Response> =>
   Promise.resolve(errorResponse(503, "feature_not_configured"))
@@ -87,11 +113,12 @@ export const accountRoutes: ReadonlyArray<DeviceRoute> = [
     handler: ({ body }, { now }): Promise<Response> => {
       const read = readJson(body)
       if (!read.ok) return Promise.resolve(read.response)
-      const kind = isRecord(read.value) ? read.value.kind : undefined
-      if (typeof kind !== "string" || !SIGNAL_KINDS.includes(kind)) {
-        return Promise.resolve(shapeRejected("unknown variant `kind`"))
-      }
-      return Promise.resolve(json(200, { kind, eligible_at: rfc3339(now()) }))
+      const signal = isRecord(read.value) ? read.value : {}
+      const refusal = signalRefusal(signal)
+      if (refusal !== null) return Promise.resolve(shapeRejected(refusal))
+      return Promise.resolve(
+        json(200, { kind: signal.kind, eligible_at: rfc3339(now()) })
+      )
     },
   },
   {

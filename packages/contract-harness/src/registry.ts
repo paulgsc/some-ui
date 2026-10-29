@@ -14,12 +14,14 @@ import { contracts as activityContracts } from "../contracts/activities.contract
 import { contracts as aphContracts } from "../contracts/aph.contract"
 import { contracts as authContracts } from "../contracts/auth.contract"
 import { contracts as curriculumOperatorContracts } from "../contracts/curriculum-operator.contract"
+import { contracts as curriculumContracts } from "../contracts/curriculum.contract"
 import { contracts as healthContracts } from "../contracts/health.contract"
 import { contracts as jobsContracts } from "../contracts/jobs.contract"
 import { contracts as koreanContracts } from "../contracts/korean.contract"
 import { contracts as leetypeLogContracts } from "../contracts/leetype-log.contract"
 import { contracts as leetypeContracts } from "../contracts/leetype.contract"
 import { contracts as routineContracts } from "../contracts/routine.contract"
+import { contracts as sessionContracts } from "../contracts/sessions.contract"
 import { contracts as shelfContracts } from "../contracts/shelf.contract"
 import { contracts as studyNudgeContracts } from "../contracts/study-nudge.contract"
 import { contracts as tabContracts } from "../contracts/tabs.contract"
@@ -30,6 +32,7 @@ export const allContracts: ReadonlyArray<Contract> = [
   ...activityContracts,
   ...aphContracts,
   ...authContracts,
+  ...curriculumContracts,
   ...curriculumOperatorContracts,
   ...healthContracts,
   ...jobsContracts,
@@ -37,6 +40,7 @@ export const allContracts: ReadonlyArray<Contract> = [
   ...leetypeContracts,
   ...leetypeLogContracts,
   ...routineContracts,
+  ...sessionContracts,
   ...shelfContracts,
   ...studyNudgeContracts,
   ...tabContracts,

@@ -6,6 +6,9 @@
  * re-decided:
  *
  * - every success is `200`, including create and delete;
+ * - a create may name its id (`is_session_id`): one that is not a session's
+ *   is a `422`, and one already held answers with that session unchanged,
+ *   so the same create sent again makes one session;
  * - `DELETE /sessions/:id` answers `{ removed }` and never `404`;
  * - `layout` has three states: absent (SQL `NULL`), explicit `null` (the
  *   text `'null'`), or a tree;
@@ -22,10 +25,12 @@ import { isRecord } from "@some-ui/core-utils"
 import { DEVICE_SUBJECT, rfc3339 } from "@/lib/device-backend/common"
 import type { DeviceRoute } from "@/lib/device-backend/router"
 import {
+  errorResponse,
   json,
   notFound,
   readJson,
   shapeRejected,
+  unprocessable,
 } from "@/lib/device-backend/router"
 import type { SqlDriver, SqlRow, SqlValue } from "@/lib/device-backend/sql"
 import { num, numOrNull, one, text, textOrNull } from "@/lib/device-backend/sql"
@@ -131,8 +136,8 @@ async function find(db: SqlDriver, id: string): Promise<Stored | null> {
   return row === null ? null : fromRow(row)
 }
 
-async function write(db: SqlDriver, session: Stored): Promise<void> {
-  const values: Array<SqlValue> = [
+function valuesOf(session: Stored): Array<SqlValue> {
+  return [
     session.id,
     DEVICE_SUBJECT,
     session.name,
@@ -149,9 +154,14 @@ async function write(db: SqlDriver, session: Stored): Promise<void> {
     session.scenes,
     session.layout,
   ]
+}
+
+const INSERT = `INSERT INTO sessions (id, subject_id, name, status, origin, layout_mode, total_duration_ms, created_at, updated_at, started_at, completed_at, final_elapsed_ms, activities, scenes, layout)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+
+async function write(db: SqlDriver, session: Stored): Promise<void> {
   await db.run(
-    `INSERT INTO sessions (id, subject_id, name, status, origin, layout_mode, total_duration_ms, created_at, updated_at, started_at, completed_at, final_elapsed_ms, activities, scenes, layout)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `${INSERT}
      ON CONFLICT(id) DO UPDATE SET
        name = excluded.name,
        status = excluded.status,
@@ -165,13 +175,32 @@ async function write(db: SqlDriver, session: Stored): Promise<void> {
        activities = excluded.activities,
        scenes = excluded.scenes,
        layout = excluded.layout`,
-    values
+    valuesOf(session)
   )
+}
+
+/**
+ * `insert_if_absent`: makes `session` unless its id is taken, and answers
+ * with the session as it is now, or `null` when another subject holds the
+ * id. Run inside the caller's transaction (`budgeted` opens it).
+ */
+async function insertIfAbsent(
+  db: SqlDriver,
+  session: Stored
+): Promise<Stored | null> {
+  const { changes } = await db.run(
+    `${INSERT} ON CONFLICT(id) DO NOTHING`,
+    valuesOf(session)
+  )
+  return changes > 0 ? session : find(db, session.id)
 }
 
 function newSessionId(): string {
   return `session-${crypto.randomUUID()}`
 }
+
+/** `is_session_id`: `session-`, then 16 to 56 letters, digits, `-` and `_`. */
+const SESSION_ID = /^session-[A-Za-z0-9_-]{16,56}$/
 
 /** Absent -> `undefined`; explicit `null` -> `"null"`; a tree -> its JSON. */
 function layoutField(body: Record<string, unknown>): string | null | undefined {
@@ -300,10 +329,20 @@ export const sessionRoutes: ReadonlyArray<DeviceRoute> = [
       if (!Array.isArray(activities) || !Array.isArray(scenes)) {
         return shapeRejected("`activities` and `scenes` must be arrays")
       }
+      // `Option<String>` with a default: absent or `null` is the server's to mint.
+      const named = input.id ?? undefined
+      if (named !== undefined && typeof named !== "string") {
+        return shapeRejected("invalid type for `id`, expected a string")
+      }
+      if (named !== undefined && !SESSION_ID.test(named)) {
+        return unprocessable({
+          id: ["is session- and 16 to 56 letters, digits, - and _"],
+        })
+      }
       const stamp = rfc3339(now())
       const layout = layoutField(input)
       const session: Stored = {
-        id: newSessionId(),
+        id: named ?? newSessionId(),
         name: input.name,
         status: "draft",
         origin: "user",
@@ -319,8 +358,12 @@ export const sessionRoutes: ReadonlyArray<DeviceRoute> = [
         layout: layout ?? null,
       }
       return budgetedAnswer(db, budget, null, async () => {
-        await write(db, session)
-        return json(200, toWire(session))
+        const created = await insertIfAbsent(db, session)
+        return created === null
+          ? errorResponse(409, "conflict", {
+              message: "another session holds this id",
+            })
+          : json(200, toWire(created))
       })
     },
   },

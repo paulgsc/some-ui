@@ -25,18 +25,7 @@
 import { z } from "zod"
 
 import { defineContract } from "../src/contract"
-
-/** `TopikMetadataSchema` (`@some-ui/topik`), field for field. */
-const ManifestEntrySchema = z.object({
-  key: z.string(),
-  displayName: z.string(),
-  description: z.string(),
-  batchCount: z.number(),
-  totalQuestions: z.number(),
-  totalMessages: z.number(),
-  difficulty: z.enum(["beginner", "intermediate", "advanced"]).optional(),
-  tags: z.array(z.string()).optional(),
-})
+import { ManifestEntrySchema } from "./curriculum.contract"
 
 const OperatorLessonSchema = ManifestEntrySchema.extend({
   activityId: z.string(),

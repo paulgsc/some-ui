@@ -5,6 +5,13 @@
  *
  * A contract for a route the device does not serve is skipped by name, so a
  * new server route shows up as a gap to decide on, not as silence.
+ *
+ * DV1: the phone's backend answers each route it serves as `file_host` does.
+ * Family: every route in `DEVICE_ROUTES`, by the requests the contracts send,
+ * accepted and refused. Proof: every such route has a contract, and every
+ * contract on one passes here or is named in `DELIBERATE`; the same
+ * contracts run against `file_host` on every server PR. Tolerance: a request
+ * no contract sends is outside the proof.
  */
 import { readFileSync } from "node:fs"
 import { openNodeSqlite } from "@/test-support/node-sqlite-driver"
@@ -41,6 +48,7 @@ const serverRoutes = parseInventory(
 const DELIBERATE: Readonly<Record<string, string>> = {
   "auth.session_signed_out":
     "the phone has one person and no passkeys; /auth/session is always signed in",
+  "auth.sign_out_everywhere_signed_out": "as auth.session_signed_out",
   "push.subscribe":
     "no VAPID identity on a phone; 503 feature_not_configured is the client's fall-back signal",
   "push.unsubscribe": "as push.subscribe",
@@ -100,6 +108,16 @@ describe("device backend conformance", () => {
       expect(["passed", "warned"]).toContain(outcome.status)
     }
   )
+
+  it("has a contract for every route it serves (DV1)", () => {
+    const contracted = new Set(
+      allContracts.map((contract) => `${contract.method} ${contract.path}`)
+    )
+    const uncovered = DEVICE_ROUTES.map(
+      (route) => `${route.method} ${route.path}`
+    ).filter((route) => !contracted.has(route))
+    expect(uncovered).toEqual([])
+  })
 
   it("names only deliberate divergences that are real contracts", () => {
     const known = new Set(allContracts.map((contract) => contract.id))

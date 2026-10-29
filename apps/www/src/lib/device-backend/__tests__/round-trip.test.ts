@@ -125,6 +125,31 @@ describe("sessions on the device", () => {
     await expect(sessions.list()).resolves.toEqual([])
   })
 
+  it("makes one session however often a create naming its id is sent", async () => {
+    const sessions = createHttpSessionsRepository(transport())
+    const id = "session-commute-copied-from-web"
+    const draft: CreateSessionInput = {
+      id,
+      name: "Commute",
+      activities: [],
+      scenes: [],
+      layoutMode: "basic",
+    }
+    await expect(sessions.create(draft)).resolves.toMatchObject({ id })
+    clock += 1000
+    await sessions.update(id, { name: "Commute, renamed" })
+
+    // A resend answers with the session as it is now, and changes nothing.
+    const again = await sessions.create(draft)
+    expect(again).toMatchObject({ id, name: "Commute, renamed" })
+    await expect(sessions.list()).resolves.toHaveLength(1)
+
+    await expect(
+      sessions.create({ ...draft, id: "session-short" })
+    ).rejects.toThrow()
+    await expect(sessions.list()).resolves.toHaveLength(1)
+  })
+
   it("reports a missing session the way the LAN build does", async () => {
     const sessions = createHttpSessionsRepository(transport())
     await expect(

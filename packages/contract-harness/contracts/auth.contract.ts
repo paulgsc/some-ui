@@ -16,8 +16,11 @@
  * same reason: they are what webauthn-rs asks of the authenticator
  * (`start_passkey_registration`, `start_discoverable_authentication`).
  *
- * Only the `start` halves are probed. A `finish` needs an authenticator's
- * signature over the challenge, which a harness cannot make.
+ * A `finish` needs an authenticator's signature over the challenge, which a
+ * harness cannot make, so each is pinned by its refusal of a body with no
+ * ceremony, which signs nobody in and adds no passkey. Where passkeys are not
+ * configured (the phone, a deployment without `WEBAUTHN_RP_ID`), every
+ * ceremony is `503 feature_not_configured` instead.
  */
 
 import { z } from "zod"
@@ -77,6 +80,19 @@ const SignInStartedSchema = z.object({
   }),
 })
 
+/**
+ * Adding a passkey to the signed-in account: the registration options, and
+ * the account's passkeys so the browser does not make a second on one
+ * authenticator.
+ */
+const AddPasskeyStartedSchema = RegistrationStartedSchema.extend({
+  options: z.object({
+    publicKey: RegistrationStartedSchema.shape.options.shape.publicKey.extend({
+      excludeCredentials: z.array(z.unknown()),
+    }),
+  }),
+})
+
 const SessionViewSchema = z.object({
   /** ms since the epoch. */
   expiresAt: z.number(),
@@ -114,6 +130,56 @@ export const contracts = [
   }),
 
   defineContract({
+    id: "auth.register_finish_refused",
+    module: "auth",
+    method: "POST",
+    path: "/auth/register/finish",
+    summary: "a finish naming no ceremony is a 422, and no account is made",
+    mutates: true,
+    request: { body: {} },
+    expect: { status: [422, 503] },
+  }),
+
+  defineContract({
+    id: "auth.sign_in_finish_refused",
+    module: "auth",
+    method: "POST",
+    path: "/auth/sign-in/finish",
+    summary: "a finish naming no ceremony is a 422, and no one is signed in",
+    mutates: true,
+    request: { body: {} },
+    expect: { status: [422, 503] },
+  }),
+
+  defineContract({
+    id: "auth.passkeys_start",
+    module: "auth",
+    method: "POST",
+    path: "/auth/passkeys/start",
+    summary:
+      "another passkey for the signed-in account: the registration options, excluding the passkeys it holds",
+    session: true,
+    // Like `register_start`, this opens an in-memory ceremony only.
+    expect: {
+      status: [200, 503],
+      schemaFor: 200,
+      schema: AddPasskeyStartedSchema,
+    },
+  }),
+
+  defineContract({
+    id: "auth.passkeys_finish_refused",
+    module: "auth",
+    method: "POST",
+    path: "/auth/passkeys/finish",
+    summary: "a finish naming no ceremony is a 422, and no passkey is added",
+    session: true,
+    mutates: true,
+    request: { body: {} },
+    expect: { status: [422, 503] },
+  }),
+
+  defineContract({
     id: "auth.session_signed_out",
     module: "auth",
     method: "GET",
@@ -141,5 +207,17 @@ export const contracts = [
       "ending this browser's session succeeds with or without one, so the client can always call it",
     // Without a cookie this ends nothing, so the default run is safe.
     expect: { status: 200 },
+  }),
+
+  defineContract({
+    id: "auth.sign_out_everywhere_signed_out",
+    module: "auth",
+    method: "POST",
+    path: "/auth/sign-out-everywhere",
+    summary:
+      "ending every session is per person: without one it is a 401, and nothing ends",
+    // Not probed signed in: it would end the session every later contract in
+    // the run is signed in with.
+    expect: { status: 401 },
   }),
 ]
