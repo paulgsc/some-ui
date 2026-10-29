@@ -26,6 +26,13 @@ export type Surroundings = {
   routeModules: ReadonlyArray<string>
   /** IDs an invariant already declares in a markdown file. */
   declaredIds: ReadonlySet<string>
+  /**
+   * The tables the mailbox's D1 migrations and the phone's schema leave
+   * standing (`tablesLeft`), each of which a store lists (STORAGE5). The
+   * mailbox keeps nothing else, so its stores are exactly these; the phone
+   * also keeps audio and records outside its database.
+   */
+  keptTables: { mailbox: ReadonlyArray<string>; phone: ReadonlyArray<string> }
 }
 
 const ID = /^[A-Z]{1,4}\d+$/
@@ -106,6 +113,21 @@ export function findLedgerViolations(
       flag(entry.store, `family "${entry.family}" is not a family here`)
     keeping.add(entry.family)
   }
+  for (const [place, tables] of Object.entries(around.keptTables)) {
+    for (const table of tables) {
+      if (!stores.has(`${place}:${table}`))
+        flag(
+          `${place}:${table}`,
+          `a ${place} table no store lists: add it to the ledger's stores with its class, growth and family`
+        )
+    }
+  }
+  const mailbox = new Set(around.keptTables.mailbox)
+  for (const entry of ledger.stores) {
+    const [place, table = ""] = entry.store.split(/:(.*)/s)
+    if (place === "mailbox" && !mailbox.has(table))
+      flag(entry.store, "no mailbox migration leaves this table standing")
+  }
   for (const family of ledger.families) {
     const states = family.objectives.some(
       (o) => o.kind === "RE9" && o.retired === undefined
@@ -176,6 +198,30 @@ function proofOrIssue(o: Objective, around: Surroundings): Array<string> {
     )
   }
   return out
+}
+
+/**
+ * The tables a run of SQL migrations leaves standing, in order: `CREATE
+ * TABLE` adds one, `DROP TABLE` removes it, `ALTER TABLE … RENAME TO`
+ * renames it. Comments are dropped first, so prose naming a table is not one.
+ */
+export function tablesLeft(sql: string): Array<string> {
+  const code = sql
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(--|\/\/)[^\n]*/g, "")
+  const tables = new Set<string>()
+  const statement =
+    /\b(CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?|DROP\s+TABLE(?:\s+IF\s+EXISTS)?|ALTER\s+TABLE)\s+["`]?(\w+)["`]?(?:\s+RENAME\s+TO\s+["`]?(\w+)["`]?)?/gi
+  for (const [, verb = "", table = "", renamed] of code.matchAll(statement)) {
+    const what = verb.toUpperCase()
+    if (what.startsWith("CREATE")) tables.add(table)
+    else if (what.startsWith("DROP")) tables.delete(table)
+    else if (renamed !== undefined) {
+      tables.delete(table)
+      tables.add(renamed)
+    }
+  }
+  return [...tables]
 }
 
 /**

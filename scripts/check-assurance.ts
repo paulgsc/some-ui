@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Guardrail: the assurance ledger (docs/operational-assurance.md). Its shape,
 // that a promise that holds names a proof that exists and one that does not
-// names its issue, that every server route module is placed, and the ratchet
-// against the base branch's ledger. The rules live in
+// names its issue, that every server route module is placed, that every
+// table the mailbox's migrations and the phone's schema leave standing is a
+// store, and the ratchet against the base branch's ledger. The rules live in
 // packages/assurance/src/rules.ts.
 //
 //   node scripts/check-assurance.ts [--base <ref>]
@@ -11,7 +12,7 @@
 // `origin/main` where it exists). Wired into the root `lint` script and
 // pr.yml's `assurance` job, which CI Gate needs. Runs on Node's built-in type
 // stripping, with no install (see scripts/check-test-layout.ts).
-import { readFileSync } from "node:fs"
+import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
 // Relative imports on purpose: Node's type stripping resolves no path aliases.
@@ -28,6 +29,7 @@ import type { Finding } from "../packages/assurance/src/rules.ts"
 import {
   findLedgerViolations,
   findRatchetViolations,
+  tablesLeft,
 } from "../packages/assurance/src/rules.ts"
 // eslint-disable-next-line no-restricted-imports
 import {
@@ -41,6 +43,8 @@ import { parseDeclarations } from "../packages/eslint/src/policy-docs.ts"
 
 const LEDGER = "packages/assurance/src/ledger.json"
 const ROUTES = "packages/contract-harness/routes.server.json"
+const MAILBOX_MIGRATIONS = "apps/mailbox/migrations"
+const PHONE_SCHEMA = "apps/www/src/lib/device-backend/schema/index.ts"
 
 const out = (line: string): void => void process.stdout.write(`${line}\n`)
 const err = (line: string): void => void process.stderr.write(`${line}\n`)
@@ -71,6 +75,17 @@ function routeModules(root: string): Array<string> {
       throw new Error(`${ROUTES} route ${i} has no module`)
     return module
   })
+}
+
+/** The mailbox's D1 tables after every migration, in the order wrangler runs them. */
+function mailboxTables(root: string): Array<string> {
+  const dir = join(root, MAILBOX_MIGRATIONS)
+  const sql = readdirSync(dir)
+    .filter((name) => name.endsWith(".sql"))
+    .sort()
+    .map((name) => readFileSync(join(dir, name), "utf8"))
+    .join("\n")
+  return tablesLeft(sql)
 }
 
 function declaredIds(root: string, files: ReadonlyArray<string>): Set<string> {
@@ -116,6 +131,10 @@ function main(): void {
           readFileSync(join(root, path), "utf8").includes(text),
         routeModules: routeModules(root),
         declaredIds: declaredIds(root, files),
+        keptTables: {
+          mailbox: mailboxTables(root),
+          phone: tablesLeft(readFileSync(join(root, PHONE_SCHEMA), "utf8")),
+        },
       }),
     ]
     const { ref, resolved } = resolveBaseRef(root, process.argv.slice(2))
