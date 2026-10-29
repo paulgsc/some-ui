@@ -115,15 +115,18 @@ pr.yml's `assurance` job, which CI Gate needs.
 - **Proof or issue:** a `holds` names at least one proof, as `<repo>:<file>#<name>`. For
   `some-ui:`, the file is tracked and the name (at least three characters) appears in it. Anything
   else names a `tracked` issue. A `some-ui:` path in evidence, a watch or a family's `paths` exists.
-  **A `server:` path is not checked at all yet:** it is taken as written until the server's CI
-  reads this ledger (server#526, objective GC4).
+  **A `server:` path is checked by the server, not here:** its `Assurance ledger` job reads this
+  ledger from `main` on every server pull request and fails a `holds`' `server:` proof, or a
+  `server:` path or ref, that is gone (server#557, objective GC4; the server's `docs/assurance.md`).
+  It runs only on server pull requests and does not stop a merge until `PR gate` is required
+  there (GC5, #2270), so a wrong `server:` path written here first shows on the next server PR.
 - **Decisions:** an amendment's `decision` links to a paulgsc issue, pull request or comment.
 - **What is kept (RE9):** a store is named `server:`, `mailbox:` or `phone:` and listed once, its
   family exists, and a family that keeps data has a live RE9 objective. Every table the mailbox's
   D1 migrations and the phone's schema (`device-backend/schema`) leave standing is a store, and a
   `mailbox:` store is one of those tables (`tablesLeft`, STORAGE5 #2226; the mailbox's reading is
-  checked against SQLite running its migrations). Home's tables are to be held by the server's own
-  CI once it reads this ledger (server#526).
+  checked against SQLite running its migrations). Home's tables are held the same way, both
+  directions, by the server's `Assurance ledger` job (server#557).
 - **Coverage (OA1):** every module in `packages/contract-harness/routes.server.json` is in exactly
   one family's `modules` or in `synchronous`. A module placed that the server does not serve is a
   warning, not an error, so a module can be placed in its own PR ahead of the route snapshot that

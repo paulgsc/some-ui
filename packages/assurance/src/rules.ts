@@ -186,7 +186,7 @@ function proofOrIssue(o: Objective, around: Surroundings): Array<string> {
         )
         continue
       }
-      // Server paths wait for the server's own check (server#526).
+      // The server's own `Assurance ledger` job checks server paths (server#557).
       if (match[1] !== "some-ui") continue
       const path = match[2] ?? ""
       const name = match[3] ?? ""
