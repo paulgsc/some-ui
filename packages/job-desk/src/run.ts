@@ -39,16 +39,31 @@ export function runFileName(startedAt: string): string {
   return `run-jobs-${stamp}.json`
 }
 
+const PACIFIC = "America/Los_Angeles"
+
 const PACIFIC_DAY = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "America/Los_Angeles",
+  timeZone: PACIFIC,
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
 })
 
+const PACIFIC_CLOCK = new Intl.DateTimeFormat("en-GB", {
+  timeZone: PACIFIC,
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+})
+
 /** The Pacific calendar day of `at`, `YYYY-MM-DD`: the morning run's "today". */
 export function pacificDay(at: Date): string {
   return PACIFIC_DAY.format(at)
+}
+
+/** Minutes since midnight at `at`, Pacific: the morning run's clock. */
+export function pacificMinutes(at: Date): number {
+  const [hour = 0, minute = 0] = PACIFIC_CLOCK.format(at).split(":").map(Number)
+  return hour * 60 + minute
 }
 
 /**

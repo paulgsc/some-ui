@@ -577,20 +577,6 @@ export function newestDay(state: JobsState): string | null {
   return state.digests.at(-1)?.day ?? null
 }
 
-/** Minutes since midnight at `at`, Pacific: the morning run's clock. */
-export function pacificMinutes(at: Date): number {
-  const [hour = 0, minute = 0] = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "America/Los_Angeles",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  })
-    .format(at)
-    .split(":")
-    .map(Number)
-  return hour * 60 + minute
-}
-
 /** Whether every place was held when `digest`'s run began, so it could pick none. */
 export function placesFull(digest: Digest): boolean {
   if (digest.queue === null) return false

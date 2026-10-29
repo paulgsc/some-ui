@@ -44,6 +44,7 @@ export {
   JobsRunSchema,
   MAX_PROBLEM,
   pacificDay,
+  pacificMinutes,
   parseJobsRun,
   runFileName,
   runFindings,
