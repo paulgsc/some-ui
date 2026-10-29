@@ -18,7 +18,7 @@
 
 import type { RefObject } from "react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
-import { assertNever } from "@some-ui/core-utils"
+import { assertNever, dayOf } from "@some-ui/core-utils"
 import type { Speaker, Urgency } from "@some-ui/speech"
 import { holdOrShow, useHeld } from "@topik/lib/topik/adapter/hooks/use-held"
 import { SPOKEN_LANGUAGE } from "@topik/lib/topik/core/spoken-language"
@@ -27,7 +27,6 @@ import type {
   ReadAloudLevel,
 } from "@topik/lib/topik/read-aloud/content"
 import type { PaceBook, PaceEntry } from "@topik/lib/topik/read-aloud/records"
-import { dayKey } from "@topik/lib/topik/read-aloud/records"
 import { serialDispatch } from "@topik/lib/topik/read-aloud/serial-dispatch"
 import { buildSet } from "@topik/lib/topik/read-aloud/set-builder"
 import type {
@@ -259,7 +258,7 @@ function createRunner(
       case "count-rep": {
         onRecord?.(
           { type: "rep", creditMs: effect.creditMs, key: effect.key },
-          dayKey(new Date(now()))
+          dayOf(new Date(now()))
         )
         return
       }
@@ -268,7 +267,7 @@ function createRunner(
         return
       }
       case "count-set": {
-        onRecord?.({ type: "set" }, dayKey(new Date(now())))
+        onRecord?.({ type: "set" }, dayOf(new Date(now())))
         return
       }
       case "save-pace": {

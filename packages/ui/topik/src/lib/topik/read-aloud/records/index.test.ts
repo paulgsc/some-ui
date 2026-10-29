@@ -1,8 +1,8 @@
+import { dayOf } from "@some-ui/core-utils"
 import type { PracticeRecord } from "@topik/lib/topik/read-aloud/records"
 import {
   addRep,
   addSet,
-  dayKey,
   emptyRecord,
   prunePaceBook,
   readPaceBook,
@@ -12,8 +12,7 @@ import {
 } from "@topik/lib/topik/read-aloud/records"
 import { describe, expect, it } from "vitest"
 
-const dayNumber = (index: number): string =>
-  dayKey(new Date(2026, 0, 1 + index))
+const dayNumber = (index: number): string => dayOf(new Date(2026, 0, 1 + index))
 
 describe("the practice record (Def. 6.6)", () => {
   it("adds reps, practice and sets per day and to the totals", () => {
@@ -38,10 +37,6 @@ describe("the practice record (Def. 6.6)", () => {
     expect(record.days[0]?.day).toBe(dayNumber(5))
     expect(record.days.at(-1)?.day).toBe(dayNumber(RECORD_DAYS + 4))
     expect(record.totals.reps).toBe(RECORD_DAYS + 5)
-  })
-
-  it("keys days by local date", () => {
-    expect(dayKey(new Date(2026, 8, 5, 23, 59))).toBe("2026-09-05")
   })
 })
 
