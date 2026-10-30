@@ -83,6 +83,12 @@ function listen(onWords: (words: string) => void): Listening {
         if (!signal.aborted) onWords(words)
       })
       try {
+        // Let go while setting up: a cancel sent then reached the plugin
+        // before this start would, so nothing must start now.
+        if (signal.aborted) throw new Error("let go before it started")
+        // Let go once started (a deadline, or a cancel racing this start):
+        // the plugin stops listening.
+        signal.addEventListener("abort", () => tell("cancel"), { once: true })
         const { words } = await module.start()
         return words
       } finally {

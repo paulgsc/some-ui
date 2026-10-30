@@ -1010,14 +1010,16 @@ them through the app's own plugin, `ListenPlugin.java` (registered in
 `MainActivity`, reached from www's `src/lib/device-listen` through
 `callForeign`):
 
-- **Offline, and no sound kept.** It asks Android's speech recognizer for
-  on-device recognition (`createOnDeviceSpeechRecognizer` where the phone
-  has it, and `EXTRA_PREFER_OFFLINE` always), with partial results. The
-  recognizer takes the microphone and hands back text; nothing writes a
-  file. Only the words the owner confirms are kept, as text in the page's
-  storage (`some-ui:studio:ideas`).
-- **Typed when it can't listen.** A phone without the offline English pack,
-  or with the microphone refused, answers `UNAVAILABLE`, and the question
+- **Offline, and no sound kept.** It uses only Android's on-device
+  recognizer (`createOnDeviceSpeechRecognizer`, Android 12 and later), with
+  partial results: `EXTRA_PREFER_OFFLINE` alone may be ignored by a
+  network-backed service, so it is never relied on. The recognizer takes
+  the microphone and hands back text; nothing writes a file. Only the words
+  the owner confirms are kept, as text in the page's storage
+  (`some-ui:studio:ideas`).
+- **Typed when it can't listen.** A phone with no on-device recognizer or
+  without its offline English pack, or with the microphone refused,
+  answers `UNAVAILABLE`, and the question
   takes typed words instead. "Type instead" is always there.
 - **Manifest:** a `<queries>` entry for `android.speech.RecognitionService`,
   without which Android 11+ hides the recognizer from the app. The

@@ -24,10 +24,11 @@ import java.util.ArrayList;
  * over the network, with the words so far sent as they settle.
  *
  * No sound is kept: the recognizer is handed the microphone and returns
- * only text, and nothing here writes a file. Recognition runs offline
- * (EXTRA_PREFER_OFFLINE, and the on-device recognizer where Android has one),
- * so a phone without its offline language pack answers UNAVAILABLE and the
- * question takes typed words instead.
+ * only text, and nothing here writes a file. Only Android's on-device
+ * recognizer is used (Android 12 and later): EXTRA_PREFER_OFFLINE alone may
+ * be ignored by a network-backed service, so a phone without an on-device
+ * recognizer, or without its offline language pack, answers UNAVAILABLE and
+ * the question takes typed words instead.
  *
  * One listening at a time. start resolves with the words heard, empty when
  * nothing was; "words" events carry the partial words; stop ends the
@@ -54,11 +55,13 @@ public class ListenPlugin extends Plugin {
 
     private SpeechRecognizer recognizer;
     private PluginCall listening;
+    /** The start waiting on the microphone prompt, by callback id; null when none. */
+    private volatile String asking;
 
     @PluginMethod
     public void available(PluginCall call) {
         Context context = getContext();
-        boolean available = SpeechRecognizer.isRecognitionAvailable(context) || onDevice(context);
+        boolean available = onDevice(context);
         JSObject result = new JSObject();
         result.put("available", available);
         call.resolve(result);
@@ -67,6 +70,7 @@ public class ListenPlugin extends Plugin {
     @PluginMethod
     public void start(PluginCall call) {
         if (getPermissionState(MICROPHONE) != PermissionState.GRANTED) {
+            asking = call.getCallbackId();
             requestPermissionForAlias(MICROPHONE, call, "microphoneAnswered");
             return;
         }
@@ -75,6 +79,12 @@ public class ListenPlugin extends Plugin {
 
     @PermissionCallback
     private void microphoneAnswered(PluginCall call) {
+        // Let go while the prompt was up: nothing may start now.
+        if (!call.getCallbackId().equals(asking)) {
+            call.reject("The listening was let go", "CANCELLED");
+            return;
+        }
+        asking = null;
         if (getPermissionState(MICROPHONE) == PermissionState.GRANTED) {
             begin(call);
         } else {
@@ -92,6 +102,8 @@ public class ListenPlugin extends Plugin {
 
     @PluginMethod
     public void cancel(PluginCall call) {
+        // A start waiting on the prompt is answered when the prompt is.
+        asking = null;
         getActivity().runOnUiThread(() -> {
             end("CANCELLED");
             call.resolve();
@@ -114,10 +126,8 @@ public class ListenPlugin extends Plugin {
             SpeechRecognizer created;
             if (onDevice(context)) {
                 created = SpeechRecognizer.createOnDeviceSpeechRecognizer(context);
-            } else if (SpeechRecognizer.isRecognitionAvailable(context)) {
-                created = SpeechRecognizer.createSpeechRecognizer(context);
             } else {
-                call.reject("No speech recognizer on this phone", "UNAVAILABLE");
+                call.reject("No on-device speech recognizer on this phone", "UNAVAILABLE");
                 return;
             }
             recognizer = created;

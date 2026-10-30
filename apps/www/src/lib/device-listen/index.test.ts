@@ -84,6 +84,24 @@ describe("the phone's recognizer, for ideas", () => {
     })
   })
 
+  it("never starts a listening let go while it was being set up", async () => {
+    const listening = deviceListener.listen(() => undefined)
+    listening.cancel()
+    expect(await listening.done).toEqual({ kind: "failed" })
+    await vi.waitFor(() => expect(plugin.cancel).toHaveBeenCalled())
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(plugin.start).not.toHaveBeenCalled()
+  })
+
+  it("tells the plugin to stop listening when a started one is let go", async () => {
+    plugin.start.mockImplementationOnce(() => new Promise(() => undefined))
+    const listening = deviceListener.listen(() => undefined)
+    await vi.waitFor(() => expect(plugin.start).toHaveBeenCalledOnce())
+    listening.cancel()
+    expect(await listening.done).toEqual({ kind: "failed" })
+    await vi.waitFor(() => expect(plugin.cancel).toHaveBeenCalled())
+  })
+
   it("lets go of a listening, telling the plugin", async () => {
     plugin.start.mockImplementationOnce(() => new Promise(() => undefined))
     const listening = deviceListener.listen(() => undefined)
