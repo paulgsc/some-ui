@@ -79,6 +79,11 @@ export const EventSchema: z.ZodType<JobEvent> = z.discriminatedUnion("type", [
   }),
   z.object({
     ...Stamp,
+    type: z.literal("outcome-withdrawn"),
+    outcomeId: z.string(),
+  }),
+  z.object({
+    ...Stamp,
     type: z.literal("disagree"),
     day: z.string(),
     fingerprint: z.string(),

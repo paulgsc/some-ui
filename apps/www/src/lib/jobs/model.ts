@@ -132,6 +132,8 @@ export type JobEvent = { id: string; at: string } & (
       on: string
       note: string
     }
+  /** An outcome taken back, by its event's id; it stays in the log. */
+  | { type: "outcome-withdrawn"; outcomeId: string }
   | { type: "disagree"; day: string; fingerprint: string; note: string }
   | { type: "scout"; scout: Scout; voice: ReadonlyArray<string> }
   | {
@@ -341,6 +343,7 @@ function withinLimits(event: Draft): boolean {
     case "resume-ready":
     case "apply-opened":
     case "read":
+    case "outcome-withdrawn":
     case "shared":
     case "arrived": {
       return true
@@ -358,6 +361,8 @@ function withinLimits(event: Draft): boolean {
 function fits(state: JobsState, event: Draft): boolean {
   if (!withinLimits(event)) return false
   if (event.type === "scout") return true
+  if (event.type === "outcome-withdrawn")
+    return standingOutcomes(state.log).some((o) => o.id === event.outcomeId)
   if (
     event.type === "debrief" &&
     !(
@@ -817,13 +822,28 @@ export type Application = {
   day: string
   pick: Pick
   progress: Progress
-  outcomes: ReadonlyArray<{ event: Outcome; on: string }>
+  /** The outcomes that stand, oldest first. */
+  outcomes: ReadonlyArray<{ id: string; event: Outcome; on: string }>
+}
+
+/** The outcomes in `log` that no event withdrew, oldest first. */
+function standingOutcomes(
+  log: ReadonlyArray<JobEvent>
+): ReadonlyArray<JobEvent & { type: "outcome" }> {
+  const withdrawn = new Set(
+    log.flatMap((e) => (e.type === "outcome-withdrawn" ? [e.outcomeId] : []))
+  )
+  return log.filter(
+    (e): e is JobEvent & { type: "outcome" } =>
+      e.type === "outcome" && !withdrawn.has(e.id)
+  )
 }
 
 /** Every pick taken, newest first, with what has happened since. */
 export function applicationsOf(state: JobsState): ReadonlyArray<Application> {
   const seen = new Set<string>()
   const found: Array<Application> = []
+  const standing = standingOutcomes(state.log)
   for (const e of [...state.log].reverse()) {
     if (e.type !== "taken") continue
     const key = `${e.day}/${e.pickId}`
@@ -833,9 +853,9 @@ export function applicationsOf(state: JobsState): ReadonlyArray<Application> {
     const progress = progressOf(state, e.day, e.pickId)
     if (!pick || progress.kind === "passed" || progress.kind === "archived")
       continue
-    const outcomes = state.log.flatMap((o) =>
-      o.type === "outcome" && o.fingerprint === e.fingerprint
-        ? [{ event: o.event, on: o.on }]
+    const outcomes = standing.flatMap((o) =>
+      o.fingerprint === e.fingerprint
+        ? [{ id: o.id, event: o.event, on: o.on }]
         : []
     )
     found.push({ day: e.day, pick, progress, outcomes })

@@ -110,6 +110,7 @@ export function draftRecordedBy(event: Draft): string | null {
     case "apply-opened":
     case "read":
     case "outcome":
+    case "outcome-withdrawn":
     case "disagree":
     case "scout":
     case "shared":

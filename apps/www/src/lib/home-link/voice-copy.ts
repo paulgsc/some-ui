@@ -87,6 +87,7 @@ function jobsRef(event: JobEvent): string | null {
     case "apply-opened":
     case "read":
     case "outcome":
+    case "outcome-withdrawn":
     case "disagree":
     case "shared":
     case "arrived": {

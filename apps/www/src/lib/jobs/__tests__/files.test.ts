@@ -235,6 +235,14 @@ describe("decisionsFile", () => {
     ])
     expect(JSON.parse(again.json).picks).toEqual([])
     expect(again.voice).toEqual([])
+
+    const reply = shared.log.at(-1)!.id
+    shared = record(shared, { type: "outcome-withdrawn", outcomeId: reply })
+    expect(
+      JSON.parse(
+        fileOf(decisionsFile(shared, "2026-10-18", "2026-10-18T23:30:00Z")).json
+      ).withdrawals
+    ).toEqual([{ id: shared.log.at(-1)!.id, outcome: reply }])
   })
 
   it("says an archived pick is archived, by the event that archived it", () => {

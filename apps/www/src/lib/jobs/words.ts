@@ -307,6 +307,22 @@ export const outcomeLabels: Readonly<Record<Outcome, string>> = {
   "no-reply-30d": "No reply in 30 days",
 }
 
+/** An outcome as its card lists it: "Rejected Oct 30". */
+export const outcomeOn = (event: Outcome, on: string): string =>
+  `${outcomeLabels[event]} ${formatDay(on)}`
+
+/** The outcomes a card lists, each tappable to take back. */
+export const recordedOutcomes = "What I recorded"
+
+/** Asked before taking back an outcome, named as `outcomeOn` says it. */
+export const takeBackAsk = (outcome: string): string =>
+  `Take back “${outcome}”?`
+
+export const takeBackWhy =
+  "Do this if it was a mistake or no longer holds. It stays in the record and no longer counts."
+
+export const takeBack = "Take it back"
+
 /** The badge on an application's card under Record: where it stands. */
 export function courseBadge(course: Course): string {
   switch (course.kind) {

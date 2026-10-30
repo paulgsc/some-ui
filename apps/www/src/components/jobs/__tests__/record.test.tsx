@@ -82,6 +82,18 @@ describe("Record's application cards", () => {
     expect(button("Heard something since?")).toBeNull()
   })
 
+  it("takes back a rejection said by mistake, and the card waits again", async () => {
+    await showRecord(["screen", "rejected"])
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Rejected Oct 30" }))
+    })
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Take it back" }))
+    })
+    expect(screen.queryByRole("button", { name: "Rejected Oct 30" })).toBeNull()
+    expect(screen.getByRole("button", { name: "Screen Oct 30" })).toBeTruthy()
+  })
+
   it("filters by how they stand, says when nothing matches, and pivots into a table", async () => {
     await showRecord(["rejected"])
     const card = (): HTMLElement | null =>

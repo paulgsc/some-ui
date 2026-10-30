@@ -426,6 +426,27 @@ describe("courseOf", () => {
     })
   })
 
+  it("takes back an outcome said by mistake, as if it was never said", () => {
+    const rejected = heard(
+      heard(debriefed("submitted"), "screen"),
+      "rejected",
+      "2026-10-30"
+    )
+    const [screen, rejection] = applicationsOf(rejected)[0].outcomes
+    expect(
+      record(rejected, { type: "outcome-withdrawn", outcomeId: "nope" })
+    ).toBe(rejected)
+    const back = record(rejected, {
+      type: "outcome-withdrawn",
+      outcomeId: rejection.id,
+    })
+    expect(
+      record(back, { type: "outcome-withdrawn", outcomeId: rejection.id })
+    ).toBe(back)
+    expect(applicationsOf(back)[0].outcomes).toEqual([screen])
+    expect(course(back)).toMatchObject({ kind: "waiting", reached: "screen" })
+  })
+
   it("ends on a rejection, a silence or an offer, until a later outcome says otherwise", () => {
     const screened = heard(debriefed("submitted"), "screen")
     const rejected = heard(screened, "rejected", "2026-10-30")

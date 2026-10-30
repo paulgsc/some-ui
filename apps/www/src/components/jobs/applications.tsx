@@ -1,6 +1,7 @@
 /**
  * Jobs › Record's applications: each card wearing its course (`courseOf`),
  * and the list found, filtered, sorted and pivoted (`lib/jobs/record-view`).
+ * Each outcome a card lists can be taken back (`outcome-withdrawn`).
  *
  * The filter's chips are the chart's legend, so each colour is named beside
  * a count. The colours are the dataviz reference's categorical slots, in an
@@ -11,8 +12,9 @@
 import type { JSX } from "react"
 import { useState } from "react"
 import { cn } from "@some-ui/core-utils"
-import { Badge, Button, Input } from "@some-ui/shared"
+import { Badge, Button, Input, useConfirmSheet } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
+import { X } from "lucide-react"
 
 import { hasAudience } from "@/lib/build-profile"
 import { phoneJobs } from "@/lib/jobs"
@@ -40,15 +42,20 @@ import {
   heardSince,
   noneMatch,
   outcomeLabels,
+  outcomeOn,
   pivotHeading,
   pivotKey,
   pivotLabels,
   pivotSays,
+  recordedOutcomes,
   showAs,
   sortHeading,
   sortLabels,
   standFilter,
   standLabels,
+  takeBack,
+  takeBackAsk,
+  takeBackWhy,
   whatHappenedSince,
 } from "@/lib/jobs/words"
 import { sectionHeading } from "@/components/job-reading"
@@ -286,6 +293,7 @@ const ApplicationCard = ({
 }): JSX.Element => {
   const jobs = phoneJobs()
   const [reopened, setReopened] = useState(false)
+  const { ask, sheet } = useConfirmSheet()
   const settled = course.kind === "ended" || course.kind === "unsent"
   const offered =
     course.kind === "waiting" || (course.kind === "ended" && reopened)
@@ -339,11 +347,35 @@ const ApplicationCard = ({
         {a.pick.posting.company} · {a.day}
       </span>
       {a.outcomes.length > 0 && (
-        <span className={cn("text-xs", settled && "text-muted-foreground")}>
-          {a.outcomes
-            .map((o) => `${outcomeLabels[o.event]} ${o.on}`)
-            .join(" · ")}
-        </span>
+        <div
+          role="group"
+          aria-label={recordedOutcomes}
+          className="flex flex-wrap gap-1"
+        >
+          {a.outcomes.map((o) => (
+            <Button
+              key={o.id}
+              type="button"
+              size="sm"
+              variant="ghost"
+              className={cn(
+                "h-7 gap-1 rounded-full border px-2.5 text-xs font-normal",
+                settled && "text-muted-foreground"
+              )}
+              onClick={() =>
+                ask({
+                  title: takeBackAsk(outcomeOn(o.event, o.on)),
+                  description: takeBackWhy,
+                  confirm: takeBack,
+                  onConfirm: () => jobs.withdrawOutcome(o.id),
+                })
+              }
+            >
+              {outcomeOn(o.event, o.on)}
+              <X aria-hidden className="size-3 opacity-60" />
+            </Button>
+          ))}
+        </div>
       )}
       {says && <p className="text-muted-foreground text-xs">{says}</p>}
       {offered.length > 0 && (
@@ -381,6 +413,7 @@ const ApplicationCard = ({
           {heardSince(reopened)}
         </Button>
       )}
+      {sheet}
     </li>
   )
 }

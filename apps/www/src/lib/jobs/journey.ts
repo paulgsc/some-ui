@@ -80,7 +80,12 @@ type ShareLeg = {
 /** Which file an event goes out in, or null for one no file carries. */
 function kindOf(e: JobEvent): ShareKind | null {
   if (e.type === "scout") return "scouts"
-  if (isPickStep(e) || e.type === "outcome" || e.type === "disagree") {
+  if (
+    isPickStep(e) ||
+    e.type === "outcome" ||
+    e.type === "outcome-withdrawn" ||
+    e.type === "disagree"
+  ) {
     return "decisions"
   }
   return null
