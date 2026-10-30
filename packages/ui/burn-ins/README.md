@@ -17,7 +17,7 @@ the same for its part:
 
 - `src/lib/geometry.ts`: the frame, the safe area, the regions.
 - `src/lib/text.ts`, `src/lib/advances.ts`: text set by the font's own
-  advance widths.
+  advance widths, subtitles' lines included.
 - `src/lib/captions/`: the subtitles (GWB11, #2085).
 - `src/lib/journal.ts`: the Build Journal headline and card, design `v1`.
 - `src/lib/authorship.ts`: whose idea and whose hands, design `cells-v1`:

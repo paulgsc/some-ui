@@ -9,7 +9,7 @@ import {
 } from "@burn-ins/lib/captions/timing"
 import { describe, expect, it } from "vitest"
 
-import { word } from "./word"
+import { byChars, word } from "./word"
 
 const said = (c: { rows: ReadonlyArray<ReadonlyArray<TimedWord>> }): string =>
   c.rows
@@ -29,7 +29,7 @@ describe("grouping words into captions", () => {
           ],
         },
       ],
-      40
+      byChars(40)
     )
     expect(captions.map(said)).toEqual(["third and", "eleven"])
   })
@@ -38,7 +38,7 @@ describe("grouping words into captions", () => {
     const words = Array.from({ length: 12 }, (_, i) =>
       word("go", i * 400, i * 400 + 300)
     )
-    const captions = groupCaptions([{ words }], 80)
+    const captions = groupCaptions([{ words }], byChars(80))
     expect(captions.length).toBeGreaterThan(1)
     for (const c of captions) {
       const ws = c.rows.flat()
@@ -49,7 +49,7 @@ describe("grouping words into captions", () => {
   it("never spans two spoken lines", () => {
     const captions = groupCaptions(
       [{ words: [word("first", 0, 200)] }, { words: [word("down", 220, 400)] }],
-      40
+      byChars(40)
     )
     expect(captions.map(said)).toEqual(["first", "down"])
   })
@@ -57,7 +57,7 @@ describe("grouping words into captions", () => {
   it("lingers after the last word, but never into the next caption", () => {
     const captions = groupCaptions(
       [{ words: [word("first", 0, 200)] }, { words: [word("down", 400, 600)] }],
-      40
+      byChars(40)
     )
     expect(captions.map((c) => [c.startMs, c.endMs])).toEqual([
       [0, 400],

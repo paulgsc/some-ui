@@ -1,7 +1,6 @@
 import { resolve } from "@video-render/resolve"
+import { cutList, series, shot } from "@video-render/testing"
 import { describe, expect, it } from "vitest"
-
-import { cutList, series, shot } from "./fixtures"
 
 const tapped = shot("S2", {
   picture: {

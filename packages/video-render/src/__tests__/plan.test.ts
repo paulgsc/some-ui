@@ -8,12 +8,11 @@ import {
 } from "@video-render/plan"
 import type { Assembly, Facts, Mix, Scene } from "@video-render/plan"
 import { resolve } from "@video-render/resolve"
+import { cutList, MOTIONS, series, shot, SUM } from "@video-render/testing"
 import { place } from "@video-render/timing"
 import { TRANSITIONS } from "@video-render/vocabulary"
 import type { Background, MotionKind } from "@video-render/vocabulary"
 import { describe, expect, it } from "vitest"
-
-import { cutList, MOTIONS, series, shot, SUM } from "./fixtures"
 
 const FACTS: Facts = new Map([
   ["captures/walk.mp4", { width: 824, height: 1830, durationMs: 60_000 }],

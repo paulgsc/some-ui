@@ -3,9 +3,8 @@ import type { CutList, Shot } from "@video-render/cut-list"
 import { parseCutList } from "@video-render/cut-list"
 import { STEPS } from "@video-render/steps"
 import type { Step } from "@video-render/steps"
+import { cutList, shot } from "@video-render/testing"
 import { describe, expect, it } from "vitest"
-
-import { cutList, shot } from "./fixtures"
 
 const take = { file: "takes/01.webm", inMs: 0, outMs: 1000 }
 const card = { kind: "card" } as const

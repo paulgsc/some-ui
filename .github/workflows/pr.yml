@@ -450,6 +450,27 @@ jobs:
             echo "No composer-relevant www files changed."
           fi
 
+      # The burn-in recorder (STUDIO ST15, #2273): nothing else drives the page
+      # the renderer records from. What it checks is in the spec's header.
+      - name: E2E — burn-in recorder (www)
+        run: |
+          files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
+            'packages/ui/burn-ins/**' \
+            'packages/video-render/**' \
+            'apps/www/tests/record/**' \
+            'apps/www/src/lib/web-surface/burn-ins/**' \
+            'apps/www/playwright.config.ts' \
+            'flake.nix' \
+            'flake.lock' \
+            'nix/video/**' || true)
+          if [ -n "$files" ]; then
+            nix develop .#ci --command pnpm turbo build --filter=www... --concurrency=100%
+            nix develop .#ci-playwright --command pnpm --filter www test:e2e \
+              tests/record/short.spec.ts
+          else
+            echo "No burn-in or renderer files changed."
+          fi
+
   # ── Dependency license audit ────────────────────────────────────────────
   deny:
     name: Deny Checks

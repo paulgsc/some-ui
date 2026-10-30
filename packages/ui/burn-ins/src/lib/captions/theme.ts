@@ -23,11 +23,6 @@ export type CaptionTheme = {
     readonly sizePx: number
     /** Line height as a multiple of the size. */
     readonly lineHeight: number
-    /**
-     * The width model's one number (`./lines`): an upper bound of the font's
-     * average advance, in ems, at this weight and case.
-     */
-    readonly charWidthEm: number
     readonly letterSpacingEm: number
     readonly uppercase: boolean
   }
@@ -65,7 +60,6 @@ export const THEMES: Readonly<Record<ThemeId, CaptionTheme>> = {
       weight: 800,
       sizePx: 84,
       lineHeight: 1.08,
-      charWidthEm: 0.56,
       letterSpacingEm: 0.01,
       uppercase: true,
     },
@@ -81,7 +75,6 @@ export const THEMES: Readonly<Record<ThemeId, CaptionTheme>> = {
       weight: 600,
       sizePx: 68,
       lineHeight: 1.18,
-      charWidthEm: 0.48,
       letterSpacingEm: 0,
       uppercase: false,
     },
@@ -103,7 +96,6 @@ export const THEMES: Readonly<Record<ThemeId, CaptionTheme>> = {
       weight: 800,
       sizePx: 76,
       lineHeight: 1.1,
-      charWidthEm: 0.5,
       letterSpacingEm: 0.02,
       uppercase: false,
     },

@@ -131,11 +131,14 @@
           '';
         };
 
+        # ffmpeg, because www's burn-in recorder spec renders a short with
+        # it (apps/www/tests/record) - see nix/video.
         ci-playwright = pkgs.mkShell {
           buildInputs =
             node.deps
             ++ [pkgs.web-ext]
-            ++ playwright.deps;
+            ++ playwright.deps
+            ++ video.deps;
 
           LD_LIBRARY_PATH = mkLdPath playwright.ldLibs;
 

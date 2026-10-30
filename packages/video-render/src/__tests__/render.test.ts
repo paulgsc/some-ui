@@ -15,6 +15,7 @@ import { nodePorts } from "@video-render/node"
 import type { Ports } from "@video-render/render"
 import { render } from "@video-render/render"
 import type { Series } from "@video-render/series"
+import * as fixtures from "@video-render/testing"
 import {
   BACKGROUND_KINDS,
   MOTION_KINDS,
@@ -23,8 +24,6 @@ import {
 } from "@video-render/vocabulary"
 import type { CheckedFile, Motion } from "@video-render/vocabulary"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
-
-import * as fixtures from "./fixtures"
 
 let root = ""
 let ports: Ports
@@ -120,16 +119,6 @@ const series = (): Series =>
     },
   })
 
-const capture = (inMs: number): Shot["picture"] => ({
-  kind: "capture",
-  source: "captures/walk.mp4",
-  inMs,
-  speed: 1,
-  cssWidth: 206,
-  framing: { mode: "crop", zoom: 1, x: 0, y: 0 },
-  taps: [400],
-})
-
 /** One scene per transition, cycling motions and backgrounds, then a card. */
 function everyMember(): CutList {
   const shots: Array<Shot> = TRANSITIONS.map((t, i) => {
@@ -139,7 +128,7 @@ function everyMember(): CutList {
       picture:
         i === 3
           ? { kind: "still", source: "captures/still.png" }
-          : capture(i * 600),
+          : fixtures.capture(i * 600, { taps: [400] }),
       durationMs: 1200,
       voiceInMs: 100,
       ...(i === 0
@@ -287,7 +276,7 @@ describe("render", () => {
     const scene = (motion: Motion): CutList =>
       fixtures.cutList([
         fixtures.shot("S1", {
-          picture: capture(0),
+          picture: fixtures.capture(0, { taps: [400] }),
           durationMs: 5000,
           overrides: { motion },
         }),
