@@ -90,10 +90,15 @@ function projectsOfState(
 const settledWrites = (
   state: ReturnType<StudioRuntime["getSnapshot"]>
 ): boolean =>
-  state.inFlight === null && state.queue.length === 0 && state.closing === null
+  state.inFlight === null &&
+  state.queue.length === 0 &&
+  state.closing.length === 0
 
-async function opened(memory = memoryProjectStore()): Promise<Running> {
-  const runtime = studio(memory)
+async function opened(
+  memory = memoryProjectStore(),
+  mic: StartRecording = fakeMic()
+): Promise<Running> {
+  const runtime = studio(memory, mic)
   await until(runtime, (state) => state.shelf.kind === "read")
   runtime.dispatch({
     type: "primerPicked",
@@ -782,6 +787,74 @@ describe("an answer waiting on its sitting's close", () => {
       ])
     )
     expect(memory.friction).toEqual([])
+  })
+})
+
+describe("Done for now twice while a take is still saving", () => {
+  it("queues both closes and settles both answers, none left waiting", async () => {
+    let finish: () => void = () => undefined
+    const finished = new Promise<void>((resolve) => {
+      finish = resolve
+    })
+    const held: StartRecording = async () => {
+      const recording = await fakeMic()()
+      return {
+        ...recording,
+        finish: async (): Promise<Take> => {
+          await finished
+          return recording.finish()
+        },
+      }
+    }
+    const memory = memoryProjectStore()
+    const runtime = await opened(memory, held)
+    runtime.dispatch({ type: "recordChosen" })
+    runtime.dispatch({ type: "recordPressed" })
+    await until(runtime, (state) => state.activity.kind === "recording")
+    runtime.dispatch({ type: "recordPressed" })
+    await until(runtime, (state) => state.activity.kind === "saving")
+    runtime.dispatch({ type: "doneForNowPressed" })
+    runtime.dispatch({ type: "wentChosen", went: "smooth" })
+    runtime.dispatch({ type: "notYetPressed" })
+    runtime.dispatch({ type: "recordChosen" })
+    runtime.dispatch({ type: "doneForNowPressed" })
+    runtime.dispatch({ type: "wentChosen", went: "rough" })
+    runtime.dispatch({ type: "snagTold", text: "Twice" })
+    expect(runtime.getSnapshot().closing).toHaveLength(2)
+    finish()
+    await until(
+      runtime,
+      (state) => settledWrites(state) && state.filings.length === 0
+    )
+    // The first close closed s1; the second found no sitting open, so its
+    // answer is said lost rather than filed or left waiting.
+    expect(memory.friction.map((f) => [f.sitting, f.went])).toEqual([
+      ["s1", "smooth"],
+    ])
+    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.done.answerNotKept)
+  })
+})
+
+describe("an answer whose report fails after the screen went away", () => {
+  it("is said by the next Start", async () => {
+    const memory = memoryProjectStore()
+    const { runtime, gate } = await doneHeld(memory)
+    // An answer already filed for this sitting makes the store refuse the report.
+    memory.friction.push({
+      project: projectIn(runtime).id,
+      sitting: "s1",
+      at: AT,
+      went: "rough",
+      gotInTheWay: null,
+    })
+    runtime.dispatch({ type: "wentChosen", went: "smooth" })
+    runtime.detach()
+    gate.open()
+    await vi.waitFor(() =>
+      expect([...memory.notices.values()]).toContain(
+        STUDIO_WORDS.done.answerNotKept
+      )
+    )
   })
 })
 

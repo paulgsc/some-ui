@@ -190,12 +190,12 @@ export type StudioState = {
   readonly roomBytes: number | null
   /** What the carry left of the Journal tab's episode, as last read. */
   readonly leftovers: Leftovers
-  /** Done for now, waiting on the take under way before the sitting closes. */
-  readonly closing: {
+  /** Each Done for now, in order, waiting on the take under way before its close. */
+  readonly closing: ReadonlyArray<{
     readonly project: string
     readonly at: string
     readonly shot: string
-  } | null
+  }>
   /** Whether the Done screen's sitting is saved yet. */
   readonly closed: "saving" | "saved" | "failed" | null
   /** Each Done for now's close not yet settled, or whose answer waits. */
@@ -337,7 +337,7 @@ export function initialStudioState(): StudioState {
     said: [],
     roomBytes: null,
     leftovers: { rows: 0, bytes: 0 },
-    closing: null,
+    closing: [],
     closed: null,
     filings: [],
     readSeq: 0,
@@ -503,11 +503,14 @@ function applied(project: Project | null, pending: Pending): Project | null {
  */
 function pump(state: StudioState): Step {
   let at = state
-  if (at.closing !== null && !isTaking(at.activity)) {
+  if (at.closing.length > 0 && !isTaking(at.activity)) {
     at = {
       ...at,
-      queue: [...at.queue, { kind: "close", ...at.closing }],
-      closing: null,
+      queue: [
+        ...at.queue,
+        ...at.closing.map((c) => ({ kind: "close" as const, ...c })),
+      ],
+      closing: [],
     }
   }
   if (at.inFlight !== null || !at.ready) return stay(at)
@@ -844,7 +847,10 @@ function doneForNow(state: StudioState, at: string): Step {
       ...state.filings,
       { project: project.id, at, sitting: null, settled: false, answer: null },
     ],
-    closing: { project: project.id, at, shot: state.screen.shot },
+    closing: [
+      ...state.closing,
+      { project: project.id, at, shot: state.screen.shot },
+    ],
   }
   if (state.activity.kind === "recording") {
     const finished = finishRecording(base)
@@ -1298,7 +1304,7 @@ export function step(state: StudioState, event: StudioEvent): Step {
     }
 
     case "reportFailed": {
-      return stay({ ...state, notice: WORDS.done.answerNotKept })
+      return told(state, WORDS.done.answerNotKept, WORDS.done.answerNotKept)
     }
 
     case "notYetPressed": {
