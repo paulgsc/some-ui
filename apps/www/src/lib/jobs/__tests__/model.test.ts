@@ -1,8 +1,16 @@
 import { describe, expect, it } from "vitest"
 
-import type { Draft, JobsState, PickRef, VoiceNote } from "@/lib/jobs/model"
+import type {
+  Course,
+  Draft,
+  JobsState,
+  Outcome,
+  PickRef,
+  VoiceNote,
+} from "@/lib/jobs/model"
 import {
   applicationsOf,
+  courseOf,
   decisionOf,
   DIGESTS_KEPT,
   draftVoice,
@@ -340,6 +348,110 @@ describe("progressOf", () => {
     })
     state = record(state, { type: "taken", ...ref() })
     expect(progressOf(state, DAY, SW.id)).toEqual({ kind: "open", step: 2 })
+  })
+})
+
+describe("courseOf", () => {
+  const dayOf = (at: Date): string => at.toISOString().slice(0, 10)
+  const debriefed = (result: "submitted" | "gave-up" | "closed"): JobsState =>
+    record(record(opened, { type: "taken", ...ref() }), {
+      type: "debrief",
+      ...ref(),
+      minutes: 20,
+      friction: 3,
+      chips: [],
+      what: "",
+      voice: [],
+      result,
+    })
+  const heard = (
+    state: JobsState,
+    event: Outcome,
+    on = "2026-10-20"
+  ): JobsState =>
+    record(state, {
+      type: "outcome",
+      fingerprint: SW.fingerprint,
+      event,
+      on,
+      note: "",
+    })
+  const course = (state: JobsState, today = "2026-10-20"): Course => {
+    const [application] = applicationsOf(state)
+    return courseOf(state, application, today, dayOf)
+  }
+
+  it("offers nothing before the debrief, nor for one never sent", () => {
+    const taken = record(opened, { type: "taken", ...ref() })
+    expect(course(taken)).toEqual({ kind: "applying" })
+    expect(course(debriefed("gave-up"))).toEqual({
+      kind: "unsent",
+      result: "gave-up",
+    })
+  })
+
+  it("leaves out outcomes dated before it was sent: they answered an earlier attempt", () => {
+    const earlier = heard(debriefed("submitted"), "rejected", "2026-10-17")
+    expect(course(earlier)).toMatchObject({ kind: "waiting", reached: null })
+  })
+
+  it("waits on what lies ahead, and says no reply only after thirty days of none", () => {
+    const sent = debriefed("submitted")
+    expect(course(sent)).toEqual({
+      kind: "waiting",
+      since: DAY,
+      reached: null,
+      next: ["viewed", "reply", "screen", "interview", "offer", "rejected"],
+    })
+    expect(course(sent, "2026-11-17")).toMatchObject({
+      next: expect.arrayContaining(["no-reply-30d"]),
+    })
+    const viewed = heard(sent, "viewed")
+    expect(course(viewed, "2026-11-17")).toMatchObject({
+      reached: "viewed",
+      next: [
+        "reply",
+        "screen",
+        "interview",
+        "offer",
+        "rejected",
+        "no-reply-30d",
+      ],
+    })
+    expect(course(heard(viewed, "screen"), "2026-11-17")).toEqual({
+      kind: "waiting",
+      since: DAY,
+      reached: "screen",
+      next: ["interview", "offer", "rejected"],
+    })
+  })
+
+  it("ends on a rejection, a silence or an offer, until a later outcome says otherwise", () => {
+    const screened = heard(debriefed("submitted"), "screen")
+    const rejected = heard(screened, "rejected", "2026-10-30")
+    expect(course(rejected)).toEqual({
+      kind: "ended",
+      since: DAY,
+      by: "rejected",
+      on: "2026-10-30",
+      reached: "screen",
+      next: ["interview", "offer"],
+    })
+    expect(course(heard(rejected, "interview"))).toMatchObject({
+      kind: "waiting",
+      reached: "interview",
+    })
+    expect(course(heard(screened, "offer"))).toMatchObject({
+      kind: "ended",
+      by: "offer",
+      next: ["rejected"],
+    })
+    const silent = heard(debriefed("submitted"), "no-reply-30d", "2026-11-17")
+    expect(course(silent)).toMatchObject({
+      kind: "ended",
+      by: "no-reply-30d",
+      next: ["viewed", "reply", "screen", "interview", "offer", "rejected"],
+    })
   })
 })
 

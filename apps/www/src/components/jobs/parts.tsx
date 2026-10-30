@@ -90,11 +90,13 @@ export const Chips = <T extends string>({
   options,
   pressed,
   onToggle,
+  disabled,
 }: {
   label: string
-  options: ReadonlyArray<readonly [T, string]>
+  options: ReadonlyArray<readonly [T, ReactNode]>
   pressed: (value: T) => boolean
   onToggle: (value: T) => void
+  disabled?: (value: T) => boolean
 }): JSX.Element => {
   return (
     <div role="group" aria-label={label} className="flex flex-wrap gap-2">
@@ -103,9 +105,10 @@ export const Chips = <T extends string>({
           key={value}
           type="button"
           size="sm"
-          className="rounded-full"
+          className="gap-1.5 rounded-full"
           variant={pressed(value) ? "default" : "outline"}
           aria-pressed={pressed(value)}
+          disabled={disabled?.(value)}
           onClick={() => onToggle(value)}
         >
           {text}

@@ -16,7 +16,7 @@
  * (`standingOf`): it no longer holds a slot, and nothing is recorded, since
  * the lapse follows from the digest's day alone.
  */
-import { assertNever } from "@some-ui/core-utils"
+import { addDays, assertNever } from "@some-ui/core-utils"
 import type {
   AdjacentFamily,
   DEBRIEF_RESULTS,
@@ -841,6 +841,100 @@ export function applicationsOf(state: JobsState): ReadonlyArray<Application> {
     found.push({ day: e.day, pick, progress, outcomes })
   }
   return found
+}
+
+/** The steps an application climbs, in order. */
+const STAGES = ["viewed", "reply", "screen", "interview", "offer"] as const
+
+/** An outcome after which nothing more is expected of an application. */
+const ENDINGS = ["offer", "rejected", "no-reply-30d"] as const
+
+type Ending = (typeof ENDINGS)[number]
+
+/** Days an application waits with no reply before it can be said to have had none. */
+const NO_REPLY_DAYS = 30
+
+/**
+ * Where an application stands, and what can still be said of it:
+ * - `applying`: not debriefed yet, so nothing has come of it;
+ * - `unsent`: debriefed as given up or closed, so nothing can come of it;
+ * - `waiting`: sent on `since`, its furthest stage so far (null for none),
+ *   and the outcomes still ahead of it;
+ * - `ended`: sent on `since`, its newest outcome an ending, on `on`. `next`
+ *   is what a later outcome could still say (a stage past `reached`, or a
+ *   rejection after the silence), offered only when asked, since the log
+ *   keeps the ending and the newest outcome is the one that stands.
+ */
+export type Course =
+  | { kind: "applying" }
+  | { kind: "unsent"; result: Exclude<DebriefResult, "submitted"> }
+  | {
+      kind: "waiting"
+      since: string
+      reached: Outcome | null
+      next: ReadonlyArray<Outcome>
+    }
+  | {
+      kind: "ended"
+      since: string
+      by: Ending
+      on: string
+      reached: Outcome | null
+      next: ReadonlyArray<Outcome>
+    }
+
+function isEnding(o: Outcome): o is Ending {
+  return ENDINGS.some((e) => e === o)
+}
+
+/** An application's course on local day `today`, its debrief day by `dayOf`. */
+export function courseOf(
+  state: JobsState,
+  application: Application,
+  today: string,
+  dayOf: (at: Date) => string
+): Course {
+  const { progress } = application
+  if (progress.kind !== "done") return { kind: "applying" }
+  if (progress.result !== "submitted")
+    return { kind: "unsent", result: progress.result }
+  const debrief = debriefOf(state, application.day, application.pick.id)
+  const since = debrief ? dayOf(new Date(debrief.at)) : application.day
+  // Outcomes follow the posting, so one dated before this sending answered
+  // an earlier attempt at it.
+  const outcomes = application.outcomes.filter((o) => o.on >= since)
+  const furthest = Math.max(
+    -1,
+    ...outcomes.map((o) => STAGES.findIndex((stage) => stage === o.event))
+  )
+  const reached = furthest < 0 ? null : STAGES[furthest]
+  const ahead = STAGES.slice(furthest + 1)
+  const newest = outcomes.at(-1)
+  if (newest && isEnding(newest.event)) {
+    const by = newest.event
+    return {
+      kind: "ended",
+      since,
+      by,
+      on: newest.on,
+      reached,
+      next: [
+        ...ahead.filter((o) => o !== by),
+        ...(by === "rejected" ? [] : (["rejected"] as const)),
+      ],
+    }
+  }
+  const unanswered = furthest <= STAGES.indexOf("viewed")
+  const silent =
+    unanswered && today >= addDays(since, NO_REPLY_DAYS)
+      ? (["no-reply-30d"] as const)
+      : []
+  return {
+    kind: "waiting",
+    since,
+    reached,
+    next: [...ahead, "rejected", ...silent],
+  }
 }
 
 /** Fingerprints of set-aside postings I said I'd have picked. */

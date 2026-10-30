@@ -5,18 +5,27 @@
  * behind it (`__tests__/words.test.ts` holds it to the list in
  * `lib/home-link/__tests__/machinery.ts`).
  */
-import { assertNever, counted, formatDay } from "@some-ui/core-utils"
+import {
+  assertNever,
+  counted,
+  formatDay,
+  formatMonth,
+} from "@some-ui/core-utils"
 import type { Track } from "@some-ui/job-desk"
 import { LAPSE_DAYS } from "@some-ui/job-desk"
 
 import type {
+  Course,
   DebriefResult,
   FrictionChip,
+  Outcome,
   PassReason,
   ShareKind,
   Standing,
 } from "./model"
 import type { NoticeState } from "./notice"
+import type { Pivot, Sort, Stand } from "./record-view"
+import { STANDS } from "./record-view"
 import type { NoticeView } from "./runtime"
 
 /** The digest on show is from an earlier day than today's. */
@@ -286,6 +295,144 @@ export const sayItAloud = "Or say it, up to a minute"
 
 export const endedAs = (result: DebriefResult): string =>
   `Ended: ${endingLabels[result]}. Add replies and interviews under Record as they come.`
+
+/** What has happened to an application since it was sent, one tap each. */
+export const outcomeLabels: Readonly<Record<Outcome, string>> = {
+  viewed: "Viewed",
+  reply: "Reply",
+  screen: "Screen",
+  interview: "Interview",
+  offer: "Offer",
+  rejected: "Rejected",
+  "no-reply-30d": "No reply in 30 days",
+}
+
+/** The badge on an application's card under Record: where it stands. */
+export function courseBadge(course: Course): string {
+  switch (course.kind) {
+    case "applying": {
+      return "In progress"
+    }
+    case "unsent": {
+      return course.result === "gave-up"
+        ? endingLabels["gave-up"]
+        : "Posting closed"
+    }
+    case "waiting": {
+      return course.reached ? outcomeLabels[course.reached] : "Waiting"
+    }
+    case "ended": {
+      return outcomeLabels[course.by]
+    }
+    default: {
+      return assertNever(course)
+    }
+  }
+}
+
+/** The line on an application's card: what it still waits on, if anything. */
+export function courseSays(course: Course): string | null {
+  switch (course.kind) {
+    case "applying": {
+      return null
+    }
+    case "unsent": {
+      return "Never sent, so nothing to wait for."
+    }
+    case "waiting": {
+      return course.reached === null || course.reached === "viewed"
+        ? `Sent ${formatDay(course.since)}. Waiting to hear.`
+        : `Sent ${formatDay(course.since)}. Heard back; waiting on the next step.`
+    }
+    case "ended": {
+      return "Nothing more to wait for."
+    }
+    default: {
+      return assertNever(course)
+    }
+  }
+}
+
+/** Opens, or closes, what an ended application can still record. */
+export const heardSince = (open: boolean): string =>
+  open ? "Leave it as it is" : "Heard something since?"
+
+/** How an application stands, as Record's filter, chart and table name it. */
+export const standLabels: Readonly<Record<Stand, string>> = {
+  waiting: "Waiting",
+  heard: "Heard back",
+  offer: "Offer",
+  rejected: "Rejected",
+  silent: "No reply",
+  applying: "In progress",
+  unsent: "Not sent",
+}
+
+/** The filter chip that shows every application. */
+export const allStands = "All"
+
+export const standFilter = "Show"
+
+export const sortHeading = "Sort"
+
+export const sortLabels: Readonly<Record<Sort, string>> = {
+  newest: "Newest",
+  oldest: "Oldest",
+  waiting: "Waiting longest",
+  company: "Company",
+}
+
+export const pivotHeading = "How they stand"
+
+export const pivotLabels: Readonly<Record<Pivot, string>> = {
+  week: "By week",
+  month: "By month",
+  company: "By company",
+}
+
+/** A pivot group's name: a week by its Monday, a month, a company, or the rest. */
+export function pivotKey(pivot: Pivot, key: string | null): string {
+  if (key === null) {
+    return pivot === "company"
+      ? "Other companies"
+      : pivot === "week"
+        ? "Earlier weeks"
+        : "Earlier months"
+  }
+  switch (pivot) {
+    case "week": {
+      return `Week of ${formatDay(key)}`
+    }
+    case "month": {
+      return formatMonth(key)
+    }
+    case "company": {
+      return key
+    }
+    default: {
+      return assertNever(pivot)
+    }
+  }
+}
+
+/** What one bar of the chart holds, said when it is tapped. */
+export const pivotSays = (
+  group: string,
+  counts: Readonly<Record<Stand, number>>
+): string =>
+  `${group}: ${STANDS.filter((s) => counts[s] > 0)
+    .map((s) => `${standLabels[s]} ${counts[s]}`)
+    .join(" · ")}`
+
+/** The outcomes a card still offers. */
+export const whatHappenedSince = "What happened since"
+
+export const showAs = (table: boolean): string =>
+  table ? "Show as chart" : "Show as table"
+
+export const findApplication = "Find a company or role"
+
+export const noneMatch = "No application matches."
 
 /** Under a scout's link whose host the morning run can't open (`linkReach`). */
 export const cantOpenLink =

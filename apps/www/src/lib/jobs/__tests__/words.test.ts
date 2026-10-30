@@ -6,8 +6,9 @@
 import { describe, expect, it } from "vitest"
 
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
-import type { Standing } from "@/lib/jobs/model"
+import type { Course, Standing } from "@/lib/jobs/model"
 import { NO_NOTICE } from "@/lib/jobs/notice"
+import { PIVOTS } from "@/lib/jobs/record-view"
 import * as words from "@/lib/jobs/words"
 
 const DAY = "2026-10-18"
@@ -15,6 +16,22 @@ const DAY = "2026-10-18"
 const OFF = NO_NOTICE
 const ON = { wanted: true, token: "t", filed: "t" }
 const IDLE = { asking: false, why: null }
+
+const COURSES: ReadonlyArray<Course> = [
+  { kind: "applying" },
+  { kind: "unsent", result: "gave-up" },
+  { kind: "unsent", result: "closed" },
+  { kind: "waiting", since: DAY, reached: null, next: [] },
+  { kind: "waiting", since: DAY, reached: "screen", next: [] },
+  {
+    kind: "ended",
+    since: DAY,
+    by: "rejected",
+    on: DAY,
+    reached: null,
+    next: [],
+  },
+]
 
 const SAID: Readonly<Record<keyof typeof words, ReadonlyArray<string>>> = {
   NOTICE_WORDS: Object.values(words.NOTICE_WORDS),
@@ -108,6 +125,36 @@ const SAID: Readonly<Record<keyof typeof words, ReadonlyArray<string>>> = {
   whatHappened: [words.whatHappened],
   sayItAloud: [words.sayItAloud],
   endedAs: (["submitted", "gave-up", "closed"] as const).map(words.endedAs),
+  outcomeLabels: Object.values(words.outcomeLabels),
+  courseBadge: COURSES.map(words.courseBadge),
+  courseSays: COURSES.flatMap((c) => words.courseSays(c) ?? []),
+  heardSince: [true, false].map(words.heardSince),
+  standLabels: Object.values(words.standLabels),
+  allStands: [words.allStands],
+  standFilter: [words.standFilter],
+  sortHeading: [words.sortHeading],
+  sortLabels: Object.values(words.sortLabels),
+  pivotHeading: [words.pivotHeading],
+  pivotLabels: Object.values(words.pivotLabels),
+  pivotKey: PIVOTS.flatMap((p) => [
+    words.pivotKey(p, null),
+    words.pivotKey(p, p === "month" ? "2026-10" : DAY),
+  ]),
+  pivotSays: [
+    words.pivotSays("Oct 26", {
+      waiting: 1,
+      heard: 0,
+      offer: 0,
+      rejected: 0,
+      silent: 2,
+      applying: 0,
+      unsent: 0,
+    }),
+  ],
+  whatHappenedSince: [words.whatHappenedSince],
+  showAs: [true, false].map(words.showAs),
+  findApplication: [words.findApplication],
+  noneMatch: [words.noneMatch],
   cantOpenLink: [words.cantOpenLink],
   postingTextLabel: [true, false].map(words.postingTextLabel),
   postingTextHint: [words.postingTextHint],
