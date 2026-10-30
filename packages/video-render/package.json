@@ -18,7 +18,8 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./node": "./src/node.ts"
+    "./node": "./src/node.ts",
+    "./testing": "./src/testing.ts"
   },
   "scripts": {
     "render": "tsx src/cli.ts",

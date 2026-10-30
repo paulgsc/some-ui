@@ -1,8 +1,14 @@
-import { CUT_LIST_SCHEMA } from "@video-render/cut-list"
-import type { CutList, Shot } from "@video-render/cut-list"
-import { SERIES_SCHEMA } from "@video-render/series"
-import type { Series } from "@video-render/series"
-import type { Motion, MotionKind } from "@video-render/vocabulary"
+/**
+ * Fixtures for tests of the renderer and of what drives it (`apps/www`'s
+ * recorder spec): a series, a scene, a capture and a cut list with every
+ * field a test doesn't care about set to something drawable.
+ */
+
+import { CUT_LIST_SCHEMA } from "./cut-list"
+import type { CutList, Shot } from "./cut-list"
+import { SERIES_SCHEMA } from "./series"
+import type { Series } from "./series"
+import type { Motion, MotionKind } from "./vocabulary"
 
 export const SUM = "a".repeat(64)
 
@@ -26,18 +32,27 @@ export function series(over: Partial<Series> = {}): Series {
   }
 }
 
+/** A capture of `captures/walk.mp4` from `inMs`, cropped as recorded. */
+export function capture(
+  inMs: number,
+  over: Partial<Extract<Shot["picture"], { kind: "capture" }>> = {}
+): Shot["picture"] {
+  return {
+    kind: "capture",
+    source: "captures/walk.mp4",
+    inMs,
+    speed: 1,
+    cssWidth: 206,
+    framing: { mode: "crop", zoom: 1, x: 0, y: 0 },
+    taps: [],
+    ...over,
+  }
+}
+
 export function shot(id: string, over: Partial<Shot> = {}): Shot {
   return {
     id,
-    picture: {
-      kind: "capture",
-      source: "captures/walk.mp4",
-      inMs: 0,
-      speed: 1,
-      cssWidth: 412,
-      framing: { mode: "crop", zoom: 1, x: 0, y: 0 },
-      taps: [],
-    },
+    picture: capture(0, { cssWidth: 412 }),
     durationMs: 2000,
     voiceInMs: 200,
     overrides: {},

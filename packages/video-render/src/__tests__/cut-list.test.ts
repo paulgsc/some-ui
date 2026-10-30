@@ -1,9 +1,8 @@
 import { parseCutList } from "@video-render/cut-list"
 import sample from "@video-render/sample/build-journal-short.json"
 import { parseSeries } from "@video-render/series"
+import { cutList, shot } from "@video-render/testing"
 import { describe, expect, it } from "vitest"
-
-import { cutList, shot } from "./fixtures"
 
 const still = (source: string): ReturnType<typeof shot> =>
   shot("S1", { picture: { kind: "still", source } })

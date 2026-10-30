@@ -13,7 +13,9 @@ import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { expect, test } from "@playwright/test"
+import type { Shot } from "@some-ui/video-render"
 import { nodePorts } from "@some-ui/video-render/node"
+import { capture, cutList, shot } from "@some-ui/video-render/testing"
 import { serve } from "@tests/ui-fit/harness"
 
 import { openRecorder, RECORDING_SIZE, renderWithBurnIns } from "./burn-ins"
@@ -32,26 +34,13 @@ const words = (line: string, fromMs: number): Array<Word> =>
     endMs: fromMs + i * 300 + 260,
   }))
 
-const capture = (inMs: number): Record<string, unknown> => ({
-  kind: "capture",
-  source: "captures/walk.mp4",
-  inMs,
-  speed: 1,
-  cssWidth: 206,
-  framing: { mode: "crop", zoom: 1, x: 0, y: 0 },
-  taps: [],
-})
+const card = (id: string): Shot =>
+  shot(id, { picture: { kind: "card" }, durationMs: 1000 })
 
-const CUT_LIST = {
-  schema: "some-ui.cut-list/2",
-  title: "Recorder check",
-  series: { id: "build-journal-short", version: 1 },
-  look: "plain",
-  voice: "ad-lib",
-  shots: [
-    { id: "intro", picture: { kind: "card" }, durationMs: 1000 },
-    {
-      id: "S1",
+const CUT_LIST = cutList(
+  [
+    card("intro"),
+    shot("S1", {
       picture: capture(0),
       durationMs: 1500,
       take: { file: "voice/a.wav", inMs: 0, outMs: 1000 },
@@ -66,32 +55,36 @@ const CUT_LIST = {
           },
         },
       ],
-    },
-    {
-      id: "S2",
+    }),
+    shot("S2", {
       picture: capture(1500),
       durationMs: 1500,
       idea: {
         origin: "source",
         from: { title: "The burn-ins README", ref: "packages/ui/burn-ins" },
       },
-    },
-    { id: "outro", picture: { kind: "card" }, durationMs: 1000 },
+    }),
+    card("outro"),
   ],
-  burnIns: [
-    {
-      kind: "captions",
-      design: "gridiron",
-      params: {
-        lines: [
-          { words: words("Every word on screen", 1100) },
-          { words: words("comes from one place", 2600) },
-        ],
+  {
+    title: "Recorder check",
+    series: { id: "build-journal-short", version: 1 },
+    look: "plain",
+    burnIns: [
+      {
+        kind: "captions",
+        design: "gridiron",
+        params: {
+          lines: [
+            { words: words("Every word on screen", 1100) },
+            { words: words("comes from one place", 2600) },
+          ],
+        },
       },
-    },
-    { kind: "authorship", design: "cells-v1" },
-  ],
-}
+      { kind: "authorship", design: "cells-v1", params: {} },
+    ],
+  }
+)
 
 test.describe("the burn-in recorder", () => {
   test.describe.configure({ timeout: 300_000 })
