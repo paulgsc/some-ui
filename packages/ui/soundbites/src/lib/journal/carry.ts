@@ -10,6 +10,7 @@
  * episode is in exactly one place at every moment. What the plan leaves,
  * the store lets go in that transaction (owner, 2026-10-30, #2251).
  */
+import { assertNever } from "@some-ui/core-utils"
 import { projectAudioKey } from "@soundbites/lib/journal/db"
 import type { Cut, Primer } from "@soundbites/lib/journal/primer"
 import { cutV1 } from "@soundbites/lib/journal/primer"
@@ -228,12 +229,14 @@ export type JournalRows = {
 export type CarryPlan =
   /** No episode is kept: nothing to do. */
   | { readonly kind: "nothing" }
-  /**
-   * An episode is kept but can't be carried (its plan can't be read, a
-   * project of its id is kept already, or what it makes isn't a project the
-   * file reads back): the store lets all of it go.
-   */
+  /** An episode is kept, but its plan can't be read: the store lets it go. */
   | { readonly kind: "unread" }
+  /**
+   * An episode Studio can read but can't carry (a project of its id is kept
+   * already, or what it makes isn't a project the file reads back): it stays
+   * where it is, untouched, since its recordings may be good.
+   */
+  | { readonly kind: "stays" }
   | {
       readonly kind: "carry"
       readonly project: Project
@@ -269,7 +272,7 @@ export function planCarry(rows: JournalRows, at: string): CarryPlan {
     readable.map((row) => row.value),
     at
   )
-  if (rows.projects.includes(project.id)) return { kind: "unread" }
+  if (rows.projects.includes(project.id)) return { kind: "stays" }
   const moves = audio.flatMap((each) => {
     const row = audioAt(each.cutId)
     return row?.value instanceof Blob
@@ -292,7 +295,7 @@ export function planCarry(rows: JournalRows, at: string): CarryPlan {
         : { ...take, onPhone: false }
     ),
   }
-  if (!readProjectFile(projectFile(carried)).ok) return { kind: "unread" }
+  if (!readProjectFile(projectFile(carried)).ok) return { kind: "stays" }
   return {
     kind: "carry",
     project: carried,
@@ -300,5 +303,27 @@ export function planCarry(rows: JournalRows, at: string): CarryPlan {
     takeRows: readable.map((row) => row.key),
     audioRows: [...moved],
     gone: carried.takes.filter((take) => !take.onPhone).length,
+  }
+}
+
+/**
+ * How many of the `held` rows of the Journal tab's stores carrying out
+ * `plan` lets go: every row it doesn't copy, or none when the episode stays.
+ */
+export function letGo(plan: CarryPlan, held: number): number {
+  switch (plan.kind) {
+    case "stays": {
+      return 0
+    }
+    case "carry": {
+      return held - 1 - plan.takeRows.length - plan.audioRows.length
+    }
+    case "nothing":
+    case "unread": {
+      return held
+    }
+    default: {
+      return assertNever(plan)
+    }
   }
 }

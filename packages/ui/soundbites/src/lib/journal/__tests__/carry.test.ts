@@ -2,6 +2,7 @@
 import type { CarryPlan, JournalRows } from "@soundbites/lib/journal/carry"
 import {
   carriedProject,
+  letGo,
   planCarry,
   upgraded,
 } from "@soundbites/lib/journal/carry"
@@ -175,8 +176,9 @@ function rows(
   }
 }
 
-/** The stores once `plan` is carried out, as `carryJournal` does: emptied. */
+/** The stores once `plan` is carried out, as `carryJournal` does. */
 function after(before: JournalRows, plan: CarryPlan): JournalRows {
+  if (plan.kind === "stays") return before
   return {
     plan: undefined,
     takes: [],
@@ -286,12 +288,21 @@ describe("the plan for carrying the Journal tab's episode", () => {
       expect(planCarry(rows({ plan }), CARRIED)).toEqual({ kind: "unread" })
   })
 
-  it("carries nothing when its project is kept already", () => {
+  it("leaves an episode whose project is kept already where it is", () => {
     const first = planCarry(rows(), CARRIED)
     if (first.kind !== "carry") throw new Error(first.kind)
     expect(planCarry(rows({ projects: [first.project.id] }), CARRIED)).toEqual({
-      kind: "unread",
+      kind: "stays",
     })
+  })
+
+  it("leaves an episode it reads but can't make a project of where it is", () => {
+    // The take reads, but its recording's type is one a project can't hold.
+    const odd = rows({
+      takeValues: { gap: { ...take("gap", 21_000), mimeType: "" } },
+    })
+    expect(planCarry(odd, CARRIED)).toEqual({ kind: "stays" })
+    expect(after(odd, { kind: "stays" })).toEqual(odd)
   })
 
   it("run twice, carries once: the second finds nothing to carry", () => {
@@ -302,6 +313,33 @@ describe("the plan for carrying the Journal tab's episode", () => {
       },
     })
     const once = planCarry(before, CARRIED)
+    expect(once.kind).toBe("carry")
     expect(planCarry(after(before, once), CARRIED)).toEqual({ kind: "nothing" })
+  })
+})
+
+describe("what carrying lets go of the Journal tab's stores", () => {
+  it("is every row the carry doesn't copy", () => {
+    // Plan, two takes and two recordings; the second take can't be read.
+    const plan = planCarry(
+      rows({
+        takeValues: { gap: take("gap", 21_000), next: { cutId: "next" } },
+      }),
+      CARRIED
+    )
+    if (plan.kind !== "carry") throw new Error(plan.kind)
+    // The unread take and the recording no carried take names.
+    expect(letGo(plan, 5)).toBe(2)
+    // An extra row in the plan store goes too.
+    expect(letGo(plan, 6)).toBe(3)
+  })
+
+  it("is nothing of an episode that stays", () => {
+    expect(letGo({ kind: "stays" }, 5)).toBe(0)
+  })
+
+  it("is all of it when the plan can't be read, or no plan is kept", () => {
+    expect(letGo({ kind: "unread" }, 5)).toBe(5)
+    expect(letGo({ kind: "nothing" }, 2)).toBe(2)
   })
 })

@@ -364,6 +364,14 @@ describe("the Journal tab's episode", () => {
     expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.notice.carryUnread)
   })
 
+  it("leaves an episode it can't move as it was, and says so", async () => {
+    const memory = memoryProjectStore()
+    memory.journal.carried = { kind: "stays" }
+    const runtime = studio(memory)
+    await until(runtime, (state) => state.shelf.kind === "read")
+    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.notice.carryStays)
+  })
+
   it("says what it let go of an earlier carry's pieces", async () => {
     const memory = memoryProjectStore()
     memory.journal.carried = { kind: "nothing", cleared: 2 }

@@ -19,7 +19,7 @@
  */
 import { bytesBesides, done, result, withRoom } from "@some-ui/voice-capture"
 import type { Row } from "@soundbites/lib/journal/carry"
-import { planCarry } from "@soundbites/lib/journal/carry"
+import { letGo, planCarry } from "@soundbites/lib/journal/carry"
 import {
   projectAudioKey as audioKey,
   JOURNAL_STORES,
@@ -43,10 +43,11 @@ export type Friction = {
 
 /**
  * What carrying the Journal tab's episode did: no episode to carry; carried,
- * with how many takes came without a recording (gone before the carry); or
- * an episode it couldn't read. Each says how many rows of the Journal tab's
- * stores it couldn't read and let go (`cleared`): those stores are empty
- * after any carry (owner, 2026-10-30, #2251).
+ * with how many takes came without a recording (gone before the carry); an
+ * episode whose plan it couldn't read; or one it can read but not carry,
+ * left untouched. All but that last say how many rows of the Journal tab's
+ * stores it didn't use and let go (`cleared`), emptying them (owner,
+ * 2026-10-30, #2251).
  */
 export type Carried =
   | { readonly kind: "nothing"; readonly cleared: number }
@@ -57,6 +58,7 @@ export type Carried =
       readonly gone: number
     }
   | { readonly kind: "unread"; readonly cleared: number }
+  | { readonly kind: "stays" }
 
 /**
  * An operation on a project as the store holds it (null when it isn't kept
@@ -102,7 +104,7 @@ export type ProjectStore = {
    * Moves the Journal tab's episode, if one is kept, into a project of its
    * own, audio and all, in one transaction, as `planCarry` decides
    * (`journal/carry.ts`), and in the same transaction lets go of every row
-   * of the Journal tab's stores it didn't move.
+   * of the Journal tab's stores it didn't move, unless the episode stays.
    */
   carryJournal: (at: string) => Promise<Carried>
   /** Keeps how a sitting went, once: a second answer for it is refused. */
@@ -306,6 +308,11 @@ export function indexedDbProjectStore(): ProjectStore {
             },
             at
           )
+          if (plan.kind === "stays") {
+            carried = plan
+            return false
+          }
+          const cleared = letGo(plan, held)
           if (plan.kind === "carry") {
             tx.objectStore(PROJECTS).put(plan.project)
             const to = tx.objectStore(AUDIO)
@@ -313,11 +320,11 @@ export function indexedDbProjectStore(): ProjectStore {
             carried = {
               kind: "carried",
               project: plan.project,
-              cleared: held - 1 - plan.takeRows.length - plan.audioRows.length,
+              cleared,
               gone: plan.gone,
             }
           } else {
-            carried = { kind: plan.kind, cleared: held }
+            carried = { kind: plan.kind, cleared }
           }
           // What wasn't moved is let go with the rest (owner, 2026-10-30,
           // #2251): nothing writes these stores any more.

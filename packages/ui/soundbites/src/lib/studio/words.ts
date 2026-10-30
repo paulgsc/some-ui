@@ -128,17 +128,19 @@ export const STUDIO_WORDS = {
           : `Your Journal episode “${title}” is in Studio now.`,
         cleared === 0
           ? ""
-          : `${plural(cleared, "piece", "pieces")} of it couldn't be read, and ${cleared === 1 ? "was" : "were"} let go.`,
+          : `${plural(cleared, "piece", "pieces")} of it Studio couldn't use ${cleared === 1 ? "was" : "were"} let go.`,
         gone === 0
           ? ""
           : `${plural(gone, "take's recording", "takes' recordings")} had already left the phone before it moved.`,
       ]
         .filter((line) => line !== "")
         .join(" "),
+    carryStays:
+      "Your Journal episode on this phone couldn't be moved into Studio. It stays on the phone as it was.",
     carryUnread:
       "Your Journal episode on this phone couldn't be read, so it was let go.",
     cleared: (n: number): string =>
-      `${plural(n, "piece", "pieces")} of the old Journal tab that Studio couldn't read ${n === 1 ? "was" : "were"} let go.`,
+      `${plural(n, "piece", "pieces")} of the old Journal tab that Studio couldn't use ${n === 1 ? "was" : "were"} let go.`,
     arrived: (n: number): string =>
       `${plural(n, "take", "takes")} left the phone. Drive keeps ${n === 1 ? "it" : "them"}.`,
   },
