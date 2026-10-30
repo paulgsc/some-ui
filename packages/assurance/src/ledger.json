@@ -2040,12 +2040,6 @@
       "class": "derived",
       "growth": "Per transcription attempt per note per model: one ending (heard/silent) per note and model plus up to ATTEMPTS = 3 failures; text only; append-only.",
       "family": "voice-heard"
-    },
-    {
-      "store": "server:voice_transcript_word",
-      "class": "derived",
-      "growth": "Per heard transcript: one row per word with when it starts and ends (whisper.cpp's per-word times, GWB11 #2085), about 150 a minute of speech; append-only, leaves with the account.",
-      "family": "voice-heard"
     }
   ]
 }
