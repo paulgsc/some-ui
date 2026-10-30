@@ -149,7 +149,6 @@ export type IdeaEvent =
       readonly ideas: ReadonlyArray<Idea> | null
     }
   | { readonly type: "voiceChecked"; readonly available: boolean }
-  /** The recognizer is listening. */
   | { readonly type: "ready"; readonly seq: number }
   | { readonly type: "partial"; readonly seq: number; readonly words: string }
   | {

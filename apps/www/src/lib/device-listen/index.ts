@@ -17,13 +17,11 @@
  *   come (before ready, after ready, after stop).
  * - _Proof:_ `index.test.ts` ("LS1"), over a plugin that withholds each
  *   callback; `lib/idea`'s machine test ("LS1") takes each ending to a
- *   screen that says it.
+ *   screen that says it. Declared for #2324.
  *
- * F1 made every wait end, by one three-minute deadline sized for a spoken
- * answer. Nothing bounded the recognizer becoming ready, and a stop was
- * fire-and-forget, so a recognizer that never began (no offline language,
- * a busy service) left the screen at "Listening…" for three minutes and
- * Done talking changed nothing (#2324).
+ * `callForeign` bounds a call; the two timers here bound an event the plugin
+ * sends during one (ready) or after one (the words after a stop), which no
+ * call's deadline can.
  */
 import { assertNever } from "@some-ui/core-utils"
 import type {
@@ -136,8 +134,8 @@ function tell(what: "stop" | "cancel"): void {
 function readyWatch(deadlines: ListenDeadlines): {
   notReady: Promise<never>
   start: () => void
-  ready: () => void
   asking: () => void
+  /** Ready came, or nobody waits any more. */
   clear: () => void
 } {
   let timer: ReturnType<typeof setTimeout> | null = null
@@ -159,7 +157,6 @@ function readyWatch(deadlines: ListenDeadlines): {
   return {
     notReady,
     start: () => arm(deadlines.readyMs),
-    ready: clear,
     asking: () => arm(deadlines.promptMs),
     clear,
   }
@@ -215,7 +212,7 @@ function listen(
         }),
         module.onReady(() => {
           if (!live || signal.aborted) return
-          watch.ready()
+          watch.clear()
           onReady()
         }),
       ])

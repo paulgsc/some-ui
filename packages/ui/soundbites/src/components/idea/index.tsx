@@ -35,24 +35,12 @@ export type IdeaCaptureProps = {
 
 type Dispatch = (intent: IdeaIntent) => void
 
-/** Where a listening with no words yet is (LS1): getting ready, listening, finishing. */
+/** Where a listening with no words yet is (LS1). */
 function hearingWhere(
-  phase: Extract<AskPhase, { kind: "listening" | "finishing" | "heard" }>
+  phase: Extract<AskPhase, { kind: "listening" | "finishing" }>
 ): string {
-  switch (phase.kind) {
-    case "listening": {
-      return phase.ready ? WORDS.listening : WORDS.gettingReady
-    }
-    case "finishing": {
-      return WORDS.finishing
-    }
-    case "heard": {
-      return ""
-    }
-    default: {
-      return assertNever(phase)
-    }
-  }
+  if (phase.kind === "finishing") return WORDS.finishing
+  return phase.ready ? WORDS.listening : WORDS.gettingReady
 }
 
 const Words = ({
@@ -122,7 +110,7 @@ const Ask = ({
           aria-live="polite"
           className="bg-card border-border/60 min-h-24 rounded-2xl border p-3 text-lg"
         >
-          {phase.words === "" ? (
+          {phase.kind !== "heard" && phase.words === "" ? (
             <span className="text-muted-foreground">{hearingWhere(phase)}</span>
           ) : (
             phase.words

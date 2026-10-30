@@ -1019,11 +1019,9 @@ them through the app's own plugin, `ListenPlugin.java` (registered in
   (`some-ui:studio:ideas`).
 - **Answered in human time (LS1, www's `lib/device-listen`).** The plugin
   says `asking` when the microphone prompt goes up and `ready` when the
-  recognizer is listening (`onReadyForSpeech`). A recognizer that never
-  gets ready delivers neither results nor an error, so www bounds reaching
-  ready (5 s; 60 s while the prompt is up) and ends the listening as not
-  started, and a stop before ready settles with nothing heard. Done talking
-  is bounded too (5 s), and brings the words heard so far.
+  recognizer is listening, and www bounds reaching ready (5 s; 60 s while
+  the prompt is up) and Done talking (5 s). The plugin's doc comment says
+  why a stop before ready settles on its own.
 - **Typed when it can't listen.** A phone with no on-device recognizer or
   without its offline English pack, or with the microphone refused,
   answers `UNAVAILABLE`, and the question

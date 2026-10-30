@@ -56,7 +56,6 @@ export function onAsking(listener: () => void): Promise<PluginListenerHandle> {
   return Listen.addListener("asking", listener)
 }
 
-/** The recognizer is listening. */
 export function onReady(listener: () => void): Promise<PluginListenerHandle> {
   return Listen.addListener("ready", listener)
 }

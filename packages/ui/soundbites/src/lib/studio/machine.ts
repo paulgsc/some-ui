@@ -240,7 +240,6 @@ export type Speaking = {
   readonly atMs: number
   /** Listening (getting ready until `ready`), finishing after Done talking, then heard (LS1). */
   readonly phase: "listening" | "finishing" | "heard"
-  /** The recognizer has said it is listening. */
   readonly ready: boolean
   /** The words so far while listening; what was heard after. */
   readonly words: string
@@ -399,7 +398,6 @@ type StudioSignal =
   | { readonly type: "audioUnreadable"; readonly seq: number }
   | { readonly type: "playbackEnded"; readonly seq: number }
   | { readonly type: "voiceChecked"; readonly available: boolean }
-  /** The recognizer is listening for the note (LS1). */
   | { readonly type: "noteReady"; readonly seq: number }
   | { readonly type: "noteWords"; readonly seq: number; readonly words: string }
   | {
@@ -784,7 +782,8 @@ function speak(
       const { result } = event
       switch (result.kind) {
         case "heard": {
-          // A stop the recognizer never answers brings the words so far.
+          // A recognizer that answers nothing after partial words: those
+          // are the words, as the idea machine takes them.
           const words = result.words.trim() || speaking.words.trim()
           return words === ""
             ? stay(withScreen({ speaking: null }, WORDS.watch.heardNothing))
