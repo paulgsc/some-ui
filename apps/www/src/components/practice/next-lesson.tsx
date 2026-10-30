@@ -94,6 +94,7 @@ export const NextLesson = ({
       size="sm"
       variant={variant}
       className={className}
+      failureOwnLine
     />
   )
 }
