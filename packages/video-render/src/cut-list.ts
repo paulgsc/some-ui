@@ -247,7 +247,10 @@ function shotProblems(shots: ReadonlyArray<Shot>): Array<string> {
 }
 
 /** The authorship mark's kind among the burn-ins (`authorship.ts`). */
-export const AUTHORSHIP = "authorship"
+const AUTHORSHIP = "authorship"
+
+/** Whether a burn-in is the authorship mark. */
+export const isAuthorship = (b: BurnIn): boolean => b.kind === AUTHORSHIP
 
 /**
  * Where the authorship mark can go: over the whole video, with nothing
@@ -256,23 +259,28 @@ export const AUTHORSHIP = "authorship"
  */
 function authorshipProblems(cut: CutList): Array<string> {
   const problems: Array<string> = []
-  const notes = new Set(cut.notes.map((n) => n.id))
+  const authorOf = new Map(cut.notes.map((n) => [n.id, n.author]))
   for (const s of cut.shots) {
-    if (s.burnIns.some((b) => b.kind === AUTHORSHIP)) {
+    if (s.burnIns.some(isAuthorship)) {
       problems.push(`${s.id}: the authorship mark covers the whole video`)
     }
     const idea = s.idea
-    if (
-      idea.origin === "you" &&
-      idea.from.kind === "note" &&
-      !notes.has(idea.from.id)
-    ) {
+    const cited =
+      idea.origin === "you" && idea.from.kind === "note"
+        ? idea.from.id
+        : undefined
+    const author = cited === undefined ? undefined : authorOf.get(cited)
+    if (cited !== undefined && author === undefined) {
       problems.push(
-        `${s.id}: its idea cites note ${idea.from.id}, which the project doesn't have`
+        `${s.id}: its idea cites note ${cited}, which the project doesn't have`
+      )
+    } else if (cited !== undefined && author !== "owner") {
+      problems.push(
+        `${s.id}: its idea cites note ${cited}, which isn't in the owner's words`
       )
     }
   }
-  const marks = cut.burnIns.filter((b) => b.kind === AUTHORSHIP)
+  const marks = cut.burnIns.filter(isAuthorship)
   if (marks.length === 0) return problems
   if (marks.length > 1) problems.push("the authorship mark is drawn once")
   if (marks.some((b) => Object.keys(b.params).length > 0)) {

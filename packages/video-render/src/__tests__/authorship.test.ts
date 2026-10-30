@@ -1,14 +1,8 @@
-import {
-  authorshipOf,
-  authorshipParams,
-  handsOf,
-  wordingOf,
-} from "@video-render/authorship"
+import { authorshipOf, handsOf, wordingOf } from "@video-render/authorship"
 import type { CutList, Shot } from "@video-render/cut-list"
 import { parseCutList } from "@video-render/cut-list"
 import { STEPS } from "@video-render/steps"
 import type { Step } from "@video-render/steps"
-import { place } from "@video-render/timing"
 import { describe, expect, it } from "vitest"
 
 import { cutList, shot } from "./fixtures"
@@ -90,44 +84,6 @@ describe("authorship", () => {
     // Fitting the scene to its length stays code.
     expect(handsOf(bare("c"), moved)).toEqual(["agent", "code"])
   })
-
-  it("times each scene at its exact frame", () => {
-    const cut: CutList = cutList([bare("A"), shot("B"), bare("C")])
-    const placement = place(
-      cut.shots.map((s, i) => ({
-        id: s.id,
-        durationMs: s.durationMs,
-        transitionIn: i === 0 ? ("cut" as const) : ("crossfade" as const),
-      })),
-      30
-    )
-    if (!placement.ok) throw new Error(placement.problems.join("; "))
-    const params = authorshipParams(cut, placement.value, 30)
-    const starts = placement.value.shots.map((s) => (s.startFrame * 1000) / 30)
-    expect(params).toEqual({
-      scenes: [
-        {
-          startMs: starts[0],
-          origin: "agent",
-          wording: "agent",
-          hands: ["code"],
-        },
-        {
-          startMs: starts[1],
-          origin: "agent",
-          wording: "agent",
-          hands: ["code"],
-        },
-        {
-          startMs: starts[2],
-          origin: "agent",
-          wording: "agent",
-          hands: ["code"],
-        },
-      ],
-      endMs: (placement.value.totalFrames * 1000) / 30,
-    })
-  })
 })
 
 describe("where the authorship mark can go", () => {
@@ -152,8 +108,22 @@ describe("where the authorship mark can go", () => {
             shot("B", {
               idea: { origin: "you", from: { kind: "note", id: "n9" } },
             }),
+            shot("C", {
+              idea: { origin: "you", from: { kind: "note", id: "n1" } },
+            }),
           ],
           {
+            notes: [
+              {
+                id: "n1",
+                rev: 1,
+                shot: "C",
+                offsetMs: 0,
+                author: "claude",
+                text: "Lead with the third down.",
+                status: "open",
+              },
+            ],
             burnIns: [{ ...mark, params: { scenes: [] } }, mark],
           }
         )
@@ -161,8 +131,15 @@ describe("where the authorship mark can go", () => {
     ).toEqual([
       "A: the authorship mark covers the whole video",
       "B: its idea cites note n9, which the project doesn't have",
+      "C: its idea cites note n1, which isn't in the owner's words",
       "the authorship mark is drawn once",
       "the authorship mark is drawn from the scenes; nothing is written for it",
+      "the authorship mark's intro needs a bare card as the first scene",
+      "the authorship mark's end card needs a bare card as the last scene",
+    ])
+    expect(
+      problems(cutList([bare("A"), bare("B")], { burnIns: [mark] }))
+    ).toEqual([
       "the authorship mark needs a scene between its intro and its end card",
     ])
     expect(

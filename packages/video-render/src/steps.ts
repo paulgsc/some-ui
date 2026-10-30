@@ -9,10 +9,7 @@
  * holds the rules: home runs no language model, a session keeps work that
  * isn't Claude's exactly while something named blocks the move, only the
  * owner's own steps are the owner's, and every field named is the cut list's.
- *
- * The authorship mark's hands (ST16, `authorship.ts`) are read from here:
- * a scene's hands are the steps whose writes made it. Moving a step moves
- * whose hands the next render shows.
+ * The authorship mark's hands are read from here (`authorship.ts`).
  */
 
 /** What does the work: code, the small speech model home runs, Claude, or the owner. */

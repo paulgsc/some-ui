@@ -10,9 +10,7 @@
  *
  * A design a published video used is never edited; a change is a new design.
  * Each kind draws only inside its regions (`./geometry`), so two burn-ins on
- * screen together never cover each other. The authorship mark (`./authorship`)
- * holds the header and body only over the bare cards the cut list keeps
- * first and last for it.
+ * screen together never cover each other.
  */
 
 import { assertNever } from "@some-ui/intent-kit"
@@ -129,6 +127,25 @@ const issues = (name: string, error: z.ZodError): ReadonlyArray<string> =>
       `${name}: ${i.path.length ? `${i.path.join(".")}: ` : ""}${i.message}`
   )
 
+/** A kind's design and params checked, and drawn by `draw`. */
+function checked<D extends string, P, V>(
+  name: string,
+  designs: ReadonlyArray<D>,
+  b: BurnInData,
+  schema: z.ZodType<P>,
+  draw: (params: P) => Parsed<V>
+): Parsed<{ readonly design: D; readonly value: V }> {
+  if (!isOneOf(designs, b.design))
+    return { ok: false, problems: [`${name}: no such design`] }
+  const params = schema.safeParse(b.params)
+  if (!params.success)
+    return { ok: false, problems: issues(name, params.error) }
+  const drawn = draw(params.data)
+  if (!drawn.ok)
+    return { ok: false, problems: drawn.problems.map((p) => `${name}: ${p}`) }
+  return { ok: true, value: { design: b.design, value: drawn.value } }
+}
+
 /** A Build Journal kind's params checked and set. */
 function journal<P>(
   name: string,
@@ -137,15 +154,13 @@ function journal<P>(
   schema: z.ZodType<P>,
   draw: (params: P) => Parsed<TextFrame>
 ): Parsed<Prepared> {
-  if (!isOneOf(JOURNAL_DESIGNS, b.design))
-    return { ok: false, problems: [`${name}: no such design`] }
-  const params = schema.safeParse(b.params)
-  if (!params.success)
-    return { ok: false, problems: issues(name, params.error) }
-  const fitted = draw(params.data)
-  if (!fitted.ok)
-    return { ok: false, problems: fitted.problems.map((p) => `${name}: ${p}`) }
-  return { ok: true, value: { kind, design: b.design, frame: fitted.value } }
+  const c = checked(name, JOURNAL_DESIGNS, b, schema, draw)
+  return c.ok
+    ? {
+        ok: true,
+        value: { kind, design: c.value.design, frame: c.value.value },
+      }
+    : c
 }
 
 /** The burn-in checked and ready, or every reason it can't be drawn. */
@@ -176,21 +191,19 @@ export function prepare(b: BurnInData): Parsed<Prepared> {
       return journal(name, kind, b, CardParamsSchema, cardFrame)
     }
     case "authorship": {
-      if (!isOneOf(AUTHORSHIP_DESIGNS, b.design))
-        return { ok: false, problems: [`${name}: no such design`] }
-      const params = AuthorshipParamsSchema.safeParse(b.params)
-      if (!params.success)
-        return { ok: false, problems: issues(name, params.error) }
-      const drawn = drawAuthorship(params.data)
-      if (!drawn.ok)
-        return {
-          ok: false,
-          problems: drawn.problems.map((p) => `${name}: ${p}`),
-        }
-      return {
-        ok: true,
-        value: { kind, design: b.design, drawing: drawn.value },
-      }
+      const c = checked(
+        name,
+        AUTHORSHIP_DESIGNS,
+        b,
+        AuthorshipParamsSchema,
+        drawAuthorship
+      )
+      return c.ok
+        ? {
+            ok: true,
+            value: { kind, design: c.value.design, drawing: c.value.value },
+          }
+        : c
     }
     default: {
       return assertNever(kind)

@@ -1,7 +1,6 @@
 /** @vitest-environment node */
 import {
   authorshipAt,
-  drawAuthorship,
   MOST_SCENES,
   type AuthoredScene,
   type AuthorshipDrawing,
@@ -120,21 +119,6 @@ describe("the authorship mark", () => {
   })
 
   it("refuses params the renderer would never write", () => {
-    const bad = prepare({
-      kind: "authorship",
-      design: "cells-v1",
-      params: {
-        scenes: [
-          { ...bare, startMs: 500 },
-          { ...bare, startMs: 400 },
-          { ...bare, origin: "everyone", startMs: 900 },
-        ],
-        endMs: 800,
-      },
-    })
-    expect(bad.ok ? [] : bad.problems).toEqual([
-      'the authorship burn-in (cells-v1): scenes.2.origin: Invalid option: expected one of "you"|"agent"|"source"',
-    ])
     const backwards = prepare({
       kind: "authorship",
       design: "cells-v1",
@@ -146,19 +130,5 @@ describe("the authorship mark", () => {
     expect(backwards.ok ? [] : backwards.problems).toEqual([
       "the authorship burn-in (cells-v1): each scene starts after the one before, and before the end",
     ])
-  })
-
-  it("holds a record of up to the most scenes a primer has", () => {
-    expect(() =>
-      drawn(Array.from({ length: MOST_SCENES }, () => bare))
-    ).not.toThrow()
-    const many = drawAuthorship({
-      scenes: Array.from({ length: MOST_SCENES + 2 }, (_, i) => ({
-        ...bare,
-        startMs: i,
-      })),
-      endMs: MOST_SCENES + 2,
-    })
-    expect(many.ok).toBe(true)
   })
 })

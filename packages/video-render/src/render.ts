@@ -6,7 +6,8 @@
  * with its last lines.
  */
 
-import { authorshipParams, isAuthorship } from "./authorship"
+import { authorshipParams } from "./authorship"
+import { isAuthorship } from "./cut-list"
 import type { BurnIn, CutList, Parsed } from "./cut-list"
 import {
   placeCues,

@@ -2,6 +2,7 @@ import type { JSX } from "react"
 import { TextLayer } from "@burn-ins/components/stage/text"
 import { cq, placed } from "@burn-ins/components/stage/units"
 import type { AuthorshipFrame, Cell } from "@burn-ins/lib/authorship"
+import { INK } from "@burn-ins/lib/journal"
 
 /** A cell's fill: whole for the idea's origin, its lower half for its wording. */
 const fillOf = (c: Cell): string =>
@@ -24,7 +25,6 @@ export const AuthorshipLayer = ({
   <>
     <TextLayer frame={frame} />
     {frame.cells.map((c) => {
-      // An outline for a hand, else a faint edge that keeps the cell's place.
       const edge = c.hand ? Math.max(3, c.box.width / 10) : 2
       const inset = c.box.width / 5
       return (
@@ -40,7 +40,7 @@ export const AuthorshipLayer = ({
             background: fillOf(c),
             backgroundClip: "content-box",
             padding: cq(inset - edge),
-            border: `${cq(edge)} solid ${c.hand ? c.colour : "#344758"}`,
+            border: `${cq(edge)} solid ${c.hand ? c.colour : INK.edge}`,
             borderRadius: cq(c.box.width / 5),
           }}
         />

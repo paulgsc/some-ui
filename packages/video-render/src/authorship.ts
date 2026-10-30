@@ -18,7 +18,6 @@
  * owner's own step (`__tests__/authorship.test.ts`).
  */
 
-import { AUTHORSHIP } from "./cut-list"
 import type { BurnIn, CutList, Shot } from "./cut-list"
 import { STEPS } from "./steps"
 import type { Step, StepKind } from "./steps"
@@ -121,6 +120,3 @@ export function authorshipParams(
   })
   return { scenes, endMs: (placement.totalFrames * 1000) / fps }
 }
-
-/** Whether a burn-in is the authorship mark. */
-export const isAuthorship = (b: BurnIn): boolean => b.kind === AUTHORSHIP

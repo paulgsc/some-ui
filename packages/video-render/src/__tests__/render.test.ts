@@ -403,7 +403,6 @@ describe("render", () => {
       { workDir: "work-b2", out: "out-b2/video.mp4" }
     )
     expect(drawn.ok ? drawn.value.leftOut : drawn.problems).toEqual([])
-    // The mark is drawn from the scenes, one entry each, whatever was written.
     expect(marks).toEqual([
       {
         scenes: authorshipOf(withLayers).map((a, i) => ({

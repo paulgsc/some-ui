@@ -52,7 +52,7 @@ export const SAFE_AREA: Box = {
  *   card's text sits.
  * - `lower-third`: the safe area's bottom band, where captions sit.
  * - `gutter`: the strip of ground left of the picture's window, where the
- *   authorship mark stays small for the whole video. Like the header it is
+ *   authorship mark stays small between its intro and its end card. Like the header it is
  *   outside the safe area's left margin; nothing of YouTube's is drawn there.
  */
 export const REGIONS = {

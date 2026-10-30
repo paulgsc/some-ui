@@ -72,7 +72,7 @@ export const CardParamsSchema = z.object({
 export type HeadlineParams = z.infer<typeof HeadlineParamsSchema>
 export type CardParams = z.infer<typeof CardParamsSchema>
 
-const kicker = (text: string): TextBlock | null =>
+export const kicker = (text: string): TextBlock | null =>
   setText(
     text,
     barlow(800, 30, INK.accent),
@@ -80,7 +80,7 @@ const kicker = (text: string): TextBlock | null =>
     1
   )
 
-const blocksOf = (
+export const blocksOf = (
   named: ReadonlyArray<readonly [string, TextBlock | null]>
 ): Parsed<TextFrame> => {
   const problems = named.flatMap(([name, b]) =>
@@ -147,13 +147,12 @@ export {
 const rowsLeft = (y: number, sizePx: number, lineHeight = 1.25): number =>
   Math.floor((INNER_BOTTOM - y) / (sizePx * lineHeight))
 
+/** A card's headline: up to two rows under the kicker. */
+export const cardHeadline = (text: string): TextBlock | null =>
+  setText(text, barlow(800, 54, INK.text), { x: LEFT, y: 104, width: WIDTH }, 2)
+
 export function cardFrame(p: CardParams): Parsed<TextFrame> {
-  const head = setText(
-    p.headline,
-    barlow(800, 54, INK.text),
-    { x: LEFT, y: 104, width: WIDTH },
-    2
-  )
+  const head = cardHeadline(p.headline)
   const inside: Array<readonly [string, TextBlock | null]> = []
   if (p.slot) {
     const label = setText(
