@@ -59,7 +59,7 @@ shown; "the cheapest possible" cannot be, from these repositories, and nothing h
 
 ## The requirement kinds
 
-Each objective names the kind it instantiates. These are the kinds, from the recon of 2026-10-27 (OA8 added 2026-10-28, AS12, server#546; OA9 added 2026-10-30, the availability SLA, AV1);
+Each objective names the kind it instantiates. These are the kinds, from the recon of 2026-10-27 (OA8 added 2026-10-28, AS12, server#546; OA9 added 2026-10-30, AS17, some-ui#2281);
 a new kind is added here first.
 
 | Kind | Property          | Requirement                                                                                                                              |

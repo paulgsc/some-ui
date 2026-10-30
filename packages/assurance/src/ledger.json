@@ -1078,13 +1078,11 @@
     },
     {
       "id": "home-up",
-      "name": "Home is up when I reach for it",
-      "why": "Home is the one place the phone's records, the Jobs flow and the routines' files meet. Time it is down is time none of that works, and nothing on home can say it is down while home is gone.",
+      "name": "Home is up",
+      "why": "Home is the one place the phone's records, the Jobs flow and the routines' files meet. Time it is down is time none of that works.",
       "paths": [
         "server:apps/servers/file_host/src/handlers/readiness.rs",
-        "server:apps/servers/file_host/src/health.rs",
-        "server:infra/compose/file_host.yml",
-        "server:infra/compose/monitoring.yml",
+        "server:infra/prometheus/rules/home.yml",
         "some-ui:apps/mailbox"
       ],
       "modules": [],
@@ -1094,28 +1092,23 @@
           "kind": "OA9",
           "property": "outcome",
           "claim": "Home is up at least 99.9% of every month: no more than about 43 minutes down in 30 days.",
-          "requirement": "In every calendar month, at least 99.9% of minutes have home answering ready or degraded (its /ready status), as witnessed off home by a heartbeat to the mailbox once a minute; a minute with no heartbeat, or one saying unavailable, counts as down, and so does a minute nothing measured.",
+          "requirement": "In every calendar month, at least 99.9% of minutes have home answering ready or degraded (its /ready status), as witnessed off home by a heartbeat to the mailbox once a minute; a minute with no heartbeat recorded, or one saying unavailable, counts as down. The heartbeat shows home is running and can reach the internet, not that the phone can reach home.",
           "bound": {
             "value": 99.9,
             "unit": "percent of minutes up per month",
             "tighter": "higher"
           },
           "verdict": "broken",
-          "conclusion": "Nothing off home measures it yet, so every minute counts as down by this objective's own rule; and on 2026-10-30 a deploy whose image was ahead of its database's migrations needed the owner to apply them by hand.",
+          "conclusion": "Nothing off home hears from it yet, so by this objective's own rule every minute counts as down; how long home has really been down is unknown.",
           "evidence": [
             {
-              "class": "measured",
-              "says": "On 2026-10-30 home ran an image five migrations ahead of its database; its healthcheck failed and every dashboard went blank until server#560, and the migrations still waited on the owner.",
-              "ref": "server#559"
+              "class": "structural",
+              "says": "Every watcher runs on home: FileHostDown fires when file_host stops answering while the box is up, but a down box or network is seen by nothing, and nothing counts minutes up.",
+              "ref": "server:infra/prometheus/rules/home.yml"
             },
             {
               "class": "structural",
-              "says": "Every watcher of home runs on home (Prometheus, Grafana, the AS7 alerts), so a down box is seen by nothing.",
-              "ref": "server:infra/compose/monitoring.yml"
-            },
-            {
-              "class": "structural",
-              "says": "Since server#560, /ready says ready, degraded or unavailable, and the container healthcheck fails only on unavailable: the status a heartbeat would carry.",
+              "says": "/ready answers ready, degraded or unavailable: the status a heartbeat would carry.",
               "ref": "server:apps/servers/file_host/src/handlers/readiness.rs"
             }
           ],
