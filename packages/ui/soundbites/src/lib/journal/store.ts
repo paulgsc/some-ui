@@ -17,6 +17,8 @@ import {
   result,
   withRoom,
 } from "@some-ui/voice-capture"
+import type { Cut, Primer } from "@soundbites/lib/journal/primer"
+import { cutV1 } from "@soundbites/lib/journal/primer"
 import { JOURNAL_TAKES_MAX_BYTES } from "@soundbites/lib/policy"
 import { askToKeep } from "@soundbites/lib/store"
 
@@ -108,8 +110,16 @@ const AUDIO = "audio"
 /** The one key `PLAN` holds. */
 const CURRENT = "current"
 
+/** A plan as kept: one from before primer version 2 has cuts with only a prompt. */
+type KeptPlan = Omit<JournalPlan, "primer"> & {
+  readonly primer: Omit<Primer, "voice" | "cuts"> & {
+    readonly voice?: Primer["voice"]
+    readonly cuts: ReadonlyArray<Cut | Parameters<typeof cutV1>[0]>
+  }
+}
+
 /** Only this module writes these stores: a guard against an older shape. */
-function isPlan(row: unknown): row is JournalPlan {
+function isPlan(row: unknown): row is KeptPlan {
   return (
     typeof row === "object" &&
     row !== null &&
@@ -136,9 +146,24 @@ function isTake(row: unknown): row is JournalTake {
   )
 }
 
+/**
+ * A plan kept before primer version 2 holds cuts with only a prompt and no
+ * voice: they read as the version 1 cuts they were.
+ */
+export function upgraded(plan: KeptPlan): JournalPlan {
+  return {
+    ...plan,
+    primer: {
+      ...plan.primer,
+      voice: plan.primer.voice ?? "read",
+      cuts: plan.primer.cuts.map((cut) => ("voice" in cut ? cut : cutV1(cut))),
+    },
+  }
+}
+
 async function planIn(store: IDBObjectStore): Promise<JournalPlan | null> {
   const row: unknown = await result(store.get(CURRENT))
-  return isPlan(row) ? row : null
+  return isPlan(row) ? upgraded(row) : null
 }
 
 export function indexedDbJournalStore(): JournalStore {

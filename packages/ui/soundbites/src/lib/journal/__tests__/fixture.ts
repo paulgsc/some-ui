@@ -1,6 +1,7 @@
 import type { JournalPlan, JournalTake } from "@soundbites/lib/journal/plan"
 import { inCutOrder } from "@soundbites/lib/journal/plan"
 import type { Primer } from "@soundbites/lib/journal/primer"
+import { cutV1 } from "@soundbites/lib/journal/primer"
 import type {
   JournalShelf,
   JournalSnapshot,
@@ -18,20 +19,26 @@ export const NOON = Date.UTC(2026, 9, 12, 12)
 export const PRIMER: Primer = {
   title: "AMO release notes",
   budgetMs: 180_000,
+  voice: "read",
   cuts: [
-    {
+    cutV1({
       id: "gap",
       artifact: "Old notes",
       prompt: "What was missed?",
       targetMs: 30_000,
-    },
-    { id: "flow", artifact: "New flow", prompt: "Walk it.", targetMs: 60_000 },
-    {
+    }),
+    cutV1({
+      id: "flow",
+      artifact: "New flow",
+      prompt: "Walk it.",
+      targetMs: 60_000,
+    }),
+    cutV1({
       id: "next",
       artifact: "End card",
       prompt: "What's next?",
       targetMs: 20_000,
-    },
+    }),
   ],
 }
 
