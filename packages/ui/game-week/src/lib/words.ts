@@ -4,6 +4,8 @@
  * the machinery behind it. `__tests__/words.test.ts` holds every entry and
  * every phrase these functions can make to that.
  */
+import { dayOf, formatDay } from "@some-ui/core-utils"
+
 import type { ModeId } from "./modes"
 import type { OutboxView } from "./ports"
 
@@ -112,14 +114,6 @@ export const MODE_WORDS: Readonly<
 /** Every mode stops a bite at one minute. */
 export const MINUTE_LINE = "Every bite stops at one minute."
 
-/** A day as the screen names it: "Oct 28". */
-function onDay(ms: number): string {
-  return new Date(ms).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  })
-}
-
 /**
  * What the outbox line under the screen says, or "" when nothing waits and
  * home holds none.
@@ -152,7 +146,7 @@ export function outboxLine(view: OutboxView): string {
   if (view.onHome > 0 && view.onHomeSince !== null) {
     const bites = view.onHome === 1 ? "1 bite" : `${view.onHome} bites`
     lines.push(
-      `${bites} kept on home since ${onDay(view.onHomeSince)}, and no longer on this phone.`
+      `${bites} kept on home since ${formatDay(dayOf(new Date(view.onHomeSince)))}.`
     )
   }
   return lines.join(" ")

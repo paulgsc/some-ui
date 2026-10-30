@@ -95,7 +95,7 @@ describe("the recorder's words", () => {
       onHomeSince: null,
     }
     expect(outboxLine({ ...none, onHome: 1, onHomeSince: ON_HOME_SINCE })).toBe(
-      "1 bite kept on home since Oct 28, and no longer on this phone."
+      "1 bite kept on home since Oct 28."
     )
     expect(
       outboxLine({
@@ -105,7 +105,7 @@ describe("the recorder's words", () => {
         onHomeSince: ON_HOME_SINCE,
       })
     ).toBe(
-      "1 bite waits on this phone until home has it. 12 bites kept on home since Oct 28, and no longer on this phone."
+      "1 bite waits on this phone until home has it. 12 bites kept on home since Oct 28."
     )
   })
 
