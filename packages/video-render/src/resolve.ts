@@ -6,7 +6,8 @@
 
 import { assertNever } from "@some-ui/core-utils"
 
-import type { CutList, Shot } from "./cut-list"
+import { once } from "./cut-list"
+import type { CutList, Parsed, Shot } from "./cut-list"
 import { LOOK_RULES } from "./plans"
 import type { Look, LookMotion } from "./plans"
 import type { Series } from "./series"
@@ -32,11 +33,7 @@ export type Resolved = {
   readonly music: MusicMode
 }
 
-export type Resolution =
-  | ({ readonly ok: true } & Resolved)
-  | { readonly ok: false; readonly problems: ReadonlyArray<string> }
-
-export function resolve(cutList: CutList, series: Series): Resolution {
+export function resolve(cutList: CutList, series: Series): Parsed<Resolved> {
   const problems: Array<string> = []
   if (cutList.series.id !== series.id) {
     problems.push(
@@ -64,7 +61,9 @@ export function resolve(cutList: CutList, series: Series): Resolution {
   if (music !== "off" && !series.music) {
     problems.push(`the music is ${music}, and the series has no music bed`)
   }
-  return problems.length ? { ok: false, problems } : { ok: true, shots, music }
+  return problems.length
+    ? { ok: false, problems: once(problems) }
+    : { ok: true, value: { shots, music } }
 }
 
 function resolveShot(shot: Shot, index: number, videoLook: Look): ResolvedShot {
@@ -81,7 +80,7 @@ function resolveShot(shot: Shot, index: number, videoLook: Look): ResolvedShot {
   return {
     shot,
     look,
-    // The first scene has nothing to come in from.
+    // The first scene has nothing to come in from, whatever its look.
     transitionIn: index === 0 ? "cut" : (o.transitionIn ?? rules.transition),
     motion:
       o.motion ??

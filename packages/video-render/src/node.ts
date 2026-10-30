@@ -1,7 +1,6 @@
 /**
  * The renderer's ports on Node: ffmpeg and ffprobe from `PATH`, the file
- * system, all inside one video's folder. Home's worker (GWB10) and a
- * session use these; a test can swap any of them.
+ * system, all inside one video's folder.
  */
 
 import { execFile } from "node:child_process"
@@ -9,6 +8,7 @@ import { createHash } from "node:crypto"
 import { createReadStream } from "node:fs"
 import { mkdir, writeFile } from "node:fs/promises"
 import { resolve as resolvePath } from "node:path"
+import { z } from "zod"
 
 import type { SourceFacts } from "./plan"
 import type { Ports } from "./render"
@@ -20,25 +20,56 @@ type Ran = {
 }
 
 function run(
-  cmd: string,
+  cmd: "ffmpeg" | "ffprobe",
   args: ReadonlyArray<string>,
   cwd: string
 ): Promise<Ran> {
-  return new Promise((done) => {
+  return new Promise((done, fail) => {
     execFile(
       cmd,
       [...args],
       { cwd, encoding: "buffer", maxBuffer: 256 * 1024 * 1024 },
-      (error, stdout, stderr) =>
+      (error, stdout, stderr) => {
+        if (error && "code" in error && error.code === "ENOENT") {
+          fail(new Error(`${cmd} isn't installed, or isn't on PATH`))
+          return
+        }
         done({ ok: !error, stdout, stderr: stderr.toString("utf8") })
+      }
     )
   })
 }
 
-const num = (v: unknown): number | null => {
-  const n = typeof v === "string" || typeof v === "number" ? Number(v) : NaN
-  return Number.isFinite(n) ? n : null
+/** The JSON ffprobe prints, or null when it printed something else. */
+function json<T>(schema: z.ZodType<T>, out: Buffer): T | null {
+  try {
+    const parsed = schema.safeParse(JSON.parse(out.toString("utf8")))
+    return parsed.success ? parsed.data : null
+  } catch {
+    return null
+  }
 }
+
+const number = z.coerce.number().refine(Number.isFinite)
+
+const ProbeSchema = z.object({
+  streams: z
+    .array(
+      z.object({
+        codec_type: z.string(),
+        width: z.number().optional(),
+        height: z.number().optional(),
+      })
+    )
+    .default([]),
+  format: z.object({ duration: number.optional() }).default({}),
+})
+
+const FramesSchema = z.object({
+  streams: z
+    .array(z.object({ nb_read_frames: number, avg_frame_rate: z.string() }))
+    .min(1),
+})
 
 /**
  * A file's length when its container doesn't say, as a phone's recorded
@@ -87,19 +118,10 @@ async function decodedMs(
     ],
     cwd
   )
-  if (!ran.ok) return null
-  const stream: unknown = Reflect.get(
-    Object(
-      Reflect.get(Object(JSON.parse(ran.stdout.toString("utf8"))), "streams")
-    ),
-    0
-  )
-  const count = num(Reflect.get(Object(stream), "nb_read_frames"))
-  const [n, d] = String(Reflect.get(Object(stream), "avg_frame_rate"))
-    .split("/")
-    .map(Number)
-  if (count === null) return null
-  return n && d ? Math.round((count * 1000 * d) / n) : 0
+  const stream = ran.ok ? json(FramesSchema, ran.stdout)?.streams[0] : null
+  if (!stream) return null
+  const [n, d] = stream.avg_frame_rate.split("/").map(Number)
+  return n && d ? Math.round((stream.nb_read_frames * 1000 * d) / n) : 0
 }
 
 export function nodePorts(root: string): Ports {
@@ -123,30 +145,19 @@ export function nodePorts(root: string): Ports {
         ],
         root
       )
-      if (!ran.ok) return null
-      let info: unknown
-      try {
-        info = JSON.parse(ran.stdout.toString("utf8"))
-      } catch {
-        return null
-      }
-      const streams: unknown = Reflect.get(Object(info), "streams")
-      const of = (type: string): unknown =>
-        Array.isArray(streams)
-          ? streams.find((s) => Reflect.get(Object(s), "codec_type") === type)
-          : undefined
-      const video = of("video")
-      const seconds = num(
-        Reflect.get(Object(Reflect.get(Object(info), "format")), "duration")
-      )
+      const info = ran.ok ? json(ProbeSchema, ran.stdout) : null
+      if (!info) return null
+      const video = info.streams.find((s) => s.codec_type === "video")
+      const audio = info.streams.some((s) => s.codec_type === "audio")
+      const seconds = info.format.duration
       const durationMs =
-        seconds === null
-          ? await decodedMs(file, of("audio") !== undefined, root)
+        seconds === undefined
+          ? await decodedMs(file, audio, root)
           : Math.round(seconds * 1000)
       if (durationMs === null) return null
       return {
-        width: num(Reflect.get(Object(video), "width")) ?? 0,
-        height: num(Reflect.get(Object(video), "height")) ?? 0,
+        width: video?.width ?? 0,
+        height: video?.height ?? 0,
         durationMs,
       }
     },

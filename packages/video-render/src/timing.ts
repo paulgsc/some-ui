@@ -6,6 +6,7 @@
  * note pinned to a scene maps to a timestamp on any revision.
  */
 
+import type { Parsed } from "./cut-list"
 import { TRANSITION_MS } from "./vocabulary"
 import type { Transition } from "./vocabulary"
 
@@ -38,17 +39,15 @@ export type Placed = {
   readonly overlapFrames: number
 }
 
-export type Placement =
-  | {
-      readonly ok: true
-      readonly shots: ReadonlyArray<Placed>
-      readonly totalFrames: number
-    }
-  | { readonly ok: false; readonly problems: ReadonlyArray<string> }
+export type Placement = {
+  readonly shots: ReadonlyArray<Placed>
+  readonly totalFrames: number
+}
 
 /**
  * Each scene's start and length in frames. A transition takes its overlap
- * from both scenes, so it must fit in half of each.
+ * from both scenes, so it must fit in half of each, and it brings the next
+ * scene's take in early, so two takes must not meet across it.
  */
 export function place(
   shots: ReadonlyArray<{
@@ -56,9 +55,11 @@ export function place(
     readonly cut?: string | undefined
     readonly durationMs: number
     readonly transitionIn: Transition
+    /** When the scene's take starts, and how long it runs, in ms. */
+    readonly take?: { readonly atMs: number; readonly lengthMs: number }
   }>,
   fps: number
-): Placement {
+): Parsed<Placement> {
   const placed: Array<Placed> = []
   const problems: Array<string> = []
   let start = 0
@@ -73,6 +74,14 @@ export function place(
       )
     }
     if (before) start = before.startFrame + before.frames - overlapFrames
+    const prev = shots[i - 1]
+    if (before && prev?.take && s.take) {
+      const ends =
+        toMs(before.startFrame, fps) + prev.take.atMs + prev.take.lengthMs
+      if (ends > toMs(start, fps) + s.take.atMs) {
+        problems.push(`${prev.id}: its take runs into ${s.id}'s`)
+      }
+    }
     placed.push({
       id: s.id,
       cut: s.cut,
@@ -85,8 +94,10 @@ export function place(
   const last = placed[placed.length - 1]
   return {
     ok: true,
-    shots: placed,
-    totalFrames: last ? last.startFrame + last.frames : 0,
+    value: {
+      shots: placed,
+      totalFrames: last ? last.startFrame + last.frames : 0,
+    },
   }
 }
 

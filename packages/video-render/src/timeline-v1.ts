@@ -12,7 +12,7 @@
 
 import { z } from "zod"
 
-import { CUT_LIST_SCHEMA, parseCutList } from "./cut-list"
+import { CUT_LIST_SCHEMA, once, parseCutList, problemsOf } from "./cut-list"
 import type { BurnIn, CutList, Parsed, Shot } from "./cut-list"
 import { fitToTake } from "./timing"
 
@@ -86,12 +86,7 @@ export function fromTimelineV1(
 ): Parsed<CutList> {
   const parsed = V1Schema.safeParse(raw)
   if (!parsed.success) {
-    return {
-      ok: false,
-      problems: parsed.error.issues.map(
-        (i) => `timeline ${i.path.join(".")}: ${i.message}`
-      ),
-    }
+    return { ok: false, problems: problemsOf(parsed.error, "timeline") }
   }
   const problems: Array<string> = []
   const shots = parsed.data.shots.map((s) => {
@@ -109,7 +104,7 @@ export function fromTimelineV1(
     }
     return shotOf(s, at, marks, inputs, problems)
   })
-  if (problems.length) return { ok: false, problems }
+  if (problems.length) return { ok: false, problems: once(problems) }
   // What is written must render: checked here, not by the next reader.
   return parseCutList({
     schema: CUT_LIST_SCHEMA,

@@ -1,33 +1,30 @@
 /**
  * Cut list v2: the one file the phone, home and Claude all edit, and the
- * only thing the renderer reads about a video. The renderer applies no
- * judgement: every duration is a number someone wrote (the phone fits a
- * scene to its take, `timing.ts`), and every choice is a plan or an
- * override from `vocabulary.ts`.
+ * only thing the renderer reads about a video. Every duration is a number
+ * someone wrote (the phone fits a scene to its take, `timing.ts`), and
+ * every choice is a plan or an override from `vocabulary.ts`.
  *
  * Times are whole milliseconds. Paths are relative to the video's folder.
- * Takes, footage and backgrounds stay out of the repo (Drive, or home);
- * only their names and checksums are written here.
+ * Takes, footage and backgrounds stay out of the repo (Drive, or home).
  */
 
 import { z } from "zod"
 
 import { LOOKS, VOICES } from "./plans"
-import { MUSIC_MODES, SOUNDS, TRANSITIONS } from "./vocabulary"
+import {
+  BackgroundSchema,
+  CueSchema,
+  increasing,
+  MotionSchema,
+  ms,
+  MUSIC_MODES,
+  path,
+  TRANSITIONS,
+} from "./vocabulary"
 
 export const CUT_LIST_SCHEMA = "some-ui.cut-list/2"
 
-const ms = z.number().int().nonnegative()
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/)
-const path = z
-  .string()
-  .min(1)
-  .refine((p) => !p.startsWith("/") && !p.split("/").includes(".."), {
-    message: "a path inside the video's folder",
-  })
-const sha256 = z.string().regex(/^[0-9a-f]{64}$/)
-
-export const CheckedFileSchema = z.object({ file: path, sha256 })
 
 /** Where the capture sits in the window: the whole screen, or a crop of it. */
 const FramingSchema = z.discriminatedUnion("mode", [
@@ -54,39 +51,15 @@ const PictureSchema = z.discriminatedUnion("kind", [
     cssWidth: z.number().int().positive().default(412),
     framing: FramingSchema.default({ mode: "crop", zoom: 1, x: 0, y: 0 }),
     /** When the recorder tapped, in ms into the scene. */
-    taps: z.array(ms).default([]),
+    taps: z
+      .array(ms)
+      .default([])
+      .refine(increasing, { message: "taps move forward in time" }),
   }),
   z.object({ kind: z.literal("still"), source: path }),
   /** The series' ground alone, for a card burn-in to draw on. */
   z.object({ kind: z.literal("card") }),
 ])
-
-const MotionSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("still") }),
-  z.object({ kind: z.literal("push-in"), amount: z.number().gt(0).max(1) }),
-  z.object({ kind: z.literal("pull-out"), amount: z.number().gt(0).max(1) }),
-  z.object({
-    kind: z.literal("pan"),
-    keys: z
-      .array(z.tuple([ms, z.number().nonnegative()]).readonly())
-      .min(1)
-      .readonly(),
-  }),
-  z.object({
-    kind: z.literal("punch-in"),
-    at: z.array(ms).min(1).readonly(),
-    amount: z.number().gt(0).max(1),
-  }),
-  z.object({ kind: z.literal("freeze"), atMs: ms }),
-])
-
-const BackgroundSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("as-captured") }),
-  z.object({ kind: z.literal("blurred") }),
-  z.object({ kind: z.literal("image"), image: CheckedFileSchema }),
-])
-
-const CueSchema = z.object({ sound: z.enum(SOUNDS), atMs: ms })
 
 /**
  * A layer code draws into the frame (STUDIO ST15): its kind, the frozen
@@ -99,20 +72,14 @@ export const BurnInSchema = z.object({
   params: z.record(z.string(), z.unknown()).default({}),
 })
 
-const TakeSchema = z.object({
-  /** A take on its own (one cut's), relative to the video's folder. */
-  file: path,
-  inMs: ms,
-  outMs: ms,
-})
-
 export const ShotSchema = z.object({
   id,
   /** The primer's cut this scene says. */
   cut: id.optional(),
   picture: PictureSchema,
   durationMs: ms.min(100),
-  take: TakeSchema.optional(),
+  /** One cut's take, trimmed to `inMs`..`outMs`. */
+  take: z.object({ file: path, inMs: ms, outMs: ms }).optional(),
   /** When the take starts, after the scene does. */
   voiceInMs: ms.default(200),
   /** This scene's own look, over the video's. */
@@ -129,25 +96,7 @@ export const ShotSchema = z.object({
   burnIns: z.array(BurnInSchema).default([]),
 })
 
-const RevisionSchema = z.object({
-  rev: z.number().int().positive(),
-  author: z.enum(["owner", "claude"]),
-  message: z.string().min(1),
-  at: z.iso.datetime(),
-})
-
-/** A note pinned to a moment: scene `shot`, `offsetMs` into it, at `rev`. */
-const NoteSchema = z.object({
-  id,
-  rev: z.number().int().positive(),
-  shot: id,
-  offsetMs: ms,
-  author: z.enum(["owner", "claude"]),
-  text: z.string().min(1),
-  status: z.enum(["open", "applied", "declined", "confirmed"]),
-  /** Why it was declined. */
-  reason: z.string().min(1).optional(),
-})
+const author = z.enum(["owner", "claude"])
 
 export const CutListSchema = z.object({
   schema: z.literal(CUT_LIST_SCHEMA),
@@ -161,8 +110,32 @@ export const CutListSchema = z.object({
   shots: z.array(ShotSchema).min(1),
   /** Burn-ins over the whole video, such as captions. */
   burnIns: z.array(BurnInSchema).default([]),
-  revisions: z.array(RevisionSchema).default([]),
-  notes: z.array(NoteSchema).default([]),
+  revisions: z
+    .array(
+      z.object({
+        rev: z.number().int().positive(),
+        author,
+        message: z.string().min(1),
+        at: z.iso.datetime(),
+      })
+    )
+    .default([]),
+  /** Notes pinned to a moment: scene `shot`, `offsetMs` into it, at `rev`. */
+  notes: z
+    .array(
+      z.object({
+        id,
+        rev: z.number().int().positive(),
+        shot: id,
+        offsetMs: ms,
+        author,
+        text: z.string().min(1),
+        status: z.enum(["open", "applied", "declined", "confirmed"]),
+        /** Why it was declined. */
+        reason: z.string().min(1).optional(),
+      })
+    )
+    .default([]),
 })
 
 export type CutList = z.infer<typeof CutListSchema>
@@ -171,22 +144,27 @@ export type Picture = Shot["picture"]
 export type Capture = Extract<Picture, { kind: "capture" }>
 export type BurnIn = z.infer<typeof BurnInSchema>
 
+/** A value, or every reason there isn't one. */
 export type Parsed<T> =
   | { readonly ok: true; readonly value: T }
   | { readonly ok: false; readonly problems: ReadonlyArray<string> }
+
+/** A problem line per issue zod found, each led by where it is. */
+export const problemsOf = (error: z.ZodError, what: string): Array<string> =>
+  error.issues.map((i) => `${i.path.join(".") || what}: ${i.message}`)
+
+/** Each line once, in the order first said. */
+export const once = (lines: ReadonlyArray<string>): Array<string> => [
+  ...new Set(lines),
+]
 
 /** The cut list, or every reason it can't be rendered as written. */
 export function parseCutList(raw: unknown): Parsed<CutList> {
   const parsed = CutListSchema.safeParse(raw)
   if (!parsed.success) {
-    return {
-      ok: false,
-      problems: parsed.error.issues.map(
-        (i) => `${i.path.join(".") || "cut list"}: ${i.message}`
-      ),
-    }
+    return { ok: false, problems: problemsOf(parsed.error, "cut list") }
   }
-  const problems = shotProblems(parsed.data.shots)
+  const problems = once(shotProblems(parsed.data.shots))
   return problems.length
     ? { ok: false, problems }
     : { ok: true, value: parsed.data }
@@ -195,20 +173,30 @@ export function parseCutList(raw: unknown): Parsed<CutList> {
 function shotProblems(shots: ReadonlyArray<Shot>): Array<string> {
   const problems: Array<string> = []
   const seen = new Set<string>()
-  for (const s of shots) {
-    if (seen.has(s.id)) problems.push(`${s.id}: two scenes share this id`)
+  shots.forEach((s, i) => {
+    const say = (what: string): void => {
+      problems.push(`${s.id}: ${what}`)
+    }
+    if (seen.has(s.id)) say("two scenes share this id")
     seen.add(s.id)
     const p = s.picture
+    const o = s.overrides
     if (p.kind === "capture" && p.outMs !== undefined && p.outMs <= p.inMs) {
-      problems.push(`${s.id}: the capture ends before it starts`)
+      say("the capture ends before it starts")
     }
     if (s.take && s.take.outMs <= s.take.inMs) {
-      problems.push(`${s.id}: the take ends before it starts`)
+      say("the take ends before it starts")
     }
     if (s.take && s.voiceInMs + s.take.outMs - s.take.inMs > s.durationMs) {
-      problems.push(`${s.id}: the take runs past the scene's end`)
+      say("the take runs past the scene's end")
     }
-    const m = s.overrides.motion
+    if (i === 0 && o.transitionIn && o.transitionIn !== "cut") {
+      say("the first scene has nothing to come in from")
+    }
+    if (p.kind === "card" && o.motion && o.motion.kind !== "still") {
+      say("a card has no picture to move")
+    }
+    const m = o.motion
     const times =
       m?.kind === "punch-in"
         ? m.at
@@ -218,14 +206,14 @@ function shotProblems(shots: ReadonlyArray<Shot>): Array<string> {
             ? m.keys.map(([t]) => t)
             : []
     if (times.some((t) => t > s.durationMs)) {
-      problems.push(`${s.id}: a motion time is past the scene's end`)
+      say("a motion time is past the scene's end")
     }
-    if (p.kind === "capture" && p.taps.some((t) => t > s.durationMs)) {
-      problems.push(`${s.id}: a tap is past the scene's end`)
+    if (p.kind === "capture" && p.taps.some((t) => t >= s.durationMs)) {
+      say("a tap is past the scene's end")
     }
-    if (s.overrides.cues?.some((c) => c.atMs > s.durationMs)) {
-      problems.push(`${s.id}: a sound cue is past the scene's end`)
+    if (o.cues?.some((c) => c.atMs > s.durationMs)) {
+      say("a sound cue is past the scene's end")
     }
-  }
+  })
   return problems
 }

@@ -60,6 +60,9 @@ const sec = (ms: number): string => (ms / 1000).toFixed(6)
 const at = (frames: number, fps: number): string => (frames / fps).toFixed(6)
 const even = (n: number): number => Math.max(2, 2 * Math.round(n / 2))
 
+/** Any audio, as the mixer takes it. */
+const MONO = "aresample=48000,aformat=sample_fmts=fltp:channel_layouts=mono"
+
 /** How long a punch-in takes to arrive, in ms. */
 export const PUNCH_MS = 150
 
@@ -85,7 +88,7 @@ export function pictureBox(
   if (p.kind === "card") return win
   if (p.kind === "capture" && p.framing.mode === "crop") return win
   const f = facts.get(p.source)
-  if (!f) return win
+  if (!f) throw new Error(`${shot.shot.id}: no facts for ${p.source}`)
   const k = Math.min(win.width / f.width, win.height / f.height)
   return { width: even(f.width * k), height: even(f.height * k) }
 }
@@ -116,7 +119,7 @@ export function zoomExpr(motion: Motion, durationMs: number): string | null {
         const sign = k % 2 === 0 ? "+" : "-"
         return `${sign}${motion.amount}*min(max((t-${ms / 1000})/${ramp},0),1)`
       })
-      return `(1${steps.join("")})`
+      return `max(1,1${steps.join("")})`
     }
     default: {
       return assertNever(motion)
@@ -160,8 +163,11 @@ function captureCrop(
 ): string {
   if (p.framing.mode === "full") return ""
   const scale = f.width / p.cssWidth
-  const cw = Math.min(f.width, even(f.width / p.framing.zoom))
-  const ch = Math.min(f.height, even((win.height * cw) / win.width))
+  // The window's shape, as wide as the zoom allows and no taller than the
+  // source; a source wider than the window is cropped at its sides.
+  const wide = Math.min(f.width, even(f.width / p.framing.zoom))
+  const ch = Math.min(f.height, even((win.height * wide) / win.width))
+  const cw = Math.min(wide, even((win.width * ch) / win.height))
   const cx = Math.max(
     0,
     Math.min(f.width - cw, Math.round(p.framing.x * scale))
@@ -217,9 +223,13 @@ function spaceChain(
   parts.push(`scale=${box.width}:${box.height}:flags=lanczos`)
   const z = zoomExpr(shot.motion, durationMs)
   if (z) {
+    // The crop's offsets come from the same expression as the scale: crop
+    // reads its input's size once, so a bare crop would zoom to a corner.
+    const w = `2*trunc(${box.width}*${z}/2)`
+    const h = `2*trunc(${box.height}*${z}/2)`
     parts.push(
-      `scale=w='2*trunc(${box.width}*${z}/2)':h='2*trunc(${box.height}*${z}/2)':eval=frame:flags=lanczos`,
-      `crop=${box.width}:${box.height}`
+      `scale=w='${w}':h='${h}':eval=frame:flags=lanczos`,
+      `crop=${box.width}:${box.height}:x='(${w}-${box.width})/2':y='(${h}-${box.height})/2'`
     )
   }
   parts.push("setsar=1")
@@ -229,10 +239,12 @@ function spaceChain(
 const cover = (b: Box): string =>
   `scale=${b.width}:${b.height}:force_original_aspect_ratio=increase:flags=lanczos,crop=${b.width}:${b.height},setsar=1`
 
+/** A scene and where it sits. */
+export type Scene = { readonly shot: ResolvedShot; readonly placed: Placed }
+
 /** One scene, picture only, to `out`: exactly `placed.frames` frames. */
 export function planSegment(
-  shot: ResolvedShot,
-  placed: Placed,
+  { shot, placed }: Scene,
   series: Series,
   facts: Facts,
   out: string
@@ -330,20 +342,18 @@ export type PlacedTake = {
 }
 
 export function placeTakes(
-  shots: ReadonlyArray<ResolvedShot>,
-  placed: ReadonlyArray<Placed>,
+  scenes: ReadonlyArray<Scene>,
   fps: number
 ): ReadonlyArray<PlacedTake> {
-  return shots.flatMap((s, i) => {
-    const at = placed[i]
-    const take = s.shot.take
-    if (!take || !at) return []
+  return scenes.flatMap(({ shot, placed }) => {
+    const take = shot.shot.take
+    if (!take) return []
     return [
       {
         file: take.file,
         inMs: take.inMs,
         outMs: take.outMs,
-        atMs: toMs(at.startFrame, fps) + s.shot.voiceInMs,
+        atMs: toMs(placed.startFrame, fps) + shot.shot.voiceInMs,
       },
     ]
   })
@@ -361,8 +371,7 @@ export function planVoice(
     const len = (t.outMs - t.inMs) / 1000
     return (
       `[${i}:a]atrim=start=${sec(t.inMs)}:end=${sec(t.outMs)},asetpts=PTS-STARTPTS,` +
-      `aresample=48000,aformat=sample_fmts=fltp:channel_layouts=mono,` +
-      `afade=t=in:d=0.03,afade=t=out:st=${Math.max(0, len - 0.08).toFixed(6)}:d=0.08,` +
+      `${MONO},afade=t=in:d=0.03,afade=t=out:st=${Math.max(0, len - 0.08).toFixed(6)}:d=0.08,` +
       `adelay=${t.atMs}:all=1[t${i}]`
     )
   })
@@ -450,8 +459,7 @@ export type Layer = { readonly file: string; readonly startFrame: number }
 export type PlacedCue = { readonly file: string; readonly atMs: number }
 
 export type Assembly = {
-  readonly shots: ReadonlyArray<ResolvedShot>
-  readonly placed: ReadonlyArray<Placed>
+  readonly scenes: ReadonlyArray<Scene>
   readonly segments: ReadonlyArray<string>
   readonly totalFrames: number
   readonly layers: ReadonlyArray<Layer>
@@ -466,21 +474,18 @@ export type Assembly = {
 
 /** Where each scene's cues land, and which kit file sounds them. */
 export function placeCues(
-  shots: ReadonlyArray<ResolvedShot>,
-  placed: ReadonlyArray<Placed>,
+  scenes: ReadonlyArray<Scene>,
   series: Series
 ): ReadonlyArray<PlacedCue> {
   const fps = series.frame.fps
-  return shots.flatMap((s, i) => {
-    const at = placed[i]
-    if (!at) return []
-    return s.cues.flatMap((c) => {
+  return scenes.flatMap(({ shot, placed }) =>
+    shot.cues.flatMap((c) => {
       const kit = series.sounds[c.sound]
       return kit
-        ? [{ file: kit.file, atMs: toMs(at.startFrame, fps) + c.atMs }]
+        ? [{ file: kit.file, atMs: toMs(placed.startFrame, fps) + c.atMs }]
         : []
     })
-  })
+  )
 }
 
 /** The bed's level and how hard the voice pushes it down, per mode. */
@@ -510,10 +515,8 @@ export function planAssembly(
     filters.push(`[${n}:v]settb=AVTB,setpts=PTS-STARTPTS[s${i}]`)
   )
   let acc = "[s0]"
-  a.shots.forEach((s, i) => {
+  a.scenes.forEach(({ shot: s, placed: p }, i) => {
     if (i === 0) return
-    const p = a.placed[i]
-    if (!p) return
     const label = `[j${i}]`
     if (s.transitionIn === "cut") {
       filters.push(`${acc}[s${i}]concat=n=2:v=1:a=0${label}`)
@@ -544,16 +547,14 @@ export function planAssembly(
       ? `loudnorm=${LOUDNESS}:measured_I=${l.input_i}:measured_TP=${l.input_tp}:` +
         `measured_LRA=${l.input_lra}:measured_thresh=${l.input_thresh}:offset=${l.target_offset}:linear=true,`
       : ""
-    filters.push(
-      `[${next++}:a]${level}aresample=48000,aformat=sample_fmts=fltp:channel_layouts=mono,asplit=2[voice][key]`
-    )
+    filters.push(`[${next++}:a]${level}${MONO},asplit=2[voice][key]`)
     mix.push("[voice]")
     voiceKey = "[key]"
   }
   if (a.music !== "off" && series.music) {
     const bed = BED[a.music]
     inputs.push("-stream_loop", "-1", "-i", series.music.bed.file)
-    const level = `aresample=48000,aformat=sample_fmts=fltp:channel_layouts=mono,atrim=duration=${total},volume=${series.music.gainDb + bed.lift}dB`
+    const level = `${MONO},atrim=duration=${total},volume=${series.music.gainDb + bed.lift}dB`
     if (voiceKey) {
       filters.push(
         `[${next++}:a]${level}[bed0]`,
@@ -569,7 +570,7 @@ export function planAssembly(
   a.cues.forEach((c, i) => {
     inputs.push("-i", c.file)
     filters.push(
-      `[${next++}:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=mono,` +
+      `[${next++}:a]${MONO},` +
         `adelay=${c.atMs}:all=1,volume=${series.soundGainDb}dB[c${i}]`
     )
     mix.push(`[c${i}]`)

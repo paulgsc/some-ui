@@ -1,28 +1,29 @@
 /**
- * Renders with the real ffmpeg on `PATH` (the `ci` nix shell carries one,
- * `nix/video`): a short fixture whose scenes use every transition, motion
- * and background between them, with takes, sound cues and a music bed, all
- * made here from ffmpeg's own test sources. Small frames keep it quick.
+ * Renders with the real ffmpeg on `PATH`, from sources ffmpeg makes here,
+ * at a small frame so it runs quickly.
  */
 
+import { execFile } from "node:child_process"
 import { createHash } from "node:crypto"
 import { mkdtemp, readdir, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { CUT_LIST_SCHEMA } from "@video-render/cut-list"
+import { promisify } from "node:util"
 import type { CutList, Shot } from "@video-render/cut-list"
 import { nodePorts } from "@video-render/node"
 import type { Ports } from "@video-render/render"
 import { render } from "@video-render/render"
-import { SERIES_SCHEMA } from "@video-render/series"
 import type { Series } from "@video-render/series"
-import { MOTION_KINDS, TRANSITIONS } from "@video-render/vocabulary"
-import type {
-  BackgroundKind,
-  Motion,
-  Transition,
+import {
+  BACKGROUND_KINDS,
+  MOTION_KINDS,
+  MUSIC_MODES,
+  TRANSITIONS,
 } from "@video-render/vocabulary"
+import type { CheckedFile, Motion } from "@video-render/vocabulary"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
+
+import * as fixtures from "./fixtures"
 
 let root = ""
 let ports: Ports
@@ -41,9 +42,7 @@ const sha = async (file: string): Promise<string> =>
 beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), "video-render-"))
   ports = nodePorts(root)
-  await ports.mkdir("captures")
-  await ports.mkdir("voice")
-  await ports.mkdir("kit")
+  for (const dir of ["captures", "voice", "kit"]) await ports.mkdir(dir)
   await make([
     "-f",
     "lavfi",
@@ -104,82 +103,37 @@ afterAll(async () => {
   if (root) await rm(root, { recursive: true, force: true })
 })
 
-const checked = (file: string): { file: string; sha256: string } => ({
+const checked = (file: string): CheckedFile => ({
   file,
   sha256: sums.get(file) ?? "",
 })
 
-function series(): Series {
-  return {
-    schema: SERIES_SCHEMA,
-    id: "fixture",
-    version: 1,
-    title: "Fixture",
+const series = (): Series =>
+  fixtures.series({
     frame: { width: 216, height: 384, fps: 30 },
-    ground: "#111821",
     window: { x: 12, y: 48, width: 192, height: 288 },
-    defaultLook: "calm",
     music: { bed: checked("kit/bed.wav"), gainDb: -14 },
     sounds: {
       click: checked("kit/click.wav"),
       whoosh: checked("kit/whoosh.wav"),
     },
-    soundGainDb: -8,
-  }
-}
+  })
 
-const MOTIONS: Readonly<Record<Motion["kind"], Motion>> = {
-  still: { kind: "still" },
-  "push-in": { kind: "push-in", amount: 0.1 },
-  "pull-out": { kind: "pull-out", amount: 0.1 },
-  pan: {
-    kind: "pan",
-    keys: [
-      [0, 0],
-      [800, 200],
-    ],
-  },
-  "punch-in": { kind: "punch-in", at: [300, 800], amount: 0.2 },
-  freeze: { kind: "freeze", atMs: 500 },
-}
-
-const BACKGROUNDS: ReadonlyArray<BackgroundKind> = [
-  "as-captured",
-  "blurred",
-  "image",
-]
-
-function capture(inMs: number): Shot["picture"] {
-  return {
-    kind: "capture",
-    source: "captures/walk.mp4",
-    inMs,
-    speed: 1,
-    cssWidth: 206,
-    framing: { mode: "crop", zoom: 1, x: 0, y: 0 },
-    taps: [400],
-  }
-}
-
-/** A five-second scene of the walk, from its start. */
-function capture5s(): Shot {
-  return {
-    id: "S1",
-    picture: capture(0),
-    durationMs: 5000,
-    voiceInMs: 200,
-    overrides: {},
-    burnIns: [],
-  }
-}
+const capture = (inMs: number): Shot["picture"] => ({
+  kind: "capture",
+  source: "captures/walk.mp4",
+  inMs,
+  speed: 1,
+  cssWidth: 206,
+  framing: { mode: "crop", zoom: 1, x: 0, y: 0 },
+  taps: [400],
+})
 
 /** One scene per transition, cycling motions and backgrounds, then a card. */
 function everyMember(): CutList {
-  const shots: Array<Shot> = TRANSITIONS.map((t: Transition, i) => {
-    const kind = BACKGROUNDS[i % BACKGROUNDS.length] ?? "as-captured"
-    const motion = MOTIONS[MOTION_KINDS[i % MOTION_KINDS.length] ?? "still"]
-    return {
-      id: `S${i + 1}`,
+  const shots: Array<Shot> = TRANSITIONS.map((t, i) => {
+    const kind = BACKGROUND_KINDS[i % BACKGROUND_KINDS.length] ?? "as-captured"
+    return fixtures.shot(`S${i + 1}`, {
       cut: `c${i + 1}`,
       picture:
         i === 3
@@ -195,61 +149,41 @@ function everyMember(): CutList {
         : {}),
       ...(i === 5 ? { look: "lively" as const } : {}),
       overrides: {
-        transitionIn: t,
-        motion,
+        ...(i === 0 ? {} : { transitionIn: t }),
+        motion:
+          fixtures.MOTIONS[MOTION_KINDS[i % MOTION_KINDS.length] ?? "still"],
         background:
           kind === "image"
             ? { kind, image: checked("kit/backdrop.png") }
             : { kind },
         ...(i === 4 ? { cues: [{ sound: "click" as const, atMs: 200 }] } : {}),
       },
-      burnIns: [],
-    }
+    })
   })
-  shots.push({
-    id: "S7",
-    picture: { kind: "card" },
-    durationMs: 900,
-    voiceInMs: 200,
-    overrides: {},
-    burnIns: [],
-  })
-  return {
-    schema: CUT_LIST_SCHEMA,
-    title: "Every member",
-    series: { id: "fixture", version: 1 },
-    look: "calm",
-    voice: "ad-lib",
-    shots,
-    burnIns: [],
-    revisions: [],
-    notes: [],
-  }
+  shots.push(
+    fixtures.shot("S7", { picture: { kind: "card" }, durationMs: 900 })
+  )
+  return fixtures.cutList(shots)
 }
 
 async function frames(file: string): Promise<number> {
-  const ran = await new Promise<string>((done) => {
-    void import("node:child_process").then(({ execFile }) =>
-      execFile(
-        "ffprobe",
-        [
-          "-v",
-          "error",
-          "-count_frames",
-          "-select_streams",
-          "v:0",
-          "-show_entries",
-          "stream=nb_read_frames",
-          "-of",
-          "csv=p=0",
-          file,
-        ],
-        { cwd: root },
-        (_e, out) => done(String(out))
-      )
-    )
-  })
-  return Number(ran.trim())
+  const { stdout } = await promisify(execFile)(
+    "ffprobe",
+    [
+      "-v",
+      "error",
+      "-count_frames",
+      "-select_streams",
+      "v:0",
+      "-show_entries",
+      "stream=nb_read_frames",
+      "-of",
+      "csv=p=0",
+      file,
+    ],
+    { cwd: root }
+  )
+  return Number(stdout.trim())
 }
 
 describe("render", () => {
@@ -268,14 +202,37 @@ describe("render", () => {
     // Each step's output, so a difference names the step that made it.
     const differ: Array<string> = []
     for (const f of await readdir(join(root, "work-1"))) {
-      if ((await sha(`work-1/${f}`)) !== (await sha(`work-2/${f}`)))
+      if ((await sha(`work-1/${f}`)) !== (await sha(`work-2/${f}`))) {
         differ.push(f)
+      }
     }
     if ((await sha("out-1/video.mp4")) !== (await sha("out-2/video.mp4"))) {
       differ.push("video.mp4")
+      // Which stream: the decoded picture and sound, each hashed.
+      for (const [stream, name] of [
+        ["0:v", "picture"],
+        ["0:a", "sound"],
+      ] as const) {
+        for (const k of [1, 2]) {
+          await make([
+            "-i",
+            `out-${k}/video.mp4`,
+            "-map",
+            stream,
+            "-f",
+            "md5",
+            `out-${k}/${name}.md5`,
+          ])
+        }
+        if (
+          (await sha(`out-1/${name}.md5`)) !== (await sha(`out-2/${name}.md5`))
+        ) {
+          differ.push(`video.mp4 ${name}`)
+        }
+      }
     }
-    const version = await ports.ffmpeg({
-      // Its banner, on stderr, names the version that made the bytes.
+    // Its banner, on stderr, names the version that made the bytes.
+    const banner = await ports.ffmpeg({
       args: [
         "-f",
         "lavfi",
@@ -288,24 +245,25 @@ describe("render", () => {
         "-",
       ],
     })
-    expect({ differ, ffmpeg: version.stderr.split("\n")[0] }).toEqual({
-      differ: [],
-      ffmpeg: version.stderr.split("\n")[0],
-    })
-    const last = first.shotTimes[first.shotTimes.length - 1]
+    const version = banner.stderr.split("\n")[0]
+    expect({ differ, version }).toEqual({ differ: [], version })
+
+    const { shotTimes, shotTimesFile } = first.value
+    const last = shotTimes[shotTimes.length - 1]
     if (!last) throw new Error("no shot times")
     // Every frame the placement promised, and no more.
     expect(await frames("out-1/video.mp4")).toBe(
       Math.round(((last.startMs + last.durationMs) * 30) / 1000)
     )
     const written: unknown = JSON.parse(
-      await readFile(join(root, first.shotTimesFile), "utf8")
+      await readFile(join(root, shotTimesFile), "utf8")
     )
-    expect(written).toEqual(first.shotTimes)
+    expect(written).toEqual(shotTimes)
   }, 180_000)
 
-  it("renders each music mode", async () => {
-    for (const music of ["off", "under-voice", "up-between-lines"] as const) {
+  it.each(MUSIC_MODES)(
+    "renders the music bed %s",
+    async (music) => {
       const cut = everyMember()
       const done = await render(
         { ...cut, music, shots: cut.shots.slice(0, 2) },
@@ -313,9 +271,10 @@ describe("render", () => {
         ports,
         { workDir: `work-${music}`, out: `out-${music}/video.mp4` }
       )
-      expect(done.ok ? "rendered" : done.problems).toBe("rendered")
-    }
-  }, 180_000)
+      expect(done.ok ? [] : done.problems).toEqual([])
+    },
+    60_000
+  )
 
   it("needs footage only up to a freeze", async () => {
     const short: Ports = {
@@ -324,31 +283,29 @@ describe("render", () => {
         Promise.resolve({ width: 206, height: 458, durationMs: 1000 }),
       ffmpeg: () => Promise.resolve({ ok: true, stderr: "" }),
     }
-    const cut = everyMember()
-    const scene = (motion: Motion): CutList => ({
-      ...cut,
-      shots: [
-        {
-          ...capture5s(),
+    const scene = (motion: Motion): CutList =>
+      fixtures.cutList([
+        fixtures.shot("S1", {
+          picture: capture(0),
+          durationMs: 5000,
           overrides: { motion },
-        },
-      ],
-    })
+        }),
+      ])
+    const options = { workDir: "work-freeze", out: "out-freeze/video.mp4" }
     const frozen = await render(
       scene({ kind: "freeze", atMs: 500 }),
       series(),
       short,
-      {
-        workDir: "work-freeze",
-        out: "out-freeze/video.mp4",
-      }
+      options
     )
     expect(frozen.ok ? [] : frozen.problems).toEqual([])
-    const still = await render(scene({ kind: "still" }), series(), short, {
-      workDir: "work-freeze",
-      out: "out-freeze/video.mp4",
-    })
-    expect(still.ok ? [] : still.problems).toEqual([
+    const held = await render(
+      scene({ kind: "still" }),
+      series(),
+      short,
+      options
+    )
+    expect(held.ok ? [] : held.problems).toEqual([
       "S1: captures/walk.mp4 is too short (5000 ms needed)",
     ])
   })
@@ -407,7 +364,7 @@ describe("render", () => {
       withoutBurnIns: true,
     })
     expect(
-      leftOut.ok ? leftOut.leftOut.map((b) => b.kind) : leftOut.problems
+      leftOut.ok ? leftOut.value.leftOut.map((b) => b.kind) : leftOut.problems
     ).toEqual(["captions", "headline", "headline"])
 
     const recorded: Array<string> = []
@@ -419,6 +376,7 @@ describe("render", () => {
         recordBurnIn: async (r) => {
           recorded.push(`${r.kind}@${r.startFrame}+${r.frames}`)
           const d = (r.frames / r.frame.fps).toFixed(3)
+          const { width, height, fps } = r.frame
           const ran = await ports.ffmpeg({
             args: [
               "-v",
@@ -427,7 +385,7 @@ describe("render", () => {
               "-f",
               "lavfi",
               "-i",
-              `color=c=red@0.4:s=${r.frame.width}x${r.frame.height}:r=${r.frame.fps}:d=${d},format=rgba`,
+              `color=c=red@0.4:s=${width}x${height}:r=${fps}:d=${d},format=rgba`,
               "-c:v",
               "png",
               r.out,
@@ -438,7 +396,7 @@ describe("render", () => {
       },
       { workDir: "work-b2", out: "out-b2/video.mp4" }
     )
-    expect(drawn.ok ? drawn.leftOut : drawn.problems).toEqual([])
+    expect(drawn.ok ? drawn.value.leftOut : drawn.problems).toEqual([])
     expect(recorded).toEqual([
       "captions@0+60",
       "headline@0+36",

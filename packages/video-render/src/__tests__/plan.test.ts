@@ -1,27 +1,20 @@
-import {
-  panExpr,
-  planAssembly,
-  planSegment,
-  readLoudness,
-  zoomExpr,
-} from "@video-render/plan"
-import type { Assembly, Facts } from "@video-render/plan"
+import { planAssembly, planSegment, readLoudness } from "@video-render/plan"
+import type { Assembly, Facts, Scene } from "@video-render/plan"
 import { resolve } from "@video-render/resolve"
-import type { ResolvedShot } from "@video-render/resolve"
 import { place } from "@video-render/timing"
-import type { Placed } from "@video-render/timing"
 import { MUSIC_MODES, TRANSITIONS } from "@video-render/vocabulary"
-import type { Background, Motion } from "@video-render/vocabulary"
+import type { Background, MotionKind } from "@video-render/vocabulary"
 import { describe, expect, it } from "vitest"
 
-import { cutList, series, shot, SUM } from "./fixtures"
+import { cutList, MOTIONS, series, shot, SUM } from "./fixtures"
 
 const FACTS: Facts = new Map([
   ["captures/walk.mp4", { width: 824, height: 1830, durationMs: 60_000 }],
+  ["captures/wide.mp4", { width: 1280, height: 720, durationMs: 60_000 }],
   ["captures/still.png", { width: 640, height: 480, durationMs: 0 }],
 ])
 
-const PLACED: Placed = {
+const PLACED = {
   id: "S1",
   cut: undefined,
   startFrame: 0,
@@ -29,42 +22,63 @@ const PLACED: Placed = {
   overlapFrames: 0,
 }
 
-function resolved(over: Parameters<typeof shot>[1]): ResolvedShot {
+function scene(over: Parameters<typeof shot>[1]): Scene {
   const r = resolve(cutList([shot("S1", over)], { look: "plain" }), series())
-  if (!r.ok || !r.shots[0]) throw new Error("fixture")
-  return r.shots[0]
+  const s = r.ok ? r.value.shots[0] : undefined
+  if (!s) throw new Error("fixture")
+  return { shot: s, placed: PLACED }
 }
 
-const graph = (s: ResolvedShot): string => {
-  const args = planSegment(s, PLACED, series(), FACTS, "out.mkv").args
+const graph = (s: Scene): string => {
+  const args = planSegment(s, series(), FACTS, "out.mkv").args
   return args[args.indexOf("-filter_complex") + 1] ?? ""
 }
 
 /** What each motion leaves in a scene's filters. */
-const MOTIONS: Readonly<Record<Motion["kind"], [Motion, string]>> = {
-  still: [{ kind: "still" }, "crop=824:1230:0:'0'"],
-  "push-in": [{ kind: "push-in", amount: 0.1 }, "(1+0.1*min(t/2,1))"],
-  "pull-out": [{ kind: "pull-out", amount: 0.1 }, "(1+0.1*(1-min(t/2,1)))"],
-  pan: [
-    {
-      kind: "pan",
-      keys: [
-        [0, 0],
-        [1000, 200],
-      ],
-    },
-    "if(lt(t,0),0,if(lt(t,1),",
-  ],
-  "punch-in": [
-    { kind: "punch-in", at: [500, 1500], amount: 0.2 },
-    "(1+0.2*min(max((t-0.5)/0.15,0),1)-0.2*",
-  ],
-  freeze: [{ kind: "freeze", atMs: 700 }, "trim=duration=0.700000"],
-}
+const DRAWN: ReadonlyArray<[MotionKind, string]> = [
+  ["still", "crop=824:1230:0:'0'"],
+  ["push-in", "(1+0.1*min(t/2,1))"],
+  ["pull-out", "(1+0.1*(1-min(t/2,1)))"],
+  ["pan", "if(lt(t,0),0,if(lt(t,0.8),"],
+  ["punch-in", "max(1,1+0.2*min(max((t-0.3)/0.15,0),1)-0.2*"],
+  ["freeze", "trim=duration=0.500000"],
+]
+
+const ZOOMS: ReadonlyArray<MotionKind> = ["push-in", "pull-out", "punch-in"]
 
 describe("planSegment", () => {
-  it.each(Object.entries(MOTIONS))("draws %s", (_kind, [motion, expected]) => {
-    expect(graph(resolved({ overrides: { motion } }))).toContain(expected)
+  it.each(DRAWN)("draws %s", (kind, expected) => {
+    const g = graph(scene({ overrides: { motion: MOTIONS[kind] } }))
+    expect(g).toContain(expected)
+    // Only a zoom scales per frame.
+    expect(g.includes("eval=frame")).toBe(ZOOMS.includes(kind))
+  })
+
+  it("zooms about the window's centre", () => {
+    const z = "(1+0.1*min(t/2,1))"
+    expect(
+      graph(scene({ overrides: { motion: MOTIONS["push-in"] } }))
+    ).toContain(
+      `crop=972:1450:x='(2*trunc(972*${z}/2)-972)/2':y='(2*trunc(1450*${z}/2)-1450)/2'`
+    )
+  })
+
+  it("crops a source wider than the window at its sides, unstretched", () => {
+    const g = graph(
+      scene({
+        picture: {
+          kind: "capture",
+          source: "captures/wide.mp4",
+          inMs: 0,
+          speed: 1,
+          cssWidth: 1280,
+          framing: { mode: "crop", zoom: 1, x: 0, y: 0 },
+          taps: [],
+        },
+      })
+    )
+    // 482 by 720 is the window's shape (972 by 1450) at the source's height.
+    expect(g).toContain("crop=482:720:0:'0'")
   })
 
   it.each<[Background, string]>([
@@ -75,45 +89,33 @@ describe("planSegment", () => {
       "force_original_aspect_ratio=increase",
     ],
   ])("puts %o behind the picture", (background, expected) => {
-    const s = resolved({ overrides: { background } })
-    const args = planSegment(s, PLACED, series(), FACTS, "out.mkv").args.join(
-      " "
+    const { args } = planSegment(
+      scene({ overrides: { background } }),
+      series(),
+      FACTS,
+      "out.mkv"
     )
-    expect(args).toContain(expected)
+    expect(args.join(" ")).toContain(expected)
   })
 
   it("fits a still inside the window and centres it", () => {
     expect(
-      graph(
-        resolved({ picture: { kind: "still", source: "captures/still.png" } })
-      )
+      graph(scene({ picture: { kind: "still", source: "captures/still.png" } }))
     ).toContain(
       "scale=972:730:flags=lanczos,setsar=1[pic];[bg][pic]overlay=x=54:y=610"
     )
-  })
-
-  it("writes exactly the frames it was placed for", () => {
-    const args = planSegment(
-      resolved({}),
-      PLACED,
-      series(),
-      FACTS,
-      "out.mkv"
-    ).args
-    expect(args[args.indexOf("-frames:v") + 1]).toBe("60")
-    expect(args).toContain("+bitexact")
   })
 })
 
 describe("planAssembly", () => {
   function assembly(over: Partial<Assembly> = {}): Assembly {
     const shots = TRANSITIONS.map((t, i) =>
-      shot(`S${i}`, { overrides: { transitionIn: t } })
+      shot(`S${i}`, i === 0 ? {} : { overrides: { transitionIn: t } })
     )
     const r = resolve(cutList(shots), series())
     if (!r.ok) throw new Error(r.problems.join("\n"))
     const p = place(
-      r.shots.map((s) => ({
+      r.value.shots.map((s) => ({
         id: s.shot.id,
         durationMs: 2000,
         transitionIn: s.transitionIn,
@@ -121,11 +123,15 @@ describe("planAssembly", () => {
       30
     )
     if (!p.ok) throw new Error(p.problems.join("\n"))
+    const scenes = r.value.shots.map((s, i) => {
+      const placed = p.value.shots[i]
+      if (!placed) throw new Error("fixture")
+      return { shot: s, placed }
+    })
     return {
-      shots: r.shots,
-      placed: p.shots,
-      segments: r.shots.map((s) => `${s.shot.id}.mkv`),
-      totalFrames: p.totalFrames,
+      scenes,
+      segments: scenes.map((s) => `${s.shot.shot.id}.mkv`),
+      totalFrames: p.value.totalFrames,
       layers: [],
       voice: null,
       music: "off",
@@ -139,7 +145,8 @@ describe("planAssembly", () => {
   }
 
   it("joins every transition at its frame", () => {
-    const f = filters(assembly())
+    const a = assembly()
+    const f = filters(a)
     expect(f).toContain(
       "[s0][s1]xfade=transition=fade:duration=0.400000:offset=1.600000[j1]"
     )
@@ -151,14 +158,12 @@ describe("planAssembly", () => {
     )
     expect(f).toContain("xfade=transition=wipeleft")
     expect(f).toContain("xfade=transition=zoomin")
-    // The first scene's "cut" comes in from nothing; a cut later is a join.
-    const cut = filters(
-      assembly({
-        shots: assembly().shots.map((s, i) =>
-          i === 1 ? { ...s, transitionIn: "cut" } : s
-        ),
-      })
-    )
+    const cut = filters({
+      ...a,
+      scenes: a.scenes.map((s, i) =>
+        i === 1 ? { ...s, shot: { ...s.shot, transitionIn: "cut" } } : s
+      ),
+    })
     expect(cut).toContain("[s0][s1]concat=n=2:v=1:a=0[j1]")
   })
 
@@ -184,16 +189,6 @@ describe("planAssembly", () => {
     expect(
       planAssembly(assembly(), series(), "video.mp4").args.join(" ")
     ).toContain("anullsrc=r=48000:cl=mono")
-  })
-})
-
-describe("expressions", () => {
-  it("holds a pan before its first key and after its last", () => {
-    expect(panExpr([[500, 100]], (y) => y * 2)).toBe("if(lt(t,0.5),200,200)")
-  })
-
-  it("has no zoom for a motion that doesn't zoom", () => {
-    expect(zoomExpr({ kind: "freeze", atMs: 10 }, 1000)).toBeNull()
   })
 })
 

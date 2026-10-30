@@ -1,4 +1,3 @@
-import { parseCutList } from "@video-render/cut-list"
 import { fromTimelineV1, V1_PROVENANCE } from "@video-render/timeline-v1"
 import { describe, expect, it } from "vitest"
 
@@ -63,7 +62,6 @@ describe("fromTimelineV1", () => {
     })
     if (!converted.ok) throw new Error(converted.problems.join("\n"))
     const cut = converted.value
-    expect(parseCutList(cut).ok).toBe(true)
     expect([cut.look, cut.voice]).toEqual(["plain", "read"])
 
     const [hook, why] = cut.shots
@@ -158,7 +156,7 @@ describe("fromTimelineV1", () => {
       takes: new Map(),
       series: { id: "build-journal-short", version: 1 },
     })
-    expect(converted.ok ? [] : [...new Set(converted.problems)]).toEqual([
+    expect(converted.ok ? [] : converted.problems).toEqual([
       'S01: no mark "tap the casual reply" beside captures/topik/topik.mp4',
     ])
   })

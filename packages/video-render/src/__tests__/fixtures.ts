@@ -2,6 +2,7 @@ import { CUT_LIST_SCHEMA } from "@video-render/cut-list"
 import type { CutList, Shot } from "@video-render/cut-list"
 import { SERIES_SCHEMA } from "@video-render/series"
 import type { Series } from "@video-render/series"
+import type { Motion, MotionKind } from "@video-render/vocabulary"
 
 export const SUM = "a".repeat(64)
 
@@ -61,4 +62,20 @@ export function cutList(
     notes: [],
     ...over,
   }
+}
+
+/** One of each motion, timed to fit a scene of a second or more. */
+export const MOTIONS: Readonly<Record<MotionKind, Motion>> = {
+  still: { kind: "still" },
+  "push-in": { kind: "push-in", amount: 0.1 },
+  "pull-out": { kind: "pull-out", amount: 0.1 },
+  pan: {
+    kind: "pan",
+    keys: [
+      [0, 0],
+      [800, 200],
+    ],
+  },
+  "punch-in": { kind: "punch-in", at: [300, 800], amount: 0.2 },
+  freeze: { kind: "freeze", atMs: 500 },
 }

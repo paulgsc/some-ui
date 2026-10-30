@@ -16,11 +16,12 @@
  * `pnpm --filter` runs this from the package; INIT_CWD is where it was typed.
  */
 
-import { readFile, writeFile } from "node:fs/promises"
+import { access, readFile, writeFile } from "node:fs/promises"
 import { dirname, join, relative, resolve as resolvePath } from "node:path"
 import { parseArgs } from "node:util"
+import { z } from "zod"
 
-import { parseCutList } from "./cut-list"
+import { parseCutList, problemsOf } from "./cut-list"
 import { nodePorts } from "./node"
 import { render } from "./render"
 import { parseSeries } from "./series"
@@ -72,12 +73,47 @@ async function main(): Promise<void> {
     withoutBurnIns: values["without-burn-ins"],
   })
   if (!done.ok) fail(["Nothing was rendered:", ...done.problems])
+  const { video, shotTimesFile, leftOut } = done.value
   process.stdout.write(
-    `wrote ${join(root, done.video)} and ${join(root, done.shotTimesFile)}\n`
+    `wrote ${join(root, video)} and ${join(root, shotTimesFile)}\n`
   )
-  for (const b of done.leftOut) {
+  for (const b of leftOut) {
     process.stdout.write(`left out: the ${b.kind} burn-in (${b.design})\n`)
   }
+}
+
+/** The parts of a v1 short's side files the converter reads. */
+const SidesSchema = z.object({
+  takes: z.string().nullish(),
+  shots: z.array(z.object({ source: z.string().optional() })),
+})
+const MarksSchema = z.object({
+  marks: z.array(z.object({ mark: z.string(), t: z.number() })),
+})
+const TakesSchema = z.object({
+  cuts: z.array(
+    z.object({ id: z.string(), take: z.object({ file: z.string() }).nullish() })
+  ),
+})
+
+async function readAs<T>(schema: z.ZodType<T>, file: string): Promise<T> {
+  const parsed = schema.safeParse(await readJson(file))
+  if (!parsed.success)
+    fail([`${file} can't be read:`, ...problemsOf(parsed.error, file)])
+  return parsed.data
+}
+
+/** The recorder's marks beside a capture; a capture recorded with none has none. */
+async function marksFor(file: string): Promise<ReadonlyMap<string, number>> {
+  try {
+    await access(file)
+  } catch {
+    // Ignored: no marks.json means no marks; any mark the timeline names
+    // is then reported missing by `fromTimelineV1`.
+    return new Map()
+  }
+  const { marks } = await readAs(MarksSchema, file)
+  return new Map(marks.map((m) => [m.mark, m.t]))
 }
 
 /** A v1 short's timeline, marks and takes, to `cut-list.json`. */
@@ -86,49 +122,33 @@ async function convert(
   series: { id: string; version: number }
 ): Promise<void> {
   const timeline = await readJson(join(root, "timeline.json"))
+  const sides = SidesSchema.safeParse(timeline)
+  if (!sides.success) {
+    fail([
+      "The timeline can't be read:",
+      ...problemsOf(sides.error, "timeline"),
+    ])
+  }
   const ports = nodePorts(root)
   const marks = new Map<string, ReadonlyMap<string, number>>()
-  const shots: unknown = Reflect.get(Object(timeline), "shots")
-  for (const shot of Array.isArray(shots) ? shots : []) {
-    const source: unknown = Reflect.get(Object(shot), "source")
-    if (typeof source !== "string" || marks.has(source)) continue
-    const file = join(root, dirname(source), "marks.json")
-    // Ignored: a capture recorded with no marks has none to read; any mark a
-    // timeline names is then reported missing by `fromTimelineV1`.
-    const read = await readJson(file).catch(() => null)
-    const list: unknown =
-      read === null ? [] : Reflect.get(Object(read), "marks")
-    marks.set(
-      source,
-      new Map(
-        (Array.isArray(list) ? list : []).flatMap((m) => {
-          const name: unknown = Reflect.get(Object(m), "mark")
-          const t: unknown = Reflect.get(Object(m), "t")
-          return typeof name === "string" && typeof t === "number"
-            ? [[name, t] as const]
-            : []
-        })
+  for (const { source } of sides.data.shots) {
+    if (source && !marks.has(source)) {
+      marks.set(
+        source,
+        await marksFor(join(root, dirname(source), "marks.json"))
       )
-    )
+    }
   }
   const takes = new Map<string, { file: string; lengthMs: number }>()
-  const takesPath: unknown = Reflect.get(Object(timeline), "takes")
-  if (typeof takesPath === "string") {
-    const listed: unknown = Reflect.get(
-      Object(await readJson(join(root, takesPath))),
-      "cuts"
-    )
-    for (const c of Array.isArray(listed) ? listed : []) {
-      const cut: unknown = Reflect.get(Object(c), "id")
-      const file: unknown = Reflect.get(
-        Object(Reflect.get(Object(c), "take")),
-        "file"
-      )
-      if (typeof cut !== "string" || typeof file !== "string") continue
-      const path = relative(root, join(root, dirname(takesPath), file))
+  const takesPath = sides.data.takes
+  if (takesPath) {
+    const { cuts } = await readAs(TakesSchema, join(root, takesPath))
+    for (const c of cuts) {
+      if (!c.take) continue
+      const path = relative(root, join(root, dirname(takesPath), c.take.file))
       const facts = await ports.probe(path)
       if (!facts) fail([`The take ${path} can't be read.`])
-      takes.set(cut, { file: path, lengthMs: facts.durationMs })
+      takes.set(c.id, { file: path, lengthMs: facts.durationMs })
     }
   }
   const cutList = fromTimelineV1(timeline, { marks, takes, series })

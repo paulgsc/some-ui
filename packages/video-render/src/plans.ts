@@ -2,10 +2,7 @@
  * The plans: what the owner picks instead of single levers. Each plan is a
  * fixed bundle of vocabulary values (`vocabulary.ts`), as some-censor's modes
  * are (`extensions/some-censor/src/lib/settings/modes.ts`). A scene's own
- * override wins over its plan, its plan over the video's, and the video's
- * over its series' default (`resolve.ts`).
- *
- * At most four plans a decision: a fifth means two should merge.
+ * override wins over its look, and its look over the video's (`resolve.ts`).
  */
 
 import type { MusicMode, Sound, Transition } from "./vocabulary"
@@ -30,8 +27,8 @@ export type LookRules = {
   }
   readonly music: MusicMode
   /**
-   * The designs the look asks of the headline and caption burn-ins (ST15).
-   * The renderer passes them on; it never draws text itself.
+   * How the headline and captions move under this look: the burn-ins
+   * (ST15) read these; the renderer draws no text.
    */
   readonly headline: "appears" | "fades-up" | "pops"
   readonly captions: "line" | "word"

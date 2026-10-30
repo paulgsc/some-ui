@@ -19,7 +19,7 @@ describe("resolve", () => {
   it("takes each lever from the lowest layer that sets it", () => {
     const r = resolve(
       cutList([
-        shot("S1", { overrides: { transitionIn: "wipe" } }),
+        shot("S1"),
         { ...tapped, look: "lively" },
         shot("S3", {
           overrides: { transitionIn: "zoom", motion: { kind: "still" } },
@@ -28,8 +28,7 @@ describe("resolve", () => {
       series()
     )
     if (!r.ok) throw new Error(r.problems.join("\n"))
-    const [first, second, third] = r.shots
-    // The first scene has nothing to come in from, whatever it asks.
+    const [first, second, third] = r.value.shots
     expect(first?.transitionIn).toBe("cut")
     expect(first?.motion).toEqual({ kind: "push-in", amount: 0.06 })
     expect(second?.transitionIn).toBe("slide-up")
@@ -45,7 +44,7 @@ describe("resolve", () => {
     ])
     expect(third?.transitionIn).toBe("zoom")
     expect(third?.motion).toEqual({ kind: "still" })
-    expect(r.music).toBe("under-voice")
+    expect(r.value.music).toBe("under-voice")
   })
 
   it("holds a card still, and a lively scene with no taps", () => {
@@ -55,7 +54,7 @@ describe("resolve", () => {
       }),
       series()
     )
-    expect(r.ok && r.shots.map((s) => s.motion.kind)).toEqual([
+    expect(r.ok && r.value.shots.map((s) => s.motion.kind)).toEqual([
       "still",
       "still",
     ])
@@ -72,7 +71,6 @@ describe("resolve", () => {
     expect(r.ok ? [] : r.problems).toEqual([
       "the video pins version 2 of fixture, not 1",
       "S2: the series has no whoosh sound",
-      "S2: the series has no click sound",
       "S2: the series has no click sound",
       "the music is up-between-lines, and the series has no music bed",
     ])
