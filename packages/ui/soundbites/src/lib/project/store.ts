@@ -17,6 +17,7 @@
  * with the write that marks its take off the phone, which `isAppendOnly`
  * allows once home or Drive holds a copy. Nothing here expires.
  */
+import { isRecord } from "@some-ui/core-utils"
 import { bytesBesides, done, result, withRoom } from "@some-ui/voice-capture"
 import type { Row } from "@soundbites/lib/journal/carry"
 import { letGo, planCarry } from "@soundbites/lib/journal/carry"
@@ -167,16 +168,8 @@ function isProject(row: unknown): row is Project {
 
 /** A row `report` wrote, as kept; null for anything else. */
 export function frictionOf(row: unknown): Friction | null {
-  if (typeof row !== "object" || row === null) return null
-  const field = (name: string): unknown => Reflect.get(row, name)
-  const [project, sitting, at, went, gotInTheWay, shot] = [
-    "project",
-    "sitting",
-    "at",
-    "went",
-    "gotInTheWay",
-    "shot",
-  ].map(field)
+  if (!isRecord(row)) return null
+  const { project, sitting, at, went, gotInTheWay, shot } = row
   if (
     typeof project !== "string" ||
     typeof sitting !== "string" ||
@@ -190,7 +183,6 @@ export function frictionOf(row: unknown): Friction | null {
     at,
     went,
     gotInTheWay: typeof gotInTheWay === "string" ? gotInTheWay : null,
-    // A report from before reports named their scene names none.
     shot: typeof shot === "string" ? shot : null,
   }
 }

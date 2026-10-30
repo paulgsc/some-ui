@@ -78,7 +78,6 @@ const studioShare: StudioShare | undefined =
  * soundbites, though it records the same way (`@some-ui/voice-capture`).
  */
 const StudioRoute = (): JSX.Element => {
-  // Studio's record goes home with the rest once its screen has been opened.
   useEffect(() => {
     if (import.meta.env.VITE_DEVICE_BACKEND !== "true") return
     const store = phoneProjectStore()

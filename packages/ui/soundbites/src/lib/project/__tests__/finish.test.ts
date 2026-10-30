@@ -91,7 +91,7 @@ describe("a release", () => {
     const released = run(ready, {
       type: "released",
       rev: 1,
-      url: "https://www.youtube.com/shorts/dQw4w9WgXcQ",
+      url: LINK,
       at: AT,
     })
     expect(finishOf(released.project)).toEqual({

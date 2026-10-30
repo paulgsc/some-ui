@@ -1187,7 +1187,7 @@ describe("Finish", () => {
     expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.finish.notALink)
     runtime.dispatch({
       type: "linkPasted",
-      text: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      text: "https://youtu.be/dQw4w9WgXcQ",
     })
     await until(runtime, (state) => settledWrites(state))
     expect(finishOf(projectIn(runtime))).toEqual({

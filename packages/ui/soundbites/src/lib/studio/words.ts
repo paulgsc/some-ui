@@ -59,6 +59,9 @@ const VOICE_WORDS = {
   },
 } as const satisfies Record<Voice, { name: string; sets: string }>
 
+const shapeStatus = (look: Look, voice: Voice): string =>
+  `${LOOK_WORDS[look].name} look, ${VOICE_WORDS[voice].name} voice`
+
 /** What sharing frees: the room the shared takes held. */
 const MAKING_ROOM =
   "On Start, share a video's takes with Claude and say they reached Drive: they leave the phone, and the room they held is free."
@@ -228,10 +231,9 @@ export const STUDIO_WORDS = {
     back: "Back",
     kept: (look: Look, voice: Voice): string =>
       `Shaped: ${LOOK_WORDS[look].name}, ${VOICE_WORDS[voice].name}. The next video drawn follows it.`,
-    status: (look: Look, voice: Voice): string =>
-      `${LOOK_WORDS[look].name} look, ${VOICE_WORDS[voice].name} voice`,
+    status: shapeStatus,
     revised: (look: Look, voice: Voice): string =>
-      `Shape: ${LOOK_WORDS[look].name} look, ${VOICE_WORDS[voice].name} voice`,
+      `Shape: ${shapeStatus(look, voice)}`,
   },
 
   /** Watch (ST5): a review render, notes pinned to its moments. */

@@ -7,10 +7,8 @@
  * take per scene, the sitting log and Finish's marks are the phone's own
  * record, and the file can't change them; the session writes text only.
  */
-import { canonicalJson } from "@some-ui/core-utils"
-
 import type { Note, Project } from "./model"
-import { isAppendOnly, reaches } from "./model"
+import { isAppendOnly, reaches, sameJson } from "./model"
 
 /** What a project file brings to the copy on the phone. */
 export type Merged =
@@ -23,15 +21,12 @@ export type Merged =
    */
   | { readonly kind: "moved" }
 
-const same = (a: unknown, b: unknown): boolean =>
-  canonicalJson(a) === canonicalJson(b)
-
 /** `kept` with what `file` adds; both are the same video (`id`). */
 export function mergeIn(kept: Project, file: Project): Merged {
   const base = file.revisions.slice(0, kept.revisions.length)
   if (
     base.length < kept.revisions.length ||
-    !base.every((revision, index) => same(revision, kept.revisions[index]))
+    !base.every((revision, index) => sameJson(revision, kept.revisions[index]))
   )
     return { kind: "moved" }
   const settled = kept.notes.map((note): Note => {
@@ -56,7 +51,7 @@ export function mergeIn(kept: Project, file: Project): Merged {
       ),
     ],
   }
-  if (same(merged, kept)) return { kind: "same" }
+  if (sameJson(merged, kept)) return { kind: "same" }
   return isAppendOnly(kept, merged)
     ? { kind: "merged", project: merged }
     : { kind: "moved" }

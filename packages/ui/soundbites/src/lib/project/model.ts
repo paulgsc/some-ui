@@ -31,7 +31,7 @@ import { assertNever, canonicalJson } from "@some-ui/core-utils"
 import type { CutList, Shot, ShotTime } from "@some-ui/video-render"
 import type { Primer } from "@soundbites/lib/journal/primer"
 
-import { finishOf, isReleased, youtubeLink } from "./finish"
+import { finishOf, isMarked, isReleased, youtubeLink } from "./finish"
 
 export const PROJECT_SCHEMA = "some-ui.studio-project/1"
 
@@ -153,12 +153,7 @@ export type ProjectEvent =
       "done" | "next" | "shot"
     >)
   | ({ readonly type: "markedReady" } & Mark)
-  | {
-      readonly type: "released"
-      readonly rev: number
-      readonly url: string
-      readonly at: string
-    }
+  | ({ readonly type: "released" } & Release)
 
 export type ProjectEffect =
   | { readonly type: "save"; readonly project: Project }
@@ -326,7 +321,7 @@ function letGoRefusal(project: Project, id: string): Refusal | null {
   return null
 }
 
-function sameJson(a: unknown, b: unknown): boolean {
+export function sameJson(a: unknown, b: unknown): boolean {
   return canonicalJson(a) === canonicalJson(b)
 }
 
@@ -636,8 +631,7 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
       const url = youtubeLink(event.url)
       if (url === null) return refuse(state, "noLink")
       if (isReleased(project, event.rev)) return refuse(state, "duplicate")
-      if (project.ready?.some((each) => each.rev === event.rev) !== true)
-        return refuse(state, "notReady")
+      if (!isMarked(project, event.rev)) return refuse(state, "notReady")
       return changed(state, {
         ...project,
         released: [

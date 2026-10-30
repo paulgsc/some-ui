@@ -7,6 +7,7 @@
 import { listed, ordinal } from "@some-ui/core-utils"
 
 import type { Actor } from "./authorship"
+import type { SceneRecord } from "./authorship-link"
 import type { Kind } from "./burn-in"
 import type { ThemeId } from "./captions/theme"
 import type { GameCardTemplate, Quarter } from "./game-card"
@@ -204,14 +205,7 @@ export const WORDS = {
 } as const
 
 /** One scene of a video's record, as the end card's cells say it. */
-export function sceneLine(
-  n: number,
-  s: {
-    readonly origin: Actor
-    readonly wording: Actor
-    readonly hands: ReadonlyArray<Actor>
-  }
-): string {
+export function sceneLine(n: number, s: SceneRecord): string {
   const hands =
     s.hands.length === 0
       ? "no hands named"

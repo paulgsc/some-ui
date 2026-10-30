@@ -1,6 +1,5 @@
-import { describe, expect, it } from "vitest"
-
 import { frictionOf } from "@soundbites/lib/project/store"
+import { describe, expect, it } from "vitest"
 
 const ROW = {
   project: "p1",

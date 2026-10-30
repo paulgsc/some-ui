@@ -130,7 +130,6 @@ async function studioGoing(
   pairing: string,
   storage: KeyedStorage | null
 ): Promise<StudioGoing> {
-  // Until Studio's route hands its record in (`./studio`), there is none.
   const studio = studioKeeping()
   if (studio === null) return { sittings: [], reports: [] }
   const [list, friction] = await Promise.all([

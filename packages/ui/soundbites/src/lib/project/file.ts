@@ -6,7 +6,7 @@
  * Reading checks every revision as the renderer would (`parseCutList`), so
  * a file the phone accepts is one the renderer can draw at any revision.
  */
-import { canonicalJson } from "@some-ui/core-utils"
+import { canonicalJson, isRecord, jsonOf } from "@some-ui/core-utils"
 import type { Parsed } from "@some-ui/video-render"
 import { CutListSchema, parseCutList } from "@some-ui/video-render"
 import { z } from "zod"
@@ -142,16 +142,8 @@ function shapeProblems(project: Project): Array<string> {
 
 /** Whether `source` says it is a project file, before it is read whole. */
 export function isProjectFile(source: string): boolean {
-  try {
-    const raw: unknown = JSON.parse(source)
-    return (
-      typeof raw === "object" &&
-      raw !== null &&
-      Reflect.get(raw, "schema") === PROJECT_SCHEMA
-    )
-  } catch {
-    return false
-  }
+  const raw = jsonOf(source)
+  return isRecord(raw) && raw.schema === PROJECT_SCHEMA
 }
 
 /** The project in `source`, or every reason it can't be resumed from. */

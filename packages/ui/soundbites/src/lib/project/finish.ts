@@ -7,9 +7,7 @@
  *   the owner's mark on that revision. Missing ones are named in that order,
  *   one at a time, since each has its own place to go.
  * - **Released** is the YouTube link the owner pastes after uploading by
- *   hand (owner, 2026-10-29: nothing here uploads). A released revision is
- *   never edited: a change makes the next revision, and the release stays
- *   on the one it named.
+ *   hand (owner, 2026-10-29: nothing here uploads).
  */
 import type { Note, Project } from "./model"
 
@@ -45,9 +43,14 @@ export function finishOf(project: Project): Finish {
   const shot = shots[index]
   if (shot !== undefined)
     return { kind: "take", rev, shot: shot.id, n: index + 1 }
-  return project.ready?.some((each) => each.rev === rev) === true
+  return isMarked(project, rev)
     ? { kind: "ready", rev }
     : { kind: "unmarked", rev }
+}
+
+/** Whether the owner marked revision `rev` ready. */
+export function isMarked(project: Project, rev: number): boolean {
+  return project.ready?.some((each) => each.rev === rev) === true
 }
 
 /** A revision `rev` has been released, so it takes no new note. */
