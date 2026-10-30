@@ -25,6 +25,7 @@ import {
 } from "@some-ui/intent-kit"
 
 import { mapFileHostError } from "./errors"
+import { useReportShownFailure } from "./report"
 
 export type UseAsyncIntentOptions = {
   /** Required, not defaulted - see `use-intent.ts`'s identical field. */
@@ -98,6 +99,11 @@ export function useAsyncIntent<TVariables, TData>(
     dispatchingRef.current = false
     setLocal({ status: "idle" })
   }, [])
+
+  useReportShownFailure(
+    local.status === "failed" ? { error: local.error } : null,
+    mapError
+  )
 
   const state: Intent<TData> = ((): Intent<TData> => {
     switch (local.status) {

@@ -55,26 +55,61 @@ export class FileHostResponseError extends Error {
     readonly status: number,
     readonly route: string,
     /** `file_host`'s own error code, e.g. `not_found`; see its `error.rs`. */
-    readonly code: string | null
+    readonly code: string | null,
+    /**
+     * What the answer said about why, for a log, never a screen: the
+     * envelope's `message` and `details`, or a plain-text body (axum's own
+     * rejections). Its method rides in the message for the same reader.
+     */
+    readonly answer: { method?: string; detail?: string | null } = {}
   ) {
     super(
-      `file_host answered ${status} for ${route}${code ? ` (${code})` : ""}`
+      `file_host answered ${status} for ${answer.method ? `${answer.method} ` : ""}${route}${code ? ` (${code})` : ""}${answer.detail ? `: ${answer.detail}` : ""}`
     )
     this.name = "FileHostResponseError"
   }
 }
 
-/** `{ error: { code, message } }` - `file_host`'s envelope for every failure. */
-async function errorCodeOf(response: Response): Promise<string | null> {
+/** Long enough for a field's reason, short enough for one log line. */
+const DETAIL_LIMIT = 300
+
+/**
+ * `{ error: { code, message, details? } }`, `file_host`'s envelope for every
+ * failure it shapes; anything else is read as text (axum's plain-text
+ * rejections), and an unreadable body leaves both `null`.
+ */
+async function errorOf(
+  response: Response
+): Promise<{ code: string | null; detail: string | null }> {
+  let text: string
   try {
-    const body: unknown = await response.json()
-    if (!isRecord(body) || !isRecord(body.error)) return null
-    const { code } = body.error
-    return typeof code === "string" ? code : null
+    text = await response.text()
   } catch {
-    // A body that is not the envelope (an nginx 502 page, most likely)
-    // still has a useful status; the code is the part that is missing.
-    return null
+    return { code: null, detail: null }
+  }
+  const clip = (value: string): string | null =>
+    value.trim() === "" ? null : value.trim().slice(0, DETAIL_LIMIT)
+  let body: unknown
+  try {
+    body = JSON.parse(text)
+  } catch {
+    // Not the envelope (an nginx 502 page, or axum's own rejection): the
+    // status still says enough, and the text may say why.
+    return { code: null, detail: clip(text) }
+  }
+  if (!isRecord(body) || !isRecord(body.error)) {
+    return { code: null, detail: clip(text) }
+  }
+  const { code, message, details } = body.error
+  const said = [
+    typeof message === "string" ? message : "",
+    details === undefined ? "" : JSON.stringify(details),
+  ]
+    .filter((part) => part !== "")
+    .join(" ")
+  return {
+    code: typeof code === "string" ? code : null,
+    detail: clip(said),
   }
 }
 
@@ -244,19 +279,22 @@ export async function requestJSON<T>(
       // server, a spent quota such as the daily new-account cap
       // (`service_overloaded`), or, in the Android app, its own storage
       // failing (`device-backend/interceptor`).
-      const code = await errorCodeOf(response)
+      const { code, detail } = await errorOf(response)
       if (code !== null && UNAVAILABLE_ANSWERS.has(code)) {
-        throw new FileHostResponseError(503, route, code)
+        throw new FileHostResponseError(503, route, code, {
+          method: init?.method ?? "GET",
+          detail,
+        })
       }
       throw new FileHostNotConfiguredError(route)
     }
     if (response.status === 401) onUnauthorized?.()
     if (!response.ok) {
-      throw new FileHostResponseError(
-        response.status,
-        route,
-        await errorCodeOf(response)
-      )
+      const { code, detail } = await errorOf(response)
+      throw new FileHostResponseError(response.status, route, code, {
+        method: init?.method ?? "GET",
+        detail,
+      })
     }
 
     // No schema here: the caller's `T` is its claim about the route, and
