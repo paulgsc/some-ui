@@ -10,7 +10,6 @@ import {
   rowOf,
   sortRows,
   standOf,
-  weekOf,
 } from "@/lib/jobs/record-view"
 
 import { digest } from "./fixture"
@@ -53,7 +52,7 @@ const ended = (
 
 describe("standOf", () => {
   it("names each course in one word", () => {
-    expect(standOf({ kind: "applying" })).toBe("unsent")
+    expect(standOf({ kind: "applying" })).toBe("applying")
     expect(standOf({ kind: "unsent", result: "closed" })).toBe("unsent")
     expect(standOf(waiting("2026-10-01"))).toBe("waiting")
     // Viewed is not a reply.
@@ -113,18 +112,13 @@ describe("sortRows", () => {
       offer: 0,
       rejected: 1,
       silent: 0,
+      applying: 0,
       unsent: 1,
     })
   })
 })
 
 describe("pivotRows", () => {
-  it("weeks start on Monday", () => {
-    expect(weekOf("2026-10-30")).toBe("2026-10-26")
-    expect(weekOf("2026-10-26")).toBe("2026-10-26")
-    expect(weekOf("2026-11-01")).toBe("2026-10-26")
-  })
-
   it("groups by week and month newest first, counting how each stands", () => {
     const rows = [
       row("2026-10-27", "A", waiting("2026-10-27")),

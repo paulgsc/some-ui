@@ -5,7 +5,12 @@
  * behind it (`__tests__/words.test.ts` holds it to the list in
  * `lib/home-link/__tests__/machinery.ts`).
  */
-import { assertNever, counted, formatDay } from "@some-ui/core-utils"
+import {
+  assertNever,
+  counted,
+  formatDay,
+  formatMonth,
+} from "@some-ui/core-utils"
 import type { Track } from "@some-ui/job-desk"
 import { LAPSE_DAYS } from "@some-ui/job-desk"
 
@@ -20,6 +25,7 @@ import type {
 } from "./model"
 import type { NoticeState } from "./notice"
 import type { Pivot, Sort, Stand } from "./record-view"
+import { STANDS } from "./record-view"
 import type { NoticeView } from "./runtime"
 
 /** The digest on show is from an earlier day than today's. */
@@ -308,7 +314,9 @@ export function courseBadge(course: Course): string {
       return "In progress"
     }
     case "unsent": {
-      return course.result === "gave-up" ? "Stopped partway" : "Posting closed"
+      return course.result === "gave-up"
+        ? endingLabels["gave-up"]
+        : "Posting closed"
     }
     case "waiting": {
       return course.reached ? outcomeLabels[course.reached] : "Waiting"
@@ -332,7 +340,9 @@ export function courseSays(course: Course): string | null {
       return "Never sent, so nothing to wait for."
     }
     case "waiting": {
-      return `Sent ${formatDay(course.since)}. Waiting to hear.`
+      return course.reached === null || course.reached === "viewed"
+        ? `Sent ${formatDay(course.since)}. Waiting to hear.`
+        : `Sent ${formatDay(course.since)}. Heard back; waiting on the next step.`
     }
     case "ended": {
       return "Nothing more to wait for."
@@ -354,6 +364,7 @@ export const standLabels: Readonly<Record<Stand, string>> = {
   offer: "Offer",
   rejected: "Rejected",
   silent: "No reply",
+  applying: "In progress",
   unsent: "Not sent",
 }
 
@@ -393,11 +404,7 @@ export function pivotKey(pivot: Pivot, key: string | null): string {
       return `Week of ${formatDay(key)}`
     }
     case "month": {
-      const [y = 1970, m = 1] = key.split("-").map(Number)
-      return new Date(y, m - 1, 1).toLocaleDateString("en-US", {
-        month: "short",
-        year: "numeric",
-      })
+      return formatMonth(key)
     }
     case "company": {
       return key
@@ -408,9 +415,17 @@ export function pivotKey(pivot: Pivot, key: string | null): string {
   }
 }
 
-/** What one segment of the chart holds, said when it is tapped. */
-export const pivotSays = (group: string, stand: Stand, n: number): string =>
-  `${group} · ${standLabels[stand]}: ${counted(n, "application")}`
+/** What one bar of the chart holds, said when it is tapped. */
+export const pivotSays = (
+  group: string,
+  counts: Readonly<Record<Stand, number>>
+): string =>
+  `${group}: ${STANDS.filter((s) => counts[s] > 0)
+    .map((s) => `${standLabels[s]} ${counts[s]}`)
+    .join(" · ")}`
+
+/** The outcomes a card still offers. */
+export const whatHappenedSince = "What happened since"
 
 export const showAs = (table: boolean): string =>
   table ? "Show as chart" : "Show as table"

@@ -3,8 +3,10 @@ import {
   dayOf,
   dayWords,
   formatDay,
+  formatMonth,
   formatRelativeTime,
   formatWeekday,
+  weekOf,
 } from "@core-utils/lib/date-utils"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -128,6 +130,13 @@ describe("calendar days", () => {
   it("formats a day as the month and date, or the weekday", () => {
     expect(formatDay("2026-10-02")).toBe("Oct 2")
     expect(formatWeekday("2026-10-02")).toBe("Fri")
+    expect(formatMonth("2026-10")).toBe("Oct 2026")
+  })
+
+  it("starts a week on its Monday", () => {
+    expect(weekOf("2026-10-30")).toBe("2026-10-26")
+    expect(weekOf("2026-10-26")).toBe("2026-10-26")
+    expect(weekOf("2026-11-01")).toBe("2026-10-26")
   })
 
   it("says a date beside today as a person does", () => {

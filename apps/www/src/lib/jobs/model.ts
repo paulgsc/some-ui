@@ -894,12 +894,15 @@ export function courseOf(
   today: string,
   dayOf: (at: Date) => string
 ): Course {
-  const { progress, outcomes } = application
+  const { progress } = application
   if (progress.kind !== "done") return { kind: "applying" }
   if (progress.result !== "submitted")
     return { kind: "unsent", result: progress.result }
   const debrief = debriefOf(state, application.day, application.pick.id)
   const since = debrief ? dayOf(new Date(debrief.at)) : application.day
+  // Outcomes follow the posting, so one dated before this sending answered
+  // an earlier attempt at it.
+  const outcomes = application.outcomes.filter((o) => o.on >= since)
   const furthest = Math.max(
     -1,
     ...outcomes.map((o) => STAGES.findIndex((stage) => stage === o.event))

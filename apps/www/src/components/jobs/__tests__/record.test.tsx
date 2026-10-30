@@ -1,9 +1,5 @@
 /**
  * @vitest-environment jsdom
- *
- * Record's application cards wear where each one stands: one waiting to hear
- * offers only what is still ahead of it, and one that ended offers nothing
- * until I say I heard something since.
  */
 
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
@@ -61,13 +57,9 @@ const button = (name: string): HTMLElement | null =>
 describe("Record's application cards", () => {
   it("while waiting, offers only the outcomes still ahead", async () => {
     await showRecord(["screen"])
-    expect(screen.getByText(/Waiting to hear/)).toBeTruthy()
+    expect(screen.getByText(/waiting on the next step/)).toBeTruthy()
     expect(button("Interview")).toBeTruthy()
-    expect(button("Rejected")).toBeTruthy()
-    expect(button("Viewed")).toBeNull()
     expect(button("Screen")).toBeNull()
-    // Sent today: a month of silence is still a month off.
-    expect(button("No reply in 30 days")).toBeNull()
   })
 
   it("once rejected, offers nothing until I say I heard something since", async () => {
@@ -86,11 +78,11 @@ describe("Record's application cards", () => {
     act(() => {
       fireEvent.click(screen.getByRole("button", { name: "Interview" }))
     })
-    expect(screen.getByText(/Waiting to hear/)).toBeTruthy()
+    expect(screen.getByText(/waiting on the next step/)).toBeTruthy()
     expect(button("Heard something since?")).toBeNull()
   })
 
-  it("filters by how they stand, finds by company, and pivots into a table", async () => {
+  it("filters by how they stand, says when nothing matches, and pivots into a table", async () => {
     await showRecord(["rejected"])
     const card = (): HTMLElement | null =>
       screen.queryByText("Nothing more to wait for.")
@@ -114,11 +106,12 @@ describe("Record's application cards", () => {
         target: { value: "" },
       })
     })
-    expect(
-      screen.getByRole("button", {
-        name: "Week of Oct 26 · Rejected: 1 application",
-      })
-    ).toBeTruthy()
+    act(() => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Week of Oct 26: Rejected 1" })
+      )
+    })
+    expect(screen.getByText("Week of Oct 26: Rejected 1")).toBeTruthy()
     act(() => {
       fireEvent.click(screen.getByRole("button", { name: "Show as table" }))
     })

@@ -7,7 +7,7 @@
  * (`courseOf`). The filter's chips, the chart's colours and the pivot's columns
  * all go by that one word, in that order.
  */
-import { addDays, assertNever } from "@some-ui/core-utils"
+import { assertNever, weekOf } from "@some-ui/core-utils"
 
 import type { Application, Course } from "./model"
 
@@ -18,6 +18,7 @@ export const STANDS = [
   "offer",
   "rejected",
   "silent",
+  "applying",
   "unsent",
 ] as const
 
@@ -34,7 +35,9 @@ export type Row = {
 
 export function standOf(course: Course): Stand {
   switch (course.kind) {
-    case "applying":
+    case "applying": {
+      return "applying"
+    }
     case "unsent": {
       return "unsent"
     }
@@ -135,7 +138,6 @@ export function matching(
   )
 }
 
-/** How many rows stand each way. */
 export function countStands(
   rows: ReadonlyArray<Row>
 ): Readonly<Record<Stand, number>> {
@@ -145,6 +147,7 @@ export function countStands(
     offer: 0,
     rejected: 0,
     silent: 0,
+    applying: 0,
     unsent: 0,
   }
   for (const r of rows) counts[r.stand] += 1
@@ -164,13 +167,6 @@ export type PivotGroup = {
   key: string | null
   counts: Readonly<Record<Stand, number>>
   total: number
-}
-
-/** The Monday on or before local day `day`. */
-export function weekOf(day: string): string {
-  const [y = 1970, m = 1, d = 1] = day.split("-").map(Number)
-  const back = (new Date(y, m - 1, d).getDay() + 6) % 7
-  return addDays(day, -back)
 }
 
 function keyOf(row: Row, pivot: Pivot): string {

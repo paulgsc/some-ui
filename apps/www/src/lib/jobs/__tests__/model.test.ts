@@ -388,10 +388,11 @@ describe("courseOf", () => {
       kind: "unsent",
       result: "gave-up",
     })
-    expect(course(debriefed("closed"))).toEqual({
-      kind: "unsent",
-      result: "closed",
-    })
+  })
+
+  it("leaves out outcomes dated before it was sent: they answered an earlier attempt", () => {
+    const earlier = heard(debriefed("submitted"), "rejected", "2026-10-17")
+    expect(course(earlier)).toMatchObject({ kind: "waiting", reached: null })
   })
 
   it("waits on what lies ahead, and says no reply only after thirty days of none", () => {

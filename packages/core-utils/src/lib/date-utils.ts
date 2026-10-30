@@ -62,6 +62,19 @@ export function addDays(day: string, n: number): string {
   return dayOf(date)
 }
 
+/** The Monday on or before `day`. */
+export function weekOf(day: string): string {
+  return addDays(day, -((dateOf(day).getDay() + 6) % 7))
+}
+
+/** "Oct 2026", for a `YYYY-MM` month. */
+export function formatMonth(month: string): string {
+  return dateOf(`${month}-01`).toLocaleDateString("en-US", {
+    month: "short",
+    year: "numeric",
+  })
+}
+
 /** "Oct 2" */
 export function formatDay(day: string): string {
   return dateOf(day).toLocaleDateString("en-US", {

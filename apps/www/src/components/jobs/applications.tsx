@@ -1,15 +1,10 @@
 /**
- * Jobs › Record's applications: found by company or role, filtered by how
- * they stand, sorted, and pivoted by week, month or company into a chart of
- * how they stand (`lib/jobs/record-view`, all of it a view of the record).
- *
- * Each card wears its course (`courseOf`): one waiting to hear stands out and
- * offers only the outcomes still ahead of it; one that ended or was never
- * sent fades and offers nothing, unless I say I heard something since.
+ * Jobs › Record's applications: each card wearing its course (`courseOf`),
+ * and the list found, filtered, sorted and pivoted (`lib/jobs/record-view`).
  *
  * The filter's chips are the chart's legend, so each colour is named beside
- * a count. The colours are the dataviz reference's first five categorical
- * slots, checked for colour-blind separation on Mochi's card and on a dark
+ * a count. The colours are the dataviz reference's categorical slots, in an
+ * order checked for colour-blind separation on Mochi's card and on a dark
  * surface; three sit under 3:1 on the light card, so every segment wide
  * enough carries its count and the chart has a table view.
  */
@@ -54,6 +49,7 @@ import {
   sortLabels,
   standFilter,
   standLabels,
+  whatHappenedSince,
 } from "@/lib/jobs/words"
 import { sectionHeading } from "@/components/job-reading"
 
@@ -66,6 +62,7 @@ const SWATCH: Readonly<Record<Stand, string>> = {
   offer: "bg-[#1baf7a] dark:bg-[#199e70]",
   rejected: "bg-[#eda100] dark:bg-[#c98500]",
   silent: "bg-[#e87ba4] dark:bg-[#d55181]",
+  applying: "bg-[#6250d6] dark:bg-[#9085e9]",
   unsent: "bg-muted-foreground/45 dark:bg-muted-foreground/75",
 }
 
@@ -96,41 +93,29 @@ export const Applications = ({
         aria-label={findApplication}
         onChange={(e) => setFind(e.target.value)}
       />
-      <div
-        role="group"
-        aria-label={standFilter}
-        className="flex flex-wrap gap-1.5"
-      >
-        <Button
-          type="button"
-          size="sm"
-          className="rounded-full"
-          variant={stand === null ? "default" : "outline"}
-          aria-pressed={stand === null}
-          onClick={() => setStand(null)}
-        >
-          {allStands} {found.length}
-        </Button>
-        {STANDS.map((s) => (
-          <Button
-            key={s}
-            type="button"
-            size="sm"
-            className="gap-1.5 rounded-full"
-            variant={stand === s ? "default" : "outline"}
-            aria-pressed={stand === s}
-            disabled={counts[s] === 0 && stand !== s}
-            onClick={() => setStand(stand === s ? null : s)}
-          >
-            <span
-              aria-hidden
-              className={cn("size-2.5 rounded-full", SWATCH[s])}
-            />
-            {standLabels[s]} {counts[s]}
-          </Button>
-        ))}
-      </div>
-      {found.length > 0 && <PivotChart rows={found} selected={stand} />}
+      <Chips
+        label={standFilter}
+        options={[
+          ["all", `${allStands} ${found.length}`],
+          ...STANDS.map(
+            (s) =>
+              [
+                s,
+                <>
+                  <span
+                    aria-hidden
+                    className={cn("size-2.5 rounded-full", SWATCH[s])}
+                  />
+                  {standLabels[s]} {counts[s]}
+                </>,
+              ] as const
+          ),
+        ]}
+        pressed={(s) => s === (stand ?? "all")}
+        disabled={(s) => s !== "all" && s !== stand && counts[s] === 0}
+        onToggle={(s) => setStand(s === "all" || s === stand ? null : s)}
+      />
+      <PivotChart rows={found} selected={stand} />
       <Chips
         label={sortHeading}
         options={SORTS.map((s) => [s, sortLabels[s]] as const)}
@@ -166,6 +151,8 @@ const PivotChart = ({
   const [tapped, setTapped] = useState<string | null>(null)
   const groups = pivotRows(rows, pivot)
   const widest = Math.max(1, ...groups.map((g) => g.total))
+  const named = groups.map((g) => ({ ...g, name: pivotKey(pivot, g.key) }))
+  const shownGroup = named.find((g) => g.name === tapped)
   return (
     <div className="bg-card flex flex-col gap-3 rounded-xl border p-3">
       <div className="flex items-baseline justify-between gap-2">
@@ -192,32 +179,34 @@ const PivotChart = ({
       {table ? (
         <PivotTable pivot={pivot} groups={groups} />
       ) : (
-        <ul className="flex flex-col gap-2">
-          {groups.map((g) => {
-            const name = pivotKey(pivot, g.key)
+        <ul className="flex flex-col gap-1">
+          {named.map((g) => {
+            const says = pivotSays(g.name, g.counts)
             return (
-              <li key={name} className="flex flex-col gap-1">
-                <div className="flex items-baseline justify-between gap-2 text-xs">
-                  <span className="truncate">{name}</span>
-                  <span className="text-muted-foreground tabular-nums">
-                    {g.total}
-                  </span>
-                </div>
-                <div
-                  className="flex h-6 gap-0.5"
-                  style={{ width: `${(g.total / widest) * 100}%` }}
+              <li key={g.name}>
+                <button
+                  type="button"
+                  aria-label={says}
+                  aria-pressed={tapped === g.name}
+                  onClick={() => setTapped(tapped === g.name ? null : g.name)}
+                  className="hover:bg-muted/60 aria-pressed:bg-muted/60 flex w-full flex-col gap-1 rounded-md p-1 text-left"
                 >
-                  {STANDS.filter((s) => g.counts[s] > 0).map((s) => {
-                    const says = pivotSays(name, s, g.counts[s])
-                    return (
-                      <button
+                  <span className="flex w-full items-baseline justify-between gap-2 text-xs">
+                    <span className="truncate">{g.name}</span>
+                    <span className="text-muted-foreground tabular-nums">
+                      {g.total}
+                    </span>
+                  </span>
+                  <span
+                    aria-hidden
+                    className="flex h-6 gap-0.5"
+                    style={{ width: `${(g.total / widest) * 100}%` }}
+                  >
+                    {STANDS.filter((s) => g.counts[s] > 0).map((s) => (
+                      <span
                         key={s}
-                        type="button"
-                        aria-label={says}
-                        title={says}
-                        onClick={() => setTapped(says)}
                         className={cn(
-                          "flex min-w-1 items-center justify-center rounded-[4px] text-[11px] font-semibold text-black/75 tabular-nums",
+                          "flex min-w-1 items-center justify-center rounded-[4px] text-[11px] font-semibold text-black tabular-nums",
                           SWATCH[s],
                           selected !== null && selected !== s && "opacity-30"
                         )}
@@ -226,20 +215,20 @@ const PivotChart = ({
                         {g.counts[s] / widest >= LABEL_SHARE
                           ? g.counts[s]
                           : null}
-                      </button>
-                    )
-                  })}
-                </div>
+                      </span>
+                    ))}
+                  </span>
+                </button>
               </li>
             )
           })}
         </ul>
       )}
-      {tapped && !table && (
-        <p className="text-muted-foreground text-xs" aria-live="polite">
-          {tapped}
-        </p>
-      )}
+      <p className="text-muted-foreground min-h-4 text-xs" aria-live="polite">
+        {shownGroup && !table
+          ? pivotSays(shownGroup.name, shownGroup.counts)
+          : null}
+      </p>
     </div>
   )
 }
@@ -360,7 +349,7 @@ const ApplicationCard = ({
       {offered.length > 0 && (
         <div
           role="group"
-          aria-label="What happened since"
+          aria-label={whatHappenedSince}
           className="flex flex-wrap gap-1.5"
         >
           {offered.map((event) => (
