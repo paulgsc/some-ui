@@ -430,6 +430,7 @@ describe("courseOf", () => {
     const rejected = heard(screened, "rejected", "2026-10-30")
     expect(course(rejected)).toEqual({
       kind: "ended",
+      since: DAY,
       by: "rejected",
       on: "2026-10-30",
       reached: "screen",

@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest"
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
 import type { Course, Standing } from "@/lib/jobs/model"
 import { NO_NOTICE } from "@/lib/jobs/notice"
+import { PIVOTS } from "@/lib/jobs/record-view"
 import * as words from "@/lib/jobs/words"
 
 const DAY = "2026-10-18"
@@ -22,7 +23,14 @@ const COURSES: ReadonlyArray<Course> = [
   { kind: "unsent", result: "closed" },
   { kind: "waiting", since: DAY, reached: null, next: [] },
   { kind: "waiting", since: DAY, reached: "screen", next: [] },
-  { kind: "ended", by: "rejected", on: DAY, reached: null, next: [] },
+  {
+    kind: "ended",
+    since: DAY,
+    by: "rejected",
+    on: DAY,
+    reached: null,
+    next: [],
+  },
 ]
 
 const SAID: Readonly<Record<keyof typeof words, ReadonlyArray<string>>> = {
@@ -121,6 +129,21 @@ const SAID: Readonly<Record<keyof typeof words, ReadonlyArray<string>>> = {
   courseBadge: COURSES.map(words.courseBadge),
   courseSays: COURSES.flatMap((c) => words.courseSays(c) ?? []),
   heardSince: [true, false].map(words.heardSince),
+  standLabels: Object.values(words.standLabels),
+  allStands: [words.allStands],
+  standFilter: [words.standFilter],
+  sortHeading: [words.sortHeading],
+  sortLabels: Object.values(words.sortLabels),
+  pivotHeading: [words.pivotHeading],
+  pivotLabels: Object.values(words.pivotLabels),
+  pivotKey: PIVOTS.flatMap((p) => [
+    words.pivotKey(p, null),
+    words.pivotKey(p, p === "month" ? "2026-10" : DAY),
+  ]),
+  pivotSays: [words.pivotSays("Oct 26", "silent", 2)],
+  showAs: [true, false].map(words.showAs),
+  findApplication: [words.findApplication],
+  noneMatch: [words.noneMatch],
   cantOpenLink: [words.cantOpenLink],
   postingTextLabel: [true, false].map(words.postingTextLabel),
   postingTextHint: [words.postingTextHint],

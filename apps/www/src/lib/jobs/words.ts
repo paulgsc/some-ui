@@ -19,6 +19,7 @@ import type {
   Standing,
 } from "./model"
 import type { NoticeState } from "./notice"
+import type { Pivot, Sort, Stand } from "./record-view"
 import type { NoticeView } from "./runtime"
 
 /** The digest on show is from an earlier day than today's. */
@@ -345,6 +346,78 @@ export function courseSays(course: Course): string | null {
 /** Opens, or closes, what an ended application can still record. */
 export const heardSince = (open: boolean): string =>
   open ? "Leave it as it is" : "Heard something since?"
+
+/** How an application stands, as Record's filter, chart and table name it. */
+export const standLabels: Readonly<Record<Stand, string>> = {
+  waiting: "Waiting",
+  heard: "Heard back",
+  offer: "Offer",
+  rejected: "Rejected",
+  silent: "No reply",
+  unsent: "Not sent",
+}
+
+/** The filter chip that shows every application. */
+export const allStands = "All"
+
+export const standFilter = "Show"
+
+export const sortHeading = "Sort"
+
+export const sortLabels: Readonly<Record<Sort, string>> = {
+  newest: "Newest",
+  oldest: "Oldest",
+  waiting: "Waiting longest",
+  company: "Company",
+}
+
+export const pivotHeading = "How they stand"
+
+export const pivotLabels: Readonly<Record<Pivot, string>> = {
+  week: "By week",
+  month: "By month",
+  company: "By company",
+}
+
+/** A pivot group's name: a week by its Monday, a month, a company, or the rest. */
+export function pivotKey(pivot: Pivot, key: string | null): string {
+  if (key === null) {
+    return pivot === "company"
+      ? "Other companies"
+      : pivot === "week"
+        ? "Earlier weeks"
+        : "Earlier months"
+  }
+  switch (pivot) {
+    case "week": {
+      return `Week of ${formatDay(key)}`
+    }
+    case "month": {
+      const [y = 1970, m = 1] = key.split("-").map(Number)
+      return new Date(y, m - 1, 1).toLocaleDateString("en-US", {
+        month: "short",
+        year: "numeric",
+      })
+    }
+    case "company": {
+      return key
+    }
+    default: {
+      return assertNever(pivot)
+    }
+  }
+}
+
+/** What one segment of the chart holds, said when it is tapped. */
+export const pivotSays = (group: string, stand: Stand, n: number): string =>
+  `${group} · ${standLabels[stand]}: ${counted(n, "application")}`
+
+export const showAs = (table: boolean): string =>
+  table ? "Show as chart" : "Show as table"
+
+export const findApplication = "Find a company or role"
+
+export const noneMatch = "No application matches."
 
 /** Under a scout's link whose host the morning run can't open (`linkReach`). */
 export const cantOpenLink =

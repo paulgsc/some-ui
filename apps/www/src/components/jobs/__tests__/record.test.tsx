@@ -89,4 +89,41 @@ describe("Record's application cards", () => {
     expect(screen.getByText(/Waiting to hear/)).toBeTruthy()
     expect(button("Heard something since?")).toBeNull()
   })
+
+  it("filters by how they stand, finds by company, and pivots into a table", async () => {
+    await showRecord(["rejected"])
+    const card = (): HTMLElement | null =>
+      screen.queryByText("Nothing more to wait for.")
+    const chip = (name: RegExp): HTMLElement =>
+      screen.getByRole("button", { name })
+    expect(chip(/^Waiting 0$/).hasAttribute("disabled")).toBe(true)
+    act(() => {
+      fireEvent.click(chip(/^Rejected 1$/))
+    })
+    expect(chip(/^Rejected 1$/).getAttribute("aria-pressed")).toBe("true")
+    expect(card()).toBeTruthy()
+    act(() => {
+      fireEvent.change(screen.getByRole("searchbox"), {
+        target: { value: "no such company" },
+      })
+    })
+    expect(card()).toBeNull()
+    expect(screen.getByText("No application matches.")).toBeTruthy()
+    act(() => {
+      fireEvent.change(screen.getByRole("searchbox"), {
+        target: { value: "" },
+      })
+    })
+    expect(
+      screen.getByRole("button", {
+        name: "Week of Oct 26 · Rejected: 1 application",
+      })
+    ).toBeTruthy()
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Show as table" }))
+    })
+    expect(
+      screen.getByRole("rowheader", { name: "Week of Oct 26" })
+    ).toBeTruthy()
+  })
 })

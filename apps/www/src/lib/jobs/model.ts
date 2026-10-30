@@ -849,19 +849,19 @@ const STAGES = ["viewed", "reply", "screen", "interview", "offer"] as const
 /** An outcome after which nothing more is expected of an application. */
 const ENDINGS = ["offer", "rejected", "no-reply-30d"] as const
 
-export type Ending = (typeof ENDINGS)[number]
+type Ending = (typeof ENDINGS)[number]
 
 /** Days an application waits with no reply before it can be said to have had none. */
-export const NO_REPLY_DAYS = 30
+const NO_REPLY_DAYS = 30
 
 /**
  * Where an application stands, and what can still be said of it:
  * - `applying`: not debriefed yet, so nothing has come of it;
  * - `unsent`: debriefed as given up or closed, so nothing can come of it;
- * - `waiting`: sent, its furthest stage so far (null for none), and the
- *   outcomes still ahead of it;
- * - `ended`: its newest outcome is an ending, and on what day. `next` is
- *   what a later outcome could still say (a stage past `reached`, or a
+ * - `waiting`: sent on `since`, its furthest stage so far (null for none),
+ *   and the outcomes still ahead of it;
+ * - `ended`: sent on `since`, its newest outcome an ending, on `on`. `next`
+ *   is what a later outcome could still say (a stage past `reached`, or a
  *   rejection after the silence), offered only when asked, since the log
  *   keeps the ending and the newest outcome is the one that stands.
  */
@@ -876,6 +876,7 @@ export type Course =
     }
   | {
       kind: "ended"
+      since: string
       by: Ending
       on: string
       reached: Outcome | null
@@ -910,6 +911,7 @@ export function courseOf(
     const by = newest.event
     return {
       kind: "ended",
+      since,
       by,
       on: newest.on,
       reached,
