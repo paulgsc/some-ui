@@ -61,7 +61,9 @@ import {
   SOUNDBITE_BITS_PER_SECOND,
   SOUNDBITE_MIN_MS,
 } from "@soundbites/lib/policy"
+import { isProjectFile, readProjectFile } from "@soundbites/lib/project/file"
 import { finishOf, youtubeLink } from "@soundbites/lib/project/finish"
+import { mergeIn } from "@soundbites/lib/project/merge"
 import type { Project, ProjectTake } from "@soundbites/lib/project/model"
 import {
   latest,
@@ -185,6 +187,8 @@ type Pending = { readonly project: string } & (
       readonly at: string
     }
   | { readonly kind: "ready"; readonly rev: number; readonly at: string }
+  /** A project file back from Claude (ST8), merged into the copy kept. */
+  | { readonly kind: "merge"; readonly file: Project }
   | {
       readonly kind: "release"
       readonly rev: number
@@ -548,6 +552,11 @@ function applied(project: Project | null, pending: Pending): Project | null {
         at: pending.at,
       })
     }
+    case "merge": {
+      if (project === null) return null
+      const merged = mergeIn(project, pending.file)
+      return merged.kind === "merged" ? merged.project : null
+    }
     case "release": {
       if (project === null) return null
       return model(project, {
@@ -561,6 +570,27 @@ function applied(project: Project | null, pending: Pending): Project | null {
       return assertNever(pending)
     }
   }
+}
+
+/** A project file picked: Claude's version of a video kept here, merged (ST8). */
+function pickedProject(state: StudioState, text: string): Step {
+  const read = readProjectFile(text)
+  if (!read.ok) return stay({ ...state, primerProblem: WORDS.merge.unreadable })
+  const file = read.value
+  const kept = projectsOf(state).find((each) => each.id === file.id)
+  if (kept === undefined)
+    return stay({ ...state, primerProblem: WORDS.merge.notHere })
+  const merged = mergeIn(kept, file)
+  if (merged.kind !== "merged")
+    return stay({
+      ...state,
+      primerProblem: null,
+      notice: WORDS.merge[merged.kind],
+    })
+  return enqueue(
+    { ...state, current: kept.id, primerProblem: null, choosing: null },
+    { kind: "merge", project: kept.id, file }
+  )
 }
 
 /**
@@ -640,6 +670,9 @@ function landedNotice(
     case "release": {
       return WORDS.finish.released
     }
+    case "merge": {
+      return WORDS.merge.merged(latest(pending.file).message)
+    }
     default: {
       return assertNever(pending)
     }
@@ -680,6 +713,10 @@ function unchangedNotice(state: StudioState, pending: Pending): string {
     case "ready":
     case "release": {
       return WORDS.notice.notSaved
+    }
+    case "merge": {
+      // It merged when picked: the phone made a version in between.
+      return WORDS.merge.moved
     }
     default: {
       return assertNever(pending)
@@ -1109,6 +1146,7 @@ export function step(state: StudioState, event: StudioEvent): Step {
 
     case "primerRead": {
       if (event.seq !== state.pickSeq) return stay(state)
+      if (isProjectFile(event.text)) return pickedProject(state, event.text)
       const reading = readPrimer(event.text)
       if (!reading.ok) return stay({ ...state, primerProblem: reading.problem })
       if (project === null)

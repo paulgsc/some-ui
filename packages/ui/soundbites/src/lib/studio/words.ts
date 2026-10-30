@@ -78,8 +78,9 @@ export const STUDIO_WORDS = {
     emptyLine:
       "Open a primer Claude saved to Drive, and its scenes are ready to record.",
     openPrimer: "Open a primer",
-    openNewer: "Open a newer primer",
-    primerHint: "A primer.json in Build Journal › voice › primers.",
+    openNewer: "Open a primer or Claude's version",
+    primerHint:
+      "A primer.json in Build Journal › voice › primers, or the project.json Claude sent back.",
     startHere: "Start here",
     others: "Other videos with takes on the phone",
     onPhone: (n: number): string =>
@@ -231,6 +232,16 @@ export const STUDIO_WORDS = {
       `${LOOK_WORDS[look].name} look, ${VOICE_WORDS[voice].name} voice`,
     revised: (look: Look, voice: Voice): string =>
       `Shape: ${LOOK_WORDS[look].name} look, ${VOICE_WORDS[voice].name} voice`,
+  },
+
+  /** A version back from Claude, opened as a primer is (ST8). */
+  merge: {
+    merged: (message: string): string => `Claude's version is in: ${message}`,
+    same: "This phone already has everything in that file.",
+    moved:
+      "This phone made a version after that file was shared. Share the video with Claude again, and ask for the round to be redone on it.",
+    notHere: "That file is for a video that isn't on this phone.",
+    unreadable: "That file can't be opened as a Studio video.",
   },
 
   /** Finish (ST7): ready for YouTube, or the one thing missing. */

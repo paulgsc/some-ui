@@ -140,6 +140,20 @@ function shapeProblems(project: Project): Array<string> {
   return problems
 }
 
+/** Whether `source` says it is a project file, before it is read whole. */
+export function isProjectFile(source: string): boolean {
+  try {
+    const raw: unknown = JSON.parse(source)
+    return (
+      typeof raw === "object" &&
+      raw !== null &&
+      Reflect.get(raw, "schema") === PROJECT_SCHEMA
+    )
+  } catch {
+    return false
+  }
+}
+
 /** The project in `source`, or every reason it can't be resumed from. */
 export function readProjectFile(source: string): Parsed<Project> {
   let raw: unknown

@@ -337,7 +337,8 @@ const SETTLES: Readonly<Record<NoteStatus, ReadonlyArray<NoteStatus>>> = {
   confirmed: [],
 }
 
-function reaches(from: NoteStatus, to: NoteStatus): boolean {
+/** Whether a note at `from` may be at `to` later: the same, or settled on from it. */
+export function reaches(from: NoteStatus, to: NoteStatus): boolean {
   return from === to || SETTLES[from].some((next) => reaches(next, to))
 }
 

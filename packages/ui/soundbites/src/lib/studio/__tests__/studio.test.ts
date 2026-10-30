@@ -1196,3 +1196,60 @@ describe("Finish", () => {
     })
   })
 })
+
+/** ST8: Claude's version comes back as a file, picked as a primer is, and adds. */
+describe("a version back from Claude", () => {
+  const pick = (runtime: StudioRuntime, project: Project): void =>
+    runtime.dispatch({
+      type: "primerPicked",
+      file: new Blob([projectFile(project)], { type: "application/json" }),
+    })
+
+  it("adds Claude's version to the video on the phone, and says so", async () => {
+    const runtime = await opened()
+    const kept = projectIn(runtime)
+    const back = run(
+      { project: kept, taking: null, closing: null },
+      {
+        type: "revised",
+        author: "claude",
+        message: "Scene 2 slower",
+        at: AT,
+        cutList: latest(kept).cutList,
+      }
+    ).project
+    pick(runtime, back)
+    await until(
+      runtime,
+      (state) =>
+        settledWrites(state) &&
+        state.notice === STUDIO_WORDS.merge.merged("Scene 2 slower")
+    )
+    expect(latest(projectIn(runtime)).message).toBe("Scene 2 slower")
+    expect(projectIn(runtime).revisions).toHaveLength(kept.revisions.length + 1)
+  })
+
+  it("adds nothing from a file shared before a version made here", async () => {
+    const runtime = await opened()
+    const kept = projectIn(runtime)
+    runtime.dispatch({ type: "shapeChosen" })
+    runtime.dispatch({ type: "lookPicked", look: "lively" })
+    runtime.dispatch({ type: "shapeNext" })
+    runtime.dispatch({ type: "shapeKept" })
+    await until(runtime, settledWrites)
+    const back = run(
+      { project: kept, taking: null, closing: null },
+      {
+        type: "revised",
+        author: "claude",
+        message: "Claude's cut",
+        at: AT,
+        cutList: latest(kept).cutList,
+      }
+    ).project
+    const revisions = projectIn(runtime).revisions.length
+    pick(runtime, back)
+    await until(runtime, (state) => state.notice === STUDIO_WORDS.merge.moved)
+    expect(projectIn(runtime).revisions).toHaveLength(revisions)
+  })
+})
