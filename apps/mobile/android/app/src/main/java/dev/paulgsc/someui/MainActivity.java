@@ -54,6 +54,22 @@ public class MainActivity extends BridgeActivity {
     }
 
     /**
+     * The page each launcher shortcut opens (res/xml/shortcuts.xml), by the
+     * fixed action its intent names. www's SHORTCUT_ROOTS (apps/www/src/lib
+     * /wings/entry.ts) hold the same table, and a www test reads these lines
+     * to check the two agree, so keep each case on one line. Any app can
+     * start .MainActivity with one of these actions, which opens no more
+     * than the page a long-press does. Null for any other action.
+     */
+    static String shortcutRoot(String action) {
+        if (action == null) return null;
+        switch (action) {
+            case "dev.paulgsc.someui.NEW_IDEA": return "/journal/idea";
+            default: return null;
+        }
+    }
+
+    /**
      * Where back leaves the app: the root of the wing the app was last
      * entered through, or the foyer if it was entered through the plain
      * icon. Set before onCreate runs, because Capacitor delivers the cold
@@ -75,6 +91,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(VoiceDataPlugin.class);
         registerPlugin(NativeLogPlugin.class);
         registerPlugin(HomeCredentialPlugin.class);
+        registerPlugin(ListenPlugin.class);
         // Before the bridge is built, so no page can finish loading unseen.
         bridgeBuilder.addWebViewListener(new WebViewListener() {
             @Override
@@ -133,9 +150,15 @@ public class MainActivity extends BridgeActivity {
 
         String alias = simpleName(intent.getComponent());
         String root = alias == null ? null : wingRoot(alias);
+        String shortcut = shortcutRoot(intent.getAction());
         String id;
         if (root != null) {
             id = alias.substring("Wing".length()).toLowerCase(Locale.ROOT);
+        } else if (shortcut != null) {
+            // A shortcut opens its page whether or not the app is running:
+            // it was asked for by name, as a wing's icon is.
+            root = shortcut;
+            id = "shortcut " + root;
         } else if (pageLoaded) {
             // The plain icon on a running app resumes where it was: the
             // Android convention, and it never yanks a session or a

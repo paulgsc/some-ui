@@ -26,6 +26,10 @@ own rooms and settings, and nothing of another wing's on the screen.
   wing, below), which skips the foyer. Drag the icons into one home-screen
   folder for one tap per wing; Android lets no app make the folder itself,
   and a widget cannot go in one.
+- A long-press on the app's icon or Studio's offers **New idea**, a launcher
+  shortcut (`res/xml/shortcuts.xml`) straight to Studio's idea capture
+  (`/journal/idea`, below), mapped from a fixed action as icons are
+  (`MainActivity.shortcutRoot`).
 
 The wings:
 
@@ -997,6 +1001,30 @@ offline, in any language whose voice data is installed (#1625):
 - **CI** checks the plugin reached the bundle (`mobile-apk.yml`), since it
   arrives through a dynamic import behind `VITE_DEVICE_BACKEND`. It cannot
   hear anything: whether a lesson actually speaks is checked on the phone.
+
+## Hearing an idea: speech to text, offline
+
+Studio's **New idea** (`/journal/idea`, STUDIO ST18) asks what a video is,
+one question at a time, and shows the words as they are spoken. It hears
+them through the app's own plugin, `ListenPlugin.java` (registered in
+`MainActivity`, reached from www's `src/lib/device-listen` through
+`callForeign`):
+
+- **Offline, and no sound kept.** It asks Android's speech recognizer for
+  on-device recognition (`createOnDeviceSpeechRecognizer` where the phone
+  has it, and `EXTRA_PREFER_OFFLINE` always), with partial results. The
+  recognizer takes the microphone and hands back text; nothing writes a
+  file. Only the words the owner confirms are kept, as text in the page's
+  storage (`some-ui:studio:ideas`).
+- **Typed when it can't listen.** A phone without the offline English pack,
+  or with the microphone refused, answers `UNAVAILABLE`, and the question
+  takes typed words instead. "Type instead" is always there.
+- **Manifest:** a `<queries>` entry for `android.speech.RecognitionService`,
+  without which Android 11+ hides the recognizer from the app. The
+  microphone is the `RECORD_AUDIO` the soundbites already declare; the
+  plugin asks for it on the first tap to say an idea.
+- **Nothing on a PR runs it.** Whether the phone actually hears is checked on
+  the phone; www's tests cover what each of the plugin's answers becomes.
 
 ## Not done yet
 

@@ -16,9 +16,21 @@
          what the WebView's audio capture needs to route the microphone.
          The Build Journal's voice takes (www routes/_dashboard/_apk/journal.tsx)
          and voice reflections (www src/lib/reflection-voice) record through
-         the same path. -->
+         the same path. Studio's idea capture (ListenPlugin) asks for
+         RECORD_AUDIO itself. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+    <!-- Studio's idea capture (www src/lib/device-listen, ListenPlugin):
+         from Android 11, an app sees the phone's speech recognizer only if
+         it says it looks for one. Without this, SpeechRecognizer
+         .isRecognitionAvailable answers false and every question takes
+         typed words. -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
 
     <!-- androidx.biometric (a dependency of @capacitor-community/sqlite)
          declares these two, but the plugin reaches its biometric code only
@@ -71,6 +83,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+
         </activity>
 
         <!-- Wings: one launcher icon per wing, each opening the app straight
@@ -118,6 +134,10 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity-alias>
 
         <activity-alias
