@@ -32,7 +32,8 @@
  *   loses none: it is filed when the close lands, or said lost if it fails.
  * - **Every video holding takes on the phone can be reached.** Start lists
  *   the others and opens any of them, so each one's takes can be shared and
- *   let go.
+ *   let go. An old Journal episode Studio can't move is no video: its notice
+ *   says the room it takes, each time Studio opens.
  * - **One activity at a time.** Playing, opening the microphone, recording
  *   and keeping a take are arms of one union.
  * - **A scene runs its take and a breath.** Keeping a take writes, in the
@@ -902,7 +903,7 @@ export function step(state: StudioState, event: StudioEvent): Step {
                 carried.gone
               )
             : carried.kind === "stays"
-              ? WORDS.notice.carryStays
+              ? WORDS.notice.carryStays(carried.bytes)
               : carried.kind === "unread"
                 ? WORDS.notice.carryUnread
                 : carried.cleared > 0

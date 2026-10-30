@@ -8,8 +8,10 @@
  *
  * The journal's own stores (`plan`, `takes`, `audio`) hold an episode kept
  * before Studio's projects; `carryJournal` (`project/store.ts`) moves it into
- * a project the first time Studio opens and lets go of what it couldn't read
- * (owner, 2026-10-30, #2251), and nothing writes them after.
+ * a project the first time Studio opens and lets go of what it doesn't move
+ * (owner, 2026-10-30, #2251), and nothing writes them after. An episode it
+ * reads but can't make a project of stays, counted under
+ * `JOURNAL_TAKES_MAX_BYTES` with the projects' takes.
  */
 import { connection } from "@some-ui/voice-capture"
 import { askToKeep } from "@soundbites/lib/store"

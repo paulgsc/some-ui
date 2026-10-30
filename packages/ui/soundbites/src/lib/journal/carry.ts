@@ -7,8 +7,10 @@
  * take of its scene, fitted to it in revision 2. `planCarry` decides, from
  * the rows one transaction read, what moves and what stays; `carryJournal`
  * (`project/store.ts`) carries that plan out in the same transaction, so the
- * episode is in exactly one place at every moment. What the plan leaves,
- * the store lets go in that transaction (owner, 2026-10-30, #2251).
+ * episode is in exactly one place at every moment. What a carry leaves, or
+ * an episode whose plan can't be read, the store lets go in that
+ * transaction (`letGo`; owner, 2026-10-30, #2251); an episode that `stays`
+ * is left untouched.
  */
 import { assertNever } from "@some-ui/core-utils"
 import { projectAudioKey } from "@soundbites/lib/journal/db"

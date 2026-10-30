@@ -45,7 +45,7 @@ export type Friction = {
  * What carrying the Journal tab's episode did: no episode to carry; carried,
  * with how many takes came without a recording (gone before the carry); an
  * episode whose plan it couldn't read; or one it can read but not carry,
- * left untouched. All but that last say how many rows of the Journal tab's
+ * left untouched, with the room its recordings take. All but that last say how many rows of the Journal tab's
  * stores it didn't use and let go (`cleared`), emptying them (owner,
  * 2026-10-30, #2251).
  */
@@ -58,7 +58,8 @@ export type Carried =
       readonly gone: number
     }
   | { readonly kind: "unread"; readonly cleared: number }
-  | { readonly kind: "stays" }
+  /** Its recordings' bytes still count under the takes cap. */
+  | { readonly kind: "stays"; readonly bytes: number }
 
 /**
  * An operation on a project as the store holds it (null when it isn't kept
@@ -309,7 +310,7 @@ export function indexedDbProjectStore(): ProjectStore {
             at
           )
           if (plan.kind === "stays") {
-            carried = plan
+            carried = { kind: "stays", bytes: await blobBytes(audio) }
             return false
           }
           const cleared = letGo(plan, held)
