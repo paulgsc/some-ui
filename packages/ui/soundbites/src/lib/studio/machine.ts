@@ -64,6 +64,7 @@ import {
 } from "@soundbites/lib/policy"
 import { isProjectFile, readProjectFile } from "@soundbites/lib/project/file"
 import { finishOf, youtubeLink } from "@soundbites/lib/project/finish"
+import type { Clash } from "@soundbites/lib/project/merge"
 import { mergeIn } from "@soundbites/lib/project/merge"
 import type { Note, Project, ProjectTake } from "@soundbites/lib/project/model"
 import {
@@ -642,6 +643,20 @@ function noteIdAt(at: string): string {
   return `n-${at.replace(/[^0-9A-Za-z]/g, "")}`
 }
 
+/** Where a merge kept this phone's value (#2317), in the owner's terms. */
+function keptHere(
+  project: Project,
+  clashes: ReadonlyArray<Clash>
+): { readonly scenes: ReadonlyArray<number>; readonly plans: boolean } {
+  const { shots } = latest(project).cutList
+  // A scene is its place in the video, from 1.
+  const scenes = clashes.flatMap((clash) => {
+    const index = shots.findIndex((shot) => shot.id === clash.shot)
+    return index < 0 ? [] : [index + 1]
+  })
+  return { scenes, plans: clashes.some((clash) => clash.shot === null) }
+}
+
 /** A project file picked: Claude's version of a video kept here, merged (ST8). */
 function pickedProject(state: StudioState, text: string): Step {
   const read = readProjectFile(text)
@@ -651,6 +666,12 @@ function pickedProject(state: StudioState, text: string): Step {
   if (kept === undefined)
     return stay({ ...state, primerProblem: WORDS.merge.notHere })
   const merged = mergeIn(kept, file)
+  if (merged.kind === "kept")
+    return stay({
+      ...state,
+      primerProblem: null,
+      notice: WORDS.merge.kept(keptHere(kept, merged.clashes)),
+    })
   if (merged.kind !== "merged")
     return stay({
       ...state,
@@ -741,7 +762,15 @@ function landedNotice(
       return WORDS.finish.released
     }
     case "merge": {
-      return WORDS.merge.merged(latest(pending.file).message)
+      const merged =
+        written.before === null ? null : mergeIn(written.before, pending.file)
+      const clashes = merged?.kind === "merged" ? merged.clashes : []
+      return WORDS.merge.merged(
+        latest(pending.file).message,
+        written.project === null
+          ? undefined
+          : keptHere(written.project, clashes)
+      )
     }
     case "note": {
       return WORDS.watch.noted

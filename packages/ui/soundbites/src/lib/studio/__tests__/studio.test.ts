@@ -11,7 +11,7 @@ import type {
 import { run, started, take } from "@soundbites/lib/project/__tests__/fixture"
 import { projectFile, readProjectFile } from "@soundbites/lib/project/file"
 import { finishOf } from "@soundbites/lib/project/finish"
-import type { Project } from "@soundbites/lib/project/model"
+import type { CutListShape, Project } from "@soundbites/lib/project/model"
 import { latest, newProject, primerAt } from "@soundbites/lib/project/model"
 import { cutListOf, TAIL_MS } from "@soundbites/lib/project/script"
 import { projectOf } from "@soundbites/lib/studio/machine"
@@ -1252,28 +1252,67 @@ describe("a version back from Claude", () => {
     expect(projectIn(runtime).revisions).toHaveLength(kept.revisions.length + 1)
   })
 
-  it("adds nothing from a file shared before a version made here", async () => {
-    const runtime = await opened()
-    const kept = projectIn(runtime)
+  /** A Shape kept here after `kept` was shared: the look is now Lively. */
+  async function shapedAfterSharing(runtime: StudioRuntime): Promise<void> {
     runtime.dispatch({ type: "shapeChosen" })
     runtime.dispatch({ type: "lookPicked", look: "lively" })
     runtime.dispatch({ type: "shapeNext" })
     runtime.dispatch({ type: "shapeKept" })
     await until(runtime, settledWrites)
-    const back = run(
+  }
+
+  const claudes = (kept: Project, cutList: CutListShape): Project =>
+    run(
       { project: kept, taking: null, closing: null },
       {
         type: "revised",
         author: "claude",
         message: "Claude's cut",
         at: AT,
-        cutList: latest(kept).cutList,
+        cutList,
       }
     ).project
+
+  it("comes in after a version made here, numbered after it (#2317)", async () => {
+    const runtime = await opened()
+    const kept = projectIn(runtime)
+    await shapedAfterSharing(runtime)
     const revisions = projectIn(runtime).revisions.length
-    pick(runtime, back)
-    await until(runtime, (state) => state.notice === STUDIO_WORDS.merge.moved)
+    const { cutList } = latest(kept)
+    const [first, ...rest] = cutList.shots
+    if (first === undefined) throw new Error("a video has a scene")
+    pick(
+      runtime,
+      claudes(kept, {
+        ...cutList,
+        shots: [{ ...first, overrides: { transitionIn: "cut" } }, ...rest],
+      })
+    )
+    await until(
+      runtime,
+      (state) =>
+        settledWrites(state) &&
+        state.notice === STUDIO_WORDS.merge.merged("Claude's cut")
+    )
+    const now = latest(projectIn(runtime))
+    expect(now.rev).toBe(revisions + 1)
+    expect(now.cutList.look).toBe("lively")
+    expect(now.cutList.shots[0]?.overrides).toEqual({ transitionIn: "cut" })
+  })
+
+  it("keeps what this phone chose where Claude changed it too, and says so", async () => {
+    const runtime = await opened()
+    const kept = projectIn(runtime)
+    await shapedAfterSharing(runtime)
+    pick(runtime, claudes(kept, { ...latest(kept).cutList, look: "plain" }))
+    const revisions = projectIn(runtime).revisions.length
+    await until(
+      runtime,
+      (state) =>
+        state.notice === STUDIO_WORDS.merge.kept({ scenes: [], plans: true })
+    )
     expect(projectIn(runtime).revisions).toHaveLength(revisions)
+    expect(latest(projectIn(runtime)).cutList.look).toBe("lively")
   })
 })
 

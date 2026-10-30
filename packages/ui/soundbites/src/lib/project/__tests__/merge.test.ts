@@ -1,6 +1,7 @@
 /** @vitest-environment node */
 import { mergeIn } from "@soundbites/lib/project/merge"
 import type { Project, ProjectEvent } from "@soundbites/lib/project/model"
+import { latest } from "@soundbites/lib/project/model"
 import { describe, expect, it } from "vitest"
 
 import { AT, run, shape, shot, started, take } from "./fixture"
@@ -66,16 +67,137 @@ describe("a version back from Claude", () => {
     expect(merged.project.sittings).toEqual(kept.sittings)
   })
 
-  it("is refused when the phone made a version after the file was shared", () => {
-    const kept = shared()
-    const here = run(
-      { project: kept, taking: null, closing: null },
-      revised("Shape: calm")
+  /** A version made on `project`: `shots`, by `author`, saying `message`. */
+  const version = (
+    project: Project,
+    author: "owner" | "claude",
+    message: string,
+    shots: ReadonlyArray<ReturnType<typeof shot>>
+  ): Project =>
+    run(
+      { project, taking: null, closing: null },
+      { type: "revised", author, message, at: AT, cutList: shape(shots) }
     ).project
+
+  /** The phone fitted scene `id` to a take after sharing. */
+  const fitted = (kept: Project, id: string): Project =>
+    version(
+      kept,
+      "owner",
+      `Take on ${id}`,
+      ["a", "b", "c"].map((each) => shot(each, each === id ? 2_500 : 2_000))
+    )
+
+  it("comes in after a version made here, numbered after it (#2317)", () => {
+    const kept = shared()
+    const here = fitted(kept, "a")
+    const back = version(kept, "claude", "Scene 2 slower", [
+      shot("a"),
+      shot("b", 3_000),
+      shot("c"),
+    ])
+    const merged = mergeIn(here, back)
+    if (merged.kind !== "merged") throw new Error(merged.kind)
+    expect(merged.clashes).toEqual([])
+    expect(
+      merged.project.revisions.map((each) => [each.rev, each.message])
+    ).toEqual([
+      [1, "First cut"],
+      [2, "Take on a"],
+      [3, "Scene 2 slower"],
+    ])
+    expect(
+      latest(merged.project).cutList.shots.map((each) => each.durationMs)
+    ).toEqual([2_500, 3_000, 2_000])
+  })
+
+  it("keeps the phone's scene where both changed it, names it, and leaves its note open", () => {
+    const kept = shared()
+    const here = fitted(kept, "b")
     const back = run(
       { project: kept, taking: null, closing: null },
-      revised("Claude's cut")
+      { type: "noteSettled", id: "n1", status: "applied" }
     ).project
+    const merged = mergeIn(
+      here,
+      version(back, "claude", "Scene 2 slower (n1)", [
+        shot("a"),
+        shot("b", 3_000),
+        shot("c", 1_500),
+      ])
+    )
+    if (merged.kind !== "merged") throw new Error(merged.kind)
+    expect(merged.clashes).toEqual([{ shot: "b" }])
+    expect(
+      latest(merged.project).cutList.shots.map((each) => each.durationMs)
+    ).toEqual([2_000, 2_500, 1_500])
+    expect(merged.project.notes.find((each) => each.id === "n1")?.status).toBe(
+      "open"
+    )
+  })
+
+  it("numbers Claude's new notes by where its versions landed", () => {
+    const kept = shared()
+    const here = fitted(kept, "a")
+    const back = run(
+      {
+        project: version(kept, "claude", "Tighter", [
+          shot("a"),
+          shot("b", 1_500),
+          shot("c"),
+        ]),
+        taking: null,
+        closing: null,
+      },
+      {
+        type: "noted",
+        note: {
+          id: "n2",
+          rev: 2,
+          shot: "b",
+          offsetMs: 100,
+          author: "claude",
+          text: "Check this",
+        },
+      }
+    ).project
+    const merged = mergeIn(here, back)
+    if (merged.kind !== "merged") throw new Error(merged.kind)
+    expect(merged.project.notes.find((each) => each.id === "n2")?.rev).toBe(3)
+  })
+
+  it("brings nothing twice when the same file is opened again", () => {
+    const kept = shared()
+    const back = version(kept, "claude", "Scene 2 slower", [
+      shot("a"),
+      shot("b", 3_000),
+      shot("c"),
+    ])
+    const once = mergeIn(fitted(kept, "a"), back)
+    if (once.kind !== "merged") throw new Error(once.kind)
+    expect(mergeIn(once.project, back)).toEqual({ kind: "same" })
+  })
+
+  it("is refused when both changed which scenes the video has", () => {
+    const kept = shared()
+    const here = version(kept, "owner", "Without c", [shot("a"), shot("b")])
+    const back = version(kept, "claude", "With d", [
+      shot("a"),
+      shot("b"),
+      shot("c"),
+      shot("d"),
+    ])
+    expect(mergeIn(here, back)).toEqual({ kind: "moved" })
+  })
+
+  it("is refused when one side removed a scene the other changed", () => {
+    const kept = shared()
+    const here = version(kept, "owner", "Without c", [shot("a"), shot("b")])
+    const back = version(kept, "claude", "c longer", [
+      shot("a"),
+      shot("b"),
+      shot("c", 4_000),
+    ])
     expect(mergeIn(here, back)).toEqual({ kind: "moved" })
   })
 
