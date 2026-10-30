@@ -2,6 +2,7 @@ import type { SpokenLanguage } from "@speech/lib/language"
 import { isAbortError, TIMEOUT_ERROR_NAME } from "@speech/lib/promise/abort"
 import {
   createFakeAudioContextHandle,
+  createPendingFetch,
   flushAsync,
   track,
 } from "@speech/lib/testing"
@@ -107,18 +108,12 @@ describe("createHttpSpeechAdapter - transport", () => {
     expect(isAbortError(settlement.error)).toBe(false)
   })
 
-  it("aborts the request when the caller cancels before the bytes arrive", async () => {
-    let observed: AbortSignal | undefined
+  it("SP1: a cancel before the bytes arrive settles the caller now, and the request ends with the adapter", async () => {
+    const { fetchImpl, calls } = createPendingFetch()
     const adapter = createHttpSpeechAdapter({
       service: { provider: "openai" },
       voiceFor: openaiVoice,
-      fetchImpl: (_input, init) =>
-        new Promise<Response>((_resolve, reject) => {
-          observed = init?.signal ?? undefined
-          init?.signal?.addEventListener("abort", () => {
-            reject(new DOMException("aborted", "AbortError"))
-          })
-        }),
+      fetchImpl,
       playerOptions: {
         audioContextFactory: createFakeAudioContextHandle().factory,
       },
@@ -135,10 +130,12 @@ describe("createHttpSpeechAdapter - transport", () => {
 
     // The window the player alone cannot cover: cancelled after the request
     // went out, before there was anything to play.
-    expect(observed?.aborted).toBe(true)
     expect(settlement.state).toBe("rejected")
     expect(isAbortError(settlement.error)).toBe(true)
     expect(adapter.pending).toBe(0)
+    expect(calls[0]?.signal.aborted).toBe(false)
+    adapter.dispose()
+    expect(calls[0]?.signal.aborted).toBe(true)
   })
 
   it("stop() flushes an utterance still waiting on the network", async () => {

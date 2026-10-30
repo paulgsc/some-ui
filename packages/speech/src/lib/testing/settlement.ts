@@ -8,26 +8,30 @@ import { toError } from "@speech/lib/promise/abort"
  * without an `await` that would itself change the answer.
  */
 
-export type Settlement = {
+export type Settlement<T = void> = {
   readonly state: "pending" | "resolved" | "rejected"
+  readonly value: T | null
   readonly error: Error | null
   readonly promise: Promise<void>
 }
 
-export function track(promise: Promise<void>): Settlement {
+export function track<T = void>(promise: Promise<T>): Settlement<T> {
   const settlement: {
     state: Settlement["state"]
+    value: T | null
     error: Error | null
     promise: Promise<void>
   } = {
     state: "pending",
+    value: null,
     error: null,
     promise: Promise.resolve(),
   }
 
   settlement.promise = promise.then(
-    () => {
+    (value) => {
       settlement.state = "resolved"
+      settlement.value = value
     },
     (error: unknown) => {
       settlement.state = "rejected"

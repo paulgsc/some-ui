@@ -10,10 +10,17 @@
  * `openai`, is the one `infra/compose/tts.yml` serves: `openai-edge-tts`
  * exposes an OpenAI-compatible `/v1/audio/speech`, which is why the
  * localhost:5050 default below is an OpenAI-shaped request.
+ *
+ * SP1: one request in flight per line and voice, owned by the client (README,
+ * "A line asked for twice is fetched once").
  */
 
 import { LANGUAGE_TAG } from "@speech/lib/language"
-import { linkSignals, toError } from "@speech/lib/promise/abort"
+import {
+  createAbortError,
+  linkSignals,
+  toError,
+} from "@speech/lib/promise/abort"
 import type {
   TTSAPIConfig,
   TTSServiceConfig,
@@ -135,31 +142,54 @@ export type TTSClient = {
     voice: VoiceConfig,
     options?: SynthesizeOptions
   ) => Promise<ArrayBuffer>
+  /** Forgets every cached line and ends every request still in flight. */
   clearCache: () => void
 }
 
 const DEFAULT_CACHE_SIZE = 32
 
-function hash(value: string): string {
-  let result = 0
-  for (let i = 0; i < value.length; i++) {
-    result = (result * 31 + value.charCodeAt(i)) | 0
-  }
-  return Math.abs(result).toString(36)
-}
-
+/**
+ * The whole text: a hash would let two lines share audio. JSON keeps the
+ * fields apart whatever they contain.
+ */
 export function createCacheKey(
   text: string,
   voice: VoiceConfig,
   config: TTSServiceConfig
 ): string {
-  return [
+  return JSON.stringify([
     config.provider,
     voice.id,
-    hash(text),
+    text,
     config.format ?? "mp3",
     config.quality ?? "medium",
-  ].join(":")
+  ])
+}
+
+type InFlight = {
+  readonly audio: Promise<ArrayBuffer>
+  readonly controller: AbortController
+}
+
+/**
+ * One requester's view of a shared request: its own copy of the audio, or an
+ * `AbortError` once its own signal aborts. Leaving never touches the request.
+ */
+function join(
+  shared: Promise<ArrayBuffer>,
+  signal: AbortSignal | undefined
+): Promise<ArrayBuffer> {
+  // Hand back a copy: `decodeAudioData` detaches whatever it is given, and
+  // the next requester, or the cache, still needs the bytes.
+  const copy = shared.then((audio) => audio.slice(0))
+  if (!signal) return copy
+  return new Promise<ArrayBuffer>((resolve, reject) => {
+    const leave = (): void => reject(createAbortError("Speech aborted"))
+    signal.addEventListener("abort", leave, { once: true })
+    copy
+      .then(resolve, reject)
+      .finally(() => signal.removeEventListener("abort", leave))
+  })
 }
 
 export function createTTSClient(options: TTSClientOptions): TTSClient {
@@ -178,6 +208,69 @@ export function createTTSClient(options: TTSClientOptions): TTSClient {
     }
   }
 
+  // SP1: the client owns each request, so a requester's cancel cannot end
+  // it; why that differs from FK1 is in the README.
+  const inFlight = new Map<string, InFlight>()
+
+  const request = (
+    key: string,
+    apiConfig: TTSAPIConfig,
+    text: string,
+    voice: VoiceConfig
+  ): InFlight => {
+    const controller = new AbortController()
+    const timeout = service.timeout ?? DEFAULT_TTS_TIMEOUT_MS
+    const linked = linkSignals([controller.signal], timeout)
+
+    const fetchAudio = async (): Promise<ArrayBuffer> => {
+      try {
+        const response = await doFetch(apiConfig.url(service, voice), {
+          method: "POST",
+          headers: apiConfig.headers(service),
+          body: apiConfig.body(text, voice, service),
+          mode: "cors",
+          credentials: "omit",
+          signal: linked.signal,
+        })
+
+        if (!response.ok) {
+          const detail = await response.text().catch(() => "Unknown error")
+          throw new Error(
+            `${service.provider} TTS API error: ${response.status} ${response.statusText} - ${detail}`
+          )
+        }
+
+        const audio = await apiConfig.processResponse(response)
+        remember(key, audio)
+        return audio
+      } catch (error) {
+        // `fetch` reports an aborted request with its own generic AbortError,
+        // losing which of the two reasons fired. `linked.signal.reason` still
+        // has the specific one - a `clearCache` (drop the utterance) or a
+        // timeout (a backend failure the queue is allowed to retry).
+        if (linked.signal.aborted && linked.signal.reason instanceof Error) {
+          throw linked.signal.reason
+        }
+        throw toError(error)
+      } finally {
+        linked.release()
+      }
+    }
+
+    const entry: InFlight = { audio: fetchAudio(), controller }
+    inFlight.set(key, entry)
+    // Cleared by a callback, not inside `fetchAudio`, whose `finally` can
+    // run before the entry is set.
+    void entry.audio
+      // Ignored: the failure reaches each requester through its own joined
+      // promise; this chain only clears the map, and may outlive them all.
+      .catch(() => undefined)
+      .finally(() => {
+        if (inFlight.get(key) === entry) inFlight.delete(key)
+      })
+    return entry
+  }
+
   const synthesize = async (
     text: string,
     voice: VoiceConfig,
@@ -192,50 +285,26 @@ export function createTTSClient(options: TTSClientOptions): TTSClient {
 
     const key = createCacheKey(text, voice, service)
     const cached = cache.get(key)
-    // Hand back a copy: `decodeAudioData` detaches whatever it is given, and
-    // a detached cache entry is worse than no cache entry.
+    // A copy, for the same reason `join` makes one.
     if (cached) return cached.slice(0)
 
-    const timeout = service.timeout ?? DEFAULT_TTS_TIMEOUT_MS
-    const linked = linkSignals([synthesizeOptions.signal], timeout)
-
-    try {
-      const response = await doFetch(apiConfig.url(service, voice), {
-        method: "POST",
-        headers: apiConfig.headers(service),
-        body: apiConfig.body(text, voice, service),
-        mode: "cors",
-        credentials: "omit",
-        signal: linked.signal,
-      })
-
-      if (!response.ok) {
-        const detail = await response.text().catch(() => "Unknown error")
-        throw new Error(
-          `${service.provider} TTS API error: ${response.status} ${response.statusText} - ${detail}`
-        )
-      }
-
-      const audio = await apiConfig.processResponse(response)
-      remember(key, audio)
-      return audio.slice(0)
-    } catch (error) {
-      // `fetch` reports an aborted request with its own generic AbortError,
-      // losing which of the two reasons fired. `linked.signal.reason` still
-      // has the specific one - a cancellation (drop the utterance) or a
-      // timeout (a backend failure the queue is allowed to retry).
-      if (linked.signal.aborted && linked.signal.reason instanceof Error) {
-        throw linked.signal.reason
-      }
-      throw toError(error)
-    } finally {
-      linked.release()
+    const { signal } = synthesizeOptions
+    if (signal?.aborted) {
+      throw createAbortError("Speech aborted before it started")
     }
+
+    const pending = inFlight.get(key) ?? request(key, apiConfig, text, voice)
+    return join(pending.audio, signal)
   }
 
   return {
     synthesize,
-    clearCache: (): void => cache.clear(),
+    clearCache: (): void => {
+      cache.clear()
+      const ending = [...inFlight.values()]
+      inFlight.clear()
+      for (const { controller } of ending) controller.abort()
+    },
   }
 }
 

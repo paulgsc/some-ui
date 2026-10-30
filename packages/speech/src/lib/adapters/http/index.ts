@@ -86,7 +86,9 @@ export function createHttpSpeechAdapter(
     const abortLocal = (): void => controller.abort()
     speakOptions.signal?.addEventListener("abort", abortLocal, { once: true })
     // Rejecting the caller's entry (via `stop`, `dispose` or the signal)
-    // must also stop the work still running underneath it.
+    // must also stop the work still running underneath it: its playback, and
+    // its wait on the synthesis. The request itself is the client's and ends
+    // on its own terms (tts-client, SP1).
     void entry.promise.catch(() => controller.abort())
 
     const run = async (): Promise<void> => {
