@@ -9,8 +9,8 @@
  * gives its own take's time back.
  *
  * An episode is a draft on its way to Drive, not an archive: the phone keeps
- * one, and lets it go once shared, discarded, replaced by another primer, or
- * left `JOURNAL_IDLE_MS` without a take.
+ * one, and lets it go once shared, discarded, or replaced by another primer.
+ * Nothing lets it go for want of use.
  */
 import { SOUNDBITE_MIN_MS } from "@soundbites/lib/policy"
 
@@ -26,10 +26,7 @@ export type JournalPlan = {
    * share that finishes after another primer opened lets go of nothing of it.
    */
   readonly openedAt: string
-  /**
-   * ISO 8601, UTC: when the primer was opened or a take last kept. The
-   * episode is let go `JOURNAL_IDLE_MS` after it.
-   */
+  /** ISO 8601, UTC: when the primer was opened or a take last kept. */
   readonly touchedAt: string
 }
 
@@ -40,14 +37,6 @@ export type JournalTake = {
   readonly recordedAt: string
   readonly durationMs: number
   readonly mimeType: string
-}
-
-/** How long an episode waits on its next take before it is let go. */
-export const JOURNAL_IDLE_MS = 7 * 86_400_000
-
-/** When `plan` is let go unless a take is kept first, in epoch ms. */
-export function expiresAt(plan: JournalPlan): number {
-  return Date.parse(plan.touchedAt) + JOURNAL_IDLE_MS
 }
 
 /** One tap on a cut's minus or plus. */

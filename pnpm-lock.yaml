@@ -1558,6 +1558,9 @@ importers:
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../shared
+      '@some-ui/video-render':
+        specifier: workspace:*
+        version: link:../../video-render
       '@some-ui/voice-capture':
         specifier: workspace:*
         version: link:../../voice-capture
@@ -1570,6 +1573,9 @@ importers:
       react-dom:
         specifier: ^19.2.0
         version: 19.2.8(react@19.2.8)
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.6
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*

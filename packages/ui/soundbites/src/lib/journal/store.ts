@@ -12,15 +12,18 @@
 import {
   bytesBesides,
   bytesOf,
-  connection,
   done,
   result,
   withRoom,
 } from "@some-ui/voice-capture"
+import {
+  JOURNAL_STORES,
+  journalDatabase,
+  otherAudioBytes,
+} from "@soundbites/lib/journal/db"
 import type { Cut, Primer } from "@soundbites/lib/journal/primer"
 import { cutV1 } from "@soundbites/lib/journal/primer"
 import { JOURNAL_TAKES_MAX_BYTES } from "@soundbites/lib/policy"
-import { askToKeep } from "@soundbites/lib/store"
 
 import type { JournalPlan, JournalTake } from "./plan"
 import { inCutOrder } from "./plan"
@@ -102,11 +105,7 @@ export class JournalStaleError extends Error {
   }
 }
 
-const DB_NAME = "some-ui.journal"
-const DB_VERSION = 1
-const PLAN = "plan"
-const TAKES = "takes"
-const AUDIO = "audio"
+const { plan: PLAN, takes: TAKES, audio: AUDIO, projectAudio } = JOURNAL_STORES
 /** The one key `PLAN` holds. */
 const CURRENT = "current"
 
@@ -171,17 +170,7 @@ export function indexedDbJournalStore(): JournalStore {
   const changed = (): void => {
     for (const listener of listeners) listener()
   }
-  const connect = connection(
-    DB_NAME,
-    DB_VERSION,
-    (db) => {
-      if (!db.objectStoreNames.contains(PLAN)) db.createObjectStore(PLAN)
-      if (!db.objectStoreNames.contains(TAKES))
-        db.createObjectStore(TAKES, { keyPath: "cutId" })
-      if (!db.objectStoreNames.contains(AUDIO)) db.createObjectStore(AUDIO)
-    },
-    askToKeep
-  )
+  const connect = journalDatabase()
 
   return {
     async read(): Promise<JournalShelf> {
@@ -255,7 +244,10 @@ export function indexedDbJournalStore(): JournalStore {
       await withRoom(
         audio.size - freed,
         async (claim): Promise<void> => {
-          const tx = db.transaction([PLAN, TAKES, AUDIO], "readwrite")
+          const tx = db.transaction(
+            [PLAN, TAKES, AUDIO, projectAudio],
+            "readwrite"
+          )
           const audios = tx.objectStore(AUDIO)
           const replaced: unknown = await result(audios.get(take.cutId))
           const frees = replaced instanceof Blob ? replaced.size : 0
@@ -269,7 +261,9 @@ export function indexedDbJournalStore(): JournalStore {
           }
           if (
             audio.size - frees > claim ||
-            (await bytesBesides(audios, take.cutId)) + audio.size >
+            (await bytesBesides(audios, take.cutId)) +
+              (await otherAudioBytes(tx, AUDIO)) +
+              audio.size >
               JOURNAL_TAKES_MAX_BYTES
           ) {
             tx.abort()

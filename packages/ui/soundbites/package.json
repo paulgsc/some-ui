@@ -25,8 +25,10 @@
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
     "@some-ui/shared": "workspace:*",
+    "@some-ui/video-render": "workspace:*",
     "@some-ui/voice-capture": "workspace:*",
-    "lucide-react": "catalog:"
+    "lucide-react": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",

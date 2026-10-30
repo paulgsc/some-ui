@@ -18,8 +18,8 @@
  * - **Nothing records while the page is off screen.** A take recording when
  *   the page is hidden or left is finished and kept; a microphone that opens
  *   then is let go.
- * - **An episode left `JOURNAL_IDLE_MS` without a take is let go** the next
- *   time the shelf is read, unless a take is under way.
+ * - **Nothing is let go for want of use.** An episode stays until it is
+ *   shared, discarded, or replaced by a primer the person confirms.
  * - **Opening a primer that would let takes go waits on the person.** One
  *   that keeps every take opens at once.
  */
@@ -40,7 +40,7 @@ import { formatDuration } from "@soundbites/lib/format"
 import { SOUNDBITE_MIN_MS } from "@soundbites/lib/policy"
 
 import type { JournalPlan, JournalTake } from "./plan"
-import { capFor, droppedBy, expiresAt, isSpent, nudged } from "./plan"
+import { capFor, droppedBy, isSpent, nudged } from "./plan"
 import type { Primer } from "./primer"
 import { readPrimer } from "./primer"
 import type { JournalShelf } from "./store"
@@ -129,7 +129,6 @@ type JournalSignal =
       readonly type: "listed"
       readonly seq: number
       readonly shelf: JournalShelf
-      readonly now: number
     }
   | { readonly type: "listFailed"; readonly seq: number }
   | {
@@ -201,7 +200,6 @@ export const JOURNAL_NOTICES = {
   notCleared: "The episode couldn't be cleared. Try again?",
   unreadableFile: "That file couldn't be read.",
   primerMidTake: "Finish the take, then open the primer again.",
-  expired: "The last episode was cleared: it went a week without a take.",
   audioMissing: "That take's audio is missing.",
   notPlayable: "That take couldn't be played.",
 } as const
@@ -431,27 +429,6 @@ export function step(state: JournalState, event: JournalEvent): Step {
     case "listed": {
       if (event.seq !== state.readSeq) return stay(state)
       const { plan: readPlan, takes: readTakes } = event.shelf
-      if (
-        readPlan !== null &&
-        event.now >= expiresAt(readPlan) &&
-        isSettled(activity)
-      ) {
-        const cleared = withShelf(
-          { ...state, notice: JOURNAL_NOTICES.expired },
-          null,
-          []
-        )
-        const stopped =
-          activity.kind === "playing" ? stopPlay(cleared) : stay(cleared)
-        const next = write(stopped.state, {
-          type: "clear",
-          episode: readPlan.openedAt,
-        })
-        return {
-          state: next.state,
-          effects: [...stopped.effects, ...next.effects],
-        }
-      }
       return stay(withShelf(state, readPlan, readTakes))
     }
 
