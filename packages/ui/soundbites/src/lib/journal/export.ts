@@ -38,12 +38,17 @@ export function journalManifest(
       exportedAt,
       timeZone,
       budgetMs: plan.primer.budgetMs,
+      voice: plan.primer.voice,
       cuts: plan.primer.cuts.map((cut) => {
         const take = takes.find((each) => each.cutId === cut.id)
         return {
           id: cut.id,
           artifact: cut.artifact,
           prompt: cut.prompt,
+          point: cut.point,
+          line: cut.line,
+          keep: cut.keep,
+          voice: cut.voice,
           targetMs: targetOf(plan, cut),
           take:
             take === undefined

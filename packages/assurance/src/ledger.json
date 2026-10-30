@@ -1098,7 +1098,7 @@
             },
             {
               "class": "structural",
-              "says": "The phone's audio caps add up to 2.17 times the 25 MiB pool, and voice-home's alone (24 MB) is about 91% of it; a save past the pool is refused, so nothing is lost, but one store can leave the others no room.",
+              "says": "The phone's audio caps add up to about 2.22 times the 25 MiB pool, and voice-home's alone (24 MB) is about 91% of it; a save past the pool is refused, so nothing is lost, but one store can leave the others no room.",
               "ref": "some-ui:apps/www/src/lib/device-backend/storage/index.ts"
             },
             {
@@ -1112,7 +1112,14 @@
             "by": "dashboard",
             "ref": "server:infra/grafana/dashboards/storage.jsonnet"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-10-30",
+              "change": "The Build Journal's takes cap (phone:journal) doubles to 2,880,000 B, twice six minutes at 4,000 B/s, so the phone's audio caps add up to about 2.22 times the pool instead of 2.17.",
+              "why": "Primer version 2 runs up to six minutes (STUDIO ST2); a save past the pool is still refused, so nothing is lost, and this store stays about a tenth of the pool.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/2250"
+            }
+          ]
         }
       ]
     },
@@ -1404,7 +1411,7 @@
     {
       "store": "phone:journal",
       "class": "record",
-      "growth": "bounded: one episode; JOURNAL_TAKES_MAX_BYTES = 2 x 180 s x 4,000 B/s = 1,440,000 B; one take per cut.",
+      "growth": "bounded: one episode; JOURNAL_TAKES_MAX_BYTES = 2 x 360 s x 4,000 B/s = 2,880,000 B; one take per cut.",
       "horizon": "the episode is let go once shared, discarded, replaced by another primer, or JOURNAL_IDLE_MS = 7 days without a take",
       "family": "what-is-kept"
     },
