@@ -297,6 +297,21 @@ describe("LS1: a tap that starts or stops listening is answered in human time", 
     expect(reportFailure).toHaveBeenCalledOnce()
   })
 
+  it("keeps the words so far when the listening deadline ends a stopped listening first", async () => {
+    const soon = createDeviceListener({ ...SHORT, listenMs: 120, stopMs: 400 })
+    startHeld()
+    const listening = soon.listen(
+      () => undefined,
+      () => undefined
+    )
+    const { ready, say } = await plugged()
+    ready()
+    say("nearly")
+    listening.stop()
+    expect(await listening.done).toEqual({ kind: "heard", words: "nearly" })
+    await vi.waitFor(() => expect(plugin.cancel).toHaveBeenCalledOnce())
+  })
+
   it("ends a stop before ready with nothing, when the recognizer never answers", async () => {
     startHeld()
     const listening = listener.listen(

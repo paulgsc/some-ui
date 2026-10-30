@@ -252,7 +252,15 @@ function listen(
   })
   void call.outcome.then((outcome) => {
     if (stopTimer !== null) clearTimeout(stopTimer)
-    settle(listened(outcome))
+    const result = listened(outcome)
+    // Stopped, then ended by a deadline or let go before the plugin
+    // answered: what was heard so far is the answer, as the stop's own
+    // bound would give.
+    settle(
+      stopped && result.kind === "failed"
+        ? { kind: "heard", words: heard }
+        : result
+    )
   })
   return {
     done,
@@ -279,6 +287,8 @@ function listen(
     },
     cancel: (): void => {
       if (stopTimer !== null) clearTimeout(stopTimer)
+      // Let go, not stopped: nothing is kept.
+      stopped = false
       call.abandon()
       tell("cancel")
     },
