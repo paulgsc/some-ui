@@ -18,5 +18,7 @@ export type {
   FakeUtterance,
 } from "./fake-speech-synthesis"
 export { createFakeSpeechSynthesis } from "./fake-speech-synthesis"
+export type { PendingFetchCall } from "./pending-fetch"
+export { createPendingFetch } from "./pending-fetch"
 export type { Settlement } from "./settlement"
 export { flushAsync, track } from "./settlement"

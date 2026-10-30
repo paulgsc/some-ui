@@ -362,6 +362,46 @@
       ]
     },
     {
+      "id": "hosted-speech",
+      "name": "A line you ask to hear is fetched once",
+      "why": "On the home-network web build, a line's audio comes from the hosted voice service over the network; a replay tapped again before the answer arrives must not send the line again.",
+      "paths": [
+        "some-ui:packages/speech/src/lib/engine",
+        "some-ui:packages/speech/src/lib/adapters/http"
+      ],
+      "modules": [],
+      "objectives": [
+        {
+          "id": "SP1",
+          "kind": "RE3",
+          "property": "work",
+          "claim": "For one line and voice, at most one request for its audio is on its way at a time.",
+          "requirement": "At most 1 request in flight per line and voice (provider, voice, the whole text, format and quality). A request for a line already on its way joins it; a requester that cancels leaves only its own wait, and the request ends on its response, its timeout or the adapter's dispose. Requests in flight are bounded by the distinct lines asked for within one timeout (30 s by default).",
+          "verdict": "holds",
+          "conclusion": "Tapping a replay again while the line is on its way joins the request already sent, and once it is answered the line is cached. This covers the hosted voice only: the phone's engine and the browser's own voice send nothing over the network.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "Before the fix, K taps while a line was on its way sent K requests, K-1 of them cancelled, and nothing played until the taps paused for longer than one round trip.",
+              "ref": "some-ui#2276"
+            },
+            {
+              "class": "unknown",
+              "says": "Whether openai-edge-tts stops synthesizing when the connection drops is not checked. A requester's cancel no longer drops it; a timeout or a dispose still does.",
+              "ref": "some-ui#2199"
+            }
+          ],
+          "proof": [
+            "some-ui:packages/speech/src/lib/engine/__tests__/tts-client.test.ts#SP1"
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        }
+      ]
+    },
+    {
       "id": "voice-heard",
       "name": "Voice notes sent home get heard",
       "why": "The phone sends a voice note home; home transcribes it in the background, and the transcript is what the routine reads.",

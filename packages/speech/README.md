@@ -234,6 +234,34 @@ suite against each of them:
 `lib/promise` is where that discipline lives; a new backend that opens its
 promises through a `SpeechLedger` gets most of it for free.
 
+## A line asked for twice is fetched once
+
+The hosted backend fetches each line's audio over the network, and a replay
+button can be tapped again before the first answer arrives. Each tap cancels
+the line before it, so if a cancel ended the request, every tap would send a
+fresh one and none would finish until the taps stopped.
+
+Promise SP1 holds that for one line and voice (provider, voice, the whole
+text, format and quality), `tts-client` has at most one request in flight. A request for a
+line already on its way joins it. The client owns the request, not whoever
+asked first: it ends on its response, its timeout or `clearCache` (which the
+adapter's `dispose` calls). A requester that cancels detaches only its own
+promise, and its playback stops as before. Once answered, the line is cached
+and a later tap sends nothing. Requests in flight are therefore bounded by
+the distinct lines asked for within one timeout.
+
+This deliberately differs from FK1 in `packages/fetch-kit` ("a request stops
+when its caller cancels it"). FK1 is right where one caller owns one request;
+here the audio is shared by key, so one requester cancelling does not mean
+nobody wants it. Counting requesters would not work either: a replay's cancel
+lands synchronously, before the next line reaches the client, so the count
+would touch zero in between.
+
+`lib/engine/__tests__/tts-client.test.ts` ("SP1") holds it against a fetch
+that has not answered: for any run of requests and cancels and one late
+answer, there is one fetch, it is never aborted by a requester, and every
+requester that stayed gets the audio.
+
 ## What this replaced, and why it mattered
 
 The previous implementation could not end a session. `initializeSpeechQueue`
