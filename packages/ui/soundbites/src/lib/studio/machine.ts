@@ -56,6 +56,7 @@ import {
   openTake,
   stepTake,
 } from "@some-ui/voice-capture"
+import type { Listened } from "@soundbites/lib/idea/machine"
 import type { Primer } from "@soundbites/lib/journal/primer"
 import { readPrimer } from "@soundbites/lib/journal/primer"
 import {
@@ -64,6 +65,7 @@ import {
 } from "@soundbites/lib/policy"
 import { isProjectFile, readProjectFile } from "@soundbites/lib/project/file"
 import { finishOf, youtubeLink } from "@soundbites/lib/project/finish"
+import type { Clash } from "@soundbites/lib/project/merge"
 import { mergeIn } from "@soundbites/lib/project/merge"
 import type { Note, Project, ProjectTake } from "@soundbites/lib/project/model"
 import {
@@ -150,6 +152,10 @@ type StudioScreen =
       readonly atMs: number
       /** Claude's changes answered on this screen, by note id. */
       readonly answered: ReadonlyArray<string>
+      /** Whether the phone can listen for a spoken note; asked on arrival. */
+      readonly listen: "checking" | "available" | "unavailable"
+      /** A note being said, until it is kept or let go. */
+      readonly speaking: Speaking | null
     }
   | {
       readonly kind: "done"
@@ -224,6 +230,19 @@ type Pending = { readonly project: string } & (
     }
 )
 
+/**
+ * A note being said in Watch (ST5): pinned to the moment the playhead was
+ * at when it was begun, since the render plays on while it is said, and
+ * numbered so a late answer from an earlier one is ignored.
+ */
+export type Speaking = {
+  readonly seq: number
+  readonly atMs: number
+  readonly phase: "listening" | "heard"
+  /** The words so far while listening; what was heard after. */
+  readonly words: string
+}
+
 export type StudioState = {
   readonly page: "new" | "here" | "left"
   readonly visible: boolean
@@ -261,6 +280,7 @@ export type StudioState = {
   readonly readSeq: number
   readonly pickSeq: number
   readonly playSeq: number
+  readonly listenSeq: number
 }
 
 /** What the person does. The runtime stamps each with when (`at`). */
@@ -293,6 +313,13 @@ export type StudioIntent =
   | { readonly type: "reviewPicked"; readonly files: ReadonlyArray<Blob> }
   | { readonly type: "playheadAt"; readonly ms: number }
   | { readonly type: "notedHere"; readonly text: string }
+  /** Say a note at the moment on screen, instead of typing it. */
+  | { readonly type: "speakPressed" }
+  | { readonly type: "speakStopped" }
+  /** Keep the words heard as a note at the moment it was begun. */
+  | { readonly type: "spokenKept" }
+  | { readonly type: "spokenAgain" }
+  | { readonly type: "spokenDropped" }
   | { readonly type: "changeGood"; readonly note: string }
   | { readonly type: "changeNotYet"; readonly note: string }
   | { readonly type: "recordPressed" }
@@ -363,6 +390,13 @@ type StudioSignal =
   | { readonly type: "audioMissing"; readonly seq: number }
   | { readonly type: "audioUnreadable"; readonly seq: number }
   | { readonly type: "playbackEnded"; readonly seq: number }
+  | { readonly type: "voiceChecked"; readonly available: boolean }
+  | { readonly type: "noteWords"; readonly seq: number; readonly words: string }
+  | {
+      readonly type: "noteListened"
+      readonly seq: number
+      readonly result: Listened
+    }
 
 export type StudioEvent =
   | (StudioIntent & { readonly at: string })
@@ -407,6 +441,11 @@ export type StudioEffect =
       readonly seq: number
     }
   | { readonly type: "stopPlayback" }
+  /** Ask whether the phone's recognizer can listen (ST5's spoken notes). */
+  | { readonly type: "checkVoice" }
+  | { readonly type: "listen"; readonly seq: number }
+  | { readonly type: "stopListening" }
+  | { readonly type: "cancelListening" }
 
 export type Step = {
   readonly state: StudioState
@@ -437,6 +476,7 @@ export function initialStudioState(): StudioState {
     readSeq: 0,
     pickSeq: 0,
     playSeq: 0,
+    listenSeq: 0,
   }
 }
 
@@ -637,9 +677,141 @@ function applied(project: Project | null, pending: Pending): Project | null {
   }
 }
 
+type WatchScreen = Extract<StudioScreen, { kind: "watch" }>
+
+/**
+ * A spoken note in Watch (ST5), as ST18's questions are said: one listening
+ * at a time, numbered, and the words heard shown back before they are kept.
+ * A phone that can't listen, or stops being able to, takes typed notes.
+ */
+function speak(
+  state: StudioState,
+  screen: WatchScreen,
+  event: Extract<
+    StudioEvent,
+    {
+      type:
+        | "voiceChecked"
+        | "speakPressed"
+        | "speakStopped"
+        | "noteWords"
+        | "noteListened"
+        | "spokenAgain"
+        | "spokenDropped"
+    }
+  >
+): Step {
+  const { speaking } = screen
+  const withScreen = (
+    next: Partial<WatchScreen>,
+    notice = state.notice
+  ): StudioState => ({
+    ...state,
+    notice,
+    screen: { ...screen, ...next },
+  })
+  const listen = (atMs: number): Step => {
+    const seq = state.listenSeq + 1
+    return {
+      state: {
+        ...withScreen(
+          { speaking: { seq, atMs, phase: "listening", words: "" } },
+          ""
+        ),
+        listenSeq: seq,
+      },
+      effects: [{ type: "listen", seq }],
+    }
+  }
+  switch (event.type) {
+    case "voiceChecked": {
+      return stay(
+        withScreen({ listen: event.available ? "available" : "unavailable" })
+      )
+    }
+    case "speakPressed": {
+      if (
+        screen.listen !== "available" ||
+        speaking !== null ||
+        screen.review === null ||
+        shotAt(screen.review, screen.atMs) === null
+      )
+        return stay(state)
+      return listen(screen.atMs)
+    }
+    case "speakStopped": {
+      return speaking?.phase === "listening"
+        ? { state, effects: [{ type: "stopListening" }] }
+        : stay(state)
+    }
+    case "noteWords": {
+      return speaking?.seq === event.seq && speaking.phase === "listening"
+        ? stay(withScreen({ speaking: { ...speaking, words: event.words } }))
+        : stay(state)
+    }
+    case "noteListened": {
+      if (speaking?.seq !== event.seq || speaking.phase !== "listening")
+        return stay(state)
+      const { result } = event
+      switch (result.kind) {
+        case "heard": {
+          const words = result.words.trim()
+          return words === ""
+            ? stay(withScreen({ speaking: null }, WORDS.watch.heardNothing))
+            : stay(
+                withScreen({ speaking: { ...speaking, phase: "heard", words } })
+              )
+        }
+        case "unavailable": {
+          return stay(
+            withScreen(
+              { speaking: null, listen: "unavailable" },
+              WORDS.watch.typeInstead
+            )
+          )
+        }
+        case "failed": {
+          return stay(withScreen({ speaking: null }, WORDS.watch.notHeard))
+        }
+        default: {
+          return assertNever(result)
+        }
+      }
+    }
+    case "spokenAgain": {
+      return speaking?.phase === "heard" ? listen(speaking.atMs) : stay(state)
+    }
+    case "spokenDropped": {
+      if (speaking === null) return stay(state)
+      return {
+        state: withScreen({ speaking: null }),
+        effects:
+          speaking.phase === "listening" ? [{ type: "cancelListening" }] : [],
+      }
+    }
+    default: {
+      return assertNever(event)
+    }
+  }
+}
+
 /** A note's id from when it was made: letters, digits and dashes. */
 function noteIdAt(at: string): string {
   return `n-${at.replace(/[^0-9A-Za-z]/g, "")}`
+}
+
+/** Where a merge kept this phone's value (#2317), in the owner's terms. */
+function keptHere(
+  project: Project,
+  clashes: ReadonlyArray<Clash>
+): { readonly scenes: ReadonlyArray<number>; readonly plans: boolean } {
+  const { shots } = latest(project).cutList
+  // A scene is its place in the video, from 1.
+  const scenes = clashes.flatMap((clash) => {
+    const index = shots.findIndex((shot) => shot.id === clash.shot)
+    return index < 0 ? [] : [index + 1]
+  })
+  return { scenes, plans: clashes.some((clash) => clash.shot === null) }
 }
 
 /** A project file picked: Claude's version of a video kept here, merged (ST8). */
@@ -651,6 +823,12 @@ function pickedProject(state: StudioState, text: string): Step {
   if (kept === undefined)
     return stay({ ...state, primerProblem: WORDS.merge.notHere })
   const merged = mergeIn(kept, file)
+  if (merged.kind === "kept")
+    return stay({
+      ...state,
+      primerProblem: null,
+      notice: WORDS.merge.kept(keptHere(kept, merged.clashes)),
+    })
   if (merged.kind !== "merged")
     return stay({
       ...state,
@@ -741,7 +919,15 @@ function landedNotice(
       return WORDS.finish.released
     }
     case "merge": {
-      return WORDS.merge.merged(latest(pending.file).message)
+      const merged =
+        written.before === null ? null : mergeIn(written.before, pending.file)
+      const clashes = merged?.kind === "merged" ? merged.clashes : []
+      return WORDS.merge.merged(
+        latest(pending.file).message,
+        written.project === null
+          ? undefined
+          : keptHere(written.project, clashes)
+      )
     }
     case "note": {
       return WORDS.watch.noted
@@ -1150,6 +1336,15 @@ export function step(state: StudioState, event: StudioEvent): Step {
       const gone = { ...state, page: "left" as const }
       if (activity.kind === "recording") return finishRecording(gone)
       if (activity.kind === "playing") return stopPlay(gone)
+      // A note being said has no screen left to show it back on.
+      if (screen.kind === "watch" && screen.speaking !== null)
+        return {
+          state: { ...gone, screen: { ...screen, speaking: null } },
+          effects:
+            screen.speaking.phase === "listening"
+              ? [{ type: "cancelListening" }]
+              : [],
+        }
       return stay(gone)
     }
 
@@ -1375,7 +1570,7 @@ export function step(state: StudioState, event: StudioEvent): Step {
     case "watchChosen": {
       if (project === null || screen.kind !== "start" || !isSettled(activity))
         return stay(state)
-      return enqueue(
+      const opened = enqueue(
         {
           ...state,
           screen: {
@@ -1384,18 +1579,65 @@ export function step(state: StudioState, event: StudioEvent): Step {
             review: null,
             atMs: 0,
             answered: [],
+            listen: "checking",
+            speaking: null,
           },
           notice: "",
           choosing: null,
         },
         { kind: "open", project: project.id, at: event.at }
       )
+      return { ...opened, effects: [...opened.effects, { type: "checkVoice" }] }
     }
 
     case "watchBack": {
-      return screen.kind === "watch"
-        ? stay({ ...state, screen: { kind: "start" }, notice: "" })
-        : stay(state)
+      if (screen.kind !== "watch") return stay(state)
+      return {
+        state: { ...state, screen: { kind: "start" }, notice: "" },
+        effects:
+          screen.speaking?.phase === "listening"
+            ? [{ type: "cancelListening" }]
+            : [],
+      }
+    }
+
+    case "voiceChecked":
+    case "speakPressed":
+    case "speakStopped":
+    case "noteWords":
+    case "noteListened":
+    case "spokenAgain":
+    case "spokenDropped": {
+      return screen.kind === "watch" ? speak(state, screen, event) : stay(state)
+    }
+
+    case "spokenKept": {
+      const speaking = screen.kind === "watch" ? screen.speaking : null
+      if (
+        screen.kind !== "watch" ||
+        speaking?.phase !== "heard" ||
+        screen.review === null ||
+        project === null
+      )
+        return stay(state)
+      const here = shotAt(screen.review, speaking.atMs)
+      const cleared = { ...state, screen: { ...screen, speaking: null } }
+      if (here === null) return stay(cleared)
+      return enqueue(
+        { ...cleared, notice: "" },
+        {
+          kind: "note",
+          project: project.id,
+          note: {
+            id: noteIdAt(event.at),
+            rev: screen.review.rev,
+            shot: here.shot,
+            offsetMs: here.offsetMs,
+            author: "owner",
+            text: speaking.words,
+          },
+        }
+      )
     }
 
     case "reviewPicked": {

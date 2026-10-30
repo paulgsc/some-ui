@@ -76,6 +76,36 @@ function minutes(ms: number): string {
     : `${hours} h ${String(total % 60).padStart(2, "0")} min`
 }
 
+/** Where Claude's version met a change made on this phone, and the phone's stayed. */
+type KeptHere = {
+  readonly scenes: ReadonlyArray<number>
+  readonly plans: boolean
+}
+
+const NOTHING_KEPT: KeptHere = { scenes: [], plans: false }
+
+function keptLines(kept: KeptHere): Array<string> {
+  const lines: Array<string> = []
+  const n = kept.scenes.length
+  if (n > 0)
+    lines.push(
+      `${n === 1 ? "Scene" : "Scenes"} ${andList(kept.scenes.map(String))} kept what you did here, so Claude's ${n === 1 ? "change to it" : "changes to them"} didn't come in.`
+    )
+  if (kept.plans)
+    lines.push(
+      "The look and voice you chose here stayed, so Claude's change to them didn't come in."
+    )
+  return lines
+}
+
+/** "1", "1 and 2", "1, 2 and 3". */
+function andList(items: ReadonlyArray<string>): string {
+  const last = items.at(-1) ?? ""
+  return items.length < 2
+    ? last
+    : `${items.slice(0, -1).join(", ")} and ${last}`
+}
+
 function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
 }
@@ -292,6 +322,17 @@ export const STUDIO_WORDS = {
     noteLabel: "Your note",
     noteHere: (ms: number): string => `Note here · ${formatDuration(ms)}`,
     noted: "Noted, pinned to this moment.",
+    /** Saying a note instead of typing it (ST5), pinned where it was begun. */
+    say: (ms: number): string => `Say a note · ${formatDuration(ms)}`,
+    listening: "Listening…",
+    stop: "Done talking",
+    keepSaid: (ms: number): string => `Note this at ${formatDuration(ms)}`,
+    again: "Say it again",
+    drop: "Let it go",
+    heardNothing: "Didn't hear anything. Say it again, or type it.",
+    notHeard: "Couldn't hear that. Say it again, or type it.",
+    typeInstead:
+      "Talking isn't available on this phone right now, so type the note.",
     changed: (text: string): string =>
       `Claude changed this, from your note: "${text}"`,
     good: "Good",
@@ -306,10 +347,19 @@ export const STUDIO_WORDS = {
 
   /** A version back from Claude, opened as a primer is (ST8). */
   merge: {
-    merged: (message: string): string => `Claude's version is in: ${message}`,
+    /**
+     * Claude's version is in. Where Claude and this phone both changed the
+     * same thing after sharing, the phone's stayed (#2317): the scenes, by
+     * their place in the video, and whether it was the plans.
+     */
+    merged: (message: string, kept: KeptHere = NOTHING_KEPT): string =>
+      [`Claude's version is in: ${message}`, ...keptLines(kept)].join(" "),
+    /** Everything in Claude's version, this phone had changed too. */
+    kept: (kept: KeptHere): string =>
+      ["Nothing in Claude's version came in.", ...keptLines(kept)].join(" "),
     same: "This phone already has everything in that file.",
     moved:
-      "This phone made a version after that file was shared. Share the video with Claude again, and ask for the round to be redone on it.",
+      "Since that file was shared, this phone and Claude changed the video in ways that can't both stand. Share the video with Claude again, and ask for the round to be redone on it.",
     notHere: "That file is for a video that isn't on this phone.",
     unreadable: "That file can't be opened as a Studio video.",
   },

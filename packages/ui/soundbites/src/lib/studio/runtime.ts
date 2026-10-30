@@ -13,6 +13,8 @@ import type {
   TakeDeadlines,
 } from "@some-ui/voice-capture"
 import { takeRunner } from "@some-ui/voice-capture"
+import type { IdeaListener, Listening } from "@soundbites/lib/idea/runtime"
+import { NO_LISTENER } from "@soundbites/lib/idea/runtime"
 import { TAKE_TICK_MS } from "@soundbites/lib/policy"
 import type { ProjectStore } from "@soundbites/lib/project/store"
 import { ProjectFullError } from "@soundbites/lib/project/store"
@@ -46,6 +48,8 @@ export type StudioPorts = {
   timeLog?: TimeLogStore
   /** How long the microphone may take to answer; `takeRunner`'s unless a test says. */
   takeDeadlines?: TakeDeadlines
+  /** The phone's recognizer, for a note said in Watch (ST5); none means typed notes. */
+  listener?: IdeaListener
 }
 
 export type StudioRuntime = {
@@ -59,6 +63,8 @@ export type StudioRuntime = {
 export function createStudio(ports: StudioPorts): StudioRuntime {
   let state = initialStudioState()
   let playback: Playback | null = null
+  let listening: Listening | null = null
+  const listener = ports.listener ?? NO_LISTENER
   const listeners = new Set<() => void>()
   const at = (): string => new Date(ports.now()).toISOString()
 
@@ -205,6 +211,34 @@ export function createStudio(ports: StudioPorts): StudioRuntime {
       }
       case "stopPlayback": {
         stopPlayback()
+        return
+      }
+      case "checkVoice": {
+        void listener
+          .available()
+          .then((available) => send({ type: "voiceChecked", available }))
+        return
+      }
+      case "listen": {
+        listening?.cancel()
+        const { seq } = effect
+        const mine = listener.listen((words) =>
+          send({ type: "noteWords", seq, words })
+        )
+        listening = mine
+        void mine.done.then((result) => {
+          if (listening === mine) listening = null
+          send({ type: "noteListened", seq, result })
+        })
+        return
+      }
+      case "stopListening": {
+        listening?.stop()
+        return
+      }
+      case "cancelListening": {
+        listening?.cancel()
+        listening = null
         return
       }
       default: {

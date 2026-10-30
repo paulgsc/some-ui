@@ -2,16 +2,27 @@
  * A series is a folder of versions (STUDIO ST11): two videos render from one
  * series at different versions, and a newer version, one that changes a
  * burn-in's design included, leaves a video pinned to an older one
- * byte-identical. Renders with the real ffmpeg on `PATH`, at a small frame.
+ * byte-identical. A version's intro and outro open and close every video
+ * that pins it, inside the authorship mark's bare cards. Renders with the
+ * real ffmpeg on `PATH`, at a small frame.
  */
 
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { authorshipOf } from "@video-render/authorship"
+import type { Shot } from "@video-render/cut-list"
 import { nodePorts, readSeries, renderFolder } from "@video-render/node"
 import type { BurnInRequest } from "@video-render/render"
+import { readReview } from "@video-render/review"
 import sample from "@video-render/sample/series/build-journal-short/v1.json"
-import { parseSeries, seriesFile } from "@video-render/series"
+import {
+  parseSeries,
+  SERIES_INTRO,
+  SERIES_OUTRO,
+  seriesFile,
+  withSeries,
+} from "@video-render/series"
 import type { Series } from "@video-render/series"
 import { cutList, series, shot } from "@video-render/testing"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
@@ -173,4 +184,132 @@ describe("the sample series", () => {
       "window: the window doesn't fit inside the frame",
     ])
   })
+})
+
+describe("a series' intro and outro", () => {
+  const card = { kind: "card" } as const
+  const bare = (id: string): Shot => shot(id, { picture: card })
+  const framed = series({
+    intro: {
+      picture: card,
+      durationMs: 600,
+      burnIns: [{ kind: "card", params: { title: "Build Journal" } }],
+    },
+    outro: { picture: card, durationMs: 400, burnIns: [] },
+  })
+  const ids = (shots: ReadonlyArray<Shot>): Array<string> =>
+    shots.map((s) => s.id)
+
+  it("sit just inside the authorship mark's bare cards", () => {
+    const cut = cutList([bare("open"), shot("S1"), shot("S2"), bare("end")], {
+      burnIns: [{ kind: "authorship", params: {} }],
+    })
+    const drawn = withSeries(cut, framed)
+    expect(drawn.ok && ids(drawn.value.shots)).toEqual([
+      "open",
+      SERIES_INTRO,
+      "S1",
+      "S2",
+      SERIES_OUTRO,
+      "end",
+    ])
+  })
+
+  it("open and close a video without the mark", () => {
+    const drawn = withSeries(cutList([shot("S1")]), framed)
+    expect(drawn.ok && ids(drawn.value.shots)).toEqual([
+      SERIES_INTRO,
+      "S1",
+      SERIES_OUTRO,
+    ])
+  })
+
+  it("leave a video under a series without them as it is", () => {
+    const cut = cutList([shot("S1")])
+    const drawn = withSeries(cut, series())
+    expect(drawn.ok && drawn.value).toEqual(cut)
+  })
+
+  it("count in the record as an agent's idea and wording, made by code", () => {
+    const cut = cutList([bare("open"), shot("S1"), bare("end")], {
+      burnIns: [{ kind: "authorship", params: {} }],
+    })
+    const drawn = withSeries(cut, framed)
+    const record = drawn.ok ? authorshipOf(drawn.value) : []
+    expect(
+      record
+        .filter((a) => a.shot === SERIES_INTRO || a.shot === SERIES_OUTRO)
+        .map((a) => [a.origin, a.wording, a.hands.join("+")])
+    ).toEqual([
+      ["agent", "agent", "code"],
+      ["agent", "agent", "code"],
+    ])
+  })
+
+  it("refuse a video whose own scene takes a series scene's id", () => {
+    const drawn = withSeries(cutList([shot(SERIES_INTRO)]), framed)
+    expect(drawn.ok ? [] : drawn.problems).toEqual([
+      `${SERIES_INTRO}: the series' own scene takes this id`,
+    ])
+  })
+
+  it("never carry the authorship mark, which covers the whole video", () => {
+    const parsed = parseSeries({
+      ...sample,
+      intro: {
+        picture: card,
+        durationMs: 600,
+        burnIns: [{ kind: "authorship", params: {} }],
+      },
+    })
+    expect(parsed.ok ? [] : parsed.problems).toEqual([
+      "intro: the authorship mark covers the whole video, not one scene",
+    ])
+  })
+
+  it("render with the video, and the review names only the video's own scenes", async () => {
+    const dir = join(root, "framed-series")
+    await mkdir(dir)
+    await writeFile(
+      join(dir, seriesFile(1)),
+      JSON.stringify({
+        ...version(1, "gridiron"),
+        intro: { picture: card, durationMs: 400, burnIns: [] },
+        outro: { picture: card, durationMs: 300, burnIns: [] },
+      })
+    )
+    await mkdir(join(root, "D"))
+    const cut = cutList([bare("S1"), bare("S2")], {
+      series: { id: "fixture", version: 1 },
+      look: "plain",
+      revisions: [
+        {
+          rev: 1,
+          author: "claude",
+          message: "First cut",
+          at: "2026-10-30T20:00:00.000Z",
+        },
+      ],
+    })
+    await writeFile(join(root, "D", "cut-list.json"), JSON.stringify(cut))
+    const done = await renderFolder(join(root, "D"), dir, {
+      workDir: "work",
+      out: "out/video.mp4",
+    })
+    if (!done.ok) throw new Error(done.problems.join("\n"))
+    expect(done.value.shotTimes.map((t) => t.id)).toEqual([
+      SERIES_INTRO,
+      "S1",
+      "S2",
+      SERIES_OUTRO,
+    ])
+    const review = readReview(
+      await readFile(join(root, "D", "out", "review.json"), "utf8")
+    )
+    if (!review.ok) throw new Error(review.problems.join("\n"))
+    expect(review.value.shotTimes.map((t) => [t.id, t.startMs])).toEqual([
+      ["S1", 400],
+      ["S2", 2400],
+    ])
+  }, 60_000)
 })
