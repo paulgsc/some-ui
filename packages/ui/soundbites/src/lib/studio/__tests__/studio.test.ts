@@ -833,7 +833,9 @@ describe("Done for now twice while a take is still saving", () => {
       ["s1", "smooth"],
       ["s2", "rough"],
     ])
-    expect(projectIn(runtime).sittings).toHaveLength(2)
+    const { sittings, takes } = projectIn(runtime)
+    expect(sittings).toHaveLength(2)
+    expect(takes).toHaveLength(1)
   })
 })
 

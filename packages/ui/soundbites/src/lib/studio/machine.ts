@@ -497,8 +497,8 @@ function applied(project: Project | null, pending: Pending): Project | null {
 
 /**
  * Starts the next write if none is in flight: the first pending one that
- * changes the project as kept. A Done for now waits here until no take is
- * under way.
+ * changes the project as kept. Held writes (a Done for now and all asked
+ * for after it) join the queue once no take is under way.
  */
 function pump(state: StudioState): Step {
   let at = state
