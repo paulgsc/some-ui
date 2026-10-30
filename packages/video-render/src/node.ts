@@ -15,7 +15,7 @@ import type { Parsed } from "./cut-list"
 import type { SourceFacts } from "./plan"
 import { render } from "./render"
 import type { Ports, Rendered, RenderOptions } from "./render"
-import { parseSeries, seriesFile } from "./series"
+import { parseSeries, seriesFile, versionOfFile } from "./series"
 import type { Series } from "./series"
 
 type Ran = {
@@ -181,7 +181,7 @@ export function nodePorts(root: string): Ports {
   }
 }
 
-const readJson = async (file: string): Promise<unknown> =>
+export const readJson = async (file: string): Promise<unknown> =>
   JSON.parse(await readFile(file, "utf8"))
 
 /**
@@ -194,9 +194,8 @@ export async function readSeries(
   version?: number
 ): Promise<Parsed<Series>> {
   const versions = (await readdir(dir).catch(() => []))
-    .map((f) => /^v([1-9][0-9]*)\.json$/.exec(f)?.[1])
-    .filter((v) => v !== undefined)
-    .map(Number)
+    .map(versionOfFile)
+    .filter((v) => v !== null)
   const wanted = version ?? Math.max(0, ...versions)
   if (!versions.includes(wanted)) {
     return {
@@ -208,9 +207,15 @@ export async function readSeries(
       ],
     }
   }
-  const raw = await readJson(join(dir, seriesFile(wanted))).catch(
-    (e: unknown) => ({ unreadable: String(e) })
-  )
+  let raw: unknown
+  try {
+    raw = await readJson(join(dir, seriesFile(wanted)))
+  } catch (e) {
+    return {
+      ok: false,
+      problems: [`${seriesFile(wanted)} can't be read: ${String(e)}`],
+    }
+  }
   const series = parseSeries(raw)
   if (!series.ok)
     return {

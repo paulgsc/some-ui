@@ -16,21 +16,17 @@
  * `pnpm --filter` runs this from the package; INIT_CWD is where it was typed.
  */
 
-import { access, readFile, writeFile } from "node:fs/promises"
+import { access, writeFile } from "node:fs/promises"
 import { dirname, join, relative, resolve as resolvePath } from "node:path"
 import { parseArgs } from "node:util"
 import { z } from "zod"
 
 import { problemsOf } from "./cut-list"
-import { nodePorts, readSeries, renderFolder } from "./node"
+import { nodePorts, readJson, readSeries, renderFolder } from "./node"
 import { fromTimelineV1 } from "./timeline-v1"
 
 const here = (p: string): string =>
   resolvePath(process.env["INIT_CWD"] ?? process.cwd(), p)
-
-async function readJson(file: string): Promise<unknown> {
-  return JSON.parse(await readFile(file, "utf8"))
-}
 
 /** Stops the command, saying why; `main` prints it and sets the exit code. */
 class Refused extends Error {}

@@ -1,17 +1,9 @@
-import { resolve } from "@video-render/resolve"
-import { cutList, series, shot } from "@video-render/testing"
+import { designOf, resolve } from "@video-render/resolve"
+import { capture, cutList, series, shot } from "@video-render/testing"
 import { describe, expect, it } from "vitest"
 
 const tapped = shot("S2", {
-  picture: {
-    kind: "capture",
-    source: "captures/walk.mp4",
-    inMs: 0,
-    speed: 1,
-    cssWidth: 412,
-    framing: { mode: "crop", zoom: 1, x: 0, y: 0 },
-    taps: [400, 1200],
-  },
+  picture: capture(0, { cssWidth: 412, taps: [400, 1200] }),
 })
 
 describe("resolve", () => {
@@ -72,6 +64,27 @@ describe("resolve", () => {
       "S2: the series has no whoosh sound",
       "S2: the series has no click sound",
       "the music is up-between-lines, and the series has no music bed",
+    ])
+  })
+})
+
+describe("a burn-in's design", () => {
+  const pinned = series({ designs: { captions: "gridiron" } })
+
+  it("is its own when it names one, else its series version's", () => {
+    expect(designOf({ kind: "captions", params: {} }, pinned)).toBe("gridiron")
+    expect(
+      designOf({ kind: "captions", design: "chalk", params: {} }, pinned)
+    ).toBe("chalk")
+  })
+
+  it("is refused when neither names one", () => {
+    const r = resolve(
+      cutList([shot("S1")], { burnIns: [{ kind: "card", params: {} }] }),
+      pinned
+    )
+    expect(r.ok ? [] : r.problems).toEqual([
+      "the card burn-in names no design, and the series names none for it",
     ])
   })
 })

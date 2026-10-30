@@ -166,7 +166,7 @@ export const STEPS: ReadonlyArray<Step> = [
       { field: "music" },
       { field: "shots" },
       { field: "burnIns" },
-      { file: "series.json" },
+      { file: "series/" },
     ],
     writes: [{ file: "video.mp4" }, { file: "shot-times.json" }],
   },

@@ -163,7 +163,6 @@ function shotOf(
     const line = s.provenance ? V1_PROVENANCE[s.provenance] : ""
     burnIns.push({
       kind: "headline",
-      design: "v1",
       params: {
         kicker: s.kicker ?? "",
         headline: s.headline,
@@ -173,7 +172,6 @@ function shotOf(
   } else {
     burnIns.push({
       kind: "card",
-      design: "v1",
       params: {
         kicker: s.kicker ?? "",
         headline: s.headline,

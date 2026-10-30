@@ -137,10 +137,16 @@ describe("a series' versions", () => {
     expect(misnamed.ok ? [] : misnamed.problems).toEqual([
       "v9.json says it is version 2",
     ])
+    await writeFile(join(root, SERIES_DIR, seriesFile(9)), "{ not json")
+    const broken = await readSeries(join(root, SERIES_DIR), 9)
+    expect(broken.ok ? [] : broken.problems).toEqual([
+      expect.stringMatching(/^v9\.json can't be read: /),
+    ])
     await rm(join(root, SERIES_DIR, seriesFile(9)))
   })
 
   it("opens the newest when no version is asked for", async () => {
+    await publish(version(3, "broadcast"))
     const newest = await readSeries(join(root, SERIES_DIR))
     expect(newest.ok ? newest.value.version : newest.problems).toBe(3)
   })

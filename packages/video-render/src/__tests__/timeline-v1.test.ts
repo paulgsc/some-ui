@@ -92,7 +92,6 @@ describe("fromTimelineV1", () => {
     expect(hook?.burnIns).toEqual([
       {
         kind: "headline",
-        design: "v1",
         params: {
           kicker: "TOPIK STUDY",
           headline: "I answered her in casual Korean",

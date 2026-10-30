@@ -80,3 +80,9 @@ export function parseSeries(raw: unknown): Parsed<Series> {
 
 /** A version's file in its series' folder. */
 export const seriesFile = (version: number): string => `v${version}.json`
+
+/** The version a file in a series' folder holds, or null for any other file. */
+export function versionOfFile(name: string): number | null {
+  const n = /^v([1-9][0-9]*)\.json$/.exec(name)?.[1]
+  return n === undefined ? null : Number(n)
+}
