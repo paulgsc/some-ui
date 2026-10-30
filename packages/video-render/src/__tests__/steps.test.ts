@@ -4,10 +4,11 @@ import { describe, expect, it } from "vitest"
 
 /** Whether a field names one the cut list has: a top-level key, or `shots.<key>`. */
 const isField = (field: string): boolean => {
-  const [top, inner] = field.split(".")
-  if (top === undefined || !(top in CutListSchema.shape)) return false
+  const [top, inner, ...rest] = field.split(".")
+  if (top === undefined || rest.length > 0) return false
+  if (!Object.hasOwn(CutListSchema.shape, top)) return false
   if (inner === undefined) return true
-  return top === "shots" && inner in ShotSchema.shape
+  return top === "shots" && Object.hasOwn(ShotSchema.shape, inner)
 }
 
 const fieldsOf = (ios: ReadonlyArray<Io>): ReadonlyArray<string> =>
@@ -27,26 +28,32 @@ describe("who owns each step", () => {
     ).toEqual([])
   })
 
-  it("keeps work on a session that isn't Claude's only with a blocker named", () => {
-    expect(
-      STEPS.filter(
-        (s) => s.now === "session" && s.kind !== "claude" && !s.blockedBy
-      ).map((s) => s.id)
-    ).toEqual([])
-  })
-
-  it("leaves what only the owner does with the owner", () => {
-    for (const s of STEPS.filter((x) => x.kind === "owner")) {
-      expect([s.id, s.now, s.target]).toEqual([s.id, "owner", "owner"])
+  it("names a blocker exactly while a session keeps work that isn't Claude's", () => {
+    for (const s of STEPS) {
+      const kept = s.now === "session" && s.kind !== "claude"
+      expect([s.id, s.blockedBy !== undefined]).toEqual([s.id, kept])
     }
   })
 
-  it("moves a step through cut-list fields and files only", () => {
+  it("gives the owner their own steps and no others", () => {
+    for (const s of STEPS) {
+      const theirs = s.kind === "owner"
+      expect([s.id, s.now === "owner", s.target === "owner"]).toEqual([
+        s.id,
+        theirs,
+        theirs,
+      ])
+    }
+  })
+
+  it("names only fields the cut list has", () => {
     const unknown = STEPS.flatMap((s) =>
       [...fieldsOf(s.reads), ...fieldsOf(s.writes)]
         .filter((f) => !isField(f))
         .map((f) => `${s.id}: ${f}`)
     )
     expect(unknown).toEqual([])
+    expect(isField("constructor")).toBe(false)
+    expect(isField("shots.take.inMs")).toBe(false)
   })
 })

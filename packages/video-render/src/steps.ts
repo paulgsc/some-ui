@@ -7,18 +7,15 @@
  * A step reads and writes only cut-list fields and files, so moving it to
  * another owner changes its row and nothing else. `__tests__/steps.test.ts`
  * holds the rules: home runs no language model, a session keeps work that
- * isn't a language model's only while something named blocks the move, and
- * what only the owner does stays theirs.
+ * isn't Claude's exactly while something named blocks the move, only the
+ * owner's own steps are the owner's, and every field named is the cut list's.
  */
 
 /** What does the work: code, the small speech model home runs, Claude, or the owner. */
-export const STEP_KINDS = ["code", "small-model", "claude", "owner"] as const
+export type StepKind = "code" | "small-model" | "claude" | "owner"
 
 /** Where it runs. */
-export const OWNERS = ["phone", "home", "session", "owner"] as const
-
-export type StepKind = (typeof STEP_KINDS)[number]
-export type Owner = (typeof OWNERS)[number]
+export type Owner = "phone" | "home" | "session" | "owner"
 
 /** A cut-list field (`shots.take` is a scene's) or a file the step reads or writes. */
 export type Io = { readonly field: string } | { readonly file: string }
@@ -31,7 +28,6 @@ export type Step = {
   readonly target: Owner
   readonly milestone: "M0" | "M1" | "M2" | null
   readonly why: string
-  /** What keeps a step that isn't Claude's on a session. */
   readonly blockedBy?: string
   readonly reads: ReadonlyArray<Io>
   readonly writes: ReadonlyArray<Io>
@@ -94,7 +90,7 @@ export const STEPS: ReadonlyArray<Step> = [
     milestone: "M1",
     why: "Home keeps every take for good; Drive only carries them to a session.",
     reads: [{ file: "takes/" }],
-    writes: [{ field: "shots.take" }],
+    writes: [{ file: "takes/" }],
   },
   {
     id: "transcribe",
@@ -150,8 +146,16 @@ export const STEPS: ReadonlyArray<Step> = [
     target: "home",
     milestone: "M2",
     why: "`@some-ui/video-render`: a cut list in, the same bytes out.",
-    blockedBy: "GWB10 (#2084): home's render worker",
-    reads: [{ field: "shots" }, { field: "burnIns" }, { field: "music" }],
+    blockedBy: "ST13 (#2261) on GWB10's worker (#2084)",
+    reads: [
+      { field: "series" },
+      { field: "look" },
+      { field: "voice" },
+      { field: "music" },
+      { field: "shots" },
+      { field: "burnIns" },
+      { file: "series.json" },
+    ],
     writes: [{ file: "video.mp4" }, { file: "shot-times.json" }],
   },
   {
