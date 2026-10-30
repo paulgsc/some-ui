@@ -21,6 +21,19 @@ export function seconds(ms: number): string {
   return `${(Math.max(0, ms) / 1_000).toFixed(1)} s`
 }
 
+/**
+ * What sharing frees, and only that: the room the shared takes held. The
+ * old Journal tab's pieces, when they hold room, are named, since sharing
+ * frees none of theirs.
+ */
+function makingRoom(leftoverBytes: number): string {
+  const shared =
+    "On Start, share a video's takes with Claude and say they reached Drive: they leave the phone, and the room they held is free."
+  return leftoverBytes === 0
+    ? shared
+    : `${shared} Pieces of the old Journal tab hold ${size(leftoverBytes)} that sharing doesn't free.`
+}
+
 /** A number of bytes, as room on the phone: `820 KB`, `1.4 MB`. */
 function size(bytes: number): string {
   return bytes < 1_000_000
@@ -56,7 +69,7 @@ export const STUDIO_WORDS = {
     others: "Other videos with takes on the phone",
     leftoversTitle: "Pieces of the old Journal tab still on the phone",
     leftovers: (rows: number, bytes: number): string =>
-      `${plural(rows, "piece", "pieces")} Studio couldn't read, kept as they were. They take ${size(bytes)} of the room for takes.`,
+      `${plural(rows, "piece", "pieces")} Studio didn't move into a video, kept as ${rows === 1 ? "it was" : "they were"}. ${rows === 1 ? "It takes" : "They take"} ${size(bytes)} of the room for takes.`,
     onPhone: (n: number): string =>
       `${plural(n, "take", "takes")} on the phone`,
     open: "Open",
@@ -112,9 +125,10 @@ export const STUDIO_WORDS = {
     kept: (ms: number): string => `Kept ${seconds(ms)}.`,
     tooShort: "Too short to keep. Tap, talk, then tap again.",
     notKept: "That take couldn't be kept. Try again?",
-    full: "No room on the phone for that take, so it wasn't kept. On Start, share each video's takes with Claude and say they reached Drive: they leave the phone, and there's room again.",
-    noRoom:
-      "No room on the phone for another take. On Start, share each video's takes with Claude and say they reached Drive: they leave the phone, and there's room again.",
+    full: (leftoverBytes: number): string =>
+      `No room on the phone for that take, so it wasn't kept. ${makingRoom(leftoverBytes)}`,
+    noRoom: (leftoverBytes: number): string =>
+      `No room on the phone for another take. ${makingRoom(leftoverBytes)}`,
     spent:
       "The primer's time is all used. Record a long scene again, shorter, to make room.",
     thrownAway: "Thrown away. Nothing kept.",
@@ -124,6 +138,8 @@ export const STUDIO_WORDS = {
     unreadableFile: "That file couldn't be read.",
     audioMissing: "That take's audio isn't on the phone any more.",
     notPlayable: "That take couldn't be played.",
+    behind:
+      "The phone's videos couldn't be read just now, so this screen may be behind. What you record is still kept.",
     carryFailed:
       "Your Journal episode couldn't be moved into Studio yet. It's still on the phone, and moves next time.",
     carried: (title: string, left: number, gone: number): string =>
@@ -167,7 +183,7 @@ export const STUDIO_WORDS = {
     opensOn: (n: number, artifact: string): string =>
       `Next time opens on scene ${n}: ${artifact}.`,
     notSaved:
-      "Your takes are kept. Where you left off couldn't be saved; next time opens on your last take.",
+      "Where you left off couldn't be saved; next time opens on your last kept take.",
     answerNotKept: "That answer couldn't be kept.",
     share: "Share with Claude",
     sharing: "Preparing…",

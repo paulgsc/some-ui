@@ -100,7 +100,7 @@ export function createStudio(ports: StudioPorts): StudioRuntime {
         const { seq } = effect
         Promise.all([
           ports.store.list(),
-          ports.store.takeNotices(),
+          ports.store.notices(),
           ports.store.room(),
           ports.store.leftovers(),
         ]).then(
@@ -139,6 +139,11 @@ export function createStudio(ports: StudioPorts): StudioRuntime {
       case "remember": {
         // Ignored: no screen is left to say it failed; the notice is all it loses.
         ports.store.remember(effect.notice).catch(() => undefined)
+        return
+      }
+      case "forget": {
+        // Ignored: a notice not let go is only said again by the next Start.
+        ports.store.forget(effect.keys).catch(() => undefined)
         return
       }
       case "report": {

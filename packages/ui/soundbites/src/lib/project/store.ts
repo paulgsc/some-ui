@@ -66,9 +66,14 @@ export type Change = (held: Project | null) => Project | null
 
 /** What a write found: the project as kept after it, and whether it changed. */
 export type Written = {
+  /** The project as held before the write. */
+  readonly before: Project | null
   readonly project: Project | null
   readonly changed: boolean
 }
+
+/** A notice `remember` kept, under the key `forget` lets it go by. */
+export type StoredNotice = { readonly key: number; readonly text: string }
 
 /** Rows the carry left in the Journal tab's stores, and the audio they hold. */
 export type Leftovers = { readonly rows: number; readonly bytes: number }
@@ -107,8 +112,10 @@ export type ProjectStore = {
   report: (friction: Friction) => Promise<void>
   /** Keeps what a screen that had gone away couldn't keep, for the next to say. */
   remember: (notice: string) => Promise<void>
-  /** What `remember` kept, oldest first, handed over once. */
-  takeNotices: () => Promise<Array<string>>
+  /** What `remember` kept, oldest first; reading lets none of it go. */
+  notices: () => Promise<Array<StoredNotice>>
+  /** Lets go of the notices under `keys`, once a screen has shown them. */
+  forget: (keys: ReadonlyArray<number>) => Promise<void>
   /**
    * Calls `listener` after each write commits, on this page, so a screen
    * showing a project (another runtime's, say) can read it again. Returns
@@ -185,20 +192,24 @@ export function indexedDbProjectStore(): ProjectStore {
     for (const listener of listeners) listener()
   }
 
-  /** Runs `write` in a read-write transaction, aborting it on a throw. */
+  /**
+   * Runs `write` in a read-write transaction, aborting it on a throw. A
+   * write that says it changed nothing (`false`) tells no one.
+   */
   async function writing(
     stores: ReadonlyArray<string>,
-    write: (tx: IDBTransaction) => Promise<void>
+    write: (tx: IDBTransaction) => Promise<boolean | void>
   ): Promise<void> {
     const tx = (await connect()).transaction([...stores], "readwrite")
+    let wrote: boolean | void
     try {
-      await write(tx)
+      wrote = await write(tx)
     } catch (error) {
       tx.abort()
       throw error
     }
     await done(tx)
-    changed()
+    if (wrote !== false) changed()
   }
 
   return {
@@ -251,15 +262,15 @@ export function indexedDbProjectStore(): ProjectStore {
     },
 
     async update(id, change, audio): Promise<Written> {
-      let written: Written = { project: null, changed: false }
+      let written: Written = { before: null, project: null, changed: false }
       const write = (): Promise<void> =>
         writing([PROJECTS, AUDIO, JOURNAL_AUDIO], async (tx) => {
           const projects = tx.objectStore(PROJECTS)
           const held = await keptIn(projects, id)
           const next = change(held)
           if (next === null) {
-            written = { project: held, changed: false }
-            return
+            written = { before: held, project: held, changed: false }
+            return false
           }
           const admission = admitted(held, next, audio?.take ?? null)
           if (!admission.ok || next.id !== id) throw new ProjectRewriteError()
@@ -282,7 +293,8 @@ export function indexedDbProjectStore(): ProjectStore {
           }
           projects.put(next)
           for (const take of admission.letGo) audios.delete(audioKey(id, take))
-          written = { project: next, changed: true }
+          written = { before: held, project: next, changed: true }
+          return true
         })
       await (audio === undefined
         ? write()
@@ -308,7 +320,7 @@ export function indexedDbProjectStore(): ProjectStore {
           )
           if (plan.kind !== "carry") {
             carried = plan
-            return
+            return false
           }
           // Only what the plan copied leaves; everything else stays put.
           tx.objectStore(PROJECTS).put(plan.project)
@@ -325,6 +337,7 @@ export function indexedDbProjectStore(): ProjectStore {
             left: plan.left,
             gone: plan.gone,
           }
+          return true
         }
       )
       return carried
@@ -347,17 +360,23 @@ export function indexedDbProjectStore(): ProjectStore {
       })
     },
 
-    async takeNotices(): Promise<Array<string>> {
-      const tx = (await connect()).transaction(NOTICES, "readwrite")
-      const store = tx.objectStore(NOTICES)
-      const rows: Array<unknown> = await result(store.getAll())
-      const notices = rows.filter(
-        (row): row is string => typeof row === "string"
+    async notices(): Promise<Array<StoredNotice>> {
+      const tx = (await connect()).transaction(NOTICES, "readonly")
+      const rows = await rowsOf(tx.objectStore(NOTICES))
+      return rows.flatMap((row) =>
+        typeof row.key === "number" && typeof row.value === "string"
+          ? [{ key: row.key, text: row.value }]
+          : []
       )
-      // Handed over once: each is said by the Start that reads it.
-      store.clear()
-      await done(tx)
-      return notices
+    },
+
+    async forget(keys): Promise<void> {
+      await writing([NOTICES], (tx) => {
+        const store = tx.objectStore(NOTICES)
+        for (const key of keys) store.delete(key)
+        // A screen let go of what it showed: nothing for another to read.
+        return Promise.resolve(false)
+      })
     },
 
     subscribe(listener): () => void {

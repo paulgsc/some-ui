@@ -67,7 +67,7 @@ export function memoryProjectStore(
   projects: Map<string, Project>
   audio: Map<string, Blob>
   friction: Array<Friction>
-  notices: Array<string>
+  notices: Map<number, string>
   journal: { carried: Carried; leftovers: Leftovers }
   gate: { hold: (() => Promise<void>) | null }
 } {
@@ -77,7 +77,8 @@ export function memoryProjectStore(
     for (const take of project.takes)
       if (take.onPhone) audio.set(`${project.id}:${take.id}`, new Blob(["x"]))
   const friction: Array<Friction> = []
-  const notices: Array<string> = []
+  const notices = new Map<number, string>()
+  let noticeKey = 0
   const journal: { carried: Carried; leftovers: Leftovers } = {
     carried: { kind: "nothing" },
     leftovers: { rows: 0, bytes: 0 },
@@ -98,7 +99,7 @@ export function memoryProjectStore(
   ): Written => {
     const held = projects.get(id) ?? null
     const next = change(held)
-    if (next === null) return { project: held, changed: false }
+    if (next === null) return { before: held, project: held, changed: false }
     const admission = admitted(held, next, added?.take ?? null)
     if (!admission.ok || next.id !== id) throw new ProjectRewriteError()
     if (added !== undefined) {
@@ -110,7 +111,7 @@ export function memoryProjectStore(
     }
     projects.set(id, next)
     for (const take of admission.letGo) audio.delete(`${id}:${take}`)
-    return { project: next, changed: true }
+    return { before: held, project: next, changed: true }
   }
 
   const store: ProjectStore = {
@@ -127,7 +128,7 @@ export function memoryProjectStore(
     update: async (id, change, added) => {
       if (gate.hold !== null) await gate.hold()
       const written = write(id, change, added)
-      changed()
+      if (written.changed) changed()
       return written
     },
     leftovers: () => Promise.resolve(journal.leftovers),
@@ -150,10 +151,17 @@ export function memoryProjectStore(
       return Promise.resolve()
     },
     remember: (notice) => {
-      notices.push(notice)
+      notices.set(++noticeKey, notice)
       return Promise.resolve()
     },
-    takeNotices: () => Promise.resolve(notices.splice(0)),
+    notices: () =>
+      Promise.resolve(
+        [...notices.entries()].map(([key, text]) => ({ key, text }))
+      ),
+    forget: (keys) => {
+      for (const key of keys) notices.delete(key)
+      return Promise.resolve()
+    },
     subscribe: (listener) => {
       listeners.add(listener)
       return (): void => {

@@ -18,9 +18,16 @@
  * - **Only a full phone refuses a take**, and the take's audio goes in the
  *   same write as the take, so nothing is half kept. The room left is read
  *   with the projects, and a take that couldn't fit is not started.
+ * - **Writes don't wait on reads.** Once the Journal tab's episode is
+ *   carried (or couldn't be), queued writes go on whether or not a read of
+ *   the store succeeds, and on after the screen has gone; a read that fails
+ *   once the screen shows the store leaves it showing, with a notice.
  * - **What wasn't kept is said, even to a screen that has gone.** A refusal
- *   after the screen left is kept in the store (`remember`) and said by the
- *   next Start.
+ *   after the screen left is kept in the store (`remember`), and a notice
+ *   the store keeps is let go only once a read carrying it is shown
+ *   (`forget`), so a failed or overtaken read loses none.
+ * - **How a sitting went is filed against the sitting the store closed**, as
+ *   its close returns it, never against the screen's copy.
  * - **Every video holding takes on the phone can be reached.** Start lists
  *   the others and opens any of them, so each one's takes can be shared and
  *   let go, and lists what the carry couldn't read of the Journal tab's
@@ -70,6 +77,7 @@ import type {
   Change,
   Friction,
   Leftovers,
+  StoredNotice,
   Written,
 } from "@soundbites/lib/project/store"
 
@@ -106,10 +114,15 @@ type StudioScreen =
       readonly kind: "done"
       readonly step: "how" | "what" | "saved"
       readonly went: Went | null
-      /** The sitting it asks about, by project and id. */
+      /** The video it asks about. */
       readonly project: string
+      /** The sitting the store closed, once its close lands. */
       readonly sitting: string | null
       readonly shot: string
+      /** How it went, as answered, waiting on the close to file it. */
+      readonly answer: Pick<Friction, "at" | "went" | "gotInTheWay"> | null
+      /** Whether the answer has gone to the store, or been said lost. */
+      readonly filed: boolean
     }
 
 type Shelf =
@@ -156,6 +169,10 @@ export type StudioState = {
   readonly inFlight: Pending | null
   /** Another screen wrote while one of ours was pending: read once ours land. */
   readonly stale: boolean
+  /** Whether the Journal tab's episode is carried (or couldn't be): writes wait on it. */
+  readonly ready: boolean
+  /** Notices from the store already shown, by key, so none is said twice. */
+  readonly said: ReadonlyArray<number>
   /** The bytes of audio the phone may still keep, as last read; null unread. */
   readonly roomBytes: number | null
   /** What the carry left of the Journal tab's episode, as last read. */
@@ -223,7 +240,7 @@ type StudioSignal =
       readonly seq: number
       readonly projects: ReadonlyArray<Project>
       /** What screens that had gone away couldn't keep. */
-      readonly notices: ReadonlyArray<string>
+      readonly notices: ReadonlyArray<StoredNotice>
       readonly roomBytes: number
       readonly leftovers: Leftovers
     }
@@ -265,6 +282,8 @@ export type StudioEffect =
       readonly audio?: { readonly take: string; readonly blob: Blob }
     }
   | { readonly type: "remember"; readonly notice: string }
+  /** Let go of notices the store kept, now that a screen has shown them. */
+  | { readonly type: "forget"; readonly keys: ReadonlyArray<number> }
   | { readonly type: "report"; readonly friction: Friction }
   | {
       readonly type: "loadAudio"
@@ -299,6 +318,8 @@ export function initialStudioState(): StudioState {
     queue: [],
     inFlight: null,
     stale: false,
+    ready: false,
+    said: [],
     roomBytes: null,
     leftovers: { rows: 0, bytes: 0 },
     closing: null,
@@ -473,7 +494,7 @@ function pump(state: StudioState): Step {
       closing: null,
     }
   }
-  if (at.inFlight !== null || at.shelf.kind !== "read") return stay(at)
+  if (at.inFlight !== null || !at.ready) return stay(at)
   const [pending, ...queue] = at.queue
   if (pending === undefined) {
     // Ours are all done: now read what another screen wrote meanwhile.
@@ -498,8 +519,21 @@ function enqueue(state: StudioState, pending: Pending): Step {
   return pump({ ...state, queue: [...state.queue, pending] })
 }
 
+/** How many of `takes` went from on the phone to off it in `written`. */
+function letGoCount(written: Written, takes: ReadonlyArray<string>): number {
+  const onPhone = (project: Project | null, id: string): boolean =>
+    project?.takes.find((take) => take.id === id)?.onPhone === true
+  return takes.filter(
+    (id) => onPhone(written.before, id) && !onPhone(written.project, id)
+  ).length
+}
+
 /** What a landed write says. */
-function landedNotice(state: StudioState, pending: Pending): string {
+function landedNotice(
+  state: StudioState,
+  pending: Pending,
+  written: Written
+): string {
   switch (pending.kind) {
     case "keep": {
       return WORDS.notice.kept(pending.take.durationMs)
@@ -511,7 +545,8 @@ function landedNotice(state: StudioState, pending: Pending): string {
       return WORDS.start.revised(pending.primer.title)
     }
     case "arrived": {
-      return WORDS.notice.arrived(pending.takes.length)
+      const n = letGoCount(written, pending.takes)
+      return n === 0 ? state.notice : WORDS.notice.arrived(n)
     }
     case "open":
     case "close": {
@@ -523,11 +558,20 @@ function landedNotice(state: StudioState, pending: Pending): string {
   }
 }
 
-/** What a refused write says it didn't keep. */
-function refusedNotice(pending: Pending, reason: "full" | "failed"): string {
+/**
+ * What a refused write says it didn't keep. A close says it on the Done
+ * screen itself (`closed`), so it covers no other notice.
+ */
+function refusedNotice(
+  state: StudioState,
+  pending: Pending,
+  reason: "full" | "failed"
+): string {
   if (pending.kind === "keep")
-    return reason === "full" ? WORDS.notice.full : WORDS.notice.notKept
-  if (pending.kind === "close") return WORDS.done.notSaved
+    return reason === "full"
+      ? WORDS.notice.full(state.leftovers.bytes)
+      : WORDS.notice.notKept
+  if (pending.kind === "close") return state.notice
   return WORDS.notice.notSaved
 }
 
@@ -541,10 +585,8 @@ function unchangedNotice(state: StudioState, pending: Pending): string {
     case "revise": {
       return WORDS.notice.notSaved
     }
-    case "close": {
-      return WORDS.done.notSaved
-    }
     case "open":
+    case "close":
     case "arrived": {
       return state.notice
     }
@@ -555,17 +597,52 @@ function unchangedNotice(state: StudioState, pending: Pending): string {
 }
 
 /**
- * `state` saying `notice`; when it says what wasn't kept and the screen is
- * gone, the store keeps it for the next Start to say.
+ * `state` saying `notice`. With the screen gone, `lost` (what wasn't kept,
+ * if anything) is kept by the store for the next Start to say.
  */
-function told(state: StudioState, notice: string, lost: boolean): Step {
+function told(state: StudioState, notice: string, lost: string | null): Step {
   return {
     state: { ...state, notice },
     effects:
-      lost && state.page === "left" && notice !== state.notice
-        ? [{ type: "remember", notice }]
+      lost !== null && state.page === "left"
+        ? [{ type: "remember", notice: lost }]
         : [],
   }
+}
+
+/** What a write that kept nothing of `pending` lost, for a gone screen. */
+function lostBy(pending: Pending, notice: string): string {
+  return pending.kind === "close" ? WORDS.done.notSaved : notice
+}
+
+/**
+ * Files the Done screen's answer once both it and the sitting the store
+ * closed are known; with no sitting closed, says the answer wasn't kept.
+ */
+function fileAnswer(state: StudioState): Step {
+  const { screen } = state
+  if (screen.kind !== "done" || screen.answer === null || screen.filed)
+    return stay(state)
+  if (screen.sitting !== null)
+    return {
+      state: { ...state, screen: { ...screen, filed: true } },
+      effects: [
+        {
+          type: "report",
+          friction: {
+            project: screen.project,
+            sitting: screen.sitting,
+            ...screen.answer,
+          },
+        },
+      ],
+    }
+  if (state.closed !== "failed") return stay(state)
+  return told(
+    { ...state, screen: { ...screen, filed: true } },
+    WORDS.done.answerNotKept,
+    null
+  )
 }
 
 /** `first`, then `then` from its state, effects in order. */
@@ -692,15 +769,15 @@ function moveTo(state: StudioState, shot: string | null): Step {
 function doneForNow(state: StudioState, at: string): Step {
   const project = projectOf(state)
   if (state.screen.kind !== "record" || project === null) return stay(state)
-  const sitting = project.sittings.at(-1)
-  const open = sitting?.closedAt === null ? sitting : null
   const screen: StudioScreen = {
     kind: "done",
     step: "how",
     went: null,
     project: project.id,
-    sitting: open?.id ?? null,
+    sitting: null,
     shot: state.screen.shot,
+    answer: null,
+    filed: false,
   }
   const base: StudioState = {
     ...state,
@@ -734,26 +811,34 @@ function report(
   at: string
 ): Step {
   if (state.screen.kind !== "done") return stay(state)
-  const { screen } = state
-  const effects: Array<StudioEffect> =
-    screen.sitting === null
-      ? []
-      : [
-          {
-            type: "report",
-            friction: {
-              project: screen.project,
-              sitting: screen.sitting,
-              at,
-              went,
-              gotInTheWay: text,
-            },
-          },
-        ]
-  return {
-    state: { ...state, screen: { ...screen, step: "saved", went } },
-    effects,
-  }
+  return fileAnswer({
+    ...state,
+    screen: {
+      ...state.screen,
+      step: "saved",
+      went,
+      answer: { at, went, gotInTheWay: text },
+    },
+  })
+}
+
+/** The Done screen, told which sitting the store closed for it. */
+function withClosedSitting(
+  screen: StudioScreen,
+  pending: Pending,
+  written: Written
+): StudioScreen {
+  if (
+    screen.kind !== "done" ||
+    pending.kind !== "close" ||
+    pending.project !== screen.project ||
+    !written.changed
+  )
+    return screen
+  const closed = written.project?.sittings.find(
+    (each) => each.closedAt === pending.at && each.shot === pending.shot
+  )
+  return closed === undefined ? screen : { ...screen, sitting: closed.id }
 }
 
 export function step(state: StudioState, event: StudioEvent): Step {
@@ -773,6 +858,7 @@ export function step(state: StudioState, event: StudioEvent): Step {
       const { carried } = event
       return read({
         ...state,
+        ready: true,
         notice:
           carried.kind === "carried"
             ? WORDS.notice.carried(
@@ -797,7 +883,12 @@ export function step(state: StudioState, event: StudioEvent): Step {
     }
 
     case "carryFailed": {
-      return read({ ...state, notice: WORDS.notice.carryFailed })
+      // Writes go on: the episode stays in the Journal tab's stores.
+      return read({
+        ...state,
+        ready: true,
+        notice: WORDS.notice.carryFailed,
+      })
     }
 
     case "left": {
@@ -822,24 +913,42 @@ export function step(state: StudioState, event: StudioEvent): Step {
     case "listed": {
       if (event.seq !== state.readSeq) return stay(state)
       const kept = event.projects.some((each) => each.id === state.current)
+      const fresh = event.notices.filter(
+        (each) => !state.said.includes(each.key)
+      )
+      const keys = event.notices.map((each) => each.key)
       const shown = withProjects(
         {
           ...state,
           roomBytes: event.roomBytes,
           leftovers: event.leftovers,
+          said: [...state.said, ...fresh.map((each) => each.key)],
           notice:
-            event.notices.length === 0
+            fresh.length === 0
               ? state.notice
-              : [...event.notices, state.notice].filter(Boolean).join(" "),
+              : [...fresh.map((each) => each.text), state.notice]
+                  .filter(Boolean)
+                  .join(" "),
         },
         event.projects,
         kept ? state.current : (currentOf(event.projects)?.id ?? null)
       )
-      return pump(shown)
+      // Shown, so the store may let them go.
+      return then(
+        {
+          state: shown,
+          effects: keys.length === 0 ? [] : [{ type: "forget", keys }],
+        },
+        pump
+      )
     }
 
     case "listFailed": {
       if (event.seq !== state.readSeq) return stay(state)
+      // Once the store is on screen, a failed read leaves it there: Record
+      // and its Stop stay, and the writes queued go on regardless.
+      if (state.shelf.kind === "read")
+        return stay({ ...state, notice: WORDS.notice.behind })
       return stay({ ...state, shelf: { kind: "unreadable" } })
     }
 
@@ -923,7 +1032,7 @@ export function step(state: StudioState, event: StudioEvent): Step {
           ...state,
           notice:
             roomMs < SOUNDBITE_MIN_MS
-              ? WORDS.notice.noRoom
+              ? WORDS.notice.noRoom(state.leftovers.bytes)
               : WORDS.notice.spent,
         })
       const opened = openTake()
@@ -1066,18 +1175,22 @@ export function step(state: StudioState, event: StudioEvent): Step {
             (pending.kind === "create" || pending.kind === "revise") &&
             written.changed
               ? { kind: "start" }
-              : screen,
+              : withClosedSitting(screen, pending, written),
         },
         projects,
         opened
       )
+      const notice = written.changed
+        ? landedNotice(state, pending, written)
+        : unchangedNotice(state, pending)
       return then(
-        told(
-          landed,
-          written.changed
-            ? landedNotice(state, pending)
-            : unchangedNotice(state, pending),
-          !written.changed
+        then(
+          told(
+            landed,
+            notice,
+            written.changed ? null : lostBy(pending, notice)
+          ),
+          fileAnswer
         ),
         pump
       )
@@ -1087,16 +1200,20 @@ export function step(state: StudioState, event: StudioEvent): Step {
       const pending = state.inFlight
       if (pending === null) return stay(state)
       // Nothing of it was kept; the store is as it was, and the queue goes on.
+      const notice = refusedNotice(state, pending, event.reason)
       return then(
-        told(
-          {
-            ...state,
-            inFlight: null,
-            activity: pending.kind === "keep" ? { kind: "idle" } : activity,
-            closed: pending.kind === "close" ? "failed" : state.closed,
-          },
-          refusedNotice(pending, event.reason),
-          true
+        then(
+          told(
+            {
+              ...state,
+              inFlight: null,
+              activity: pending.kind === "keep" ? { kind: "idle" } : activity,
+              closed: pending.kind === "close" ? "failed" : state.closed,
+            },
+            notice,
+            lostBy(pending, notice)
+          ),
+          fileAnswer
         ),
         pump
       )
