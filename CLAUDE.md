@@ -567,7 +567,10 @@ bound, a changed requirement, a retirement) carries an amendment naming the owne
 decision. Ask the owner before writing one; never weaken a promise to get a PR green. A new server
 route module fails the check on the route snapshot PR (`bot/server-route-snapshot`), which a
 server workflow rewrites on every merge: place the module in its own PR here first (a placed
-module the server does not serve yet is only a warning), then the snapshot goes green.
+module the server does not serve yet is only a warning), then the snapshot goes green. A new
+server table is the other way round: the server's `Assurance ledger` check fails every server PR
+while `stores` names a table no migration has, so place the store here only once its server PR
+is otherwise ready to merge, and merge that PR right after (#2306 turned every open server PR red).
 
 Held by: `pnpm check:assurance`
 
