@@ -55,12 +55,20 @@ const ADVANCES = { 600: advances(600), 800: advances(800) } as const
 /** Kerning only rarely widens a pair; this covers it. */
 const KERNING_MARGIN = 1.03
 
-/** How wide `text` draws in `style`, in pixels; a character the font lacks counts as its widest. */
-function widthOf(text: string, style: TextStyle): number {
+/**
+ * How wide `text` draws in `style`, in pixels, with `letterSpacingEm` after
+ * each character as CSS adds it; a character the font lacks counts as its
+ * widest.
+ */
+export function widthOf(
+  text: string,
+  style: Pick<TextStyle, "weight" | "sizePx" | "uppercase">,
+  letterSpacingEm = 0
+): number {
   const table = ADVANCES[style.weight]
   const shown = style.uppercase ? text.toUpperCase() : text
   let ems = 0
-  for (const c of shown) ems += table.get(c) ?? WIDEST
+  for (const c of shown) ems += (table.get(c) ?? WIDEST) + letterSpacingEm
   return ems * style.sizePx * KERNING_MARGIN
 }
 
@@ -71,11 +79,13 @@ const wrap = (text: string, style: TextStyle, widthPx: number): Array<string> =>
       .split(/\s+/)
       .filter((w) => w.length > 0)
       .map((w) => ({ text: w })),
-    (row) => widthOf(join(row), style) <= widthPx
-  ).map(join)
+    (row) => widthOf(rowText(row), style) <= widthPx
+  ).map(rowText)
 
-const join = (row: ReadonlyArray<{ readonly text: string }>): string =>
-  row.map((w) => w.text).join(" ")
+/** A row of words as it reads, one space between words. */
+export const rowText = (
+  row: ReadonlyArray<{ readonly text: string }>
+): string => row.map((w) => w.text).join(" ")
 
 /**
  * `text` set from the top left of `at`, wrapped to its width, or null when

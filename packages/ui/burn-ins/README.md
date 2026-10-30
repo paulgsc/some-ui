@@ -17,7 +17,7 @@ the same for its part:
 
 - `src/lib/geometry.ts`: the frame, the safe area, the regions.
 - `src/lib/text.ts`, `src/lib/advances.ts`: text set by the font's own
-  advance widths.
+  advance widths, subtitles' lines included.
 - `src/lib/captions/`: the subtitles (GWB11, #2085).
 - `src/lib/journal.ts`: the Build Journal headline and card, design `v1`.
 - `src/lib/authorship.ts`: whose idea and whose hands, design `cells-v1`:
@@ -39,6 +39,11 @@ lays over the video. With it, a video renders with its burn-ins:
 pnpm --filter www build
 pnpm --filter www record:short <video folder> --series <series.json>
 ```
+
+CI renders a small short with captions, a headline and the mark twice this
+way and checks the two runs give the same bytes
+(`apps/www/tests/record/short.spec.ts`, PR workflow's "E2E — burn-in
+recorder (www)").
 
 The font is Barlow Condensed (SIL Open Font License 1.1), free to embed in
 video, which the host page loads in the weights 600 and 800.

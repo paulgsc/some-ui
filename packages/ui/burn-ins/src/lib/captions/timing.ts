@@ -12,9 +12,9 @@
  * order, and lines in time order.
  */
 
-import { breakLines } from "@burn-ins/lib/lines"
+import { breakLines, type Measure } from "@burn-ins/lib/lines"
 
-import { lineCharsFor } from "./layout"
+import { measureFor } from "./layout"
 import type { CaptionTheme } from "./theme"
 
 export type TimedWord = {
@@ -49,7 +49,7 @@ const MAX_ROWS = 2
 
 export function groupCaptions(
   lines: ReadonlyArray<SpokenLine>,
-  lineChars: number,
+  measure: Measure,
   rules: GroupingRules = GROUPING
 ): ReadonlyArray<Caption> {
   const groups: Array<ReadonlyArray<TimedWord>> = []
@@ -63,7 +63,7 @@ export function groupCaptions(
         last !== undefined &&
         (word.startMs - last.endMs > rules.pauseMs ||
           word.endMs - first.startMs > rules.maxCaptionMs ||
-          breakLines([...group, word], lineChars).length > MAX_ROWS)
+          breakLines([...group, word], measure).length > MAX_ROWS)
       ) {
         groups.push(group)
         group = []
@@ -82,7 +82,7 @@ export function groupCaptions(
       {
         startMs: first.startMs,
         endMs: next === undefined ? linger : Math.min(linger, next.startMs),
-        rows: breakLines(words, lineChars),
+        rows: breakLines(words, measure),
       },
     ]
   })
@@ -92,7 +92,7 @@ export function groupCaptions(
 export const captionsFor = (
   lines: ReadonlyArray<SpokenLine>,
   theme: CaptionTheme
-): ReadonlyArray<Caption> => groupCaptions(lines, lineCharsFor(theme))
+): ReadonlyArray<Caption> => groupCaptions(lines, measureFor(theme))
 
 /** When the last caption leaves the screen; 0 for none. */
 export const runtimeOf = (captions: ReadonlyArray<Caption>): number =>

@@ -4,28 +4,26 @@
  */
 
 import { SAFE_AREA, type Box } from "@burn-ins/lib/geometry"
-import { charsOf } from "@burn-ins/lib/lines"
+import type { HasText, Measure } from "@burn-ins/lib/lines"
+import { rowText, widthOf } from "@burn-ins/lib/text"
 
 import type { CaptionTheme } from "./theme"
 
 /** How far above the safe area's bottom edge a caption's box ends. */
 const CAPTION_LIFT_PX = 48
 
-const charPx = (theme: CaptionTheme, sizePx: number): number =>
-  sizePx * (theme.font.charWidthEm + theme.font.letterSpacingEm)
-
 const padX = (theme: CaptionTheme): number => theme.plate?.padXPx ?? 0
 const padY = (theme: CaptionTheme): number => theme.plate?.padYPx ?? 0
 
-/** Characters a line may hold in this theme, across the safe area. */
-export const lineCharsFor = (theme: CaptionTheme): number =>
-  Math.max(
-    1,
-    Math.floor(
-      (SAFE_AREA.width - 2 * padX(theme) - theme.strokePx) /
-        charPx(theme, theme.font.sizePx)
-    )
-  )
+/**
+ * A line's width in the theme's type at its size, from the font's advance
+ * widths, against the safe area's width less the plate and the outline.
+ */
+export const measureFor = (theme: CaptionTheme): Measure => ({
+  widthOf: (row: ReadonlyArray<HasText>) =>
+    widthOf(rowText(row), theme.font, theme.font.letterSpacingEm),
+  limit: SAFE_AREA.width - 2 * padX(theme) - theme.strokePx,
+})
 
 export type CaptionLayout = {
   /** The bound the caption is drawn inside; its text is centred in it. */
@@ -40,15 +38,17 @@ export type CaptionLayout = {
  * leaves the safe area.
  */
 export function layoutCaption(
-  rows: ReadonlyArray<ReadonlyArray<{ readonly text: string }>>,
+  rows: ReadonlyArray<ReadonlyArray<HasText>>,
   theme: CaptionTheme
 ): CaptionLayout {
-  const longest = Math.max(1, ...rows.map((row) => charsOf(row)))
-  const scale = Math.min(1, lineCharsFor(theme) / longest)
+  const { widthOf: rowPx, limit } = measureFor(theme)
+  const longest = Math.max(1, ...rows.map(rowPx))
+  const scale = Math.min(1, limit / longest)
   const fontPx = theme.font.sizePx * scale
   const lineHeightPx = fontPx * theme.font.lineHeight
+  // `min` because `longest * (limit / longest)` can round above `limit`.
   const width =
-    longest * charPx(theme, fontPx) + 2 * padX(theme) + theme.strokePx
+    Math.min(limit, longest * scale) + 2 * padX(theme) + theme.strokePx
   const height = rows.length * lineHeightPx + 2 * padY(theme) + theme.strokePx
   return {
     box: {

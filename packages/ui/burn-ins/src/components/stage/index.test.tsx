@@ -1,5 +1,6 @@
 import { BurnInStage } from "@burn-ins/components/stage"
 import { frameAt as burnInAt, prepare } from "@burn-ins/lib/burn-in"
+import { byChars } from "@burn-ins/lib/captions/__tests__/word"
 import { frameAt } from "@burn-ins/lib/captions/frame"
 import { THEMES } from "@burn-ins/lib/captions/theme"
 import { groupCaptions } from "@burn-ins/lib/captions/timing"
@@ -16,7 +17,7 @@ const captions = groupCaptions(
       ],
     },
   ],
-  40
+  byChars(40)
 )
 
 describe("the stage", () => {

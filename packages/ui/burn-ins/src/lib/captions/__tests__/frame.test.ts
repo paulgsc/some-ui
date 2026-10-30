@@ -4,7 +4,7 @@ import { THEMES, type CaptionTheme } from "@burn-ins/lib/captions/theme"
 import { groupCaptions } from "@burn-ins/lib/captions/timing"
 import { describe, expect, it } from "vitest"
 
-import { word } from "./word"
+import { byChars, word } from "./word"
 
 // Two captions: "third and" (said 0 to 400, up until 900) and "eleven"
 // (said 1000 to 1300, up until 1800).
@@ -13,7 +13,7 @@ const CAPTIONS = groupCaptions(
     { words: [word("third", 0, 200), word("and", 250, 400)] },
     { words: [word("eleven", 1000, 1300)] },
   ],
-  40
+  byChars(40)
 )
 const popping: CaptionTheme = THEMES.gridiron
 const still: CaptionTheme = THEMES.broadcast

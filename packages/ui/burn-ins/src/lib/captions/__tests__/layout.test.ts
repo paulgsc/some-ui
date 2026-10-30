@@ -1,9 +1,10 @@
 /** @vitest-environment node */
-import { layoutCaption } from "@burn-ins/lib/captions/layout"
+import { layoutCaption, measureFor } from "@burn-ins/lib/captions/layout"
 import { SAMPLE } from "@burn-ins/lib/captions/sample"
 import { THEME_IDS, THEMES } from "@burn-ins/lib/captions/theme"
 import { captionsFor } from "@burn-ins/lib/captions/timing"
 import { SAFE_AREA, type Box } from "@burn-ins/lib/geometry"
+import { breakLines } from "@burn-ins/lib/lines"
 import { describe, expect, it } from "vitest"
 
 const inside = (box: Box, area: Box): boolean =>
@@ -29,5 +30,17 @@ describe("the safe area", () => {
     )
     expect(layout.fontPx).toBeLessThan(theme.font.sizePx)
     expect(inside(layout.box, SAFE_AREA)).toBe(true)
+  })
+
+  it.each(THEME_IDS)("breaks by how wide the letters draw (%s)", (id) => {
+    // As many narrow words as fit on one line; the same count of wide words,
+    // with the same number of characters, does not.
+    const measure = measureFor(THEMES[id])
+    const run = (word: string, n: number): Array<{ text: string }> =>
+      Array.from({ length: n }, () => ({ text: word }))
+    let n = 1
+    while (breakLines(run("lit", n + 1), measure).length === 1) n++
+    expect(breakLines(run("lit", n), measure)).toHaveLength(1)
+    expect(breakLines(run("MWM", n), measure).length).toBeGreaterThan(1)
   })
 })
