@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardRouteImport } from './routes/_dashboard'
 import { Route as AssuranceRouteImport } from './routes/assurance'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthorshipRouteImport } from './routes/authorship'
 import { Route as BurnInsRouteImport } from './routes/burn-ins'
 import { Route as CaptionsRouteImport } from './routes/captions'
 import { Route as ExtensionsRouteImport } from './routes/extensions'
@@ -70,6 +71,11 @@ const AssuranceRoute = AssuranceRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthorshipRoute = AuthorshipRouteImport.update({
+  id: '/authorship',
+  path: '/authorship',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BurnInsRoute = BurnInsRouteImport.update({
@@ -279,6 +285,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/assurance': typeof AssuranceRoute
   '/auth': typeof AuthRoute
+  '/authorship': typeof AuthorshipRoute
   '/burn-ins': typeof BurnInsRoute
   '/captions': typeof CaptionsRoute
   '/extensions': typeof ExtensionsRoute
@@ -321,6 +328,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/assurance': typeof AssuranceRoute
   '/auth': typeof AuthRoute
+  '/authorship': typeof AuthorshipRoute
   '/burn-ins': typeof BurnInsRoute
   '/captions': typeof CaptionsRoute
   '/extensions': typeof ExtensionsRoute
@@ -363,6 +371,7 @@ export interface FileRoutesById {
   '/_dashboard': typeof DashboardRouteWithChildren
   '/assurance': typeof AssuranceRoute
   '/auth': typeof AuthRoute
+  '/authorship': typeof AuthorshipRoute
   '/burn-ins': typeof BurnInsRoute
   '/captions': typeof CaptionsRoute
   '/extensions': typeof ExtensionsRoute
@@ -409,6 +418,7 @@ export interface FileRouteTypes {
     | '/'
     | '/assurance'
     | '/auth'
+    | '/authorship'
     | '/burn-ins'
     | '/captions'
     | '/extensions'
@@ -451,6 +461,7 @@ export interface FileRouteTypes {
     | '/'
     | '/assurance'
     | '/auth'
+    | '/authorship'
     | '/burn-ins'
     | '/captions'
     | '/extensions'
@@ -492,6 +503,7 @@ export interface FileRouteTypes {
     | '/_dashboard'
     | '/assurance'
     | '/auth'
+    | '/authorship'
     | '/burn-ins'
     | '/captions'
     | '/extensions'
@@ -538,6 +550,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRouteWithChildren
   AssuranceRoute: typeof AssuranceRoute
   AuthRoute: typeof AuthRoute
+  AuthorshipRoute: typeof AuthorshipRoute
   BurnInsRoute: typeof BurnInsRoute
   CaptionsRoute: typeof CaptionsRoute
   ExtensionsRoute: typeof ExtensionsRoute
@@ -573,6 +586,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/authorship': {
+      id: '/authorship'
+      path: '/authorship'
+      fullPath: '/authorship'
+      preLoaderRoute: typeof AuthorshipRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/burn-ins': {
@@ -973,6 +993,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRouteWithChildren,
   AssuranceRoute: AssuranceRoute,
   AuthRoute: AuthRoute,
+  AuthorshipRoute: AuthorshipRoute,
   BurnInsRoute: BurnInsRoute,
   CaptionsRoute: CaptionsRoute,
   ExtensionsRoute: ExtensionsRoute,

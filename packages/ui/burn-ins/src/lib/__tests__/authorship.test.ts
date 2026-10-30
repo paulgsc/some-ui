@@ -5,6 +5,12 @@ import {
   type AuthoredScene,
   type AuthorshipDrawing,
 } from "@burn-ins/lib/authorship"
+import {
+  recordCode,
+  recordLink,
+  recordParams,
+  scenesOf,
+} from "@burn-ins/lib/authorship-link"
 import { prepare } from "@burn-ins/lib/burn-in"
 import { describe, expect, it } from "vitest"
 
@@ -130,5 +136,34 @@ describe("the authorship mark", () => {
     expect(backwards.ok ? [] : backwards.problems).toEqual([
       "the authorship burn-in (cells-v1): each scene starts after the one before, and before the end",
     ])
+  })
+})
+
+describe("the end card's link", () => {
+  it("reads back every idea path over every set of hands", () => {
+    expect(scenesOf(recordCode(EVERY))).toEqual(EVERY)
+    expect(new Set(recordCode(EVERY)).size).toBe(EVERY.length)
+  })
+
+  it("refuses what no record writes", () => {
+    expect(scenesOf("Az!")).toBeNull()
+    expect(scenesOf("~")).toBeNull()
+    expect(scenesOf("")).toEqual([])
+  })
+
+  it("is printed on every end card, under what it is", () => {
+    for (const batch of batches()) {
+      const rows = drawn(batch).end.blocks.flatMap((b) => b.rows)
+      expect(rows).toContain(recordLink(batch))
+    }
+  })
+
+  it("gives the page params the mark draws from", () => {
+    const p = prepare({
+      kind: "authorship",
+      design: "cells-v1",
+      params: recordParams(EVERY.slice(0, MOST_SCENES)),
+    })
+    expect(p.ok).toBe(true)
   })
 })

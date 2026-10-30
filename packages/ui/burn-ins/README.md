@@ -24,6 +24,10 @@ the same for its part:
   an intro and an end card over the bare cards that open and close the
   video, and the mark in the gutter beside the picture between them. Its
   params come only from `@some-ui/video-render`'s `authorshipParams`.
+- `src/lib/authorship-link.ts`, `src/components/authorship-record`: the link
+  the end card prints, one character a scene, and the page it opens,
+  `/authorship?r=…`, which draws the mark's key and that video's record from
+  the link alone and keeps nothing.
 - `src/runtime/record.ts`, `src/components/record`: the recording protocol.
 - `src/components/preview`, `src/components/stage`: the preview page.
 

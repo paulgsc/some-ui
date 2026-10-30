@@ -1,3 +1,4 @@
+import { Route as Authorship } from "@/routes/authorship"
 import { Route as BurnIns } from "@/routes/burn-ins"
 import { Route as Captions } from "@/routes/captions"
 import { isRedirect } from "@tanstack/react-router"
@@ -47,5 +48,15 @@ describe("/captions", () => {
       to: "/burn-ins",
       search: { kind: "captions" },
     })
+  })
+})
+
+describe("/authorship's search", () => {
+  it("takes a record as text and drops anything else", () => {
+    const validate = Authorship.options.validateSearch
+    if (typeof validate !== "function") throw new Error("no validateSearch")
+    expect(validate({ r: "Az-_" })).toEqual({ r: "Az-_" })
+    expect(validate({ r: 7 })).toEqual({})
+    expect(validate({})).toEqual({})
   })
 })

@@ -38,22 +38,26 @@ const Layer = ({ frame }: { frame: BurnInFrame }): JSX.Element | null => {
  *
  * `bare` is the recorder's: no ground, no edge, nothing but the burn-ins, on
  * a stage as wide as its container (1080 px for a 1080x1920 recording).
+ * `ground` paints the video's own ground behind them, as a viewer saw it.
  */
 export const BurnInStage = ({
   frames,
   outline = false,
   bare = false,
+  ground,
   label,
 }: {
   frames: ReadonlyArray<BurnInFrame>
   outline?: boolean
   bare?: boolean
+  ground?: string
   label: string
 }): JSX.Element => (
   <div
     className={
       bare ? "bi-stage" : "bi-stage bg-muted border-border rounded-xl border"
     }
+    style={ground === undefined ? undefined : { background: ground }}
     role="img"
     aria-label={label}
   >
