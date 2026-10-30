@@ -57,7 +57,12 @@ const ENCODED_RUN = /[A-Za-z0-9+/=_-]{256,}/
 /** home's note ids and refs (`voice_repo::is_name` in paulgsc/server). */
 const NOTE_ID = /^[A-Za-z0-9_.:-]{1,64}$/
 const NOTE_REF = /^[A-Za-z0-9_.:-]{1,200}$/
-const NOTE_OF: ReadonlySet<unknown> = new Set(["reflection", "jobs", "scene"])
+const NOTE_OF: ReadonlySet<unknown> = new Set([
+  "reflection",
+  "jobs",
+  "scene",
+  "studio",
+])
 const INSTANT =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?(Z|[+-]\d{2}:\d{2})$/
 
@@ -98,7 +103,8 @@ function transcriptRefusal(
   ) {
     return "the name must carry the note's id"
   }
-  if (!NOTE_OF.has(body.of)) return "of must be reflection, jobs or scene"
+  if (!NOTE_OF.has(body.of))
+    return "of must be reflection, jobs, scene or studio"
   if (typeof body.ref !== "string" || !NOTE_REF.test(body.ref)) {
     return "ref must name what the note belongs to"
   }

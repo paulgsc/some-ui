@@ -713,6 +713,11 @@ describe("voice transcripts", () => {
     }
   })
 
+  it("takes a Studio take's transcript, named by its project, shot and take", async () => {
+    const take = { ...HEARD, of: "studio", ref: "short-7:s3:2" }
+    expect((await asHome(deps(), NAME, JSON.stringify(take))).status).toBe(201)
+  })
+
   it("takes only a transcript's own shape", async () => {
     const d = deps()
     const { text: _text, ...untold } = HEARD
@@ -724,7 +729,10 @@ describe("voice transcripts", () => {
       // `transcript-k3v9qa-1.json` is note `k3v9qa`'s, not note `k3v9qa-1`'s
       // first, nor `k3v`'s.
       [{ ...HEARD, note: "k3v" }, "the name must carry the note's id"],
-      [{ ...HEARD, of: "diary" }, "of must be reflection, jobs or scene"],
+      [
+        { ...HEARD, of: "diary" },
+        "of must be reflection, jobs, scene or studio",
+      ],
       [{ ...HEARD, ref: 7 }, "ref must name what the note belongs to"],
       [{ ...HEARD, at: "soon" }, "at must be when the note was recorded"],
       [

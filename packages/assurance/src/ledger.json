@@ -1848,7 +1848,7 @@
     {
       "store": "server:voice_note",
       "class": "record",
-      "growth": "Per voice note sent home (reflection, jobs, scene, game): one small metadata row; append-only.",
+      "growth": "Per voice note sent home (reflection, jobs, scene, game, studio): one small metadata row; append-only.",
       "family": "voice-heard"
     },
     {
