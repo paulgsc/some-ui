@@ -6,6 +6,12 @@ export function counted(n: number, noun: string, plural = `${noun}s`): string {
   return `${n} ${n === 1 ? noun : plural}`
 }
 
+/** `a`, `a and b`, `a, b and c`: items as a sentence lists them. */
+export function listed(items: ReadonlyArray<string>): string {
+  if (items.length <= 1) return items.join("")
+  return `${items.slice(0, -1).join(", ")} and ${items.at(-1) ?? ""}`
+}
+
 /** "1st", "2nd", "23rd", "111th": a place as a person reads it. */
 export function ordinal(n: number): string {
   const tens = n % 100

@@ -20,6 +20,7 @@ import type { SoundbitesPorts } from "./runtime"
 import type { SoundbiteStore } from "./store"
 import { indexedDbSoundbiteStore } from "./store"
 import type { StudioPorts } from "./studio/runtime"
+import { keptTimeLog } from "./studio/time-store"
 
 /** One store per page load, so the database opens once. */
 let store: SoundbiteStore | null = null
@@ -56,6 +57,7 @@ export function phoneStudioPorts(): StudioPorts {
     newId: () => crypto.randomUUID(),
     readText: (file) => file.text(),
     onVisibility: onPageVisibility,
+    timeLog: keptTimeLog(),
   }
 }
 

@@ -1,5 +1,5 @@
 /** @vitest-environment node */
-import { WORDS } from "@burn-ins/lib/words"
+import { sceneLine, WORDS } from "@burn-ins/lib/words"
 import { describe, expect, it } from "vitest"
 
 /** How it works rather than what it does: none of this reaches the page. */
@@ -22,6 +22,23 @@ describe("the preview page's words", () => {
     const all = strings(WORDS)
     expect(all.length).toBeGreaterThan(10)
     expect(all.filter((s) => MACHINERY.test(s))).toEqual([])
+  })
+
+  it("say a scene's record in words, never the machinery", () => {
+    const lines = [
+      sceneLine(1, { origin: "you", wording: "you", hands: ["you", "code"] }),
+      sceneLine(2, { origin: "source", wording: "agent", hands: [] }),
+      sceneLine(3, {
+        origin: "agent",
+        wording: "agent",
+        hands: ["you", "agent", "code"],
+      }),
+    ]
+    expect(lines).toEqual([
+      "Scene 1: my idea, my words, made by me and code.",
+      "Scene 2: a source's idea, Claude's words, no hands named.",
+      "Scene 3: Claude's idea, Claude's words, made by me, Claude and code.",
+    ])
   })
 
   it("give the time in seconds", () => {

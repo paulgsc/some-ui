@@ -2,10 +2,11 @@
  * "Send to home": everything this phone sends its paired home, in one tap
  * and one confirm that names what and where (LA8): the sessions (`./sessions`,
  * then freed from the phone once home holds them), the kept shelf items
- * home doesn't hold as they are now (`./shelf`, which stay), and the
+ * home doesn't hold as they are now (`./shelf`, which stay), the
  * LeetType sessions it doesn't hold as they are now (`./leetype-log`, which
- * stay too; `./sent` knows what it holds). One run, so one Stop ends all
- * three, and one line says how it went.
+ * stay too; `./sent` knows what it holds), and Studio's sittings and how
+ * each went (`./studio-log`, which stay too). One run, so one Stop ends
+ * them all, and one line says how it went.
  */
 import type { HomeCall, KeyedStorage } from "@some-ui/core-utils"
 import { counted, localStorageOrNull } from "@some-ui/core-utils"
@@ -17,6 +18,7 @@ import type { Kept } from "@/lib/device-backend/handlers/shelf"
 import { everyKept } from "@/lib/device-backend/handlers/shelf"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import { letGoUnchanged } from "@/lib/session-archive"
+import { studioKeeping } from "@/lib/studio-keeping"
 import { sessionsRepository } from "@/lib/tenant/queries"
 import type { CopyResult, HeldReport } from "@/lib/tenant/sessions-copy"
 import { emptyHeldReport } from "@/lib/tenant/sessions-copy"
@@ -40,6 +42,13 @@ import {
 import { causedBy, copyAndConfirm, HomeForgotPhoneError } from "./sessions"
 import type { SendReport } from "./shelf"
 import { emptyReport, sendKept } from "./shelf"
+import type { StudioGoing } from "./studio-log"
+import {
+  reportsOf,
+  sendStudio,
+  sittingsGoing,
+  studioToSend,
+} from "./studio-log"
 import type { SyncResult } from "./sync"
 
 const LAST_SEND_KEY = "some-ui.device.last-send.v1"
@@ -47,6 +56,9 @@ const LAST_SEND_KEY = "some-ui.device.last-send.v1"
 const sessions = (n: number): string => counted(n, "session")
 const items = (n: number): string => counted(n, "kept item")
 const leetype = (n: number): string => counted(n, "LeetType session")
+const studio = (n: number): string => counted(n, "Studio sitting")
+const entries = (n: number): string =>
+  counted(n, "Studio entry", "Studio entries")
 
 /** What `sendHome` and `onPhone` read and call; the defaults are the phone's own. A seam for tests. */
 export type SendPorts = {
@@ -54,6 +66,8 @@ export type SendPorts = {
   read: () => Promise<{ local: Array<SessionRecord>; kept: Array<Kept> }>
   /** The finished LeetType sessions a send under `pairing` carries (`logGoing`). */
   logGoing: (pairing: string) => Promise<Array<HomeSession>>
+  /** What of Studio's record a send under `pairing` carries (`studioGoing`). */
+  studioGoing: (pairing: string) => Promise<StudioGoing>
   /** Where `./sent` remembers what home holds. */
   storage: KeyedStorage | null
   /** Runs one send on the paired link: `homeLink().send`. */
@@ -71,6 +85,7 @@ export function sendPorts(): SendPorts {
   return {
     read: readPhone,
     logGoing: (pairing) => logGoing(pairing, storage),
+    studioGoing: (pairing) => studioGoing(pairing, storage),
     storage,
     run: <T>(r: (send: HomeCall) => Promise<T>) => homeLink().send(r),
     copy: copyAndConfirm,
@@ -108,6 +123,27 @@ async function logGoing(
 }
 
 /**
+ * What a send under `pairing` carries of Studio's time log and answers:
+ * what home doesn't hold as it is now. Reads only this phone.
+ */
+async function studioGoing(
+  pairing: string,
+  storage: KeyedStorage | null
+): Promise<StudioGoing> {
+  const studio = studioKeeping()
+  if (studio === null) return { sittings: [], reports: [] }
+  const [list, friction] = await Promise.all([
+    studio.store.list(),
+    studio.store.friction(),
+  ])
+  return studioToSend(
+    studio.timeLog(),
+    reportsOf(friction, list, studio.sittingKey),
+    readSent(storage, pairing)
+  )
+}
+
+/**
  * What a send would carry, for its confirm: its total, in words, how many
  * kept items it leaves out because home took them as they are now, and how
  * many LeetType sessions it copies.
@@ -117,6 +153,7 @@ export type ToSend = {
   what: string
   taken: number
   leetype: number
+  studio: number
 }
 
 /**
@@ -142,17 +179,20 @@ export async function onPhone(
   const { local, kept } = await ports.read()
   const going = (await keptToSend(kept, pairing, ports.storage)).changed
   const log = await ports.logGoing(pairing)
+  const sittings = sittingsGoing(await ports.studioGoing(pairing))
   const parts = [
     ...(local.length > 0 ? [sessions(local.length)] : []),
     ...(going.length > 0 ? [items(going.length)] : []),
     ...(log.length > 0 ? [leetype(log.length)] : []),
+    ...(sittings > 0 ? [studio(sittings)] : []),
   ]
   const what = new Intl.ListFormat("en", { type: "conjunction" }).format(parts)
   return {
-    total: local.length + going.length + log.length,
+    total: local.length + going.length + log.length + sittings,
     what,
     taken: kept.length - going.length,
     leetype: log.length,
+    studio: sittings,
   }
 }
 
@@ -163,6 +203,8 @@ export type SendOutcome = {
   readonly freed: number
   readonly shelf: SendReport
   readonly log: LogReport
+  /** Studio's sittings and answers, counted as LeetType's sessions are. */
+  readonly studio: LogReport
   /** What threw and ended the run early, if anything did. */
   readonly ended: unknown
   /** Home answered `429` at least once: it was busy. */
@@ -181,17 +223,25 @@ function endedLine(error: unknown, host: string, busy: boolean): string {
 }
 
 /** What ended the send early, or `null` when it ran to its end. */
-function whyEnded({ copy, shelf, log, ended }: SendOutcome): unknown {
+function whyEnded({
+  copy,
+  shelf,
+  log,
+  studio: sat,
+  ended,
+}: SendOutcome): unknown {
   if (copy?.outcome.kind === "partial") return copy.outcome.error
   if (ended !== null) return ended
-  if (shelf.forgotten || log.forgotten) return new HomeForgotPhoneError()
-  if (shelf.unreachable || log.unreachable) return new Error("no answer")
+  if (shelf.forgotten || log.forgotten || sat.forgotten)
+    return new HomeForgotPhoneError()
+  if (shelf.unreachable || log.unreachable || sat.unreachable)
+    return new Error("no answer")
   return null
 }
 
 /** The send's end, short: what changed, then why it stopped, if it did. */
 export function describeSend(outcome: SendOutcome, host: string): string {
-  const { copy, held, freed, shelf, log } = outcome
+  const { copy, held, freed, shelf, log, studio: sat } = outcome
   const why = whyEnded(outcome)
   const copied = copy?.outcome.copied ?? 0
   const sent = shelf.kept + shelf.replaced
@@ -200,6 +250,7 @@ export function describeSend(outcome: SendOutcome, host: string): string {
     copied === 0 &&
     shelf.sent === 0 &&
     log.held === 0 &&
+    sat.held === 0 &&
     why !== null &&
     !causedBy(why, SyncStoppedError) &&
     !causedBy(why, HomeForgotPhoneError)
@@ -213,17 +264,24 @@ export function describeSend(outcome: SendOutcome, host: string): string {
     copied > 0 ? `Copied ${sessions(copied)}.` : "",
     sent > 0 ? `Sent ${items(sent)}.` : "",
     log.held > 0 ? `Copied ${leetype(log.held)}.` : "",
+    sat.held > 0 ? `Copied ${entries(sat.held)}.` : "",
     full > 0 ? `${full} didn't fit: home's shelf is full.` : "",
     shelf.refused + shelf.other > 0
       ? `${shelf.refused + shelf.other} refused by ${host}.`
       : "",
     logRefused > 0 ? `${leetype(logRefused)} refused by ${host}.` : "",
+    sat.refused + sat.other > 0
+      ? `${entries(sat.refused + sat.other)} refused by ${host}.`
+      : "",
     freed > 0 ? `Cleared ${freed} from this phone.` : "",
     held.differs.length > 0
       ? `${held.differs.length} kept: home's copy didn't match.`
       : "",
     log.differs > 0
       ? `${leetype(log.differs)} kept here: home's copy didn't match.`
+      : "",
+    sat.differs > 0
+      ? `${studio(sat.differs)} kept here: home's copy didn't match.`
       : "",
     why === null ? "" : endedLine(why, host, outcome.busy === true),
   ].filter((part) => part !== "")
@@ -240,7 +298,10 @@ function rememberHeld(
   pairing: string,
   copy: CopyResult | null,
   local: ReadonlyArray<SessionRecord>,
-  heard: Record<"held" | "refused" | "leetype", Record<string, string>>,
+  heard: Record<
+    "held" | "refused" | "leetype" | "studio",
+    Record<string, string>
+  >,
   storage: KeyedStorage | null
 ): void {
   const finished = local.filter((s) => s.status === "completed")
@@ -250,6 +311,7 @@ function rememberHeld(
     shelf: heard.held,
     refused: heard.refused,
     leetype: heard.leetype,
+    studio: heard.studio,
   })
 }
 
@@ -274,9 +336,11 @@ export async function sendHome(
   let local: Array<SessionRecord>
   let kept: Array<Kept>
   let going: Array<HomeSession>
+  let studioing: StudioGoing
   try {
     ;({ local, kept } = await ports.read())
     going = await ports.logGoing(id)
+    studioing = await ports.studioGoing(id)
   } catch (error) {
     return { ok: false, line: `Couldn't read this phone: ${String(error)}` }
   }
@@ -284,15 +348,16 @@ export async function sendHome(
   const held = emptyHeldReport()
   const shelf = emptyReport()
   const log = emptyLogReport()
+  const sat = emptyLogReport()
   const ran: { copy: CopyResult | null; ended: unknown } = {
     copy: null,
     ended: null,
   }
   let seen = { busy: false }
   const heard: Record<
-    "held" | "refused" | "leetype",
+    "held" | "refused" | "leetype" | "studio",
     Record<string, string>
-  > = { held: {}, refused: {}, leetype: {} }
+  > = { held: {}, refused: {}, leetype: {}, studio: {} }
   const run = await ports.run(async (link) => {
     const noticed = noticingBusy(link)
     seen = noticed.seen
@@ -311,6 +376,10 @@ export async function sendHome(
       if (shelf.forgotten || shelf.unreachable) return
       await sendLog(going, send, log, (session, digest) => {
         heard.leetype[session] = digest
+      })
+      if (log.forgotten || log.unreachable) return
+      await sendStudio(studioing, send, sat, (key, digest) => {
+        heard.studio[key] = digest
       })
     } catch (error) {
       // Stopped, or home stopped answering: what was done stays done.
@@ -334,11 +403,15 @@ export async function sendHome(
     freed,
     shelf,
     log,
+    studio: sat,
     busy: seen.busy,
   }
   const line = describeSend(outcome, host) + freeing
   remember(LAST_SEND_KEY, `${new Date().toLocaleString()} · ${line}`)
   const clean =
-    whyEnded(outcome) === null && held.differs.length === 0 && log.differs === 0
+    whyEnded(outcome) === null &&
+    held.differs.length === 0 &&
+    log.differs === 0 &&
+    sat.differs === 0
   return { ok: clean, line }
 }

@@ -8,7 +8,10 @@
  * - `seek(atMs)` shows the moment `atMs` ms into it and resolves once that
  *   moment is painted with its fonts loaded, with a key for the picture:
  *   equal keys, equal pictures, so the recorder captures a picture only
- *   when it changes, and a burn-in that holds still is captured once.
+ *   when it changes, and a burn-in that holds still is captured once;
+ * - `check({ burnIns, fps })`, before any is recorded, gives every pair of a
+ *   video's burn-ins that would draw in one region at one moment
+ *   (`lib/clash.ts`), so the renderer refuses the video instead.
  *
  * The frame is `frameAt`'s, so the recording is the preview at that moment.
  * This runtime owns the waiting; the component only draws the snapshot and
@@ -23,6 +26,8 @@ import {
   type BurnInFrame,
   type Prepared,
 } from "@burn-ins/lib/burn-in"
+import type { PlacedBurnIn } from "@burn-ins/lib/clash"
+import { clashes } from "@burn-ins/lib/clash"
 import type { Parsed } from "@burn-ins/lib/parsed"
 
 export type RecordPorts = {
@@ -43,6 +48,10 @@ export type Recorder = {
     burnIn: BurnInData
   ) => Parsed<{ readonly runtimeMs: number | null }>
   readonly seek: (atMs: number) => Promise<string>
+  readonly check: (video: {
+    readonly burnIns: ReadonlyArray<PlacedBurnIn>
+    readonly fps: number
+  }) => ReadonlyArray<string>
   readonly subscribe: (listener: () => void) => () => void
   readonly getSnapshot: () => RecordSnapshot
   /** The component drew snapshot `seq`. */
@@ -94,6 +103,7 @@ export function createRecorder(ports: RecordPorts): Recorder {
       if (snapshot.seq === seq) shown = key
       return key
     },
+    check: ({ burnIns, fps }): ReadonlyArray<string> => clashes(burnIns, fps),
     subscribe: (listener) => {
       listeners.add(listener)
       return (): void => {

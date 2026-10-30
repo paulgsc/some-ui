@@ -1,3 +1,4 @@
+import { LOOKS, VOICES } from "@video-render/plans"
 import { designOf, resolve } from "@video-render/resolve"
 import { capture, cutList, series, shot } from "@video-render/testing"
 import { describe, expect, it } from "vitest"
@@ -36,6 +37,11 @@ describe("resolve", () => {
     expect(third?.transitionIn).toBe("zoom")
     expect(third?.motion).toEqual({ kind: "still" })
     expect(r.value.music).toBe("under-voice")
+  })
+
+  it("offers at most four plans per decision, never a lever (ST6)", () => {
+    expect(LOOKS.length).toBeLessThanOrEqual(4)
+    expect(VOICES.length).toBeLessThanOrEqual(4)
   })
 
   it("holds a card still, and a lively scene with no taps", () => {

@@ -1,4 +1,6 @@
 /** @vitest-environment node */
+import { inMemoryStorage } from "@some-ui/core-utils"
+import { REVIEW_SCHEMA } from "@some-ui/video-render"
 import type {
   Playback,
   Recording,
@@ -6,13 +8,16 @@ import type {
   Take,
   TakeDeadlines,
 } from "@some-ui/voice-capture"
+import { run, started, take } from "@soundbites/lib/project/__tests__/fixture"
 import { projectFile, readProjectFile } from "@soundbites/lib/project/file"
+import { finishOf } from "@soundbites/lib/project/finish"
 import type { Project } from "@soundbites/lib/project/model"
 import { latest, newProject, primerAt } from "@soundbites/lib/project/model"
 import { cutListOf, TAIL_MS } from "@soundbites/lib/project/script"
 import { projectOf } from "@soundbites/lib/studio/machine"
 import type { StudioRuntime } from "@soundbites/lib/studio/runtime"
 import { createStudio } from "@soundbites/lib/studio/runtime"
+import { keptTimeLog } from "@soundbites/lib/studio/time-store"
 import { othersOnPhone } from "@soundbites/lib/studio/view"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { describe, expect, it, vi } from "vitest"
@@ -319,6 +324,7 @@ describe("a sitting", () => {
     await vi.waitFor(() => expect(memory.friction).toHaveLength(1))
     expect(memory.friction[0]).toMatchObject({
       sitting: "s1",
+      shot: "path",
       went: "rough",
       gotInTheWay: "The microphone",
     })
@@ -877,6 +883,7 @@ describe("an answer whose report fails after the screen went away", () => {
     memory.friction.push({
       project: projectIn(runtime).id,
       sitting: "s1",
+      shot: "path",
       at: AT,
       went: "rough",
       gotInTheWay: null,
@@ -1032,5 +1039,368 @@ describe("VC1: a microphone that is slow or silent holds nothing for good", () =
     const project = projectIn(runtime)
     expect(project.takes).toEqual([])
     expect(project.sittings.at(-1)?.closedAt).toBeDefined()
+  })
+})
+
+/** ST9: the runtime logs each screen of a sitting, and nothing outside one. */
+describe("Studio's time log", () => {
+  /** A video opened on a runtime that keeps its time log in `storage`. */
+  async function logged(): Promise<{
+    runtime: StudioRuntime
+    storage: ReturnType<typeof inMemoryStorage>
+  }> {
+    const storage = inMemoryStorage()
+    const memory = memoryProjectStore()
+    let tick = 0
+    let ids = 0
+    const runtime = createStudio({
+      store: memory.store,
+      startRecording: fakeMic(),
+      now: () => NOW + 1_000 * tick++,
+      newId: () => `id${++ids}`,
+      readText: (file) => file.text(),
+      onVisibility: (listener) => {
+        listener(false)
+        return (): void => undefined
+      },
+      player: {
+        play: (): Playback => ({
+          ended: new Promise(() => undefined),
+          stop: vi.fn(),
+        }),
+      },
+      timeLog: keptTimeLog(() => storage),
+    })
+    runtime.attach()
+    await until(runtime, (state) => state.shelf.kind === "read")
+    runtime.dispatch({
+      type: "primerPicked",
+      file: new Blob([PRIMER_TEXT], { type: "application/json" }),
+    })
+    await until(
+      runtime,
+      (state) => projectOf(state) !== null && settledWrites(state)
+    )
+    return { runtime, storage }
+  }
+
+  it("logs a sitting's screens from Record to Done for now", async () => {
+    const { runtime, storage } = await logged()
+    expect(keptTimeLog(() => storage).read()).toEqual([])
+    runtime.dispatch({ type: "recordChosen" })
+    await until(runtime, settledWrites)
+    await recordOne(runtime)
+    runtime.dispatch({ type: "doneForNowPressed" })
+    await until(runtime, settledWrites)
+    const events = keptTimeLog(() => storage).read()
+    expect(events.map((event) => [event.type, event.screen])).toEqual([
+      ["sitting_opened", null],
+      ["screen_entered", "record:path"],
+      ["screen_left", "record:path"],
+      ["screen_entered", "done"],
+      ["screen_left", "done"],
+      ["sitting_closed", null],
+    ])
+    expect(new Set(events.map((event) => event.sitting)).size).toBe(1)
+  })
+
+  it("opens a sitting for Shape, Watch and Finish too, logged as that kind", async () => {
+    const { runtime, storage } = await logged()
+    runtime.dispatch({ type: "shapeChosen" })
+    await until(runtime, settledWrites)
+    const events = keptTimeLog(() => storage).read()
+    expect(
+      events.map((event) => [event.type, event.kind, event.screen])
+    ).toEqual([
+      ["sitting_opened", "shape", null],
+      ["screen_entered", "shape", "shape"],
+    ])
+  })
+})
+
+/** ST6: Shape writes the chosen plans as the owner's revision, and nothing more. */
+describe("Shape", () => {
+  it("keeps a Look and a Voice plan as a new version of the video", async () => {
+    const memory = memoryProjectStore()
+    const runtime = await opened(memory)
+    const before = latest(projectIn(runtime)).cutList
+    runtime.dispatch({ type: "shapeChosen" })
+    expect(runtime.getSnapshot().screen).toEqual({
+      kind: "shape",
+      step: "look",
+      look: before.look,
+      voice: before.voice,
+    })
+    runtime.dispatch({ type: "lookPicked", look: "lively" })
+    runtime.dispatch({ type: "shapeNext" })
+    runtime.dispatch({ type: "voicePicked", voice: "read" })
+    runtime.dispatch({ type: "shapeKept" })
+    await until(runtime, settledWrites)
+    const kept = latest(projectIn(runtime))
+    expect(kept.author).toBe("owner")
+    expect(kept.cutList).toEqual({ ...before, look: "lively", voice: "read" })
+    expect(runtime.getSnapshot().screen).toEqual({ kind: "start" })
+    expect(runtime.getSnapshot().notice).toBe(
+      STUDIO_WORDS.shape.kept("lively", "read")
+    )
+  })
+
+  it("writes nothing when the plans are the ones kept", async () => {
+    const memory = memoryProjectStore()
+    const runtime = await opened(memory)
+    const revisions = projectIn(runtime).revisions.length
+    runtime.dispatch({ type: "shapeChosen" })
+    runtime.dispatch({ type: "shapeNext" })
+    runtime.dispatch({ type: "shapeKept" })
+    await until(runtime, settledWrites)
+    expect(projectIn(runtime).revisions).toHaveLength(revisions)
+  })
+
+  it("goes back a step, then to Start, keeping nothing", async () => {
+    const runtime = await opened()
+    runtime.dispatch({ type: "shapeChosen" })
+    runtime.dispatch({ type: "shapeNext" })
+    runtime.dispatch({ type: "shapeBack" })
+    expect(runtime.getSnapshot().screen).toMatchObject({ step: "look" })
+    runtime.dispatch({ type: "shapeBack" })
+    expect(runtime.getSnapshot().screen).toEqual({ kind: "start" })
+  })
+})
+
+/** ST7: Finish names the one thing missing, then keeps the mark and the link. */
+describe("Finish", () => {
+  /** A video kept on the phone with every scene taken. */
+  async function taken(): Promise<Running> {
+    const state = ["a", "b", "c"].reduce(
+      (at, id) =>
+        run(at, { type: "takeStarted", shot: id }, take(`t-${id}`, id)),
+      started()
+    )
+    const runtime = studio(memoryProjectStore([state.project]))
+    await until(runtime, (each) => projectOf(each) !== null)
+    runtime.dispatch({ type: "finishChosen" })
+    return runtime
+  }
+
+  it("goes straight to the first scene with no take", async () => {
+    const runtime = await opened()
+    runtime.dispatch({ type: "finishChosen" })
+    expect(runtime.getSnapshot().screen).toEqual({ kind: "finish" })
+    runtime.dispatch({ type: "finishGo" })
+    const [first] = latest(projectIn(runtime)).cutList.shots
+    expect(runtime.getSnapshot().screen).toEqual({
+      kind: "record",
+      shot: first?.id,
+    })
+  })
+
+  it("keeps the owner's mark, then the YouTube link, on the latest version", async () => {
+    const runtime = await taken()
+    runtime.dispatch({
+      type: "linkPasted",
+      text: "https://youtu.be/dQw4w9WgXcQ",
+    })
+    expect(finishOf(projectIn(runtime)).kind).toBe("unmarked")
+    runtime.dispatch({ type: "readyMarked" })
+    await until(runtime, (state) => settledWrites(state))
+    expect(finishOf(projectIn(runtime))).toEqual({ kind: "ready", rev: 1 })
+    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.finish.marked)
+    runtime.dispatch({ type: "linkPasted", text: "https://example.com/v" })
+    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.finish.notALink)
+    runtime.dispatch({
+      type: "linkPasted",
+      text: "https://youtu.be/dQw4w9WgXcQ",
+    })
+    await until(runtime, (state) => settledWrites(state))
+    expect(finishOf(projectIn(runtime))).toEqual({
+      kind: "released",
+      rev: 1,
+      url: "https://youtu.be/dQw4w9WgXcQ",
+    })
+  })
+})
+
+/** ST8: Claude's version comes back as a file, picked as a primer is, and adds. */
+describe("a version back from Claude", () => {
+  const pick = (runtime: StudioRuntime, project: Project): void =>
+    runtime.dispatch({
+      type: "primerPicked",
+      file: new Blob([projectFile(project)], { type: "application/json" }),
+    })
+
+  it("adds Claude's version to the video on the phone, and says so", async () => {
+    const runtime = await opened()
+    const kept = projectIn(runtime)
+    const back = run(
+      { project: kept, taking: null, closing: null },
+      {
+        type: "revised",
+        author: "claude",
+        message: "Scene 2 slower",
+        at: AT,
+        cutList: latest(kept).cutList,
+      }
+    ).project
+    pick(runtime, back)
+    await until(
+      runtime,
+      (state) =>
+        settledWrites(state) &&
+        state.notice === STUDIO_WORDS.merge.merged("Scene 2 slower")
+    )
+    expect(latest(projectIn(runtime)).message).toBe("Scene 2 slower")
+    expect(projectIn(runtime).revisions).toHaveLength(kept.revisions.length + 1)
+  })
+
+  it("adds nothing from a file shared before a version made here", async () => {
+    const runtime = await opened()
+    const kept = projectIn(runtime)
+    runtime.dispatch({ type: "shapeChosen" })
+    runtime.dispatch({ type: "lookPicked", look: "lively" })
+    runtime.dispatch({ type: "shapeNext" })
+    runtime.dispatch({ type: "shapeKept" })
+    await until(runtime, settledWrites)
+    const back = run(
+      { project: kept, taking: null, closing: null },
+      {
+        type: "revised",
+        author: "claude",
+        message: "Claude's cut",
+        at: AT,
+        cutList: latest(kept).cutList,
+      }
+    ).project
+    const revisions = projectIn(runtime).revisions.length
+    pick(runtime, back)
+    await until(runtime, (state) => state.notice === STUDIO_WORDS.merge.moved)
+    expect(projectIn(runtime).revisions).toHaveLength(revisions)
+  })
+})
+
+/** ST5: Watch pins a note to the moment of the review render on screen. */
+describe("Watch", () => {
+  it("pins a note to the scene and offset playing, from the render's own times", async () => {
+    const runtime = await opened()
+    const { rev, cutList } = latest(projectIn(runtime))
+    let start = 0
+    const shotTimes = cutList.shots.map((each) => {
+      const at = start
+      start += each.durationMs
+      return {
+        id: each.id,
+        cut: null,
+        startMs: at,
+        durationMs: each.durationMs,
+      }
+    })
+    const [first, second] = shotTimes
+    if (first === undefined || second === undefined) throw new Error("scenes")
+    runtime.dispatch({ type: "watchChosen" })
+    runtime.dispatch({
+      type: "reviewPicked",
+      files: [
+        new Blob(["v"], { type: "video/mp4" }),
+        new Blob(
+          [
+            JSON.stringify({
+              schema: REVIEW_SCHEMA,
+              title: cutList.title,
+              rev,
+              shotTimes,
+            }),
+          ],
+          {
+            type: "application/json",
+          }
+        ),
+      ],
+    })
+    await until(
+      runtime,
+      (state) => state.screen.kind === "watch" && state.screen.review !== null
+    )
+    runtime.dispatch({ type: "playheadAt", ms: second.startMs + 250 })
+    runtime.dispatch({ type: "notedHere", text: "Hold the list longer" })
+    await until(
+      runtime,
+      (state) =>
+        settledWrites(state) && state.notice === STUDIO_WORDS.watch.noted
+    )
+    expect(projectIn(runtime).notes).toEqual([
+      expect.objectContaining({
+        rev,
+        shot: second.id,
+        offsetMs: 250,
+        author: "owner",
+        text: "Hold the list longer",
+        status: "open",
+      }),
+    ])
+  })
+
+  it("asks for the video and its review.json together", async () => {
+    const runtime = await opened()
+    runtime.dispatch({ type: "watchChosen" })
+    runtime.dispatch({
+      type: "reviewPicked",
+      files: [new Blob(["v"], { type: "video/mp4" })],
+    })
+    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.watch.pickBoth)
+  })
+})
+
+/** ST4's quiet links: History and Time spent, each back to Start. */
+describe("Start's quiet links", () => {
+  it("reads the time log for Time spent, and goes back to Start", async () => {
+    const runtime = await opened()
+    runtime.dispatch({ type: "timeChosen" })
+    await until(
+      runtime,
+      (state) => state.screen.kind === "time" && state.screen.log !== null
+    )
+    runtime.dispatch({ type: "quietBack" })
+    expect(runtime.getSnapshot().screen).toEqual({ kind: "start" })
+    runtime.dispatch({ type: "historyChosen" })
+    expect(runtime.getSnapshot().screen).toEqual({ kind: "history" })
+  })
+})
+
+/** ST5: a review is checked against the video on screen before it plays. */
+describe("a review of another video", () => {
+  it("is refused when its title or scenes differ, whatever its revision", async () => {
+    const runtime = await opened()
+    const { rev, cutList } = latest(projectIn(runtime))
+    runtime.dispatch({ type: "watchChosen" })
+    runtime.dispatch({
+      type: "reviewPicked",
+      files: [
+        new Blob(["v"], { type: "video/mp4" }),
+        new Blob(
+          [
+            JSON.stringify({
+              schema: REVIEW_SCHEMA,
+              title: `${cutList.title}, another`,
+              rev,
+              shotTimes: cutList.shots.map((each, index) => ({
+                id: each.id,
+                cut: null,
+                startMs: index * 1_000,
+                durationMs: 1_000,
+              })),
+            }),
+          ],
+          { type: "application/json" }
+        ),
+      ],
+    })
+    await until(
+      runtime,
+      (state) => state.notice === STUDIO_WORDS.watch.notThisVideo
+    )
+    expect(runtime.getSnapshot().screen).toMatchObject({
+      kind: "watch",
+      review: null,
+      video: null,
+    })
   })
 })

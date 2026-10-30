@@ -4,16 +4,20 @@
  * table, in the person's terms: what is kept where, and what to do next,
  * never the machinery (`__tests__/words.test.ts` holds that).
  */
-import { formatSize } from "@some-ui/core-utils"
+import { formatSize, listed } from "@some-ui/core-utils"
+import type { Look, Voice } from "@some-ui/video-render"
 import type { RecordingFailure } from "@some-ui/voice-capture"
 import { RECORDING_FAILURE_COPY } from "@some-ui/voice-capture"
+import { formatDuration } from "@soundbites/lib/format"
 import type { QuestionId } from "@soundbites/lib/idea/model"
 
 /** How a sitting went, as the person answers it. */
 export type Went = "smooth" | "snags" | "rough"
 
 /** A sitting the Start screen offers. Only Record is on the phone so far. */
-export type SittingKind = "record" | "watch" | "shape" | "finish"
+export const SITTING_KINDS = ["record", "watch", "shape", "finish"] as const
+
+export type SittingKind = (typeof SITTING_KINDS)[number]
 
 /** What can go wrong while recording, offered as "What got in the way?". */
 export type Snag = "mic" | "words" | "interrupted" | "screen"
@@ -23,14 +27,53 @@ export function seconds(ms: number): string {
   return `${(Math.max(0, ms) / 1_000).toFixed(1)} s`
 }
 
+/** Each Look plan (ST6): its name, and what it sets. */
+const LOOK_WORDS = {
+  plain: {
+    name: "Plain",
+    sets: "Straight cuts, a still picture, no music and no sounds. The words appear as a whole line.",
+  },
+  calm: {
+    name: "Calm",
+    sets: "Soft crossfades and a slow push-in, music low under your voice, and each word lighting up as you say it.",
+  },
+  lively: {
+    name: "Lively",
+    sets: "Scenes slide up into each other, the picture punches in at each tap, a whoosh and clicks, and music rising between your lines.",
+  },
+} as const satisfies Record<Look, { name: string; sets: string }>
+
+/** Each Voice plan (ST6): its name, and what it sets. */
+const VOICE_WORDS = {
+  "ad-lib": {
+    name: "Ad-lib",
+    sets: "You make each scene's point in your own words. Claude checks it stays true, and the subtitles follow what you said.",
+  },
+  read: {
+    name: "Read",
+    sets: "You read each scene's line word for word, and the subtitles show the line.",
+  },
+  mixed: {
+    name: "Mixed",
+    sets: "Each scene says whether to make its point or read its line.",
+  },
+} as const satisfies Record<Voice, { name: string; sets: string }>
+
+const shapeStatus = (look: Look, voice: Voice): string =>
+  `${LOOK_WORDS[look].name} look, ${VOICE_WORDS[voice].name} voice`
+
 /** What sharing frees: the room the shared takes held. */
 const MAKING_ROOM =
   "On Start, share a video's takes with Claude and say they reached Drive: they leave the phone, and the room they held is free."
 
-/** `2`, `2 and 3`, `2, 3 and 5`. */
-function listed(items: ReadonlyArray<string>): string {
-  if (items.length <= 1) return items.join("")
-  return `${items.slice(0, -1).join(", ")} and ${items.at(-1) ?? ""}`
+/** `under a minute`, `1 min`, `1 h 05 min`. */
+function minutes(ms: number): string {
+  const total = Math.floor(ms / 60_000)
+  if (total < 1) return "under a minute"
+  const hours = Math.floor(total / 60)
+  return hours === 0
+    ? `${total} min`
+    : `${hours} h ${String(total % 60).padStart(2, "0")} min`
 }
 
 function plural(n: number, one: string, many: string): string {
@@ -49,8 +92,9 @@ export const STUDIO_WORDS = {
     emptyLine:
       "Open a primer Claude saved to Drive, and its scenes are ready to record.",
     openPrimer: "Open a primer",
-    openNewer: "Open a newer primer",
-    primerHint: "A primer.json in Build Journal › voice › primers.",
+    openNewer: "Open a primer or Claude's version",
+    primerHint:
+      "A primer.json in Build Journal › voice › primers, or the project.json Claude sent back.",
     startHere: "Start here",
     others: "Other videos with takes on the phone",
     onPhone: (n: number): string =>
@@ -64,7 +108,6 @@ export const STUDIO_WORDS = {
       shape: "Shape",
       finish: "Finish",
     } satisfies Record<SittingKind, string>,
-    notYet: "Not on the phone yet",
     which: (title: string): string =>
       `Is this the next version of “${title}”, or a new video?`,
     nextVersion: (title: string): string => `Next version of “${title}”`,
@@ -184,6 +227,124 @@ export const STUDIO_WORDS = {
       "Once they're in Drive, the takes that went out can leave the phone.",
     arrivedYes: "They're in Drive: let them go",
     arrivedNo: "Keep them here",
+  },
+
+  /** Shape (ST6): a plan for the look, then one for the voice, never a lever. */
+  shape: {
+    lookQuestion: "How should it look?",
+    voiceQuestion: "How will you talk?",
+    looks: LOOK_WORDS,
+    voices: VOICE_WORDS,
+    now: "Now",
+    next: "Next",
+    keep: "Keep this",
+    back: "Back",
+    kept: (look: Look, voice: Voice): string =>
+      `Shaped: ${LOOK_WORDS[look].name}, ${VOICE_WORDS[voice].name}. The next video drawn follows it.`,
+    status: shapeStatus,
+    revised: (look: Look, voice: Voice): string =>
+      `Shape: ${shapeStatus(look, voice)}`,
+  },
+
+  /** Start's quiet links (ST4). */
+  quiet: { history: "History", time: "Time spent" },
+
+  history: {
+    heading: "Every version",
+    by: { owner: "You", claude: "Claude" },
+    line: (rev: number, who: string): string => `Version ${rev} · ${who}`,
+    back: "Back",
+  },
+
+  time: {
+    heading: "Time spent",
+    none: "No time logged on this video yet. It is counted while a sitting is open and the screen is showing.",
+    total: (ms: number): string => `In all: ${minutes(ms)}`,
+    spent: minutes,
+    screens: {
+      named: {
+        start: "Start",
+        done: "Done for now",
+        shape: "Shape",
+        finish: "Finish",
+        watch: "Watch",
+        history: "History",
+        time: "Time spent",
+      },
+      scene: (n: number): string => `Scene ${n}`,
+      droppedScene: "A scene since dropped",
+      other: "Elsewhere in Studio",
+    },
+    back: "Back",
+  },
+
+  /** Watch (ST5): a review render, notes pinned to its moments. */
+  watch: {
+    heading: "Watch",
+    open: "Open a review render",
+    openHint:
+      "Pick the video and the review.json beside it, together, from Build Journal › voice › reviews.",
+    pickBoth: "Pick the video and its review.json together.",
+    unreadable:
+      "That review.json can't be read. Pick the video and its review.json again.",
+    notThisVideo:
+      "That render is of a version this phone doesn't have. Open Claude's version first.",
+    noteLabel: "Your note",
+    noteHere: (ms: number): string => `Note here · ${formatDuration(ms)}`,
+    noted: "Noted, pinned to this moment.",
+    changed: (text: string): string =>
+      `Claude changed this, from your note: "${text}"`,
+    good: "Good",
+    notYet: "Not yet",
+    notYetText: (text: string): string => `Not yet: ${text}`,
+    back: "Back",
+    status: (changes: number): string =>
+      changes === 0
+        ? "Note any moment of the review render"
+        : `${plural(changes, "change", "changes")} of Claude's to watch`,
+  },
+
+  /** A version back from Claude, opened as a primer is (ST8). */
+  merge: {
+    merged: (message: string): string => `Claude's version is in: ${message}`,
+    same: "This phone already has everything in that file.",
+    moved:
+      "This phone made a version after that file was shared. Share the video with Claude again, and ask for the round to be redone on it.",
+    notHere: "That file is for a video that isn't on this phone.",
+    unreadable: "That file can't be opened as a Studio video.",
+  },
+
+  /** Finish (ST7): ready for YouTube, or the one thing missing. */
+  finish: {
+    heading: "Finish",
+    note: (text: string): string =>
+      `A note is still open: "${text}". Settle it before this goes up.`,
+    goNote: "Go to its scene",
+    take: (n: number): string => `Scene ${n} has no kept take yet.`,
+    goTake: (n: number): string => `Record scene ${n}`,
+    unmarked:
+      "Every scene has its take and no note is open. Say it's ready when you have watched it through.",
+    mark: "It's ready",
+    ready: "Ready for YouTube.",
+    uploadCopy:
+      "Next, ask Claude for the upload copy: the full video, its title, its description with the music credit, and its captions file, on the shorts page. You upload it to YouTube yourself.",
+    linkLabel: "Its YouTube link, once it is up",
+    keepLink: "Keep this link",
+    notALink:
+      "That isn't a YouTube video's link. Copy it from YouTube's Share button.",
+    released: "Kept as this version's release.",
+    releasedLine:
+      "Released. A change from here makes a new version; this one stays as it went up.",
+    watchIt: "Watch it on YouTube",
+    marked: "Marked ready for YouTube.",
+    back: "Back",
+    status: {
+      note: "A note is open",
+      take: (n: number): string => `Scene ${n} needs a take`,
+      unmarked: "Ready to mark",
+      ready: "Ready for YouTube",
+      released: "Released",
+    },
   },
 
   /** Catching an idea, one question at a time (ST18). */

@@ -19,6 +19,7 @@ describe("the record page", () => {
     expect(
       screen.getByRole("img", { name: WORDS.record.recordLabel })
     ).toBeTruthy()
+    expect(screen.getAllByRole("listitem")).toHaveLength(2)
   })
 
   it("says so when a link is longer than any record", () => {

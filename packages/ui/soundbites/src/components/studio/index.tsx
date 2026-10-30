@@ -11,25 +11,37 @@
  * (docs/monorepo-boundaries.md, "Inside a React package").
  */
 import type { JSX, ReactNode } from "react"
-import { useEffect, useId, useState, useSyncExternalStore } from "react"
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
+import { LOOKS, VOICES } from "@some-ui/video-render"
 import { phoneStudioPorts } from "@soundbites/lib/phone"
+import { finishOf } from "@soundbites/lib/project/finish"
 import type { Project } from "@soundbites/lib/project/model"
+import { latest } from "@soundbites/lib/project/model"
 import { lengthFor } from "@soundbites/lib/project/script"
 import type { StudioIntent, StudioState } from "@soundbites/lib/studio/machine"
 import { isSettled, projectOf } from "@soundbites/lib/studio/machine"
 import type { StudioPorts } from "@soundbites/lib/studio/runtime"
 import { createStudio } from "@soundbites/lib/studio/runtime"
+import { timeView } from "@soundbites/lib/studio/time-log"
 import type { RecordView } from "@soundbites/lib/studio/view"
 import {
+  historyView,
   opensOn,
   othersOnPhone,
   recordView,
   startView,
   takesOnPhone,
 } from "@soundbites/lib/studio/view"
-import type { Snag, Went } from "@soundbites/lib/studio/words"
+import { askedAt, changesIn, shotAt } from "@soundbites/lib/studio/watch"
+import type { SittingKind, Snag, Went } from "@soundbites/lib/studio/words"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { FolderOpen, Mic, Pause, Play, Square } from "lucide-react"
 
@@ -49,6 +61,17 @@ export type StudioProps = {
 }
 
 type Dispatch = (intent: StudioIntent) => void
+
+/** What tapping each open sitting on Start asks for. */
+const CHOSEN = {
+  record: "recordChosen",
+  watch: "watchChosen",
+  shape: "shapeChosen",
+  finish: "finishChosen",
+} as const satisfies Record<
+  SittingKind,
+  Extract<StudioIntent["type"], `${string}Chosen`>
+>
 
 const Notice = ({ text }: { text: string }): JSX.Element => (
   <p aria-live="polite" className="text-muted-foreground min-h-5 text-sm">
@@ -151,7 +174,11 @@ const Start = ({
               {row.open ? (
                 <button
                   type="button"
-                  onClick={() => dispatch({ type: "recordChosen" })}
+                  onClick={() =>
+                    dispatch({
+                      type: CHOSEN[row.kind],
+                    })
+                  }
                   className="bg-card border-brand focus-visible:ring-ring flex w-full items-center gap-3 rounded-2xl border-2 px-4 py-3 text-left focus-visible:ring-2 focus-visible:outline-none"
                 >
                   <span className="min-w-0 flex-1">
@@ -181,6 +208,24 @@ const Start = ({
             </li>
           ))}
         </ul>
+      )}
+      {view !== null && (
+        <nav className="flex gap-4 text-sm">
+          <button
+            type="button"
+            className="text-muted-foreground underline"
+            onClick={() => dispatch({ type: "historyChosen" })}
+          >
+            {WORDS.quiet.history}
+          </button>
+          <button
+            type="button"
+            className="text-muted-foreground underline"
+            onClick={() => dispatch({ type: "timeChosen" })}
+          >
+            {WORDS.quiet.time}
+          </button>
+        </nav>
       )}
       {share !== undefined && project !== null && takesOnPhone(project) > 0 && (
         <div className="border-border/60 space-y-2 rounded-2xl border p-3">
@@ -547,6 +592,395 @@ const Done = ({
   )
 }
 
+type ShapeScreen = Extract<StudioState["screen"], { kind: "shape" }>
+
+/** One plan as a card: its name, and what it sets once chosen. */
+const PlanCard = ({
+  name,
+  sets,
+  chosen,
+  now,
+  onPick,
+}: {
+  name: string
+  sets: string
+  chosen: boolean
+  now: boolean
+  onPick: () => void
+}): JSX.Element => (
+  <button
+    type="button"
+    aria-pressed={chosen}
+    onClick={onPick}
+    className={cn(
+      "focus-visible:ring-ring flex w-full flex-col gap-1 rounded-2xl border px-4 py-3 text-left focus-visible:ring-2 focus-visible:outline-none",
+      chosen ? "bg-card border-brand border-2" : "border-border/60"
+    )}
+  >
+    <span className="flex items-center gap-2">
+      <span className="text-base font-extrabold">{name}</span>
+      {now && (
+        <span className="text-muted-foreground text-xs font-bold">
+          {WORDS.shape.now}
+        </span>
+      )}
+    </span>
+    {chosen && <span className="text-muted-foreground text-sm">{sets}</span>}
+  </button>
+)
+
+/**
+ * Shape (STUDIO ST6): two steps, one question each, a few plans per
+ * question, and only the chosen plan says what it sets.
+ */
+const Shape = ({
+  screen,
+  project,
+  dispatch,
+}: {
+  screen: ShapeScreen
+  project: Project
+  dispatch: Dispatch
+}): JSX.Element => {
+  const kept = latest(project).cutList
+  const lookStep = screen.step === "look"
+  return (
+    <div className="flex flex-col gap-3">
+      <h2 className="text-2xl font-extrabold text-balance">
+        {lookStep ? WORDS.shape.lookQuestion : WORDS.shape.voiceQuestion}
+      </h2>
+      <div className="flex flex-col gap-2">
+        {lookStep
+          ? LOOKS.map((look) => (
+              <PlanCard
+                key={look}
+                {...WORDS.shape.looks[look]}
+                chosen={screen.look === look}
+                now={kept.look === look}
+                onPick={() => dispatch({ type: "lookPicked", look })}
+              />
+            ))
+          : VOICES.map((voice) => (
+              <PlanCard
+                key={voice}
+                {...WORDS.shape.voices[voice]}
+                chosen={screen.voice === voice}
+                now={kept.voice === voice}
+                onPick={() => dispatch({ type: "voicePicked", voice })}
+              />
+            ))}
+      </div>
+      <Button
+        size="lg"
+        onClick={() => dispatch({ type: lookStep ? "shapeNext" : "shapeKept" })}
+      >
+        {lookStep ? WORDS.shape.next : WORDS.shape.keep}
+      </Button>
+      <Button variant="ghost" onClick={() => dispatch({ type: "shapeBack" })}>
+        {WORDS.shape.back}
+      </Button>
+    </div>
+  )
+}
+
+/** History (ST4's quiet link): every version of the video, newest first. */
+const History = ({
+  project,
+  dispatch,
+}: {
+  project: Project
+  dispatch: Dispatch
+}): JSX.Element => (
+  <div className="flex flex-col gap-3">
+    <h2 className="text-2xl font-extrabold">{WORDS.history.heading}</h2>
+    <ol className="flex flex-col gap-2">
+      {historyView(project).map((row) => (
+        <li
+          key={row.rev}
+          className="border-border/60 rounded-2xl border px-4 py-2.5"
+        >
+          <span className="text-muted-foreground block text-xs">
+            {WORDS.history.line(row.rev, row.who)}
+          </span>
+          <span className="block text-sm">{row.message}</span>
+        </li>
+      ))}
+    </ol>
+    <Button variant="ghost" onClick={() => dispatch({ type: "quietBack" })}>
+      {WORDS.history.back}
+    </Button>
+  </div>
+)
+
+/** Time spent (ST4's quiet link, from ST9's log): per screen, most first. */
+const TimeSpent = ({
+  log,
+  project,
+  dispatch,
+}: {
+  log: Extract<StudioState["screen"], { kind: "time" }>["log"]
+  project: Project
+  dispatch: Dispatch
+}): JSX.Element => {
+  const rows = log === null ? [] : timeView(project, log)
+  const total = rows.reduce((sum, row) => sum + row.ms, 0)
+  return (
+    <div className="flex flex-col gap-3">
+      <h2 className="text-2xl font-extrabold">{WORDS.time.heading}</h2>
+      {log !== null && rows.length === 0 && (
+        <p className="text-muted-foreground text-sm">{WORDS.time.none}</p>
+      )}
+      {rows.length > 0 && (
+        <>
+          <p className="text-sm font-semibold">{WORDS.time.total(total)}</p>
+          <ul className="flex flex-col gap-1 text-sm">
+            {rows.map((row) => (
+              <li key={row.name} className="flex justify-between gap-3">
+                <span className="min-w-0">{row.name}</span>
+                <span className="text-muted-foreground shrink-0">
+                  {WORDS.time.spent(row.ms)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      <Button variant="ghost" onClick={() => dispatch({ type: "quietBack" })}>
+        {WORDS.time.back}
+      </Button>
+    </div>
+  )
+}
+
+type WatchScreen = Extract<StudioState["screen"], { kind: "watch" }>
+
+/** The picked render, played from the file where it is: never copied in. */
+const ReviewVideo = ({
+  video,
+  dispatch,
+}: {
+  video: Blob
+  dispatch: Dispatch
+}): JSX.Element => {
+  const url = useMemo(() => URL.createObjectURL(video), [video])
+  useEffect(
+    () => (): void => {
+      URL.revokeObjectURL(url)
+    },
+    [url]
+  )
+  return (
+    // eslint-disable-next-line jsx-a11y/media-has-caption -- the review render burns its subtitles into the picture (the captions burn-in); there is no separate track to give
+    <video
+      src={url}
+      controls
+      playsInline
+      className="w-full rounded-2xl bg-black"
+      onTimeUpdate={(event) =>
+        dispatch({
+          type: "playheadAt",
+          ms: Math.round(event.currentTarget.currentTime * 1_000),
+        })
+      }
+    />
+  )
+}
+
+/**
+ * Watch (STUDIO ST5): a review render, one button to note the moment on
+ * screen, and each of Claude's changes asked once the playhead reaches it.
+ */
+const Watch = ({
+  state,
+  screen,
+  project,
+  dispatch,
+}: {
+  state: StudioState
+  screen: WatchScreen
+  project: Project
+  dispatch: Dispatch
+}): JSX.Element => {
+  const noteId = useId()
+  const [text, setText] = useState("")
+  const words = WORDS.watch
+  const { review, video } = screen
+  const asked =
+    review === null
+      ? null
+      : askedAt(changesIn(project, review), screen.atMs, screen.answered)
+  const here = review === null ? null : shotAt(review, screen.atMs)
+  return (
+    <div className="flex flex-col gap-3">
+      <h2 className="text-2xl font-extrabold">{words.heading}</h2>
+      {review === null || video === null ? (
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-semibold">{words.open}</span>
+          <input
+            type="file"
+            multiple
+            accept="video/*,application/json,.json"
+            onChange={(event) => {
+              const files = [...(event.currentTarget.files ?? [])]
+              if (files.length > 0) dispatch({ type: "reviewPicked", files })
+            }}
+          />
+          <span className="text-muted-foreground">{words.openHint}</span>
+        </label>
+      ) : (
+        <>
+          <ReviewVideo video={video} dispatch={dispatch} />
+          {asked !== null && (
+            <div className="border-brand space-y-2 rounded-2xl border-2 p-3">
+              <p className="text-sm">{words.changed(asked.note.text)}</p>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() =>
+                    dispatch({ type: "changeGood", note: asked.note.id })
+                  }
+                >
+                  {words.good}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    dispatch({ type: "changeNotYet", note: asked.note.id })
+                  }
+                >
+                  {words.notYet}
+                </Button>
+              </div>
+            </div>
+          )}
+          <form
+            className="flex flex-col gap-2"
+            onSubmit={(event) => {
+              event.preventDefault()
+              dispatch({ type: "notedHere", text })
+              setText("")
+            }}
+          >
+            <label htmlFor={noteId} className="text-sm font-semibold">
+              {words.noteLabel}
+            </label>
+            <input
+              id={noteId}
+              value={text}
+              onChange={(event) => setText(event.currentTarget.value)}
+              className="border-input bg-background focus-visible:ring-ring rounded-xl border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
+            />
+            <Button
+              type="submit"
+              size="lg"
+              disabled={text.trim() === "" || here === null}
+            >
+              {words.noteHere(screen.atMs)}
+            </Button>
+          </form>
+        </>
+      )}
+      <Button variant="ghost" onClick={() => dispatch({ type: "watchBack" })}>
+        {words.back}
+      </Button>
+      <Notice text={state.notice} />
+    </div>
+  )
+}
+
+/**
+ * Finish (STUDIO ST7): ready for YouTube, or the one thing missing with a
+ * button straight to it; once ready, the upload copy and the link it went
+ * up at.
+ */
+const Finish = ({
+  state,
+  project,
+  dispatch,
+}: {
+  state: StudioState
+  project: Project
+  dispatch: Dispatch
+}): JSX.Element => {
+  const linkId = useId()
+  const [link, setLink] = useState("")
+  const finish = finishOf(project)
+  const words = WORDS.finish
+  return (
+    <div className="flex flex-col gap-3">
+      <h2 className="text-2xl font-extrabold">{words.heading}</h2>
+      {finish.kind === "note" && (
+        <>
+          <p className="text-sm">{words.note(finish.note.text)}</p>
+          <Button size="lg" onClick={() => dispatch({ type: "finishGo" })}>
+            {words.goNote}
+          </Button>
+        </>
+      )}
+      {finish.kind === "take" && (
+        <>
+          <p className="text-sm">{words.take(finish.n)}</p>
+          <Button size="lg" onClick={() => dispatch({ type: "finishGo" })}>
+            {words.goTake(finish.n)}
+          </Button>
+        </>
+      )}
+      {finish.kind === "unmarked" && (
+        <>
+          <p className="text-sm">{words.unmarked}</p>
+          <Button size="lg" onClick={() => dispatch({ type: "readyMarked" })}>
+            {words.mark}
+          </Button>
+        </>
+      )}
+      {finish.kind === "ready" && (
+        <>
+          <p className="text-base font-extrabold">{words.ready}</p>
+          <p className="text-muted-foreground text-sm">{words.uploadCopy}</p>
+          <form
+            className="flex flex-col gap-2"
+            onSubmit={(event) => {
+              event.preventDefault()
+              dispatch({ type: "linkPasted", text: link })
+            }}
+          >
+            <label htmlFor={linkId} className="text-sm font-semibold">
+              {words.linkLabel}
+            </label>
+            <input
+              id={linkId}
+              type="url"
+              inputMode="url"
+              value={link}
+              onChange={(event) => setLink(event.currentTarget.value)}
+              className="border-input bg-background focus-visible:ring-ring rounded-xl border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
+            />
+            <Button type="submit" disabled={link.trim() === ""}>
+              {words.keepLink}
+            </Button>
+          </form>
+        </>
+      )}
+      {finish.kind === "released" && (
+        <>
+          <p className="text-sm">{words.releasedLine}</p>
+          <a
+            href={finish.url}
+            target="_blank"
+            rel="noreferrer"
+            className="text-brand text-sm font-semibold underline"
+          >
+            {words.watchIt}
+          </a>
+        </>
+      )}
+      <Button variant="ghost" onClick={() => dispatch({ type: "finishBack" })}>
+        {words.back}
+      </Button>
+      <Notice text={state.notice} />
+    </div>
+  )
+}
+
 export const Studio = ({ ports, share }: StudioProps): JSX.Element => {
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime is created once per mount, as the soundbites page's is */
   const [runtime] = useState(() =>
@@ -583,6 +1017,23 @@ export const Studio = ({ ports, share }: StudioProps): JSX.Element => {
     return (
       <Done state={state} project={project} dispatch={dispatch} share={share} />
     )
+  if (screen.kind === "shape" && project !== null)
+    return <Shape screen={screen} project={project} dispatch={dispatch} />
+  if (screen.kind === "history" && project !== null)
+    return <History project={project} dispatch={dispatch} />
+  if (screen.kind === "time" && project !== null)
+    return <TimeSpent log={screen.log} project={project} dispatch={dispatch} />
+  if (screen.kind === "watch" && project !== null)
+    return (
+      <Watch
+        state={state}
+        screen={screen}
+        project={project}
+        dispatch={dispatch}
+      />
+    )
+  if (screen.kind === "finish" && project !== null)
+    return <Finish state={state} project={project} dispatch={dispatch} />
   return (
     <Start state={state} project={project} dispatch={dispatch} share={share} />
   )

@@ -20,6 +20,9 @@
  *   that lets its audio go, checked again in the store (`isAppendOnly`).
  * - **Closing a sitting mid-take keeps the take.** The take is finished
  *   first, and the sitting closes once it is kept or has failed.
+ * - **A released revision is never edited** (ST7, `./finish`). Its mark
+ *   and its link stay as written, it takes no new note, and a change makes
+ *   the next revision.
  * - **A note follows its shot.** It is pinned to (revision, shot, offset),
  *   and `anchorAt` finds that shot in any later revision by id, or says the
  *   shot is gone; its time is read from the renderer's shot times.
@@ -27,6 +30,8 @@
 import { assertNever, canonicalJson } from "@some-ui/core-utils"
 import type { CutList, Shot, ShotTime } from "@some-ui/video-render"
 import type { Primer } from "@soundbites/lib/journal/primer"
+
+import { finishOf, isReleased, youtubeLink } from "./finish"
 
 export const PROJECT_SCHEMA = "some-ui.studio-project/1"
 
@@ -78,6 +83,19 @@ export type Sitting = {
   readonly shot: string | null
 }
 
+/** The owner's word that revision `rev` is ready for YouTube (ST7). */
+type Mark = {
+  readonly rev: number
+  /** ISO 8601, UTC. */
+  readonly at: string
+}
+
+/** Where revision `rev` went up, as the owner pasted it once uploaded. */
+type Release = Mark & {
+  /** `https://youtu.be/<id>` (`youtubeLink`). */
+  readonly url: string
+}
+
 export type Project = {
   readonly schema: typeof PROJECT_SCHEMA
   readonly id: string
@@ -87,6 +105,10 @@ export type Project = {
   /** The chosen take for each shot that has one, by shot id. */
   readonly chosen: Readonly<Record<string, string>>
   readonly sittings: ReadonlyArray<Sitting>
+  /** Each revision marked ready, in order; absent on a project from before Finish. */
+  readonly ready?: ReadonlyArray<Mark>
+  /** Each revision released, in order; absent as `ready` is. */
+  readonly released?: ReadonlyArray<Release>
 }
 
 /** A take under way, and the sitting waiting on it to close. */
@@ -130,6 +152,8 @@ export type ProjectEvent =
       Sitting,
       "done" | "next" | "shot"
     >)
+  | ({ readonly type: "markedReady" } & Mark)
+  | ({ readonly type: "released" } & Release)
 
 export type ProjectEffect =
   | { readonly type: "save"; readonly project: Project }
@@ -155,6 +179,10 @@ export type Refusal =
   | "sittingOpen"
   | "noSitting"
   | "unconfirmed"
+  | "notLatest"
+  | "notReady"
+  | "released"
+  | "noLink"
 
 export type ProjectStep = {
   readonly state: ProjectState
@@ -293,7 +321,7 @@ function letGoRefusal(project: Project, id: string): Refusal | null {
   return null
 }
 
-function sameJson(a: unknown, b: unknown): boolean {
+export function sameJson(a: unknown, b: unknown): boolean {
   return canonicalJson(a) === canonicalJson(b)
 }
 
@@ -304,7 +332,8 @@ const SETTLES: Readonly<Record<NoteStatus, ReadonlyArray<NoteStatus>>> = {
   confirmed: [],
 }
 
-function reaches(from: NoteStatus, to: NoteStatus): boolean {
+/** Whether a note at `from` may be at `to` later: the same, or settled on from it. */
+export function reaches(from: NoteStatus, to: NoteStatus): boolean {
   return from === to || SETTLES[from].some((next) => reaches(next, to))
 }
 
@@ -355,7 +384,12 @@ export function isAppendOnly(before: Project, after: Project): boolean {
         : sameJson(now, sitting))
     )
   })
-  return revisions && notes && takes && sittings
+  const marks = (["ready", "released"] as const).every((key) =>
+    (before[key] ?? []).every((mark, index) =>
+      sameJson(mark, after[key]?.[index])
+    )
+  )
+  return revisions && notes && takes && sittings && marks
 }
 
 /** What a store does with a save: refuse it, or put it and let some audio go. */
@@ -444,6 +478,7 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
         return refuse(state, "noShot")
       if (project.notes.some((each) => each.id === note.id))
         return refuse(state, "duplicate")
+      if (isReleased(project, note.rev)) return refuse(state, "released")
       return changed(state, {
         ...project,
         notes: [...project.notes, { ...note, status: "open" }],
@@ -578,6 +613,35 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
         effects: [{ type: "finishTake" }],
         refused: null,
       }
+    }
+
+    case "markedReady": {
+      if (event.rev !== latest(project).rev) return refuse(state, "notLatest")
+      const finish = finishOf(project)
+      if (finish.kind === "ready" || finish.kind === "released")
+        return refuse(state, "duplicate")
+      if (finish.kind !== "unmarked") return refuse(state, "notReady")
+      return changed(state, {
+        ...project,
+        ready: [...(project.ready ?? []), { rev: event.rev, at: event.at }],
+      })
+    }
+
+    case "released": {
+      const url = youtubeLink(event.url)
+      if (url === null) return refuse(state, "noLink")
+      if (isReleased(project, event.rev)) return refuse(state, "duplicate")
+      // Ready as it is now, not only once marked: a note opened since counts.
+      const finish = finishOf(project)
+      if (finish.kind !== "ready" || finish.rev !== event.rev)
+        return refuse(state, "notReady")
+      return changed(state, {
+        ...project,
+        released: [
+          ...(project.released ?? []),
+          { rev: event.rev, at: event.at, url },
+        ],
+      })
     }
 
     default: {

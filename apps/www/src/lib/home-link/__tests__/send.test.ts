@@ -18,6 +18,30 @@ import { emptyHeldReport } from "@/lib/tenant/sessions-copy"
 
 import { home, session } from "./fake-home"
 
+/** One sitting of Studio's time log, just opened. */
+const SITTING = {
+  name: "s1-20261030T100000000Z",
+  events: [
+    {
+      id: "e1",
+      at: "2026-10-30T10:00:00.000Z",
+      sitting: "s1-20261030T100000000Z",
+      kind: "record" as const,
+      type: "sitting_opened" as const,
+      screen: null,
+    },
+  ],
+}
+const REPORT = {
+  id: "s1-20261030T100000000Z",
+  at: "2026-10-30T10:05:00.000Z",
+  sitting: "s1-20261030T100000000Z",
+  kind: "record" as const,
+  how: "some_snags" as const,
+  cause: "The microphone",
+  shot: "path",
+}
+
 function outcome(over: Partial<SendOutcome> = {}): SendOutcome {
   return {
     copy: { outcome: { kind: "copied", copied: 0 }, alreadyThere: 0 },
@@ -25,6 +49,7 @@ function outcome(over: Partial<SendOutcome> = {}): SendOutcome {
     freed: 0,
     shelf: emptyReport(),
     log: emptyLogReport(),
+    studio: emptyLogReport(),
     ended: null,
     ...over,
   }
@@ -144,6 +169,7 @@ function ports(send: HomeCall, over: Partial<SendPorts> = {}): SendPorts {
     storage: inMemoryStorage(),
     read: () => Promise.resolve({ local: [], kept: [] }),
     logGoing: () => Promise.resolve([session("a")]),
+    studioGoing: () => Promise.resolve({ sittings: [], reports: [] }),
     run: async (r) => ({ kind: "done", value: await r(send) }),
     copy: () =>
       Promise.resolve({
@@ -245,6 +271,42 @@ describe("sendHome's wiring", () => {
       leetype: 2,
       total: 2,
       what: "2 LeetType sessions",
+    })
+  })
+
+  it("puts Studio's sittings, then their answers, after LeetType, and remembers them", async () => {
+    const h = home()
+    const p = ports(h.send, {
+      studioGoing: () =>
+        Promise.resolve({ sittings: [SITTING], reports: [REPORT] }),
+    })
+    const result = await sendHome(TARGET, undefined, NOW, p)
+    expect(
+      h.calls
+        .filter(([method]) => method === "PUT")
+        .map(([, path]) => path)
+        .slice(-2)
+    ).toEqual([
+      "/studio/sittings/s1-20261030T100000000Z/events/e1",
+      "/studio/friction/s1-20261030T100000000Z",
+    ])
+    expect(result.line).toContain("Copied 2 Studio entries.")
+    expect(readSent(p.storage, TARGET.id).studio).toEqual({
+      [SITTING.name]: digestOf(SITTING),
+      [`report:${REPORT.id}`]: expect.any(String),
+    })
+  })
+
+  it("counts Studio's sittings in onPhone's total and words", async () => {
+    const p = ports(home().send, {
+      logGoing: () => Promise.resolve([]),
+      studioGoing: () =>
+        Promise.resolve({ sittings: [SITTING], reports: [REPORT] }),
+    })
+    expect(await onPhone(TARGET.id, p)).toMatchObject({
+      studio: 1,
+      total: 1,
+      what: "1 Studio sitting",
     })
   })
 

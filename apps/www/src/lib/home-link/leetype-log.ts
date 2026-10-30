@@ -14,16 +14,25 @@ import { digestOf } from "./sent"
 import type { EndedReport } from "./shelf"
 import { answerOrEnd } from "./shelf"
 
-/** How the LeetType part of a send went; filled as it goes, so a stop keeps it. */
+/**
+ * How a log's part of a send went (LeetType's sessions, Studio's sittings
+ * and answers); filled as it goes, so a stop keeps it.
+ */
 export type LogReport = EndedReport & {
-  /** Sessions home now holds as they are, read back. */
+  /** Entries home now holds as they are, read back. */
   held: number
-  /** Sessions home refused an event of (`422`, `409`); kept here, offered by the next tap. */
+  /** Entries home refused a write of (`422`, `409`); kept here, offered by the next tap. */
   refused: number
-  /** Sessions home answered an event of some other way; kept here too. */
+  /** Entries home answered a write of some other way; kept here too. */
   other: number
-  /** Sessions whose read-back did not match what was sent. */
+  /** Entries whose read-back did not match what was sent. */
   differs: number
+}
+
+/** How home's answer to one write counts. */
+export function bucketOf(status: number): "held" | "refused" | "other" {
+  if (status === 200) return "held"
+  return status === 409 || status === 422 ? "refused" : "other"
 }
 
 export function emptyLogReport(): LogReport {
@@ -37,8 +46,14 @@ export function emptyLogReport(): LogReport {
   }
 }
 
+/** A log home keeps as a list of events under one name. */
+export type EventLog = {
+  readonly name: string
+  readonly events: ReadonlyArray<{ readonly id: string }>
+}
+
 /** Home's read-back holds every one of `session`'s events exactly as sent. */
-function holdsAll(session: HomeSession, body: string): boolean {
+function holdsAll(session: EventLog, body: string): boolean {
   let parsed: unknown
   try {
     parsed = JSON.parse(body)
@@ -58,6 +73,11 @@ function holdsAll(session: HomeSession, body: string): boolean {
 const eventsPath = (session: string): string =>
   `/leetype/sessions/${encodeURIComponent(session)}/events`
 
+/** A LeetType session as `sendLogs` sends it. */
+function leetypeLog(session: HomeSession): EventLog {
+  return { name: session.session, events: session.events }
+}
+
 /**
  * Sends `sessions` through `send`, into `report`; `held` hears each session
  * home read back as sent, with its digest.
@@ -68,34 +88,45 @@ export async function sendLog(
   report: LogReport,
   held: (session: string, digest: string) => void = () => undefined
 ): Promise<void> {
-  for (const session of sessions) {
+  await sendLogs(sessions.map(leetypeLog), eventsPath, send, report, held)
+}
+
+/**
+ * Sends each log through `send` to `pathOf` its name, one PUT per event,
+ * then reads it back, into `report`; `held` hears each log home read back
+ * as sent, with its digest.
+ */
+export async function sendLogs(
+  logs: ReadonlyArray<EventLog>,
+  pathOf: (name: string) => string,
+  send: HomeCall,
+  report: LogReport,
+  held: (name: string, digest: string) => void
+): Promise<void> {
+  for (const session of logs) {
     let taken: "all" | "refused" | "other" = "all"
     for (const event of session.events) {
       const answer = await answerOrEnd(
         send,
         report,
         "PUT",
-        `${eventsPath(session.session)}/${encodeURIComponent(event.id)}`,
+        `${pathOf(session.name)}/${encodeURIComponent(event.id)}`,
         JSON.stringify(event)
       )
       if (answer === null) return
-      if (answer.status === 409 || answer.status === 422) taken = "refused"
-      else if (answer.status !== 200 && taken === "all") taken = "other"
+      const bucket = bucketOf(answer.status)
+      if (bucket === "refused") taken = "refused"
+      else if (bucket === "other" && taken === "all") taken = "other"
     }
     if (taken !== "all") {
       report[taken] += 1
       continue
     }
-    const back = await answerOrEnd(
-      send,
-      report,
-      "GET",
-      eventsPath(session.session)
-    )
+    const back = await answerOrEnd(send, report, "GET", pathOf(session.name))
     if (back === null) return
     if (back.status === 200 && holdsAll(session, back.body)) {
       report.held += 1
-      held(session.session, digestOf(session))
+      held(session.name, digestOf(session))
     } else {
       report.differs += 1
     }

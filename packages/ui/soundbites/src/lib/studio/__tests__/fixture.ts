@@ -147,6 +147,7 @@ export function memoryProjectStore(
       changed()
       return Promise.resolve()
     },
+    friction: () => Promise.resolve([...friction]),
     remember: (notice) => {
       notices.set(++noticeKey, notice)
       return Promise.resolve()

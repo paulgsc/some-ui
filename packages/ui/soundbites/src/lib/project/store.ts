@@ -17,6 +17,7 @@
  * with the write that marks its take off the phone, which `isAppendOnly`
  * allows once home or Drive holds a copy. Nothing here expires.
  */
+import { isRecord } from "@some-ui/core-utils"
 import { bytesBesides, done, result, withRoom } from "@some-ui/voice-capture"
 import type { Row } from "@soundbites/lib/journal/carry"
 import { letGo, planCarry } from "@soundbites/lib/journal/carry"
@@ -34,6 +35,8 @@ import { admitted, PROJECT_SCHEMA } from "./model"
 export type Friction = {
   readonly project: string
   readonly sitting: string
+  /** The scene the sitting ended on; null on a row from before reports named it. */
+  readonly shot: string | null
   /** ISO 8601, UTC. */
   readonly at: string
   readonly went: "smooth" | "snags" | "rough"
@@ -110,6 +113,8 @@ export type ProjectStore = {
   carryJournal: (at: string) => Promise<Carried>
   /** Keeps how a sitting went, once: a second answer for it is refused. */
   report: (friction: Friction) => Promise<void>
+  /** Every sitting's answer kept, for home (ST9). */
+  friction: () => Promise<Array<Friction>>
   /** Keeps what a screen that had gone away couldn't keep, for the next to say. */
   remember: (notice: string) => Promise<void>
   /** What `remember` kept, oldest first; reading lets none of it go. */
@@ -159,6 +164,27 @@ function isProject(row: unknown): row is Project {
     "schema" in row &&
     row.schema === PROJECT_SCHEMA
   )
+}
+
+/** A row `report` wrote, as kept; null for anything else. */
+export function frictionOf(row: unknown): Friction | null {
+  if (!isRecord(row)) return null
+  const { project, sitting, at, went, gotInTheWay, shot } = row
+  if (
+    typeof project !== "string" ||
+    typeof sitting !== "string" ||
+    typeof at !== "string" ||
+    (went !== "smooth" && went !== "snags" && went !== "rough")
+  )
+    return null
+  return {
+    project,
+    sitting,
+    at,
+    went,
+    gotInTheWay: typeof gotInTheWay === "string" ? gotInTheWay : null,
+    shot: typeof shot === "string" ? shot : null,
+  }
 }
 
 async function keptIn(
@@ -350,6 +376,17 @@ export function indexedDbProjectStore(): ProjectStore {
     async remember(notice): Promise<void> {
       await writing([NOTICES], async (tx) => {
         await result(tx.objectStore(NOTICES).add(notice))
+      })
+    },
+
+    async friction(): Promise<Array<Friction>> {
+      const tx = (await connect()).transaction(FRICTION, "readonly")
+      const rows: Array<unknown> = await result(
+        tx.objectStore(FRICTION).getAll()
+      )
+      return rows.flatMap((row) => {
+        const friction = frictionOf(row)
+        return friction === null ? [] : [friction]
       })
     },
 

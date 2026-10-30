@@ -2,8 +2,11 @@
  * What each Studio screen shows, read off the project: pure, so a component
  * renders it and a test checks it without a store or a microphone.
  */
+import { assertNever } from "@some-ui/core-utils"
 import type { Shot } from "@some-ui/video-render"
 import type { Cut } from "@soundbites/lib/journal/primer"
+import type { Finish } from "@soundbites/lib/project/finish"
+import { finishOf } from "@soundbites/lib/project/finish"
 import type { Note, Project, ProjectTake } from "@soundbites/lib/project/model"
 import { latest } from "@soundbites/lib/project/model"
 import { capFor, chosenTake, scriptOf } from "@soundbites/lib/project/script"
@@ -32,6 +35,11 @@ function lastLog(project: Project): { done: string; next: string } | null {
   return last === undefined ? null : { done: last.done, next: last.next }
 }
 
+/** Claude's changes not yet confirmed: notes applied, waiting to be watched. */
+function changesWaiting(project: Project): number {
+  return project.notes.filter((note) => note.status === "applied").length
+}
+
 /** How many of the latest revision's scenes have a chosen take. */
 function takenCount(project: Project): number {
   return latest(project).cutList.shots.filter(
@@ -41,12 +49,6 @@ function takenCount(project: Project): number {
 
 export function startView(project: Project): StartView {
   const scenes = latest(project).cutList.shots.length
-  const later = (kind: SittingKind): SittingRow => ({
-    kind,
-    status: STUDIO_WORDS.start.notYet,
-    open: false,
-    startHere: false,
-  })
   return {
     title: latest(project).cutList.title,
     standing: STUDIO_WORDS.standing(lastLog(project)),
@@ -58,10 +60,49 @@ export function startView(project: Project): StartView {
         // The one sitting the phone runs today, so the most useful one.
         startHere: true,
       },
-      later("watch"),
-      later("shape"),
-      later("finish"),
+      {
+        kind: "watch",
+        status: STUDIO_WORDS.watch.status(changesWaiting(project)),
+        open: true,
+        startHere: false,
+      },
+      {
+        kind: "shape",
+        status: STUDIO_WORDS.shape.status(
+          latest(project).cutList.look,
+          latest(project).cutList.voice
+        ),
+        open: true,
+        startHere: false,
+      },
+      {
+        kind: "finish",
+        status: finishStatus(finishOf(project)),
+        open: true,
+        startHere: false,
+      },
     ],
+  }
+}
+
+/** Finish's row on Start, a few words. */
+function finishStatus(finish: Finish): string {
+  const words = STUDIO_WORDS.finish.status
+  switch (finish.kind) {
+    case "note": {
+      return words.note
+    }
+    case "take": {
+      return words.take(finish.n)
+    }
+    case "unmarked":
+    case "ready":
+    case "released": {
+      return words[finish.kind]
+    }
+    default: {
+      return assertNever(finish)
+    }
   }
 }
 
@@ -148,4 +189,21 @@ export function othersOnPhone(
       onPhone: takesOnPhone(each),
     }))
     .sort((a, b) => b.onPhone - a.onPhone || a.title.localeCompare(b.title))
+}
+
+/** One version of the video, for History: newest first. */
+type HistoryRow = {
+  readonly rev: number
+  readonly who: string
+  readonly message: string
+  readonly at: string
+}
+
+export function historyView(project: Project): ReadonlyArray<HistoryRow> {
+  return [...project.revisions].reverse().map((revision) => ({
+    rev: revision.rev,
+    who: STUDIO_WORDS.history.by[revision.author],
+    message: revision.message,
+    at: revision.at,
+  }))
 }

@@ -1,15 +1,20 @@
 import type { JSX } from "react"
 import { BurnInStage } from "@burn-ins/components/stage"
 import { MOST_SCENES } from "@burn-ins/lib/authorship"
+import type { SceneRecord } from "@burn-ins/lib/authorship-link"
 import { recordParams, scenesOf } from "@burn-ins/lib/authorship-link"
 import { frameAt, prepare, type Prepared } from "@burn-ins/lib/burn-in"
 import { INK } from "@burn-ins/lib/journal"
 import { SAMPLES } from "@burn-ins/lib/samples"
-import { WORDS } from "@burn-ins/lib/words"
+import { sceneLine, WORDS } from "@burn-ins/lib/words"
 
-/** What a link's code draws: the video's mark, or why there is none. */
+/** What a link's code draws: the video's mark and scenes, or why there are none. */
 type Read =
-  | { readonly kind: "mark"; readonly mark: Prepared }
+  | {
+      readonly kind: "mark"
+      readonly mark: Prepared
+      readonly scenes: ReadonlyArray<SceneRecord>
+    }
   | { readonly kind: "none" | "too-long" }
 
 /** The mark for a record. Its params come from `recordParams`, checked in tests. */
@@ -22,7 +27,7 @@ function read(code: string | undefined): Read {
     design: "cells-v1",
     params: recordParams(scenes),
   })
-  return p.ok ? { kind: "mark", mark: p.value } : { kind: "none" }
+  return p.ok ? { kind: "mark", mark: p.value, scenes } : { kind: "none" }
 }
 
 /** The key every video opens with: the mark's intro, at its start. */
@@ -64,11 +69,21 @@ export const AuthorshipRecord = ({ code }: { code?: string }): JSX.Element => {
         <section className="flex flex-col gap-3">
           <h2 className="text-lg font-medium">{words.recordHeading}</h2>
           {record.kind === "mark" ? (
-            <BurnInStage
-              frames={[frameAt(record.mark, Number.MAX_SAFE_INTEGER)]}
-              ground={INK.ground}
-              label={words.recordLabel}
-            />
+            <>
+              <BurnInStage
+                frames={[frameAt(record.mark, Number.MAX_SAFE_INTEGER)]}
+                ground={INK.ground}
+                label={words.recordLabel}
+              />
+              <h3 className="text-base font-medium">{words.listHeading}</h3>
+              <ol className="text-muted-foreground flex flex-col gap-1 text-sm">
+                {record.scenes.map((scene, i) => (
+                  // The record is fixed by the link: its order is its identity.
+                  // eslint-disable-next-line react/no-array-index-key
+                  <li key={i}>{sceneLine(i + 1, scene)}</li>
+                ))}
+              </ol>
+            </>
           ) : (
             <p className="text-muted-foreground">
               {record.kind === "too-long" ? words.tooLong : words.noRecord}

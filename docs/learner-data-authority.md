@@ -70,13 +70,14 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 | `/signals`, `/presence/lease`               | never                                        | never                                                                                                                                                                                                                                                                                                          | sent                                       |
 | Push subscription                           | never                                        | never                                                                                                                                                                                                                                                                                                          | the account's, on the person's own taps    |
 | Reflections                                 | on the device (at most 20), never sent       | never sent, but a spoken one's audio, once its person keeps voice notes on home (LA7, LA13)                                                                                                                                                                                                                    | the same                                   |
-| Voice notes (the phone's)                   | on the phone, never sent                     | once its person keeps voice notes on home (Settings), each spoken reflection, Jobs voice note an event names, game bite and scene note of a shared drama prompt copied and sent to the paired home while the app is open, the copy kept until home holds it; stopped from Settings (LA13)                      | the same                                   |
+| Voice notes (the phone's)                   | on the phone, never sent                     | once its person keeps voice notes on home (Settings), each spoken reflection, Jobs voice note an event names, game bite, Studio take and scene note of a shared drama prompt copied and sent to the paired home while the app is open, the copy kept until home holds it; stopped from Settings (LA13)         | the same                                   |
 | Shelf                                       | never                                        | the account's, on the person's own taps                                                                                                                                                                                                                                                                        | the same                                   |
 | aph (the phone's)                           | on the phone, never sent                     | once its person keeps it on home, on the paired home, synced while aph is open; the phone keeps only what home has not confirmed; stopped from aph's mark, which brings it back (LA9)                                                                                                                          | the same                                   |
 | Jobs record (the phone's)                   | on the phone, never sent                     | once its person keeps it on home, a copy on the paired home, synced while the Jobs wing is open; its decisions and scouts files without voice, filed with home, which hands them to the Jobs mailbox on Cloudflare; the phone keeps its whole log; stopped from the wing's mark or Settings (LA10)             | the same                                   |
 | Practice (the phone's)                      | on the phone, never sent                     | once its person ticks "Keep sending" in the send's confirm, its finished sessions and kept items sent while Practice is open; nothing let go on its own; stopped from its mark or Settings (LA11)                                                                                                              | the same                                   |
 | The routine's word sets and dramas (home's) | not read                                     | read with the account's session while Korean is open; in the Android app, once its person shows them in Korean (Settings), from the paired home with the pairing's key while Korean is open, nothing of the phone's sent, its newest files and its run records kept on the phone; stopped from Settings (LA12) | the same                                   |
 | LeetType session log (the phone's)          | on the phone, never sent                     | its finished sessions copied to the paired home by "Send to home", each event without a spoken answer's ticks, read back before it counts as held; the phone keeps its whole log (LA8)                                                                                                                         | the same                                   |
+| Studio's time log and answers (the phone's) | on the phone, never sent                     | each sitting's time log and its answer to how it went, copied to the paired home by "Send to home", the log read back before it counts as held; the phone keeps its whole log (LA8)                                                                                                                            | the same                                   |
 | Speech                                      | the browser's own voice                      | the server's speech service                                                                                                                                                                                                                                                                                    | the same                                   |
 | Reminders                                   | the client's own policy, while a tab is open | the client's own policy, while a tab is open                                                                                                                                                                                                                                                                   | the server's push, with the browser closed |
 
@@ -362,8 +363,8 @@ declared (checked by reading every call site and by the tests named).
   (`components/settings/device-section.tsx`):
   the sync (published lessons and rounds, read with no credential), pairing
   (the code only), unpairing, and the send to home (`lib/home-link/send`,
-  after one confirm that names how many sessions, kept items and LeetType
-  sessions and the host): the phone's sessions, each one's record, its plan, status and
+  after one confirm that names how many sessions, kept items, LeetType
+  sessions and Studio sittings and the host): the phone's sessions, each one's record, its plan, status and
   times, created once, restored with one patch, and patched again whenever
   the phone's record has moved on from home's copy; home is read only to
   learn what it already holds and, once the copy has run, to read back each
@@ -379,7 +380,12 @@ declared (checked by reading every call site and by the tests named).
   per event in its home form (`homeFormOf`: a spoken answer without its
   ticks, which stay on the phone), then one read of that session back,
   compared event by event, and only a session that reads back exactly as
-  sent is remembered as held; the phone keeps its whole log. Nothing on home is
+  sent is remembered as held; the phone keeps its whole log; then Studio's
+  time log the same way, sitting by sitting (`lib/home-link/studio-log`,
+  paulgsc/server's `studio_log`), and each sitting's answer to how it went,
+  one PUT each, remembered as held on a `200`; Studio's record reaches the
+  send only through what Studio's screen handed in (`lib/studio-keeping`,
+  which holds it and calls nothing of the link). Nothing on home is
   deleted. Outside LA9 to LA13, nothing is sent when the app or Settings
   opens, on resume, on a timer or on a network change: making the runtime and
   `load` read only the phone's own record. There is no retry; a sync, a send,
@@ -998,7 +1004,10 @@ and when it was said, a written one never; a Jobs voice note by the first pick
 or scout event that names it, a draft's never; a scene note by its drama
 prompt's stamp, when that prompt is shared; a game bite
 (`lib/game-bites`) by its game, with every field it keeps, once its hold
-(Undo, and what a bite said first was about) has run out. That a note's audio is copied
+(Undo, and what a bite said first was about) has run out; a Studio take
+still on the phone by its project, scene and take
+(`<project>:<shot>:<take>`), when it was recorded, its audio leaving the
+phone once home holds it (soundbites' `letGoHeldTakes`). That a note's audio is copied
 once, before the record names it, that the copy goes once home holds the
 note and stays when home refused it, and that a copy nothing names is swept
 (`lib/voice-home/__tests__/runtime.test.ts`); that a note counts as home's
@@ -1015,7 +1024,7 @@ watch started only from the lane's hook and a shared prompt heard only by it
 - _Claim:_ a voice note's audio is copied for home (`phoneVoiceHome().copy`)
   only while the consent log keeps `voice` under the paired home's id
   (`keptNow(VOICE_SCOPES)`), and only from `copyAll` (each spoken reflection,
-  named Jobs note and game bite past its hold on the phone, from `watchVoiceNotes`, which only
+  named Jobs note, game bite past its hold and Studio take still on the phone, from `watchVoiceNotes`, which only
   `useVoiceHome`'s effect starts, and from the lane's exchange, `sendVoice`) and `copySceneNotes` (a drama prompt's
   notes, heard through `onPromptShared`, which `shareDramaPrompt` tells
   only once its share succeeded as shared); the

@@ -168,7 +168,11 @@ export const STEPS: ReadonlyArray<Step> = [
       { field: "burnIns" },
       { file: "series/" },
     ],
-    writes: [{ file: "video.mp4" }, { file: "shot-times.json" }],
+    writes: [
+      { file: "video.mp4" },
+      { file: "shot-times.json" },
+      { file: "review.json" },
+    ],
   },
   {
     id: "read-mark",

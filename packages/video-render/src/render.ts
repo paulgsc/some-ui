@@ -24,6 +24,7 @@ import {
 import type { FfmpegCall, Layer, Scene, SourceFacts } from "./plan"
 import { designOf, resolve } from "./resolve"
 import type { ResolvedShot } from "./resolve"
+import { reviewOf } from "./review"
 import type { Series } from "./series"
 import { place, shotTimes, toMs } from "./timing"
 import type { Placement, ShotTime } from "./timing"
@@ -52,12 +53,19 @@ export type Ports = {
   readonly writeFile: (file: string, text: string) => Promise<void>
   /** Records one burn-in with transparency (ST15's stage), when one can. */
   readonly recordBurnIn?: (request: BurnInRequest) => Promise<boolean>
+  /** The burn-ins that would clash, said before any is recorded; empty when none would. */
+  readonly checkBurnIns?: (
+    requests: ReadonlyArray<BurnInRequest>
+  ) => Promise<ReadonlyArray<string>>
 }
 
 export type RenderOptions = {
   /** Where segments and the voice track go, relative to the video's folder. */
   readonly workDir: string
-  /** The video, relative to the video's folder. `shot-times.json` goes beside it. */
+  /**
+   * The video, relative to the video's folder. `shot-times.json` goes
+   * beside it, and `review.json` when the cut list names its revision.
+   */
   readonly out: string
   /**
    * When nothing records burn-ins, render without them and list them,
@@ -132,6 +140,10 @@ export async function render(
       "nothing here can draw burn-ins; render with them left out, or with " +
         "them drawn by `pnpm --filter www record:short`",
     ])
+  }
+  if (ports.recordBurnIn && ports.checkBurnIns && requests.length > 1) {
+    const clashing = await ports.checkBurnIns(requests)
+    if (clashing.length > 0) return refused(clashing)
   }
   await ports.mkdir(work)
   await ports.mkdir(dirOf(options.out))
@@ -214,6 +226,12 @@ export async function render(
   const times = shotTimes(placement.value.shots, fps)
   const shotTimesFile = `${dirOf(options.out)}/shot-times.json`
   await ports.writeFile(shotTimesFile, `${JSON.stringify(times, null, 1)}\n`)
+  const review = reviewOf(cutList, times)
+  if (review !== null)
+    await ports.writeFile(
+      `${dirOf(options.out)}/review.json`,
+      `${JSON.stringify(review, null, 1)}\n`
+    )
   return {
     ok: true,
     value: { video: options.out, shotTimes: times, shotTimesFile, leftOut },

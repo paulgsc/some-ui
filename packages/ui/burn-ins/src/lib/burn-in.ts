@@ -189,9 +189,13 @@ function journal<P>(
     : c
 }
 
+/** A burn-in as a problem names it: `the captions burn-in (bold)`. */
+export const burnInName = (b: Pick<BurnInData, "kind" | "design">): string =>
+  `the ${b.kind} burn-in (${b.design})`
+
 /** The burn-in checked and ready, or every reason it can't be drawn. */
 export function prepare(b: BurnInData): Parsed<Prepared> {
-  const name = `the ${b.kind} burn-in (${b.design})`
+  const name = burnInName(b)
   if (!isKind(b.kind)) return { ok: false, problems: [`${name}: no such kind`] }
   const kind = b.kind
   switch (kind) {

@@ -6,7 +6,7 @@
  * Reading checks every revision as the renderer would (`parseCutList`), so
  * a file the phone accepts is one the renderer can draw at any revision.
  */
-import { canonicalJson } from "@some-ui/core-utils"
+import { canonicalJson, isRecord, jsonOf } from "@some-ui/core-utils"
 import type { Parsed } from "@some-ui/video-render"
 import { CutListSchema, parseCutList } from "@some-ui/video-render"
 import { z } from "zod"
@@ -76,6 +76,16 @@ const ProjectSchema = z.object({
       shot: id.nullable().default(null),
     })
   ),
+  ready: z.array(z.object({ rev: z.number().int().positive(), at })).optional(),
+  released: z
+    .array(
+      z.object({
+        rev: z.number().int().positive(),
+        at,
+        url: z.string().regex(/^https:\/\/youtu\.be\/[\w-]{11}$/),
+      })
+    )
+    .optional(),
 })
 
 /** The project as its file: every object's keys in order, two-space indents. */
@@ -128,6 +138,12 @@ function shapeProblems(project: Project): Array<string> {
   if (project.sittings.slice(0, -1).some((each) => each.closedAt === null))
     problems.push("sittings: only the last can be open")
   return problems
+}
+
+/** Whether `source` says it is a project file, before it is read whole. */
+export function isProjectFile(source: string): boolean {
+  const raw = jsonOf(source)
+  return isRecord(raw) && raw.schema === PROJECT_SCHEMA
 }
 
 /** The project in `source`, or every reason it can't be resumed from. */
