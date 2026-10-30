@@ -161,6 +161,18 @@ function capture(inMs: number): Shot["picture"] {
   }
 }
 
+/** A five-second scene of the walk, from its start. */
+function capture5s(): Shot {
+  return {
+    id: "S1",
+    picture: capture(0),
+    durationMs: 5000,
+    voiceInMs: 200,
+    overrides: {},
+    burnIns: [],
+  }
+}
+
 /** One scene per transition, cycling motions and backgrounds, then a card. */
 function everyMember(): CutList {
   const shots: Array<Shot> = TRANSITIONS.map((t: Transition, i) => {
@@ -278,6 +290,42 @@ describe("render", () => {
       expect(done.ok ? "rendered" : done.problems).toBe("rendered")
     }
   }, 180_000)
+
+  it("needs footage only up to a freeze", async () => {
+    const short: Ports = {
+      ...ports,
+      probe: () =>
+        Promise.resolve({ width: 206, height: 458, durationMs: 1000 }),
+      ffmpeg: () => Promise.resolve({ ok: true, stderr: "" }),
+    }
+    const cut = everyMember()
+    const scene = (motion: Motion): CutList => ({
+      ...cut,
+      shots: [
+        {
+          ...capture5s(),
+          overrides: { motion },
+        },
+      ],
+    })
+    const frozen = await render(
+      scene({ kind: "freeze", atMs: 500 }),
+      series(),
+      short,
+      {
+        workDir: "work-freeze",
+        out: "out-freeze/video.mp4",
+      }
+    )
+    expect(frozen.ok ? [] : frozen.problems).toEqual([])
+    const still = await render(scene({ kind: "still" }), series(), short, {
+      workDir: "work-freeze",
+      out: "out-freeze/video.mp4",
+    })
+    expect(still.ok ? [] : still.problems).toEqual([
+      "S1: captures/walk.mp4 is too short (5000 ms needed)",
+    ])
+  })
 
   it("refuses a changed background before drawing anything", async () => {
     const cut = everyMember()

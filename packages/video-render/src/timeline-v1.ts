@@ -12,7 +12,7 @@
 
 import { z } from "zod"
 
-import { CUT_LIST_SCHEMA } from "./cut-list"
+import { CUT_LIST_SCHEMA, parseCutList } from "./cut-list"
 import type { BurnIn, CutList, Parsed, Shot } from "./cut-list"
 import { fitToTake } from "./timing"
 
@@ -110,20 +110,38 @@ export function fromTimelineV1(
     return shotOf(s, at, marks, inputs, problems)
   })
   if (problems.length) return { ok: false, problems }
-  return {
-    ok: true,
-    value: {
-      schema: CUT_LIST_SCHEMA,
-      title: parsed.data.project,
-      series: inputs.series,
-      look: "plain",
-      voice: "read",
-      shots,
-      burnIns: [],
-      revisions: [],
-      notes: [],
-    },
-  }
+  // What is written must render: checked here, not by the next reader.
+  return parseCutList({
+    schema: CUT_LIST_SCHEMA,
+    title: parsed.data.project,
+    series: inputs.series,
+    look: "plain",
+    voice: "read",
+    shots,
+  })
+}
+
+/**
+ * Pan keys inside a scene fitted to its take: a key past the end can never
+ * be seen, so the pan stops at the end where it would have been then.
+ */
+function withinScene(
+  keys: ReadonlyArray<[number, number]>,
+  durationMs: number
+): Array<[number, number]> {
+  const kept = keys.filter(([t]) => t <= durationMs)
+  const before = kept[kept.length - 1]
+  const after = keys.find(([t]) => t > durationMs)
+  if (!after) return kept
+  if (!before) return [[durationMs, after[1]]]
+  const k =
+    (1 -
+      Math.cos((Math.PI * (durationMs - before[0])) / (after[0] - before[0]))) /
+    2
+  return [
+    ...kept,
+    [durationMs, Math.round(before[1] + (after[1] - before[1]) * k)],
+  ]
 }
 
 function shotOf(
@@ -203,6 +221,7 @@ function shotOf(
         name.startsWith("tap") && t >= inS && (outS === undefined || t <= outS)
     )
     .map(([, t]) => scene(t))
+    .filter((t) => t < durationMs)
     .sort((a, b) => a - b)
   const view = s.view ?? {
     mode: "crop" as const,
@@ -219,7 +238,8 @@ function shotOf(
       cssY,
     ])
     y = keys[0]?.[1] ?? 0
-    if (keys.length > 1) motion = { kind: "pan", keys }
+    const kept = withinScene(keys, durationMs)
+    if (kept.length > 1) motion = { kind: "pan", keys: kept }
   }
   return {
     ...base,

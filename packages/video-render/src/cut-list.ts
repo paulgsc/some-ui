@@ -220,6 +220,9 @@ function shotProblems(shots: ReadonlyArray<Shot>): Array<string> {
     if (times.some((t) => t > s.durationMs)) {
       problems.push(`${s.id}: a motion time is past the scene's end`)
     }
+    if (p.kind === "capture" && p.taps.some((t) => t > s.durationMs)) {
+      problems.push(`${s.id}: a tap is past the scene's end`)
+    }
     if (s.overrides.cues?.some((c) => c.atMs > s.durationMs)) {
       problems.push(`${s.id}: a sound cue is past the scene's end`)
     }

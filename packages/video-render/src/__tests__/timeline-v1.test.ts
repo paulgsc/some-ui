@@ -109,6 +109,49 @@ describe("fromTimelineV1", () => {
     })
   })
 
+  it("keeps a fitted scene's pan and taps inside it", () => {
+    const converted = fromTimelineV1(
+      {
+        project: "Short",
+        shots: [
+          {
+            id: "S1",
+            cut: "c",
+            duration: 10,
+            kind: "capture",
+            source: "walk.mp4",
+            in: 0,
+            out: 10,
+            view: {
+              mode: "crop",
+              keys: [
+                [0, 0],
+                [8, 300],
+              ],
+            },
+          },
+        ],
+      },
+      {
+        marks: new Map([["walk.mp4", new Map([["tap late", 9]])]]),
+        takes: new Map([["c", { file: "c.webm", lengthMs: 1000 }]]),
+        series: { id: "build-journal-short", version: 1 },
+      }
+    )
+    if (!converted.ok) throw new Error(converted.problems.join("\n"))
+    const [s] = converted.value.shots
+    expect(s?.durationMs).toBe(1700)
+    // Where the eased pan was at 1.7 s of its 8 s run.
+    expect(s?.overrides.motion).toEqual({
+      kind: "pan",
+      keys: [
+        [0, 0],
+        [1700, 32],
+      ],
+    })
+    expect(s?.picture.kind === "capture" && s.picture.taps).toEqual([])
+  })
+
   it("names a mark the recorder never wrote", () => {
     const converted = fromTimelineV1(TIMELINE, {
       marks: new Map(),

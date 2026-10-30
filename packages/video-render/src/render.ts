@@ -236,7 +236,13 @@ async function checkInputs(
       const f = await read(p.source)
       if (!f) problems.push(`${shot.id}: ${p.source} is missing`)
       else if (p.kind === "capture") {
-        const need = p.outMs ?? p.inMs + shot.durationMs * p.speed
+        // The source is read to its out, its freeze, or the scene's end,
+        // whichever comes first; the last frame read holds after that.
+        const freeze = s.motion.kind === "freeze" ? s.motion.atMs : Infinity
+        const need = Math.min(
+          p.outMs ?? Infinity,
+          p.inMs + Math.min(freeze, shot.durationMs) * p.speed
+        )
         if (f.durationMs + 50 < need) {
           problems.push(
             `${shot.id}: ${p.source} is too short (${need} ms needed)`
