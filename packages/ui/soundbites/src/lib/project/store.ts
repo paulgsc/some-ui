@@ -45,9 +45,9 @@ export type Friction = {
  * What carrying the Journal tab's episode did: no episode to carry; carried,
  * with how many takes came without a recording (gone before the carry); an
  * episode whose plan it couldn't read; or one it can read but not carry,
- * left untouched, with the room its recordings take. All but that last say how many rows of the Journal tab's
- * stores it didn't use and let go (`cleared`), emptying them (owner,
- * 2026-10-30, #2251).
+ * left untouched, with the room its recordings take. All but that last say
+ * how many rows of the Journal tab's stores it didn't use and let go
+ * (`cleared`), emptying them (owner, 2026-10-30, #2251).
  */
 export type Carried =
   | { readonly kind: "nothing"; readonly cleared: number }

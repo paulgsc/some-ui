@@ -40,6 +40,7 @@ const MADE: ReadonlyArray<string> = [
   W.notice.carried(TITLE, 2, 3),
   W.start.onPhone(1),
   W.start.onPhone(4),
+  W.notice.carryStays(0),
   W.notice.carryStays(820_000),
   W.notice.carryStays(1_400_000),
   W.notice.carryUnread,

@@ -4,6 +4,7 @@
  * table, in the person's terms: what is kept where, and what to do next,
  * never the machinery (`__tests__/words.test.ts` holds that).
  */
+import { formatSize } from "@some-ui/core-utils"
 import type { RecordingFailure } from "@some-ui/voice-capture"
 import { RECORDING_FAILURE_COPY } from "@some-ui/voice-capture"
 
@@ -24,13 +25,6 @@ export function seconds(ms: number): string {
 /** What sharing frees: the room the shared takes held. */
 const MAKING_ROOM =
   "On Start, share a video's takes with Claude and say they reached Drive: they leave the phone, and the room they held is free."
-
-/** A number of bytes, as room on the phone: `820 KB`, `1.4 MB`. */
-function size(bytes: number): string {
-  return bytes < 1_000_000
-    ? `${Math.ceil(bytes / 1_000)} KB`
-    : `${(bytes / 1_000_000).toFixed(1)} MB`
-}
 
 /** `2`, `2 and 3`, `2, 3 and 5`. */
 function listed(items: ReadonlyArray<string>): string {
@@ -143,7 +137,7 @@ export const STUDIO_WORDS = {
         .filter((line) => line !== "")
         .join(" "),
     carryStays: (bytes: number): string =>
-      `Your Journal episode on this phone couldn't be moved into Studio. It stays on the phone as it was, and takes ${size(bytes)} of the room for takes.`,
+      `Your Journal episode on this phone couldn't be moved into Studio. It stays on the phone as it was${bytes === 0 ? "." : `, and takes ${formatSize(bytes)} of the room for takes.`}`,
     carryUnread:
       "Your Journal episode on this phone couldn't be read, so it was let go.",
     cleared: (n: number): string =>
