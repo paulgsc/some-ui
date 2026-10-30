@@ -194,6 +194,15 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "the web builds' voice, the browser's own synthesizer: the Android app speaks only with the phone's engine (src/providers/tts.tsx)",
     },
     {
+      modules: [
+        "packages/video-render/src/cut-list.ts",
+        "packages/video-render/src/plans.ts",
+        "packages/video-render/src/vocabulary.ts",
+      ],
+      profiles: [MOBILE_PROFILE],
+      why: "the cut list's schemas, which the phone's Studio project reads and checks (@some-ui/soundbites, lib/project): the web builds render no video and keep no project",
+    },
+    {
       modules: ["apps/www/src/lib/demo/**"],
       profiles: ["pages"],
       why: "a viewer's sample drafts (CLAUDE.md, two mandates): only the Pages build is a viewer's, and the owner's builds keep to their own records",
