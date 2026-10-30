@@ -112,7 +112,18 @@ export const MODE_WORDS: Readonly<
 /** Every mode stops a bite at one minute. */
 export const MINUTE_LINE = "Every bite stops at one minute."
 
-/** What the outbox line under the screen says, or "" when nothing waits. */
+/** A day as the screen names it: "Oct 28". */
+function onDay(ms: number): string {
+  return new Date(ms).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  })
+}
+
+/**
+ * What the outbox line under the screen says, or "" when nothing waits and
+ * home holds none.
+ */
 export function outboxLine(view: OutboxView): string {
   const lines: Array<string> = []
   if (view.notKept > 0) {
@@ -136,6 +147,12 @@ export function outboxLine(view: OutboxView): string {
       view.refused === 1
         ? "Home couldn't take 1 bite. It stays on this phone."
         : `Home couldn't take ${view.refused} bites. They stay on this phone.`
+    )
+  }
+  if (view.onHome > 0 && view.onHomeSince !== null) {
+    const bites = view.onHome === 1 ? "1 bite" : `${view.onHome} bites`
+    lines.push(
+      `${bites} kept on home since ${onDay(view.onHomeSince)}, and no longer on this phone.`
     )
   }
   return lines.join(" ")

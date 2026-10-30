@@ -39,7 +39,14 @@ function ports(feed = fixtureFeed(() => NOW)): GameWeekPorts {
   }
 }
 
-const WAITING = { notKept: 0, waiting: 2, refused: 0, sending: true }
+const WAITING = {
+  notKept: 0,
+  waiting: 2,
+  refused: 0,
+  sending: true,
+  onHome: 0,
+  onHomeSince: null,
+}
 
 const outbox: OutboxPort = {
   getSnapshot: () => WAITING,

@@ -17,7 +17,9 @@
  *   every field it keeps.
  *
  * Copying deletes nothing where the note was recorded; letting it go there
- * leaves the copy, which goes once home holds the note. Each pass says what
+ * leaves the copy, which goes once home holds the note. A game bite's own
+ * audio goes too once home holds it (`letGoHeldBites`, owner, 2026-10-29,
+ * #2080); the other notes' screens let theirs go. Each pass says what
  * it could not copy and why (`copyPasses`), so Settings never counts as
  * waiting a note this phone cannot send (LA14).
  */
@@ -306,6 +308,11 @@ function copySceneNotes({ stamp, at, notes }: SharedPrompt): void {
  * The stores that hold notes are listened to only once voice notes are
  * kept, so a phone that never chose it builds none of them for this.
  */
+/** Lets each game bite home now holds leave this phone (`lib/game-bites`). */
+function letGoHeldBites(): void {
+  void phoneGameBites().letGo(new Set(phoneVoiceHome().getSnapshot().held))
+}
+
 export function watchVoiceNotes(): () => void {
   const stores: Array<() => void> = []
   const changed = (): void => {
@@ -322,7 +329,10 @@ export function watchVoiceNotes(): () => void {
     copySoon()
   }
   changed()
+  letGoHeldBites()
   const stops = [
+    // Home holding a note is a change to the voice record, sent or not.
+    phoneVoiceHome().subscribe(letGoHeldBites),
     onPromptShared(copySceneNotes),
     phoneConsent().subscribe(changed),
     homeLink().subscribe(changed),
