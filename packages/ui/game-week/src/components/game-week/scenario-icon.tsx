@@ -1,14 +1,6 @@
 import type { JSX } from "react"
 import { cn } from "@some-ui/core-utils"
-import { SCENARIOS } from "@some-ui/game-scenarios"
-import type { Scenario, ScenarioId } from "@some-ui/game-scenarios"
-
-const BY_ID = new Map<string, Scenario>(SCENARIOS.map((s) => [s.id, s]))
-
-/** The scenario as the catalog has it. Every `ScenarioId` is in it. */
-export function scenarioOf(id: ScenarioId): Scenario | undefined {
-  return BY_ID.get(id)
-}
+import { scenarioOf, type ScenarioId } from "@some-ui/game-scenarios"
 
 /** A scenario's 24x24 stroke icon (`@some-ui/game-scenarios`, `ICONS`). */
 export const ScenarioIcon = ({
@@ -28,6 +20,8 @@ export const ScenarioIcon = ({
     aria-hidden="true"
     className={cn("size-6 shrink-0", className)}
   >
-    {scenarioOf(id)?.icon.map((d) => <path key={d} d={d} />)}
+    {scenarioOf(id).icon.map((d) => (
+      <path key={d} d={d} />
+    ))}
   </svg>
 )

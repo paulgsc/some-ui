@@ -22,6 +22,8 @@
     "react-dom": "^19.2.0"
   },
   "dependencies": {
+    "@some-ui/core-utils": "workspace:*",
+    "@some-ui/game-scenarios": "workspace:*",
     "@some-ui/intent-kit": "workspace:*",
     "zod": "catalog:"
   },

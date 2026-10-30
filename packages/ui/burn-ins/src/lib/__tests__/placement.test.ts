@@ -11,11 +11,11 @@ import {
   type Prepared,
 } from "@burn-ins/lib/burn-in"
 import { inside, overlaps, REGIONS, type Region } from "@burn-ins/lib/geometry"
-import { SAMPLES, STILL_SAMPLE_MS } from "@burn-ins/lib/samples"
+import { samplesOf, STILL_SAMPLE_MS } from "@burn-ins/lib/samples"
 import { describe, expect, it } from "vitest"
 
-const ready = (kind: Kind, design: string): Prepared => {
-  const p = prepare({ kind, design, params: SAMPLES[kind] })
+const ready = (kind: Kind, design: string, params: unknown): Prepared => {
+  const p = prepare({ kind, design, params })
   if (!p.ok) throw new Error(p.problems.join("; "))
   return p.value
 }
@@ -26,9 +26,16 @@ const times = (p: Prepared): ReadonlyArray<number> => {
   return Array.from({ length: Math.ceil(total / 50) + 1 }, (_, i) => i * 50)
 }
 
+/** Every sample of every kind, in every design. */
 const every = (): ReadonlyArray<{ kind: Kind; design: string; p: Prepared }> =>
   KINDS.flatMap((kind) =>
-    DESIGNS[kind].map((design) => ({ kind, design, p: ready(kind, design) }))
+    DESIGNS[kind].flatMap((design) =>
+      samplesOf(kind).map((params) => ({
+        kind,
+        design,
+        p: ready(kind, design, params),
+      }))
+    )
   )
 
 const shared = (a: Kind, b: Kind): ReadonlyArray<Region> =>
@@ -58,7 +65,7 @@ describe("where burn-ins sit", () => {
     }
   })
 
-  it("shares a region only between a scene's headline and its card, one or the other, and the authorship mark's bare cards", () => {
+  it("shares a region only between a scene's headline and its card, one or the other, the authorship mark's bare cards, and a game card in the body", () => {
     const sharing = KINDS.flatMap((a, i) =>
       KINDS.slice(i + 1).flatMap((b) =>
         shared(a, b).length > 0 ? [[a, b]] : []
@@ -68,11 +75,13 @@ describe("where burn-ins sit", () => {
       ["headline", "card"],
       ["headline", "authorship"],
       ["card", "authorship"],
+      ["card", "game-card"],
+      ["authorship", "game-card"],
     ])
   })
 
   it("keeps the authorship mark to the gutter between its intro and its end card", () => {
-    const p = ready("authorship", "cells-v1")
+    const p = ready("authorship", "cells-v1", samplesOf("authorship")[0])
     for (const t of times(p)) {
       const f = frameAt(p, t)
       if (f.kind !== "authorship" || f.frame.part !== "mark") continue

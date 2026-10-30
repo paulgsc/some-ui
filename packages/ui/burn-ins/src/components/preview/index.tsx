@@ -12,7 +12,15 @@ import {
   type Prepared,
 } from "@burn-ins/lib/burn-in"
 import { toSrt } from "@burn-ins/lib/captions/srt"
-import { SAMPLES, STILL_SAMPLE_MS } from "@burn-ins/lib/samples"
+import {
+  GAME_CARD_TEMPLATES,
+  type GameCardTemplate,
+} from "@burn-ins/lib/game-card"
+import {
+  GAME_CARD_SAMPLES,
+  SAMPLES,
+  STILL_SAMPLE_MS,
+} from "@burn-ins/lib/samples"
 import { WORDS } from "@burn-ins/lib/words"
 
 const designsOf = (kind: Kind): ReadonlyArray<string> => DESIGNS[kind]
@@ -21,9 +29,18 @@ const designsOf = (kind: Kind): ReadonlyArray<string> => DESIGNS[kind]
 const designFor = (kind: Kind, asked: string | undefined): string =>
   designsOf(kind).find((d) => d === asked) ?? designsOf(kind)[0] ?? ""
 
-/** A kind's sample in a design. The samples are checked in tests, so a refusal here is a bug. */
-const sampleOf = (kind: Kind, design: string): Prepared => {
-  const prepared = prepare({ kind, design, params: SAMPLES[kind] })
+/**
+ * A kind's sample in a design, a game card's for the template picked. The
+ * samples are checked in tests, so a refusal here is a bug.
+ */
+const sampleOf = (
+  kind: Kind,
+  design: string,
+  template: GameCardTemplate
+): Prepared => {
+  const params =
+    kind === "game-card" ? GAME_CARD_SAMPLES[template] : SAMPLES[kind]
+  const prepared = prepare({ kind, design, params })
   if (!prepared.ok) throw new Error(prepared.problems.join("; "))
   return prepared.value
 }
@@ -33,7 +50,8 @@ const BUTTON =
 
 /**
  * Where the owner tunes what is drawn into every video, on sample data: pick
- * a kind and a look, play or drag through the sample, and see the video as
+ * a kind (for a game card, which card) and a look, play or drag through the
+ * sample, and see the video as
  * the recorder will draw it, with, for subtitles, the plain file that goes
  * up beside it. `initialKind`, `initialDesign` and `initialAtMs` are read
  * once, where the page opens; an unknown kind or look opens on the default.
@@ -51,8 +69,12 @@ export const BurnInsPreview = ({
     isKind(initialKind) ? initialKind : "captions"
   )
   const [design, setDesign] = useState(() => designFor(kind, initialDesign))
+  const [template, setTemplate] = useState<GameCardTemplate>("stat")
   const [outline, setOutline] = useState(true)
-  const prepared = useMemo(() => sampleOf(kind, design), [kind, design])
+  const prepared = useMemo(
+    () => sampleOf(kind, design, template),
+    [kind, design, template]
+  )
   const totalMs = runtimeMs(prepared) ?? STILL_SAMPLE_MS
   const clock = usePreviewClock(initialAtMs)
   const atMs = Math.min(clock.atMs, totalMs)
@@ -94,6 +116,28 @@ export const BurnInsPreview = ({
               {WORDS.kinds[kind].about}
             </p>
           </section>
+
+          {kind === "game-card" ? (
+            <section className="flex flex-col gap-3">
+              <h2 className="text-lg font-medium">{WORDS.templateHeading}</h2>
+              <div className="flex flex-wrap gap-2">
+                {GAME_CARD_TEMPLATES.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={id === template}
+                    className={`${BUTTON} ${id === template ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                    onClick={() => setTemplate(id)}
+                  >
+                    {WORDS.gameCard.templates[id].name}
+                  </button>
+                ))}
+              </div>
+              <p className="text-muted-foreground text-sm">
+                {WORDS.gameCard.templates[template].about}
+              </p>
+            </section>
+          ) : null}
 
           <section className="flex flex-col gap-3">
             <h2 className="text-lg font-medium">{WORDS.lookHeading}</h2>

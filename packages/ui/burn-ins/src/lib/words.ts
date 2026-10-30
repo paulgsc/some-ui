@@ -4,11 +4,17 @@
  * goes, never the machinery that draws it (`__tests__/words.test.ts`).
  */
 
+import { ordinal } from "@some-ui/core-utils"
+
 import type { Actor } from "./authorship"
 import type { Kind } from "./burn-in"
 import type { ThemeId } from "./captions/theme"
+import type { GameCardTemplate, Quarter } from "./game-card"
 
 const seconds = (ms: number): string => (Math.max(0, ms) / 1000).toFixed(1)
+
+const quarterName = (q: Quarter): string =>
+  q === "OT" ? "Overtime" : `${ordinal(q)} quarter`
 
 export const WORDS = {
   title: "What every video carries",
@@ -30,6 +36,11 @@ export const WORDS = {
       name: "Card",
       about:
         "A scene with no picture: a headline, then the point in large type and a note under it.",
+    },
+    "game-card": {
+      name: "Game card",
+      about:
+        "A card over a game-week short's picture, under the headline and above the subtitles: the situation, the score, a scenario, a chain of outcomes, or the ways into the playoffs. Teams are named by their codes, as text.",
     },
     authorship: {
       name: "Who made it",
@@ -63,10 +74,16 @@ export const WORDS = {
       about:
         "One square for each of us, always in the same place. Filled for whose idea, half filled for whose words, outlined for whose hands.",
     },
+    "gridiron-v1": {
+      name: "Game day",
+      about:
+        "White on a deep navy plate with a yellow stripe down its left edge; the line above, a scenario's icon and the leader's points in yellow.",
+    },
   } satisfies Record<
-    ThemeId | "v1" | "cells-v1",
+    ThemeId | "v1" | "cells-v1" | "gridiron-v1",
     { name: string; about: string }
   >,
+  templateHeading: "Which card",
   play: "Play",
   pause: "Pause",
   timeLabel: "Where in the sample",
@@ -102,6 +119,54 @@ export const WORDS = {
       "Filled: whose idea · half filled: whose words · outlined: whose hands",
     scene: (n: number): string => String(n),
     linkLabel: "Every scene, and how to read it:",
+  },
+  /** What the game cards say inside the video, and each one's name. */
+  gameCard: {
+    templates: {
+      stat: {
+        name: "Situation",
+        about:
+          "The down, the distance, the margin and the time left, for one team.",
+      },
+      score: {
+        name: "Score",
+        about:
+          "The score at that moment, the visitors over the home team, the leader's points in yellow.",
+      },
+      scenario: {
+        name: "Scenario",
+        about:
+          "One of the fixed game-week scenarios: its icon and its name as the catalog has them, and how it came out, when that is known.",
+      },
+      chain: {
+        name: "Chain",
+        about:
+          "Two to four outcomes, one leading to the next: each a scenario and how it came out, or a few plain words.",
+      },
+      path: {
+        name: "Ways in",
+        about:
+          "From Playoff Delta's week: how many more wins get the team in, and the best seed each can reach.",
+      },
+    } satisfies Record<GameCardTemplate, { name: string; about: string }>,
+    quarter: quarterName,
+    downAndDistance: (down: number, toGo: number | "goal"): string =>
+      `${ordinal(down)} and ${toGo}`,
+    margin: (points: number): string =>
+      points === 0
+        ? "Tied"
+        : points > 0
+          ? `Up ${points}`
+          : `Down ${Math.abs(points)}`,
+    left: (clock: string): string => `${clock} left`,
+    halftime: "Halftime",
+    final: "Final",
+    pathKicker: (week: number): string => `Playoff Delta · week ${week}`,
+    pathHeadline: (team: string): string => `How ${team} gets in`,
+    wins: (more: number): string =>
+      more === 0 ? "Lose out" : `Win ${more} more`,
+    seed: (seed: number): string => `as high as the ${ordinal(seed)} seed`,
+    noWayIn: "No way in is left",
   },
   /** The page the end card links to. */
   record: {

@@ -14,7 +14,6 @@ import {
   MATERIAL,
   materialOf,
   numberWord,
-  ordinal,
   PIECES,
   STAKES,
   stakesOf,
@@ -70,26 +69,13 @@ describe("next week's stakes", () => {
 })
 
 describe("counting words", () => {
-  it("spells small numbers, and places", () => {
+  it("spells small numbers", () => {
     expect([0, 1, 4, 10, 11].map(numberWord)).toEqual([
       "no",
       "one",
       "four",
       "ten",
       "11",
-    ])
-    expect([1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 101].map(ordinal)).toEqual([
-      "1st",
-      "2nd",
-      "3rd",
-      "4th",
-      "11th",
-      "12th",
-      "13th",
-      "21st",
-      "22nd",
-      "23rd",
-      "101st",
     ])
   })
 })

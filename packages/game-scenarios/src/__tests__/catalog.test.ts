@@ -1,6 +1,6 @@
 import { CATALOG, parseCatalog } from "@game-scenarios/catalog"
 import { PRIMITIVES } from "@game-scenarios/icons"
-import { SCENARIOS } from "@game-scenarios/scenarios"
+import { isScenarioId, scenarioOf, SCENARIOS } from "@game-scenarios/scenarios"
 import { OUTCOME_WORDS } from "@game-scenarios/words"
 import { describe, expect, it } from "vitest"
 
@@ -11,6 +11,13 @@ describe("the copy and the words agree (GW24)", () => {
     expect(Object.keys(OUTCOME_WORDS).sort()).toEqual(
       CATALOG.scenarios.map((s) => s.id).sort()
     )
+  })
+
+  it("finds every scenario by its id", () => {
+    for (const s of SCENARIOS) {
+      if (!isScenarioId(s.id)) throw new Error(s.id)
+      expect(scenarioOf(s.id)).toBe(s)
+    }
   })
 
   it("labels no outcome the copy lacks", () => {

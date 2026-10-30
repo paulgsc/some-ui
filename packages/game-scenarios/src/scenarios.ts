@@ -35,3 +35,12 @@ function join(entry: CatalogEntry): Scenario {
 
 /** Every scenario, in the catalog's order. */
 export const SCENARIOS: ReadonlyArray<Scenario> = CATALOG.scenarios.map(join)
+
+const BY_ID = new Map<string, Scenario>(SCENARIOS.map((s) => [s.id, s]))
+
+/** The scenario as the catalog has it. Every `ScenarioId` is in it (the tests hold it). */
+export function scenarioOf(id: ScenarioId): Scenario {
+  const scenario = BY_ID.get(id)
+  if (!scenario) throw new Error(`no scenario ${id} in the catalog`)
+  return scenario
+}

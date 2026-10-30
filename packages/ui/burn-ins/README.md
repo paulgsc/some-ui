@@ -1,19 +1,19 @@
 # @some-ui/burn-ins
 
 What code draws into every video (STUDIO ST15, #2273): the subtitles, the
-Build Journal shorts' headline and card, and the authorship mark (ST16,
-#2274). A video's takes, footage and backgrounds are throwaway and stay in
-Drive or on home; these are generic, drawn the same way into every video,
-and only their data changes per video. Web only (`someUi.audience: "web"`);
+Build Journal shorts' headline and card, the authorship mark (ST16, #2274),
+and Game Week Bites' cards (GWB12, #2086). A video's takes, footage and
+backgrounds are throwaway and stay in Drive or on home; these are generic,
+drawn the same way into every video, and only their data changes per video. Web only (`someUi.audience: "web"`);
 `apps/www` serves the preview at `/burn-ins` (and `/captions`, its old
 address) through the web surface's door.
 
 ## What it is
 
-A burn-in is a kind (`captions`, `headline`, `card`, `authorship`), a named design and
-one video's params, which the cut list carries. `src/lib/burn-in.ts` holds
-the contract and says why it is the way it is; each module's header does
-the same for its part:
+A burn-in is a kind (`captions`, `headline`, `card`, `authorship`,
+`game-card`), a named design and one video's params, which the cut list
+carries. `src/lib/burn-in.ts` holds the contract and says why it is the way
+it is; each module's header does the same for its part:
 
 - `src/lib/geometry.ts`: the frame, the safe area, the regions.
 - `src/lib/text.ts`, `src/lib/advances.ts`: text set by the font's own
@@ -28,6 +28,7 @@ the same for its part:
   the end card prints, one character a scene, and the page it opens,
   `/authorship?r=…`, which draws the mark's key and that video's record from
   the link alone and keeps nothing.
+- `src/lib/game-card.ts`: Game Week Bites' cards (GWB12), design `gridiron-v1`.
 - `src/runtime/record.ts`, `src/components/record`: the recording protocol.
 - `src/components/preview`, `src/components/stage`: the preview page.
 

@@ -27,7 +27,8 @@
 
   .bi-panel,
   .bi-text,
-  .bi-cell {
+  .bi-cell,
+  .bi-glyph {
     position: absolute;
   }
 
