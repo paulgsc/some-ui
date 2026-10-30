@@ -84,23 +84,32 @@
             "unit": "seconds",
             "tighter": "lower"
           },
-          "verdict": "broken",
-          "conclusion": "Nothing tells you: Prometheus has no alert rules, and the one provisioned Grafana alert is about logged errors.",
+          "verdict": "holds",
+          "conclusion": "Prometheus fires 18 minutes after the poller's last pass began, or 5 minutes after its stamp goes missing while it is on, and Grafana sends it to your Slack within about a minute, since it checks once a minute. Slack delivery was shown on home on 2026-10-30; no Prometheus alert has fired there yet, so its hand-off to Grafana has not been seen live.",
           "evidence": [
             {
               "class": "structural",
-              "says": "rule_files is commented out in prometheus.yml.",
-              "ref": "server:infra/prometheus/prometheus.yml"
+              "says": "MailboxPollerStale fires when no pass has started for the interval plus the budget plus 60 s (1080 s), and MailboxPollerMetricsMissing when the poller is on with its stamp gone; promtool tests both in CI.",
+              "ref": "server:infra/prometheus/rules/home.yml"
             },
             {
               "class": "structural",
-              "says": "The only provisioned alert counts tracing error events.",
-              "ref": "server:infra/grafana/provisioning/alerting/file-host-errors.yml"
+              "says": "Grafana reads what Prometheus has firing from ALERTS and sends each alert to the Slack contact point, one message per alert.",
+              "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+            },
+            {
+              "class": "measured",
+              "says": "On home on 2026-10-30, the Slack contact point's test notification and a live file_host error alert both reached the owner, and Prometheus had the home rules loaded. No Prometheus alert has fired there yet to show its hand-off to Grafana live.",
+              "ref": "server#525"
             }
           ],
-          "tracked": "server#525",
+          "proof": [
+            "server:infra/prometheus/rules/home.test.yml#MailboxPollerStale",
+            "server:infra/prometheus/rules/home.test.yml#MailboxPollerMetricsMissing"
+          ],
           "watch": {
-            "by": "none"
+            "by": "alert",
+            "ref": "server:infra/prometheus/rules/home.yml"
           },
           "amendments": []
         },
@@ -600,8 +609,8 @@
           "property": "outcome",
           "claim": "A game feed that has stopped reads as stopped, not as a quiet week.",
           "requirement": "Every wake stamps game_feed_last_attempt_timestamp_seconds, whether or not anything is due, so a dashboard tells 'nothing to fetch' (a recent stamp) from 'not running' (an old one), and game_feed_enabled tells 'switched off' from both; an alert tells the owner when the stamp goes stale.",
-          "verdict": "unproven",
-          "conclusion": "The dashboard's SINCE LAST LOOK turns red after 60 s without a wake and stays green through a quiet week; if home's server is down it shows no data rather than red, nothing tells you, and no test holds either.",
+          "verdict": "holds",
+          "conclusion": "The dashboard tells a quiet week (a recent stamp) from a stopped feed (an old one), and Slack tells you when the feed is on and has not woken for two minutes. If home's server is down, the dashboard shows no data and FileHostDown tells you instead. Slack delivery was shown on home on 2026-10-30; no Prometheus alert has fired there yet, so its hand-off to Grafana has not been seen live.",
           "evidence": [
             {
               "class": "structural",
@@ -610,14 +619,27 @@
             },
             {
               "class": "structural",
-              "says": "No alert rule reads the stamp: Prometheus has no rule files, as for the mailbox poller.",
-              "ref": "server:infra/prometheus/prometheus.yml"
+              "says": "GameFeedStale fires when the feed is on and its stamp is more than 120 s old, and FileHostDown when home's server has not answered a scrape for 2 minutes; promtool tests both in CI.",
+              "ref": "server:infra/prometheus/rules/home.yml"
+            },
+            {
+              "class": "structural",
+              "says": "Grafana reads what Prometheus has firing from ALERTS and sends each alert to the Slack contact point, one message per alert.",
+              "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+            },
+            {
+              "class": "measured",
+              "says": "On home on 2026-10-30, the Slack contact point's test notification and a live file_host error alert both reached the owner, and Prometheus had the home rules loaded. No Prometheus alert has fired there yet to show its hand-off to Grafana live.",
+              "ref": "server#525"
             }
           ],
-          "tracked": "server#525",
+          "proof": [
+            "server:infra/prometheus/rules/home.test.yml#GameFeedStale",
+            "server:infra/prometheus/rules/home.test.yml#FileHostDown"
+          ],
           "watch": {
-            "by": "dashboard",
-            "ref": "server:infra/grafana/dashboards/game-feed.jsonnet"
+            "by": "alert",
+            "ref": "server:infra/prometheus/rules/home.yml"
           },
           "amendments": []
         },
@@ -702,18 +724,32 @@
           "property": "outcome",
           "claim": "If the nudge waker stops, you are told.",
           "requirement": "An alert fires when no waker pass has started within its interval plus its pass deadline plus 60 seconds, and when its metrics are missing; its delivery is tested.",
-          "verdict": "broken",
-          "conclusion": "The dashboard shows when the waker last ran; nothing tells you when it stops.",
+          "verdict": "holds",
+          "conclusion": "Prometheus fires once the waker's interval, its pass deadline and a minute pass without a pass starting, or 5 minutes after its stamp goes missing while it is on, and Grafana sends it to your Slack within about a minute. Slack delivery was shown on home on 2026-10-30; no Prometheus alert has fired there yet, so its hand-off to Grafana has not been seen live.",
           "evidence": [
             {
               "class": "structural",
-              "says": "nudge_waker_last_attempt_timestamp_seconds exists, and no alert rule reads it.",
-              "ref": "server:infra/prometheus/prometheus.yml"
+              "says": "NudgeWakerStale fires when no waker pass has started within its interval plus its pass deadline plus 60 s, and NudgeWakerMetricsMissing when it is on with its stamp gone; promtool tests both in CI.",
+              "ref": "server:infra/prometheus/rules/home.yml"
+            },
+            {
+              "class": "structural",
+              "says": "Grafana reads what Prometheus has firing from ALERTS and sends each alert to the Slack contact point, one message per alert.",
+              "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+            },
+            {
+              "class": "measured",
+              "says": "On home on 2026-10-30, the Slack contact point's test notification and a live file_host error alert both reached the owner, and Prometheus had the home rules loaded. No Prometheus alert has fired there yet to show its hand-off to Grafana live.",
+              "ref": "server#525"
             }
           ],
-          "tracked": "server#525",
+          "proof": [
+            "server:infra/prometheus/rules/home.test.yml#NudgeWakerStale",
+            "server:infra/prometheus/rules/home.test.yml#NudgeWakerMetricsMissing"
+          ],
           "watch": {
-            "by": "dashboard"
+            "by": "alert",
+            "ref": "server:infra/prometheus/rules/home.yml"
           },
           "amendments": []
         },
@@ -790,18 +826,31 @@
             "unit": "seconds",
             "tighter": "lower"
           },
-          "verdict": "broken",
-          "conclusion": "Nothing on home expects the run, so a missed run is noticed only when you open Jobs.",
+          "verdict": "holds",
+          "conclusion": "Home expects each scheduled run by its time zone's clock, and Slack tells you when no run is recorded 30 minutes after one was due. A record reaches home on the mailbox pass after its run ends, so a run longer than about 15 minutes trips the alert although it ran. Slack delivery was shown on home on 2026-10-30; no Prometheus alert has fired there yet, so its hand-off to Grafana has not been seen live.",
           "evidence": [
             {
               "class": "structural",
-              "says": "Run records are written by the run itself; no schedule on home says when one is owed.",
-              "ref": "server:apps/servers/file_host/src/mailbox/pass.rs"
+              "says": "routine_watch sets each routine's due time from ROUTINE_SCHEDULE and its last recorded run; RoutineRunOverdue fires 30 minutes after a due time with no run that started for it, and promtool tests it in CI.",
+              "ref": "server:infra/prometheus/rules/home.yml"
+            },
+            {
+              "class": "structural",
+              "says": "Grafana reads what Prometheus has firing from ALERTS and sends each alert to the Slack contact point, one message per alert.",
+              "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+            },
+            {
+              "class": "measured",
+              "says": "On home on 2026-10-30, the Slack contact point's test notification and a live file_host error alert both reached the owner, and Prometheus had the home rules loaded. No Prometheus alert has fired there yet to show its hand-off to Grafana live.",
+              "ref": "server#525"
             }
           ],
-          "tracked": "server#525",
+          "proof": [
+            "server:infra/prometheus/rules/home.test.yml#RoutineRunOverdue"
+          ],
           "watch": {
-            "by": "none"
+            "by": "alert",
+            "ref": "server:infra/prometheus/rules/home.yml"
           },
           "amendments": []
         },
@@ -1012,7 +1061,7 @@
           "claim": "An error on home is never silent: it reaches you, named by what failed, and a record of it outlasts the session that saw it.",
           "requirement": "Every ERROR-level event on home is counted by its target and its name; an alert reaches the owner within 15 minutes and says what failed, its delivery tested; and a sanitised record, one open issue per fingerprint updated in place and holding no field value, survives for the next session.",
           "verdict": "broken",
-          "conclusion": "Home counts every error its log filter passes once tracing is up, and alerts per module, but the count keeps only the module, so an alert cannot say what failed; nothing shows the alert reaches you, and nothing keeps a record past the session that saw it.",
+          "conclusion": "Home counts every error its log filter passes once tracing is up, and alerts per module, and that alert reached you on home on 2026-10-30; but the count keeps only the module, so an alert cannot say what failed, and nothing keeps a record past the session that saw it.",
           "evidence": [
             {
               "class": "structural",
@@ -1020,15 +1069,15 @@
               "ref": "server:apps/servers/file_host/src/metrics/observability.rs"
             },
             {
-              "class": "structural",
-              "says": "The one error alert sends Slack a message per target; whether its webhook is set on home has not been shown.",
+              "class": "measured",
+              "says": "The one error alert sends Slack a message per target; on home on 2026-10-30, one for opentelemetry_sdk reached the owner.",
               "ref": "server:infra/grafana/provisioning/alerting/file-host-errors.yml"
             }
           ],
           "tracked": "server#546",
           "watch": {
-            "by": "dashboard",
-            "ref": "server:infra/grafana/dashboards/lib/panels.libsonnet"
+            "by": "alert",
+            "ref": "server:infra/grafana/provisioning/alerting/file-host-errors.yml"
           },
           "amendments": []
         },
@@ -1052,9 +1101,14 @@
               "ref": "server#545"
             },
             {
+              "class": "measured",
+              "says": "On home on 2026-10-30, the error alert fired for opentelemetry_sdk with 180 errors in 15 minutes: server#545 happens on home too, not only in the reproduction.",
+              "ref": "server#545"
+            },
+            {
               "class": "structural",
-              "says": "Prometheus has no rule files, so nothing counts error hours.",
-              "ref": "server:infra/prometheus/prometheus.yml"
+              "says": "Prometheus's rules watch home's background tasks; none counts error hours.",
+              "ref": "server:infra/prometheus/rules/home.yml"
             }
           ],
           "tracked": "server#546",
