@@ -190,12 +190,11 @@ export type StudioState = {
   readonly roomBytes: number | null
   /** What the carry left of the Journal tab's episode, as last read. */
   readonly leftovers: Leftovers
-  /** Each Done for now, in order, waiting on the take under way before its close. */
-  readonly closing: ReadonlyArray<{
-    readonly project: string
-    readonly at: string
-    readonly shot: string
-  }>
+  /**
+   * A Done for now's close waiting on the take under way, and every write asked
+   * for after it, in order, so none runs ahead of that close.
+   */
+  readonly held: ReadonlyArray<Pending>
   /** Whether the Done screen's sitting is saved yet. */
   readonly closed: "saving" | "saved" | "failed" | null
   /** Each Done for now's close not yet settled, or whose answer waits. */
@@ -337,7 +336,7 @@ export function initialStudioState(): StudioState {
     said: [],
     roomBytes: null,
     leftovers: { rows: 0, bytes: 0 },
-    closing: [],
+    held: [],
     closed: null,
     filings: [],
     readSeq: 0,
@@ -503,16 +502,8 @@ function applied(project: Project | null, pending: Pending): Project | null {
  */
 function pump(state: StudioState): Step {
   let at = state
-  if (at.closing.length > 0 && !isTaking(at.activity)) {
-    at = {
-      ...at,
-      queue: [
-        ...at.queue,
-        ...at.closing.map((c) => ({ kind: "close" as const, ...c })),
-      ],
-      closing: [],
-    }
-  }
+  if (at.held.length > 0 && !isTaking(at.activity))
+    at = { ...at, queue: [...at.queue, ...at.held], held: [] }
   if (at.inFlight !== null || !at.ready) return stay(at)
   const [pending, ...queue] = at.queue
   if (pending === undefined) {
@@ -534,7 +525,10 @@ function pump(state: StudioState): Step {
   }
 }
 
+/** Queues `pending`; behind any held close unless it keeps the take that close waits on. */
 function enqueue(state: StudioState, pending: Pending): Step {
+  if (state.held.length > 0 && pending.kind !== "keep")
+    return pump({ ...state, held: [...state.held, pending] })
   return pump({ ...state, queue: [...state.queue, pending] })
 }
 
@@ -847,9 +841,9 @@ function doneForNow(state: StudioState, at: string): Step {
       ...state.filings,
       { project: project.id, at, sitting: null, settled: false, answer: null },
     ],
-    closing: [
-      ...state.closing,
-      { project: project.id, at, shot: state.screen.shot },
+    held: [
+      ...state.held,
+      { kind: "close", project: project.id, at, shot: state.screen.shot },
     ],
   }
   if (state.activity.kind === "recording") {
@@ -926,7 +920,11 @@ export function step(state: StudioState, event: StudioEvent): Step {
       if (state.page !== "here" || state.shelf.kind !== "read")
         return stay(state)
       // Ours first: the notice waits for them, and is never dropped.
-      if (state.inFlight !== null || state.queue.length > 0)
+      if (
+        state.inFlight !== null ||
+        state.queue.length > 0 ||
+        state.held.length > 0
+      )
         return stay({ ...state, stale: true })
       return read(state)
     }

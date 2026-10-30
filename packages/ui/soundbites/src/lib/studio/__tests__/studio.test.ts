@@ -90,9 +90,7 @@ function projectsOfState(
 const settledWrites = (
   state: ReturnType<StudioRuntime["getSnapshot"]>
 ): boolean =>
-  state.inFlight === null &&
-  state.queue.length === 0 &&
-  state.closing.length === 0
+  state.inFlight === null && state.queue.length === 0 && state.held.length === 0
 
 async function opened(
   memory = memoryProjectStore(),
@@ -791,7 +789,7 @@ describe("an answer waiting on its sitting's close", () => {
 })
 
 describe("Done for now twice while a take is still saving", () => {
-  it("queues both closes and settles both answers, none left waiting", async () => {
+  it("records both sittings and files both answers", async () => {
     let finish: () => void = () => undefined
     const finished = new Promise<void>((resolve) => {
       finish = resolve
@@ -820,18 +818,22 @@ describe("Done for now twice while a take is still saving", () => {
     runtime.dispatch({ type: "doneForNowPressed" })
     runtime.dispatch({ type: "wentChosen", went: "rough" })
     runtime.dispatch({ type: "snagTold", text: "Twice" })
-    expect(runtime.getSnapshot().closing).toHaveLength(2)
+    // The second sitting's open waits behind the first close, not ahead of it.
+    expect(runtime.getSnapshot().held.map((each) => each.kind)).toEqual([
+      "close",
+      "open",
+      "close",
+    ])
     finish()
     await until(
       runtime,
       (state) => settledWrites(state) && state.filings.length === 0
     )
-    // The first close closed s1; the second found no sitting open, so its
-    // answer is said lost rather than filed or left waiting.
     expect(memory.friction.map((f) => [f.sitting, f.went])).toEqual([
       ["s1", "smooth"],
+      ["s2", "rough"],
     ])
-    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.done.answerNotKept)
+    expect(projectIn(runtime).sittings).toHaveLength(2)
   })
 })
 
