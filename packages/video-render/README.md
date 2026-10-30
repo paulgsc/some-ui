@@ -25,6 +25,8 @@ Each module's header says why it is the way it is.
   it; each scene placed in whole frames.
 - `src/plan.ts`: the ffmpeg calls, as data. `src/render.ts` runs them over
   ports; `src/node.ts` gives it ffmpeg and the file system.
+- `src/steps.ts`: who owns each step of making a video, now and by when
+  (ST10, #2258); its test holds the rules for moving one.
 - `src/timeline-v1.ts`: the build-journal skill's `timeline.json` shorts as
   cut list v2.
 - `src/cli.ts`: the command, and its usage:
