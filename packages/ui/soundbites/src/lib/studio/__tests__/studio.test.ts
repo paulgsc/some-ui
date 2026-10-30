@@ -7,7 +7,9 @@ import type {
   Take,
   TakeDeadlines,
 } from "@some-ui/voice-capture"
+import { run, started, take } from "@soundbites/lib/project/__tests__/fixture"
 import { projectFile, readProjectFile } from "@soundbites/lib/project/file"
+import { finishOf } from "@soundbites/lib/project/finish"
 import type { Project } from "@soundbites/lib/project/model"
 import { latest, newProject, primerAt } from "@soundbites/lib/project/model"
 import { cutListOf, TAIL_MS } from "@soundbites/lib/project/script"
@@ -1139,5 +1141,58 @@ describe("Shape", () => {
     expect(runtime.getSnapshot().screen).toMatchObject({ step: "look" })
     runtime.dispatch({ type: "shapeBack" })
     expect(runtime.getSnapshot().screen).toEqual({ kind: "start" })
+  })
+})
+
+/** ST7: Finish names the one thing missing, then keeps the mark and the link. */
+describe("Finish", () => {
+  /** A video kept on the phone with every scene taken. */
+  async function taken(): Promise<Running> {
+    const state = ["a", "b", "c"].reduce(
+      (at, id) =>
+        run(at, { type: "takeStarted", shot: id }, take(`t-${id}`, id)),
+      started()
+    )
+    const runtime = studio(memoryProjectStore([state.project]))
+    await until(runtime, (each) => projectOf(each) !== null)
+    runtime.dispatch({ type: "finishChosen" })
+    return runtime
+  }
+
+  it("goes straight to the first scene with no take", async () => {
+    const runtime = await opened()
+    runtime.dispatch({ type: "finishChosen" })
+    expect(runtime.getSnapshot().screen).toEqual({ kind: "finish" })
+    runtime.dispatch({ type: "finishGo" })
+    const [first] = latest(projectIn(runtime)).cutList.shots
+    expect(runtime.getSnapshot().screen).toEqual({
+      kind: "record",
+      shot: first?.id,
+    })
+  })
+
+  it("keeps the owner's mark, then the YouTube link, on the latest version", async () => {
+    const runtime = await taken()
+    runtime.dispatch({
+      type: "linkPasted",
+      text: "https://youtu.be/dQw4w9WgXcQ",
+    })
+    expect(finishOf(projectIn(runtime)).kind).toBe("unmarked")
+    runtime.dispatch({ type: "readyMarked" })
+    await until(runtime, (state) => settledWrites(state))
+    expect(finishOf(projectIn(runtime))).toEqual({ kind: "ready", rev: 1 })
+    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.finish.marked)
+    runtime.dispatch({ type: "linkPasted", text: "https://example.com/v" })
+    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.finish.notALink)
+    runtime.dispatch({
+      type: "linkPasted",
+      text: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    })
+    await until(runtime, (state) => settledWrites(state))
+    expect(finishOf(projectIn(runtime))).toEqual({
+      kind: "released",
+      rev: 1,
+      url: "https://youtu.be/dQw4w9WgXcQ",
+    })
   })
 })

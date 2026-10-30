@@ -76,6 +76,16 @@ const ProjectSchema = z.object({
       shot: id.nullable().default(null),
     })
   ),
+  ready: z.array(z.object({ rev: z.number().int().positive(), at })).optional(),
+  released: z
+    .array(
+      z.object({
+        rev: z.number().int().positive(),
+        at,
+        url: z.string().regex(/^https:\/\/youtu\.be\/[\w-]{11}$/),
+      })
+    )
+    .optional(),
 })
 
 /** The project as its file: every object's keys in order, two-space indents. */

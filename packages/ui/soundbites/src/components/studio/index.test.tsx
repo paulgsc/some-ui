@@ -85,8 +85,9 @@ describe("Studio", () => {
     await openPrimer()
     expect(screen.getByText(W.start.startHere)).toBeInTheDocument()
     expect(screen.getByText(W.recordStatus(0, 3))).toBeInTheDocument()
-    // Watch and Finish; Shape opens (ST6).
-    expect(screen.getAllByText(W.start.notYet)).toHaveLength(2)
+    // Watch; Shape (ST6) and Finish (ST7) open.
+    expect(screen.getAllByText(W.start.notYet)).toHaveLength(1)
+    expect(screen.getByText(W.finish.status.take(1))).toBeInTheDocument()
   })
 
   it("records a scene: its point, its voice, what must stay true, then Again or Keep", async () => {

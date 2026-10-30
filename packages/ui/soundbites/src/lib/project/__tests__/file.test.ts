@@ -43,6 +43,18 @@ describe("the project file", () => {
     expect(isAppendOnly(read.value, project)).toBe(true)
   })
 
+  it("carries a revision's ready mark and release (ST7)", () => {
+    const project = {
+      ...worked(),
+      ready: [{ rev: 1, at: AT }],
+      released: [{ rev: 1, at: AT, url: "https://youtu.be/dQw4w9WgXcQ" }],
+    }
+    expect(readProjectFile(projectFile(project))).toEqual({
+      ok: true,
+      value: project,
+    })
+  })
+
   it("names every reason a file can't be resumed from", () => {
     const project = worked()
     const broken = {

@@ -16,6 +16,7 @@ import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import { LOOKS, VOICES } from "@some-ui/video-render"
 import { phoneStudioPorts } from "@soundbites/lib/phone"
+import { finishOf } from "@soundbites/lib/project/finish"
 import type { Project } from "@soundbites/lib/project/model"
 import { latest } from "@soundbites/lib/project/model"
 import { lengthFor } from "@soundbites/lib/project/script"
@@ -31,7 +32,7 @@ import {
   startView,
   takesOnPhone,
 } from "@soundbites/lib/studio/view"
-import type { Snag, Went } from "@soundbites/lib/studio/words"
+import type { SittingKind, Snag, Went } from "@soundbites/lib/studio/words"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { FolderOpen, Mic, Pause, Play, Square } from "lucide-react"
 
@@ -51,6 +52,18 @@ export type StudioProps = {
 }
 
 type Dispatch = (intent: StudioIntent) => void
+
+/** What tapping each open sitting on Start asks for. */
+const CHOSEN = {
+  record: "recordChosen",
+  // Watch is not open on the phone yet (ST5), so its row is never tapped.
+  watch: "recordChosen",
+  shape: "shapeChosen",
+  finish: "finishChosen",
+} as const satisfies Record<
+  SittingKind,
+  Extract<StudioIntent["type"], `${string}Chosen`>
+>
 
 const Notice = ({ text }: { text: string }): JSX.Element => (
   <p aria-live="polite" className="text-muted-foreground min-h-5 text-sm">
@@ -155,8 +168,7 @@ const Start = ({
                   type="button"
                   onClick={() =>
                     dispatch({
-                      type:
-                        row.kind === "shape" ? "shapeChosen" : "recordChosen",
+                      type: CHOSEN[row.kind],
                     })
                   }
                   className="bg-card border-brand focus-visible:ring-ring flex w-full items-center gap-3 rounded-2xl border-2 px-4 py-3 text-left focus-visible:ring-2 focus-visible:outline-none"
@@ -645,6 +657,100 @@ const Shape = ({
   )
 }
 
+/**
+ * Finish (STUDIO ST7): ready for YouTube, or the one thing missing with a
+ * button straight to it; once ready, the upload copy and the link it went
+ * up at.
+ */
+const Finish = ({
+  state,
+  project,
+  dispatch,
+}: {
+  state: StudioState
+  project: Project
+  dispatch: Dispatch
+}): JSX.Element => {
+  const linkId = useId()
+  const [link, setLink] = useState("")
+  const finish = finishOf(project)
+  const words = WORDS.finish
+  return (
+    <div className="flex flex-col gap-3">
+      <h2 className="text-2xl font-extrabold">{words.heading}</h2>
+      {finish.kind === "note" && (
+        <>
+          <p className="text-sm">{words.note(finish.note.text)}</p>
+          <Button size="lg" onClick={() => dispatch({ type: "finishGo" })}>
+            {words.goNote}
+          </Button>
+        </>
+      )}
+      {finish.kind === "take" && (
+        <>
+          <p className="text-sm">{words.take(finish.n)}</p>
+          <Button size="lg" onClick={() => dispatch({ type: "finishGo" })}>
+            {words.goTake(finish.n)}
+          </Button>
+        </>
+      )}
+      {finish.kind === "unmarked" && (
+        <>
+          <p className="text-sm">{words.unmarked}</p>
+          <Button size="lg" onClick={() => dispatch({ type: "readyMarked" })}>
+            {words.mark}
+          </Button>
+        </>
+      )}
+      {finish.kind === "ready" && (
+        <>
+          <p className="text-base font-extrabold">{words.ready}</p>
+          <p className="text-muted-foreground text-sm">{words.uploadCopy}</p>
+          <form
+            className="flex flex-col gap-2"
+            onSubmit={(event) => {
+              event.preventDefault()
+              dispatch({ type: "linkPasted", text: link })
+            }}
+          >
+            <label htmlFor={linkId} className="text-sm font-semibold">
+              {words.linkLabel}
+            </label>
+            <input
+              id={linkId}
+              type="url"
+              inputMode="url"
+              value={link}
+              onChange={(event) => setLink(event.currentTarget.value)}
+              className="border-input bg-background focus-visible:ring-ring rounded-xl border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
+            />
+            <Button type="submit" disabled={link.trim() === ""}>
+              {words.keepLink}
+            </Button>
+          </form>
+        </>
+      )}
+      {finish.kind === "released" && (
+        <>
+          <p className="text-sm">{words.releasedLine}</p>
+          <a
+            href={finish.url}
+            target="_blank"
+            rel="noreferrer"
+            className="text-brand text-sm font-semibold underline"
+          >
+            {words.watchIt}
+          </a>
+        </>
+      )}
+      <Button variant="ghost" onClick={() => dispatch({ type: "finishBack" })}>
+        {words.back}
+      </Button>
+      <Notice text={state.notice} />
+    </div>
+  )
+}
+
 export const Studio = ({ ports, share }: StudioProps): JSX.Element => {
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime is created once per mount, as the soundbites page's is */
   const [runtime] = useState(() =>
@@ -683,6 +789,8 @@ export const Studio = ({ ports, share }: StudioProps): JSX.Element => {
     )
   if (screen.kind === "shape" && project !== null)
     return <Shape screen={screen} project={project} dispatch={dispatch} />
+  if (screen.kind === "finish" && project !== null)
+    return <Finish state={state} project={project} dispatch={dispatch} />
   return (
     <Start state={state} project={project} dispatch={dispatch} share={share} />
   )

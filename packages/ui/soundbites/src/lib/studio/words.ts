@@ -233,6 +233,39 @@ export const STUDIO_WORDS = {
       `Shape: ${LOOK_WORDS[look].name} look, ${VOICE_WORDS[voice].name} voice`,
   },
 
+  /** Finish (ST7): ready for YouTube, or the one thing missing. */
+  finish: {
+    heading: "Finish",
+    note: (text: string): string =>
+      `A note is still open: "${text}". Settle it before this goes up.`,
+    goNote: "Go to its scene",
+    take: (n: number): string => `Scene ${n} has no kept take yet.`,
+    goTake: (n: number): string => `Record scene ${n}`,
+    unmarked:
+      "Every scene has its take and no note is open. Say it's ready when you have watched it through.",
+    mark: "It's ready",
+    ready: "Ready for YouTube.",
+    uploadCopy:
+      "Next, ask Claude for the upload copy: the full video, its title, its description with the music credit, and its captions file, on the shorts page. You upload it to YouTube yourself.",
+    linkLabel: "Its YouTube link, once it is up",
+    keepLink: "Keep this link",
+    notALink:
+      "That isn't a YouTube video's link. Copy it from YouTube's Share button.",
+    released: "Kept as this version's release.",
+    releasedLine:
+      "Released. A change from here makes a new version; this one stays as it went up.",
+    watchIt: "Watch it on YouTube",
+    marked: "Marked ready for YouTube.",
+    back: "Back",
+    status: {
+      note: "A note is open",
+      take: (n: number): string => `Scene ${n} needs a take`,
+      unmarked: "Ready to mark",
+      ready: "Ready for YouTube",
+      released: "Released",
+    },
+  },
+
   /** Catching an idea, one question at a time (ST18). */
   idea: {
     newIdea: "New idea",

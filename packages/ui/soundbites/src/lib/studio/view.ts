@@ -2,8 +2,11 @@
  * What each Studio screen shows, read off the project: pure, so a component
  * renders it and a test checks it without a store or a microphone.
  */
+import { assertNever } from "@some-ui/core-utils"
 import type { Shot } from "@some-ui/video-render"
 import type { Cut } from "@soundbites/lib/journal/primer"
+import type { Finish } from "@soundbites/lib/project/finish"
+import { finishOf } from "@soundbites/lib/project/finish"
 import type { Note, Project, ProjectTake } from "@soundbites/lib/project/model"
 import { latest } from "@soundbites/lib/project/model"
 import { capFor, chosenTake, scriptOf } from "@soundbites/lib/project/script"
@@ -68,8 +71,34 @@ export function startView(project: Project): StartView {
         open: true,
         startHere: false,
       },
-      later("finish"),
+      {
+        kind: "finish",
+        status: finishStatus(finishOf(project)),
+        open: true,
+        startHere: false,
+      },
     ],
+  }
+}
+
+/** Finish's row on Start, a few words. */
+function finishStatus(finish: Finish): string {
+  const words = STUDIO_WORDS.finish.status
+  switch (finish.kind) {
+    case "note": {
+      return words.note
+    }
+    case "take": {
+      return words.take(finish.n)
+    }
+    case "unmarked":
+    case "ready":
+    case "released": {
+      return words[finish.kind]
+    }
+    default: {
+      return assertNever(finish)
+    }
   }
 }
 

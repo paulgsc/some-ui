@@ -61,6 +61,7 @@ import {
   SOUNDBITE_BITS_PER_SECOND,
   SOUNDBITE_MIN_MS,
 } from "@soundbites/lib/policy"
+import { finishOf, youtubeLink } from "@soundbites/lib/project/finish"
 import type { Project, ProjectTake } from "@soundbites/lib/project/model"
 import {
   latest,
@@ -124,6 +125,8 @@ type StudioScreen =
       readonly look: Look
       readonly voice: Voice
     }
+  /** Finish (ST7): ready for YouTube, or the one thing missing. */
+  | { readonly kind: "finish" }
   | {
       readonly kind: "done"
       readonly step: "how" | "what" | "saved"
@@ -181,6 +184,13 @@ type Pending = { readonly project: string } & (
       readonly voice: Voice
       readonly at: string
     }
+  | { readonly kind: "ready"; readonly rev: number; readonly at: string }
+  | {
+      readonly kind: "release"
+      readonly rev: number
+      readonly url: string
+      readonly at: string
+    }
 )
 
 export type StudioState = {
@@ -236,6 +246,12 @@ export type StudioIntent =
   | { readonly type: "shapeNext" }
   | { readonly type: "shapeBack" }
   | { readonly type: "shapeKept" }
+  | { readonly type: "finishChosen" }
+  | { readonly type: "finishBack" }
+  /** Finish's button to the one thing missing: the note's or take's scene. */
+  | { readonly type: "finishGo" }
+  | { readonly type: "readyMarked" }
+  | { readonly type: "linkPasted"; readonly text: string }
   | { readonly type: "recordPressed" }
   | { readonly type: "discardPressed" }
   | { readonly type: "keepNextPressed" }
@@ -524,6 +540,23 @@ function applied(project: Project | null, pending: Pending): Project | null {
         cutList: { ...cutList, look: pending.look, voice: pending.voice },
       })
     }
+    case "ready": {
+      if (project === null) return null
+      return model(project, {
+        type: "markedReady",
+        rev: pending.rev,
+        at: pending.at,
+      })
+    }
+    case "release": {
+      if (project === null) return null
+      return model(project, {
+        type: "released",
+        rev: pending.rev,
+        url: pending.url,
+        at: pending.at,
+      })
+    }
     default: {
       return assertNever(pending)
     }
@@ -601,6 +634,12 @@ function landedNotice(
     case "shape": {
       return state.notice
     }
+    case "ready": {
+      return WORDS.finish.marked
+    }
+    case "release": {
+      return WORDS.finish.released
+    }
     default: {
       return assertNever(pending)
     }
@@ -637,7 +676,9 @@ function unchangedNotice(state: StudioState, pending: Pending): string {
     case "arrived": {
       return state.notice
     }
-    case "shape": {
+    case "shape":
+    case "ready":
+    case "release": {
       return WORDS.notice.notSaved
     }
     default: {
@@ -1177,6 +1218,73 @@ export function step(state: StudioState, event: StudioEvent): Step {
           project: project.id,
           look: screen.look,
           voice: screen.voice,
+          at: event.at,
+        }
+      )
+    }
+
+    case "finishChosen": {
+      if (project === null || screen.kind !== "start" || !isSettled(activity))
+        return stay(state)
+      return stay({
+        ...state,
+        screen: { kind: "finish" },
+        notice: "",
+        choosing: null,
+      })
+    }
+
+    case "finishBack": {
+      return screen.kind === "finish"
+        ? stay({ ...state, screen: { kind: "start" } })
+        : stay(state)
+    }
+
+    case "finishGo": {
+      if (screen.kind !== "finish" || project === null) return stay(state)
+      const finish = finishOf(project)
+      if (finish.kind !== "note" && finish.kind !== "take") return stay(state)
+      const wanted = finish.kind === "take" ? finish.shot : finish.note.shot
+      // A note on a scene a later revision dropped opens where work resumes.
+      const there = latest(project).cutList.shots.some(
+        (each) => each.id === wanted
+      )
+      return enqueue(
+        {
+          ...state,
+          screen: {
+            kind: "record",
+            shot: there ? wanted : resumeAt(project),
+          },
+          notice: "",
+        },
+        { kind: "open", project: project.id, at: event.at }
+      )
+    }
+
+    case "readyMarked": {
+      if (screen.kind !== "finish" || project === null) return stay(state)
+      const finish = finishOf(project)
+      if (finish.kind !== "unmarked") return stay(state)
+      return enqueue(
+        { ...state, notice: "" },
+        { kind: "ready", project: project.id, rev: finish.rev, at: event.at }
+      )
+    }
+
+    case "linkPasted": {
+      if (screen.kind !== "finish" || project === null) return stay(state)
+      const finish = finishOf(project)
+      if (finish.kind !== "ready") return stay(state)
+      const url = youtubeLink(event.text)
+      if (url === null) return stay({ ...state, notice: WORDS.finish.notALink })
+      return enqueue(
+        { ...state, notice: "" },
+        {
+          kind: "release",
+          project: project.id,
+          rev: finish.rev,
+          url,
           at: event.at,
         }
       )
