@@ -144,7 +144,7 @@ describe("proof or issue", () => {
     [{ verdict: "unproven" as const, tracked: "#12" }, "names the issue"],
     [{ id: "mi1" }, "area prefix"],
     [{ id: "L3" }, "already an invariant"],
-    [{ kind: "OA9" }, "is not one of"],
+    [{ kind: "OA10" }, "is not one of"],
     [
       {
         evidence: [
