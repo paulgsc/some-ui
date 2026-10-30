@@ -791,6 +791,11 @@ describe("autoplay (#1805)", () => {
       ?.append(lockup("side"), lockup("after"))
     document.body.append(manager)
     await tick()
+    // R12: the playlist's rows, once, in page order; Up next is not one.
+    const rows = ["before", "here", "after", "last"]
+    expect(tokens.filter((t) => t.kind === "queued")).toEqual([
+      { kind: "queued", rows, t: expect.any(Number) },
+    ])
     tokens = []
     navigate(autoplay("held"))
     expect(tokens).toEqual([

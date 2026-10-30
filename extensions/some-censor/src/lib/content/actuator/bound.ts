@@ -13,6 +13,7 @@
  */
 
 import type { Action } from "@censor/lib/content/core/actions"
+import type { RowMark } from "@censor/lib/content/course/course"
 
 /** How one element takes part in a card. */
 export type CustodyRole =
@@ -42,4 +43,10 @@ export type BoundAction = {
     { kind: "render" | "unmount" | "play" | "watch" }
   >
   readonly targets: ReadonlyArray<CustodyTarget>
+}
+
+/** One row of the watch page's playlist and its mark (R12). */
+export type MarkedRow = {
+  readonly el: HTMLElement
+  readonly mark: RowMark | null
 }

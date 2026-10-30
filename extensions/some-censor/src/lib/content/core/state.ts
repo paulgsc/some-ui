@@ -6,8 +6,9 @@
  * the same state every time and the diagnostics page can render it directly.
  */
 
+import type { RowMark } from "@censor/lib/content/course/course"
+import { goesOn } from "@censor/lib/content/course/course"
 import type { ViewState, WatchView } from "@censor/lib/content/fsm"
-import { admitted } from "@censor/lib/content/fsm"
 import type { MusicSigns } from "@censor/lib/content/lane/lane"
 import type { UnknownShapeReason } from "@censor/lib/content/layout/lookup"
 import { DEFAULT_BOUNDARY_DAYS } from "@censor/lib/content/maturity/maturity"
@@ -129,7 +130,28 @@ export type CoreState = {
    * page is still the one shown, still held, and Skip still the choice.
    */
   readonly stranded: VideoId | null
+  /**
+   * The watch page's playlist, its rows in page order, as the Sensor last
+   * read it: what the course is drawn on (R12).
+   */
+  readonly queue: ReadonlyArray<VideoId>
+  /** The course as last handed to the Actuator (R12). */
+  readonly course: Course
+  /** R13: the page autoplay stopped on, unforeseen. */
+  readonly unforeseen: Unforeseen | null
 }
+
+type Unforeseen = {
+  /** The page's video when it stopped; null when none was read. */
+  readonly at: VideoId | null
+}
+
+export type Course = {
+  readonly rows: ReadonlyArray<VideoId>
+  readonly marks: ReadonlyArray<RowMark | null>
+}
+
+export const NO_COURSE: Course = { rows: [], marks: [] }
 
 /** An autoplay on its way from the page's video to the next one. */
 export type Arrival = {
@@ -166,6 +188,9 @@ export function initialState(session: SessionId): CoreState {
     musicMixes: [],
     arriving: null,
     stranded: null,
+    queue: [],
+    course: NO_COURSE,
+    unforeseen: null,
   }
 }
 
@@ -187,6 +212,9 @@ export type CoreSnapshot = {
   readonly musicMixes: ReadonlyArray<string>
   readonly arriving: Arrival | null
   readonly stranded: VideoId | null
+  readonly queue: ReadonlyArray<VideoId>
+  readonly course: Course
+  readonly unforeseen: Unforeseen | null
 }
 
 /**
@@ -201,9 +229,7 @@ export function admits(state: CoreState, videoId: VideoId): boolean {
     state.rules.fromMusic === "music" && state.watch?.view === "whole"
   for (const card of state.cards.values()) {
     if (card.observation.videoId !== videoId) continue
-    if (lane ? card.view.kind === "whole" : admitted(card.view.kind)) {
-      return true
-    }
+    if (goesOn(lane, card.view.kind)) return true
   }
   return false
 }
@@ -279,5 +305,24 @@ export function snapshot(state: CoreState): CoreSnapshot {
     musicMixes: state.musicMixes,
     arriving: state.arriving,
     stranded: state.stranded,
+    queue: state.queue,
+    course: state.course,
+    unforeseen: state.unforeseen,
   }
+}
+
+/**
+ * R13: whether the course marked the page's own row as a stop, so the
+ * owner could see autoplay would stop there.
+ */
+export function foreseen(state: CoreState): boolean {
+  return state.course.marks.some((m) => m?.place === "now" && m.stop)
+}
+
+/** The same rows, in the same order. */
+export function sameRows(
+  a: ReadonlyArray<VideoId>,
+  b: ReadonlyArray<VideoId>
+): boolean {
+  return a.length === b.length && a.every((id, i) => id === b[i])
 }

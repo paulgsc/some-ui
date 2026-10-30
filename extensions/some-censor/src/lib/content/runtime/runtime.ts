@@ -17,19 +17,26 @@
  * and Core answers by forgetting every card (R3).
  */
 
-import type { Actuator, BoundAction } from "@censor/lib/content/actuator/index"
+import type {
+  Actuator,
+  BoundAction,
+  MarkedRow,
+} from "@censor/lib/content/actuator/index"
 import { createActuator } from "@censor/lib/content/actuator/index"
 import type { Action, CoreFact } from "@censor/lib/content/core/actions"
 import type { CoreEvent } from "@censor/lib/content/core/events"
+import { keyVideoId } from "@censor/lib/content/core/keys"
 import { reduce } from "@censor/lib/content/core/reduce"
 import {
   admits,
   initialState,
   isStranded,
+  sameRows,
 } from "@censor/lib/content/core/state"
 import type {
   AutoplayRule,
   CoreState,
+  Course,
   Rules,
 } from "@censor/lib/content/core/state"
 import {
@@ -65,6 +72,8 @@ export type RuntimePorts = {
   readonly clock?: () => number
   readonly mintSession?: () => SessionId
   readonly onFact?: (fact: CoreFact) => void
+  /** R13: on the toolbar button. */
+  readonly onStopped?: (stopped: boolean) => void
 }
 
 export type Runtime = {
@@ -127,9 +136,11 @@ export function createRuntime(ports: RuntimePorts): Runtime {
       if (action.kind === "record") {
         if (action.fact.kind === "navigation") notifyNavigation()
         onFact(action.fact)
-      } else if (action.kind === "skip") {
+      } else if (action.kind === "skip" || action.kind === "course") {
         // Answered after the Actuator has the rest (`dispatch`).
         continue
+      } else if (action.kind === "stopped") {
+        ports.onStopped?.(action.stopped)
       } else if (action.kind === "play") {
         const el = sensorInstance.upNextCard(action.key)
         bound.push({
@@ -149,11 +160,38 @@ export function createRuntime(ports: RuntimePorts): Runtime {
     return bound
   }
 
+  /**
+   * R12: the course's rows on every playlist on the page whose rows are the
+   * course's, as the Sensor holds them now. A playlist that differs (one
+   * still being drawn) is left as it is until the next course.
+   */
+  function markRows(course: Course): Array<MarkedRow> {
+    const out: Array<MarkedRow> = []
+    for (const rows of sensorInstance.playlistRows()) {
+      const ids = rows.map((row) => keyVideoId(row.key))
+      if (!sameRows(ids, course.rows)) continue
+      rows.forEach((row, i) => {
+        out.push({ el: row.el, mark: course.marks[i] ?? null })
+      })
+    }
+    return out
+  }
+
   function dispatch(event: CoreEvent): void {
     const step = reduce(state, event)
     state = step.state
     const bound = bind(step.actions)
     if (bound.length > 0) actuator?.realize(bound)
+    // R12: on a new course, and on any render, which may be a row YouTube
+    // drew again in place for the same video.
+    if (
+      step.actions.some(
+        (a) =>
+          a.kind === "course" || a.kind === "render" || a.kind === "unmount"
+      )
+    ) {
+      actuator?.course(markRows(state.course))
+    }
     if (step.actions.some((a) => a.kind === "skip")) skipOn(1)
     // A navigation is a new session (C2): occlusion ages from the page before
     // it must not count against the page after it.

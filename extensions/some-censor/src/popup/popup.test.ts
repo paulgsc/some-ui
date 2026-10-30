@@ -8,12 +8,15 @@ import {
   CHOICE_CHANGES_KEY,
   SETTINGS_KEY,
 } from "@censor/lib/settings/settings"
+import { STOP_WORDS } from "@censor/lib/settings/words"
 import { ext } from "@censor/platform/content"
 import { fakeStorage } from "@some-extension/common/testing"
 import { afterEach, expect, it, vi } from "vitest"
 
 afterEach(() => {
   Reflect.deleteProperty(ext, "storage")
+  Reflect.deleteProperty(ext, "tabs")
+  Reflect.deleteProperty(ext, "action")
   Reflect.deleteProperty(ext.runtime, "getURL")
 })
 
@@ -80,4 +83,32 @@ it("while off, leaves every choice out of reach but the switch", async () => {
   expect(document.querySelector('[role="switch"]')?.closest("[inert]")).toBe(
     null
   )
+})
+
+it("says what the toolbar button's notice means, only while it is on (R13)", async () => {
+  for (const badge of ["", STOP_WORDS.badge]) {
+    Reflect.set(ext, "storage", {
+      local: fakeStorage().area,
+      onChanged: { addListener: () => {} },
+    })
+    Reflect.set(ext.runtime, "getURL", (path: string) => path)
+    Reflect.set(ext, "tabs", {
+      query: (): Promise<Array<{ id: number }>> => Promise.resolve([{ id: 3 }]),
+    })
+    Reflect.set(ext, "action", {
+      getBadgeText: ({ tabId }: { tabId: number }): Promise<string> =>
+        Promise.resolve(tabId === 3 ? badge : ""),
+    })
+    document.body.innerHTML = '<div id="app"></div>'
+    vi.resetModules()
+    await import("@censor/popup/popup")
+    await vi.waitFor(() => {
+      expect(document.querySelector(".popup__choices")).not.toBeNull()
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(
+      document.querySelector(".popup__stopped")?.textContent ?? null,
+      badge || "no badge"
+    ).toBe(badge === "" ? null : STOP_WORDS.headline + STOP_WORDS.line)
+  }
 })

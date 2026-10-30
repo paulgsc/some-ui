@@ -9,7 +9,7 @@
  * (`queue.ts`), and emits `Token`s. Tokens go onto whatever `emit` it was
  * given, and Core sees exactly two kinds of vendor event through it:
  * mutation-derived (`observed`, `gone`, `unknown-shape`, `watched`,
- * `described`) and `nav` (B5). It asks Core one question, through the
+ * `described`, `queued`) and `nav` (B5). It asks Core one question, through the
  * `admits` port: whether an autoplay may go on into a video. On a no it
  * holds that one vendor event (`onYtNavigate`, #1805).
  *
@@ -83,6 +83,7 @@ import { createRetryQueue, RESOLVE_BUDGET_MS, RETRY_INTERVAL_MS } from "./queue"
 export const NAV_DEBOUNCE_MS = 150
 
 const NO_WATCH = JSON.stringify(null)
+const NO_QUEUE = JSON.stringify([])
 
 export type SensorPorts = {
   readonly doc: Document
@@ -126,6 +127,13 @@ export type Sensor = {
   custodyOf(key: CardKey): ReadonlyArray<CustodyTarget>
   /** The shown watch page's description, where the face control goes. */
   description(): HTMLElement | null
+  /**
+   * The watch page's playlists' rows the Sensor holds a card for, each
+   * playlist's in page order, for the runtime to bind the course (R12).
+   */
+  playlistRows(): ReadonlyArray<
+    ReadonlyArray<{ el: HTMLElement; key: CardKey }>
+  >
   /** The card carrying `key` that a skip opens, first in Skip's order (#1966). */
   upNextCard(key: CardKey): HTMLElement | null
   /**
@@ -185,6 +193,11 @@ export function createSensor(ports: SensorPorts): Sensor {
    * none, so "none" needs no announcing, and keeps it across `nav`.
    */
   let lastWatch = NO_WATCH
+  /**
+   * The playlist's rows as last announced, serialized. Core starts with
+   * none, and `nav` empties them, as `forget()` does here.
+   */
+  let lastQueue = NO_QUEUE
   /**
    * The watch page's video, and since when it is: re-read by the retry loop
    * under the same budget, since its date arrives after it, and can arrive
@@ -567,6 +580,21 @@ export function createSensor(ports: SensorPorts): Sensor {
     }
   }
 
+  function playlistRows(): Array<Array<{ el: HTMLElement; key: CardKey }>> {
+    return readPlaylists(ports.doc)
+      .map((playlist) => cardsIn(playlist))
+      .filter((rows) => rows.length > 0)
+  }
+
+  function observeQueue(): void {
+    if (!running) return
+    const rows = (playlistRows()[0] ?? []).map(({ key }) => keyVideoId(key))
+    const serialized = JSON.stringify(rows)
+    if (serialized === lastQueue) return
+    lastQueue = serialized
+    ports.emit({ kind: "queued", rows, t: ports.clock() })
+  }
+
   // ── Mutation and navigation ────────────────────────────────────────────
 
   function onMutations(mutations: ReadonlyArray<MutationRecord>): void {
@@ -609,6 +637,7 @@ export function createSensor(ports: SensorPorts): Sensor {
     retry()
     if (removed) prune()
     observeWatch()
+    observeQueue()
     ports.onFact({
       kind: "mutation.batch",
       candidates: candidates.size + enclosing.size,
@@ -723,6 +752,7 @@ export function createSensor(ports: SensorPorts): Sensor {
     dateAbandoned = new WeakSet()
     unknownReported = new WeakSet()
     lastEmitted.clear()
+    lastQueue = NO_QUEUE
     if (retryTimer !== null) {
       clearInterval(retryTimer)
       retryTimer = null
@@ -733,6 +763,7 @@ export function createSensor(ports: SensorPorts): Sensor {
     if (!running) return
     ports.doc.querySelectorAll<HTMLElement>(SEL).forEach((el) => observe(el))
     observeWatch()
+    observeQueue()
   }
 
   return {
@@ -780,6 +811,8 @@ export function createSensor(ports: SensorPorts): Sensor {
     description(): HTMLElement | null {
       return readDescription(ports.doc)
     },
+
+    playlistRows,
 
     upNextCard(key: CardKey): HTMLElement | null {
       return upNextCards().find((card) => card.key === key)?.el ?? null

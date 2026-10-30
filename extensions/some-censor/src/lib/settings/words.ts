@@ -114,3 +114,14 @@ export const MENU_WORDS = {
   settings: `${PAGE_WORDS.allSettings}…`,
   diagnostics: PAGE_WORDS.diagnostics,
 } as const
+
+/**
+ * The toolbar button's notice (R13, `lib/notice`). The badge is a pause
+ * sign in letters, which every badge font draws.
+ */
+export const STOP_WORDS = {
+  badge: "II",
+  title: "Autoplay stopped at a held video",
+  headline: "Autoplay stopped on this tab",
+  line: "It reached a held video that the page could not mark beforehand. Start the next one yourself.",
+} as const

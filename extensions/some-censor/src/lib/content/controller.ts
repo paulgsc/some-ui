@@ -22,6 +22,7 @@
  *        `yt-navigate-finish` into one `nav` (`NAV_DEBOUNCE_MS`).
  */
 
+import { stoppedMessage } from "@censor/lib/notice/notice"
 import { MODE_RULES } from "@censor/lib/settings/modes"
 import type { Settings } from "@censor/lib/settings/settings"
 import { boundaryDays, followSettings } from "@censor/lib/settings/settings"
@@ -37,7 +38,9 @@ export class Controller {
   private _appWaiter: MutationObserver | null = null
 
   constructor(runtime?: Runtime) {
-    this._runtime = runtime ?? createRuntime({ doc: document, win: window })
+    this._runtime =
+      runtime ??
+      createRuntime({ doc: document, win: window, onStopped: tellStopped })
   }
 
   init(): void {
@@ -97,4 +100,13 @@ export class Controller {
       subtree: true,
     })
   }
+}
+
+/** R13 */
+function tellStopped(stopped: boolean): void {
+  void ext.runtime
+    .sendMessage(stoppedMessage(stopped))
+    // Ignored: the notice is a convenience, and a background that is not
+    // there to hear it has no button to draw it on.
+    .catch(() => undefined)
 }

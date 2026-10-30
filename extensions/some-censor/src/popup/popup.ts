@@ -5,8 +5,10 @@
  *
  * `storage.local` is the only state: a click writes the settings, and the
  * popup renders from {@link followSettings}, so what it shows is what the
- * content script applies.
+ * content script applies. When the toolbar button carries the notice
+ * (R13, `lib/notice`), the popup says what it means at the top.
  */
+import { stoppedOn } from "@censor/lib/notice/notice"
 import { onSwitch, segments } from "@censor/lib/settings/choices"
 import type { Settings } from "@censor/lib/settings/settings"
 import {
@@ -24,6 +26,7 @@ import {
   MODE_QUESTION,
   MODE_WORDS,
   PAGE_WORDS,
+  STOP_WORDS,
 } from "@censor/lib/settings/words"
 import { ext } from "@censor/platform/content"
 import { diagnosticsLink } from "@some-extension/common/lib/diagnostics"
@@ -105,11 +108,45 @@ function footer(): HTMLElement {
   return el
 }
 
+/** R13: what the toolbar button's notice means. */
+function stopNote(): HTMLElement {
+  const el = document.createElement("p")
+  el.className = "popup__stopped"
+  const headline = document.createElement("strong")
+  headline.textContent = STOP_WORDS.headline
+  el.append(headline, document.createElement("br"), STOP_WORDS.line)
+  return el
+}
+
+/** Whether the notice is on the active tab's button. */
+async function stoppedHere(): Promise<boolean> {
+  try {
+    const [tab] = await ext.tabs.query({ active: true, currentWindow: true })
+    return tab?.id === undefined ? false : await stoppedOn(ext.action, tab.id)
+  } catch {
+    // No tab or no button to read: no notice to explain.
+    return false
+  }
+}
+
+let shown: Settings | null = null
+let stopped = false
+
 function render(settings: Settings): void {
+  shown = settings
   const root = document.getElementById("app")
   if (!root) return
   root.classList.toggle("boyo-popup-off", !settings.enabled)
-  root.replaceChildren(header(settings), choices(settings), footer())
+  root.replaceChildren(
+    header(settings),
+    ...(stopped && settings.enabled ? [stopNote()] : []),
+    choices(settings),
+    footer()
+  )
 }
 
 followSettings(ext.storage, render)
+void stoppedHere().then((here) => {
+  stopped = here
+  if (here && shown !== null) render(shown)
+})

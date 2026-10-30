@@ -7,6 +7,7 @@
  * before handing one over, so nothing here can name an element either.
  */
 
+import type { RowMark } from "@censor/lib/content/course/course"
 import type { RenderModel, ViewState, WatchView } from "@censor/lib/content/fsm"
 import type { UnknownShapeReason } from "@censor/lib/content/layout/lookup"
 import type { BoyoSurface } from "@censor/lib/content/layout/surface"
@@ -58,6 +59,17 @@ export type Action =
    * it does for an autoplay it holds.
    */
   | { readonly kind: "skip" }
+  /**
+   * Mark the watch page's playlist: `marks[i]` is the mark of the row at
+   * `i`, a row of `rows`; null takes a row's mark away (R12).
+   */
+  | {
+      readonly kind: "course"
+      readonly rows: ReadonlyArray<VideoId>
+      readonly marks: ReadonlyArray<RowMark | null>
+    }
+  /** Autoplay stopped unforeseen, or that is over (R13). */
+  | { readonly kind: "stopped"; readonly stopped: boolean }
   /** A fact for the flight recorder; the runtime forwards it. */
   | { readonly kind: "record"; readonly fact: CoreFact }
 

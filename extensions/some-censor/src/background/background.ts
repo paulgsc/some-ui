@@ -1,7 +1,9 @@
 /**
  * BOYO — background bundle entry point.
  *
- * Its one job is the tab and toolbar-button menu (#1966): the switch, the
+ * Its jobs are the toolbar button's notice (R13, `lib/notice`), drawn on
+ * the tab whose content script says autoplay stopped there unforeseen, and
+ * the tab and toolbar-button menu (#1966): the switch, the
  * mode, what autoplay does at a held video, the settings page and
  * Diagnostics. The menu is created once, at install, and its marks are set
  * from what is stored each time it opens, so they always match the popup
@@ -11,6 +13,7 @@
  *
  * Runtime isolation: no imports from src/content/ or src/popup/ at runtime.
  */
+import { createNotices, parseStopped } from "@censor/lib/notice/notice"
 import { menuCommand, menuItems } from "@censor/lib/settings/menu"
 import {
   createSaver,
@@ -102,6 +105,16 @@ ext.contextMenus.onClicked.addListener((info): void => {
       assertNever(command)
     }
   }
+})
+
+const notice = createNotices(ext.action)
+
+ext.runtime.onMessage.addListener((message: unknown, sender): undefined => {
+  const stopped = parseStopped(message)
+  const tabId = sender.tab?.id
+  if (stopped === null || tabId === undefined) return undefined
+  void notice(tabId, stopped)
+  return undefined
 })
 
 export {}

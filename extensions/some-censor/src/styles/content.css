@@ -773,6 +773,65 @@ ytd-item-section-renderer:has(> #contents > ytd-shelf-renderer:only-child):has(
 }
 
 /* ----------------------------------------------------------
+   THE COURSE (R12, absent-plated-heard.md §9)
+
+   A plate covers the thumbnail YouTube marks the playing row on, and
+   a held row is not drawn at all, so the Actuator marks the watch
+   page's playlist itself: data-boyo-course is where a row stands
+   against the row playing, and data-boyo-stop is a row autoplay does
+   not go on from. Marks only, in YouTube's own tokens: no words, no
+   colour of their own, nothing that moves.
+   ---------------------------------------------------------- */
+ytd-playlist-panel-video-renderer[data-boyo-course="played"] {
+  opacity: 0.55 !important;
+}
+
+ytd-playlist-panel-video-renderer[data-boyo-course="now"] {
+  background-color: var(
+    --yt-spec-10-percent-layer,
+    rgb(128 128 128 / 18%)
+  ) !important;
+}
+
+ytd-playlist-panel-video-renderer[data-boyo-course="now"] ytd-thumbnail {
+  outline: 2px solid var(--yt-spec-text-primary, #f1f1f1);
+  outline-offset: -2px;
+}
+
+ytd-playlist-panel-video-renderer[data-boyo-course="next"] ytd-thumbnail {
+  outline: 1px dashed var(--yt-spec-text-secondary, #aaa);
+  outline-offset: -1px;
+}
+
+ytd-playlist-panel-video-renderer[data-boyo-course="passed"] ytd-thumbnail {
+  opacity: 0.35;
+}
+
+/* The pause sign is drawn in borders: the plate takes every background
+   image (QD12). */
+ytd-playlist-panel-video-renderer[data-boyo-stop] {
+  box-shadow: inset 0 -2px 0 var(--yt-spec-text-secondary, #aaa);
+}
+
+ytd-playlist-panel-video-renderer[data-boyo-stop] ytd-thumbnail {
+  position: relative;
+}
+
+ytd-playlist-panel-video-renderer[data-boyo-stop] ytd-thumbnail::after {
+  border-left: 3px solid rgb(255 255 255 / 88%);
+  border-right: 3px solid rgb(255 255 255 / 88%);
+  content: "";
+  filter: drop-shadow(0 0 1px rgb(0 0 0 / 80%));
+  height: 12px;
+  left: 6px;
+  pointer-events: none;
+  position: absolute;
+  top: 6px;
+  width: 4px;
+  z-index: 1;
+}
+
+/* ----------------------------------------------------------
    NO COMMENTS (QD14, #1805)
 
    Comments are written in the present, even under a 2015 video, so
