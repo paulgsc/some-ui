@@ -939,9 +939,9 @@ describe("a screen that has gone", () => {
 /**
  * VC1 (`@some-ui/voice-capture`'s `takeRunner`) as Studio meets it: every
  * write held behind Done for now is let through within a bounded time of
- * it, over each way the microphone can answer (open never, late), and a
- * take begun while the microphone opened never lands in the sitting Done
- * for now closed (#2304).
+ * it, over each way the microphone can answer (open never or late, finish
+ * never), and a take begun while the microphone opened never lands in the
+ * sitting Done for now closed (#2304).
  */
 describe("VC1: a microphone that is slow or silent holds nothing for good", () => {
   /** A microphone the test opens by hand, or never. */
@@ -987,6 +987,30 @@ describe("VC1: a microphone that is slow or silent holds nothing for good", () =
       (state) => state.activity.kind === "idle" && settledWrites(state)
     )
     const project = projectIn(runtime)
+    expect(project.sittings.at(-1)?.closedAt).toBeDefined()
+  })
+
+  it("closes the sitting when Done for now waits on a recording that never gives back what it heard", async () => {
+    const memory = memoryProjectStore()
+    const silent: StartRecording = () =>
+      Promise.resolve({
+        level: (): number => 0.3,
+        finish: (): Promise<Take> => new Promise<Take>(() => undefined),
+        discard: (): void => undefined,
+      })
+    const runtime = await opened(memory, silent, { openMs: 30, finishMs: 30 })
+    runtime.dispatch({ type: "recordChosen" })
+    runtime.dispatch({ type: "recordPressed" })
+    await until(runtime, (state) => state.activity.kind === "recording")
+    runtime.dispatch({ type: "recordPressed" })
+    await until(runtime, (state) => state.activity.kind === "saving")
+    runtime.dispatch({ type: "doneForNowPressed" })
+    await until(
+      runtime,
+      (state) => state.activity.kind === "idle" && settledWrites(state)
+    )
+    const project = projectIn(runtime)
+    expect(project.takes).toEqual([])
     expect(project.sittings.at(-1)?.closedAt).toBeDefined()
   })
 

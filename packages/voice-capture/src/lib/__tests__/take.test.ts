@@ -151,6 +151,24 @@ describe("VC1: the microphone answers in bounded time", () => {
     )
   })
 
+  it("fails the take when a recording gives back what it heard after its deadline, and keeps none of it", async () => {
+    let give: (said: Take) => void = () => undefined
+    const { signals, runner } = run(() =>
+      Promise.resolve(
+        recorder(() => new Promise((resolve) => (give = resolve)))
+      )
+    )
+    runner.run({ type: "openMic" })
+    await vi.waitFor(() => expect(signals).toHaveLength(1))
+    runner.run({ type: "finishTake" })
+    await vi.waitFor(() =>
+      expect(signals.at(-1)).toEqual({ type: "takeFailed" })
+    )
+    give(take(2_000))
+    await new Promise((resolve) => setTimeout(resolve, 40))
+    expect(signals.filter((signal) => signal.type === "taken")).toEqual([])
+  })
+
   it("keeps a recording that gives back what it heard in time", async () => {
     const said = take(2_000)
     const { signals, runner } = run(() =>
