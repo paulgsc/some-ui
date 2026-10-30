@@ -132,6 +132,9 @@ export function logBetween(
         "screen_entered",
         now.screen
       )
+    // A sitting can open while the page is hidden, its write landing late.
+    if (sittingChanged && !now.visible)
+      add({ sitting: now.sitting, kind: now.kind }, "page_hidden")
   }
   return events
 }

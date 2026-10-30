@@ -1,7 +1,9 @@
 /** @vitest-environment node */
 import { AT, run, started } from "@soundbites/lib/project/__tests__/fixture"
+import { initialStudioState } from "@soundbites/lib/studio/machine"
 import type { TimeEvent } from "@soundbites/lib/studio/time-log"
 import {
+  logBetween,
   SITTING_GAP_MS,
   sittingKey,
   timePerScreen,
@@ -131,5 +133,38 @@ describe("Start's quiet links (ST4)", () => {
       [2, "You", "Shape: Calm look, Read voice"],
       [1, "Claude", "First cut"],
     ])
+  })
+})
+
+describe("a sitting that opens while the page is hidden", () => {
+  it("is logged hidden from its start, so the time away counts for nothing", () => {
+    const before = {
+      ...run(started()).project,
+    }
+    const after = run(started(), {
+      type: "sittingOpened",
+      id: "s1",
+      at: AT,
+    }).project
+    const base = { ...initialStudioState(), current: "p1", visible: false }
+    let ids = 0
+    const events = logBetween(
+      { ...base, shelf: { kind: "read", projects: [before] } },
+      { ...base, shelf: { kind: "read", projects: [after] } },
+      AT,
+      () => `e${++ids}`
+    )
+    expect(events.map((event) => event.type)).toEqual([
+      "sitting_opened",
+      "screen_entered",
+      "page_hidden",
+    ])
+    const later = new Date(Date.parse(AT) + 5 * 60_000).toISOString()
+    expect(
+      timePerScreen([
+        ...events,
+        { ...events[0]!, id: "e9", at: later, type: "page_shown" },
+      ])
+    ).toEqual(new Map())
   })
 })
