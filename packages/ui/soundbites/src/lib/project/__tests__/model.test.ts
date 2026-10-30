@@ -242,11 +242,13 @@ describe("takes", () => {
     expect(refused.refused).toBe("unconfirmed")
     expect(refused.effects).toEqual([])
 
-    const confirmed = run(
-      state,
-      { type: "keptBy", take: "t1", keeper: "home" },
-      { type: "letGo", take: "t1" }
-    )
+    const kept = run(state, { type: "keptBy", take: "t1", keeper: "home" })
+    const released = step(kept, { type: "letGo", take: "t1" })
+    // The store lets the audio go, checking again in its own transaction.
+    expect(released.effects).toEqual([
+      { type: "letGo", project: "p1", take: "t1" },
+    ])
+    const confirmed = released.state
     expect(confirmed.project.takes[0]).toMatchObject({
       keptBy: ["home"],
       onPhone: false,
@@ -313,6 +315,17 @@ describe("a sitting", () => {
     const failed = step(closing, { type: "takeFailed" })
     expect(failed.state.project.sittings[0]?.closedAt).toBe(AT)
     expect(failed.state.project.takes).toEqual([])
+  })
+
+  it("keeps when it opened, open or closed", () => {
+    const open = run(started(), { type: "sittingOpened", id: "s1", at: AT })
+    const moved = {
+      ...open.project,
+      sittings: [
+        { ...open.project.sittings[0]!, openedAt: "2026-10-29T09:00:00.000Z" },
+      ],
+    }
+    expect(isAppendOnly(open.project, moved)).toBe(false)
   })
 
   it("is one at a time", () => {

@@ -3,7 +3,7 @@
  * the notes pinned to moments in them, every take recorded for it, and a log
  * entry per sitting. `step(state, event)` returns the next state and the
  * effects to run, and does nothing else (docs/monorepo-boundaries.md, "Inside
- * a React package"); a runtime runs `save`, `keepTake` and `finishTake`
+ * a React package"); a runtime runs `save`, `keepTake`, `letGo` and `finishTake`
  * against the store and the microphone, and reads the store again when a
  * write is refused, since a refused write kept nothing.
  *
@@ -129,6 +129,8 @@ export type ProjectEffect =
       readonly project: Project
       readonly take: string
     }
+  /** Let take `take`'s audio go from the phone, in the store's own check. */
+  | { readonly type: "letGo"; readonly project: string; readonly take: string }
   | { readonly type: "finishTake" }
 
 /** Why an event changed nothing. */
@@ -330,8 +332,10 @@ export function isAppendOnly(before: Project, after: Project): boolean {
   const sittings = before.sittings.every((sitting, index) => {
     const now = after.sittings[index]
     return (
-      now?.id === sitting.id &&
-      (sitting.closedAt === null || sameJson(now, sitting))
+      now !== undefined &&
+      (sitting.closedAt === null
+        ? now.id === sitting.id && now.openedAt === sitting.openedAt
+        : sameJson(now, sitting))
     )
   })
   return revisions && notes && takes && sittings
@@ -478,12 +482,17 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
     case "letGo": {
       const refused = letGoRefusal(project, event.take)
       if (refused !== null) return refuse(state, refused)
-      return changed(state, {
+      const next: Project = {
         ...project,
         takes: project.takes.map((each) =>
           each.id === event.take ? { ...each, onPhone: false } : each
         ),
-      })
+      }
+      return {
+        state: { ...state, project: next },
+        effects: [{ type: "letGo", project: project.id, take: event.take }],
+        refused: null,
+      }
     }
 
     case "sittingOpened": {
