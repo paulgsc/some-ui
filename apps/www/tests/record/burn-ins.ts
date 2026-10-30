@@ -93,7 +93,7 @@ async function seek(page: Page, atMs: number): Promise<string> {
  * The renderer's `recordBurnIn` port over a page `openRecorder` opened, for
  * the video in `root`. Says why on `report` when a burn-in can't be drawn.
  */
-export function burnInRecorder(
+function burnInRecorder(
   page: Page,
   root: string,
   report: (line: string) => void
