@@ -47,7 +47,6 @@ const DONE: ReadonlySet<JobEvent["type"]> = new Set([
   "fit-note",
   "debrief",
   "outcome",
-  "outcome-withdrawn",
   "disagree",
   "scout",
 ])

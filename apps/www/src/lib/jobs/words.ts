@@ -314,16 +314,14 @@ export const outcomeOn = (event: Outcome, on: string): string =>
 /** The outcomes a card lists, each tappable to take back. */
 export const recordedOutcomes = "What I recorded"
 
-/** The outcomes a card still offers. */
-export const whatHappenedSince = "What happened since"
-
 /** Asked before taking back an outcome, named as `outcomeOn` says it. */
 export const takeBackAsk = (outcome: string): string =>
-  `Take back “${outcome}”? Do this if it was a mistake or no longer holds. It stays in the record and no longer counts.`
+  `Take back “${outcome}”?`
+
+export const takeBackWhy =
+  "Do this if it was a mistake or no longer holds. It stays in the record and no longer counts."
 
 export const takeBack = "Take it back"
-
-export const keepOutcome = "Keep it"
 
 /** The badge on an application's card under Record: where it stands. */
 export function courseBadge(course: Course): string {
@@ -441,6 +439,9 @@ export const pivotSays = (
   `${group}: ${STANDS.filter((s) => counts[s] > 0)
     .map((s) => `${standLabels[s]} ${counts[s]}`)
     .join(" · ")}`
+
+/** The outcomes a card still offers. */
+export const whatHappenedSince = "What happened since"
 
 export const showAs = (table: boolean): string =>
   table ? "Show as chart" : "Show as table"

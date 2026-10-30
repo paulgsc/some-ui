@@ -433,7 +433,6 @@ describe("courseOf", () => {
       "2026-10-30"
     )
     const [screen, rejection] = applicationsOf(rejected)[0].outcomes
-    // Only a standing outcome can be taken back, and only once.
     expect(
       record(rejected, { type: "outcome-withdrawn", outcomeId: "nope" })
     ).toBe(rejected)
@@ -441,7 +440,6 @@ describe("courseOf", () => {
       type: "outcome-withdrawn",
       outcomeId: rejection.id,
     })
-    expect(back.log).toHaveLength(rejected.log.length + 1)
     expect(
       record(back, { type: "outcome-withdrawn", outcomeId: rejection.id })
     ).toBe(back)

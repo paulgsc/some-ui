@@ -132,10 +132,7 @@ export type JobEvent = { id: string; at: string } & (
       on: string
       note: string
     }
-  /**
-   * An outcome taken back, by its event's id: said by mistake, or no longer
-   * standing. The outcome stays in the log and counts for nothing.
-   */
+  /** An outcome taken back, by its event's id; it stays in the log. */
   | { type: "outcome-withdrawn"; outcomeId: string }
   | { type: "disagree"; day: string; fingerprint: string; note: string }
   | { type: "scout"; scout: Scout; voice: ReadonlyArray<string> }
@@ -825,11 +822,11 @@ export type Application = {
   day: string
   pick: Pick
   progress: Progress
-  /** The outcomes that stand, oldest first: none withdrawn. */
+  /** The outcomes that stand, oldest first. */
   outcomes: ReadonlyArray<{ id: string; event: Outcome; on: string }>
 }
 
-/** The outcomes in `log` that no later event withdrew, oldest first. */
+/** The outcomes in `log` that no event withdrew, oldest first. */
 function standingOutcomes(
   log: ReadonlyArray<JobEvent>
 ): ReadonlyArray<JobEvent & { type: "outcome" }> {

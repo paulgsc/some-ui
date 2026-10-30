@@ -12,7 +12,7 @@
 import type { JSX } from "react"
 import { useState } from "react"
 import { cn } from "@some-ui/core-utils"
-import { Badge, Button, Input } from "@some-ui/shared"
+import { Badge, Button, Input, useConfirmSheet } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 import { X } from "lucide-react"
 
@@ -40,7 +40,6 @@ import {
   courseSays,
   findApplication,
   heardSince,
-  keepOutcome,
   noneMatch,
   outcomeLabels,
   outcomeOn,
@@ -56,6 +55,7 @@ import {
   standLabels,
   takeBack,
   takeBackAsk,
+  takeBackWhy,
   whatHappenedSince,
 } from "@/lib/jobs/words"
 import { sectionHeading } from "@/components/job-reading"
@@ -293,8 +293,7 @@ const ApplicationCard = ({
 }): JSX.Element => {
   const jobs = phoneJobs()
   const [reopened, setReopened] = useState(false)
-  const [choosing, setChoosing] = useState<string | null>(null)
-  const chosen = a.outcomes.find((o) => o.id === choosing)
+  const { ask, sheet } = useConfirmSheet()
   const settled = course.kind === "ended" || course.kind === "unsent"
   const offered =
     course.kind === "waiting" || (course.kind === "ended" && reopened)
@@ -358,45 +357,24 @@ const ApplicationCard = ({
               key={o.id}
               type="button"
               size="sm"
-              variant={choosing === o.id ? "secondary" : "ghost"}
-              aria-pressed={choosing === o.id}
+              variant="ghost"
               className={cn(
                 "h-7 gap-1 rounded-full border px-2.5 text-xs font-normal",
                 settled && "text-muted-foreground"
               )}
-              onClick={() => setChoosing(choosing === o.id ? null : o.id)}
+              onClick={() =>
+                ask({
+                  title: takeBackAsk(outcomeOn(o.event, o.on)),
+                  description: takeBackWhy,
+                  confirm: takeBack,
+                  onConfirm: () => jobs.withdrawOutcome(o.id),
+                })
+              }
             >
               {outcomeOn(o.event, o.on)}
               <X aria-hidden className="size-3 opacity-60" />
             </Button>
           ))}
-        </div>
-      )}
-      {chosen && (
-        <div className="bg-muted/60 flex flex-col gap-2 rounded-lg p-2.5">
-          <p className="text-xs">
-            {takeBackAsk(outcomeOn(chosen.event, chosen.on))}
-          </p>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                if (jobs.withdrawOutcome(chosen.id)) setChoosing(null)
-              }}
-            >
-              {takeBack}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => setChoosing(null)}
-            >
-              {keepOutcome}
-            </Button>
-          </div>
         </div>
       )}
       {says && <p className="text-muted-foreground text-xs">{says}</p>}
@@ -435,6 +413,7 @@ const ApplicationCard = ({
           {heardSince(reopened)}
         </Button>
       )}
+      {sheet}
     </li>
   )
 }

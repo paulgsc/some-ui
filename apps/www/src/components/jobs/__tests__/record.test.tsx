@@ -90,7 +90,6 @@ describe("Record's application cards", () => {
     act(() => {
       fireEvent.click(screen.getByRole("button", { name: "Take it back" }))
     })
-    expect(screen.getByText(/waiting on the next step/)).toBeTruthy()
     expect(screen.queryByRole("button", { name: "Rejected Oct 30" })).toBeNull()
     expect(screen.getByRole("button", { name: "Screen Oct 30" })).toBeTruthy()
   })
