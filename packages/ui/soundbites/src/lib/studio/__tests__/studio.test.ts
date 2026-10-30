@@ -1316,3 +1316,19 @@ describe("Watch", () => {
     expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.watch.pickBoth)
   })
 })
+
+/** ST4's quiet links: History and Time spent, each back to Start. */
+describe("Start's quiet links", () => {
+  it("reads the time log for Time spent, and goes back to Start", async () => {
+    const runtime = await opened()
+    runtime.dispatch({ type: "timeChosen" })
+    await until(
+      runtime,
+      (state) => state.screen.kind === "time" && state.screen.log !== null
+    )
+    runtime.dispatch({ type: "quietBack" })
+    expect(runtime.getSnapshot().screen).toEqual({ kind: "start" })
+    runtime.dispatch({ type: "historyChosen" })
+    expect(runtime.getSnapshot().screen).toEqual({ kind: "history" })
+  })
+})

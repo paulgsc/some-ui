@@ -30,8 +30,10 @@ import type { StudioIntent, StudioState } from "@soundbites/lib/studio/machine"
 import { isSettled, projectOf } from "@soundbites/lib/studio/machine"
 import type { StudioPorts } from "@soundbites/lib/studio/runtime"
 import { createStudio } from "@soundbites/lib/studio/runtime"
+import { timeView } from "@soundbites/lib/studio/time-log"
 import type { RecordView } from "@soundbites/lib/studio/view"
 import {
+  historyView,
   opensOn,
   othersOnPhone,
   recordView,
@@ -206,6 +208,24 @@ const Start = ({
             </li>
           ))}
         </ul>
+      )}
+      {view !== null && (
+        <nav className="flex gap-4 text-sm">
+          <button
+            type="button"
+            className="text-muted-foreground underline"
+            onClick={() => dispatch({ type: "historyChosen" })}
+          >
+            {WORDS.quiet.history}
+          </button>
+          <button
+            type="button"
+            className="text-muted-foreground underline"
+            onClick={() => dispatch({ type: "timeChosen" })}
+          >
+            {WORDS.quiet.time}
+          </button>
+        </nav>
       )}
       {share !== undefined && project !== null && takesOnPhone(project) > 0 && (
         <div className="border-border/60 space-y-2 rounded-2xl border p-3">
@@ -663,6 +683,75 @@ const Shape = ({
   )
 }
 
+/** History (ST4's quiet link): every version of the video, newest first. */
+const History = ({
+  project,
+  dispatch,
+}: {
+  project: Project
+  dispatch: Dispatch
+}): JSX.Element => (
+  <div className="flex flex-col gap-3">
+    <h2 className="text-2xl font-extrabold">{WORDS.history.heading}</h2>
+    <ol className="flex flex-col gap-2">
+      {historyView(project).map((row) => (
+        <li
+          key={row.rev}
+          className="border-border/60 rounded-2xl border px-4 py-2.5"
+        >
+          <span className="text-muted-foreground block text-xs">
+            {WORDS.history.line(row.rev, row.who)}
+          </span>
+          <span className="block text-sm">{row.message}</span>
+        </li>
+      ))}
+    </ol>
+    <Button variant="ghost" onClick={() => dispatch({ type: "quietBack" })}>
+      {WORDS.history.back}
+    </Button>
+  </div>
+)
+
+/** Time spent (ST4's quiet link, from ST9's log): per screen, most first. */
+const TimeSpent = ({
+  log,
+  project,
+  dispatch,
+}: {
+  log: Extract<StudioState["screen"], { kind: "time" }>["log"]
+  project: Project
+  dispatch: Dispatch
+}): JSX.Element => {
+  const rows = log === null ? [] : timeView(project, log)
+  const total = rows.reduce((sum, row) => sum + row.ms, 0)
+  return (
+    <div className="flex flex-col gap-3">
+      <h2 className="text-2xl font-extrabold">{WORDS.time.heading}</h2>
+      {log !== null && rows.length === 0 && (
+        <p className="text-muted-foreground text-sm">{WORDS.time.none}</p>
+      )}
+      {rows.length > 0 && (
+        <>
+          <p className="text-sm font-semibold">{WORDS.time.total(total)}</p>
+          <ul className="flex flex-col gap-1 text-sm">
+            {rows.map((row) => (
+              <li key={row.name} className="flex justify-between gap-3">
+                <span className="min-w-0">{row.name}</span>
+                <span className="text-muted-foreground shrink-0">
+                  {WORDS.time.spent(row.ms)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      <Button variant="ghost" onClick={() => dispatch({ type: "quietBack" })}>
+        {WORDS.time.back}
+      </Button>
+    </div>
+  )
+}
+
 type WatchScreen = Extract<StudioState["screen"], { kind: "watch" }>
 
 /** The picked render, played from the file where it is: never copied in. */
@@ -930,6 +1019,10 @@ export const Studio = ({ ports, share }: StudioProps): JSX.Element => {
     )
   if (screen.kind === "shape" && project !== null)
     return <Shape screen={screen} project={project} dispatch={dispatch} />
+  if (screen.kind === "history" && project !== null)
+    return <History project={project} dispatch={dispatch} />
+  if (screen.kind === "time" && project !== null)
+    return <TimeSpent log={screen.log} project={project} dispatch={dispatch} />
   if (screen.kind === "watch" && project !== null)
     return (
       <Watch

@@ -88,6 +88,7 @@ import type {
   Written,
 } from "@soundbites/lib/project/store"
 
+import type { TimeEvent } from "./time-log"
 import { sceneBeside } from "./view"
 import { askedAt, changesIn, shotAt } from "./watch"
 import type { Went } from "./words"
@@ -131,6 +132,13 @@ type StudioScreen =
     }
   /** Finish (ST7): ready for YouTube, or the one thing missing. */
   | { readonly kind: "finish" }
+  /** Start's quiet links (ST4): the video's versions, and time spent. */
+  | { readonly kind: "history" }
+  | {
+      readonly kind: "time"
+      /** The time log as read; null until it is. */
+      readonly log: ReadonlyArray<TimeEvent> | null
+    }
   /** Watch (ST5): a review render, with notes pinned to its moments. */
   | {
       readonly kind: "watch"
@@ -276,6 +284,10 @@ export type StudioIntent =
   | { readonly type: "readyMarked" }
   | { readonly type: "linkPasted"; readonly text: string }
   | { readonly type: "watchChosen" }
+  | { readonly type: "historyChosen" }
+  | { readonly type: "timeChosen" }
+  /** Back to Start from a quiet link's screen. */
+  | { readonly type: "quietBack" }
   | { readonly type: "watchBack" }
   /** The review render and its review.json, picked together. */
   | { readonly type: "reviewPicked"; readonly files: ReadonlyArray<Blob> }
@@ -342,6 +354,7 @@ type StudioSignal =
       readonly text: string
     }
   | { readonly type: "reviewUnreadable"; readonly seq: number }
+  | { readonly type: "timeLogRead"; readonly log: ReadonlyArray<TimeEvent> }
   | { readonly type: "written"; readonly written: Written }
   | { readonly type: "writeFailed"; readonly reason: "full" | "failed" }
   | { readonly type: "reported" }
@@ -363,6 +376,7 @@ export type StudioEffect =
   | { readonly type: "stopClock" }
   | { readonly type: "carry"; readonly at: string }
   | { readonly type: "read"; readonly seq: number }
+  | { readonly type: "readTimeLog" }
   | {
       readonly type: "readFile"
       readonly file: Blob
@@ -1323,6 +1337,36 @@ export function step(state: StudioState, event: StudioEvent): Step {
           at: event.at,
         }
       )
+    }
+
+    case "historyChosen":
+    case "timeChosen": {
+      if (project === null || screen.kind !== "start" || !isSettled(activity))
+        return stay(state)
+      const chosen = {
+        ...state,
+        notice: "",
+        choosing: null,
+        screen:
+          event.type === "historyChosen"
+            ? ({ kind: "history" } as const)
+            : ({ kind: "time", log: null } as const),
+      }
+      return event.type === "historyChosen"
+        ? stay(chosen)
+        : { state: chosen, effects: [{ type: "readTimeLog" }] }
+    }
+
+    case "timeLogRead": {
+      return screen.kind === "time"
+        ? stay({ ...state, screen: { kind: "time", log: event.log } })
+        : stay(state)
+    }
+
+    case "quietBack": {
+      return screen.kind === "history" || screen.kind === "time"
+        ? stay({ ...state, screen: { kind: "start" } })
+        : stay(state)
     }
 
     case "watchChosen": {

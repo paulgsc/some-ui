@@ -15,10 +15,12 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { Project, Sitting } from "@soundbites/lib/project/model"
+import { latest } from "@soundbites/lib/project/model"
 
 import type { StudioState } from "./machine"
 import { projectOf } from "./machine"
 import type { SittingKind } from "./words"
+import { STUDIO_WORDS } from "./words"
 
 export const SITTING_GAP_MS = 30 * 60_000
 
@@ -179,4 +181,35 @@ export function timePerScreen(
     }
   }
   return totals
+}
+
+/** A screen as Time spent names it: Start, Scene 2, Done for now… */
+function screenName(project: Project, screen: string): string {
+  const words = STUDIO_WORDS.time.screens
+  if (screen.startsWith("record:")) {
+    const shot = screen.slice("record:".length)
+    const n =
+      latest(project).cutList.shots.findIndex((each) => each.id === shot) + 1
+    return n === 0 ? words.droppedScene : words.scene(n)
+  }
+  const named: Readonly<Record<string, string>> = words.named
+  return named[screen] ?? words.other
+}
+
+/** Time spent on this video, per screen, most first; from its sittings' log. */
+export function timeView(
+  project: Project,
+  log: ReadonlyArray<TimeEvent>
+): ReadonlyArray<{ readonly name: string; readonly ms: number }> {
+  const mine = new Set(project.sittings.map(sittingKey))
+  const totals = new Map<string, number>()
+  for (const [screen, ms] of timePerScreen(
+    log.filter((event) => mine.has(event.sitting))
+  )) {
+    const name = screenName(project, screen)
+    totals.set(name, (totals.get(name) ?? 0) + ms)
+  }
+  return [...totals]
+    .map(([name, ms]) => ({ name, ms }))
+    .sort((a, b) => b.ms - a.ms)
 }

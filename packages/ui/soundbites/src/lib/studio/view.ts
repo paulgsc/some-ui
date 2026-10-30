@@ -190,3 +190,20 @@ export function othersOnPhone(
     }))
     .sort((a, b) => b.onPhone - a.onPhone || a.title.localeCompare(b.title))
 }
+
+/** One version of the video, for History: newest first. */
+type HistoryRow = {
+  readonly rev: number
+  readonly who: string
+  readonly message: string
+  readonly at: string
+}
+
+export function historyView(project: Project): ReadonlyArray<HistoryRow> {
+  return [...project.revisions].reverse().map((revision) => ({
+    rev: revision.rev,
+    who: STUDIO_WORDS.history.by[revision.author],
+    message: revision.message,
+    at: revision.at,
+  }))
+}

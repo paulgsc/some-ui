@@ -111,6 +111,10 @@ export function createStudio(ports: StudioPorts): StudioRuntime {
         )
         return
       }
+      case "readTimeLog": {
+        send({ type: "timeLogRead", log: ports.timeLog?.read() ?? [] })
+        return
+      }
       case "read": {
         const { seq } = effect
         Promise.all([

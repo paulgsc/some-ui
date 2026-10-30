@@ -66,6 +66,16 @@ const shapeStatus = (look: Look, voice: Voice): string =>
 const MAKING_ROOM =
   "On Start, share a video's takes with Claude and say they reached Drive: they leave the phone, and the room they held is free."
 
+/** `under a minute`, `1 min`, `1 h 05 min`. */
+function minutes(ms: number): string {
+  const total = Math.floor(ms / 60_000)
+  if (total < 1) return "under a minute"
+  const hours = Math.floor(total / 60)
+  return hours === 0
+    ? `${total} min`
+    : `${hours} h ${String(total % 60).padStart(2, "0")} min`
+}
+
 function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
 }
@@ -234,6 +244,38 @@ export const STUDIO_WORDS = {
     status: shapeStatus,
     revised: (look: Look, voice: Voice): string =>
       `Shape: ${shapeStatus(look, voice)}`,
+  },
+
+  /** Start's quiet links (ST4). */
+  quiet: { history: "History", time: "Time spent" },
+
+  history: {
+    heading: "Every version",
+    by: { owner: "You", claude: "Claude" },
+    line: (rev: number, who: string): string => `Version ${rev} · ${who}`,
+    back: "Back",
+  },
+
+  time: {
+    heading: "Time spent",
+    none: "No time logged on this video yet. It is counted while a sitting is open and the screen is showing.",
+    total: (ms: number): string => `In all: ${minutes(ms)}`,
+    spent: minutes,
+    screens: {
+      named: {
+        start: "Start",
+        done: "Done for now",
+        shape: "Shape",
+        finish: "Finish",
+        watch: "Watch",
+        history: "History",
+        time: "Time spent",
+      },
+      scene: (n: number): string => `Scene ${n}`,
+      droppedScene: "A scene since dropped",
+      other: "Elsewhere in Studio",
+    },
+    back: "Back",
   },
 
   /** Watch (ST5): a review render, notes pinned to its moments. */
