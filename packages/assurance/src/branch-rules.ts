@@ -19,6 +19,9 @@ export const REQUIRED_CHECKS: ReadonlyArray<{
       "rust_ci",
       "metric_contract_ci",
       "Deny Checks Summary",
+      // GC5's gate. The five above stay: they are the ones GC1's probes
+      // showed blocking a merge (server#529).
+      "PR gate",
     ],
   },
 ]
