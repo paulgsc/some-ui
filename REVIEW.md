@@ -125,9 +125,8 @@ Each of the following is a **blocking** finding:
 2. **Code that makes a ledger claim false, with the ledger unchanged.** A hunk that removes or
    renames what a proof names, or the alert or dashboard a `watch` names, or that changes what an
    objective's requirement describes, without the matching ledger edit. A `server:` path is
-   checked by the server's `Assurance ledger` job (server#557), but only on server pull requests and
-   without stopping a merge until `PR gate` is required there (#2270), so a some-ui PR that touches
-   an objective with a `server:` proof still confirms the path exists.
+   checked by the server's `Assurance ledger` job (server#557), but only on server pull requests, so
+   a some-ui PR that touches an objective with a `server:` proof still confirms the path exists.
 3. **An amendment without the owner.** A new amendment whose `decision` does not link to the
    owner deciding that change, or whose `change` does not say what the objective lost.
 4. **A route module called synchronous that is not.** A module added to `synchronous` whose

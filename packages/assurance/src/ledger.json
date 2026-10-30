@@ -946,7 +946,7 @@
           "claim": "A failing required check stops a merge, in both repositories.",
           "requirement": "main in some-ui requires CI Gate and main in the server requires its five named checks (Artifact retention, Rust lint, rust_ci, metric_contract_ci, Deny Checks Summary); a deliberately failing pull request is shown to be blocked in each, and a check fails if either repository stops requiring them.",
           "verdict": "holds",
-          "conclusion": "A failing required check stops a merge in both repositories, as probes showed even through the owner's account; a check reads both repositories' rules on every pull request and daily, and its red run shows only in Actions. It cannot see a bypass granted later, and some-ui's extension and pedagogy checks, like the server's other checks (GC5), are not required.",
+          "conclusion": "A failing required check stops a merge in both repositories, as probes showed even through the owner's account; a check reads both repositories' rules on every pull request and daily, and its red run shows only in Actions. It cannot see a bypass granted later, and some-ui's extension and pedagogy checks are not required; the server's other checks reach a merge through PR gate (GC5).",
           "evidence": [
             {
               "class": "measured",
@@ -1041,7 +1041,7 @@
           "claim": "The server's own checks hold its half of this ledger.",
           "requirement": "Server CI reads this ledger, fails when a server path a holds names is missing, and fails a background task that belongs to no family.",
           "verdict": "broken",
-          "conclusion": "The server's Assurance ledger job reads this ledger from main on every server pull request and fails a server proof or path that is gone and a background task in file_host that no family covers, except the 10 s gauge sweep, which only warns until the owner places it; until main requires PR gate (GC5), a red run informs and does not stop a merge.",
+          "conclusion": "The server's Assurance ledger job reads this ledger from main on every server pull request and fails a server proof or path that is gone and a background task in file_host that no family covers, except the 10 s gauge sweep, which only warns until the owner places it; since main requires PR gate (GC5), a red run stops a merge.",
           "evidence": [
             {
               "class": "measured",
@@ -1067,22 +1067,33 @@
           "claim": "Every check the server runs on a pull request can stop its merge.",
           "requirement": "main in the server requires one gate that waits on every pull request check, path-filtered ones such as Check some-ui against it included, and reads a skipped check as passed only where its paths did not change.",
           "verdict": "broken",
-          "conclusion": "PR gate now waits on every server pull request check (server#557), but main still requires only five named checks, so until the owner requires PR gate a red Check some-ui against it, Emit the route snapshot, infra_ci or Assurance ledger informs and does not stop a merge.",
+          "conclusion": "main in the server now requires PR gate, which waits on every pull request check and fails if any fails, is cancelled or never appears, so a red Check some-ui against it, infra_ci or Assurance ledger now stops a merge; a job allowed to fail (deny's advisories, the client steps under client-breaking-route), a job skipped for any reason, and a pull request that edits its own gate still get through.",
           "evidence": [
             {
               "class": "measured",
-              "says": "GET /repos/paulgsc/server/rules/branches/main on 2026-10-28 required Artifact retention, Rust lint, rust_ci, metric_contract_ci and Deny Checks Summary, and nothing from routes.yml.",
-              "ref": "some-ui#2211"
+              "says": "GET /repos/paulgsc/server/rules/branches/main on 2026-10-30 (ruleset 1557095) required PR gate beside the five named checks.",
+              "ref": "https://github.com/paulgsc/some-ui/issues/2270#issuecomment-6514794566"
             },
             {
               "class": "structural",
               "says": "PR gate (gate.yml, pr_gate.py) waits on every other check of the head commit, path-filtered ones included, and fails on any that fails or never appears.",
               "ref": "server:scripts/pr_gate.py"
+            },
+            {
+              "class": "structural",
+              "says": "pr_gate.py counts any skipped job or run as passing, so a job skipped inside a run for a reason other than its paths passes too.",
+              "ref": "server:scripts/pr_gate.py"
+            },
+            {
+              "class": "structural",
+              "says": "deny.yml's advisories job, and routes.yml's client steps when the pull request carries client-breaking-route, may fail without failing their run (continue-on-error).",
+              "ref": "server:.github/workflows/routes.yml"
             }
           ],
-          "tracked": "some-ui#2270",
+          "tracked": "some-ui#2291",
           "watch": {
-            "by": "none"
+            "by": "dashboard",
+            "ref": "some-ui:.github/workflows/branch-rules.yml"
           },
           "amendments": []
         }

@@ -119,8 +119,8 @@ pr.yml's `assurance` job, which CI Gate needs.
   **A `server:` path is checked by the server, not here:** its `Assurance ledger` job reads this
   ledger from `main` on every server pull request and fails a `holds`' `server:` proof, or a
   `server:` path or ref, that is gone (server#557, objective GC4; the server's `docs/assurance.md`).
-  It runs only on server pull requests and does not stop a merge until `PR gate` is required
-  there (GC5, #2270), so a wrong `server:` path written here first shows on the next server PR.
+  It runs only on server pull requests, where `PR gate` makes a red run stop the merge (GC5), so
+  a wrong `server:` path written here first shows on the next server PR.
 - **Decisions:** an amendment's `decision` links to a paulgsc issue, pull request or comment.
 - **What is kept (RE9):** a store is named `server:`, `mailbox:` or `phone:` and listed once, its
   family exists, and a family that keeps data has a live RE9 objective. Every table the mailbox's
