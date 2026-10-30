@@ -150,6 +150,44 @@ describe("fromTimelineV1", () => {
     expect(s?.picture.kind === "capture" && s.picture.taps).toEqual([])
   })
 
+  it("keeps a pan key already at the fitted scene's end, once", () => {
+    const converted = fromTimelineV1(
+      {
+        project: "Short",
+        shots: [
+          {
+            id: "S1",
+            cut: "c",
+            duration: 10,
+            kind: "capture",
+            source: "walk.mp4",
+            view: {
+              mode: "crop",
+              keys: [
+                [0, 0],
+                [1.7, 100],
+                [8, 300],
+              ],
+            },
+          },
+        ],
+      },
+      {
+        marks: new Map(),
+        takes: new Map([["c", { file: "c.webm", lengthMs: 1000 }]]),
+        series: { id: "build-journal-short", version: 1 },
+      }
+    )
+    if (!converted.ok) throw new Error(converted.problems.join("\n"))
+    expect(converted.value.shots[0]?.overrides.motion).toEqual({
+      kind: "pan",
+      keys: [
+        [0, 0],
+        [1700, 100],
+      ],
+    })
+  })
+
   it("names a mark the recorder never wrote", () => {
     const converted = fromTimelineV1(TIMELINE, {
       marks: new Map(),

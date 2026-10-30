@@ -129,6 +129,7 @@ function withinScene(
   const after = keys.find(([t]) => t > durationMs)
   if (!after) return kept
   if (!before) return [[durationMs, after[1]]]
+  if (before[0] === durationMs) return kept
   const k =
     (1 -
       Math.cos((Math.PI * (durationMs - before[0])) / (after[0] - before[0]))) /
