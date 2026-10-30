@@ -16,10 +16,15 @@ type ListenPlugin = {
   start: () => Promise<{ words: string }>
   stop: () => Promise<void>
   cancel: () => Promise<void>
-  addListener: (
+  addListener: ((
     event: "words",
     listener: (heard: { words: string }) => void
-  ) => Promise<PluginListenerHandle>
+  ) => Promise<PluginListenerHandle>) &
+    ((
+      /** The microphone prompt is up, or the recognizer is listening. */
+      event: "asking" | "ready",
+      listener: () => void
+    ) => Promise<PluginListenerHandle>)
 }
 
 const Listen = registerPlugin<ListenPlugin>("Listen")
@@ -44,4 +49,14 @@ export function onWords(
   listener: (words: string) => void
 ): Promise<PluginListenerHandle> {
   return Listen.addListener("words", ({ words }) => listener(words))
+}
+
+/** The microphone prompt went up: a person is answering it. */
+export function onAsking(listener: () => void): Promise<PluginListenerHandle> {
+  return Listen.addListener("asking", listener)
+}
+
+/** The recognizer is listening. */
+export function onReady(listener: () => void): Promise<PluginListenerHandle> {
+  return Listen.addListener("ready", listener)
 }

@@ -1017,6 +1017,13 @@ them through the app's own plugin, `ListenPlugin.java` (registered in
   the microphone and hands back text; nothing writes a file. Only the words
   the owner confirms are kept, as text in the page's storage
   (`some-ui:studio:ideas`).
+- **Answered in human time (LS1, www's `lib/device-listen`).** The plugin
+  says `asking` when the microphone prompt goes up and `ready` when the
+  recognizer is listening (`onReadyForSpeech`). A recognizer that never
+  gets ready delivers neither results nor an error, so www bounds reaching
+  ready (5 s; 60 s while the prompt is up) and ends the listening as not
+  started, and a stop before ready settles with nothing heard. Done talking
+  is bounded too (5 s), and brings the words heard so far.
 - **Typed when it can't listen.** A phone with no on-device recognizer or
   without its offline English pack, or with the microphone refused,
   answers `UNAVAILABLE`, and the question
