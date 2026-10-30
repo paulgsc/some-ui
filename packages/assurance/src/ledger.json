@@ -1345,6 +1345,10 @@
       "why": "Kept records in and out; the phone reads each copy back (home-link)."
     },
     {
+      "module": "studio_log",
+      "why": "Writes Studio's sitting log and friction reports; each answers with what it kept, and the phone reads it back."
+    },
+    {
       "module": "subjects",
       "why": "Reads the subject's own stats; the answer is the outcome."
     },
@@ -1998,6 +2002,18 @@
       "store": "server:storage_sample",
       "class": "telemetry",
       "growth": "Per UTC day: one row per table and index plus database, wal and disk_free, about 80 rows a day (\"a few MB a year\", docs/storage.md); append-only, triggers abort UPDATE, DELETE and REPLACE.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:studio_friction",
+      "class": "record",
+      "growth": "Per Studio sitting the owner rates at its end: how it went, the cause chosen, the sitting kind, the shot, an optional voice note id (server #553); one tiny row, append-only.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:studio_sitting_event",
+      "class": "record",
+      "growth": "Per Studio screen entered or left, page hidden or shown, sitting opened or closed, as the phone sends it (server #553); tiny rows, append-only.",
       "family": "what-is-kept"
     },
     {
