@@ -236,12 +236,12 @@ export async function readSeries(
 /**
  * Renders `<root>/cut-list.json` under the version of the series in
  * `seriesDir` it pins, the video's burn-ins drawn by `recordBurnIn` when
- * one is given.
+ * one is given, after `checkBurnIns` finds no two of them in one place.
  */
 export async function renderFolder(
   root: string,
   seriesDir: string,
-  options: RenderOptions & { readonly recordBurnIn?: Ports["recordBurnIn"] }
+  options: RenderOptions & Partial<Pick<Ports, "recordBurnIn" | "checkBurnIns">>
 ): Promise<Rendered> {
   const cutList = parseCutList(await readJson(join(root, "cut-list.json")))
   if (!cutList.ok) {
@@ -255,11 +255,15 @@ export async function renderFolder(
   }
   const series = await readSeries(seriesDir, cutList.value.series.version)
   if (!series.ok) return series
-  const { recordBurnIn, ...rest } = options
+  const { recordBurnIn, checkBurnIns, ...rest } = options
   return render(
     cutList.value,
     series.value,
-    { ...nodePorts(root), ...(recordBurnIn ? { recordBurnIn } : {}) },
+    {
+      ...nodePorts(root),
+      ...(recordBurnIn ? { recordBurnIn } : {}),
+      ...(checkBurnIns ? { checkBurnIns } : {}),
+    },
     rest
   )
 }

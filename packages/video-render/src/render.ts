@@ -52,6 +52,10 @@ export type Ports = {
   readonly writeFile: (file: string, text: string) => Promise<void>
   /** Records one burn-in with transparency (ST15's stage), when one can. */
   readonly recordBurnIn?: (request: BurnInRequest) => Promise<boolean>
+  /** The burn-ins that would clash, said before any is recorded; empty when none would. */
+  readonly checkBurnIns?: (
+    requests: ReadonlyArray<BurnInRequest>
+  ) => Promise<ReadonlyArray<string>>
 }
 
 export type RenderOptions = {
@@ -132,6 +136,10 @@ export async function render(
       "nothing here can draw burn-ins; render with them left out, or with " +
         "them drawn by `pnpm --filter www record:short`",
     ])
+  }
+  if (ports.recordBurnIn && ports.checkBurnIns && requests.length > 1) {
+    const clashing = await ports.checkBurnIns(requests)
+    if (clashing.length > 0) return refused(clashing)
   }
   await ports.mkdir(work)
   await ports.mkdir(dirOf(options.out))

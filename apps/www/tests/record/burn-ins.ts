@@ -4,9 +4,10 @@
  * a headless browser at 1080x1920.
  *
  * The page holds `@some-ui/burn-ins`' recording protocol (its
- * `runtime/record.ts`): `load` checks a burn-in and shows it, `seek` shows a
- * moment and answers once it is painted with its fonts, with a key for the
- * picture. For each frame of the burn-in this seeks to that frame's exact
+ * `runtime/record.ts`): `check` finds any two of a video's burn-ins that
+ * would draw in one place at once, `load` checks a burn-in and shows it,
+ * `seek` shows a moment and answers once it is painted with its fonts, with
+ * a key for the picture. For each frame of the burn-in this seeks to that frame's exact
  * time (`frame / fps`, never rounded), captures the picture with
  * transparency only when the key changes, and pipes every frame, as PNG, to
  * ffmpeg, which writes the lossless `.mov` the renderer lays over the video.
@@ -52,7 +53,7 @@ export async function openRecorder(page: Page, origin: string): Promise<void> {
 /** Calls one of the protocol's methods on the page and returns its answer. */
 async function call(
   page: Page,
-  method: "load" | "seek",
+  method: "load" | "seek" | "check",
   arg: unknown
 ): Promise<unknown> {
   return page.evaluate(
@@ -87,6 +88,35 @@ async function seek(page: Page, atMs: number): Promise<string> {
   if (typeof key !== "string")
     throw new Error("the recorder's page did not answer")
   return key
+}
+
+/**
+ * The renderer's `checkBurnIns` port over a page `openRecorder` opened: what
+ * the page says clashes, before anything is recorded.
+ */
+function burnInChecker(
+  page: Page
+): (requests: ReadonlyArray<BurnInRequest>) => Promise<ReadonlyArray<string>> {
+  return async (requests) => {
+    const first = requests.at(0)
+    if (first === undefined) return []
+    const answer = await call(page, "check", {
+      burnIns: requests.map((r) => ({
+        kind: r.kind,
+        design: r.design,
+        params: r.params,
+        startFrame: r.startFrame,
+        frames: r.frames,
+      })),
+      fps: first.frame.fps,
+    })
+    if (
+      !Array.isArray(answer) ||
+      !answer.every((line) => typeof line === "string")
+    )
+      throw new Error("the recorder's page did not answer")
+    return answer
+  }
 }
 
 /**
@@ -187,6 +217,7 @@ export async function renderWithBurnIns(
   const done = await renderFolder(root, seriesDir, {
     ...options,
     recordBurnIn: burnInRecorder(page, root, (line) => reasons.push(line)),
+    checkBurnIns: burnInChecker(page),
   })
   return done.ok
     ? done

@@ -360,6 +360,25 @@ describe("render", () => {
       leftOut.ok ? leftOut.value.leftOut.map((b) => b.kind) : leftOut.problems
     ).toEqual(["captions", "authorship", "headline", "headline"])
 
+    const asked: Array<string> = []
+    const clashing = await render(
+      withLayers,
+      series(),
+      {
+        ...ports,
+        checkBurnIns: (requests) => {
+          asked.push(...requests.map((r) => r.kind))
+          return Promise.resolve(["the headline and the card clash"])
+        },
+        recordBurnIn: () => Promise.reject(new Error("nothing records")),
+      },
+      { workDir: "work-b3", out: "out-b3/video.mp4" }
+    )
+    expect(clashing.ok ? [] : clashing.problems).toEqual([
+      "the headline and the card clash",
+    ])
+    expect(asked).toEqual(["captions", "authorship", "headline", "headline"])
+
     const recorded: Array<string> = []
     const marks: Array<unknown> = []
     const drawn = await render(
