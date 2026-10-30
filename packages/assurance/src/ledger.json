@@ -2040,6 +2040,12 @@
       "class": "derived",
       "growth": "Per transcription attempt per note per model: one ending (heard/silent) per note and model plus up to ATTEMPTS = 3 failures; text only; append-only.",
       "family": "voice-heard"
+    },
+    {
+      "store": "server:voice_transcript_word",
+      "class": "derived",
+      "growth": "Per heard transcript per note and model: one row per word heard (text, start_ms, end_ms from the note's start), about 150 rows a minute of speech; written with its transcript; append-only; leaves with the account.",
+      "family": "voice-heard"
     }
   ]
 }
