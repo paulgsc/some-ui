@@ -13,7 +13,9 @@ import type { QuestionId } from "@soundbites/lib/idea/model"
 export type Went = "smooth" | "snags" | "rough"
 
 /** A sitting the Start screen offers. Only Record is on the phone so far. */
-export type SittingKind = "record" | "watch" | "shape" | "finish"
+export const SITTING_KINDS = ["record", "watch", "shape", "finish"] as const
+
+export type SittingKind = (typeof SITTING_KINDS)[number]
 
 /** What can go wrong while recording, offered as "What got in the way?". */
 export type Snag = "mic" | "words" | "interrupted" | "screen"

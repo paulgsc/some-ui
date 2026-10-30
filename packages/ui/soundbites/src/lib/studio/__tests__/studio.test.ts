@@ -1,4 +1,5 @@
 /** @vitest-environment node */
+import { inMemoryStorage } from "@some-ui/core-utils"
 import type {
   Playback,
   Recording,
@@ -13,6 +14,7 @@ import { cutListOf, TAIL_MS } from "@soundbites/lib/project/script"
 import { projectOf } from "@soundbites/lib/studio/machine"
 import type { StudioRuntime } from "@soundbites/lib/studio/runtime"
 import { createStudio } from "@soundbites/lib/studio/runtime"
+import { keptTimeLog } from "@soundbites/lib/studio/time-store"
 import { othersOnPhone } from "@soundbites/lib/studio/view"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { describe, expect, it, vi } from "vitest"
@@ -319,6 +321,7 @@ describe("a sitting", () => {
     await vi.waitFor(() => expect(memory.friction).toHaveLength(1))
     expect(memory.friction[0]).toMatchObject({
       sitting: "s1",
+      shot: "path",
       went: "rough",
       gotInTheWay: "The microphone",
     })
@@ -877,6 +880,7 @@ describe("an answer whose report fails after the screen went away", () => {
     memory.friction.push({
       project: projectIn(runtime).id,
       sitting: "s1",
+      shot: "path",
       at: AT,
       went: "rough",
       gotInTheWay: null,
@@ -1032,5 +1036,59 @@ describe("VC1: a microphone that is slow or silent holds nothing for good", () =
     const project = projectIn(runtime)
     expect(project.takes).toEqual([])
     expect(project.sittings.at(-1)?.closedAt).toBeDefined()
+  })
+})
+
+/** ST9: the runtime logs each screen of a sitting, and nothing outside one. */
+describe("Studio's time log", () => {
+  it("logs a sitting's screens from Record to Done for now", async () => {
+    const storage = inMemoryStorage()
+    const memory = memoryProjectStore()
+    let tick = 0
+    let ids = 0
+    const runtime = createStudio({
+      store: memory.store,
+      startRecording: fakeMic(),
+      now: () => NOW + 1_000 * tick++,
+      newId: () => `id${++ids}`,
+      readText: (file) => file.text(),
+      onVisibility: (listener) => {
+        listener(false)
+        return (): void => undefined
+      },
+      player: {
+        play: (): Playback => ({
+          ended: new Promise(() => undefined),
+          stop: vi.fn(),
+        }),
+      },
+      timeLog: keptTimeLog(() => storage),
+    })
+    runtime.attach()
+    await until(runtime, (state) => state.shelf.kind === "read")
+    runtime.dispatch({
+      type: "primerPicked",
+      file: new Blob([PRIMER_TEXT], { type: "application/json" }),
+    })
+    await until(
+      runtime,
+      (state) => projectOf(state) !== null && settledWrites(state)
+    )
+    expect(keptTimeLog(() => storage).read()).toEqual([])
+    runtime.dispatch({ type: "recordChosen" })
+    await until(runtime, settledWrites)
+    await recordOne(runtime)
+    runtime.dispatch({ type: "doneForNowPressed" })
+    await until(runtime, settledWrites)
+    const events = keptTimeLog(() => storage).read()
+    expect(events.map((event) => [event.type, event.screen])).toEqual([
+      ["sitting_opened", null],
+      ["screen_entered", "record:path"],
+      ["screen_left", "record:path"],
+      ["screen_entered", "done"],
+      ["screen_left", "done"],
+      ["sitting_closed", null],
+    ])
+    expect(new Set(events.map((event) => event.sitting)).size).toBe(1)
   })
 })

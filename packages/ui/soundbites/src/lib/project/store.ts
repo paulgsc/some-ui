@@ -34,6 +34,8 @@ import { admitted, PROJECT_SCHEMA } from "./model"
 export type Friction = {
   readonly project: string
   readonly sitting: string
+  /** The scene the sitting ended on. */
+  readonly shot: string
   /** ISO 8601, UTC. */
   readonly at: string
   readonly went: "smooth" | "snags" | "rough"

@@ -137,6 +137,8 @@ type Filing = {
   readonly at: string
   /** The sitting the store closed; null until it does, or if it didn't. */
   readonly sitting: string | null
+  /** The scene on screen when Done for now was pressed. */
+  readonly shot: string
   /** Whether the close has landed or been refused. */
   readonly settled: boolean
   readonly answer: Answer | null
@@ -642,6 +644,7 @@ function fileAnswers(state: StudioState): Step {
             friction: {
               project: filing.project,
               sitting: filing.sitting,
+              shot: filing.shot,
               ...filing.answer,
             },
           },
@@ -837,7 +840,14 @@ function doneForNow(state: StudioState, at: string): Step {
     closed: "saving",
     filings: [
       ...state.filings,
-      { project: project.id, at, sitting: null, settled: false, answer: null },
+      {
+        project: project.id,
+        at,
+        sitting: null,
+        shot: state.screen.shot,
+        settled: false,
+        answer: null,
+      },
     ],
     held: [
       ...state.held,

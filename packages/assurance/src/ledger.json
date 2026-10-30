@@ -1515,6 +1515,13 @@
       "family": "what-is-kept"
     },
     {
+      "store": "phone:studio-time-log",
+      "class": "record",
+      "growth": "Per Studio sitting on the phone: a sitting opened and closed, each screen entered and left, the page hidden and shown (ST9), a few hundred bytes each, append-only; no cap (`some-ui:studio:time-log`).",
+      "horizon": "the phone keeps its whole log",
+      "family": "what-is-kept"
+    },
+    {
       "store": "phone:job-voice",
       "class": "record",
       "growth": "bounded: JOB_VOICE_MAX_BYTES = 40 x 240,000 = 9,600,000 B of Jobs voice notes.",

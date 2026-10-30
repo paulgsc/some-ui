@@ -24,6 +24,8 @@ import type {
   StudioState,
 } from "./machine"
 import { initialStudioState, step } from "./machine"
+import { logBetween } from "./time-log"
+import type { TimeLogStore } from "./time-store"
 
 export type StudioPorts = {
   store: ProjectStore
@@ -40,6 +42,8 @@ export type StudioPorts = {
   readText: (file: Blob) => Promise<string>
   /** As `SoundbitesPorts.onVisibility`: now, then on each change. */
   onVisibility: (listener: (hidden: boolean) => void) => () => void
+  /** Where the time log is kept (ST9); nothing is logged without one. */
+  timeLog?: TimeLogStore
   /** How long the microphone may take to answer; `takeRunner`'s unless a test says. */
   takeDeadlines?: TakeDeadlines
 }
@@ -61,6 +65,9 @@ export function createStudio(ports: StudioPorts): StudioRuntime {
   const send = (event: StudioEvent): void => {
     const next = step(state, event)
     if (next.state !== state) {
+      // Ignored when refused: the log is kept best effort, and a screen
+      // is never held up for it.
+      ports.timeLog?.append(logBetween(state, next.state, at(), ports.newId))
       state = next.state
       for (const listener of listeners) listener()
     }
