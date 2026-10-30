@@ -3,7 +3,8 @@
  * (`./standing`, LA11) and Settings' send (`./send`) carry only what changed
  * since: each finished session's `updatedAt` as it was copied, each kept
  * shelf item's digest as home answered for it, each LeetType session's
- * digest as home read it back (`./leetype-log`), and the digests home
+ * digest as home read it back (`./leetype-log`), each Studio sitting's and
+ * answer's (`./studio-log`), and the digests home
  * refused, so the standing send does not offer an unchanged refused item
  * again (a tap in Settings does). Kept for one pairing (`pairing`, the
  * link's id for it): another pairing starts from nothing. Bookkeeping, not
@@ -32,6 +33,7 @@ export type Sent = {
   readonly shelf: Readonly<Record<string, string>>
   readonly refused: Readonly<Record<string, string>>
   readonly leetype: Readonly<Record<string, string>>
+  readonly studio: Readonly<Record<string, string>>
 }
 
 type Store = KeyedStorage | null
@@ -42,6 +44,7 @@ const emptyFor = (pairing: string): Sent => ({
   shelf: {},
   refused: {},
   leetype: {},
+  studio: {},
 })
 
 /** The string entries of `value`, and whether every entry was one. */
@@ -70,6 +73,7 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
   const shelf = stringsOf(parsed.shelf)
   const refused = stringsOf(parsed.refused)
   const leetype = stringsOf(parsed.leetype)
+  const studio = stringsOf(parsed.studio)
   return {
     value: {
       pairing: parsed.pairing,
@@ -77,8 +81,11 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
       shelf: shelf.value,
       refused: refused.value,
       leetype: leetype.value,
+      studio: studio.value,
     },
-    whole: [sessions, shelf, refused, leetype].every((kind) => kind.whole),
+    whole: [sessions, shelf, refused, leetype, studio].every(
+      (kind) => kind.whole
+    ),
   }
 }
 
@@ -114,6 +121,7 @@ export function rememberSent(
     shelf: { ...without(sent.shelf, more.refused), ...more.shelf },
     refused: { ...without(sent.refused, more.shelf), ...more.refused },
     leetype: { ...sent.leetype, ...more.leetype },
+    studio: { ...sent.studio, ...more.studio },
   }
   // Unwritten (full): the next send carries these again, and home says
   // unchanged.
@@ -140,8 +148,10 @@ export function sessionsHeld(
   return Object.fromEntries(sessions.map((s) => [s.id, s.updatedAt]))
 }
 
-/** A LeetType-held entry for `session`: its events, by id. */
-export function digestOf(session: HomeSession): string {
+/** A held entry for a log home keeps (`./leetype-log`): its events, by id. */
+export function digestOf(session: {
+  readonly events: ReadonlyArray<{ readonly id: string }>
+}): string {
   const ids = session.events.map((event) => event.id)
   return `${String(ids.length)}:${String(fnv1a(ids.join("|")))}`
 }
