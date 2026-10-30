@@ -3,10 +3,17 @@ import { STOP_WORDS } from "@censor/lib/settings/words"
 import { describe, expect, it } from "vitest"
 
 import type { ActionPort } from "./notice"
-import { parseStopped, showStopped, stoppedMessage, stoppedOn } from "./notice"
+import {
+  createNotices,
+  parseStopped,
+  stoppedMessage,
+  stoppedOn,
+} from "./notice"
 
 /** A toolbar button that keeps each tab's badge and title. */
-function button(): ActionPort & {
+function button(
+  colour: () => Promise<void> = () => Promise.resolve()
+): ActionPort & {
   readonly text: Map<number, string>
   readonly title: Map<number, string | null>
 } {
@@ -19,7 +26,7 @@ function button(): ActionPort & {
       if (tabId !== undefined) text.set(tabId, t ?? "")
       return Promise.resolve()
     },
-    setBadgeBackgroundColor: (): Promise<void> => Promise.resolve(),
+    setBadgeBackgroundColor: colour,
     setTitle: ({ tabId, title: t }): Promise<void> => {
       if (tabId !== undefined) title.set(tabId, t)
       return Promise.resolve()
@@ -43,15 +50,31 @@ describe("the stopped message (R13)", () => {
 describe("the toolbar button's notice (R13)", () => {
   it("shows on one tab, and comes off with the button's own title back", async () => {
     const action = button()
-    await showStopped(action, 7, true)
+    const notice = createNotices(action)
+    await notice(7, true)
     expect(action.text.get(7)).toBe(STOP_WORDS.badge)
     expect(action.title.get(7)).toBe(STOP_WORDS.title)
     expect(await stoppedOn(action, 7)).toBe(true)
     expect(await stoppedOn(action, 8), "another tab").toBe(false)
 
-    await showStopped(action, 7, false)
+    await notice(7, false)
     expect(action.text.get(7)).toBe("")
     expect(action.title.get(7)).toBeNull()
     expect(await stoppedOn(action, 7)).toBe(false)
+  })
+
+  it("draws the last message a tab sent, however long a call takes", async () => {
+    let release = (): void => undefined
+    const slow = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const action = button(() => slow)
+    const notice = createNotices(action)
+    const shown = notice(7, true)
+    const cleared = notice(7, false)
+    release()
+    await Promise.all([shown, cleared])
+    expect(action.text.get(7)).toBe("")
+    expect(action.title.get(7)).toBeNull()
   })
 })

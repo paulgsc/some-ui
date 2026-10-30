@@ -2,7 +2,7 @@
  * The toolbar button's notice (R13): autoplay stopped on a tab where the
  * page could not have shown it would. The content script says so with
  * {@link stoppedMessage}, and the background draws it on that tab's
- * button with {@link showStopped}; the popup reads it back off the badge
+ * button through {@link createNotices}; the popup reads it back off the badge
  * ({@link stoppedOn}), so nothing is stored.
  *
  * A mark, never a count (`docs/absent-plated-heard.md` §8): the badge says
@@ -42,7 +42,7 @@ export type ActionPort = Pick<
  * Show, or take away, the notice on one tab's button. Taking it away puts
  * the button's own title back.
  */
-export async function showStopped(
+async function showStopped(
   action: ActionPort,
   tabId: number,
   stopped: boolean
@@ -52,6 +52,28 @@ export async function showStopped(
   }
   await action.setBadgeText({ tabId, text: stopped ? STOP_WORDS.badge : "" })
   await action.setTitle({ tabId, title: stopped ? STOP_WORDS.title : null })
+}
+
+/**
+ * What draws the notice: each tab's updates run one after another, so the
+ * last message a tab sent is the last one drawn, however long a call
+ * takes. A failed update is dropped, and the next one still runs.
+ */
+export function createNotices(
+  action: ActionPort
+): (tabId: number, stopped: boolean) => Promise<void> {
+  const queues = new Map<number, Promise<void>>()
+  return (tabId, stopped) => {
+    const next = (queues.get(tabId) ?? Promise.resolve())
+      .then(() => showStopped(action, tabId, stopped))
+      // Ignored: a tab closed before its notice was drawn needs none.
+      .catch(() => undefined)
+      .finally(() => {
+        if (queues.get(tabId) === next) queues.delete(tabId)
+      })
+    queues.set(tabId, next)
+    return next
+  }
 }
 
 export async function stoppedOn(

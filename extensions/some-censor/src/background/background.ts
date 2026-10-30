@@ -13,7 +13,7 @@
  *
  * Runtime isolation: no imports from src/content/ or src/popup/ at runtime.
  */
-import { parseStopped, showStopped } from "@censor/lib/notice/notice"
+import { createNotices, parseStopped } from "@censor/lib/notice/notice"
 import { menuCommand, menuItems } from "@censor/lib/settings/menu"
 import {
   createSaver,
@@ -107,13 +107,13 @@ ext.contextMenus.onClicked.addListener((info): void => {
   }
 })
 
+const notice = createNotices(ext.action)
+
 ext.runtime.onMessage.addListener((message: unknown, sender): undefined => {
   const stopped = parseStopped(message)
   const tabId = sender.tab?.id
   if (stopped === null || tabId === undefined) return undefined
-  void showStopped(ext.action, tabId, stopped)
-    // Ignored: a tab closed before its notice was drawn needs none.
-    .catch(() => undefined)
+  void notice(tabId, stopped)
   return undefined
 })
 
