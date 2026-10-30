@@ -58,7 +58,7 @@ describe("MobileNav", () => {
     ).toBe("page")
   })
 
-  it("holds Studio's two rooms: the Build Journal and game day", () => {
+  it("holds Studio's two rooms: the video in sittings and game day", () => {
     render(<MobileNav pathname="/game-week" />)
 
     expect(targetOf("Journal")).toBe("/journal")

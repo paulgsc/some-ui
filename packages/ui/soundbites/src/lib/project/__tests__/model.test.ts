@@ -244,9 +244,10 @@ describe("takes", () => {
 
     const kept = run(state, { type: "keptBy", take: "t1", keeper: "home" })
     const released = step(kept, { type: "letGo", take: "t1" })
-    // The store lets the audio go, checking again in its own transaction.
+    // The save lets the audio go, the store checking again in its own
+    // transaction.
     expect(released.effects).toEqual([
-      { type: "letGo", project: "p1", take: "t1" },
+      { type: "save", project: released.state.project },
     ])
     const confirmed = released.state
     expect(confirmed.project.takes[0]).toMatchObject({
@@ -286,6 +287,7 @@ describe("a sitting", () => {
       at: "2026-10-30T09:20:00.000Z",
       done: "Recorded b",
       next: "Record c",
+      shot: "c",
     })
     expect(closing.effects).toEqual([{ type: "finishTake" }])
     expect(closing.state.project.sittings[0]?.closedAt).toBeNull()
@@ -297,6 +299,7 @@ describe("a sitting", () => {
       closedAt: "2026-10-30T09:20:00.000Z",
       done: "Recorded b",
       next: "Record c",
+      shot: "c",
     })
     // One write keeps the take's audio with the closed sitting.
     expect(kept.effects).toEqual([
@@ -310,7 +313,7 @@ describe("a sitting", () => {
       started(),
       { type: "sittingOpened", id: "s1", at: AT },
       { type: "takeStarted", shot: "b" },
-      { type: "sittingClosed", at: AT, done: "", next: "" }
+      { type: "sittingClosed", at: AT, done: "", next: "", shot: null }
     )
     const failed = step(closing, { type: "takeFailed" })
     expect(failed.state.project.sittings[0]?.closedAt).toBe(AT)

@@ -18,6 +18,28 @@ const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/)
 const at = z.iso.datetime()
 const NoteSchema = CutListSchema.shape.notes.unwrap().element
 const RevisionSchema = CutListSchema.shape.revisions.unwrap().element
+const words = z.string().min(1)
+
+/** A primer as the phone read it (`readPrimer`), carried by its revision. */
+const PrimerSchema = z.object({
+  title: words,
+  budgetMs: z.number().int().positive(),
+  voice: z.enum(["ad-lib", "read", "mixed"]),
+  cuts: z
+    .array(
+      z.object({
+        id,
+        artifact: words,
+        point: words,
+        line: words.nullable(),
+        keep: z.array(words),
+        voice: z.enum(["ad-lib", "read"]),
+        prompt: words,
+        targetMs: z.number().int().positive(),
+      })
+    )
+    .min(1),
+})
 
 const ProjectSchema = z.object({
   schema: z.literal(PROJECT_SCHEMA),
@@ -27,6 +49,7 @@ const ProjectSchema = z.object({
       RevisionSchema.extend({
         // Checked again whole by `parseCutList`, with its history put back.
         cutList: CutListSchema.omit({ revisions: true, notes: true }),
+        primer: PrimerSchema.optional(),
       })
     )
     .min(1),
@@ -50,6 +73,7 @@ const ProjectSchema = z.object({
       closedAt: at.nullable(),
       done: z.string(),
       next: z.string(),
+      shot: id.nullable().default(null),
     })
   ),
 })

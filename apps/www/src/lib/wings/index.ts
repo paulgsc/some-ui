@@ -90,7 +90,7 @@ export const WINGS: ReadonlyArray<Wing> = [
   {
     id: "studio",
     name: "Studio",
-    job: "Voice takes for the next Build Journal episode, and bites on game day",
+    job: "A video made in sittings, scene by scene, and bites on game day",
     home: "/journal",
     settings: null,
     web: {

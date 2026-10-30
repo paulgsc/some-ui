@@ -3,6 +3,12 @@
  * `JOURNAL_TAKES_MAX_BYTES` covers the audio of both, so a project adds no
  * cap of its own to the phone's. Version 2 adds the project stores beside
  * the journal's plan, takes and audio, and keeps everything version 1 held.
+ * Version 3 adds `friction`: how each sitting went, one row per sitting,
+ * kept on the phone until home takes it (STUDIO ST9).
+ *
+ * The journal's own stores (`plan`, `takes`, `audio`) hold an episode kept
+ * before Studio's projects; `carryJournal` (`project/store.ts`) moves it into
+ * a project the first time Studio opens, and nothing writes them after.
  */
 import { connection, result } from "@some-ui/voice-capture"
 import { askToKeep } from "@soundbites/lib/store"
@@ -13,6 +19,7 @@ export const JOURNAL_STORES = {
   audio: "audio",
   projects: "projects",
   projectAudio: "project-audio",
+  friction: "friction",
 } as const
 
 /** Every audio store the takes cap covers. */
@@ -25,7 +32,7 @@ export const AUDIO_STORES = [
 export function journalDatabase(): () => Promise<IDBDatabase> {
   return connection(
     "some-ui.journal",
-    2,
+    3,
     (db) => {
       const make = (name: string, keyPath?: string): void => {
         if (db.objectStoreNames.contains(name)) return
@@ -37,6 +44,7 @@ export function journalDatabase(): () => Promise<IDBDatabase> {
       make(JOURNAL_STORES.audio)
       make(JOURNAL_STORES.projects, "id")
       make(JOURNAL_STORES.projectAudio)
+      make(JOURNAL_STORES.friction, "id")
     },
     askToKeep
   )

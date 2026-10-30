@@ -3,7 +3,7 @@
  * the notes pinned to moments in them, every take recorded for it, and a log
  * entry per sitting. `step(state, event)` returns the next state and the
  * effects to run, and does nothing else (docs/monorepo-boundaries.md, "Inside
- * a React package"); a runtime runs `save`, `keepTake`, `letGo` and `finishTake`
+ * a React package"); a runtime runs `save`, `keepTake` and `finishTake`
  * against the store and the microphone, and reads the store again when a
  * write is refused, since a refused write kept nothing.
  *
@@ -16,7 +16,8 @@
  *   replaces stays, unchosen, and can be chosen again.
  * - **Nothing leaves the phone unconfirmed.** A take's audio is let go only
  *   once home or Drive has said it holds a copy (`letGoRefusal`), and its
- *   record stays either way.
+ *   record stays either way. The save that marks it off the phone is the one
+ *   that lets its audio go, checked again in the store (`isAppendOnly`).
  * - **Closing a sitting mid-take keeps the take.** The take is finished
  *   first, and the sitting closes once it is kept or has failed.
  * - **A note follows its shot.** It is pinned to (revision, shot, offset),
@@ -25,6 +26,7 @@
  */
 import { assertNever, canonicalJson } from "@some-ui/core-utils"
 import type { CutList, Shot, ShotTime } from "@some-ui/video-render"
+import type { Primer } from "@soundbites/lib/journal/primer"
 
 export const PROJECT_SCHEMA = "some-ui.studio-project/1"
 
@@ -37,6 +39,11 @@ export type Revision = Readonly<CutList["revisions"][number]> & {
   /** From 1, one more than the revision before. */
   readonly rev: number
   readonly cutList: CutListShape
+  /**
+   * The primer this revision brought, when it brought one: what each scene
+   * says. `primerAt` finds the one in force at any revision.
+   */
+  readonly primer?: Primer
 }
 
 /** Pinned to the revision, shot and offset it was written against. */
@@ -67,6 +74,8 @@ export type Sitting = {
   /** What was done, and what is next: one line each, for the next sitting. */
   readonly done: string
   readonly next: string
+  /** The scene the next sitting opens on, once this one closes. */
+  readonly shot: string | null
 }
 
 export type Project = {
@@ -85,7 +94,7 @@ export type ProjectState = {
   readonly project: Project
   readonly taking: { readonly shot: string } | null
   readonly closing:
-    | (Pick<Sitting, "done" | "next"> & {
+    | (Pick<Sitting, "done" | "next" | "shot"> & {
         readonly at: string
       })
     | null
@@ -98,6 +107,7 @@ export type ProjectEvent =
       readonly message: string
       readonly at: string
       readonly cutList: CutListShape
+      readonly primer?: Primer
     }
   | { readonly type: "noted"; readonly note: Omit<Note, "status" | "reason"> }
   | {
@@ -118,7 +128,7 @@ export type ProjectEvent =
   | { readonly type: "sittingOpened"; readonly id: string; readonly at: string }
   | ({ readonly type: "sittingClosed"; readonly at: string } & Pick<
       Sitting,
-      "done" | "next"
+      "done" | "next" | "shot"
     >)
 
 export type ProjectEffect =
@@ -129,8 +139,6 @@ export type ProjectEffect =
       readonly project: Project
       readonly take: string
     }
-  /** Let take `take`'s audio go from the phone, in the store's own check. */
-  | { readonly type: "letGo"; readonly project: string; readonly take: string }
   | { readonly type: "finishTake" }
 
 /** Why an event changed nothing. */
@@ -181,6 +189,15 @@ export function latest(project: Project): Revision {
 
 function revisionOf(project: Project, rev: number): Revision | null {
   return project.revisions.find((each) => each.rev === rev) ?? null
+}
+
+/** The primer in force at revision `rev`: the last one brought at or before it. */
+export function primerAt(project: Project, rev: number): Primer | null {
+  let found: Primer | null = null
+  for (const each of project.revisions) {
+    if (each.rev <= rev && each.primer !== undefined) found = each.primer
+  }
+  return found
 }
 
 /** The sitting under way, if one is. */
@@ -269,7 +286,7 @@ export function cutListAt(project: Project, rev: number): CutList | null {
 }
 
 /** Why the audio of take `id` can't leave the phone, or null if it can. */
-export function letGoRefusal(project: Project, id: string): Refusal | null {
+function letGoRefusal(project: Project, id: string): Refusal | null {
   const take = project.takes.find((each) => each.id === id)
   if (take === undefined) return "noTake"
   if (take.keptBy.length === 0) return "unconfirmed"
@@ -365,6 +382,7 @@ function withClosed(
     closedAt: closing.at,
     done: closing.done,
     next: closing.next,
+    shot: closing.shot,
   }
   return { ...project, sittings: [...project.sittings.slice(0, -1), closed] }
 }
@@ -482,17 +500,13 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
     case "letGo": {
       const refused = letGoRefusal(project, event.take)
       if (refused !== null) return refuse(state, refused)
-      const next: Project = {
+      // The store lets the audio go with this save, checking again there.
+      return changed(state, {
         ...project,
         takes: project.takes.map((each) =>
           each.id === event.take ? { ...each, onPhone: false } : each
         ),
-      }
-      return {
-        state: { ...state, project: next },
-        effects: [{ type: "letGo", project: project.id, take: event.take }],
-        refused: null,
-      }
+      })
     }
 
     case "sittingOpened": {
@@ -507,6 +521,7 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
             closedAt: null,
             done: "",
             next: "",
+            shot: null,
           },
         ],
       })
@@ -514,7 +529,12 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
 
     case "sittingClosed": {
       if (openSitting(project) === null) return refuse(state, "noSitting")
-      const closing = { at: event.at, done: event.done, next: event.next }
+      const closing = {
+        at: event.at,
+        done: event.done,
+        next: event.next,
+        shot: event.shot,
+      }
       if (state.taking === null)
         return changed(state, withClosed(project, closing))
       // The take is finished and kept first; `taken` or `takeFailed` closes.
