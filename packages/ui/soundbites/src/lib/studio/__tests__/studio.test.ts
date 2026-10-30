@@ -41,7 +41,8 @@ type Running = StudioRuntime & { readonly detach: () => void }
 function studio(
   memory: ReturnType<typeof memoryProjectStore>,
   mic: StartRecording = fakeMic(),
-  prefix = "t"
+  prefix = "t",
+  takeDeadlines?: { readonly openMs: number; readonly finishMs: number }
 ): Running {
   let tick = 0
   let ids = 0
@@ -56,6 +57,7 @@ function studio(
       listener(false)
       return (): void => undefined
     },
+    ...(takeDeadlines ? { takeDeadlines } : {}),
     player: {
       play: (): Playback => ({
         ended: new Promise(() => undefined),
@@ -94,9 +96,10 @@ const settledWrites = (
 
 async function opened(
   memory = memoryProjectStore(),
-  mic: StartRecording = fakeMic()
+  mic: StartRecording = fakeMic(),
+  takeDeadlines?: { readonly openMs: number; readonly finishMs: number }
 ): Promise<Running> {
-  const runtime = studio(memory, mic)
+  const runtime = studio(memory, mic, "t", takeDeadlines)
   await until(runtime, (state) => state.shelf.kind === "read")
   runtime.dispatch({
     type: "primerPicked",
@@ -930,5 +933,82 @@ describe("a screen that has gone", () => {
     await until(runtime, (state) => !state.stale && state.inFlight === null)
     await until(runtime, (state) => projectsOfState(state).length === 2)
     expect([...memory.notices.values()]).toEqual([STUDIO_WORDS.notice.notKept])
+  })
+})
+
+/**
+ * VC1 (`@some-ui/voice-capture`'s `takeRunner`) as Studio meets it: every
+ * write held behind Done for now is let through within a bounded time of
+ * it, over each way the microphone can answer (open never, late), and a
+ * take begun while the microphone opened never lands in the sitting Done
+ * for now closed (#2304).
+ */
+describe("VC1: a microphone that is slow or silent holds nothing for good", () => {
+  /** A microphone the test opens by hand, or never. */
+  function heldMic(): {
+    mic: StartRecording
+    open: () => void
+    discarded: () => number
+  } {
+    let open: () => void = () => undefined
+    let discards = 0
+    const mic: StartRecording = () =>
+      new Promise((resolve) => {
+        open = (): void =>
+          resolve({
+            level: (): number => 0.3,
+            finish: (): Promise<Take> =>
+              Promise.resolve({
+                blob: new Blob(["v"], { type: "audio/webm" }),
+                mimeType: "audio/webm;codecs=opus",
+                durationMs: 4_000,
+              }),
+            discard: (): void => {
+              discards++
+            },
+          })
+      })
+    return { mic, open: () => open(), discarded: () => discards }
+  }
+
+  it("closes the sitting when the microphone never opens", async () => {
+    const memory = memoryProjectStore()
+    const silent = heldMic()
+    const runtime = await opened(memory, silent.mic, {
+      openMs: 30,
+      finishMs: 30,
+    })
+    runtime.dispatch({ type: "recordChosen" })
+    runtime.dispatch({ type: "recordPressed" })
+    await until(runtime, (state) => state.activity.kind === "opening")
+    runtime.dispatch({ type: "doneForNowPressed" })
+    await until(
+      runtime,
+      (state) => state.activity.kind === "idle" && settledWrites(state)
+    )
+    const project = projectIn(runtime)
+    expect(project.sittings.at(-1)?.closedAt).toBeDefined()
+  })
+
+  it("lets go of a microphone that opens after Done for now, and starts no take", async () => {
+    const memory = memoryProjectStore()
+    const slow = heldMic()
+    const runtime = await opened(memory, slow.mic)
+    runtime.dispatch({ type: "recordChosen" })
+    runtime.dispatch({ type: "recordPressed" })
+    await until(runtime, (state) => state.activity.kind === "opening")
+    runtime.dispatch({ type: "doneForNowPressed" })
+    runtime.dispatch({ type: "notYetPressed" })
+    runtime.dispatch({ type: "recordChosen" })
+    await until(runtime, (state) => state.screen.kind === "record")
+    slow.open()
+    await until(
+      runtime,
+      (state) => state.activity.kind === "idle" && settledWrites(state)
+    )
+    expect(slow.discarded()).toBe(1)
+    const project = projectIn(runtime)
+    expect(project.takes).toEqual([])
+    expect(project.sittings.at(-1)?.closedAt).toBeDefined()
   })
 })

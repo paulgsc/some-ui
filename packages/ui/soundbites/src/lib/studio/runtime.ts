@@ -35,6 +35,8 @@ export type StudioPorts = {
   readText: (file: Blob) => Promise<string>
   /** As `SoundbitesPorts.onVisibility`: now, then on each change. */
   onVisibility: (listener: (hidden: boolean) => void) => () => void
+  /** How long the microphone may take to answer; `takeRunner`'s unless a test says. */
+  takeDeadlines?: { readonly openMs: number; readonly finishMs: number }
 }
 
 export type StudioRuntime = {
@@ -65,6 +67,7 @@ export function createStudio(ports: StudioPorts): StudioRuntime {
       startRecording: ports.startRecording,
       now: ports.now,
       tickMs: TAKE_TICK_MS,
+      ...(ports.takeDeadlines ? { deadlines: ports.takeDeadlines } : {}),
     },
     (signal) =>
       send(

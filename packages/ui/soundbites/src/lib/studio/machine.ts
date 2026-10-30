@@ -40,7 +40,10 @@
  *   same write, a revision fitting its scene to it (`project/script.ts`).
  * - **Done for now keeps the take under way first.** The sitting closes
  *   after the take is kept or has failed, so its log counts it, and it
- *   records the scene on screen: the next sitting opens there.
+ *   records the scene on screen: the next sitting opens there. A microphone
+ *   still opening is let go when it opens (`letGo`), so no take starts in a
+ *   sitting asked to close, and the wait is bounded (`takeRunner`'s VC1), so
+ *   a microphone that never answers holds nothing for good.
  * - **Nothing records while the page is off screen.** A take recording when
  *   the page is hidden or left is finished and kept; a microphone that opens
  *   then, or once the Record screen is gone, is let go.
@@ -98,7 +101,14 @@ type TakeFor = {
 export type StudioActivity =
   | { readonly kind: "idle" }
   | { readonly kind: "playing"; readonly take: string; readonly seq: number }
-  | ({ readonly kind: "opening" } & TakeFor)
+  | ({
+      readonly kind: "opening"
+      /**
+       * Done for now came first: the microphone is let go when it opens, so
+       * no take starts in a sitting that was asked to close.
+       */
+      readonly letGo?: true
+    } & TakeFor)
   | ({
       readonly kind: "recording"
       readonly startedAt: number
@@ -847,6 +857,9 @@ function doneForNow(state: StudioState, at: string): Step {
       effects: [...finished.effects, ...next.effects],
     }
   }
+  if (state.activity.kind === "opening") {
+    return pump({ ...base, activity: { ...state.activity, letGo: true } })
+  }
   if (state.activity.kind === "playing") {
     const stopped = stopPlay(base)
     const next = pump(stopped.state)
@@ -1125,12 +1138,19 @@ export function step(state: StudioState, event: StudioEvent): Step {
 
     case "micOpened": {
       if (activity.kind !== "opening") return stay(state)
-      if (state.page === "left" || !state.visible || screen.kind !== "record") {
+      if (
+        activity.letGo === true ||
+        state.page === "left" ||
+        !state.visible ||
+        screen.kind !== "record"
+      ) {
         const idle = pump({
           ...state,
           activity: { kind: "idle" },
           notice:
-            state.page === "left" || screen.kind !== "record"
+            activity.letGo === true ||
+            state.page === "left" ||
+            screen.kind !== "record"
               ? state.notice
               : WORDS.notice.notStarted,
         })
