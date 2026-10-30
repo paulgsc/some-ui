@@ -21,25 +21,9 @@ export function seconds(ms: number): string {
   return `${(Math.max(0, ms) / 1_000).toFixed(1)} s`
 }
 
-/**
- * What sharing frees, and only that: the room the shared takes held. The
- * old Journal tab's pieces, when they hold room, are named, since sharing
- * frees none of theirs.
- */
-function makingRoom(leftoverBytes: number): string {
-  const shared =
-    "On Start, share a video's takes with Claude and say they reached Drive: they leave the phone, and the room they held is free."
-  return leftoverBytes === 0
-    ? shared
-    : `${shared} Pieces of the old Journal tab hold ${size(leftoverBytes)} that sharing doesn't free.`
-}
-
-/** A number of bytes, as room on the phone: `820 KB`, `1.4 MB`. */
-function size(bytes: number): string {
-  return bytes < 1_000_000
-    ? `${Math.ceil(bytes / 1_000)} KB`
-    : `${(bytes / 1_000_000).toFixed(1)} MB`
-}
+/** What sharing frees: the room the shared takes held. */
+const MAKING_ROOM =
+  "On Start, share a video's takes with Claude and say they reached Drive: they leave the phone, and the room they held is free."
 
 /** `2`, `2 and 3`, `2, 3 and 5`. */
 function listed(items: ReadonlyArray<string>): string {
@@ -67,9 +51,6 @@ export const STUDIO_WORDS = {
     primerHint: "A primer.json in Build Journal › voice › primers.",
     startHere: "Start here",
     others: "Other videos with takes on the phone",
-    leftoversTitle: "Pieces of the old Journal tab still on the phone",
-    leftovers: (rows: number, bytes: number): string =>
-      `${plural(rows, "piece", "pieces")} Studio didn't move into a video, kept as ${rows === 1 ? "it was" : "they were"}. ${rows === 1 ? "It takes" : "They take"} ${size(bytes)} of the room for takes.`,
     onPhone: (n: number): string =>
       `${plural(n, "take", "takes")} on the phone`,
     open: "Open",
@@ -125,10 +106,8 @@ export const STUDIO_WORDS = {
     kept: (ms: number): string => `Kept ${seconds(ms)}.`,
     tooShort: "Too short to keep. Tap, talk, then tap again.",
     notKept: "That take couldn't be kept. Try again?",
-    full: (leftoverBytes: number): string =>
-      `No room on the phone for that take, so it wasn't kept. ${makingRoom(leftoverBytes)}`,
-    noRoom: (leftoverBytes: number): string =>
-      `No room on the phone for another take. ${makingRoom(leftoverBytes)}`,
+    full: `No room on the phone for that take, so it wasn't kept. ${MAKING_ROOM}`,
+    noRoom: `No room on the phone for another take. ${MAKING_ROOM}`,
     spent:
       "The primer's time is all used. Record a long scene again, shorter, to make room.",
     thrownAway: "Thrown away. Nothing kept.",
@@ -142,22 +121,24 @@ export const STUDIO_WORDS = {
       "The phone's videos couldn't be read just now, so this screen may be behind. What you record is still kept.",
     carryFailed:
       "Your Journal episode couldn't be moved into Studio yet. It's still on the phone, and moves next time.",
-    carried: (title: string, left: number, gone: number): string =>
+    carried: (title: string, cleared: number, gone: number): string =>
       [
-        left === 0 && gone === 0
+        cleared === 0 && gone === 0
           ? `Your Journal episode “${title}” is in Studio now, every take with it.`
           : `Your Journal episode “${title}” is in Studio now.`,
-        left === 0
+        cleared === 0
           ? ""
-          : `${plural(left, "piece", "pieces")} of it couldn't be read, and ${left === 1 ? "stays" : "stay"} on the phone as ${left === 1 ? "it was" : "they were"}.`,
+          : `${plural(cleared, "piece", "pieces")} of it couldn't be read, and ${cleared === 1 ? "was" : "were"} let go.`,
         gone === 0
           ? ""
           : `${plural(gone, "take's recording", "takes' recordings")} had already left the phone before it moved.`,
       ]
         .filter((line) => line !== "")
         .join(" "),
-    carryStays:
-      "Your Journal episode on this phone couldn't be moved into Studio. It stays on the phone as it was.",
+    carryUnread:
+      "Your Journal episode on this phone couldn't be read, so it was let go.",
+    cleared: (n: number): string =>
+      `${plural(n, "piece", "pieces")} of the old Journal tab that Studio couldn't read ${n === 1 ? "was" : "were"} let go.`,
     arrived: (n: number): string =>
       `${plural(n, "take", "takes")} left the phone. Drive keeps ${n === 1 ? "it" : "them"}.`,
   },

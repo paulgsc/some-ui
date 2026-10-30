@@ -6,7 +6,6 @@ import type {
   Carried,
   Change,
   Friction,
-  Leftovers,
   ProjectStore,
   Written,
 } from "@soundbites/lib/project/store"
@@ -68,7 +67,7 @@ export function memoryProjectStore(
   audio: Map<string, Blob>
   friction: Array<Friction>
   notices: Map<number, string>
-  journal: { carried: Carried; leftovers: Leftovers }
+  journal: { carried: Carried }
   gate: { hold: (() => Promise<void>) | null }
 } {
   const projects = new Map(initial.map((each) => [each.id, each]))
@@ -79,9 +78,8 @@ export function memoryProjectStore(
   const friction: Array<Friction> = []
   const notices = new Map<number, string>()
   let noticeKey = 0
-  const journal: { carried: Carried; leftovers: Leftovers } = {
-    carried: { kind: "nothing" },
-    leftovers: { rows: 0, bytes: 0 },
+  const journal: { carried: Carried } = {
+    carried: { kind: "nothing", cleared: 0 },
   }
   const gate: { hold: (() => Promise<void>) | null } = { hold: null }
   const listeners = new Set<() => void>()
@@ -131,10 +129,9 @@ export function memoryProjectStore(
       if (written.changed) changed()
       return written
     },
-    leftovers: () => Promise.resolve(journal.leftovers),
     carryJournal: () => {
       const { carried } = journal
-      journal.carried = { kind: "nothing" }
+      journal.carried = { kind: "nothing", cleared: 0 }
       if (carried.kind === "carried")
         projects.set(carried.project.id, carried.project)
       return Promise.resolve(carried)

@@ -78,7 +78,6 @@ import type {
   Carried,
   Change,
   Friction,
-  Leftovers,
   StoredNotice,
   Written,
 } from "@soundbites/lib/project/store"
@@ -188,8 +187,6 @@ export type StudioState = {
   readonly said: ReadonlyArray<number>
   /** The bytes of audio the phone may still keep, as last read; null unread. */
   readonly roomBytes: number | null
-  /** What the carry left of the Journal tab's episode, as last read. */
-  readonly leftovers: Leftovers
   /**
    * A Done for now's close waiting on the take under way, and every write asked
    * for after it, in order, so none runs ahead of that close.
@@ -256,7 +253,6 @@ type StudioSignal =
       /** What screens that had gone away couldn't keep. */
       readonly notices: ReadonlyArray<StoredNotice>
       readonly roomBytes: number
-      readonly leftovers: Leftovers
     }
   | { readonly type: "listFailed"; readonly seq: number }
   | {
@@ -335,7 +331,6 @@ export function initialStudioState(): StudioState {
     ready: false,
     said: [],
     roomBytes: null,
-    leftovers: { rows: 0, bytes: 0 },
     held: [],
     closed: null,
     filings: [],
@@ -581,9 +576,7 @@ function refusedNotice(
   reason: "full" | "failed"
 ): string {
   if (pending.kind === "keep")
-    return reason === "full"
-      ? WORDS.notice.full(state.leftovers.bytes)
-      : WORDS.notice.notKept
+    return reason === "full" ? WORDS.notice.full : WORDS.notice.notKept
   if (pending.kind === "close") return state.notice
   return WORDS.notice.notSaved
 }
@@ -906,12 +899,14 @@ export function step(state: StudioState, event: StudioEvent): Step {
           carried.kind === "carried"
             ? WORDS.notice.carried(
                 latest(carried.project).cutList.title,
-                carried.left,
+                carried.cleared,
                 carried.gone
               )
-            : carried.kind === "stays"
-              ? WORDS.notice.carryStays
-              : state.notice,
+            : carried.kind === "unread"
+              ? WORDS.notice.carryUnread
+              : carried.cleared > 0
+                ? WORDS.notice.cleared(carried.cleared)
+                : state.notice,
       })
     }
 
@@ -970,7 +965,6 @@ export function step(state: StudioState, event: StudioEvent): Step {
         {
           ...state,
           roomBytes: event.roomBytes,
-          leftovers: event.leftovers,
           said: [...state.said, ...fresh.map((each) => each.key)],
           notice:
             fresh.length === 0
@@ -1081,7 +1075,7 @@ export function step(state: StudioState, event: StudioEvent): Step {
           ...state,
           notice:
             roomMs < SOUNDBITE_MIN_MS
-              ? WORDS.notice.noRoom(state.leftovers.bytes)
+              ? WORDS.notice.noRoom
               : WORDS.notice.spent,
         })
       const opened = openTake()

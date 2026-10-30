@@ -175,14 +175,16 @@ function rows(
   }
 }
 
-/** The stores once `plan` is carried out, as `carryJournal` does. */
+/** The stores once `plan` is carried out, as `carryJournal` does: emptied. */
 function after(before: JournalRows, plan: CarryPlan): JournalRows {
-  if (plan.kind !== "carry") return before
   return {
     plan: undefined,
-    takes: before.takes.filter((row) => !plan.takeRows.includes(row.key)),
-    audio: before.audio.filter((row) => !plan.audioRows.includes(row.key)),
-    projects: [...before.projects, plan.project.id],
+    takes: [],
+    audio: [],
+    projects:
+      plan.kind === "carry"
+        ? [...before.projects, plan.project.id]
+        : before.projects,
   }
 }
 
@@ -196,7 +198,6 @@ describe("the plan for carrying the Journal tab's episode", () => {
     ])
     expect(plan.takeRows).toEqual(["gap", "next"])
     expect(plan.audioRows).toEqual(["gap", "next"])
-    expect(plan.left).toBe(0)
     expect(plan.project.takes.every((each) => each.onPhone)).toBe(true)
   })
 
@@ -206,13 +207,13 @@ describe("the plan for carrying the Journal tab's episode", () => {
     })
   })
 
-  it("leaves everything where it is when the plan can't be read", () => {
+  it("carries nothing when the plan can't be read", () => {
     expect(planCarry(rows({ plan: { primer: "?" } }), CARRIED)).toEqual({
-      kind: "stays",
+      kind: "unread",
     })
   })
 
-  it("leaves a take row it can't read where it is, and carries the rest", () => {
+  it("counts a take row it can't read as left, and carries the rest", () => {
     const plan = planCarry(
       rows({
         takeValues: {
@@ -225,9 +226,8 @@ describe("the plan for carrying the Journal tab's episode", () => {
     if (plan.kind !== "carry") throw new Error(plan.kind)
     expect(plan.project.takes.map((each) => each.shot)).toEqual(["gap"])
     expect(plan.takeRows).toEqual(["gap"])
-    // Neither the unread row nor its recording is deleted.
+    // Neither the unread row nor its recording is copied.
     expect(plan.audioRows).toEqual(["gap"])
-    expect(plan.left).toBe(2)
   })
 
   it("carries a take whose recording is missing as off the phone", () => {
@@ -243,10 +243,9 @@ describe("the plan for carrying the Journal tab's episode", () => {
       ]
     )
     expect(plan.audioRows).toEqual(["gap"])
-    expect(plan.left).toBe(0)
   })
 
-  it("never deletes audio that isn't a recording it copied", () => {
+  it("copies only audio that is a recording a carried take names", () => {
     const plan = planCarry(
       rows({
         audioValues: {
@@ -260,10 +259,9 @@ describe("the plan for carrying the Journal tab's episode", () => {
     if (plan.kind !== "carry") throw new Error(plan.kind)
     expect(plan.moves.map((each) => each.from)).toEqual(["gap"])
     expect(plan.audioRows).toEqual(["gap"])
-    // A take whose audio row isn't a recording stays beside it, unread.
+    // A take whose audio row isn't a recording isn't carried either.
     expect(plan.project.takes.map((each) => each.shot)).toEqual(["gap"])
     expect(plan.takeRows).toEqual(["gap"])
-    expect(plan.left).toBe(3)
     expect(plan.gone).toBe(0)
   })
 
@@ -276,7 +274,7 @@ describe("the plan for carrying the Journal tab's episode", () => {
     expect(plan.gone).toBe(1)
   })
 
-  it("leaves a plan it can't fully read where it is", () => {
+  it("carries nothing of a plan it can't fully read", () => {
     const broken = [
       { ...PLAN, targets: null },
       { ...PLAN, primer: { ...PRIMER, title: 7 } },
@@ -285,14 +283,14 @@ describe("the plan for carrying the Journal tab's episode", () => {
       { ...PLAN, openedAt: 12 },
     ]
     for (const plan of broken)
-      expect(planCarry(rows({ plan }), CARRIED)).toEqual({ kind: "stays" })
+      expect(planCarry(rows({ plan }), CARRIED)).toEqual({ kind: "unread" })
   })
 
-  it("leaves everything where it is when its project is kept already", () => {
+  it("carries nothing when its project is kept already", () => {
     const first = planCarry(rows(), CARRIED)
     if (first.kind !== "carry") throw new Error(first.kind)
     expect(planCarry(rows({ projects: [first.project.id] }), CARRIED)).toEqual({
-      kind: "stays",
+      kind: "unread",
     })
   })
 
@@ -304,9 +302,6 @@ describe("the plan for carrying the Journal tab's episode", () => {
       },
     })
     const once = planCarry(before, CARRIED)
-    const left = after(before, once)
-    expect(left.takes.map((row) => row.key)).toEqual(["next"])
-    expect(left.audio.map((row) => row.key)).toEqual(["next"])
-    expect(planCarry(left, CARRIED)).toEqual({ kind: "nothing" })
+    expect(planCarry(after(before, once), CARRIED)).toEqual({ kind: "nothing" })
   })
 })
