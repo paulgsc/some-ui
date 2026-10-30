@@ -13,13 +13,13 @@
  * Each rule holds in that transaction: a save only adds (`isAppendOnly`), a
  * take joins a project only with its audio, in the same write, its audio is
  * kept once and never past `JOURNAL_TAKES_MAX_BYTES` over the projects'
- * audio and what the Journal tab's stores still hold, and audio leaves only with the write that marks its take off the
- * phone, which `isAppendOnly` allows once home or Drive holds a copy.
- * Nothing here expires.
+ * audio and what the Journal tab's stores still hold, and audio leaves only
+ * with the write that marks its take off the phone, which `isAppendOnly`
+ * allows once home or Drive holds a copy. Nothing here expires.
  */
 import { bytesBesides, done, result, withRoom } from "@some-ui/voice-capture"
 import type { Row } from "@soundbites/lib/journal/carry"
-import { planCarry } from "@soundbites/lib/journal/carry"
+import { letGo, planCarry } from "@soundbites/lib/journal/carry"
 import {
   projectAudioKey as audioKey,
   JOURNAL_STORES,
@@ -42,20 +42,24 @@ export type Friction = {
 }
 
 /**
- * What carrying the Journal tab's episode did: nothing to carry; carried,
- * with how many rows it couldn't read or copy and left where they were, and
- * how many takes came without a recording (gone before the carry); or kept
- * where it is, untouched, since it can't be carried.
+ * What carrying the Journal tab's episode did: no episode to carry; carried,
+ * with how many takes came without a recording (gone before the carry); an
+ * episode whose plan it couldn't read; or one it can read but not carry,
+ * left untouched, with the room its recordings take. All but that last say
+ * how many rows of the Journal tab's stores it didn't use and let go
+ * (`cleared`), emptying them (owner, 2026-10-30, #2251).
  */
 export type Carried =
-  | { readonly kind: "nothing" }
+  | { readonly kind: "nothing"; readonly cleared: number }
   | {
       readonly kind: "carried"
       readonly project: Project
-      readonly left: number
+      readonly cleared: number
       readonly gone: number
     }
-  | { readonly kind: "stays" }
+  | { readonly kind: "unread"; readonly cleared: number }
+  /** Its recordings' bytes still count under the takes cap. */
+  | { readonly kind: "stays"; readonly bytes: number }
 
 /**
  * An operation on a project as the store holds it (null when it isn't kept
@@ -75,9 +79,6 @@ export type Written = {
 /** A notice `remember` kept, under the key `forget` lets it go by. */
 export type StoredNotice = { readonly key: number; readonly text: string }
 
-/** Rows the carry left in the Journal tab's stores, and the audio they hold. */
-export type Leftovers = { readonly rows: number; readonly bytes: number }
-
 export type ProjectStore = {
   read: (id: string) => Promise<Project | null>
   list: () => Promise<Array<Project>>
@@ -87,8 +88,6 @@ export type ProjectStore = {
    * counts what the Journal tab's stores still hold too.
    */
   room: () => Promise<number>
-  /** What of the Journal tab's episode the carry couldn't read and left. */
-  leftovers: () => Promise<Leftovers>
   /**
    * Applies `change` to project `id` as held, in one transaction, with
    * `audio` (the one take the change adds) kept in the same write. Rejects,
@@ -105,7 +104,8 @@ export type ProjectStore = {
   /**
    * Moves the Journal tab's episode, if one is kept, into a project of its
    * own, audio and all, in one transaction, as `planCarry` decides
-   * (`journal/carry.ts`).
+   * (`journal/carry.ts`), and in the same transaction lets go of every row
+   * of the Journal tab's stores it didn't move, unless the episode stays.
    */
   carryJournal: (at: string) => Promise<Carried>
   /** Keeps how a sitting went, once: a second answer for it is refused. */
@@ -245,22 +245,6 @@ export function indexedDbProjectStore(): ProjectStore {
       return Math.max(0, JOURNAL_TAKES_MAX_BYTES - used)
     },
 
-    async leftovers(): Promise<Leftovers> {
-      const tx = (await connect()).transaction(
-        [JOURNAL_PLAN, JOURNAL_TAKES, JOURNAL_AUDIO],
-        "readonly"
-      )
-      const count = (name: string): Promise<number> =>
-        result(tx.objectStore(name).count())
-      return {
-        rows:
-          (await count(JOURNAL_PLAN)) +
-          (await count(JOURNAL_TAKES)) +
-          (await count(JOURNAL_AUDIO)),
-        bytes: await blobBytes(tx.objectStore(JOURNAL_AUDIO)),
-      }
-    },
-
     async update(id, change, audio): Promise<Written> {
       let written: Written = { before: null, project: null, changed: false }
       const write = (): Promise<void> =>
@@ -303,40 +287,49 @@ export function indexedDbProjectStore(): ProjectStore {
     },
 
     async carryJournal(at): Promise<Carried> {
-      let carried: Carried = { kind: "nothing" }
+      let carried: Carried = { kind: "nothing", cleared: 0 }
       await writing(
         [PROJECTS, AUDIO, JOURNAL_PLAN, JOURNAL_TAKES, JOURNAL_AUDIO],
         async (tx) => {
+          const plans = tx.objectStore(JOURNAL_PLAN)
+          const takes = tx.objectStore(JOURNAL_TAKES)
+          const audio = tx.objectStore(JOURNAL_AUDIO)
+          const rows = {
+            plan: await result(plans.get(JOURNAL_CURRENT)),
+            takes: await rowsOf(takes),
+            audio: await rowsOf(audio),
+          }
+          const planRows = await result(plans.count())
+          const held = planRows + rows.takes.length + rows.audio.length
+          if (held === 0) return false
           const plan = planCarry(
             {
-              plan: await result(
-                tx.objectStore(JOURNAL_PLAN).get(JOURNAL_CURRENT)
-              ),
-              takes: await rowsOf(tx.objectStore(JOURNAL_TAKES)),
-              audio: await rowsOf(tx.objectStore(JOURNAL_AUDIO)),
+              ...rows,
               projects: await result(tx.objectStore(PROJECTS).getAllKeys()),
             },
             at
           )
-          if (plan.kind !== "carry") {
-            carried = plan
+          if (plan.kind === "stays") {
+            carried = { kind: "stays", bytes: await blobBytes(audio) }
             return false
           }
-          // Only what the plan copied leaves; everything else stays put.
-          tx.objectStore(PROJECTS).put(plan.project)
-          const to = tx.objectStore(AUDIO)
-          for (const each of plan.moves) to.put(each.audio, each.to)
-          const from = tx.objectStore(JOURNAL_AUDIO)
-          for (const key of plan.audioRows) from.delete(key)
-          const takes = tx.objectStore(JOURNAL_TAKES)
-          for (const key of plan.takeRows) takes.delete(key)
-          tx.objectStore(JOURNAL_PLAN).delete(JOURNAL_CURRENT)
-          carried = {
-            kind: "carried",
-            project: plan.project,
-            left: plan.left,
-            gone: plan.gone,
+          const cleared = letGo(plan, held)
+          if (plan.kind === "carry") {
+            tx.objectStore(PROJECTS).put(plan.project)
+            const to = tx.objectStore(AUDIO)
+            for (const each of plan.moves) to.put(each.audio, each.to)
+            carried = {
+              kind: "carried",
+              project: plan.project,
+              cleared,
+              gone: plan.gone,
+            }
+          } else {
+            carried = { kind: plan.kind, cleared }
           }
+          // What wasn't moved is let go with the rest (owner, 2026-10-30,
+          // #2251): nothing writes these stores any more.
+          for (const store of [plans, takes, audio]) store.clear()
           return true
         }
       )

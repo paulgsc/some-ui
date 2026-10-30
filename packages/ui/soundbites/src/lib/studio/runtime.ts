@@ -102,16 +102,14 @@ export function createStudio(ports: StudioPorts): StudioRuntime {
           ports.store.list(),
           ports.store.notices(),
           ports.store.room(),
-          ports.store.leftovers(),
         ]).then(
-          ([projects, notices, roomBytes, leftovers]) =>
+          ([projects, notices, roomBytes]) =>
             send({
               type: "listed",
               seq,
               projects,
               notices,
               roomBytes,
-              leftovers,
             }),
           () => send({ type: "listFailed", seq })
         )

@@ -212,7 +212,7 @@ describe("recording a scene", () => {
     await until(runtime, settledWrites)
     runtime.dispatch({ type: "recordPressed" })
     expect(runtime.getSnapshot().activity.kind).toBe("idle")
-    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.notice.noRoom(0))
+    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.notice.noRoom)
   })
 
   it("refused for room as it is kept keeps nothing of it, and says what to do", async () => {
@@ -232,7 +232,7 @@ describe("recording a scene", () => {
     expect(projectIn(runtime)).toEqual(before)
     expect(memory.projects.get(before.id)).toEqual(before)
     expect(memory.audio.size).toBe(0)
-    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.notice.full(0))
+    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.notice.full)
   })
 })
 
@@ -345,7 +345,7 @@ describe("the Journal tab's episode", () => {
     memory.journal.carried = {
       kind: "carried",
       project: projectIn(carrying),
-      left: 0,
+      cleared: 0,
       gone: 0,
     }
     const runtime = studio(memory)
@@ -354,6 +354,32 @@ describe("the Journal tab's episode", () => {
       STUDIO_WORDS.notice.carried("Playoff Delta, week 8", 0, 0)
     )
     expect(projectIn(runtime).id).toBe(projectIn(carrying).id)
+  })
+
+  it("lets go of an episode it can't read, and says so", async () => {
+    const memory = memoryProjectStore()
+    memory.journal.carried = { kind: "unread", cleared: 4 }
+    const runtime = studio(memory)
+    await until(runtime, (state) => state.shelf.kind === "read")
+    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.notice.carryUnread)
+  })
+
+  it("leaves an episode it can't move as it was, and says so", async () => {
+    const memory = memoryProjectStore()
+    memory.journal.carried = { kind: "stays", bytes: 820_000 }
+    const runtime = studio(memory)
+    await until(runtime, (state) => state.shelf.kind === "read")
+    expect(runtime.getSnapshot().notice).toBe(
+      STUDIO_WORDS.notice.carryStays(820_000)
+    )
+  })
+
+  it("says what it let go of an earlier carry's pieces", async () => {
+    const memory = memoryProjectStore()
+    memory.journal.carried = { kind: "nothing", cleared: 2 }
+    const runtime = studio(memory)
+    await until(runtime, (state) => state.shelf.kind === "read")
+    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.notice.cleared(2))
   })
 })
 
@@ -699,7 +725,7 @@ describe("what the screen says it let go", () => {
     await until(runtime, (state) => state.activity.kind === "recording")
     runtime.dispatch({ type: "doneForNowPressed" })
     await until(runtime, (state) => state.closed !== "saving")
-    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.notice.full(0))
+    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.notice.full)
   })
 })
 

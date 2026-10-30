@@ -32,8 +32,8 @@
  *   loses none: it is filed when the close lands, or said lost if it fails.
  * - **Every video holding takes on the phone can be reached.** Start lists
  *   the others and opens any of them, so each one's takes can be shared and
- *   let go, and lists what the carry couldn't read of the Journal tab's
- *   episode, with the room it takes.
+ *   let go. An old Journal episode Studio can't move is no video: its notice
+ *   says the room it takes, each time Studio opens.
  * - **One activity at a time.** Playing, opening the microphone, recording
  *   and keeping a take are arms of one union.
  * - **A scene runs its take and a breath.** Keeping a take writes, in the
@@ -78,7 +78,6 @@ import type {
   Carried,
   Change,
   Friction,
-  Leftovers,
   StoredNotice,
   Written,
 } from "@soundbites/lib/project/store"
@@ -188,8 +187,6 @@ export type StudioState = {
   readonly said: ReadonlyArray<number>
   /** The bytes of audio the phone may still keep, as last read; null unread. */
   readonly roomBytes: number | null
-  /** What the carry left of the Journal tab's episode, as last read. */
-  readonly leftovers: Leftovers
   /**
    * A Done for now's close waiting on the take under way, and every write asked
    * for after it, in order, so none runs ahead of that close.
@@ -256,7 +253,6 @@ type StudioSignal =
       /** What screens that had gone away couldn't keep. */
       readonly notices: ReadonlyArray<StoredNotice>
       readonly roomBytes: number
-      readonly leftovers: Leftovers
     }
   | { readonly type: "listFailed"; readonly seq: number }
   | {
@@ -335,7 +331,6 @@ export function initialStudioState(): StudioState {
     ready: false,
     said: [],
     roomBytes: null,
-    leftovers: { rows: 0, bytes: 0 },
     held: [],
     closed: null,
     filings: [],
@@ -581,9 +576,7 @@ function refusedNotice(
   reason: "full" | "failed"
 ): string {
   if (pending.kind === "keep")
-    return reason === "full"
-      ? WORDS.notice.full(state.leftovers.bytes)
-      : WORDS.notice.notKept
+    return reason === "full" ? WORDS.notice.full : WORDS.notice.notKept
   if (pending.kind === "close") return state.notice
   return WORDS.notice.notSaved
 }
@@ -906,12 +899,16 @@ export function step(state: StudioState, event: StudioEvent): Step {
           carried.kind === "carried"
             ? WORDS.notice.carried(
                 latest(carried.project).cutList.title,
-                carried.left,
+                carried.cleared,
                 carried.gone
               )
             : carried.kind === "stays"
-              ? WORDS.notice.carryStays
-              : state.notice,
+              ? WORDS.notice.carryStays(carried.bytes)
+              : carried.kind === "unread"
+                ? WORDS.notice.carryUnread
+                : carried.cleared > 0
+                  ? WORDS.notice.cleared(carried.cleared)
+                  : state.notice,
       })
     }
 
@@ -970,7 +967,6 @@ export function step(state: StudioState, event: StudioEvent): Step {
         {
           ...state,
           roomBytes: event.roomBytes,
-          leftovers: event.leftovers,
           said: [...state.said, ...fresh.map((each) => each.key)],
           notice:
             fresh.length === 0
@@ -1081,7 +1077,7 @@ export function step(state: StudioState, event: StudioEvent): Step {
           ...state,
           notice:
             roomMs < SOUNDBITE_MIN_MS
-              ? WORDS.notice.noRoom(state.leftovers.bytes)
+              ? WORDS.notice.noRoom
               : WORDS.notice.spent,
         })
       const opened = openTake()

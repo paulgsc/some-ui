@@ -40,12 +40,12 @@ const MADE: ReadonlyArray<string> = [
   W.notice.carried(TITLE, 2, 3),
   W.start.onPhone(1),
   W.start.onPhone(4),
-  W.start.leftovers(1, 820_000),
-  W.notice.full(0),
-  W.notice.full(820_000),
-  W.notice.noRoom(0),
-  W.notice.noRoom(1_400_000),
-  W.start.leftovers(3, 1_400_000),
+  W.notice.carryStays(0),
+  W.notice.carryStays(820_000),
+  W.notice.carryStays(1_400_000),
+  W.notice.carryUnread,
+  W.notice.cleared(1),
+  W.notice.cleared(3),
   W.notice.arrived(1),
   W.notice.arrived(3),
   W.done.opensOn(2, "The miss"),
@@ -94,16 +94,11 @@ describe("Studio's words", () => {
     ).toBe("Last time: Kept takes for scene 2. Next: Scene 3: End card.")
   })
 
-  it("say what to do when the phone is full, and only what sharing frees", () => {
-    const full = STUDIO_WORDS.notice.full(0)
+  it("say what to do when the phone is full", () => {
+    const full = STUDIO_WORDS.notice.full
     expect(full).toMatch(/wasn't kept/)
     expect(full).toMatch(/share a video's takes with Claude/)
     expect(full).toMatch(/the room they held is free/)
-    expect(full).not.toMatch(/old Journal/)
-    // The old journal's pieces hold room sharing never frees: named.
-    expect(STUDIO_WORDS.notice.noRoom(820_000)).toMatch(
-      /old Journal tab hold 820 KB that sharing doesn't free/
-    )
   })
 
   it("never say takes were kept where a sitting wasn't saved", () => {

@@ -7,8 +7,12 @@
  * take of its scene, fitted to it in revision 2. `planCarry` decides, from
  * the rows one transaction read, what moves and what stays; `carryJournal`
  * (`project/store.ts`) carries that plan out in the same transaction, so the
- * episode is in exactly one place at every moment: nothing is let go.
+ * episode is in exactly one place at every moment. What a carry leaves, or
+ * an episode whose plan can't be read, the store lets go in that
+ * transaction (`letGo`; owner, 2026-10-30, #2251); an episode that `stays`
+ * is left untouched.
  */
+import { assertNever } from "@some-ui/core-utils"
 import { projectAudioKey } from "@soundbites/lib/journal/db"
 import type { Cut, Primer } from "@soundbites/lib/journal/primer"
 import { cutV1 } from "@soundbites/lib/journal/primer"
@@ -220,19 +224,19 @@ export type JournalRows = {
 
 /**
  * What carrying does, decided before anything is written: `carryJournal`
- * (`project/store.ts`) only carries it out. Nothing is deleted that was not
- * first copied into the project. A take row it can't read, a take whose
- * audio row is there but isn't a recording, and audio no carried take names
- * all stay where they are, counted in `left`; Start lists them, with the
- * room they take under the takes cap (`journal/db.ts`).
+ * (`project/store.ts`) only carries it out. A take row it can't read, a
+ * take whose audio row is there but isn't a recording, and audio no carried
+ * take names are not copied; the store lets them go with the rows it copied.
  */
 export type CarryPlan =
   /** No episode is kept: nothing to do. */
   | { readonly kind: "nothing" }
+  /** An episode is kept, but its plan can't be read: the store lets it go. */
+  | { readonly kind: "unread" }
   /**
-   * An episode is kept but can't be carried (its plan can't be read, a
-   * project of its id is kept already, or what it makes isn't a project the
-   * file reads back): everything stays where it is.
+   * An episode Studio can read but can't carry (a project of its id is kept
+   * already, or what it makes isn't a project the file reads back): it stays
+   * where it is, untouched, since its recordings may be good.
    */
   | { readonly kind: "stays" }
   | {
@@ -247,15 +251,13 @@ export type CarryPlan =
       /** The take rows and audio rows copied into the project, to delete. */
       readonly takeRows: ReadonlyArray<IDBValidKey>
       readonly audioRows: ReadonlyArray<IDBValidKey>
-      /** Rows of either store that stay, unread or uncopied. */
-      readonly left: number
       /** Takes carried whose recording was already gone from the phone. */
       readonly gone: number
     }
 
 export function planCarry(rows: JournalRows, at: string): CarryPlan {
   if (rows.plan === undefined) return { kind: "nothing" }
-  if (!isPlan(rows.plan)) return { kind: "stays" }
+  if (!isPlan(rows.plan)) return { kind: "unread" }
   const audioAt = (cutId: string): Row | undefined =>
     rows.audio.find((row) => row.key === cutId)
   // A take is carried only with its recording, or with none there at all: a
@@ -302,10 +304,28 @@ export function planCarry(rows: JournalRows, at: string): CarryPlan {
     moves,
     takeRows: readable.map((row) => row.key),
     audioRows: [...moved],
-    left:
-      rows.takes.length -
-      readable.length +
-      rows.audio.filter((row) => !moved.has(row.key)).length,
     gone: carried.takes.filter((take) => !take.onPhone).length,
+  }
+}
+
+/**
+ * How many of the `held` rows of the Journal tab's stores carrying out
+ * `plan` lets go: every row it doesn't copy, or none when the episode stays.
+ */
+export function letGo(plan: CarryPlan, held: number): number {
+  switch (plan.kind) {
+    case "stays": {
+      return 0
+    }
+    case "carry": {
+      return held - 1 - plan.takeRows.length - plan.audioRows.length
+    }
+    case "nothing":
+    case "unread": {
+      return held
+    }
+    default: {
+      return assertNever(plan)
+    }
   }
 }
