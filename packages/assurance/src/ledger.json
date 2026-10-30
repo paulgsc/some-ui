@@ -77,20 +77,25 @@
           "id": "MI3",
           "kind": "OA6",
           "property": "outcome",
-          "claim": "If the poller stops, you are told within 20 minutes.",
-          "requirement": "An alert fires when no pass has started within the interval plus the pass budget plus 60 seconds (900 + 120 + 60 at today's settings), and when the metric itself is missing; it reaches the owner within 20 minutes of the last pass start, Prometheus's 15 s evaluation and Grafana's 1 min check included, and its delivery is tested.",
+          "claim": "If the poller stops while home's server runs, you are told within 20 minutes.",
+          "requirement": "While file_host answers Prometheus, an alert fires when no pass has started within the interval plus the pass budget plus 60 seconds (900 + 120 + 60 at today's settings), and when the metric itself is missing; it reaches the owner within 20 minutes of the last pass start, Prometheus's 15 s evaluation and Grafana's 1 min check included, and its delivery is tested. A file_host that stops answering is FileHostDown's to report.",
           "bound": {
             "value": 1200,
             "unit": "seconds",
             "tighter": "lower"
           },
           "verdict": "holds",
-          "conclusion": "If the poller stops, Slack tells you within about 19 minutes of its last pass, inside the 20 promised; nothing yet watches Grafana itself.",
+          "conclusion": "While home's server runs, Slack tells you within about 19 minutes of the poller's last pass, inside the 20 promised; a server that stops answering is its own alert, and Grafana itself is not yet watched.",
           "evidence": [
             {
               "class": "structural",
               "says": "MailboxPollerStale fires when no pass has started for the interval plus the budget plus 60 s (1080 s), and MailboxPollerMetricsMissing when the poller is on with its stamp gone; promtool tests both in CI.",
               "ref": "server:infra/prometheus/rules/home.yml"
+            },
+            {
+              "class": "derived",
+              "says": "Worst case while file_host answers: the rule fires at 1080 s, Prometheus evaluates within 15 s and Grafana's rule runs within 60 s, about 1155 s in all. The promtool tests evaluate once a minute, so they do not prove the seconds.",
+              "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
             },
             {
               "class": "structural",
@@ -101,6 +106,11 @@
               "class": "measured",
               "says": "On home on 2026-10-30, the contact point's test, a Grafana-evaluated error alert and a live FileHostDown from Prometheus (03:46 UTC, through home-alerts.yml's home_watchers route) all reached the owner's Slack.",
               "ref": "server#525"
+            },
+            {
+              "class": "unknown",
+              "says": "Nothing watches Grafana itself, the one thing that delivers home's alerts.",
+              "ref": "some-ui#2289"
             }
           ],
           "proof": [
@@ -114,9 +124,9 @@
           "amendments": [
             {
               "on": "2026-10-30",
-              "change": "The bound is 20 minutes (1200 s), up from 18 (1080 s), and now includes delivery: the alert still fires at 1080 s.",
-              "why": "Prometheus evaluates every 15 s and Grafana passes alerts on once a minute, so a message lands up to about 75 s after the rule fires; an 18-minute promise could not hold without cutting the pass budget.",
-              "decision": "https://github.com/paulgsc/server/issues/525#issuecomment-6514491499"
+              "change": "The claim covers a poller that stops while home's server runs, and the bound is 20 minutes (1200 s), up from 18 (1080 s), now including delivery; the alert still fires at 1080 s, and a server that stops answering is FileHostDown's to report.",
+              "why": "A message lands up to about 75 s after the rule fires (Prometheus every 15 s, Grafana every minute), so 18 minutes could hold only by cutting the interval, the 120 s pass budget or the 60 s slack; a dead server leaves the rule no data, and FileHostDown reports it within about 3.5 minutes. The owner chose the wider bound and the narrower scope over faster rules: stronger reliability waits on a real need.",
+              "decision": "https://github.com/paulgsc/server/issues/525#issuecomment-6514571124"
             }
           ]
         },
@@ -617,7 +627,7 @@
           "claim": "A game feed that has stopped reads as stopped, not as a quiet week.",
           "requirement": "Every wake stamps game_feed_last_attempt_timestamp_seconds, whether or not anything is due, so a dashboard tells 'nothing to fetch' (a recent stamp) from 'not running' (an old one), and game_feed_enabled tells 'switched off' from both; an alert tells the owner when the stamp goes stale.",
           "verdict": "holds",
-          "conclusion": "The dashboard tells a quiet week from a stopped feed, and Slack tells you within about three minutes of its last wake when it stops; nothing yet watches Grafana itself.",
+          "conclusion": "The dashboard tells a quiet week from a stopped feed, and Slack tells you within about three minutes of its last wake once it stops, or through the server-down alert if home's server stops; a feed that is on but has never woken has no alert, and Grafana itself is not yet watched.",
           "evidence": [
             {
               "class": "structural",
@@ -638,10 +648,16 @@
               "class": "measured",
               "says": "On home on 2026-10-30, the contact point's test, a Grafana-evaluated error alert and a live FileHostDown from Prometheus (03:46 UTC, through home-alerts.yml's home_watchers route) all reached the owner's Slack.",
               "ref": "server#525"
+            },
+            {
+              "class": "unknown",
+              "says": "Nothing watches Grafana itself, the one thing that delivers home's alerts.",
+              "ref": "some-ui#2289"
             }
           ],
           "proof": [
-            "server:infra/prometheus/rules/home.test.yml#GameFeedStale"
+            "server:infra/prometheus/rules/home.test.yml#GameFeedStale",
+            "server:infra/prometheus/rules/home.test.yml#FileHostDown"
           ],
           "watch": {
             "by": "alert",
@@ -731,7 +747,7 @@
           "claim": "If the nudge waker stops, you are told.",
           "requirement": "An alert fires when no waker pass has started within its interval plus its pass deadline plus 60 seconds, and when its metrics are missing; its delivery is tested.",
           "verdict": "holds",
-          "conclusion": "If the waker stops, Slack tells you about a minute after its interval, deadline and a minute pass; nothing yet watches Grafana itself.",
+          "conclusion": "If the waker stops, Slack tells you within about 75 s of its interval plus its deadline plus a minute, or through the server-down alert if home's server stops; Grafana itself is not yet watched.",
           "evidence": [
             {
               "class": "structural",
@@ -747,11 +763,17 @@
               "class": "measured",
               "says": "On home on 2026-10-30, the contact point's test, a Grafana-evaluated error alert and a live FileHostDown from Prometheus (03:46 UTC, through home-alerts.yml's home_watchers route) all reached the owner's Slack.",
               "ref": "server#525"
+            },
+            {
+              "class": "unknown",
+              "says": "Nothing watches Grafana itself, the one thing that delivers home's alerts.",
+              "ref": "some-ui#2289"
             }
           ],
           "proof": [
             "server:infra/prometheus/rules/home.test.yml#NudgeWakerStale",
-            "server:infra/prometheus/rules/home.test.yml#NudgeWakerMetricsMissing"
+            "server:infra/prometheus/rules/home.test.yml#NudgeWakerMetricsMissing",
+            "server:infra/prometheus/rules/home.test.yml#FileHostDown"
           ],
           "watch": {
             "by": "alert",
@@ -825,20 +847,25 @@
           "id": "RR2",
           "kind": "OA6",
           "property": "outcome",
-          "claim": "If the morning run has not happened 30 minutes after it was due, you are told by 32 minutes.",
-          "requirement": "Home expects each scheduled run by its time zone's clock, and an alert fires when none is recorded 30 minutes after it was due; it reaches the owner by 32 minutes after the due time, Prometheus's 15 s evaluation and Grafana's 1 min check included, and its delivery is tested.",
+          "claim": "If the morning run has not happened 30 minutes after it was due, you are told within 32 minutes of the due time, while home's server runs.",
+          "requirement": "While file_host answers Prometheus, home expects each scheduled run by its time zone's clock, and an alert fires when none is recorded 30 minutes after it was due; it reaches the owner within 32 minutes of the due time, Prometheus's 15 s evaluation and Grafana's 1 min check included, and its delivery is tested. A file_host that stops answering is FileHostDown's to report.",
           "bound": {
             "value": 1920,
             "unit": "seconds",
             "tighter": "lower"
           },
           "verdict": "holds",
-          "conclusion": "Slack tells you within about 31 minutes of a missed run's due time, inside the 32 promised, though a run longer than about 15 minutes trips it although it ran; nothing yet watches Grafana itself.",
+          "conclusion": "While home's server runs, Slack tells you within about 31 minutes of a missed run's due time, inside the 32 promised, and a run longer than about 15 minutes trips it too; a server that stops answering is its own alert, and Grafana itself is not yet watched.",
           "evidence": [
             {
               "class": "structural",
               "says": "routine_watch sets each routine's due time from ROUTINE_SCHEDULE and its last recorded run; RoutineRunOverdue fires 30 minutes after a due time with no run that started for it, and promtool tests it in CI.",
               "ref": "server:apps/servers/file_host/src/routine_watch.rs"
+            },
+            {
+              "class": "derived",
+              "says": "Worst case while file_host answers: the rule fires 1800 s after the due time, Prometheus evaluates within 15 s and Grafana's rule runs within 60 s, about 1875 s in all. The promtool tests evaluate once a minute, so they do not prove the seconds.",
+              "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
             },
             {
               "class": "structural",
@@ -849,6 +876,11 @@
               "class": "measured",
               "says": "On home on 2026-10-30, the contact point's test, a Grafana-evaluated error alert and a live FileHostDown from Prometheus (03:46 UTC, through home-alerts.yml's home_watchers route) all reached the owner's Slack.",
               "ref": "server#525"
+            },
+            {
+              "class": "unknown",
+              "says": "Nothing watches Grafana itself, the one thing that delivers home's alerts.",
+              "ref": "some-ui#2289"
             }
           ],
           "proof": [
@@ -861,9 +893,9 @@
           "amendments": [
             {
               "on": "2026-10-30",
-              "change": "The bound is 32 minutes (1920 s), up from 30 (1800 s), and now includes delivery: the alert still fires 30 minutes after the due time.",
-              "why": "Prometheus evaluates every 15 s and Grafana passes alerts on once a minute, so a message lands up to about 75 s after the rule fires.",
-              "decision": "https://github.com/paulgsc/server/issues/525#issuecomment-6514491499"
+              "change": "The claim covers a run missed while home's server runs, and the bound is 32 minutes (1920 s) after the due time, up from 30 (1800 s), now including delivery; the alert still fires at 30 minutes, and a server that stops answering is FileHostDown's to report.",
+              "why": "A message lands up to about 75 s after the rule fires (Prometheus every 15 s, Grafana every minute); a dead server leaves the rule no data, and FileHostDown reports it within about 3.5 minutes. The owner chose the wider bound and the narrower scope over faster rules: stronger reliability waits on a real need.",
+              "decision": "https://github.com/paulgsc/server/issues/525#issuecomment-6514571124"
             }
           ]
         },
