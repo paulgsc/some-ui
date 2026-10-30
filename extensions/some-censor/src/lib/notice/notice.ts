@@ -10,6 +10,7 @@
  */
 
 import { STOP_WORDS } from "@censor/lib/settings/words"
+import { isRecord } from "@some-extension/common/utils/guards"
 
 const KIND = "boyo/stopped"
 
@@ -24,16 +25,14 @@ export function stoppedMessage(stopped: boolean): StoppedMessage {
 
 /** What a message says, or null when it is not this one. */
 export function parseStopped(message: unknown): boolean | null {
-  if (typeof message !== "object" || message === null) return null
-  if (Reflect.get(message, "kind") !== KIND) return null
-  const stopped: unknown = Reflect.get(message, "stopped")
+  if (!isRecord(message) || message["kind"] !== KIND) return null
+  const stopped = message["stopped"]
   return typeof stopped === "boolean" ? stopped : null
 }
 
 /** A muted grey: the notice reads as a fact, not an alarm. */
 const BADGE_COLOR = "#5f6368"
 
-/** The part of `browser.action` the notice uses. */
 export type ActionPort = Pick<
   typeof browser.action,
   "setBadgeText" | "setBadgeBackgroundColor" | "setTitle" | "getBadgeText"
@@ -55,7 +54,6 @@ export async function showStopped(
   await action.setTitle({ tabId, title: stopped ? STOP_WORDS.title : null })
 }
 
-/** Whether the notice is on `tabId`'s button now. */
 export async function stoppedOn(
   action: ActionPort,
   tabId: number

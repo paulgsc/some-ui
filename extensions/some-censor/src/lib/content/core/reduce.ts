@@ -110,6 +110,7 @@ import {
   foreseen,
   NO_COURSE,
   PLAYED_KEPT,
+  sameRows,
   skipTo,
   undatedShown,
 } from "./state"
@@ -309,7 +310,7 @@ function fold(state: CoreState, event: CoreEvent): Step {
       if (state.phase !== "running") return none(state)
       const to = skipTo(state, event.upNext)
       if (to === null) {
-        // R13: autoplay stops here; told unless the course showed it.
+        // R13
         if (foreseen(state) || state.unforeseen !== null) return none(state)
         return none({
           ...state,
@@ -389,8 +390,7 @@ const sameMark = (a: RowMark | null, b: RowMark | null): boolean =>
 
 function sameCourse(a: Course, b: Course): boolean {
   return (
-    a.rows.length === b.rows.length &&
-    a.rows.every((id, i) => id === b.rows[i]) &&
+    sameRows(a.rows, b.rows) &&
     a.marks.every((mark, i) => sameMark(mark, b.marks[i] ?? null))
   )
 }
@@ -615,7 +615,7 @@ function watched(
       watchDates,
       played: playedWith(state.played, merged),
       arriving: landed === "on its way" ? state.arriving : null,
-      // R13: a page autoplay went on into is held, and nothing moves on.
+      // R13
       unforeseen:
         landed === "held" && !skip ? { at: merged.videoId } : state.unforeseen,
       // Stranded only while that page stays held: later evidence may show it.

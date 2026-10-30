@@ -77,8 +77,7 @@
   outline-offset: 2px;
 }
 
-/* The toolbar button's notice, explained (R13): a plain boxed note, no
-   accent colour. */
+/* The toolbar button's notice, explained (R13). */
 .popup__stopped {
   border: 1px solid var(--bc-border);
   border-radius: 6px;

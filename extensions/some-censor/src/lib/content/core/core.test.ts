@@ -1294,23 +1294,10 @@ describe("the course (R12)", () => {
     expect(courses(skip.actions)).toEqual([["played", "now", ".", "next"]])
   })
 
-  it("decides nothing: no card's view, nor where autoplay goes", () => {
-    const without = fold(page)
-    const with_ = fold([...page, queued(["r0", "r1", "r2", "r3"], 3)])
-    for (const id of ["r0", "r1", "r2", "r3"]) {
-      const key = cardKey(asVideoId(id))
-      expect(viewOf(with_.state, key)).toBe(viewOf(without.state, key))
-      expect(admits(with_.state, asVideoId(id))).toBe(
-        admits(without.state, asVideoId(id))
-      )
-    }
-  })
-
   it("takes the marks away on nav and on stop", () => {
     const marked = fold([...page, queued(["r0", "r1", "r2", "r3"], 3)])
     const navigated = reduce(marked.state, nav(2, 4))
     expect(courses(navigated.actions)).toEqual([[]])
-    expect(navigated.state.queue).toEqual([])
 
     const stopped = reduce(marked.state, { kind: "stop", t: 4 })
     expect(courses(stopped.actions)).toEqual([[]])

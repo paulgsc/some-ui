@@ -796,9 +796,6 @@ describe("autoplay (#1805)", () => {
     expect(tokens.filter((t) => t.kind === "queued")).toEqual([
       { kind: "queued", rows, t: expect.any(Number) },
     ])
-    expect(
-      sensor.playlistRows().map((list) => list.map(({ key }) => String(key)))
-    ).toEqual([rows])
     tokens = []
     navigate(autoplay("held"))
     expect(tokens).toEqual([

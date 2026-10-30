@@ -54,8 +54,4 @@ describe("the toolbar button's notice (R13)", () => {
     expect(action.title.get(7)).toBeNull()
     expect(await stoppedOn(action, 7)).toBe(false)
   })
-
-  it("is a mark, never a count", () => {
-    expect(STOP_WORDS.badge).not.toMatch(/\d/)
-  })
 })

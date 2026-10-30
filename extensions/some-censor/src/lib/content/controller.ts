@@ -102,7 +102,7 @@ export class Controller {
   }
 }
 
-/** R13: the toolbar button shows when autoplay stopped unforeseen here. */
+/** R13 */
 function tellStopped(stopped: boolean): void {
   void ext.runtime
     .sendMessage(stoppedMessage(stopped))

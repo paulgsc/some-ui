@@ -121,13 +121,11 @@ export function courseOf(input: CourseInput): ReadonlyArray<RowMark | null> {
     }
     let byHand = false
     if (to === null) {
-      // The last row loaded is no stop: a Mix loads more behind it.
       if (at + 1 >= rows.length) break
       const mark = marks[at]
       if (mark !== null && mark !== undefined) {
         marks[at] = { ...mark, stop: true }
       }
-      // The owner starts the next shown row by hand.
       let resume = at + 1
       while (resume < rows.length && !shown(resume)) resume += 1
       if (resume >= rows.length) break

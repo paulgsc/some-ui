@@ -45,11 +45,7 @@ export type BoundAction = {
   readonly targets: ReadonlyArray<CustodyTarget>
 }
 
-/**
- * One row of the watch page's playlist and its mark (R12), bound by the
- * runtime from a `course` action: every playlist on the page whose rows
- * are the action's, row by row. Null takes the row's mark away.
- */
+/** One row of the watch page's playlist and its mark (R12). */
 export type MarkedRow = {
   readonly el: HTMLElement
   readonly mark: RowMark | null

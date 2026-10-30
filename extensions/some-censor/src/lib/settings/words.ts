@@ -116,8 +116,7 @@ export const MENU_WORDS = {
 } as const
 
 /**
- * The toolbar button's notice (R13, `lib/notice`): autoplay stopped at a
- * held video the page could not mark beforehand. The badge is a pause
+ * The toolbar button's notice (R13, `lib/notice`). The badge is a pause
  * sign in letters, which every badge font draws.
  */
 export const STOP_WORDS = {

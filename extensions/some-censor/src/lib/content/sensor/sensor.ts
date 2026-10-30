@@ -580,14 +580,12 @@ export function createSensor(ports: SensorPorts): Sensor {
     }
   }
 
-  /** The watch page's playlists, each with the rows that are cards. */
   function playlistRows(): Array<Array<{ el: HTMLElement; key: CardKey }>> {
     return readPlaylists(ports.doc)
       .map((playlist) => cardsIn(playlist))
       .filter((rows) => rows.length > 0)
   }
 
-  /** Announce the playlist's rows when they change (R12). */
   function observeQueue(): void {
     if (!running) return
     const rows = (playlistRows()[0] ?? []).map(({ key }) => keyVideoId(key))

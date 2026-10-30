@@ -5,7 +5,7 @@ import { asVideoId } from "@censor/types/ids"
 import { describe, expect, it } from "vitest"
 
 import type { CourseInput, RowMark } from "./course"
-import { courseOf, goesOn } from "./course"
+import { courseOf } from "./course"
 
 type Kind = ViewState["kind"]
 
@@ -45,17 +45,6 @@ function show(mark: RowMark | null): string {
   return mark === null ? "." : `${mark.place}${mark.stop ? "!" : ""}`
 }
 
-describe("goesOn", () => {
-  it("lets autoplay into a plated or whole video, and only whole in the lane", () => {
-    expect(goesOn(false, "plated")).toBe(true)
-    expect(goesOn(false, "whole")).toBe(true)
-    expect(goesOn(false, "absent")).toBe(false)
-    expect(goesOn(false, null)).toBe(false)
-    expect(goesOn(true, "whole")).toBe(true)
-    expect(goesOn(true, "plated")).toBe(false)
-  })
-})
-
 describe("courseOf (R12)", () => {
   it("marks what played, what plays, and what comes next", () => {
     expect(course("pppp", 1)).toEqual(["played", "now", "next", "ahead"])
@@ -83,7 +72,6 @@ describe("courseOf (R12)", () => {
       "ahead",
       "ahead",
     ])
-    // Every stop ahead is marked, not only the first.
     expect(course("ppppapp", 1)).toEqual([
       "played",
       "now",
@@ -129,7 +117,6 @@ describe("courseOf (R12)", () => {
       "passed",
       "next",
     ])
-    // From a plated row, anything admitted is.
     expect(course("pww", 0, strict)).toEqual(["now", "next", "ahead"])
   })
 

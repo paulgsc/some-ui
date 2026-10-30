@@ -137,20 +137,15 @@ export type CoreState = {
   readonly queue: ReadonlyArray<VideoId>
   /** The course as last handed to the Actuator (R12). */
   readonly course: Course
-  /**
-   * Autoplay stopped on this page where the course had marked no stop
-   * (R13): the page's video then, until the page shows another.
-   */
+  /** R13: the page autoplay stopped on, unforeseen. */
   readonly unforeseen: Unforeseen | null
 }
 
-/** Where autoplay stopped without the course having said so (R13). */
 type Unforeseen = {
   /** The page's video when it stopped; null when none was read. */
   readonly at: VideoId | null
 }
 
-/** A playlist's rows and each one's mark (`course/course.ts`). */
 export type Course = {
   readonly rows: ReadonlyArray<VideoId>
   readonly marks: ReadonlyArray<RowMark | null>
@@ -321,8 +316,13 @@ export function snapshot(state: CoreState): CoreSnapshot {
  * owner could see autoplay would stop there.
  */
 export function foreseen(state: CoreState): boolean {
-  const own = state.watch?.observation.videoId ?? null
-  if (own === null) return false
-  const at = state.course.rows.lastIndexOf(own)
-  return at !== -1 && state.course.marks[at]?.stop === true
+  return state.course.marks.some((m) => m?.place === "now" && m.stop)
+}
+
+/** The same rows, in the same order. */
+export function sameRows(
+  a: ReadonlyArray<VideoId>,
+  b: ReadonlyArray<VideoId>
+): boolean {
+  return a.length === b.length && a.every((id, i) => id === b[i])
 }

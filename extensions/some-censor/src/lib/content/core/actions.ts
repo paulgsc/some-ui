@@ -61,18 +61,14 @@ export type Action =
   | { readonly kind: "skip" }
   /**
    * Mark the watch page's playlist: `marks[i]` is the mark of the row at
-   * `i`, a row of `rows`; null takes a row's mark away (R12). The runtime
-   * binds each playlist on the page whose rows are `rows`.
+   * `i`, a row of `rows`; null takes a row's mark away (R12).
    */
   | {
       readonly kind: "course"
       readonly rows: ReadonlyArray<VideoId>
       readonly marks: ReadonlyArray<RowMark | null>
     }
-  /**
-   * Autoplay stopped on this page where the course had marked no stop, or
-   * that is over (R13): the shell shows it on the toolbar button.
-   */
+  /** Autoplay stopped unforeseen, or that is over (R13). */
   | { readonly kind: "stopped"; readonly stopped: boolean }
   /** A fact for the flight recorder; the runtime forwards it. */
   | { readonly kind: "record"; readonly fact: CoreFact }

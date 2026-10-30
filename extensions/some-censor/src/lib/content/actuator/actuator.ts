@@ -188,7 +188,6 @@ export function createActuator(doc: Document, ports: ActuatorPorts): Actuator {
 
   // ── The course (R12) ───────────────────────────────────────────────────
 
-  /** Rows that carry a course stamp now. */
   let marked = new Set<HTMLElement>()
 
   function unmark(el: HTMLElement): void {

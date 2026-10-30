@@ -31,6 +31,7 @@ import {
   admits,
   initialState,
   isStranded,
+  sameRows,
 } from "@censor/lib/content/core/state"
 import type {
   AutoplayRule,
@@ -71,10 +72,7 @@ export type RuntimePorts = {
   readonly clock?: () => number
   readonly mintSession?: () => SessionId
   readonly onFact?: (fact: CoreFact) => void
-  /**
-   * Autoplay stopped where the page could not show it would, or that is
-   * over (R13): the shell says so on the toolbar button.
-   */
+  /** R13: on the toolbar button. */
   readonly onStopped?: (stopped: boolean) => void
 }
 
@@ -170,10 +168,8 @@ export function createRuntime(ports: RuntimePorts): Runtime {
   function markRows(course: Course): Array<MarkedRow> {
     const out: Array<MarkedRow> = []
     for (const rows of sensorInstance.playlistRows()) {
-      const same =
-        rows.length === course.rows.length &&
-        rows.every((row, i) => keyVideoId(row.key) === course.rows[i])
-      if (!same) continue
+      const ids = rows.map((row) => keyVideoId(row.key))
+      if (!sameRows(ids, course.rows)) continue
       rows.forEach((row, i) => {
         out.push({ el: row.el, mark: course.marks[i] ?? null })
       })
