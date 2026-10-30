@@ -195,7 +195,12 @@ function timeChain(shot: ResolvedShot, fps: number, frames: number): string {
   const outSpan = p.outMs === undefined ? null : p.outMs - p.inMs
   const span = [freezeAt, outSpan].filter((x) => x !== null)
   return [
-    span.length ? `trim=duration=${sec(Math.min(...span))}` : "",
+    // trim reads a duration of 0 as none, so a freeze at 0 keeps one frame.
+    !span.length
+      ? ""
+      : Math.min(...span) > 0
+        ? `trim=duration=${sec(Math.min(...span))}`
+        : "trim=end_frame=1",
     p.speed === 1 ? "setpts=PTS-STARTPTS" : `setpts=(PTS-STARTPTS)/${p.speed}`,
     `tpad=stop_mode=clone:stop_duration=${at(frames + fps, fps)}`,
     `fps=${fps}`,

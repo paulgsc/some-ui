@@ -59,6 +59,12 @@ describe("planSegment", () => {
     expect(g.includes("eval=frame")).toBe(ZOOMS.includes(kind))
   })
 
+  it("holds the first frame for a freeze at the start", () => {
+    expect(
+      graph(scene({ overrides: { motion: { kind: "freeze", atMs: 0 } } }))
+    ).toContain("[0:v]trim=end_frame=1,setpts=PTS-STARTPTS,tpad=")
+  })
+
   it("zooms about the window's centre", () => {
     const z = "(1+0.1*min(t/2,1))"
     expect(
