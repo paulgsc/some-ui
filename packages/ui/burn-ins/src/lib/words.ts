@@ -116,5 +116,7 @@ export const WORDS = {
     recordLabel: "The record of each scene, as the video's end card shows it",
     noRecord:
       "This link carries no record. The link at the end of a video names its scenes; open that one to see them here.",
+    tooLong:
+      "This link names more scenes than a video's record holds, so it isn't one a video printed. Check it against the end of the video.",
   },
 } as const

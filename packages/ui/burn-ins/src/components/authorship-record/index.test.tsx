@@ -1,5 +1,5 @@
 import { AuthorshipRecord } from "@burn-ins/components/authorship-record"
-import { recordCode, recordLink } from "@burn-ins/lib/authorship-link"
+import { recordCode } from "@burn-ins/lib/authorship-link"
 import { WORDS } from "@burn-ins/lib/words"
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
@@ -16,8 +16,14 @@ describe("the record page", () => {
     expect(
       screen.getByRole("img", { name: WORDS.record.keyLabel })
     ).toBeTruthy()
-    const end = screen.getByRole("img", { name: WORDS.record.recordLabel })
-    expect(end.textContent).toContain(recordLink(record))
+    expect(
+      screen.getByRole("img", { name: WORDS.record.recordLabel })
+    ).toBeTruthy()
+  })
+
+  it("says so when a link is longer than any record", () => {
+    render(<AuthorshipRecord code={"A".repeat(25)} />)
+    expect(screen.getByText(WORDS.record.tooLong)).toBeTruthy()
   })
 
   it("says so when the link carries no record", () => {

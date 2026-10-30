@@ -5,8 +5,12 @@
  *
  * Each scene between the intro and the end card is one character: its
  * origin (3), its wording (2) and its set of hands (8) are 48 states, one
- * base64url digit. Hands are read back in a fixed order, so a record
- * round-trips exactly.
+ * digit of 48 URL-safe characters with no look-alikes (no I, l, O, 0 or 1),
+ * so a link typed from a paused video reads back exactly or not at all.
+ *
+ * The digits and the orders below are frozen: a published video's end card
+ * prints codes in them, so reordering any list changes what an old link
+ * says. A change is a new parameter, never an edit.
  */
 
 import type { AuthoredScene, AuthorshipParams } from "./authorship"
@@ -14,8 +18,7 @@ import type { AuthoredScene, AuthorshipParams } from "./authorship"
 /** The record page, as the end card prints it. */
 const RECORD_ADDRESS = "paulgsc.github.io/some-ui/authorship"
 
-const DIGITS =
-  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+const DIGITS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxy"
 
 const ORIGINS = ["you", "agent", "source"] as const
 const WORDINGS = ["you", "agent"] as const

@@ -44,14 +44,10 @@ const bare: Omit<AuthoredScene, "startMs"> = {
 const drawn = (
   between: ReadonlyArray<Omit<AuthoredScene, "startMs">>
 ): AuthorshipDrawing => {
-  const scenes = [bare, ...between, bare].map((s, i) => ({
-    ...s,
-    startMs: i * 1000,
-  }))
   const p = prepare({
     kind: "authorship",
     design: "cells-v1",
-    params: { scenes, endMs: scenes.length * 1000 },
+    params: recordParams(between),
   })
   if (!p.ok) throw new Error(p.problems.join("; "))
   if (p.value.kind !== "authorship") throw new Error("not the mark")
@@ -142,12 +138,11 @@ describe("the authorship mark", () => {
 describe("the end card's link", () => {
   it("reads back every idea path over every set of hands", () => {
     expect(scenesOf(recordCode(EVERY))).toEqual(EVERY)
-    expect(new Set(recordCode(EVERY)).size).toBe(EVERY.length)
   })
 
-  it("refuses what no record writes", () => {
-    expect(scenesOf("Az!")).toBeNull()
-    expect(scenesOf("~")).toBeNull()
+  it("refuses what no record writes, look-alikes included", () => {
+    for (const code of ["A!", "~", "z", "-", "I", "l", "O", "0", "1"])
+      expect(scenesOf(code)).toBeNull()
     expect(scenesOf("")).toEqual([])
   })
 
@@ -156,14 +151,5 @@ describe("the end card's link", () => {
       const rows = drawn(batch).end.blocks.flatMap((b) => b.rows)
       expect(rows).toContain(recordLink(batch))
     }
-  })
-
-  it("gives the page params the mark draws from", () => {
-    const p = prepare({
-      kind: "authorship",
-      design: "cells-v1",
-      params: recordParams(EVERY.slice(0, MOST_SCENES)),
-    })
-    expect(p.ok).toBe(true)
   })
 })

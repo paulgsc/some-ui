@@ -1,7 +1,7 @@
 import { Route as Authorship } from "@/routes/authorship"
 import { Route as BurnIns } from "@/routes/burn-ins"
 import { Route as Captions } from "@/routes/captions"
-import { isRedirect } from "@tanstack/react-router"
+import { defaultParseSearch, isRedirect } from "@tanstack/react-router"
 import { describe, expect, it } from "vitest"
 
 const read = (search: Record<string, unknown>): unknown => {
@@ -52,10 +52,16 @@ describe("/captions", () => {
 })
 
 describe("/authorship's search", () => {
-  it("takes a record as text and drops anything else", () => {
-    const validate = Authorship.options.validateSearch
-    if (typeof validate !== "function") throw new Error("no validateSearch")
-    expect(validate({ r: "Az-_" })).toEqual({ r: "Az-_" })
+  const validate = Authorship.options.validateSearch
+  if (typeof validate !== "function") throw new Error("no validateSearch")
+
+  it("reads back the record of every link an end card prints", () => {
+    for (const code of ["HFWaMp", "true"]) {
+      expect(validate(defaultParseSearch(`?r=${code}`))).toEqual({ r: code })
+    }
+  })
+
+  it("drops what no link writes", () => {
     expect(validate({ r: 7 })).toEqual({})
     expect(validate({})).toEqual({})
   })
