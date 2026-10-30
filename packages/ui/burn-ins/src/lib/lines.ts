@@ -17,7 +17,7 @@ export const charsOf = (words: ReadonlyArray<HasText>): number =>
   words.reduce((n, w) => n + w.text.length, 0) + Math.max(0, words.length - 1)
 
 /** Fills lines greedily; a word longer than a line gets a line of its own. */
-export const greedy = <W extends HasText>(
+const greedy = <W extends HasText>(
   words: ReadonlyArray<W>,
   lineChars: number
 ): ReadonlyArray<ReadonlyArray<W>> => {

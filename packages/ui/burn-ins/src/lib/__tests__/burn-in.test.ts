@@ -86,6 +86,21 @@ describe("a burn-in", () => {
     })
   })
 
+  it("measures wide letters as wide as they draw", () => {
+    // 32 W's are about 1357 px at 60 px in Barlow Condensed 800: too wide
+    // for the header even at the 44 px floor.
+    expect(
+      prepare({
+        kind: "headline",
+        design: "v1",
+        params: { headline: "W".repeat(32) },
+      })
+    ).toEqual({
+      ok: false,
+      problems: ["the headline burn-in (v1): the headline doesn't fit"],
+    })
+  })
+
   it("takes the params the renderer's v1 converter writes", () => {
     // packages/video-render/src/timeline-v1.ts
     expect(
