@@ -1,0 +1,48 @@
+# @some-ui/video-render
+
+The one renderer for my videos: Studio's (epic #2248, story ST1 #2249) and
+Game Week Bites' shorts (#2074), run in a session today and on home by
+GWB10's worker (#2084) later. A cut list goes in; an MP4 and the time of
+every scene come out, the same bytes each time for the same inputs and
+ffmpeg.
+
+It applies no judgement: every duration is a number someone wrote, every
+look is a plan or an override. Before ffmpeg runs, it refuses a cut list
+with every reason it can't be drawn as written: a file missing or too
+short, or a background, music bed or sound that changed since it was
+chosen.
+
+## What is here
+
+Each module's header says why it is the way it is.
+
+- `src/vocabulary.ts`: everything the renderer can draw, as schemas.
+- `src/plans.ts`, `src/words.ts`: the Look and Voice plans, and every word
+  the phone shows for them.
+- `src/cut-list.ts`, `src/series.ts`: cut list v2, and a series (ST11) with
+  `src/sample/build-journal-short.json`.
+- `src/resolve.ts`, `src/timing.ts`: each lever from the layer that sets
+  it; each scene placed in whole frames.
+- `src/plan.ts`: the ffmpeg calls, as data. `src/render.ts` runs them over
+  ports; `src/node.ts` gives it ffmpeg and the file system.
+- `src/timeline-v1.ts`: the build-journal skill's `timeline.json` shorts as
+  cut list v2.
+- `src/cli.ts`: the command, and its usage:
+
+```sh
+pnpm --filter @some-ui/video-render render <video folder> --series <series.json>
+```
+
+Needs `ffmpeg` and `ffprobe` on `PATH`; the repo's nix shells carry them
+(`nix/video`).
+
+## Not yet
+
+- **Burn-ins** (headlines, captions, cards, the authorship mark) come from
+  ST15's workspace (#2273) through `Ports.recordBurnIn`. Until then a cut
+  list with burn-ins renders only with them left out (`--without-burn-ins`),
+  so a short converted from the skill's `render.py` loses its text, and
+  `render.py` stays until ST15.
+- **`fromRenderPack`**, GWB9's render pack (#2083) as a cut list, waits on
+  that pack's shape, and with it B-roll by library id (GWB12, #2086).
+- **Intro and outro scenes** in a series are ST11's (#2259).

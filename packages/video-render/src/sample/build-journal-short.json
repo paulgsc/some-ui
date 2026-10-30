@@ -1,0 +1,21 @@
+{
+  "schema": "some-ui.video-series/1",
+  "id": "build-journal-short",
+  "version": 1,
+  "title": "Build Journal short",
+  "frame": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30
+  },
+  "ground": "#111821",
+  "window": {
+    "x": 54,
+    "y": 250,
+    "width": 972,
+    "height": 1450
+  },
+  "defaultLook": "calm",
+  "sounds": {},
+  "soundGainDb": -8
+}
