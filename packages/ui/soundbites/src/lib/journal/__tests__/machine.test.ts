@@ -11,7 +11,6 @@ import {
   step,
 } from "@soundbites/lib/journal/machine"
 import type { JournalPlan, JournalTake } from "@soundbites/lib/journal/plan"
-import { JOURNAL_IDLE_MS } from "@soundbites/lib/journal/plan"
 import { describe, expect, it } from "vitest"
 
 /** The fixture plan's `openedAt`: the episode its writes name. */
@@ -35,13 +34,12 @@ function run(
 /** Arrived, and the shelf read as `p` with `takes`. */
 function arrived(
   p: JournalPlan | null = plan(),
-  takes: ReadonlyArray<JournalTake> = [],
-  now = NOON
+  takes: ReadonlyArray<JournalTake> = []
 ): JournalState {
   return run(
     initialJournalState(),
     { type: "arrived" },
-    { type: "listed", seq: 1, shelf: { plan: p, takes }, now }
+    { type: "listed", seq: 1, shelf: { plan: p, takes } }
   ).state
 }
 
@@ -188,7 +186,6 @@ describe("journal machine", () => {
       type: "listed",
       seq: staleSeq,
       shelf: { plan: plan(), takes: [] },
-      now: NOON,
     })
     expect(stale.state).toBe(moved.state)
   })
@@ -251,7 +248,6 @@ describe("journal machine", () => {
       type: "listed",
       seq: recording.readSeq,
       shelf: { plan: other, takes: [] },
-      now: NOON,
     }).state
     const saved = run(
       reread,
@@ -298,28 +294,6 @@ describe("journal machine", () => {
     })
     expect(read.state.primerProblem).toBe("That file isn't JSON.")
     expect(read.state.shelf).toBe(state.shelf)
-  })
-
-  it("lets an episode go a week after its last take", () => {
-    const touched = plan({ touchedAt: new Date(NOON).toISOString() })
-    const fresh = arrived(touched, [], NOON + JOURNAL_IDLE_MS - 1)
-    expect(fresh.shelf).toMatchObject({ plan: touched })
-    const stale = run(
-      initialJournalState(),
-      { type: "arrived" },
-      {
-        type: "listed",
-        seq: 1,
-        shelf: { plan: touched, takes: [take("gap", 5_000)] },
-        now: NOON + JOURNAL_IDLE_MS,
-      }
-    )
-    expect(stale.effects).toEqual([
-      { type: "read", seq: 1 },
-      { type: "clear", episode: EPISODE },
-    ])
-    expect(stale.state.shelf).toEqual({ kind: "read", plan: null, takes: [] })
-    expect(stale.state.notice).toBe(JOURNAL_NOTICES.expired)
   })
 
   it("discards the episode on the person's say", () => {

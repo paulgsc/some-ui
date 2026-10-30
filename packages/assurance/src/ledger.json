@@ -1530,8 +1530,8 @@
     {
       "store": "phone:journal",
       "class": "record",
-      "growth": "bounded: one episode; JOURNAL_TAKES_MAX_BYTES = 2 x 360 s x 4,000 B/s = 2,880,000 B; one take per cut.",
-      "horizon": "the episode is let go once shared, discarded, replaced by another primer, or JOURNAL_IDLE_MS = 7 days without a take",
+      "growth": "bounded: one episode, one take per cut, and Studio's projects in the same database (every revision, note, take and sitting, append-only); JOURNAL_TAKES_MAX_BYTES = 2 x 360 s x 4,000 B/s = 2,880,000 B covers the episode's audio and the projects' together.",
+      "horizon": "the episode is let go once shared, discarded or replaced by another primer; a project is never let go, and a take's audio leaves the phone only once home or Drive holds a copy",
       "family": "what-is-kept"
     },
     {

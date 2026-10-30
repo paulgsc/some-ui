@@ -114,12 +114,10 @@ describe("Journal", () => {
     )
   })
 
-  it("shows when an unshared episode clears", async () => {
+  it("says an unshared episode is kept until shared", async () => {
     setup({ takes: [take("gap", 9_000)] })
     expect(
-      await screen.findByText(
-        /3 cuts · 1 recorded · clears Oct 19 unless shared/
-      )
+      await screen.findByText(/3 cuts · 1 recorded · kept until shared/)
     ).toBeInTheDocument()
   })
 

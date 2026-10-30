@@ -14,6 +14,8 @@ import type { JournalPorts } from "./journal/runtime"
 import type { JournalStore } from "./journal/store"
 import { indexedDbJournalStore } from "./journal/store"
 import { SOUNDBITE_BITS_PER_SECOND } from "./policy"
+import type { ProjectStore } from "./project/store"
+import { indexedDbProjectStore } from "./project/store"
 import type { SoundbitesPorts } from "./runtime"
 import type { SoundbiteStore } from "./store"
 import { indexedDbSoundbiteStore } from "./store"
@@ -21,6 +23,7 @@ import { indexedDbSoundbiteStore } from "./store"
 /** One store per page load, so the database opens once. */
 let store: SoundbiteStore | null = null
 let journal: JournalStore | null = null
+let projects: ProjectStore | null = null
 
 export function phoneSoundbiteStore(): SoundbiteStore {
   store ??= indexedDbSoundbiteStore()
@@ -42,6 +45,12 @@ export function phonePorts(): SoundbitesPorts {
 export function phoneJournalStore(): JournalStore {
   journal ??= indexedDbJournalStore()
   return journal
+}
+
+/** Studio's projects: kept in the journal's database, under its takes cap. */
+export function phoneProjectStore(): ProjectStore {
+  projects ??= indexedDbProjectStore()
+  return projects
 }
 
 export function phoneJournalPorts(): JournalPorts {

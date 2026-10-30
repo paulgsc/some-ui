@@ -102,7 +102,7 @@ export function createJournal(ports: JournalPorts): JournalRuntime {
       case "read": {
         const { seq } = effect
         ports.store.read().then(
-          (shelf) => dispatch({ type: "listed", seq, shelf, now: ports.now() }),
+          (shelf) => dispatch({ type: "listed", seq, shelf }),
           () => dispatch({ type: "listFailed", seq })
         )
         return

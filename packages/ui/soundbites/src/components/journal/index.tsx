@@ -33,7 +33,6 @@ import {
 import type { Timeline } from "@soundbites/lib/journal/plan"
 import {
   capFor,
-  expiresAt,
   isSpent,
   NUDGE_MS,
   timeline,
@@ -483,13 +482,6 @@ export const Journal = ({ ports, footer }: JournalProps): JSX.Element => {
     setOpen((was) => ({ ...was, [section]: !was[section] }))
   }
 
-  const clears =
-    plan === null
-      ? ""
-      : new Date(expiresAt(plan)).toLocaleDateString(undefined, {
-          month: "short",
-          day: "numeric",
-        })
   const recordedMs = line?.recordedMs ?? 0
   const focus = line?.rows.find((row) => row.cut.id === state.selected) ?? null
 
@@ -517,7 +509,7 @@ export const Journal = ({ ports, footer }: JournalProps): JSX.Element => {
             <span className="text-muted-foreground truncate text-xs">
               {plan === null
                 ? "Open one an agent saved to Drive."
-                : `${plan.primer.cuts.length} cuts · ${takes.length} recorded · clears ${clears} unless shared`}
+                : `${plan.primer.cuts.length} cuts · ${takes.length} recorded · kept until shared`}
             </span>
           </>
         }
