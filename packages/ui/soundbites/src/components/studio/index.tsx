@@ -18,11 +18,17 @@ import { phoneStudioPorts } from "@soundbites/lib/phone"
 import type { Project } from "@soundbites/lib/project/model"
 import { lengthFor } from "@soundbites/lib/project/script"
 import type { StudioIntent, StudioState } from "@soundbites/lib/studio/machine"
-import { isSettled } from "@soundbites/lib/studio/machine"
+import { isSettled, projectOf } from "@soundbites/lib/studio/machine"
 import type { StudioPorts } from "@soundbites/lib/studio/runtime"
 import { createStudio } from "@soundbites/lib/studio/runtime"
 import type { RecordView } from "@soundbites/lib/studio/view"
-import { opensOn, recordView, startView } from "@soundbites/lib/studio/view"
+import {
+  opensOn,
+  othersOnPhone,
+  recordView,
+  startView,
+  takesOnPhone,
+} from "@soundbites/lib/studio/view"
 import type { Snag, Went } from "@soundbites/lib/studio/words"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { FolderOpen, Mic, Pause, Play, Square } from "lucide-react"
@@ -96,16 +102,35 @@ const PrimerPick = ({
   )
 }
 
+/** The share slot for `project`, with "they reached Drive" told to the machine. */
+function shareFor(
+  share: StudioShare,
+  project: Project,
+  dispatch: Dispatch
+): ReactNode {
+  return share({
+    project,
+    onArrived: (takes) =>
+      dispatch({ type: "takesArrived", project: project.id, takes }),
+  })
+}
+
 const Start = ({
   state,
   project,
   dispatch,
+  share,
 }: {
   state: StudioState
   project: Project | null
   dispatch: Dispatch
+  share: StudioShare | undefined
 }): JSX.Element => {
   const view = project === null ? null : startView(project)
+  const others = othersOnPhone(
+    state.shelf.kind === "read" ? state.shelf.projects : [],
+    state.current
+  )
   return (
     <div className="flex flex-col gap-3">
       <header className="space-y-1">
@@ -156,6 +181,48 @@ const Start = ({
             </li>
           ))}
         </ul>
+      )}
+      {share !== undefined && project !== null && takesOnPhone(project) > 0 && (
+        <div className="border-border/60 space-y-2 rounded-2xl border p-3">
+          <p className="text-muted-foreground text-sm">
+            {WORDS.start.shareLine}
+          </p>
+          {shareFor(share, project, dispatch)}
+        </div>
+      )}
+      {others.length > 0 && (
+        <section className="space-y-2">
+          <h3 className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+            {WORDS.start.others}
+          </h3>
+          <ul className="flex flex-col gap-2">
+            {others.map((other) => (
+              <li
+                key={other.id}
+                className="border-border/60 flex items-center gap-3 rounded-2xl border px-3 py-2"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-bold">
+                    {other.title}
+                  </span>
+                  <span className="text-muted-foreground block text-xs">
+                    {WORDS.start.onPhone(other.onPhone)}
+                  </span>
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  aria-label={`${WORDS.start.open}: ${other.title}`}
+                  onClick={() =>
+                    dispatch({ type: "projectOpened", project: other.id })
+                  }
+                >
+                  {WORDS.start.open}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
       <PrimerPick
         state={state}
@@ -466,10 +533,7 @@ const Done = ({
           <p className="text-muted-foreground text-sm">
             {WORDS.done.shareLine}
           </p>
-          {share({
-            project,
-            onArrived: (takes) => dispatch({ type: "takesArrived", takes }),
-          })}
+          {shareFor(share, project, dispatch)}
         </div>
       )}
       <Button
@@ -509,7 +573,7 @@ export const Studio = ({ ports, share }: StudioProps): JSX.Element => {
         </Button>
       </div>
     )
-  const { project } = shelf
+  const project = projectOf(state)
   if (screen.kind === "record" && project !== null) {
     const view = recordView(project, screen.shot)
     if (view !== null)
@@ -519,5 +583,7 @@ export const Studio = ({ ports, share }: StudioProps): JSX.Element => {
     return (
       <Done state={state} project={project} dispatch={dispatch} share={share} />
     )
-  return <Start state={state} project={project} dispatch={dispatch} />
+  return (
+    <Start state={state} project={project} dispatch={dispatch} share={share} />
+  )
 }

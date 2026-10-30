@@ -9,9 +9,11 @@ import { assertNever } from "@some-ui/core-utils"
 import type { Playback, Player, StartRecording } from "@some-ui/voice-capture"
 import { takeRunner } from "@some-ui/voice-capture"
 import { TAKE_TICK_MS } from "@soundbites/lib/policy"
-import { latest } from "@soundbites/lib/project/model"
 import type { ProjectStore } from "@soundbites/lib/project/store"
-import { ProjectFullError } from "@soundbites/lib/project/store"
+import {
+  ProjectFullError,
+  ProjectRewriteError,
+} from "@soundbites/lib/project/store"
 
 import type {
   StudioEffect,
@@ -27,6 +29,11 @@ export type StudioPorts = {
   player: Player
   /** Milliseconds since the epoch. */
   now: () => number
+  /**
+   * A new take's id: unique across every runtime on the phone, so two
+   * screens' takes never claim one id. Letters, digits and dashes.
+   */
+  newId: () => string
   /** A picked file's text. */
   readText: (file: Blob) => Promise<string>
   /** As `SoundbitesPorts.onVisibility`: now, then on each change. */
@@ -62,7 +69,12 @@ export function createStudio(ports: StudioPorts): StudioRuntime {
       now: ports.now,
       tickMs: TAKE_TICK_MS,
     },
-    (signal) => send(signal.type === "taken" ? { ...signal, at: at() } : signal)
+    (signal) =>
+      send(
+        signal.type === "taken"
+          ? { ...signal, at: at(), id: ports.newId() }
+          : signal
+      )
   )
 
   const stopPlayback = (): void => {
@@ -76,7 +88,12 @@ export function createStudio(ports: StudioPorts): StudioRuntime {
       (error: unknown) =>
         send({
           type: "writeFailed",
-          reason: error instanceof ProjectFullError ? "full" : "failed",
+          reason:
+            error instanceof ProjectFullError
+              ? "full"
+              : error instanceof ProjectRewriteError
+                ? "rewrite"
+                : "failed",
         })
     )
   }
@@ -93,11 +110,7 @@ export function createStudio(ports: StudioPorts): StudioRuntime {
       }
       case "carry": {
         ports.store.carryJournal(effect.at).then(
-          (carried) =>
-            send({
-              type: "carried",
-              title: carried === null ? null : latest(carried).cutList.title,
-            }),
+          (carried) => send({ type: "carried", carried }),
           () => send({ type: "carryFailed" })
         )
         return
@@ -178,8 +191,14 @@ export function createStudio(ports: StudioPorts): StudioRuntime {
         send({ type: hidden ? "hidden" : "shown" })
       )
       send({ type: "entered", at: at() })
+      const unwatchStore = ports.store.subscribe(() =>
+        send({ type: "storeChanged" })
+      )
+      // Detached, the runtime still finishes a take under way and keeps it:
+      // its writes land after the screen is gone.
       return () => {
         unwatchPage()
+        unwatchStore()
         send({ type: "left" })
       }
     },

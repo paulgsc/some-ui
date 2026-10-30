@@ -1,8 +1,12 @@
 import type { Primer } from "@soundbites/lib/journal/primer"
 import { readPrimer } from "@soundbites/lib/journal/primer"
 import type { Project } from "@soundbites/lib/project/model"
-import { isAppendOnly } from "@soundbites/lib/project/model"
-import type { Friction, ProjectStore } from "@soundbites/lib/project/store"
+import { admitted } from "@soundbites/lib/project/model"
+import type {
+  Carried,
+  Friction,
+  ProjectStore,
+} from "@soundbites/lib/project/store"
 import {
   ProjectFullError,
   ProjectRewriteError,
@@ -47,9 +51,9 @@ export function primer(): Primer {
 }
 
 /**
- * The IndexedDB store's contract, in memory: the same refusals (a save that
- * rewrites, a take added without its audio, audio past `capBytes`) and the
- * same letting go of audio a save marks off the phone.
+ * The IndexedDB store's contract, in memory: the same refusals and the same
+ * letting go of audio, decided by the store's own `admitted`, audio past
+ * `capBytes` refused, and a change notice after each write.
  */
 export function memoryProjectStore(
   initial: ReadonlyArray<Project> = [],
@@ -59,7 +63,7 @@ export function memoryProjectStore(
   projects: Map<string, Project>
   audio: Map<string, Blob>
   friction: Array<Friction>
-  journal: { carried: Project | null }
+  journal: { carried: Carried }
 } {
   const projects = new Map(initial.map((each) => [each.id, each]))
   const audio = new Map<string, Blob>()
@@ -67,23 +71,24 @@ export function memoryProjectStore(
     for (const take of project.takes)
       if (take.onPhone) audio.set(`${project.id}:${take.id}`, new Blob(["x"]))
   const friction: Array<Friction> = []
-  const journal: { carried: Project | null } = { carried: null }
+  const journal: { carried: Carried } = { carried: { kind: "nothing" } }
+  const listeners = new Set<() => void>()
+  const changed = (): Promise<void> => {
+    for (const listener of listeners) listener()
+    return Promise.resolve()
+  }
 
-  const put = (project: Project, with_: string | null): void => {
-    const kept = projects.get(project.id) ?? null
-    if (kept !== null && !isAppendOnly(kept, project))
-      throw new ProjectRewriteError()
-    const before = kept?.takes ?? []
-    const added = project.takes.filter(
-      (take) => !before.some((each) => each.id === take.id)
+  /** Puts `project` as the store would, or says why not. */
+  const put = (project: Project, adding: string | null): Error | null => {
+    const admission = admitted(
+      projects.get(project.id) ?? null,
+      project,
+      adding
     )
-    if (added.some((take) => take.id !== with_)) throw new ProjectRewriteError()
+    if (!admission.ok) return new ProjectRewriteError()
     projects.set(project.id, project)
-    for (const take of before) {
-      const now = project.takes.find((each) => each.id === take.id)
-      if (take.onPhone && now?.onPhone === false)
-        audio.delete(`${project.id}:${take.id}`)
-    }
+    for (const take of admission.letGo) audio.delete(`${project.id}:${take}`)
+    return null
   }
 
   const store: ProjectStore = {
@@ -92,14 +97,8 @@ export function memoryProjectStore(
     audio: (project, take) =>
       Promise.resolve(audio.get(`${project}:${take}`) ?? null),
     save: (project) => {
-      try {
-        put(project, null)
-        return Promise.resolve()
-      } catch (error) {
-        return Promise.reject(
-          error instanceof Error ? error : new Error(String(error))
-        )
-      }
+      const refused = put(project, null)
+      return refused === null ? changed() : Promise.reject(refused)
     },
     keepTake: (project, take, blob) => {
       const key = `${project.id}:${take}`
@@ -107,20 +106,16 @@ export function memoryProjectStore(
       if (audio.has(key)) return Promise.reject(new ProjectRewriteError())
       if (used + blob.size > capBytes)
         return Promise.reject(new ProjectFullError())
-      try {
-        put(project, take)
-      } catch (error) {
-        return Promise.reject(
-          error instanceof Error ? error : new Error(String(error))
-        )
-      }
+      const refused = put(project, take)
+      if (refused !== null) return Promise.reject(refused)
       audio.set(key, blob)
-      return Promise.resolve()
+      return changed()
     },
     carryJournal: () => {
       const { carried } = journal
-      journal.carried = null
-      if (carried !== null) projects.set(carried.id, carried)
+      journal.carried = { kind: "nothing" }
+      if (carried.kind === "carried")
+        projects.set(carried.project.id, carried.project)
       return Promise.resolve(carried)
     },
     report: (row) => {
@@ -131,7 +126,13 @@ export function memoryProjectStore(
       )
         return Promise.reject(new Error("already answered"))
       friction.push(row)
-      return Promise.resolve()
+      return changed()
+    },
+    subscribe: (listener) => {
+      listeners.add(listener)
+      return (): void => {
+        listeners.delete(listener)
+      }
     },
   }
   return { store, projects, audio, friction, journal }

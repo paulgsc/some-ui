@@ -7,8 +7,11 @@ import type {
 import type { StudioProps } from "@soundbites/components/studio"
 import { Studio } from "@soundbites/components/studio"
 import type { Project } from "@soundbites/lib/project/model"
+import { newProject } from "@soundbites/lib/project/model"
+import { cutListOf } from "@soundbites/lib/project/script"
 import {
   memoryProjectStore,
+  primer,
   PRIMER_TEXT,
 } from "@soundbites/lib/studio/__tests__/fixture"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
@@ -42,6 +45,7 @@ function setup(
         store: memory.store,
         startRecording: mic,
         now: () => Date.UTC(2026, 9, 30, 10) + 1_000 * tick++,
+        newId: () => `t${tick}`,
         readText: () => Promise.resolve(PRIMER_TEXT),
         onVisibility: (listener) => {
           listener(false)
@@ -151,6 +155,49 @@ describe("Studio", () => {
       expect(memory.friction).toMatchObject([
         { went: "smooth", gotInTheWay: null },
       ])
+    )
+  })
+
+  it("lists the other videos holding takes on the phone, and opens one", async () => {
+    const video = (id: string, title: string, at: string): Project =>
+      newProject(id, {
+        author: "claude",
+        message: "Primer",
+        at,
+        cutList: cutListOf({ ...primer(), title }),
+        primer: { ...primer(), title },
+      }).project
+    const older: Project = {
+      ...video("older", "Week 7", "2026-10-20T09:00:00.000Z"),
+      takes: [
+        {
+          id: "t1",
+          shot: "path",
+          recordedAt: "2026-10-20T09:05:00.000Z",
+          durationMs: 4_000,
+          mimeType: "audio/webm",
+          keptBy: [],
+          onPhone: true,
+        },
+      ],
+      chosen: { path: "t1" },
+    }
+    const share = vi.fn<NonNullable<StudioProps["share"]>>(() => (
+      <button type="button">{W.done.share}</button>
+    ))
+    setup(share, [older, video("newer", "Week 8", "2026-10-29T09:00:00.000Z")])
+    expect(await screen.findByText("Week 8")).toBeInTheDocument()
+    expect(screen.getByText(W.start.others)).toBeInTheDocument()
+    expect(screen.getByText(W.start.onPhone(1))).toBeInTheDocument()
+    // Week 8 holds no takes on the phone, so it offers no share yet.
+    expect(screen.queryByRole("button", { name: W.done.share })).toBeNull()
+    fireEvent.click(
+      screen.getByRole("button", { name: `${W.start.open}: Week 7` })
+    )
+    expect(await screen.findByText("Week 7")).toBeInTheDocument()
+    expect(screen.getByText(W.start.shareLine)).toBeInTheDocument()
+    expect(share).toHaveBeenLastCalledWith(
+      expect.objectContaining({ project: older })
     )
   })
 })

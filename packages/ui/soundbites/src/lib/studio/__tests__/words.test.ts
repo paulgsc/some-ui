@@ -35,7 +35,11 @@ const MADE: ReadonlyArray<string> = [
   W.record.elapsed(4_700, 120_000),
   W.record.blocked("denied"),
   W.notice.kept(4_700),
-  W.notice.carried(TITLE),
+  W.notice.carried(TITLE, 0),
+  W.notice.carried(TITLE, 1),
+  W.notice.carried(TITLE, 3),
+  W.start.onPhone(1),
+  W.start.onPhone(4),
   W.notice.arrived(1),
   W.notice.arrived(3),
   W.done.opensOn(2, "The miss"),
@@ -85,7 +89,9 @@ describe("Studio's words", () => {
   })
 
   it("say what to do when the phone is full", () => {
-    expect(STUDIO_WORDS.notice.full).toMatch(/Share your takes with Claude/)
+    expect(STUDIO_WORDS.notice.full).toMatch(
+      /share each video's takes with Claude/
+    )
     expect(STUDIO_WORDS.notice.full).toMatch(/wasn't kept/)
   })
 })

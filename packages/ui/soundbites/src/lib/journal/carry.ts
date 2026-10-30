@@ -4,10 +4,12 @@
  * audio under its cut's id (`db.ts`'s `plan`, `takes` and `audio` stores).
  * `carriedProject` reads what those held as a project: the primer as
  * revision 1, with any target the person moved, and every take as the chosen
- * take of its scene, fitted to it in revision 2. `carryJournal`
- * (`project/store.ts`) writes it and moves the audio in one transaction, so
- * the episode is in exactly one place at every moment: nothing is let go.
+ * take of its scene, fitted to it in revision 2. `planCarry` decides, from
+ * the rows one transaction read, what moves and what stays; `carryJournal`
+ * (`project/store.ts`) carries that plan out in the same transaction, so the
+ * episode is in exactly one place at every moment: nothing is let go.
  */
+import { projectAudioKey } from "@soundbites/lib/journal/db"
 import type { Cut, Primer } from "@soundbites/lib/journal/primer"
 import { cutV1 } from "@soundbites/lib/journal/primer"
 import type { Project } from "@soundbites/lib/project/model"
@@ -40,7 +42,7 @@ type KeptPlan = Omit<JournalPlan, "primer"> & {
 }
 
 /** Only the Journal tab wrote these stores: a guard against another shape. */
-export function isPlan(row: unknown): row is KeptPlan {
+function isPlan(row: unknown): row is KeptPlan {
   return (
     typeof row === "object" &&
     row !== null &&
@@ -56,7 +58,7 @@ export function isPlan(row: unknown): row is KeptPlan {
   )
 }
 
-export function isTake(row: unknown): row is JournalTake {
+function isTake(row: unknown): row is JournalTake {
   return (
     typeof row === "object" &&
     row !== null &&
@@ -165,5 +167,96 @@ export function carriedProject(
       cutId: take.cutId,
       take: `t${index + 1}`,
     })),
+  }
+}
+
+/** A row as a store holds it: its key and whatever was written under it. */
+export type Row = { readonly key: IDBValidKey; readonly value: unknown }
+
+/** What the Journal tab's stores hold, as one transaction read them. */
+export type JournalRows = {
+  /** The plan store's one row, if it has one. */
+  readonly plan: unknown
+  readonly takes: ReadonlyArray<Row>
+  readonly audio: ReadonlyArray<Row>
+  /** The ids of the projects already kept. */
+  readonly projects: ReadonlyArray<IDBValidKey>
+}
+
+/**
+ * What carrying does, decided before anything is written: `carryJournal`
+ * (`project/store.ts`) only carries it out. Nothing is deleted that was not
+ * first copied into the project: a take row it can't read and audio that is
+ * not a recording stay where they are, counted in `left`.
+ */
+export type CarryPlan =
+  /** No episode is kept: nothing to do. */
+  | { readonly kind: "nothing" }
+  /**
+   * An episode is kept but can't be carried (its plan can't be read, or a
+   * project of its id is kept already): everything stays where it is.
+   */
+  | { readonly kind: "stays" }
+  | {
+      readonly kind: "carry"
+      readonly project: Project
+      /** Each recording, from its key in the journal's audio to its take's key. */
+      readonly moves: ReadonlyArray<{
+        readonly from: IDBValidKey
+        readonly to: string
+        readonly audio: Blob
+      }>
+      /** The take rows and audio rows copied into the project, to delete. */
+      readonly takeRows: ReadonlyArray<IDBValidKey>
+      readonly audioRows: ReadonlyArray<IDBValidKey>
+      /** Rows of either store that stay, unread or uncopied. */
+      readonly left: number
+    }
+
+export function planCarry(rows: JournalRows, at: string): CarryPlan {
+  if (rows.plan === undefined) return { kind: "nothing" }
+  if (!isPlan(rows.plan)) return { kind: "stays" }
+  const readable = rows.takes.filter(
+    (row): row is { key: IDBValidKey; value: JournalTake } =>
+      isTake(row.value) && row.key === row.value.cutId
+  )
+  const { project, audio } = carriedProject(
+    rows.plan,
+    readable.map((row) => row.value),
+    at
+  )
+  if (rows.projects.includes(project.id)) return { kind: "stays" }
+  const moves = audio.flatMap((each) => {
+    const row = rows.audio.find((one) => one.key === each.cutId)
+    return row?.value instanceof Blob
+      ? [
+          {
+            from: row.key,
+            to: projectAudioKey(project.id, each.take),
+            audio: row.value,
+          },
+        ]
+      : []
+  })
+  const moved = new Set(moves.map((each) => each.from))
+  const carried: Project = {
+    ...project,
+    // A take whose recording isn't there to move is carried as off the phone.
+    takes: project.takes.map((take) =>
+      audio.some((each) => each.take === take.id && moved.has(each.cutId))
+        ? take
+        : { ...take, onPhone: false }
+    ),
+  }
+  return {
+    kind: "carry",
+    project: carried,
+    moves,
+    takeRows: readable.map((row) => row.key),
+    audioRows: [...moved],
+    left:
+      rows.takes.length -
+      readable.length +
+      rows.audio.filter((row) => !moved.has(row.key)).length,
   }
 }

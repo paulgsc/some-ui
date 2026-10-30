@@ -119,3 +119,33 @@ export function opensOn(project: Project, shotId: string): string | null {
   if (view === null) return null
   return STUDIO_WORDS.done.opensOn(view.n, view.cut?.artifact ?? view.shot.id)
 }
+
+/** How many of a project's takes still have their audio on the phone. */
+export function takesOnPhone(project: Project): number {
+  return project.takes.filter((take) => take.onPhone).length
+}
+
+type OtherVideo = {
+  readonly id: string
+  readonly title: string
+  readonly onPhone: number
+}
+
+/**
+ * The videos besides the one on screen whose takes still take room on the
+ * phone, most takes first: Start lists them, so each can be opened and its
+ * takes shared and let go.
+ */
+export function othersOnPhone(
+  projects: ReadonlyArray<Project>,
+  current: string | null
+): ReadonlyArray<OtherVideo> {
+  return projects
+    .filter((each) => each.id !== current && takesOnPhone(each) > 0)
+    .map((each) => ({
+      id: each.id,
+      title: latest(each).cutList.title,
+      onPhone: takesOnPhone(each),
+    }))
+    .sort((a, b) => b.onPhone - a.onPhone || a.title.localeCompare(b.title))
+}

@@ -9,8 +9,10 @@ import { projectFile, readProjectFile } from "@soundbites/lib/project/file"
 import type { Project } from "@soundbites/lib/project/model"
 import { latest, primerAt } from "@soundbites/lib/project/model"
 import { TAIL_MS } from "@soundbites/lib/project/script"
+import { projectOf } from "@soundbites/lib/studio/machine"
 import type { StudioRuntime } from "@soundbites/lib/studio/runtime"
 import { createStudio } from "@soundbites/lib/studio/runtime"
+import { othersOnPhone } from "@soundbites/lib/studio/view"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { describe, expect, it, vi } from "vitest"
 
@@ -33,16 +35,22 @@ function fakeMic(durationMs = 4_000, bytes = 5): StartRecording {
 
 const NOW = Date.UTC(2026, 9, 30, 10)
 
+type Running = StudioRuntime & { readonly detach: () => void }
+
+/** A runtime on `memory`, attached; its takes' ids are `prefix` and a count. */
 function studio(
   memory: ReturnType<typeof memoryProjectStore>,
-  mic: StartRecording = fakeMic()
-): StudioRuntime {
+  mic: StartRecording = fakeMic(),
+  prefix = "t"
+): Running {
   let tick = 0
+  let ids = 0
   const runtime = createStudio({
     store: memory.store,
     startRecording: mic,
     // Each reading of the clock a second on, so takes are in order.
     now: () => NOW + 1_000 * tick++,
+    newId: () => `${prefix}${++ids}`,
     readText: (file) => file.text(),
     onVisibility: (listener) => {
       listener(false)
@@ -55,8 +63,8 @@ function studio(
       }),
     },
   })
-  runtime.attach()
-  return runtime
+  const detach = runtime.attach()
+  return { ...runtime, detach }
 }
 
 /** Waits until `ready` holds of the runtime's state. */
@@ -68,10 +76,9 @@ async function until(
 }
 
 function projectIn(runtime: StudioRuntime): Project {
-  const { shelf } = runtime.getSnapshot()
-  if (shelf.kind !== "read" || shelf.project === null)
-    throw new Error("no project")
-  return shelf.project
+  const project = projectOf(runtime.getSnapshot())
+  if (project === null) throw new Error("no project")
+  return project
 }
 
 const settledWrites = (
@@ -79,7 +86,7 @@ const settledWrites = (
 ): boolean =>
   state.inFlight === null && state.queue.length === 0 && state.closing === null
 
-async function opened(memory = memoryProjectStore()): Promise<StudioRuntime> {
+async function opened(memory = memoryProjectStore()): Promise<Running> {
   const runtime = studio(memory)
   await until(runtime, (state) => state.shelf.kind === "read")
   runtime.dispatch({
@@ -88,10 +95,7 @@ async function opened(memory = memoryProjectStore()): Promise<StudioRuntime> {
   })
   await until(
     runtime,
-    (state) =>
-      state.shelf.kind === "read" &&
-      state.shelf.project !== null &&
-      settledWrites(state)
+    (state) => projectOf(state) !== null && settledWrites(state)
   )
   return runtime
 }
@@ -199,10 +203,7 @@ describe("recording a scene", () => {
     runtime.dispatch({ type: "primerPicked", file: new Blob([PRIMER_TEXT]) })
     await until(
       runtime,
-      (state) =>
-        state.shelf.kind === "read" &&
-        state.shelf.project !== null &&
-        settledWrites(state)
+      (state) => projectOf(state) !== null && settledWrites(state)
     )
     runtime.dispatch({ type: "recordChosen" })
     await until(runtime, settledWrites)
@@ -310,7 +311,7 @@ describe("takes that arrived", () => {
     runtime.dispatch({ type: "recordChosen" })
     await recordOne(runtime)
     const { id } = projectIn(runtime)
-    runtime.dispatch({ type: "takesArrived", takes: ["t1"] })
+    runtime.dispatch({ type: "takesArrived", project: id, takes: ["t1"] })
     await until(runtime, (state) => state.notice.includes("left the phone"))
     expect(projectIn(runtime).takes[0]).toMatchObject({
       keptBy: ["drive"],
@@ -324,12 +325,189 @@ describe("the Journal tab's episode", () => {
   it("is carried into Studio the first time it opens, and said so", async () => {
     const memory = memoryProjectStore()
     const carrying = await opened(memoryProjectStore())
-    memory.journal.carried = projectIn(carrying)
+    memory.journal.carried = {
+      kind: "carried",
+      project: projectIn(carrying),
+      left: 0,
+    }
     const runtime = studio(memory)
     await until(runtime, (state) => state.shelf.kind === "read")
     expect(runtime.getSnapshot().notice).toBe(
-      STUDIO_WORDS.notice.carried("Playoff Delta, week 8")
+      STUDIO_WORDS.notice.carried("Playoff Delta, week 8", 0)
     )
     expect(projectIn(runtime).id).toBe(projectIn(carrying).id)
+  })
+})
+
+/** A new page on `memory`, opened on Record: the scene it resumes on. */
+async function resumedOn(
+  memory: ReturnType<typeof memoryProjectStore>
+): Promise<unknown> {
+  const next = studio(memory, fakeMic(), "u")
+  await until(next, (state) => projectOf(state) !== null)
+  next.dispatch({ type: "recordChosen" })
+  return next.getSnapshot().screen
+}
+
+describe("a sitting stopped after any take resumes on the same scene", () => {
+  it("after the first scene's take", async () => {
+    const memory = memoryProjectStore()
+    const first = await opened(memory)
+    first.dispatch({ type: "recordChosen" })
+    await recordOne(first)
+    first.dispatch({ type: "doneForNowPressed" })
+    await until(first, (state) => state.closed === "saved")
+    expect(await resumedOn(memory)).toEqual({ kind: "record", shot: "path" })
+  })
+
+  it("after the last scene's take, kept with that's every scene", async () => {
+    const memory = memoryProjectStore()
+    const first = await opened(memory)
+    first.dispatch({ type: "recordChosen" })
+    for (const _ of ["path", "miss", "next"]) {
+      await recordOne(first)
+      first.dispatch({ type: "keepNextPressed" })
+    }
+    await until(first, (state) => state.closed === "saved")
+    expect(projectIn(first).sittings.at(-1)).toMatchObject({
+      shot: "next",
+      next: STUDIO_WORDS.sittingNext(null),
+    })
+    expect(await resumedOn(memory)).toEqual({ kind: "record", shot: "next" })
+  })
+
+  it("when the page is hidden mid-take: the take is kept", async () => {
+    const memory = memoryProjectStore()
+    let hide: (hidden: boolean) => void = () => undefined
+    const runtime = createStudio({
+      store: memory.store,
+      startRecording: fakeMic(),
+      now: () => NOW,
+      newId: () => "t1",
+      readText: (file) => file.text(),
+      onVisibility: (listener) => {
+        hide = listener
+        listener(false)
+        return (): void => undefined
+      },
+      player: {
+        play: (): Playback => ({
+          ended: new Promise(() => undefined),
+          stop: vi.fn(),
+        }),
+      },
+    })
+    runtime.attach()
+    await until(runtime, (state) => state.shelf.kind === "read")
+    runtime.dispatch({ type: "primerPicked", file: new Blob([PRIMER_TEXT]) })
+    await until(
+      runtime,
+      (state) => projectOf(state) !== null && settledWrites(state)
+    )
+    runtime.dispatch({ type: "recordChosen" })
+    runtime.dispatch({ type: "keepNextPressed" })
+    runtime.dispatch({ type: "recordPressed" })
+    await until(runtime, (state) => state.activity.kind === "recording")
+    hide(true)
+    await until(
+      runtime,
+      (state) => state.activity.kind === "idle" && settledWrites(state)
+    )
+    expect(projectIn(runtime).takes.map((take) => take.shot)).toEqual(["miss"])
+    expect(await resumedOn(memory)).toEqual({ kind: "record", shot: "miss" })
+  })
+
+  it("when the screen goes away mid-take: the take is kept after it", async () => {
+    const memory = memoryProjectStore()
+    const first = await opened(memory)
+    first.dispatch({ type: "recordChosen" })
+    first.dispatch({ type: "keepNextPressed" })
+    first.dispatch({ type: "keepNextPressed" })
+    first.dispatch({ type: "recordPressed" })
+    await until(first, (state) => state.activity.kind === "recording")
+    first.detach()
+    await until(
+      first,
+      (state) => state.activity.kind === "idle" && settledWrites(state)
+    )
+    const [kept] = [...memory.projects.values()]
+    expect(kept?.takes.map((take) => take.shot)).toEqual(["next"])
+    expect(await resumedOn(memory)).toEqual({ kind: "record", shot: "next" })
+  })
+})
+
+describe("two screens at once", () => {
+  it("each sees the other's takes, and neither's is lost", async () => {
+    const memory = memoryProjectStore()
+    const first = await opened(memory)
+    const second = studio(memory, fakeMic(), "u")
+    await until(second, (state) => projectOf(state) !== null)
+    first.dispatch({ type: "recordChosen" })
+    await until(first, settledWrites)
+    await until(second, settledWrites)
+    second.dispatch({ type: "recordChosen" })
+    await recordOne(first)
+    // The second screen read the first's take as it landed.
+    await until(second, () => projectIn(second).takes.length === 1)
+    await recordOne(second)
+    const [kept] = [...memory.projects.values()]
+    expect(kept?.takes.map((take) => take.id)).toEqual(["t1", "u1"])
+    expect(memory.audio.size).toBe(2)
+  })
+
+  it("a take refused because the project moved on goes again on it", async () => {
+    const memory = memoryProjectStore()
+    const runtime = await opened(memory)
+    runtime.dispatch({ type: "recordChosen" })
+    await until(runtime, settledWrites)
+    // Another screen writes the project between this take's start and its keep.
+    const keep = memory.store.keepTake
+    let raced = false
+    memory.store.keepTake = (project, take, audio): Promise<void> => {
+      if (!raced) {
+        raced = true
+        const kept = memory.projects.get(project.id)!
+        memory.projects.set(project.id, {
+          ...kept,
+          sittings: [...kept.sittings, { ...kept.sittings.at(-1)!, id: "s9" }],
+        })
+      }
+      return keep(project, take, audio)
+    }
+    await recordOne(runtime)
+    expect(projectIn(runtime).takes.map((take) => take.id)).toEqual(["t1"])
+    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.notice.kept(4_000))
+  })
+})
+
+describe("every video with takes on the phone", () => {
+  it("is listed on Start and can be opened, so its takes can be let go", async () => {
+    const memory = memoryProjectStore()
+    const runtime = await opened(memory)
+    runtime.dispatch({ type: "recordChosen" })
+    await recordOne(runtime)
+    runtime.dispatch({ type: "doneForNowPressed" })
+    runtime.dispatch({ type: "notYetPressed" })
+    await until(runtime, settledWrites)
+    const older = projectIn(runtime).id
+    runtime.dispatch({
+      type: "primerPicked",
+      file: new Blob([PRIMER_TEXT.replace("Playoff Delta, week 8", "Week 9")]),
+    })
+    await until(runtime, (state) => state.choosing !== null)
+    runtime.dispatch({ type: "versionChosen", as: "new" })
+    await until(runtime, () => projectIn(runtime).id !== older)
+    const state = runtime.getSnapshot()
+    expect(
+      othersOnPhone(
+        state.shelf.kind === "read" ? state.shelf.projects : [],
+        state.current
+      )
+    ).toEqual([{ id: older, title: "Playoff Delta, week 8", onPhone: 1 }])
+    runtime.dispatch({ type: "projectOpened", project: older })
+    expect(projectIn(runtime).id).toBe(older)
+    runtime.dispatch({ type: "takesArrived", project: older, takes: ["t1"] })
+    await until(runtime, (s) => s.notice === STUDIO_WORDS.notice.arrived(1))
+    expect(memory.audio.size).toBe(0)
   })
 })

@@ -46,6 +46,12 @@ export const STUDIO_WORDS = {
     openNewer: "Open a newer primer",
     primerHint: "A primer.json in Build Journal › voice › primers.",
     startHere: "Start here",
+    others: "Other videos with takes on the phone",
+    onPhone: (n: number): string =>
+      `${plural(n, "take", "takes")} on the phone`,
+    open: "Open",
+    shareLine:
+      "This video's takes are on the phone. Share them with Claude, and once they're in Drive they leave the phone.",
     sittings: {
       record: "Record",
       watch: "Watch",
@@ -96,7 +102,7 @@ export const STUDIO_WORDS = {
     kept: (ms: number): string => `Kept ${seconds(ms)}.`,
     tooShort: "Too short to keep. Tap, talk, then tap again.",
     notKept: "That take couldn't be kept. Try again?",
-    full: "No room on the phone for that take, so it wasn't kept. Share your takes with Claude and say they arrived: they leave the phone, and there's room again.",
+    full: "No room on the phone for that take, so it wasn't kept. On Start, share each video's takes with Claude and say they reached Drive: they leave the phone, and there's room again.",
     spent:
       "The primer's time is all used. Record a long scene again, shorter, to make room.",
     thrownAway: "Thrown away. Nothing kept.",
@@ -108,8 +114,12 @@ export const STUDIO_WORDS = {
     notPlayable: "That take couldn't be played.",
     carryFailed:
       "Your Journal episode couldn't be moved into Studio yet. It's still on the phone, and moves next time.",
-    carried: (title: string): string =>
-      `Your Journal episode “${title}” is in Studio now, every take with it.`,
+    carried: (title: string, left: number): string =>
+      left === 0
+        ? `Your Journal episode “${title}” is in Studio now, every take with it.`
+        : `Your Journal episode “${title}” is in Studio now. ${plural(left, "piece", "pieces")} of it couldn't be read, and ${left === 1 ? "stays" : "stay"} on the phone as ${left === 1 ? "it was" : "they were"}.`,
+    carryStays:
+      "Your Journal episode on this phone couldn't be moved into Studio. It stays on the phone as it was.",
     arrived: (n: number): string =>
       `${plural(n, "take", "takes")} left the phone. Drive keeps ${n === 1 ? "it" : "them"}.`,
   },
@@ -141,14 +151,15 @@ export const STUDIO_WORDS = {
     sharing: "Preparing…",
     notYet: "Not yet",
     shareLine:
-      "The project file and your takes, for Claude. You pick where they go.",
+      "The project file and your takes, for Claude, to Drive. Once they're there, the takes can leave the phone.",
   },
 
   share: {
     title: "Studio takes",
-    arrivedTitle: "Did they arrive?",
-    arrivedLine: "Once they have, the takes that went out can leave the phone.",
-    arrivedYes: "They arrived: let them go",
+    arrivedTitle: "Did they reach Drive?",
+    arrivedLine:
+      "Once they're in Drive, the takes that went out can leave the phone.",
+    arrivedYes: "They're in Drive: let them go",
     arrivedNo: "Keep them here",
   },
 

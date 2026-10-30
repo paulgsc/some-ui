@@ -8,14 +8,20 @@
  *
  * Rules that hold by structure:
  *
- * - **The project shown is the project kept.** A change is a `Pending` write
- *   queued in order and applied to the project as the store holds it when its
- *   turn comes; the state adopts it only once the write lands. One write is
- *   in flight at a time, so no write is built on another that may yet be
- *   refused.
+ * - **The project shown is the project kept.** A change is a `Pending` write,
+ *   naming its project, queued in order and applied to that project as the
+ *   store holds it when its turn comes; the state adopts it only once the
+ *   write lands. One write is in flight at a time, so no write is built on
+ *   another that may yet be refused. A write from elsewhere (another screen's
+ *   runtime) is read as soon as nothing of ours is waiting.
  * - **A refused write kept nothing, and says so.** The store is read again,
  *   the notice says what wasn't kept and what to do (a full phone: share the
  *   takes, say they arrived), and the queue goes on from what the store holds.
+ *   A take refused because the project moved on under it is tried once more
+ *   against the project as it now is; its id, the runtime's, never collides.
+ * - **Every video holding takes on the phone can be reached.** Start lists
+ *   the others and opens any of them, so each one's takes can be shared and
+ *   let go.
  * - **One activity at a time.** Playing, opening the microphone, recording
  *   and keeping a take are arms of one union.
  * - **A scene runs its take and a breath.** Keeping a take writes, in the
@@ -53,7 +59,7 @@ import {
   resumeAt,
   scriptOf,
 } from "@soundbites/lib/project/script"
-import type { Friction } from "@soundbites/lib/project/store"
+import type { Carried, Friction } from "@soundbites/lib/project/store"
 
 import { sceneBeside } from "./view"
 import type { Went } from "./words"
@@ -97,29 +103,36 @@ type StudioScreen =
 type Shelf =
   | { readonly kind: "reading" }
   | { readonly kind: "unreadable" }
-  | { readonly kind: "read"; readonly project: Project | null }
+  | { readonly kind: "read"; readonly projects: ReadonlyArray<Project> }
 
-/** A write waiting its turn, applied to the project as kept when it starts. */
-type Pending =
+/**
+ * A write waiting its turn, applied to its project (`project`, by id) as kept
+ * when it starts.
+ */
+type Pending = { readonly project: string } & (
   | { readonly kind: "create"; readonly primer: Primer; readonly at: string }
   | { readonly kind: "revise"; readonly primer: Primer; readonly at: string }
   | { readonly kind: "open"; readonly at: string }
   | {
       readonly kind: "keep"
-      readonly project: string
       readonly take: Pick<
         ProjectTake,
-        "shot" | "recordedAt" | "durationMs" | "mimeType"
+        "id" | "shot" | "recordedAt" | "durationMs" | "mimeType"
       >
       readonly audio: Blob
+      /** Tried once more after the project moved on under it. */
+      readonly retried: boolean
     }
   | { readonly kind: "close"; readonly at: string; readonly shot: string }
   | { readonly kind: "arrived"; readonly takes: ReadonlyArray<string> }
+)
 
 export type StudioState = {
   readonly page: "new" | "here" | "left"
   readonly visible: boolean
   readonly shelf: Shelf
+  /** The video on screen, by id; the one worked on last until one is opened. */
+  readonly current: string | null
   readonly screen: StudioScreen
   readonly activity: StudioActivity
   /** Why the microphone last refused, until the next try. */
@@ -135,7 +148,11 @@ export type StudioState = {
     readonly project: Project
   } | null
   /** Done for now, waiting on the take under way before the sitting closes. */
-  readonly closing: { readonly at: string; readonly shot: string } | null
+  readonly closing: {
+    readonly project: string
+    readonly at: string
+    readonly shot: string
+  } | null
   /** Whether the Done screen's sitting is saved yet. */
   readonly closed: "saving" | "saved" | "failed" | null
   readonly readSeq: number
@@ -160,7 +177,12 @@ export type StudioIntent =
   | { readonly type: "wentChosen"; readonly went: Went }
   | { readonly type: "snagTold"; readonly text: string }
   | { readonly type: "notYetPressed" }
-  | { readonly type: "takesArrived"; readonly takes: ReadonlyArray<string> }
+  | {
+      readonly type: "takesArrived"
+      readonly project: string
+      readonly takes: ReadonlyArray<string>
+    }
+  | { readonly type: "projectOpened"; readonly project: string }
   | { readonly type: "retryRead" }
 
 /** What the page, the clock and the ports report. */
@@ -169,12 +191,19 @@ type StudioSignal =
   | { readonly type: "left" }
   | { readonly type: "hidden" }
   | { readonly type: "shown" }
-  | { readonly type: "carried"; readonly title: string | null }
+  | { readonly type: "carried"; readonly carried: Carried }
   | { readonly type: "carryFailed" }
+  | { readonly type: "storeChanged" }
   | { readonly type: "ticked"; readonly now: number; readonly level: number }
   | { readonly type: "micOpened"; readonly at: number }
   | { readonly type: "micFailed"; readonly reason: RecordingFailure }
-  | { readonly type: "taken"; readonly take: Take; readonly at: string }
+  | {
+      readonly type: "taken"
+      readonly take: Take
+      readonly at: string
+      /** The take's id, the runtime's: unique across runtimes. */
+      readonly id: string
+    }
   | { readonly type: "takeFailed" }
   | {
       readonly type: "listed"
@@ -190,7 +219,10 @@ type StudioSignal =
     }
   | { readonly type: "primerUnreadable"; readonly seq: number }
   | { readonly type: "written" }
-  | { readonly type: "writeFailed"; readonly reason: "full" | "failed" }
+  | {
+      readonly type: "writeFailed"
+      readonly reason: "full" | "rewrite" | "failed"
+    }
   | { readonly type: "reported" }
   | { readonly type: "reportFailed" }
   | { readonly type: "audioLoaded"; readonly seq: number; readonly audio: Blob }
@@ -242,6 +274,7 @@ export function initialStudioState(): StudioState {
     page: "new",
     visible: true,
     shelf: { kind: "reading" },
+    current: null,
     screen: { kind: "start" },
     activity: { kind: "idle" },
     blocked: null,
@@ -274,8 +307,13 @@ export function isSettled(activity: StudioActivity): boolean {
 
 const stay = (state: StudioState): Step => ({ state, effects: [] })
 
-function projectOf(state: StudioState): Project | null {
-  return state.shelf.kind === "read" ? state.shelf.project : null
+function projectsOf(state: StudioState): ReadonlyArray<Project> {
+  return state.shelf.kind === "read" ? state.shelf.projects : []
+}
+
+/** The video on screen, as kept. */
+export function projectOf(state: StudioState): Project | null {
+  return projectsOf(state).find((each) => each.id === state.current) ?? null
 }
 
 function read(state: StudioState): Step {
@@ -295,8 +333,15 @@ function scenesTaken(project: Project): Array<number> {
   return [...new Set(numbers)].sort((a, b) => a - b)
 }
 
-/** The project `pending` makes of `project`, or null when it changes nothing. */
-function applied(project: Project | null, pending: Pending): Project | null {
+/**
+ * The project `pending` makes of its project as kept, or null when it changes
+ * nothing.
+ */
+function applied(
+  projects: ReadonlyArray<Project>,
+  pending: Pending
+): Project | null {
+  const project = projects.find((each) => each.id === pending.project) ?? null
   const model = (
     at: Project,
     event: Parameters<typeof stepProject>[1],
@@ -314,8 +359,9 @@ function applied(project: Project | null, pending: Pending): Project | null {
   }
   switch (pending.kind) {
     case "create": {
+      if (project !== null) return null
       const { primer, at } = pending
-      return newProject(projectIdFor(primer.title, at), {
+      return newProject(pending.project, {
         author: "claude",
         message: `Primer: ${primer.title}`,
         at,
@@ -347,8 +393,8 @@ function applied(project: Project | null, pending: Pending): Project | null {
       })
     }
     case "keep": {
-      if (project?.id !== pending.project) return null
-      const take = { ...pending.take, id: `t${project.takes.length + 1}` }
+      if (project === null) return null
+      const { take } = pending
       const withTake = model(project, { type: "taken", take }, take.shot)
       if (withTake === null) return null
       const { shots } = latest(withTake).cutList
@@ -385,6 +431,7 @@ function applied(project: Project | null, pending: Pending): Project | null {
     case "arrived": {
       if (project === null) return null
       const after = pending.takes.reduce<Project>((at, take) => {
+        // The person said they reached Drive (`STUDIO_WORDS.share`).
         const kept = model(at, { type: "keptBy", take, keeper: "drive" }) ?? at
         return model(kept, { type: "letGo", take }) ?? kept
       }, project)
@@ -413,7 +460,7 @@ function pump(state: StudioState): Step {
   if (at.inFlight !== null || at.shelf.kind !== "read") return stay(at)
   const [pending, ...queue] = at.queue
   if (pending === undefined) return stay(at)
-  const project = applied(at.shelf.project, pending)
+  const project = applied(at.shelf.projects, pending)
   if (project === null) {
     // A take with nowhere to go is said, never dropped silently; a sitting
     // with none open to close says where the next one opens instead.
@@ -431,7 +478,7 @@ function pump(state: StudioState): Step {
       ? {
           type: "keepTake",
           project,
-          take: project.takes.at(-1)?.id ?? "",
+          take: pending.take.id,
           audio: pending.audio,
         }
       : { type: "save", project }
@@ -471,7 +518,10 @@ function landedNotice(state: StudioState, pending: Pending): string {
 }
 
 /** What a refused write says it didn't keep. */
-function refusedNotice(pending: Pending, reason: "full" | "failed"): string {
+function refusedNotice(
+  pending: Pending,
+  reason: "full" | "rewrite" | "failed"
+): string {
   if (pending.kind === "keep")
     return reason === "full" ? WORDS.notice.full : WORDS.notice.notKept
   return WORDS.notice.notSaved
@@ -487,12 +537,29 @@ function placed(screen: StudioScreen, project: Project | null): StudioScreen {
   return there ? screen : { kind: "record", shot: resumeAt(project) }
 }
 
-function withProject(state: StudioState, project: Project | null): StudioState {
+/** `state` holding `projects`, on `current` if it is among them. */
+function withProjects(
+  state: StudioState,
+  projects: ReadonlyArray<Project>,
+  current: string | null
+): StudioState {
+  const shown = projects.find((each) => each.id === current) ?? null
   return {
     ...state,
-    shelf: { kind: "read", project },
-    screen: placed(state.screen, project),
+    shelf: { kind: "read", projects },
+    current: shown?.id ?? null,
+    screen: placed(state.screen, shown),
   }
+}
+
+/** `projects` with `project` in place of its kept copy, or added. */
+function replaced(
+  projects: ReadonlyArray<Project>,
+  project: Project
+): ReadonlyArray<Project> {
+  return projects.some((each) => each.id === project.id)
+    ? projects.map((each) => (each.id === project.id ? project : each))
+    : [...projects, project]
 }
 
 function finishRecording(state: StudioState): Step {
@@ -589,7 +656,7 @@ function doneForNow(state: StudioState, at: string): Step {
     ...state,
     screen,
     closed: "saving",
-    closing: { at, shot: state.screen.shot },
+    closing: { project: project.id, at, shot: state.screen.shot },
   }
   if (state.activity.kind === "recording") {
     const finished = finishRecording(base)
@@ -653,13 +720,31 @@ export function step(state: StudioState, event: StudioEvent): Step {
     }
 
     case "carried": {
+      const { carried } = event
       return read({
         ...state,
         notice:
-          event.title === null
-            ? state.notice
-            : WORDS.notice.carried(event.title),
+          carried.kind === "carried"
+            ? WORDS.notice.carried(
+                latest(carried.project).cutList.title,
+                carried.left
+              )
+            : carried.kind === "stays"
+              ? WORDS.notice.carryStays
+              : state.notice,
       })
+    }
+
+    case "storeChanged": {
+      // Ours re-read as they land; this is a write from elsewhere.
+      if (
+        state.page !== "here" ||
+        state.shelf.kind !== "read" ||
+        state.inFlight !== null ||
+        state.queue.length > 0
+      )
+        return stay(state)
+      return read(state)
     }
 
     case "carryFailed": {
@@ -687,7 +772,14 @@ export function step(state: StudioState, event: StudioEvent): Step {
 
     case "listed": {
       if (event.seq !== state.readSeq) return stay(state)
-      return pump(withProject(state, currentOf(event.projects)))
+      const kept = event.projects.some((each) => each.id === state.current)
+      return pump(
+        withProjects(
+          state,
+          event.projects,
+          kept ? state.current : (currentOf(event.projects)?.id ?? null)
+        )
+      )
     }
 
     case "listFailed": {
@@ -716,6 +808,7 @@ export function step(state: StudioState, event: StudioEvent): Step {
       if (project === null)
         return enqueue(state, {
           kind: "create",
+          project: projectIdFor(reading.primer.title, event.at),
           primer: reading.primer,
           at: event.at,
         })
@@ -729,9 +822,18 @@ export function step(state: StudioState, event: StudioEvent): Step {
       const { choosing } = state
       if (choosing === null) return stay(state)
       const cleared = { ...state, choosing: null }
-      if (event.as === "cancel") return stay(cleared)
+      if (event.as === "cancel" || (event.as === "next" && project === null))
+        return stay(cleared)
+      if (event.as === "next" && project !== null)
+        return enqueue(cleared, {
+          kind: "revise",
+          project: project.id,
+          primer: choosing.primer,
+          at: choosing.at,
+        })
       return enqueue(cleared, {
-        kind: event.as === "next" ? "revise" : "create",
+        kind: "create",
+        project: projectIdFor(choosing.primer.title, choosing.at),
         primer: choosing.primer,
         at: choosing.at,
       })
@@ -747,7 +849,7 @@ export function step(state: StudioState, event: StudioEvent): Step {
           primerProblem: null,
           choosing: null,
         },
-        { kind: "open", at: event.at }
+        { kind: "open", project: project.id, at: event.at }
       )
     }
 
@@ -847,7 +949,9 @@ export function step(state: StudioState, event: StudioEvent): Step {
       return enqueue(state, {
         kind: "keep",
         project: activity.project,
+        retried: false,
         take: {
+          id: event.id,
           shot: activity.shot,
           recordedAt: event.at,
           // The clock stops a take at its cap a tick late at worst.
@@ -875,7 +979,11 @@ export function step(state: StudioState, event: StudioEvent): Step {
       if (inFlight === null) return stay(state)
       const { pending } = inFlight
       const landed: StudioState = {
-        ...withProject(state, inFlight.project),
+        ...withProjects(
+          state,
+          replaced(projectsOf(state), inFlight.project),
+          pending.kind === "create" ? inFlight.project.id : state.current
+        ),
         inFlight: null,
         notice: landedNotice(state, pending),
         activity: pending.kind === "keep" ? { kind: "idle" } : activity,
@@ -883,7 +991,10 @@ export function step(state: StudioState, event: StudioEvent): Step {
         screen:
           pending.kind === "create" || pending.kind === "revise"
             ? { kind: "start" }
-            : placed(screen, inFlight.project),
+            : placed(
+                screen,
+                pending.project === state.current ? inFlight.project : project
+              ),
       }
       return pump(landed)
     }
@@ -892,6 +1003,18 @@ export function step(state: StudioState, event: StudioEvent): Step {
       const { inFlight } = state
       if (inFlight === null) return stay(state)
       const { pending } = inFlight
+      // A take refused because its project moved on under it (another
+      // screen's write) goes again, once, on the project as it now is.
+      if (
+        pending.kind === "keep" &&
+        event.reason === "rewrite" &&
+        !pending.retried
+      )
+        return read({
+          ...state,
+          inFlight: null,
+          queue: [{ ...pending, retried: true }, ...state.queue],
+        })
       // Nothing of it was kept: read what the store holds, then go on.
       return read({
         ...state,
@@ -958,7 +1081,29 @@ export function step(state: StudioState, event: StudioEvent): Step {
 
     case "takesArrived": {
       if (event.takes.length === 0) return stay(state)
-      return enqueue(state, { kind: "arrived", takes: event.takes })
+      return enqueue(state, {
+        kind: "arrived",
+        project: event.project,
+        takes: event.takes,
+      })
+    }
+
+    case "projectOpened": {
+      if (
+        screen.kind !== "start" ||
+        !isSettled(activity) ||
+        state.inFlight !== null ||
+        state.queue.length > 0 ||
+        !projectsOf(state).some((each) => each.id === event.project)
+      )
+        return stay(state)
+      return stay({
+        ...state,
+        current: event.project,
+        notice: "",
+        choosing: null,
+        primerProblem: null,
+      })
     }
 
     case "playPressed": {

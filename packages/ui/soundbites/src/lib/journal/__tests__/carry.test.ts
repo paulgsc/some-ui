@@ -1,5 +1,10 @@
 /** @vitest-environment node */
-import { carriedProject, upgraded } from "@soundbites/lib/journal/carry"
+import type { CarryPlan, JournalRows } from "@soundbites/lib/journal/carry"
+import {
+  carriedProject,
+  planCarry,
+  upgraded,
+} from "@soundbites/lib/journal/carry"
 import type { Primer } from "@soundbites/lib/journal/primer"
 import { cutV1 } from "@soundbites/lib/journal/primer"
 import { projectFile, readProjectFile } from "@soundbites/lib/project/file"
@@ -144,5 +149,142 @@ describe("the Journal tab's episode, carried", () => {
       ok: true,
       value: project,
     })
+  })
+})
+
+/** The journal's stores as rows, `takes` and `audio` keyed by cut id. */
+function rows(
+  fields: Partial<JournalRows> & {
+    takeValues?: Record<string, unknown>
+    audioValues?: Record<string, unknown>
+  } = {}
+): JournalRows {
+  const takeValues = fields.takeValues ?? {
+    gap: take("gap", 21_000),
+    next: take("next", 9_000),
+  }
+  const audioValues = fields.audioValues ?? {
+    gap: new Blob(["gap"]),
+    next: new Blob(["next"]),
+  }
+  return {
+    plan: "plan" in fields ? fields.plan : PLAN,
+    takes: Object.entries(takeValues).map(([key, value]) => ({ key, value })),
+    audio: Object.entries(audioValues).map(([key, value]) => ({ key, value })),
+    projects: fields.projects ?? [],
+  }
+}
+
+/** The stores once `plan` is carried out, as `carryJournal` does. */
+function after(before: JournalRows, plan: CarryPlan): JournalRows {
+  if (plan.kind !== "carry") return before
+  return {
+    plan: undefined,
+    takes: before.takes.filter((row) => !plan.takeRows.includes(row.key)),
+    audio: before.audio.filter((row) => !plan.audioRows.includes(row.key)),
+    projects: [...before.projects, plan.project.id],
+  }
+}
+
+describe("the plan for carrying the Journal tab's episode", () => {
+  it("moves every take and its recording, and leaves nothing behind", () => {
+    const plan = planCarry(rows(), CARRIED)
+    if (plan.kind !== "carry") throw new Error(plan.kind)
+    expect(plan.moves.map((each) => [each.from, each.to])).toEqual([
+      ["gap", `${plan.project.id}:t1`],
+      ["next", `${plan.project.id}:t2`],
+    ])
+    expect(plan.takeRows).toEqual(["gap", "next"])
+    expect(plan.audioRows).toEqual(["gap", "next"])
+    expect(plan.left).toBe(0)
+    expect(plan.project.takes.every((each) => each.onPhone)).toBe(true)
+  })
+
+  it("is nothing with no episode kept", () => {
+    expect(planCarry(rows({ plan: undefined }), CARRIED)).toEqual({
+      kind: "nothing",
+    })
+  })
+
+  it("leaves everything where it is when the plan can't be read", () => {
+    expect(planCarry(rows({ plan: { primer: "?" } }), CARRIED)).toEqual({
+      kind: "stays",
+    })
+  })
+
+  it("leaves a take row it can't read where it is, and carries the rest", () => {
+    const plan = planCarry(
+      rows({
+        takeValues: {
+          gap: take("gap", 21_000),
+          next: { cutId: "next", durationMs: "nine seconds" },
+        },
+      }),
+      CARRIED
+    )
+    if (plan.kind !== "carry") throw new Error(plan.kind)
+    expect(plan.project.takes.map((each) => each.shot)).toEqual(["gap"])
+    expect(plan.takeRows).toEqual(["gap"])
+    // Neither the unread row nor its recording is deleted.
+    expect(plan.audioRows).toEqual(["gap"])
+    expect(plan.left).toBe(2)
+  })
+
+  it("carries a take whose recording is missing as off the phone", () => {
+    const plan = planCarry(
+      rows({ audioValues: { gap: new Blob(["gap"]) } }),
+      CARRIED
+    )
+    if (plan.kind !== "carry") throw new Error(plan.kind)
+    expect(plan.project.takes.map((each) => [each.shot, each.onPhone])).toEqual(
+      [
+        ["gap", true],
+        ["next", false],
+      ]
+    )
+    expect(plan.audioRows).toEqual(["gap"])
+    expect(plan.left).toBe(0)
+  })
+
+  it("never deletes audio that isn't a recording it copied", () => {
+    const plan = planCarry(
+      rows({
+        audioValues: {
+          gap: new Blob(["gap"]),
+          next: "not a recording",
+          stray: new Blob(["no take names this"]),
+        },
+      }),
+      CARRIED
+    )
+    if (plan.kind !== "carry") throw new Error(plan.kind)
+    expect(plan.moves.map((each) => each.from)).toEqual(["gap"])
+    expect(plan.audioRows).toEqual(["gap"])
+    expect(
+      plan.project.takes.find((each) => each.shot === "next")?.onPhone
+    ).toBe(false)
+    expect(plan.left).toBe(2)
+  })
+
+  it("leaves everything where it is when its project is kept already", () => {
+    const first = planCarry(rows(), CARRIED)
+    if (first.kind !== "carry") throw new Error(first.kind)
+    expect(planCarry(rows({ projects: [first.project.id] }), CARRIED)).toEqual({
+      kind: "stays",
+    })
+  })
+
+  it("run twice, carries once: the second finds nothing to carry", () => {
+    const before = rows({
+      takeValues: {
+        gap: take("gap", 21_000),
+        next: { cutId: "next" },
+      },
+    })
+    const once = planCarry(before, CARRIED)
+    const left = after(before, once)
+    expect(left.takes.map((row) => row.key)).toEqual(["next"])
+    expect(left.audio.map((row) => row.key)).toEqual(["next"])
+    expect(planCarry(left, CARRIED)).toEqual({ kind: "nothing" })
   })
 })

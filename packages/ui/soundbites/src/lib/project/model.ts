@@ -358,6 +358,41 @@ export function isAppendOnly(before: Project, after: Project): boolean {
   return revisions && notes && takes && sittings
 }
 
+/** What a store does with a save: refuse it, or put it and let some audio go. */
+export type Admission =
+  | { readonly ok: false }
+  | { readonly ok: true; readonly letGo: ReadonlyArray<string> }
+
+/**
+ * Whether a store may put `after` in place of `kept` (null for a project not
+ * kept yet): it only adds (`isAppendOnly`), and the only take it adds is
+ * `adding`, the one whose audio comes in the same write. `letGo` names each
+ * take it marks off the phone, whose audio leaves with it. The phone's store
+ * and every fake of it decide by this one function.
+ */
+export function admitted(
+  kept: Project | null,
+  after: Project,
+  adding: string | null = null
+): Admission {
+  if (kept !== null && !isAppendOnly(kept, after)) return { ok: false }
+  const before = kept?.takes ?? []
+  const added = after.takes.filter(
+    (take) => !before.some((each) => each.id === take.id)
+  )
+  if (added.some((take) => take.id !== adding)) return { ok: false }
+  return {
+    ok: true,
+    letGo: before
+      .filter(
+        (take) =>
+          take.onPhone &&
+          after.takes.find((each) => each.id === take.id)?.onPhone === false
+      )
+      .map((take) => take.id),
+  }
+}
+
 function changed(state: ProjectState, project: Project): ProjectStep {
   return {
     state: { ...state, project },

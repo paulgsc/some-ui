@@ -63,3 +63,8 @@ export async function otherAudioBytes(
   }
   return sum
 }
+
+/** Where a project take's audio is kept: take ids are unique only within a project. */
+export function projectAudioKey(project: string, take: string): string {
+  return `${project}:${take}`
+}

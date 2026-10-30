@@ -50,6 +50,7 @@ export function phoneStudioPorts(): StudioPorts {
     startRecording: micRecorder({ bitsPerSecond: SOUNDBITE_BITS_PER_SECOND }),
     player: audioPlayer,
     now: () => Date.now(),
+    newId: () => crypto.randomUUID(),
     readText: (file) => file.text(),
     onVisibility: onPageVisibility,
   }
