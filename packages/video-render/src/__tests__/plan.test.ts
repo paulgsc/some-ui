@@ -1,5 +1,10 @@
-import { planAssembly, planSegment, readLoudness } from "@video-render/plan"
-import type { Assembly, Facts, Scene } from "@video-render/plan"
+import {
+  planAssembly,
+  planMix,
+  planSegment,
+  readLoudness,
+} from "@video-render/plan"
+import type { Assembly, Facts, Mix, Scene } from "@video-render/plan"
 import { resolve } from "@video-render/resolve"
 import { place } from "@video-render/timing"
 import { MUSIC_MODES, TRANSITIONS } from "@video-render/vocabulary"
@@ -133,9 +138,7 @@ describe("planAssembly", () => {
       segments: scenes.map((s) => `${s.shot.shot.id}.mkv`),
       totalFrames: p.value.totalFrames,
       layers: [],
-      voice: null,
-      music: "off",
-      cues: [],
+      mix: "mix.wav",
       ...over,
     }
   }
@@ -167,28 +170,35 @@ describe("planAssembly", () => {
     expect(cut).toContain("[s0][s1]concat=n=2:v=1:a=0[j1]")
   })
 
-  it.each(MUSIC_MODES)("mixes the music bed %s", (music) => {
-    const f = filters(
-      assembly({
-        music,
-        voice: { file: "voice.wav", loudness: null },
-        cues: [{ file: "kit/click.wav", atMs: 400 }],
-      })
-    )
-    expect(f.includes("sidechaincompress")).toBe(music !== "off")
-    expect(f).toContain("adelay=400:all=1,volume=-8dB[c0]")
-  })
-
   it("lays a burn-in from its frame on", () => {
     expect(
       filters(assembly({ layers: [{ file: "b.mov", startFrame: 45 }] }))
     ).toContain("setpts=PTS-STARTPTS+1.500000/TB[b0]")
   })
+})
+
+describe("planMix", () => {
+  const mix = (over: Partial<Mix> = {}): string => {
+    const args = planMix(
+      { totalFrames: 60, voice: null, music: "off", cues: [], ...over },
+      series(),
+      "mix.wav"
+    ).args
+    return args.join(" ")
+  }
+
+  it.each(MUSIC_MODES)("mixes the music bed %s", (music) => {
+    const f = mix({
+      music,
+      voice: { file: "voice.wav", loudness: null },
+      cues: [{ file: "kit/click.wav", atMs: 400 }],
+    })
+    expect(f.includes("sidechaincompress")).toBe(music !== "off")
+    expect(f).toContain("adelay=400:all=1,volume=-8dB[c0]")
+  })
 
   it("gives a silent video a silent track", () => {
-    expect(
-      planAssembly(assembly(), series(), "video.mp4").args.join(" ")
-    ).toContain("anullsrc=r=48000:cl=mono")
+    expect(mix()).toContain("anullsrc=r=48000:cl=mono")
   })
 })
 

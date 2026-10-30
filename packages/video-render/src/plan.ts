@@ -5,11 +5,11 @@
  * test can check every vocabulary member without running ffmpeg, and the
  * runtime only runs what is written here.
  *
- * Three steps: each scene to a segment (picture only, a whole number of
- * frames); the voice, placed and levelled to -16 LUFS in two passes, as the
- * build-journal skill's `render.py` did; then one assembly that joins the
- * segments with their transitions, lays the burn-ins over them, and mixes
- * voice, music bed and sound cues.
+ * Four steps: each scene to a segment (picture only, a whole number of
+ * frames); the voice, placed and measured for -16 LUFS, as the build-journal
+ * skill's `render.py` did; the sound, mixing the levelled voice, the music
+ * bed and the sound cues; then one assembly that joins the segments with
+ * their transitions, lays the burn-ins over them, and adds the sound.
  *
  * Every output is written bit-exact (no encoder tags, no metadata, no
  * timestamps), so the same inputs and the same ffmpeg give the same bytes.
@@ -458,11 +458,9 @@ export type Layer = { readonly file: string; readonly startFrame: number }
 /** A sound cue placed in the video. */
 export type PlacedCue = { readonly file: string; readonly atMs: number }
 
-export type Assembly = {
-  readonly scenes: ReadonlyArray<Scene>
-  readonly segments: ReadonlyArray<string>
+/** What the sound step mixes. */
+export type Mix = {
   readonly totalFrames: number
-  readonly layers: ReadonlyArray<Layer>
   /** The voice track and its measured loudness; null loudness is silence. */
   readonly voice: {
     readonly file: string
@@ -470,6 +468,15 @@ export type Assembly = {
   } | null
   readonly music: MusicMode
   readonly cues: ReadonlyArray<PlacedCue>
+}
+
+/** What the last step joins: the segments, the burn-ins, the mixed sound. */
+export type Assembly = {
+  readonly scenes: ReadonlyArray<Scene>
+  readonly segments: ReadonlyArray<string>
+  readonly totalFrames: number
+  readonly layers: ReadonlyArray<Layer>
+  readonly mix: string
 }
 
 /** Where each scene's cues land, and which kit file sounds them. */
@@ -497,48 +504,17 @@ const BED: Readonly<
 }
 
 /** Joins the segments, lays the burn-ins on, mixes the sound, to `out`. */
-export function planAssembly(
-  a: Assembly,
-  series: Series,
-  out: string
-): FfmpegCall {
-  const fps = series.frame.fps
-  const total = at(a.totalFrames, fps)
+/**
+ * The sound: the levelled voice, the music bed lowered under it, and the
+ * sound cues, the video's length, to a WAV. Its own step, so its bytes
+ * are checked apart from the picture's.
+ */
+export function planMix(a: Mix, series: Series, out: string): FfmpegCall {
+  const total = at(a.totalFrames, series.frame.fps)
   const inputs: Array<string> = []
   const filters: Array<string> = []
-  let next = 0
-  const segIn = a.segments.map((file) => {
-    inputs.push("-i", file)
-    return next++
-  })
-  segIn.forEach((n, i) =>
-    filters.push(`[${n}:v]settb=AVTB,setpts=PTS-STARTPTS[s${i}]`)
-  )
-  let acc = "[s0]"
-  a.scenes.forEach(({ shot: s, placed: p }, i) => {
-    if (i === 0) return
-    const label = `[j${i}]`
-    if (s.transitionIn === "cut") {
-      filters.push(`${acc}[s${i}]concat=n=2:v=1:a=0${label}`)
-    } else {
-      filters.push(
-        `${acc}[s${i}]xfade=transition=${XFADE[s.transitionIn]}:` +
-          `duration=${at(p.overlapFrames, fps)}:offset=${at(p.startFrame, fps)}${label}`
-      )
-    }
-    acc = label
-  })
-  a.layers.forEach((layer, i) => {
-    inputs.push("-i", layer.file)
-    filters.push(
-      `[${next++}:v]setpts=PTS-STARTPTS+${at(layer.startFrame, fps)}/TB[b${i}]`,
-      `${acc}[b${i}]overlay=0:0:eof_action=pass[l${i}]`
-    )
-    acc = `[l${i}]`
-  })
-  filters.push(`${acc}format=yuv420p[v]`)
-
   const mix: Array<string> = []
+  let next = 0
   let voiceKey: string | null = null
   if (a.voice) {
     inputs.push("-i", a.voice.file)
@@ -575,7 +551,7 @@ export function planAssembly(
     )
     mix.push(`[c${i}]`)
   })
-  const tail = `apad=whole_dur=${total},atrim=duration=${total},aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo[a]`
+  const tail = `apad=whole_dur=${total},atrim=duration=${total},aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo[a]`
   if (mix.length) {
     filters.push(
       `${mix.join("")}amix=inputs=${mix.length}:normalize=0:duration=longest,${tail}`
@@ -591,9 +567,66 @@ export function planAssembly(
       "-filter_complex",
       filters.join(";"),
       "-map",
+      "[a]",
+      "-c:a",
+      "pcm_s16le",
+      ...BITEXACT,
+      out,
+    ],
+  }
+}
+
+/** Joins the segments, lays the burn-ins on, adds the mixed sound, to `out`. */
+export function planAssembly(
+  a: Assembly,
+  series: Series,
+  out: string
+): FfmpegCall {
+  const fps = series.frame.fps
+  const inputs: Array<string> = []
+  const filters: Array<string> = []
+  let next = 0
+  const segIn = a.segments.map((file) => {
+    inputs.push("-i", file)
+    return next++
+  })
+  segIn.forEach((n, i) =>
+    filters.push(`[${n}:v]settb=AVTB,setpts=PTS-STARTPTS[s${i}]`)
+  )
+  let acc = "[s0]"
+  a.scenes.forEach(({ shot: s, placed: p }, i) => {
+    if (i === 0) return
+    const label = `[j${i}]`
+    if (s.transitionIn === "cut") {
+      filters.push(`${acc}[s${i}]concat=n=2:v=1:a=0${label}`)
+    } else {
+      filters.push(
+        `${acc}[s${i}]xfade=transition=${XFADE[s.transitionIn]}:` +
+          `duration=${at(p.overlapFrames, fps)}:offset=${at(p.startFrame, fps)}${label}`
+      )
+    }
+    acc = label
+  })
+  a.layers.forEach((layer, i) => {
+    inputs.push("-i", layer.file)
+    filters.push(
+      `[${next++}:v]setpts=PTS-STARTPTS+${at(layer.startFrame, fps)}/TB[b${i}]`,
+      `${acc}[b${i}]overlay=0:0:eof_action=pass[l${i}]`
+    )
+    acc = `[l${i}]`
+  })
+  filters.push(`${acc}format=yuv420p[v]`)
+  inputs.push("-i", a.mix)
+  return {
+    args: [
+      ...QUIET,
+      ...inputs,
+      "-filter_complex",
+      filters.join(";"),
+      "-map",
       "[v]",
       "-map",
-      "[a]",
+      `${next}:a`,
       "-frames:v",
       String(a.totalFrames),
       "-r",

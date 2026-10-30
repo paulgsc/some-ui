@@ -12,11 +12,12 @@ import {
   placeTakes,
   planAssembly,
   planMeasure,
+  planMix,
   planSegment,
   planVoice,
   readLoudness,
 } from "./plan"
-import type { Assembly, FfmpegCall, Layer, Scene, SourceFacts } from "./plan"
+import type { FfmpegCall, Layer, Mix, Scene, SourceFacts } from "./plan"
 import { resolve } from "./resolve"
 import type { ResolvedShot } from "./resolve"
 import type { Series } from "./series"
@@ -155,7 +156,7 @@ export async function render(
     toMs(totalFrames, fps),
     voiceFile
   )
-  let voice: Assembly["voice"] = null
+  let voice: Mix["voice"] = null
   if (voiceCall) {
     const ran = await ports.ffmpeg(voiceCall)
     if (!ran.ok) return refused([`the voice: ${tail(ran.stderr)}`])
@@ -172,17 +173,19 @@ export async function render(
     }
   }
 
+  const mixFile = `${work}/mix.wav`
+  const mixed = await ports.ffmpeg(
+    planMix(
+      { totalFrames, voice, music, cues: placeCues(scenes, series) },
+      series,
+      mixFile
+    )
+  )
+  if (!mixed.ok) return refused([`the sound: ${tail(mixed.stderr)}`])
+
   const assembled = await ports.ffmpeg(
     planAssembly(
-      {
-        scenes,
-        segments,
-        totalFrames,
-        layers,
-        voice,
-        music,
-        cues: placeCues(scenes, series),
-      },
+      { scenes, segments, totalFrames, layers, mix: mixFile },
       series,
       options.out
     )
