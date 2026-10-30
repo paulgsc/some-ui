@@ -19,9 +19,9 @@ import {
  * routine cannot reach home, so this file is its only view of the record.
  *
  * Append-only by convention: a later file never edits an earlier one. It
- * adds outcomes for earlier picks by fingerprint, and it restates a pick only
- * when I changed my mind about it; the newest file's entry for a fingerprint
- * is the decision that stands. A second share on one day is
+ * adds outcomes for earlier picks by fingerprint, withdraws an earlier
+ * outcome by its id, and restates a pick only when I changed my mind about
+ * it; the newest file's entry for a fingerprint is the decision that stands. A second share on one day is
  * `decisions-<day>-2.json`, then `-3`, and so on (`decisionsFileName`).
  *
  * A pick I archived (`archived`) is one I let go with the rest of its
@@ -147,6 +147,14 @@ export const DecisionsSchema = z.object({
       note: z.string(),
     })
   ),
+  /**
+   * Outcomes I took back, each by the `id` it had in `outcomes` of this file
+   * or an earlier one: said by mistake, or no longer standing. A withdrawn
+   * outcome counts for nothing. Files before it had none.
+   */
+  withdrawals: z
+    .array(z.object({ id: EventIdSchema, outcome: EventIdSchema }))
+    .default([]),
 })
 
 export type Decisions = z.infer<typeof DecisionsSchema>

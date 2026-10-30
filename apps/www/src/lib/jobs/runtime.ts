@@ -139,6 +139,11 @@ export type JobsRuntime = {
   addScout: (scout: ScoutDraft, voice: ReadonlyArray<string>) => boolean
   /** Records what happened to an application, dated today. */
   addOutcome: (fingerprint: string, event: Outcome) => boolean
+  /**
+   * Takes back the outcome recorded as `outcomeId`; false when no standing
+   * outcome has that id, or it wasn't kept.
+   */
+  withdrawOutcome: (outcomeId: string) => boolean
   startVoice: (owner: string) => void
   stopVoice: () => void
   leaveVoice: () => void
@@ -501,6 +506,12 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
           on: ports.dayOf(ports.now()),
           note: "",
         },
+        stamp: stamp(),
+      }),
+    withdrawOutcome: (outcomeId) =>
+      commit({
+        type: "record",
+        event: { type: "outcome-withdrawn", outcomeId },
         stamp: stamp(),
       }),
     startVoice(owner): void {

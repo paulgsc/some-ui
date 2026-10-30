@@ -48,6 +48,7 @@ function decisions(
     notes: {},
     disagreements: [],
     outcomes: [],
+    withdrawals: [],
   }
 }
 

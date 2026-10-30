@@ -96,8 +96,8 @@ function since(state: JobsState, kind: ShareKind): ReadonlyArray<JobEvent> {
 /**
  * `decisions-<day>.json`: each pick decided or debriefed since the last
  * decisions share that arrived, as it stands now; the picks of an earlier
- * day's digest nobody touched; disagreements and outcomes since. Null when
- * there is nothing new to say.
+ * day's digest nobody touched; disagreements, outcomes and outcomes taken
+ * back since. Null when there is nothing new to say.
  */
 export function decisionsFile(
   state: JobsState,
@@ -214,7 +214,17 @@ export function decisionsFile(
         ]
       : []
   )
-  if (picks.length + disagreements.length + outcomes.length === 0) return null
+  const withdrawals = fresh.flatMap((e) =>
+    e.type === "outcome-withdrawn" ? [{ id: e.id, outcome: e.outcomeId }] : []
+  )
+  if (
+    picks.length +
+      disagreements.length +
+      outcomes.length +
+      withdrawals.length ===
+    0
+  )
+    return null
 
   const parsed = DecisionsSchema.safeParse({
     schema: "some-ui.job-decisions/1",
@@ -225,6 +235,7 @@ export function decisionsFile(
     notes,
     disagreements,
     outcomes,
+    withdrawals,
   })
   if (!parsed.success) return unshareable("decisions", parsed.error.issues)
   const file: Decisions = parsed.data

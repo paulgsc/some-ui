@@ -195,6 +195,9 @@ For each new file:
      there are 30 or more outcomes, compare them with
      the odds each pick was given and say in the summary whether the rubric
      reads high or low. Don't change the rubric yourself.
+     An outcome named in any file's `withdrawals` (by its `id`) was taken
+     back: said by mistake, or no longer standing. Leave it out of every
+     count and comparison, and say in the summary which were withdrawn.
 
 A pick is known by its fingerprint (each entry also names the digest day it
 came from). When a later decisions file restates a pick, I changed my mind:
