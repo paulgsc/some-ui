@@ -1,5 +1,6 @@
 /** @vitest-environment node */
 import { inMemoryStorage } from "@some-ui/core-utils"
+import { REVIEW_SCHEMA } from "@some-ui/video-render"
 import type {
   Playback,
   Recording,
@@ -1251,5 +1252,67 @@ describe("a version back from Claude", () => {
     pick(runtime, back)
     await until(runtime, (state) => state.notice === STUDIO_WORDS.merge.moved)
     expect(projectIn(runtime).revisions).toHaveLength(revisions)
+  })
+})
+
+/** ST5: Watch pins a note to the moment of the review render on screen. */
+describe("Watch", () => {
+  it("pins a note to the scene and offset playing, from the render's own times", async () => {
+    const runtime = await opened()
+    const { rev, cutList } = latest(projectIn(runtime))
+    let start = 0
+    const shotTimes = cutList.shots.map((each) => {
+      const at = start
+      start += each.durationMs
+      return {
+        id: each.id,
+        cut: null,
+        startMs: at,
+        durationMs: each.durationMs,
+      }
+    })
+    const [first, second] = shotTimes
+    if (first === undefined || second === undefined) throw new Error("scenes")
+    runtime.dispatch({ type: "watchChosen" })
+    runtime.dispatch({
+      type: "reviewPicked",
+      files: [
+        new Blob(["v"], { type: "video/mp4" }),
+        new Blob([JSON.stringify({ schema: REVIEW_SCHEMA, rev, shotTimes })], {
+          type: "application/json",
+        }),
+      ],
+    })
+    await until(
+      runtime,
+      (state) => state.screen.kind === "watch" && state.screen.review !== null
+    )
+    runtime.dispatch({ type: "playheadAt", ms: second.startMs + 250 })
+    runtime.dispatch({ type: "notedHere", text: "Hold the list longer" })
+    await until(
+      runtime,
+      (state) =>
+        settledWrites(state) && state.notice === STUDIO_WORDS.watch.noted
+    )
+    expect(projectIn(runtime).notes).toEqual([
+      expect.objectContaining({
+        rev,
+        shot: second.id,
+        offsetMs: 250,
+        author: "owner",
+        text: "Hold the list longer",
+        status: "open",
+      }),
+    ])
+  })
+
+  it("asks for the video and its review.json together", async () => {
+    const runtime = await opened()
+    runtime.dispatch({ type: "watchChosen" })
+    runtime.dispatch({
+      type: "reviewPicked",
+      files: [new Blob(["v"], { type: "video/mp4" })],
+    })
+    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.watch.pickBoth)
   })
 })

@@ -8,6 +8,7 @@ import { formatSize, listed } from "@some-ui/core-utils"
 import type { Look, Voice } from "@some-ui/video-render"
 import type { RecordingFailure } from "@some-ui/voice-capture"
 import { RECORDING_FAILURE_COPY } from "@some-ui/voice-capture"
+import { formatDuration } from "@soundbites/lib/format"
 import type { QuestionId } from "@soundbites/lib/idea/model"
 
 /** How a sitting went, as the person answers it. */
@@ -94,7 +95,6 @@ export const STUDIO_WORDS = {
       shape: "Shape",
       finish: "Finish",
     } satisfies Record<SittingKind, string>,
-    notYet: "Not on the phone yet",
     which: (title: string): string =>
       `Is this the next version of “${title}”, or a new video?`,
     nextVersion: (title: string): string => `Next version of “${title}”`,
@@ -232,6 +232,32 @@ export const STUDIO_WORDS = {
       `${LOOK_WORDS[look].name} look, ${VOICE_WORDS[voice].name} voice`,
     revised: (look: Look, voice: Voice): string =>
       `Shape: ${LOOK_WORDS[look].name} look, ${VOICE_WORDS[voice].name} voice`,
+  },
+
+  /** Watch (ST5): a review render, notes pinned to its moments. */
+  watch: {
+    heading: "Watch",
+    open: "Open a review render",
+    openHint:
+      "Pick the video and the review.json beside it, together, from Build Journal › voice › reviews.",
+    pickBoth: "Pick the video and its review.json together.",
+    unreadable:
+      "That review.json can't be read. Pick the video and its review.json again.",
+    notThisVideo:
+      "That render is of a version this phone doesn't have. Open Claude's version first.",
+    noteLabel: "Your note",
+    noteHere: (ms: number): string => `Note here · ${formatDuration(ms)}`,
+    noted: "Noted, pinned to this moment.",
+    changed: (text: string): string =>
+      `Claude changed this, from your note: "${text}"`,
+    good: "Good",
+    notYet: "Not yet",
+    notYetText: (text: string): string => `Not yet: ${text}`,
+    back: "Back",
+    status: (changes: number): string =>
+      changes === 0
+        ? "Note any moment of the review render"
+        : `${plural(changes, "change", "changes")} of Claude's to watch`,
   },
 
   /** A version back from Claude, opened as a primer is (ST8). */

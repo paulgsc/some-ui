@@ -133,8 +133,20 @@ export function createStudio(ports: StudioPorts): StudioRuntime {
       case "readFile": {
         const { seq } = effect
         ports.readText(effect.file).then(
-          (text) => send({ type: "primerRead", seq, text, at: at() }),
-          () => send({ type: "primerUnreadable", seq })
+          (text) =>
+            send(
+              effect.as === "primer"
+                ? { type: "primerRead", seq, text, at: at() }
+                : { type: "reviewRead", seq, text }
+            ),
+          () =>
+            send({
+              type:
+                effect.as === "primer"
+                  ? "primerUnreadable"
+                  : "reviewUnreadable",
+              seq,
+            })
         )
         return
       }

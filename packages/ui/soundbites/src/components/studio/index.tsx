@@ -11,7 +11,13 @@
  * (docs/monorepo-boundaries.md, "Inside a React package").
  */
 import type { JSX, ReactNode } from "react"
-import { useEffect, useId, useState, useSyncExternalStore } from "react"
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import { LOOKS, VOICES } from "@some-ui/video-render"
@@ -32,6 +38,7 @@ import {
   startView,
   takesOnPhone,
 } from "@soundbites/lib/studio/view"
+import { askedAt, changesIn, shotAt } from "@soundbites/lib/studio/watch"
 import type { SittingKind, Snag, Went } from "@soundbites/lib/studio/words"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { FolderOpen, Mic, Pause, Play, Square } from "lucide-react"
@@ -56,8 +63,7 @@ type Dispatch = (intent: StudioIntent) => void
 /** What tapping each open sitting on Start asks for. */
 const CHOSEN = {
   record: "recordChosen",
-  // Watch is not open on the phone yet (ST5), so its row is never tapped.
-  watch: "recordChosen",
+  watch: "watchChosen",
   shape: "shapeChosen",
   finish: "finishChosen",
 } as const satisfies Record<
@@ -657,6 +663,141 @@ const Shape = ({
   )
 }
 
+type WatchScreen = Extract<StudioState["screen"], { kind: "watch" }>
+
+/** The picked render, played from the file where it is: never copied in. */
+const ReviewVideo = ({
+  video,
+  dispatch,
+}: {
+  video: Blob
+  dispatch: Dispatch
+}): JSX.Element => {
+  const url = useMemo(() => URL.createObjectURL(video), [video])
+  useEffect(
+    () => (): void => {
+      URL.revokeObjectURL(url)
+    },
+    [url]
+  )
+  return (
+    // eslint-disable-next-line jsx-a11y/media-has-caption -- the review render burns its subtitles into the picture (the captions burn-in); there is no separate track to give
+    <video
+      src={url}
+      controls
+      playsInline
+      className="w-full rounded-2xl bg-black"
+      onTimeUpdate={(event) =>
+        dispatch({
+          type: "playheadAt",
+          ms: Math.round(event.currentTarget.currentTime * 1_000),
+        })
+      }
+    />
+  )
+}
+
+/**
+ * Watch (STUDIO ST5): a review render, one button to note the moment on
+ * screen, and each of Claude's changes asked once the playhead reaches it.
+ */
+const Watch = ({
+  state,
+  screen,
+  project,
+  dispatch,
+}: {
+  state: StudioState
+  screen: WatchScreen
+  project: Project
+  dispatch: Dispatch
+}): JSX.Element => {
+  const noteId = useId()
+  const [text, setText] = useState("")
+  const words = WORDS.watch
+  const { review, video } = screen
+  const asked =
+    review === null
+      ? null
+      : askedAt(changesIn(project, review), screen.atMs, screen.answered)
+  const here = review === null ? null : shotAt(review, screen.atMs)
+  return (
+    <div className="flex flex-col gap-3">
+      <h2 className="text-2xl font-extrabold">{words.heading}</h2>
+      {review === null || video === null ? (
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-semibold">{words.open}</span>
+          <input
+            type="file"
+            multiple
+            accept="video/*,application/json,.json"
+            onChange={(event) => {
+              const files = [...(event.currentTarget.files ?? [])]
+              if (files.length > 0) dispatch({ type: "reviewPicked", files })
+            }}
+          />
+          <span className="text-muted-foreground">{words.openHint}</span>
+        </label>
+      ) : (
+        <>
+          <ReviewVideo video={video} dispatch={dispatch} />
+          {asked !== null && (
+            <div className="border-brand space-y-2 rounded-2xl border-2 p-3">
+              <p className="text-sm">{words.changed(asked.text)}</p>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() =>
+                    dispatch({ type: "changeGood", note: asked.id })
+                  }
+                >
+                  {words.good}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    dispatch({ type: "changeNotYet", note: asked.id })
+                  }
+                >
+                  {words.notYet}
+                </Button>
+              </div>
+            </div>
+          )}
+          <form
+            className="flex flex-col gap-2"
+            onSubmit={(event) => {
+              event.preventDefault()
+              dispatch({ type: "notedHere", text })
+              setText("")
+            }}
+          >
+            <label htmlFor={noteId} className="text-sm font-semibold">
+              {words.noteLabel}
+            </label>
+            <input
+              id={noteId}
+              value={text}
+              onChange={(event) => setText(event.currentTarget.value)}
+              className="border-input bg-background focus-visible:ring-ring rounded-xl border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
+            />
+            <Button
+              type="submit"
+              size="lg"
+              disabled={text.trim() === "" || here === null}
+            >
+              {words.noteHere(screen.atMs)}
+            </Button>
+          </form>
+        </>
+      )}
+      <Button variant="ghost" onClick={() => dispatch({ type: "watchBack" })}>
+        {words.back}
+      </Button>
+      <Notice text={state.notice} />
+    </div>
+  )
+}
+
 /**
  * Finish (STUDIO ST7): ready for YouTube, or the one thing missing with a
  * button straight to it; once ready, the upload copy and the link it went
@@ -789,6 +930,15 @@ export const Studio = ({ ports, share }: StudioProps): JSX.Element => {
     )
   if (screen.kind === "shape" && project !== null)
     return <Shape screen={screen} project={project} dispatch={dispatch} />
+  if (screen.kind === "watch" && project !== null)
+    return (
+      <Watch
+        state={state}
+        screen={screen}
+        project={project}
+        dispatch={dispatch}
+      />
+    )
   if (screen.kind === "finish" && project !== null)
     return <Finish state={state} project={project} dispatch={dispatch} />
   return (

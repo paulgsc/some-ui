@@ -35,6 +35,11 @@ function lastLog(project: Project): { done: string; next: string } | null {
   return last === undefined ? null : { done: last.done, next: last.next }
 }
 
+/** Claude's changes not yet confirmed: notes applied, waiting to be watched. */
+function changesWaiting(project: Project): number {
+  return project.notes.filter((note) => note.status === "applied").length
+}
+
 /** How many of the latest revision's scenes have a chosen take. */
 function takenCount(project: Project): number {
   return latest(project).cutList.shots.filter(
@@ -44,12 +49,6 @@ function takenCount(project: Project): number {
 
 export function startView(project: Project): StartView {
   const scenes = latest(project).cutList.shots.length
-  const later = (kind: SittingKind): SittingRow => ({
-    kind,
-    status: STUDIO_WORDS.start.notYet,
-    open: false,
-    startHere: false,
-  })
   return {
     title: latest(project).cutList.title,
     standing: STUDIO_WORDS.standing(lastLog(project)),
@@ -61,7 +60,12 @@ export function startView(project: Project): StartView {
         // The one sitting the phone runs today, so the most useful one.
         startHere: true,
       },
-      later("watch"),
+      {
+        kind: "watch",
+        status: STUDIO_WORDS.watch.status(changesWaiting(project)),
+        open: true,
+        startHere: false,
+      },
       {
         kind: "shape",
         status: STUDIO_WORDS.shape.status(

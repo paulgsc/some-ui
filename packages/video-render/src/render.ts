@@ -24,6 +24,7 @@ import {
 import type { FfmpegCall, Layer, Scene, SourceFacts } from "./plan"
 import { designOf, resolve } from "./resolve"
 import type { ResolvedShot } from "./resolve"
+import { reviewOf } from "./review"
 import type { Series } from "./series"
 import { place, shotTimes, toMs } from "./timing"
 import type { Placement, ShotTime } from "./timing"
@@ -61,7 +62,10 @@ export type Ports = {
 export type RenderOptions = {
   /** Where segments and the voice track go, relative to the video's folder. */
   readonly workDir: string
-  /** The video, relative to the video's folder. `shot-times.json` goes beside it. */
+  /**
+   * The video, relative to the video's folder. `shot-times.json` goes
+   * beside it, and `review.json` when the cut list names its revision.
+   */
   readonly out: string
   /**
    * When nothing records burn-ins, render without them and list them,
@@ -222,6 +226,12 @@ export async function render(
   const times = shotTimes(placement.value.shots, fps)
   const shotTimesFile = `${dirOf(options.out)}/shot-times.json`
   await ports.writeFile(shotTimesFile, `${JSON.stringify(times, null, 1)}\n`)
+  const review = reviewOf(cutList, times)
+  if (review !== null)
+    await ports.writeFile(
+      `${dirOf(options.out)}/review.json`,
+      `${JSON.stringify(review, null, 1)}\n`
+    )
   return {
     ok: true,
     value: { video: options.out, shotTimes: times, shotTimesFile, leftOut },

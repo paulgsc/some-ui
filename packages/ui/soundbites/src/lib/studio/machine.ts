@@ -47,7 +47,8 @@
  *   then, or once the Record screen is gone, is let go.
  */
 import { assertNever } from "@some-ui/core-utils"
-import type { Look, Voice } from "@some-ui/video-render"
+import type { Look, Review, Voice } from "@some-ui/video-render"
+import { readReview } from "@some-ui/video-render"
 import type { RecordingFailure, Take, TakePhase } from "@some-ui/voice-capture"
 import {
   discardTake,
@@ -64,7 +65,7 @@ import {
 import { isProjectFile, readProjectFile } from "@soundbites/lib/project/file"
 import { finishOf, youtubeLink } from "@soundbites/lib/project/finish"
 import { mergeIn } from "@soundbites/lib/project/merge"
-import type { Project, ProjectTake } from "@soundbites/lib/project/model"
+import type { Note, Project, ProjectTake } from "@soundbites/lib/project/model"
 import {
   latest,
   newProject,
@@ -88,6 +89,7 @@ import type {
 } from "@soundbites/lib/project/store"
 
 import { sceneBeside } from "./view"
+import { askedAt, changesIn, shotAt } from "./watch"
 import type { Went } from "./words"
 import { STUDIO_WORDS } from "./words"
 
@@ -129,6 +131,18 @@ type StudioScreen =
     }
   /** Finish (ST7): ready for YouTube, or the one thing missing. */
   | { readonly kind: "finish" }
+  /** Watch (ST5): a review render, with notes pinned to its moments. */
+  | {
+      readonly kind: "watch"
+      /** The review render picked; null until one is. */
+      readonly video: Blob | null
+      /** The review.json picked with it, once read. */
+      readonly review: Review | null
+      /** Where the playhead is, in ms. */
+      readonly atMs: number
+      /** Claude's changes answered on this screen, by note id. */
+      readonly answered: ReadonlyArray<string>
+    }
   | {
       readonly kind: "done"
       readonly step: "how" | "what" | "saved"
@@ -187,6 +201,11 @@ type Pending = { readonly project: string } & (
       readonly at: string
     }
   | { readonly kind: "ready"; readonly rev: number; readonly at: string }
+  | {
+      readonly kind: "note"
+      readonly note: Omit<Note, "status" | "reason">
+    }
+  | { readonly kind: "good"; readonly note: string }
   /** A project file back from Claude (ST8), merged into the copy kept. */
   | { readonly kind: "merge"; readonly file: Project }
   | {
@@ -256,6 +275,14 @@ export type StudioIntent =
   | { readonly type: "finishGo" }
   | { readonly type: "readyMarked" }
   | { readonly type: "linkPasted"; readonly text: string }
+  | { readonly type: "watchChosen" }
+  | { readonly type: "watchBack" }
+  /** The review render and its review.json, picked together. */
+  | { readonly type: "reviewPicked"; readonly files: ReadonlyArray<Blob> }
+  | { readonly type: "playheadAt"; readonly ms: number }
+  | { readonly type: "notedHere"; readonly text: string }
+  | { readonly type: "changeGood"; readonly note: string }
+  | { readonly type: "changeNotYet"; readonly note: string }
   | { readonly type: "recordPressed" }
   | { readonly type: "discardPressed" }
   | { readonly type: "keepNextPressed" }
@@ -309,6 +336,12 @@ type StudioSignal =
       readonly at: string
     }
   | { readonly type: "primerUnreadable"; readonly seq: number }
+  | {
+      readonly type: "reviewRead"
+      readonly seq: number
+      readonly text: string
+    }
+  | { readonly type: "reviewUnreadable"; readonly seq: number }
   | { readonly type: "written"; readonly written: Written }
   | { readonly type: "writeFailed"; readonly reason: "full" | "failed" }
   | { readonly type: "reported" }
@@ -330,7 +363,13 @@ export type StudioEffect =
   | { readonly type: "stopClock" }
   | { readonly type: "carry"; readonly at: string }
   | { readonly type: "read"; readonly seq: number }
-  | { readonly type: "readFile"; readonly file: Blob; readonly seq: number }
+  | {
+      readonly type: "readFile"
+      readonly file: Blob
+      readonly seq: number
+      /** What the text is read as: a primer (or project file), or a review. */
+      readonly as: "primer" | "review"
+    }
   | {
       readonly type: "write"
       readonly project: string
@@ -552,6 +591,18 @@ function applied(project: Project | null, pending: Pending): Project | null {
         at: pending.at,
       })
     }
+    case "note": {
+      if (project === null) return null
+      return model(project, { type: "noted", note: pending.note })
+    }
+    case "good": {
+      if (project === null) return null
+      return model(project, {
+        type: "noteSettled",
+        id: pending.note,
+        status: "confirmed",
+      })
+    }
     case "merge": {
       if (project === null) return null
       const merged = mergeIn(project, pending.file)
@@ -570,6 +621,11 @@ function applied(project: Project | null, pending: Pending): Project | null {
       return assertNever(pending)
     }
   }
+}
+
+/** A note's id from when it was made: letters, digits and dashes. */
+function noteIdAt(at: string): string {
+  return `n-${at.replace(/[^0-9A-Za-z]/g, "")}`
 }
 
 /** A project file picked: Claude's version of a video kept here, merged (ST8). */
@@ -673,6 +729,12 @@ function landedNotice(
     case "merge": {
       return WORDS.merge.merged(latest(pending.file).message)
     }
+    case "note": {
+      return WORDS.watch.noted
+    }
+    case "good": {
+      return state.notice
+    }
     default: {
       return assertNever(pending)
     }
@@ -711,7 +773,9 @@ function unchangedNotice(state: StudioState, pending: Pending): string {
     }
     case "shape":
     case "ready":
-    case "release": {
+    case "release":
+    case "note":
+    case "good": {
       return WORDS.notice.notSaved
     }
     case "merge": {
@@ -1135,7 +1199,7 @@ export function step(state: StudioState, event: StudioEvent): Step {
       const seq = state.pickSeq + 1
       return {
         state: { ...state, pickSeq: seq, primerProblem: null, choosing: null },
-        effects: [{ type: "readFile", file: event.file, seq }],
+        effects: [{ type: "readFile", file: event.file, seq, as: "primer" }],
       }
     }
 
@@ -1259,6 +1323,141 @@ export function step(state: StudioState, event: StudioEvent): Step {
           at: event.at,
         }
       )
+    }
+
+    case "watchChosen": {
+      if (project === null || screen.kind !== "start" || !isSettled(activity))
+        return stay(state)
+      return stay({
+        ...state,
+        screen: {
+          kind: "watch",
+          video: null,
+          review: null,
+          atMs: 0,
+          answered: [],
+        },
+        notice: "",
+        choosing: null,
+      })
+    }
+
+    case "watchBack": {
+      return screen.kind === "watch"
+        ? stay({ ...state, screen: { kind: "start" }, notice: "" })
+        : stay(state)
+    }
+
+    case "reviewPicked": {
+      if (screen.kind !== "watch") return stay(state)
+      const video = event.files.find((file) => file.type.startsWith("video/"))
+      const review = event.files.find((file) => file !== video)
+      if (video === undefined || review === undefined)
+        return stay({ ...state, notice: WORDS.watch.pickBoth })
+      const seq = state.pickSeq + 1
+      return {
+        state: {
+          ...state,
+          pickSeq: seq,
+          notice: "",
+          screen: { ...screen, video, review: null, atMs: 0, answered: [] },
+        },
+        effects: [{ type: "readFile", file: review, seq, as: "review" }],
+      }
+    }
+
+    case "reviewRead": {
+      if (event.seq !== state.pickSeq || screen.kind !== "watch")
+        return stay(state)
+      const read = readReview(event.text)
+      if (!read.ok)
+        return stay({
+          ...state,
+          notice: WORDS.watch.unreadable,
+          screen: { ...screen, video: null },
+        })
+      if (!project?.revisions.some((each) => each.rev === read.value.rev))
+        return stay({
+          ...state,
+          notice: WORDS.watch.notThisVideo,
+          screen: { ...screen, video: null },
+        })
+      return stay({ ...state, screen: { ...screen, review: read.value } })
+    }
+
+    case "reviewUnreadable": {
+      if (event.seq !== state.pickSeq || screen.kind !== "watch")
+        return stay(state)
+      return stay({
+        ...state,
+        notice: WORDS.watch.unreadable,
+        screen: { ...screen, video: null },
+      })
+    }
+
+    case "playheadAt": {
+      return screen.kind === "watch" && screen.atMs !== event.ms
+        ? stay({ ...state, screen: { ...screen, atMs: event.ms } })
+        : stay(state)
+    }
+
+    case "notedHere": {
+      if (screen.kind !== "watch" || screen.review === null || project === null)
+        return stay(state)
+      const text = event.text.trim()
+      const here = shotAt(screen.review, screen.atMs)
+      if (text === "" || here === null) return stay(state)
+      return enqueue(
+        { ...state, notice: "" },
+        {
+          kind: "note",
+          project: project.id,
+          note: {
+            id: noteIdAt(event.at),
+            rev: screen.review.rev,
+            shot: here.shot,
+            offsetMs: here.offsetMs,
+            author: "owner",
+            text,
+          },
+        }
+      )
+    }
+
+    case "changeGood":
+    case "changeNotYet": {
+      if (screen.kind !== "watch" || screen.review === null || project === null)
+        return stay(state)
+      const asked = askedAt(
+        changesIn(project, screen.review),
+        screen.atMs,
+        screen.answered
+      )
+      if (asked?.id !== event.note) return stay(state)
+      const answered = {
+        ...state,
+        screen: { ...screen, answered: [...screen.answered, asked.id] },
+      }
+      if (event.type === "changeGood")
+        return enqueue(answered, {
+          kind: "good",
+          project: project.id,
+          note: asked.id,
+        })
+      const here = shotAt(screen.review, screen.atMs)
+      if (here === null) return stay(answered)
+      return enqueue(answered, {
+        kind: "note",
+        project: project.id,
+        note: {
+          id: noteIdAt(event.at),
+          rev: screen.review.rev,
+          shot: here.shot,
+          offsetMs: here.offsetMs,
+          author: "owner",
+          text: WORDS.watch.notYetText(asked.text),
+        },
+      })
     }
 
     case "finishChosen": {
