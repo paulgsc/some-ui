@@ -42,7 +42,18 @@ const TRANSCRIPT_KEYS: ReadonlySet<string> = new Set([
   "language",
   "model",
   "heardAt",
+  "words",
 ])
+/** The keys of one heard word in a transcript's `words`; any other is refused. */
+const WORD_KEYS: ReadonlySet<string> = new Set([
+  "text",
+  "startMs",
+  "endMs",
+  "p",
+  "language",
+])
+/** More words than a note can hold (home hears at most ten minutes). */
+const WORDS_MAX = 4_000
 const NO_AUDIO = "a transcript carries no audio: home keeps the audio"
 const NO_DRIVE = "a transcript names no Drive file: home keeps the audio"
 const AUDIO_KEY = /audio|sound|wav|webm|ogg|opus|m4a|mp3|base64|bytes|blob/i
@@ -126,6 +137,43 @@ function transcriptRefusal(
     return "model must name the model that heard it"
   }
   if (!isInstant(body.heardAt)) return "heardAt must be when home heard it"
+  if (body.words !== undefined) return wordsRefusal(body.words)
+  return null
+}
+
+/**
+ * Why a transcript's `words` are refused, or `null`: each is one heard word,
+ * its time in milliseconds from the note's start, how sure the model was of
+ * it, 0 to 1, where it said (paulgsc/server#577, ST22), and the language it
+ * was heard in, where that differs by word (paulgsc/server#578, ST23).
+ */
+function wordsRefusal(words: unknown): string | null {
+  const why = "words must be each word heard, with its time and how sure"
+  if (!Array.isArray(words) || words.length > WORDS_MAX) return why
+  for (const word of words) {
+    if (!isRecord(word)) return why
+    if (Object.keys(word).some((key) => !WORD_KEYS.has(key))) return why
+    const { text, startMs, endMs, p } = word
+    if (typeof text !== "string" || text.trim() === "" || text.length > 200)
+      return why
+    if (
+      typeof startMs !== "number" ||
+      typeof endMs !== "number" ||
+      !Number.isInteger(startMs) ||
+      !Number.isInteger(endMs) ||
+      startMs < 0 ||
+      endMs < startMs
+    )
+      return why
+    if (p !== undefined && (typeof p !== "number" || !(p >= 0 && p <= 1)))
+      return why
+    const { language } = word
+    if (
+      language !== undefined &&
+      (typeof language !== "string" || !/^[a-z]{2,3}$/.test(language))
+    )
+      return why
+  }
   return null
 }
 
