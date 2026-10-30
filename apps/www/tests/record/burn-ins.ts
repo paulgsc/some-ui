@@ -172,18 +172,19 @@ function burnInRecorder(
 }
 
 /**
- * Renders `<root>/cut-list.json` under `seriesFile` with its burn-ins
+ * Renders `<root>/cut-list.json` under the version of the series in
+ * `seriesDir` it pins, with its burn-ins
  * recorded on `page` (`openRecorder` opened it); a refusal carries the
  * recorder's reasons after the renderer's.
  */
 export async function renderWithBurnIns(
   page: Page,
   root: string,
-  seriesFile: string,
+  seriesDir: string,
   options: RenderOptions
 ): Promise<Rendered> {
   const reasons: Array<string> = []
-  const done = await renderFolder(root, seriesFile, {
+  const done = await renderFolder(root, seriesDir, {
     ...options,
     recordBurnIn: burnInRecorder(page, root, (line) => reasons.push(line)),
   })

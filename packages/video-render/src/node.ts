@@ -6,15 +6,17 @@
 import { execFile } from "node:child_process"
 import { createHash } from "node:crypto"
 import { createReadStream } from "node:fs"
-import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises"
 import { join, resolve as resolvePath } from "node:path"
 import { z } from "zod"
 
 import { parseCutList } from "./cut-list"
+import type { Parsed } from "./cut-list"
 import type { SourceFacts } from "./plan"
 import { render } from "./render"
 import type { Ports, Rendered, RenderOptions } from "./render"
-import { parseSeries } from "./series"
+import { parseSeries, seriesFile, versionOfFile } from "./series"
+import type { Series } from "./series"
 
 type Ran = {
   readonly ok: boolean
@@ -179,23 +181,68 @@ export function nodePorts(root: string): Ports {
   }
 }
 
+export const readJson = async (file: string): Promise<unknown> =>
+  JSON.parse(await readFile(file, "utf8"))
+
 /**
- * Renders `<root>/cut-list.json` under the series in `seriesFile`, the
- * video's burn-ins drawn by `recordBurnIn` when one is given.
+ * One version of the series in `dir` (`v<n>.json`, `series.ts`): the one
+ * asked for, or the newest when none is. Refuses a file that is missing,
+ * unreadable, or another series or version than its name says.
  */
-export async function renderFolder(
-  root: string,
-  seriesFile: string,
-  options: RenderOptions & { readonly recordBurnIn?: Ports["recordBurnIn"] }
-): Promise<Rendered> {
-  const readJson = async (file: string): Promise<unknown> =>
-    JSON.parse(await readFile(file, "utf8"))
-  const series = parseSeries(await readJson(seriesFile))
+export async function readSeries(
+  dir: string,
+  version?: number
+): Promise<Parsed<Series>> {
+  const versions = (await readdir(dir).catch(() => []))
+    .map(versionOfFile)
+    .filter((v) => v !== null)
+  const wanted = version ?? Math.max(0, ...versions)
+  if (!versions.includes(wanted)) {
+    return {
+      ok: false,
+      problems: [
+        version === undefined
+          ? `${dir} holds no version of a series`
+          : `${dir} holds no version ${version} of its series`,
+      ],
+    }
+  }
+  let raw: unknown
+  try {
+    raw = await readJson(join(dir, seriesFile(wanted)))
+  } catch (e) {
+    return {
+      ok: false,
+      problems: [`${seriesFile(wanted)} can't be read: ${String(e)}`],
+    }
+  }
+  const series = parseSeries(raw)
   if (!series.ok)
     return {
       ok: false,
       problems: ["The series can't be read:", ...series.problems],
     }
+  if (series.value.version !== wanted) {
+    return {
+      ok: false,
+      problems: [
+        `${seriesFile(wanted)} says it is version ${series.value.version}`,
+      ],
+    }
+  }
+  return series
+}
+
+/**
+ * Renders `<root>/cut-list.json` under the version of the series in
+ * `seriesDir` it pins, the video's burn-ins drawn by `recordBurnIn` when
+ * one is given.
+ */
+export async function renderFolder(
+  root: string,
+  seriesDir: string,
+  options: RenderOptions & { readonly recordBurnIn?: Ports["recordBurnIn"] }
+): Promise<Rendered> {
   const cutList = parseCutList(await readJson(join(root, "cut-list.json")))
   if (!cutList.ok) {
     return {
@@ -206,6 +253,8 @@ export async function renderFolder(
       ],
     }
   }
+  const series = await readSeries(seriesDir, cutList.value.series.version)
+  if (!series.ok) return series
   const { recordBurnIn, ...rest } = options
   return render(
     cutList.value,

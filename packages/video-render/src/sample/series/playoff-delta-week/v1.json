@@ -1,0 +1,26 @@
+{
+  "schema": "some-ui.video-series/1",
+  "id": "playoff-delta-week",
+  "version": 1,
+  "title": "Playoff Delta week",
+  "frame": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30
+  },
+  "ground": "#111821",
+  "window": {
+    "x": 54,
+    "y": 250,
+    "width": 972,
+    "height": 1450
+  },
+  "defaultLook": "calm",
+  "sounds": {},
+  "soundGainDb": -8,
+  "designs": {
+    "captions": "broadcast",
+    "card": "v1",
+    "authorship": "cells-v1"
+  }
+}

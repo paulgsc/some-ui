@@ -4,7 +4,7 @@
  * app's burn-ins page (`./burn-ins.ts`).
  *
  *   pnpm --filter www build
- *   pnpm --filter www record:short <video folder> --series <series.json> [--out outputs/video.mp4]
+ *   pnpm --filter www record:short <video folder> --series <series folder> [--out outputs/video.mp4]
  *
  * reads `<video folder>/cut-list.json` and writes the video and
  * `shot-times.json` beside it, as `pnpm --filter @some-ui/video-render
@@ -43,7 +43,7 @@ async function main(): Promise<void> {
   })
   const [folder] = positionals
   if (!folder || !values.series)
-    fail(["usage: record:short <folder> --series <series.json>"])
+    fail(["usage: record:short <folder> --series <series folder>"])
   const root = here(folder)
 
   const site = await serve(resolve(values.dist), { fallback: "index.html" })

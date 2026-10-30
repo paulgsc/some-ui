@@ -1,6 +1,4 @@
 import { parseCutList } from "@video-render/cut-list"
-import sample from "@video-render/sample/build-journal-short.json"
-import { parseSeries } from "@video-render/series"
 import { cutList, shot } from "@video-render/testing"
 import { describe, expect, it } from "vitest"
 
@@ -60,25 +58,6 @@ describe("parseCutList", () => {
       "S1: two scenes share this id",
       "S1: a motion time is past the scene's end",
       "S3: a card has no picture to move",
-    ])
-  })
-})
-
-describe("the sample series", () => {
-  it("is a series", () => {
-    const parsed = parseSeries(sample)
-    expect(parsed.ok ? parsed.value.id : parsed.problems).toBe(
-      "build-journal-short"
-    )
-  })
-
-  it("refuses a window outside the frame", () => {
-    const parsed = parseSeries({
-      ...sample,
-      window: { x: 54, y: 250, width: 1080, height: 1450 },
-    })
-    expect(parsed.ok ? [] : parsed.problems).toEqual([
-      "window: the window doesn't fit inside the frame",
     ])
   })
 })

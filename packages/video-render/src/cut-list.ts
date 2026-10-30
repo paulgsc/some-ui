@@ -61,14 +61,20 @@ const PictureSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("card") }),
 ])
 
+/** A burn-in's kind and design, as names (`@some-ui/burn-ins` knows them). */
+export const BurnInKindSchema = z.string().regex(/^[a-z][a-z-]{0,31}$/)
+export const BurnInDesignSchema = z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/)
+
 /**
  * A layer code draws into the frame (STUDIO ST15): its kind, the frozen
- * design it is drawn in, and this video's data for it. The burn-ins
- * workspace validates `params`; the renderer only passes them on.
+ * design it is drawn in, and this video's data for it. A burn-in that names
+ * no design is drawn in the one its series version names for the kind
+ * (ST11, `resolve.ts`). The burn-ins workspace validates `params`; the
+ * renderer only passes them on.
  */
 export const BurnInSchema = z.object({
-  kind: z.string().regex(/^[a-z][a-z-]{0,31}$/),
-  design: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/),
+  kind: BurnInKindSchema,
+  design: BurnInDesignSchema.optional(),
   params: z.record(z.string(), z.unknown()).default({}),
 })
 

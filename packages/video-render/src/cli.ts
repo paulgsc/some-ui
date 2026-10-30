@@ -1,13 +1,13 @@
 /**
  * The renderer from a shell, in a session or on home:
  *
- *   pnpm --filter @some-ui/video-render render <video folder> --series <series.json>
+ *   pnpm --filter @some-ui/video-render render <video folder> --series <series folder>
  *       [--out outputs/video.mp4] [--without-burn-ins]
  *
  * reads `<video folder>/cut-list.json` and writes the video and
  * `shot-times.json` beside it.
  *
- *   pnpm --filter @some-ui/video-render render from-timeline <short folder> --series <series.json>
+ *   pnpm --filter @some-ui/video-render render from-timeline <short folder> --series <series folder>
  *
  * reads a v1 short (`timeline.json`, the recorder's `marks.json` beside each
  * capture, and `voice/takes.json` when the timeline names it) and writes
@@ -16,22 +16,17 @@
  * `pnpm --filter` runs this from the package; INIT_CWD is where it was typed.
  */
 
-import { access, readFile, writeFile } from "node:fs/promises"
+import { access, writeFile } from "node:fs/promises"
 import { dirname, join, relative, resolve as resolvePath } from "node:path"
 import { parseArgs } from "node:util"
 import { z } from "zod"
 
 import { problemsOf } from "./cut-list"
-import { nodePorts, renderFolder } from "./node"
-import { parseSeries } from "./series"
+import { nodePorts, readJson, readSeries, renderFolder } from "./node"
 import { fromTimelineV1 } from "./timeline-v1"
 
 const here = (p: string): string =>
   resolvePath(process.env["INIT_CWD"] ?? process.cwd(), p)
-
-async function readJson(file: string): Promise<unknown> {
-  return JSON.parse(await readFile(file, "utf8"))
-}
 
 /** Stops the command, saying why; `main` prints it and sets the exit code. */
 class Refused extends Error {}
@@ -53,12 +48,12 @@ async function main(): Promise<void> {
   const converting = first === "from-timeline"
   const folder = converting ? second : first
   if (!folder || !values.series) {
-    fail(["usage: render [from-timeline] <folder> --series <series.json>"])
+    fail(["usage: render [from-timeline] <folder> --series <series folder>"])
   }
   const root = here(folder)
   if (converting) {
-    const series = parseSeries(await readJson(here(values.series)))
-    if (!series.ok) fail(["The series can't be read:", ...series.problems])
+    const series = await readSeries(here(values.series))
+    if (!series.ok) fail(series.problems)
     await convert(root, series.value)
     return
   }
