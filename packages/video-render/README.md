@@ -23,7 +23,13 @@ Each module's header says why it is the way it is.
   folder of versions, `v1.json`, `v2.json`, …, which a video pins one of and
   which names the design each burn-in kind is drawn in. The first three are
   sampled in `src/sample/series/` (a Build Journal short, a Playoff Delta
-  week, a long episode); their real content stays in Drive.
+  week, a long episode); their real content stays in Drive. A version may
+  carry an `intro` and an `outro` (a card or a checked still, with its
+  burn-ins), which the renderer adds to every video pinning it
+  (`withSeries`): just inside the authorship mark's bare cards, so the mark
+  still opens and closes the video and its record counts them as an
+  agent's, drawn by code. `review.json` lists only the video's own scenes,
+  so no note is pinned to the series'.
 - `src/resolve.ts`, `src/timing.ts`: each lever from the layer that sets
   it; each scene placed in whole frames.
 - `src/plan.ts`: the ffmpeg calls, as data. `src/render.ts` runs them over
@@ -56,4 +62,3 @@ Needs `ffmpeg` and `ffprobe` on `PATH`; the repo's nix shells carry them
   left out (`--without-burn-ins`).
 - **`fromRenderPack`**, GWB9's render pack (#2083) as a cut list, waits on
   that pack's shape, and with it B-roll by library id (GWB12, #2086).
-- **Intro and outro scenes** in a series are ST11's (#2259).

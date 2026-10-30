@@ -25,6 +25,7 @@ import type { FfmpegCall, Layer, Scene, SourceFacts } from "./plan"
 import { designOf, resolve } from "./resolve"
 import type { ResolvedShot } from "./resolve"
 import { reviewOf } from "./review"
+import { withSeries } from "./series"
 import type { Series } from "./series"
 import { place, shotTimes, toMs } from "./timing"
 import type { Placement, ShotTime } from "./timing"
@@ -96,11 +97,15 @@ const tail = (stderr: string): string =>
   stderr.trim().split("\n").slice(-6).join("\n") || "ffmpeg gave no reason"
 
 export async function render(
-  cutList: CutList,
+  own: CutList,
   series: Series,
   ports: Ports,
   options: RenderOptions
 ): Promise<Rendered> {
+  // The video as drawn: its own scenes and the series' intro and outro.
+  const framed = withSeries(own, series)
+  if (!framed.ok) return refused(framed.problems)
+  const cutList = framed.value
   const resolved = resolve(cutList, series)
   if (!resolved.ok) return refused(resolved.problems)
   const { shots, music } = resolved.value
@@ -226,7 +231,12 @@ export async function render(
   const times = shotTimes(placement.value.shots, fps)
   const shotTimesFile = `${dirOf(options.out)}/shot-times.json`
   await ports.writeFile(shotTimesFile, `${JSON.stringify(times, null, 1)}\n`)
-  const review = reviewOf(cutList, times)
+  // A note is pinned to the video's own scenes, never to the series'.
+  const ids = new Set(own.shots.map((s) => s.id))
+  const review = reviewOf(
+    own,
+    times.filter((t) => ids.has(t.id))
+  )
   if (review !== null)
     await ports.writeFile(
       `${dirOf(options.out)}/review.json`,
@@ -299,6 +309,14 @@ async function checkInputs(
   }
   if (series.music && music !== "off") {
     await unchanged("the music bed", series.music.bed)
+  }
+  for (const [what, scene] of [
+    ["the series' intro", series.intro],
+    ["the series' outro", series.outro],
+  ] as const) {
+    if (scene?.picture.kind === "still") {
+      await unchanged(what, scene.picture.image)
+    }
   }
   return problems.length ? { ok: false, problems } : { ok: true, value: facts }
 }
