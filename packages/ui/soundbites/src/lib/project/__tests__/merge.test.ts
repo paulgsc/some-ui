@@ -178,6 +178,65 @@ describe("a version back from Claude", () => {
     expect(mergeIn(once.project, back)).toEqual({ kind: "same" })
   })
 
+  it("still leaves a clashed scene's note open when the same file is opened again", () => {
+    const kept = shared()
+    const back = run(
+      { project: kept, taking: null, closing: null },
+      { type: "noteSettled", id: "n1", status: "applied" }
+    ).project
+    const file = version(back, "claude", "Scene 2 slower (n1)", [
+      shot("a"),
+      shot("b", 3_000),
+      shot("c", 1_500),
+    ])
+    const once = mergeIn(fitted(kept, "b"), file)
+    if (once.kind !== "merged") throw new Error(once.kind)
+    const twice = mergeIn(once.project, file)
+    expect(twice).toEqual({ kind: "same" })
+  })
+
+  it("takes a scene one side added while the other changed another", () => {
+    const kept = shared()
+    const added = version(kept, "claude", "With d", [
+      shot("a"),
+      shot("b"),
+      shot("c"),
+      shot("d", 1_000),
+    ])
+    const merged = mergeIn(fitted(kept, "b"), added)
+    if (merged.kind !== "merged") throw new Error(merged.kind)
+    expect(
+      latest(merged.project).cutList.shots.map((each) => [
+        each.id,
+        each.durationMs,
+      ])
+    ).toEqual([
+      ["a", 2_000],
+      ["b", 2_500],
+      ["c", 2_000],
+      ["d", 1_000],
+    ])
+    const here = version(kept, "owner", "With e", [
+      shot("a"),
+      shot("b"),
+      shot("c"),
+      shot("e", 1_200),
+    ])
+    const back = version(kept, "claude", "Scene 2 slower", [
+      shot("a"),
+      shot("b", 3_000),
+      shot("c"),
+    ])
+    const other = mergeIn(here, back)
+    if (other.kind !== "merged") throw new Error(other.kind)
+    expect(latest(other.project).cutList.shots.map((each) => each.id)).toEqual([
+      "a",
+      "b",
+      "c",
+      "e",
+    ])
+  })
+
   it("is refused when both changed which scenes the video has", () => {
     const kept = shared()
     const here = version(kept, "owner", "Without c", [shot("a"), shot("b")])

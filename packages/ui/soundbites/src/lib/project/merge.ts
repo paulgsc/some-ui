@@ -68,8 +68,8 @@ export function mergeIn(kept: Project, file: Project): Merged {
   if (base === 0) return { kind: "moved" }
   const onto = rebase(kept, file, base)
   if (onto === null) return { kind: "moved" }
-  const { revisions, renumber, clashes } = onto
-  const clashed = new Set(clashes.map((each) => each.shot))
+  const { revisions, renumber, clashes, held } = onto
+  const clashed = new Set(held.map((each) => each.shot))
   const settled = kept.notes.map((note): Note => {
     const there = file.notes.find((each) => each.id === note.id)
     if (there === undefined || !reaches(note.status, there.status)) return note
@@ -101,7 +101,13 @@ type Rebased = {
   readonly revisions: ReadonlyArray<Revision>
   /** A revision number in the file, as it reads on the phone. */
   readonly renumber: (rev: number) => number
+  /** Where this merge kept the phone's value, to say so. */
   readonly clashes: ReadonlyArray<Clash>
+  /**
+   * Those, and where an earlier merge of this file did: no change of the
+   * file's on them has come in, so no note on them is settled by it.
+   */
+  readonly held: ReadonlyArray<Clash>
 }
 
 /**
@@ -113,6 +119,12 @@ function rebase(kept: Project, file: Project, base: number): Rebased | null {
   const numbers = new Map<number, number>()
   const revisions: Array<Revision> = []
   const clashes: Array<Clash> = []
+  const held: Array<Clash> = []
+  const note = (into: Array<Clash>, found: ReadonlyArray<Clash>): void => {
+    for (const clash of found) {
+      if (!into.some((each) => each.shot === clash.shot)) into.push(clash)
+    }
+  }
   let ours = latest(kept).cutList
   let next = latest(kept).rev + 1
   let theirsBefore = file.revisions[base - 1]?.cutList
@@ -123,13 +135,18 @@ function rebase(kept: Project, file: Project, base: number): Rebased | null {
     const there = kept.revisions.find((each) => sameCommit(each, theirs))
     if (there !== undefined) {
       numbers.set(theirs.rev, there.rev)
+      // Merged before: what didn't come in then still hasn't, so its notes
+      // stay as they are. It was replayed onto the revision before it.
+      const onto = kept.revisions[kept.revisions.indexOf(there) - 1]
+      const again =
+        onto === undefined ? null : replay(before, onto.cutList, theirs.cutList)
+      if (again !== null) note(held, again.clashes)
       continue
     }
     const replayed = replay(before, ours, theirs.cutList)
     if (replayed === null) return null
-    for (const clash of replayed.clashes) {
-      if (!clashes.some((each) => each.shot === clash.shot)) clashes.push(clash)
-    }
+    note(clashes, replayed.clashes)
+    note(held, replayed.clashes)
     if (!sameJson(theirs.cutList, before) && sameJson(replayed.cutList, ours)) {
       // Everything it changed, the phone had changed too.
       numbers.set(theirs.rev, next - 1)
@@ -149,6 +166,7 @@ function rebase(kept: Project, file: Project, base: number): Rebased | null {
     revisions,
     renumber: (rev) => (rev <= base ? rev : (numbers.get(rev) ?? rev)),
     clashes,
+    held,
   }
 }
 
@@ -175,9 +193,14 @@ function replay(
     const o = ours.shots.find((each) => each.id === id)
     const t = theirs.shots.find((each) => each.id === id)
     if (o === undefined || t === undefined) {
-      // Removed on one side: fine only where the other left it as it was.
       const kept = o ?? t
-      if (b === undefined || !sameJson(b, kept)) return null
+      // Added on one side: it comes in as that side has it.
+      if (b === undefined) {
+        shots.push(kept)
+        continue
+      }
+      // Removed on one side: fine only where the other left it as it was.
+      if (!sameJson(b, kept)) return null
       continue
     }
     const shot = merge3(b ?? o, o, t)
