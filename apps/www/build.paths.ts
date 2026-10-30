@@ -197,10 +197,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       modules: [
         "packages/video-render/src/cut-list.ts",
         "packages/video-render/src/plans.ts",
+        "packages/video-render/src/timing.ts",
         "packages/video-render/src/vocabulary.ts",
       ],
       profiles: [MOBILE_PROFILE],
-      why: "the cut list's schemas, which the phone's Studio project reads and checks (@some-ui/soundbites, lib/project): the web builds render no video and keep no project",
+      why: "the cut list's schemas, which the phone's Studio project reads and checks, and its timing, which fits a scene to its take as Record keeps it (@some-ui/soundbites, lib/project): the web builds render no video and keep no project",
     },
     {
       modules: ["apps/www/src/lib/demo/**"],

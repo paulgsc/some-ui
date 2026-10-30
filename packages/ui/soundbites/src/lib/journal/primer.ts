@@ -49,7 +49,7 @@ import { JOURNAL_BUDGET_MAX_MS } from "@soundbites/lib/policy"
  */
 
 /** A cut's target is a guide, never under this or over the budget. */
-export const CUT_TARGET_MIN_MS = 3_000
+const CUT_TARGET_MIN_MS = 3_000
 
 /** The longest and the most cuts each version allows. */
 const LIMITS = {

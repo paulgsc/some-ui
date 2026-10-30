@@ -1530,8 +1530,8 @@
     {
       "store": "phone:journal",
       "class": "record",
-      "growth": "bounded: one episode, one take per cut, and Studio's projects in the same database (every revision, note, take and sitting, append-only); JOURNAL_TAKES_MAX_BYTES = 2 x 360 s x 4,000 B/s = 2,880,000 B covers the episode's audio and the projects' together.",
-      "horizon": "the episode is let go once shared, discarded or replaced by another primer; a project is never let go, and a take's audio leaves the phone only once home or Drive holds a copy",
+      "growth": "Studio's projects (every revision, note, take and sitting, append-only), and one row per sitting saying how it went (`friction`); the Journal tab's one episode, if a build before Studio kept one, is moved into a project the first time Studio opens, and any row of it that can't be read stays where it was, listed on Studio's Start. JOURNAL_TAKES_MAX_BYTES = 2 x 360 s x 4,000 B/s = 2,880,000 B covers the projects' takes' audio and what the Journal tab's stores still hold, together; a few notices a closed screen couldn't say wait in `notices` until the next Start says them.",
+      "horizon": "a project is never let go, and a take's audio leaves the phone only once home or Drive holds a copy",
       "family": "what-is-kept"
     },
     {
