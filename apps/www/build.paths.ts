@@ -120,6 +120,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/scene-voice/**",
   "apps/www/src/lib/session-archive/**",
   "apps/www/src/lib/share-files/**",
+  "apps/www/src/lib/studio-keeping/**",
   "apps/www/src/lib/takes-desk/**",
   "apps/www/src/lib/voice-home/**",
   "apps/www/src/lib/device-backend/**",

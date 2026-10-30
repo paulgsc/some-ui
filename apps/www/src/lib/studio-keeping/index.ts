@@ -1,11 +1,13 @@
 /**
- * Studio's part in the home link (STUDIO ST9, ST12). `@some-ui/soundbites` is
- * the phone's alone, so only Studio's screens import it
- * (packages/some-vite-config/AUDIENCES.md): its route hands its store, log
- * and rules in (`keepStudio`), and the lanes here name its types alone, as
- * aph's does (`./aph`). Until Studio's route has loaded in this run of the
- * app, the lanes carry nothing of Studio's, and its record waits on the
- * phone for the next send after it has.
+ * What Studio's screen hands to the home link (STUDIO ST9, ST12).
+ * `@some-ui/soundbites` is the phone's alone, so only Studio's screens import
+ * it (packages/some-vite-config/AUDIENCES.md): its route hands its store, log
+ * and rules in here (`keepStudio`), and the voice and send lanes
+ * (`lib/home-link`) read them, naming soundbites' types alone. This module
+ * calls nothing of the link and sends nothing: it only holds what was handed
+ * in. Until Studio's route has loaded in this run of the app, the lanes carry
+ * nothing of Studio's, and its record waits on the phone for the next send
+ * after it has.
  */
 import type {
   Project,

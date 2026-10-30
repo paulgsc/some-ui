@@ -15,10 +15,10 @@ import {
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { Lightbulb } from "lucide-react"
 
-import { keepStudio } from "@/lib/home-link/studio"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { shareStudio } from "@/lib/journal-share"
+import { keepStudio } from "@/lib/studio-keeping"
 
 const WORDS = STUDIO_WORDS
 

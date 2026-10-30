@@ -15,11 +15,11 @@ import { ShelfFullError } from "@some-ui/voice-capture"
 import { renderHook } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
-import { keepStudio } from "@/lib/home-link/studio"
 import { useUnsendable, voiceLane } from "@/lib/home-link/voice"
 import { sendVoice } from "@/lib/home-link/voice-copy"
 import type { JobEvent, JobsState } from "@/lib/jobs/model"
 import { EMPTY } from "@/lib/jobs/model"
+import { keepStudio } from "@/lib/studio-keeping"
 import type { VoiceHome } from "@/lib/voice-home/runtime"
 import { createVoiceHome } from "@/lib/voice-home/runtime"
 

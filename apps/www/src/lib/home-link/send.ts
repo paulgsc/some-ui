@@ -18,6 +18,7 @@ import type { Kept } from "@/lib/device-backend/handlers/shelf"
 import { everyKept } from "@/lib/device-backend/handlers/shelf"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import { letGoUnchanged } from "@/lib/session-archive"
+import { studioKeeping } from "@/lib/studio-keeping"
 import { sessionsRepository } from "@/lib/tenant/queries"
 import type { CopyResult, HeldReport } from "@/lib/tenant/sessions-copy"
 import { emptyHeldReport } from "@/lib/tenant/sessions-copy"
@@ -41,7 +42,6 @@ import {
 import { causedBy, copyAndConfirm, HomeForgotPhoneError } from "./sessions"
 import type { SendReport } from "./shelf"
 import { emptyReport, sendKept } from "./shelf"
-import { studioKeeping } from "./studio"
 import type { StudioGoing } from "./studio-log"
 import {
   reportsOf,

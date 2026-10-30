@@ -16,7 +16,7 @@
  *   was about are closed: `game`, the game's ESPN id, when it was kept, and
  *   every field it keeps;
  * - a Studio take still on the phone (`@some-ui/soundbites`' `notesForHome`,
- *   handed in by Studio's route, `./studio`): `studio`, the take as
+ *   handed in by Studio's route, `lib/studio-keeping`): `studio`, the take as
  *   `<project>:<shot>:<take>`, when it was recorded.
  *
  * Copying deletes nothing where the note was recorded; letting it go there
@@ -44,6 +44,7 @@ import type { SharedPrompt } from "@/lib/scene-voice"
 import { onPromptShared } from "@/lib/scene-voice"
 import { reflections } from "@/lib/session-reflection"
 import type { Reflection } from "@/lib/session-reflection/policy"
+import { onStudioKept, studioKeeping } from "@/lib/studio-keeping"
 import { phoneVoiceHome } from "@/lib/voice-home"
 import { exchangeVoice } from "@/lib/voice-home/home"
 import type { CopyPass, Unsendable, VoiceOut } from "@/lib/voice-home/model"
@@ -52,7 +53,6 @@ import { NO_PASS, passWith, runEnd } from "@/lib/voice-home/model"
 import { phoneConsent } from "./consent-runtime"
 import { homeLink } from "./index"
 import { keptNow } from "./lanes"
-import { onStudioKept, studioKeeping } from "./studio"
 
 /** What the voice lane keeps sending (`./voice`). */
 export const VOICE_SCOPES = { scopes: ["voice"] } as const
