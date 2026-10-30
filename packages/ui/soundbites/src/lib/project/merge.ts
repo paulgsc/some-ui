@@ -11,16 +11,19 @@
  * kept; #2317), the session's revisions are rebased onto the phone's: each
  * is replayed, in order, onto the phone's latest cut list and numbered after
  * it. A replay is a three-way merge against the revision the session built
- * on, field by field, for the video and for each scene: a field only one
- * side changed takes that side's value, and a field both changed keeps the
- * phone's, since what the owner did here (a take fitted, a plan chosen) is
- * the owner's own work. Each scene that kept the phone's value is named, and
+ * on: field by field for the video's own settings, and **scene by scene**,
+ * never field by field inside a scene, so every scene is wholly one side's
+ * and stays as consistent as that side made it. A scene or setting only one
+ * side changed takes that side's; one both changed, or a scene both added
+ * under one id, keeps the phone's, since what the owner did here (a take
+ * fitted, a plan chosen) is the owner's own work. Each scene that kept the
+ * phone's is named, and
  * a note the session settled as applied on that scene stays as the phone
  * has it, so the next round picks it up again. Nothing is lost: the
  * session's file is where it was picked from, and the phone's revisions
  * stay as they were.
  *
- * Refused (`moved`) only where no field-by-field answer exists: both sides
+ * Refused (`moved`) only where no such answer exists: both sides
  * changed which scenes the video has, or one side removed a scene the other
  * changed, or the file shares no first version with the phone; or where the
  * answer, each part of it valid, isn't as a whole a project this phone could
@@ -208,7 +211,7 @@ function replay(
       if (!sameJson(b, kept)) return null
       continue
     }
-    const shot = merge3(b ?? o, o, t)
+    const shot = pick3(b === undefined ? null : { was: b }, o, t)
     if (shot.clashed) clashes.push({ shot: id })
     shots.push(shot.value)
   }
@@ -238,7 +241,24 @@ function orderOf(
   return null
 }
 
-/** Each field of `ours` and `theirs` against `base`: one side's change, or ours where both changed it. */
+/**
+ * One value from `base`, `ours` and `theirs`: the side that changed it, or
+ * ours where both did. With no base (both added it), the same or ours.
+ */
+function pick3<T>(
+  base: { readonly was: T } | null,
+  ours: T,
+  theirs: T
+): { readonly value: T; readonly clashed: boolean } {
+  if (sameJson(theirs, ours)) return { value: ours, clashed: false }
+  if (base !== null && sameJson(theirs, base.was))
+    return { value: ours, clashed: false }
+  if (base !== null && sameJson(ours, base.was))
+    return { value: theirs, clashed: false }
+  return { value: ours, clashed: true }
+}
+
+/** Each field of `ours` and `theirs` against `base`, by `pick3`. */
 function merge3(
   base: object,
   ours: object,
@@ -250,14 +270,10 @@ function merge3(
   const value: Record<string, unknown> = {}
   let clashed = false
   for (const key of new Set([...b.keys(), ...o.keys(), ...t.keys()])) {
-    const was = b.get(key)
-    const mine = o.get(key)
-    const theirsNow = t.get(key)
-    let chosen = mine
-    if (sameJson(mine, was)) chosen = theirsNow
-    else if (!sameJson(theirsNow, was) && !sameJson(theirsNow, mine))
-      clashed = true
-    if (chosen !== undefined) value[key] = chosen
+    // A field the base doesn't set is unset there, not added on both sides.
+    const picked = pick3({ was: b.get(key) }, o.get(key), t.get(key))
+    if (picked.clashed) clashed = true
+    if (picked.value !== undefined) value[key] = picked.value
   }
   return { value, clashed }
 }

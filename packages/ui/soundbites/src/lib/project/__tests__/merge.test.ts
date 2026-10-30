@@ -237,7 +237,7 @@ describe("a version back from Claude", () => {
     ])
   })
 
-  it("is refused when the merge, each part valid, couldn't be opened again", () => {
+  it("keeps a scene whole: the phone's take fitting never meets Claude's change to it", () => {
     const kept = shared()
     // A take fitted here: 2,700 ms of voice from 200 ms in, in 3,400 ms.
     const here = version(kept, "owner", "Take on b", [
@@ -254,7 +254,32 @@ describe("a version back from Claude", () => {
       { ...shot("b"), voiceInMs: 1_000 },
       shot("c"),
     ])
-    expect(mergeIn(here, back)).toEqual({ kind: "moved" })
+    expect(mergeIn(here, back)).toEqual({
+      kind: "kept",
+      clashes: [{ shot: "b" }],
+    })
+  })
+
+  it("keeps the phone's copy of a scene both added under one id, and names it", () => {
+    const kept = shared()
+    const here = version(kept, "owner", "With d", [
+      shot("a"),
+      shot("b"),
+      shot("c"),
+      shot("d", 2_500),
+    ])
+    const back = version(kept, "claude", "With d, and a longer", [
+      shot("a", 3_000),
+      shot("b"),
+      shot("c"),
+      shot("d", 3_000),
+    ])
+    const merged = mergeIn(here, back)
+    if (merged.kind !== "merged") throw new Error(merged.kind)
+    expect(merged.clashes).toEqual([{ shot: "d" }])
+    expect(
+      latest(merged.project).cutList.shots.map((each) => each.durationMs)
+    ).toEqual([3_000, 2_000, 2_000, 2_500])
   })
 
   it("is refused when Claude's note lands on a scene the phone removed", () => {
