@@ -2,6 +2,7 @@ import type { RuleId } from "@leetype/lib/leetype/proposition-register/generated
 import { RULE_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
 import type {
   ChoiceScreen,
+  ResponseKind,
   SessionFile,
   SessionScreen,
 } from "@leetype/types/session-file"
@@ -20,7 +21,11 @@ import { assertNever, mentionsWord } from "@some-ui/core-utils"
  * core is its passage, read at `WORDS_PER_MINUTE`. `unregistered-rule`
  * resolves every `rule` and `applies` against Rem. 7.4's registers
  * (Rem. 7.1's citation check over `M` and `A`); a round names its `rule`,
- * and its correct option applies no other.
+ * and its correct option applies no other. `response-without-return` is
+ * Prop. 9.1's follow-up per response (Rem. 9.6, Rem. 11.9): a round any of
+ * whose returns names the response it follows (`returnFor`) has a return for
+ * each response its options allow. It checks that the returns exist, not
+ * which reading leads to which.
  *
  * Rem. 10.3 (5) spans files, so it is not here: `negativeDiscriminationGaps`
  * takes the whole set.
@@ -38,6 +43,7 @@ type SessionFileFindingCode =
   | "unregistered-rule"
   | "round-without-rule"
   | "correct-applies-other-rule"
+  | "response-without-return"
 
 export type SessionFileFinding = {
   readonly code: SessionFileFindingCode
@@ -187,6 +193,71 @@ function alwaysReachesReading(
   return walk(start)
 }
 
+/** Each round's returns, by the round they return (`returnOf`). */
+function returnsByRound(file: SessionFile): Map<string, Array<string>> {
+  const returns = new Map<string, Array<string>>()
+  for (const [id, screen] of Object.entries(file.screens)) {
+    if (screen.type === "choice" && screen.returnOf !== undefined) {
+      returns.set(screen.returnOf, [
+        ...(returns.get(screen.returnOf) ?? []),
+        id,
+      ])
+    }
+  }
+  return returns
+}
+
+/** The responses `returns` name as the ones they follow (`returnFor`). */
+function namedResponses(
+  file: SessionFile,
+  returns: ReadonlyArray<string>
+): Set<ResponseKind> {
+  const named = new Set<ResponseKind>()
+  for (const id of returns) {
+    const screen = file.screens[id]
+    if (screen?.type === "choice" && screen.returnFor !== undefined) {
+      named.add(screen.returnFor)
+    }
+  }
+  return named
+}
+
+/**
+ * The responses on `round` that call for their own return (Prop. 9.1,
+ * Rem. 9.6): an incorrect pick where an option is wrong, the abstention
+ * where it is offered, and a slow correct pick, which any round can draw
+ * (Def. 9.4).
+ */
+function responsesOf(round: ChoiceScreen): Array<ResponseKind> {
+  const kinds: Array<ResponseKind> = []
+  if (round.options.some((option) => !option.correct && !option.abstain)) {
+    kinds.push("incorrect")
+  }
+  if (round.options.some((option) => option.abstain)) kinds.push("abstain")
+  kinds.push("hesitate")
+  return kinds
+}
+
+/**
+ * Rounds whose returns name no response they follow: one return for every
+ * struggle, which meets Def. 9.4 and not Prop. 9.1 (Rem. 9.6). The lint
+ * checks a round's returns per response once one names its response, so a
+ * file written before `returnFor` (Rem. 11.9) keeps passing; this lists
+ * what that leaves unchecked.
+ */
+export function roundsWithUnnamedReturns(file: SessionFile): Array<string> {
+  return [...returnsByRound(file)]
+    .filter(([id, returns]) => {
+      const round = file.screens[id]
+      return (
+        round !== undefined &&
+        isRound(round) &&
+        namedResponses(file, returns).size === 0
+      )
+    })
+    .map(([id]) => id)
+}
+
 /**
  * Screens reachable from `start`, a return counted as reachable from its
  * round. With `term`, the walk stops at screens that gloss it, so what it
@@ -195,15 +266,7 @@ function alwaysReachesReading(
 function reachable(file: SessionFile, term?: string): Set<string> {
   const reached = new Set<string>()
   // A return is played after its round, in this session or a later one.
-  const returnsOf = new Map<string, Array<string>>()
-  for (const [id, screen] of Object.entries(file.screens)) {
-    if (screen.type === "choice" && screen.returnOf !== undefined) {
-      returnsOf.set(screen.returnOf, [
-        ...(returnsOf.get(screen.returnOf) ?? []),
-        id,
-      ])
-    }
-  }
+  const returnsOf = returnsByRound(file)
   const queue = [file.start]
   for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
     const screen = file.screens[id]
@@ -226,6 +289,7 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
   }
 
   const placed = new Set<string>()
+  const returns = returnsByRound(file)
   for (const [id, screen] of Object.entries(file.screens)) {
     if (screen.type === "choice") {
       const cited = [
@@ -295,6 +359,17 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
             "verbatim-return",
             id,
             `the return repeats ${screen.returnOf}'s situation; it needs new numbers or a new case`
+          )
+        }
+      }
+      const named = namedResponses(file, returns.get(id) ?? [])
+      if (named.size > 0) {
+        const missing = responsesOf(screen).filter((kind) => !named.has(kind))
+        if (missing.length > 0) {
+          add(
+            "response-without-return",
+            id,
+            `no return names ${missing.map((kind) => `"${kind}"`).join(", ")} in \`returnFor\`; each response gets its own follow-up (Prop. 9.1, Rem. 9.6)`
           )
         }
       }

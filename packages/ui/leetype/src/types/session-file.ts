@@ -6,8 +6,8 @@ import { z } from "zod"
  * graph of screens, written by an agent to Drive and pulled by the phone.
  * The format is the LeetType A/B's prototype format, kept so that the A/B's
  * harness can play real content too, plus optional fields the A/B's designs
- * could not express: `rule`, `cites`, `returnOf`, `glosses`, `panel`,
- * `provenance`, `applies` and the session's `glossary`. Parsing checks
+ * could not express: `rule`, `cites`, `returnOf`, `returnFor`, `glosses`,
+ * `panel`, `provenance`, `applies` and the session's `glossary`. Parsing checks
  * shape and wiring; `lib/leetype/session-file` lints the content.
  */
 
@@ -69,9 +69,19 @@ const InfoScreenSchema = z.strictObject({
 })
 
 /**
+ * The response on a round a return follows (Prop. 9.1, Rem. 11.9): an
+ * incorrect pick, the abstention, or a correct pick slow enough to be a
+ * struggle (`onHesitate`, Def. 9.4). A slow incorrect pick is `incorrect`.
+ */
+const ResponseKindSchema = z.enum(["incorrect", "abstain", "hesitate"])
+
+export type ResponseKind = z.infer<typeof ResponseKindSchema>
+
+/**
  * A choice. With a correct option it is a round (Def. 1.9): `rule` is ρ,
  * `cites` the reading screen whose passage answers it (π), `returnOf` the
- * round it returns (Prop. 9.4 (b)). `onHesitate` is where a slow pick goes
+ * round it returns (Prop. 9.4 (b)) and `returnFor` which of that round's
+ * responses it follows (Rem. 11.9). `onHesitate` is where a slow pick goes
  * instead of the option's own `next` (Def. 9.4).
  */
 const ChoiceScreenSchema = z.strictObject({
@@ -83,6 +93,7 @@ const ChoiceScreenSchema = z.strictObject({
   rule: RuleIdSchema.optional(),
   cites: ScreenIdSchema.optional(),
   returnOf: ScreenIdSchema.optional(),
+  returnFor: ResponseKindSchema.optional(),
   panel: PanelSchema.optional(),
   provenance: z.string().min(1).optional(),
 })
@@ -209,6 +220,14 @@ export const SessionFileSchema = z
             code: "custom",
             path: ["screens", id, "options"],
             message: "an abstention is never the correct option (Prop. 9.1)",
+          })
+        }
+        if (screen.returnFor !== undefined && screen.returnOf === undefined) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["screens", id, "returnFor"],
+            message:
+              "returnFor names the response a return follows; it needs returnOf",
           })
         }
         const typed: Array<[string | undefined, SessionScreen["type"]]> = [

@@ -81,7 +81,7 @@
     `packages/some-content/prompts/leetype-exercise-generator` · `pedagogy/`
   ]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.3 --- 2026-10-20]
+  #text(size: 9.5pt)[Version 1.4 --- 2026-10-30]
   #v(2cm)
 ]
 
@@ -1784,6 +1784,39 @@ superseded and kept.
   Evidence: the code (Amendment protocol, fourth rule).
 ]
 
+#remark("11.9", name: "Rem. 9.6's check of a return per response is a rule")[
+  Amends Rem. 9.6, which is retained as filed. Its last sentence called
+  checking that a session file authors a variant per response kind mechanical
+  and not yet a rule, because the format could not say which response a
+  return follows: a return named only the round it returns (`returnOf`), so
+  one return for every struggle and a return per response read the same.
+  Since `#2061` it can, and the check is a rule:
+
+  - A return may name the response on its round that it follows, beside
+    `returnOf`: `returnFor` is `incorrect` (an incorrect selection, slow or
+    not), `abstain` (the abstention) or `hesitate` (a correct selection slow
+    enough to be a struggle, Def. 9.4). Naming one without `returnOf` does
+    not parse.
+  - `lib/leetype/session-file`'s lint reports a round any of whose returns
+    names its response, when some response the round's options allow has no
+    return naming it (`response-without-return`). Every round allows
+    `hesitate`; it allows `incorrect` when an option is neither correct nor
+    the abstention, and `abstain` when it offers the abstention.
+  - A round whose returns name no response is not reported. It is the shape
+    Rem. 9.6 says meets Def. 9.4 and not Prop. 9.1, and the session files
+    written before the field have it; `lint:session-file` lists such rounds
+    without failing, so the gap stays visible and those files stay
+    placeable.
+
+  The check is that each response has its return, not that the struggle on
+  that response leads to it: which placed reading leads to which return is
+  the file's wiring, and the lint does not trace it. Nor does it cover the
+  spoken answer's two follow-ups Rem. 9.6 names, a pass and fewer than two
+  ticks, since a return is a choice screen and a spoken answer is not.
+
+  Evidence: the code (Amendment protocol, fourth rule).
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = Falsifiers
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1967,6 +2000,12 @@ Rem. 11.6 named (`roundProbeOf`, `READING_OPTION_COUNT`, `DiffCard`,
 records that Rem. 7.1's citation check over `M` and `A`, which Rem. 7.4 left
 "not yet a rule", is the session-file lint of `#1942`. No Definition, Axiom,
 Theorem, `CW-P`, `M` or `A` entry changes.
+
+*v1.4 --- 2026-10-30.* Rem. 11.9 makes Rem. 9.6's check of a return per
+response kind a rule, which Rem. 9.6 left "not yet a rule": a return names the
+response it follows (`returnFor`), and the session-file lint of `#2061`
+reports a round whose named returns leave a response without one. No
+Definition, Axiom, Theorem, `CW-P`, `M` or `A` entry changes.
 
 #pagebreak()
 

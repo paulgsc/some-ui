@@ -1,8 +1,12 @@
-import type { SessionFile } from "@leetype/types/session-file"
+import type { ResponseKind, SessionFile } from "@leetype/types/session-file"
 import { SessionFileSchema } from "@leetype/types/session-file"
 import { describe, expect, it } from "vitest"
 
-import { lintSessionFile, negativeDiscriminationGaps } from ".."
+import {
+  lintSessionFile,
+  negativeDiscriminationGaps,
+  roundsWithUnnamedReturns,
+} from ".."
 import { AB_FIXTURES } from "./fixtures"
 
 const source = {
@@ -241,6 +245,59 @@ describe("lintSessionFile", () => {
       body: "Seven nodes; three may crash. How big is a quorum?",
     }
     expect(lintSessionFile(file)).toEqual([])
+  })
+
+  /** `clean()` with a return of r1 for each response named, new numbers each. */
+  function withReturns(
+    returnFor: ReadonlyArray<ResponseKind | undefined>
+  ): SessionFile {
+    const file = clean()
+    const round = file.screens.r1
+    if (round?.type !== "choice") throw new Error("r1 is a choice")
+    returnFor.forEach((kind, index) => {
+      const nodes = String(7 + 2 * index)
+      file.screens[`r1-${String(index)}`] = {
+        ...round,
+        returnOf: "r1",
+        ...(kind === undefined ? {} : { returnFor: kind }),
+        body: `${nodes} nodes; some may crash. How big is a quorum?`,
+      }
+    })
+    return file
+  }
+
+  it("reports a round whose returns name some responses and not each (Prop. 9.1)", () => {
+    expect(lintSessionFile(withReturns(["incorrect"]))).toEqual([
+      {
+        code: "response-without-return",
+        screen: "r1",
+        message:
+          'no return names "abstain", "hesitate" in `returnFor`; each response gets its own follow-up (Prop. 9.1, Rem. 9.6)',
+      },
+    ])
+    // A return that names no response follows none, beside one that does.
+    expect(codes(withReturns(["incorrect", undefined]))).toEqual([
+      "response-without-return",
+    ])
+    expect(
+      lintSessionFile(withReturns(["incorrect", "abstain", "hesitate"]))
+    ).toEqual([])
+  })
+
+  it("owes no incorrect return where every option is the answer or the abstention", () => {
+    const file = withReturns(["abstain", "hesitate"])
+    const round = file.screens.r1
+    if (round?.type !== "choice") throw new Error("r1 is a choice")
+    round.options = round.options.filter((option) => !option.feedback)
+    expect(lintSessionFile(file)).toEqual([])
+  })
+
+  it("leaves a round whose returns name no response unchecked, and lists it", () => {
+    const file = withReturns([undefined])
+    expect(lintSessionFile(file)).toEqual([])
+    expect(roundsWithUnnamedReturns(file)).toEqual(["r1"])
+    expect(roundsWithUnnamedReturns(withReturns(["incorrect"]))).toEqual([])
+    expect(roundsWithUnnamedReturns(clean())).toEqual([])
   })
 
   it.each([
