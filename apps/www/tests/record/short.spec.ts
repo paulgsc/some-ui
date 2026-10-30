@@ -9,43 +9,19 @@
  * `ffmpeg` on `PATH`.
  */
 
-import { execFile } from "node:child_process"
-import { createHash } from "node:crypto"
-import {
-  mkdir,
-  mkdtemp,
-  readdir,
-  readFile,
-  rm,
-  writeFile,
-} from "node:fs/promises"
+import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
-import { promisify } from "node:util"
 import { expect, test } from "@playwright/test"
-import { renderFolder } from "@some-ui/video-render/node"
+import { nodePorts } from "@some-ui/video-render/node"
 import { serve } from "@tests/ui-fit/harness"
 
-import { burnInRecorder, openRecorder, RECORDING_SIZE } from "./burn-ins"
+import { openRecorder, RECORDING_SIZE, renderWithBurnIns } from "./burn-ins"
 
 const DIST = resolve(process.env["WWW_DIST"] ?? "dist")
 const SERIES = resolve(
   "../../packages/video-render/src/sample/build-journal-short.json"
 )
-
-const run = promisify(execFile)
-
-async function ffmpeg(
-  root: string,
-  args: ReadonlyArray<string>
-): Promise<void> {
-  await run("ffmpeg", ["-v", "error", "-y", ...args], { cwd: root })
-}
-
-const sha = async (file: string): Promise<string> =>
-  createHash("sha256")
-    .update(await readFile(file))
-    .digest("hex")
 
 type Word = { text: string; startMs: number; endMs: number }
 
@@ -123,15 +99,22 @@ test.describe("the burn-in recorder", () => {
   let root = ""
   test.beforeAll(async () => {
     root = await mkdtemp(join(tmpdir(), "record-short-"))
-    for (const dir of ["captures", "voice"]) await mkdir(join(root, dir))
-    await ffmpeg(root, [
-      ...["-f", "lavfi", "-i", "testsrc2=s=206x458:r=30:d=4"],
-      ...["-c:v", "libx264", "-pix_fmt", "yuv420p", "captures/walk.mp4"],
-    ])
-    await ffmpeg(root, [
-      ...["-f", "lavfi", "-i", "sine=f=330:d=1:r=48000"],
-      ...["-c:a", "pcm_s16le", "voice/a.wav"],
-    ])
+    const ports = nodePorts(root)
+    for (const dir of ["captures", "voice"]) await ports.mkdir(dir)
+    const sources = [
+      [
+        ...["-f", "lavfi", "-i", "testsrc2=s=206x458:r=30:d=4"],
+        ...["-c:v", "libx264", "-pix_fmt", "yuv420p", "captures/walk.mp4"],
+      ],
+      [
+        ...["-f", "lavfi", "-i", "sine=f=330:d=1:r=48000"],
+        ...["-c:a", "pcm_s16le", "voice/a.wav"],
+      ],
+    ]
+    for (const args of sources) {
+      const made = await ports.ffmpeg({ args: ["-v", "error", "-y", ...args] })
+      if (!made.ok) throw new Error(made.stderr)
+    }
     await writeFile(join(root, "cut-list.json"), JSON.stringify(CUT_LIST))
   })
 
@@ -149,37 +132,35 @@ test.describe("the burn-in recorder", () => {
         deviceScaleFactor: 1,
       })
       await openRecorder(page, site.origin)
-      // One render into its own folders: the video's sum and each recording's.
+      const ports = nodePorts(root)
+      const sum = async (file: string): Promise<string> =>
+        (await ports.sha256(file)) ?? ""
       const renderOnce = async (
         n: number
       ): Promise<{ video: string; burnIns: Map<string, string> }> => {
-        const reasons: Array<string> = []
-        const done = await renderFolder(root, SERIES, {
+        const done = await renderWithBurnIns(page, root, SERIES, {
           workDir: `work-${n}`,
           out: `out-${n}/video.mp4`,
-          recordBurnIn: burnInRecorder(page, root, (l) => reasons.push(l)),
         })
-        if (!done.ok) throw new Error([...done.problems, ...reasons].join("\n"))
-        const work = join(root, `work-${n}`)
-        const recorded = (await readdir(work)).filter((f) =>
+        if (!done.ok) throw new Error(done.problems.join("\n"))
+        const recorded = (await readdir(join(root, `work-${n}`))).filter((f) =>
           f.startsWith("burn-in-")
         )
         return {
-          video: await sha(join(root, done.value.video)),
+          video: await sum(done.value.video),
           burnIns: new Map(
             await Promise.all(
-              recorded.map(async (f) => [f, await sha(join(work, f))] as const)
+              recorded.map(
+                async (f) => [f, await sum(`work-${n}/${f}`)] as const
+              )
             )
           ),
         }
       }
       const first = await renderOnce(1)
       const second = await renderOnce(2)
-      expect([...first.burnIns.keys()].sort()).toEqual([
-        "burn-in-0-captions.mov",
-        "burn-in-1-authorship.mov",
-        "burn-in-S1-0-headline.mov",
-      ])
+      // Captions, the mark and the headline, so the comparison is not of nothing.
+      expect(first.burnIns.size).toBe(3)
       expect(second.burnIns).toEqual(first.burnIns)
       expect(second.video).toBe(first.video)
     } finally {

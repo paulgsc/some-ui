@@ -450,12 +450,8 @@ jobs:
             echo "No composer-relevant www files changed."
           fi
 
-      # The burn-in recorder (STUDIO ST15, #2273): a short with captions, a
-      # headline and the authorship mark, rendered twice through the built
-      # app's /burn-ins?record page, must give the same MP4 and recordings
-      # both times. Nothing else drives the page the renderer records from,
-      # so a change to a burn-in's drawing or the recording protocol that
-      # makes frames differ between runs would otherwise land green.
+      # The burn-in recorder (STUDIO ST15, #2273): nothing else drives the page
+      # the renderer records from. What it checks is in the spec's header.
       - name: E2E — burn-in recorder (www)
         run: |
           files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \

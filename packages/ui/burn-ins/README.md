@@ -40,11 +40,6 @@ pnpm --filter www build
 pnpm --filter www record:short <video folder> --series <series.json>
 ```
 
-CI renders a small short with captions, a headline and the mark twice this
-way and checks the two runs give the same bytes
-(`apps/www/tests/record/short.spec.ts`, PR workflow's "E2E — burn-in
-recorder (www)").
-
 The font is Barlow Condensed (SIL Open Font License 1.1), free to embed in
 video, which the host page loads in the weights 600 and 800.
 

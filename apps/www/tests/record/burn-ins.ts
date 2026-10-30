@@ -18,7 +18,12 @@ import { once } from "node:events"
 import { mkdir } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
 import type { Page } from "@playwright/test"
-import type { BurnInRequest } from "@some-ui/video-render"
+import type {
+  BurnInRequest,
+  Rendered,
+  RenderOptions,
+} from "@some-ui/video-render"
+import { renderFolder } from "@some-ui/video-render/node"
 
 /** The page global the protocol is reached by (burn-ins' `RECORDER_GLOBAL`). */
 const GLOBAL = "someUiBurnIns"
@@ -164,4 +169,25 @@ export function burnInRecorder(
     }
     return true
   }
+}
+
+/**
+ * Renders `<root>/cut-list.json` under `seriesFile` with its burn-ins
+ * recorded on `page` (`openRecorder` opened it); a refusal carries the
+ * recorder's reasons after the renderer's.
+ */
+export async function renderWithBurnIns(
+  page: Page,
+  root: string,
+  seriesFile: string,
+  options: RenderOptions
+): Promise<Rendered> {
+  const reasons: Array<string> = []
+  const done = await renderFolder(root, seriesFile, {
+    ...options,
+    recordBurnIn: burnInRecorder(page, root, (line) => reasons.push(line)),
+  })
+  return done.ok
+    ? done
+    : { ok: false, problems: [...done.problems, ...reasons] }
 }

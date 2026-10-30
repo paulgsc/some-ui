@@ -18,10 +18,9 @@
 import { join, resolve } from "node:path"
 import { parseArgs } from "node:util"
 import { chromium } from "@playwright/test"
-import { renderFolder } from "@some-ui/video-render/node"
 import { serve } from "@tests/ui-fit/harness"
 
-import { burnInRecorder, openRecorder, RECORDING_SIZE } from "./burn-ins"
+import { openRecorder, RECORDING_SIZE, renderWithBurnIns } from "./burn-ins"
 
 const here = (p: string): string =>
   resolve(process.env["INIT_CWD"] ?? process.cwd(), p)
@@ -59,13 +58,11 @@ async function main(): Promise<void> {
       deviceScaleFactor: 1,
     })
     await openRecorder(page, site.origin)
-    const reasons: Array<string> = []
-    const done = await renderFolder(root, here(values.series), {
+    const done = await renderWithBurnIns(page, root, here(values.series), {
       workDir: "outputs/cache",
       out: values.out,
-      recordBurnIn: burnInRecorder(page, root, (line) => reasons.push(line)),
     })
-    if (!done.ok) fail(["Nothing was rendered:", ...done.problems, ...reasons])
+    if (!done.ok) fail(["Nothing was rendered:", ...done.problems])
     process.stdout.write(
       `wrote ${join(root, done.value.video)} and ${join(root, done.value.shotTimesFile)}\n`
     )
