@@ -155,6 +155,21 @@ describe("a note pinned to a moment", () => {
       id: "n1",
       status: "confirmed",
     })
+    expect(confirmed.project.notes[0]?.reason).toBe(
+      "The pause reads as a stall"
+    )
+    expect(isAppendOnly(declined.project, confirmed.project)).toBe(true)
+    // Neither a status walked back nor a reason dropped is a save.
+    for (const lossy of [
+      { ...confirmed.project.notes[0]!, status: "open" as const },
+      { ...confirmed.project.notes[0]!, reason: undefined },
+    ])
+      expect(
+        isAppendOnly(confirmed.project, {
+          ...confirmed.project,
+          notes: [lossy],
+        })
+      ).toBe(false)
     expect(
       step(confirmed, { type: "noteSettled", id: "n1", status: "applied" })
         .refused
@@ -243,6 +258,17 @@ describe("takes", () => {
       takes: [{ ...state.project.takes[0]!, onPhone: false }],
     }
     expect(isAppendOnly(state.project, lost)).toBe(false)
+    // Nor does audio come back, or a take change what it was.
+    const back = {
+      ...confirmed.project,
+      takes: [{ ...confirmed.project.takes[0]!, onPhone: true }],
+    }
+    expect(isAppendOnly(confirmed.project, back)).toBe(false)
+    const longer = {
+      ...state.project,
+      takes: [{ ...state.project.takes[0]!, durationMs: 9_000 }],
+    }
+    expect(isAppendOnly(state.project, longer)).toBe(false)
   })
 })
 
@@ -270,8 +296,9 @@ describe("a sitting", () => {
       done: "Recorded b",
       next: "Record c",
     })
+    // One write keeps the take's audio with the closed sitting.
     expect(kept.effects).toEqual([
-      { type: "save", project: kept.state.project },
+      { type: "keepTake", project: kept.state.project, take: "t1" },
     ])
     expect(kept.state.taking).toBeNull()
   })

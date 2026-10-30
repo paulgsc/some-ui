@@ -85,8 +85,9 @@ export function displacedBy(
 export const JOURNAL_BUDGET_MAX_MS = 360_000
 
 /**
- * The most Build Journal take audio the phone keeps: twice a full budget at
- * the target bitrate, since the recorder's rate is a target, not a promise.
+ * The most take audio the phone keeps for the Build Journal and Studio's
+ * projects together: twice a full budget at the target bitrate, since the
+ * recorder's rate is a target, not a promise.
  */
 export const JOURNAL_TAKES_MAX_BYTES =
   2 * (JOURNAL_BUDGET_MAX_MS / 1_000) * (SOUNDBITE_BITS_PER_SECOND / 8)

@@ -6,6 +6,7 @@
  * Reading checks every revision as the renderer would (`parseCutList`), so
  * a file the phone accepts is one the renderer can draw at any revision.
  */
+import { canonicalJson } from "@some-ui/core-utils"
 import type { Parsed } from "@some-ui/video-render"
 import { CutListSchema, parseCutList } from "@some-ui/video-render"
 import { z } from "zod"
@@ -15,35 +16,21 @@ import { cutListAt, PROJECT_SCHEMA } from "./model"
 
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/)
 const at = z.iso.datetime()
-const author = z.enum(["owner", "claude"])
+const NoteSchema = CutListSchema.shape.notes.unwrap().element
+const RevisionSchema = CutListSchema.shape.revisions.unwrap().element
 
 const ProjectSchema = z.object({
   schema: z.literal(PROJECT_SCHEMA),
   id,
   revisions: z
     .array(
-      z.object({
-        rev: z.number().int().positive(),
-        author,
-        message: z.string().min(1),
-        at,
+      RevisionSchema.extend({
         // Checked again whole by `parseCutList`, with its history put back.
         cutList: CutListSchema.omit({ revisions: true, notes: true }),
       })
     )
     .min(1),
-  notes: z.array(
-    z.object({
-      id,
-      rev: z.number().int().positive(),
-      shot: id,
-      offsetMs: z.number().int().nonnegative(),
-      author,
-      text: z.string().min(1),
-      status: z.enum(["open", "applied", "declined", "confirmed"]),
-      reason: z.string().min(1).optional(),
-    })
-  ),
+  notes: z.array(NoteSchema),
   takes: z.array(
     z.object({
       id,
@@ -67,9 +54,15 @@ const ProjectSchema = z.object({
   ),
 })
 
-/** The project as its file: stable key order, two-space indents. */
+/** The project as its file: every object's keys in order, two-space indents. */
 export function projectFile(project: Project): string {
-  return `${JSON.stringify(project, null, 2)}\n`
+  return `${JSON.stringify(JSON.parse(canonicalJson(project)), null, 2)}\n`
+}
+
+function repeated(what: string, ids: ReadonlyArray<string>): Array<string> {
+  return [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))].map(
+    (id) => `${what}: ${id} is listed twice`
+  )
 }
 
 function shapeProblems(project: Project): Array<string> {
@@ -83,6 +76,27 @@ function shapeProblems(project: Project): Array<string> {
         ...cutList.problems.map((line) => `rev ${revision.rev}: ${line}`)
       )
   })
+  for (const note of project.notes) {
+    const revision = project.revisions.find((each) => each.rev === note.rev)
+    if (!revision?.cutList.shots.some((each) => each.id === note.shot))
+      problems.push(
+        `notes.${note.id}: rev ${note.rev} has no shot ${note.shot}`
+      )
+  }
+  problems.push(
+    ...repeated(
+      "notes",
+      project.notes.map((each) => each.id)
+    ),
+    ...repeated(
+      "takes",
+      project.takes.map((each) => each.id)
+    ),
+    ...repeated(
+      "sittings",
+      project.sittings.map((each) => each.id)
+    )
+  )
   for (const [shot, take] of Object.entries(project.chosen)) {
     if (!project.takes.some((each) => each.id === take && each.shot === shot))
       problems.push(`chosen.${shot}: no take ${take} for that shot`)

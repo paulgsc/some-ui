@@ -3,8 +3,9 @@
  * the notes pinned to moments in them, every take recorded for it, and a log
  * entry per sitting. `step(state, event)` returns the next state and the
  * effects to run, and does nothing else (docs/monorepo-boundaries.md, "Inside
- * a React package"); a runtime runs `save` and `finishTake` against the
- * store and the microphone.
+ * a React package"); a runtime runs `save`, `keepTake` and `finishTake`
+ * against the store and the microphone, and reads the store again when a
+ * write is refused, since a refused write kept nothing.
  *
  * Rules that hold by structure:
  *
@@ -22,40 +23,26 @@
  *   and `anchorAt` finds that shot in any later revision by id, or says the
  *   shot is gone; its time is read from the renderer's shot times.
  */
-import { assertNever } from "@some-ui/core-utils"
+import { assertNever, canonicalJson } from "@some-ui/core-utils"
 import type { CutList, Shot, ShotTime } from "@some-ui/video-render"
 
 export const PROJECT_SCHEMA = "some-ui.studio-project/1"
 
-type Author = CutList["revisions"][number]["author"]
+type Author = Revision["author"]
 
 /** What a revision holds: the cut list, less the history the project keeps. */
 export type CutListShape = Omit<CutList, "revisions" | "notes">
 
-export type Revision = {
+export type Revision = Readonly<CutList["revisions"][number]> & {
   /** From 1, one more than the revision before. */
   readonly rev: number
-  readonly author: Author
-  readonly message: string
-  /** ISO 8601, UTC. */
-  readonly at: string
   readonly cutList: CutListShape
 }
 
-type NoteStatus = CutList["notes"][number]["status"]
+/** Pinned to the revision, shot and offset it was written against. */
+export type Note = Readonly<CutList["notes"][number]>
 
-export type Note = {
-  readonly id: string
-  /** The revision, shot and offset it was written against. */
-  readonly rev: number
-  readonly shot: string
-  readonly offsetMs: number
-  readonly author: Author
-  readonly text: string
-  readonly status: NoteStatus
-  /** Why it was declined. */
-  readonly reason?: string
-}
+type NoteStatus = Note["status"]
 
 /** Who has said it holds a copy of a take's audio. */
 type Keeper = "home" | "drive"
@@ -136,9 +123,15 @@ export type ProjectEvent =
 
 export type ProjectEffect =
   | { readonly type: "save"; readonly project: Project }
+  /** Save `project` with take `take`'s audio, in one write (`keepTake`). */
+  | {
+      readonly type: "keepTake"
+      readonly project: Project
+      readonly take: string
+    }
   | { readonly type: "finishTake" }
 
-/** Why an event changed nothing. Said to the person by `REFUSALS`. */
+/** Why an event changed nothing. */
 export type Refusal =
   | "noRevision"
   | "noShot"
@@ -282,13 +275,25 @@ export function letGoRefusal(project: Project, id: string): Refusal | null {
 }
 
 function sameJson(a: unknown, b: unknown): boolean {
-  return JSON.stringify(a) === JSON.stringify(b)
+  return canonicalJson(a) === canonicalJson(b)
+}
+
+const SETTLES: Readonly<Record<NoteStatus, ReadonlyArray<NoteStatus>>> = {
+  open: ["applied", "declined"],
+  applied: ["confirmed"],
+  declined: ["confirmed"],
+  confirmed: [],
+}
+
+function reaches(from: NoteStatus, to: NoteStatus): boolean {
+  return from === to || SETTLES[from].some((next) => reaches(next, to))
 }
 
 /**
  * Whether `after` only adds to `before`: every revision kept as it was, every
- * note, take and sitting still there (a note's status and a take's keepers
- * may move on, a sitting may close, audio may leave once confirmed).
+ * note, take and sitting still there as written. Only a note's status moves
+ * on (keeping a reason once given), a take gains keepers, an open sitting
+ * closes, and audio leaves the phone once someone else holds it.
  */
 export function isAppendOnly(before: Project, after: Project): boolean {
   if (before.id !== after.id) return false
@@ -297,19 +302,28 @@ export function isAppendOnly(before: Project, after: Project): boolean {
   )
   const notes = before.notes.every((note) => {
     const now = after.notes.find((each) => each.id === note.id)
+    // A reason may be given once; after that it stays as written.
+    const fixed = (each: Note): unknown => ({
+      ...each,
+      status: null,
+      reason: note.reason === undefined ? null : each.reason,
+    })
     return (
-      now?.rev === note.rev &&
-      now.shot === note.shot &&
-      now.offsetMs === note.offsetMs &&
-      now.text === note.text
+      now !== undefined &&
+      reaches(note.status, now.status) &&
+      sameJson(fixed(now), fixed(note))
     )
   })
   const takes = before.takes.every((take) => {
     const now = after.takes.find((each) => each.id === take.id)
     return (
-      now?.recordedAt === take.recordedAt &&
+      now !== undefined &&
+      sameJson(
+        { ...now, keptBy: null, onPhone: null },
+        { ...take, keptBy: null, onPhone: null }
+      ) &&
       take.keptBy.every((keeper) => now.keptBy.includes(keeper)) &&
-      // Audio leaves the phone only once someone else holds it.
+      (take.onPhone || !now.onPhone) &&
       (now.onPhone || !take.onPhone || now.keptBy.length > 0)
     )
   })
@@ -321,13 +335,6 @@ export function isAppendOnly(before: Project, after: Project): boolean {
     )
   })
   return revisions && notes && takes && sittings
-}
-
-const SETTLES: Readonly<Record<NoteStatus, ReadonlyArray<NoteStatus>>> = {
-  open: ["applied", "declined"],
-  applied: ["confirmed"],
-  declined: ["confirmed"],
-  confirmed: [],
 }
 
 function changed(state: ProjectState, project: Project): ProjectStep {
@@ -342,23 +349,20 @@ function refuse(state: ProjectState, refused: Refusal): ProjectStep {
   return { state, effects: [], refused }
 }
 
-function closeSitting(
-  state: ProjectState,
+/** `project` with its open sitting closed as `closing` says. */
+function withClosed(
+  project: Project,
   closing: NonNullable<ProjectState["closing"]>
-): ProjectStep {
-  const { project } = state
+): Project {
   const sitting = openSitting(project)
-  if (sitting === null) return refuse({ ...state, closing: null }, "noSitting")
+  if (sitting === null) return project
   const closed: Sitting = {
     ...sitting,
     closedAt: closing.at,
     done: closing.done,
     next: closing.next,
   }
-  return changed(
-    { ...state, closing: null },
-    { ...project, sittings: [...project.sittings.slice(0, -1), closed] }
-  )
+  return { ...project, sittings: [...project.sittings.slice(0, -1), closed] }
 }
 
 export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
@@ -397,11 +401,10 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
       const reason = event.reason?.trim() ?? ""
       if (event.status === "declined" && reason === "")
         return refuse(state, "noReason")
-      const { reason: _, ...rest } = note
       const settled: Note =
         event.status === "declined"
-          ? { ...rest, status: event.status, reason }
-          : { ...rest, status: event.status }
+          ? { ...note, status: event.status, reason }
+          : { ...note, status: event.status }
       return changed(state, {
         ...project,
         notes: project.notes.map((each) =>
@@ -427,25 +430,26 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
       if (state.taking === null) return refuse(state, "notTaking")
       if (project.takes.some((each) => each.id === take.id))
         return refuse(state, "duplicate")
-      const kept = changed(
-        { ...state, taking: null },
-        {
-          ...project,
-          takes: [...project.takes, { ...take, keptBy: [], onPhone: true }],
-          chosen: { ...project.chosen, [take.shot]: take.id },
-        }
-      )
-      return state.closing === null
-        ? kept
-        : afterClose(kept, closeSitting(kept.state, state.closing))
+      const withTake: Project = {
+        ...project,
+        takes: [...project.takes, { ...take, keptBy: [], onPhone: true }],
+        chosen: { ...project.chosen, [take.shot]: take.id },
+      }
+      const next =
+        state.closing === null ? withTake : withClosed(withTake, state.closing)
+      return {
+        state: { project: next, taking: null, closing: null },
+        effects: [{ type: "keepTake", project: next, take: take.id }],
+        refused: null,
+      }
     }
 
     case "takeFailed": {
       if (state.taking === null) return refuse(state, "notTaking")
-      const stopped = { ...state, taking: null }
+      const stopped = { ...state, taking: null, closing: null }
       return state.closing === null
         ? { state: stopped, effects: [], refused: null }
-        : closeSitting(stopped, state.closing)
+        : changed(stopped, withClosed(project, state.closing))
     }
 
     case "chosen": {
@@ -502,7 +506,8 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
     case "sittingClosed": {
       if (openSitting(project) === null) return refuse(state, "noSitting")
       const closing = { at: event.at, done: event.done, next: event.next }
-      if (state.taking === null) return closeSitting(state, closing)
+      if (state.taking === null)
+        return changed(state, withClosed(project, closing))
       // The take is finished and kept first; `taken` or `takeFailed` closes.
       return {
         state: { ...state, closing },
@@ -515,9 +520,4 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
       return assertNever(event)
     }
   }
-}
-
-/** One save for both writes: the last project carries the take too. */
-function afterClose(kept: ProjectStep, closed: ProjectStep): ProjectStep {
-  return closed.refused === null ? closed : kept
 }

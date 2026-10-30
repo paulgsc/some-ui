@@ -149,18 +149,17 @@ export function indexedDbProjectStore(): ProjectStore {
         throw new ProjectRewriteError()
       await withRoom(
         audio.size,
-        (claim) =>
+        () =>
           writing([PROJECTS, AUDIO, JOURNAL_STORES.audio], async (tx) => {
             const audios = tx.objectStore(AUDIO)
             const key = audioKey(project.id, take)
             if ((await result(audios.getKey(key))) !== undefined)
               throw new ProjectRewriteError()
             if (
-              audio.size > claim ||
               (await bytesBesides(audios, key)) +
                 (await otherAudioBytes(tx, AUDIO)) +
                 audio.size >
-                JOURNAL_TAKES_MAX_BYTES
+              JOURNAL_TAKES_MAX_BYTES
             )
               throw new ProjectFullError()
             await putAdding(tx.objectStore(PROJECTS), project)

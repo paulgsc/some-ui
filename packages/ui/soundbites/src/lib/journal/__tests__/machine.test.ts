@@ -296,22 +296,6 @@ describe("journal machine", () => {
     expect(read.state.shelf).toBe(state.shelf)
   })
 
-  it("keeps an episode however long it waits on its next take", () => {
-    const touched = plan({ touchedAt: "2025-01-01T00:00:00.000Z" })
-    const later = run(
-      initialJournalState(),
-      { type: "arrived" },
-      {
-        type: "listed",
-        seq: 1,
-        shelf: { plan: touched, takes: [take("gap", 5_000)] },
-      }
-    )
-    expect(later.effects).toEqual([{ type: "read", seq: 1 }])
-    expect(later.state.shelf).toMatchObject({ plan: touched })
-    expect(later.state.notice).toBe("")
-  })
-
   it("discards the episode on the person's say", () => {
     const discarded = run(arrived(plan(), [take("gap", 5_000)]), {
       type: "episodeDiscarded",

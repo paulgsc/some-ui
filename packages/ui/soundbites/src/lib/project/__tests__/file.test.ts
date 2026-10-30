@@ -1,5 +1,6 @@
 /** @vitest-environment node */
 import { projectFile, readProjectFile } from "@soundbites/lib/project/file"
+import { isAppendOnly } from "@soundbites/lib/project/model"
 import { describe, expect, it } from "vitest"
 
 import { AT, run, shape, shot, started, take } from "./fixture"
@@ -32,12 +33,14 @@ function worked(): ReturnType<typeof started>["project"] {
 }
 
 describe("the project file", () => {
-  it("reads back as the project it was written from", () => {
+  it("reads back as the project it was written from, and saves over it", () => {
     const project = worked()
-    expect(readProjectFile(projectFile(project))).toEqual({
-      ok: true,
-      value: project,
-    })
+    const read = readProjectFile(projectFile(project))
+    expect(read).toEqual({ ok: true, value: project })
+    // Keys come back in another order; the store still takes it as the same.
+    if (!read.ok) throw new Error("unread")
+    expect(isAppendOnly(project, read.value)).toBe(true)
+    expect(isAppendOnly(read.value, project)).toBe(true)
   })
 
   it("names every reason a file can't be resumed from", () => {
@@ -53,6 +56,17 @@ describe("the project file", () => {
       "revisions.0: expected rev 1",
       "revisions.1: expected rev 2",
       "chosen.b: no take t1 for that shot",
+    ])
+    const odd = {
+      ...project,
+      notes: [...project.notes, { ...project.notes[0]!, rev: 9 }],
+      takes: [...project.takes, ...project.takes],
+    }
+    const oddRead = readProjectFile(JSON.stringify(odd))
+    expect(oddRead.ok ? [] : oddRead.problems).toEqual([
+      "notes.n1: rev 9 has no shot b",
+      "notes: n1 is listed twice",
+      "takes: t1 is listed twice",
     ])
     expect(readProjectFile("{")).toEqual({ ok: false, problems: ["not JSON"] })
   })
