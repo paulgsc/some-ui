@@ -381,7 +381,7 @@ job held.
 
 == Counts
 
-*49 workspace packages, 5 browser extensions* --- counted 2026-10-28 by
+*50 workspace packages, 5 browser extensions* --- counted 2026-10-30 by
 `scripts/check-claims.mjs`, which walks the globs in `pnpm-workspace.yaml`
 (`packages/ui/*`, `apps/*`, `docs/canon`, `extensions/**`, `packages/*`,
 `crates/*`) for a `package.json`, the same method `pnpm -r list --depth -1`
@@ -393,7 +393,10 @@ catches build scripts): `some-censor`, `some-drama`, `some-filter`,
 `filter-classifier`, `docs`, and `scripts` are excluded — shared code and a
 test corpus, not shipped extensions.
 
-The package count is 48 -> 49 on 2026-10-28: `packages/ui/game-week`
+The package count is 49 -> 50 on 2026-10-30: `packages/video-render`
+(`@some-ui/video-render`, the one renderer for Studio and Game Week Bites: a
+cut list in, a video out, the same bytes every time) landed. Before that it
+was 48 -> 49 on 2026-10-28: `packages/ui/game-week`
 (`@some-ui/game-week`, the game-day bite recorder on the phone: offered
 scenarios, say it first, the quiet stop, every bite kept on the phone until
 home holds it) landed. Before that it was 47 -> 48 on 2026-10-28: `packages/ui/captions`

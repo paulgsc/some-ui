@@ -6,7 +6,7 @@
  */
 
 import { createHash } from "node:crypto"
-import { mkdtemp, readFile, rm } from "node:fs/promises"
+import { mkdtemp, readdir, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { CUT_LIST_SCHEMA } from "@video-render/cut-list"
@@ -265,7 +265,33 @@ describe("render", () => {
     })
     if (!second.ok) throw new Error(second.problems.join("\n"))
 
-    expect(await sha("out-1/video.mp4")).toBe(await sha("out-2/video.mp4"))
+    // Each step's output, so a difference names the step that made it.
+    const differ: Array<string> = []
+    for (const f of await readdir(join(root, "work-1"))) {
+      if ((await sha(`work-1/${f}`)) !== (await sha(`work-2/${f}`)))
+        differ.push(f)
+    }
+    if ((await sha("out-1/video.mp4")) !== (await sha("out-2/video.mp4"))) {
+      differ.push("video.mp4")
+    }
+    const version = await ports.ffmpeg({
+      // Its banner, on stderr, names the version that made the bytes.
+      args: [
+        "-f",
+        "lavfi",
+        "-i",
+        "nullsrc",
+        "-frames:v",
+        "1",
+        "-f",
+        "null",
+        "-",
+      ],
+    })
+    expect({ differ, ffmpeg: version.stderr.split("\n")[0] }).toEqual({
+      differ: [],
+      ffmpeg: version.stderr.split("\n")[0],
+    })
     const last = first.shotTimes[first.shotTimes.length - 1]
     if (!last) throw new Error("no shot times")
     // Every frame the placement promised, and no more.
