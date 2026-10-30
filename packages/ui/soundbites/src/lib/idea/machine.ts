@@ -74,6 +74,11 @@ export type IdeaState = {
   readonly idea: Idea | null
   /** The idea being caught: `idea`'s id, or the one it will have. */
   readonly ideaId: string
+  /**
+   * The newest other idea with questions skipped and still unanswered,
+   * offered on a new idea's first screen so they can still be answered.
+   */
+  readonly skipped: Idea | null
   readonly notice: IdeaNotice
   /** The last listening's number. */
   readonly seq: number
@@ -160,6 +165,7 @@ export function initialIdeaState(ideaId: string): IdeaState {
     voice: "checking",
     idea: null,
     ideaId,
+    skipped: null,
     notice: null,
     seq: 0,
   }
@@ -201,6 +207,15 @@ function ask(state: IdeaState, question: QuestionId): IdeaState {
     ...state,
     screen: { kind: "ask", question, phase: phaseFor(state.voice) },
   }
+}
+
+/** The newest idea besides `id` with skipped questions still unanswered. */
+function newestSkipped(ideas: ReadonlyArray<Idea>, id: string): Idea | null {
+  return (
+    ideas
+      .filter((idea) => idea.id !== id && unanswered(idea).length > 0)
+      .at(-1) ?? null
+  )
 }
 
 /** The newest kept idea still open at a question, if any. */
@@ -413,10 +428,18 @@ export function step(state: IdeaState, event: IdeaEvent): IdeaStep {
         return same({ ...state, screen: { kind: "unreadable" } })
       }
       const resumed = resumable(event.ideas)
-      if (resumed === undefined) return same(ask(state, IDEA_QUESTIONS[0]))
+      if (resumed === undefined) {
+        const skipped = newestSkipped(event.ideas, state.ideaId)
+        return same(ask({ ...state, skipped }, IDEA_QUESTIONS[0]))
+      }
       return same(
         ask(
-          { ...state, idea: resumed, ideaId: resumed.id },
+          {
+            ...state,
+            idea: resumed,
+            ideaId: resumed.id,
+            skipped: newestSkipped(event.ideas, resumed.id),
+          },
           openQuestion(resumed) ?? IDEA_QUESTIONS[0]
         )
       )
@@ -457,7 +480,11 @@ export function step(state: IdeaState, event: IdeaEvent): IdeaStep {
     case "kept": {
       if (event.ideas === null) return same({ ...state, notice: "notKept" })
       const idea = event.ideas.find((kept) => kept.id === state.ideaId)
-      return same(idea === undefined ? state : advance(state, idea))
+      const next = {
+        ...state,
+        skipped: newestSkipped(event.ideas, state.ideaId),
+      }
+      return same(idea === undefined ? next : advance(next, idea))
     }
     case "hidden": {
       return screen.kind === "ask" && screen.phase.kind === "listening"
@@ -476,9 +503,31 @@ export function step(state: IdeaState, event: IdeaEvent): IdeaStep {
         : same(state)
     }
     case "answerSkipped": {
-      if (screen.kind !== "kept" || state.idea === null) return same(state)
-      const [first] = unanswered(state.idea)
-      return first === undefined ? same(state) : same(ask(state, first))
+      // The idea just kept, from its Kept screen; or, from a new idea's
+      // first screen with nothing kept yet, the newest one with questions
+      // skipped.
+      const fromKept = screen.kind === "kept" ? state.idea : null
+      const fromNew =
+        screen.kind === "ask" &&
+        state.idea === null &&
+        (screen.phase.kind === "idle" || screen.phase.kind === "typing")
+          ? state.skipped
+          : null
+      const idea = fromKept ?? fromNew
+      const [first] = idea === null ? [] : unanswered(idea)
+      if (idea === null || first === undefined) return same(state)
+      return same(
+        ask(
+          {
+            ...state,
+            idea,
+            ideaId: idea.id,
+            skipped: fromNew === null ? state.skipped : null,
+            notice: null,
+          },
+          first
+        )
+      )
     }
     case "another": {
       if (screen.kind !== "kept") return same(state)

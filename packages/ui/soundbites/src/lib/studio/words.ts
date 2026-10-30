@@ -233,6 +233,8 @@ export const STUDIO_WORDS = {
       `${plural(n, "answer", "answers")} kept as text on this phone. No sound was kept.`,
     answerSkipped: (n: number): string =>
       `Answer the ${n === 1 ? "one" : n} you skipped`,
+    answerSkippedEarlier: (n: number): string =>
+      `Answer the ${n === 1 ? "one" : n} you skipped last time`,
     another: "Another idea",
     back: "Back to Studio",
   },

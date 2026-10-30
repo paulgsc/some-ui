@@ -93,6 +93,13 @@ describe("the phone's recognizer, for ideas", () => {
     expect(plugin.start).not.toHaveBeenCalled()
   })
 
+  it("never starts a listening stopped while it was being set up", async () => {
+    const listening = deviceListener.listen(() => undefined)
+    listening.stop()
+    expect(await listening.done).toEqual({ kind: "heard", words: "" })
+    expect(plugin.start).not.toHaveBeenCalled()
+  })
+
   it("tells the plugin to stop listening when a started one is let go", async () => {
     plugin.start.mockImplementationOnce(() => new Promise(() => undefined))
     const listening = deviceListener.listen(() => undefined)

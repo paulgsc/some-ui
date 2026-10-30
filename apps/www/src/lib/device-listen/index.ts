@@ -74,6 +74,8 @@ function tell(what: "stop" | "cancel"): void {
 }
 
 function listen(onWords: (words: string) => void): Listening {
+  /** Stop was asked for: once started, the plugin answers what it heard. */
+  let stopped = false
   const call = callForeign<string>({
     port: PORT,
     deadlineMs: LISTEN_DEADLINE_MS,
@@ -86,6 +88,8 @@ function listen(onWords: (words: string) => void): Listening {
         // Let go while setting up: a cancel sent then reached the plugin
         // before this start would, so nothing must start now.
         if (signal.aborted) throw new Error("let go before it started")
+        // Stopped while setting up: nothing was heard, and nothing starts.
+        if (stopped) return ""
         // Let go once started (a deadline, or a cancel racing this start):
         // the plugin stops listening.
         signal.addEventListener("abort", () => tell("cancel"), { once: true })
@@ -116,7 +120,10 @@ function listen(onWords: (words: string) => void): Listening {
   })
   return {
     done,
-    stop: () => tell("stop"),
+    stop: (): void => {
+      stopped = true
+      tell("stop")
+    },
     cancel: (): void => {
       call.abandon()
       tell("cancel")

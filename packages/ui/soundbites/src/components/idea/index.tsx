@@ -159,6 +159,17 @@ const Ask = ({
             {WORDS.type}
           </Button>
         )}
+        {state.idea === null &&
+          state.skipped !== null &&
+          (phase.kind === "idle" || phase.kind === "typing") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => dispatch({ type: "answerSkipped" })}
+            >
+              {WORDS.answerSkippedEarlier(unanswered(state.skipped).length)}
+            </Button>
+          )}
         {!isRequired(question) && state.idea !== null && (
           <Button
             variant="ghost"

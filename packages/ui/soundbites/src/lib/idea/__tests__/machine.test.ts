@@ -236,6 +236,41 @@ describe("catching an idea", () => {
     ])
   })
 
+  it("offers an earlier idea's skipped questions on a new idea's first screen", () => {
+    const earlier: Idea = {
+      id: "idea-0",
+      at: AT,
+      questions: 1,
+      answers: [
+        { question: "what", versions: [{ at: AT, how: "typed", words: "x" }] },
+      ],
+      passed: ["takeaway", "spark", "picture"],
+    }
+    const opened = run([
+      { type: "entered", at: AT },
+      { type: "listed", ideas: [earlier] },
+      { type: "voiceChecked", available: true },
+    ])
+    expect(opened.state.idea).toBeNull()
+    expect(opened.state.skipped?.id).toBe("idea-0")
+    const { state, ideas } = run(
+      [
+        tap({ type: "answerSkipped" }),
+        tap({ type: "type" }),
+        tap({ type: "draft", text: "the point" }),
+        tap({ type: "save" }),
+      ],
+      opened.state,
+      [earlier]
+    )
+    expect(ideas).toHaveLength(1)
+    expect(ideas[0]?.answers.map((answer) => answer.question)).toEqual([
+      "what",
+      "takeaway",
+    ])
+    expect(screenOf(state)).toBe("kept")
+  })
+
   it("starts another idea once one is kept", () => {
     const done = run([
       ...OPENED,

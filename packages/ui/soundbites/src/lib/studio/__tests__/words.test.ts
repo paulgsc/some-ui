@@ -62,6 +62,8 @@ const MADE: ReadonlyArray<string> = [
   W.idea.keptLine(4),
   W.idea.answerSkipped(1),
   W.idea.answerSkipped(2),
+  W.idea.answerSkippedEarlier(1),
+  W.idea.answerSkippedEarlier(3),
 ]
 
 describe("Studio's words", () => {

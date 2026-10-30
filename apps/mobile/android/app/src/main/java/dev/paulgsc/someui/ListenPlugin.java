@@ -57,6 +57,8 @@ public class ListenPlugin extends Plugin {
     private PluginCall listening;
     /** The start waiting on the microphone prompt, by callback id; null when none. */
     private volatile String asking;
+    /** Stop was asked for while that start waited: it answers nothing heard. */
+    private volatile boolean stoppedAsking;
 
     @PluginMethod
     public void available(PluginCall call) {
@@ -71,6 +73,7 @@ public class ListenPlugin extends Plugin {
     public void start(PluginCall call) {
         if (getPermissionState(MICROPHONE) != PermissionState.GRANTED) {
             asking = call.getCallbackId();
+            stoppedAsking = false;
             requestPermissionForAlias(MICROPHONE, call, "microphoneAnswered");
             return;
         }
@@ -79,12 +82,18 @@ public class ListenPlugin extends Plugin {
 
     @PermissionCallback
     private void microphoneAnswered(PluginCall call) {
-        // Let go while the prompt was up: nothing may start now.
+        // Let go or stopped while the prompt was up: nothing may start now.
         if (!call.getCallbackId().equals(asking)) {
             call.reject("The listening was let go", "CANCELLED");
             return;
         }
         asking = null;
+        if (stoppedAsking) {
+            JSObject nothing = new JSObject();
+            nothing.put("words", "");
+            call.resolve(nothing);
+            return;
+        }
         if (getPermissionState(MICROPHONE) == PermissionState.GRANTED) {
             begin(call);
         } else {
@@ -94,6 +103,8 @@ public class ListenPlugin extends Plugin {
 
     @PluginMethod
     public void stop(PluginCall call) {
+        // A start waiting on the prompt answers nothing heard once it is answered.
+        if (asking != null) stoppedAsking = true;
         getActivity().runOnUiThread(() -> {
             if (recognizer != null) recognizer.stopListening();
             call.resolve();
