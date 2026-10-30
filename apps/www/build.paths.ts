@@ -124,6 +124,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/voice-home/**",
   "apps/www/src/lib/device-backend/**",
   "apps/www/src/lib/device-speech/**",
+  "apps/www/src/lib/device-listen/**",
   "apps/www/src/lib/native-log/**",
   "apps/www/src/lib/study-nudge/native.ts",
   "apps/www/src/lib/study-nudge/schedule.ts",

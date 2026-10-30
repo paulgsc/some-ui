@@ -7,15 +7,19 @@
 
 import type { ForeignCall, IntentError } from "@some-ui/intent-kit"
 
+/** A Capacitor plugin's `code` for a failure, if it gave one. */
+export function pluginCode(error: unknown): unknown {
+  return typeof error === "object" && error !== null
+    ? Reflect.get(error, "code")
+    : undefined
+}
+
 /**
  * A Capacitor `code` of `UNAVAILABLE` or `UNIMPLEMENTED`: no such plugin (or
  * native service) in this build, which no retry changes.
  */
 export function isMissingPlugin(error: unknown): boolean {
-  const code: unknown =
-    typeof error === "object" && error !== null
-      ? Reflect.get(error, "code")
-      : undefined
+  const code = pluginCode(error)
   return code === "UNAVAILABLE" || code === "UNIMPLEMENTED"
 }
 

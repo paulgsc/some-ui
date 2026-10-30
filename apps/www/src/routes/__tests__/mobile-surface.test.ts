@@ -20,7 +20,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest"
 
 import { isOnMobileSurface, MOBILE_ENTRY } from "@/lib/app-surface"
 import { WINGS } from "@/lib/wings"
-import { ENTRY_ROOTS } from "@/lib/wings/entry"
+import { ENTRY_ROOTS, SHORTCUT_ROOTS } from "@/lib/wings/entry"
 
 vi.mock("virtual:build-profile", async () => {
   const { MOBILE_PROFILE, profiles } = await import("@/build.profiles")
@@ -157,6 +157,14 @@ describe("the Android app's surface", () => {
         ([, alias = "", root = ""]) => [alias, root]
       )
     )
+    /** MainActivity's fixed table: shortcut action to the page it opens. */
+    const shortcuts = new Map(
+      [
+        ...activity.matchAll(
+          /case "(dev\.paulgsc\.someui\.\w+)": return "(\/[^"]*)";/g
+        ),
+      ].map(([, action = "", root = ""]) => [action, root])
+    )
     /** Every launcher alias the manifest declares, and what it targets. */
     const aliases = [
       ...manifest.matchAll(/<activity-alias\b[\s\S]*?<\/activity-alias>/g),
@@ -183,8 +191,22 @@ describe("the Android app's surface", () => {
       )
       expect([...table.entries()].sort()).toEqual(expected.sort())
       expect(new Set(table.values())).toEqual(
-        new Set(ENTRY_ROOTS.filter((root) => root !== MOBILE_ENTRY))
+        new Set(
+          ENTRY_ROOTS.filter(
+            (root) => root !== MOBILE_ENTRY && !SHORTCUT_ROOTS.includes(root)
+          )
+        )
       )
+    })
+
+    it("opens each launcher shortcut on its own page, as www lists them", () => {
+      expect(new Set(shortcuts.values())).toEqual(new Set(SHORTCUT_ROOTS))
+      const declared = [
+        ...read("android/app/src/main/res/xml/shortcuts.xml").matchAll(
+          /android:action="([\w.]+)"/g
+        ),
+      ].map(([, action = ""]) => action)
+      expect(declared.sort()).toEqual([...shortcuts.keys()].sort())
     })
 
     it("declares every alias in the table as a launcher icon onto MainActivity, and no other", () => {

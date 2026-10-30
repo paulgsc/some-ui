@@ -2,7 +2,7 @@
   "name": "@some-ui/soundbites",
   "private": true,
   "version": "0.0.1",
-  "description": "Say why you skipped a session, out loud, and record a Build Journal episode's voice takes against its primer: capped, on-phone recorders for the Android app.",
+  "description": "Say why you skipped a session, out loud; record a Studio video's voice takes against its primer; and catch a video idea by voice, kept as text: on-phone recorders for the Android app.",
   "type": "module",
   "someUi": {
     "audience": "apk"

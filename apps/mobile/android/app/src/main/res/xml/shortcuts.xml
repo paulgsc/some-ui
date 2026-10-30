@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher shortcuts: a long-press on the app's icon or Studio's. Each
+     intent names a fixed action MainActivity maps to a page (shortcutRoot).
+     Shortcut ids are frozen once shipped, as alias names are: a pinned
+     shortcut is keyed by its id. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="new_idea"
+        android:enabled="true"
+        android:icon="@mipmap/ic_wing_studio"
+        android:shortcutShortLabel="@string/shortcut_new_idea"
+        android:shortcutLongLabel="@string/shortcut_new_idea_long">
+        <intent
+            android:action="dev.paulgsc.someui.NEW_IDEA"
+            android:targetPackage="dev.paulgsc.someui"
+            android:targetClass="dev.paulgsc.someui.MainActivity" />
+    </shortcut>
+</shortcuts>

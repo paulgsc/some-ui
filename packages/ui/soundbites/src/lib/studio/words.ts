@@ -7,6 +7,7 @@
 import { formatSize } from "@some-ui/core-utils"
 import type { RecordingFailure } from "@some-ui/voice-capture"
 import { RECORDING_FAILURE_COPY } from "@some-ui/voice-capture"
+import type { QuestionId } from "@soundbites/lib/idea/model"
 
 /** How a sitting went, as the person answers it. */
 export type Went = "smooth" | "snags" | "rough"
@@ -183,6 +184,59 @@ export const STUDIO_WORDS = {
       "Once they're in Drive, the takes that went out can leave the phone.",
     arrivedYes: "They're in Drive: let them go",
     arrivedNo: "Keep them here",
+  },
+
+  /** Catching an idea, one question at a time (ST18). */
+  idea: {
+    newIdea: "New idea",
+    newIdeaLine: "Say what the video is, the moment it comes.",
+    heading: "New idea",
+    reading: "Opening your ideas…",
+    unreadable:
+      "The ideas kept on this phone couldn't be read, so nothing new can be kept yet.",
+    questionOf: (n: number, of: number): string => `Question ${n} of ${of}`,
+    questions: {
+      what: {
+        ask: "What's the video?",
+        hint: "Say it the way you'd tell a friend.",
+      },
+      takeaway: {
+        ask: "What should someone come away with?",
+        hint: "The one thing they keep.",
+      },
+      spark: {
+        ask: "What set it off?",
+        hint: "The moment, the thing you saw, why now.",
+      },
+      picture: {
+        ask: "What do you see on screen?",
+        hint: "One picture: the scene you see first.",
+      },
+    } satisfies Record<QuestionId, { ask: string; hint: string }>,
+    talk: "Say it",
+    listening: "Listening…",
+    stop: "Done talking",
+    right: "That's right",
+    fix: "Fix the words",
+    again: "Say it again",
+    type: "Type instead",
+    typeHint: "Type it the way you'd say it.",
+    keepWords: "Keep these words",
+    skip: "Skip for now",
+    noVoice:
+      "Talking isn't available on this phone right now, so type it. Speech needs the microphone and the phone's offline English.",
+    notHeard: "Didn't hear anything. Try again, or type it.",
+    listenFailed: "Couldn't hear that. Try again, or type it.",
+    notKept: "Couldn't keep that on this phone. Your words are still here.",
+    kept: "Kept. Come back to it any time.",
+    keptLine: (n: number): string =>
+      `${plural(n, "answer", "answers")} kept as text on this phone. No sound was kept.`,
+    answerSkipped: (n: number): string =>
+      `Answer the ${n === 1 ? "one" : n} you skipped`,
+    answerSkippedEarlier: (n: number): string =>
+      `Answer the ${n === 1 ? "one" : n} you skipped last time`,
+    another: "Another idea",
+    back: "Back to Studio",
   },
 
   /** Where things stand, from the last sitting's log. */

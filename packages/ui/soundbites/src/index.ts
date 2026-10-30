@@ -1,3 +1,7 @@
+export { IdeaCapture } from "./components/idea"
+export type { IdeaCaptureProps } from "./components/idea"
+export type { Listened } from "./lib/idea/machine"
+export type { IdeaListener, Listening } from "./lib/idea/runtime"
 export { Studio } from "./components/studio"
 export type { StudioProps, StudioShare } from "./components/studio"
 export { studioFiles } from "./lib/studio/export"

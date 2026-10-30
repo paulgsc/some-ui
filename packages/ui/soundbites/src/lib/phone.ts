@@ -10,6 +10,9 @@ import {
   onPageVisibility,
 } from "@some-ui/voice-capture"
 
+import type { IdeaPorts } from "./idea/runtime"
+import { NO_LISTENER } from "./idea/runtime"
+import { keptIdeaStore } from "./idea/store"
 import { SOUNDBITE_BITS_PER_SECOND } from "./policy"
 import type { ProjectStore } from "./project/store"
 import { indexedDbProjectStore } from "./project/store"
@@ -52,6 +55,17 @@ export function phoneStudioPorts(): StudioPorts {
     now: () => Date.now(),
     newId: () => crypto.randomUUID(),
     readText: (file) => file.text(),
+    onVisibility: onPageVisibility,
+  }
+}
+
+/** Catching an idea; the recognizer is the build's to add (www). */
+export function phoneIdeaPorts(): IdeaPorts {
+  return {
+    store: keptIdeaStore(),
+    listener: NO_LISTENER,
+    now: () => Date.now(),
+    newId: () => crypto.randomUUID(),
     onVisibility: onPageVisibility,
   }
 }

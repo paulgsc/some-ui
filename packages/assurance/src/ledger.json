@@ -1508,6 +1508,13 @@
       "family": "what-is-kept"
     },
     {
+      "store": "phone:ideas",
+      "class": "record",
+      "growth": "Per video idea caught in Studio (ST18): the confirmed text of up to four answers, each a few versions (what was heard, then any fix), append-only; no audio is ever written, so nothing is discarded (owner, 2026-10-30, #2300); no cap (`some-ui:studio:ideas`).",
+      "horizon": "an idea is never let go",
+      "family": "what-is-kept"
+    },
+    {
       "store": "phone:job-voice",
       "class": "record",
       "growth": "bounded: JOB_VOICE_MAX_BYTES = 40 x 240,000 = 9,600,000 B of Jobs voice notes.",

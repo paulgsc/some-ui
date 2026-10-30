@@ -6,15 +6,19 @@ import { FOYER, WINGS } from "./index"
 
 type Path = keyof FileRoutesByTo
 
+/** The pages a launcher shortcut opens (apps/mobile's `shortcutRoot`). */
+export const SHORTCUT_ROOTS: ReadonlyArray<Path> = ["/journal/idea"]
+
 /**
- * The roots a wing's launcher icon may open, and the foyer. apps/mobile's
- * `MainActivity` maps each icon to one of these from a fixed table
- * (`routes/__tests__/mobile-surface.test.ts` checks the two agree), never
- * from anything the intent carries.
+ * The roots a wing's launcher icon or a shortcut may open, and the foyer.
+ * apps/mobile's `MainActivity` maps each icon and shortcut to one of these
+ * from a fixed table (`routes/__tests__/mobile-surface.test.ts` checks the
+ * two agree), never from anything else the intent carries.
  */
 export const ENTRY_ROOTS: ReadonlyArray<Path> = [
   FOYER,
   ...WINGS.flatMap((wing) => (wing.home === null ? [] : [wing.home])),
+  ...SHORTCUT_ROOTS,
 ]
 
 /** `root` as one of `ENTRY_ROOTS`, or undefined for anything else. */

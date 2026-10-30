@@ -57,6 +57,13 @@ const MADE: ReadonlyArray<string> = [
   W.sittingDone([1, 2]),
   W.sittingNext(null),
   W.sittingNext({ n: 2, artifact: "The miss" }),
+  W.idea.questionOf(2, 4),
+  W.idea.keptLine(1),
+  W.idea.keptLine(4),
+  W.idea.answerSkipped(1),
+  W.idea.answerSkipped(2),
+  W.idea.answerSkippedEarlier(1),
+  W.idea.answerSkippedEarlier(3),
 ]
 
 describe("Studio's words", () => {
