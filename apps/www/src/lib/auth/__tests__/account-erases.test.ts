@@ -37,6 +37,7 @@ describe("what deleting the account says", () => {
       "LeetType sessions",
       "Korean's word sets and reading records",
       "Voice notes, game bites included",
+      "Studio's time log",
       "What your phones share",
       "Sign-in",
     ])

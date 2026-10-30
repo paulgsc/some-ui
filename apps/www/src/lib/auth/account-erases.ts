@@ -58,6 +58,10 @@ export const ACCOUNT_ERASES = {
       text: "Each voice note your phone sent home, its sound included, and what home heard in it; for a game-day bite, also what it was about and what the screen showed as you said it.",
     },
     {
+      label: "Studio's time log",
+      text: "When each Studio screen was open in a sitting, and how each sitting went: what got in the way, and the scene you were on.",
+    },
+    {
       label: "What your phones share",
       text: "What each paired phone chose to keep sending home, and when it chose.",
     },
