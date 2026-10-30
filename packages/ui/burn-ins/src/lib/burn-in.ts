@@ -16,6 +16,15 @@
 import { assertNever } from "@some-ui/intent-kit"
 import { z } from "zod"
 
+import {
+  AUTHORSHIP_DESIGNS,
+  authorshipAt,
+  authorshipBoxes,
+  AuthorshipParamsSchema,
+  drawAuthorship,
+  type AuthorshipDrawing,
+  type AuthorshipFrame,
+} from "./authorship"
 import { frameAt as captionFrameAt, type CaptionFrame } from "./captions/frame"
 import { isThemeId, THEME_IDS, THEMES, type ThemeId } from "./captions/theme"
 import { captionsFor, runtimeOf, type Caption } from "./captions/timing"
@@ -31,7 +40,7 @@ import {
 } from "./journal"
 import { isOneOf, type Parsed } from "./parsed"
 
-export const KINDS = ["captions", "headline", "card"] as const
+export const KINDS = ["captions", "headline", "card", "authorship"] as const
 export type Kind = (typeof KINDS)[number]
 
 export const isKind = (value: unknown): value is Kind => isOneOf(KINDS, value)
@@ -41,6 +50,7 @@ export const DESIGNS = {
   captions: THEME_IDS,
   headline: JOURNAL_DESIGNS,
   card: JOURNAL_DESIGNS,
+  authorship: AUTHORSHIP_DESIGNS,
 } as const satisfies Record<Kind, ReadonlyArray<string>>
 
 /** Where each kind draws. */
@@ -48,6 +58,9 @@ export const REGIONS_OF = {
   captions: ["lower-third"],
   headline: ["header"],
   card: ["header", "body"],
+  // The intro and end card hold a bare card's header and body; between
+  // them the mark keeps to the gutter.
+  authorship: ["gutter", "header", "body"],
 } as const satisfies Record<Kind, ReadonlyArray<Region>>
 
 const TimedWordSchema = z
@@ -84,6 +97,11 @@ export type Prepared =
       readonly design: (typeof JOURNAL_DESIGNS)[number]
       readonly frame: TextFrame
     }
+  | {
+      readonly kind: "authorship"
+      readonly design: (typeof AUTHORSHIP_DESIGNS)[number]
+      readonly drawing: AuthorshipDrawing
+    }
 
 /** What is on screen at a moment. */
 export type BurnInFrame =
@@ -97,12 +115,36 @@ export type BurnInFrame =
       readonly design: (typeof JOURNAL_DESIGNS)[number]
       readonly frame: TextFrame
     }
+  | {
+      readonly kind: "authorship"
+      readonly design: (typeof AUTHORSHIP_DESIGNS)[number]
+      readonly frame: AuthorshipFrame
+    }
 
 const issues = (name: string, error: z.ZodError): ReadonlyArray<string> =>
   error.issues.map(
     (i) =>
       `${name}: ${i.path.length ? `${i.path.join(".")}: ` : ""}${i.message}`
   )
+
+/** A kind's design and params checked, and drawn by `draw`. */
+function checked<D extends string, P, V>(
+  name: string,
+  designs: ReadonlyArray<D>,
+  b: BurnInData,
+  schema: z.ZodType<P>,
+  draw: (params: P) => Parsed<V>
+): Parsed<{ readonly design: D; readonly value: V }> {
+  if (!isOneOf(designs, b.design))
+    return { ok: false, problems: [`${name}: no such design`] }
+  const params = schema.safeParse(b.params)
+  if (!params.success)
+    return { ok: false, problems: issues(name, params.error) }
+  const drawn = draw(params.data)
+  if (!drawn.ok)
+    return { ok: false, problems: drawn.problems.map((p) => `${name}: ${p}`) }
+  return { ok: true, value: { design: b.design, value: drawn.value } }
+}
 
 /** A Build Journal kind's params checked and set. */
 function journal<P>(
@@ -112,15 +154,13 @@ function journal<P>(
   schema: z.ZodType<P>,
   draw: (params: P) => Parsed<TextFrame>
 ): Parsed<Prepared> {
-  if (!isOneOf(JOURNAL_DESIGNS, b.design))
-    return { ok: false, problems: [`${name}: no such design`] }
-  const params = schema.safeParse(b.params)
-  if (!params.success)
-    return { ok: false, problems: issues(name, params.error) }
-  const fitted = draw(params.data)
-  if (!fitted.ok)
-    return { ok: false, problems: fitted.problems.map((p) => `${name}: ${p}`) }
-  return { ok: true, value: { kind, design: b.design, frame: fitted.value } }
+  const c = checked(name, JOURNAL_DESIGNS, b, schema, draw)
+  return c.ok
+    ? {
+        ok: true,
+        value: { kind, design: c.value.design, frame: c.value.value },
+      }
+    : c
 }
 
 /** The burn-in checked and ready, or every reason it can't be drawn. */
@@ -150,6 +190,21 @@ export function prepare(b: BurnInData): Parsed<Prepared> {
     case "card": {
       return journal(name, kind, b, CardParamsSchema, cardFrame)
     }
+    case "authorship": {
+      const c = checked(
+        name,
+        AUTHORSHIP_DESIGNS,
+        b,
+        AuthorshipParamsSchema,
+        drawAuthorship
+      )
+      return c.ok
+        ? {
+            ok: true,
+            value: { kind, design: c.value.design, drawing: c.value.value },
+          }
+        : c
+    }
     default: {
       return assertNever(kind)
     }
@@ -169,6 +224,13 @@ export function frameAt(p: Prepared, t: number): BurnInFrame {
     case "headline":
     case "card": {
       return p
+    }
+    case "authorship": {
+      return {
+        kind: p.kind,
+        design: p.design,
+        frame: authorshipAt(p.drawing, t),
+      }
     }
     default: {
       return assertNever(p)
@@ -190,6 +252,9 @@ export function boxesOf(f: BurnInFrame): ReadonlyArray<Box> {
     case "headline":
     case "card": {
       return textBoxes(f.frame)
+    }
+    case "authorship": {
+      return authorshipBoxes(f.frame)
     }
     default: {
       return assertNever(f)

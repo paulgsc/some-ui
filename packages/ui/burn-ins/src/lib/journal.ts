@@ -27,7 +27,7 @@ import { barlow, bottomOf, fitLine, setText, type TextBlock } from "./text"
 export const JOURNAL_DESIGNS = ["v1"] as const
 
 /** `render.py`'s palette. Video colours, not the app's, so literals. */
-const INK = {
+export const INK = {
   panel: "#182331",
   edge: "#344758",
   text: "#cbd5e1",
@@ -36,7 +36,7 @@ const INK = {
 } as const
 
 /** A rounded panel drawn under a card's text. */
-type Panel = {
+export type Panel = {
   readonly box: Box
   readonly fill: string
   readonly edge: string
@@ -72,7 +72,7 @@ export const CardParamsSchema = z.object({
 export type HeadlineParams = z.infer<typeof HeadlineParamsSchema>
 export type CardParams = z.infer<typeof CardParamsSchema>
 
-const kicker = (text: string): TextBlock | null =>
+export const kicker = (text: string): TextBlock | null =>
   setText(
     text,
     barlow(800, 30, INK.accent),
@@ -80,7 +80,7 @@ const kicker = (text: string): TextBlock | null =>
     1
   )
 
-const blocksOf = (
+export const blocksOf = (
   named: ReadonlyArray<readonly [string, TextBlock | null]>
 ): Parsed<TextFrame> => {
   const problems = named.flatMap(([name, b]) =>
@@ -137,17 +137,22 @@ const INNER = {
 }
 const INNER_BOTTOM = PANEL.box.y + PANEL.box.height - 56
 
+export {
+  PANEL as CARD_PANEL,
+  INNER as CARD_INNER,
+  INNER_BOTTOM as CARD_INNER_BOTTOM,
+}
+
 /** Rows of `lineHeight * size` that fit from `y` to the panel's foot. */
 const rowsLeft = (y: number, sizePx: number, lineHeight = 1.25): number =>
   Math.floor((INNER_BOTTOM - y) / (sizePx * lineHeight))
 
+/** A card's headline: up to two rows under the kicker. */
+export const cardHeadline = (text: string): TextBlock | null =>
+  setText(text, barlow(800, 54, INK.text), { x: LEFT, y: 104, width: WIDTH }, 2)
+
 export function cardFrame(p: CardParams): Parsed<TextFrame> {
-  const head = setText(
-    p.headline,
-    barlow(800, 54, INK.text),
-    { x: LEFT, y: 104, width: WIDTH },
-    2
-  )
+  const head = cardHeadline(p.headline)
   const inside: Array<readonly [string, TextBlock | null]> = []
   if (p.slot) {
     const label = setText(

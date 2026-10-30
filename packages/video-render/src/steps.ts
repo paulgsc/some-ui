@@ -9,6 +9,7 @@
  * holds the rules: home runs no language model, a session keeps work that
  * isn't Claude's exactly while something named blocks the move, only the
  * owner's own steps are the owner's, and every field named is the cut list's.
+ * The authorship mark's hands are read from here (`authorship.ts`).
  */
 
 /** What does the work: code, the small speech model home runs, Claude, or the owner. */
@@ -80,6 +81,17 @@ export const STEPS: ReadonlyArray<Step> = [
     blockedBy: "ST4 (#2252) and ST6 (#2254): Record and Shape on the phone",
     reads: [{ field: "shots.take" }, { field: "look" }, { field: "voice" }],
     writes: [{ field: "shots.durationMs" }, { field: "shots.voiceInMs" }],
+  },
+  {
+    id: "record-takes",
+    what: "Say each scene: the takes",
+    kind: "owner",
+    now: "owner",
+    target: "owner",
+    milestone: null,
+    why: "The voice is the owner's own, whether the point is ad-libbed or the line read.",
+    reads: [{ file: "primer.json" }],
+    writes: [{ field: "shots.take" }],
   },
   {
     id: "carry-takes",

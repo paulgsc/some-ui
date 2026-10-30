@@ -4,6 +4,7 @@
  * goes, never the machinery that draws it (`__tests__/words.test.ts`).
  */
 
+import type { Actor } from "./authorship"
 import type { Kind } from "./burn-in"
 import type { ThemeId } from "./captions/theme"
 
@@ -30,6 +31,11 @@ export const WORDS = {
       about:
         "A scene with no picture: a headline, then the point in large type and a note under it.",
     },
+    authorship: {
+      name: "Who made it",
+      about:
+        "Whose idea each scene is, and whose hands made it: a short key at the start, a small mark beside the picture as each scene plays, and every scene's record at the end. The sample is five scenes, one for each way an idea can come about.",
+    },
   } satisfies Record<Kind, { name: string; about: string }>,
   lookHeading: "Look",
   looks: {
@@ -52,7 +58,15 @@ export const WORDS = {
       about:
         "The look of every Build Journal short so far: pale words on slate, the kicker in teal.",
     },
-  } satisfies Record<ThemeId | "v1", { name: string; about: string }>,
+    "cells-v1": {
+      name: "Cells",
+      about:
+        "One square for each of us, always in the same place. Filled for whose idea, half filled for whose words, outlined for whose hands.",
+    },
+  } satisfies Record<
+    ThemeId | "v1" | "cells-v1",
+    { name: string; about: string }
+  >,
   play: "Play",
   pause: "Pause",
   timeLabel: "Where in the sample",
@@ -65,4 +79,27 @@ export const WORDS = {
   fileNote:
     "YouTube shows these to anyone who turns captions on, and reads them for search. They carry the words and their times, without the look.",
   stageLabel: "The video, with what is drawn into it",
+  /** What the authorship mark says inside the video. */
+  authorship: {
+    kicker: "WHO MADE THIS",
+    introHeadline: "Each scene shows whose idea it is, and whose hands made it",
+    endHeadline: "Who made each scene",
+    actors: {
+      you: { name: "Me", about: "My own thought, my own voice" },
+      agent: { name: "Claude", about: "The AI agent I make these with" },
+      code: { name: "Code", about: "My own code, the same every time it runs" },
+      source: {
+        name: "A source",
+        about: "Someone else's work, named in the notes",
+      },
+    } satisfies Record<Actor, { name: string; about: string }>,
+    grammar: {
+      origin: "Filled: whose idea it is",
+      wording: "Half filled: whose words say it",
+      hand: "Outlined: whose hands made what you see",
+    },
+    grammarShort:
+      "Filled: whose idea · half filled: whose words · outlined: whose hands",
+    scene: (n: number): string => String(n),
+  },
 } as const

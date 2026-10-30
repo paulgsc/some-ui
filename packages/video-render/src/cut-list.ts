@@ -72,6 +72,27 @@ export const BurnInSchema = z.object({
   params: z.record(z.string(), z.unknown()).default({}),
 })
 
+/** Whose words an idea came from, when they were the owner's (ST16). */
+const OwnerRefSchema = z.object({
+  kind: z.enum(["note", "take", "voice-note", "prompt"]),
+  id: z.string().min(1).max(200),
+})
+
+/**
+ * Whose idea a scene presents (STUDIO ST16): the owner's, which must cite
+ * the owner's own words it came from, an agent's, or a source's, which must
+ * cite it. A scene that says nothing is an agent's: nothing claims the idea
+ * for the owner without a citation (`authorship.ts`).
+ */
+export const IdeaSchema = z.discriminatedUnion("origin", [
+  z.object({ origin: z.literal("you"), from: OwnerRefSchema }),
+  z.object({ origin: z.literal("agent") }),
+  z.object({
+    origin: z.literal("source"),
+    from: z.object({ title: z.string().min(1), ref: z.string().min(1) }),
+  }),
+])
+
 export const ShotSchema = z.object({
   id,
   /** The primer's cut this scene says. */
@@ -80,6 +101,8 @@ export const ShotSchema = z.object({
   durationMs: ms.min(100),
   /** One cut's take, trimmed to `inMs`..`outMs`. */
   take: z.object({ file: path, inMs: ms, outMs: ms }).optional(),
+  /** This scene's voice under a Mixed plan: the point said, or the line read. */
+  voice: z.enum(["ad-lib", "read"]).optional(),
   /** When the take starts, after the scene does. */
   voiceInMs: ms.default(200),
   /** This scene's own look, over the video's. */
@@ -94,6 +117,7 @@ export const ShotSchema = z.object({
     })
     .default({}),
   burnIns: z.array(BurnInSchema).default([]),
+  idea: IdeaSchema.default({ origin: "agent" }),
 })
 
 const author = z.enum(["owner", "claude"])
@@ -143,6 +167,7 @@ export type Shot = z.infer<typeof ShotSchema>
 export type Picture = Shot["picture"]
 export type Capture = Extract<Picture, { kind: "capture" }>
 export type BurnIn = z.infer<typeof BurnInSchema>
+export type Idea = z.infer<typeof IdeaSchema>
 
 /** A value, or every reason there isn't one. */
 export type Parsed<T> =
@@ -164,7 +189,10 @@ export function parseCutList(raw: unknown): Parsed<CutList> {
   if (!parsed.success) {
     return { ok: false, problems: problemsOf(parsed.error, "cut list") }
   }
-  const problems = once(shotProblems(parsed.data.shots))
+  const problems = once([
+    ...shotProblems(parsed.data.shots),
+    ...authorshipProblems(parsed.data),
+  ])
   return problems.length
     ? { ok: false, problems }
     : { ok: true, value: parsed.data }
@@ -215,5 +243,68 @@ function shotProblems(shots: ReadonlyArray<Shot>): Array<string> {
       say("a sound cue is past the scene's end")
     }
   })
+  return problems
+}
+
+/** The authorship mark's kind among the burn-ins (`authorship.ts`). */
+const AUTHORSHIP = "authorship"
+
+/** Whether a burn-in is the authorship mark. */
+export const isAuthorship = (b: BurnIn): boolean => b.kind === AUTHORSHIP
+
+/**
+ * Where the authorship mark can go: over the whole video, with nothing
+ * written for it (the renderer draws it from the scenes alone), and a bare
+ * card first and last for its intro and its end card.
+ */
+function authorshipProblems(cut: CutList): Array<string> {
+  const problems: Array<string> = []
+  const authorOf = new Map(cut.notes.map((n) => [n.id, n.author]))
+  for (const s of cut.shots) {
+    if (s.burnIns.some(isAuthorship)) {
+      problems.push(`${s.id}: the authorship mark covers the whole video`)
+    }
+    const idea = s.idea
+    const cited =
+      idea.origin === "you" && idea.from.kind === "note"
+        ? idea.from.id
+        : undefined
+    const author = cited === undefined ? undefined : authorOf.get(cited)
+    if (cited !== undefined && author === undefined) {
+      problems.push(
+        `${s.id}: its idea cites note ${cited}, which the project doesn't have`
+      )
+    } else if (cited !== undefined && author !== "owner") {
+      problems.push(
+        `${s.id}: its idea cites note ${cited}, which isn't in the owner's words`
+      )
+    }
+  }
+  const marks = cut.burnIns.filter(isAuthorship)
+  if (marks.length === 0) return problems
+  if (marks.length > 1) problems.push("the authorship mark is drawn once")
+  if (marks.some((b) => Object.keys(b.params).length > 0)) {
+    problems.push(
+      "the authorship mark is drawn from the scenes; nothing is written for it"
+    )
+  }
+  const bare = (s: Shot | undefined): boolean =>
+    s?.picture.kind === "card" && s.burnIns.length === 0
+  if (cut.shots.length < 3) {
+    problems.push(
+      "the authorship mark needs a scene between its intro and its end card"
+    )
+  } else {
+    if (!bare(cut.shots[0])) {
+      problems.push(
+        "the authorship mark's intro needs a bare card as the first scene"
+      )
+    }
+    if (!bare(cut.shots.at(-1))) {
+      problems.push(
+        "the authorship mark's end card needs a bare card as the last scene"
+      )
+    }
+  }
   return problems
 }
