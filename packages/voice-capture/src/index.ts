@@ -18,6 +18,7 @@ export {
   RecordingError,
 } from "./lib/recorder"
 export type {
+  TakeDeadlines,
   TakeEffect,
   TakeLimits,
   TakePhase,

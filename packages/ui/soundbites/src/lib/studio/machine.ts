@@ -41,9 +41,7 @@
  * - **Done for now keeps the take under way first.** The sitting closes
  *   after the take is kept or has failed, so its log counts it, and it
  *   records the scene on screen: the next sitting opens there. A microphone
- *   still opening is let go when it opens (`letGo`), so no take starts in a
- *   sitting asked to close, and the wait is bounded (`takeRunner`'s VC1), so
- *   a microphone that never answers holds nothing for good.
+ *   still opening is let go when it opens (`letGo`).
  * - **Nothing records while the page is off screen.** A take recording when
  *   the page is hidden or left is finished and kept; a microphone that opens
  *   then, or once the Record screen is gone, is let go.
@@ -103,10 +101,7 @@ export type StudioActivity =
   | { readonly kind: "playing"; readonly take: string; readonly seq: number }
   | ({
       readonly kind: "opening"
-      /**
-       * Done for now came first: the microphone is let go when it opens, so
-       * no take starts in a sitting that was asked to close.
-       */
+      /** Done for now came first. */
       readonly letGo?: true
     } & TakeFor)
   | ({
@@ -1138,21 +1133,15 @@ export function step(state: StudioState, event: StudioEvent): Step {
 
     case "micOpened": {
       if (activity.kind !== "opening") return stay(state)
-      if (
+      const quietly =
         activity.letGo === true ||
         state.page === "left" ||
-        !state.visible ||
         screen.kind !== "record"
-      ) {
+      if (quietly || !state.visible) {
         const idle = pump({
           ...state,
           activity: { kind: "idle" },
-          notice:
-            activity.letGo === true ||
-            state.page === "left" ||
-            screen.kind !== "record"
-              ? state.notice
-              : WORDS.notice.notStarted,
+          notice: quietly ? state.notice : WORDS.notice.notStarted,
         })
         return {
           state: idle.state,

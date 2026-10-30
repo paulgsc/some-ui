@@ -4,6 +4,7 @@ import type {
   Recording,
   StartRecording,
   Take,
+  TakeDeadlines,
 } from "@some-ui/voice-capture"
 import { projectFile, readProjectFile } from "@soundbites/lib/project/file"
 import type { Project } from "@soundbites/lib/project/model"
@@ -42,7 +43,7 @@ function studio(
   memory: ReturnType<typeof memoryProjectStore>,
   mic: StartRecording = fakeMic(),
   prefix = "t",
-  takeDeadlines?: { readonly openMs: number; readonly finishMs: number }
+  takeDeadlines?: TakeDeadlines
 ): Running {
   let tick = 0
   let ids = 0
@@ -57,7 +58,7 @@ function studio(
       listener(false)
       return (): void => undefined
     },
-    ...(takeDeadlines ? { takeDeadlines } : {}),
+    takeDeadlines,
     player: {
       play: (): Playback => ({
         ended: new Promise(() => undefined),
@@ -97,7 +98,7 @@ const settledWrites = (
 async function opened(
   memory = memoryProjectStore(),
   mic: StartRecording = fakeMic(),
-  takeDeadlines?: { readonly openMs: number; readonly finishMs: number }
+  takeDeadlines?: TakeDeadlines
 ): Promise<Running> {
   const runtime = studio(memory, mic, "t", takeDeadlines)
   await until(runtime, (state) => state.shelf.kind === "read")
@@ -954,19 +955,16 @@ describe("VC1: a microphone that is slow or silent holds nothing for good", () =
     let discards = 0
     const mic: StartRecording = () =>
       new Promise((resolve) => {
-        open = (): void =>
-          resolve({
-            level: (): number => 0.3,
-            finish: (): Promise<Take> =>
-              Promise.resolve({
-                blob: new Blob(["v"], { type: "audio/webm" }),
-                mimeType: "audio/webm;codecs=opus",
-                durationMs: 4_000,
-              }),
-            discard: (): void => {
-              discards++
-            },
-          })
+        open = (): void => {
+          void fakeMic()().then((recording) =>
+            resolve({
+              ...recording,
+              discard: (): void => {
+                discards++
+              },
+            })
+          )
+        }
       })
     return { mic, open: () => open(), discarded: () => discards }
   }

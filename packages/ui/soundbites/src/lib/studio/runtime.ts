@@ -6,7 +6,12 @@
  * screen shows are `step`'s.
  */
 import { assertNever } from "@some-ui/core-utils"
-import type { Playback, Player, StartRecording } from "@some-ui/voice-capture"
+import type {
+  Playback,
+  Player,
+  StartRecording,
+  TakeDeadlines,
+} from "@some-ui/voice-capture"
 import { takeRunner } from "@some-ui/voice-capture"
 import { TAKE_TICK_MS } from "@soundbites/lib/policy"
 import type { ProjectStore } from "@soundbites/lib/project/store"
@@ -36,7 +41,7 @@ export type StudioPorts = {
   /** As `SoundbitesPorts.onVisibility`: now, then on each change. */
   onVisibility: (listener: (hidden: boolean) => void) => () => void
   /** How long the microphone may take to answer; `takeRunner`'s unless a test says. */
-  takeDeadlines?: { readonly openMs: number; readonly finishMs: number }
+  takeDeadlines?: TakeDeadlines
 }
 
 export type StudioRuntime = {
@@ -67,7 +72,7 @@ export function createStudio(ports: StudioPorts): StudioRuntime {
       startRecording: ports.startRecording,
       now: ports.now,
       tickMs: TAKE_TICK_MS,
-      ...(ports.takeDeadlines ? { deadlines: ports.takeDeadlines } : {}),
+      deadlines: ports.takeDeadlines,
     },
     (signal) =>
       send(

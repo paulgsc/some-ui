@@ -10,10 +10,6 @@
  * - A take shorter than `minMs`, or one that came back with no bytes (a
  *   recorder that ran but wrote nothing), ends `short`: nothing to keep.
  * - Finishing keeps what was said; discarding keeps nothing.
- * - The microphone answers in bounded time (VC1, below): `takeRunner` waits
- *   on it through `callForeign`, so one that never opens or never gives back
- *   its recording fails the take instead of holding it, and whatever waits
- *   on the take, for good.
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { ForeignFailure, ForeignPort } from "@some-ui/intent-kit"
@@ -154,8 +150,13 @@ export function stepTake(
  */
 const OPEN_DEADLINE_MS = 60_000
 
-/** How long a recorder may take to give back what it heard once stopped. */
 const FINISH_DEADLINE_MS = 15_000
+
+/** How long `takeRunner` waits on the microphone; tests shorten it. */
+export type TakeDeadlines = {
+  readonly openMs: number
+  readonly finishMs: number
+}
 
 /**
  * The microphone as `callForeign` meets it. Its refusals are its own to
@@ -199,8 +200,8 @@ export function takeRunner(
     /** Milliseconds since the epoch. */
     now: () => number
     tickMs: number
-    /** Defaults `OPEN_DEADLINE_MS` and `FINISH_DEADLINE_MS`; tests shorten them. */
-    deadlines?: { readonly openMs: number; readonly finishMs: number }
+    /** Defaults `OPEN_DEADLINE_MS` and `FINISH_DEADLINE_MS`. */
+    deadlines?: TakeDeadlines | undefined
   },
   signal: (signal: TakeSignal) => void
 ): { run: (effect: TakeEffect) => void } {
