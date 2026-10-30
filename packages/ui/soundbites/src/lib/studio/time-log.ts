@@ -20,7 +20,7 @@ import { latest } from "@soundbites/lib/project/model"
 import type { StudioState } from "./machine"
 import { projectOf } from "./machine"
 import type { SittingKind } from "./words"
-import { STUDIO_WORDS } from "./words"
+import { SITTING_KINDS, STUDIO_WORDS } from "./words"
 
 export const SITTING_GAP_MS = 30 * 60_000
 
@@ -54,6 +54,8 @@ type Seen = {
   readonly sitting: string | null
   readonly screen: string | null
   readonly visible: boolean
+  /** The sitting's kind as the screen shows it; Record's for Start and Done. */
+  readonly kind: SittingKind
 }
 
 /**
@@ -69,7 +71,10 @@ function openSitting(project: Project | null): Sitting | null {
   return last?.closedAt === null ? last : null
 }
 
-/** The screen a state shows: `start`, `record:<shot>` or `done`. */
+const kindOf = (state: StudioState): SittingKind =>
+  SITTING_KINDS.find((kind) => kind === state.screen.kind) ?? "record"
+
+/** The screen a state shows: `start`, `record:<shot>`, `watch`, `done`… */
 function screenOf(state: StudioState): string {
   const { screen } = state
   return screen.kind === "record" ? `record:${screen.shot}` : screen.kind
@@ -80,6 +85,7 @@ function seen(state: StudioState): Seen {
   return {
     sitting: sitting === null ? null : sittingKey(sitting),
     screen: state.page === "left" ? null : screenOf(state),
+    kind: kindOf(state),
     visible: state.visible && state.page !== "left",
   }
 }
@@ -98,28 +104,34 @@ export function logBetween(
   const now = seen(after)
   const events: Array<TimeEvent> = []
   const add = (
-    sitting: string,
+    { sitting, kind }: { sitting: string; kind: SittingKind },
     type: TimeEventType,
     screen: string | null = null
   ): void => {
-    events.push({ id: newId(), at, sitting, kind: "record", type, screen })
+    events.push({ id: newId(), at, sitting, kind, type, screen })
   }
   const sittingChanged = was.sitting !== now.sitting
   if (was.sitting !== null) {
     const leaving = sittingChanged || was.screen !== now.screen
     if (leaving && was.screen !== null)
-      add(was.sitting, "screen_left", was.screen)
+      add({ sitting: was.sitting, kind: was.kind }, "screen_left", was.screen)
     if (!sittingChanged && was.visible && !now.visible)
-      add(was.sitting, "page_hidden")
-    if (sittingChanged) add(was.sitting, "sitting_closed")
+      add({ sitting: was.sitting, kind: was.kind }, "page_hidden")
+    if (sittingChanged)
+      add({ sitting: was.sitting, kind: was.kind }, "sitting_closed")
   }
   if (now.sitting !== null) {
-    if (sittingChanged) add(now.sitting, "sitting_opened")
+    if (sittingChanged)
+      add({ sitting: now.sitting, kind: now.kind }, "sitting_opened")
     if (!sittingChanged && !was.visible && now.visible)
-      add(now.sitting, "page_shown")
+      add({ sitting: now.sitting, kind: now.kind }, "page_shown")
     const entering = sittingChanged || was.screen !== now.screen
     if (entering && now.screen !== null)
-      add(now.sitting, "screen_entered", now.screen)
+      add(
+        { sitting: now.sitting, kind: now.kind },
+        "screen_entered",
+        now.screen
+      )
   }
   return events
 }

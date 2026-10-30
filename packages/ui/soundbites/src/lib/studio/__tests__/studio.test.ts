@@ -1044,7 +1044,11 @@ describe("VC1: a microphone that is slow or silent holds nothing for good", () =
 
 /** ST9: the runtime logs each screen of a sitting, and nothing outside one. */
 describe("Studio's time log", () => {
-  it("logs a sitting's screens from Record to Done for now", async () => {
+  /** A video opened on a runtime that keeps its time log in `storage`. */
+  async function logged(): Promise<{
+    runtime: StudioRuntime
+    storage: ReturnType<typeof inMemoryStorage>
+  }> {
     const storage = inMemoryStorage()
     const memory = memoryProjectStore()
     let tick = 0
@@ -1077,6 +1081,11 @@ describe("Studio's time log", () => {
       runtime,
       (state) => projectOf(state) !== null && settledWrites(state)
     )
+    return { runtime, storage }
+  }
+
+  it("logs a sitting's screens from Record to Done for now", async () => {
+    const { runtime, storage } = await logged()
     expect(keptTimeLog(() => storage).read()).toEqual([])
     runtime.dispatch({ type: "recordChosen" })
     await until(runtime, settledWrites)
@@ -1093,6 +1102,19 @@ describe("Studio's time log", () => {
       ["sitting_closed", null],
     ])
     expect(new Set(events.map((event) => event.sitting)).size).toBe(1)
+  })
+
+  it("opens a sitting for Shape, Watch and Finish too, logged as that kind", async () => {
+    const { runtime, storage } = await logged()
+    runtime.dispatch({ type: "shapeChosen" })
+    await until(runtime, settledWrites)
+    const events = keptTimeLog(() => storage).read()
+    expect(
+      events.map((event) => [event.type, event.kind, event.screen])
+    ).toEqual([
+      ["sitting_opened", "shape", null],
+      ["screen_entered", "shape", "shape"],
+    ])
   })
 })
 
@@ -1278,9 +1300,19 @@ describe("Watch", () => {
       type: "reviewPicked",
       files: [
         new Blob(["v"], { type: "video/mp4" }),
-        new Blob([JSON.stringify({ schema: REVIEW_SCHEMA, rev, shotTimes })], {
-          type: "application/json",
-        }),
+        new Blob(
+          [
+            JSON.stringify({
+              schema: REVIEW_SCHEMA,
+              title: cutList.title,
+              rev,
+              shotTimes,
+            }),
+          ],
+          {
+            type: "application/json",
+          }
+        ),
       ],
     })
     await until(
@@ -1330,5 +1362,45 @@ describe("Start's quiet links", () => {
     expect(runtime.getSnapshot().screen).toEqual({ kind: "start" })
     runtime.dispatch({ type: "historyChosen" })
     expect(runtime.getSnapshot().screen).toEqual({ kind: "history" })
+  })
+})
+
+/** ST5: a review is checked against the video on screen before it plays. */
+describe("a review of another video", () => {
+  it("is refused when its title or scenes differ, whatever its revision", async () => {
+    const runtime = await opened()
+    const { rev, cutList } = latest(projectIn(runtime))
+    runtime.dispatch({ type: "watchChosen" })
+    runtime.dispatch({
+      type: "reviewPicked",
+      files: [
+        new Blob(["v"], { type: "video/mp4" }),
+        new Blob(
+          [
+            JSON.stringify({
+              schema: REVIEW_SCHEMA,
+              title: `${cutList.title}, another`,
+              rev,
+              shotTimes: cutList.shots.map((each, index) => ({
+                id: each.id,
+                cut: null,
+                startMs: index * 1_000,
+                durationMs: 1_000,
+              })),
+            }),
+          ],
+          { type: "application/json" }
+        ),
+      ],
+    })
+    await until(
+      runtime,
+      (state) => state.notice === STUDIO_WORDS.watch.notThisVideo
+    )
+    expect(runtime.getSnapshot().screen).toMatchObject({
+      kind: "watch",
+      review: null,
+      video: null,
+    })
   })
 })

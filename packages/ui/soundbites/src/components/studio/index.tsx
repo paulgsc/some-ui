@@ -832,11 +832,11 @@ const Watch = ({
           <ReviewVideo video={video} dispatch={dispatch} />
           {asked !== null && (
             <div className="border-brand space-y-2 rounded-2xl border-2 p-3">
-              <p className="text-sm">{words.changed(asked.text)}</p>
+              <p className="text-sm">{words.changed(asked.note.text)}</p>
               <div className="flex gap-2">
                 <Button
                   onClick={() =>
-                    dispatch({ type: "changeGood", note: asked.id })
+                    dispatch({ type: "changeGood", note: asked.note.id })
                   }
                 >
                   {words.good}
@@ -844,7 +844,7 @@ const Watch = ({
                 <Button
                   variant="outline"
                   onClick={() =>
-                    dispatch({ type: "changeNotYet", note: asked.id })
+                    dispatch({ type: "changeNotYet", note: asked.note.id })
                   }
                 >
                   {words.notYet}

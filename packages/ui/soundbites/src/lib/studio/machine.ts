@@ -90,7 +90,7 @@ import type {
 
 import type { TimeEvent } from "./time-log"
 import { sceneBeside } from "./view"
-import { askedAt, changesIn, shotAt } from "./watch"
+import { askedAt, changesIn, isReviewOf, shotAt } from "./watch"
 import type { Went } from "./words"
 import { STUDIO_WORDS } from "./words"
 
@@ -1279,12 +1279,15 @@ export function step(state: StudioState, event: StudioEvent): Step {
       if (project === null || screen.kind !== "start" || !isSettled(activity))
         return stay(state)
       const { look, voice } = latest(project).cutList
-      return stay({
-        ...state,
-        screen: { kind: "shape", step: "look", look, voice },
-        notice: "",
-        choosing: null,
-      })
+      return enqueue(
+        {
+          ...state,
+          screen: { kind: "shape", step: "look", look, voice },
+          notice: "",
+          choosing: null,
+        },
+        { kind: "open", project: project.id, at: event.at }
+      )
     }
 
     case "lookPicked": {
@@ -1372,18 +1375,21 @@ export function step(state: StudioState, event: StudioEvent): Step {
     case "watchChosen": {
       if (project === null || screen.kind !== "start" || !isSettled(activity))
         return stay(state)
-      return stay({
-        ...state,
-        screen: {
-          kind: "watch",
-          video: null,
-          review: null,
-          atMs: 0,
-          answered: [],
+      return enqueue(
+        {
+          ...state,
+          screen: {
+            kind: "watch",
+            video: null,
+            review: null,
+            atMs: 0,
+            answered: [],
+          },
+          notice: "",
+          choosing: null,
         },
-        notice: "",
-        choosing: null,
-      })
+        { kind: "open", project: project.id, at: event.at }
+      )
     }
 
     case "watchBack": {
@@ -1420,7 +1426,7 @@ export function step(state: StudioState, event: StudioEvent): Step {
           notice: WORDS.watch.unreadable,
           screen: { ...screen, video: null },
         })
-      if (!project?.revisions.some((each) => each.rev === read.value.rev))
+      if (project === null || !isReviewOf(project, read.value))
         return stay({
           ...state,
           notice: WORDS.watch.notThisVideo,
@@ -1477,29 +1483,27 @@ export function step(state: StudioState, event: StudioEvent): Step {
         screen.atMs,
         screen.answered
       )
-      if (asked?.id !== event.note) return stay(state)
+      if (asked?.note.id !== event.note) return stay(state)
       const answered = {
         ...state,
-        screen: { ...screen, answered: [...screen.answered, asked.id] },
+        screen: { ...screen, answered: [...screen.answered, asked.note.id] },
       }
       if (event.type === "changeGood")
         return enqueue(answered, {
           kind: "good",
           project: project.id,
-          note: asked.id,
+          note: asked.note.id,
         })
-      const here = shotAt(screen.review, screen.atMs)
-      if (here === null) return stay(answered)
       return enqueue(answered, {
         kind: "note",
         project: project.id,
         note: {
           id: noteIdAt(event.at),
           rev: screen.review.rev,
-          shot: here.shot,
-          offsetMs: here.offsetMs,
+          shot: asked.shot,
+          offsetMs: asked.offsetMs,
           author: "owner",
-          text: WORDS.watch.notYetText(asked.text),
+          text: WORDS.watch.notYetText(asked.note.text),
         },
       })
     }
@@ -1507,12 +1511,10 @@ export function step(state: StudioState, event: StudioEvent): Step {
     case "finishChosen": {
       if (project === null || screen.kind !== "start" || !isSettled(activity))
         return stay(state)
-      return stay({
-        ...state,
-        screen: { kind: "finish" },
-        notice: "",
-        choosing: null,
-      })
+      return enqueue(
+        { ...state, screen: { kind: "finish" }, notice: "", choosing: null },
+        { kind: "open", project: project.id, at: event.at }
+      )
     }
 
     case "finishBack": {

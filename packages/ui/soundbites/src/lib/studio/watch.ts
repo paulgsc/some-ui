@@ -8,9 +8,9 @@
  *   durations: transitions overlap scenes, so where two play at once the
  *   later one is the one on screen.
  * - **A change is a note Claude applied** on an earlier revision, found at
- *   its time in this one (`anchorAt`). Good confirms it; Not yet leaves it
- *   as it is and writes a new open note at the same moment, since a note's
- *   status only moves forward.
+ *   its moment in this one (`anchorAt`). Good confirms it; Not yet leaves it
+ *   as it is and writes a new open note at that moment, wherever the
+ *   playhead has gone since, as a note's status only moves forward.
  */
 import type { Review } from "@some-ui/video-render"
 import type { Note, Project } from "@soundbites/lib/project/model"
@@ -30,8 +30,13 @@ export function shotAt(
     : { shot: on.id, offsetMs: Math.round(ms - on.startMs) }
 }
 
-/** A change Claude made, where it plays in the review. */
-type Change = { readonly note: Note; readonly atMs: number }
+/** A change Claude made, and its moment in the review: scene, offset, time. */
+type Change = {
+  readonly note: Note
+  readonly shot: string
+  readonly offsetMs: number
+  readonly atMs: number
+}
 
 /** Claude's changes that show in `review`, in the order they play. */
 export function changesIn(
@@ -45,7 +50,14 @@ export function changesIn(
     .flatMap((note) => {
       const anchor = anchorAt(project, note, review.rev, timesOf)
       return anchor.kind === "here" && anchor.atMs !== null
-        ? [{ note, atMs: anchor.atMs }]
+        ? [
+            {
+              note,
+              shot: anchor.shot,
+              offsetMs: anchor.offsetMs,
+              atMs: anchor.atMs,
+            },
+          ]
         : []
     })
     .sort((a, b) => a.atMs - b.atMs)
@@ -56,10 +68,22 @@ export function askedAt(
   changes: ReadonlyArray<Change>,
   ms: number,
   answered: ReadonlyArray<string>
-): Note | null {
+): Change | null {
   return (
     changes.find(
       (change) => change.atMs <= ms && !answered.includes(change.note.id)
-    )?.note ?? null
+    ) ?? null
+  )
+}
+
+/** Whether `review` is a render of revision `rev` of `project` as kept. */
+export function isReviewOf(project: Project, review: Review): boolean {
+  const revision = project.revisions.find((each) => each.rev === review.rev)
+  if (revision === undefined) return false
+  const { title, shots } = revision.cutList
+  return (
+    title === review.title &&
+    shots.length === review.shotTimes.length &&
+    shots.every((shot, index) => shot.id === review.shotTimes[index]?.id)
   )
 }

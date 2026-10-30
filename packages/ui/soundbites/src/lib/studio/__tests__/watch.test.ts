@@ -22,7 +22,7 @@ function review(rev: number, lengths: ReadonlyArray<number>): Review {
     start += durationMs - 200
     return { id, cut: null, startMs: at, durationMs }
   })
-  return { schema: REVIEW_SCHEMA, rev, shotTimes }
+  return { schema: REVIEW_SCHEMA, title: "Fixture", rev, shotTimes }
 }
 
 const REV3 = review(3, [60_000, 60_000, 60_000])
@@ -106,7 +106,11 @@ describe("Claude's changes, asked as the playhead reaches them", () => {
       ["n1", 119_600 + 1_000],
     ])
     expect(askedAt(changes, 100_000, [])).toBeNull()
-    expect(askedAt(changes, 121_000, [])?.id).toBe("n1")
+    expect(askedAt(changes, 121_000, [])).toMatchObject({
+      note: { id: "n1" },
+      shot: "c",
+      offsetMs: 1_000,
+    })
     expect(askedAt(changes, 121_000, ["n1"])).toBeNull()
   })
 })

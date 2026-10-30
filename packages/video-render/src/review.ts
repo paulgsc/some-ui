@@ -1,7 +1,8 @@
 /**
  * What a review render carries for the phone's Watch (STUDIO ST5): which
- * revision it is and where each scene plays in it, written beside the video
- * as `review.json`. A note made while watching is pinned by these times to
+ * video and revision it is (its title and revision; the phone checks both,
+ * and the scenes, against its own copy) and where each scene plays in it,
+ * written beside the video as `review.json`. A note made while watching is pinned by these times to
  * (revision, scene, offset), so it follows its scene into later revisions.
  */
 import { z } from "zod"
@@ -14,6 +15,7 @@ export const REVIEW_SCHEMA = "some-ui.studio-review/1"
 
 export type Review = {
   readonly schema: typeof REVIEW_SCHEMA
+  readonly title: string
   readonly rev: number
   readonly shotTimes: ReadonlyArray<ShotTime>
 }
@@ -22,6 +24,7 @@ const ms = z.number().int().nonnegative()
 
 const ReviewSchema = z.object({
   schema: z.literal(REVIEW_SCHEMA),
+  title: z.string().min(1),
   rev: z.number().int().positive(),
   shotTimes: z
     .array(
@@ -37,11 +40,13 @@ const ReviewSchema = z.object({
 
 /** The review of `cutList` as rendered; null when it names no revision. */
 export function reviewOf(
-  cutList: Pick<CutList, "revisions">,
+  cutList: Pick<CutList, "revisions" | "title">,
   shotTimes: ReadonlyArray<ShotTime>
 ): Review | null {
   const rev = cutList.revisions.at(-1)?.rev
-  return rev === undefined ? null : { schema: REVIEW_SCHEMA, rev, shotTimes }
+  return rev === undefined
+    ? null
+    : { schema: REVIEW_SCHEMA, title: cutList.title, rev, shotTimes }
 }
 
 /** The review in `source`, or every reason it can't be read. */

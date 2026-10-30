@@ -9,10 +9,18 @@ const TIMES = [
 describe("a review render's review.json", () => {
   it("names the revision rendered, and reads back as written", () => {
     const review = reviewOf(
-      { revisions: [{ rev: 3, author: "claude", message: "m", at: "x" }] },
+      {
+        title: "A short",
+        revisions: [{ rev: 3, author: "claude", message: "m", at: "x" }],
+      },
       TIMES
     )
-    expect(review).toEqual({ schema: REVIEW_SCHEMA, rev: 3, shotTimes: TIMES })
+    expect(review).toEqual({
+      schema: REVIEW_SCHEMA,
+      title: "A short",
+      rev: 3,
+      shotTimes: TIMES,
+    })
     expect(readReview(JSON.stringify(review))).toEqual({
       ok: true,
       value: review,
@@ -20,7 +28,7 @@ describe("a review render's review.json", () => {
   })
 
   it("is not written for a cut list that names no revision", () => {
-    expect(reviewOf({ revisions: [] }, TIMES)).toBeNull()
+    expect(reviewOf({ title: "A short", revisions: [] }, TIMES)).toBeNull()
   })
 
   it("names what is wrong with a file that isn't one", () => {
