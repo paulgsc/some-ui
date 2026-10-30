@@ -36,6 +36,7 @@ import type { SqlDriver, SqlRow, SqlValue } from "@/lib/device-backend/sql"
 import { num, numOrNull, one, text, textOrNull } from "@/lib/device-backend/sql"
 import { budgetedAnswer } from "@/lib/device-backend/storage"
 import { touchedToday } from "@/lib/study-nudge"
+import { isSessionId } from "@/lib/tenant/session-id"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 const STATUSES = ["draft", "scheduled", "active", "paused", "completed"]
@@ -198,9 +199,6 @@ function newSessionId(): string {
   return `session-${crypto.randomUUID()}`
 }
 
-/** `is_session_id`: `session-`, then 16 to 56 letters, digits, `-` and `_`. */
-const SESSION_ID = /^session-[A-Za-z0-9_-]{16,56}$/
-
 /** Absent -> `undefined`; explicit `null` -> `"null"`; a tree -> its JSON. */
 function layoutField(body: Record<string, unknown>): string | null | undefined {
   if (!("layout" in body)) return undefined
@@ -333,7 +331,7 @@ export const sessionRoutes: ReadonlyArray<DeviceRoute> = [
       if (named !== undefined && typeof named !== "string") {
         return shapeRejected("invalid type for `id`, expected a string")
       }
-      if (named !== undefined && !SESSION_ID.test(named)) {
+      if (named !== undefined && !isSessionId(named)) {
         return unprocessable({
           id: ["is session- and 16 to 56 letters, digits, - and _"],
         })
