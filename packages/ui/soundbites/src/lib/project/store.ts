@@ -1,10 +1,10 @@
 /**
  * Where Studio projects live on the phone: the WebView's IndexedDB, in the
  * Build Journal's database (`journal/db.ts`), each project one row and each
- * take's audio beside it under the take's id.
+ * take's audio beside it under `audioKey`, so no two projects share a key.
  *
  * Each rule holds in the transaction that writes, not in the caller: a save
- * only adds to the project kept (`isAppendOnly`), a take's audio is kept
+ * only adds to the project kept (`isAppendOnly`), a take's audio is kept once,
  * only with the project that lists it, never past `JOURNAL_TAKES_MAX_BYTES`
  * counted over the journal's audio and the projects' together,
  * and audio leaves only once home or Drive holds a copy (`letGoRefusal`).
@@ -24,13 +24,14 @@ import { isAppendOnly, letGoRefusal, PROJECT_SCHEMA } from "./model"
 export type ProjectStore = {
   read: (id: string) => Promise<Project | null>
   list: () => Promise<Array<Project>>
-  audio: (take: string) => Promise<Blob | null>
+  audio: (project: string, take: string) => Promise<Blob | null>
   /** Rejects with `ProjectRewriteError`, keeping nothing, unless it only adds. */
   save: (project: Project) => Promise<void>
   /**
    * Saves `project` with take `take`'s audio, in one transaction. Rejects,
    * keeping nothing, with `ProjectFullError` past the cap or the device's
-   * room, or `ProjectRewriteError` as `save` does or if `project` lacks it.
+   * room, or `ProjectRewriteError` as `save` does, if `project` lacks the
+   * take, or if its audio is already kept.
    */
   keepTake: (project: Project, take: string, audio: Blob) => Promise<void>
   /**
@@ -62,6 +63,11 @@ export class ProjectUnconfirmedError extends Error {
 }
 
 const { projects: PROJECTS, projectAudio: AUDIO } = JOURNAL_STORES
+
+/** Where a take's audio is kept: take ids are unique only within a project. */
+function audioKey(project: string, take: string): string {
+  return `${project}:${take}`
+}
 
 /** Only this module writes these stores: a guard against another shape. */
 function isProject(row: unknown): row is Project {
@@ -124,9 +130,11 @@ export function indexedDbProjectStore(): ProjectStore {
       return rows.filter(isProject)
     },
 
-    async audio(take): Promise<Blob | null> {
+    async audio(project, take): Promise<Blob | null> {
       const tx = (await connect()).transaction(AUDIO, "readonly")
-      const blob: unknown = await result(tx.objectStore(AUDIO).get(take))
+      const blob: unknown = await result(
+        tx.objectStore(AUDIO).get(audioKey(project, take))
+      )
       return blob instanceof Blob ? blob : null
     },
 
@@ -144,16 +152,19 @@ export function indexedDbProjectStore(): ProjectStore {
         (claim) =>
           writing([PROJECTS, AUDIO, JOURNAL_STORES.audio], async (tx) => {
             const audios = tx.objectStore(AUDIO)
+            const key = audioKey(project.id, take)
+            if ((await result(audios.getKey(key))) !== undefined)
+              throw new ProjectRewriteError()
             if (
               audio.size > claim ||
-              (await bytesBesides(audios, take)) +
+              (await bytesBesides(audios, key)) +
                 (await otherAudioBytes(tx, AUDIO)) +
                 audio.size >
                 JOURNAL_TAKES_MAX_BYTES
             )
               throw new ProjectFullError()
             await putAdding(tx.objectStore(PROJECTS), project)
-            audios.put(audio, take)
+            audios.put(audio, key)
           }),
         () => new ProjectFullError()
       )
@@ -171,7 +182,7 @@ export function indexedDbProjectStore(): ProjectStore {
             each.id === take ? { ...each, onPhone: false } : each
           ),
         })
-        tx.objectStore(AUDIO).delete(take)
+        tx.objectStore(AUDIO).delete(audioKey(id, take))
       })
     },
   }

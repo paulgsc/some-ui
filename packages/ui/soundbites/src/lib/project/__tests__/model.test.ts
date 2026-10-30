@@ -1,4 +1,5 @@
 /** @vitest-environment node */
+import type { ShotTime } from "@some-ui/video-render"
 import {
   anchorAt,
   cutListAt,
@@ -19,6 +20,26 @@ const NOTE = {
   text: "Hold here",
 } as const
 
+/** Shot times as a render writes them: `[id, startMs, durationMs]`. */
+function times(
+  ...rows: ReadonlyArray<readonly [string, number, number]>
+): ReadonlyArray<ShotTime> {
+  return rows.map(([id, startMs, durationMs]) => ({
+    id,
+    cut: null,
+    startMs,
+    durationMs,
+  }))
+}
+
+/** Rev 2 and rev 3 rendered with 400 ms crossfades; rev 1 never rendered. */
+const RENDERED: Readonly<Record<number, ReadonlyArray<ShotTime>>> = {
+  2: times(["a", 0, 1_000], ["b", 600, 2_000], ["c", 2_200, 2_000]),
+  3: times(["a", 0, 1_000], ["c", 600, 2_000], ["b", 2_200, 2_000]),
+}
+const timesOf = (rev: number): ReadonlyArray<ShotTime> | null =>
+  RENDERED[rev] ?? null
+
 /** Rev 1, then rev 2 as the same three shots, and a note on c at rev 2. */
 function noted(): ReturnType<typeof started> {
   return run(
@@ -35,7 +56,7 @@ function noted(): ReturnType<typeof started> {
 }
 
 describe("a note pinned to a moment", () => {
-  it("maps onto rev 3 after its shot moves, and says it moved", () => {
+  it("maps onto rev 3 after its shot moves, at the rendered time, and says it moved", () => {
     const state = run(noted(), {
       type: "revised",
       author: "claude",
@@ -44,18 +65,32 @@ describe("a note pinned to a moment", () => {
       cutList: shape([shot("a", 1_000), shot("c"), shot("b")]),
     })
     const [note] = state.project.notes
-    expect(anchorAt(state.project, note!, 2)).toMatchObject({
+    expect(anchorAt(state.project, note!, 2, timesOf)).toMatchObject({
       kind: "here",
-      atMs: 3_500,
+      atMs: 2_700,
       moved: false,
     })
-    expect(anchorAt(state.project, note!, 3)).toEqual({
+    expect(anchorAt(state.project, note!, 3, timesOf)).toEqual({
       kind: "here",
       shot: "c",
       offsetMs: 500,
-      atMs: 1_500,
+      atMs: 1_100,
       moved: true,
       clipped: false,
+    })
+    // Rev 4 isn't rendered yet: the shot is found, its time is not guessed.
+    const next = run(state, {
+      type: "revised",
+      author: "owner",
+      message: "Same again",
+      at: AT,
+      cutList: shape([shot("a", 1_000), shot("c"), shot("b")]),
+    })
+    expect(anchorAt(next.project, note!, 4, timesOf)).toMatchObject({
+      kind: "here",
+      offsetMs: 500,
+      atMs: null,
+      moved: null,
     })
   })
 
@@ -67,7 +102,9 @@ describe("a note pinned to a moment", () => {
       at: AT,
       cutList: shape([shot("a", 1_000), shot("b")]),
     })
-    expect(anchorAt(state.project, state.project.notes[0]!, 3)).toEqual({
+    expect(
+      anchorAt(state.project, state.project.notes[0]!, 3, timesOf)
+    ).toEqual({
       kind: "gone",
       shot: "c",
     })
@@ -81,7 +118,9 @@ describe("a note pinned to a moment", () => {
       at: AT,
       cutList: shape([shot("a", 1_000), shot("b"), shot("c", 300)]),
     })
-    expect(anchorAt(state.project, state.project.notes[0]!, 3)).toMatchObject({
+    expect(
+      anchorAt(state.project, state.project.notes[0]!, 3, timesOf)
+    ).toMatchObject({
       offsetMs: 300,
       clipped: true,
     })

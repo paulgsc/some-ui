@@ -20,10 +20,10 @@
  *   first, and the sitting closes once it is kept or has failed.
  * - **A note follows its shot.** It is pinned to (revision, shot, offset),
  *   and `anchorAt` finds that shot in any later revision by id, or says the
- *   shot is gone.
+ *   shot is gone; its time is read from the renderer's shot times.
  */
 import { assertNever } from "@some-ui/core-utils"
-import type { CutList } from "@some-ui/video-render"
+import type { CutList, Shot, ShotTime } from "@some-ui/video-render"
 
 export const PROJECT_SCHEMA = "some-ui.studio-project/1"
 
@@ -194,16 +194,17 @@ function openSitting(project: Project): Sitting | null {
   return last?.closedAt === null ? last : null
 }
 
-type Placed = { readonly startMs: number; readonly durationMs: number }
-
-function placed(cutList: CutListShape, shot: string): Placed | null {
-  let startMs = 0
-  for (const each of cutList.shots) {
-    if (each.id === shot) return { startMs, durationMs: each.durationMs }
-    startMs += each.durationMs
-  }
-  return null
+function shotIn(cutList: CutListShape, shot: string): Shot | null {
+  return cutList.shots.find((each) => each.id === shot) ?? null
 }
+
+/**
+ * Where the renderer put each shot of a revision (its `shot-times.json`),
+ * or null when that revision has not been rendered. Times come only from
+ * there: transitions overlap scenes and frames round them, so a sum of
+ * durations is not where a scene plays.
+ */
+export type ShotTimesOf = (rev: number) => ReadonlyArray<ShotTime> | null
 
 /** Where a note's moment is in revision `rev`. */
 export type Anchor =
@@ -211,31 +212,46 @@ export type Anchor =
       readonly kind: "here"
       readonly shot: string
       readonly offsetMs: number
-      /** Its time in the video at `rev`. */
-      readonly atMs: number
-      /** Whether that time differs from the one the note was written at. */
-      readonly moved: boolean
       /** Whether the shot got shorter than the offset, so it sits at its end. */
       readonly clipped: boolean
+      /** Its time in the video at `rev`, once `rev` is rendered. */
+      readonly atMs: number | null
+      /**
+       * Whether that time differs from the one the note was written at, once
+       * both revisions are rendered.
+       */
+      readonly moved: boolean | null
     }
   | { readonly kind: "gone"; readonly shot: string }
 
-export function anchorAt(project: Project, note: Note, rev: number): Anchor {
+function startOf(
+  times: ReadonlyArray<ShotTime> | null,
+  shot: string
+): number | null {
+  return times?.find((each) => each.id === shot)?.startMs ?? null
+}
+
+export function anchorAt(
+  project: Project,
+  note: Note,
+  rev: number,
+  timesOf: ShotTimesOf
+): Anchor {
   const target = revisionOf(project, rev)
-  const there = target === null ? null : placed(target.cutList, note.shot)
+  const there = target === null ? null : shotIn(target.cutList, note.shot)
   if (there === null) return { kind: "gone", shot: note.shot }
-  const source = revisionOf(project, note.rev)
-  const was = source === null ? null : placed(source.cutList, note.shot)
   const clipped = note.offsetMs > there.durationMs
   const offsetMs = clipped ? there.durationMs : note.offsetMs
-  const atMs = there.startMs + offsetMs
+  const start = startOf(timesOf(rev), note.shot)
+  const was = startOf(timesOf(note.rev), note.shot)
+  const atMs = start === null ? null : start + offsetMs
   return {
     kind: "here",
     shot: note.shot,
     offsetMs,
-    atMs,
-    moved: was === null || was.startMs + note.offsetMs !== atMs,
     clipped,
+    atMs,
+    moved: atMs === null || was === null ? null : was + note.offsetMs !== atMs,
   }
 }
 
@@ -363,7 +379,7 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
       const { note } = event
       const revision = revisionOf(project, note.rev)
       if (revision === null) return refuse(state, "noRevision")
-      if (placed(revision.cutList, note.shot) === null)
+      if (shotIn(revision.cutList, note.shot) === null)
         return refuse(state, "noShot")
       if (project.notes.some((each) => each.id === note.id))
         return refuse(state, "duplicate")
@@ -397,7 +413,7 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
     case "takeStarted": {
       if (state.taking !== null || state.closing !== null)
         return refuse(state, "taking")
-      if (placed(latest(project).cutList, event.shot) === null)
+      if (shotIn(latest(project).cutList, event.shot) === null)
         return refuse(state, "noShot")
       return {
         state: { ...state, taking: { shot: event.shot } },

@@ -18,6 +18,7 @@ export type {
   ProjectStep,
   ProjectTake,
   Refusal,
+  ShotTimesOf,
   Sitting,
 } from "./lib/project/model"
 export { anchorAt, cutListAt, newProject, step } from "./lib/project/model"
