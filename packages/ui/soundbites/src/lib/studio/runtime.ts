@@ -10,10 +10,7 @@ import type { Playback, Player, StartRecording } from "@some-ui/voice-capture"
 import { takeRunner } from "@some-ui/voice-capture"
 import { TAKE_TICK_MS } from "@soundbites/lib/policy"
 import type { ProjectStore } from "@soundbites/lib/project/store"
-import {
-  ProjectFullError,
-  ProjectRewriteError,
-} from "@soundbites/lib/project/store"
+import { ProjectFullError } from "@soundbites/lib/project/store"
 
 import type {
   StudioEffect,
@@ -82,22 +79,6 @@ export function createStudio(ports: StudioPorts): StudioRuntime {
     playback = null
   }
 
-  const written = (write: Promise<void>): void => {
-    write.then(
-      () => send({ type: "written" }),
-      (error: unknown) =>
-        send({
-          type: "writeFailed",
-          reason:
-            error instanceof ProjectFullError
-              ? "full"
-              : error instanceof ProjectRewriteError
-                ? "rewrite"
-                : "failed",
-        })
-    )
-  }
-
   function run(effect: StudioEffect): void {
     switch (effect.type) {
       case "openMic":
@@ -117,8 +98,21 @@ export function createStudio(ports: StudioPorts): StudioRuntime {
       }
       case "read": {
         const { seq } = effect
-        ports.store.list().then(
-          (projects) => send({ type: "listed", seq, projects }),
+        Promise.all([
+          ports.store.list(),
+          ports.store.takeNotices(),
+          ports.store.room(),
+          ports.store.leftovers(),
+        ]).then(
+          ([projects, notices, roomBytes, leftovers]) =>
+            send({
+              type: "listed",
+              seq,
+              projects,
+              notices,
+              roomBytes,
+              leftovers,
+            }),
           () => send({ type: "listFailed", seq })
         )
         return
@@ -131,12 +125,20 @@ export function createStudio(ports: StudioPorts): StudioRuntime {
         )
         return
       }
-      case "save": {
-        written(ports.store.save(effect.project))
+      case "write": {
+        ports.store.update(effect.project, effect.change, effect.audio).then(
+          (written) => send({ type: "written", written }),
+          (error: unknown) =>
+            send({
+              type: "writeFailed",
+              reason: error instanceof ProjectFullError ? "full" : "failed",
+            })
+        )
         return
       }
-      case "keepTake": {
-        written(ports.store.keepTake(effect.project, effect.take, effect.audio))
+      case "remember": {
+        // Ignored: no screen is left to say it failed; the notice is all it loses.
+        ports.store.remember(effect.notice).catch(() => undefined)
         return
       }
       case "report": {

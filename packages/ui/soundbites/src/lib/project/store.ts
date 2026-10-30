@@ -3,11 +3,17 @@
  * Build Journal's database (`journal/db.ts`), each project one row and each
  * take's audio beside it under `audioKey`, so no two projects share a key.
  *
- * Each rule holds in the transaction that writes, not in the caller: a save
- * only adds to the project kept (`isAppendOnly`), a take joins a project only
- * with its audio (`keepTake`), its audio is kept once, never past
- * `JOURNAL_TAKES_MAX_BYTES` counted over the journal's audio and the
- * projects' together, and it leaves only with the save that marks it off the
+ * **A write is an operation on what the store holds now.** `update` reads the
+ * project inside its own transaction, hands it to the caller's pure `change`
+ * (the model's `step`, through the Studio's queued operations), checks the
+ * result with `admitted` and writes it there, so no write is ever built on a
+ * copy a screen read earlier. Append-only operations can't conflict, so
+ * nothing is retried.
+ *
+ * Each rule holds in that transaction: a save only adds (`isAppendOnly`), a
+ * take joins a project only with its audio, in the same write, its audio is
+ * kept once and never past `JOURNAL_TAKES_MAX_BYTES` over the projects'
+ * audio and what the Journal tab's stores still hold, and audio leaves only with the write that marks its take off the
  * phone, which `isAppendOnly` allows once home or Drive holds a copy.
  * Nothing here expires.
  */
@@ -18,7 +24,6 @@ import {
   projectAudioKey as audioKey,
   JOURNAL_STORES,
   journalDatabase,
-  otherAudioBytes,
 } from "@soundbites/lib/journal/db"
 import { JOURNAL_TAKES_MAX_BYTES } from "@soundbites/lib/policy"
 
@@ -38,8 +43,9 @@ export type Friction = {
 
 /**
  * What carrying the Journal tab's episode did: nothing to carry; carried,
- * with how many rows it couldn't read or copy and left where they were; or
- * kept where it is, untouched, since it can't be carried.
+ * with how many rows it couldn't read or copy and left where they were, and
+ * how many takes came without a recording (gone before the carry); or kept
+ * where it is, untouched, since it can't be carried.
  */
 export type Carried =
   | { readonly kind: "nothing" }
@@ -47,26 +53,50 @@ export type Carried =
       readonly kind: "carried"
       readonly project: Project
       readonly left: number
+      readonly gone: number
     }
   | { readonly kind: "stays" }
+
+/**
+ * An operation on a project as the store holds it (null when it isn't kept
+ * yet): the project it makes, or null to change nothing. Pure: the store
+ * runs it inside the transaction that writes.
+ */
+export type Change = (held: Project | null) => Project | null
+
+/** What a write found: the project as kept after it, and whether it changed. */
+export type Written = {
+  readonly project: Project | null
+  readonly changed: boolean
+}
+
+/** Rows the carry left in the Journal tab's stores, and the audio they hold. */
+export type Leftovers = { readonly rows: number; readonly bytes: number }
 
 export type ProjectStore = {
   read: (id: string) => Promise<Project | null>
   list: () => Promise<Array<Project>>
   audio: (project: string, take: string) => Promise<Blob | null>
   /**
-   * Rejects with `ProjectRewriteError`, keeping nothing, unless it only adds
-   * and adds no take (a take comes with its audio, through `keepTake`). A
-   * take it marks off the phone has its audio let go in the same write.
+   * The bytes of audio the projects may still keep under the cap, which
+   * counts what the Journal tab's stores still hold too.
    */
-  save: (project: Project) => Promise<void>
+  room: () => Promise<number>
+  /** What of the Journal tab's episode the carry couldn't read and left. */
+  leftovers: () => Promise<Leftovers>
   /**
-   * Saves `project` with take `take`'s audio, in one transaction. Rejects,
+   * Applies `change` to project `id` as held, in one transaction, with
+   * `audio` (the one take the change adds) kept in the same write. Rejects,
    * keeping nothing, with `ProjectFullError` past the cap or the device's
-   * room, or `ProjectRewriteError` as `save` does, if `project` lacks the
-   * take, or if its audio is already kept.
+   * room, or `ProjectRewriteError` if the change would drop or rewrite what
+   * is kept or add a take without its audio: a fault in the change, never a
+   * race, since it reads what is held.
    */
-  keepTake: (project: Project, take: string, audio: Blob) => Promise<void>
+  update: (
+    id: string,
+    change: Change,
+    audio?: { readonly take: string; readonly blob: Blob }
+  ) => Promise<Written>
   /**
    * Moves the Journal tab's episode, if one is kept, into a project of its
    * own, audio and all, in one transaction, as `planCarry` decides
@@ -75,6 +105,10 @@ export type ProjectStore = {
   carryJournal: (at: string) => Promise<Carried>
   /** Keeps how a sitting went, once: a second answer for it is refused. */
   report: (friction: Friction) => Promise<void>
+  /** Keeps what a screen that had gone away couldn't keep, for the next to say. */
+  remember: (notice: string) => Promise<void>
+  /** What `remember` kept, oldest first, handed over once. */
+  takeNotices: () => Promise<Array<string>>
   /**
    * Calls `listener` after each write commits, on this page, so a screen
    * showing a project (another runtime's, say) can read it again. Returns
@@ -92,7 +126,7 @@ export class ProjectFullError extends Error {
 
 export class ProjectRewriteError extends Error {
   constructor() {
-    super("the save would change or drop what the project already keeps")
+    super("the write would change or drop what the project already keeps")
     this.name = "ProjectRewriteError"
   }
 }
@@ -104,6 +138,7 @@ const {
   takes: JOURNAL_TAKES,
   audio: JOURNAL_AUDIO,
   friction: FRICTION,
+  notices: NOTICES,
 } = JOURNAL_STORES
 
 /** The one key the Journal tab's plan store held. */
@@ -127,22 +162,13 @@ async function keptIn(
   return isProject(row) ? row : null
 }
 
-/**
- * Puts `project` in place as `admitted` allows (only adding, and adding no
- * take but `adding`, whose audio comes in this write), and lets go of the
- * audio of each take it marks off the phone.
- */
-async function putAdding(
-  tx: IDBTransaction,
-  project: Project,
-  adding: string | null = null
-): Promise<void> {
-  const store = tx.objectStore(PROJECTS)
-  const admission = admitted(await keptIn(store, project.id), project, adding)
-  if (!admission.ok) throw new ProjectRewriteError()
-  store.put(project)
-  const audios = tx.objectStore(AUDIO)
-  for (const take of admission.letGo) audios.delete(audioKey(project.id, take))
+/** The bytes of every recording in `store`, in the caller's transaction. */
+async function blobBytes(store: IDBObjectStore): Promise<number> {
+  const kept: Array<unknown> = await result(store.getAll())
+  return kept.reduce<number>(
+    (sum, each) => (each instanceof Blob ? sum + each.size : sum),
+    0
+  )
 }
 
 /** Every row of `store`, each with its key, in the caller's transaction. */
@@ -197,33 +223,71 @@ export function indexedDbProjectStore(): ProjectStore {
       return blob instanceof Blob ? blob : null
     },
 
-    async save(project): Promise<void> {
-      await writing([PROJECTS, AUDIO], (tx) => putAdding(tx, project))
+    async room(): Promise<number> {
+      const tx = (await connect()).transaction(
+        [AUDIO, JOURNAL_AUDIO],
+        "readonly"
+      )
+      const used =
+        (await blobBytes(tx.objectStore(AUDIO))) +
+        (await blobBytes(tx.objectStore(JOURNAL_AUDIO)))
+      return Math.max(0, JOURNAL_TAKES_MAX_BYTES - used)
     },
 
-    async keepTake(project, take, audio): Promise<void> {
-      if (!project.takes.some((each) => each.id === take))
-        throw new ProjectRewriteError()
-      await withRoom(
-        audio.size,
-        () =>
-          writing([PROJECTS, AUDIO, JOURNAL_AUDIO], async (tx) => {
-            const audios = tx.objectStore(AUDIO)
-            const key = audioKey(project.id, take)
-            if ((await result(audios.getKey(key))) !== undefined)
+    async leftovers(): Promise<Leftovers> {
+      const tx = (await connect()).transaction(
+        [JOURNAL_PLAN, JOURNAL_TAKES, JOURNAL_AUDIO],
+        "readonly"
+      )
+      const count = (name: string): Promise<number> =>
+        result(tx.objectStore(name).count())
+      return {
+        rows:
+          (await count(JOURNAL_PLAN)) +
+          (await count(JOURNAL_TAKES)) +
+          (await count(JOURNAL_AUDIO)),
+        bytes: await blobBytes(tx.objectStore(JOURNAL_AUDIO)),
+      }
+    },
+
+    async update(id, change, audio): Promise<Written> {
+      let written: Written = { project: null, changed: false }
+      const write = (): Promise<void> =>
+        writing([PROJECTS, AUDIO, JOURNAL_AUDIO], async (tx) => {
+          const projects = tx.objectStore(PROJECTS)
+          const held = await keptIn(projects, id)
+          const next = change(held)
+          if (next === null) {
+            written = { project: held, changed: false }
+            return
+          }
+          const admission = admitted(held, next, audio?.take ?? null)
+          if (!admission.ok || next.id !== id) throw new ProjectRewriteError()
+          const audios = tx.objectStore(AUDIO)
+          if (audio !== undefined) {
+            const key = audioKey(id, audio.take)
+            if (
+              !next.takes.some((take) => take.id === audio.take) ||
+              (await result(audios.getKey(key))) !== undefined
+            )
               throw new ProjectRewriteError()
             if (
               (await bytesBesides(audios, key)) +
-                (await otherAudioBytes(tx, AUDIO)) +
-                audio.size >
+                (await blobBytes(tx.objectStore(JOURNAL_AUDIO))) +
+                audio.blob.size >
               JOURNAL_TAKES_MAX_BYTES
             )
               throw new ProjectFullError()
-            await putAdding(tx, project, take)
-            audios.put(audio, key)
-          }),
-        () => new ProjectFullError()
-      )
+            audios.put(audio.blob, key)
+          }
+          projects.put(next)
+          for (const take of admission.letGo) audios.delete(audioKey(id, take))
+          written = { project: next, changed: true }
+        })
+      await (audio === undefined
+        ? write()
+        : withRoom(audio.blob.size, write, () => new ProjectFullError()))
+      return written
     },
 
     async carryJournal(at): Promise<Carried> {
@@ -255,7 +319,12 @@ export function indexedDbProjectStore(): ProjectStore {
           const takes = tx.objectStore(JOURNAL_TAKES)
           for (const key of plan.takeRows) takes.delete(key)
           tx.objectStore(JOURNAL_PLAN).delete(JOURNAL_CURRENT)
-          carried = { kind: "carried", project: plan.project, left: plan.left }
+          carried = {
+            kind: "carried",
+            project: plan.project,
+            left: plan.left,
+            gone: plan.gone,
+          }
         }
       )
       return carried
@@ -270,6 +339,25 @@ export function indexedDbProjectStore(): ProjectStore {
           })
         )
       })
+    },
+
+    async remember(notice): Promise<void> {
+      await writing([NOTICES], async (tx) => {
+        await result(tx.objectStore(NOTICES).add(notice))
+      })
+    },
+
+    async takeNotices(): Promise<Array<string>> {
+      const tx = (await connect()).transaction(NOTICES, "readwrite")
+      const store = tx.objectStore(NOTICES)
+      const rows: Array<unknown> = await result(store.getAll())
+      const notices = rows.filter(
+        (row): row is string => typeof row === "string"
+      )
+      // Handed over once: each is said by the Start that reads it.
+      store.clear()
+      await done(tx)
+      return notices
     },
 
     subscribe(listener): () => void {

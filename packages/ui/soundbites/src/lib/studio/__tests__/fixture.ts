@@ -4,8 +4,11 @@ import type { Project } from "@soundbites/lib/project/model"
 import { admitted } from "@soundbites/lib/project/model"
 import type {
   Carried,
+  Change,
   Friction,
+  Leftovers,
   ProjectStore,
+  Written,
 } from "@soundbites/lib/project/store"
 import {
   ProjectFullError,
@@ -51,9 +54,10 @@ export function primer(): Primer {
 }
 
 /**
- * The IndexedDB store's contract, in memory: the same refusals and the same
- * letting go of audio, decided by the store's own `admitted`, audio past
- * `capBytes` refused, and a change notice after each write.
+ * The IndexedDB store's contract, in memory: each `update` applies its change
+ * to what is held at the moment it runs, decided by the store's own
+ * `admitted`, audio past `capBytes` refused, and a change notice after each
+ * write. `gate`, when a test sets it, holds every write until it resolves.
  */
 export function memoryProjectStore(
   initial: ReadonlyArray<Project> = [],
@@ -63,7 +67,9 @@ export function memoryProjectStore(
   projects: Map<string, Project>
   audio: Map<string, Blob>
   friction: Array<Friction>
-  journal: { carried: Carried }
+  notices: Array<string>
+  journal: { carried: Carried; leftovers: Leftovers }
+  gate: { hold: (() => Promise<void>) | null }
 } {
   const projects = new Map(initial.map((each) => [each.id, each]))
   const audio = new Map<string, Blob>()
@@ -71,24 +77,40 @@ export function memoryProjectStore(
     for (const take of project.takes)
       if (take.onPhone) audio.set(`${project.id}:${take.id}`, new Blob(["x"]))
   const friction: Array<Friction> = []
-  const journal: { carried: Carried } = { carried: { kind: "nothing" } }
-  const listeners = new Set<() => void>()
-  const changed = (): Promise<void> => {
-    for (const listener of listeners) listener()
-    return Promise.resolve()
+  const notices: Array<string> = []
+  const journal: { carried: Carried; leftovers: Leftovers } = {
+    carried: { kind: "nothing" },
+    leftovers: { rows: 0, bytes: 0 },
   }
+  const gate: { hold: (() => Promise<void>) | null } = { hold: null }
+  const listeners = new Set<() => void>()
+  const changed = (): void => {
+    for (const listener of listeners) listener()
+  }
+  const used = (): number =>
+    [...audio.values()].reduce((sum, each) => sum + each.size, 0)
 
-  /** Puts `project` as the store would, or says why not. */
-  const put = (project: Project, adding: string | null): Error | null => {
-    const admission = admitted(
-      projects.get(project.id) ?? null,
-      project,
-      adding
-    )
-    if (!admission.ok) return new ProjectRewriteError()
-    projects.set(project.id, project)
-    for (const take of admission.letGo) audio.delete(`${project.id}:${take}`)
-    return null
+  /** One write, as the store's transaction runs it: all of it, or nothing. */
+  const write = (
+    id: string,
+    change: Change,
+    added?: { readonly take: string; readonly blob: Blob }
+  ): Written => {
+    const held = projects.get(id) ?? null
+    const next = change(held)
+    if (next === null) return { project: held, changed: false }
+    const admission = admitted(held, next, added?.take ?? null)
+    if (!admission.ok || next.id !== id) throw new ProjectRewriteError()
+    if (added !== undefined) {
+      const key = `${id}:${added.take}`
+      if (audio.has(key) || !next.takes.some((t) => t.id === added.take))
+        throw new ProjectRewriteError()
+      if (used() + added.blob.size > capBytes) throw new ProjectFullError()
+      audio.set(key, added.blob)
+    }
+    projects.set(id, next)
+    for (const take of admission.letGo) audio.delete(`${id}:${take}`)
+    return { project: next, changed: true }
   }
 
   const store: ProjectStore = {
@@ -96,21 +118,19 @@ export function memoryProjectStore(
     list: () => Promise.resolve([...projects.values()]),
     audio: (project, take) =>
       Promise.resolve(audio.get(`${project}:${take}`) ?? null),
-    save: (project) => {
-      const refused = put(project, null)
-      return refused === null ? changed() : Promise.reject(refused)
+    room: () =>
+      Promise.resolve(
+        capBytes === Number.POSITIVE_INFINITY
+          ? Number.MAX_SAFE_INTEGER
+          : Math.max(0, capBytes - used())
+      ),
+    update: async (id, change, added) => {
+      if (gate.hold !== null) await gate.hold()
+      const written = write(id, change, added)
+      changed()
+      return written
     },
-    keepTake: (project, take, blob) => {
-      const key = `${project.id}:${take}`
-      const used = [...audio.values()].reduce((sum, each) => sum + each.size, 0)
-      if (audio.has(key)) return Promise.reject(new ProjectRewriteError())
-      if (used + blob.size > capBytes)
-        return Promise.reject(new ProjectFullError())
-      const refused = put(project, take)
-      if (refused !== null) return Promise.reject(refused)
-      audio.set(key, blob)
-      return changed()
-    },
+    leftovers: () => Promise.resolve(journal.leftovers),
     carryJournal: () => {
       const { carried } = journal
       journal.carried = { kind: "nothing" }
@@ -126,8 +146,14 @@ export function memoryProjectStore(
       )
         return Promise.reject(new Error("already answered"))
       friction.push(row)
-      return changed()
+      changed()
+      return Promise.resolve()
     },
+    remember: (notice) => {
+      notices.push(notice)
+      return Promise.resolve()
+    },
+    takeNotices: () => Promise.resolve(notices.splice(0)),
     subscribe: (listener) => {
       listeners.add(listener)
       return (): void => {
@@ -135,5 +161,5 @@ export function memoryProjectStore(
       }
     },
   }
-  return { store, projects, audio, friction, journal }
+  return { store, projects, audio, friction, notices, journal, gate }
 }

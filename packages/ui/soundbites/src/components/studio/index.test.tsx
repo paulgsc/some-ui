@@ -35,9 +35,11 @@ const mic: StartRecording = (): Promise<Recording> =>
 
 function setup(
   share?: StudioProps["share"],
-  initial: ReadonlyArray<Project> = []
+  initial: ReadonlyArray<Project> = [],
+  leftovers = { rows: 0, bytes: 0 }
 ): ReturnType<typeof memoryProjectStore> {
   const memory = memoryProjectStore(initial)
+  memory.journal.leftovers = leftovers
   let tick = 0
   render(
     <Studio
@@ -199,5 +201,11 @@ describe("Studio", () => {
     expect(share).toHaveBeenLastCalledWith(
       expect.objectContaining({ project: older })
     )
+  })
+
+  it("lists what the carry couldn't read of the old journal, and the room it takes", async () => {
+    setup(undefined, [], { rows: 2, bytes: 820_000 })
+    expect(await screen.findByText(W.start.leftoversTitle)).toBeInTheDocument()
+    expect(screen.getByText(W.start.leftovers(2, 820_000))).toBeInTheDocument()
   })
 })

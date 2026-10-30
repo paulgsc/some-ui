@@ -12,6 +12,7 @@
 import { projectAudioKey } from "@soundbites/lib/journal/db"
 import type { Cut, Primer } from "@soundbites/lib/journal/primer"
 import { cutV1 } from "@soundbites/lib/journal/primer"
+import { projectFile, readProjectFile } from "@soundbites/lib/project/file"
 import type { Project } from "@soundbites/lib/project/model"
 import { newProject, step } from "@soundbites/lib/project/model"
 import { cutListOf, fitted, projectIdFor } from "@soundbites/lib/project/script"
@@ -41,20 +42,53 @@ type KeptPlan = Omit<JournalPlan, "primer"> & {
   }
 }
 
-/** Only the Journal tab wrote these stores: a guard against another shape. */
-function isPlan(row: unknown): row is KeptPlan {
+type Fields = Readonly<Record<string, unknown>>
+
+function isFields(value: unknown): value is Fields {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+const isText = (value: unknown): value is string =>
+  typeof value === "string" && value !== ""
+
+const isMs = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value) && value > 0
+
+/** A cut as either primer version kept it. */
+function isKeptCut(cut: unknown): boolean {
+  if (!isFields(cut) || !isText(cut.id) || !isText(cut.artifact)) return false
+  if (!isMs(cut.targetMs) || !isText(cut.prompt)) return false
+  if (!("voice" in cut)) return true
   return (
-    typeof row === "object" &&
-    row !== null &&
-    "primer" in row &&
-    typeof row.primer === "object" &&
-    row.primer !== null &&
-    "cuts" in row.primer &&
-    Array.isArray(row.primer.cuts) &&
-    "targets" in row &&
-    typeof row.targets === "object" &&
-    "openedAt" in row &&
-    typeof row.openedAt === "string"
+    isText(cut.point) &&
+    (cut.line === null || isText(cut.line)) &&
+    Array.isArray(cut.keep) &&
+    cut.keep.every(isText) &&
+    (cut.voice === "ad-lib" || cut.voice === "read")
+  )
+}
+
+/**
+ * Only the Journal tab wrote these stores, but a row of any other shape is
+ * left where it is rather than read wrong: every field the carry reads is
+ * checked here.
+ */
+function isPlan(row: unknown): row is KeptPlan {
+  if (!isFields(row) || !isText(row.openedAt)) return false
+  const { primer, targets } = row
+  return (
+    isFields(primer) &&
+    isText(primer.title) &&
+    isMs(primer.budgetMs) &&
+    (primer.voice === undefined ||
+      primer.voice === "ad-lib" ||
+      primer.voice === "read" ||
+      primer.voice === "mixed") &&
+    Array.isArray(primer.cuts) &&
+    primer.cuts.length > 0 &&
+    primer.cuts.every(isKeptCut) &&
+    isFields(targets) &&
+    Object.values(targets).every(isMs)
   )
 }
 
@@ -66,8 +100,9 @@ function isTake(row: unknown): row is JournalTake {
     typeof row.cutId === "string" &&
     "recordedAt" in row &&
     typeof row.recordedAt === "string" &&
+    !Number.isNaN(Date.parse(row.recordedAt)) &&
     "durationMs" in row &&
-    typeof row.durationMs === "number" &&
+    isMs(row.durationMs) &&
     "mimeType" in row &&
     typeof row.mimeType === "string"
   )
@@ -186,15 +221,18 @@ export type JournalRows = {
 /**
  * What carrying does, decided before anything is written: `carryJournal`
  * (`project/store.ts`) only carries it out. Nothing is deleted that was not
- * first copied into the project: a take row it can't read and audio that is
- * not a recording stay where they are, counted in `left`.
+ * first copied into the project. A take row it can't read, a take whose
+ * audio row is there but isn't a recording, and audio no carried take names
+ * all stay where they are, counted in `left`; Start lists them, with the
+ * room they take under the takes cap (`journal/db.ts`).
  */
 export type CarryPlan =
   /** No episode is kept: nothing to do. */
   | { readonly kind: "nothing" }
   /**
-   * An episode is kept but can't be carried (its plan can't be read, or a
-   * project of its id is kept already): everything stays where it is.
+   * An episode is kept but can't be carried (its plan can't be read, a
+   * project of its id is kept already, or what it makes isn't a project the
+   * file reads back): everything stays where it is.
    */
   | { readonly kind: "stays" }
   | {
@@ -211,14 +249,23 @@ export type CarryPlan =
       readonly audioRows: ReadonlyArray<IDBValidKey>
       /** Rows of either store that stay, unread or uncopied. */
       readonly left: number
+      /** Takes carried whose recording was already gone from the phone. */
+      readonly gone: number
     }
 
 export function planCarry(rows: JournalRows, at: string): CarryPlan {
   if (rows.plan === undefined) return { kind: "nothing" }
   if (!isPlan(rows.plan)) return { kind: "stays" }
+  const audioAt = (cutId: string): Row | undefined =>
+    rows.audio.find((row) => row.key === cutId)
+  // A take is carried only with its recording, or with none there at all: a
+  // row there that isn't a recording keeps its take beside it, unread.
   const readable = rows.takes.filter(
-    (row): row is { key: IDBValidKey; value: JournalTake } =>
-      isTake(row.value) && row.key === row.value.cutId
+    (row): row is { key: IDBValidKey; value: JournalTake } => {
+      if (!isTake(row.value) || row.key !== row.value.cutId) return false
+      const audio = audioAt(row.value.cutId)
+      return audio === undefined || audio.value instanceof Blob
+    }
   )
   const { project, audio } = carriedProject(
     rows.plan,
@@ -227,7 +274,7 @@ export function planCarry(rows: JournalRows, at: string): CarryPlan {
   )
   if (rows.projects.includes(project.id)) return { kind: "stays" }
   const moves = audio.flatMap((each) => {
-    const row = rows.audio.find((one) => one.key === each.cutId)
+    const row = audioAt(each.cutId)
     return row?.value instanceof Blob
       ? [
           {
@@ -241,13 +288,14 @@ export function planCarry(rows: JournalRows, at: string): CarryPlan {
   const moved = new Set(moves.map((each) => each.from))
   const carried: Project = {
     ...project,
-    // A take whose recording isn't there to move is carried as off the phone.
+    // A take whose recording was already gone is carried as off the phone.
     takes: project.takes.map((take) =>
       audio.some((each) => each.take === take.id && moved.has(each.cutId))
         ? take
         : { ...take, onPhone: false }
     ),
   }
+  if (!readProjectFile(projectFile(carried)).ok) return { kind: "stays" }
   return {
     kind: "carry",
     project: carried,
@@ -258,5 +306,6 @@ export function planCarry(rows: JournalRows, at: string): CarryPlan {
       rows.takes.length -
       readable.length +
       rows.audio.filter((row) => !moved.has(row.key)).length,
+    gone: carried.takes.filter((take) => !take.onPhone).length,
   }
 }

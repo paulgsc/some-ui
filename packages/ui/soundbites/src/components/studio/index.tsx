@@ -224,6 +224,14 @@ const Start = ({
           </ul>
         </section>
       )}
+      {state.leftovers.rows > 0 && (
+        <section className="border-border/60 space-y-1 rounded-2xl border px-3 py-2">
+          <h3 className="text-sm font-bold">{WORDS.start.leftoversTitle}</h3>
+          <p className="text-muted-foreground text-xs">
+            {WORDS.start.leftovers(state.leftovers.rows, state.leftovers.bytes)}
+          </p>
+        </section>
+      )}
       <PrimerPick
         state={state}
         dispatch={dispatch}

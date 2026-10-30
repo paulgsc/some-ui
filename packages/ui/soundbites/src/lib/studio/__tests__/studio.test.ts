@@ -81,6 +81,12 @@ function projectIn(runtime: StudioRuntime): Project {
   return project
 }
 
+function projectsOfState(
+  state: ReturnType<StudioRuntime["getSnapshot"]>
+): ReadonlyArray<Project> {
+  return state.shelf.kind === "read" ? state.shelf.projects : []
+}
+
 const settledWrites = (
   state: ReturnType<StudioRuntime["getSnapshot"]>
 ): boolean =>
@@ -196,9 +202,20 @@ describe("recording a scene", () => {
     expect(project.chosen).toEqual({ path: "t2" })
   })
 
-  it("on a full phone keeps nothing, reads the store again and says what to do", async () => {
+  it("with no room left for a take, doesn't start one, and says what to do", async () => {
     const memory = memoryProjectStore([], 3)
-    const runtime = studio(memory, fakeMic(4_000, 50))
+    const runtime = await opened(memory)
+    runtime.dispatch({ type: "recordChosen" })
+    await until(runtime, settledWrites)
+    runtime.dispatch({ type: "recordPressed" })
+    expect(runtime.getSnapshot().activity.kind).toBe("idle")
+    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.notice.noRoom)
+  })
+
+  it("refused for room as it is kept keeps nothing of it, and says what to do", async () => {
+    // Room for ten seconds as read, but this take came out larger.
+    const memory = memoryProjectStore([], 40_000)
+    const runtime = studio(memory, fakeMic(4_000, 50_000))
     await until(runtime, (state) => state.shelf.kind === "read")
     runtime.dispatch({ type: "primerPicked", file: new Blob([PRIMER_TEXT]) })
     await until(
@@ -209,13 +226,10 @@ describe("recording a scene", () => {
     await until(runtime, settledWrites)
     const before = projectIn(runtime)
     await recordOne(runtime)
-    const after = projectIn(runtime)
-    expect(after).toEqual(before)
-    expect(after.takes).toEqual([])
-    expect(memory.projects.get(after.id)).toEqual(before)
+    expect(projectIn(runtime)).toEqual(before)
+    expect(memory.projects.get(before.id)).toEqual(before)
+    expect(memory.audio.size).toBe(0)
     expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.notice.full)
-    // The read that followed came back as the store holds it.
-    expect(runtime.getSnapshot().readSeq).toBeGreaterThan(1)
   })
 })
 
@@ -329,11 +343,12 @@ describe("the Journal tab's episode", () => {
       kind: "carried",
       project: projectIn(carrying),
       left: 0,
+      gone: 0,
     }
     const runtime = studio(memory)
     await until(runtime, (state) => state.shelf.kind === "read")
     expect(runtime.getSnapshot().notice).toBe(
-      STUDIO_WORDS.notice.carried("Playoff Delta, week 8", 0)
+      STUDIO_WORDS.notice.carried("Playoff Delta, week 8", 0, 0)
     )
     expect(projectIn(runtime).id).toBe(projectIn(carrying).id)
   })
@@ -455,28 +470,83 @@ describe("two screens at once", () => {
     expect(memory.audio.size).toBe(2)
   })
 
-  it("a take refused because the project moved on goes again on it", async () => {
+  it("another screen writes, then Done for now while a take is kept: the take is kept", async () => {
     const memory = memoryProjectStore()
     const runtime = await opened(memory)
+    const other = studio(memory, fakeMic(), "u")
+    await until(other, (state) => projectOf(state) !== null)
     runtime.dispatch({ type: "recordChosen" })
     await until(runtime, settledWrites)
-    // Another screen writes the project between this take's start and its keep.
-    const keep = memory.store.keepTake
-    let raced = false
-    memory.store.keepTake = (project, take, audio): Promise<void> => {
-      if (!raced) {
-        raced = true
-        const kept = memory.projects.get(project.id)!
-        memory.projects.set(project.id, {
-          ...kept,
-          sittings: [...kept.sittings, { ...kept.sittings.at(-1)!, id: "s9" }],
-        })
-      }
-      return keep(project, take, audio)
-    }
-    await recordOne(runtime)
-    expect(projectIn(runtime).takes.map((take) => take.id)).toEqual(["t1"])
-    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.notice.kept(4_000))
+    // Hold the next write while the other screen writes the same video.
+    let release: () => void = () => undefined
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    memory.gate.hold = (): Promise<void> => held
+    runtime.dispatch({ type: "recordPressed" })
+    await until(runtime, (state) => state.activity.kind === "recording")
+    runtime.dispatch({ type: "recordPressed" })
+    await until(runtime, (state) => state.inFlight?.kind === "keep")
+    memory.gate.hold = null
+    other.dispatch({ type: "recordChosen" })
+    await until(other, settledWrites)
+    // Done for now while the take is still being kept: its close queues.
+    runtime.dispatch({ type: "doneForNowPressed" })
+    release()
+    await until(runtime, (state) => state.closed === "saved")
+    const [kept] = [...memory.projects.values()]
+    expect(kept?.takes.map((take) => take.id)).toEqual(["t1"])
+    expect(memory.audio.size).toBe(1)
+    expect(kept?.sittings.at(-1)).toMatchObject({
+      shot: "path",
+      done: STUDIO_WORDS.sittingDone([1]),
+    })
+    expect(kept?.sittings.at(-1)?.closedAt).not.toBeNull()
+  })
+
+  it("a change from another screen while a write is pending is read after it", async () => {
+    const memory = memoryProjectStore()
+    const runtime = await opened(memory)
+    const other = studio(memory, fakeMic(), "u")
+    await until(other, (state) => projectOf(state) !== null)
+    let release: () => void = () => undefined
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    memory.gate.hold = (): Promise<void> => held
+    runtime.dispatch({ type: "recordChosen" })
+    await until(runtime, (state) => state.inFlight?.kind === "open")
+    memory.gate.hold = null
+    // The other screen opens a new video while this screen's write waits.
+    other.dispatch({
+      type: "primerPicked",
+      file: new Blob([PRIMER_TEXT.replace("Playoff Delta, week 8", "Week 9")]),
+    })
+    await until(other, (state) => state.choosing !== null)
+    other.dispatch({ type: "versionChosen", as: "new" })
+    await until(other, (state) => projectsOfState(state).length === 2)
+    expect(runtime.getSnapshot().stale).toBe(true)
+    release()
+    await until(runtime, (state) => projectsOfState(state).length === 2)
+    expect(runtime.getSnapshot().stale).toBe(false)
+  })
+
+  it("a take refused after the screen went away is said by the next Start", async () => {
+    const memory = memoryProjectStore()
+    const first = await opened(memory)
+    first.dispatch({ type: "recordChosen" })
+    await until(first, settledWrites)
+    first.dispatch({ type: "recordPressed" })
+    await until(first, (state) => state.activity.kind === "recording")
+    memory.gate.hold = (): Promise<void> => Promise.reject(new Error("disk"))
+    first.detach()
+    await until(first, (state) => state.activity.kind === "idle")
+    memory.gate.hold = null
+    expect(memory.notices).toEqual([STUDIO_WORDS.notice.notKept])
+    const next = studio(memory, fakeMic(), "u")
+    await until(next, (state) => state.shelf.kind === "read")
+    expect(next.getSnapshot().notice).toBe(STUDIO_WORDS.notice.notKept)
+    expect(memory.notices).toEqual([])
   })
 })
 

@@ -260,10 +260,32 @@ describe("the plan for carrying the Journal tab's episode", () => {
     if (plan.kind !== "carry") throw new Error(plan.kind)
     expect(plan.moves.map((each) => each.from)).toEqual(["gap"])
     expect(plan.audioRows).toEqual(["gap"])
-    expect(
-      plan.project.takes.find((each) => each.shot === "next")?.onPhone
-    ).toBe(false)
-    expect(plan.left).toBe(2)
+    // A take whose audio row isn't a recording stays beside it, unread.
+    expect(plan.project.takes.map((each) => each.shot)).toEqual(["gap"])
+    expect(plan.takeRows).toEqual(["gap"])
+    expect(plan.left).toBe(3)
+    expect(plan.gone).toBe(0)
+  })
+
+  it("counts the takes whose recording was already gone", () => {
+    const plan = planCarry(
+      rows({ audioValues: { gap: new Blob(["gap"]) } }),
+      CARRIED
+    )
+    if (plan.kind !== "carry") throw new Error(plan.kind)
+    expect(plan.gone).toBe(1)
+  })
+
+  it("leaves a plan it can't fully read where it is", () => {
+    const broken = [
+      { ...PLAN, targets: null },
+      { ...PLAN, primer: { ...PRIMER, title: 7 } },
+      { ...PLAN, primer: { ...PRIMER, cuts: [{ id: "gap" }] } },
+      { ...PLAN, targets: { flow: "long" } },
+      { ...PLAN, openedAt: 12 },
+    ]
+    for (const plan of broken)
+      expect(planCarry(rows({ plan }), CARRIED)).toEqual({ kind: "stays" })
   })
 
   it("leaves everything where it is when its project is kept already", () => {
