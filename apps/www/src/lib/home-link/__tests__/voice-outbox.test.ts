@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest"
 
-import type { PhoneBite } from "@/lib/game-bites/model"
+import type { PhoneBite } from "@/lib/game-bites"
 import { outboxView } from "@/lib/home-link/voice"
 import { INITIAL_VOICE_HOME } from "@/lib/voice-home/model"
 
@@ -22,6 +22,12 @@ const bite = (id: string, homeSince?: number): PhoneBite => ({
 })
 
 describe("outboxView", () => {
+  it("never counts a bite home holds as waiting, even when home's answers here were lost", () => {
+    expect(
+      outboxView(0, [bite("b1", 300)], INITIAL_VOICE_HOME, true)
+    ).toMatchObject({ waiting: 0, onHome: { count: 1, since: 300 } })
+  })
+
   it("counts each bite not kept yet, each home doesn't hold as waiting, and each it refused apart", () => {
     const home = {
       ...INITIAL_VOICE_HOME,
@@ -42,16 +48,14 @@ describe("outboxView", () => {
       waiting: 2,
       refused: 1,
       sending: true,
-      onHome: 1,
-      onHomeSince: 300,
+      onHome: { count: 1, since: 300 },
     })
     expect(outboxView(0, [], INITIAL_VOICE_HOME, false)).toEqual({
       notKept: 0,
       waiting: 0,
       refused: 0,
       sending: false,
-      onHome: 0,
-      onHomeSince: null,
+      onHome: null,
     })
   })
 })

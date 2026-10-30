@@ -18,22 +18,29 @@ import { describe, expect, it } from "vitest"
 const MACHINERY =
   /\b(grant|consent|scope|sync\w*|server|request|response|status|error|api|http\w*|https?:|\d{3}\b|token|queue|retry|null|undefined|lane|pull\w*|outbox|upload\w*|socket|offset|seq|catalog|fixture|feed|store|idb|indexeddb|blob)\b/i
 
-/** Midday UTC, so the day it names is the same in every zone the phone is in. */
+/** Midday UTC: Oct 28 in every zone from UTC-12 to UTC+11. */
 const ON_HOME_SINCE = Date.UTC(2026, 9, 28, 12)
+
+const NONE = {
+  notKept: 0,
+  waiting: 0,
+  refused: 0,
+  sending: true,
+  onHome: null,
+}
 
 function everyPhrase(): Array<string> {
   const views = [0, 1, 2].flatMap((notKept) =>
     [0, 1, 3].flatMap((waiting) =>
       [0, 1, 2].flatMap((refused) =>
         [true, false].flatMap((sending) =>
-          [0, 1, 12].map((onHome) =>
+          [0, 1, 12].map((count) =>
             outboxLine({
               notKept,
               waiting,
               refused,
               sending,
-              onHome,
-              onHomeSince: onHome === 0 ? null : ON_HOME_SINCE,
+              onHome: count === 0 ? null : { count, since: ON_HOME_SINCE },
             })
           )
         )
@@ -62,14 +69,7 @@ describe("the recorder's words", () => {
   })
 
   it("says what isn't kept yet, what waits, and what home couldn't take, in counts", () => {
-    const none = {
-      notKept: 0,
-      waiting: 0,
-      refused: 0,
-      sending: true,
-      onHome: 0,
-      onHomeSince: null,
-    }
+    const none = NONE
     expect(outboxLine(none)).toBe("")
     expect(outboxLine({ ...none, waiting: 1 })).toBe(
       "1 bite waits on this phone until home has it."
@@ -86,23 +86,15 @@ describe("the recorder's words", () => {
   })
 
   it("says how many bites are kept on home instead, and since when (#2080)", () => {
-    const none = {
-      notKept: 0,
-      waiting: 0,
-      refused: 0,
-      sending: true,
-      onHome: 0,
-      onHomeSince: null,
-    }
-    expect(outboxLine({ ...none, onHome: 1, onHomeSince: ON_HOME_SINCE })).toBe(
-      "1 bite kept on home since Oct 28."
-    )
+    const none = NONE
+    expect(
+      outboxLine({ ...none, onHome: { count: 1, since: ON_HOME_SINCE } })
+    ).toBe("1 bite kept on home since Oct 28.")
     expect(
       outboxLine({
         ...none,
         waiting: 1,
-        onHome: 12,
-        onHomeSince: ON_HOME_SINCE,
+        onHome: { count: 12, since: ON_HOME_SINCE },
       })
     ).toBe(
       "1 bite waits on this phone until home has it. 12 bites kept on home since Oct 28."

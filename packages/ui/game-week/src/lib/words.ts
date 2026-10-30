@@ -4,7 +4,7 @@
  * the machinery behind it. `__tests__/words.test.ts` holds every entry and
  * every phrase these functions can make to that.
  */
-import { dayOf, formatDay } from "@some-ui/core-utils"
+import { counted, dayOf, formatDay } from "@some-ui/core-utils"
 
 import type { ModeId } from "./modes"
 import type { OutboxView } from "./ports"
@@ -143,10 +143,10 @@ export function outboxLine(view: OutboxView): string {
         : `Home couldn't take ${view.refused} bites. They stay on this phone.`
     )
   }
-  if (view.onHome > 0 && view.onHomeSince !== null) {
-    const bites = view.onHome === 1 ? "1 bite" : `${view.onHome} bites`
+  if (view.onHome !== null) {
+    const { count, since } = view.onHome
     lines.push(
-      `${bites} kept on home since ${formatDay(dayOf(new Date(view.onHomeSince)))}.`
+      `${counted(count, "bite")} kept on home since ${formatDay(dayOf(new Date(since)))}.`
     )
   }
   return lines.join(" ")

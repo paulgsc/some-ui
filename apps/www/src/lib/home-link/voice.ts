@@ -9,8 +9,8 @@
 import { useEffect, useSyncExternalStore } from "react"
 import type { OutboxPort, OutboxView } from "@some-ui/game-week"
 
+import type { PhoneBite } from "@/lib/game-bites"
 import { phoneGameBites } from "@/lib/game-bites"
-import type { PhoneBite } from "@/lib/game-bites/model"
 import { phoneJobs } from "@/lib/jobs"
 import { reflections } from "@/lib/session-reflection"
 import { phoneVoiceHome } from "@/lib/voice-home"
@@ -113,16 +113,23 @@ export function outboxView(
 ): OutboxView {
   const held = new Set(home.held)
   const refused = new Set(home.refused.map(({ id }) => id))
-  const onHome = bites.flatMap(({ homeSince }) =>
+  const since = bites.flatMap(({ homeSince }) =>
     homeSince === undefined ? [] : [homeSince]
   )
   return {
     notKept,
-    waiting: bites.filter(({ id }) => !held.has(id) && !refused.has(id)).length,
+    // A bite the record says home holds never waits, even if home's
+    // answers here were lost.
+    waiting: bites.filter(
+      ({ id, homeSince }) =>
+        homeSince === undefined && !held.has(id) && !refused.has(id)
+    ).length,
     refused: bites.filter(({ id }) => refused.has(id)).length,
     sending,
-    onHome: onHome.length,
-    onHomeSince: onHome.length === 0 ? null : Math.min(...onHome),
+    onHome:
+      since.length === 0
+        ? null
+        : { count: since.length, since: Math.min(...since) },
   }
 }
 
@@ -134,8 +141,8 @@ function sameView(a: OutboxView, b: OutboxView): boolean {
     a.waiting === b.waiting &&
     a.refused === b.refused &&
     a.sending === b.sending &&
-    a.onHome === b.onHome &&
-    a.onHomeSince === b.onHomeSince
+    a.onHome?.count === b.onHome?.count &&
+    a.onHome?.since === b.onHome?.since
   )
 }
 

@@ -7,8 +7,7 @@
  * held back (`holdUntil` not yet reached) can be said again (`amended`) or
  * thrown away (`undone`). Once its hold has run out it is the voice lane's
  * to copy for home (`lib/home-link/voice-copy`). Once home holds it, the
- * record says since when (`homeSince`), and `./runtime` lets its audio go:
- * the record of the bite stays here (owner, 2026-10-29, #2080).
+ * record says since when (`homeSince`), and `./runtime` lets its audio go.
  */
 import { assertNever, isRecord } from "@some-ui/core-utils"
 import type { KeptBite } from "@some-ui/game-week"
@@ -61,7 +60,8 @@ export function stepGameBites(
   }
   const bite = bites.find((b) => b.id === event.id)
   if (bite === undefined) return "unknown"
-  if (isReady(bite, now)) {
+  // A bite home holds is on its way for good, even if the clock goes back.
+  if (bite.homeSince !== undefined || isReady(bite, now)) {
     // Releasing what is already on its way is no change, and no refusal.
     return event.kind === "released" ? bites : "on-its-way"
   }

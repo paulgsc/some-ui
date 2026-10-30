@@ -44,8 +44,7 @@ const WAITING = {
   waiting: 2,
   refused: 0,
   sending: true,
-  onHome: 0,
-  onHomeSince: null,
+  onHome: null,
 }
 
 const outbox: OutboxPort = {

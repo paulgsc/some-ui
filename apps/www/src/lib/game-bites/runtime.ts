@@ -66,11 +66,11 @@ export type GameBites = BiteStore & {
   /** The bites that may start on their way home now, and home doesn't hold. */
   ready: () => ReadonlyArray<KeptBite>
   /**
-   * Notes since when home holds each of `held` this record has on its way,
+   * Notes since when home holds each of `homeHolds` this record has on its way,
    * then lets the audio of every bite home holds go. Failures go to the
    * log; the next call tries again.
    */
-  letGo: (held: ReadonlySet<string>) => Promise<void>
+  letGo: (homeHolds: ReadonlySet<string>) => Promise<void>
   /** Bites the phone could not keep yet, held by this page load. */
   unkept: () => number
   audio: (id: string) => Promise<Blob | null>
@@ -268,15 +268,17 @@ export function createGameBites(ports: GameBitesPorts): GameBites {
    * app left undone is done at the next call. Only after the record says
    * so, and never a bite the record does not name.
    */
-  async function letGoNow(held: ReadonlySet<string>): Promise<void> {
+  async function letGoNow(homeHolds: ReadonlySet<string>): Promise<void> {
     if (!writable) return
-    apply({ kind: "home-holds", ids: held })
-    const ids = bites
-      .filter((bite) => bite.homeSince !== undefined && !letGone.has(bite.id))
-      .map(({ id }) => id)
-    if (ids.length === 0) return
-    await shelf.remove(ids)
-    for (const id of ids) letGone.add(id)
+    apply({ kind: "home-holds", ids: homeHolds })
+    const due = bites.filter(
+      (bite) => bite.homeSince !== undefined && !letGone.has(bite.id)
+    )
+    if (due.length === 0) return
+    const shelved = new Set(await shelf.ids())
+    const ids = due.map(({ id }) => id).filter((id) => shelved.has(id))
+    if (ids.length > 0) await shelf.remove(ids)
+    for (const { id } of due) letGone.add(id)
   }
 
   inTurn(recover).catch((error: unknown) => {
@@ -302,8 +304,8 @@ export function createGameBites(ports: GameBitesPorts): GameBites {
       bites.filter(
         (bite) => bite.homeSince === undefined && isReady(bite, ports.now())
       ),
-    letGo: (held) =>
-      inTurn(() => letGoNow(held)).catch((error: unknown) => {
+    letGo: (homeHolds) =>
+      inTurn(() => letGoNow(homeHolds)).catch((error: unknown) => {
         reportFailure({
           port: "game bites (let go once home holds them)",
           error: toIntentError(error),

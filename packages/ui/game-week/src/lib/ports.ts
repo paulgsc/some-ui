@@ -62,10 +62,11 @@ export type OutboxView = {
   readonly waiting: number
   /** Home said it can't take these; each stays on this phone. */
   readonly refused: number
-  /** Kept on home; this phone lets their sound go. */
-  readonly onHome: number
-  /** When home first held one of `onHome`, in ms since the epoch; null for none. */
-  readonly onHomeSince: number | null
+  /**
+   * Kept on home, so this phone lets their sound go: how many, and when home
+   * first held one (ms since the epoch); null for none.
+   */
+  readonly onHome: { readonly count: number; readonly since: number } | null
   /** Whether this phone sends voice notes home at all. */
   readonly sending: boolean
 }

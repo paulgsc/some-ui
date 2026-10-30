@@ -395,7 +395,7 @@ describe("createGameBites", () => {
     expect([...shelf.blobs.keys()].sort()).toEqual(["b1", "b2", "b9"])
   })
 
-  it("lets the audio go at the next call when the first removal failed, and only after the record says so", async () => {
+  it("lets the audio go at the next call when the first removal failed", async () => {
     const clock = world()
     const storage = memoryStorage()
     const shelf = memoryShelf()
@@ -414,6 +414,35 @@ describe("createGameBites", () => {
     failing = false
     await store.letGo(new Set(["b1"]))
     expect([...shelf.blobs.keys()]).toEqual([])
+  })
+
+  it("keeps the record of a bite home holds, even if the clock goes back", async () => {
+    const clock = world()
+    const store = createGameBites({
+      storage: memoryStorage(),
+      shelf: memoryShelf(),
+      ...clock.ports,
+    })
+    await store.keep(bite("b1"), new Blob(["x"]))
+    await store.release("b1")
+    await clock.advance(1)
+    await store.letGo(new Set(["b1"]))
+    const marked = stepGameBites(
+      store.getSnapshot(),
+      { kind: "undone", id: "b1" },
+      T0 - 60_000
+    )
+    expect(marked).toBe("on-its-way")
+  })
+
+  it("lets nothing go when its record was unreadable", async () => {
+    const storage = memoryStorage()
+    storage.map.set("some-ui:game-bites", "[{broken")
+    const shelf = memoryShelf()
+    shelf.blobs.set("b1", new Blob(["said"]))
+    const store = createGameBites({ storage, shelf, ...world().ports })
+    await store.letGo(new Set(["b1"]))
+    expect([...shelf.blobs.keys()]).toEqual(["b1"])
   })
 
   it("lets no audio go when storage won't keep the record saying home holds it", async () => {
