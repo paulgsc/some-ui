@@ -1,15 +1,11 @@
-import type { JSX } from "react"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, redirect } from "@tanstack/react-router"
 
-import { VIEWER_BUILD } from "@/lib/data-mode"
 import { wholeNumber } from "@/lib/search-params"
-import { CaptionsPreview } from "@/lib/web-surface"
-import { ViewerStrip } from "@/components/provenance-strip"
 
 /**
- * The subtitles preview (GWB11). `?theme` names the look it opens on (the
- * preview falls back to the default for an unknown one) and `?at` how far
- * into the sample, in milliseconds.
+ * The subtitles preview's old address (GWB11): subtitles are one of the
+ * burn-ins now (STUDIO ST15), so `/captions?theme=…&at=…` opens `/burn-ins`
+ * on them, the look as its design.
  */
 
 type CaptionsSearch = { theme?: string; at?: number }
@@ -22,17 +18,17 @@ function validateSearch(search: Record<string, unknown>): CaptionsSearch {
   }
 }
 
-const Captions = (): JSX.Element => {
-  const { theme, at } = Route.useSearch()
-  return (
-    <>
-      {VIEWER_BUILD && <ViewerStrip />}
-      <CaptionsPreview theme={theme} at={at} />
-    </>
-  )
-}
-
 export const Route = createFileRoute("/captions")({
   validateSearch,
-  component: Captions,
+  beforeLoad: ({ search }) => {
+    throw redirect({
+      to: "/burn-ins",
+      search: {
+        kind: "captions",
+        ...(search.theme === undefined ? {} : { design: search.theme }),
+        ...(search.at === undefined ? {} : { at: search.at }),
+      },
+      replace: true,
+    })
+  },
 })

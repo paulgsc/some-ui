@@ -395,8 +395,10 @@ test corpus, not shipped extensions.
 
 The package count is 49 -> 50 on 2026-10-30: `packages/video-render`
 (`@some-ui/video-render`, the one renderer for Studio and Game Week Bites: a
-cut list in, a video out, the same bytes every time) landed. Before that it
-was 48 -> 49 on 2026-10-28: `packages/ui/game-week`
+cut list in, a video out, the same bytes every time) landed, and
+`packages/ui/captions` became `packages/ui/burn-ins` (`@some-ui/burn-ins`, what
+code draws into every video, the subtitles its first kind), which left the count
+as it was. Before that it was 48 -> 49 on 2026-10-28: `packages/ui/game-week`
 (`@some-ui/game-week`, the game-day bite recorder on the phone: offered
 scenarios, say it first, the quiet stop, every bite kept on the phone until
 home holds it) landed. Before that it was 47 -> 48 on 2026-10-28: `packages/ui/captions`

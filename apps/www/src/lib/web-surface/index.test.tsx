@@ -3,7 +3,7 @@
  *
  * The door (A4, packages/some-vite-config/AUDIENCES.md): the web builds get
  * Hangul Honeycomb's panel, the extensions comb, the Playoff Delta stage and
- * the captions preview, and a build without a web
+ * the burn-ins' preview and recorder page, and a build without a web
  * surface gets something inert in their place. Vitest builds the `lan`
  * profile; the Android app's build is stood in for by its flag, and a
  * profile without "web" by mocking `@/lib/build-profile`.
@@ -40,14 +40,20 @@ const isLazy = (component: unknown): boolean =>
   Reflect.get(component, "$$typeof") === Symbol.for("react.lazy")
 
 describe("a web build", () => {
-  it("binds Hangul Honeycomb's panel, the extensions comb, the Playoff Delta stage and the captions preview", async () => {
-    const { CaptionsPreview, ExtensionsComb, PlayoffDeltaStage, WEB_PANELS } =
-      await loadDoor()
+  it("binds Hangul Honeycomb's panel, the extensions comb, the Playoff Delta stage and the burn-ins' pages", async () => {
+    const {
+      BurnInRecord,
+      BurnInsPreview,
+      ExtensionsComb,
+      PlayoffDeltaStage,
+      WEB_PANELS,
+    } = await loadDoor()
 
     expect(Object.keys(WEB_PANELS)).toEqual(["hangul"])
     expect(isLazy(ExtensionsComb)).toBe(true)
     expect(isLazy(PlayoffDeltaStage)).toBe(true)
-    expect(isLazy(CaptionsPreview)).toBe(true)
+    expect(isLazy(BurnInsPreview)).toBe(true)
+    expect(isLazy(BurnInRecord)).toBe(true)
   })
 })
 
@@ -57,15 +63,21 @@ describe("a build with no web surface", () => {
     ["a mobile dev server's (no device flag)", { device: false, web: false }],
     ["the device flag alone", { device: true, web: true }],
   ])("binds nothing in %s", async (_, build) => {
-    const { CaptionsPreview, ExtensionsComb, PlayoffDeltaStage, WEB_PANELS } =
-      await loadDoor(build)
+    const {
+      BurnInRecord,
+      BurnInsPreview,
+      ExtensionsComb,
+      PlayoffDeltaStage,
+      WEB_PANELS,
+    } = await loadDoor(build)
 
     expect(WEB_PANELS).toEqual({})
     const { container } = render(
       <>
         <ExtensionsComb />
         <PlayoffDeltaStage />
-        <CaptionsPreview />
+        <BurnInsPreview />
+        <BurnInRecord />
       </>
     )
     expect(container.innerHTML).toBe("")

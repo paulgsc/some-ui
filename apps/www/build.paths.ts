@@ -213,9 +213,9 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "the Playoff Delta stage's live season, a desktop recording stage for the vlog: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
     },
     {
-      modules: ["apps/www/src/lib/web-surface/captions/**"],
+      modules: ["apps/www/src/lib/web-surface/burn-ins/**"],
       profiles: ["lan", "pages"],
-      why: "the shorts' subtitles preview and its font, a desktop page for tuning the look the renderer records: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
+      why: "what every video carries, its preview, its recorder page and their font, desktop pages for tuning and recording what the renderer lays over a video: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
     },
     {
       modules: ["apps/www/src/lib/web-surface/hangul/**"],
@@ -310,8 +310,8 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
     },
     {
       profile: "lan",
-      modules: ["apps/www/src/lib/web-surface/captions/preview.tsx"],
-      why: "the subtitles preview renders through this; without it /captions renders nothing. Also what keeps its `exclusive` rule from passing by matching nothing",
+      modules: ["apps/www/src/lib/web-surface/burn-ins/preview.tsx"],
+      why: "the burn-ins preview renders through this; without it /burn-ins renders nothing. Also what keeps its `exclusive` rule from passing by matching nothing",
     },
     {
       profile: "lan",
@@ -360,6 +360,7 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       "assurance.tsx*",
       "extensions.tsx*",
       "playoff-delta.tsx*",
+      "burn-ins.tsx*",
       "captions.tsx*",
       "_dashboard/app.tsx*",
       "_dashboard/profile.tsx*",

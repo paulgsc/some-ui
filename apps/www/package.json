@@ -24,7 +24,8 @@
     "test:e2e": "playwright test --config playwright.config.ts",
     "test:ui-fit": "playwright test --config playwright.config.ts tests/ui-fit",
     "test:sw": "playwright test --config playwright.config.ts tests/study-nudge",
-    "record:playoff-delta": "tsx tests/record/playoff-delta.ts"
+    "record:playoff-delta": "tsx tests/record/playoff-delta.ts",
+    "record:short": "tsx tests/record/short.ts"
   },
   "dependencies": {
     "@capacitor-community/sqlite": "^8.1.1",
@@ -43,7 +44,7 @@
     "@some-ui/aph": "workspace:*",
     "@some-ui/assurance": "workspace:*",
     "@some-ui/auth": "workspace:*",
-    "@some-ui/captions": "workspace:*",
+    "@some-ui/burn-ins": "workspace:*",
     "@some-ui/content-registry": "workspace:*",
     "@some-ui/core-utils": "workspace:*",
     "@some-ui/fetch-kit": "workspace:*",
@@ -82,6 +83,7 @@
   "devDependencies": {
     "@playwright/test": "1.62.1",
     "@some-ui/contract-harness": "workspace:*",
+    "@some-ui/video-render": "workspace:*",
     "@vitejs/plugin-react": "^6.1.2",
     "vite": "^8.3.5"
   }

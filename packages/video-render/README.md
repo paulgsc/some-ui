@@ -38,11 +38,12 @@ Needs `ffmpeg` and `ffprobe` on `PATH`; the repo's nix shells carry them
 
 ## Not yet
 
-- **Burn-ins** (headlines, captions, cards, the authorship mark) come from
-  ST15's workspace (#2273) through `Ports.recordBurnIn`. Until then a cut
-  list with burn-ins renders only with them left out (`--without-burn-ins`),
-  so a short converted from the skill's `render.py` loses its text, and
-  `render.py` stays until ST15.
+- **Burn-ins** (headlines, captions, cards, the authorship mark) are drawn
+  by `@some-ui/burn-ins` (ST15, #2273) and recorded through
+  `Ports.recordBurnIn`, which `apps/www`'s `record:short` fills from the
+  built app (`pnpm --filter www record:short <folder> --series <json>`).
+  This package's own CLI has no browser, so it still renders burn-ins only
+  left out (`--without-burn-ins`).
 - **`fromRenderPack`**, GWB9's render pack (#2083) as a cut list, waits on
   that pack's shape, and with it B-roll by library id (GWB12, #2086).
 - **Intro and outro scenes** in a series are ST11's (#2259).

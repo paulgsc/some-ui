@@ -123,8 +123,8 @@ export async function render(
   const requests = burnInRequests(cutList, placement.value, series, work)
   if (requests.length && !ports.recordBurnIn && !options.withoutBurnIns) {
     return refused([
-      "nothing can draw burn-ins yet; render with them left out, or once " +
-        "the burn-ins workspace lands",
+      "nothing here can draw burn-ins; render with them left out, or with " +
+        "them drawn by `pnpm --filter www record:short`",
     ])
   }
   await ports.mkdir(work)
