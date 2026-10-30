@@ -12,7 +12,6 @@ import type { HomeCall, KeyedStorage } from "@some-ui/core-utils"
 import { counted, localStorageOrNull } from "@some-ui/core-utils"
 import type { HomeSession } from "@some-ui/leetype"
 
-import { hasAudience } from "@/lib/build-profile"
 import { deviceBackend } from "@/lib/device-backend/boot"
 import { mayLeavePhone } from "@/lib/device-backend/handlers/sessions"
 import type { Kept } from "@/lib/device-backend/handlers/shelf"
@@ -42,6 +41,7 @@ import {
 import { causedBy, copyAndConfirm, HomeForgotPhoneError } from "./sessions"
 import type { SendReport } from "./shelf"
 import { emptyReport, sendKept } from "./shelf"
+import { studioKeeping } from "./studio"
 import type { StudioGoing } from "./studio-log"
 import {
   reportsOf,
@@ -57,6 +57,8 @@ const sessions = (n: number): string => counted(n, "session")
 const items = (n: number): string => counted(n, "kept item")
 const leetype = (n: number): string => counted(n, "LeetType session")
 const studio = (n: number): string => counted(n, "Studio sitting")
+const entries = (n: number): string =>
+  counted(n, "Studio entry", "Studio entries")
 
 /** What `sendHome` and `onPhone` read and call; the defaults are the phone's own. A seam for tests. */
 export type SendPorts = {
@@ -128,19 +130,16 @@ async function studioGoing(
   pairing: string,
   storage: KeyedStorage | null
 ): Promise<StudioGoing> {
-  // Studio is the phone's (the "apk" audience): elsewhere there is none.
-  if (!hasAudience("apk")) return { sittings: [], reports: [] }
-  const { keptTimeLog, phoneProjectStore, sittingKey } = await import(
-    "@some-ui/soundbites"
-  )
-  const projects = phoneProjectStore()
+  // Until Studio's route hands its record in (`./studio`), there is none.
+  const studio = studioKeeping()
+  if (studio === null) return { sittings: [], reports: [] }
   const [list, friction] = await Promise.all([
-    projects.list(),
-    projects.friction(),
+    studio.store.list(),
+    studio.store.friction(),
   ])
   return studioToSend(
-    keptTimeLog().read(),
-    reportsOf(friction, list, sittingKey),
+    studio.timeLog(),
+    reportsOf(friction, list, studio.sittingKey),
     readSent(storage, pairing)
   )
 }
@@ -206,7 +205,7 @@ export type SendOutcome = {
   readonly shelf: SendReport
   readonly log: LogReport
   /** Studio's sittings and answers, counted as LeetType's sessions are. */
-  readonly studio?: LogReport
+  readonly studio: LogReport
   /** What threw and ended the run early, if anything did. */
   readonly ended: unknown
   /** Home answered `429` at least once: it was busy. */
@@ -229,7 +228,7 @@ function whyEnded({
   copy,
   shelf,
   log,
-  studio: sat = emptyLogReport(),
+  studio: sat,
   ended,
 }: SendOutcome): unknown {
   if (copy?.outcome.kind === "partial") return copy.outcome.error
@@ -243,8 +242,7 @@ function whyEnded({
 
 /** The send's end, short: what changed, then why it stopped, if it did. */
 export function describeSend(outcome: SendOutcome, host: string): string {
-  const { copy, held, freed, shelf, log } = outcome
-  const sat = outcome.studio ?? emptyLogReport()
+  const { copy, held, freed, shelf, log, studio: sat } = outcome
   const why = whyEnded(outcome)
   const copied = copy?.outcome.copied ?? 0
   const sent = shelf.kept + shelf.replaced
@@ -267,16 +265,14 @@ export function describeSend(outcome: SendOutcome, host: string): string {
     copied > 0 ? `Copied ${sessions(copied)}.` : "",
     sent > 0 ? `Sent ${items(sent)}.` : "",
     log.held > 0 ? `Copied ${leetype(log.held)}.` : "",
-    sat.held > 0
-      ? `Copied ${counted(sat.held, "Studio entry", "Studio entries")}.`
-      : "",
+    sat.held > 0 ? `Copied ${entries(sat.held)}.` : "",
     full > 0 ? `${full} didn't fit: home's shelf is full.` : "",
     shelf.refused + shelf.other > 0
       ? `${shelf.refused + shelf.other} refused by ${host}.`
       : "",
     logRefused > 0 ? `${leetype(logRefused)} refused by ${host}.` : "",
     sat.refused + sat.other > 0
-      ? `${counted(sat.refused + sat.other, "Studio entry", "Studio entries")} refused by ${host}.`
+      ? `${entries(sat.refused + sat.other)} refused by ${host}.`
       : "",
     freed > 0 ? `Cleared ${freed} from this phone.` : "",
     held.differs.length > 0

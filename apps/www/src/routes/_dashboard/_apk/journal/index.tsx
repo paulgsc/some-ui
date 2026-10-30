@@ -1,8 +1,13 @@
 import type { JSX } from "react"
+import { useEffect } from "react"
 import { useConfirmSheet } from "@some-ui/shared"
 import type { Project, StudioShare } from "@some-ui/soundbites"
 import {
+  keptTimeLog,
+  letGoHeldTakes,
+  notesForHome,
   phoneProjectStore,
+  sittingKey,
   Studio,
   STUDIO_WORDS,
   studioFiles,
@@ -10,6 +15,7 @@ import {
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { Lightbulb } from "lucide-react"
 
+import { keepStudio } from "@/lib/home-link/studio"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { shareStudio } from "@/lib/journal-share"
@@ -71,26 +77,40 @@ const studioShare: StudioShare | undefined =
  * Making something to publish, so not a study tool and not under Practice's
  * soundbites, though it records the same way (`@some-ui/voice-capture`).
  */
-const StudioRoute = (): JSX.Element => (
-  <div className="mx-auto flex w-full max-w-md flex-col gap-4">
-    <h1 className="text-2xl font-bold tracking-tight">{WORDS.heading}</h1>
-    <Link
-      to="/journal/idea"
-      className="bg-card border-brand focus-visible:ring-ring flex items-center gap-3 rounded-2xl border-2 px-4 py-3 focus-visible:ring-2 focus-visible:outline-none"
-    >
-      <Lightbulb aria-hidden className="text-brand size-6 shrink-0" />
-      <span className="min-w-0">
-        <span className="block text-base font-extrabold">
-          {WORDS.idea.newIdea}
+const StudioRoute = (): JSX.Element => {
+  // Studio's record goes home with the rest once its screen has been opened.
+  useEffect(() => {
+    if (import.meta.env.VITE_DEVICE_BACKEND !== "true") return
+    const store = phoneProjectStore()
+    keepStudio({
+      store,
+      timeLog: () => keptTimeLog().read(),
+      notesForHome,
+      letGoHeldTakes: (held) => letGoHeldTakes(store, held),
+      sittingKey,
+    })
+  }, [])
+  return (
+    <div className="mx-auto flex w-full max-w-md flex-col gap-4">
+      <h1 className="text-2xl font-bold tracking-tight">{WORDS.heading}</h1>
+      <Link
+        to="/journal/idea"
+        className="bg-card border-brand focus-visible:ring-ring flex items-center gap-3 rounded-2xl border-2 px-4 py-3 focus-visible:ring-2 focus-visible:outline-none"
+      >
+        <Lightbulb aria-hidden className="text-brand size-6 shrink-0" />
+        <span className="min-w-0">
+          <span className="block text-base font-extrabold">
+            {WORDS.idea.newIdea}
+          </span>
+          <span className="text-muted-foreground block text-sm">
+            {WORDS.idea.newIdeaLine}
+          </span>
         </span>
-        <span className="text-muted-foreground block text-sm">
-          {WORDS.idea.newIdeaLine}
-        </span>
-      </span>
-    </Link>
-    <Studio share={studioShare} />
-  </div>
-)
+      </Link>
+      <Studio share={studioShare} />
+    </div>
+  )
+}
 
 export const Route = createFileRoute("/_dashboard/_apk/journal/")({
   component: StudioRoute,

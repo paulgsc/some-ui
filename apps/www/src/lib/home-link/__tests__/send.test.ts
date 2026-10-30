@@ -18,7 +18,7 @@ import { emptyHeldReport } from "@/lib/tenant/sessions-copy"
 
 import { home, session } from "./fake-home"
 
-/** One sitting of Studio's time log, opened and left on a scene. */
+/** One sitting of Studio's time log, just opened. */
 const SITTING = {
   name: "s1-20261030T100000000Z",
   events: [
@@ -49,6 +49,7 @@ function outcome(over: Partial<SendOutcome> = {}): SendOutcome {
     freed: 0,
     shelf: emptyReport(),
     log: emptyLogReport(),
+    studio: emptyLogReport(),
     ended: null,
     ...over,
   }

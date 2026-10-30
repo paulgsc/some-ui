@@ -25,6 +25,7 @@ import {
   candidates,
   copyPasses,
   sendVoice,
+  studioRead,
   unsendable,
   VOICE_SCOPES,
   watchVoiceNotes,
@@ -39,12 +40,14 @@ export const voiceLane: Lane = {
   useCounts: (): LaneCounts => {
     const home = phoneVoiceHome()
     const state = useSyncExternalStore(home.subscribe, home.getSnapshot)
-    // Read so a reflection, Jobs note or game bite added renders the offer again.
+    // Read so a reflection, Jobs note, game bite or Studio take added
+    // renders the offer again.
     useSyncExternalStore(reflections.subscribe, reflections.getSnapshot)
     const jobs = phoneJobs()
     useSyncExternalStore(jobs.subscribe, jobs.getSnapshot)
     const bites = phoneGameBites()
     useSyncExternalStore(bites.subscribe, bites.getSnapshot)
+    useSyncExternalStore(studioRead.subscribe, studioRead.getSnapshot)
     const { gone } = useSyncExternalStore(
       copyPasses.subscribe,
       copyPasses.getSnapshot

@@ -15,8 +15,9 @@
  * - a game bite (`lib/game-bites`), once Undo and the question of what it
  *   was about are closed: `game`, the game's ESPN id, when it was kept, and
  *   every field it keeps;
- * - a Studio take still on the phone (`@some-ui/soundbites`' `notesForHome`):
- *   `studio`, the take as `<project>:<shot>:<take>`, when it was recorded.
+ * - a Studio take still on the phone (`@some-ui/soundbites`' `notesForHome`,
+ *   handed in by Studio's route, `./studio`): `studio`, the take as
+ *   `<project>:<shot>:<take>`, when it was recorded.
  *
  * Copying deletes nothing where the note was recorded; letting it go there
  * leaves the copy, which goes once home holds the note. A game bite's own
@@ -29,11 +30,6 @@ import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/core-utils"
 import type { KeptBite } from "@some-ui/game-week"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
-import {
-  letGoHeldTakes,
-  notesForHome,
-  phoneProjectStore,
-} from "@some-ui/soundbites"
 
 import { phoneGameBites } from "@/lib/game-bites"
 import { jobVoiceAudio, phoneJobs } from "@/lib/jobs"
@@ -56,6 +52,7 @@ import { NO_PASS, passWith, runEnd } from "@/lib/voice-home/model"
 import { phoneConsent } from "./consent-runtime"
 import { homeLink } from "./index"
 import { keptNow } from "./lanes"
+import { onStudioKept, studioKeeping } from "./studio"
 
 /** What the voice lane keeps sending (`./voice`). */
 export const VOICE_SCOPES = { scopes: ["voice"] } as const
@@ -154,13 +151,36 @@ type Candidate = {
   readonly audio: () => Promise<Blob | null>
 }
 
-/** Studio's takes still on the phone that home doesn't hold yet. */
-async function studioCandidates(): Promise<Array<Candidate>> {
-  const store = phoneProjectStore()
-  return notesForHome(await store.list()).map(({ project, ...note }) => ({
-    note: { ...note, of: "studio" },
-    audio: (): Promise<Blob | null> => store.audio(project, note.id),
-  }))
+/**
+ * Studio's takes still on the phone that home doesn't hold yet, as last
+ * read (`readStudio`): its store answers only asynchronously, so each copy
+ * pass reads it first and the count renders what that read found.
+ */
+let studioTakes: ReadonlyArray<Candidate> = []
+const studioListeners = new Set<() => void>()
+
+/** What the last read of Studio's store found, for the lane's count. */
+export const studioRead = {
+  getSnapshot: (): ReadonlyArray<Candidate> => studioTakes,
+  subscribe(listener: () => void): () => void {
+    studioListeners.add(listener)
+    return (): void => {
+      studioListeners.delete(listener)
+    }
+  },
+}
+
+async function readStudio(): Promise<void> {
+  const studio = studioKeeping()
+  if (studio === null) return
+  const { store } = studio
+  studioTakes = studio
+    .notesForHome(await store.list())
+    .map(({ project, ...note }) => ({
+      note: { ...note, of: "studio" },
+      audio: (): Promise<Blob | null> => store.audio(project, note.id),
+    }))
+  for (const listener of studioListeners) listener()
 }
 
 export function candidates(): Array<Candidate> {
@@ -189,7 +209,7 @@ export function candidates(): Array<Candidate> {
     note: gameNote(bite),
     audio: (): Promise<Blob | null> => bites.audio(bite.id),
   }))
-  return [...said, ...named, ...game]
+  return [...said, ...named, ...game, ...studioTakes]
 }
 
 /** A game bite, as home is told it. */
@@ -226,10 +246,8 @@ async function copyAll(): Promise<CopyPass> {
   let pass = NO_PASS
   const gone = new Set<string>()
   let failed = false
-  for (const { note, audio } of [
-    ...candidates(),
-    ...(await studioCandidates()),
-  ]) {
+  await readStudio()
+  for (const { note, audio } of candidates()) {
     if (!keptNow(VOICE_SCOPES)) break
     if (home.settled(note.id)) continue
     try {
@@ -331,7 +349,8 @@ function letGoHeldBites(): void {
   // Home holds nothing on a phone that never sent: build no store for it.
   if (held.length === 0) return
   void phoneGameBites().letGo(new Set(held))
-  letGoHeldTakes(phoneProjectStore(), new Set(held)).catch(reported)
+  const studio = studioKeeping()
+  studio?.letGoHeldTakes(new Set(held)).catch(reported)
 }
 
 /**
@@ -342,6 +361,7 @@ function letGoHeldBites(): void {
 
 export function watchVoiceNotes(): () => void {
   const stores: Array<() => void> = []
+  let takes = false
   const changed = (): void => {
     if (keptNow(VOICE_SCOPES) && stores.length === 0) {
       stores.push(
@@ -350,10 +370,14 @@ export function watchVoiceNotes(): () => void {
         onAudioSettled(copySoon),
         phoneJobs().subscribe(copySoon),
         // A bite's release (Undo closed) is a change to its record.
-        phoneGameBites().subscribe(copySoon),
-        // A kept take is a write to its project.
-        phoneProjectStore().subscribe(copySoon)
+        phoneGameBites().subscribe(copySoon)
       )
+    }
+    // A kept take is a write to its project, once Studio has handed it in.
+    const studio = studioKeeping()
+    if (stores.length > 0 && studio !== null && !takes) {
+      takes = true
+      stores.push(studio.store.subscribe(copySoon))
     }
     copySoon()
   }
@@ -364,6 +388,10 @@ export function watchVoiceNotes(): () => void {
     onPromptShared(copySceneNotes),
     phoneConsent().subscribe(changed),
     homeLink().subscribe(changed),
+    onStudioKept(() => {
+      changed()
+      letGoHeldBites()
+    }),
   ]
   return (): void => {
     for (const stop of [...stops, ...stores]) stop()

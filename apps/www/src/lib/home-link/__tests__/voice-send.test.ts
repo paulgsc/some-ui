@@ -15,6 +15,7 @@ import { ShelfFullError } from "@some-ui/voice-capture"
 import { renderHook } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
+import { keepStudio } from "@/lib/home-link/studio"
 import { useUnsendable, voiceLane } from "@/lib/home-link/voice"
 import { sendVoice } from "@/lib/home-link/voice-copy"
 import type { JobEvent, JobsState } from "@/lib/jobs/model"
@@ -60,14 +61,6 @@ vi.mock("@/lib/reflection-voice", () => ({
 }))
 vi.mock("@/lib/scene-voice", () => ({
   onPromptShared: () => (): void => undefined,
-}))
-vi.mock("@some-ui/soundbites", () => ({
-  phoneProjectStore: (): object => ({
-    list: (): Promise<Array<never>> => Promise.resolve([]),
-    subscribe: (): (() => void) => () => undefined,
-  }),
-  notesForHome: (): Array<never> => [],
-  letGoHeldTakes: (): Promise<number> => Promise.resolve(0),
 }))
 vi.mock("@/lib/voice-home", () => ({
   phoneVoiceHome: (): VoiceHome | null => fakes.home,
@@ -222,5 +215,43 @@ describe("the voice lane's run, after its copy pass (LA14)", () => {
       inDrive: 2,
       gone: 0,
     })
+  })
+})
+
+describe("Studio's takes, once its route hands them in (ST12)", () => {
+  it("are counted waiting once read, copied for home as studio notes, and not counted once held", async () => {
+    setUp(5, {})
+    expect(waiting()).toBe(0)
+    const take = new Blob(["take"])
+    keepStudio({
+      store: {
+        list: () => Promise.resolve([]),
+        audio: (project: string, id: string) =>
+          Promise.resolve(project === "p1" && id === "t1" ? take : null),
+        friction: () => Promise.resolve([]),
+        subscribe: () => (): void => undefined,
+      },
+      timeLog: () => [],
+      notesForHome: () => [
+        {
+          id: "t1",
+          ref: "p1:s1:t1",
+          at: "2026-10-29T08:00:00.000Z",
+          contentType: "audio/webm",
+          project: "p1",
+        },
+      ],
+      letGoHeldTakes: () => Promise.resolve(0),
+      sittingKey: () => "s",
+    })
+    const sent: Array<string> = []
+    const recording: HomeCall = (method, path, init) => {
+      sent.push(path)
+      return send(method, path, init)
+    }
+    expect(await sendVoice(recording)).toEqual({ kind: "synced" })
+    expect(fakes.home?.getSnapshot().held).toEqual(["t1"])
+    expect(sent.some((path) => path.includes("of=studio"))).toBe(true)
+    expect(waiting()).toBe(0)
   })
 })
