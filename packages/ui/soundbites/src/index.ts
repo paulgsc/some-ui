@@ -23,6 +23,8 @@ export type {
   Sitting,
 } from "./lib/project/model"
 export { anchorAt, cutListAt, newProject, step } from "./lib/project/model"
+export { letGoHeldTakes, notesForHome } from "./lib/project/home"
+export type { StudioNote } from "./lib/project/home"
 export { ProjectFullError, ProjectRewriteError } from "./lib/project/store"
 export type { Friction, ProjectStore } from "./lib/project/store"
 export type { SoundbiteStore } from "./lib/store"

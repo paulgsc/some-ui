@@ -61,6 +61,14 @@ vi.mock("@/lib/reflection-voice", () => ({
 vi.mock("@/lib/scene-voice", () => ({
   onPromptShared: () => (): void => undefined,
 }))
+vi.mock("@some-ui/soundbites", () => ({
+  phoneProjectStore: (): object => ({
+    list: (): Promise<Array<never>> => Promise.resolve([]),
+    subscribe: (): (() => void) => () => undefined,
+  }),
+  notesForHome: (): Array<never> => [],
+  letGoHeldTakes: (): Promise<number> => Promise.resolve(0),
+}))
 vi.mock("@/lib/voice-home", () => ({
   phoneVoiceHome: (): VoiceHome | null => fakes.home,
 }))
