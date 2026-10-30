@@ -31,7 +31,7 @@ import { assertNever, canonicalJson } from "@some-ui/core-utils"
 import type { CutList, Shot, ShotTime } from "@some-ui/video-render"
 import type { Primer } from "@soundbites/lib/journal/primer"
 
-import { finishOf, isMarked, isReleased, youtubeLink } from "./finish"
+import { finishOf, isReleased, youtubeLink } from "./finish"
 
 export const PROJECT_SCHEMA = "some-ui.studio-project/1"
 
@@ -631,7 +631,10 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
       const url = youtubeLink(event.url)
       if (url === null) return refuse(state, "noLink")
       if (isReleased(project, event.rev)) return refuse(state, "duplicate")
-      if (!isMarked(project, event.rev)) return refuse(state, "notReady")
+      // Ready as it is now, not only once marked: a note opened since counts.
+      const finish = finishOf(project)
+      if (finish.kind !== "ready" || finish.rev !== event.rev)
+        return refuse(state, "notReady")
       return changed(state, {
         ...project,
         released: [

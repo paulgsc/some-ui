@@ -49,7 +49,7 @@ export function finishOf(project: Project): Finish {
 }
 
 /** Whether the owner marked revision `rev` ready. */
-export function isMarked(project: Project, rev: number): boolean {
+function isMarked(project: Project, rev: number): boolean {
   return project.ready?.some((each) => each.rev === rev) === true
 }
 

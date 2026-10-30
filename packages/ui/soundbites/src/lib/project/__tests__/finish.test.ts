@@ -134,6 +134,28 @@ describe("a release", () => {
     ).toBe(false)
   })
 
+  it("is refused when a note opened after the mark, until it is settled", () => {
+    const noted = run(marked(taken(started())), {
+      type: "noted",
+      note: {
+        id: "n1",
+        rev: 1,
+        shot: "a",
+        offsetMs: 0,
+        author: "owner",
+        text: "Too quiet",
+      },
+    })
+    const release = { type: "released", rev: 1, url: LINK, at: AT } as const
+    expect(step(noted, release).refused).toBe("notReady")
+    const settled = run(noted, {
+      type: "noteSettled",
+      id: "n1",
+      status: "applied",
+    })
+    expect(step(settled, release).refused).toBeNull()
+  })
+
   it("is refused for anything but a YouTube video's link", () => {
     expect(
       step(marked(taken(started())), {
