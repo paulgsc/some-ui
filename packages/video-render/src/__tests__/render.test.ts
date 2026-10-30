@@ -9,6 +9,7 @@ import { mkdtemp, readdir, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { promisify } from "node:util"
+import { authorshipOf } from "@video-render/authorship"
 import type { CutList, Shot } from "@video-render/cut-list"
 import { nodePorts } from "@video-render/node"
 import type { Ports } from "@video-render/render"
@@ -350,7 +351,10 @@ describe("render", () => {
           { kind: "headline", design: "v1", params: { headline: s.id } },
         ],
       })),
-      burnIns: [{ kind: "captions", design: "gridiron", params: {} }],
+      burnIns: [
+        { kind: "captions", design: "gridiron", params: {} },
+        { kind: "authorship", design: "cells-v1", params: {} },
+      ],
     }
     const refused = await render(withLayers, series(), ports, {
       workDir: "work-b0",
@@ -365,9 +369,10 @@ describe("render", () => {
     })
     expect(
       leftOut.ok ? leftOut.value.leftOut.map((b) => b.kind) : leftOut.problems
-    ).toEqual(["captions", "headline", "headline"])
+    ).toEqual(["captions", "authorship", "headline", "headline"])
 
     const recorded: Array<string> = []
+    const marks: Array<unknown> = []
     const drawn = await render(
       withLayers,
       series(),
@@ -375,6 +380,7 @@ describe("render", () => {
         ...ports,
         recordBurnIn: async (r) => {
           recorded.push(`${r.kind}@${r.startFrame}+${r.frames}`)
+          if (r.kind === "authorship") marks.push(r.params)
           const d = (r.frames / r.frame.fps).toFixed(3)
           const { width, height, fps } = r.frame
           const ran = await ports.ffmpeg({
@@ -397,8 +403,21 @@ describe("render", () => {
       { workDir: "work-b2", out: "out-b2/video.mp4" }
     )
     expect(drawn.ok ? drawn.value.leftOut : drawn.problems).toEqual([])
+    // The mark is drawn from the scenes, one entry each, whatever was written.
+    expect(marks).toEqual([
+      {
+        scenes: authorshipOf(withLayers).map((a, i) => ({
+          startMs: [0, 800][i],
+          origin: a.origin,
+          wording: a.wording,
+          hands: a.hands,
+        })),
+        endMs: 2000,
+      },
+    ])
     expect(recorded).toEqual([
       "captions@0+60",
+      "authorship@0+60",
       // The first scene's headline ends where the crossfade into the second
       // begins, so the two are never up together.
       "headline@0+24",

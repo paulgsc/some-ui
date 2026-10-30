@@ -10,12 +10,23 @@
  *
  * A design a published video used is never edited; a change is a new design.
  * Each kind draws only inside its regions (`./geometry`), so two burn-ins on
- * screen together never cover each other.
+ * screen together never cover each other. The authorship mark (`./authorship`)
+ * holds the header and body only over the bare cards the cut list keeps
+ * first and last for it.
  */
 
 import { assertNever } from "@some-ui/intent-kit"
 import { z } from "zod"
 
+import {
+  AUTHORSHIP_DESIGNS,
+  authorshipAt,
+  authorshipBoxes,
+  AuthorshipParamsSchema,
+  drawAuthorship,
+  type AuthorshipDrawing,
+  type AuthorshipFrame,
+} from "./authorship"
 import { frameAt as captionFrameAt, type CaptionFrame } from "./captions/frame"
 import { isThemeId, THEME_IDS, THEMES, type ThemeId } from "./captions/theme"
 import { captionsFor, runtimeOf, type Caption } from "./captions/timing"
@@ -31,7 +42,7 @@ import {
 } from "./journal"
 import { isOneOf, type Parsed } from "./parsed"
 
-export const KINDS = ["captions", "headline", "card"] as const
+export const KINDS = ["captions", "headline", "card", "authorship"] as const
 export type Kind = (typeof KINDS)[number]
 
 export const isKind = (value: unknown): value is Kind => isOneOf(KINDS, value)
@@ -41,6 +52,7 @@ export const DESIGNS = {
   captions: THEME_IDS,
   headline: JOURNAL_DESIGNS,
   card: JOURNAL_DESIGNS,
+  authorship: AUTHORSHIP_DESIGNS,
 } as const satisfies Record<Kind, ReadonlyArray<string>>
 
 /** Where each kind draws. */
@@ -48,6 +60,9 @@ export const REGIONS_OF = {
   captions: ["lower-third"],
   headline: ["header"],
   card: ["header", "body"],
+  // The intro and end card hold a bare card's header and body; between
+  // them the mark keeps to the gutter.
+  authorship: ["gutter", "header", "body"],
 } as const satisfies Record<Kind, ReadonlyArray<Region>>
 
 const TimedWordSchema = z
@@ -84,6 +99,11 @@ export type Prepared =
       readonly design: (typeof JOURNAL_DESIGNS)[number]
       readonly frame: TextFrame
     }
+  | {
+      readonly kind: "authorship"
+      readonly design: (typeof AUTHORSHIP_DESIGNS)[number]
+      readonly drawing: AuthorshipDrawing
+    }
 
 /** What is on screen at a moment. */
 export type BurnInFrame =
@@ -96,6 +116,11 @@ export type BurnInFrame =
       readonly kind: "headline" | "card"
       readonly design: (typeof JOURNAL_DESIGNS)[number]
       readonly frame: TextFrame
+    }
+  | {
+      readonly kind: "authorship"
+      readonly design: (typeof AUTHORSHIP_DESIGNS)[number]
+      readonly frame: AuthorshipFrame
     }
 
 const issues = (name: string, error: z.ZodError): ReadonlyArray<string> =>
@@ -150,6 +175,23 @@ export function prepare(b: BurnInData): Parsed<Prepared> {
     case "card": {
       return journal(name, kind, b, CardParamsSchema, cardFrame)
     }
+    case "authorship": {
+      if (!isOneOf(AUTHORSHIP_DESIGNS, b.design))
+        return { ok: false, problems: [`${name}: no such design`] }
+      const params = AuthorshipParamsSchema.safeParse(b.params)
+      if (!params.success)
+        return { ok: false, problems: issues(name, params.error) }
+      const drawn = drawAuthorship(params.data)
+      if (!drawn.ok)
+        return {
+          ok: false,
+          problems: drawn.problems.map((p) => `${name}: ${p}`),
+        }
+      return {
+        ok: true,
+        value: { kind, design: b.design, drawing: drawn.value },
+      }
+    }
     default: {
       return assertNever(kind)
     }
@@ -169,6 +211,13 @@ export function frameAt(p: Prepared, t: number): BurnInFrame {
     case "headline":
     case "card": {
       return p
+    }
+    case "authorship": {
+      return {
+        kind: p.kind,
+        design: p.design,
+        frame: authorshipAt(p.drawing, t),
+      }
     }
     default: {
       return assertNever(p)
@@ -190,6 +239,9 @@ export function boxesOf(f: BurnInFrame): ReadonlyArray<Box> {
     case "headline":
     case "card": {
       return textBoxes(f.frame)
+    }
+    case "authorship": {
+      return authorshipBoxes(f.frame)
     }
     default: {
       return assertNever(f)

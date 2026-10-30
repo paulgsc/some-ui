@@ -6,6 +6,7 @@
  * with its last lines.
  */
 
+import { authorshipParams, isAuthorship } from "./authorship"
 import type { BurnIn, CutList, Parsed } from "./cut-list"
 import {
   placeCues,
@@ -288,6 +289,11 @@ function burnInRequests(
 ): ReadonlyArray<BurnInRequest> {
   const whole = cutList.burnIns.map((b, i) => ({
     ...b,
+    // The authorship mark is drawn from the scenes, never from what was
+    // written for it (`parseCutList` refuses any).
+    params: isAuthorship(b)
+      ? authorshipParams(cutList, placement, series.frame.fps)
+      : b.params,
     startFrame: 0,
     frames: placement.totalFrames,
     frame: series.frame,

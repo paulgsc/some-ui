@@ -51,6 +51,9 @@ export const SAFE_AREA: Box = {
  * - `body`: the picture's window below it, down to the lower third, where a
  *   card's text sits.
  * - `lower-third`: the safe area's bottom band, where captions sit.
+ * - `gutter`: the strip of ground left of the picture's window, where the
+ *   authorship mark stays small for the whole video. Like the header it is
+ *   outside the safe area's left margin; nothing of YouTube's is drawn there.
  */
 export const REGIONS = {
   header: { x: 54, y: 40, width: 972, height: 210 },
@@ -61,6 +64,7 @@ export const REGIONS = {
     width: SAFE_AREA.width,
     height: SAFE_AREA.y + SAFE_AREA.height - 1250,
   },
+  gutter: { x: 6, y: 250, width: 42, height: 1000 },
 } as const satisfies Record<string, Box>
 
 export type Region = keyof typeof REGIONS

@@ -1,4 +1,5 @@
 import type { JSX } from "react"
+import { AuthorshipLayer } from "@burn-ins/components/stage/authorship"
 import { Caption } from "@burn-ins/components/stage/captions"
 import { TextLayer } from "@burn-ins/components/stage/text"
 import { placed } from "@burn-ins/components/stage/units"
@@ -19,6 +20,9 @@ const Layer = ({ frame }: { frame: BurnInFrame }): JSX.Element | null => {
     case "headline":
     case "card": {
       return <TextLayer frame={frame.frame} />
+    }
+    case "authorship": {
+      return <AuthorshipLayer frame={frame.frame} />
     }
     default: {
       return assertNever(frame)

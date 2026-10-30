@@ -192,6 +192,8 @@ function shotOf(
       : {}),
     voiceInMs: ms(s.voice_in),
     burnIns,
+    // A render.py short says nothing about whose idea a scene is.
+    idea: { origin: "agent" as const },
   }
   if (s.kind !== "capture" && s.kind !== "still") {
     return { ...base, picture: { kind: "card" }, overrides: {} }

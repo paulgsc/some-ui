@@ -1,8 +1,8 @@
 # @some-ui/burn-ins
 
 What code draws into every video (STUDIO ST15, #2273): the subtitles, the
-Build Journal shorts' headline and card, and next the authorship mark
-(ST16). A video's takes, footage and backgrounds are throwaway and stay in
+Build Journal shorts' headline and card, and the authorship mark (ST16,
+#2274). A video's takes, footage and backgrounds are throwaway and stay in
 Drive or on home; these are generic, drawn the same way into every video,
 and only their data changes per video. Web only (`someUi.audience: "web"`);
 `apps/www` serves the preview at `/burn-ins` (and `/captions`, its old
@@ -10,7 +10,7 @@ address) through the web surface's door.
 
 ## What it is
 
-A burn-in is a kind (`captions`, `headline`, `card`), a named design and
+A burn-in is a kind (`captions`, `headline`, `card`, `authorship`), a named design and
 one video's params, which the cut list carries. `src/lib/burn-in.ts` holds
 the contract and says why it is the way it is; each module's header does
 the same for its part:
@@ -20,6 +20,10 @@ the same for its part:
   advance widths.
 - `src/lib/captions/`: the subtitles (GWB11, #2085).
 - `src/lib/journal.ts`: the Build Journal headline and card, design `v1`.
+- `src/lib/authorship.ts`: whose idea and whose hands, design `cells-v1`:
+  an intro and an end card over the bare cards that open and close the
+  video, and the mark in the gutter beside the picture between them. Its
+  params come only from `@some-ui/video-render`'s `authorshipParams`.
 - `src/runtime/record.ts`, `src/components/record`: the recording protocol.
 - `src/components/preview`, `src/components/stage`: the preview page.
 

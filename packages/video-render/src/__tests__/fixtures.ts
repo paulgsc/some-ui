@@ -42,6 +42,7 @@ export function shot(id: string, over: Partial<Shot> = {}): Shot {
     voiceInMs: 200,
     overrides: {},
     burnIns: [],
+    idea: { origin: "agent" },
     ...over,
   }
 }

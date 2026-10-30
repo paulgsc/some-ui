@@ -58,12 +58,27 @@ describe("where burn-ins sit", () => {
     }
   })
 
-  it("shares a region only between a scene's headline and its card, one or the other", () => {
+  it("shares a region only between a scene's headline and its card, one or the other, and the authorship mark's bare cards", () => {
     const sharing = KINDS.flatMap((a, i) =>
       KINDS.slice(i + 1).flatMap((b) =>
         shared(a, b).length > 0 ? [[a, b]] : []
       )
     )
-    expect(sharing).toEqual([["headline", "card"]])
+    expect(sharing).toEqual([
+      ["headline", "card"],
+      ["headline", "authorship"],
+      ["card", "authorship"],
+    ])
+  })
+
+  it("keeps the authorship mark to the gutter between its intro and its end card", () => {
+    const p = ready("authorship", "cells-v1")
+    for (const t of times(p)) {
+      const f = frameAt(p, t)
+      if (f.kind !== "authorship" || f.frame.part !== "mark") continue
+      for (const box of boxesOf(f)) {
+        expect(inside(box, REGIONS.gutter), `${t} ms`).toBe(true)
+      }
+    }
   })
 })

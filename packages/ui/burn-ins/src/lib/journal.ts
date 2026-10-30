@@ -27,7 +27,7 @@ import { barlow, bottomOf, fitLine, setText, type TextBlock } from "./text"
 export const JOURNAL_DESIGNS = ["v1"] as const
 
 /** `render.py`'s palette. Video colours, not the app's, so literals. */
-const INK = {
+export const INK = {
   panel: "#182331",
   edge: "#344758",
   text: "#cbd5e1",
@@ -36,7 +36,7 @@ const INK = {
 } as const
 
 /** A rounded panel drawn under a card's text. */
-type Panel = {
+export type Panel = {
   readonly box: Box
   readonly fill: string
   readonly edge: string
@@ -136,6 +136,12 @@ const INNER = {
   width: PANEL.box.width - 112,
 }
 const INNER_BOTTOM = PANEL.box.y + PANEL.box.height - 56
+
+export {
+  PANEL as CARD_PANEL,
+  INNER as CARD_INNER,
+  INNER_BOTTOM as CARD_INNER_BOTTOM,
+}
 
 /** Rows of `lineHeight * size` that fit from `y` to the panel's foot. */
 const rowsLeft = (y: number, sizePx: number, lineHeight = 1.25): number =>

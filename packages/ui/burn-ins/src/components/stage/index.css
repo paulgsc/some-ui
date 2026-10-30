@@ -26,8 +26,13 @@
   }
 
   .bi-panel,
-  .bi-text {
+  .bi-text,
+  .bi-cell {
     position: absolute;
+  }
+
+  .bi-cell {
+    box-sizing: border-box;
   }
 
   .bi-text {
