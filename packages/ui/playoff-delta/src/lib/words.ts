@@ -261,11 +261,3 @@ export function numberWord(n: number): string {
   ]
   return words[n] ?? String(n)
 }
-
-/** "1st", "2nd", "23rd". */
-export function ordinal(n: number): string {
-  const tens = n % 100
-  if (tens >= 11 && tens <= 13) return `${n}th`
-  const suffix = ["th", "st", "nd", "rd"][n % 10] ?? "th"
-  return `${n}${suffix}`
-}

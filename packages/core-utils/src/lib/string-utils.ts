@@ -6,6 +6,14 @@ export function counted(n: number, noun: string, plural = `${noun}s`): string {
   return `${n} ${n === 1 ? noun : plural}`
 }
 
+/** "1st", "2nd", "23rd", "111th": a place as a person reads it. */
+export function ordinal(n: number): string {
+  const tens = n % 100
+  if (tens >= 11 && tens <= 13) return `${n}th`
+  const suffix = ["th", "st", "nd", "rd"][n % 10] ?? "th"
+  return `${n}${suffix}`
+}
+
 /** "12.4 KB": a byte count as a person reads it. */
 export function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`

@@ -56,7 +56,10 @@ export const GAME_CARD_SAMPLES: Readonly<
   },
 }
 
-export const SAMPLES: Readonly<Record<Kind, BurnInData["params"]>> = {
+/** One sample for each kind but a game card, which has one per template. */
+export const SAMPLES: Readonly<
+  Record<Exclude<Kind, "game-card">, BurnInData["params"]>
+> = {
   captions: { lines: SAMPLE },
   headline: {
     kicker: "BUILD JOURNAL · SHORT 7",
@@ -96,9 +99,7 @@ export const SAMPLES: Readonly<Record<Kind, BurnInData["params"]>> = {
     ],
     endMs: STILL_SAMPLE_MS,
   },
-  "game-card": GAME_CARD_SAMPLES.stat,
 }
 
-/** Every sample of a kind: one for most, one per template for a game card. */
 export const samplesOf = (kind: Kind): ReadonlyArray<BurnInData["params"]> =>
   kind === "game-card" ? Object.values(GAME_CARD_SAMPLES) : [SAMPLES[kind]]

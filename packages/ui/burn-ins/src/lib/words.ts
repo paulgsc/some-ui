@@ -4,20 +4,14 @@
  * goes, never the machinery that draws it (`__tests__/words.test.ts`).
  */
 
+import { ordinal } from "@some-ui/core-utils"
+
 import type { Actor } from "./authorship"
 import type { Kind } from "./burn-in"
 import type { ThemeId } from "./captions/theme"
 import type { GameCardTemplate, Quarter } from "./game-card"
 
 const seconds = (ms: number): string => (Math.max(0, ms) / 1000).toFixed(1)
-
-/** "1st", "2nd", "3rd", "4th", "11th", "22nd". */
-export function ordinal(n: number): string {
-  const tens = n % 100
-  if (tens >= 11 && tens <= 13) return `${n}th`
-  const suffix = ["th", "st", "nd", "rd"][n % 10] ?? "th"
-  return `${n}${suffix}`
-}
 
 const quarterName = (q: Quarter): string =>
   q === "OT" ? "Overtime" : `${ordinal(q)} quarter`
@@ -132,7 +126,7 @@ export const WORDS = {
       stat: {
         name: "Situation",
         about:
-          "The down, the distance, the margin and the time left, for one team. The sample is a 49ers third-and-8, down 4 late in the fourth.",
+          "The down, the distance, the margin and the time left, for one team.",
       },
       score: {
         name: "Score",

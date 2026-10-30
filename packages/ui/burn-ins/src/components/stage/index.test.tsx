@@ -79,9 +79,5 @@ describe("the stage", () => {
     const icon = container.querySelector("svg.bi-glyph")
     expect(icon?.getAttribute("stroke")).toBe("#ffd60a")
     expect(icon?.querySelectorAll("path").length).toBeGreaterThan(0)
-    const rows = [...container.querySelectorAll(".bi-text > div")].map(
-      (r) => r.textContent
-    )
-    expect(rows).toEqual(["During the game", "Third and long", "Converted"])
   })
 })

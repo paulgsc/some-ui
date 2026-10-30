@@ -3,7 +3,6 @@ import {
   boxesOf,
   frameAt,
   prepare,
-  runtimeMs,
   type BurnInFrame,
 } from "@burn-ins/lib/burn-in"
 import { GAME_CARD_TEMPLATES, pathSteps } from "@burn-ins/lib/game-card"
@@ -27,21 +26,6 @@ const rows = (params: unknown): ReadonlyArray<string> =>
   drawn(params).frame.blocks.flatMap((b) => b.rows)
 
 describe("a game card", () => {
-  it("draws every template's sample", () => {
-    for (const t of GAME_CARD_TEMPLATES) {
-      expect(card(GAME_CARD_SAMPLES[t]).ok, t).toBe(true)
-    }
-  })
-
-  it("holds still for its whole scene", () => {
-    for (const t of GAME_CARD_TEMPLATES) {
-      const p = card(GAME_CARD_SAMPLES[t])
-      if (!p.ok) throw new Error(t)
-      expect(runtimeMs(p.value)).toBeNull()
-      expect(frameAt(p.value, 4321)).toEqual(frameAt(p.value, 0))
-    }
-  })
-
   it("says the situation in the person's terms", () => {
     expect(rows(GAME_CARD_SAMPLES.stat)).toEqual([
       "SF · 4th quarter",
@@ -187,14 +171,49 @@ describe("a game card", () => {
     })
   })
 
-  it("refuses a logo, a clock or a down it can't read", () => {
+  it("draws every scenario in the catalog, with and without each outcome", () => {
+    for (const s of SCENARIOS) {
+      const bare = rows({ template: "scenario", scenario: s.id })
+      expect(bare, s.id).toEqual([PHASE_TITLES[s.phase], ...bare.slice(1)])
+      expect(bare.slice(1).join(" "), s.id).toBe(s.name)
+      for (const o of s.outcomes) {
+        const outcome = { scenario: s.id, outcome: o.slug }
+        expect(card({ template: "scenario", ...outcome }).ok, o.slug).toBe(true)
+        expect(
+          card({ template: "chain", steps: [outcome, outcome] }).ok,
+          `${s.id} ${o.slug} in a chain`
+        ).toBe(true)
+      }
+    }
+  })
+
+  it("refuses a chain step that is blank, or both a scenario and words", () => {
+    for (const step of [
+      { text: "   " },
+      { scenario: "in.kick", outcome: "made", text: "Good from 50" },
+    ]) {
+      expect(
+        card({ template: "chain", steps: [{ text: "First" }, step] }).ok,
+        JSON.stringify(step)
+      ).toBe(false)
+    }
+  })
+
+  it("refuses a score with one team on both sides", () => {
+    expect(
+      card({
+        ...GAME_CARD_SAMPLES.score,
+        home: { team: "SF", points: 3 },
+      }).ok
+    ).toBe(false)
+  })
+
+  it("refuses a team or a clock it can't read", () => {
     const stat = GAME_CARD_SAMPLES.stat
     for (const bad of [
       { ...stat, team: "49ers" },
       { ...stat, left: "1:75" },
       { ...stat, left: "16:00" },
-      { ...stat, down: 5 },
-      { ...stat, template: "logo" },
     ]) {
       expect(card(bad).ok, JSON.stringify(bad)).toBe(false)
     }

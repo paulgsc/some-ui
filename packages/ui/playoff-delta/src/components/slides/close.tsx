@@ -28,11 +28,11 @@ import {
   live,
   materialOf,
   medalOf,
-  ordinal,
   phraseOf,
   STAKES,
   stakesOf,
 } from "@playoff-delta/lib/words"
+import { ordinal } from "@some-ui/core-utils"
 
 import { BAND_CLASS, PieceLight, priceNote } from "./marks"
 import { delay, Kicker, Reveal, type SlideProps } from "./shared"

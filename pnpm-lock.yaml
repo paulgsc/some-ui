@@ -1229,6 +1229,9 @@ importers:
 
   packages/ui/burn-ins:
     dependencies:
+      '@some-ui/core-utils':
+        specifier: workspace:*
+        version: link:../../core-utils
       '@some-ui/game-scenarios':
         specifier: workspace:*
         version: link:../../game-scenarios

@@ -9,6 +9,7 @@
  * per question (`./reading`), opening on the week's ways.
  */
 
+import { ordinal } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/intent-kit"
 
 import {
@@ -51,7 +52,6 @@ import {
   MATERIAL,
   medalOf,
   numberWord,
-  ordinal,
   phraseOf,
   PIECE_ORDER,
   PIECES,

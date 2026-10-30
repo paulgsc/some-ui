@@ -28,16 +28,7 @@ it is; each module's header does the same for its part:
   the end card prints, one character a scene, and the page it opens,
   `/authorship?r=…`, which draws the mark's key and that video's record from
   the link alone and keeps nothing.
-- `src/lib/game-card.ts`: Game Week Bites' one-off cards, design
-  `gridiron-v1`, which the shot writer picks and fills (GWB9) and home's
-  renderer draws (GWB10). Its params are a union on `template`: `stat` (the
-  down, distance, margin and time left, for one team), `score` (the score at
-  a moment), `scenario` (a scenario's icon and name from
-  `@some-ui/game-scenarios`, and how it came out), `chain` (two to four
-  outcomes, one leading to the next) and `path` (Playoff Delta's paths for a
-  week). Each is one panel at the top of the body region, as tall as its
-  words. Teams are their codes, as text, never a logo. A new template is a
-  new member of the union; changing how one looks is a new design.
+- `src/lib/game-card.ts`: Game Week Bites' cards (GWB12), design `gridiron-v1`.
 - `src/runtime/record.ts`, `src/components/record`: the recording protocol.
 - `src/components/preview`, `src/components/stage`: the preview page.
 

@@ -32,7 +32,12 @@ import {
 } from "@game-week/lib/words"
 import { cn } from "@some-ui/core-utils"
 import type { ScenarioId } from "@some-ui/game-scenarios"
-import { PHASE_TITLES, PHASES, SCENARIOS } from "@some-ui/game-scenarios"
+import {
+  PHASE_TITLES,
+  PHASES,
+  scenarioOf,
+  SCENARIOS,
+} from "@some-ui/game-scenarios"
 import {
   Button,
   Sheet,
@@ -43,7 +48,7 @@ import {
 import { RECORDING_FAILURE_COPY } from "@some-ui/voice-capture"
 import { Eye, EyeOff, List, Mic, Settings2 } from "lucide-react"
 
-import { ScenarioIcon, scenarioOf } from "./scenario-icon"
+import { ScenarioIcon } from "./scenario-icon"
 
 export type GameWeekProps = {
   /** The phone's ports. Read once, on mount. */
@@ -143,7 +148,7 @@ const Card = ({
           large ? "text-lg" : "text-sm"
         )}
       >
-        {scenarioOf(card.scenario)?.name}
+        {scenarioOf(card.scenario).name}
       </span>
       <span className="text-muted-foreground block truncate text-xs">
         {card.context}
@@ -170,7 +175,7 @@ const JustHappenedRow = ({
       <ScenarioIcon id={each.scenario} className="text-muted-foreground" />
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold">
-          {scenarioOf(each.scenario)?.name}
+          {scenarioOf(each.scenario).name}
         </span>
         <span className="text-muted-foreground block truncate text-xs">
           {each.context}
@@ -291,7 +296,7 @@ const Recording = ({
       <p className="text-lg font-bold uppercase tracking-wide">
         {said.how === "said-first"
           ? WORDS.sayingFirst
-          : scenarioOf(said.scenario)?.name}
+          : scenarioOf(said.scenario).name}
       </p>
       <div className="flex w-full max-w-xs items-center gap-3">
         <div

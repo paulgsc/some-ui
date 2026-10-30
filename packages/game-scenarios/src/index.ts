@@ -12,6 +12,7 @@ export { ICONS, PRIMITIVES } from "./icons"
 export {
   SCENARIOS,
   isScenarioId,
+  scenarioOf,
   type Outcome,
   type Scenario,
 } from "./scenarios"

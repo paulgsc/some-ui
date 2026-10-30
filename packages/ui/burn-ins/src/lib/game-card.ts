@@ -21,10 +21,11 @@
  * frame is too. Text that does not fit is refused with the reason, never cut.
  */
 
+import { ordinal } from "@some-ui/core-utils"
 import {
   isScenarioId,
   PHASE_TITLES,
-  SCENARIOS,
+  scenarioOf,
   type Scenario,
   type ScenarioId,
 } from "@some-ui/game-scenarios"
@@ -42,7 +43,7 @@ import {
   type TextBlock,
   type TextStyle,
 } from "./text"
-import { ordinal, WORDS } from "./words"
+import { WORDS } from "./words"
 
 export const GAME_CARD_DESIGNS = ["gridiron-v1"] as const
 
@@ -97,16 +98,21 @@ const StatSchema = z.object({
 
 const Side = z.object({ team: Team, points: z.number().int().min(0).max(99) })
 
-const ScoreSchema = z.object({
-  template: z.literal("score"),
-  away: Side,
-  home: Side,
-  when: z.union([
-    z.object({ quarter: QuarterSchema, left: Clock }),
-    z.literal("halftime"),
-    z.literal("final"),
-  ]),
-})
+const ScoreSchema = z
+  .object({
+    template: z.literal("score"),
+    away: Side,
+    home: Side,
+    when: z.union([
+      z.object({ quarter: QuarterSchema, left: Clock }),
+      z.literal("halftime"),
+      z.literal("final"),
+    ]),
+  })
+  .refine((p) => p.away.team !== p.home.team, {
+    message: "a team doesn't play itself",
+    path: ["home", "team"],
+  })
 
 const ScenarioCardSchema = z.object({
   template: z.literal("scenario"),
@@ -115,11 +121,12 @@ const ScenarioCardSchema = z.object({
   outcome: z.string().optional(),
 })
 
+// Strict, so a step naming both a scenario and words is refused, not read as one.
 const ChainStepSchema = z.union([
   /** A scenario and how it came out. */
-  z.object({ scenario: ScenarioIdSchema, outcome: z.string() }),
+  z.strictObject({ scenario: ScenarioIdSchema, outcome: z.string() }),
   /** A few plain words, for what no scenario covers. */
-  z.object({ text: z.string().min(1) }),
+  z.strictObject({ text: z.string().trim().min(1) }),
 ])
 
 const ChainSchema = z.object({
@@ -131,13 +138,15 @@ const ChainSchema = z.object({
 const PathSchema = z.object({
   template: z.literal("path"),
   team: Team,
-  week: z.number().int().min(1).max(23),
+  /** A regular-season week, as Playoff Delta's story covers. */
+  week: z.number().int().min(1).max(18),
   /**
    * The week's paths after its games, as Playoff Delta's story has them
    * (`paths.after`): `paths[x]` is the best seed the team can get in as
    * winning exactly x more games, null for none.
    */
-  paths: z.array(z.number().int().min(1).max(7).nullable()).min(1).max(18),
+  // Restates its `Paths`: that package's only entry is its React stage.
+  paths: z.array(z.number().int().min(1).max(7).nullable()).min(1),
 })
 
 export const GameCardParamsSchema = z.discriminatedUnion("template", [
@@ -210,7 +219,6 @@ const square = (x: number, y: number, size: number): Box => ({
   height: size,
 })
 
-/** A block moved down by `dy`. */
 const lowered = (b: TextBlock | null, dy: number): TextBlock | null =>
   b && { ...b, box: { ...b.box, y: b.box.y + dy } }
 
@@ -319,15 +327,12 @@ function scoreCard(p: z.infer<typeof ScoreSchema>): Parsed<GameCardFrame> {
   return carded("score", named, [])
 }
 
-const BY_ID = new Map<string, Scenario>(SCENARIOS.map((s) => [s.id, s]))
-
 /** The scenario as the catalog has it, and its outcome's words when asked. */
 function lookUp(
   id: ScenarioId,
   outcome: string | undefined
 ): Parsed<{ readonly scenario: Scenario; readonly outcome: string | null }> {
-  const scenario = BY_ID.get(id)
-  if (!scenario) return { ok: false, problems: [`no such scenario: ${id}`] }
+  const scenario = scenarioOf(id)
   if (outcome === undefined)
     return { ok: true, value: { scenario, outcome: null } }
   const label = scenario.outcomes.find((o) => o.slug === outcome)?.label
@@ -355,7 +360,7 @@ function scenarioCard(
     scenario.name,
     nameStyle,
     at(y, textX, WIDTH - ICON - 36),
-    2
+    3
   )
   const outcomeStyle = barlow(600, 52, INK.accent)
   const came =
@@ -370,15 +375,14 @@ function scenarioCard(
   // The words sit level with the icon's middle when they are shorter than it.
   const foot = came ?? name
   const dy = foot ? Math.max(0, (ICON - (bottomOf(foot) - y)) / 2) : 0
-  return carded(
-    "scenario",
-    [
-      ["scenario's phase", kicker],
-      ["scenario's name", lowered(name, dy)],
-      ["outcome", lowered(came, dy)],
-    ],
-    [{ box: square(X, y, ICON), paths: scenario.icon, colour: INK.accent }]
-  )
+  const named: Named = [
+    ["scenario's phase", kicker],
+    ["scenario's name", lowered(name, dy)],
+  ]
+  if (outcome !== null) named.push(["outcome", lowered(came, dy)])
+  return carded("scenario", named, [
+    { box: square(X, y, ICON), paths: scenario.icon, colour: INK.accent },
+  ])
 }
 
 const MARK = 72
