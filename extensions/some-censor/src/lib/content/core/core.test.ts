@@ -1253,3 +1253,75 @@ describe("the date corpus", () => {
     expect(dateFacts(actions)).toEqual(["3 days ago", "4 days ago"])
   })
 })
+
+describe("the course (R12)", () => {
+  const queued = (rows: ReadonlyArray<string>, t: number): CoreEvent => ({
+    kind: "queued",
+    rows: rows.map(asVideoId),
+    t,
+  })
+  const courses = (actions: ReadonlyArray<Action>): Array<Array<string>> =>
+    actions.flatMap((a) =>
+      a.kind === "course"
+        ? [
+            a.marks.map((m) =>
+              m === null ? "." : `${m.place}${m.stop ? "!" : ""}`
+            ),
+          ]
+        : []
+    )
+  const page = [
+    started,
+    seen(1, { uploadDate: OLD }, "r0"),
+    seen(1, { uploadDate: OLD }, "r1"),
+    seen(1, { uploadDate: null }, "r2"),
+    seen(1, { uploadDate: OLD }, "r3"),
+    watching("r1", 2),
+  ]
+
+  it("marks the playlist once its rows are read, and again only when a mark moves", () => {
+    const first = fold([...page, queued(["r0", "r1", "r2", "r3"], 3)])
+    expect(courses(first.actions)).toEqual([["played", "now!", ".", "ahead"]])
+
+    const again = reduce(first.state, queued(["r0", "r1", "r2", "r3"], 4))
+    expect(courses(again.actions)).toEqual([])
+
+    const skip = reduce(first.state, {
+      kind: "autoplay",
+      autoplay: "skip",
+      t: 5,
+    })
+    expect(courses(skip.actions)).toEqual([["played", "now", ".", "next"]])
+  })
+
+  it("decides nothing: no card's view, nor where autoplay goes", () => {
+    const without = fold(page)
+    const with_ = fold([...page, queued(["r0", "r1", "r2", "r3"], 3)])
+    for (const id of ["r0", "r1", "r2", "r3"]) {
+      const key = cardKey(asVideoId(id))
+      expect(viewOf(with_.state, key)).toBe(viewOf(without.state, key))
+      expect(admits(with_.state, asVideoId(id))).toBe(
+        admits(without.state, asVideoId(id))
+      )
+    }
+  })
+
+  it("takes the marks away on nav and on stop", () => {
+    const marked = fold([...page, queued(["r0", "r1", "r2", "r3"], 3)])
+    const navigated = reduce(marked.state, nav(2, 4))
+    expect(courses(navigated.actions)).toEqual([[]])
+    expect(navigated.state.queue).toEqual([])
+
+    const stopped = reduce(marked.state, { kind: "stop", t: 4 })
+    expect(courses(stopped.actions)).toEqual([[]])
+  })
+
+  it("marks nothing in the miniplayer, which plays over another page", () => {
+    const mini = fold([
+      ...page.slice(0, -1),
+      watching("r1", 2, { miniplayer: true }),
+      queued(["r0", "r1", "r2", "r3"], 3),
+    ])
+    expect(courses(mini.actions)).toEqual([[".", ".", ".", "."]])
+  })
+})

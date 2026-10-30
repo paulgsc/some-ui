@@ -151,6 +151,37 @@ escalates with disclosure, and
 the words _safe, unlock, reveal, preview, fresh, new, soon, yet, missed,
 caught up, contained_.
 
+## 9. The course
+
+A plate covers the thumbnail YouTube marks the playing row on, and a held
+row is not drawn at all. In a Mix, that took away which row is playing, and
+hid the rows autoplay will not go on from: it stops there, before a held
+video, and the owner starts the next one. The owner asked for both back on
+2026-10-30. The marks show what the extension already does; they change
+nothing it decides (`R12`).
+
+The watch page's playlist marks each row it shows against the row playing:
+
+| Row                                                               | Mark                                    |
+| ----------------------------------------------------------------- | --------------------------------------- |
+| Played: before the row playing                                    | Dimmed                                  |
+| Now: the page's own video                                         | A solid ring, and the row tinted        |
+| Next: where autoplay goes from it                                 | A dashed ring                           |
+| Ahead: autoplay, or a start after a stop, reaches it              | As YouTube draws it                     |
+| Passed: Skip goes past it (a plated row from music, under Strict) | Its thumbnail faint                     |
+| A stop: autoplay goes on to no later row of this list             | A pause sign on it, and a rule under it |
+
+A row stops when the next is held and the choice is Stop; when the mode
+keeps autoplay in the lane and the row is whole while the next is not; and,
+under Skip, when no later row is shown and admitted. Every stop ahead is
+marked, not only the first, since after one the owner starts the next row
+by hand. Under Skip, a stop can still go on into Up next, outside the list.
+
+Marks only, in YouTube's tokens: no words, no colour of its own, nothing
+that moves (§8). Not foreseen: a row shown by its card whose own page turns
+out held (SK1), the last row loaded, after which a Mix loads more, and
+YouTube's shuffle.
+
 ## Provenance
 
 Settled with the owner on 2026-10-15/16 in a Claude Code design session

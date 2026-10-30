@@ -71,6 +71,16 @@ export type Token =
       readonly t: number
     }
   /**
+   * The watch page's playlist has these rows, in page order: the rows the
+   * Sensor holds a card for, of the first playlist with any. Re-sent
+   * whenever they change; empty when no playlist is shown (R12).
+   */
+  | {
+      readonly kind: "queued"
+      readonly rows: ReadonlyArray<VideoId>
+      readonly t: number
+    }
+  /**
    * The page's own video, as the watch page or a Short shows it, or null
    * when neither is shown (#1805). Re-sent whenever the reading changes.
    */

@@ -47,6 +47,9 @@ observation to write:
    images (QD12), and the watch page's view (#1805): "Not here." on a held
    video's page, and until a video is plated or whole no playback and a tab
    title of "YouTube", which it keeps against YouTube's own writes.
+   It also marks the watch page's playlist with what Core works out from
+   those views (R12): which rows played, which plays, which comes next, and
+   each row autoplay stops after (`docs/absent-plated-heard.md` §9).
 
 ## Browsers
 

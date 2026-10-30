@@ -29,6 +29,11 @@
  *        elements that left — but only those this key still owns, so an
  *        element that moved to another card keeps that card's stamp
  *        whichever render runs first.
+ *   A7 — The course is its own stamps (R12). `course` writes
+ *        `data-boyo-course` and `data-boyo-stop` on the rows it is handed,
+ *        takes them off every row it marked before and is not handed now,
+ *        and `dispose` takes them off every row. A card's stamps and the
+ *        course's never touch each other.
  */
 
 import type { CardKey } from "@censor/lib/content/core/keys"
@@ -37,11 +42,13 @@ import type { RenderModel } from "@censor/lib/content/fsm"
 import type { Plate } from "@censor/lib/content/plate/plate"
 import type { VideoId } from "@censor/types/ids"
 
-import type { BoundAction, CustodyTarget } from "./bound"
+import type { BoundAction, CustodyTarget, MarkedRow } from "./bound"
 import { createWatchHold } from "./watch-hold"
 
 export type Actuator = {
   realize(actions: ReadonlyArray<BoundAction>): void
+  /** Mark the playlist's rows, and only these (A7). */
+  course(rows: ReadonlyArray<MarkedRow>): void
   /** Stamps a key currently holds, for the debug layer. */
   custodyOf(key: CardKey): ReadonlyArray<HTMLElement>
   dispose(): void
@@ -179,6 +186,32 @@ export function createActuator(doc: Document, ports: ActuatorPorts): Actuator {
     realized.delete(key)
   }
 
+  // ── The course (R12) ───────────────────────────────────────────────────
+
+  /** Rows that carry a course stamp now. */
+  let marked = new Set<HTMLElement>()
+
+  function unmark(el: HTMLElement): void {
+    delete el.dataset["boyoCourse"]
+    delete el.dataset["boyoStop"]
+  }
+
+  function course(rows: ReadonlyArray<MarkedRow>): void {
+    const next = new Set<HTMLElement>()
+    for (const { el, mark } of rows) {
+      if (mark === null) continue
+      next.add(el)
+      // A3: an unchanged mark is not written again.
+      if (el.dataset["boyoCourse"] !== mark.place) {
+        el.dataset["boyoCourse"] = mark.place
+      }
+      if (!mark.stop) delete el.dataset["boyoStop"]
+      else el.dataset["boyoStop"] ??= ""
+    }
+    for (const el of marked) if (!next.has(el)) unmark(el)
+    marked = next
+  }
+
   // ── Skip (#1966) ───────────────────────────────────────────────────────
 
   let pendingPlay: ReturnType<typeof setTimeout> | null = null
@@ -236,6 +269,10 @@ export function createActuator(doc: Document, ports: ActuatorPorts): Actuator {
       }
     },
 
+    course(rows: ReadonlyArray<MarkedRow>): void {
+      if (!disposed) course(rows)
+    },
+
     custodyOf(key: CardKey): ReadonlyArray<HTMLElement> {
       const rec = realized.get(key)
       return rec === undefined ? [] : [...rec.anchors, ...rec.nested]
@@ -245,6 +282,7 @@ export function createActuator(doc: Document, ports: ActuatorPorts): Actuator {
       if (disposed) return
       disposed = true
       for (const key of [...realized.keys()]) unmount(key, [])
+      course([])
       watchHold.dispose()
       if (pendingPlay !== null) clearTimeout(pendingPlay)
       pendingPlay = null

@@ -613,3 +613,48 @@ describe("the poster and the face control (#1805, QD13)", () => {
     expect(root.hasAttribute("style")).toBe(false)
   })
 })
+
+describe("the course (A7, R12)", () => {
+  const row = (): HTMLElement => card("ytd-playlist-panel-video-renderer")
+
+  it("stamps where each row stands, and the stop", () => {
+    const [a, b, c] = [row(), row(), row()]
+    actuator.course([
+      { el: a, mark: { place: "played", stop: false } },
+      { el: b, mark: { place: "now", stop: true } },
+      { el: c, mark: null },
+    ])
+    expect(a.dataset["boyoCourse"]).toBe("played")
+    expect(a.hasAttribute("data-boyo-stop")).toBe(false)
+    expect(b.dataset["boyoCourse"]).toBe("now")
+    expect(b.hasAttribute("data-boyo-stop")).toBe(true)
+    expect(c.hasAttribute("data-boyo-course")).toBe(false)
+  })
+
+  it("takes the marks off a row it is no longer handed, and every row on dispose", () => {
+    const [a, b] = [row(), row()]
+    actuator.course([
+      { el: a, mark: { place: "now", stop: true } },
+      { el: b, mark: { place: "next", stop: false } },
+    ])
+    actuator.course([{ el: b, mark: { place: "now", stop: false } }])
+    expect(a.hasAttribute("data-boyo-course")).toBe(false)
+    expect(a.hasAttribute("data-boyo-stop")).toBe(false)
+    expect(b.dataset["boyoCourse"]).toBe("now")
+
+    actuator.dispose()
+    expect(b.hasAttribute("data-boyo-course")).toBe(false)
+  })
+
+  it("never touches a card's own stamps, nor they its", () => {
+    const el = row()
+    actuator.realize([render(K, PLATED, [{ el, role: "anchor" }])])
+    actuator.course([{ el, mark: { place: "now", stop: false } }])
+    actuator.realize([unmount(K)])
+    expect(el.hasAttribute("data-boyo")).toBe(false)
+    expect(el.dataset["boyoCourse"]).toBe("now")
+    actuator.course([])
+    expect(el.getAttribute("data-boyo")).toBeNull()
+    expect(el.hasAttribute("data-boyo-course")).toBe(false)
+  })
+})

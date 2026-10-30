@@ -62,6 +62,13 @@
  *        Music mix its rows with no date are plated (QD3's amendment).
  *        Like `played`, `musicMixes` is the tab's: `nav` keeps it, and only
  *        `start` empties it.
+ *  R12 — The course follows every step (`course/course.ts`). After each
+ *        event, the marks of the watch page's playlist are worked out again
+ *        from the rows the Sensor last read (`queued`), each row's view, the
+ *        page's own video, the mode and the autoplay choice; a `course`
+ *        action is emitted only when the rows or a mark changed. It decides
+ *        nothing: no card's view, nor where autoplay goes. `nav` and `stop`
+ *        empty the rows, so the marks go with the cards.
  *
  * R4 correlated the answers to Core's async requests; none are left, so it
  * is retired. The parenthesised M- and C- labels are kept so their
@@ -69,6 +76,8 @@
  * are `controller.ts`'s.
  */
 
+import type { RowMark } from "@censor/lib/content/course/course"
+import { courseOf } from "@censor/lib/content/course/course"
 import type { WatchView } from "@censor/lib/content/fsm"
 import { decide, decideWatch, project } from "@censor/lib/content/fsm"
 import { plateOf } from "@censor/lib/content/plate/plate"
@@ -81,9 +90,17 @@ import type { CardKey } from "./keys"
 import { cardKey, keyVideoId } from "./keys"
 import type { Observation, WatchObservation } from "./observation"
 import { mergeObservation, mergeWatch } from "./observation"
-import type { Arrival, CardState, CoreState, Rules, WatchState } from "./state"
+import type {
+  Arrival,
+  CardState,
+  CoreState,
+  Course,
+  Rules,
+  WatchState,
+} from "./state"
 import {
   EMPTY_UNKNOWN_SHAPES,
+  NO_COURSE,
   PLAYED_KEPT,
   skipTo,
   undatedShown,
@@ -142,6 +159,10 @@ function clearCards(state: CoreState): Step {
 }
 
 export function reduce(state: CoreState, event: CoreEvent): Step {
+  return withCourse(fold(state, event))
+}
+
+function fold(state: CoreState, event: CoreEvent): Step {
   const { kind } = event
   switch (kind) {
     // ── Lifecycle ──────────────────────────────────────────────────────────
@@ -163,6 +184,8 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
           musicMixes: [],
           arriving: null,
           stranded: null,
+          queue: [],
+          course: NO_COURSE,
         },
         actions: [record({ kind: "session.start", session: event.session })],
       }
@@ -172,7 +195,7 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
       if (state.phase !== "running") return none(state)
       const cleared = clearCards(state)
       return {
-        state: { ...cleared.state, phase: "idle", watch: null },
+        state: { ...cleared.state, phase: "idle", watch: null, queue: [] },
         actions: [
           record({ kind: "session.reset", session: state.session }),
           ...cleared.actions,
@@ -192,6 +215,7 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
           ...cleared.state,
           session: event.session,
           watch,
+          queue: [],
           unknownShapes: EMPTY_UNKNOWN_SHAPES,
         },
         actions: [
@@ -262,6 +286,11 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
       return watched(state, event.watch, event.t)
     }
 
+    case "queued": {
+      if (state.phase !== "running") return none(state)
+      return none({ ...state, queue: event.rows })
+    }
+
     case "autoplayed": {
       if (state.phase !== "running") return none(state)
       return none({ ...state, arriving: arrival(state, event.videoId) })
@@ -312,6 +341,51 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+/** R12: the playlist's marks as `state` has them now. */
+function courseNow(state: CoreState): Course {
+  const watch = state.watch
+  if (state.phase !== "running" || state.queue.length === 0) return NO_COURSE
+  const own =
+    watch === null || watch.observation.miniplayer
+      ? null
+      : watch.observation.videoId
+  const marks = courseOf({
+    rows: state.queue,
+    own,
+    ownWhole: watch?.view === "whole",
+    view: (videoId) => state.cards.get(cardKey(videoId))?.view.kind ?? null,
+    fromMusic: state.rules.fromMusic,
+    autoplay: state.autoplay,
+    played: state.played,
+  })
+  return { rows: state.queue, marks }
+}
+
+const sameMark = (a: RowMark | null, b: RowMark | null): boolean =>
+  a === b ||
+  (a !== null && b !== null && a.place === b.place && a.stop === b.stop)
+
+function sameCourse(a: Course, b: Course): boolean {
+  return (
+    a.rows.length === b.rows.length &&
+    a.rows.every((id, i) => id === b.rows[i]) &&
+    a.marks.every((mark, i) => sameMark(mark, b.marks[i] ?? null))
+  )
+}
+
+/** R12: append the course to a step when it moved. */
+function withCourse(step: Step): Step {
+  const course = courseNow(step.state)
+  if (sameCourse(course, step.state.course)) return step
+  return {
+    state: { ...step.state, course },
+    actions: [
+      ...step.actions,
+      { kind: "course", rows: course.rows, marks: course.marks },
+    ],
+  }
+}
 
 function adopt(
   state: CoreState,
