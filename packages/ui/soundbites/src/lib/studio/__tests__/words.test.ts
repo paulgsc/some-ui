@@ -107,6 +107,27 @@ describe("Studio's words", () => {
     expect(all.filter((text) => MACHINERY.test(text))).toEqual([])
   })
 
+  /**
+   * Start names a step the person takes, never a file, folder or format
+   * (#2325): no file name, no `›` path, no Drive folder, no "primer".
+   */
+  it("say the way in on Start in the person's terms, never a file or folder", () => {
+    const file = /\.json|›|build journal|\bprimers?\b|\bfolder\b|\bformat\b/i
+    const start = [
+      ...fixed(STUDIO_WORDS.start),
+      W.start.stepOf(2),
+      W.start.which(TITLE),
+      W.start.nextVersion(TITLE),
+      W.start.opened(TITLE),
+      W.start.revised(TITLE),
+      W.start.onPhone(2),
+      W.standing(null),
+      W.recordStatus(0, 3),
+    ]
+    expect(start.length).toBeGreaterThan(20)
+    expect(start.filter((text) => file.test(text))).toEqual([])
+  })
+
   it("write a length as a number of seconds", () => {
     expect(seconds(4_700)).toBe("4.7 s")
     expect(STUDIO_WORDS.record.runsWith(5_200)).toBe(

@@ -78,9 +78,10 @@ const studioShare: StudioShare | undefined =
     : undefined
 
 /**
- * The Studio wing's Home (lib/wings): New idea first (STUDIO ST18), then a
- * video made in sittings, its scenes recorded one at a time against a primer Claude saved
- * to Drive (STUDIO ST4).
+ * The Studio wing's Home (lib/wings): a video made in sittings (STUDIO
+ * ST4), with the way in to New idea (ST18) handed to Studio's Start, which
+ * places it as the loop's first step while there is no video and as a quiet
+ * link once there is (#2325).
  * Making something to publish, so not a study tool and not under Practice's
  * soundbites, though it records the same way (`@some-ui/voice-capture`).
  */
@@ -96,9 +97,8 @@ const StudioRoute = (): JSX.Element => {
       sittingKey,
     })
   }, [])
-  return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-4">
-      <h1 className="text-2xl font-bold tracking-tight">{WORDS.heading}</h1>
+  const newIdea = {
+    big: (
       <Link
         to="/journal/idea"
         className="bg-card border-brand focus-visible:ring-ring flex items-center gap-3 rounded-2xl border-2 px-4 py-3 focus-visible:ring-2 focus-visible:outline-none"
@@ -113,7 +113,17 @@ const StudioRoute = (): JSX.Element => {
           </span>
         </span>
       </Link>
-      <Studio share={studioShare} ports={studioPorts} />
+    ),
+    quiet: (
+      <Link to="/journal/idea" className="text-muted-foreground underline">
+        {WORDS.idea.newIdea}
+      </Link>
+    ),
+  }
+  return (
+    <div className="mx-auto flex w-full max-w-md flex-col gap-4">
+      <h1 className="text-2xl font-bold tracking-tight">{WORDS.heading}</h1>
+      <Studio share={studioShare} ports={studioPorts} newIdea={newIdea} />
     </div>
   )
 }

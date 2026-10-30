@@ -116,15 +116,38 @@ export const STUDIO_WORDS = {
   unreadable: "Couldn't open the video kept on this phone.",
   readAgain: "Try again",
 
+  /**
+   * Start says the loop in the person's terms, never a file, folder or
+   * format (#2325): `__tests__/words.test.ts` refuses those here.
+   */
   start: {
     eyebrow: "Your video",
     empty: "No video yet",
     emptyLine:
-      "Open a primer Claude saved to Drive, and its scenes are ready to record.",
-    openPrimer: "Open a primer",
-    openNewer: "Open a primer or Claude's version",
-    primerHint:
-      "A primer.json in Build Journal › voice › primers, or the project.json Claude sent back.",
+      "A video starts as an idea you say out loud. Here is the way through.",
+    /** The loop, as steps; the third is the sittings below. */
+    steps: {
+      idea: {
+        title: "Catch the idea",
+        line: "Say what the video is, the moment it comes. Here, by voice.",
+      },
+      scenes: {
+        title: "Claude turns it into scenes",
+        line: "Ask Claude in a session. The scenes to record arrive in your Drive.",
+      },
+      sittings: {
+        title: "Record, Watch, Shape, Finish",
+        line: "One sitting at a time, on this phone, until it's ready to upload.",
+      },
+    },
+    stepOf: (n: number): string => `Step ${n}`,
+    /** The quiet way in for what a session made. */
+    openSent: "Open what Claude sent",
+    openSentHint:
+      "The scenes Claude made for your idea, or Claude's version of your video.",
+    openNewer: "Open Claude's version",
+    openNewerHint:
+      "Claude's version of this video, or the scenes for a new one.",
     startHere: "Start here",
     others: "Other videos with takes on the phone",
     onPhone: (n: number): string =>

@@ -65,7 +65,7 @@ function setup(
 }
 
 async function openPrimer(): Promise<void> {
-  const pick = await screen.findByLabelText(/^Open a primer/)
+  const pick = await screen.findByLabelText(new RegExp(`^${W.start.openSent}`))
   fireEvent.change(pick, {
     target: { files: [new File(["{}"], "primer.json")] },
   })
@@ -79,10 +79,17 @@ async function takeOne(): Promise<void> {
 }
 
 describe("Studio", () => {
-  it("opens a primer, then offers Record as the place to start", async () => {
+  it("shows the loop as steps with no video, then Record as the place to start once Claude's scenes are opened", async () => {
     setup()
     expect(await screen.findByText(W.start.empty)).toBeInTheDocument()
+    for (const step of Object.values(W.start.steps)) {
+      expect(screen.getByText(step.title)).toBeInTheDocument()
+    }
+    expect(
+      screen.getByRole("list", { name: W.start.steps.sittings.title })
+    ).toHaveTextContent(Object.values(W.start.sittings).join(""))
     await openPrimer()
+    expect(screen.queryByText(W.start.steps.idea.title)).toBeNull()
     expect(screen.getByText(W.start.startHere)).toBeInTheDocument()
     expect(screen.getByText(W.recordStatus(0, 3))).toBeInTheDocument()
     expect(screen.getByText(W.finish.status.take(1))).toBeInTheDocument()
