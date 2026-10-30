@@ -71,6 +71,11 @@ export type RuntimePorts = {
   readonly clock?: () => number
   readonly mintSession?: () => SessionId
   readonly onFact?: (fact: CoreFact) => void
+  /**
+   * Autoplay stopped where the page could not show it would, or that is
+   * over (R13): the shell says so on the toolbar button.
+   */
+  readonly onStopped?: (stopped: boolean) => void
 }
 
 export type Runtime = {
@@ -136,6 +141,8 @@ export function createRuntime(ports: RuntimePorts): Runtime {
       } else if (action.kind === "skip" || action.kind === "course") {
         // Answered after the Actuator has the rest (`dispatch`).
         continue
+      } else if (action.kind === "stopped") {
+        ports.onStopped?.(action.stopped)
       } else if (action.kind === "play") {
         const el = sensorInstance.upNextCard(action.key)
         bound.push({

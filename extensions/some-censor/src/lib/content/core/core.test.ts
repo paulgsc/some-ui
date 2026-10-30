@@ -1325,3 +1325,75 @@ describe("the course (R12)", () => {
     expect(courses(mini.actions)).toEqual([[".", ".", ".", "."]])
   })
 })
+
+describe("a stop the course did not foresee (R13)", () => {
+  const told = (actions: ReadonlyArray<Action>): Array<boolean> =>
+    actions.flatMap((a) => (a.kind === "stopped" ? [a.stopped] : []))
+  const queued = (rows: ReadonlyArray<string>): CoreEvent => ({
+    kind: "queued",
+    rows: rows.map(asVideoId),
+    t: 3,
+  })
+  const onPage = [
+    started,
+    watching("here", 2),
+    seen(2, { uploadDate: OLD }, "here"),
+    seen(2, { uploadDate: "3 hours ago" }, "recent"),
+  ]
+
+  it("is told when autoplay stops with no stop marked, once, until the page moves on", () => {
+    const stopped = fold([...onPage, held(["recent"])])
+    expect(told(stopped.actions)).toEqual([true])
+    expect(stopped.state.unforeseen).toEqual({ at: "here" })
+    expect(told(reduce(stopped.state, held(["recent"], 10)).actions)).toEqual(
+      []
+    )
+    // A navigation keeps the page's video: still the same stop.
+    expect(told(reduce(stopped.state, nav(2, 11)).actions)).toEqual([])
+    const moved = reduce(stopped.state, watching("clicked", 12))
+    expect(told(moved.actions)).toEqual([false])
+    expect(moved.state.unforeseen).toBeNull()
+  })
+
+  it("is not told when the course marked the row a stop", () => {
+    const marked = fold([...onPage, queued(["here", "recent"])])
+    expect(marked.state.course.marks[0]?.stop).toBe(true)
+    expect(told(reduce(marked.state, held(["recent"])).actions)).toEqual([])
+  })
+
+  it("is not told when Skip finds somewhere to go, and ends when it does", () => {
+    const skipping = fold([
+      ...onPage,
+      seen(2, { uploadDate: OLD }, "old"),
+      { kind: "autoplay", autoplay: "skip", t: 2 },
+    ])
+    expect(told(reduce(skipping.state, held(["old"])).actions)).toEqual([])
+    const nowhere = reduce(skipping.state, held(["recent"]))
+    expect(told(nowhere.actions)).toEqual([true])
+    expect(told(reduce(nowhere.state, held(["old"], 10)).actions)).toEqual([
+      false,
+    ])
+  })
+
+  it("is told when a page autoplay went on into is held and nothing moves on (SK1)", () => {
+    const onTheWay = fold([
+      started,
+      watching("here", 2),
+      seen(2, { uploadDate: OLD }, "next"),
+      { kind: "autoplayed", videoId: asVideoId("next"), t: 3 },
+    ])
+    const landed = reduce(
+      onTheWay.state,
+      watching("next", 4, { dates: ["3 hours ago"] })
+    )
+    expect(landed.state.watch?.view).toBe("absent")
+    expect(told(landed.actions)).toEqual([true])
+  })
+
+  it("ends on stop", () => {
+    const stopped = fold([...onPage, held(["recent"])])
+    expect(told(reduce(stopped.state, { kind: "stop", t: 9 }).actions)).toEqual(
+      [false]
+    )
+  })
+})

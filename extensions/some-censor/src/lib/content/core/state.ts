@@ -137,6 +137,17 @@ export type CoreState = {
   readonly queue: ReadonlyArray<VideoId>
   /** The course as last handed to the Actuator (R12). */
   readonly course: Course
+  /**
+   * Autoplay stopped on this page where the course had marked no stop
+   * (R13): the page's video then, until the page shows another.
+   */
+  readonly unforeseen: Unforeseen | null
+}
+
+/** Where autoplay stopped without the course having said so (R13). */
+type Unforeseen = {
+  /** The page's video when it stopped; null when none was read. */
+  readonly at: VideoId | null
 }
 
 /** A playlist's rows and each one's mark (`course/course.ts`). */
@@ -184,6 +195,7 @@ export function initialState(session: SessionId): CoreState {
     stranded: null,
     queue: [],
     course: NO_COURSE,
+    unforeseen: null,
   }
 }
 
@@ -207,6 +219,7 @@ export type CoreSnapshot = {
   readonly stranded: VideoId | null
   readonly queue: ReadonlyArray<VideoId>
   readonly course: Course
+  readonly unforeseen: Unforeseen | null
 }
 
 /**
@@ -299,5 +312,17 @@ export function snapshot(state: CoreState): CoreSnapshot {
     stranded: state.stranded,
     queue: state.queue,
     course: state.course,
+    unforeseen: state.unforeseen,
   }
+}
+
+/**
+ * R13: whether the course marked the page's own row as a stop, so the
+ * owner could see autoplay would stop there.
+ */
+export function foreseen(state: CoreState): boolean {
+  const own = state.watch?.observation.videoId ?? null
+  if (own === null) return false
+  const at = state.course.rows.lastIndexOf(own)
+  return at !== -1 && state.course.marks[at]?.stop === true
 }

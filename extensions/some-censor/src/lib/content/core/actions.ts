@@ -69,6 +69,11 @@ export type Action =
       readonly rows: ReadonlyArray<VideoId>
       readonly marks: ReadonlyArray<RowMark | null>
     }
+  /**
+   * Autoplay stopped on this page where the course had marked no stop, or
+   * that is over (R13): the shell shows it on the toolbar button.
+   */
+  | { readonly kind: "stopped"; readonly stopped: boolean }
   /** A fact for the flight recorder; the runtime forwards it. */
   | { readonly kind: "record"; readonly fact: CoreFact }
 

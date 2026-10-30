@@ -69,6 +69,13 @@
  *        action is emitted only when the rows or a mark changed. It decides
  *        nothing: no card's view, nor where autoplay goes. `nav` and `stop`
  *        empty the rows, so the marks go with the cards.
+ *  R13 — A stop the course did not foresee is told. A `held` that finds
+ *        nowhere to go, on a page whose row the course had not marked a
+ *        stop, and a page autoplay went on into that turns out held where
+ *        Skip does not move on (SK1), mark `unforeseen` at the page's
+ *        video; a `stopped` action says so. A `play`, another video on the
+ *        page, no page, and `stop` end it, with `stopped: false`. Nothing
+ *        else reads it.
  *
  * R4 correlated the answers to Core's async requests; none are left, so it
  * is retired. The parenthesised M- and C- labels are kept so their
@@ -100,6 +107,7 @@ import type {
 } from "./state"
 import {
   EMPTY_UNKNOWN_SHAPES,
+  foreseen,
   NO_COURSE,
   PLAYED_KEPT,
   skipTo,
@@ -159,7 +167,7 @@ function clearCards(state: CoreState): Step {
 }
 
 export function reduce(state: CoreState, event: CoreEvent): Step {
-  return withCourse(fold(state, event))
+  return withNotice(state, withCourse(fold(state, event)))
 }
 
 function fold(state: CoreState, event: CoreEvent): Step {
@@ -186,6 +194,7 @@ function fold(state: CoreState, event: CoreEvent): Step {
           stranded: null,
           queue: [],
           course: NO_COURSE,
+          unforeseen: null,
         },
         actions: [record({ kind: "session.start", session: event.session })],
       }
@@ -299,9 +308,21 @@ function fold(state: CoreState, event: CoreEvent): Step {
     case "held": {
       if (state.phase !== "running") return none(state)
       const to = skipTo(state, event.upNext)
-      if (to === null) return none(state)
+      if (to === null) {
+        // R13: autoplay stops here; told unless the course showed it.
+        if (foreseen(state) || state.unforeseen !== null) return none(state)
+        return none({
+          ...state,
+          unforeseen: { at: state.watch?.observation.videoId ?? null },
+        })
+      }
       return {
-        state: { ...state, arriving: arrival(state, to), stranded: null },
+        state: {
+          ...state,
+          arriving: arrival(state, to),
+          stranded: null,
+          unforeseen: null,
+        },
         actions: [{ kind: "play", key: cardKey(to) }],
       }
     }
@@ -372,6 +393,27 @@ function sameCourse(a: Course, b: Course): boolean {
     a.rows.every((id, i) => id === b.rows[i]) &&
     a.marks.every((mark, i) => sameMark(mark, b.marks[i] ?? null))
   )
+}
+
+/**
+ * R13: end `unforeseen` once the page shows another video, or none, and
+ * tell the shell when it starts or ends.
+ */
+function withNotice(before: CoreState, step: Step): Step {
+  const s = step.state
+  const own = s.phase === "running" ? s.watch?.observation.videoId : undefined
+  const unforeseen =
+    s.unforeseen === null || own === undefined || own !== s.unforeseen.at
+      ? null
+      : s.unforeseen
+  const was = before.unforeseen !== null
+  const now = unforeseen !== null
+  const state = unforeseen === s.unforeseen ? s : { ...s, unforeseen }
+  if (was === now) return state === s ? step : { ...step, state }
+  return {
+    state,
+    actions: [...step.actions, { kind: "stopped", stopped: now }],
+  }
 }
 
 /** R12: append the course to a step when it moved. */
@@ -573,6 +615,9 @@ function watched(
       watchDates,
       played: playedWith(state.played, merged),
       arriving: landed === "on its way" ? state.arriving : null,
+      // R13: a page autoplay went on into is held, and nothing moves on.
+      unforeseen:
+        landed === "held" && !skip ? { at: merged.videoId } : state.unforeseen,
       // Stranded only while that page stays held: later evidence may show it.
       stranded:
         skip || (merged.videoId === state.stranded && view === "absent")

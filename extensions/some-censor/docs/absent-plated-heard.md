@@ -182,6 +182,18 @@ that moves (§8). Not foreseen: a row shown by its card whose own page turns
 out held (SK1), the last row loaded, after which a Mix loads more, and
 YouTube's shuffle.
 
+**The notice** (`R13`). A stop the marks could not show beforehand, when
+it happens, is shown off the page, on the extension's toolbar button for
+that tab: a grey badge, "II", and the button's title "Autoplay stopped at a
+held video". The popup then says what it means at the top. It covers
+autoplay stopping on a row the course had not marked a stop, outside a
+playlist (Up next) or in the miniplayer, and a page autoplay went on into
+that turns out held by its own date, where Skip does not move on (SK1). A
+stop the course marked gets no badge: the page already said it. The badge
+goes when the tab shows another video, or no video, and when the extension
+is switched off. It is a mark, never a count (§8), and nothing about it is
+stored: the popup reads it back off the button.
+
 ## Provenance
 
 Settled with the owner on 2026-10-15/16 in a Claude Code design session
