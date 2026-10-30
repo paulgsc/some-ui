@@ -14,7 +14,7 @@
  */
 
 /** The questions' version: bump it, and add the new set, to change them. */
-export const IDEA_QUESTIONS_VERSION = 1
+const IDEA_QUESTIONS_VERSION = 1
 
 export const IDEA_QUESTIONS = ["what", "takeaway", "spark", "picture"] as const
 
@@ -27,7 +27,7 @@ export function isRequired(question: QuestionId): boolean {
 /** How a version of an answer's words came to be. */
 export const WORDS_HOW = ["heard", "typed", "fixed"] as const
 
-export type WordsHow = (typeof WORDS_HOW)[number]
+type WordsHow = (typeof WORDS_HOW)[number]
 
 export type AnswerWords = {
   /** ISO time it was kept. */
@@ -36,7 +36,7 @@ export type AnswerWords = {
   readonly words: string
 }
 
-export type Answer = {
+type Answer = {
   readonly question: QuestionId
   /** Oldest first; the last is the answer now. Never empty. */
   readonly versions: ReadonlyArray<AnswerWords>
@@ -55,7 +55,7 @@ export type Idea = {
   readonly passed: ReadonlyArray<QuestionId>
 }
 
-export function answerTo(idea: Idea, question: QuestionId): Answer | undefined {
+function answerTo(idea: Idea, question: QuestionId): Answer | undefined {
   return idea.answers.find((answer) => answer.question === question)
 }
 

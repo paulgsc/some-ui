@@ -37,7 +37,7 @@ import {
 } from "./model"
 
 /** Whether the phone's recognizer can listen. */
-export type Voice = "checking" | "ready" | "unavailable"
+type Voice = "checking" | "ready" | "unavailable"
 
 export type AskPhase =
   | { readonly kind: "idle" }
@@ -55,7 +55,7 @@ export type AskPhase =
     }
   | { readonly kind: "typing"; readonly draft: string }
 
-export type IdeaScreen =
+type IdeaScreen =
   | { readonly kind: "loading" }
   | { readonly kind: "unreadable" }
   | {
@@ -65,7 +65,7 @@ export type IdeaScreen =
     }
   | { readonly kind: "kept" }
 
-export type IdeaNotice = "notHeard" | "listenFailed" | "notKept" | null
+type IdeaNotice = "notHeard" | "listenFailed" | "notKept" | null
 
 export type IdeaState = {
   readonly screen: IdeaScreen
