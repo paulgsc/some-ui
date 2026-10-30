@@ -30,7 +30,7 @@ import type { StyleContext } from "@some-ui/styles/styles-build"
 const uiPackages = [
   "aph",
   "auth",
-  "captions",
+  "burn-ins",
   "game-week",
   "honeycomb",
   "leetype",

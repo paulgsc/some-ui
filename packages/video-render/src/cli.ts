@@ -21,9 +21,8 @@ import { dirname, join, relative, resolve as resolvePath } from "node:path"
 import { parseArgs } from "node:util"
 import { z } from "zod"
 
-import { parseCutList, problemsOf } from "./cut-list"
-import { nodePorts } from "./node"
-import { render } from "./render"
+import { problemsOf } from "./cut-list"
+import { nodePorts, renderFolder } from "./node"
 import { parseSeries } from "./series"
 import { fromTimelineV1 } from "./timeline-v1"
 
@@ -57,17 +56,13 @@ async function main(): Promise<void> {
     fail(["usage: render [from-timeline] <folder> --series <series.json>"])
   }
   const root = here(folder)
-  const series = parseSeries(await readJson(here(values.series)))
-  if (!series.ok) fail(["The series can't be read:", ...series.problems])
-
   if (converting) {
+    const series = parseSeries(await readJson(here(values.series)))
+    if (!series.ok) fail(["The series can't be read:", ...series.problems])
     await convert(root, series.value)
     return
   }
-  const cutList = parseCutList(await readJson(join(root, "cut-list.json")))
-  if (!cutList.ok)
-    fail(["The cut list can't be rendered as written:", ...cutList.problems])
-  const done = await render(cutList.value, series.value, nodePorts(root), {
+  const done = await renderFolder(root, here(values.series), {
     workDir: "outputs/cache",
     out: values.out,
     withoutBurnIns: values["without-burn-ins"],

@@ -399,7 +399,9 @@ describe("render", () => {
     expect(drawn.ok ? drawn.value.leftOut : drawn.problems).toEqual([])
     expect(recorded).toEqual([
       "captions@0+60",
-      "headline@0+36",
+      // The first scene's headline ends where the crossfade into the second
+      // begins, so the two are never up together.
+      "headline@0+24",
       "headline@24+36",
     ])
   }, 120_000)

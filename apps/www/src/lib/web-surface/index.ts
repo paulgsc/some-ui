@@ -4,13 +4,13 @@ import type { ComponentRegistry } from "@some-ui/types"
 
 import { hasAudience } from "@/lib/build-profile"
 
-import type { CaptionsPreviewProps } from "./captions/preview"
+import type { BurnInsPreviewProps } from "./burn-ins/preview"
 import type { LiveStageProps } from "./playoff-delta/stage"
 
 /**
  * The web surface's door (`doors` in build.profiles.ts): the one place
  * outside a gated route that may import a "web"-audience workspace, today
- * `@some-ui/honeycomb`, `@some-ui/playoff-delta` and `@some-ui/captions`.
+ * `@some-ui/honeycomb`, `@some-ui/playoff-delta` and `@some-ui/burn-ins`.
  * What only the web has reaches shared code (the session player, the
  * extensions page, a standalone page) through here, and the Android app's
  * build gets nothing.
@@ -63,12 +63,22 @@ export const PlayoffDeltaStage: ComponentType<LiveStageProps> =
     : Nothing
 
 /**
- * The shorts' subtitles preview (`@some-ui/captions`, a desktop page for
- * tuning the look the renderer records), with its font; nothing where the
- * build has no web surface.
+ * What every video carries (`@some-ui/burn-ins`, a desktop page for tuning
+ * the subtitles and cards the recorder draws), with its font; nothing where
+ * the build has no web surface.
  */
-export const CaptionsPreview: ComponentType<CaptionsPreviewProps> =
+export const BurnInsPreview: ComponentType<BurnInsPreviewProps> =
   import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
-    ? lazyWithPreload(() => import("./captions/preview"), "CaptionsPreviewPage")
+    ? lazyWithPreload(() => import("./burn-ins/preview"), "BurnInsPreviewPage")
+        .Component
+    : Nothing
+
+/**
+ * The page the burn-ins recorder captures (`tests/record/burn-ins.ts`);
+ * nothing where the build has no web surface.
+ */
+export const BurnInRecord: ComponentType =
+  import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
+    ? lazyWithPreload(() => import("./burn-ins/record"), "BurnInRecordPage")
         .Component
     : Nothing

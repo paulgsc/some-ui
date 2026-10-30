@@ -464,9 +464,9 @@ importers:
       '@some-ui/auth':
         specifier: workspace:*
         version: link:../../packages/ui/auth
-      '@some-ui/captions':
+      '@some-ui/burn-ins':
         specifier: workspace:*
-        version: link:../../packages/ui/captions
+        version: link:../../packages/ui/burn-ins
       '@some-ui/content-registry':
         specifier: workspace:*
         version: link:../../packages/some-content-registry
@@ -576,6 +576,9 @@ importers:
       '@some-ui/contract-harness':
         specifier: workspace:*
         version: link:../../packages/contract-harness
+      '@some-ui/video-render':
+        specifier: workspace:*
+        version: link:../../packages/video-render
       '@vitejs/plugin-react':
         specifier: ^6.1.2
         version: 6.1.2(vite@8.3.5(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.1))
@@ -1224,7 +1227,7 @@ importers:
         specifier: workspace:*
         version: link:../../some-vite-config
 
-  packages/ui/captions:
+  packages/ui/burn-ins:
     dependencies:
       '@some-ui/intent-kit':
         specifier: workspace:*
@@ -1235,6 +1238,9 @@ importers:
       react-dom:
         specifier: ^19.2.0
         version: 19.2.8(react@19.2.8)
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.6
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
