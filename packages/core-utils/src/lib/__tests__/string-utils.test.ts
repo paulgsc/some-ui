@@ -1,9 +1,21 @@
 import {
   canonicalJson,
+  listed,
   mentionsWord,
   ordinal,
 } from "@core-utils/lib/string-utils"
 import { describe, expect, it } from "vitest"
+
+describe("listed", () => {
+  it.each([
+    [[], ""],
+    [["a"], "a"],
+    [["a", "b"], "a and b"],
+    [["a", "b", "c"], "a, b and c"],
+  ])("lists %j as %j", (items, said) => {
+    expect(listed(items)).toBe(said)
+  })
+})
 
 describe("ordinal", () => {
   it("places a number as it is read", () => {

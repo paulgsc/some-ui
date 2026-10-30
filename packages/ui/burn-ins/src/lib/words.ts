@@ -4,7 +4,7 @@
  * goes, never the machinery that draws it (`__tests__/words.test.ts`).
  */
 
-import { ordinal } from "@some-ui/core-utils"
+import { listed, ordinal } from "@some-ui/core-utils"
 
 import type { Actor } from "./authorship"
 import type { Kind } from "./burn-in"
@@ -12,6 +12,22 @@ import type { ThemeId } from "./captions/theme"
 import type { GameCardTemplate, Quarter } from "./game-card"
 
 const seconds = (ms: number): string => (Math.max(0, ms) / 1000).toFixed(1)
+
+/** Whose something is, in the owner's voice: `my`, `Claude's`, `a source's`. */
+const whose = {
+  you: "my",
+  agent: "Claude's",
+  code: "code's",
+  source: "a source's",
+} satisfies Record<Actor, string>
+
+/** Who, after "made by": `me`, `Claude`, `code`. */
+const by = {
+  you: "me",
+  agent: "Claude",
+  code: "code",
+  source: "a source",
+} satisfies Record<Actor, string>
 
 const quarterName = (q: Quarter): string =>
   q === "OT" ? "Overtime" : `${ordinal(q)} quarter`
@@ -183,5 +199,22 @@ export const WORDS = {
       "This link carries no record. The link at the end of a video names its scenes; open that one to see them here.",
     tooLong:
       "This link names more scenes than a video's record holds, so it isn't one a video printed. Check it against the end of the video.",
+    listHeading: "Each scene, in words",
   },
 } as const
+
+/** One scene of a video's record, as the end card's cells say it. */
+export function sceneLine(
+  n: number,
+  s: {
+    readonly origin: Actor
+    readonly wording: Actor
+    readonly hands: ReadonlyArray<Actor>
+  }
+): string {
+  const hands =
+    s.hands.length === 0
+      ? "no hands named"
+      : `made by ${listed(s.hands.map((h) => by[h]))}`
+  return `Scene ${n}: ${whose[s.origin]} idea, ${whose[s.wording]} words, ${hands}.`
+}
