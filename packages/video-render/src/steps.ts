@@ -118,13 +118,14 @@ export const STEPS: ReadonlyArray<Step> = [
   },
   {
     id: "check-takes",
-    what: "Mechanical take checks: length, silence, the numbers said",
+    what: "Mechanical take checks: the line read, the facts kept, the numbers said",
     kind: "code",
     now: "session",
     target: "home",
     milestone: "M1",
-    why: "Rules over a transcript and a waveform.",
-    blockedBy: "ST12 (#2260): the phone sending takes home",
+    why: "Rules over a transcript (`take-check.ts`, ST21), no judgement of meaning.",
+    blockedBy:
+      "ST22 (paulgsc/server#577): how sure home was of each word, and ST13 (#2261): home running the check",
     reads: [{ file: "takes/" }, { file: "transcripts/" }],
     writes: [{ file: "take-checks.json" }],
   },
