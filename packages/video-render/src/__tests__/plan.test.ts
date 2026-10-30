@@ -1,5 +1,7 @@
 import {
+  duckExpr,
   planAssembly,
+  planBed,
   planMix,
   planSegment,
   readLoudness,
@@ -7,7 +9,7 @@ import {
 import type { Assembly, Facts, Mix, Scene } from "@video-render/plan"
 import { resolve } from "@video-render/resolve"
 import { place } from "@video-render/timing"
-import { MUSIC_MODES, TRANSITIONS } from "@video-render/vocabulary"
+import { TRANSITIONS } from "@video-render/vocabulary"
 import type { Background, MotionKind } from "@video-render/vocabulary"
 import { describe, expect, it } from "vitest"
 
@@ -183,27 +185,48 @@ describe("planAssembly", () => {
   })
 })
 
-describe("planMix", () => {
-  const mix = (over: Partial<Mix> = {}): string => {
-    const args = planMix(
-      { totalFrames: 60, voice: null, music: "off", cues: [], ...over },
-      series(),
-      "mix.wav"
-    ).args
-    return args.join(" ")
-  }
+describe("the sound", () => {
+  const take = { file: "voice/a.wav", inMs: 0, outMs: 1000, atMs: 2000 }
 
-  it.each(MUSIC_MODES)("mixes the music bed %s", (music) => {
-    const f = mix({
-      music,
-      voice: { file: "voice.wav", loudness: null },
-      cues: [{ file: "kit/click.wav", atMs: 400 }],
-    })
-    expect(f.includes("sidechaincompress")).toBe(music !== "off")
-    expect(f).toContain("adelay=400:all=1,volume=-8dB[c0]")
+  it("lowers the bed while each take plays, with ramps either side", () => {
+    // Full until 1.8 s, down by 1.6 s to 2 s ... 3 s, back up by 3.4 s.
+    expect(duckExpr([take], -10)).toBe(
+      "1-0.683772*min(clip((t-1.800)/0.2,0,1),clip((3.400-t)/0.4,0,1))"
+    )
+    expect(duckExpr([], -10)).toBe("1")
   })
 
-  it("gives a silent video a silent track", () => {
+  it.each(["under-voice", "up-between-lines"] as const)(
+    "makes the bed for %s from one input",
+    (music) => {
+      const args = planBed(music, [take], 90, series(), "bed.wav")?.args ?? []
+      expect(args.filter((a) => a === "-i")).toHaveLength(1)
+      expect(args.join(" ")).toContain(
+        music === "under-voice" ? "volume=-14dB" : "volume=-8dB"
+      )
+    }
+  )
+
+  it("has no bed when the series has no music", () => {
+    expect(
+      planBed("under-voice", [], 90, series({ music: undefined }), "bed.wav")
+    ).toBeNull()
+  })
+
+  it("sums the parts, each cue at its time", () => {
+    const mix = (over: Partial<Mix> = {}): string =>
+      planMix(
+        { totalFrames: 60, voice: null, bed: null, cues: [], ...over },
+        series(),
+        "mix.wav"
+      ).args.join(" ")
+    const f = mix({
+      voice: "voice-level.wav",
+      bed: "bed.wav",
+      cues: [{ file: "kit/click.wav", atMs: 400 }],
+    })
+    expect(f).toContain("amix=inputs=3:normalize=0")
+    expect(f).toContain("adelay=400:all=1,volume=-8dB[c0]")
     expect(mix()).toContain("anullsrc=r=48000:cl=mono")
   })
 })

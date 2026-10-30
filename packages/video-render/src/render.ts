@@ -11,13 +11,15 @@ import {
   placeCues,
   placeTakes,
   planAssembly,
+  planBed,
+  planLevel,
   planMeasure,
   planMix,
   planSegment,
   planVoice,
   readLoudness,
 } from "./plan"
-import type { FfmpegCall, Layer, Mix, Scene, SourceFacts } from "./plan"
+import type { FfmpegCall, Layer, Scene, SourceFacts } from "./plan"
 import { resolve } from "./resolve"
 import type { ResolvedShot } from "./resolve"
 import type { Series } from "./series"
@@ -151,12 +153,9 @@ export async function render(
   }
 
   const voiceFile = `${work}/voice.wav`
-  const voiceCall = planVoice(
-    placeTakes(scenes, fps),
-    toMs(totalFrames, fps),
-    voiceFile
-  )
-  let voice: Mix["voice"] = null
+  const takes = placeTakes(scenes, fps)
+  const voiceCall = planVoice(takes, toMs(totalFrames, fps), voiceFile)
+  let voice: string | null = null
   if (voiceCall) {
     const ran = await ports.ffmpeg(voiceCall)
     if (!ran.ok) return refused([`the voice: ${tail(ran.stderr)}`])
@@ -165,18 +164,32 @@ export async function render(
       return refused([`the voice's level: ${tail(measured.stderr)}`])
     }
     const loudness = readLoudness(measured.stderr)
+    voice = voiceFile
     // A silent track has no loudness to bring to -16 LUFS.
-    voice = {
-      file: voiceFile,
-      loudness:
-        loudness && Number.isFinite(Number(loudness.input_i)) ? loudness : null,
+    if (loudness && Number.isFinite(Number(loudness.input_i))) {
+      voice = `${work}/voice-level.wav`
+      const levelled = await ports.ffmpeg(planLevel(voiceFile, loudness, voice))
+      if (!levelled.ok) {
+        return refused([`the voice's level: ${tail(levelled.stderr)}`])
+      }
     }
+  }
+
+  let bed: string | null = null
+  const bedCall =
+    music === "off"
+      ? null
+      : planBed(music, takes, totalFrames, series, `${work}/bed.wav`)
+  if (bedCall) {
+    const ran = await ports.ffmpeg(bedCall)
+    if (!ran.ok) return refused([`the music bed: ${tail(ran.stderr)}`])
+    bed = `${work}/bed.wav`
   }
 
   const mixFile = `${work}/mix.wav`
   const mixed = await ports.ffmpeg(
     planMix(
-      { totalFrames, voice, music, cues: placeCues(scenes, series) },
+      { totalFrames, voice, bed, cues: placeCues(scenes, series) },
       series,
       mixFile
     )

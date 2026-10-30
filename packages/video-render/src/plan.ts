@@ -5,11 +5,13 @@
  * test can check every vocabulary member without running ffmpeg, and the
  * runtime only runs what is written here.
  *
- * Four steps: each scene to a segment (picture only, a whole number of
- * frames); the voice, placed and measured for -16 LUFS, as the build-journal
- * skill's `render.py` did; the sound, mixing the levelled voice, the music
- * bed and the sound cues; then one assembly that joins the segments with
- * their transitions, lays the burn-ins over them, and adds the sound.
+ * The steps: each scene to a segment (picture only, a whole number of
+ * frames); the voice, its takes placed on one track, measured and brought
+ * to -16 LUFS, as the build-journal skill's `render.py` did; the music bed,
+ * lowered while each take plays; the sound, summing voice, bed and cues;
+ * then one assembly that joins the segments with their transitions, lays
+ * the burn-ins over them, and adds the sound. Every step but the sum and
+ * the joins reads one input, and the test checks each step's bytes.
  *
  * Every output is written bit-exact (no encoder tags, no metadata, no
  * timestamps), so the same inputs and the same ffmpeg give the same bytes.
@@ -463,15 +465,13 @@ export type Layer = { readonly file: string; readonly startFrame: number }
 /** A sound cue placed in the video. */
 export type PlacedCue = { readonly file: string; readonly atMs: number }
 
-/** What the sound step mixes. */
+/** What the sound step sums: each part already made, the video's length. */
 export type Mix = {
   readonly totalFrames: number
-  /** The voice track and its measured loudness; null loudness is silence. */
-  readonly voice: {
-    readonly file: string
-    readonly loudness: Loudness | null
-  } | null
-  readonly music: MusicMode
+  /** The levelled voice track, if any scene has a take. */
+  readonly voice: string | null
+  /** The music bed, already lowered under the voice. */
+  readonly bed: string | null
   readonly cues: ReadonlyArray<PlacedCue>
 }
 
@@ -500,70 +500,132 @@ export function placeCues(
   )
 }
 
-/** The bed's level and how hard the voice pushes it down, per mode. */
+/**
+ * The bed's level and how far it drops while a take plays, per mode, in dB.
+ * The cut list says when each take plays, so the bed follows that, not a
+ * detector listening for the voice.
+ */
 const BED: Readonly<
-  Record<Exclude<MusicMode, "off">, { lift: number; ratio: number }>
+  Record<Exclude<MusicMode, "off">, { lift: number; under: number }>
 > = {
-  "under-voice": { lift: 0, ratio: 6 },
-  "up-between-lines": { lift: 6, ratio: 14 },
+  "under-voice": { lift: 0, under: -10 },
+  "up-between-lines": { lift: 6, under: -16 },
 }
 
-/** Joins the segments, lays the burn-ins on, mixes the sound, to `out`. */
+/** How long the bed takes to drop before a take, and to rise after it. */
+const DUCK_IN_MS = 200
+const DUCK_OUT_MS = 400
+
 /**
- * The sound: the levelled voice, the music bed lowered under it, and the
- * sound cues, the video's length, to a WAV. Its own step, so its bytes
- * are checked apart from the picture's.
+ * The bed's gain over time, as an expression in `t`: 1 between takes,
+ * `under` (as a fraction) while one plays, ramping between.
+ */
+export function duckExpr(
+  takes: ReadonlyArray<PlacedTake>,
+  underDb: number
+): string {
+  const under = 10 ** (underDb / 20)
+  const din = DUCK_IN_MS / 1000
+  const dout = DUCK_OUT_MS / 1000
+  const windows = takes.map((k) => {
+    const a = k.atMs / 1000
+    const b = (k.atMs + k.outMs - k.inMs) / 1000
+    return `min(clip((t-${(a - din).toFixed(3)})/${din},0,1),clip((${(b + dout).toFixed(3)}-t)/${dout},0,1))`
+  })
+  if (!windows.length) return "1"
+  const w = windows.reduce((acc, x) => `max(${acc},${x})`)
+  return `1-${(1 - under).toFixed(6)}*${w}`
+}
+
+/** The voice brought to -16 LUFS, from the measured pass, on its own. */
+export function planLevel(
+  voice: string,
+  loudness: Loudness,
+  out: string
+): FfmpegCall {
+  const l = loudness
+  return {
+    args: [
+      ...QUIET,
+      "-i",
+      voice,
+      "-af",
+      `loudnorm=${LOUDNESS}:measured_I=${l.input_i}:measured_TP=${l.input_tp}:` +
+        `measured_LRA=${l.input_lra}:measured_thresh=${l.input_thresh}:` +
+        `offset=${l.target_offset}:linear=true,${MONO}`,
+      "-c:a",
+      "pcm_s16le",
+      ...BITEXACT,
+      out,
+    ],
+  }
+}
+
+/**
+ * The music bed alone: looped to the video's length, at its level, lowered
+ * while each take plays. One input, in fixed 10 ms blocks, so the gain
+ * steps fall at the same samples every time.
+ */
+export function planBed(
+  music: Exclude<MusicMode, "off">,
+  takes: ReadonlyArray<PlacedTake>,
+  totalFrames: number,
+  series: Series,
+  out: string
+): FfmpegCall | null {
+  if (!series.music) return null
+  const bed = BED[music]
+  const total = at(totalFrames, series.frame.fps)
+  return {
+    args: [
+      ...QUIET,
+      "-stream_loop",
+      "-1",
+      "-i",
+      series.music.bed.file,
+      "-af",
+      `${MONO},atrim=duration=${total},asetnsamples=n=480:p=1,` +
+        `volume=${series.music.gainDb + bed.lift}dB,` +
+        `volume='${duckExpr(takes, bed.under)}':eval=frame`,
+      "-c:a",
+      "pcm_s16le",
+      ...BITEXACT,
+      out,
+    ],
+  }
+}
+
+/**
+ * The sound: the voice, the bed and the cues summed, the video's length,
+ * to a WAV. Every part is made first on its own; this only adds them.
  */
 export function planMix(a: Mix, series: Series, out: string): FfmpegCall {
   const total = at(a.totalFrames, series.frame.fps)
   const inputs: Array<string> = []
   const filters: Array<string> = []
-  const mix: Array<string> = []
+  const parts: Array<string> = []
   let next = 0
-  let voiceKey: string | null = null
-  if (a.voice) {
-    inputs.push("-i", a.voice.file)
-    const l = a.voice.loudness
-    const level = l
-      ? `loudnorm=${LOUDNESS}:measured_I=${l.input_i}:measured_TP=${l.input_tp}:` +
-        `measured_LRA=${l.input_lra}:measured_thresh=${l.input_thresh}:offset=${l.target_offset}:linear=true,`
-      : ""
-    filters.push(`[${next++}:a]${level}${MONO},asplit=2[voice][key]`)
-    mix.push("[voice]")
-    voiceKey = "[key]"
-  }
-  if (a.music !== "off" && series.music) {
-    const bed = BED[a.music]
-    inputs.push("-stream_loop", "-1", "-i", series.music.bed.file)
-    const level = `${MONO},atrim=duration=${total},volume=${series.music.gainDb + bed.lift}dB`
-    if (voiceKey) {
-      filters.push(
-        `[${next++}:a]${level}[bed0]`,
-        `[bed0]${voiceKey}sidechaincompress=threshold=0.02:ratio=${bed.ratio}:attack=20:release=400[bed]`
-      )
-    } else {
-      filters.push(`[${next++}:a]${level}[bed]`)
-    }
-    mix.push("[bed]")
-  } else if (voiceKey) {
-    filters.push(`${voiceKey}anullsink`)
+  for (const file of [a.voice, a.bed]) {
+    if (!file) continue
+    inputs.push("-i", file)
+    filters.push(`[${next}:a]${MONO}[p${next}]`)
+    parts.push(`[p${next++}]`)
   }
   a.cues.forEach((c, i) => {
     inputs.push("-i", c.file)
     filters.push(
-      `[${next++}:a]${MONO},` +
-        `adelay=${c.atMs}:all=1,volume=${series.soundGainDb}dB[c${i}]`
+      `[${next++}:a]${MONO},adelay=${c.atMs}:all=1,volume=${series.soundGainDb}dB[c${i}]`
     )
-    mix.push(`[c${i}]`)
+    parts.push(`[c${i}]`)
   })
   const tail = `apad=whole_dur=${total},atrim=duration=${total},aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo[a]`
-  if (mix.length) {
+  if (parts.length) {
     filters.push(
-      `${mix.join("")}amix=inputs=${mix.length}:normalize=0:duration=longest,${tail}`
+      `${parts.join("")}amix=inputs=${parts.length}:normalize=0:duration=longest,${tail}`
     )
   } else {
     inputs.push("-f", "lavfi", "-i", "anullsrc=r=48000:cl=mono")
-    filters.push(`[${next++}:a]${tail}`)
+    filters.push(`[${next}:a]${tail}`)
   }
   return {
     args: [
