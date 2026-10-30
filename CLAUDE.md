@@ -65,8 +65,8 @@ What follows from them:
   entries, pruning, a migration that drops or reshapes data, a "let it go" that deletes for
   good), give it a durable copy first, or ask. This is the
   owner's direction, not yet a declared invariant: today's code still discards history (a
-  session delete, the `reflection-voice` and `scene-voice` budgets, the Build Journal takes
-  store in `packages/ui/soundbites`, the "let it go" steps), so an append-only claim would
+  session delete, the `reflection-voice` and `scene-voice` budgets, the "let it go" steps),
+  so an append-only claim would
   be false on landing. Declaring it, with a tag at each discard site, waits on the owner's
   call about those sites, which `docs/discard-sites.md` lists with each ruling so far (#2265).
 
