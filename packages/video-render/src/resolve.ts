@@ -7,7 +7,7 @@
 import { assertNever } from "@some-ui/core-utils"
 
 import { once } from "./cut-list"
-import type { CutList, Parsed, Shot } from "./cut-list"
+import type { BurnIn, CutList, Parsed, Shot } from "./cut-list"
 import { LOOK_RULES } from "./plans"
 import type { Look, LookMotion } from "./plans"
 import type { Series } from "./series"
@@ -55,6 +55,16 @@ export function resolve(cutList: CutList, series: Series): Parsed<Resolved> {
     }
     if (s.background.kind === "blurred" && s.shot.picture.kind === "card") {
       problems.push(`${s.shot.id}: a card has no picture to blur`)
+    }
+  }
+  for (const b of [
+    ...cutList.burnIns,
+    ...cutList.shots.flatMap((s) => s.burnIns),
+  ]) {
+    if (designOf(b, series) === null) {
+      problems.push(
+        `the ${b.kind} burn-in names no design, and the series names none for it`
+      )
     }
   }
   const music = cutList.music ?? LOOK_RULES[cutList.look].music
@@ -110,3 +120,7 @@ function lookMotion(m: LookMotion, taps: ReadonlyArray<number>): Motion {
     }
   }
 }
+
+/** A burn-in's design: its own, else its series version's for the kind. */
+export const designOf = (b: BurnIn, series: Series): string | null =>
+  b.design ?? series.designs[b.kind] ?? null

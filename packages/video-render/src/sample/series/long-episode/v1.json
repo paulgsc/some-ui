@@ -1,0 +1,22 @@
+{
+  "schema": "some-ui.video-series/1",
+  "id": "long-episode",
+  "version": 1,
+  "title": "Long episode",
+  "frame": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30
+  },
+  "ground": "#111821",
+  "window": {
+    "x": 96,
+    "y": 60,
+    "width": 1728,
+    "height": 960
+  },
+  "defaultLook": "calm",
+  "sounds": {},
+  "soundGainDb": -8,
+  "designs": {}
+}

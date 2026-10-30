@@ -22,7 +22,7 @@ import { openRecorder, RECORDING_SIZE, renderWithBurnIns } from "./burn-ins"
 
 const DIST = resolve(process.env["WWW_DIST"] ?? "dist")
 const SERIES = resolve(
-  "../../packages/video-render/src/sample/build-journal-short.json"
+  "../../packages/video-render/src/sample/series/build-journal-short"
 )
 
 type Word = { text: string; startMs: number; endMs: number }

@@ -17,5 +17,11 @@
   },
   "defaultLook": "calm",
   "sounds": {},
-  "soundGainDb": -8
+  "soundGainDb": -8,
+  "designs": {
+    "captions": "gridiron",
+    "headline": "v1",
+    "card": "v1",
+    "authorship": "cells-v1"
+  }
 }

@@ -19,8 +19,11 @@ Each module's header says why it is the way it is.
 - `src/vocabulary.ts`: everything the renderer can draw, as schemas.
 - `src/plans.ts`, `src/words.ts`: the Look and Voice plans, and every word
   the phone shows for them.
-- `src/cut-list.ts`, `src/series.ts`: cut list v2, and a series (ST11) with
-  `src/sample/build-journal-short.json`.
+- `src/cut-list.ts`, `src/series.ts`: cut list v2, and a series (ST11): a
+  folder of versions, `v1.json`, `v2.json`, …, which a video pins one of and
+  which names the design each burn-in kind is drawn in. The first three are
+  sampled in `src/sample/series/` (a Build Journal short, a Playoff Delta
+  week, a long episode); their real content stays in Drive.
 - `src/resolve.ts`, `src/timing.ts`: each lever from the layer that sets
   it; each scene placed in whole frames.
 - `src/plan.ts`: the ffmpeg calls, as data. `src/render.ts` runs them over
@@ -37,7 +40,7 @@ Each module's header says why it is the way it is.
 - `src/cli.ts`: the command, and its usage:
 
 ```sh
-pnpm --filter @some-ui/video-render render <video folder> --series <series.json>
+pnpm --filter @some-ui/video-render render <video folder> --series <series folder>
 ```
 
 Needs `ffmpeg` and `ffprobe` on `PATH`; the repo's nix shells carry them
@@ -48,7 +51,7 @@ Needs `ffmpeg` and `ffprobe` on `PATH`; the repo's nix shells carry them
 - **Burn-ins** (headlines, captions, cards, the authorship mark) are drawn
   by `@some-ui/burn-ins` (ST15, #2273) and recorded through
   `Ports.recordBurnIn`, which `apps/www`'s `record:short` fills from the
-  built app (`pnpm --filter www record:short <folder> --series <json>`).
+  built app (`pnpm --filter www record:short <folder> --series <folder>`).
   This package's own CLI has no browser, so it still renders burn-ins only
   left out (`--without-burn-ins`).
 - **`fromRenderPack`**, GWB9's render pack (#2083) as a cut list, waits on

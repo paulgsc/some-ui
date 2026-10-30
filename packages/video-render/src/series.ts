@@ -1,13 +1,20 @@
 /**
  * A series: what every video in a set shares (STUDIO ST11), versioned so a
- * video pins one and moves to a newer one on purpose. Its content (music,
- * the sound kit, brand files) lives in Drive, `Build Journal/template/`;
- * the repo keeps this schema and `sample/build-journal-short.json`.
+ * video pins one and moves to a newer one on purpose. A series is a folder
+ * of versions, `v1.json`, `v2.json`, …; a version is never edited once a
+ * video pins it, so a newer one is a new file, and a video renders from the
+ * version it pins (`readSeries` in `node.ts`). That holds for the drawn
+ * layers too: a version names each burn-in kind's design, and a design is
+ * frozen once a published video used it (`@some-ui/burn-ins`).
+ *
+ * Its content (music, the sound kit, brand files) lives in Drive,
+ * `Build Journal/template/`; the repo keeps this schema and a sample of
+ * each series in `sample/series/`.
  */
 
 import { z } from "zod"
 
-import { problemsOf } from "./cut-list"
+import { BurnInDesignSchema, BurnInKindSchema, problemsOf } from "./cut-list"
 import type { Parsed } from "./cut-list"
 import { LOOKS } from "./plans"
 import { CheckedFileSchema, SOUNDS } from "./vocabulary"
@@ -52,6 +59,8 @@ export const SeriesSchema = z
     /** The CC0 sound kit, by the vocabulary's names. */
     sounds: z.partialRecord(z.enum(SOUNDS), CheckedFileSchema).default({}),
     soundGainDb: z.number().max(0).default(-8),
+    /** The design each burn-in kind is drawn in, where a video names none. */
+    designs: z.record(BurnInKindSchema, BurnInDesignSchema).default({}),
   })
   .refine(
     (s) =>
@@ -68,3 +77,6 @@ export function parseSeries(raw: unknown): Parsed<Series> {
     ? { ok: true, value: parsed.data }
     : { ok: false, problems: problemsOf(parsed.error, "series") }
 }
+
+/** A version's file in its series' folder. */
+export const seriesFile = (version: number): string => `v${version}.json`

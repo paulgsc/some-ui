@@ -22,7 +22,7 @@ import {
   readLoudness,
 } from "./plan"
 import type { FfmpegCall, Layer, Scene, SourceFacts } from "./plan"
-import { resolve } from "./resolve"
+import { designOf, resolve } from "./resolve"
 import type { ResolvedShot } from "./resolve"
 import type { Series } from "./series"
 import { place, shotTimes, toMs } from "./timing"
@@ -31,6 +31,8 @@ import type { CheckedFile, MusicMode } from "./vocabulary"
 
 /** A burn-in the renderer asks to have recorded, and where it goes. */
 export type BurnInRequest = BurnIn & {
+  /** The design it is drawn in, its own or its series version's. */
+  readonly design: string
   readonly startFrame: number
   readonly frames: number
   readonly frame: Series["frame"]
@@ -69,7 +71,9 @@ export type Rendered = Parsed<{
   readonly shotTimes: ReadonlyArray<ShotTime>
   readonly shotTimesFile: string
   /** Burn-ins left out because nothing could record them. */
-  readonly leftOut: ReadonlyArray<BurnIn>
+  readonly leftOut: ReadonlyArray<
+    Pick<BurnInRequest, "kind" | "design" | "params">
+  >
 }>
 
 const refused = (problems: ReadonlyArray<string>): Rendered => ({
@@ -133,7 +137,7 @@ export async function render(
   await ports.mkdir(dirOf(options.out))
 
   const layers: Array<Layer> = []
-  const leftOut: Array<BurnIn> = []
+  const leftOut: Array<Pick<BurnInRequest, "kind" | "design" | "params">> = []
   for (const r of requests) {
     if (!ports.recordBurnIn) {
       leftOut.push({ kind: r.kind, design: r.design, params: r.params })
@@ -288,8 +292,15 @@ function burnInRequests(
   series: Series,
   work: string
 ): ReadonlyArray<BurnInRequest> {
+  const design = (b: BurnIn): string => {
+    const d = designOf(b, series)
+    // `resolve` refuses a burn-in with no design before this runs.
+    if (d === null) throw new Error(`the ${b.kind} burn-in has no design`)
+    return d
+  }
   const whole = cutList.burnIns.map((b, i) => ({
     ...b,
+    design: design(b),
     // The authorship mark is drawn from the scenes, never from what was
     // written for it (`parseCutList` refuses any).
     params: isAuthorship(b)
@@ -308,6 +319,7 @@ function burnInRequests(
     const until = placement.shots[i + 1]?.startFrame ?? placement.totalFrames
     return s.burnIns.map((b, k) => ({
       ...b,
+      design: design(b),
       startFrame: at.startFrame,
       frames: until - at.startFrame,
       frame: series.frame,

@@ -28,6 +28,7 @@ export function series(over: Partial<Series> = {}): Series {
       whoosh: { file: "kit/whoosh.wav", sha256: SUM },
     },
     soundGainDb: -8,
+    designs: {},
     ...over,
   }
 }

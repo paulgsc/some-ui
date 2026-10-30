@@ -41,7 +41,7 @@ lays over the video. With it, a video renders with its burn-ins:
 
 ```sh
 pnpm --filter www build
-pnpm --filter www record:short <video folder> --series <series.json>
+pnpm --filter www record:short <video folder> --series <series folder>
 ```
 
 The font is Barlow Condensed (SIL Open Font License 1.1), free to embed in
