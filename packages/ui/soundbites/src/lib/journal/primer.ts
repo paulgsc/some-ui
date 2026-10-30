@@ -171,9 +171,13 @@ function readCut(
   }
   const point = text(raw.point)
   if (point === null) return { problem: `Cut ${n} has no point.` }
-  const line = raw.line === undefined ? null : text(raw.line)
-  if (raw.line !== undefined && line === null)
-    return { problem: `Cut ${n}'s line is empty.` }
+  // A cut with no line leaves it out or writes null, as the takes export does.
+  const absent = raw.line === undefined || raw.line === null
+  const line = absent ? null : text(raw.line)
+  if (!absent && line === null)
+    return {
+      problem: `Cut ${n}'s line should be words to read, or left out.`,
+    }
   const keep = texts(raw.keep)
   if (keep === null)
     return {
@@ -189,7 +193,9 @@ function readCut(
         : "read"
       : plan
   if (voice === "read" && line === null)
-    return { problem: `Cut ${n} is read word for word but has no line.` }
+    return {
+      problem: `Cut ${n} is read word for word, so it needs a line, or set its voice to ad-lib.`,
+    }
   return {
     id,
     artifact,

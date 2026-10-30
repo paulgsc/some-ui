@@ -1,4 +1,4 @@
-import { readPrimer } from "@soundbites/lib/journal/primer"
+import { cutV1, readPrimer } from "@soundbites/lib/journal/primer"
 import { describe, expect, it } from "vitest"
 
 const cut = (id: string, targetSec = 30): Record<string, unknown> => ({
@@ -26,26 +26,18 @@ describe("readPrimer", () => {
         budgetMs: 180_000,
         voice: "read",
         cuts: [
-          {
+          cutV1({
             id: "gap",
             artifact: "Artifact gap",
-            point: "Say something about gap",
-            line: "Say something about gap",
-            keep: [],
-            voice: "read",
             prompt: "Say something about gap",
             targetMs: 25_000,
-          },
-          {
+          }),
+          cutV1({
             id: "flow",
             artifact: "Artifact flow",
-            point: "Say something about flow",
-            line: "Say something about flow",
-            keep: [],
-            voice: "read",
             prompt: "Say something about flow",
             targetMs: 40_000,
-          },
+          }),
         ],
       },
     })
@@ -191,6 +183,25 @@ describe("readPrimer, version 2", () => {
     expect(read.ok && read.primer.cuts[0]?.prompt).toBe("Read me.")
   })
 
+  it("lets a cut's own voice decide, and takes a line of null as none", () => {
+    const reading = readPrimer(
+      v2({
+        voice: "read",
+        cuts: [
+          v2Cut({ id: "a", line: "Read me.", voice: "ad-lib" }),
+          v2Cut({ id: "b", line: null, voice: "ad-lib" }),
+          v2Cut({ id: "c", line: "Read me." }),
+        ],
+      })
+    )
+    if (!reading.ok) throw new Error(reading.problem)
+    expect(reading.primer.cuts.map((c) => [c.voice, c.prompt])).toEqual([
+      ["ad-lib", "A point"],
+      ["ad-lib", "A point"],
+      ["read", "Read me."],
+    ])
+  })
+
   it("runs up to six minutes and 24 cuts", () => {
     const cuts = Array.from({ length: 24 }, (_, i) =>
       v2Cut({ id: `c${i}`, targetSec: 15 })
@@ -224,12 +235,12 @@ describe("readPrimer, version 2", () => {
     [
       "a read cut with no line",
       v2({ cuts: [v2Cut({ voice: "read" })] }),
-      "Cut 1 is read word for word but has no line.",
+      "Cut 1 is read word for word, so it needs a line, or set its voice to ad-lib.",
     ],
     [
       "an empty line",
       v2({ cuts: [v2Cut({ line: "" })] }),
-      "Cut 1's line is empty.",
+      "Cut 1's line should be words to read, or left out.",
     ],
     [
       "a fact left blank",
