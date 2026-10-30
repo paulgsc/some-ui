@@ -4,7 +4,7 @@ import { byChars } from "@burn-ins/lib/captions/__tests__/word"
 import { frameAt } from "@burn-ins/lib/captions/frame"
 import { THEMES } from "@burn-ins/lib/captions/theme"
 import { groupCaptions } from "@burn-ins/lib/captions/timing"
-import { SAMPLES } from "@burn-ins/lib/samples"
+import { GAME_CARD_SAMPLES, SAMPLES } from "@burn-ins/lib/samples"
 import { render } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 
@@ -63,5 +63,25 @@ describe("the stage", () => {
     )
     expect(rows[0]).toBe("BUILD JOURNAL · SHORT 7")
     expect(rows.join(" ")).toContain("never for one already up.")
+  })
+
+  it("draws a game card's panel, its words and the scenario's icon", () => {
+    const card = prepare({
+      kind: "game-card",
+      design: "gridiron-v1",
+      params: GAME_CARD_SAMPLES.scenario,
+    })
+    if (!card.ok) throw new Error(card.problems.join("; "))
+    const { container } = render(
+      <BurnInStage frames={[burnInAt(card.value, 0)]} label="short" />
+    )
+    expect(container.querySelectorAll(".bi-panel")).toHaveLength(2)
+    const icon = container.querySelector("svg.bi-glyph")
+    expect(icon?.getAttribute("stroke")).toBe("#ffd60a")
+    expect(icon?.querySelectorAll("path").length).toBeGreaterThan(0)
+    const rows = [...container.querySelectorAll(".bi-text > div")].map(
+      (r) => r.textContent
+    )
+    expect(rows).toEqual(["During the game", "Third and long", "Converted"])
   })
 })

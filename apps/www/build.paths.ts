@@ -233,11 +233,6 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "Hangul Honeycomb's panel, a desktop keyboard game the phone has no counterpart for: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
     },
     {
-      modules: ["packages/game-scenarios/dist/@some-ui/game-scenarios.es.js"],
-      profiles: [MOBILE_PROFILE],
-      why: "the game-week scenario set, which only the phone's game-day recorder draws (`@some-ui/game-week`, src/routes/_dashboard/_apk/game-week.tsx)",
-    },
-    {
       modules: ["apps/www/src/components/reflection/copy.ts"],
       profiles: [MOBILE_PROFILE],
       why: "the phone's hand-off wording (`arrived`, `goingOut`), after a share only the Android app makes; the web's reflection screens count with `@some-ui/core-utils`",

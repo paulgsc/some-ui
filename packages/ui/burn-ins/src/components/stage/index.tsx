@@ -1,6 +1,7 @@
 import type { JSX } from "react"
 import { AuthorshipLayer } from "@burn-ins/components/stage/authorship"
 import { Caption } from "@burn-ins/components/stage/captions"
+import { GameCardLayer } from "@burn-ins/components/stage/game-card"
 import { TextLayer } from "@burn-ins/components/stage/text"
 import { placed } from "@burn-ins/components/stage/units"
 import type { BurnInFrame } from "@burn-ins/lib/burn-in"
@@ -23,6 +24,9 @@ const Layer = ({ frame }: { frame: BurnInFrame }): JSX.Element | null => {
     }
     case "authorship": {
       return <AuthorshipLayer frame={frame.frame} />
+    }
+    case "game-card": {
+      return <GameCardLayer frame={frame.frame} />
     }
     default: {
       return assertNever(frame)

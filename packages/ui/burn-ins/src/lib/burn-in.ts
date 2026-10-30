@@ -28,6 +28,13 @@ import {
 import { frameAt as captionFrameAt, type CaptionFrame } from "./captions/frame"
 import { isThemeId, THEME_IDS, THEMES, type ThemeId } from "./captions/theme"
 import { captionsFor, runtimeOf, type Caption } from "./captions/timing"
+import {
+  drawGameCard,
+  GAME_CARD_DESIGNS,
+  gameCardBoxes,
+  GameCardParamsSchema,
+  type GameCardFrame,
+} from "./game-card"
 import type { Box, Region } from "./geometry"
 import {
   cardFrame,
@@ -40,7 +47,13 @@ import {
 } from "./journal"
 import { isOneOf, type Parsed } from "./parsed"
 
-export const KINDS = ["captions", "headline", "card", "authorship"] as const
+export const KINDS = [
+  "captions",
+  "headline",
+  "card",
+  "authorship",
+  "game-card",
+] as const
 export type Kind = (typeof KINDS)[number]
 
 export const isKind = (value: unknown): value is Kind => isOneOf(KINDS, value)
@@ -51,6 +64,7 @@ export const DESIGNS = {
   headline: JOURNAL_DESIGNS,
   card: JOURNAL_DESIGNS,
   authorship: AUTHORSHIP_DESIGNS,
+  "game-card": GAME_CARD_DESIGNS,
 } as const satisfies Record<Kind, ReadonlyArray<string>>
 
 /** Where each kind draws. */
@@ -61,6 +75,8 @@ export const REGIONS_OF = {
   // The intro and end card hold a bare card's header and body; between
   // them the mark keeps to the gutter.
   authorship: ["gutter", "header", "body"],
+  // A panel at the body's top, under a scene's headline, over its picture.
+  "game-card": ["body"],
 } as const satisfies Record<Kind, ReadonlyArray<Region>>
 
 const TimedWordSchema = z
@@ -102,6 +118,11 @@ export type Prepared =
       readonly design: (typeof AUTHORSHIP_DESIGNS)[number]
       readonly drawing: AuthorshipDrawing
     }
+  | {
+      readonly kind: "game-card"
+      readonly design: (typeof GAME_CARD_DESIGNS)[number]
+      readonly frame: GameCardFrame
+    }
 
 /** What is on screen at a moment. */
 export type BurnInFrame =
@@ -119,6 +140,11 @@ export type BurnInFrame =
       readonly kind: "authorship"
       readonly design: (typeof AUTHORSHIP_DESIGNS)[number]
       readonly frame: AuthorshipFrame
+    }
+  | {
+      readonly kind: "game-card"
+      readonly design: (typeof GAME_CARD_DESIGNS)[number]
+      readonly frame: GameCardFrame
     }
 
 const issues = (name: string, error: z.ZodError): ReadonlyArray<string> =>
@@ -205,6 +231,21 @@ export function prepare(b: BurnInData): Parsed<Prepared> {
           }
         : c
     }
+    case "game-card": {
+      const c = checked(
+        name,
+        GAME_CARD_DESIGNS,
+        b,
+        GameCardParamsSchema,
+        drawGameCard
+      )
+      return c.ok
+        ? {
+            ok: true,
+            value: { kind, design: c.value.design, frame: c.value.value },
+          }
+        : c
+    }
     default: {
       return assertNever(kind)
     }
@@ -222,7 +263,8 @@ export function frameAt(p: Prepared, t: number): BurnInFrame {
       }
     }
     case "headline":
-    case "card": {
+    case "card":
+    case "game-card": {
       return p
     }
     case "authorship": {
@@ -255,6 +297,9 @@ export function boxesOf(f: BurnInFrame): ReadonlyArray<Box> {
     }
     case "authorship": {
       return authorshipBoxes(f.frame)
+    }
+    case "game-card": {
+      return gameCardBoxes(f.frame)
     }
     default: {
       return assertNever(f)
