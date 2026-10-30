@@ -27,7 +27,9 @@
  *   the store keeps is let go only once a read carrying it is shown
  *   (`forget`), so a failed or overtaken read loses none.
  * - **How a sitting went is filed against the sitting the store closed**, as
- *   its close returns it, never against the screen's copy.
+ *   its close returns it, never against the screen's copy. The answer waits
+ *   in `filings`, not on the Done screen, so leaving that screen or the page
+ *   loses none: it is filed when the close lands, or said lost if it fails.
  * - **Every video holding takes on the phone can be reached.** Start lists
  *   the others and opens any of them, so each one's takes can be shared and
  *   let go, and lists what the carry couldn't read of the Journal tab's
@@ -116,14 +118,25 @@ type StudioScreen =
       readonly went: Went | null
       /** The video it asks about. */
       readonly project: string
-      /** The sitting the store closed, once its close lands. */
-      readonly sitting: string | null
       readonly shot: string
-      /** How it went, as answered, waiting on the close to file it. */
-      readonly answer: Pick<Friction, "at" | "went" | "gotInTheWay"> | null
-      /** Whether the answer has gone to the store, or been said lost. */
-      readonly filed: boolean
+      /** When its close was asked for: the filing it answers (`filings`). */
+      readonly at: string
     }
+
+/** How a sitting went, as the person answered. */
+type Answer = Pick<Friction, "at" | "went" | "gotInTheWay">
+
+/** A Done for now's close, and the answer waiting on it to be filed. */
+type Filing = {
+  readonly project: string
+  /** When the close was asked for: it names the close. */
+  readonly at: string
+  /** The sitting the store closed; null until it does, or if it didn't. */
+  readonly sitting: string | null
+  /** Whether the close has landed or been refused. */
+  readonly settled: boolean
+  readonly answer: Answer | null
+}
 
 type Shelf =
   | { readonly kind: "reading" }
@@ -185,6 +198,8 @@ export type StudioState = {
   } | null
   /** Whether the Done screen's sitting is saved yet. */
   readonly closed: "saving" | "saved" | "failed" | null
+  /** Each Done for now's close not yet settled, or whose answer waits. */
+  readonly filings: ReadonlyArray<Filing>
   readonly readSeq: number
   readonly pickSeq: number
   readonly playSeq: number
@@ -324,6 +339,7 @@ export function initialStudioState(): StudioState {
     leftovers: { rows: 0, bytes: 0 },
     closing: null,
     closed: null,
+    filings: [],
     readSeq: 0,
     pickSeq: 0,
     playSeq: 0,
@@ -616,32 +632,75 @@ function lostBy(pending: Pending, notice: string): string {
 }
 
 /**
- * Files the Done screen's answer once both it and the sitting the store
- * closed are known; with no sitting closed, says the answer wasn't kept.
+ * Files each waiting answer once the sitting the store closed for it is
+ * known, whatever screen is up; for a close that closed none, says the
+ * answer wasn't kept (and keeps saying so for the next Start, with the screen
+ * gone). Lets go of a settled filing no answer waits on once its Done screen
+ * is gone.
  */
-function fileAnswer(state: StudioState): Step {
-  const { screen } = state
-  if (screen.kind !== "done" || screen.answer === null || screen.filed)
-    return stay(state)
-  if (screen.sitting !== null)
-    return {
-      state: { ...state, screen: { ...screen, filed: true } },
-      effects: [
-        {
-          type: "report",
-          friction: {
-            project: screen.project,
-            sitting: screen.sitting,
-            ...screen.answer,
+function fileAnswers(state: StudioState): Step {
+  const effects: Array<StudioEffect> = state.filings.flatMap((filing) =>
+    filing.answer !== null && filing.sitting !== null
+      ? [
+          {
+            type: "report" as const,
+            friction: {
+              project: filing.project,
+              sitting: filing.sitting,
+              ...filing.answer,
+            },
           },
-        },
-      ],
-    }
-  if (state.closed !== "failed") return stay(state)
-  return told(
-    { ...state, screen: { ...screen, filed: true } },
-    WORDS.done.answerNotKept,
-    null
+        ]
+      : []
+  )
+  const lost = state.filings.some(
+    (filing) =>
+      filing.answer !== null && filing.sitting === null && filing.settled
+  )
+  const left = state.filings.filter((filing) => {
+    if (filing.answer !== null)
+      return filing.sitting === null && !filing.settled
+    const asked = state.screen.kind === "done" && state.screen.at === filing.at
+    return !filing.settled || asked
+  })
+  const filed = { ...state, filings: left }
+  if (!lost) return { state: filed, effects }
+  const said = told(filed, WORDS.done.answerNotKept, WORDS.done.answerNotKept)
+  return { state: said.state, effects: [...effects, ...said.effects] }
+}
+
+/**
+ * A close landed, closing `sitting`, or closed none (null): its filing learns
+ * which, the Done screen asking about it says so, and with that screen gone
+ * a close that closed none is said wherever the person is.
+ */
+function closeSettled(
+  state: StudioState,
+  pending: Pending,
+  sitting: string | null
+): Step {
+  if (pending.kind !== "close") return stay(state)
+  const asked = state.screen.kind === "done" && state.screen.at === pending.at
+  const next: StudioState = {
+    ...state,
+    filings: state.filings.map((filing) =>
+      filing.project === pending.project && filing.at === pending.at
+        ? { ...filing, sitting, settled: true }
+        : filing
+    ),
+    closed: asked ? (sitting === null ? "failed" : "saved") : state.closed,
+    notice: sitting === null && !asked ? WORDS.done.notSaved : state.notice,
+  }
+  return fileAnswers(next)
+}
+
+/** The sitting a landed close closed, as the store returned it. */
+function closedSitting(pending: Pending, written: Written): string | null {
+  if (pending.kind !== "close" || !written.changed) return null
+  return (
+    written.project?.sittings.find(
+      (each) => each.closedAt === pending.at && each.shot === pending.shot
+    )?.id ?? null
   )
 }
 
@@ -774,15 +833,17 @@ function doneForNow(state: StudioState, at: string): Step {
     step: "how",
     went: null,
     project: project.id,
-    sitting: null,
     shot: state.screen.shot,
-    answer: null,
-    filed: false,
+    at,
   }
   const base: StudioState = {
     ...state,
     screen,
     closed: "saving",
+    filings: [
+      ...state.filings,
+      { project: project.id, at, sitting: null, settled: false, answer: null },
+    ],
     closing: { project: project.id, at, shot: state.screen.shot },
   }
   if (state.activity.kind === "recording") {
@@ -810,35 +871,17 @@ function report(
   text: string | null,
   at: string
 ): Step {
-  if (state.screen.kind !== "done") return stay(state)
-  return fileAnswer({
+  const { screen } = state
+  if (screen.kind !== "done") return stay(state)
+  return fileAnswers({
     ...state,
-    screen: {
-      ...state.screen,
-      step: "saved",
-      went,
-      answer: { at, went, gotInTheWay: text },
-    },
+    screen: { ...screen, step: "saved", went },
+    filings: state.filings.map((filing) =>
+      filing.at === screen.at && filing.project === screen.project
+        ? { ...filing, answer: { at, went, gotInTheWay: text } }
+        : filing
+    ),
   })
-}
-
-/** The Done screen, told which sitting the store closed for it. */
-function withClosedSitting(
-  screen: StudioScreen,
-  pending: Pending,
-  written: Written
-): StudioScreen {
-  if (
-    screen.kind !== "done" ||
-    pending.kind !== "close" ||
-    pending.project !== screen.project ||
-    !written.changed
-  )
-    return screen
-  const closed = written.project?.sittings.find(
-    (each) => each.closedAt === pending.at && each.shot === pending.shot
-  )
-  return closed === undefined ? screen : { ...screen, sitting: closed.id }
 }
 
 export function step(state: StudioState, event: StudioEvent): Step {
@@ -913,10 +956,12 @@ export function step(state: StudioState, event: StudioEvent): Step {
     case "listed": {
       if (event.seq !== state.readSeq) return stay(state)
       const kept = event.projects.some((each) => each.id === state.current)
-      const fresh = event.notices.filter(
-        (each) => !state.said.includes(each.key)
-      )
-      const keys = event.notices.map((each) => each.key)
+      // Only a screen on view shows the store's notices, and so lets them go.
+      const onView = state.page === "here"
+      const fresh = onView
+        ? event.notices.filter((each) => !state.said.includes(each.key))
+        : []
+      const keys = onView ? event.notices.map((each) => each.key) : []
       const shown = withProjects(
         {
           ...state,
@@ -1165,17 +1210,11 @@ export function step(state: StudioState, event: StudioEvent): Step {
           ...state,
           inFlight: null,
           activity: pending.kind === "keep" ? { kind: "idle" } : activity,
-          closed:
-            pending.kind === "close"
-              ? written.changed
-                ? "saved"
-                : "failed"
-              : state.closed,
           screen:
             (pending.kind === "create" || pending.kind === "revise") &&
             written.changed
               ? { kind: "start" }
-              : withClosedSitting(screen, pending, written),
+              : screen,
         },
         projects,
         opened
@@ -1190,7 +1229,7 @@ export function step(state: StudioState, event: StudioEvent): Step {
             notice,
             written.changed ? null : lostBy(pending, notice)
           ),
-          fileAnswer
+          (now) => closeSettled(now, pending, closedSitting(pending, written))
         ),
         pump
       )
@@ -1208,12 +1247,11 @@ export function step(state: StudioState, event: StudioEvent): Step {
               ...state,
               inFlight: null,
               activity: pending.kind === "keep" ? { kind: "idle" } : activity,
-              closed: pending.kind === "close" ? "failed" : state.closed,
             },
             notice,
             lostBy(pending, notice)
           ),
-          fileAnswer
+          (now) => closeSettled(now, pending, null)
         ),
         pump
       )
@@ -1265,7 +1303,8 @@ export function step(state: StudioState, event: StudioEvent): Step {
 
     case "notYetPressed": {
       if (screen.kind !== "done") return stay(state)
-      return stay({
+      // A waiting answer stays in `filings`, filed when its close lands.
+      return fileAnswers({
         ...state,
         screen: { kind: "start" },
         notice: "",

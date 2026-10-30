@@ -651,10 +651,11 @@ describe("how a sitting went", () => {
     await until(runtime, (state) => state.inFlight?.kind === "open")
     runtime.dispatch({ type: "doneForNowPressed" })
     runtime.dispatch({ type: "wentChosen", went: "smooth" })
-    expect(runtime.getSnapshot().screen).toMatchObject({
-      step: "saved",
-      sitting: null,
-    })
+    expect(runtime.getSnapshot().screen).toMatchObject({ step: "saved" })
+    // The answer waits for the sitting the store will close.
+    expect(runtime.getSnapshot().filings).toMatchObject([
+      { sitting: null, answer: { went: "smooth" } },
+    ])
     memory.gate.hold = null
     release()
     await until(runtime, (state) => state.closed === "saved")
@@ -696,5 +697,135 @@ describe("what the screen says it let go", () => {
     runtime.dispatch({ type: "doneForNowPressed" })
     await until(runtime, (state) => state.closed !== "saving")
     expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.notice.full(0))
+  })
+})
+
+/** A gate the next writes wait on, opened (or refused) by the test. */
+function holdWrites(memory: ReturnType<typeof memoryProjectStore>): {
+  readonly open: () => void
+  readonly refuse: () => void
+} {
+  let open: () => void = () => undefined
+  let refuse: () => void = () => undefined
+  const held = new Promise<void>((resolve, reject) => {
+    open = resolve
+    refuse = (): void => reject(new Error("disk"))
+  })
+  // A refused gate refuses every write behind it, once.
+  held.catch(() => undefined)
+  memory.gate.hold = (): Promise<void> => held
+  return {
+    open: (): void => {
+      memory.gate.hold = null
+      open()
+    },
+    refuse: (): void => {
+      memory.gate.hold = null
+      refuse()
+    },
+  }
+}
+
+/** Opened on Record with one take kept, then Done for now with its close held. */
+async function doneHeld(
+  memory: ReturnType<typeof memoryProjectStore>
+): Promise<{
+  readonly runtime: Running
+  readonly gate: ReturnType<typeof holdWrites>
+}> {
+  const runtime = await opened(memory)
+  runtime.dispatch({ type: "recordChosen" })
+  await recordOne(runtime)
+  const gate = holdWrites(memory)
+  runtime.dispatch({ type: "doneForNowPressed" })
+  await until(runtime, (state) => state.inFlight?.kind === "close")
+  return { runtime, gate }
+}
+
+describe("an answer waiting on its sitting's close", () => {
+  it("is filed when the close lands, after Not yet left the Done screen", async () => {
+    const memory = memoryProjectStore()
+    const { runtime, gate } = await doneHeld(memory)
+    runtime.dispatch({ type: "wentChosen", went: "smooth" })
+    runtime.dispatch({ type: "notYetPressed" })
+    expect(runtime.getSnapshot().screen).toEqual({ kind: "start" })
+    gate.open()
+    await vi.waitFor(() => expect(memory.friction).toHaveLength(1))
+    expect(memory.friction[0]).toMatchObject({ sitting: "s1", went: "smooth" })
+    expect(runtime.getSnapshot().filings).toEqual([])
+  })
+
+  it("is filed when the close lands, after the screen went away", async () => {
+    const memory = memoryProjectStore()
+    const { runtime, gate } = await doneHeld(memory)
+    runtime.dispatch({ type: "wentChosen", went: "rough" })
+    runtime.dispatch({ type: "snagTold", text: "The microphone" })
+    runtime.detach()
+    gate.open()
+    await vi.waitFor(() => expect(memory.friction).toHaveLength(1))
+    expect(memory.friction[0]).toMatchObject({
+      sitting: "s1",
+      gotInTheWay: "The microphone",
+    })
+  })
+
+  it("whose close is refused after the screen went away is said by the next Start", async () => {
+    const memory = memoryProjectStore()
+    const { runtime, gate } = await doneHeld(memory)
+    runtime.dispatch({ type: "wentChosen", went: "smooth" })
+    runtime.detach()
+    gate.refuse()
+    await vi.waitFor(() =>
+      expect([...memory.notices.values()]).toEqual([
+        STUDIO_WORDS.done.notSaved,
+        STUDIO_WORDS.done.answerNotKept,
+      ])
+    )
+    expect(memory.friction).toEqual([])
+  })
+})
+
+describe("a close refused after Not yet", () => {
+  it("is said on the screen that is up", async () => {
+    const memory = memoryProjectStore()
+    const { runtime, gate } = await doneHeld(memory)
+    runtime.dispatch({ type: "notYetPressed" })
+    gate.refuse()
+    await until(runtime, (state) => state.notice === STUDIO_WORDS.done.notSaved)
+    expect(runtime.getSnapshot().screen).toEqual({ kind: "start" })
+  })
+})
+
+describe("a screen that has gone", () => {
+  it("lets go of no notice the store keeps for the next Start", async () => {
+    const memory = memoryProjectStore()
+    const runtime = await opened(memory)
+    const other = studio(memory, fakeMic(), "u")
+    await until(other, (state) => projectOf(state) !== null)
+    const gate = holdWrites(memory)
+    runtime.dispatch({ type: "recordChosen" })
+    await until(runtime, (state) => state.inFlight?.kind === "open")
+    // Another screen writes, so this one reads once its write lands.
+    memory.gate.hold = null
+    await memory.store.update(
+      "other",
+      () =>
+        newProject("other", {
+          author: "claude",
+          message: "Primer",
+          at: AT,
+          cutList: cutListOf(primer()),
+          primer: primer(),
+        }).project
+    )
+    await until(runtime, (state) => state.stale)
+    // Neither screen is on view when the notice is kept.
+    other.detach()
+    runtime.detach()
+    await memory.store.remember(STUDIO_WORDS.notice.notKept)
+    gate.open()
+    await until(runtime, (state) => !state.stale && state.inFlight === null)
+    await until(runtime, (state) => projectsOfState(state).length === 2)
+    expect([...memory.notices.values()]).toEqual([STUDIO_WORDS.notice.notKept])
   })
 })
