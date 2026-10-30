@@ -59,7 +59,15 @@ export function startView(project: Project): StartView {
         startHere: true,
       },
       later("watch"),
-      later("shape"),
+      {
+        kind: "shape",
+        status: STUDIO_WORDS.shape.status(
+          latest(project).cutList.look,
+          latest(project).cutList.voice
+        ),
+        open: true,
+        startHere: false,
+      },
       later("finish"),
     ],
   }

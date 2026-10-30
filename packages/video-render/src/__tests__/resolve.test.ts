@@ -1,3 +1,4 @@
+import { LOOK_RULES, LOOKS, VOICES } from "@video-render/plans"
 import { designOf, resolve } from "@video-render/resolve"
 import { capture, cutList, series, shot } from "@video-render/testing"
 import { describe, expect, it } from "vitest"
@@ -37,6 +38,36 @@ describe("resolve", () => {
     expect(third?.motion).toEqual({ kind: "still" })
     expect(r.value.music).toBe("under-voice")
   })
+
+  it("offers at most four plans per decision, never a lever (ST6)", () => {
+    expect(LOOKS.length).toBeLessThanOrEqual(4)
+    expect(VOICES.length).toBeLessThanOrEqual(4)
+  })
+
+  it.each(LOOKS)(
+    "draws the %s plan's levers exactly as its table says (ST6)",
+    (look) => {
+      const rules = LOOK_RULES[look]
+      const r = resolve({ ...cutList([shot("S1"), tapped]), look }, series())
+      if (!r.ok) throw new Error(r.problems.join("\n"))
+      const second = r.value.shots[1]
+      expect(second?.transitionIn).toBe(rules.transition)
+      expect(second?.motion.kind).toBe(
+        rules.motion.kind === "punch-in-at-taps"
+          ? "punch-in"
+          : rules.motion.kind
+      )
+      expect(second?.cues).toEqual([
+        ...(rules.cues.sceneStart === null
+          ? []
+          : [{ sound: rules.cues.sceneStart, atMs: 0 }]),
+        ...(rules.cues.tap === null
+          ? []
+          : [400, 1200].map((atMs) => ({ sound: rules.cues.tap, atMs }))),
+      ])
+      expect(r.value.music).toBe(rules.music)
+    }
+  )
 
   it("holds a card still, and a lively scene with no taps", () => {
     const r = resolve(

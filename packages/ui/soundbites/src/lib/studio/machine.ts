@@ -47,6 +47,7 @@
  *   then, or once the Record screen is gone, is let go.
  */
 import { assertNever } from "@some-ui/core-utils"
+import type { Look, Voice } from "@some-ui/video-render"
 import type { RecordingFailure, Take, TakePhase } from "@some-ui/voice-capture"
 import {
   discardTake,
@@ -116,6 +117,13 @@ export type StudioActivity =
 type StudioScreen =
   | { readonly kind: "start" }
   | { readonly kind: "record"; readonly shot: string }
+  /** Shape (ST6): a Look, then a Voice plan, one question each. */
+  | {
+      readonly kind: "shape"
+      readonly step: "look" | "voice"
+      readonly look: Look
+      readonly voice: Voice
+    }
   | {
       readonly kind: "done"
       readonly step: "how" | "what" | "saved"
@@ -167,6 +175,12 @@ type Pending = { readonly project: string } & (
     }
   | { readonly kind: "close"; readonly at: string; readonly shot: string }
   | { readonly kind: "arrived"; readonly takes: ReadonlyArray<string> }
+  | {
+      readonly kind: "shape"
+      readonly look: Look
+      readonly voice: Voice
+      readonly at: string
+    }
 )
 
 export type StudioState = {
@@ -216,6 +230,12 @@ export type StudioIntent =
       readonly as: "next" | "new" | "cancel"
     }
   | { readonly type: "recordChosen" }
+  | { readonly type: "shapeChosen" }
+  | { readonly type: "lookPicked"; readonly look: Look }
+  | { readonly type: "voicePicked"; readonly voice: Voice }
+  | { readonly type: "shapeNext" }
+  | { readonly type: "shapeBack" }
+  | { readonly type: "shapeKept" }
   | { readonly type: "recordPressed" }
   | { readonly type: "discardPressed" }
   | { readonly type: "keepNextPressed" }
@@ -491,6 +511,19 @@ function applied(project: Project | null, pending: Pending): Project | null {
       }, project)
       return after === project ? null : after
     }
+    case "shape": {
+      if (project === null) return null
+      const { cutList } = latest(project)
+      if (cutList.look === pending.look && cutList.voice === pending.voice)
+        return null
+      return model(project, {
+        type: "revised",
+        author: "owner",
+        message: WORDS.shape.revised(pending.look, pending.voice),
+        at: pending.at,
+        cutList: { ...cutList, look: pending.look, voice: pending.voice },
+      })
+    }
     default: {
       return assertNever(pending)
     }
@@ -564,7 +597,8 @@ function landedNotice(
       return n === 0 ? state.notice : WORDS.notice.arrived(n)
     }
     case "open":
-    case "close": {
+    case "close":
+    case "shape": {
       return state.notice
     }
     default: {
@@ -602,6 +636,9 @@ function unchangedNotice(state: StudioState, pending: Pending): string {
     case "close":
     case "arrived": {
       return state.notice
+    }
+    case "shape": {
+      return WORDS.notice.notSaved
     }
     default: {
       return assertNever(pending)
@@ -1078,6 +1115,70 @@ export function step(state: StudioState, event: StudioEvent): Step {
           choosing: null,
         },
         { kind: "open", project: project.id, at: event.at }
+      )
+    }
+
+    case "shapeChosen": {
+      if (project === null || screen.kind !== "start" || !isSettled(activity))
+        return stay(state)
+      const { look, voice } = latest(project).cutList
+      return stay({
+        ...state,
+        screen: { kind: "shape", step: "look", look, voice },
+        notice: "",
+        choosing: null,
+      })
+    }
+
+    case "lookPicked": {
+      return screen.kind === "shape" && screen.step === "look"
+        ? stay({ ...state, screen: { ...screen, look: event.look } })
+        : stay(state)
+    }
+
+    case "voicePicked": {
+      return screen.kind === "shape" && screen.step === "voice"
+        ? stay({ ...state, screen: { ...screen, voice: event.voice } })
+        : stay(state)
+    }
+
+    case "shapeNext": {
+      return screen.kind === "shape" && screen.step === "look"
+        ? stay({ ...state, screen: { ...screen, step: "voice" } })
+        : stay(state)
+    }
+
+    case "shapeBack": {
+      if (screen.kind !== "shape") return stay(state)
+      return stay({
+        ...state,
+        screen:
+          screen.step === "voice"
+            ? { ...screen, step: "look" }
+            : { kind: "start" },
+      })
+    }
+
+    case "shapeKept": {
+      if (
+        screen.kind !== "shape" ||
+        screen.step !== "voice" ||
+        project === null
+      )
+        return stay(state)
+      return enqueue(
+        {
+          ...state,
+          screen: { kind: "start" },
+          notice: WORDS.shape.kept(screen.look, screen.voice),
+        },
+        {
+          kind: "shape",
+          project: project.id,
+          look: screen.look,
+          voice: screen.voice,
+          at: event.at,
+        }
       )
     }
 

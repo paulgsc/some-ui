@@ -4,7 +4,8 @@
  * table, in the person's terms: what is kept where, and what to do next,
  * never the machinery (`__tests__/words.test.ts` holds that).
  */
-import { formatSize } from "@some-ui/core-utils"
+import { formatSize, listed } from "@some-ui/core-utils"
+import type { Look, Voice } from "@some-ui/video-render"
 import type { RecordingFailure } from "@some-ui/voice-capture"
 import { RECORDING_FAILURE_COPY } from "@some-ui/voice-capture"
 import type { QuestionId } from "@soundbites/lib/idea/model"
@@ -25,15 +26,41 @@ export function seconds(ms: number): string {
   return `${(Math.max(0, ms) / 1_000).toFixed(1)} s`
 }
 
+/** Each Look plan (ST6): its name, and what it sets. */
+const LOOK_WORDS = {
+  plain: {
+    name: "Plain",
+    sets: "Straight cuts, a still picture, no music and no sounds. The words appear as a whole line.",
+  },
+  calm: {
+    name: "Calm",
+    sets: "Soft crossfades and a slow push-in, music low under your voice, and each word lighting up as you say it.",
+  },
+  lively: {
+    name: "Lively",
+    sets: "Scenes slide up into each other, the picture punches in at each tap, a whoosh and clicks, and music rising between your lines.",
+  },
+} as const satisfies Record<Look, { name: string; sets: string }>
+
+/** Each Voice plan (ST6): its name, and what it sets. */
+const VOICE_WORDS = {
+  "ad-lib": {
+    name: "Ad-lib",
+    sets: "You make each scene's point in your own words. Claude checks it stays true, and the subtitles follow what you said.",
+  },
+  read: {
+    name: "Read",
+    sets: "You read each scene's line word for word, and the subtitles show the line.",
+  },
+  mixed: {
+    name: "Mixed",
+    sets: "Each scene says whether to make its point or read its line.",
+  },
+} as const satisfies Record<Voice, { name: string; sets: string }>
+
 /** What sharing frees: the room the shared takes held. */
 const MAKING_ROOM =
   "On Start, share a video's takes with Claude and say they reached Drive: they leave the phone, and the room they held is free."
-
-/** `2`, `2 and 3`, `2, 3 and 5`. */
-function listed(items: ReadonlyArray<string>): string {
-  if (items.length <= 1) return items.join("")
-  return `${items.slice(0, -1).join(", ")} and ${items.at(-1) ?? ""}`
-}
 
 function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
@@ -186,6 +213,24 @@ export const STUDIO_WORDS = {
       "Once they're in Drive, the takes that went out can leave the phone.",
     arrivedYes: "They're in Drive: let them go",
     arrivedNo: "Keep them here",
+  },
+
+  /** Shape (ST6): a plan for the look, then one for the voice, never a lever. */
+  shape: {
+    lookQuestion: "How should it look?",
+    voiceQuestion: "How will you talk?",
+    looks: LOOK_WORDS,
+    voices: VOICE_WORDS,
+    now: "Now",
+    next: "Next",
+    keep: "Keep this",
+    back: "Back",
+    kept: (look: Look, voice: Voice): string =>
+      `Shaped: ${LOOK_WORDS[look].name}, ${VOICE_WORDS[voice].name}. The next video drawn follows it.`,
+    status: (look: Look, voice: Voice): string =>
+      `${LOOK_WORDS[look].name} look, ${VOICE_WORDS[voice].name} voice`,
+    revised: (look: Look, voice: Voice): string =>
+      `Shape: ${LOOK_WORDS[look].name} look, ${VOICE_WORDS[voice].name} voice`,
   },
 
   /** Catching an idea, one question at a time (ST18). */

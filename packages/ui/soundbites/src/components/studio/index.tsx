@@ -14,8 +14,10 @@ import type { JSX, ReactNode } from "react"
 import { useEffect, useId, useState, useSyncExternalStore } from "react"
 import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
+import { LOOKS, VOICES } from "@some-ui/video-render"
 import { phoneStudioPorts } from "@soundbites/lib/phone"
 import type { Project } from "@soundbites/lib/project/model"
+import { latest } from "@soundbites/lib/project/model"
 import { lengthFor } from "@soundbites/lib/project/script"
 import type { StudioIntent, StudioState } from "@soundbites/lib/studio/machine"
 import { isSettled, projectOf } from "@soundbites/lib/studio/machine"
@@ -151,7 +153,12 @@ const Start = ({
               {row.open ? (
                 <button
                   type="button"
-                  onClick={() => dispatch({ type: "recordChosen" })}
+                  onClick={() =>
+                    dispatch({
+                      type:
+                        row.kind === "shape" ? "shapeChosen" : "recordChosen",
+                    })
+                  }
                   className="bg-card border-brand focus-visible:ring-ring flex w-full items-center gap-3 rounded-2xl border-2 px-4 py-3 text-left focus-visible:ring-2 focus-visible:outline-none"
                 >
                   <span className="min-w-0 flex-1">
@@ -547,6 +554,97 @@ const Done = ({
   )
 }
 
+type ShapeScreen = Extract<StudioState["screen"], { kind: "shape" }>
+
+/** One plan as a card: its name, and what it sets once chosen. */
+const PlanCard = ({
+  name,
+  sets,
+  chosen,
+  now,
+  onPick,
+}: {
+  name: string
+  sets: string
+  chosen: boolean
+  now: boolean
+  onPick: () => void
+}): JSX.Element => (
+  <button
+    type="button"
+    aria-pressed={chosen}
+    onClick={onPick}
+    className={cn(
+      "focus-visible:ring-ring flex w-full flex-col gap-1 rounded-2xl border px-4 py-3 text-left focus-visible:ring-2 focus-visible:outline-none",
+      chosen ? "bg-card border-brand border-2" : "border-border/60"
+    )}
+  >
+    <span className="flex items-center gap-2">
+      <span className="text-base font-extrabold">{name}</span>
+      {now && (
+        <span className="text-muted-foreground text-xs font-bold">
+          {WORDS.shape.now}
+        </span>
+      )}
+    </span>
+    {chosen && <span className="text-muted-foreground text-sm">{sets}</span>}
+  </button>
+)
+
+/**
+ * Shape (STUDIO ST6): two steps, one question each, a few plans per
+ * question, and only the chosen plan says what it sets.
+ */
+const Shape = ({
+  screen,
+  project,
+  dispatch,
+}: {
+  screen: ShapeScreen
+  project: Project
+  dispatch: Dispatch
+}): JSX.Element => {
+  const kept = latest(project).cutList
+  const lookStep = screen.step === "look"
+  return (
+    <div className="flex flex-col gap-3">
+      <h2 className="text-2xl font-extrabold text-balance">
+        {lookStep ? WORDS.shape.lookQuestion : WORDS.shape.voiceQuestion}
+      </h2>
+      <div className="flex flex-col gap-2">
+        {lookStep
+          ? LOOKS.map((look) => (
+              <PlanCard
+                key={look}
+                {...WORDS.shape.looks[look]}
+                chosen={screen.look === look}
+                now={kept.look === look}
+                onPick={() => dispatch({ type: "lookPicked", look })}
+              />
+            ))
+          : VOICES.map((voice) => (
+              <PlanCard
+                key={voice}
+                {...WORDS.shape.voices[voice]}
+                chosen={screen.voice === voice}
+                now={kept.voice === voice}
+                onPick={() => dispatch({ type: "voicePicked", voice })}
+              />
+            ))}
+      </div>
+      <Button
+        size="lg"
+        onClick={() => dispatch({ type: lookStep ? "shapeNext" : "shapeKept" })}
+      >
+        {lookStep ? WORDS.shape.next : WORDS.shape.keep}
+      </Button>
+      <Button variant="ghost" onClick={() => dispatch({ type: "shapeBack" })}>
+        {WORDS.shape.back}
+      </Button>
+    </div>
+  )
+}
+
 export const Studio = ({ ports, share }: StudioProps): JSX.Element => {
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime is created once per mount, as the soundbites page's is */
   const [runtime] = useState(() =>
@@ -583,6 +681,8 @@ export const Studio = ({ ports, share }: StudioProps): JSX.Element => {
     return (
       <Done state={state} project={project} dispatch={dispatch} share={share} />
     )
+  if (screen.kind === "shape" && project !== null)
+    return <Shape screen={screen} project={project} dispatch={dispatch} />
   return (
     <Start state={state} project={project} dispatch={dispatch} share={share} />
   )

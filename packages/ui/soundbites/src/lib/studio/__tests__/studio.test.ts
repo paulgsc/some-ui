@@ -1092,3 +1092,52 @@ describe("Studio's time log", () => {
     expect(new Set(events.map((event) => event.sitting)).size).toBe(1)
   })
 })
+
+/** ST6: Shape writes the chosen plans as the owner's revision, and nothing more. */
+describe("Shape", () => {
+  it("keeps a Look and a Voice plan as a new version of the video", async () => {
+    const memory = memoryProjectStore()
+    const runtime = await opened(memory)
+    const before = latest(projectIn(runtime)).cutList
+    runtime.dispatch({ type: "shapeChosen" })
+    expect(runtime.getSnapshot().screen).toEqual({
+      kind: "shape",
+      step: "look",
+      look: before.look,
+      voice: before.voice,
+    })
+    runtime.dispatch({ type: "lookPicked", look: "lively" })
+    runtime.dispatch({ type: "shapeNext" })
+    runtime.dispatch({ type: "voicePicked", voice: "read" })
+    runtime.dispatch({ type: "shapeKept" })
+    await until(runtime, settledWrites)
+    const kept = latest(projectIn(runtime))
+    expect(kept.author).toBe("owner")
+    expect(kept.cutList).toEqual({ ...before, look: "lively", voice: "read" })
+    expect(runtime.getSnapshot().screen).toEqual({ kind: "start" })
+    expect(runtime.getSnapshot().notice).toBe(
+      STUDIO_WORDS.shape.kept("lively", "read")
+    )
+  })
+
+  it("writes nothing when the plans are the ones kept", async () => {
+    const memory = memoryProjectStore()
+    const runtime = await opened(memory)
+    const revisions = projectIn(runtime).revisions.length
+    runtime.dispatch({ type: "shapeChosen" })
+    runtime.dispatch({ type: "shapeNext" })
+    runtime.dispatch({ type: "shapeKept" })
+    await until(runtime, settledWrites)
+    expect(projectIn(runtime).revisions).toHaveLength(revisions)
+  })
+
+  it("goes back a step, then to Start, keeping nothing", async () => {
+    const runtime = await opened()
+    runtime.dispatch({ type: "shapeChosen" })
+    runtime.dispatch({ type: "shapeNext" })
+    runtime.dispatch({ type: "shapeBack" })
+    expect(runtime.getSnapshot().screen).toMatchObject({ step: "look" })
+    runtime.dispatch({ type: "shapeBack" })
+    expect(runtime.getSnapshot().screen).toEqual({ kind: "start" })
+  })
+})
