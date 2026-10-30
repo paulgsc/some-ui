@@ -359,7 +359,7 @@ export const STUDIO_WORDS = {
       ["Nothing in Claude's version came in.", ...keptLines(kept)].join(" "),
     same: "This phone already has everything in that file.",
     moved:
-      "Since that file was shared, this phone and Claude changed which scenes the video has in ways that can't both stand. Share the video with Claude again, and ask for the round to be redone on it.",
+      "Since that file was shared, this phone and Claude changed the video in ways that can't both stand. Share the video with Claude again, and ask for the round to be redone on it.",
     notHere: "That file is for a video that isn't on this phone.",
     unreadable: "That file can't be opened as a Studio video.",
   },

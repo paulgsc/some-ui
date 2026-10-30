@@ -22,10 +22,15 @@
  *
  * Refused (`moved`) only where no field-by-field answer exists: both sides
  * changed which scenes the video has, or one side removed a scene the other
- * changed, or the file shares no first version with the phone.
+ * changed, or the file shares no first version with the phone; or where the
+ * answer, each part of it valid, isn't as a whole a project this phone could
+ * open again (a scene whose take runs past its end, a note on a scene its
+ * version no longer has). That is checked by the file reader itself, so a
+ * merge never keeps what `readProjectFile` would refuse.
  */
 import { CutListSchema } from "@some-ui/video-render"
 
+import { projectFile, readProjectFile } from "./file"
 import type { CutListShape, Note, Project, Revision } from "./model"
 import { isAppendOnly, latest, reaches, sameJson } from "./model"
 
@@ -91,7 +96,7 @@ export function mergeIn(kept: Project, file: Project): Merged {
   }
   if (sameJson(merged, kept))
     return clashes.length > 0 ? { kind: "kept", clashes } : { kind: "same" }
-  return isAppendOnly(kept, merged)
+  return isAppendOnly(kept, merged) && readProjectFile(projectFile(merged)).ok
     ? { kind: "merged", project: merged, clashes }
     : { kind: "moved" }
 }

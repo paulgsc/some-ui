@@ -237,6 +237,54 @@ describe("a version back from Claude", () => {
     ])
   })
 
+  it("is refused when the merge, each part valid, couldn't be opened again", () => {
+    const kept = shared()
+    // A take fitted here: 2,700 ms of voice from 200 ms in, in 3,400 ms.
+    const here = version(kept, "owner", "Take on b", [
+      shot("a"),
+      {
+        ...shot("b", 3_400),
+        take: { file: "takes/t1.webm", inMs: 0, outMs: 2_700 },
+      },
+      shot("c"),
+    ])
+    // Claude starts b's voice later, on the version with no take.
+    const back = version(kept, "claude", "b's voice later", [
+      shot("a"),
+      { ...shot("b"), voiceInMs: 1_000 },
+      shot("c"),
+    ])
+    expect(mergeIn(here, back)).toEqual({ kind: "moved" })
+  })
+
+  it("is refused when Claude's note lands on a scene the phone removed", () => {
+    const kept = shared()
+    const here = version(kept, "owner", "Without c", [shot("a"), shot("b")])
+    const back = run(
+      {
+        project: version(kept, "claude", "a longer", [
+          shot("a", 3_000),
+          shot("b"),
+          shot("c"),
+        ]),
+        taking: null,
+        closing: null,
+      },
+      {
+        type: "noted",
+        note: {
+          id: "n3",
+          rev: 2,
+          shot: "c",
+          offsetMs: 100,
+          author: "claude",
+          text: "Check c",
+        },
+      }
+    ).project
+    expect(mergeIn(here, back)).toEqual({ kind: "moved" })
+  })
+
   it("is refused when both changed which scenes the video has", () => {
     const kept = shared()
     const here = version(kept, "owner", "Without c", [shot("a"), shot("b")])
