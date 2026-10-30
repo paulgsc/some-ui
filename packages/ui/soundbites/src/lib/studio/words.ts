@@ -324,8 +324,10 @@ export const STUDIO_WORDS = {
     noted: "Noted, pinned to this moment.",
     /** Saying a note instead of typing it (ST5), pinned where it was begun. */
     say: (ms: number): string => `Say a note · ${formatDuration(ms)}`,
+    gettingReady: "Getting ready…",
     listening: "Listening…",
     stop: "Done talking",
+    finishing: "Finishing…",
     keepSaid: (ms: number): string => `Note this at ${formatDuration(ms)}`,
     again: "Say it again",
     drop: "Let it go",
@@ -333,6 +335,7 @@ export const STUDIO_WORDS = {
     notHeard: "Couldn't hear that. Say it again, or type it.",
     typeInstead:
       "Talking isn't available on this phone right now, so type the note.",
+    notStarted: "Listening isn't working right now. Type the note instead.",
     changed: (text: string): string =>
       `Claude changed this, from your note: "${text}"`,
     good: "Good",
@@ -425,8 +428,10 @@ export const STUDIO_WORDS = {
       },
     } satisfies Record<QuestionId, { ask: string; hint: string }>,
     talk: "Say it",
+    gettingReady: "Getting ready…",
     listening: "Listening…",
     stop: "Done talking",
+    finishing: "Finishing…",
     right: "That's right",
     fix: "Fix the words",
     again: "Say it again",
@@ -438,6 +443,7 @@ export const STUDIO_WORDS = {
       "Talking isn't available on this phone right now, so type it. Speech needs the microphone and the phone's offline English.",
     notHeard: "Didn't hear anything. Try again, or type it.",
     listenFailed: "Couldn't hear that. Try again, or type it.",
+    listenNotStarted: "Listening isn't working right now. Type it instead.",
     notKept: "Couldn't keep that on this phone. Your words are still here.",
     kept: "Kept. Come back to it any time.",
     keptLine: (n: number): string =>
