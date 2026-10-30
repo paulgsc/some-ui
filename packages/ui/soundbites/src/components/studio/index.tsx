@@ -877,12 +877,88 @@ const Watch = ({
               {words.noteHere(screen.atMs)}
             </Button>
           </form>
+          {screen.listen === "available" && (
+            <SpokenNote
+              speaking={screen.speaking}
+              atMs={screen.atMs}
+              canStart={here !== null}
+              dispatch={dispatch}
+            />
+          )}
         </>
       )}
       <Button variant="ghost" onClick={() => dispatch({ type: "watchBack" })}>
         {words.back}
       </Button>
       <Notice text={state.notice} />
+    </div>
+  )
+}
+
+/**
+ * A note said instead of typed (STUDIO ST5): the words as they are heard,
+ * then kept as a note at the moment it was begun, said again, or let go.
+ */
+const SpokenNote = ({
+  speaking,
+  atMs,
+  canStart,
+  dispatch,
+}: {
+  speaking: WatchScreen["speaking"]
+  atMs: number
+  canStart: boolean
+  dispatch: Dispatch
+}): JSX.Element => {
+  const words = WORDS.watch
+  if (speaking === null)
+    return (
+      <Button
+        variant="outline"
+        size="lg"
+        disabled={!canStart}
+        onClick={() => dispatch({ type: "speakPressed" })}
+      >
+        <Mic aria-hidden />
+        {words.say(atMs)}
+      </Button>
+    )
+  if (speaking.phase === "listening")
+    return (
+      <div className="flex flex-col gap-2" aria-live="polite">
+        <p className="text-sm">
+          {speaking.words === "" ? (
+            <span className="text-muted-foreground">{words.listening}</span>
+          ) : (
+            speaking.words
+          )}
+        </p>
+        <Button size="lg" onClick={() => dispatch({ type: "speakStopped" })}>
+          <Square aria-hidden />
+          {words.stop}
+        </Button>
+      </div>
+    )
+  return (
+    <div className="border-brand flex flex-col gap-2 rounded-2xl border-2 p-3">
+      <p className="text-sm">{speaking.words}</p>
+      <Button size="lg" onClick={() => dispatch({ type: "spokenKept" })}>
+        {words.keepSaid(speaking.atMs)}
+      </Button>
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          onClick={() => dispatch({ type: "spokenAgain" })}
+        >
+          {words.again}
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={() => dispatch({ type: "spokenDropped" })}
+        >
+          {words.drop}
+        </Button>
+      </div>
     </div>
   )
 }

@@ -1,5 +1,6 @@
 /** @vitest-environment node */
 import { inMemoryStorage } from "@some-ui/core-utils"
+import type { ShotTime } from "@some-ui/video-render"
 import { REVIEW_SCHEMA } from "@some-ui/video-render"
 import type {
   Playback,
@@ -8,12 +9,15 @@ import type {
   Take,
   TakeDeadlines,
 } from "@some-ui/voice-capture"
+import type { Listened } from "@soundbites/lib/idea/machine"
+import type { IdeaListener, Listening } from "@soundbites/lib/idea/runtime"
 import { run, started, take } from "@soundbites/lib/project/__tests__/fixture"
 import { projectFile, readProjectFile } from "@soundbites/lib/project/file"
 import { finishOf } from "@soundbites/lib/project/finish"
 import type { CutListShape, Project } from "@soundbites/lib/project/model"
 import { latest, newProject, primerAt } from "@soundbites/lib/project/model"
 import { cutListOf, TAIL_MS } from "@soundbites/lib/project/script"
+import type { Speaking } from "@soundbites/lib/studio/machine"
 import { projectOf } from "@soundbites/lib/studio/machine"
 import type { StudioRuntime } from "@soundbites/lib/studio/runtime"
 import { createStudio } from "@soundbites/lib/studio/runtime"
@@ -48,7 +52,8 @@ function studio(
   memory: ReturnType<typeof memoryProjectStore>,
   mic: StartRecording = fakeMic(),
   prefix = "t",
-  takeDeadlines?: TakeDeadlines
+  takeDeadlines?: TakeDeadlines,
+  listener?: IdeaListener
 ): Running {
   let tick = 0
   let ids = 0
@@ -64,6 +69,7 @@ function studio(
       return (): void => undefined
     },
     takeDeadlines,
+    ...(listener === undefined ? {} : { listener }),
     player: {
       play: (): Playback => ({
         ended: new Promise(() => undefined),
@@ -103,9 +109,10 @@ const settledWrites = (
 async function opened(
   memory = memoryProjectStore(),
   mic: StartRecording = fakeMic(),
-  takeDeadlines?: TakeDeadlines
+  takeDeadlines?: TakeDeadlines,
+  listener?: IdeaListener
 ): Promise<Running> {
-  const runtime = studio(memory, mic, "t", takeDeadlines)
+  const runtime = studio(memory, mic, "t", takeDeadlines, listener)
   await until(runtime, (state) => state.shelf.kind === "read")
   runtime.dispatch({
     type: "primerPicked",
@@ -1318,8 +1325,10 @@ describe("a version back from Claude", () => {
 
 /** ST5: Watch pins a note to the moment of the review render on screen. */
 describe("Watch", () => {
-  it("pins a note to the scene and offset playing, from the render's own times", async () => {
-    const runtime = await opened()
+  /** Watch open on a review render of the latest version; its scenes' times. */
+  async function watching(
+    runtime: StudioRuntime
+  ): Promise<ReadonlyArray<ShotTime>> {
     const { rev, cutList } = latest(projectIn(runtime))
     let start = 0
     const shotTimes = cutList.shots.map((each) => {
@@ -1332,8 +1341,6 @@ describe("Watch", () => {
         durationMs: each.durationMs,
       }
     })
-    const [first, second] = shotTimes
-    if (first === undefined || second === undefined) throw new Error("scenes")
     runtime.dispatch({ type: "watchChosen" })
     runtime.dispatch({
       type: "reviewPicked",
@@ -1358,6 +1365,14 @@ describe("Watch", () => {
       runtime,
       (state) => state.screen.kind === "watch" && state.screen.review !== null
     )
+    return shotTimes
+  }
+
+  it("pins a note to the scene and offset playing, from the render's own times", async () => {
+    const runtime = await opened()
+    const { rev } = latest(projectIn(runtime))
+    const [, second] = await watching(runtime)
+    if (second === undefined) throw new Error("scenes")
     runtime.dispatch({ type: "playheadAt", ms: second.startMs + 250 })
     runtime.dispatch({ type: "notedHere", text: "Hold the list longer" })
     await until(
@@ -1375,6 +1390,135 @@ describe("Watch", () => {
         status: "open",
       }),
     ])
+  })
+
+  /** A recognizer the test speaks through: words as heard, then the end. */
+  function fakeListener(available = true): {
+    listener: IdeaListener
+    say: (words: string) => void
+    end: (result: Listened) => void
+    listens: () => number
+  } {
+    let onWords: (words: string) => void = () => undefined
+    let settle: (result: Listened) => void = () => undefined
+    let count = 0
+    return {
+      listener: {
+        available: () => Promise.resolve(available),
+        listen: (heard): Listening => {
+          count += 1
+          onWords = heard
+          return {
+            done: new Promise<Listened>((resolve) => {
+              settle = resolve
+            }),
+            stop: () => undefined,
+            cancel: () => undefined,
+          }
+        },
+      },
+      say: (words) => onWords(words),
+      end: (result) => settle(result),
+      listens: () => count,
+    }
+  }
+
+  const speakingIn = (
+    state: ReturnType<StudioRuntime["getSnapshot"]>
+  ): Speaking | null =>
+    state.screen.kind === "watch" ? state.screen.speaking : null
+
+  it("pins a spoken note to the moment it was begun, once its words are kept (ST5)", async () => {
+    const voice = fakeListener()
+    const runtime = await opened(
+      undefined,
+      undefined,
+      undefined,
+      voice.listener
+    )
+    const { rev } = latest(projectIn(runtime))
+    const [, second] = await watching(runtime)
+    if (second === undefined) throw new Error("scenes")
+    await until(
+      runtime,
+      (state) =>
+        state.screen.kind === "watch" && state.screen.listen === "available"
+    )
+    runtime.dispatch({ type: "playheadAt", ms: second.startMs + 400 })
+    runtime.dispatch({ type: "speakPressed" })
+    voice.say("Hold the")
+    expect(speakingIn(runtime.getSnapshot())?.words).toBe("Hold the")
+    // The render plays on while the note is said.
+    runtime.dispatch({ type: "playheadAt", ms: second.startMs + 1_900 })
+    voice.end({ kind: "heard", words: "Hold the list longer " })
+    await until(runtime, (state) => speakingIn(state)?.phase === "heard")
+    expect(projectIn(runtime).notes).toEqual([])
+    runtime.dispatch({ type: "spokenKept" })
+    await until(
+      runtime,
+      (state) =>
+        settledWrites(state) && state.notice === STUDIO_WORDS.watch.noted
+    )
+    expect(projectIn(runtime).notes).toEqual([
+      expect.objectContaining({
+        rev,
+        shot: second.id,
+        offsetMs: 400,
+        author: "owner",
+        text: "Hold the list longer",
+      }),
+    ])
+  })
+
+  it("says it again, or lets it go, and keeps nothing it wasn't told to", async () => {
+    const voice = fakeListener()
+    const runtime = await opened(
+      undefined,
+      undefined,
+      undefined,
+      voice.listener
+    )
+    await watching(runtime)
+    await until(
+      runtime,
+      (state) =>
+        state.screen.kind === "watch" && state.screen.listen === "available"
+    )
+    runtime.dispatch({ type: "speakPressed" })
+    voice.end({ kind: "heard", words: "Too fast" })
+    await until(runtime, (state) => speakingIn(state)?.phase === "heard")
+    runtime.dispatch({ type: "spokenAgain" })
+    expect(voice.listens()).toBe(2)
+    voice.end({ kind: "heard", words: "" })
+    await until(
+      runtime,
+      (state) => state.notice === STUDIO_WORDS.watch.heardNothing
+    )
+    expect(speakingIn(runtime.getSnapshot())).toBeNull()
+    runtime.dispatch({ type: "speakPressed" })
+    voice.end({ kind: "heard", words: "Slower" })
+    await until(runtime, (state) => speakingIn(state)?.phase === "heard")
+    runtime.dispatch({ type: "spokenDropped" })
+    expect(speakingIn(runtime.getSnapshot())).toBeNull()
+    expect(projectIn(runtime).notes).toEqual([])
+  })
+
+  it("takes typed notes only, on a phone that can't listen", async () => {
+    const voice = fakeListener(false)
+    const runtime = await opened(
+      undefined,
+      undefined,
+      undefined,
+      voice.listener
+    )
+    await watching(runtime)
+    await until(
+      runtime,
+      (state) =>
+        state.screen.kind === "watch" && state.screen.listen === "unavailable"
+    )
+    runtime.dispatch({ type: "speakPressed" })
+    expect(voice.listens()).toBe(0)
   })
 
   it("asks for the video and its review.json together", async () => {

@@ -322,6 +322,17 @@ export const STUDIO_WORDS = {
     noteLabel: "Your note",
     noteHere: (ms: number): string => `Note here · ${formatDuration(ms)}`,
     noted: "Noted, pinned to this moment.",
+    /** Saying a note instead of typing it (ST5), pinned where it was begun. */
+    say: (ms: number): string => `Say a note · ${formatDuration(ms)}`,
+    listening: "Listening…",
+    stop: "Done talking",
+    keepSaid: (ms: number): string => `Note this at ${formatDuration(ms)}`,
+    again: "Say it again",
+    drop: "Let it go",
+    heardNothing: "Didn't hear anything. Say it again, or type it.",
+    notHeard: "Couldn't hear that. Say it again, or type it.",
+    typeInstead:
+      "Talking isn't available on this phone right now, so type the note.",
     changed: (text: string): string =>
       `Claude changed this, from your note: "${text}"`,
     good: "Good",

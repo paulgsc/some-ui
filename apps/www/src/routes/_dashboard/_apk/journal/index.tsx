@@ -1,7 +1,7 @@
 import type { JSX } from "react"
 import { useEffect } from "react"
 import { useConfirmSheet } from "@some-ui/shared"
-import type { Project, StudioShare } from "@some-ui/soundbites"
+import type { IdeaListener, Project, StudioShare } from "@some-ui/soundbites"
 import {
   keptTimeLog,
   letGoHeldTakes,
@@ -15,6 +15,7 @@ import {
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { Lightbulb } from "lucide-react"
 
+import { deviceListener } from "@/lib/device-listen"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { shareStudio } from "@/lib/journal-share"
@@ -65,6 +66,12 @@ const ShareStudio = ({
   )
 }
 
+/** The phone's recognizer for a note said in Watch, in the Android app (ST5). */
+const studioPorts: { listener: IdeaListener } | undefined =
+  import.meta.env.VITE_DEVICE_BACKEND === "true"
+    ? { listener: deviceListener }
+    : undefined
+
 const studioShare: StudioShare | undefined =
   import.meta.env.VITE_DEVICE_BACKEND === "true"
     ? (props): JSX.Element => <ShareStudio {...props} />
@@ -106,7 +113,7 @@ const StudioRoute = (): JSX.Element => {
           </span>
         </span>
       </Link>
-      <Studio share={studioShare} />
+      <Studio share={studioShare} ports={studioPorts} />
     </div>
   )
 }
