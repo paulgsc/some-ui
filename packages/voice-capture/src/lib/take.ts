@@ -12,6 +12,12 @@
  * - Finishing keeps what was said; discarding keeps nothing.
  */
 import { assertNever } from "@some-ui/core-utils"
+import type { ForeignFailure, ForeignPort } from "@some-ui/intent-kit"
+import {
+  callForeign,
+  ForeignDeadlineError,
+  reportFailure,
+} from "@some-ui/intent-kit"
 
 import type {
   Recording,
@@ -139,9 +145,54 @@ export function stepTake(
 }
 
 /**
+ * How long the microphone may take to open: Android's prompt the first
+ * time waits on a person, so a long while, but not for ever.
+ */
+const OPEN_DEADLINE_MS = 60_000
+
+const FINISH_DEADLINE_MS = 15_000
+
+/** How long `takeRunner` waits on the microphone; tests shorten it. */
+export type TakeDeadlines = {
+  readonly openMs: number
+  readonly finishMs: number
+}
+
+/**
+ * The microphone as `callForeign` meets it. Its refusals are its own to
+ * report (`recorder.ts`); a deadline is this runner's, so only that is
+ * reported here.
+ */
+const MICROPHONE: ForeignPort = {
+  name: "microphone (a take)",
+  classify: (error) =>
+    error instanceof ForeignDeadlineError
+      ? {
+          kind: "unreachable",
+          retryable: true,
+          summary: "The microphone didn't answer in time.",
+        }
+      : {
+          kind: "unknown",
+          retryable: true,
+          summary: "The microphone didn't work.",
+        },
+  report: (failure: ForeignFailure) => {
+    if (failure.error.cause instanceof ForeignDeadlineError) {
+      reportFailure(failure)
+    }
+  },
+}
+
+/**
  * Runs a take's effects against the microphone and the clock: holds the
  * recording and the interval, and reports each result as a `TakeSignal`.
  * Which signals still matter is the machine's to decide.
+ *
+ * VC1: every wait on the microphone settles within its deadline
+ * (`OPEN_DEADLINE_MS`, `FINISH_DEADLINE_MS`), as `micFailed` or
+ * `takeFailed` when it doesn't answer, and a microphone that opens after
+ * its deadline is let go at once, never left recording.
  */
 export function takeRunner(
   ports: {
@@ -149,6 +200,8 @@ export function takeRunner(
     /** Milliseconds since the epoch. */
     now: () => number
     tickMs: number
+    /** Defaults `OPEN_DEADLINE_MS` and `FINISH_DEADLINE_MS`. */
+    deadlines?: TakeDeadlines | undefined
   },
   signal: (signal: TakeSignal) => void
 ): { run: (effect: TakeEffect) => void } {
@@ -163,19 +216,30 @@ export function takeRunner(
     run(effect): void {
       switch (effect.type) {
         case "openMic": {
-          ports.startRecording().then(
-            (opened) => {
-              recording?.discard()
-              recording = opened
-              signal({ type: "micOpened", at: ports.now() })
+          const call = callForeign<Recording>({
+            port: MICROPHONE,
+            deadlineMs: ports.deadlines?.openMs ?? OPEN_DEADLINE_MS,
+            start: async (late) => {
+              const opened = await ports.startRecording()
+              // Opened after its deadline: nothing waits for it any more.
+              if (late.aborted) opened.discard()
+              return opened
             },
-            (error: unknown) =>
+          })
+          void call.outcome.then((outcome) => {
+            if (outcome.status === "succeeded") {
+              recording?.discard()
+              recording = outcome.value
+              signal({ type: "micOpened", at: ports.now() })
+            } else if (outcome.status === "failed") {
+              const { cause } = outcome.error
               signal({
                 type: "micFailed",
                 reason:
-                  error instanceof RecordingError ? error.reason : "failed",
+                  cause instanceof RecordingError ? cause.reason : "failed",
               })
-          )
+            }
+          })
           return
         }
         case "startClock": {
@@ -202,9 +266,17 @@ export function takeRunner(
             signal({ type: "takeFailed" })
             return
           }
-          finishing.finish().then(
-            (take) => signal({ type: "taken", take }),
-            () => signal({ type: "takeFailed" })
+          const call = callForeign<Take>({
+            port: MICROPHONE,
+            deadlineMs: ports.deadlines?.finishMs ?? FINISH_DEADLINE_MS,
+            start: () => finishing.finish(),
+          })
+          void call.outcome.then((outcome) =>
+            signal(
+              outcome.status === "succeeded"
+                ? { type: "taken", take: outcome.value }
+                : { type: "takeFailed" }
+            )
           )
           return
         }
