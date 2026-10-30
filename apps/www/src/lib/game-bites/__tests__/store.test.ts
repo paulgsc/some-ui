@@ -2,8 +2,8 @@
  * The game bites kept on this phone (`../model`, `../runtime`): a bite is
  * kept whole or not at all, one the phone could not keep is held by the
  * store and tried again, nothing lets it go but Undo while it is held back,
- * no audio a record might name is deleted, and an unreadable record is
- * moved aside, never written over (GW3).
+ * no audio goes but a bite's the record says home holds (#2080), and an
+ * unreadable record is moved aside, never written over (GW3).
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import type { KeptBite } from "@some-ui/game-week"
@@ -352,6 +352,111 @@ describe("createGameBites", () => {
     await clock.advance(1)
     await expect(store.undo("b1")).rejects.toThrow()
     expect(store.getSnapshot().map(({ id }) => id)).toEqual(["b1"])
+  })
+
+  it("lets a bite's audio go once home holds it, and keeps its record saying since when (#2080)", async () => {
+    const clock = world()
+    const storage = memoryStorage()
+    const shelf = memoryShelf()
+    const store = createGameBites({ storage, shelf, ...clock.ports })
+    await store.keep(bite("b1"), new Blob(["x"]))
+    await store.keep(bite("b2"), new Blob(["y"]))
+    await store.release("b1")
+    await store.release("b2")
+    await clock.advance(1)
+    await store.letGo(new Set(["b1"]))
+    expect(store.getSnapshot()).toEqual([
+      { ...bite("b1"), holdUntil: T0, homeSince: T0 + 1 },
+      { ...bite("b2"), holdUntil: T0 },
+    ])
+    expect([...shelf.blobs.keys()]).toEqual(["b2"])
+    expect(store.ready().map(({ id }) => id)).toEqual(["b2"])
+    // A later answer keeps the first time; a later launch reads it back.
+    await clock.advance(1)
+    await store.letGo(new Set(["b1"]))
+    const again = createGameBites({ storage, shelf, ...clock.ports })
+    expect(again.getSnapshot()[0]).toMatchObject({ homeSince: T0 + 1 })
+  })
+
+  it("lets nothing go that home doesn't hold, that is still held back, or that the record doesn't name", async () => {
+    const shelf = memoryShelf()
+    shelf.blobs.set("b9", new Blob(["unnamed"]))
+    const store = createGameBites({
+      storage: memoryStorage(),
+      shelf,
+      ...world().ports,
+    })
+    await store.keep(bite("b1"), new Blob(["x"]))
+    await store.keep(bite("b2"), new Blob(["y"]))
+    await store.release("b2")
+    // b1 is still held back for Undo; b9 is on the shelf, named by no record.
+    await store.letGo(new Set(["b1", "b9"]))
+    expect(store.getSnapshot().some((b) => "homeSince" in b)).toBe(false)
+    expect([...shelf.blobs.keys()].sort()).toEqual(["b1", "b2", "b9"])
+  })
+
+  it("lets the audio go at the next call when the first removal failed", async () => {
+    const clock = world()
+    const storage = memoryStorage()
+    const shelf = memoryShelf()
+    let failing = true
+    const removing: BlobShelf = {
+      ...shelf,
+      remove: (ids): Promise<void> =>
+        failing ? Promise.reject(new Error("blocked")) : shelf.remove(ids),
+    }
+    const store = createGameBites({ storage, shelf: removing, ...clock.ports })
+    await store.keep(bite("b1"), new Blob(["x"]))
+    await store.release("b1")
+    await clock.advance(1)
+    await store.letGo(new Set(["b1"]))
+    expect([...shelf.blobs.keys()]).toEqual(["b1"])
+    failing = false
+    await store.letGo(new Set(["b1"]))
+    expect([...shelf.blobs.keys()]).toEqual([])
+  })
+
+  it("keeps the record of a bite home holds, even if the clock goes back", async () => {
+    const clock = world()
+    const store = createGameBites({
+      storage: memoryStorage(),
+      shelf: memoryShelf(),
+      ...clock.ports,
+    })
+    await store.keep(bite("b1"), new Blob(["x"]))
+    await store.release("b1")
+    await clock.advance(1)
+    await store.letGo(new Set(["b1"]))
+    const marked = stepGameBites(
+      store.getSnapshot(),
+      { kind: "undone", id: "b1" },
+      T0 - 60_000
+    )
+    expect(marked).toBe("on-its-way")
+  })
+
+  it("lets nothing go when its record was unreadable", async () => {
+    const storage = memoryStorage()
+    storage.map.set("some-ui:game-bites", "[{broken")
+    const shelf = memoryShelf()
+    shelf.blobs.set("b1", new Blob(["said"]))
+    const store = createGameBites({ storage, shelf, ...world().ports })
+    await store.letGo(new Set(["b1"]))
+    expect([...shelf.blobs.keys()]).toEqual(["b1"])
+  })
+
+  it("lets no audio go when storage won't keep the record saying home holds it", async () => {
+    const clock = world()
+    const storage = memoryStorage()
+    const shelf = memoryShelf()
+    const store = createGameBites({ storage, shelf, ...clock.ports })
+    await store.keep(bite("b1"), new Blob(["x"]))
+    await store.release("b1")
+    await clock.advance(1)
+    storage.refuse = true
+    await store.letGo(new Set(["b1"]))
+    expect([...shelf.blobs.keys()]).toEqual(["b1"])
+    expect(store.getSnapshot()[0]).not.toHaveProperty("homeSince")
   })
 
   it("wakes its listeners when a hold runs out on its own (A4)", async () => {

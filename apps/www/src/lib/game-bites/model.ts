@@ -6,13 +6,18 @@
  * Append-only but for Undo: a bite is added once, and only a bite still
  * held back (`holdUntil` not yet reached) can be said again (`amended`) or
  * thrown away (`undone`). Once its hold has run out it is the voice lane's
- * to copy for home (`lib/home-link/voice-copy`), and nothing here lets it go.
+ * to copy for home (`lib/home-link/voice-copy`). Once home holds it, the
+ * record says since when (`homeSince`), and `./runtime` lets its audio go.
  */
 import { assertNever, isRecord } from "@some-ui/core-utils"
 import type { KeptBite } from "@some-ui/game-week"
 
+/** A bite as this phone keeps it: once home holds it, since when. */
+export type PhoneBite = KeptBite & { readonly homeSince?: number }
+
 export type GameBitesEvent =
   | { readonly kind: "kept"; readonly bite: KeptBite }
+  | { readonly kind: "home-holds"; readonly ids: ReadonlySet<string> }
   | {
       readonly kind: "amended"
       readonly id: string
@@ -35,18 +40,28 @@ export function isReady(bite: KeptBite, now: number): boolean {
  * already kept changes nothing.
  */
 export function stepGameBites(
-  bites: ReadonlyArray<KeptBite>,
+  bites: ReadonlyArray<PhoneBite>,
   event: GameBitesEvent,
   now: number
-): ReadonlyArray<KeptBite> | Refusal {
+): ReadonlyArray<PhoneBite> | Refusal {
   if (event.kind === "kept") {
     return bites.some((b) => b.id === event.bite.id)
       ? bites
       : [...bites, event.bite]
   }
+  if (event.kind === "home-holds") {
+    // Only a bite on its way can be held by home, and the first answer's
+    // time stays: a later one changes nothing.
+    const marked = (b: PhoneBite): boolean =>
+      b.homeSince === undefined && isReady(b, now) && event.ids.has(b.id)
+    return bites.some(marked)
+      ? bites.map((b) => (marked(b) ? { ...b, homeSince: now } : b))
+      : bites
+  }
   const bite = bites.find((b) => b.id === event.id)
   if (bite === undefined) return "unknown"
-  if (isReady(bite, now)) {
+  // A bite home holds is on its way for good, even if the clock goes back.
+  if (bite.homeSince !== undefined || isReady(bite, now)) {
     // Releasing what is already on its way is no change, and no refusal.
     return event.kind === "released" ? bites : "on-its-way"
   }
@@ -78,7 +93,7 @@ function isFields(value: unknown): value is Record<string, string> {
   return isRecord(value) && Object.values(value).every(isString)
 }
 
-function isBite(value: unknown): value is KeptBite {
+function isBite(value: unknown): value is PhoneBite {
   return (
     isRecord(value) &&
     isString(value.id) &&
@@ -87,12 +102,13 @@ function isBite(value: unknown): value is KeptBite {
     isString(value.contentType) &&
     isNumber(value.durationMs) &&
     isFields(value.fields) &&
-    isNumber(value.holdUntil)
+    isNumber(value.holdUntil) &&
+    (value.homeSince === undefined || isNumber(value.homeSince))
   )
 }
 
 /** The stored record, or null for one this build cannot read. */
-export function parseGameBites(raw: string): ReadonlyArray<KeptBite> | null {
+export function parseGameBites(raw: string): ReadonlyArray<PhoneBite> | null {
   let value: unknown
   try {
     value = JSON.parse(raw)

@@ -9,6 +9,7 @@
 import { useEffect, useSyncExternalStore } from "react"
 import type { OutboxPort, OutboxView } from "@some-ui/game-week"
 
+import type { PhoneBite } from "@/lib/game-bites"
 import { phoneGameBites } from "@/lib/game-bites"
 import { phoneJobs } from "@/lib/jobs"
 import { reflections } from "@/lib/session-reflection"
@@ -95,27 +96,40 @@ export function useVoiceHome(): KeptState {
  * `OutboxPort`), for the recorder to say in the person's terms: how many
  * the phone could not keep yet (held while the app is open), how many
  * home does not hold yet, how many home said it can't take (each stays on
- * this phone, its copy for home included), and whether this phone sends
- * voice notes home at all. It reads, and sends nothing.
+ * this phone, its copy for home included), how many home holds instead
+ * and since when, and whether this phone sends voice notes home at all. It
+ * reads, and sends nothing.
  */
 
 /**
- * The view from the bites not kept yet, the kept bites' ids, what home
+ * The view from the bites not kept yet, the kept bites, what home
  * answered, and whether they are sent.
  */
 export function outboxView(
   notKept: number,
-  ids: ReadonlyArray<string>,
+  bites: ReadonlyArray<PhoneBite>,
   home: VoiceHomeState,
   sending: boolean
 ): OutboxView {
   const held = new Set(home.held)
   const refused = new Set(home.refused.map(({ id }) => id))
+  const since = bites.flatMap(({ homeSince }) =>
+    homeSince === undefined ? [] : [homeSince]
+  )
   return {
     notKept,
-    waiting: ids.filter((id) => !held.has(id) && !refused.has(id)).length,
-    refused: ids.filter((id) => refused.has(id)).length,
+    // A bite the record says home holds never waits, even if home's
+    // answers here were lost.
+    waiting: bites.filter(
+      ({ id, homeSince }) =>
+        homeSince === undefined && !held.has(id) && !refused.has(id)
+    ).length,
+    refused: bites.filter(({ id }) => refused.has(id)).length,
     sending,
+    onHome:
+      since.length === 0
+        ? null
+        : { count: since.length, since: Math.min(...since) },
   }
 }
 
@@ -126,7 +140,9 @@ function sameView(a: OutboxView, b: OutboxView): boolean {
     a.notKept === b.notKept &&
     a.waiting === b.waiting &&
     a.refused === b.refused &&
-    a.sending === b.sending
+    a.sending === b.sending &&
+    a.onHome?.count === b.onHome?.count &&
+    a.onHome?.since === b.onHome?.since
   )
 }
 
@@ -135,7 +151,7 @@ export const gameOutbox: OutboxPort = {
     const bites = phoneGameBites()
     const next = outboxView(
       bites.unkept(),
-      bites.getSnapshot().map(({ id }) => id),
+      bites.getSnapshot(),
       phoneVoiceHome().getSnapshot(),
       keptNow(VOICE_SCOPES)
     )

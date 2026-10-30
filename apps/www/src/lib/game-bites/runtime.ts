@@ -13,15 +13,18 @@
  * listeners hear when a try keeps it (`isKept`). Calls run one after
  * another, in the order made.
  *
- * Nothing here lets a bite go but Undo while it is held back, and nothing
- * deletes audio a record might name: there is no sweep. The record lives in
+ * Nothing here lets a bite go but Undo while it is held back, and no audio
+ * goes but that of a bite the record says home holds (`letGo`): there is
+ * no sweep. The record lives in
  * this device's storage and the audio in IndexedDB, so a keep cannot write
  * both in one transaction; the bite is noted (`KEEPING_KEY`) before its
  * audio is written, and a launch after the app was killed between the two
  * writes adds it to the record from that note (`recover`). Audio no record
- * or note names stays on the shelf. A bite home holds stays on the phone
- * too (the owner's call, CLAUDE.md "Never lose the record"). An unreadable
- * record is moved aside, never written over.
+ * or note names stays on the shelf. Once home holds a bite (its voice note
+ * and `game_bite` row, kept for good), the record notes since when and the
+ * bite's audio leaves the phone; the record of the bite stays (owner,
+ * 2026-10-29, #2080; docs/discard-sites.md). An unreadable record is moved
+ * aside, never written over, and lets nothing go.
  *
  * The store wakes itself when the earliest hold runs out, so the voice lane
  * copies a bite whose Undo closed with nobody on the screen.
@@ -32,7 +35,7 @@ import type { BiteStore, KeptBite } from "@some-ui/game-week"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import type { BlobShelf } from "@some-ui/voice-capture"
 
-import type { GameBitesEvent } from "./model"
+import type { GameBitesEvent, PhoneBite } from "./model"
 import { isReady, parseGameBites, stepGameBites } from "./model"
 
 const STORAGE_KEY = "some-ui:game-bites"
@@ -59,9 +62,15 @@ export type GameBitesPorts = {
 }
 
 export type GameBites = BiteStore & {
-  getSnapshot: () => ReadonlyArray<KeptBite>
-  /** The bites that may start on their way home now. */
+  getSnapshot: () => ReadonlyArray<PhoneBite>
+  /** The bites that may start on their way home now, and home doesn't hold. */
   ready: () => ReadonlyArray<KeptBite>
+  /**
+   * Notes since when home holds each of `homeHolds` this record has on its way,
+   * then lets the audio of every bite home holds go. Failures go to the
+   * log; the next call tries again.
+   */
+  letGo: (homeHolds: ReadonlySet<string>) => Promise<void>
   /** Bites the phone could not keep yet, held by this page load. */
   unkept: () => number
   audio: (id: string) => Promise<Blob | null>
@@ -85,7 +94,7 @@ export function createGameBites(ports: GameBitesPorts): GameBites {
     storage === null
       ? null
       : openRecord(storage, STORAGE_KEY, parseGameBites, QUARANTINE_PREFIX)
-  let bites: ReadonlyArray<KeptBite> =
+  let bites: ReadonlyArray<PhoneBite> =
     opened?.kind === "kept" ? opened.value : []
   // Storage that threw, or a record that could not be moved aside, is
   // written to by no one: a keep then fails, and the bite is held here.
@@ -95,6 +104,8 @@ export function createGameBites(ports: GameBitesPorts): GameBites {
   let queue: Promise<unknown> = Promise.resolve()
   let cancelWake: (() => void) | null = null
   let cancelRetry: (() => void) | null = null
+  /** Bites whose audio this page load has already let go. */
+  const letGone = new Set<string>()
 
   const notify = (): void => {
     for (const listener of listeners) listener()
@@ -125,7 +136,7 @@ export function createGameBites(ports: GameBitesPorts): GameBites {
     })
   }
 
-  function writeBites(next: ReadonlyArray<KeptBite>): void {
+  function writeBites(next: ReadonlyArray<PhoneBite>): void {
     if (
       !writable ||
       !writeRecord(storage, STORAGE_KEY, JSON.stringify(next), parseGameBites)
@@ -184,7 +195,9 @@ export function createGameBites(ports: GameBitesPorts): GameBites {
   }
 
   /** Steps a bite held here; throws if it is not held or the step is refused. */
-  function applyHeld(event: Exclude<GameBitesEvent, { kind: "kept" }>): void {
+  function applyHeld(
+    event: Exclude<GameBitesEvent, { kind: "kept" | "home-holds" }>
+  ): void {
     const at = held.findIndex(({ bite }) => bite.id === event.id)
     if (at < 0) throw new BiteRefusedError("unknown")
     const entry = held[at]
@@ -198,7 +211,9 @@ export function createGameBites(ports: GameBitesPorts): GameBites {
   }
 
   /** Applies `event` to the record, or to the held bite it names. */
-  function change(event: Exclude<GameBitesEvent, { kind: "kept" }>): void {
+  function change(
+    event: Exclude<GameBitesEvent, { kind: "kept" | "home-holds" }>
+  ): void {
     if (held.some(({ bite }) => bite.id === event.id)) applyHeld(event)
     else apply(event)
   }
@@ -247,6 +262,25 @@ export function createGameBites(ports: GameBitesPorts): GameBites {
     writeKeeping([])
   }
 
+  /**
+   * Notes what home now holds, then lets go the audio of every bite home
+   * holds that this page load has not let go yet, so a removal a stopped
+   * app left undone is done at the next call. Only after the record says
+   * so, and never a bite the record does not name.
+   */
+  async function letGoNow(homeHolds: ReadonlySet<string>): Promise<void> {
+    if (!writable) return
+    apply({ kind: "home-holds", ids: homeHolds })
+    const due = bites.filter(
+      (bite) => bite.homeSince !== undefined && !letGone.has(bite.id)
+    )
+    if (due.length === 0) return
+    const shelved = new Set(await shelf.ids())
+    const ids = due.map(({ id }) => id).filter((id) => shelved.has(id))
+    if (ids.length > 0) await shelf.remove(ids)
+    for (const { id } of due) letGone.add(id)
+  }
+
   inTurn(recover).catch((error: unknown) => {
     reportFailure({ port: "game bites recover", error: toIntentError(error) })
   })
@@ -266,7 +300,17 @@ export function createGameBites(ports: GameBitesPorts): GameBites {
         listeners.delete(listener)
       }
     },
-    ready: () => bites.filter((bite) => isReady(bite, ports.now())),
+    ready: () =>
+      bites.filter(
+        (bite) => bite.homeSince === undefined && isReady(bite, ports.now())
+      ),
+    letGo: (homeHolds) =>
+      inTurn(() => letGoNow(homeHolds)).catch((error: unknown) => {
+        reportFailure({
+          port: "game bites (let go once home holds them)",
+          error: toIntentError(error),
+        })
+      }),
     unkept: () => held.length,
     isKept: (id) => bites.some((bite) => bite.id === id),
     audio: (id) => shelf.get(id),

@@ -1208,7 +1208,7 @@
             },
             {
               "class": "structural",
-              "says": "Game bites' audio store has no cap (maxBytes is Infinity) and never leaves the phone, so it can fill the 25 MiB pool, after which every other save is refused (some-ui#2264).",
+              "says": "Game bites' audio store has no cap (maxBytes is Infinity). Since #2080 a bite's audio leaves the phone once home holds it, but bites home does not hold yet (away from home, or voice notes not kept there) can still fill the 25 MiB pool, after which every other save is refused (some-ui#2264).",
               "ref": "some-ui:apps/www/src/lib/game-bites"
             },
             {
@@ -1466,7 +1466,7 @@
     {
       "store": "phone:game-bites",
       "class": "record",
-      "growth": "Per game bite (up to a minute at 32 kbps, ~240 KB): no cap of its own (maxBytes = +Infinity), only the 25 MiB pool refuses; bites stay on the phone even after home holds them.",
+      "growth": "Per game bite (up to a minute at 32 kbps, ~240 KB) until home holds it, then its audio leaves the phone and a small record stays (letGo, #2080); no cap of its own (maxBytes = +Infinity), so bites home does not hold yet grow until the 25 MiB pool refuses.",
       "family": "what-is-kept"
     },
     {

@@ -4,6 +4,8 @@
  * the machinery behind it. `__tests__/words.test.ts` holds every entry and
  * every phrase these functions can make to that.
  */
+import { counted, dayOf, formatDay } from "@some-ui/core-utils"
+
 import type { ModeId } from "./modes"
 import type { OutboxView } from "./ports"
 
@@ -112,7 +114,10 @@ export const MODE_WORDS: Readonly<
 /** Every mode stops a bite at one minute. */
 export const MINUTE_LINE = "Every bite stops at one minute."
 
-/** What the outbox line under the screen says, or "" when nothing waits. */
+/**
+ * What the outbox line under the screen says, or "" when nothing waits and
+ * home holds none.
+ */
 export function outboxLine(view: OutboxView): string {
   const lines: Array<string> = []
   if (view.notKept > 0) {
@@ -136,6 +141,12 @@ export function outboxLine(view: OutboxView): string {
       view.refused === 1
         ? "Home couldn't take 1 bite. It stays on this phone."
         : `Home couldn't take ${view.refused} bites. They stay on this phone.`
+    )
+  }
+  if (view.onHome !== null) {
+    const { count, since } = view.onHome
+    lines.push(
+      `${counted(count, "bite")} kept on home since ${formatDay(dayOf(new Date(since)))}.`
     )
   }
   return lines.join(" ")
