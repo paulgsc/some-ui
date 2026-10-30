@@ -10,8 +10,10 @@ import type { Track } from "@some-ui/job-desk"
 import { LAPSE_DAYS } from "@some-ui/job-desk"
 
 import type {
+  Course,
   DebriefResult,
   FrictionChip,
+  Outcome,
   PassReason,
   ShareKind,
   Standing,
@@ -286,6 +288,63 @@ export const sayItAloud = "Or say it, up to a minute"
 
 export const endedAs = (result: DebriefResult): string =>
   `Ended: ${endingLabels[result]}. Add replies and interviews under Record as they come.`
+
+/** What has happened to an application since it was sent, one tap each. */
+export const outcomeLabels: Readonly<Record<Outcome, string>> = {
+  viewed: "Viewed",
+  reply: "Reply",
+  screen: "Screen",
+  interview: "Interview",
+  offer: "Offer",
+  rejected: "Rejected",
+  "no-reply-30d": "No reply in 30 days",
+}
+
+/** The badge on an application's card under Record: where it stands. */
+export function courseBadge(course: Course): string {
+  switch (course.kind) {
+    case "applying": {
+      return "In progress"
+    }
+    case "unsent": {
+      return course.result === "gave-up" ? "Stopped partway" : "Posting closed"
+    }
+    case "waiting": {
+      return course.reached ? outcomeLabels[course.reached] : "Waiting"
+    }
+    case "ended": {
+      return outcomeLabels[course.by]
+    }
+    default: {
+      return assertNever(course)
+    }
+  }
+}
+
+/** The line on an application's card: what it still waits on, if anything. */
+export function courseSays(course: Course): string | null {
+  switch (course.kind) {
+    case "applying": {
+      return null
+    }
+    case "unsent": {
+      return "Never sent, so nothing to wait for."
+    }
+    case "waiting": {
+      return `Sent ${formatDay(course.since)}. Waiting to hear.`
+    }
+    case "ended": {
+      return "Nothing more to wait for."
+    }
+    default: {
+      return assertNever(course)
+    }
+  }
+}
+
+/** Opens, or closes, what an ended application can still record. */
+export const heardSince = (open: boolean): string =>
+  open ? "Leave it as it is" : "Heard something since?"
 
 /** Under a scout's link whose host the morning run can't open (`linkReach`). */
 export const cantOpenLink =
