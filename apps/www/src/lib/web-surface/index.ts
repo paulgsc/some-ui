@@ -74,6 +74,19 @@ export const BurnInsPreview: ComponentType<BurnInsPreviewProps> =
     : Nothing
 
 /**
+ * The page an authorship mark's end card names (`/authorship`): the mark's
+ * key and one video's record, read from its link; nothing where the build
+ * has no web surface.
+ */
+export const AuthorshipRecord: ComponentType<{ code?: string }> =
+  import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
+    ? lazyWithPreload(
+        () => import("./burn-ins/authorship"),
+        "AuthorshipRecordPage"
+      ).Component
+    : Nothing
+
+/**
  * The page the burn-ins recorder captures (`tests/record/burn-ins.ts`);
  * nothing where the build has no web surface.
  */

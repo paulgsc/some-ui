@@ -16,7 +16,8 @@
  *
  * - over the first scene (a bare card), the intro, teaching that grammar;
  * - over every scene between, the mark, small in the gutter;
- * - over the last scene (a bare card), the end card: each scene's record.
+ * - over the last scene (a bare card), the end card: each scene's record,
+ *   and the link to a page that draws it (`./authorship-link`).
  *
  * A cell is a `claim` (what the data says about a scene) or a `key` (a
  * swatch in a legend). No claim lights the owner that the scene's data does
@@ -25,6 +26,7 @@
 
 import { z } from "zod"
 
+import { recordLink } from "./authorship-link"
 import { REGIONS, type Box } from "./geometry"
 import {
   blocksOf,
@@ -249,8 +251,9 @@ const markFrame = (s: AuthoredScene): AuthorshipFrame => ({
 })
 
 const ROWS_PER_COLUMN = 12
-const ROW = 56
+const ROW = 54
 const COLUMN = 430
+const LINK_PX = 26
 
 /** The end card: a legend, the grammar, then each scene's cells, numbered. */
 function endFrame(
@@ -298,9 +301,32 @@ function endFrame(
     ])
     cells.push(...claims(s, { x: x + 64, y }, 36, 10, true))
   })
+  // The link on a row of its own, under what it is: it has no space to break at.
+  const linkY = CARD_INNER_BOTTOM - LINK_PX * 1.25
+  const labelY = linkY - LINK_PX * 1.25
+  const row = (y: number): { x: number; y: number; width: number } => ({
+    x: CARD_INNER.x,
+    y,
+    width: CARD_INNER.width,
+  })
+  named.push(
+    [
+      "end card's link label",
+      setText(words.linkLabel, barlow(600, LINK_PX, INK.muted), row(labelY), 1),
+    ],
+    [
+      "end card's link",
+      setText(
+        recordLink(between),
+        barlow(600, LINK_PX, INK.text),
+        row(linkY),
+        1
+      ),
+    ]
+  )
   const lastY = top + Math.min(between.length, ROWS_PER_COLUMN) * ROW
   const result = onCard("end", named, cells)
-  if (result.ok && lastY > CARD_INNER_BOTTOM) {
+  if (result.ok && lastY > labelY) {
     return { ok: false, problems: ["the end card's record doesn't fit"] }
   }
   return result

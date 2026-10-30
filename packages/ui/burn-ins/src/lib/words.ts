@@ -101,5 +101,22 @@ export const WORDS = {
     grammarShort:
       "Filled: whose idea · half filled: whose words · outlined: whose hands",
     scene: (n: number): string => String(n),
+    linkLabel: "Every scene, and how to read it:",
+  },
+  /** The page the end card links to. */
+  record: {
+    title: "Who made each scene",
+    intro: [
+      "I make these videos with Claude, an AI agent, and with code I wrote. Each one carries a small mark beside the picture that says, scene by scene, whose idea it is, whose words say it, and whose hands made what is on screen.",
+      "The key below is the one each video opens with. The record beside it is the video's own, read from the link at its end, scene by scene in order.",
+    ],
+    keyHeading: "How to read the mark",
+    keyLabel: "The key each video opens with",
+    recordHeading: "This video's record",
+    recordLabel: "The record of each scene, as the video's end card shows it",
+    noRecord:
+      "This link carries no record. The link at the end of a video names its scenes; open that one to see them here.",
+    tooLong:
+      "This link names more scenes than a video's record holds, so it isn't one a video printed. Check it against the end of the video.",
   },
 } as const

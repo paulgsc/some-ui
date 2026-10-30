@@ -28,6 +28,8 @@ export const JOURNAL_DESIGNS = ["v1"] as const
 
 /** `render.py`'s palette. Video colours, not the app's, so literals. */
 export const INK = {
+  /** The Build Journal series' ground, behind the picture's window. */
+  ground: "#111821",
   panel: "#182331",
   edge: "#344758",
   text: "#cbd5e1",
