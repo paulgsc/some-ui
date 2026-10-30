@@ -15,7 +15,7 @@
 export const FRAME = { width: 1080, height: 1920 } as const
 
 /** Each inset, in pixels of the 1080x1920 frame, and why it is there. */
-export const SAFE_INSETS = {
+const SAFE_INSETS = {
   /** 8%: the search and menu buttons along the top. */
   top: 154,
   /** 15%: the like, comment, share and sound column on the right. */
@@ -44,11 +44,10 @@ export const SAFE_AREA: Box = {
  * The bands a burn-in may draw in.
  *
  * - `header`: the band above the picture, where a scene's kicker, headline
- *   and line sit. It is the Build Journal shorts' header as `render.py`
- *   drew it (54 px in, from 62 px down to the picture at 250 px), which
- *   predates the safe area and reaches into its top and right insets: the
- *   shorts already published carry it there, and a design they used is
- *   frozen. A new header design keeps to its safe part.
+ *   and line sit, where the Build Journal shorts have always had them
+ *   (54 px in, above the picture at 250 px). It reaches into the safe
+ *   area's top and right insets, as those shorts' headers do; a header
+ *   design that must clear YouTube's top buttons keeps to its safe part.
  * - `body`: the picture's window below it, down to the lower third, where a
  *   card's text sits.
  * - `lower-third`: the safe area's bottom band, where captions sit.

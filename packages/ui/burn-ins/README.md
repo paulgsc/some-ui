@@ -10,42 +10,18 @@ address) through the web surface's door.
 
 ## What it is
 
-A burn-in is a **kind** (`captions`, `headline`, `card`), a named, frozen
-**design** of how it looks, and **params**, one video's data for it, which
-the cut list carries (`@some-ui/video-render`'s `BurnInSchema`). A design a
-published video used is never edited; a change is a new design.
+A burn-in is a kind (`captions`, `headline`, `card`), a named design and
+one video's params, which the cut list carries. `src/lib/burn-in.ts` holds
+the contract and says why it is the way it is; each module's header does
+the same for its part:
 
-`prepare` checks the params against the kind's schema once, with every
-reason they can't be drawn (text that doesn't fit is refused, never cut).
-`frameAt(prepared, t)` is what is on screen `t` ms after the burn-in starts,
-pure, so the preview, the recorder and a test agree at every moment.
-
-Placement is the class's: each kind draws only in its regions (`header`,
-`body`, `lower-third` in `src/lib/geometry.ts`), the regions never overlap,
-and a test checks every kind's sample stays inside them at every moment.
-Only a scene's headline and its card share a region, and a scene has one or
-the other.
-
-Each module's header says why it is the way it is:
-
-- `src/lib/burn-in.ts`: the contract: kinds, designs, `prepare`, `frameAt`.
-- `src/lib/geometry.ts`: the frame, the safe area clear of YouTube's
-  controls, the regions.
-- `src/lib/lines.ts`, `src/lib/text.ts`: breaking text into rows under a
-  character-count width model, and setting it in a box.
-- `src/lib/captions/`: the subtitles (GWB11, #2085): timed words to
-  captions, their looks (Gridiron, Broadcast, Chalk), the frame, the plain
-  `.srt` file, and sample lines with made-up timings.
-- `src/lib/journal.ts`: the headline and card in design `v1`, the layout
-  and colours of the build-journal skill's `render.py`.
-- `src/lib/samples.ts`, `src/lib/words.ts`: the preview's sample data and
-  its words.
-- `src/lib/clock.ts`, `src/runtime/clock.ts`,
-  `src/hooks/use-preview-clock.ts`: the preview's play, pause and scrub.
-- `src/runtime/record.ts`, `src/components/record`: the recording protocol
-  and the page the recorder captures.
-- `src/components/stage`: draws one moment; `src/components/preview`: the
-  preview page.
+- `src/lib/geometry.ts`: the frame, the safe area, the regions.
+- `src/lib/text.ts`, `src/lib/advances.ts`: text set by the font's own
+  advance widths.
+- `src/lib/captions/`: the subtitles (GWB11, #2085).
+- `src/lib/journal.ts`: the Build Journal headline and card, design `v1`.
+- `src/runtime/record.ts`, `src/components/record`: the recording protocol.
+- `src/components/preview`, `src/components/stage`: the preview page.
 
 ## Recording
 

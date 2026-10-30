@@ -18,7 +18,7 @@ const drawing = (): ReturnType<typeof createRecorder> => {
 describe("the recording protocol", () => {
   it("says why a burn-in can't be loaded", () => {
     const r = drawing()
-    expect(r.load({ kind: "card", design: "v1", params: {} }).ok).toBe(false)
+    expect(r.load({ kind: "card", design: "v9", params: {} }).ok).toBe(false)
   })
 
   it("waits for the moment to be drawn before answering", async () => {

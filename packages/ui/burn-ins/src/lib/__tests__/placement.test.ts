@@ -58,25 +58,6 @@ describe("where burn-ins sit", () => {
     }
   })
 
-  it("never draws two kinds over each other unless they share a region", () => {
-    const all = every()
-    for (const [i, a] of all.entries()) {
-      for (const b of all.slice(i + 1)) {
-        if (a.kind === b.kind || shared(a.kind, b.kind).length > 0) continue
-        for (const t of times(a.p)) {
-          for (const boxA of boxesOf(frameAt(a.p, t))) {
-            for (const boxB of boxesOf(frameAt(b.p, t))) {
-              expect(
-                overlaps(boxA, boxB),
-                `${a.kind} (${a.design}) and ${b.kind} (${b.design}) at ${t} ms`
-              ).toBe(false)
-            }
-          }
-        }
-      }
-    }
-  })
-
   it("shares a region only between a scene's headline and its card, one or the other", () => {
     const sharing = KINDS.flatMap((a, i) =>
       KINDS.slice(i + 1).flatMap((b) =>

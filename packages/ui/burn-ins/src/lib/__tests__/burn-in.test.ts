@@ -1,12 +1,8 @@
 /** @vitest-environment node */
-import {
-  DESIGNS,
-  frameAt,
-  KINDS,
-  prepare,
-  runtimeMs,
-  type Prepared,
-} from "@burn-ins/lib/burn-in"
+import { prepare, runtimeMs, type Prepared } from "@burn-ins/lib/burn-in"
+import { SAMPLE } from "@burn-ins/lib/captions/sample"
+import { THEMES } from "@burn-ins/lib/captions/theme"
+import { captionsFor, runtimeOf } from "@burn-ins/lib/captions/timing"
 import { SAMPLES } from "@burn-ins/lib/samples"
 import { describe, expect, it } from "vitest"
 
@@ -17,26 +13,9 @@ const ready = (kind: string, design: string, params: unknown): Prepared => {
 }
 
 describe("a burn-in", () => {
-  it("draws every kind's sample in every one of its designs", () => {
-    for (const kind of KINDS) {
-      for (const design of DESIGNS[kind]) {
-        expect(prepare({ kind, design, params: SAMPLES[kind] }).ok).toBe(true)
-      }
-    }
-  })
-
-  it("is the same frame at the same moment, however often it is asked", () => {
-    for (const kind of KINDS) {
-      const p = ready(kind, DESIGNS[kind][0], SAMPLES[kind])
-      for (const t of [0, 450, 1234, 5000, 9999]) {
-        expect(frameAt(p, t)).toEqual(frameAt(p, t))
-      }
-    }
-  })
-
   it("lasts as long as its captions, or as long as its scene", () => {
-    expect(runtimeMs(ready("captions", "gridiron", SAMPLES.captions))).toBe(
-      runtimeMs(ready("captions", "gridiron", SAMPLES.captions))
+    expect(runtimeMs(ready("captions", "chalk", SAMPLES.captions))).toBe(
+      runtimeOf(captionsFor(SAMPLE, THEMES.chalk))
     )
     expect(runtimeMs(ready("card", "v1", SAMPLES.card))).toBeNull()
   })

@@ -39,48 +39,46 @@ const isLoaded = (x: unknown): x is Loaded =>
 export async function openRecorder(page: Page, origin: string): Promise<void> {
   await page.goto(`${origin}/burn-ins?record=true`)
   await page.addStyleTag({
-    content: "html, body, #root { background: transparent !important; }",
+    content: "html, body, #app { background: transparent !important; }",
   })
   await page.waitForFunction((name) => Reflect.has(window, name), GLOBAL)
 }
 
-async function load(page: Page, r: BurnInRequest): Promise<Loaded> {
-  const loaded: unknown = await page.evaluate(
-    ({ name, burnIn }) => {
+/** Calls one of the protocol's methods on the page and returns its answer. */
+async function call(
+  page: Page,
+  method: "load" | "seek",
+  arg: unknown
+): Promise<unknown> {
+  return page.evaluate(
+    async ({ name, method, arg }) => {
       const recorder: unknown = Reflect.get(window, name)
       const fn: unknown =
         typeof recorder === "object" && recorder !== null
-          ? Reflect.get(recorder, "load")
+          ? Reflect.get(recorder, method)
           : null
       const out: unknown =
-        typeof fn === "function" ? Reflect.apply(fn, recorder, [burnIn]) : null
+        typeof fn === "function"
+          ? await Reflect.apply(fn, recorder, [arg])
+          : null
       return out
     },
-    {
-      name: GLOBAL,
-      burnIn: { kind: r.kind, design: r.design, params: r.params },
-    }
+    { name: GLOBAL, method, arg }
   )
+}
+
+async function load(page: Page, r: BurnInRequest): Promise<Loaded> {
+  const loaded = await call(page, "load", {
+    kind: r.kind,
+    design: r.design,
+    params: r.params,
+  })
   if (!isLoaded(loaded)) throw new Error("the recorder's page did not answer")
   return loaded
 }
 
-const seek = async (page: Page, atMs: number): Promise<string> => {
-  const key: unknown = await page.evaluate(
-    async ({ name, at }) => {
-      const recorder: unknown = Reflect.get(window, name)
-      const fn: unknown =
-        typeof recorder === "object" && recorder !== null
-          ? Reflect.get(recorder, "seek")
-          : null
-      const out: unknown =
-        typeof fn === "function"
-          ? await Reflect.apply(fn, recorder, [at])
-          : null
-      return out
-    },
-    { name: GLOBAL, at: atMs }
-  )
+async function seek(page: Page, atMs: number): Promise<string> {
+  const key = await call(page, "seek", atMs)
   if (typeof key !== "string")
     throw new Error("the recorder's page did not answer")
   return key
@@ -129,10 +127,24 @@ export function burnInRecorder(
     ffmpeg.stderr.on("data", (chunk: Buffer) => {
       stderr += chunk.toString()
     })
-    const exited = once(ffmpeg, "close")
+    // ffmpeg missing, or gone early (a bad path, a full disk): say so rather
+    // than crash on the spawn error or wait forever for a pipe to drain.
+    const ffmpegState = { closed: false }
+    const exited = new Promise<number | null>((done) => {
+      ffmpeg.on("error", (e) => {
+        stderr ||= e.message
+        done(null)
+      })
+      ffmpeg.on("close", (code) => done(code))
+    }).finally(() => {
+      ffmpegState.closed = true
+    })
+    ffmpeg.stdin.on("error", () => {
+      // Ignored: an early exit breaks the pipe; `exited` reports it.
+    })
     let shown: string | null = null
     let picture: Buffer | null = null
-    for (let f = 0; f < r.frames; f++) {
+    for (let f = 0; f < r.frames && !ffmpegState.closed; f++) {
       const key = await seek(page, (f * 1000) / fps)
       if (key !== shown || picture === null) {
         picture = await page.screenshot({
@@ -141,10 +153,11 @@ export function burnInRecorder(
         })
         shown = key
       }
-      if (!ffmpeg.stdin.write(picture)) await once(ffmpeg.stdin, "drain")
+      if (!ffmpeg.stdin.write(picture))
+        await Promise.race([once(ffmpeg.stdin, "drain"), exited])
     }
     ffmpeg.stdin.end()
-    const [code] = await exited
+    const code = await exited
     if (code !== 0) {
       report(`${name}: ffmpeg could not write ${r.out}: ${stderr.trim()}`)
       return false

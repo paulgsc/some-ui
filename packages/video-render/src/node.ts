@@ -6,12 +6,15 @@
 import { execFile } from "node:child_process"
 import { createHash } from "node:crypto"
 import { createReadStream } from "node:fs"
-import { mkdir, writeFile } from "node:fs/promises"
-import { resolve as resolvePath } from "node:path"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { join, resolve as resolvePath } from "node:path"
 import { z } from "zod"
 
+import { parseCutList } from "./cut-list"
 import type { SourceFacts } from "./plan"
-import type { Ports } from "./render"
+import { render } from "./render"
+import type { Ports, Rendered, RenderOptions } from "./render"
+import { parseSeries } from "./series"
 
 type Ran = {
   readonly ok: boolean
@@ -174,4 +177,40 @@ export function nodePorts(root: string): Ports {
     },
     writeFile: (file, text) => writeFile(at(file), text),
   }
+}
+
+/**
+ * Renders `<root>/cut-list.json` under the series in `seriesFile`, the
+ * video's burn-ins drawn by `recordBurnIn` when one is given.
+ */
+export async function renderFolder(
+  root: string,
+  seriesFile: string,
+  options: RenderOptions & { readonly recordBurnIn?: Ports["recordBurnIn"] }
+): Promise<Rendered> {
+  const readJson = async (file: string): Promise<unknown> =>
+    JSON.parse(await readFile(file, "utf8"))
+  const series = parseSeries(await readJson(seriesFile))
+  if (!series.ok)
+    return {
+      ok: false,
+      problems: ["The series can't be read:", ...series.problems],
+    }
+  const cutList = parseCutList(await readJson(join(root, "cut-list.json")))
+  if (!cutList.ok) {
+    return {
+      ok: false,
+      problems: [
+        "The cut list can't be rendered as written:",
+        ...cutList.problems,
+      ],
+    }
+  }
+  const { recordBurnIn, ...rest } = options
+  return render(
+    cutList.value,
+    series.value,
+    { ...nodePorts(root), ...(recordBurnIn ? { recordBurnIn } : {}) },
+    rest
+  )
 }

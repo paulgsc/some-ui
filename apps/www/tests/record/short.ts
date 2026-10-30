@@ -11,24 +11,20 @@
  * render` does without burn-ins. Paths are from where it was typed.
  *
  * It serves the built app (never `vite dev`: the dev tools would be in the
- * frame). Needs `ffmpeg` and `ffprobe` on `PATH`.
+ * frame), from `--dist`, relative to apps/www. Needs `ffmpeg` and
+ * `ffprobe` on `PATH`.
  */
 
-import { readFile } from "node:fs/promises"
 import { join, resolve } from "node:path"
 import { parseArgs } from "node:util"
 import { chromium } from "@playwright/test"
-import { parseCutList, parseSeries, render } from "@some-ui/video-render"
-import { nodePorts } from "@some-ui/video-render/node"
+import { renderFolder } from "@some-ui/video-render/node"
 import { serve } from "@tests/ui-fit/harness"
 
 import { burnInRecorder, openRecorder, RECORDING_SIZE } from "./burn-ins"
 
 const here = (p: string): string =>
   resolve(process.env["INIT_CWD"] ?? process.cwd(), p)
-
-const readJson = async (file: string): Promise<unknown> =>
-  JSON.parse(await readFile(file, "utf8"))
 
 /** Stops the command, saying why; the last lines print it and set the exit code. */
 class Refused extends Error {}
@@ -50,11 +46,6 @@ async function main(): Promise<void> {
   if (!folder || !values.series)
     fail(["usage: record:short <folder> --series <series.json>"])
   const root = here(folder)
-  const series = parseSeries(await readJson(here(values.series)))
-  if (!series.ok) fail(["The series can't be read:", ...series.problems])
-  const cutList = parseCutList(await readJson(join(root, "cut-list.json")))
-  if (!cutList.ok)
-    fail(["The cut list can't be rendered as written:", ...cutList.problems])
 
   const site = await serve(resolve(values.dist), { fallback: "index.html" })
   const browser = await chromium.launch(
@@ -69,15 +60,11 @@ async function main(): Promise<void> {
     })
     await openRecorder(page, site.origin)
     const reasons: Array<string> = []
-    const done = await render(
-      cutList.value,
-      series.value,
-      {
-        ...nodePorts(root),
-        recordBurnIn: burnInRecorder(page, root, (line) => reasons.push(line)),
-      },
-      { workDir: "outputs/cache", out: values.out }
-    )
+    const done = await renderFolder(root, here(values.series), {
+      workDir: "outputs/cache",
+      out: values.out,
+      recordBurnIn: burnInRecorder(page, root, (line) => reasons.push(line)),
+    })
     if (!done.ok) fail(["Nothing was rendered:", ...done.problems, ...reasons])
     process.stdout.write(
       `wrote ${join(root, done.value.video)} and ${join(root, done.value.shotTimesFile)}\n`

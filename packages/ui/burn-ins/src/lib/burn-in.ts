@@ -27,15 +27,14 @@ import {
   HeadlineParamsSchema,
   JOURNAL_DESIGNS,
   textBoxes,
-  type Fitted,
   type TextFrame,
 } from "./journal"
+import { isOneOf, type Parsed } from "./parsed"
 
 export const KINDS = ["captions", "headline", "card"] as const
 export type Kind = (typeof KINDS)[number]
 
-export const isKind = (value: unknown): value is Kind =>
-  KINDS.some((k) => k === value)
+export const isKind = (value: unknown): value is Kind => isOneOf(KINDS, value)
 
 /** Each kind's designs, the first its default. */
 export const DESIGNS = {
@@ -99,19 +98,11 @@ export type BurnInFrame =
       readonly frame: TextFrame
     }
 
-/** A value, or every reason there isn't one. */
-export type Parsed<T> =
-  | { readonly ok: true; readonly value: T }
-  | { readonly ok: false; readonly problems: ReadonlyArray<string> }
-
 const issues = (name: string, error: z.ZodError): ReadonlyArray<string> =>
   error.issues.map(
     (i) =>
       `${name}: ${i.path.length ? `${i.path.join(".")}: ` : ""}${i.message}`
   )
-
-const isJournalDesign = (d: string): d is (typeof JOURNAL_DESIGNS)[number] =>
-  JOURNAL_DESIGNS.some((x) => x === d)
 
 /** A Build Journal kind's params checked and set. */
 function journal<P>(
@@ -119,9 +110,9 @@ function journal<P>(
   kind: "headline" | "card",
   b: BurnInData,
   schema: z.ZodType<P>,
-  draw: (params: P) => Fitted
+  draw: (params: P) => Parsed<TextFrame>
 ): Parsed<Prepared> {
-  if (!isJournalDesign(b.design))
+  if (!isOneOf(JOURNAL_DESIGNS, b.design))
     return { ok: false, problems: [`${name}: no such design`] }
   const params = schema.safeParse(b.params)
   if (!params.success)

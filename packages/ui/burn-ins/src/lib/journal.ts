@@ -7,18 +7,21 @@
  *   two rows, then a panel in the picture's window holding the card's body
  *   and its note, or, for a slot, the body under "Native clip to come".
  *
- * `v1` is the layout and colours of the build-journal skill's `render.py`,
- * which drew every short published so far, set in the burn-ins' one font.
+ * `v1` follows the layout and colours of the build-journal skill's
+ * `render.py`, which drew every short published so far, in the burn-ins' one
+ * font and sizes, with the card's panel kept to the body region. It is a new
+ * design, not a copy: a short `render.py` drew is not redrawn by it.
  * Its params are what `@some-ui/video-render`'s `fromTimelineV1` writes. The
  * text never changes over a scene, so the frame is the same at every time.
  *
  * Text that does not fit is refused with the reason, never cut or shrunk
- * past the floor, as `render.py` refused it.
+ * past the floor. An empty field draws nothing, as in `render.py`.
  */
 
 import { z } from "zod"
 
 import { REGIONS, type Box } from "./geometry"
+import type { Parsed } from "./parsed"
 import { barlow, bottomOf, fitLine, setText, type TextBlock } from "./text"
 
 export const JOURNAL_DESIGNS = ["v1"] as const
@@ -53,13 +56,13 @@ const WIDTH = REGIONS.header.width
 
 export const HeadlineParamsSchema = z.object({
   kicker: z.string().default(""),
-  headline: z.string().min(1),
+  headline: z.string().default(""),
   line: z.string().default(""),
 })
 
 export const CardParamsSchema = z.object({
   kicker: z.string().default(""),
-  headline: z.string().min(1),
+  headline: z.string().default(""),
   body: z.string().default(""),
   note: z.string().default(""),
   /** A native clip still to come in this card's place. */
@@ -68,11 +71,6 @@ export const CardParamsSchema = z.object({
 
 export type HeadlineParams = z.infer<typeof HeadlineParamsSchema>
 export type CardParams = z.infer<typeof CardParamsSchema>
-
-/** A frame, or every reason the text doesn't fit. */
-export type Fitted =
-  | { readonly ok: true; readonly value: TextFrame }
-  | { readonly ok: false; readonly problems: ReadonlyArray<string> }
 
 const kicker = (text: string): TextBlock | null =>
   setText(
@@ -84,7 +82,7 @@ const kicker = (text: string): TextBlock | null =>
 
 const blocksOf = (
   named: ReadonlyArray<readonly [string, TextBlock | null]>
-): Fitted => {
+): Parsed<TextFrame> => {
   const problems = named.flatMap(([name, b]) =>
     b === null ? [`the ${name} doesn't fit`] : []
   )
@@ -98,9 +96,7 @@ const blocksOf = (
   }
 }
 
-export function headlineFrame(p: HeadlineParams): Fitted {
-  const lineStyle = barlow(600, 30, INK.muted)
-  const lineAt = { x: LEFT, y: 190, width: WIDTH }
+export function headlineFrame(p: HeadlineParams): Parsed<TextFrame> {
   return blocksOf([
     ["kicker", kicker(p.kicker)],
     [
@@ -112,12 +108,14 @@ export function headlineFrame(p: HeadlineParams): Fitted {
         44
       ),
     ],
-    // An empty line sets an empty block, which draws nothing.
     [
       "line",
-      p.line === ""
-        ? setText("", lineStyle, lineAt, 1)
-        : fitLine(p.line, lineStyle, lineAt, 22),
+      fitLine(
+        p.line,
+        barlow(600, 30, INK.muted),
+        { x: LEFT, y: 190, width: WIDTH },
+        22
+      ),
     ],
   ])
 }
@@ -143,7 +141,7 @@ const INNER_BOTTOM = PANEL.box.y + PANEL.box.height - 56
 const rowsLeft = (y: number, sizePx: number, lineHeight = 1.25): number =>
   Math.floor((INNER_BOTTOM - y) / (sizePx * lineHeight))
 
-export function cardFrame(p: CardParams): Fitted {
+export function cardFrame(p: CardParams): Parsed<TextFrame> {
   const head = setText(
     p.headline,
     barlow(800, 54, INK.text),

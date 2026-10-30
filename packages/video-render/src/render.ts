@@ -296,10 +296,13 @@ function burnInRequests(
   const perShot = cutList.shots.flatMap((s, i) => {
     const at = placement.shots[i]
     if (!at) throw new Error(`${s.id} was not placed`)
+    // A scene's burn-ins end where the next scene starts, so during a
+    // transition its headline and the next one's are never both up.
+    const until = placement.shots[i + 1]?.startFrame ?? placement.totalFrames
     return s.burnIns.map((b, k) => ({
       ...b,
       startFrame: at.startFrame,
-      frames: at.frames,
+      frames: until - at.startFrame,
       frame: series.frame,
       out: `${work}/burn-in-${s.id}-${k}-${b.kind}.mov`,
     }))

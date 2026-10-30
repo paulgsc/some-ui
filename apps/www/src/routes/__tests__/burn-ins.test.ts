@@ -1,10 +1,3 @@
-/**
- * `/burn-ins` reads where the preview opens from the URL: `?kind` and
- * `?design` as text (the preview opens an unknown one on the default), `?at`
- * as whole milliseconds and `?record` as the recorder's page. `/captions`,
- * the subtitles preview's old address, sends its look and time there.
- */
-
 import { Route as BurnIns } from "@/routes/burn-ins"
 import { Route as Captions } from "@/routes/captions"
 import { isRedirect } from "@tanstack/react-router"

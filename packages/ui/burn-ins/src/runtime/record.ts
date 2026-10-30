@@ -21,9 +21,9 @@ import {
   runtimeMs,
   type BurnInData,
   type BurnInFrame,
-  type Parsed,
   type Prepared,
 } from "@burn-ins/lib/burn-in"
+import type { Parsed } from "@burn-ins/lib/parsed"
 
 export type RecordPorts = {
   /** Resolves once every font the page asked for has loaded. */

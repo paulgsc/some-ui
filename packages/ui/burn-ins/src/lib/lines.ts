@@ -16,15 +16,18 @@ type HasText = { readonly text: string }
 export const charsOf = (words: ReadonlyArray<HasText>): number =>
   words.reduce((n, w) => n + w.text.length, 0) + Math.max(0, words.length - 1)
 
-/** Fills lines greedily; a word longer than a line gets a line of its own. */
-const greedy = <W extends HasText>(
+/**
+ * Fills lines greedily while `fits` accepts the line; a word too long for a
+ * line gets a line of its own.
+ */
+export const greedy = <W extends HasText>(
   words: ReadonlyArray<W>,
-  lineChars: number
+  fits: (line: ReadonlyArray<W>) => boolean
 ): ReadonlyArray<ReadonlyArray<W>> => {
   const rows: Array<Array<W>> = []
   let row: Array<W> = []
   for (const word of words) {
-    if (row.length > 0 && charsOf([...row, word]) > lineChars) {
+    if (row.length > 0 && !fits([...row, word])) {
       rows.push(row)
       row = []
     }
@@ -56,6 +59,6 @@ export function breakLines<W extends HasText>(
       best = { at, longest }
   }
   return best === null
-    ? greedy(words, lineChars)
+    ? greedy(words, (line) => charsOf(line) <= lineChars)
     : [words.slice(0, best.at), words.slice(best.at)]
 }

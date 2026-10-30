@@ -8,6 +8,7 @@
 
 import { ADVANCES_600, ADVANCES_800, CHARS, WIDEST } from "./advances"
 import type { Box } from "./geometry"
+import { greedy } from "./lines"
 
 const FONT_STACK = '"Barlow Condensed", "Arial Narrow", sans-serif'
 
@@ -63,20 +64,18 @@ function widthOf(text: string, style: TextStyle): number {
   return ems * style.sizePx * KERNING_MARGIN
 }
 
-/** Fills rows greedily; a word wider than a row gets a row of its own. */
-function wrap(text: string, style: TextStyle, widthPx: number): Array<string> {
-  const rows: Array<string> = []
-  let row = ""
-  for (const word of text.split(/\s+/).filter((w) => w.length > 0)) {
-    const next = row === "" ? word : `${row} ${word}`
-    if (row !== "" && widthOf(next, style) > widthPx) {
-      rows.push(row)
-      row = word
-    } else row = next
-  }
-  if (row !== "") rows.push(row)
-  return rows
-}
+/** `text`'s words, filled greedily into rows `widthPx` wide. */
+const wrap = (text: string, style: TextStyle, widthPx: number): Array<string> =>
+  greedy(
+    text
+      .split(/\s+/)
+      .filter((w) => w.length > 0)
+      .map((w) => ({ text: w })),
+    (row) => widthOf(join(row), style) <= widthPx
+  ).map(join)
+
+const join = (row: ReadonlyArray<{ readonly text: string }>): string =>
+  row.map((w) => w.text).join(" ")
 
 /**
  * `text` set from the top left of `at`, wrapped to its width, or null when
