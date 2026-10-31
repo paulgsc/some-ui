@@ -22,6 +22,20 @@ export type LogAdd =
     }
   | { readonly kind: "pin"; readonly ref: CardRef }
 
+/**
+ * `log` already holds `add`: the same card's event, left at the same moment.
+ * A pin is never held this way; `appendToLog` adds a pin once by itself.
+ */
+export function holdsAdd(log: RoundLog, add: LogAdd): boolean {
+  if (add.kind !== "card") return false
+  const { round, card, at } = add.event
+  return log.sessions.some((session) =>
+    session.cards.some(
+      (each) => each.round === round && each.card === card && each.at === at
+    )
+  )
+}
+
 const sameRef = (a: CardRef, b: CardRef): boolean =>
   a.round === b.round && a.card === b.card
 

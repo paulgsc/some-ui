@@ -9,17 +9,23 @@
  *   over it. A card's event is added once: one the stored log already holds
  *   (the same card, left at the same moment) is not added again, so two
  *   openings that both settle a card left waiting on its note log it once.
+ *   An addition the phone refused is not dropped: it is kept (`unlogged`, in
+ *   the place record, and in memory should that write be refused too) and
+ *   written with the next addition, or by `flush` at the next opening, and
+ *   `append` says false until every one of them is in the log.
  * - `HELD_KEY`, what plays: the rounds taken, rustc's recorded runs, every
  *   version of the tutor notes (`./held`).
  * - `PLACE_KEY`, the card on screen and how far into it, so leaving at any
  *   card and coming back lands on it with nothing lost; the take under way
  *   (`taking`) and the cards left while their voice note was still being
  *   kept (`pending`), so a note that lands after the screen was left, or the
- *   app was ended, still finds its card at the next opening.
+ *   app was ended, still finds its card at the next opening; and the
+ *   additions the log refused (`unlogged`), which only the store writes.
  */
 import type { CardEvent, CardRef, RoundLog } from "@rust-rounds/lib/formats"
 import {
   CardEventSchema,
+  CardRefSchema,
   RoundLogSchema,
   RoundSchema,
   RustcRunSchema,
@@ -33,7 +39,7 @@ import type { Held } from "./held"
 import { NOTHING_HELD } from "./held"
 import { HELD_KEY, LOG_KEY, PLACE_KEY } from "./keys"
 import type { LogAdd, SessionHead } from "./log"
-import { appendToLog, EMPTY_LOG } from "./log"
+import { appendToLog, EMPTY_LOG, holdsAdd } from "./log"
 
 export { HELD_KEY, LOG_KEY, PLACE_KEY } from "./keys"
 
@@ -100,6 +106,21 @@ const TitleSchema = z.strictObject({
 
 const TakingSchema = z.strictObject({ line: z.string(), since: z.number() })
 
+/** An addition the log refused, with the session it belongs to. */
+type Unlogged = { readonly head: SessionHead; readonly add: LogAdd }
+
+const UnloggedSchema = z.strictObject({
+  head: z.strictObject({ id: z.string(), startedAt: z.string() }),
+  add: z.discriminatedUnion("kind", [
+    z.strictObject({
+      kind: z.literal("card"),
+      event: CardEventSchema,
+      guessedWrong: z.boolean(),
+    }),
+    z.strictObject({ kind: z.literal("pin"), ref: CardRefSchema }),
+  ]),
+})
+
 const PlaceRecordSchema = z.strictObject({
   v: z.literal(1),
   place: z
@@ -118,7 +139,9 @@ const PlaceRecordSchema = z.strictObject({
       title: TitleSchema,
     })
     .nullable(),
-  taking: TakingSchema.nullable(),
+  // Absent from a record kept before there was one: none under way.
+  taking: TakingSchema.nullable().default(null),
+  unlogged: z.array(UnloggedSchema).default([]),
   pending: z.array(
     z.strictObject({
       line: z.string(),
@@ -152,26 +175,28 @@ export type Whereabouts = {
 export type Opened = Whereabouts & {
   readonly log: RoundLog
   readonly held: Held
+  /** How many additions the log refused, still kept to write to it. */
+  readonly unlogged: number
 }
 
-/** The stored log already holds `add`: the same card's event, left at the same moment. */
-function holds(log: RoundLog, add: LogAdd): boolean {
-  if (add.kind !== "card") return false
-  const { round, card, at } = add.event
-  return log.sessions.some((session) =>
-    session.cards.some(
-      (each) => each.round === round && each.card === card && each.at === at
-    )
-  )
+const NO_PLACE: z.infer<typeof PlaceRecordSchema> = {
+  v: 1,
+  place: null,
+  taking: null,
+  unlogged: [],
+  pending: [],
 }
 
 export type RoundsStore = {
   readonly open: () => Opened
   /**
-   * Adds to the stored log, once: a card's event the log already holds is
-   * not added again. False when the phone did not keep it.
+   * Adds to the stored log, once, after every addition it refused before: a
+   * card's event the log already holds is not added again. False while any
+   * of them is not kept.
    */
   readonly append: (head: SessionHead, add: LogAdd) => boolean
+  /** Writes the additions the log refused before; false while any is not kept. */
+  readonly flush: () => boolean
   /** Keeps what plays; false when the phone did not keep it. */
   readonly hold: (held: Held) => boolean
   /** Keeps where the session is; false when the phone did not keep it. */
@@ -180,40 +205,68 @@ export type RoundsStore = {
 
 /** The records in `storage`; with none (or one that throws), nothing is kept. */
 export function keptRounds(storage: KeyedStorage | null): RoundsStore {
+  const openPlace = (): z.infer<typeof PlaceRecordSchema> =>
+    openKept(storage, PLACE_KEY, readPlace, NO_PLACE).value
+  /**
+   * The additions the log refused, oldest first: read from the place record
+   * once, then held here too, so one is kept even if that record refuses it.
+   */
+  let unlogged: ReadonlyArray<Unlogged> | null = null
+  const waiting = (): ReadonlyArray<Unlogged> =>
+    (unlogged ??= openPlace().unlogged)
+
+  /** Writes `adds` to the log in order; keeps them to write again when it is refused. */
+  function write(adds: ReadonlyArray<Unlogged>): boolean {
+    if (adds.length === 0) return true
+    const kept = openKept(storage, LOG_KEY, readLog, EMPTY_LOG)
+    const log = adds.reduce(
+      (each, { head, add }) =>
+        holdsAdd(each, add) ? each : appendToLog(each, head, add),
+      kept.value
+    )
+    const written =
+      kept.writable &&
+      (log === kept.value || writeKept(storage, LOG_KEY, log, readLog))
+    const before = waiting()
+    unlogged = written ? [] : adds
+    if (before.length > 0 || !written) {
+      writeKept(
+        storage,
+        PLACE_KEY,
+        { ...openPlace(), unlogged: waiting() },
+        readPlace
+      )
+    }
+    return written
+  }
+
   return {
     open(): Opened {
       const { v: _held, ...held } = openKept(storage, HELD_KEY, readHeld, {
         v: 1,
         ...NOTHING_HELD,
       }).value
-      const { v: _place, ...whereabouts } = openKept(
-        storage,
-        PLACE_KEY,
-        readPlace,
-        { v: 1, place: null, taking: null, pending: [] }
-      ).value
+      const { v: _place, unlogged: refused, ...whereabouts } = openPlace()
+      unlogged ??= refused
       return {
         log: openKept(storage, LOG_KEY, readLog, EMPTY_LOG).value,
         held,
         ...whereabouts,
+        unlogged: waiting().length,
       }
     },
-    append(head, add): boolean {
-      const kept = openKept(storage, LOG_KEY, readLog, EMPTY_LOG)
-      if (!kept.writable) return false
-      if (holds(kept.value, add)) return true
-      return writeKept(
-        storage,
-        LOG_KEY,
-        appendToLog(kept.value, head, add),
-        readLog
-      )
-    },
+    append: (head, add): boolean => write([...waiting(), { head, add }]),
+    flush: (): boolean => write(waiting()),
     hold(held): boolean {
       return writeKept(storage, HELD_KEY, { v: 1, ...held }, readHeld)
     },
     place(whereabouts): boolean {
-      return writeKept(storage, PLACE_KEY, { v: 1, ...whereabouts }, readPlace)
+      return writeKept(
+        storage,
+        PLACE_KEY,
+        { v: 1, ...whereabouts, unlogged: waiting() },
+        readPlace
+      )
     },
   }
 }

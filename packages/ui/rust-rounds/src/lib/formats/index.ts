@@ -295,7 +295,10 @@ export type RustcRun = z.infer<typeof RustcRunSchema>
 
 // ── The log ────────────────────────────────────────────────────────────────
 
-const CardRefSchema = z.strictObject({ round: SlugSchema, card: SlugSchema })
+export const CardRefSchema = z.strictObject({
+  round: SlugSchema,
+  card: SlugSchema,
+})
 export type CardRef = z.infer<typeof CardRefSchema>
 
 /** One card, as it went. Notes are named by id: the log never holds audio. */

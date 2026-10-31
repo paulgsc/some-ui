@@ -22,15 +22,22 @@
  *   on the card on screen, once the microphone says how the take ended; or,
  *   once the screen was left or the app ended, when the next opening finds
  *   the note on the phone. A card is logged once, however many openings
- *   settle it: the store adds a card's event only once (`./store`).
- * - **A note the phone could not keep is said.** A card left before its take
- *   ended, whose note then failed to be kept or found no room, is said,
- *   whichever card is on screen by then. One let go too soon to keep is not:
- *   letting go early is the person's own doing, and the card they left on
- *   showed it when it happened.
+ *   settle it: neither the session's log nor the store's adds a card's event
+ *   it already holds (`holdsAdd`).
+ * - **A note the phone could not keep is said, within the opening that left
+ *   the card.** A card left before its take ended, whose note then failed to
+ *   be kept or found no room, is said, whichever card is on screen by then.
+ *   One let go too soon to keep is not: letting go early is the person's own
+ *   doing, and the card they left on showed it when it happened. Once that
+ *   opening is gone (the screen left, the app ended), the next one logs the
+ *   card as it stood and says nothing: the phone holds no note, and nothing
+ *   tells a note that failed from one cut short.
  * - **A failed write is said until that record is kept.** Each record's last
  *   write is tracked apart (`notKept`), so a later write of another record
- *   cannot hide it.
+ *   cannot hide it. An addition the log refused is kept by the store and
+ *   sent again with the next one, and the store says the log is kept only
+ *   once every refused addition is in it, so the warning stays until then,
+ *   across openings too (`initialState`, `flush`).
  * - **rustc's result is never compared with the pick on screen.** The
  *   tutor's guess is checked only to log `tutorGuessedWrong`.
  */
@@ -55,7 +62,7 @@ import {
   runOf,
 } from "./held"
 import type { LogAdd, SessionHead } from "./log"
-import { appendToLog } from "./log"
+import { appendToLog, holdsAdd } from "./log"
 import type {
   Again,
   Opened,
@@ -265,7 +272,8 @@ export function initialState(
     lost: null,
     noRoom: false,
     copy: { kind: "idle", seq: 0, what: "log" },
-    notKept: KEPT,
+    // Additions the log refused at an earlier opening are still to be written.
+    notKept: { ...KEPT, log: opened.unlogged > 0 },
   }
 }
 
@@ -337,8 +345,11 @@ function logCard(
     event: { ...left.event, note: left.event.note ?? note },
     guessedWrong: left.guessedWrong,
   }
+  const log = holdsAdd(state.log, add)
+    ? state.log
+    : appendToLog(state.log, state.head, add)
   return {
-    state: { ...state, log: appendToLog(state.log, state.head, add) },
+    state: { ...state, log },
     effects: [{ type: "append", head: state.head, add }],
   }
 }

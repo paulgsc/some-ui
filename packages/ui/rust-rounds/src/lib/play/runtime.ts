@@ -158,6 +158,10 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
       )
       // What changed between making the runtime and attaching it.
       send({ type: "notes", view: ports.notes.getSnapshot() })
+      // Additions an earlier opening's log refused: written before any new one.
+      if (state.notKept.log) {
+        send({ type: "stored", record: "log", ok: ports.store.flush() })
+      }
       // The take and the cards an earlier opening left unsettled: the phone
       // may hold their notes.
       const unsettled = new Map<string, number>()

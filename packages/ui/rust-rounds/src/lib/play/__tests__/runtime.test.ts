@@ -9,7 +9,7 @@ import type { PlayState } from "@rust-rounds/lib/play/machine"
 import { lineOf } from "@rust-rounds/lib/play/machine"
 import type { RustRoundsRuntime } from "@rust-rounds/lib/play/runtime"
 import { createRustRounds } from "@rust-rounds/lib/play/runtime"
-import { keptRounds, LOG_KEY } from "@rust-rounds/lib/play/store"
+import { keptRounds, LOG_KEY, PLACE_KEY } from "@rust-rounds/lib/play/store"
 import {
   INDEXING_01,
   INDEXING_01_NOTES,
@@ -19,7 +19,7 @@ import { inMemoryStorage } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
 import type { FakePorts } from "./fakes"
-import { fakeNotes, fakePorts } from "./fakes"
+import { fakeNotes, fakePorts, fullLog } from "./fakes"
 
 function opened(ports: FakePorts): RustRoundsRuntime {
   const runtime = createRustRounds(ports)
@@ -459,6 +459,112 @@ describe("leaving and coming back", () => {
     })
     runtime.dispatch({ type: "pick", pick: "Prints 122" })
     expect(runtime.getSnapshot().notKept.log).toBe(true)
+  })
+
+  it("writes a card the log refused with the next one, each once, and says so until then", () => {
+    const { storage, full } = fullLog()
+    const runtime = opened(fakePorts(storage))
+    runtime.dispatch({ type: "continue" })
+    runtime.dispatch({ type: "next" })
+    expect(storedLog(storage)).toEqual([])
+    expect(runtime.getSnapshot().notKept.log).toBe(true)
+    // Another refused card, and a place kept, leave the warning on.
+    runtime.dispatch({ type: "next" })
+    runtime.dispatch({ type: "pick", pick: "Prints 122" })
+    expect(runtime.getSnapshot().notKept).toMatchObject({
+      log: true,
+      place: false,
+    })
+
+    full(false)
+    runtime.dispatch({ type: "next" })
+    expect(storedLog(storage).map((event) => event.card)).toEqual([
+      "a",
+      "b",
+      "c",
+    ])
+    expect(runtime.getSnapshot().notKept.log).toBe(false)
+    expect(keptRounds(storage).open().unlogged).toBe(0)
+  })
+
+  it("keeps a card the log refused across a reopen, and logs it once", () => {
+    const { storage, full } = fullLog()
+    const notes = fakeNotes()
+    const first = opened(fakePorts(storage, notes))
+    first.dispatch({ type: "continue" })
+    first.dispatch({ type: "pick", pick: "Prints z" })
+    first.dispatch({ type: "holdToSpeak" })
+    first.dispatch({ type: "next" })
+    notes.land("note-a")
+    expect(storedLog(storage)).toEqual([])
+    expect(keptRounds(storage).open()).toMatchObject({
+      unlogged: 1,
+      pending: [],
+    })
+
+    // The app is ended; room is made.
+    full(false)
+    const again = opened(fakePorts(storage, notes))
+    expect(again.getSnapshot().notKept.log).toBe(false)
+    again.dispatch({ type: "next" })
+    expect(storedLog(storage)).toEqual([
+      expect.objectContaining({ card: "a", note: "note-a" }),
+      expect.objectContaining({ card: "b" }),
+    ])
+  })
+
+  it("says a refused card at the next opening until the log takes it", () => {
+    const { storage } = fullLog()
+    const first = opened(fakePorts(storage))
+    first.dispatch({ type: "continue" })
+    first.dispatch({ type: "next" })
+    const again = opened(fakePorts(storage))
+    expect(again.getSnapshot().notKept.log).toBe(true)
+    expect(keptRounds(storage).open().unlogged).toBe(1)
+  })
+
+  it("logs a card still waiting at the next opening once, when its settling was refused", () => {
+    const { storage, full } = fullLog()
+    const notes = fakeNotes()
+    const first = opened(fakePorts(storage, notes))
+    first.dispatch({ type: "continue" })
+    first.dispatch({ type: "pick", pick: "Prints z" })
+    first.dispatch({ type: "holdToSpeak" })
+    first.dispatch({ type: "next" })
+    const { pending } = keptRounds(storage).open()
+    notes.land("note-a")
+    // Kept to write again, and still waiting too: the place's last write
+    // did not survive the app being ended.
+    const { place, taking } = keptRounds(storage).open()
+    keptRounds(storage).place({ place, taking, pending })
+    expect(keptRounds(storage).open()).toMatchObject({
+      unlogged: 1,
+      pending: [expect.objectContaining({ line: pending[0]?.line })],
+    })
+
+    full(false)
+    opened(fakePorts(storage, notes))
+    expect(storedLog(storage)).toEqual([
+      expect.objectContaining({ card: "a", note: "note-a" }),
+    ])
+    expect(keptRounds(storage).open()).toMatchObject({
+      unlogged: 0,
+      pending: [],
+    })
+  })
+
+  it("reads a place kept before a take under way was kept with it", () => {
+    const storage = inMemoryStorage()
+    const first = opened(fakePorts(storage))
+    first.dispatch({ type: "continue" })
+    const { place, pending } = keptRounds(storage).open()
+    storage.setItem(PLACE_KEY, JSON.stringify({ v: 1, place, pending }))
+    const again = opened(fakePorts(storage))
+    expect(visitOf(again.getSnapshot())).toBe("a:choose")
+    const copies = Array.from({ length: storage.length }, (_, index) =>
+      storage.key(index)
+    ).filter((key) => key?.startsWith(`${PLACE_KEY}:unreadable:`))
+    expect(copies).toEqual([])
   })
 
   it("never writes over a log it could not read", () => {

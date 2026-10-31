@@ -5,7 +5,7 @@
  */
 import type { NoteView, TakeEnd } from "@rust-rounds/lib/play/machine"
 import type { NotesPort, RustRoundsPorts } from "@rust-rounds/lib/play/runtime"
-import { keptRounds } from "@rust-rounds/lib/play/store"
+import { keptRounds, LOG_KEY } from "@rust-rounds/lib/play/store"
 import { inMemoryStorage } from "@some-ui/core-utils"
 import { vi } from "vitest"
 
@@ -82,6 +82,26 @@ export function fakeNotes(): FakeNotes {
     },
     refuse(why): void {
       refused = why
+    },
+  }
+}
+
+/** Storage whose log refuses every write while it is full, as a phone out of room does. */
+export function fullLog(): {
+  readonly storage: Storage
+  readonly full: (on: boolean) => void
+} {
+  const storage = inMemoryStorage()
+  const setItem = storage.setItem.bind(storage)
+  let isFull = true
+  storage.setItem = (key, value): void => {
+    if (isFull && key === LOG_KEY) throw new Error("QuotaExceededError")
+    setItem(key, value)
+  }
+  return {
+    storage,
+    full: (on): void => {
+      isFull = on
     },
   }
 }
