@@ -6,13 +6,21 @@ import { finishedNaturally } from "@/lib/wind-down"
 
 /**
  * A session stopped before its end, by "Got to go" or by leaving it (the app
- * hidden, or Back or a link taking its screen away): one record per stop,
- * kept the moment it happens, its reason optional. The newest `STOP_LIMIT`
- * stay on this device (`apps/mobile/README.md`, "A session cut short still
- * closes"), beside each session's `PathCounts`.
+ * hidden on the phone, or, on either surface, Back or a link taking its
+ * screen away or the page going away): one record per stop, kept the moment
+ * it happens, its reason optional. The newest `STOP_LIMIT` stay on this
+ * device (`apps/mobile/README.md`, "A session cut short still closes"),
+ * beside each session's `PathCounts`.
  *
  * `step` is the whole policy: what a tap, leaving, coming back and the clock
- * mean for a stop. `./runtime` runs its effects; React only forwards events.
+ * mean for a stop. `./runtime` runs its effects over `./playback`; React only
+ * forwards events.
+ *
+ * Promise SS1, held by `__tests__/stop-resume.test.ts`, which enumerates its
+ * Family: across any run of stops and resumes, on the phone or the desktop
+ * web, the session's clock does not move while it is stopped, each resume
+ * goes on from where its stop left the clock and the scene, and the time the
+ * session closes with is the time it played.
  */
 
 export const REASONS = [
@@ -36,7 +44,10 @@ export type Stop = {
   plannedMs: number
   /** For the record (both shares in `lib/agent-export`); a pick-up seeks to `elapsedMs`. */
   scene: string | null
-  /** "left": the app went to the background, or the player's screen closed. */
+  /**
+   * "left": the app went to the background (the phone), or the player's
+   * screen closed or its page went away (either surface).
+   */
   via: "tap" | "left"
   reason: Reason | null
   reasonFrom: "stop" | "return" | "close" | "home" | null

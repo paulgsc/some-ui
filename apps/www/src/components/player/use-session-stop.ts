@@ -1,50 +1,27 @@
 import { useEffect, useState, useSyncExternalStore } from "react"
 
 import { hasAudience } from "@/lib/build-profile"
-import { primaryOf, useOrchestratorStore } from "@/lib/orchestrator"
 import type { StopState } from "@/lib/session-stop"
-import type { Playback, StopRuntime } from "@/lib/session-stop/runtime"
+import { orchestratorPlayback } from "@/lib/session-stop/playback"
+import type { StopRuntime } from "@/lib/session-stop/runtime"
 import { createStopRuntime } from "@/lib/session-stop/runtime"
-
-/** The orchestrator as a stop's playback port. */
-const orchestrator: Playback = {
-  position: () => {
-    const o = useOrchestratorStore.getState()
-    if (!o.mode.is_running && !o.mode.is_paused) return null
-    return {
-      elapsedMs: o.clock.current_time,
-      plannedMs: o.clock.total_duration,
-      scene:
-        primaryOf(o.lifetimes.scene_lifetimes)?.kind.Scene.scene_name ?? null,
-      playing: o.mode.is_running,
-    }
-  },
-  pause: () => void useOrchestratorStore.getState().pause(),
-  resume: () => void useOrchestratorStore.getState().resume(),
-  start: () => void useOrchestratorStore.getState().start(),
-  restart: (elapsedMs, plannedMs) => {
-    const o = useOrchestratorStore.getState()
-    const lost = plannedMs - o.clock.total_duration
-    void o.start()
-    // The plan first, so the seek is not clamped short of a "+5 min".
-    if (lost > 0) void o.extend(lost)
-    void o.seek(elapsedMs)
-  },
-  end: () => void useOrchestratorStore.getState().stop(),
-}
 
 /**
  * Wiring only: the runtime for this player mount, its state as a snapshot,
- * and leaving forwarded on the phone (a desktop tab switch, or navigating
- * away on the desktop web, is not a stop).
+ * and which surface's leaving it listens for (`StopRuntime.connect`).
  */
 export function useSessionStop(sessionId: string): {
   state: StopState
   stops: StopRuntime
 } {
-  // eslint-disable-next-line owner-guard/no-mount-snapshot -- a runtime made once per mount; LivePlayer is keyed by session id
-  const [stops] = useState(() => createStopRuntime(sessionId, orchestrator))
-  useEffect(() => stops.connect(hasAudience("apk")), [stops])
+  const [stops] = useState(() =>
+    // eslint-disable-next-line owner-guard/no-mount-snapshot -- a runtime made once per mount; LivePlayer is keyed by session id
+    createStopRuntime(sessionId, orchestratorPlayback)
+  )
+  useEffect(
+    () => stops.connect(hasAudience("apk") ? "phone" : "desktop"),
+    [stops]
+  )
   const state = useSyncExternalStore(
     stops.subscribe,
     stops.getState,

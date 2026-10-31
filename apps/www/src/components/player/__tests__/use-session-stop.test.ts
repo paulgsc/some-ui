@@ -1,8 +1,8 @@
 /**
  * @vitest-environment jsdom
  *
- * The wiring: the orchestrator as the playback port, and leaving forwarded
- * on the phone. What each event means is `lib/session-stop`'s.
+ * The wiring: the orchestrator as the playback port, and which surface's
+ * leaving is forwarded. What each event means is `lib/session-stop`'s.
  */
 
 import { StrictMode } from "react"
@@ -40,7 +40,8 @@ vi.mock("@/lib/orchestrator", async () => {
     },
   }
 })
-vi.mock("@/lib/build-profile", () => ({ hasAudience: (): boolean => true }))
+let phone = true
+vi.mock("@/lib/build-profile", () => ({ hasAudience: (): boolean => phone }))
 
 let visibility: DocumentVisibilityState = "visible"
 function setVisibility(next: DocumentVisibilityState): void {
@@ -52,6 +53,7 @@ function setVisibility(next: DocumentVisibilityState): void {
 
 beforeEach(() => {
   mode = { is_running: true, is_paused: false }
+  phone = true
   Object.defineProperty(document, "visibilityState", {
     configurable: true,
     get: () => visibility,
@@ -149,5 +151,19 @@ describe("useSessionStop", () => {
 
     expect(commands.stop).toHaveBeenCalledTimes(1)
     expect(latestStop("s")?.outcome).toBe("lapsed")
+  })
+
+  it("on the desktop, keeps a stop when the player closes, not when the tab hides", () => {
+    phone = false
+    const { result, unmount } = renderHook(() => useSessionStop("s"))
+    act(() => result.current.stops.begin())
+
+    setVisibility("hidden")
+    expect(latestStop("s")).toBeNull()
+    expect(commands.pause).not.toHaveBeenCalled()
+
+    unmount()
+    expect(commands.pause).toHaveBeenCalledTimes(1)
+    expect(latestStop("s")).toMatchObject({ via: "left", outcome: "open" })
   })
 })
