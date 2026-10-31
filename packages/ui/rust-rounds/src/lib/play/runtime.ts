@@ -47,7 +47,11 @@ export type NotesPort = {
 
 export type RustRoundsPorts = {
   readonly store: RoundsStore
-  readonly notes: NotesPort
+  /**
+   * The microphone; null in a build that has none (the viewer's sample on
+   * Pages, #2241), where the speak step says what it would do instead.
+   */
+  readonly notes: NotesPort | null
   /** Puts `text` on the clipboard; rejects when it could not. */
   readonly copy: (text: string) => Promise<void>
   /** Milliseconds since the epoch. */
@@ -74,11 +78,26 @@ export type RustRoundsRuntime = {
 
 const iso = (ms: number): string => new Date(ms).toISOString()
 
+const AT_REST: NoteView = { take: { kind: "idle" }, ended: null, blocked: null }
+
+/**
+ * No microphone: no take ever starts, so none ever ends. The screen offers
+ * no way to start one (`RustRoundsPorts.notes`).
+ */
+const NO_MICROPHONE: NotesPort = {
+  getSnapshot: () => AT_REST,
+  subscribe: () => () => undefined,
+  start: () => undefined,
+  stop: () => undefined,
+  keptOn: () => null,
+}
+
 export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
+  const notes = ports.notes ?? NO_MICROPHONE
   let state = initialState(
     ports.store.open(),
     { id: ports.newId(), startedAt: iso(ports.now()) },
-    ports.notes.getSnapshot()
+    notes.getSnapshot()
   )
   const listeners = new Set<() => void>()
 
@@ -122,11 +141,11 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
         return
       }
       case "startNote": {
-        ports.notes.start(effect.line)
+        notes.start(effect.line)
         return
       }
       case "stopNote": {
-        ports.notes.stop()
+        notes.stop()
         return
       }
       case "copy": {
@@ -153,11 +172,11 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
     },
     dispatch: (intent): void => send({ ...intent, at: iso(ports.now()) }),
     attach(): () => void {
-      const stopNotes = ports.notes.subscribe(() =>
-        send({ type: "notes", view: ports.notes.getSnapshot() })
+      const stopNotes = notes.subscribe(() =>
+        send({ type: "notes", view: notes.getSnapshot() })
       )
       // What changed between making the runtime and attaching it.
-      send({ type: "notes", view: ports.notes.getSnapshot() })
+      send({ type: "notes", view: notes.getSnapshot() })
       // Additions an earlier opening's log refused: written before any new one.
       if (state.notKept.log) {
         send({ type: "stored", record: "log", ok: ports.store.flush() })
@@ -174,9 +193,9 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
           type: "reopened",
           found: [...unsettled].map(([line, since]) => ({
             line,
-            note: ports.notes.keptOn(line, since),
+            note: notes.keptOn(line, since),
           })),
-          busy: ports.notes.getSnapshot().take.kind !== "idle",
+          busy: notes.getSnapshot().take.kind !== "idle",
         })
       }
       const stopVisibility = ports.onVisibility((hidden) => {

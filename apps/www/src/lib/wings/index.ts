@@ -1,6 +1,7 @@
 import type { FileRoutesByTo } from "@/routeTree.gen"
 
 import { hasAudience } from "@/lib/build-profile"
+import { VIEWER_BUILD } from "@/lib/data-mode"
 
 /**
  * Wings: what someone came in for. Build audiences separate the app by
@@ -61,6 +62,8 @@ export type Room = {
   tab?: string
   /** Its label in its wing's sidebar on the desktop web, when it has one there. */
   nav?: string
+  /** A sample only the viewer's build serves (`lib/demo`): in its sidebar there alone. */
+  viewerOnly?: true
 }
 
 export const WINGS: ReadonlyArray<Wing> = [
@@ -148,6 +151,14 @@ export const ROOMS: ReadonlyArray<Room> = [
   { id: "soundbites", wing: "practice", roots: ["/soundbites"], tab: "Bites" },
   // Opened from Practice Home's card (#2235, the owner's D2), not a tab.
   { id: "rust-rounds", wing: "practice", roots: ["/rust-rounds"] },
+  // The viewer's way to try it on Pages, with sample rounds (#2241).
+  {
+    id: "rust-rounds-sample",
+    wing: "practice",
+    roots: ["/rust-rounds-sample"],
+    nav: "Rust Rounds",
+    viewerOnly: true,
+  },
   { id: "profile", wing: "practice", roots: ["/profile"], nav: "Profile" },
   { id: "aph", wing: "self", roots: ["/aph"] },
   { id: "journal", wing: "studio", roots: ["/journal"], tab: "Journal" },
@@ -228,13 +239,19 @@ function onWebHere(wing: Wing): boolean {
 /**
  * A wing's rooms in its sidebar on the desktop web, in registry order, and
  * none for a wing this build's web does not carry (A3,
- * packages/some-vite-config/AUDIENCES.md).
+ * packages/some-vite-config/AUDIENCES.md). A viewer's sample is listed only
+ * in the viewer's build, the one that serves it.
  */
-export function navOf(wing: Wing): ReadonlyArray<Room & { nav: string }> {
+export function navOf(
+  wing: Wing,
+  viewer: boolean = VIEWER_BUILD
+): ReadonlyArray<Room & { nav: string }> {
   if (!onWebHere(wing)) return []
   return ROOMS.filter(
     (room): room is Room & { nav: string } =>
-      room.wing === wing.id && room.nav !== undefined
+      room.wing === wing.id &&
+      room.nav !== undefined &&
+      (room.viewerOnly !== true || viewer)
   )
 }
 

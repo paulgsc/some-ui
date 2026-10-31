@@ -30,7 +30,7 @@ import { Button, CodeCard, HoldButton, Textarea } from "@some-ui/shared"
 import { Mic, Pin } from "lucide-react"
 
 export type RustRoundsProps = {
-  /** The phone's ports. Read once, on mount. */
+  /** The phone's ports, or the viewer's sample's. Read once, on mount. */
   ports: RustRoundsPorts
 }
 
@@ -150,6 +150,28 @@ const HoldToSpeak = ({
   )
 }
 
+/**
+ * The speak step: Hold to speak, or, in a build with no microphone (the
+ * viewer's sample on Pages, #2241), what it would do there. Nothing waits on
+ * it either way: the card's own actions carry on.
+ */
+const Speak = ({
+  microphone,
+  state,
+  visit,
+  dispatch,
+}: {
+  microphone: boolean
+  state: PlayState
+  visit: Visit
+  dispatch: Dispatch
+}): JSX.Element =>
+  microphone ? (
+    <HoldToSpeak state={state} visit={visit} dispatch={dispatch} />
+  ) : (
+    <p className="text-muted-foreground text-sm">{WORDS.noMicrophone}</p>
+  )
+
 /** The program a read or variant card shows, with rustc's span once seen. */
 const Program = ({
   round,
@@ -200,9 +222,11 @@ const NextButton = ({ dispatch }: { dispatch: Dispatch }): JSX.Element => (
 )
 
 const CardScreen = ({
+  microphone,
   state,
   dispatch,
 }: {
+  microphone: boolean
   state: PlayState
   dispatch: Dispatch
 }): JSX.Element | null => {
@@ -262,7 +286,12 @@ const CardScreen = ({
           <p className="text-lg font-semibold">
             {WORDS.aim[card.aim]}: {card.say}
           </p>
-          <HoldToSpeak state={state} visit={visit} dispatch={dispatch} />
+          <Speak
+            microphone={microphone}
+            state={state}
+            visit={visit}
+            dispatch={dispatch}
+          />
           <Actions>
             <NextButton dispatch={dispatch} />
           </Actions>
@@ -305,7 +334,12 @@ const CardScreen = ({
                     ?.say ?? card.ask}
                 </p>
               </section>
-              <HoldToSpeak state={state} visit={visit} dispatch={dispatch} />
+              <Speak
+                microphone={microphone}
+                state={state}
+                visit={visit}
+                dispatch={dispatch}
+              />
             </>
           )}
           {visit.stage === "see" && <RunView run={run} />}
@@ -508,7 +542,11 @@ export const RustRounds = ({ ports }: RustRoundsProps): JSX.Element => {
         <MenuScreen state={state} dispatch={dispatch} />
       )}
       {state.screen.kind === "card" && (
-        <CardScreen state={state} dispatch={dispatch} />
+        <CardScreen
+          microphone={ports.notes !== null}
+          state={state}
+          dispatch={dispatch}
+        />
       )}
       {state.screen.kind === "tutor" && (
         <TutorScreen state={state} dispatch={dispatch} />

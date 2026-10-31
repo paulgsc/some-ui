@@ -108,7 +108,6 @@ const SPEECH_ENTRY = "packages/speech/dist/@some-ui/speech"
 const DEVICE_MODULES = [
   `${SPEECH_ENTRY}/native.es.js`,
   "apps/www/src/lib/agent-export/**",
-  "apps/www/src/lib/clipboard/**",
   "apps/www/src/lib/drive-filing/**",
   "apps/www/src/lib/game-bites/**",
   "apps/www/src/lib/home-link/**",
@@ -211,8 +210,13 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
     },
     {
       modules: ["packages/some-styles/src/theme/boundary.ts"],
-      profiles: [MOBILE_PROFILE],
-      why: "the theme boundary's helpers as @some-ui/shared's source reaches them: only the phone's code card opens one (Rust Rounds' `code` appearance, src/routes/_dashboard/_apk/rust-rounds.tsx). The web's activities bundle their own copy in their dist",
+      profiles: [MOBILE_PROFILE, "pages"],
+      why: "the theme boundary's helpers as @some-ui/shared's source reaches them: only Rust Rounds' code card opens one (its `code` appearance), on the phone (src/routes/_dashboard/_apk/rust-rounds.tsx) and in the viewer's sample on Pages (src/routes/_dashboard/rust-rounds-sample.tsx). The web's activities bundle their own copy in their dist",
+    },
+    {
+      modules: ["apps/www/src/lib/clipboard/**"],
+      profiles: [MOBILE_PROFILE, "pages"],
+      why: "copying text: the phone's paste kits, its failure log and Rust Rounds' Copy for a tutor, and that same copy in the viewer's Rust Rounds sample on Pages (src/lib/demo/rust-rounds-sample.ts). The home network's build copies nothing through it",
     },
     {
       modules: ["apps/www/src/lib/demo/**"],
@@ -385,6 +389,7 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       "_dashboard/profile.tsx*",
       "_dashboard/resume.tsx*",
       "_dashboard/job-run.tsx*",
+      "_dashboard/rust-rounds-sample.tsx*",
     ].map(
       (route): Debt => ({
         profile: MOBILE_PROFILE,
