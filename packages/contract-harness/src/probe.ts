@@ -230,6 +230,29 @@ export async function probeContract(
     })
   }
 
+  if (accepted.includes(response.status)) {
+    for (const [name, expected] of Object.entries(
+      contract.expect.headers ?? {}
+    )) {
+      const actual = response.headers.get(name)
+      if (actual === null) {
+        findings.push({
+          code: "header-missing",
+          severity: "fail",
+          message: `expected the ${name} header, and the server sent none`,
+          detail: `expected: ${expected}`,
+        })
+      } else if (actual !== expected) {
+        findings.push({
+          code: "header-mismatch",
+          severity: "fail",
+          message: `the ${name} header is not the one the client relies on`,
+          detail: `expected: ${expected}\nactual:   ${actual}`,
+        })
+      }
+    }
+  }
+
   let conformance: ConformanceResult | undefined
   const schemaApplies = schemaStatuses(contract).includes(response.status)
 

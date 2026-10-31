@@ -65,6 +65,13 @@ export type ContractExpectation<TResponse> = {
   schemaFor?: number | ReadonlyArray<number>
   /** Defaults to `report`. */
   unknownFields?: UnknownFieldPolicy
+  /**
+   * Response headers the client relies on, each by name (any case) and the
+   * exact value it must carry, such as an `ETag` the client sends back as
+   * `If-None-Match`. Checked whenever the status is one of the accepted ones;
+   * a header that is absent or carries another value is a failure.
+   */
+  headers?: Readonly<Record<string, string>>
 }
 
 export type Contract<TResponse = unknown> = {
