@@ -55,13 +55,16 @@
     "@radix-ui/react-tooltip": "catalog:",
     "@some-ui/core-utils": "workspace:*",
     "@some-ui/react-hooks": "workspace:*",
+    "@some-ui/styles": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "catalog:",
+    "prismjs": "^1.30.0",
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
+    "@types/prismjs": "^1.26.5",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

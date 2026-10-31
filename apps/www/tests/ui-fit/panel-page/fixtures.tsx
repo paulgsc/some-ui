@@ -39,6 +39,7 @@ import {
 
 import { PANELS } from "@/lib/playable"
 
+import { CodeCardFixture } from "./code-card"
 import { IncidentFixture } from "./incident"
 import { JobsStatusFixture } from "./jobs-status"
 
@@ -553,6 +554,8 @@ export const PANEL_FIXTURES = {
   "leetype-incident": IncidentFixture,
 
   "jobs-status": JobsStatusFixture,
+
+  "code-card": CodeCardFixture,
 
   // Inline styles, not utilities: this directory is outside www's Tailwind
   // sources (style.context.ts), so the page adds nothing to the CSS it

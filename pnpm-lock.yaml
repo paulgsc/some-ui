@@ -1386,9 +1386,6 @@ importers:
       '@some-ui/vite-config':
         specifier: workspace:*
         version: link:../../some-vite-config
-      '@types/prismjs':
-        specifier: ^1.26.5
-        version: 1.26.6
       tsx:
         specifier: ^4.22.4
         version: 4.22.4
@@ -1533,6 +1530,9 @@ importers:
       '@some-ui/react-hooks':
         specifier: workspace:*
         version: link:../../react-hooks
+      '@some-ui/styles':
+        specifier: workspace:*
+        version: link:../../some-styles
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -1542,6 +1542,9 @@ importers:
       lucide-react:
         specifier: 'catalog:'
         version: 0.562.0(react@19.2.8)
+      prismjs:
+        specifier: ^1.30.0
+        version: 1.30.0
       tailwind-merge:
         specifier: ^3.6.0
         version: 3.6.0
@@ -1549,6 +1552,9 @@ importers:
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
+      '@types/prismjs':
+        specifier: ^1.26.5
+        version: 1.26.6
       react:
         specifier: ^19.2.0
         version: 19.2.8
