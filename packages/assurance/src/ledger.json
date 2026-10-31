@@ -2060,7 +2060,7 @@
     {
       "store": "server:leetype_round",
       "class": "cache",
-      "growth": "Per LeetType round imported from the client's corpus; body up to ROUND_BYTES_CEILING = 256 KiB; never deleted (retired_at unlists).",
+      "growth": "Per LeetType round imported from the client's corpus; body up to ROUND_BYTES_CEILING = 256 KiB; never deleted; nothing writes retired_at since paulgsc/server#584 retired the round routes, so the rows stand as they were.",
       "family": "what-is-kept"
     },
     {
