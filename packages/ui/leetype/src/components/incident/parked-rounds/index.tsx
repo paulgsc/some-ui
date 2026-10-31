@@ -3,6 +3,7 @@ import { useState } from "react"
 import { RubricPoints } from "@leetype/components/incident/rubric-points"
 import { WorkedAnswer } from "@leetype/components/incident/worked-answer"
 import type { ParkedRound } from "@leetype/lib/leetype/incident-play/words"
+import { rubricText } from "@leetype/types/session-file"
 import { Button } from "@some-ui/shared"
 
 type ParkedRoundsProps = {
@@ -84,7 +85,7 @@ export const ParkedRounds: FC<ParkedRoundsProps> = ({
           {open.includes(round.round) && (
             <div className="text-sm">
               {round.screen.type === "record" ? (
-                <RubricPoints rubric={round.screen.rubric} />
+                <RubricPoints rubric={rubricText(round.screen)} />
               ) : (
                 <WorkedAnswer screen={round.screen} />
               )}

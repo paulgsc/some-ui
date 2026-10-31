@@ -6,7 +6,7 @@ import type {
   SessionFile,
   SessionScreen,
 } from "@leetype/types/session-file"
-import { edgesOf } from "@leetype/types/session-file"
+import { edgesOf, rubricCovers, rubricText } from "@leetype/types/session-file"
 import { assertNever, mentionsWord } from "@some-ui/core-utils"
 
 /**
@@ -26,6 +26,11 @@ import { assertNever, mentionsWord } from "@some-ui/core-utils"
  * whose returns names the response it follows (`returnFor`) has a return for
  * each response its options allow; `mismatched-return-for` names a response
  * its round cannot produce, or returns a screen that is not a round.
+ * `covers-not-a-round` is a rubric point's `covers` naming a screen of the
+ * file that is not a round, or a return (`returnOf`, or tagged
+ * `parked-return`), whose answer is the round's and which never parks
+ * (Rem. 11.10). A rubric mixing points that say `covers` with points that
+ * do not does not parse.
  *
  * Rem. 10.3 (5) spans files, so it is not here: `negativeDiscriminationGaps`
  * takes the whole set.
@@ -45,6 +50,7 @@ type SessionFileFindingCode =
   | "correct-applies-other-rule"
   | "response-without-return"
   | "mismatched-return-for"
+  | "covers-not-a-round"
 
 export type SessionFileFinding = {
   readonly code: SessionFileFindingCode
@@ -73,6 +79,14 @@ function unregistered(id: string): string | null {
 export function isRound(screen: SessionScreen): screen is ChoiceScreen {
   return (
     screen.type === "choice" && screen.options.some((option) => option.correct)
+  )
+}
+
+/** A return: it names its round, or the player infers it from its tag. */
+function isReturn(screen: ChoiceScreen): boolean {
+  return (
+    screen.returnOf !== undefined ||
+    screen.tags?.includes("parked-return") === true
   )
 }
 
@@ -106,7 +120,7 @@ function textOf(screen: SessionScreen): string {
       break
     }
     case "record": {
-      parts.push(screen.prompt, ...screen.rubric)
+      parts.push(screen.prompt, ...rubricText(screen))
       break
     }
     case "reading": {
@@ -245,7 +259,7 @@ export function roundsWithoutNamedReturns(file: SessionFile): Array<string> {
     .filter(
       ([id, screen]) =>
         isRound(screen) &&
-        screen.returnOf === undefined &&
+        !isReturn(screen) &&
         namedResponses(file, returns.get(id) ?? []).size === 0
     )
     .map(([id]) => id)
@@ -379,6 +393,25 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
             "response-without-return",
             id,
             `no return names ${missing.map((kind) => `"${kind}"`).join(", ")} in \`returnFor\`; each response gets its own follow-up (Prop. 9.1, Rem. 11.9)`
+          )
+        }
+      }
+    }
+
+    if (screen.type === "record") {
+      for (const round of rubricCovers(screen) ?? []) {
+        const target = file.screens[round]
+        if (target === undefined || !isRound(target)) {
+          add(
+            "covers-not-a-round",
+            id,
+            `a rubric point covers "${round}", which is not a round of this file`
+          )
+        } else if (isReturn(target)) {
+          add(
+            "covers-not-a-round",
+            id,
+            `a rubric point covers "${round}", which is a return; cover the round it returns`
           )
         }
       }
