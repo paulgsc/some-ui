@@ -20,7 +20,11 @@ async function showRecord(
     const { createJobsRuntime } = await import("@/lib/jobs/runtime")
     const { ports } = await import("@/lib/jobs/__tests__/fixture")
     const runtime = createJobsRuntime(
-      ports({ now: () => new Date(), dayOf: () => "2026-10-30" })
+      // A fixed clock: the real one made this fail from the day after.
+      ports({
+        now: () => new Date("2026-10-30T22:00:00Z"),
+        dayOf: () => "2026-10-30",
+      })
     )
     return { phoneJobs: (): typeof runtime => runtime, copyText: vi.fn() }
   })
