@@ -87,7 +87,7 @@ export const ACCOUNT_ERASES = {
     },
     {
       label: "Rust Rounds' programs",
-      text: "Home's copy of each Rust Rounds program and what rustc printed for it. They are kept by their code alone, linked to no one once your rounds are gone.",
+      text: "Home's copy of each Rust Rounds program, what rustc printed for it, and when the first round holding it reached home. They are kept by their code alone, linked to no one once your rounds are gone.",
     },
     {
       label: "Logs and backups",

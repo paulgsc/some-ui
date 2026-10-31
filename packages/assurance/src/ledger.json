@@ -591,13 +591,13 @@
           "kind": "RE3",
           "property": "work",
           "claim": "A recording pass takes a bounded batch and stops at its deadline.",
-          "requirement": "A pass first asks the runner its toolchain, waiting CLIENT_TIMEOUT (5 s), and only when its deadline (RUST_ROUNDS_PASS_DEADLINE_SECONDS, 600 by default) is at least MIN_DEADLINE (142 s, that wait and one program's); with less it asks nothing, which is an error. It then takes at most BATCH (20) waiting programs in arrival order, one at a time, asking about each only while its whole wait, ASK_TIMEOUT (137 s), is left before the deadline. A deadline reached after at least one program was asked about is a warning, not an error, and what a pass does not reach waits for the next. Each of a program's at most DROPS (2) losses under a toolchain holds the runner at most one job deadline (132 s).",
+          "requirement": "A pass first asks the runner its toolchain, waiting CLIENT_TIMEOUT (5 s), and only when its deadline (RUST_ROUNDS_PASS_DEADLINE_SECONDS, 600 by default) is at least MIN_DEADLINE (142 s, that wait and one program's); with less it asks nothing, which is an error. It then takes at most BATCH (20) waiting programs in arrival order, one at a time, asking about each only while its whole wait, ASK_TIMEOUT (137 s), is left before the deadline. A deadline reached after at least one program was asked about is a warning, not an error, and what a pass does not reach waits for the next. Each of a program's at most DROPS (2) losses under a toolchain costs a pass at most ASK_TIMEOUT (137 s).",
           "verdict": "holds",
           "conclusion": "A pass records at most 20 programs, asks none it could not wait out before its deadline, and at the shortest deadline allowed still records one; the next pass takes the rest.",
           "evidence": [
             {
               "class": "measured",
-              "says": "Over 21 waiting programs a pass records exactly 20 and the next the last; at exactly MIN_DEADLINE a pass records a program, 1 ms below it a pass asks nothing and fails, and a runner that hangs ends the pass at its wait with nothing asked after.",
+              "says": "Over 21 waiting programs a pass records exactly 20 and the next the last; at exactly MIN_DEADLINE a pass records a program, 1 ms below it a pass asks nothing and fails.",
               "ref": "server:apps/servers/file_host/src/rust_rounds/pass.rs"
             },
             {
