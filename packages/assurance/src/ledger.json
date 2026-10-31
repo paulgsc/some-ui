@@ -442,7 +442,7 @@
         "some-ui:apps/www/src/lib/voice-home",
         "server:apps/servers/file_host/src/transcribe"
       ],
-      "modules": ["voice"],
+      "modules": ["voice", "probes"],
       "objectives": [
         {
           "id": "VH1",
@@ -464,7 +464,8 @@
           ],
           "watch": {
             "by": "dashboard",
-            "ref": "server:infra/grafana/dashboards/transcribe.jsonnet"
+            "ref": "server:infra/grafana/dashboards/transcribe.jsonnet",
+            "checks": ["home-transcription/transcription-probe"]
           },
           "amendments": []
         },
@@ -2109,6 +2110,18 @@
       "family": "study-nudge"
     },
     {
+      "store": "server:probe_result",
+      "class": "telemetry",
+      "growth": "Per probe run that ended (server CK4, some-ui#2383): one tiny row, its verdict, outcome, word error, time to transcript, the engine's time and name, never the words heard; at most one per run; names no subject; append-only, triggers abort UPDATE and DELETE, kept.",
+      "family": "voice-heard"
+    },
+    {
+      "store": "server:probe_run",
+      "class": "telemetry",
+      "growth": "Per probe run: one tiny row (who asked, schedule or page, and when); daily (EVERY = 24 h) plus each run the operator asks for from the page, and at most one open at a time (a second ask joins it), so about 365 rows a year; names no subject; append-only, triggers abort UPDATE and DELETE, kept.",
+      "family": "voice-heard"
+    },
+    {
       "store": "server:push_subscriptions",
       "class": "cache",
       "growth": "Per browser that subscribed to web push (endpoint is the key); upserted; tiny rows.",
@@ -2174,13 +2187,13 @@
     {
       "store": "server:voice_note",
       "class": "record",
-      "growth": "Per voice note sent home (reflection, jobs, scene, game, studio): one small metadata row; append-only.",
+      "growth": "Per voice note sent home (reflection, jobs, scene, game, studio): one small metadata row; append-only. Plus one probe note per probe run (said for probe, under the subject probe, which no account holds; server CK4): about 365 rows a year.",
       "family": "voice-heard"
     },
     {
       "store": "server:voice_note_audio",
       "class": "record",
-      "growth": "Per voice note: its audio bytes, about 240 KB a minute at the phone's 32 kbps (migration), at most NOTE_CEILING = 1 MiB per note; append-only, kept for good; the migration says the bytes move out of the DB once they pass about 20 GB.",
+      "growth": "Per voice note: its audio bytes, about 240 KB a minute at the phone's 32 kbps (migration), at most NOTE_CEILING = 1 MiB per note; append-only, kept for good; the migration says the bytes move out of the DB once they pass about 20 GB. Each probe run adds its probe note's clip, 8,999 bytes (server transcribe::probe::CLIP), kept as every note's audio is: about 3.3 MB a year at one run a day.",
       "family": "voice-heard"
     },
     {
@@ -2559,8 +2572,8 @@
           "name": "A known clip goes in as a probe note, daily and from the page, and the words that come back are compared",
           "runs": "home",
           "segments": ["home-transcription/pass", "home-transcription/engine"],
-          "status": "planned",
-          "tracked": "some-ui#2383"
+          "status": "live",
+          "ref": "server:apps/servers/file_host/src/transcribe/probe.rs#settle"
         }
       ]
     },

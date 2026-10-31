@@ -161,6 +161,15 @@ a check's `<process>/<check>` is what a result is recorded against and what a Ru
 (CK4–CK8); and a check that goes live sets its `ref`, and the objectives it runs name it in
 their watch.
 
+The first live check is home's transcription probe (CK4, #2383),
+`home-transcription/transcription-probe`. Home runs it daily and when the operator asks
+(paulgsc/server `routes::probes`: `GET /probes`, `POST /probes/transcription`, operator only;
+`apps/www/src/lib/probes-client` is the client the page uses). A known clip goes through home's
+real voice-note path as a probe note, under a subject no account holds, and each run's verdict,
+time to transcript and engine are kept on home, append-only (`probe_run`, `probe_result`). The
+server names that probe `transcription`. The hosted-speech probe, `hosted-speech/speech-probe`, is
+still planned.
+
 ## What `pnpm check:assurance` holds
 
 `scripts/check-assurance.ts`, rules in `packages/assurance/src/rules.ts`; in root `pnpm lint` and
