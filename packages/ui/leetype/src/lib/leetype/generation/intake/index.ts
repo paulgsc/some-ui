@@ -25,7 +25,7 @@ import {
 } from "@leetype/lib/leetype/round-assembly"
 import type { Round } from "@leetype/types/authored-round"
 import { RoundSchema } from "@leetype/types/authored-round"
-import { isRecord } from "@some-ui/core-utils"
+import { isRecord, jsonValues } from "@some-ui/core-utils"
 
 export type RoundIntake =
   | { ok: true; round: Round; assembled: AssembledRound }
@@ -34,52 +34,6 @@ export type RoundIntake =
       /** One line per failed check, for the learner and for `fixRequest`. */
       violations: Array<string>
     }
-
-const FENCE = "```"
-const LANGUAGE = "json"
-
-/** Spaces, tabs and a CR are allowed between a fence's opening and its newline. */
-const isInlineSpace = (char: string | undefined): boolean =>
-  char === " " || char === "\t" || char === "\r"
-
-/**
- * The body of every ``` or ```json fence in `text`, in order. A linear scan
- * rather than a regular expression, for the reason TOPIK's intake gives
- * (`@some-ui/topik`, `lib/topik/generation/intake`): the obvious pattern
- * backtracks polynomially on whatever was pasted (CodeQL).
- */
-export function fencedBodies(text: string): Array<string> {
-  const bodies: Array<string> = []
-  let from = 0
-  for (;;) {
-    const open = text.indexOf(FENCE, from)
-    if (open === -1) return bodies
-    let at = open + FENCE.length
-    if (text.startsWith(LANGUAGE, at)) at += LANGUAGE.length
-    while (isInlineSpace(text[at])) at += 1
-    if (text[at] !== "\n") {
-      from = open + 1
-      continue
-    }
-    const close = text.indexOf(FENCE, at + 1)
-    if (close === -1) return bodies
-    bodies.push(text.slice(at + 1, close))
-    from = close + FENCE.length
-  }
-}
-
-function jsonValues(text: string): Array<unknown> {
-  const fenced = fencedBodies(text)
-  const candidates = fenced.length > 0 ? fenced : [text]
-  return candidates.flatMap((candidate) => {
-    try {
-      const value: unknown = JSON.parse(candidate)
-      return [value]
-    } catch {
-      return []
-    }
-  })
-}
 
 /**
  * A repetition as `lib/leetype/cost` normalizes it. The prompt asks for
