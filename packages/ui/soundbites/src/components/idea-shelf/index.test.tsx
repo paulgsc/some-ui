@@ -145,6 +145,32 @@ describe("IdeaShelf", () => {
     ).toBeTruthy()
   })
 
+  it("keeps a skipped question answerable once the idea is a video", async () => {
+    setup([caught()])
+    fireEvent.click(await screen.findByRole("button", { name: /week 8/ }))
+    await pick(replyText({ primer: DRAFT, ask: ["Which week is it?"] }))
+    fireEvent.click(screen.getByRole("button", { name: W.answer(1) }))
+    await screen.findByText(W.askedOf(1, 1))
+    fireEvent.click(
+      screen.getByRole("button", { name: STUDIO_WORDS.idea.skip })
+    )
+    fireEvent.click(screen.getByRole("button", { name: W.backToIdea }))
+    fireEvent.click(screen.getByRole("button", { name: W.make }))
+    await settle()
+    expect(screen.getByText(W.notice.made)).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", { name: W.back }))
+    fireEvent.click(await screen.findByRole("button", { name: /week 8/ }))
+    expect(screen.getByRole("link", { name: W.openVideo })).toBeTruthy()
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: STUDIO_WORDS.idea.answerSkipped(1),
+      })
+    )
+    expect(
+      await screen.findByRole("textbox", { name: "Which week is it?" })
+    ).toBeTruthy()
+  })
+
   it("says so in place of Make when the phone's videos can't be read, and reads them again", async () => {
     let reads = 0
     const memory = memoryProjectStore()

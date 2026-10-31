@@ -269,7 +269,9 @@ const OneIdea = ({
           <p className="text-muted-foreground text-xs">{WORDS.answerLine}</p>
         </div>
       )}
-      {moving && asks === 0 && skipped > 0 && (
+      {/* A skipped question stays answerable once the idea is a video too:
+          the capture said "any time", and only this reaches it. */}
+      {(moving || stage === "video") && asks === 0 && skipped > 0 && (
         <Button
           variant="ghost"
           size="sm"
