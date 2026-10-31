@@ -1,5 +1,15 @@
-import type { BlobShelf, Playback, Recording } from "@some-ui/voice-capture"
-import { describe, expect, it, vi } from "vitest"
+import type {
+  BlobShelf,
+  Playback,
+  Recording,
+  VoiceNoteEnd,
+} from "@some-ui/voice-capture"
+import {
+  RECORDING_FAILURE_COPY,
+  RecordingError,
+  VOICE_NOTE_SAID,
+} from "@some-ui/voice-capture"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type { Take, TakesPorts } from "@/lib/takes-desk/runtime"
 import { createTakes } from "@/lib/takes-desk/runtime"
@@ -244,5 +254,159 @@ describe("createTakes", () => {
     p.ended()
     await settle()
     expect(takes.getSnapshot().playing).toBe(false)
+  })
+})
+
+/**
+ * VC2 (`@some-ui/voice-capture`'s `voice-note.ts`) over the real desk: each
+ * order of start, stop and leave (`reset`) against a microphone that opens
+ * on cue, late, never or refuses ends the take exactly once, with words for
+ * how it ended, and holds no microphone it opened too late.
+ */
+describe("VC2: every take on the desk ends once, and says how", () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  /** A microphone that answers when the test says, or never. */
+  function cued(p: TakesPorts): {
+    open: () => void
+    refuse: () => void
+    mic: Recording
+  } {
+    const mic = recording(4_000)
+    let answer: { open: () => void; refuse: () => void } = {
+      open: () => undefined,
+      refuse: () => undefined,
+    }
+    p.startRecording = (): Promise<Recording> =>
+      new Promise<Recording>((resolve, reject) => {
+        answer = {
+          open: (): void => resolve(mic),
+          refuse: (): void => reject(new RecordingError("denied")),
+        }
+      })
+    return {
+      open: (): void => answer.open(),
+      refuse: (): void => answer.refuse(),
+      mic,
+    }
+  }
+
+  type Order = {
+    readonly name: string
+    readonly run: (
+      takes: ReturnType<typeof createTakes>,
+      mic: ReturnType<typeof cued>
+    ) => Promise<void>
+    readonly end: VoiceNoteEnd
+    /** `reset` hushes what is said; the end is still named. */
+    readonly hushed?: boolean
+    /** The microphone opened after the take was let go. */
+    readonly letGo?: boolean
+  }
+
+  const ORDERS: ReadonlyArray<Order> = [
+    {
+      name: "stopped before the microphone opens, which then opens",
+      run: async (takes, mic): Promise<void> => {
+        takes.stop()
+        mic.open()
+        await settle()
+      },
+      end: "early",
+      letGo: true,
+    },
+    {
+      name: "stopped before a microphone that never opens",
+      run: async (takes): Promise<void> => {
+        takes.stop()
+        await settle()
+      },
+      end: "early",
+    },
+    {
+      name: "stopped before the microphone refuses",
+      run: async (takes, mic): Promise<void> => {
+        takes.stop()
+        mic.refuse()
+        await settle()
+      },
+      end: "early",
+    },
+    {
+      name: "left before the microphone opens, which then opens",
+      run: async (takes, mic): Promise<void> => {
+        takes.reset()
+        mic.open()
+        await settle()
+      },
+      end: "early",
+      hushed: true,
+      letGo: true,
+    },
+    {
+      name: "refused before any stop",
+      run: async (takes, mic): Promise<void> => {
+        mic.refuse()
+        await settle()
+        takes.stop()
+        await settle()
+      },
+      end: "blocked",
+    },
+    {
+      name: "stopped once the microphone opened",
+      run: async (takes, mic): Promise<void> => {
+        mic.open()
+        await settle()
+        takes.stop()
+        await settle()
+      },
+      end: "kept",
+    },
+    {
+      name: "left once the microphone opened",
+      run: async (takes, mic): Promise<void> => {
+        mic.open()
+        await settle()
+        takes.reset()
+        await settle()
+      },
+      end: "kept",
+      hushed: true,
+    },
+  ]
+
+  it.each(ORDERS)("$name", async ({ run, end, hushed, letGo }) => {
+    const p = ports()
+    const mic = cued(p)
+    const takes = createTakes(p, LIMITS)
+    takes.start("school-bus")
+    await settle()
+    expect(takes.getSnapshot().take.kind).toBe("opening")
+    await run(takes, mic)
+    await settle()
+    const snapshot = takes.getSnapshot()
+    expect(snapshot.take.kind).toBe("idle")
+    expect(snapshot.ended).toMatchObject({ seq: 1, line: "school-bus", end })
+    const words =
+      end === "blocked" ? RECORDING_FAILURE_COPY.denied : VOICE_NOTE_SAID[end]
+    expect(snapshot.said).toBe(hushed === true ? null : words)
+    if (letGo === true) expect(mic.mic.discard).toHaveBeenCalledOnce()
+  })
+
+  it("ends a take whose microphone never answers once the wait runs out", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    const p = ports()
+    cued(p)
+    const takes = createTakes(p, LIMITS)
+    takes.start("school-bus")
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(takes.getSnapshot()).toMatchObject({
+      take: { kind: "idle" },
+      ended: { seq: 1, end: "blocked" },
+      said: RECORDING_FAILURE_COPY.failed,
+    })
   })
 })

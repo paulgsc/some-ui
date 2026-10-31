@@ -111,9 +111,27 @@ describe("Rust Rounds on the phone", () => {
     press("Not sure")
     const hold = screen.getByRole("button", { name: WORDS.holdToSpeak })
     fireEvent.pointerDown(hold)
+    expect(hold).toHaveTextContent(WORDS.opening)
+    act(() => ports.notes.open())
+    expect(hold).toHaveTextContent(WORDS.listening)
     fireEvent.pointerUp(hold)
     act(() => ports.notes.land(null))
     expect(screen.getByRole("status")).toHaveTextContent(WORDS.takeEnded.short)
+  })
+
+  it("says a take let go before the microphone was listening (VC2)", () => {
+    const ports = fakePorts()
+    render(<RustRounds ports={ports} />)
+    press(WORDS.start)
+    press("Not sure")
+    const hold = screen.getByRole("button", { name: WORDS.holdToSpeak })
+    fireEvent.pointerDown(hold)
+    fireEvent.pointerUp(hold)
+    expect(screen.getByRole("status")).toHaveTextContent(WORDS.takeEnded.early)
+    // Nothing was kept, so the card still offers to hold again.
+    expect(
+      screen.getByRole("button", { name: WORDS.holdToSpeak })
+    ).toBeInTheDocument()
   })
 
   it("offers plain Skip on a card with no run of its program on the phone", () => {

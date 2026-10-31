@@ -84,9 +84,19 @@ type TakeView =
 
 /**
  * How a take ended: kept, too short, no room, failed to keep, refused by
- * the microphone, or let go before it opened.
+ * the microphone, or let go before it opened (`early`); or, for a take an
+ * earlier opening left, that the phone holds no note from it (`missing`).
+ * Each is said on the card it was taken on (`WORDS.takeEnded`; `blocked`
+ * in the microphone's own words), none in silence (VC2).
  */
-export type TakeEnd = "kept" | "short" | "full" | "failed" | "blocked" | "none"
+export type TakeEnd =
+  | "kept"
+  | "short"
+  | "full"
+  | "failed"
+  | "blocked"
+  | "early"
+  | "missing"
 
 /** The microphone's voice notes, as the session reads them. */
 export type NoteView = {
@@ -554,7 +564,7 @@ function onReopened(
     const settled = settle(
       step.state,
       line,
-      note === null ? "none" : "kept",
+      note === null ? "missing" : "kept",
       note
     )
     step = {

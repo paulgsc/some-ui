@@ -34,6 +34,7 @@ export {
 } from "./lib/take"
 export type {
   TakeView,
+  VoiceNoteEnd,
   VoiceNoteOutcome,
   VoiceNoteRuntime,
   VoiceNoteState,
@@ -42,6 +43,7 @@ export {
   shelveTake,
   takeView,
   VOICE_NOTE_SAID,
+  voiceNoteEnd,
   voiceNoteRuntime,
   voiceNoteSaid,
 } from "./lib/voice-note"

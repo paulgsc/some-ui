@@ -1,7 +1,12 @@
 /**
- * Ports for the session's tests: a microphone whose takes land when a test
- * says so, a clock, ids, a page that is never hidden, and a clipboard that
- * takes whatever is copied.
+ * Ports for the session's tests: a microphone that opens and whose takes
+ * land when a test says so, a clock, ids, a page that is never hidden, and a
+ * clipboard that takes whatever is copied.
+ *
+ * The microphone keeps www's takes desk's phases (`lib/takes-desk`): a take
+ * starts `opening`, records once `open` is called, and one stopped before
+ * then ends `early` (VC2). MIC1 (#2371) replaces this with the one simulated
+ * microphone every screen's tests share.
  */
 import type { NoteView, TakeEnd } from "@rust-rounds/lib/play/machine"
 import type { NotesPort, RustRoundsPorts } from "@rust-rounds/lib/play/runtime"
@@ -14,6 +19,8 @@ export type FakeNotes = NotesPort & {
   readonly started: Array<string>
   /** The notes the phone holds, as the desk lists them. */
   readonly held: Array<{ id: string; line: string; takenAt: number }>
+  /** The microphone opens for the take under way: it is recording. */
+  readonly open: () => void
   /** Ends the take under way: kept as `id`, or too short when null. */
   readonly land: (id: string | null) => void
   /** Ends the take under way kept nothing: `failed` or `full`. */
@@ -62,9 +69,15 @@ export function fakeNotes(): FakeNotes {
         return
       }
       started.push(next)
-      set({ ...view, take: { kind: "recording" } })
+      set({ ...view, take: { kind: "opening" } })
+    },
+    open(): void {
+      if (view.take.kind === "opening") {
+        set({ ...view, take: { kind: "recording" } })
+      }
     },
     stop(): void {
+      if (view.take.kind === "opening") end("early", null)
       if (view.take.kind === "recording") {
         set({ ...view, take: { kind: "keeping" } })
       }
@@ -73,11 +86,17 @@ export function fakeNotes(): FakeNotes {
       held.find((each) => each.line === on && each.takenAt >= since)?.id ??
       null,
     land(id): void {
+      if (view.take.kind !== "recording" && view.take.kind !== "keeping") {
+        throw new Error("a take lands only once its microphone opened")
+      }
       // Listed once kept: after any take on this line began.
       if (id !== null) held.push({ id, line, takenAt: Number.MAX_SAFE_INTEGER })
       end(id === null ? "short" : "kept", id)
     },
     lose(how): void {
+      if (view.take.kind !== "recording" && view.take.kind !== "keeping") {
+        throw new Error("a take is lost only once its microphone opened")
+      }
       end(how, null)
     },
     refuse(why): void {
