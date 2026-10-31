@@ -1591,7 +1591,7 @@ describe("Watch", () => {
     expect(voice.listens()).toBe(0)
   })
 
-  it("asks for the video and its review.json together", async () => {
+  it("asks for the video and the notes beside it together", async () => {
     const runtime = await opened()
     runtime.dispatch({ type: "watchChosen" })
     runtime.dispatch({

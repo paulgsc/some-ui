@@ -117,8 +117,9 @@ export const STUDIO_WORDS = {
   readAgain: "Try again",
 
   /**
-   * Start says the loop in the person's terms, never a file, folder or
-   * format (#2325): `__tests__/words.test.ts` refuses those here.
+   * Start says the loop in the person's terms. Every word in this table
+   * names what you do or what Claude made, never a file, folder or format
+   * (SW1, #2325): `__tests__/words.test.ts` refuses those anywhere in it.
    */
   start: {
     eyebrow: "Your video",
@@ -208,7 +209,7 @@ export const STUDIO_WORDS = {
     full: `No room on the phone for that take, so it wasn't kept. ${MAKING_ROOM}`,
     noRoom: `No room on the phone for another take. ${MAKING_ROOM}`,
     spent:
-      "The primer's time is all used. Record a long scene again, shorter, to make room.",
+      "The video's time is all used. Record a long scene again, shorter, to make room.",
     thrownAway: "Thrown away. Nothing kept.",
     notStarted:
       "The screen went away before the microphone opened. Tap to talk.",
@@ -272,7 +273,7 @@ export const STUDIO_WORDS = {
     sharing: "Preparing…",
     notYet: "Not yet",
     shareLine:
-      "The project file and your takes, for Claude, to Drive. Once they're there, the takes can leave the phone.",
+      "Your video and your takes, for Claude, to Drive. Once they're there, the takes can leave the phone.",
   },
 
   share: {
@@ -338,10 +339,10 @@ export const STUDIO_WORDS = {
     heading: "Watch",
     open: "Open a review render",
     openHint:
-      "Pick the video and the review.json beside it, together, from Build Journal › voice › reviews.",
-    pickBoth: "Pick the video and its review.json together.",
+      "Pick the review video Claude sent and the notes beside it, together, from your Drive.",
+    pickBoth: "Pick the video and the notes beside it together.",
     unreadable:
-      "That review.json can't be read. Pick the video and its review.json again.",
+      "Those notes can't be read. Pick the video and the notes beside it again.",
     notThisVideo:
       "That render is of a version this phone doesn't have. Open Claude's version first.",
     noteLabel: "Your note",
@@ -406,7 +407,7 @@ export const STUDIO_WORDS = {
     mark: "It's ready",
     ready: "Ready for YouTube.",
     uploadCopy:
-      "Next, ask Claude for the upload copy: the full video, its title, its description with the music credit, and its captions file, on the shorts page. You upload it to YouTube yourself.",
+      "Next, ask Claude for the upload copy: the full video, its title, its description with the music credit, and its captions, on the shorts page. You upload it to YouTube yourself.",
     linkLabel: "Its YouTube link, once it is up",
     keepLink: "Keep this link",
     notALink:

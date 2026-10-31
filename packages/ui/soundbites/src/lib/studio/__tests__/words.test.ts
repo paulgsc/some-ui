@@ -75,6 +75,7 @@ function startDrawn(): Array<string> {
 /** Every word the table makes, from a sample of what it is given. */
 const MADE: ReadonlyArray<string> = [
   ...START_MADE,
+  ...startDrawn(),
   W.record.sceneOf(2, 3),
   W.record.onScreen("The path card"),
   W.record.mustStayTrue(2),
@@ -150,23 +151,12 @@ describe("Studio's words", () => {
     expect(all.filter((text) => MACHINERY.test(text))).toEqual([])
   })
 
-  it("SW1: say the way in on Start in the person's terms, never a file, folder or format", () => {
+  it("SW1: name what you do or what Claude made, never a file, folder or format", () => {
     expect(Object.keys(W.shape.looks)).toEqual([...LOOKS])
     expect(Object.keys(W.shape.voices)).toEqual([...VOICES])
     const file =
       /\.json|›|build journal|\bprimers?\b|\bfiles?\b|\bfolder\b|\bformat\b/i
-    const start = [
-      ...fixed(STUDIO_WORDS.start),
-      ...START_MADE,
-      ...startDrawn(),
-      // What the pick says when what was picked is refused.
-      W.notice.unreadableFile,
-      W.merge.unreadable,
-      W.merge.notHere,
-      W.merge.same,
-      W.merge.moved,
-    ]
-    expect(start.filter((text) => file.test(text))).toEqual([])
+    expect(all.filter((text) => file.test(text))).toEqual([])
   })
 
   it("write a length as a number of seconds", () => {
