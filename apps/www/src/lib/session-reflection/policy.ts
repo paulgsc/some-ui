@@ -8,8 +8,8 @@
  * Each carries its session's ID. They are for the next session, not an
  * archive, so the phone keeps at most `REFLECTION_LIMIT` of them across every
  * session, nothing is dropped to make room, and one older than
- * `STALE_AFTER_MS` reads as stale. Room comes back only by sharing them (they
- * leave the phone) or letting them go.
+ * `STALE_AFTER_MS` reads as stale. Room comes back only by letting some go:
+ * a share is a copy (LG1).
  */
 
 export const QUESTIONS = [
@@ -50,7 +50,7 @@ export type Answers = Partial<Record<QuestionKey, string>>
 export const REFLECTION_LIMIT = 20
 
 /** What a reflection refused for want of a slot says. */
-export const NO_ROOM = "No room for it: share or let some go first."
+export const NO_ROOM = "No room for another on this phone: let one go first."
 
 /** Older than a week, a reflection no longer says how things are going. */
 export const STALE_AFTER_MS = 7 * 24 * 60 * 60_000

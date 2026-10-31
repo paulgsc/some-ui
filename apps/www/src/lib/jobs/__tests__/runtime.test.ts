@@ -4,9 +4,10 @@ import { describe, expect, it, vi } from "vitest"
 
 import { isFile } from "@/lib/jobs/files"
 import type { PickRef } from "@/lib/jobs/model"
+import { EMPTY } from "@/lib/jobs/model"
 import type { NoticeAsked, NoticePort } from "@/lib/jobs/runtime"
 import { createJobsRuntime } from "@/lib/jobs/runtime"
-import { STORAGE_KEY } from "@/lib/jobs/stored"
+import { STORAGE_KEY, writeStored } from "@/lib/jobs/stored"
 
 import { digest, ports, run } from "./fixture"
 
@@ -172,6 +173,49 @@ describe("createJobsRuntime", () => {
     if (again.outcome === "shared") runtime.arrived(again.shareId)
     expect(runtime.getSnapshot().state.log.at(-1)?.type).toBe("arrived")
     expect(await runtime.share("decisions")).toEqual({ outcome: "nothing" })
+  })
+
+  it("lets a voice note's audio go on home's word, never on a Drive share's (LG1)", async () => {
+    const p = ports()
+    const note = { mimeType: "audio/webm", durationMs: 3_000, owner: "o" }
+    writeStored(p.storage, {
+      ...EMPTY,
+      voice: [
+        { ...note, id: "v1" },
+        { ...note, id: "v2" },
+      ],
+    })
+    await p.audio.put("v1", new Blob(["opus"]))
+    await p.audio.put("v2", new Blob(["opus"]))
+    const runtime = createJobsRuntime(p)
+    runtime.open(blob(JSON.stringify(digest("2026-10-18"))))
+    await settle()
+    const pick = runtime.getSnapshot().state.digests[0].picks[1]
+    expect(
+      runtime.record({
+        type: "passed",
+        day: "2026-10-18",
+        pickId: pick.id,
+        fingerprint: pick.fingerprint,
+        reasons: ["pay"],
+        note: "",
+        voice: ["v1"],
+      })
+    ).toBe(true)
+    const shared = await runtime.share("decisions")
+    if (shared.outcome === "shared") runtime.arrived(shared.shareId)
+    expect(runtime.getSnapshot().state.log.at(-1)?.type).toBe("arrived")
+    // The share arriving in Drive is a copy: the audio stays.
+    await settle()
+    expect(await p.audio.ids()).toEqual(["v1", "v2"])
+    // Home's word lets it go, and only the note home holds.
+    runtime.letGoHeld(new Set(["v1", "never-heard"]))
+    await settle()
+    expect(await p.audio.ids()).toEqual(["v2"])
+    // What nothing names any more is swept; a note still listed stays.
+    runtime.sweep()
+    await settle()
+    expect(await p.audio.ids()).toEqual(["v2"])
   })
 
   it("records a file home took as shared and arrived, and offers it no more", async () => {

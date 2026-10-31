@@ -81,19 +81,15 @@ const ShareWithAgent = ({ taking }: { taking: boolean }): JSX.Element => {
       leetypeTakes: result.leetype.takes.length,
     })
     if (result.outcome !== "shared" || going === "") return
-    ask(
-      arrived(`the ${going}`, "Keep them here", () =>
-        handOffExport(phoneSoundbiteStore(), result)
-      )
-    )
+    ask(arrived(`the ${going}`, "Not yet", () => handOffExport(result)))
   })
   return (
     <section className="space-y-2">
       <p className="text-muted-foreground text-sm">
         Your sessions with their reflections, soundbites, stop reasons,
         grammar-lens answers and takes, and LeetType answers and takes, as files
-        for an agent to read. You pick where they go; once they arrive, all but
-        the sessions and stop reasons leave the phone.
+        for an agent to read. You pick where they go. Everything stays on this
+        phone.
       </p>
       <IntentButton
         state={share.state}

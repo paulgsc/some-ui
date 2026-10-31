@@ -64,7 +64,7 @@ const shapeStatus = (look: Look, voice: Voice): string =>
 
 /** What sharing frees: the room the shared takes held. */
 const MAKING_ROOM =
-  "On Start, share a video's takes with Claude and say they reached Drive: they leave the phone, and the room they held is free."
+  "Takes leave the phone once home holds them, and the room they held is free."
 
 /** `under a minute`, `1 min`, `1 h 05 min`. */
 function minutes(ms: number): string {
@@ -131,7 +131,7 @@ export const STUDIO_WORDS = {
       `${plural(n, "take", "takes")} on the phone`,
     open: "Open",
     shareLine:
-      "This video's takes are on the phone. Share them with Claude, and once they're in Drive they leave the phone.",
+      "This video's takes are on the phone. Share them with Claude so a session can hear them; they stay here until home holds them.",
     sittings: {
       record: "Record",
       watch: "Watch",
@@ -217,7 +217,7 @@ export const STUDIO_WORDS = {
     cleared: (n: number): string =>
       `${plural(n, "piece", "pieces")} of the old Journal tab that Studio couldn't use ${n === 1 ? "was" : "were"} let go.`,
     arrived: (n: number): string =>
-      `${plural(n, "take", "takes")} left the phone. Drive keeps ${n === 1 ? "it" : "them"}.`,
+      `${plural(n, "take", "takes")} in Drive too. ${n === 1 ? "It leaves" : "They leave"} the phone once home holds ${n === 1 ? "it" : "them"}.`,
   },
 
   done: {
@@ -247,16 +247,16 @@ export const STUDIO_WORDS = {
     sharing: "Preparing…",
     notYet: "Not yet",
     shareLine:
-      "The project file and your takes, for Claude, to Drive. Once they're there, the takes can leave the phone.",
+      "The project file and your takes, for Claude, to Drive. They stay on this phone until home holds them.",
   },
 
   share: {
     title: "Studio takes",
     arrivedTitle: "Did they reach Drive?",
     arrivedLine:
-      "Once they're in Drive, the takes that went out can leave the phone.",
-    arrivedYes: "They're in Drive: let them go",
-    arrivedNo: "Keep them here",
+      "Once they're in Drive, Claude can hear them. The takes stay on this phone until home holds them.",
+    arrivedYes: "They're in Drive",
+    arrivedNo: "Not yet",
   },
 
   /** Shape (ST6): a plan for the look, then one for the voice, never a lever. */

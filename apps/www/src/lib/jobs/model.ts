@@ -147,7 +147,7 @@ export type JobEvent = { id: string; at: string } & (
       through: number
       voice: ReadonlyArray<string>
     }
-  /** The person said a share's files arrived, so its audio can leave. */
+  /** The person said a share's files arrived: they count as sent. */
   | { type: "arrived"; shareId: string }
 )
 
@@ -1009,10 +1009,11 @@ export function sharesOn(
 }
 
 /**
- * Voice ids whose audio can leave the phone: each one an event names before
- * the last share of its kind that arrived. Such a note either went out in a
- * share that arrived, or belongs to a pass, fit note or debrief a later
- * decision replaced, which no share will send.
+ * Voice ids a share that arrived in Drive covers, which no later share
+ * sends again: each one an event names before the last share of its kind
+ * that arrived. Such a note either went out in a share that arrived, or
+ * belongs to a pass, fit note or debrief a later decision replaced. Its
+ * audio stays until home holds it (LG1).
  */
 export function releasedVoice(state: JobsState): ReadonlySet<string> {
   const through = {

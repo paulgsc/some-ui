@@ -1,8 +1,8 @@
 /**
  * A desk of takes on the phone (`./runtime`): the microphone, the audio on a
  * shelf of its own, and the takes in a list, one runtime per page load.
- * They leave the phone only once the learner says a study-context export
- * carrying them arrived (`letGo`). Grammar-lens takes (`lib/lens-takes`) and
+ * A take leaves only when the learner lets it go (`letGo`); an export is a
+ * copy (LG1). Grammar-lens takes (`lib/lens-takes`) and
  * LeetType's spoken answers (`lib/leetype-takes`) each keep one.
  * Phone-only (`build.paths.ts`).
  */

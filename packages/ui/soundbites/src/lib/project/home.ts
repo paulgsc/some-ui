@@ -4,7 +4,7 @@
  * kind `studio`, its `ref` the take, `<project>:<shot>:<take>` (paulgsc/server
  * `voice_repo`'s `Of::Studio`). Once home says it holds one, the take is
  * marked kept by home and its audio leaves the phone, in one write: the
- * store lets audio go only once a keeper holds a copy (`letGoRefusal`).
+ * store lets audio go only once home holds a copy (`letGoRefusal`, LG1).
  * Sending is the app's home link's (www `lib/home-link/voice-copy`).
  */
 import type { Project } from "./model"

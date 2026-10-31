@@ -15,7 +15,8 @@
  * - **Every take is kept.** A new take is chosen for its shot; the take it
  *   replaces stays, unchosen, and can be chosen again.
  * - **Nothing leaves the phone unconfirmed.** A take's audio is let go only
- *   once home or Drive has said it holds a copy (`letGoRefusal`), and its
+ *   once home has said it holds a copy (`letGoRefusal`; Drive's copy lets
+ *   nothing go, LG1), and its
  *   record stays either way. The save that marks it off the phone is the one
  *   that lets its audio go, checked again in the store (`isAppendOnly`).
  * - **Closing a sitting mid-take keeps the take.** The take is finished
@@ -56,7 +57,10 @@ export type Note = Readonly<CutList["notes"][number]>
 
 type NoteStatus = Note["status"]
 
-/** Who has said it holds a copy of a take's audio. */
+/**
+ * Who has said it holds a copy of a take's audio. Only home's word lets the
+ * audio leave the phone (LG1): Drive's is a copy for the session.
+ */
 type Keeper = "home" | "drive"
 
 export type ProjectTake = {
@@ -317,7 +321,7 @@ export function cutListAt(project: Project, rev: number): CutList | null {
 function letGoRefusal(project: Project, id: string): Refusal | null {
   const take = project.takes.find((each) => each.id === id)
   if (take === undefined) return "noTake"
-  if (take.keptBy.length === 0) return "unconfirmed"
+  if (!take.keptBy.includes("home")) return "unconfirmed"
   return null
 }
 
@@ -372,7 +376,7 @@ export function isAppendOnly(before: Project, after: Project): boolean {
       ) &&
       take.keptBy.every((keeper) => now.keptBy.includes(keeper)) &&
       (take.onPhone || !now.onPhone) &&
-      (now.onPhone || !take.onPhone || now.keptBy.length > 0)
+      (now.onPhone || !take.onPhone || now.keptBy.includes("home"))
     )
   })
   const sittings = before.sittings.every((sitting, index) => {

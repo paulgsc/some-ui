@@ -15,7 +15,7 @@
  * kept once and never past `JOURNAL_TAKES_MAX_BYTES` over the projects'
  * audio and what the Journal tab's stores still hold, and audio leaves only
  * with the write that marks its take off the phone, which `isAppendOnly`
- * allows once home or Drive holds a copy. Nothing here expires.
+ * allows once home holds a copy (LG1). Nothing here expires.
  */
 import { isRecord } from "@some-ui/core-utils"
 import { bytesBesides, done, result, withRoom } from "@some-ui/voice-capture"

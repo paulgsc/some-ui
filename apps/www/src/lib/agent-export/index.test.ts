@@ -54,7 +54,6 @@ const LENS = vi.hoisted(() => ({
   entries: [{ session: "2026-10-10T08:00:00.000Z", line: "school-bus" }],
   sessions: [{ session: "2026-10-10T08:00:00.000Z", racing: false }],
 }))
-const letGoLensRecord = vi.hoisted(() => vi.fn(() => 1))
 /** Which lens store each export read, in order. */
 const lensReads = vi.hoisted((): Array<string> => [])
 vi.mock("@some-ui/topik", () => ({
@@ -64,7 +63,6 @@ vi.mock("@some-ui/topik", () => ({
     lensReads.push("record")
     return LENS
   },
-  letGoLensRecord,
 }))
 const TAKE = {
   line: "school-bus",
@@ -72,9 +70,7 @@ const TAKE = {
   durationMs: 2_500,
   mimeType: "audio/webm",
 }
-const letGoLensTakes = vi.hoisted(() => vi.fn())
 vi.mock("@/lib/lens-takes", () => ({
-  letGoLensTakes,
   lensTakesForExport: (): Promise<Array<unknown>> => {
     lensReads.push("takes")
     return Promise.resolve([
@@ -95,7 +91,6 @@ vi.mock("@/lib/lens-takes", () => ({
     ])
   },
 }))
-const letGoLeetypeTakes = vi.hoisted(() => vi.fn())
 const NOTE = {
   file: "t1-01",
   screen: "s15",
@@ -105,7 +100,6 @@ const NOTE = {
   notedAt: 1_760_000_000_000,
 }
 vi.mock("@/lib/leetype-takes", () => ({
-  letGoLeetypeTakes,
   leetypeTakesForExport: (): Promise<unknown> =>
     Promise.resolve({
       notes: [
@@ -256,15 +250,16 @@ describe("shareReflections", () => {
     // Android says "shared" once an app is picked: nothing goes on that.
     expect(reflections.getSnapshot().kept).toHaveLength(3)
 
+    // LG1: the hand-off marks the session shared and lets nothing go.
     handOff(["v1", "t1"], NOW())
-    expect(reflections.getSnapshot().kept.map((r) => r.id)).toEqual(["t2"])
-    expect(removedAudio).toHaveBeenCalledWith(["v1", "t1"])
+    expect(reflections.getSnapshot().kept).toHaveLength(3)
+    expect(removedAudio).not.toHaveBeenCalled()
     expect(reflections.getSnapshot().shared).toEqual([
       { sessionId: "s1-0000000000", sharedAt: NOW().toISOString() },
     ])
   })
 
-  it("shares one reflection of a session under the session's own file name, and once it arrived a later share carries only the rest", async () => {
+  it("shares one reflection of a session under the session's own file name, and a later share carries the session whole: a share lets none go (LG1)", async () => {
     const base = "reflections/2026-10-10_morning-drama_s1-00000"
     const reflectionsIn = (): unknown =>
       JSON.parse(written.get(`${base}.json`) ?? "null").reflections
@@ -286,7 +281,10 @@ describe("shareReflections", () => {
     arrivals.answer(batch, true, NOW())
     expect(arrivals.getSnapshot()).toEqual([])
     await shareReflections({ sessionIds: ["s1-0000000000"] }, NOW)
-    expect(reflectionsIn()).toEqual([expect.objectContaining({ id: "t1" })])
+    expect(reflectionsIn()).toEqual([
+      expect.objectContaining({ id: "v1" }),
+      expect.objectContaining({ id: "t1" }),
+    ])
   })
 
   it("keeps a share the person says did not arrive, and waits on none backed out of", async () => {
@@ -301,25 +299,6 @@ describe("shareReflections", () => {
     share.mockRejectedValue(new Error("Share canceled"))
     await shareReflections({ sessionIds: ["s1-0000000000"] }, NOW)
     expect(arrivals.getSnapshot()).toEqual([])
-  })
-
-  it("marks nothing shared when the phone would not store the hand-off", () => {
-    const setItem = Storage.prototype.setItem
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (
-      this: Storage,
-      key: string,
-      value: string
-    ) {
-      if (key === "some-ui:reflections") throw new DOMException("full")
-      setItem.call(this, key, value)
-    })
-
-    handOff(["v1", "t1"], NOW())
-    vi.restoreAllMocks()
-
-    expect(reflections.getSnapshot().kept).toHaveLength(3)
-    expect(removedAudio).not.toHaveBeenCalled()
-    expect(reflections.getSnapshot().shared).toEqual([])
   })
 
   it("leaves out a voice note whose audio could not be read, so it stays", async () => {
@@ -457,22 +436,17 @@ describe("shareAgentExport", () => {
     // The record first: a take kept in between stays with its rewritten entry.
     expect(lensReads.slice(-2)).toEqual(["record", "takes"])
 
-    const remove = vi.fn(() => Promise.resolve())
-    handOffExport({ remove }, result, NOW())
-    expect(reflections.getSnapshot().kept).toEqual([])
-    expect(remove).toHaveBeenCalledWith(["b1"])
-    expect(letGoLensTakes).toHaveBeenCalledWith([
-      "take-one-aaaa",
-      "take-two-bbbb",
-      "take-four-dddd",
+    // LG1: the export arriving lets nothing go; the reflections read as
+    // shared, and everything stays on the phone.
+    handOffExport(result, NOW())
+    expect(reflections.getSnapshot().kept.map((r) => r.id)).toEqual([
+      "t2",
+      "t1",
+      "v1",
     ])
-    expect(letGoLeetypeTakes).toHaveBeenCalledWith({
-      notes: ["note-aloud", "note-typed"],
-      takes: ["lt-take-1111"],
-    })
-    await vi.waitFor(() => {
-      expect(letGoLensRecord).toHaveBeenCalledWith(LENS.entries)
-    })
+    expect(reflections.getSnapshot().shared.map((m) => m.sessionId)).toContain(
+      "s1-0000000000"
+    )
   })
 
   it("hands off soundbites alone when no reflection went out", async () => {
@@ -483,10 +457,8 @@ describe("shareAgentExport", () => {
       JSON.parse(written.get("agent-export/context.json") ?? "null")
     ).toMatchObject({ leetypeSessions: [], leetypeRoundLedger: null })
 
-    const remove = vi.fn(() => Promise.reject(new Error("busy")))
-    // A refused remove is swallowed: vitest fails the run on an unhandled one.
-    handOffExport({ remove }, result, NOW())
-    expect(remove).toHaveBeenCalledWith(["b1"])
+    handOffExport(result, NOW())
+    expect(result.soundbites).toEqual(["b1"])
   })
 
   it("names no file for a recording whose audio is gone", async () => {

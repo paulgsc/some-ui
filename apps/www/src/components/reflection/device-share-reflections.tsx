@@ -3,8 +3,8 @@
  * this module (`build.paths.ts`).
  *
  * Android says "shared" once the person picks an app, even if they back out
- * of it, so nothing is let go on that alone: the person says whether they
- * arrived (`DeviceReflectionsArrival`), and only then do they leave the phone.
+ * of it, so a share counts only once the person says it arrived
+ * (`DeviceReflectionsArrival`). The reflections stay on the phone (LG1).
  */
 import type { JSX, ReactNode } from "react"
 import type { ButtonProps } from "@some-ui/shared"

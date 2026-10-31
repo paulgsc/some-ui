@@ -158,9 +158,14 @@ export type JobsRuntime = {
   share: (kind: ShareKind) => Promise<Shared>
   /**
    * The person said share `shareId`'s files arrived: what it carried counts
-   * as sent, and its audio leaves.
+   * as sent. Its audio stays (LG1).
    */
   arrived: (shareId: string) => void
+  /**
+   * Lets the audio of each voice note home holds (`held`) leave the phone:
+   * the one word that lets a note go (LG1).
+   */
+  letGoHeld: (held: ReadonlySet<string>) => void
   /** Audio no note lists (the app closed mid-save). Best effort. */
   sweep: () => void
   /**
@@ -576,19 +581,21 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
       ) {
         return
       }
-      // Ignored: released audio that fails to go is cleared by `sweep`.
-      ports.audio.remove([...releasedVoice(state)]).catch(() => undefined)
+      // The audio stays: only home's word lets a note go (`letGoHeld`, LG1).
+    },
+    letGoHeld(held): void {
+      const ids = state.voice.map((n) => n.id).filter((id) => held.has(id))
+      if (ids.length === 0) return
+      // Ignored: `letGoHeldBites` asks again at home's next word.
+      ports.audio.remove(ids).catch(() => undefined)
     },
     sweep(): void {
       ports.audio
         .ids()
         .then((stored) => {
           const listed = new Set(state.voice.map((n) => n.id))
-          // A released note was let go; retry one whose removal failed or
-          // was cut short.
-          const released = releasedVoice(state)
           const orphans = stored.filter(
-            (id) => (!listed.has(id) || released.has(id)) && !ports.isSaving(id)
+            (id) => !listed.has(id) && !ports.isSaving(id)
           )
           return ports.audio.remove(orphans)
         })

@@ -617,11 +617,14 @@ function applied(project: Project | null, pending: Pending): Project | null {
     }
     case "arrived": {
       if (project === null) return null
-      const after = pending.takes.reduce<Project>((at, take) => {
-        // The person said they reached Drive (`STUDIO_WORDS.share`).
-        const kept = model(at, { type: "keptBy", take, keeper: "drive" }) ?? at
-        return model(kept, { type: "letGo", take }) ?? kept
-      }, project)
+      // The person said they reached Drive (`STUDIO_WORDS.share`): a copy
+      // for the session. The audio stays until home holds it (LG1,
+      // `project/home.ts`).
+      const after = pending.takes.reduce<Project>(
+        (at, take) =>
+          model(at, { type: "keptBy", take, keeper: "drive" }) ?? at,
+        project
+      )
       return after === project ? null : after
     }
     case "shape": {
@@ -879,11 +882,13 @@ function enqueue(state: StudioState, pending: Pending): Step {
 }
 
 /** How many of `takes` went from on the phone to off it in `written`. */
-function letGoCount(written: Written, takes: ReadonlyArray<string>): number {
-  const onPhone = (project: Project | null, id: string): boolean =>
-    project?.takes.find((take) => take.id === id)?.onPhone === true
+/** How many of `takes` this write newly marked as in Drive. */
+function arrivedCount(written: Written, takes: ReadonlyArray<string>): number {
+  const inDrive = (project: Project | null, id: string): boolean =>
+    project?.takes.find((take) => take.id === id)?.keptBy.includes("drive") ===
+    true
   return takes.filter(
-    (id) => onPhone(written.before, id) && !onPhone(written.project, id)
+    (id) => !inDrive(written.before, id) && inDrive(written.project, id)
   ).length
 }
 
@@ -904,7 +909,7 @@ function landedNotice(
       return WORDS.start.revised(pending.primer.title)
     }
     case "arrived": {
-      const n = letGoCount(written, pending.takes)
+      const n = arrivedCount(written, pending.takes)
       return n === 0 ? state.notice : WORDS.notice.arrived(n)
     }
     case "open":

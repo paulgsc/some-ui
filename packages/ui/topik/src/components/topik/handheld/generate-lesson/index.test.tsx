@@ -187,6 +187,7 @@ describe("GenerateLesson's spoken scene", () => {
       start: vi.fn(),
       stop: vi.fn(),
       leave: vi.fn(),
+      letGoHeld: vi.fn(() => 0),
       remove: vi.fn((ids: ReadonlyArray<string>) => {
         snapshot = {
           ...snapshot,
@@ -201,7 +202,7 @@ describe("GenerateLesson's spoken scene", () => {
     { id: "n2", durationMs: 9_000, mimeType: "audio/webm" },
   ]
 
-  it("shares the draft's voice notes with the prompt, named in it, and lets them go once they arrived", async () => {
+  it("shares the draft's voice notes with the prompt, named in it, and keeps them on the phone (LG1)", async () => {
     const draft = draftOf(notes)
     const share = vi.fn<FileShare>(() =>
       Promise.resolve({ status: "succeeded", value: "shared" })
@@ -215,10 +216,11 @@ describe("GenerateLesson's spoken scene", () => {
     expect(buildPrompt).toHaveBeenCalledWith(
       expect.objectContaining({ voiceNotes: named.map(({ name }) => name) })
     )
-    await screen.findByText(/reach your drive/)
+    // A Drive share is a copy: nothing asks whether it arrived, and the
+    // notes stay until home holds them (LG1, HF1 #2176).
+    await screen.findByText(/Share the next scene's prompt/)
+    expect(screen.queryByText(/reach your drive/)).toBeNull()
     expect(draft.remove).not.toHaveBeenCalled()
-    click(/Yes, let them go/)
-    expect(draft.remove).toHaveBeenCalledWith(["n1", "n2"])
   })
 
   it("opens on the draft left open, and starts another only once it is let go", () => {
