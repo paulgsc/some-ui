@@ -2,7 +2,7 @@
   "name": "@some-ui/voice-capture",
   "private": true,
   "version": "0.0.1",
-  "description": "The phone's microphone as one take at a time, a voice note kept from it, and IndexedDB to keep the audio.",
+  "description": "The phone's microphone as one take at a time, a voice note kept from it, IndexedDB to keep the audio, and the take pattern's machine and words.",
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build",

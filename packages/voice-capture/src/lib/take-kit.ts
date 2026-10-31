@@ -15,7 +15,8 @@
  *
  * A screen's parameters, not copies: what each take answers (`start`'s
  * `answers`, carried to its ending), the cap and the minimum (`limits`).
- * One current take or many, and extra actions, are MIC2's options (#2372).
+ * One current take or many, Redo, Let go and playing a take back are the
+ * take pattern's (`./take-pattern`, MIC2 #2372), which embeds this step.
  *
  * Every ending has words: a screen's table is a `TakeEndingWords`, so an
  * ending added here fails to compile until every screen says it. The

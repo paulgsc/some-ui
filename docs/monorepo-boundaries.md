@@ -209,6 +209,39 @@ navigate(...)`, and state that is coordination without awaiting anything,
 such as a ref that holds a handle. Those surface as review findings instead,
 and `.claude/skills/steward/SKILL.md` says what a cluster of them means.
 
+## Patterns: whole flows, one closed set of options
+
+A design system has three tiers: **tokens** (colour, type, spacing, radius:
+`@some-ui/styles`), **components** (a button, a sheet: `packages/ui/shared`'s
+`components/ui`), and **patterns**, whole flows a person goes through. shadcn
+gives the component tier a closed, typed set of options (`cva` variants): a
+screen picks `variant: "outline"` and never restyles a copy. A pattern does the
+same for a flow, and is four things:
+
+1. **A pure machine**: a state union and a step, with a runtime over ports, in
+   a package with no React (the shape in the section above).
+2. **Its parts**: the components the flow needs, in
+   `packages/ui/shared/src/components/patterns/<name>`. They render a pure
+   projection of the machine's snapshot and dispatch its intents, as a Zag.js
+   `connect` maps a machine onto markup; they decide nothing.
+3. **Its words**: one pure table in the person's terms, tested for them
+   (CLAUDE.md, "State in the person's terms"). A screen adds its item's words
+   around the parts, never its own copy of a line the pattern says.
+4. **A closed options type**: the only way a screen may make it differ.
+
+A screen chooses options; it never redraws a part. A need outside the options
+becomes a new option in the pattern, added in the pull request that needs it
+with the case it serves, never a fork in the screen. An option no part honours
+yet is not added ahead of its case.
+
+| Pattern                                                                                      | Machine and words                                                                             | Parts                                                                                                                     | Options                                                                                                                                          |
+| -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Take** (MIC2, #2372; epic #2368): record, see where it's kept, hear it, redo it, let it go | `@some-ui/voice-capture`: `takePattern`, `takeItemView`, `TAKE_WORDS` (on the take kit, MIC1) | `TakeButton`, `TakeRow`, `TakeList`; tests on `@some-ui/voice-capture/testing`'s simulated microphone and scenario family | `TakePatternOptions`: `takes` (one, or many up to a max), `limits`, `redo: "supersede"` (D2), `letGo: "set-aside"` (D3), `play` (each or latest) |
+
+The next candidates are confirming a permanent step (`ConfirmSheet`, used
+unevenly), listening for words (the recognizer), and a record going home and
+saying where it is.
+
 ## A port translates: the foreign boundary
 
 A port to an API this codebase does not own has to answer what can go wrong,

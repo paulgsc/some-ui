@@ -44,6 +44,7 @@ import { IncidentFixture } from "./incident"
 import { IntentFailureFixture } from "./intent-failure"
 import { JobsStatusFixture } from "./jobs-status"
 import { RustRoundsFixture } from "./rust-rounds"
+import { TakePatternFixture } from "./take-pattern"
 
 type QuizPanelProps = ComponentProps<typeof QuizPanel>
 type Question = QuizPanelProps["questions"][number]
@@ -562,6 +563,8 @@ export const PANEL_FIXTURES = {
   "intent-failure": IntentFailureFixture,
 
   "rust-rounds": RustRoundsFixture,
+
+  "take-pattern": TakePatternFixture,
 
   // Inline styles, not utilities: this directory is outside www's Tailwind
   // sources (style.context.ts), so the page adds nothing to the CSS it
