@@ -54,3 +54,10 @@ export function parseScouts(raw: string): Parsed<Scouts> {
 export function scoutsFileName(stamp: string): string {
   return `scouts-${stamp}.json`
 }
+
+/** The day a `scoutsFileName` name is for, or `null` for any other name. */
+export function scoutsFileDay(name: string): string | null {
+  const [, y, m, d] =
+    /^scouts-(\d{4})(\d{2})(\d{2})T\d{6}\.json$/.exec(name) ?? []
+  return y === undefined ? null : `${y}-${m ?? ""}-${d ?? ""}`
+}

@@ -6,12 +6,15 @@
  * The invariants this file governs (full text: README.md, "Gray-area
  * invariants"):
  *
- * - MB1: an item never changes, and leaves `item` only into `archived`
- *   (`store.ts`, `migrations/`).
+ * - MB1 (retired): an item never changes, and leaves `item` only into
+ *   `archived`; MB5 carries it, with home's index's exception.
  * - MB2: `ROLES` is the one place a token is mapped to what it may do.
  * - MB3: no token reaches the repo or a log.
  * - MB4: the Cloudflare account has no payment method (account state, not
  *   reviewable).
+ * - MB5: an item never changes, and leaves `item` only into `archived`, or,
+ *   for home's index, once a newer index of its routine is live (`store.ts`,
+ *   `migrations/`).
  */
 
 import type { Folder, Role, Store } from "./store"
@@ -87,19 +90,52 @@ function isInstant(value: unknown): boolean {
   )
 }
 
+const DAY = /^(\d{4})-(\d{2})-(\d{2})$/
+
+/**
+ * A `YYYY-MM-DD` that names a day on the calendar: `Date.parse` takes
+ * `2026-02-30` as 2 March, so the parts are checked to come back unchanged.
+ */
+function isCalendarDay(value: unknown): value is string {
+  if (typeof value !== "string") return false
+  const [, y, m, d] = (DAY.exec(value) ?? []).map(Number)
+  if (y === undefined || m === undefined || d === undefined) return false
+  const date = new Date(0)
+  date.setUTCFullYear(y, m - 1, d)
+  return (
+    date.getUTCFullYear() === y &&
+    date.getUTCMonth() === m - 1 &&
+    date.getUTCDate() === d
+  )
+}
+
+/**
+ * Audio or a Drive link in a body's text as sent, so a key given twice,
+ * whose first value `JSON.parse` drops, is read too: `noAudio` or `noDrive`,
+ * or `null` for neither.
+ */
+function carriesRefusal(
+  text: string,
+  noAudio: string,
+  noDrive: string
+): string | null {
+  const flat = text.replace(/\\[nr]|[\r\n]/g, "").replaceAll("\\/", "/")
+  if (DATA_URI.test(text) || ENCODED_RUN.test(flat)) return noAudio
+  if (DRIVE_LINK.test(text)) return noDrive
+  return null
+}
+
 /**
  * README, "What a put must satisfy": a transcript is text, and only its own
- * keys. Audio and Drive links are looked for in the body's text as sent, so
- * a key given twice, whose first value `JSON.parse` drops, is read too.
+ * keys.
  */
 function transcriptRefusal(
   body: Readonly<Record<string, unknown>>,
   text: string,
   name: string
 ): string | null {
-  const flat = text.replace(/\\[nr]|[\r\n]/g, "").replaceAll("\\/", "/")
-  if (DATA_URI.test(text) || ENCODED_RUN.test(flat)) return NO_AUDIO
-  if (DRIVE_LINK.test(text)) return NO_DRIVE
+  const carried = carriesRefusal(text, NO_AUDIO, NO_DRIVE)
+  if (carried !== null) return carried
   const extra = Object.keys(body).find((key) => !TRANSCRIPT_KEYS.has(key))
   if (extra !== undefined) {
     if (AUDIO_KEY.test(extra)) return NO_AUDIO
@@ -170,6 +206,102 @@ function wordsRefusal(words: unknown): string | null {
   return null
 }
 
+/** The routines home computes an index for (README, "What a put must satisfy"). */
+const INDEX_ROUTINES: ReadonlySet<unknown> = new Set(["jobs"])
+/** The keys of a `some-ui.routine-index/1` body for the jobs routine; any other is refused. */
+const JOBS_INDEX_KEYS: ReadonlySet<string> = new Set([
+  "schema",
+  "routine",
+  "day",
+  "validThrough",
+  "asOf",
+  "from",
+  "skipped",
+  "queue",
+  "new",
+  "notes",
+  "picked",
+])
+const NO_AUDIO_INDEX = "an index carries no audio: home keeps the audio"
+const NO_DRIVE_INDEX = "an index names no Drive file"
+
+/**
+ * README, "What a put must satisfy": an index is home's bookkeeping for one
+ * routine, its own keys only, and text.
+ */
+function indexRefusal(
+  body: Readonly<Record<string, unknown>>,
+  text: string,
+  name: string
+): string | null {
+  const carried = carriesRefusal(text, NO_AUDIO_INDEX, NO_DRIVE_INDEX)
+  if (carried !== null) return carried
+  if (!INDEX_ROUTINES.has(body.routine)) return "routine must be jobs"
+  if (!name.startsWith(`index-${String(body.routine)}-`)) {
+    return "the name must carry the body's routine"
+  }
+  const keys = Object.keys(body)
+  const extra = keys.find((key) => !JOBS_INDEX_KEYS.has(key))
+  if (extra !== undefined) return `${extra} is not part of the jobs index`
+  const missing = [...JOBS_INDEX_KEYS].find((key) => !(key in body))
+  if (missing !== undefined) return `the jobs index carries ${missing}`
+  if (!isCalendarDay(body.day)) return "day must be the day the index is for"
+  if (
+    body.validThrough !== null &&
+    (!isCalendarDay(body.validThrough) || body.validThrough < body.day)
+  ) {
+    return "validThrough must be a day from day on, or null"
+  }
+  if (body.asOf !== null && !isInstant(body.asOf)) {
+    return "asOf must be when home last took in what the index counts"
+  }
+  for (const key of ["from", "queue", "new"] as const) {
+    if (!isRecord(body[key])) return `${key} must be an object`
+  }
+  for (const key of ["skipped", "notes", "picked"] as const) {
+    if (!Array.isArray(body[key])) return `${key} must be a list`
+  }
+  return null
+}
+
+/**
+ * MB2's backfill (owner, 2026-10-31, paulgsc/server#509) takes a
+ * pre-mailbox Jobs file only under a name for a day from `FIRST_SHARED`
+ * up to, not including, `MAILBOX_OPENED`, so the files it can take are a
+ * closed set. `FIRST_SHARED` is the day the phone could first share one:
+ * paulgsc/some-ui#1884 (the Jobs wing, `decisionsFileName` and
+ * `scoutsFileName`) landed on 2026-10-17 at 21:06 in America/Los_Angeles,
+ * and the phone names a file for its own day. `MAILBOX_OPENED` is the day
+ * the mailbox opened; `@some-ui/job-desk`'s `home-index.ts` holds the same
+ * day for the routine, which cannot import this Worker.
+ */
+const FIRST_SHARED = "2026-10-17"
+const MAILBOX_OPENED = "2026-10-23"
+
+/**
+ * The names of a Jobs decisions or scouts file exactly as the phone writes
+ * them, with the day each is for: `decisions-<day>.json`, then
+ * `decisions-<day>-<n>.json` from `-2` for a later share that day, two
+ * digits at most (a share needs something new to say, so a day has a
+ * handful), and `scouts-<YYYYMMDD>T<HHMMSS>.json` at a time on the clock.
+ */
+const SHARED_NAMES: ReadonlyArray<RegExp> = [
+  /^decisions-(\d{4})-(\d{2})-(\d{2})(?:-(?:[2-9]|[1-9]\d))?\.json$/,
+  /^scouts-(\d{4})(\d{2})(\d{2})T(?:[01]\d|2[0-3])[0-5]\d[0-5]\d\.json$/,
+]
+
+/** The calendar day a decisions or scouts file the phone wrote is for, or `null`. */
+function sharedDay(name: string): string | null {
+  for (const pattern of SHARED_NAMES) {
+    const [, y, m, d] = pattern.exec(name) ?? []
+    if (y === undefined) continue
+    const day = `${y}-${m ?? ""}-${d ?? ""}`
+    return isCalendarDay(day) ? day : null
+  }
+  return null
+}
+
+/** What a name in a folder must carry: its schema, and any deeper check. */
 type FolderRules = {
   readonly folder: Folder
   /** Audio files match none, on purpose: the mailbox carries text. */
@@ -184,6 +316,32 @@ type FolderRules = {
     text: string,
     name: string
   ) => string | null
+  /**
+   * MB2's backfill: the folders whose files this one also takes, under each
+   * one's name and schema, once each, and only as `sharedDay` reads the name,
+   * for a day from `FIRST_SHARED` to before `MAILBOX_OPENED`.
+   */
+  readonly backfill?: ReadonlyArray<FolderRules>
+}
+
+/** The rules `name` is held to in `rules`' folder, or `null` for a name it does not take. */
+function kindOf(rules: FolderRules, name: string): FolderRules | null {
+  if (rules.name.test(name)) return rules
+  const day = sharedDay(name)
+  if (day === null || day < FIRST_SHARED || day >= MAILBOX_OPENED) return null
+  return rules.backfill?.find((kind) => kind.name.test(name)) ?? null
+}
+
+const DECISIONS: FolderRules = {
+  folder: "decisions",
+  name: /^decisions-\d{4}-\d{2}-\d{2}(-\d+)?\.json$/,
+  schema: "some-ui.job-decisions/1",
+}
+
+const SCOUT: FolderRules = {
+  folder: "scout",
+  name: /^scouts-\d{8}T\d{6}\.json$/,
+  schema: "some-ui.job-scouts/1",
 }
 
 const FOLDERS: ReadonlyArray<FolderRules> = [
@@ -191,17 +349,13 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
     folder: "brief",
     name: /^digest-\d{4}-\d{2}-\d{2}\.json$/,
     schema: "some-ui.job-digest/1",
+    // The Jobs decisions and scouts files from before the mailbox, which only
+    // Drive holds, put back once under their Drive names so home counts them
+    // in its index (MB2, owner, 2026-10-31).
+    backfill: [DECISIONS, SCOUT],
   },
-  {
-    folder: "decisions",
-    name: /^decisions-\d{4}-\d{2}-\d{2}(-\d+)?\.json$/,
-    schema: "some-ui.job-decisions/1",
-  },
-  {
-    folder: "scout",
-    name: /^scouts-\d{8}T\d{6}\.json$/,
-    schema: "some-ui.job-scouts/1",
-  },
+  DECISIONS,
+  SCOUT,
   {
     // The routine's answer to a study reflection (`<date>_<session>_<id>`),
     // `-2` and on for a second reflection under one name.
@@ -244,6 +398,15 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
     schema: "some-ui.leetype-log/1",
   },
   {
+    // Home's bookkeeping for one routine, computed from what home holds after
+    // a pass, named for the routine and when home filed it: a new name each
+    // time it changes, so the newest is the greatest name.
+    folder: "index",
+    name: /^index-[a-z]{1,20}-\d{8}T\d{9}Z\.json$/,
+    schema: "some-ui.routine-index/1",
+    refuses: indexRefusal,
+  },
+  {
     // What home heard in one voice note, named for the note's id and home's
     // number for the transcript, so a better model's goes under a new name.
     folder: "transcript",
@@ -273,7 +436,13 @@ type Grant = {
   readonly move: ReadonlyArray<Folder>
 }
 
-const ALL: ReadonlyArray<Folder> = [
+/**
+ * Every folder that holds records: all but `index`. Home's index is a view it
+ * recomputes from records it keeps, so the mailbox keeps only the latest and
+ * nothing archives it or asks for an old one (owner, 2026-10-31,
+ * paulgsc/server#509).
+ */
+const RECORDS: ReadonlyArray<Folder> = [
   "brief",
   "decisions",
   "scout",
@@ -286,6 +455,8 @@ const ALL: ReadonlyArray<Folder> = [
   "transcript",
 ]
 
+const ALL: ReadonlyArray<Folder> = [...RECORDS, "index"]
+
 /** MB2. Another role (the phone's, say) is the owner's call, not a code change. */
 const ROLES: ReadonlyArray<Grant> = [
   {
@@ -293,14 +464,14 @@ const ROLES: ReadonlyArray<Grant> = [
     token: (tokens) => tokens.routine,
     get: ALL,
     put: ["brief", "scene", "drama", "run", "leetype"],
-    ask: ALL,
+    ask: RECORDS,
     move: [],
   },
   {
     role: "home",
     token: (tokens) => tokens.home,
     get: ["brief", "scene", "drama", "run", "leetype"],
-    put: ["decisions", "scout", "opened", "leetype-log", "transcript"],
+    put: ["decisions", "scout", "opened", "leetype-log", "transcript", "index"],
     ask: [],
     move: [],
   },
@@ -310,7 +481,7 @@ const ROLES: ReadonlyArray<Grant> = [
     get: ALL,
     put: [],
     ask: [],
-    move: ALL,
+    move: RECORDS,
   },
 ]
 
@@ -489,7 +660,7 @@ async function read(
   name: string,
   store: Store
 ): Promise<Response> {
-  if (!rules.name.test(name)) return refuse(404, "not_found")
+  if (kindOf(rules, name) === null) return refuse(404, "not_found")
   const item = await store.get(rules.folder, name)
   if (item === null) {
     const archived = await store.archivedOf(rules.folder, name)
@@ -571,7 +742,8 @@ async function bodyOf(
   rules: FolderRules,
   name: string
 ): Promise<Body | Response> {
-  if (!rules.name.test(name)) {
+  const kind = kindOf(rules, name)
+  if (kind === null) {
     return refuse(422, "the name does not fit this folder")
   }
   if (!isJsonType(request.headers.get("content-type"))) {
@@ -593,10 +765,10 @@ async function bodyOf(
 
   const parsed = parseJson(bytes)
   if (!parsed.ok) return refuse(422, "the body is not JSON")
-  if (!isRecord(parsed.value) || parsed.value.schema !== rules.schema) {
-    return refuse(422, `the body's schema must be ${rules.schema}`)
+  if (!isRecord(parsed.value) || parsed.value.schema !== kind.schema) {
+    return refuse(422, `the body's schema must be ${kind.schema}`)
   }
-  const refusal = rules.refuses?.(parsed.value, parsed.text, name) ?? null
+  const refusal = kind.refuses?.(parsed.value, parsed.text, name) ?? null
   if (refusal !== null) return refuse(422, refusal)
   return { bytes, sha256: hex(await sha256(bytes)) }
 }
@@ -619,6 +791,9 @@ async function write(
     putAt: deps.now().toISOString(),
   })
   if (result.change === "conflict") return refuse(409, "conflict")
+  if (result.change === "superseded") {
+    return refuse(409, "a newer index of this routine is held")
+  }
   return answer(result.change === "added" ? 201 : 200, {
     change: result.change,
     seq: result.seq,
@@ -674,7 +849,7 @@ async function archive(
   name: string,
   deps: Deps
 ): Promise<Response> {
-  if (!rules.name.test(name)) return refuse(404, "not_found")
+  if (kindOf(rules, name) === null) return refuse(404, "not_found")
   const sha = matchOf(request)
   if (sha === null) {
     return refuse(428, 'If-Match must name the item\'s sha256, as "<hex>"')
@@ -716,7 +891,7 @@ async function ask(
   name: string,
   deps: Deps
 ): Promise<Response> {
-  if (!rules.name.test(name)) return refuse(404, "not_found")
+  if (kindOf(rules, name) === null) return refuse(404, "not_found")
   const result = await deps.store.ask(
     rules.folder,
     name,

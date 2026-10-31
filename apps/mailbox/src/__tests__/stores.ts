@@ -81,6 +81,25 @@ export function memoryStore(): Store {
         putBy: item.putBy,
         bytes: item.bytes,
       })
+      if (folder === "index") {
+        // Every index of the routine but the newest goes (the adapter's
+        // `DROP_OLDER_INDEXES_SQL`); the routine is the name less its stamp.
+        const routine = (other: string): string => other.slice(0, -24)
+        const newest = live
+          .filter(
+            (i) => i.folder === "index" && routine(i.name) === routine(name)
+          )
+          .map((i) => i.name)
+          .sort()
+          .at(-1)
+        live = live.filter(
+          (i) =>
+            i.folder !== "index" ||
+            routine(i.name) !== routine(name) ||
+            i.name === newest
+        )
+        if (newest !== name) return Promise.resolve({ change: "superseded" })
+      }
       return Promise.resolve({ change: "added", seq: lastSeq })
     },
     archivedOf(folder, name): Promise<ArchivedMeta | null> {

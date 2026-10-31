@@ -295,6 +295,106 @@ describe("roles", () => {
   })
 })
 
+describe("the routine's backfill of pre-mailbox files (MB2)", () => {
+  const OLD_DECISIONS = "decisions-2026-10-20.json"
+  const OLD_SCOUTS = "scouts-20261022T235959.json"
+
+  it("the routine puts a decisions or scouts file from before the mailbox in brief, once, and home reads it", async () => {
+    const d = deps()
+    // The days from the phone's first share (2026-10-17) to the mailbox's.
+    for (const [name, body] of [
+      [OLD_DECISIONS, DECISIONS],
+      ["decisions-2026-10-17.json", DECISIONS],
+      ["decisions-2026-10-20-2.json", DECISIONS],
+      ["decisions-2026-10-22-99.json", DECISIONS],
+      ["scouts-20261017T000000.json", SCOUTS],
+      [OLD_SCOUTS, SCOUTS],
+    ] as const) {
+      expect([name, (await put(d, "brief", name, { body })).status]).toEqual([
+        name,
+        201,
+      ])
+      expect((await put(d, "brief", name, { body })).status).toBe(200)
+      const read = await send(d, "GET", `/v1/brief/items/${name}`, {
+        token: HOME,
+      })
+      expect(read.status).toBe(200)
+      expect(await read.text()).toBe(body)
+    }
+    expect(
+      (
+        await put(d, "brief", OLD_DECISIONS, {
+          body: JSON.stringify({ schema: "some-ui.job-decisions/1", x: 1 }),
+        })
+      ).status
+    ).toBe(409)
+  })
+
+  it("takes only a name the phone could have written before the mailbox opened, and holds each to its own schema", async () => {
+    const d = deps()
+    for (const [name, body] of [
+      // From the day the mailbox opened.
+      ["decisions-2026-10-23.json", DECISIONS],
+      ["decisions-2026-11-02-3.json", DECISIONS],
+      ["scouts-20261023T000000.json", SCOUTS],
+      // Before the phone could share one, or in no year it could.
+      ["decisions-2026-10-16.json", DECISIONS],
+      ["scouts-20261016T235959.json", SCOUTS],
+      ["decisions-2025-10-20.json", DECISIONS],
+      ["decisions-0000-00-00-99999.json", DECISIONS],
+      // No day on the calendar, or no time on the clock.
+      ["decisions-2026-09-99.json", DECISIONS],
+      ["decisions-2026-02-30.json", DECISIONS],
+      ["decisions-2026-10-00.json", DECISIONS],
+      ["scouts-20261020T240000.json", SCOUTS],
+      ["scouts-20261020T126000.json", SCOUTS],
+      // A share number the phone never writes.
+      ["decisions-2026-10-20-1.json", DECISIONS],
+      ["decisions-2026-10-20-02.json", DECISIONS],
+      ["decisions-2026-10-20-100.json", DECISIONS],
+      // Not a decisions or scouts name at all.
+      ["decision-2026-10-20.json", DECISIONS],
+      ["decisions-2026-10-20.webm", DECISIONS],
+      ["2026-10-20_sw-0001_voice-1.webm", DECISIONS],
+    ] as const) {
+      const response = await put(d, "brief", name, { body })
+      expect([name, response.status]).toEqual([name, 422])
+      expect(await json(response)).toEqual({
+        error: "the name does not fit this folder",
+      })
+    }
+    for (const [name, body, schema] of [
+      [OLD_DECISIONS, SCOUTS, "some-ui.job-decisions/1"],
+      [OLD_SCOUTS, DIGEST, "some-ui.job-scouts/1"],
+      ["digest-2026-10-20.json", DECISIONS, "some-ui.job-digest/1"],
+    ] as const) {
+      const response = await put(d, "brief", name, { body })
+      expect([name, response.status]).toEqual([name, 422])
+      expect(await json(response)).toEqual({
+        error: `the body's schema must be ${schema}`,
+      })
+    }
+  })
+
+  it("only the routine puts one, and only in brief", async () => {
+    const d = deps()
+    // Home may not put in brief; the archive role's put only restores.
+    for (const [token, status] of [
+      [HOME, 403],
+      [ARCHIVE, 404],
+    ] as const) {
+      expect(
+        (await put(d, "brief", OLD_DECISIONS, { token, body: DECISIONS }))
+          .status
+      ).toBe(status)
+    }
+    // The phone's folders take the phone's files, from home only.
+    expect(
+      (await put(d, "decisions", OLD_DECISIONS, { body: DECISIONS })).status
+    ).toBe(403)
+  })
+})
+
 describe("the routine's study files", () => {
   const SCENE = JSON.stringify({
     schema: "some-ui.routine-scene/1",
@@ -828,6 +928,212 @@ describe("voice transcripts", () => {
   })
 })
 
+describe("home's indexes", () => {
+  const JOBS = {
+    schema: "some-ui.routine-index/1",
+    routine: "jobs",
+    day: "2026-10-31",
+    validThrough: "2026-11-01",
+    asOf: "2026-10-31T14:45:02.118Z",
+    from: {
+      digests: ["digest-2026-10-30.json"],
+      decisions: ["decisions-2026-10-30.json"],
+      scout: [],
+      backfill: [],
+    },
+    skipped: [],
+    queue: {
+      open: [
+        {
+          day: "2026-10-30",
+          pickId: "tid-7f2a",
+          track: "software",
+          fingerprint: "tidewater|backend engineer|remote",
+          title: "Backend Engineer",
+          company: "Tidewater",
+          applyUrl: "https://jobs.lever.co/tidewater/6f1c2b9e",
+        },
+      ],
+      lapsed: [],
+      free: { software: 2, adjacent: 2 },
+    },
+    new: {
+      decisions: [{ name: "decisions-2026-10-30.json", repeats: [] }],
+      scout: [],
+    },
+    notes: [
+      {
+        file: "decisions-2026-10-30_voice-1.webm",
+        in: "decisions-2026-10-30.json",
+        note: "k3v9qa",
+        transcript: {
+          name: "transcript-k3v9qa-1.json",
+          sha256: "a".repeat(64),
+        },
+      },
+    ],
+    picked: ["tidewater|backend engineer|remote"],
+  }
+  const INDEX = JSON.stringify(JOBS)
+  const NAME = "index-jobs-20261031T144502118Z.json"
+  const asHome = (
+    d: Deps,
+    name: string,
+    body: string = INDEX
+  ): Promise<Response> => put(d, "index", name, { token: HOME, body })
+
+  it("home puts an index and the routine reads it, neither the other way, and an older one is a 409", async () => {
+    const d = deps()
+    const NEWER = "index-jobs-20261101T080001003Z.json"
+    const NEWER_BODY = { ...JOBS, day: "2026-11-01" }
+    expect((await asHome(d, NAME)).status).toBe(201)
+    expect((await asHome(d, NEWER, JSON.stringify(NEWER_BODY))).status).toBe(
+      201
+    )
+    const newer = `/v1/index/items/${NEWER}`
+    const read = await send(d, "GET", newer)
+    expect(read.status).toBe(200)
+    expect(await json(read)).toEqual(NEWER_BODY)
+    // The store answers `superseded` (store.test.ts); here, what home hears.
+    const older = await asHome(d, "index-jobs-20261031T150000000Z.json")
+    expect(older.status).toBe(409)
+    expect(await json(older)).toEqual({
+      error: "a newer index of this routine is held",
+    })
+    expect((await send(d, "GET", newer, { token: HOME })).status).toBe(403)
+    expect(
+      (await send(d, "GET", "/v1/index/items", { token: HOME })).status
+    ).toBe(403)
+    expect((await put(d, "index", NAME, { body: INDEX })).status).toBe(403)
+  })
+
+  it("takes only its own names", async () => {
+    const d = deps()
+    for (const name of [
+      "index-jobs-20261031T144502Z.json",
+      "index-Jobs-20261031T144502118Z.json",
+      "index-20261031T144502118Z.json",
+      "jobs-index-20261031T144502118Z.json",
+      "index-jobs-20261031T144502118Z.webm",
+    ]) {
+      expect([name, (await asHome(d, name)).status]).toEqual([name, 422])
+    }
+  })
+
+  it("takes only a jobs index's own shape, and says why not", async () => {
+    const d = deps()
+    const refused = async (
+      body: Record<string, unknown>,
+      name = NAME
+    ): Promise<unknown> => {
+      const response = await asHome(d, name, JSON.stringify(body))
+      expect(response.status).toBe(422)
+      return json(response)
+    }
+    expect(await refused({ ...JOBS, routine: "reflections" })).toEqual({
+      error: "routine must be jobs",
+    })
+    expect(await refused(JOBS, "index-topik-20261031T144502118Z.json")).toEqual(
+      { error: "the name must carry the body's routine" }
+    )
+    expect(await refused({ ...JOBS, drafts: [] })).toEqual({
+      error: "drafts is not part of the jobs index",
+    })
+    const { picked: _, ...short } = JOBS
+    expect(await refused(short)).toEqual({
+      error: "the jobs index carries picked",
+    })
+    for (const day of [
+      "2026-10-31T00:00:00Z",
+      "31-10-2026",
+      "2026-13-01",
+      "2026-02-30",
+      7,
+    ]) {
+      expect(await refused({ ...JOBS, day })).toEqual({
+        error: "day must be the day the index is for",
+      })
+    }
+    for (const validThrough of [
+      "2026-10-30",
+      "tomorrow",
+      3,
+      "2026-02-30x",
+      "2026-11-31",
+    ]) {
+      expect(await refused({ ...JOBS, validThrough })).toEqual({
+        error: "validThrough must be a day from day on, or null",
+      })
+    }
+    const { validThrough: _v, ...unbounded } = JOBS
+    expect(await refused(unbounded)).toEqual({
+      error: "the jobs index carries validThrough",
+    })
+    expect(await refused({ ...JOBS, asOf: "this morning" })).toEqual({
+      error: "asOf must be when home last took in what the index counts",
+    })
+    expect(await refused({ ...JOBS, queue: [] })).toEqual({
+      error: "queue must be an object",
+    })
+    expect(await refused({ ...JOBS, notes: {} })).toEqual({
+      error: "notes must be a list",
+    })
+    // Home's first index, before it holds anything: no asOf, and with no
+    // open pick nothing can lapse.
+    expect(
+      (
+        await asHome(
+          d,
+          NAME,
+          JSON.stringify({ ...JOBS, asOf: null, validThrough: null })
+        )
+      ).status
+    ).toBe(201)
+  })
+
+  it("is never archived, listed as archived or asked for", async () => {
+    const d = deps()
+    expect((await asHome(d, NAME)).status).toBe(201)
+    const path = `/v1/index/items/${NAME}`
+    const sha = createHash("sha256").update(INDEX).digest("hex")
+    for (const token of [ROUTINE, HOME, ARCHIVE]) {
+      expect(
+        (
+          await send(d, "DELETE", path, {
+            token,
+            headers: { "if-match": `"${sha}"` },
+          })
+        ).status
+      ).toBe(403)
+      for (const collection of ["archived", "wanted"]) {
+        expect(
+          (await send(d, "GET", `/v1/index/${collection}`, { token })).status
+        ).toBe(403)
+      }
+      expect(
+        (await send(d, "PUT", `/v1/index/wanted/${NAME}`, { token })).status
+      ).toBe(403)
+    }
+  })
+
+  it("refuses an index that carries audio or names a Drive file", async () => {
+    const d = deps()
+    const audio = { error: "an index carries no audio: home keeps the audio" }
+    const drive = { error: "an index names no Drive file" }
+    const withNote = (file: string): string =>
+      JSON.stringify({ ...JOBS, notes: [{ ...JOBS.notes[0], file }] })
+    for (const [body, why] of [
+      [withNote("data:audio/webm;base64,GkXfo59ChoEBQveBAULygQRC"), audio],
+      [withNote("A".repeat(300)), audio],
+      [withNote("https://drive.google.com/file/d/1AbC/view"), drive],
+    ] as const) {
+      const response = await asHome(d, NAME, body)
+      expect(response.status).toBe(422)
+      expect(await json(response)).toEqual(why)
+    }
+  })
+})
+
 describe("names", () => {
   it("a name that breaks the folder's pattern is refused", async () => {
     const d = deps()
@@ -1226,6 +1532,10 @@ describe("archiving", () => {
           .status
       ).toBe(200)
     }
+    // Home's index is read too; that nothing archives it is "home's indexes".
+    expect(
+      (await send(d, "GET", "/v1/index/items", { token: ARCHIVE })).status
+    ).toBe(200)
     // A put of a name never archived adds nothing.
     expect(
       (

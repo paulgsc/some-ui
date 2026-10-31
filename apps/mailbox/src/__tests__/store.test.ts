@@ -86,6 +86,44 @@ describe("the migration", () => {
     expect(db.exec("SELECT count(*) FROM item").at(0)?.values).toEqual([[0]])
   })
 
+  it("an index leaves item without an archived row only while a newer one of its routine is live", async () => {
+    const db = await migrated()
+    const index = (name: string): void => {
+      db.run(
+        "INSERT INTO item (folder, name, sha256, size, content_type, body, put_by, put_at) VALUES ('index', ?, 's', 1, 'application/json', x'7b7d', 'home', 'now')",
+        [name]
+      )
+    }
+    const jobs1 = "index-jobs-20261031T150000000Z.json"
+    const jobs2 = "index-jobs-20261101T150000000Z.json"
+    const topik = "index-topik-20261102T150000000Z.json"
+    index(jobs1)
+    const leaves = "an item leaves only into archived"
+    const drop = (name: string): void => {
+      db.run("DELETE FROM item WHERE name = ?", [name])
+    }
+    expect(() => {
+      drop(jobs1)
+    }).toThrow(leaves)
+    index(topik)
+    expect(() => {
+      drop(jobs1)
+    }).toThrow(leaves)
+    index(jobs2)
+    expect(() => {
+      drop(jobs2)
+    }).toThrow(leaves)
+    expect(() => {
+      drop(topik)
+    }).toThrow(leaves)
+    expect(() => {
+      drop(jobs1)
+    }).not.toThrow()
+    expect(db.exec("SELECT name FROM item ORDER BY seq").at(0)?.values).toEqual(
+      [[topik], [jobs2]]
+    )
+  })
+
   it("an archived name takes no other bytes, whoever inserts them", async () => {
     const db = await migrated()
     const store = d1Store(d1Shim(db))
@@ -324,6 +362,38 @@ describe.each([
     })
   })
 
+  it("an index put drops the ones before it of its routine, and one older than the live one is superseded", async () => {
+    const store = await open()
+    const home = (text: string): NewItem => item(text, { putBy: "home" })
+    const jobs1 = "index-jobs-20261031T150000000Z.json"
+    const jobs2 = "index-jobs-20261101T150000000Z.json"
+    const topik = "index-topik-20261030T150000000Z.json"
+    expect(await store.put("index", jobs1, home("1"))).toEqual({
+      change: "added",
+      seq: 1,
+    })
+    expect((await store.put("index", topik, home("t"))).change).toBe("added")
+    expect(await store.put("index", jobs1, home("1"))).toEqual({
+      change: "unchanged",
+      seq: 1,
+    })
+    expect((await store.put("index", jobs2, home("2"))).change).toBe("added")
+    expect((await store.list("index", 0, 50)).map((meta) => meta.name)).toEqual(
+      [topik, jobs2]
+    )
+    expect(await store.get("index", jobs1)).toBeNull()
+    expect(await store.archivedOf("index", jobs1)).toBeNull()
+    expect(await store.put("index", jobs1, home("1"))).toEqual({
+      change: "superseded",
+    })
+    expect((await store.list("index", 0, 50)).map((meta) => meta.name)).toEqual(
+      [topik, jobs2]
+    )
+    expect(
+      new TextDecoder().decode((await store.get("index", jobs2))?.bytes)
+    ).toBe("2")
+  })
+
   it("archiving moves an old item's metadata into archived and drops its bytes", async () => {
     const store = await open()
     await store.put("brief", "b1.json", item("1"))
@@ -469,10 +539,10 @@ describe.each([
   })
 })
 
-describe("MB1: nothing in the workspace issues a statement that rewrites an item", () => {
+describe("MB5: nothing in the workspace issues a statement that rewrites an item", () => {
   const SRC = join(import.meta.dirname, "..")
   // The words appear in prose comments, so comments are cut before the scan.
-  // `DELETE FROM` is matched apart: two are allowed (below).
+  // `DELETE FROM` is matched apart: three are allowed (below).
   const REWRITES =
     /\b(UPDATE\s+\w+\s+SET|REPLACE\s+INTO|OR\s+REPLACE|DO\s+UPDATE)\b/i
   const DELETES = /\bDELETE\s+FROM\s+(\w+)/gi
@@ -486,6 +556,12 @@ describe("MB1: nothing in the workspace issues a statement that rewrites an item
     /\bUPDATE sqlite_sequence\s+SET seq = MAX\(seq, COALESCE\(\(SELECT seq FROM sqlite_sequence WHERE name = 'item'\), 0\)\)\s+WHERE name = 'item_next';\s*DROP TABLE item;\s*ALTER TABLE item_next RENAME TO item;/
   /** The one trigger a migration may drop: 0002 replaces it in the same file. */
   const REPLACED_TRIGGER = /\bDROP\s+TRIGGER\s+item_is_append_only_delete\s*;/i
+  /**
+   * 0004 replaces the delete trigger in the same file, with the index's one
+   * exception; the trigger cases above fail if it lets anything else go.
+   */
+  const REPLACED_FOR_INDEX =
+    /\bDROP\s+TRIGGER\s+item_leaves_only_into_archived\s*;(?=\s*CREATE\s+TRIGGER\s+item_leaves_only_into_archived\s+BEFORE\s+DELETE\s+ON\s+item\b)/i
   const tsCode = (text: string): string =>
     text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "")
   const sqlCode = (text: string): string => text.replace(/--[^\n]*/g, "")
@@ -515,7 +591,7 @@ describe("MB1: nothing in the workspace issues a statement that rewrites an item
     ).not.toMatch(REWRITES)
   })
 
-  it("no source file issues one, and deletes only the archive's bytes and a closed ask", () => {
+  it("no source file issues one, and deletes only the archive's bytes, an index a newer one replaced, and a closed ask", () => {
     const files = readdirSync(SRC).filter((file) => file.endsWith(".ts"))
     // A directory that moved would otherwise leave nothing to scan.
     expect(files).toEqual(
@@ -531,7 +607,11 @@ describe("MB1: nothing in the workspace issues a statement that rewrites an item
     const deletes = code.flatMap(({ file, text }) =>
       [...text.matchAll(DELETES)].map((found) => `${file}: ${found[1] ?? ""}`)
     )
-    expect(deletes.sort()).toEqual(["store.ts: item", "store.ts: wanted"])
+    expect(deletes.sort()).toEqual([
+      "store.ts: item",
+      "store.ts: item",
+      "store.ts: wanted",
+    ])
   })
 
   it("no migration rewrites an item or removes what guards it", () => {
@@ -545,6 +625,9 @@ describe("MB1: nothing in the workspace issues a statement that rewrites an item
       let sql = sqlCode(readFileSync(join(MIGRATIONS, file), "utf8"))
       if (file === "0002_archive.sql") sql = sql.replace(REPLACED_TRIGGER, "")
       if (file === "0003_folders.sql") sql = sql.replace(REBUILD, "")
+      if (file === "0004_index_view.sql") {
+        sql = sql.replace(REPLACED_FOR_INDEX, "")
+      }
       return (
         REWRITES.test(sql) ||
         UNGUARDS.test(sql) ||
