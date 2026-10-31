@@ -259,7 +259,7 @@ export function roundsWithoutNamedReturns(file: SessionFile): Array<string> {
     .filter(
       ([id, screen]) =>
         isRound(screen) &&
-        screen.returnOf === undefined &&
+        !isReturn(screen) &&
         namedResponses(file, returns.get(id) ?? []).size === 0
     )
     .map(([id]) => id)

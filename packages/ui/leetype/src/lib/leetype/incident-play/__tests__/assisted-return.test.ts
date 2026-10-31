@@ -590,6 +590,12 @@ describe("LTY1: a return after anything that showed its answer is assisted", () 
         solved: true,
         parked: false,
       })
+      // b.json's text-only rubric covers b.json's parked rounds: none.
+      expect(
+        log.some(
+          (event) => event.type === "rubric-shown" && event.file === "b.json"
+        )
+      ).toBe(coverage === "names-it")
     }
   )
 })

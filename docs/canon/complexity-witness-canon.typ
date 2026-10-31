@@ -2073,10 +2073,10 @@ Definition, Axiom, Theorem, `CW-P`, `M` or `A` entry changes.
 as assistance to its return, under Rem. 9.5: a take's rubric covering the
 round (a rubric point may name the rounds it covers, `covers`, and the
 session log records `rubric-shown` when the rubric is shown), the round's
-worked confirmation, or a correct replay or return's reveal. An assisted
-return solves nothing in any report, and still takes the round off the
-ledger screen (`#2029`, `#2343`). No Definition, Axiom, Theorem, `CW-P`, `M`
-or `A` entry changes.
+worked confirmation, or a correct, unhurried replay or return's reveal. An
+assisted return solves nothing in any report, and still takes the round off
+the ledger screen (`#2029`, `#2343`). No Definition, Axiom, Theorem, `CW-P`,
+`M` or `A` entry changes.
 
 #pagebreak()
 
