@@ -19,7 +19,7 @@ function mockJobs(): void {
     const runtime = createJobsRuntime(
       ports({ now: () => new Date(), dayOf: () => "2026-10-22" })
     )
-    return { phoneJobs: (): typeof runtime => runtime, copyText: vi.fn() }
+    return { phoneJobs: (): typeof runtime => runtime }
   })
 }
 

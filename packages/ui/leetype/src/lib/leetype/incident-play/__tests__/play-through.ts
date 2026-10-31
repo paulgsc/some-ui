@@ -21,6 +21,7 @@ export function clock(
       newId: () => `e${String(++id)}`,
       medianMs: median,
       hiddenMs,
+      parked: () => [],
     }),
   }
 }

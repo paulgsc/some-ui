@@ -8,12 +8,7 @@ import { openNodeSqlite } from "@/test-support/node-sqlite-driver"
 import { beforeEach, describe, expect, it } from "vitest"
 
 import { openDeviceBackend } from "@/lib/device-backend/backend"
-import { sha256Hex } from "@/lib/device-backend/common"
-import {
-  upsertLesson,
-  upsertRound,
-  upsertRuns,
-} from "@/lib/device-backend/content-store"
+import { upsertLesson } from "@/lib/device-backend/content-store"
 import type { HomeGet } from "@/lib/device-backend/home-sync"
 import {
   homeApiBase,
@@ -27,7 +22,7 @@ import { createDeviceFetch } from "@/lib/device-backend/interceptor"
 import type { SqlDriver } from "@/lib/device-backend/sql"
 import { DeviceStorageError } from "@/lib/device-backend/sql"
 import type { StorageBudget } from "@/lib/device-backend/storage"
-import { databaseBytes, readPruneNotice } from "@/lib/device-backend/storage"
+import { databaseBytes } from "@/lib/device-backend/storage"
 import { TREE_ACTIVITY } from "@/lib/topik-content"
 
 const HOME = "http://192.168.1.10:3000"
@@ -103,48 +98,10 @@ const LESSON = {
   tags: ["food"],
 }
 
-/** A round home serves, pretty-printed as authored. */
-const HOME_ROUND = JSON.stringify(
-  {
-    id: "home-only-round",
-    diffOptions: [
-      { member: { propositionId: "CW-P1", admissible: true } },
-      { member: { propositionId: "CW-P2", admissible: false } },
-    ],
-  },
-  null,
-  2
-)
-
 beforeEach(async () => {
   homeDb = openNodeSqlite()
   home = await openDeviceBackend(homeDb, () => NOW)
   await upsertLesson(homeDb, LESSON, '{\n  "batches": []\n}', NOW)
-  await upsertRound(homeDb, HOME_ROUND, NOW)
-  await upsertRuns(
-    homeDb,
-    JSON.stringify({
-      roundId: "home-only-round",
-      contentHash: await sha256Hex(HOME_ROUND),
-      runs: [
-        {
-          variant: "A",
-          bounds: "before",
-          sizes: { n: 10 },
-          result: {
-            kind: "ok",
-            inputSize: 10,
-            observation: {
-              output: "1",
-              logs: [],
-              elapsed: { milliseconds: 1 },
-            },
-          },
-        },
-      ],
-    }),
-    NOW
-  )
   phoneDb = openNodeSqlite()
   phone = await openDeviceBackend(phoneDb, () => NOW)
 })
@@ -160,12 +117,11 @@ describe("syncFromHome", () => {
     ["verbatim", verbatimGet],
     ["re-serialised (native HTTP)", reserialisingGet],
   ] as const)(
-    "puts home's lessons and new rounds on the phone, runs included (%s)",
+    "puts home's lessons on the phone (%s)",
     async (_label, transport) => {
       const report = await syncFromHome(phoneDb, HOME, transport, () => NOW)
       expect(report.failed).toEqual([])
       expect(report.lessons).toMatchObject({ listed: 1, added: 1 })
-      expect(report.rounds.added).toBe(1)
 
       await expect(
         phoneJson("/curriculum/manifest.json")
@@ -177,39 +133,38 @@ describe("syncFromHome", () => {
       await expect(phoneJson("/curriculum/k2-cafe")).resolves.toEqual({
         batches: [],
       })
-      // The runs follow the round even when its bytes did not survive.
-      await expect(
-        phoneJson("/leetype/rounds/home-only-round/runs")
-      ).resolves.toMatchObject({ runs: [{ variant: "A" }] })
     }
   )
+
+  it("asks home for lessons and dramas only, never its rounds", async () => {
+    const asked: Array<string> = []
+    const recording: HomeGet = (url, etag) => {
+      asked.push(url)
+      return verbatimGet(url, etag)
+    }
+    await syncFromHome(phoneDb, HOME, recording, () => NOW)
+    expect(asked.length).toBeGreaterThan(0)
+    expect(
+      asked.every((url) => url.startsWith(`${HOME}/api/v1/curriculum/`))
+    ).toBe(true)
+  })
 
   it("is idempotent, and removes what home stopped listing", async () => {
     await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
     const again = await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
     expect(again.lessons).toMatchObject({ added: 0, updated: 0, removed: 0 })
-    expect(again.rounds).toMatchObject({ added: 0, updated: 0, removed: 0 })
 
     await homeDb.run("UPDATE curriculum SET retired_at = ? WHERE key = ?", [
       "2026-09-29T09:00:00+00:00",
       "k2-cafe",
     ])
-    await homeDb.run("UPDATE leetype_round SET retired_at = ? WHERE id = ?", [
-      "2026-09-29T09:00:00+00:00",
-      "home-only-round",
-    ])
     const third = await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
     expect(third.lessons.removed).toBe(1)
-    expect(third.rounds.removed).toBe(1)
     await expect(phoneJson("/curriculum/manifest.json")).resolves.toMatchObject(
       {
         topiks: [],
       }
     )
-    const rounds = await phoneDb.all(
-      "SELECT id FROM leetype_round WHERE id = 'home-only-round'"
-    )
-    expect(rounds).toEqual([])
   })
 
   it("skips what would grow the phone past its budget, and counts it", async () => {
@@ -263,7 +218,7 @@ describe("syncFromHome", () => {
     let reads = 0
     const stoppedGet: HomeGet = (url) => {
       reads += 1
-      return reads > 3
+      return reads > 2
         ? Promise.reject(new SyncStoppedError())
         : verbatimGet(url)
     }
@@ -272,18 +227,18 @@ describe("syncFromHome", () => {
     ).rejects.toBeInstanceOf(SyncStoppedError)
   })
 
-  it("removes nothing when the rounds listing fails after the lessons'", async () => {
+  it("removes nothing when the dramas' listing fails after the lessons'", async () => {
     await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
     await homeDb.run("UPDATE curriculum SET retired_at = ? WHERE key = ?", [
       "2026-09-29T09:00:00+00:00",
       "k2-cafe",
     ])
-    const noRounds: HomeGet = async (url) =>
-      url.endsWith("/leetype/rounds")
+    const noTrees: HomeGet = async (url) =>
+      url.endsWith(`?activity=${TREE_ACTIVITY}`)
         ? { status: 500, body: "" }
         : verbatimGet(url)
     await expect(
-      syncFromHome(phoneDb, HOME, noRounds, () => NOW)
+      syncFromHome(phoneDb, HOME, noTrees, () => NOW)
     ).rejects.toThrow(/500/)
     await expect(phoneJson("/curriculum/manifest.json")).resolves.toMatchObject(
       { topiks: [{ key: "k2-cafe" }] }
@@ -315,20 +270,6 @@ describe("syncFromHome", () => {
     )
   })
 
-  it("picks up a round's runs on the next sync after their request failed", async () => {
-    const noRuns: HomeGet = async (url) =>
-      url.endsWith("/runs") ? { status: 500, body: "" } : verbatimGet(url)
-    await syncFromHome(phoneDb, HOME, noRuns, () => NOW)
-    await expect(
-      phoneJson("/leetype/rounds/home-only-round/runs")
-    ).resolves.toMatchObject({ runs: [] })
-
-    await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
-    await expect(
-      phoneJson("/leetype/rounds/home-only-round/runs")
-    ).resolves.toMatchObject({ runs: [{ variant: "A" }] })
-  })
-
   it("keeps a lesson that failed to download, rather than removing it", async () => {
     await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
     const flaky: HomeGet = async (url) =>
@@ -343,10 +284,11 @@ describe("syncFromHome", () => {
 
 describe("syncFromHome against a busy home", () => {
   it("ends at home's first busy answer, keeping what came before it", async () => {
+    await upsertLesson(homeDb, { ...LESSON, key: "k3-tea" }, "{}", NOW)
     let asked = 0
     const busyAfterOne: HomeGet = async (url, etag) => {
       if (url.includes("/curriculum/k2-cafe")) asked += 1
-      return url.includes("/leetype/rounds/")
+      return url.endsWith("/curriculum/k3-tea")
         ? { status: 429, body: "" }
         : verbatimGet(url, etag)
     }
@@ -375,32 +317,20 @@ describe("syncFromHome revalidating what it holds", () => {
 
     home.bodies.length = 0
     const again = await syncFromHome(phoneDb, HOME, home.get, () => NOW)
-    expect(home.tags).toEqual([
-      `${HOME}/api/v1/curriculum/k2-cafe`,
-      `${HOME}/api/v1/leetype/rounds/home-only-round/runs`,
-    ])
-    expect(home.bodies.filter((url) => !url.includes("manifest"))).toEqual([
-      `${HOME}/api/v1/leetype/rounds`,
-    ])
+    expect(home.tags).toEqual([`${HOME}/api/v1/curriculum/k2-cafe`])
+    expect(home.bodies.filter((url) => !url.includes("manifest"))).toEqual([])
     expect(again.failed).toEqual([])
     expect(again.lessons).toMatchObject({ listed: 1, added: 0, updated: 0 })
-    expect(again.rounds.runs).toBe(1)
   })
 
   it("asks for a body afresh once the phone no longer holds it", async () => {
     const home = revalidatingHome()
     await syncFromHome(phoneDb, HOME, home.get, () => NOW)
     await phoneDb.run("DELETE FROM curriculum")
-    await phoneDb.run("DELETE FROM leetype_round")
     home.bodies.length = 0
     const report = await syncFromHome(phoneDb, HOME, home.get, () => NOW)
     expect(report.lessons.added).toBe(1)
-    expect(report.rounds.added).toBe(1)
-    // The runs went with their round; the body kept with their tag
-    // brings them back.
-    await expect(
-      phoneJson("/leetype/rounds/home-only-round/runs")
-    ).resolves.toMatchObject({ runs: [{ variant: "A" }] })
+    expect(home.bodies).toContain(`${HOME}/api/v1/curriculum/k2-cafe`)
   })
 
   it("sends no tag for a lesson whose bytes another home wrote since", async () => {
@@ -477,24 +407,6 @@ describe("syncFromHome against a home it cannot read", () => {
     const report = await syncFromHome(phoneDb, HOME, partial, () => NOW)
     expect(report.failed).toEqual(["k2-cafe"])
     expect(report.lessons.removed).toBe(0)
-  })
-})
-
-describe("a round an earlier build seeded with home's own bytes", () => {
-  it("goes at the next start, and the next sync brings it back, runs included", async () => {
-    // What an earlier build left: the round, never marked as home's.
-    await upsertRound(phoneDb, HOME_ROUND, NOW)
-    await phoneDb.run("DELETE FROM device_round_from_home")
-    phone = await openDeviceBackend(phoneDb, () => NOW)
-    await expect(readPruneNotice(phoneDb)).resolves.toEqual({ rounds: 1 })
-
-    const report = await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
-    expect(report.rounds.added).toBe(1)
-    phone = await openDeviceBackend(phoneDb, () => NOW)
-    await expect(
-      phoneJson("/leetype/rounds/home-only-round/runs")
-    ).resolves.toMatchObject({ runs: [{ variant: "A", bounds: "before" }] })
-    await expect(readPruneNotice(phoneDb)).resolves.toEqual({ rounds: 1 })
   })
 })
 

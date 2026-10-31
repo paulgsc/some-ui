@@ -64,4 +64,3 @@ export function phoneJobs(): JobsRuntime {
 }
 
 export type { JobsSnapshot } from "./runtime"
-export { copyText } from "./clipboard"

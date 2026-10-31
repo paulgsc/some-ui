@@ -88,7 +88,10 @@ export type Primer = {
 
 export type PrimerReading =
   | { readonly ok: true; readonly primer: Primer }
-  /** `problem` is a sentence for the person, naming what to fix. */
+  /**
+   * `problem` names what to fix, for the session that wrote the file; the
+   * screen says its own words (SW1, `studio/words.ts`).
+   */
   | { readonly ok: false; readonly problem: string }
 
 const CUT_ID = /^[a-z0-9][a-z0-9-]{0,39}$/

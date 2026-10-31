@@ -33,3 +33,4 @@ export {
 } from "./hooks"
 export type { TransferPreview } from "./sessions-transfer"
 export { resumableSession } from "./resumable"
+export { newSessionId } from "./session-id"

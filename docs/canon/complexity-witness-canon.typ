@@ -81,7 +81,7 @@
     `packages/some-content/prompts/leetype-exercise-generator` · `pedagogy/`
   ]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.3 --- 2026-10-20]
+  #text(size: 9.5pt)[Version 1.5 --- 2026-10-31]
   #v(2cm)
 ]
 
@@ -1784,6 +1784,101 @@ superseded and kept.
   Evidence: the code (Amendment protocol, fourth rule).
 ]
 
+#remark("11.9", name: "Rem. 9.6's check of a return per response is a rule")[
+  Amends Rem. 9.6, which is retained as filed. Its last sentence called
+  checking that a session file authors a variant per response kind mechanical
+  and not yet a rule, because the format could not say which response a
+  return follows: a return named only the round it returns (`returnOf`), so
+  one return for every struggle and a return per response read the same.
+  Since `#2061` it can, and the check is a rule:
+
+  - A return may name the response on its round that it follows, beside
+    `returnOf`: `returnFor` is `incorrect` (an incorrect selection, slow or
+    not), `abstain` (the abstention) or `hesitate` (a correct selection slow
+    enough to be a struggle). The kinds are responses, not routes: under
+    Def. 9.4 slowness only annotates a selection. Naming one without
+    `returnOf` does not parse, so a return the player infers from its
+    `parked-return` tag, which has no `returnOf`, cannot carry one.
+  - `lib/leetype/session-file`'s lint reports a round any of whose returns
+    names its response, when some response the round's options allow has no
+    return naming it (`response-without-return`). Every round allows
+    `hesitate`; it allows `incorrect` when an option is neither correct nor
+    the abstention, and `abstain` when it offers the abstention. It also
+    reports a return naming a response its round's options cannot produce,
+    or returning a screen that is not a round (`mismatched-return-for`).
+  - A round, other than a return (one with `returnOf`), that has no return,
+    or whose returns name no response, is not reported. Returns that name
+    none are the shape Rem. 9.6 says meets Def. 9.4 and not Prop. 9.1, and
+    the session files written before the field have it;
+    `lint:session-file` lists every such round without failing, so the gap
+    stays visible and those files stay placeable.
+
+  The check is that each response has its return, not that the struggle on
+  that response leads to it: which placed reading leads to which return is
+  the file's wiring, and the lint does not trace it. That wiring is not yet
+  the response's either: the phone sends any slow selection that is not the
+  abstention, an incorrect one included, to the round's `onHesitate` rather
+  than its option's `next` (`#2332`). Nor does the check cover the spoken answer's two
+  follow-ups Rem. 9.6 names, a pass and fewer than two ticks, since a return
+  is a choice screen and a spoken answer is not.
+
+  Evidence: the code (Amendment protocol, fourth rule).
+]
+
+#remark("11.10", name: "What shows a parked round's answer assists its return")[
+  Amends Def. 9.5 and Rem. 11.7, which are retained as filed, under Rem. 9.5.
+  A take is built from its session's rounds: a short form must reach a strong
+  answer, so its rubric states what those rounds decide, a parked round's
+  answer among them. Def. 9.5 shows the rubric after the answer or the pass,
+  so a round that struggled and parked before the take has its answer shown
+  before its return, and by Rem. 9.5 an answer after it is an observation of
+  it, not an unassisted commitment (Axiom 9.2). Until `#2029` the log did not
+  record that, and a correct return after the rubric solved the round. The
+  same held for the round's own worked confirmation, which Rem. 9.5 names
+  outright: the log recorded it (`confirmation-taken`) and no reader counted
+  it (`#2343`), and for the confirmation the phone reveals unasked after a
+  correct, unhurried pick or return. The owner's decisions there
+  (2026-10-30, amended 2026-10-31 on the pull request's review) record
+  them:
+
+  - A rubric point may say which rounds it states the answer of, beside its
+    text: `covers`, a list of round ids of the same file (`[]` for none). A
+    rubric's points are all text or all say `covers`; a mix does not parse,
+    so a rubric's coverage is known or unknown, never half of each.
+    `lib/leetype/session-file`'s lint reports an id that names no round of
+    the file, or names a return, whose answer is its round's and which never
+    parks (`covers-not-a-round`).
+  - A rubric of text alone is read as covering every round of its file
+    still parked when it is shown, in whichever session it parked: a round
+    parks in one session and its take is often reached in the next. Thread
+    1's five files were written before the field, and their takes take two
+    of three points from the session's first round; they stay as filed, and
+    `lint:session-file` lists each such take without failing.
+  - Whenever a take's rubric is shown, after its answer or its pass or as a
+    parked take's worked confirmation (Prop. 9.4 (d)), the session log
+    records `rubric-shown` for each round it covers. Rem. 11.7's funnel gains
+    the event; nothing already recorded changes.
+  - A return is *assisted* when, since the round's last struggle, its
+    answer was shown: by a rubric covering it, by its worked confirmation
+    taken on a struggle's reveal or from the parked list, or by the reveal
+    of a correct, unhurried pick or return of it, which shows the
+    confirmation unasked. A struggle is a struggled pick or a struggled
+    return (Def. 9.4), and a confirmation taken on its reveal comes after
+    it. An assisted return solves nothing: every report counts it as
+    assisted, not solved, and records it so.
+  - The ledger screen (Prop. 10.2) and the parked list are the learner's way
+    on, not a report: a correct, unhurried return unparks the round there,
+    assisted or not, so the learner is not kept answering a round they
+    answer. A later struggle parks it again as usual, and a return after
+    that, with nothing shown since, solves it.
+
+  What is shown before the struggle assists nothing, since the struggle is
+  the evidence that it was not retained.
+
+  Evidence: the code (Amendment protocol, fourth rule), and the closing
+  author-expert review of Thread 1 that raised `#2029`.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = Falsifiers
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1967,6 +2062,21 @@ Rem. 11.6 named (`roundProbeOf`, `READING_OPTION_COUNT`, `DiffCard`,
 records that Rem. 7.1's citation check over `M` and `A`, which Rem. 7.4 left
 "not yet a rule", is the session-file lint of `#1942`. No Definition, Axiom,
 Theorem, `CW-P`, `M` or `A` entry changes.
+
+*v1.4 --- 2026-10-30.* Rem. 11.9 makes Rem. 9.6's check of a return per
+response kind a rule, which Rem. 9.6 left "not yet a rule": a return names the
+response it follows (`returnFor`), and the session-file lint of `#2061`
+reports a round whose named returns leave a response without one. No
+Definition, Axiom, Theorem, `CW-P`, `M` or `A` entry changes.
+
+*v1.5 --- 2026-10-31.* Rem. 11.10 reads what shows a parked round's answer
+as assistance to its return, under Rem. 9.5: a take's rubric covering the
+round (a rubric point may name the rounds it covers, `covers`, and the
+session log records `rubric-shown` when the rubric is shown), the round's
+worked confirmation, or a correct, unhurried replay or return's reveal. An
+assisted return solves nothing in any report, and still takes the round off
+the ledger screen (`#2029`, `#2343`). No Definition, Axiom, Theorem, `CW-P`,
+`M` or `A` entry changes.
 
 #pagebreak()
 

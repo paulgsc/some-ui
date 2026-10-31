@@ -290,22 +290,6 @@
     background-color: var(--color-code-highlight);
   }
 
-  [data-line] {
-    display: inline-block;
-    min-height: calc(var(--spacing) * 1);
-    padding-bottom: calc(var(--spacing) * 0.5);
-    padding-top: calc(var(--spacing) * 0.5);
-    width: 100%;
-  }
-
-  [data-line] span {
-    color: var(--shiki-light);
-
-    @variant dark {
-      color: var(--shiki-dark) !important;
-    }
-  }
-
   [data-highlighted-line],
   [data-highlighted-chars] {
     background-color: var(--color-code-highlight);

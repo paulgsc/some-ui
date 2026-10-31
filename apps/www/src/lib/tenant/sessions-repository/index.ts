@@ -2,6 +2,7 @@ import type { KeyedStorage } from "@some-ui/core-utils"
 import { openKept, salvageList, writeKept } from "@some-ui/core-utils"
 import type { SceneConfig } from "@some-ui/types"
 
+import type { SessionId } from "@/lib/tenant/session-id"
 import {
   browserLocalStorage,
   delay,
@@ -69,7 +70,7 @@ export type CreateSessionInput = {
    * (paulgsc/server#432) and makes one session however often the same create
    * is sent. This store names its own.
    */
-  id?: string
+  id?: SessionId
   name: string
   // The stored shape, not the catalogue's: copying this device's sessions to
   // an account passes their activities through verbatim, retired ids and all.

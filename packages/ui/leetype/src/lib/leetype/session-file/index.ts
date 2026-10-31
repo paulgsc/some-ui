@@ -2,10 +2,11 @@ import type { RuleId } from "@leetype/lib/leetype/proposition-register/generated
 import { RULE_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
 import type {
   ChoiceScreen,
+  ResponseKind,
   SessionFile,
   SessionScreen,
 } from "@leetype/types/session-file"
-import { edgesOf } from "@leetype/types/session-file"
+import { edgesOf, rubricCovers, rubricText } from "@leetype/types/session-file"
 import { assertNever, mentionsWord } from "@some-ui/core-utils"
 
 /**
@@ -20,7 +21,16 @@ import { assertNever, mentionsWord } from "@some-ui/core-utils"
  * core is its passage, read at `WORDS_PER_MINUTE`. `unregistered-rule`
  * resolves every `rule` and `applies` against Rem. 7.4's registers
  * (Rem. 7.1's citation check over `M` and `A`); a round names its `rule`,
- * and its correct option applies no other.
+ * and its correct option applies no other. `response-without-return` is
+ * Prop. 9.1's follow-up per response (Rem. 9.6, Rem. 11.9): a round any of
+ * whose returns names the response it follows (`returnFor`) has a return for
+ * each response its options allow; `mismatched-return-for` names a response
+ * its round cannot produce, or returns a screen that is not a round.
+ * `covers-not-a-round` is a rubric point's `covers` naming a screen of the
+ * file that is not a round, or a return (`returnOf`, or tagged
+ * `parked-return`), whose answer is the round's and which never parks
+ * (Rem. 11.10). A rubric mixing points that say `covers` with points that
+ * do not does not parse.
  *
  * Rem. 10.3 (5) spans files, so it is not here: `negativeDiscriminationGaps`
  * takes the whole set.
@@ -38,6 +48,9 @@ type SessionFileFindingCode =
   | "unregistered-rule"
   | "round-without-rule"
   | "correct-applies-other-rule"
+  | "response-without-return"
+  | "mismatched-return-for"
+  | "covers-not-a-round"
 
 export type SessionFileFinding = {
   readonly code: SessionFileFindingCode
@@ -66,6 +79,14 @@ function unregistered(id: string): string | null {
 export function isRound(screen: SessionScreen): screen is ChoiceScreen {
   return (
     screen.type === "choice" && screen.options.some((option) => option.correct)
+  )
+}
+
+/** A return: it names its round, or the player infers it from its tag. */
+function isReturn(screen: ChoiceScreen): boolean {
+  return (
+    screen.returnOf !== undefined ||
+    screen.tags?.includes("parked-return") === true
   )
 }
 
@@ -99,7 +120,7 @@ function textOf(screen: SessionScreen): string {
       break
     }
     case "record": {
-      parts.push(screen.prompt, ...screen.rubric)
+      parts.push(screen.prompt, ...rubricText(screen))
       break
     }
     case "reading": {
@@ -187,6 +208,63 @@ function alwaysReachesReading(
   return walk(start)
 }
 
+function returnsByRound(file: SessionFile): Map<string, Array<string>> {
+  const returns = new Map<string, Array<string>>()
+  for (const [id, screen] of Object.entries(file.screens)) {
+    if (screen.type === "choice" && screen.returnOf !== undefined) {
+      returns.set(screen.returnOf, [
+        ...(returns.get(screen.returnOf) ?? []),
+        id,
+      ])
+    }
+  }
+  return returns
+}
+
+/** The responses `returns` name as the ones they follow (`returnFor`). */
+function namedResponses(
+  file: SessionFile,
+  returns: ReadonlyArray<string>
+): Set<ResponseKind> {
+  const named = new Set<ResponseKind>()
+  for (const id of returns) {
+    const screen = file.screens[id]
+    if (screen?.type === "choice" && screen.returnFor !== undefined) {
+      named.add(screen.returnFor)
+    }
+  }
+  return named
+}
+
+/**
+ * The responses on `round` that call for their own return (Prop. 9.1,
+ * Rem. 9.6): an incorrect pick where an option is wrong, the abstention
+ * where it is offered, and a slow correct pick, which any round can draw
+ * (Def. 9.4).
+ */
+function responsesOf(round: ChoiceScreen): Array<ResponseKind> {
+  const kinds: Array<ResponseKind> = []
+  if (round.options.some((option) => !option.correct && !option.abstain)) {
+    kinds.push("incorrect")
+  }
+  if (round.options.some((option) => option.abstain)) kinds.push("abstain")
+  kinds.push("hesitate")
+  return kinds
+}
+
+/** Rounds, returns aside, that no return names a response for: Rem. 11.9 leaves them unchecked. */
+export function roundsWithoutNamedReturns(file: SessionFile): Array<string> {
+  const returns = returnsByRound(file)
+  return Object.entries(file.screens)
+    .filter(
+      ([id, screen]) =>
+        isRound(screen) &&
+        !isReturn(screen) &&
+        namedResponses(file, returns.get(id) ?? []).size === 0
+    )
+    .map(([id]) => id)
+}
+
 /**
  * Screens reachable from `start`, a return counted as reachable from its
  * round. With `term`, the walk stops at screens that gloss it, so what it
@@ -195,15 +273,7 @@ function alwaysReachesReading(
 function reachable(file: SessionFile, term?: string): Set<string> {
   const reached = new Set<string>()
   // A return is played after its round, in this session or a later one.
-  const returnsOf = new Map<string, Array<string>>()
-  for (const [id, screen] of Object.entries(file.screens)) {
-    if (screen.type === "choice" && screen.returnOf !== undefined) {
-      returnsOf.set(screen.returnOf, [
-        ...(returnsOf.get(screen.returnOf) ?? []),
-        id,
-      ])
-    }
-  }
+  const returnsOf = returnsByRound(file)
   const queue = [file.start]
   for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
     const screen = file.screens[id]
@@ -226,6 +296,7 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
   }
 
   const placed = new Set<string>()
+  const returns = returnsByRound(file)
   for (const [id, screen] of Object.entries(file.screens)) {
     if (screen.type === "choice") {
       const cited = [
@@ -235,6 +306,22 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
       for (const rule of new Set(cited)) {
         const why = rule === undefined ? null : unregistered(rule)
         if (why !== null) add("unregistered-rule", id, why)
+      }
+      if (screen.returnFor !== undefined && screen.returnOf !== undefined) {
+        const round = file.screens[screen.returnOf]
+        if (round === undefined || !isRound(round)) {
+          add(
+            "mismatched-return-for",
+            id,
+            `names the response it follows, but ${screen.returnOf} is not a round (Prop. 9.1, Rem. 11.9)`
+          )
+        } else if (!responsesOf(round).includes(screen.returnFor)) {
+          add(
+            "mismatched-return-for",
+            id,
+            `follows "${screen.returnFor}", which ${screen.returnOf}'s options cannot produce (Prop. 9.1, Rem. 11.9)`
+          )
+        }
       }
     }
 
@@ -295,6 +382,36 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
             "verbatim-return",
             id,
             `the return repeats ${screen.returnOf}'s situation; it needs new numbers or a new case`
+          )
+        }
+      }
+      const named = namedResponses(file, returns.get(id) ?? [])
+      if (named.size > 0) {
+        const missing = responsesOf(screen).filter((kind) => !named.has(kind))
+        if (missing.length > 0) {
+          add(
+            "response-without-return",
+            id,
+            `no return names ${missing.map((kind) => `"${kind}"`).join(", ")} in \`returnFor\`; each response gets its own follow-up (Prop. 9.1, Rem. 11.9)`
+          )
+        }
+      }
+    }
+
+    if (screen.type === "record") {
+      for (const round of rubricCovers(screen) ?? []) {
+        const target = file.screens[round]
+        if (target === undefined || !isRound(target)) {
+          add(
+            "covers-not-a-round",
+            id,
+            `a rubric point covers "${round}", which is not a round of this file`
+          )
+        } else if (isReturn(target)) {
+          add(
+            "covers-not-a-round",
+            id,
+            `a rubric point covers "${round}", which is a return; cover the round it returns`
           )
         }
       }

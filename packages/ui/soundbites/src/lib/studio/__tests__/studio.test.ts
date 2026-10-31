@@ -359,6 +359,20 @@ describe("takes that arrived in Drive", () => {
   })
 })
 
+describe("what Claude sent that doesn't read as scenes", () => {
+  it("is refused in Start's words, never the reader's (SW1)", async () => {
+    const runtime = await opened(memoryProjectStore())
+    runtime.dispatch({
+      type: "primerPicked",
+      file: new Blob(['{"version":9,"title":"x","cuts":[]}']),
+    })
+    await until(runtime, (state) => state.primerProblem !== null)
+    expect(runtime.getSnapshot().primerProblem).toBe(
+      STUDIO_WORDS.start.sentProblem
+    )
+  })
+})
+
 describe("the Journal tab's episode", () => {
   it("is carried into Studio the first time it opens, and said so", async () => {
     const memory = memoryProjectStore()
@@ -1396,34 +1410,43 @@ describe("Watch", () => {
     ])
   })
 
-  /** A recognizer the test speaks through: words as heard, then the end. */
+  /** A recognizer the test speaks through: ready, words as heard, then the end. */
   function fakeListener(available = true): {
     listener: IdeaListener
+    ready: () => void
     say: (words: string) => void
     end: (result: Listened) => void
     listens: () => number
+    stops: () => number
   } {
     let onWords: (words: string) => void = () => undefined
+    let onReady: () => void = () => undefined
     let settle: (result: Listened) => void = () => undefined
     let count = 0
+    let stopped = 0
     return {
       listener: {
         available: () => Promise.resolve(available),
-        listen: (heard): Listening => {
+        listen: (heard, ready): Listening => {
           count += 1
           onWords = heard
+          onReady = ready
           return {
             done: new Promise<Listened>((resolve) => {
               settle = resolve
             }),
-            stop: () => undefined,
+            stop: (): void => {
+              stopped += 1
+            },
             cancel: () => undefined,
           }
         },
       },
+      ready: () => onReady(),
       say: (words) => onWords(words),
       end: (result) => settle(result),
       listens: () => count,
+      stops: () => stopped,
     }
   }
 
@@ -1507,6 +1530,53 @@ describe("Watch", () => {
     expect(projectIn(runtime).notes).toEqual([])
   })
 
+  it("is getting ready, then finishing, and says when the recognizer never started (LS1)", async () => {
+    const voice = fakeListener()
+    const runtime = await opened(
+      undefined,
+      undefined,
+      undefined,
+      voice.listener
+    )
+    await watching(runtime)
+    await until(
+      runtime,
+      (state) =>
+        state.screen.kind === "watch" && state.screen.listen === "available"
+    )
+    runtime.dispatch({ type: "speakPressed" })
+    expect(speakingIn(runtime.getSnapshot())).toMatchObject({
+      phase: "listening",
+      ready: false,
+    })
+    voice.ready()
+    expect(speakingIn(runtime.getSnapshot())?.ready).toBe(true)
+    voice.say("Hold")
+    runtime.dispatch({ type: "speakStopped" })
+    expect(speakingIn(runtime.getSnapshot())).toMatchObject({
+      phase: "finishing",
+      words: "Hold",
+    })
+    expect(voice.stops()).toBe(1)
+    // Words still arriving while finishing count.
+    voice.say("Hold the list")
+    voice.end({ kind: "heard", words: "" })
+    await until(runtime, (state) => speakingIn(state)?.phase === "heard")
+    expect(speakingIn(runtime.getSnapshot())?.words).toBe("Hold the list")
+    runtime.dispatch({ type: "spokenDropped" })
+
+    runtime.dispatch({ type: "speakPressed" })
+    voice.end({ kind: "notStarted" })
+    await until(
+      runtime,
+      (state) => state.notice === STUDIO_WORDS.watch.notStarted
+    )
+    expect(speakingIn(runtime.getSnapshot())).toBeNull()
+    // The phone can still listen; the next note may try the voice again.
+    const { screen } = runtime.getSnapshot()
+    expect(screen.kind === "watch" && screen.listen).toBe("available")
+  })
+
   it("takes typed notes only, on a phone that can't listen", async () => {
     const voice = fakeListener(false)
     const runtime = await opened(
@@ -1525,7 +1595,7 @@ describe("Watch", () => {
     expect(voice.listens()).toBe(0)
   })
 
-  it("asks for the video and its review.json together", async () => {
+  it("asks for the video and the notes beside it together", async () => {
     const runtime = await opened()
     runtime.dispatch({ type: "watchChosen" })
     runtime.dispatch({
