@@ -10,41 +10,46 @@
  */
 import type { HomeCall } from "@some-ui/core-utils"
 
-import type { AskedPrompt } from "@/lib/scene-ask"
+import type { AskedPrompt, PendingAsk } from "@/lib/scene-ask"
 
 import type { LogReport, WholeLane } from "./leetype-log"
 import { heldBy, sendWhole } from "./leetype-log"
 import type { Sent } from "./sent"
 
 /** What goes home of an ask: its stamp and its markdown, nothing else. */
-const PROMPTS: WholeLane<AskedPrompt> = {
+const PROMPTS: WholeLane<PendingAsk> = {
   path: "/routine/prompts",
   wire: ({ stamp, text }) => ({ stamp, text }),
   key: "prompt",
   id: (prompt) => prompt.stamp,
 }
 
-/** The asks in `kept` home does not hold as they are now. */
+const isPending = (prompt: AskedPrompt): prompt is PendingAsk =>
+  prompt.held !== true
+
+/**
+ * The asks in `kept` home does not hold as they are now. One the store
+ * marked held is never sent again, under this pairing or another.
+ */
 export function promptsToSend(
   kept: ReadonlyArray<AskedPrompt>,
   sent: Sent
-): Array<AskedPrompt> {
+): Array<PendingAsk> {
   const held = heldBy(PROMPTS, sent.prompts)
-  return kept.filter((prompt) => !held(prompt))
+  return kept.filter(isPending).filter((prompt) => !held(prompt))
 }
 
 /** The asks in `kept` home holds as they are, not yet marked held. */
 export function heldPrompts(
   kept: ReadonlyArray<AskedPrompt>,
   sent: Sent
-): Array<AskedPrompt> {
-  const held = heldBy(PROMPTS, sent.prompts)
-  return kept.filter((prompt) => prompt.held !== true && held(prompt))
+): Array<PendingAsk> {
+  return kept.filter(isPending).filter(heldBy(PROMPTS, sent.prompts))
 }
 
 /** `sendWhole` over the asks (`./drain`'s prompts part). */
 export const sendPrompts = (
-  going: ReadonlyArray<AskedPrompt>,
+  going: ReadonlyArray<PendingAsk>,
   send: HomeCall,
   report: LogReport,
   held: (stamp: string, fingerprint: string) => void

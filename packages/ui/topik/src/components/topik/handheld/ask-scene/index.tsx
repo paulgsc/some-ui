@@ -18,7 +18,7 @@ import { Check, Send } from "lucide-react"
 
 /** Said when the device could not keep the ask. */
 const ASK_NOT_KEPT =
-  "This phone couldn't keep your ask. Make some room on it, then ask again."
+  "This phone couldn't keep your ask. Ask again; if it still can't, make some room on it."
 
 export const AskScene = ({
   asks,

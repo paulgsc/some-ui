@@ -15,11 +15,11 @@ import {
 } from "@/lib/home-link/prompts"
 import type { Sent } from "@/lib/home-link/sent"
 import { readSent } from "@/lib/home-link/sent"
-import type { AskedPrompt } from "@/lib/scene-ask"
+import type { PendingAsk } from "@/lib/scene-ask"
 
 import { home } from "./fake-home"
 
-const asked = (n: number, text = `prompt ${String(n)}`): AskedPrompt => ({
+const asked = (n: number, text = `prompt ${String(n)}`): PendingAsk => ({
   stamp: `drama-2026103${String(n)}T071503120Z`,
   at: `2026-10-3${String(n)}T07:15:03.120Z`,
   text,
@@ -28,7 +28,7 @@ const asked = (n: number, text = `prompt ${String(n)}`): AskedPrompt => ({
 
 const none: Sent = readSent(inMemoryStorage(), "p1")
 
-const echo = (prompt: AskedPrompt, text = prompt.text): HomeAnswer => ({
+const echo = (prompt: PendingAsk, text = prompt.text): HomeAnswer => ({
   status: 200,
   body: JSON.stringify({
     change: "added",
@@ -53,8 +53,15 @@ describe("what goes", () => {
     expect(
       Object.values(remembered).every((digest) => digest.length < 32)
     ).toBe(true)
-    // Marked held by the store, it is offered no more.
-    expect(heldPrompts([{ ...asked(0), held: true }], sent)).toEqual([])
+    // Marked held by the store, it is offered no more, and never sent again,
+    // under this pairing or another.
+    const marked = {
+      stamp: asked(0).stamp,
+      at: asked(0).at,
+      held: true as const,
+    }
+    expect(heldPrompts([marked], sent)).toEqual([])
+    expect(promptsToSend([marked], none)).toEqual([])
   })
 })
 

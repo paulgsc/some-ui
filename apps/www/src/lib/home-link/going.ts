@@ -14,7 +14,7 @@ import type { HomeSession } from "@some-ui/leetype"
 import { deviceBackend } from "@/lib/device-backend/boot"
 import type { Kept } from "@/lib/device-backend/handlers/shelf"
 import { everyKept } from "@/lib/device-backend/handlers/shelf"
-import type { AskedPrompt } from "@/lib/scene-ask"
+import type { PendingAsk } from "@/lib/scene-ask"
 import { sceneAsks } from "@/lib/scene-ask"
 import { phoneSceneVoice } from "@/lib/scene-voice"
 import { reflections } from "@/lib/session-reflection"
@@ -111,7 +111,7 @@ export function letGoHeldReflections(sent: Sent): void {
 export function promptsGoing(
   pairing: string,
   storage: KeyedStorage | null
-): Array<AskedPrompt> {
+): Array<PendingAsk> {
   return promptsToSend(sceneAsks.kept(), readSent(storage, pairing))
 }
 

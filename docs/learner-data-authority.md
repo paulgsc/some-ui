@@ -873,13 +873,14 @@ What no test can say is where a reflection goes once an allowed module holds it:
 
 ### LA18: an ask for the next scene goes home through the drain alone, and the phone lets it go only once home holds it
 
-LA17 is left to HF5 (#2180), in flight beside this. Home keeps every ask
-(paulgsc/server `drama_prompt`, its `docs/identity.md` invariant 31), one per
-stamp, append-only, and hands its stamp and markdown to the Jobs mailbox's
-`prompt` folder, from which the reflections routine writes the drama (owner,
-D2 on #2174). The scene notes an ask names go home as voice notes (LA13), so
+Home keeps every ask (paulgsc/server `drama_prompt`, its `docs/identity.md`
+invariant 31), one per stamp, append-only, and hands its stamp and markdown to
+the Jobs mailbox's `prompt` folder, from which the reflections routine writes
+the drama (owner, D2 on #2174). The scene notes an ask names go home as voice notes (LA13), so
 the ask carries only their ids. The phone keeps every ask home does not hold,
-with no limit, so it never refuses one for lack of a cap (`lib/scene-ask`).
+with no limit, so it never refuses one for lack of a cap, and never replaces
+one: an ask with a kept stamp is refused (`lib/scene-ask`). Of the newest ask
+home holds it keeps only the stamp and time the screen names.
 
 What is enforced by test: that an ask goes as its stamp and markdown, each
 once, counts as home's only on an answer that holds it exactly as sent, and
@@ -888,8 +889,9 @@ leaves a bounded fingerprint in `sent.prompts`
 the reflections, remembers what home held and lets go only through its port,
 even when home stops answering partway (`drain.test.ts`, "the drain's asks
 for the next scene"); that the store keeps every ask home does not hold, lets
-one go only once it is held and a newer one is kept, and says where it is in
-the person's terms (`lib/scene-ask/index.test.ts`); that topik names the
+one go only once it is held and a newer one is kept, refuses one with a kept
+stamp, and says where it is in the person's terms
+(`lib/scene-ask/index.test.ts`); that topik names the
 draft's notes by id, hands the ask over and says what the host says
 (`generate-lesson/index.test.tsx`, `handheld-lesson/index.test.tsx`); and that
 a scene note goes only once `prompted` and held (`lib/scene-voice`'s
@@ -906,21 +908,22 @@ a scene note goes only once `prompted` and held (`lib/scene-voice`'s
   `heldPrompts` reads from what home answered (`sent.prompts`): it marks
   their notes `prompted` before it tells the store they are `held`, and the
   store (`afterHeld`, `afterAsk`) drops only asks marked held, never the
-  newest.
+  newest, replaces none, and keeps of a held ask only its stamp and time.
 - _Falsified by:_ a hunk to `lib/home-link/prompts.ts`, or to `sendWhole`
   or `heldBy` in `lib/home-link/leetype-log.ts`, that sends anything but an
-  ask's stamp and text, by another method or path, or lets `held`
-  hear one home's answer does not hold exactly as sent, or stores more than
-  a bounded fingerprint in `sent.prompts`; a hunk to `lib/home-link/drain.ts`
-  that calls `sendPrompts` or `letGoHeldPrompts` from anywhere else, passes
-  `letGoHeldPrompts` anything but the run's own `sent`, or moves the call out
-  of the `finally`; a hunk to `lib/home-link/going.ts` that has
+  ask's stamp and text, sends one marked held, sends by another method or
+  path, lets `held` hear one home's answer does not hold exactly as sent, or
+  stores more than a bounded fingerprint in `sent.prompts`; a hunk to
+  `lib/home-link/drain.ts` that calls `sendPrompts` or `letGoHeldPrompts`
+  from anywhere else, passes `letGoHeldPrompts` anything but the run's own
+  `sent`, or moves the call out of the `finally`; a hunk to `lib/home-link/going.ts` that has
   `letGoHeldPrompts` mark notes `prompted` or call `sceneAsks.held` with
   anything but `heldPrompts` over the store's own list and that `sent`, or
   tell the store before marking the notes; a hunk that calls
   `sceneAsks.held`, or a scene voice's `prompted`, anywhere but there; a
   hunk to `lib/scene-ask/index.ts` that lets `afterHeld` or `afterAsk` drop
-  an ask not marked held, or the newest, gives the list a limit, or sends;
+  or replace an ask not marked held, or drop the newest, keeps more of a
+  held ask than its stamp and time, gives the list a limit, or sends;
   or a hunk that passes an ask, or its text, to anything else that sends to
   `file_host` or to a share sheet.
 - _Scope:_ `apps/www/src/lib/scene-ask/index.ts`,

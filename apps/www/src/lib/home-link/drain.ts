@@ -28,7 +28,7 @@ import {
   FileHostNotConfiguredError,
   FileHostResponseError,
 } from "@/lib/file-host-config/client"
-import type { AskedPrompt } from "@/lib/scene-ask"
+import type { PendingAsk } from "@/lib/scene-ask"
 import type { CopyResult } from "@/lib/tenant/sessions-copy"
 import { SessionNotFoundError } from "@/lib/tenant/sessions-repository"
 import type { SessionRecord } from "@/lib/tenant/types"
@@ -74,7 +74,7 @@ export type DrainPorts = {
    */
   letGoHeld: (sent: Sent) => void
   /** The asks for the next scene home lacks under `pairing` (`./going`). */
-  promptsGoing: () => ReadonlyArray<AskedPrompt>
+  promptsGoing: () => ReadonlyArray<PendingAsk>
   /**
    * Lets go of the asks `sent` says home holds, and marks the scene notes
    * they named as carried by them (`./going`'s `letGoHeldPrompts`).

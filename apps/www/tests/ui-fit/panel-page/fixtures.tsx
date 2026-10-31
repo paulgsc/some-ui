@@ -71,9 +71,10 @@ const noop = (): void => undefined
 
 /**
  * An ask home holds: the longest line the ask shows under its button
- * (`lib/scene-ask`'s `ASK_WORDS.held`, which is phone-only).
+ * (`lib/scene-ask`'s `ASK_WORDS.held`, which is phone-only, so this is a
+ * copy; `lib/scene-ask/index.test.ts` holds it to the original).
  */
-const FIT_HELD = {
+export const FIT_HELD = {
   said: "Home has your ask from Oct 31, 9:15 AM. Home's morning routine writes the scene, and it comes back to your list.",
   held: true,
 }

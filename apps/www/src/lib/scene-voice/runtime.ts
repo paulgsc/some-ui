@@ -31,7 +31,7 @@ import { SCENE_NOTES_MAX } from "./budget"
 /**
  * A note as the phone keeps it: topik's, when it was kept (ISO 8601; a note
  * kept before the phone noted that has none), and whether an ask home holds
- * carried it (before HF4, a shared drama prompt).
+ * carried it.
  */
 export type KeptSceneNote = SceneNote & {
   readonly at?: string
