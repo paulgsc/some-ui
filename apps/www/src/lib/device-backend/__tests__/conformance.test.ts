@@ -87,8 +87,6 @@ describe("device backend conformance", () => {
       expect.arrayContaining([
         "shelf.list",
         "shelf.keep_refused",
-        "leetype.manifest",
-        "leetype.runs",
         "push.vapid_key",
       ])
     )

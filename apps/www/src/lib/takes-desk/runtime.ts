@@ -8,6 +8,9 @@
  *   each at most `limits.maxMs`. At the most a new take is refused and
  *   `full` says so; takes leave only by `letGo`, once the learner says an
  *   export carrying them arrived.
+ * - **Every take's end is said.** `ended` names how each take ended and the
+ *   line it was started on, apart from `reset`'s hush, so a caller that
+ *   moved on still hears that a take it left was kept or lost.
  * - **The last take is the item's.** `reset` forgets it, so the next item
  *   starts with none; a take still being kept when that happens is kept, but
  *   is not the next item's last. `kept` names every take kept, for the
@@ -19,7 +22,9 @@ import type {
   BlobShelf,
   Playback,
   Player,
+  RecordingFailure,
   StartRecording,
+  VoiceNoteOutcome,
 } from "@some-ui/voice-capture"
 import {
   shelveTake,
@@ -61,8 +66,31 @@ export type TakesPorts = {
   newId: () => string
 }
 
+/**
+ * How a take ended, whatever `reset` has hushed since: every take that
+ * starts ends in exactly one, `seq` counting them. `none` is a take let go
+ * before the microphone opened; `blocked` one the microphone refused, why in
+ * the snapshot's `blocked`.
+ */
+type TakeEnded = {
+  readonly seq: number
+  /** What the take was started on (`start`'s `reading`). */
+  readonly line: string
+  readonly end: VoiceNoteOutcome | "blocked" | "none"
+  /** The kept take's id, when `end` is `kept`. */
+  readonly id: string | null
+}
+
+export type DeskSnapshot = LensTakeSnapshot & {
+  /** The last take to end, never hushed. */
+  readonly ended: TakeEnded | null
+  /** Why the microphone refused the last take, while it is refused. */
+  readonly blocked: RecordingFailure | null
+}
+
 /** The port, and the export's hand-off (`takesDesk`'s `letGo`). */
-export type PhoneTakes = LensTakes & {
+export type PhoneTakes = Omit<LensTakes, "getSnapshot"> & {
+  getSnapshot: () => DeskSnapshot
   /** These went out in an export the learner says arrived: they leave. */
   letGo: (ids: ReadonlyArray<string>) => void
 }
@@ -119,7 +147,10 @@ export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
     { minMs: SOUNDBITE_MIN_MS, maxMs: limits.maxMs }
   )
 
-  const snapshotOf = (): LensTakeSnapshot => {
+  let ended: TakeEnded | null = null
+  let busy = false
+
+  const snapshotOf = (): DeskSnapshot => {
     const state = note.getSnapshot()
     return {
       take: takeView(state),
@@ -128,6 +159,8 @@ export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
       kept,
       playing: playback !== null,
       full: full(),
+      ended,
+      blocked: state.kind === "blocked" ? state.reason : null,
     }
   }
   let snapshot = snapshotOf()
@@ -135,7 +168,22 @@ export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
     snapshot = snapshotOf()
     for (const listener of listeners) listener()
   }
-  note.subscribe(publish)
+  note.subscribe(() => {
+    // A take ends when the note leaves taking or saving, however it ends.
+    const state = note.getSnapshot()
+    const now = state.kind === "taking" || state.kind === "saving"
+    if (busy && !now) {
+      const end = state.kind === "blocked" ? "blocked" : (state.last ?? "none")
+      ended = {
+        seq: (ended?.seq ?? 0) + 1,
+        line: taking.line,
+        end,
+        id: end === "kept" ? (kept?.id ?? null) : null,
+      }
+    }
+    busy = now
+    publish()
+  })
 
   const stopPlayback = (): void => {
     playRequest += 1

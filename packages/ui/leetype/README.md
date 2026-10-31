@@ -136,3 +136,13 @@ source → AST → concept extraction → evidence graph → difficulty estimati
 with everything left of the last arrow deferred out of M20. The acceptance
 test for the real pipeline is narrow: _it emits what the shim emits._ Nothing
 outside that module imports the seed data, so replacing it touches one file.
+
+## The weekly review
+
+[`REVIEW-ROUTINE.md`](./REVIEW-ROUTINE.md) is the instructions of the
+scheduled task that reads, each week, how the phone's sessions went (their
+logs, from the mailbox's `leetype-log` folder) and what the owner said in
+their spoken answers (from Drive), and writes an assessment to Drive's
+`LeetType/reviews/` (some-ui#1927). Its one checker is
+`pnpm --filter @some-ui/leetype lint:session-file <file>`, for the session
+files it may write once four weeks' reviews exist.

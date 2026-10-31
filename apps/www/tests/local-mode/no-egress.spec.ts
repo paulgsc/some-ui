@@ -45,17 +45,14 @@ const LOCAL_ROUTES = [
 
 /**
  * What a request may be, in local mode, to reach `file_host`: a GET of a
- * lesson, round or run. Everything else on the server carries a learner's
- * state or an operator's.
+ * lesson. Everything else on the server carries a learner's state or an
+ * operator's.
  */
 function isCorpusRead(r: Received): boolean {
   if (r.method !== "GET") return false
   const path = r.path.split("?")[0] ?? ""
   if (path.includes("/operator/")) return false
-  return (
-    path.startsWith("/api/v1/curriculum/") ||
-    path.startsWith("/api/v1/leetype/rounds")
-  )
+  return path.startsWith("/api/v1/curriculum/")
 }
 
 const LEARNER_STATE =

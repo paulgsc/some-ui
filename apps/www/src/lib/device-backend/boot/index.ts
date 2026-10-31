@@ -28,14 +28,17 @@ async function open(): Promise<DeviceBackend> {
     { openCapacitorSqlite },
     { openDeviceBackend },
     { installNativeLog, writeNativeLog },
+    { installFailureLog },
   ] = await Promise.all([
     import("@/lib/device-backend/capacitor-sqlite"),
     import("@/lib/device-backend/backend"),
     import("@/lib/native-log"),
+    import("@/lib/failure-log"),
   ])
-  // Again here (it is idempotent), so it is in before the database even if
-  // boot's own import has not landed yet.
+  // Again here (each is idempotent), so both are in before the database even
+  // if boot's own imports have not landed yet.
   installNativeLog()
+  installFailureLog()
   const backend = await openDeviceBackend(await openCapacitorSqlite())
   writeNativeLog(DEVICE_STORAGE_OPENED)
   return backend
@@ -72,9 +75,10 @@ export function deviceFileHostBase(): URL | undefined {
 }
 
 /**
- * Installs the device backend in the device build, and its native log, so a
- * failure any native API reports reaches it from the start, not only from
- * the first database request; a no-op in any other build.
+ * Installs the device backend in the device build, and its native log and
+ * kept failure log, so a failure any native API reports reaches both from
+ * the start, not only from the first database request; a no-op in any other
+ * build.
  */
 export function bootDeviceBackend(): void {
   if (
@@ -84,6 +88,9 @@ export function bootDeviceBackend(): void {
     return
   void import("@/lib/native-log").then(({ installNativeLog }) =>
     installNativeLog()
+  )
+  void import("@/lib/failure-log").then(({ installFailureLog }) =>
+    installFailureLog()
   )
   void import("@/lib/device-backend/storage").then(
     ({ ANDROID_BACKUP_BUDGET, roomOn }) =>

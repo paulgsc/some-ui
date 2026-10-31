@@ -9,8 +9,9 @@ import {
 import type { SpokenAnswer } from "@leetype/lib/leetype/incident-play"
 import type { SpokenTakeSnapshot } from "@leetype/lib/leetype/spoken-take"
 import type { SessionScreen } from "@leetype/types/session-file"
+import { rubricText } from "@leetype/types/session-file"
 import { assertNever } from "@some-ui/core-utils"
-import { Button, Label, Textarea } from "@some-ui/shared"
+import { Button, HoldButton, Label, Textarea } from "@some-ui/shared"
 import { Mic } from "lucide-react"
 
 type RecordScreen = Extract<SessionScreen, { type: "record" }>
@@ -87,13 +88,13 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
           {answered(spoken)}
         </p>
         {spoken.as === "passed" ? (
-          <RubricPoints rubric={screen.rubric} />
+          <RubricPoints rubric={rubricText(screen)} />
         ) : (
           <fieldset className="flex flex-col gap-2">
             <legend className="text-sm font-medium text-foreground">
               Tick what your answer said
             </legend>
-            {screen.rubric.map((point, index) => (
+            {rubricText(screen).map((point, index) => (
               <div
                 key={`${String(index)} ${point}`}
                 className="flex items-start gap-2"
@@ -144,18 +145,17 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
       )}
       {take !== null && !typing && (
         <div className="flex flex-col gap-2">
-          <Button
+          <HoldButton
             size="lg"
-            className="h-auto min-h-14 touch-none select-none"
+            className="h-auto min-h-14"
             disabled={full}
-            onPointerDown={onRecordStart}
-            onPointerUp={onRecordStop}
-            onPointerCancel={onRecordStop}
-            onPointerLeave={take.recording ? onRecordStop : undefined}
+            holding={take.recording}
+            onHold={onRecordStart}
+            onRelease={onRecordStop}
           >
             <Mic aria-hidden />
             {take.recording ? "Recording… let go to stop" : "Hold to record"}
-          </Button>
+          </HoldButton>
           {take.said !== null && (
             <p
               role="status"

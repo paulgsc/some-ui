@@ -165,17 +165,11 @@ export function onSaveRefused(listener: RefusalListener): () => void {
   return () => refusals.delete(listener)
 }
 
-/** Removals the person did not ask for and has not been shown. */
+/**
+ * Removals the person did not ask for and has not been shown. No writer; a
+ * notice already noted is shown once.
+ */
 export type PruneNotice = { rounds: number }
-
-export async function notePruned(db: SqlDriver, rounds: number): Promise<void> {
-  if (rounds === 0) return
-  await db.run(
-    `INSERT INTO device_storage_notice (id, rounds) VALUES (1, ?)
-     ON CONFLICT(id) DO UPDATE SET rounds = device_storage_notice.rounds + excluded.rounds`,
-    [rounds]
-  )
-}
 
 export async function readPruneNotice(
   db: SqlDriver

@@ -58,6 +58,7 @@
     "@some-ui/playoff-delta": "workspace:*",
     "@some-ui/react-hooks": "workspace:*",
     "@some-ui/resume": "workspace:*",
+    "@some-ui/rust-rounds": "workspace:*",
     "@some-ui/shared": "workspace:*",
     "@some-ui/soundbites": "workspace:*",
     "@some-ui/speech": "workspace:*",

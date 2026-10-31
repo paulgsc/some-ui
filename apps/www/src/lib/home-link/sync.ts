@@ -1,7 +1,7 @@
 /**
  * The sync from home as one call for the Home server block: through the
  * link's stoppable `get`, with what happened said in a line. Published
- * lessons and rounds only, read with no credential (LA8).
+ * lessons and dramas only, read with no credential (LA8).
  */
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 

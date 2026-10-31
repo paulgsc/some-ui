@@ -18,7 +18,7 @@ import { FolderOpen, Mic, Square } from "lucide-react"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import type { JobsSnapshot } from "@/lib/jobs"
-import { copyText, phoneJobs } from "@/lib/jobs"
+import { phoneJobs } from "@/lib/jobs"
 import { isFile } from "@/lib/jobs/files"
 import type { JourneyContext } from "@/lib/jobs/journey"
 import { unconfirmedShare } from "@/lib/jobs/journey"
@@ -58,30 +58,6 @@ export function builderHref(
     template: sends.template,
     pick: id,
   }).toString()}`
-}
-
-export const CopyButton = ({
-  text,
-  what,
-}: {
-  text: string
-  what: string
-}): JSX.Element => {
-  const copy = useAsyncIntent(() => copyText(text), {
-    presentation: "interactive",
-  })
-  return (
-    <IntentButton
-      state={copy.state}
-      onPress={() => copy.start(undefined)}
-      variant="outline"
-      size="sm"
-      idleLabel="Copy"
-      workingLabel="Copying…"
-      succeededLabel="Copied"
-      title={`Copy ${what}`}
-    />
-  )
 }
 
 /** Toggle chips: each pressed or not, in the order given. */

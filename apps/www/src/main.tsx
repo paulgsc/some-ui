@@ -15,6 +15,7 @@ import { listenForNoticeTaps } from "@/lib/jobs/notice-native"
 import { sweepLeetypeTakes } from "@/lib/leetype-takes"
 import { sweepLensTakes } from "@/lib/lens-takes"
 import { sweepOrphans } from "@/lib/reflection-voice"
+import { sweepRustRoundsNotes } from "@/lib/rust-rounds"
 import { sweepSceneVoice } from "@/lib/scene-voice"
 import { installShareSidecar } from "@/lib/share-files"
 import { releasePushWhenLeavingTheAccount } from "@/lib/study-nudge/leave-account"
@@ -45,12 +46,13 @@ import.meta.glob(
 // before the app renders and anything issues a request. A no-op elsewhere.
 bootDeviceBackend()
 
-// Voice reflections, scene notes, grammar-lens takes and LeetType takes, and
-// their audio, each without the other.
+// Voice reflections, scene notes, grammar-lens takes, LeetType takes and Rust
+// Rounds' notes, and their audio, each without the other.
 if (import.meta.env.VITE_DEVICE_BACKEND === "true") {
   sweepOrphans()
   sweepLensTakes()
   sweepLeetypeTakes()
+  sweepRustRoundsNotes()
   sweepSceneVoice()
   installShareSidecar(driveFiling())
 }
