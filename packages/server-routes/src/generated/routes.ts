@@ -60,8 +60,6 @@ export type ServerRoute =
   | "/api/v1/sessions/:id"
   | "/api/v1/sessions/:id/duplicate"
   | "/api/v1/sessions/status"
-  | "/api/v1/sharing"
-  | "/api/v1/sharing/:scope"
   | "/api/v1/shelf/:activity"
   | "/api/v1/shelf/:activity/:key"
   | "/api/v1/signals"
