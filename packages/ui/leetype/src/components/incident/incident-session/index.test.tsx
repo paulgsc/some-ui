@@ -289,14 +289,15 @@ describe("IncidentSession", () => {
 
     const take = FILE.screens.s15
     if (take?.type !== "record") throw new Error("s15 is not a take")
+    const rubric = rubricText(take)
     // The rubric is not shown before an answer (Ax. 9.2).
-    expect(screen.queryByText(rubricText(take)[0] ?? "")).toBeNull()
+    expect(screen.queryByText(rubric[0] ?? "")).toBeNull()
     fireEvent.change(screen.getByLabelText("Your answer, typed"), {
       target: { value: "The OK came before a majority held it." },
     })
     fireEvent.click(screen.getByRole("button", { name: "Done" }))
-    fireEvent.click(screen.getByLabelText(rubricText(take)[0] ?? ""))
-    fireEvent.click(screen.getByLabelText(rubricText(take)[3] ?? ""))
+    fireEvent.click(screen.getByLabelText(rubric[0] ?? ""))
+    fireEvent.click(screen.getByLabelText(rubric[3] ?? ""))
     fireEvent.click(screen.getByRole("button", { name: "Done" }))
 
     expect(log.getSnapshot().log).toContainEqual(
@@ -305,7 +306,7 @@ describe("IncidentSession", () => {
         screen: "s15",
         answer: {
           as: "typed",
-          ticks: [rubricText(take)[0], rubricText(take)[3]],
+          ticks: [rubric[0], rubric[3]],
           strong: true,
         },
       })
@@ -396,11 +397,12 @@ describe("IncidentSession", () => {
 
     const take = FILE.screens.s15
     if (take?.type !== "record") throw new Error("s15 is not a take")
+    const rubric = rubricText(take)
     render(<IncidentSession fileName="t1-01" file={FILE} ports={{ log }} />)
     fireEvent.click(
       screen.getByRole("button", { name: "Show what a good answer says" })
     )
-    expect(screen.getByText(rubricText(take)[0] ?? "")).toBeTruthy()
+    expect(screen.getByText(rubric[0] ?? "")).toBeTruthy()
     fireEvent.click(screen.getByRole("button", { name: "Say it again" }))
     expect(screen.getByText(take.prompt)).toBeTruthy()
   })
@@ -455,8 +457,9 @@ describe("IncidentSession", () => {
 
     const take = FILE.screens.s15
     if (take?.type !== "record") throw new Error("s15 is not a take")
+    const rubric = rubricText(take)
     fireEvent.click(screen.getByRole("button", { name: "Pass" }))
-    expect(screen.getByText(rubricText(take)[0] ?? "")).toBeTruthy()
+    expect(screen.getByText(rubric[0] ?? "")).toBeTruthy()
     expect(screen.queryByRole("checkbox")).toBeNull()
     fireEvent.click(screen.getByRole("button", { name: "Continue" }))
     expect(log.getSnapshot().log).toContainEqual(

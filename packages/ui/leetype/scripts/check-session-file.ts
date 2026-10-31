@@ -58,7 +58,7 @@ function check(file: string): { parsed: SessionFile | null; problems: number } {
     .map(([id]) => id)
   if (unknown.length > 0) {
     console.log(
-      `${file}: coverage unknown: no rubric point of ${unknown.join(", ")} says which rounds it covers (\`covers\`), so each is read as covering every round parked in its session (Rem. 11.10).`
+      `${file}: coverage unknown: no rubric point of ${unknown.join(", ")} says which rounds it covers (\`covers\`), so each is read as covering every round of the file still parked when it is shown (Rem. 11.10).`
     )
   }
   return { parsed: parsed.data, problems: findings.length }

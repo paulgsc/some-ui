@@ -182,12 +182,13 @@ const unhurried = (answer: Answer): boolean =>
   answer.response === "correct" && !answer.slow
 
 /**
- * Which rounds had their answer shown since their last struggle, by a
- * take's rubric (`rubric-shown`) or their worked confirmation
- * (`confirmation-taken`) (Rem. 9.5, Rem. 11.10, promise LTY1): fed every
- * event in order, it answers for a return whether it is assisted. A
- * struggled pick of the round, first or replayed, starts it afresh; it
- * comes before the reveal's confirmation and the park.
+ * Which rounds had their answer shown since their last struggle (Rem. 9.5,
+ * Rem. 11.10, promise LTY1): by a take's rubric (`rubric-shown`), their
+ * worked confirmation taken (`confirmation-taken`), or the confirmation a
+ * correct, unhurried pick or return reveals unasked. Fed every event in
+ * order, it answers for a return whether it is assisted; ask before feeding
+ * the return itself. A struggle on the round, a pick or a return, starts
+ * it afresh; a confirmation taken on that struggle's reveal comes after it.
  */
 class Assistance {
   private readonly shown = new Set<string>()
@@ -195,8 +196,10 @@ class Assistance {
   see(event: SessionEvent): void {
     if (event.type === "rubric-shown" || event.type === "confirmation-taken") {
       this.shown.add(keyOf(event.file, event.screen))
-    } else if (event.type === "picked" && !unhurried(event.answer)) {
-      this.shown.delete(keyOf(event.file, event.screen))
+    } else if (event.type === "picked" || event.type === "returned") {
+      const key = keyOf(event.file, event.screen)
+      if (unhurried(event.answer)) this.shown.add(key)
+      else this.shown.delete(key)
     }
   }
 
@@ -268,6 +271,15 @@ export function ledgerOf(log: SessionLog, session: string): SessionLedger {
     saved: [...saved.values()],
     spoken,
   }
+}
+
+/**
+ * What waits on a reading now, across every session in `log`: the ledger's
+ * `parked` as of the log's last event, whichever session it is in.
+ */
+export function parkedNow(log: SessionLog): SessionLedger["parked"] {
+  const last = byTime(log).at(-1)
+  return last === undefined ? [] : ledgerOf(log, last.session).parked
 }
 
 type Of<T extends SessionEvent["type"]> = Extract<SessionEvent, { type: T }>
@@ -343,7 +355,6 @@ export function summariesOf(log: SessionLog): Array<SessionSummary> {
   const assisted = new Assistance()
   for (const event of ordered) {
     const summary = sessions.get(event.session)
-    assisted.see(event)
     switch (event.type) {
       case "started": {
         sessions.set(event.session, {
@@ -436,6 +447,8 @@ export function summariesOf(log: SessionLog): Array<SessionSummary> {
         assertNever(event)
       }
     }
+    // After the switch: a return is judged by what was shown before it.
+    assisted.see(event)
   }
   return [...sessions.values()]
 }

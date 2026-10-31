@@ -102,15 +102,16 @@ const ChoiceScreenSchema = z.strictObject({
 
 /**
  * One point a good spoken answer hits: its text, or its text with the rounds
- * whose answer it states (`covers`, canon Rem. 11.10). Showing the rubric
- * shows those rounds' answers, so a return after it is assisted (Rem. 9.5).
- * `lib/leetype/session-file`'s lint checks each id names a round of the file.
+ * whose answer it states (`covers`, `[]` for none; canon Rem. 11.10).
+ * Showing the rubric shows those rounds' answers, so a return after it is
+ * assisted (Rem. 9.5). `lib/leetype/session-file`'s lint checks each id
+ * names a round of the file.
  */
 const RubricPointSchema = z.union([
   z.string().min(1),
   z.strictObject({
     text: z.string().min(1),
-    covers: z.array(ScreenIdSchema).optional(),
+    covers: z.array(ScreenIdSchema),
   }),
 ])
 
@@ -120,11 +121,22 @@ type RubricPoint = z.infer<typeof RubricPointSchema>
 const pointText = (point: RubricPoint): string =>
   typeof point === "string" ? point : point.text
 
-/** The rounds `point` says it covers, or undefined when it says nothing. */
-export const pointCovers = (
-  point: RubricPoint
-): ReadonlyArray<string> | undefined =>
-  typeof point === "string" ? undefined : point.covers
+/**
+ * A rubric's points are all text, its coverage unknown, or all say what
+ * they cover: never half of each, which would cover less than it states.
+ */
+const RubricSchema = z
+  .array(RubricPointSchema)
+  .min(1)
+  .refine(
+    (points) =>
+      points.every((point) => typeof point === "string") ||
+      points.every((point) => typeof point !== "string"),
+    {
+      message:
+        "a rubric's points are all text or all say what they cover (`covers`, `[]` for none); never a mix (Rem. 11.10)",
+    }
+  )
 
 /** A spoken answer: the rubric is shown only after recording (Ax. 9.2). */
 const RecordScreenSchema = z.strictObject({
@@ -132,7 +144,7 @@ const RecordScreenSchema = z.strictObject({
   type: z.literal("record"),
   prompt: z.string().min(1),
   maxSeconds: z.number().int().positive(),
-  rubric: z.array(RubricPointSchema).min(1),
+  rubric: RubricSchema,
   weakIfFewerThan: z.number().int().nonnegative(),
   next: ScreenIdSchema,
   onWeak: ScreenIdSchema.optional(),
@@ -173,14 +185,15 @@ export const rubricText = (screen: RecordScreen): Array<string> =>
 
 /**
  * The rounds whose answer `screen`'s rubric states (Rem. 11.10): the union
- * of its points' `covers` when any point says one, a point without it then
- * covering none; null when none does, coverage unknown, which the player
- * reads as every round parked in the session that shows it.
+ * of its points' `covers`; null when its points are text, coverage unknown,
+ * which the player reads as every round of the file still parked when the
+ * rubric is shown.
  */
 export function rubricCovers(screen: RecordScreen): Array<string> | null {
-  const said = screen.rubric.map(pointCovers)
-  if (said.every((covers) => covers === undefined)) return null
-  return [...new Set(said.flatMap((covers) => covers ?? []))]
+  const said = screen.rubric.flatMap((point) =>
+    typeof point === "string" ? [] : [point.covers]
+  )
+  return said.length === 0 ? null : [...new Set(said.flat())]
 }
 
 /** Every screen id a screen can lead to, in authored order. */

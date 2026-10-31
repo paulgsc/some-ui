@@ -347,10 +347,12 @@ describe("lintSessionFile", () => {
     ])
   })
 
-  it("reports a rubric covering what is not a round, or covering in part (Rem. 11.10)", () => {
-    const withTake = (rubric: ReadonlyArray<unknown>): SessionFile => {
-      const file = clean()
-      return SessionFileSchema.parse({
+  it("reports a rubric covering what is not a round, or a return (Rem. 11.10)", () => {
+    const withTake = (
+      rubric: ReadonlyArray<unknown>,
+      file: SessionFile = clean()
+    ): SessionFile =>
+      SessionFileSchema.parse({
         ...file,
         screens: {
           ...file.screens,
@@ -365,7 +367,6 @@ describe("lintSessionFile", () => {
           },
         },
       })
-    }
     // Known coverage naming a round, and unknown coverage, both pass.
     expect(
       lintSessionFile(
@@ -381,16 +382,10 @@ describe("lintSessionFile", () => {
       lintSessionFile(
         withTake([
           { text: "Three", covers: ["r1", "p1", "nowhere"] },
-          "Any two meet",
+          { text: "Any two meet", covers: [] },
         ])
       )
     ).toEqual([
-      {
-        code: "covers-partial",
-        screen: "t1",
-        message:
-          "some rubric points say which rounds they cover and others do not; give each a `covers` (`[]` for none), so the rubric's coverage is known (Rem. 11.10)",
-      },
       {
         code: "covers-not-a-round",
         screen: "t1",
@@ -404,6 +399,26 @@ describe("lintSessionFile", () => {
           'a rubric point covers "nowhere", which is not a round of this file',
       },
     ])
+
+    // A return, by `returnOf` or by its tag, is the round's, and never parks.
+    const returns = withReturns([undefined])
+    const round = returns.screens.r1
+    if (round?.type !== "choice") throw new Error("r1 is a choice")
+    returns.screens.again = {
+      ...round,
+      tags: ["parked-return"],
+      body: "Nine nodes; four may crash. How big is a quorum?",
+    }
+    const findings = lintSessionFile(
+      withTake([{ text: "Three", covers: ["r1-0", "again"] }], returns)
+    )
+    for (const id of ["r1-0", "again"]) {
+      expect(findings).toContainEqual({
+        code: "covers-not-a-round",
+        screen: "t1",
+        message: `a rubric point covers "${id}", which is a return; cover the round it returns`,
+      })
+    }
   })
 
   it.each([

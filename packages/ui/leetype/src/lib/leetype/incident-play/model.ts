@@ -35,8 +35,9 @@ import { assertNever, median } from "@some-ui/core-utils"
  *   reveal or a spoken answer's rubric (Prop. 9.6).
  * - A take's rubric states the answer of the rounds it covers, so showing
  *   it records `rubric-shown` for each (`rubricShown`, Rem. 11.10). A
- *   return after that or after the round's worked confirmation, until the
- *   round's next struggle, is assisted (`session-log`'s `summariesOf`).
+ *   return after that, after the round's worked confirmation, or after a
+ *   correct pick or return of it, whose reveal shows the confirmation,
+ *   until the round's next struggle, is assisted (`summariesOf`).
  */
 
 export type PlayForm = "full" | "short"
@@ -135,8 +136,6 @@ export type Play = {
   readonly spoken: SpokenAnswer | null
   /** Rounds played this session, returns aside: the short form plays one. */
   readonly rounds: number
-  /** Rounds parked this session, which a rubric with no `covers` covers. */
-  readonly parkedHere: ReadonlyArray<string>
   readonly ended: "declared" | "left" | null
 }
 
@@ -168,6 +167,11 @@ export type StepContext = {
    * view: it is not time the learner took to choose.
    */
   readonly hiddenMs: number
+  /**
+   * The screens of the file named still parked, by the log (`parkedNow`):
+   * what a rubric with no `covers` covers (Rem. 11.10).
+   */
+  readonly parked: (file: string) => ReadonlyArray<string>
 }
 
 export type Stepped = {
@@ -442,7 +446,6 @@ export function startPlay(
     asked: false,
     spoken: null,
     rounds: 0,
-    parkedHere: [],
     ended: null,
   }
   const started: SessionEvent = {
@@ -488,26 +491,30 @@ export function confirmationTaken(
 /**
  * A take's rubric shown (Def. 9.5: after the answer, or the pass): one
  * `rubric-shown` for each round it states the answer of (Rem. 11.10). Its
- * points' `covers` name them; a rubric whose points name none is read as
- * covering every round parked in the session showing it (`parkedHere`).
- * Whether a covered round was parked then is the log's to say: a return
- * is assisted only by a rubric shown since the round's last struggle.
+ * points' `covers` name them; a rubric of text alone is read as covering
+ * every round of the file still parked as it is shown (`parked`, the
+ * file's screens the log has parked). Whether a covered round was parked
+ * then is the log's to say: a return is assisted only by a rubric shown
+ * since the round's last struggle.
  */
 export function rubricShown(
   args: {
     readonly session: string
-    readonly file: string
+    readonly fileName: string
+    readonly file: SessionFile
     readonly take: string
     readonly screen: RecordScreen
-    readonly parkedHere: ReadonlyArray<string>
+    readonly parked: ReadonlyArray<string>
   },
   ctx: Pick<StepContext, "at" | "newId">
 ): Array<SessionEvent> {
-  const covered = rubricCovers(args.screen) ?? args.parkedHere
+  const covered =
+    rubricCovers(args.screen) ??
+    args.parked.filter((id) => isRoundId(args.file, id))
   return [...new Set(covered)].map((round) => ({
     ...stamp(args, ctx),
     type: "rubric-shown",
-    file: args.file,
+    file: args.fileName,
     screen: round,
     take: args.take,
   }))
@@ -525,10 +532,11 @@ function showRubric(
     events: rubricShown(
       {
         session: play.session,
-        file: play.fileName,
+        fileName: play.fileName,
+        file: play.file,
         take: play.screen,
         screen,
-        parkedHere: play.parkedHere,
+        parked: ctx.parked(play.fileName),
       },
       ctx
     ),
@@ -607,10 +615,8 @@ function carryOn(
           },
         ]
       : []
-  const parkedHere =
-    parks.length > 0 ? [...play.parkedHere, round] : play.parkedHere
   return arrive(
-    { ...play, parkedHere },
+    play,
     target,
     ctx,
     { round, as: reveal.struggled ? "placement" : "pointer" },

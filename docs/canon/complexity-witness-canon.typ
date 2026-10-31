@@ -1836,28 +1836,36 @@ superseded and kept.
   record that, and a correct return after the rubric solved the round. The
   same held for the round's own worked confirmation, which Rem. 9.5 names
   outright: the log recorded it (`confirmation-taken`) and no reader counted
-  it (`#2343`). The owner's decisions there (2026-10-30) record both:
+  it (`#2343`), and for the confirmation the phone reveals unasked after a
+  correct, unhurried pick or return. The owner's decisions there
+  (2026-10-30, amended 2026-10-31 on the pull request's review) record
+  them:
 
   - A rubric point may say which rounds it states the answer of, beside its
-    text: `covers`, a list of round ids of the same file (`[]` for none).
+    text: `covers`, a list of round ids of the same file (`[]` for none). A
+    rubric's points are all text or all say `covers`; a mix does not parse,
+    so a rubric's coverage is known or unknown, never half of each.
     `lib/leetype/session-file`'s lint reports an id that names no round of
-    the file (`covers-not-a-round`), and a rubric where some points say
-    `covers` and others do not (`covers-partial`), so a rubric's coverage is
-    known or unknown, never half of each.
-  - A rubric whose points say no `covers` is read as covering every round
-    parked in the session that shows it. Thread 1's five files were written
-    before the field, and their takes take two of three points from the
-    session's first round; they stay as filed, and `lint:session-file` lists
-    each such take without failing.
+    the file, or names a return, whose answer is its round's and which never
+    parks (`covers-not-a-round`).
+  - A rubric of text alone is read as covering every round of its file
+    still parked when it is shown, in whichever session it parked: a round
+    parks in one session and its take is often reached in the next. Thread
+    1's five files were written before the field, and their takes take two
+    of three points from the session's first round; they stay as filed, and
+    `lint:session-file` lists each such take without failing.
   - Whenever a take's rubric is shown, after its answer or its pass or as a
     parked take's worked confirmation (Prop. 9.4 (d)), the session log
     records `rubric-shown` for each round it covers. Rem. 11.7's funnel gains
     the event; nothing already recorded changes.
-  - A return is *assisted* when, since the round's last struggle, a rubric
-    covering it was shown or its worked confirmation was taken, on the
-    struggle's reveal or from the parked list. An assisted return solves
-    nothing: every report counts it as assisted, not solved, and records it
-    so.
+  - A return is *assisted* when, since the round's last struggle, its
+    answer was shown: by a rubric covering it, by its worked confirmation
+    taken on a struggle's reveal or from the parked list, or by the reveal
+    of a correct, unhurried pick or return of it, which shows the
+    confirmation unasked. A struggle is a struggled pick or a struggled
+    return (Def. 9.4), and a confirmation taken on its reveal comes after
+    it. An assisted return solves nothing: every report counts it as
+    assisted, not solved, and records it so.
   - The ledger screen (Prop. 10.2) and the parked list are the learner's way
     on, not a report: a correct, unhurried return unparks the round there,
     assisted or not, so the learner is not kept answering a round they
@@ -2064,10 +2072,11 @@ Definition, Axiom, Theorem, `CW-P`, `M` or `A` entry changes.
 *v1.5 --- 2026-10-31.* Rem. 11.10 reads what shows a parked round's answer
 as assistance to its return, under Rem. 9.5: a take's rubric covering the
 round (a rubric point may name the rounds it covers, `covers`, and the
-session log records `rubric-shown` when the rubric is shown) or the round's
-worked confirmation. An assisted return solves nothing in any report, and
-still takes the round off the ledger screen (`#2029`, `#2343`). No
-Definition, Axiom, Theorem, `CW-P`, `M` or `A` entry changes.
+session log records `rubric-shown` when the rubric is shown), the round's
+worked confirmation, or a correct replay or return's reveal. An assisted
+return solves nothing in any report, and still takes the round off the
+ledger screen (`#2029`, `#2343`). No Definition, Axiom, Theorem, `CW-P`, `M`
+or `A` entry changes.
 
 #pagebreak()
 

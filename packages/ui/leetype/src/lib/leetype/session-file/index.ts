@@ -6,7 +6,7 @@ import type {
   SessionFile,
   SessionScreen,
 } from "@leetype/types/session-file"
-import { edgesOf, pointCovers, rubricText } from "@leetype/types/session-file"
+import { edgesOf, rubricCovers, rubricText } from "@leetype/types/session-file"
 import { assertNever, mentionsWord } from "@some-ui/core-utils"
 
 /**
@@ -27,10 +27,10 @@ import { assertNever, mentionsWord } from "@some-ui/core-utils"
  * each response its options allow; `mismatched-return-for` names a response
  * its round cannot produce, or returns a screen that is not a round.
  * `covers-not-a-round` is a rubric point's `covers` naming a screen of the
- * file that is not a round, and `covers-partial` a rubric where some points
- * say what they cover and others do not (Rem. 11.10): a point that covers
- * no round says `covers: []`, so a rubric's coverage is known or unknown,
- * never half of each.
+ * file that is not a round, or a return (`returnOf`, or tagged
+ * `parked-return`), whose answer is the round's and which never parks
+ * (Rem. 11.10). A rubric mixing points that say `covers` with points that
+ * do not does not parse.
  *
  * Rem. 10.3 (5) spans files, so it is not here: `negativeDiscriminationGaps`
  * takes the whole set.
@@ -51,7 +51,6 @@ type SessionFileFindingCode =
   | "response-without-return"
   | "mismatched-return-for"
   | "covers-not-a-round"
-  | "covers-partial"
 
 export type SessionFileFinding = {
   readonly code: SessionFileFindingCode
@@ -80,6 +79,14 @@ function unregistered(id: string): string | null {
 export function isRound(screen: SessionScreen): screen is ChoiceScreen {
   return (
     screen.type === "choice" && screen.options.some((option) => option.correct)
+  )
+}
+
+/** A return: it names its round, or the player infers it from its tag. */
+function isReturn(screen: ChoiceScreen): boolean {
+  return (
+    screen.returnOf !== undefined ||
+    screen.tags?.includes("parked-return") === true
   )
 }
 
@@ -392,21 +399,19 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
     }
 
     if (screen.type === "record") {
-      const said = screen.rubric.map(pointCovers)
-      if (said.some((covers) => covers === undefined) && said.some(Boolean)) {
-        add(
-          "covers-partial",
-          id,
-          "some rubric points say which rounds they cover and others do not; give each a `covers` (`[]` for none), so the rubric's coverage is known (Rem. 11.10)"
-        )
-      }
-      for (const round of new Set(said.flatMap((covers) => covers ?? []))) {
+      for (const round of rubricCovers(screen) ?? []) {
         const target = file.screens[round]
         if (target === undefined || !isRound(target)) {
           add(
             "covers-not-a-round",
             id,
             `a rubric point covers "${round}", which is not a round of this file`
+          )
+        } else if (isReturn(target)) {
+          add(
+            "covers-not-a-round",
+            id,
+            `a rubric point covers "${round}", which is a return; cover the round it returns`
           )
         }
       }

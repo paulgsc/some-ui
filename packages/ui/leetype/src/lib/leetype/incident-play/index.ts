@@ -1,4 +1,5 @@
 import type { SessionLogStore } from "@leetype/lib/leetype/session-log"
+import { parkedNow } from "@leetype/lib/leetype/session-log/model"
 import type {
   SpokenTakes,
   SpokenTakeSnapshot,
@@ -151,7 +152,8 @@ export class IncidentPlayRuntime {
   /**
    * A parked round's worked confirmation, taken from the first screen or at
    * a round boundary. A take's is its rubric, so it is shown as one
-   * (`rubricShown`): over the rounds parked so far this session, if any.
+   * (`rubricShown`), over the file's rounds still parked when its points
+   * say no `covers`.
    */
   takeConfirmation = (
     fileName: string,
@@ -166,10 +168,11 @@ export class IncidentPlayRuntime {
         ? rubricShown(
             {
               session: this.session,
-              file: fileName,
+              fileName,
+              file,
               take: round,
               screen,
-              parkedHere: this.snapshot.play?.parkedHere ?? [],
+              parked: this.parkedOf(fileName),
             },
             ctx
           )
@@ -252,11 +255,18 @@ export class IncidentPlayRuntime {
     this.publish()
   }
 
+  /** The screens of `file` still parked, by the log. */
+  private readonly parkedOf = (file: string): Array<string> =>
+    parkedNow(this.ports.log.getSnapshot().log)
+      .filter((parked) => parked.file === file)
+      .map((parked) => parked.screen)
+
   private context(): Parameters<typeof step>[2] {
     const at = this.ports.now()
     return {
       at,
       newId: this.ports.newId,
+      parked: this.parkedOf,
       medianMs: medianSelectionMs(this.ports.log.getSnapshot().log),
       hiddenMs:
         this.hiddenTotal +

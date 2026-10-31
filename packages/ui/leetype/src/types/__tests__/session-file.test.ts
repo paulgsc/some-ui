@@ -153,6 +153,36 @@ describe("SessionFileSchema", () => {
       }),
       "it needs returnOf",
     ],
+    [
+      "a rubric point that is an object without `covers`",
+      minimal({
+        r1: {
+          type: "record",
+          prompt: "Why?",
+          maxSeconds: 60,
+          rubric: [{ text: "A majority" }],
+          weakIfFewerThan: 0,
+          next: "end",
+        },
+        end,
+      }),
+      "Invalid input",
+    ],
+    [
+      "a rubric that mixes text with points saying what they cover",
+      minimal({
+        r1: {
+          type: "record",
+          prompt: "Why?",
+          maxSeconds: 60,
+          rubric: ["Why", { text: "A majority", covers: [] }],
+          weakIfFewerThan: 0,
+          next: "end",
+        },
+        end,
+      }),
+      "never a mix",
+    ],
   ])("rejects %s", (_name, file, message) => {
     const result = SessionFileSchema.safeParse(file)
     expect(result.success).toBe(false)
@@ -184,10 +214,9 @@ describe("SessionFileSchema", () => {
     if (known?.type !== "record") throw new Error("r1 is a take")
     expect(rubricText(known)).toEqual(["A majority", "Why", "Said aloud"])
     expect(rubricCovers(known)).toEqual(["r0", "r2"])
-    const unknown = take(["A majority", { text: "Why" }])
+    const unknown = take(["A majority", "Why"])
     if (unknown?.type !== "record") throw new Error("r1 is a take")
     expect(rubricText(unknown)).toEqual(["A majority", "Why"])
     expect(rubricCovers(unknown)).toBeNull()
-    expect(() => take([{ text: "A majority", round: "r0" }])).toThrow()
   })
 })
