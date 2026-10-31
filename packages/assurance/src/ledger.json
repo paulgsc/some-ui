@@ -527,6 +527,121 @@
       ]
     },
     {
+      "id": "rust-rounds-recorded",
+      "name": "Rust Rounds' programs get run on home",
+      "why": "The phone puts a Rust Rounds round home; home queues each of its programs and, in the background, hands each to the sandboxed rust-runner and keeps what rustc printed, so a card can show a run made on home. Nothing on the phone fetches rounds or runs from home yet (RR4b, some-ui#2347).",
+      "paths": [
+        "server:apps/servers/file_host/src/rust_rounds",
+        "server:crates/db/rust_round",
+        "server:crates/rust_rounds_wire",
+        "server:crates/rust_runner"
+      ],
+      "modules": ["rust_rounds"],
+      "objectives": [
+        {
+          "id": "RC1",
+          "kind": "OA2",
+          "property": "outcome",
+          "claim": "Every program in a round home keeps gets a recorded run, or is kept as the one that took the runner down.",
+          "requirement": "Each distinct program a stored round holds is queued once, and a pass records it under the runner's toolchain. A runner that goes away while it holds a program is a drop, and the program is asked again on the next pass; at its DROPS (2)th drop it is kept as runner-restarted and never asked again under that toolchain, so the programs behind it are recorded. A runner that cannot be reached records nothing and keeps no drop: every program waits for the next pass, and each such pass is logged as an error and counted on operation_errors_total{operation=\"rust_rounds\"}.",
+          "verdict": "holds",
+          "conclusion": "Every program gets a run, or after two drops is kept as the one that took the runner down, and while the runner cannot be reached the programs wait and every pass says so; this holds while home has the recorder turned on (RUST_ROUNDS_ENABLED), and off, rounds are kept and their programs wait unrecorded.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A pass records every waiting program once, a second pass asks nothing, and a new toolchain records each program again.",
+              "ref": "server:apps/servers/file_host/src/rust_rounds/pass.rs"
+            },
+            {
+              "class": "measured",
+              "says": "A program the runner goes away holding is asked again, and at its second drop kept as runner-restarted; the program behind it is then recorded.",
+              "ref": "server:apps/servers/file_host/src/rust_rounds/pass.rs"
+            },
+            {
+              "class": "measured",
+              "says": "Five passes against a runner that is down record nothing and keep no drop; the next pass with it back records every program.",
+              "ref": "server:apps/servers/file_host/src/rust_rounds/pass.rs"
+            },
+            {
+              "class": "structural",
+              "says": "A pass that stops on the runner (unreachable, dropped, refused, or an answer that is not one) or on storage is logged at ERROR and added to operation_errors_total{operation=\"rust_rounds\"}; that it is counted is read from the code, not tested.",
+              "ref": "server:apps/servers/file_host/src/rust_rounds.rs"
+            }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/rust_rounds/pass.rs#a_stored_rounds_programs_are_recorded_by_the_runner_in_one_pass",
+            "server:apps/servers/file_host/src/rust_rounds/pass.rs#a_program_that_takes_the_runner_down_is_kept_as_that",
+            "server:apps/servers/file_host/src/rust_rounds/pass.rs#a_runner_that_is_down_leaves_every_program_waiting"
+          ],
+          "watch": {
+            "by": "alert",
+            "ref": "server:infra/grafana/provisioning/alerting/file-host-errors.yml"
+          },
+          "amendments": []
+        },
+        {
+          "id": "RC2",
+          "kind": "RE3",
+          "property": "work",
+          "claim": "A recording pass takes a bounded batch and stops at its deadline.",
+          "requirement": "One pass records at most BATCH (20) programs, one at a time, and starts an ask only while a whole ask's wait (ASK_TIMEOUT, 137 s) is left before the pass deadline (RUST_ROUNDS_PASS_DEADLINE_SECONDS, 600 by default and never under 137); any failure but a recording ends the pass, and the rest wait for the next.",
+          "verdict": "holds",
+          "conclusion": "A pass records at most 20 programs and starts no ask it could not wait out before its deadline, and the next pass takes the rest.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "Over 21 waiting programs a pass records exactly 20 and the next the last; a runner that hangs ends the pass at its ask's wait, and a pass with less than one ask's wait left asks nothing.",
+              "ref": "server:apps/servers/file_host/src/rust_rounds/pass.rs"
+            }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/rust_rounds/pass.rs#a_pass_is_bounded_by_its_batch_and_its_deadline"
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "RC3",
+          "kind": "RE9",
+          "property": "work",
+          "claim": "What Rust Rounds keeps on home grows by a stated model, and a round is kept until its account goes.",
+          "requirement": "Home keeps each round as the phone put it, at most 32 KiB, until its account is deleted, and each distinct program once, with one run per program and toolchain and at most DROPS (2) drops per program and toolchain, for good; nothing is rewritten, and its growth per round and per day is stated from measurement.",
+          "verdict": "unproven",
+          "conclusion": "Each round is at most 32 KiB and kept until its account goes, and each program, its run under each toolchain and at most two drops are kept for good; how fast they grow is not measured yet.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "All four tables refuse UPDATE; a round is deleted only by its account's deletion trigger, and a program, a run and a drop refuse DELETE.",
+              "ref": "server:migrations/20261031000100_create_rust_round.up.sql"
+            },
+            {
+              "class": "structural",
+              "says": "A round's body is refused above 32 KiB (ROUND_CEILING).",
+              "ref": "server:crates/db/rust_round/src/round.rs"
+            },
+            {
+              "class": "structural",
+              "says": "A run keeps the runner's answer, which is refused above 4 MiB (ANSWER_CEILING); the runner keeps at most 4 KiB of what a program printed on each stream.",
+              "ref": "server:crates/rust_rounds_wire/src/protocol.rs"
+            },
+            {
+              "class": "unknown",
+              "says": "Home samples every table's bytes once a day (storage_sample, server#551), but no round has reached home yet, so there is no growth to read.",
+              "ref": "server:docs/storage.md"
+            }
+          ],
+          "tracked": "some-ui#2266",
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/storage.jsonnet"
+          },
+          "amendments": []
+        }
+      ]
+    },
+    {
       "id": "game-feed",
       "name": "Home follows the games of the week",
       "why": "Home polls ESPN's public NFL feed in the background, keeping every answer and appending each game's plays to a log, so the phone's game-day bites can later be matched to the play they are about. No route serves it yet.",
@@ -2018,6 +2133,30 @@
       "growth": "Per browser that subscribed to web push (endpoint is the key); upserted; tiny rows.",
       "horizon": "deleted on the push service's 410 Gone or an unsubscribe (delete_by_endpoint); no time horizon",
       "family": "study-nudge"
+    },
+    {
+      "store": "server:rust_round",
+      "class": "record",
+      "growth": "Per Rust Rounds round a paired phone puts: its JSON byte for byte, <= ROUND_CEILING = 32 KiB, with its hash; one row per (subject, round id), never updated (another body under the id is refused); append-only; leaves with the account.",
+      "family": "rust-rounds-recorded"
+    },
+    {
+      "store": "server:rust_round_drop",
+      "class": "telemetry",
+      "growth": "Per program and toolchain the runner went away holding: one tiny row per drop, at most DROPS = 2; a runner that could not be reached leaves none; names no subject; append-only, kept for good.",
+      "family": "rust-rounds-recorded"
+    },
+    {
+      "store": "server:rust_round_run",
+      "class": "derived",
+      "growth": "Per program and toolchain: one row, recorded (the runner's answer, <= ANSWER_CEILING = 4 MiB, and what the phone reads of it) or runner-restarted; a toolchain bump adds one for every program; names no subject; append-only, kept for good.",
+      "family": "rust-rounds-recorded"
+    },
+    {
+      "store": "server:rust_round_source",
+      "class": "derived",
+      "growth": "Per distinct program any round holds (a read card's, or a variant card's as built), once by its SHA-256 and shared by every round and subject that holds it; each within its round's 32 KiB; names no subject; append-only, kept for good.",
+      "family": "rust-rounds-recorded"
     },
     {
       "store": "server:sessions",

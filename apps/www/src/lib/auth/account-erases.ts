@@ -58,6 +58,10 @@ export const ACCOUNT_ERASES = {
       text: "Each voice note your phone sent home, its sound included, and what home heard in it; for a game-day bite, also what it was about and what the screen showed as you said it.",
     },
     {
+      label: "Rust Rounds' rounds",
+      text: "Each round your phone put, as the tutor wrote it: its cards and programs, the voice notes a card brought back and the tutor's nudges. The programs and what rustc printed for them stay, since they say nothing about you.",
+    },
+    {
       label: "Studio's time log",
       text: "When each Studio screen was open in a sitting, and how each sitting went: what got in the way, and the scene you were on.",
     },
