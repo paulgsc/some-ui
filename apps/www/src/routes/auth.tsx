@@ -38,9 +38,6 @@ const PasskeyScreen = (): JSX.Element => {
   const [step, setStep] = useState<AuthFlowStep>("sign-in")
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // Once the server says it already has its owner's account, creating one
-  // can only fail again: the error says to sign in, beside the create card's
-  // own "Already have a passkey? Sign in", and nothing offers creating again.
   const [signupClosed, setSignupClosed] = useState(false)
   const supported = DATA_MODE === "static" || passkeysSupported()
 

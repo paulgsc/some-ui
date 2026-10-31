@@ -7,8 +7,7 @@ import { PasskeyCancelledError } from "@/lib/passkey"
 
 /**
  * Whether the server refused a new account because it already has its
- * owner's: once it does, signing in is the only way in, so the passkey
- * screen stops offering to create one.
+ * owner's: once it does, signing in is the only way in.
  */
 export function isSignupClosed(error: unknown): boolean {
   return (

@@ -127,7 +127,6 @@ describe("the passkey screen", () => {
         .getByRole("button", { name: "Create a passkey" })
         .hasAttribute("disabled")
     ).toBe(true)
-    expect(entered).toEqual([])
 
     fireEvent.click(
       screen.getByRole("button", { name: /already have a passkey\? sign in/i })

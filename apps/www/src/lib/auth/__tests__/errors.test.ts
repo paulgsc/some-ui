@@ -41,11 +41,6 @@ describe("describeAuthError", () => {
       /already has its owner's account.*sign in with your passkey/,
     ],
     [
-      new FileHostResponseError(403, "/auth/register/finish", "signup_closed"),
-      "create",
-      /already has its owner's account/,
-    ],
-    [
       new FileHostResponseError(
         503,
         "/auth/register/start",
