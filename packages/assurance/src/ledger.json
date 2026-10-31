@@ -1469,10 +1469,6 @@
       "why": "Study sessions in and out; each write answers with what it kept."
     },
     {
-      "module": "sharing",
-      "why": "Reads and sets what is shared; each answers with the setting kept."
-    },
-    {
       "module": "shelf",
       "why": "Kept records in and out; the phone reads each copy back (home-link)."
     },
