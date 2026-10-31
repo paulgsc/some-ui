@@ -2061,7 +2061,7 @@
     {
       "store": "server:mailbox_archive_answer",
       "class": "telemetry",
-      "growth": "Per ask home made the mailbox to drop a written reflection it archived that got an answer (archived/unchanged/mismatch/refused/gone): tiny rows, no key, append-only; one per reflection archived, as none is ever put back. An ask that heard none is made again, by name, on the next pass (paulgsc/server invariant 21).",
+      "growth": "Per ask home made the mailbox to drop a written reflection or a drama prompt it archived that got an answer (archived/unchanged/mismatch/refused/gone): tiny rows, no key, append-only; one per reflection or prompt archived, as none is ever put back (prompts since HF4, #2179). An ask that heard none is made again, by name, on the next pass (paulgsc/server invariant 21).",
       "family": "archive-restore"
     },
     {
@@ -2162,6 +2162,12 @@
       "store": "server:written_reflection",
       "class": "record",
       "growth": "Per written reflection the phone sends (a typed line, its session, when and how far in; paulgsc/server invariant 29), one row per id, append-only, body <= BODY_CEILING = 64 KiB, text <= 10,000 characters; each is filed once for the mailbox's reflection folder as it arrives.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:drama_prompt",
+      "class": "record",
+      "growth": "Per ask for the next scene the phone sends (its stamp and the prompt's markdown, about 40 KB; paulgsc/server invariant 31), one row per stamp, append-only, text <= MAX_TEXT_BYTES = 256 KiB; each is filed once for the mailbox's prompt folder as it arrives.",
       "family": "what-is-kept"
     },
     {
