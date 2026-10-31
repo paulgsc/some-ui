@@ -503,6 +503,9 @@ importers:
       '@some-ui/resume':
         specifier: workspace:*
         version: link:../../packages/ui/resume
+      '@some-ui/rust-rounds':
+        specifier: workspace:*
+        version: link:../../packages/ui/rust-rounds
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../../packages/ui/shared
@@ -1479,6 +1482,18 @@ importers:
       '@some-ui/core-utils':
         specifier: workspace:*
         version: link:../../core-utils
+      '@some-ui/shared':
+        specifier: workspace:*
+        version: link:../shared
+      lucide-react:
+        specifier: 'catalog:'
+        version: 0.562.0(react@19.2.8)
+      react:
+        specifier: ^19.2.0
+        version: 19.2.8
+      react-dom:
+        specifier: ^19.2.0
+        version: 19.2.8(react@19.2.8)
       zod:
         specifier: 'catalog:'
         version: 4.6.6
@@ -1489,6 +1504,9 @@ importers:
       '@some-ui/vite-config':
         specifier: workspace:*
         version: link:../../some-vite-config
+      '@types/react':
+        specifier: ^19.0.4
+        version: 19.2.17
 
   packages/ui/shared:
     dependencies:

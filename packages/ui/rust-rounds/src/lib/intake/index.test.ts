@@ -45,6 +45,7 @@ describe("intakeReply", () => {
       round: NEXT,
       notes: NEXT_NOTES,
       findings: [],
+      alreadyHeld: false,
     })
   })
 
@@ -62,6 +63,24 @@ describe("intakeReply", () => {
       round: INDEXING_01,
       notes: null,
       findings: [{ kind: "no-tutor-notes" }],
+      alreadyHeld: false,
+    })
+  })
+
+  it("takes the very round already held as held, even once played", () => {
+    expect(
+      intakeReply(JSON.stringify(INDEXING_01), WORKED_LOG, [INDEXING_01])
+    ).toMatchObject({ ok: true, alreadyHeld: true })
+  })
+
+  it("refuses another round under the id of one already held", () => {
+    const other = { ...INDEXING_01, cards: INDEXING_01.cards.slice(0, 2) }
+    const intake = intakeReply(JSON.stringify(other), NO_LOG, [INDEXING_01])
+    expect(intake).toMatchObject({
+      ok: false,
+      violations: [
+        'round id: "indexing-01" is a round already on the phone with other cards; give this round a new id, never reused.',
+      ],
     })
   })
 

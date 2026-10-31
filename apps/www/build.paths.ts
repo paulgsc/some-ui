@@ -118,6 +118,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/leetype-files/**",
   "apps/www/src/lib/leetype-takes/**",
   "apps/www/src/lib/reflection-voice/**",
+  "apps/www/src/lib/rust-rounds/**",
   "apps/www/src/lib/scene-voice/**",
   "apps/www/src/lib/session-archive/**",
   "apps/www/src/lib/share-files/**",
@@ -207,6 +208,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       ],
       profiles: [MOBILE_PROFILE],
       why: "the cut list's schemas, which the phone's Studio project reads and checks, its timing, which fits a scene to its take as Record keeps it, and a review render's review.json, which Watch reads (@some-ui/soundbites, lib/project and lib/studio): the web builds render no video and keep no project",
+    },
+    {
+      modules: ["packages/some-styles/src/theme/boundary.ts"],
+      profiles: [MOBILE_PROFILE],
+      why: "the theme boundary's helpers as @some-ui/shared's source reaches them: only the phone's code card opens one (Rust Rounds' `code` appearance, src/routes/_dashboard/_apk/rust-rounds.tsx). The web's activities bundle their own copy in their dist",
     },
     {
       modules: ["apps/www/src/lib/demo/**"],

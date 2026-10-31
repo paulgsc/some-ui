@@ -1724,6 +1724,31 @@
       "family": "routine-to-home"
     },
     {
+      "store": "phone:rust-rounds-held",
+      "class": "record",
+      "growth": "Per round taken from a tutor's reply (a few KB of cards), each version of the tutor notes taken with one, and one recorded rustc run per card home records (RR3); only added to, never rewritten or dropped; no cap (`some-ui:rust-rounds.held`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:rust-rounds-log",
+      "class": "record",
+      "growth": "Per card played in Rust Rounds: one event (pick, note id, rustc's recorded run as printed, up to ~4 KB), and per pin; append-only, nothing logged is rewritten; no cap until RR7 (#2238) keeps it on home (`some-ui:rust-rounds.log`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:rust-rounds-notes",
+      "class": "record",
+      "growth": "Per Rust Rounds voice note (up to a minute at 32 kbps, ~240 KB) until home holds it (RR6, #2237); no count of its own (max = +Infinity), so notes grow until the device's measured room (withRoom, the 25 MiB pool) refuses one, which the session says on the menu and the card; none is ever evicted (`some-ui:rust-rounds.notes`, `some-ui.rust-rounds-notes`).",
+      "horizon": "nothing lets them go yet: RR6 (#2237) sends them home",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:rust-rounds-place",
+      "class": "record",
+      "growth": "bounded: one slot, the Rust Rounds card on screen and how far into it (stage, pick, note id), replaced as each card is entered and played (`some-ui:rust-rounds.place`).",
+      "family": "what-is-kept"
+    },
+    {
       "store": "phone:scene-voice",
       "class": "record",
       "growth": "bounded: SCENE_NOTES_MAX = 5 notes per draft, SCENE_AUDIO_MAX_BYTES = 5 x 240,000 = 1,200,000 B.",

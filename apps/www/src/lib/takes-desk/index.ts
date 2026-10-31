@@ -15,7 +15,7 @@ import { boundedList } from "@/lib/bounded-list"
 import type { PhoneTakes, Take, TakeLimits } from "./runtime"
 import { createTakes } from "./runtime"
 
-export type { Take } from "./runtime"
+export type { DeskSnapshot, Take } from "./runtime"
 
 const isTake = (value: unknown): value is Take =>
   typeof value === "object" &&
@@ -42,6 +42,11 @@ export type TakesDesk = {
   readonly forExport: () => Promise<
     Array<{ take: Take; audio: Blob | null; read: boolean }>
   >
+  /**
+   * The take kept on `line` at or after `since` (ms since the epoch), the
+   * earliest such; null when this phone holds none.
+   */
+  readonly keptOn: (line: string, since: number) => string | null
   /**
    * The learner says an export carrying `ids` arrived: those takes leave the
    * phone, through the runtime so a screen showing one sees it go.
@@ -132,6 +137,11 @@ export function takesDesk(options: {
         })
       )
     },
+    keptOn: (line, since): string | null =>
+      takes
+        .read()
+        .filter((take) => take.line === line && take.takenAt >= since)
+        .sort((a, b) => a.takenAt - b.takenAt)[0]?.id ?? null,
     letGo: (ids): void => {
       phone().letGo(ids)
     },
