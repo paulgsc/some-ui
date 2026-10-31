@@ -9,6 +9,7 @@
 import { canonicalJson, isRecord, jsonOf } from "@some-ui/core-utils"
 import type { Parsed } from "@some-ui/video-render"
 import { CutListSchema, parseCutList } from "@some-ui/video-render"
+import { ANSWER_ID, IDEA_ID } from "@soundbites/lib/journal/primer"
 import { z } from "zod"
 
 import type { Project } from "./model"
@@ -20,8 +21,11 @@ const NoteSchema = CutListSchema.shape.notes.unwrap().element
 const RevisionSchema = CutListSchema.shape.revisions.unwrap().element
 const words = z.string().min(1)
 
-/** A primer as the phone read it (`readPrimer`), carried by its revision. */
-const PrimerSchema = z.object({
+/**
+ * A primer as the phone read it (`readPrimer`), carried by its revision, and
+ * by an idea fleshed out into it (`lib/idea/store.ts`).
+ */
+export const PrimerSchema = z.object({
   title: words,
   budgetMs: z.number().int().positive(),
   voice: z.enum(["ad-lib", "read", "mixed"]),
@@ -36,9 +40,11 @@ const PrimerSchema = z.object({
         voice: z.enum(["ad-lib", "read"]),
         prompt: words,
         targetMs: z.number().int().positive(),
+        from: z.array(z.string().regex(ANSWER_ID)).optional(),
       })
     )
     .min(1),
+  idea: z.string().regex(IDEA_ID).optional(),
 })
 
 const ProjectSchema = z.object({

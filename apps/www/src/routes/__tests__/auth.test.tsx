@@ -10,6 +10,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { authority } from "@/lib/authority"
+import { FileHostResponseError } from "@/lib/file-host-config/client"
 
 const navigated = vi.hoisted((): Array<unknown> => [])
 let search: { redirect?: string } = {}
@@ -40,6 +41,17 @@ vi.mock("@/lib/auth/enter", () => ({
     void entered.push({ href, mode }),
 }))
 
+const created = vi.hoisted((): { refusal: Error | null } => ({
+  refusal: null,
+}))
+vi.mock("@/lib/auth/session", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  createAccount: (): Promise<void> =>
+    created.refusal === null
+      ? Promise.resolve()
+      : Promise.reject(created.refusal),
+}))
+
 const { Route } = await import("@/routes/auth")
 
 beforeEach(() => {
@@ -49,6 +61,7 @@ beforeEach(() => {
   search = {}
   navigated.length = 0
   entered.length = 0
+  created.refusal = null
 })
 
 afterEach(() => {
@@ -92,6 +105,38 @@ describe("the passkey screen", () => {
   it("lists what an account keeps, in full", () => {
     renderAuth()
     expect(screen.getByText(/items you save to shelves/i)).toBeTruthy()
+  })
+
+  it("points to signing in once the server already has its owner's account", async () => {
+    created.refusal = new FileHostResponseError(
+      403,
+      "/auth/register/start",
+      "signup_closed"
+    )
+    renderAuth()
+    fireEvent.click(
+      screen.getByRole("button", { name: /new here\? create a passkey/i })
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Create a passkey" }))
+
+    expect(
+      await screen.findByText(/already has its owner's account/i)
+    ).toBeTruthy()
+    expect(
+      screen
+        .getByRole("button", { name: "Create a passkey" })
+        .hasAttribute("disabled")
+    ).toBe(true)
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /already have a passkey\? sign in/i })
+    )
+    expect(
+      screen.getByRole("button", { name: /continue with a passkey/i })
+    ).toBeTruthy()
+    expect(
+      screen.queryByRole("button", { name: /new here\? create a passkey/i })
+    ).toBeNull()
   })
 })
 

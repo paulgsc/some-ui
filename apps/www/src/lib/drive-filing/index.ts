@@ -31,6 +31,7 @@ export const DRIVE_FOLDERS: Readonly<
   // next export's files carry the same names.
   "agent-export": (day) => `Study ledger › study-context › ${day} (new folder)`,
   "journal-takes": () => "Build Journal › voice › takes",
+  "studio-idea": () => "Build Journal › ideas",
   "drama-prompt": () => DRAMA_REQUESTS,
   "session-archive": () => "Study ledger › sessions",
   "job-decisions": () => "some-ui jobs › Decisions",

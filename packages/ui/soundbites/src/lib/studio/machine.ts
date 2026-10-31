@@ -57,6 +57,7 @@ import {
   stepTake,
 } from "@some-ui/voice-capture"
 import type { Listened } from "@soundbites/lib/idea/machine"
+import { isIdeaReply } from "@soundbites/lib/idea/reply"
 import type { Primer } from "@soundbites/lib/journal/primer"
 import { readPrimer } from "@soundbites/lib/journal/primer"
 import {
@@ -457,12 +458,13 @@ export type Step = {
   readonly effects: ReadonlyArray<StudioEffect>
 }
 
-export function initialStudioState(): StudioState {
+/** `open`: the video to open on once the phone's are read, if it is there. */
+export function initialStudioState(open: string | null = null): StudioState {
   return {
     page: "new",
     visible: true,
     shelf: { kind: "reading" },
-    current: null,
+    current: open,
     screen: { kind: "start" },
     activity: { kind: "idle" },
     blocked: null,
@@ -1443,11 +1445,17 @@ export function step(state: StudioState, event: StudioEvent): Step {
     case "primerRead": {
       if (event.seq !== state.pickSeq) return stay(state)
       if (isProjectFile(event.text)) return pickedProject(state, event.text)
+      if (isIdeaReply(event.text))
+        return stay({ ...state, primerProblem: WORDS.start.ideaReply })
       const reading = readPrimer(event.text)
       // What is wrong names cuts and fields: for the session that wrote the
       // file (`PrimerReading`), never the screen (SW1).
       if (!reading.ok)
         return stay({ ...state, primerProblem: WORDS.start.sentProblem })
+      // Scenes naming an idea cite its answers as the owner's, which only the
+      // shelf, holding the idea, can check (ST19).
+      if (reading.primer.idea !== undefined)
+        return stay({ ...state, primerProblem: WORDS.start.ideaReply })
       if (project === null)
         return enqueue(state, {
           kind: "create",

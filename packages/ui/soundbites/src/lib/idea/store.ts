@@ -3,7 +3,8 @@
  * text, read and written only through core-utils' `openKept` and
  * `writeKept` (KR1), so a value it can't read whole is moved aside, never
  * written over. A write is a change applied to what is held now, refused
- * unless it only adds (`grows`).
+ * unless it only adds (`grows`): an answer, Claude's questions and scenes
+ * (ST19), a mark setting it aside or bringing it back.
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import {
@@ -12,10 +13,11 @@ import {
   salvageList,
   writeKept,
 } from "@some-ui/core-utils"
+import { PrimerSchema } from "@soundbites/lib/project/file"
 import { z } from "zod"
 
 import type { Idea } from "./model"
-import { grows, IDEA_QUESTIONS, WORDS_HOW } from "./model"
+import { ANSWER_TO, FOLLOW_UPS, grows, WORDS_HOW } from "./model"
 
 export const IDEAS_KEY = "some-ui:studio:ideas"
 
@@ -25,7 +27,7 @@ const IdeaSchema: z.ZodType<Idea> = z.object({
   questions: z.number().int().positive(),
   answers: z.array(
     z.object({
-      question: z.enum(IDEA_QUESTIONS),
+      question: z.enum(ANSWER_TO),
       versions: z
         .array(
           z.object({
@@ -37,7 +39,21 @@ const IdeaSchema: z.ZodType<Idea> = z.object({
         .min(1),
     })
   ),
-  passed: z.array(z.enum(IDEA_QUESTIONS)),
+  passed: z.array(z.enum(ANSWER_TO)),
+  asked: z
+    .array(
+      z.object({
+        id: z.enum(FOLLOW_UPS),
+        at: z.string(),
+        words: z.string().min(1),
+      })
+    )
+    .max(FOLLOW_UPS.length)
+    .optional(),
+  drafts: z
+    .array(z.object({ at: z.string(), primer: PrimerSchema }))
+    .optional(),
+  shelved: z.array(z.object({ at: z.string(), aside: z.boolean() })).optional(),
 })
 
 function isIdea(value: unknown): value is Idea {
