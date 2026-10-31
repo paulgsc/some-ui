@@ -222,8 +222,9 @@ export function createStudio(ports: StudioPorts): StudioRuntime {
       case "listen": {
         listening?.cancel()
         const { seq } = effect
-        const mine = listener.listen((words) =>
-          send({ type: "noteWords", seq, words })
+        const mine = listener.listen(
+          (words) => send({ type: "noteWords", seq, words }),
+          () => send({ type: "noteReady", seq })
         )
         listening = mine
         void mine.done.then((result) => {

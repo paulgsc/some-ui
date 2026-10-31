@@ -35,6 +35,13 @@ import java.util.ArrayList;
  * listening and lets start resolve with what was heard; cancel lets it go,
  * rejecting start with CANCELLED. SpeechRecognizer must be used on the main
  * thread, so every call to it is posted there.
+ *
+ * Two events say where a start is, so the screen never waits on a
+ * recognizer that never began (LS1, www's lib/device-listen): "asking"
+ * when the microphone prompt goes up, and "ready" when the recognizer is
+ * listening (onReadyForSpeech). A recognizer that never gets ready delivers
+ * neither results nor an error, so stop before ready settles the start
+ * with nothing heard instead of waiting on it.
  */
 @CapacitorPlugin(
     name = "Listen",
@@ -59,6 +66,8 @@ public class ListenPlugin extends Plugin {
     private volatile String asking;
     /** Stop was asked for while that start waited: it answers nothing heard. */
     private volatile boolean stoppedAsking;
+    /** The recognizer under way has said it is listening. Main thread. */
+    private boolean ready;
 
     @PluginMethod
     public void available(PluginCall call) {
@@ -74,6 +83,7 @@ public class ListenPlugin extends Plugin {
         if (getPermissionState(MICROPHONE) != PermissionState.GRANTED) {
             asking = call.getCallbackId();
             stoppedAsking = false;
+            notifyListeners("asking", new JSObject());
             requestPermissionForAlias(MICROPHONE, call, "microphoneAnswered");
             return;
         }
@@ -106,7 +116,13 @@ public class ListenPlugin extends Plugin {
         // A start waiting on the prompt answers nothing heard once it is answered.
         if (asking != null) stoppedAsking = true;
         getActivity().runOnUiThread(() -> {
-            if (recognizer != null) recognizer.stopListening();
+            if (recognizer != null && !ready) {
+                // Never began: nothing would answer stopListening.
+                recognizer.cancel();
+                settle("");
+            } else if (recognizer != null) {
+                recognizer.stopListening();
+            }
             call.resolve();
         });
     }
@@ -143,6 +159,7 @@ public class ListenPlugin extends Plugin {
             }
             recognizer = created;
             listening = call;
+            ready = false;
             created.setRecognitionListener(new Heard(created));
             Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
             intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
@@ -163,11 +180,20 @@ public class ListenPlugin extends Plugin {
         release();
     }
 
+    /** Answers the listening under way with `words` and forgets it. Main thread. */
+    private void settle(String words) {
+        JSObject result = new JSObject();
+        result.put("words", words);
+        if (listening != null) listening.resolve(result);
+        release();
+    }
+
     /** Forgets the listening and destroys its recognizer. Main thread. */
     private void release() {
         if (recognizer != null) recognizer.destroy();
         recognizer = null;
         listening = null;
+        ready = false;
     }
 
     private static String wordsIn(Bundle results) {
@@ -210,13 +236,6 @@ public class ListenPlugin extends Plugin {
             return recognizer == owner && listening != null;
         }
 
-        private void settle(String words) {
-            JSObject result = new JSObject();
-            result.put("words", words);
-            listening.resolve(result);
-            release();
-        }
-
         @Override
         public void onPartialResults(Bundle partial) {
             if (!current()) return;
@@ -244,7 +263,11 @@ public class ListenPlugin extends Plugin {
         }
 
         @Override
-        public void onReadyForSpeech(Bundle params) {}
+        public void onReadyForSpeech(Bundle params) {
+            if (!current()) return;
+            ready = true;
+            notifyListeners("ready", new JSObject());
+        }
 
         @Override
         public void onBeginningOfSpeech() {}
