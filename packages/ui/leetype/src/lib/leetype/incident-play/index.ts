@@ -3,12 +3,15 @@ import type {
   SpokenTakes,
   SpokenTakeSnapshot,
 } from "@leetype/lib/leetype/spoken-take"
+import type { SessionFile } from "@leetype/types/session-file"
+import { rubricText } from "@leetype/types/session-file"
 
 import type { Play, PlayInput, Stepped } from "./model"
 import {
   confirmationTaken,
   declaredMinutes,
   medianSelectionMs,
+  rubricShown,
   startPlay,
   step,
 } from "./model"
@@ -145,14 +148,34 @@ export class IncidentPlayRuntime {
     this.arm()
   }
 
-  /** A parked round's worked confirmation, taken from the first screen. */
-  takeConfirmation = (file: string, round: string): void => {
-    this.ports.log.append(
-      confirmationTaken(
-        { session: this.session, file, round },
-        { at: this.ports.now(), newId: this.ports.newId }
-      )
-    )
+  /**
+   * A parked round's worked confirmation, taken from the first screen or at
+   * a round boundary. A take's is its rubric, so it is shown as one
+   * (`rubricShown`): over the rounds parked so far this session, if any.
+   */
+  takeConfirmation = (
+    fileName: string,
+    file: SessionFile,
+    round: string
+  ): void => {
+    const ctx = { at: this.ports.now(), newId: this.ports.newId }
+    const screen = file.screens[round]
+    const events = [
+      confirmationTaken({ session: this.session, file: fileName, round }, ctx),
+      ...(screen?.type === "record"
+        ? rubricShown(
+            {
+              session: this.session,
+              file: fileName,
+              take: round,
+              screen,
+              parkedHere: this.snapshot.play?.parkedHere ?? [],
+            },
+            ctx
+          )
+        : []),
+    ]
+    for (const event of events) this.ports.log.append(event)
     this.publishProblem()
   }
 
@@ -281,7 +304,7 @@ export class IncidentPlayRuntime {
       file: play.fileName,
       screen: play.screen,
       prompt: screen.prompt,
-      rubric: screen.rubric,
+      rubric: rubricText(screen),
       ticks: answer.ticks,
       typed: spoken.as === "typed" ? spoken.text : null,
     })

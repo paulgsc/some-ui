@@ -276,7 +276,7 @@ describe("summariesOf", () => {
             struggled: true,
             placed: ["p1"],
             reading: [{ reading: "p1", action: "saved" }],
-            returned: [{ response: "correct", slow: false }],
+            returned: [{ response: "correct", slow: false, assisted: false }],
             solved: true,
           },
         ],
@@ -309,7 +309,7 @@ describe("summariesOf", () => {
         picked: "correct",
         struggled: true,
         placed: ["g1"],
-        returned: [{ response: "correct", slow: true }],
+        returned: [{ response: "correct", slow: true, assisted: false }],
         solved: false,
       }),
     ])
@@ -359,7 +359,7 @@ describe("summariesOf", () => {
           { reading: "p1", action: "saved" },
           { reading: "p1", action: "read" },
         ],
-        returned: [{ response: "correct", slow: false }],
+        returned: [{ response: "correct", slow: false, assisted: false }],
         solved: true,
       }),
     ])

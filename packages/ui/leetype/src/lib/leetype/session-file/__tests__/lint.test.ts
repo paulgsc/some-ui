@@ -347,6 +347,65 @@ describe("lintSessionFile", () => {
     ])
   })
 
+  it("reports a rubric covering what is not a round, or covering in part (Rem. 11.10)", () => {
+    const withTake = (rubric: ReadonlyArray<unknown>): SessionFile => {
+      const file = clean()
+      return SessionFileSchema.parse({
+        ...file,
+        screens: {
+          ...file.screens,
+          t1: {
+            type: "record",
+            prompt: "How big is a quorum of five, and why?",
+            maxSeconds: 60,
+            rubric,
+            weakIfFewerThan: 1,
+            next: "end",
+            onWeak: "p1",
+          },
+        },
+      })
+    }
+    // Known coverage naming a round, and unknown coverage, both pass.
+    expect(
+      lintSessionFile(
+        withTake([
+          { text: "Three", covers: ["r1"] },
+          { text: "Any two meet", covers: [] },
+        ])
+      )
+    ).toEqual([])
+    expect(lintSessionFile(withTake(["Three", "Any two meet"]))).toEqual([])
+
+    expect(
+      lintSessionFile(
+        withTake([
+          { text: "Three", covers: ["r1", "p1", "nowhere"] },
+          "Any two meet",
+        ])
+      )
+    ).toEqual([
+      {
+        code: "covers-partial",
+        screen: "t1",
+        message:
+          "some rubric points say which rounds they cover and others do not; give each a `covers` (`[]` for none), so the rubric's coverage is known (Rem. 11.10)",
+      },
+      {
+        code: "covers-not-a-round",
+        screen: "t1",
+        message:
+          'a rubric point covers "p1", which is not a round of this file',
+      },
+      {
+        code: "covers-not-a-round",
+        screen: "t1",
+        message:
+          'a rubric point covers "nowhere", which is not a round of this file',
+      },
+    ])
+  })
+
   it.each([
     { body: "You read two sources." },
     { title: "Two sources read" },

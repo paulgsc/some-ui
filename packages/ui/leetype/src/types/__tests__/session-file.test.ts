@@ -1,5 +1,10 @@
 import { AB_FIXTURES } from "@leetype/lib/leetype/session-file/__tests__/fixtures"
-import { SessionFileSchema } from "@leetype/types/session-file"
+import type { SessionScreen } from "@leetype/types/session-file"
+import {
+  rubricCovers,
+  rubricText,
+  SessionFileSchema,
+} from "@leetype/types/session-file"
 import { describe, expect, it } from "vitest"
 
 function minimal(screens: Record<string, unknown>, extra: object = {}): object {
@@ -154,5 +159,35 @@ describe("SessionFileSchema", () => {
     expect(
       result.error?.issues.map((issue) => issue.message).join("\n")
     ).toContain(message)
+  })
+
+  it("reads a rubric point as its text, with the rounds it covers or none said (Rem. 11.10)", () => {
+    const take = (rubric: ReadonlyArray<unknown>): SessionScreen | undefined =>
+      SessionFileSchema.parse(
+        minimal({
+          r1: {
+            type: "record",
+            prompt: "Why?",
+            maxSeconds: 60,
+            rubric,
+            weakIfFewerThan: 0,
+            next: "end",
+          },
+          end,
+        })
+      ).screens.r1
+    const known = take([
+      { text: "A majority", covers: ["r0", "r2"] },
+      { text: "Why", covers: ["r2"] },
+      { text: "Said aloud", covers: [] },
+    ])
+    if (known?.type !== "record") throw new Error("r1 is a take")
+    expect(rubricText(known)).toEqual(["A majority", "Why", "Said aloud"])
+    expect(rubricCovers(known)).toEqual(["r0", "r2"])
+    const unknown = take(["A majority", { text: "Why" }])
+    if (unknown?.type !== "record") throw new Error("r1 is a take")
+    expect(rubricText(unknown)).toEqual(["A majority", "Why"])
+    expect(rubricCovers(unknown)).toBeNull()
+    expect(() => take([{ text: "A majority", round: "r0" }])).toThrow()
   })
 })

@@ -3,7 +3,7 @@ import { IncidentSession } from "@leetype/components/incident/incident-session"
 import { AB_FIXTURES } from "@leetype/lib/leetype/session-file/__tests__/fixtures"
 import { createSessionLogStore } from "@leetype/lib/leetype/session-log"
 import type { ChoiceScreen } from "@leetype/types/session-file"
-import { SessionFileSchema } from "@leetype/types/session-file"
+import { rubricText, SessionFileSchema } from "@leetype/types/session-file"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { reachedFrom } from "@some-ui/vite-config/vitest/source-graph"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
@@ -290,13 +290,13 @@ describe("IncidentSession", () => {
     const take = FILE.screens.s15
     if (take?.type !== "record") throw new Error("s15 is not a take")
     // The rubric is not shown before an answer (Ax. 9.2).
-    expect(screen.queryByText(take.rubric[0] ?? "")).toBeNull()
+    expect(screen.queryByText(rubricText(take)[0] ?? "")).toBeNull()
     fireEvent.change(screen.getByLabelText("Your answer, typed"), {
       target: { value: "The OK came before a majority held it." },
     })
     fireEvent.click(screen.getByRole("button", { name: "Done" }))
-    fireEvent.click(screen.getByLabelText(take.rubric[0] ?? ""))
-    fireEvent.click(screen.getByLabelText(take.rubric[3] ?? ""))
+    fireEvent.click(screen.getByLabelText(rubricText(take)[0] ?? ""))
+    fireEvent.click(screen.getByLabelText(rubricText(take)[3] ?? ""))
     fireEvent.click(screen.getByRole("button", { name: "Done" }))
 
     expect(log.getSnapshot().log).toContainEqual(
@@ -305,7 +305,7 @@ describe("IncidentSession", () => {
         screen: "s15",
         answer: {
           as: "typed",
-          ticks: [take.rubric[0], take.rubric[3]],
+          ticks: [rubricText(take)[0], rubricText(take)[3]],
           strong: true,
         },
       })
@@ -400,7 +400,7 @@ describe("IncidentSession", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Show what a good answer says" })
     )
-    expect(screen.getByText(take.rubric[0] ?? "")).toBeTruthy()
+    expect(screen.getByText(rubricText(take)[0] ?? "")).toBeTruthy()
     fireEvent.click(screen.getByRole("button", { name: "Say it again" }))
     expect(screen.getByText(take.prompt)).toBeTruthy()
   })
@@ -456,7 +456,7 @@ describe("IncidentSession", () => {
     const take = FILE.screens.s15
     if (take?.type !== "record") throw new Error("s15 is not a take")
     fireEvent.click(screen.getByRole("button", { name: "Pass" }))
-    expect(screen.getByText(take.rubric[0] ?? "")).toBeTruthy()
+    expect(screen.getByText(rubricText(take)[0] ?? "")).toBeTruthy()
     expect(screen.queryByRole("checkbox")).toBeNull()
     fireEvent.click(screen.getByRole("button", { name: "Continue" }))
     expect(log.getSnapshot().log).toContainEqual(

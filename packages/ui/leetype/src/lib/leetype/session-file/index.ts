@@ -6,7 +6,7 @@ import type {
   SessionFile,
   SessionScreen,
 } from "@leetype/types/session-file"
-import { edgesOf } from "@leetype/types/session-file"
+import { edgesOf, pointCovers, rubricText } from "@leetype/types/session-file"
 import { assertNever, mentionsWord } from "@some-ui/core-utils"
 
 /**
@@ -26,6 +26,11 @@ import { assertNever, mentionsWord } from "@some-ui/core-utils"
  * whose returns names the response it follows (`returnFor`) has a return for
  * each response its options allow; `mismatched-return-for` names a response
  * its round cannot produce, or returns a screen that is not a round.
+ * `covers-not-a-round` is a rubric point's `covers` naming a screen of the
+ * file that is not a round, and `covers-partial` a rubric where some points
+ * say what they cover and others do not (Rem. 11.10): a point that covers
+ * no round says `covers: []`, so a rubric's coverage is known or unknown,
+ * never half of each.
  *
  * Rem. 10.3 (5) spans files, so it is not here: `negativeDiscriminationGaps`
  * takes the whole set.
@@ -45,6 +50,8 @@ type SessionFileFindingCode =
   | "correct-applies-other-rule"
   | "response-without-return"
   | "mismatched-return-for"
+  | "covers-not-a-round"
+  | "covers-partial"
 
 export type SessionFileFinding = {
   readonly code: SessionFileFindingCode
@@ -106,7 +113,7 @@ function textOf(screen: SessionScreen): string {
       break
     }
     case "record": {
-      parts.push(screen.prompt, ...screen.rubric)
+      parts.push(screen.prompt, ...rubricText(screen))
       break
     }
     case "reading": {
@@ -379,6 +386,27 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
             "response-without-return",
             id,
             `no return names ${missing.map((kind) => `"${kind}"`).join(", ")} in \`returnFor\`; each response gets its own follow-up (Prop. 9.1, Rem. 11.9)`
+          )
+        }
+      }
+    }
+
+    if (screen.type === "record") {
+      const said = screen.rubric.map(pointCovers)
+      if (said.some((covers) => covers === undefined) && said.some(Boolean)) {
+        add(
+          "covers-partial",
+          id,
+          "some rubric points say which rounds they cover and others do not; give each a `covers` (`[]` for none), so the rubric's coverage is known (Rem. 11.10)"
+        )
+      }
+      for (const round of new Set(said.flatMap((covers) => covers ?? []))) {
+        const target = file.screens[round]
+        if (target === undefined || !isRound(target)) {
+          add(
+            "covers-not-a-round",
+            id,
+            `a rubric point covers "${round}", which is not a round of this file`
           )
         }
       }

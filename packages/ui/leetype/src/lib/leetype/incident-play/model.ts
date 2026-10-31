@@ -5,10 +5,11 @@ import type {
 } from "@leetype/lib/leetype/session-log/model"
 import type {
   ChoiceScreen,
+  RecordScreen,
   SessionFile,
   SessionScreen,
 } from "@leetype/types/session-file"
-import { edgesOf } from "@leetype/types/session-file"
+import { edgesOf, rubricCovers, rubricText } from "@leetype/types/session-file"
 import { assertNever, median } from "@some-ui/core-utils"
 
 /**
@@ -32,6 +33,9 @@ import { assertNever, median } from "@some-ui/core-utils"
  *   (`confirmationTaken` for the worked confirmation).
  * - The learner may leave at any round boundary: any screen not showing a
  *   reveal or a spoken answer's rubric (Prop. 9.6).
+ * - A take's rubric states the answer of the rounds it covers, so showing
+ *   it records `rubric-shown` for each (`rubricShown`, Rem. 11.10), and a
+ *   later return of one is assisted until it parks again.
  */
 
 export type PlayForm = "full" | "short"
@@ -130,6 +134,8 @@ export type Play = {
   readonly spoken: SpokenAnswer | null
   /** Rounds played this session, returns aside: the short form plays one. */
   readonly rounds: number
+  /** Rounds parked this session, which a rubric with no `covers` covers. */
+  readonly parkedHere: ReadonlyArray<string>
   readonly ended: "declared" | "left" | null
 }
 
@@ -435,6 +441,7 @@ export function startPlay(
     asked: false,
     spoken: null,
     rounds: 0,
+    parkedHere: [],
     ended: null,
   }
   const started: SessionEvent = {
@@ -474,6 +481,56 @@ export function confirmationTaken(
     type: "confirmation-taken",
     file: args.file,
     screen: args.round,
+  }
+}
+
+/**
+ * A take's rubric shown (Def. 9.5: after the answer, or the pass): one
+ * `rubric-shown` for each round it states the answer of (Rem. 11.10). Its
+ * points' `covers` name them; a rubric whose points name none is read as
+ * covering every round parked in the session showing it (`parkedHere`).
+ * Whether a covered round was parked then is the log's to say: a return
+ * is assisted only by a rubric shown since the round last parked.
+ */
+export function rubricShown(
+  args: {
+    readonly session: string
+    readonly file: string
+    readonly take: string
+    readonly screen: RecordScreen
+    readonly parkedHere: ReadonlyArray<string>
+  },
+  ctx: Pick<StepContext, "at" | "newId">
+): Array<SessionEvent> {
+  const covered = rubricCovers(args.screen) ?? args.parkedHere
+  return [...new Set(covered)].map((round) => ({
+    ...stamp(args, ctx),
+    type: "rubric-shown",
+    file: args.file,
+    screen: round,
+    take: args.take,
+  }))
+}
+
+/** The rubric of the record screen in view comes into view after `spoken`. */
+function showRubric(
+  play: Play,
+  screen: RecordScreen,
+  spoken: SpokenAnswer,
+  ctx: StepContext
+): Stepped {
+  return {
+    play: { ...play, spoken },
+    events: rubricShown(
+      {
+        session: play.session,
+        file: play.fileName,
+        take: play.screen,
+        screen,
+        parkedHere: play.parkedHere,
+      },
+      ctx
+    ),
   }
 }
 
@@ -549,8 +606,10 @@ function carryOn(
           },
         ]
       : []
+  const parkedHere =
+    parks.length > 0 ? [...play.parkedHere, round] : play.parkedHere
   return arrive(
-    play,
+    { ...play, parkedHere },
     target,
     ctx,
     { round, as: reveal.struggled ? "placement" : "pointer" },
@@ -606,7 +665,6 @@ function act(
   return { play: entered.play, events: [...events, ...entered.events] }
 }
 
-type RecordScreen = Extract<SessionScreen, { type: "record" }>
 type Spoken = Extract<SessionEvent, { type: "spoken" }>["answer"]
 
 /**
@@ -744,18 +802,19 @@ export function step(play: Play, input: PlayInput, ctx: StepContext): Stepped {
     }
     case "pass": {
       return screen.type === "record" && play.spoken === null
-        ? { play: { ...play, spoken: { as: "passed" } }, events: [] }
+        ? showRubric(play, screen, { as: "passed" }, ctx)
         : unchanged
     }
     case "answered": {
       return screen.type === "record" && play.spoken === null
-        ? { play: { ...play, spoken: input.answer }, events: [] }
+        ? showRubric(play, screen, input.answer, ctx)
         : unchanged
     }
     case "ticked": {
       const spoken = play.spoken
       if (screen.type !== "record" || spoken === null) return unchanged
-      const ticks = input.ticks.filter((tick) => screen.rubric.includes(tick))
+      const points = rubricText(screen)
+      const ticks = input.ticks.filter((tick) => points.includes(tick))
       const strong = ticks.length >= screen.weakIfFewerThan
       return speak(
         play,

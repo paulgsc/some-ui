@@ -81,7 +81,7 @@
     `packages/some-content/prompts/leetype-exercise-generator` · `pedagogy/`
   ]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.4 --- 2026-10-30]
+  #text(size: 9.5pt)[Version 1.5 --- 2026-10-31]
   #v(2cm)
 ]
 
@@ -1825,6 +1825,50 @@ superseded and kept.
   Evidence: the code (Amendment protocol, fourth rule).
 ]
 
+#remark("11.10", name: "A take's rubric is assistance to the rounds it states")[
+  Amends Def. 9.5 and Rem. 11.7, which are retained as filed, under Rem. 9.5.
+  A take is built from its session's rounds: a short form must reach a strong
+  answer, so its rubric states what those rounds decide, a parked round's
+  answer among them. Def. 9.5 shows the rubric after the answer or the pass,
+  so a round that struggled and parked before the take has its answer shown
+  before its return, and by Rem. 9.5 an answer after it is an observation of
+  it, not an unassisted commitment (Axiom 9.2). Until `#2029` the log did not
+  record that, and a correct return after the rubric solved the round. The
+  owner's decision there (2026-10-30) records it:
+
+  - A rubric point may say which rounds it states the answer of, beside its
+    text: `covers`, a list of round ids of the same file (`[]` for none).
+    `lib/leetype/session-file`'s lint reports an id that names no round of
+    the file (`covers-not-a-round`), and a rubric where some points say
+    `covers` and others do not (`covers-partial`), so a rubric's coverage is
+    known or unknown, never half of each.
+  - A rubric whose points say no `covers` is read as covering every round
+    parked in the session that shows it. Thread 1's five files were written
+    before the field, and their takes take two of three points from the
+    session's first round; they stay as filed, and `lint:session-file` lists
+    each such take without failing.
+  - Whenever a take's rubric is shown, after its answer or its pass or as a
+    parked take's worked confirmation (Prop. 9.4 (d)), the session log
+    records `rubric-shown` for each round it covers. Rem. 11.7's funnel gains
+    the event; nothing already recorded changes.
+  - A return is *assisted* when a rubric covering its round was shown since
+    the round last parked. An assisted return solves nothing: the round stays
+    parked on the ledger screen (Prop. 10.2) and unsolved in every report,
+    which records the return as assisted. A later struggle that parks the
+    round again starts it afresh.
+
+  A rubric shown before the struggle assists nothing, since the struggle is
+  the evidence that it was not retained. The worked confirmation of a
+  struggled round, which Rem. 9.5 already names as costing evidence, is
+  recorded (`confirmation-taken`) but not yet read as assistance (`#2343`).
+  Once a rubric covered a parked round, only a later struggle that parks it
+  again lets a return solve it; whether time or a reading should end the
+  assistance instead is the owner's call (`#2343`).
+
+  Evidence: the code (Amendment protocol, fourth rule), and the closing
+  author-expert review of Thread 1 that raised `#2029`.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = Falsifiers
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2014,6 +2058,12 @@ response kind a rule, which Rem. 9.6 left "not yet a rule": a return names the
 response it follows (`returnFor`), and the session-file lint of `#2061`
 reports a round whose named returns leave a response without one. No
 Definition, Axiom, Theorem, `CW-P`, `M` or `A` entry changes.
+
+*v1.5 --- 2026-10-31.* Rem. 11.10 makes a take's rubric assistance to the
+parked rounds whose answer it states, under Rem. 9.5: a rubric point may name
+the rounds it covers (`covers`), the session log records `rubric-shown` when
+the rubric is shown, and a return after it is assisted and solves nothing
+(`#2029`). No Definition, Axiom, Theorem, `CW-P`, `M` or `A` entry changes.
 
 #pagebreak()
 

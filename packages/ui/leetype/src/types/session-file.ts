@@ -100,13 +100,39 @@ const ChoiceScreenSchema = z.strictObject({
   provenance: z.string().min(1).optional(),
 })
 
+/**
+ * One point a good spoken answer hits: its text, or its text with the rounds
+ * whose answer it states (`covers`, canon Rem. 11.10). Showing the rubric
+ * shows those rounds' answers, so a return after it is assisted (Rem. 9.5).
+ * `lib/leetype/session-file`'s lint checks each id names a round of the file.
+ */
+const RubricPointSchema = z.union([
+  z.string().min(1),
+  z.strictObject({
+    text: z.string().min(1),
+    covers: z.array(ScreenIdSchema).optional(),
+  }),
+])
+
+type RubricPoint = z.infer<typeof RubricPointSchema>
+
+/** What the learner reads of a rubric point, and ticks. */
+const pointText = (point: RubricPoint): string =>
+  typeof point === "string" ? point : point.text
+
+/** The rounds `point` says it covers, or undefined when it says nothing. */
+export const pointCovers = (
+  point: RubricPoint
+): ReadonlyArray<string> | undefined =>
+  typeof point === "string" ? undefined : point.covers
+
 /** A spoken answer: the rubric is shown only after recording (Ax. 9.2). */
 const RecordScreenSchema = z.strictObject({
   ...screenBase,
   type: z.literal("record"),
   prompt: z.string().min(1),
   maxSeconds: z.number().int().positive(),
-  rubric: z.array(z.string().min(1)).min(1),
+  rubric: z.array(RubricPointSchema).min(1),
   weakIfFewerThan: z.number().int().nonnegative(),
   next: ScreenIdSchema,
   onWeak: ScreenIdSchema.optional(),
@@ -139,6 +165,23 @@ const ScreenSchema = z.discriminatedUnion("type", [
 
 export type SessionScreen = z.infer<typeof ScreenSchema>
 export type ChoiceScreen = z.infer<typeof ChoiceScreenSchema>
+export type RecordScreen = z.infer<typeof RecordScreenSchema>
+
+/** The text of each of `screen`'s rubric points, in order. */
+export const rubricText = (screen: RecordScreen): Array<string> =>
+  screen.rubric.map(pointText)
+
+/**
+ * The rounds whose answer `screen`'s rubric states (Rem. 11.10): the union
+ * of its points' `covers` when any point says one, a point without it then
+ * covering none; null when none does, coverage unknown, which the player
+ * reads as every round parked in the session that shows it.
+ */
+export function rubricCovers(screen: RecordScreen): Array<string> | null {
+  const said = screen.rubric.map(pointCovers)
+  if (said.every((covers) => covers === undefined)) return null
+  return [...new Set(said.flatMap((covers) => covers ?? []))]
+}
 
 /** Every screen id a screen can lead to, in authored order. */
 export function edgesOf(screen: SessionScreen): Array<string> {
