@@ -64,9 +64,12 @@ const WALKS: ReadonlyArray<Walk> = [
     fixture: "studio-empty",
     stops: [
       {
+        // The route's New idea button (`newIdea.big`) is step 1's body here.
         screen: "Start, no video",
-        go: (page) =>
-          page.getByText("No video yet").waitFor({ timeout: 10_000 }),
+        go: async (page): Promise<void> => {
+          await page.getByText("No video yet").waitFor({ timeout: 10_000 })
+          await page.getByRole("link", { name: /^New idea/ }).waitFor()
+        },
       },
     ],
   },

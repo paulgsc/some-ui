@@ -5,17 +5,19 @@
  * each fixture's Start to the screens that standing reaches.
  *
  * Each mounts `Studio` as `/journal` does (src/routes/_dashboard/_apk/
- * journal/index.tsx): the wing's heading and the New idea card above it, in
- * the route's own column. The card is a plain link here, since the page has
- * no router; its classes are the route's, which www's CSS carries. A change
- * to the route's shell is a change to `JournalHome` below.
+ * journal/index.tsx): the wing's heading above it, in the route's own
+ * column, and the route's way to New idea handed in as `newIdea` (the big
+ * button on a Start with no video, the quiet link once there is one). The
+ * links are plain anchors here, since the page has no router; their classes
+ * are the route's, which www's CSS carries. A change to the route's shell or
+ * its `newIdea` is a change to `NEW_IDEA` and `studioOn` below.
  *
  * `planted-overflow` is not a screen. It is the sweep's self-test: a box of a
  * fixed height around content that cannot fit, so a harness that silently
  * measures nothing goes red.
  */
 
-import type { JSX, ReactNode } from "react"
+import type { JSX } from "react"
 import { inMemoryStorage } from "@some-ui/core-utils"
 import type {
   IdeaListener,
@@ -169,10 +171,9 @@ function studioPorts(
   }
 }
 
-/** The Studio wing's Home, as the route lays it out around `children`. */
-const JournalHome = ({ children }: { children: ReactNode }): JSX.Element => (
-  <div className="mx-auto flex w-full max-w-md flex-col gap-4">
-    <h1 className="text-2xl font-bold tracking-tight">{WORDS.heading}</h1>
+/** The route's way to New idea (`StudioProps.newIdea`), as it builds it. */
+const NEW_IDEA: NonNullable<StudioProps["newIdea"]> = {
+  big: (
     <a
       href="#idea"
       className="bg-card border-brand focus-visible:ring-ring flex items-center gap-3 rounded-2xl border-2 px-4 py-3 focus-visible:ring-2 focus-visible:outline-none"
@@ -187,15 +188,21 @@ const JournalHome = ({ children }: { children: ReactNode }): JSX.Element => (
         </span>
       </span>
     </a>
-    {children}
-  </div>
-)
+  ),
+  quiet: (
+    <a href="#idea" className="text-muted-foreground underline">
+      {WORDS.idea.newIdea}
+    </a>
+  ),
+}
 
+/** The Studio wing's Home on `projects`, as the route lays it out. */
 function studioOn(projects: ReadonlyArray<Project>): () => JSX.Element {
   const StudioFixture = (): JSX.Element => (
-    <JournalHome>
-      <Studio ports={studioPorts(projects)} />
-    </JournalHome>
+    <div className="mx-auto flex w-full max-w-md flex-col gap-4">
+      <h1 className="text-2xl font-bold tracking-tight">{WORDS.heading}</h1>
+      <Studio ports={studioPorts(projects)} newIdea={NEW_IDEA} />
+    </div>
   )
   return StudioFixture
 }
