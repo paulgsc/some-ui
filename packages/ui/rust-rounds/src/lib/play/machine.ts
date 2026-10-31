@@ -37,7 +37,9 @@
  *   cannot hide it. An addition the log refused is kept by the store and
  *   sent again with the next one, and the store says the log is kept only
  *   once every refused addition is in it, so the warning stays until then,
- *   across openings too (`initialState`, `flush`).
+ *   across openings too while the place record keeps the queue
+ *   (`initialState`, `flush`). If that write is refused as well and the app
+ *   is killed, only the cards still in `pending` survive to the next opening.
  * - **rustc's result is never compared with the pick on screen.** The
  *   tutor's guess is checked only to log `tutorGuessedWrong`.
  */

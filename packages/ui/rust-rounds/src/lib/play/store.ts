@@ -10,7 +10,8 @@
  *   (the same card, left at the same moment) is not added again, so two
  *   openings that both settle a card left waiting on its note log it once.
  *   An addition the phone refused is not dropped: it is kept (`unlogged`, in
- *   the place record, and in memory should that write be refused too) and
+ *   the place record, and in memory should that write be refused too, which
+ *   then lasts only as long as this opening) and
  *   written with the next addition, or by `flush` at the next opening, and
  *   `append` says false until every one of them is in the log.
  * - `HELD_KEY`, what plays: the rounds taken, rustc's recorded runs, every
