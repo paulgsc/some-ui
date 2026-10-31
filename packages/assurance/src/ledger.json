@@ -1963,7 +1963,13 @@
     {
       "store": "server:mailbox_outgoing",
       "class": "record",
-      "growth": "Per file the phone (or the poller, for transcripts) files for the mailbox (decisions, scout, transcript), bytes verbatim; append-only.",
+      "growth": "Per file the phone (or the poller, for transcripts and LeetType session logs) files for the mailbox (decisions, scout, opened, transcript, leetype-log), bytes verbatim; append-only.",
+      "family": "routine-to-home"
+    },
+    {
+      "store": "server:mailbox_leetype_log",
+      "class": "derived",
+      "growth": "Per LeetType session log the poller files for the mailbox: (session, n, events); tiny rows; a session gets a new row only once home holds more of its events; append-only.",
       "family": "routine-to-home"
     },
     {
