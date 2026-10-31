@@ -30,8 +30,8 @@ const reporting: Reporting = {
 /**
  * The lesson CRM: the lessons `file_host` serves, and the weekly batch.
  * LAN-only (`@some-ui/lesson-crm` is a `lan` workspace); operator routes
- * answer only `OPERATOR_SUBJECTS` (401 signed out, 403 otherwise). Bounded
- * (`lib/route-bounds`).
+ * answer only the home's owner (or the subjects `OPERATOR_SUBJECTS` lists):
+ * 401 signed out, 403 otherwise. Bounded (`lib/route-bounds`).
  */
 const LessonsRoute = (): JSX.Element => {
   const [client] = useState(createLessonCrmClient)

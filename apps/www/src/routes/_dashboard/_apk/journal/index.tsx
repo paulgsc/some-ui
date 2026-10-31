@@ -1,19 +1,23 @@
 import type { JSX } from "react"
 import { useEffect } from "react"
 import { useConfirmSheet } from "@some-ui/shared"
-import type { IdeaListener, Project, StudioShare } from "@some-ui/soundbites"
+import type {
+  IdeaListener,
+  Project,
+  StudioShare,
+  WingLink,
+} from "@some-ui/soundbites"
 import {
   keptTimeLog,
   letGoHeldTakes,
   notesForHome,
   phoneProjectStore,
   sittingKey,
-  Studio,
   STUDIO_WORDS,
   studioFiles,
+  StudioHome,
 } from "@some-ui/soundbites"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { Lightbulb } from "lucide-react"
 
 import { deviceListener } from "@/lib/device-listen"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
@@ -72,6 +76,18 @@ const studioPorts: { listener: IdeaListener } | undefined =
     ? { listener: deviceListener }
     : undefined
 
+const IdeaLink: WingLink = ({ className, children }) => (
+  <Link to="/journal/idea" className={className}>
+    {children}
+  </Link>
+)
+
+const IdeasLink: WingLink = ({ className, children }) => (
+  <Link to="/journal/ideas" className={className}>
+    {children}
+  </Link>
+)
+
 const studioShare: StudioShare | undefined =
   import.meta.env.VITE_DEVICE_BACKEND === "true"
     ? (props): JSX.Element => <ShareStudio {...props} />
@@ -79,12 +95,14 @@ const studioShare: StudioShare | undefined =
 
 /**
  * The Studio wing's Home (lib/wings): a video made in sittings (STUDIO
- * ST4), with the way in to New idea (ST18) handed to Studio's Start
- * (`StudioProps.newIdea`).
+ * ST4), with the ways in to New idea (ST18) and Your ideas (ST19)
+ * (`StudioHome`).
  * Making something to publish, so not a study tool and not under Practice's
  * soundbites, though it records the same way (`@some-ui/voice-capture`).
+ * Opened from Your ideas on a video an idea became, it opens that one.
  */
 const StudioRoute = (): JSX.Element => {
+  const { project } = Route.useSearch()
   useEffect(() => {
     if (import.meta.env.VITE_DEVICE_BACKEND !== "true") return
     const store = phoneProjectStore()
@@ -96,37 +114,26 @@ const StudioRoute = (): JSX.Element => {
       sittingKey,
     })
   }, [])
-  const newIdea = {
-    big: (
-      <Link
-        to="/journal/idea"
-        className="bg-card border-brand focus-visible:ring-ring flex items-center gap-3 rounded-2xl border-2 px-4 py-3 focus-visible:ring-2 focus-visible:outline-none"
-      >
-        <Lightbulb aria-hidden className="text-brand size-6 shrink-0" />
-        <span className="min-w-0">
-          <span className="block text-base font-extrabold">
-            {WORDS.idea.newIdea}
-          </span>
-          <span className="text-muted-foreground block text-sm">
-            {WORDS.idea.newIdeaLine}
-          </span>
-        </span>
-      </Link>
-    ),
-    quiet: (
-      <Link to="/journal/idea" className="text-muted-foreground underline">
-        {WORDS.idea.newIdea}
-      </Link>
-    ),
-  }
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-4">
-      <h1 className="text-2xl font-bold tracking-tight">{WORDS.heading}</h1>
-      <Studio share={studioShare} ports={studioPorts} newIdea={newIdea} />
-    </div>
+    <StudioHome
+      share={studioShare}
+      ports={studioPorts}
+      ideaLink={IdeaLink}
+      ideasLink={IdeasLink}
+      initialProject={project}
+    />
   )
 }
 
+/** `?project`: the video to open on, as Your ideas links one an idea became. */
+type StudioSearch = { project?: string }
+
+function validateStudioSearch(search: Record<string, unknown>): StudioSearch {
+  const { project } = search
+  return typeof project === "string" && project !== "" ? { project } : {}
+}
+
 export const Route = createFileRoute("/_dashboard/_apk/journal/")({
+  validateSearch: validateStudioSearch,
   component: StudioRoute,
 })

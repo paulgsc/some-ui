@@ -64,6 +64,11 @@
       "types": "./dist/@some-ui/soundbites/contract.d.ts",
       "import": "./dist/@some-ui/soundbites/contract.es.js",
       "default": "./dist/@some-ui/soundbites/contract.es.js"
+    },
+    "./fixtures": {
+      "types": "./dist/@some-ui/soundbites/fixtures.d.ts",
+      "import": "./dist/@some-ui/soundbites/fixtures.es.js",
+      "default": "./dist/@some-ui/soundbites/fixtures.es.js"
     }
   }
 }
