@@ -186,12 +186,6 @@ export const breaksRules = (count: number, first: string): string =>
 export const heldOver = (count: number, full: boolean): string =>
   `${counted(count, "pick")} from earlier days ${count === 1 ? "was" : "were"} still open${full ? ", so no new ones came" : ""}.`
 
-/** A share the sheet made, said to have arrived in Drive. */
-export const itArrived = "It arrived"
-
-/** The share sheet again, for a share not yet said to have arrived. */
-export const shareAgain = "Share again"
-
 /** A posting left out that I would have picked. */
 export const wouldHavePicked = "I’d have picked this"
 

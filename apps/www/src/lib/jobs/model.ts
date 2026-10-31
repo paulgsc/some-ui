@@ -1035,6 +1035,6 @@ export function homeOutbox(state: JobsState): ReadonlyArray<JobEvent> {
 }
 
 /** Whether the files of share `shareId` were said to have arrived. */
-export function hasArrived(state: JobsState, shareId: string): boolean {
+function hasArrived(state: JobsState, shareId: string): boolean {
   return state.log.some((e) => e.type === "arrived" && e.shareId === shareId)
 }

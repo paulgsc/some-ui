@@ -88,8 +88,6 @@ const SAID: Readonly<Record<keyof typeof words, ReadonlyArray<string>>> = {
   lapsedOn: [words.lapsedOn(DAY)],
   lapsedBeforeHeard: [1, 2].map(words.lapsedBeforeHeard),
   lapsedList: [words.lapsedList(true, 4), words.lapsedList(false, 4)],
-  itArrived: [words.itArrived],
-  shareAgain: [words.shareAgain],
   wouldHavePicked: [words.wouldHavePicked],
   saidWouldHavePicked: [words.saidWouldHavePicked],
   whyItFits: [words.whyItFits],

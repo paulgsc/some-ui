@@ -37,8 +37,8 @@ toward this frame without doing so is a finding.
 | LA7 (a reflection reaches no server)                                                                               | HF3, #2178        |
 | LA8's "only on a tap"; LA9–LA11 and LA13's consent; LA12 (consent to read) (done: LA9–LA12 retired, LA15 declared) | HF8, #2182        |
 | LA6's reporting reset on every sign-in, on the owner's `lan` build                                                 | HF8, #2182 (open) |
-| LA13's scene notes copied only once a drama prompt is shared                                                       | HF2, #2177        |
-| Every share sheet's let-go (done: HF1, #2176, promise LG1); the Jobs share sheet itself                            | HF2, #2177        |
+| LA13's scene notes copied only once a drama prompt is shared (done: copied once kept)                              | HF2, #2177        |
+| Every share sheet's let-go (done: HF1, #2176, promise LG1); the Jobs share sheet itself and the archive's (done)   | HF2, #2177        |
 
 HF8 (#2182, owner's decision D3: no per-domain switch, and no consent log told
 to home or enforced by home) removed the phone's consent machinery: the
@@ -46,13 +46,17 @@ per-pairing consent log and its telling to home, the choice to show the
 routine's files, the two-press marks, aph's way back, and Settings' ledger of
 choices. A paired phone drains everything it keeps (LA15); the only choice is
 the pairing, and the only tap that lets anything leave the phone is the clear
-of finished sessions home holds (LA8). The server half (paulgsc/server's
-`handlers/sharing.rs`, its `sharing_choice` table and the `409
-sharing_stopped` checks, its invariant 17) is a separate change; until it
-lands, a home that still carries an old stop answers a write `409`, which the
-phone reports as a failed send and refuses nothing for good
-(`@some-ui/core-utils`' `stoppedOnHome`). LA6's reporting reset is still to
-move.
+of finished sessions home holds (LA8). The server half (paulgsc/server#598)
+removed `handlers/sharing.rs`, the `sharing_choice` table and every `409
+sharing_stopped`, so HF2 (#2177) removed the phone's transitional reading of
+that answer (`stoppedOnHome`). LA6's reporting reset is still to move.
+
+HF2 (#2177) sends every voice note home when it is kept, a drama's scene
+notes included, and files every Jobs decisions and scouts file with home
+whatever it names (paulgsc/server#596: a file names its notes by id, and the
+routine reads home's transcripts). The Jobs share sheet and "Did they
+arrive?" are gone, and "Archive finished sessions" is a copy that lets no
+session go, so LG1 (`lib/home-link/voice-copy.ts`) covers it.
 
 ## The two questions
 
@@ -84,10 +88,10 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 | `/signals`, `/presence/lease`               | never                                        | never                                                                                                                                                                                                                                                                                                                                                                       | sent                                       |
 | Push subscription                           | never                                        | never                                                                                                                                                                                                                                                                                                                                                                       | the account's, on the person's own taps    |
 | Reflections                                 | on the device (at most 20), never sent       | never sent, but a spoken one's audio, on a phone paired with home (LA7, LA13)                                                                                                                                                                                                                                                                                               | the same                                   |
-| Voice notes (the phone's)                   | on the phone, never sent                     | on a paired phone, each spoken reflection, Jobs voice note an event names, game bite, Studio take and scene note of a shared drama prompt copied and sent to the paired home while the app is open, the copy kept until home holds it (LA13, LA15)                                                                                                                          | the same                                   |
+| Voice notes (the phone's)                   | on the phone, never sent                     | on a paired phone, each spoken reflection, Jobs voice note an event names, game bite, Studio take and scene note copied and sent to the paired home while the app is open, the copy kept until home holds it (LA13, LA15)                                                                                                                                                   | the same                                   |
 | Shelf                                       | never                                        | the account's, on the person's own taps                                                                                                                                                                                                                                                                                                                                     | the same                                   |
 | aph (the phone's)                           | on the phone, never sent                     | on a paired phone, on the paired home from the first run, synced while aph is open; the phone keeps only what home has not confirmed (LA15)                                                                                                                                                                                                                                 | the same                                   |
-| Jobs record (the phone's)                   | on the phone, never sent                     | on a paired phone, a copy on the paired home, synced while the app is open; its decisions and scouts files without voice, filed with home, which hands them to the Jobs mailbox on Cloudflare; the phone keeps its whole log (LA15)                                                                                                                                         | the same                                   |
+| Jobs record (the phone's)                   | on the phone, never sent                     | on a paired phone, a copy on the paired home, synced while the app is open; its decisions and scouts files, each naming its voice notes by id, filed with home, which hands them to the Jobs mailbox on Cloudflare; the phone keeps its whole log (LA15)                                                                                                                    | the same                                   |
 | Practice (the phone's)                      | on the phone, never sent                     | on a paired phone, its finished sessions and kept items sent while the app is open; nothing let go on its own (LA15)                                                                                                                                                                                                                                                        | the same                                   |
 | The routine's word sets and dramas (home's) | not read                                     | read with the account's session while Korean is open; in the Android app, from the paired home with the pairing's key while Korean is open, nothing of the phone's sent but which it opened, by name, its newest files and its run records kept on the phone (LA15)                                                                                                         | the same                                   |
 | LeetType session log (the phone's)          | on the phone, never sent                     | its finished sessions copied to the paired home by the drain, each event without a spoken answer's ticks, read back before it counts as held; the phone keeps its whole log (LA15); for home's owner alone (its only account, or the one `MAILBOX_SUBJECT` names), home passes each finished session it holds on to the Jobs mailbox on Cloudflare, for the routine to read | the same                                   |
@@ -525,8 +529,9 @@ recording and transcribes it (paulgsc/server#460).
 Which notes go, and what each is told home as, is enforced by test
 (`lib/home-link/__tests__/voice-copy.test.ts`): a spoken reflection by its session
 and when it was said, a written one never; a Jobs voice note by the first pick
-or scout event that names it, a draft's never; a scene note by its drama
-prompt's stamp, when that prompt is shared; a game bite
+or scout event that names it, a draft's never; a scene note as the drama's
+next scene (`next-scene`), by when it was kept, shared or not (HF2, #2177;
+`voice-send.test.ts` sends one never shared); a game bite
 (`lib/game-bites`) by its game, with every field it keeps, once its hold
 (Undo, and what a bite said first was about) has run out; a Studio take
 still on the phone by its project, scene and take
@@ -537,29 +542,26 @@ note and stays when home refused it, and that a copy nothing names is swept
 (`lib/voice-home/__tests__/runtime.test.ts`); that a note counts as home's
 only once home answers with its SHA-256, that a replay counts as held, that
 other audio under its id or a field home won't take is a refusal kept and
-never sent again, and that a body home did not get, a stop a home kept from
-before HF8, or a forgotten phone refuses nothing (`home.test.ts`); and that
-the copies' store is reached only from the voice lane, a copy made only in
-`voice-copy.ts`, the watch started only from the lane's hook and a shared
-prompt heard only by it (`egress-choke-points`). What no test can say is
-when a note is copied:
+never sent again, and that a body home did not get or a forgotten phone
+refuses nothing (`home.test.ts`); and that the copies' store is reached only
+from the voice lane, a copy made only in `voice-copy.ts`, the watch started
+only from the lane's hook and the scene notes read for home only there
+(`egress-choke-points`). What no test can say is when a note is copied:
 
 - _Claim:_ a voice note's audio is copied for home (`phoneVoiceHome().copy`)
   only while the phone is paired (`paired()`), and only from `copyAll` (each
-  spoken reflection, named Jobs note, game bite past its hold and Studio
-  take still on the phone, from `watchVoiceNotes`, which only
-  `useVoiceHome`'s effect starts, and from the lane's exchange, `sendVoice`)
-  and `copySceneNotes` (a drama prompt's notes, heard through
-  `onPromptShared`, which `shareDramaPrompt` tells only once its share
-  succeeded as shared); the lane's runs are asked for as LA15 says, its
+  spoken reflection, named Jobs note, scene note in the draft, game bite past
+  its hold and Studio take still on the phone, from `watchVoiceNotes`, which
+  only `useVoiceHome`'s effect starts, and from the lane's exchange,
+  `sendVoice`); the lane's runs are asked for as LA15 says, its
   exchange is `sendVoice` (a copy pass, then `exchangeVoice` over the
   store's `keeping`, its end read with the pass's by `runEnd`, LA14), and a
   copy goes only once home holds its note. Letting a note go where it was
   recorded never removes its copy.
 - _Falsified by:_ a hunk LA15's falsifier names for the shared files; a hunk
   to `lib/home-link/voice-copy.ts` that calls `copy` from anywhere but
-  `copyAll` and `copySceneNotes`, removes either's `paired()` check
-  (`copyAll`'s before every note and again after its audio is read), starts
+  `copyAll`, removes its `paired()` checks (before every note and again
+  after its audio is read), starts
   `copySoon` from anything but `watchVoiceNotes`, its subscriptions and
   `sendVoice`, or makes `sendVoice` anything but a copy pass and then
   `exchangeVoice` over `phoneVoiceHome().keeping`, whose end only `runEnd`
@@ -567,9 +569,10 @@ when a note is copied:
   anything but the link holding a pairing; a hunk to
   `lib/home-link/voice.ts` that makes the lane's `exchange` anything but
   `sendVoice`, or calls `watchVoiceNotes` from anywhere but `useVoiceHome`'s
-  effect, or drops its cleanup; a hunk to `lib/scene-voice/index.ts` that
-  tells `onPromptShared`'s listeners before or without the share's
-  `succeeded`/`shared` outcome; a hunk to `lib/voice-home/runtime.ts` that
+  effect, or drops its cleanup; a hunk to `lib/scene-voice` that makes
+  `sceneNotes` read anything but the draft's list, or lists a note before
+  its audio is on the shelf (`shelveTake` in `runtime.ts`); a hunk to
+  `lib/voice-home/runtime.ts` that
   removes a copy from the shelf on anything but a `held` answer, a record
   storage would not keep, or in `sweep`, lets `sweep` remove a copy the
   record names waiting or refused, writes the record naming a copy before
@@ -579,27 +582,28 @@ when a note is copied:
   that names only its body.
 - _Scope:_ LA15's shared files, `apps/www/src/lib/home-link/voice.ts`,
   `voice-copy.ts`, `apps/www/src/lib/voice-home/**`,
-  `apps/www/src/lib/scene-voice/index.ts`.
+  `apps/www/src/lib/scene-voice/index.ts`, `runtime.ts`.
 - _Tolerance:_ a note let go before the watch copies it (the app closed in
   between, or a long pass had not reached it) is not copied; one the copies'
   shelf has no room for (`VOICE_HOME_MAX_BYTES`, a hundred minutes), or whose
   record storage will not keep, waits until a copy fits and is lost if it is
-  let go meanwhile, and a scene note is never offered again; a note on
+  let go meanwhile; a note on
   Android 7, whose native request sends no body, waits and is never sent,
   and Settings says sending went wrong. A reflection that leaves the bounded
   list before it is copied is not copied either. A Jobs note let go once its
   share arrived in Drive before a copy was made, and a note whose audio is
   gone, are never copied, and Settings says so (LA14). A note recorded on a
-  phone that was never paired is not copied until it is.
-- _Why not enforced:_ which files call the copy, the watch and the shared
-  prompt's listener is pinned (`egress-choke-points`). Whether each call
+  phone that was never paired is not copied until it is. A scene note kept
+  before HF2 noted when is told home as of its copy.
+- _Why not enforced:_ which files call the copy, the watch and the scene
+  notes' read are pinned (`egress-choke-points`). Whether each call
   copies only while the phone is paired is a reading of its guard, which a
   source scan sees as text and a lint rule cannot tie to the link's state.
-  Held when declared (reworded for HF8), by reading every call: `copy` in
-  `copyAll`, behind `paired()` before each note and after its audio is
-  read, and in `copySceneNotes`, behind it once; `copySceneNotes` only as
-  `onPromptShared`'s listener, which `shareDramaPrompt` tells only after a
-  share that `succeeded` as `shared`; `watchVoiceNotes` only in
+  Held when declared (reworded for HF8, and for HF2), by reading every
+  call: `copy` only in `copyAll`, behind `paired()` before each note and
+  after its audio is read; `sceneNotes.read` only in `candidates`, over
+  the draft's list, which `shelveTake` writes only after the audio is
+  shelved; `watchVoiceNotes` only in
   `useVoiceHome`'s effect, which returns its cleanup; `useVoiceHome` only in
   `HomeLanes`, which `_dashboard.tsx` mounts under `VITE_DEVICE_BACKEND`;
   `shelf.remove` in the runtime only on `held` and in `sweep`, which keeps
@@ -641,9 +645,7 @@ was silent, so the run ended as if all had gone.
   failed run's line, and none naming the machinery); and
   `components/settings/__tests__/device-kept-on-home.test.tsx` (Settings
   shows the notes it can't send, and says nothing waits for them).
-- _Tolerance:_ a scene note's copy is offered once, at its share, so one that
-  fails there goes to the native log and is not named in Settings (LA13's
-  Tolerance). A pass under way when Send now is pressed is the one the run
+- _Tolerance:_ a pass under way when Send now is pressed is the one the run
   waits on, so a note changed during it is counted by the next run.
 
 ### LA15: a paired phone drains what it keeps to home on its own, at the moments its person is using the app
@@ -825,8 +827,8 @@ can say is when a run is asked for:
   entries and takes) stay on the phone, the share being a copy (LG1, HF1
   #2176). "Archive finished sessions"
   (`lib/session-archive`) hands the share sheet one file of the finished
-  sessions' records, and they leave the phone once the learner says it
-  arrived. The phone's Home server block syncs, pairs, unpairs and clears
+  sessions' records, a copy that lets no session go (LG1, HF2 #2177). The
+  phone's Home server block syncs, pairs, unpairs and clears
   finished sessions home holds on a tap (LA8); a paired phone drains what it
   keeps to home on its own, since home is the owner's own store (LA15), and
   Korean reads the routine's files from it. The share sheet and the speech

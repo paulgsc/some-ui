@@ -1,7 +1,8 @@
 /**
  * The phone's Jobs wing (`./runtime`): one runtime per page load, its
  * record in this device's storage, its voice notes on a shelf of their own,
- * its files out through the share sheet. Phone-only (`build.paths.ts`).
+ * its files and notes to home by the home link (`lib/home-link/jobs`,
+ * `lib/home-link/voice-copy`). Phone-only (`build.paths.ts`).
  */
 import { dayOf } from "@some-ui/core-utils"
 import {
@@ -11,8 +12,6 @@ import {
 import { micRecorder, savingShelf } from "@some-ui/voice-capture"
 
 import { MOBILE_APP } from "@/lib/build-profile"
-import { foreignValue } from "@/lib/intent/foreign"
-import { shareFiles } from "@/lib/share-files"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 
 import { nativeNotice } from "./notice-native"
@@ -21,7 +20,7 @@ import { createJobsRuntime } from "./runtime"
 
 /**
  * Room for the voice notes not yet let go: a minute each, up to forty. A
- * note leaves once the share it went out in has arrived.
+ * note leaves once home holds it (LG1).
  */
 const JOB_VOICE_MAX_BYTES = 40 * SOUNDBITE_TAKE_MAX_BYTES
 
@@ -46,13 +45,6 @@ export function phoneJobs(): JobsRuntime {
       startRecording: micRecorder({
         bitsPerSecond: SOUNDBITE_BITS_PER_SECOND,
       }),
-      share: (dir, title, files) =>
-        foreignValue({
-          outcome:
-            dir === "job-decisions"
-              ? shareFiles("job-decisions", title, files)
-              : shareFiles("job-scouts", title, files),
-        }),
       now: () => new Date(),
       dayOf,
       newId: () => crypto.randomUUID(),

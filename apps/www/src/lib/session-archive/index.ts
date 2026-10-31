@@ -1,12 +1,10 @@
 /**
- * "Archive finished sessions": the phone's other way to make room, for
- * someone who keeps no home server. The finished sessions (`mayLeavePhone`)
- * go out through Android's share sheet as one file of their full records,
- * and the person picks where (Drive, say); nothing here sends anything
- * anywhere. Android says "shared" once an app is picked, even if the person
- * then backs out, and the phone cannot look inside Drive, so the sessions
- * leave the phone only once the person says the file arrived
- * (`letGoUnchanged`), and only those unchanged since they went out.
+ * "Archive finished sessions": a copy of the finished sessions
+ * (`mayLeavePhone`) through Android's share sheet, as one file of their full
+ * records, wherever the person picks (Drive, say); nothing here sends
+ * anything anywhere. An archive is a copy and lets nothing go (LG1, HF2
+ * #2177): a finished session leaves the phone only once home has read it
+ * back (`letGoUnchanged`, which only `lib/home-link/clear` calls, LA8).
  *
  * Only session records go, as a copy home carries them; reflections, stops
  * and soundbites have their own share (`lib/agent-export`, LA7).
@@ -27,15 +25,10 @@ import { sessionsRepository } from "@/lib/tenant/queries"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 const ABOUT =
-  "Finished study sessions archived from the some-ui app on the learner's phone, as the phone stored them: each session's plan (`activities`, `scenes`, `layout`), status and times. Once the learner confirmed this file arrived, these sessions left the phone: this file is their only copy unless they were also copied to a home server."
+  "Finished study sessions archived from the some-ui app on the learner's phone, as the phone stored them: each session's plan (`activities`, `scenes`, `layout`), status and times. A copy: the sessions stay on the phone, which lets one go only once the learner's home server holds it."
 
-/** A session as a destination got it: what `letGoUnchanged` checks. */
+/** A session as home read it back: what `letGoUnchanged` checks. */
 export type SessionAsOf = { readonly id: string; readonly updatedAt: string }
-
-export type ArchiveResult = {
-  readonly outcome: "shared" | "cancelled"
-  readonly sent: ReadonlyArray<SessionAsOf>
-}
 
 /** The sessions an archive would carry. Reads only this phone. */
 async function finishedOnPhone(
@@ -64,30 +57,29 @@ function archiveFile(
   }
 }
 
-/** Opens the share sheet with the finished sessions, oldest first. */
+/**
+ * Opens the share sheet with a copy of the finished sessions, oldest first.
+ * Lets nothing go, however the sheet ends.
+ */
 export async function shareArchive(
   now: () => Date = () => new Date()
-): Promise<ArchiveResult> {
+): Promise<"shared" | "cancelled"> {
   const at = now()
   const sessions = (await finishedOnPhone(at)).sort((a, b) =>
     (a.completedAt ?? a.updatedAt).localeCompare(b.completedAt ?? b.updatedAt)
   )
-  if (sessions.length === 0) return { outcome: "cancelled", sent: [] }
-  const outcome = await foreignValue({
+  if (sessions.length === 0) return "cancelled"
+  return foreignValue({
     outcome: shareFiles("session-archive", "Finished study sessions", [
       archiveFile(sessions, at),
     ]),
   })
-  return {
-    outcome,
-    sent: sessions.map(({ id, updatedAt }) => ({ id, updatedAt })),
-  }
 }
 
 /**
- * Lets go of the phone's copy of each of `held`, a destination (home, or an
- * archive the person says arrived) now holds, only if it is unchanged since
- * the destination got it. Returns how many left.
+ * Lets go of the phone's copy of each of `held`, which home has read back
+ * (`lib/home-link/clear`), only if it is unchanged since home read it.
+ * Returns how many left.
  */
 export async function letGoUnchanged(
   held: ReadonlyArray<SessionAsOf>

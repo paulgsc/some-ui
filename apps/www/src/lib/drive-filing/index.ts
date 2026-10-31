@@ -34,8 +34,6 @@ export const DRIVE_FOLDERS: Readonly<
   "studio-idea": () => "Build Journal › ideas",
   "drama-prompt": () => DRAMA_REQUESTS,
   "session-archive": () => "Study ledger › sessions",
-  "job-decisions": () => "some-ui jobs › Decisions",
-  "job-scouts": () => "some-ui jobs › Scout",
 }
 
 /**

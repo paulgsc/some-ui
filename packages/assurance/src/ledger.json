@@ -1852,7 +1852,7 @@
       "store": "phone:scene-voice",
       "class": "record",
       "growth": "bounded: SCENE_NOTES_MAX = 5 notes per draft, SCENE_AUDIO_MAX_BYTES = 5 x 240,000 = 1,200,000 B.",
-      "horizon": "notes leave when the person lets the draft go, or once home holds them (letGo, LG1); a shared prompt is a copy; sweepSceneVoice drops audio no note names and notes whose audio never landed",
+      "horizon": "notes leave when the person lets the draft go, or once home holds them and a shared prompt carried them (letGo, LG1); a shared prompt is a copy; sweepSceneVoice drops audio no note names and notes whose audio never landed",
       "family": "what-is-kept"
     },
     {
@@ -1871,8 +1871,8 @@
     {
       "store": "phone:sessions",
       "class": "record",
-      "growth": "Per study session on the phone (SQLite copy of server sessions), one row each; counts toward the 25 MiB pool; finished sessions leave once home or an archive holds them.",
-      "horizon": "a finished session (completed, not today's: mayLeavePhone) leaves once home reads it back (Send to host) or the person says an archive share arrived; the person may delete any session; over budget the app names the oldest finished one and removes it on a yes",
+      "growth": "Per study session on the phone (SQLite copy of server sessions), one row each; counts toward the 25 MiB pool; finished sessions leave once home holds them (an archive is a copy, LG1).",
+      "horizon": "a finished session (completed, not today's: mayLeavePhone) leaves once home reads it back (Clear finished sessions home holds), never on an archive share (LG1, HF2 #2177); the person may delete any session; over budget the app names the oldest finished one and removes it on a yes",
       "family": "what-is-kept"
     },
     {

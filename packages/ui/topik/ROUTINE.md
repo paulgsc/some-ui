@@ -113,8 +113,9 @@ home has heard it: don't answer it this run, and skip it in step 3 or 7 so it
 doesn't use up that step's limit. Count it in the run record's
 `voice.waiting` (step 12).
 
-A note reaches home only while the phone keeps voice notes on home, and a
-drama prompt's notes are sent once, when it is shared. So once its voice file
+A note reaches home from a paired phone once it is kept (a drama prompt's
+scene notes too, before the prompt is shared), and from a phone that isn't
+paired not until it is. So once its voice file
 (or, without one, the reflection's file) has been in Drive for two days, and
 nothing is coming back for it (this run asked none back for it, and
 `GET "$JOBS_MAILBOX_URL/v1/transcript/wanted"` lists no open ask for it: a

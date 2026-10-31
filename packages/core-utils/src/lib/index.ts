@@ -19,7 +19,6 @@ export {
   isHomeBytes,
   readAs,
   refusalOf,
-  stoppedOnHome,
   unexpectedAnswer,
 } from "./home-exchange"
 export type { Kept, KeyedStorage, OpenedRecord, Salvaged } from "./storage"

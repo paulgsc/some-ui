@@ -6,14 +6,7 @@
 import type { JSX } from "react"
 import { useEffect, useSyncExternalStore } from "react"
 import { counted, formatSize } from "@some-ui/core-utils"
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-  Button,
-  useConfirmSheet,
-} from "@some-ui/shared"
-import { useQueryClient } from "@tanstack/react-query"
+import { Alert, AlertDescription, AlertTitle, Button } from "@some-ui/shared"
 import { HardDrive } from "lucide-react"
 import { toast } from "sonner"
 
@@ -23,8 +16,7 @@ import type { DeviceStorageView } from "@/lib/device-backend/storage-view"
 import { deviceStorage } from "@/lib/device-backend/storage-view"
 import { useAsyncIntent, useIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
-import type { SessionAsOf } from "@/lib/session-archive"
-import { letGoUnchanged, shareArchive } from "@/lib/session-archive"
+import { shareArchive } from "@/lib/session-archive"
 import { useDeleteSession, useSessions } from "@/lib/tenant"
 
 function useDeviceStorage(): DeviceStorageView | null {
@@ -49,7 +41,7 @@ export const DeviceStorageSummary = (): JSX.Element | null => {
         {formatSize(quotaBytes)}
       </p>
       <p className="text-muted-foreground text-xs">
-        Copy or archive finished sessions to free up space.
+        Clear finished sessions home holds to free up space.
       </p>
     </div>
   )
@@ -147,34 +139,19 @@ export const DeviceStoragePrompt = (): JSX.Element | null => {
 
 const sessions = (n: number): string => counted(n, "finished session")
 
-/** Settings' "Archive finished sessions" (`lib/session-archive`). */
+/**
+ * Settings' "Archive finished sessions" (`lib/session-archive`): a copy,
+ * which lets nothing go (LG1).
+ */
 export const DeviceArchive = (): JSX.Element | null => {
-  const queryClient = useQueryClient()
   const { data } = useSessions()
   const finished = (data ?? []).filter((s) => mayLeavePhone(s, new Date()))
   const share = useAsyncIntent((_: undefined) => shareArchive(), {
     presentation: "interactive",
   })
-  const letGo = useAsyncIntent(
-    (sent: ReadonlyArray<SessionAsOf>) => letGoUnchanged(sent),
-    { presentation: "interactive" }
-  )
-  const { ask, sheet } = useConfirmSheet()
-  useIntentEffect(share, ({ outcome, sent }) => {
-    if (outcome !== "shared" || sent.length === 0) return
-    // `arrived` (components/reflection/copy) says the same of reflections,
-    // but a reflection module stays out of reach here (LA7).
-    ask({
-      title: "Did it arrive?",
-      description: `Once it has, ${sessions(sent.length)} can leave this phone.`,
-      confirm: "It arrived: let them go",
-      keep: "Keep them here",
-      onConfirm: () => letGo.start(sent),
-    })
-  })
-  useIntentEffect(letGo, (left) => {
-    void queryClient.invalidateQueries()
-    if (left > 0) toast.success(`Cleared ${sessions(left)} from this phone.`)
+  useIntentEffect(share, (outcome) => {
+    if (outcome === "shared")
+      toast.success("Archived. They stay on this phone.")
   })
   if (finished.length === 0) return null
   return (
@@ -188,9 +165,8 @@ export const DeviceArchive = (): JSX.Element | null => {
         workingLabel="Preparing..."
       />
       <p className="text-muted-foreground text-xs">
-        Save them to a file (Drive, say), then clear them here.
+        Save a copy to a file (Drive, say). They stay on this phone.
       </p>
-      {sheet}
     </div>
   )
 }

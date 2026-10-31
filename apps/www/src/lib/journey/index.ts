@@ -7,8 +7,9 @@
  * these words live, so they stay in the person's terms: what is where, and
  * since when (`__tests__/journey.test.ts`).
  *
- * Two roads lead to the morning run: home's, which hands a file to the run's
- * mailbox without a tap, and the share sheet's, to Drive.
+ * One road leads to the morning run: home's, which hands a file to the run's
+ * mailbox without a tap. Drive's is in the record only, for what the share
+ * sheet carried there before HF2 (#2177) took it away.
  *
  * It sits outside `lib/home-link`, which only the screens LA8 names may
  * import: these are words and pictures, and reach nothing.
@@ -26,8 +27,7 @@ export const JOURNEY_IDS = [
   "missed-run",
   "home-refused",
   "mailbox-refused",
-  "needs-sheet",
-  "sheet-unconfirmed",
+  "unpaired",
   "in-drive",
 ] as const
 
@@ -66,11 +66,8 @@ export type Road = {
   readonly legs: ReadonlyArray<Leg>
 }
 
-/** Which road a file takes: home's, or the share sheet's to Drive. */
+/** Which road a file took: home's, or, before HF2, the share sheet's to Drive. */
 type Via = "home" | "drive"
-
-/** Why a file goes by the share sheet. */
-type SheetWhy = "voice" | "not-kept"
 
 /** One file's state now, and what its words need. */
 export type Journey = {
@@ -81,8 +78,6 @@ export type Journey = {
   readonly since: string | null
   /** The day of the run that read or missed it, `YYYY-MM-DD`. */
   readonly runDay: string | null
-  /** For `needs-sheet`: why it goes that way. */
-  readonly why: SheetWhy | null
 }
 
 /** A journey with only what `id` needs; the rest left empty. */
@@ -95,22 +90,16 @@ export function journey(
     via: more.via ?? (DRIVE_STATES.has(id) ? "drive" : "home"),
     since: more.since ?? null,
     runDay: more.runDay ?? null,
-    why: more.why ?? null,
   }
 }
 
 const HOME_ROAD: ReadonlyArray<Stop> = ["phone", "home", "mailbox", "run"]
 const DRIVE_ROAD: ReadonlyArray<Stop> = ["phone", "drive", "run"]
 
-const DRIVE_STATES: ReadonlySet<JourneyId> = new Set([
-  "needs-sheet",
-  "sheet-unconfirmed",
-  "in-drive",
-])
+const DRIVE_STATES: ReadonlySet<JourneyId> = new Set(["in-drive"])
 
 const R = "reached"
 const S = "stopped"
-const U = "unconfirmed"
 const A = "ahead"
 
 /** Each state's theme, the stop its icon shows, and its road. */
@@ -175,19 +164,12 @@ const SHAPES: Readonly<
     marks: [R, R, S, A],
     legs: ["passed", "broken", "ahead"],
   },
-  "needs-sheet": {
+  unpaired: {
     theme: "waiting",
-    at: "drive",
-    sign: "none",
-    marks: [R, A, A],
-    legs: ["under-way", "ahead"],
-  },
-  "sheet-unconfirmed": {
-    theme: "waiting",
-    at: "drive",
-    sign: "unknown",
-    marks: [R, U, A],
-    legs: ["under-way", "ahead"],
+    at: "phone",
+    sign: "later",
+    marks: [R, A, A, A],
+    legs: ["ahead", "ahead", "ahead"],
   },
   "in-drive": {
     theme: "moving",
@@ -288,7 +270,7 @@ export function journeySaid(j: Journey, noun: Noun, now: Date): Said {
     case "on-phone": {
       return {
         title: "On this phone",
-        line: `Not sent yet. On the home Wi‑Fi, home takes ${it} without a tap, or share ${it} to Drive now.`,
+        line: `Not sent yet. On the home Wi‑Fi, home takes ${it} without a tap.`,
       }
     }
     case "with-home": {
@@ -312,34 +294,25 @@ export function journeySaid(j: Journey, noun: Noun, now: Date): Said {
     case "missed-run": {
       return {
         title: "Didn’t reach the morning run",
-        line: `Home has had ${it}${since === null ? "" : ` since ${since}`}, but ${run} run didn’t read ${it}. Share ${it} to Drive so the next one does.`,
+        line: `Home has had ${it}${since === null ? "" : ` since ${since}`}, but ${run} run didn’t read ${it}. Home takes ${it} again without a tap, for the next one.`,
       }
     }
     case "home-refused": {
       return {
         title: `Home wouldn’t take ${it}`,
-        line: `Share ${it} to Drive instead, so the morning run still reads ${it}.`,
+        line: `${capital(they)} ${many ? "stay" : "stays"} on this phone, and the morning run doesn’t read ${it}.`,
       }
     }
     case "mailbox-refused": {
       return {
         title: `The run’s mailbox wouldn’t take ${it}`,
-        line: `${since === null ? "Home tried" : `Home tried at ${since}`}. Share ${it} to Drive so the morning run still reads ${it}.`,
+        line: `${since === null ? "Home tried" : `Home tried at ${since}`}. Home keeps ${it}, and the morning run doesn’t read ${it}.`,
       }
     }
-    case "needs-sheet": {
+    case "unpaired": {
       return {
-        title: "Goes by the share sheet",
-        line:
-          j.why === "not-kept"
-            ? `This phone isn’t paired with home, so nothing goes there by itself. Share ${it} to Drive.`
-            : `A voice note rides along, and home keeps no audio. Share ${it} to Drive.`,
-      }
-    }
-    case "sheet-unconfirmed": {
-      return {
-        title: "Shared, not confirmed",
-        line: `Did ${they} arrive in Drive? Until you say so, ${they} ${many ? "stay" : "stays"} on offer.`,
+        title: "Waiting on this phone",
+        line: `This phone isn’t paired with home, so ${they} ${many ? "wait" : "waits"} here. Once it is, home takes ${it} without a tap.`,
       }
     }
     case "in-drive": {

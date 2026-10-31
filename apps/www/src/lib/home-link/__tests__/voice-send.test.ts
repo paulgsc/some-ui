@@ -28,7 +28,13 @@ const fakes = vi.hoisted(
     jobs: { state: JobsState } | null
     audio: Map<string, Blob | Error>
     home: VoiceHome | null
-  } => ({ jobs: null, audio: new Map(), home: null })
+    scene: Array<{
+      id: string
+      durationMs: number
+      mimeType: string
+      at: string
+    }>
+  } => ({ jobs: null, audio: new Map(), home: null, scene: [] })
 )
 
 vi.mock("@/lib/jobs", () => ({
@@ -60,7 +66,15 @@ vi.mock("@/lib/reflection-voice", () => ({
   reflectionAudio: (): unknown => ({ get: () => Promise.resolve(null) }),
 }))
 vi.mock("@/lib/scene-voice", () => ({
-  onPromptShared: () => (): void => undefined,
+  phoneSceneVoice: (): unknown => ({
+    subscribe: () => (): void => undefined,
+    letGo: (): void => undefined,
+  }),
+  sceneNotes: {
+    read: (): unknown => fakes.scene,
+    audio: (id: string): Promise<Blob | null> =>
+      Promise.resolve(id === "s1" ? new Blob(["s"]) : null),
+  },
 }))
 vi.mock("@/lib/voice-home", () => ({
   phoneVoiceHome: (): VoiceHome | null => fakes.home,
@@ -253,5 +267,31 @@ describe("Studio's takes, once its route hands them in (ST12)", () => {
     expect(fakes.home?.getSnapshot().held).toEqual(["t1"])
     expect(sent.some((path) => path.includes("of=studio"))).toBe(true)
     expect(waiting()).toBe(0)
+  })
+})
+
+describe("the drama's scene notes (HF2)", () => {
+  it("sends one recorded and never shared, as the next scene's", async () => {
+    setUp(5, {})
+    fakes.scene = [
+      {
+        id: "s1",
+        durationMs: 4000,
+        mimeType: "audio/mp4",
+        at: "2026-10-31T08:00:00.000Z",
+      },
+    ]
+    const sent: Array<string> = []
+    const recording: HomeCall = (method, path, init) => {
+      sent.push(path)
+      return send(method, path, init)
+    }
+    expect(await sendVoice(recording)).toEqual({ kind: "synced" })
+    fakes.scene = []
+    // Studio's take, handed in above, goes too.
+    expect(fakes.home?.getSnapshot().held).toContain("s1")
+    expect(sent).toContain(
+      "/voice-notes/s1?of=scene&ref=next-scene&at=2026-10-31T08%3A00%3A00.000Z"
+    )
   })
 })

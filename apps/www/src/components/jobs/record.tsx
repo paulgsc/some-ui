@@ -14,9 +14,9 @@ import { FILE_NAMES } from "@/lib/jobs/words"
 
 import { Applications } from "./applications"
 import {
+  FileProblem,
   JourneyCard,
   Problem,
-  ShareAction,
   useJobs,
   useJourneyContext,
 } from "./parts"
@@ -56,11 +56,7 @@ export const JobsRecord = (): JSX.Element => {
           The morning run reads these and your voice notes.
           {last ? ` Last sent ${last.day}.` : ""}
         </p>
-        <ShareAction
-          kind="decisions"
-          journey={journey}
-          label="Share today’s decisions"
-        />
+        <FileProblem kind="decisions" />
       </JourneyCard>
       <Problem />
       {applications.length > 0 && (

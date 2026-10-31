@@ -3,9 +3,9 @@
  * reflection by its session, and a Jobs note by the first event that names
  * it, with times that never move between tries (home takes a replay only as
  * it was first described), never one let go once its share arrived in
- * Drive; a game bite by its game, with every field it keeps; and what this
- * phone can't send, by why (LA14). A scene note's stamp is topik's
- * `promptOfFile`.
+ * Drive; a scene note as the drama's next scene, by when it was kept; a game
+ * bite by its game, with every field it keeps; and what this phone can't
+ * send, by why (LA14).
  */
 import { describe, expect, it } from "vitest"
 
@@ -13,6 +13,7 @@ import {
   gameNote,
   jobsNotes,
   reflectionNote,
+  sceneNote,
   unsendable,
 } from "@/lib/home-link/voice-copy"
 import type { JobEvent, JobsState, VoiceNote } from "@/lib/jobs/model"
@@ -28,6 +29,22 @@ const voice = (id: string, owner = "draft"): VoiceNote => ({
 })
 
 describe("what each voice note is told home as", () => {
+  it("tells a scene note as the drama's next scene, by when it was kept, recorded and never shared", () => {
+    const now = new Date("2026-10-31T12:00:00.000Z")
+    const kept = { id: "s1", durationMs: 4000, mimeType: "audio/mp4" }
+    expect(sceneNote({ ...kept, at: "2026-10-30T20:00:00.000Z" }, now)).toEqual(
+      {
+        id: "s1",
+        of: "scene",
+        ref: "next-scene",
+        at: "2026-10-30T20:00:00.000Z",
+        contentType: "audio/mp4",
+      }
+    )
+    // Kept before the phone noted when: told home as of now.
+    expect(sceneNote(kept, now).at).toBe("2026-10-31T12:00:00.000Z")
+  })
+
   it("tells a game bite by its game and when it was kept, with every field it keeps", () => {
     const fields = { how: "said-first", strip: "", watching: "1" }
     expect(

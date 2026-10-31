@@ -1,10 +1,10 @@
 import { inMemoryStorage } from "@some-ui/core-utils"
 import type { KeyedStorage } from "@some-ui/core-utils"
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import { isFile } from "@/lib/jobs/files"
 import type { PickRef } from "@/lib/jobs/model"
-import { EMPTY } from "@/lib/jobs/model"
+import { EMPTY, step } from "@/lib/jobs/model"
 import type { NoticeAsked, NoticePort } from "@/lib/jobs/runtime"
 import { createJobsRuntime } from "@/lib/jobs/runtime"
 import { STORAGE_KEY, writeStored } from "@/lib/jobs/stored"
@@ -137,45 +137,48 @@ describe("createJobsRuntime", () => {
     expect(runtime.read(ref)).toBe(false)
   })
 
-  it("offers a share again until it arrived, by a name of its own", async () => {
+  it("files what a share nobody said arrived carried, by a name of its own", async () => {
     const p = ports()
-    const runtime = createJobsRuntime(p)
-    runtime.open(blob(JSON.stringify(digest("2026-10-18"))))
+    const before = createJobsRuntime(p)
+    before.open(blob(JSON.stringify(digest("2026-10-18"))))
     await settle()
-    const pick = runtime.getSnapshot().state.digests[0].picks[1]
-    const ref = {
+    const pick = before.getSnapshot().state.digests[0].picks[1]
+    before.record({
+      type: "passed",
       day: "2026-10-18",
       pickId: pick.id,
       fingerprint: pick.fingerprint,
-    }
-    expect(
-      runtime.record({
-        type: "passed",
-        ...ref,
-        reasons: ["pay"],
-        note: "",
-        voice: [],
+      reasons: ["pay"],
+      note: "",
+      voice: [],
+    })
+    // A Drive share from before HF2 that nobody said arrived.
+    const held = before.getSnapshot().state
+    writeStored(
+      p.storage,
+      step(held, {
+        type: "record",
+        event: {
+          type: "shared",
+          kind: "decisions",
+          day: "2026-10-18",
+          file: "decisions-2026-10-18.json",
+          through: held.log.length,
+          voice: [],
+        },
+        stamp: { id: "s1", at: "2026-10-18T21:00:00.000Z" },
       })
-    ).toBe(true)
-
-    const shared = await runtime.share("decisions")
-    expect(shared.outcome).toBe("shared")
-    expect(p.share).toHaveBeenCalledWith("job-decisions", expect.any(String), [
-      expect.objectContaining({ name: "decisions-2026-10-18.json" }),
-    ])
-    // Not yet arrived: the same picks go again, beside the first file.
-    const again = await runtime.share("decisions")
-    expect(p.share).toHaveBeenLastCalledWith(
-      "job-decisions",
-      expect.any(String),
-      [expect.objectContaining({ name: "decisions-2026-10-18-2.json" })]
     )
-    if (again.outcome === "shared") runtime.arrived(again.shareId)
-    expect(runtime.getSnapshot().state.log.at(-1)?.type).toBe("arrived")
-    expect(await runtime.share("decisions")).toEqual({ outcome: "nothing" })
+    const runtime = createJobsRuntime(p)
+    const file = runtime.keeping.outgoing("decisions")
+    if (!isFile(file)) throw new Error("expected a file")
+    expect(file.name).toBe("decisions-2026-10-18-2.json")
+    expect(JSON.parse(file.json).picks).toEqual([
+      expect.objectContaining({ pickId: pick.id, decision: "passed" }),
+    ])
   })
 
-  it("lets a voice note's audio go on home's word, never on a Drive share's (LG1)", async () => {
+  it("lets a voice note's audio go on home's word alone, never on its file's filing (LG1)", async () => {
     const p = ports()
     const note = { mimeType: "audio/webm", durationMs: 3_000, owner: "o" }
     writeStored(p.storage, {
@@ -202,10 +205,10 @@ describe("createJobsRuntime", () => {
         voice: ["v1"],
       })
     ).toBe(true)
-    const shared = await runtime.share("decisions")
-    if (shared.outcome === "shared") runtime.arrived(shared.shareId)
-    expect(runtime.getSnapshot().state.log.at(-1)?.type).toBe("arrived")
-    // The share arriving in Drive is a copy: the audio stays.
+    const file = runtime.keeping.outgoing("decisions")
+    if (!isFile(file)) throw new Error("expected a file")
+    expect(runtime.keeping.filed("decisions", file)).toBe(true)
+    // The file names the note; its audio stays until home holds the note.
     await settle()
     expect(await p.audio.ids()).toEqual(["v1", "v2"])
     // Home's word lets it go, and only the note home holds.
@@ -219,7 +222,7 @@ describe("createJobsRuntime", () => {
     expect(await p.audio.ids()).toEqual(["v2"])
   })
 
-  it("shares a note home holds by name alone, and home can file it then (LG1)", async () => {
+  it("files a note home holds by its id alone (LG1)", async () => {
     const p = ports()
     const note = { mimeType: "audio/webm", durationMs: 3_000, owner: "o" }
     writeStored(p.storage, { ...EMPTY, voice: [{ ...note, id: "v1" }] })
@@ -237,29 +240,19 @@ describe("createJobsRuntime", () => {
       note: "",
       voice: ["v1"],
     })
-    const before = runtime.outgoing("decisions")
-    expect(isFile(before) && before.voice.map((v) => v.id)).toEqual(["v1"])
-
-    // Home holds the note before its share is made.
+    // Home holds the note before its file is filed.
     runtime.letGo(new Set(["v1"]))
     await settle()
     expect(await p.audio.ids()).toEqual([])
     const file = runtime.keeping.outgoing("decisions")
-    expect(isFile(file) && file.voice).toEqual([])
-    const shared = await runtime.share("decisions")
-    expect(shared.outcome).toBe("shared")
-    expect(p.share).toHaveBeenLastCalledWith(
-      "job-decisions",
-      expect.any(String),
-      [expect.objectContaining({ name: "decisions-2026-10-18.json" })]
-    )
-    expect(runtime.getSnapshot().state.log.at(-1)).toMatchObject({
-      type: "shared",
-      voice: [],
+    if (!isFile(file)) throw new Error("expected a file")
+    expect(JSON.parse(file.json)).toMatchObject({
+      notes: { "2026-10-18_tid-7f2a_voice-1.webm": "v1" },
     })
+    expect(runtime.keeping.filed("decisions", file)).toBe(true)
   })
 
-  it("sends a file a run missed again, with the audio still on the phone (LG1)", async () => {
+  it("files what a run missed again, with the audio still on the phone (LG1)", async () => {
     let now = new Date("2026-10-18T19:00:00Z")
     const p = ports({ now: () => now })
     const note = { mimeType: "audio/webm", durationMs: 3_000, owner: "o" }
@@ -275,9 +268,9 @@ describe("createJobsRuntime", () => {
       pickId: sw.id,
       fingerprint: sw.fingerprint,
     })
-    const filed = runtime.keeping.outgoing("decisions")
-    if (!isFile(filed)) throw new Error("expected a file")
-    expect(runtime.keeping.filed("decisions", filed)).toBe(true)
+    const first = runtime.keeping.outgoing("decisions")
+    if (!isFile(first)) throw new Error("expected a file")
+    expect(runtime.keeping.filed("decisions", first)).toBe(true)
     runtime.record({
       type: "passed",
       day: "2026-10-18",
@@ -287,25 +280,21 @@ describe("createJobsRuntime", () => {
       note: "",
       voice: ["v1"],
     })
-    const sent = await runtime.share("decisions")
-    if (sent.outcome !== "shared") throw new Error("expected a share")
-    runtime.arrived(sent.shareId)
+    const second = runtime.keeping.outgoing("decisions")
+    if (!isFile(second)) throw new Error("expected a file")
+    expect(runtime.keeping.filed("decisions", second)).toBe(true)
+    expect(runtime.keeping.outgoing("decisions")).toBeNull()
 
     // The next morning's run went by without reading what home filed, so
-    // the sheet sends it all again, the note's audio beside it.
+    // the next exchange files it all again, the note's audio still here.
     now = new Date("2026-10-19T17:00:00Z")
     runtime.keeping.fetched([digest("2026-10-19")], undefined)
-    expect(await runtime.share("decisions")).toMatchObject({
-      outcome: "shared",
-    })
-    expect(p.share).toHaveBeenLastCalledWith(
-      "job-decisions",
-      expect.any(String),
-      [
-        expect.objectContaining({ name: expect.stringMatching(/\.json$/) }),
-        expect.objectContaining({ name: expect.stringMatching(/voice-1/) }),
-      ]
-    )
+    const again = runtime.keeping.outgoing("decisions")
+    if (!isFile(again)) throw new Error("expected a file")
+    expect(
+      JSON.parse(again.json).picks.map((pk: { pickId: string }) => pk.pickId)
+    ).toEqual(expect.arrayContaining([sw.id, ad.id]))
+    expect(await p.audio.ids()).toEqual(["v1"])
   })
 
   it("records a file home took as shared and arrived, and offers it no more", async () => {
@@ -335,7 +324,6 @@ describe("createJobsRuntime", () => {
     })
     expect(arrived).toMatchObject({ type: "arrived", shareId: shared.id })
     expect(runtime.keeping.outgoing("decisions")).toBeNull()
-    expect(await runtime.share("decisions")).toEqual({ outcome: "nothing" })
   })
 
   it("gives a scout an id of its own, and dates an outcome today", () => {
@@ -453,17 +441,6 @@ describe("createJobsRuntime", () => {
     expect(full.storage.getItem("some-ui:jobs:drafts")).toBe(kept)
     expect(cramped.getSnapshot().problem).toMatch(/lasts only while Jobs/)
     expect(cramped.getSnapshot().drafts).toHaveProperty("2026-10-18/b/fit")
-  })
-
-  it("records nothing for a share backed out of", async () => {
-    const p = ports({
-      share: vi.fn(() => Promise.resolve<"shared" | "cancelled">("cancelled")),
-    })
-    const runtime = createJobsRuntime(p)
-    runtime.open(blob(JSON.stringify(digest("2026-10-17"))))
-    await settle()
-    expect(await runtime.share("decisions")).toEqual({ outcome: "cancelled" })
-    expect(runtime.getSnapshot().state.log).toEqual([])
   })
 })
 

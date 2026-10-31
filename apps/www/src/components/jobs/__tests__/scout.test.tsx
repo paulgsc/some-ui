@@ -98,7 +98,7 @@ describe("a scout the run reviewed", () => {
 })
 
 describe("a scout filed with home without a tap (JB2)", () => {
-  it("wears where it is: on the phone, then with home, with nothing left to share", async () => {
+  it("wears where it is: on the phone, then with home, and offers Drive at neither (HF2)", async () => {
     const { phoneJobs } = await import("@/lib/jobs")
     const { isFile } = await import("@/lib/jobs/files")
     const jobs = phoneJobs()
@@ -127,9 +127,7 @@ describe("a scout filed with home without a tap (JB2)", () => {
       card.closest("[data-journey]")?.getAttribute("data-journey")
     const inCard = within(card.closest("section") ?? document.body)
     expect(bar()).toBe("on-phone")
-    expect(
-      inCard.getByRole("button", { name: "Share scouts to Drive" })
-    ).toBeTruthy()
+    expect(screen.queryByRole("button", { name: /Drive/ })).toBeNull()
 
     const file = jobs.keeping.outgoing("scouts")
     if (!isFile(file)) throw new Error("no scouts file")
@@ -140,50 +138,7 @@ describe("a scout filed with home without a tap (JB2)", () => {
     expect(
       inCard.getByRole("button", { name: /^Home has it\. Show where it is/ })
     ).toBeTruthy()
-    expect(
-      inCard.queryByRole("button", { name: "Share scouts to Drive" })
-    ).toBeNull()
-    expect(screen.queryByText("Nothing new to share.")).toBeNull()
-  })
-})
-
-describe("a scouts share nobody confirmed, that a run read (JB2)", () => {
-  it("still asks whether it arrived, though every card reads read", async () => {
-    const { phoneJobs } = await import("@/lib/jobs")
-    const { digest } = await import("@/lib/jobs/__tests__/fixture")
-    const jobs = phoneJobs()
-    jobs.addScout(
-      {
-        url: "https://jobs.lever.co/acme/2",
-        track: "software",
-        family: null,
-        title: "Site Reliability Engineer",
-        why: "",
-        postingText: null,
-      },
-      []
-    )
-    const shared = await jobs.share("scouts")
-    expect(shared.outcome).toBe("shared")
-    const files = jobs
-      .getSnapshot()
-      .state.log.flatMap((e) => (e.type === "shared" ? [e.file] : []))
-    jobs.keeping.fetched([{ ...digest("2026-10-19"), read: files }])
-
-    const { JobsScout } = await import("@/components/jobs/scout")
-    const { KeptOnHome } = await import("@/components/jobs/parts")
-    render(
-      <KeptOnHome value>
-        <JobsScout />
-      </KeptOnHome>
-    )
-    const card = screen.getByRole("heading", {
-      name: "Site Reliability Engineer",
-    })
-    expect(card.closest("[data-journey]")?.getAttribute("data-journey")).toBe(
-      "read"
-    )
-    expect(screen.getByRole("button", { name: "It arrived" })).toBeTruthy()
+    expect(screen.queryByRole("button", { name: /Drive/ })).toBeNull()
   })
 })
 

@@ -12,19 +12,17 @@
  * 1. each event in `homeOutbox`, once (`PUT /jobs/events/:id`, the event as
  *    the body). Home answers with the event it holds; a `409` (another event
  *    under that id) or a `422` (an event it won't take, with why) is a
- *    refusal, kept on the phone and not sent again; a `409` that
- *    `stoppedOnHome` reads refuses nothing and ends the exchange;
+ *    refusal, kept on the phone and not sent again;
  * 2. home's whole record (`GET /jobs`), asked for only by a phone whose own
  *    log is empty, the one that takes it in: a reinstalled phone gets its
  *    record back;
- * 2½. the decisions and scouts files a share would send, when they name no
- *    voice note (`PUT /jobs/files/:name`, the file as the body): home hands
- *    them to the mailbox for the morning run. A `200` records the file shared
- *    and arrived, as a share the person confirmed would; a `409` or `422` is
- *    a refusal, kept by name and the file never filed again (it stays on the
- *    share sheet). A file naming a voice note waits for the share sheet,
- *    which carries the audio to Drive, since the mailbox carries no audio
- *    (home's own copy of a note goes by the voice lane, LA13);
+ * 2½. the decisions and scouts files (`PUT /jobs/files/:name`, the file as
+ *    the body), what a run missed taken back in (`deliveryView`): home hands
+ *    them to the mailbox for the morning run. A file names its voice notes
+ *    by id and carries no audio; each note goes home by the voice lane
+ *    (LA13), and the run reads what home heard in it (paulgsc/server#596).
+ *    A `200` records the file shared and arrived; a `409` or `422` is a
+ *    refusal, kept by name and the file never filed again;
  * 2¾. whether home should tell this phone when a morning run is in
  *    (`PUT` or `DELETE /jobs/notice`, `./notice`'s `noticeFiling`): at most
  *    one token taken back and one filed. A `200` records what home holds; a
@@ -45,12 +43,7 @@
  * throw part way (a stop, no answer) keeps what home already confirmed.
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
-import {
-  readAs,
-  refusalOf,
-  stoppedOnHome,
-  unexpectedAnswer,
-} from "@some-ui/core-utils"
+import { readAs, refusalOf, unexpectedAnswer } from "@some-ui/core-utils"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import type { Digest, JobsRun } from "@some-ui/job-desk"
 import { DigestSchema, JobsRunSchema } from "@some-ui/job-desk"
@@ -80,7 +73,7 @@ export type JobsRecordPort = {
     digests: ReadonlyArray<Digest>,
     runs?: ReadonlyArray<JobsRun>
   ) => void
-  /** The file a share of `kind` would send now, as the runtime builds it. */
+  /** The file of `kind` to file now, as the runtime builds it. */
   outgoing: (kind: ShareKind) => Outgoing
   /** Home holds `file`: recorded shared and arrived. False if not kept. */
   filed: (kind: ShareKind, file: OutgoingFile) => boolean
@@ -117,10 +110,6 @@ async function sendEvents(
       JSON.stringify(event)
     )
     if (answer.status === 401) return { kind: "forgotten" }
-    // Not a refusal of the event (`stoppedOnHome`).
-    if (stoppedOnHome(answer)) {
-      return unexpectedAnswer("an event", 409)
-    }
     if (answer.status === 409) {
       learned.refused.push({
         id: event.id,
@@ -184,7 +173,6 @@ async function fileNotice(
     if (answer.status === 401) return { kind: "forgotten" }
     // A home from before the notice: nothing filed, and asked again later.
     if (answer.status === 404) return null
-    if (stoppedOnHome(answer)) return unexpectedAnswer("the notice", 409)
     if (answer.status === 422) {
       // Never the token: it names this phone to its push service.
       reportFailure({
@@ -281,7 +269,7 @@ async function fileOutgoing(
 ): Promise<HomeExchanged | null> {
   for (const kind of FILED) {
     const file = keeping.outgoing(kind)
-    if (!isFile(file) || file.voice.length > 0) continue
+    if (!isFile(file)) continue
     if (keeping.state().home.refusedFiles.includes(file.name)) continue
     const answer = await send(
       "PUT",
@@ -289,7 +277,6 @@ async function fileOutgoing(
       file.json
     )
     if (answer.status === 401) return { kind: "forgotten" }
-    if (stoppedOnHome(answer)) return unexpectedAnswer("a file", 409)
     if (answer.status === 409 || answer.status === 422) {
       keeping.fileRefused(file.name)
       // The name only, never the file: it is the owner's decisions.
@@ -297,7 +284,7 @@ async function fileOutgoing(
         port: "home server (files)",
         error: {
           ...toIntentError(null),
-          summary: `Home didn’t take ${file.name}; it stays on the share sheet.`,
+          summary: `Home didn’t take ${file.name}; it stays on this phone.`,
         },
       })
       continue

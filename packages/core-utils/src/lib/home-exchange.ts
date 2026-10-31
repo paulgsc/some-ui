@@ -94,27 +94,3 @@ export function refusalOf(body: string): string {
 export function unexpectedAnswer(what: string, status: number): HomeExchanged {
   return { kind: "failed", why: `${what}: home answered ${status}` }
 }
-
-/**
- * Home refused a write because it still carries a stop from before HF8
- * (paulgsc/server#433's `409`, code `sharing_stopped`; paulgsc/some-ui#2182
- * ends the choices, and the server half drops this answer): not a refusal of
- * what was sent, so an exchange ends there and refuses nothing for good.
- */
-export function stoppedOnHome(answer: HomeAnswer): boolean {
-  if (answer.status !== 409) return false
-  try {
-    const parsed: unknown = JSON.parse(answer.body)
-    const error: unknown =
-      typeof parsed === "object" && parsed !== null
-        ? Reflect.get(parsed, "error")
-        : null
-    return (
-      typeof error === "object" &&
-      error !== null &&
-      Reflect.get(error, "code") === "sharing_stopped"
-    )
-  } catch {
-    return false
-  }
-}

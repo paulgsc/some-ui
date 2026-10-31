@@ -81,13 +81,10 @@ describe("decisionsFile", () => {
         voice: ["2026-10-18_tid-7f2a_voice-1.webm"],
       }),
     ])
-    expect(file.voice).toEqual([
-      { id: "v1", name: "2026-10-18_tid-7f2a_voice-1.webm" },
-    ])
     expect(json.notes).toEqual({ "2026-10-18_tid-7f2a_voice-1.webm": "v1" })
   })
 
-  it("carries a pick's fit notes and sends their audio, whatever its decision", () => {
+  it("carries a pick's fit notes and names their notes, whatever its decision", () => {
     let fitted = record(state, { type: "taken", ...ref(AD) })
     fitted = step(fitted, voice("v2"))
     fitted = record(fitted, {
@@ -115,14 +112,10 @@ describe("decisionsFile", () => {
         voice: ["2026-10-18_tid-7f2a_voice-2.webm"],
       },
     ])
-    expect(file.voice).toContainEqual({
-      id: "v2",
-      name: "2026-10-18_tid-7f2a_voice-2.webm",
-    })
     expect(json.notes).toEqual({ "2026-10-18_tid-7f2a_voice-2.webm": "v2" })
   })
 
-  it("sends no voice note the pick as written doesn't name", () => {
+  it("names no voice note the pick as written doesn't name", () => {
     const changed = record(state, { type: "taken", ...ref(AD) })
     const file = fileOf(
       decisionsFile(changed, "2026-10-18", "2026-10-18T22:00:00Z")
@@ -132,7 +125,6 @@ describe("decisionsFile", () => {
     expect(json.picks[1]).toEqual(
       expect.objectContaining({ decision: "taken", voice: [] })
     )
-    expect(file.voice).toEqual([])
   })
 
   it("says an ending left unsaid as null, and the file still reads", () => {
@@ -234,7 +226,7 @@ describe("decisionsFile", () => {
       expect.objectContaining({ id: shared.log.at(-1)!.id, event: "reply" }),
     ])
     expect(JSON.parse(again.json).picks).toEqual([])
-    expect(again.voice).toEqual([])
+    expect(JSON.parse(again.json).notes).toEqual({})
 
     const reply = shared.log.at(-1)!.id
     shared = record(shared, { type: "outcome-withdrawn", outcomeId: reply })
@@ -391,11 +383,10 @@ describe("scoutsFile", () => {
     // Local time: the stamp names the file as the phone's clock reads.
     const file = fileOf(scoutsFile(state, new Date(2026, 9, 18, 20, 5, 0)))
     expect(file.name).toBe("scouts-20261018T200500.json")
-    expect(file.voice).toEqual([{ id: "v9", name: "sc-a1b2c3_voice-1.webm" }])
-    // Offered again later: the same notes under the same names.
+    // Filed again later: the same notes under the same names.
     const retried = fileOf(scoutsFile(state, new Date(2026, 9, 19, 8, 0, 0)))
     expect(retried.name).not.toBe(file.name)
-    expect(retried.voice).toEqual(file.voice)
+    expect(JSON.parse(retried.json).notes).toEqual(JSON.parse(file.json).notes)
     expect(JSON.parse(file.json).notes).toEqual({
       "sc-a1b2c3_voice-1.webm": "v9",
     })
@@ -458,7 +449,7 @@ describe("a log home restored", () => {
     ])
   })
 
-  it("names a scout's notes but sends no audio the phone doesn't hold", () => {
+  it("names a scout's notes whose audio stayed on another phone", () => {
     let made = step(EMPTY, {
       type: "voice-kept",
       note: { id: "v9", mimeType: "audio/webm", durationMs: 2000, owner: "o" },
@@ -485,6 +476,5 @@ describe("a log home restored", () => {
     expect(JSON.parse(file.json).notes).toEqual({
       "sc-a1b2c3_voice-1.webm": "v9",
     })
-    expect(file.voice).toEqual([])
   })
 })

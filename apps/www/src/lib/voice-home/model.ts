@@ -22,11 +22,12 @@ export type VoiceOut = {
   readonly id: string
   readonly of: VoiceOf
   /**
-   * The reflection's session, the Jobs pick or scout, the drama prompt's
-   * stamp, the game's ESPN id, the Studio take (`<project>:<shot>:<take>`).
+   * The reflection's session, the Jobs pick or scout, `next-scene` for the
+   * drama's next scene said aloud (before HF2, the prompt's stamp), the
+   * game's ESPN id, the Studio take (`<project>:<shot>:<take>`).
    */
   readonly ref: string
-  /** When it was recorded (a scene note: when its prompt was shared), ISO 8601. */
+  /** When it was recorded, ISO 8601. */
   readonly at: string
   readonly contentType: string
   /**
@@ -46,9 +47,8 @@ export type VoiceHomeState = {
   /** What home will never hold, with why. */
   readonly refused: ReadonlyArray<VoiceRefusal>
   /**
-   * Notes this phone had no room to copy yet, tried again when offered again:
-   * a spoken reflection or Jobs note at each change, a scene note never (it
-   * is offered only at its share).
+   * Notes this phone had no room to copy yet, tried again when offered
+   * again, at each change to the store that holds it.
    */
   readonly roomless: ReadonlyArray<string>
 }

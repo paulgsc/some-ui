@@ -33,12 +33,10 @@ const SAMPLES: ReadonlyArray<Journey> = JOURNEY_IDS.flatMap((id) => [
   journey(id, {
     since: "2026-10-24T16:14:00Z",
     runDay: "2026-10-25",
-    why: "voice",
   }),
   journey(id, {
     since: "2026-10-22T16:14:00Z",
     runDay: "2026-10-23",
-    why: "not-kept",
     via: "drive",
   }),
 ])
@@ -62,13 +60,13 @@ describe("the journey states", () => {
   })
 
   it("agree in number with what they're about", () => {
-    const one = journeySaid(journey("sheet-unconfirmed"), "it", NOW).line
-    const many = journeySaid(journey("sheet-unconfirmed"), "them", NOW).line
+    const one = journeySaid(journey("unpaired"), "it", NOW).line
+    const many = journeySaid(journey("unpaired"), "them", NOW).line
     expect(one).toBe(
-      "Did it arrive in Drive? Until you say so, it stays on offer."
+      "This phone isn’t paired with home, so it waits here. Once it is, home takes it without a tap."
     )
     expect(many).toBe(
-      "Did they arrive in Drive? Until you say so, they stay on offer."
+      "This phone isn’t paired with home, so they wait here. Once it is, home takes them without a tap."
     )
   })
 
@@ -116,6 +114,14 @@ describe("the journey states", () => {
     for (const id of JOURNEY_IDS) {
       const stopped = roadOf(journey(id)).marks.includes("stopped")
       expect(stopped).toBe(themeOf(id) === "stopped")
+    }
+  })
+
+  it("offer Drive nowhere: the only road left is home's (HF2)", () => {
+    for (const j of SAMPLES) {
+      for (const noun of NOUNS) {
+        expect(journeySaid(j, noun, NOW).line).not.toMatch(/share/i)
+      }
     }
   })
 
