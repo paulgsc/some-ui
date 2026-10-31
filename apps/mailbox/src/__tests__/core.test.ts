@@ -1134,6 +1134,128 @@ describe("home's indexes", () => {
   })
 })
 
+describe("written reflections", () => {
+  const WRITTEN = {
+    schema: "some-ui.reflection/1",
+    reflection: "3f9c2a1e-7b4d-4c1a-9e2f-0a1b2c3d4e5f",
+    session: "s-7f3a91c2",
+    at: "2026-10-25T03:10:00.000Z",
+    text: "The second scene felt slow; more level two, please.",
+  }
+  const REFLECTION = JSON.stringify(WRITTEN)
+  const NAME = `reflection-${WRITTEN.reflection}.json`
+  const asHome = (
+    d: Deps,
+    name: string,
+    body: string = REFLECTION
+  ): Promise<Response> => put(d, "reflection", name, { token: HOME, body })
+
+  it("home puts a reflection once, and the routine reads it; neither the other way", async () => {
+    const d = deps()
+    expect((await asHome(d, NAME)).status).toBe(201)
+    expect((await asHome(d, NAME)).status).toBe(200)
+    expect(
+      (await asHome(d, NAME, JSON.stringify({ ...WRITTEN, text: "other" })))
+        .status
+    ).toBe(409)
+
+    const path = `/v1/reflection/items/${NAME}`
+    const read = await send(d, "GET", path)
+    expect(read.status).toBe(200)
+    expect(await read.text()).toBe(REFLECTION)
+    expect((await send(d, "GET", "/v1/reflection/items")).status).toBe(200)
+    expect((await send(d, "GET", path, { token: HOME })).status).toBe(403)
+    expect(
+      (await send(d, "GET", "/v1/reflection/items", { token: HOME })).status
+    ).toBe(403)
+    expect(
+      (await put(d, "reflection", NAME, { body: REFLECTION })).status
+    ).toBe(403)
+  })
+
+  it("the routine neither lists archived reflections nor asks one back", async () => {
+    const d = deps()
+    expect((await asHome(d, NAME)).status).toBe(201)
+    expect((await send(d, "GET", "/v1/reflection/archived")).status).toBe(403)
+    expect((await send(d, "PUT", `/v1/reflection/wanted/${NAME}`)).status).toBe(
+      403
+    )
+  })
+
+  it("refuses a reflection that carries audio or names a Drive file, and says why", async () => {
+    const d = deps()
+    const audio =
+      "a reflection carries no audio: a spoken one goes as its transcript"
+    const drive = "a reflection names no Drive file"
+    const refused: ReadonlyArray<readonly [string, string]> = [
+      [JSON.stringify({ ...WRITTEN, audio: "T2dnUwACAAAAAAAA" }), audio],
+      [
+        JSON.stringify({
+          ...WRITTEN,
+          text: "here data:audio/webm;base64,GkXfo59ChoEB",
+        }),
+        audio,
+      ],
+      [JSON.stringify({ ...WRITTEN, driveId: "1AbCdEf" }), drive],
+      [
+        JSON.stringify({
+          ...WRITTEN,
+          text: "see https://drive.google.com/file/d/1AbC/view",
+        }),
+        drive,
+      ],
+    ]
+    for (const [body, why] of refused) {
+      const answer = await asHome(d, NAME, body)
+      expect(answer.status).toBe(422)
+      expect(await json(answer)).toEqual({ error: why })
+    }
+  })
+
+  it("takes only a written reflection's own shape", async () => {
+    const d = deps()
+    const { text: _text, ...untexted } = WRITTEN
+    const { at: _at, ...undated } = WRITTEN
+    const { session: _session, ...unsessioned } = WRITTEN
+    const shapes: ReadonlyArray<readonly [unknown, string]> = [
+      [{ ...WRITTEN, kind: "text" }, "kind is not part of a reflection"],
+      [{ ...WRITTEN, atMs: 1000 }, "atMs is not part of a reflection"],
+      [
+        { ...WRITTEN, answers: { difficulty: "right" } },
+        "answers is not part of a reflection",
+      ],
+      [untexted, "text must be what was written"],
+      [{ ...WRITTEN, text: "  " }, "text must be what was written"],
+      [undated, "at must be when it was written"],
+      [{ ...WRITTEN, at: "yesterday" }, "at must be when it was written"],
+      [unsessioned, "session must name the session it is about"],
+      [{ ...WRITTEN, reflection: 7 }, "reflection must be the reflection's id"],
+      [
+        { ...WRITTEN, reflection: "a/b" },
+        "the name must carry the reflection's id",
+      ],
+      [
+        { ...WRITTEN, reflection: "another-id" },
+        "the name must carry the reflection's id",
+      ],
+    ]
+    for (const [body, why] of shapes) {
+      const answer = await asHome(d, NAME, JSON.stringify(body))
+      expect(answer.status).toBe(422)
+      expect(await json(answer)).toEqual({ error: why })
+    }
+    for (const name of [
+      "reflection-.json",
+      `reflection-${"a".repeat(65)}.json`,
+      "reflection-a.b.json",
+      `reflection-${WRITTEN.reflection}.webm`,
+      `${WRITTEN.reflection}.json`,
+    ]) {
+      expect((await asHome(d, name)).status).toBe(422)
+    }
+  })
+})
+
 describe("names", () => {
   it("a name that breaks the folder's pattern is refused", async () => {
     const d = deps()
@@ -1523,6 +1645,7 @@ describe("archiving", () => {
       "leetype",
       "leetype-log",
       "transcript",
+      "reflection",
     ]) {
       expect(
         (await send(d, "GET", `/v1/${folder}/items`, { token: ARCHIVE })).status

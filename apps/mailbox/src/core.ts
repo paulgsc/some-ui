@@ -206,6 +206,55 @@ function wordsRefusal(words: unknown): string | null {
   return null
 }
 
+/**
+ * The keys of a `some-ui.reflection/1` body: only what the reflections
+ * routine reads of a written reflection (paulgsc/some-ui#2174, D2). Any
+ * other is refused.
+ */
+const REFLECTION_KEYS: ReadonlyArray<string> = [
+  "schema",
+  "reflection",
+  "session",
+  "at",
+  "text",
+]
+const NO_AUDIO_REFLECTION =
+  "a reflection carries no audio: a spoken one goes as its transcript"
+const NO_DRIVE_REFLECTION = "a reflection names no Drive file"
+
+/**
+ * README, "What a put must satisfy": a written reflection is its text, the
+ * session it is about and when it was written, and nothing else.
+ */
+function reflectionRefusal(
+  body: Readonly<Record<string, unknown>>,
+  text: string,
+  name: string
+): string | null {
+  const carried = carriesRefusal(text, NO_AUDIO_REFLECTION, NO_DRIVE_REFLECTION)
+  if (carried !== null) return carried
+  const extra = Object.keys(body).find((key) => !REFLECTION_KEYS.includes(key))
+  if (extra !== undefined) {
+    if (AUDIO_KEY.test(extra)) return NO_AUDIO_REFLECTION
+    if (DRIVE_KEY.test(extra)) return NO_DRIVE_REFLECTION
+    return `${extra} is not part of a reflection`
+  }
+  if (typeof body.reflection !== "string") {
+    return "reflection must be the reflection's id"
+  }
+  if (name !== `reflection-${body.reflection}.json`) {
+    return "the name must carry the reflection's id"
+  }
+  if (typeof body.session !== "string" || !NOTE_REF.test(body.session)) {
+    return "session must name the session it is about"
+  }
+  if (!isInstant(body.at)) return "at must be when it was written"
+  if (typeof body.text !== "string" || body.text.trim() === "") {
+    return "text must be what was written"
+  }
+  return null
+}
+
 /** The routines home computes an index for (README, "What a put must satisfy"). */
 const INDEX_ROUTINES: ReadonlySet<unknown> = new Set(["jobs"])
 /** The keys of a `some-ui.routine-index/1` body for the jobs routine; any other is refused. */
@@ -414,6 +463,13 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
     schema: "some-ui.voice-transcript/1",
     refuses: transcriptRefusal,
   },
+  {
+    // One written reflection, as home keeps it, named for the phone's id.
+    folder: "reflection",
+    name: /^reflection-[A-Za-z0-9_-]{1,64}\.json$/,
+    schema: "some-ui.reflection/1",
+    refuses: reflectionRefusal,
+  },
 ]
 
 /** The Worker secrets. An unset or empty one never authenticates anyone. */
@@ -453,9 +509,15 @@ const RECORDS: ReadonlyArray<Folder> = [
   "leetype",
   "leetype-log",
   "transcript",
+  "reflection",
 ]
 
 const ALL: ReadonlyArray<Folder> = [...RECORDS, "index"]
+
+/** Every record but `reflection`, which the routine never asks back (README, "Who may do what"; MI6). */
+const ASKED: ReadonlyArray<Folder> = RECORDS.filter(
+  (folder) => folder !== "reflection"
+)
 
 /** MB2. Another role (the phone's, say) is the owner's call, not a code change. */
 const ROLES: ReadonlyArray<Grant> = [
@@ -464,14 +526,22 @@ const ROLES: ReadonlyArray<Grant> = [
     token: (tokens) => tokens.routine,
     get: ALL,
     put: ["brief", "scene", "drama", "run", "leetype"],
-    ask: RECORDS,
+    ask: ASKED,
     move: [],
   },
   {
     role: "home",
     token: (tokens) => tokens.home,
     get: ["brief", "scene", "drama", "run", "leetype"],
-    put: ["decisions", "scout", "opened", "leetype-log", "transcript", "index"],
+    put: [
+      "decisions",
+      "scout",
+      "opened",
+      "leetype-log",
+      "transcript",
+      "index",
+      "reflection",
+    ],
     ask: [],
     move: [],
   },
