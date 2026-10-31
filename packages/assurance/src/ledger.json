@@ -1643,7 +1643,7 @@
     {
       "store": "phone:ideas",
       "class": "record",
-      "growth": "Per video idea caught in Studio (ST18): the confirmed text of up to four answers, each a few versions (what was heard, then any fix), append-only; no audio is ever written, so nothing is discarded (owner, 2026-10-30, #2300); no cap (`some-ui:studio:ideas`).",
+      "growth": "Per video idea caught in Studio (ST18): the confirmed text of up to four answers, each a few versions (what was heard, then any fix), and since ST19 (#2301) up to three questions Claude asked back with their answers, each primer Claude fleshed it out into (up to 24 scenes of text), and a mark each time it is set aside or brought back; append-only; no audio is ever written, so nothing is discarded (owner, 2026-10-30, #2300); no cap (`some-ui:studio:ideas`).",
       "horizon": "an idea is never let go",
       "family": "what-is-kept"
     },

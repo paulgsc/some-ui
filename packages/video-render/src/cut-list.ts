@@ -78,9 +78,13 @@ export const BurnInSchema = z.object({
   params: z.record(z.string(), z.unknown()).default({}),
 })
 
-/** Whose words an idea came from, when they were the owner's (ST16). */
+/**
+ * Whose words an idea came from, when they were the owner's (ST16): an
+ * `idea` is one answer of a video idea the owner caught (ST18, ST19), as
+ * `<idea id>/<answer>`.
+ */
 const OwnerRefSchema = z.object({
-  kind: z.enum(["note", "take", "voice-note", "prompt"]),
+  kind: z.enum(["note", "take", "voice-note", "prompt", "idea"]),
   id: z.string().min(1).max(200),
 })
 

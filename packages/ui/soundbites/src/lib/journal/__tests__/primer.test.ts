@@ -252,7 +252,31 @@ describe("readPrimer, version 2", () => {
       v2({ cuts: [v2Cut({ voice: "mixed" })] }),
       "Cut 1's voice should be ad-lib or read.",
     ],
+    [
+      "a cut citing something that isn't an answer",
+      v2({ cuts: [v2Cut({ from: ["What's the video?"] })] }),
+      "Cut 1's from should list the idea's answers it came from, as what or ask-1.",
+    ],
+    [
+      "an idea that isn't an id",
+      v2({ idea: "my idea!" }),
+      "The primer's idea should be the id of the idea it came from.",
+    ],
   ])("names what is wrong with %s", (_, source, problem) => {
     expect(readPrimer(source)).toEqual({ ok: false, problem })
+  })
+
+  it("names the idea it was fleshed out from, and the answers each cut came from (ST19)", () => {
+    const reading = readPrimer(
+      v2({
+        idea: "idea-1",
+        cuts: [v2Cut({ from: ["what", "spark", "what"] }), v2Cut({ id: "b" })],
+      })
+    )
+    expect(reading.ok && reading.primer.idea).toBe("idea-1")
+    expect(reading.ok && reading.primer.cuts.map((each) => each.from)).toEqual([
+      ["what", "spark"],
+      undefined,
+    ])
   })
 })

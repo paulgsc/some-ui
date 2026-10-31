@@ -63,6 +63,11 @@ export type StudioProps = {
    * while there is no video, a quiet link beside the sittings once there is.
    */
   newIdea?: { big: ReactNode; quiet: ReactNode }
+  /**
+   * The way to Your ideas (ST19), as the app links it: the loop's second
+   * step while there is no video, a quiet link beside New idea once there is.
+   */
+  ideas?: { step: ReactNode; quiet: ReactNode }
 }
 
 type Dispatch = (intent: StudioIntent) => void
@@ -146,7 +151,13 @@ function shareFor(
 }
 
 /** The loop as steps, for a first visit. */
-const Steps = ({ newIdea }: { newIdea: ReactNode }): JSX.Element => {
+const Steps = ({
+  newIdea,
+  ideas,
+}: {
+  newIdea: ReactNode
+  ideas: ReactNode
+}): JSX.Element => {
   const { steps } = WORDS.start
   const step = (
     n: number,
@@ -166,7 +177,7 @@ const Steps = ({ newIdea }: { newIdea: ReactNode }): JSX.Element => {
   return (
     <ol className="flex flex-col gap-4">
       {step(1, steps.idea.title, steps.idea.line, newIdea)}
-      {step(2, steps.scenes.title, steps.scenes.line)}
+      {step(2, steps.scenes.title, steps.scenes.line, ideas)}
       {step(
         3,
         steps.sittings.title,
@@ -192,12 +203,14 @@ const Start = ({
   dispatch,
   share,
   newIdea,
+  ideas,
 }: {
   state: StudioState
   project: Project | null
   dispatch: Dispatch
   share: StudioShare | undefined
   newIdea: StudioProps["newIdea"]
+  ideas: StudioProps["ideas"]
 }): JSX.Element => {
   const view = project === null ? null : startView(project)
   const others = othersOnPhone(
@@ -217,7 +230,7 @@ const Start = ({
           {view?.standing ?? WORDS.start.emptyLine}
         </p>
       </header>
-      {view === null && <Steps newIdea={newIdea?.big} />}
+      {view === null && <Steps newIdea={newIdea?.big} ideas={ideas?.step} />}
       {view !== null && (
         <ul className="flex flex-col gap-2">
           {view.sittings.map((row) => (
@@ -277,6 +290,7 @@ const Start = ({
             {WORDS.quiet.time}
           </button>
           {newIdea?.quiet}
+          {ideas?.quiet}
         </nav>
       )}
       {share !== undefined && project !== null && takesOnPhone(project) > 0 && (
@@ -1123,7 +1137,12 @@ const Finish = ({
   )
 }
 
-export const Studio = ({ ports, share, newIdea }: StudioProps): JSX.Element => {
+export const Studio = ({
+  ports,
+  share,
+  newIdea,
+  ideas,
+}: StudioProps): JSX.Element => {
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime is created once per mount, as the soundbites page's is */
   const [runtime] = useState(() =>
     createStudio({ ...phoneStudioPorts(), ...ports })
@@ -1183,6 +1202,7 @@ export const Studio = ({ ports, share, newIdea }: StudioProps): JSX.Element => {
       dispatch={dispatch}
       share={share}
       newIdea={newIdea}
+      ideas={ideas}
     />
   )
 }

@@ -26,14 +26,20 @@
  *   idea is only ever the store's answer.
  * - **Reopening resumes.** The newest idea still open at a question opens
  *   there; otherwise a new idea starts at the first question.
+ * - **Claude's questions are answered only when asked for** (ST19). A
+ *   capture opened on one idea (`focus`, from the idea shelf) asks only
+ *   Claude's questions about it still waiting, one per screen, the same way;
+ *   New idea never opens on them.
  */
 import { assertNever } from "@some-ui/core-utils"
 
-import type { AnswerWords, Idea, QuestionId } from "./model"
+import type { AnswerTo, AnswerWords, Idea } from "./model"
 import {
   IDEA_QUESTIONS,
+  isFollowUp,
   isRequired,
   newIdea,
+  openFollowUp,
   openQuestion,
   unanswered,
   withPassed,
@@ -68,7 +74,7 @@ type IdeaScreen =
   | { readonly kind: "unreadable" }
   | {
       readonly kind: "ask"
-      readonly question: QuestionId
+      readonly question: AnswerTo
       readonly phase: AskPhase
     }
   | { readonly kind: "kept" }
@@ -95,6 +101,8 @@ export type IdeaState = {
   readonly notice: IdeaNotice
   /** The last listening's number. */
   readonly seq: number
+  /** The idea whose waiting questions from Claude are asked, if one is. */
+  readonly focus: string | null
 }
 
 /** What a write does to the ideas the store holds now. */
@@ -102,13 +110,13 @@ export type IdeaOp =
   | {
       readonly kind: "words"
       readonly idea: string
-      readonly question: QuestionId
+      readonly question: AnswerTo
       readonly versions: ReadonlyArray<AnswerWords>
     }
   | {
       readonly kind: "pass"
       readonly idea: string
-      readonly question: QuestionId
+      readonly question: AnswerTo
     }
 
 /** How a listening ended. */
@@ -175,7 +183,10 @@ export type IdeaStep = {
   readonly effects: ReadonlyArray<IdeaEffect>
 }
 
-export function initialIdeaState(ideaId: string): IdeaState {
+export function initialIdeaState(
+  ideaId: string,
+  focus: string | null = null
+): IdeaState {
   return {
     screen: { kind: "loading" },
     voice: "checking",
@@ -184,6 +195,7 @@ export function initialIdeaState(ideaId: string): IdeaState {
     skipped: null,
     notice: null,
     seq: 0,
+    focus,
   }
 }
 
@@ -218,7 +230,7 @@ function phaseFor(voice: Voice): AskPhase {
     : { kind: "idle" }
 }
 
-function ask(state: IdeaState, question: QuestionId): IdeaState {
+function ask(state: IdeaState, question: AnswerTo): IdeaState {
   return {
     ...state,
     screen: { kind: "ask", question, phase: phaseFor(state.voice) },
@@ -291,7 +303,7 @@ function listened(state: IdeaState, seq: number, result: Listened): IdeaStep {
 /** Keeps `versions` as the answer on screen. */
 function keepWords(
   state: IdeaState,
-  question: QuestionId,
+  question: AnswerTo,
   versions: ReadonlyArray<AnswerWords>,
   at: string
 ): IdeaStep {
@@ -307,9 +319,14 @@ function keepWords(
   }
 }
 
+/** The question `idea` is open at: Claude's, for a capture focused on it. */
+function nextFor(state: IdeaState, idea: Idea): AnswerTo | null {
+  return state.focus === null ? openQuestion(idea) : openFollowUp(idea)
+}
+
 /** On to the idea's next open question, or the kept screen. */
 function advance(state: IdeaState, idea: Idea): IdeaState {
-  const next = openQuestion(idea)
+  const next = nextFor(state, idea)
   const moved = { ...state, idea, notice: null }
   return next === null
     ? { ...moved, screen: { kind: "kept" } }
@@ -319,7 +336,7 @@ function advance(state: IdeaState, idea: Idea): IdeaState {
 function onAsk(
   state: IdeaState,
   event: IdeaIntent & Stamp,
-  question: QuestionId,
+  question: AnswerTo,
   phase: AskPhase
 ): IdeaStep {
   const withPhase = (next: AskPhase, notice = state.notice): IdeaState => ({
@@ -463,6 +480,12 @@ export function step(state: IdeaState, event: IdeaEvent): IdeaStep {
       if (event.ideas === null) {
         return same({ ...state, screen: { kind: "unreadable" } })
       }
+      if (state.focus !== null) {
+        const focused = event.ideas.find((idea) => idea.id === state.focus)
+        return focused === undefined
+          ? same({ ...state, screen: { kind: "unreadable" } })
+          : same(advance({ ...state, ideaId: focused.id }, focused))
+      }
       const resumed = resumable(event.ideas)
       if (resumed === undefined) {
         const skipped = newestSkipped(event.ideas, state.ideaId)
@@ -592,7 +615,7 @@ export function step(state: IdeaState, event: IdeaEvent): IdeaStep {
       if (screen.kind !== "kept") return same(state)
       return same(
         ask(
-          { ...state, idea: null, ideaId: event.id, notice: null },
+          { ...state, idea: null, ideaId: event.id, notice: null, focus: null },
           IDEA_QUESTIONS[0]
         )
       )
@@ -615,11 +638,24 @@ export function step(state: IdeaState, event: IdeaEvent): IdeaStep {
   }
 }
 
-/** The number of the question on screen, and how many there are. */
-export function questionNumber(question: QuestionId): {
+/**
+ * The number of the question on screen, and how many there are: among the
+ * idea's questions, or among Claude's about `idea`.
+ */
+export function questionNumber(
+  question: AnswerTo,
+  idea: Idea | null = null
+): {
   n: number
   of: number
 } {
+  if (isFollowUp(question)) {
+    const asked = idea?.asked ?? []
+    return {
+      n: asked.findIndex((each) => each.id === question) + 1,
+      of: asked.length,
+    }
+  }
   return {
     n: IDEA_QUESTIONS.indexOf(question) + 1,
     of: IDEA_QUESTIONS.length,

@@ -1,7 +1,8 @@
 /**
  * Catching a video idea the moment it comes (STUDIO ST18): one question per
  * screen in large type, one button to say it. Renders `lib/idea/machine.ts`'s
- * state and forwards taps; its words are Studio's (`idea`).
+ * state and forwards taps; its words are Studio's (`idea`). Opened on one
+ * idea (`answering`, ST19), it asks Claude's questions about it the same way.
  */
 import type { JSX, ReactNode } from "react"
 import { useEffect, useId, useState, useSyncExternalStore } from "react"
@@ -13,8 +14,8 @@ import type {
   IdeaState,
 } from "@soundbites/lib/idea/machine"
 import { questionNumber } from "@soundbites/lib/idea/machine"
-import type { QuestionId } from "@soundbites/lib/idea/model"
-import { isRequired, unanswered } from "@soundbites/lib/idea/model"
+import type { AnswerTo, Idea } from "@soundbites/lib/idea/model"
+import { isFollowUp, isRequired, unanswered } from "@soundbites/lib/idea/model"
 import type { IdeaPorts } from "@soundbites/lib/idea/runtime"
 import { createIdeaCapture } from "@soundbites/lib/idea/runtime"
 import { phoneIdeaPorts } from "@soundbites/lib/phone"
@@ -31,6 +32,11 @@ export type IdeaCaptureProps = {
   ports?: Partial<IdeaPorts>
   /** The way back to Studio, as the app links it. */
   back?: ReactNode
+  /**
+   * The idea whose questions from Claude to ask (ST19), by id; with none,
+   * New idea. Read once, on mount.
+   */
+  answering?: string
 }
 
 type Dispatch = (intent: IdeaIntent) => void
@@ -79,6 +85,21 @@ const Words = ({
   )
 }
 
+/** What a question says: one of the idea's own, or Claude's about it. */
+function wordsOf(
+  question: AnswerTo,
+  idea: Idea | null
+): { eyebrow: string; ask: string; hint: string } {
+  const { n, of } = questionNumber(question, idea)
+  if (isFollowUp(question))
+    return {
+      eyebrow: STUDIO_WORDS.shelf.askedOf(n, of),
+      ask: idea?.asked?.find((each) => each.id === question)?.words ?? "",
+      hint: STUDIO_WORDS.shelf.askedHint,
+    }
+  return { eyebrow: WORDS.questionOf(n, of), ...WORDS.questions[question] }
+}
+
 const Ask = ({
   state,
   question,
@@ -86,18 +107,17 @@ const Ask = ({
   dispatch,
 }: {
   state: IdeaState
-  question: QuestionId
+  question: AnswerTo
   phase: AskPhase
   dispatch: Dispatch
 }): JSX.Element => {
-  const { n, of } = questionNumber(question)
-  const { ask, hint } = WORDS.questions[question]
+  const { eyebrow, ask, hint } = wordsOf(question, state.idea)
   const canTalk = state.voice === "ready"
   return (
     <div className="flex flex-col gap-4">
       <header className="space-y-1">
         <p className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
-          {WORDS.questionOf(n, of)}
+          {eyebrow}
         </p>
         <h2 className="text-3xl font-extrabold text-balance">{ask}</h2>
         <p className="text-muted-foreground text-sm">{hint}</p>
@@ -212,6 +232,18 @@ const Kept = ({
 }): JSX.Element => {
   const skipped = state.idea === null ? 0 : unanswered(state.idea).length
   const answers = state.idea?.answers.length ?? 0
+  if (state.focus !== null)
+    return (
+      <div className="flex flex-col gap-3">
+        <h2 role="status" className="text-2xl font-extrabold">
+          {WORDS.kept}
+        </h2>
+        <p className="text-muted-foreground text-sm">
+          {STUDIO_WORDS.shelf.answered}
+        </p>
+        {back}
+      </div>
+    )
   return (
     <div className="flex flex-col gap-3">
       <h2 role="status" className="text-2xl font-extrabold">
@@ -234,10 +266,14 @@ const Kept = ({
   )
 }
 
-export const IdeaCapture = ({ ports, back }: IdeaCaptureProps): JSX.Element => {
+export const IdeaCapture = ({
+  ports,
+  back,
+  answering,
+}: IdeaCaptureProps): JSX.Element => {
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime is created once per mount, as Studio's is */
   const [runtime] = useState(() =>
-    createIdeaCapture({ ...phoneIdeaPorts(), ...ports })
+    createIdeaCapture({ ...phoneIdeaPorts(), ...ports }, answering ?? null)
   )
   /* eslint-enable owner-guard/no-mount-snapshot */
   useEffect(() => runtime.attach(), [runtime])

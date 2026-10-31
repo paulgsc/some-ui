@@ -79,8 +79,8 @@ const studioShare: StudioShare | undefined =
 
 /**
  * The Studio wing's Home (lib/wings): a video made in sittings (STUDIO
- * ST4), with the way in to New idea (ST18) handed to Studio's Start
- * (`StudioProps.newIdea`).
+ * ST4), with the ways in to New idea (ST18) and Your ideas (ST19) handed to
+ * Studio's Start (`StudioProps.newIdea`, `StudioProps.ideas`).
  * Making something to publish, so not a study tool and not under Practice's
  * soundbites, though it records the same way (`@some-ui/voice-capture`).
  */
@@ -119,10 +119,35 @@ const StudioRoute = (): JSX.Element => {
       </Link>
     ),
   }
+  const ideas = {
+    step: (
+      <Link
+        to="/journal/ideas"
+        className="bg-card border-border/60 focus-visible:ring-ring rounded-2xl border px-4 py-3 focus-visible:ring-2 focus-visible:outline-none"
+      >
+        <span className="block text-base font-extrabold">
+          {WORDS.shelf.open}
+        </span>
+        <span className="text-muted-foreground block text-sm">
+          {WORDS.shelf.openLine}
+        </span>
+      </Link>
+    ),
+    quiet: (
+      <Link to="/journal/ideas" className="text-muted-foreground underline">
+        {WORDS.shelf.open}
+      </Link>
+    ),
+  }
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-4">
       <h1 className="text-2xl font-bold tracking-tight">{WORDS.heading}</h1>
-      <Studio share={studioShare} ports={studioPorts} newIdea={newIdea} />
+      <Studio
+        share={studioShare}
+        ports={studioPorts}
+        newIdea={newIdea}
+        ideas={ideas}
+      />
     </div>
   )
 }

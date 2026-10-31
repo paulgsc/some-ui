@@ -367,6 +367,23 @@ describe("what Claude sent that doesn't read as scenes", () => {
       STUDIO_WORDS.start.sentProblem
     )
   })
+
+  it("points Claude's reply about an idea to the idea it belongs to (ST19)", async () => {
+    const memory = memoryProjectStore()
+    const runtime = await opened(memory)
+    const before = memory.projects.size
+    runtime.dispatch({
+      type: "primerPicked",
+      file: new Blob([
+        '{"schema":"some-ui.studio-idea-reply/1","idea":"idea-1","ask":["?"]}',
+      ]),
+    })
+    await until(runtime, (state) => state.primerProblem !== null)
+    expect(runtime.getSnapshot().primerProblem).toBe(
+      STUDIO_WORDS.start.ideaReply
+    )
+    expect(memory.projects.size).toBe(before)
+  })
 })
 
 describe("the Journal tab's episode", () => {
