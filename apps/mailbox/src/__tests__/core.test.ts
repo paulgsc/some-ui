@@ -713,6 +713,21 @@ describe("voice transcripts", () => {
     }
   })
 
+  it("takes each word heard, with its time and how sure home was of it", async () => {
+    const worded = {
+      ...HEARD,
+      words: [
+        { text: "오늘은", startMs: 0, endMs: 400, p: 0.42 },
+        { text: "the", startMs: 500, endMs: 600, language: "en" },
+        // Whisper's word runs to the next space, so one can be long.
+        { text: "아".repeat(300), startMs: 700, endMs: 9000 },
+      ],
+    }
+    expect((await asHome(deps(), NAME, JSON.stringify(worded))).status).toBe(
+      201
+    )
+  })
+
   it("takes a Studio take's transcript, named by its project, shot and take", async () => {
     const take = { ...HEARD, of: "studio", ref: "short-7:s3:2" }
     expect((await asHome(deps(), NAME, JSON.stringify(take))).status).toBe(201)
@@ -722,7 +737,36 @@ describe("voice transcripts", () => {
     const d = deps()
     const { text: _text, ...untold } = HEARD
     const wrong: ReadonlyArray<readonly [Record<string, unknown>, string]> = [
-      [{ ...HEARD, words: 7 }, "words is not part of a transcript"],
+      [
+        { ...HEARD, words: 7 },
+        "words must be each word heard, with its time and how sure",
+      ],
+      [
+        {
+          ...HEARD,
+          words: [{ text: "오늘은", startMs: 0, endMs: 400, p: 1.2 }],
+        },
+        "words must be each word heard, with its time and how sure",
+      ],
+      [
+        { ...HEARD, words: [{ text: "오늘은", startMs: 500, endMs: 400 }] },
+        "words must be each word heard, with its time and how sure",
+      ],
+      [
+        { ...HEARD, words: [{ text: "", startMs: 0, endMs: 400 }] },
+        "words must be each word heard, with its time and how sure",
+      ],
+      [
+        { ...HEARD, words: [{ text: "x", startMs: 0, endMs: 1, lang: "ko" }] },
+        "words must be each word heard, with its time and how sure",
+      ],
+      [
+        {
+          ...HEARD,
+          words: [{ text: "x", startMs: 0, endMs: 1, language: "Korean" }],
+        },
+        "words must be each word heard, with its time and how sure",
+      ],
       [{ ...HEARD, note: "" }, "note must be the note's id"],
       [{ ...HEARD, note: "a/b" }, "note must be the note's id"],
       [{ ...HEARD, note: "zzz" }, "the name must carry the note's id"],
