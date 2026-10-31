@@ -101,11 +101,15 @@ code wins.
      dated on or after it are read. With no review yet, every folder is.
    - `answers` and `takes`: the union of their lists. An answer whose `id`, or
      an answerless take whose take `id`, is in them was judged before.
-   - `sessions`: the union of their lists of log names
-     (`log-<session>[.r<n>].json`). A log already in it is never counted as
-     new.
-   - `sessionsDigest` and `unheard`: from the review of the latest ISO week,
-     its newest revision (the highest `-r<n>`, no suffix being the first).
+   - `sessions`: the union of their `sessions` entries, each a log name
+     (`log-<session>[.r<n>].json`) and the session `file` it is for. A log
+     whose name is in it is never counted as new, and it is how an archived
+     log is found again (§1).
+   - `sessionsDigest`: from the review of the latest ISO week, its newest
+     revision (the highest `-r<n>`, no suffix being the first; between two
+     files of the same name, the later `createdTime`).
+   - `unheard`: the union of the latest week's files' `unheard`, less any id
+     a review's `answers` or `takes` holds.
    - **How many weeks:** the number of distinct weeks the files are named for
      (a week's revisions count once). §6 reads it.
 
@@ -134,8 +138,10 @@ answer, never `seq + 1` (`seq` has gaps). An answer that isn't
 `GET "$JOBS_MAILBOX_URL/v1/leetype-log/archived?after=0&limit=50"` the same
 way. Then:
 
-- **New logs** are the live items with a `seq` above `logSeq` whose name is in
-  no review's `sessions`.
+- **New logs** are the items, live or archived, with a `seq` above `logSeq`
+  whose name is in no review's `sessions`. An archived one (its ask went
+  unanswered, or the mailbox was down for 30 days) is asked back as below and
+  held until it is.
 - **Each log you read,** fetch with
   `GET "$JOBS_MAILBOX_URL/v1/leetype-log/items/<name>"`, check the bytes'
   SHA-256 against the listing's `sha256`, that `schema` is
@@ -143,12 +149,15 @@ way. Then:
   fails any of these is a record problem (§5).
 - **A file's whole history.** A return this week answers a struggle that may
   be weeks old. So for each session file a new log names (its `file`), read
-  every log of that file, earlier weeks' included: fetch every live item's
-  body once to learn its `file`. An earlier log of the file that is archived
+  every log of that file, earlier weeks' included: the live items whose body
+  names it (fetch every live item's body once to learn its `file`), and the
+  archived logs an earlier review's `sessions` lists for it. An archived log
   (logs go home after 30 days live) is asked back with
   `PUT "$JOBS_MAILBOX_URL/v1/leetype-log/wanted/<name>"` (no body); home puts
   it back within 15 minutes. Until it is back, that file's new logs are
-  **held**: not judged this run, and not counted in `sessions`.
+  **held**: not judged this run, and not counted in `sessions`. A held log,
+  or an ask the mailbox refuses, is a record problem (§5), named every run
+  until it is judged.
 - **A session with several copies:** only its highest `.r<n>` (no suffix is
   `r1`) is fed to `summariesOf`, since a later copy holds every event of an
   earlier one.
@@ -347,9 +356,9 @@ python3 -c "from datetime import datetime; from zoneinfo import ZoneInfo; y, w, 
 ```
 
 **Append-only.** A review is never edited, replaced, renamed or trashed.
-Just before uploading, list `LeetType/reviews/` again. If a file for the week
-is there (a second run that week), or this run corrects an earlier week's
-review, the file is `review-<YYYY>-W<ww>-r<n>.md` with the next `n` from 2.
+Run §6 first, so **Sources** can name its puts. Just before uploading, list
+`LeetType/reviews/` again. If a file for the week is there (a second run that
+week), the file is `review-<YYYY>-W<ww>-r<n>.md` with the next `n` from 2.
 A revision is complete in itself: it carries the full state, everything the
 file it revises said and what this run adds, and its first line says what it
 supersedes and why. Answers and takes are keyed by id, so an overlap between
@@ -375,13 +384,16 @@ unheard: []
 - `supersedes`: the file name this one revises, or `null`.
 - `logSeq`: §1's: the highest `seq` up to which every new log was read,
   checked and judged.
-- `answersThrough`: the latest export folder date read (`YYYY-MM-DD`), or the
-  previous one.
+- `answersThrough` (`YYYY-MM-DD`): the earliest export folder date holding
+  an answer or take this run read but neither judged nor listed in
+  `unheard`; with none, the latest folder date read; with no folder read,
+  the previous value.
 - `sessionsDigest`: the SHA-256 of the newest export's `leetypeSessions`, as
   `JSON.stringify` of the parsed value, or `null` with none.
 - `answers`: the `id` of every answer this file judged.
 - `takes`: the take `id` of every answerless take this file judged.
-- `sessions`: every log name this file judged (held logs are left out).
+- `sessions`: every log this file judged, as `{ name, file }`: its name and
+  the session file its body names (held logs are left out).
 - `unheard`: each take that couldn't be heard, as
   `{ id, kind: answer | take, folder: <export date>, file: <audio file name> }`.
 
@@ -396,7 +408,10 @@ An empty section says "None."
 Upload it with `contentMimeType` `text/markdown` and
 `disableConversionToGoogleType` true. Confirm the result's mimeType is
 `text/markdown`, its owner is paulgathondudev@gmail.com, and its size equals
-your local file's byte count.
+your local file's byte count. Then list `LeetType/reviews/` once more: if
+another file now has the same name (a run racing this one), name both in the
+summary. If a check fails, don't retry under the same name: write the next
+`-r<n>` revision and say so in the summary.
 
 ## 6. New session files: none for the first four reviews
 
@@ -437,7 +452,8 @@ curl -sS --max-time 30 -X PUT -H "Authorization: Bearer $JOBS_MAILBOX_TOKEN" \
 `201` (added) and `200` (unchanged) are success. `409`: the name is taken;
 take the next `NN` and put again. `422` names why it was refused: fix it if
 the reason is in your file, else say so in the summary. Anything else: say so
-and don't retry. Name each file put in the review's **Sources**.
+and don't retry. Name each file put in the review's **Sources** (this step
+runs before §5's upload).
 
 ## 7. What it may and may not touch
 
@@ -454,16 +470,17 @@ and don't retry. Name each file put in the review's **Sources**.
   puts to any mailbox folder but `leetype`.
 - **Never** writes outside Drive and the mailbox: no GitHub issue, PR,
   comment or commit, nothing to home, no email.
-- **Never** uploads, sends or saves a take's audio or its transcript anywhere,
-  and never prints the mailbox token or the service account key. The takes
+- **Never** uploads, sends or saves a take's audio or its transcript anywhere
+  outside the owner's Drive (the copies in §1) and this session's scratch
+  directory, and never prints the mailbox token or the service account key. The takes
   are the owner's own voice: the review quotes an answer only as far as a
   rubric point needs, never whole.
 
 ## 8. Summary
 
 End with a short summary, which the push notification carries: the review
-file written (name, and its `logSeq` and `answersThrough`), or that nothing
-was new; how many logs, answers and takes it read, and the logs held; the
+file written (its name, and in plain words which session's log and which
+export date it read up to), or that nothing was new; how many logs, answers and takes it read, and the logs held; the
 three readings placed; the exports copied into `LeetType/answers/`; each
 session file put and its status code; anything skipped and why (the mailbox,
 the SOP section, the service account's access, an unheard take, an archived
