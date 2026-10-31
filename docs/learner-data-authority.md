@@ -39,6 +39,7 @@ toward this frame without doing so is a finding.
 | LA6's reporting reset on every sign-in, on the owner's `lan` build                                                 | HF8, #2182 (open) |
 | LA13's scene notes copied only once a drama prompt is shared (done: copied once kept)                              | HF2, #2177        |
 | Every share sheet's let-go (done: HF1, #2176, promise LG1); the Jobs share sheet itself and the archive's (done)   | HF2, #2177        |
+| The drama prompt's share sheet, and its scene notes let go on a share (done: LA18 declared, LA13 reworded)         | HF4, #2179        |
 
 HF8 (#2182, owner's decision D3: no per-domain switch, and no consent log told
 to home or enforced by home) removed the phone's consent machinery: the
@@ -57,6 +58,15 @@ whatever it names (paulgsc/server#596: a file names its notes by id, and the
 routine reads home's transcripts). The Jobs share sheet and "Did they
 arrive?" are gone, and "Archive finished sessions" is a copy that lets no
 session go, so LG1 (`lib/home-link/voice-copy.ts`) covers it.
+
+HF4 (#2179; the owner's decisions D2 and D5 on #2174) sends the next scene's
+prompt home: "Share the next scene's prompt" became "Ask for the next scene",
+which keeps the ask on the phone (`lib/scene-ask`) for the drain to send
+(LA18), and home hands it to the routine through the Jobs mailbox
+(paulgsc/server `drama_prompt`, its invariant 31). The drama's share sheet
+and its Drive folder are gone from the owner's app, and topik's `FileShare`
+port and `SharePrompt`, which no host injected, are removed (the owner, on
+#2179; `docs/makjang/README.md`, "The loop through the learner's drive").
 
 ## The two questions
 
@@ -88,6 +98,7 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 | `/signals`, `/presence/lease`               | never                                        | never                                                                                                                                                                                                                                                                                                                                                                       | sent                                       |
 | Push subscription                           | never                                        | never                                                                                                                                                                                                                                                                                                                                                                       | the account's, on the person's own taps    |
 | Reflections                                 | on the device, never sent                    | on a paired phone, each written one sent to home by the drain and kept there, which hands its text to the Jobs mailbox for the routine; a spoken one's audio as its voice note; the one-tap answers never sent; the phone keeps its newest 20, and past them only the written ones home does not hold (LA13, LA16)                                                          | the same                                   |
+| Asks for the next scene (the phone's)       | on the phone, never sent                     | on a paired phone, each ask sent to home by the drain and kept there, which hands its prompt to the Jobs mailbox for the routine; the scene notes it names go as voice notes; the phone keeps each until home holds it, and the newest after (LA18)                                                                                                                         | the same                                   |
 | Voice notes (the phone's)                   | on the phone, never sent                     | on a paired phone, each spoken reflection, Jobs voice note an event names, game bite, Studio take and scene note copied and sent to the paired home while the app is open, the copy kept until home holds it (LA13, LA15)                                                                                                                                                   | the same                                   |
 | Shelf                                       | never                                        | the account's, on the person's own taps                                                                                                                                                                                                                                                                                                                                     | the same                                   |
 | aph (the phone's)                           | on the phone, never sent                     | on a paired phone, on the paired home from the first run, synced while aph is open; the phone keeps only what home has not confirmed (LA15)                                                                                                                                                                                                                                 | the same                                   |
@@ -519,8 +530,13 @@ only from the lane's hook and the scene notes read for home only there
   exchange is `sendVoice` (a copy pass, then `exchangeVoice` over the
   store's `keeping`, its end read with the pass's by `runEnd`, LA14), and a
   copy goes only once home holds its note. Letting a note go where it was
-  recorded never removes its copy.
+  recorded never removes its copy, and the drama's draft lets a scene note
+  go on home's word only once home holds the ask that named it too
+  (`prompted`, which only LA18's `letGoHeldPrompts` sets).
 - _Falsified by:_ a hunk LA15's falsifier names for the shared files; a hunk
+  to `lib/scene-voice/runtime.ts` that lets `letGo` remove a scene note that
+  is not `prompted` (an ask home holds named it, LA18) or that home does not
+  hold; a hunk
   to `lib/home-link/voice-copy.ts` that calls `copy` from anywhere but
   `copyAll`, removes its `paired()` checks (before every note and again
   after its audio is read), starts
@@ -613,7 +629,7 @@ was silent, so the run ended as if all had gone.
 ### LA15: a paired phone drains what it keeps to home on its own, at the moments its person is using the app
 
 Everything the phone keeps for home (aph, the Jobs record, Practice's
-record with its written reflections, voice notes) goes through one wiring (`lib/home-link/lanes.ts`):
+record with its written reflections and asks for the next scene, voice notes) goes through one wiring (`lib/home-link/lanes.ts`):
 each declares its lane (its exchange, how its record moves, its sheet's
 counts; `aph.ts`, `jobs.ts`, `practice.ts`, `voice.ts`), and every lane
 shares the runtime (`kept-runtime.ts`), the watch (`kept-watch.ts`) and the
@@ -623,7 +639,7 @@ screens hand its store in, since only they may import `@some-ui/aph`). There
 is no choice: a paired phone drains, and the only tap that lets anything
 leave the phone is LA8's clear (what goes on its own once home holds it, as
 aph's changes and the written reflections past the offline set do, is each
-record's own invariant: LA16 for reflections). Korean's look at the routine's files
+record's own invariant: LA16 for reflections, LA18 for asks). Korean's look at the routine's files
 (`routine.ts`) is read the same way, by the lesson's own query.
 
 What each lane sends, and what the phone may let go of, is enforced by
@@ -703,13 +719,15 @@ can say is when a run is asked for:
   `exchangeJobs` no longer makes it in every run that gets that far; a hunk
   to `lib/home-link/practice.ts` that makes the lane's `revision` or
   `subscribe` follow anything but the sessions cache, `onKept`, Studio's
-  store and the reflections store (HF3), or its `exchange` anything but
+  store, the reflections store (HF3) and the asks store (`lib/scene-ask`,
+  HF4), or its `exchange` anything but
   `drainHome` over the phone's own ports (`./going`) under the run's
   `pairing`; a hunk to `lib/home-link/drain.ts` that takes home's copy in,
   lets a phone session go, lets anything else go but through `letGoHeld`
-  (LA16), or confirms what home holds (`confirmHeld`), or sends other than
-  through `copyHome`, `sendKept`, `sendLog`, `sendStudio` and
-  `sendReflections` (LA16); a hunk to
+  (LA16) and `letGoHeldPrompts` (LA18), or confirms what home holds
+  (`confirmHeld`), or sends other than through `copyHome`, `sendKept`,
+  `sendLog`, `sendStudio`, `sendReflections` (LA16) and `sendPrompts`
+  (LA18); a hunk to
   `lib/home-link/model.ts` or `runtime.ts` that lets `pair` keep an earlier
   pairing's `id`, or lets `load` report an `id` other than the one stored
   with the key; a hunk to `lib/home-link/sent.ts` that lets
@@ -797,13 +815,15 @@ What no test can say is where a reflection goes once an allowed module holds it:
 - _Claim:_ a session reflection (`lib/session-reflection`), or any value built
   from one, reaches `file_host` only as a written one (`body.kind` `text`),
   whole and as kept, through the drain's reflections part
-  (`sendReflections` in `lib/home-link/reflections.ts`, one
-  `PUT /routine/reflections/:id` each, from `drainHome` alone), or as a spoken
+  (`sendReflections` in `lib/home-link/reflections.ts`, through `sendWhole`
+  in `leetype-log.ts`, one `PUT /routine/reflections/:id` each, from
+  `drainHome` alone), or as a spoken
   one's voice note (LA13); the one-tap answers reach no server; nothing else
   passes one to anything that sends to `file_host` or writes a session, a
   signal or the device backend's database; and a reflection leaves the phone
   without its person's own let go only through the store's `trimOffline`,
-  called only from `drainHome`'s `letGoHeld` port after that part, with the
+  called only from `drainHome`'s `letGoHeld` port, in the `finally` after
+  that part, with the
   ids `heldWritten` reads from what home answered (`sent.reflections`). Two
   allowlists in `apps/www/eslint.config.js` bound where one can travel: the
   modules that hold or show reflections (`REFLECTION_MODULES`) import from
@@ -820,11 +840,13 @@ What no test can say is where a reflection goes once an allowed module holds it:
   names, that passes a reflection or a value built from one to a call that
   sends to `file_host` or writes a session, a signal or the device backend's
   database, other than `sendReflections`' `PUT` and LA13's voice lane; a hunk
-  to `lib/home-link/reflections.ts` that sends anything but a `text`
+  to `lib/home-link/reflections.ts`, or to `sendWhole` or `heldBy` in
+  `lib/home-link/leetype-log.ts`, that sends anything but a `text`
   reflection, whole as kept, or by another method or path, or lets `held`
   hear one home's answer does not hold exactly as sent; a hunk to
   `lib/home-link/drain.ts` that calls `sendReflections` or `letGoHeld` from
-  anywhere else, or passes `letGoHeld` anything but the run's own `sent`; a
+  anywhere else, passes `letGoHeld` anything but the run's own `sent`, or
+  moves the call out of the `finally`; a
   hunk to `lib/home-link/going.ts` that has `letGoHeldReflections` pass
   `trimOffline` anything but `heldWritten` over the store's own list and that
   `sent`; a hunk that calls `trimOffline` anywhere but there; or a hunk to
@@ -848,6 +870,75 @@ What no test can say is where a reflection goes once an allowed module holds it:
   `trimOffline` is called only in `letGoHeldReflections`, which only the
   Practice lane hands to `drainHome` as `letGoHeld`; and `sendReflections`
   is called only in `drainHome`.
+
+### LA18: an ask for the next scene goes home through the drain alone, and the phone lets it go only once home holds it
+
+Home keeps every ask (paulgsc/server `drama_prompt`, its `docs/identity.md`
+invariant 31), one per stamp, append-only, and hands its stamp and markdown to
+the Jobs mailbox's `prompt` folder, from which the reflections routine writes
+the drama (owner, D2 on #2174). The scene notes an ask names go home as voice notes (LA13), so
+the ask carries only their ids. The phone keeps every ask home does not hold,
+with no limit, so it never refuses one for lack of a cap, and never replaces
+one: an ask with a kept stamp is refused (`lib/scene-ask`). Of the newest ask
+home holds it keeps only the stamp and time the screen names.
+
+What is enforced by test: that an ask goes as its stamp and markdown, each
+once, counts as home's only on an answer that holds it exactly as sent, and
+leaves a bounded fingerprint in `sent.prompts`
+(`lib/home-link/__tests__/prompts.test.ts`); that the drain puts them after
+the reflections, remembers what home held and lets go only through its port,
+even when home stops answering partway (`drain.test.ts`, "the drain's asks
+for the next scene"); that the store keeps every ask home does not hold, lets
+one go only once it is held and a newer one is kept, refuses one with a kept
+stamp, and says where it is in the person's terms
+(`lib/scene-ask/index.test.ts`); that topik names the
+draft's notes by id, hands the ask over and says what the host says
+(`generate-lesson/index.test.tsx`, `handheld-lesson/index.test.tsx`); and that
+a scene note goes only once `prompted` and held (`lib/scene-voice`'s
+`runtime.test.ts`). What no test can say is who calls the let-go:
+
+- _Claim:_ an ask (`lib/scene-ask`'s `AskedPrompt`) reaches `file_host` only
+  through the drain's prompts part (`sendPrompts` in
+  `lib/home-link/prompts.ts`, through `sendWhole` in `leetype-log.ts`, one
+  `PUT /routine/prompts/:stamp` of
+  `{ stamp, text }` each, from `drainHome` alone); and an ask leaves the
+  phone, and a scene note is marked `prompted`, only in
+  `letGoHeldPrompts` (`lib/home-link/going.ts`), which `drainHome` calls
+  through its `letGoHeldPrompts` port after that part, with the asks
+  `heldPrompts` reads from what home answered (`sent.prompts`): it marks
+  their notes `prompted` before it tells the store they are `held`, and the
+  store (`afterHeld`, `afterAsk`) drops only asks marked held, never the
+  newest, replaces none, and keeps of a held ask only its stamp and time.
+- _Falsified by:_ a hunk to `lib/home-link/prompts.ts`, or to `sendWhole`
+  or `heldBy` in `lib/home-link/leetype-log.ts`, that sends anything but an
+  ask's stamp and text, sends one marked held, sends by another method or
+  path, lets `held` hear one home's answer does not hold exactly as sent, or
+  stores more than a bounded fingerprint in `sent.prompts`; a hunk to
+  `lib/home-link/drain.ts` that calls `sendPrompts` or `letGoHeldPrompts`
+  from anywhere else, passes `letGoHeldPrompts` anything but the run's own
+  `sent`, or moves the call out of the `finally`; a hunk to `lib/home-link/going.ts` that has
+  `letGoHeldPrompts` mark notes `prompted` or call `sceneAsks.held` with
+  anything but `heldPrompts` over the store's own list and that `sent`, or
+  tell the store before marking the notes; a hunk that calls
+  `sceneAsks.held`, or a scene voice's `prompted`, anywhere but there; a
+  hunk to `lib/scene-ask/index.ts` that lets `afterHeld` or `afterAsk` drop
+  or replace an ask not marked held, or drop the newest, keeps more of a
+  held ask than its stamp and time, gives the list a limit, or sends;
+  or a hunk that passes an ask, or its text, to anything else that sends to
+  `file_host` or to a share sheet.
+- _Scope:_ `apps/www/src/lib/scene-ask/index.ts`,
+  `apps/www/src/lib/home-link/prompts.ts`, `leetype-log.ts`, `drain.ts`, `going.ts`,
+  `practice.ts`, `apps/www/src/lib/scene-voice/runtime.ts`,
+  `apps/www/src/components/player/session-viewport.tsx`.
+- _Why not enforced:_ each part above is held by its test, but that the
+  let-go's one caller is the drain, and that nothing else hands an ask to a
+  sender, is a reading of every call site: data flow, which a lint cannot
+  see. Held when declared (HF4), by reading each: `sendPrompts` is called
+  only in `drainHome`; `letGoHeldPrompts` only in `drainHome`'s `finally`,
+  through the port `practice.ts` hands it; `sceneAsks.held` and
+  `phoneSceneVoice().prompted` only in `letGoHeldPrompts`; `sceneAsks.ask`
+  only through topik's `AskScene`, from the port `session-viewport.tsx`
+  hands it on the phone; and `lib/scene-ask` imports nothing that sends.
 
 ## Not covered, on purpose
 

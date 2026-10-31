@@ -5,13 +5,15 @@
  * `handlers/leetype_log.rs`, docs/identity.md invariant 18: a spoken answer
  * without its ticks), then one read of the session back, compared event by
  * event (LA8). Phone to home only, and the phone keeps its whole log:
- * nothing here lets an event go.
+ * nothing here lets an event go. Beside it, `sendWhole`, the one PUT per
+ * item the written reflections (`./reflections`) and the asks for the next
+ * scene (`./prompts`) go by.
  */
 import type { HomeCall } from "@some-ui/core-utils"
-import { canonicalJson, isRecord } from "@some-ui/core-utils"
+import { canonicalJson, isRecord, jsonOf } from "@some-ui/core-utils"
 import type { HomeSession } from "@some-ui/leetype"
 
-import { digestOf } from "./sent"
+import { digestOf, fingerprintOf } from "./sent"
 import type { EndedReport } from "./shelf"
 import { answerOrEnd } from "./shelf"
 
@@ -34,6 +36,68 @@ export type LogReport = EndedReport & {
 export function bucketOf(status: number): "held" | "refused" | "other" {
   if (status === 200) return "held"
   return status === 409 || status === 422 ? "refused" : "other"
+}
+
+/** A kind of item that goes home whole, one PUT each, and comes back in home's answer. */
+export type WholeLane<T> = {
+  /** Where each goes: this, then its id. */
+  readonly path: string
+  /** What goes of one item. */
+  readonly wire: (item: T) => unknown
+  /** The key home's answer holds the item under. */
+  readonly key: string
+  /** The item's id: the last part of its path, and its key in `sent`. */
+  readonly id: (item: T) => string
+}
+
+/** Whether `held` (the lane's map in `./sent`) says home holds `item` as it is now. */
+export const heldBy =
+  <T>(lane: WholeLane<T>, held: Readonly<Record<string, string>>) =>
+  (item: T): boolean =>
+    held[lane.id(item)] === fingerprintOf(lane.wire(item))
+
+/**
+ * Sends `going` through `send`, one PUT each, into `report` (a refusal or
+ * an answer that does not hold what was sent is counted, and that item
+ * stays on the phone, to go again with the next run); `held` hears each one
+ * home holds as sent, by its id and fingerprint (`fingerprintOf`).
+ */
+export async function sendWhole<T>(
+  lane: WholeLane<T>,
+  going: ReadonlyArray<T>,
+  send: HomeCall,
+  report: LogReport,
+  held: (id: string, fingerprint: string) => void
+): Promise<void> {
+  for (const item of going) {
+    const wire = lane.wire(item)
+    const id = lane.id(item)
+    const answer = await answerOrEnd(
+      send,
+      report,
+      "PUT",
+      `${lane.path}/${encodeURIComponent(id)}`,
+      JSON.stringify(wire)
+    )
+    if (answer === null) return
+    const bucket = bucketOf(answer.status)
+    if (bucket !== "held") {
+      report[bucket] += 1
+      continue
+    }
+    const parsed = jsonOf(answer.body)
+    const fingerprint = fingerprintOf(wire)
+    if (
+      isRecord(parsed) &&
+      isRecord(parsed[lane.key]) &&
+      canonicalJson(parsed[lane.key]) === canonicalJson(wire)
+    ) {
+      report.held += 1
+      held(id, fingerprint)
+    } else {
+      report.differs += 1
+    }
+  }
 }
 
 export function emptyLogReport(): LogReport {

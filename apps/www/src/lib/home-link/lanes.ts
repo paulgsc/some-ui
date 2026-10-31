@@ -29,6 +29,7 @@ export type LaneKind =
   | "sessions"
   | "shelf"
   | "reflections"
+  | "prompts"
   | "aph"
   | "jobs"
   | "voice"

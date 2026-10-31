@@ -16,7 +16,10 @@
  * files nothing. So is `PUT /routine/reflections/:id`
  * (`apps/www/src/lib/home-link/reflections`): an accepted one is kept on home
  * for good and filed for the routine, and a spoken reflection is refused by
- * name, keeping and filing nothing.
+ * name, keeping and filing nothing. So is `PUT /routine/prompts/:stamp`
+ * (`apps/www/src/lib/home-link/prompts`): an accepted ask is kept on home for
+ * good and filed for the routine, and a stamp that is no moment on the
+ * calendar is refused, keeping and filing nothing.
  */
 
 import { z } from "zod"
@@ -93,6 +96,25 @@ export const contracts = [
           mimeType: "audio/webm",
           bytes: 1,
         },
+      },
+    },
+    expect: { status: 422 },
+  }),
+
+  defineContract({
+    id: "routine.prompt_refused",
+    module: "routine",
+    session: true,
+    method: "PUT",
+    path: "/routine/prompts/:stamp",
+    summary:
+      "an ask whose stamp is no moment on the calendar is a 422 naming stamp, and nothing is kept or filed for the mailbox",
+    mutates: true,
+    request: {
+      path: { stamp: "drama-20261399T000000000Z" },
+      body: {
+        stamp: "drama-20261399T000000000Z",
+        text: "contract-harness: refused before it is kept",
       },
     },
     expect: { status: 422 },

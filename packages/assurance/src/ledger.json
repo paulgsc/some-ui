@@ -1613,7 +1613,7 @@
     {
       "store": "phone:home-sent",
       "class": "cache",
-      "growth": "Per finished session, kept shelf item and LeetType session home holds or refused (one digest or updatedAt each), for one pairing; no cap (`some-ui.home.sent.v1`).",
+      "growth": "Per finished session, kept shelf item, LeetType session, Studio sitting, written reflection and ask for the next scene home holds or refused (one digest, fingerprint or updatedAt each), for one pairing; no cap (`some-ui.home.sent.v1`).",
       "horizon": "a new pairing starts it over (the next write replaces the old pairing's record); a refused digest leaves when home later holds the item, and refused digests of items no longer kept are dropped (home-link/standing.ts)",
       "family": "what-is-kept"
     },
@@ -1848,7 +1848,14 @@
       "store": "phone:scene-voice",
       "class": "record",
       "growth": "bounded: SCENE_NOTES_MAX = 5 notes per draft, SCENE_AUDIO_MAX_BYTES = 5 x 240,000 = 1,200,000 B.",
-      "horizon": "notes leave when the person lets the draft go, or once home holds them and a shared prompt carried them (letGo, LG1); a shared prompt is a copy; sweepSceneVoice drops audio no note names and notes whose audio never landed",
+      "horizon": "notes leave when the person lets the draft go, or once home holds them and holds the ask that named them (letGo, prompted, LA18); sweepSceneVoice drops audio no note names and notes whose audio never landed",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:scene-asks",
+      "class": "record",
+      "growth": "Per ask for the next scene (HF4, #2179): its stamp, when, the prompt's markdown (about 40 KB, most of it the tree prompt) and the ids of the scene notes it names; no cap, since each waits on the phone until home holds it (`some-ui:scene-asks`).",
+      "horizon": "an ask goes once home answers with it as it was sent (paulgsc/server drama_prompt, append-only) and a newer ask is kept; the newest stays to say home has it (LA18)",
       "family": "what-is-kept"
     },
     {
@@ -2079,7 +2086,7 @@
     {
       "store": "server:mailbox_outgoing",
       "class": "record",
-      "growth": "Per file the phone (or the poller, for transcripts and LeetType session logs) files for the mailbox (decisions, scout, opened, transcript, leetype-log, reflection), bytes verbatim; append-only. A LeetType session's log is filed again as log-<session>.r<n>.json only when an event of it arrives home after its last copy, and each copy repeats every earlier event of the session. The Jobs index adds nothing here or in mailbox_handed or mailbox_archive: it is a view home recomputes from these records and keeps no copy of, so the mailbox holds one index per routine, the latest only (owner, paulgsc/server#509).",
+      "growth": "Per file the phone (or the poller, for transcripts and LeetType session logs) files for the mailbox (decisions, scout, opened, transcript, leetype-log, reflection, prompt), bytes verbatim; append-only. A LeetType session's log is filed again as log-<session>.r<n>.json only when an event of it arrives home after its last copy, and each copy repeats every earlier event of the session. The Jobs index adds nothing here or in mailbox_handed or mailbox_archive: it is a view home recomputes from these records and keeps no copy of, so the mailbox holds one index per routine, the latest only (owner, paulgsc/server#509).",
       "family": "routine-to-home"
     },
     {

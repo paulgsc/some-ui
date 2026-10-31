@@ -54,6 +54,7 @@ export type ServerRoute =
   | "/api/v1/push/vapid-key"
   | "/api/v1/routine/files"
   | "/api/v1/routine/opened"
+  | "/api/v1/routine/prompts/:stamp"
   | "/api/v1/routine/reflections/:id"
   | "/api/v1/rust-rounds"
   | "/api/v1/rust-rounds/:id"

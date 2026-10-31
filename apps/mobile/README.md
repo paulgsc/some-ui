@@ -637,10 +637,16 @@ the last send went, with **Send now** for what waits.
   counted and said.
 - **LeetType sessions** and **Studio sittings and answers** go the same way,
   event by event and read back, and stay on the phone.
-- **Written reflections** go last, one PUT each, and count as home's only once
+- **Written reflections** go next, one PUT each, and count as home's only once
   home answers with each as sent; the drain then lets go of the ones past the
-  phone's offline set that home holds, its one let-go
-  (`docs/learner-data-authority.md`, LA16).
+  phone's offline set that home holds (`docs/learner-data-authority.md`,
+  LA16).
+- **Asks for the next scene** go last, one PUT each of the prompt's stamp and
+  markdown, and count as home's only once home answers with each as sent.
+  Home hands each to the reflections routine through the Jobs mailbox, and
+  the drama comes back through home. The drain then lets go of each ask home
+  holds but the newest, and marks the scene notes it named, which leave the
+  draft once home holds them too (LA18). The drain's let-gos are these two.
 - **aph**, the **Jobs record** and **voice notes** go by their own
   exchanges, below.
 

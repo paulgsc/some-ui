@@ -6,10 +6,12 @@
  * items PUT as the shelf sends them (`./shelf`), each finished LeetType
  * session PUT event by event and read back (`./leetype-log`), then Studio's
  * sittings and answers the same way (`./studio-log`), then each written
- * reflection (`./reflections`, LA16). Nothing of home's is taken in, and
- * nothing on the phone is let go but written reflections (`letGoHeld`,
- * LA16): a finished session leaves only by the clear in Settings
- * (`./clear`), once home has read it back.
+ * reflection (`./reflections`, LA16), then each ask for the next scene
+ * (`./prompts`, LA18). Nothing of home's is taken in, and nothing on the
+ * phone is let go but written reflections (`letGoHeld`, LA16) and the asks
+ * home holds, with the scene notes they named (`letGoHeldPrompts`, LA18):
+ * a finished session leaves only by the clear in Settings (`./clear`), once
+ * home has read it back.
  *
  * A part home turned away (a full shelf, a refusal, a read-back that did not
  * match what was sent) does not hold back the parts after it, which share
@@ -26,12 +28,14 @@ import {
   FileHostNotConfiguredError,
   FileHostResponseError,
 } from "@/lib/file-host-config/client"
+import type { PendingAsk } from "@/lib/scene-ask"
 import type { CopyResult } from "@/lib/tenant/sessions-copy"
 import { SessionNotFoundError } from "@/lib/tenant/sessions-repository"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 import type { LogReport } from "./leetype-log"
 import { emptyLogReport, sendLog } from "./leetype-log"
+import { sendPrompts } from "./prompts"
 import type { Written } from "./reflections"
 import { sendReflections } from "./reflections"
 import type { Sent } from "./sent"
@@ -69,6 +73,13 @@ export type DrainPorts = {
    * says home holds (`./going`'s `letGoHeldReflections`).
    */
   letGoHeld: (sent: Sent) => void
+  /** The asks for the next scene home lacks under `pairing` (`./going`). */
+  promptsGoing: () => ReadonlyArray<PendingAsk>
+  /**
+   * Lets go of the asks `sent` says home holds, and marks the scene notes
+   * they named as carried by them (`./going`'s `letGoHeldPrompts`).
+   */
+  letGoHeldPrompts: (sent: Sent) => void
   /** The pairing this run goes under (the link's id for it). */
   pairing: string
   storage: KeyedStorage | null
@@ -180,7 +191,7 @@ export async function drainHome(
   const part = async <T>(
     going: T,
     sender: LogSender<T>,
-    field: "leetype" | "studio" | "reflections"
+    field: "leetype" | "studio" | "reflections" | "prompts"
   ): Promise<HomeExchanged | null> => {
     const log = emptyLogReport()
     const readBack: Record<string, string> = {}
@@ -202,14 +213,25 @@ export async function drainHome(
     "studio"
   )
   if (studioEnded !== null) return studioEnded
-  const reflectionsEnded = await part(
-    ports.reflectionsGoing(),
-    sendReflections,
-    "reflections"
-  )
-  // What home holds, as this run has heard it, whatever the run came to.
-  ports.letGoHeld(sent)
-  if (reflectionsEnded !== null) return reflectionsEnded
+  try {
+    const reflectionsEnded = await part(
+      ports.reflectionsGoing(),
+      sendReflections,
+      "reflections"
+    )
+    if (reflectionsEnded !== null) return reflectionsEnded
+    const promptsEnded = await part(
+      ports.promptsGoing(),
+      sendPrompts,
+      "prompts"
+    )
+    if (promptsEnded !== null) return promptsEnded
+  } finally {
+    // What home holds, as this run has heard it, however the run ended:
+    // done, stopped, or thrown partway.
+    ports.letGoHeld(sent)
+    ports.letGoHeldPrompts(sent)
+  }
 
   return short === null ? { kind: "synced" } : failed(short)
 }
