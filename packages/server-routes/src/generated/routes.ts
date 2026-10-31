@@ -42,6 +42,8 @@ export type ServerRoute =
   | "/api/v1/leetype/rounds"
   | "/api/v1/leetype/rounds/:id"
   | "/api/v1/leetype/rounds/:id/runs"
+  | "/api/v1/leetype/session-files"
+  | "/api/v1/leetype/session-files/:name"
   | "/api/v1/leetype/sessions"
   | "/api/v1/leetype/sessions/:session/events"
   | "/api/v1/leetype/sessions/:session/events/:id"
