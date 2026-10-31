@@ -19,13 +19,11 @@ import { hasAudience } from "@/lib/build-profile"
 import { formatDurationMs } from "@/lib/format"
 import { useIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
-import { useReflections } from "@/lib/session-reflection/use-reflections"
 import { cutShortStop } from "@/lib/session-stop"
 import type { SessionRecord } from "@/lib/tenant"
 import { useDuplicateSession } from "@/lib/tenant"
 import { finishedNaturally as endedInLead } from "@/lib/wind-down"
 import { ActivityIcon } from "@/components/activity-icon"
-import { DeviceShareReflections } from "@/components/reflection/device-share-reflections"
 import { ReflectPanel } from "@/components/reflection/reflect-panel"
 
 import { StopReasons } from "./session-stop"
@@ -47,7 +45,6 @@ export const CompletionSummary = ({
   const cutShort = cutShortStop(session.id)
   const phone = hasAudience("apk")
   const reflectionsId = useId()
-  const hasOwn = useReflections().kept.some((r) => r.sessionId === session.id)
 
   // Replay hands the player a fresh draft copy and drops them into the
   // composer's Configure step, where everything is still editable.
@@ -147,20 +144,6 @@ export const CompletionSummary = ({
               How did it go?
             </h3>
             <ReflectPanel sessionId={session.id} atMs={null} />
-            {import.meta.env.VITE_DEVICE_BACKEND === "true" && hasOwn && (
-              <div className="space-y-1">
-                <DeviceShareReflections
-                  sessionIds={[session.id]}
-                  label="Hand off to Drive now"
-                  size="default"
-                  className="h-11 w-full"
-                />
-                <p className="text-muted-foreground text-center text-xs">
-                  Best read while it&apos;s fresh: your agent can shape the next
-                  session from it.
-                </p>
-              </div>
-            )}
           </section>
         </CardContent>
       </Card>

@@ -2,7 +2,8 @@
  * The sessions half of the drain (`./drain`): the phone's own finished
  * sessions copied into the paired home account (LA8, LA15). Only the
  * session records go, each one's plan, status and times (canon Rem. 7.6
- * (a)); reflections, stops and soundbites stay on the phone (LA7). Nothing
+ * (a)); stops and soundbites stay on the phone, and written reflections go
+ * as the drain's own part (`./reflections`, LA16). Nothing
  * on home is deleted, and a copy cannot be taken back from here.
  *
  * The clear (`./clear`) reads the finished sessions back (`readHeld`,

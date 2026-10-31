@@ -25,7 +25,13 @@ import { laneView, WORDS } from "./words"
 export type LaneId = "practice" | "aph" | "jobs" | "voice"
 
 /** What a lane's record holds of one kind, as the sheet names it. */
-export type LaneKind = "sessions" | "shelf" | "aph" | "jobs" | "voice"
+export type LaneKind =
+  | "sessions"
+  | "shelf"
+  | "reflections"
+  | "aph"
+  | "jobs"
+  | "voice"
 
 /** What a lane's sheet counts, as its record says. */
 export type LaneCounts = {

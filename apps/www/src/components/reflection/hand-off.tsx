@@ -8,7 +8,6 @@ import { bySession, describeAge } from "@/lib/session-reflection"
 import { useReflections } from "@/lib/session-reflection/use-reflections"
 import { useSessions } from "@/lib/tenant"
 
-import { DeviceShareReflections } from "./device-share-reflections"
 import { letGo } from "./let-go"
 
 /**
@@ -65,13 +64,6 @@ export const HandOff = (): JSX.Element | null => {
                   {group.stale && <Badge variant="secondary">stale</Badge>}
                 </p>
               </div>
-              {import.meta.env.VITE_DEVICE_BACKEND === "true" && (
-                <DeviceShareReflections
-                  sessionIds={[group.sessionId]}
-                  label="Share"
-                  title={`Share the reflections from "${name}"`}
-                />
-              )}
               <Button
                 type="button"
                 size="sm"
@@ -92,14 +84,6 @@ export const HandOff = (): JSX.Element | null => {
           )
         })}
       </ul>
-      {import.meta.env.VITE_DEVICE_BACKEND === "true" && (
-        <DeviceShareReflections
-          sessionIds={groups.map((g) => g.sessionId)}
-          label={`Share all ${kept.length} to Drive`}
-          size="default"
-          className="h-11 w-full"
-        />
-      )}
       {sheet}
     </div>
   )

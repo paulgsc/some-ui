@@ -182,7 +182,6 @@ const SessionCard = ({
             </p>
             <SessionReflectionsRow
               sessionId={session.id}
-              name={session.name}
               finished={session.status === "completed"}
             />
           </div>
@@ -293,7 +292,6 @@ const PhoneSessionRow = ({
         </div>
         <SessionReflectionsRow
           sessionId={session.id}
-          name={session.name}
           finished={session.status === "completed"}
         />
         {failureOf(deleteIntent.state)}

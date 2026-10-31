@@ -1789,8 +1789,8 @@
     {
       "store": "phone:reflection-audio",
       "class": "record",
-      "growth": "bounded: REFLECTION_LIMIT = 20 reflections across all sessions; REFLECTION_AUDIO_MAX_BYTES = 20 x 240,000 = 4,800,000 B; a 21st is refused (\"nothing is dropped to make room\").",
-      "horizon": "none automatic: a share is a copy (LG1), so room comes back only by letting some go",
+      "growth": "bounded: REFLECTION_AUDIO_MAX_BYTES = 20 x 240,000 = 4,800,000 B of spoken reflections' audio; a take past it is refused (the reflection-voice budget, #2265). The reflections list beside it has no cap of its own since HF3: the offline set is the newest REFLECTION_LIMIT = 20, and past them only the written ones home does not hold (LA16).",
+      "horizon": "a written reflection past the offline set goes once home holds it (LA16); a spoken one's audio only when its person lets it go, since an export is a copy (LG1)",
       "family": "what-is-kept"
     },
     {
@@ -2073,7 +2073,7 @@
     {
       "store": "server:mailbox_outgoing",
       "class": "record",
-      "growth": "Per file the phone (or the poller, for transcripts and LeetType session logs) files for the mailbox (decisions, scout, opened, transcript, leetype-log), bytes verbatim; append-only. A LeetType session's log is filed again as log-<session>.r<n>.json only when an event of it arrives home after its last copy, and each copy repeats every earlier event of the session. The Jobs index adds nothing here or in mailbox_handed or mailbox_archive: it is a view home recomputes from these records and keeps no copy of, so the mailbox holds one index per routine, the latest only (owner, paulgsc/server#509).",
+      "growth": "Per file the phone (or the poller, for transcripts and LeetType session logs) files for the mailbox (decisions, scout, opened, transcript, leetype-log, reflection), bytes verbatim; append-only. A LeetType session's log is filed again as log-<session>.r<n>.json only when an event of it arrives home after its last copy, and each copy repeats every earlier event of the session. The Jobs index adds nothing here or in mailbox_handed or mailbox_archive: it is a view home recomputes from these records and keeps no copy of, so the mailbox holds one index per routine, the latest only (owner, paulgsc/server#509).",
       "family": "routine-to-home"
     },
     {

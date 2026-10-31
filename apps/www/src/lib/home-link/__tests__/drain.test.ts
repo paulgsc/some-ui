@@ -21,7 +21,11 @@ import type { CopyResult } from "@/lib/tenant/sessions-copy"
 import { SessionNotFoundError } from "@/lib/tenant/sessions-repository"
 import type { SessionRecord } from "@/lib/tenant/types"
 
-import { home as leetypeHome, session as leetypeSession } from "./fake-home"
+import {
+  echo,
+  home as leetypeHome,
+  session as leetypeSession,
+} from "./fake-home"
 
 const PAIRING = "pairing-1"
 
@@ -73,6 +77,8 @@ function setup(
     copy?: DrainPorts["copy"]
     log?: DrainPorts["logGoing"]
     studio?: DrainPorts["studioGoing"]
+    reflections?: DrainPorts["reflectionsGoing"]
+    letGoHeld?: DrainPorts["letGoHeld"]
   } = {}
 ): {
   ports: DrainPorts
@@ -101,6 +107,8 @@ function setup(
       over.studio ??
       ((): Promise<{ sittings: []; reports: [] }> =>
         Promise.resolve({ sittings: [], reports: [] })),
+    reflectionsGoing: over.reflections ?? ((): Array<never> => []),
+    letGoHeld: over.letGoHeld ?? ((): void => undefined),
     pairing: PAIRING,
     storage: memoryStorage(),
     copy:
@@ -459,5 +467,46 @@ describe("the drain's LeetType and Studio parts", () => {
       why: "refused",
     })
     expect(readSent(ports.storage, PAIRING).leetype).toEqual({})
+  })
+})
+
+describe("the drain's written reflections (LA16)", () => {
+  const LINE = {
+    id: "r1",
+    sessionId: "s1",
+    createdAt: "2026-10-30T10:06:00.000Z",
+    atMs: 61_000,
+    body: { kind: "text" as const, text: "More level two, please." },
+  }
+  it("puts each after Studio, remembers the ones home answers with as sent, then lets go only what home holds", async () => {
+    const trims: Array<Readonly<Record<string, string>>> = []
+    const { ports, send, puts } = setup({
+      kept: [],
+      answers: [echo(LINE)],
+      reflections: () => [LINE],
+      letGoHeld: (sent) => {
+        trims.push(sent.reflections)
+      },
+    })
+    await expect(drainHome(send, ports)).resolves.toEqual({ kind: "synced" })
+    expect(puts).toEqual(["/routine/reflections/r1"])
+    expect(Object.keys(readSent(ports.storage, PAIRING).reflections)).toEqual([
+      "r1",
+    ])
+    expect(trims).toEqual([{ r1: expect.any(String) }])
+  })
+
+  it("lets nothing go for one home answers with other words", async () => {
+    const trims: Array<Readonly<Record<string, string>>> = []
+    const { ports, send } = setup({
+      kept: [],
+      answers: [echo({ ...LINE, body: { kind: "text", text: "other" } })],
+      reflections: () => [LINE],
+      letGoHeld: (sent) => {
+        trims.push(sent.reflections)
+      },
+    })
+    await drainHome(send, ports)
+    expect(trims).toEqual([{}])
   })
 })

@@ -12,11 +12,12 @@ import { RECORDING_FAILURE_COPY, VOICE_NOTE_SAID } from "@some-ui/voice-capture"
 import { Mic, Square } from "lucide-react"
 
 import { phoneVoiceNote } from "@/lib/reflection-voice"
-import { NO_ROOM } from "@/lib/session-reflection"
 
 const SAID: Record<VoiceNoteOutcome, string> = {
   ...VOICE_NOTE_SAID,
-  full: NO_ROOM,
+  // The spoken reflections' audio has a size on this phone of its own
+  // (`lib/reflection-voice/budget`); a written one always has room.
+  full: "No room on this phone for another spoken one: let one go, or type it.",
 }
 
 function note(state: VoiceNoteState): string | null {
@@ -25,21 +26,14 @@ function note(state: VoiceNoteState): string | null {
   return null
 }
 
-/**
- * Stays mounted while the panel switches to its full state, so a take under
- * way when the last slot goes still ends where the person can see it.
- */
 export const DeviceReflectionVoice = ({
   sessionId,
   atMs,
-  full,
 }: {
   sessionId: string
   /** How far into the session now, or null after it ended. */
   atMs: number | null
-  /** Every slot is taken: a new take cannot start. */
-  full: boolean
-}): JSX.Element | null => {
+}): JSX.Element => {
   // eslint-disable-next-line owner-guard/no-mount-snapshot -- a runtime made once per mount, keyed by `sessionId` where it is rendered
   const [voice] = useState(() => phoneVoiceNote(sessionId))
   const state = useSyncExternalStore(voice.subscribe, voice.getSnapshot)
@@ -49,7 +43,6 @@ export const DeviceReflectionVoice = ({
   const phase = state.kind === "taking" ? state.phase : null
   const busy =
     state.kind === "saving" || (phase !== null && phase.kind !== "recording")
-  if (full && state.kind === "idle" && said === null) return null
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -64,21 +57,19 @@ export const DeviceReflectionVoice = ({
           Keep it ({formatTimecode(phase.elapsed)})
         </Button>
       ) : (
-        !full && (
-          <Button
-            type="button"
-            className="h-12 w-full gap-2 text-base"
-            disabled={busy}
-            onClick={() => voice.start(atMs)}
-          >
-            <Mic className="size-4" aria-hidden />
-            {phase?.kind === "opening"
-              ? "Opening the microphone..."
-              : busy
-                ? "Keeping it..."
-                : "Talk"}
-          </Button>
-        )
+        <Button
+          type="button"
+          className="h-12 w-full gap-2 text-base"
+          disabled={busy}
+          onClick={() => voice.start(atMs)}
+        >
+          <Mic className="size-4" aria-hidden />
+          {phase?.kind === "opening"
+            ? "Opening the microphone..."
+            : busy
+              ? "Keeping it..."
+              : "Talk"}
+        </Button>
       )}
       {said !== null && (
         <p role="status" className="text-muted-foreground text-sm">

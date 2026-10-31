@@ -30,6 +30,12 @@ export function session(id: string): HomeSession {
 
 type Call = [method: string, path: string, body: string | undefined]
 
+/** Home's answer to a reflection's PUT, holding `reflection` (`../reflections`). */
+export const echo = (reflection: unknown): HomeAnswer => ({
+  status: 200,
+  body: JSON.stringify({ change: "added", reflection }),
+})
+
 /**
  * A home that answers each PUT with `put` (200 `added` by default) and holds
  * what it took, reading it back with its keys in another order; `back`

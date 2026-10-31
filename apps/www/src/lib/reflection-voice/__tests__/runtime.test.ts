@@ -75,8 +75,8 @@ describe("createVoiceNote", () => {
     expect(note.getSnapshot()).toEqual({ kind: "idle", last: "kept" })
   })
 
-  it("stores no audio when there is no slot", async () => {
-    const p = ports({ keep: () => "full" })
+  it("stores no audio when the reflection could not be kept", async () => {
+    const p = ports({ keep: () => "failed" })
     const note = createVoiceNote(p, "s1")
     note.start(null)
     await settle()
@@ -84,7 +84,7 @@ describe("createVoiceNote", () => {
     await settle()
 
     expect(p.audio.put).not.toHaveBeenCalled()
-    expect(note.getSnapshot()).toEqual({ kind: "idle", last: "full" })
+    expect(note.getSnapshot()).toEqual({ kind: "idle", last: "failed" })
   })
 
   it("takes the reflection back out when its audio cannot be kept", async () => {
