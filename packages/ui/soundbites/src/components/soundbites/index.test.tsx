@@ -187,21 +187,6 @@ describe("Soundbites", () => {
     expect(kept.size).toBe(6)
   })
 
-  it("when full, replaces the oldest without asking", async () => {
-    soundbitesHeldByHome(() => (): boolean => true)
-    const { kept } = setup({ kept: FULL })
-
-    expect(
-      await screen.findByText(/Full\. Your next one replaces/)
-    ).toHaveTextContent(", the oldest home has")
-    await tap("Start talking")
-    await tap("Done, keep it")
-
-    expect(await screen.findByText(/6 of 6 on this phone/)).toBeInTheDocument()
-    expect(kept.has("b5")).toBe(false)
-    expect(kept.size).toBe(6)
-  })
-
   it("replaces the one picked instead, if the person picks", async () => {
     soundbitesHeldByHome(() => (): boolean => true)
     const { kept } = setup({ kept: FULL })

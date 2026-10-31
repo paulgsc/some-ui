@@ -23,10 +23,6 @@
  * - a LeetType spoken answer's take (`lib/leetype-takes`): `leetype`, the
  *   session file and screen, when taken; its note goes as a study note.
  *
- * Those last three stores are offline sets: each lets a note go only to make
- * room at its cap, and only one home holds (`holdOffline`, which hands each
- * store what home holds; a soundbite only once home holds its record too).
- *
  * Copying deletes nothing where the note was recorded; letting it go there
  * leaves the copy, which goes once home holds the note. Each pass says what
  * it could not copy and why (`copyPasses`), so Settings never counts as

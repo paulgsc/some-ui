@@ -5,10 +5,9 @@
  * (`SoundbiteContext`), so the person only ever supplies the why.
  *
  * Bounded twice: a take stops itself at `SOUNDBITE_MAX_MS`, and the phone
- * keeps `SOUNDBITE_LIMIT`, an offline set (HF5, #2180). Once full, the next
- * one replaces the oldest home holds, or whichever of those the person
- * marks instead, a choice made before, during or never; while home holds
- * none of them, the next one is refused, and none leaves.
+ * keeps `SOUNDBITE_LIMIT`. Once full, the next one replaces the one
+ * `lib/policy` picks, or one the person marks instead, a choice made
+ * before, during or never.
  *
  * A take in progress is kept, not lost, when it is cut short from outside:
  * the screen turning off, the app going to the background, or the page being

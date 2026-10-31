@@ -2,10 +2,8 @@
  * Where soundbites live on the phone: the WebView's IndexedDB. Blobs go in
  * as they are (no base64), metadata beside them, and the cap is enforced in
  * the same transaction as the write, so no sequence of saves can leave more
- * than `SOUNDBITE_LIMIT` on the phone. The cap is an offline set: a save
- * past it lets go only soundbites home holds (`./home-held`), and is refused
- * while home holds too few. Each soundbite goes home through www's home link
- * (HF5, #2180): its audio as a voice note, its record as a study note.
+ * than `SOUNDBITE_LIMIT` on the phone (what a save past it lets go:
+ * `./policy`).
  *
  * Not the device backend's SQLite: audio is the one thing that database
  * would hold as large opaque values for no query to read.

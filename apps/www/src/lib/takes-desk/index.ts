@@ -2,12 +2,9 @@
  * A desk of takes on the phone (`./runtime`): the microphone, the audio on a
  * shelf of its own, and the takes in a list, one runtime per page load.
  * Each take goes home as a voice note (`lib/home-link/voice-copy`, HF5
- * #2180), which tells the desk what home holds (`heldByHome`). A take leaves
- * only when its audio never landed (`sweep`), or, once home holds it, to
- * make room for a new one at the cap (`./runtime`'s `makesRoom`): the cap is
- * an offline set, and nothing leaves before home holds it. Grammar-lens
- * takes (`lib/lens-takes`) and
- * LeetType's spoken answers (`lib/leetype-takes`) each keep one.
+ * #2180), which tells the desk what home holds (`heldByHome`). Grammar-lens
+ * takes (`lib/lens-takes`) and LeetType's spoken answers
+ * (`lib/leetype-takes`) each keep one.
  * Phone-only (`build.paths.ts`).
  */
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"

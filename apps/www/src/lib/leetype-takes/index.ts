@@ -3,13 +3,12 @@
  * `@some-ui/leetype`'s `SpokenTakes`): a desk of takes (`lib/takes-desk`),
  * at most forty, each at most sixty seconds, and beside each answer a note
  * of what it answered: the prompt, the rubric, the points ticked, and the
- * text when it was typed. Both go home (HF5, #2180, folding in #1934's
- * "never home" lane): each take as a voice note and each note as a study
- * note (`lib/home-link/voice-copy` and the drain's `./notes`), and the
- * study-context export carries a copy of both. Each list is an offline set
- * of forty: past it, a new one makes room by letting go the oldest home
- * holds, and is refused while home holds none; nothing leaves before home
- * holds it. Phone-only (`build.paths.ts`).
+ * text when it was typed. Both go home (HF5, #2180): each take as a voice
+ * note and each note as a study note (`lib/home-link/voice-copy` and the
+ * drain's `./notes`), and the study-context export carries a copy of both.
+ * Each list keeps forty: past it, a new one makes room by letting go the
+ * oldest home holds, and is refused while home holds none. Phone-only
+ * (`build.paths.ts`).
  */
 import type {
   SpokenTakeNote,

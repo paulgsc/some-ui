@@ -1,8 +1,6 @@
 /**
- * Takes kept (adaptive-learning canon Rem. 4.16): at most forty, an offline
- * set. None expires, and none leaves before home holds it: past forty a new
- * take lets go the oldest home holds, and is refused while home holds none
- * (HF5, #2180).
+ * Takes kept (adaptive-learning canon Rem. 4.16): at most forty; see
+ * `lib/takes-desk/runtime`.
  */
 export const LENS_TAKES_MAX = 40
 

@@ -3,9 +3,8 @@
  * (HF5, #2180): each one whose audio and record both reached home. The page
  * hands `soundbitesHeldByHome` to www's home link
  * (`apps/www/src/lib/soundbite-keeping`), which calls it whenever that
- * changes. Only those may leave the phone to make room for a new soundbite
- * (`./policy`'s `nextReplaced`): the cap is an offline set, and nothing
- * leaves before home holds it. Until the link says so, home holds none.
+ * changes. Only those may make room for a new soundbite (`./policy`'s
+ * `nextReplaced`). Until the link says so, home holds none.
  */
 
 /** Whether home holds a soundbite, as one reading of what home holds. */
