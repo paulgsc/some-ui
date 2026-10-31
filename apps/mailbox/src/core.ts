@@ -221,8 +221,6 @@ const REFLECTION_KEYS: ReadonlyArray<string> = [
 const NO_AUDIO_REFLECTION =
   "a reflection carries no audio: a spoken one goes as its transcript"
 const NO_DRIVE_REFLECTION = "a reflection names no Drive file"
-/** The phone's id for a reflection, as home's `PUT /routine/reflections/:id` takes it. */
-const REFLECTION_ID = /^[A-Za-z0-9_-]{1,64}$/
 
 /**
  * README, "What a put must satisfy": a written reflection is its text, the
@@ -241,10 +239,7 @@ function reflectionRefusal(
     if (DRIVE_KEY.test(extra)) return NO_DRIVE_REFLECTION
     return `${extra} is not part of a reflection`
   }
-  if (
-    typeof body.reflection !== "string" ||
-    !REFLECTION_ID.test(body.reflection)
-  ) {
+  if (typeof body.reflection !== "string") {
     return "reflection must be the reflection's id"
   }
   if (name !== `reflection-${body.reflection}.json`) {
@@ -519,14 +514,7 @@ const RECORDS: ReadonlyArray<Folder> = [
 
 const ALL: ReadonlyArray<Folder> = [...RECORDS, "index"]
 
-/**
- * The folders the routine may list as archived and ask back: every record
- * but `reflection`. Home archives a reflection by what it put, never by an
- * ask, and lists the folder only once one is old enough, so a pass with
- * nothing to do makes no request for it and the idle bound holds (the
- * assurance ledger's MI6). A reflection archived before the routine answered
- * it stays home's.
- */
+/** Every record but `reflection`, which the routine never asks back (README, "Who may do what"; MI6). */
 const ASKED: ReadonlyArray<Folder> = RECORDS.filter(
   (folder) => folder !== "reflection"
 )

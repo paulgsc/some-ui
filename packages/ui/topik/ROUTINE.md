@@ -165,16 +165,17 @@ step 12 doesn't run. Voice notes never go to the mailbox from this run.
    an entry in a `<base>.json` in `Study ledger/reflections` belongs to that
    file: it was shared there first, so it is answered with that file and
    never again. The others are grouped by session and by the day of their
-   `at` in America/Los*Angeles, and each group is one reflection to answer,
-   with the base `<day>\_reflection*<the session's first 8 letters, digits or
-   -, as written>`, which the scene's folder description and mailbox name
-carry exactly as a Drive file's base does. A group whose newest `at`is
-under two hours old waits for the next run, since more of that session may
-be on its way; a reflection written on the same day after its group was
-answered is not answered again (say so in the summary). Its spoken
-reflections ("Voice notes", above) belong to it when their transcript's`at` falls on the same day. The routine cannot ask an archived reflection
-   back, so a group whose reflections have left the listing waits no more and
-   is not counted.
+   `at` in `America/Los_Angeles`, and each group is one reflection to
+   answer. Its base is `<day>_reflection_<session8>`, where `<session8>` is
+   the session's first 8 letters, digits or `-`, as written; the scene's
+   folder description and mailbox name carry it exactly as a Drive file's
+   base does. A group whose newest `at` is under two hours old waits for the
+   next run, since more of that session may be on its way; a reflection
+   written on the same day after its group was answered is not answered
+   again (say so in the summary). Its spoken reflections ("Voice notes",
+   above) belong to it when their transcript's `at` falls on the same day.
+   The routine cannot ask an archived reflection back, so a group whose
+   reflections have left the listing waits no more and is not counted.
 
    Take the unanswered ones, from the mailbox and from Drive together,
    newest first, skipping any that wait on a voice note ("Voice notes"), at

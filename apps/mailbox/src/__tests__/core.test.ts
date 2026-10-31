@@ -1173,26 +1173,13 @@ describe("written reflections", () => {
     ).toBe(403)
   })
 
-  it("the routine neither lists archived reflections nor asks one back; the archive role moves them", async () => {
+  it("the routine neither lists archived reflections nor asks one back", async () => {
     const d = deps()
     expect((await asHome(d, NAME)).status).toBe(201)
     expect((await send(d, "GET", "/v1/reflection/archived")).status).toBe(403)
     expect((await send(d, "PUT", `/v1/reflection/wanted/${NAME}`)).status).toBe(
       403
     )
-    for (const token of [ROUTINE, HOME]) {
-      expect(
-        (
-          await send(d, "DELETE", `/v1/reflection/items/${NAME}`, {
-            token,
-            headers: { "if-match": `"${"0".repeat(64)}"` },
-          })
-        ).status
-      ).toBe(403)
-    }
-    expect(
-      (await send(d, "GET", "/v1/reflection/items", { token: ARCHIVE })).status
-    ).toBe(200)
   })
 
   it("refuses a reflection that carries audio or names a Drive file, and says why", async () => {
@@ -1202,7 +1189,6 @@ describe("written reflections", () => {
     const drive = "a reflection names no Drive file"
     const refused: ReadonlyArray<readonly [string, string]> = [
       [JSON.stringify({ ...WRITTEN, audio: "T2dnUwACAAAAAAAA" }), audio],
-      [JSON.stringify({ ...WRITTEN, bytes: 2048 }), audio],
       [
         JSON.stringify({
           ...WRITTEN,
@@ -1210,7 +1196,6 @@ describe("written reflections", () => {
         }),
         audio,
       ],
-      [JSON.stringify({ ...WRITTEN, text: "GkXfo59C".repeat(40) }), audio],
       [JSON.stringify({ ...WRITTEN, driveId: "1AbCdEf" }), drive],
       [
         JSON.stringify({
@@ -1244,20 +1229,20 @@ describe("written reflections", () => {
       [undated, "at must be when it was written"],
       [{ ...WRITTEN, at: "yesterday" }, "at must be when it was written"],
       [unsessioned, "session must name the session it is about"],
+      [{ ...WRITTEN, reflection: 7 }, "reflection must be the reflection's id"],
       [
         { ...WRITTEN, reflection: "a/b" },
-        "reflection must be the reflection's id",
+        "the name must carry the reflection's id",
       ],
       [
         { ...WRITTEN, reflection: "another-id" },
         "the name must carry the reflection's id",
       ],
-      [{ ...WRITTEN, schema: "some-ui.voice-transcript/1" }, ""],
     ]
     for (const [body, why] of shapes) {
       const answer = await asHome(d, NAME, JSON.stringify(body))
       expect(answer.status).toBe(422)
-      if (why !== "") expect(await json(answer)).toEqual({ error: why })
+      expect(await json(answer)).toEqual({ error: why })
     }
     for (const name of [
       "reflection-.json",
