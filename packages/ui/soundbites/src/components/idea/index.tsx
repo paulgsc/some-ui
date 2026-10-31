@@ -35,6 +35,14 @@ export type IdeaCaptureProps = {
 
 type Dispatch = (intent: IdeaIntent) => void
 
+/** Where a listening with no words yet is (LS1). */
+function hearingWhere(
+  phase: Extract<AskPhase, { kind: "listening" | "finishing" }>
+): string {
+  if (phase.kind === "finishing") return WORDS.finishing
+  return phase.ready ? WORDS.listening : WORDS.gettingReady
+}
+
 const Words = ({
   phase,
   dispatch,
@@ -95,16 +103,23 @@ const Ask = ({
         <p className="text-muted-foreground text-sm">{hint}</p>
       </header>
 
-      {(phase.kind === "listening" || phase.kind === "heard") && (
+      {(phase.kind === "listening" ||
+        phase.kind === "finishing" ||
+        phase.kind === "heard") && (
         <p
           aria-live="polite"
           className="bg-card border-border/60 min-h-24 rounded-2xl border p-3 text-lg"
         >
-          {phase.words === "" ? (
-            <span className="text-muted-foreground">{WORDS.listening}</span>
+          {phase.kind !== "heard" && phase.words === "" ? (
+            <span className="text-muted-foreground">{hearingWhere(phase)}</span>
           ) : (
             phase.words
           )}
+        </p>
+      )}
+      {phase.kind === "finishing" && phase.words !== "" && (
+        <p aria-live="polite" className="text-muted-foreground text-sm">
+          {WORDS.finishing}
         </p>
       )}
 
@@ -150,7 +165,9 @@ const Ask = ({
       )}
 
       <div className="flex flex-wrap gap-2">
-        {(phase.kind === "idle" || phase.kind === "listening") && (
+        {(phase.kind === "idle" ||
+          phase.kind === "listening" ||
+          phase.kind === "finishing") && (
           <Button
             variant="ghost"
             size="sm"

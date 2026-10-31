@@ -238,9 +238,16 @@ type Pending = { readonly project: string } & (
 export type Speaking = {
   readonly seq: number
   readonly atMs: number
-  readonly phase: "listening" | "heard"
+  /** Listening (getting ready until `ready`), finishing after Done talking, then heard (LS1). */
+  readonly phase: "listening" | "finishing" | "heard"
+  readonly ready: boolean
   /** The words so far while listening; what was heard after. */
   readonly words: string
+}
+
+/** Whether a note is still being heard: begun, or finishing. */
+function stillHearing(speaking: Speaking | null): boolean {
+  return speaking?.phase === "listening" || speaking?.phase === "finishing"
 }
 
 export type StudioState = {
@@ -391,6 +398,7 @@ type StudioSignal =
   | { readonly type: "audioUnreadable"; readonly seq: number }
   | { readonly type: "playbackEnded"; readonly seq: number }
   | { readonly type: "voiceChecked"; readonly available: boolean }
+  | { readonly type: "noteReady"; readonly seq: number }
   | { readonly type: "noteWords"; readonly seq: number; readonly words: string }
   | {
       readonly type: "noteListened"
@@ -694,6 +702,7 @@ function speak(
         | "voiceChecked"
         | "speakPressed"
         | "speakStopped"
+        | "noteReady"
         | "noteWords"
         | "noteListened"
         | "spokenAgain"
@@ -715,7 +724,15 @@ function speak(
     return {
       state: {
         ...withScreen(
-          { speaking: { seq, atMs, phase: "listening", words: "" } },
+          {
+            speaking: {
+              seq,
+              atMs,
+              phase: "listening",
+              ready: false,
+              words: "",
+            },
+          },
           ""
         ),
         listenSeq: seq,
@@ -741,21 +758,33 @@ function speak(
     }
     case "speakStopped": {
       return speaking?.phase === "listening"
-        ? { state, effects: [{ type: "stopListening" }] }
+        ? {
+            state: withScreen({
+              speaking: { ...speaking, phase: "finishing" },
+            }),
+            effects: [{ type: "stopListening" }],
+          }
+        : stay(state)
+    }
+    case "noteReady": {
+      return speaking?.seq === event.seq && speaking.phase === "listening"
+        ? stay(withScreen({ speaking: { ...speaking, ready: true } }))
         : stay(state)
     }
     case "noteWords": {
-      return speaking?.seq === event.seq && speaking.phase === "listening"
+      return speaking?.seq === event.seq && stillHearing(speaking)
         ? stay(withScreen({ speaking: { ...speaking, words: event.words } }))
         : stay(state)
     }
     case "noteListened": {
-      if (speaking?.seq !== event.seq || speaking.phase !== "listening")
+      if (speaking?.seq !== event.seq || !stillHearing(speaking))
         return stay(state)
       const { result } = event
       switch (result.kind) {
         case "heard": {
-          const words = result.words.trim()
+          // A recognizer that answers nothing after partial words: those
+          // are the words, as the idea machine takes them.
+          const words = result.words.trim() || speaking.words.trim()
           return words === ""
             ? stay(withScreen({ speaking: null }, WORDS.watch.heardNothing))
             : stay(
@@ -769,6 +798,9 @@ function speak(
               WORDS.watch.typeInstead
             )
           )
+        }
+        case "notStarted": {
+          return stay(withScreen({ speaking: null }, WORDS.watch.notStarted))
         }
         case "failed": {
           return stay(withScreen({ speaking: null }, WORDS.watch.notHeard))
@@ -785,8 +817,7 @@ function speak(
       if (speaking === null) return stay(state)
       return {
         state: withScreen({ speaking: null }),
-        effects:
-          speaking.phase === "listening" ? [{ type: "cancelListening" }] : [],
+        effects: stillHearing(speaking) ? [{ type: "cancelListening" }] : [],
       }
     }
     default: {
@@ -1340,10 +1371,9 @@ export function step(state: StudioState, event: StudioEvent): Step {
       if (screen.kind === "watch" && screen.speaking !== null)
         return {
           state: { ...gone, screen: { ...screen, speaking: null } },
-          effects:
-            screen.speaking.phase === "listening"
-              ? [{ type: "cancelListening" }]
-              : [],
+          effects: stillHearing(screen.speaking)
+            ? [{ type: "cancelListening" }]
+            : [],
         }
       return stay(gone)
     }
@@ -1594,16 +1624,16 @@ export function step(state: StudioState, event: StudioEvent): Step {
       if (screen.kind !== "watch") return stay(state)
       return {
         state: { ...state, screen: { kind: "start" }, notice: "" },
-        effects:
-          screen.speaking?.phase === "listening"
-            ? [{ type: "cancelListening" }]
-            : [],
+        effects: stillHearing(screen.speaking)
+          ? [{ type: "cancelListening" }]
+          : [],
       }
     }
 
     case "voiceChecked":
     case "speakPressed":
     case "speakStopped":
+    case "noteReady":
     case "noteWords":
     case "noteListened":
     case "spokenAgain":

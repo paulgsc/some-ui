@@ -30,8 +30,11 @@ export type Listening = {
 export type IdeaListener = {
   /** Whether it can listen at all; never rejects. */
   available: () => Promise<boolean>
-  /** Starts listening; `onWords` gets the words so far as they change. */
-  listen: (onWords: (words: string) => void) => Listening
+  /**
+   * Starts listening; `onWords` gets the words so far as they change, and
+   * `onReady` is called once the recognizer says it is listening (LS1).
+   */
+  listen: (onWords: (words: string) => void, onReady: () => void) => Listening
 }
 
 /** No recognizer: every question takes typed words. */
@@ -93,8 +96,9 @@ export function createIdeaCapture(ports: IdeaPorts): IdeaRuntime {
       case "listen": {
         listening?.cancel()
         const { seq } = effect
-        const mine = ports.listener.listen((words) =>
-          send({ type: "partial", seq, words })
+        const mine = ports.listener.listen(
+          (words) => send({ type: "partial", seq, words }),
+          () => send({ type: "ready", seq })
         )
         listening = mine
         void mine.done.then((result) => {

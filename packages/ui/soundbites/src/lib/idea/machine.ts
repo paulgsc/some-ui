@@ -15,6 +15,10 @@
  * - **Capture never waits on voice.** Until the recognizer says it can
  *   listen, and from the moment it says it can't, the question takes typed
  *   words; "Type instead" is always there.
+ * - **A tap is answered on screen** (LS1, www's `lib/device-listen`): a
+ *   listening shows it is getting ready until the recognizer says it is
+ *   listening, Done talking shows it is finishing until the words come,
+ *   and a recognizer that never started says so and takes typed words.
  * - **One listening at a time**, numbered: a result for an earlier one, or
  *   one that lands after the screen moved on, changes nothing.
  * - **A write is a change, never a copy.** `keep` hands the store an
@@ -44,9 +48,13 @@ export type AskPhase =
   | {
       readonly kind: "listening"
       readonly seq: number
+      /** The recognizer has said it is listening. */
+      readonly ready: boolean
       /** What has been heard so far; it may still change. */
       readonly words: string
     }
+  /** Done talking: waiting on the words, briefly. */
+  | { readonly kind: "finishing"; readonly seq: number; readonly words: string }
   | { readonly kind: "heard"; readonly words: string }
   | {
       readonly kind: "fixing"
@@ -65,7 +73,12 @@ type IdeaScreen =
     }
   | { readonly kind: "kept" }
 
-type IdeaNotice = "notHeard" | "listenFailed" | "notKept" | null
+type IdeaNotice =
+  | "notHeard"
+  | "listenFailed"
+  | "listenNotStarted"
+  | "notKept"
+  | null
 
 export type IdeaState = {
   readonly screen: IdeaScreen
@@ -103,6 +116,8 @@ export type Listened =
   /** Empty when nothing was heard. */
   | { readonly kind: "heard"; readonly words: string }
   | { readonly kind: "unavailable" }
+  /** The recognizer never said it was listening (LS1). */
+  | { readonly kind: "notStarted" }
   | { readonly kind: "failed" }
 
 /** Taps, as the component sends them. */
@@ -134,6 +149,7 @@ export type IdeaEvent =
       readonly ideas: ReadonlyArray<Idea> | null
     }
   | { readonly type: "voiceChecked"; readonly available: boolean }
+  | { readonly type: "ready"; readonly seq: number }
   | { readonly type: "partial"; readonly seq: number; readonly words: string }
   | {
       readonly type: "listened"
@@ -223,13 +239,20 @@ function resumable(ideas: ReadonlyArray<Idea>): Idea | undefined {
   return ideas.filter((idea) => openQuestion(idea) !== null).at(-1)
 }
 
+/** Whether a listening numbered `seq` is on screen, started or finishing. */
+function hearing(
+  phase: AskPhase,
+  seq: number
+): phase is Extract<AskPhase, { kind: "listening" | "finishing" }> {
+  return (
+    (phase.kind === "listening" || phase.kind === "finishing") &&
+    phase.seq === seq
+  )
+}
+
 function listened(state: IdeaState, seq: number, result: Listened): IdeaStep {
   const { screen } = state
-  if (
-    screen.kind !== "ask" ||
-    screen.phase.kind !== "listening" ||
-    screen.phase.seq !== seq
-  ) {
+  if (screen.kind !== "ask" || !hearing(screen.phase, seq)) {
     return same(state)
   }
   const sofar = screen.phase.words.trim()
@@ -254,6 +277,10 @@ function listened(state: IdeaState, seq: number, result: Listened): IdeaStep {
         screen: { ...screen, phase: { kind: "typing", draft: sofar } },
         notice: null,
       })
+    }
+    case "notStarted": {
+      // This question takes typed words; the next may try the voice again.
+      return at({ kind: "typing", draft: sofar }, "listenNotStarted")
     }
     default: {
       return assertNever(result)
@@ -304,7 +331,7 @@ function onAsk(
     const seq = state.seq + 1
     return {
       state: {
-        ...withPhase({ kind: "listening", seq, words: "" }, null),
+        ...withPhase({ kind: "listening", seq, ready: false, words: "" }, null),
         seq,
       },
       effects: [{ type: "listen", seq }],
@@ -319,7 +346,14 @@ function onAsk(
     }
     case "stopTalking": {
       return phase.kind === "listening"
-        ? { state, effects: [{ type: "stopListening" }] }
+        ? {
+            state: withPhase({
+              kind: "finishing",
+              seq: phase.seq,
+              words: phase.words,
+            }),
+            effects: [{ type: "stopListening" }],
+          }
         : same(state)
     }
     case "right": {
@@ -348,7 +382,7 @@ function onAsk(
       if (phase.kind === "idle") {
         return same(withPhase({ kind: "typing", draft: "" }))
       }
-      return phase.kind === "listening"
+      return phase.kind === "listening" || phase.kind === "finishing"
         ? {
             state: withPhase({ kind: "typing", draft: phase.words }),
             effects: [{ type: "cancelListening" }],
@@ -390,7 +424,9 @@ function onAsk(
     case "skip": {
       if (isRequired(question) || state.idea === null) return same(state)
       const effects: Array<IdeaEffect> =
-        phase.kind === "listening" ? [{ type: "cancelListening" }] : []
+        phase.kind === "listening" || phase.kind === "finishing"
+          ? [{ type: "cancelListening" }]
+          : []
       effects.push({
         type: "keep",
         op: { kind: "pass", idea: state.ideaId, question },
@@ -461,12 +497,21 @@ export function step(state: IdeaState, event: IdeaEvent): IdeaStep {
       }
       return same(next)
     }
-    case "partial": {
+    case "ready": {
       if (
         screen.kind === "ask" &&
         screen.phase.kind === "listening" &&
         screen.phase.seq === event.seq
       ) {
+        return same({
+          ...state,
+          screen: { ...screen, phase: { ...screen.phase, ready: true } },
+        })
+      }
+      return same(state)
+    }
+    case "partial": {
+      if (screen.kind === "ask" && hearing(screen.phase, event.seq)) {
         return same({
           ...state,
           screen: { ...screen, phase: { ...screen.phase, words: event.words } },
@@ -488,11 +533,25 @@ export function step(state: IdeaState, event: IdeaEvent): IdeaStep {
     }
     case "hidden": {
       return screen.kind === "ask" && screen.phase.kind === "listening"
-        ? { state, effects: [{ type: "stopListening" }] }
+        ? {
+            state: {
+              ...state,
+              screen: {
+                ...screen,
+                phase: {
+                  kind: "finishing",
+                  seq: screen.phase.seq,
+                  words: screen.phase.words,
+                },
+              },
+            },
+            effects: [{ type: "stopListening" }],
+          }
         : same(state)
     }
     case "left": {
-      return screen.kind === "ask" && screen.phase.kind === "listening"
+      return screen.kind === "ask" &&
+        (screen.phase.kind === "listening" || screen.phase.kind === "finishing")
         ? {
             state: {
               ...state,
