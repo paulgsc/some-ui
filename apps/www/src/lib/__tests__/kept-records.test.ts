@@ -28,6 +28,7 @@ import { EMPTY } from "@/lib/jobs/model"
 import { openStored, writeStored } from "@/lib/jobs/stored"
 import type { Stop } from "@/lib/session-stop"
 import { allPathCounts, allStops, storeEffect } from "@/lib/session-stop"
+import { storedPlaces } from "@/lib/session-stop/activity-host"
 import {
   createProfileRepository,
   DEFAULT_PROFILE,
@@ -226,6 +227,17 @@ const stores: ReadonlyArray<KeptStore> = [
         storeEffect({ kind: "count", sessionId: "s1", path: "opens" })
       },
       read: (): unknown => allPathCounts(),
+    }),
+  },
+  {
+    name: "each activity's place in a session",
+    key: "some-ui:activity-places",
+    older: '[{"sessionId":"s1","places":"leetype"}]',
+    open: (): KeptHandle => ({
+      write: (): void => {
+        storedPlaces.keep("s1", "drill#1", "leetype:term", 60_000)
+      },
+      read: (): unknown => storedPlaces.recall("s1", "drill#1", "leetype:term"),
     }),
   },
   {

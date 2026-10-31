@@ -54,6 +54,12 @@ import { useSessionConfig } from "@topik/lib/topik/adapter/context/session-confi
 import { useLessonPrompt } from "@topik/lib/topik/adapter/hooks/use-lesson-prompt"
 import { usePastedTree } from "@topik/lib/topik/adapter/hooks/use-pasted-tree"
 import { useSceneVoice } from "@topik/lib/topik/adapter/hooks/use-scene-voice"
+import type { Reading } from "@topik/lib/topik/adapter/host-places"
+import {
+  READING_PLACE,
+  readingOf,
+  SITTING_PLACE,
+} from "@topik/lib/topik/adapter/host-places"
 import type { LastDramaStore } from "@topik/lib/topik/adapter/last-drama-store"
 import { createLastDramaStore } from "@topik/lib/topik/adapter/last-drama-store"
 import { createLensRecordStore } from "@topik/lib/topik/adapter/lens-record-store"
@@ -121,7 +127,6 @@ import {
   setLevel,
   wordsLeaving,
 } from "@topik/lib/topik/read-aloud/added-sets"
-import type { SetPractice } from "@topik/lib/topik/read-aloud/content"
 import type { Tally } from "@topik/lib/topik/read-aloud/tally"
 import { ChevronLeft, Loader2, Music, Users } from "lucide-react"
 
@@ -196,6 +201,7 @@ export const HandheldLesson = ({
     wordSetHint,
     recordsLens,
     lensTakes,
+    host,
   } = useSessionConfig()
   const draft = useSceneVoice(sceneVoice)
   const feed = useTreeFeed(treeFeed)
@@ -312,16 +318,25 @@ export const HandheldLesson = ({
     addSetTexts([text], setSetNote)
   }
   // The read-aloud drill takes the whole screen, header included; leaving it
-  // returns to the material list it was opened from. `set` is the added set
-  // it reads on its own, or null for every word the phone has.
-  // `lines`: a bite or a snack, read from those lines of the set alone.
-  // `practice`: the session it opens on, where the set serves both.
-  const [reading, setReading] = useState<{
-    set: string | null
-    begin?: boolean
-    lines?: ReadonlyArray<string>
-    practice?: SetPractice
-  } | null>(null)
+  // returns to the material list it was opened from (`Reading`). It is kept
+  // with the session (`host-places`), so the player reopened on this scene
+  // opens on the same drill, its sitting going on where it stood (SS2).
+  const [recalled] = useState(() => readingOf(host?.recall(READING_PLACE)))
+  const [reading, setOpenReading] = useState<Reading | null>(recalled)
+  /** A drill opened afresh, with a sitting of its own; null closes it. */
+  const setReading = (next: Reading | null): void => {
+    if (next !== null) host?.keep(SITTING_PLACE, null)
+    host?.keep(READING_PLACE, next)
+    setOpenReading(next)
+  }
+  const sitting = useMemo(
+    () =>
+      host && {
+        recall: (): unknown => host.recall(SITTING_PLACE),
+        keep: (place: unknown): void => host.keep(SITTING_PLACE, place),
+      },
+    [host]
+  )
   const routine = useRoutineFiles(routineFeed)
   const [opened] = useState(() => routineOpened ?? createOpenedStore())
   const [openedKeys, setOpenedKeys] = useState(opened.opened)
@@ -403,7 +418,7 @@ export const HandheldLesson = ({
   // The press the host already made, answered once, a double mount
   // included: the second would open the one after it. With nothing to open
   // yet, it waits for the first look at home to settle, then tries once more.
-  const opening = useRef(initialOpen)
+  const opening = useRef(recalled === null ? initialOpen : undefined)
   const looking = routine.isFetching
   const openAsked = useEffectEvent((): void => {
     if (opening.current !== "next") return
@@ -417,7 +432,9 @@ export const HandheldLesson = ({
   // when it opened: what is served is judged against that.
   const [orders] = useState(() => portionOrder ?? createPortionOrderStore())
   const [menu, setMenu] = useState<{ tally: Tally } | null>(() =>
-    initialOpen === "menu" ? { tally: readAloud.tally() } : null
+    initialOpen === "menu" && recalled === null
+      ? { tally: readAloud.tally() }
+      : null
   )
   const openMenu = (): void => setMenu({ tally: readAloud.tally() })
   const startDish = (dish: Dish): void => {
@@ -474,6 +491,7 @@ export const HandheldLesson = ({
           lensDeck={own ?? resolved.lens}
           short={short}
           paused={paused}
+          {...(sitting ? { sitting } : {})}
           onExit={() => setReading(null)}
           initialBegin={reading.begin === true}
           {...(reading.practice ? { initialPractice: reading.practice } : {})}
@@ -579,6 +597,7 @@ export const HandheldLesson = ({
               : pointsFor(servedPlace, servedKey)
           }
           last={last}
+          {...(host ? { host } : {})}
           ending={
             share && (
               <SharePrompt

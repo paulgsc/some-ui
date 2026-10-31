@@ -122,6 +122,19 @@ describe("withSceneProps", () => {
     })
   })
 
+  it("gives each scene its own props when they are drawn from its lifetime", () => {
+    const result = withSceneProps(
+      [
+        lifetime({ main: { registry_key: "topik" } }, 1),
+        lifetime({ main: { registry_key: "topik" } }, 2),
+      ],
+      (each) => ({ topik: { host: each.kind.Scene.scene_id } })
+    )
+
+    expect(panelsOf(result, 0).main.props).toEqual({ host: "scene-1" })
+    expect(panelsOf(result, 1).main.props).toEqual({ host: "scene-2" })
+  })
+
   it("ignores a registry key this build no longer has", () => {
     // Persisted scenes outlive registry renames, and `registry_key` crosses
     // the orchestrator's zod boundary as a plain string.

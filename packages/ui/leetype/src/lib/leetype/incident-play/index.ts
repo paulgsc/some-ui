@@ -91,6 +91,11 @@ export class IncidentPlayRuntime {
   private cancelTimer: () => void = () => undefined
   /** When the declared length runs, on the runtime's clock. */
   private deadline: number | null = null
+  /**
+   * Since when the session around it waits (`hold`): the declared length's
+   * timer is off, and the deadline moves on by the wait once it plays.
+   */
+  private heldSince: number | null = null
   private attached = false
   /** A settled answer's notes the phone could not keep. */
   private unkept: string | null = null
@@ -146,6 +151,8 @@ export class IncidentPlayRuntime {
     // has left, which can be less than one.
     const ms = Math.min(minutes, args.limitMinutes ?? minutes) * MINUTE_MS
     this.deadline = this.ports.now() + ms
+    // Started while held, only the wait from here moves it.
+    if (this.heldSince !== null) this.heldSince = this.ports.now()
     this.arm()
   }
 
@@ -203,12 +210,40 @@ export class IncidentPlayRuntime {
     this.ports.takes?.stop()
   }
 
+  /**
+   * The session around it waits (paused, stopped, or behind the reflection
+   * drawer): the declared length stands still until `release` (promise
+   * SS2). Called again while held, it does nothing.
+   */
+  hold = (): void => {
+    if (this.heldSince !== null) return
+    this.heldSince = this.ports.now()
+    this.arm()
+  }
+
+  /** The session plays again: the deadline moves on by the wait. */
+  release = (): void => {
+    if (this.heldSince === null) return
+    if (this.deadline !== null) {
+      this.deadline += this.ports.now() - this.heldSince
+    }
+    this.heldSince = null
+    this.arm()
+  }
+
   /** Sets the timer for what is left of the declared length. */
   private arm(): void {
     this.cancelTimer()
     this.cancelTimer = (): void => undefined
     const { play, timeUp } = this.snapshot
-    if (!this.attached || this.deadline === null || timeUp) return
+    if (
+      !this.attached ||
+      this.heldSince !== null ||
+      this.deadline === null ||
+      timeUp
+    ) {
+      return
+    }
     // Not started (no play), or ended.
     if (play?.ended !== null) return
     const after = this.ports.after ?? defaultAfter

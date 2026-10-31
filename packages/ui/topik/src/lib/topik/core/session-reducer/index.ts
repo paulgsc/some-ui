@@ -42,6 +42,7 @@ export function createInitialState(): SessionState {
     feedback: null,
     hydrationEpoch: 0,
     sessionEpoch: 0,
+    hostHold: null,
   }
 }
 
@@ -90,11 +91,74 @@ export function createActiveState(
 
 // REDUCER
 
-/** Returns the new state and its effects (V2, V3). */
+const chatPlaying = (state: SessionState): boolean =>
+  state.active?.mode === "chat" && state.active.playState === "running"
+
+const STARTS: ReadonlySet<SessionEffect["type"]> = new Set([
+  "START_TIMER",
+  "PLAY_AUDIO",
+])
+
+/**
+ * Returns the new state and its effects (V2, V3), with the host's hold
+ * over them (promise SS2): while the session the applet plays in waits,
+ * nothing plays. Holding pauses a playing chat; whatever would start it
+ * meanwhile (Play, a new batch, a lesson loading) waits for the release
+ * instead, and a Pause meanwhile means it stays paused. Releasing plays on
+ * only a chat that is still paused there.
+ */
 export function sessionReducer(
   state: SessionState,
   event: SessionEvent
 ): ReducerResult {
+  const hold = state.hostHold
+  if (event.type === "HOST_HELD") {
+    if (hold !== null) return { state, effects: [] }
+    const playing = chatPlaying(state)
+    return {
+      state: {
+        ...state,
+        hostHold: { resume: playing },
+        active:
+          playing && state.active
+            ? { ...state.active, playState: "paused" }
+            : state.active,
+      },
+      effects: playing ? [{ type: "STOP_TIMER" }, { type: "STOP_AUDIO" }] : [],
+    }
+  }
+  if (event.type === "HOST_RELEASED") {
+    if (hold === null) return { state, effects: [] }
+    const { active } = state
+    const resume =
+      hold.resume && active?.mode === "chat" && active.playState === "paused"
+    return {
+      state: {
+        ...state,
+        hostHold: null,
+        active: resume ? { ...active, playState: "running" } : active,
+      },
+      effects: resume ? [{ type: "START_TIMER" }, { type: "PLAY_AUDIO" }] : [],
+    }
+  }
+  const next = stepSession(state, event)
+  if (hold === null) return next
+  const starts = chatPlaying(next.state)
+  const resume = starts || (event.type !== "PAUSE_CHAT" && hold.resume)
+  if (!starts && next.state === state && resume === hold.resume) return next
+  const { active } = next.state
+  return {
+    state: {
+      ...next.state,
+      hostHold: { resume },
+      active: starts && active ? { ...active, playState: "paused" } : active,
+    },
+    effects: next.effects.filter((effect) => !STARTS.has(effect.type)),
+  }
+}
+
+/** The session's own transitions, the host's hold aside. */
+function stepSession(state: SessionState, event: SessionEvent): ReducerResult {
   const unchanged = (): ReducerResult => ({ state, effects: [] })
 
   const result = (

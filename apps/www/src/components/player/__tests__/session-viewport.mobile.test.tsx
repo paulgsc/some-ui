@@ -9,6 +9,7 @@
 import type { JSX } from "react"
 import { withQueryClient } from "@/test-support/query-client"
 import { sessionRecord } from "@/test-support/session-record"
+import { playingActivities } from "@/test-support/session-stop"
 import type * as ReactHooks from "@some-ui/react-hooks"
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -68,6 +69,7 @@ const mount = (): ReturnType<typeof render> =>
           status: "active",
           totalDurationMs: 60_000,
         })}
+        activities={playingActivities}
       />
     )
   )

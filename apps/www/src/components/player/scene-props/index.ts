@@ -28,7 +28,9 @@ export function defineSceneProps<T extends ScenePropsMap>(
 /**
  * Merge each panel's runtime props into the lifetimes the orchestrator is
  * about to render, by that panel's own `registry_key`, so no panel receives
- * another's props and the viewport holds no app content concerns.
+ * another's props and the viewport holds no app content concerns. `props`
+ * may be one map for every scene, or each scene's own, from its lifetime
+ * (a scene's activity host).
  *
  * Runtime props win over persisted scene props: a stale saved value should
  * not beat what this render resolved. Untouched subtrees keep their identity,
@@ -36,9 +38,14 @@ export function defineSceneProps<T extends ScenePropsMap>(
  */
 export function withSceneProps(
   lifetimes: Array<ActiveLifetime>,
-  props: ScenePropsMap
+  props: ScenePropsMap | ((lifetime: ActiveLifetime) => ScenePropsMap)
 ): Array<ActiveLifetime> {
-  const next = lifetimes.map((lifetime) => mergeLifetime(lifetime, props))
+  const next = lifetimes.map((lifetime) =>
+    mergeLifetime(
+      lifetime,
+      typeof props === "function" ? props(lifetime) : props
+    )
+  )
   return unchanged(next, lifetimes) ? lifetimes : next
 }
 

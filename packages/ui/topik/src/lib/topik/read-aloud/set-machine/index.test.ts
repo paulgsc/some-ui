@@ -14,9 +14,11 @@ import {
   createSetMachine,
   currentEntry,
   freshSet,
+  isSittingPlace,
   MAX_RETURNS,
   progressOf,
   setMachineReducer,
+  sittingOf,
 } from "@topik/lib/topik/read-aloud/set-machine"
 import type { Tally } from "@topik/lib/topik/read-aloud/tally"
 import {
@@ -590,6 +592,38 @@ describe("the sitting bound (Rem. 4.10)", () => {
     host.send({ type: "shown", at: host.now + SITTING_MS })
     expect(host.state.phase.name).toBe("sitting-over")
     expect(progressOf(host.state)?.queue).toHaveLength(3)
+  })
+})
+
+describe("a sitting kept across mounts (SS2)", () => {
+  it("goes on from where an earlier mount left its clock and list", () => {
+    const before = new Host()
+    before.begin(SET)
+    before.now += 12 * 60_000
+    const place = sittingOf(before.state, before.now)
+    expect(place).toEqual({ playedMs: 12 * 60_000, shown: before.state.shown })
+    if (!isSittingPlace(place)) throw new Error("no sitting kept")
+
+    const at = before.now + 25 * 60_000
+    const resumed = createSetMachine(1, { place, at })
+    expect(resumed.sittingStartedAt).toBe(at - 12 * 60_000)
+    expect(resumed.shown).toEqual(before.state.shown)
+    expect(sittingOf(resumed, at + SITTING_MS)?.playedMs).toBe(
+      12 * 60_000 + SITTING_MS
+    )
+  })
+
+  it("has no sitting to keep before the first set", () => {
+    expect(sittingOf(createSetMachine(1), 0)).toBeNull()
+  })
+
+  it.each([
+    ["nothing", null],
+    ["a negative clock", { playedMs: -1, shown: [] }],
+    ["a list of other things", { playedMs: 0, shown: [1] }],
+    ["no list", { playedMs: 0 }],
+  ])("reads no sitting from %s", (_, value) => {
+    expect(isSittingPlace(value)).toBe(false)
   })
 })
 

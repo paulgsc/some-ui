@@ -1,4 +1,5 @@
 import { createContext, useContext } from "react"
+import type { ActivityHost } from "@some-ui/react-hooks"
 import type { ShelfPort } from "@some-ui/shared"
 import type { Speaker } from "@some-ui/speech"
 import type { LensTakes } from "@topik/lib/topik/adapter/lens-takes"
@@ -47,6 +48,13 @@ export type SessionConfig = {
   recordsLens?: boolean
   /** The Android app's microphone, for the grammar lens's takes (Rem. 4.16). */
   lensTakes?: LensTakes
+  /**
+   * The session the applet plays in (`ActivityHost`): every part of it that
+   * plays (read-aloud, the desktop conversation, the drama) waits while the
+   * session waits, and the handheld lesson keeps its place with it (promise
+   * SS2). Absent, the applet plays on its own and keeps nothing.
+   */
+  host?: ActivityHost
 }
 
 const SessionConfigContext = createContext<SessionConfig | null>(null)

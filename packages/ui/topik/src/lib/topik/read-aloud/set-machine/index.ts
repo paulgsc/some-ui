@@ -237,7 +237,51 @@ const INTRODUCTION_STEPS: ReadonlySet<string> = new Set<IntroductionStep>([
 const onEntry = (phase: SetPhase): boolean =>
   REP_STEPS.has(phase.name) || INTRODUCTION_STEPS.has(phase.name)
 
-export function createSetMachine(level: ReadAloudLevel): SetMachineState {
+/**
+ * A sitting as a mount left it, for the next mount to go on with
+ * (promise SS2): how long it had run, and its list.
+ */
+export type SittingPlace = { playedMs: number; shown: Array<string> }
+
+/** Whether `value` is a `SittingPlace`, as a host hands it back unvalidated. */
+export function isSittingPlace(value: unknown): value is SittingPlace {
+  if (typeof value !== "object" || value === null) return false
+  const playedMs: unknown = Reflect.get(value, "playedMs")
+  const shown: unknown = Reflect.get(value, "shown")
+  return (
+    typeof playedMs === "number" &&
+    Number.isFinite(playedMs) &&
+    playedMs >= 0 &&
+    Array.isArray(shown) &&
+    shown.every((id) => typeof id === "string")
+  )
+}
+
+/** The sitting under way at `at`, or null before the first set. */
+export function sittingOf(
+  state: SetMachineState,
+  at: number
+): SittingPlace | null {
+  if (state.sittingStartedAt === null) return null
+  return {
+    playedMs: Math.max(0, at - state.sittingStartedAt),
+    shown: state.shown,
+  }
+}
+
+/**
+ * A machine before its first set. With `sitting`, the sitting an earlier
+ * mount left goes on at `at` from where it stood, its clock and its list
+ * kept, instead of a fresh one beginning with the first set.
+ */
+export function createSetMachine(
+  level: ReadAloudLevel,
+  sitting?: { place: SittingPlace; at: number }
+): SetMachineState {
+  const resumed = sitting && {
+    sittingStartedAt: sitting.at - sitting.place.playedMs,
+    shown: sitting.place.shown,
+  }
   return {
     seq: 0,
     phase: { name: "idle" },
@@ -251,6 +295,7 @@ export function createSetMachine(level: ReadAloudLevel): SetMachineState {
     paces: {},
     sittingStartedAt: null,
     shown: [],
+    ...resumed,
   }
 }
 

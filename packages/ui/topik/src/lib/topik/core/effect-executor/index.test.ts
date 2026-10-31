@@ -94,6 +94,7 @@ function activeStateWithBatch(batch: ConversationBatch): SessionState {
     feedback: null,
     hydrationEpoch: 1,
     sessionEpoch: 1,
+    hostHold: null,
   }
 }
 
@@ -113,6 +114,7 @@ function emptyActiveState(): SessionState {
     feedback: null,
     hydrationEpoch: 0,
     sessionEpoch: 0,
+    hostHold: null,
   }
 }
 

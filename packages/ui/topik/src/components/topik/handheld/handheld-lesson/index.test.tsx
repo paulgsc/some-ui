@@ -1,4 +1,5 @@
 import type { JSX } from "react"
+import type { ActivityHost } from "@some-ui/react-hooks"
 import type { Speaker } from "@some-ui/speech"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
@@ -14,6 +15,7 @@ import {
 import { EXERCISE_FRAMING } from "@topik/components/topik/handheld/drama-lesson/exercise-framing"
 import type { ITopikMetadataRepository } from "@topik/lib/topik"
 import { SessionConfigProvider } from "@topik/lib/topik/adapter/context/session-config-context"
+import { READING_PLACE } from "@topik/lib/topik/adapter/host-places"
 import type { LastDramaStore } from "@topik/lib/topik/adapter/last-drama-store"
 import { createLastDramaStore } from "@topik/lib/topik/adapter/last-drama-store"
 import type { FileShare } from "@topik/lib/topik/adapter/next-scene-share"
@@ -81,6 +83,7 @@ type RenderOptions = {
   routineOpened?: OpenedStore
   portionOrder?: PortionOrderStore
   initialOpen?: LessonOpening
+  host?: ActivityHost
 }
 
 function renderLesson({
@@ -101,7 +104,11 @@ function renderLesson({
   routineOpened = createOpenedStore(memoryStorage()),
   portionOrder = createPortionOrderStore(memoryStorage()),
   initialOpen,
-}: RenderOptions = {}): { feedWith: (next: RoutineFeed) => void } {
+  host,
+}: RenderOptions = {}): {
+  feedWith: (next: RoutineFeed) => void
+  unmount: () => void
+} {
   const tree = (feed = routineFeed): JSX.Element => (
     <QueryClientProvider client={client}>
       <SessionConfigProvider
@@ -114,6 +121,7 @@ function renderLesson({
           ...(sceneFileHint ? { sceneFileHint } : {}),
           ...(wordSetHint ? { wordSetHint } : {}),
           ...(feed ? { routineFeed: feed } : {}),
+          ...(host ? { host } : {}),
         }}
       >
         <HandheldLesson
@@ -131,8 +139,8 @@ function renderLesson({
       </SessionConfigProvider>
     </QueryClientProvider>
   )
-  const { rerender } = render(tree())
-  return { feedWith: (next) => rerender(tree(next)) }
+  const { rerender, unmount } = render(tree())
+  return { feedWith: (next) => rerender(tree(next)), unmount }
 }
 
 const voice = (say: Speaker["say"]): Speaker => ({
@@ -264,6 +272,37 @@ describe("HandheldLesson", () => {
     expect(screen.getByLabelText("Your reading aloud")).toBeTruthy()
     click("Back")
     expect(await writeYourOwnButton()).toBeTruthy()
+  })
+
+  it("reopens on the drill it had open, kept with its session (SS2)", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    store.saveSets([{ deck: STARTER_SET, addedAt: "", openedAt: "" }])
+    const places = new Map<string, unknown>()
+    const host: ActivityHost = {
+      held: () => false,
+      subscribe: () => () => undefined,
+      recall: (key) => places.get(key),
+      keep: (key, place) => places.set(key, place),
+    }
+    const speaker = voice(() => Promise.resolve({ kind: "heard" }))
+    const first = renderLesson({ speaker, readAloudStore: store, host })
+    fireEvent.click(await screen.findByRole("button", { name: /^Read aloud/ }))
+    expect(places.get(READING_PLACE)).toEqual({ set: null })
+    first.unmount()
+
+    // The player reopened on the scene: the drill, not the menu it opened on.
+    const second = renderLesson({
+      speaker,
+      readAloudStore: store,
+      host,
+      initialOpen: "menu",
+    })
+    expect(screen.getByLabelText("Your reading aloud")).toBeTruthy()
+    click("Back")
+    expect(places.get(READING_PLACE)).toBeNull()
+    second.unmount()
+    renderLesson({ speaker, readAloudStore: store, host })
+    expect(screen.queryByLabelText("Your reading aloud")).toBeNull()
   })
 
   it("adds a word set from storage: it waits at the top, says what it answers, and opens on its own words", async () => {

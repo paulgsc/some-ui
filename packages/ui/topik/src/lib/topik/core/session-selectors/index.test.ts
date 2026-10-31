@@ -72,6 +72,7 @@ function baseState(
     feedback: null,
     hydrationEpoch: 0,
     sessionEpoch: 0,
+    hostHold: null,
     ...overrides,
   }
 }

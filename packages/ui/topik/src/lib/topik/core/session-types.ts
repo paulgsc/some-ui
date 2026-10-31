@@ -92,6 +92,13 @@ export type SessionState = {
   // Hydration epoch tracking (V5, V6)
   hydrationEpoch: number
   sessionEpoch: number
+
+  /**
+   * The session the applet plays in waits (`HOST_HELD`): nothing plays
+   * until `HOST_RELEASED` (promise SS2). `resume`: whether the chat plays
+   * on then, because it was playing, or was asked to start, meanwhile.
+   */
+  hostHold: { resume: boolean } | null
 }
 
 /** From TanStack Query. */
@@ -138,6 +145,9 @@ type EvaluationEvent =
 
 type TimerEvent = { type: "TIMER_TICK" }
 
+/** The session the applet plays in waits, or plays again (SS2). */
+type HostEvent = { type: "HOST_HELD" } | { type: "HOST_RELEASED" }
+
 export type SessionEvent =
   | CatalogRequestEvent
   | CatalogEvent
@@ -147,6 +157,7 @@ export type SessionEvent =
   | ModeEvent
   | EvaluationEvent
   | TimerEvent
+  | HostEvent
 
 /** Intents the FSM emits; the runtime performs them. */
 export type SessionEffect =

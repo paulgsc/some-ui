@@ -1,4 +1,5 @@
 import { useId, useMemo } from "react"
+import { useHostHold } from "@some-ui/react-hooks"
 import { useSessionConfig } from "@topik/lib/topik/adapter/context/session-config-context"
 import { useSession } from "@topik/lib/topik/adapter/hooks/use-session"
 import {
@@ -70,7 +71,8 @@ export type KoreanStudyPageVM = {
 }
 
 export function useKoreanStudyPageVM(): KoreanStudyPageVM {
-  const { topikRepository, metadataRepository, speaker } = useSessionConfig()
+  const { topikRepository, metadataRepository, speaker, host } =
+    useSessionConfig()
 
   // componentId is an opaque, per-instance key threaded through to the
   // session/TTS pipeline (see use-session.ts, tts-effect-handler.ts) - it's
@@ -92,7 +94,12 @@ export function useKoreanStudyPageVM(): KoreanStudyPageVM {
 
   const { state, dispatch } = session
 
-  // Cleanup audio on unmount
+  // The conversation waits while the session it plays in waits (SS2): what
+  // that means for the chat is the reducer's.
+  useHostHold(host, {
+    hold: () => dispatch({ type: "HOST_HELD" }),
+    release: () => dispatch({ type: "HOST_RELEASED" }),
+  })
 
   // getAvailableTopiks/getCurrentBatch/getCurrentMessage are direct
   // property/array lookups against `state` - no allocation, so the

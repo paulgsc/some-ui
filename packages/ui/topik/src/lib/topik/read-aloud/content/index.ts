@@ -48,7 +48,7 @@ import { z } from "zod"
 
 // TYPES
 
-const SET_PRACTICES = ["read-aloud", "lens"] as const
+export const SET_PRACTICES = ["read-aloud", "lens"] as const
 export type SetPractice = (typeof SET_PRACTICES)[number]
 
 /**

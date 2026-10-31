@@ -165,4 +165,30 @@ describe("IncidentPlayRuntime", () => {
     runtime.attach()
     expect(after).toHaveBeenLastCalledWith(240_000, expect.any(Function))
   })
+
+  it("stands the declared length still while the session waits (SS2)", () => {
+    let now = 0
+    const cancel = vi.fn()
+    const after = vi.fn((_ms: number, _fired: () => void) => cancel)
+    const runtime = new IncidentPlayRuntime({
+      log: createSessionLogStore(memoryStorage()),
+      now: (): number => now,
+      newId: (): string => crypto.randomUUID(),
+      after,
+    })
+    runtime.attach()
+    runtime.start({ fileName: "t1-01", file: FILE, form: "short" })
+    expect(after).toHaveBeenLastCalledWith(300_000, expect.any(Function))
+    now += 60_000
+    runtime.hold()
+    expect(cancel).toHaveBeenCalled()
+    const armed = after.mock.calls.length
+    now += 20 * 60_000
+    runtime.hold()
+    expect(after.mock.calls.length).toBe(armed)
+    runtime.release()
+    expect(after).toHaveBeenLastCalledWith(240_000, expect.any(Function))
+    runtime.release()
+    expect(after.mock.calls.length).toBe(armed + 1)
+  })
 })

@@ -3,6 +3,7 @@ import { useEffect, useMemo } from "react"
 import type { RegistryKey } from "@some-ui/content-registry"
 import { cn } from "@some-ui/core-utils"
 import { useIsMobile } from "@some-ui/react-hooks"
+import type { ActiveLifetime } from "@some-ui/types"
 import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 
 import { useAuthority } from "@/lib/authority"
@@ -14,12 +15,12 @@ import { phoneLensTakes } from "@/lib/lens-takes"
 import {
   setSessionKey,
   setSuspended,
-  useIsPaused,
   useSceneLifetimes,
 } from "@/lib/orchestrator"
 import { PANELS } from "@/lib/playable"
 import { createRoutineFilesClient } from "@/lib/routine-files"
 import { phoneSceneVoice, shareDramaPrompt } from "@/lib/scene-voice"
+import type { ActivityHosts } from "@/lib/session-stop/activity-host"
 import { lookIn, runsNatively } from "@/lib/share-files"
 import { createShelfClient } from "@/lib/shelf-client"
 import type { SessionRecord } from "@/lib/tenant"
@@ -31,6 +32,7 @@ import {
 import { WEB_PANEL_KEYS } from "@/lib/web-surface"
 
 import { useHomeRoutineFiles } from "./device-routine-files"
+import type { ScenePropsMap } from "./scene-props"
 import { defineSceneProps, withSceneProps } from "./scene-props"
 import { useLiveLayoutEditor } from "./use-live-layout-editor"
 import { withWebOnlyNotes } from "./web-only-note"
@@ -77,11 +79,18 @@ export type LessonOpening = "next" | "menu"
 
 type SessionViewportProps = {
   session: SessionRecord
+  /**
+   * The session as each activity sees it (`useSessionStop`): each scene's
+   * panels get their scene's host, which they wait with and keep their
+   * place through (promise SS2).
+   */
+  activities: ActivityHosts
   opening?: LessonOpening
 }
 
 export const SessionViewport = ({
   session,
+  activities,
   opening,
 }: SessionViewportProps): JSX.Element => {
   const activeLifetimes = useSceneLifetimes()
@@ -136,10 +145,8 @@ export const SessionViewport = ({
   const routineFromHome = useRoutineFromHome()
   const routineFiles = shelves?.routineFiles ?? routineFromHome
 
-  const paused = useIsPaused()
-
   // Each panel's runtime props, keyed by the one registry key that consumes
-  // them.
+  // them, for one scene: `host` is that scene's (`activities.forScene`).
   //
   // `leetype`: the phone plays session files picked from storage (canon
   // Rem. 11.7), a viewer a sample (`lib/demo`), and a wide window gets the typing surface, chosen inside the
@@ -148,45 +155,49 @@ export const SessionViewport = ({
   // Built through `defineSceneProps` so a misspelled registry key is caught.
   const sceneProps = useMemo(
     () =>
-      defineSceneProps({
-        topik: {
-          // Plain functions: importing topik's factories would pull the
-          // applet into the main bundle (src/lib/topik-content).
-          loadManifest: loadTopikManifest,
-          loadTopik: loadTopikFile,
-          // The served scene trees, which only the handheld lesson lists.
-          loadTreeManifest,
-          shelf: shelves?.topik,
-          // What the reflections routine left on home: the account's, as
-          // `shelf` is, or, in the app, through its paired home.
-          routineFiles,
-          share: PHONE_SHARE,
-          sceneVoice: PHONE_SCENE_VOICE,
-          // Read at render: main.tsx installs the sidecar after imports run.
-          sceneFileHint: ON_PHONE ? lookIn("drama-tree") : undefined,
-          wordSetHint: ON_PHONE ? lookIn("word-set") : undefined,
-          // Kept only where the study-context export carries it (Rem. 4.18).
-          recordsLens: ON_PHONE,
-          lensTakes: PHONE_LENS_TAKES,
-          paused,
-          ...(opening ? { opening } : {}),
-        },
-        leetype: {
-          takes: PHONE_SPOKEN_TAKES,
-          // Read at render, as topik's hints are.
-          sessionFiles:
-            PHONE_SESSION_FILES !== undefined
-              ? {
-                  store: PHONE_SESSION_FILES,
-                  hint: lookIn("leetype-session"),
-                }
-              : VIEWER_SESSION_FILES && {
-                  store: VIEWER_SESSION_FILES,
-                  samples: true,
-                },
-        },
-      }),
-    [shelves, routineFiles, paused, opening]
+      (lifetime: ActiveLifetime): ScenePropsMap => {
+        const host = activities.forScene(lifetime.kind.Scene.scene_id)
+        return defineSceneProps({
+          topik: {
+            // Plain functions: importing topik's factories would pull the
+            // applet into the main bundle (src/lib/topik-content).
+            loadManifest: loadTopikManifest,
+            loadTopik: loadTopikFile,
+            // The served scene trees, which only the handheld lesson lists.
+            loadTreeManifest,
+            shelf: shelves?.topik,
+            // What the reflections routine left on home: the account's, as
+            // `shelf` is, or, in the app, through its paired home.
+            routineFiles,
+            share: PHONE_SHARE,
+            sceneVoice: PHONE_SCENE_VOICE,
+            // Read at render: main.tsx installs the sidecar after imports run.
+            sceneFileHint: ON_PHONE ? lookIn("drama-tree") : undefined,
+            wordSetHint: ON_PHONE ? lookIn("word-set") : undefined,
+            // Kept only where the study-context export carries it (Rem. 4.18).
+            recordsLens: ON_PHONE,
+            lensTakes: PHONE_LENS_TAKES,
+            host,
+            ...(opening ? { opening } : {}),
+          },
+          leetype: {
+            host,
+            takes: PHONE_SPOKEN_TAKES,
+            // Read at render, as topik's hints are.
+            sessionFiles:
+              PHONE_SESSION_FILES !== undefined
+                ? {
+                    store: PHONE_SESSION_FILES,
+                    hint: lookIn("leetype-session"),
+                  }
+                : VIEWER_SESSION_FILES && {
+                    store: VIEWER_SESSION_FILES,
+                    samples: true,
+                  },
+          },
+        })
+      },
+    [activities, shelves, routineFiles, opening]
   )
 
   const renderedLifetimes = useMemo(

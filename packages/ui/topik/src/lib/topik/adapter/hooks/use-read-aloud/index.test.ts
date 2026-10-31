@@ -336,4 +336,35 @@ describe("useReadAloud", () => {
     expect(speech.said).toHaveLength(said)
     expect(vi.getTimerCount()).toBe(0)
   })
+
+  it("goes on with the sitting its last mount kept, clock and list (SS2)", async () => {
+    let kept: unknown = null
+    const sitting = {
+      recall: (): unknown => kept,
+      keep: (place: unknown): void => {
+        kept = place
+      },
+    }
+    let now = 1_000_000
+    const first = harness({ sitting, now: () => now })
+    const { result: before, unmount } = renderHook(() =>
+      useReadAloud(first.options)
+    )
+    act(() => before.current.begin())
+    while (before.current.state.shown.length === 0) await advance(50)
+    now += 10 * 60_000
+    unmount()
+    expect(kept).toEqual({
+      playedMs: 10 * 60_000,
+      shown: before.current.state.shown,
+    })
+
+    // Reopened a stop later: the sitting has played ten minutes, not none.
+    now += 25 * 60_000
+    const { options } = harness({ sitting, now: () => now })
+    const { result } = renderHook(() => useReadAloud(options))
+    expect(result.current.state.shown).toEqual(before.current.state.shown)
+    act(() => result.current.begin())
+    expect(result.current.state.sittingStartedAt).toBe(now - 10 * 60_000)
+  })
 })

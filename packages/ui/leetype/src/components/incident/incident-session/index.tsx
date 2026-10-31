@@ -33,6 +33,8 @@ import {
 } from "@leetype/lib/leetype/session-log"
 import type { SessionFile } from "@leetype/types/session-file"
 import { assertNever, cn } from "@some-ui/core-utils"
+import type { ActivityHost } from "@some-ui/react-hooks"
+import { useHostHold } from "@some-ui/react-hooks"
 import { Button } from "@some-ui/shared"
 
 type IncidentSessionProps = {
@@ -43,6 +45,8 @@ type IncidentSessionProps = {
   ports?: Partial<IncidentPlayPorts>
   /** The most the host's time leaves, in minutes: the length is no longer. */
   limitMinutes?: number
+  /** The session around it: the declared length waits while it waits. */
+  host?: ActivityHost
   /** The learner is done with an ended session: by its end screen, or by leaving. */
   onEnd?: (how: "declared" | "left") => void
   /** The learner leaves the first screen without starting. */
@@ -63,6 +67,7 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
   file,
   ports,
   limitMinutes,
+  host,
   onEnd,
   onBack,
   className,
@@ -87,6 +92,7 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
     runtime.getSnapshot
   )
   useEffect(() => runtime.attach(), [runtime])
+  useHostHold(host, runtime)
   // Whether the rounds waiting on a reading are open during play.
   const [waiting, setWaiting] = useState(false)
   const ended = play?.ended ?? null

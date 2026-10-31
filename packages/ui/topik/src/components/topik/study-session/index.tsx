@@ -13,6 +13,8 @@
 import type { JSX } from "react"
 import { useMemo, useRef } from "react"
 import { cn } from "@some-ui/core-utils"
+import type { ActivityHost } from "@some-ui/react-hooks"
+import { useHostHold } from "@some-ui/react-hooks"
 import type { ShelfPort } from "@some-ui/shared"
 import { useSpeaker } from "@some-ui/speech"
 import type { Appearance } from "@some-ui/styles/theme"
@@ -31,7 +33,10 @@ import type {
   ITopikMetadataRepository,
   ITopikRepository,
 } from "@topik/lib/topik"
-import { SessionConfigProvider } from "@topik/lib/topik/adapter/context/session-config-context"
+import {
+  SessionConfigProvider,
+  useSessionConfig,
+} from "@topik/lib/topik/adapter/context/session-config-context"
 import type { SurfacePreference } from "@topik/lib/topik/adapter/hooks/use-surface"
 import {
   chooseSurface,
@@ -133,10 +138,12 @@ export type KoreanStudyPageProps = {
    */
   surface?: SurfacePreference
   /**
-   * The host's session is paused (a stop, its own Pause). Only the handheld
-   * read-aloud drill holds for it; the rest of the applet is unaffected.
+   * The session it plays in (`ActivityHost`, `@some-ui/react-hooks`): the
+   * read-aloud drill, the desktop conversation and the drama wait while it
+   * waits (a stop, its own Pause, the reflection drawer), and the handheld
+   * lesson keeps its open drill and sitting with it (promise SS2).
    */
-  paused?: boolean
+  host?: ActivityHost
   /** `HandheldLesson`'s `initialOpen`. */
   opening?: LessonOpening
 }
@@ -188,14 +195,13 @@ const DesktopSession = (): JSX.Element => {
 const KoreanStudySession = ({
   appearance = "inherit",
   surface: preference = "auto",
-  paused,
   opening,
 }: {
   appearance?: Appearance
   surface?: SurfacePreference
-  paused?: boolean
   opening?: LessonOpening
 } = {}): JSX.Element => {
+  const paused = useHostHold(useSessionConfig().host)
   const root = useRef<HTMLDivElement>(null)
   const box = useElementBox(root)
   const surface = preference === "auto" ? chooseSurface(box) : preference
@@ -246,7 +252,7 @@ export const KoreanStudyPage = ({
   lensTakes,
   appearance = "inherit",
   surface = "auto",
-  paused,
+  host,
   opening,
 }: KoreanStudyPageProps = {}): JSX.Element => {
   /*
@@ -280,6 +286,7 @@ export const KoreanStudyPage = ({
       ...(wordSetHint ? { wordSetHint } : {}),
       ...(recordsLens ? { recordsLens } : {}),
       ...(lensTakes ? { lensTakes } : {}),
+      ...(host ? { host } : {}),
       ...(loadTreeManifest && loadTopik
         ? { treeFeed: createTreeFeed(loadTreeManifest, loadTopik) }
         : {}),
@@ -300,6 +307,7 @@ export const KoreanStudyPage = ({
       wordSetHint,
       recordsLens,
       lensTakes,
+      host,
     ]
   )
 
@@ -308,7 +316,6 @@ export const KoreanStudyPage = ({
       <KoreanStudySession
         appearance={appearance}
         surface={surface}
-        paused={paused}
         opening={opening}
       />
     </SessionConfigProvider>

@@ -5,6 +5,7 @@ import {
 } from "@leetype/lib/leetype/exercises"
 import { AB_FIXTURES } from "@leetype/lib/leetype/session-file/__tests__/fixtures"
 import { SessionFileSchema } from "@leetype/types/session-file"
+import type { ActivityHost } from "@some-ui/react-hooks"
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -256,5 +257,83 @@ describe("Leetype", () => {
     )
     const tile = screen.getByText(oneStep.title).closest("button")
     expect(tile?.textContent).toContain("7")
+  })
+})
+
+/** A host whose hold a test moves, keeping places in memory. */
+function fakeHost(places: Record<string, unknown> = {}): ActivityHost & {
+  set: (held: boolean) => void
+  places: Record<string, unknown>
+} {
+  let held = false
+  const listeners = new Set<() => void>()
+  return {
+    places,
+    held: () => held,
+    subscribe: (listener) => {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+    recall: (key) => places[key],
+    keep: (key, place): void => {
+      places[key] = place
+    },
+    set: (next): void => {
+      held = next
+      listeners.forEach((listener) => listener())
+    },
+  }
+}
+
+describe("the scene's term inside a session (SS2)", () => {
+  const raw = SessionFileSchema.parse(AB_FIXTURES[1]?.raw)
+  const store = {
+    list: vi.fn(() =>
+      Promise.resolve([
+        {
+          name: "t1-01",
+          title: raw.title,
+          oneLine: raw.oneLine,
+          pickedAt: "2026-10-18T21:00:00.000Z",
+        },
+      ])
+    ),
+    keep: vi.fn(),
+    read: vi.fn(() => Promise.resolve(JSON.stringify(raw))),
+  }
+
+  it("goes on with what an earlier mount left, not a fresh term", async () => {
+    setViewport(true)
+    const host = fakeHost({ "leetype:term": 7.5 * 60_000 })
+    render(
+      <Leetype
+        sessionDurationMs={10 * 60_000}
+        sessionFiles={{ store }}
+        host={host}
+      />
+    )
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: new RegExp(`Play ${raw.title}`),
+      })
+    )
+    expect(
+      await screen.findByRole("button", {
+        name: "About 2 minutes: the whole session",
+      })
+    ).toBeTruthy()
+  })
+
+  it("keeps what it spent as the session waits and as it unmounts", () => {
+    setViewport(true)
+    const host = fakeHost({ "leetype:term": 60_000 })
+    const view = render(<Leetype sessionFiles={{ store }} host={host} />)
+    act(() => host.set(true))
+    const kept = host.places["leetype:term"]
+    expect(typeof kept === "number" && kept >= 60_000).toBe(true)
+    act(() => host.set(false))
+    view.unmount()
+    const after = host.places["leetype:term"]
+    expect(typeof after === "number" && after >= Number(kept)).toBe(true)
   })
 })

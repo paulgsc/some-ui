@@ -316,6 +316,68 @@ describe("DramaRuntime", () => {
     })
   })
 
+  describe("while its session waits (SS2)", () => {
+    it("stops the sting and the line waiting on it, and plays both again on release", async () => {
+      const voice = heldVoice()
+      const sound = heldSound()
+      const runtime = runtimeOf({ voice, sound })
+      runtime.connect()
+      runtime.dispatch({ type: "advance" })
+      expect(sound.requests).toHaveLength(1)
+
+      runtime.hold()
+      expect(sound.requests[0]?.signal.aborted).toBe(true)
+      await sound.finish(0)
+      expect(beats(voice)).toEqual([])
+      // The lesson moving on meanwhile voices nothing, and owes no sting.
+      runtime.dispatch({ type: "advance" })
+      runtime.dispatch({ type: "back" })
+      runtime.hold()
+      expect(beats(voice)).toEqual([])
+      expect(sound.requests).toHaveLength(1)
+
+      runtime.release()
+      expect(sound.requests[1]?.request).toEqual({ feeling: "tension" })
+      await sound.finish(1)
+      expect(beats(voice)).toEqual(["s1-l1"])
+      runtime.release()
+      expect(beats(voice)).toEqual(["s1-l1"])
+    })
+
+    it("says the line it cut off again once the session plays", async () => {
+      const voice = heldVoice()
+      const runtime = runtimeOf({ voice })
+      runtime.connect()
+      runtime.dispatch({ type: "advance" })
+      voice.requests[0]?.request.onStart?.()
+      expect(runtime.getSnapshot().speaking).toBe("s1-l1")
+
+      runtime.hold()
+      expect(voice.requests[0]?.signal.aborted).toBe(true)
+      expect(runtime.getSnapshot().speaking).toBeNull()
+      await voice.finish(0, "cancelled")
+      runtime.replay("s1-l1")
+      expect(beats(voice)).toEqual(["s1-l1"])
+
+      runtime.release()
+      expect(beats(voice)).toEqual(["s1-l1", "s1-l1"])
+      expect(voice.requests[1]?.signal.aborted).toBe(false)
+    })
+
+    it("stays quiet when sound is turned on while held", () => {
+      const voice = heldVoice()
+      const sound = heldSound(false)
+      const runtime = runtimeOf({ voice, sound })
+      runtime.connect()
+      runtime.dispatch({ type: "advance" })
+      runtime.hold()
+      sound.turn(true)
+      expect(sound.requests).toHaveLength(0)
+      runtime.release()
+      expect(sound.requests).toHaveLength(1)
+    })
+  })
+
   describe("the last session (canon Rem. 4.14)", () => {
     /** Plays root, then `option`, to the leaf's end. */
     const playTo = (runtime: DramaRuntime, option: string): void => {

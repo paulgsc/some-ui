@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "description": "React hooks with more than one genuine consumer: the handheld breakpoint, the fitted page, the resize observer and show-on-scroll-up.",
+  "description": "React hooks with more than one genuine consumer: the handheld breakpoint, the fitted page, the resize observer, show-on-scroll-up, and an activity following its session's hold.",
   "license": "MIT",
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "repository": {

@@ -25,6 +25,12 @@
  * has touched the lesson, sound is on and no line is playing: on any touch,
  * when sound is turned on, or when a line ends. A line the lesson reaches waits for it,
  * and the learner's own replay cuts it off, so it never sounds over a line.
+ *
+ * While the session the lesson plays in waits (a stop, its own Pause, the
+ * reflection drawer: `hold`), nothing sounds: the line and the sting in
+ * flight stop, a line the lesson reaches meanwhile is owed, and `release`
+ * says the line still on screen and plays the sting still owed (promise
+ * SS2). Its place is the engine's resume point, kept as ever.
  */
 
 import { assertNever } from "@some-ui/core-utils"
@@ -89,7 +95,13 @@ export class DramaRuntime {
   /** The beat the voice could not say, owed once it can. */
   private owed: string | null = null
   /** The sting playing, and when it ends; a line waits for it. */
-  private sting: { stop: AbortController; ended: Promise<void> } | null = null
+  private sting: {
+    stop: AbortController
+    ended: Promise<void>
+    request: StingRequest
+  } | null = null
+  /** The session the lesson plays in waits: nothing sounds. */
+  private held = false
   /** This scene visit's sting, until it plays or the scene is left. */
   private owedSting: StingRequest | null = null
 
@@ -176,6 +188,38 @@ export class DramaRuntime {
   replay = (beatId: string): void => {
     this.armed = true
     this.say(beatId, true)
+  }
+
+  /**
+   * The session waits: the line and the sting in flight stop, and each is
+   * owed again. Called again while held, it does nothing.
+   */
+  hold = (): void => {
+    if (this.held) return
+    this.held = true
+    const { at } = this.snapshot.session.drama
+    if (this.line !== null && at.kind === "beat") this.owed = at.id
+    if (this.sting !== null) this.owedSting ??= this.sting.request
+    this.stop()
+  }
+
+  /** The session plays again: what the hold cut off, or owed, sounds. */
+  release = (): void => {
+    if (!this.held) return
+    this.held = false
+    if (!this.armed) return
+    const owed = this.owed
+    const { at } = this.snapshot.session.drama
+    if (
+      owed !== null &&
+      at.kind === "beat" &&
+      at.id === owed &&
+      this.ports.voice?.audible() === true
+    ) {
+      this.say(owed, false)
+    } else {
+      this.playOwedSting()
+    }
   }
 
   /**
@@ -298,6 +342,7 @@ export class DramaRuntime {
     if (
       sound === null ||
       owed === null ||
+      this.held ||
       !this.armed ||
       !sound.audible() ||
       !coverShown(this.lesson, this.snapshot.session)
@@ -313,11 +358,16 @@ export class DramaRuntime {
     this.sting = {
       stop,
       ended: sound.sting(owed, stop.signal).then(done, done),
+      request: owed,
     }
   }
 
   private say(beatId: string, interrupt: boolean): void {
     this.stopLine()
+    if (this.held) {
+      this.owed = beatId
+      return
+    }
     this.owed = null
     if (interrupt) this.stopSting()
     else this.playOwedSting()

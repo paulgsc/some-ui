@@ -7,7 +7,7 @@ import { ResultsCard } from "@leetype/components/typing-game/results-card"
 import { TypingErrorAlert } from "@leetype/components/typing-game/typing-error-alert"
 import { useExerciseRunner } from "@leetype/hooks/leetype/use-exercise-runner"
 import { useKeystrokeIntervals } from "@leetype/hooks/leetype/use-keystroke-intervals"
-import { useSessionDeadline } from "@leetype/hooks/leetype/use-session-deadline"
+import { useTerm } from "@leetype/hooks/leetype/use-term"
 import { useTypingGame } from "@leetype/hooks/leetype/use-typing-game-wasm"
 import type { Baseline } from "@leetype/lib/leetype/baseline-store"
 import {
@@ -27,6 +27,7 @@ import type {
 } from "@leetype/types/leetype"
 import { VISIBILITY_REVEALED } from "@leetype/types/leetype"
 import { cn } from "@some-ui/core-utils"
+import type { ActivityHost } from "@some-ui/react-hooks"
 import { Button } from "@some-ui/shared"
 import type { Appearance } from "@some-ui/styles/theme"
 import { appearanceClassName } from "@some-ui/styles/theme"
@@ -57,6 +58,8 @@ type TypingSessionProps = {
   exercise: Exercise
   /** Session term supplied by the composer/scene, in milliseconds. */
   sessionDurationMs?: number
+  /** The session around it: the term waits while it waits (`useTerm`). */
+  host?: ActivityHost
   /** Cosmetic. See `TextGradient`. */
   textGradient?: TextGradient
   /** Called once the whole sequence is finished. */
@@ -90,6 +93,7 @@ type TypingSessionProps = {
 export const TypingSession: FC<TypingSessionProps> = ({
   exercise,
   sessionDurationMs = 10 * 60_000,
+  host,
   textGradient,
   onSessionComplete,
   appearance = "inherit",
@@ -205,15 +209,16 @@ export const TypingSession: FC<TypingSessionProps> = ({
     [onSessionComplete]
   )
 
-  const { hasExpired, restart: restartDeadline } = useSessionDeadline(
-    sessionDurationMs,
-    () => {
+  const { hasExpired, restart: restartDeadline } = useTerm({
+    durationMs: sessionDurationMs,
+    host,
+    onExpire: () => {
       // The warm-up proves nothing, so a term spent during it ends the
       // session when it does (see `recordKeystroke`), or at Begin.
       if (calibrating || gameState !== "playing") return
       finish(snapshot, runner.completed, runner.escaped)
-    }
-  )
+    },
+  })
 
   /**
    * One keystroke, and, when it finishes the step, everything that follows

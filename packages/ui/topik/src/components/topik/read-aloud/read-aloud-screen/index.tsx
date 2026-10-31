@@ -25,6 +25,7 @@ import { dayOf } from "@some-ui/core-utils"
 import type { Speaker } from "@some-ui/speech"
 import { LensSession } from "@topik/components/topik/read-aloud/lens-session"
 import { ReadAloudSession } from "@topik/components/topik/read-aloud/read-aloud-session"
+import type { SittingPort } from "@topik/lib/topik/adapter/hooks/use-read-aloud"
 import type { LensRecordStore } from "@topik/lib/topik/adapter/lens-record-store"
 import type { LensTakes } from "@topik/lib/topik/adapter/lens-takes"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
@@ -55,6 +56,8 @@ type ReadAloudScreenProps = {
   short?: boolean
   /** The host's session is paused (`useReadAloud`'s `paused`). */
   paused?: boolean
+  /** Where the host keeps the sitting (`useReadAloud`'s `sitting`). */
+  sitting?: SittingPort
   onExit: () => void
   /** As `useReadAloud`'s. */
   initialBegin?: boolean
@@ -74,6 +77,7 @@ export const ReadAloudScreen = ({
   lensDeck = deck,
   short = false,
   paused,
+  sitting,
   onExit,
   initialBegin,
   initialPractice = "read-aloud",
@@ -148,6 +152,7 @@ export const ReadAloudScreen = ({
       record={{ record, today: dayOf(new Date(now())) }}
       short={short}
       paused={paused}
+      {...(sitting ? { sitting } : {})}
       initialBegin={initialBegin}
       onRecord={(event, day) => {
         setRecord(store.count(event, day))

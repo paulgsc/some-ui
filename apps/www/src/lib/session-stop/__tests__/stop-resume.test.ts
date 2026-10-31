@@ -37,17 +37,50 @@
  *   real engine, each reopening reconfiguring it from zero as `LivePlayer`
  *   does. What the person played is counted here, apart from the engine, and
  *   every resume and every close is checked against it.
- * - Not covered: the activity inside a scene starts its own content again
- *   once its player reopens (topik's open drill, leetype's term), and only
- *   an activity that follows the host's pause waits behind the drawer
- *   (topik's read-aloud does; leetype's own clock, topik's desktop
- *   conversation and the drama do not follow it yet); Skip and seek move the
- *   clock by design, so "time
- *   played" is the clock's, not the wall's; a departure the app cannot see
- *   (a crash on screen) leaves no stop; a session the player never took over
- *   (a scheduled one, a finished one played again) keeps none.
+ * - Not covered: the activity inside a scene, which is SS2's (below); Skip
+ *   and seek move the clock by design, so "time played" is the clock's, not
+ *   the wall's; a departure the app cannot see (a crash on screen) leaves no
+ *   stop; a session the player never took over (a scheduled one, a finished
+ *   one played again) keeps none.
+ *
+ * Promise SS2: inside a session, each activity follows it (#1868, #1870).
+ *
+ * - Claim: every activity a session plays waits exactly while the session's
+ *   clock stands still (paused by the person, stopped, left, or behind the
+ *   reflection drawer) and plays again as it plays, through the one host
+ *   the session's playback port makes (`../activity-host`, followed by
+ *   `useHostHold` in `@some-ui/react-hooks`); and the place it kept goes on
+ *   when the player reopens on that scene at a stop, and is forgotten when
+ *   the session starts from its beginning or ends at a stop.
+ * - Family: SS1's whole Family above (every stop, resume, ending, drawer
+ *   and surface), crossed with each activity that holds anything in time:
+ *   leetype's term (the typing deadline and a session file's declared
+ *   length with it), topik's desktop conversation, the drama's line and
+ *   sting, read-aloud's rep, and the places kept: leetype's term spent,
+ *   topik's open drill and its read-aloud sitting.
+ * - Proof: in two halves. This file drives a stand-in activity over the
+ *   real host through every SS1 sequence, the viewport mounting one per
+ *   scene as the scene changes: it is held whenever the drawer is open,
+ *   the time it counted equals the time the person played after every
+ *   resume, its place survives each reopening, and none survives a close
+ *   at a stop or a fresh start. Each activity's own test holds that it
+ *   follows the host: `Term` and `Leetype` (leetype's term and its place),
+ *   `IncidentPlayRuntime` (`stands the declared length still`), topik's
+ *   `sessionReducer` (`SS2: the desktop conversation`, every sequence of
+ *   five holds, releases and chat controls) and `useKoreanStudyPageVM`,
+ *   `DramaRuntime` (`while its session waits`), `useReadAloud` (the
+ *   sitting kept) and `set-machine`, and `HandheldLesson` (the open drill
+ *   kept), with `useHostHold`'s own test for the wiring.
+ * - Tolerance: a place keeps the activity's position, not everything on its
+ *   screen: leetype's chosen exercise or session file is picked again (the
+ *   term left is kept), the drama goes on from its kept point and says the
+ *   line on screen again, and the conversation plays its current message
+ *   again from the start. A session file's choice timing (Def. 9.4) still
+ *   counts held time; only its declared length waits.
  */
 
+import type { ActivityHost } from "@some-ui/react-hooks"
+import { followHost } from "@some-ui/react-hooks"
 import type { OrchestratorCommand, SceneConfig } from "@some-ui/types"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
@@ -60,6 +93,12 @@ import {
   createEngineState,
 } from "@/lib/orchestrator/mock-orchestrator-engine"
 import { closedPatch, latestStop, PICK_UP_MS } from "@/lib/session-stop"
+import type { ActivityHosts } from "@/lib/session-stop/activity-host"
+import {
+  createActivityHosts,
+  orchestratorWatch,
+  storedPlaces,
+} from "@/lib/session-stop/activity-host"
 import type { Release } from "@/lib/session-stop/playback"
 import { holdable, orchestratorPlayback } from "@/lib/session-stop/playback"
 import type { StopRuntime, Surface } from "@/lib/session-stop/runtime"
@@ -95,8 +134,26 @@ type World = {
     hold: () => Release
     /** The reflection drawer, open: its hold's release. */
     drawer: Release | null
+    activities: ActivityHosts
+    /** The activity in the scene playing, as the viewport mounts it. */
+    activity: Activity | null
   } | null
 }
+
+/**
+ * A stand-in for an activity inside a scene (SS2): it follows its scene's
+ * host as `useHostHold` does, counts the time it plays as leetype's term
+ * does, and keeps it with the host as it is held and as it unmounts.
+ */
+type Activity = {
+  scene: string
+  host: ActivityHost
+  spentBefore: number
+  since: number | null
+  unfollow: () => void
+}
+
+const CLOCK = "clock"
 
 let world: World
 
@@ -104,6 +161,82 @@ function emit(): void {
   useOrchestratorStore
     .getState()
     ._setState(buildOrchestratorState(world.engine))
+  syncActivity()
+}
+
+const sceneId = (): string | null =>
+  primaryOf(useOrchestratorStore.getState().lifetimes.scene_lifetimes)?.kind
+    .Scene.scene_id ?? null
+
+const spent = (activity: Activity): number =>
+  activity.spentBefore +
+  (activity.since === null ? 0 : world.t - activity.since)
+
+function holdActivity(activity: Activity): void {
+  activity.spentBefore = spent(activity)
+  activity.since = null
+  activity.host.keep(CLOCK, activity.spentBefore)
+}
+
+function mountActivity(scene: string, hosts: ActivityHosts): Activity {
+  const host = hosts.forScene(scene)
+  const kept = host.recall(CLOCK)
+  const activity: Activity = {
+    scene,
+    host,
+    spentBefore: typeof kept === "number" ? kept : 0,
+    since: null,
+    unfollow: () => undefined,
+  }
+  activity.unfollow = followHost(host, {
+    hold: () => {
+      if (activity.since !== null) holdActivity(activity)
+    },
+    release: () => {
+      activity.since ??= world.t
+    },
+  })
+  return activity
+}
+
+function unmountActivity(): void {
+  const activity = world.mount?.activity
+  if (!activity || world.mount === null) return
+  activity.unfollow()
+  holdActivity(activity)
+  world.mount.activity = null
+}
+
+/** The viewport: the scene playing's activity mounted, any other not. */
+function syncActivity(): void {
+  const mount = world.mount
+  if (mount === null) return
+  const scene = sceneId()
+  if (mount.activity?.scene === scene) return
+  unmountActivity()
+  if (scene !== null) mount.activity = mountActivity(scene, mount.activities)
+}
+
+const SCENE_IDS = SCENES.map((one, index) => `${one.scene_name}#${index}`)
+
+/** What every activity counted, kept or still counting. */
+function activityTime(): number {
+  const live = world.mount?.activity ?? null
+  return SCENE_IDS.reduce((total, scene) => {
+    if (live?.scene === scene) return total + spent(live)
+    const kept = storedPlaces.recall(SESSION, scene, CLOCK)
+    return total + (typeof kept === "number" ? kept : 0)
+  }, 0)
+}
+
+function placesKept(): boolean {
+  return SCENE_IDS.some(
+    (scene) => storedPlaces.recall(SESSION, scene, CLOCK) !== undefined
+  )
+}
+
+function activityHeld(): boolean | null {
+  return world.mount?.activity?.host.held() ?? null
 }
 
 function send(command: OrchestratorCommand): Promise<void> {
@@ -133,9 +266,14 @@ function pass(ms: number, counts: boolean): void {
 /** `LivePlayer` mounting: its effects connect, then configure, then begin. */
 function open(): void {
   const held = holdable(orchestratorPlayback)
+  const activities = createActivityHosts(
+    SESSION,
+    orchestratorPlayback,
+    orchestratorWatch
+  )
   const stops = createStopRuntime(
     SESSION,
-    held.playback,
+    activities.forgetting(held.playback),
     () => new Date(BASE + world.t)
   )
   // On the phone the drawer lives in `SessionChrome`, which `LivePlayer`
@@ -149,7 +287,15 @@ function open(): void {
   const disconnect = stops.connect(world.surface)
   void useOrchestratorStore.getState().configure(SCENES)
   stops.begin()
-  world.mount = { stops, disconnect, hold: held.hold, drawer: null }
+  world.mount = {
+    stops,
+    disconnect,
+    hold: held.hold,
+    drawer: null,
+    activities,
+    activity: null,
+  }
+  syncActivity()
 }
 
 /**
@@ -160,6 +306,8 @@ function close(drawerFirst = false): void {
   if (drawerFirst) closeDrawer()
   world.mount?.disconnect()
   closeDrawer()
+  // The viewport's panels unmount after the player's own effects.
+  unmountActivity()
   world.mount = null
   expect(playing(), "playing behind a closed player").toBe(false)
 }
@@ -418,9 +566,11 @@ function reflect(during: () => void, after?: boolean): void {
   const was = after ?? playing()
   openDrawer()
   expect(playing(), "playing behind the drawer").toBe(false)
+  expect(activityHeld(), "an activity playing behind the drawer").toBe(true)
   during()
   if (drawerOpen()) {
     expect(playing(), "playing behind the drawer").toBe(false)
+    expect(activityHeld(), "an activity playing behind the drawer").toBe(true)
     closeDrawer()
   }
   expect(playing(), "the drawer closed on another state").toBe(was)
@@ -515,6 +665,9 @@ function sitting(
     expect(elapsed(), `${route.name}: resumed elsewhere`).toBe(at)
     expect(sceneNow(), `${route.name}: in another scene`).toBe(where)
     expect(elapsed(), `${route.name}: off what was played`).toBe(world.played)
+    expect(activityTime(), `${route.name}: an activity off it`).toBe(
+      world.played
+    )
     expect(planned()).toBe(extended ? 25 * MIN : 20 * MIN)
     // Back in it: a resume that left it paused is played on by hand.
     if (!playing()) void useOrchestratorStore.getState().resume()
@@ -524,6 +677,15 @@ function sitting(
   expect(ending.run(), `closed off what was played`).toBe(
     Math.min(world.played, planned())
   )
+  // A session closed at a stop forgets its activities' places; one played
+  // to its end keeps them until the next start.
+  if (ending.name === "played to its end") {
+    expect(activityTime(), "an activity off what was played").toBe(
+      Math.min(world.played, planned())
+    )
+  } else {
+    expect(placesKept(), "places kept past the session's end").toBe(false)
+  }
   close()
 }
 
@@ -587,6 +749,22 @@ describe("SS1: stop and resume keep the session's clock honest", () => {
       ENUMERATION_MS
     )
   }
+
+  it("SS2: a session started from its beginning recalls no activity's place", () => {
+    world = {
+      surface: "desktop",
+      t: 0,
+      engine: createEngineState(),
+      played: 0,
+      mount: null,
+    }
+    storedPlaces.keep(SESSION, SCENE_IDS[0] ?? "", CLOCK, 3 * MIN)
+    storedPlaces.keep("another", SCENE_IDS[0] ?? "", CLOCK, MIN)
+    open()
+    pass(MIN, true)
+    expect(activityTime()).toBe(MIN)
+    expect(storedPlaces.recall("another", SCENE_IDS[0] ?? "", CLOCK)).toBe(MIN)
+  })
 
   it("on the desktop, a hidden tab plays on and counts, keeping no stop", () => {
     world = {

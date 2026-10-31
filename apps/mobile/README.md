@@ -763,9 +763,9 @@ sheet is open (#1870): its clock stands still, so reflecting is not counted
 as time played, and closing the sheet plays it on from there (a session the
 person had paused stays paused). Leaving with the sheet open is a stop like
 any other, taken where the session was before the sheet opened. A take in
-progress when the sheet closes is kept. Inside the session, only an activity
-that follows its pause waits too: read-aloud does; LeetType's own clock and
-the drama do not follow it yet.
+progress when the sheet closes is kept. Every activity inside the session
+waits with it: read-aloud and the drama say nothing, topik's conversation
+pauses, and LeetType's time stands still, until the sheet closes.
 
 They are for the next session, not an archive. The phone keeps at most 20
 across every session (`REFLECTION_LIMIT`, `lib/session-reflection`); nothing
@@ -805,8 +805,9 @@ cutting study short can be read over time.
   (playing, even if it had been paused, once the screen had closed).
 - **Within 30 minutes** of the stop the person can **Pick up where you left
   off** (exactly, in the player they left; once reopened, the clock goes on
-  from where it stopped, so time played adds up, and the activity starts its
-  content again) or **Call it done**.
+  from where it stopped, so time played adds up, and the activity goes on
+  where it was: topik's open drill and its sitting, LeetType's time left,
+  the drama's line) or **Call it done**.
 - **Past 30 minutes**, whether the stop screen is still up, the app is
   reopened or Practice's Home is, the session closes as it stood, dated when it
   stopped, and counts toward **Studied today**; a close whose write failed is

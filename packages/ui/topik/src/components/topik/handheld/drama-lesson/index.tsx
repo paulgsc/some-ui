@@ -16,6 +16,7 @@ import type { JSX } from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@some-ui/core-utils"
 import type { SoundPort, VoicePort } from "@some-ui/makjang"
+import type { ActivityHost } from "@some-ui/react-hooks"
 import {
   Accordion,
   AccordionContent,
@@ -58,6 +59,8 @@ type DramaLessonProps = {
   sound: SoundPort | null
   points: DramaPointStore
   last: LastDramaPort
+  /** The session it plays in: nothing sounds while it waits (SS2). */
+  host?: ActivityHost
   /** Shown at an ending, first in the dock: the next scene's way out. */
   ending?: JSX.Element
   short: boolean
@@ -70,6 +73,7 @@ export const DramaLesson = ({
   sound,
   points,
   last,
+  host,
   ending,
   short,
   onLeave,
@@ -81,7 +85,7 @@ export const DramaLesson = ({
     dispatch,
     replay,
     review,
-  } = useDrama(lesson, { voice, sound, points, last })
+  } = useDrama(lesson, { voice, sound, points, last }, host)
   const panels = panelsOf(lesson, session)
   const past = panels.filter(({ kind }) => kind === "past")
   const present = panels.filter(({ kind }) => kind !== "past")

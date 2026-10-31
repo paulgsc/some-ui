@@ -23,6 +23,10 @@ import { finishedNaturally } from "@/lib/wind-down"
  * drawer is open, each resume goes on from where its stop left the clock and
  * the scene, closing the drawer plays on what was playing, and the time the
  * session closes with is the time it played.
+ *
+ * Promise SS2, held by the same file and each activity's own test: each
+ * activity inside the session waits while it waits and keeps its place
+ * across the player reopening (`./activity-host`).
  */
 
 export const REASONS = [

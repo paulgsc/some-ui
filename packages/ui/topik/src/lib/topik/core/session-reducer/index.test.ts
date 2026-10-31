@@ -617,3 +617,94 @@ describe("chat/quiz/batch flow", () => {
     expect(after.active?.mode).toBe("chat")
   })
 })
+
+describe("SS2: the desktop conversation waits while its session waits", () => {
+  const HELD: SessionEvent = { type: "HOST_HELD" }
+  const RELEASED: SessionEvent = { type: "HOST_RELEASED" }
+  const EVENTS: ReadonlyArray<SessionEvent> = [
+    HELD,
+    RELEASED,
+    { type: "START_CHAT" },
+    { type: "RESUME_CHAT" },
+    PAUSE,
+    { type: "TIMER_TICK" },
+  ]
+  const running = (state: SessionState): boolean =>
+    state.active?.mode === "chat" && state.active.playState === "running"
+
+  /** Every sequence of `n` events. */
+  function sequences(n: number): Array<Array<SessionEvent>> {
+    if (n === 0) return [[]]
+    return sequences(n - 1).flatMap((rest) =>
+      EVENTS.map((event) => [...rest, event])
+    )
+  }
+
+  it("plays only while not held, and on release as the learner last asked", () => {
+    let runs = 0
+    for (const startPaused of [false, true]) {
+      for (const run of sequences(5)) {
+        let state = startPaused ? fold(hydrate(), PAUSE) : hydrate()
+        let held = false
+        let wants = !startPaused
+        for (const event of run) {
+          const { state: next, effects } = sessionReducer(state, event)
+          if (event.type === "HOST_HELD") held = true
+          if (event.type === "HOST_RELEASED") held = false
+          if (event.type === "START_CHAT" || event.type === "RESUME_CHAT") {
+            wants = true
+          }
+          if (event.type === "PAUSE_CHAT") wants = false
+          expect(running(next)).toBe(!held && wants)
+          if (held) {
+            expect(effects.map((effect) => effect.type)).not.toContain(
+              "PLAY_AUDIO"
+            )
+            expect(effects.map((effect) => effect.type)).not.toContain(
+              "START_TIMER"
+            )
+          }
+          if (running(next) && !running(state)) {
+            expect(effects).toContainEqual({ type: "PLAY_AUDIO" })
+          }
+          if (!running(next) && running(state)) {
+            expect(effects).toContainEqual({ type: "STOP_AUDIO" })
+          }
+          state = next
+        }
+        runs += 1
+      }
+    }
+    expect(runs).toBe(2 * EVENTS.length ** 5)
+  })
+
+  it("holds a lesson that loads, and a batch that begins, while held", () => {
+    const loading = fold(createInitialState(), HELD, select("t1"))
+    const { state: loaded, effects } = sessionReducer(loading, {
+      type: "HYDRATION_SUCCESS",
+      key: "t1",
+      batches: [makeBatch(0, 3, 1), makeBatch(1, 3, 1)],
+    })
+    expect(running(loaded)).toBe(false)
+    expect(effects).toEqual([])
+    const released = sessionReducer(loaded, RELEASED)
+    expect(running(released.state)).toBe(true)
+    expect(released.effects).toContainEqual({ type: "PLAY_AUDIO" })
+
+    const atSummary = fold(released.state, ...TO_SUMMARY, HELD)
+    const passed = sessionReducer(atSummary, { type: "BATCH_PASSED" })
+    expect(passed.state.active?.cursor.batch).toBe(1)
+    expect(running(passed.state)).toBe(false)
+    expect(passed.effects.map((effect) => effect.type)).toEqual([
+      "NOTIFY_BATCH_COMPLETE",
+    ])
+  })
+
+  it("keeps the hold across a lesson changed after it completes", () => {
+    const done = fold(hydrate([makeBatch(0, 3, 1)]), ...TO_SUMMARY, HELD, {
+      type: "BATCH_PASSED",
+    })
+    expect(done.phase).toBe("complete")
+    expect(fold(done, CHANGE).hostHold).toEqual({ resume: false })
+  })
+})

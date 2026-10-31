@@ -35,13 +35,16 @@ import type {
   SetEvent,
   SetMachineState,
   SetProgress,
+  SittingPlace,
 } from "@topik/lib/topik/read-aloud/set-machine"
 import {
   createSetMachine,
   currentEntry,
   freshSet,
+  isSittingPlace,
   progressOf,
   setMachineReducer,
+  sittingOf,
 } from "@topik/lib/topik/read-aloud/set-machine"
 
 export type ReadAloudRecordEvent =
@@ -70,6 +73,13 @@ export type UseReadAloudOptions = {
   onShown?: (key: string, at: number) => void
   /** What is left of the set after every change, for resuming it later. */
   onProgress?: (progress: SetProgress | null) => void
+  /**
+   * Where the host keeps this sitting for the player's next mount
+   * (promise SS2): recalled once, when the drill is made, so a reopened
+   * player goes on with the sitting's clock and list; kept whenever the
+   * page hides, the session holds it, and as it unmounts.
+   */
+  sitting?: SittingPort
   /** Test seams: the clock, and the key each new set is drawn with. */
   now?: () => number
   seedKey?: () => string
@@ -78,6 +88,12 @@ export type UseReadAloudOptions = {
    * set. Read once; it never begins a drill already on screen.
    */
   initialBegin?: boolean
+}
+
+/** A sitting kept by the host, unvalidated as it comes back. */
+export type SittingPort = {
+  recall: () => unknown
+  keep: (place: SittingPlace | null) => void
 }
 
 /** The running wait: how long the current step lasts. */
@@ -132,7 +148,12 @@ function createRunner(
   options: () => UseReadAloudOptions,
   render: (snapshot: Snapshot) => void
 ): Runner {
-  let state = createSetMachine(options().level)
+  const now = (): number => options().now?.() ?? Date.now()
+  const kept = options().sitting?.recall()
+  let state = createSetMachine(
+    options().level,
+    isSittingPlace(kept) ? { place: kept, at: now() } : undefined
+  )
   let step: ReadAloudStep = null
   /** When the current step's first wait runs out; a renewal never passes it. */
   let deadline: { seq: number; at: number } | null = null
@@ -140,8 +161,6 @@ function createRunner(
   let empty = false
   let timer: ReturnType<typeof setTimeout> | null = null
   let utterance: AbortController | null = null
-
-  const now = (): number => options().now?.() ?? Date.now()
 
   const clearTimer = (): void => {
     if (timer !== null) clearTimeout(timer)
@@ -300,6 +319,9 @@ function createRunner(
     () => render({ state, step, playing, empty })
   )
 
+  const keepSitting = (): void =>
+    options().sitting?.keep(sittingOf(state, now()))
+
   return {
     dispatch,
     now,
@@ -318,11 +340,18 @@ function createRunner(
       state = { ...state, paces: options().paces ?? {} }
       drawSet()
     },
-    hide: (): void => dispatch({ type: "hidden", at: now() }),
-    hold: (): void => dispatch({ type: "held", at: now() }),
+    hide: (): void => {
+      dispatch({ type: "hidden", at: now() })
+      keepSitting()
+    },
+    hold: (): void => {
+      dispatch({ type: "held", at: now() })
+      keepSitting()
+    },
     show: (): void => dispatch({ type: "shown", at: now() }),
     dispose: (): void => {
       dispatch({ type: "hidden", at: now() })
+      keepSitting()
       clearTimer()
       stopSpeech()
     },

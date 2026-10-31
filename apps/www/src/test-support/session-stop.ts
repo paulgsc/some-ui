@@ -1,5 +1,6 @@
 import type { Stop } from "@/lib/session-stop"
 import { storeEffect } from "@/lib/session-stop"
+import type { ActivityHosts } from "@/lib/session-stop/activity-host"
 
 /** An open stop at 12:18 of 20:00, in "reading", `agoMs` before now. */
 export function stopRecord(agoMs = 0, overrides: Partial<Stop> = {}): Stop {
@@ -22,4 +23,15 @@ export function stopRecord(agoMs = 0, overrides: Partial<Stop> = {}): Stop {
 export function seedStop(stop: Stop): Stop {
   storeEffect({ kind: "save", stop })
   return stop
+}
+
+/** The activity hosts of a session that plays on and keeps nothing. */
+export const playingActivities: ActivityHosts = {
+  forScene: () => ({
+    held: () => false,
+    subscribe: () => () => undefined,
+    recall: () => undefined,
+    keep: () => undefined,
+  }),
+  forgetting: (playback) => playback,
 }

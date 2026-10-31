@@ -1529,6 +1529,13 @@
       "family": "archive-restore"
     },
     {
+      "store": "phone:activity-places",
+      "class": "record",
+      "growth": "bounded: PLACE_LIMIT = 20 sessions, each one place per scene and activity key (LeetType's term spent, topik's open drill and read-aloud sitting), replaced in place (`some-ui:activity-places`, boundedList).",
+      "horizon": "a session's places leave when it starts from its beginning or ends at a stop (`forgetting`, lib/session-stop/activity-host); older than the 20 newest sessions are dropped",
+      "family": "what-is-kept"
+    },
+    {
       "store": "phone:aph-left",
       "class": "record",
       "growth": "Per clash when aph comes back to this phone (a home record whose waiting changes clashed with home's): one verbatim copy each; no cap (`aph:home:left:<n>`).",

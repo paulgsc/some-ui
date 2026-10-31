@@ -5,6 +5,7 @@ import { ExercisePicker } from "@leetype/components/exercise-picker"
 import { IncidentSession } from "@leetype/components/incident/incident-session"
 import { SessionFilePicker } from "@leetype/components/session-file-picker"
 import { TypingSession } from "@leetype/components/typing-game/typing-session"
+import { useTerm } from "@leetype/hooks/leetype/use-term"
 import {
   nextExercise,
   SESSION_EXERCISE_IDS,
@@ -20,6 +21,7 @@ import type {
   TextGradient,
 } from "@leetype/types/leetype"
 import { cn } from "@some-ui/core-utils"
+import type { ActivityHost } from "@some-ui/react-hooks"
 import { useIsMobile } from "@some-ui/react-hooks"
 import type { Appearance } from "@some-ui/styles/theme"
 import { appearanceClassName } from "@some-ui/styles/theme"
@@ -31,8 +33,11 @@ import { appearanceClassName } from "@some-ui/styles/theme"
  */
 export type LeetypeSurface = "auto" | "rounds" | "typing"
 
-/** Matches `TypingSession`'s own default — see why below at `mountedAt`. */
+/** Matches `TypingSession`'s own default — see why below at `term`. */
 const DEFAULT_SESSION_DURATION_MS = 10 * 60_000
+
+/** The host keeps the scene's term under this key. */
+const TERM_PLACE = "leetype:term"
 
 type LeetypeProps = {
   /**
@@ -75,6 +80,13 @@ type LeetypeProps = {
    * (`lib/leetype/spoken-take`). Absent, an answer can only be typed.
    */
   takes?: SpokenTakes
+  /**
+   * The session it plays in (`@some-ui/react-hooks`'s `ActivityHost`): the
+   * term waits while the session waits, and is kept with it, so the player
+   * reopened on this scene goes on with what was left (promise SS2).
+   * Absent, the term runs from mount.
+   */
+  host?: ActivityHost
 }
 
 /**
@@ -110,7 +122,7 @@ type LeetypeProps = {
  *
  * `picked` is this component's whole memory of the choice, cleared once a
  * picker-sourced session finishes so the next one asks again. It also
- * snapshots the remaining time budget at selection (see `mountedAt`). An
+ * snapshots the remaining time budget at selection (see `term`). An
  * explicit `exercise` prop always wins and never shows the picker.
  *
  * # The registry contract
@@ -129,18 +141,25 @@ export const Leetype: FC<LeetypeProps> = ({
   exerciseBadges,
   sessionFiles,
   takes,
+  host,
 }) => {
   const isMobile = useIsMobile()
   const resolved =
     surface === "auto" ? (isMobile ? "rounds" : "typing") : surface
 
   /**
-   * The orchestrator removes this component at mount time plus
-   * `sessionDurationMs`, fixed before the learner picks anything. Time spent
-   * browsing comes out of the session's budget, or a late pick could be
-   * unmounted before `onSessionComplete` fires.
+   * The scene's term: the orchestrator removes this component once the
+   * scene's `sessionDurationMs` has played, fixed before the learner picks
+   * anything. Time spent browsing comes out of it, or a late pick could be
+   * unmounted before `onSessionComplete` fires. It counts only while the
+   * session plays, as the scene's clock does, and an earlier mount's time
+   * counts too (`useTerm`'s `place`).
    */
-  const [mountedAt] = useState(() => performance.now())
+  const term = useTerm({
+    durationMs: sessionDurationMs,
+    host,
+    place: TERM_PLACE,
+  })
 
   const playsRounds = resolved === "rounds"
 
@@ -151,11 +170,8 @@ export const Leetype: FC<LeetypeProps> = ({
   >(undefined)
 
   const handleSelect = useCallback(
-    (id: string): void => {
-      const elapsed = performance.now() - mountedAt
-      setPicked({ id, remainingMs: Math.max(0, sessionDurationMs - elapsed) })
-    },
-    [mountedAt, sessionDurationMs]
+    (id: string): void => setPicked({ id, remainingMs: term.left() }),
+    [term]
   )
 
   const active: Exercise | undefined =
@@ -169,11 +185,9 @@ export const Leetype: FC<LeetypeProps> = ({
     (OpenedSessionFile & { limitMinutes: number }) | null
   >(null)
   const handlePlay = useCallback(
-    (opened: OpenedSessionFile): void => {
-      const left = sessionDurationMs - (performance.now() - mountedAt)
-      setPlaying({ ...opened, limitMinutes: Math.max(0, left) / 60_000 })
-    },
-    [mountedAt, sessionDurationMs]
+    (opened: OpenedSessionFile): void =>
+      setPlaying({ ...opened, limitMinutes: term.left() / 60_000 }),
+    [term]
   )
 
   // Only a picker-sourced choice returns to the picker on completion.
@@ -195,6 +209,7 @@ export const Leetype: FC<LeetypeProps> = ({
           fileName={playing.name}
           file={playing.file}
           limitMinutes={playing.limitMinutes}
+          {...(host === undefined ? {} : { host })}
           {...(takes === undefined ? {} : { ports: { takes } })}
           onEnd={(): void => {
             setPlaying(null)
@@ -250,6 +265,7 @@ export const Leetype: FC<LeetypeProps> = ({
     <TypingSession
       exercise={active}
       sessionDurationMs={activeDurationMs}
+      {...(host === undefined ? {} : { host })}
       textGradient={textGradient}
       onSessionComplete={handleComplete}
       appearance={appearance}
