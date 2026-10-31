@@ -39,6 +39,11 @@ export type BiteMoment = {
   readonly strip: string
   readonly watching: boolean
   readonly mode: ModeId
+  /**
+   * Home's clock minus the phone's, in milliseconds, as the live socket last
+   * measured it; null when it never has (GW5).
+   */
+  readonly offsetMs: number | null
 }
 
 /** Home's limit on the strip and the context line (`MAX_LINE_CHARS`). */
@@ -75,8 +80,8 @@ export function line(text: string): string {
  * The bite's fields, by home's names: `how`, `strip`, `watching`,
  * `started`, `mode` and `catalog` always; `scenario` whenever `said` names
  * one (every bite but one said first); `seq` and `context` when there was
- * one. `offset` (home's clock
- * minus the phone's) is left out until a live connection measures it (GW5).
+ * one; `offset` (home's clock minus the phone's, whole milliseconds) once
+ * the live socket has measured it (GW5).
  */
 export function biteFields(
   said: Said,
@@ -93,6 +98,8 @@ export function biteFields(
   fields.strip = line(moment.strip)
   fields.watching = moment.watching ? "1" : "0"
   fields.started = new Date(startedAt).toISOString()
+  if (moment.offsetMs !== null)
+    fields.offset = String(Math.round(moment.offsetMs))
   fields.mode = moment.mode
   fields.catalog = String(CATALOG_VERSION)
   return fields

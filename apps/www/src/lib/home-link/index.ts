@@ -4,7 +4,9 @@
  * tap (LA8, docs/learner-data-authority.md); the drain of everything the
  * phone keeps (aph, the Jobs record, Practice's record, voice notes), which
  * a paired phone sends on its own while the app is open (`./lanes`, LA15);
- * and Korean's look at the routine's files on home (`./routine`).
+ * Korean's look at the routine's files on home (`./routine`); and the game
+ * day's live socket (`./live`, LA16), which alone reads the pairing's token
+ * (`./live-pairing`) to open it.
  * Phone-only (`build.paths.ts`).
  */
 import { useSyncExternalStore } from "react"

@@ -1,14 +1,16 @@
 /**
  * What home tells the phone during a game week, as one port: the week's
  * games, and for the game being watched the latest offer (the live strip,
- * the scenarios that can be happening now, and what just happened). Home's
- * scenario engine (GWB3) makes the offers and a live connection (GWB4)
- * carries them; until then `fixtureFeed` stands in for both in development
- * and tests, and the Android app gets `noGamesFeed`: no games, so nothing
- * can be recorded there yet, and the screen says so. A real source plugs in
- * as another `FeedPort`.
+ * the scenarios that can be happening now, and what just happened), how the
+ * phone stands with home, and home's clock against the phone's. Home's
+ * scenario engine (GWB3) makes the offers and the game day's live socket
+ * (GWB4, the app's `lib/home-link/live`) carries them; `fixtureFeed` stands
+ * in for both in development and tests. The recorder tells the port what it
+ * is on (`choose`), so home offers for that game in that mode.
  */
 import type { ScenarioId } from "@some-ui/game-scenarios"
+
+import type { ModeId } from "./modes"
 
 /** One game of the week, read through SF. */
 export type Game = {
@@ -50,11 +52,42 @@ export type Offer = {
   readonly justHappened: ReadonlyArray<JustHappened>
 }
 
+/**
+ * How the phone stands with home, which says why there is no live offer:
+ * `asking` until home first answers, `live` while it does, `away` while it
+ * is out of reach, `not-following` when home follows no games, `unpaired`
+ * when this phone is not paired with home, and `update` when this build
+ * cannot read what home sends.
+ */
+export type FeedLink =
+  | "asking"
+  | "live"
+  | "away"
+  | "not-following"
+  | "unpaired"
+  | "update"
+
 /** What the phone knows of the week right now. */
 export type Feed = {
+  /** The week's games: the last ones home sent, even while away. */
   readonly games: ReadonlyArray<Game>
-  /** The latest offer, or null while home is out of reach (away). */
+  /** The latest offer, or null unless home is answering now (`live`). */
   readonly offer: Offer | null
+  readonly link: FeedLink
+  /**
+   * Home's clock minus the phone's, in milliseconds, as last measured; null
+   * until home has answered once (GW5).
+   */
+  readonly offsetMs: number | null
+}
+
+/** What the recorder is on, for home to offer about. */
+export type FeedChoice = {
+  readonly mode: ModeId
+  /** The game on screen, or null while there is none. */
+  readonly gameId: string | null
+  /** Whether the person is watching, for each game of the week. */
+  readonly watching: Readonly<Record<string, boolean>>
 }
 
 export type FeedPort = {
@@ -63,14 +96,8 @@ export type FeedPort = {
    * the unsubscribe.
    */
   watch: (listener: (feed: Feed) => void) => () => void
-}
-
-/** No games and no offers: home has sent no week yet. */
-export const noGamesFeed: FeedPort = {
-  watch(listener): () => void {
-    listener({ games: [], offer: null })
-    return () => undefined
-  },
+  /** What the recorder is on now; told again on every change. */
+  choose: (choice: FeedChoice) => void
 }
 
 const MINUTE = 60_000
@@ -82,6 +109,7 @@ const MINUTE = 60_000
  */
 export function fixtureFeed(now: () => number = Date.now): FeedPort {
   return {
+    choose: () => undefined,
     watch(listener): () => void {
       const at = now()
       const iso = (ms: number): string => new Date(ms).toISOString()
@@ -101,6 +129,8 @@ export function fixtureFeed(now: () => number = Date.now): FeedPort {
       ]
       listener({
         games,
+        link: "live",
+        offsetMs: 0,
         offer: {
           seq: 41,
           gameId: "fixture-1",

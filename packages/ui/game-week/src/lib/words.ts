@@ -6,6 +6,7 @@
  */
 import { counted, dayOf, formatDay } from "@some-ui/core-utils"
 
+import type { FeedLink } from "./feed"
 import type { ModeId } from "./modes"
 import type { OutboxView } from "./ports"
 
@@ -15,10 +16,6 @@ export const WORDS = {
   watching: "Watching",
   notWatching: "Not watching",
   everyScenario: "Every scenario",
-  noOffer:
-    "Nothing offered for this game yet: say it first, or pick from every scenario. Your bites wait on this phone.",
-  noGames:
-    "Recording opens once home sends this week's games. Until then, every scenario is listed under Every scenario.",
   likeliest: "Likeliest now",
   alsoNow: "Could also be",
   justHappened: "Just happened",
@@ -52,6 +49,46 @@ export const NOTICES = {
   pickFirst: "Pick a game first.",
   notStarted: "The screen went away before the microphone opened.",
 } as const
+
+/** A game as the picker names it: "SEA at SF". */
+export function gameLabel(home: string, away: string): string {
+  return `${away} at ${home}`
+}
+
+/**
+ * The result SF wants from a game, in a few words ("SF win"), or nothing
+ * for a game home reads as one that cannot move SF.
+ */
+export function wantLine(want: string | null): string {
+  return want === null ? "" : `${want} win`
+}
+
+/** Why nothing is offered live, by how the phone stands with home. */
+const WHY_NOT_LIVE: Readonly<Record<FeedLink, string>> = {
+  asking: "Asking home what's happening now.",
+  live: "Nothing offered for this game right now.",
+  away: "Home is out of reach, so nothing is offered live.",
+  "not-following": "Home isn't following games right now.",
+  unpaired: "This phone isn't paired with home, so nothing is offered live.",
+  update:
+    "This version of the app can't read what home offers. Update the app to see it live.",
+}
+
+/** The line where the offer would be, when there is none for this game. */
+export function noOfferLine(link: FeedLink): string {
+  return `${WHY_NOT_LIVE[link]} Say it first, or pick from every scenario. Your bites wait on this phone until home has them.`
+}
+
+/** The line where the games would be, when the phone has none this week. */
+export function noGamesLine(link: FeedLink): string {
+  const why =
+    link === "live"
+      ? "Home has no games this week."
+      : link === "away" || link === "asking"
+        ? "This phone hasn't had this week's games from home yet."
+        : WHY_NOT_LIVE[link]
+  return `${why} Recording opens with a game; every scenario is listed under Every scenario meanwhile.`
+}
 
 /** What a kept bite's toast says. */
 export function keptLine(durationMs: number): string {

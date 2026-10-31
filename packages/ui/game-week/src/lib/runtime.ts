@@ -6,7 +6,9 @@
  * deleting React deletes none of this.
  *
  * What it starts it also ends: the page clock, the feed and the store's
- * word on bites it held run while the page is attached. A take under way
+ * word on bites it held run while the page is attached. While attached it
+ * tells the feed what the recorder is on (`homeChoice`) each time that
+ * changes, so home offers for the game on screen in the mode picked. A take under way
  * when the page is left is finished and kept, and its keep still runs after
  * the detach: the bite outlives the page.
  */
@@ -21,7 +23,7 @@ import type {
   GameWeekIntent,
   GameWeekState,
 } from "./machine"
-import { initialState, step } from "./machine"
+import { homeChoice, initialState, step } from "./machine"
 import type { BiteStore, PrefsPort } from "./ports"
 
 /** How often a bite's clock and level are read while it records. */
@@ -56,6 +58,19 @@ export type GameWeekRuntime = {
 export function createGameWeek(ports: GameWeekPorts): GameWeekRuntime {
   let state = initialState(ports.prefs.read(), ports.now())
   const listeners = new Set<() => void>()
+  // What home was last told the recorder is on, as its JSON; null while
+  // the page is not attached.
+  let told: string | null = null
+
+  /** Tells home what the recorder is on, once per change, while attached. */
+  function tellHome(): void {
+    if (told === null) return
+    const choice = homeChoice(state)
+    const said = JSON.stringify(choice)
+    if (said === told) return
+    told = said
+    ports.feed.choose(choice)
+  }
 
   const dispatch = (event: GameWeekEvent): void => {
     const next = step(state, event)
@@ -64,6 +79,7 @@ export function createGameWeek(ports: GameWeekPorts): GameWeekRuntime {
       for (const listener of listeners) listener()
     }
     for (const effect of next.effects) run(effect)
+    tellHome()
   }
 
   const take = takeRunner(
@@ -154,9 +170,11 @@ export function createGameWeek(ports: GameWeekPorts): GameWeekRuntime {
         if (!hidden) dispatch({ type: "clock", now: ports.now() })
       })
       dispatch({ type: "arrived" })
+      told = ""
       const unwatchFeed = ports.feed.watch((feed) =>
         dispatch({ type: "fed", feed })
       )
+      tellHome()
       const unwatchStore = ports.store.subscribe(reconcile)
       reconcile()
       const clock = setInterval(
@@ -166,6 +184,7 @@ export function createGameWeek(ports: GameWeekPorts): GameWeekRuntime {
       return () => {
         clearInterval(clock)
         unwatchStore()
+        told = null
         unwatchFeed()
         unwatchPage()
         dispatch({ type: "left" })

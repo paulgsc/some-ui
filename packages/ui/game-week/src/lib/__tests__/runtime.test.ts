@@ -1,4 +1,5 @@
 import type { KeptBite } from "@game-week/lib/bite"
+import type { FeedChoice } from "@game-week/lib/feed"
 import { fixtureFeed } from "@game-week/lib/feed"
 import { ASK_HOLD_MS } from "@game-week/lib/machine"
 import type { BiteStore } from "@game-week/lib/ports"
@@ -103,6 +104,44 @@ afterEach(() => {
 })
 
 describe("createGameWeek", () => {
+  it("tells home what it is on, once per change, only while the page is attached", () => {
+    const chosen: Array<FeedChoice> = []
+    const feed = fixtureFeed(() => T0)
+    const runtime = createGameWeek({
+      ...ports(memoryStore()),
+      feed: { ...feed, choose: (choice) => chosen.push(choice) },
+    })
+    runtime.dispatch({ type: "pickMode", mode: "full" })
+    expect(chosen).toEqual([])
+    const detach = runtime.attach()
+    expect(chosen).toEqual([
+      {
+        mode: "full",
+        gameId: "fixture-1",
+        watching: { "fixture-1": true, "fixture-2": true },
+      },
+    ])
+    runtime.dispatch({ type: "pickGame", gameId: "fixture-1" })
+    expect(chosen).toHaveLength(1)
+    runtime.dispatch({ type: "toggleWatching", gameId: "fixture-2" })
+    runtime.dispatch({ type: "pickGame", gameId: "fixture-2" })
+    expect(chosen.slice(1)).toEqual([
+      {
+        mode: "full",
+        gameId: "fixture-1",
+        watching: { "fixture-1": true, "fixture-2": false },
+      },
+      {
+        mode: "full",
+        gameId: "fixture-2",
+        watching: { "fixture-1": true, "fixture-2": false },
+      },
+    ])
+    detach()
+    runtime.dispatch({ type: "pickMode", mode: "light" })
+    expect(chosen).toHaveLength(3)
+  })
+
   it("keeps a bite cut short by leaving the page", async () => {
     vi.useFakeTimers()
     const store = memoryStore()

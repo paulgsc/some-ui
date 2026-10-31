@@ -27,6 +27,8 @@ import {
   clock,
   MINUTE_LINE,
   MODE_WORDS,
+  noGamesLine,
+  noOfferLine,
   outboxLine,
   WORDS,
 } from "@game-week/lib/words"
@@ -543,11 +545,15 @@ export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
           onLegend={() => setPanel("legend")}
         />
       ) : game === null ? (
-        <p className="text-muted-foreground text-sm">{WORDS.noGames}</p>
+        <p className="text-muted-foreground text-sm">
+          {noGamesLine(state.link)}
+        </p>
       ) : (
         <>
           {view === null ? (
-            <p className="text-muted-foreground text-sm">{WORDS.noOffer}</p>
+            <p className="text-muted-foreground text-sm">
+              {noOfferLine(state.link)}
+            </p>
           ) : (
             <Offers view={view} now={now} onSay={say} />
           )}

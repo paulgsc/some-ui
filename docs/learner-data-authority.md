@@ -135,8 +135,11 @@ declared (checked by reading every call site and by the tests named).
   the presence lease, a push subscription), which needs the account _and_ the
   person's separate opt-in (LA6). The network globals (`fetch`,
   `XMLHttpRequest`, `WebSocket`, `EventSource`, `navigator.sendBeacon`) are
-  restricted by lint in `apps/www/src` except in the two files that are the choke
-  point: `lib/file-host-config/client.ts` and `lib/device-backend/interceptor/index.ts`.
+  restricted by lint in `apps/www/src` except in the files that are the choke
+  point: `lib/file-host-config/client.ts` and `lib/device-backend/interceptor/index.ts`,
+  and, for the phone's game day alone, `lib/home-link/live-socket.ts` (LA16),
+  which reaches the paired home, never the account's backend, and carries no
+  session, signal, presence, shelf item or push subscription.
 - _Falsified by:_ a hunk that adds a `fetch`, `XMLHttpRequest`, `WebSocket`,
   `EventSource` or `sendBeacon` to a path under `apps/www/src` that carries
   sessions, signals, presence, a shelf item or a push subscription and does not
@@ -371,7 +374,8 @@ declared (checked by reading every call site and by the tests named).
 
 - _Claim:_ in the Android app, every request to the home server goes through
   `lib/device-backend/native-http` (the one module that names
-  `CapacitorHttp`), which only `lib/home-link` calls, and, but for the drain
+  `CapacitorHttp`), which only `lib/home-link` calls (the game day's live
+  socket, which native HTTP cannot carry, is LA16's), and, but for the drain
   of what this phone keeps (LA15: aph, the Jobs record, Practice's record,
   voice notes, through `lib/home-link/lanes`) and Korean's look at the
   routine's files (`lib/home-link/routine`, one `GET /routine/files` per
@@ -809,6 +813,58 @@ can say is when a run is asked for:
   `onLink`, whose listeners only settle and drop what waits under another
   pairing.
 
+### LA16: the game day's live socket is open only while Game day watches it, in front, paired
+
+The recorder's offers come from home while home has them (GWB4, #2078; the
+owner chose a WebSocket, push and pull, on 2026-10-25). Native HTTP has no
+socket, so the phone's one WebSocket to home is `lib/home-link/live-socket.ts`
+(an LA1 exemption), opened only by `lib/home-link/live.ts`, which alone reads
+the pairing's token for it (`livePairing`, `lib/home-link/live-pairing.ts`); only the
+Game day route wires that feed (`gameDayFeed`). Who reaches each of those is
+enforced by `lib/serving-privacy/__tests__/egress-choke-points.test.ts`; how
+the feed opens, pulls, drops a stale offer, tries again and stops is enforced
+by `lib/home-link/__tests__/live.test.ts`; the messages by
+`packages/ui/game-week/src/lib/__tests__/live-wire.test.ts`. What no test can
+say is when the socket is open:
+
+- _Claim:_ `liveFeed` (`lib/home-link/live.ts`) opens the socket only while
+  the recorder watches the feed (from `watch` until its last unwatch), the
+  page is visible (`onVisibility`) and the phone holds a pairing whose base is
+  `https:` (`liveUrl` turns it into `wss:`; `openLiveSocket` refuses any other
+  scheme); it sends only a `hello` (on opening and on each `choose`) and a
+  `ping` every `PING_MS`; it drops the offer on every close, on `QUIET_MS`
+  with nothing from home, and ignores an offer numbered no later than the last;
+  it tries again only after a close that leaves it `away`, after
+  `retryDelayMs`, and not at all after `update` or `unpaired` until the
+  pairing changes; and the Game day route makes it with `gameDayFeed` only in
+  the device build's non-development branch.
+- _Falsified by:_ a hunk to `lib/home-link/live.ts` that calls `connect` from
+  anything but `start`, the visibility listener's shown branch, the link
+  listener (on a changed pairing) or the retry timer; that sends on the socket
+  anything but `ports.wire.hello` and `ports.wire.ping`, or pings other than
+  from `sendPing`'s own timer; that keeps `offer` across `end`, removes the
+  `seq` check in `heard`, or removes or lengthens `armQuiet`; that retries
+  after a close `triesAgain` refuses, or changes `linkAfterClose`,
+  `triesAgain` or `retryDelayMs` (`live-model.ts`) to retry sooner or after
+  `update` or `unpaired`; that drops `stop`'s `end` or its unsubscribes; a hunk
+  to `live-socket.ts` that removes the `wss:` check, sends the token anywhere
+  but the offered subprotocols, or reports a close it asked for; a hunk to
+  `routes/_dashboard/_apk/game-week.tsx` that calls `gameDayFeed` outside
+  `PhoneGameWeek`'s ports or in the development branch; a hunk that widens the
+  LA16 allowlists in the egress test; or a hunk that deletes, renames or moves
+  any file, function or constant this claim names without carrying the claim
+  to its new place.
+- _Scope:_ `apps/www/src/lib/home-link/live.ts`, `live-model.ts`,
+  `live-socket.ts`, `live-pairing.ts`,
+  `apps/www/src/routes/_dashboard/_apk/game-week.tsx`.
+- _Why not enforced:_ the tests drive the runtime with a fake socket and clock
+  and see what it does in the states they name; whether a new listener or
+  timer opens the socket at a moment the person is not on Game day is a
+  reading of intent no test or lint can make. Held when declared, by reading
+  every call: `connect` in `start`, the visibility listener, the link listener
+  and the retry timer; `socket.send` only through `sayHello` and `sendPing`;
+  `gameDayFeed` only in `gameWeekPorts`'s non-`DEV` branch.
+
 ## Not covered, on purpose
 
 - **The shared origin.** On GitHub Pages every project under the same `github.io`
@@ -831,7 +887,9 @@ can say is when a run is asked for:
   phone's Home server block syncs, pairs, unpairs and clears
   finished sessions home holds on a tap (LA8); a paired phone drains what it
   keeps to home on its own, since home is the owner's own store (LA15), and
-  Korean reads the routine's files from it. The share sheet and the speech
+  Korean reads the routine's files from it. Game day holds a live socket to
+  home while it shows (LA16); what it says there (the mode, the game, which
+  games the owner is watching) decides home's offer and is kept nowhere. The share sheet and the speech
   provider reach beyond home, and the share sheet's "arrived" is the
   receiver's copy, not home's (HF1, #2176).
 - **The server's side.** What `file_host` stores and logs is

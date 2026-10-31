@@ -662,11 +662,13 @@
     {
       "id": "game-feed",
       "name": "Home follows the games of the week",
-      "why": "Home polls ESPN's public NFL feed in the background, keeping every answer and appending each game's plays to a log, so the phone's game-day bites can later be matched to the play they are about. No route serves it yet.",
+      "why": "Home polls ESPN's public NFL feed in the background, keeping every answer and appending each game's plays to a log, so the phone's game-day bites can later be matched to the play they are about. No route serves the log; the paired phone's game day socket (in the `websocket` module, placed in `synchronous`) reads it to offer what can be happening now, only while the socket is open.",
       "paths": [
         "server:apps/servers/file_host/src/game_feed",
         "server:crates/nfl_feed",
-        "server:crates/db/game_feed"
+        "server:crates/db/game_feed",
+        "server:apps/servers/file_host/src/websocket/game_live",
+        "some-ui:apps/www/src/lib/home-link/live.ts"
       ],
       "modules": [],
       "objectives": [

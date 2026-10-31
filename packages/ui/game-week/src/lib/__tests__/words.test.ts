@@ -2,21 +2,35 @@
  * The recorder speaks in the person's terms: what is kept where, never the
  * machinery behind it (CLAUDE.md, "State in the person's terms").
  */
+import type { FeedLink } from "@game-week/lib/feed"
 import { MODES } from "@game-week/lib/modes"
 import {
   ago,
   clock,
+  gameLabel,
   keptLine,
   MINUTE_LINE,
   MODE_WORDS,
+  noGamesLine,
+  noOfferLine,
   NOTICES,
   outboxLine,
+  wantLine,
   WORDS,
 } from "@game-week/lib/words"
 import { describe, expect, it } from "vitest"
 
 const MACHINERY =
   /\b(grant|consent|scope|sync\w*|server|request|response|status|error|api|http\w*|https?:|\d{3}\b|token|queue|retry|null|undefined|lane|pull\w*|outbox|upload\w*|socket|offset|seq|catalog|fixture|feed|store|idb|indexeddb|blob)\b/i
+
+const LINKS: ReadonlyArray<FeedLink> = [
+  "asking",
+  "live",
+  "away",
+  "not-following",
+  "unpaired",
+  "update",
+]
 
 /** Midday UTC: Oct 28 in every zone from UTC-12 to UTC+11. */
 const ON_HOME_SINCE = Date.UTC(2026, 9, 28, 12)
@@ -59,6 +73,9 @@ function everyPhrase(): Array<string> {
     keptLine(4_200),
     ago(40_000),
     ago(150_000),
+    ...LINKS.flatMap((link) => [noOfferLine(link), noGamesLine(link)]),
+    gameLabel("SF", "SEA"),
+    wantLine("SF"),
     ...views,
   ]
 }
@@ -99,6 +116,15 @@ describe("the recorder's words", () => {
     ).toBe(
       "1 bite waits on this phone until home has it. 12 bites kept on home since Oct 28."
     )
+  })
+
+  it("says why nothing is offered live, in the person's terms", () => {
+    expect(noOfferLine("away")).toBe(
+      "Home is out of reach, so nothing is offered live. Say it first, or pick from every scenario. Your bites wait on this phone until home has them."
+    )
+    expect(noGamesLine("not-following")).toMatch(/^Home isn't following games/)
+    expect(gameLabel("SF", "SEA")).toBe("SEA at SF")
+    expect([wantLine("SF"), wantLine(null)]).toEqual(["SF win", ""])
   })
 
   it("counts time the way the screen shows it", () => {

@@ -11,6 +11,8 @@ export const T0 = Date.UTC(2026, 10, 1, 21)
 export const KICKOFF = T0 - 70 * 60_000
 
 export const FEED: Feed = {
+  link: "live",
+  offsetMs: 1_250,
   games: [
     {
       id: "401772981",

@@ -53,7 +53,7 @@ describe("a tap", () => {
   it("starts nothing without a game, and says why", () => {
     const empty = run(initialState(INITIAL_PREFS, T0), {
       type: "fed",
-      feed: { games: [], offer: null },
+      feed: { games: [], offer: null, link: "live", offsetMs: null },
     }).state
     const next = step(empty, { type: "say", said: THIRD })
     expect(next.effects).toEqual([])
@@ -70,6 +70,7 @@ describe("a tap", () => {
       strip: FEED.offer?.strip,
       watching: true,
       mode: "standard",
+      offsetMs: 1_250,
     })
   })
 })
@@ -538,7 +539,11 @@ describe("GB1: every bite keeps how it was chosen", () => {
 })
 
 describe("with no offer for the game", () => {
-  const away = here(INITIAL_PREFS, { games: FEED.games, offer: null })
+  const away = here(INITIAL_PREFS, {
+    ...FEED,
+    offer: null,
+    link: "away",
+  })
 
   it("offers nothing", () => {
     expect(offerView(away)).toBeNull()

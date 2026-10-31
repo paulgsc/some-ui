@@ -112,12 +112,15 @@ export default defineConfig([
     },
   },
   {
-    // The two files that are the choke point: the account/ceremony transport,
-    // and the Android build's wrapper that answers `file_host` routes from the
-    // device's own database. Tests stub the network on purpose.
+    // The files that are the choke point: the account/ceremony transport,
+    // the Android build's wrapper that answers `file_host` routes from the
+    // device's own database, and the game day's live socket. Tests stub the
+    // network on purpose.
     files: [
       "src/lib/file-host-config/client.ts",
       "src/lib/device-backend/interceptor/index.ts",
+      // LA16: the game day's live socket, the phone's one WebSocket to home.
+      "src/lib/home-link/live-socket.ts",
       "src/test-support/**",
       "src/**/__tests__/**",
       "src/**/*.test.{ts,tsx}",

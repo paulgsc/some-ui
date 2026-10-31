@@ -1,14 +1,24 @@
-import { fixtureFeed, noGamesFeed } from "@game-week/lib/feed"
+import type { FeedPort } from "@game-week/lib/feed"
+import { fixtureFeed } from "@game-week/lib/feed"
 import type { OutboxPort } from "@game-week/lib/ports"
 import { storedPrefs } from "@game-week/lib/ports"
 import type { GameWeekPorts } from "@game-week/lib/runtime"
-import { WORDS } from "@game-week/lib/words"
+import { noGamesLine, noOfferLine, WORDS } from "@game-week/lib/words"
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 
 import { GameWeek } from "./index"
 
 const NOW = Date.UTC(2026, 10, 1, 21)
+
+/** Home out of reach, with no week yet on this phone. */
+const awayFeed: FeedPort = {
+  choose: () => undefined,
+  watch(listener): () => void {
+    listener({ games: [], offer: null, link: "away", offsetMs: null })
+    return () => undefined
+  },
+}
 
 function ports(feed = fixtureFeed(() => NOW)): GameWeekPorts {
   return {
@@ -69,33 +79,34 @@ describe("GameWeek", () => {
     expect(screen.getByRole("button", { name: WORDS.done })).toBeTruthy()
   })
 
-  it("with no offer for the game, still lets me say it first", () => {
+  it("away from home, keeps the week it had, says so, and still lets me say it first", () => {
     render(
       <GameWeek
         ports={ports({
+          choose: () => undefined,
           watch: (listener): (() => void) => {
             let games: Parameters<typeof listener>[0]["games"] = []
             fixtureFeed(() => NOW).watch((feed) => {
               games = feed.games
             })
-            listener({ games, offer: null })
+            listener({ games, offer: null, link: "away", offsetMs: null })
             return () => undefined
           },
         })}
         outbox={outbox}
       />
     )
-    expect(screen.getByText(WORDS.noOffer)).toBeTruthy()
+    expect(screen.getByText(noOfferLine("away"))).toBeTruthy()
     expect(screen.getByRole("button", { name: WORDS.sayItFirst })).toBeTruthy()
   })
 
-  it("with no games yet, says recording opens once home sends them", () => {
-    render(<GameWeek ports={ports(noGamesFeed)} outbox={outbox} />)
-    expect(screen.getByText(WORDS.noGames)).toBeTruthy()
+  it("with no games yet, says why", () => {
+    render(<GameWeek ports={ports(awayFeed)} outbox={outbox} />)
+    expect(screen.getByText(noGamesLine("away"))).toBeTruthy()
   })
 
   it("opens every scenario in a sheet over the screen, and closes it", () => {
-    render(<GameWeek ports={ports(noGamesFeed)} outbox={outbox} />)
+    render(<GameWeek ports={ports(awayFeed)} outbox={outbox} />)
     fireEvent.click(screen.getByRole("button", { name: WORDS.everyScenario }))
     const sheet = screen.getByRole("dialog", { name: WORDS.legendTitle })
     expect(sheet.textContent).toContain(WORDS.legendLede)

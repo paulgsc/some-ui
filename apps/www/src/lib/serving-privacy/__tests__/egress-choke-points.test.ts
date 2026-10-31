@@ -22,6 +22,13 @@
  *   and whose telling of what was opened one `PUT /routine/opened`) may
  *   call `lib/home-link`.
  *
+ * - **LA16: the game day's live socket is the phone's one other way home.**
+ *   Native HTTP has no socket, so `lib/home-link/live-socket` is the one
+ *   file that names `WebSocket` (an LA1 exemption), only `lib/home-link/live`
+ *   opens it and reads the pairing's token for it (`livePairing`, in
+ *   `lib/home-link/live-pairing`), and only
+ *   the Game day route wires that feed (`gameDayFeed`).
+ *
  * The last group feeds the checks known-bad sources, so a check that stopped
  * looking cannot stay green.
  */
@@ -35,10 +42,19 @@ import { describe, expect, it } from "vitest"
 /** apps/www/src/lib/serving-privacy/__tests__ -> apps/www/src. */
 const SRC = resolve(dirname(fileURLToPath(import.meta.url)), "../../..")
 
+/** LA16: the one module that opens a socket to the home server. */
+const LIVE_SOCKET = "lib/home-link/live-socket.ts"
+
+/** LA16: who may open the live socket, read the token for it, and wire it. */
+const LIVE_RUNTIME = "lib/home-link/live.ts"
+const LIVE_FEED_CALLERS = ["routes/_dashboard/_apk/game-week.tsx"]
+
 /** Files that are the choke point, or stub the network on purpose. */
 const NETWORK_EXEMPT = new Set([
   "lib/file-host-config/client.ts",
   "lib/device-backend/interceptor/index.ts",
+  // LA16: the game day's live socket, the phone's one WebSocket to home.
+  LIVE_SOCKET,
 ])
 
 /** LA8: the one module that may reach the home server over native HTTP. */
@@ -61,7 +77,8 @@ const HOME_LINK_CALLERS = new Set([
   "components/settings/device-routine-reads.tsx",
   "components/player/device-routine-files.ts",
   // LA13: game day's line of what of its bites waits on the phone for home
-  // (`gameOutbox`), which reads and sends nothing.
+  // (`gameOutbox`), which reads and sends nothing; and LA16: the game day's
+  // live feed (`gameDayFeed`), open while the recorder watches it.
   "routes/_dashboard/_apk/game-week.tsx",
 ])
 
@@ -373,7 +390,7 @@ describe("LA1: only the choke points name a network global", () => {
     expect(problems).toEqual([])
   })
 
-  it("keeps the exemption list in eslint.config.js to the same two files", () => {
+  it("keeps the exemption list in eslint.config.js to the same files", () => {
     const config = readFileSync(join(SRC, "../eslint.config.js"), "utf8")
     // The `files` of every block that turns either network rule off.
     const blocks = [
@@ -489,6 +506,47 @@ describe("LA8: the phone reaches home through one module", () => {
       expect(
         valueImportsOf(caller, read(caller), isHomeLink).length
       ).toBeGreaterThan(0)
+    }
+  })
+})
+
+describe("LA16: the game day's live socket opens from one feed", () => {
+  const sources = sourceFiles().filter((f) => !isTestFile(f))
+  const read = (f: string): string => readFileSync(join(SRC, f), "utf8")
+  const names = (f: string, name: string): boolean =>
+    new RegExp(`\\b${name}\\b`).test(read(f))
+
+  it("opens the socket only from the feed, and wires the feed only from Game day", () => {
+    const outside = sources.filter((f) => f !== LIVE_SOCKET)
+    expect(
+      outside.filter((f) => f !== LIVE_RUNTIME && names(f, "openLiveSocket"))
+    ).toEqual([])
+    expect(
+      sources.filter(
+        (f) =>
+          f !== LIVE_RUNTIME &&
+          f !== "lib/home-link/live-pairing.ts" &&
+          names(f, "livePairing")
+      )
+    ).toEqual([])
+    expect(
+      sources.filter(
+        (f) =>
+          f !== LIVE_RUNTIME &&
+          !LIVE_FEED_CALLERS.includes(f) &&
+          names(f, "gameDayFeed")
+      )
+    ).toEqual([])
+  })
+
+  it("still finds what it is meant to guard", () => {
+    expect(
+      networkGlobalUses(LIVE_SOCKET, read(LIVE_SOCKET)).length
+    ).toBeGreaterThan(0)
+    expect(names(LIVE_RUNTIME, "openLiveSocket")).toBe(true)
+    expect(names(LIVE_RUNTIME, "livePairing")).toBe(true)
+    for (const caller of LIVE_FEED_CALLERS) {
+      expect(names(caller, "gameDayFeed")).toBe(true)
     }
   })
 })
