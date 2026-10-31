@@ -18,8 +18,8 @@ import type { Shot } from "@some-ui/video-render"
 import { CUT_LIST_SCHEMA, fitToTake } from "@some-ui/video-render"
 import type { Cut, Primer } from "@soundbites/lib/journal/primer"
 
-import type { CutListShape, Project, ProjectTake } from "./model"
-import { latest, primerAt } from "./model"
+import type { CutListShape, Project, ProjectState, ProjectTake } from "./model"
+import { latest, newProject, primerAt } from "./model"
 
 /** The breath after a take before the next scene: `render.py`'s default tail. */
 export const TAIL_MS = 500
@@ -136,6 +136,21 @@ export function cutListOf(
     const take = chosenTake(before.project, shot.id)
     return take === null ? cutList : fitted(cutList, shot.id, take)
   }, base)
+}
+
+/** The project a primer opens as: revision 1, Claude's, nothing taken. */
+export function projectFromPrimer(
+  id: string,
+  primer: Primer,
+  at: string
+): ProjectState {
+  return newProject(id, {
+    author: "claude",
+    message: `Primer: ${primer.title}`,
+    at,
+    cutList: cutListOf(primer),
+    primer,
+  })
 }
 
 /** The take chosen for scene `shot`, if one is. */

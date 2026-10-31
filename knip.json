@@ -32,7 +32,10 @@
       ]
     },
     "apps/www": {
-      "entry": ["tests/ui-fit/panel-page/main.tsx"]
+      "entry": [
+        "tests/ui-fit/panel-page/main.tsx",
+        "tests/ui-fit/phone-page/main.tsx"
+      ]
     },
     "extensions/common": {
       "ignoreDependencies": ["@types/firefox-webext-browser"]
@@ -108,7 +111,7 @@
       "entry": ["src/index.ts", "src/entry.ts"]
     },
     "packages/ui/soundbites": {
-      "entry": ["src/index.ts", "src/contract.ts"]
+      "entry": ["src/index.ts", "src/contract.ts", "src/fixtures.ts"]
     },
     "packages/ui/shared": {
       "ignoreDependencies": ["clsx", "tailwind-merge"]

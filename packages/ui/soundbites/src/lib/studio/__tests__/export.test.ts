@@ -1,12 +1,13 @@
 /** @vitest-environment node */
 import { readProjectFile } from "@soundbites/lib/project/file"
+import { memoryProjectStore } from "@soundbites/lib/project/memory-store"
 import type { Project } from "@soundbites/lib/project/model"
 import { newProject, step } from "@soundbites/lib/project/model"
 import { cutListOf, fitted } from "@soundbites/lib/project/script"
 import { studioFiles } from "@soundbites/lib/studio/export"
 import { describe, expect, it } from "vitest"
 
-import { AT, memoryProjectStore, primer } from "./fixture"
+import { AT, primer } from "./fixture"
 
 /** A project with a take on "path" still on the phone and one on "miss" sent. */
 function project(): Project {

@@ -41,6 +41,9 @@ a LAN-only page talks to is the server's to guard.
   carries the audience and something inert elsewhere (A4): Hangul Honeycomb's panel joins the
   shared registry's panels in a web build, and is absent from the Android app's, which
   therefore offers no activity that plays it (`apps/www/src/lib/playable`).
+- **Or on a ui-fit page**, a test entry no shipped build carries, built only under a
+  profile that carries the audience: `fitPages` in `build.profiles.ts`, whose
+  `FIT_PHONE_PAGE` says why it is neither a route nor a door (A4 does not apply to it).
 
 ## What is enforced, and what is not
 

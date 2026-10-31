@@ -18,8 +18,12 @@ import type { Cut, Primer } from "@soundbites/lib/journal/primer"
 import { cutV1 } from "@soundbites/lib/journal/primer"
 import { projectFile, readProjectFile } from "@soundbites/lib/project/file"
 import type { Project } from "@soundbites/lib/project/model"
-import { newProject, step } from "@soundbites/lib/project/model"
-import { cutListOf, fitted, projectIdFor } from "@soundbites/lib/project/script"
+import { step } from "@soundbites/lib/project/model"
+import {
+  fitted,
+  projectFromPrimer,
+  projectIdFor,
+} from "@soundbites/lib/project/script"
 
 /** The episode as the Journal tab kept it. */
 type JournalPlan = {
@@ -155,13 +159,7 @@ export function carriedProject(
     })),
   }
   const id = projectIdFor(primer.title, plan.openedAt)
-  const first = newProject(id, {
-    author: "claude",
-    message: `Primer: ${primer.title}`,
-    at: plan.openedAt,
-    cutList: cutListOf(primer),
-    primer,
-  })
+  const first = projectFromPrimer(id, primer, plan.openedAt)
   const order = primer.cuts.map((cut) => cut.id)
   const sorted = [...takes].sort(
     (a, b) =>

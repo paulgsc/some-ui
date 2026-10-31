@@ -457,7 +457,15 @@ const Record = ({
             <Mic className="size-4" aria-hidden="true" />
             {WORDS.record.again}
           </Button>
-          <Button onClick={() => dispatch({ type: "keepNextPressed" })}>
+          {/* Wraps: on the narrowest phone (360px) a column is 160px, less
+              than "Keep · next scene" on one line, and the last scene's
+              label is longer. `whitespace-normal`, not `text-wrap`: the
+              button's own `whitespace-nowrap` is a shorthand that resets
+              text-wrap, and wins in the cascade. */}
+          <Button
+            className="h-auto min-h-10 whitespace-normal"
+            onClick={() => dispatch({ type: "keepNextPressed" })}
+          >
             {view.last ? WORDS.record.keepLast : WORDS.record.keepNext}
           </Button>
         </div>
@@ -584,7 +592,7 @@ const Done = ({
             <Button
               key={snag}
               variant="outline"
-              className="h-auto min-h-10 text-wrap"
+              className="h-auto min-h-10 whitespace-normal"
               onClick={() =>
                 dispatch({ type: "snagTold", text: WORDS.done.snags[snag] })
               }
