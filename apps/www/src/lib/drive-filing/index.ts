@@ -26,7 +26,6 @@ const DRAMA_REQUESTS = "Dramas › requests"
 export const DRIVE_FOLDERS: Readonly<
   Partial<Record<string, (day: string) => string>>
 > = {
-  reflections: () => "Study ledger › reflections",
   // One folder per export: each `context.json` is a full snapshot, and the
   // next export's files carry the same names.
   "agent-export": (day) => `Study ledger › study-context › ${day} (new folder)`,

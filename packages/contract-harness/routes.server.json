@@ -424,6 +424,13 @@
       "module": "routine"
     },
     {
+      "method": "PUT",
+      "path": "/routine/reflections/:id",
+      "full_path": "/api/v1/routine/reflections/:id",
+      "versioned": true,
+      "module": "routine"
+    },
+    {
       "method": "GET",
       "path": "/rust-rounds",
       "full_path": "/api/v1/rust-rounds",

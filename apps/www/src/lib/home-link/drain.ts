@@ -5,9 +5,11 @@
  * to home copies them (`./sessions`, reading home only to plan), kept shelf
  * items PUT as the shelf sends them (`./shelf`), each finished LeetType
  * session PUT event by event and read back (`./leetype-log`), then Studio's
- * sittings and answers the same way (`./studio-log`). Nothing of home's is
- * taken in, and nothing on the phone is let go: a finished session leaves
- * only by the clear in Settings (`./clear`), once home has read it back.
+ * sittings and answers the same way (`./studio-log`), then each written
+ * reflection (`./reflections`, LA16). Nothing of home's is taken in, and
+ * nothing on the phone is let go but written reflections (`letGoHeld`,
+ * LA16): a finished session leaves only by the clear in Settings
+ * (`./clear`), once home has read it back.
  *
  * A part home turned away (a full shelf, a refusal, a read-back that did not
  * match what was sent) does not hold back the parts after it, which share
@@ -30,6 +32,8 @@ import type { SessionRecord } from "@/lib/tenant/types"
 
 import type { LogReport } from "./leetype-log"
 import { emptyLogReport, sendLog } from "./leetype-log"
+import type { Written } from "./reflections"
+import { sendReflections } from "./reflections"
 import type { Sent } from "./sent"
 import {
   readSent,
@@ -58,6 +62,13 @@ export type DrainPorts = {
   logGoing: () => Promise<ReadonlyArray<HomeSession>>
   /** What of Studio's record home lacks under `pairing` (`./going`). */
   studioGoing: () => Promise<StudioGoing>
+  /** The written reflections home lacks under `pairing` (`./going`). */
+  reflectionsGoing: () => ReadonlyArray<Written>
+  /**
+   * Lets go of the written reflections past the offline set that `sent`
+   * says home holds (`./going`'s `letGoHeldReflections`).
+   */
+  letGoHeld: (sent: Sent) => void
   /** The pairing this run goes under (the link's id for it). */
   pairing: string
   storage: KeyedStorage | null
@@ -169,7 +180,7 @@ export async function drainHome(
   const part = async <T>(
     going: T,
     sender: LogSender<T>,
-    field: "leetype" | "studio"
+    field: "leetype" | "studio" | "reflections"
   ): Promise<HomeExchanged | null> => {
     const log = emptyLogReport()
     const readBack: Record<string, string> = {}
@@ -191,6 +202,14 @@ export async function drainHome(
     "studio"
   )
   if (studioEnded !== null) return studioEnded
+  const reflectionsEnded = await part(
+    ports.reflectionsGoing(),
+    sendReflections,
+    "reflections"
+  )
+  // What home holds, as this run has heard it, whatever the run came to.
+  ports.letGoHeld(sent)
+  if (reflectionsEnded !== null) return reflectionsEnded
 
   return short === null ? { kind: "synced" } : failed(short)
 }

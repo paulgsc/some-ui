@@ -253,6 +253,8 @@ describe("letting the phone's copies go once home holds them", () => {
       read: () => Promise.resolve({ local: [...phone.sessions], kept: [] }),
       logGoing: () => Promise.resolve([]),
       studioGoing: () => Promise.resolve({ sittings: [], reports: [] }),
+      reflectionsGoing: () => [],
+      letGoHeld: () => undefined,
       pairing: PAIRING,
       storage,
     })
