@@ -167,6 +167,14 @@ size per table. LeetType's session files, picked from storage, count toward
 it too, and nothing lets them go yet (#1921); each stays where it was picked
 from.
 
+Every cap is shown on the Settings page of its concern, with where it stands
+and what happens at it (`apps/www/src/lib/limits`, SM2): the budget and each
+store's own cap under **Settings → This phone**, the voice notes on their way
+home under **Settings → Home**, and the failure log under **How it's
+running**. Each count is read from the store that keeps it. A test fails when
+a cap in code has no row there and no reason it is left off
+(`lib/limits/__tests__/coverage.test.ts`).
+
 A restore has to be able to open what it brings back, which is why the SQLite
 plugin's unused encryption is off (`capacitor.config.ts` says why; the review
 holds the APK to it).

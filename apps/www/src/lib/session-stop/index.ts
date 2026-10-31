@@ -48,7 +48,8 @@ export type Stop = {
 export const PICK_UP_MS = 30 * 60_000
 /** Back within this after leaving: a glance, not a stop. */
 export const GLANCE_MS = 60_000
-const STOP_LIMIT = 20
+/** Stops kept, and sessions whose paths are counted: the oldest goes past it. */
+export const STOP_LIMIT = 20
 
 const store = boundedList(
   "some-ui:session-stops",

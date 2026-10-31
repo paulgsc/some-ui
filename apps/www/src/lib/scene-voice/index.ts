@@ -44,6 +44,9 @@ const notes = {
     ),
 }
 
+/** How many notes the draft holds now, read from the list that keeps them. */
+export const keptSceneNotes = (): number => list.read().length
+
 const shelf = savingShelf({
   dbName: "some-ui.scene-voice",
   maxBytes: SCENE_AUDIO_MAX_BYTES,

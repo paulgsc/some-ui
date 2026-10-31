@@ -19,12 +19,15 @@ import { createVoiceHome } from "./runtime"
  * days of notes while the phone is away from home. Past it, a note waits on
  * its own screen's shelf until a copy fits.
  */
-const VOICE_HOME_MAX_BYTES = 100 * SOUNDBITE_TAKE_MAX_BYTES
+export const VOICE_HOME_MAX_BYTES = 100 * SOUNDBITE_TAKE_MAX_BYTES
 
 const shelf = savingShelf({
   dbName: "some-ui.voice-home",
   maxBytes: VOICE_HOME_MAX_BYTES,
 })
+
+/** The copies' audio, by note id: what Settings counts against the room. */
+export const voiceHomeAudio = shelf.shelf
 
 let voiceHome: VoiceHome | null = null
 

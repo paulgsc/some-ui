@@ -1,6 +1,7 @@
 import type { JSX } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 
+import { DeviceLimits } from "@/components/settings/device-limits"
 import { DeviceSection } from "@/components/settings/device-section"
 import {
   SettingsBlock,
@@ -10,9 +11,12 @@ import {
 const HomePage = (): JSX.Element => (
   <SettingsPage id="home">
     {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
-      <SettingsBlock>
-        <DeviceSection />
-      </SettingsBlock>
+      <>
+        <SettingsBlock>
+          <DeviceSection />
+        </SettingsBlock>
+        <DeviceLimits concern="home" />
+      </>
     ) : null}
   </SettingsPage>
 )

@@ -114,6 +114,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/home-link/**",
   "apps/www/src/lib/jobs/**",
   "apps/www/src/lib/journal-share/**",
+  "apps/www/src/lib/limits/**",
   "apps/www/src/lib/lens-takes/**",
   "apps/www/src/lib/leetype-files/**",
   "apps/www/src/lib/leetype-takes/**",

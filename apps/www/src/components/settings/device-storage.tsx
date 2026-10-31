@@ -5,7 +5,7 @@
  */
 import type { JSX } from "react"
 import { useEffect, useSyncExternalStore } from "react"
-import { counted, formatSize } from "@some-ui/core-utils"
+import { counted } from "@some-ui/core-utils"
 import { Alert, AlertDescription, AlertTitle, Button } from "@some-ui/shared"
 import { HardDrive } from "lucide-react"
 import { toast } from "sonner"
@@ -28,23 +28,6 @@ function useDeviceStorage(): DeviceStorageView | null {
     void deviceStorage.refresh()
   }, [])
   return view
-}
-
-export const DeviceStorageSummary = (): JSX.Element | null => {
-  const view = useDeviceStorage()
-  if (view === null) return null
-  const { databaseBytes, webViewBytes, quotaBytes } = view.use
-  return (
-    <div className="space-y-1">
-      <p className="text-sm">
-        Using {formatSize(databaseBytes + webViewBytes)} of{" "}
-        {formatSize(quotaBytes)}
-      </p>
-      <p className="text-muted-foreground text-xs">
-        Clear finished sessions home holds to free up space.
-      </p>
-    </div>
-  )
 }
 
 const finishedOn = (stamp: string): string =>
