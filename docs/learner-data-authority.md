@@ -64,10 +64,9 @@ prompt home: "Share the next scene's prompt" became "Ask for the next scene",
 which keeps the ask on the phone (`lib/scene-ask`) for the drain to send
 (LA18), and home hands it to the routine through the Jobs mailbox
 (paulgsc/server `drama_prompt`, its invariant 31). The drama's share sheet
-and its Drive folder are gone from the owner's app. Topik keeps its
-`FileShare` port as the product adapter for other learners' hosts, off the
-owner's path (D5; `docs/makjang/README.md`, "The loop through the learner's
-drive").
+and its Drive folder are gone from the owner's app, and topik's `FileShare`
+port and `SharePrompt`, which no host injected, are removed (the owner, on
+#2179; `docs/makjang/README.md`, "The loop through the learner's drive").
 
 ## The two questions
 

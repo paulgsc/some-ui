@@ -49,7 +49,6 @@ import {
   RoutineStatus,
   useHeldRuns,
 } from "@topik/components/topik/handheld/routine-status"
-import { SharePrompt } from "@topik/components/topik/handheld/share-prompt"
 import { ReadAloudScreen } from "@topik/components/topik/read-aloud/read-aloud-screen"
 import { useSessionConfig } from "@topik/lib/topik/adapter/context/session-config-context"
 import { useLessonPrompt } from "@topik/lib/topik/adapter/hooks/use-lesson-prompt"
@@ -192,7 +191,6 @@ export const HandheldLesson = ({
     routineFeed,
     metadataRepository,
     sceneAsk,
-    share,
     sceneVoice,
     sceneFileHint,
     wordSetHint,
@@ -582,7 +580,7 @@ export const HandheldLesson = ({
           }
           last={last}
           ending={
-            sceneAsk ? (
+            sceneAsk && (
               <AskScene
                 asks={sceneAsk}
                 label="다음 화 쓰기"
@@ -590,16 +588,6 @@ export const HandheldLesson = ({
                 prompt={() => lessonPrompt.prompt({ level: heldLevel })}
                 onAsked={lessonPrompt.handedOff}
               />
-            ) : (
-              share && (
-                <SharePrompt
-                  share={share}
-                  label="다음 화 쓰기"
-                  labelLang="ko"
-                  prompt={() => lessonPrompt.prompt({ level: heldLevel })}
-                  onShared={lessonPrompt.handedOff}
-                />
-              )
             )
           }
           short={short}
@@ -665,7 +653,6 @@ export const HandheldLesson = ({
           onPromptHandedOff={lessonPrompt.handedOff}
           onStartTree={startTree}
           sceneAsk={sceneAsk}
-          share={share}
           sceneVoice={sceneVoice}
           short={short}
           kept={

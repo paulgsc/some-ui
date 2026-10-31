@@ -12,7 +12,6 @@ import {
 } from "@some-ui/shared"
 import { AskScene } from "@topik/components/topik/handheld/ask-scene"
 import { SceneVoiceNotes } from "@topik/components/topik/handheld/scene-voice"
-import { SharePrompt } from "@topik/components/topik/handheld/share-prompt"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import {
   ToggleChip,
@@ -20,7 +19,6 @@ import {
 } from "@topik/components/topik/handheld/toggle-chip"
 import { useSceneVoice } from "@topik/lib/topik/adapter/hooks/use-scene-voice"
 import type { SceneAsk } from "@topik/lib/topik/adapter/next-scene-ask"
-import type { FileShare } from "@topik/lib/topik/adapter/next-scene-share"
 import type { SceneVoice } from "@topik/lib/topik/adapter/scene-voice"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
 import { titleOf } from "@topik/lib/topik/core/drama"
@@ -62,9 +60,8 @@ type GenerateLessonProps = {
    * their own.
    */
   kept?: JSX.Element
-  /** Asks home for the next scene; offered instead of `share` where given. */
+  /** Asks home for the next scene, where the host gives it. */
   sceneAsk?: SceneAsk
-  share?: FileShare
   sceneVoice?: SceneVoice
 }
 
@@ -267,7 +264,6 @@ export const GenerateLesson = ({
   short,
   kept,
   sceneAsk,
-  share,
   sceneVoice,
   initialSeed,
   initialReply,
@@ -380,9 +376,8 @@ export const GenerateLesson = ({
           Paste it into any model, then paste its reply below. The lesson lasts
           this session; your chat with the model keeps it.
           {notes.length > 0 &&
-            (sceneAsk
-              ? " Your voice notes go with your ask, not with a copied prompt."
-              : " Your voice notes go with Share, not with a copied prompt.")}
+            sceneAsk &&
+            " Your voice notes go with your ask, not with a copied prompt."}
         </p>
         {sceneAsk && (
           <AskScene
@@ -391,15 +386,6 @@ export const GenerateLesson = ({
             notes={notes}
             disabled={voice !== null && voice.take.kind !== "idle"}
             onAsked={(text) => onPromptHandedOff?.(text)}
-          />
-        )}
-        {!sceneAsk && share && (
-          <SharePrompt
-            share={share}
-            prompt={prompt}
-            notes={notes}
-            disabled={voice !== null && voice.take.kind !== "idle"}
-            onShared={(text) => onPromptHandedOff?.(text)}
           />
         )}
         {manual !== null && (

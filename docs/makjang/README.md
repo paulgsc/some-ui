@@ -865,13 +865,13 @@ file, so a learner's drive can carry the loop and their own agent can
 answer it unattended. We run no agent and no server for it; the only
 contract is the files. Its canon line is Remark 8.3 (v1.15).
 
-This loop is a product adapter for other learners, off the owner's path
+This loop was a product adapter for other learners, off the owner's path
 (the owner's decision D5 on #2174). The owner's phone asks home instead
-(above); topik keeps the `FileShare` port and `SharePrompt` for a host that
-serves a learner with their own drive and agent, and the file contract
-below is what that host and agent agree on. No host in this repository
-injects it today. Pulling a scene back from storage (MKJ-S10) stays on the
-owner's phone too, for refreshing away from home (D4).
+(above). Its code (topik's `FileShare` port and `SharePrompt`) is removed,
+since no host injected it (the owner, on #2179: "delete it, it's
+unreached"); git history keeps it. The file contract below still holds: an
+ask's markdown is the same file. Pulling a scene back from storage (MKJ-S10)
+stays on the owner's phone, for refreshing away from home (D4).
 
 ### Sharing the next scene (MKJ-S8)
 
@@ -884,12 +884,11 @@ owner's phone too, for refreshing away from home (D4).
   다음 화 쓰기 (write the next episode), since what happens next is the
   reason to come back; and beside "Copy the prompt" when the learner starts
   a new drama.
-- **How:** a share sheet, through the host's `FileShare` port, the same
-  mechanism soundbites' "Share with an agent" uses. Since HF4 no host here
-  injects it (the owner's app asks home instead, above); where none does,
-  the prompt is copied.
-  Backing out of the sheet is not a failure. A build without the plugin
-  withdraws the button.
+- **How:** a share sheet, through a host's `FileShare` port, the same
+  mechanism soundbites' "Share with an agent" uses. That code is removed
+  with the loop's (above); where no ask is offered, the prompt is copied.
+  Backing out of the sheet was not a failure, and a build without the
+  plugin withdrew the button.
 - **Free text:** a prompt the learner sent is handed off, so the review's
   free text it carried is deleted (Rem. 7.4), as after a copy. The shared
   file itself stays in the app's cache until the next share replaces it:
@@ -932,9 +931,8 @@ level and genre fold away under a line that says what they are.
   kept (HF2, #2177), and the ask names each one by the phone's id under its
   file name, `drama-<stamp>.voice-<n>.<ext>` (the recording's type), in the
   order said (`Scene, spoken`), so the routine reads what home heard before
-  it writes. A share, where a host gives one, writes every note beside the
-  prompt. The clipboard cannot carry audio, so a copied prompt goes without
-  them, and the screen says so.
+  it writes. The clipboard cannot carry audio, so a copied prompt goes
+  without them, and the screen says so.
 - **They leave once home holds them.** A note leaves the draft once home
   holds it and the ask that named it (LA13, LA18), never on a share's
   word.

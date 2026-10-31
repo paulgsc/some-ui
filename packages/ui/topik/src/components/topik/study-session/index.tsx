@@ -40,7 +40,6 @@ import {
 } from "@topik/lib/topik/adapter/hooks/use-surface"
 import type { LensTakes } from "@topik/lib/topik/adapter/lens-takes"
 import type { SceneAsk } from "@topik/lib/topik/adapter/next-scene-ask"
-import type { FileShare } from "@topik/lib/topik/adapter/next-scene-share"
 import type { RoutineFilesPort } from "@topik/lib/topik/adapter/routine-files"
 import { createRoutineFeed } from "@topik/lib/topik/adapter/routine-files"
 import type { SceneVoice } from "@topik/lib/topik/adapter/scene-voice"
@@ -92,13 +91,8 @@ export type KoreanStudyPageProps = {
    * choice (`key`, carried into the feed). Absent, none are listed.
    */
   routineFiles?: RoutineFilesPort
-  /**
-   * The Android app's ask of home for the next scene (`SceneAsk`); offered
-   * instead of `share` where both are given.
-   */
+  /** The Android app's ask of home for the next scene (`SceneAsk`). */
   sceneAsk?: SceneAsk
-  /** A host's share sheet (`FileShare`); absent, none is offered. */
-  share?: FileShare
   /**
    * The Android app's microphone, for saying the next scene aloud
    * (`SceneVoice`); absent, the scene is typed.
@@ -245,7 +239,6 @@ export const KoreanStudyPage = ({
   shelf,
   routineFiles,
   sceneAsk,
-  share,
   sceneVoice,
   sceneFileHint,
   wordSetHint,
@@ -282,7 +275,6 @@ export const KoreanStudyPage = ({
       ...(shelf ? { shelf } : {}),
       ...(routineFiles ? { routineFeed: createRoutineFeed(routineFiles) } : {}),
       ...(sceneAsk ? { sceneAsk } : {}),
-      ...(share ? { share } : {}),
       ...(sceneVoice ? { sceneVoice } : {}),
       ...(sceneFileHint ? { sceneFileHint } : {}),
       ...(wordSetHint ? { wordSetHint } : {}),
@@ -303,7 +295,6 @@ export const KoreanStudyPage = ({
       shelf,
       routineFiles,
       sceneAsk,
-      share,
       sceneVoice,
       sceneFileHint,
       wordSetHint,

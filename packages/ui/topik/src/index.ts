@@ -92,7 +92,6 @@ export { QuizPanel } from "./components/topik/quiz-panel"
  */
 export { DramaLesson } from "./components/topik/handheld/drama-lesson"
 export { AskScene } from "./components/topik/handheld/ask-scene"
-export { SharePrompt } from "./components/topik/handheld/share-prompt"
 export { lastDramaOf } from "./lib/topik/core/last-drama"
 
 /** The read-aloud cards; apps/www's panel-fit page mounts them directly. */
@@ -127,7 +126,6 @@ export type {
   SceneAsk,
   SceneAskSnapshot,
 } from "./lib/topik/adapter/next-scene-ask"
-export type { FileShare } from "./lib/topik/adapter/next-scene-share"
 export type {
   SceneNote,
   SceneVoice,
