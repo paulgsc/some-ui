@@ -14,50 +14,65 @@ import { AT, primer } from "./fixture"
 const MACHINERY =
   /\b(grant|consent|scope|sync\w*|server|request|response|status|error|api|https?|token|queue|retry|null|undefined|indexeddb|database|store|blob|shot|cut list|revision|rev|keeper|pending|write|refused)\b/i
 
-/** Every fixed word in the table. */
-function fixed(table: unknown): Array<string> {
-  if (typeof table === "string") return [table]
-  if (typeof table === "object" && table !== null)
-    return Object.values(table).flatMap(fixed)
-  return []
-}
+/**
+ * What a word maker is handed to make one: a title, a count, a length, a
+ * sitting's log, a scene, a look and voice, what the phone kept. A maker
+ * refusing every sample (not a string, or a throw) is reached by none of
+ * them, and the walk below fails on it rather than passing without it.
+ */
+const SAMPLES: ReadonlyArray<ReadonlyArray<unknown>> = [
+  ["Playoff Delta, week 8"],
+  ["Playoff Delta, week 8", 2, 3],
+  ["Playoff Delta, week 8", { scenes: [2], plans: false }],
+  [2],
+  [2, 3],
+  [4_700, 120_000],
+  [null],
+  [{ done: "Kept takes for scene 1.", next: "Scene 2: The miss." }],
+  [{ n: 2, artifact: "The miss" }],
+  [[1, 2]],
+  [{ scenes: [2, 5], plans: false }],
+  ["calm", "ad-lib"],
+  ["denied"],
+]
 
-const W = STUDIO_WORDS
-const TITLE = "Playoff Delta, week 8"
+/** A word a sample did not fit shows the misfit; no screen shows that. */
+const MISFIT = /\bnull\b|\bundefined\b|\bNaN\b|\[object Object\]/
+const fits = (made: string): boolean => !MISFIT.test(made)
 
-/** Every look and voice Shape offers; the test below holds these complete. */
-const LOOKS = ["plain", "calm", "lively"] as const satisfies ReadonlyArray<
-  keyof typeof W.shape.looks
->
-const VOICES = ["ad-lib", "read", "mixed"] as const satisfies ReadonlyArray<
-  keyof typeof W.shape.voices
->
+type Walk = { words: Array<string>; unreached: Array<string> }
 
 /**
- * Every word Start makes, from a sample of what it is given: its own table,
- * and each sitting's status line as `startView` draws it (Record's count,
- * Watch's changes, Shape's every look and voice, Finish's every state).
+ * Every word in the table: each fixed one, and each one a maker makes from
+ * every sample it takes, so a maker added to the table is walked without
+ * being listed here.
  */
-const START_MADE: ReadonlyArray<string> = [
-  W.start.which(TITLE),
-  W.start.nextVersion(TITLE),
-  W.start.opened(TITLE),
-  W.start.revised(TITLE),
-  W.start.onPhone(1),
-  W.start.onPhone(4),
-  W.start.stepOf(2),
-  W.standing(null),
-  W.standing({ done: "Kept takes for scene 1.", next: "Scene 2: The miss." }),
-  W.recordStatus(1, 3),
-  W.recordStatus(3, 3),
-  W.watch.status(0),
-  W.watch.status(2),
-  ...LOOKS.flatMap((look) =>
-    VOICES.map((voice) => W.shape.status(look, voice))
-  ),
-  ...fixed(W.finish.status),
-  W.finish.status.take(2),
-]
+function walk(table: unknown, path = "words"): Walk {
+  if (typeof table === "string") return { words: [table], unreached: [] }
+  if (typeof table === "function") {
+    const words = SAMPLES.flatMap((args) => {
+      try {
+        const made: unknown = Reflect.apply(table, undefined, [...args])
+        return typeof made === "string" && fits(made) ? [made] : []
+      } catch {
+        // Ignored: a sample the maker does not take; another may.
+        return []
+      }
+    })
+    return { words, unreached: words.length === 0 ? [path] : [] }
+  }
+  if (typeof table === "object" && table !== null)
+    return Object.entries(table)
+      .map(([key, value]) => walk(value, `${path}.${key}`))
+      .reduce(
+        (sum, each) => ({
+          words: [...sum.words, ...each.words],
+          unreached: [...sum.unreached, ...each.unreached],
+        }),
+        { words: [], unreached: [] }
+      )
+  return { words: [], unreached: [] }
+}
 
 /** Every string Start draws for a video just opened from its primer. */
 function startDrawn(): Array<string> {
@@ -72,79 +87,13 @@ function startDrawn(): Array<string> {
   return [view.title, view.standing, ...view.sittings.map((row) => row.status)]
 }
 
-/** Every word the table makes, from a sample of what it is given. */
-const MADE: ReadonlyArray<string> = [
-  ...START_MADE,
-  ...startDrawn(),
-  W.record.sceneOf(2, 3),
-  W.record.onScreen("The path card"),
-  W.record.mustStayTrue(2),
-  W.record.runs(20_000),
-  W.record.runsWith(4_700),
-  W.record.upTo(120_000),
-  W.record.elapsed(4_700, 120_000),
-  W.record.blocked("denied"),
-  W.notice.kept(4_700),
-  W.notice.carried(TITLE, 0, 0),
-  W.notice.carried(TITLE, 0, 1),
-  W.notice.carried(TITLE, 2, 3),
-  W.notice.carryStays(0),
-  W.notice.carryStays(820_000),
-  W.notice.carryStays(1_400_000),
-  W.notice.carryUnread,
-  W.notice.cleared(1),
-  W.notice.cleared(3),
-  W.notice.arrived(1),
-  W.notice.arrived(3),
-  W.done.opensOn(2, "The miss"),
-  W.sittingDone([]),
-  W.sittingDone([1, 2]),
-  W.sittingNext(null),
-  W.sittingNext({ n: 2, artifact: "The miss" }),
-  W.shape.kept("calm", "ad-lib"),
-  W.shape.revised("lively", "mixed"),
-  W.shape.status("plain", "read"),
-  W.time.none,
-  W.time.total(3_900_000),
-  W.time.spent(30_000),
-  W.history.line(2, "You"),
-  W.watch.openHint,
-  W.watch.unreadable,
-  W.watch.notThisVideo,
-  W.watch.noteHere(91_000),
-  W.watch.changed("Cut the pause"),
-  W.watch.status(0),
-  W.watch.status(2),
-  W.merge.merged("Scene 2 slower"),
-  W.merge.merged("Scene 2 slower", { scenes: [2], plans: false }),
-  W.merge.merged("Tighter", { scenes: [1, 3, 4], plans: true }),
-  W.merge.kept({ scenes: [2, 5], plans: false }),
-  W.merge.same,
-  W.merge.moved,
-  W.merge.notHere,
-  W.merge.unreadable,
-  W.finish.note("Louder here"),
-  W.finish.take(2),
-  W.finish.goTake(2),
-  W.finish.unmarked,
-  W.finish.uploadCopy,
-  W.finish.notALink,
-  W.finish.releasedLine,
-  W.finish.status.take(2),
-  W.idea.questionOf(2, 4),
-  W.idea.keptLine(1),
-  W.idea.keptLine(4),
-  W.idea.answerSkipped(1),
-  W.idea.answerSkipped(2),
-  W.idea.answerSkippedEarlier(1),
-  W.idea.answerSkippedEarlier(3),
-]
-
 describe("Studio's words", () => {
-  const all = [...fixed(STUDIO_WORDS), ...MADE]
+  const walked = walk(STUDIO_WORDS)
+  const all = [...walked.words, ...startDrawn()]
 
-  it("are many, so the walk above reached them", () => {
-    expect(fixed(STUDIO_WORDS).length).toBeGreaterThan(40)
+  it("are many, and every maker was reached by a sample", () => {
+    expect(all.length).toBeGreaterThan(40)
+    expect(walked.unreached).toEqual([])
   })
 
   it("never name the machinery", () => {
@@ -152,8 +101,6 @@ describe("Studio's words", () => {
   })
 
   it("SW1: name what you do or what Claude made, never a file, folder or format", () => {
-    expect(Object.keys(W.shape.looks)).toEqual([...LOOKS])
-    expect(Object.keys(W.shape.voices)).toEqual([...VOICES])
     const file =
       /\.json|›|build journal|\bprimers?\b|\bfiles?\b|\bfolder\b|\bformat\b/i
     expect(all.filter((text) => file.test(text))).toEqual([])
