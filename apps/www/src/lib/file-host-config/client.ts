@@ -17,7 +17,7 @@
  *    deadline fire" is read from `controller.signal.aborted`, not from which
  *    rejection won, because `fetch`'s own `AbortError` can reject first.
  */
-import { isRecord } from "@some-ui/core-utils"
+import { isRecord, jsonOf, refusalOf } from "@some-ui/core-utils"
 
 import { authority, StaleAuthorityError } from "@/lib/authority"
 
@@ -89,21 +89,16 @@ async function errorOf(
   }
   const clip = (value: string): string | null =>
     value.trim() === "" ? null : value.trim().slice(0, DETAIL_LIMIT)
-  let body: unknown
-  try {
-    body = JSON.parse(text)
-  } catch {
-    // Not the envelope (an nginx 502 page, or axum's own rejection): the
-    // status still says enough, and the text may say why.
-    return { code: null, detail: clip(text) }
-  }
+  const body = jsonOf(text)
+  // Not the envelope (an nginx 502 page, or axum's own rejection): the
+  // status still says enough, and the text may say why.
   if (!isRecord(body) || !isRecord(body.error)) {
     return { code: null, detail: clip(text) }
   }
   const { code, message, details } = body.error
   const said = [
     typeof message === "string" ? message : "",
-    details === undefined ? "" : JSON.stringify(details),
+    details === undefined ? "" : refusalOf(text),
   ]
     .filter((part) => part !== "")
     .join(" ")
@@ -268,6 +263,7 @@ export async function requestJSON<T>(
   const timeoutId = setTimeout(() => controller.abort(), resolveTimeoutMs())
 
   const onUnauthorized = unauthorizedHandler?.()
+  const method = init?.method ?? "GET"
   const operation = async (): Promise<T> => {
     const response = await transport(route, {
       ...init,
@@ -281,10 +277,7 @@ export async function requestJSON<T>(
       // failing (`device-backend/interceptor`).
       const { code, detail } = await errorOf(response)
       if (code !== null && UNAVAILABLE_ANSWERS.has(code)) {
-        throw new FileHostResponseError(503, route, code, {
-          method: init?.method ?? "GET",
-          detail,
-        })
+        throw new FileHostResponseError(503, route, code, { method, detail })
       }
       throw new FileHostNotConfiguredError(route)
     }
@@ -292,7 +285,7 @@ export async function requestJSON<T>(
     if (!response.ok) {
       const { code, detail } = await errorOf(response)
       throw new FileHostResponseError(response.status, route, code, {
-        method: init?.method ?? "GET",
+        method,
         detail,
       })
     }

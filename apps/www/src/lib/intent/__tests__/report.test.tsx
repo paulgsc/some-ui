@@ -1,9 +1,7 @@
 /**
  * @vitest-environment jsdom
  *
- * U3 for what an intent shows: each failure reaches `reportFailure` once,
- * and a refused request's line says what the answer said why, which is how
- * the phone's own refusals (no server log sees them) can be read at all.
+ * Proof of IR1 (`../report.ts`).
  */
 
 import { queryClientWrapper } from "@/test-support/query-client"
