@@ -72,11 +72,26 @@ export const SessionEventSchema = z.discriminatedUnion("type", [
     action: z.enum(["opened", "saved", "read", "skipped"]),
   }),
   z.strictObject({ ...Stamp, ...OnScreen, type: z.literal("parked") }),
-  /** The worked confirmation of a parked round, taken (Prop. 9.4 (d)). */
+  /**
+   * The worked confirmation of a struggled or parked round, taken
+   * (Prop. 9.4 (d)): it shows the round's answer, so a return after it is
+   * assisted, as after `rubric-shown` (Rem. 9.5, Rem. 11.10).
+   */
   z.strictObject({
     ...Stamp,
     ...OnScreen,
     type: z.literal("confirmation-taken"),
+  }),
+  /**
+   * A take's rubric shown that states the answer of `screen`, a round
+   * (canon Rem. 11.10): a return of it after this, until the round's next
+   * struggle, is assisted (Rem. 9.5). `take` is the record screen.
+   */
+  z.strictObject({
+    ...Stamp,
+    ...OnScreen,
+    type: z.literal("rubric-shown"),
+    take: z.string().min(1),
   }),
   /**
    * A return played: `screen` is the parked round, `variant` the return.
@@ -139,9 +154,11 @@ type OnFile = z.infer<z.ZodObject<typeof OnScreen>>
  * What a session's ledger screen says (Prop. 10.2), computed from the log
  * up to the session's last event, so a past session's ledger never changes.
  * `parked` and `saved` are across every session until then: a round parked
- * earlier and not since returned and solved, or a take not since answered
- * strongly, still waits on its reading, and a reading saved earlier and not
- * since read is still saved.
+ * earlier and not since returned correctly and unhurried, or a take not
+ * since answered strongly, still waits on its reading, and a reading saved
+ * earlier and not since read is still saved. An assisted return unparks its
+ * round here too, so the learner is not kept on a round they answer, though
+ * `summariesOf` counts it assisted, not solved (canon Rem. 11.10).
  */
 export type SessionLedger = {
   readonly walked: ReadonlyArray<OnFile>
@@ -163,6 +180,33 @@ type Answer = z.infer<typeof AnswerSchema>
 /** A correct pick in time; anything else is a struggle (Def. 9.4). */
 const unhurried = (answer: Answer): boolean =>
   answer.response === "correct" && !answer.slow
+
+/**
+ * Which rounds had their answer shown since their last struggle (Rem. 9.5,
+ * Rem. 11.10, promise LTY1): by a take's rubric (`rubric-shown`), their
+ * worked confirmation taken (`confirmation-taken`), or the confirmation a
+ * correct, unhurried pick or return reveals unasked. Fed every event in
+ * order, it answers for a return whether it is assisted; ask before feeding
+ * the return itself. A struggle on the round, a pick or a return, starts
+ * it afresh; a confirmation taken on that struggle's reveal comes after it.
+ */
+class Assistance {
+  private readonly shown = new Set<string>()
+
+  see(event: SessionEvent): void {
+    if (event.type === "rubric-shown" || event.type === "confirmation-taken") {
+      this.shown.add(keyOf(event.file, event.screen))
+    } else if (event.type === "picked" || event.type === "returned") {
+      const key = keyOf(event.file, event.screen)
+      if (unhurried(event.answer)) this.shown.add(key)
+      else this.shown.delete(key)
+    }
+  }
+
+  has(event: OnFile): boolean {
+    return this.shown.has(keyOf(event.file, event.screen))
+  }
+}
 
 export function ledgerOf(log: SessionLog, session: string): SessionLedger {
   // By time, not position: the store lays the log out session by session.
@@ -229,18 +273,29 @@ export function ledgerOf(log: SessionLog, session: string): SessionLedger {
   }
 }
 
+/**
+ * What waits on a reading now, across every session in `log`: the ledger's
+ * `parked` as of the log's last event, whichever session it is in.
+ */
+export function parkedNow(log: SessionLog): SessionLedger["parked"] {
+  const last = byTime(log).at(-1)
+  return last === undefined ? [] : ledgerOf(log, last.session).parked
+}
+
 type Of<T extends SessionEvent["type"]> = Extract<SessionEvent, { type: T }>
 
 /**
  * One round's funnel (Prop. 9.4): its first pick, the readings placed after
  * a struggle and what was done with each, the returns played, and whether
- * it is solved: a correct, unhurried pick or return since its last
- * struggle, as `ledgerOf` counts parked rounds, except that a struggle left
- * on its reveal (the app closed before it parked) is unsolved here. Later
- * sessions add to it: a reading saved on the bus and read the next day, a
- * return taken from the first screen, a replay's struggle that parks it
- * again. A reading opened with no placement in view goes to the round its
- * latest placement was for.
+ * it is solved: a correct, unhurried pick, or such a return unassisted
+ * (nothing showed its answer since its last struggle), since its last
+ * struggle. `ledgerOf` counts parked rounds the same way, except that an
+ * assisted return unparks there and a struggle left on its reveal (the app
+ * closed before it parked) is unsolved here. Later sessions add to it: a
+ * reading saved on the bus and read the next day, a return taken from the
+ * first screen, a replay's struggle that parks it again. A reading opened
+ * with no placement in view goes to the round its latest placement was
+ * for.
  */
 type RoundSummary = OnFile & {
   readonly picked: Answer["response"]
@@ -250,7 +305,8 @@ type RoundSummary = OnFile & {
     readonly reading: string
     readonly action: Of<"reading">["action"]
   }>
-  readonly returned: ReadonlyArray<Answer>
+  /** Each return's answer; `assisted` when its answer was shown since its last struggle. */
+  readonly returned: ReadonlyArray<Answer & { readonly assisted: boolean }>
   readonly solved: boolean
 }
 
@@ -296,6 +352,7 @@ export function summariesOf(log: SessionLog): Array<SessionSummary> {
   >()
   // The round the latest placement of each reading was for; null for a pointer.
   const placedFor = new Map<string, string | null>()
+  const assisted = new Assistance()
   for (const event of ordered) {
     const summary = sessions.get(event.session)
     switch (event.type) {
@@ -357,8 +414,9 @@ export function summariesOf(log: SessionLog): Array<SessionSummary> {
       case "returned": {
         const round = rounds.get(keyOf(event.file, event.screen))?.round
         if (round === undefined) break
-        round.returned.push(event.answer)
-        round.solved ||= unhurried(event.answer)
+        const helped = assisted.has(event)
+        round.returned.push({ ...event.answer, assisted: helped })
+        round.solved ||= unhurried(event.answer) && !helped
         break
       }
       case "spoken": {
@@ -381,13 +439,16 @@ export function summariesOf(log: SessionLog): Array<SessionSummary> {
         if (round !== undefined) round.solved = false
         break
       }
-      case "confirmation-taken": {
+      case "confirmation-taken":
+      case "rubric-shown": {
         break
       }
       default: {
         assertNever(event)
       }
     }
+    // After the switch: a return is judged by what was shown before it.
+    assisted.see(event)
   }
   return [...sessions.values()]
 }

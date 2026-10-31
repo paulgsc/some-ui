@@ -4,17 +4,6 @@ export * from "./types/exercise"
 export * from "./types/leetype"
 export { nextExercise } from "./lib/leetype/exercises"
 export type { SelectionState } from "./lib/leetype/exercises"
-// Rounds (Def. 1.7): what the round CRM (`@some-ui/lesson-crm`) needs to
-// write, check and publish one.
-export { GenerateRound } from "./components/round/generate-round"
-export { buildRoundPrompt } from "./lib/leetype/generation"
-export type { RoundRequest } from "./lib/leetype/generation"
-export { fixRequest, intakeRound } from "./lib/leetype/generation/intake"
-export type { RoundIntake } from "./lib/leetype/generation/intake"
-export { serializeRound } from "./lib/leetype/round-export"
-export { RoundSchema } from "./types/authored-round"
-export type { Round } from "./types/authored-round"
-export { AUTHORED_ROUNDS } from "./lib/leetype/authored-rounds"
 // Sessions of incident rounds (canon v1.2): the append-only log the phone's
 // session surface writes, the reflection export reads (#1917–#1923), and
 // "Send to home" sends, in its home form.

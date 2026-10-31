@@ -104,6 +104,9 @@
     "packages/ui/resume": {
       "ignoreDependencies": ["@some-ui/contract-harness"]
     },
+    "packages/ui/rust-rounds": {
+      "entry": ["src/index.ts", "src/entry.ts"]
+    },
     "packages/ui/soundbites": {
       "entry": ["src/index.ts", "src/contract.ts"]
     },

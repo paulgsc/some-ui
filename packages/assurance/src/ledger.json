@@ -10,7 +10,7 @@
         "server:apps/servers/file_host/src/mailbox",
         "server:crates/mailbox_kit"
       ],
-      "modules": ["jobs", "routine"],
+      "modules": ["jobs", "routine", "leetype_files"],
       "objectives": [
         {
           "id": "MI1",
@@ -167,11 +167,11 @@
             "tighter": "lower"
           },
           "verdict": "broken",
-          "conclusion": "Each request has a 30-second limit but the pass has none: at today's constants a full pass may make up to 668 calls, about 5.5 hours of waiting in the worst case.",
+          "conclusion": "Each request has a 30-second limit but the pass has none: at today's constants a full pass may make up to 820 calls, about 6.8 hours of waiting in the worst case.",
           "evidence": [
             {
               "class": "derived",
-              "says": "Inbound 4 × (10 pages + 20 gets) = 120, outbound 20, restore 8 × (1 + 50) = 408, archive 120: 668 calls, × 30 s ≈ 20,040 s.",
+              "says": "Inbound 5 folders × (10 pages + 20 gets) = 150, outbound 20, restore 10 folders × (1 + 50) = 510, archive 10 folders × 10 pages + 20 × (get + archive) = 140: 820 calls, × 30 s ≈ 24,600 s. Filing transcripts and LeetType logs makes no call.",
               "ref": "server:apps/servers/file_host/src/mailbox/pass.rs"
             }
           ],
@@ -186,9 +186,9 @@
           "kind": "RE7",
           "property": "work",
           "claim": "When there is nothing to do, the poller's own work stays small and counted.",
-          "requirement": "With no files and no asks, a day of passes makes at most 384 mailbox requests without archiving and 1,920 with it; a change that raises either needs an amendment.",
+          "requirement": "With no files and no asks, a day of passes makes at most 480 mailbox requests without archiving and 2,400 with it; a change that raises either needs an amendment.",
           "bound": {
-            "value": 1920,
+            "value": 2400,
             "unit": "requests a day",
             "tighter": "lower"
           },
@@ -197,7 +197,7 @@
           "evidence": [
             {
               "class": "derived",
-              "says": "96 passes a day × 4 folder listings = 384; with archiving, + 8 wanted listings + 8 archive listings = 20 a pass, 1,920 a day.",
+              "says": "96 passes a day × 5 folder listings (brief, scene, drama, run, leetype) = 480; with archiving, + 10 wanted listings + 10 archive listings = 25 a pass, 2,400 a day. Filing LeetType logs reads home's database only.",
               "ref": "server:apps/servers/file_host/src/mailbox/pass.rs"
             }
           ],
@@ -205,7 +205,14 @@
           "watch": {
             "by": "none"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-10-31",
+              "change": "The idle bound is 480 mailbox requests a day without archiving and 2,400 with it, up from 384 and 1,920.",
+              "why": "paulgsc/server#583 (some-ui#2026, #2027) has home read the leetype folder, so an idle pass lists five folders, and adds leetype and leetype-log to the ten folders archiving walks for asks and old files: 5 + 10 + 10 = 25 listings a pass, 96 passes a day. The owner chose the higher bound: \"yes, raise the bound to 2,400\".",
+              "decision": "https://github.com/paulgsc/some-ui/pull/2338#issuecomment-6536715212"
+            }
+          ]
         },
         {
           "id": "MW2",
@@ -1442,7 +1449,7 @@
     {
       "store": "phone:device_home_answer",
       "class": "cache",
-      "growth": "bounded: one row per address home-sync reads (ETag plus body or hash), upserted.",
+      "growth": "bounded: one row per address home-sync reads (ETag plus the body's hash), upserted.",
       "family": "what-is-kept"
     },
     {
@@ -1452,15 +1459,16 @@
       "family": "what-is-kept"
     },
     {
-      "store": "phone:device_round_from_home",
-      "class": "derived",
-      "growth": "bounded: one row per round home wrote (cascade with leetype_round).",
+      "store": "phone:device_storage_notice",
+      "class": "telemetry",
+      "growth": "bounded: one row (id = 1), the count of rounds removed not yet shown; nothing adds to it, so it only shrinks.",
       "family": "what-is-kept"
     },
     {
-      "store": "phone:device_storage_notice",
+      "store": "phone:failure-log",
       "class": "telemetry",
-      "growth": "bounded: one row (id = 1), the count of rounds removed not yet shown.",
+      "growth": "bounded: the newest 200 failures this phone reported, each one line with its time (`some-ui.failure-log.v1`).",
+      "horizon": "the oldest line goes when the 201st is kept (lib/failure-log `keepFailure`; owner, 2026-10-30, docs/discard-sites.md)",
       "family": "what-is-kept"
     },
     {
@@ -1589,25 +1597,6 @@
       "family": "what-is-kept"
     },
     {
-      "store": "phone:leetype_round",
-      "class": "cache",
-      "growth": "Per round synced from home; bounded by home's listing.",
-      "horizon": "rounds home no longer lists are removed at sync (removeRoundsExcept); rounds an earlier build seeded were removed once (removeSeededRounds, noted to the person)",
-      "family": "what-is-kept"
-    },
-    {
-      "store": "phone:leetype_round_run",
-      "class": "derived",
-      "growth": "bounded: <= 12 per round (upsert on round_id, variant, bounds).",
-      "family": "what-is-kept"
-    },
-    {
-      "store": "phone:leetype_round_witness",
-      "class": "derived",
-      "growth": "bounded: <= 5 per round, rewritten from the round body.",
-      "family": "what-is-kept"
-    },
-    {
       "store": "phone:lens-record",
       "class": "record",
       "growth": "Per grammar-lens item seen (session, line, showing): one entry each, rewritten in place for the same item; LENS_RECORD_MAX = 1,000 entries (about 700 KB), a new one past it refused, never evicted (`topik:lens-record`).",
@@ -1733,6 +1722,31 @@
       "class": "telemetry",
       "growth": "Per routine run home reported (a few hundred bytes, about one a day), per home read: added once by name, never rewritten or dropped; no cap (`topik:routine-runs`).",
       "family": "routine-to-home"
+    },
+    {
+      "store": "phone:rust-rounds-held",
+      "class": "record",
+      "growth": "Per round taken from a tutor's reply (a few KB of cards), each version of the tutor notes taken with one, and one recorded rustc run per card home records (RR3); only added to, never rewritten or dropped; no cap (`some-ui:rust-rounds.held`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:rust-rounds-log",
+      "class": "record",
+      "growth": "Per card played in Rust Rounds: one event (pick, note id, rustc's recorded run as printed, up to ~4 KB), and per pin; append-only, nothing logged is rewritten; no cap until RR7 (#2238) keeps it on home (`some-ui:rust-rounds.log`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:rust-rounds-notes",
+      "class": "record",
+      "growth": "Per Rust Rounds voice note (up to a minute at 32 kbps, ~240 KB) until home holds it (RR6, #2237); no count of its own (max = +Infinity), so notes grow until the device's measured room (withRoom, the 25 MiB pool) refuses one, which the session says on the menu and the card; none is ever evicted (`some-ui:rust-rounds.notes`, `some-ui.rust-rounds-notes`).",
+      "horizon": "nothing lets them go yet: RR6 (#2237) sends them home",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:rust-rounds-place",
+      "class": "record",
+      "growth": "bounded: one slot, the Rust Rounds card on screen and how far into it (stage, pick, note id), replaced as each card is entered and played (`some-ui:rust-rounds.place`).",
+      "family": "what-is-kept"
     },
     {
       "store": "phone:scene-voice",
@@ -1963,7 +1977,13 @@
     {
       "store": "server:mailbox_outgoing",
       "class": "record",
-      "growth": "Per file the phone (or the poller, for transcripts) files for the mailbox (decisions, scout, transcript), bytes verbatim; append-only.",
+      "growth": "Per file the phone (or the poller, for transcripts and LeetType session logs) files for the mailbox (decisions, scout, opened, transcript, leetype-log), bytes verbatim; append-only. A LeetType session's log is filed again as log-<session>.r<n>.json only when an event of it arrives home after its last copy, and each copy repeats every earlier event of the session.",
+      "family": "routine-to-home"
+    },
+    {
+      "store": "server:mailbox_leetype_log",
+      "class": "derived",
+      "growth": "Per decision the poller makes on a LeetType session as its events arrive: a log filed for the mailbox (session, through, n) or a refusal (session, through, why: unreadable, no_file or too_big), through being the highest event rowid it covered; tiny rows; a session gets a new row only when an event of it arrives after its last decision; append-only.",
       "family": "routine-to-home"
     },
     {

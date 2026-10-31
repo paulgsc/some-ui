@@ -78,6 +78,6 @@ describe("the LAN layout is the account's own", () => {
   it("sends someone whose session was lost to the passkey screen too", () => {
     authority.dispatch({ type: "session-started", adopt: true })
     authority.dispatch({ type: "session-ended", forget: false })
-    expect(() => beforeLoad(lan, "/rounds")).toThrow()
+    expect(() => beforeLoad(lan, "/resume-build")).toThrow()
   })
 })

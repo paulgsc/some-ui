@@ -8,15 +8,18 @@
  * negative-discrimination round is reported. That obligation is the whole
  * corpus's, which one thread does not meet alone, so the gaps fail the run
  * only with `--corpus` (the files given are the whole corpus).
+ * Rounds Rem. 11.9 leaves unchecked for Prop. 9.1 are listed without failing,
+ * and so are takes whose rubric says no round it covers (Rem. 11.10).
  */
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import path from "node:path"
 import {
   lintSessionFile,
   negativeDiscriminationGaps,
+  roundsWithoutNamedReturns,
 } from "@leetype/lib/leetype/session-file"
 import type { SessionFile } from "@leetype/types/session-file"
-import { SessionFileSchema } from "@leetype/types/session-file"
+import { rubricCovers, SessionFileSchema } from "@leetype/types/session-file"
 
 function filesAt(target: string): Array<string> {
   if (!statSync(target).isDirectory()) return [target]
@@ -42,6 +45,20 @@ function check(file: string): { parsed: SessionFile | null; problems: number } {
   for (const finding of findings) {
     console.error(
       `${file}: ${finding.screen}: ${finding.code}: ${finding.message}`
+    )
+  }
+  const unchecked = roundsWithoutNamedReturns(parsed.data)
+  if (unchecked.length > 0) {
+    console.log(
+      `${file}: unchecked: no return names a response it follows (\`returnFor\`) for ${unchecked.join(", ")} (Prop. 9.1, Rem. 11.9).`
+    )
+  }
+  const unknown = Object.entries(parsed.data.screens)
+    .filter(([, screen]) => screen.type === "record" && !rubricCovers(screen))
+    .map(([id]) => id)
+  if (unknown.length > 0) {
+    console.log(
+      `${file}: coverage unknown: no rubric point of ${unknown.join(", ")} says which rounds it covers (\`covers\`), so each is read as covering every round of the file still parked when it is shown (Rem. 11.10).`
     )
   }
   return { parsed: parsed.data, problems: findings.length }

@@ -104,7 +104,6 @@ describe("wings", () => {
     carriesLan = true
     expect(navOf(wing("operate")).map((room) => room.nav)).toEqual([
       "Lessons",
-      "Rounds",
       "Résumé build",
     ])
   })

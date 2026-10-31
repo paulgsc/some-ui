@@ -271,6 +271,20 @@
     },
     {
       "method": "GET",
+      "path": "/leetype/session-files",
+      "full_path": "/api/v1/leetype/session-files",
+      "versioned": true,
+      "module": "leetype_files"
+    },
+    {
+      "method": "GET",
+      "path": "/leetype/session-files/:name",
+      "full_path": "/api/v1/leetype/session-files/:name",
+      "versioned": true,
+      "module": "leetype_files"
+    },
+    {
+      "method": "GET",
       "path": "/leetype/sessions",
       "full_path": "/api/v1/leetype/sessions",
       "versioned": true,

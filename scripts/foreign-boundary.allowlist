@@ -33,7 +33,6 @@
 6 apps/www/src/lib/device-speech/native.ts
 7 apps/www/src/lib/study-nudge/native.ts
 6 apps/www/src/lib/study-nudge/service-worker.ts
-1 packages/ui/leetype/src/components/round/generate-round/index.tsx
 1 packages/ui/lesson-crm/src/components/lesson-crm/index.tsx
 1 packages/ui/lesson-crm/src/components/prompt-card/index.tsx
 1 packages/ui/soundbites/src/lib/store.ts

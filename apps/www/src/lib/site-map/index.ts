@@ -4,7 +4,6 @@ import {
   BookOpenText,
   Compass,
   FileText,
-  Keyboard,
   Puzzle,
   Sparkles,
   Trophy,
@@ -30,7 +29,6 @@ export type Destination = {
     | "/extensions"
     | "/mission"
     | "/lessons"
-    | "/rounds"
     | "/resume-build"
   readonly title: string
   readonly blurb: string
@@ -68,14 +66,6 @@ const DESTINATIONS: ReadonlyArray<Destination> = [
     title: "Lessons",
     blurb: "The TOPIK curriculum and its weekly batch.",
     icon: BookOpenText,
-    audience: "lan",
-    launcher: "home-network",
-  },
-  {
-    to: "/rounds",
-    title: "Rounds",
-    blurb: "The LeetType rounds every learner plays.",
-    icon: Keyboard,
     audience: "lan",
     launcher: "home-network",
   },

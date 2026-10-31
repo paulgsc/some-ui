@@ -38,12 +38,12 @@ export const ACCOUNT_ERASES = {
       text: "Which phones asked to be told when the morning run is in, and which runs home told them of.",
     },
     {
-      label: "Jobs mailbox files home holds",
-      text: "The daily job picks, word sets, dramas and run records home holds for you, the ones it archived out of the mailbox included. Once the mailbox has let a file go, home's copy is the only one, so it goes too.",
+      label: "Mailbox files home holds",
+      text: "The daily job picks, word sets, dramas, LeetType session files and run records home holds for you, the ones it archived out of the mailbox included. Once the mailbox has let a file go, home's copy is the only one, so it goes too.",
     },
     {
       label: "Filed with home for the mailbox",
-      text: "The decisions and scouts you filed with home, which lessons you opened, what home heard in your voice notes, and home's note of each one it passed on.",
+      text: "The decisions and scouts you filed with home, which lessons you opened, what home heard in your voice notes, how each LeetType session went, and home's note of each one it passed on.",
     },
     {
       label: "LeetType sessions",
@@ -78,7 +78,7 @@ export const ACCOUNT_ERASES = {
     },
     { label: "In Drive", text: "Your Drive copies." },
     {
-      label: "In the Jobs mailbox",
+      label: "In the mailbox",
       text: "Files still in the mailbox stay until you remove them there, because deleting here doesn't reach it. For each file it has let go, the mailbox keeps a note of its name, size and dates, never what was in it.",
     },
     {
