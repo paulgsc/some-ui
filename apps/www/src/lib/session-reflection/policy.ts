@@ -5,10 +5,14 @@
  *
  * A reflection is one thing said about a session while it was fresh: a voice
  * note, a typed line, or the three one-tap answers (one set per session).
- * Each carries its session's ID. They are for the next session, not an
- * archive, so the phone keeps at most `REFLECTION_LIMIT` of them across every
- * session, nothing is dropped to make room, and one older than
- * `STALE_AFTER_MS` reads as stale. Room comes back only by letting some go.
+ * Each carries its session's ID, and one older than `STALE_AFTER_MS` reads as
+ * stale.
+ *
+ * Home keeps the written ones (LA16, docs/learner-data-authority.md): the
+ * phone keeps an offline set, the newest `REFLECTION_LIMIT`, and past it only
+ * what home does not hold yet. So a new reflection is never refused for lack
+ * of room (`admit`), and one leaves on its own only once it is past the
+ * offline set and home holds it (`beyondOffline`).
  */
 
 export const QUESTIONS = [
@@ -45,11 +49,14 @@ type QuestionKey = (typeof QUESTIONS)[number]["key"]
 
 export type Answers = Partial<Record<QuestionKey, string>>
 
-/** k: every reflection on the phone, all sessions together. */
+/**
+ * k: the offline set, the newest reflections the phone keeps across every
+ * session even once home holds them, for when it is away from home.
+ */
 export const REFLECTION_LIMIT = 20
 
-/** What a reflection refused for want of a slot says. */
-export const NO_ROOM = "No room for another on this phone: let one go first."
+/** The most characters one typed line holds; home takes no more. */
+export const REFLECTION_TEXT_MAX = 10_000
 
 /** Older than a week, a reflection no longer says how things are going. */
 export const STALE_AFTER_MS = 7 * 24 * 60 * 60_000
@@ -70,20 +77,29 @@ export type Reflection = {
   body: ReflectionBody
 }
 
-/** The result of asking to keep one: room is never made by dropping another. */
-export type Kept =
-  | { kind: "kept"; next: Array<Reflection> }
-  | { kind: "full"; next: ReadonlyArray<Reflection> }
-
-/** Puts `incoming` in, replacing the one with its `id`; full at the limit. */
+/** Puts `incoming` in first, replacing the one with its `id`. Never refuses. */
 export function admit(
   kept: ReadonlyArray<Reflection>,
-  incoming: Reflection,
+  incoming: Reflection
+): Array<Reflection> {
+  return [incoming, ...kept.filter((r) => r.id !== incoming.id)]
+}
+
+/**
+ * The ids of the reflections past the offline set (the newest `limit`, by
+ * when each was said) that `held` names: what may leave the phone, since
+ * home holds each. Nothing home does not hold is ever among them.
+ */
+export function beyondOffline(
+  kept: ReadonlyArray<Reflection>,
+  held: ReadonlySet<string>,
   limit = REFLECTION_LIMIT
-): Kept {
-  const others = kept.filter((r) => r.id !== incoming.id)
-  if (others.length >= limit) return { kind: "full", next: kept }
-  return { kind: "kept", next: [incoming, ...others] }
+): Array<string> {
+  return [...kept]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(limit)
+    .filter((r) => held.has(r.id))
+    .map((r) => r.id)
 }
 
 /** The one-tap answers kept for `sessionId`, if any. */
@@ -99,22 +115,19 @@ export function answersOf(
 }
 
 /**
- * Sets `sessionId`'s answers. Its one set is replaced in place, so a changed
- * answer costs no slot; clearing every answer lets the set go.
+ * Sets `sessionId`'s answers. Its one set is replaced in place; clearing
+ * every answer lets the set go. The answers stay on the phone (LA16).
  */
 export function withAnswers(
   kept: ReadonlyArray<Reflection>,
   sessionId: string,
   answers: Answers,
   made: { id: string; createdAt: string; atMs: number | null }
-): Kept {
+): Array<Reflection> {
   const existing = answersOf(kept, sessionId)
   const given = clean(answers)
   if (Object.keys(given).length === 0) {
-    return {
-      kind: "kept",
-      next: kept.filter((r) => r.id !== existing?.id),
-    }
+    return kept.filter((r) => r.id !== existing?.id)
   }
   return admit(kept, {
     id: existing?.id ?? made.id,
@@ -249,7 +262,7 @@ export function parseReflection(value: unknown): Reflection | null {
  * The list before reflections had dates: one set of answers per session,
  * `{ id: sessionId, answers }`. Each becomes an answers reflection dated
  * `staleAt`, since nothing says when it was given and it is from before this
- * version: it reads as stale, so it is among the first to share or let go.
+ * version: it reads as stale.
  */
 export function fromLegacy(
   rows: ReadonlyArray<unknown>,

@@ -1,9 +1,11 @@
 /**
  * What this phone holds for the drain (`./drain`): its sessions and kept
- * shelf items, its finished LeetType sessions and Studio's sittings and
- * answers, each read from the phone alone, and the LeetType and Studio
- * parts already narrowed to what home does not hold as it is now (`./sent`).
- * Nothing here sends.
+ * shelf items, its finished LeetType sessions, Studio's sittings and
+ * answers and its written reflections, each read from the phone alone, and
+ * the LeetType, Studio and reflection parts already narrowed to what home
+ * does not hold as it is now (`./sent`). Nothing here sends; the one thing
+ * it lets go is a written reflection past the offline set that home holds
+ * (`letGoHeldReflections`, LA16).
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import type { HomeSession } from "@some-ui/leetype"
@@ -11,10 +13,14 @@ import type { HomeSession } from "@some-ui/leetype"
 import { deviceBackend } from "@/lib/device-backend/boot"
 import type { Kept } from "@/lib/device-backend/handlers/shelf"
 import { everyKept } from "@/lib/device-backend/handlers/shelf"
+import { reflections } from "@/lib/session-reflection"
 import { studioKeeping } from "@/lib/studio-keeping"
 import { sessionsRepository } from "@/lib/tenant/queries"
 import type { SessionRecord } from "@/lib/tenant/types"
 
+import type { Written } from "./reflections"
+import { heldWritten, writtenToSend } from "./reflections"
+import type { Sent } from "./sent"
 import { logToSend, readSent } from "./sent"
 import type { StudioGoing } from "./studio-log"
 import { reportsOf, studioToSend } from "./studio-log"
@@ -68,4 +74,27 @@ export async function studioGoing(
     reportsOf(friction, list, studio.sittingKey),
     readSent(storage, pairing)
   )
+}
+
+/**
+ * The written reflections a run under `pairing` carries: what home doesn't
+ * hold as it is now. Reads only this phone.
+ */
+export function reflectionsGoing(
+  pairing: string,
+  storage: KeyedStorage | null
+): Array<Written> {
+  return writtenToSend(
+    reflections.getSnapshot().kept,
+    readSent(storage, pairing)
+  )
+}
+
+/**
+ * Lets go of the written reflections past the offline set that `sent` says
+ * home holds as they are (LA16). The one-tap answers and spoken
+ * reflections stay; so does every one home does not hold.
+ */
+export function letGoHeldReflections(sent: Sent): void {
+  reflections.trimOffline(heldWritten(reflections.getSnapshot().kept, sent))
 }

@@ -36,22 +36,23 @@ describe("HandOffStrip", () => {
     expect(container.textContent).toBe("")
   })
 
-  it("counts the slots taken across sessions", () => {
+  it("counts what is kept across sessions, with no cap to fill", () => {
     keep("a", "s1", new Date().toISOString())
     keep("b", "s2", new Date().toISOString())
 
     render(withQueryClient(<HandOffStrip />))
 
-    expect(screen.getByText(/2 of 20 slots · oldest today/)).toBeTruthy()
+    expect(screen.getByText(/2 kept · oldest today/)).toBeTruthy()
+    expect(screen.queryByText(/slots/)).toBeNull()
   })
 })
 
 describe("SessionReflectionsRow", () => {
-  it("says how many wait for this session and that they are stale", () => {
+  it("says how many are kept for this session and that they are stale", () => {
     keep("a", "s1", "2026-01-01T00:00:00.000Z")
     keep("b", "s2", new Date().toISOString())
 
-    render(<SessionReflectionsRow sessionId="s1" name="Evening" finished />)
+    render(<SessionReflectionsRow sessionId="s1" finished />)
 
     expect(screen.getByText(/1 reflection ·/)).toBeTruthy()
     expect(screen.getByText("stale")).toBeTruthy()
@@ -59,18 +60,16 @@ describe("SessionReflectionsRow", () => {
 
   it("says they were shared once none wait", () => {
     reflections.markShared(["s1"])
-    render(<SessionReflectionsRow sessionId="s1" name="Evening" finished />)
+    render(<SessionReflectionsRow sessionId="s1" finished />)
     expect(screen.getByText(/Reflections shared/)).toBeTruthy()
   })
 
   it("says there are none for a finished session, and nothing for a draft", () => {
     const { rerender, container } = render(
-      <SessionReflectionsRow sessionId="s1" name="Evening" finished />
+      <SessionReflectionsRow sessionId="s1" finished />
     )
     expect(screen.getByText("No reflections")).toBeTruthy()
-    rerender(
-      <SessionReflectionsRow sessionId="s1" name="Evening" finished={false} />
-    )
+    rerender(<SessionReflectionsRow sessionId="s1" finished={false} />)
     expect(container.textContent).toBe("")
   })
 })

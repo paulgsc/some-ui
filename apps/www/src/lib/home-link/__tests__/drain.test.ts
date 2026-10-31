@@ -73,6 +73,8 @@ function setup(
     copy?: DrainPorts["copy"]
     log?: DrainPorts["logGoing"]
     studio?: DrainPorts["studioGoing"]
+    reflections?: DrainPorts["reflectionsGoing"]
+    letGoHeld?: DrainPorts["letGoHeld"]
   } = {}
 ): {
   ports: DrainPorts
@@ -101,6 +103,8 @@ function setup(
       over.studio ??
       ((): Promise<{ sittings: []; reports: [] }> =>
         Promise.resolve({ sittings: [], reports: [] })),
+    reflectionsGoing: over.reflections ?? ((): Array<never> => []),
+    letGoHeld: over.letGoHeld ?? ((): void => undefined),
     pairing: PAIRING,
     storage: memoryStorage(),
     copy:
@@ -459,5 +463,68 @@ describe("the drain's LeetType and Studio parts", () => {
       why: "refused",
     })
     expect(readSent(ports.storage, PAIRING).leetype).toEqual({})
+  })
+})
+
+describe("the drain's written reflections (LA16)", () => {
+  const LINE = {
+    id: "r1",
+    sessionId: "s1",
+    createdAt: "2026-10-30T10:06:00.000Z",
+    atMs: 61_000,
+    body: { kind: "text" as const, text: "More level two, please." },
+  }
+  const echo = (reflection: unknown): HomeAnswer => ({
+    status: 200,
+    body: JSON.stringify({ change: "added", reflection }),
+  })
+
+  it("puts each after Studio, remembers the ones home answers with as sent, then lets go only what home holds", async () => {
+    const trims: Array<Readonly<Record<string, string>>> = []
+    const { ports, send, puts } = setup({
+      kept: [],
+      answers: [echo(LINE)],
+      reflections: () => [LINE],
+      letGoHeld: (sent) => {
+        trims.push(sent.reflections)
+      },
+    })
+    await expect(drainHome(send, ports)).resolves.toEqual({ kind: "synced" })
+    expect(puts).toEqual(["/routine/reflections/r1"])
+    expect(Object.keys(readSent(ports.storage, PAIRING).reflections)).toEqual([
+      "r1",
+    ])
+    expect(trims).toEqual([{ r1: expect.any(String) }])
+  })
+
+  it("keeps one home answers with other words, and says the run fell short", async () => {
+    const trims: Array<Readonly<Record<string, string>>> = []
+    const { ports, send } = setup({
+      kept: [],
+      answers: [echo({ ...LINE, body: { kind: "text", text: "other" } })],
+      reflections: () => [LINE],
+      letGoHeld: (sent) => {
+        trims.push(sent.reflections)
+      },
+    })
+    await expect(drainHome(send, ports)).resolves.toEqual({
+      kind: "failed",
+      why: "refused",
+    })
+    expect(readSent(ports.storage, PAIRING).reflections).toEqual({})
+    expect(trims).toEqual([{}])
+  })
+
+  it("keeps one home refused, and lets nothing go for it", async () => {
+    const { ports, send } = setup({
+      kept: [],
+      answers: [{ status: 422, body: "{}" }],
+      reflections: () => [LINE],
+    })
+    await expect(drainHome(send, ports)).resolves.toEqual({
+      kind: "failed",
+      why: "refused",
+    })
+    expect(readSent(ports.storage, PAIRING).reflections).toEqual({})
   })
 })

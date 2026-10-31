@@ -2,8 +2,8 @@
  * @vitest-environment jsdom
  *
  * Reflecting on a session: a typed line and the one-tap answers are kept
- * with the session's ID and the moment, and a full phone offers the way out
- * (let go) instead of a place to add another.
+ * with the session's ID and the moment, and there is always room for another
+ * (LA16: the phone keeps an offline set, and home the written ones).
  */
 
 import { withQueryClient } from "@/test-support/query-client"
@@ -19,8 +19,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { REFLECTION_LIMIT, reflections } from "@/lib/session-reflection"
 import { ReflectPanel } from "@/components/reflection/reflect-panel"
 
-const shareReflections = vi.hoisted(() => vi.fn())
-vi.mock("@/lib/agent-export", () => ({ shareReflections }))
 // On the phone the panel also records voice; that is its own module's test.
 vi.mock("@/components/reflection/device-reflection-voice", () => ({
   DeviceReflectionVoice: (): null => null,
@@ -65,35 +63,27 @@ describe("ReflectPanel", () => {
       },
     ])
     expect(screen.getByText("9:30")).toBeTruthy()
-    expect(screen.getByText(/1 of 20 kept/)).toBeTruthy()
+    expect(screen.getByText(/1 kept · kept in this browser/)).toBeTruthy()
   })
 
-  it("offers letting go instead of a new one once every slot is taken", () => {
-    fill(REFLECTION_LIMIT)
-    vi.spyOn(window, "confirm").mockReturnValue(true)
+  it("takes another however many are kept, typed or tapped", () => {
+    fill(REFLECTION_LIMIT * 2)
     render(withQueryClient(<ReflectPanel sessionId="s1" atMs={1_000} />))
 
-    expect(screen.getByText("Time to hand these off")).toBeTruthy()
-    expect(screen.queryByLabelText("Type a reflection")).toBeNull()
-    expect(screen.getByText("stale")).toBeTruthy()
-
-    fireEvent.click(screen.getByRole("button", { name: /let go/i }))
-
-    expect(reflections.getSnapshot().kept).toEqual([])
-    expect(screen.getByLabelText("Type a reflection")).toBeTruthy()
-  })
-
-  it("says so when an answer has no slot", () => {
-    fill(REFLECTION_LIMIT)
-    render(withQueryClient(<ReflectPanel sessionId="s1" atMs={null} />))
-
+    fireEvent.change(screen.getByLabelText("Type a reflection"), {
+      target: { value: "one more" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Keep" }))
     const energy = screen.getByRole("group", { name: "Energy" })
     fireEvent.click(within(energy).getByRole("button", { name: "Keen" }))
 
-    expect(screen.getByRole("alert").textContent).toMatch(/no room/i)
+    expect(screen.queryByRole("alert")).toBeNull()
+    expect(reflections.getSnapshot().kept).toHaveLength(
+      REFLECTION_LIMIT * 2 + 2
+    )
   })
 
-  it("shares one reflection on its own, on the phone", () => {
+  it("says on the phone that the written ones go to home, and offers no share", () => {
     vi.stubEnv("VITE_DEVICE_BACKEND", "true")
     reflections.keep({
       id: "now",
@@ -102,16 +92,12 @@ describe("ReflectPanel", () => {
       atMs: 252_000,
       body: { kind: "text", text: "particles" },
     })
-    shareReflections.mockResolvedValue({ outcome: "shared", sent: ["now"] })
     render(withQueryClient(<ReflectPanel sessionId="s1" atMs={300_000} />))
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Share the one at 4:12" })
-    )
-
-    expect(shareReflections).toHaveBeenCalledWith({
-      sessionIds: ["s1"],
-      only: ["now"],
-    })
+    expect(screen.getByText(/written ones go to home/)).toBeTruthy()
+    expect(screen.queryByRole("button", { name: /share/i })).toBeNull()
+    expect(
+      screen.getByRole("button", { name: "Let go of the one at 4:12" })
+    ).toBeTruthy()
   })
 })

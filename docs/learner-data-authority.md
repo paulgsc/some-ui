@@ -34,7 +34,7 @@ toward this frame without doing so is a finding.
 
 | Invariant                                                                                                          | Moved by          |
 | ------------------------------------------------------------------------------------------------------------------ | ----------------- |
-| LA7 (a reflection reaches no server)                                                                               | HF3, #2178        |
+| LA7 (a reflection reaches no server) (done: LA7 retired, LA16 declared)                                            | HF3, #2178        |
 | LA8's "only on a tap"; LA9–LA11 and LA13's consent; LA12 (consent to read) (done: LA9–LA12 retired, LA15 declared) | HF8, #2182        |
 | LA6's reporting reset on every sign-in, on the owner's `lan` build                                                 | HF8, #2182 (open) |
 | LA13's scene notes copied only once a drama prompt is shared (done: copied once kept)                              | HF2, #2177        |
@@ -87,7 +87,7 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 | This device's sessions                      | stay here                                    | copied only by "Copy to my account", per account, after a confirmation; the phone's finished ones, to its paired home, by the drain (LA15), and freed from the phone only by "Clear finished sessions home holds", which reads each back first (LA8)                                                                                                                        | the same                                   |
 | `/signals`, `/presence/lease`               | never                                        | never                                                                                                                                                                                                                                                                                                                                                                       | sent                                       |
 | Push subscription                           | never                                        | never                                                                                                                                                                                                                                                                                                                                                                       | the account's, on the person's own taps    |
-| Reflections                                 | on the device (at most 20), never sent       | never sent, but a spoken one's audio, on a phone paired with home (LA7, LA13)                                                                                                                                                                                                                                                                                               | the same                                   |
+| Reflections                                 | on the device, never sent                    | on a paired phone, each written one sent to home by the drain and kept there, which hands its text to the Jobs mailbox for the routine; a spoken one's audio as its voice note; the one-tap answers never sent; the phone keeps its newest 20, and past them only the written ones home does not hold (LA13, LA16)                                                          | the same                                   |
 | Voice notes (the phone's)                   | on the phone, never sent                     | on a paired phone, each spoken reflection, Jobs voice note an event names, game bite, Studio take and scene note copied and sent to the paired home while the app is open, the copy kept until home holds it (LA13, LA15)                                                                                                                                                   | the same                                   |
 | Shelf                                       | never                                        | the account's, on the person's own taps                                                                                                                                                                                                                                                                                                                                     | the same                                   |
 | aph (the phone's)                           | on the phone, never sent                     | on a paired phone, on the paired home from the first run, synced while aph is open; the phone keeps only what home has not confirmed (LA15)                                                                                                                                                                                                                                 | the same                                   |
@@ -318,54 +318,16 @@ declared (checked by reading every call site and by the tests named).
   test can say is that a new caller chose the right purpose, which is LA1's
   limit too.
 
-### LA7: a reflection reaches no server, but a spoken one's audio its person keeps on home
+### LA7 (retired): a reflection reaches no server, but a spoken one's audio its person keeps on home
 
-- _Claim:_ a session reflection (a typed line, a voice note, the one-tap
-  answers; `lib/session-reflection`), or any value built from one, is never
-  passed to anything that sends to `file_host` or writes what does (a session
-  record, a signal, the device backend's database), with one exception: a
-  voice note's audio, with its id, session, time and media type, which the
-  voice lane copies for the paired home and sends there while the phone is
-  paired (LA13). It leaves the device otherwise only
-  through the share sheet (`lib/agent-export`), which the person starts. Two
-  allowlists in `apps/www/eslint.config.js` bound where one can travel: the
-  modules that hold or show reflections (`REFLECTION_MODULES`) import from `@/`
-  only what `REFLECTION_MAY_IMPORT` names (from the tenant, only
-  `useSessions`) and nothing from `fetch-kit`; and no module imports a
-  reflection module but those, `REFLECTION_IMPORTERS` and tests
-  (`reflection-voice/budget`, a size, aside). An importer may write sessions
-  of its own (the player completes one, the study list deletes them); it
-  never writes one with a reflection.
-- _Falsified by:_ a hunk that removes or narrows either LA7 block (a glob, a
-  pattern, the restated base patterns), moves a module that holds reflections
-  out of `REFLECTION_MODULES`, or adds an `eslint-disable` of
-  `no-restricted-imports` in a file either block covers; a hunk that adds a
-  name to `REFLECTION_MAY_IMPORT`, `REFLECTION_IMPORTERS` or
-  `allowImportNames` (each is a new place a reflection can reach, so read the
-  module it names against the next clause); a hunk, in `lib/agent-export`
-  or a module either list names, that passes a reflection or a value built
-  from one to a call that sends to `file_host` or writes a session, a signal
-  or the device backend's database; or a hunk to `lib/home-link/voice-copy.ts`
-  or `lib/home-link/voice.ts` that reads any part of a reflection but a voice
-  note's id, `sessionId`, `createdAt`, `body.kind`, `body.mimeType` and its
-  audio, or copies one while `paired()` is false.
-- _Scope:_ `apps/www/src`. The way out by the share sheet is LA1's "what a
-  learner chooses to send" (below), not a request.
-- _Why not enforced:_ the imports are, by lint (checked when declared by
-  adding a banned import to a probe file on each side: each failed, and
-  `budget` passed). What a lint cannot see is where a value goes once an
-  allowed module has it: `lib/agent-export` reads the sessions repository and
-  the reflections, as sharing needs, and the importers that render reflection
-  components write sessions of their own. That is data flow, not an import.
-  Held when declared, by reading each: `agent-export` gives reflections to
-  `shareFiles` alone and reads the sessions repository only for names and
-  dates, and the importers only render reflection components or call
-  `sweepOrphans`. _Amended with LA13 (owner, paulgsc/some-ui#2038):_ the voice
-  lane's two modules, added to `REFLECTION_IMPORTERS`, read a reflection only
-  in `reflectionNote` (id, session, time, kind and media type) and its audio
-  only through `reflectionAudio().get`, inside `copyAll`, which checks
-  `paired()` before every note; `voice.ts` reads the store only to render
-  the count again.
+- _Retired:_ HF3 (#2178; the owner's decisions D1 and D2 on #2174: home is the
+  owner's own store, and reflection text reaches the routine by the mailbox
+  as its minimum). A written reflection now goes home through the drain and
+  is kept there for good, so "reaches no server" no longer describes the code,
+  and the share sheet that was its one way out (`shareReflections`, the
+  arrival question, the reflections Drive folder) is gone. LA16 carries what
+  still holds: what may send a reflection, what the one-tap answers and spoken
+  reflections do, and the import allowlists.
 
 ### LA8: the phone reaches its home server through one module, and lets go only on a tap
 
@@ -428,7 +390,7 @@ declared (checked by reading every call site and by the tests named).
   same file), or lets `letGoUnchanged` (`lib/session-archive`) delete by
   any other route; one that makes `confirmHeld` write, or compare less than
   everything a copy carries (`sameRecord`); one that passes `copySessionsTo`
-  anything but session records (a reflection, a stop or a soundbite: LA7),
+  anything but session records (a reflection, a stop or a soundbite: LA16),
   or lets `homeTransport` send a method other than `GET`, `POST` or
   `PATCH`, or hand a `401` to `requestJSON` (the app's own sign-out); one
   that lets the runtime's `work` end before every request it started has
@@ -651,7 +613,7 @@ was silent, so the run ended as if all had gone.
 ### LA15: a paired phone drains what it keeps to home on its own, at the moments its person is using the app
 
 Everything the phone keeps for home (aph, the Jobs record, Practice's
-record, voice notes) goes through one wiring (`lib/home-link/lanes.ts`):
+record with its written reflections, voice notes) goes through one wiring (`lib/home-link/lanes.ts`):
 each declares its lane (its exchange, how its record moves, its sheet's
 counts; `aph.ts`, `jobs.ts`, `practice.ts`, `voice.ts`), and every lane
 shares the runtime (`kept-runtime.ts`), the watch (`kept-watch.ts`) and the
@@ -659,7 +621,9 @@ app shell's mounting of it (`components/device-home-glyph.tsx`'s
 `HomeLanes`, on every screen of the Android app; aph's lane while aph's
 screens hand its store in, since only they may import `@some-ui/aph`). There
 is no choice: a paired phone drains, and the only tap that lets anything
-leave the phone is LA8's clear. Korean's look at the routine's files
+leave the phone is LA8's clear (what goes on its own once home holds it, as
+aph's changes and the written reflections past the offline set do, is each
+record's own invariant: LA16 for reflections). Korean's look at the routine's files
 (`routine.ts`) is read the same way, by the lesson's own query.
 
 What each lane sends, and what the phone may let go of, is enforced by
@@ -738,12 +702,14 @@ can say is when a run is asked for:
   `readDigests`, `fileOutgoing` or `fileNotice` (`lib/jobs/home.ts`) so
   `exchangeJobs` no longer makes it in every run that gets that far; a hunk
   to `lib/home-link/practice.ts` that makes the lane's `revision` or
-  `subscribe` follow anything but the sessions cache, `onKept` and Studio's
-  store, or its `exchange` anything but `drainHome` over the phone's own
-  ports (`./going`) under the run's `pairing`; a hunk to
-  `lib/home-link/drain.ts` that takes home's copy in, lets a phone session
-  go, or confirms what home holds (`confirmHeld`), or sends other than
-  through `copyHome`, `sendKept`, `sendLog` and `sendStudio`; a hunk to
+  `subscribe` follow anything but the sessions cache, `onKept`, Studio's
+  store and the reflections store (HF3), or its `exchange` anything but
+  `drainHome` over the phone's own ports (`./going`) under the run's
+  `pairing`; a hunk to `lib/home-link/drain.ts` that takes home's copy in,
+  lets a phone session go, lets anything else go but through `letGoHeld`
+  (LA16), or confirms what home holds (`confirmHeld`), or sends other than
+  through `copyHome`, `sendKept`, `sendLog`, `sendStudio` and
+  `sendReflections` (LA16); a hunk to
   `lib/home-link/model.ts` or `runtime.ts` that lets `pair` keep an earlier
   pairing's `id`, or lets `load` report an `id` other than the one stored
   with the key; a hunk to `lib/home-link/sent.ts` that lets
@@ -808,6 +774,82 @@ can say is when a run is asked for:
   `retry` off, and no interval; no timer or listener in `routine.ts` but
   `onLink`, whose listeners only settle and drop what waits under another
   pairing.
+
+### LA16: written reflections are kept on home, append-only, and the phone lets one go only once home holds it
+
+Home keeps every written reflection (paulgsc/server `written_reflection`,
+its `docs/identity.md` invariant 29), one per id, append-only, and hands what
+the reflections routine reads of each (its id, session, time and text) to the
+Jobs mailbox's `reflection` folder (owner, D2 on #2174). The phone keeps an
+offline set (`lib/session-reflection/policy.ts`): its newest
+`REFLECTION_LIMIT`, and past them only what home does not hold, so it never
+refuses a new one for lack of room (#2098's offline set, for reflections).
+
+What is enforced by test: that only typed lines go, each once, as the phone
+keeps it, and count as home's only on an answer that holds them exactly as
+sent (`lib/home-link/__tests__/reflections.test.ts`); that the drain puts
+them last, remembers what home held and lets go only through its port after
+that part (`drain.test.ts`, "the drain's written reflections"); that
+`admit` never refuses and `beyondOffline` names only what is past the set and
+held (`lib/session-reflection/__tests__/policy.test.ts`, `store.test.ts`);
+and that the panel takes another however many are kept
+(`components/reflection/__tests__/reflect-panel.test.tsx`). What no test can
+say is where a reflection goes once an allowed module holds it:
+
+- _Claim:_ a session reflection (`lib/session-reflection`), or any value built
+  from one, reaches `file_host` only as a written one (`body.kind` `text`),
+  whole and as kept, through the drain's reflections part
+  (`sendReflections` in `lib/home-link/reflections.ts`, one
+  `PUT /routine/reflections/:id` each, from `drainHome` alone), or as a spoken
+  one's voice note (LA13); the one-tap answers reach no server; nothing else
+  passes one to anything that sends to `file_host` or writes a session, a
+  signal or the device backend's database; and a reflection leaves the phone
+  without its person's own let go only through the store's `trimOffline`,
+  called only from `drainHome`'s `letGoHeld` port after that part, with the
+  ids `heldWritten` reads from what home answered (`sent.reflections`). Two
+  allowlists in `apps/www/eslint.config.js` bound where one can travel: the
+  modules that hold or show reflections (`REFLECTION_MODULES`) import from
+  `@/` only what `REFLECTION_MAY_IMPORT` names and nothing from `fetch-kit`;
+  and no module imports a reflection module but those,
+  `REFLECTION_IMPORTERS` and tests (`reflection-voice/budget`, a size, aside).
+- _Falsified by:_ a hunk that removes or narrows either LA16 block in
+  `apps/www/eslint.config.js` (a glob, a pattern, the restated base
+  patterns), moves a module that holds reflections out of
+  `REFLECTION_MODULES`, or adds an `eslint-disable` of `no-restricted-imports`
+  in a file either block covers; a hunk that adds a name to
+  `REFLECTION_MAY_IMPORT`, `REFLECTION_IMPORTERS` or `allowImportNames` (read
+  the module it names against the claim); a hunk, in a module either list
+  names, that passes a reflection or a value built from one to a call that
+  sends to `file_host` or writes a session, a signal or the device backend's
+  database, other than `sendReflections`' `PUT` and LA13's voice lane; a hunk
+  to `lib/home-link/reflections.ts` that sends anything but a `text`
+  reflection, whole as kept, or by another method or path, or lets `held`
+  hear one home's answer does not hold exactly as sent; a hunk to
+  `lib/home-link/drain.ts` that calls `sendReflections` or `letGoHeld` from
+  anywhere else, or passes `letGoHeld` anything but the run's own `sent`; a
+  hunk to `lib/home-link/going.ts` that has `letGoHeldReflections` pass
+  `trimOffline` anything but `heldWritten` over the store's own list and that
+  `sent`; a hunk that calls `trimOffline` anywhere but there; or a hunk to
+  `lib/session-reflection/policy.ts` or `index.ts` that lets `admit` refuse
+  or drop another, lets `beyondOffline` name one inside the newest `limit` or
+  one `held` does not name, gives the list a limit of its own, or lets
+  `trimOffline` remove anything `beyondOffline` did not name.
+- _Scope:_ `apps/www/src`. The whole study-context export's share
+  (`lib/agent-export`, `shareAgentExport`) is LA1's "what a learner chooses to
+  send", not a request, and lets nothing go (LG1).
+- _Why not enforced:_ the imports are, by lint, and each part above is held
+  by its test. What a lint cannot see is where a value goes once an allowed
+  module has it: `lib/agent-export` reads the sessions repository and the
+  reflections, and the importers that render reflection components write
+  sessions of their own; and that the trim's one caller is the drain is a
+  reading of every call site. That is data flow, not an import. Held when
+  declared (HF3), by reading each: `agent-export` gives reflections to
+  `shareFiles` alone; `going.ts` reads the store for `reflectionsGoing` and
+  `letGoHeldReflections` and nothing else; `practice.ts` reads it only for
+  the lane's revision, its subscription and the sheet's count;
+  `trimOffline` is called only in `letGoHeldReflections`, which only the
+  Practice lane hands to `drainHome` as `letGoHeld`; and `sendReflections`
+  is called only in `drainHome`.
 
 ## Not covered, on purpose
 

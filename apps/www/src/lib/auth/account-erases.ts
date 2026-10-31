@@ -43,7 +43,7 @@ export const ACCOUNT_ERASES = {
     },
     {
       label: "Filed with home for the mailbox",
-      text: "The decisions and scouts you filed with home, which lessons you opened, what home heard in your voice notes, how each LeetType session went, and home's note of each one it passed on.",
+      text: "The decisions and scouts you filed with home, which lessons you opened, what home heard in your voice notes, how each LeetType session went, your written reflections, and home's note of each one it passed on.",
     },
     {
       label: "LeetType sessions",
@@ -52,6 +52,10 @@ export const ACCOUNT_ERASES = {
     {
       label: "Korean's word sets and reading records",
       text: "Every word set your phone sent home, and what it kept as you read: how long each word is given, how often each sentence was shown and read to the end, your grammar lens answers, your practice record, where you left off and your answers at a sitting's end, every change to them included.",
+    },
+    {
+      label: "Written reflections",
+      text: "Each reflection you typed about a session and your phone sent home, word for word, with when you wrote it.",
     },
     {
       label: "Voice notes, game bites included",

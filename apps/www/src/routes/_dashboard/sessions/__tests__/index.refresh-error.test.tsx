@@ -82,7 +82,7 @@ describe("SessionsRoute: no sessions left, reflections still kept", () => {
 
     expect(screen.getByText("No sessions yet.")).toBeTruthy()
     expect(
-      screen.getByRole("region", { name: "Reflections to hand off" })
+      screen.getByRole("region", { name: "Your reflections" })
     ).toBeTruthy()
   })
 })

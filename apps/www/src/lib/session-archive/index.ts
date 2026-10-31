@@ -6,8 +6,9 @@
  * #2177): a finished session leaves the phone only once home has read it
  * back (`letGoUnchanged`, which only `lib/home-link/clear` calls, LA8).
  *
- * Only session records go, as a copy home carries them; reflections, stops
- * and soundbites have their own share (`lib/agent-export`, LA7).
+ * Only session records go, as a copy home carries them; written
+ * reflections go home on their own (LA16), and stops and soundbites with
+ * the whole export (`lib/agent-export`).
  *
  * Phone-only (`build.paths.ts`).
  */

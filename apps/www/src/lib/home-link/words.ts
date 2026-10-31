@@ -48,9 +48,9 @@ export type LaneWords = {
 }
 
 const waits =
-  (noun: string) =>
+  (noun: string, many?: string) =>
   (n: number): string =>
-    `${counted(n, noun)} wait${n === 1 ? "s" : ""}`
+    `${counted(n, noun, many)} wait${n === 1 ? "s" : ""}`
 
 const PAIR = "Pair this phone with home in Settings to keep a copy there."
 
@@ -69,13 +69,18 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
         label: "Kept shelf items",
         one: "kept item",
       },
+      {
+        kind: "reflections",
+        label: "Written reflections",
+        one: "written reflection",
+      },
     ],
-    waits: waits("session"),
+    waits: waits("session or reflection", "sessions and reflections"),
     phoneOnly: `Practice is only on this phone. ${PAIR}`,
     partly:
       "Some of Practice is on home. New sessions stay on this phone until it is paired again.",
     footnote:
-      "Finished sessions, kept items, LeetType sessions and Studio sittings go to home while the app is open. A finished session leaves this phone only when you clear it in Settings, once home has it. Written reflections never leave this phone.",
+      "Finished sessions, kept items, LeetType sessions, Studio sittings and written reflections go to home while the app is open. A finished session leaves this phone only when you clear it in Settings, once home has it. This phone keeps your newest 20 reflections, and older written ones until home has them. Your answers to the three quick questions stay on this phone.",
     clash: null,
     unread: null,
   },
@@ -129,7 +134,7 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
     partly:
       "Some voice notes are on home. New ones stay on this phone until it is paired again.",
     footnote:
-      "Home keeps every recording and turns it into text for the morning routines. This phone keeps a note until home has it, even after you let it go here. Written reflections and read-aloud takes stay on this phone.",
+      "Home keeps every recording and turns it into text for the morning routines. This phone keeps a note until home has it, even after you let it go here. Read-aloud takes stay on this phone.",
     clash: null,
     unread: null,
   },
@@ -153,7 +158,7 @@ export function unsentLines({ gone }: Unsendable): Array<string> {
 
 /** Settings' Home server block, once paired: what goes, and when. */
 export const HOME_BLOCK = {
-  lead: "Everything this phone keeps goes to home on its own while the app is open: finished sessions, kept items, LeetType sessions, Studio sittings, the Jobs record, voice notes, and aph while it is open. Nothing leaves this phone until home has read it back.",
+  lead: "Everything this phone keeps goes to home on its own while the app is open: finished sessions, kept items, LeetType sessions, Studio sittings, written reflections, the Jobs record, voice notes, and aph while it is open. Nothing leaves this phone until home has read it back.",
 } as const
 
 /** Settings' readout of what this phone keeps on home, and what waits. */
@@ -173,8 +178,12 @@ export const KEPT_ON_HOME = {
       text: "Come from home when you ask for them. Nothing goes the other way.",
     },
     {
-      label: "Written reflections and read-aloud takes",
+      label: "Read-aloud takes",
       text: "Never go to home. You can share them yourself, to Drive.",
+    },
+    {
+      label: "Your answers to the three quick questions after a session",
+      text: "Stay on this phone.",
     },
     {
       label: "What you set in Settings, and your profile",

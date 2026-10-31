@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import type { Reflection } from "@/lib/session-reflection/policy"
 import {
   admit,
+  beyondOffline,
   bySession,
   describeAge,
   fromLegacy,
@@ -26,29 +27,59 @@ function note(id: string, sessionId: string, daysAgo = 0): Reflection {
 }
 
 describe("admit", () => {
-  it("counts every session's reflections toward one cap, and drops none for room", () => {
-    const kept = [note("a", "s1"), note("b", "s2")]
-
-    expect(admit(kept, note("c", "s3"), 3)).toMatchObject({
-      kind: "kept",
-      next: [{ id: "c" }, { id: "a" }, { id: "b" }],
-    })
-    const full = admit([...kept, note("c", "s3")], note("d", "s1"), 3)
-    expect(full.kind).toBe("full")
-    expect(full.next.map((r) => r.id)).toEqual(["a", "b", "c"])
+  it("puts a new one first, and never refuses one for room", () => {
+    const kept = Array.from({ length: 40 }, (_, i) =>
+      note(`n${String(i)}`, "s1")
+    )
+    const next = admit(kept, note("new", "s2"))
+    expect(next).toHaveLength(41)
+    expect(next[0]?.id).toBe("new")
   })
 
-  it("replaces the one with the same id even when full", () => {
+  it("replaces the one with the same id", () => {
     const kept = [note("a", "s1"), note("b", "s2")]
     const edited: Reflection = {
       ...note("a", "s1"),
       body: { kind: "text", text: "x" },
     }
 
-    expect(admit(kept, edited, 2)).toMatchObject({
-      kind: "kept",
-      next: [{ id: "a", body: { text: "x" } }, { id: "b" }],
-    })
+    expect(admit(kept, edited)).toMatchObject([
+      { id: "a", body: { text: "x" } },
+      { id: "b" },
+    ])
+  })
+})
+
+describe("beyondOffline (LA16)", () => {
+  const kept = [
+    note("new", "s1", 0),
+    note("mid", "s1", 1),
+    note("old", "s2", 2),
+  ]
+
+  it("names only the ones past the newest that home holds", () => {
+    expect(beyondOffline(kept, new Set(["new", "mid", "old"]), 2)).toEqual([
+      "old",
+    ])
+    expect(beyondOffline(kept, new Set(["new", "mid", "old"]), 1)).toEqual([
+      "mid",
+      "old",
+    ])
+  })
+
+  it("never names one home does not hold, however far past the set", () => {
+    expect(beyondOffline(kept, new Set(["new"]), 0)).toEqual(["new"])
+    expect(beyondOffline(kept, new Set(), 0)).toEqual([])
+    expect(beyondOffline(kept, new Set(["mid"]), 2)).toEqual([])
+  })
+
+  it("orders by when each was said, not by where it sits in the list", () => {
+    const shuffled = [
+      note("old", "s2", 2),
+      note("new", "s1", 0),
+      note("mid", "s1", 1),
+    ]
+    expect(beyondOffline(shuffled, new Set(["old", "new"]), 2)).toEqual(["old"])
   })
 })
 
@@ -57,18 +88,17 @@ describe("withAnswers", () => {
 
   it("keeps one set per session, changed in place", () => {
     const first = withAnswers([], "s1", { difficulty: "too-hard" }, made)
-    expect(first).toMatchObject({
-      kind: "kept",
-      next: [{ id: "new", body: { answers: { difficulty: "too-hard" } } }],
-    })
+    expect(first).toMatchObject([
+      { id: "new", body: { answers: { difficulty: "too-hard" } } },
+    ])
     const second = withAnswers(
-      first.next,
+      first,
       "s1",
       { difficulty: "right", worthwhile: "yes" },
       { ...made, id: "other" }
     )
-    expect(second.next).toHaveLength(1)
-    expect(second.next[0]).toMatchObject({
+    expect(second).toHaveLength(1)
+    expect(second[0]).toMatchObject({
       id: "new",
       body: { answers: { difficulty: "right", worthwhile: "yes" } },
     })
@@ -76,10 +106,8 @@ describe("withAnswers", () => {
 
   it("lets the set go once every answer is cleared, and drops unknown answers", () => {
     const first = withAnswers([], "s1", { enthusiasm: "keen" }, made)
-    expect(withAnswers(first.next, "s1", {}, made).next).toEqual([])
-    expect(withAnswers([], "s1", { enthusiasm: "sleepy" }, made).next).toEqual(
-      []
-    )
+    expect(withAnswers(first, "s1", {}, made)).toEqual([])
+    expect(withAnswers([], "s1", { enthusiasm: "sleepy" }, made)).toEqual([])
   })
 })
 

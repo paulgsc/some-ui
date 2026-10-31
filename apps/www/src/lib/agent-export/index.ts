@@ -3,14 +3,12 @@
  * (Claude, ChatGPT) to read, handed to Android's share sheet so the person
  * picks where they go (Drive, say); nothing here sends anything anywhere.
  *
- * Two shares. `shareAgentExport` is everything: one `context.json` (sessions,
+ * One share, `shareAgentExport`: everything, as one `context.json` (sessions,
  * each with its reflections and path counts, stops, soundbites and the
- * read-aloud practice record) and every recording beside it.
- * `shareReflections` is the reflections of the sessions named, or some of
- * them, one file per session named for it with that session's stops and path
- * counts and the practice record, each voice note beside its file. Either way, the
+ * read-aloud practice record) and every recording beside it. The
  * reflections that went out read as shared once the person says they arrived
- * (`arrivals`, `handOff`).
+ * (`handOff`). Written reflections reach the routine from home through the
+ * Jobs mailbox (LA16), so they have no share of their own.
  *
  * Phone-only: rendered only in the device build, so no other profile ships it
  * (`build.paths.ts`).
@@ -100,17 +98,6 @@ const ABOUT = [
   LEETYPE_ANSWERS,
   LEETYPE_SESSIONS,
   LEETYPE_ROUND_LEDGER,
-].join("\n")
-
-const ABOUT_REFLECTIONS = [
-  "Reflections from the some-ui study app on the learner's phone, about one study session, for an agent helping them.",
-  "Each is something the learner said while it was fresh: a typed line, a voice note (its audio is the file named in `file`), or one-tap answers (`legend` reads them).",
-  "`atMs` is how far into the session it was said; null means after the session ended.",
-  STOPS,
-  PATHS,
-  READ_ALOUD_PRACTICE,
-  READ_ALOUD_FEEDBACK,
-  "Use them to shape the next session. The reflections stay on the phone: this file is a copy.",
 ].join("\n")
 
 function soundbiteFile(bite: Soundbite): string {
@@ -339,7 +326,7 @@ function timeZone(): string {
  * then back out of it, so the sessions of the reflections in `sent` read as
  * shared only once the person says they arrived (`handOff`).
  */
-export type ShareResult = {
+type ShareResult = {
   outcome: "shared" | "cancelled"
   sent: ReadonlyArray<string>
 }
@@ -360,10 +347,7 @@ export type AgentExportResult = ShareResult & {
   }
 }
 
-/**
- * The person says these arrived: their sessions read as shared. No route
- * takes a written reflection home yet (#2178).
- */
+/** The person says these arrived: their sessions read as shared. */
 export function handOff(ids: ReadonlyArray<string>, at = new Date()): void {
   const sent = new Set(ids)
   const sessionIds = reflections
@@ -371,102 +355,6 @@ export function handOff(ids: ReadonlyArray<string>, at = new Date()): void {
     .kept.filter((r) => sent.has(r.id))
     .map((r) => r.sessionId)
   if (sessionIds.length > 0) reflections.markShared(sessionIds, at)
-}
-
-export type ReflectionPick = {
-  sessionIds: ReadonlyArray<string>
-  only?: ReadonlyArray<string>
-}
-
-/**
- * Reflection shares Android called "shared", oldest first, each waiting on
- * the person's word that it arrived. Held here, not by the button that
- * shared: mid-session the share sheet sends the app to the background, and
- * the session's chrome remounts (`live-player.tsx`), the drawer and its
- * button with it, so only a question asked from outside them survives.
- */
-let awaiting: ReadonlyArray<ReadonlyArray<string>> = []
-const awaitingListeners = new Set<() => void>()
-
-function setAwaiting(next: ReadonlyArray<ReadonlyArray<string>>): void {
-  awaiting = next
-  awaitingListeners.forEach((listener) => listener())
-}
-
-export const arrivals = {
-  subscribe(listener: () => void): () => void {
-    awaitingListeners.add(listener)
-    return () => awaitingListeners.delete(listener)
-  },
-  getSnapshot: (): ReadonlyArray<ReadonlyArray<string>> => awaiting,
-  /**
-   * The person's answer for `batch`: arrived hands it off; otherwise it
-   * stays on the phone to share again. Only the first answer counts.
-   */
-  answer(
-    batch: ReadonlyArray<string>,
-    arrived: boolean,
-    at = new Date()
-  ): void {
-    if (!awaiting.includes(batch)) return
-    setAwaiting(awaiting.filter((b) => b !== batch))
-    if (arrived) handOff(batch, at)
-  },
-}
-
-/**
- * Shares the reflections picked, one file per session. Some of a session's
- * are named and written as all of them would be; once handed off they leave
- * the phone, so a later share of the session carries only the rest. What
- * went out waits in `arrivals`.
- */
-export async function shareReflections(
-  { sessionIds, only }: ReflectionPick,
-  now: () => Date = () => new Date()
-): Promise<ShareResult> {
-  const wanted = new Set(sessionIds)
-  const picked = only ? new Set(only) : null
-  const kept = reflections
-    .getSnapshot()
-    .kept.filter(
-      (r) => wanted.has(r.sessionId) && (picked === null || picked.has(r.id))
-    )
-  const sessions = await sessionsRepository.list()
-  const exportedAt = now().toISOString()
-  const { bySession, files, sent } = await writeOut(kept, sessions, exportedAt)
-  const practice = await readAloudPractice()
-  const feedback = await readAloudFeedback()
-  const stops = allStops()
-  const jsons = [...bySession].map(([sessionId, { base, entries }]) => {
-    const session = sessions.find((s) => s.id === sessionId)
-    return {
-      name: `${base}.json`,
-      data: JSON.stringify(
-        {
-          about: ABOUT_REFLECTIONS,
-          exportedAt,
-          timeZone: timeZone(),
-          legend: { reflectionQuestions: QUESTIONS, stopReasons: REASONS },
-          session: session ? summary(session) : { id: sessionId },
-          reflections: entries,
-          stops: stops.filter((stop) => stop.sessionId === sessionId),
-          paths: pathCounts(sessionId),
-          readAloudPractice: practice,
-          readAloudFeedback: feedback,
-        },
-        null,
-        2
-      ),
-    }
-  })
-  const outcome = await foreignValue({
-    outcome: shareFiles("reflections", "Study session reflections", [
-      ...jsons,
-      ...files,
-    ]),
-  })
-  if (outcome === "shared" && sent.length > 0) setAwaiting([...awaiting, sent])
-  return { outcome, sent }
 }
 
 /** Opens the share sheet with everything, reflections nested per session. */

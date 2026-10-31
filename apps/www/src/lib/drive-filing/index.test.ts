@@ -48,10 +48,10 @@ describe("driveFiling", () => {
     const notice = { show: vi.fn(() => 7), dismiss: vi.fn() }
     const sidecar = driveFiling(notice, () => new Date(2026, 9, 13))
 
-    const settle = sidecar.opening("reflections")
+    const settle = sidecar.opening("session-archive")
     expect(notice.show).toHaveBeenCalledWith(
       "In Drive, save to",
-      "Study ledger › reflections"
+      "Study ledger › sessions"
     )
     expect(notice.dismiss).not.toHaveBeenCalled()
     settle?.()
