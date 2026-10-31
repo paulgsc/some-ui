@@ -529,7 +529,7 @@
     {
       "id": "rust-rounds-recorded",
       "name": "Rust Rounds' programs get run on home",
-      "why": "The phone puts a Rust Rounds round home; home queues each of its programs and, in the background, hands each to the sandboxed rust-runner and keeps what rustc printed, so a card can show a run made on home. Nothing on the phone fetches rounds or runs from home yet (RR4b, some-ui#2347).",
+      "why": "A Rust Rounds round sent home is kept there; home queues each of its programs and, in the background, hands each to the sandboxed rust-runner and keeps what rustc printed, so a card can show a run made on home. Nothing on the phone sends rounds home yet: RR4b (some-ui#2347) is the story that adds it.",
       "paths": [
         "server:apps/servers/file_host/src/rust_rounds",
         "server:crates/db/rust_round",
@@ -542,10 +542,10 @@
           "id": "RC1",
           "kind": "OA2",
           "property": "outcome",
-          "claim": "Every program in a round home keeps gets a recorded run, or is kept as the one that took the runner down.",
-          "requirement": "Each distinct program a stored round holds is queued once, and a pass records it under the runner's toolchain. A runner that goes away while it holds a program is a drop, and the program is asked again on the next pass; at its DROPS (2)th drop it is kept as runner-restarted and never asked again under that toolchain, so the programs behind it are recorded. A runner that cannot be reached records nothing and keeps no drop: every program waits for the next pass, and each such pass is logged as an error and counted on operation_errors_total{operation=\"rust_rounds\"}.",
+          "claim": "Every program in a round home keeps reaches a recorded outcome: its run, the runner's refusal of it, or that it took the runner down.",
+          "requirement": "While RUST_ROUNDS_ENABLED is on, each distinct program a stored round holds is queued once, and a pass keeps its outcome under the runner's toolchain: the runner's recording, or the runner's refusal of that program, each kept as the program's outcome. A runner that goes away while it holds a program, or does not answer within an ask's wait, is a drop, and the program is asked again on the next pass; at its DROPS (2)th drop that is kept as its outcome, and it is never asked again under that toolchain. A fault in the runner itself, an answer that is not one, a runner that cannot be reached, or a toolchain changed mid-pass is an outage: it keeps nothing, is logged at ERROR and counted on operation_errors_total{operation=\"rust_rounds\"}, and every program waits for the next pass. So no program holds up the queue for good, and a program's outcome is only ever what it did.",
           "verdict": "holds",
-          "conclusion": "Every program gets a run, or after two drops is kept as the one that took the runner down, and while the runner cannot be reached the programs wait and every pass says so; this holds while home has the recorder turned on (RUST_ROUNDS_ENABLED), and off, rounds are kept and their programs wait unrecorded.",
+          "conclusion": "While RUST_ROUNDS_ENABLED is on, every program ends recorded, refused, or after two drops kept as the one that took the runner down, and an outage keeps nothing, is reported at ERROR on every pass it lasts and leaves the programs for the next; while it is off, rounds are kept, their programs wait, and nothing reports them.",
           "evidence": [
             {
               "class": "measured",
@@ -554,7 +554,7 @@
             },
             {
               "class": "measured",
-              "says": "A program the runner goes away holding is asked again, and at its second drop kept as runner-restarted; the program behind it is then recorded.",
+              "says": "A program the runner goes away holding is asked again, and at its second drop kept as the one that took the runner down; the program behind it is then recorded.",
               "ref": "server:apps/servers/file_host/src/rust_rounds/pass.rs"
             },
             {
@@ -564,7 +564,7 @@
             },
             {
               "class": "structural",
-              "says": "A pass that stops on the runner (unreachable, dropped, refused, or an answer that is not one) or on storage is logged at ERROR and added to operation_errors_total{operation=\"rust_rounds\"}; that it is counted is read from the code, not tested.",
+              "says": "A pass that ends on an outage (a runner that cannot be reached, a fault in it, an answer that is not one, a changed toolchain) or on storage is logged at ERROR and added to operation_errors_total{operation=\"rust_rounds\"}; that it is counted is read from the code, not tested.",
               "ref": "server:apps/servers/file_host/src/rust_rounds.rs"
             }
           ],
@@ -584,13 +584,13 @@
           "kind": "RE3",
           "property": "work",
           "claim": "A recording pass takes a bounded batch and stops at its deadline.",
-          "requirement": "One pass records at most BATCH (20) programs, one at a time, and starts an ask only while a whole ask's wait (ASK_TIMEOUT, 137 s) is left before the pass deadline (RUST_ROUNDS_PASS_DEADLINE_SECONDS, 600 by default and never under 137); any failure but a recording ends the pass, and the rest wait for the next.",
+          "requirement": "One pass records at most BATCH (20) programs, one at a time, and starts an ask only while a whole ask's wait (ASK_TIMEOUT, 137 s) is left before the pass deadline (RUST_ROUNDS_PASS_DEADLINE_SECONDS, 600 by default and never under 137); what a pass does not reach waits for the next.",
           "verdict": "holds",
           "conclusion": "A pass records at most 20 programs and starts no ask it could not wait out before its deadline, and the next pass takes the rest.",
           "evidence": [
             {
               "class": "measured",
-              "says": "Over 21 waiting programs a pass records exactly 20 and the next the last; a runner that hangs ends the pass at its ask's wait, and a pass with less than one ask's wait left asks nothing.",
+              "says": "Over 21 waiting programs a pass records exactly 20 and the next the last; a runner that hangs is waited on no longer than one ask's wait, and a pass with less than one ask's wait left asks nothing.",
               "ref": "server:apps/servers/file_host/src/rust_rounds/pass.rs"
             }
           ],
@@ -2143,19 +2143,19 @@
     {
       "store": "server:rust_round_drop",
       "class": "telemetry",
-      "growth": "Per program and toolchain the runner went away holding: one tiny row per drop, at most DROPS = 2; a runner that could not be reached leaves none; names no subject; append-only, kept for good.",
+      "growth": "Per program and toolchain the runner went away holding or did not answer for in time: one tiny row per drop, at most DROPS = 2; an outage leaves none; names no subject; append-only, kept for good.",
       "family": "rust-rounds-recorded"
     },
     {
       "store": "server:rust_round_run",
       "class": "derived",
-      "growth": "Per program and toolchain: one row, recorded (the runner's answer, <= ANSWER_CEILING = 4 MiB, and what the phone reads of it) or runner-restarted; a toolchain bump adds one for every program; names no subject; append-only, kept for good.",
+      "growth": "Per program and toolchain: one row, its outcome (the runner's recording, <= ANSWER_CEILING = 4 MiB, and what the phone reads of it; the runner's refusal of it; or that it took the runner down); a toolchain bump adds one for every program; names no subject; append-only, kept for good.",
       "family": "rust-rounds-recorded"
     },
     {
       "store": "server:rust_round_source",
-      "class": "derived",
-      "growth": "Per distinct program any round holds (a read card's, or a variant card's as built), once by its SHA-256 and shared by every round and subject that holds it; each within its round's 32 KiB; names no subject; append-only, kept for good.",
+      "class": "record",
+      "growth": "Per distinct program any round holds (a read card's, or a variant card's as built), once by its SHA-256 and shared by every round and subject that holds it; each within its round's 32 KiB; names no subject; append-only, kept for good. Once the rounds that held a program are gone with their account, this is its only copy and nothing can rebuild it.",
       "family": "rust-rounds-recorded"
     },
     {

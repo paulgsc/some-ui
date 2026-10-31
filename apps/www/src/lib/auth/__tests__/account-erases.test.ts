@@ -42,6 +42,13 @@ describe("what deleting the account says", () => {
       "What your phones share",
       "Sign-in",
     ])
+    expect(stays.map(({ label }) => label)).toEqual([
+      "On your phones",
+      "In Drive",
+      "In the mailbox",
+      "Rust Rounds' programs",
+      "Logs and backups",
+    ])
   })
 
   it("says the mailbox's files go, archived ones too, and what stays in the mailbox", () => {
@@ -68,6 +75,15 @@ describe("what deleting the account says", () => {
     expect(voice).toMatch(/game-day bite, also what it was about/)
     expect(textOf(goes, "Filed with home for the mailbox")).toMatch(
       /what home heard in your voice notes/
+    )
+  })
+
+  it("says a Rust Rounds round goes and its programs stay, linked to no one", () => {
+    expect(textOf(goes, "Rust Rounds' rounds")).toMatch(
+      /which of your voice notes a card answered/
+    )
+    expect(textOf(stays, "Rust Rounds' programs")).toMatch(
+      /linked to no one once your rounds are gone/
     )
   })
 })
