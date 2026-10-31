@@ -70,7 +70,7 @@ function holds(reflection: Written, body: string): boolean {
   return (
     isRecord(parsed) &&
     isRecord(parsed.reflection) &&
-    digestOf(parsed.reflection) === digestOf(reflection)
+    canonicalJson(parsed.reflection) === canonicalJson(reflection)
   )
 }
 
