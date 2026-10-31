@@ -17,11 +17,11 @@ import {
   isRecord,
   jsonOf,
   openKept,
+  sha256Hex,
   writeKept,
 } from "@some-ui/core-utils"
 import type { HomeSession } from "@some-ui/leetype"
 
-import { sha256Hex } from "@/lib/device-backend/common"
 import type { Kept } from "@/lib/device-backend/handlers/shelf"
 import type { SessionRecord } from "@/lib/tenant/types"
 

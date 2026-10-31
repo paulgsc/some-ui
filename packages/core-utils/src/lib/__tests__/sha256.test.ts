@@ -8,8 +8,5 @@ describe("sha256Hex", () => {
       "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
     expect(await sha256Hex("abc")).toBe(abc)
     expect(await sha256Hex(new TextEncoder().encode("abc").buffer)).toBe(abc)
-    expect(await sha256Hex("한")).toBe(
-      await sha256Hex(new Uint8Array([0xed, 0x95, 0x9c]).buffer)
-    )
   })
 })

@@ -9,6 +9,7 @@
  */
 
 import type { ReactNode } from "react"
+import { sha256Hex } from "@some-ui/core-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import {
   act,
@@ -20,7 +21,6 @@ import {
 } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { sha256Hex } from "@/lib/device-backend/common"
 import type { HomeRequest } from "@/lib/device-backend/native-http"
 import { CONSENT_KEY } from "@/lib/home-link/consent-runtime"
 import { SENT_KEY } from "@/lib/home-link/sent"

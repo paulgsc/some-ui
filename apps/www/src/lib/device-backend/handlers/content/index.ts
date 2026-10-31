@@ -8,7 +8,8 @@
  * `?activity=` names another), `version` is the SHA-256 of the compact JSON in the
  * server's field order, and a body is verbatim with its hash as the ETag.
  */
-import { sha256Hex } from "@/lib/device-backend/common"
+import { sha256Hex } from "@some-ui/core-utils"
+
 import { DEFAULT_LESSON_ACTIVITY } from "@/lib/device-backend/content-store"
 import type { DeviceRoute } from "@/lib/device-backend/router"
 import {

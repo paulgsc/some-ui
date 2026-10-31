@@ -4,13 +4,6 @@
  * with its chosen take's file, the shape the Build Journal's splicer reads),
  * and the audio of every take still on the phone, each named as the cut list
  * names it (`takeFile`).
- *
- * Each take in `takes.json` names the voice note home keeps it as
- * (`homeNote`, the take's id: home's transcripts of it are
- * `transcript-<homeNote>-<n>.json` in the Jobs mailbox), and, when its audio
- * goes with this share, the SHA-256 of those bytes. A session hears a take
- * only once its file's hash is the one named, so its hearing and home's are
- * of the same bytes (ST25, #2323).
  */
 import { sha256Hex } from "@some-ui/core-utils"
 import { projectFile } from "@soundbites/lib/project/file"

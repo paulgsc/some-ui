@@ -11,7 +11,7 @@
  * is fine enough to see 뻐 -> 뻤어 and coarse enough to stay cheap.
  */
 
-import { lcsTable } from "@some-ui/core-utils"
+import { lcsAlignment } from "@some-ui/core-utils"
 
 type DiffSegment = {
   text: string
@@ -53,25 +53,12 @@ export function diffUtterance(
     return { segments: [{ kind: "same", text: candidate }], similarity: 0 }
   }
 
-  const table = lcsTable(a, b)
   const segments: Array<DiffSegment> = []
-  let i = 0
-  let j = 0
-  while (i < a.length && j < b.length) {
-    if (a[i] === b[j]) {
-      push(segments, "same", b[j] ?? "")
-      i += 1
-      j += 1
-    } else if ((table[i + 1]?.[j] ?? 0) >= (table[i]?.[j + 1] ?? 0)) {
-      push(segments, "removed", a[i] ?? "")
-      i += 1
-    } else {
-      push(segments, "added", b[j] ?? "")
-      j += 1
-    }
+  for (const step of lcsAlignment(a, b)) {
+    if (step.kind === "both") push(segments, "same", step.b)
+    else if (step.kind === "a") push(segments, "removed", step.a)
+    else push(segments, "added", step.b)
   }
-  for (; i < a.length; i += 1) push(segments, "removed", a[i] ?? "")
-  for (; j < b.length; j += 1) push(segments, "added", b[j] ?? "")
 
   const visible = (chars: Array<string>): number =>
     chars.filter((char) => char.trim() !== "").length

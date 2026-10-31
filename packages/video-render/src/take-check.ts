@@ -368,9 +368,7 @@ export type Token = {
 
 /**
  * The words of `raw` as compared: each split at its hyphens and
- * normalized, and each spoken number made one token. Both the take check
- * and the comparison of two hearings (`hearings.ts`) read words through it,
- * so `21` and `twenty-one` are one word to each.
+ * normalized, and each spoken number made one token.
  */
 export function tokenized(raw: ReadonlyArray<string>): Array<Token> {
   const pieces = raw.flatMap((text, at) =>

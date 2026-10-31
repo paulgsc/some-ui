@@ -6,7 +6,9 @@
  * (`device-backend/home-sync`), the only way TOPIK lessons arrive; and a
  * session file the person picks from storage (`lib/leetype-files`).
  */
-import { rfc3339, sha256Hex } from "@/lib/device-backend/common"
+import { sha256Hex } from "@some-ui/core-utils"
+
+import { rfc3339 } from "@/lib/device-backend/common"
 import type { SqlDriver, SqlValue } from "@/lib/device-backend/sql"
 import { num, one, text } from "@/lib/device-backend/sql"
 

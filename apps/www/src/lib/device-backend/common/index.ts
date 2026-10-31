@@ -4,9 +4,6 @@
  */
 import { isRecord } from "@some-ui/core-utils"
 
-/** `file_host`'s content hash. */
-export { sha256Hex } from "@some-ui/core-utils"
-
 /**
  * The phone's one person: a fixed id (the server mints `subject-<32 hex>`
  * per account), distinct from the server's legacy `subject-local`.

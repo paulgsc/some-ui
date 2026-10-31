@@ -17,8 +17,7 @@
  *
  * lines up two hearings of one take (ST25, `hearings.ts`) and prints the
  * comparison as JSON: home's transcript as the Jobs mailbox holds it
- * (`transcript-<note>-<n>.json`, its `words`), and the session's words, a
- * list of `{ text, startMs, endMs, p }` or an object holding one as `words`.
+ * (`transcript-<note>-<n>.json`), and the session's words (`WordsSchema`).
  *
  * `pnpm --filter` runs this from the package; INIT_CWD is where it was typed.
  */
