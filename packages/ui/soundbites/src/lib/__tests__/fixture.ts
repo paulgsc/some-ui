@@ -1,5 +1,7 @@
+import { heldByHome } from "@soundbites/lib/home-held"
 import { byNewest, displacedBy } from "@soundbites/lib/policy"
 import type { SoundbiteStore } from "@soundbites/lib/store"
+import { SoundbitesFullError } from "@soundbites/lib/store"
 import type { Soundbite } from "@soundbites/lib/types"
 
 /** A soundbite recorded `minutesAgo` before 2026-10-01 12:00 UTC. */
@@ -45,7 +47,9 @@ export function memoryStore(initial: ReadonlyArray<Soundbite> = []): {
         Promise.resolve(kept.get(id)?.audio ?? null),
       save: (b, audio, replace): Promise<void> => {
         const all = [...kept.values()].map((k) => k.bite)
-        for (const id of displacedBy(all, replace)) kept.delete(id)
+        const leaving = displacedBy(all, replace, heldByHome)
+        if (leaving === null) return Promise.reject(new SoundbitesFullError())
+        for (const id of leaving) kept.delete(id)
         kept.set(b.id, { bite: b, audio })
         changed()
         return Promise.resolve()

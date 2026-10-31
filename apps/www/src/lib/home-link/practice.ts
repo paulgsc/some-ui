@@ -2,7 +2,9 @@
  * Practice's lane (LA15, docs/learner-data-authority.md): what this phone
  * holds of its own record, drained by `./drain` through the one wiring
  * (`./lanes`): its finished sessions and kept shelf items, its finished
- * LeetType sessions, and Studio's sittings and answers. Its record moves
+ * LeetType sessions, Studio's sittings and answers, and the soundbites'
+ * records and LeetType's answer notes (`./notes`), and the grammar-lens
+ * record (`./lens-record`). Its record moves
  * with the sessions the app has read (React Query's `sessionsKey`), each
  * shelf keep (`onKept`) and each write to Studio's projects, so a finished
  * session, a newly kept item or a kept take asks for a run; a LeetType
@@ -18,9 +20,10 @@ import { sessionsKey } from "@/lib/tenant/queries"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 import { drainHome } from "./drain"
-import { logGoing, readPhone, studioGoing } from "./going"
+import { logGoing, notesGoing, readPhone, studioGoing } from "./going"
 import { pairingOf, useHomeLink } from "./index"
 import type { Lane, LaneCounts } from "./lanes"
+import { lensGoing } from "./lens-record"
 import type { HomeLinkState } from "./model"
 import type { Sent } from "./sent"
 import { heldCounts, readSent, sessionsToSend } from "./sent"
@@ -49,6 +52,8 @@ export const practiceLane: Lane = {
       read: readPhone,
       logGoing: () => logGoing(pairing, storage),
       studioGoing: () => studioGoing(pairing, storage),
+      notesGoing: () => notesGoing(pairing, storage),
+      lensGoing: () => lensGoing(pairing, storage),
       pairing,
       storage,
     })

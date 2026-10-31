@@ -1477,6 +1477,10 @@
       "why": "Writes Studio's sitting log and friction reports; each answers with what it kept, and the phone reads it back."
     },
     {
+      "module": "study_notes",
+      "why": "Writes a soundbite's record or a LeetType answer's note; each answers with the SHA-256 of what it kept, and the phone checks it against what it sent."
+    },
+    {
       "module": "subjects",
       "why": "Reads the subject's own stats; the answer is the outcome."
     },
@@ -1694,22 +1698,22 @@
     {
       "store": "phone:leetype-takes",
       "class": "record",
-      "growth": "bounded: 40 spoken answers, each <= 60 s: 40 x 60 x 4,000 = 9,600,000 B; past 40 refused.",
-      "horizon": "none: a study-context export is a copy (LG1), and nothing sends them home yet (#1934); only a take whose audio never landed is swept",
+      "growth": "bounded: an offline set of 40 spoken answers, each <= 60 s: 40 x 60 x 4,000 = 9,600,000 B, and 40 answer notes; past 40, a new one makes room with the oldest home holds, and is refused while home holds none.",
+      "horizon": "a take, or a note, leaves the phone only to make room at 40, and only once home holds it (HF5 #2180, LG1); a study-context export is a copy; a take whose audio never landed is swept",
       "family": "what-is-kept"
     },
     {
       "store": "phone:lens-record",
       "class": "record",
-      "growth": "Per grammar-lens item seen (session, line, showing): one entry each, rewritten in place for the same item; LENS_RECORD_MAX = 1,000 entries (about 700 KB), a new one past it refused, never evicted (`topik:lens-record`).",
-      "horizon": "none: a study-context export is a copy (LG1), and nothing sends the record home yet (#2180)",
+      "growth": "Per grammar-lens item seen (session, line, showing): one entry each, rewritten in place for the same item; an offline set of LENS_RECORD_MAX = 1,000 entries (about 700 KB): past it, a new one makes room with the earliest home holds as it is, and is refused while home holds none (`topik:lens-record`).",
+      "horizon": "an entry leaves the phone only to make room at 1,000, and only once home holds it as it is (HF5 #2180, LG1); a study-context export is a copy",
       "family": "what-is-kept"
     },
     {
       "store": "phone:lens-takes",
       "class": "record",
-      "growth": "bounded: LENS_TAKES_MAX = 40 takes, each <= 30 s: 40 x 30 x 4,000 = 4,800,000 B; past 40 refused, never evicted.",
-      "horizon": "none: a study-context export is a copy (LG1), and nothing sends them home yet (#2180); only a take whose audio never landed is swept",
+      "growth": "bounded: an offline set of LENS_TAKES_MAX = 40 takes, each <= 30 s: 40 x 30 x 4,000 = 4,800,000 B; past 40, a new take makes room with the oldest home holds, and is refused while home holds none.",
+      "horizon": "a take leaves the phone only to make room at 40, and only once home holds it (HF5 #2180, LG1); a study-context export is a copy; a take whose audio never landed is swept",
       "family": "what-is-kept"
     },
     {
@@ -1880,8 +1884,8 @@
     {
       "store": "phone:soundbites",
       "class": "record",
-      "growth": "bounded: SOUNDBITE_LIMIT = 6 takes, each <= 1 min at 32 kbps (240,000 B), SOUNDBITES_MAX_BYTES = 1,440,000 B; a 7th replaces the oldest (or the one picked).",
-      "horizon": "the 7th take displaces the oldest kept (or the one the person picked)",
+      "growth": "bounded: an offline set of SOUNDBITE_LIMIT = 6 takes, each <= 1 min at 32 kbps (240,000 B), SOUNDBITES_MAX_BYTES = 1,440,000 B; a 7th replaces the oldest home holds (or the one picked of those), and is refused while home holds none.",
+      "horizon": "a soundbite leaves the phone only to make room for a 7th, and only once home holds its audio and its record (HF5 #2180, LG1); or when the person deletes it",
       "family": "what-is-kept"
     },
     {
@@ -2165,6 +2169,12 @@
       "family": "what-is-kept"
     },
     {
+      "store": "server:study_note",
+      "class": "record",
+      "growth": "Per soundbite (its record) and per LeetType spoken answer (its note: prompt, rubric, ticks, what was typed), as the phone sends it (some-ui #2180, HF5): one JSON body each, at most BODY_CEILING = 64 KiB, a few hundred bytes in practice; append-only, kept for good.",
+      "family": "what-is-kept"
+    },
+    {
       "store": "server:tabs",
       "class": "cache",
       "growth": "Per distinct URL captured by the browser extension (upsert by URL hash), with the page's extracted content as a JSON blob; no subject column.",
@@ -2174,7 +2184,7 @@
     {
       "store": "server:voice_note",
       "class": "record",
-      "growth": "Per voice note sent home (reflection, jobs, scene, game, studio): one small metadata row; append-only.",
+      "growth": "Per voice note sent home (reflection, jobs, scene, game, studio, soundbite, lens, leetype): one small metadata row; append-only.",
       "family": "voice-heard"
     },
     {

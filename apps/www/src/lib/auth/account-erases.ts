@@ -58,6 +58,10 @@ export const ACCOUNT_ERASES = {
       text: "Each voice note your phone sent home, its sound included, and what home heard in it; for a game-day bite, also what it was about and what the screen showed as you said it.",
     },
     {
+      label: "What the phone noted beside a soundbite or a LeetType answer",
+      text: "When each soundbite was recorded and what your phone noted around it, and for each LeetType spoken answer, its prompt and rubric, the points you ticked and what you typed.",
+    },
+    {
       label: "Rust Rounds' rounds",
       text: "Each round sent home, as the tutor wrote it: its cards, which of your voice notes a card answered, and the tutor's nudges.",
     },

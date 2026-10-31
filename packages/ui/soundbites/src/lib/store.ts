@@ -1,11 +1,13 @@
 /**
- * Where soundbites live: the WebView's IndexedDB, on the phone, and nowhere
- * else. Blobs go in as they are (no base64), metadata beside them, and the
- * cap is enforced in the same transaction as the write, so no sequence of
- * saves can leave more than `SOUNDBITE_LIMIT` on the phone.
+ * Where soundbites live on the phone: the WebView's IndexedDB. Blobs go in
+ * as they are (no base64), metadata beside them, and the cap is enforced in
+ * the same transaction as the write, so no sequence of saves can leave more
+ * than `SOUNDBITE_LIMIT` on the phone. The cap is an offline set: a save
+ * past it lets go only soundbites home holds (`./home-held`), and is refused
+ * while home holds too few. Each soundbite goes home through www's home link
+ * (HF5, #2180): its audio as a voice note, its record as a study note.
  *
- * Not the device backend's SQLite: these are not `file_host` data, the
- * server has no route for them, and audio is the one thing that database
+ * Not the device backend's SQLite: audio is the one thing that database
  * would hold as large opaque values for no query to read.
  */
 import {
@@ -16,6 +18,7 @@ import {
   withRoom,
 } from "@some-ui/voice-capture"
 
+import { heldByHome } from "./home-held"
 import { byNewest, displacedBy, fitsMaxBytes, SOUNDBITE_LIMIT } from "./policy"
 import type { Soundbite } from "./types"
 
@@ -25,8 +28,9 @@ export type SoundbiteStore = {
   audio: (id: string) => Promise<Blob | null>
   /**
    * Keeps `bite` with its audio. When the phone already holds the limit, it
-   * replaces `replace` if that is still kept, else the oldest. Rejects with
-   * `SoundbitesFullError`, keeping nothing, past `SOUNDBITES_MAX_BYTES` or
+   * replaces `replace` if that is still kept and home holds it, else the
+   * oldest home holds. Rejects with `SoundbitesFullError`, keeping nothing,
+   * while home holds none to replace, past `SOUNDBITES_MAX_BYTES` or past
    * the device's room.
    */
   save: (bite: Soundbite, audio: Blob, replace: string | null) => Promise<void>
@@ -116,8 +120,10 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
       const leaving = displacedBy(
         await allKept(db.transaction(META, "readonly").objectStore(META)),
         replace,
+        heldByHome,
         SOUNDBITE_LIMIT
       )
+      if (leaving === null) throw new SoundbitesFullError()
       const freed = await bytesOf(db, AUDIO, leaving)
       await withRoom(
         audio.size - freed,
@@ -128,7 +134,16 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
           // Read and evict inside the one transaction: the cap holds even if two
           // saves overlap (a second tab of the WebView, say).
           const kept = await allKept(meta)
-          const displaced = displacedBy(kept, replace, SOUNDBITE_LIMIT)
+          const displaced = displacedBy(
+            kept,
+            replace,
+            heldByHome,
+            SOUNDBITE_LIMIT
+          )
+          if (displaced === null) {
+            tx.abort()
+            throw new SoundbitesFullError()
+          }
           const staying = await Promise.all(
             kept
               .filter((each) => !displaced.includes(each.id))

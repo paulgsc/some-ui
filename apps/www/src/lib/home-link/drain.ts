@@ -5,7 +5,9 @@
  * to home copies them (`./sessions`, reading home only to plan), kept shelf
  * items PUT as the shelf sends them (`./shelf`), each finished LeetType
  * session PUT event by event and read back (`./leetype-log`), then Studio's
- * sittings and answers the same way (`./studio-log`). Nothing of home's is
+ * sittings and answers the same way (`./studio-log`), then each soundbite's
+ * record and LeetType answer's note home lacks (`./notes`), and the
+ * grammar-lens entries home lacks as they are (`./lens-record`). Nothing of home's is
  * taken in, and nothing on the phone is let go: a finished session leaves
  * only by the clear in Settings (`./clear`), once home has read it back.
  *
@@ -30,6 +32,10 @@ import type { SessionRecord } from "@/lib/tenant/types"
 
 import type { LogReport } from "./leetype-log"
 import { emptyLogReport, sendLog } from "./leetype-log"
+import type { LensEntry } from "./lens-record"
+import { sendLens } from "./lens-record"
+import type { StudyNote } from "./notes"
+import { sendNotes } from "./notes"
 import type { Sent } from "./sent"
 import {
   readSent,
@@ -58,6 +64,10 @@ export type DrainPorts = {
   logGoing: () => Promise<ReadonlyArray<HomeSession>>
   /** What of Studio's record home lacks under `pairing` (`./going`). */
   studioGoing: () => Promise<StudioGoing>
+  /** The study notes home lacks under `pairing` (`./going`). */
+  notesGoing: () => Promise<ReadonlyArray<StudyNote>>
+  /** The grammar-lens entries home lacks as they are (`./lens-record`). */
+  lensGoing: () => Promise<ReadonlyArray<LensEntry>>
   /** The pairing this run goes under (the link's id for it). */
   pairing: string
   storage: KeyedStorage | null
@@ -93,7 +103,10 @@ function endedPart(report: EndedReport): HomeExchanged | null {
   return null
 }
 
-/** One log's sender (`./leetype-log`'s `sendLog`, `./studio-log`'s `sendStudio`). */
+/**
+ * One log's sender (`./leetype-log`'s `sendLog`, `./studio-log`'s
+ * `sendStudio`, `./notes`' `sendNotes`, `./lens-record`'s `sendLens`).
+ */
 type LogSender<T> = (
   going: T,
   send: HomeCall,
@@ -169,7 +182,7 @@ export async function drainHome(
   const part = async <T>(
     going: T,
     sender: LogSender<T>,
-    field: "leetype" | "studio"
+    field: "leetype" | "studio" | "notes" | "lens"
   ): Promise<HomeExchanged | null> => {
     const log = emptyLogReport()
     const readBack: Record<string, string> = {}
@@ -191,6 +204,10 @@ export async function drainHome(
     "studio"
   )
   if (studioEnded !== null) return studioEnded
+  const notesEnded = await part(await ports.notesGoing(), sendNotes, "notes")
+  if (notesEnded !== null) return notesEnded
+  const lensEnded = await part(await ports.lensGoing(), sendLens, "lens")
+  if (lensEnded !== null) return lensEnded
 
   return short === null ? { kind: "synced" } : failed(short)
 }
