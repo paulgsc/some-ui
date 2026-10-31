@@ -1,6 +1,11 @@
 /** @vitest-environment node */
+import { newProject } from "@soundbites/lib/project/model"
+import { cutListOf } from "@soundbites/lib/project/script"
+import { startView } from "@soundbites/lib/studio/view"
 import { seconds, STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { describe, expect, it } from "vitest"
+
+import { AT, primer } from "./fixture"
 
 /**
  * What the person must never be told in: how it works, not what it does
@@ -20,7 +25,19 @@ function fixed(table: unknown): Array<string> {
 const W = STUDIO_WORDS
 const TITLE = "Playoff Delta, week 8"
 
-/** Every word Start makes, from a sample of what it is given. */
+/** Every look and voice Shape offers; the test below holds these complete. */
+const LOOKS = ["plain", "calm", "lively"] as const satisfies ReadonlyArray<
+  keyof typeof W.shape.looks
+>
+const VOICES = ["ad-lib", "read", "mixed"] as const satisfies ReadonlyArray<
+  keyof typeof W.shape.voices
+>
+
+/**
+ * Every word Start makes, from a sample of what it is given: its own table,
+ * and each sitting's status line as `startView` draws it (Record's count,
+ * Watch's changes, Shape's every look and voice, Finish's every state).
+ */
 const START_MADE: ReadonlyArray<string> = [
   W.start.which(TITLE),
   W.start.nextVersion(TITLE),
@@ -33,7 +50,27 @@ const START_MADE: ReadonlyArray<string> = [
   W.standing({ done: "Kept takes for scene 1.", next: "Scene 2: The miss." }),
   W.recordStatus(1, 3),
   W.recordStatus(3, 3),
+  W.watch.status(0),
+  W.watch.status(2),
+  ...LOOKS.flatMap((look) =>
+    VOICES.map((voice) => W.shape.status(look, voice))
+  ),
+  ...fixed(W.finish.status),
+  W.finish.status.take(2),
 ]
+
+/** Every string Start draws for a video just opened from its primer. */
+function startDrawn(): Array<string> {
+  const { project } = newProject("week-8", {
+    author: "claude",
+    message: "Primer",
+    at: AT,
+    cutList: cutListOf(primer()),
+    primer: primer(),
+  })
+  const view = startView(project)
+  return [view.title, view.standing, ...view.sittings.map((row) => row.status)]
+}
 
 /** Every word the table makes, from a sample of what it is given. */
 const MADE: ReadonlyArray<string> = [
@@ -114,11 +151,14 @@ describe("Studio's words", () => {
   })
 
   it("SW1: say the way in on Start in the person's terms, never a file, folder or format", () => {
+    expect(Object.keys(W.shape.looks)).toEqual([...LOOKS])
+    expect(Object.keys(W.shape.voices)).toEqual([...VOICES])
     const file =
       /\.json|›|build journal|\bprimers?\b|\bfiles?\b|\bfolder\b|\bformat\b/i
     const start = [
       ...fixed(STUDIO_WORDS.start),
       ...START_MADE,
+      ...startDrawn(),
       // What the pick says when what was picked is refused.
       W.notice.unreadableFile,
       W.merge.unreadable,
