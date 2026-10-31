@@ -2,7 +2,8 @@
 -- https://github.com/paulgsc/server/issues/509#issuecomment-6547096403):
 -- home recomputes it from records it keeps, so the mailbox holds only the
 -- latest per routine. When home puts a new one, `store.ts` drops the ones
--- before it in the same batch (MB1).
+-- before it in the same batch (MB5, which carries the retired MB1's claim
+-- with this exception).
 --
 -- An item still never changes, and it still leaves `item` only into
 -- `archived`, with one exception: an `index` item may go once a newer index

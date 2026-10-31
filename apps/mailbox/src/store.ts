@@ -1,7 +1,7 @@
 /**
  * What the mailbox keeps, and the one adapter that keeps it in D1.
  *
- * MB1: an item never changes, and leaves `item` only into `archived`, or, for
+ * MB5: an item never changes, and leaves `item` only into `archived`, or, for
  * home's index (a view, not a record), once a newer index of its routine is
  * live; no code may issue `INSERT OR REPLACE`, which the triggers do not
  * stop. Full text: README.md, "Gray-area invariants".
@@ -186,6 +186,8 @@ const HELD_SQL = "SELECT seq, sha256 FROM item WHERE folder = ?1 AND name = ?2"
  * batch of the put that took it. An index's routine is its name less the
  * stamp and `.json` (24 characters), and the greater name is the newer; the
  * trigger lets an index go only while a newer one of its routine is live.
+ * It returns the names it dropped, so a put whose own name is among them
+ * learns it was superseded from the same transaction.
  */
 const DROP_OLDER_INDEXES_SQL = `DELETE FROM item
 WHERE folder = 'index'
@@ -194,7 +196,8 @@ WHERE folder = 'index'
     SELECT MAX(newer.name) FROM item AS newer
     WHERE newer.folder = 'index'
       AND substr(newer.name, 1, length(newer.name) - 24) = substr(?1, 1, length(?1) - 24)
-  )`
+  )
+RETURNING name`
 
 const ITEM_COLUMNS =
   "item.seq, item.name, item.size, item.sha256, item.content_type AS contentType, item.put_at AS putAt, COALESCE(restored.restored_at, item.put_at) AS liveSince"
@@ -378,17 +381,18 @@ export function d1Store(db: Db): Store {
       ] as const
       if (folder === "index") {
         // The newest index of the routine stays, and every one before goes,
-        // in one transaction with the put (MB1).
-        const [put] = await db.batch([
+        // in one transaction with the put (MB5).
+        const [put, dropped] = await db.batch([
           db.prepare(INSERT_SQL).bind(...values),
           db.prepare(DROP_OLDER_INDEXES_SQL).bind(name),
         ])
+        // Dropped in the write that took it: a newer index of its routine is live.
+        if ((dropped?.results ?? []).some((row) => row.name === name)) {
+          return { change: "superseded" }
+        }
         const inserted = put?.results?.at(0)
         if (inserted !== undefined) {
-          // Taken and dropped at once: a newer index of its routine is live.
-          return (await one(HELD_SQL, folder, name)) === null
-            ? { change: "superseded" }
-            : { change: "added", seq: seqOf(inserted) }
+          return { change: "added", seq: seqOf(inserted) }
         }
       } else {
         const inserted = await one(INSERT_SQL, ...values)

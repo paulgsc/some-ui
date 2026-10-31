@@ -117,9 +117,11 @@ role, and it is the owner's call, so it is not built.
 
 - **Name**, anchored to its folder: `brief` takes `digest-YYYY-MM-DD.json`, and, from the
   routine's one-time backfill (MB2, below), a pre-mailbox `decisions-YYYY-MM-DD.json`,
-  `decisions-YYYY-MM-DD-<n>.json` or `scouts-YYYYMMDDTHHMMSS.json` under its Drive name, only
-  for a day before 2026-10-23, when the mailbox opened, and each with its own schema
-  (`some-ui.job-decisions/1` or `some-ui.job-scouts/1`); `decisions` takes
+  `decisions-YYYY-MM-DD-<n>.json` (`<n>` from 2 to 99, no leading zero, as the phone numbers
+  a later share that day) or `scouts-YYYYMMDDTHHMMSS.json` (a time on the clock) under its
+  Drive name, only for a real calendar day from 2026-10-17, the first day the phone could
+  share one, through 2026-10-22, the day before the mailbox opened, and each with its own
+  schema (`some-ui.job-decisions/1` or `some-ui.job-scouts/1`); `decisions` takes
   `decisions-YYYY-MM-DD.json` or `decisions-YYYY-MM-DD-<n>.json`; `scout` takes
   `scouts-YYYYMMDDTHHMMSS.json`; `scene` takes `scene-<reflection>.json` or
   `scene-<reflection>-<n>.json`, named for the reflection it answers
@@ -211,8 +213,9 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   for it and the name and SHA-256 of its newest transcript here (`[{"file","in","note","transcript"}]`);
   and `picked`, every posting a digest picked or a decisions file names, by fingerprint.
   `packages/job-desk/ROUTINE.md` says how the routine reads it. The Worker holds its shape as it
-  holds a transcript's: those keys and no other, a `day` that is a date, a `validThrough` that
-  is a date no earlier than `day` or `null`, an `asOf` that is an
+  holds a transcript's: those keys and no other, a `day` that is a calendar day
+  (`YYYY-MM-DD`, and `2026-02-30` is not one), a `validThrough` that is a calendar day no
+  earlier than `day` or `null`, an `asOf` that is an
   instant or `null`, `from`, `queue` and `new` objects, `skipped`, `notes` and `picked` lists, a
   name that carries the body's `routine`, and no audio or Drive link, by the same tests, each
   refusal with its reason (`an index carries no audio` or `an index names no Drive file`).
@@ -252,7 +255,67 @@ Each is written for review, one hunk at a time (`REVIEW.md`; `CLAUDE.md`, "Gray-
 invariants"). One line of each is in the doc comment of `src/core.ts`. The sections below say
 how each was checked when this workspace landed.
 
-**MB1: An item never changes, and leaves `item` only into `archived`, or, for home's index, once a newer one of its routine is live.**
+**MB1 (retired): An item never changes, and leaves `item` only into `archived`.**
+
+- _Claim:_ in `apps/mailbox`, no source file or migration updates or replaces an `item` row;
+  the only statement that deletes one is the archive's, which names only items whose row
+  `archived` already holds with the SHA-256 the request named in `If-Match`; and an archived
+  name never takes other bytes. The adapter writes `item` with an `INSERT … ON CONFLICT
+(folder, name) DO NOTHING` (a put adds nothing under an archived name, in the same
+  statement) and that `DELETE`. `item` carries three triggers: `BEFORE UPDATE` aborts;
+  `item_leaves_only_into_archived` aborts a `DELETE` unless `archived` holds a row with the
+  item's `seq`, folder, name and SHA-256; `item_keeps_an_archived_name` aborts an `INSERT`
+  of other bytes under an archived name. `archived` and `restored` carry triggers that abort
+  every `UPDATE` and `DELETE`. The only other delete is of an answered ask in `wanted`, and
+  the only insert into `archived` is the archive's.
+- _Falsified by_ a hunk that drops, renames or weakens any of those triggers (a later
+  migration that drops a trigger or one of the tables included, other than `0003_folders.sql`'s
+  rebuild, which recreates them); that deletes or moves the
+  migrations that create them, or changes `migrations_dir` in `wrangler.jsonc` so they no
+  longer apply; that adds an `UPDATE`, `INSERT OR REPLACE`, `REPLACE INTO` or
+  `ON CONFLICT … DO UPDATE` against `item`, `archived` or `restored`, a `DELETE` other than
+  the two in `store.ts`, or an `INSERT INTO archived` other than `ARCHIVE_SQL`, anywhere in
+  `src/` or `migrations/`; that changes `put`'s `INSERT_SQL` away from `DO NOTHING` or drops
+  its `NOT EXISTS (… archived …)` condition; that drops the `sha256 = ?3` condition from
+  `ARCHIVE_SQL` or `DROP_BYTES_SQL`, drops the latter's `seq IN (SELECT seq FROM archived …)`,
+  or runs the two outside one batch; that lets `archive` in `core.ts` pass anything but the
+  `If-Match` hash as that SHA-256; that rebuilds `item` again other than as `0003_folders.sql`
+  does (every row and seq copied, the sequence carried past every archived seq, all three
+  triggers recreated in the same migration); or that deletes or loosens the trigger cases, the
+  rebuild test or the scan in `__tests__/store.test.ts`.
+- _Scope:_ `apps/mailbox`.
+- _Why not enforced:_ the triggers and `store.test.ts` enforce `UPDATE` and `DELETE` (each case
+  fails if its trigger is removed). They do **not** enforce `INSERT OR REPLACE`: SQLite runs the
+  delete trigger for the row a `REPLACE` removes only when `recursive_triggers` is on, and it is
+  off by default. I checked this on SQLite 3.49.1 through sql.js: `INSERT OR REPLACE` replaced
+  the row (seq 1 became 2, the hash changed) and neither trigger fired. I have not checked
+  D1 itself. So in the database the `REPLACE` half rests on this falsifier. In the code, a
+  test in `store.test.ts` scans the comment-stripped `src/*.ts` and every migration for those
+  statements and for a dropped trigger; it cannot see SQL built at run time or typed into
+  Cloudflare's dashboard, and a type cannot see SQL at all. Closing it in the database would take a `BEFORE INSERT`
+  guard on every held name and a `put` that reads before it writes, which changes the table's
+  design (`item_keeps_an_archived_name` guards archived names only). The owner
+  chose to leave the gap (2026-10-21) rather than add that guard, so a hunk that adds a
+  `REPLACE` is what a reviewer is watching for, and it is a violation if one lands.
+- _Checked at landing:_ the only SQL in `src/` is the one `INSERT … DO NOTHING` and four
+  `SELECT`s in `store.ts`; the words UPDATE, DELETE and REPLACE appear there only in comments.
+  _Checked at the 2026-10-23 amendment (archiving, the owner's decision):_ `store.ts` has two
+  `DELETE`s (the archive's on `item`, and an answered ask on `wanted`), no `UPDATE` or
+  `REPLACE`, one `INSERT INTO archived` (`ARCHIVE_SQL`), and every `INSERT` is `DO NOTHING`
+  or a plain insert into `restored`; each of the seven triggers has a case in
+  `store.test.ts` that fails without it. _Checked at the rebuild (`0003_folders.sql`,
+  2026-10-23):_ after every migration `item` has the same three triggers; the rebuild test
+  keeps every row and seq and carries the sequence past archived seqs, with items live, with
+  none live, and on a table never used; and workerd's D1 (`wrangler d1 migrations apply
+--local`) applied it with the same result. Remote D1 was not tried: if it refuses the
+  `sqlite_sequence` update, the migration rolls back whole and nothing changes.
+- _Retired:_ 2026-10-31, when the owner decided home's index is a view, not a record
+  ([paulgsc/server#509](https://github.com/paulgsc/server/issues/509#issuecomment-6547096403)):
+  an index now leaves `item` with no `archived` row once a newer one of its routine is live,
+  so "only into `archived`" no longer holds. MB5 (below) carries the claim with that
+  exception; everything MB1's checks found above still holds outside the `index` folder.
+
+**MB5: An item never changes, and leaves `item` only into `archived`, or, for home's index, once a newer one of its routine is live.**
 
 - _Claim:_ in `apps/mailbox`, no source file or migration updates or replaces an `item` row;
   the only statements that delete one are the archive's, which names only items whose row
@@ -302,25 +365,14 @@ how each was checked when this workspace landed.
   design (`item_keeps_an_archived_name` guards archived names only). The owner
   chose to leave the gap (2026-10-21) rather than add that guard, so a hunk that adds a
   `REPLACE` is what a reviewer is watching for, and it is a violation if one lands.
-- _Checked at landing:_ the only SQL in `src/` is the one `INSERT … DO NOTHING` and four
-  `SELECT`s in `store.ts`; the words UPDATE, DELETE and REPLACE appear there only in comments.
-  _Checked at the 2026-10-23 amendment (archiving, the owner's decision):_ `store.ts` has two
-  `DELETE`s (the archive's on `item`, and an answered ask on `wanted`), no `UPDATE` or
-  `REPLACE`, one `INSERT INTO archived` (`ARCHIVE_SQL`), and every `INSERT` is `DO NOTHING`
-  or a plain insert into `restored`; each of the seven triggers has a case in
-  `store.test.ts` that fails without it. _Checked at the rebuild (`0003_folders.sql`,
-  2026-10-23):_ after every migration `item` has the same three triggers; the rebuild test
-  keeps every row and seq and carries the sequence past archived seqs, with items live, with
-  none live, and on a table never used; and workerd's D1 (`wrangler d1 migrations apply
---local`) applied it with the same result. Remote D1 was not tried: if it refuses the
-  `sqlite_sequence` update, the migration rolls back whole and nothing changes. _Checked at
-  the index amendment (`0004_index_view.sql`, 2026-10-31, the owner's decision that the index
-  is a view, not a record, [paulgsc/server#509](https://github.com/paulgsc/server/issues/509#issuecomment-6547096403)):_ `store.ts` has three
-  `DELETE`s (the archive's and `DROP_OLDER_INDEXES_SQL` on `item`, and an answered ask on
-  `wanted`) and still no `UPDATE` or `REPLACE`; after every migration `item` has the same
-  three triggers; `store.test.ts` has a trigger case that lets an index go only while a newer
-  one of its routine is live and never another folder's item, and runs the index put against
-  the in-memory store and the adapter alike.
+- _Checked at landing (`0004_index_view.sql`, 2026-10-31, the owner's decision that the index
+  is a view, not a record, [paulgsc/server#509](https://github.com/paulgsc/server/issues/509#issuecomment-6547096403)):_
+  `store.ts` has three `DELETE`s (the archive's and `DROP_OLDER_INDEXES_SQL` on `item`, and an
+  answered ask on `wanted`) and still no `UPDATE` or `REPLACE`; `DROP_OLDER_INDEXES_SQL`
+  returns the names it drops, so a put learns it was superseded from its own batch; after
+  every migration `item` has the same three triggers; `store.test.ts` has a trigger case that
+  lets an index go only while a newer one of its routine is live, and runs the index put
+  against the in-memory store and the adapter alike. The rest is as MB1's last check found it.
 
 **MB2: Roles.**
 
@@ -333,8 +385,11 @@ how each was checked when this workspace landed.
   `leetype` and `leetype-log` 2026-10-24 too; `transcript` 2026-10-25; `index` 2026-10-31,
   paulgsc/server#509, and kept out of `ask` and `move` the same day, since it is a view and
   not a record). The routine's `brief` also takes its one-time backfill: a Jobs decisions or
-  scouts file named for a day before 2026-10-23, under its Drive name (`FOLDERS`' `backfill`,
-  `MAILBOX_OPENED`), so the files it can add there are a closed set. Every request passes `authenticate` and then one of `serve`'s
+  scouts file under its Drive name, only as the phone names one (`sharedDay`: a real calendar
+  day, a decisions share number from 2 to 99, a scouts stamp at a real time) and only for a
+  day from 2026-10-17, when the phone could first share one, through 2026-10-22, the day
+  before the mailbox opened (`FOLDERS`' `backfill`, `FIRST_SHARED`, `MAILBOX_OPENED`), so the
+  files it can add there are a closed set. Every request passes `authenticate` and then one of `serve`'s
   `may(grant.get | put | ask | move)` checks before anything reaches the store.
 - _Falsified by_ a hunk that adds, removes or renames a role; adds a folder to, or removes one
   from, any role's `get`, `put`, `ask` or `move` list; changes which secret a role reads, or
@@ -342,9 +397,9 @@ how each was checked when this workspace landed.
   loosens or removes a `may` check in `serve`, or changes which right a listing or method is
   checked against; lets `handle` reach `serve` or the store without a grant; adds a method to
   a route in `METHODS`; renames, moves or deletes the `ROLES` table; or adds a `backfill`
-  kind to any folder, changes one's name or schema, moves `MAILBOX_OPENED` or lets
-  `kindOf` take a backfill name for a day on or after it; when the PR description does not
-  name the owner's decision to do so.
+  folder to any folder, loosens `SHARED_NAMES` or `sharedDay`, moves `FIRST_SHARED` or
+  `MAILBOX_OPENED`, or lets `kindOf` take a backfill name `sharedDay` does not read or for a
+  day outside them; when the PR description does not name the owner's decision to do so.
 - _Scope:_ `apps/mailbox/src/core.ts` and `wrangler.jsonc`.
 - _Why not enforced:_ `__tests__/core.test.ts` pins today's matrix (every role against every
   folder and method), but a hunk that changes the table and the test together passes it. A test
@@ -369,18 +424,19 @@ how each was checked when this workspace landed.
   the transcript amendment (2026-10-25, the owner's choice that home hears the voice notes and
   hands the routines text, paulgsc/server#460):_ `ROLES` has three entries; `core.test.ts` pins
   `transcript`: home puts it and may not read it, the routine reads it and may not put it, and
-  archive moves it. _Checked at the index amendment (2026-10-31, the owner's HF7,
-  paulgsc/server#509: "after each mailbox pass, home puts an index file per routine to the
-  mailbox"):_ `ROLES` has three entries; `core.test.ts` pins `index`: home puts it and may not
-  read it, the routine reads it and may not put it, and archive moves it. _Checked at the
-  derived-view and backfill amendment (2026-10-31, the owner's decision on the HF7 asks,
+  archive moves it. _Checked at the index and backfill amendment (2026-10-31, the owner's HF7,
+  paulgsc/server#509, "after each mailbox pass, home puts an index file per routine to the
+  mailbox", and the decision on its asks,
   [paulgsc/server#509](https://github.com/paulgsc/server/issues/509#issuecomment-6547096403): "yes on 1 and 2, and
-  let's go with the recommended option A for 3"):_ `ROLES` has three entries; the routine's
-  `ask` and the archive role's `move` are `RECORDS`, every folder but `index`, and
-  `core.test.ts` pins that no role archives `index`, lists it as archived or asked for, or
-  asks for it; `brief`'s `backfill` takes `decisions-…` and `scouts-…` only for a day before
-  `MAILBOX_OPENED` (2026-10-23), each under its own schema, and `core.test.ts` pins the days
-  on either side of it, the schemas, and that only the routine puts one.
+  let's go with the recommended option A for 3"):_ `ROLES` has three entries; `core.test.ts`
+  pins `index`: home puts it and may not read it, and the routine reads it and may not put
+  it; the routine's `ask` and the archive role's `move` are `RECORDS`, every folder but
+  `index`, and `core.test.ts` pins that no role archives `index`, lists it as archived or
+  asked for, or asks for it; `brief`'s `backfill` is the `decisions` and `scout` folders'
+  own rules, taken only for a name `sharedDay` reads as a day from `FIRST_SHARED`
+  (2026-10-17) to before `MAILBOX_OPENED` (2026-10-23), and `core.test.ts` pins the first
+  and last days taken and the days either side, impossible dates and times, share numbers
+  the phone never writes, the schemas, and that only the routine puts one.
 
 **MB3: No token reaches the repo or a log.**
 

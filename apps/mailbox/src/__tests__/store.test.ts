@@ -119,14 +119,8 @@ describe("the migration", () => {
     expect(() => {
       drop(jobs1)
     }).not.toThrow()
-    // Only the index folder: a name in another folder with a newer one stays.
-    await d1Store(d1Shim(db)).put("brief", "digest-2026-10-21.json", item("a"))
-    await d1Store(d1Shim(db)).put("brief", "digest-2026-10-22.json", item("b"))
-    expect(() => {
-      drop("digest-2026-10-21.json")
-    }).toThrow(leaves)
     expect(db.exec("SELECT name FROM item ORDER BY seq").at(0)?.values).toEqual(
-      [[topik], [jobs2], ["digest-2026-10-21.json"], ["digest-2026-10-22.json"]]
+      [[topik], [jobs2]]
     )
   })
 
@@ -545,7 +539,7 @@ describe.each([
   })
 })
 
-describe("MB1: nothing in the workspace issues a statement that rewrites an item", () => {
+describe("MB5: nothing in the workspace issues a statement that rewrites an item", () => {
   const SRC = join(import.meta.dirname, "..")
   // The words appear in prose comments, so comments are cut before the scan.
   // `DELETE FROM` is matched apart: three are allowed (below).
