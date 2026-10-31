@@ -26,11 +26,9 @@
 3 packages/ui/honeycomb/src/hooks/use-game-audio.ts
 2 packages/ui/honeycomb/src/hooks/use-hangul-wasm/index.ts
 2 packages/ui/honeycomb/src/hooks/use-hexgrid-wasm/index.ts
-2 packages/ui/leetype/src/components/round/generate-round/index.tsx
 1 packages/ui/leetype/src/hooks/leetype/use-typing-game-wasm/index.ts
 6 packages/ui/lesson-crm/src/components/lesson-crm/index.tsx
 1 packages/ui/lesson-crm/src/components/prompt-card/index.tsx
-4 packages/ui/lesson-crm/src/components/round-crm/index.tsx
 1 packages/ui/lesson-crm/src/lib/operation.ts
 1 packages/ui/topik/src/components/topik/conversation-preview/index.tsx
 2 packages/ui/topik/src/components/topik/handheld/generate-lesson/index.tsx

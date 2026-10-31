@@ -37,6 +37,7 @@ const uiPackages = [
   "lesson-crm",
   "playoff-delta",
   "resume",
+  "rust-rounds",
   "shared",
   "soundbites",
   "topik",

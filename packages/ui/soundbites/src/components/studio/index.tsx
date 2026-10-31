@@ -923,22 +923,33 @@ const SpokenNote = ({
         {words.say(atMs)}
       </Button>
     )
-  if (speaking.phase === "listening")
+  if (speaking.phase === "listening" || speaking.phase === "finishing") {
+    const where =
+      speaking.phase === "finishing"
+        ? words.finishing
+        : speaking.ready
+          ? words.listening
+          : words.gettingReady
     return (
       <div className="flex flex-col gap-2" aria-live="polite">
         <p className="text-sm">
           {speaking.words === "" ? (
-            <span className="text-muted-foreground">{words.listening}</span>
+            <span className="text-muted-foreground">{where}</span>
           ) : (
             speaking.words
           )}
         </p>
-        <Button size="lg" onClick={() => dispatch({ type: "speakStopped" })}>
-          <Square aria-hidden />
-          {words.stop}
-        </Button>
+        {speaking.phase === "listening" ? (
+          <Button size="lg" onClick={() => dispatch({ type: "speakStopped" })}>
+            <Square aria-hidden />
+            {words.stop}
+          </Button>
+        ) : (
+          <p className="text-muted-foreground text-sm">{words.finishing}</p>
+        )}
       </div>
     )
+  }
   return (
     <div className="border-brand flex flex-col gap-2 rounded-2xl border-2 p-3">
       <p className="text-sm">{speaking.words}</p>

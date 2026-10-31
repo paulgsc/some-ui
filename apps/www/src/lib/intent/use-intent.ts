@@ -37,6 +37,7 @@ import {
 import type { UseMutationResult } from "@tanstack/react-query"
 
 import { mapFileHostError } from "./errors"
+import { useReportShownFailure } from "./report"
 
 export type UseIntentOptions = {
   /**
@@ -105,6 +106,11 @@ export function useIntent<TVariables, TData, TStep extends string = never>(
   const reset = useCallback((): void => {
     mutationReset()
   }, [mutationReset])
+
+  useReportShownFailure(
+    status === "error" ? { error: mutation.error, attempt: submittedAt } : null,
+    mapError
+  )
 
   const state = ((): Intent<TData, TStep> => {
     // Switch on the destructured `status`: narrowing `mutation.status` would

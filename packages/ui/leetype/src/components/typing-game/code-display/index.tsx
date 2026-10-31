@@ -8,14 +8,11 @@ import {
   VISIBILITY_MASKED,
 } from "@leetype/types/leetype"
 import { cn } from "@some-ui/core-utils"
+import type { CodeToken } from "@some-ui/shared"
+import { tokenizeCode } from "@some-ui/shared"
 import { ChevronDown } from "lucide-react"
-import Prism from "prismjs"
 
 import "prismjs/themes/prism-tomorrow.css"
-import "prismjs/components/prism-typescript"
-import "prismjs/components/prism-c"
-import "prismjs/components/prism-cpp"
-import "prismjs/components/prism-rust"
 
 /**
  * One character wide, like every glyph it stands in for: masked and unmasked
@@ -23,13 +20,6 @@ import "prismjs/components/prism-rust"
  * `crates/leetype_wasm/tests/invariants.rs` asserts the engine's half.
  */
 const MASK_CHAR = "•"
-
-const LANGUAGE_MAP: Record<string, string> = {
-  typescript: "typescript",
-  rust: "rust",
-  cpp: "cpp",
-  c: "c",
-}
 
 /** Fixed widths for the gutter's sign and line-number columns — outside the glyph run, never reflowing with content (LTY-PATCH P3). */
 const GUTTER_SIGN_WIDTH = "w-4"
@@ -128,6 +118,9 @@ type CodeDisplayProps = {
  * is the invariant worth protecting: a new prompt-side block kind must never
  * reach this file. `LineKind`/`Hunk` are plain diff vocabulary. It owns no
  * masking policy, error accounting, threshold, latch or memory.
+ *
+ * Its tokens come from `tokenizeCode` (`@some-ui/shared`); the glyph roles,
+ * mask and hunk gutters stay here.
  */
 export const CodeDisplay: FC<CodeDisplayProps> = ({
   displayCode,
@@ -228,18 +221,17 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
   }
 
   const renderHighlightedCode = (): ReactNode => {
-    const selectedLang = LANGUAGE_MAP[language] ?? "javascript"
-    const grammar = Prism.languages[selectedLang]
-    if (!grammar || roles.length === 0) return displayCode
+    if (roles.length === 0) return displayCode
+    const tokens = tokenizeCode(displayCode, language)
+    if (tokens === null) return displayCode
 
-    const tokens = Prism.tokenize(displayCode, grammar)
     let charIndex = 0
 
     const renderRun = (text: string): Array<JSX.Element> =>
       Array.from(text).map((char) => renderChar(char, charIndex++))
 
     const renderToken = (
-      token: string | Prism.Token,
+      token: string | CodeToken,
       key: string | number
     ): ReactNode => {
       if (typeof token === "string") return renderRun(token)
@@ -300,8 +292,6 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
    * `roles`/`slotOfDisplay`/`slotStatus` past line breaks.
    */
   const renderHunkRows = (activeHunk: Hunk): ReactNode => {
-    const selectedLang = LANGUAGE_MAP[language] ?? "javascript"
-    const grammar = Prism.languages[selectedLang]
     const lines = displayCode.split("\n")
     let charIndex = 0
     let oldLine = activeHunk.oldStart
@@ -315,7 +305,7 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
         Array.from(text).map((char) => renderChar(char, charIndex++, kind))
 
       const renderToken = (
-        token: string | Prism.Token,
+        token: string | CodeToken,
         key: string | number
       ): ReactNode => {
         if (typeof token === "string") return renderRun(token)
@@ -338,12 +328,11 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
         )
       }
 
+      const tokens = roles.length === 0 ? null : tokenizeCode(line, language)
       const rowNodes: Array<ReactNode> =
-        !grammar || roles.length === 0
+        tokens === null
           ? Array.from(line).map((char) => renderChar(char, charIndex++, kind))
-          : Prism.tokenize(line, grammar).map((token, i) =>
-              renderToken(token, `${lineIndex}-${i}`)
-            )
+          : tokens.map((token, i) => renderToken(token, `${lineIndex}-${i}`))
 
       if (lineIndex < lines.length - 1) {
         // The '\n' has a display index but no glyph: the row is the break.

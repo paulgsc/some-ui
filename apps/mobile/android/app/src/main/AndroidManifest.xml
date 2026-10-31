@@ -63,7 +63,7 @@
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true">
         <!-- Cleartext is for the unpaired sync from home only: published
-             lessons and rounds, read with no credential from a plain-http LAN
+             lessons and dramas, read with no credential from a plain-http LAN
              address (http://<lan-ip>:3000), which Android refuses to reach from
              targetSdk 28 on unless allowed here. A network security config
              cannot scope this to "private addresses"; it takes named hosts, and
