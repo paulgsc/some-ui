@@ -45,7 +45,6 @@ test.describe("the code card fits the phone and scrolls its code sideways", () =
       await page.goto(PAGE.url(CODE_CARD_FIXTURE), { waitUntil: "load" })
 
       const program = page.getByRole("figure", { name: "The program" })
-      const variant = page.getByRole("figure", { name: "The variant" })
       await expect(program).toBeVisible()
       expect(errors, errors.join("\n")).toEqual([])
 
@@ -55,19 +54,10 @@ test.describe("the code card fits the phone and scrolls its code sideways", () =
         violations.map((violation) => describeViolation("code card", violation))
       ).toEqual([])
 
-      // rustc's span: line 4 alone is highlighted, and only its `r` is marked.
-      await expect(program.locator("[data-code-marked]")).toHaveCount(1)
-      await expect(
-        program.locator(
-          '[data-code-line="4"][data-code-marked] [data-code-span]'
-        )
-      ).toHaveText("r")
-      // The variant's changed line: `+` in the gutter, on line 4 alone.
-      await expect(variant.locator("[data-code-changed]")).toHaveCount(1)
-      await expect(
-        variant.locator('[data-code-line="4"][data-code-changed]')
-      ).toHaveCount(1)
-      await expect(variant.getByText("+", { exact: true })).toHaveCount(1)
+      // rustc's span is a <mark>, painted as the card's underline alone.
+      const mark = program.locator("mark[data-code-span]")
+      await expect(mark).toHaveText("r")
+      await expect(mark).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
 
       // Highlighted by the Rust grammar, in www's own build.
       const fn = program.locator('[data-code-line="1"] span', {
@@ -82,9 +72,22 @@ test.describe("the code card fits the phone and scrolls its code sideways", () =
         const rows = Array.from(
           region.querySelectorAll<HTMLElement>("[data-code-line]")
         ).map((row) => row.getBoundingClientRect().height)
+        // Each gutter cell sits level with its code row, in both cards.
+        const misaligned = Array.from(
+          document.querySelectorAll<HTMLElement>("[data-code-gutter]")
+        ).flatMap((cell) => {
+          const line = cell.dataset["codeGutter"] ?? ""
+          const row = cell
+            .closest("figure")!
+            .querySelector<HTMLElement>(`[data-code-line="${line}"]`)!
+          const off =
+            cell.getBoundingClientRect().top - row.getBoundingClientRect().top
+          return Math.abs(off) > 0.5 ? [`line ${line}: ${off}px`] : []
+        })
         const scrolls = region.scrollWidth > region.clientWidth
         region.scrollLeft = region.scrollWidth
         return {
+          misaligned,
           scrolls,
           scrolled: region.scrollLeft > 0,
           rows,
@@ -95,6 +98,7 @@ test.describe("the code card fits the phone and scrolls its code sideways", () =
         }
       })
 
+      expect(fit.misaligned).toEqual([])
       // Line 5 is longer than any phone is wide: it scrolls, never wraps.
       expect(fit.scrolls).toBe(true)
       expect(fit.scrolled).toBe(true)

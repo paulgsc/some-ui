@@ -11,8 +11,7 @@
 
 import type { Token } from "prismjs"
 
-// The order is load-bearing: Prism has to have run before any grammar does
-// (`./grammars` says why). Alphabetical, so the import sorter keeps it.
+// `./core` must come before `./grammars` (ESM runs imports in source order); the import sorter keeps it only because the names sort that way.
 import { Prism } from "./core"
 import { GRAMMAR_MODULES } from "./grammars"
 

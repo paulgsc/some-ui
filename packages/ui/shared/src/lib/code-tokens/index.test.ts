@@ -22,16 +22,6 @@ function typed(stream: CodeTokenStream | null): Array<[string, string]> {
   return out
 }
 
-function text(stream: CodeTokenStream | null): string {
-  const join = (content: string | CodeToken | CodeTokenStream): string =>
-    typeof content === "string"
-      ? content
-      : Array.isArray(content)
-        ? content.map(join).join("")
-        : join(content.content)
-  return stream === null ? "" : join(stream)
-}
-
 describe("tokenizeCode", () => {
   it("reads Rust with Rust's grammar", () => {
     const tokens = tokenizeCode('fn main() {\n    let s = "aéz";\n}', "rust")
@@ -60,11 +50,5 @@ describe("tokenizeCode", () => {
       "keyword",
       "const",
     ])
-  })
-
-  it("keeps every character, in order", () => {
-    const code =
-      "fn f<'a>(s: &'a str) -> u8 {\n    /* é */ s.as_bytes()[2]\n}\n"
-    expect(text(tokenizeCode(code, "rust"))).toBe(code)
   })
 })

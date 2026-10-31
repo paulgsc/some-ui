@@ -3,7 +3,7 @@ import type { Appearance } from "@some-ui/styles/theme"
 import { appearanceClassName } from "@some-ui/styles/theme"
 
 import type { CodeSpan, CodeTone } from "../../../lib/code-card"
-import { codeLines } from "../../../lib/code-card"
+import { CODE_CARD_WORDS, codeLines } from "../../../lib/code-card"
 import type { CodeLanguage } from "../../../lib/code-tokens"
 import { cn } from "../../../lib/utils"
 
@@ -83,6 +83,7 @@ export const CodeCard = ({
         {lines.map((line) => (
           <div
             key={line.number}
+            data-code-gutter={line.number}
             className={cn(
               "flex whitespace-pre pl-2 pr-1",
               line.marked && "bg-destructive/15 text-destructive"
@@ -97,20 +98,11 @@ export const CodeCard = ({
       </div>
       <div
         data-scroll-intent="code-display"
-        className={
-          // scroll-intent: code-display — a line of code never wraps on the
-          // phone, so a long one scrolls sideways here, inside the card,
-          // rather than the page scrolling (#2233).
-          "min-w-0 flex-1 overflow-x-auto py-2"
-        }
+        className="min-w-0 flex-1 overflow-x-auto py-2"
       >
-        <pre className="m-0 w-max min-w-full">
+        <pre className="m-0 w-max min-w-full [tab-size:4]">
           <code className="block">
             {lines.map((line) => (
-              // `data-code-*`, never `data-line`: the shared stylesheet
-              // styles `[data-line]` for rendered markdown
-              // (`packages/some-styles/tailwind.css`), inline and with its
-              // own colours.
               <div
                 key={line.number}
                 data-code-line={line.number}
@@ -121,21 +113,29 @@ export const CodeCard = ({
                   line.marked && "bg-destructive/15"
                 )}
               >
+                {line.changed && (
+                  <span className="sr-only">{CODE_CARD_WORDS.changedLine}</span>
+                )}
                 {line.runs.length === 0
                   ? " "
-                  : line.runs.map((run) => (
-                      <span
-                        key={run.column}
-                        data-code-span={run.marked || undefined}
-                        className={cn(
-                          TONE_CLASS[run.tone],
-                          run.marked &&
-                            "underline decoration-destructive decoration-wavy decoration-2 underline-offset-4"
-                        )}
-                      >
-                        {run.text}
-                      </span>
-                    ))}
+                  : line.runs.map((run) =>
+                      run.marked ? (
+                        <mark
+                          key={run.column}
+                          data-code-span=""
+                          className={cn(
+                            "bg-transparent text-inherit underline decoration-destructive decoration-wavy decoration-2 underline-offset-4",
+                            TONE_CLASS[run.tone]
+                          )}
+                        >
+                          {run.text}
+                        </mark>
+                      ) : (
+                        <span key={run.column} className={TONE_CLASS[run.tone]}>
+                          {run.text}
+                        </span>
+                      )
+                    )}
               </div>
             ))}
           </code>

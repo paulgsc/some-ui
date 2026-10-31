@@ -119,8 +119,8 @@ type CodeDisplayProps = {
  * reach this file. `LineKind`/`Hunk` are plain diff vocabulary. It owns no
  * masking policy, error accounting, threshold, latch or memory.
  *
- * Its tokens come from `tokenizeCode` (`@some-ui/shared`), which the phone's
- * `CodeCard` reads too; the glyph roles, mask and hunk gutters stay here.
+ * Its tokens come from `tokenizeCode` (`@some-ui/shared`); the glyph roles,
+ * mask and hunk gutters stay here.
  */
 export const CodeDisplay: FC<CodeDisplayProps> = ({
   displayCode,

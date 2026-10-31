@@ -48,17 +48,23 @@ type CodeLine = {
   readonly runs: ReadonlyArray<CodeRun>
 }
 
+/**
+ * The card's own words, which only assistive tech reads (the gutter is
+ * hidden from it): said before a variant's changed line.
+ */
+export const CODE_CARD_WORDS = {
+  changedLine: "Changed line: ",
+} as const
+
 /** Prism's token types and aliases, each named for the tone it is painted in. */
 const TONE_OF_TYPE: ReadonlyMap<string, CodeTone> = new Map<string, CodeTone>([
   ["keyword", "keyword"],
   ["function", "keyword"],
-  ["function-definition", "keyword"],
   ["macro", "keyword"],
   ["attribute", "keyword"],
   ["builtin", "keyword"],
   ["directive", "keyword"],
   ["class-name", "type"],
-  ["type-definition", "type"],
   ["namespace", "type"],
   ["lifetime-annotation", "type"],
   ["constant", "type"],
@@ -68,7 +74,6 @@ const TONE_OF_TYPE: ReadonlyMap<string, CodeTone> = new Map<string, CodeTone>([
   ["number", "literal"],
   ["boolean", "literal"],
   ["comment", "comment"],
-  ["block-comment", "comment"],
 ])
 
 function toneOf(token: CodeToken, outer: CodeTone): CodeTone {
@@ -123,6 +128,17 @@ function spanTouches(spans: ReadonlyArray<CodeSpan>, line: number): boolean {
   return spans.some((span) => line >= span.lineStart && line <= span.lineEnd)
 }
 
+/**
+ * Whether a span marks no character of its first line: rustc gives a
+ * zero-width span (a missing `;`: 2:14 to 2:14) or one starting past the
+ * line's end (an unclosed delimiter at the end of the file) for its commonest
+ * errors, and these would otherwise underline nothing.
+ */
+function marksNothing(span: CodeSpan, lineLength: number): boolean {
+  if (span.columnStart > lineLength) return true
+  return span.lineStart === span.lineEnd && span.columnEnd <= span.columnStart
+}
+
 type CodeLinesOptions = {
   /** Lines a variant changed, numbered from 1. */
   readonly changedLines?: ReadonlyArray<number>
@@ -130,47 +146,58 @@ type CodeLinesOptions = {
   readonly spans?: ReadonlyArray<CodeSpan>
 }
 
+type Cell = { char: string; tone: CodeTone }
+
 /**
  * `code` as lines, tokenized whole first, so a construct spanning lines (a
  * block comment, a raw string) keeps its tone on each of them. A final
  * newline ends the last line rather than starting an empty one.
+ *
+ * A span that marks no character of its first line marks one cell there
+ * instead: the character at its column, or a blank cell after the line's
+ * end when its column is past it.
  */
 export function codeLines(
-  code: string,
+  source: string,
   language: string,
   { changedLines = [], spans = [] }: CodeLinesOptions = {}
 ): ReadonlyArray<CodeLine> {
+  const code = source.replaceAll("\r\n", "\n")
   const changed = new Set(changedLines)
-  const lines: Array<{ number: number; runs: Array<CodeRun> }> = [
-    { number: 1, runs: [] },
-  ]
-  let column = 1
-
+  const cells: Array<Array<Cell>> = [[]]
   for (const { text, tone } of toneRuns(tokenizeCode(code, language), code)) {
     for (const char of Array.from(text)) {
-      const line = lines[lines.length - 1]!
-      if (char === "\n") {
-        lines.push({ number: line.number + 1, runs: [] })
-        column = 1
-        continue
-      }
-      const marked = spanMarks(spans, line.number, column)
-      const last = line.runs[line.runs.length - 1]
-      if (last?.tone === tone && last.marked === marked) {
-        line.runs[line.runs.length - 1] = { ...last, text: last.text + char }
-      } else {
-        line.runs.push({ column, text: char, tone, marked })
-      }
-      column += 1
+      if (char === "\n") cells.push([])
+      else cells[cells.length - 1]!.push({ char, tone })
     }
   }
+  if (cells.length > 1 && code.endsWith("\n")) cells.pop()
 
-  if (lines.length > 1 && code.endsWith("\n")) lines.pop()
-
-  return lines.map(({ number, runs }) => ({
-    number,
-    changed: changed.has(number),
-    marked: spanTouches(spans, number),
-    runs,
-  }))
+  return cells.map((line, index) => {
+    const number = index + 1
+    const oneCell = new Set<number>()
+    for (const span of spans) {
+      if (span.lineStart === number && marksNothing(span, line.length)) {
+        oneCell.add(Math.min(span.columnStart, line.length + 1))
+      }
+    }
+    const runs: Array<CodeRun> = []
+    const push = (column: number, char: string, tone: CodeTone): void => {
+      const marked = oneCell.has(column) || spanMarks(spans, number, column)
+      const last = runs[runs.length - 1]
+      if (last?.tone === tone && last.marked === marked) {
+        runs[runs.length - 1] = { ...last, text: last.text + char }
+      } else {
+        runs.push({ column, text: char, tone, marked })
+      }
+    }
+    line.forEach((cell, at) => push(at + 1, cell.char, cell.tone))
+    if (oneCell.has(line.length + 1)) push(line.length + 1, " ", "plain")
+    return {
+      number,
+      changed: changed.has(number),
+      marked: spanTouches(spans, number),
+      runs,
+    }
+  })
 }
