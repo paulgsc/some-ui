@@ -11,6 +11,8 @@
  * is fine enough to see 뻐 -> 뻤어 and coarse enough to stay cheap.
  */
 
+import { lcsTable } from "@some-ui/core-utils"
+
 type DiffSegment = {
   text: string
   kind: "same" | "added" | "removed"
@@ -30,23 +32,6 @@ const MAX_DIFF_LENGTH = 160
  * other words - rather than one sentence transformed.
  */
 export const MIN_DIFF_SIMILARITY = 0.45
-
-function lcsTable(a: Array<string>, b: Array<string>): Array<Array<number>> {
-  const table = Array.from({ length: a.length + 1 }, () =>
-    new Array<number>(b.length + 1).fill(0)
-  )
-  for (let i = a.length - 1; i >= 0; i -= 1) {
-    const row = table[i] ?? []
-    const below = table[i + 1] ?? []
-    for (let j = b.length - 1; j >= 0; j -= 1) {
-      row[j] =
-        a[i] === b[j]
-          ? (below[j + 1] ?? 0) + 1
-          : Math.max(below[j] ?? 0, row[j + 1] ?? 0)
-    }
-  }
-  return table
-}
 
 function push(
   segments: Array<DiffSegment>,

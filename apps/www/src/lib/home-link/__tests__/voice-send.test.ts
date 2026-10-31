@@ -207,13 +207,12 @@ describe("the voice lane's run, after its copy pass (LA14)", () => {
     expect(waiting()).toBe(1)
   })
 
-  it("never offers a Jobs note let go once its share arrived, and names it instead", async () => {
+  it("offers a Jobs note whose share arrived like any other, and names it gone when its audio is (LG1)", async () => {
     setUp(5, { r1: null, r2: null }, { arrived: true })
     expect(await sendVoice(send)).toEqual({ kind: "synced" })
     expect(waiting()).toBe(0)
     expect(renderHook(() => useUnsendable()).result.current).toEqual({
-      inDrive: 2,
-      gone: 0,
+      gone: 2,
     })
   })
 })

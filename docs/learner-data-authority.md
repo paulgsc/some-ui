@@ -32,13 +32,13 @@ Each invariant below still describes the code, and holds until the change that
 moves its code retires or rewords it in the same PR; a hunk that moves code
 toward this frame without doing so is a finding.
 
-| Invariant                                                                     | Moved by               |
-| ----------------------------------------------------------------------------- | ---------------------- |
-| LA7 (a reflection reaches no server)                                          | HF3, #2178             |
-| LA8's "only on a tap"; LA9–LA11 and LA13's consent; LA12 (consent to read)    | HF8, #2182             |
-| LA6's reporting reset on every sign-in, on the owner's `lan` build            | HF8, #2182             |
-| LA13's scene notes copied only once a drama prompt is shared                  | HF2, #2177             |
-| LA14's "let go once a share arrived in Drive", and every share sheet's let-go | HF1, #2176; HF2, #2177 |
+| Invariant                                                                               | Moved by   |
+| --------------------------------------------------------------------------------------- | ---------- |
+| LA7 (a reflection reaches no server)                                                    | HF3, #2178 |
+| LA8's "only on a tap"; LA9–LA11 and LA13's consent; LA12 (consent to read)              | HF8, #2182 |
+| LA6's reporting reset on every sign-in, on the owner's `lan` build                      | HF8, #2182 |
+| LA13's scene notes copied only once a drama prompt is shared                            | HF2, #2177 |
+| Every share sheet's let-go (done: HF1, #2176, promise LG1); the Jobs share sheet itself | HF2, #2177 |
 
 ## The two questions
 
@@ -1096,25 +1096,24 @@ was silent, so the run ended as if all had gone.
 
 - _Claim:_ while voice notes are kept on home, the count Settings says waits
   (`voiceLane.useCounts`) is only notes this phone can still copy or send;
-  one it can never send is named with why (`unsentLines`: let go once a share
-  arrived in Drive, gone from this phone), and a run whose copy pass left a
+  one it can never send is named with why (`unsentLines`: gone from this
+  phone, as the Jobs notes let go before LG1 are), and a run whose copy pass left a
   note it could copy uncopied ends failed with why (`runEnd`: this phone's
   fault, `fault`, before its lack of room, `room`), which `laneView` words.
-- _Family:_ every source state of a note: still on the phone; a Jobs note
-  let go after an arrived share, copied before or not; its audio gone; its
+- _Family:_ every source state of a note: still on the phone; a Jobs note a
+  Drive share carried, copied before or not; its audio gone; its
   copy refused by the shelf (no room), by storage that won't keep the record,
   or by an error; and every outcome of the exchange after the pass (sent all,
   home forgot the phone, home answered otherwise), with a run before it or
   none.
-- _Proof:_ `lib/home-link/__tests__/voice-copy.test.ts` (a released Jobs
-  note is no candidate, and is counted in Drive until home has a copy; a
-  gone note is counted until settled); `lib/home-link/__tests__/voice-send.test.ts`
+- _Proof:_ `lib/home-link/__tests__/voice-copy.test.ts` (a Jobs note a Drive
+  share carried is a candidate like any other; a gone note is counted until
+  settled); `lib/home-link/__tests__/voice-send.test.ts`
   (`sendVoice` and the lane's count over fake stores: a gone note fails no
   run and stops waiting, no room fails the run and waits until it fits, a
   read that throws or storage that won't keep the record fails it as the
-  phone's fault and the pass goes on, and a Jobs note let go once its share
-  arrived is never offered and is named instead; each before any run and
-  after one);
+  phone's fault and the pass goes on, and a Jobs note whose audio is gone is
+  named gone; each before any run and after one);
   `lib/voice-home/__tests__/model.test.ts` ("how a run ends after a copy pass
   (LA14)": every pair of note ends, with and without a gone note, against
   every exchange end); `lib/voice-home/__tests__/runtime.test.ts` (`copy`
@@ -1142,8 +1141,8 @@ was silent, so the run ended as if all had gone.
   grammar-lens takes, and a session's (or every session's) **Share** hands
   it that session's reflections, and the learner picks where they go; the
   reflections (and, from the whole export, the soundbites and grammar-lens
-  entries and takes) shared then leave the phone once the learner says they
-  arrived. "Archive finished sessions"
+  entries and takes) stay on the phone, the share being a copy (LG1, HF1
+  #2176). "Archive finished sessions"
   (`lib/session-archive`) hands the share sheet one file of the finished
   sessions' records, and they leave the phone once the learner says it
   arrived. The phone's Home server block

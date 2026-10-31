@@ -13,7 +13,6 @@ import { arrivals, shareReflections } from "@/lib/agent-export"
 import { reflections } from "@/lib/session-reflection"
 import { DeviceReflectionsArrival } from "@/components/reflection/device-reflections-arrival"
 
-const handedOff = vi.hoisted(() => vi.fn())
 vi.mock("@capacitor/filesystem", () => ({
   Directory: { Cache: "CACHE" },
   Encoding: { UTF8: "utf8" },
@@ -32,10 +31,6 @@ vi.mock("@/lib/tenant/queries", () => ({
 vi.mock("@/lib/reflection-voice", () => ({
   reflectionAudio: (): object => ({ get: () => Promise.resolve(null) }),
   isSaving: (): boolean => false,
-  letGoReflections: (ids: ReadonlyArray<string>): boolean => {
-    handedOff(ids)
-    return true
-  },
 }))
 vi.mock("@some-ui/topik", () => ({
   readAloudPracticeRecord: (): null => null,
@@ -45,42 +40,42 @@ afterEach(() => {
   cleanup()
   reflections.letGo(reflections.getSnapshot().kept.map((r) => r.id))
   for (const batch of arrivals.getSnapshot()) arrivals.answer(batch, false)
-  handedOff.mockReset()
 })
 
-async function shareOne(id = "now"): Promise<void> {
+const sharedSessions = (): Array<string> =>
+  reflections.getSnapshot().shared.map((mark) => mark.sessionId)
+
+async function shareOne(id = "now", sessionId = "s1"): Promise<void> {
   reflections.keep({
     id,
-    sessionId: "s1",
+    sessionId,
     createdAt: "2026-10-10T09:00:00.000Z",
     atMs: 252_000,
     body: { kind: "text", text: "particles" },
   })
-  await shareReflections({ sessionIds: ["s1"], only: [id] })
+  await shareReflections({ sessionIds: [sessionId], only: [id] })
 }
 
 describe("DeviceReflectionsArrival", () => {
-  it("asks after a share it did not start, and lets the reflection go once it arrived", async () => {
+  it("asks after a share it did not start, and marks the session shared once it arrived", async () => {
     render(<DeviceReflectionsArrival />)
     await shareOne()
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "They arrived: let them go" })
-    )
+    fireEvent.click(await screen.findByRole("button", { name: "They arrived" }))
 
-    expect(handedOff).toHaveBeenCalledWith(["now"])
+    expect(sharedSessions()).toEqual(["s1"])
     expect(arrivals.getSnapshot()).toEqual([])
   })
 
-  it("keeps the reflection when the person says it did not arrive", async () => {
+  it("marks nothing shared when the person says it did not arrive", async () => {
     render(<DeviceReflectionsArrival />)
-    await shareOne()
+    await shareOne("later", "s2")
 
     fireEvent.click(
       await screen.findByRole("button", { name: "Keep them to share again" })
     )
 
-    expect(handedOff).not.toHaveBeenCalled()
+    expect(sharedSessions()).not.toContain("s2")
     expect(arrivals.getSnapshot()).toEqual([])
   })
 
@@ -91,15 +86,12 @@ describe("DeviceReflectionsArrival", () => {
 
     expect(
       await screen.findByText(
-        "Once they have, 2 reflections can leave this phone."
+        "Once they have, 2 reflections count as shared. They stay on this phone."
       )
     ).toBeTruthy()
-    fireEvent.click(
-      screen.getByRole("button", { name: "They arrived: let them go" })
-    )
+    fireEvent.click(screen.getByRole("button", { name: "They arrived" }))
 
-    expect(handedOff).toHaveBeenCalledWith(["first"])
-    expect(handedOff).toHaveBeenCalledWith(["second"])
+    expect(sharedSessions()).toEqual(["s1"])
     expect(arrivals.getSnapshot()).toEqual([])
   })
 })

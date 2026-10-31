@@ -30,7 +30,7 @@ const WORDS = STUDIO_WORDS
 /**
  * The video's files out through the share sheet, held and confirmed as
  * Practice's study export is (`soundbites.tsx`): once the person says they
- * arrived, the takes that went out leave the phone.
+ * arrived, the takes that went out are marked as in Drive too.
  */
 const ShareStudio = ({
   project,
