@@ -20,6 +20,7 @@ async function showRecord(
     const { createJobsRuntime } = await import("@/lib/jobs/runtime")
     const { ports } = await import("@/lib/jobs/__tests__/fixture")
     const runtime = createJobsRuntime(
+      // JC1: the clock and the day are one instant, never the wall clock.
       ports({
         now: () => new Date("2026-10-30T18:00:00Z"),
         dayOf: () => "2026-10-30",

@@ -17,7 +17,11 @@ function mockJobs(): void {
     const { createJobsRuntime } = await import("@/lib/jobs/runtime")
     const { ports } = await import("@/lib/jobs/__tests__/fixture")
     const runtime = createJobsRuntime(
-      ports({ now: () => new Date(), dayOf: () => "2026-10-22" })
+      // JC1: the clock and the day are one instant, never the wall clock.
+      ports({
+        now: () => new Date("2026-10-22T18:00:00Z"),
+        dayOf: () => "2026-10-22",
+      })
     )
     return { phoneJobs: (): typeof runtime => runtime, copyText: vi.fn() }
   })
