@@ -719,6 +719,8 @@ describe("voice transcripts", () => {
       words: [
         { text: "오늘은", startMs: 0, endMs: 400, p: 0.42 },
         { text: "the", startMs: 500, endMs: 600, language: "en" },
+        // Whisper's word runs to the next space, so one can be long.
+        { text: "아".repeat(300), startMs: 700, endMs: 9000 },
       ],
     }
     expect((await asHome(deps(), NAME, JSON.stringify(worded))).status).toBe(

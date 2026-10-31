@@ -52,8 +52,8 @@ const WORD_KEYS: ReadonlySet<string> = new Set([
   "p",
   "language",
 ])
-/** More words than a note can hold (home hears at most ten minutes). */
-const WORDS_MAX = 4_000
+/** More words than a note can hold: ten minutes at twenty a second. */
+const WORDS_MAX = 12_000
 const NO_AUDIO = "a transcript carries no audio: home keeps the audio"
 const NO_DRIVE = "a transcript names no Drive file: home keeps the audio"
 const AUDIO_KEY = /audio|sound|wav|webm|ogg|opus|m4a|mp3|base64|bytes|blob/i
@@ -68,6 +68,8 @@ const ENCODED_RUN = /[A-Za-z0-9+/=_-]{256,}/
 /** home's note ids and refs (`voice_repo::is_name` in paulgsc/server). */
 const NOTE_ID = /^[A-Za-z0-9_.:-]{1,64}$/
 const NOTE_REF = /^[A-Za-z0-9_.:-]{1,200}$/
+/** Whisper's language code, as `en` or `ko`. */
+const LANGUAGE = /^[a-z]{2,3}$/
 const NOTE_OF: ReadonlySet<unknown> = new Set([
   "reflection",
   "jobs",
@@ -123,10 +125,7 @@ function transcriptRefusal(
   if (typeof body.text !== "string" || body.text.trim() === "") {
     return "text must be what home heard"
   }
-  if (
-    typeof body.language !== "string" ||
-    !/^[a-z]{2,3}$/.test(body.language)
-  ) {
+  if (typeof body.language !== "string" || !LANGUAGE.test(body.language)) {
     return "language must be the language heard, as en or ko"
   }
   if (
@@ -141,12 +140,7 @@ function transcriptRefusal(
   return null
 }
 
-/**
- * Why a transcript's `words` are refused, or `null`: each is one heard word,
- * its time in milliseconds from the note's start, how sure the model was of
- * it, 0 to 1, where it said (paulgsc/server#577, ST22), and the language it
- * was heard in, where that differs by word (paulgsc/server#578, ST23).
- */
+/** README, "What a put must satisfy": a transcript's `words`. */
 function wordsRefusal(words: unknown): string | null {
   const why = "words must be each word heard, with its time and how sure"
   if (!Array.isArray(words) || words.length > WORDS_MAX) return why
@@ -154,8 +148,7 @@ function wordsRefusal(words: unknown): string | null {
     if (!isRecord(word)) return why
     if (Object.keys(word).some((key) => !WORD_KEYS.has(key))) return why
     const { text, startMs, endMs, p } = word
-    if (typeof text !== "string" || text.trim() === "" || text.length > 200)
-      return why
+    if (typeof text !== "string" || text.trim() === "") return why
     if (
       typeof startMs !== "number" ||
       typeof endMs !== "number" ||
@@ -170,7 +163,7 @@ function wordsRefusal(words: unknown): string | null {
     const { language } = word
     if (
       language !== undefined &&
-      (typeof language !== "string" || !/^[a-z]{2,3}$/.test(language))
+      (typeof language !== "string" || !LANGUAGE.test(language))
     )
       return why
   }

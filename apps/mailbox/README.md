@@ -156,12 +156,12 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   `<base>_voice-<at>-<id>`, in a Jobs voice entry, and in a drama prompt's `notes` line), what
   it belongs to (`of` is `reflection` with `ref` its session, `jobs` with the pick or scout, `scene` with the drama prompt's
   stamp, or `studio` with a Studio take's `<project>:<shot>:<take>`), when it was recorded, what home heard, the language heard (Whisper's code, `en` or
-  `ko`), the model that heard it, and when; and, since paulgsc/server#577, `words`, each
-  word heard as `{"text","startMs","endMs","p","language"}`: its time in milliseconds from
-  the note's start, how sure the model was of it, 0 to 1 (`p` is left out for a word heard
-  before home kept that), and the language it was heard in (Whisper's code; left out where it
-  is the transcript's). `words` may be absent (a transcript filed before it was carried), holds at
-  most 4,000 words, and takes no other key per word. Unlike the other folders, the Worker holds this
+  `ko`), the model that heard it, and when; and `words`, each word heard as
+  `{"text","startMs","endMs","p","language"}`: its time in milliseconds from the note's start,
+  how sure the model was of it, 0 to 1, and the language it was heard in (Whisper's code).
+  `p` and `language` are left out where home has none for the word; a word's text has no
+  length cap, since Whisper's word runs to the next space. `words` may be absent (a transcript
+  filed before it was carried), holds at most 12,000 words, and takes no other key per word. Unlike the other folders, the Worker holds this
   shape itself, because the one thing a transcript must never be is audio: a body with any
   other key is `422`, a name that does not carry the body's `note` is `422`, and so is a body
   that carries audio or names a Drive file, with the reason (`a transcript carries no audio` or
