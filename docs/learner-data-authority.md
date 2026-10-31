@@ -752,12 +752,13 @@ can say is when a run is asked for:
   (LA16) and `letGoHeldPrompts` (LA18), or confirms what home holds
   (`confirmHeld`), or sends other than through `copyHome`, `sendKept`,
   `sendLog`, `sendStudio`, `sendReflections` (LA16), `sendPrompts` (LA18),
-  `sendNotes` and `sendLens`; a hunk to `lib/home-link/notes.ts` that counts
-  `sendNotes` and `sendLens`; a hunk to `lib/home-link/notes.ts` that counts
-  a note held without home's `200` naming the SHA-256 of the bytes sent, or
-  to `lib/home-link/lens-record.ts` that counts an entry held without home's
-  `200` carrying it back as sent, or makes `lensEntriesHeld` (the reading of
-  what home holds that `./voice-copy` hands topik) other than `sent.lens`
+  `sendNotes` and `sendLens`; a hunk to `lib/home-link/leetype-log.ts` that
+  lets `sendEach` count an item held on any answer but a `200` its `heldAs`
+  accepts; a hunk to `lib/home-link/notes.ts` that counts a note held
+  without home's `200` naming the SHA-256 of the bytes sent, or to
+  `lib/home-link/lens-record.ts` that counts an entry held without home's
+  `200` carrying it back as sent, or makes `lensEntriesHeld` (the reading
+  of what home holds that `./voice-copy` hands topik) other than `sent.lens`
   matching the entry as it is now; a hunk to
   `lib/home-link/model.ts` or `runtime.ts` that lets `pair` keep an earlier
   pairing's `id`, or lets `load` report an `id` other than the one stored
@@ -791,7 +792,8 @@ can say is when a run is asked for:
   carrying the claim to its new place.
 - _Scope:_ `apps/www/src/lib/home-link/kept-watch.ts`, `lanes.ts`,
   `kept-runtime.ts`, `aph.ts`, `jobs.ts`, `practice.ts`, `voice.ts`,
-  `drain.ts`, `going.ts`, `notes.ts`, `lens-record.ts`, `sent.ts`, `model.ts`, `runtime.ts`, `routine.ts`,
+  `drain.ts`, `going.ts`, `leetype-log.ts`, `notes.ts`, `lens-record.ts`,
+  `sent.ts`, `model.ts`, `runtime.ts`, `routine.ts`,
   `routine-model.ts`, `apps/www/src/components/device-home-glyph.tsx`,
   `apps/www/src/components/settings/device-kept-on-home.tsx`,
   `apps/www/src/components/aph/device-aph-lane.tsx`,

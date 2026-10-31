@@ -7,7 +7,8 @@
  * event (LA8). Phone to home only, and the phone keeps its whole log:
  * nothing here lets an event go. Beside it, `sendWhole`, the one PUT per
  * item the written reflections (`./reflections`) and the asks for the next
- * scene (`./prompts`) go by.
+ * scene (`./prompts`) go by, and `sendEach`, the one PUT per item the study
+ * notes (`./notes`) and the grammar-lens record (`./lens-record`) go by.
  */
 import type { HomeCall } from "@some-ui/core-utils"
 import { canonicalJson, isRecord, jsonOf } from "@some-ui/core-utils"
@@ -19,7 +20,8 @@ import { answerOrEnd } from "./shelf"
 
 /**
  * How a log's part of a send went (LeetType's sessions, Studio's sittings
- * and answers); filled as it goes, so a stop keeps it.
+ * and answers, the study notes, the grammar-lens record); filled as it goes,
+ * so a stop keeps it.
  */
 export type LogReport = EndedReport & {
   /** Entries home now holds as they are, read back. */
@@ -96,6 +98,54 @@ export async function sendWhole<T>(
       held(id, fingerprint)
     } else {
       report.differs += 1
+    }
+  }
+}
+
+/** How `sendEach` sends one kind of item, and reads home's answer for it. */
+export type EachSent<T> = {
+  /** Where the item is PUT. */
+  readonly path: (item: T) => string
+  /** What is sent: its canonical JSON (`canonicalJson`). */
+  readonly body: (item: T) => unknown
+  /**
+   * The item's key and digest for `held`, when home's 200 answer (`body`)
+   * holds `text` as sent; null when it holds other bytes.
+   */
+  readonly heldAs: (
+    item: T,
+    text: string,
+    body: string
+  ) => Promise<readonly [string, string] | null>
+}
+
+/**
+ * Sends each item through `send` as one PUT of its body, into `report`, by
+ * `bucketOf` its status; a 200 home answers for other bytes differs. `held`
+ * hears each item home holds as sent, by its key and digest.
+ */
+export async function sendEach<T>(
+  items: ReadonlyArray<T>,
+  as: EachSent<T>,
+  send: HomeCall,
+  report: LogReport,
+  held: (key: string, digest: string) => void
+): Promise<void> {
+  for (const item of items) {
+    const text = canonicalJson(as.body(item))
+    const answer = await answerOrEnd(send, report, "PUT", as.path(item), text)
+    if (answer === null) return
+    const bucket = bucketOf(answer.status)
+    if (bucket !== "held") {
+      report[bucket] += 1
+      continue
+    }
+    const holds = await as.heldAs(item, text, answer.body)
+    if (holds === null) {
+      report.differs += 1
+    } else {
+      report.held += 1
+      held(...holds)
     }
   }
 }

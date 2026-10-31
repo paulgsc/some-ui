@@ -14,7 +14,6 @@
  */
 import type { HomeCall } from "@some-ui/core-utils"
 import {
-  canonicalJson,
   isRecord,
   jsonOf,
   localStorageOrNull,
@@ -25,11 +24,10 @@ import type { Soundbite } from "@some-ui/soundbites"
 import type { LeetypeTakeNote } from "@/lib/leetype-takes"
 
 import { pairingOf } from "./index"
-import type { LogReport } from "./leetype-log"
-import { bucketOf } from "./leetype-log"
+import type { EachSent, LogReport } from "./leetype-log"
+import { sendEach } from "./leetype-log"
 import type { Sent } from "./sent"
 import { readSent } from "./sent"
-import { answerOrEnd } from "./shelf"
 
 /** What home's `PUT /study-notes/:kind/:id` takes as `kind`. */
 export type NoteKind = "soundbite" | "leetype"
@@ -92,41 +90,24 @@ function heldSha(body: string): string | null {
   return typeof answer.note.sha256 === "string" ? answer.note.sha256 : null
 }
 
-/**
- * Sends `going` through `send`, into `report`: a note home answers 200 for
- * holding the same bytes is held, one it answers for other bytes differs,
- * and a `409` or `422` is refused (kept here, offered again by the next
- * run); `held` hears each key `sent.notes` should remember.
- */
+/** How `sendEach` sends a note: counted held only once home names its bytes. */
+const NOTE_SENT: EachSent<StudyNote> = {
+  path: (note) => `/study-notes/${note.kind}/${encodeURIComponent(note.id)}`,
+  body: (note) => note.body,
+  heldAs: async (note, text, body) => {
+    const sha = await sha256Hex(text)
+    return heldSha(body) === sha ? [noteKey(note.kind, note.id), sha] : null
+  },
+}
+
+/** Sends `going` (`sendEach`); `held` hears each key `sent.notes` should remember. */
 export async function sendNotes(
   going: ReadonlyArray<StudyNote>,
   send: HomeCall,
   report: LogReport,
   held: (key: string, digest: string) => void
 ): Promise<void> {
-  for (const note of going) {
-    const text = canonicalJson(note.body)
-    const answer = await answerOrEnd(
-      send,
-      report,
-      "PUT",
-      `/study-notes/${note.kind}/${encodeURIComponent(note.id)}`,
-      text
-    )
-    if (answer === null) return
-    const bucket = bucketOf(answer.status)
-    if (bucket !== "held") {
-      report[bucket] += 1
-      continue
-    }
-    const sha = await sha256Hex(text)
-    if (heldSha(answer.body) === sha) {
-      report.held += 1
-      held(noteKey(note.kind, note.id), sha)
-    } else {
-      report.differs += 1
-    }
-  }
+  await sendEach(going, NOTE_SENT, send, report, held)
 }
 
 /**

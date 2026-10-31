@@ -19,7 +19,7 @@ import type {
 import type { LensTakeSnapshot } from "@some-ui/topik"
 
 import { boundedList } from "@/lib/bounded-list"
-import { takesDesk } from "@/lib/takes-desk"
+import { makesRoom, takesDesk } from "@/lib/takes-desk"
 
 export type { Take as LeetypeTake } from "@/lib/takes-desk"
 
@@ -70,16 +70,8 @@ const notesMoved = (): void => {
 }
 
 /** The oldest note home holds, which a new one may replace at the cap. */
-function roomFor(): LeetypeTakeNote | null {
-  const kept = notes.read()
-  if (kept.length < MAX) return null
-  const held = notesHeld()
-  return (
-    kept
-      .filter(({ id }) => held(id))
-      .sort((a, b) => a.notedAt - b.notedAt)[0] ?? null
-  )
-}
+const roomFor = (): LeetypeTakeNote | null =>
+  makesRoom(notes.read(), MAX, notesHeld(), (note) => note.notedAt)
 
 const notesFull = (): boolean =>
   notes.read().length >= MAX && roomFor() === null

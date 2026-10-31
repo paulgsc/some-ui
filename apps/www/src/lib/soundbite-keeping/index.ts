@@ -11,6 +11,8 @@
  */
 import type { SoundbiteStore } from "@some-ui/soundbites"
 
+import { handedIn } from "@/lib/handed-in"
+
 /** What the lanes need of the soundbites, handed in by their page. */
 export type SoundbiteKeeping = {
   /** What the lanes read of the kept soundbites. */
@@ -23,25 +25,13 @@ export type SoundbiteKeeping = {
   readonly heldByHome: (next: () => (id: string) => boolean) => void
 }
 
-let keeping: SoundbiteKeeping | null = null
-const listeners = new Set<() => void>()
+const soundbites = handedIn<SoundbiteKeeping>()
 
 /** The soundbites page hands its pieces in; the lanes then carry them. */
-export function keepSoundbites(handed: SoundbiteKeeping): void {
-  if (keeping !== null) return
-  keeping = handed
-  for (const listener of listeners) listener()
-}
+export const keepSoundbites = soundbites.keep
 
 /** The soundbites' pieces, once their page has handed them in; null until then. */
-export function soundbiteKeeping(): SoundbiteKeeping | null {
-  return keeping
-}
+export const soundbiteKeeping = soundbites.kept
 
 /** Calls `listener` once the soundbites' pieces are handed in. */
-export function onSoundbitesKept(listener: () => void): () => void {
-  listeners.add(listener)
-  return (): void => {
-    listeners.delete(listener)
-  }
-}
+export const onSoundbitesKept = soundbites.onKept

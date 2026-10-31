@@ -493,6 +493,21 @@ export async function sendVoice(send: HomeCall): Promise<HomeExchanged> {
   return runEnd(pass, await exchangeVoice(phoneVoiceHome().keeping, send))
 }
 
+/** Home's held notes as a set, made again only when the list changes. */
+let heldFrom: ReadonlyArray<string> | null = null
+let heldSet: ReadonlySet<string> = new Set()
+
+function heldIds(): ReadonlySet<string> {
+  const { held } = phoneVoiceHome().getSnapshot()
+  if (held !== heldFrom) {
+    heldFrom = held
+    heldSet = new Set(held)
+  }
+  return heldSet
+}
+
+const voiceHeld = (id: string): boolean => heldIds().has(id)
+
 /** A store whose notes leave this phone once home holds them. */
 type LetsGo = { letGo: (homeHolds: ReadonlySet<string>) => unknown }
 
@@ -502,10 +517,9 @@ type LetsGo = { letGo: (homeHolds: ReadonlySet<string>) => unknown }
  * of them leave this phone (LG1).
  */
 function letGoHeld(): void {
-  const { held } = phoneVoiceHome().getSnapshot()
+  const holds = heldIds()
   // Home holds nothing on a phone that never sent: build no store for it.
-  if (held.length === 0) return
-  const holds = new Set(held)
+  if (holds.size === 0) return
   const stores: ReadonlyArray<LetsGo> = [
     phoneGameBites(),
     phoneJobs(),
@@ -513,19 +527,6 @@ function letGoHeld(): void {
   ]
   for (const store of stores) void store.letGo(holds)
   studioKeeping()?.letGoHeldTakes(holds).catch(reported)
-}
-
-/** Home's held notes as a set, made again only when the list changes. */
-let heldFrom: ReadonlyArray<string> | null = null
-let heldSet: ReadonlySet<string> = new Set()
-
-function voiceHeld(id: string): boolean {
-  const { held } = phoneVoiceHome().getSnapshot()
-  if (held !== heldFrom) {
-    heldFrom = held
-    heldSet = new Set(held)
-  }
-  return heldSet.has(id)
 }
 
 /** Whether the grammar-lens record has been told how to read what home holds. */

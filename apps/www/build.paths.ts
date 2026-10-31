@@ -111,6 +111,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/clipboard/**",
   "apps/www/src/lib/drive-filing/**",
   "apps/www/src/lib/game-bites/**",
+  "apps/www/src/lib/handed-in/**",
   "apps/www/src/lib/home-link/**",
   "apps/www/src/lib/jobs/**",
   "apps/www/src/lib/journal-share/**",

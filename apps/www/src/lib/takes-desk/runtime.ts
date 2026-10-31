@@ -102,21 +102,27 @@ export type PhoneTakes = Omit<LensTakes, "getSnapshot"> & {
 }
 
 /**
- * The take a new one makes room by letting go: the oldest home holds, or
- * null while there is room or home holds none.
+ * The item a new one makes room by letting go at `max`: the oldest by `at`
+ * of those home holds (`held`), or null while there is room or home holds
+ * none. The takes' and LeetType's answer notes' (`lib/leetype-takes`).
  */
-function makesRoom(
-  takes: ReadonlyArray<Take>,
+export function makesRoom<T extends { readonly id: string }>(
+  items: ReadonlyArray<T>,
   max: number,
-  held: (id: string) => boolean
-): string | null {
-  if (takes.length < max) return null
-  const oldest = takes
-    .filter(({ id }) => held(id))
-    .sort((a, b) => a.takenAt - b.takenAt)
-    .at(0)
-  return oldest?.id ?? null
+  held: (id: string) => boolean,
+  at: (item: T) => number
+): T | null {
+  if (items.length < max) return null
+  let oldest: T | null = null
+  for (const item of items) {
+    if (held(item.id) && (oldest === null || at(item) < at(oldest))) {
+      oldest = item
+    }
+  }
+  return oldest
 }
+
+const takenAt = (take: Take): number => take.takenAt
 
 export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
   const listeners = new Set<() => void>()
@@ -136,7 +142,7 @@ export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
     const takes = ports.takes.read()
     return (
       takes.length >= limits.max &&
-      makesRoom(takes, limits.max, ports.held) === null
+      makesRoom(takes, limits.max, ports.held, takenAt) === null
     )
   }
 
@@ -165,8 +171,13 @@ export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
           saved("full")
           return
         }
-        const room = makesRoom(ports.takes.read(), limits.max, ports.held)
-        if (room !== null) letGo([room])
+        const room = makesRoom(
+          ports.takes.read(),
+          limits.max,
+          ports.held,
+          takenAt
+        )
+        if (room !== null) letGo([room.id])
         shelveTake(
           ports,
           id,

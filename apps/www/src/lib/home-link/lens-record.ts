@@ -23,11 +23,10 @@ import {
 import type { LensRecordExport } from "@some-ui/topik"
 
 import { pairingOf } from "./index"
-import type { LogReport } from "./leetype-log"
-import { bucketOf } from "./leetype-log"
+import type { EachSent, LogReport } from "./leetype-log"
+import { sendEach } from "./leetype-log"
 import type { Sent } from "./sent"
 import { readSent } from "./sent"
-import { answerOrEnd } from "./shelf"
 
 export type LensEntry = LensRecordExport["entries"][number]
 
@@ -68,37 +67,24 @@ function holds(body: string, text: string): boolean {
   )
 }
 
-/**
- * Sends `going` through `send`, into `report`, as `./notes` sends its
- * notes; `held` hears each key `sent.lens` should remember.
- */
+/** How `sendEach` sends an entry: counted held only once home carries it back. */
+const LENS_SENT: EachSent<LensEntry> = {
+  path: (entry) => `/korean/lens/${lensKey(entry)}`,
+  body: (entry) => entry,
+  heldAs: (entry, text, body) =>
+    Promise.resolve(
+      holds(body, text) ? [lensKey(entry), lensDigest(entry)] : null
+    ),
+}
+
+/** Sends `going` (`sendEach`); `held` hears each key `sent.lens` should remember. */
 export async function sendLens(
   going: ReadonlyArray<LensEntry>,
   send: HomeCall,
   report: LogReport,
   held: (key: string, digest: string) => void
 ): Promise<void> {
-  for (const entry of going) {
-    const key = lensKey(entry)
-    const text = canonicalJson(entry)
-    const answer = await answerOrEnd(
-      send,
-      report,
-      "PUT",
-      `/korean/lens/${encodeURIComponent(key)}`,
-      text
-    )
-    if (answer === null) return
-    const bucket = bucketOf(answer.status)
-    if (bucket !== "held") {
-      report[bucket] += 1
-    } else if (holds(answer.body, text)) {
-      report.held += 1
-      held(key, lensDigest(entry))
-    } else {
-      report.differs += 1
-    }
-  }
+  await sendEach(going, LENS_SENT, send, report, held)
 }
 
 /**
