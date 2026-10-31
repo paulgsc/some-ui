@@ -108,6 +108,7 @@ const SPEECH_ENTRY = "packages/speech/dist/@some-ui/speech"
 const DEVICE_MODULES = [
   `${SPEECH_ENTRY}/native.es.js`,
   "apps/www/src/lib/agent-export/**",
+  "apps/www/src/lib/clipboard/**",
   "apps/www/src/lib/drive-filing/**",
   "apps/www/src/lib/game-bites/**",
   "apps/www/src/lib/home-link/**",
@@ -129,6 +130,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/native-log/**",
   "apps/www/src/lib/study-nudge/native.ts",
   "apps/www/src/lib/study-nudge/schedule.ts",
+  "apps/www/src/components/copy-button.tsx",
   "apps/www/src/components/device-home-glyph.tsx",
   "apps/www/src/components/player/device-*.ts",
   "apps/www/src/components/aph/device-*.tsx",
@@ -252,8 +254,10 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       modules: [
         "apps/www/src/lib/status-board/**",
         "apps/www/src/lib/sharing-marks/**",
+        "apps/www/src/lib/failure-log/**",
         "apps/www/src/components/sharing-marks.tsx",
         "apps/www/src/components/settings/status-board.tsx",
+        "apps/www/src/components/settings/failure-log.tsx",
       ],
       profiles: [MOBILE_PROFILE],
       why: "the status page (#2165) and the sharing marks it draws: what this phone keeps and sends, which only the Android app does (src/routes/_dashboard/_apk/settings/status.tsx, src/components/device-home-glyph.tsx)",
