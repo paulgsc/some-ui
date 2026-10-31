@@ -269,7 +269,6 @@ export const GenerateLesson = ({
 }: GenerateLessonProps): JSX.Element => {
   const voice = useSceneVoice(sceneVoice)
   const notes = voice?.notes ?? []
-  const [arrived, setArrived] = useState<ReadonlyArray<string> | null>(null)
   const [level, setLevel] = useState<TopikLevel>(defaultLevel)
   const [scene, setScene] = useState(initialSeed?.scene ?? "")
   const [genres, setGenres] = useState<Array<string>>(initialSeed?.genres ?? [])
@@ -384,41 +383,8 @@ export const GenerateLesson = ({
             prompt={prompt}
             notes={notes}
             disabled={voice !== null && voice.take.kind !== "idle"}
-            onShared={(text, sent) => {
-              onPromptHandedOff?.(text)
-              if (sent.length > 0) setArrived(sent)
-            }}
+            onShared={(text) => onPromptHandedOff?.(text)}
           />
-        )}
-        {arrived && sceneVoice && (
-          <div
-            role="group"
-            aria-label="Did they arrive?"
-            className="bg-card border-border flex flex-col gap-2 rounded-2xl border p-3"
-          >
-            <p className="text-sm">
-              Did the prompt and its {arrived.length} voice note
-              {arrived.length === 1 ? "" : "s"} reach your drive?
-            </p>
-            <div className="flex gap-2">
-              <Button
-                className="h-11 min-w-0 flex-1 rounded-xl"
-                onClick={() => {
-                  sceneVoice.remove(arrived)
-                  setArrived(null)
-                }}
-              >
-                Yes, let them go
-              </Button>
-              <Button
-                variant="ghost"
-                className="h-11 min-w-0 flex-1 rounded-xl"
-                onClick={() => setArrived(null)}
-              >
-                Not yet
-              </Button>
-            </div>
-          </div>
         )}
         {manual !== null && (
           <>

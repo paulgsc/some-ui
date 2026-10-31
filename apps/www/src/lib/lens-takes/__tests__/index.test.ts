@@ -4,12 +4,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import {
-  lensTakesForExport,
-  letGoLensTakes,
-  phoneLensTakes,
-  sweepLensTakes,
-} from "@/lib/lens-takes"
+import { lensTakesForExport, sweepLensTakes } from "@/lib/lens-takes"
 
 const removeAudio = vi.hoisted(() => vi.fn(() => Promise.resolve()))
 /** The ids on the shelf, and one whose read fails. */
@@ -81,17 +76,6 @@ describe("lensTakesForExport", () => {
       ["b", false, true],
       ["c", false, false],
     ])
-  })
-})
-
-describe("letGoLensTakes", () => {
-  it("lets the takes go, then their audio, and frees room for another", () => {
-    listed(...Array.from({ length: 40 }, (_, n) => `t${n}`))
-    expect(phoneLensTakes().getSnapshot().full).toBe(true)
-    letGoLensTakes(["t0"])
-    expect(ids()).not.toContain("t0")
-    expect(removeAudio).toHaveBeenCalledWith(["t0"])
-    expect(phoneLensTakes().getSnapshot().full).toBe(false)
   })
 })
 

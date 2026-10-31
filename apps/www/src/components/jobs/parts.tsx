@@ -261,8 +261,8 @@ export const JourneyCard = ({
 /**
  * What a card that waits on me, or stopped, asks: share `kind`'s file to
  * Drive (and its voice notes, and what a run missed), then say whether it
- * arrived; only then does the share count, and its audio leave the phone.
- * Nothing for a file on its way or read.
+ * arrived; only then does the share count. Nothing for a file on its way or
+ * read.
  */
 export const ShareAction = ({
   kind,
@@ -287,8 +287,8 @@ export const ShareAction = ({
     ask({
       title: "Did they arrive?",
       description:
-        "Once they have, they count as sent and their voice notes can leave this phone.",
-      confirm: "They arrived: let them go",
+        "Once they have, they count as sent. Their voice notes stay on this phone until home holds them.",
+      confirm: "They arrived",
       keep: "Not yet: offer them again",
       onConfirm: () => jobs.arrived(shared.shareId),
     })

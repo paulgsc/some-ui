@@ -338,20 +338,20 @@ describe("a sitting", () => {
   })
 })
 
-describe("takes that arrived", () => {
-  it("are kept by Drive and leave the phone, their record staying", async () => {
+describe("takes that arrived in Drive", () => {
+  it("are marked as kept by Drive too, and stay on the phone until home holds them (LG1)", async () => {
     const memory = memoryProjectStore()
     const runtime = await opened(memory)
     runtime.dispatch({ type: "recordChosen" })
     await recordOne(runtime)
     const { id } = projectIn(runtime)
     runtime.dispatch({ type: "takesArrived", project: id, takes: ["t1"] })
-    await until(runtime, (state) => state.notice.includes("left the phone"))
+    await until(runtime, (s) => s.notice === STUDIO_WORDS.notice.arrived(1))
     expect(projectIn(runtime).takes[0]).toMatchObject({
       keptBy: ["drive"],
-      onPhone: false,
+      onPhone: true,
     })
-    expect(memory.audio.has(`${id}:t1`)).toBe(false)
+    expect(memory.audio.has(`${id}:t1`)).toBe(true)
   })
 })
 
@@ -638,7 +638,7 @@ describe("every video with takes on the phone", () => {
     expect(projectIn(runtime).id).toBe(older)
     runtime.dispatch({ type: "takesArrived", project: older, takes: ["t1"] })
     await until(runtime, (s) => s.notice === STUDIO_WORDS.notice.arrived(1))
-    expect(memory.audio.size).toBe(0)
+    expect(memory.audio.size).toBe(1)
   })
 })
 
@@ -726,8 +726,8 @@ describe("how a sitting went", () => {
   })
 })
 
-describe("what the screen says it let go", () => {
-  it("counts only takes that left the phone", async () => {
+describe("what the screen says reached Drive", () => {
+  it("counts only takes newly marked as in Drive", async () => {
     const memory = memoryProjectStore()
     const runtime = await opened(memory)
     runtime.dispatch({ type: "recordChosen" })

@@ -149,10 +149,11 @@ describe("Studio's words", () => {
     ).toBe("Last time: Kept takes for scene 2. Next: Scene 3: End card.")
   })
 
-  it("say what to do when the phone is full", () => {
+  it("say what frees room when the phone is full: home holding the takes (LG1)", () => {
     const full = STUDIO_WORDS.notice.full
     expect(full).toMatch(/wasn't kept/)
-    expect(full).toMatch(/share a video's takes with Claude/)
+    expect(full).toMatch(/once home holds them/)
+    expect(full).not.toMatch(/Drive/)
     expect(full).toMatch(/the room they held is free/)
   })
 

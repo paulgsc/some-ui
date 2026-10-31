@@ -232,7 +232,7 @@ describe("takes", () => {
     ).toEqual({ a: "t1" })
   })
 
-  it("leave the phone only once home or Drive holds a copy", () => {
+  it("leave the phone only once home holds a copy; Drive's is a copy (LG1)", () => {
     const state = run(
       started(),
       { type: "takeStarted", shot: "a" },
@@ -241,6 +241,19 @@ describe("takes", () => {
     const refused = step(state, { type: "letGo", take: "t1" })
     expect(refused.refused).toBe("unconfirmed")
     expect(refused.effects).toEqual([])
+    const inDrive = run(state, { type: "keptBy", take: "t1", keeper: "drive" })
+    expect(
+      step(inDrive, { type: "keptBy", take: "t1", keeper: "drive" }).refused
+    ).toBe("duplicate")
+    expect(step(inDrive, { type: "letGo", take: "t1" }).refused).toBe(
+      "unconfirmed"
+    )
+    expect(
+      isAppendOnly(inDrive.project, {
+        ...inDrive.project,
+        takes: [{ ...inDrive.project.takes[0]!, onPhone: false }],
+      })
+    ).toBe(false)
 
     const kept = run(state, { type: "keptBy", take: "t1", keeper: "home" })
     const released = step(kept, { type: "letGo", take: "t1" })

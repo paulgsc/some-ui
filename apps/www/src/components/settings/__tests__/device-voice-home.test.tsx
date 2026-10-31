@@ -19,7 +19,7 @@ const lane = vi.hoisted(
   (): { run: KeptState; waiting: number; unsent: Unsendable } => ({
     run: { running: false, again: false, last: null },
     waiting: 0,
-    unsent: { inDrive: 0, gone: 0 },
+    unsent: { gone: 0 },
   })
 )
 
@@ -53,18 +53,17 @@ afterEach(() => {
   cleanup()
   lane.run = INITIAL_KEPT
   lane.waiting = 0
-  lane.unsent = { inDrive: 0, gone: 0 }
+  lane.unsent = { gone: 0 }
 })
 
 describe("Settings' voice notes, kept on home", () => {
   it("names notes it can't send, and says nothing waits when nothing else does", () => {
     lane.run = { ...INITIAL_KEPT, last: { kind: "synced", at: 1 } }
-    lane.unsent = { inDrive: 2, gone: 1 }
+    lane.unsent = { gone: 1 }
     render(<VoiceHomeChoice />)
     expect(screen.getByRole("status").textContent).toBe(
       "Kept on home. Up to date."
     )
-    expect(screen.getByText(VOICE_UNSENT.inDrive(2))).toBeTruthy()
     expect(screen.getByText(VOICE_UNSENT.gone(1))).toBeTruthy()
     expect(screen.queryByText(/wait/)).toBeNull()
     expect(screen.queryByRole("button", { name: SHEET.sendNow })).toBeNull()

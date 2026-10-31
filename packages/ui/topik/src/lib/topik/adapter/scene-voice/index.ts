@@ -29,6 +29,8 @@ export type SceneVoice = {
   stop: () => void
   /** The flow was left: a take under way is kept. */
   leave: () => void
-  /** Lets these notes go, with their audio: shared, or discarded. */
+  /** Lets these notes go, with their audio: discarded by the person. */
   remove: (ids: ReadonlyArray<string>) => void
+  /** Lets each note in `homeHolds` go, with its audio (LG1). */
+  letGo: (homeHolds: ReadonlySet<string>) => void
 }

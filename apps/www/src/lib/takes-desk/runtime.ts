@@ -6,8 +6,8 @@
  *
  * - **Bounded on its own, and never evicted.** At most `limits.max` takes,
  *   each at most `limits.maxMs`. At the most a new take is refused and
- *   `full` says so; takes leave only by `letGo`, once the learner says an
- *   export carrying them arrived.
+ *   `full` says so; takes leave only by `letGo`, which `takesDesk`'s sweep
+ *   calls for a take whose audio never landed.
  * - **Every take's end is said.** `ended` names how each take ended and the
  *   line it was started on, apart from `reset`'s hush, so a caller that
  *   moved on still hears that a take it left was kept or lost.
@@ -88,10 +88,10 @@ export type DeskSnapshot = LensTakeSnapshot & {
   readonly blocked: RecordingFailure | null
 }
 
-/** The port, and the export's hand-off (`takesDesk`'s `letGo`). */
+/** The port, and the sweep's way to let takes go (`takesDesk`). */
 export type PhoneTakes = Omit<LensTakes, "getSnapshot"> & {
   getSnapshot: () => DeskSnapshot
-  /** These went out in an export the learner says arrived: they leave. */
+  /** Lets these takes go, with their audio. */
   letGo: (ids: ReadonlyArray<string>) => void
 }
 

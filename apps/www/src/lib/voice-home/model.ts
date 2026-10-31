@@ -136,8 +136,6 @@ export type CopyPass = {
 
 /** What this phone holds and can't send home, by why (LA14). */
 export type Unsendable = {
-  /** Jobs notes let go once their share arrived in Drive, before a copy was made. */
-  readonly inDrive: number
   /** Notes the last copy pass found no audio for. */
   readonly gone: number
 }
