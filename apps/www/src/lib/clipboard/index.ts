@@ -1,6 +1,7 @@
 /**
- * The paste kit's copy: the WebView's clipboard, waited on through
- * `callForeign` (F1, `@some-ui/intent-kit`).
+ * Copying text: the WebView's clipboard, waited on through `callForeign`
+ * (F1, `@some-ui/intent-kit`). Jobs' paste kit and the failure log copy
+ * through it, by `components/copy-button`.
  */
 import type { ForeignPort, ForeignVerdict } from "@some-ui/intent-kit"
 import {

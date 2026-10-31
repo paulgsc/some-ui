@@ -21,7 +21,7 @@ vi.mock("@/lib/jobs", async () => {
   const { createJobsRuntime } = await import("@/lib/jobs/runtime")
   const { ports } = await import("@/lib/jobs/__tests__/fixture")
   const runtime = createJobsRuntime(ports())
-  return { phoneJobs: (): typeof runtime => runtime, copyText: vi.fn() }
+  return { phoneJobs: (): typeof runtime => runtime }
 })
 
 afterEach(() => {

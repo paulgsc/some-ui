@@ -14,7 +14,7 @@ import {
   subscribeFailureLog,
 } from "@/lib/failure-log"
 import { BOARD_WORDS } from "@/lib/status-board/words"
-import { CopyButton } from "@/components/jobs/parts"
+import { CopyButton } from "@/components/copy-button"
 
 export const FailureLog = (): JSX.Element => {
   const newest = useSyncExternalStore(subscribeFailureLog, failureLogSnapshot)
