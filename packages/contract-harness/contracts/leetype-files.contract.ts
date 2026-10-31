@@ -14,10 +14,10 @@
  * body `@some-ui/leetype`'s `SessionFileSchema` takes, with `sha256` as its
  * `ETag` and a `304` on `If-None-Match`.
  *
- * Both routes are per person and read only, so nothing here writes. What the
- * run cannot reach: nothing puts a file in `mailbox_item` for the run's
- * subject (only the poller writes it, from the mailbox), so the list comes
- * back empty and no file can be fetched. The served file, its `ETag` and the
+ * Both routes are per person and read only, so nothing here writes. What CI's
+ * throwaway run cannot reach: nothing puts a file in `mailbox_item` for the
+ * run's subject (only the poller writes it, from the mailbox), so there the
+ * list comes back empty and no file can be fetched (paulgsc/server#590). The served file, its `ETag` and the
  * `304` are held by the server's own handler tests, as is another subject's
  * file being a `404`: the run signs in as one subject.
  */
