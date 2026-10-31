@@ -50,6 +50,7 @@
     "lint:js": "NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier . --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
     "queue": "node scripts/queue.mjs",
+    "stands": "node scripts/stands.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

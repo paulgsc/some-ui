@@ -167,3 +167,10 @@ export function parseDecisions(raw: string): Parsed<Decisions> {
 export function decisionsFileName(day: string, n = 1): string {
   return n <= 1 ? `decisions-${day}.json` : `decisions-${day}-${n}.json`
 }
+
+/** The day a `decisionsFileName` name is for, or `null` for any other name. */
+export function decisionsFileDay(name: string): string | null {
+  return (
+    /^decisions-(\d{4}-\d{2}-\d{2})(?:-\d+)?\.json$/.exec(name)?.[1] ?? null
+  )
+}

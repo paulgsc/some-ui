@@ -167,11 +167,11 @@
             "tighter": "lower"
           },
           "verdict": "broken",
-          "conclusion": "Each request has a 30-second limit but the pass has none: at today's constants a full pass may make up to 820 calls, about 6.8 hours of waiting in the worst case.",
+          "conclusion": "Each request has a 30-second limit but the pass has none: at today's constants a full pass may make up to 821 calls, about 6.8 hours of waiting in the worst case.",
           "evidence": [
             {
               "class": "derived",
-              "says": "Inbound 5 folders × (10 pages + 20 gets) = 150, outbound 20, restore 10 folders × (1 + 50) = 510, archive 10 folders × 10 pages + 20 × (get + archive) = 140: 820 calls, × 30 s ≈ 24,600 s. Filing transcripts and LeetType logs makes no call.",
+              "says": "Inbound 5 folders × (10 pages + 20 gets) = 150, outbound 20, the Jobs index 1 put, restore 10 folders × (1 + 50) = 510, archive 10 folders × 10 pages + 20 × (get + archive) = 140: 821 calls, × 30 s ≈ 24,630 s. Filing transcripts and LeetType logs makes no call, and archiving walks 10 of the 11 folders (not index).",
               "ref": "server:apps/servers/file_host/src/mailbox/pass.rs"
             }
           ],
@@ -197,7 +197,7 @@
           "evidence": [
             {
               "class": "derived",
-              "says": "96 passes a day × 5 folder listings (brief, scene, drama, run, leetype) = 480; with archiving, + 10 wanted listings + 10 archive listings = 25 a pass, 2,400 a day. Filing LeetType logs reads home's database only.",
+              "says": "96 passes a day × 5 folder listings (brief, scene, drama, run, leetype) = 480; with archiving, + 10 wanted listings + 10 archive listings = 25 a pass, 2,400 a day. Filing LeetType logs reads home's database only. Home's index (index) adds no listing: archiving walks every folder but it (ARCHIVES), the routine's backfill rides brief, which a pass lists anyway, and with no files home computes no index. Once it holds some, it puts one only when a file it counts arrives or an open pick lapses (the index's validThrough), never for the day turning alone, so a day with no arrival and no lapse is exactly 2,400; the day a pick lapses adds one put, which is work, not idle (paulgsc/server#509).",
               "ref": "server:apps/servers/file_host/src/mailbox/pass.rs"
             }
           ],
@@ -1515,8 +1515,8 @@
     {
       "store": "mailbox:item",
       "class": "cache",
-      "growth": "Per file the routine or home puts (folders brief, decisions, scout, scene, drama, run, leetype, transcript ...), body <= MAX_BODY_BYTES = 1,048,576; a few KB a day per README; bytes leave once archived.",
-      "horizon": "a file's bytes are deleted once it has been live >= 30 days (ARCHIVE_MIN_AGE_DAYS) and home has archived them (home waits MAILBOX_ARCHIVE_DAYS, >= 30); metadata moves to `archived`",
+      "growth": "Per file the routine or home puts (folders brief, decisions, scout, scene, drama, run, leetype, transcript ...), body <= MAX_BODY_BYTES = 1,048,576; a few KB a day per README; bytes leave once archived. Home's index (index) is one per routine, the latest only: putting a new one drops the one before in the same write, and it is never archived (owner, paulgsc/server#509).",
+      "horizon": "a file's bytes are deleted once it has been live >= 30 days (ARCHIVE_MIN_AGE_DAYS) and home has archived them (home waits MAILBOX_ARCHIVE_DAYS, >= 30); metadata moves to `archived`. An index's row and bytes go when home puts a newer one of its routine, with no `archived` row",
       "family": "routine-to-home"
     },
     {
@@ -2071,13 +2071,13 @@
     {
       "store": "server:mailbox_item",
       "class": "record",
-      "growth": "Per file home reads from the Jobs mailbox (digests, run records, scene/drama lessons, ...): its bytes verbatim, each <= 1 MiB (mailbox MAX_BODY_BYTES); append-only.",
+      "growth": "Per file home reads from the Jobs mailbox (digests, run records, scene/drama lessons, ...): its bytes verbatim, each <= 1 MiB (mailbox MAX_BODY_BYTES); append-only. Once, the routine's backfill adds the Jobs decisions and scouts files from before the mailbox to brief (owner, paulgsc/server#509): the mailbox takes only a name the phone writes (a real calendar day, a decisions share number 2 to 99, a scouts stamp at a real time) for a day from 2026-10-17, when the phone could first share one, through 2026-10-22, so a closed set.",
       "family": "routine-to-home"
     },
     {
       "store": "server:mailbox_outgoing",
       "class": "record",
-      "growth": "Per file the phone (or the poller, for transcripts and LeetType session logs) files for the mailbox (decisions, scout, opened, transcript, leetype-log), bytes verbatim; append-only. A LeetType session's log is filed again as log-<session>.r<n>.json only when an event of it arrives home after its last copy, and each copy repeats every earlier event of the session.",
+      "growth": "Per file the phone (or the poller, for transcripts and LeetType session logs) files for the mailbox (decisions, scout, opened, transcript, leetype-log), bytes verbatim; append-only. A LeetType session's log is filed again as log-<session>.r<n>.json only when an event of it arrives home after its last copy, and each copy repeats every earlier event of the session. The Jobs index adds nothing here or in mailbox_handed or mailbox_archive: it is a view home recomputes from these records and keeps no copy of, so the mailbox holds one index per routine, the latest only (owner, paulgsc/server#509).",
       "family": "routine-to-home"
     },
     {
