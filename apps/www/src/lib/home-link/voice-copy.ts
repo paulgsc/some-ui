@@ -233,29 +233,32 @@ type Candidate = {
 }
 
 /**
- * Studio's takes still on the phone that home doesn't hold yet, as last
- * read (`readStudio`): its store answers only asynchronously, so each copy
- * pass reads it first and the count renders what that read found.
+ * Studio's takes still on the phone that home doesn't hold yet, and the
+ * soundbites on the phone, each as last read (`readStudio`,
+ * `readSoundbites`): their stores answer only asynchronously, so each copy
+ * pass reads them first and the count renders what those reads found.
  */
 let studioTakes: ReadonlyArray<Candidate> = []
-const studioListeners = new Set<() => void>()
+let soundbites: ReadonlyArray<Candidate> = []
+/** Moves with each read of either store. */
+let reads = 0
+const readListeners = new Set<() => void>()
 
-/** What the last read of Studio's store found, for the lane's count. */
-export const studioRead = {
-  getSnapshot: (): ReadonlyArray<Candidate> => studioTakes,
+function wasRead(): void {
+  reads += 1
+  for (const listener of readListeners) listener()
+}
+
+/** What the last reads of Studio's and the soundbites' stores found, for the lane's count. */
+export const storesRead = {
+  getSnapshot: (): number => reads,
   subscribe(listener: () => void): () => void {
-    studioListeners.add(listener)
+    readListeners.add(listener)
     return (): void => {
-      studioListeners.delete(listener)
+      readListeners.delete(listener)
     }
   },
 }
-
-/**
- * The soundbites on the phone, as last read (`readSoundbites`): their store
- * answers only asynchronously, as Studio's does.
- */
-let soundbites: ReadonlyArray<Candidate> = []
 
 async function readSoundbites(): Promise<void> {
   const kept = soundbiteKeeping()
@@ -266,6 +269,7 @@ async function readSoundbites(): Promise<void> {
     note: soundbiteNote(bite),
     audio: (): Promise<Blob | null> => store.audio(bite.id),
   }))
+  wasRead()
 }
 
 async function readStudio(): Promise<void> {
@@ -278,7 +282,7 @@ async function readStudio(): Promise<void> {
       note: { ...note, of: "studio" },
       audio: (): Promise<Blob | null> => store.audio(project, note.id),
     }))
-  for (const listener of studioListeners) listener()
+  wasRead()
 }
 
 export function candidates(): Array<Candidate> {
