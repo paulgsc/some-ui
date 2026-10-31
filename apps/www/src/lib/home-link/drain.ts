@@ -213,23 +213,25 @@ export async function drainHome(
     "studio"
   )
   if (studioEnded !== null) return studioEnded
-  const reflectionsEnded = await part(
-    ports.reflectionsGoing(),
-    sendReflections,
-    "reflections"
-  )
-  // What home holds, as this run has heard it, whatever the run came to.
-  ports.letGoHeld(sent)
-  if (reflectionsEnded !== null) return reflectionsEnded
-  let promptsEnded: HomeExchanged | null
   try {
-    promptsEnded = await part(ports.promptsGoing(), sendPrompts, "prompts")
+    const reflectionsEnded = await part(
+      ports.reflectionsGoing(),
+      sendReflections,
+      "reflections"
+    )
+    if (reflectionsEnded !== null) return reflectionsEnded
+    const promptsEnded = await part(
+      ports.promptsGoing(),
+      sendPrompts,
+      "prompts"
+    )
+    if (promptsEnded !== null) return promptsEnded
   } finally {
-    // What home holds, as this run has heard it, even when home stopped
-    // answering partway.
+    // What home holds, as this run has heard it, however the run ended:
+    // done, stopped, or thrown partway.
+    ports.letGoHeld(sent)
     ports.letGoHeldPrompts(sent)
   }
-  if (promptsEnded !== null) return promptsEnded
 
   return short === null ? { kind: "synced" } : failed(short)
 }

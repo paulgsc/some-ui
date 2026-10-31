@@ -3,7 +3,6 @@
  * markdown only, and counts as home's only once home answers with it
  * exactly as sent; what `sent` keeps of it is a bounded fingerprint.
  */
-import { noAnswer } from "@/test-support/no-answer"
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { inMemoryStorage } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
@@ -90,27 +89,5 @@ describe("sendPrompts", () => {
     ])
     expect(held).toEqual(["drama-20261030T071503120Z"])
     expect(report).toMatchObject({ held: 1, differs: 1 })
-  })
-
-  it("counts a refusal and keeps it here, and stops when home stops answering", async () => {
-    const report = emptyLogReport()
-    const held: Array<string> = []
-    const { send, calls } = home([{ status: 422, body: "{}" }, noAnswer()])
-    await sendPrompts([asked(0), asked(1), asked(2)], send, report, (stamp) => {
-      held.push(stamp)
-    })
-    expect(calls).toHaveLength(2)
-    expect(held).toEqual([])
-    expect(report).toMatchObject({ refused: 1, unreachable: true })
-  })
-
-  it("ends at a 401: home no longer knows this phone", async () => {
-    const report = emptyLogReport()
-    const { send, calls } = home([{ status: 401, body: "" }])
-    await sendPrompts([asked(0), asked(1)], send, report, () => {
-      throw new Error("nothing is held")
-    })
-    expect(calls).toHaveLength(1)
-    expect(report.forgotten).toBe(true)
   })
 })

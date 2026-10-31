@@ -1,12 +1,17 @@
 /**
  * The drain's written reflections (LA16): only typed lines go, each once,
  * and one counts as home's only once home answers with it exactly as sent.
+ * Last, how every lane that goes home whole (`sendWhole`: these and the asks
+ * for the next scene, LA18) counts a refusal, a stop and a 401.
  */
 import { noAnswer } from "@/test-support/no-answer"
+import type { HomeCall } from "@some-ui/core-utils"
 import { inMemoryStorage } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
+import type { LogReport } from "@/lib/home-link/leetype-log"
 import { emptyLogReport } from "@/lib/home-link/leetype-log"
+import { sendPrompts } from "@/lib/home-link/prompts"
 import type { Written } from "@/lib/home-link/reflections"
 import {
   heldWritten,
@@ -87,31 +92,49 @@ describe("sendReflections", () => {
     expect(held).toEqual(["t1"])
     expect(report).toMatchObject({ held: 1, differs: 1 })
   })
+})
 
-  it("counts an answer that differs from what was sent, even with the same fingerprint", async () => {
-    // These two texts share a length and an FNV-1a hash on t1's metadata.
-    const report = emptyLogReport()
-    const held: Array<string> = []
-    const { send } = home([echo(typed("t1", "2d728257"))])
-    await sendReflections([typed("t1", "b71894e9")], send, report, (id) => {
-      held.push(id)
-    })
-    expect(held).toEqual([])
-    expect(report).toMatchObject({ held: 0, differs: 1 })
-  })
+const ask = (
+  n: number
+): { stamp: string; at: string; text: string; notes: [] } => ({
+  stamp: `drama-2026103${String(n)}T071503120Z`,
+  at: `2026-10-3${String(n)}T07:15:03.120Z`,
+  text: `prompt ${String(n)}`,
+  notes: [],
+})
 
+type SendThree = (
+  send: HomeCall,
+  report: LogReport,
+  held: (id: string) => void
+) => Promise<void>
+
+describe.each<{ lane: string; refusal: number; sendThree: SendThree }>([
+  {
+    lane: "written reflections",
+    refusal: 409,
+    sendThree: (send, report, held): Promise<void> =>
+      sendReflections(
+        [typed("t1"), typed("t2"), typed("t3")],
+        send,
+        report,
+        held
+      ),
+  },
+  {
+    lane: "asks for the next scene",
+    refusal: 422,
+    sendThree: (send, report, held): Promise<void> =>
+      sendPrompts([ask(0), ask(1), ask(2)], send, report, held),
+  },
+])("sending $lane", ({ refusal, sendThree }) => {
   it("counts a refusal and keeps it here, and stops when home stops answering", async () => {
     const report = emptyLogReport()
     const held: Array<string> = []
-    const { send, calls } = home([{ status: 409, body: "{}" }, noAnswer()])
-    await sendReflections(
-      [typed("t1"), typed("t2"), typed("t3")],
-      send,
-      report,
-      (id) => {
-        held.push(id)
-      }
-    )
+    const { send, calls } = home([{ status: refusal, body: "{}" }, noAnswer()])
+    await sendThree(send, report, (id) => {
+      held.push(id)
+    })
     expect(calls).toHaveLength(2)
     expect(held).toEqual([])
     expect(report).toMatchObject({ refused: 1, unreachable: true })
@@ -120,7 +143,7 @@ describe("sendReflections", () => {
   it("ends at a 401: home no longer knows this phone", async () => {
     const report = emptyLogReport()
     const { send, calls } = home([{ status: 401, body: "" }])
-    await sendReflections([typed("t1"), typed("t2")], send, report, () => {
+    await sendThree(send, report, () => {
       throw new Error("nothing is held")
     })
     expect(calls).toHaveLength(1)

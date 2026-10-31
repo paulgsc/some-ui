@@ -815,13 +815,15 @@ What no test can say is where a reflection goes once an allowed module holds it:
 - _Claim:_ a session reflection (`lib/session-reflection`), or any value built
   from one, reaches `file_host` only as a written one (`body.kind` `text`),
   whole and as kept, through the drain's reflections part
-  (`sendReflections` in `lib/home-link/reflections.ts`, one
-  `PUT /routine/reflections/:id` each, from `drainHome` alone), or as a spoken
+  (`sendReflections` in `lib/home-link/reflections.ts`, through `sendWhole`
+  in `leetype-log.ts`, one `PUT /routine/reflections/:id` each, from
+  `drainHome` alone), or as a spoken
   one's voice note (LA13); the one-tap answers reach no server; nothing else
   passes one to anything that sends to `file_host` or writes a session, a
   signal or the device backend's database; and a reflection leaves the phone
   without its person's own let go only through the store's `trimOffline`,
-  called only from `drainHome`'s `letGoHeld` port after that part, with the
+  called only from `drainHome`'s `letGoHeld` port, in the `finally` after
+  that part, with the
   ids `heldWritten` reads from what home answered (`sent.reflections`). Two
   allowlists in `apps/www/eslint.config.js` bound where one can travel: the
   modules that hold or show reflections (`REFLECTION_MODULES`) import from
@@ -838,11 +840,13 @@ What no test can say is where a reflection goes once an allowed module holds it:
   names, that passes a reflection or a value built from one to a call that
   sends to `file_host` or writes a session, a signal or the device backend's
   database, other than `sendReflections`' `PUT` and LA13's voice lane; a hunk
-  to `lib/home-link/reflections.ts` that sends anything but a `text`
+  to `lib/home-link/reflections.ts`, or to `sendWhole` or `heldBy` in
+  `lib/home-link/leetype-log.ts`, that sends anything but a `text`
   reflection, whole as kept, or by another method or path, or lets `held`
   hear one home's answer does not hold exactly as sent; a hunk to
   `lib/home-link/drain.ts` that calls `sendReflections` or `letGoHeld` from
-  anywhere else, or passes `letGoHeld` anything but the run's own `sent`; a
+  anywhere else, passes `letGoHeld` anything but the run's own `sent`, or
+  moves the call out of the `finally`; a
   hunk to `lib/home-link/going.ts` that has `letGoHeldReflections` pass
   `trimOffline` anything but `heldWritten` over the store's own list and that
   `sent`; a hunk that calls `trimOffline` anywhere but there; or a hunk to
@@ -893,7 +897,8 @@ a scene note goes only once `prompted` and held (`lib/scene-voice`'s
 
 - _Claim:_ an ask (`lib/scene-ask`'s `AskedPrompt`) reaches `file_host` only
   through the drain's prompts part (`sendPrompts` in
-  `lib/home-link/prompts.ts`, one `PUT /routine/prompts/:stamp` of
+  `lib/home-link/prompts.ts`, through `sendWhole` in `leetype-log.ts`, one
+  `PUT /routine/prompts/:stamp` of
   `{ stamp, text }` each, from `drainHome` alone); and an ask leaves the
   phone, and a scene note is marked `prompted`, only in
   `letGoHeldPrompts` (`lib/home-link/going.ts`), which `drainHome` calls
@@ -902,8 +907,9 @@ a scene note goes only once `prompted` and held (`lib/scene-voice`'s
   their notes `prompted` before it tells the store they are `held`, and the
   store (`afterHeld`, `afterAsk`) drops only asks marked held, never the
   newest.
-- _Falsified by:_ a hunk to `lib/home-link/prompts.ts` that sends anything
-  but an ask's stamp and text, by another method or path, or lets `held`
+- _Falsified by:_ a hunk to `lib/home-link/prompts.ts`, or to `sendWhole`
+  or `heldBy` in `lib/home-link/leetype-log.ts`, that sends anything but an
+  ask's stamp and text, by another method or path, or lets `held`
   hear one home's answer does not hold exactly as sent, or stores more than
   a bounded fingerprint in `sent.prompts`; a hunk to `lib/home-link/drain.ts`
   that calls `sendPrompts` or `letGoHeldPrompts` from anywhere else, passes
@@ -918,7 +924,7 @@ a scene note goes only once `prompted` and held (`lib/scene-voice`'s
   or a hunk that passes an ask, or its text, to anything else that sends to
   `file_host` or to a share sheet.
 - _Scope:_ `apps/www/src/lib/scene-ask/index.ts`,
-  `apps/www/src/lib/home-link/prompts.ts`, `drain.ts`, `going.ts`,
+  `apps/www/src/lib/home-link/prompts.ts`, `leetype-log.ts`, `drain.ts`, `going.ts`,
   `practice.ts`, `apps/www/src/lib/scene-voice/runtime.ts`,
   `apps/www/src/components/player/session-viewport.tsx`.
 - _Why not enforced:_ each part above is held by its test, but that the

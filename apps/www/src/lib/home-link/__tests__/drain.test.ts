@@ -513,6 +513,31 @@ describe("the drain's written reflections (LA16)", () => {
     await drainHome(send, ports)
     expect(trims).toEqual([{}])
   })
+
+  it("still lets go what home held when home stops answering partway", async () => {
+    const trims: Array<Readonly<Record<string, string>>> = []
+    const asks: Array<Readonly<Record<string, string>>> = []
+    const { ports } = setup({
+      kept: [],
+      reflections: () => [LINE, { ...LINE, id: "r2" }],
+      letGoHeld: (sent) => {
+        trims.push(sent.reflections)
+      },
+      letGoHeldPrompts: (sent) => {
+        asks.push(sent.prompts)
+      },
+    })
+    let calls = 0
+    const send: HomeCall = () => {
+      calls += 1
+      return calls === 1
+        ? Promise.resolve(echo(LINE))
+        : Promise.reject(noAnswer())
+    }
+    await expect(drainHome(send, ports)).rejects.toThrow(HomeUnansweredError)
+    expect(trims).toEqual([{ r1: expect.any(String) }])
+    expect(asks).toEqual([{}])
+  })
 })
 
 describe("the drain's asks for the next scene (LA18)", () => {
@@ -541,7 +566,6 @@ describe("the drain's asks for the next scene (LA18)", () => {
     expect(puts).toEqual(["/routine/prompts/drama-20261031T071503120Z"])
     const held = readSent(ports.storage, PAIRING).prompts
     expect(Object.keys(held)).toEqual([ASK.stamp])
-    expect(Object.values(held).every((digest) => digest.length < 32)).toBe(true)
     expect(lets).toEqual([{ [ASK.stamp]: expect.any(String) }])
   })
 

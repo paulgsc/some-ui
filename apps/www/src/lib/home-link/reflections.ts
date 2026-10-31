@@ -9,14 +9,12 @@
  * voice note (LA13), and the one-tap answers stay on the phone.
  */
 import type { HomeCall } from "@some-ui/core-utils"
-import { canonicalJson, fnv1a, isRecord, jsonOf } from "@some-ui/core-utils"
 
 import type { Reflection } from "@/lib/session-reflection"
 
-import type { LogReport } from "./leetype-log"
-import { bucketOf } from "./leetype-log"
+import type { LogReport, WholeLane } from "./leetype-log"
+import { heldBy, sendWhole } from "./leetype-log"
 import type { Sent } from "./sent"
-import { answerOrEnd } from "./shelf"
 
 /** A typed line: the only reflection the drain sends. */
 export type Written = Reflection & {
@@ -27,27 +25,20 @@ function isWritten(reflection: Reflection): reflection is Written {
   return reflection.body.kind === "text"
 }
 
-/**
- * `sent.reflections`' entry for `reflection`: a fingerprint of it as sent,
- * its canonical JSON's length and FNV-1a, as `./sent`'s digests are.
- */
-function digestOf(reflection: unknown): string {
-  const json = canonicalJson(reflection)
-  return `${String(json.length)}:${String(fnv1a(json))}`
+/** A written reflection goes as the phone keeps it, under its id. */
+const REFLECTIONS: WholeLane<Written> = {
+  path: "/routine/reflections",
+  wire: (reflection) => reflection,
+  key: "reflection",
+  id: (reflection) => reflection.id,
 }
-
-/** Whether `sent` says home holds `reflection` as it is now. */
-const isHeld =
-  (sent: Sent) =>
-  (reflection: Written): boolean =>
-    sent.reflections[reflection.id] === digestOf(reflection)
 
 /** The written reflections in `kept` home does not hold as they are now. */
 export function writtenToSend(
   kept: ReadonlyArray<Reflection>,
   sent: Sent
 ): Array<Written> {
-  const held = isHeld(sent)
+  const held = heldBy(REFLECTIONS, sent.reflections)
   return kept.filter(isWritten).filter((reflection) => !held(reflection))
 }
 
@@ -59,50 +50,15 @@ export function heldWritten(
   return new Set(
     kept
       .filter(isWritten)
-      .filter(isHeld(sent))
+      .filter(heldBy(REFLECTIONS, sent.reflections))
       .map((reflection) => reflection.id)
   )
 }
 
-/** Home's answer holds `reflection` exactly as it was sent. */
-function holds(reflection: Written, body: string): boolean {
-  const parsed = jsonOf(body)
-  return (
-    isRecord(parsed) &&
-    isRecord(parsed.reflection) &&
-    canonicalJson(parsed.reflection) === canonicalJson(reflection)
-  )
-}
-
-/**
- * Sends `going` through `send`, one PUT each, into `report` (a refusal or
- * an answer that does not hold what was sent is counted, and that one stays
- * on the phone, to go again with the next run); `held` hears each one home
- * holds as sent, with its digest.
- */
-export async function sendReflections(
+/** `sendWhole` over the written reflections (`./drain`'s reflections part). */
+export const sendReflections = (
   going: ReadonlyArray<Written>,
   send: HomeCall,
   report: LogReport,
-  held: (id: string, digest: string) => void
-): Promise<void> {
-  for (const reflection of going) {
-    const answer = await answerOrEnd(
-      send,
-      report,
-      "PUT",
-      `/routine/reflections/${encodeURIComponent(reflection.id)}`,
-      JSON.stringify(reflection)
-    )
-    if (answer === null) return
-    const bucket = bucketOf(answer.status)
-    if (bucket !== "held") {
-      report[bucket] += 1
-    } else if (holds(reflection, answer.body)) {
-      report.held += 1
-      held(reflection.id, digestOf(reflection))
-    } else {
-      report.differs += 1
-    }
-  }
-}
+  held: (id: string, fingerprint: string) => void
+): Promise<void> => sendWhole(REFLECTIONS, going, send, report, held)

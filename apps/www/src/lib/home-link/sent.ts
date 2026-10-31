@@ -14,6 +14,7 @@
  */
 import type { KeyedStorage, Salvaged } from "@some-ui/core-utils"
 import {
+  canonicalJson,
   fnv1a,
   isRecord,
   jsonOf,
@@ -163,6 +164,16 @@ export function sessionsHeld(
   sessions: ReadonlyArray<SessionRecord>
 ): Record<string, string> {
   return Object.fromEntries(sessions.map((s) => [s.id, s.updatedAt]))
+}
+
+/**
+ * A held entry for an item that goes home whole (`./reflections`,
+ * `./prompts`): a bounded fingerprint of what went, its canonical JSON's
+ * length and FNV-1a.
+ */
+export function fingerprintOf(wire: unknown): string {
+  const json = canonicalJson(wire)
+  return `${String(json.length)}:${String(fnv1a(json))}`
 }
 
 /** A held entry for a log home keeps (`./leetype-log`): its events, by id. */
