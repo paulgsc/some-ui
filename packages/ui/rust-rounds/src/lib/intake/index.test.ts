@@ -113,6 +113,36 @@ describe("intakeReply", () => {
 
   it("refuses a round with no schema tag", () => {
     const { schema: _schema, ...untagged } = INDEXING_01
-    expect(refusal(reply(untagged))[0]).toMatch(/^round schema:/)
+    expect(refusal(reply(untagged))).toEqual([
+      'round schema: missing; it must be "some-ui.rust-round/1".',
+    ])
+  })
+
+  it("refuses notes or a round under the wrong tag, naming it, not dropping them", () => {
+    const notesTwo = {
+      ...INDEXING_01_NOTES,
+      schema: "some-ui.rust-tutor-notes/2",
+    }
+    expect(refusal(reply(INDEXING_01, notesTwo))).toEqual([
+      'tutor notes schema: "some-ui.rust-tutor-notes/2" is not this format\'s tag; it must be "some-ui.rust-tutor-notes/1".',
+    ])
+    const roundTwo = { ...INDEXING_01, schema: "some-ui.rust-round/2" }
+    expect(refusal(reply(roundTwo, INDEXING_01_NOTES))).toEqual([
+      'round schema: "some-ui.rust-round/2" is not this format\'s tag; it must be "some-ui.rust-round/1".',
+    ])
+    const { schema: _schema, ...untagged } = INDEXING_01_NOTES
+    const otherTag = { ...untagged, schema: "rust-notes" }
+    expect(refusal(reply(INDEXING_01, otherTag))[0]).toMatch(
+      /^tutor notes schema: "rust-notes" is not/
+    )
+  })
+
+  it("leaves an echoed log alone", () => {
+    expect(
+      intakeReply(reply(NEXT, NEXT_NOTES, WORKED_LOG), WORKED_LOG)
+    ).toMatchObject({
+      ok: true,
+      notes: NEXT_NOTES,
+    })
   })
 })

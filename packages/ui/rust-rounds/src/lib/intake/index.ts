@@ -11,6 +11,7 @@
  */
 import type { Round, RoundLog, TutorNotes } from "@rust-rounds/lib/formats"
 import {
+  LOG_SCHEMA,
   NOTES_SCHEMA,
   ROUND_SCHEMA,
   RoundSchema,
@@ -87,6 +88,15 @@ function describeIssue(issue: Issue, value: unknown, label: string): string {
       )
       .join("\n")
   }
+  if (issue.code === "invalid_value" && where === "schema") {
+    const tag = child(value, "schema")
+    const expected = issue.values
+      .map((each) => JSON.stringify(each))
+      .join(" or ")
+    return tag === undefined
+      ? `${at}: missing; it must be ${expected}.`
+      : `${at}: ${JSON.stringify(tag)} is not this format's tag; it must be ${expected}.`
+  }
   return `${at}: ${issue.message}`
 }
 
@@ -110,16 +120,25 @@ function objectsIn(reply: string): Array<Record<string, unknown>> {
     .filter(isRecord)
 }
 
-/** The objects tagged `schema`, or failing that every untagged one with `key`. */
-function candidates(
-  objects: Array<Record<string, unknown>>,
-  schema: string,
-  key: string
-): Array<Record<string, unknown>> {
-  const tagged = objects.filter((object) => object.schema === schema)
-  return tagged.length > 0
-    ? tagged
-    : objects.filter((object) => !("schema" in object) && key in object)
+/** A format's name: its tag without the version, `some-ui.rust-round`. */
+const nameOf = (tag: string): string => tag.slice(0, tag.lastIndexOf("/"))
+
+/**
+ * What an object is meant to be: a `schema` naming a round or notes in any
+ * version (or with any suffix) says so, and an object with no such tag is a
+ * round when it has `cards` and notes when it has `concepts`. A mistagged
+ * one is still found, so its schema refuses it rather than the reply
+ * dropping it unseen.
+ */
+function shapeOf(object: Record<string, unknown>): "round" | "notes" | null {
+  const { schema } = object
+  if (typeof schema === "string" && !schema.startsWith(nameOf(LOG_SCHEMA))) {
+    if (schema.startsWith(nameOf(NOTES_SCHEMA))) return "notes"
+    if (schema.startsWith(nameOf(ROUND_SCHEMA))) return "round"
+  }
+  if ("cards" in object) return "round"
+  if ("concepts" in object) return "notes"
+  return null
 }
 
 /** Every round id the log has a card from. */
@@ -135,8 +154,8 @@ const roundsPlayed = (log: RoundLog): Set<string> =>
  */
 export function intakeReply(reply: string, log: RoundLog): ReplyIntake {
   const objects = objectsIn(reply)
-  const rounds = candidates(objects, ROUND_SCHEMA, "cards")
-  const allNotes = candidates(objects, NOTES_SCHEMA, "concepts")
+  const rounds = objects.filter((object) => shapeOf(object) === "round")
+  const allNotes = objects.filter((object) => shapeOf(object) === "notes")
 
   const [roundValue] = rounds
   if (roundValue === undefined) {
