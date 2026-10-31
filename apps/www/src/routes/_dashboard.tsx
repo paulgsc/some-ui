@@ -27,7 +27,6 @@ import {
   ChevronLeft,
   FileText,
   Home,
-  Keyboard,
   ListVideo,
   Settings,
   SlidersHorizontal,
@@ -89,7 +88,6 @@ const NAV_ICONS: Partial<
   sessions: ListVideo,
   profile: User,
   lessons: BookOpenText,
-  rounds: Keyboard,
   "resume-build": FileText,
   resume: FileText,
 }

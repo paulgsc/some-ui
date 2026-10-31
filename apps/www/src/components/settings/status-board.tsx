@@ -4,7 +4,8 @@
  * per process: the ones that need you first, the rest by context. Each row
  * draws its own surface's mark and says its surface's words
  * (`lib/status-board` names each); that module only orders them. Each row
- * opens the page that owns it. It reads; it sends nothing.
+ * opens the page that owns it. Below them, what went wrong lately
+ * (`./failure-log`). It reads; it sends nothing.
  */
 import type { JSX } from "react"
 import { cn } from "@some-ui/core-utils"
@@ -46,6 +47,7 @@ import {
 import { useHomeRoutineFiles } from "@/components/player/device-routine-files"
 import { useLaneRows } from "@/components/settings/device-kept-on-home"
 import { useLookRow } from "@/components/settings/device-routine-reads"
+import { FailureLog } from "@/components/settings/failure-log"
 import {
   HOW_TONE,
   HowMark,
@@ -300,6 +302,7 @@ export const StatusBoard = (): JSX.Element => {
           rows={group.rows}
         />
       ))}
+      <FailureLog />
       <Legends />
     </div>
   )

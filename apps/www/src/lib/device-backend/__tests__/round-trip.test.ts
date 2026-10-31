@@ -24,6 +24,7 @@ import { createFileHostTransport } from "@/lib/file-host-config/client"
 import { mapFileHostError } from "@/lib/intent/errors"
 import { createShelfClient, ShelfRefusedError } from "@/lib/shelf-client"
 import { createHttpSessionsRepository } from "@/lib/tenant/http-sessions-repository"
+import { newSessionId } from "@/lib/tenant/session-id"
 import type { CreateSessionInput } from "@/lib/tenant/sessions-repository"
 import { SessionNotFoundError } from "@/lib/tenant/sessions-repository"
 
@@ -127,7 +128,7 @@ describe("sessions on the device", () => {
 
   it("makes one session however often a create naming its id is sent", async () => {
     const sessions = createHttpSessionsRepository(transport())
-    const id = "session-commute-copied-from-web"
+    const id = newSessionId()
     const draft: CreateSessionInput = {
       id,
       name: "Commute",

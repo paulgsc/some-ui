@@ -105,6 +105,27 @@ describe("createTakes", () => {
     })
   })
 
+  it("says how every take ended and on what line, through a reset's hush", async () => {
+    const p = ports()
+    const takes = createTakes(p, LIMITS)
+    takes.start("rust-rounds:indexing-01/a")
+    await settle()
+    takes.reset()
+    takes.stop()
+    await settle()
+    expect(takes.getSnapshot()).toMatchObject({
+      said: null,
+      ended: {
+        seq: 1,
+        line: "rust-rounds:indexing-01/a",
+        end: "kept",
+        id: "t1",
+      },
+    })
+    await take(takes, "rust-rounds:indexing-01/b")
+    expect(takes.getSnapshot().ended).toMatchObject({ seq: 2, id: "t2" })
+  })
+
   it("forgets the last take on reset, and never makes a late save the next item's", async () => {
     const p = ports()
     const takes = createTakes(p, LIMITS)

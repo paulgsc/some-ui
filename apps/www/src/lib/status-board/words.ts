@@ -28,6 +28,12 @@ export const BOARD_WORDS = {
   routine: "The reflections routine",
   /** The sharing marks' legend: their two axes. */
   sharingLegend: "Where it's kept, and how it last went",
+  /** The phone's own record of what went wrong (`lib/failure-log`). */
+  failures: "What went wrong lately",
+  failuresLead: (count: string): string =>
+    `The last ${count} problems this phone ran into, newest first, each as the app wrote it down. They stay on this phone.`,
+  failuresNone: "Nothing has gone wrong since this phone began keeping track.",
+  failuresWhat: "what went wrong",
 } as const
 
 /** Korean's look at what the routine left on home. */

@@ -170,6 +170,8 @@ describe("ledgerOf", () => {
       { file: "thread-1.json", screen: "r1", reading: "p2" },
     ])
 
+    // After the worked confirmation `aSession` took, so assisted: it still
+    // unparks here, and only the summary counts it unsolved (LTY1).
     events.push(returned("b", "correct"))
     const ledger = ledgerOf(logOf(events), "b")
     expect(ledger.parked).toEqual([])
@@ -276,8 +278,10 @@ describe("summariesOf", () => {
             struggled: true,
             placed: ["p1"],
             reading: [{ reading: "p1", action: "saved" }],
-            returned: [{ response: "correct", slow: false }],
-            solved: true,
+            // The session took the round's worked confirmation before the
+            // return: the return is assisted and solves nothing (LTY1).
+            returned: [{ response: "correct", slow: false, assisted: true }],
+            solved: false,
           },
         ],
         replays: [],
@@ -309,7 +313,7 @@ describe("summariesOf", () => {
         picked: "correct",
         struggled: true,
         placed: ["g1"],
-        returned: [{ response: "correct", slow: true }],
+        returned: [{ response: "correct", slow: true, assisted: false }],
         solved: false,
       }),
     ])
@@ -359,7 +363,7 @@ describe("summariesOf", () => {
           { reading: "p1", action: "saved" },
           { reading: "p1", action: "read" },
         ],
-        returned: [{ response: "correct", slow: false }],
+        returned: [{ response: "correct", slow: false, assisted: false }],
         solved: true,
       }),
     ])

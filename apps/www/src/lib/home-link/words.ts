@@ -173,7 +173,7 @@ export const KEPT_ON_HOME = {
   neverTitle: "Never sent",
   never: [
     {
-      label: "Lessons, dramas and rounds home publishes",
+      label: "Lessons and dramas home publishes",
       text: "Come from home when you ask for them. Nothing goes the other way.",
     },
     {

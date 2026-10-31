@@ -128,7 +128,7 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
             })
           }
           onConfirmation={({ round }): void =>
-            runtime.takeConfirmation(fileName, round)
+            runtime.takeConfirmation(fileName, file, round)
           }
           {...(onBack === undefined ? {} : { onBack })}
         />
@@ -277,7 +277,7 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
               dispatch({ type: "take-parked", ...taken(round, take) })
             }}
             onConfirmation={({ round }): void =>
-              runtime.takeConfirmation(fileName, round)
+              runtime.takeConfirmation(fileName, file, round)
             }
           />
         </div>

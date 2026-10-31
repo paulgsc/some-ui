@@ -3,13 +3,15 @@
  *
  * Practice's Home: its study card must not read a failed sessions read as
  * "nothing in progress" and offer Start over a session that is only
- * unreadable.
+ * unreadable. Its Rust Rounds card opens the session on the card left last.
  */
 
 import { fakeQueryResult, withQueryClient } from "@/test-support/query-client"
 import { routeComponent } from "@/test-support/router-stubs"
 import { sessionRecord } from "@/test-support/session-record"
 import { seedStop, stopRecord } from "@/test-support/session-stop"
+import { keptRounds } from "@some-ui/rust-rounds"
+import { RUST_ROUNDS_TITLE } from "@some-ui/rust-rounds/entry"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -192,6 +194,48 @@ describe("Practice's study card", () => {
       reason: "call",
       reasonFrom: "home",
     })
+  })
+})
+
+/** The card's link: the router stub renders it as a plain `<a>`. */
+const rustRoundsCard = (): HTMLElement | null =>
+  screen.getByText(RUST_ROUNDS_TITLE).closest("a")
+
+describe("Practice's Rust Rounds card", () => {
+  it("opens Rust Rounds, saying what it is before any card is played", () => {
+    renderWith({ data: [], isError: false })
+
+    const card = rustRoundsCard()
+    expect(card?.getAttribute("to")).toBe("/rust-rounds")
+    expect(card?.textContent).toContain(
+      "Small Rust programs, and what rustc really did with them"
+    )
+  })
+
+  it("says where it was left: the concept and the card, never how long", () => {
+    keptRounds(localStorage).place({
+      place: {
+        visit: {
+          round: "indexing-01",
+          card: "c",
+          stage: "speak",
+          picked: "Panics",
+          note: null,
+          shown: false,
+          pinned: false,
+          again: "fresh",
+        },
+        menu: null,
+        title: { concept: "indexing", number: 3 },
+      },
+      taking: null,
+      pending: [],
+    })
+    renderWith({ data: [], isError: false })
+
+    expect(rustRoundsCard()?.textContent).toContain(
+      "Continue: indexing, card 3"
+    )
   })
 })
 
