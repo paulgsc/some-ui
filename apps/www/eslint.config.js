@@ -60,6 +60,8 @@ const REFLECTION_IMPORTERS = [
   "src/lib/home-link/reflections.ts",
   "src/lib/home-link/going.ts",
   "src/lib/home-link/practice.ts",
+  // Practice's footnote says the offline set in the strip's own words.
+  "src/lib/home-link/words.ts",
   "src/main.tsx",
   "src/components/player/completion-summary.tsx",
   "src/components/player/live-player.tsx",

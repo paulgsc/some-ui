@@ -3,7 +3,7 @@
  * and one counts as home's only once home answers with it exactly as sent.
  */
 import { noAnswer } from "@/test-support/no-answer"
-import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
+import { inMemoryStorage } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
 import { emptyLogReport } from "@/lib/home-link/leetype-log"
@@ -14,7 +14,10 @@ import {
   writtenToSend,
 } from "@/lib/home-link/reflections"
 import type { Sent } from "@/lib/home-link/sent"
+import { readSent } from "@/lib/home-link/sent"
 import type { Reflection } from "@/lib/session-reflection"
+
+import { echo, home } from "./fake-home"
 
 const typed = (id: string, text = `line ${id}`): Written => ({
   id,
@@ -37,39 +40,7 @@ const KEPT: ReadonlyArray<Reflection> = [
   typed("t2"),
 ]
 
-const none: Sent = {
-  pairing: "p1",
-  sessions: {},
-  shelf: {},
-  refused: {},
-  leetype: {},
-  studio: {},
-  reflections: {},
-}
-
-function home(answers: Array<HomeAnswer | Error>): {
-  send: HomeCall
-  sent: Array<[string, string, unknown]>
-} {
-  const sent: Array<[string, string, unknown]> = []
-  const send: HomeCall = (method, path, body) => {
-    sent.push([
-      method,
-      path,
-      typeof body === "string" ? JSON.parse(body) : body,
-    ])
-    const answer = answers.shift() ?? { status: 500, body: "" }
-    return answer instanceof Error
-      ? Promise.reject(answer)
-      : Promise.resolve(answer)
-  }
-  return { send, sent }
-}
-
-const echo = (reflection: unknown): HomeAnswer => ({
-  status: 200,
-  body: JSON.stringify({ change: "added", reflection }),
-})
+const none: Sent = readSent(inMemoryStorage(), "p1")
 
 describe("what goes", () => {
   it("is each typed line home does not hold as it is; never a spoken one or the answers", () => {
@@ -102,16 +73,16 @@ describe("sendReflections", () => {
   it("puts each as the phone keeps it, and counts it home's only on an answer that holds it", async () => {
     const report = emptyLogReport()
     const held: Array<string> = []
-    const { send, sent } = home([
+    const { send, calls } = home([
       echo(typed("t1")),
       echo(typed("t2", "not what was sent")),
     ])
     await sendReflections(writtenToSend(KEPT, none), send, report, (id) => {
       held.push(id)
     })
-    expect(sent).toEqual([
-      ["PUT", "/routine/reflections/t1", typed("t1")],
-      ["PUT", "/routine/reflections/t2", typed("t2")],
+    expect(calls).toEqual([
+      ["PUT", "/routine/reflections/t1", JSON.stringify(typed("t1"))],
+      ["PUT", "/routine/reflections/t2", JSON.stringify(typed("t2"))],
     ])
     expect(held).toEqual(["t1"])
     expect(report).toMatchObject({ held: 1, differs: 1 })
@@ -120,7 +91,7 @@ describe("sendReflections", () => {
   it("counts a refusal and keeps it here, and stops when home stops answering", async () => {
     const report = emptyLogReport()
     const held: Array<string> = []
-    const { send, sent } = home([{ status: 409, body: "{}" }, noAnswer()])
+    const { send, calls } = home([{ status: 409, body: "{}" }, noAnswer()])
     await sendReflections(
       [typed("t1"), typed("t2"), typed("t3")],
       send,
@@ -129,18 +100,18 @@ describe("sendReflections", () => {
         held.push(id)
       }
     )
-    expect(sent).toHaveLength(2)
+    expect(calls).toHaveLength(2)
     expect(held).toEqual([])
     expect(report).toMatchObject({ refused: 1, unreachable: true })
   })
 
   it("ends at a 401: home no longer knows this phone", async () => {
     const report = emptyLogReport()
-    const { send, sent } = home([{ status: 401, body: "" }])
+    const { send, calls } = home([{ status: 401, body: "" }])
     await sendReflections([typed("t1"), typed("t2")], send, report, () => {
       throw new Error("nothing is held")
     })
-    expect(sent).toHaveLength(1)
+    expect(calls).toHaveLength(1)
     expect(report.forgotten).toBe(true)
   })
 })

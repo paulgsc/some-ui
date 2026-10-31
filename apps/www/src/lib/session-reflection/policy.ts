@@ -55,6 +55,9 @@ export type Answers = Partial<Record<QuestionKey, string>>
  */
 export const REFLECTION_LIMIT = 20
 
+/** What the phone keeps of them, in the person's terms: true paired or not. */
+export const OFFLINE_SET_WORDS = `This phone keeps your newest ${String(REFLECTION_LIMIT)} reflections, and older written ones until home has them.`
+
 /** The most characters one typed line holds; home takes no more. */
 export const REFLECTION_TEXT_MAX = 10_000
 
@@ -77,7 +80,7 @@ export type Reflection = {
   body: ReflectionBody
 }
 
-/** Puts `incoming` in first, replacing the one with its `id`. Never refuses. */
+/** Puts `incoming` in first, replacing the one with its `id`. */
 export function admit(
   kept: ReadonlyArray<Reflection>,
   incoming: Reflection
@@ -116,7 +119,7 @@ export function answersOf(
 
 /**
  * Sets `sessionId`'s answers. Its one set is replaced in place; clearing
- * every answer lets the set go. The answers stay on the phone (LA16).
+ * every answer lets the set go.
  */
 export function withAnswers(
   kept: ReadonlyArray<Reflection>,

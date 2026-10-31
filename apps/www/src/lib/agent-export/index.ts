@@ -8,7 +8,7 @@
  * read-aloud practice record) and every recording beside it. The
  * reflections that went out read as shared once the person says they arrived
  * (`handOff`). Written reflections reach the routine from home through the
- * Jobs mailbox (LA16), so they have no share of their own.
+ * Jobs mailbox (LA16).
  *
  * Phone-only: rendered only in the device build, so no other profile ships it
  * (`build.paths.ts`).

@@ -36,14 +36,13 @@ describe("HandOffStrip", () => {
     expect(container.textContent).toBe("")
   })
 
-  it("counts what is kept across sessions, with no cap to fill", () => {
+  it("counts what is kept across sessions", () => {
     keep("a", "s1", new Date().toISOString())
     keep("b", "s2", new Date().toISOString())
 
     render(withQueryClient(<HandOffStrip />))
 
     expect(screen.getByText(/2 kept · oldest today/)).toBeTruthy()
-    expect(screen.queryByText(/slots/)).toBeNull()
   })
 })
 

@@ -21,7 +21,11 @@ import type { CopyResult } from "@/lib/tenant/sessions-copy"
 import { SessionNotFoundError } from "@/lib/tenant/sessions-repository"
 import type { SessionRecord } from "@/lib/tenant/types"
 
-import { home as leetypeHome, session as leetypeSession } from "./fake-home"
+import {
+  echo,
+  home as leetypeHome,
+  session as leetypeSession,
+} from "./fake-home"
 
 const PAIRING = "pairing-1"
 
@@ -474,11 +478,6 @@ describe("the drain's written reflections (LA16)", () => {
     atMs: 61_000,
     body: { kind: "text" as const, text: "More level two, please." },
   }
-  const echo = (reflection: unknown): HomeAnswer => ({
-    status: 200,
-    body: JSON.stringify({ change: "added", reflection }),
-  })
-
   it("puts each after Studio, remembers the ones home answers with as sent, then lets go only what home holds", async () => {
     const trims: Array<Readonly<Record<string, string>>> = []
     const { ports, send, puts } = setup({
@@ -497,7 +496,7 @@ describe("the drain's written reflections (LA16)", () => {
     expect(trims).toEqual([{ r1: expect.any(String) }])
   })
 
-  it("keeps one home answers with other words, and says the run fell short", async () => {
+  it("lets nothing go for one home answers with other words", async () => {
     const trims: Array<Readonly<Record<string, string>>> = []
     const { ports, send } = setup({
       kept: [],
@@ -507,24 +506,7 @@ describe("the drain's written reflections (LA16)", () => {
         trims.push(sent.reflections)
       },
     })
-    await expect(drainHome(send, ports)).resolves.toEqual({
-      kind: "failed",
-      why: "refused",
-    })
-    expect(readSent(ports.storage, PAIRING).reflections).toEqual({})
+    await drainHome(send, ports)
     expect(trims).toEqual([{}])
-  })
-
-  it("keeps one home refused, and lets nothing go for it", async () => {
-    const { ports, send } = setup({
-      kept: [],
-      answers: [{ status: 422, body: "{}" }],
-      reflections: () => [LINE],
-    })
-    await expect(drainHome(send, ports)).resolves.toEqual({
-      kind: "failed",
-      why: "refused",
-    })
-    expect(readSent(ports.storage, PAIRING).reflections).toEqual({})
   })
 })

@@ -4,8 +4,7 @@
  * answers and its written reflections, each read from the phone alone, and
  * the LeetType, Studio and reflection parts already narrowed to what home
  * does not hold as it is now (`./sent`). Nothing here sends; the one thing
- * it lets go is a written reflection past the offline set that home holds
- * (`letGoHeldReflections`, LA16).
+ * it lets go is a written reflection (`letGoHeldReflections`, LA16).
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import type { HomeSession } from "@some-ui/leetype"

@@ -791,10 +791,8 @@ sent (`lib/home-link/__tests__/reflections.test.ts`); that the drain puts
 them last, remembers what home held and lets go only through its port after
 that part (`drain.test.ts`, "the drain's written reflections"); that
 `admit` never refuses and `beyondOffline` names only what is past the set and
-held (`lib/session-reflection/__tests__/policy.test.ts`, `store.test.ts`);
-and that the panel takes another however many are kept
-(`components/reflection/__tests__/reflect-panel.test.tsx`). What no test can
-say is where a reflection goes once an allowed module holds it:
+held (`lib/session-reflection/__tests__/policy.test.ts`, `store.test.ts`).
+What no test can say is where a reflection goes once an allowed module holds it:
 
 - _Claim:_ a session reflection (`lib/session-reflection`), or any value built
   from one, reaches `file_host` only as a written one (`body.kind` `text`),

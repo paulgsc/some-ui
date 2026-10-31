@@ -7,13 +7,9 @@
  * as sent. Home keeps it for good and hands what the reflections routine
  * reads of it to the Jobs mailbox. A spoken reflection goes home as its
  * voice note (LA13), and the one-tap answers stay on the phone.
- *
- * What home holds lets the phone keep only its offline set: the drain then
- * lets go of the written reflections past it that home holds
- * (`heldWritten`, the store's `trimOffline`).
  */
 import type { HomeCall } from "@some-ui/core-utils"
-import { canonicalJson, isRecord } from "@some-ui/core-utils"
+import { canonicalJson, fnv1a, isRecord, jsonOf } from "@some-ui/core-utils"
 
 import type { Reflection } from "@/lib/session-reflection"
 
@@ -31,19 +27,28 @@ function isWritten(reflection: Reflection): reflection is Written {
   return reflection.body.kind === "text"
 }
 
-/** `sent.reflections`' entry for `reflection`: the whole of it, as sent. */
-const digestOf = (reflection: Written): string => canonicalJson(reflection)
+/**
+ * `sent.reflections`' entry for `reflection`: a fingerprint of it as sent,
+ * its canonical JSON's length and FNV-1a, as `./sent`'s digests are.
+ */
+function digestOf(reflection: unknown): string {
+  const json = canonicalJson(reflection)
+  return `${String(json.length)}:${String(fnv1a(json))}`
+}
+
+/** Whether `sent` says home holds `reflection` as it is now. */
+const isHeld =
+  (sent: Sent) =>
+  (reflection: Written): boolean =>
+    sent.reflections[reflection.id] === digestOf(reflection)
 
 /** The written reflections in `kept` home does not hold as they are now. */
 export function writtenToSend(
   kept: ReadonlyArray<Reflection>,
   sent: Sent
 ): Array<Written> {
-  return kept
-    .filter(isWritten)
-    .filter(
-      (reflection) => sent.reflections[reflection.id] !== digestOf(reflection)
-    )
+  const held = isHeld(sent)
+  return kept.filter(isWritten).filter((reflection) => !held(reflection))
 }
 
 /** The ids of the written reflections in `kept` home holds as they are now. */
@@ -54,25 +59,18 @@ export function heldWritten(
   return new Set(
     kept
       .filter(isWritten)
-      .filter(
-        (reflection) => sent.reflections[reflection.id] === digestOf(reflection)
-      )
+      .filter(isHeld(sent))
       .map((reflection) => reflection.id)
   )
 }
 
 /** Home's answer holds `reflection` exactly as it was sent. */
 function holds(reflection: Written, body: string): boolean {
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(body)
-  } catch {
-    return false
-  }
+  const parsed = jsonOf(body)
   return (
     isRecord(parsed) &&
     isRecord(parsed.reflection) &&
-    canonicalJson(parsed.reflection) === digestOf(reflection)
+    digestOf(parsed.reflection) === digestOf(reflection)
   )
 }
 

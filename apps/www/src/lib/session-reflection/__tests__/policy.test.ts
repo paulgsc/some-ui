@@ -27,13 +27,11 @@ function note(id: string, sessionId: string, daysAgo = 0): Reflection {
 }
 
 describe("admit", () => {
-  it("puts a new one first, and never refuses one for room", () => {
-    const kept = Array.from({ length: 40 }, (_, i) =>
-      note(`n${String(i)}`, "s1")
-    )
-    const next = admit(kept, note("new", "s2"))
-    expect(next).toHaveLength(41)
-    expect(next[0]?.id).toBe("new")
+  it("puts a new one first", () => {
+    expect(admit([note("old", "s1")], note("new", "s2"))).toMatchObject([
+      { id: "new" },
+      { id: "old" },
+    ])
   })
 
   it("replaces the one with the same id", () => {

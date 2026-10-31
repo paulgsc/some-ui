@@ -9,6 +9,7 @@
  */
 import { assertNever, counted } from "@some-ui/core-utils"
 
+import { OFFLINE_SET_WORDS } from "@/lib/session-reflection/policy"
 import type { How, Where } from "@/lib/sharing-marks"
 import type { Unsendable } from "@/lib/voice-home/model"
 import { NO_ROOM } from "@/lib/voice-home/model"
@@ -79,8 +80,7 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
     phoneOnly: `Practice is only on this phone. ${PAIR}`,
     partly:
       "Some of Practice is on home. New sessions stay on this phone until it is paired again.",
-    footnote:
-      "Finished sessions, kept items, LeetType sessions, Studio sittings and written reflections go to home while the app is open. A finished session leaves this phone only when you clear it in Settings, once home has it. This phone keeps your newest 20 reflections, and older written ones until home has them. Your answers to the three quick questions stay on this phone.",
+    footnote: `Finished sessions, kept items, LeetType sessions, Studio sittings and written reflections go to home while the app is open. A finished session leaves this phone only when you clear it in Settings, once home has it. ${OFFLINE_SET_WORDS} Your answers to the three quick questions stay on this phone.`,
     clash: null,
     unread: null,
   },

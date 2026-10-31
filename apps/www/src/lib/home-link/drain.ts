@@ -7,10 +7,9 @@
  * session PUT event by event and read back (`./leetype-log`), then Studio's
  * sittings and answers the same way (`./studio-log`), then each written
  * reflection (`./reflections`, LA16). Nothing of home's is taken in, and
- * nothing on the phone is let go but the written reflections past the
- * offline set that home has answered with as they are (`letGoHeld`): a
- * finished session leaves only by the clear in Settings (`./clear`), once
- * home has read it back.
+ * nothing on the phone is let go but written reflections (`letGoHeld`,
+ * LA16): a finished session leaves only by the clear in Settings
+ * (`./clear`), once home has read it back.
  *
  * A part home turned away (a full shelf, a refusal, a read-back that did not
  * match what was sent) does not hold back the parts after it, which share

@@ -4,7 +4,7 @@
  * it was copied, each kept shelf item's digest as home answered for it,
  * each LeetType session's digest as home read it back (`./leetype-log`),
  * each Studio sitting's and answer's (`./studio-log`), each written
- * reflection as home answered it (`./reflections`), and the digests home
+ * reflection's as home answered it (`./reflections`), and the digests home
  * refused, so the drain does not offer an unchanged refused item again
  * (it goes once its bytes change). Kept for one pairing (`pairing`, the
  * link's id for it): another pairing starts from nothing. Bookkeeping, not

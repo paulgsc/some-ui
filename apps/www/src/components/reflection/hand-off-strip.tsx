@@ -3,7 +3,12 @@ import { useState } from "react"
 import { Button } from "@some-ui/shared"
 
 import { useMinuteClock } from "@/lib/clock"
-import { bySession, describeAge, staleCount } from "@/lib/session-reflection"
+import {
+  bySession,
+  describeAge,
+  OFFLINE_SET_WORDS,
+  staleCount,
+} from "@/lib/session-reflection"
 import { useReflections } from "@/lib/session-reflection/use-reflections"
 
 import { HandOff } from "./hand-off"
@@ -11,9 +16,7 @@ import { ReflectionSheet } from "./reflection-sheet"
 
 /**
  * The study list's reflections: how many are kept, how long the oldest has
- * waited, and the way to let them go. Absent with nothing kept. There is no
- * cap to fill: on the phone the written ones go to home, and the phone keeps
- * its newest (LA16, docs/learner-data-authority.md).
+ * waited, and the way to let them go. Absent with nothing kept.
  */
 export const HandOffStrip = (): JSX.Element | null => {
   const [open, setOpen] = useState(false)
@@ -43,7 +46,7 @@ export const HandOffStrip = (): JSX.Element | null => {
       </div>
       <p className="text-muted-foreground text-xs">
         {import.meta.env.VITE_DEVICE_BACKEND === "true"
-          ? "Written ones go to home, where the morning routine reads them. This phone keeps your newest 20, and older written ones until home has them."
+          ? `Written ones go to home while this phone is paired with it, and the morning routine reads them there. ${OFFLINE_SET_WORDS}`
           : "Kept in this browser. Let them go once you've acted on them."}
       </p>
 

@@ -7,9 +7,8 @@
  * LA16 (docs/learner-data-authority.md): nothing here reaches a server. A
  * written reflection goes home through the drain (`lib/home-link/reflections`),
  * which tells this store what home holds (`trimOffline`); a spoken one goes as
- * its voice note (LA13), and the one-tap answers stay here. The list is the
- * offline set (`./policy`): it never refuses one for lack of room, and keeps
- * past it only what home does not hold. The import guard is `eslint.config.js`.
+ * its voice note (LA13), and the one-tap answers stay here. The import guard
+ * is `eslint.config.js`.
  */
 import {
   jsonOf,
@@ -37,6 +36,7 @@ export {
   bySession,
   describeAge,
   inOrder,
+  OFFLINE_SET_WORDS,
   QUESTIONS,
   REFLECTION_LIMIT,
   REFLECTION_TEXT_MAX,
@@ -207,15 +207,13 @@ export const reflections = {
   /**
    * Lets go of the reflections past the offline set that `held` names,
    * which home holds as they are (LA16; the drain alone calls it, with the
-   * written reflections home read back). False if the device would not
-   * store that.
+   * written reflections home read back).
    */
-  trimOffline(held: ReadonlySet<string>): boolean {
+  trimOffline(held: ReadonlySet<string>): void {
     const gone = new Set(beyondOffline(list.read(), held))
-    if (gone.size === 0) return true
-    const removed = list.remove((r) => gone.has(r.id))
+    if (gone.size === 0) return
+    list.remove((r) => gone.has(r.id))
     changed()
-    return removed
   },
 
   /** These sessions' reflections went out in the whole export's share. */

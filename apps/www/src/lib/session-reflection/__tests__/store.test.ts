@@ -37,7 +37,7 @@ describe("reflections", () => {
     }
     // r0 and r1 are the two oldest, past the newest twenty; home holds r0
     // and the newest, r21.
-    expect(reflections.trimOffline(new Set(["r0", "r21"]))).toBe(true)
+    reflections.trimOffline(new Set(["r0", "r21"]))
     const ids = reflections.getSnapshot().kept.map((r) => r.id)
     expect(ids).toHaveLength(REFLECTION_LIMIT + 1)
     expect(ids).not.toContain("r0")

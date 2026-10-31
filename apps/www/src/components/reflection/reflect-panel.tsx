@@ -27,7 +27,7 @@ const REFUSED: Record<Exclude<KeepResult, "kept">, string> = {
 /** What the count says beside it: where reflections are kept. */
 function where(): string {
   return import.meta.env.VITE_DEVICE_BACKEND === "true"
-    ? "written ones go to home"
+    ? "written ones go to home while paired"
     : "kept in this browser"
 }
 
@@ -44,8 +44,7 @@ function describe(reflection: Reflection): string {
 
 /**
  * Reflecting on one session, at any moment of it or after: say it (phone),
- * type it, or tap how it is going. There is always room for another: on the
- * phone, the written ones go to home (LA16, docs/learner-data-authority.md).
+ * type it, or tap how it is going.
  */
 export const ReflectPanel = ({
   sessionId,
