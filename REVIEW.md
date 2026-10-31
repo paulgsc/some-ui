@@ -116,7 +116,8 @@ anything they do not reach: another spelling, a prose file, any other line that 
 `packages/assurance/src/ledger.json` records each promise about outcomes and work with a
 verdict (`docs/operational-assurance.md`). `pnpm check:assurance` already fails its shape, a
 `holds` with no proof that exists, anything else with no issue, an unplaced server route
-module, and a weakening against the base branch with no amendment, so do not re-check those.
+module, a family no process in the registry serves, a registry name that points at nothing, and
+a weakening against the base branch with no amendment, so do not re-check those.
 Each of the following is a **blocking** finding:
 
 1. **A verdict the evidence does not carry.** A `holds` whose proof does not reach its
@@ -132,3 +133,8 @@ Each of the following is a **blocking** finding:
 4. **A route module called synchronous that is not.** A module added to `synchronous` whose
    caller does not see the outcome in the answer (the work finishes later, in a pass or a
    queue).
+5. **A registry entry that no longer says what runs.** A hunk that adds a new async process (a
+   background pass, a phone flow that ends later) inside a family listed as `crosscutting`, or
+   that moves work across an ownership boundary (a new plugin, a new service) without its
+   segment, or a `live` signal or check whose `ref` no longer does what its `says` or `name`
+   claims.

@@ -35,6 +35,8 @@ const ledger = (...families: Array<Array<Objective>>): Ledger => ({
   })),
   synchronous: [],
   stores: [],
+  processes: [],
+  crosscutting: [],
 })
 
 describe("assurancePageOf", () => {

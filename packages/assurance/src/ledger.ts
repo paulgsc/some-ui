@@ -1,5 +1,6 @@
 /**
  * The assurance ledger's shape (docs/operational-assurance.md, "The ledger"),
+ * its registry of process families ("The registry: every process family"),
  * and the one reader that turns its JSON into it or says why it cannot.
  *
  * Pure and dependency-free: `scripts/check-assurance.ts` runs it on Node's
@@ -18,6 +19,17 @@ export type EvidenceClass = "measured" | "structural" | "derived" | "unknown"
 
 /** How a running deployment is observed for an objective. */
 export type WatchBy = "none" | "dashboard" | "alert"
+
+/**
+ * How an objective is watched: who would learn it stopped holding (`by`),
+ * where to look (`ref`), and the registry's live checks that run it
+ * (`checks`, each `<process>/<check>`).
+ */
+export type Watch = {
+  by: WatchBy
+  ref?: string
+  checks?: ReadonlyArray<string>
+}
 
 export type Evidence = {
   class: EvidenceClass
@@ -76,7 +88,7 @@ export type Objective = {
   proof?: ReadonlyArray<string>
   /** The issue that will make it hold, when it does not. */
   tracked?: string
-  watch: { by: WatchBy; ref?: string }
+  watch: Watch
   comparison?: Comparison
   amendments: ReadonlyArray<Amendment>
   retired?: { on: string; why: string }
@@ -112,6 +124,104 @@ type Store = {
   family: string
 }
 
+/**
+ * Who owns a segment of a process: this codebase (`ours`), someone else's
+ * code it calls (`foreign`: the browser, Android, a native plugin, a
+ * container or service someone else wrote), or the hop between two places
+ * (`network`).
+ */
+export type SegmentOwner = "ours" | "foreign" | "network"
+
+/**
+ * Where a segment runs: the phone, a browser page of a web build, home, the
+ * mailbox's Worker, a service run by someone else (`outside`: a routine at
+ * Anthropic, ESPN), or the hop between two of them (`between`).
+ */
+export type SegmentPlace =
+  | "phone"
+  | "browser"
+  | "home"
+  | "mailbox"
+  | "outside"
+  | "between"
+
+/** One stretch of a process, split where ownership changes. */
+export type Segment = {
+  /** Unique in its process; referred to as `<process>/<segment>`. */
+  id: string
+  /** What happens in it, and whose it is, in a sentence. */
+  name: string
+  owner: SegmentOwner
+  on: SegmentPlace
+  /** Where this codebase's side of it lives (`some-ui:` or `server:`). */
+  paths: ReadonlyArray<string>
+}
+
+/** Whether a signal or check runs today (`live`) or is still to be built. */
+export type CheckStatus = "live" | "planned"
+
+/** What real use leaves that shows the process working (passive). */
+export type Signal = {
+  /** What it shows, and what it misses, in a sentence. */
+  says: string
+  status: CheckStatus
+  /** Where it is, when live. */
+  ref?: string
+  /** The issue that builds it, when planned. */
+  tracked?: string
+}
+
+/**
+ * An active check's kind: `probe` (home runs it end to end, no person),
+ * `phone-check` (the phone runs it, no person), `guided` (the phone runs it
+ * with its person), `journey` (scripted taps on a real WebView) or `monitor`
+ * (a rule checked on every real step of the shipped app).
+ */
+export type CheckKind =
+  | "probe"
+  | "phone-check"
+  | "guided"
+  | "journey"
+  | "monitor"
+
+/** Where a check runs. */
+export type CheckPlace = "home" | "phone" | "ci"
+
+/** One way to run a process on purpose and see it work. */
+export type Check = {
+  /** Unique in its process; referred to as `<process>/<check>`. */
+  id: string
+  kind: CheckKind
+  /** What it does, in the owner's words. */
+  name: string
+  runs: CheckPlace
+  /** The segments it exercises, each `<process>/<segment>`, any process. */
+  segments: ReadonlyArray<string>
+  status: CheckStatus
+  /** Where it is, when live. */
+  ref?: string
+  /** The issue that builds it, when planned. */
+  tracked?: string
+}
+
+/**
+ * One async process family: what runs, split where ownership changes, what
+ * real use shows of it, and the checks that can run it (CK1, #2380).
+ */
+export type Process = {
+  id: string
+  /** What the owner uses, in their words. */
+  name: string
+  why: string
+  /** The ledger families whose promises it carries. */
+  serves: ReadonlyArray<string>
+  /** The ledger objectives its signals and checks show holding, or not. */
+  witnesses: ReadonlyArray<string>
+  segments: ReadonlyArray<Segment>
+  signals: ReadonlyArray<Signal>
+  checks: ReadonlyArray<Check>
+}
+
 export type Ledger = {
   schema: typeof LEDGER_SCHEMA
   families: ReadonlyArray<Family>
@@ -119,6 +229,10 @@ export type Ledger = {
   synchronous: ReadonlyArray<{ module: string; why: string; decision?: string }>
   /** Every table and store the system keeps (STORAGE3, #2225). */
   stores: ReadonlyArray<Store>
+  /** The registry: every async process family (CK1, #2380). */
+  processes: ReadonlyArray<Process>
+  /** The families no process carries, because they span every one. */
+  crosscutting: ReadonlyArray<{ family: string; why: string }>
 }
 
 export type Parsed =
@@ -140,6 +254,24 @@ const STORE_CLASSES: ReadonlyArray<StoreClass> = [
   "cache",
   "telemetry",
 ]
+const OWNERS: ReadonlyArray<SegmentOwner> = ["ours", "foreign", "network"]
+const PLACES: ReadonlyArray<SegmentPlace> = [
+  "phone",
+  "browser",
+  "home",
+  "mailbox",
+  "outside",
+  "between",
+]
+const STATUSES: ReadonlyArray<CheckStatus> = ["live", "planned"]
+const CHECK_KINDS: ReadonlyArray<CheckKind> = [
+  "probe",
+  "phone-check",
+  "guided",
+  "journey",
+  "monitor",
+]
+const CHECK_PLACES: ReadonlyArray<CheckPlace> = ["home", "phone", "ci"]
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 
 type Json = Record<string, unknown>
@@ -147,7 +279,14 @@ type At = (where: string, what: string) => void
 
 /** Every key each object may carry: anything else is a typo or a new field. */
 const KEYS = {
-  root: ["schema", "families", "synchronous", "stores"],
+  root: [
+    "schema",
+    "families",
+    "synchronous",
+    "stores",
+    "processes",
+    "crosscutting",
+  ],
   family: ["id", "name", "why", "paths", "modules", "objectives"],
   objective: [
     "id",
@@ -167,7 +306,7 @@ const KEYS = {
     "retired",
   ],
   evidence: ["class", "says", "ref"],
-  watch: ["by", "ref"],
+  watch: ["by", "ref", "checks"],
   bound: ["value", "unit", "tighter"],
   comparison: ["what", "x", "y", "series", "limits"],
   series: ["label", "points"],
@@ -175,6 +314,20 @@ const KEYS = {
   retired: ["on", "why"],
   synchronous: ["module", "why", "decision"],
   store: ["store", "class", "growth", "horizon", "family"],
+  process: [
+    "id",
+    "name",
+    "why",
+    "serves",
+    "witnesses",
+    "segments",
+    "signals",
+    "checks",
+  ],
+  segment: ["id", "name", "owner", "on", "paths"],
+  signal: ["says", "status", "ref", "tracked"],
+  check: ["id", "kind", "name", "runs", "segments", "status", "ref", "tracked"],
+  crosscutting: ["family", "why"],
 } as const
 
 /**
@@ -259,7 +412,129 @@ function build(input: unknown, at: At): Ledger | null {
       },
     ]
   })
-  return { schema: LEDGER_SCHEMA, families, synchronous, stores }
+  const processes = list(root.processes, "processes", at).flatMap((raw, i) => {
+    const process = readProcess(raw, `processes[${i}]`, at)
+    return process ? [process] : []
+  })
+  const crosscutting = list(root.crosscutting, "crosscutting", at).flatMap(
+    (raw, i) => {
+      const entry = record(raw)
+      const where = `crosscutting[${i}]`
+      if (!entry || !text(entry.family) || !text(entry.why)) {
+        at(where, "needs a family and why")
+        return []
+      }
+      keys(entry, KEYS.crosscutting, where, at)
+      return [{ family: entry.family, why: entry.why }]
+    }
+  )
+  return {
+    schema: LEDGER_SCHEMA,
+    families,
+    synchronous,
+    stores,
+    processes,
+    crosscutting,
+  }
+}
+
+function readProcess(raw: unknown, where: string, at: At): Process | null {
+  const p = record(raw)
+  if (!p) {
+    at(where, "is not an object")
+    return null
+  }
+  const here = text(p.id) ? `${where} (${p.id})` : where
+  keys(p, KEYS.process, here, at)
+  for (const key of ["id", "name", "why"] as const) {
+    if (!text(p[key])) at(here, `needs a ${key}`)
+  }
+  const segments = list(p.segments, `${here}.segments`, at).flatMap((s, i) => {
+    const item = record(s)
+    const spot = `${here}.segments[${i}]`
+    if (item) keys(item, KEYS.segment, spot, at)
+    const owner = oneOf(item?.owner, OWNERS)
+    const on = oneOf(item?.on, PLACES)
+    if (!item || !text(item.id) || !text(item.name) || !owner || !on) {
+      at(
+        spot,
+        `needs an id, a name, an owner (${OWNERS.join(", ")}) and on (${PLACES.join(", ")})`
+      )
+      return []
+    }
+    return [
+      {
+        id: item.id,
+        name: item.name,
+        owner,
+        on,
+        paths: strings(item.paths, `${spot}.paths`, at),
+      },
+    ]
+  })
+  if (segments.length === 0) at(here, "has no segments")
+  const signals = list(p.signals, `${here}.signals`, at).flatMap((s, i) => {
+    const item = record(s)
+    const spot = `${here}.signals[${i}]`
+    if (item) keys(item, KEYS.signal, spot, at)
+    const status = oneOf(item?.status, STATUSES)
+    if (!item || !text(item.says) || !status) {
+      at(spot, `needs says and a status (${STATUSES.join(", ")})`)
+      return []
+    }
+    return [
+      {
+        says: item.says,
+        status,
+        ...(text(item.ref) ? { ref: item.ref } : {}),
+        ...(text(item.tracked) ? { tracked: item.tracked } : {}),
+      },
+    ]
+  })
+  const checks = list(p.checks, `${here}.checks`, at).flatMap((c, i) => {
+    const item = record(c)
+    const spot = `${here}.checks[${i}]`
+    if (item) keys(item, KEYS.check, spot, at)
+    const kind = oneOf(item?.kind, CHECK_KINDS)
+    const runs = oneOf(item?.runs, CHECK_PLACES)
+    const status = oneOf(item?.status, STATUSES)
+    if (
+      !item ||
+      !text(item.id) ||
+      !text(item.name) ||
+      !kind ||
+      !runs ||
+      !status
+    ) {
+      at(
+        spot,
+        `needs an id, a name, a kind (${CHECK_KINDS.join(", ")}), runs (${CHECK_PLACES.join(", ")}) and a status (${STATUSES.join(", ")})`
+      )
+      return []
+    }
+    return [
+      {
+        id: item.id,
+        kind,
+        name: item.name,
+        runs,
+        segments: strings(item.segments, `${spot}.segments`, at),
+        status,
+        ...(text(item.ref) ? { ref: item.ref } : {}),
+        ...(text(item.tracked) ? { tracked: item.tracked } : {}),
+      },
+    ]
+  })
+  return {
+    id: str(p.id),
+    name: str(p.name),
+    why: str(p.why),
+    serves: strings(p.serves, `${here}.serves`, at),
+    witnesses: strings(p.witnesses, `${here}.witnesses`, at),
+    segments,
+    signals,
+    checks,
+  }
 }
 
 function readFamily(raw: unknown, where: string, at: At): Family | null {
@@ -385,6 +660,9 @@ function readObjective(raw: unknown, where: string, at: At): Objective | null {
     watch: {
       by: by ?? "none",
       ...(watch && text(watch.ref) ? { ref: watch.ref } : {}),
+      ...(watch?.checks === undefined
+        ? {}
+        : { checks: strings(watch.checks, `${here}.watch.checks`, at) }),
     },
     ...optionalComparison(o.comparison, here, at),
     amendments,

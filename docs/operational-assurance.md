@@ -51,9 +51,28 @@ shown; "the cheapest possible" cannot be, from these repositories, and nothing h
 - **Proof:** the test, check, type or lint rule that holds a `holds`, as a path the reader can
   open. A narrative is not a proof, and neither is an agent's agreement with another agent.
 - **Watch:** how a running deployment is observed for this objective: `none`, `dashboard` (someone
-  has to look) or `alert` (it tells the owner). A proof says the code holds the claim; a watch says
-  whether anyone would learn that the running system stopped holding it. They are separate on
-  purpose.
+  has to look) or `alert` (it tells the owner), and the live **checks** that run it, by name from
+  the registry (below). A proof says the code holds the claim; a watch says whether anyone would
+  learn that the running system stopped holding it. They are separate on purpose.
+- **Process family:** one async process the owner relies on, named once in the registry
+  (recording on the phone, transcription on home, a mailbox pass), whichever ledger families its
+  promises sit in. Organised by what runs; the ledger's families are organised by promise.
+- **Segment:** a stretch of a process, split where ownership changes: `ours` (this codebase's
+  code), `foreign` (the browser's, Android's, a native plugin's, a container or service someone
+  else wrote) or `network` (the hop between two places). Each is checked as cheaply as it allows.
+- **Passive signal:** what real use leaves that shows a process working or failing: an outcome
+  event (CK2), a row home keeps, a mark on the phone's "How it's running". It closes the gap of
+  finding a failure only by walking the exact steps that reach it.
+- **Check:** a way to run a process on purpose and see it work, at runtime. Its kinds:
+  - **probe:** home runs it end to end with no phone and no person (a known clip transcribed);
+  - **phone check:** the phone runs it with no person (the microphone opens and is let go);
+  - **guided check:** the phone runs it with its person (say a phrase), the only kind that
+    proves the physical chain;
+  - **journey:** scripted taps through a flow on a real WebView, on an emulator in CI;
+  - **monitor:** a rule the tests check over generated traces, checked again on every real step
+    of the shipped app; it reports and never changes behaviour.
+- **Trace:** the last events a machine saw before a monitor broke, sent home with the outcome.
+  The machines are pure step functions, so a trace replays as a failing test (CK3).
 - **Amendment:** a recorded change to what an objective requires. It is the only way an
   objective's requirement, bound or kind changes, a `holds` stops holding, or an objective retires.
 
@@ -99,11 +118,48 @@ JSON so the server's CI can read it as well (#2199, AS10). It holds:
   `telemetry`), its `growth` (per what it grows, or, starting `bounded:`, the bound that keeps it
   constant), its `horizon` when something deletes from it, and the `family` that answers for its growth (RE9). Where each one is
   discarded or rewritten, with the owner's ruling, is `docs/discard-sites.md`.
+- `processes` and `crosscutting`: the registry (below).
 - Each objective: `id`, `kind`, `claim`, `requirement`, optional `bound` (`value`, `unit`, and
   which way is `tighter`), `verdict`, `conclusion` (one plain sentence, its boundary included),
   `evidence` (each with its `class`, what it `says` and a `ref`), `proof` (when it holds) or
-  `tracked` (the issue that will make it hold), `watch`, an optional `comparison` (measured
+  `tracked` (the issue that will make it hold), `watch` (`by`, an optional `ref`, and the
+  registry's live `checks` that run it), an optional `comparison` (measured
   series, for the before and after), `amendments`, and `retired` once it no longer applies.
+
+## The registry: every process family
+
+The ledger says what is promised and what proves it in the code; the registry says what runs and
+how each part of it can be seen working while it runs (CHECKS, #2369; CK1, #2380). It is the
+ledger's `processes` section, so one reader and one check hold both, and the page that runs
+checks (CK8) reads one row per process from it. A check result is `measured` evidence at
+runtime; it never replaces a proof.
+
+Each process has:
+
+- `id`, `name` in the owner's words, and `why`;
+- `serves`: the ledger families whose promises it carries, and `witnesses`: the objectives its
+  signals and checks show holding, or not;
+- `segments`: each with an `id`, a `name` (what happens, and whose it is), an `owner` (`ours`,
+  `foreign`, `network`), where it runs, `on` (`phone`, `browser`, `home`, `mailbox`, `outside`
+  for a service run by someone else, or `between` for a network hop), and the `paths` where this
+  codebase's side of it lives;
+- `signals`: each says what it shows and what it misses, and is `live` with a `ref`, or
+  `planned` with the issue that builds it;
+- `checks`: each with an `id`, a `kind` (`probe`, `phone-check`, `guided`, `journey`,
+  `monitor`), a `name`, where it `runs` (`home`, `phone` or `ci`), the `segments` it exercises
+  (`<process>/<segment>`, in any process: the guided check runs the phone's take, the send home
+  and home's transcription), and `live` with a `ref` or `planned` with its issue.
+
+`crosscutting` lists the ledger families no process carries because they span every one (the
+checks themselves, home's errors, what is kept, whether home is up), each with why.
+
+An objective's `watch.checks` names the live checks that run it (`<process>/<check>`), of a
+process that witnesses it. A planned check watches nothing yet, so it may not be named.
+
+The seams for the stories after CK1: a process `id` is the family an outcome event names (CK2);
+a check's `<process>/<check>` is what a result is recorded against and what a Run button starts
+(CK4–CK8); and a check that goes live sets its `ref`, and the objectives it runs name it in
+their watch.
 
 ## What `pnpm check:assurance` holds
 
@@ -132,10 +188,20 @@ pr.yml's `assurance` job, which CI Gate needs.
   one family's `modules` or in `synchronous`. A module placed that the server does not serve is a
   warning, not an error, so a module can be placed in its own PR ahead of the route snapshot that
   brings it, and a stale one is visible.
+- **The registry:** every ledger family is served by a process or is `crosscutting` (one or
+  the other), so a new family cannot land without its process. A process's `serves`, its
+  `witnesses` (a live objective), each check's `segments` and each watch's `checks` name
+  something that exists; a check exercises at least one segment of its own process; a network
+  segment, and only one, runs `between`; a segment of ours does not run `outside`; a `live`
+  signal or check names a `ref` and a `planned` one its issue; a `some-ui:` path exists; and a
+  watch names only a live check of a process that witnesses the objective. Reported, not failed:
+  a process with no signal, one no check runs (its own or another process's), and one that
+  witnesses no objective yet. The server's job does not read the registry's `server:` paths yet.
 - **The ratchet**, against the base branch's ledger (read leniently, so a change to this grammar
   can land): no objective disappears (it retires instead); a retired one stays retired;
   amendments are only appended. Each of these needs a new amendment on the objective: a `holds`
-  that stops holding, a changed claim, requirement, kind or property, a weaker watch, a loosened
+  that stops holding, a changed claim, requirement, kind or property, a weaker watch (a lower
+  `by`, or a check it no longer names), a loosened
   or dropped bound, a retirement. A route module that leaves a family for `synchronous` needs a
   `decision` on its synchronous entry. An agent can still write an amendment, but not silently: it
   is in the diff, in review (`REVIEW.md`), and on the page, under the objective it changes.

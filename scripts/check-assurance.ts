@@ -3,8 +3,10 @@
 // that a promise that holds names a proof that exists and one that does not
 // names its issue, that every server route module is placed, that every
 // table the mailbox's migrations and the phone's schema leave standing is a
-// store, and the ratchet against the base branch's ledger. The rules live in
-// packages/assurance/src/rules.ts.
+// store, that every family is carried by a process in the registry and every
+// name the registry uses exists, and the ratchet against the base branch's
+// ledger. The rules live in packages/assurance/src/rules.ts and, for the
+// registry, packages/assurance/src/processes.ts.
 //
 //   node scripts/check-assurance.ts [--base <ref>]
 //
@@ -24,6 +26,8 @@ import {
 } from "../packages/assurance/src/ledger.ts"
 // eslint-disable-next-line no-restricted-imports
 import type { Ledger } from "../packages/assurance/src/ledger.ts"
+// eslint-disable-next-line no-restricted-imports
+import { findProcessViolations } from "../packages/assurance/src/processes.ts"
 // eslint-disable-next-line no-restricted-imports
 import type { Finding } from "../packages/assurance/src/rules.ts"
 // eslint-disable-next-line no-restricted-imports
@@ -150,12 +154,13 @@ function main(): void {
     const ledger = read(readFileSync(join(root, LEDGER), "utf8"), LEDGER)
     const files = worktreeFiles(root)
     const tracked = new Set(files)
+    const exists = (path: string): boolean =>
+      tracked.has(path) ||
+      files.some((file) => file.startsWith(`${path.replace(/\/$/, "")}/`))
     findings = [
       ...findLedgerViolations(ledger, {
         isFile: (path) => tracked.has(path),
-        exists: (path) =>
-          tracked.has(path) ||
-          files.some((file) => file.startsWith(`${path.replace(/\/$/, "")}/`)),
+        exists,
         contains: (path, text) =>
           readFileSync(join(root, path), "utf8").includes(text),
         routeModules: routeModules(root),
@@ -165,6 +170,7 @@ function main(): void {
           phone: phoneTables(root),
         },
       }),
+      ...findProcessViolations(ledger, { exists }),
     ]
     const { ref, resolved } = resolveBaseRef(root, process.argv.slice(2))
     const base = resolved ? baseLedger(root, ref) : null

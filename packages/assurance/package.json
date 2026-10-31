@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "The assurance ledger: every promise about outcomes and work, its verdict and its evidence, and the rules check:assurance holds it to.",
+  "description": "The assurance ledger: every promise about outcomes and work, its verdict and its evidence, the registry of process families and how each can be checked, and the rules check:assurance holds it to.",
   "license": "MIT",
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "repository": {

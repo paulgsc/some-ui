@@ -2195,5 +2195,623 @@
       "growth": "Per heard transcript per note and model: one row per word heard (text, start_ms, end_ms from the note's start), about 150 rows a minute of speech; written with its transcript; append-only; leaves with the account.",
       "family": "voice-heard"
     }
+  ],
+  "processes": [
+    {
+      "id": "phone-recording",
+      "name": "Recording on the phone",
+      "why": "Every screen that records a take (Rust Rounds, LeetType, the grammar lens, scene and reflection voice, Jobs notes, Soundbites, Studio, Game Week) opens the microphone through one kit, keeps the take on the phone, and says how it went. MIC0 (some-ui#2370) failed here while every test was green, and was found only by luck.",
+      "serves": [],
+      "witnesses": [],
+      "segments": [
+        {
+          "id": "take",
+          "name": "The take machine and its runner: a tap opens a take, a tap or its cap ends it, and every ending is said. Ours.",
+          "owner": "ours",
+          "on": "phone",
+          "paths": [
+            "some-ui:packages/voice-capture/src/lib/take.ts",
+            "some-ui:packages/voice-capture/src/lib/voice-note.ts"
+          ]
+        },
+        {
+          "id": "microphone",
+          "name": "The WebView's getUserMedia and MediaRecorder, and Android's microphone permission behind them. The browser's and Android's.",
+          "owner": "foreign",
+          "on": "phone",
+          "paths": ["some-ui:packages/voice-capture/src/lib/recorder.ts"]
+        },
+        {
+          "id": "kept",
+          "name": "The take's audio on its own shelf in this phone's storage. Ours, over the WebView's IndexedDB.",
+          "owner": "ours",
+          "on": "phone",
+          "paths": ["some-ui:packages/voice-capture/src/lib/blob-shelf.ts"]
+        }
+      ],
+      "signals": [
+        {
+          "says": "A microphone that refuses or fails, and a take that fails, is written to the phone's failure log, which How it's running shows; a take that ends saying nothing (MIC0) leaves no line, and a take that works leaves none either.",
+          "status": "live",
+          "ref": "some-ui:apps/www/src/lib/failure-log"
+        },
+        {
+          "says": "Every take records how it ended, how long the microphone took to open, its length and peak level, and the screen it came from, and home keeps those outcomes (CK2).",
+          "status": "planned",
+          "tracked": "some-ui#2381"
+        }
+      ],
+      "checks": [
+        {
+          "id": "microphone",
+          "kind": "phone-check",
+          "name": "The microphone opens, hears sound and is let go",
+          "runs": "phone",
+          "segments": ["phone-recording/microphone", "phone-recording/take"],
+          "status": "planned",
+          "tracked": "some-ui#2384"
+        },
+        {
+          "id": "injected-clip",
+          "kind": "phone-check",
+          "name": "A known clip goes through the real take, its shelf and the send home, and home transcribes it",
+          "runs": "phone",
+          "segments": [
+            "phone-recording/take",
+            "phone-recording/kept",
+            "voice-going-home/lane",
+            "voice-going-home/home-network",
+            "voice-going-home/intake",
+            "home-transcription/pass",
+            "home-transcription/engine"
+          ],
+          "status": "planned",
+          "tracked": "some-ui#2384"
+        },
+        {
+          "id": "say-the-phrase",
+          "kind": "guided",
+          "name": "The phone asks you to say a phrase, plays it back, and home says whether it heard it",
+          "runs": "phone",
+          "segments": [
+            "phone-recording/microphone",
+            "phone-recording/take",
+            "phone-recording/kept",
+            "voice-going-home/lane",
+            "voice-going-home/home-network",
+            "voice-going-home/intake",
+            "home-transcription/pass",
+            "home-transcription/engine"
+          ],
+          "status": "planned",
+          "tracked": "some-ui#2385"
+        },
+        {
+          "id": "take-journeys",
+          "kind": "journey",
+          "name": "Scripted taps through each recording screen on an emulator, its microphone fed a clip",
+          "runs": "ci",
+          "segments": [
+            "phone-recording/microphone",
+            "phone-recording/take",
+            "phone-recording/kept"
+          ],
+          "status": "planned",
+          "tracked": "some-ui#2386"
+        },
+        {
+          "id": "take-monitor",
+          "kind": "monitor",
+          "name": "The take machine's rules checked on every real step, a break sending home a trace that replays as a test",
+          "runs": "phone",
+          "segments": ["phone-recording/take"],
+          "status": "planned",
+          "tracked": "some-ui#2382"
+        }
+      ]
+    },
+    {
+      "id": "recognizer",
+      "name": "The phone hears words",
+      "why": "Studio's idea capture and Watch's spoken notes turn speech into words on the phone through the app's Listen plugin and Android's own recognizer (LS1, apps/www/src/lib/device-listen).",
+      "serves": [],
+      "witnesses": [],
+      "segments": [
+        {
+          "id": "listening",
+          "name": "A listening, from the tap to the words heard, with LS1's deadlines. Ours.",
+          "owner": "ours",
+          "on": "phone",
+          "paths": ["some-ui:apps/www/src/lib/device-listen"]
+        },
+        {
+          "id": "plugin",
+          "name": "The Listen plugin, the Java side of the bridge. Ours, though no pull request builds it.",
+          "owner": "ours",
+          "on": "phone",
+          "paths": [
+            "some-ui:apps/mobile/android/app/src/main/java/dev/paulgsc/someui/ListenPlugin.java"
+          ]
+        },
+        {
+          "id": "android-recognizer",
+          "name": "Android's SpeechRecognizer, its offline language pack and the microphone. Android's.",
+          "owner": "foreign",
+          "on": "phone",
+          "paths": []
+        }
+      ],
+      "signals": [
+        {
+          "says": "A listening that fails or never answers is written to the phone's failure log, which How it's running shows; a listening that works leaves nothing.",
+          "status": "live",
+          "ref": "some-ui:apps/www/src/lib/failure-log"
+        },
+        {
+          "says": "Every listening records how it ended, how long it took to be ready, and the screen it came from (CK2).",
+          "status": "planned",
+          "tracked": "some-ui#2381"
+        }
+      ],
+      "checks": [
+        {
+          "id": "listen-monitor",
+          "kind": "monitor",
+          "name": "The recognizer's rules (LS1) checked on every real step, after the take machine's",
+          "runs": "phone",
+          "segments": ["recognizer/listening"],
+          "status": "planned",
+          "tracked": "some-ui#2382"
+        }
+      ]
+    },
+    {
+      "id": "device-speech",
+      "name": "The phone speaks",
+      "why": "In the Android app every line read aloud comes from the phone's own text-to-speech engine, since the WebView has no working speechSynthesis (#1625).",
+      "serves": [],
+      "witnesses": [],
+      "segments": [
+        {
+          "id": "speaker",
+          "name": "The speech engine hands a line to the phone's voice and waits for it to finish. Ours.",
+          "owner": "ours",
+          "on": "phone",
+          "paths": [
+            "some-ui:packages/speech/src/lib/adapters/native",
+            "some-ui:apps/www/src/lib/device-speech"
+          ]
+        },
+        {
+          "id": "android-tts",
+          "name": "The text-to-speech plugin and Android's TextToSpeech engine with the voices installed. A native plugin's and Android's.",
+          "owner": "foreign",
+          "on": "phone",
+          "paths": []
+        }
+      ],
+      "signals": [
+        {
+          "says": "Every spoken line records how it ended and the screen it came from (CK2).",
+          "status": "planned",
+          "tracked": "some-ui#2381"
+        }
+      ],
+      "checks": []
+    },
+    {
+      "id": "hosted-speech",
+      "name": "The web build speaks",
+      "why": "On the home-network web build, a line's audio comes from the hosted voice service on home, which asks an online voice for it.",
+      "serves": ["hosted-speech"],
+      "witnesses": ["SP1"],
+      "segments": [
+        {
+          "id": "engine",
+          "name": "The speech engine fetches a line's audio once and plays it. Ours, in the browser.",
+          "owner": "ours",
+          "on": "browser",
+          "paths": [
+            "some-ui:packages/speech/src/lib/engine",
+            "some-ui:packages/speech/src/lib/adapters/http"
+          ]
+        },
+        {
+          "id": "home-network",
+          "name": "The browser reaches home over the home network.",
+          "owner": "network",
+          "on": "between",
+          "paths": []
+        },
+        {
+          "id": "proxy",
+          "name": "The web image's proxy hands the request to the voice container. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": ["some-ui:apps/www/nginx.tts-proxy.conf"]
+        },
+        {
+          "id": "voice-service",
+          "name": "openai-edge-tts, a container on home that someone else wrote.",
+          "owner": "foreign",
+          "on": "home",
+          "paths": ["some-ui:infra/compose/tts.yml"]
+        },
+        {
+          "id": "online-voice",
+          "name": "The online voice openai-edge-tts asks over the internet. Someone else's, outside home.",
+          "owner": "foreign",
+          "on": "outside",
+          "paths": []
+        }
+      ],
+      "signals": [
+        {
+          "says": "Every spoken line records how it ended and the screen it came from (CK2).",
+          "status": "planned",
+          "tracked": "some-ui#2381"
+        }
+      ],
+      "checks": [
+        {
+          "id": "speech-probe",
+          "kind": "probe",
+          "name": "A known line through the real hosted-speech route, daily and from the page: audio back within a bound, of a plausible length",
+          "runs": "home",
+          "segments": [
+            "hosted-speech/proxy",
+            "hosted-speech/voice-service",
+            "hosted-speech/online-voice"
+          ],
+          "status": "planned",
+          "tracked": "some-ui#2383"
+        }
+      ]
+    },
+    {
+      "id": "voice-going-home",
+      "name": "Voice notes go home",
+      "why": "A voice note waits on the phone until home holds a copy; the home link's voice lane sends it over the home network, and the phone lets its copy go once home has it.",
+      "serves": ["voice-heard"],
+      "witnesses": [],
+      "segments": [
+        {
+          "id": "waiting",
+          "name": "The note's record and audio on the phone while home does not hold it. Ours.",
+          "owner": "ours",
+          "on": "phone",
+          "paths": ["some-ui:apps/www/src/lib/voice-home"]
+        },
+        {
+          "id": "lane",
+          "name": "The voice lane sends each waiting note and lets the phone's copy go once home holds it. Ours.",
+          "owner": "ours",
+          "on": "phone",
+          "paths": ["some-ui:apps/www/src/lib/home-link/voice.ts"]
+        },
+        {
+          "id": "home-network",
+          "name": "The phone reaches home over the home network, as the paired phone.",
+          "owner": "network",
+          "on": "between",
+          "paths": []
+        },
+        {
+          "id": "intake",
+          "name": "Home takes the note and keeps its audio for good. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": ["server:apps/servers/file_host/src/routes/voice.rs"]
+        }
+      ],
+      "signals": [
+        {
+          "says": "The voice lane's mark on How it's running says where the notes are and how the last send went.",
+          "status": "live",
+          "ref": "some-ui:apps/www/src/lib/home-link/lanes.ts"
+        },
+        {
+          "says": "Every note sent home records how the send ended (CK2).",
+          "status": "planned",
+          "tracked": "some-ui#2381"
+        }
+      ],
+      "checks": []
+    },
+    {
+      "id": "home-transcription",
+      "name": "Home hears voice notes",
+      "why": "Home transcribes every voice note in the background, and the transcript is what the routine reads.",
+      "serves": ["voice-heard"],
+      "witnesses": ["VH1", "VH2"],
+      "segments": [
+        {
+          "id": "pass",
+          "name": "A transcription pass takes a batch of notes, gives each a row and retries a failure a few times. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": ["server:apps/servers/file_host/src/transcribe/pass.rs"]
+        },
+        {
+          "id": "engine",
+          "name": "ffmpeg decodes the note, and whisper.cpp's VAD and Whisper hear it. Someone else's, on home.",
+          "owner": "foreign",
+          "on": "home",
+          "paths": ["server:apps/servers/file_host/src/transcribe/engine.rs"]
+        }
+      ],
+      "signals": [
+        {
+          "says": "Every note gets a row with its transcript or the reason it has none, and home's transcription dashboard counts them.",
+          "status": "live",
+          "ref": "server:infra/grafana/dashboards/transcribe.jsonnet"
+        },
+        {
+          "says": "The reflections routine's row on How it's running says when a voice note was missed, unread or garbled.",
+          "status": "live",
+          "ref": "some-ui:apps/www/src/lib/status-board/index.ts#routineRow"
+        }
+      ],
+      "checks": [
+        {
+          "id": "transcription-probe",
+          "kind": "probe",
+          "name": "A known clip goes in as a probe note, daily and from the page, and the words that come back are compared",
+          "runs": "home",
+          "segments": ["home-transcription/pass", "home-transcription/engine"],
+          "status": "planned",
+          "tracked": "some-ui#2383"
+        }
+      ]
+    },
+    {
+      "id": "mailbox-passes",
+      "name": "Home reads the mailbox",
+      "why": "The routines put their files in the Jobs mailbox, a Cloudflare Worker; every 15 minutes home reads them, keeps a checked copy, archives what has sat a while and puts back what a routine asks for.",
+      "serves": ["routine-to-home", "archive-restore"],
+      "witnesses": ["MI1", "MI2", "MI3", "MI4"],
+      "segments": [
+        {
+          "id": "routine-puts",
+          "name": "A routine, at Anthropic, puts its files through the mailbox's API. Someone else's.",
+          "owner": "foreign",
+          "on": "outside",
+          "paths": []
+        },
+        {
+          "id": "worker",
+          "name": "The mailbox's Worker and its D1 database. Ours, on Cloudflare.",
+          "owner": "ours",
+          "on": "mailbox",
+          "paths": ["some-ui:apps/mailbox"]
+        },
+        {
+          "id": "internet",
+          "name": "Home reaches the mailbox over the internet.",
+          "owner": "network",
+          "on": "between",
+          "paths": []
+        },
+        {
+          "id": "pass",
+          "name": "Home's mailbox pass: read, keep a checked copy, hand over, archive and restore. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": ["server:apps/servers/file_host/src/mailbox"]
+        }
+      ],
+      "signals": [
+        {
+          "says": "Each pass stamps when it started and counts its failures by kind, and Slack is told within 20 minutes if passes stop while home runs (MI3).",
+          "status": "live",
+          "ref": "server:apps/servers/file_host/src/metrics/mailbox.rs"
+        }
+      ],
+      "checks": []
+    },
+    {
+      "id": "morning-run",
+      "name": "The morning run",
+      "why": "The 7:52 Jobs routine runs at Anthropic and leaves its files in the mailbox; home records each run and expects the next, and Jobs on the phone says how this morning's went.",
+      "serves": ["morning-run"],
+      "witnesses": ["RR1", "RR2"],
+      "segments": [
+        {
+          "id": "routine",
+          "name": "The Jobs routine itself, at Anthropic. Someone else's.",
+          "owner": "foreign",
+          "on": "outside",
+          "paths": []
+        },
+        {
+          "id": "worker",
+          "name": "The run's files and record in the mailbox. Ours, on Cloudflare.",
+          "owner": "ours",
+          "on": "mailbox",
+          "paths": ["some-ui:apps/mailbox"]
+        },
+        {
+          "id": "watch",
+          "name": "Home records each run and sets when the next is due. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": ["server:apps/servers/file_host/src/routine_watch.rs"]
+        },
+        {
+          "id": "home-network",
+          "name": "The phone reaches home over the home network.",
+          "owner": "network",
+          "on": "between",
+          "paths": []
+        },
+        {
+          "id": "today",
+          "name": "Jobs' Today card and the morning row on How it's running. Ours, on the phone.",
+          "owner": "ours",
+          "on": "phone",
+          "paths": ["some-ui:apps/www/src/lib/jobs/morning.ts"]
+        }
+      ],
+      "signals": [
+        {
+          "says": "Home keeps a record of every run, and Slack is told within 32 minutes of a run that did not happen (RR2).",
+          "status": "live",
+          "ref": "server:apps/servers/file_host/src/routine_watch.rs"
+        },
+        {
+          "says": "The morning row on How it's running says how this morning's run went, or that home has no record of it.",
+          "status": "live",
+          "ref": "some-ui:apps/www/src/lib/status-board/index.ts#morningRow"
+        }
+      ],
+      "checks": []
+    },
+    {
+      "id": "rust-rounds-runs",
+      "name": "Rust Rounds' programs run on home",
+      "why": "Home queues each program of a round it keeps and hands it to the sandboxed rust-runner in the background, keeping what rustc printed. Nothing on the phone sends rounds home yet (RR4b, some-ui#2347).",
+      "serves": ["rust-rounds-recorded"],
+      "witnesses": ["RC1", "RC2"],
+      "segments": [
+        {
+          "id": "pass",
+          "name": "The recording pass takes a bounded batch of waiting programs and keeps each one's outcome. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": ["server:apps/servers/file_host/src/rust_rounds"]
+        },
+        {
+          "id": "runner",
+          "name": "The sandboxed rust-runner. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": ["server:crates/rust_runner"]
+        },
+        {
+          "id": "toolchain",
+          "name": "rustc and its toolchain inside the sandbox. Someone else's, on home.",
+          "owner": "foreign",
+          "on": "home",
+          "paths": []
+        }
+      ],
+      "signals": [
+        {
+          "says": "Every program reaches an outcome of its own, kept on home, and an error reaches the owner (RC1).",
+          "status": "live",
+          "ref": "server:apps/servers/file_host/src/rust_rounds/pass.rs"
+        }
+      ],
+      "checks": []
+    },
+    {
+      "id": "game-feed",
+      "name": "Home follows the games",
+      "why": "Home polls ESPN's public NFL feed in the background, keeping every answer and each game's plays.",
+      "serves": ["game-feed"],
+      "witnesses": ["GA1", "GA4"],
+      "segments": [
+        {
+          "id": "poller",
+          "name": "The game feed's worker decides what to fetch and keeps every answer. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": [
+            "server:apps/servers/file_host/src/game_feed",
+            "server:crates/nfl_feed",
+            "server:crates/db/game_feed"
+          ]
+        },
+        {
+          "id": "internet",
+          "name": "Home reaches ESPN over the internet.",
+          "owner": "network",
+          "on": "between",
+          "paths": []
+        },
+        {
+          "id": "espn",
+          "name": "ESPN's public feed. Someone else's.",
+          "owner": "foreign",
+          "on": "outside",
+          "paths": []
+        }
+      ],
+      "signals": [
+        {
+          "says": "Every answer is kept and counted by what it was, and Slack is told when the feed stops while it is on (GA4).",
+          "status": "live",
+          "ref": "server:crates/db/game_feed"
+        }
+      ],
+      "checks": []
+    },
+    {
+      "id": "study-nudge",
+      "name": "Study nudges",
+      "why": "The phone tells home when it is present and what it did; home's waker decides when to nudge and sends the nudge by push.",
+      "serves": ["study-nudge"],
+      "witnesses": ["NW1", "NW2"],
+      "segments": [
+        {
+          "id": "signals",
+          "name": "The phone's presence and signals. Ours, on the phone.",
+          "owner": "ours",
+          "on": "phone",
+          "paths": ["some-ui:apps/www/src/lib/study-nudge"]
+        },
+        {
+          "id": "home-network",
+          "name": "The phone reaches home over the home network.",
+          "owner": "network",
+          "on": "between",
+          "paths": []
+        },
+        {
+          "id": "waker",
+          "name": "Home's waker reads who is due and decides, within its batch and deadline. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": ["server:apps/servers/file_host/src/nudge"]
+        },
+        {
+          "id": "push",
+          "name": "The push service carries the nudge to the device. Someone else's.",
+          "owner": "foreign",
+          "on": "outside",
+          "paths": []
+        }
+      ],
+      "signals": [
+        {
+          "says": "Each waker pass stamps when it started, and Slack is told if the waker stops (NW2).",
+          "status": "live",
+          "ref": "server:infra/prometheus/rules/home.yml"
+        }
+      ],
+      "checks": []
+    }
+  ],
+  "crosscutting": [
+    {
+      "family": "app-requests",
+      "why": "A rule every request the shared fetch client makes keeps, whichever process makes it."
+    },
+    {
+      "family": "the-checks",
+      "why": "The checks that hold every family, run in CI on every pull request: not a process the app runs."
+    },
+    {
+      "family": "home-errors",
+      "why": "How every one of home's processes reports what goes wrong."
+    },
+    {
+      "family": "what-is-kept",
+      "why": "What every process keeps, on home and on the phone, and how it grows."
+    },
+    {
+      "family": "home-up",
+      "why": "Whether home itself answers, which every segment on home needs."
+    }
   ]
 }
