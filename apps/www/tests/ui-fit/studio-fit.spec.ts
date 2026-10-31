@@ -10,8 +10,9 @@
  *
  * The sizes are the phone's alone (`PHONE_VIEWPORTS`): Studio is a phone
  * surface (`_apk`). The page's body scrolls as the route's does, so a tall
- * screen is not a finding here; a wide one is, and so is a box that asserts
- * a height its content cannot fit.
+ * screen is not a finding here; a wide one is (the body scrolling sideways,
+ * `wide` in `findViolations`), and so is a box that asserts a height its
+ * content cannot fit.
  *
  * Run against a built phone page:
  *
@@ -46,15 +47,19 @@ const start = (page: Page): Promise<void> =>
     timeout: 10_000,
   })
 
-const PLANTED_OVERFLOW = "planted-overflow" satisfies PhoneId
+/** The planted fixtures, each by what the sweep must report it as. */
+const PLANTED = {
+  "planted-overflow": "leak",
+  "planted-wide": "wide",
+} as const satisfies Partial<Record<PhoneId, "leak" | "wide">>
 
 /**
  * The walks, one per fixture, each in the order the owner meets the screens
- * from that Start. Keyed by every fixture but the planted box, so a fixture
+ * from that Start. Keyed by every fixture but the planted ones, so a fixture
  * no walk reaches fails tsc.
  */
 const WALKS: Record<
-  Exclude<PhoneId, typeof PLANTED_OVERFLOW>,
+  Exclude<PhoneId, keyof typeof PLANTED>,
   ReadonlyArray<Stop>
 > = {
   "studio-empty": [
@@ -245,15 +250,19 @@ test.describe("every screen of the phone's Studio fits the phone", () => {
   /**
    * The phone page is its own build with its own slot (`phone-page/main.tsx`),
    * so panel-fit's planted panel proves nothing about it: a slot here that
-   * stopped holding the screen would leave every walk above measuring nothing.
+   * stopped holding the screen would leave every walk above measuring nothing,
+   * and a body whose scroll hid a screen wider than the phone would pass every
+   * walk however wide its screens grew.
    */
-  test("a box that overflows its height is seen", async ({ page }) => {
-    PAGE.expectBuilt()
-    await page.setViewportSize({ width: 412, height: 915 })
-    const errors: Array<string> = []
-    page.on("pageerror", (error) => errors.push(error.message))
-    await page.goto(PAGE.url(PLANTED_OVERFLOW), { waitUntil: "load" })
-    await page.waitForTimeout(250)
-    expectPlantedSeen(await findViolations(page), errors)
-  })
+  for (const [fixture, planted] of Object.entries(PLANTED)) {
+    test(`the planted ${planted} (${fixture}) is seen`, async ({ page }) => {
+      PAGE.expectBuilt()
+      await page.setViewportSize({ width: 360, height: 780 })
+      const errors: Array<string> = []
+      page.on("pageerror", (error) => errors.push(error.message))
+      await page.goto(PAGE.url(fixture), { waitUntil: "load" })
+      await page.waitForTimeout(250)
+      expectPlantedSeen(await findViolations(page), errors, planted)
+    })
+  }
 })

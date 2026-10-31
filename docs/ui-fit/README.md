@@ -349,9 +349,16 @@ to the screens that standing reaches (Record before, during and after a
 take; Done for now's three steps; Shape's two; Finish with a scene missing
 and ready; Watch before a render and with one whose change is asked;
 History; Time spent; New idea asked and typed), measuring at each stop with
-`findViolations`, at `PHONE_VIEWPORTS`. The body's scroll is the route's
-own, so what the sweep sees is a screen that leaves the phone sideways, or a
-box that asserts a height its content cannot fit.
+`findViolations`, at `PHONE_VIEWPORTS`. The body's scroll down is the
+route's own, so what the sweep sees is a screen that leaves the phone
+sideways, or a box that asserts a height its content cannot fit. The first
+needs a check of its own: a row wider than the phone that sizes to its
+content leaks nothing, and the body that scrolls across to show it is the
+clipping ancestor the escape check excuses, so a 900px screen measured
+clean at 360px until `findViolations` read the body for its intent. A
+`data-scroll-intent="page"` box that scrolls sideways is reported as `wide`
+(a page scrolls down, never across), and the page plants one of each
+(`planted-overflow`, `planted-wide`) to prove the sweep sees them.
 
 ### 3. CI
 

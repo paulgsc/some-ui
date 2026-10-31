@@ -7,9 +7,11 @@
  * Each mounts the page its route mounts (`StudioHome`, `NewIdeaPage`), with
  * plain anchors for the route's links, since the page has no router.
  *
- * `planted-overflow` is not a screen. It is the sweep's self-test: a box of a
- * fixed height around content that cannot fit, so a harness that silently
- * measures nothing goes red.
+ * `planted-overflow` and `planted-wide` are not screens. They are the sweep's
+ * self-tests: a box of a fixed height around content that cannot fit, and a
+ * row wider than the phone, so a harness that silently measures nothing, or
+ * lets the body's scroll hide a screen that leaves the phone sideways, goes
+ * red.
  */
 
 import type { JSX } from "react"
@@ -154,6 +156,15 @@ export const PHONE_FIXTURES = {
   "planted-overflow": (): JSX.Element => (
     <div className="planted-panel" style={{ height: 120 }}>
       <div style={{ height: 900 }}>too tall</div>
+    </div>
+  ),
+
+  // A row wider than any phone that sizes to its own content, so it holds
+  // what it has and leaks nothing: only the body, scrolling sideways to show
+  // it, says the screen is wider than the phone.
+  "planted-wide": (): JSX.Element => (
+    <div className="planted-wide" style={{ width: 900 }}>
+      too wide
     </div>
   ),
 } satisfies Record<string, () => JSX.Element>

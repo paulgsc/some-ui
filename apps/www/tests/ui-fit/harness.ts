@@ -241,9 +241,14 @@ const ALLOWED_FIT_INTENTS = new Set([
  *           panel below. A box that sizes to its content cannot leak - its
  *           `scrollHeight` and `clientHeight` are equal - so this only ever
  *           fires where something really did assert a size.
+ *   `wide`  a page (`data-scroll-intent="page"`) scrolls sideways. A page's
+ *           scroll is for its length, so a tall screen is no finding; a wide
+ *           one is, even when nothing in it leaks or escapes, since the box
+ *           wider than the phone sizes to its content and the page, which
+ *           scrolls, is the clipping ancestor the escape check excuses.
  */
 export type Violation = {
-  kind: "escape" | "leak"
+  kind: "escape" | "leak" | "wide"
   tag: string
   classes: string
   overY: number
@@ -297,6 +302,14 @@ export async function findViolations(
         const tag = element.tagName.toLowerCase()
         const classes = element.className.toString().slice(0, 120)
         const box = element.getBoundingClientRect()
+
+        // A page scrolls down, never across.
+        if (element.dataset["scrollIntent"] === "page") {
+          const overX = element.scrollWidth - element.clientWidth
+          if (overX > 2) {
+            violations.push({ kind: "wide", tag, classes, overY: 0, overX })
+          }
+        }
 
         // A box that clips or scrolls has resolved its own overflow; what
         // matters then is whether *it* fits, which is measured on its own turn.
@@ -359,6 +372,16 @@ export function describeViolation(where: string, violation: Violation): string {
     )
   }
 
+  if (violation.kind === "wide") {
+    return (
+      `${at} is a page that scrolls ${violation.overX}px sideways: something ` +
+      `on the screen is wider than the screen. A page scrolls down, never ` +
+      `across. Let the wide thing shrink or wrap (min-w-0, flex-wrap, ` +
+      `break-words), or give it a scroll of its own declared with ` +
+      `data-scroll-intent. ${classes}`
+    )
+  }
+
   return (
     `${at} paints ${violation.overY}px below / ${violation.overX}px right ` +
     `of the granted rect — the panel is asking for more room than the layout ` +
@@ -409,27 +432,42 @@ export async function walk(
   return failures
 }
 
+/** What each planted fixture is, and how the sweep must report it. */
+const PLANTED = {
+  // A box (`planted-panel`) holding 900px of content in less, not clipping it.
+  leak: {
+    seen: (violation: Violation): boolean =>
+      violation.kind === "leak" && violation.classes.includes("planted-panel"),
+    says:
+      "The planted box holds 900px of content in less and does not clip it. " +
+      "If this is not reported, the sweep over its page is measuring nothing",
+  },
+  // A 900px row (`planted-wide`) in the phone page's body, which scrolls.
+  wide: {
+    seen: (violation: Violation): boolean => violation.kind === "wide",
+    says:
+      "The planted row is 900px wide, so the page holding it scrolls " +
+      "sideways. If this is not reported, the page's scroll hides every " +
+      "screen wider than the phone",
+  },
+} as const
+
 /**
- * The guard the doctrine asks for, on either page: its `planted-overflow`
- * fixture, a box (`planted-panel`) holding 900px of content in less and not
- * clipping it, is mounted and reported as a leak. If it is not, the sweep
- * over that page is measuring nothing.
+ * The guard the doctrine asks for, on either page: a planted fixture is
+ * mounted and reported as what it is. `leak` (the default) is each page's
+ * `planted-overflow`; `wide` is the phone page's `planted-wide`. If one is
+ * not reported, the sweep over that page cannot see what it plants.
  */
 export function expectPlantedSeen(
   { mounted, violations }: { mounted: boolean; violations: Array<Violation> },
-  errors: ReadonlyArray<string>
+  errors: ReadonlyArray<string>,
+  planted: keyof typeof PLANTED = "leak"
 ): void {
   expect(
     mounted,
-    `The planted box rendered nothing: ${errors.join(" | ")}`
+    `The planted fixture rendered nothing: ${errors.join(" | ")}`
   ).toBe(true)
-  expect(
-    violations.some(
-      (violation) =>
-        violation.kind === "leak" && violation.classes.includes("planted-panel")
-    ),
-    `The planted box holds 900px of content in less and does not clip it. ` +
-      `If this is not reported, the sweep over its page is measuring ` +
-      `nothing: ${JSON.stringify(violations)}`
-  ).toBe(true)
+  const { seen, says } = PLANTED[planted]
+  const found = violations.some(seen)
+  expect(found, `${says}: ${JSON.stringify(violations)}`).toBe(true)
 }

@@ -48,11 +48,14 @@ const bodyPadding = (): number => (window.innerWidth >= 640 ? 24 : 16)
  * The room the shell gives an ordinary document route on the phone
  * (src/routes/_dashboard.tsx): a column the size of the screen, the header
  * above, the bar below, and between them a body that scrolls as a page
- * (scroll-intent: page). The sweep measures from the column
- * (`data-fit-slot`), so a screen that leaves it sideways, or a box in it
- * that holds more than its own height, is seen; the body's scroll is the
- * route's own and not an overflow. Inline styles, not utilities: this
- * directory is outside www's Tailwind sources (style.context.ts).
+ * (scroll-intent: page), both ways as the shell's `overflow-auto` does. The
+ * sweep measures from the column (`data-fit-slot`), so a box in it that
+ * holds more than its own height is seen; the body's scroll down is the
+ * route's own and not an overflow. Its scroll across is: a screen wider than
+ * the phone sizes to its content and leaks nothing, so only the body, which
+ * the sweep reads for its page intent (`wide` in `findViolations`), shows
+ * it. Inline styles, not utilities: this directory is outside www's
+ * Tailwind sources (style.context.ts).
  */
 const Phone = ({ children }: { children: ReactNode }): JSX.Element => (
   <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
