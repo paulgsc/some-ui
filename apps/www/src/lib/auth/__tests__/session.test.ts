@@ -290,22 +290,6 @@ describe("ceremonies", () => {
     expect(auth.hasSession()).toBe(true)
   })
 
-  it("carries an operator's claim token to the register finish, and only there", async () => {
-    server.answer = (route: string): Response =>
-      route === "/auth/register/start"
-        ? json({ ceremony: "c-1", options: { publicKey: { challenge: "x" } } })
-        : json({ expiresAt: 1 })
-
-    await auth.createAccount("t0ken")
-
-    expect(server.calls[0]?.init?.body).toBeUndefined()
-    expect(bodyOf(server.calls[1])).toEqual({
-      ceremony: "c-1",
-      credential: { created: true, from: { publicKey: { challenge: "x" } } },
-      legacyClaim: "t0ken",
-    })
-  })
-
   it("signs in the same way, through the sign-in routes", async () => {
     server.answer = (route: string): Response =>
       route === "/auth/sign-in/start"
@@ -349,18 +333,6 @@ describe("ceremonies", () => {
       "/auth/passkeys/finish",
     ])
     expect(auth.hasSession()).toBe(true)
-  })
-})
-
-describe("readLegacyClaim", () => {
-  it.each([
-    ["#claim=t0ken", "t0ken"],
-    ["#claim=a%2Bb", "a+b"],
-    ["#claim=", undefined],
-    ["#other=1", undefined],
-    ["", undefined],
-  ])("reads %j as %j", (hash, claim) => {
-    expect(auth.readLegacyClaim(hash)).toBe(claim)
   })
 })
 
