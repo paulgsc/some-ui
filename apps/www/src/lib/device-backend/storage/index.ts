@@ -164,33 +164,3 @@ export function onSaveRefused(listener: RefusalListener): () => void {
   refusals.add(listener)
   return () => refusals.delete(listener)
 }
-
-/**
- * Removals the person did not ask for and has not been shown. No writer; a
- * notice already noted is shown once.
- */
-export type PruneNotice = { rounds: number }
-
-export async function readPruneNotice(
-  db: SqlDriver
-): Promise<PruneNotice | null> {
-  const row = await one(
-    db,
-    "SELECT rounds FROM device_storage_notice WHERE id = 1"
-  )
-  return row === null ? null : { rounds: num(row, "rounds") }
-}
-
-/** Takes back what was shown; anything noted since stays for next time. */
-export async function dismissPruneNotice(
-  db: SqlDriver,
-  shown: PruneNotice
-): Promise<void> {
-  await db.transaction(async () => {
-    await db.run(
-      "UPDATE device_storage_notice SET rounds = rounds - ? WHERE id = 1",
-      [shown.rounds]
-    )
-    await db.run("DELETE FROM device_storage_notice WHERE rounds <= 0")
-  })
-}

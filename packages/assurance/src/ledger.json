@@ -1580,12 +1580,6 @@
       "family": "what-is-kept"
     },
     {
-      "store": "phone:device_storage_notice",
-      "class": "telemetry",
-      "growth": "bounded: one row (id = 1), the count of rounds removed not yet shown; nothing adds to it, so it only shrinks.",
-      "family": "what-is-kept"
-    },
-    {
       "store": "phone:failure-log",
       "class": "telemetry",
       "growth": "bounded: the newest 200 failures this phone reported, each one line with its time (`some-ui.failure-log.v1`).",

@@ -14,17 +14,15 @@ import {
   removeUnchanged,
 } from "@/lib/device-backend/handlers/sessions"
 import type { DeviceBackend } from "@/lib/device-backend/interceptor"
-import type { SqlDriver } from "@/lib/device-backend/sql"
+import type { SqlDriver, SqlRow } from "@/lib/device-backend/sql"
 import { num, one } from "@/lib/device-backend/sql"
 import type { StorageBudget } from "@/lib/device-backend/storage"
 import {
   budgeted,
   databaseBytes,
-  dismissPruneNotice,
   fitsBesides,
   onSaveRefused,
   OverBudgetError,
-  readPruneNotice,
 } from "@/lib/device-backend/storage"
 
 const DAY = 24 * 60 * 60 * 1000
@@ -271,11 +269,36 @@ describe("presence leases", () => {
   })
 })
 
-describe("the phone's copy of home's rounds, dropped", () => {
-  it("goes at the start that reaches migration 7, and a notice noted before stays until shown", async () => {
+/** The device tables a database holds, by name. */
+async function tablesNamed(
+  names: ReadonlyArray<string>
+): Promise<Array<SqlRow>> {
+  return db.all(
+    `SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (${names
+      .map(() => "?")
+      .join(", ")})`,
+    [...names]
+  )
+}
+
+async function userVersion(): Promise<number | null> {
+  const version = await one(db, "PRAGMA user_version")
+  return version === null ? null : num(version, "user_version")
+}
+
+/** Migration 3's notice, as a phone from 3 to 7 holds it, one pending. */
+const PENDING_NOTICE = `
+  CREATE TABLE device_storage_notice (
+      id     INTEGER PRIMARY KEY CHECK (id = 1),
+      rounds INTEGER NOT NULL
+  );
+  INSERT INTO device_storage_notice (id, rounds) VALUES (1, 2);
+`
+
+describe("what earlier versions kept, dropped", () => {
+  it("drops the phone's copy of home's rounds at the start that reaches migration 7", async () => {
     // A phone at migration 6: home's rounds copied, a round's runs and a
-    // lesson's tag kept by the sync, and a notice of the seeded rounds an
-    // earlier start removed, not yet shown.
+    // lesson's tag kept by the sync, and the storage notice's table.
     await db.exec(`
       CREATE TABLE leetype_round (id TEXT PRIMARY KEY, body TEXT NOT NULL);
       CREATE TABLE leetype_round_witness (round_id TEXT NOT NULL REFERENCES leetype_round(id) ON DELETE CASCADE);
@@ -288,24 +311,32 @@ describe("the phone's copy of home's rounds, dropped", () => {
       INSERT INTO device_home_answer (url, etag, hash, body) VALUES
         ('http://home/leetype/rounds/home-round/runs', '"runs"', NULL, '{}'),
         ('http://home/curriculum/lesson-01', '"lesson"', 'abc', NULL);
-      INSERT INTO device_storage_notice (id, rounds) VALUES (1, 2);
+      ${PENDING_NOTICE}
       PRAGMA user_version = 6;
     `)
 
     backend = await openDeviceBackend(db, () => NOW, budget)
 
-    const version = await one(db, "PRAGMA user_version")
-    expect(version === null ? null : num(version, "user_version")).toBe(7)
-    const left = await db.all(
-      "SELECT name FROM sqlite_master WHERE type = 'table' AND (name LIKE 'leetype_round%' OR name = 'device_round_from_home')"
-    )
-    expect(left).toEqual([])
+    expect(await userVersion()).toBe(8)
+    expect(
+      await tablesNamed([
+        "leetype_round",
+        "leetype_round_witness",
+        "leetype_round_run",
+        "device_round_from_home",
+      ])
+    ).toEqual([])
     const answers = await db.all("SELECT url FROM device_home_answer")
     expect(answers).toEqual([{ url: "http://home/curriculum/lesson-01" }])
-    const notice = await readPruneNotice(db)
-    expect(notice).toEqual({ rounds: 2 })
-    if (notice === null) throw new Error("no notice")
-    await dismissPruneNotice(db, notice)
-    await expect(readPruneNotice(db)).resolves.toBeNull()
+  })
+
+  it("arrives at migration 8 without the storage notice, a pending one included", async () => {
+    // A phone at migration 7, the previous version, still holding a notice.
+    await db.exec(`${PENDING_NOTICE} PRAGMA user_version = 7;`)
+
+    backend = await openDeviceBackend(db, () => NOW, budget)
+
+    expect(await userVersion()).toBe(8)
+    expect(await tablesNamed(["device_storage_notice"])).toEqual([])
   })
 })

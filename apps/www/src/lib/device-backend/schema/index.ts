@@ -4,14 +4,14 @@
  * included), so a row here is one `file_host` could take verbatim. Each table
  * names its source migration and anything left out.
  *
- * Three tables are the device's own: `device_storage_notice` (migration 3),
- * removals not yet shown (`device-backend/storage`);
- * `device_leetype_session_file` (4), the LeetType session files picked
- * from storage, which no server serves (`content-store`); and
- * `device_home_answer` (6), the `ETag` the sync from home last read at each
- * address (`home-sync`). Migration 7 drops the phone's copy of home's
- * Leetype rounds (`leetype_round` and the tables beside it, from 1 and 2),
- * which nothing on the phone read.
+ * Two tables are the device's own: `device_leetype_session_file` (4), the
+ * LeetType session files picked from storage, which no server serves
+ * (`content-store`); and `device_home_answer` (6), the `ETag` the sync from
+ * home last read at each address (`home-sync`). Migration 7 drops the
+ * phone's copy of home's Leetype rounds (`leetype_round` and the tables
+ * beside it, from 1 and 2), which nothing on the phone read, and 8 drops
+ * `device_storage_notice` (3), the removals not yet shown, which nothing
+ * wrote from 7 on.
  *
  * Migrations are append-only, numbered by `PRAGMA user_version`. Never edit a
  * shipped entry: a phone that ran it will not run it again.
@@ -174,6 +174,13 @@ const MIGRATIONS: ReadonlyArray<string> = [
   DROP TABLE leetype_round_run;
   DROP TABLE leetype_round_witness;
   DROP TABLE leetype_round;
+  `,
+  // 8 - device only: the storage notice goes (#2344). Its only writer, the
+  // seeded rounds' removal, went with 7 (#2341), so it could only shrink,
+  // and the owner confirmed on 2026-10-31 that every phone had opened a
+  // build from 7 on, which shows a pending notice once: none is left.
+  `
+  DROP TABLE device_storage_notice;
   `,
 ]
 

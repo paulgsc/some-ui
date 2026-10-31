@@ -1,22 +1,16 @@
 /**
  * What the app shows about the phone's storage (`device-backend/storage`):
- * how much of the budget is in use, the removals not yet shown, and, after
- * a session save was refused, which session it could remove to make room.
+ * how much of the budget is in use and, after a session save was refused,
+ * which session it could remove to make room.
  */
 import { deviceBackend } from "@/lib/device-backend/boot"
 import type { RemovableSession } from "@/lib/device-backend/handlers/sessions"
 import { oldestRemovable } from "@/lib/device-backend/handlers/sessions"
-import type { PruneNotice, StorageUse } from "@/lib/device-backend/storage"
-import {
-  dismissPruneNotice,
-  onSaveRefused,
-  readPruneNotice,
-  storageUse,
-} from "@/lib/device-backend/storage"
+import type { StorageUse } from "@/lib/device-backend/storage"
+import { onSaveRefused, storageUse } from "@/lib/device-backend/storage"
 
 export type DeviceStorageView = {
   use: StorageUse
-  notice: PruneNotice | null
   full: { removable: RemovableSession | null } | null
 }
 
@@ -29,7 +23,6 @@ async function read(): Promise<void> {
     const { context } = await deviceBackend()
     snapshot = {
       use: await storageUse(context.db, context.budget),
-      notice: await readPruneNotice(context.db),
       full,
     }
   } catch {
@@ -67,14 +60,5 @@ export const deviceStorage = {
   settle(): Promise<void> {
     full = null
     return read()
-  },
-  async dismiss(shown: PruneNotice): Promise<void> {
-    try {
-      const { context } = await deviceBackend()
-      await dismissPruneNotice(context.db, shown)
-    } catch {
-      // Ignored: still shown; dismissing again tries again.
-    }
-    await read()
   },
 }

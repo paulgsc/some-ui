@@ -88,51 +88,30 @@ const RemoveOffer = ({
 export const DeviceStoragePrompt = (): JSX.Element | null => {
   const view = useDeviceStorage()
   if (view === null) return null
-  const { full, notice } = view
-  if (full === null && notice === null) return null
+  const { full } = view
+  if (full === null) return null
   return (
     <div className="space-y-2 px-4 pt-3">
-      {full === null ? null : (
-        <Alert>
-          <HardDrive className="size-4" />
-          <AlertTitle>Phone full. Not saved.</AlertTitle>
-          <AlertDescription className="space-y-2">
-            {full.removable === null ? (
-              <>
-                <p>Delete a session you don&apos;t need, then try again.</p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => void deviceStorage.settle()}
-                >
-                  OK
-                </Button>
-              </>
-            ) : (
-              <RemoveOffer key={full.removable.id} session={full.removable} />
-            )}
-          </AlertDescription>
-        </Alert>
-      )}
-      {notice === null ? null : (
-        <Alert>
-          <HardDrive className="size-4" />
-          <AlertDescription className="flex items-center gap-2">
-            <span className="min-w-0 flex-1">
-              Removed {notice.rounds} Leetype round
-              {notice.rounds === 1 ? "" : "s"} this version of the app no longer
-              ships.
-            </span>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => void deviceStorage.dismiss(notice)}
-            >
-              Got it
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
+      <Alert>
+        <HardDrive className="size-4" />
+        <AlertTitle>Phone full. Not saved.</AlertTitle>
+        <AlertDescription className="space-y-2">
+          {full.removable === null ? (
+            <>
+              <p>Delete a session you don&apos;t need, then try again.</p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void deviceStorage.settle()}
+              >
+                OK
+              </Button>
+            </>
+          ) : (
+            <RemoveOffer key={full.removable.id} session={full.removable} />
+          )}
+        </AlertDescription>
+      </Alert>
     </div>
   )
 }
