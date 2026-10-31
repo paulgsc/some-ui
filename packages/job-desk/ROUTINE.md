@@ -87,15 +87,34 @@ record (§9) and the summary (§10). Nothing ends a run before those two.
    so there is no older one to read or ask for. Fetch it from
    `index/items/<name>` as §2 fetches a decisions file, and check its
    `sha256`. A `404` means home put a newer one since the listing: list
-   again, once. It must be JSON with `"schema": "some-ui.routine-index/1"`
-   and `"routine": "jobs"`. It stands for this run when all of these hold:
+   again, once. It stands for this run when all of these hold:
 
-   - its `day` is today;
+   - it is JSON with `"schema": "some-ui.routine-index/1"` and
+     `"routine": "jobs"`;
+   - its `day` (when home computed it) is today or earlier, and today is no
+     later than its `validThrough`, the last day its queue holds before an
+     open pick lapses; a `validThrough` of `null` means no open pick can
+     lapse, so it holds on any later day. Home puts a new index only when
+     something arrives or a pick lapses, so an index from an earlier day is
+     the usual case, not a stale one;
    - every `digest-*.json` in `Brief/` is in its `from.digests`, every file
      in `Decisions/` in its `from.decisions`, and every file in `Scout/` in
      its `from.scout` (list the three folders; download nothing). Home holds
      only what the phone sent it and what the mailbox carried, so a file
      only Drive has is one the index could not count.
+
+   Don't judge these by eye. Save the index, and the three folders' file
+   names as `{"brief":[…],"decisions":[…],"scout":[…]}`, in the scratch
+   folder, and from the repo root run:
+
+   ```sh
+   pnpm --filter @some-ui/job-desk build
+   pnpm --filter @some-ui/job-desk stands --day <today> <scratch>/index.json <scratch>/drive.json
+   ```
+
+   It prints `stands`, `why` (each reason it doesn't, in my terms), and
+   what Drive holds that the index lacks: `digests` and `backfill` to put
+   back (below), and `later`, which waits on the phone.
 
    For each file Drive holds that the index lacks, put it back for home to
    count, once, its bytes exactly as Drive holds them, as §8.6 puts today's
@@ -104,15 +123,16 @@ record (§9) and the summary (§10). Nothing ends a run before those two.
    it in within 15 minutes, so the next run's index counts it; the mailbox
    holds a name for good, so put it once and never again.
 
-   - **A digest** in `Brief/`: always.
-   - **A decisions or scouts file from before the mailbox**, one named for a
-     day before 2026-10-23 (`decisions-2026-10-20.json`,
+   - **A digest** in `Brief/` (its `digests`): always.
+   - **A decisions or scouts file from before the mailbox** (its
+     `backfill`), one named for a day before 2026-10-23 (`decisions-2026-10-20.json`,
      `scouts-20261021T101500.json`): the one-time backfill I agreed to
      (https://github.com/paulgsc/server/issues/509#issuecomment-6547096403).
      The mailbox takes these names in `brief` only for a day before it
      opened, so the backfill ends by itself once Drive's old files are in.
      Home counts them as mine and names them in `from.backfill`.
-   - **A decisions or scouts file named for 2026-10-23 or later** is one
+   - **A decisions or scouts file named for 2026-10-23 or later** (its
+     `later`) is one
      the phone kept off home, because it names a voice note. The mailbox
      refuses it (`422`), so don't put it: the phone sends these itself once
      #2177 lands. While one is in Drive and not in the index, the index
@@ -182,7 +202,8 @@ and nothing below is downloaded or compared to work it out:
   `transcript` of `null` its last paragraph's. Don't list the `transcript`
   folder to find them.
 - **The queue** is its `queue`, exactly what step 1 of "The queue" would
-  print, for `day`: `open` (each pick with its `day`, `pickId`, `track`,
+  print for today (any day from its `day` through its `validThrough` gives
+  the same): `open` (each pick with its `day`, `pickId`, `track`,
   `fingerprint`, `title`, `company` and `applyUrl`), `lapsed` and `free`.
   Files that don't read as their schema are in `skipped`: name them in the
   summary.

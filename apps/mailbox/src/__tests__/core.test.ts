@@ -907,6 +907,7 @@ describe("home's indexes", () => {
     schema: "some-ui.routine-index/1",
     routine: "jobs",
     day: "2026-10-31",
+    validThrough: "2026-11-01",
     asOf: "2026-10-31T14:45:02.118Z",
     from: {
       digests: ["digest-2026-10-30.json"],
@@ -1043,6 +1044,15 @@ describe("home's indexes", () => {
         error: "day must be the day the index is for",
       })
     }
+    for (const validThrough of ["2026-10-30", "tomorrow", 3, "2026-02-30x"]) {
+      expect(await refused({ ...JOBS, validThrough })).toEqual({
+        error: "validThrough must be a day from day on, or null",
+      })
+    }
+    const { validThrough: _v, ...unbounded } = JOBS
+    expect(await refused(unbounded)).toEqual({
+      error: "the jobs index carries validThrough",
+    })
     expect(await refused({ ...JOBS, asOf: "this morning" })).toEqual({
       error: "asOf must be when home last took in what the index counts",
     })
@@ -1052,9 +1062,16 @@ describe("home's indexes", () => {
     expect(await refused({ ...JOBS, notes: {} })).toEqual({
       error: "notes must be a list",
     })
-    // Home's first index, before it holds anything: no asOf.
+    // Home's first index, before it holds anything: no asOf, and with no
+    // open pick nothing can lapse.
     expect(
-      (await asHome(d, NAME, JSON.stringify({ ...JOBS, asOf: null }))).status
+      (
+        await asHome(
+          d,
+          NAME,
+          JSON.stringify({ ...JOBS, asOf: null, validThrough: null })
+        )
+      ).status
     ).toBe(201)
   })
 

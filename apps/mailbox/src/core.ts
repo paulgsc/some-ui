@@ -178,6 +178,7 @@ const JOBS_INDEX_KEYS: ReadonlySet<string> = new Set([
   "schema",
   "routine",
   "day",
+  "validThrough",
   "asOf",
   "from",
   "skipped",
@@ -218,6 +219,15 @@ function indexRefusal(
     Number.isNaN(Date.parse(body.day))
   ) {
     return "day must be the day the index is for"
+  }
+  if (
+    body.validThrough !== null &&
+    (typeof body.validThrough !== "string" ||
+      !DAY.test(body.validThrough) ||
+      Number.isNaN(Date.parse(body.validThrough)) ||
+      body.validThrough < body.day)
+  ) {
+    return "validThrough must be a day from day on, or null"
   }
   if (body.asOf !== null && !isInstant(body.asOf)) {
     return "asOf must be when home last took in what the index counts"

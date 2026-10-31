@@ -191,11 +191,15 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   than any word of speech. It cannot catch audio spelled some other way (a `\u`-escaped
   `data:`, say), or a bare Drive id in any field, which looks like any other id. **An index**
   is home's bookkeeping for one routine, deterministic from what home holds (paulgsc/server
-  `mailbox::index`, paulgsc/server#509): the same rows give the same bytes, so home puts a new
-  one only when it would differ from the last, and keeps no copy. Its `routine` names the routine, as the file's
+  `mailbox::index`, paulgsc/server#509): the same rows give the same bytes, and home keeps no
+  copy. Home puts a new one only when something it counts arrives or an open pick lapses: a
+  new day alone moves nothing else, so a day with neither puts none. Its `routine` names the routine, as the file's
   name does; `jobs` is the only one so far. The Jobs index is
-  `{"schema":"some-ui.routine-index/1","routine":"jobs","day","asOf","from","skipped","queue","new","notes","picked"}`:
-  `day`, the day in America/Los_Angeles it is for; `asOf`, when home last took in something it
+  `{"schema":"some-ui.routine-index/1","routine":"jobs","day","validThrough","asOf","from","skipped","queue","new","notes","picked"}`:
+  `day`, the day in America/Los_Angeles home computed it on; `validThrough`, the last day its
+  queue holds with nothing new arriving (the day before the first open pick no decision answers
+  would lapse), or `null` when no open pick can lapse, so it stands from `day` through
+  `validThrough`; `asOf`, when home last took in something it
   counts, or `null`; `from`, every digest, decisions and scouts file it was computed from, by
   name, and which of those decisions and scouts files came from the routine's backfill rather
   than from the phone (`{"digests","decisions","scout","backfill"}`); `skipped`, those that do not read as their schema;
@@ -207,7 +211,8 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   for it and the name and SHA-256 of its newest transcript here (`[{"file","in","note","transcript"}]`);
   and `picked`, every posting a digest picked or a decisions file names, by fingerprint.
   `packages/job-desk/ROUTINE.md` says how the routine reads it. The Worker holds its shape as it
-  holds a transcript's: those keys and no other, a `day` that is a date, an `asOf` that is an
+  holds a transcript's: those keys and no other, a `day` that is a date, a `validThrough` that
+  is a date no earlier than `day` or `null`, an `asOf` that is an
   instant or `null`, `from`, `queue` and `new` objects, `skipped`, `notes` and `picked` lists, a
   name that carries the body's `routine`, and no audio or Drive link, by the same tests, each
   refusal with its reason (`an index carries no audio` or `an index names no Drive file`).

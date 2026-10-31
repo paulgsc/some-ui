@@ -23,6 +23,8 @@ export type { Finding } from "./findings"
 export { digestFindings } from "./findings"
 export type { FingerprintInput } from "./fingerprint"
 export { fingerprint, role } from "./fingerprint"
+export type { DriveListing, IndexStanding } from "./home-index"
+export { indexStands, MAILBOX_OPENED } from "./home-index"
 export type { AdjacentFamily, Track } from "./policy"
 export {
   ADJACENT_FAMILIES,
