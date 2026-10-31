@@ -6,7 +6,12 @@ import type {
 } from "@soundbites/lib/idea/machine"
 import { apply, initialIdeaState, step } from "@soundbites/lib/idea/machine"
 import type { Idea } from "@soundbites/lib/idea/model"
-import { grows, openQuestion } from "@soundbites/lib/idea/model"
+import {
+  grows,
+  openQuestion,
+  waiting,
+  withReply,
+} from "@soundbites/lib/idea/model"
 import { describe, expect, it } from "vitest"
 
 const AT = "2026-10-30T10:00:00.000Z"
@@ -410,5 +415,66 @@ describe("catching an idea", () => {
     expect(next.state.idea).toBeNull()
     expect(screenOf(next.state)).toBe("ask:what:idle")
     expect(done.ideas[0] && openQuestion(done.ideas[0])).toBeNull()
+  })
+
+  it("asks Claude's questions about one idea only when opened on it (ST19)", () => {
+    const base = run([
+      ...OPENED,
+      tap({ type: "type" }),
+      tap({ type: "draft", text: "a short" }),
+      tap({ type: "save" }),
+    ]).ideas[0]
+    const asked =
+      base &&
+      withReply(base, { primer: null, ask: ["Which week?", "Why now?"] }, AT)
+    if (!asked) throw new Error("asked")
+    // New idea resumes at the idea's own next question, never Claude's.
+    expect(
+      screenOf(
+        run([...OPENED.slice(0, 1), { type: "listed", ideas: [asked] }]).state
+      )
+    ).toBe("ask:takeaway:idle")
+
+    const focused = run(
+      [
+        { type: "entered", at: AT },
+        { type: "listed", ideas: [asked] },
+        { type: "voiceChecked", available: true },
+        tap({ type: "talk" }),
+        {
+          type: "listened",
+          seq: 1,
+          result: { kind: "heard", words: "week 8" },
+        },
+        tap({ type: "right" }),
+        tap({ type: "skip" }),
+      ],
+      initialIdeaState("unused", "idea-1"),
+      [asked]
+    )
+    expect(screenOf(focused.state)).toBe("kept")
+    const kept = focused.ideas[0]
+    expect(kept?.answers.at(-1)).toEqual({
+      question: "ask-1",
+      versions: [{ at: AT, how: "heard", words: "week 8" }],
+    })
+    expect(kept?.passed).toEqual(["ask-2"])
+
+    // Skipped, it waits on nothing, and is still answered when asked for,
+    // as a skipped question of the idea's own is.
+    if (!kept) throw new Error("kept")
+    expect(waiting(kept)).toBe(0)
+    expect(
+      screenOf(step(focused.state, tap({ type: "answerSkipped" })).state)
+    ).toBe("ask:ask-2:idle")
+    const reopened = run(
+      [
+        { type: "entered", at: AT },
+        { type: "listed", ideas: [kept] },
+      ],
+      initialIdeaState("unused", "idea-1"),
+      [kept]
+    )
+    expect(screenOf(reopened.state)).toBe("ask:ask-2:idle")
   })
 })

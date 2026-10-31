@@ -9,7 +9,8 @@ import type { Look, Voice } from "@some-ui/video-render"
 import type { RecordingFailure } from "@some-ui/voice-capture"
 import { RECORDING_FAILURE_COPY } from "@some-ui/voice-capture"
 import { formatDuration } from "@soundbites/lib/format"
-import type { QuestionId } from "@soundbites/lib/idea/model"
+import type { IdeaStage, QuestionId } from "@soundbites/lib/idea/model"
+import type { ShelfNotice } from "@soundbites/lib/idea/shelf"
 
 /** How a sitting went, as the person answers it. */
 export type Went = "smooth" | "snags" | "rough"
@@ -134,7 +135,7 @@ export const STUDIO_WORDS = {
       },
       scenes: {
         title: "Claude turns it into scenes",
-        line: "Ask Claude in a session. The scenes to record arrive in your Drive.",
+        line: "From Your ideas, share the idea with Claude. Claude's scenes come back to it, and the video starts from them.",
       },
       sittings: {
         title: "Record, Watch, Shape, Finish",
@@ -150,6 +151,9 @@ export const STUDIO_WORDS = {
       "Claude's version of this video, or the scenes for a new one.",
     sentProblem:
       "That isn't something Claude made for Studio, or part of it is missing. Ask Claude for it again.",
+    /** Claude's reply about an idea, picked here instead of on the idea (ST19). */
+    ideaReply:
+      "That's Claude's reply about one of your ideas. Open it from the idea, in Your ideas.",
     startHere: "Start here",
     others: "Other videos with takes on the phone",
     onPhone: (n: number): string =>
@@ -481,6 +485,93 @@ export const STUDIO_WORDS = {
       `Answer the ${n === 1 ? "one" : n} you skipped last time`,
     another: "Another idea",
     back: "Back to Studio",
+  },
+
+  /**
+   * The idea shelf (ST19): every idea kept, and one at a time moved on a
+   * step, from just the idea to a video, or set aside, never let go.
+   */
+  shelf: {
+    heading: "Your ideas",
+    open: "Your ideas",
+    openLine: "Every idea you caught, and where each one is.",
+    unreadable:
+      "The ideas kept on this phone couldn't be read, so none can be shown yet.",
+    none: "No ideas kept yet. Catch one with New idea, the moment it comes.",
+    stage: {
+      idea: "Just the idea",
+      fleshed: "Fleshed out",
+      video: "A video",
+      aside: "Set aside",
+    } satisfies Record<IdeaStage, string>,
+    waiting: (n: number): string =>
+      `Claude asked ${n === 1 ? "a question" : `${n} questions`}`,
+    asideCount: (n: number): string => `Set aside · ${n}`,
+    showAll: "Back to your ideas",
+    openIdea: "Open",
+    yourAnswers: "Your answers",
+    claudeAsked: "Claude asked",
+    notAnswered: "Not answered yet",
+    skipped: "Skipped",
+    share: "Share with Claude",
+    sharing: "Preparing…",
+    /** What the share sheet calls what goes out. */
+    shareTitle: "Studio idea",
+    shareLine:
+      "Your answers, as text, for Claude to turn into scenes. Then ask Claude in a session, and open what Claude sends back here.",
+    shareAgainLine:
+      "You've answered since Claude last saw it. Share it with Claude again.",
+    openReply: "Open what Claude made of it",
+    openReplyHint:
+      "The scenes Claude made from your answers, or Claude's questions about the idea.",
+    answer: (n: number): string =>
+      `Answer Claude's ${n === 1 ? "question" : `${n} questions`}`,
+    answerLine: "By voice or typed, one at a time, like the idea itself.",
+    scenes: (n: number): string => `Claude's scenes · ${n}`,
+    fromYou: "From your answers",
+    fromClaude: "Claude's own idea",
+    make: "Make this a video",
+    making: "Making it…",
+    makeLine:
+      "Starts a video in Studio with these scenes as its first version, linked back to this idea.",
+    openVideo: "Open it in Studio",
+    videoLine: "A video in Studio began with this idea.",
+    setAside: "Set it aside",
+    setAsideLine: "It stays kept, out of the way. Bring it back any time.",
+    bringBack: "Bring it back",
+    back: "Your ideas",
+    backToIdea: "Back to the idea",
+    answered:
+      "Claude's questions are answered and kept as text on this phone. Share the idea with Claude again.",
+    /** Claude's questions met, `n` of them skipped (ST19). */
+    answeredSkipping: (n: number): string =>
+      `Your answers are kept as text on this phone. ${n === 1 ? "The question you skipped stays" : `The ${n} you skipped stay`} with the idea, to answer any time.`,
+    askedOf: (n: number, of: number): string =>
+      `Claude's question ${n} of ${of}`,
+    askedHint: "Claude asked this about your idea.",
+    firstVersion: (title: string): string => `From your idea: ${title}`,
+    /** In place of Make this a video while the phone's videos can't be read. */
+    videosUnread:
+      "The videos on this phone couldn't be read, so whether this idea is one yet isn't known. Read them again.",
+    notice: {
+      notKept: "That couldn't be kept on this phone, so nothing changed.",
+      notReply:
+        "That isn't Claude's reply about an idea. Ask Claude for it again.",
+      otherIdea:
+        "That's Claude's reply about another idea. Open it from that idea.",
+      wrongReply:
+        "Part of Claude's reply is missing, or it cites answers this idea doesn't have. Ask Claude for it again.",
+      unreadableFile: "That couldn't be opened. Pick it again.",
+      replied: "Claude's scenes are kept with the idea.",
+      alreadyKept: "That's kept with the idea already, so nothing changed.",
+
+      asked:
+        "Claude's questions are kept with the idea. Answer them when you're ready.",
+      made: "It's a video now, in Studio. The idea and every answer stay here.",
+      notMade: "The video couldn't be started, so nothing changed. Try again?",
+      aside: "Set aside. It stays kept.",
+      back: "Back with your ideas.",
+    } satisfies Record<ShelfNotice, string>,
   },
 
   /** Where things stand, from the last sitting's log. */

@@ -20,17 +20,22 @@ export type WingLink = (props: {
   children: ReactNode
 }) => ReactNode
 
-type StudioHomeProps = Omit<StudioProps, "newIdea"> & {
+type StudioHomeProps = Omit<StudioProps, "newIdea" | "ideas"> & {
   /** The link to New idea. */
   ideaLink: WingLink
+  /** The link to Your ideas. */
+  ideasLink: WingLink
 }
 
 /**
  * The wing's Home: Studio, with the way in to New idea (ST18) as the big
- * button on a Start with no video and a quiet link once there is one.
+ * button on a Start with no video and a quiet link once there is one, and
+ * the way to Your ideas (ST19) as the loop's second step and a quiet link
+ * beside it.
  */
 export const StudioHome = ({
   ideaLink: IdeaLink,
+  ideasLink: IdeasLink,
   ...studio
 }: StudioHomeProps): JSX.Element => (
   <div className="mx-auto flex w-full max-w-md flex-col gap-4">
@@ -55,6 +60,23 @@ export const StudioHome = ({
           <IdeaLink className="text-muted-foreground underline">
             {WORDS.idea.newIdea}
           </IdeaLink>
+        ),
+      }}
+      ideas={{
+        step: (
+          <IdeasLink className="bg-card border-border/60 focus-visible:ring-ring rounded-2xl border px-4 py-3 focus-visible:ring-2 focus-visible:outline-none">
+            <span className="block text-base font-extrabold">
+              {WORDS.shelf.open}
+            </span>
+            <span className="text-muted-foreground block text-sm">
+              {WORDS.shelf.openLine}
+            </span>
+          </IdeasLink>
+        ),
+        quiet: (
+          <IdeasLink className="text-muted-foreground underline">
+            {WORDS.shelf.open}
+          </IdeasLink>
         ),
       }}
     />

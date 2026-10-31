@@ -130,12 +130,17 @@ function anchorTo(href: string): WingLink {
 }
 
 const IDEA_LINK = anchorTo("#idea")
+const IDEAS_LINK = anchorTo("#ideas")
 const STUDIO_LINK = anchorTo("#studio")
 
 /** The Studio wing's Home on `projects`. */
 function studioOn(projects: ReadonlyArray<Project>): () => JSX.Element {
   const StudioFixture = (): JSX.Element => (
-    <StudioHome ports={studioPorts(projects)} ideaLink={IDEA_LINK} />
+    <StudioHome
+      ports={studioPorts(projects)}
+      ideaLink={IDEA_LINK}
+      ideasLink={IDEAS_LINK}
+    />
   )
   return StudioFixture
 }

@@ -1,5 +1,7 @@
 export { IdeaCapture } from "./components/idea"
 export type { IdeaCaptureProps } from "./components/idea"
+export { IdeaShelf } from "./components/idea-shelf"
+export type { IdeaShare, IdeaShelfProps } from "./components/idea-shelf"
 export type { Listened } from "./lib/idea/machine"
 export type { IdeaListener, Listening } from "./lib/idea/runtime"
 export { Studio } from "./components/studio"

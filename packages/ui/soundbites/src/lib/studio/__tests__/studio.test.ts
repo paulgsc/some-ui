@@ -19,7 +19,11 @@ import type { CutListShape, Project } from "@soundbites/lib/project/model"
 import { latest, newProject, primerAt } from "@soundbites/lib/project/model"
 import { cutListOf, TAIL_MS } from "@soundbites/lib/project/script"
 import type { Speaking } from "@soundbites/lib/studio/machine"
-import { projectOf } from "@soundbites/lib/studio/machine"
+import {
+  initialStudioState,
+  projectOf,
+  step,
+} from "@soundbites/lib/studio/machine"
 import type { StudioRuntime } from "@soundbites/lib/studio/runtime"
 import { createStudio } from "@soundbites/lib/studio/runtime"
 import { keptTimeLog } from "@soundbites/lib/studio/time-store"
@@ -352,6 +356,58 @@ describe("what Claude sent that doesn't read as scenes", () => {
     expect(runtime.getSnapshot().primerProblem).toBe(
       STUDIO_WORDS.start.sentProblem
     )
+  })
+
+  it.each([
+    [
+      "Claude's reply about an idea",
+      '{"schema":"some-ui.studio-idea-reply/1","idea":"idea-1","ask":["?"]}',
+    ],
+    [
+      "scenes naming an idea, citing its answers",
+      PRIMER_TEXT.replace(/^\{/, '{"idea":"idea-1",'),
+    ],
+  ])(
+    "points %s to the idea it belongs to, starting nothing (ST19)",
+    async (_, text) => {
+      const memory = memoryProjectStore()
+      const runtime = studio(memory)
+      await until(runtime, (state) => state.shelf.kind === "read")
+      runtime.dispatch({ type: "primerPicked", file: new Blob([text]) })
+      await until(runtime, (state) => state.primerProblem !== null)
+      expect(runtime.getSnapshot().primerProblem).toBe(
+        STUDIO_WORDS.start.ideaReply
+      )
+      expect(memory.projects.size).toBe(0)
+    }
+  )
+})
+
+describe("which video Studio opens on", () => {
+  it("is the one asked for when it is on the phone, else the one touched last (ST19)", () => {
+    const made = (id: string, at: string): Project =>
+      newProject(id, {
+        author: "claude",
+        message: "Primer",
+        at,
+        cutList: cutListOf(primer()),
+        primer: primer(),
+      }).project
+    const projects = [
+      made("older", AT),
+      made("newer", "2026-10-31T09:00:00.000Z"),
+    ]
+    const opensOn = (open?: string): string | null =>
+      step(initialStudioState(open), {
+        type: "listed",
+        seq: 0,
+        projects,
+        notices: [],
+        roomBytes: 0,
+      }).state.current
+    expect(opensOn("older")).toBe("older")
+    expect(opensOn()).toBe("newer")
+    expect(opensOn("gone")).toBe("newer")
   })
 })
 

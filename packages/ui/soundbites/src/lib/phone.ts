@@ -12,6 +12,7 @@ import {
 
 import type { IdeaPorts } from "./idea/runtime"
 import { NO_LISTENER } from "./idea/runtime"
+import type { ShelfPorts } from "./idea/shelf-runtime"
 import { keptIdeaStore } from "./idea/store"
 import { SOUNDBITE_BITS_PER_SECOND } from "./policy"
 import type { ProjectStore } from "./project/store"
@@ -69,5 +70,15 @@ export function phoneIdeaPorts(): IdeaPorts {
     now: () => Date.now(),
     newId: () => crypto.randomUUID(),
     onVisibility: onPageVisibility,
+  }
+}
+
+/** The idea shelf (ST19): the ideas kept, and the phone's videos. */
+export function phoneShelfPorts(): ShelfPorts {
+  return {
+    ideas: keptIdeaStore(),
+    projects: phoneProjectStore(),
+    now: () => Date.now(),
+    readText: (file) => file.text(),
   }
 }
