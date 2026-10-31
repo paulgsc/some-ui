@@ -18,7 +18,6 @@ import {
   kitOf,
   openOf,
   progressOf,
-  releasedVoice,
   RUNS_KEPT,
   standingOf,
   step,
@@ -539,36 +538,6 @@ describe("a pick left untouched (J5)", () => {
   it("never lapses once taken", () => {
     const taken = record(opened, { type: "taken", ...ref() })
     expect(openOf(taken, "2026-11-30").map((o) => o.pick.id)).toEqual([SW.id])
-  })
-})
-
-describe("releasedVoice", () => {
-  const share = (state: JobsState, voice: ReadonlyArray<string>): JobsState =>
-    record(state, {
-      type: "shared",
-      kind: "decisions",
-      day: DAY,
-      file: "decisions.json",
-      through: state.log.length,
-      voice,
-    })
-
-  it("lets go of a note a later decision replaced, once a later share arrives", () => {
-    let state = record(opened, {
-      type: "passed",
-      ...ref(),
-      reasons: [],
-      note: "",
-      voice: ["v1"],
-    })
-    // Shared with v1, never confirmed; then taken, so the next share omits it.
-    state = share(state, ["v1"])
-    state = record(state, { type: "taken", ...ref() })
-    expect(releasedVoice(state)).toEqual(new Set())
-    state = share(state, [])
-    expect(releasedVoice(state)).toEqual(new Set())
-    state = record(state, { type: "arrived", shareId: state.log.at(-1)!.id })
-    expect(releasedVoice(state)).toEqual(new Set(["v1"]))
   })
 })
 

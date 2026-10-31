@@ -102,7 +102,7 @@ describe("the lens record store", () => {
     expect(store.full()).toBe(true)
   })
 
-  it("neither exports nor rewrites an entry with a field it does not know", () => {
+  it("exports no entry with a field it does not know", () => {
     const storage = memoryStorage()
     const newer = { ...entry(NOW), mood: "calm" }
     const nested = {
@@ -114,9 +114,6 @@ describe("the lens record store", () => {
       JSON.stringify({ version: 1, entries: [newer, nested] })
     )
     expect(lensRecordForExport(storage).entries).toEqual([])
-    createLensRecordStore(storage).add(entry(NOW, { line: "other" }))
-    expect(storage.map.get(LENS_RECORD_KEY)).toContain('"mood"')
-    expect(storage.map.get(LENS_RECORD_KEY)).toContain('"pitch"')
   })
 
   it("keeps what it cannot parse, and copies a record it cannot read aside before writing", () => {

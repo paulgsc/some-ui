@@ -1,8 +1,7 @@
 /**
  * The learner's takes of grammar-lens lines, on the phone (adaptive-learning
  * canon Rem. 4.16): a desk of takes (`lib/takes-desk`), at most forty, each
- * at most thirty seconds. They stay on the phone: an export is a copy (LG1).
- * Phone-only (`build.paths.ts`).
+ * at most thirty seconds. Phone-only (`build.paths.ts`).
  */
 import { takesDesk } from "@/lib/takes-desk"
 

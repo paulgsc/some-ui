@@ -28,8 +28,7 @@ export function goingOut(counts: {
 /**
  * The question after a share: Android says "shared" once an app is picked,
  * even if the person backs out of it, so `what` counts as shared only on
- * their word. Nothing leaves the phone for it (LG1, HF1 #2176): a Drive
- * copy is a copy.
+ * their word.
  */
 export function arrived(
   what: string,

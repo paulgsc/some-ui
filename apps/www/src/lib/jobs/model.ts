@@ -247,6 +247,11 @@ export type JobsAction =
     }
   | { type: "voice-kept"; note: VoiceNote }
   | { type: "voice-dropped"; ids: ReadonlyArray<string> }
+  /**
+   * Home holds these notes, so their audio leaves the phone and their
+   * entries go with it; the log still names them.
+   */
+  | { type: "voice-held"; ids: ReadonlyArray<string> }
   /** `since`, for a share: where its file began (`carried`). */
   | { type: "record"; event: Draft; stamp: Stamp; since?: number }
   /** Several events kept together, or none if any doesn't fit. */
@@ -487,6 +492,10 @@ export function step(state: JobsState, action: JobsAction): JobsState {
       const voice = state.voice.filter(
         (n) => keep.has(n.id) || !action.ids.includes(n.id)
       )
+      return voice.length === state.voice.length ? state : { ...state, voice }
+    }
+    case "voice-held": {
+      const voice = state.voice.filter((n) => !action.ids.includes(n.id))
       return voice.length === state.voice.length ? state : { ...state, voice }
     }
     case "record": {
@@ -1006,29 +1015,6 @@ export function sharesOn(
   return state.log.filter(
     (e) => e.type === "shared" && e.kind === kind && e.day === day
   ).length
-}
-
-/**
- * Voice ids a share that arrived in Drive covers, which no later share
- * sends again: each one an event names before the last share of its kind
- * that arrived. Such a note either went out in a share that arrived, or
- * belongs to a pass, fit note or debrief a later decision replaced. Its
- * audio stays until home holds it (LG1).
- */
-export function releasedVoice(state: JobsState): ReadonlySet<string> {
-  const through = {
-    decisions: deliveredThrough(state, "decisions"),
-    scouts: deliveredThrough(state, "scouts"),
-  }
-  const ids = new Set<string>()
-  state.log.forEach((e, i) => {
-    const covered =
-      e.type === "scout"
-        ? i < through.scouts
-        : carriesPickVoice(e) && i < through.decisions
-    if (covered && "voice" in e) for (const id of e.voice) ids.add(id)
-  })
-  return ids
 }
 
 /**

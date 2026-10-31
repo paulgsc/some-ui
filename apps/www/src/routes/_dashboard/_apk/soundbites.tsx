@@ -4,7 +4,7 @@ import type { SoundbiteSituation, SoundbiteSource } from "@some-ui/soundbites"
 import { phoneSoundbiteStore, Soundbites } from "@some-ui/soundbites"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
-import { handOffExport, shareAgentExport } from "@/lib/agent-export"
+import { handOff, shareAgentExport } from "@/lib/agent-export"
 import { useArrivalKey } from "@/lib/arrival-key"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
@@ -81,7 +81,7 @@ const ShareWithAgent = ({ taking }: { taking: boolean }): JSX.Element => {
       leetypeTakes: result.leetype.takes.length,
     })
     if (result.outcome !== "shared" || going === "") return
-    ask(arrived(`the ${going}`, "Not yet", () => handOffExport(result)))
+    ask(arrived(`the ${going}`, "Not yet", () => handOff(result.sent)))
   })
   return (
     <section className="space-y-2">

@@ -10,7 +10,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
   arrivals,
   handOff,
-  handOffExport,
   shareAgentExport,
   shareReflections,
 } from "@/lib/agent-export"
@@ -211,7 +210,7 @@ beforeEach(() => {
 })
 
 describe("shareReflections", () => {
-  it("shares one file per session named for it, its voice notes beside it, and keeps them until handed off", async () => {
+  it("shares one file per session named for it, its voice notes beside it, and keeps them once handed off (LG1)", async () => {
     seedStop(stopRecord(0, { sessionId: "s1-0000000000", reason: "break" }))
     seedStop(stopRecord(0, { sessionId: "another-session" }))
     storeEffect({ kind: "count", sessionId: "s1-0000000000", path: "glances" })
@@ -250,7 +249,6 @@ describe("shareReflections", () => {
     // Android says "shared" once an app is picked: nothing goes on that.
     expect(reflections.getSnapshot().kept).toHaveLength(3)
 
-    // LG1: the hand-off marks the session shared and lets nothing go.
     handOff(["v1", "t1"], NOW())
     expect(reflections.getSnapshot().kept).toHaveLength(3)
     expect(removedAudio).not.toHaveBeenCalled()
@@ -328,7 +326,7 @@ describe("shareReflections", () => {
 })
 
 describe("shareAgentExport", () => {
-  it("shares context.json with each session's reflections nested, and every recording, keeping them until handed off", async () => {
+  it("shares context.json with each session's reflections nested, and every recording, keeping them once handed off (LG1)", async () => {
     seedStop(stopRecord(0, { reason: "focus", outcome: "done" }))
     storeEffect({ kind: "count", sessionId: "s1-0000000000", path: "opens" })
     storeEffect({ kind: "count", sessionId: "gone-session", path: "glances" })
@@ -436,9 +434,7 @@ describe("shareAgentExport", () => {
     // The record first: a take kept in between stays with its rewritten entry.
     expect(lensReads.slice(-2)).toEqual(["record", "takes"])
 
-    // LG1: the export arriving lets nothing go; the reflections read as
-    // shared, and everything stays on the phone.
-    handOffExport(result, NOW())
+    handOff(result.sent, NOW())
     expect(reflections.getSnapshot().kept.map((r) => r.id)).toEqual([
       "t2",
       "t1",
@@ -449,16 +445,13 @@ describe("shareAgentExport", () => {
     )
   })
 
-  it("hands off soundbites alone when no reflection went out", async () => {
+  it("shares soundbites alone when no reflection went out", async () => {
     reflections.letGo(["v1", "t1", "t2"])
     const result = await shareAgentExport(soundbites, NOW)
     expect(result).toMatchObject({ sent: [], soundbites: ["b1"] })
     expect(
       JSON.parse(written.get("agent-export/context.json") ?? "null")
     ).toMatchObject({ leetypeSessions: [], leetypeRoundLedger: null })
-
-    handOffExport(result, NOW())
-    expect(result.soundbites).toEqual(["b1"])
   })
 
   it("names no file for a recording whose audio is gone", async () => {

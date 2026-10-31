@@ -106,13 +106,12 @@ export function createSceneVoice(ports: SceneVoicePorts): SceneVoice {
     stop: note.stop,
     leave: note.leave,
     remove,
-    letGoHeld: (held): number => {
+    letGo(homeHolds): void {
       const ids = ports.notes
         .read()
         .map(({ id }) => id)
-        .filter((id) => held.has(id))
+        .filter((id) => homeHolds.has(id))
       if (ids.length > 0) remove(ids)
-      return ids.length
     },
   }
 }

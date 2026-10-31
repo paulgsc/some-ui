@@ -10,8 +10,7 @@
  * them, one file per session named for it with that session's stops and path
  * counts and the practice record, each voice note beside its file. Either way, the
  * reflections that went out read as shared once the person says they arrived
- * (`arrivals`, `handOff`); nothing leaves the phone for a share (LG1): the
- * files are copies for the agent to act on.
+ * (`arrivals`, `handOff`).
  *
  * Phone-only: rendered only in the device build, so no other profile ships it
  * (`build.paths.ts`).
@@ -337,8 +336,8 @@ function timeZone(): string {
 /**
  * What a share put in front of the share sheet. `shared` is only what the
  * sheet says: Android reports it once the person picks an app, even if they
- * then back out of it, so the reflections in `sent` stay on the phone until
- * the person says they arrived (`handOff`).
+ * then back out of it, so the sessions of the reflections in `sent` read as
+ * shared only once the person says they arrived (`handOff`).
  */
 export type ShareResult = {
   outcome: "shared" | "cancelled"
@@ -361,11 +360,9 @@ export type AgentExportResult = ShareResult & {
   }
 }
 
-type Sent = Pick<AgentExportResult, "sent">
-
 /**
- * The person says these arrived: their sessions read as shared. They stay
- * on the phone (LG1); no route takes a written reflection home yet (#2178).
+ * The person says these arrived: their sessions read as shared. No route
+ * takes a written reflection home yet (#2178).
  */
 export function handOff(ids: ReadonlyArray<string>, at = new Date()): void {
   const sent = new Set(ids)
@@ -373,17 +370,7 @@ export function handOff(ids: ReadonlyArray<string>, at = new Date()): void {
     .getSnapshot()
     .kept.filter((r) => sent.has(r.id))
     .map((r) => r.sessionId)
-  reflections.markShared(sessionIds, at)
-}
-
-/**
- * The person says the whole export arrived: its reflections' sessions read
- * as shared (`handOff`), and everything in it stays on the phone (LG1); no
- * route takes the soundbites, grammar-lens entries and takes or LeetType's
- * answers and takes home yet (#2180).
- */
-export function handOffExport({ sent }: Sent, at = new Date()): void {
-  if (sent.length > 0) handOff(sent, at)
+  if (sessionIds.length > 0) reflections.markShared(sessionIds, at)
 }
 
 export type ReflectionPick = {
@@ -581,14 +568,14 @@ export async function shareAgentExport(
     ]),
   })
   // Every bite listed went out: its audio beside it, or `file: null` for
-  // audio already gone, which leaves nothing on the phone worth keeping.
+  // audio already gone.
   return {
     outcome,
     sent,
     soundbites: bites.map((bite) => bite.id),
     lens: lens?.entries ?? [],
-    // Likewise every take listed: its audio beside it, or none left to keep;
-    // never one whose audio could not be read, which may still be there.
+    // Likewise every take listed, but never one whose audio could not be
+    // read, which may still be on the phone, unsent.
     takes: (takes ?? []).flatMap(({ take, read }) => (read ? [take.id] : [])),
     leetype: {
       notes: (leetype?.notes ?? []).map(({ id }) => id),

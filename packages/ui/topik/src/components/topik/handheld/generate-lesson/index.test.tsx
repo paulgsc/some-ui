@@ -187,7 +187,7 @@ describe("GenerateLesson's spoken scene", () => {
       start: vi.fn(),
       stop: vi.fn(),
       leave: vi.fn(),
-      letGoHeld: vi.fn(() => 0),
+      letGo: vi.fn(),
       remove: vi.fn((ids: ReadonlyArray<string>) => {
         snapshot = {
           ...snapshot,
@@ -217,7 +217,7 @@ describe("GenerateLesson's spoken scene", () => {
       expect.objectContaining({ voiceNotes: named.map(({ name }) => name) })
     )
     // A Drive share is a copy: nothing asks whether it arrived, and the
-    // notes stay until home holds them (LG1, HF1 #2176).
+    // notes stay until home holds them.
     await screen.findByText(/Share the next scene's prompt/)
     expect(screen.queryByText(/reach your drive/)).toBeNull()
     expect(draft.remove).not.toHaveBeenCalled()
