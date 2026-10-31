@@ -24,8 +24,8 @@ import { assertNever, mentionsWord } from "@some-ui/core-utils"
  * and its correct option applies no other. `response-without-return` is
  * Prop. 9.1's follow-up per response (Rem. 9.6, Rem. 11.9): a round any of
  * whose returns names the response it follows (`returnFor`) has a return for
- * each response its options allow. It checks that the returns exist, not
- * which reading leads to which.
+ * each response its options allow; `mismatched-return-for` names a response
+ * its round cannot produce, or returns a screen that is not a round.
  *
  * Rem. 10.3 (5) spans files, so it is not here: `negativeDiscriminationGaps`
  * takes the whole set.
@@ -44,6 +44,7 @@ type SessionFileFindingCode =
   | "round-without-rule"
   | "correct-applies-other-rule"
   | "response-without-return"
+  | "mismatched-return-for"
 
 export type SessionFileFinding = {
   readonly code: SessionFileFindingCode
@@ -193,7 +194,6 @@ function alwaysReachesReading(
   return walk(start)
 }
 
-/** Each round's returns, by the round they return (`returnOf`). */
 function returnsByRound(file: SessionFile): Map<string, Array<string>> {
   const returns = new Map<string, Array<string>>()
   for (const [id, screen] of Object.entries(file.screens)) {
@@ -238,23 +238,16 @@ function responsesOf(round: ChoiceScreen): Array<ResponseKind> {
   return kinds
 }
 
-/**
- * Rounds whose returns name no response they follow: one return for every
- * struggle, which meets Def. 9.4 and not Prop. 9.1 (Rem. 9.6). The lint
- * checks a round's returns per response once one names its response, so a
- * file written before `returnFor` (Rem. 11.9) keeps passing; this lists
- * what that leaves unchecked.
- */
-export function roundsWithUnnamedReturns(file: SessionFile): Array<string> {
-  return [...returnsByRound(file)]
-    .filter(([id, returns]) => {
-      const round = file.screens[id]
-      return (
-        round !== undefined &&
-        isRound(round) &&
-        namedResponses(file, returns).size === 0
-      )
-    })
+/** Rounds, returns aside, that no return names a response for: Rem. 11.9 leaves them unchecked. */
+export function roundsWithoutNamedReturns(file: SessionFile): Array<string> {
+  const returns = returnsByRound(file)
+  return Object.entries(file.screens)
+    .filter(
+      ([id, screen]) =>
+        isRound(screen) &&
+        screen.returnOf === undefined &&
+        namedResponses(file, returns.get(id) ?? []).size === 0
+    )
     .map(([id]) => id)
 }
 
@@ -299,6 +292,22 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
       for (const rule of new Set(cited)) {
         const why = rule === undefined ? null : unregistered(rule)
         if (why !== null) add("unregistered-rule", id, why)
+      }
+      if (screen.returnFor !== undefined && screen.returnOf !== undefined) {
+        const round = file.screens[screen.returnOf]
+        if (round === undefined || !isRound(round)) {
+          add(
+            "mismatched-return-for",
+            id,
+            `names the response it follows, but ${screen.returnOf} is not a round (Prop. 9.1, Rem. 11.9)`
+          )
+        } else if (!responsesOf(round).includes(screen.returnFor)) {
+          add(
+            "mismatched-return-for",
+            id,
+            `follows "${screen.returnFor}", which ${screen.returnOf}'s options cannot produce (Prop. 9.1, Rem. 11.9)`
+          )
+        }
       }
     }
 
@@ -369,7 +378,7 @@ export function lintSessionFile(file: SessionFile): Array<SessionFileFinding> {
           add(
             "response-without-return",
             id,
-            `no return names ${missing.map((kind) => `"${kind}"`).join(", ")} in \`returnFor\`; each response gets its own follow-up (Prop. 9.1, Rem. 9.6)`
+            `no return names ${missing.map((kind) => `"${kind}"`).join(", ")} in \`returnFor\`; each response gets its own follow-up (Prop. 9.1, Rem. 11.9)`
           )
         }
       }

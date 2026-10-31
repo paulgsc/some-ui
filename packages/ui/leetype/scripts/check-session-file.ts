@@ -8,18 +8,14 @@
  * negative-discrimination round is reported. That obligation is the whole
  * corpus's, which one thread does not meet alone, so the gaps fail the run
  * only with `--corpus` (the files given are the whole corpus).
- *
- * A round whose returns name no response they follow (`returnFor`) is listed
- * too, without failing the run: the lint checks Prop. 9.1's return per
- * response only where a return names one (Rem. 11.9), so this shows what a
- * file written before the field leaves unchecked.
+ * Rounds Rem. 11.9 leaves unchecked for Prop. 9.1 are listed without failing.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import path from "node:path"
 import {
   lintSessionFile,
   negativeDiscriminationGaps,
-  roundsWithUnnamedReturns,
+  roundsWithoutNamedReturns,
 } from "@leetype/lib/leetype/session-file"
 import type { SessionFile } from "@leetype/types/session-file"
 import { SessionFileSchema } from "@leetype/types/session-file"
@@ -50,10 +46,10 @@ function check(file: string): { parsed: SessionFile | null; problems: number } {
       `${file}: ${finding.screen}: ${finding.code}: ${finding.message}`
     )
   }
-  const unnamed = roundsWithUnnamedReturns(parsed.data)
-  if (unnamed.length > 0) {
+  const unchecked = roundsWithoutNamedReturns(parsed.data)
+  if (unchecked.length > 0) {
     console.log(
-      `${file}: Prop. 9.1 unchecked: the returns of ${unnamed.join(", ")} name no response they follow (\`returnFor\`, Rem. 9.6).`
+      `${file}: unchecked: no return names a response it follows (\`returnFor\`) for ${unchecked.join(", ")} (Prop. 9.1, Rem. 11.9).`
     )
   }
   return { parsed: parsed.data, problems: findings.length }

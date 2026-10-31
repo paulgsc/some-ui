@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 import {
   lintSessionFile,
   negativeDiscriminationGaps,
-  roundsWithUnnamedReturns,
+  roundsWithoutNamedReturns,
 } from ".."
 import { AB_FIXTURES } from "./fixtures"
 
@@ -272,10 +272,9 @@ describe("lintSessionFile", () => {
         code: "response-without-return",
         screen: "r1",
         message:
-          'no return names "abstain", "hesitate" in `returnFor`; each response gets its own follow-up (Prop. 9.1, Rem. 9.6)',
+          'no return names "abstain", "hesitate" in `returnFor`; each response gets its own follow-up (Prop. 9.1, Rem. 11.9)',
       },
     ])
-    // A return that names no response follows none, beside one that does.
     expect(codes(withReturns(["incorrect", undefined]))).toEqual([
       "response-without-return",
     ])
@@ -288,16 +287,64 @@ describe("lintSessionFile", () => {
     const file = withReturns(["abstain", "hesitate"])
     const round = file.screens.r1
     if (round?.type !== "choice") throw new Error("r1 is a choice")
-    round.options = round.options.filter((option) => !option.feedback)
+    round.options = round.options.filter(
+      (option) => option.correct || option.abstain
+    )
     expect(lintSessionFile(file)).toEqual([])
   })
 
-  it("leaves a round whose returns name no response unchecked, and lists it", () => {
+  it("leaves a round with no return naming a response unchecked, and lists it", () => {
     const file = withReturns([undefined])
     expect(lintSessionFile(file)).toEqual([])
-    expect(roundsWithUnnamedReturns(file)).toEqual(["r1"])
-    expect(roundsWithUnnamedReturns(withReturns(["incorrect"]))).toEqual([])
-    expect(roundsWithUnnamedReturns(clean())).toEqual([])
+    // The returns are rounds too, and are not listed.
+    expect(roundsWithoutNamedReturns(file)).toEqual(["r1"])
+    expect(roundsWithoutNamedReturns(withReturns(["incorrect"]))).toEqual([])
+    // A round with no return at all.
+    expect(lintSessionFile(clean())).toEqual([])
+    expect(roundsWithoutNamedReturns(clean())).toEqual(["r1"])
+  })
+
+  it("reports a return naming a response its round cannot produce, or returning no round", () => {
+    const file = withReturns(["incorrect", "abstain", "hesitate"])
+    const round = file.screens.r1
+    if (round?.type !== "choice") throw new Error("r1 is a choice")
+    round.options = round.options.filter(
+      (option) => option.correct || option.abstain
+    )
+    expect(lintSessionFile(file)).toEqual([
+      {
+        code: "mismatched-return-for",
+        screen: "r1-0",
+        message:
+          'follows "incorrect", which r1\'s options cannot produce (Prop. 9.1, Rem. 11.9)',
+      },
+    ])
+
+    const choice = clean()
+    choice.screens.ask = {
+      type: "choice",
+      options: [
+        { label: "Yes", next: "end" },
+        { label: "No", next: "end" },
+      ],
+    }
+    choice.screens.again = {
+      type: "choice",
+      returnOf: "ask",
+      returnFor: "abstain",
+      options: [
+        { label: "Yes", next: "end" },
+        { label: "No", next: "end" },
+      ],
+    }
+    expect(lintSessionFile(choice)).toEqual([
+      {
+        code: "mismatched-return-for",
+        screen: "again",
+        message:
+          "names the response it follows, but ask is not a round (Prop. 9.1, Rem. 11.9)",
+      },
+    ])
   })
 
   it.each([

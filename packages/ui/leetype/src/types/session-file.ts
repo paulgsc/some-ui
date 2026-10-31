@@ -70,8 +70,10 @@ const InfoScreenSchema = z.strictObject({
 
 /**
  * The response on a round a return follows (Prop. 9.1, Rem. 11.9): an
- * incorrect pick, the abstention, or a correct pick slow enough to be a
- * struggle (`onHesitate`, Def. 9.4). A slow incorrect pick is `incorrect`.
+ * incorrect pick, slow or not; the abstention; or a correct pick slow enough
+ * to be a struggle (Def. 9.4: slowness only annotates a pick). In the session
+ * log's `AnswerSchema` these are `incorrect`, `abstained` and a `correct`
+ * answer with `slow: true`.
  */
 const ResponseKindSchema = z.enum(["incorrect", "abstain", "hesitate"])
 

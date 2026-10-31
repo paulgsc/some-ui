@@ -1795,24 +1795,32 @@ superseded and kept.
   - A return may name the response on its round that it follows, beside
     `returnOf`: `returnFor` is `incorrect` (an incorrect selection, slow or
     not), `abstain` (the abstention) or `hesitate` (a correct selection slow
-    enough to be a struggle, Def. 9.4). Naming one without `returnOf` does
-    not parse.
+    enough to be a struggle). The kinds are responses, not routes: under
+    Def. 9.4 slowness only annotates a selection. Naming one without
+    `returnOf` does not parse, so a return the player infers from its
+    `parked-return` tag, which has no `returnOf`, cannot carry one.
   - `lib/leetype/session-file`'s lint reports a round any of whose returns
     names its response, when some response the round's options allow has no
     return naming it (`response-without-return`). Every round allows
     `hesitate`; it allows `incorrect` when an option is neither correct nor
-    the abstention, and `abstain` when it offers the abstention.
-  - A round whose returns name no response is not reported. It is the shape
-    Rem. 9.6 says meets Def. 9.4 and not Prop. 9.1, and the session files
-    written before the field have it; `lint:session-file` lists such rounds
-    without failing, so the gap stays visible and those files stay
-    placeable.
+    the abstention, and `abstain` when it offers the abstention. It also
+    reports a return naming a response its round's options cannot produce,
+    or returning a screen that is not a round (`mismatched-return-for`).
+  - A round, other than a return (one with `returnOf`), that has no return,
+    or whose returns name no response, is not reported. Returns that name
+    none are the shape Rem. 9.6 says meets Def. 9.4 and not Prop. 9.1, and
+    the session files written before the field have it;
+    `lint:session-file` lists every such round without failing, so the gap
+    stays visible and those files stay placeable.
 
   The check is that each response has its return, not that the struggle on
   that response leads to it: which placed reading leads to which return is
-  the file's wiring, and the lint does not trace it. Nor does it cover the
-  spoken answer's two follow-ups Rem. 9.6 names, a pass and fewer than two
-  ticks, since a return is a choice screen and a spoken answer is not.
+  the file's wiring, and the lint does not trace it. That wiring is not yet
+  the response's either: the phone sends any slow selection that is not the
+  abstention, an incorrect one included, to the round's `onHesitate` rather
+  than its option's `next` (`#2332`). Nor does the check cover the spoken answer's two
+  follow-ups Rem. 9.6 names, a pass and fewer than two ticks, since a return
+  is a choice screen and a spoken answer is not.
 
   Evidence: the code (Amendment protocol, fourth rule).
 ]
