@@ -15,6 +15,7 @@ import {
   keepFailure,
   subscribeFailureLog,
 } from "@/lib/failure-log"
+import { failureLine } from "@/lib/native-log"
 
 const failure = (summary: string): ForeignFailure => ({
   port: "intent",
@@ -39,7 +40,7 @@ it("keeps the native log's line with when, newest first, up to its cap", () => {
   expect(kept).toHaveLength(FAILURE_LOG_CAP)
   expect(kept[0]).toEqual({
     at: new Date(Date.UTC(2026, 9, 30, 0, FAILURE_LOG_CAP)).toISOString(),
-    line: `foreign-failure [intent] rejected: number ${FAILURE_LOG_CAP} (Error: file_host answered 422 for POST /sessions)`,
+    line: failureLine(failure(`number ${FAILURE_LOG_CAP}`)),
   })
   expect(kept.at(-1)?.line).toContain("rejected: number 1 ")
 })

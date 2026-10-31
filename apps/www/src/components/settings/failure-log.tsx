@@ -17,12 +17,7 @@ import { BOARD_WORDS } from "@/lib/status-board/words"
 import { CopyButton } from "@/components/jobs/parts"
 
 export const FailureLog = (): JSX.Element => {
-  const log = useSyncExternalStore(subscribeFailureLog, failureLogSnapshot)
-  // Kept newest first, so an entry's place from the oldest is its key.
-  const newest = log.map((entry, index) => ({
-    ...entry,
-    key: log.length - index,
-  }))
+  const newest = useSyncExternalStore(subscribeFailureLog, failureLogSnapshot)
   return (
     <section aria-label={BOARD_WORDS.failures} className="space-y-2">
       <div className="flex items-center justify-between gap-2 px-1">
@@ -47,13 +42,13 @@ export const FailureLog = (): JSX.Element => {
         <ol
           data-scroll-intent=""
           className={
-            // scroll-intent: up to 200 lines, read by scrolling back through
+            // scroll-intent: up to FAILURE_LOG_CAP lines, read by scrolling back through
             // them; the page around the log stays where it is.
             "max-h-96 space-y-3 overflow-y-auto rounded-xl border p-3"
           }
         >
           {newest.map((entry) => (
-            <li key={entry.key} className="space-y-0.5">
+            <li key={`${entry.at} ${entry.line}`} className="space-y-0.5">
               <time
                 dateTime={entry.at}
                 className="text-muted-foreground block text-xs"

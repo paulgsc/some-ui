@@ -1467,7 +1467,7 @@
       "store": "phone:failure-log",
       "class": "telemetry",
       "growth": "bounded: the newest 200 failures this phone reported, each one line with its time (`some-ui.failure-log.v1`).",
-      "horizon": "the oldest line goes when the 201st is kept (lib/failure-log `withFailure`; owner, 2026-10-30, docs/discard-sites.md)",
+      "horizon": "the oldest line goes when the 201st is kept (lib/failure-log `keepFailure`; owner, 2026-10-30, docs/discard-sites.md)",
       "family": "what-is-kept"
     },
     {
