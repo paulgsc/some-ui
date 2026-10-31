@@ -214,8 +214,8 @@ A redraft (below) needs its pick's kit and fits: fetch that one digest,
 Every digest lists in `read` the Decisions and Scout files it took in. Read
 every digest in `Brief/` and collect those names; the files in
 `some-ui jobs/Decisions/` and `some-ui jobs/Scout/` that no digest names are
-new. The phone offers a share again until I confirm it arrived, so a new file
-can repeat one already read:
+new. The phone files again what a run missed, so a new file can repeat one
+already read:
 
 - a pick's decision, a debrief, an outcome or a disagreement whose `id` a file
   some digest names in `read` already carried is not new: skip it;
@@ -252,9 +252,9 @@ curl -sS --max-time 30 -H "Authorization: Bearer $JOBS_MAILBOX_TOKEN" \
 doesn't match is skipped and named in the summary. Then merge the two sources
 by file name: a name in both is one file, and if the bytes differ, use Drive's
 and say so in the summary. Home is the only one that can put a file in these
-mailbox folders, so the owner check in §0.1 doesn't apply to them. They never
-name voice notes, so a voice note is named by a Drive file only, as above;
-what I said in it comes from home's transcript (below).
+mailbox folders, so the owner check in §0.1 doesn't apply to them. They name
+voice notes as a Drive file does (`voice` and `notes`), and what I said in
+each comes from home's transcript (below).
 
 The listings show live files only. A file that has been in the mailbox for
 months moves home (it is archived), and reading it answers `410`.

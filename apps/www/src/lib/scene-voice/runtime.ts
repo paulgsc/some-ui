@@ -1,7 +1,12 @@
 /**
  * Topik's `SceneVoice` port: `@some-ui/voice-capture`'s voice note, each
  * kept take a note in the draft, its audio on a shelf and its entry in a
- * list.
+ * list, with when it was kept (`at`), which home is told it by (LA13), and
+ * whether a drama prompt carried it (`prompted`).
+ *
+ * A note goes home once it is kept (LA13), so home can hold one long before
+ * its scene's prompt is shared: the draft lets a note go on home's word only
+ * once a prompt carried it (`letGo`), or when the person lets it go.
  */
 import {
   SOUNDBITE_MAX_MS,
@@ -22,6 +27,22 @@ import {
 
 import { SCENE_NOTES_MAX } from "./budget"
 
+/**
+ * A note as the phone keeps it: topik's, when it was kept (ISO 8601; a note
+ * kept before the phone noted that has none), and whether a shared drama
+ * prompt carried it.
+ */
+export type KeptSceneNote = SceneNote & {
+  readonly at?: string
+  readonly prompted?: boolean
+}
+
+/** Topik's port, and what the phone's share tells it. */
+export type PhoneSceneVoice = SceneVoice & {
+  /** A shared drama prompt carried these notes. */
+  prompted: (ids: ReadonlyArray<string>) => void
+}
+
 /** A note is a take of a soundbite's length. */
 const LIMITS = { minMs: SOUNDBITE_MIN_MS, maxMs: SOUNDBITE_MAX_MS }
 
@@ -32,10 +53,12 @@ export type SceneVoicePorts = {
   audio: BlobShelf
   /** The draft's notes, oldest first. */
   notes: {
-    read: () => Array<SceneNote>
+    read: () => Array<KeptSceneNote>
     /** Says whether the device stored it. */
-    add: (note: SceneNote) => boolean
+    add: (note: KeptSceneNote) => boolean
     remove: (ids: ReadonlyArray<string>) => boolean
+    /** Marks these notes carried by a prompt; says whether it stored. */
+    prompted: (ids: ReadonlyArray<string>) => boolean
   }
   /** A note whose audio is being written, and when done. */
   saving: (id: string, inFlight: boolean) => void
@@ -54,7 +77,7 @@ function snapshotOf(
   return { notes, take: takeView(state), said, full }
 }
 
-export function createSceneVoice(ports: SceneVoicePorts): SceneVoice {
+export function createSceneVoice(ports: SceneVoicePorts): PhoneSceneVoice {
   // Letting notes go hushes the last take's outcome, which was about them.
   let quiet = false
   const listeners = new Set<() => void>()
@@ -69,6 +92,7 @@ export function createSceneVoice(ports: SceneVoicePorts): SceneVoice {
           id,
           durationMs: Math.round(take.durationMs),
           mimeType: take.mimeType,
+          at: new Date(ports.now()).toISOString(),
         }
         shelveTake(ports, id, take, () => ports.notes.add(entry), saved)
       },
@@ -106,11 +130,14 @@ export function createSceneVoice(ports: SceneVoicePorts): SceneVoice {
     stop: note.stop,
     leave: note.leave,
     remove,
+    prompted(ids): void {
+      if (ids.length > 0 && ports.notes.prompted(ids)) publish()
+    },
     letGo(homeHolds): void {
       const ids = ports.notes
         .read()
+        .filter(({ id, prompted }) => prompted === true && homeHolds.has(id))
         .map(({ id }) => id)
-        .filter((id) => homeHolds.has(id))
       if (ids.length > 0) remove(ids)
     },
   }

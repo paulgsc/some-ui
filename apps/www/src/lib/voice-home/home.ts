@@ -11,16 +11,10 @@
  * audio under that id) or a `422` naming the note's fields is a refusal,
  * kept and never sent again. A `422` naming only the body means the bytes
  * did not arrive (Android 7's native request sends none): not the note's
- * fault, so it ends the exchange and the note waits. A `409` that
- * `stoppedOnHome` reads refuses nothing and ends the exchange.
+ * fault, so it ends the exchange and the note waits.
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
-import {
-  readAs,
-  refusalOf,
-  stoppedOnHome,
-  unexpectedAnswer,
-} from "@some-ui/core-utils"
+import { readAs, refusalOf, unexpectedAnswer } from "@some-ui/core-utils"
 import { z } from "zod"
 
 import type { VoiceHomeEvent, VoiceHomeState, VoiceOut } from "./model"
@@ -93,7 +87,6 @@ export async function exchangeVoice(
       base64,
     })
     if (answer.status === 401) return { kind: "forgotten" }
-    if (stoppedOnHome(answer)) return unexpectedAnswer("a voice note", 409)
     if (answer.status === 409) {
       port.answered({
         kind: "refused",

@@ -160,22 +160,7 @@ describe("sending voice notes home", () => {
     expect(p.current().waiting.map(({ id }) => id)).toEqual(["n1", "n2"])
   })
 
-  it("ends at a `sharing_stopped` 409, or a forgotten phone, refusing nothing", async () => {
-    const stopped = port([note("n1")])
-    await expect(
-      exchangeVoice(
-        stopped,
-        home(() => ({
-          status: 409,
-          body: '{"error":{"code":"sharing_stopped"}}',
-        })).send
-      )
-    ).resolves.toEqual({
-      kind: "failed",
-      why: "a voice note: home answered 409",
-    })
-    expect(stopped.current().refused).toEqual([])
-
+  it("ends at a forgotten phone, refusing nothing", async () => {
     const forgotten = port([note("n1")])
     await expect(
       exchangeVoice(forgotten, home(() => ({ status: 401, body: "" })).send)

@@ -616,14 +616,11 @@ describe("LA13: what copies a voice note for home", () => {
     ).toEqual(["lib/home-link/voice-copy.ts"])
   })
 
-  it("starts the watch only from the lane's hook, and hears shared prompts only there", () => {
+  it("starts the watch only from the lane's hook, and reads scene notes for home only there", () => {
     expect(using(/watchVoiceNotes\(/)).toEqual([
       "lib/home-link/voice-copy.ts",
       "lib/home-link/voice.ts",
     ])
-    expect(using(/onPromptShared\(/)).toEqual([
-      "lib/home-link/voice-copy.ts",
-      "lib/scene-voice/index.ts",
-    ])
+    expect(using(/sceneNotes\./)).toEqual(["lib/home-link/voice-copy.ts"])
   })
 })

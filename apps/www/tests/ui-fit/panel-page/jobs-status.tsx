@@ -70,7 +70,6 @@ export const JobsStatusFixture = (): JSX.Element => (
           journey={journey(id, {
             since: SINCE,
             runDay: "2026-10-24",
-            why: "not-kept",
           })}
           noun="them"
           now={NOW}

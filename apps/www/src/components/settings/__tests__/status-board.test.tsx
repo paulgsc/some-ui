@@ -42,7 +42,7 @@ vi.mock("@some-ui/topik", async (importOriginal) => ({
 vi.mock("@/lib/jobs/journey", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   kindJourney: (_: unknown, kind: string): unknown =>
-    kind === "decisions" ? journey("needs-sheet", { why: "not-kept" }) : null,
+    kind === "decisions" ? journey("unpaired") : null,
 }))
 vi.mock("@/components/jobs/parts", () => ({
   useJourneyContext: (kept: boolean): unknown => ({
@@ -110,7 +110,7 @@ describe("StatusBoard", () => {
         (a) => [a.textContent, a.getAttribute("to")]
       )
     // Voice notes on an unpaired phone, today's picks waiting in Drive,
-    // decisions waiting on the share sheet, and what the routine brought.
+    // decisions waiting on this phone, and what the routine brought.
     const lifted = links(BOARD_WORDS.needsYou)
     expect(lifted.map(([, to]) => to)).toEqual([
       "/settings/home",

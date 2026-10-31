@@ -218,21 +218,6 @@ describe("exchangeJobs", () => {
     expect(homeOutbox(k.current)).toEqual([])
   })
 
-  it("refuses nothing on a `sharing_stopped` 409, and ends there", async () => {
-    const k = keeping(withLog)
-    const h = home(() => ({
-      status: 409,
-      body: { error: { code: "sharing_stopped", message: "stopped" } },
-    }))
-    expect(await exchangeJobs(k, h.send)).toEqual({
-      kind: "failed",
-      why: "an event: home answered 409",
-    })
-    expect(h.calls).toHaveLength(1)
-    expect(k.current.home.refused).toEqual([])
-    expect(homeOutbox(k.current)).toHaveLength(3)
-  })
-
   it("keeps what home confirmed when the exchange stops part way", async () => {
     const k = keeping(withLog)
     const send: HomeCall = (method, path, body) =>
@@ -610,7 +595,7 @@ describe("exchangeJobs, filing decisions and scouts with home", () => {
     vi.restoreAllMocks()
   })
 
-  it("files a voice-free decisions file after the events, and records it shared and arrived", async () => {
+  it("files a decisions file after the events, and records it shared and arrived", async () => {
     const k = keeping(withLog, decisionsToday)
     const h = home(filing())
     expect(await exchangeJobs(k, h.send)).toEqual({ kind: "synced" })
@@ -632,23 +617,32 @@ describe("exchangeJobs, filing decisions and scouts with home", () => {
     expect(decisionsToday(k.current, "decisions")).toBeNull()
   })
 
-  it("leaves a file that names a voice note for the share sheet", async () => {
-    const k = keeping(withLog, (_, kind) =>
-      kind === "decisions"
-        ? {
-            kind,
-            name: "decisions-2026-10-20.json",
-            json: "{}",
-            voice: [{ id: "n1", name: "decisions-2026-10-20_voice-1.webm" }],
-            since: 0,
-            through: 3,
-          }
-        : null
-    )
+  it("files a decisions file that names a voice note, by its id alone", async () => {
+    const said = step(opened, {
+      type: "voice-kept",
+      note: { id: "n1", mimeType: "audio/webm", durationMs: 4000, owner: "x" },
+    })
+    const passed = step(said, {
+      type: "record",
+      event: {
+        type: "passed",
+        ...ref(),
+        reasons: ["seniority"],
+        note: "",
+        voice: ["n1"],
+      },
+      stamp: { id: "e1", at: "2026-10-18T16:00:00.000Z" },
+    })
+    const k = keeping(passed, decisionsToday)
     const h = home(filing())
-    await exchangeJobs(k, h.send)
-    expect(h.calls.some((c) => c.path.startsWith("/jobs/files/"))).toBe(false)
-    expect(k.current.log.some((e) => e.type === "shared")).toBe(false)
+    expect(await exchangeJobs(k, h.send)).toEqual({ kind: "synced" })
+    const put = h.calls.find((c) => c.path.startsWith("/jobs/files/"))
+    expect(put?.path).toBe("/jobs/files/decisions-2026-10-20.json")
+    const file: unknown = JSON.parse(put?.body ?? "{}")
+    expect(file).toMatchObject({
+      notes: { "2026-10-18_nor-0b77_voice-1.webm": "n1" },
+    })
+    expect(k.current.log.some((e) => e.type === "shared")).toBe(true)
   })
 
   it("keeps a refused file by name, reports only its name, and never files it again", async () => {
@@ -673,8 +667,8 @@ describe("exchangeJobs, filing decisions and scouts with home", () => {
     stop()
     expect(k.current.log.some((e) => e.type === "shared")).toBe(false)
     expect(failures.map((f) => f.error.summary)).toEqual([
-      "Home didn’t take decisions-2026-10-20.json; it stays on the share sheet.",
-      "Home didn’t take decisions-2026-10-20.json; it stays on the share sheet.",
+      "Home didn’t take decisions-2026-10-20.json; it stays on this phone.",
+      "Home didn’t take decisions-2026-10-20.json; it stays on this phone.",
     ])
   })
 

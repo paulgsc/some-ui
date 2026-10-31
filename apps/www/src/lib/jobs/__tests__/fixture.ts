@@ -145,7 +145,6 @@ export function ports(overrides: Partial<JobsPorts> = {}): JobsPorts {
     saving: () => undefined,
     isSaving: () => false,
     startRecording: vi.fn(),
-    share: vi.fn(() => Promise.resolve<"shared" | "cancelled">("shared")),
     now: () => new Date("2026-10-18T22:00:00Z"),
     dayOf: () => "2026-10-18",
     newId: () => `id${(n += 1)}`,

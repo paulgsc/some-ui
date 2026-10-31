@@ -3,28 +3,30 @@
  * of `lib/journey`: read off the log and the digests, so each card
  * says where its file went without a tap ("never silent", JB2 below).
  *
- * Every `shared` event is one file that left, or was offered: by the share
- * sheet (to Drive), or filed with home by an exchange (`./home`), which hands
- * it to the run's mailbox. A filed share is recorded shared and arrived at
- * one instant (`filed` in `./runtime`); a person confirms a sheet's arrival
- * only after the sheet has closed, so no confirmed share is that close.
+ * Every `shared` event is one file that left: filed with home by an
+ * exchange (`./home`), which hands it to the run's mailbox, or, before HF2
+ * (#2177) took the share sheet away, offered to Drive. A filed share is
+ * recorded shared and arrived at one instant (`filed` in `./runtime`); a
+ * person confirmed a sheet's arrival only after the sheet had closed, so no
+ * confirmed share is that close. A sheet's share nobody confirmed carried
+ * nothing, so what it held is filed with home.
  * A digest names in `read` every file its run took in: an event is read once
  * a run named any file that carried it, and missed when the last file that
  * carried it went home and a later run went by without naming one.
  *
  * What a share carried runs from where its file began, which the phone
- * notes as it records the share (`carried`), to its `through`. The share
- * sheet's file also takes back in what a run missed (`deliveryView`), so
+ * notes as it records the share (`carried`), to its `through`. The file an
+ * exchange files also takes back in what a run missed (`deliveryView`), so
  * where it began can be earlier than the last share that arrived.
  *
  * JB2 (promise, Change-Kind: defect):
  * - Claim: every control in the Jobs wing whose effect leaves the phone, or
  *   changes what will leave it, says on that surface where the effect is now.
- * - Family: the road (home without a tap, the share sheet, home refused, a
- *   missed run); the network (paired with home or not); timing (filed before the
- *   person looks, after a relaunch, a run going by); the order of shares (an
- *   unconfirmed share, then a filing, then its confirmation; something added
- *   after an unconfirmed share; a restored log).
+ * - Family: the road (home without a tap, home refused, a missed run, and a
+ *   Drive share from before HF2 in the log); the network (paired with home
+ *   or not); timing (filed before the person looks, after a relaunch, a run
+ *   going by); the order of shares (a sheet's share nobody confirmed, then a
+ *   filing; a confirmed Drive share, then a filing; a restored log).
  * - Tolerance: the mailbox's own states wait on home saying what it handed
  *   on (S0), so `with-home` stands in for them. A share confirmed in Drive
  *   stays "In Drive" until a run names it: no run is counted as missing a
@@ -32,7 +34,7 @@
  *   phone restored from home has lost its notes of where shares began
  *   (`carried`): a reshare it made after a missed run counts from the last
  *   share that had arrived, so what that run missed reads as missed, even
- *   once a run read the reshare, until it is shared once more.
+ *   once a run read the reshare, until it is filed once more.
  * - Proof: `__tests__/journey.test.ts` derives each state of the union from
  *   a record built for it, and `components/__tests__/journey-status.test.tsx`
  *   renders every state.
@@ -137,7 +139,7 @@ type Fate =
   | { kind: "on-way"; leg: ShareLeg }
   | { kind: "too-old" }
   /** No file that carried it had arrived. */
-  | { kind: "unsent"; unconfirmed: boolean }
+  | { kind: "unsent" }
 
 /**
  * The event at `index`, by `asOf`: read once a run named any file that
@@ -160,9 +162,7 @@ function fateOf(
     .filter((l) => l.arrival !== null && at(l.arrival.at) <= asOf)
     .sort((a, b) => a.arrivalIndex - b.arrivalIndex)
   const leg = arrived.at(-1)
-  if (leg?.arrival == null) {
-    return { kind: "unsent", unconfirmed: carriers.length > arrived.length }
-  }
+  if (leg?.arrival == null) return { kind: "unsent" }
   const since = at(leg.arrival.at)
   if (since < runs.horizon) return { kind: "too-old" }
   // Come to the phone after the filing too: a phone's clock running behind
@@ -250,7 +250,7 @@ function firstMissed(
 }
 
 /**
- * `state` as the share sheet builds `kind`'s file from it: with every share
+ * `state` as an exchange builds `kind`'s file from it: with every share
  * that carried the first event a run missed, or anything after it, counted
  * as not arrived, so the file takes back in what that run never read.
  * Otherwise `state` itself.
@@ -297,25 +297,11 @@ export type JourneyContext = {
   readonly outgoing: (kind: ShareKind) => Outgoing
 }
 
-/** A share of `kind` the sheet made since the last that arrived, unconfirmed. */
-export function unconfirmedShare(
-  state: JobsState,
-  kind: ShareKind
-): SharedEvent | null {
-  const legs = ledger(state, kind)
-  const last = legs.filter((l) => l.arrival !== null).at(-1)
-  const after = legs.filter(
-    (l) => l.arrival === null && (last === undefined || l.index > last.index)
-  )
-  return after.at(-1)?.share ?? null
-}
-
-/** Where `kind`'s file not yet shared is, or null when there is none. */
+/** Where `kind`'s file not yet filed is, or null when there is none. */
 function outgoingJourney(ctx: JourneyContext, kind: ShareKind): Journey | null {
   const file = ctx.outgoing(kind)
   if (!isFile(file)) return null
-  if (file.voice.length > 0) return journey("needs-sheet", { why: "voice" })
-  if (!ctx.kept) return journey("needs-sheet", { why: "not-kept" })
+  if (!ctx.kept) return journey("unpaired")
   if (ctx.state.home.refusedFiles.includes(file.name)) {
     return journey("home-refused")
   }
@@ -353,9 +339,7 @@ export function eventJourney(
       return null
     }
     case "unsent": {
-      return fate.unconfirmed
-        ? journey("sheet-unconfirmed")
-        : outgoingJourney(ctx, kind)
+      return outgoingJourney(ctx, kind)
     }
     default: {
       return assertNever(fate)
@@ -378,9 +362,6 @@ export function kindJourney(
     const j = eventJourney(ctx, index)
     if (j !== null) events.unshift(j)
   })
-  const pending =
-    unconfirmedShare(ctx.state, kind) === null
-      ? outgoingJourney(ctx, kind)
-      : journey("sheet-unconfirmed")
+  const pending = outgoingJourney(ctx, kind)
   return mostUrgent([...(pending === null ? [] : [pending]), ...events])
 }

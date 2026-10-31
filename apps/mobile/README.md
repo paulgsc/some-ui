@@ -196,11 +196,11 @@ storage failure (`launch/launch-test.sh`).
   act.** The app is client first: nothing requires a server, and a paired
   phone sends to its own home on its own (HF8), but nothing leaves the
   phone until the person says so. A finished session (completed, not
-  today's: `mayLeavePhone`) leaves the phone once a destination holds it:
-  home, when **Clear finished sessions home holds** reads it back and finds
-  it as the phone has it; an archive, when the person says the file arrived
-  (the phone cannot look inside Drive). Unfinished sessions and today's
-  always stay, since the study card and the nudge read them.
+  today's: `mayLeavePhone`) leaves the phone only once home holds it, when
+  **Clear finished sessions home holds** reads it back and finds it as the
+  phone has it; an archive is a copy and lets nothing go (LG1). Unfinished
+  sessions and today's always stay, since the study card and the nudge
+  read them.
 - **Sending is archiving.** A finished session's record is context for an
   agent shaping the next lesson, not something the person reads back: the
   app is for studying, not a dashboard of it. So nothing that left the
@@ -648,14 +648,12 @@ does leave; the rest stay, and the line says so. It sends nothing.
 
 Home no longer knowing the phone, or no answer, ends a run there.
 
-**Archive finished sessions**, in the This phone block, is the way to
-make room without a home server. It shares one file
-(`sessions-<day>.json`, every finished session's full record) through
+**Archive finished sessions**, in the This phone block, shares a copy: one
+file (`sessions-<day>.json`, every finished session's full record) through
 Android's share sheet, so the person picks where it goes (Drive, say:
-`Study ledger › sessions`). Android says "shared" once an app is picked,
-even if the person backs out, so the sessions leave the phone only once the
-person says the file arrived, and only those unchanged since. Reflections
-keep their own share (**Share with an agent**).
+`Study ledger › sessions`). The sessions stay on the phone: nothing is let
+go on a third party's word (LG1, HF2 #2177), so only the clear above frees
+their room. Reflections keep their own share (**Share with an agent**).
 
 The sync goes through Capacitor's native HTTP (`device-backend/native-http`).
 The app's page is `https://localhost`, so a browser `fetch` to
@@ -942,9 +940,8 @@ note saying what an agent should
 use them for: shaping the next lesson, and finding where the app gets in the
 way) plus each soundbite's and voice reflection's audio to the app's cache,
 then opens Android's share sheet, where the person picks where they go
-(Drive, say). Once the person says they arrived, the reflections and
-soundbites shared leave the phone, reflections as above; a soundbite recorded
-since stays.
+(Drive, say). The export is a copy: nothing it carried leaves the phone
+for it (LG1, HF1 #2176).
 `apps/www/src/lib/agent-export`. A WebView cannot download a blob, so this
 goes through `@capacitor/filesystem` and `@capacitor/share`: neither adds a
 permission or an exported component (their manifests are empty, checked

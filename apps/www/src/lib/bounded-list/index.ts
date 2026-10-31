@@ -27,6 +27,8 @@ export function boundedList<T>(
    */
   put: (item: T, same: (other: T) => boolean) => boolean
   remove: (same: (other: T) => boolean) => boolean
+  /** Rewrites each item in place, keeping the order. Says whether it stored. */
+  update: (change: (item: T) => T) => boolean
 } {
   const items = salvageList(isItem)
   // Looked up on each call: the viewer's in-memory copy
@@ -42,5 +44,6 @@ export function boundedList<T>(
     put: (item, same) =>
       change((kept) => [item, ...kept.filter((x) => !same(x))]),
     remove: (same) => change((kept) => kept.filter((x) => !same(x))),
+    update: (each) => change((kept) => kept.map(each)),
   }
 }

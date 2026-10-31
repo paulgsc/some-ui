@@ -1,8 +1,8 @@
 /**
  * JB2's proof (`lib/jobs/journey`): each state of the shared union is read
  * off a record built to reach it, over the promise's Family: the road (home
- * without a tap, the share sheet, home refused, a missed run), whether Jobs
- * is kept on home, and timing (filed before the person looks, a run going
+ * without a tap, home refused, a missed run, and a Drive share from before
+ * HF2 in the log), whether the phone is paired with home, and timing (filed before the person looks, a run going
  * by, after a relaunch). `in-mailbox` and `mailbox-refused` need home to say
  * what it handed on (S0), so no record on the phone reaches them yet.
  */
@@ -17,7 +17,6 @@ import {
   eventJourney,
   HANDOVER_MS,
   kindJourney,
-  unconfirmedShare,
 } from "@/lib/jobs/journey"
 import type { Draft, JobsState, ShareKind } from "@/lib/jobs/model"
 import { DIGESTS_KEPT, EMPTY, step } from "@/lib/jobs/model"
@@ -74,7 +73,7 @@ function context(state: JobsState, kept = true): JourneyContext {
 const idOf = (state: JobsState, kept = true): JourneyId | null =>
   kindJourney(context(state, kept), "decisions")?.id ?? null
 
-/** Shared by the sheet at `at`, as the runtime records it; and its id. */
+/** Shared by the sheet at `at`, as the runtime recorded it before HF2; and its id. */
 function share(
   state: JobsState,
   at = NOON,
@@ -91,7 +90,7 @@ function share(
       day: DAY,
       file: file.name,
       through: file.through,
-      voice: file.voice.map((v) => v.id),
+      voice: [],
     },
     stamp: s,
     since: file.since,
@@ -103,9 +102,10 @@ function share(
 function fileWithHome(
   state: JobsState,
   at = NOON,
-  kind: ShareKind = "decisions"
+  kind: ShareKind = "decisions",
+  from = state
 ): { state: JobsState; name: string } {
-  const file = fileOf(state, kind)
+  const file = fileOf(from, kind)
   const s = stamp(at)
   const next = step(state, {
     type: "record-all",
@@ -152,15 +152,14 @@ describe("JB2: a file waiting to leave the phone", () => {
     )
   })
 
-  it("goes by the share sheet when Jobs isn't kept on home", () => {
+  it("waits on the phone while it isn't paired with home", () => {
     const state = record(opened, taken())
     expect(kindJourney(context(state, false), "decisions")).toMatchObject({
-      id: "needs-sheet",
-      why: "not-kept",
+      id: "unpaired",
     })
   })
 
-  it("goes by the share sheet when a voice note rides along", () => {
+  it("is on the phone like any other when a voice note rides along", () => {
     let state = step(opened, {
       type: "voice-kept",
       note: { id: "v1", mimeType: "audio/webm", durationMs: 4000, owner: "x" },
@@ -175,12 +174,11 @@ describe("JB2: a file waiting to leave the phone", () => {
       voice: ["v1"],
     })
     expect(kindJourney(context(state), "decisions")).toMatchObject({
-      id: "needs-sheet",
-      why: "voice",
+      id: "on-phone",
     })
   })
 
-  it("waits for the sheet once home wouldn't take it", () => {
+  it("says home wouldn't take it", () => {
     const state = record(opened, taken())
     const refused = step(state, {
       type: "file-refused",
@@ -189,11 +187,10 @@ describe("JB2: a file waiting to leave the phone", () => {
     expect(idOf(refused)).toBe("home-refused")
   })
 
-  it("is shared, not confirmed, until the person says it arrived", () => {
+  it("counts a Drive share nobody said arrived as never sent, and one said to as in Drive", () => {
     const shared = share(record(opened, taken()))
-    expect(idOf(shared.state)).toBe("sheet-unconfirmed")
-    expect(unconfirmedShare(shared.state, "decisions")?.id).toBe(shared.id)
-    // Said once the sheet has closed: never the instant of the share.
+    expect(idOf(shared.state)).toBe("on-phone")
+    // Said once the sheet had closed: never the instant of the share.
     const arrived = record(
       shared.state,
       { type: "arrived", shareId: shared.id },
@@ -203,7 +200,6 @@ describe("JB2: a file waiting to leave the phone", () => {
       id: "in-drive",
       via: "drive",
     })
-    expect(unconfirmedShare(arrived, "decisions")).toBeNull()
   })
 
   it("says nothing before anything was offered", () => {
@@ -231,7 +227,6 @@ describe("JB2: a file home took without a tap", () => {
       via: "home",
       since: NOON,
       runDay: null,
-      why: null,
     })
   })
 
@@ -262,11 +257,10 @@ describe("JB2: a file home took without a tap", () => {
       via: "home",
       since: NOON,
       runDay: NEXT,
-      why: null,
     })
   })
 
-  it("is shared to Drive again whole once missed, and then counts as in Drive", () => {
+  it("is filed with home again whole once missed, and then counts as with home", () => {
     const missed = run(filed.state, NEXT, [], "2026-10-19T16:00:00Z")
     expect(outgoing(missed, "decisions")).toBeNull()
     const view = deliveryView(
@@ -277,18 +271,18 @@ describe("JB2: a file home took without a tap", () => {
     const again = fileOf(view)
     expect(JSON.parse(again.json).picks).toMatchObject([{ pickId: SW.id }])
 
-    const resent = share(missed, "2026-10-19T17:00:00.000Z", "decisions", view)
-    const arrived = record(
-      resent.state,
-      { type: "arrived", shareId: resent.id },
-      "2026-10-19T17:01:00.000Z"
-    )
-    expect(kindJourney(context(arrived), "decisions")?.id).toBe("in-drive")
+    const refiled = fileWithHome(
+      missed,
+      "2026-10-19T17:00:00.000Z",
+      "decisions",
+      view
+    ).state
+    expect(kindJourney(context(refiled), "decisions")?.id).toBe("with-home")
     expect(
-      deliveryView(arrived, "decisions", new Date("2026-10-19T18:00:00Z"))
-    ).toBe(arrived)
-    const decision = arrived.log.findIndex((e) => e.type === "taken")
-    expect(eventJourney(context(arrived), decision)?.id).toBe("in-drive")
+      deliveryView(refiled, "decisions", new Date("2026-10-19T18:00:00Z"))
+    ).toBe(refiled)
+    const decision = refiled.log.findIndex((e) => e.type === "taken")
+    expect(eventJourney(context(refiled), decision)?.id).toBe("with-home")
   })
 })
 
@@ -363,28 +357,6 @@ describe("JB2: two shares interleaved", () => {
         "decisions"
       )
     ).not.toBeNull()
-  })
-
-  it("says shared only of what the unconfirmed share carried", () => {
-    const scout = (id: string): Draft => ({
-      type: "scout",
-      scout: {
-        id,
-        url: "https://example.org/job",
-        title: id,
-        why: "",
-        postingText: null,
-        track: "software",
-        family: null,
-      },
-      voice: [],
-    })
-    const first = record(opened, scout("sc-1"))
-    const shared = share(first, NOON, "scouts")
-    const second = record(shared.state, scout("sc-2"))
-    const ctx = context(second)
-    expect(eventJourney(ctx, 0)?.id).toBe("sheet-unconfirmed")
-    expect(eventJourney(ctx, second.log.length - 1)?.id).toBe("on-phone")
   })
 
   it("is read once a run named a share nobody confirmed", () => {
@@ -487,6 +459,6 @@ describe("JB2: the runtime", () => {
         "decisions"
       )
     ).toMatchObject({ id: "with-home", since: at.toISOString() })
-    expect(again.outgoing("decisions")).toBeNull()
+    expect(again.keeping.outgoing("decisions")).toBeNull()
   })
 })

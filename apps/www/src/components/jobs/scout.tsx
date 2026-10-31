@@ -20,7 +20,7 @@ import { Badge, Button, Input, Label, Textarea } from "@some-ui/shared"
 import { ExternalLink } from "lucide-react"
 
 import { phoneJobs } from "@/lib/jobs"
-import { eventJourney, kindJourney } from "@/lib/jobs/journey"
+import { eventJourney } from "@/lib/jobs/journey"
 import { draftVoice, SCOUT_OWNER } from "@/lib/jobs/model"
 import {
   cantOpenLink,
@@ -28,15 +28,14 @@ import {
   postingTextHint,
   postingTextLabel,
 } from "@/lib/jobs/words"
-import { themeOf } from "@/lib/journey"
 import { Gaps, Scores, sectionHeading } from "@/components/job-reading"
 
 import {
   builderHref,
   Chips,
+  FileProblem,
   JourneyCard,
   Problem,
-  ShareAction,
   useJobs,
   useJourneyContext,
   useVoiceBusy,
@@ -111,11 +110,6 @@ export const JobsScout = (): JSX.Element => {
       : []
   )
   const newestFirst = [...scouts].reverse()
-  // One file carries every scout waiting, so one card asks to share it.
-  const asking = newestFirst.find(({ journey }) => {
-    const theme = journey === null ? null : themeOf(journey.id)
-    return theme === "waiting" || theme === "stopped"
-  })?.scout.id
   const verdicts = new Map(
     state.digests.flatMap((d) => d.scouts.map((s) => [s.scoutId, s] as const))
   )
@@ -266,13 +260,6 @@ export const JobsScout = (): JSX.Element => {
                         <Review review={verdict.review} scoutId={scout.id} />
                       )}
                     </div>
-                    {scout.id === asking && (
-                      <ShareAction
-                        kind="scouts"
-                        journey={journey}
-                        label="Share scouts to Drive"
-                      />
-                    )}
                   </JourneyCard>
                 </li>
               )
@@ -280,15 +267,7 @@ export const JobsScout = (): JSX.Element => {
           </ul>
         </section>
       )}
-      {asking === undefined && (
-        // No card asks, yet a share may still wait to be confirmed, or the
-        // file can't be shared: say so here.
-        <ShareAction
-          kind="scouts"
-          journey={kindJourney(context, "scouts")}
-          label="Share scouts to Drive"
-        />
-      )}
+      <FileProblem kind="scouts" />
     </div>
   )
 }

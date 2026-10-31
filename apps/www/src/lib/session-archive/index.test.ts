@@ -1,7 +1,7 @@
 /**
  * The archive of finished sessions: what goes out (finished before today,
- * whole records) and what leaves the phone once the person says it arrived
- * (only those unchanged since).
+ * whole records), that sharing it lets nothing go (LG1), and what leaves the
+ * phone on home's word (only those unchanged since home read them).
  */
 import { sessionRecord } from "@/test-support/session-record"
 import { beforeEach, describe, expect, it, vi } from "vitest"
@@ -83,11 +83,7 @@ beforeEach(() => {
 
 describe("archiving finished sessions", () => {
   it("shares the whole records of sessions finished before today, as one file", async () => {
-    const result = await shareArchive(() => NOW)
-    expect(result).toEqual({
-      outcome: "shared",
-      sent: [{ id: "old", updatedAt: "2026-10-10T09:00:00.000Z" }],
-    })
+    expect(await shareArchive(() => NOW)).toBe("shared")
     expect(phone.shared).toHaveLength(1)
     const [{ dir, files }] = phone.shared
     expect(dir).toBe("session-archive")
@@ -99,15 +95,21 @@ describe("archiving finished sessions", () => {
     })
   })
 
-  it("lets go only of what went out and is unchanged since", async () => {
-    const { sent } = await shareArchive(() => NOW)
+  it("lets no session go for an archive shared (LG1)", async () => {
+    const before = [...phone.sessions]
+    expect(await shareArchive(() => NOW)).toBe("shared")
+    expect(phone.sessions).toEqual(before)
+  })
+
+  it("lets go, on home's word, only what is unchanged since home read it", async () => {
+    const sent = [{ id: "old", updatedAt: "2026-10-10T09:00:00.000Z" }]
     phone.sessions = phone.sessions.map((s) =>
       s.id === "old" ? s : { ...s, updatedAt: "2026-10-15T11:00:00.000Z" }
     )
     expect(await letGoUnchanged(sent)).toBe(1)
     expect(phone.sessions.map((s) => s.id)).toEqual(["today", "open"])
 
-    // Changed after it went out: the archive no longer holds it as it is.
+    // Changed after home read it: home no longer holds it as it is.
     phone.sessions = [
       { ...phone.sessions[0], id: "old", updatedAt: "2026-10-15T12:00:00Z" },
     ]
@@ -117,10 +119,7 @@ describe("archiving finished sessions", () => {
 
   it("shares nothing when nothing is finished before today", async () => {
     phone.sessions = phone.sessions.filter((s) => s.id !== "old")
-    expect(await shareArchive(() => NOW)).toEqual({
-      outcome: "cancelled",
-      sent: [],
-    })
+    expect(await shareArchive(() => NOW)).toBe("cancelled")
     expect(phone.shared).toEqual([])
   })
 })

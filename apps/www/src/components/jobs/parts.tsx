@@ -15,17 +15,12 @@ import { counted, formatTimecode } from "@some-ui/core-utils"
 import { Button, useConfirmSheet } from "@some-ui/shared"
 import { FolderOpen, Mic, Square } from "lucide-react"
 
-import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
-import { IntentButton } from "@/lib/intent/render"
 import type { JobsSnapshot } from "@/lib/jobs"
 import { phoneJobs } from "@/lib/jobs"
-import { isFile } from "@/lib/jobs/files"
 import type { JourneyContext } from "@/lib/jobs/journey"
-import { unconfirmedShare } from "@/lib/jobs/journey"
 import type { ShareKind } from "@/lib/jobs/model"
-import { itArrived, openFromDrive, shareAgain } from "@/lib/jobs/words"
+import { openFromDrive } from "@/lib/jobs/words"
 import type { Journey, Noun } from "@/lib/journey"
-import { themeOf } from "@/lib/journey"
 import { lookIn } from "@/lib/share-files"
 import { journeyBarState, StatusCard } from "@/components/journey-status"
 
@@ -146,9 +141,7 @@ export const VoiceNotes = ({
                 : hint}
           </span>
           <span className="text-muted-foreground text-xs">
-            {mine && said
-              ? said
-              : "Shared to Drive with the day’s files, never sent home."}
+            {mine && said ? said : "Goes home with what you add it to."}
           </span>
         </div>
       </div>
@@ -164,7 +157,7 @@ export const VoiceNotes = ({
                   ask({
                     title: `Delete note ${i + 1}?`,
                     description:
-                      "It hasn’t been shared, so deleting it can’t be undone.",
+                      "It isn’t kept anywhere else, so deleting it can’t be undone.",
                     confirm: "Delete it",
                     keep: "Keep it",
                     onConfirm: () => jobs.dropVoice([n.id]),
@@ -259,81 +252,22 @@ export const JourneyCard = ({
 )
 
 /**
- * What a card that waits on me, or stopped, asks: share `kind`'s file to
- * Drive (and its voice notes, and what a run missed), then say whether it
- * arrived; only then does the share count. Nothing for a file on its way or
- * read.
+ * Why `kind`'s file can't be filed, when the record holds something the
+ * morning run couldn't read; nothing otherwise.
  */
-export const ShareAction = ({
+export const FileProblem = ({
   kind,
-  journey,
-  label,
 }: {
   kind: ShareKind
-  journey: Journey | null
-  label: string
 }): JSX.Element | null => {
-  const { state } = useJobs()
-  const jobs = phoneJobs()
-  const outgoing = jobs.outgoing(kind)
-  const share = useAsyncIntent(() => jobs.share(kind), {
-    presentation: "interactive",
-  })
-  const { ask, sheet } = useConfirmSheet()
-  useIntentEffect(share, (shared) => {
-    if (shared.outcome !== "shared") return
-    // `arrived` (components/reflection/copy) says the same of reflections,
-    // but a reflection module stays out of reach here (LA7).
-    ask({
-      title: "Did they arrive?",
-      description:
-        "Once they have, they count as sent. Their voice notes stay on this phone until home holds them.",
-      confirm: "They arrived",
-      keep: "Not yet: offer them again",
-      onConfirm: () => jobs.arrived(shared.shareId),
-    })
-  })
-  const problem =
-    outgoing !== null && "problem" in outgoing ? outgoing.problem : null
-  const theme = journey === null ? null : themeOf(journey.id)
-  const asks = theme === "waiting" || theme === "stopped"
-  const file = isFile(outgoing) ? outgoing : null
-  // A share not yet confirmed can be, whatever else the card says.
-  const unconfirmed = asks ? unconfirmedShare(state, kind) : null
-  if (!asks && problem === null) return <>{sheet}</>
+  // Read again whenever the record changes.
+  useJobs()
+  const outgoing = phoneJobs().keeping.outgoing(kind)
+  if (outgoing === null || !("problem" in outgoing)) return null
   return (
-    <div className="flex flex-col gap-2 px-3.5 pb-3.5">
-      {unconfirmed !== null && (
-        <Button
-          type="button"
-          size="lg"
-          onClick={() => jobs.arrived(unconfirmed.id)}
-        >
-          {itArrived}
-        </Button>
-      )}
-      {asks && file !== null && (
-        <>
-          <IntentButton
-            state={share.state}
-            onPress={() => share.start(undefined)}
-            size="lg"
-            variant={unconfirmed === null ? "default" : "outline"}
-            idleLabel={unconfirmed === null ? label : shareAgain}
-            workingLabel="Sharing…"
-          />
-          <p className="text-muted-foreground text-xs">
-            {`${file.name}${file.voice.length > 0 ? ` and ${counted(file.voice.length, "voice note")}` : ""}.`}
-          </p>
-        </>
-      )}
-      {problem !== null && (
-        <p role="alert" className="text-destructive text-sm">
-          {problem}
-        </p>
-      )}
-      {sheet}
-    </div>
+    <p role="alert" className="text-destructive px-3.5 pb-3.5 text-sm">
+      {outgoing.problem}
+    </p>
   )
 }
 

@@ -1,10 +1,9 @@
-import type { SceneNote } from "@some-ui/topik"
 import type { BlobShelf, Recording } from "@some-ui/voice-capture"
 import { ShelfFullError } from "@some-ui/voice-capture"
 import { describe, expect, it, vi } from "vitest"
 
 import { SCENE_NOTES_MAX } from "@/lib/scene-voice/budget"
-import type { SceneVoicePorts } from "@/lib/scene-voice/runtime"
+import type { KeptSceneNote, SceneVoicePorts } from "@/lib/scene-voice/runtime"
 import { createSceneVoice } from "@/lib/scene-voice/runtime"
 
 function recording(durationMs: number): Recording {
@@ -22,8 +21,8 @@ function recording(durationMs: number): Recording {
 
 function ports(
   overrides: Partial<SceneVoicePorts> = {},
-  listed: Array<SceneNote> = []
-): SceneVoicePorts & { listed: Array<SceneNote>; audio: BlobShelf } {
+  listed: Array<KeptSceneNote> = []
+): SceneVoicePorts & { listed: Array<KeptSceneNote>; audio: BlobShelf } {
   const audio: BlobShelf = {
     put: vi.fn(() => Promise.resolve()),
     get: () => Promise.resolve(null),
@@ -47,6 +46,16 @@ function ports(
           0,
           listed.length,
           ...listed.filter(({ id }) => !ids.includes(id))
+        )
+        return true
+      },
+      prompted: (ids): boolean => {
+        listed.splice(
+          0,
+          listed.length,
+          ...listed.map((note) =>
+            ids.includes(note.id) ? { ...note, prompted: true } : note
+          )
         )
         return true
       },
@@ -95,14 +104,27 @@ describe("createSceneVoice", () => {
     expect(voice.getSnapshot()).toMatchObject({ notes: [], said: null })
   })
 
-  it("lets go the notes home holds, and no other (LG1)", async () => {
+  it("lets go the notes home holds that a shared prompt carried, and no other (LG1)", async () => {
     const p = ports()
     const voice = createSceneVoice(p)
     await talk(voice)
     await talk(voice)
-    voice.letGo(new Set(["n2", "never-heard"]))
+    await talk(voice)
+    // Home holds a note as soon as it is kept: the draft keeps it until a
+    // prompt carried it (HF2).
+    voice.letGo(new Set(["n1", "n2", "never-heard"]))
+    expect(p.audio.remove).not.toHaveBeenCalled()
+    voice.prompted(["n2", "n3"])
+    voice.letGo(new Set(["n1", "n2", "never-heard"]))
     expect(p.audio.remove).toHaveBeenCalledWith(["n2"])
-    expect(voice.getSnapshot().notes.map(({ id }) => id)).toEqual(["n1"])
+    expect(voice.getSnapshot().notes.map(({ id }) => id)).toEqual(["n1", "n3"])
+  })
+
+  it("keeps when each note was kept, for home (LA13)", async () => {
+    const p = ports()
+    const voice = createSceneVoice(p)
+    await talk(voice)
+    expect(p.listed[0]?.at).toMatch(/^1970-01-01T00:00:0\d\.\d{3}Z$/)
   })
 
   it("says the draft is full once the last note it holds is kept", async () => {

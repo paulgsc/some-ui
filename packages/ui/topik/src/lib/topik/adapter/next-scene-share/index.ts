@@ -17,10 +17,6 @@ import type { ForeignOutcome } from "@some-ui/intent-kit"
 export type FileShare = (file: {
   name: string
   text: string
-  /** The prompt's stamp, which every file of the share starts with. */
-  stamp: string
-  /** When the prompt was made, ISO 8601. */
-  at: string
   notes?: ReadonlyArray<{ id: string; name: string }>
 }) => Promise<ForeignOutcome<"shared" | "cancelled">>
 

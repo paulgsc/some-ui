@@ -1,8 +1,11 @@
 /**
- * The files the phone shares back to Drive, made from the record: what the
- * log holds since the last share of their kind that arrived. `@some-ui/job-desk`
- * owns the shapes, and each file is checked with it before it is offered, so
- * the routine never reads one the phone could not.
+ * The files the phone files with home for the morning run, made from the
+ * record: what the log holds since the last share of their kind that
+ * arrived (a filing, or a Drive share from before HF2). Each names its voice
+ * notes by id (`notes`), whose audio goes home by the voice lane, never in
+ * the file. `@some-ui/job-desk` owns the shapes, and each file is checked
+ * with it before it is filed, so the routine never reads one the phone
+ * could not.
  */
 import { extensionOf } from "@some-ui/core-utils"
 import type { Decisions, Scouts } from "@some-ui/job-desk"
@@ -29,8 +32,6 @@ export type OutgoingFile = {
   kind: ShareKind
   name: string
   json: string
-  /** Each voice note to send beside it, by the name the file gives it. */
-  voice: ReadonlyArray<{ id: string; name: string }>
   /** Where in the log what it covers begins. */
   since: number
   /** The log's length it covers. */
@@ -38,8 +39,8 @@ export type OutgoingFile = {
 }
 
 /**
- * A file the record holds but job-desk would refuse: never offered, and said
- * instead of the file, so a bad event can't silently stop the share.
+ * A file the record holds but job-desk would refuse: never filed, and said
+ * instead of the file, so a bad event can't silently stop the filing.
  */
 type Unshareable = { kind: ShareKind; problem: string }
 
@@ -79,16 +80,6 @@ function pickVoice(
   return voiceNames(state.voice, ids, `${day}_${pickId}`, 1)
 }
 
-/**
- * Whether the phone holds `id`'s audio. A log home restored names notes whose
- * audio stayed on the phone it came from, and a note home holds has left this
- * one (`voice-held`): the file still names them, but none goes out beside it.
- */
-function holds(state: JobsState): (id: string) => boolean {
-  const kept = new Set(state.voice.map((n) => n.id))
-  return (id) => kept.has(id)
-}
-
 function since(state: JobsState, kind: ShareKind): ReadonlyArray<JobEvent> {
   return state.log.slice(deliveredThrough(state, kind))
 }
@@ -111,9 +102,7 @@ export function decisionsFile(
   }
 
   const picks: Decisions["picks"] = []
-  const voice: Array<{ id: string; name: string }> = []
   const notes: Record<string, string> = {}
-  const heard = holds(state)
   for (const digest of state.digests) {
     const stale = digest.day < day && !untouchedReported(state, digest.day)
     for (const pick of digest.picks) {
@@ -139,26 +128,6 @@ export function decisionsFile(
         notes[name] = id
         return name
       }
-      const freshVoice = fresh.flatMap((e) =>
-        carriesPickVoice(e) && e.day === digest.day && e.pickId === pick.id
-          ? e.voice
-          : []
-      )
-      // Attach only notes the pick as written names: a pass changed to taken
-      // leaves its note out of the file, so it is not sent either.
-      const named = [
-        ...(decision === "passed" && passed?.type === "passed"
-          ? passed.voice
-          : []),
-        ...(decision === "taken" && debrief ? debrief.voice : []),
-        ...fit.flatMap((e) => e.voice),
-      ]
-      voice.push(
-        ...names.filter(
-          (n) =>
-            named.includes(n.id) && freshVoice.includes(n.id) && heard(n.id)
-        )
-      )
       picks.push({
         day: digest.day,
         pickId: pick.id,
@@ -242,7 +211,6 @@ export function decisionsFile(
     kind: "decisions",
     name: decisionsFileName(day, sharesOn(state, "decisions", day) + 1),
     json: JSON.stringify(file, null, 2),
-    voice,
     since: deliveredThrough(state, "decisions"),
     through: state.log.length,
   }
@@ -253,13 +221,10 @@ export function scoutsFile(state: JobsState, at: Date): Outgoing {
   const fresh = since(state, "scouts").filter((e) => e.type === "scout")
   if (fresh.length === 0) return null
   const stamp = stampOf(at)
-  const voice: Array<{ id: string; name: string }> = []
   const notes: Record<string, string> = {}
-  const heard = holds(state)
   const scouts: Scouts["scouts"] = fresh.map((e) => {
     // By the scout, never the share: a retry names the same audio the same.
     const names = voiceNames(state.voice, e.voice, e.scout.id, 1)
-    voice.push(...names.filter((n) => heard(n.id)))
     for (const { id, name } of names) notes[name] = id
     return { ...e.scout, voice: names.map((n) => n.name), addedAt: e.at }
   })
@@ -275,7 +240,6 @@ export function scoutsFile(state: JobsState, at: Date): Outgoing {
     kind: "scouts",
     name: scoutsFileName(stamp),
     json: JSON.stringify(file, null, 2),
-    voice,
     since: deliveredThrough(state, "scouts"),
     through: state.log.length,
   }
@@ -303,7 +267,7 @@ function unshareable(
   }
 }
 
-/** Whether `outgoing` is a file to share. */
+/** Whether `outgoing` is a file to file. */
 export function isFile(outgoing: Outgoing): outgoing is OutgoingFile {
   return outgoing !== null && !("problem" in outgoing)
 }

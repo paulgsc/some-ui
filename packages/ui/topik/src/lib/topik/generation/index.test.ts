@@ -179,8 +179,6 @@ describe("nextSceneFile", () => {
       []
     )
     expect(file.name).toBe("drama-20261009T070503120Z.prompt.md")
-    expect(file.stamp).toBe("drama-20261009T070503120Z")
-    expect(file.at).toBe("2026-10-09T07:05:03.120Z")
     expect(file.text).toContain("`drama-20261009T070503120Z.json`")
     expect(file.text.endsWith("\nTHE PROMPT")).toBe(true)
   })

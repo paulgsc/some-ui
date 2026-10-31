@@ -1,7 +1,8 @@
 /**
  * The Jobs wing's runtime: it owns the async work around `step` (reading a
- * picked digest, a voice note's take, the share sheet) and decides which late
- * result is stale. Screens read `getSnapshot` and call the methods below.
+ * picked digest, a voice note's take, the push service's token) and decides
+ * which late result is stale. Screens read `getSnapshot` and call the
+ * methods below.
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/core-utils"
@@ -23,12 +24,10 @@ import {
   voiceNoteSaid,
 } from "@some-ui/voice-capture"
 
-import type { SharedFile } from "@/lib/share-files"
-
 import type { FormDraft, FormDrafts } from "./drafts"
 import { draftRecordedBy, readDrafts, withDraft, writeDrafts } from "./drafts"
-import type { Outgoing, OutgoingFile } from "./files"
-import { decisionsFile, isFile, scoutsFile } from "./files"
+import type { Outgoing } from "./files"
+import { decisionsFile, scoutsFile } from "./files"
 import type { JobsRecordPort } from "./home"
 import { deliveryView } from "./journey"
 import type {
@@ -40,7 +39,7 @@ import type {
   ScoutDraft,
   ShareKind,
 } from "./model"
-import { EMPTY, hasArrived, readOn, step } from "./model"
+import { EMPTY, readOn, step } from "./model"
 import { openStored, writeStored } from "./stored"
 
 /** Reading a picked file: nothing in hand, reading, or not a digest (and why). */
@@ -90,20 +89,12 @@ export type NoticePort = {
   register: () => Promise<NoticeAsked>
 }
 
-type ShareDir = "job-decisions" | "job-scouts"
-
 export type JobsPorts = {
   storage: KeyedStorage
   audio: BlobShelf
   saving: (id: string, inFlight: boolean) => void
   isSaving: (id: string) => boolean
   startRecording: StartRecording
-  /** Opens the share sheet with `files`; throws when sharing failed. */
-  share: (
-    dir: ShareDir,
-    title: string,
-    files: ReadonlyArray<SharedFile>
-  ) => Promise<"shared" | "cancelled">
   now: () => Date
   /** The local calendar day of `at`, `YYYY-MM-DD`. */
   dayOf: (at: Date) => string
@@ -111,11 +102,6 @@ export type JobsPorts = {
   /** The push service, where this build has one. */
   notice?: NoticePort
 }
-
-type Shared =
-  | { outcome: "shared"; shareId: string }
-  /** The sheet sent the files but the phone could not note it: they stay pending. */
-  | { outcome: "cancelled" | "nothing" | "unrecorded" }
 
 export type JobsRuntime = {
   getSnapshot: () => JobsSnapshot
@@ -149,18 +135,6 @@ export type JobsRuntime = {
   leaveVoice: () => void
   /** Lets a draft's voice notes go; a note the record names stays. */
   dropVoice: (ids: ReadonlyArray<string>) => void
-  /**
-   * The file `kind`'s share sheet would send now, why it can't be shared,
-   * or null when there's nothing new since the last share that arrived and
-   * no run missed one.
-   */
-  outgoing: (kind: ShareKind) => Outgoing
-  share: (kind: ShareKind) => Promise<Shared>
-  /**
-   * The person said share `shareId`'s files arrived: what it carried counts
-   * as sent.
-   */
-  arrived: (shareId: string) => void
   /** Lets each voice note in `homeHolds` leave the phone (LG1). */
   letGo: (homeHolds: ReadonlySet<string>) => void
   /** Audio no note lists (the app closed mid-save). Best effort. */
@@ -182,11 +156,6 @@ const IDLE: Importing = { kind: "idle" }
 const DRAFT_NOT_KEPT =
   "This phone couldn’t keep what you typed, so it lasts only while Jobs stays open. Free some space."
 
-const SHARES: Readonly<Record<ShareKind, { dir: ShareDir; title: string }>> = {
-  decisions: { dir: "job-decisions", title: "Today's job decisions" },
-  scouts: { dir: "job-scouts", title: "Jobs I found" },
-}
-
 export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
   const opened = openStored(ports.storage)
   let state: JobsState = opened.kind === "kept" ? opened.state : EMPTY
@@ -197,7 +166,6 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
   let drafts = keptDrafts.drafts
   let takeOwner: string | null = null
   let picks = 0
-  const sharing = new Set<ShareKind>()
   const listeners = new Set<() => void>()
   let notice: NoticeView = {
     offered: ports.notice !== undefined,
@@ -358,33 +326,16 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
     }
   }
 
-  const fileFor = (kind: ShareKind, at: Date, from = state): Outgoing =>
-    kind === "decisions"
+  /**
+   * The file of `kind` an exchange files with home now: what no file that
+   * reached its road carried, and what a run missed besides
+   * (`deliveryView`), so a file the run never read goes again.
+   */
+  const fileFor = (kind: ShareKind, at: Date): Outgoing => {
+    const from = deliveryView(state, kind, at)
+    return kind === "decisions"
       ? decisionsFile(from, ports.dayOf(at), at.toISOString())
       : scoutsFile(from, at)
-
-  /**
-   * The share sheet's file: what an exchange would file, and what a run
-   * missed besides (`deliveryView`), each note's audio still on the phone
-   * beside it.
-   */
-  const sheetFile = (kind: ShareKind, at: Date): Outgoing =>
-    fileFor(kind, at, deliveryView(state, kind, at))
-
-  /**
-   * The audio of `file`'s notes the phone still has: a note whose audio is
-   * gone stays named in the file, and none goes beside it.
-   */
-  const audioOf = async (
-    file: OutgoingFile
-  ): Promise<ReadonlyArray<SharedFile & { id: string }>> => {
-    const blobs = await Promise.all(
-      file.voice.map(({ id }) => ports.audio.get(id))
-    )
-    return file.voice.flatMap(({ id, name }, i) => {
-      const blob = blobs[i]
-      return blob ? [{ id, name, data: blob }] : []
-    })
   }
 
   // A token can change under the app (FCM rotates them): ask again on each
@@ -413,8 +364,8 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
       },
       outgoing: (kind) => fileFor(kind, ports.now()),
       // Home holds it, so it is shared and has arrived, in one change: a
-      // record of one without the other would offer the file again. Both
-      // at one instant (`./journey`).
+      // record of one without the other would file it again. Both at one
+      // instant (`./journey`).
       filed(kind, file): boolean {
         const shared = stamp()
         return commit({
@@ -530,54 +481,10 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
       // clears it.
       ports.audio.remove(gone.map((n) => n.id)).catch(() => undefined)
     },
-    outgoing: (kind) => sheetFile(kind, ports.now()),
-    async share(kind): Promise<Shared> {
-      if (sharing.has(kind)) return { outcome: "cancelled" }
-      const at = ports.now()
-      const file = sheetFile(kind, at)
-      if (!isFile(file)) return { outcome: "nothing" }
-      sharing.add(kind)
-      try {
-        const audio = await audioOf(file)
-        const { dir, title } = SHARES[kind]
-        const result = await ports.share(dir, title, [
-          { name: file.name, data: file.json },
-          ...audio.map(({ name, data }) => ({ name, data })),
-        ])
-        if (result !== "shared") return { outcome: "cancelled" }
-        const shareStamp = stamp()
-        const noted = commit({
-          type: "record",
-          event: {
-            type: "shared",
-            kind,
-            day: ports.dayOf(at),
-            file: file.name,
-            through: file.through,
-            voice: audio.map(({ id }) => id),
-          },
-          stamp: shareStamp,
-          since: file.since,
-        })
-        if (!noted) return { outcome: "unrecorded" }
-        return { outcome: "shared", shareId: shareStamp.id }
-      } finally {
-        sharing.delete(kind)
-      }
-    },
-    arrived(shareId): void {
-      const share = state.log.find((e) => e.id === shareId)
-      if (share?.type !== "shared" || hasArrived(state, shareId)) return
-      commit({
-        type: "record",
-        event: { type: "arrived", shareId },
-        stamp: stamp(),
-      })
-    },
     letGo(homeHolds): void {
       const ids = state.voice.map((n) => n.id).filter((id) => homeHolds.has(id))
-      // An entry the phone couldn't drop keeps its audio, so a share still
-      // finds what the file names.
+      // An entry the phone couldn't drop keeps its audio, so the voice lane
+      // still finds it.
       if (ids.length === 0 || !commit({ type: "voice-held", ids }, true)) {
         return
       }
