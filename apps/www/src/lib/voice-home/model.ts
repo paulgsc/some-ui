@@ -4,7 +4,7 @@
  * which home holds, and which it refused for good. Pure; `./runtime` keeps
  * the copies' audio and this record, `./home` sends them.
  *
- * A note's audio is copied here when its person keeps voice notes on home,
+ * A note's audio is copied here while the phone is paired with home,
  * so letting it go from the screen it was recorded on never loses it before
  * home has it. The copy goes once home holds the note; `held` and `refused`
  * only grow, so a note is never copied twice. A copy pass says what it

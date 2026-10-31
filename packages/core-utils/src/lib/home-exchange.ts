@@ -96,9 +96,10 @@ export function unexpectedAnswer(what: string, status: number): HomeExchanged {
 }
 
 /**
- * Home refused a write because this phone's person stopped sending it, as
- * home heard (paulgsc/server#433's `409`, code `sharing_stopped`): not a
- * refusal of what was sent.
+ * Home refused a write because it still carries a stop from before HF8
+ * (paulgsc/server#433's `409`, code `sharing_stopped`; paulgsc/some-ui#2182
+ * ends the choices, and the server half drops this answer): not a refusal of
+ * what was sent, so an exchange ends there and refuses nothing for good.
  */
 export function stoppedOnHome(answer: HomeAnswer): boolean {
   if (answer.status !== 409) return false

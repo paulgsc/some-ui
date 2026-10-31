@@ -1,12 +1,14 @@
 /**
- * A record's sharing mark, in the Android app's header while its wing shows
- * (aph, LA9; the Jobs record, LA10; Practice, LA11;
- * docs/learner-data-authority.md): where it is kept, at a glance, and a sheet
- * with what is on home, since when, the way to keep sending and the way to
- * stop. Its words are `lib/home-link/words`'s alone. It mounts the lane's
- * watch (`useLaneHome`), so a lane sends only while its mark shows.
- * It draws `laneView`'s `where` and `how` marks (`./sharing-marks`), and the
- * sheet's legend draws each (`__tests__/device-home-glyph.test.tsx`).
+ * The drain of what this phone keeps to its paired home, and its marks
+ * (LA15, docs/learner-data-authority.md). `HomeLanes`, mounted by the app
+ * shell on every screen of the Android app, runs every lane's watch
+ * (`useLaneHome`), so Practice's record, the Jobs record and voice notes go
+ * from any wing, and aph's once its screens hand its store in. A record's
+ * mark, in the header while its wing shows, says where it is kept, at a
+ * glance, and opens a sheet with what is on home, what waits and Send now;
+ * it sends nothing of its own. Its words are `lib/home-link/words`'s alone.
+ * It draws `laneView`'s `where` and `how` marks (`./sharing-marks`), and
+ * the sheet's legend draws each (`__tests__/device-home-glyph.test.tsx`).
  */
 import type { JSX } from "react"
 import { useState } from "react"
@@ -26,14 +28,10 @@ import { jobsLane } from "@/lib/home-link/jobs"
 import type { Lane } from "@/lib/home-link/lanes"
 import {
   askLane,
-  bringLaneBack,
-  keepOnHome,
   pairingOf,
-  stopOnHome,
   useHandedLane,
-  useLaneBack,
-  useLaneChoices,
   useLaneHome,
+  useLaneRun,
 } from "@/lib/home-link/lanes"
 import { practiceLane } from "@/lib/home-link/practice"
 import { useVoiceHome } from "@/lib/home-link/voice"
@@ -49,49 +47,32 @@ import {
 
 const BIG = "h-12 rounded-2xl text-base"
 
-/** Which part of the sheet shows: what is kept, or a choice's second press. */
-type Pane = "kept" | "keep" | "stop"
-
 const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
-  const run = useLaneHome(lane)
-  const back = useLaneBack(lane)
-  const { shared, stopped } = useLaneChoices(lane)
+  const run = useLaneRun(lane)
   const counts = lane.useCounts()
   const link = useHomeLink()
   const [open, setOpen] = useState(false)
-  const [pane, setPane] = useState<Pane>("kept")
-  /** The choice this phone couldn't keep, said until the sheet opens again. */
-  const [refused, setRefused] = useState<"keep" | "stop" | null>(null)
 
   const words = WORDS[lane.id]
   const pairing = pairingOf(link)
   const view = laneView(words, {
     ...counts,
     known: link.link.kind !== "reading",
-    shared,
-    stopped,
+    paired: pairing !== null,
     run,
-    away: counts.away === null ? null : { waiting: counts.away, back },
   })
-  const kept = shared.size > 0
-  const offer = words.offer?.(counts.offered) ?? null
   // A run home turned away (busy, or no answer) is worth trying again, even
   // when nothing counted waits.
   const retryable =
     run.last?.kind === "unreachable" ||
     (run.last?.kind === "failed" && run.last.why === "busy")
-  const close = (): void => setPane("kept")
 
   return (
     <>
       <button
         type="button"
         aria-label={`${words.markLabel}: ${view.line}`}
-        onClick={() => {
-          setPane("kept")
-          setRefused(null)
-          setOpen(true)
-        }}
+        onClick={() => setOpen(true)}
         className={cn(
           "hover:bg-accent flex h-10 items-center gap-1.5 rounded-md px-2 text-xs font-medium",
           toneOf(view.where, view.how)
@@ -102,7 +83,7 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
           className={cn(
             "size-5 shrink-0",
             WHERE_TONE[view.where],
-            (run.running || back.running) && "motion-safe:animate-pulse"
+            run.running && "motion-safe:animate-pulse"
           )}
         />
         {view.how !== null ? (
@@ -115,157 +96,56 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
           side="bottom"
           data-scroll-intent="long-form"
           className={
-            // scroll-intent: long-form — the rows, the choices and the
-            // legend outgrow a phone, held sideways most of all, so the
-            // sheet scrolls.
+            // scroll-intent: long-form — the rows and the legend outgrow a
+            // phone, held sideways most of all, so the sheet scrolls.
             "max-h-[85dvh] overflow-y-auto rounded-t-3xl px-5 pt-6 pb-8"
           }
         >
           <SheetHeader className="px-0 text-left">
-            <SheetTitle className="text-xl">
-              {pane === "stop" ? SHEET.stopTitle : words.title}
-            </SheetTitle>
+            <SheetTitle className="text-xl">{words.title}</SheetTitle>
             <SheetDescription
               className={cn(
                 "text-base break-words",
-                pane === "kept" && toneOf(view.where, view.how)
+                toneOf(view.where, view.how)
               )}
             >
-              {pane === "stop"
-                ? words.stopQuestion
-                : pane === "keep"
-                  ? offer
-                  : view.line}
+              {view.line}
             </SheetDescription>
           </SheetHeader>
-          {pane === "stop" ? (
-            <div className="mt-4 flex flex-col gap-2.5">
-              <p className="text-muted-foreground text-sm">{words.stopMore}</p>
-              <Button
-                variant="destructive"
-                size="lg"
-                className={BIG}
-                onClick={() => {
-                  setRefused(stopOnHome(lane) ? null : "stop")
-                  close()
-                }}
-              >
-                {SHEET.stopYes}
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className={BIG}
-                onClick={close}
-              >
-                {SHEET.stopNo}
-              </Button>
-            </div>
-          ) : pane === "keep" && offer !== null && pairing !== null ? (
-            <div className="mt-4 flex flex-col gap-2.5">
-              <Button
-                size="lg"
-                className={BIG}
-                onClick={() => {
-                  setRefused(keepOnHome(lane, pairing, offer) ? null : "keep")
-                  close()
-                }}
-              >
-                {SHEET.keepYes}
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className={BIG}
-                onClick={close}
-              >
-                {SHEET.keepNo}
-              </Button>
-            </div>
-          ) : (
-            <div className="mt-4 flex flex-col gap-3">
-              <dl className="divide-y rounded-2xl border text-sm">
-                {view.rows.map((row) => (
-                  <div key={row.label} className="space-y-0.5 p-3">
-                    <dt className="font-medium">{row.label}</dt>
-                    <dd className="text-muted-foreground">{row.text}</dd>
-                  </div>
-                ))}
-              </dl>
-              {view.notes.map((note) => (
-                <p key={note} className="text-muted-foreground text-sm">
-                  {note}
-                </p>
+          <div className="mt-4 flex flex-col gap-3">
+            <dl className="divide-y rounded-2xl border text-sm">
+              {view.rows.map((row) => (
+                <div key={row.label} className="space-y-0.5 p-3">
+                  <dt className="font-medium">{row.label}</dt>
+                  <dd className="text-muted-foreground">{row.text}</dd>
+                </div>
               ))}
-              {refused !== null ? (
-                <p className="text-destructive text-sm" role="status">
-                  {refused === "keep" ? SHEET.keepRefused : SHEET.stopRefused}
-                </p>
-              ) : null}
-              {kept &&
-              pairing !== null &&
-              (counts.waiting > 0 || retryable) &&
-              !run.running ? (
-                <Button size="lg" className={BIG} onClick={() => askLane(lane)}>
-                  {SHEET.sendNow}
-                </Button>
-              ) : null}
-              {!kept &&
-              counts.away !== null &&
-              pairing !== null &&
-              !back.running ? (
-                <Button
-                  size="lg"
-                  className={BIG}
-                  onClick={() => bringLaneBack(lane)}
-                >
-                  {SHEET.bringBack}
-                </Button>
-              ) : null}
-              {kept ? (
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className={cn("text-destructive", BIG)}
-                  onClick={() => setPane("stop")}
-                >
-                  {SHEET.stop}
-                </Button>
-              ) : words.startElsewhere !== null ? (
-                <p className="text-muted-foreground text-sm">
-                  {words.startElsewhere}
-                </p>
-              ) : pairing === null ? (
-                <p className="text-muted-foreground text-sm">
-                  {SHEET.pairFirst}
-                </p>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className={BIG}
-                  onClick={() => {
-                    setRefused(null)
-                    setPane("keep")
-                  }}
-                >
-                  {SHEET.keep}
-                </Button>
-              )}
-              <p className="text-muted-foreground text-sm">{words.footnote}</p>
-              <SharingLegend
-                away={words.away !== null}
-                className="rounded-2xl border p-3"
-              />
-              <Link
-                to="/settings"
-                onClick={() => setOpen(false)}
-                className="text-sm font-medium underline"
-              >
-                {SHEET.settings}
-              </Link>
-            </div>
-          )}
+            </dl>
+            {view.notes.map((note) => (
+              <p key={note} className="text-muted-foreground text-sm">
+                {note}
+              </p>
+            ))}
+            {pairing !== null &&
+            (counts.waiting > 0 || retryable) &&
+            !run.running ? (
+              <Button size="lg" className={BIG} onClick={() => askLane(lane)}>
+                {SHEET.sendNow}
+              </Button>
+            ) : null}
+            {pairing === null ? (
+              <p className="text-muted-foreground text-sm">{SHEET.pairFirst}</p>
+            ) : null}
+            <p className="text-muted-foreground text-sm">{words.footnote}</p>
+            <SharingLegend className="rounded-2xl border p-3" />
+            <Link
+              to="/settings"
+              onClick={() => setOpen(false)}
+              className="text-sm font-medium underline"
+            >
+              {SHEET.settings}
+            </Link>
+          </div>
         </SheetContent>
       </Sheet>
     </>
@@ -273,11 +153,11 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
 }
 
 /**
- * Whether the Jobs record is kept on the paired home now, so an exchange
- * files its decisions and scouts there: its cards say so (J0, LA10).
+ * Whether this phone is paired with home, so a Jobs exchange files its
+ * decisions and scouts there: its cards say so (J0).
  */
-export function useJobsKeptOnHome(): boolean {
-  return useLaneChoices(jobsLane).shared.size > 0
+export function usePairedWithHome(): boolean {
+  return pairingOf(useHomeLink()) !== null
 }
 
 /**
@@ -302,11 +182,32 @@ export const DeviceHomeGlyph = ({
   return lane === null ? null : <LaneMark key={lane.id} lane={lane} />
 }
 
-/**
- * Voice notes' send, which has no mark: mounted by the app shell on every
- * screen, so notes go home from any wing (LA13).
- */
-export const VoiceNotesHome = (): null => {
+/** One lane's watch, for as long as it is mounted. */
+const LaneWatch = ({ lane }: { lane: Lane }): null => {
+  useLaneHome(lane)
+  return null
+}
+
+/** The voice lane's watch, which also copies each new note (`useVoiceHome`). */
+const VoiceWatch = (): null => {
   useVoiceHome()
   return null
+}
+
+/**
+ * The drain: every lane's watch, mounted by the app shell on every screen,
+ * so what this phone keeps goes home from any wing while the app is open
+ * and the phone is paired (LA15). aph's lane runs while aph's screens are
+ * mounted, since only they may hand its store in.
+ */
+export const HomeLanes = (): JSX.Element => {
+  const aph = useHandedLane("aph")
+  return (
+    <>
+      <LaneWatch lane={practiceLane} />
+      <LaneWatch lane={jobsLane} />
+      <VoiceWatch />
+      {aph === null ? null : <LaneWatch key={aph.id} lane={aph} />}
+    </>
+  )
 }

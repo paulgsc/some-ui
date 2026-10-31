@@ -1,11 +1,12 @@
 /**
  * The Android app's Home page (Settings → Home, paulgsc/some-ui#2107): the
- * Home server block, the one place on the phone that sends anything to the
- * home server (LA8, docs/learner-data-authority.md).
- *
- * Every hop is a tap here, and names where it goes (LA8); `lib/home-link`
- * owns the work, and this component only shows it. The choice to show the
- * routine's files in Korean is made here too, and Korean reads them (LA12).
+ * Home server block, where the phone is paired, unpaired and synced, and
+ * where a finished session home holds is cleared from the phone (LA8,
+ * docs/learner-data-authority.md), each a tap that names where it goes.
+ * Everything else the phone keeps goes to home on its own once paired
+ * (LA15; HF8, #2182), and this page says what is kept where and what waits
+ * (`./device-kept-on-home`, `./device-routine-reads`). `lib/home-link` owns
+ * the work, and this component only shows it.
  */
 
 import type { JSX } from "react"
@@ -24,26 +25,16 @@ import {
   typedCode,
   useHomeLink,
 } from "@/lib/home-link"
-import { keepOnHome, useLaneChoices } from "@/lib/home-link/lanes"
-import { practiceLane } from "@/lib/home-link/practice"
+import type { ClearEnd } from "@/lib/home-link/clear"
+import { clearHeld, finishedOnPhone } from "@/lib/home-link/clear"
 import { remember, remembered } from "@/lib/home-link/remembered"
-import { lastSend, onPhone, sendHome } from "@/lib/home-link/send"
 import type { SyncResult } from "@/lib/home-link/sync"
 import { lastSync, syncLessonsFrom } from "@/lib/home-link/sync"
-import {
-  KEEP_SENDING,
-  KEEP_SENDING_MORE,
-  KEEP_SENDING_REFUSED,
-  KEEP_SENDING_SAID,
-  KEPT_NOTE,
-  LEETYPE_STAYS,
-  NOTHING_TO_SEND,
-} from "@/lib/home-link/words"
+import { CLEAR, HOME_BLOCK } from "@/lib/home-link/words"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
+import { KeptOnHome } from "@/components/settings/device-kept-on-home"
 import { DeviceRoutineReads } from "@/components/settings/device-routine-reads"
-import { SharingLedger } from "@/components/settings/device-sharing-ledger"
-import { VoiceHomeChoice } from "@/components/settings/device-voice-home"
 
 const HOME_KEY = "some-ui.device.home-server.v1"
 
@@ -192,69 +183,56 @@ const StopButton = ({ stopping }: { stopping: boolean }): JSX.Element => (
 )
 
 /**
- * "Send to home" in three taps' worth of steps (LA8): count what would go
- * (what home lacks, by `./sent`), a confirm naming that count and the host,
- * then the one button that sends, with Stop while it runs. The confirm offers, unticked every time, to keep
- * sending Practice from now on (LA11); ticked, the send adds that choice to
- * the consent log before it starts.
+ * "Clear finished sessions home holds" in two presses (LA8): a count of the
+ * finished sessions this phone holds, a confirm naming that count and the
+ * host, then the one button that asks home about each and lets go of those
+ * it holds exactly as the phone does (`lib/home-link/clear`). It sends
+ * nothing: the drain has copied them already.
  */
-const SendHome = ({
+const ClearHeld = ({
   base,
-  pairing,
   refresh,
   state,
 }: {
   base: string
-  /** The pairing a ticked box keeps Practice on home under (LA11). */
-  pairing: string
   refresh: () => unknown
   state: HomeLinkState
 }): JSX.Element => {
   const { activity } = state
   const host = hostOf(base)
-  const count = useAsyncIntent((_: undefined) => onPhone(pairing), {
+  const count = useAsyncIntent((_: undefined) => finishedOnPhone(), {
     presentation: "interactive",
   })
-  const run = useAsyncIntent(
-    (_: undefined) => sendHome({ base, id: pairing }, refresh),
-    {
-      presentation: "interactive",
-    }
-  )
-  useIntentEffect(run, say)
+  const run = useAsyncIntent((_: undefined) => clearHeld(refresh), {
+    presentation: "interactive",
+  })
+  useIntentEffect(run, (end: ClearEnd) => {
+    const line = CLEAR.ended(end, host)
+    if (end.kind === "cleared" || end.kind === "nothing") toast.success(line)
+    else toast.error(line)
+  })
   const asking = count.state.status === "succeeded" ? count.state.value : null
-  const last = lastSend()
-  const kept = useLaneChoices(practiceLane).shared.size > 0
-  const [keepSending, setKeepSending] = useState(false)
-  const ask = (): void => {
-    setKeepSending(false)
-    count.start(undefined)
-  }
 
   return (
     <div className="space-y-2">
       {run.state.status === "working" && activity.kind === "sending" ? (
         <div className="flex flex-wrap items-center gap-2" role="status">
-          <p className="text-sm">Sending to {host}...</p>
+          <p className="text-sm">Asking {host}...</p>
           <StopButton stopping={activity.stopping} />
         </div>
       ) : asking === null ? (
         <IntentButton
           state={count.state}
-          onPress={ask}
+          onPress={() => count.start(undefined)}
           disabled={activity.kind !== "idle"}
           variant="outline"
           size="sm"
-          idleLabel={`Send to ${host}...`}
+          idleLabel={CLEAR.button}
           workingLabel="Counting..."
         />
-      ) : asking.total === 0 ? (
+      ) : asking === 0 ? (
         <div className="flex flex-wrap items-center gap-2" role="status">
-          <p className="text-sm">
-            {asking.taken > 0
-              ? NOTHING_TO_SEND.taken(host)
-              : NOTHING_TO_SEND.none}
-          </p>
+          <p className="text-sm">{CLEAR.nothing}</p>
           <Button
             type="button"
             variant="ghost"
@@ -266,51 +244,19 @@ const SendHome = ({
         </div>
       ) : (
         <div className="space-y-2">
-          <p className="text-sm break-words">
-            Send {asking.what} to {host}? Finished sessions are cleared from
-            this phone once they&apos;re there.
-            {asking.leetype > 0 ? ` ${LEETYPE_STAYS}` : null}
-          </p>
-          {kept ? null : (
-            <div className="flex items-start gap-3 rounded-md border p-3">
-              <input
-                id="keep-sending"
-                type="checkbox"
-                aria-describedby="keep-sending-more"
-                className="accent-primary mt-0.5 size-5 shrink-0"
-                checked={keepSending}
-                onChange={(event) => setKeepSending(event.target.checked)}
-              />
-              <div className="space-y-0.5">
-                <Label htmlFor="keep-sending" className="text-sm font-medium">
-                  {KEEP_SENDING}
-                </Label>
-                <p
-                  id="keep-sending-more"
-                  className="text-muted-foreground text-xs"
-                >
-                  {KEEP_SENDING_MORE}
-                </p>
-              </div>
-            </div>
-          )}
+          <p className="text-sm break-words">{CLEAR.question(asking, host)}</p>
           <div className="flex flex-wrap gap-2">
             <IntentButton
               state={run.state}
               onPress={() => {
                 count.reset()
-                if (
-                  keepSending &&
-                  !keepOnHome(practiceLane, pairing, KEEP_SENDING_SAID)
-                ) {
-                  toast.error(KEEP_SENDING_REFUSED)
-                }
                 run.start(undefined)
               }}
               disabled={activity.kind !== "idle"}
+              variant="destructive"
               size="sm"
-              idleLabel={`Send ${asking.total}`}
-              workingLabel="Sending..."
+              idleLabel={CLEAR.yes}
+              workingLabel="Asking..."
             />
             <Button
               type="button"
@@ -318,18 +264,10 @@ const SendHome = ({
               size="sm"
               onClick={() => count.reset()}
             >
-              Cancel
+              {CLEAR.no}
             </Button>
           </div>
         </div>
-      )}
-      {kept ? (
-        <p className="text-muted-foreground text-xs">{KEPT_NOTE}</p>
-      ) : null}
-      {last === "" ? null : (
-        <p className="text-muted-foreground text-xs break-all">
-          Last send: {last}
-        </p>
       )}
     </div>
   )
@@ -418,22 +356,16 @@ export const DeviceSection = (): JSX.Element => {
                 Try Unpair again.
               </p>
             ) : null}
-            <p className="text-muted-foreground text-xs">
-              Nothing is sent unless you tap below, except what you chose to
-              keep on home: aph, the Jobs record and Practice, each only while
-              it is open, and voice notes, from anywhere in the app.
-            </p>
+            <p className="text-muted-foreground text-xs">{HOME_BLOCK.lead}</p>
+            <KeptOnHome />
+            <DeviceRoutineReads />
             {confirmingUnpair ? null : (
-              <SendHome
+              <ClearHeld
                 base={paired.base}
-                pairing={paired.id}
                 refresh={() => queryClient.invalidateQueries()}
                 state={state}
               />
             )}
-            <DeviceRoutineReads />
-            <VoiceHomeChoice />
-            <SharingLedger />
           </>
         ) : (
           <>

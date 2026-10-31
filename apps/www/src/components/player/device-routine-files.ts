@@ -1,34 +1,28 @@
 /**
  * Korean's way to what the reflections routine left on the paired home, in
- * the Android app (LA12, docs/learner-data-authority.md): a port only while
- * the phone is paired and its person chose to show them there, keyed by
- * that choice, so a new pairing, or a stop and a new choice, starts with
+ * the Android app (LA15, docs/learner-data-authority.md): a port only while
+ * the phone is paired, keyed by the pairing, so a new pairing starts with
  * nothing listed. Phone-only (`build.paths.ts`); `session-viewport.tsx`
  * reaches it only in the device build.
  */
-import { useMemo, useSyncExternalStore } from "react"
+import { useMemo } from "react"
 
 import { useHomeLink } from "@/lib/home-link"
 import { routineReads } from "@/lib/home-link/routine"
-import { underNow } from "@/lib/home-link/routine-model"
 
 /** As `@some-ui/topik`'s `RoutineFilesPort`, which this is handed as. */
 type RoutineFilesPort = {
-  /** Which choice the answers are for. */
+  /** Which pairing the answers are for. */
   key: string
   list: () => Promise<unknown>
-  /** Present only under a choice whose words say home is told (LA12). */
-  opened?: (keys: ReadonlyArray<string>) => void
+  /** Tells home which were opened, so the routine keeps three ready. */
+  opened: (keys: ReadonlyArray<string>) => void
 }
 
 export function useHomeRoutineFiles(): RoutineFilesPort | undefined {
   const { link } = useHomeLink()
   const reads = routineReads()
-  const { log } = useSyncExternalStore(reads.subscribe, reads.getSnapshot)
-  const under = underNow(log, link.kind === "paired" ? link.id : null)
-  const key = under === null ? null : `${under.pairing}@${under.since}`
-  // Read under the same log as `key`, so the two never disagree.
-  const tells = key !== null && reads.tells()
+  const key = link.kind === "paired" ? link.id : null
   return useMemo(
     () =>
       key === null
@@ -36,13 +30,9 @@ export function useHomeRoutineFiles(): RoutineFilesPort | undefined {
         : {
             key,
             list: () => reads.list(),
-            ...(tells
-              ? {
-                  opened: (keys: ReadonlyArray<string>): void =>
-                    reads.tellOpened(keys),
-                }
-              : {}),
+            opened: (keys: ReadonlyArray<string>): void =>
+              reads.tellOpened(keys),
           },
-    [key, tells, reads]
+    [key, reads]
   )
 }

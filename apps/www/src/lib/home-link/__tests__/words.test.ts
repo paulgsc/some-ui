@@ -1,37 +1,19 @@
 /**
- * Each lane's sharing words (LA9 to LA11), and the routine's files shown in
- * Korean (LA12): each state reads as what is kept where, and none of them
- * names the machinery behind it.
+ * Each lane's sharing words (LA14, LA15), Settings' readout of what is kept
+ * on home, the clear, and Korean's look at the routine's files: each state
+ * reads as what is kept where and what waits, and none of them names the
+ * machinery behind it.
  */
 import { describe, expect, it } from "vitest"
 
-import type { Shared } from "@/lib/home-link/consent-model"
 import type { KeptRun, KeptState } from "@/lib/home-link/kept-model"
 import { INITIAL_KEPT } from "@/lib/home-link/kept-model"
 import type { LaneFacts } from "@/lib/home-link/words"
 import * as words from "@/lib/home-link/words"
-import {
-  historyLines,
-  laneView,
-  lastLook,
-  ROUTINE_READS,
-  ROUTINE_TELLS_OPENED,
-  WORDS,
-} from "@/lib/home-link/words"
+import { laneView, lastLook, WORDS } from "@/lib/home-link/words"
 import { HOW_ORDER, MARK_WORDS, WHERE_ORDER } from "@/lib/sharing-marks"
 
 import { MACHINERY } from "./machinery"
-
-const ALL = { since: 0, earlier: false }
-const KEPT: Shared = new Map([
-  ["sessions", ALL],
-  ["shelf", ALL],
-  ["aph", ALL],
-  ["jobs", { since: 0, earlier: true }],
-  ["voice", ALL],
-])
-const NONE: Shared = new Map()
-const ONLY_SESSIONS: Shared = new Map([["sessions", ALL]])
 
 const runs: Array<KeptState> = [
   INITIAL_KEPT,
@@ -56,13 +38,11 @@ const runs: Array<KeptState> = [
 
 const facts = (over: Partial<LaneFacts> = {}): LaneFacts => ({
   known: true,
-  shared: NONE,
-  stopped: new Map(),
+  paired: false,
   held: {},
   refused: {},
   waiting: 0,
   run: INITIAL_KEPT,
-  away: null,
   hidden: 0,
   pulled: true,
   ...over,
@@ -70,41 +50,44 @@ const facts = (over: Partial<LaneFacts> = {}): LaneFacts => ({
 
 function every(): Array<LaneFacts> {
   const all: Array<LaneFacts> = []
-  for (const shared of [NONE, KEPT, ONLY_SESSIONS]) {
-    for (const stopped of [new Map(), new Map([["aph", 5] as const])]) {
-      for (const held of [{}, { sessions: 3, shelf: 1, jobs: 4 }]) {
-        for (const away of [null, { waiting: 2, back: INITIAL_KEPT }]) {
-          for (const run of runs) {
-            all.push(
-              facts({
-                known: run !== INITIAL_KEPT,
-                shared,
-                stopped,
-                held,
-                refused: { shelf: 2, aph: 1, jobs: 1 },
-                waiting: 3,
-                run,
-                away: away && { ...away, back: run },
-                hidden: 1,
-                pulled: false,
-              })
-            )
-          }
-        }
+  for (const paired of [false, true]) {
+    for (const held of [{}, { sessions: 3, shelf: 1, jobs: 4 }]) {
+      for (const run of runs) {
+        all.push(
+          facts({
+            known: run !== INITIAL_KEPT,
+            paired,
+            held,
+            refused: { shelf: 2, aph: 1, jobs: 1 },
+            waiting: 3,
+            run,
+            hidden: 1,
+            pulled: false,
+          })
+        )
       }
     }
   }
   return all
 }
 
-const day = (): string => "18 Oct"
+/** What a word-making function says of 2 and a host; nothing for one that takes more. */
+function saidOf(fn: unknown): Array<string> {
+  if (typeof fn !== "function") return []
+  try {
+    const said: unknown = fn(2, "home.example")
+    return typeof said === "string" ? [said] : []
+  } catch {
+    return []
+  }
+}
 
 /** Every string in `value`, and what each of its counting words says of 2. */
 function stringsOf(value: unknown): Array<string> {
   if (typeof value === "string") return [value]
   if (typeof value === "object" && value !== null) {
     return Object.values(value).flatMap((v: unknown) =>
-      typeof v === "function" ? [String(v(2))] : stringsOf(v)
+      typeof v === "function" ? saidOf(v) : stringsOf(v)
     )
   }
   return []
@@ -114,7 +97,7 @@ describe("each lane's sharing words", () => {
   it("never name the machinery", () => {
     const said = Object.values(WORDS).flatMap((lane) =>
       every().flatMap((f) => {
-        const view = laneView(lane, f, day)
+        const view = laneView(lane, f)
         return [
           view.word,
           view.line,
@@ -140,47 +123,34 @@ describe("each lane's sharing words", () => {
     }
   })
 
-  it("says phone only until something has gone home", () => {
-    const view = laneView(WORDS.practice, facts({ waiting: 2 }), day)
+  it("says phone only until paired, and that nothing waits for a pairing", () => {
+    const view = laneView(WORDS.practice, facts({ waiting: 2 }))
     expect(view).toMatchObject({ where: "phone", how: null })
+    expect(view.line).toContain("Pair this phone with home")
     expect(view.rows.map((row) => row.text)).toEqual([
       "Only on this phone",
       "Only on this phone",
     ])
   })
 
-  it("says partly on home once sent and not kept", () => {
+  it("says partly on home once sent and not paired now", () => {
     const view = laneView(
       WORDS.practice,
-      facts({ held: { sessions: 3, shelf: 0 } }),
-      day
+      facts({ held: { sessions: 3, shelf: 0 } })
     )
     expect(view).toMatchObject({ where: "partly", how: null })
     expect(view.rows[0]?.text).toBe("3 sessions on home · new ones stay here")
   })
 
-  it("says until when home was sent to, once stopped", () => {
-    const view = laneView(
-      WORDS.jobs,
-      facts({ stopped: new Map([["jobs", 5]]), held: { jobs: 4 } }),
-      day
-    )
-    expect(view).toMatchObject({ where: "partly", how: null })
-    expect(view.rows[0]?.text).toBe(
-      "Sent to home until 18 Oct · 4 events there · new ones stay here"
-    )
-  })
-
-  it("says on home, since when, when kept and nothing waits", () => {
+  it("says on home, and how much, when paired and nothing waits", () => {
     const view = laneView(
       WORDS.practice,
       facts({
-        shared: KEPT,
+        paired: true,
         held: { sessions: 3, shelf: 1 },
         refused: { shelf: 2 },
         run: { ...INITIAL_KEPT, last: { kind: "synced", at: 1 } },
-      }),
-      day
+      })
     )
     expect(view).toMatchObject({
       where: "kept",
@@ -188,27 +158,35 @@ describe("each lane's sharing words", () => {
       word: "On home",
     })
     expect(view.rows.map((row) => row.text)).toEqual([
-      "Kept on home since 18 Oct · 3 sessions there",
-      "Kept on home since 18 Oct · 1 kept item there · 2 kept items home didn't take",
+      "3 sessions on home",
+      "1 kept item on home · 2 kept items home didn't take",
     ])
   })
 
-  it("says a choice found from before only that it was before", () => {
-    const view = laneView(WORDS.jobs, facts({ shared: KEPT }), day)
-    expect(view.rows[0]?.text).toBe("Kept on home since before 18 Oct")
+  it("says kept on home, with nothing to tell, before the first send", () => {
+    const view = laneView(
+      WORDS.jobs,
+      facts({ paired: true, held: { jobs: 0 } })
+    )
+    expect(view).toMatchObject({
+      where: "kept",
+      how: null,
+      word: "Kept on home",
+    })
+    expect(view.rows[0]?.text).toBe("Nothing on home yet")
   })
 
   it("says a fault on this phone as the phone's, not home's", () => {
     const fault = facts({
-      shared: KEPT,
+      paired: true,
       run: { ...INITIAL_KEPT, last: { kind: "failed", why: "fault" } },
     })
-    expect(laneView(WORDS.jobs, fault, day)).toMatchObject({
+    expect(laneView(WORDS.jobs, fault)).toMatchObject({
       where: "kept",
       how: "fault",
       word: "Didn't go",
     })
-    expect(laneView(WORDS.jobs, fault, day).line).toMatch(
+    expect(laneView(WORDS.jobs, fault).line).toMatch(
       /^Something on this phone went wrong\./
     )
   })
@@ -216,21 +194,21 @@ describe("each lane's sharing words", () => {
   it("says a voice note this phone had no room or failed to copy as the phone's, with what waits (LA14)", () => {
     const ran = (why: string, waiting: number): LaneFacts =>
       facts({
-        shared: KEPT,
+        paired: true,
         waiting,
         run: { ...INITIAL_KEPT, last: { kind: "failed", why } },
       })
-    expect(laneView(WORDS.voice, ran("room", 2), day)).toMatchObject({
+    expect(laneView(WORDS.voice, ran("room", 2))).toMatchObject({
       where: "kept",
       how: "no-room",
       word: "No room",
       line: "This phone has no room left for copies home doesn't have yet. 2 voice notes wait on this phone and go next time.",
     })
-    expect(laneView(WORDS.voice, ran("fault", 1), day).line).toBe(
+    expect(laneView(WORDS.voice, ran("fault", 1)).line).toBe(
       "Something on this phone went wrong. 1 voice note waits on this phone and goes next time."
     )
     expect(
-      laneView(WORDS.voice, facts({ shared: KEPT, waiting: 1 }), day).line
+      laneView(WORDS.voice, facts({ paired: true, waiting: 1 })).line
     ).toBe(
       "1 voice note waits on this phone. It goes to home while the app is open."
     )
@@ -238,71 +216,35 @@ describe("each lane's sharing words", () => {
 
   it("says home was busy, with what waits, for every lane", () => {
     const busy = facts({
-      shared: KEPT,
+      paired: true,
       waiting: 2,
       run: { ...INITIAL_KEPT, last: { kind: "failed", why: "busy" } },
     })
-    expect(laneView(WORDS.practice, busy, day)).toMatchObject({
+    expect(laneView(WORDS.practice, busy)).toMatchObject({
       where: "kept",
       how: "busy",
       word: "Home busy",
       line: "Home is busy right now. 2 sessions wait on this phone and go next time.",
     })
-    expect(laneView(WORDS.aph, busy, day).line).toBe(
+    expect(laneView(WORDS.aph, busy).line).toBe(
       "Home is busy right now. 2 changes wait on this phone and go next time."
     )
   })
 
-  it("says aph is on home, and what this phone holds, once stopped short", () => {
-    const away = facts({
-      stopped: new Map([["aph", 5]]),
-      away: {
-        waiting: 2,
-        back: { ...INITIAL_KEPT, last: { kind: "unreachable", at: 1 } },
-      },
-    })
-    expect(laneView(WORDS.aph, away, day)).toMatchObject({
-      where: "away",
-      how: "no-answer",
-      line: "Home didn't answer. Sending to home is off. Home holds aph; this phone holds only the 2 changes home hadn't confirmed.",
-    })
-  })
-})
-
-describe("the ledger's history", () => {
-  const log = [
-    {
-      seq: 1,
-      at: 1,
-      pairing: "old",
-      kind: "kept",
-      scopes: ["aph"],
-      said: null,
-    },
-    {
-      seq: 2,
-      at: 2,
-      pairing: "now",
-      kind: "kept",
-      scopes: ["sessions", "shelf"],
-      said: "yes",
-    },
-    { seq: 3, at: 3, pairing: "now", kind: "stopped", scopes: ["jobs"] },
-  ] as const
-
-  it("says every choice, newest first, once per record, in the person's terms", () => {
-    const lines = historyLines(log, "now", (t) => `day ${String(t)}`)
-    expect(lines.map((line) => line.text)).toEqual([
-      "day 3 · The Jobs record: stopped sending to home. Home keeps what it has.",
-      "day 2 · Practice: kept on home.",
-      "day 1 · aph: kept on home, under an earlier pairing, as chosen before this phone kept its choices.",
+  it("says what aph holds aside, and what it shows before home answers", () => {
+    const view = laneView(
+      WORDS.aph,
+      facts({ paired: true, hidden: 2, pulled: false })
+    )
+    expect(view.notes).toEqual([
+      "2 changes waiting here clash with home's record and aren't shown.",
+      "Until home answers, this shows only what this phone hasn't sent yet.",
     ])
-    expect(lines.filter((line) => MACHINERY.test(line.text))).toEqual([])
   })
 })
 
 describe("the routine's files in Korean", () => {
-  it("says every look in the person's terms, and that showing sends nothing", () => {
+  it("says every look in the person's terms", () => {
     const looks = [
       lastLook(null),
       ...(["read", "busy", "unreachable", "forgotten", "failed"] as const).map(
@@ -314,37 +256,18 @@ describe("the routine's files in Korean", () => {
     expect(lastLook({ kind: "read", at: 1 }, () => "18 Oct, 10:42")).toBe(
       "Last looked at home 18 Oct, 10:42."
     )
-    const confirm = ROUTINE_READS.confirm("home.example")
-    expect(confirm).toContain("home.example")
-    // What is told, and only that: the choice's words gate the telling.
-    expect(confirm).toContain(ROUTINE_TELLS_OPENED)
-    expect(confirm).toContain("Nothing else of yours is sent.")
-    expect(
-      [ROUTINE_TELLS_OPENED, ROUTINE_READS.askAgain].filter((line) =>
-        MACHINERY.test(line)
-      )
-    ).toEqual([])
-    expect(ROUTINE_READS.on("18 Oct")).toBe("Shown in Korean since 18 Oct.")
-    expect(ROUTINE_READS.stopMore).toBe("What you opened stays on this phone.")
   })
 
   it("gives every state of the mark its own pair of marks, and every mark a state", () => {
     const last = (run: KeptRun): KeptState => ({ ...INITIAL_KEPT, last: run })
     const kept = (run: KeptState, waiting = 0): LaneFacts =>
-      facts({ shared: KEPT, waiting, run })
-    const away = (back: KeptState): LaneFacts =>
-      facts({ stopped: new Map([["aph", 5]]), away: { waiting: 2, back } })
+      facts({ paired: true, waiting, run })
     // One of each branch `laneView` can take.
     const states: ReadonlyArray<LaneFacts> = [
       facts({ known: false }),
       facts(),
       facts({ held: { aph: 3 } }),
-      away(INITIAL_KEPT),
-      away({ ...INITIAL_KEPT, running: true }),
-      away(last({ kind: "unreachable", at: 1 })),
-      away(last({ kind: "failed", why: "busy" })),
-      away(last({ kind: "forgotten" })),
-      away(last({ kind: "failed", why: "an entry" })),
+      kept(INITIAL_KEPT),
       kept(last({ kind: "synced", at: 1 })),
       kept(INITIAL_KEPT, 2),
       kept({ ...INITIAL_KEPT, running: true }),
@@ -358,7 +281,7 @@ describe("the routine's files in Korean", () => {
       kept(last({ kind: "failed", why: "fault" })),
       kept(last({ kind: "failed", why: "an entry" })),
     ]
-    const views = states.map((f) => laneView(WORDS.aph, f, day))
+    const views = states.map((f) => laneView(WORDS.aph, f))
     const marks = views.map((v) => `${v.where} ${v.how ?? "-"}`)
     expect(new Set(marks).size).toBe(states.length)
     expect(new Set(views.map((v) => v.line)).size).toBe(states.length)
@@ -368,15 +291,14 @@ describe("the routine's files in Korean", () => {
     )
   })
 
-  it("says a kept record on a phone that isn't paired now, never up to date", () => {
+  it("says a record on a phone that isn't paired now, never up to date", () => {
     const view = laneView(
       WORDS.jobs,
       facts({
-        shared: KEPT,
+        paired: true,
         waiting: 1,
         run: { ...INITIAL_KEPT, last: { kind: "unpaired" } },
-      }),
-      day
+      })
     )
     expect(view).toMatchObject({ how: "unpaired", word: "Not paired" })
     expect(view.line).toBe(

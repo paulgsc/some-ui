@@ -66,10 +66,9 @@ vi.mock("@/lib/voice-home", () => ({
   phoneVoiceHome: (): VoiceHome | null => fakes.home,
 }))
 vi.mock("@/lib/home-link/lanes", () => ({
-  keptNow: (): boolean => true,
+  paired: (): boolean => true,
   useLaneHome: (): unknown => null,
 }))
-vi.mock("@/lib/home-link/consent-runtime", () => ({ phoneConsent: vi.fn() }))
 vi.mock("@/lib/home-link", () => ({ homeLink: vi.fn() }))
 vi.mock("@some-ui/intent-kit", async (actual) => ({
   ...(await actual<object>()),

@@ -41,7 +41,7 @@ import { useIsDeclaredBounded } from "@/lib/route-bounds"
 import { navOf, owns, webSettingsOf, wingOf } from "@/lib/wings"
 import { AudioIndicator } from "@/components/audio/audio-indicator"
 import { AccountUnavailableBanner } from "@/components/auth/account-unavailable-banner"
-import { DeviceHomeGlyph, VoiceNotesHome } from "@/components/device-home-glyph"
+import { DeviceHomeGlyph, HomeLanes } from "@/components/device-home-glyph"
 import { LocIndicator } from "@/components/loc/loc-indicator"
 import {
   barOf,
@@ -226,7 +226,8 @@ const DashboardLayout = (): JSX.Element => {
 
   return (
     <SidebarProvider className={cn(isBoundedRoute && "h-dvh overflow-hidden")}>
-      {import.meta.env.VITE_DEVICE_BACKEND === "true" && <VoiceNotesHome />}
+      {/* The drain: what this phone keeps goes to its paired home from any screen (LA15). */}
+      {import.meta.env.VITE_DEVICE_BACKEND === "true" && <HomeLanes />}
       {/* The phone navigates by the bar along the bottom instead. */}
       {!MOBILE_APP && <DashboardSidebarContent pathname={pathname} />}
       <SidebarInset
@@ -256,7 +257,7 @@ const DashboardLayout = (): JSX.Element => {
             {(!MOBILE_APP || wing?.id === "studio") && <LocIndicator />}
             <SiteLauncher />
             {MOBILE_APP && <MobileSettingsLink pathname={pathname} />}
-            {/* The wing's sharing mark, which runs its lane's send while shown (LA9 to LA11). */}
+            {/* The wing's sharing mark: where its record is kept, and what waits (LA15). */}
             {import.meta.env.VITE_DEVICE_BACKEND === "true" && wing && (
               <DeviceHomeGlyph wing={wing.id} />
             )}

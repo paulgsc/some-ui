@@ -1,10 +1,10 @@
 /**
- * The voice notes' lane (LA13, docs/learner-data-authority.md): each
- * finished voice note a routine hears, copied for home while its person
- * keeps voice notes on home (`./voice-copy`, which says which notes and how
- * each is told), and sent through the one wiring (`./lanes`) by
- * `exchangeVoice` (`lib/voice-home/home`). There is no mark: the app shell
- * mounts `useVoiceHome` on every screen, so notes go from any wing.
+ * The voice notes' lane (LA13, LA15, docs/learner-data-authority.md): each
+ * finished voice note a routine hears, copied for home while the phone is
+ * paired (`./voice-copy`, which says which notes and how each is told), and
+ * sent through the one wiring (`./lanes`) by `exchangeVoice`
+ * (`lib/voice-home/home`). There is no mark: the app shell mounts
+ * `useVoiceHome` on every screen, so notes go from any wing.
  */
 import { useEffect, useSyncExternalStore } from "react"
 import type { OutboxPort, OutboxView } from "@some-ui/game-week"
@@ -16,24 +16,21 @@ import { reflections } from "@/lib/session-reflection"
 import { phoneVoiceHome } from "@/lib/voice-home"
 import type { Unsendable, VoiceHomeState } from "@/lib/voice-home/model"
 
-import { phoneConsent } from "./consent-runtime"
 import { homeLink } from "./index"
 import type { KeptState } from "./kept-model"
 import type { Lane, LaneCounts } from "./lanes"
-import { keptNow, useLaneHome } from "./lanes"
+import { paired, useLaneHome } from "./lanes"
 import {
   candidates,
   copyPasses,
   sendVoice,
   studioRead,
   unsendable,
-  VOICE_SCOPES,
   watchVoiceNotes,
 } from "./voice-copy"
 
 export const voiceLane: Lane = {
   id: "voice",
-  scopes: VOICE_SCOPES.scopes,
   exchange: sendVoice,
   revision: () => phoneVoiceHome().getSnapshot().waiting.length,
   subscribe: (listener) => phoneVoiceHome().subscribe(listener),
@@ -61,10 +58,8 @@ export const voiceLane: Lane = {
       refused: { voice: state.refused.length },
       // A note not copied yet is no safer than one copied and not sent.
       waiting: state.waiting.length + onPhone.length,
-      away: null,
       hidden: 0,
       pulled: true,
-      offered: state.waiting.length + onPhone.length,
     }
   },
 }
@@ -100,8 +95,8 @@ export function useVoiceHome(): KeptState {
  * the phone could not keep yet (held while the app is open), how many
  * home does not hold yet, how many home said it can't take (each stays on
  * this phone, its copy for home included), how many home holds instead
- * and since when, and whether this phone sends voice notes home at all. It
- * reads, and sends nothing.
+ * and since when, and whether this phone is paired with home, so they go.
+ * It reads, and sends nothing.
  */
 
 /**
@@ -156,7 +151,7 @@ export const gameOutbox: OutboxPort = {
       bites.unkept(),
       bites.getSnapshot(),
       phoneVoiceHome().getSnapshot(),
-      keptNow(VOICE_SCOPES)
+      paired()
     )
     // The same view while nothing changed, as `useSyncExternalStore` asks.
     if (last === null || !sameView(last, next)) last = next
@@ -166,7 +161,6 @@ export const gameOutbox: OutboxPort = {
     const stops = [
       phoneGameBites().subscribe(listener),
       phoneVoiceHome().subscribe(listener),
-      phoneConsent().subscribe(listener),
       homeLink().subscribe(listener),
     ]
     return (): void => {

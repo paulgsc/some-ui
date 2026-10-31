@@ -242,8 +242,8 @@ export const OpenDigest = (): JSX.Element => {
 }
 
 /**
- * Whether Jobs is kept on the paired home, as the wing's layout reads it
- * (`useJobsKeptOnHome`): only then does an exchange file the cards' files.
+ * Whether this phone is paired with home, as the wing's layout reads it
+ * (`usePairedWithHome`): only then does an exchange file the cards' files.
  */
 const KeptOnHomeContext = createContext(false)
 

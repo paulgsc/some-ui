@@ -98,14 +98,6 @@ export function studioToSend(
   }
 }
 
-/** How many sittings a send carries something of. */
-export function sittingsGoing(going: StudioGoing): number {
-  return new Set([
-    ...going.sittings.map((sitting) => sitting.name),
-    ...going.reports.map((report) => report.sitting),
-  ]).size
-}
-
 const sittingPath = (sitting: string): string =>
   `/studio/sittings/${encodeURIComponent(sitting)}/events`
 

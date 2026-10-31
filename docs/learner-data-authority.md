@@ -32,13 +32,27 @@ Each invariant below still describes the code, and holds until the change that
 moves its code retires or rewords it in the same PR; a hunk that moves code
 toward this frame without doing so is a finding.
 
-| Invariant                                                                               | Moved by   |
-| --------------------------------------------------------------------------------------- | ---------- |
-| LA7 (a reflection reaches no server)                                                    | HF3, #2178 |
-| LA8's "only on a tap"; LA9–LA11 and LA13's consent; LA12 (consent to read)              | HF8, #2182 |
-| LA6's reporting reset on every sign-in, on the owner's `lan` build                      | HF8, #2182 |
-| LA13's scene notes copied only once a drama prompt is shared                            | HF2, #2177 |
-| Every share sheet's let-go (done: HF1, #2176, promise LG1); the Jobs share sheet itself | HF2, #2177 |
+| Invariant                                                                                                          | Moved by          |
+| ------------------------------------------------------------------------------------------------------------------ | ----------------- |
+| LA7 (a reflection reaches no server)                                                                               | HF3, #2178        |
+| LA8's "only on a tap"; LA9–LA11 and LA13's consent; LA12 (consent to read) (done: LA9–LA12 retired, LA15 declared) | HF8, #2182        |
+| LA6's reporting reset on every sign-in, on the owner's `lan` build                                                 | HF8, #2182 (open) |
+| LA13's scene notes copied only once a drama prompt is shared                                                       | HF2, #2177        |
+| Every share sheet's let-go (done: HF1, #2176, promise LG1); the Jobs share sheet itself                            | HF2, #2177        |
+
+HF8 (#2182, owner's decision D3: no per-domain switch, and no consent log told
+to home or enforced by home) removed the phone's consent machinery: the
+per-pairing consent log and its telling to home, the choice to show the
+routine's files, the two-press marks, aph's way back, and Settings' ledger of
+choices. A paired phone drains everything it keeps (LA15); the only choice is
+the pairing, and the only tap that lets anything leave the phone is the clear
+of finished sessions home holds (LA8). The server half (paulgsc/server's
+`handlers/sharing.rs`, its `sharing_choice` table and the `409
+sharing_stopped` checks, its invariant 17) is a separate change; until it
+lands, a home that still carries an old stop answers a write `409`, which the
+phone reports as a failed send and refuses nothing for good
+(`@some-ui/core-utils`' `stoppedOnHome`). LA6's reporting reset is still to
+move.
 
 ## The two questions
 
@@ -60,26 +74,26 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 
 ## What leaves the device
 
-|                                             | Learning on the device                       | On the account, reporting off                                                                                                                                                                                                                                                                                  | On the account, reporting on               |
-| ------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| Sessions, settings, profile                 | `localStorage`, never sent                   | sessions go to `file_host`                                                                                                                                                                                                                                                                                     | the same                                   |
-| Session probe (`GET /auth/session`)         | never made                                   | at boot, only because the account was chosen                                                                                                                                                                                                                                                                   | the same                                   |
-| Passkey ceremonies                          | only when the person starts one              | the same                                                                                                                                                                                                                                                                                                       | the same                                   |
-| Lesson, round and vocab reads               | made, **without credentials**                | made, without credentials                                                                                                                                                                                                                                                                                      | the same                                   |
-| This device's sessions                      | stay here                                    | copied only by "Copy to my account", per account, after a confirmation; the phone's, to its paired home, by "Send to home", which then frees the finished ones home confirms it holds (LA8)                                                                                                                    | the same                                   |
-| `/signals`, `/presence/lease`               | never                                        | never                                                                                                                                                                                                                                                                                                          | sent                                       |
-| Push subscription                           | never                                        | never                                                                                                                                                                                                                                                                                                          | the account's, on the person's own taps    |
-| Reflections                                 | on the device (at most 20), never sent       | never sent, but a spoken one's audio, once its person keeps voice notes on home (LA7, LA13)                                                                                                                                                                                                                    | the same                                   |
-| Voice notes (the phone's)                   | on the phone, never sent                     | once its person keeps voice notes on home (Settings), each spoken reflection, Jobs voice note an event names, game bite, Studio take and scene note of a shared drama prompt copied and sent to the paired home while the app is open, the copy kept until home holds it; stopped from Settings (LA13)         | the same                                   |
-| Shelf                                       | never                                        | the account's, on the person's own taps                                                                                                                                                                                                                                                                        | the same                                   |
-| aph (the phone's)                           | on the phone, never sent                     | once its person keeps it on home, on the paired home, synced while aph is open; the phone keeps only what home has not confirmed; stopped from aph's mark, which brings it back (LA9)                                                                                                                          | the same                                   |
-| Jobs record (the phone's)                   | on the phone, never sent                     | once its person keeps it on home, a copy on the paired home, synced while the Jobs wing is open; its decisions and scouts files without voice, filed with home, which hands them to the Jobs mailbox on Cloudflare; the phone keeps its whole log; stopped from the wing's mark or Settings (LA10)             | the same                                   |
-| Practice (the phone's)                      | on the phone, never sent                     | once its person ticks "Keep sending" in the send's confirm, its finished sessions and kept items sent while Practice is open; nothing let go on its own; stopped from its mark or Settings (LA11)                                                                                                              | the same                                   |
-| The routine's word sets and dramas (home's) | not read                                     | read with the account's session while Korean is open; in the Android app, once its person shows them in Korean (Settings), from the paired home with the pairing's key while Korean is open, nothing of the phone's sent, its newest files and its run records kept on the phone; stopped from Settings (LA12) | the same                                   |
-| LeetType session log (the phone's)          | on the phone, never sent                     | its finished sessions copied to the paired home by "Send to home", each event without a spoken answer's ticks, read back before it counts as held; the phone keeps its whole log (LA8)                                                                                                                         | the same                                   |
-| Studio's time log and answers (the phone's) | on the phone, never sent                     | each sitting's time log and its answer to how it went, copied to the paired home by "Send to home", the log read back before it counts as held; the phone keeps its whole log (LA8)                                                                                                                            | the same                                   |
-| Speech                                      | the browser's own voice                      | the server's speech service                                                                                                                                                                                                                                                                                    | the same                                   |
-| Reminders                                   | the client's own policy, while a tab is open | the client's own policy, while a tab is open                                                                                                                                                                                                                                                                   | the server's push, with the browser closed |
+|                                             | Learning on the device                       | On the account, reporting off                                                                                                                                                                                                                                       | On the account, reporting on               |
+| ------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| Sessions, settings, profile                 | `localStorage`, never sent                   | sessions go to `file_host`                                                                                                                                                                                                                                          | the same                                   |
+| Session probe (`GET /auth/session`)         | never made                                   | at boot, only because the account was chosen                                                                                                                                                                                                                        | the same                                   |
+| Passkey ceremonies                          | only when the person starts one              | the same                                                                                                                                                                                                                                                            | the same                                   |
+| Lesson, round and vocab reads               | made, **without credentials**                | made, without credentials                                                                                                                                                                                                                                           | the same                                   |
+| This device's sessions                      | stay here                                    | copied only by "Copy to my account", per account, after a confirmation; the phone's finished ones, to its paired home, by the drain (LA15), and freed from the phone only by "Clear finished sessions home holds", which reads each back first (LA8)                | the same                                   |
+| `/signals`, `/presence/lease`               | never                                        | never                                                                                                                                                                                                                                                               | sent                                       |
+| Push subscription                           | never                                        | never                                                                                                                                                                                                                                                               | the account's, on the person's own taps    |
+| Reflections                                 | on the device (at most 20), never sent       | never sent, but a spoken one's audio, on a phone paired with home (LA7, LA13)                                                                                                                                                                                       | the same                                   |
+| Voice notes (the phone's)                   | on the phone, never sent                     | on a paired phone, each spoken reflection, Jobs voice note an event names, game bite, Studio take and scene note of a shared drama prompt copied and sent to the paired home while the app is open, the copy kept until home holds it (LA13, LA15)                  | the same                                   |
+| Shelf                                       | never                                        | the account's, on the person's own taps                                                                                                                                                                                                                             | the same                                   |
+| aph (the phone's)                           | on the phone, never sent                     | on a paired phone, on the paired home from the first run, synced while aph is open; the phone keeps only what home has not confirmed (LA15)                                                                                                                         | the same                                   |
+| Jobs record (the phone's)                   | on the phone, never sent                     | on a paired phone, a copy on the paired home, synced while the app is open; its decisions and scouts files without voice, filed with home, which hands them to the Jobs mailbox on Cloudflare; the phone keeps its whole log (LA15)                                 | the same                                   |
+| Practice (the phone's)                      | on the phone, never sent                     | on a paired phone, its finished sessions and kept items sent while the app is open; nothing let go on its own (LA15)                                                                                                                                                | the same                                   |
+| The routine's word sets and dramas (home's) | not read                                     | read with the account's session while Korean is open; in the Android app, from the paired home with the pairing's key while Korean is open, nothing of the phone's sent but which it opened, by name, its newest files and its run records kept on the phone (LA15) | the same                                   |
+| LeetType session log (the phone's)          | on the phone, never sent                     | its finished sessions copied to the paired home by the drain, each event without a spoken answer's ticks, read back before it counts as held; the phone keeps its whole log (LA15)                                                                                  | the same                                   |
+| Studio's time log and answers (the phone's) | on the phone, never sent                     | each sitting's time log and its answer to how it went, copied to the paired home by the drain, the log read back before it counts as held; the phone keeps its whole log (LA15)                                                                                     | the same                                   |
+| Speech                                      | the browser's own voice                      | the server's speech service                                                                                                                                                                                                                                         | the same                                   |
+| Reminders                                   | the client's own policy, while a tab is open | the client's own policy, while a tab is open                                                                                                                                                                                                                        | the server's push, with the browser closed |
 
 A returning account user whose server cannot be reached at boot (a timeout, a
 5xx, a refused connection) stays on the account, and its calls fail where they
@@ -163,9 +177,9 @@ declared (checked by reading every call site and by the tests named).
   rather than repeated.
   On the Android app the copy to its paired home is `copySessionsTo`
   (`lib/tenant/sessions-copy`, which the phone build may carry), called
-  only from `lib/home-link/sessions` behind the Home server block's confirm
-  (LA8), with the same plan and receipt, no lock (the phone's link runs one
-  thing at a time) and no authority (the pairing is the account). The phone's
+  only from `lib/home-link/sessions`, by the drain (LA15), with the same
+  plan and receipt, no lock (the phone's link runs one thing at a time)
+  and no authority (the pairing is the account). The phone's
   copy also names each create's id, kept with its attempt until home answers:
   a home that creates once per id (paulgsc/server#432) is asked for that id
   first, and sent the same create again if it lacks it.
@@ -307,8 +321,8 @@ declared (checked by reading every call site and by the tests named).
   passed to anything that sends to `file_host` or writes what does (a session
   record, a signal, the device backend's database), with one exception: a
   voice note's audio, with its id, session, time and media type, which the
-  voice lane copies for the paired home and sends there while its person
-  keeps voice notes on home (LA13). It leaves the device otherwise only
+  voice lane copies for the paired home and sends there while the phone is
+  paired (LA13). It leaves the device otherwise only
   through the share sheet (`lib/agent-export`), which the person starts. Two
   allowlists in `apps/www/eslint.config.js` bound where one can travel: the
   modules that hold or show reflections (`REFLECTION_MODULES`) import from `@/`
@@ -330,7 +344,7 @@ declared (checked by reading every call site and by the tests named).
   or the device backend's database; or a hunk to `lib/home-link/voice-copy.ts`
   or `lib/home-link/voice.ts` that reads any part of a reflection but a voice
   note's id, `sessionId`, `createdAt`, `body.kind`, `body.mimeType` and its
-  audio, or copies one while `keptNow(VOICE_SCOPES)` is false.
+  audio, or copies one while `paired()` is false.
 - _Scope:_ `apps/www/src`. The way out by the share sheet is LA1's "what a
   learner chooses to send" (below), not a request.
 - _Why not enforced:_ the imports are, by lint (checked when declared by
@@ -346,57 +360,39 @@ declared (checked by reading every call site and by the tests named).
   lane's two modules, added to `REFLECTION_IMPORTERS`, read a reflection only
   in `reflectionNote` (id, session, time, kind and media type) and its audio
   only through `reflectionAudio().get`, inside `copyAll`, which checks
-  `keptNow(VOICE_SCOPES)` before every note; `voice.ts` reads the store only
-  to render the count again.
+  `paired()` before every note; `voice.ts` reads the store only to render
+  the count again.
 
-### LA8: the phone reaches its home server only when tapped, and says where
+### LA8: the phone reaches its home server through one module, and lets go only on a tap
 
 - _Claim:_ in the Android app, every request to the home server goes through
   `lib/device-backend/native-http` (the one module that names
-  `CapacitorHttp`), which only `lib/home-link` calls, and, but for a record
-  kept on home (aph, LA9; the Jobs record, LA10; Practice, LA11; voice notes,
-  LA13) and for
-  Korean's look at the routine's files (LA12, the one request started
-  neither by a tap nor by a record's send), which are the other callers of
-  `lib/home-link`, is started by a tap
-  in the Home server block of Settings
-  (`components/settings/device-section.tsx`):
-  the sync (published lessons and rounds, read with no credential), pairing
-  (the code only), unpairing, and the send to home (`lib/home-link/send`,
-  after one confirm that names how many sessions, kept items, LeetType
-  sessions and Studio sittings and the host): the phone's sessions, each one's record, its plan, status and
-  times, created once, restored with one patch, and patched again whenever
-  the phone's record has moved on from home's copy; home is read only to
-  learn what it already holds and, once the copy has run, to read back each
-  finished session (`mayLeavePhone`: completed, not today's) and confirm it
-  holds it exactly as the phone does (`confirmHeld`), and the phone then
-  lets go of its own copy of those alone, each unchanged since it was read;
-  then one PUT per item kept on this phone's shelf that home does not hold
-  as it is now, by what home last answered for it under this pairing
-  (`./sent`), its bytes as kept, nothing read back and the item kept on the
-  phone; then each finished LeetType session (`finishedSessions`: ended, or
-  another session started after it) that home does not hold as it is now,
-  by what home last read back of it under this pairing (`./sent`), one PUT
-  per event in its home form (`homeFormOf`: a spoken answer without its
-  ticks, which stay on the phone), then one read of that session back,
-  compared event by event, and only a session that reads back exactly as
-  sent is remembered as held; the phone keeps its whole log; then Studio's
-  time log the same way, sitting by sitting (`lib/home-link/studio-log`,
-  paulgsc/server's `studio_log`), and each sitting's answer to how it went,
-  one PUT each, remembered as held on a `200`; Studio's record reaches the
-  send only through what Studio's screen handed in (`lib/studio-keeping`,
-  which holds it and calls nothing of the link). Nothing on home is
-  deleted. Outside LA9 to LA13, nothing is sent when the app or Settings
-  opens, on resume, on a timer or on a network change: making the runtime and
-  `load` read only the phone's own record. There is no retry; a sync, a send,
-  a copy or a record's keeping ends at Stop, or when the app goes to the
-  background, before its next request, and is over only once every request
-  it started has settled.
+  `CapacitorHttp`), which only `lib/home-link` calls, and, but for the drain
+  of what this phone keeps (LA15: aph, the Jobs record, Practice's record,
+  voice notes, through `lib/home-link/lanes`) and Korean's look at the
+  routine's files (`lib/home-link/routine`, one `GET /routine/files` per
+  look and one `PUT /routine/opened` of names per open, started by the
+  lesson's own query and the open), which are the other callers of
+  `lib/home-link`, is started by a tap in the Home server block of Settings
+  (`components/settings/device-section.tsx`): the sync (published lessons
+  and rounds, read with no credential), pairing (the code only), unpairing,
+  and the clear of finished sessions home holds (`lib/home-link/clear`,
+  after one confirm that names how many and the host): each finished
+  session (`mayLeavePhone`: completed, not today's) read back from home
+  (`readHeld`, `confirmHeld`) and confirmed held exactly as the phone does
+  (`sameRecord`), and the phone then lets go of its own copy of those alone,
+  each unchanged since it was read (`letGoUnchanged`); the clear sends
+  nothing. Nothing on home is deleted. Nothing but the drain and Korean's
+  look is sent when the app or Settings opens, on resume, on a timer or on
+  a network change: making the runtime and `load` read only the phone's own
+  record. There is no retry; a sync, a clear or a drain's run ends at Stop,
+  or when the app goes to the background, before its next request, and is
+  over only once every request it started has settled.
   The pairing's credential is sent only to the base stored with it, over
   `https:` (`homeRequest` refuses a credentialed `http:` URL), and never on
   a sync read; no redirect is followed. Unpairing forgets it on the phone whether or
   not home could be told, and says which. The pair button names the host
-  before it is pressed, and every send names it. The credential is stored
+  before it is pressed, and the clear names it. The credential is stored
   only by `HomeCredentialPlugin`, sealed by the Android Keystore, kept out of
   every backup and device-to-device transfer (`res/xml/backup_rules.xml`,
   `res/xml/data_extraction_rules.xml`, both named by the manifest), and
@@ -406,66 +402,44 @@ declared (checked by reading every call site and by the tests named).
   the LA8 checks in
   `lib/serving-privacy/__tests__/egress-choke-points.test.ts` (who may name
   `CapacitorHttp`, call `native-http`, call `lib/home-link`); one that calls
-  a `homeLink()` method that sends (`pair`, `unpair`, `sync`, `send`) from anywhere but
-  a press handler in the Home server block or a module that block calls; one
-  that calls its `keep` from anywhere but `lib/home-link/lanes.ts` (LA9 to
-  LA11) and `lib/home-link/routine.ts` (LA12); one
-  that sends from `createHomeLink`,
-  `load`, or, outside LA9 to LA13, a `useEffect`, a timer, a
-  `visibilitychange` or `online` listener; one that retries a failed home
-  request, or queues one for later, outside LA9 to LA11 and LA13; one that lets the send start without
-  its confirm, or drops a count or the host from that confirm; one that
-  sends shelf items other than `everyKept`'s, or with a method other than
-  `PUT`; one that passes `sendKept` kept items that did not come through
-  `keptToSend` (in `lib/home-link/send`), or that deletes, bypasses or
-  weakens its filter (`shelfToSend` in `./sent`: an item goes unless what
-  home last answered for it under this pairing holds its bytes as they are
-  now), so the send carries what home already holds; one that passes
-  `sendLog` sessions that did not come through `logGoing` (in
-  `lib/home-link/send`), or lets `finishedSessions` hand on an event
-  that did not pass through `homeFormOf`, or lets `homeFormOf` keep a
-  spoken answer's `ticks`; one that deletes, bypasses
-  or weakens `finishedSessions` (in
-  `packages/ui/leetype/src/lib/leetype/session-log/home.ts`: a session goes
-  only once it ended or another started after it) or `logToSend` and
-  `digestOf` (in `lib/home-link/sent`: a session goes unless what
-  home last read back of it under this pairing holds every event it has
-  now); one that makes `sendLog`
-  remember a session as held without reading it back, or compare less than
-  every event it sent (`holdsAll`), or send with a method other than `PUT`
-  and `GET`; one that lets the send remove an event from the phone's
-  session log; one that passes `copySessionsTo` anything but session records
-  (a reflection, a stop or a soundbite: LA7), or lets `homeTransport` send a
-  method other than `GET`, `POST` or `PATCH`, or hand a `401` to
-  `requestJSON` (the app's own sign-out); one that sends a session's create
-  or patch other than through `copySessionsTo` (which LA2 keeps to one
-  create per session, and patches only to finish a copy or bring it up to
-  date); one that lets the send remove a phone session that
-  `confirmHeld` did not report held, that `mayLeavePhone` refuses, or that
-  changed since it was read (`letGoUnchanged`), or that drops the freeing from
-  the send's confirm; one that widens `mayLeavePhone` (in
+  a `homeLink()` method that sends (`pair`, `unpair`, `sync`, `send`) from
+  anywhere but a press handler in the Home server block or a module that
+  block calls; one that calls its `keep` from anywhere but
+  `lib/home-link/lanes.ts` (LA15) and `lib/home-link/routine.ts`; one that
+  sends from `createHomeLink` or `load`, or, outside LA15's watch and
+  Korean's look, from a `useEffect`, a timer, a `visibilitychange` or
+  `online` listener; one that retries a failed home request, or queues one
+  for later, outside LA15; one that lets the clear start without its
+  confirm, or drops the count or the host from that confirm; one that has
+  the clear send anything (`readHeld` with a method other than `GET`, or
+  `clearHeld` calling the drain or a copy); one that lets the clear remove
+  a phone session that `confirmHeld` did not report held, that
+  `mayLeavePhone` refuses, or that changed since it was read
+  (`letGoUnchanged`); one that widens `mayLeavePhone` (in
   `lib/device-backend/handlers/sessions`) to pass a session that is not
   completed or that was started or finished today, or that deletes,
   renames or moves it, or replaces a call to it with a condition of its
   own, without the same test at every site that picks what may leave; one
   that deletes or weakens `removeUnchanged`'s `updated_at` match (in the
   same file), or lets `letGoUnchanged` (`lib/session-archive`) delete by
-  any other route; each lets the send remove what the claim keeps; one that makes
-  `confirmHeld` write, or compare less than everything a copy carries
-  (`sameRecord`); one that lets the runtime's `work` end before every
-  request it started has settled (`inFlight`, `track`), so a second tap could
-  race a create still on its way; one that deletes or weakens the
-  `onHidden` subscription in the runtime's `work`, the `stopPressed` it
-  dispatches, the `stopped()` check in the `get` it hands out, or
-  `onHidden`'s stop of a sync that starts already hidden
-  (`lib/home-link/visibility.ts`); one that passes `token` on a sync's
-  `get`, or with a URL not built from the stored pairing's `base` (or, in
-  `pair`, the address being paired); one that removes `homeRequest`'s
-  `https:` check or its `disableRedirects`;
-  one that lets `unpair` keep the credential when the request fails, or
-  report the phone unpaired when forgetting it failed; one that
-  removes the host from the pair button or the paired line; one that writes
-  the pairing record anywhere but `HomeCredentialPlugin`, or stores it there
+  any other route; one that makes `confirmHeld` write, or compare less than
+  everything a copy carries (`sameRecord`); one that passes `copySessionsTo`
+  anything but session records (a reflection, a stop or a soundbite: LA7),
+  or lets `homeTransport` send a method other than `GET`, `POST` or
+  `PATCH`, or hand a `401` to `requestJSON` (the app's own sign-out); one
+  that lets the runtime's `work` end before every request it started has
+  settled (`inFlight`, `track`), so a second tap could race a request still
+  on its way; one that deletes or weakens the `onHidden` subscription in
+  the runtime's `work`, the `stopPressed` it dispatches, the `stopped()`
+  check in the `get` or `send` it hands out, or `onHidden`'s stop of a sync
+  that starts already hidden (`lib/home-link/visibility.ts`); one that
+  passes `token` on a sync's `get`, or with a URL not built from the stored
+  pairing's `base` (or, in `pair`, the address being paired); one that
+  removes `homeRequest`'s `https:` check or its `disableRedirects`; one
+  that lets `unpair` keep the credential when the request fails, or report
+  the phone unpaired when forgetting it failed; one that removes the host
+  from the pair button or the paired line; one that writes the pairing
+  record anywhere but `HomeCredentialPlugin`, or stores it there
   unencrypted; one that makes `HomeCredentialPlugin` delete the record or
   its key (`forgetKey`) anywhere but `read`'s `Lost` branch and `write`'s
   retry after a failure `mayPass` refuses; one that adds a `Lost` throw in
@@ -473,530 +447,80 @@ declared (checked by reading every call site and by the tests named).
   `mayPass`, removes a `mayPass` check `decrypt` makes, moves loading the
   Keystore inside such a catch, narrows `mayPass`, or makes `storedKey`
   throw `UnrecoverableKeyException` for anything but an entry that is not
-  a secret key; or one that
-  removes or narrows an `<exclude>` in either backup rule file, removes
-  `android:fullBackupContent` or `android:dataExtractionRules` from the
-  manifest, or renames `HomeCredentialPlugin.PREFS` without them.
+  a secret key; or one that removes or narrows an `<exclude>` in either
+  backup rule file, removes `android:fullBackupContent` or
+  `android:dataExtractionRules` from the manifest, or renames
+  `HomeCredentialPlugin.PREFS` without them.
 - _Scope:_ `apps/www/src` (the phone build), `apps/mobile/android`.
 - _Why not enforced:_ who may reach home is, by test (`egress-choke-points`:
   `CapacitorHttp` named only in `native-http`, whose index only
   `lib/home-link/index.ts` imports as a value (its `no-answer` sibling holds
-  an error class and no request), and `lib/home-link` imported
-  only by the Home server block and its ledger of what is shared, the marks
-  of the records kept on home, what hands aph's lane to its mark, and
-  LA12's choice and port; the routine's read sends one `GET /routine/files`
-  and nothing else). What a test cannot say is that a call
-  site in that block is a tap: a lint rule cannot
-  tell a press handler from an effect that reaches it through a helper.
-  Held when declared, by reading every caller (`device-section.tsx` alone
+  an error class and no request), and `lib/home-link` imported only by the
+  Home server block, Settings' readout of what is kept on home, the drain
+  and the marks of the records it sends, what hands aph's lane to them, and
+  the routine's readout and port; the routine's read sends one
+  `GET /routine/files` and one `PUT /routine/opened` and nothing else; and
+  `confirmHeld` is called only in `lib/home-link/sessions.ts`). What a test
+  cannot say is that a call site in that block is a tap: a lint rule cannot
+  tell a press handler from an effect that reaches it through a helper. Held
+  when declared (HF8), by reading every caller (`device-section.tsx` alone
   calls `pair`, `unpair`, `stop` and, through `lib/home-link/sync` and
-  `lib/home-link/send`, `sync` and `send`, each from a button's `onPress`
-  or `onClick`) and by `lib/home-link/__tests__/runtime.test.ts`,
-  `shelf.test.ts`, `sessions.test.ts` (a finished session leaves the phone
-  only once home holds it as it is, a moved-on one once home's copy is
-  brought up to date; an unfinished one, today's and one home could not be
-  asked about stay) and
+  `lib/home-link/clear`, `sync` and `send`, each from a button's `onPress`
+  or `onClick`; `readHeld` is called only by `clearHeld`, and sends only
+  through `confirmHeld`'s `GET`s) and by `lib/home-link/__tests__/runtime.test.ts`,
+  `clear.test.ts` (the clear only reads, lets go of nothing home does not
+  hold, and says each end in the person's terms), `sessions.test.ts` (a
+  finished session leaves the phone only once home holds it as it is, a
+  moved-on one once home's copy is brought up to date; an unfinished one,
+  today's, a changed one and one home could not be asked about stay) and
   `components/settings/__tests__/device-section.test.tsx` (opening Settings,
-  paired or not, sends nothing; unpairing and the send each take a second
-  press), with `device-sharing-ledger.test.tsx` for the ledger it mounts. Held again when the marks of the records kept on home
-  (`components/device-home-glyph.tsx`, one wiring in
-  `lib/home-link/lanes.ts`) joined the link's callers: the mark calls none
-  of `pair`, `unpair`, `sync`, `send` or `stop`, and reaches home only
-  through `lanes.ts`, the one caller of `keep`, by `askLane` from its Send
-  now button, the watch `useLaneHome` mounts, for aph, one read of home's
-  record (`bringBack`) after its person's stop, and the telling of each
-  choice (`lib/home-link/told.ts`: first in a run, and for a stop of a lane
-  with no way back, from the stop's second press in the mark or Settings'
-  ledger, and again when a mark's link listener finds that run turned away
-  busy): all LA9's; its choices add to the consent log, and home is told
-  each, never its words. Held again when Korean's look at the routine's
-  files (LA12) joined `keep`'s callers: `lib/home-link/routine.ts` calls it
-  only from `list`, with one `GET /routine/files`, never retried, and
-  nothing else of the link (`egress-choke-points` pins that it calls `keep`
-  and sends that one request; that it does so only from `list` is read).
-  Held again when voice notes (LA13) joined: Settings' voice choice
-  (`components/settings/device-voice-home.tsx`, pinned as a caller of the
-  link) calls none of `pair`, `unpair`, `sync`, `send` or `stop`, only
-  `keepOnHome` from its second press and `askLane` from Send now; the
-  lane's runs go through `lanes.ts`, as LA9's, its watch mounted by the app
-  shell (`VoiceNotesHome`), and the copying it sends from is
-  `lib/home-link/voice-copy.ts`'s, which sends nothing itself.
+  paired or not, sends nothing and offers no choice; unpairing and the clear
+  each take a second press, and the clear only reads).
 
-### LA9: aph is sent home only while its person is using it
+### LA9 (retired): aph is sent home only while its person is using it
 
-aph, the Jobs record, Practice and voice notes are kept on home through one
-wiring (`lib/home-link/lanes.ts`): each declares its lane (its scopes, its
-exchange, how its record moves, its sheet's counts; `aph.ts`, `jobs.ts`,
-`practice.ts`, `voice.ts`), and every lane shares the consent log, the
-runtime, the watch and, but voice notes, the mark
-(`components/device-home-glyph.tsx`). This invariant states the wiring's
-claim for every lane, and aph's own; LA10, LA11 and LA13 add the Jobs
-record's, Practice's and voice notes'.
+- _Retired:_ HF8 (#2182, owner's decision D3). The consent log, the opt-in
+  and the stop it gated, aph's way back (`bringBack`, `leaveHome`), the
+  telling of choices to home (`told.ts`, `PUT /sharing/:scope`) and the
+  `409 sharing_stopped` retelling are gone: a paired phone keeps aph on home
+  from its first run, with no choice to make. The moments a run is asked
+  for, which were this invariant's reading of intent, are LA15's.
 
-What aph may send home, and what the phone may let go of, is enforced by
-test: who reaches the link and its `keep` lane (`egress-choke-points`), the
-requests an exchange makes and that an entry leaves the phone only once home
-answers with it unchanged (`packages/ui/aph/src/lib/__tests__/sync.test.ts`,
-`home.test.ts`), that bringing aph back sends nothing, keeps what waited here
-and sets aside a change that clashes with home's record (`sync.test.ts`), one
-run at a time, that every request a run makes finds a scope still kept and
-that home being busy is said as such (`lib/home-link/__tests__/kept.test.ts`),
-that home is told each choice once, in the order made, and nothing more
-(`told.test.ts`), and the mark's two presses, its stop and its way back
-(`components/__tests__/device-home-glyph.test.tsx`). What no test can say is
-when a run is asked for:
+### LA10 (retired): the Jobs record is sent home only while its person is using the wing
 
-- _Claim:_ `askKept` (`lib/home-link/kept-watch.ts`) asks for a run of a lane
-  only at a moment its person is using that lane's wing: from `watchKept`,
-  which only `useLaneHome` starts, for as long as the lane's mark (`LaneMark`,
-  which `DeviceHomeGlyph` mounts only in the Android app's header, for the
-  wing that shows) is mounted (voice notes, which have no mark: for as long
-  as `VoiceNotesHome`, which `routes/_dashboard.tsx` mounts on every screen of
-  the Android app, is; LA13), on the mark mounting, a move of the lane's
-  revision (its record changed on this phone, or the consent log grew), the
-  app coming back to the foreground, the network coming back, the phone being
-  paired, or the link freeing up after turning a run away; or from `askLane`,
-  which the mark's sheet calls only from its Send now button (and Settings'
-  voice choice from its own, LA13). Each asks only
-  when the consent log keeps one of the lane's scopes under the paired home's
-  id and the document is visible, and every request of the record's that a
-  run makes first finds one still kept (`laneExchange`), so a stop ends a run
-  before its next such request; telling home a choice is not gated, since a
-  stop is one. Nothing asks on a timer. A kept choice enters the log only from the
-  mark's second press, with the words its first press showed (`offer`), from
-  Settings' send with its box ticked (Practice, LA11), from the second press
-  of Settings' voice choice, with the words its first press showed (LA13),
-  or once, as found
-  (`said: null`), for a lane whose record's own switch kept it on home before
-  the log and whose scopes no choice ever named, under a pairing an earlier
-  build made (the link's `earlier`: its record's `choicesLogged` is not
-  `true`, which every pairing this build makes is kept with), never one this
-  build made; a stop only from the second press of Stop sending, in the
-  mark's sheet or in Settings' ledger (`device-sharing-ledger.tsx`, for Practice and
-  the Jobs record; aph's row there sends its person to aph's mark). Home is
-  told each choice it has not heard under the pairing (`lib/home-link/told.ts`:
-  one `PUT /sharing/:scope` with `{ "kept": … }` per scope, the words never,
-  once each, in the order made): first in every run of a lane and in aph's
-  way back, and, for a stop of a lane with no way back, by one run of its own
-  (the teller) asked from `stopOnHome`, since no run of a stopped lane
-  follows, and again from a lane mark's link listener once the link frees
-  after turning it away. A lane's run sends its record only once home has
-  heard every choice (a home that answered twice in a row that it keeps none
-  counts as having heard, until the app starts again, and a home that
-  answers a choice `422` naming its scope, one older than that scope, as
-  having heard for that run: the choices after it are still told, and that
-  one and every later one stay untold, told again on each run until home
-  answers them `200`); aph's way back, which
-  only reads, goes on either way. A `409` saying the phone stopped
-  (`stoppedOnHome`) refuses nothing and makes the next run tell every choice
-  again. For
-  aph, the mark shows aph's lane only while aph's screens hand it in
-  (`DeviceAphLane`, in aph's layout); opting in moves aph's record to home
-  (`keepOnHome`), and stopping asks home once for its record back
-  (`bringBack`: `GET /aph`, after telling home the stop), from the stop's second press, from
-  the Bring it back button, or once the link frees after turning that read
-  away, only while nothing of aph is kept, found so before the read and again
-  before its answer is kept; home being busy is said as busy; when home can't
-  be reached, aph stays as it was, and the mark says this phone holds only
-  what home hadn't confirmed.
-- _Falsified by:_ a hunk to `lib/home-link/kept-watch.ts` that reaches
-  `askKept` from anything but `watchKept`'s record subscription, its link
-  subscription, its `visibilitychange` and `online` listeners and its first
-  ask, adds a timer, changes when a listener asks (the record subscription's
-  check that the revision moved, the link subscription's test for a new
-  pairing or for the link freeing up after a run it turned away), removes or
-  changes anything the cleanup `watchKept` returns undoes, or removes
-  `askKept`'s check that the record is kept on home or that the document is
-  visible; a hunk to `lib/home-link/lanes.ts` that calls `watchKept` from
-  anywhere but `useLaneHome`'s effect, passes it anything but `wire(lane)`'s
-  `record` and `sending`, keeps that effect from returning a cleanup that
-  calls the one `watchKept` returns, calls `askKept` from anywhere but
-  `askLane`, makes the record's `kept` anything but the lane's scopes in
-  `sharedNow` of the log under `pairingOf`, keeps its `revision` from moving
-  with the lane's and the log's length, or its `subscribe` from hearing both,
-  calls `phoneConsent().choose` from anywhere but `keepOnHome`, `stopOnHome`
-  and `enterEarlier`, lets `enterEarlier` choose for a lane whose `keptBefore`
-  is not true or one of whose scopes `everChosen` finds, under a pairing whose
-  `earlier` is not true, or with `said` other than `null`, lets `back` run
-  `bringBack` while a scope is kept, without its `stopped` check, with a
-  `stopped` other than none of the lane's scopes being kept now, or outside
-  `sayingBusy`, or asks it from anywhere but `stopOnHome`, `bringLaneBack` and
-  the effect's link listener (once the link is idle after it was turned away
-  busy), or asks the teller (`telling()` or `teller`) from anywhere but
-  `stopOnHome` and the effect's link listener (once the link is idle after
-  it was turned away busy),
-  removes `telling().want()` from a stop of a lane with no way back, wires the
-  teller outside `sayingBusy`, removes `tellChoices` from a lane's
-  `laneExchange` or from `back`'s `toldFirst`, or makes `tellChoices` tell
-  anything but `tellHome` over the consent log under the run's pairing; a
-  hunk to `lib/home-link/told.ts` that sends anything but one
-  `PUT /sharing/:scope` with `{ kept }` per untold change, tells a change made
-  under another pairing or out of order, sends a choice's words, remembers a
-  choice told before home answered every one of its scopes with `200`,
-  makes `readTold` answer for another pairing, sets `keepsNone` on anything
-  but a second `404` in a row for that pairing, keys it on anything but the
-  pairing or keeps it past the page load, lets `tellHome` answer
-  `synced` on anything but every change answered `200`, a `404`, or a `422`
-  whose details name `scope`, stops telling at such a `422`, or remembers as
-  told that change or any after it; a hunk to
-  `lib/home-link/kept-runtime.ts` that lets `toldFirst` run what follows
-  before telling, or, unless its caller says `"tried"` (aph's way back
-  alone), after telling ended any way but `synced`, or that drops
-  `laneExchange`'s `unheard` on a `stoppedOnHome` answer; a
-  hunk to `lib/home-link/kept-runtime.ts` that lets `laneExchange`
-  send a record's request without its check that a scope is still kept, tells
-  home under a pairing other than the run's, or makes a run
-  say anything but busy once home answered one of its requests `429` (unless
-  it was forgotten or stopped); a hunk to `components/device-home-glyph.tsx`
-  that calls `askLane`, `keepOnHome`, `stopOnHome` or `bringLaneBack` other
-  than from a button's `onClick`, lets the first press of the opt-in or of
-  Stop sending do it, passes `keepOnHome` words other than the `offer` it
-  shows, or shows a lane under another wing's mark; a hunk to
-  `components/settings/device-sharing-ledger.tsx` that calls `stopOnHome` other than
-  from its second Stop press's `onClick`, calls it for aph's lane, or calls
-  `askLane`, `askKept`, `keepOnHome`, `bringLaneBack`, `useLaneHome`,
-  `watchKept`, or `choose` on the consent runtime under any name; a
-  hunk that mounts
-  `DeviceHomeGlyph` anywhere but `routes/_dashboard.tsx`'s header in the
-  device build, `VoiceNotesHome` anywhere but `routes/_dashboard.tsx` in the
-  device build, or `DeviceAphLane` anywhere but
-  `routes/_dashboard/_apk/aph.tsx`; a hunk to `lib/home-link/aph.ts` that
-  makes the lane's `exchange` do more than make the switch and run aph's
-  exchange, its `revision` anything but the store's `edits` while on home and
-  -1 on the phone, its `keptBefore` anything but the store being on home, or
-  its `bringBack` anything but aph's with the `stopped` it was given; or a
-  hunk to `packages/ui/aph/src/lib/sync.ts` that makes `bringBack` send
-  anything but one `GET /aph` or keep home's answer once `stopped` fails; a
-  hunk to `lib/home-link/model.ts` that lets a `paired` event's pairing, or
-  anything but the `read` of a record, have `earlier` true, or makes the
-  `read` step's `earlier` other than the event's; a hunk to
-  `lib/home-link/runtime.ts` that lets `pair` keep its record without
-  `choicesLogged: true`, renames that field on one side only, makes
-  `parsePairing`'s `earlier` anything but `choicesLogged` not being `true`,
-  makes `load`'s `read` carry an `id` or `earlier` other than `parsePairing`'s
-  of the stored record, or adds a `credential.write` anywhere but
-  `finishPairing`; or a hunk to `lib/home-link/credential.ts` that makes
-  `nativeCredential.write` keep anything but the record it is handed; or a
-  hunk to `store.ts` that lets `leaveHome` drop a waiting change `shown` hides
-  without `forgetHomeRecord`'s copy under `LEFT_PREFIX`, or remove the home
-  record before the device record is written.
-- _Scope:_ `apps/www/src/lib/home-link/kept-watch.ts`, `lanes.ts`,
-  `kept-runtime.ts`, `told.ts`, `aph.ts`, `model.ts`, `runtime.ts`, `credential.ts`,
-  `apps/www/src/components/device-home-glyph.tsx`,
-  `apps/www/src/components/settings/device-sharing-ledger.tsx`,
-  `apps/www/src/components/aph/device-aph-lane.tsx`,
-  `apps/www/src/routes/_dashboard.tsx`,
-  `apps/www/src/routes/_dashboard/_apk/aph.tsx`,
-  `packages/ui/aph/src/lib/sync.ts`, `packages/ui/aph/src/lib/store.ts`.
-- _Why not enforced:_ whether a moment is one where the person is using a wing
-  is a reading of intent: a test sees a listener, not why it is there, and a
-  lint rule cannot tell a press handler from an effect that reaches it through
-  a helper. Held when declared, by reading every call: `watchKept` only in
-  `useLaneHome`'s effect; `askKept` in `watchKept`'s three listeners and its
-  first ask, and in `askLane`; `askLane` only in the sheet's Send now
-  `onClick` (and, since LA13, Settings' voice choice's); `keepOnHome` only in
-  the sheet's second opt-in press, with the `offer` it shows, in
-  `device-section.tsx`'s send `onPress` behind the ticked box, and in
-  `device-voice-home.tsx`'s second press, with the `offer` it shows;
-  `stopOnHome` only in the sheet's second Stop press and the
-  ledger's, which offers none for aph;
-  `bringLaneBack` only in Bring it back's `onClick`; the teller only in
-  `stopOnHome` and the link listener; `choose` only in
-  `keepOnHome`, `stopOnHome` and `enterEarlier`; `DeviceHomeGlyph` only in
-  `_dashboard.tsx`'s header under `VITE_DEVICE_BACKEND`; `DeviceAphLane` only
-  in aph's layout; `earlier` true only from the `read` of a pairing record
-  whose `choicesLogged` is not `true`, which `finishPairing`, the one
-  `credential.write`, always sets.
+- _Retired:_ HF8 (#2182). The Jobs record drains on a paired phone from any
+  screen (LA15); its old switch (`home.kept`) is no longer read or kept.
+  What the exchange sends, reads and files, and that a refused event stays
+  on the phone, is still `lib/jobs/__tests__/home.test.ts`'s; the notice
+  token's filing (RUN5) is still read only by `fileNotice` in the run
+  `exchangeJobs` makes.
 
-### LA10: the Jobs record is sent home only while its person is using the wing
+### LA11 (retired): Practice is sent home on its own only while its person keeps sending it
 
-What the Jobs record sends home, and that it never takes home's copy over
-its own, is enforced by test: who reaches the link and its `keep` lane
-(`egress-choke-points`), the requests an exchange makes, that a refused
-event stays on the phone and is not sent again, and that home's copy is
-taken in only by a phone whose log is empty (`lib/jobs/__tests__/home.test.ts`),
-one run at a time (`lib/home-link/__tests__/kept.test.ts`), and the mark's
-two presses, its stop and the choice its old switch made entering the log
-once, as found (`components/__tests__/device-home-glyph.test.tsx`). Unlike
-aph, the phone keeps its whole log once home holds it: its shares count
-events by their place in the log, and home's copy is the way back for a
-phone that lost it, so stopping is the choice, and home told it.
+- _Retired:_ HF8 (#2182). The standing send and Settings' tapped "Send to
+  home" became one drain (`lib/home-link/drain.ts`, LA15), which a paired
+  phone runs with no box to tick; what it carries and that it lets nothing
+  go is `drain.test.ts`'s, and the clear that does let a finished session go
+  is LA8's.
 
-The exchange also reads the morning run's digests, which home holds (it
-takes them from the mailbox): `GET /jobs/digests`, after the newest day the
-phone holds. Digests are not the record; they come to the phone, not from it.
-That read takes in at most `DIGESTS_PER_RUN` digests, never one for a day the
-phone holds, and never moves the day Today shows back to an older one; a fetch
-changes the phone's digests, the day shown and when each came, and not the
-log or what home holds (`lib/jobs/__tests__/home.test.ts` and
-`model.test.ts`). The phone's revision does not move when a digest is taken
-in.
+### LA12 (retired): Korean reads the routine's files from home only while its person shows them there
 
-The exchange also files the phone's decisions and scouts with home, which
-hands them to the Jobs mailbox for the morning run: `PUT /jobs/files/:name`,
-one per kind with something new. A file that names a voice note is never
-filed, and stays for the share sheet; a file home refuses (409 or 422) stays
-for the share sheet too, kept by name in `home.refusedFiles` and never filed
-again; only home's 200 records the file as shared and arrived, so it is not
-offered again (`lib/jobs/__tests__/home.test.ts`, `runtime.test.ts` and
-`model.test.ts`). That 200 records both at one instant, which is how the
-wing tells a file home took from one the person confirmed in Drive: each
-card says where its file is now, read off the log and the digests' `read`
-lists, and nothing filed goes unsaid (`lib/jobs/journey.ts`, promise JB2).
-A file home took that a later run did not read is offered to the share
-sheet again; the exchange never files it again.
+- _Retired:_ HF8 (#2182). The read log (`some-ui.home.reads.v1`), Settings'
+  two-press choice and the words that gated telling home which lessons were
+  opened are gone: a paired phone reads the routine's files while Korean is
+  open and tells home which it opened, by name. That the read is one at a
+  time, never retried, never rejected, and that nothing read outlives its
+  pairing, is `lib/home-link/__tests__/routine.test.ts`'s; the moments a
+  look is asked for are LA15's.
 
-The exchange also files this phone's notice token, when the person asked
-to be told the morning run is in (RUN5): `PUT /jobs/notice` with the
-token home should hold and `DELETE /jobs/notice` with the one it no longer
-should, at most two requests a run, as `noticeFiling` (`lib/jobs/notice.ts`)
-says. A token home refuses (422) is dropped and reported without the
-token. While a filing is owed the revision moves, so a token the push
-service hands over while the wing shows is filed then, and not at the next
-foreground (`lib/jobs/__tests__/home.test.ts`, `notice.test.ts`). What no
-test can say is when a run is asked for:
+### LA13: voice notes go home from a paired phone, and none is lost before home has it
 
-- _Claim:_ LA9's claim holds for the Jobs record's lane
-  (`lib/home-link/jobs.ts`): its mark shows in the header while the Jobs
-  wing shows (Today, Scout and Record alike), its revision moves with each
-  event added on this phone or home's copy taken in by a phone whose log was
-  empty, and when a notice filing comes to be owed or stops being owed, and
-  its exchange is `exchangeJobs` over the record. Its run also reads home's
-  digests and files the phone's decisions, scouts and notice token with home
-  (above), at no moment but a run's. The record's own switch from before
-  the consent log (`home.kept`) is read only to enter that choice once and, in Settings' ledger, to say the record's
-  choice is not entered yet; nothing sets it.
-- _Falsified by:_ a hunk LA9's falsifier names for the shared files; a hunk
-  to `lib/home-link/jobs.ts` that makes the lane's `revision` anything but
-  twice the log's length, plus one while `noticeFiling` owes home a
-  request, its `keptBefore` anything but `home.kept`, or its
-  `exchange` anything but `exchangeJobs` over the runtime's `keeping`; a
-  hunk to `lib/jobs` that reads home's digests anywhere but in
-  `exchangeJobs`, or that deletes, renames or moves the digests read
-  (`readDigests` in `lib/jobs/home.ts`) so `exchangeJobs` no longer makes it
-  in every run that gets that far; a hunk to `lib/jobs` that sends a
-  decisions or scouts file to home anywhere but in `exchangeJobs`, or that
-  deletes, renames or moves the filing step (`fileOutgoing` in
-  `lib/jobs/home.ts`) so `exchangeJobs` no longer makes it in every run
-  that gets that far; a hunk to `lib/jobs` that sends the notice token to
-  home anywhere but in `exchangeJobs`, or that deletes, renames or moves
-  the notice step (`fileNotice` in `lib/jobs/home.ts`) so `exchangeJobs`
-  no longer makes it in every run that gets that far; a
-  hunk to `components/settings/device-sharing-ledger.tsx` that reads
-  `keptBefore` for anything but its row's wording; or a hunk to `lib/jobs`
-  that sets `home.kept`.
-- _Scope:_ LA9's shared files, `apps/www/src/lib/home-link/jobs.ts`,
-  `apps/www/src/components/settings/device-sharing-ledger.tsx`,
-  `apps/www/src/lib/jobs/home.ts`, `apps/www/src/lib/jobs/model.ts`,
-  `apps/www/src/lib/jobs/runtime.ts`, `apps/www/src/lib/jobs/notice.ts`.
-- _Why not enforced:_ as LA9's. Held when declared, by reading every call
-  as LA9 says, and `home.kept` read only by the lane's `keptBefore` (whose
-  callers are `enterEarlier` and the ledger's Jobs row) and the record's
-  stored schema. The notice amendment (RUN5) was checked the same way:
-  `/jobs/notice` is reached only by `fileNotice`, called once in the run
-  `exchangeJobs` makes, and the lane's `revision` alone reads `noticeFiling`
-  outside `lib/jobs/home.ts`.
-
-### LA11: Practice is sent home on its own only while its person keeps sending it
-
-What a standing send carries, and that a choice only ever appends, is
-enforced by test: the fold over the consent log and that an unreadable log
-is never written over (`lib/home-link/__tests__/consent.test.ts`), that a
-run sends only what its person keeps sending, only finished sessions and
-what changed since that home held it, takes nothing of home's in and lets
-nothing go, and sends nothing more once stopped (`standing.test.ts`; home is
-read only as the send's copy reads it, to plan: `planTransfer`'s look at
-the copies it made before, `sessions.test.ts`), that the send's box
-starts unticked every time and only a tick adds the choice
-(`components/settings/__tests__/device-section.test.tsx`), that the mark
-sends nothing before the choice and "Stop sending" appends a stop
-(`components/__tests__/device-home-glyph.test.tsx`), and that the words
-name no machinery (`words.test.ts`). Who reaches the link and its `keep`
-lane is `egress-choke-points`'s. Sharing is one way: home keeps what it
-received, and a stop means only that nothing new goes. What no test can say
-is when a run is asked for:
-
-- _Claim:_ LA9's claim holds for Practice's lane
-  (`lib/home-link/practice.ts`, its standing send `lib/home-link/standing.ts`):
-  its mark shows in the header while the Practice wing shows, and its
-  revision moves with the sessions the app has read and each shelf keep
-  (`onKept`). Its sheet offers no opt-in of its own: a kept choice enters
-  the log only from the send confirm's press with its box ticked. A choice
-  counts for the pairing it was made under alone (the link's `id` for it,
-  made new at each pairing and kept with its key), so a new pairing, even to
-  the same address, starts with nothing kept; a run sends only finished
-  sessions and kept items, and every request it makes first finds its own
-  scope still kept.
-- _Falsified by:_ a hunk LA9's falsifier names for the shared files; a hunk
-  to `lib/home-link/practice.ts` that makes the lane's `revision` or
-  `subscribe` follow anything but the sessions cache and `onKept`, or its
-  `exchange` anything but `sendStanding` with the run's `shared` and
-  `pairing`; a hunk to `components/settings/device-section.tsx` that calls
-  `keepOnHome` other than in the send's press with its box ticked, starts
-  the box ticked, or keeps a tick across confirms (`ask` unticks it); a
-  hunk to `lib/home-link/runtime.ts` that lets `pair` keep an earlier
-  pairing's `id`, or lets `load` report an `id` other than the one stored
-  with the key; a hunk to `lib/home-link/consent-model.ts` that lets
-  `appended` edit, reorder or drop an earlier event, or lets `sharedAt`
-  count an event made after `t` or under another pairing; to
-  `lib/home-link/consent-runtime.ts` that writes the log when it could not
-  read it; to `lib/home-link/sent.ts` that lets `sessionsToSend` pass a
-  session that is not completed, or `readSent` return one pairing's record
-  for another; or to `lib/home-link/standing.ts` that sends a request
-  without `gated`'s check that its scope is still kept, reads home other
-  than through `copyHome`'s plan, takes home's copy in, lets a phone session
-  go, or confirms what home holds (`confirmHeld`), or sends other than
-  through `copyHome` and `sendKept`. Each lets something reach home, or
-  leave the phone, that its person did not choose.
-- _Scope:_ LA9's shared files, `apps/www/src/lib/home-link/consent-model.ts`,
-  `consent-runtime.ts`, `practice.ts`, `runtime.ts`, `sent.ts`, `standing.ts`,
-  `apps/www/src/components/settings/device-section.tsx`.
-- _Why not enforced:_ as LA9's. Held when declared, by reading every call
-  as LA9 says: Practice's `keepOnHome` only in `device-section.tsx`'s send
-  `onPress`, behind the ticked box, and its sheet showing no opt-in
-  (`startElsewhere`).
-
-### LA12: Korean reads the routine's files from home only while its person shows them there
-
-The owner chose (2026-10-24) a read-only way to what the reflections routine
-left on home: after one opt-in, while the Korean study is open, the phone
-reads `GET /routine/files` (paulgsc/server `handlers/routine.rs`) from its
-paired home with the pairing's key, and the handheld lesson lists it under
-"From the routine". It is not a lane: home keeps no choice for it (the
-server's sharing scopes are a closed set, so telling it one would be refused
-and hold up every lane's run), and nothing of the phone's is sent but, under
-a choice whose words say so, which of the routine's lessons it opened. The
-choice is the phone's own log, `some-ui.home.reads.v1`, which only grows
-and counts for the pairing it was made under alone.
-
-The owner chose (2026-10-24) to have the routine keep three lessons ready
-whether or not a reflection asked for one, so home is told which of them
-the phone opened: when Korean opens one, `routineReads().tellOpened` sends
-one `PUT /routine/opened` with the `<folder>/<name>` of every listed one
-opened, names only, and home files them for the mailbox's `opened` folder
-(paulgsc/server docs/identity.md invariant 19). It does so only under a
-choice whose words pressed carry `ROUTINE_TELLS_OPENED`, so a choice made
-under the earlier words ("It sends nothing of yours") tells nothing, and
-Settings says how to choose again. It is started by that open, a tap, with
-the app in front, one at a time, never retried and never rejected: one
-asked for while a look or another is on its way waits for it, and is told
-only while its choice is still the one shown, so no home is told of another's;
-the next open tells them all again.
-
-The same answer carries a record of each of the routine's runs (when it
-ran, what it found and added, what it could not do) and when home answered.
-The owner chose (2026-10-24) to keep those on the phone, so the handheld can
-say away from home when the routine last ran and whether it brought anything
-new: topik's `adapter/routine-runs` adds each run once, by its name, under
-the port's key (so a new pairing, or a new choice, shows none of the old
-one's), never rewrites or drops one, and notes when home last answered.
-The owner chose the same day to keep the lessons too: topik's
-`adapter/routine-files` keeps home's newest dated answer for each key
-(`createHeldAnswers`), replaced only by a newer one, and lists it when a look
-brings no dated answer, so "From the routine" is there away from home. It is
-a copy of what home holds, not a record of the learner's. `lib/home-link/routine.ts`
-still keeps home's answer in memory alone; what is kept is topik's, from
-what `list` hands it.
-
-What a look sends and keeps is enforced by test: no request unless shown
-under the pairing the phone holds with the app in front, one `GET` per look
-and one on its way shared, no request as time passes, every failure resolved
-(never rejected, so the app's query cannot retry it) with what was last read
-under the same choice, nothing held once stopped, unpaired or paired anew, an
-answer landing after a stop dropped, and an unreadable log never written over
-(`lib/home-link/__tests__/routine.test.ts`); the read being `keep`'s only
-other caller and its two sends `GET /routine/files` and
-`PUT /routine/opened`, and who may import the
-link (`egress-choke-points`); Settings sending nothing, naming home before
-the choice, and taking a second press to show and to stop, with the words
-agreed to kept (`components/settings/__tests__/device-routine-reads.test.tsx`);
-the words naming no machinery (`words.test.ts`); and a new key listing
-nothing of the old one's (topik's `handheld-lesson/index.test.tsx`). What no
-test can say is when a look is asked for:
-
-- _Claim:_ in the Android app, `routineReads().list()`
-  (`lib/home-link/routine.ts`) is called only through the port
-  `useHomeRoutineFiles` (`components/player/device-routine-files.ts`)
-  returns, which exists only while the phone is paired and the read log
-  shows the files under that pairing, keyed by the pairing and since when;
-  `session-viewport.tsx` hands that port to topik's `routineFiles` alone,
-  in the device build alone, and topik reads it only in the handheld
-  lesson's `useRoutineFiles` query (on the lesson mounting and the app
-  coming back to the front, while Korean is open; never on an interval, a
-  reconnect or a retry); a
-  choice enters the log only from a second press in Settings
-  (`components/settings/device-routine-reads.tsx`), showing with the words
-  its first press showed and stopping with the stop's.
-- _Falsified by:_ a hunk that calls `routineReads()`'s `list` anywhere but
-  the port in `device-routine-files.ts`, or its `choose` anywhere but the
-  two second-press `onClick`s in `device-routine-reads.tsx`; a hunk to
-  `device-routine-files.ts` that returns a port while `underNow` is null,
-  keys it on anything but the pairing and since when, whose `list` does
-  more than call `list`, or that offers `opened` under a choice `tells`
-  does not hold for, or whose `opened` does more than call `tellOpened`; a hunk to `session-viewport.tsx` that reaches
-  `useHomeRoutineFiles` other than through `useRoutineFromHome`'s
-  `VITE_DEVICE_BACKEND` branch, or hands its port anywhere but topik's
-  `routineFiles`; a hunk to `device-routine-reads.tsx` that calls `choose`
-  on a first press, passes a `said` other than the confirm's words (shown)
-  or the stop's (hidden), or calls `list`; a hunk to `routine.ts` that lets
-  `list` start a read without `mayRead`'s checks or while one under the
-  same choice is on its way, lets it reject, retries a read, starts one from a timer or from the
-  `onLink` listener (which only settles), sends anything but one
-  `GET /routine/files` and, from `tellOpened` alone, one
-  `PUT /routine/opened` of `{ opened }` names, lets `tellOpened` send without
-  `tells` holding, with the app in the background, or while one is on its
-  way, retries one or lets it reject, keeps an answer whose choice is not the one shown
-  when it lands, removes or weakens `settle`'s clearing, writes the log when
-  it could not read it, or keeps home's files anywhere but memory; a hunk
-  to `routine-model.ts` that changes what any of its functions answers
-  (`shownNow`, `appendedRead`, `parseReadLog`, `underNow`, `sameUnder`,
-  `saidUnder`, `heldFor`, `mayRead`, `stepRead`: together they judge whose choice is
-  shown, whose answer is kept and whether the log was read, so each such
-  hunk is re-checked against this claim); a hunk to topik's
-  `adapter/server/routine-files-queries` that keys its query on anything
-  but the feed's `key` (or, with none, whether there is a feed), or changes
-  or removes its `enabled`, `staleTime`, `refetchOnMount`,
-  `refetchOnWindowFocus`, `refetchOnReconnect` or `retry`, or adds a
-  `refetchInterval`; a hunk in topik that calls the feed's or the port's
-  `list` anywhere but that query's `queryFn`, or that calls
-  `useRoutineFiles` anywhere but `HandheldLesson`, or to
-  `adapter/routine-files` that drops the port's `key` from the feed; or a
-  hunk that deletes, renames or moves
-  any file, function or constant this claim names without carrying the
-  claim to its new place.
-- _Scope:_ `apps/www/src/lib/home-link/routine.ts`, `routine-model.ts`,
-  `apps/www/src/components/player/device-routine-files.ts`,
-  `apps/www/src/components/player/session-viewport.tsx`,
-  `apps/www/src/components/settings/device-routine-reads.tsx`,
-  `packages/ui/topik/src/lib/topik/adapter/server/routine-files-queries/index.ts`,
-  `packages/ui/topik/src/lib/topik/adapter/routine-files/index.ts`,
-  `packages/ui/topik/src/components/topik/handheld/handheld-lesson/index.tsx`,
-  `packages/ui/topik/src/components/topik/study-session/index.tsx`.
-- _Why not enforced:_ whether a moment is one where its person is using
-  Korean is a reading of intent: a test sees a query run, not the screen it
-  runs for, and a lint rule cannot tell a press handler from an effect that
-  reaches it through a port handed down a prop. The import test says who
-  may reach the link, not which of those calls `list`. Held when declared,
-  by reading every call: `list` only in `device-routine-files.ts`'s port;
-  that port only in `session-viewport.tsx`, under `VITE_DEVICE_BACKEND`, as
-  topik's `routineFiles`; topik's feed only in `KoreanStudyPage`'s session
-  config, read by `useRoutineFiles` in `HandheldLesson` alone, with
-  `refetchOnMount` and `refetchOnWindowFocus`, `refetchOnReconnect` and
-  `retry` off, and no interval; `choose`
-  only in the two second-press `onClick`s; no timer or listener in
-  `routine.ts` but `onLink`, whose listener is `settle`.
-
-### LA13: voice notes go home only while their person keeps them there, and none is lost before home has it
-
-Voice notes are kept on home through LA9's wiring, with a lane of their own
-(`lib/home-link/voice.ts`, scope `voice`) and no mark: they come from more
-than one wing (spoken reflections and the drama's scene notes in Practice,
-voice notes in Jobs), so Settings offers the choice
-(`components/settings/device-voice-home.tsx`, two presses, the second keeping
-the first's words) and the app shell mounts the lane's watch on every screen
-(`VoiceNotesHome`, owner, paulgsc/some-ui#2038). Home keeps each recording
-and transcribes it (paulgsc/server#460); paulgsc/server refuses a note from a
-pairing that stopped (`sharing_stopped`).
+Voice notes are drained through LA15's wiring, with a lane of their own
+(`lib/home-link/voice.ts`) and no mark: they come from more than one wing
+(spoken reflections and the drama's scene notes in Practice, voice notes
+in Jobs, game bites, Studio takes), so the app shell mounts the lane's watch
+on every screen (`HomeLanes`, owner, paulgsc/some-ui#2038). Home keeps each
+recording and transcribes it (paulgsc/server#460).
 
 Which notes go, and what each is told home as, is enforced by test
 (`lib/home-link/__tests__/voice-copy.test.ts`): a spoken reflection by its session
@@ -1013,54 +537,49 @@ note and stays when home refused it, and that a copy nothing names is swept
 (`lib/voice-home/__tests__/runtime.test.ts`); that a note counts as home's
 only once home answers with its SHA-256, that a replay counts as held, that
 other audio under its id or a field home won't take is a refusal kept and
-never sent again, and that a body home did not get, a stop or a forgotten
-phone refuses nothing (`home.test.ts`); and that a home older than the
-`voice` scope is told the choice again and refuses nothing meanwhile
-(`lib/home-link/__tests__/told.test.ts`); and that the copies' store is
-reached only from the voice lane, a copy made only in `voice-copy.ts`, the
-watch started only from the lane's hook and a shared prompt heard only by it
-(`egress-choke-points`). What no test can say is when a note is copied:
+never sent again, and that a body home did not get, a stop a home kept from
+before HF8, or a forgotten phone refuses nothing (`home.test.ts`); and that
+the copies' store is reached only from the voice lane, a copy made only in
+`voice-copy.ts`, the watch started only from the lane's hook and a shared
+prompt heard only by it (`egress-choke-points`). What no test can say is
+when a note is copied:
 
 - _Claim:_ a voice note's audio is copied for home (`phoneVoiceHome().copy`)
-  only while the consent log keeps `voice` under the paired home's id
-  (`keptNow(VOICE_SCOPES)`), and only from `copyAll` (each spoken reflection,
-  named Jobs note, game bite past its hold and Studio take still on the phone, from `watchVoiceNotes`, which only
-  `useVoiceHome`'s effect starts, and from the lane's exchange, `sendVoice`) and `copySceneNotes` (a drama prompt's
-  notes, heard through `onPromptShared`, which `shareDramaPrompt` tells
-  only once its share succeeded as shared); the
-  lane's runs are asked for as LA9 says, its exchange is `sendVoice` (a copy
-  pass, then `exchangeVoice` over the store's `keeping`, its end read with
-  the pass's by `runEnd`, LA14), and a copy goes only once home holds its note.
-  Letting a note go where it was recorded never removes its copy.
-- _Falsified by:_ a hunk LA9's falsifier names for the shared files; a hunk
+  only while the phone is paired (`paired()`), and only from `copyAll` (each
+  spoken reflection, named Jobs note, game bite past its hold and Studio
+  take still on the phone, from `watchVoiceNotes`, which only
+  `useVoiceHome`'s effect starts, and from the lane's exchange, `sendVoice`)
+  and `copySceneNotes` (a drama prompt's notes, heard through
+  `onPromptShared`, which `shareDramaPrompt` tells only once its share
+  succeeded as shared); the lane's runs are asked for as LA15 says, its
+  exchange is `sendVoice` (a copy pass, then `exchangeVoice` over the
+  store's `keeping`, its end read with the pass's by `runEnd`, LA14), and a
+  copy goes only once home holds its note. Letting a note go where it was
+  recorded never removes its copy.
+- _Falsified by:_ a hunk LA15's falsifier names for the shared files; a hunk
   to `lib/home-link/voice-copy.ts` that calls `copy` from anywhere but
-  `copyAll` and `copySceneNotes`, removes either's `keptNow(VOICE_SCOPES)`
-  check (`copyAll`'s before every note and again after its audio is read),
-  starts `copySoon` from anything but `watchVoiceNotes`, its subscriptions
-  and `sendVoice`, makes `sendVoice` anything but a copy pass and then
+  `copyAll` and `copySceneNotes`, removes either's `paired()` check
+  (`copyAll`'s before every note and again after its audio is read), starts
+  `copySoon` from anything but `watchVoiceNotes`, its subscriptions and
+  `sendVoice`, or makes `sendVoice` anything but a copy pass and then
   `exchangeVoice` over `phoneVoiceHome().keeping`, whose end only `runEnd`
-  may change, or makes `VOICE_SCOPES` anything but `voice`; a hunk to
-  `lib/home-link/lanes.ts` that makes `keptNow` anything but the lane's
-  scopes in `sharedNow` of the log under `pairingOf`; a hunk to
+  may change; a hunk to `lib/home-link/lanes.ts` that makes `paired`
+  anything but the link holding a pairing; a hunk to
   `lib/home-link/voice.ts` that makes the lane's `exchange` anything but
-  `sendVoice`, its scopes anything but
-  `voice`, or calls `watchVoiceNotes` from anywhere but `useVoiceHome`'s
+  `sendVoice`, or calls `watchVoiceNotes` from anywhere but `useVoiceHome`'s
   effect, or drops its cleanup; a hunk to `lib/scene-voice/index.ts` that
   tells `onPromptShared`'s listeners before or without the share's
   `succeeded`/`shared` outcome; a hunk to `lib/voice-home/runtime.ts` that
   removes a copy from the shelf on anything but a `held` answer, a record
   storage would not keep, or in `sweep`, lets `sweep` remove a copy the
   record names waiting or refused, writes the record naming a copy before
-  the shelf took it, or counts a copy whose record storage did not keep; a hunk to `lib/voice-home/home.ts`
-  that counts a note held without home's `200` naming its id and the
-  phone's SHA-256, or refuses one on a `422` that names only its body; or a
-  hunk to `components/settings/device-voice-home.tsx` that calls
-  `keepOnHome` other than from the second press's `onClick` with the
-  `offer` it shows, or `askLane` other than from Send now's.
-- _Scope:_ LA9's shared files, `apps/www/src/lib/home-link/voice.ts`,
+  the shelf took it, or counts a copy whose record storage did not keep; or
+  a hunk to `lib/voice-home/home.ts` that counts a note held without home's
+  `200` naming its id and the phone's SHA-256, or refuses one on a `422`
+  that names only its body.
+- _Scope:_ LA15's shared files, `apps/www/src/lib/home-link/voice.ts`,
   `voice-copy.ts`, `apps/www/src/lib/voice-home/**`,
-  `apps/www/src/lib/scene-voice/index.ts`,
-  `apps/www/src/components/settings/device-voice-home.tsx`.
+  `apps/www/src/lib/scene-voice/index.ts`.
 - _Tolerance:_ a note let go before the watch copies it (the app closed in
   between, or a long pass had not reached it) is not copied; one the copies'
   shelf has no room for (`VOICE_HOME_MAX_BYTES`, a hundred minutes), or whose
@@ -1070,20 +589,21 @@ watch started only from the lane's hook and a shared prompt heard only by it
   and Settings says sending went wrong. A reflection that leaves the bounded
   list before it is copied is not copied either. A Jobs note let go once its
   share arrived in Drive before a copy was made, and a note whose audio is
-  gone, are never copied, and Settings says so (LA14).
+  gone, are never copied, and Settings says so (LA14). A note recorded on a
+  phone that was never paired is not copied until it is.
 - _Why not enforced:_ which files call the copy, the watch and the shared
   prompt's listener is pinned (`egress-choke-points`). Whether each call
-  copies only while voice notes are kept is a reading of its guard, which a
-  source scan sees as text and a lint rule cannot tie to the consent log.
-  Held when declared, by reading every call: `copy` in `copyAll`, behind
-  `keptNow(VOICE_SCOPES)` before each note and after its audio is read, and
-  in `copySceneNotes`, behind it once; `copySceneNotes` only as
+  copies only while the phone is paired is a reading of its guard, which a
+  source scan sees as text and a lint rule cannot tie to the link's state.
+  Held when declared (reworded for HF8), by reading every call: `copy` in
+  `copyAll`, behind `paired()` before each note and after its audio is
+  read, and in `copySceneNotes`, behind it once; `copySceneNotes` only as
   `onPromptShared`'s listener, which `shareDramaPrompt` tells only after a
-  share that `succeeded` as `shared`; `watchVoiceNotes` only in `useVoiceHome`'s effect,
-  which returns its cleanup; `useVoiceHome` only in `VoiceNotesHome`, which
-  `_dashboard.tsx` mounts under `VITE_DEVICE_BACKEND`; `shelf.remove` in the
-  runtime only on `held` and in `sweep`, which keeps waiting and refused
-  copies.
+  share that `succeeded` as `shared`; `watchVoiceNotes` only in
+  `useVoiceHome`'s effect, which returns its cleanup; `useVoiceHome` only in
+  `HomeLanes`, which `_dashboard.tsx` mounts under `VITE_DEVICE_BACKEND`;
+  `shelf.remove` in the runtime only on `held` and in `sweep`, which keeps
+  waiting and refused copies.
 
 ### LA14: Settings never says a voice note waits that this phone cannot send
 
@@ -1094,7 +614,7 @@ audio the Jobs runtime let go once their share arrived in Drive (`arrived()`,
 `releasedVoice`), still offered by `jobsNotes`; and every copy that failed
 was silent, so the run ended as if all had gone.
 
-- _Claim:_ while voice notes are kept on home, the count Settings says waits
+- _Claim:_ on a paired phone, the count Settings says waits
   (`voiceLane.useCounts`) is only notes this phone can still copy or send;
   one it can never send is named with why (`unsentLines`: gone from this
   phone, as the Jobs notes let go before LG1 are), and a run whose copy pass left a
@@ -1119,12 +639,173 @@ was silent, so the run ended as if all had gone.
   every exchange end); `lib/voice-home/__tests__/runtime.test.ts` (`copy`
   says `roomless` and `unkept`); `lib/home-link/__tests__/words.test.ts` (each
   failed run's line, and none naming the machinery); and
-  `components/settings/__tests__/device-voice-home.test.tsx` (Settings shows
-  the notes it can't send).
+  `components/settings/__tests__/device-kept-on-home.test.tsx` (Settings
+  shows the notes it can't send, and says nothing waits for them).
 - _Tolerance:_ a scene note's copy is offered once, at its share, so one that
   fails there goes to the native log and is not named in Settings (LA13's
   Tolerance). A pass under way when Send now is pressed is the one the run
   waits on, so a note changed during it is counted by the next run.
+
+### LA15: a paired phone drains what it keeps to home on its own, at the moments its person is using the app
+
+Everything the phone keeps for home (aph, the Jobs record, Practice's
+record, voice notes) goes through one wiring (`lib/home-link/lanes.ts`):
+each declares its lane (its exchange, how its record moves, its sheet's
+counts; `aph.ts`, `jobs.ts`, `practice.ts`, `voice.ts`), and every lane
+shares the runtime (`kept-runtime.ts`), the watch (`kept-watch.ts`) and the
+app shell's mounting of it (`components/device-home-glyph.tsx`'s
+`HomeLanes`, on every screen of the Android app; aph's lane while aph's
+screens hand its store in, since only they may import `@some-ui/aph`). There
+is no choice: a paired phone drains, and the only tap that lets anything
+leave the phone is LA8's clear. Korean's look at the routine's files
+(`routine.ts`) is read the same way, by the lesson's own query.
+
+What each lane sends, and what the phone may let go of, is enforced by
+test: who reaches the link and its `keep` lane (`egress-choke-points`), the
+requests each exchange makes and that an entry leaves the phone only once
+home answers with it unchanged (`packages/ui/aph/src/lib/__tests__/sync.test.ts`,
+`home.test.ts`; `lib/jobs/__tests__/home.test.ts`; `lib/home-link/__tests__/drain.test.ts`,
+which also holds that the drain sends only finished sessions and what
+changed since home last held it, lets nothing go, and stops before its next
+request; `voice-send.test.ts`), one run at a time and home being busy said
+as such (`kept.test.ts`), and that the shell's drain sends nothing unpaired
+and sends once paired on the moments below, while a mark sends nothing of
+its own (`components/__tests__/device-home-glyph.test.tsx`). What no test
+can say is when a run is asked for:
+
+- _Claim:_ `askKept` (`lib/home-link/kept-watch.ts`) asks for a run of a lane
+  only while the phone is paired and the document is visible, and only at a
+  moment its person is using the app: from `watchKept`, which only
+  `useLaneHome` starts, for as long as `HomeLanes` is mounted (every screen
+  of the Android app; aph's lane for as long as its screens hand it in), on
+  the watch starting, a move of the lane's revision (its record changed on
+  this phone), the app coming back to the foreground, the network coming
+  back, the phone being paired, or the link freeing up after turning a run
+  away; or from `askLane`, which a mark's sheet and Settings' readout call
+  only from their Send now button. Nothing asks on a timer. A run goes
+  under the pairing the phone holds when it starts (`laneExchange`), and
+  the link's `send` refuses a request once the phone stops or goes to the
+  background. For aph, the first run on a paired phone moves its record to
+  home (`keepOnHome`, in the lane's `exchange`), and from then on the phone
+  holds the settings and what home has not confirmed. Korean's look
+  (`routineReads().list()`) is called only through the port
+  `useHomeRoutineFiles` (`components/player/device-routine-files.ts`)
+  returns, which exists only while the phone is paired, keyed by the
+  pairing; `session-viewport.tsx` hands that port to topik's `routineFiles`
+  alone, in the device build alone, and topik reads it only in the handheld
+  lesson's `useRoutineFiles` query (on the lesson mounting and the app
+  coming back to the front, while Korean is open; never on an interval, a
+  reconnect or a retry), and tells home which lessons it opened only from
+  that open (`tellOpened`).
+- _Falsified by:_ a hunk to `lib/home-link/kept-watch.ts` that reaches
+  `askKept` from anything but `watchKept`'s record subscription, its link
+  subscription, its `visibilitychange` and `online` listeners and its first
+  ask, adds a timer, changes when a listener asks (the record subscription's
+  check that the revision moved, the link subscription's test for a new
+  pairing or for the link freeing up after a run it turned away), removes or
+  changes anything the cleanup `watchKept` returns undoes, or removes
+  `askKept`'s check that the phone is paired or that the document is
+  visible; a hunk to `lib/home-link/lanes.ts` that calls `watchKept` from
+  anywhere but `useLaneHome`'s effect, passes it anything but `wire(lane)`'s
+  `record` and `sending`, keeps that effect from returning the cleanup
+  `watchKept` returns, calls `askKept` from anywhere but `askLane`, makes
+  `paired` anything but the link holding a pairing, or makes the record's
+  `revision` or `subscribe` anything but the lane's; a hunk to
+  `lib/home-link/kept-runtime.ts` that lets `laneExchange` run a lane's
+  exchange unpaired or under a pairing other than the one read when the run
+  starts, or makes a run say anything but busy once home answered one of
+  its requests `429` (unless it was forgotten or stopped); a hunk to
+  `components/device-home-glyph.tsx` that calls `askLane` other than from a
+  button's `onClick`, mounts a watch (`useLaneHome`, `useVoiceHome`)
+  anywhere but `HomeLanes`, drops a lane from `HomeLanes`, or shows a lane
+  under another wing's mark; a hunk to
+  `components/settings/device-kept-on-home.tsx` that calls `askLane` other
+  than from its Send now `onClick`, or calls `askKept`, `useLaneHome` or
+  `watchKept`; a hunk that mounts `HomeLanes` anywhere but
+  `routes/_dashboard.tsx` in the device build, `DeviceHomeGlyph` anywhere
+  but its header, or `DeviceAphLane` anywhere but
+  `routes/_dashboard/_apk/aph.tsx`; a hunk to `lib/home-link/aph.ts` that
+  makes the lane's `exchange` do more than make the switch and run aph's
+  exchange, or its `revision` anything but the store's `edits` while on
+  home and -1 on the phone; a hunk to `lib/home-link/jobs.ts` that makes
+  the lane's `revision` anything but twice the log's length, plus one while
+  `noticeFiling` owes home a request, or its `exchange` anything but
+  `exchangeJobs` over the runtime's `keeping`; a hunk to `lib/jobs` that
+  reads home's digests, files a decisions or scouts file or the notice
+  token anywhere but in `exchangeJobs`, or that deletes, renames or moves
+  `readDigests`, `fileOutgoing` or `fileNotice` (`lib/jobs/home.ts`) so
+  `exchangeJobs` no longer makes it in every run that gets that far; a hunk
+  to `lib/home-link/practice.ts` that makes the lane's `revision` or
+  `subscribe` follow anything but the sessions cache, `onKept` and Studio's
+  store, or its `exchange` anything but `drainHome` over the phone's own
+  ports (`./going`) under the run's `pairing`; a hunk to
+  `lib/home-link/drain.ts` that takes home's copy in, lets a phone session
+  go, or confirms what home holds (`confirmHeld`), or sends other than
+  through `copyHome`, `sendKept`, `sendLog` and `sendStudio`; a hunk to
+  `lib/home-link/model.ts` or `runtime.ts` that lets `pair` keep an earlier
+  pairing's `id`, or lets `load` report an `id` other than the one stored
+  with the key; a hunk to `lib/home-link/sent.ts` that lets
+  `sessionsToSend` pass a session that is not completed, or `readSent`
+  return one pairing's record for another; a hunk that calls
+  `routineReads()`'s `list` anywhere but the port in
+  `device-routine-files.ts`, or its `tellOpened` anywhere but that port's
+  `opened`; a hunk to `device-routine-files.ts` that returns a port while
+  the phone is not paired, or keys it on anything but the pairing; a hunk
+  to `session-viewport.tsx` that reaches `useHomeRoutineFiles` other than
+  through `useRoutineFromHome`'s `VITE_DEVICE_BACKEND` branch, or hands its
+  port anywhere but topik's `routineFiles`; a hunk to `routine.ts` that
+  lets `list` start a read without `mayRead`'s checks or while one under
+  the same pairing is on its way, lets it reject, retries a read, starts
+  one from a timer or from the `onLink` listener (which only settles),
+  sends anything but one `GET /routine/files` and, from `tellOpened` alone,
+  one `PUT /routine/opened` of `{ opened }` names, lets `tellOpened` send
+  unpaired, with the app in the background, or while one is on its way,
+  retries one or lets it reject, keeps an answer whose pairing is not the
+  phone's when it lands, removes or weakens `settle`'s clearing, or keeps
+  home's files anywhere but memory; a hunk to topik's
+  `adapter/server/routine-files-queries` that keys its query on anything
+  but the feed's `key` (or, with none, whether there is a feed), or changes
+  or removes its `enabled`, `staleTime`, `refetchOnMount`,
+  `refetchOnWindowFocus`, `refetchOnReconnect` or `retry`, or adds a
+  `refetchInterval`; a hunk in topik that calls the feed's or the port's
+  `list` anywhere but that query's `queryFn`, or that calls
+  `useRoutineFiles` anywhere but `HandheldLesson`; or a hunk that deletes,
+  renames or moves any file, function or constant this claim names without
+  carrying the claim to its new place.
+- _Scope:_ `apps/www/src/lib/home-link/kept-watch.ts`, `lanes.ts`,
+  `kept-runtime.ts`, `aph.ts`, `jobs.ts`, `practice.ts`, `voice.ts`,
+  `drain.ts`, `going.ts`, `sent.ts`, `model.ts`, `runtime.ts`, `routine.ts`,
+  `routine-model.ts`, `apps/www/src/components/device-home-glyph.tsx`,
+  `apps/www/src/components/settings/device-kept-on-home.tsx`,
+  `apps/www/src/components/aph/device-aph-lane.tsx`,
+  `apps/www/src/components/player/device-routine-files.ts`,
+  `apps/www/src/components/player/session-viewport.tsx`,
+  `apps/www/src/routes/_dashboard.tsx`,
+  `apps/www/src/routes/_dashboard/_apk/aph.tsx`,
+  `apps/www/src/lib/jobs/home.ts`, `apps/www/src/lib/jobs/notice.ts`,
+  `packages/ui/aph/src/lib/sync.ts`, `packages/ui/aph/src/lib/store.ts`,
+  `packages/ui/topik/src/lib/topik/adapter/server/routine-files-queries/index.ts`,
+  `packages/ui/topik/src/lib/topik/adapter/routine-files/index.ts`,
+  `packages/ui/topik/src/components/topik/handheld/handheld-lesson/index.tsx`,
+  `packages/ui/topik/src/components/topik/study-session/index.tsx`.
+- _Why not enforced:_ whether a moment is one where the person is using the
+  app is a reading of intent: a test sees a listener or a query run, not why
+  it is there, and a lint rule cannot tell a press handler from an effect
+  that reaches it through a helper or a port handed down a prop. Held when
+  declared (HF8), by reading every call: `watchKept` only in `useLaneHome`'s
+  effect; `askKept` in `watchKept`'s three listeners and its first ask, and
+  in `askLane`; `askLane` only in the sheet's and Settings' Send now
+  `onClick`; `useLaneHome` only in `HomeLanes`' `LaneWatch` and
+  `useVoiceHome` (itself only in `HomeLanes`' `VoiceWatch`); `HomeLanes`
+  only in `_dashboard.tsx` under `VITE_DEVICE_BACKEND`; `DeviceAphLane`
+  only in aph's layout; `list` only in `device-routine-files.ts`'s port,
+  that port only in `session-viewport.tsx`, under `VITE_DEVICE_BACKEND`, as
+  topik's `routineFiles`, and topik's feed only in `KoreanStudyPage`'s
+  session config, read by `useRoutineFiles` in `HandheldLesson` alone, with
+  `refetchOnMount` and `refetchOnWindowFocus`, `refetchOnReconnect` and
+  `retry` off, and no interval; no timer or listener in `routine.ts` but
+  `onLink`, whose listeners only settle and drop what waits under another
+  pairing.
 
 ## Not covered, on purpose
 
@@ -1145,11 +826,11 @@ was silent, so the run ended as if all had gone.
   #2176). "Archive finished sessions"
   (`lib/session-archive`) hands the share sheet one file of the finished
   sessions' records, and they leave the phone once the learner says it
-  arrived. The phone's Home server block
-  syncs, pairs, unpairs and sends to home on a tap (LA8), and Korean reads
-  the routine's files from home once its person chose to show them (LA12). These are explicit actions on
-  the account path or by the learner, not defaults. The share sheet and the
-  speech provider reach beyond home, and the share sheet's "arrived" is the
+  arrived. The phone's Home server block syncs, pairs, unpairs and clears
+  finished sessions home holds on a tap (LA8); a paired phone drains what it
+  keeps to home on its own, since home is the owner's own store (LA15), and
+  Korean reads the routine's files from it. The share sheet and the speech
+  provider reach beyond home, and the share sheet's "arrived" is the
   receiver's copy, not home's (HF1, #2176).
 - **The server's side.** What `file_host` stores and logs is
   `paulgsc/server` `docs/identity.md`.

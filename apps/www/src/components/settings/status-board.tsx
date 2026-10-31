@@ -19,7 +19,7 @@ import {
   useRoutineStatus,
 } from "@some-ui/topik"
 import { Link } from "@tanstack/react-router"
-import { ChevronRight, EyeOff } from "lucide-react"
+import { ChevronRight } from "lucide-react"
 
 import { hasAudience } from "@/lib/build-profile"
 import { useMinuteClock } from "@/lib/clock"
@@ -44,8 +44,8 @@ import {
   themeText,
 } from "@/components/journey-status"
 import { useHomeRoutineFiles } from "@/components/player/device-routine-files"
+import { useLaneRows } from "@/components/settings/device-kept-on-home"
 import { useLookRow } from "@/components/settings/device-routine-reads"
-import { useLaneRows } from "@/components/settings/device-sharing-ledger"
 import {
   HOW_TONE,
   HowMark,
@@ -63,11 +63,10 @@ const LOOKS: ReadonlyArray<Look> = [
   "forgotten",
   "failed",
   "not-yet",
-  "off",
 ]
 
 /** A look home answered is an exchange, drawn as the sharing mark's `how`. */
-const LOOK_HOW: Readonly<Record<Exclude<Look, "off" | "not-yet">, How>> = {
+const LOOK_HOW: Readonly<Record<Exclude<Look, "not-yet">, How>> = {
   read: "current",
   busy: "busy",
   unreachable: "no-answer",
@@ -76,11 +75,9 @@ const LOOK_HOW: Readonly<Record<Exclude<Look, "off" | "not-yet">, How>> = {
 }
 
 const lookTone = (look: Look): string =>
-  look === "off" || look === "not-yet"
-    ? "text-muted-foreground"
-    : HOW_TONE[LOOK_HOW[look]]
+  look === "not-yet" ? "text-muted-foreground" : HOW_TONE[LOOK_HOW[look]]
 
-/** Korean's look: off, not yet (a ring, as "checking"), or how it went. */
+/** Korean's look: not yet (a ring, as "checking"), or how it went. */
 const LookMark = ({
   look,
   className,
@@ -88,9 +85,7 @@ const LookMark = ({
   look: Look
   className?: string
 }): JSX.Element =>
-  look === "off" ? (
-    <EyeOff aria-hidden data-look={look} className={className} />
-  ) : look === "not-yet" ? (
+  look === "not-yet" ? (
     <WhereMark where="checking" className={className} />
   ) : (
     <HowMark how={LOOK_HOW[look]} className={className} />
@@ -237,7 +232,7 @@ const Legends = (): JSX.Element => (
       {MARK_WORDS.title}
     </summary>
     <div className="mt-3 space-y-4">
-      <SharingLegend away={false} title={BOARD_WORDS.sharingLegend} />
+      <SharingLegend title={BOARD_WORDS.sharingLegend} />
       <JourneyLegend title={BOARD_WORDS.morning} states={everyMorning()} />
       <JourneyLegend
         title={BOARD_WORDS.filesLegend}
@@ -264,13 +259,13 @@ const Legends = (): JSX.Element => (
 export const StatusBoard = (): JSX.Element => {
   const lanes = useLaneRows()
   const look = useLookRow()
-  const files = useJourneyContext(lanes.jobsKept)
+  const files = useJourneyContext(lanes.paired)
   const now = useMinuteClock()
   const routineFiles = useHomeRoutineFiles()
   const routine = useRoutineStatus(routineFiles?.key ?? "", now)
   const rows = [
     ...lanes.rows,
-    morningRow(morningOf(files.state, lanes.jobsKept, now), now),
+    morningRow(morningOf(files.state, lanes.paired, now), now),
     ...(["decisions", "scouts"] as const).flatMap((kind) => {
       const j = kindJourney(files, kind)
       return j === null ? [] : [journeyRow(kind, j, now)]

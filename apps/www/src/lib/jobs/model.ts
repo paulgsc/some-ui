@@ -159,11 +159,6 @@ export type HomeRefusal = { id: string; why: string }
  * its whole log, and the way back for a phone that lost it.
  */
 type JobsHome = {
-  /**
-   * Read by the Jobs lane's `keptBefore`, to enter that choice once and for
-   * the ledger's wording; never set (LA10).
-   */
-  kept: boolean
   /** The events home answered it holds, by id. */
   held: ReadonlyArray<string>
   /** The events home refused: kept here, and not sent again. */
@@ -215,7 +210,6 @@ export const EMPTY: JobsState = {
   log: [],
   voice: [],
   home: {
-    kept: false,
     held: [],
     refused: [],
     refusedFiles: [],

@@ -9,13 +9,7 @@
  * nothing, so the status page can draw them too. `laneView` decides which
  * mark a lane shows.
  */
-export const WHERE_ORDER = [
-  "checking",
-  "phone",
-  "partly",
-  "kept",
-  "away",
-] as const
+export const WHERE_ORDER = ["checking", "phone", "partly", "kept"] as const
 
 export type Where = (typeof WHERE_ORDER)[number]
 
@@ -23,7 +17,6 @@ export const HOW_ORDER = [
   "current",
   "waiting",
   "sending",
-  "bringing",
   "no-answer",
   "busy",
   "forgotten",
@@ -43,15 +36,14 @@ export const MARK_WORDS = {
   where: {
     checking: "Checking where it is kept",
     phone: "Kept on this phone alone",
-    partly: "Some of it on home; new ones stay on this phone",
+    partly:
+      "Some of it on home; new ones stay on this phone until it is paired again",
     kept: "Kept on home: new ones go there",
-    away: "On home, and not sent any more; this phone holds what home hadn't confirmed",
   } satisfies Record<Where, string>,
   how: {
     current: "Home has all of it",
     waiting: "Some waits on this phone, and goes next time",
     sending: "Going to home now",
-    bringing: "Coming back to this phone now",
     "no-answer": "Home didn't answer",
     busy: "Home was busy",
     forgotten: "Home no longer knows this phone: pair it again",

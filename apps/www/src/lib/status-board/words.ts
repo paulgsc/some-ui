@@ -16,8 +16,8 @@ export const BOARD_WORDS = {
     korean: "Korean",
   } satisfies Record<GroupId, string>,
   /**
-   * A kept record whose last send this launch hasn't seen: its own screen's
-   * mark says how it went once that screen opens.
+   * A record that drains only while its own screen is open (aph): its mark
+   * there says how its last send went.
    */
   unseen: (opens: string): string =>
     `How its last send went shows once ${opens} opens.`,
@@ -26,13 +26,11 @@ export const BOARD_WORDS = {
   morning: "This morning's jobs run",
   filesLegend: "Where Jobs' files are",
   routine: "The reflections routine",
-  /** A choice made before this phone kept its choices: its own mark knows. */
-  unsure: "Not known here",
   /** The sharing marks' legend: their two axes. */
   sharingLegend: "Where it's kept, and how it last went",
 } as const
 
-/** Korean's look at what the routine left on home (LA12). */
+/** Korean's look at what the routine left on home. */
 export const LOOK_WORDS = {
   name: "Korean's look at home",
   words: {
@@ -42,7 +40,6 @@ export const LOOK_WORDS = {
     forgotten: "Pair again",
     failed: "Didn't go",
     "not-yet": "Not yet",
-    off: "Off",
   } satisfies Record<Look, string>,
   /** Its legend: what each look's mark means here. */
   legend: {
@@ -52,6 +49,5 @@ export const LOOK_WORDS = {
     forgotten: "Home no longer knows this phone: pair it again",
     failed: "Something went wrong when Korean looked",
     "not-yet": "Korean looks the next time its list opens",
-    off: "Korean doesn't look at home: the choice is off",
   } satisfies Record<Look, string>,
 } as const

@@ -193,15 +193,15 @@ storage failure (`launch/launch-test.sh`).
   the oldest finished session (never today's or an unfinished one) and
   removes it only if the person agrees. Unless it was copied home or
   archived, a removed one is gone.
-- **Sending is how the phone makes room, and it is always the person's
-  act.** The app is client first: nothing leaves the phone by default, and
-  nothing requires a server. What sending buys is that the phone can let
-  go. A finished session (completed, not today's: `mayLeavePhone`) leaves
-  the phone once a destination holds it: home, when **Send to host** reads
-  it back and finds it as the phone has it; an archive, when the person
-  says the file arrived (the phone cannot look inside Drive). Unfinished
-  sessions and today's always stay, since the study card and the nudge read
-  them.
+- **Letting go is how the phone makes room, and it is always the person's
+  act.** The app is client first: nothing requires a server, and a paired
+  phone sends to its own home on its own (HF8), but nothing leaves the
+  phone until the person says so. A finished session (completed, not
+  today's: `mayLeavePhone`) leaves the phone once a destination holds it:
+  home, when **Clear finished sessions home holds** reads it back and finds
+  it as the phone has it; an archive, when the person says the file arrived
+  (the phone cannot look inside Drive). Unfinished sessions and today's
+  always stay, since the study card and the nudge read them.
 - **Sending is archiving.** A finished session's record is context for an
   agent shaping the next lesson, not something the person reads back: the
   app is for studying, not a dashboard of it. So nothing that left the
@@ -612,45 +612,44 @@ asks once more, tells home if it can, and forgets the token on the phone
 either way. Signing out everywhere on the computer ends a phone's session too.
 The server side is `paulgsc/server` `docs/identity.md`, "Pairing a phone".
 
-**Send to host...**, once paired, counts what this phone would send: its
-sessions and the items kept on its shelf (reading only the phone). The
-confirm names those counts and the host, and only its **Send** sends. One
-run, so one **Stop** (or the app going to the background) ends all of it
-before the next request; nothing is retried.
+**Everything the phone keeps goes to home on its own**, once paired
+(`lib/home-link/lanes.ts`, the drain; LA15 in
+`docs/learner-data-authority.md`; HF8, paulgsc/some-ui#2182: home is the
+owner's own store, as private as the phone, so sending to it asks nothing).
+There is no choice to make and no switch: pairing is the choice. The app
+shell runs every record's drain on every screen, while the app is in front:
+when the record changes on this phone, when the app comes back, when the
+network does, when the phone is paired, and once the link frees after
+turning a run away; never on a timer. One run at a time, and one **Stop** (or
+the app going to the background) ends it before the next request; nothing
+is retried, and what did not go goes on the next ask. Each wing's mark in
+the header, and Settings → Home, say what is kept where, what waits, and how
+the last send went, with **Send now** for what waits.
 
-- **Sessions** go as their records (plan, status and times); their
-  reflections, stops and soundbites stay on the phone
+- **Sessions** go as their records (plan, status and times), finished ones
+  only; their reflections, stops and soundbites stay on the phone
   (`docs/learner-data-authority.md`, LA7). Each is created on home once, and
   the phone keeps a receipt of what home made. A session that moved on since
-  its copy (planned when copied, finished later; renamed) has home's copy
-  patched to match. Then each finished session (`mayLeavePhone`) is read
-  back from home (`confirmHeld`), and those home holds exactly as the phone
-  does leave the phone: sending is archiving. Nothing on home is deleted.
+  its copy (renamed, say) has home's copy patched to match. Nothing on home
+  is deleted, and the drain lets nothing go.
 - **Kept items** go one PUT each, their bytes as kept; one with the same
   name there is replaced. Only those home doesn't hold as they are now go
-  (the phone remembers each one home answered for by its bytes' digest),
-  and the confirm counts only those; one home refused is offered again.
-  An item removed on home is not sent again until its bytes change on the
-  phone. They stay on the
-  phone: they are for studying again. A full shelf there, or a refused item,
-  is counted and said.
+  (the phone remembers each one home answered for by its bytes' digest); one
+  home refused goes again once its bytes change. They stay on the phone:
+  they are for studying again. A full shelf there, or a refused item, is
+  counted and said.
+- **LeetType sessions** and **Studio sittings and answers** go the same way,
+  event by event and read back, and stay on the phone.
+- **aph**, the **Jobs record** and **voice notes** go by their own
+  exchanges, below.
 
-Home no longer knowing the phone, or no answer, ends the send there.
+**Clear finished sessions home holds...**, in Settings → Home, is the one
+way a finished session leaves the phone for home's sake: a confirm names how
+many and the host, then each finished session (not today's) is read back
+from home (`confirmHeld`), and only those home holds exactly as the phone
+does leave; the rest stay, and the line says so. It sends nothing.
 
-**Choices are told to home.** Each time I keep a record on home or stop
-it, home is told which record and that sharing began or stopped, never
-the words I agreed to (`lib/home-link/told.ts`; paulgsc/server#433 keeps
-when it heard each one). Once home has heard a stop, it refuses aph and
-Jobs writes from this phone, and a record goes to home only once home has
-heard its choices. A choice is told first in the record's next run, and a
-stop right after its second press; a stop the link was too busy for then
-is told when a wing's mark next finds the link free, and one home did not
-answer is told on the next run of a record still kept. aph's way back asks
-for its record even when home could not hear the stop. Each session's
-create also names its id, so a create whose answer was lost makes one
-session on a home from paulgsc/server#432 on. An older home, once it has
-said twice that it keeps no choices, is told nothing more until the app
-starts again, and names its own ids.
+Home no longer knowing the phone, or no answer, ends a run there.
 
 **Archive finished sessions**, in the This phone block, is the way to
 make room without a home server. It shares one file
@@ -706,12 +705,12 @@ Home tells the phone when the morning run is in (RUN4 and RUN5, epic #2051):
 the run picked something, picked nothing, or couldn't finish. It is the one
 thing home pushes, so it comes by **Firebase Cloud Messaging**
 (`@capacitor/push-notifications`), not a local notification. A phone that
-asked home on a timer would break the rule that the phone asks only while
-Jobs is open (LA10), and a fixed-time notification would be a reminder,
-which Jobs does not have.
+asked home on a timer would break the rule that the phone asks only at the
+moments the drain names (LA15), and a fixed-time notification would be a
+reminder, which Jobs does not have.
 
 - **Turning it on:** Settings, the Jobs record's row, **Tell me when the
-  morning run is in**, shown only while Jobs is kept on home. Android asks
+  morning run is in**, shown while the phone is paired. Android asks
   for notifications, the push service gives this install a token
   (`lib/jobs/notice-native.ts`), and the next exchange with home files it
   (`PUT /jobs/notice`). Off takes it back (`DELETE /jobs/notice`).
@@ -865,20 +864,19 @@ draw it), routed under `_dashboard/_apk/aph`.
   is refused on screen too ("Not saved"), and a record that cannot be read is
   moved aside, never written over. Uninstalling the app, or clearing its
   data, still deletes it, which is what the strip above aph's views says.
-- **Kept on home**, once I press "Keep on home" twice in that strip (the
-  first press names the host and how many entries go; the phone must be
-  paired). From then on the home server is the record (paulgsc/server
-  `routes/aph.rs`, append-only: every revision is kept and nothing is
-  deleted), and the phone keeps only the settings and what home hasn't
-  confirmed (`lib/home.ts`). While aph is open with the app in front, it
-  syncs on its own: when aph opens, after each change, when the app comes back
-  or the network does (`lib/home-link/aph.ts` in www; LA9 in
+- **Kept on home**, once the phone is paired: the first run moves the
+  record there, with no choice to make (HF8). From then on the home server
+  is the record (paulgsc/server `routes/aph.rs`, append-only: every revision
+  is kept and nothing is deleted), and the phone keeps only the settings and
+  what home hasn't confirmed (`lib/home.ts`). While aph is open with the app
+  in front, it syncs on its own: when aph opens, after each change, when the
+  app comes back or the network does (`lib/home-link/aph.ts` in www; LA15 in
   `docs/learner-data-authority.md`). A change leaves the phone only once home
   answers with the same entry. Off the home network, changes wait on the
   phone, and the strip says how many; until home is reached, History shows
   only what the phone hasn't sent. An entry home refuses (a second plain
   figure at a checkpoint home already holds, say) stays on the phone with
-  why, until it is changed. There is no way back to the phone only yet.
+  why, until it is changed. There is no way back to the phone only.
 - **A day I missed** can still be logged, up to two weeks back
   (`loggableDays`): the logger steps back a day at a time, and History's
   "not logged" rows open it on that day. A figure off the checkpoints on a

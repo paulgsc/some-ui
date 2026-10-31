@@ -1,61 +1,45 @@
 /**
  * The runtime behind `./routine-model`: Korean's look at what the
  * reflections routine left on the paired home (`GET /routine/files`,
- * paulgsc/server `handlers/routine.rs`), through the link's `keep`, once
- * its person chose to show it (LA12, docs/learner-data-authority.md).
+ * paulgsc/server `handlers/routine.rs`), through the link's `keep`, on a
+ * paired phone (LA8, LA15, docs/learner-data-authority.md). Home is the
+ * owner's own store, so reading it asks nothing (HF8, #2182).
  *
- * - **Only once shown, only under the pairing it was shown for, only in
- *   front.** `list` sends nothing unless the choice log shows the files
- *   under the pairing this phone holds and the app is visible; otherwise it
- *   answers with what it last read under that choice, or no files.
+ * - **Only paired, only under the pairing this phone holds, only in
+ *   front.** `list` sends nothing unless the phone is paired and the app is
+ *   visible; otherwise it answers with what it last read under that
+ *   pairing, or no files.
  * - **One read at a time:** a call while one is on its way, under the same
- *   choice, shares it. A look the link turns away (it is busy with another
+ *   pairing, shares it. A look the link turns away (it is busy with another
  *   send) is said nowhere and answers what was held.
  * - **Never rejects, never retries.** The app's query retries a rejection,
  *   and LA8 allows no retry, so every way a read ends resolves: a refusal,
  *   home's silence or a fault on this phone is said in `last`, and the
- *   answer is the last one read under the same choice.
- * - **Nothing outlives its choice.** An answer that lands once its choice
- *   is stopped, or its pairing gone, is dropped; a stop, an unpairing or a
- *   new pairing clears what was held. Home's files are held in memory only.
- * - **An unreadable choice log is never written over,** as the consent
- *   log's is not (`./consent-runtime`): every choice is then refused, and
- *   nothing is shown until it can be read.
- * - **Which lessons were opened is told only as the choice's words say.**
- *   `tellOpened` sends one `PUT /routine/opened` of names, when Korean
- *   opens one, only under a choice whose words pressed carry
- *   `ROUTINE_TELLS_OPENED`, with the app in front, one at a time, never retried and never
- *   rejected. One asked for while a look or another telling is on its way,
- *   or turned away by another send, waits: the newest is told once that
- *   look or telling settles, while its choice is still the one shown, and
- *   the next open tells them all again.
+ *   answer is the last one read under the same pairing.
+ * - **Nothing outlives its pairing.** An answer that lands once the pairing
+ *   is gone is dropped; an unpairing or a new pairing clears what was held.
+ *   Home's files are held in memory only.
+ * - **Which lessons were opened is told to home.** `tellOpened` sends one
+ *   `PUT /routine/opened` of names, when Korean opens one, with the app in
+ *   front, one at a time, never retried and never rejected, so the routine
+ *   keeps three ready. One asked for while a look or another telling is on
+ *   its way, or turned away by another send, waits: the newest is told once
+ *   that look or telling settles, while the pairing is still this phone's,
+ *   and the next open tells them all again.
  */
-import type { HomeAnswer, KeyedStorage } from "@some-ui/core-utils"
-import { jsonOf, localStorageOrNull } from "@some-ui/core-utils"
+import type { HomeAnswer } from "@some-ui/core-utils"
+import { jsonOf } from "@some-ui/core-utils"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 
 import { ForeignCallError } from "@/lib/intent/foreign"
 
 import { homeLink } from "./index"
-import type { ReadEvent, ReadLog, ReadState, Under } from "./routine-model"
-import {
-  appendedRead,
-  heldFor,
-  INITIAL_READ,
-  mayRead,
-  parseReadLog,
-  saidUnder,
-  sameUnder,
-  stepRead,
-  underNow,
-} from "./routine-model"
+import type { ReadEvent, ReadState, Under } from "./routine-model"
+import { heldFor, INITIAL_READ, mayRead, stepRead } from "./routine-model"
 import type { HomeLink } from "./runtime"
 import { unanswered } from "./runtime"
-import { ROUTINE_TELLS_OPENED } from "./words"
 
-export const READS_KEY = "some-ui.home.reads.v1"
-
-/** What `list` answers when nothing was read under the choice shown now. */
+/** What `list` answers when nothing was read under the pairing held now. */
 const NO_FILES = { files: [] } as const
 
 export type RoutinePorts = {
@@ -65,32 +49,18 @@ export type RoutinePorts = {
   /** The app is in front. */
   visible: () => boolean
   now: () => number
-  storage: KeyedStorage | null
   /** Calls `listener` when the link changes (an unpairing, a new pairing). */
   onLink: (listener: () => void) => () => void
 }
 
-type RoutineSnapshot = {
-  readonly log: ReadLog
-  readonly read: ReadState
-}
-
 export type RoutineReads = {
-  getSnapshot: () => RoutineSnapshot
+  getSnapshot: () => ReadState
   subscribe: (listener: () => void) => () => void
   /** Home's answer, as it came (topik parses it); never rejects. */
   list: () => Promise<unknown>
   /**
-   * Shows or hides the routine's files under the pairing this phone holds,
-   * with `said` the words pressed. False when the phone would not keep it.
-   */
-  choose: (kind: "shown" | "hidden", said: string) => boolean
-  /** Whether the choice shown now lets `tellOpened` tell home anything. */
-  tells: () => boolean
-  /**
    * Tells home which of the routine's lessons this phone opened, by
-   * `<folder>/<name>`, when `tells` holds and the app is in front; never
-   * rejects.
+   * `<folder>/<name>`, while paired and in front; never rejects.
    */
   tellOpened: (keys: ReadonlyArray<string>) => void
 }
@@ -106,46 +76,45 @@ function answerOf(answer: HomeAnswer): { files: unknown } | { ended: Ended } {
   return files === undefined ? { ended: "failed" } : { files }
 }
 
+function reportFault(error: unknown): void {
+  // A fault on this phone, not home's silence: it goes to the native log
+  // (once: a foreign call's own port has already reported it).
+  if (error instanceof ForeignCallError) return
+  reportFailure({
+    port: "home server (routine)",
+    error: {
+      ...toIntentError(error),
+      summary: "Something on this phone went wrong.",
+    },
+  })
+}
+
 export function createRoutineReads(ports: RoutinePorts): RoutineReads {
-  let log: ReadLog = []
-  let readable = ports.storage !== null
-  try {
-    const text = ports.storage?.getItem(READS_KEY) ?? null
-    const read = text === null ? [] : parseReadLog(text)
-    if (read === null) readable = false
-    else log = read
-  } catch {
-    readable = false
-  }
-  let snapshot: RoutineSnapshot = { log, read: INITIAL_READ }
+  let state: ReadState = INITIAL_READ
   const listeners = new Set<() => void>()
-  const changed = (next: RoutineSnapshot): void => {
-    if (next.log === snapshot.log && next.read === snapshot.read) return
-    snapshot = next
+  const dispatch = (event: ReadEvent): void => {
+    const next = stepRead(state, event)
+    if (next === state) return
+    state = next
     for (const listener of listeners) listener()
   }
-  const dispatch = (event: ReadEvent): void =>
-    changed({ log, read: stepRead(snapshot.read, event) })
 
-  const underNowHere = (): Under | null => underNow(log, ports.pairing())
-
-  // The choice what is held was read under; cleared once it is not the one
-  // shown now.
+  // The pairing what is held was read under; cleared once it is not the one
+  // this phone holds.
   let heldUnder: Under | null = null
   const settle = (): void => {
-    if (heldUnder === null || sameUnder(heldUnder, underNowHere())) return
+    if (heldUnder === null || heldUnder === ports.pairing()) return
     heldUnder = null
     dispatch({ type: "cleared" })
   }
   ports.onLink(settle)
 
-  const heldNow = (): unknown =>
-    heldFor(snapshot.read, underNowHere()) ?? NO_FILES
+  const heldNow = (): unknown => heldFor(state, ports.pairing()) ?? NO_FILES
 
-  // A read that ended without files, said for the choice it was made
-  // under; dropped once that choice is not the one shown now.
+  // A read that ended without files, said for the pairing it was made
+  // under; dropped once that is not the one this phone holds.
   const end = (under: Under, kind: Ended): unknown => {
-    if (sameUnder(under, underNowHere())) {
+    if (under === ports.pairing()) {
       dispatch({ type: "ended", kind, at: ports.now() })
     } else {
       dispatch({ type: "dropped" })
@@ -160,24 +129,14 @@ export function createRoutineReads(ports: RoutinePorts): RoutineReads {
       outcome = await ports.keep((send) => send("GET", "/routine/files"))
     } catch (error) {
       if (unanswered(error)) return end(under, "unreachable")
-      // A fault on this phone, not home's silence: it goes to the native
-      // log (once: a foreign call's own port has already reported it).
-      if (!(error instanceof ForeignCallError)) {
-        reportFailure({
-          port: "home server (routine)",
-          error: {
-            ...toIntentError(error),
-            summary: "Something on this phone went wrong.",
-          },
-        })
-      }
+      reportFault(error)
       return end(under, "failed")
     }
     if (outcome === null) {
       // Turned away: this phone's link was doing something else (a record
-      // kept on home sending), or the phone is no longer paired, which
-      // `settle` clears. Neither is home's to answer for, so nothing is
-      // said; the next look asks again.
+      // draining), or the phone is no longer paired, which `settle` clears.
+      // Neither is home's to answer for, so nothing is said; the next look
+      // asks again.
       dispatch({ type: "dropped" })
       settle()
       return heldNow()
@@ -188,8 +147,8 @@ export function createRoutineReads(ports: RoutinePorts): RoutineReads {
     }
     const read = answerOf(outcome.value)
     if ("ended" in read) return end(under, read.ended)
-    // Landed after a stop, an unpairing or a new pairing: nothing of it is kept.
-    if (!sameUnder(under, underNowHere())) {
+    // Landed after an unpairing or a new pairing: nothing of it is kept.
+    if (under !== ports.pairing()) {
       dispatch({ type: "dropped" })
       settle()
       return heldNow()
@@ -199,40 +158,29 @@ export function createRoutineReads(ports: RoutinePorts): RoutineReads {
     return read.files
   }
 
-  // The look on its way, and the choice it was made under: a call under
-  // another choice does not share it.
+  // The look on its way, and the pairing it was made under: a call under
+  // another pairing does not share it.
   let inFlight: { under: Under; reading: Promise<unknown> } | null = null
 
-  const tells = (): boolean => {
-    const under = underNowHere()
-    return (
-      under !== null &&
-      (saidUnder(log, under)?.includes(ROUTINE_TELLS_OPENED) ?? false)
-    )
-  }
   let telling = false
   // The newest names asked for while a look or a telling was on its way, or
-  // that the link turned away for another send, with the choice they were
-  // asked under: told once that look or telling settles, and only while that
-  // choice is the one shown, so no home is told of another's.
+  // that the link turned away for another send, with the pairing they were
+  // asked under: told once that look or telling settles, and only while
+  // that pairing is this phone's, so no home is told of another's.
   let waiting: { under: Under; keys: ReadonlyArray<string> } | null = null
   const startTelling = (under: Under, keys: ReadonlyArray<string>): void => {
     telling = true
     void tell(under, keys)
   }
-  // A new pairing or choice drops what waits under the old one.
+  // A new pairing drops what waits under the old one.
   ports.onLink(() => {
-    if (waiting !== null && !sameUnder(waiting.under, underNowHere())) {
-      waiting = null
-    }
+    if (waiting !== null && waiting.under !== ports.pairing()) waiting = null
   })
   const flush = (): void => {
     if (waiting === null || telling || inFlight !== null) return
     const { under, keys } = waiting
     waiting = null
-    if (ports.visible() && tells() && sameUnder(under, underNowHere())) {
-      startTelling(under, keys)
-    }
+    if (ports.visible() && under === ports.pairing()) startTelling(under, keys)
   }
   const tell = async (
     under: Under,
@@ -248,17 +196,8 @@ export function createRoutineReads(ports: RoutinePorts): RoutineReads {
         waiting ??= { under, keys }
       }
     } catch (error) {
-      // Home's silence is said nowhere: the next open tells it again. A
-      // fault on this phone goes to the native log, once.
-      if (!unanswered(error) && !(error instanceof ForeignCallError)) {
-        reportFailure({
-          port: "home server (routine)",
-          error: {
-            ...toIntentError(error),
-            summary: "Something on this phone went wrong.",
-          },
-        })
-      }
+      // Home's silence is said nowhere: the next open tells it again.
+      if (!unanswered(error)) reportFault(error)
     } finally {
       telling = false
       // Turned away: told when the next look settles, not straight back.
@@ -267,7 +206,7 @@ export function createRoutineReads(ports: RoutinePorts): RoutineReads {
   }
 
   return {
-    getSnapshot: () => snapshot,
+    getSnapshot: () => state,
     subscribe(listener): () => void {
       listeners.add(listener)
       return (): void => {
@@ -276,12 +215,12 @@ export function createRoutineReads(ports: RoutinePorts): RoutineReads {
     },
     list(): Promise<unknown> {
       settle()
-      const under = underNowHere()
+      const under = ports.pairing()
       if (under === null) return Promise.resolve(NO_FILES)
-      if (inFlight !== null && sameUnder(inFlight.under, under)) {
+      if (inFlight !== null && inFlight.under === under) {
         return inFlight.reading
       }
-      if (!mayRead(snapshot.read, { under, visible: ports.visible() })) {
+      if (!mayRead(state, { under, visible: ports.visible() })) {
         return Promise.resolve(heldNow())
       }
       heldUnder ??= under
@@ -296,27 +235,9 @@ export function createRoutineReads(ports: RoutinePorts): RoutineReads {
       reading.then(done, done)
       return reading
     },
-    choose(kind, said): boolean {
-      const pairing = ports.pairing()
-      if (!readable || ports.storage === null || pairing === null) return false
-      const next = appendedRead(log, { kind, pairing, at: ports.now(), said })
-      if (next === log) return true
-      try {
-        ports.storage.setItem(READS_KEY, JSON.stringify(next))
-      } catch {
-        return false
-      }
-      log = next
-      changed({ log, read: snapshot.read })
-      settle()
-      return true
-    },
-    tells,
     tellOpened(keys): void {
-      const under = underNowHere()
-      if (keys.length === 0 || under === null || !ports.visible() || !tells()) {
-        return
-      }
+      const under = ports.pairing()
+      if (keys.length === 0 || under === null || !ports.visible()) return
       if (telling || inFlight !== null) {
         waiting = { under, keys }
         return
@@ -328,7 +249,7 @@ export function createRoutineReads(ports: RoutinePorts): RoutineReads {
 
 let reads: RoutineReads | null = null
 
-/** One runtime per page load, over the link; reads only this phone's log. */
+/** One runtime per page load, over the link; reads only this phone's pairing. */
 export function routineReads(): RoutineReads {
   reads ??= createRoutineReads({
     keep: (run) => homeLink().keep(run),
@@ -338,7 +259,6 @@ export function routineReads(): RoutineReads {
     },
     visible: () => document.visibilityState === "visible",
     now: Date.now,
-    storage: localStorageOrNull(),
     onLink: (listener) => homeLink().subscribe(listener),
   })
   return reads

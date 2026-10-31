@@ -1,11 +1,11 @@
 /**
- * The phone's link to its home server: pairing, unpairing, the sync, the
- * shelf send and the sessions copy, one at a time, each started by a tap
- * (LA8, docs/learner-data-authority.md); and aph, the Jobs record and
- * Practice kept on home, once their person opted in, while each is open
- * (`./lanes`; aph, LA9; the Jobs record, LA10; Practice, LA11); and, once
- * its person chose to show them, Korean's look at the routine's files
- * (`./routine`, LA12).
+ * The phone's link to its home server: pairing, unpairing, the sync and the
+ * clear of finished sessions home holds, one at a time, each started by a
+ * tap (LA8, docs/learner-data-authority.md); the drain of everything the
+ * phone keeps (aph, the Jobs record, Practice's record, voice notes), which
+ * a paired phone sends on its own while the app is open (`./lanes`, LA15);
+ * and Korean's look at the routine's files on home (`./routine`).
+ * Sending to home is the default and asks nothing (HF8, #2182).
  * Phone-only (`build.paths.ts`).
  */
 import { useSyncExternalStore } from "react"

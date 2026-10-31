@@ -1,8 +1,9 @@
 /**
- * A record kept on home (aph, LA9; the Jobs record, LA10; Practice, LA11) as
- * one state: whether a run is under way, whether another was asked for while
- * it ran, and how the last one ended. `step` is pure; `./kept-runtime` runs
- * the work and feeds its end back in.
+ * A record this phone drains to home (aph, the Jobs record, Practice, voice
+ * notes; LA15, docs/learner-data-authority.md) as one state: whether a run
+ * is under way, whether another was asked for while it ran, and how the
+ * last one ended. `step` is pure; `./kept-runtime` runs the work and feeds
+ * its end back in.
  *
  * One run at a time, by structure: asking while one runs only marks that
  * another is wanted once it ends, so a burst of edits is one more run, not

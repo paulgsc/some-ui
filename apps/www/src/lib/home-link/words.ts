@@ -1,25 +1,26 @@
 /**
- * Every word a record kept on home shows (LA9 to LA11, LA13, LA14): each lane's mark in
- * the header, its sheet, and the choice to keep sending; and Settings'
- * choice to show the routine's files in Korean (LA12). Pure, and the one
+ * Every word a record this phone drains to home shows (LA14, LA15): each
+ * lane's mark in the header, its sheet, and Settings' readout of what is
+ * kept where and what waits; the clear of finished sessions home holds
+ * (`./clear`); and Korean's look at the routine's files. Pure, and the one
  * place those words live, so they stay in the person's terms (what is kept
- * where, and since when) and never the machinery's: no request, status
+ * where, and what waits) and never the machinery's: no request, status
  * code, address or state name reaches the screen (`__tests__/words.test.ts`).
  */
-import { counted } from "@some-ui/core-utils"
+import { assertNever, counted } from "@some-ui/core-utils"
 
 import type { How, Where } from "@/lib/sharing-marks"
 import type { Unsendable } from "@/lib/voice-home/model"
 import { NO_ROOM } from "@/lib/voice-home/model"
 
-import type { ConsentLog, Scope, Shared } from "./consent-model"
+import type { ClearEnd } from "./clear"
 import type { KeptState } from "./kept-model"
-import type { LaneCounts, LaneId } from "./lanes"
+import type { LaneCounts, LaneId, LaneKind } from "./lanes"
 import type { LastRead } from "./routine-model"
 
-/** One row of a lane's sheet: what one scope is called, and one of it. */
+/** One row of a lane's sheet: what one kind is called, and one of it. */
 type Row = {
-  readonly scope: Scope
+  readonly kind: LaneKind
   readonly label: string
   readonly one: string
   /** When it is not `one` and an s. */
@@ -34,27 +35,15 @@ export type LaneWords = {
   readonly rows: ReadonlyArray<Row>
   /** What waits on this phone, counted, as a sentence's start. */
   readonly waits: (n: number) => string
-  /** When a kept lane sends. */
-  readonly whileOpen: string
+  /** Not paired, with nothing of it on home. */
   readonly phoneOnly: string
-  /** Not kept, with some of it on home. */
+  /** Not paired, with some of it on home. */
   readonly partly: string
   /** What never leaves, or stays put. */
   readonly footnote: string
-  readonly stopQuestion: string
-  readonly stopMore: string
-  /** Not kept, where the choice is made elsewhere (Practice: Settings' send). */
-  readonly startElsewhere: string | null
-  /**
-   * Not kept, the first press's question, given how much goes: also the
-   * words kept with the choice. Null where the choice is made elsewhere.
-   */
-  readonly offer: ((n: number) => string) | null
-  /** `LaneCounts`' `away`, given the changes this phone holds (aph). */
-  readonly away: ((n: number) => string) | null
   /** Waiting changes that clash with home's record, so not shown (aph). */
   readonly clash: ((n: number) => string) | null
-  /** Kept, before home's record has been read since the app opened (aph). */
+  /** Paired, before home's record has been read since the app opened (aph). */
   readonly unread: string | null
 }
 
@@ -63,35 +52,30 @@ const waits =
   (n: number): string =>
     `${counted(n, noun)} wait${n === 1 ? "s" : ""}`
 
+const PAIR = "Pair this phone with home in Settings to keep a copy there."
+
 export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
   practice: {
     markLabel: "Where Practice is kept",
     title: "Practice and home",
     rows: [
       {
-        scope: "sessions",
+        kind: "sessions",
         label: "Finished sessions",
         one: "session",
       },
       {
-        scope: "shelf",
+        kind: "shelf",
         label: "Kept shelf items",
         one: "kept item",
       },
     ],
     waits: waits("session"),
-    whileOpen: "while Practice is open",
-    phoneOnly: "Practice is only on this phone. Losing the phone loses it.",
+    phoneOnly: `Practice is only on this phone. ${PAIR}`,
     partly:
-      "Some of Practice is on home. New sessions stay on this phone until you send them.",
+      "Some of Practice is on home. New sessions stay on this phone until it is paired again.",
     footnote:
-      "Written reflections never leave this phone. Spoken ones go to home only if you keep voice notes there, in Settings.",
-    stopQuestion: "Stop sending new sessions and kept items to home?",
-    stopMore:
-      "This phone tells home you stopped, when it can. What home already has stays there. This phone keeps everything it has. You can choose to keep sending again from any send.",
-    startElsewhere: "Send from Settings, and choose there to keep sending.",
-    offer: null,
-    away: null,
+      "Finished sessions, kept items, LeetType sessions and Studio sittings go to home while the app is open. A finished session leaves this phone only when you clear it in Settings, once home has it. Written reflections never leave this phone.",
     clash: null,
     unread: null,
   },
@@ -100,26 +84,18 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
     title: "aph and home",
     rows: [
       {
-        scope: "aph",
+        kind: "aph",
         label: "Entries and settings",
         one: "entry",
         many: "entries",
       },
     ],
     waits: waits("change"),
-    whileOpen: "while aph is open",
-    phoneOnly: "aph is only on this phone. Losing the phone loses it.",
+    phoneOnly: `aph is only on this phone. ${PAIR}`,
     partly:
-      "Some of aph is on home. New entries stay on this phone from now on.",
-    footnote: "Stopping brings aph back to this phone.",
-    stopQuestion: "Stop sending aph to home?",
-    stopMore:
-      "This phone tells home you stopped, when it can, and asks home for aph's record and keeps it here again, with the changes still waiting; any that clash with home's record are kept aside on this phone. What home has stays there too.",
-    startElsewhere: null,
-    offer: (n) =>
-      `Send ${counted(n, "change")} from this phone to home, and keep sending from now on? This phone then keeps only the settings and what home hasn't confirmed. Changes go while aph is open. Stop any time, and aph comes back to this phone.`,
-    away: (n) =>
-      `Sending to home is off. Home holds aph; this phone holds only the ${counted(n, "change")} home hadn't confirmed.`,
+      "Home holds aph; this phone holds what home hadn't confirmed, until it is paired again.",
+    footnote:
+      "Home keeps every revision. This phone keeps the settings and what home hasn't confirmed, and sends while aph is open.",
     clash: (n) =>
       `${counted(n, "change")} waiting here clash with home's record and aren't shown.`,
     unread:
@@ -128,24 +104,13 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
   jobs: {
     markLabel: "Where the Jobs record is kept",
     title: "Jobs and home",
-    rows: [
-      { scope: "jobs", label: "The record", one: "event", many: "events" },
-    ],
+    rows: [{ kind: "jobs", label: "The record", one: "event", many: "events" }],
     waits: waits("event"),
-    whileOpen: "while Jobs is open",
-    phoneOnly:
-      "The Jobs record is only on this phone. Losing the phone loses it.",
+    phoneOnly: `The Jobs record is only on this phone. ${PAIR}`,
     partly:
-      "Some of the Jobs record is on home. New events stay on this phone from now on.",
+      "Some of the Jobs record is on home. New events stay on this phone until it is paired again.",
     footnote:
-      "Voice notes go to home only if you keep voice notes there, in Settings. They still go to Drive as you share them.",
-    stopQuestion: "Stop sending the Jobs record to home?",
-    stopMore:
-      "This phone tells home you stopped, when it can. What home already has stays there. This phone keeps its whole record.",
-    startElsewhere: null,
-    offer: (n) =>
-      `Send ${counted(n, "event")} to home, and keep sending from now on? This phone keeps its whole record too. New events go while Jobs is open. Stop any time; what's sent stays on home.`,
-    away: null,
+      "This phone keeps its whole record. Voice notes go to home too, and still go to Drive as you share them.",
     clash: null,
     unread: null,
   },
@@ -154,26 +119,17 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
     title: "Voice notes and home",
     rows: [
       {
-        scope: "voice",
-        label: "Spoken reflections, Jobs and scene notes",
+        kind: "voice",
+        label: "Spoken reflections, Jobs, game and scene notes, Studio takes",
         one: "voice note",
       },
     ],
     waits: waits("voice note"),
-    whileOpen: "while the app is open",
-    phoneOnly:
-      "Voice notes are only on this phone, and in Drive when you share them.",
+    phoneOnly: `Voice notes are only on this phone, and in Drive when you share them. ${PAIR}`,
     partly:
-      "Some voice notes are on home. New ones stay on this phone from now on.",
+      "Some voice notes are on home. New ones stay on this phone until it is paired again.",
     footnote:
-      "Home keeps every recording and turns it into text for the morning routines. Written reflections and read-aloud takes stay on this phone.",
-    stopQuestion: "Stop sending voice notes to home?",
-    stopMore:
-      "This phone tells home you stopped, when it can. What home already has stays there. Voice notes stay on this phone, and you can still share them to Drive.",
-    startElsewhere: null,
-    offer: (n) =>
-      `Send ${counted(n, "voice note")} to home, and keep sending from now on? Spoken reflections, Jobs voice notes and the drama's scene notes go to home while the app is open, wherever you are in it. Home keeps each recording and turns it into text for the morning routines. This phone keeps a note until home has it, even after you let it go here. Stop any time; what's sent stays on home.`,
-    away: null,
+      "Home keeps every recording and turns it into text for the morning routines. This phone keeps a note until home has it, even after you let it go here. Written reflections and read-aloud takes stay on this phone.",
     clash: null,
     unread: null,
   },
@@ -182,18 +138,8 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
 /** The words every lane's sheet shares. */
 export const SHEET = {
   sendNow: "Send now",
-  stop: "Stop sending...",
-  stopTitle: "Stop sending",
-  stopYes: "Stop sending",
-  stopNo: "Keep sending",
-  keep: "Keep sending to home...",
-  keepYes: "Keep sending",
-  keepNo: "Cancel",
-  keepRefused: "This phone couldn't keep that choice. Nothing changed.",
-  stopRefused: "This phone couldn't keep that choice, so sending goes on.",
-  pairFirst: "Pair this phone with home in Settings to send it there.",
-  bringBack: "Bring it back to this phone",
-  settings: "Send, free space and pairing: Settings",
+  pairFirst: "Pair this phone with home in Settings to keep a copy there.",
+  settings: "Pairing, what waits and clearing space: Settings",
 } as const
 
 const they = (n: number): string => (n === 1 ? "it" : "they")
@@ -209,53 +155,29 @@ export function unsentLines({ gone }: Unsendable): Array<string> {
   return gone > 0 ? [VOICE_UNSENT.gone(gone)] : []
 }
 
-/** The send confirm's box, and the words stored with the choice. */
-export const KEEP_SENDING = "Keep sending these to home from now on"
-export const KEEP_SENDING_MORE =
-  "New finished sessions and kept items go to home while Practice is open, and the mark at the top shows each send. Stop any time; what's sent stays on home."
-
-/** Settings' send confirm, when it carries LeetType sessions: the phone keeps them. */
-export const LEETYPE_STAYS = "LeetType sessions stay on this phone."
-
-/** Settings' send with nothing to carry: some left out as home took them, or none at all. */
-export const NOTHING_TO_SEND = {
-  taken: (host: string): string =>
-    `Nothing new to send: ${host} took every kept item as it is now.`,
-  none: "Nothing on this phone to send.",
+/** Settings' Home server block, once paired: what goes, and when. */
+export const HOME_BLOCK = {
+  lead: "Everything this phone keeps goes to home on its own while the app is open: finished sessions, kept items, LeetType sessions, Studio sittings, the Jobs record, voice notes, and aph while it is open. Nothing leaves this phone until home has read it back.",
 } as const
 
-/** Settings' send, once Practice is kept on home. */
-export const KEPT_NOTE =
-  "Practice's finished sessions and kept items go to home on their own while Practice is open. To stop, tap the mark at the top of Practice, or Stop sending below."
-
-/** The box was ticked, but this phone could not keep the choice. */
-export const KEEP_SENDING_REFUSED =
-  "This phone couldn't keep that choice, so this send is once only."
-
-/** What a person agreed to when they ticked the box, as stored with it. */
-export const KEEP_SENDING_SAID = `${KEEP_SENDING}. ${KEEP_SENDING_MORE}`
-
-/** Settings' ledger: what this phone shares with home, and every choice. */
-export const LEDGER = {
-  title: "What this phone shares",
-  lead: "What home has, it keeps: stopping never erases it there.",
+/** Settings' readout of what this phone keeps on home, and what waits. */
+export const KEPT_ON_HOME = {
+  title: "What this phone keeps on home",
+  lead: "What home has, it keeps.",
   names: {
     practice: "Practice",
     aph: "aph",
     jobs: "The Jobs record",
     voice: "Voice notes",
   } satisfies Record<LaneId, string>,
-  /** aph comes back to this phone as it stops, which its own screens do. */
-  stopInAph:
-    "To stop, tap the mark at the top of aph: aph comes back to this phone as it stops.",
-  neverTitle: "Never shared",
+  neverTitle: "Never sent",
   never: [
     {
       label: "Lessons, dramas and rounds home publishes",
       text: "Come from home when you ask for them. Nothing goes the other way.",
     },
     {
-      label: "Written reflections, read-aloud takes and soundbites",
+      label: "Written reflections and read-aloud takes",
       text: "Never go to home. You can share them yourself, to Drive.",
     },
     {
@@ -263,10 +185,6 @@ export const LEDGER = {
       text: "Stay on this phone.",
     },
   ],
-  historyTitle: "Every choice",
-  noHistory: "No choice to keep sending made yet.",
-  /** Under a pairing made before the log, a record's own switch may have chosen. */
-  noHistoryEarlier: "No choice recorded on this phone yet.",
   /** What to open for each record: its wing's own name. */
   opens: {
     practice: "Practice",
@@ -274,73 +192,62 @@ export const LEDGER = {
     jobs: "Jobs",
     voice: "Settings",
   } satisfies Record<LaneId, string>,
-  /** A record whose choice an earlier pairing made, which only its own screens know. */
-  unsure: (opens: string): string =>
-    `This phone was paired before it kept its choices, so where it is kept shows on ${opens}'s own mark.`,
 } as const
 
-const LANE_OF: Readonly<Record<Scope, LaneId>> = {
-  sessions: "practice",
-  shelf: "practice",
-  aph: "aph",
-  jobs: "jobs",
-  voice: "voice",
-}
+const sessions = (n: number): string => counted(n, "finished session")
 
-/** One choice, as the ledger's history says it. */
-export type HistoryLine = {
-  /** Its place in the log, and the lane: unique, and never reused. */
-  readonly key: string
-  readonly text: string
-}
-
-/** A day the ledger may be read years after. */
-export const fullDay = (t: number): string =>
-  new Date(t).toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
-
-/**
- * Every choice in `log`, newest first: each lane it named, and whether
- * sending there began or stopped. A choice made under another pairing than
- * `pairing` says so.
- */
-export function historyLines(
-  log: ConsentLog,
-  pairing: string | null,
-  day: (t: number) => string = fullDay
-): Array<HistoryLine> {
-  return [...log].reverse().flatMap((event) => {
-    const lanes = [...new Set(event.scopes.map((scope) => LANE_OF[scope]))]
-    const elsewhere =
-      event.pairing === pairing ? "" : ", under an earlier pairing"
-    return lanes.map((lane) => {
-      const name = LEDGER.names[lane]
-      const what =
-        event.kind === "stopped"
-          ? `stopped sending to home${elsewhere}. Home keeps what it has.`
-          : event.said === null
-            ? `kept on home${elsewhere}, as chosen before this phone kept its choices.`
-            : `kept on home${elsewhere}.`
-      return {
-        key: `${event.seq}-${lane}`,
-        text: `${day(event.at)} · ${name}: ${what}`,
+/** Settings' clear of finished sessions home holds (`./clear`). */
+export const CLEAR = {
+  button: "Clear finished sessions home holds...",
+  /** The first press's question, given how many would be asked about and the host. */
+  question: (n: number, host: string): string =>
+    `Clear ${sessions(n)} from this phone? Each is asked about first, and only one ${host} holds exactly as this phone does leaves. The rest stay.`,
+  yes: "Clear them",
+  no: "Keep them",
+  nothing: "No finished session to clear.",
+  /** How a clear ended, given the host. */
+  ended: (end: ClearEnd, host: string): string => {
+    switch (end.kind) {
+      case "cleared": {
+        const left =
+          end.freed === 0
+            ? "Nothing left this phone"
+            : `Cleared ${sessions(end.freed)} from this phone`
+        return end.kept === 0
+          ? `${left}.`
+          : `${left}. ${counted(end.kept, "stays", "stay")} here: ${host} doesn't hold ${end.kept === 1 ? "it" : "them"} as ${end.kept === 1 ? "it is" : "they are"} yet.`
       }
-    })
-  })
-}
+      case "nothing": {
+        return CLEAR.nothing
+      }
+      case "unreachable": {
+        return `Couldn't reach ${host}. Are you on the home network? Nothing left this phone.`
+      }
+      case "forgotten": {
+        return `${host} no longer knows this phone: unpair, then pair again. Nothing left this phone.`
+      }
+      case "busy": {
+        return "Home is busy right now. Try again in a minute; nothing left this phone."
+      }
+      case "stopped": {
+        return "Stopped. Nothing left this phone."
+      }
+      case "not-cleared": {
+        return "Home holds them, but this phone couldn't clear them. Try again."
+      }
+      default: {
+        return assertNever(end)
+      }
+    }
+  },
+} as const
 
-export type LaneFacts = Omit<LaneCounts, "away" | "offered"> & {
+export type LaneFacts = Omit<LaneCounts, "offered"> & {
   /** The link has read the phone's own record of its pairing. */
   known: boolean
-  shared: Shared
-  /** What was kept and is stopped now, and since when. */
-  stopped: ReadonlyMap<Scope, number>
+  /** The phone is paired with home, so the lane drains. */
+  paired: boolean
   run: KeptState
-  /** `LaneCounts`' `away`, and how bringing the record back went. */
-  away: { readonly waiting: number; readonly back: KeptState } | null
 }
 
 export type LaneView = {
@@ -356,24 +263,14 @@ export type LaneView = {
   notes: Array<string>
 }
 
-const shortDay = (t: number): string =>
-  new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short" })
-
-function rowText(
-  row: Row,
-  facts: LaneFacts,
-  day: (t: number) => string
-): string {
-  const held = facts.held[row.scope]
-  const there =
-    held === undefined ? "" : ` · ${counted(held, row.one, row.many)} there`
-  const since = facts.shared.get(row.scope)
-  if (since) {
-    return `Kept on home since ${since.earlier ? "before " : ""}${day(since.since)}${there}`
-  }
-  const until = facts.stopped.get(row.scope)
-  if (until !== undefined) {
-    return `Sent to home until ${day(until)}${there} · new ones stay here`
+function rowText(row: Row, facts: LaneFacts): string {
+  const held = facts.held[row.kind]
+  if (facts.paired) {
+    return held === undefined
+      ? "Kept on home"
+      : held > 0
+        ? `${counted(held, row.one, row.many)} on home`
+        : "Nothing on home yet"
   }
   if (held !== undefined && held > 0) {
     return `${counted(held, row.one, row.many)} on home · new ones stay here`
@@ -382,28 +279,23 @@ function rowText(
 }
 
 /** How a lane is kept, in `words`, from `facts`. */
-export function laneView(
-  words: LaneWords,
-  facts: LaneFacts,
-  day: (t: number) => string = shortDay
-): LaneView {
+export function laneView(words: LaneWords, facts: LaneFacts): LaneView {
   const rows = words.rows.map((row) => {
-    const refused = facts.refused[row.scope] ?? 0
+    const refused = facts.refused[row.kind] ?? 0
     return {
       label: row.label,
       text:
-        rowText(row, facts, day) +
+        rowText(row, facts) +
         (refused > 0
           ? ` · ${counted(refused, row.one, row.many)} home didn't take`
           : ""),
     }
   })
-  const kept = facts.shared.size > 0
   const notes = [
-    ...(kept && facts.hidden > 0 && words.clash
+    ...(facts.paired && facts.hidden > 0 && words.clash
       ? [words.clash(facts.hidden)]
       : []),
-    ...(kept &&
+    ...(facts.paired &&
     !facts.pulled &&
     words.unread &&
     facts.run.last?.kind !== "synced"
@@ -427,54 +319,8 @@ export function laneView(
   if (!facts.known) {
     return show("checking", null, "Checking", "Checking where this is kept.")
   }
-  if (!kept) {
-    if (facts.away !== null && words.away !== null) {
-      const { back } = facts.away
-      const held = words.away(facts.away.waiting)
-      if (back.running) {
-        return show(
-          "away",
-          "bringing",
-          "Bringing back",
-          "Bringing it back from home."
-        )
-      }
-      if (back.last?.kind === "unreachable") {
-        return show(
-          "away",
-          "no-answer",
-          "On home",
-          `Home didn't answer. ${held}`
-        )
-      }
-      if (back.last?.kind === "failed" && back.last.why === "busy") {
-        return show(
-          "away",
-          "busy",
-          "On home",
-          `Home is busy right now. ${held}`
-        )
-      }
-      if (back.last?.kind === "forgotten") {
-        return show(
-          "away",
-          "forgotten",
-          "Pair again",
-          `Home no longer knows this phone. ${held}`
-        )
-      }
-      if (back.last?.kind === "failed") {
-        return show(
-          "away",
-          "failed",
-          "On home",
-          `Something went wrong bringing it back. ${held}`
-        )
-      }
-      return show("away", null, "On home", held)
-    }
-    const some =
-      facts.stopped.size > 0 || Object.values(facts.held).some((n) => n > 0)
+  if (!facts.paired) {
+    const some = Object.values(facts.held).some((n) => n > 0)
     return some
       ? show("partly", null, "Partly on home", words.partly)
       : show("phone", null, "Phone only", words.phoneOnly)
@@ -494,7 +340,7 @@ export function laneView(
       "kept",
       "forgotten",
       "Pair again",
-      "Home no longer knows this phone. Pair it again in Settings, then choose to keep sending again."
+      "Home no longer knows this phone. Pair it again in Settings."
     )
   }
   if (last?.kind === "unreachable") {
@@ -538,7 +384,7 @@ export function laneView(
         "kept",
         "refused",
         "Not all taken",
-        "Home didn't take some kept items."
+        "Home didn't take some of it."
       )
     }
     if (last.why === "fault") {
@@ -561,38 +407,22 @@ export function laneView(
       "kept",
       "waiting",
       `${facts.waiting} waiting`,
-      `${words.waits(facts.waiting)} on this phone. ${facts.waiting === 1 ? "It goes" : "They go"} to home ${words.whileOpen}.`
+      `${words.waits(facts.waiting)} on this phone. ${facts.waiting === 1 ? "It goes" : "They go"} to home while the app is open.`
     )
+  }
+  if (last === null) {
+    return show("kept", null, "Kept on home", "Kept on home.")
   }
   return show("kept", "current", "On home", "Kept on home. Up to date.")
 }
 
 /**
- * In a choice's words, what lets this phone tell home which of the
- * routine's lessons it opened (`./routine`'s `tellOpened`): a choice made
- * without them tells home nothing.
+ * Korean's look at what the reflections routine left on home: Settings'
+ * readout of it, and how the last look went.
  */
-export const ROUTINE_TELLS_OPENED =
-  "When you open one, this phone tells home which, by name, so the routine keeps three ready."
-
-/**
- * Korean's look at what the reflections routine left on home (LA12):
- * Settings' choice to show it there, and how the last look went.
- */
-export const ROUTINE_READS = {
+export const ROUTINE_LOOK = {
   title: "From the routine",
-  off: "Korean on this phone doesn't show the word sets and dramas the routine leaves on home.",
-  show: "Show them in Korean...",
-  /** The first press's question: also the words kept with the choice. */
-  confirm: (host: string): string =>
-    `Show the routine's word sets and dramas from ${host} in Korean? While Korean is open, this phone looks at what ${host} holds for you. ${ROUTINE_TELLS_OPENED} Nothing else of yours is sent.`,
-  /** Shown under a choice made before it told home which were opened. */
-  askAgain:
-    "This phone doesn't tell home which ones you open, so the routine can't keep three ready. To choose that, stop showing them, then show them again.",
-  confirmYes: "Show them",
-  confirmNo: "Cancel",
-  refused: "This phone couldn't keep that choice. Nothing changed.",
-  on: (day: string): string => `Shown in Korean since ${day}.`,
+  lead: "Korean lists the word sets and dramas the routine leaves on home, and tells home which you open, by name, so the routine keeps three ready.",
   /** How the last look went, given when. */
   last: {
     read: (when: string): string => `Last looked at home ${when}.`,
@@ -601,16 +431,11 @@ export const ROUTINE_READS = {
     unreachable: (when: string): string =>
       `Home didn't answer when Korean last looked, ${when}.`,
     forgotten: (when: string): string =>
-      `Home no longer knows this phone (${when}). Pair it again, then choose to show them again.`,
+      `Home no longer knows this phone (${when}). Pair it again.`,
     failed: (when: string): string =>
       `Something went wrong when Korean last looked, ${when}.`,
   } satisfies Record<LastRead["kind"], (when: string) => string>,
   notYet: "Korean looks the next time its list opens on this phone.",
-  stop: "Stop showing...",
-  stopQuestion: "Stop showing the routine's word sets and dramas in Korean?",
-  stopMore: "What you opened stays on this phone.",
-  stopYes: "Stop showing",
-  stopNo: "Keep showing",
 } as const
 
 /** A moment a look was made: its day and time. */
@@ -628,6 +453,6 @@ export function lastLook(
   when: (t: number) => string = lookedAt
 ): string {
   return last === null
-    ? ROUTINE_READS.notYet
-    : ROUTINE_READS.last[last.kind](when(last.at))
+    ? ROUTINE_LOOK.notYet
+    : ROUTINE_LOOK.last[last.kind](when(last.at))
 }

@@ -1,10 +1,10 @@
 /**
  * @vitest-environment jsdom
  *
- * LA9 to LA11 in the header: each wing's mark says where its record is kept,
- * and nothing reaches home until its person chose to keep sending; once they
- * did, the mark's watch sends, and says how it went; "Stop sending" adds a
- * stop to the log and nothing more goes.
+ * LA15 in the header and the app shell: each wing's mark says where its
+ * record is kept and what waits, and sends nothing of its own; the shell's
+ * drain (`HomeLanes`) sends nothing unpaired, and once paired sends on the
+ * moments the watch names and says how it went; Send now asks for a run.
  */
 
 import { markForm } from "@/test-support/mark-form"
@@ -31,7 +31,6 @@ import {
 
 import type { HomeRequest as NativeCall } from "@/lib/device-backend/native-http"
 import type { AphKeeping } from "@/lib/home-link/aph"
-import { CONSENT_KEY } from "@/lib/home-link/consent-runtime"
 import type { JobsState } from "@/lib/jobs/model"
 import { EMPTY } from "@/lib/jobs/model"
 import { NO_NOTICE } from "@/lib/jobs/notice"
@@ -39,7 +38,7 @@ import type { SessionRecord } from "@/lib/tenant/types"
 
 const home = vi.hoisted(
   (): {
-    credential: Record<string, unknown>
+    credential: Record<string, unknown> | null
     sent: Array<NativeCall>
     answer: (call: NativeCall) => Promise<{ status: number; body: string }>
     jobs: { snapshot: { state: JobsState } | null }
@@ -77,16 +76,20 @@ vi.mock("@/lib/home-link/credential", () => ({
   nativeCredential: {
     read: (): Promise<{ record: string | null; lost: boolean }> =>
       Promise.resolve({
-        record: JSON.stringify(home.credential),
+        record:
+          home.credential === null ? null : JSON.stringify(home.credential),
         lost: false,
       }),
     write: (): Promise<void> => Promise.resolve(),
     clear: (): Promise<void> => Promise.resolve(),
   },
 }))
-vi.mock("@/lib/home-link/send", () => ({
+vi.mock("@/lib/home-link/going", () => ({
   readPhone: (): Promise<unknown> =>
     Promise.resolve({ local: [SESSION], kept: [] }),
+  logGoing: (): Promise<Array<never>> => Promise.resolve([]),
+  studioGoing: (): Promise<unknown> =>
+    Promise.resolve({ sittings: [], reports: [] }),
 }))
 vi.mock("@/lib/jobs", () => ({
   phoneJobs: (): unknown => ({
@@ -101,6 +104,9 @@ vi.mock("@/lib/jobs", () => ({
 }))
 vi.mock("@/lib/tenant", () => ({
   useSessions: (): { data: Array<SessionRecord> } => ({ data: [SESSION] }),
+}))
+vi.mock("@/lib/home-link/voice", () => ({
+  useVoiceHome: (): unknown => null,
 }))
 vi.mock(
   "@tanstack/react-router",
@@ -123,6 +129,14 @@ beforeEach(() => {
   })
 })
 
+/** The pairing's id, for a credential stored before ids: its base. */
+const PAIRING = "https://home.example/api/v1"
+
+beforeEach(() => {
+  // The shell drains every lane, so the Jobs record is always there to read.
+  jobsRecord(0)
+})
+
 afterEach(() => {
   cleanup()
   vi.resetModules()
@@ -133,12 +147,20 @@ afterEach(() => {
   home.credential = { base: PAIRING, token: "t" }
 })
 
-/** The pairing's id, for a credential stored before ids: its base. */
-const PAIRING = "https://home.example/api/v1"
-
-async function mount(): Promise<void> {
-  const { DeviceHomeGlyph } = await import("@/components/device-home-glyph")
-  render(<DeviceHomeGlyph wing="practice" />)
+/** The Practice wing's mark, with or without the shell's drain. */
+async function mount(
+  wing: "practice" | "jobs" = "practice",
+  drain = true
+): Promise<void> {
+  const { DeviceHomeGlyph, HomeLanes } = await import(
+    "@/components/device-home-glyph"
+  )
+  render(
+    <>
+      {drain ? <HomeLanes /> : null}
+      <DeviceHomeGlyph wing={wing} />
+    </>
+  )
   await act(() => Promise.resolve())
 }
 
@@ -146,20 +168,8 @@ async function mount(): Promise<void> {
 const mark = (name = /Where Practice is kept/): HTMLElement =>
   screen.getByRole("button", { name, hidden: true })
 
-function keptBefore(scopes = ["sessions", "shelf"]): void {
-  localStorage.setItem(
-    CONSENT_KEY,
-    JSON.stringify([
-      { seq: 1, at: 1, pairing: PAIRING, kind: "kept", scopes, said: "yes" },
-    ])
-  )
-}
-
-const logged = (): unknown =>
-  JSON.parse(localStorage.getItem(CONSENT_KEY) ?? "[]")
-
-/** A Jobs record of `events` events, kept on home by its old switch or not. */
-function jobsRecord(events: number, kept: boolean): void {
+/** A Jobs record of `events` events. */
+function jobsRecord(events: number): void {
   home.jobs.snapshot = {
     state: {
       ...EMPTY,
@@ -172,7 +182,6 @@ function jobsRecord(events: number, kept: boolean): void {
         fingerprint: `f${i}`,
       })),
       home: {
-        kept,
         held: [],
         refused: [],
         refusedFiles: [],
@@ -184,14 +193,9 @@ function jobsRecord(events: number, kept: boolean): void {
   }
 }
 
-async function mountJobs(): Promise<void> {
-  const { DeviceHomeGlyph } = await import("@/components/device-home-glyph")
-  render(<DeviceHomeGlyph wing="jobs" />)
-  await act(() => Promise.resolve())
-}
-
 describe("Practice's sharing mark", () => {
-  it("says phone only, and sends nothing, until its person keeps sending", async () => {
+  it("says phone only, and sends nothing, while the phone isn't paired", async () => {
+    home.credential = null
     await mount()
     expect(mark().textContent).toContain("Phone only")
     act(() => {
@@ -202,7 +206,10 @@ describe("Practice's sharing mark", () => {
     expect(home.sent).toEqual([])
     fireEvent.click(mark())
     expect(screen.getAllByText("Only on this phone")).toHaveLength(2)
-    expect(screen.queryByText("Stop sending...")).toBeNull()
+    expect(
+      screen.getAllByText(/Pair this phone with home in Settings/).length
+    ).toBeGreaterThan(0)
+    expect(screen.queryByRole("button", { name: "Send now" })).toBeNull()
   })
 
   it("draws each mark in its legend in a form no other shares", async () => {
@@ -211,108 +218,59 @@ describe("Practice's sharing mark", () => {
     fireEvent.click(mark())
     const legend = screen.getByRole("region", { name: MARK_WORDS.title })
     const forms = [...legend.querySelectorAll("li svg")].map(markForm)
-    // Practice can't stop short, so neither away nor bringing back is drawn.
     expect(forms).toHaveLength(
-      Object.keys(MARK_WORDS.where).length +
-        Object.keys(MARK_WORDS.how).length -
-        2
+      Object.keys(MARK_WORDS.where).length + Object.keys(MARK_WORDS.how).length
     )
     expect(new Set(forms).size).toBe(forms.length)
   })
 
-  it("sends once kept, and says when home didn't answer", async () => {
-    keptBefore()
+  it("sends nothing of its own: the shell's drain sends, and the mark says how it went", async () => {
+    await mount("practice", false)
+    await act(() => Promise.resolve())
+    expect(home.sent).toEqual([])
+    // One finished session, which home does not hold yet.
+    expect(mark().textContent).toContain("1 waiting")
+    cleanup()
+    vi.resetModules()
+
     await mount()
     await waitFor(() => expect(home.sent.length).toBeGreaterThan(0))
     await waitFor(() => expect(mark().textContent).toContain("No answer"))
+    // Sessions go first, as the drain orders them.
+    expect(new URL(home.sent[0]?.url ?? "").pathname).toBe("/api/v1/sessions")
   })
 
-  it("stops sending on the second press, and adds the stop to the log", async () => {
-    keptBefore()
+  it("asks for a run again from Send now", async () => {
     await mount()
+    await waitFor(() => expect(mark().textContent).toContain("No answer"))
+    const before = home.sent.length
     fireEvent.click(mark())
-    fireEvent.click(screen.getByRole("button", { name: "Stop sending..." }))
-    expect(
-      screen.getByText("Stop sending new sessions and kept items to home?")
-    ).toBeTruthy()
-    home.sent = []
-    home.answer = (): Promise<{ status: number; body: string }> =>
-      Promise.resolve({ status: 200, body: "{}" })
-    fireEvent.click(screen.getByRole("button", { name: "Stop sending" }))
-    const log: unknown = JSON.parse(localStorage.getItem(CONSENT_KEY) ?? "[]")
-    expect(log).toMatchObject([{ kind: "kept" }, { kind: "stopped" }])
-    expect(screen.queryByRole("button", { name: "Stop sending..." })).toBeNull()
-    // Home is told the stop, though nothing of Practice goes now.
-    await waitFor(() =>
-      expect(home.sent.map((call) => call.body)).toContain('{"kept":false}')
-    )
-    expect(
-      home.sent.every((call) =>
-        new URL(call.url).pathname.includes("/sharing/")
-      )
-    ).toBe(true)
+    fireEvent.click(screen.getByRole("button", { name: "Send now" }))
+    await waitFor(() => expect(home.sent.length).toBeGreaterThan(before))
   })
 })
 
 describe("the Jobs record's mark", () => {
-  it("enters a choice its old switch made once, as found, and sends", async () => {
-    jobsRecord(2, true)
-    await mountJobs()
-    await waitFor(() => expect(home.sent.length).toBeGreaterThan(0))
-    expect(logged()).toMatchObject([
-      { kind: "kept", scopes: ["jobs"], said: null, pairing: PAIRING },
-    ])
-  })
-
-  it("enters no such choice under a pairing this build made", async () => {
-    home.credential = { ...home.credential, id: "new", choicesLogged: true }
-    jobsRecord(2, true)
-    await mountJobs()
-    await act(() => Promise.resolve())
-    expect(logged()).toEqual([])
-    expect(home.sent).toEqual([])
-  })
-
-  it("keeps sending only on the second press, with the words it showed", async () => {
-    jobsRecord(2, false)
-    await mountJobs()
-    fireEvent.click(mark(/Where the Jobs record is kept/))
-    fireEvent.click(
-      screen.getByRole("button", { name: "Keep sending to home..." })
+  it("drains once paired, from the shell, and says what waits", async () => {
+    jobsRecord(2)
+    await mount("jobs")
+    await waitFor(() =>
+      expect(
+        home.sent.some((call) => new URL(call.url).pathname.includes("/jobs/"))
+      ).toBe(true)
     )
-    const offer = screen.getByText(/^Send 2 events to home/).textContent
-    await act(() => Promise.resolve())
-    expect(home.sent).toEqual([])
-    expect(logged()).toEqual([])
-    fireEvent.click(screen.getByRole("button", { name: "Keep sending" }))
-    expect(logged()).toMatchObject([
-      { kind: "kept", scopes: ["jobs"], said: offer },
-    ])
-    await waitFor(() => expect(home.sent.length).toBeGreaterThan(0))
-  })
-
-  it("stops on the second press, and keeps its whole record", async () => {
-    keptBefore(["jobs"])
-    jobsRecord(2, false)
-    await mountJobs()
+    await waitFor(() =>
+      expect(mark(/Where the Jobs record is kept/).textContent).toContain(
+        "No answer"
+      )
+    )
     fireEvent.click(mark(/Where the Jobs record is kept/))
-    fireEvent.click(screen.getByRole("button", { name: "Stop sending..." }))
-    expect(
-      screen.getByText("Stop sending the Jobs record to home?")
-    ).toBeTruthy()
-    fireEvent.click(screen.getByRole("button", { name: "Stop sending" }))
-    expect(logged()).toMatchObject([{ kind: "kept" }, { kind: "stopped" }])
-    expect(
-      screen.getByRole("button", { name: "Keep sending to home..." })
-    ).toBeTruthy()
+    expect(screen.getByText(/2 events wait on this phone/)).toBeTruthy()
   })
 })
 
-/**
- * aph's store, kept on home with two changes waiting, until it leaves; or,
- * `onPhone`, on this phone with `entries` entries.
- */
-function aphStore(onPhone = false, entries = 0): AphStore & { left: number } {
+/** aph's store, kept on home with two changes waiting, or on this phone with `entries` entries. */
+function aphStore(onPhone = false, entries = 0): AphStore & { moved: number } {
   let where: AphWhere = onPhone
     ? { kind: "device" }
     : {
@@ -347,8 +305,8 @@ function aphStore(onPhone = false, entries = 0): AphStore & { left: number } {
       review: null,
     })),
   }
-  const store: AphStore & { left: number } = {
-    left: 0,
+  const store: AphStore & { moved: number } = {
+    moved: 0,
     get: () => state,
     subscribe: (listener) => {
       listeners.add(listener)
@@ -357,10 +315,16 @@ function aphStore(onPhone = false, entries = 0): AphStore & { left: number } {
       }
     },
     where: () => where,
-    keepOnHome: () => true,
-    leaveHome: (): boolean => {
-      store.left += 1
-      where = { kind: "device" }
+    keepOnHome: (): boolean => {
+      store.moved += 1
+      where = {
+        kind: "home",
+        pulled: false,
+        unsent: entries,
+        refused: [],
+        hidden: 0,
+        edits: 0,
+      }
       for (const listener of listeners) listener()
       return true
     },
@@ -376,24 +340,21 @@ function aphStore(onPhone = false, entries = 0): AphStore & { left: number } {
 }
 
 async function mountAph(store: AphStore): Promise<void> {
-  // aph's own exchanges are its package's to test: here, one request each.
+  // aph's own exchange is its package's to test: here, one request.
   const aph: AphKeeping = {
     store,
     exchange: async (_, send) => {
       await send("PUT", "/aph/entries/1", "{}")
       return { kind: "synced" }
     },
-    bringBack: async (kept, send, stopped) => {
-      const answer = await send("GET", "/aph")
-      if (answer.status !== 200) return { kind: "failed", why: "unanswered" }
-      if (stopped()) kept.leaveHome({ settings: null, entries: [] })
-      return { kind: "synced" }
-    },
   }
   const { DeviceAphLane } = await import("@/components/aph/device-aph-lane")
-  const { DeviceHomeGlyph } = await import("@/components/device-home-glyph")
+  const { DeviceHomeGlyph, HomeLanes } = await import(
+    "@/components/device-home-glyph"
+  )
   render(
     <>
+      <HomeLanes />
       <DeviceHomeGlyph wing="self" />
       <DeviceAphLane aph={aph} />
     </>
@@ -401,114 +362,43 @@ async function mountAph(store: AphStore): Promise<void> {
   await act(() => Promise.resolve())
 }
 
-async function stopAph(): Promise<void> {
-  fireEvent.click(mark(/Where aph is kept/))
-  fireEvent.click(screen.getByRole("button", { name: "Stop sending..." }))
-  fireEvent.click(screen.getByRole("button", { name: "Stop sending" }))
-  await act(() => Promise.resolve())
-}
-
 describe("aph's mark", () => {
-  it("offers every entry and the settings, from the phone, before the second press", async () => {
-    await mountAph(aphStore(true, 2))
-    fireEvent.click(mark(/Where aph is kept/))
-    fireEvent.click(
-      screen.getByRole("button", { name: "Keep sending to home..." })
-    )
-    expect(
-      screen.getByText(/^Send 3 changes from this phone to home/)
-    ).toBeTruthy()
-    expect(logged()).toEqual([])
-  })
-
-  it("brings aph back from home once its person stops", async () => {
-    keptBefore(["aph"])
-    const store = aphStore()
-    await mountAph(store)
-    await waitFor(() => expect(home.sent.length).toBeGreaterThan(0))
-    home.sent = []
-    home.answer = (): Promise<{ status: number; body: string }> =>
-      Promise.resolve({
-        status: 200,
-        body: JSON.stringify({ settings: null, entries: [] }),
-      })
-    await waitFor(() =>
-      expect(mark(/Where aph is kept/).textContent).not.toContain("Sending")
-    )
-    await stopAph()
-    await waitFor(() => expect(store.left).toBe(1))
-    expect(logged()).toMatchObject([{ kind: "kept" }, { kind: "stopped" }])
-    // Home is told the choices it hasn't heard, the stop last, then asked
-    // for aph's record back.
-    expect(
-      home.sent.map((call) => `${call.method} ${new URL(call.url).pathname}`)
-    ).toEqual([
-      "PUT /api/v1/sharing/aph",
-      "PUT /api/v1/sharing/aph",
-      "GET /api/v1/aph",
-    ])
-    expect(home.sent.map((call) => call.body)).toMatchObject([
-      '{"kept":true}',
-      '{"kept":false}',
-      undefined,
-    ])
-    expect(mark(/Where aph is kept/).textContent).toContain("Partly on home")
-  })
-
-  it("stops at once when home can't be reached, and says what this phone holds", async () => {
-    keptBefore(["aph"])
-    const store = aphStore()
+  it("moves aph to home on a paired phone's first run, and sends", async () => {
+    const store = aphStore(true, 2)
     await mountAph(store)
     await waitFor(() =>
-      expect(mark(/Where aph is kept/).textContent).toContain("No answer")
-    )
-    await stopAph()
-    await waitFor(() =>
-      expect(mark(/Where aph is kept/).getAttribute("aria-label")).toContain(
-        "this phone holds only the 2 changes home hadn't confirmed"
+      expect(home.sent.map((call) => new URL(call.url).pathname)).toContain(
+        "/api/v1/aph/entries/1"
       )
     )
-    expect(store.left).toBe(0)
-    expect(logged()).toMatchObject([{ kind: "kept" }, { kind: "stopped" }])
-    fireEvent.click(mark(/Where aph is kept/))
-    expect(
-      screen.getByRole("button", { name: "Bring it back to this phone" })
-    ).toBeTruthy()
+    expect(store.moved).toBe(1)
   })
 
-  it("says home was busy, not a failure, when bringing aph back finds it busy", async () => {
-    keptBefore(["aph"])
+  it("says what this phone holds when home can't be reached", async () => {
     const store = aphStore()
     await mountAph(store)
     await waitFor(() =>
       expect(mark(/Where aph is kept/).textContent).toContain("No answer")
     )
+    expect(mark(/Where aph is kept/).getAttribute("aria-label")).toContain(
+      "2 changes wait on this phone and go next time"
+    )
+    fireEvent.click(mark(/Where aph is kept/))
+    expect(
+      screen.getByText(
+        "Until home answers, this shows only what this phone hasn't sent yet."
+      )
+    ).toBeTruthy()
+  })
+
+  it("says home was busy, not a failure, when home is busy", async () => {
     home.answer = (): Promise<{ status: number; body: string }> =>
       Promise.resolve({ status: 429, body: "" })
-    await stopAph()
+    await mountAph(aphStore())
     await waitFor(() =>
       expect(mark(/Where aph is kept/).getAttribute("aria-label")).toContain(
         "Home is busy right now."
       )
     )
-    expect(store.left).toBe(0)
-  })
-
-  it("says so when the phone couldn't keep the stop, which sends on", async () => {
-    keptBefore(["aph"])
-    await mountAph(aphStore())
-    const setItem = vi
-      .spyOn(Storage.prototype, "setItem")
-      .mockImplementation(() => {
-        throw new Error("full")
-      })
-    await stopAph()
-    setItem.mockRestore()
-    expect(logged()).toMatchObject([{ kind: "kept" }])
-    expect(
-      screen.getByText(
-        "This phone couldn't keep that choice, so sending goes on."
-      )
-    ).toBeTruthy()
   })
 })

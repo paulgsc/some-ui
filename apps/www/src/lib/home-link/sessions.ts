@@ -1,13 +1,13 @@
 /**
- * The sessions half of "Send to home" (`./send`): the phone's own sessions
- * copied into the paired home account (LA8). Only the session records go,
- * each one's plan, status and times (canon Rem. 7.6 (a)); reflections, stops
- * and soundbites stay on the phone (LA7). Nothing on home is deleted, and a
- * copy cannot be taken back from here.
+ * The sessions half of the drain (`./drain`): the phone's own finished
+ * sessions copied into the paired home account (LA8, LA15). Only the
+ * session records go, each one's plan, status and times (canon Rem. 7.6
+ * (a)); reflections, stops and soundbites stay on the phone (LA7). Nothing
+ * on home is deleted, and a copy cannot be taken back from here.
  *
- * After the copy, `copyAndConfirm` reads back the finished sessions
- * (`confirmHeld`), so the send can let go of those home holds exactly. The
- * plan and receipt are `lib/tenant/sessions-copy`'s.
+ * The clear (`./clear`) reads the finished sessions back (`readHeld`,
+ * `confirmHeld`), so it lets go of those home holds exactly. The plan and
+ * receipt are `lib/tenant/sessions-copy`'s.
  */
 import type { HomeCall } from "@some-ui/core-utils"
 
@@ -16,6 +16,8 @@ import { createHttpSessionsRepository } from "@/lib/tenant/http-sessions-reposit
 import type { CopyResult, HeldReport } from "@/lib/tenant/sessions-copy"
 import { confirmHeld, copySessionsTo } from "@/lib/tenant/sessions-copy"
 import type { SessionRecord } from "@/lib/tenant/types"
+
+import { noticingBusy } from "./runtime"
 
 /** Home answered `401`: it no longer knows this phone. */
 export class HomeForgotPhoneError extends Error {
@@ -56,8 +58,8 @@ export function causedBy(
 
 /**
  * Copies `local` home through `send`, reading home only to plan the copy,
- * and confirms nothing: the standing send's half (`./standing`, LA11),
- * which never lets a phone session go.
+ * and confirms nothing: the drain's half (`./drain`), which never lets a
+ * phone session go.
  */
 export function copyHome(
   send: HomeCall,
@@ -70,23 +72,21 @@ export function copyHome(
 }
 
 /**
- * Copies `local` home through `send`, then reads back each of `leaving` into
- * `held`. A read that throws ends it, keeping the copy's result and what
- * `held` confirmed before it; a copy that cannot start throws.
+ * Reads back each of `leaving` from home into `held` (`confirmHeld`), for
+ * the clear (`./clear`): what ended it, if anything did, and whether home
+ * answered any read as busy. Sends nothing.
  */
-export async function copyAndConfirm(
+export async function readHeld(
   send: HomeCall,
-  local: ReadonlyArray<SessionRecord>,
   leaving: ReadonlyArray<SessionRecord>,
   held: HeldReport
-): Promise<{ copy: CopyResult; ended: unknown }> {
-  const remote = createHttpSessionsRepository(homeTransport(send))
-  const copy = await copySessionsTo(local, remote)
-  if (copy.outcome.kind !== "copied") return { copy, ended: null }
+): Promise<{ ended: unknown; busy: boolean }> {
+  const noticed = noticingBusy(send)
+  const remote = createHttpSessionsRepository(homeTransport(noticed.send))
   try {
     await confirmHeld(leaving, remote, held)
   } catch (error) {
-    return { copy, ended: error }
+    return { ended: error, busy: noticed.seen.busy }
   }
-  return { copy, ended: null }
+  return { ended: null, busy: noticed.seen.busy }
 }
