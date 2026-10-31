@@ -98,9 +98,39 @@ function warnMissingContentAssets(): Plugin {
 // /resume.
 const isMobileBuild = process.env.SOME_UI_PROFILE === MOBILE_PROFILE
 
-// `pnpm build:fit`: build only the ui-fit panel page, with this config
-// (tests/ui-fit/panel-page/main.tsx says why).
+// `pnpm build:fit` and `build:fit-phone`: build only a ui-fit page, with this
+// config (tests/ui-fit/panel-page/main.tsx says why). `WWW_FIT_PAGE` picks
+// the page; the panel page unless said.
 const isFitHarnessBuild = process.env.WWW_FIT_HARNESS === "1"
+
+const FIT_PAGES = {
+  panel: "tests/ui-fit/panel-page/index.html",
+  phone: "tests/ui-fit/phone-page/index.html",
+} as const
+
+const isFitPage = (page: string): page is keyof typeof FIT_PAGES =>
+  Object.hasOwn(FIT_PAGES, page)
+
+function fitPageEntry(): Record<string, string> {
+  const page = process.env.WWW_FIT_PAGE ?? "panel"
+  if (!isFitPage(page)) {
+    throw new Error(
+      `WWW_FIT_PAGE=${page} names no ui-fit page; one of ${Object.keys(FIT_PAGES).join(", ")}.`
+    )
+  }
+  // The phone page mounts `apk` workspaces (build.profiles.ts), which every
+  // profile but the Android app's stubs with exports that throw. Built under
+  // another profile it would mount nothing, and a sweep over it would then
+  // fail on every fixture, or pass having measured none.
+  if (page === "phone" && process.env.SOME_UI_PROFILE !== MOBILE_PROFILE) {
+    throw new Error(
+      `The ui-fit phone page is built under SOME_UI_PROFILE=${MOBILE_PROFILE} only (pnpm --filter www build:fit-phone).`
+    )
+  }
+  return {
+    [`${page}-page`]: resolve(import.meta.dirname, FIT_PAGES[page]),
+  }
+}
 
 // What a profile's output carries from public/ that it never loads
 // (build.paths.ts, `offPathPublicFiles`; the Android app's résumé PDFs are
@@ -327,12 +357,7 @@ export default defineConfig(
         // as a real 200 at /resume/ instead of the generic app-shell
         // 404.html fallback every other unmatched path relies on.
         input: isFitHarnessBuild
-          ? {
-              "panel-page": resolve(
-                import.meta.dirname,
-                "tests/ui-fit/panel-page/index.html"
-              ),
-            }
+          ? fitPageEntry()
           : {
               main: resolve(import.meta.dirname, "index.html"),
               ...(isMobileBuild

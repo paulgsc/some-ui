@@ -1,10 +1,10 @@
 /**
- * Plumbing for the panel sweeps (panel-fit, incident-fit): the viewport sizes
- * they sweep, the panel page (`./panel-page`) built with www's own config,
- * served over HTTP, and the measure of what leaves a fixture's rect. Never
- * `file://`: Chromium blocks cross-origin ES module loads from a file origin,
- * every panel then renders an empty root, and a sweep that does not check
- * for that passes having measured nothing.
+ * Plumbing for the fixture sweeps (panel-fit, incident-fit, studio-fit): the
+ * viewport sizes they sweep, the pages (`./panel-page`, `./phone-page`)
+ * built with www's own config, served over HTTP, and the measure of what
+ * leaves a fixture's rect. Never `file://`: Chromium blocks cross-origin ES
+ * module loads from a file origin, every panel then renders an empty root,
+ * and a sweep that does not check for that passes having measured nothing.
  */
 
 import { createReadStream, existsSync, statSync } from "node:fs"
@@ -18,23 +18,33 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 /** Repo root, from `apps/www/tests/ui-fit`. */
 const REPO_ROOT = resolve(__dirname, "../../../..")
 
-/**
- * Where `pnpm --filter www build:fit` writes the panel page. `out/` because
- * it is ignored at any depth; the build is not part of `dist/`, which ships.
- */
-const PANEL_PAGE_BUILD = resolve(
-  REPO_ROOT,
-  process.env["WWW_FIT_HARNESS_DIST"] ?? "apps/www/out/ui-fit"
-)
-
-/** The page's path inside that build: Vite keeps the source's layout. */
-const PANEL_PAGE_PATH = "/tests/ui-fit/panel-page/index.html"
-
-function panelPageBuilt(): boolean {
-  return existsSync(join(PANEL_PAGE_BUILD, PANEL_PAGE_PATH))
+/** A fixture page as `pnpm --filter www <script>` builds it. */
+type FitBuild = {
+  /** The build directory, from the repo root; `WWW_FIT_HARNESS_DIST` and `WWW_FIT_PHONE_DIST` move them. */
+  readonly dir: string
+  /** The page's path inside that build: Vite keeps the source's layout. */
+  readonly path: string
+  readonly script: string
 }
 
-export type PanelPage = {
+/**
+ * The panel page (`./panel-page`). `out/` because it is ignored at any
+ * depth; the build is not part of `dist/`, which ships.
+ */
+const PANEL_PAGE: FitBuild = {
+  dir: process.env["WWW_FIT_HARNESS_DIST"] ?? "apps/www/out/ui-fit",
+  path: "/tests/ui-fit/panel-page/index.html",
+  script: "build:fit",
+}
+
+/** The phone page (`./phone-page`), built under the Android app's profile. */
+const PHONE_PAGE: FitBuild = {
+  dir: process.env["WWW_FIT_PHONE_DIST"] ?? "apps/www/out/ui-fit-phone",
+  path: "/tests/ui-fit/phone-page/index.html",
+  script: "build:fit-phone",
+}
+
+export type FitPage = {
   /** The page's URL, at one fixture when given its id. */
   readonly url: (panel?: string) => string
   /** Skips the calling describe when no build is found, outside CI. */
@@ -44,36 +54,43 @@ export type PanelPage = {
 }
 
 /**
- * Serves the built panel page for the spec that calls this at its top level.
+ * Serves a built fixture page for the spec that calls this at its top level.
  * Locally a missing build is a skip with directions; under CI it is a failure,
  * so a build step that broke never turns a sweep into a green run that
  * measured nothing.
  */
-export function servePanelPage(): PanelPage {
-  const built = panelPageBuilt()
+function serveFitPage(page: FitBuild): FitPage {
+  const dir = resolve(REPO_ROOT, page.dir)
+  const built = existsSync(join(dir, page.path))
   let site: StaticSite | null = null
   test.beforeAll(async () => {
-    if (built) site = await serve(PANEL_PAGE_BUILD)
+    if (built) site = await serve(dir)
   })
   test.afterAll(async () => {
     await site?.close()
   })
   return {
     url: (panel) =>
-      `${site!.origin}${PANEL_PAGE_PATH}${panel === undefined ? "" : `?panel=${panel}`}`,
+      `${site!.origin}${page.path}${panel === undefined ? "" : `?panel=${panel}`}`,
     skipUnbuilt: () =>
       test.skip(
         !built && !process.env["CI"],
-        `No panel page at ${PANEL_PAGE_BUILD}. Build one first: ` +
-          `pnpm --filter www build:fit (or point WWW_FIT_HARNESS_DIST at one).`
+        `No fixture page at ${dir}. Build one first: ` +
+          `pnpm --filter www ${page.script} (or point its env at one).`
       ),
     expectBuilt: () =>
       expect(
         built,
-        `No panel page at ${PANEL_PAGE_BUILD}: run pnpm --filter www build:fit.`
+        `No fixture page at ${dir}: run pnpm --filter www ${page.script}.`
       ).toBe(true),
   }
 }
+
+/** The panel page (`pnpm --filter www build:fit`), for the panel sweeps. */
+export const servePanelPage = (): FitPage => serveFitPage(PANEL_PAGE)
+
+/** The phone page (`pnpm --filter www build:fit-phone`), for the Studio sweep. */
+export const servePhonePage = (): FitPage => serveFitPage(PHONE_PAGE)
 
 const PHONE_LANDSCAPE = {
   name: "phone-landscape",
@@ -118,9 +135,9 @@ export const VIEWPORTS = [
 ] as const
 
 /**
- * The sizes a phone-only surface is swept at (incident-fit): a tall phone, a
- * narrow one, and the same phone on its side as above. A desktop size would
- * measure such a surface on a device that never shows it.
+ * The sizes a phone-only surface is swept at (incident-fit, studio-fit): a
+ * tall phone, a narrow one, and the same phone on its side as above. A
+ * desktop size would measure such a surface on a device that never shows it.
  */
 export const PHONE_VIEWPORTS = [
   { name: "phone-tall", width: 412, height: 915 },

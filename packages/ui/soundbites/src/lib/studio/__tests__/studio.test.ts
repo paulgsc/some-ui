@@ -4,16 +4,17 @@ import type { ShotTime } from "@some-ui/video-render"
 import { REVIEW_SCHEMA } from "@some-ui/video-render"
 import type {
   Playback,
-  Recording,
   StartRecording,
   Take,
   TakeDeadlines,
 } from "@some-ui/voice-capture"
+import { fakeMic } from "@soundbites/lib/fake-mic"
 import type { Listened } from "@soundbites/lib/idea/machine"
 import type { IdeaListener, Listening } from "@soundbites/lib/idea/runtime"
 import { run, started, take } from "@soundbites/lib/project/__tests__/fixture"
 import { projectFile, readProjectFile } from "@soundbites/lib/project/file"
 import { finishOf } from "@soundbites/lib/project/finish"
+import { memoryProjectStore } from "@soundbites/lib/project/memory-store"
 import type { CutListShape, Project } from "@soundbites/lib/project/model"
 import { latest, newProject, primerAt } from "@soundbites/lib/project/model"
 import { cutListOf, TAIL_MS } from "@soundbites/lib/project/script"
@@ -26,22 +27,7 @@ import { othersOnPhone } from "@soundbites/lib/studio/view"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { describe, expect, it, vi } from "vitest"
 
-import { AT, memoryProjectStore, primer, PRIMER_TEXT } from "./fixture"
-
-/** A microphone that hears `durationMs` of speech per take. */
-function fakeMic(durationMs = 4_000, bytes = 5): StartRecording {
-  return (): Promise<Recording> =>
-    Promise.resolve({
-      level: (): number => 0.3,
-      finish: (): Promise<Take> =>
-        Promise.resolve({
-          blob: new Blob(["v".repeat(bytes)], { type: "audio/webm" }),
-          mimeType: "audio/webm;codecs=opus",
-          durationMs,
-        }),
-      discard: (): void => undefined,
-    })
-}
+import { AT, primer, PRIMER_TEXT } from "./fixture"
 
 const NOW = Date.UTC(2026, 9, 30, 10)
 

@@ -41,6 +41,12 @@ a LAN-only page talks to is the server's to guard.
   carries the audience and something inert elsewhere (A4): Hangul Honeycomb's panel joins the
   shared registry's panels in a web build, and is absent from the Android app's, which
   therefore offers no activity that plays it (`apps/www/src/lib/playable`).
+- **Or on a ui-fit page**, a test entry no shipped build carries, built only under a
+  profile that carries the audience (`fitPages` in `build.profiles.ts`; today one, `apk`'s
+  `apps/www/tests/ui-fit/phone-page/`, built by `pnpm --filter www build:fit-phone` under
+  `mobile`, and refused by `vite.config.ts` under any other profile). It imports the
+  workspace statically and hands nothing out, so it is not a door and A4 does not apply to
+  it; no route reaches it, so the gate test has no layout to check there.
 
 ## What is enforced, and what is not
 

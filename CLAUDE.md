@@ -640,7 +640,10 @@ never "sounds like good practice."
   `PHONE_VIEWPORTS` beside it), one of which (780×390) exists because the other
   three are all portrait or landscape-desktop, and a phone held sideways was therefore a
   shape nothing could fail on. If a report is about an orientation or window shape, check
-  that matrix contains it before concluding the surface is fine.
+  that matrix contains it before concluding the surface is fine. The panel page cannot
+  mount an `apk` workspace (its profile stubs them), so the phone's Studio has its own
+  page and sweep, `apps/www/tests/ui-fit/studio-fit.spec.ts` over
+  `pnpm --filter www build:fit-phone`, at `PHONE_VIEWPORTS`.
 - **A Capacitor plugin object is a thenable: never resolve a promise with one.** Its Proxy
   answers `then` too, so returning the plugin from an `async` function waits forever,
   silently. Box it (`return { plugin }`), and mock plugins as a Proxy that answers every key

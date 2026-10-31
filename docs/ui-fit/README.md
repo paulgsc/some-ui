@@ -121,14 +121,16 @@ route is none of those.
 
 ### 2. `apps/www/tests/ui-fit` (Playwright, the actual gate)
 
-Four specs, all run in CI (section 3): `panel-fit` (2c) mounts real panels
+Five specs, all run in CI (section 3): `panel-fit` (2c) mounts real panels
 on a page built with www's own config and CSS, `incident-fit` (2e) plays the
 phone's LeetType incident session on that page through every kind of screen,
-and `launcher-fit` (2b) and `exercise-shell-fit` measure static fixtures that
-mirror the shipped classes.
+`studio-fit` (2f) walks the phone's Studio screens on a second page built
+under the Android app's profile, and `launcher-fit` (2b) and
+`exercise-shell-fit` measure static fixtures that mirror the shipped classes.
 
 ```bash
 pnpm --filter www build:fit
+pnpm --filter www build:fit-phone
 pnpm --filter www test:ui-fit
 ```
 
@@ -330,13 +332,34 @@ screen (`panel-page/incident-session.ts`), tapping as a learner would and
 measuring at each stop with the same `findViolations` (`harness.ts`). It runs
 at the phone sizes alone (`PHONE_VIEWPORTS`): the session is a phone surface.
 
+### 2f. `apps/www/tests/ui-fit/studio-fit.spec.ts` (Playwright, the phone's Studio)
+
+The panel page is built under the `lan` profile, which stubs every `apk`
+workspace (`build.profiles.ts`), and Studio (`@some-ui/soundbites`) is one:
+a fixture for it there would mount a stub. So the phone's screens have a
+page of their own, `panel-page`'s shape built under the Android app's
+profile (`pnpm --filter www build:fit-phone`, `tests/ui-fit/phone-page`),
+which `gates` admits as a ui-fit page rather than a route or a door. Its
+fixtures mount Studio on fakes from `@some-ui/soundbites/fixtures` (a
+project store in memory, a microphone that always hears), each opened on a
+video in one standing (`phone-page/fixtures.tsx`), inside the room the
+shell gives a document route on the phone: the header above, the bar below,
+a body that scrolls as a page between them. The spec taps from each Start
+to the screens that standing reaches (Record before, during and after a
+take; Done for now's three steps; Shape's two; Finish with a scene missing
+and ready; Watch before a render and with one whose change is asked;
+History; Time spent; New idea asked and typed), measuring at each stop with
+`findViolations`, at `PHONE_VIEWPORTS`. The body's scroll is the route's
+own, so what the sweep sees is a screen that leaves the phone sideways, or a
+box that asserts a height its content cannot fit.
+
 ### 3. CI
 
 The ui-fit specs ran nowhere until #899. `pnpm test:ui-fit` existed, this
 document called them "the actual gate", and no workflow invoked them — which
 is its own lesson about where guardrails actually live. `pr.yml` now builds
-the panel page and runs `panel-fit`, `incident-fit`, `launcher-fit` and
-`exercise-shell-fit` whenever a PR touches `packages/ui/**`, `packages/some-content-registry/**`,
+the panel page and the phone page and runs `panel-fit`, `incident-fit`,
+`studio-fit`, `launcher-fit` and `exercise-shell-fit` whenever a PR touches `packages/ui/**`, `packages/some-content-registry/**`,
 `packages/some-styles/**`, `apps/www/src/**`, `apps/www/tests/ui-fit/**`,
 www's build config (the list is in `pr.yml`), the root `package.json` or
 `pnpm-lock.yaml`.
