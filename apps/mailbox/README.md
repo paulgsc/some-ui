@@ -120,9 +120,8 @@ The routine cannot list archived reflections or ask one back. Home holds every r
 puts (`written_reflection` in `paulgsc/server`), so it archives one by what it put, listing the
 folder only once one is old enough, and never answers an ask for it: a pass with nothing to do
 then makes no request for `reflection` at all. A reflection archived before the routine
-answered it is no longer offered to the routine; home still keeps it. A drama prompt is the
-same: home holds every prompt it puts (`drama_prompt` in `paulgsc/server`), lists `prompt`
-only once one is old enough, and the routine cannot list or ask back an archived one.
+answered it is no longer offered to the routine; home still keeps it. Home holds every drama
+prompt it puts too (`drama_prompt` in `paulgsc/server`).
 
 Home holds two tokens. `archive` is apart from `home` so the token home uses every pass cannot
 drop a byte. A secret that is unset or empty authenticates no one, and one value set for two

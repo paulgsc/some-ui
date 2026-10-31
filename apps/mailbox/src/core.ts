@@ -126,6 +126,28 @@ function carriesRefusal(
 }
 
 /**
+ * The start every lane's shape check shares: audio or a Drive link anywhere
+ * in the text as sent, then a key outside `keys`, refused as audio, as Drive
+ * or as `not part of a <what>`. `null` when neither.
+ */
+function shapeRefusal(
+  body: Readonly<Record<string, unknown>>,
+  text: string,
+  keys: ReadonlySet<string>,
+  noAudio: string,
+  noDrive: string,
+  what: string
+): string | null {
+  const carried = carriesRefusal(text, noAudio, noDrive)
+  if (carried !== null) return carried
+  const extra = Object.keys(body).find((key) => !keys.has(key))
+  if (extra === undefined) return null
+  if (AUDIO_KEY.test(extra)) return noAudio
+  if (DRIVE_KEY.test(extra)) return noDrive
+  return `${extra} is not part of a ${what}`
+}
+
+/**
  * README, "What a put must satisfy": a transcript is text, and only its own
  * keys.
  */
@@ -134,14 +156,15 @@ function transcriptRefusal(
   text: string,
   name: string
 ): string | null {
-  const carried = carriesRefusal(text, NO_AUDIO, NO_DRIVE)
-  if (carried !== null) return carried
-  const extra = Object.keys(body).find((key) => !TRANSCRIPT_KEYS.has(key))
-  if (extra !== undefined) {
-    if (AUDIO_KEY.test(extra)) return NO_AUDIO
-    if (DRIVE_KEY.test(extra)) return NO_DRIVE
-    return `${extra} is not part of a transcript`
-  }
+  const shape = shapeRefusal(
+    body,
+    text,
+    TRANSCRIPT_KEYS,
+    NO_AUDIO,
+    NO_DRIVE,
+    "transcript"
+  )
+  if (shape !== null) return shape
   if (typeof body.note !== "string" || !NOTE_ID.test(body.note)) {
     return "note must be the note's id"
   }
@@ -211,13 +234,13 @@ function wordsRefusal(words: unknown): string | null {
  * routine reads of a written reflection (paulgsc/some-ui#2174, D2). Any
  * other is refused.
  */
-const REFLECTION_KEYS: ReadonlyArray<string> = [
+const REFLECTION_KEYS: ReadonlySet<string> = new Set([
   "schema",
   "reflection",
   "session",
   "at",
   "text",
-]
+])
 const NO_AUDIO_REFLECTION =
   "a reflection carries no audio: a spoken one goes as its transcript"
 const NO_DRIVE_REFLECTION = "a reflection names no Drive file"
@@ -231,14 +254,15 @@ function reflectionRefusal(
   text: string,
   name: string
 ): string | null {
-  const carried = carriesRefusal(text, NO_AUDIO_REFLECTION, NO_DRIVE_REFLECTION)
-  if (carried !== null) return carried
-  const extra = Object.keys(body).find((key) => !REFLECTION_KEYS.includes(key))
-  if (extra !== undefined) {
-    if (AUDIO_KEY.test(extra)) return NO_AUDIO_REFLECTION
-    if (DRIVE_KEY.test(extra)) return NO_DRIVE_REFLECTION
-    return `${extra} is not part of a reflection`
-  }
+  const shape = shapeRefusal(
+    body,
+    text,
+    REFLECTION_KEYS,
+    NO_AUDIO_REFLECTION,
+    NO_DRIVE_REFLECTION,
+    "reflection"
+  )
+  if (shape !== null) return shape
   if (typeof body.reflection !== "string") {
     return "reflection must be the reflection's id"
   }
@@ -260,7 +284,7 @@ function reflectionRefusal(
  * routine reads of the next scene's prompt (paulgsc/some-ui#2174, D2). Any
  * other is refused.
  */
-const PROMPT_KEYS: ReadonlyArray<string> = ["schema", "prompt", "text"]
+const PROMPT_KEYS: ReadonlySet<string> = new Set(["schema", "prompt", "text"])
 const NO_AUDIO_PROMPT =
   "a prompt carries no audio: its scene notes go as their transcripts"
 const NO_DRIVE_PROMPT = "a prompt names no Drive file"
@@ -274,14 +298,15 @@ function promptRefusal(
   text: string,
   name: string
 ): string | null {
-  const carried = carriesRefusal(text, NO_AUDIO_PROMPT, NO_DRIVE_PROMPT)
-  if (carried !== null) return carried
-  const extra = Object.keys(body).find((key) => !PROMPT_KEYS.includes(key))
-  if (extra !== undefined) {
-    if (AUDIO_KEY.test(extra)) return NO_AUDIO_PROMPT
-    if (DRIVE_KEY.test(extra)) return NO_DRIVE_PROMPT
-    return `${extra} is not part of a prompt`
-  }
+  const shape = shapeRefusal(
+    body,
+    text,
+    PROMPT_KEYS,
+    NO_AUDIO_PROMPT,
+    NO_DRIVE_PROMPT,
+    "prompt"
+  )
+  if (shape !== null) return shape
   if (typeof body.prompt !== "string") {
     return "prompt must be the prompt's stamp"
   }
