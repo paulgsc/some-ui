@@ -443,7 +443,7 @@ describe("the drain's LeetType and Studio parts", () => {
     expect(readSent(ports.storage, PAIRING).leetype).toEqual({})
   })
 
-  it("keeps a LeetType session here when home's read-back differs", async () => {
+  it("keeps a LeetType session here, and says so, when home's read-back differs", async () => {
     const changed = {
       session: "a",
       events: [{ ...leetypeSession("a").events[0], declaredMinutes: 11 }],
@@ -454,7 +454,10 @@ describe("the drain's LeetType and Studio parts", () => {
       kept: [],
       log: () => Promise.resolve([leetypeSession("a")]),
     })
-    await expect(drainHome(h.send, ports)).resolves.toEqual({ kind: "synced" })
+    await expect(drainHome(h.send, ports)).resolves.toEqual({
+      kind: "failed",
+      why: "refused",
+    })
     expect(readSent(ports.storage, PAIRING).leetype).toEqual({})
   })
 })

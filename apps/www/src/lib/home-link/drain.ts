@@ -9,9 +9,10 @@
  * taken in, and nothing on the phone is let go: a finished session leaves
  * only by the clear in Settings (`./clear`), once home has read it back.
  *
- * A part home turned away (a full shelf, a refusal) does not hold back the
- * parts after it, which share nothing with it; the run says the first such
- * end once every part has gone. What did not go goes on the next ask.
+ * A part home turned away (a full shelf, a refusal, a read-back that did not
+ * match what was sent) does not hold back the parts after it, which share
+ * nothing with it; the run says the first such end once every part has gone.
+ * What did not go goes on the next ask.
  */
 import type { HomeCall, HomeExchanged, KeyedStorage } from "@some-ui/core-utils"
 import { unexpectedAnswer } from "@some-ui/core-utils"
@@ -179,7 +180,7 @@ export async function drainHome(
     } finally {
       sent = rememberSent(ports.storage, sent, { [field]: readBack })
     }
-    if (log.refused + log.other > 0) short ??= "refused"
+    if (log.refused + log.other + log.differs > 0) short ??= "refused"
     return endedPart(log)
   }
   const logEnded = await part(await ports.logGoing(), sendLog, "leetype")

@@ -109,8 +109,9 @@ function useLaneRun(lane: Lane): KeptState {
 
 /**
  * Whether Send now is offered: paired, not sending, and something waits or
- * the last run was turned away (home busy, or no answer), which is worth
- * trying again even when nothing counted waits.
+ * the last run did not get everything to home (no answer, home busy, its
+ * shelf full, something not taken), which is worth trying again even when
+ * nothing counted waits: what did not go is not always what a lane counts.
  */
 function offersSendNow(
   run: KeptState,
@@ -121,7 +122,7 @@ function offersSendNow(
   return (
     counts.waiting > 0 ||
     run.last?.kind === "unreachable" ||
-    (run.last?.kind === "failed" && run.last.why === "busy")
+    run.last?.kind === "failed"
   )
 }
 

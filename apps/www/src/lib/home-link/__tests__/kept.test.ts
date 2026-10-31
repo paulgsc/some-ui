@@ -17,7 +17,8 @@ import type { KeptState } from "@/lib/home-link/kept-model"
 import { INITIAL_KEPT, stepKept } from "@/lib/home-link/kept-model"
 import type { Kept, KeptPorts } from "@/lib/home-link/kept-runtime"
 import { createKept, laneExchange } from "@/lib/home-link/kept-runtime"
-import type { Lane } from "@/lib/home-link/lanes"
+import type { Lane, LaneCounts } from "@/lib/home-link/lanes"
+import { laneReading } from "@/lib/home-link/lanes"
 import { INITIAL, step } from "@/lib/home-link/model"
 import type { HomeLink } from "@/lib/home-link/runtime"
 import { HomeUnansweredError } from "@/lib/home-link/shelf"
@@ -293,5 +294,48 @@ describe("a lane's run", () => {
     await expect(
       laneExchange(stopping, () => "p")(home([429]).send)
     ).rejects.toBeInstanceOf(SyncStoppedError)
+  })
+})
+
+describe("Send now", () => {
+  const PAIRED = step(INITIAL, {
+    type: "read",
+    found: { base: "https://home.lan", id: "p" },
+  })
+  const NOTHING_WAITS: LaneCounts = {
+    held: { sessions: 2 },
+    refused: {},
+    waiting: 0,
+    hidden: 0,
+    pulled: false,
+  }
+  const after = (last: KeptState["last"]): KeptState => ({
+    ...INITIAL_KEPT,
+    last,
+  })
+  const offered = (run: KeptState): boolean =>
+    laneReading("practice", NOTHING_WAITS, run, PAIRED).sendNow
+
+  it("is offered with nothing counted waiting after a run that didn't get everything home", () => {
+    for (const why of ["full", "refused", "busy", "fault"]) {
+      expect(offered(after({ kind: "failed", why }))).toBe(true)
+    }
+    expect(offered(after({ kind: "unreachable", at: 1 }))).toBe(true)
+  })
+
+  it("is not offered after a clean run, while sending, or unpaired", () => {
+    expect(offered(after({ kind: "synced", at: 1 }))).toBe(false)
+    expect(offered(INITIAL_KEPT)).toBe(false)
+    expect(
+      offered({ ...after({ kind: "failed", why: "full" }), running: true })
+    ).toBe(false)
+    expect(
+      laneReading(
+        "practice",
+        NOTHING_WAITS,
+        after({ kind: "failed", why: "full" }),
+        INITIAL
+      ).sendNow
+    ).toBe(false)
   })
 })
