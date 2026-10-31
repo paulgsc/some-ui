@@ -10,7 +10,7 @@
         "server:apps/servers/file_host/src/mailbox",
         "server:crates/mailbox_kit"
       ],
-      "modules": ["jobs", "routine"],
+      "modules": ["jobs", "routine", "leetype_files"],
       "objectives": [
         {
           "id": "MI1",
