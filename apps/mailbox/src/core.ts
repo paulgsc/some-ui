@@ -306,7 +306,7 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
   {
     // Home's bookkeeping for one routine, computed from what home holds after
     // a pass, named for the routine and when home filed it: a new name each
-    // time it changes, so the newest is the highest seq.
+    // time it changes, so the newest is the greatest name.
     folder: "index",
     name: /^index-[a-z]{1,20}-\d{8}T\d{9}Z\.json$/,
     schema: "some-ui.routine-index/1",

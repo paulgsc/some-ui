@@ -128,7 +128,8 @@ role, and it is the owner's call, so it is not built.
   each model), so a better model's transcript goes under a new name rather than meeting a `409`,
   and the highest `<n>` is the newest; and `index` takes `index-<routine>-YYYYMMDDTHHMMSSmmmZ.json`,
   named for the routine (lower-case letters) and when home filed it, in UTC to the
-  millisecond, so each change goes under a new name and the newest is the highest `seq`.
+  millisecond, so each change goes under a new name and the newest is the greatest name (not
+  the highest `seq`: one home could not hand at once is handed by a later pass).
   Anything else, an audio file's name included, is `422`.
 - **Content type** `application/json` (parameters such as `charset` are ignored), and the body
   must be UTF-8 JSON with no byte-order mark.

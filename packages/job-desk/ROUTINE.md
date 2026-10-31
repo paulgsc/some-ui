@@ -82,9 +82,10 @@ record (§9) and the summary (§10). Nothing ends a run before those two.
      "$JOBS_MAILBOX_URL/v1/index/items?after=0&limit=50"
    ```
 
-   Of the names that start `index-jobs-`, take the one with the highest
-   `seq`, fetch it from `index/items/<name>` as §2 fetches a decisions file,
-   and check its `sha256`. It must be JSON with
+   Of the names that start `index-jobs-`, take the greatest: each is named
+   for when home filed it, so that is the newest (a later `seq` can be an
+   older index home handed late). Fetch it from `index/items/<name>` as §2
+   fetches a decisions file, and check its `sha256`. It must be JSON with
    `"schema": "some-ui.routine-index/1"` and `"routine": "jobs"`. It stands
    for this run when all of these hold:
 
