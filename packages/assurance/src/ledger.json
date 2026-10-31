@@ -2059,6 +2059,12 @@
       "family": "archive-restore"
     },
     {
+      "store": "server:mailbox_archive_answer",
+      "class": "telemetry",
+      "growth": "Per ask home made the mailbox to drop a written reflection it archived that got an answer (archived/unchanged/mismatch/refused/gone): tiny rows, no key, append-only; one per reflection archived, as none is ever put back. An ask that heard none is made again, by name, on the next pass (paulgsc/server invariant 21).",
+      "family": "archive-restore"
+    },
+    {
       "store": "server:mailbox_handed",
       "class": "telemetry",
       "growth": "Per hand-off attempt home made that got an answer it keeps (added/unchanged/conflict/refused); tiny rows, no key, append-only.",
