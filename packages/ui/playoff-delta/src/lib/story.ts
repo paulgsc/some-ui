@@ -225,3 +225,9 @@ export function signed(x: number): string {
   if (abs === "0.0") return abs
   return `${x < 0 ? "−" : "+"}${abs}`
 }
+
+/** A change in the share that rounds to nothing at one place, in points. */
+export const nothing = (change: number): boolean => size(change) === "0.0"
+
+/** A fall in the share as signed points, after rounding: "−2.9", "0.0" (PDS6). */
+export const fall = (drop: number): string => signed(-drop * 100)

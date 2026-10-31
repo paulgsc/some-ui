@@ -40,6 +40,7 @@ import {
 } from "./reading"
 import {
   nameOf,
+  nothing,
   percent,
   signed,
   size,
@@ -207,10 +208,11 @@ export function narration(
       const ours =
         week.game === null || ownPart(week) === "tie"
           ? ""
-          : c.own > 0.00005
-            ? ` Our light cost ${size(c.own)} points.`
-            : " Our light cost nothing."
-      return `Kickoff by kickoff, the best week still possible went from ${percent(ways.best)} to ${percent(ways.actual)}.${ours} The league cost ${size(c.league)}.`
+          : nothing(c.own)
+            ? " Our light cost nothing."
+            : ` Our light cost ${size(c.own)} points.`
+      const league = nothing(c.league) ? "nothing" : size(c.league)
+      return `Kickoff by kickoff, the best week still possible went from ${percent(ways.best)} to ${percent(ways.actual)}.${ours} The league cost ${league}.`
     }
     case "given": {
       const part = ownPart(week)

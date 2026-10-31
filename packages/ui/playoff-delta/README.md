@@ -89,6 +89,9 @@ bundled 2025 season and of 2026 as published on 2026-10-29
   material, the rest counted (`components/slides/__tests__/slides.test.tsx`).
 - **PDS5:** each label under the strip of the week's ways sits under its own
   mark and inside the frame, a row per mark (same test file).
+- **PDS6:** a change that rounds to nothing carries no sign: on the road a
+  game's drop shows "·", a total "0.0", and its line says it cost nothing
+  (same test file).
 
 ## Recording
 

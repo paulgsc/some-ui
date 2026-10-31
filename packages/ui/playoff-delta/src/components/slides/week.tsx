@@ -21,7 +21,7 @@ import {
   type PieceRead,
 } from "@playoff-delta/lib/reading"
 import { MODEL, pieceName } from "@playoff-delta/lib/slides"
-import { percent, signed, size } from "@playoff-delta/lib/story"
+import { fall, nothing, percent, signed, size } from "@playoff-delta/lib/story"
 import { CLEAN_RUN, phraseOf } from "@playoff-delta/lib/words"
 
 import { BAND_CLASS, Bands, PieceLight, priceNote, Strip } from "./marks"
@@ -94,6 +94,10 @@ export const Best = ({ week }: SlideProps): JSX.Element => {
   )
 }
 
+/** A fall in red; one that rounds to nothing, plain. */
+const fallClass = (drop: number): string =>
+  nothing(drop) ? "" : "text-destructive"
+
 export const Road = ({ week }: SlideProps): JSX.Element => {
   const { ways } = week
   const pieces = piecesOf(week)
@@ -143,7 +147,7 @@ export const Road = ({ week }: SlideProps): JSX.Element => {
               price={p.piece.price}
               state={p.made ? "made" : "missed"}
               label={p.game.winner}
-              note={drop > 0.00005 ? `−${size(drop)}` : "·"}
+              note={nothing(drop) ? "·" : fall(drop)}
               at={start + (i + 1) * step}
               compact
             />
@@ -156,11 +160,11 @@ export const Road = ({ week }: SlideProps): JSX.Element => {
       >
         {ownPart(week) === "bye" || ownPart(week) === "tie" ? null : (
           <span>
-            our light <b className="text-destructive">−{size(c.own)}</b>
+            our light <b className={fallClass(c.own)}>{fall(c.own)}</b>
           </span>
         )}
         <span>
-          the league <b className="text-destructive">−{size(c.league)}</b>
+          the league <b className={fallClass(c.league)}>{fall(c.league)}</b>
         </span>
       </Reveal>
     </>

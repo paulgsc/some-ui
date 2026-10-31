@@ -145,6 +145,22 @@ describe("PDS5: the strip's labels sit at their marks", () => {
   })
 })
 
+// PDS6: a change that rounds to nothing carries no sign: on the road, a
+// game's drop shows "·" and a total shows "0.0", and its line says the cost
+// was nothing. Family: every week of a real season, across a drop of
+// exactly zero, one under the rounding (0 < drop < 0.05 points), and one at
+// or above it.
+describe("PDS6: the road never shows −0.0", () => {
+  it.each(REAL_WEEKS)("%s week %i", (_, __, season, week) => {
+    const { container, unmount } = render(
+      <SLIDES.road season={season} week={week} />
+    )
+    expect(container.textContent).not.toMatch(/[−-]0\.0(?!\d)/)
+    unmount()
+    expect(narration(season, week, "road")).not.toMatch(/cost 0\.0\b/)
+  })
+})
+
 describe("the podium", () => {
   it("lists tied medalists a line each, and still says our place", () => {
     const tied = SAMPLE_SEASON.weeks.find((w) => w.podium.medals.length > 3)
