@@ -19,19 +19,38 @@ const MACHINERY =
  * sitting's log, a scene, a look and voice, what the phone kept. A maker
  * refusing every sample (not a string, or a throw) is reached by none of
  * them, and the walk below fails on it rather than passing without it.
+ *
+ * SW1's tolerance: a wording a maker turns on its input reaches the walk
+ * only through a sample that turns it, so a maker with a new branch gets a
+ * sample here with it. No walk can see a branch from outside the maker.
  */
 const SAMPLES: ReadonlyArray<ReadonlyArray<unknown>> = [
   ["Playoff Delta, week 8"],
+  // Counts of none, one and several, so each wording a count turns reaches.
+  ["Playoff Delta, week 8", 0, 0],
+  ["Playoff Delta, week 8", 0, 1],
   ["Playoff Delta, week 8", 2, 3],
   ["Playoff Delta, week 8", { scenes: [2], plans: false }],
+  ["Playoff Delta, week 8", { scenes: [], plans: true }],
+  ["Playoff Delta, week 8", { scenes: [1, 3, 4], plans: true }],
+  [0],
+  [1],
   [2],
+  [3],
   [2, 3],
+  [3, 3],
   [4_700, 120_000],
+  [820_000],
+  [1_400_000],
   [null],
   [{ done: "Kept takes for scene 1.", next: "Scene 2: The miss." }],
   [{ n: 2, artifact: "The miss" }],
-  [[1, 2]],
+  [[]],
+  [[2]],
+  [[1, 2, 4]],
   [{ scenes: [2, 5], plans: false }],
+  [{ scenes: [], plans: true }],
+  [{ scenes: [1, 3], plans: true }],
   ["calm", "ad-lib"],
   ["denied"],
 ]
