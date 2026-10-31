@@ -413,8 +413,8 @@ export const Soundbites = ({
 
         {full && replaced === null && (
           <p className="text-muted-foreground text-xs">
-            Full. These stay on this phone until home has them, and then your
-            next one replaces the oldest.
+            Full. These stay on this phone until a home it&apos;s paired with
+            has them, and then your next one replaces the oldest.
           </p>
         )}
 
@@ -425,7 +425,8 @@ export const Soundbites = ({
           >
             <p className="text-muted-foreground">
               Couldn&apos;t read what&apos;s on this phone. If it is full, your
-              next one replaces the oldest home has.
+              next one replaces the oldest home has, or isn&apos;t kept while
+              home has none.
             </p>
             <Button
               size="sm"

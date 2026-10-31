@@ -263,7 +263,7 @@ const TakeRow = ({
       {(snapshot.said ?? snapshot.full) && (
         <span role="status" className="text-muted-foreground text-xs">
           {snapshot.said ??
-            "This makes room once home has the takes on this phone."}
+            "This makes room once a home this phone is paired with has the takes on it."}
         </span>
       )}
     </div>

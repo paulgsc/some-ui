@@ -311,7 +311,7 @@ describe("LensSession", () => {
     const button = screen.getByRole("button", { name: /no room for a take/i })
     expect(button.hasAttribute("disabled")).toBe(true)
     expect(screen.getByRole("status").textContent).toMatch(
-      /makes room once home has/i
+      /makes room once a home this phone is paired with has/i
     )
   })
 })

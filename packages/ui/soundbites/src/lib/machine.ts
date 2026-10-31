@@ -188,7 +188,7 @@ export type Step = {
 export const NOTICES = {
   tooShort: "Too short to keep. Tap, talk, then tap again.",
   notKept: "That one couldn't be kept. Try again?",
-  full: "No room for that one: this phone keeps six until home has them. Record it again once they're home, or delete one.",
+  full: "No room for that one: this phone keeps six until a home it's paired with has them. Delete one, or record it again once home has one of them.",
   thrownAway: "Thrown away. Nothing kept.",
   audioMissing: "That recording's audio is missing.",
   notPlayable: "That recording couldn't be played.",

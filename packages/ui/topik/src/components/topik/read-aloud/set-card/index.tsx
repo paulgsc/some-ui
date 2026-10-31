@@ -303,8 +303,8 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
           )}
           {props.lens?.available && props.lens.full && (
             <p className="text-warning text-sm leading-relaxed">
-              The grammar-lens record is full and keeps no new answers until
-              home has the ones on this phone.
+              The grammar-lens record is full and keeps no new answers until a
+              home this phone is paired with has the ones on it.
             </p>
           )}
           {props.record && (

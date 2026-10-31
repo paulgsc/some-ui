@@ -152,7 +152,9 @@ describe("Soundbites", () => {
     const { kept } = setup({ kept: FULL })
 
     expect(
-      await screen.findByText(/These stay on this phone until home has them/)
+      await screen.findByText(
+        /These stay on this phone until a home it.s paired with has them/
+      )
     ).toBeInTheDocument()
     expect(
       screen.queryByRole("button", { name: "Replace this one next instead" })
