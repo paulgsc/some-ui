@@ -1,9 +1,10 @@
 /**
  * What the mailbox keeps, and the one adapter that keeps it in D1.
  *
- * MB1: an item never changes, and leaves `item` only into `archived`; no code
- * may issue `INSERT OR REPLACE`, which the triggers do not stop. Full text:
- * README.md, "Gray-area invariants".
+ * MB1: an item never changes, and leaves `item` only into `archived`, or, for
+ * home's index (a view, not a record), once a newer index of its routine is
+ * live; no code may issue `INSERT OR REPLACE`, which the triggers do not
+ * stop. Full text: README.md, "Gray-area invariants".
  */
 
 export type Folder =
@@ -66,6 +67,11 @@ export type NewItem = {
 
 export type PutResult =
   | { readonly change: "added" | "unchanged"; readonly seq: number }
+  /**
+   * `superseded`: an index older than the one live for its routine, dropped
+   * in the write that took it (README, "What it keeps").
+   */
+  | { readonly change: "superseded" }
   | { readonly change: "conflict" }
 
 export type ArchiveResult = {
@@ -103,7 +109,10 @@ export type Store = {
   get: (folder: Folder, name: string) => Promise<StoredItem | null>
   /**
    * One name holds one body, forever, archived or not: the same bytes again
-   * are `unchanged`, other bytes are a `conflict` and change nothing.
+   * are `unchanged`, other bytes are a `conflict` and change nothing. The
+   * `index` folder keeps only the newest index of each routine: a new one
+   * drops the ones before it in the same transaction, and one older than the
+   * live one is `superseded`.
    */
   put: (folder: Folder, name: string, item: NewItem) => Promise<PutResult>
   /** The name's latest archived row, or `null`. */
@@ -171,6 +180,21 @@ ON CONFLICT (folder, name) DO NOTHING
 RETURNING seq`
 
 const HELD_SQL = "SELECT seq, sha256 FROM item WHERE folder = ?1 AND name = ?2"
+
+/**
+ * ?1 an index's name: every index of its routine but the newest goes, in the
+ * batch of the put that took it. An index's routine is its name less the
+ * stamp and `.json` (24 characters), and the greater name is the newer; the
+ * trigger lets an index go only while a newer one of its routine is live.
+ */
+const DROP_OLDER_INDEXES_SQL = `DELETE FROM item
+WHERE folder = 'index'
+  AND substr(name, 1, length(name) - 24) = substr(?1, 1, length(?1) - 24)
+  AND name < (
+    SELECT MAX(newer.name) FROM item AS newer
+    WHERE newer.folder = 'index'
+      AND substr(newer.name, 1, length(newer.name) - 24) = substr(?1, 1, length(?1) - 24)
+  )`
 
 const ITEM_COLUMNS =
   "item.seq, item.name, item.size, item.sha256, item.content_type AS contentType, item.put_at AS putAt, COALESCE(restored.restored_at, item.put_at) AS liveSince"
@@ -342,8 +366,7 @@ export function d1Store(db: Db): Store {
     },
 
     async put(folder, name, item): Promise<PutResult> {
-      const inserted = await one(
-        INSERT_SQL,
+      const values = [
         folder,
         name,
         item.sha256,
@@ -351,14 +374,35 @@ export function d1Store(db: Db): Store {
         item.contentType,
         blobOf(item.bytes),
         item.putBy,
-        item.putAt
-      )
-      if (inserted !== null) return { change: "added", seq: seqOf(inserted) }
+        item.putAt,
+      ] as const
+      if (folder === "index") {
+        // The newest index of the routine stays, and every one before goes,
+        // in one transaction with the put (MB1).
+        const [put] = await db.batch([
+          db.prepare(INSERT_SQL).bind(...values),
+          db.prepare(DROP_OLDER_INDEXES_SQL).bind(name),
+        ])
+        const inserted = put?.results?.at(0)
+        if (inserted !== undefined) {
+          // Taken and dropped at once: a newer index of its routine is live.
+          return (await one(HELD_SQL, folder, name)) === null
+            ? { change: "superseded" }
+            : { change: "added", seq: seqOf(inserted) }
+        }
+      } else {
+        const inserted = await one(INSERT_SQL, ...values)
+        if (inserted !== null) return { change: "added", seq: seqOf(inserted) }
+      }
       // No row: the name is held, live or archived (and maybe both, put back).
       const held =
         (await one(HELD_SQL, folder, name)) ??
         (await one(ARCHIVED_OF_SQL, folder, name))
-      if (held === null) throw new Error("a held item is not there")
+      if (held === null) {
+        // Only an index can go without an archived row: one replaced since.
+        if (folder === "index") return { change: "superseded" }
+        throw new Error("a held item is not there")
+      }
       return held.sha256 === item.sha256
         ? { change: "unchanged", seq: seqOf(held) }
         : { change: "conflict" }

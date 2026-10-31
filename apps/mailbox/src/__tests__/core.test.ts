@@ -295,6 +295,80 @@ describe("roles", () => {
   })
 })
 
+describe("the routine's backfill of pre-mailbox files (MB2)", () => {
+  const OLD_DECISIONS = "decisions-2026-10-20.json"
+  const OLD_SCOUTS = "scouts-20261022T235959.json"
+
+  it("the routine puts a decisions or scouts file from before the mailbox in brief, once, and home reads it", async () => {
+    const d = deps()
+    for (const [name, body] of [
+      [OLD_DECISIONS, DECISIONS],
+      ["decisions-2026-10-20-2.json", DECISIONS],
+      [OLD_SCOUTS, SCOUTS],
+    ] as const) {
+      expect([name, (await put(d, "brief", name, { body })).status]).toEqual([
+        name,
+        201,
+      ])
+      expect((await put(d, "brief", name, { body })).status).toBe(200)
+      const read = await send(d, "GET", `/v1/brief/items/${name}`, {
+        token: HOME,
+      })
+      expect(read.status).toBe(200)
+      expect(await read.text()).toBe(body)
+    }
+    expect(
+      (
+        await put(d, "brief", OLD_DECISIONS, {
+          body: JSON.stringify({ schema: "some-ui.job-decisions/1", x: 1 }),
+        })
+      ).status
+    ).toBe(409)
+  })
+
+  it("takes nothing dated from the day the mailbox opened, and holds each name to its own schema", async () => {
+    const d = deps()
+    for (const [name, body] of [
+      ["decisions-2026-10-23.json", DECISIONS],
+      ["decisions-2026-11-02-3.json", DECISIONS],
+      ["scouts-20261023T000000.json", SCOUTS],
+      ["decision-2026-10-20.json", DECISIONS],
+      ["decisions-2026-10-20.webm", DECISIONS],
+    ] as const) {
+      const response = await put(d, "brief", name, { body })
+      expect([name, response.status]).toEqual([name, 422])
+      expect(await json(response)).toEqual({
+        error: "the name does not fit this folder",
+      })
+    }
+    for (const [name, body, schema] of [
+      [OLD_DECISIONS, SCOUTS, "some-ui.job-decisions/1"],
+      [OLD_SCOUTS, DIGEST, "some-ui.job-scouts/1"],
+      ["digest-2026-10-20.json", DECISIONS, "some-ui.job-digest/1"],
+    ] as const) {
+      const response = await put(d, "brief", name, { body })
+      expect([name, response.status]).toEqual([name, 422])
+      expect(await json(response)).toEqual({
+        error: `the body's schema must be ${schema}`,
+      })
+    }
+  })
+
+  it("only the routine puts one, and only in brief", async () => {
+    const d = deps()
+    for (const token of [HOME, ARCHIVE]) {
+      expect(
+        (await put(d, "brief", OLD_DECISIONS, { token, body: DECISIONS }))
+          .status
+      ).not.toBe(201)
+    }
+    // The phone's folders take the phone's files, from home only.
+    expect(
+      (await put(d, "decisions", OLD_DECISIONS, { body: DECISIONS })).status
+    ).toBe(403)
+  })
+})
+
 describe("the routine's study files", () => {
   const SCENE = JSON.stringify({
     schema: "some-ui.routine-scene/1",
@@ -900,11 +974,28 @@ describe("home's indexes", () => {
     ).toBe(201)
 
     const path = `/v1/index/items/${NAME}`
-    const read = await send(d, "GET", path)
+    const newer = "/v1/index/items/index-jobs-20261101T080001003Z.json"
+    const read = await send(d, "GET", newer)
     expect(read.status).toBe(200)
-    expect(await read.text()).toBe(INDEX)
-    expect((await send(d, "GET", "/v1/index/items")).status).toBe(200)
-    expect((await send(d, "GET", path, { token: HOME })).status).toBe(403)
+    expect(await json(read)).toEqual({ ...JOBS, day: "2026-11-01" })
+    // A view, not a record: the one before went with the put of the newer.
+    expect((await send(d, "GET", path)).status).toBe(404)
+    const listed = await send(d, "GET", "/v1/index/items")
+    expect(listed.status).toBe(200)
+    expect(await json(listed)).toEqual({
+      items: [
+        expect.objectContaining({
+          name: "index-jobs-20261101T080001003Z.json",
+        }),
+      ],
+    })
+    // One older than the live one is not taken.
+    const older = await asHome(d, "index-jobs-20261031T150000000Z.json")
+    expect(older.status).toBe(409)
+    expect(await json(older)).toEqual({
+      error: "a newer index of this routine is held",
+    })
+    expect((await send(d, "GET", newer, { token: HOME })).status).toBe(403)
     expect(
       (await send(d, "GET", "/v1/index/items", { token: HOME })).status
     ).toBe(403)
@@ -965,6 +1056,31 @@ describe("home's indexes", () => {
     expect(
       (await asHome(d, NAME, JSON.stringify({ ...JOBS, asOf: null }))).status
     ).toBe(201)
+  })
+
+  it("is never archived, listed as archived or asked for", async () => {
+    const d = deps()
+    expect((await asHome(d, NAME)).status).toBe(201)
+    const path = `/v1/index/items/${NAME}`
+    const sha = createHash("sha256").update(INDEX).digest("hex")
+    for (const token of [ROUTINE, HOME, ARCHIVE]) {
+      expect(
+        (
+          await send(d, "DELETE", path, {
+            token,
+            headers: { "if-match": `"${sha}"` },
+          })
+        ).status
+      ).toBe(403)
+      for (const collection of ["archived", "wanted"]) {
+        expect(
+          (await send(d, "GET", `/v1/index/${collection}`, { token })).status
+        ).toBe(403)
+      }
+      expect(
+        (await send(d, "PUT", `/v1/index/wanted/${NAME}`, { token })).status
+      ).toBe(403)
+    }
   })
 
   it("refuses an index that carries audio or names a Drive file", async () => {
@@ -1374,7 +1490,6 @@ describe("archiving", () => {
       "leetype",
       "leetype-log",
       "transcript",
-      "index",
     ]) {
       expect(
         (await send(d, "GET", `/v1/${folder}/items`, { token: ARCHIVE })).status
@@ -1384,6 +1499,13 @@ describe("archiving", () => {
           .status
       ).toBe(200)
     }
+    // Home's index is a view, not a record: read, never archived (MB2).
+    expect(
+      (await send(d, "GET", "/v1/index/items", { token: ARCHIVE })).status
+    ).toBe(200)
+    expect(
+      (await send(d, "GET", "/v1/index/wanted", { token: ARCHIVE })).status
+    ).toBe(403)
     // A put of a name never archived adds nothing.
     expect(
       (

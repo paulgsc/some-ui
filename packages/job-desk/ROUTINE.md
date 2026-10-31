@@ -23,7 +23,7 @@ one that never finished.
 
 Home keeps every digest, decisions file, scout and transcript, and after each
 of its passes it leaves the bookkeeping this file used to have the run do
-itself in the mailbox too: home's index (§0.5). When the index stands, the
+itself in the mailbox too: home's index (§0.5), the latest only. When the index stands, the
 run reads the queue, what is new and which notes are waiting from it, and
 downloads nothing to work them out. The run never redoes or second-guesses
 what the index says; it only checks that the index is today's and covers
@@ -74,20 +74,21 @@ record (§9) and the summary (§10). Nothing ends a run before those two.
    goes to Drive. Use only `curl` with that `Authorization` header, never print
    the token, and don't turn on shell tracing (`set -x`).
 
-5. Home's index. If the mailbox is usable, list its `index` folder, starting
-   at `after=0`, paged as §2 pages the decisions folder, to the end:
+5. Home's index. If the mailbox is usable, list its `index` folder:
 
    ```sh
    curl -sS --max-time 30 -H "Authorization: Bearer $JOBS_MAILBOX_TOKEN" \
      "$JOBS_MAILBOX_URL/v1/index/items?after=0&limit=50"
    ```
 
-   Of the names that start `index-jobs-`, take the greatest: each is named
-   for when home filed it, so that is the newest (a later `seq` can be an
-   older index home handed late). Fetch it from `index/items/<name>` as §2
-   fetches a decisions file, and check its `sha256`. It must be JSON with
-   `"schema": "some-ui.routine-index/1"` and `"routine": "jobs"`. It stands
-   for this run when all of these hold:
+   The mailbox keeps one index per routine, the newest: take the item whose
+   name starts `index-jobs-` (if a listing ever shows two, the greater name
+   is the newer). The index is home's view of what it holds, not a record,
+   so there is no older one to read or ask for. Fetch it from
+   `index/items/<name>` as §2 fetches a decisions file, and check its
+   `sha256`. A `404` means home put a newer one since the listing: list
+   again, once. It must be JSON with `"schema": "some-ui.routine-index/1"`
+   and `"routine": "jobs"`. It stands for this run when all of these hold:
 
    - its `day` is today;
    - every `digest-*.json` in `Brief/` is in its `from.digests`, every file
@@ -96,11 +97,29 @@ record (§9) and the summary (§10). Nothing ends a run before those two.
      only what the phone sent it and what the mailbox carried, so a file
      only Drive has is one the index could not count.
 
-   For each digest in `Brief/` that `from.digests` lacks, put it in the
-   mailbox's `brief` folder now, its bytes exactly as Drive holds them, as
-   §8.6 puts today's (`--data-binary`): home takes it in within 15 minutes,
-   so the next run's index counts it. A `409` means the mailbox holds other
-   bytes under that name: say so in the summary.
+   For each file Drive holds that the index lacks, put it back for home to
+   count, once, its bytes exactly as Drive holds them, as §8.6 puts today's
+   digest (`--data-binary`), under its Drive name, in the mailbox's `brief`
+   folder. Only a file that passed step 1's owner check is put. Home takes
+   it in within 15 minutes, so the next run's index counts it; the mailbox
+   holds a name for good, so put it once and never again.
+
+   - **A digest** in `Brief/`: always.
+   - **A decisions or scouts file from before the mailbox**, one named for a
+     day before 2026-10-23 (`decisions-2026-10-20.json`,
+     `scouts-20261021T101500.json`): the one-time backfill I agreed to
+     (https://github.com/paulgsc/server/issues/509#issuecomment-6547096403).
+     The mailbox takes these names in `brief` only for a day before it
+     opened, so the backfill ends by itself once Drive's old files are in.
+     Home counts them as mine and names them in `from.backfill`.
+   - **A decisions or scouts file named for 2026-10-23 or later** is one
+     the phone kept off home, because it names a voice note. The mailbox
+     refuses it (`422`), so don't put it: the phone sends these itself once
+     #2177 lands. While one is in Drive and not in the index, the index
+     doesn't stand; say which in the summary.
+
+   A `409` means the mailbox holds other bytes under that name: say so in
+   the summary. Count what you put back, by kind, for §10.
 
    When the index doesn't stand, or there is none, or the mailbox isn't
    usable, do §2's bookkeeping as written, from Drive and the mailbox, and say
@@ -147,8 +166,9 @@ and nothing below is downloaded or compared to work it out:
 - **What is new** is its `new`: each decisions file (`new.decisions`) and
   scouts file (`new.scout`) that no digest names in `read`. Fetch each from
   the mailbox by name (`decisions/items/<name>`, `scout/items/<name>`, as
-  below, `wanted` included for an archived one), check it (step 8 below) and
-  take it in. An entry whose `id` is in that file's `repeats` was taken in
+  below, `wanted` included for an archived one; a name in `from.backfill` is
+  one put back from Drive, at `brief/items/<name>`), check it (step 8 below)
+  and take it in. An entry whose `id` is in that file's `repeats` was taken in
   from an earlier file, and a scout in its `answered` was answered by an
   earlier digest: skip both, as the rules below say.
 - **The voice notes** are its `notes`: each note some file names that no
@@ -844,5 +864,6 @@ scout's verdict; the calibration note, once there are enough outcomes; the
 mailbox (whether the digest was added, was already there or was refused, and
 why; the files taken in from it; any name whose bytes differed from Drive's; or
 that it was skipped, and why); home's index (whether it stood, and when it
-didn't, why, and any digest put back for home to count); the run record (its outcome and problems, and
+didn't, why, and what was put back for home to count: digests, and
+pre-mailbox decisions and scouts files); the run record (its outcome and problems, and
 whether the mailbox took it); and anything skipped, with why.

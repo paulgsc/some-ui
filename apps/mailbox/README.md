@@ -13,7 +13,8 @@ sessions went. For voice notes: what home heard in each one (`transcript`), text
 routines read it instead of hearing the audio themselves. For the routines' bookkeeping: an
 **index** per routine (`index`), which home computes from what it holds after each pass (for
 the Jobs routine, the queue, what is new since the last digest and each waiting note's newest
-transcript), so a routine reads it instead of rebuilding it. Each side reaches it with
+transcript), so a routine reads it instead of rebuilding it. The index is a view of what home
+keeps, so only the latest of each routine's stays. Each side reaches it with
 its own token, so the files move between them without a hand-carried step.
 
 ## Why it exists
@@ -43,6 +44,12 @@ same bytes again changes nothing, and putting other bytes under a held name is r
 after the file is archived. Each row records who put it (`routine` or `home`), when, and the
 SHA-256 of its bytes.
 
+The one exception is home's index (`index`). It is a view home recomputes from the records it
+keeps, not a record (owner, 2026-10-31, [paulgsc/server#509](https://github.com/paulgsc/server/issues/509#issuecomment-6547096403)), so the
+mailbox keeps only the newest of each routine. When home puts a new one, the ones before it go
+in the same transaction, and an index older than the live one is not taken (`409`). Nothing
+archives an index, and the routine cannot ask for an old one.
+
 ### Archiving: home keeps the record, the mailbox stays small
 
 The mailbox is where the routine and home meet, not where the record lives: home keeps that.
@@ -62,23 +69,24 @@ about it (owner, 2026-10-23):
    A file put back counts its 30 days again from its return.
 
 Nothing is deleted for good: the bytes are home's before the mailbox lets them go, and the
-`archived` row stays.
+`archived` row stays. Home's index is not archived (above, "What it keeps"): home can compute
+the same bytes again from what it keeps.
 
 ## API
 
 Every request needs `Authorization: Bearer <token>`. Every answer is JSON, or the stored bytes.
 
-| Request                                                  | Answer                                                                                                                                                                                                                                                                                             |
-| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /v1/:folder/items?after=<seq>&limit=<n>`            | `200 {"items":[{"seq","name","size","sha256","contentType","putAt","liveSince"}]}`, live files only, oldest first, `seq > after` (default 0), `limit` 1–50 (default 50). Metadata only. A whole number outside those bounds is `422`. `liveSince` is when it was put back from home, else `putAt`. |
-| `GET /v1/:folder/items/:name`                            | `200` with the stored bytes, `Content-Type` as stored and `ETag: "<sha256>"`; `410 {"error":"archived","archivedAt"}` if it moved home; `404` if never held.                                                                                                                                       |
-| `PUT /v1/:folder/items/:name` (body = the file's bytes)  | `201 {"change":"added","seq"}`; `200 {"change":"unchanged","seq"}` for the same bytes; `409 {"error":"conflict"}` for other bytes under a held name; `413` when the body is over the cap; `422 {"error":"…why…"}` when the name or content is refused.                                             |
-| `PUT /v1/:folder/items/:name` by `archive`               | Puts an archived file's own bytes back: `201 {"change":"restored","seq"}`; `200 {"change":"unchanged","seq"}` if it is live; `409` for other bytes; `404` if never archived. The body is checked as any put's is.                                                                                  |
-| `DELETE /v1/:folder/items/:name`, `If-Match: "<sha256>"` | Archives it: `200 {"change":"archived"}`, or `"unchanged"` if it already was; `412` if the live bytes are other ones; `422` if it has been live under 30 days; `404` if never held; `428` without a lower-case hex `If-Match`.                                                                     |
-| `GET /v1/:folder/archived?after=<seq>&limit=<n>`         | `200 {"items":[{"seq","name","size","sha256","contentType","putAt","archivedAt"}]}`, oldest first by the `seq` each had while live. Paged as above.                                                                                                                                                |
-| `PUT /v1/:folder/wanted/:name` (no body)                 | Asks home to put an archived file back: `202 {"change":"asked"}`; `200 {"change":"unchanged"}` if already asked; `200 {"change":"live"}` if it is there now; `404` if never archived.                                                                                                              |
-| `GET /v1/:folder/wanted?limit=<n>`                       | `200 {"items":[{"name","askedAt"}]}`, the open asks, oldest first.                                                                                                                                                                                                                                 |
-| anything else                                            | `404`; a method the path does not take is `405` with `Allow`. A missing or wrong token is `401`, a token that may not do this is `403`, and storage failing is `503`.                                                                                                                              |
+| Request                                                  | Answer                                                                                                                                                                                                                                                                                                                                                  |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /v1/:folder/items?after=<seq>&limit=<n>`            | `200 {"items":[{"seq","name","size","sha256","contentType","putAt","liveSince"}]}`, live files only, oldest first, `seq > after` (default 0), `limit` 1–50 (default 50). Metadata only. A whole number outside those bounds is `422`. `liveSince` is when it was put back from home, else `putAt`.                                                      |
+| `GET /v1/:folder/items/:name`                            | `200` with the stored bytes, `Content-Type` as stored and `ETag: "<sha256>"`; `410 {"error":"archived","archivedAt"}` if it moved home; `404` if never held.                                                                                                                                                                                            |
+| `PUT /v1/:folder/items/:name` (body = the file's bytes)  | `201 {"change":"added","seq"}`; `200 {"change":"unchanged","seq"}` for the same bytes; `409 {"error":"conflict"}` for other bytes under a held name, or `409 {"error":"a newer index of this routine is held"}` for an index older than the live one; `413` when the body is over the cap; `422 {"error":"…why…"}` when the name or content is refused. |
+| `PUT /v1/:folder/items/:name` by `archive`               | Puts an archived file's own bytes back: `201 {"change":"restored","seq"}`; `200 {"change":"unchanged","seq"}` if it is live; `409` for other bytes; `404` if never archived. The body is checked as any put's is.                                                                                                                                       |
+| `DELETE /v1/:folder/items/:name`, `If-Match: "<sha256>"` | Archives it: `200 {"change":"archived"}`, or `"unchanged"` if it already was; `412` if the live bytes are other ones; `422` if it has been live under 30 days; `404` if never held; `428` without a lower-case hex `If-Match`.                                                                                                                          |
+| `GET /v1/:folder/archived?after=<seq>&limit=<n>`         | `200 {"items":[{"seq","name","size","sha256","contentType","putAt","archivedAt"}]}`, oldest first by the `seq` each had while live. Paged as above.                                                                                                                                                                                                     |
+| `PUT /v1/:folder/wanted/:name` (no body)                 | Asks home to put an archived file back: `202 {"change":"asked"}`; `200 {"change":"unchanged"}` if already asked; `200 {"change":"live"}` if it is there now; `404` if never archived.                                                                                                                                                                   |
+| `GET /v1/:folder/wanted?limit=<n>`                       | `200 {"items":[{"name","askedAt"}]}`, the open asks, oldest first.                                                                                                                                                                                                                                                                                      |
+| anything else                                            | `404`; a method the path does not take is `405` with `Allow`. A missing or wrong token is `401`, a token that may not do this is `403`, and storage failing is `503`.                                                                                                                                                                                   |
 
 The folders are `brief`, `decisions`, `scout`, `scene`, `drama`, `run`, `opened`, `leetype`,
 `leetype-log`, `transcript` and `index`.
@@ -91,11 +99,11 @@ then six repeats, then `seq 8`). Page with `after` set to the highest `seq` you 
 
 ### Who may do what
 
-| Secret          | Role      | May                                                                                                                              |
-| --------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `ROUTINE_TOKEN` | `routine` | read every folder; put `brief`, `scene`, `drama`, `run` and `leetype`; list what is archived and ask for it back                 |
-| `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama`, `run` and `leetype`; put `decisions`, `scout`, `opened`, `leetype-log`, `transcript` and `index` |
-| `ARCHIVE_TOKEN` | `archive` | read every folder; archive a file and put an archived one back; list the open asks                                               |
+| Secret          | Role      | May                                                                                                                                           |
+| --------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ROUTINE_TOKEN` | `routine` | read every folder; put `brief`, `scene`, `drama`, `run` and `leetype`; list what is archived and ask for it back, in every folder but `index` |
+| `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama`, `run` and `leetype`; put `decisions`, `scout`, `opened`, `leetype-log`, `transcript` and `index`              |
+| `ARCHIVE_TOKEN` | `archive` | read every folder; archive a file, put an archived one back and list the open asks, in every folder but `index`                               |
 
 The routine role is every scheduled routine's: the Jobs digest, the study reflections and,
 once it is scheduled, the LeetType review each put to their own folders.
@@ -107,7 +115,11 @@ role, and it is the owner's call, so it is not built.
 
 ### What a put must satisfy
 
-- **Name**, anchored to its folder: `brief` takes `digest-YYYY-MM-DD.json`; `decisions` takes
+- **Name**, anchored to its folder: `brief` takes `digest-YYYY-MM-DD.json`, and, from the
+  routine's one-time backfill (MB2, below), a pre-mailbox `decisions-YYYY-MM-DD.json`,
+  `decisions-YYYY-MM-DD-<n>.json` or `scouts-YYYYMMDDTHHMMSS.json` under its Drive name, only
+  for a day before 2026-10-23, when the mailbox opened, and each with its own schema
+  (`some-ui.job-decisions/1` or `some-ui.job-scouts/1`); `decisions` takes
   `decisions-YYYY-MM-DD.json` or `decisions-YYYY-MM-DD-<n>.json`; `scout` takes
   `scouts-YYYYMMDDTHHMMSS.json`; `scene` takes `scene-<reflection>.json` or
   `scene-<reflection>-<n>.json`, named for the reflection it answers
@@ -127,9 +139,9 @@ role, and it is the owner's call, so it is not built.
   note's next, when it files the transcript; never its `attempt`, which starts again at 1 for
   each model), so a better model's transcript goes under a new name rather than meeting a `409`,
   and the highest `<n>` is the newest; and `index` takes `index-<routine>-YYYYMMDDTHHMMSSmmmZ.json`,
-  named for the routine (lower-case letters) and when home filed it, in UTC to the
-  millisecond, so each change goes under a new name and the newest is the greatest name (not
-  the highest `seq`: one home could not hand at once is handed by a later pass).
+  named for the routine (lower-case letters) and when home computed it, in UTC to the
+  millisecond, so each change goes under a new name, the greatest name is the newest, and the
+  folder holds one per routine.
   Anything else, an audio file's name included, is `422`.
 - **Content type** `application/json` (parameters such as `charset` are ignored), and the body
   must be UTF-8 JSON with no byte-order mark.
@@ -179,13 +191,14 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   than any word of speech. It cannot catch audio spelled some other way (a `\u`-escaped
   `data:`, say), or a bare Drive id in any field, which looks like any other id. **An index**
   is home's bookkeeping for one routine, deterministic from what home holds (paulgsc/server
-  `mailbox::index`, paulgsc/server#509): the same rows give the same bytes, so home files a new
-  one only when it would differ from the last. Its `routine` names the routine, as the file's
+  `mailbox::index`, paulgsc/server#509): the same rows give the same bytes, so home puts a new
+  one only when it would differ from the last, and keeps no copy. Its `routine` names the routine, as the file's
   name does; `jobs` is the only one so far. The Jobs index is
   `{"schema":"some-ui.routine-index/1","routine":"jobs","day","asOf","from","skipped","queue","new","notes","picked"}`:
   `day`, the day in America/Los_Angeles it is for; `asOf`, when home last took in something it
   counts, or `null`; `from`, every digest, decisions and scouts file it was computed from, by
-  name (`{"digests","decisions","scout"}`); `skipped`, those that do not read as their schema;
+  name, and which of those decisions and scouts files came from the routine's backfill rather
+  than from the phone (`{"digests","decisions","scout","backfill"}`); `skipped`, those that do not read as their schema;
   `queue`, as `@some-ui/job-desk`'s `queueOf` and `freeSlots` give it on `day`
   (`{"open":[{"day","pickId","track","fingerprint","title","company","applyUrl"}],"lapsed":[…],"free":{"software","adjacent"}}`);
   `new`, each decisions and scouts file no digest names in `read`, with the entries in it that a
@@ -205,7 +218,8 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   files are under 20 KB, except LeetType session files: Thread 1's first file is 30 KB
   for two rounds, and the ten-round draft was 140 KB. A Jobs index grows with what it names
   for good (`from` and `picked`: a file name or a fingerprint, tens of bytes, for every file
-  and pick), so a few hundred bytes a day; home files none over the cap.
+  and pick), so a few hundred bytes a day; only the latest is kept, and home puts none over
+  the cap.
 
 ## Limits
 
@@ -233,26 +247,34 @@ Each is written for review, one hunk at a time (`REVIEW.md`; `CLAUDE.md`, "Gray-
 invariants"). One line of each is in the doc comment of `src/core.ts`. The sections below say
 how each was checked when this workspace landed.
 
-**MB1: An item never changes, and leaves `item` only into `archived`.**
+**MB1: An item never changes, and leaves `item` only into `archived`, or, for home's index, once a newer one of its routine is live.**
 
 - _Claim:_ in `apps/mailbox`, no source file or migration updates or replaces an `item` row;
-  the only statement that deletes one is the archive's, which names only items whose row
-  `archived` already holds with the SHA-256 the request named in `If-Match`; and an archived
-  name never takes other bytes. The adapter writes `item` with an `INSERT … ON CONFLICT
+  the only statements that delete one are the archive's, which names only items whose row
+  `archived` already holds with the SHA-256 the request named in `If-Match`, and an index
+  put's, which drops only the `index` items of the put's routine older than the newest
+  (`DROP_OLDER_INDEXES_SQL`, in the same batch as the put); and an archived name never takes
+  other bytes. The adapter writes `item` with an `INSERT … ON CONFLICT
 (folder, name) DO NOTHING` (a put adds nothing under an archived name, in the same
-  statement) and that `DELETE`. `item` carries three triggers: `BEFORE UPDATE` aborts;
+  statement) and those `DELETE`s. `item` carries three triggers: `BEFORE UPDATE` aborts;
   `item_leaves_only_into_archived` aborts a `DELETE` unless `archived` holds a row with the
-  item's `seq`, folder, name and SHA-256; `item_keeps_an_archived_name` aborts an `INSERT`
+  item's `seq`, folder, name and SHA-256, or the item is in `index` and a greater-named
+  `index` item of the same routine (the name less its last 24 characters) is live;
+  `item_keeps_an_archived_name` aborts an `INSERT`
   of other bytes under an archived name. `archived` and `restored` carry triggers that abort
   every `UPDATE` and `DELETE`. The only other delete is of an answered ask in `wanted`, and
   the only insert into `archived` is the archive's.
 - _Falsified by_ a hunk that drops, renames or weakens any of those triggers (a later
   migration that drops a trigger or one of the tables included, other than `0003_folders.sql`'s
-  rebuild, which recreates them); that deletes or moves the
+  rebuild, which recreates them, and `0004_index_view.sql`, which recreates
+  `item_leaves_only_into_archived` with the index's exception alone); that widens that
+  exception past the `index` folder or past items a newer index of the same routine
+  outranks, or changes `DROP_OLDER_INDEXES_SQL` likewise, runs it outside the put's batch, or
+  runs it for another folder; that deletes or moves the
   migrations that create them, or changes `migrations_dir` in `wrangler.jsonc` so they no
   longer apply; that adds an `UPDATE`, `INSERT OR REPLACE`, `REPLACE INTO` or
   `ON CONFLICT … DO UPDATE` against `item`, `archived` or `restored`, a `DELETE` other than
-  the two in `store.ts`, or an `INSERT INTO archived` other than `ARCHIVE_SQL`, anywhere in
+  the three in `store.ts`, or an `INSERT INTO archived` other than `ARCHIVE_SQL`, anywhere in
   `src/` or `migrations/`; that changes `put`'s `INSERT_SQL` away from `DO NOTHING` or drops
   its `NOT EXISTS (… archived …)` condition; that drops the `sha256 = ?3` condition from
   `ARCHIVE_SQL` or `DROP_BYTES_SQL`, drops the latter's `seq IN (SELECT seq FROM archived …)`,
@@ -286,25 +308,38 @@ how each was checked when this workspace landed.
   keeps every row and seq and carries the sequence past archived seqs, with items live, with
   none live, and on a table never used; and workerd's D1 (`wrangler d1 migrations apply
 --local`) applied it with the same result. Remote D1 was not tried: if it refuses the
-  `sqlite_sequence` update, the migration rolls back whole and nothing changes.
+  `sqlite_sequence` update, the migration rolls back whole and nothing changes. _Checked at
+  the index amendment (`0004_index_view.sql`, 2026-10-31, the owner's decision that the index
+  is a view, not a record, [paulgsc/server#509](https://github.com/paulgsc/server/issues/509#issuecomment-6547096403)):_ `store.ts` has three
+  `DELETE`s (the archive's and `DROP_OLDER_INDEXES_SQL` on `item`, and an answered ask on
+  `wanted`) and still no `UPDATE` or `REPLACE`; after every migration `item` has the same
+  three triggers; `store.test.ts` has a trigger case that lets an index go only while a newer
+  one of its routine is live and never another folder's item, and runs the index put against
+  the in-memory store and the adapter alike.
 
 **MB2: Roles.**
 
 - _Claim:_ the `ROLES` table in `src/core.ts` is the only place a token is mapped to what it
   may do, and it holds exactly three roles: `routine` (get every folder, put `brief`, `scene`,
-  `drama`, `run` and `leetype`, ask every folder), `home` (get `brief`, `scene`, `drama`, `run`
-  and `leetype`, put `decisions`, `scout`, `opened`, `leetype-log`, `transcript` and `index`)
-  and `archive` (get and move every folder; owner, 2026-10-23, and `scene` and `drama` the
-  same day; `run` and `opened` 2026-10-24; `leetype` and `leetype-log` 2026-10-24 too;
-  `transcript` 2026-10-25; `index` 2026-10-31, paulgsc/server#509). Every request passes `authenticate` and then one of `serve`'s
+  `drama`, `run` and `leetype`, ask every folder but `index`), `home` (get `brief`, `scene`,
+  `drama`, `run` and `leetype`, put `decisions`, `scout`, `opened`, `leetype-log`,
+  `transcript` and `index`) and `archive` (get every folder, move every folder but `index`;
+  owner, 2026-10-23, and `scene` and `drama` the same day; `run` and `opened` 2026-10-24;
+  `leetype` and `leetype-log` 2026-10-24 too; `transcript` 2026-10-25; `index` 2026-10-31,
+  paulgsc/server#509, and kept out of `ask` and `move` the same day, since it is a view and
+  not a record). The routine's `brief` also takes its one-time backfill: a Jobs decisions or
+  scouts file named for a day before 2026-10-23, under its Drive name (`FOLDERS`' `backfill`,
+  `MAILBOX_OPENED`), so the files it can add there are a closed set. Every request passes `authenticate` and then one of `serve`'s
   `may(grant.get | put | ask | move)` checks before anything reaches the store.
 - _Falsified by_ a hunk that adds, removes or renames a role; adds a folder to, or removes one
   from, any role's `get`, `put`, `ask` or `move` list; changes which secret a role reads, or
   lets `authenticate` read another secret or accept an unset, empty or shared one; edits,
   loosens or removes a `may` check in `serve`, or changes which right a listing or method is
   checked against; lets `handle` reach `serve` or the store without a grant; adds a method to
-  a route in `METHODS`; or renames, moves or deletes the `ROLES` table; when the PR
-  description does not name the owner's decision to do so.
+  a route in `METHODS`; renames, moves or deletes the `ROLES` table; or adds a `backfill`
+  kind to any folder, changes one's name or schema, moves `MAILBOX_OPENED` or lets
+  `kindOf` take a backfill name for a day on or after it; when the PR description does not
+  name the owner's decision to do so.
 - _Scope:_ `apps/mailbox/src/core.ts` and `wrangler.jsonc`.
 - _Why not enforced:_ `__tests__/core.test.ts` pins today's matrix (every role against every
   folder and method), but a hunk that changes the table and the test together passes it. A test
@@ -332,7 +367,15 @@ how each was checked when this workspace landed.
   archive moves it. _Checked at the index amendment (2026-10-31, the owner's HF7,
   paulgsc/server#509: "after each mailbox pass, home puts an index file per routine to the
   mailbox"):_ `ROLES` has three entries; `core.test.ts` pins `index`: home puts it and may not
-  read it, the routine reads it and may not put it, and archive moves it.
+  read it, the routine reads it and may not put it, and archive moves it. _Checked at the
+  derived-view and backfill amendment (2026-10-31, the owner's decision on the HF7 asks,
+  [paulgsc/server#509](https://github.com/paulgsc/server/issues/509#issuecomment-6547096403): "yes on 1 and 2, and
+  let's go with the recommended option A for 3"):_ `ROLES` has three entries; the routine's
+  `ask` and the archive role's `move` are `RECORDS`, every folder but `index`, and
+  `core.test.ts` pins that no role archives `index`, lists it as archived or asked for, or
+  asks for it; `brief`'s `backfill` takes `decisions-…` and `scouts-…` only for a day before
+  `MAILBOX_OPENED` (2026-10-23), each under its own schema, and `core.test.ts` pins the days
+  on either side of it, the schemas, and that only the routine puts one.
 
 **MB3: No token reaches the repo or a log.**
 
@@ -410,7 +453,10 @@ asks.
 ### Updating a deployed mailbox
 
 Run step 3 again, then step 5, from `origin/main`: `migrations apply` runs only the
-migrations it has not applied, and a migration that fails is rolled back whole. For archiving (`0002_archive.sql`), also put `ARCHIVE_TOKEN` (step 4) and give the
+migrations it has not applied, and a migration that fails is rolled back whole. Apply a new
+migration before deploying the code that needs it: `0004_index_view.sql` (the index keeps only
+the latest) must be in before the Worker whose index put drops the one before, or that put
+fails with `503` until it is. For archiving (`0002_archive.sql`), also put `ARCHIVE_TOKEN` (step 4) and give the
 same value to home as `MAILBOX_ARCHIVE_TOKEN`.
 
 ## Working on it

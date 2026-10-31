@@ -6,8 +6,9 @@
  * The invariants this file governs (full text: README.md, "Gray-area
  * invariants"):
  *
- * - MB1: an item never changes, and leaves `item` only into `archived`
- *   (`store.ts`, `migrations/`).
+ * - MB1: an item never changes, and leaves `item` only into `archived`, or,
+ *   for home's index, once a newer index of its routine is live (`store.ts`,
+ *   `migrations/`).
  * - MB2: `ROLES` is the one place a token is mapped to what it may do.
  * - MB3: no token reaches the repo or a log.
  * - MB4: the Cloudflare account has no payment method (account state, not
@@ -230,10 +231,15 @@ function indexRefusal(
   return null
 }
 
-type FolderRules = {
-  readonly folder: Folder
-  /** Audio files match none, on purpose: the mailbox carries text. */
-  readonly name: RegExp
+/**
+ * The day the mailbox opened. MB2's backfill (owner, 2026-10-31,
+ * paulgsc/server#509) takes a pre-mailbox file only under a name for a day
+ * before it, so the files it can take are a closed set.
+ */
+const MAILBOX_OPENED = "2026-10-23"
+
+/** What a name in a folder must carry: its schema, and any deeper check. */
+type Kind = {
   readonly schema: string
   /**
    * Checks deeper than the schema, for a folder whose shape the mailbox
@@ -246,11 +252,48 @@ type FolderRules = {
   ) => string | null
 }
 
+type FolderRules = Kind & {
+  readonly folder: Folder
+  /** Audio files match none, on purpose: the mailbox carries text. */
+  readonly name: RegExp
+  /**
+   * MB2's backfill: files this folder takes besides its own, each by name
+   * and schema, once each, and only for a day before `MAILBOX_OPENED`. Each
+   * name's `y`, `m` and `d` groups are the day it is for.
+   */
+  readonly backfill?: ReadonlyArray<Kind & { readonly name: RegExp }>
+}
+
+/** What `name` must carry in `rules`' folder, or `null` for a name it does not take. */
+function kindOf(rules: FolderRules, name: string): Kind | null {
+  if (rules.name.test(name)) return rules
+  for (const kind of rules.backfill ?? []) {
+    const day = kind.name.exec(name)?.groups
+    if (day === undefined) continue
+    const { y = "", m = "", d = "" } = day
+    if (`${y}-${m}-${d}` < MAILBOX_OPENED) return kind
+  }
+  return null
+}
+
 const FOLDERS: ReadonlyArray<FolderRules> = [
   {
     folder: "brief",
     name: /^digest-\d{4}-\d{2}-\d{2}\.json$/,
     schema: "some-ui.job-digest/1",
+    // The Jobs decisions and scouts files from before the mailbox, which only
+    // Drive holds, put back once under their Drive names so home counts them
+    // in its index (MB2, owner, 2026-10-31).
+    backfill: [
+      {
+        name: /^decisions-(?<y>\d{4})-(?<m>\d{2})-(?<d>\d{2})(-\d+)?\.json$/,
+        schema: "some-ui.job-decisions/1",
+      },
+      {
+        name: /^scouts-(?<y>\d{4})(?<m>\d{2})(?<d>\d{2})T\d{6}\.json$/,
+        schema: "some-ui.job-scouts/1",
+      },
+    ],
   },
   {
     folder: "decisions",
@@ -342,7 +385,13 @@ type Grant = {
   readonly move: ReadonlyArray<Folder>
 }
 
-const ALL: ReadonlyArray<Folder> = [
+/**
+ * Every folder that holds records: all but `index`. Home's index is a view it
+ * recomputes from records it keeps, so the mailbox keeps only the latest and
+ * nothing archives it or asks for an old one (owner, 2026-10-31,
+ * paulgsc/server#509).
+ */
+const RECORDS: ReadonlyArray<Folder> = [
   "brief",
   "decisions",
   "scout",
@@ -353,8 +402,9 @@ const ALL: ReadonlyArray<Folder> = [
   "leetype",
   "leetype-log",
   "transcript",
-  "index",
 ]
+
+const ALL: ReadonlyArray<Folder> = [...RECORDS, "index"]
 
 /** MB2. Another role (the phone's, say) is the owner's call, not a code change. */
 const ROLES: ReadonlyArray<Grant> = [
@@ -363,7 +413,7 @@ const ROLES: ReadonlyArray<Grant> = [
     token: (tokens) => tokens.routine,
     get: ALL,
     put: ["brief", "scene", "drama", "run", "leetype"],
-    ask: ALL,
+    ask: RECORDS,
     move: [],
   },
   {
@@ -380,7 +430,7 @@ const ROLES: ReadonlyArray<Grant> = [
     get: ALL,
     put: [],
     ask: [],
-    move: ALL,
+    move: RECORDS,
   },
 ]
 
@@ -559,7 +609,7 @@ async function read(
   name: string,
   store: Store
 ): Promise<Response> {
-  if (!rules.name.test(name)) return refuse(404, "not_found")
+  if (kindOf(rules, name) === null) return refuse(404, "not_found")
   const item = await store.get(rules.folder, name)
   if (item === null) {
     const archived = await store.archivedOf(rules.folder, name)
@@ -641,7 +691,8 @@ async function bodyOf(
   rules: FolderRules,
   name: string
 ): Promise<Body | Response> {
-  if (!rules.name.test(name)) {
+  const kind = kindOf(rules, name)
+  if (kind === null) {
     return refuse(422, "the name does not fit this folder")
   }
   if (!isJsonType(request.headers.get("content-type"))) {
@@ -663,10 +714,10 @@ async function bodyOf(
 
   const parsed = parseJson(bytes)
   if (!parsed.ok) return refuse(422, "the body is not JSON")
-  if (!isRecord(parsed.value) || parsed.value.schema !== rules.schema) {
-    return refuse(422, `the body's schema must be ${rules.schema}`)
+  if (!isRecord(parsed.value) || parsed.value.schema !== kind.schema) {
+    return refuse(422, `the body's schema must be ${kind.schema}`)
   }
-  const refusal = rules.refuses?.(parsed.value, parsed.text, name) ?? null
+  const refusal = kind.refuses?.(parsed.value, parsed.text, name) ?? null
   if (refusal !== null) return refuse(422, refusal)
   return { bytes, sha256: hex(await sha256(bytes)) }
 }
@@ -689,6 +740,9 @@ async function write(
     putAt: deps.now().toISOString(),
   })
   if (result.change === "conflict") return refuse(409, "conflict")
+  if (result.change === "superseded") {
+    return refuse(409, "a newer index of this routine is held")
+  }
   return answer(result.change === "added" ? 201 : 200, {
     change: result.change,
     seq: result.seq,
@@ -744,7 +798,7 @@ async function archive(
   name: string,
   deps: Deps
 ): Promise<Response> {
-  if (!rules.name.test(name)) return refuse(404, "not_found")
+  if (kindOf(rules, name) === null) return refuse(404, "not_found")
   const sha = matchOf(request)
   if (sha === null) {
     return refuse(428, 'If-Match must name the item\'s sha256, as "<hex>"')
@@ -786,7 +840,7 @@ async function ask(
   name: string,
   deps: Deps
 ): Promise<Response> {
-  if (!rules.name.test(name)) return refuse(404, "not_found")
+  if (kindOf(rules, name) === null) return refuse(404, "not_found")
   const result = await deps.store.ask(
     rules.folder,
     name,
