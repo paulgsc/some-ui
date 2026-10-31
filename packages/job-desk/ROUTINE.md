@@ -21,6 +21,14 @@ every run, one that stops early included, leaves a record there of what it
 did (§9): the phone has no other way to tell a run that found nothing from
 one that never finished.
 
+Home keeps every digest, decisions file, scout and transcript, and after each
+of its passes it leaves the bookkeeping this file used to have the run do
+itself in the mailbox too: home's index (§0.5). When the index stands, the
+run reads the queue, what is new and which notes are waiting from it, and
+downloads nothing to work them out. The run never redoes or second-guesses
+what the index says; it only checks that the index is today's and covers
+every file Drive holds.
+
 The shapes are this package's schemas, and `src/sample.digest.json`
 is a complete digest to copy. The limits (picks per track, open picks,
 places, queries, excluded titles, posting age, the hosts the run opens) are
@@ -66,6 +74,40 @@ record (§9) and the summary (§10). Nothing ends a run before those two.
    goes to Drive. Use only `curl` with that `Authorization` header, never print
    the token, and don't turn on shell tracing (`set -x`).
 
+5. Home's index. If the mailbox is usable, list its `index` folder, starting
+   at `after=0`, paged as §2 pages the decisions folder, to the end:
+
+   ```sh
+   curl -sS --max-time 30 -H "Authorization: Bearer $JOBS_MAILBOX_TOKEN" \
+     "$JOBS_MAILBOX_URL/v1/index/items?after=0&limit=50"
+   ```
+
+   Of the names that start `index-jobs-`, take the one with the highest
+   `seq`, fetch it from `index/items/<name>` as §2 fetches a decisions file,
+   and check its `sha256`. It must be JSON with
+   `"schema": "some-ui.routine-index/1"` and `"routine": "jobs"`. It stands
+   for this run when all of these hold:
+
+   - its `day` is today;
+   - every `digest-*.json` in `Brief/` is in its `from.digests`, every file
+     in `Decisions/` in its `from.decisions`, and every file in `Scout/` in
+     its `from.scout` (list the three folders; download nothing). Home holds
+     only what the phone sent it and what the mailbox carried, so a file
+     only Drive has is one the index could not count.
+
+   For each digest in `Brief/` that `from.digests` lacks, put it in the
+   mailbox's `brief` folder now, its bytes exactly as Drive holds them, as
+   §8.6 puts today's (`--data-binary`): home takes it in within 15 minutes,
+   so the next run's index counts it. A `409` means the mailbox holds other
+   bytes under that name: say so in the summary.
+
+   When the index doesn't stand, or there is none, or the mailbox isn't
+   usable, do §2's bookkeeping as written, from Drive and the mailbox, and say
+   why in the summary, in my terms ("Home hadn't caught up with today's files,
+   so this run counted them itself"). When it stands, §2 says what it
+   replaces. Its `asOf` is when home last took in anything it counts; a file
+   I shared after that waits for tomorrow's run, which the index will name.
+
 Today is the date in America/Los_Angeles.
 
 ## 1. The evidence
@@ -97,6 +139,39 @@ Record both commits in `evidence`, and the some-ui commit as each build's
 `ref`.
 
 ## 2. What I said since the last run
+
+**When home's index stands (§0.5)**, it has done this section's bookkeeping,
+and nothing below is downloaded or compared to work it out:
+
+- **What is new** is its `new`: each decisions file (`new.decisions`) and
+  scouts file (`new.scout`) that no digest names in `read`. Fetch each from
+  the mailbox by name (`decisions/items/<name>`, `scout/items/<name>`, as
+  below, `wanted` included for an archived one), check it (step 8 below) and
+  take it in. An entry whose `id` is in that file's `repeats` was taken in
+  from an earlier file, and a scout in its `answered` was answered by an
+  earlier digest: skip both, as the rules below say.
+- **The voice notes** are its `notes`: each note some file names that no
+  digest lists in `notesDone`, with the file that names it (`in`), the
+  phone's id for it (`note`, `null` from a file before ids) and its newest
+  transcript (`transcript`: the `name` in the mailbox's `transcript` folder
+  and its `sha256`, or `null` when home hasn't heard it yet). Fetch each
+  transcript by that name, check its bytes against that `sha256` as well as
+  the listing's, hold it to "Home's transcripts" step 2's checks, and go on
+  with its steps 3 and 4. A `note` of `null` is its step 1's case, and a
+  `transcript` of `null` its last paragraph's. Don't list the `transcript`
+  folder to find them.
+- **The queue** is its `queue`, exactly what step 1 of "The queue" would
+  print, for `day`: `open` (each pick with its `day`, `pickId`, `track`,
+  `fingerprint`, `title`, `company` and `applyUrl`), `lapsed` and `free`.
+  Files that don't read as their schema are in `skipped`: name them in the
+  summary.
+- **Never picked again** is its `picked`: every posting a digest picked or a
+  decisions file names, by fingerprint.
+
+A redraft (below) needs its pick's kit and fits: fetch that one digest,
+`brief/items/digest-<day>.json` from the mailbox or `Brief/` from Drive.
+
+**Otherwise**, work it out as follows.
 
 Every digest lists in `read` the Decisions and Scout files it took in. Read
 every digest in `Brief/` and collect those names; the files in
@@ -204,7 +279,8 @@ came from). When a later decisions file restates a pick, I changed my mind:
 the newest entry is the decision that stands.
 
 A posting picked in any earlier digest, or named in any decisions file, is
-never picked again, unless a disagreement brought it back.
+never picked again, unless a disagreement brought it back. With home's index
+(above), those are the fingerprints in its `picked`.
 
 ### Home's transcripts
 
@@ -252,8 +328,9 @@ track (the same as `PICKS_PER_DAY`: 3 software, 2 adjacent), earlier
 digests' picks included. A pick I leave untouched for `LAPSE_DAYS` days (3)
 lapses and frees its slot, so the queue never turns into a backlog to clear.
 
-1. Download every digest in `Brief/` and every decisions file in
-   `Decisions/` that passes the checker (all of them, not only the new ones;
+1. With home's index (above), its `queue` is this step's answer: skip to
+   step 2. Otherwise, download every digest in `Brief/` and every decisions
+   file in `Decisions/` that passes the checker (all of them, not only the new ones;
    a file step 1 skipped stays out) into one scratch folder, and from the
    repo root run:
 
@@ -765,5 +842,6 @@ each redraft, by its pick, or why a fit note got none; each
 scout's verdict; the calibration note, once there are enough outcomes; the
 mailbox (whether the digest was added, was already there or was refused, and
 why; the files taken in from it; any name whose bytes differed from Drive's; or
-that it was skipped, and why); the run record (its outcome and problems, and
+that it was skipped, and why); home's index (whether it stood, and when it
+didn't, why, and any digest put back for home to count); the run record (its outcome and problems, and
 whether the mailbox took it); and anything skipped, with why.

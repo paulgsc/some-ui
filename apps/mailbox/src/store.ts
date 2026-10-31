@@ -17,6 +17,7 @@ export type Folder =
   | "leetype"
   | "leetype-log"
   | "transcript"
+  | "index"
 
 /** Who put an item. A restored item keeps its first putter. */
 export type Putter = "routine" | "home"

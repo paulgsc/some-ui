@@ -828,6 +828,163 @@ describe("voice transcripts", () => {
   })
 })
 
+describe("home's indexes", () => {
+  const JOBS = {
+    schema: "some-ui.routine-index/1",
+    routine: "jobs",
+    day: "2026-10-31",
+    asOf: "2026-10-31T14:45:02.118Z",
+    from: {
+      digests: ["digest-2026-10-30.json"],
+      decisions: ["decisions-2026-10-30.json"],
+      scout: [],
+    },
+    skipped: [],
+    queue: {
+      open: [
+        {
+          day: "2026-10-30",
+          pickId: "tid-7f2a",
+          track: "software",
+          fingerprint: "tidewater|backend engineer|remote",
+          title: "Backend Engineer",
+          company: "Tidewater",
+          applyUrl: "https://jobs.lever.co/tidewater/6f1c2b9e",
+        },
+      ],
+      lapsed: [],
+      free: { software: 2, adjacent: 2 },
+    },
+    new: {
+      decisions: [{ name: "decisions-2026-10-30.json", repeats: [] }],
+      scout: [],
+    },
+    notes: [
+      {
+        file: "decisions-2026-10-30_voice-1.webm",
+        in: "decisions-2026-10-30.json",
+        note: "k3v9qa",
+        transcript: {
+          name: "transcript-k3v9qa-1.json",
+          sha256: "a".repeat(64),
+        },
+      },
+    ],
+    picked: ["tidewater|backend engineer|remote"],
+  }
+  const INDEX = JSON.stringify(JOBS)
+  const NAME = "index-jobs-20261031T144502118Z.json"
+  const asHome = (
+    d: Deps,
+    name: string,
+    body: string = INDEX
+  ): Promise<Response> => put(d, "index", name, { token: HOME, body })
+
+  it("home puts an index once, and the routine reads it; neither the other way", async () => {
+    const d = deps()
+    expect((await asHome(d, NAME)).status).toBe(201)
+    expect((await asHome(d, NAME)).status).toBe(200)
+    expect(
+      (await asHome(d, NAME, JSON.stringify({ ...JOBS, day: "2026-11-01" })))
+        .status
+    ).toBe(409)
+    // What changed goes under a new name, named for when home filed it.
+    expect(
+      (
+        await asHome(
+          d,
+          "index-jobs-20261101T080001003Z.json",
+          JSON.stringify({ ...JOBS, day: "2026-11-01" })
+        )
+      ).status
+    ).toBe(201)
+
+    const path = `/v1/index/items/${NAME}`
+    const read = await send(d, "GET", path)
+    expect(read.status).toBe(200)
+    expect(await read.text()).toBe(INDEX)
+    expect((await send(d, "GET", "/v1/index/items")).status).toBe(200)
+    expect((await send(d, "GET", path, { token: HOME })).status).toBe(403)
+    expect(
+      (await send(d, "GET", "/v1/index/items", { token: HOME })).status
+    ).toBe(403)
+    expect((await put(d, "index", NAME, { body: INDEX })).status).toBe(403)
+  })
+
+  it("takes only its own names", async () => {
+    const d = deps()
+    for (const name of [
+      "index-jobs-20261031T144502Z.json",
+      "index-Jobs-20261031T144502118Z.json",
+      "index-20261031T144502118Z.json",
+      "jobs-index-20261031T144502118Z.json",
+      "index-jobs-20261031T144502118Z.webm",
+    ]) {
+      expect([name, (await asHome(d, name)).status]).toEqual([name, 422])
+    }
+  })
+
+  it("takes only a jobs index's own shape, and says why not", async () => {
+    const d = deps()
+    const refused = async (
+      body: Record<string, unknown>,
+      name = NAME
+    ): Promise<unknown> => {
+      const response = await asHome(d, name, JSON.stringify(body))
+      expect(response.status).toBe(422)
+      return json(response)
+    }
+    expect(await refused({ ...JOBS, routine: "reflections" })).toEqual({
+      error: "routine must be jobs",
+    })
+    expect(await refused(JOBS, "index-topik-20261031T144502118Z.json")).toEqual(
+      { error: "the name must carry the body's routine" }
+    )
+    expect(await refused({ ...JOBS, drafts: [] })).toEqual({
+      error: "drafts is not part of the jobs index",
+    })
+    const { picked: _, ...short } = JOBS
+    expect(await refused(short)).toEqual({
+      error: "the jobs index carries picked",
+    })
+    for (const day of ["2026-10-31T00:00:00Z", "31-10-2026", "2026-13-01", 7]) {
+      expect(await refused({ ...JOBS, day })).toEqual({
+        error: "day must be the day the index is for",
+      })
+    }
+    expect(await refused({ ...JOBS, asOf: "this morning" })).toEqual({
+      error: "asOf must be when home last took in what the index counts",
+    })
+    expect(await refused({ ...JOBS, queue: [] })).toEqual({
+      error: "queue must be an object",
+    })
+    expect(await refused({ ...JOBS, notes: {} })).toEqual({
+      error: "notes must be a list",
+    })
+    // Home's first index, before it holds anything: no asOf.
+    expect(
+      (await asHome(d, NAME, JSON.stringify({ ...JOBS, asOf: null }))).status
+    ).toBe(201)
+  })
+
+  it("refuses an index that carries audio or names a Drive file", async () => {
+    const d = deps()
+    const audio = { error: "an index carries no audio: home keeps the audio" }
+    const drive = { error: "an index names no Drive file" }
+    const withNote = (file: string): string =>
+      JSON.stringify({ ...JOBS, notes: [{ ...JOBS.notes[0], file }] })
+    for (const [body, why] of [
+      [withNote("data:audio/webm;base64,GkXfo59ChoEBQveBAULygQRC"), audio],
+      [withNote("A".repeat(300)), audio],
+      [withNote("https://drive.google.com/file/d/1AbC/view"), drive],
+    ] as const) {
+      const response = await asHome(d, NAME, body)
+      expect(response.status).toBe(422)
+      expect(await json(response)).toEqual(why)
+    }
+  })
+})
+
 describe("names", () => {
   it("a name that breaks the folder's pattern is refused", async () => {
     const d = deps()
@@ -1217,6 +1374,7 @@ describe("archiving", () => {
       "leetype",
       "leetype-log",
       "transcript",
+      "index",
     ]) {
       expect(
         (await send(d, "GET", `/v1/${folder}/items`, { token: ARCHIVE })).status

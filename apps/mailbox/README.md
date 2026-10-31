@@ -10,7 +10,10 @@ phone opened (`opened`), names only, so it keeps three ready. For LeetType: the 
 files** a routine writes (`leetype`), which home serves to the phone, and
 each finished session's **log** as home holds it (`leetype-log`), so a routine can read how the
 sessions went. For voice notes: what home heard in each one (`transcript`), text only, so the
-routines read it instead of hearing the audio themselves. Each side reaches it with
+routines read it instead of hearing the audio themselves. For the routines' bookkeeping: an
+**index** per routine (`index`), which home computes from what it holds after each pass (for
+the Jobs routine, the queue, what is new since the last digest and each waiting note's newest
+transcript), so a routine reads it instead of rebuilding it. Each side reaches it with
 its own token, so the files move between them without a hand-carried step.
 
 ## Why it exists
@@ -26,6 +29,7 @@ cloud routine ◀──GET opened── [ mailbox ] ◀──PUT opened── ho
 cloud routine ──PUT leetype──▶ [ mailbox ] ◀──GET leetype── home ◀── phone (LeetType sessions)
 cloud routine ◀──GET leetype-log── [ mailbox ] ◀──PUT leetype-log── home ◀── phone (Send to home)
 cloud routine ◀──GET transcript── [ mailbox ] ◀──PUT transcript── home ◀── phone (a voice note)
+cloud routine ◀──GET index── [ mailbox ] ◀──PUT index── home (after each pass, when it changed)
 ```
 
 The phone talks to home only. The mailbox carries no audio: home keeps the audio
@@ -77,7 +81,7 @@ Every request needs `Authorization: Bearer <token>`. Every answer is JSON, or th
 | anything else                                            | `404`; a method the path does not take is `405` with `Allow`. A missing or wrong token is `401`, a token that may not do this is `403`, and storage failing is `503`.                                                                                                                              |
 
 The folders are `brief`, `decisions`, `scout`, `scene`, `drama`, `run`, `opened`, `leetype`,
-`leetype-log` and `transcript`.
+`leetype-log`, `transcript` and `index`.
 
 **`seq` only grows, and it has gaps.** SQLite hands out a number for every put that reaches the
 table, including a put of a name already held (`unchanged` or `conflict`), which stores nothing.
@@ -87,11 +91,11 @@ then six repeats, then `seq 8`). Page with `after` set to the highest `seq` you 
 
 ### Who may do what
 
-| Secret          | Role      | May                                                                                                                     |
-| --------------- | --------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `ROUTINE_TOKEN` | `routine` | read every folder; put `brief`, `scene`, `drama`, `run` and `leetype`; list what is archived and ask for it back        |
-| `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama`, `run` and `leetype`; put `decisions`, `scout`, `opened`, `leetype-log` and `transcript` |
-| `ARCHIVE_TOKEN` | `archive` | read every folder; archive a file and put an archived one back; list the open asks                                      |
+| Secret          | Role      | May                                                                                                                              |
+| --------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `ROUTINE_TOKEN` | `routine` | read every folder; put `brief`, `scene`, `drama`, `run` and `leetype`; list what is archived and ask for it back                 |
+| `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama`, `run` and `leetype`; put `decisions`, `scout`, `opened`, `leetype-log`, `transcript` and `index` |
+| `ARCHIVE_TOKEN` | `archive` | read every folder; archive a file and put an archived one back; list the open asks                                               |
 
 The routine role is every scheduled routine's: the Jobs digest, the study reflections and,
 once it is scheduled, the LeetType review each put to their own folders.
@@ -122,13 +126,15 @@ role, and it is the owner's call, so it is not built.
   must differ for every transcript of the note across every model (home decides it once, as the
   note's next, when it files the transcript; never its `attempt`, which starts again at 1 for
   each model), so a better model's transcript goes under a new name rather than meeting a `409`,
-  and the highest `<n>` is the newest. Anything else, an audio file's name included,
-  is `422`.
+  and the highest `<n>` is the newest; and `index` takes `index-<routine>-YYYYMMDDTHHMMSSmmmZ.json`,
+  named for the routine (lower-case letters) and when home filed it, in UTC to the
+  millisecond, so each change goes under a new name and the newest is the highest `seq`.
+  Anything else, an audio file's name included, is `422`.
 - **Content type** `application/json` (parameters such as `charset` are ignored), and the body
   must be UTF-8 JSON with no byte-order mark.
 - **Schema**: the top-level `schema` must be `some-ui.job-digest/1`, `some-ui.job-decisions/1`,
   `some-ui.job-scouts/1`, `some-ui.routine-scene/1`, `some-ui.routine-drama/1`, `some-ui.routine-run/1`,
-  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1` or `some-ui.voice-transcript/1` to match the folder. The Worker checks that and nothing deeper, except for a transcript (below); the readers validate the full shape.
+  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1` or `some-ui.routine-index/1` to match the folder. The Worker checks that and nothing deeper, except for a transcript and an index (below); the readers validate the full shape.
 - **A scene** is `{"schema":"some-ui.routine-scene/1","answers":"<reflection>","title":"<the
 scene folder's name>","decks":[<read-aloud deck>,<lens deck>]}`, each deck exactly as the
   phone's word set check takes it. **A drama** is `{"schema":"some-ui.routine-drama/1",
@@ -170,11 +176,35 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   included), a `data:<type>/<subtype>` URI, a Drive link, or a run of 256 or more base64
   characters once line breaks are taken out, longer than any id a transcript holds and longer
   than any word of speech. It cannot catch audio spelled some other way (a `\u`-escaped
-  `data:`, say), or a bare Drive id in any field, which looks like any other id.
+  `data:`, say), or a bare Drive id in any field, which looks like any other id. **An index**
+  is home's bookkeeping for one routine, deterministic from what home holds (paulgsc/server
+  `mailbox::index`, paulgsc/server#509): the same rows give the same bytes, so home files a new
+  one only when it would differ from the last. Its `routine` names the routine, as the file's
+  name does; `jobs` is the only one so far. The Jobs index is
+  `{"schema":"some-ui.routine-index/1","routine":"jobs","day","asOf","from","skipped","queue","new","notes","picked"}`:
+  `day`, the day in America/Los_Angeles it is for; `asOf`, when home last took in something it
+  counts, or `null`; `from`, every digest, decisions and scouts file it was computed from, by
+  name (`{"digests","decisions","scout"}`); `skipped`, those that do not read as their schema;
+  `queue`, as `@some-ui/job-desk`'s `queueOf` and `freeSlots` give it on `day`
+  (`{"open":[{"day","pickId","track","fingerprint","title","company","applyUrl"}],"lapsed":[…],"free":{"software","adjacent"}}`);
+  `new`, each decisions and scouts file no digest names in `read`, with the entries in it that a
+  file some digest read already carried (`{"decisions":[{"name","repeats"}],"scout":[{"name","answered"}]}`);
+  `notes`, each voice note a file names that no digest lists in `notesDone`, with the phone's id
+  for it and the name and SHA-256 of its newest transcript here (`[{"file","in","note","transcript"}]`);
+  and `picked`, every posting a digest picked or a decisions file names, by fingerprint.
+  `packages/job-desk/ROUTINE.md` says how the routine reads it. The Worker holds its shape as it
+  holds a transcript's: those keys and no other, a `day` that is a date, an `asOf` that is an
+  instant or `null`, `from`, `queue` and `new` objects, `skipped`, `notes` and `picked` lists, a
+  name that carries the body's `routine`, and no audio or Drive link, by the same tests, each
+  refusal with its reason (`an index carries no audio` or `an index names no Drive file`).
+  Nothing in it is audio or points at audio: notes are named by their file name and id, and
+  transcripts by their name here.
 - **Size**: at most 1,048,576 bytes. A declared `Content-Length` over that is refused before
   the body is read, and a body that declares nothing is cut off as it passes the cap. Real
   files are under 20 KB, except LeetType session files: Thread 1's first file is 30 KB
-  for two rounds, and the ten-round draft was 140 KB.
+  for two rounds, and the ten-round draft was 140 KB. A Jobs index grows with what it names
+  for good (`from` and `picked`: a file name or a fingerprint, tens of bytes, for every file
+  and pick), so a few hundred bytes a day; home files none over the cap.
 
 ## Limits
 
@@ -262,10 +292,10 @@ how each was checked when this workspace landed.
 - _Claim:_ the `ROLES` table in `src/core.ts` is the only place a token is mapped to what it
   may do, and it holds exactly three roles: `routine` (get every folder, put `brief`, `scene`,
   `drama`, `run` and `leetype`, ask every folder), `home` (get `brief`, `scene`, `drama`, `run`
-  and `leetype`, put `decisions`, `scout`, `opened`, `leetype-log` and `transcript`) and
-  `archive` (get and move every folder; owner, 2026-10-23, and `scene` and `drama` the same
-  day; `run` and `opened` 2026-10-24; `leetype` and `leetype-log` 2026-10-24 too; `transcript`
-  2026-10-25). Every request passes `authenticate` and then one of `serve`'s
+  and `leetype`, put `decisions`, `scout`, `opened`, `leetype-log`, `transcript` and `index`)
+  and `archive` (get and move every folder; owner, 2026-10-23, and `scene` and `drama` the
+  same day; `run` and `opened` 2026-10-24; `leetype` and `leetype-log` 2026-10-24 too;
+  `transcript` 2026-10-25; `index` 2026-10-31, paulgsc/server#509). Every request passes `authenticate` and then one of `serve`'s
   `may(grant.get | put | ask | move)` checks before anything reaches the store.
 - _Falsified by_ a hunk that adds, removes or renames a role; adds a folder to, or removes one
   from, any role's `get`, `put`, `ask` or `move` list; changes which secret a role reads, or
@@ -298,7 +328,10 @@ how each was checked when this workspace landed.
   the transcript amendment (2026-10-25, the owner's choice that home hears the voice notes and
   hands the routines text, paulgsc/server#460):_ `ROLES` has three entries; `core.test.ts` pins
   `transcript`: home puts it and may not read it, the routine reads it and may not put it, and
-  archive moves it.
+  archive moves it. _Checked at the index amendment (2026-10-31, the owner's HF7,
+  paulgsc/server#509: "after each mailbox pass, home puts an index file per routine to the
+  mailbox"):_ `ROLES` has three entries; `core.test.ts` pins `index`: home puts it and may not
+  read it, the routine reads it and may not put it, and archive moves it.
 
 **MB3: No token reaches the repo or a log.**
 

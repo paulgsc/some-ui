@@ -170,6 +170,66 @@ function wordsRefusal(words: unknown): string | null {
   return null
 }
 
+/** The routines home computes an index for (README, "What a put must satisfy"). */
+const INDEX_ROUTINES: ReadonlySet<unknown> = new Set(["jobs"])
+/** The keys of a `some-ui.routine-index/1` body for the jobs routine; any other is refused. */
+const JOBS_INDEX_KEYS: ReadonlySet<string> = new Set([
+  "schema",
+  "routine",
+  "day",
+  "asOf",
+  "from",
+  "skipped",
+  "queue",
+  "new",
+  "notes",
+  "picked",
+])
+const NO_AUDIO_INDEX = "an index carries no audio: home keeps the audio"
+const NO_DRIVE_INDEX = "an index names no Drive file"
+const DAY = /^\d{4}-\d{2}-\d{2}$/
+
+/**
+ * README, "What a put must satisfy": an index is home's bookkeeping for one
+ * routine, its own keys only, and text. Audio and Drive links are looked for
+ * in the body's text as sent, as for a transcript.
+ */
+function indexRefusal(
+  body: Readonly<Record<string, unknown>>,
+  text: string,
+  name: string
+): string | null {
+  const flat = text.replace(/\\[nr]|[\r\n]/g, "").replaceAll("\\/", "/")
+  if (DATA_URI.test(text) || ENCODED_RUN.test(flat)) return NO_AUDIO_INDEX
+  if (DRIVE_LINK.test(text)) return NO_DRIVE_INDEX
+  if (!INDEX_ROUTINES.has(body.routine)) return "routine must be jobs"
+  if (!name.startsWith(`index-${String(body.routine)}-`)) {
+    return "the name must carry the body's routine"
+  }
+  const keys = Object.keys(body)
+  const extra = keys.find((key) => !JOBS_INDEX_KEYS.has(key))
+  if (extra !== undefined) return `${extra} is not part of the jobs index`
+  const missing = [...JOBS_INDEX_KEYS].find((key) => !(key in body))
+  if (missing !== undefined) return `the jobs index carries ${missing}`
+  if (
+    typeof body.day !== "string" ||
+    !DAY.test(body.day) ||
+    Number.isNaN(Date.parse(body.day))
+  ) {
+    return "day must be the day the index is for"
+  }
+  if (body.asOf !== null && !isInstant(body.asOf)) {
+    return "asOf must be when home last took in what the index counts"
+  }
+  for (const key of ["from", "queue", "new"] as const) {
+    if (!isRecord(body[key])) return `${key} must be an object`
+  }
+  for (const key of ["skipped", "notes", "picked"] as const) {
+    if (!Array.isArray(body[key])) return `${key} must be a list`
+  }
+  return null
+}
+
 type FolderRules = {
   readonly folder: Folder
   /** Audio files match none, on purpose: the mailbox carries text. */
@@ -244,6 +304,15 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
     schema: "some-ui.leetype-log/1",
   },
   {
+    // Home's bookkeeping for one routine, computed from what home holds after
+    // a pass, named for the routine and when home filed it: a new name each
+    // time it changes, so the newest is the highest seq.
+    folder: "index",
+    name: /^index-[a-z]{1,20}-\d{8}T\d{9}Z\.json$/,
+    schema: "some-ui.routine-index/1",
+    refuses: indexRefusal,
+  },
+  {
     // What home heard in one voice note, named for the note's id and home's
     // number for the transcript, so a better model's goes under a new name.
     folder: "transcript",
@@ -284,6 +353,7 @@ const ALL: ReadonlyArray<Folder> = [
   "leetype",
   "leetype-log",
   "transcript",
+  "index",
 ]
 
 /** MB2. Another role (the phone's, say) is the owner's call, not a code change. */
@@ -300,7 +370,7 @@ const ROLES: ReadonlyArray<Grant> = [
     role: "home",
     token: (tokens) => tokens.home,
     get: ["brief", "scene", "drama", "run", "leetype"],
-    put: ["decisions", "scout", "opened", "leetype-log", "transcript"],
+    put: ["decisions", "scout", "opened", "leetype-log", "transcript", "index"],
     ask: [],
     move: [],
   },
