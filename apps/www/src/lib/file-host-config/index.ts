@@ -22,7 +22,7 @@ import type { RouteParams, ServerRoute } from "@some-ui/fetch-kit"
 import { API_V1_PREFIX } from "@some-ui/fetch-kit"
 
 /**
- * How a read of *public corpus content* is made (lessons, rounds, the vocab
+ * How a read of *public corpus content* is made (lessons and the vocab
  * file): with no credentials. Otherwise the `/api/file-host` proxy would send
  * the session cookie, and the operator would see a device learner and an
  * account holder as the same visitor. Spread into a data source's

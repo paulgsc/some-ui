@@ -1398,9 +1398,6 @@ importers:
       '@some-ui/intent-kit':
         specifier: workspace:*
         version: link:../../intent-kit
-      '@some-ui/leetype':
-        specifier: workspace:*
-        version: link:../leetype
       '@some-ui/react-hooks':
         specifier: workspace:*
         version: link:../../react-hooks
