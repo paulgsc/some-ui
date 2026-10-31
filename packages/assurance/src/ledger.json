@@ -1935,7 +1935,7 @@
     {
       "store": "server:account",
       "class": "record",
-      "growth": "Per account created (one row: subject id and WebAuthn user handle); new accounts per day capped in memory.",
+      "growth": "One row, the owner's account (subject id and WebAuthn user handle): sign-up closes once it exists (403 signup_closed); only AUTH_OPEN_SIGNUP admits more, one row per account created, new accounts per day capped in memory.",
       "family": "what-is-kept"
     },
     {

@@ -8,7 +8,7 @@ import {
   createAccount,
   describeAuthError,
   enterAccount,
-  readLegacyClaim,
+  isSignupClosed,
   signIn,
 } from "@/lib/auth"
 import { ACCOUNT_KEEPS } from "@/lib/auth/account-keeps"
@@ -38,23 +38,16 @@ const PasskeyScreen = (): JSX.Element => {
   const [step, setStep] = useState<AuthFlowStep>("sign-in")
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Once the server says it already has its owner's account, creating one
+  // can only fail again: the error says to sign in, beside the create card's
+  // own "Already have a passkey? Sign in", and nothing offers creating again.
+  const [signupClosed, setSignupClosed] = useState(false)
   const supported = DATA_MODE === "static" || passkeysSupported()
-  // An operator's `/auth#claim=<token>` link: the account created from it
-  // inherits what the server kept before accounts. Read once; a static
-  // build has no server to claim from.
-  const [claim] = useState(() =>
-    DATA_MODE === "static" || typeof window === "undefined"
-      ? undefined
-      : readLegacyClaim(window.location.hash)
-  )
 
   const run = (attempt: "sign-in" | "create"): void => {
     setPending(true)
     setError(null)
-    const ceremony =
-      attempt === "sign-in" ? signIn : (): Promise<void> => createAccount(claim)
-    const described =
-      attempt === "create" && claim !== undefined ? "claim" : attempt
+    const ceremony = attempt === "sign-in" ? signIn : createAccount
     ceremony()
       .then(() =>
         // Narrowed here because type-aware lint reads `useSearch()` as `any`.
@@ -63,7 +56,10 @@ const PasskeyScreen = (): JSX.Element => {
           (href) => void navigate({ href })
         )
       )
-      .catch((cause: unknown) => setError(describeAuthError(cause, described)))
+      .catch((cause: unknown) => {
+        if (isSignupClosed(cause)) setSignupClosed(true)
+        setError(describeAuthError(cause, attempt))
+      })
       .finally(() => setPending(false))
   }
 
@@ -91,9 +87,12 @@ const PasskeyScreen = (): JSX.Element => {
       onResetPassword={noop}
       onVerifyCode={noop}
       onPasskeySignIn={() => run("sign-in")}
-      // Without passkey support, "Create a passkey" could only fail, so the
-      // flow shows no create action at all.
-      {...(supported ? { onCreatePasskey: () => run("create") } : {})}
+      // Without passkey support, or once the server makes no new accounts,
+      // "Create a passkey" could only fail: the sign-in card stops offering
+      // it and the create card's button is disabled.
+      {...(supported && !signupClosed
+        ? { onCreatePasskey: () => run("create") }
+        : {})}
       pending={pending}
       error={error}
       passkeyAvailable={supported}
@@ -137,16 +136,10 @@ const PasskeyScreen = (): JSX.Element => {
                 description:
                   "This browser or connection can't use passkeys. Open the app over HTTPS in a current browser.",
               }
-            : claim !== undefined
-              ? {
-                  title: "Claiming this server's earlier data",
-                  description:
-                    "Create a passkey to make the account that takes over what this server kept before accounts. The link works once.",
-                }
-              : {
-                  title: "What the server keeps",
-                  description: ACCOUNT_KEEPS,
-                }
+            : {
+                title: "What the server keeps",
+                description: ACCOUNT_KEEPS,
+              }
       }
     />
   )

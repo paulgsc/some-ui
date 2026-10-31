@@ -11,9 +11,9 @@
  * `retiredAt` always present and `null` while the lesson is listed.
  *
  * Every route here is operator-only (paulgsc/server `auth::operator`): `401`
- * without a passkey session, `403` for a subject not in the server's
- * `OPERATOR_SUBJECTS`. So each contract is marked `session`, and the cookie
- * passed with `--session-cookie` must be an operator's.
+ * without a passkey session, `403` for anyone but the home's owner (or the
+ * subjects `OPERATOR_SUBJECTS` lists). So each contract is marked `session`,
+ * and the cookie passed with `--session-cookie` must be an operator's.
  *
  * No contract writes a lesson. A lesson written to a real server is served to
  * everyone and announced as new material by the study nudge, so there is no
