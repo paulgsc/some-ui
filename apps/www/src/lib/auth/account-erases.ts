@@ -58,6 +58,10 @@ export const ACCOUNT_ERASES = {
       text: "Each voice note your phone sent home, its sound included, and what home heard in it; for a game-day bite, also what it was about and what the screen showed as you said it.",
     },
     {
+      label: "Rust Rounds' rounds",
+      text: "Each round sent home, as the tutor wrote it: its cards, which of your voice notes a card answered, and the tutor's nudges.",
+    },
+    {
       label: "Studio's time log",
       text: "When each Studio screen was open in a sitting, and how each sitting went: what got in the way, and the scene you were on.",
     },
@@ -80,6 +84,10 @@ export const ACCOUNT_ERASES = {
     {
       label: "In the mailbox",
       text: "Files still in the mailbox stay until you remove them there, because deleting here doesn't reach it. For each file it has let go, the mailbox keeps a note of its name, size and dates, never what was in it.",
+    },
+    {
+      label: "Rust Rounds' programs",
+      text: "Home's copy of each Rust Rounds program, what rustc printed for it, and when the first round holding it reached home. They are kept by their code alone, linked to no one once your rounds are gone.",
     },
     {
       label: "Logs and backups",
