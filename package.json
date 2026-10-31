@@ -43,6 +43,7 @@
     "loc:snapshot": "node scripts/loc-snapshot.ts",
     "check:ui-manifests": "tsx scripts/check-ui-manifests.ts",
     "check:workflows": "node scripts/check-workflows.ts",
+    "check:workflow-security": "bash scripts/check-workflow-security.sh",
     "dump:activity-catalog": "tsx scripts/dump-activity-catalog.ts",
     "dump:session-duration-policy": "tsx scripts/dump-session-duration-policy.ts",
     "prepare": "husky",

@@ -14,9 +14,10 @@ on:
         default: false
 env:
   RELEASE_COMMIT_MESSAGE: "chore(release): update WASM packages"
+# Only `release` writes (the changesets release PR and its branch), so only
+# it holds write permissions (#2116); detect and build read.
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 # `queue: max`, for www-docker-release.yml's reason: a replaced run loses a
 # publish or its push's range. Two queued runs can swap; an ordinary run that
 # starts after a newer release then proposes bumps from its older tree, and
@@ -225,6 +226,9 @@ jobs:
     needs: [detect, build]
     if: needs.detect.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/nix-setup

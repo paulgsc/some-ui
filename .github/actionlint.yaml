@@ -1,0 +1,10 @@
+# actionlint's configuration for `pnpm check:workflow-security`
+# (scripts/check-workflow-security.sh, promise WS1). Each ignore says why the
+# finding is actionlint's gap, not the workflow's (#2116).
+paths:
+  .github/workflows/**/*.{yml,yaml}:
+    ignore:
+      # `concurrency.queue` (`queue: max` in wasm-release.yml and
+      # www-docker-release.yml, whose comments say why) is a GitHub key newer
+      # than actionlint's schema. Drop this when the pinned actionlint knows it.
+      - 'unexpected key "queue" for "concurrency" section'

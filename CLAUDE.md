@@ -223,6 +223,20 @@ the shortest life that works, and nothing recreated leaves its old copy behind.
   retention" sets the default for any upload without `retention-days` and caps any
   explicit value above it. It also sets how long run logs are kept.
 
+## Workflow security
+
+No workflow or composite action expands text a stranger can write (a dispatch input, an
+issue or PR title, body or branch name) into a `run:` script: pass it through `env:` and
+validate it, as `extension-sign-manual.yml` does with its extension name. Write permissions
+sit on the job that writes, not the workflow. `pnpm check:workflow-security`
+(`scripts/check-workflow-security.sh`, promise WS1) runs actionlint, with ShellCheck, and
+zizmor's offline audits at high severity over `.github/`, at the versions it pins. A finding
+is fixed, or suppressed with its reason in `.github/zizmor.yml` or `.github/actionlint.yaml`
+(an inline `# zizmor: ignore[...]` carries its reason in the comment above). It needs python3
+and go, and installs the tools on first run.
+
+Held by: `pnpm check:workflow-security`
+
 ## The phone and the desktop web are separate surfaces
 
 The APK and the desktop web are orthogonal: each is built for what its device

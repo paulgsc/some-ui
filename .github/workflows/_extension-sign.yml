@@ -78,7 +78,7 @@ jobs:
           ARCHIVE="${{ steps.source.outputs.SOURCE_ARCHIVE }}"
           if [ -z "$ARCHIVE" ] || [ ! -f "$ARCHIVE" ]; then
             # Fallback: find the archive by glob
-            ARCHIVE=$(ls "${{ matrix.extension_path }}"/artifacts/source-*.zip 2>/dev/null | head -1)
+            ARCHIVE=$(find "${{ matrix.extension_path }}/artifacts" -maxdepth 1 -name 'source-*.zip' 2>/dev/null | sort | head -1)
           fi
           if [ -z "$ARCHIVE" ]; then
             echo "::error::Source archive not found — sign aborted"

@@ -48,10 +48,10 @@ on:
         description: "Optional last-known-good commit SHA to deploy while leaving main unchanged (empty: deploy main's head)"
         type: string
         required: false
+# Only `deploy` publishes, so only it holds `pages: write` and
+# `id-token: write` (#2116); the build and a pull request's preview read.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 # No workflow-level concurrency: a run waiting in `approve` would hold that
 # group, so a newer push would queue behind it and approving the waiting run
 # would deploy the older commit. Each job below takes its own group instead.
@@ -209,6 +209,10 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
