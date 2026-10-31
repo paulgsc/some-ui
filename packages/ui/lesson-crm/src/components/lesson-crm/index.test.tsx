@@ -381,6 +381,53 @@ describe("LessonCrm on a wide screen: a list rail and a step workflow", () => {
     expect(screen.getByText("b.json")).toBeInTheDocument()
     expect(screen.queryByText("a.json")).toBeNull()
   })
+
+  it("QO1: opening the lesson already open starts nothing, on its way or landed", async () => {
+    const client = fakeClient([lesson("a")])
+    let finishA: (body: string) => void = () => undefined
+    vi.mocked(client.read).mockImplementation(
+      () =>
+        new Promise<string>((resolve) => {
+          finishA = resolve
+        })
+    )
+    await mount(client)
+    const row = (): HTMLElement =>
+      screen.getByRole("button", { name: /Lesson a/ })
+
+    for (let click = 0; click < 5; click += 1) {
+      fireEvent.click(row())
+      await settle()
+    }
+    expect(client.read).toHaveBeenCalledTimes(1)
+
+    finishA(BODY)
+    await settle()
+    step(/Step 1: Lesson/)
+    pasteReply()
+    await settle()
+    // Landed, and the editor has moved on: a click on its row keeps both.
+    fireEvent.click(row())
+    await settle()
+    expect(client.read).toHaveBeenCalledTimes(1)
+    expect(screen.getByText("pasted-reply.md")).toBeInTheDocument()
+  })
+
+  it("QO1: opening the lesson already open asks again once its read failed", async () => {
+    const client = fakeClient([lesson("a")])
+    vi.mocked(client.read)
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValue(BODY)
+    await mount(client)
+
+    fireEvent.click(screen.getByRole("button", { name: /Lesson a/ }))
+    await settle()
+    fireEvent.click(screen.getByRole("button", { name: /Lesson a/ }))
+    await settle()
+    expect(client.read).toHaveBeenCalledTimes(2)
+    step(/Step 1: Lesson/)
+    expect(screen.getByText("a.json")).toBeInTheDocument()
+  })
 })
 
 describe("LessonCrm: the latest source asked for is the one kept", () => {

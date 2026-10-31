@@ -4,10 +4,10 @@
  * Every error is preserved and traceable, never collapsed: a fallback fills
  * the slot but its file's error stays in `fileErrors`.
  *
- * The runtime owns the async work (R1, docs/monorepo-boundaries.md): it
- * publishes snapshots, and a load that a newer one superseded is dropped, so a
- * late result never lands over a newer one. `useRecursiveLibrary` only
- * subscribes.
+ * `loadLibrary` never rejects: discovery failing, or strict mode seeing any
+ * file error, is its `fatal` outcome. It holds no state; the caller's query
+ * cache owns the load, so every reader of one library joins one load
+ * (QO1, `components/composer/scene-editor/use-scene-library.ts`).
  */
 
 import type { FileDiscovery, ResourceLoader } from "@some-ui/fetch-kit"
@@ -49,21 +49,7 @@ export type LibraryConfig<TRaw, TValidated, TKey extends string = string> = {
   strict?: boolean
 }
 
-export type LibrarySnapshot<TValidated, TKey extends string> = {
-  library: Map<TKey, TValidated>
-  loading: boolean
-  fatalError: LibraryFatalError | null
-  fileErrors: Array<LibraryFileError<TKey>>
-}
-
-export type LibraryRuntime<TValidated, TKey extends string> = {
-  getSnapshot: () => LibrarySnapshot<TValidated, TKey>
-  subscribe: (listener: () => void) => () => void
-  /** Starts a load; resolves once its result is published or superseded. Never rejects. */
-  load: () => Promise<void>
-}
-
-type LoadOutcome<TValidated, TKey extends string> =
+export type LibraryLoad<TValidated, TKey extends string> =
   | {
       kind: "loaded"
       library: Map<TKey, TValidated>
@@ -71,9 +57,9 @@ type LoadOutcome<TValidated, TKey extends string> =
     }
   | { kind: "fatal"; error: LibraryFatalError }
 
-async function loadLibrary<TRaw, TValidated, TKey extends string>(
+export async function loadLibrary<TRaw, TValidated, TKey extends string>(
   config: LibraryConfig<TRaw, TValidated, TKey>
-): Promise<LoadOutcome<TValidated, TKey>> {
+): Promise<LibraryLoad<TValidated, TKey>> {
   try {
     const files = await config.discovery.listFiles(
       config.rootPath,
@@ -157,59 +143,5 @@ async function loadLibrary<TRaw, TValidated, TKey extends string>(
     return { kind: "loaded", library: nextLibrary, fileErrors: nextFileErrors }
   } catch (err) {
     return { kind: "fatal", error: { stage: "discovery", cause: err } }
-  }
-}
-
-export function createLibraryRuntime<
-  TRaw,
-  TValidated,
-  TKey extends string = string,
->(
-  config: LibraryConfig<TRaw, TValidated, TKey>
-): LibraryRuntime<TValidated, TKey> {
-  let snapshot: LibrarySnapshot<TValidated, TKey> = {
-    library: new Map(),
-    loading: true,
-    fatalError: null,
-    fileErrors: [],
-  }
-  const listeners = new Set<() => void>()
-  let generation = 0
-
-  const publish = (next: LibrarySnapshot<TValidated, TKey>): void => {
-    snapshot = next
-    for (const listener of listeners) listener()
-  }
-
-  return {
-    getSnapshot: (): LibrarySnapshot<TValidated, TKey> => snapshot,
-    subscribe: (listener): (() => void) => {
-      listeners.add(listener)
-      return (): void => {
-        listeners.delete(listener)
-      }
-    },
-    load: async (): Promise<void> => {
-      generation += 1
-      const mine = generation
-      publish({ ...snapshot, loading: true, fatalError: null, fileErrors: [] })
-      const outcome = await loadLibrary(config)
-      if (mine !== generation) return
-      publish(
-        outcome.kind === "loaded"
-          ? {
-              library: outcome.library,
-              loading: false,
-              fatalError: null,
-              fileErrors: outcome.fileErrors,
-            }
-          : {
-              library: new Map(),
-              loading: false,
-              fatalError: outcome.error,
-              fileErrors: [],
-            }
-      )
-    },
   }
 }

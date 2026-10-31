@@ -1251,6 +1251,42 @@ describe("HandheldLesson", () => {
       expect(screen.queryByText(/Couldn't load the dramas/)).toBeNull()
     })
 
+    it("QO1: Try again while the dramas are on their way asks for them once", async () => {
+      // The list already shows dramas, and a refresh of it failed: the state
+      // where a reload that cancelled and refetched stacked one more request
+      // per tap, since `list` never reads the cancel.
+      let answer: (trees: Array<typeof TEA>) => void = () => undefined
+      const list = vi
+        .fn<TreeFeed["list"]>()
+        .mockResolvedValueOnce([TEA])
+        .mockRejectedValueOnce(new Error("500"))
+        .mockImplementation(
+          () =>
+            new Promise((resolve) => {
+              answer = resolve
+            })
+        )
+      const client = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      })
+      renderLesson({ client, treeFeed: { list, load: vi.fn() } })
+      expect(await screen.findByText("Tea at the chairman's")).toBeTruthy()
+      void client.refetchQueries({ queryKey: ["tree-feed", "list"] })
+      expect(await screen.findByText("Couldn't load the dramas.")).toBeTruthy()
+
+      for (let tap = 0; tap < 5; tap += 1) {
+        click("Try again")
+        await waitFor(() => {
+          expect(list).toHaveBeenCalledTimes(3)
+        })
+      }
+      answer([TEA])
+      await waitFor(() => {
+        expect(screen.queryByText(/Couldn't load the dramas/)).toBeNull()
+      })
+      expect(list).toHaveBeenCalledTimes(3)
+    })
+
     it("says none are served where the host serves none, and offers to write one", async () => {
       renderLesson()
       expect(await screen.findByText("No dramas this week yet.")).toBeTruthy()
