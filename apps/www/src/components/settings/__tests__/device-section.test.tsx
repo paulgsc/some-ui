@@ -9,6 +9,7 @@
  */
 
 import type { ReactNode } from "react"
+import { sha256Hex } from "@some-ui/core-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import {
   act,

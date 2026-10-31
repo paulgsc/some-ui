@@ -8,11 +8,9 @@
  * problems are one `422` keyed by field; `DELETE` is `204` either way. A
  * keep is budgeted like a session save (`device-backend/storage`).
  */
-import {
-  DEVICE_SUBJECT,
-  rfc3339Millis,
-  sha256Hex,
-} from "@/lib/device-backend/common"
+import { sha256Hex } from "@some-ui/core-utils"
+
+import { DEVICE_SUBJECT, rfc3339Millis } from "@/lib/device-backend/common"
 import type { DeviceRoute, ErrorDetails } from "@/lib/device-backend/router"
 import {
   errorResponse,
