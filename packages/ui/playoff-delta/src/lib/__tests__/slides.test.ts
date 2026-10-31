@@ -4,6 +4,7 @@ import { narration, slidesFor } from "@playoff-delta/lib/slides"
 import { percent, type StoryWeek } from "@playoff-delta/lib/story"
 import { describe, expect, it } from "vitest"
 
+import { SEASON_2026 } from "./seasons"
 import { SEASON7, WEEK7 } from "./week7"
 
 describe("the story", () => {
@@ -18,12 +19,20 @@ describe("the story", () => {
   it("opens on the best week and closes on the week in one sentence", () => {
     expect(slidesFor(WEEK7)[0]).toBe("best")
     expect(narration(SEASON7, WEEK7, "best")).toBe(
-      "Week 7. The best week we could have had: 99.3% of the ways in. It needed our light (a major)."
+      "Week 7. The best week we could have had: 99.3% of the ways in. It needed SF over ATL (our light, a major)."
     )
     expect(narration(SEASON7, WEEK7, "road")).toBe(
       "Kickoff by kickoff, the best week still possible went from 99.3% to 94.0%. Our light cost 2.9 points. The league cost 2.3."
     )
     expect(narration(SEASON7, WEEK7, "outro")).toMatch(/^All reds\. /)
+  })
+
+  it("names the minor the first recording left unnamed (#2229)", () => {
+    const recorded = SEASON_2026.weeks.find((w) => w.week === 7)
+    if (!recorded) throw new Error("no week 7 in 2026")
+    expect(narration(SEASON_2026, recorded, "best")).toBe(
+      "Week 7. The best week we could have had: 99.4% of the ways in. It needed SF over ATL (our light, a major) and LV over LAR (a minor)."
+    )
   })
 
   it("says what the verdict says", () => {

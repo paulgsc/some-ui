@@ -1,0 +1,2837 @@
+{
+  "version": 5,
+  "label": "2026",
+  "seasonLength": 17,
+  "team": "SF",
+  "names": {
+    "ARI": "Cardinals",
+    "ATL": "Falcons",
+    "BAL": "Ravens",
+    "BUF": "Bills",
+    "CAR": "Panthers",
+    "CHI": "Bears",
+    "CIN": "Bengals",
+    "CLE": "Browns",
+    "DAL": "Cowboys",
+    "DEN": "Broncos",
+    "DET": "Lions",
+    "GB": "Packers",
+    "HOU": "Texans",
+    "IND": "Colts",
+    "JAX": "Jaguars",
+    "KC": "Chiefs",
+    "LAC": "Chargers",
+    "LAR": "Rams",
+    "LV": "Raiders",
+    "MIA": "Dolphins",
+    "MIN": "Vikings",
+    "NE": "Patriots",
+    "NO": "Saints",
+    "NYG": "Giants",
+    "NYJ": "Jets",
+    "PHI": "Eagles",
+    "PIT": "Steelers",
+    "SEA": "Seahawks",
+    "SF": "Niners",
+    "TB": "Buccaneers",
+    "TEN": "Titans",
+    "WAS": "Commanders"
+  },
+  "conference": "NFC",
+  "ways": 100000,
+  "weeks": [
+    {
+      "week": 1,
+      "record": {
+        "w": 0,
+        "l": 0
+      },
+      "game": {
+        "opponent": "LAR",
+        "won": true,
+        "relation": "division"
+      },
+      "paths": {
+        "before": [null, null, null, 4, 3],
+        "after": [null, null, null, 3, 3],
+        "winsBefore": 0,
+        "winsAfter": 1
+      },
+      "share": {
+        "before": 0.5236,
+        "after": 0.6108,
+        "own": 0.0992,
+        "league": -0.0119,
+        "spread": 0.015,
+        "exact": false
+      },
+      "pending": {
+        "before": 272,
+        "after": 256
+      },
+      "stake": {
+        "opponent": "MIA",
+        "own": 0.1753,
+        "spread": 0.0903,
+        "exact": false,
+        "pieces": [
+          {
+            "home": "BUF",
+            "away": "DET",
+            "kind": "exported",
+            "want": "BUF",
+            "price": 0.0131,
+            "error": 0.0007
+          },
+          {
+            "home": "NYJ",
+            "away": "GB",
+            "kind": "exported",
+            "want": "NYJ",
+            "price": 0.0106,
+            "error": 0.0009
+          },
+          {
+            "home": "BAL",
+            "away": "NO",
+            "kind": "exported",
+            "want": "BAL",
+            "price": 0.008,
+            "error": 0.0003
+          },
+          {
+            "home": "TEN",
+            "away": "PHI",
+            "kind": "exported",
+            "want": "TEN",
+            "price": 0.0108,
+            "error": 0.0003
+          },
+          {
+            "home": "CHI",
+            "away": "MIN",
+            "kind": "inside",
+            "want": "MIN",
+            "price": 0.0006,
+            "error": 0.0018
+          },
+          {
+            "home": "TB",
+            "away": "CLE",
+            "kind": "exported",
+            "want": "CLE",
+            "price": 0.0082,
+            "error": 0.0006
+          },
+          {
+            "home": "ATL",
+            "away": "CAR",
+            "kind": "inside",
+            "want": "ATL",
+            "price": 0.0013,
+            "error": 0.0006
+          },
+          {
+            "home": "DAL",
+            "away": "WAS",
+            "kind": "inside",
+            "want": "WAS",
+            "price": 0.0007,
+            "error": 0.0005
+          },
+          {
+            "home": "SF",
+            "away": "MIA",
+            "kind": "own",
+            "want": "SF",
+            "price": 0.1748,
+            "error": 0.0027
+          },
+          {
+            "home": "ARI",
+            "away": "SEA",
+            "kind": "inside",
+            "want": "ARI",
+            "price": 0.0017,
+            "error": 0.0014
+          },
+          {
+            "home": "LAR",
+            "away": "NYG",
+            "kind": "inside",
+            "want": "NYG",
+            "price": 0.0037,
+            "error": 0.0015
+          }
+        ]
+      },
+      "clinched": false,
+      "ways": {
+        "games": [
+          {
+            "home": "SEA",
+            "away": "NE",
+            "kind": "exported",
+            "winner": "SEA",
+            "want": "NE",
+            "price": 0.0179,
+            "error": 0.001
+          },
+          {
+            "home": "LAR",
+            "away": "SF",
+            "kind": "own",
+            "winner": "SF",
+            "want": "SF",
+            "price": 0.1996,
+            "error": 0.0026
+          },
+          {
+            "home": "PIT",
+            "away": "ATL",
+            "kind": "exported",
+            "winner": "PIT",
+            "want": "PIT",
+            "price": 0.0095,
+            "error": 0.0
+          },
+          {
+            "home": "CIN",
+            "away": "TB",
+            "kind": "exported",
+            "winner": "CIN",
+            "want": "CIN",
+            "price": 0.0093,
+            "error": 0.0009
+          },
+          {
+            "home": "DET",
+            "away": "NO",
+            "kind": "inside",
+            "winner": "DET",
+            "want": "DET",
+            "price": 0.0009,
+            "error": 0.0004
+          },
+          {
+            "home": "CAR",
+            "away": "CHI",
+            "kind": "inside",
+            "winner": "CHI",
+            "want": "CAR",
+            "price": 0.0009,
+            "error": 0.0004
+          },
+          {
+            "home": "LAC",
+            "away": "ARI",
+            "kind": "exported",
+            "winner": "ARI",
+            "want": "LAC",
+            "price": 0.0197,
+            "error": 0.0001
+          },
+          {
+            "home": "PHI",
+            "away": "WAS",
+            "kind": "inside",
+            "winner": "PHI",
+            "want": "WAS",
+            "price": 0.0009,
+            "error": 0.001
+          },
+          {
+            "home": "MIN",
+            "away": "GB",
+            "kind": "inside",
+            "winner": "MIN",
+            "want": "GB",
+            "price": 0.0009,
+            "error": 0.0008
+          },
+          {
+            "home": "NYG",
+            "away": "DAL",
+            "kind": "inside",
+            "winner": "NYG",
+            "want": "NYG",
+            "price": 0.0009,
+            "error": 0.0003
+          }
+        ],
+        "best": 0.6549,
+        "worst": 0.3906,
+        "actual": 0.6133,
+        "rank": 0.6104,
+        "given": {
+          "best": 0.6549,
+          "rank": 0.2207,
+          "pieces": [
+            {
+              "want": "NE",
+              "price": 0.0179,
+              "error": 0.001
+            },
+            {
+              "want": "SF",
+              "price": 0.0,
+              "error": 0.0
+            },
+            {
+              "want": "PIT",
+              "price": 0.0095,
+              "error": 0.0
+            },
+            {
+              "want": "CIN",
+              "price": 0.0093,
+              "error": 0.0009
+            },
+            {
+              "want": "DET",
+              "price": 0.0009,
+              "error": 0.0004
+            },
+            {
+              "want": "CAR",
+              "price": 0.0009,
+              "error": 0.0004
+            },
+            {
+              "want": "LAC",
+              "price": 0.0197,
+              "error": 0.0001
+            },
+            {
+              "want": "WAS",
+              "price": 0.0009,
+              "error": 0.001
+            },
+            {
+              "want": "GB",
+              "price": 0.0009,
+              "error": 0.0008
+            },
+            {
+              "want": "NYG",
+              "price": 0.0009,
+              "error": 0.0003
+            }
+          ]
+        },
+        "road": [
+          0.6549, 0.637, 0.637, 0.637, 0.637, 0.6367, 0.6342, 0.6151, 0.6141,
+          0.6141, 0.6133
+        ],
+        "mean": [
+          0.5239, 0.515, 0.6155, 0.6207, 0.6257, 0.6249, 0.6237, 0.6142, 0.6138,
+          0.6137, 0.6133
+        ],
+        "strip": [
+          [
+            35, 140, 150, 148, 39, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32, 121, 167,
+            96, 96
+          ],
+          [
+            35, 108, 81, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32, 89, 103, 32, 0
+          ],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32, 89, 103, 32, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 40, 56, 32, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 24, 32, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 16, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 8, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]
+        ],
+        "exact": false
+      },
+      "podium": {
+        "medals": [
+          {
+            "team": "JAX",
+            "place": 1,
+            "rank": 0.9497,
+            "best": 0.6459,
+            "worst": 0.3929,
+            "actual": 0.6279,
+            "game": "won",
+            "pieces": [
+              {
+                "home": "JAX",
+                "away": "CLE",
+                "want": "JAX",
+                "price": 0.1851,
+                "made": true
+              },
+              {
+                "home": "SEA",
+                "away": "NE",
+                "want": "SEA",
+                "price": 0.0103,
+                "made": true
+              },
+              {
+                "home": "TEN",
+                "away": "NYJ",
+                "want": "NYJ",
+                "price": 0.0096,
+                "made": true
+              }
+            ]
+          },
+          {
+            "team": "NYJ",
+            "place": 2,
+            "rank": 0.8184,
+            "best": 0.6531,
+            "worst": 0.3999,
+            "actual": 0.6252,
+            "game": "won",
+            "pieces": [
+              {
+                "home": "TEN",
+                "away": "NYJ",
+                "want": "NYJ",
+                "price": 0.1819,
+                "made": true
+              },
+              {
+                "home": "SEA",
+                "away": "NE",
+                "want": "SEA",
+                "price": 0.0182,
+                "made": true
+              },
+              {
+                "home": "LV",
+                "away": "MIA",
+                "want": "LV",
+                "price": 0.01,
+                "made": true
+              }
+            ]
+          },
+          {
+            "team": "BUF",
+            "place": 3,
+            "rank": 0.8125,
+            "best": 0.6486,
+            "worst": 0.394,
+            "actual": 0.6203,
+            "game": "won",
+            "pieces": [
+              {
+                "home": "HOU",
+                "away": "BUF",
+                "want": "BUF",
+                "price": 0.1827,
+                "made": true
+              },
+              {
+                "home": "SEA",
+                "away": "NE",
+                "want": "SEA",
+                "price": 0.0189,
+                "made": true
+              },
+              {
+                "home": "PIT",
+                "away": "ATL",
+                "want": "ATL",
+                "price": 0.0099,
+                "made": false
+              }
+            ]
+          }
+        ],
+        "place": 13,
+        "eligible": 32
+      }
+    },
+    {
+      "week": 2,
+      "record": {
+        "w": 1,
+        "l": 0
+      },
+      "game": {
+        "opponent": "MIA",
+        "won": true,
+        "relation": "other"
+      },
+      "paths": {
+        "before": [null, null, null, 3, 3],
+        "after": [null, null, 4, 3, 2],
+        "winsBefore": 1,
+        "winsAfter": 2
+      },
+      "share": {
+        "before": 0.6108,
+        "after": 0.6938,
+        "own": 0.0878,
+        "league": -0.0048,
+        "spread": 0.0105,
+        "exact": false
+      },
+      "pending": {
+        "before": 256,
+        "after": 240
+      },
+      "stake": {
+        "opponent": "ARI",
+        "own": 0.1844,
+        "spread": 0.0933,
+        "exact": false,
+        "pieces": [
+          {
+            "home": "GB",
+            "away": "ATL",
+            "kind": "inside",
+            "want": "ATL",
+            "price": 0.002,
+            "error": 0.0001
+          },
+          {
+            "home": "CLE",
+            "away": "CAR",
+            "kind": "exported",
+            "want": "CLE",
+            "price": 0.0071,
+            "error": 0.0001
+          },
+          {
+            "home": "WAS",
+            "away": "SEA",
+            "kind": "inside",
+            "want": "WAS",
+            "price": 0.0054,
+            "error": 0.0011
+          },
+          {
+            "home": "NYG",
+            "away": "TEN",
+            "kind": "exported",
+            "want": "TEN",
+            "price": 0.0075,
+            "error": 0.0001
+          },
+          {
+            "home": "DET",
+            "away": "NYJ",
+            "kind": "exported",
+            "want": "NYJ",
+            "price": 0.0083,
+            "error": 0.0005
+          },
+          {
+            "home": "TB",
+            "away": "MIN",
+            "kind": "inside",
+            "want": "TB",
+            "price": 0.0011,
+            "error": 0.0009
+          },
+          {
+            "home": "SF",
+            "away": "ARI",
+            "kind": "own",
+            "want": "SF",
+            "price": 0.1677,
+            "error": 0.0032
+          },
+          {
+            "home": "DAL",
+            "away": "BAL",
+            "kind": "exported",
+            "want": "BAL",
+            "price": 0.0094,
+            "error": 0.0005
+          },
+          {
+            "home": "NO",
+            "away": "LV",
+            "kind": "exported",
+            "want": "LV",
+            "price": 0.0056,
+            "error": 0.0001
+          },
+          {
+            "home": "DEN",
+            "away": "LAR",
+            "kind": "exported",
+            "want": "DEN",
+            "price": 0.0128,
+            "error": 0.0004
+          },
+          {
+            "home": "CHI",
+            "away": "PHI",
+            "kind": "inside",
+            "want": "CHI",
+            "price": 0.0,
+            "error": 0.0005
+          }
+        ]
+      },
+      "clinched": false,
+      "ways": {
+        "games": [
+          {
+            "home": "BUF",
+            "away": "DET",
+            "kind": "exported",
+            "winner": "BUF",
+            "want": "BUF",
+            "price": 0.0131,
+            "error": 0.0007
+          },
+          {
+            "home": "NYJ",
+            "away": "GB",
+            "kind": "exported",
+            "winner": "GB",
+            "want": "NYJ",
+            "price": 0.0106,
+            "error": 0.0009
+          },
+          {
+            "home": "BAL",
+            "away": "NO",
+            "kind": "exported",
+            "winner": "NO",
+            "want": "BAL",
+            "price": 0.008,
+            "error": 0.0003
+          },
+          {
+            "home": "TEN",
+            "away": "PHI",
+            "kind": "exported",
+            "winner": "PHI",
+            "want": "TEN",
+            "price": 0.0108,
+            "error": 0.0003
+          },
+          {
+            "home": "CHI",
+            "away": "MIN",
+            "kind": "inside",
+            "winner": "MIN",
+            "want": "MIN",
+            "price": 0.0006,
+            "error": 0.0018
+          },
+          {
+            "home": "TB",
+            "away": "CLE",
+            "kind": "exported",
+            "winner": "CLE",
+            "want": "CLE",
+            "price": 0.0082,
+            "error": 0.0006
+          },
+          {
+            "home": "ATL",
+            "away": "CAR",
+            "kind": "inside",
+            "winner": "CAR",
+            "want": "ATL",
+            "price": 0.0013,
+            "error": 0.0006
+          },
+          {
+            "home": "DAL",
+            "away": "WAS",
+            "kind": "inside",
+            "winner": "DAL",
+            "want": "WAS",
+            "price": 0.0007,
+            "error": 0.0005
+          },
+          {
+            "home": "SF",
+            "away": "MIA",
+            "kind": "own",
+            "winner": "SF",
+            "want": "SF",
+            "price": 0.1748,
+            "error": 0.0027
+          },
+          {
+            "home": "ARI",
+            "away": "SEA",
+            "kind": "inside",
+            "winner": "SEA",
+            "want": "ARI",
+            "price": 0.0017,
+            "error": 0.0014
+          },
+          {
+            "home": "LAR",
+            "away": "NYG",
+            "kind": "inside",
+            "winner": "LAR",
+            "want": "NYG",
+            "price": 0.0037,
+            "error": 0.0015
+          }
+        ],
+        "best": 0.7274,
+        "worst": 0.4907,
+        "actual": 0.6946,
+        "rank": 0.6565,
+        "given": {
+          "best": 0.7274,
+          "rank": 0.313,
+          "pieces": [
+            {
+              "want": "BUF",
+              "price": 0.0131,
+              "error": 0.0007
+            },
+            {
+              "want": "NYJ",
+              "price": 0.0106,
+              "error": 0.0009
+            },
+            {
+              "want": "BAL",
+              "price": 0.008,
+              "error": 0.0003
+            },
+            {
+              "want": "TEN",
+              "price": 0.0108,
+              "error": 0.0003
+            },
+            {
+              "want": "MIN",
+              "price": 0.0006,
+              "error": 0.0018
+            },
+            {
+              "want": "CLE",
+              "price": 0.0082,
+              "error": 0.0006
+            },
+            {
+              "want": "ATL",
+              "price": 0.0013,
+              "error": 0.0006
+            },
+            {
+              "want": "WAS",
+              "price": 0.0007,
+              "error": 0.0005
+            },
+            {
+              "want": "SF",
+              "price": 0.0,
+              "error": 0.0
+            },
+            {
+              "want": "ARI",
+              "price": 0.0017,
+              "error": 0.0014
+            },
+            {
+              "want": "NYG",
+              "price": 0.0037,
+              "error": 0.0015
+            }
+          ]
+        },
+        "road": [
+          0.7274, 0.7274, 0.7168, 0.7094, 0.7003, 0.7003, 0.7003, 0.6985,
+          0.6985, 0.6985, 0.6973, 0.6946
+        ],
+        "mean": [
+          0.6105, 0.6165, 0.6111, 0.6069, 0.6022, 0.6024, 0.6065, 0.6064,
+          0.6069, 0.6967, 0.6959, 0.6946
+        ],
+        "strip": [
+          [
+            83, 254, 351, 244, 82, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 28, 201, 418,
+            299, 78
+          ],
+          [
+            1, 72, 181, 176, 72, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 31, 174, 229,
+            78
+          ],
+          [1, 67, 116, 65, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 31, 127, 94, 4],
+          [1, 56, 55, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 31, 72, 25, 0],
+          [1, 46, 17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 31, 33, 0, 0],
+          [0, 23, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 17, 0, 0],
+          [0, 7, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0],
+          [0, 3, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0],
+          [0, 1, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0]
+        ],
+        "exact": false
+      },
+      "podium": {
+        "medals": [
+          {
+            "team": "BUF",
+            "place": 1,
+            "rank": 0.9011,
+            "best": 0.7452,
+            "worst": 0.4955,
+            "actual": 0.7245,
+            "game": "won",
+            "pieces": [
+              {
+                "home": "BUF",
+                "away": "DET",
+                "want": "BUF",
+                "price": 0.1639,
+                "made": true
+              },
+              {
+                "home": "NYJ",
+                "away": "GB",
+                "want": "GB",
+                "price": 0.0167,
+                "made": true
+              },
+              {
+                "home": "SF",
+                "away": "MIA",
+                "want": "SF",
+                "price": 0.0145,
+                "made": true
+              }
+            ]
+          },
+          {
+            "team": "CLE",
+            "place": 2,
+            "rank": 0.8997,
+            "best": 0.551,
+            "worst": 0.2888,
+            "actual": 0.5212,
+            "game": "won",
+            "pieces": [
+              {
+                "home": "TB",
+                "away": "CLE",
+                "want": "CLE",
+                "price": 0.1867,
+                "made": true
+              },
+              {
+                "home": "BAL",
+                "away": "NO",
+                "want": "NO",
+                "price": 0.0176,
+                "made": true
+              },
+              {
+                "home": "NYJ",
+                "away": "GB",
+                "want": "GB",
+                "price": 0.0119,
+                "made": true
+              }
+            ]
+          },
+          {
+            "team": "CIN",
+            "place": 3,
+            "rank": 0.8638,
+            "best": 0.7498,
+            "worst": 0.4832,
+            "actual": 0.7217,
+            "game": "won",
+            "pieces": [
+              {
+                "home": "HOU",
+                "away": "CIN",
+                "want": "CIN",
+                "price": 0.1748,
+                "made": true
+              },
+              {
+                "home": "BAL",
+                "away": "NO",
+                "want": "NO",
+                "price": 0.0157,
+                "made": true
+              },
+              {
+                "home": "TB",
+                "away": "CLE",
+                "want": "TB",
+                "price": 0.0132,
+                "made": false
+              }
+            ]
+          }
+        ],
+        "place": 11,
+        "eligible": 32
+      }
+    },
+    {
+      "week": 3,
+      "record": {
+        "w": 2,
+        "l": 0
+      },
+      "game": {
+        "opponent": "ARI",
+        "won": true,
+        "relation": "division"
+      },
+      "paths": {
+        "before": [null, null, 4, 3, 2],
+        "after": [null, 4, 3, 2, 1],
+        "winsBefore": 2,
+        "winsAfter": 3
+      },
+      "share": {
+        "before": 0.6938,
+        "after": 0.7994,
+        "own": 0.0925,
+        "league": 0.0132,
+        "spread": 0.013,
+        "exact": false
+      },
+      "pending": {
+        "before": 240,
+        "after": 224
+      },
+      "stake": {
+        "opponent": "DEN",
+        "own": 0.1369,
+        "spread": 0.0708,
+        "exact": false,
+        "pieces": [
+          {
+            "home": "WAS",
+            "away": "IND",
+            "kind": "exported",
+            "want": "IND",
+            "price": 0.0062,
+            "error": 0.0007
+          },
+          {
+            "home": "HOU",
+            "away": "DAL",
+            "kind": "exported",
+            "want": "HOU",
+            "price": 0.0046,
+            "error": 0.0001
+          },
+          {
+            "home": "PHI",
+            "away": "LAR",
+            "kind": "inside",
+            "want": "PHI",
+            "price": 0.0036,
+            "error": 0.0012
+          },
+          {
+            "home": "NYG",
+            "away": "ARI",
+            "kind": "inside",
+            "want": "NYG",
+            "price": 0.0045,
+            "error": 0.0004
+          },
+          {
+            "home": "CHI",
+            "away": "NYJ",
+            "kind": "exported",
+            "want": "NYJ",
+            "price": 0.0049,
+            "error": 0.0007
+          },
+          {
+            "home": "TB",
+            "away": "GB",
+            "kind": "inside",
+            "want": "TB",
+            "price": 0.0021,
+            "error": 0.0005
+          },
+          {
+            "home": "MIN",
+            "away": "MIA",
+            "kind": "exported",
+            "want": "MIA",
+            "price": 0.0034,
+            "error": 0.0006
+          },
+          {
+            "home": "SF",
+            "away": "DEN",
+            "kind": "own",
+            "want": "SF",
+            "price": 0.1216,
+            "error": 0.0033
+          },
+          {
+            "home": "SEA",
+            "away": "LAC",
+            "kind": "exported",
+            "want": "LAC",
+            "price": 0.011,
+            "error": 0.0002
+          },
+          {
+            "home": "CAR",
+            "away": "DET",
+            "kind": "inside",
+            "want": "CAR",
+            "price": 0.0024,
+            "error": 0.0005
+          },
+          {
+            "home": "NO",
+            "away": "ATL",
+            "kind": "inside",
+            "want": "ATL",
+            "price": 0.0003,
+            "error": 0.0004
+          }
+        ]
+      },
+      "clinched": false,
+      "ways": {
+        "games": [
+          {
+            "home": "GB",
+            "away": "ATL",
+            "kind": "inside",
+            "winner": "ATL",
+            "want": "ATL",
+            "price": 0.002,
+            "error": 0.0001
+          },
+          {
+            "home": "CLE",
+            "away": "CAR",
+            "kind": "exported",
+            "winner": "CLE",
+            "want": "CLE",
+            "price": 0.0071,
+            "error": 0.0001
+          },
+          {
+            "home": "WAS",
+            "away": "SEA",
+            "kind": "inside",
+            "winner": "WAS",
+            "want": "WAS",
+            "price": 0.0054,
+            "error": 0.0011
+          },
+          {
+            "home": "NYG",
+            "away": "TEN",
+            "kind": "exported",
+            "winner": "NYG",
+            "want": "TEN",
+            "price": 0.0075,
+            "error": 0.0001
+          },
+          {
+            "home": "DET",
+            "away": "NYJ",
+            "kind": "exported",
+            "winner": "DET",
+            "want": "NYJ",
+            "price": 0.0083,
+            "error": 0.0005
+          },
+          {
+            "home": "TB",
+            "away": "MIN",
+            "kind": "inside",
+            "winner": "MIN",
+            "want": "TB",
+            "price": 0.0011,
+            "error": 0.0009
+          },
+          {
+            "home": "SF",
+            "away": "ARI",
+            "kind": "own",
+            "winner": "SF",
+            "want": "SF",
+            "price": 0.1677,
+            "error": 0.0032
+          },
+          {
+            "home": "DAL",
+            "away": "BAL",
+            "kind": "exported",
+            "winner": "BAL",
+            "want": "BAL",
+            "price": 0.0094,
+            "error": 0.0005
+          },
+          {
+            "home": "NO",
+            "away": "LV",
+            "kind": "exported",
+            "winner": "LV",
+            "want": "LV",
+            "price": 0.0056,
+            "error": 0.0001
+          },
+          {
+            "home": "DEN",
+            "away": "LAR",
+            "kind": "exported",
+            "winner": "DEN",
+            "want": "DEN",
+            "price": 0.0128,
+            "error": 0.0004
+          },
+          {
+            "home": "CHI",
+            "away": "PHI",
+            "kind": "inside",
+            "winner": "CHI",
+            "want": "CHI",
+            "price": 0.0,
+            "error": 0.0005
+          }
+        ],
+        "best": 0.8205,
+        "worst": 0.5589,
+        "actual": 0.7991,
+        "rank": 0.9197,
+        "given": {
+          "best": 0.8205,
+          "rank": 0.8394,
+          "pieces": [
+            {
+              "want": "ATL",
+              "price": 0.002,
+              "error": 0.0001
+            },
+            {
+              "want": "CLE",
+              "price": 0.0071,
+              "error": 0.0001
+            },
+            {
+              "want": "WAS",
+              "price": 0.0054,
+              "error": 0.0011
+            },
+            {
+              "want": "TEN",
+              "price": 0.0075,
+              "error": 0.0001
+            },
+            {
+              "want": "NYJ",
+              "price": 0.0083,
+              "error": 0.0005
+            },
+            {
+              "want": "TB",
+              "price": 0.0011,
+              "error": 0.0009
+            },
+            {
+              "want": "SF",
+              "price": 0.0,
+              "error": 0.0
+            },
+            {
+              "want": "BAL",
+              "price": 0.0094,
+              "error": 0.0005
+            },
+            {
+              "want": "LV",
+              "price": 0.0056,
+              "error": 0.0001
+            },
+            {
+              "want": "DEN",
+              "price": 0.0128,
+              "error": 0.0004
+            },
+            {
+              "want": "CHI",
+              "price": 0.0,
+              "error": 0.0005
+            }
+          ]
+        },
+        "road": [
+          0.8205, 0.8205, 0.8205, 0.8205, 0.813, 0.8031, 0.7993, 0.7993, 0.7993,
+          0.7993, 0.7993, 0.7991
+        ],
+        "mean": [
+          0.6959, 0.6986, 0.703, 0.7069, 0.7015, 0.6963, 0.6942, 0.7842, 0.7898,
+          0.7921, 0.7992, 0.7991
+        ],
+        "strip": [
+          [
+            18, 90, 235, 300, 243, 111, 24, 3, 0, 0, 0, 0, 0, 0, 9, 88, 266,
+            378, 234, 49
+          ],
+          [
+            4, 30, 101, 150, 134, 72, 18, 3, 0, 0, 0, 0, 0, 0, 2, 32, 115, 191,
+            141, 31
+          ],
+          [0, 6, 36, 69, 78, 50, 14, 3, 0, 0, 0, 0, 0, 0, 0, 7, 42, 93, 87, 27],
+          [0, 0, 12, 29, 42, 31, 11, 3, 0, 0, 0, 0, 0, 0, 0, 1, 15, 41, 50, 21],
+          [0, 0, 10, 20, 22, 9, 3, 0, 0, 0, 0, 0, 0, 0, 0, 1, 12, 24, 23, 4],
+          [0, 0, 7, 14, 9, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 9, 14, 8, 0],
+          [0, 0, 5, 7, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 5, 6, 4, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 5, 6, 4, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 4, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0]
+        ],
+        "exact": false
+      },
+      "podium": {
+        "medals": [
+          {
+            "team": "ATL",
+            "place": 1,
+            "rank": 0.9675,
+            "best": 0.4902,
+            "worst": 0.2052,
+            "actual": 0.4706,
+            "game": "won",
+            "pieces": [
+              {
+                "home": "GB",
+                "away": "ATL",
+                "want": "ATL",
+                "price": 0.1901,
+                "made": true
+              },
+              {
+                "home": "CLE",
+                "away": "CAR",
+                "want": "CLE",
+                "price": 0.0316,
+                "made": true
+              },
+              {
+                "home": "NO",
+                "away": "LV",
+                "want": "LV",
+                "price": 0.0313,
+                "made": true
+              }
+            ]
+          },
+          {
+            "team": "NYG",
+            "place": 2,
+            "rank": 0.9531,
+            "best": 0.6522,
+            "worst": 0.3755,
+            "actual": 0.6315,
+            "game": "won",
+            "pieces": [
+              {
+                "home": "NYG",
+                "away": "TEN",
+                "want": "NYG",
+                "price": 0.1876,
+                "made": true
+              },
+              {
+                "home": "DAL",
+                "away": "BAL",
+                "want": "BAL",
+                "price": 0.0221,
+                "made": true
+              },
+              {
+                "home": "DET",
+                "away": "NYJ",
+                "want": "NYJ",
+                "price": 0.0114,
+                "made": false
+              }
+            ]
+          },
+          {
+            "team": "SF",
+            "place": 3,
+            "rank": 0.9197,
+            "best": 0.8205,
+            "worst": 0.5589,
+            "actual": 0.7991,
+            "game": "won",
+            "pieces": [
+              {
+                "home": "SF",
+                "away": "ARI",
+                "want": "SF",
+                "price": 0.1677,
+                "made": true
+              },
+              {
+                "home": "DEN",
+                "away": "LAR",
+                "want": "DEN",
+                "price": 0.0128,
+                "made": true
+              },
+              {
+                "home": "DAL",
+                "away": "BAL",
+                "want": "BAL",
+                "price": 0.0094,
+                "made": true
+              }
+            ]
+          }
+        ],
+        "place": 3,
+        "eligible": 32
+      }
+    },
+    {
+      "week": 4,
+      "record": {
+        "w": 3,
+        "l": 0
+      },
+      "game": {
+        "opponent": "DEN",
+        "won": true,
+        "relation": "other"
+      },
+      "paths": {
+        "before": [null, 4, 3, 2, 1],
+        "after": [null, 3, 2, 1, 1],
+        "winsBefore": 3,
+        "winsAfter": 4
+      },
+      "share": {
+        "before": 0.7994,
+        "after": 0.8509,
+        "own": 0.0675,
+        "league": -0.016,
+        "spread": 0.0097,
+        "exact": false
+      },
+      "pending": {
+        "before": 224,
+        "after": 208
+      },
+      "stake": {
+        "opponent": "SEA",
+        "own": 0.1304,
+        "spread": 0.0665,
+        "exact": false,
+        "pieces": [
+          {
+            "home": "DAL",
+            "away": "TB",
+            "kind": "inside",
+            "want": "TB",
+            "price": 0.0032,
+            "error": 0.0001
+          },
+          {
+            "home": "JAX",
+            "away": "PHI",
+            "kind": "exported",
+            "want": "JAX",
+            "price": 0.0039,
+            "error": 0.0006
+          },
+          {
+            "home": "WAS",
+            "away": "NYG",
+            "kind": "inside",
+            "want": "NYG",
+            "price": 0.0002,
+            "error": 0.0002
+          },
+          {
+            "home": "GB",
+            "away": "CHI",
+            "kind": "inside",
+            "want": "CHI",
+            "price": 0.0001,
+            "error": 0.0009
+          },
+          {
+            "home": "NO",
+            "away": "MIN",
+            "kind": "inside",
+            "want": "NO",
+            "price": 0.0005,
+            "error": 0.0001
+          },
+          {
+            "home": "SEA",
+            "away": "SF",
+            "kind": "own",
+            "want": "SF",
+            "price": 0.1207,
+            "error": 0.0013
+          },
+          {
+            "home": "ARI",
+            "away": "DET",
+            "kind": "inside",
+            "want": "ARI",
+            "price": 0.0001,
+            "error": 0.0003
+          },
+          {
+            "home": "ATL",
+            "away": "BAL",
+            "kind": "exported",
+            "want": "BAL",
+            "price": 0.004,
+            "error": 0.0001
+          },
+          {
+            "home": "LAR",
+            "away": "BUF",
+            "kind": "exported",
+            "want": "BUF",
+            "price": 0.0079,
+            "error": 0.0012
+          }
+        ]
+      },
+      "clinched": false,
+      "ways": {
+        "games": [
+          {
+            "home": "WAS",
+            "away": "IND",
+            "kind": "exported",
+            "winner": "IND",
+            "want": "IND",
+            "price": 0.0062,
+            "error": 0.0007
+          },
+          {
+            "home": "HOU",
+            "away": "DAL",
+            "kind": "exported",
+            "winner": "DAL",
+            "want": "HOU",
+            "price": 0.0046,
+            "error": 0.0001
+          },
+          {
+            "home": "PHI",
+            "away": "LAR",
+            "kind": "inside",
+            "winner": "LAR",
+            "want": "PHI",
+            "price": 0.0036,
+            "error": 0.0012
+          },
+          {
+            "home": "NYG",
+            "away": "ARI",
+            "kind": "inside",
+            "winner": "NYG",
+            "want": "NYG",
+            "price": 0.0045,
+            "error": 0.0004
+          },
+          {
+            "home": "CHI",
+            "away": "NYJ",
+            "kind": "exported",
+            "winner": "CHI",
+            "want": "NYJ",
+            "price": 0.0049,
+            "error": 0.0007
+          },
+          {
+            "home": "TB",
+            "away": "GB",
+            "kind": "inside",
+            "winner": "GB",
+            "want": "TB",
+            "price": 0.0021,
+            "error": 0.0005
+          },
+          {
+            "home": "MIN",
+            "away": "MIA",
+            "kind": "exported",
+            "winner": "MIN",
+            "want": "MIA",
+            "price": 0.0034,
+            "error": 0.0006
+          },
+          {
+            "home": "SF",
+            "away": "DEN",
+            "kind": "own",
+            "winner": "SF",
+            "want": "SF",
+            "price": 0.1216,
+            "error": 0.0033
+          },
+          {
+            "home": "SEA",
+            "away": "LAC",
+            "kind": "exported",
+            "winner": "SEA",
+            "want": "LAC",
+            "price": 0.011,
+            "error": 0.0002
+          },
+          {
+            "home": "CAR",
+            "away": "DET",
+            "kind": "inside",
+            "winner": "CAR",
+            "want": "CAR",
+            "price": 0.0024,
+            "error": 0.0005
+          },
+          {
+            "home": "NO",
+            "away": "ATL",
+            "kind": "inside",
+            "winner": "ATL",
+            "want": "ATL",
+            "price": 0.0003,
+            "error": 0.0004
+          }
+        ],
+        "best": 0.8934,
+        "worst": 0.6827,
+        "actual": 0.8569,
+        "rank": 0.5598,
+        "given": {
+          "best": 0.8934,
+          "rank": 0.1196,
+          "pieces": [
+            {
+              "want": "IND",
+              "price": 0.0062,
+              "error": 0.0007
+            },
+            {
+              "want": "HOU",
+              "price": 0.0046,
+              "error": 0.0001
+            },
+            {
+              "want": "PHI",
+              "price": 0.0036,
+              "error": 0.0012
+            },
+            {
+              "want": "NYG",
+              "price": 0.0045,
+              "error": 0.0004
+            },
+            {
+              "want": "NYJ",
+              "price": 0.0049,
+              "error": 0.0007
+            },
+            {
+              "want": "TB",
+              "price": 0.0021,
+              "error": 0.0005
+            },
+            {
+              "want": "MIA",
+              "price": 0.0034,
+              "error": 0.0006
+            },
+            {
+              "want": "SF",
+              "price": 0.0,
+              "error": 0.0
+            },
+            {
+              "want": "LAC",
+              "price": 0.011,
+              "error": 0.0002
+            },
+            {
+              "want": "CAR",
+              "price": 0.0024,
+              "error": 0.0005
+            },
+            {
+              "want": "ATL",
+              "price": 0.0003,
+              "error": 0.0004
+            }
+          ]
+        },
+        "road": [
+          0.8934, 0.8934, 0.8887, 0.8843, 0.8843, 0.8788, 0.8757, 0.8712,
+          0.8712, 0.8588, 0.8588, 0.8569
+        ],
+        "mean": [
+          0.7995, 0.8036, 0.7995, 0.7971, 0.7992, 0.7944, 0.7919, 0.788, 0.8608,
+          0.8544, 0.8578, 0.8569
+        ],
+        "strip": [
+          [
+            10, 50, 132, 202, 236, 216, 129, 44, 5, 0, 0, 0, 0, 0, 2, 41, 187,
+            398, 322, 74
+          ],
+          [
+            1, 10, 43, 88, 120, 119, 89, 37, 5, 0, 0, 0, 0, 0, 0, 5, 60, 180,
+            204, 63
+          ],
+          [
+            1, 8, 34, 56, 64, 54, 33, 6, 0, 0, 0, 0, 0, 0, 0, 5, 44, 106, 88, 13
+          ],
+          [1, 6, 19, 32, 34, 26, 10, 0, 0, 0, 0, 0, 0, 0, 0, 3, 27, 58, 38, 2],
+          [0, 2, 8, 16, 15, 15, 8, 0, 0, 0, 0, 0, 0, 0, 0, 1, 10, 29, 22, 2],
+          [0, 2, 6, 10, 7, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 8, 15, 8, 0],
+          [0, 2, 4, 4, 4, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 5, 8, 2, 0],
+          [0, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3, 4, 0, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3, 4, 0, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3, 0, 0, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]
+        ],
+        "exact": false
+      },
+      "podium": {
+        "medals": [
+          {
+            "team": "NE",
+            "place": 1,
+            "rank": 0.9807,
+            "best": 0.5647,
+            "worst": 0.2715,
+            "actual": 0.5499,
+            "game": "won",
+            "pieces": [
+              {
+                "home": "BUF",
+                "away": "NE",
+                "want": "NE",
+                "price": 0.212,
+                "made": true
+              },
+              {
+                "home": "CHI",
+                "away": "NYJ",
+                "want": "CHI",
+                "price": 0.0224,
+                "made": true
+              },
+              {
+                "home": "MIN",
+                "away": "MIA",
+                "want": "MIN",
+                "price": 0.0162,
+                "made": true
+              }
+            ]
+          },
+          {
+            "team": "BAL",
+            "place": 2,
+            "rank": 0.9778,
+            "best": 0.7419,
+            "worst": 0.4694,
+            "actual": 0.7279,
+            "game": "won",
+            "pieces": [
+              {
+                "home": "BAL",
+                "away": "TEN",
+                "want": "BAL",
+                "price": 0.1898,
+                "made": true
+              },
+              {
+                "home": "SF",
+                "away": "DEN",
+                "want": "SF",
+                "price": 0.0173,
+                "made": true
+              },
+              {
+                "home": "CHI",
+                "away": "NYJ",
+                "want": "CHI",
+                "price": 0.0126,
+                "made": true
+              }
+            ]
+          },
+          {
+            "team": "KC",
+            "place": 3,
+            "rank": 0.9651,
+            "best": 0.8903,
+            "worst": 0.668,
+            "actual": 0.879,
+            "game": "won",
+            "pieces": [
+              {
+                "home": "LV",
+                "away": "KC",
+                "want": "KC",
+                "price": 0.1366,
+                "made": true
+              },
+              {
+                "home": "SF",
+                "away": "DEN",
+                "want": "SF",
+                "price": 0.01,
+                "made": true
+              },
+              {
+                "home": "CHI",
+                "away": "NYJ",
+                "want": "CHI",
+                "price": 0.0081,
+                "made": true
+              }
+            ]
+          }
+        ],
+        "place": 11,
+        "eligible": 32
+      }
+    },
+    {
+      "week": 5,
+      "record": {
+        "w": 4,
+        "l": 0
+      },
+      "game": {
+        "opponent": "SEA",
+        "won": true,
+        "relation": "division"
+      },
+      "paths": {
+        "before": [null, 3, 2, 1, 1],
+        "after": [3, 3, 1, 1, 1],
+        "winsBefore": 4,
+        "winsAfter": 5
+      },
+      "share": {
+        "before": 0.8509,
+        "after": 0.9234,
+        "own": 0.065,
+        "league": 0.0075,
+        "spread": 0.007,
+        "exact": false
+      },
+      "pending": {
+        "before": 208,
+        "after": 193
+      },
+      "stake": {
+        "opponent": "WAS",
+        "own": 0.0794,
+        "spread": 0.0403,
+        "exact": false,
+        "pieces": [
+          {
+            "home": "DEN",
+            "away": "SEA",
+            "kind": "exported",
+            "want": "DEN",
+            "price": 0.0042,
+            "error": 0.0
+          },
+          {
+            "home": "PHI",
+            "away": "CAR",
+            "kind": "inside",
+            "want": "CAR",
+            "price": 0.0009,
+            "error": 0.0002
+          },
+          {
+            "home": "NYG",
+            "away": "NO",
+            "kind": "inside",
+            "want": "NO",
+            "price": 0.0006,
+            "error": 0.0001
+          },
+          {
+            "home": "TB",
+            "away": "PIT",
+            "kind": "exported",
+            "want": "PIT",
+            "price": 0.0009,
+            "error": 0.0002
+          },
+          {
+            "home": "ATL",
+            "away": "CHI",
+            "kind": "inside",
+            "want": "ATL",
+            "price": 0.0009,
+            "error": 0.0006
+          },
+          {
+            "home": "LAR",
+            "away": "ARI",
+            "kind": "inside",
+            "want": "ARI",
+            "price": 0.002,
+            "error": 0.0
+          },
+          {
+            "home": "GB",
+            "away": "DAL",
+            "kind": "inside",
+            "want": "DAL",
+            "price": 0.0004,
+            "error": 0.0005
+          },
+          {
+            "home": "SF",
+            "away": "WAS",
+            "kind": "own",
+            "want": "SF",
+            "price": 0.0657,
+            "error": 0.0008
+          }
+        ]
+      },
+      "clinched": false,
+      "ways": {
+        "games": [
+          {
+            "home": "DAL",
+            "away": "TB",
+            "kind": "inside",
+            "winner": "TB",
+            "want": "TB",
+            "price": 0.0037,
+            "error": 0.0003
+          },
+          {
+            "home": "JAX",
+            "away": "PHI",
+            "kind": "exported",
+            "winner": "JAX",
+            "want": "JAX",
+            "price": 0.0044,
+            "error": 0.0011
+          },
+          {
+            "home": "GB",
+            "away": "CHI",
+            "kind": "inside",
+            "winner": "GB",
+            "want": "GB",
+            "price": 0.0002,
+            "error": 0.0011
+          },
+          {
+            "home": "NO",
+            "away": "MIN",
+            "kind": "inside",
+            "winner": "MIN",
+            "want": "NO",
+            "price": 0.0013,
+            "error": 0.0001
+          },
+          {
+            "home": "SEA",
+            "away": "SF",
+            "kind": "own",
+            "winner": "SF",
+            "want": "SF",
+            "price": 0.1242,
+            "error": 0.0004
+          },
+          {
+            "home": "ARI",
+            "away": "DET",
+            "kind": "inside",
+            "winner": "DET",
+            "want": "DET",
+            "price": 0.0002,
+            "error": 0.0007
+          },
+          {
+            "home": "ATL",
+            "away": "BAL",
+            "kind": "exported",
+            "winner": "BAL",
+            "want": "BAL",
+            "price": 0.0038,
+            "error": 0.0001
+          },
+          {
+            "home": "LAR",
+            "away": "BUF",
+            "kind": "exported",
+            "winner": "BUF",
+            "want": "BUF",
+            "price": 0.0092,
+            "error": 0.0006
+          }
+        ],
+        "best": 0.9257,
+        "worst": 0.7511,
+        "actual": 0.9244,
+        "rank": 0.9824,
+        "given": {
+          "best": 0.9257,
+          "rank": 0.9648,
+          "pieces": [
+            {
+              "want": "TB",
+              "price": 0.0037,
+              "error": 0.0003
+            },
+            {
+              "want": "JAX",
+              "price": 0.0044,
+              "error": 0.0011
+            },
+            {
+              "want": "GB",
+              "price": 0.0002,
+              "error": 0.0011
+            },
+            {
+              "want": "NO",
+              "price": 0.0013,
+              "error": 0.0001
+            },
+            {
+              "want": "SF",
+              "price": 0.0,
+              "error": 0.0
+            },
+            {
+              "want": "DET",
+              "price": 0.0002,
+              "error": 0.0007
+            },
+            {
+              "want": "BAL",
+              "price": 0.0038,
+              "error": 0.0001
+            },
+            {
+              "want": "BUF",
+              "price": 0.0092,
+              "error": 0.0006
+            }
+          ]
+        },
+        "road": [
+          0.9257, 0.9257, 0.9257, 0.9257, 0.9244, 0.9244, 0.9244, 0.9244, 0.9244
+        ],
+        "mean": [
+          0.845, 0.8484, 0.8528, 0.8528, 0.8516, 0.9175, 0.9175, 0.9191, 0.9244
+        ],
+        "strip": [
+          [12, 19, 33, 32, 24, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 34, 51, 39],
+          [0, 10, 11, 22, 13, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 26, 26],
+          [0, 0, 5, 10, 9, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, 16],
+          [0, 0, 3, 5, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8],
+          [0, 0, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+        ],
+        "exact": false
+      },
+      "podium": {
+        "medals": [
+          {
+            "team": "DET",
+            "place": 1,
+            "rank": 0.9824,
+            "best": 0.6083,
+            "worst": 0.3208,
+            "actual": 0.6005,
+            "game": "won",
+            "pieces": [
+              {
+                "home": "ARI",
+                "away": "DET",
+                "want": "DET",
+                "price": 0.2203,
+                "made": true
+              },
+              {
+                "home": "LAR",
+                "away": "BUF",
+                "want": "BUF",
+                "price": 0.0175,
+                "made": true
+              },
+              {
+                "home": "JAX",
+                "away": "PHI",
+                "want": "JAX",
+                "price": 0.0153,
+                "made": true
+              }
+            ]
+          },
+          {
+            "team": "SF",
+            "place": 1,
+            "rank": 0.9824,
+            "best": 0.9257,
+            "worst": 0.7511,
+            "actual": 0.9244,
+            "game": "won",
+            "pieces": [
+              {
+                "home": "SEA",
+                "away": "SF",
+                "want": "SF",
+                "price": 0.1242,
+                "made": true
+              },
+              {
+                "home": "LAR",
+                "away": "BUF",
+                "want": "BUF",
+                "price": 0.0092,
+                "made": true
+              },
+              {
+                "home": "JAX",
+                "away": "PHI",
+                "want": "JAX",
+                "price": 0.0044,
+                "made": true
+              }
+            ]
+          },
+          {
+            "team": "TB",
+            "place": 3,
+            "rank": 0.9805,
+            "best": 0.2598,
+            "worst": 0.0876,
+            "actual": 0.2571,
+            "game": "won",
+            "pieces": [
+              {
+                "home": "DAL",
+                "away": "TB",
+                "want": "TB",
+                "price": 0.1319,
+                "made": true
+              },
+              {
+                "home": "ATL",
+                "away": "BAL",
+                "want": "BAL",
+                "price": 0.0297,
+                "made": true
+              },
+              {
+                "home": "NO",
+                "away": "MIN",
+                "want": "MIN",
+                "price": 0.017,
+                "made": true
+              }
+            ]
+          }
+        ],
+        "place": 1,
+        "eligible": 31
+      }
+    },
+    {
+      "week": 6,
+      "record": {
+        "w": 5,
+        "l": 0
+      },
+      "game": {
+        "opponent": "WAS",
+        "won": true,
+        "relation": "conference"
+      },
+      "paths": {
+        "before": [3, 3, 1, 1, 1],
+        "after": [3, 1, 1, 1, 1],
+        "winsBefore": 5,
+        "winsAfter": 6
+      },
+      "share": {
+        "before": 0.9234,
+        "after": 0.9683,
+        "own": 0.04,
+        "league": 0.0049,
+        "spread": 0.0036,
+        "exact": false
+      },
+      "pending": {
+        "before": 193,
+        "after": 179
+      },
+      "stake": {
+        "opponent": "ATL",
+        "own": 0.0393,
+        "spread": 0.0204,
+        "exact": false,
+        "pieces": [
+          {
+            "home": "CHI",
+            "away": "NE",
+            "kind": "exported",
+            "want": "NE",
+            "price": 0.0012,
+            "error": 0.0002
+          },
+          {
+            "home": "NO",
+            "away": "PIT",
+            "kind": "exported",
+            "want": "PIT",
+            "price": 0.0004,
+            "error": 0.0001
+          },
+          {
+            "home": "HOU",
+            "away": "NYG",
+            "kind": "exported",
+            "want": "HOU",
+            "price": 0.0005,
+            "error": 0.0001
+          },
+          {
+            "home": "MIN",
+            "away": "IND",
+            "kind": "exported",
+            "want": "IND",
+            "price": 0.0007,
+            "error": 0.0001
+          },
+          {
+            "home": "ATL",
+            "away": "SF",
+            "kind": "own",
+            "want": "SF",
+            "price": 0.028,
+            "error": 0.0007
+          },
+          {
+            "home": "CAR",
+            "away": "TB",
+            "kind": "inside",
+            "want": "TB",
+            "price": 0.0003,
+            "error": 0.0001
+          },
+          {
+            "home": "ARI",
+            "away": "DEN",
+            "kind": "exported",
+            "want": "DEN",
+            "price": 0.0024,
+            "error": 0.0004
+          },
+          {
+            "home": "LV",
+            "away": "LAR",
+            "kind": "exported",
+            "want": "LV",
+            "price": 0.0026,
+            "error": 0.001
+          },
+          {
+            "home": "DET",
+            "away": "GB",
+            "kind": "inside",
+            "want": "DET",
+            "price": 0.0009,
+            "error": 0.0002
+          },
+          {
+            "home": "SEA",
+            "away": "KC",
+            "kind": "exported",
+            "want": "KC",
+            "price": 0.0023,
+            "error": 0.0002
+          },
+          {
+            "home": "PHI",
+            "away": "DAL",
+            "kind": "inside",
+            "want": "DAL",
+            "price": 0.001,
+            "error": 0.0001
+          }
+        ]
+      },
+      "clinched": false,
+      "ways": {
+        "games": [
+          {
+            "home": "DEN",
+            "away": "SEA",
+            "kind": "exported",
+            "winner": "DEN",
+            "want": "DEN",
+            "price": 0.0042,
+            "error": 0.0
+          },
+          {
+            "home": "PHI",
+            "away": "CAR",
+            "kind": "inside",
+            "winner": "CAR",
+            "want": "CAR",
+            "price": 0.0009,
+            "error": 0.0002
+          },
+          {
+            "home": "NYG",
+            "away": "NO",
+            "kind": "inside",
+            "winner": "NO",
+            "want": "NO",
+            "price": 0.0006,
+            "error": 0.0001
+          },
+          {
+            "home": "TB",
+            "away": "PIT",
+            "kind": "exported",
+            "winner": "PIT",
+            "want": "PIT",
+            "price": 0.0009,
+            "error": 0.0002
+          },
+          {
+            "home": "ATL",
+            "away": "CHI",
+            "kind": "inside",
+            "winner": "CHI",
+            "want": "ATL",
+            "price": 0.0009,
+            "error": 0.0006
+          },
+          {
+            "home": "LAR",
+            "away": "ARI",
+            "kind": "inside",
+            "winner": "ARI",
+            "want": "ARI",
+            "price": 0.002,
+            "error": 0.0
+          },
+          {
+            "home": "GB",
+            "away": "DAL",
+            "kind": "inside",
+            "winner": "GB",
+            "want": "DAL",
+            "price": 0.0004,
+            "error": 0.0005
+          },
+          {
+            "home": "SF",
+            "away": "WAS",
+            "kind": "own",
+            "winner": "SF",
+            "want": "SF",
+            "price": 0.0657,
+            "error": 0.0008
+          }
+        ],
+        "best": 0.9691,
+        "worst": 0.8642,
+        "actual": 0.9672,
+        "rank": 0.9473,
+        "given": {
+          "best": 0.9691,
+          "rank": 0.8945,
+          "pieces": [
+            {
+              "want": "DEN",
+              "price": 0.0042,
+              "error": 0.0
+            },
+            {
+              "want": "CAR",
+              "price": 0.0009,
+              "error": 0.0002
+            },
+            {
+              "want": "NO",
+              "price": 0.0006,
+              "error": 0.0001
+            },
+            {
+              "want": "PIT",
+              "price": 0.0009,
+              "error": 0.0002
+            },
+            {
+              "want": "ATL",
+              "price": 0.0009,
+              "error": 0.0006
+            },
+            {
+              "want": "ARI",
+              "price": 0.002,
+              "error": 0.0
+            },
+            {
+              "want": "DAL",
+              "price": 0.0004,
+              "error": 0.0005
+            },
+            {
+              "want": "SF",
+              "price": 0.0,
+              "error": 0.0
+            }
+          ]
+        },
+        "road": [
+          0.9691, 0.9691, 0.9691, 0.9691, 0.9691, 0.9682, 0.9682, 0.9672, 0.9672
+        ],
+        "mean": [
+          0.9245, 0.9299, 0.9311, 0.9319, 0.9326, 0.9312, 0.9333, 0.9325, 0.9672
+        ],
+        "strip": [
+          [3, 11, 21, 23, 19, 25, 22, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 23, 54, 51],
+          [0, 0, 0, 2, 11, 25, 22, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, 48],
+          [0, 0, 0, 0, 3, 11, 14, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 28],
+          [0, 0, 0, 0, 1, 4, 8, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 15],
+          [0, 0, 0, 0, 0, 2, 4, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8],
+          [0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4],
+          [0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+          [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+        ],
+        "exact": false
+      },
+      "podium": {
+        "medals": [
+          {
+            "team": "CHI",
+            "place": 1,
+            "rank": 0.9785,
+            "best": 0.7319,
+            "worst": 0.4559,
+            "actual": 0.7241,
+            "game": "won",
+            "pieces": [
+              {
+                "home": "ATL",
+                "away": "CHI",
+                "want": "CHI",
+                "price": 0.2143,
+                "made": true
+              },
+              {
+                "home": "DEN",
+                "away": "SEA",
+                "want": "DEN",
+                "price": 0.0183,
+                "made": true
+              },
+              {
+                "home": "LAR",
+                "away": "ARI",
+                "want": "ARI",
+                "price": 0.0079,
+                "made": true
+              }
+            ]
+          },
+          {
+            "team": "GB",
+            "place": 2,
+            "rank": 0.9512,
+            "best": 0.7408,
+            "worst": 0.4559,
+            "actual": 0.732,
+            "game": "won",
+            "pieces": [
+              {
+                "home": "GB",
+                "away": "DAL",
+                "want": "GB",
+                "price": 0.2169,
+                "made": true
+              },
+              {
+                "home": "DEN",
+                "away": "SEA",
+                "want": "DEN",
+                "price": 0.0187,
+                "made": true
+              },
+              {
+                "home": "ATL",
+                "away": "CHI",
+                "want": "ATL",
+                "price": 0.0089,
+                "made": false
+              }
+            ]
+          },
+          {
+            "team": "SF",
+            "place": 3,
+            "rank": 0.9473,
+            "best": 0.9691,
+            "worst": 0.8642,
+            "actual": 0.9672,
+            "game": "won",
+            "pieces": [
+              {
+                "home": "SF",
+                "away": "WAS",
+                "want": "SF",
+                "price": 0.0657,
+                "made": true
+              },
+              {
+                "home": "DEN",
+                "away": "SEA",
+                "want": "DEN",
+                "price": 0.0042,
+                "made": true
+              },
+              {
+                "home": "LAR",
+                "away": "ARI",
+                "want": "ARI",
+                "price": 0.002,
+                "made": true
+              }
+            ]
+          }
+        ],
+        "place": 3,
+        "eligible": 30
+      }
+    },
+    {
+      "week": 7,
+      "record": {
+        "w": 6,
+        "l": 0
+      },
+      "game": {
+        "opponent": "ATL",
+        "won": false,
+        "relation": "conference"
+      },
+      "paths": {
+        "before": [3, 1, 1, 1, 1],
+        "after": [3, 2, 1, 1, 1],
+        "winsBefore": 6,
+        "winsAfter": 6
+      },
+      "share": {
+        "before": 0.9683,
+        "after": 0.9393,
+        "own": -0.0196,
+        "league": -0.0094,
+        "spread": 0.0078,
+        "exact": false
+      },
+      "pending": {
+        "before": 179,
+        "after": 165
+      },
+      "stake": {
+        "opponent": null,
+        "own": 0.0,
+        "spread": 0.0068,
+        "exact": false,
+        "pieces": [
+          {
+            "home": "GB",
+            "away": "CAR",
+            "kind": "inside",
+            "want": "CAR",
+            "price": 0.0046,
+            "error": 0.0005
+          },
+          {
+            "home": "DAL",
+            "away": "ARI",
+            "kind": "inside",
+            "want": "DAL",
+            "price": 0.0001,
+            "error": 0.0008
+          },
+          {
+            "home": "DET",
+            "away": "MIN",
+            "kind": "inside",
+            "want": "MIN",
+            "price": 0.0031,
+            "error": 0.0001
+          },
+          {
+            "home": "TB",
+            "away": "ATL",
+            "kind": "inside",
+            "want": "TB",
+            "price": 0.001,
+            "error": 0.0001
+          },
+          {
+            "home": "LAR",
+            "away": "LAC",
+            "kind": "exported",
+            "want": "LAC",
+            "price": 0.0084,
+            "error": 0.0005
+          },
+          {
+            "home": "WAS",
+            "away": "PHI",
+            "kind": "inside",
+            "want": "PHI",
+            "price": 0.0008,
+            "error": 0.0002
+          },
+          {
+            "home": "SEA",
+            "away": "CHI",
+            "kind": "inside",
+            "want": "CHI",
+            "price": 0.0051,
+            "error": 0.0003
+          }
+        ]
+      },
+      "clinched": false,
+      "ways": {
+        "games": [
+          {
+            "home": "CHI",
+            "away": "NE",
+            "kind": "exported",
+            "winner": "CHI",
+            "want": "NE",
+            "price": 0.0012,
+            "error": 0.0002
+          },
+          {
+            "home": "NO",
+            "away": "PIT",
+            "kind": "exported",
+            "winner": "PIT",
+            "want": "PIT",
+            "price": 0.0004,
+            "error": 0.0001
+          },
+          {
+            "home": "HOU",
+            "away": "NYG",
+            "kind": "exported",
+            "winner": "NYG",
+            "want": "HOU",
+            "price": 0.0005,
+            "error": 0.0001
+          },
+          {
+            "home": "MIN",
+            "away": "IND",
+            "kind": "exported",
+            "winner": "MIN",
+            "want": "IND",
+            "price": 0.0007,
+            "error": 0.0001
+          },
+          {
+            "home": "ATL",
+            "away": "SF",
+            "kind": "own",
+            "winner": "ATL",
+            "want": "SF",
+            "price": 0.028,
+            "error": 0.0007
+          },
+          {
+            "home": "CAR",
+            "away": "TB",
+            "kind": "inside",
+            "winner": "TB",
+            "want": "TB",
+            "price": 0.0003,
+            "error": 0.0001
+          },
+          {
+            "home": "ARI",
+            "away": "DEN",
+            "kind": "exported",
+            "winner": "DEN",
+            "want": "DEN",
+            "price": 0.0024,
+            "error": 0.0004
+          },
+          {
+            "home": "LV",
+            "away": "LAR",
+            "kind": "exported",
+            "winner": "LAR",
+            "want": "LV",
+            "price": 0.0026,
+            "error": 0.001
+          },
+          {
+            "home": "DET",
+            "away": "GB",
+            "kind": "inside",
+            "winner": "DET",
+            "want": "DET",
+            "price": 0.0009,
+            "error": 0.0002
+          },
+          {
+            "home": "SEA",
+            "away": "KC",
+            "kind": "exported",
+            "winner": "SEA",
+            "want": "KC",
+            "price": 0.0023,
+            "error": 0.0002
+          },
+          {
+            "home": "PHI",
+            "away": "DAL",
+            "kind": "inside",
+            "winner": "DAL",
+            "want": "DAL",
+            "price": 0.001,
+            "error": 0.0001
+          }
+        ],
+        "best": 0.9941,
+        "worst": 0.9276,
+        "actual": 0.9397,
+        "rank": 0.0647,
+        "given": {
+          "best": 0.9661,
+          "rank": 0.1294,
+          "pieces": [
+            {
+              "want": "NE",
+              "price": 0.0034,
+              "error": 0.0002
+            },
+            {
+              "want": "PIT",
+              "price": 0.0011,
+              "error": 0.0002
+            },
+            {
+              "want": "HOU",
+              "price": 0.0018,
+              "error": 0.0004
+            },
+            {
+              "want": "IND",
+              "price": 0.0014,
+              "error": 0.0001
+            },
+            {
+              "want": "ATL",
+              "price": 0.0,
+              "error": 0.0
+            },
+            {
+              "want": "TB",
+              "price": 0.001,
+              "error": 0.0001
+            },
+            {
+              "want": "DEN",
+              "price": 0.0067,
+              "error": 0.0005
+            },
+            {
+              "want": "LV",
+              "price": 0.0073,
+              "error": 0.0003
+            },
+            {
+              "want": "GB",
+              "price": 0.0002,
+              "error": 0.0001
+            },
+            {
+              "want": "KC",
+              "price": 0.0076,
+              "error": 0.0002
+            },
+            {
+              "want": "PHI",
+              "price": 0.0001,
+              "error": 0.0
+            }
+          ]
+        },
+        "road": [
+          0.9941, 0.9929, 0.9929, 0.9924, 0.9918, 0.9592, 0.9592, 0.9592, 0.95,
+          0.9496, 0.9397, 0.9397
+        ],
+        "mean": [
+          0.9683, 0.9665, 0.967, 0.9662, 0.9653, 0.9442, 0.945, 0.9489, 0.9446,
+          0.9445, 0.9396, 0.9397
+        ],
+        "strip": [
+          [
+            15, 23, 40, 98, 122, 135, 183, 151, 112, 69, 59, 17, 0, 0, 0, 1, 71,
+            354, 457, 141
+          ],
+          [
+            15, 23, 35, 70, 86, 57, 90, 68, 10, 42, 16, 0, 0, 0, 0, 1, 63, 220,
+            179, 49
+          ],
+          [
+            4, 11, 14, 28, 44, 33, 42, 44, 5, 19, 12, 0, 0, 0, 0, 0, 27, 108,
+            92, 29
+          ],
+          [4, 7, 6, 20, 24, 9, 29, 13, 1, 14, 1, 0, 0, 0, 0, 0, 18, 55, 42, 13],
+          [4, 4, 1, 19, 4, 6, 18, 0, 1, 7, 0, 0, 0, 0, 0, 0, 12, 29, 18, 5],
+          [4, 4, 1, 19, 4, 6, 18, 0, 1, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+          [0, 4, 0, 8, 4, 2, 10, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+          [0, 0, 0, 4, 0, 2, 6, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+          [0, 0, 0, 4, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+          [0, 0, 0, 2, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+          [0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+          [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        ],
+        "exact": false
+      },
+      "podium": {
+        "medals": [
+          {
+            "team": "JAX",
+            "place": 1,
+            "rank": 0.9595,
+            "best": 0.8402,
+            "worst": 0.7267,
+            "actual": 0.8314,
+            "game": "bye",
+            "pieces": [
+              {
+                "home": "MIN",
+                "away": "IND",
+                "want": "MIN",
+                "price": 0.0377,
+                "made": true
+              },
+              {
+                "home": "HOU",
+                "away": "NYG",
+                "want": "NYG",
+                "price": 0.0326,
+                "made": true
+              },
+              {
+                "home": "TEN",
+                "away": "CLE",
+                "want": "CLE",
+                "price": 0.0175,
+                "made": true
+              }
+            ]
+          },
+          {
+            "team": "DEN",
+            "place": 2,
+            "rank": 0.9077,
+            "best": 0.8439,
+            "worst": 0.5388,
+            "actual": 0.8163,
+            "game": "won",
+            "pieces": [
+              {
+                "home": "ARI",
+                "away": "DEN",
+                "want": "DEN",
+                "price": 0.1753,
+                "made": true
+              },
+              {
+                "home": "LV",
+                "away": "LAR",
+                "want": "LAR",
+                "price": 0.0179,
+                "made": true
+              },
+              {
+                "home": "NO",
+                "away": "PIT",
+                "want": "NO",
+                "price": 0.0137,
+                "made": false
+              }
+            ]
+          },
+          {
+            "team": "PIT",
+            "place": 3,
+            "rank": 0.8813,
+            "best": 0.8383,
+            "worst": 0.5403,
+            "actual": 0.8084,
+            "game": "won",
+            "pieces": [
+              {
+                "home": "NO",
+                "away": "PIT",
+                "want": "PIT",
+                "price": 0.1738,
+                "made": true
+              },
+              {
+                "home": "LV",
+                "away": "LAR",
+                "want": "LAR",
+                "price": 0.0151,
+                "made": true
+              },
+              {
+                "home": "CHI",
+                "away": "NE",
+                "want": "CHI",
+                "price": 0.0142,
+                "made": true
+              }
+            ]
+          }
+        ],
+        "place": 28,
+        "eligible": 31
+      }
+    }
+  ]
+}

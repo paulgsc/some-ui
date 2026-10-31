@@ -5,6 +5,8 @@
  * every slide of the legend.
  */
 import { LEGEND, SLIDES } from "@playoff-delta/components/slides"
+import { REAL_WEEKS } from "@playoff-delta/lib/__tests__/seasons"
+import { piecesOf } from "@playoff-delta/lib/reading"
 import { SAMPLE_SEASON } from "@playoff-delta/lib/sample"
 import {
   LEGEND_SLIDES,
@@ -12,7 +14,8 @@ import {
   narration,
   slidesFor,
 } from "@playoff-delta/lib/slides"
-import type { StorySeason } from "@playoff-delta/lib/story"
+import type { StorySeason, StoryWeek } from "@playoff-delta/lib/story"
+import { MATERIAL } from "@playoff-delta/lib/words"
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 
@@ -59,6 +62,48 @@ describe("every slide of the bundled season", () => {
     if (!after) throw new Error("no weeks")
     render(<SLIDES.verdict season={SAMPLE_SEASON} week={after} />)
     screen.getByText(/We stopped watching after week 15/)
+  })
+})
+
+/** The "SF over ATL" labels a slide draws under its lights. */
+function pieceLabels(season: StorySeason, week: StoryWeek): Set<string> {
+  const { unmount } = render(<SLIDES.best season={season} week={week} />)
+  const labels = screen
+    .queryAllByText(/^[A-Z]+ over [A-Z]+$/)
+    .map((e) => e.textContent)
+  unmount()
+  return new Set(labels)
+}
+
+// PDS4: the best week's voiceover line names the pieces its slide names: our
+// light and the dearest of the league's by name, each with its material, and
+// nothing the slide doesn't show. Family: every week of a real season (the
+// bundled 2025, 2026 as published), across how many pieces are live, their
+// mix of majors and minors, and our light live, idle, a bye or a tie.
+describe("PDS4: the best week's line names what its slide names", () => {
+  it.each(REAL_WEEKS)("%s week %i", (_, __, season, week) => {
+    const shown = pieceLabels(season, week)
+    const line = narration(season, week, "best")
+    const said = [...line.matchAll(/\b[A-Z]+ over [A-Z]+\b/g)].map((m) => m[0])
+    for (const name of said) expect(shown, line).toContain(name)
+
+    const live = piecesOf(week)
+      .filter((p) => p.material !== "idle")
+      .sort((a, b) => b.piece.price - a.piece.price)
+    const nameOf = (p: (typeof live)[number]): string =>
+      `${p.piece.want} over ${p.piece.want === p.game.home ? p.game.away : p.game.home}`
+    const own = live.find((p) => p.game.kind === "own")
+    if (own && shown.has(nameOf(own)))
+      expect(line).toContain(
+        `${nameOf(own)} (our light, a ${MATERIAL[own.material].word})`
+      )
+    const dearest = live.find((p) => p.game.kind !== "own")
+    if (dearest)
+      expect(line).toContain(
+        `${nameOf(dearest)} (a ${MATERIAL[dearest.material].word})`
+      )
+    if (live.length === 0)
+      expect(line).toMatch(/No piece could move us a quarter point\.$/)
   })
 })
 

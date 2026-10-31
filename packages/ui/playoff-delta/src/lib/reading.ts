@@ -58,6 +58,15 @@ const read = (game: WayGame, piece: StoryPiece): PieceRead => ({
 export const piecesOf = (week: StoryWeek): ReadonlyArray<PieceRead> =>
   week.ways.games.map((g) => read(g, g))
 
+/** The most lights a grid shows: the dearest, the rest counted. */
+export const LIGHTS_SHOWN = 8
+
+/** The best week's major and minor pieces, dearest first: what it needed. */
+export const neededOf = (week: StoryWeek): ReadonlyArray<PieceRead> =>
+  piecesOf(week)
+    .filter((p) => p.material !== "idle")
+    .sort((a, b) => b.piece.price - a.piece.price)
+
 /** Our part this week. */
 export type OwnPart = "made" | "missed" | "idle" | "bye" | "tie"
 

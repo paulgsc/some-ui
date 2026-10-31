@@ -11,6 +11,8 @@ import {
   leagueBand,
   leagueClause,
   leaguePieces,
+  LIGHTS_SHOWN,
+  neededOf,
   ownPart,
   piecesOf,
   weekBand,
@@ -18,29 +20,17 @@ import {
   worseOf100,
   type PieceRead,
 } from "@playoff-delta/lib/reading"
-import { MODEL, over } from "@playoff-delta/lib/slides"
+import { MODEL, pieceName } from "@playoff-delta/lib/slides"
 import { percent, signed, size } from "@playoff-delta/lib/story"
 import { CLEAN_RUN, phraseOf } from "@playoff-delta/lib/words"
 
-import {
-  BAND_CLASS,
-  Bands,
-  LIGHTS_SHOWN,
-  PieceLight,
-  priceNote,
-  Strip,
-} from "./marks"
+import { BAND_CLASS, Bands, PieceLight, priceNote, Strip } from "./marks"
 import { Kicker, Reveal, type SlideProps } from "./shared"
-
-const label = (p: PieceRead): string =>
-  over(p.game.home, p.game.away, p.piece.want)
 
 export const Best = ({ week }: SlideProps): JSX.Element => {
   const { ways } = week
   const pieces = piecesOf(week)
-  const live = [...pieces]
-    .filter((p) => p.material !== "idle")
-    .sort((a, b) => b.piece.price - a.piece.price)
+  const live = neededOf(week)
   const shown = live.slice(0, LIGHTS_SHOWN)
   const more = live.length - shown.length
   const idle = pieces.length - live.length
@@ -85,7 +75,7 @@ export const Best = ({ week }: SlideProps): JSX.Element => {
             material={p.material}
             price={p.piece.price}
             state="waiting"
-            label={label(p)}
+            label={pieceName(p)}
             note={priceNote(p.piece.price)}
             at={1.8 + i * 0.15}
           />
@@ -210,7 +200,7 @@ export const Given = ({ week }: SlideProps): JSX.Element => {
             material={p.material}
             price={p.piece.price}
             state={p.made ? "made" : "missed"}
-            label={label(p)}
+            label={pieceName(p)}
             note={awake.has(key(p)) ? "woke" : priceNote(p.piece.price)}
             at={1 + i * 0.2}
           />

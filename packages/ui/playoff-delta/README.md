@@ -80,6 +80,14 @@ slide's words) by contract v3, which dropped the path slide. A light is made
 or missed by whether its game went the way the best week wanted, and sized
 by its price.
 
+Each promise below is held by a test named for it, over every week of the
+bundled 2025 season and of 2026 as published on 2026-10-29
+(`src/fixtures/season-2026.json`):
+
+- **PDS4:** the best week's voiceover line names the pieces its slide names,
+  by the slide's names: our light and the league's two dearest, each with its
+  material, the rest counted (`components/slides/__tests__/slides.test.tsx`).
+
 ## Recording
 
 ```sh

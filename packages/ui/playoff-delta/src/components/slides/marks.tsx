@@ -91,9 +91,6 @@ export const PieceLight = ({
   )
 }
 
-/** The most lights a grid shows: the dearest, the rest counted. */
-export const LIGHTS_SHOWN = 8
-
 /** A price as the note under a light: "2.5 pts". */
 export const priceNote = (price: number): string => `${size(price)} pts`
 

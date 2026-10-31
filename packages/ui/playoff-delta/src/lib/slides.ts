@@ -29,12 +29,14 @@ import {
   costs,
   leagueBand,
   leagueClause,
+  LIGHTS_SHOWN,
+  neededOf,
   ownPart,
-  piecesOf,
   sentence,
   stakesClause,
   weekBand,
   worseOf100,
+  type PieceRead,
 } from "./reading"
 import {
   nameOf,
@@ -156,6 +158,19 @@ const capital = (word: string): string =>
 export const over = (home: string, away: string, want: string): string =>
   `${want} over ${want === home ? away : home}`
 
+/** A piece of the week by the name its light carries: "SF over ATL". */
+export const pieceName = (p: PieceRead): string =>
+  over(p.game.home, p.game.away, p.piece.want)
+
+/** The league's pieces the best week's line names; the rest it counts. */
+const LEAGUE_NAMED = 2
+
+/** "A", "A and B", "A, B and C". */
+const listOf = (items: ReadonlyArray<string>): string =>
+  items.length < 2
+    ? items.join("")
+    : `${items.slice(0, -1).join(", ")} and ${items.at(-1) ?? ""}`
+
 /** The voiceover line for one slide of a week. */
 export function narration(
   season: StorySeason,
@@ -165,16 +180,26 @@ export function narration(
   const { ways } = week
   switch (id) {
     case "best": {
-      const needed = piecesOf(week).filter((p) => live(p.game))
-      const own = needed.find((p) => p.game.kind === "own")
-      const league = needed.filter((p) => p.game.kind !== "own")
-      const parts = [
-        ...(own ? [`our light (a ${MATERIAL[own.material].word})`] : []),
-        ...(league.length > 0 ? [byMaterial(league)] : []),
+      // The pieces its slide shows, by the names it shows them under:
+      // our light and the dearest of the league's, the rest counted (PDS4).
+      const needed = neededOf(week)
+      const own = needed
+        .slice(0, LIGHTS_SHOWN)
+        .find((p) => p.game.kind === "own")
+      const named = needed
+        .filter((p) => p.game.kind !== "own")
+        .slice(0, LEAGUE_NAMED)
+      const rest = needed.filter((p) => p !== own && !named.includes(p))
+      const items = [
+        ...(own
+          ? [`${pieceName(own)} (our light, a ${MATERIAL[own.material].word})`]
+          : []),
+        ...named.map((p) => `${pieceName(p)} (a ${MATERIAL[p.material].word})`),
       ]
+      const plus = rest.length > 0 ? `, plus ${byMaterial(rest)}` : ""
       const lead = `Week ${week.week}. The best week we could have had: ${percent(ways.best)} of the ways in.`
-      return parts.length > 0
-        ? `${lead} It needed ${parts.join(", ")}.`
+      return items.length > 0
+        ? `${lead} It needed ${listOf(items)}${plus}.`
         : `${lead} No piece could move us a quarter point.`
     }
     case "road": {
