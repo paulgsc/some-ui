@@ -60,8 +60,12 @@ export type StudioRuntime = {
   attach: () => () => void
 }
 
-export function createStudio(ports: StudioPorts): StudioRuntime {
-  let state = initialStudioState()
+/** `open`: the video to open on, by id, rather than the latest touched. */
+export function createStudio(
+  ports: StudioPorts,
+  open: string | null = null
+): StudioRuntime {
+  let state = initialStudioState(open)
   let playback: Playback | null = null
   let listening: Listening | null = null
   const listener = ports.listener ?? NO_LISTENER

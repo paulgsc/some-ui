@@ -12,6 +12,9 @@
  * - **A scene's idea is the owner's only with their words cited.** A cut
  *   naming the answers of the idea it was fleshed out from (ST19) makes a
  *   scene whose idea is `you`, citing the first; any other is Claude's.
+ *   Only the idea shelf, holding the idea, starts one from such a primer,
+ *   once `lib/idea/reply.ts` checked each answer cited is the idea's;
+ *   Studio's Start points a primer naming an idea there.
  * - **The phone doesn't know the footage.** A scene the primer brings is a
  *   card (the series' ground) until a revision of Claude's sets its picture;
  *   a newer primer keeps every scene's picture whose cut kept its id.

@@ -68,12 +68,18 @@ export function createIdeaShelf(ports: ShelfPorts): ShelfRuntime {
         return
       }
       case "keep": {
-        const { op, notice } = effect
-        send({
-          type: "kept",
-          ideas: ports.ideas.keep((ideas) => applyShelf(ideas, op, effect.at)),
-          notice,
+        const { op } = effect
+        const applied = { changed: false }
+        const ideas = ports.ideas.keep((held) => {
+          const next = applyShelf(held, op, effect.at)
+          applied.changed = next.some((idea, i) => idea !== held[i])
+          return next
         })
+        // What the store held may already have had it (another screen's
+        // pick of the same reply, say): then nothing was added.
+        const notice =
+          applied.changed || op.kind !== "reply" ? effect.notice : "alreadyKept"
+        send({ type: "kept", ideas, notice })
         return
       }
       case "create": {

@@ -101,4 +101,54 @@ describe("what Claude sends back", () => {
     expect(readReply(replyText({ ask: ["c"] }), twice).ok).toBe(true)
     expect(withReply(twice, { primer: null, ask: ["c", "d"] }, AT)).toBeNull()
   })
+
+  it("keeps what it already has once: the same question, or the same scenes", () => {
+    const reading = readReply(
+      replyText({ primer: DRAFT, ask: ["Which week?"] }),
+      caught()
+    )
+    if (!reading.ok) throw new Error(reading.problem)
+    const once = withReply(caught(), reading.reply, AT)
+    if (once === null) throw new Error("kept")
+    expect(withReply(once, reading.reply, AT)).toBeNull()
+    // Asked again, a question counts against nothing left.
+    const full = withReply(once, { primer: null, ask: ["b", "c"] }, AT)
+    if (full === null) throw new Error("kept")
+    expect(
+      readReply(replyText({ primer: DRAFT, ask: ["Which week?"] }), full).ok
+    ).toBe(true)
+    const more = withReply(
+      once,
+      { primer: reading.reply.primer, ask: ["Which week?", "Why now?"] },
+      AT
+    )
+    expect(more?.asked?.map((each) => each.words)).toEqual([
+      "Which week?",
+      "Why now?",
+    ])
+    expect(more?.drafts).toHaveLength(1)
+  })
+
+  it("reads scenes naming the idea, sent on their own, as a reply carrying them alone", () => {
+    const reading = readReply(
+      JSON.stringify({ ...DRAFT, idea: "idea-1" }),
+      caught()
+    )
+    expect(reading.ok && reading.reply.ask).toEqual([])
+    expect(reading.ok && reading.reply.primer?.idea).toBe("idea-1")
+    const other = readReply(
+      JSON.stringify({ ...DRAFT, idea: "idea-2" }),
+      caught()
+    )
+    expect(!other.ok && other.why).toBe("otherIdea")
+    const strange = readReply(
+      JSON.stringify({
+        ...DRAFT,
+        idea: "idea-1",
+        cuts: [{ ...DRAFT.cuts[0], from: ["picture"] }],
+      }),
+      caught()
+    )
+    expect(!strange.ok && strange.why).toBe("wrong")
+  })
 })

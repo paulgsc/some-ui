@@ -136,11 +136,25 @@ export function openFollowUp(idea: Idea): FollowUpId | null {
   )
 }
 
-/** Claude's questions still waiting on an answer. */
+/**
+ * Claude's questions still waiting on an answer: neither answered nor
+ * skipped. A skipped one waits on nothing, as a skipped question of the
+ * idea's own doesn't (`skippedAsks`).
+ */
 export function waiting(idea: Idea): number {
   return (idea.asked ?? []).filter(
-    (asked) => answerTo(idea, asked.id) === undefined
+    (asked) =>
+      answerTo(idea, asked.id) === undefined && !idea.passed.includes(asked.id)
   ).length
+}
+
+/** Claude's questions skipped and still unanswered, in the order asked. */
+export function skippedAsks(idea: Idea): ReadonlyArray<FollowUpId> {
+  return (idea.asked ?? []).flatMap((asked) =>
+    answerTo(idea, asked.id) === undefined && idea.passed.includes(asked.id)
+      ? [asked.id]
+      : []
+  )
 }
 
 /** The words of the idea's answer to `question` now, if it has one. */
@@ -177,8 +191,10 @@ export function stageOf(idea: Idea, videos: ReadonlySet<string>): IdeaStage {
 
 /**
  * `idea` with what Claude sent added: its scenes as the newest draft, and
- * its questions after any asked before; null when that would take Claude
- * past three questions, or adds nothing.
+ * its questions after any asked before. A question in words already asked,
+ * and scenes the same as the latest draft, are kept already, so they add
+ * nothing. Null when that would take Claude past three questions, or when
+ * nothing is new.
  */
 export function withReply(
   idea: Idea,
@@ -189,24 +205,46 @@ export function withReply(
   at: string
 ): Idea | null {
   const asked = idea.asked ?? []
-  const more = reply.ask.flatMap((words, i): ReadonlyArray<FollowUp> => {
+  const fresh = newAsks(idea, reply.ask)
+  const more = fresh.flatMap((words, i): ReadonlyArray<FollowUp> => {
     const id = FOLLOW_UPS[asked.length + i]
     return id === undefined ? [] : [{ id, at, words }]
   })
-  if (more.length < reply.ask.length) return null
-  if (reply.primer === null && more.length === 0) return null
+  if (more.length < fresh.length) return null
+  const primer =
+    reply.primer === null ? null : { ...reply.primer, idea: idea.id }
+  const draft =
+    primer === null || isLatestDraft(idea, primer) ? [] : [{ at, primer }]
+  if (draft.length === 0 && more.length === 0) return null
   return {
     ...idea,
     ...(more.length === 0 ? {} : { asked: [...asked, ...more] }),
-    ...(reply.primer === null
+    ...(draft.length === 0
       ? {}
-      : {
-          drafts: [
-            ...(idea.drafts ?? []),
-            { at, primer: { ...reply.primer, idea: idea.id } },
-          ],
-        }),
+      : { drafts: [...(idea.drafts ?? []), ...draft] }),
   }
+}
+
+/** The questions in `ask` not asked about `idea` yet, each once. */
+export function newAsks(
+  idea: Idea,
+  ask: ReadonlyArray<string>
+): ReadonlyArray<string> {
+  const known = new Set((idea.asked ?? []).map((each) => each.words.trim()))
+  return ask.filter((words) => {
+    const trimmed = words.trim()
+    if (known.has(trimmed)) return false
+    known.add(trimmed)
+    return true
+  })
+}
+
+/** Whether `primer` is the idea's latest draft, read the same. */
+function isLatestDraft(idea: Idea, primer: Primer): boolean {
+  const latest = latestDraft(idea)
+  return (
+    latest !== null && canonicalJson(latest.primer) === canonicalJson(primer)
+  )
 }
 
 /** `idea` set aside, or brought back; unchanged when it already is. */

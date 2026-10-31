@@ -6,7 +6,12 @@ import type {
 } from "@soundbites/lib/idea/machine"
 import { apply, initialIdeaState, step } from "@soundbites/lib/idea/machine"
 import type { Idea } from "@soundbites/lib/idea/model"
-import { grows, openQuestion, withReply } from "@soundbites/lib/idea/model"
+import {
+  grows,
+  openQuestion,
+  waiting,
+  withReply,
+} from "@soundbites/lib/idea/model"
 import { describe, expect, it } from "vitest"
 
 const AT = "2026-10-30T10:00:00.000Z"
@@ -454,5 +459,22 @@ describe("catching an idea", () => {
       versions: [{ at: AT, how: "heard", words: "week 8" }],
     })
     expect(kept?.passed).toEqual(["ask-2"])
+
+    // Skipped, it waits on nothing, and is still answered when asked for,
+    // as a skipped question of the idea's own is.
+    if (!kept) throw new Error("kept")
+    expect(waiting(kept)).toBe(0)
+    expect(
+      screenOf(step(focused.state, tap({ type: "answerSkipped" })).state)
+    ).toBe("ask:ask-2:idle")
+    const reopened = run(
+      [
+        { type: "entered", at: AT },
+        { type: "listed", ideas: [kept] },
+      ],
+      initialIdeaState("unused", "idea-1"),
+      [kept]
+    )
+    expect(screenOf(reopened.state)).toBe("ask:ask-2:idle")
   })
 })

@@ -8,6 +8,7 @@ import type { JSX, ReactNode } from "react"
 import { useEffect, useId, useState, useSyncExternalStore } from "react"
 import { assertNever } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
+import { Notice } from "@soundbites/components/notice"
 import type {
   AskPhase,
   IdeaIntent,
@@ -15,7 +16,12 @@ import type {
 } from "@soundbites/lib/idea/machine"
 import { questionNumber } from "@soundbites/lib/idea/machine"
 import type { AnswerTo, Idea } from "@soundbites/lib/idea/model"
-import { isFollowUp, isRequired, unanswered } from "@soundbites/lib/idea/model"
+import {
+  isFollowUp,
+  isRequired,
+  skippedAsks,
+  unanswered,
+} from "@soundbites/lib/idea/model"
 import type { IdeaPorts } from "@soundbites/lib/idea/runtime"
 import { createIdeaCapture } from "@soundbites/lib/idea/runtime"
 import { phoneIdeaPorts } from "@soundbites/lib/phone"
@@ -177,9 +183,7 @@ const Ask = ({
         <Words phase={phase} dispatch={dispatch} label={ask} />
       )}
 
-      <p aria-live="polite" className="text-muted-foreground min-h-5 text-sm">
-        {state.notice === null ? "" : WORDS[state.notice]}
-      </p>
+      <Notice text={state.notice === null ? "" : WORDS[state.notice]} />
       {state.voice === "unavailable" && phase.kind === "typing" && (
         <p className="text-muted-foreground text-xs">{WORDS.noVoice}</p>
       )}
@@ -230,20 +234,32 @@ const Kept = ({
   dispatch: Dispatch
   back: ReactNode
 }): JSX.Element => {
-  const skipped = state.idea === null ? 0 : unanswered(state.idea).length
   const answers = state.idea?.answers.length ?? 0
-  if (state.focus !== null)
+  if (state.focus !== null) {
+    const asks = state.idea === null ? 0 : skippedAsks(state.idea).length
     return (
       <div className="flex flex-col gap-3">
         <h2 role="status" className="text-2xl font-extrabold">
           {WORDS.kept}
         </h2>
         <p className="text-muted-foreground text-sm">
-          {STUDIO_WORDS.shelf.answered}
+          {asks === 0
+            ? STUDIO_WORDS.shelf.answered
+            : STUDIO_WORDS.shelf.answeredSkipping(asks)}
         </p>
+        {asks > 0 && (
+          <Button
+            variant="outline"
+            onClick={() => dispatch({ type: "answerSkipped" })}
+          >
+            {WORDS.answerSkipped(asks)}
+          </Button>
+        )}
         {back}
       </div>
     )
+  }
+  const skipped = state.idea === null ? 0 : unanswered(state.idea).length
   return (
     <div className="flex flex-col gap-3">
       <h2 role="status" className="text-2xl font-extrabold">

@@ -83,8 +83,10 @@ const studioShare: StudioShare | undefined =
  * Studio's Start (`StudioProps.newIdea`, `StudioProps.ideas`).
  * Making something to publish, so not a study tool and not under Practice's
  * soundbites, though it records the same way (`@some-ui/voice-capture`).
+ * Opened from Your ideas on a video an idea became, it opens that one.
  */
 const StudioRoute = (): JSX.Element => {
+  const { project } = Route.useSearch()
   useEffect(() => {
     if (import.meta.env.VITE_DEVICE_BACKEND !== "true") return
     const store = phoneProjectStore()
@@ -147,11 +149,21 @@ const StudioRoute = (): JSX.Element => {
         ports={studioPorts}
         newIdea={newIdea}
         ideas={ideas}
+        initialProject={project}
       />
     </div>
   )
 }
 
+/** `?project`: the video to open on, as Your ideas links one an idea became. */
+type StudioSearch = { project?: string }
+
+function validateStudioSearch(search: Record<string, unknown>): StudioSearch {
+  const { project } = search
+  return typeof project === "string" && project !== "" ? { project } : {}
+}
+
 export const Route = createFileRoute("/_dashboard/_apk/journal/")({
+  validateSearch: validateStudioSearch,
   component: StudioRoute,
 })

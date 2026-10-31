@@ -9,6 +9,7 @@
 import { canonicalJson, isRecord, jsonOf } from "@some-ui/core-utils"
 import type { Parsed } from "@some-ui/video-render"
 import { CutListSchema, parseCutList } from "@some-ui/video-render"
+import { ANSWER_ID, IDEA_ID } from "@soundbites/lib/journal/primer"
 import { z } from "zod"
 
 import type { Project } from "./model"
@@ -39,14 +40,11 @@ export const PrimerSchema = z.object({
         voice: z.enum(["ad-lib", "read"]),
         prompt: words,
         targetMs: z.number().int().positive(),
-        from: z.array(z.string().regex(/^[a-z][a-z0-9-]{0,19}$/)).optional(),
+        from: z.array(z.string().regex(ANSWER_ID)).optional(),
       })
     )
     .min(1),
-  idea: z
-    .string()
-    .regex(/^[\w-]{1,64}$/)
-    .optional(),
+  idea: z.string().regex(IDEA_ID).optional(),
 })
 
 const ProjectSchema = z.object({

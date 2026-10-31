@@ -39,7 +39,10 @@
  *   the answers it came from, which must be answers the idea has. A cut
  *   that names none is Claude's idea, never the owner's.
  *
- * At least one of the two. A reply naming another idea is refused whole.
+ * At least one of the two. A reply naming another idea is refused whole. A
+ * primer naming the idea (`idea`), sent on its own, reads as a reply that
+ * carries it alone: Studio's Start points one here, since only the idea it
+ * names can say whether the answers it cites are the owner's.
  */
 import { isRecord, jsonOf } from "@some-ui/core-utils"
 import type { Primer } from "@soundbites/lib/journal/primer"
@@ -47,7 +50,7 @@ import { primerOf } from "@soundbites/lib/journal/primer"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 
 import type { AnswerTo, Idea } from "./model"
-import { FOLLOW_UPS, isFollowUp, latestDraft } from "./model"
+import { FOLLOW_UPS, isFollowUp, latestDraft, newAsks } from "./model"
 
 const IDEA_SCHEMA = "some-ui.studio-idea/1"
 const REPLY_SCHEMA = "some-ui.studio-idea-reply/1"
@@ -127,9 +130,19 @@ function readAsk(raw: unknown): ReadonlyArray<string> | null {
   return all.every((each): each is string => each !== null) ? all : null
 }
 
+/** A reply as sent, or a primer naming an idea as a reply carrying it alone. */
+function asReply(raw: unknown): unknown {
+  return isRecord(raw) &&
+    raw.schema === undefined &&
+    raw.version !== undefined &&
+    raw.idea !== undefined
+    ? { schema: REPLY_SCHEMA, idea: raw.idea, primer: raw }
+    : raw
+}
+
 /** Reads what a session sent back about `idea`, or says why it can't. */
 export function readReply(source: string, idea: Idea): ReplyReading {
-  const raw = jsonOf(source)
+  const raw = asReply(jsonOf(source))
   if (!isRecord(raw) || raw.schema !== REPLY_SCHEMA)
     return { ok: false, why: "notReply", problem: `schema: ${REPLY_SCHEMA}` }
   if (raw.idea !== idea.id)
@@ -140,7 +153,8 @@ export function readReply(source: string, idea: Idea): ReplyReading {
     }
   const ask = readAsk(raw.ask)
   if (ask === null) return wrong("ask: a list of questions, each written out")
-  if (ask.length > askLeft(idea))
+  // A question already asked is kept already, so only new ones count.
+  if (newAsks(idea, ask).length > askLeft(idea))
     return wrong(`ask: at most ${askLeft(idea)} more questions for this idea`)
   if (raw.primer === undefined || raw.primer === null) {
     return ask.length === 0

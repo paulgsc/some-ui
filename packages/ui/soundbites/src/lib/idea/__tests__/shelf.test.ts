@@ -1,8 +1,14 @@
 /** @vitest-environment node */
 import { inMemoryStorage } from "@some-ui/core-utils"
 import type { Idea } from "@soundbites/lib/idea/model"
-import { stageOf, withAside, withReply } from "@soundbites/lib/idea/model"
-import type { ShelfState } from "@soundbites/lib/idea/shelf"
+import {
+  stageOf,
+  waiting,
+  withAside,
+  withPassed,
+  withReply,
+} from "@soundbites/lib/idea/model"
+import type { ShelfIntent, ShelfState } from "@soundbites/lib/idea/shelf"
 import {
   ideaOnScreen,
   initialShelfState,
@@ -11,7 +17,10 @@ import {
   videoFrom,
   videosOf,
 } from "@soundbites/lib/idea/shelf"
-import type { ShelfRuntime } from "@soundbites/lib/idea/shelf-runtime"
+import type {
+  ShelfPorts,
+  ShelfRuntime,
+} from "@soundbites/lib/idea/shelf-runtime"
 import { createIdeaShelf } from "@soundbites/lib/idea/shelf-runtime"
 import { keptIdeaStore } from "@soundbites/lib/idea/store"
 import { projectFile, readProjectFile } from "@soundbites/lib/project/file"
@@ -29,7 +38,10 @@ const settle = (): Promise<void> =>
     setTimeout(resolve, 0)
   })
 
-function shelf(ideas: ReadonlyArray<Idea> = [caught()]): {
+function shelf(
+  ideas: ReadonlyArray<Idea> = [caught()],
+  ports: Partial<ShelfPorts> = {}
+): {
   runtime: ShelfRuntime
   store: ReturnType<typeof keptIdeaStore>
   projects: ReturnType<typeof memoryProjectStore>
@@ -43,9 +55,17 @@ function shelf(ideas: ReadonlyArray<Idea> = [caught()]): {
     projects: projects.store,
     now: () => Date.parse(LATER),
     readText: (file) => file.text(),
+    ...ports,
   })
   runtime.attach()
   return { runtime, store, projects }
+}
+
+/** `fleshed()` with Claude's one question about it skipped. */
+function skippedAsk(): Idea {
+  const asked = withReply(fleshed(), { primer: null, ask: ["Which week?"] }, AT)
+  if (asked === null) throw new Error("asked")
+  return withPassed(asked, "ask-1")
 }
 
 function fleshed(): Idea {
@@ -190,7 +210,7 @@ describe("the idea shelf", () => {
     for (const [text, notice] of [
       [replyText({ ask: ["?"] }, "idea-2"), "otherIdea"],
       [JSON.stringify(DRAFT), "notReply"],
-      [replyText({ ask: ["a", "b", "c", "d"] }), "wrongReply"],
+      [replyText({}), "wrongReply"],
     ] as const) {
       runtime.dispatch({ type: "replyPicked", file: blob(text) })
       await settle()
@@ -246,6 +266,158 @@ describe("the idea shelf", () => {
     expect(step({ ...open, videos: [] }, make).effects).toMatchObject([
       { type: "create" },
     ])
+  })
+
+  it("lets a skipped question of Claude's wait on nothing: the video can still be made", () => {
+    const idea = skippedAsk()
+    expect(waiting(idea)).toBe(0)
+    const open: ShelfState = {
+      ...initialShelfState(),
+      ideas: [idea],
+      videos: [],
+      screen: { kind: "idea", id: "idea-1" },
+    }
+    expect(step(open, { type: "makeChosen", at: LATER }).effects).toMatchObject(
+      [{ type: "create" }]
+    )
+    // And it can still be answered, from the idea.
+    expect(
+      step(open, { type: "answerChosen", at: LATER }).state.screen
+    ).toEqual({ kind: "answering", id: "idea-1" })
+  })
+
+  it("keeps a reply picked twice once, and says it's kept already", async () => {
+    const { runtime, store } = shelf()
+    await settle()
+    runtime.dispatch({ type: "opened", id: "idea-1" })
+    const reply = replyText({ primer: DRAFT, ask: ["Which week?"] })
+    runtime.dispatch({ type: "replyPicked", file: blob(reply) })
+    await settle()
+    expect(runtime.getSnapshot().notice).toBe("replied")
+    runtime.dispatch({ type: "replyPicked", file: blob(reply) })
+    await settle()
+    expect(runtime.getSnapshot().notice).toBe("alreadyKept")
+    const kept = store.list()?.[0]
+    expect(kept?.asked?.map((each) => each.id)).toEqual(["ask-1"])
+    expect(kept?.drafts).toHaveLength(1)
+    // A new question beside the same scenes adds only the question.
+    runtime.dispatch({
+      type: "replyPicked",
+      file: blob(
+        replyText({ primer: DRAFT, ask: ["Which week?", "Why now?"] })
+      ),
+    })
+    await settle()
+    expect(runtime.getSnapshot().notice).toBe("asked")
+    expect(store.list()?.[0]?.asked?.map((each) => each.words)).toEqual([
+      "Which week?",
+      "Why now?",
+    ])
+    expect(store.list()?.[0]?.drafts).toHaveLength(1)
+  })
+
+  it("says it's kept already when the phone had the reply before this screen did", async () => {
+    const first = shelf()
+    await settle()
+    // A second screen over the same ideas, read before the first one kept it.
+    const second = createIdeaShelf({
+      ideas: first.store,
+      projects: first.projects.store,
+      now: () => Date.parse(LATER),
+      readText: (file) => file.text(),
+    })
+    second.attach()
+    await settle()
+    const reply = replyText({ ask: ["Which week?"] })
+    for (const runtime of [first.runtime, second]) {
+      runtime.dispatch({ type: "opened", id: "idea-1" })
+      runtime.dispatch({ type: "replyPicked", file: blob(reply) })
+      await settle()
+    }
+    expect(first.runtime.getSnapshot().notice).toBe("asked")
+    expect(second.getSnapshot().notice).toBe("alreadyKept")
+    expect(first.store.list()?.[0]?.asked).toHaveLength(1)
+  })
+
+  it("makes one video however quickly Make is tapped again, before the videos are read again", async () => {
+    let clock = Date.parse(LATER)
+    let reads = 0
+    const memory = memoryProjectStore()
+    const { runtime } = shelf([fleshed()], {
+      projects: {
+        update: (id, change) => memory.store.update(id, change),
+        // The first read lands; every later one never does.
+        list: () =>
+          reads++ === 0 ? memory.store.list() : new Promise(() => undefined),
+      },
+      now: () => clock++,
+    })
+    await settle()
+    runtime.dispatch({ type: "opened", id: "idea-1" })
+    runtime.dispatch({ type: "makeChosen" })
+    await settle()
+    expect(runtime.getSnapshot().notice).toBe("made")
+    runtime.dispatch({ type: "makeChosen" })
+    await settle()
+    expect(memory.projects.size).toBe(1)
+  })
+
+  it("says so when the phone's videos can't be read, and reads them again", () => {
+    const open: ShelfState = {
+      ...initialShelfState(),
+      ideas: [fleshed()],
+      screen: { kind: "idea", id: "idea-1" },
+    }
+    const unread = step(open, { type: "videosListed", videos: null }).state
+    expect(unread.videosUnread).toBe(true)
+    expect(step(unread, { type: "makeChosen", at: LATER }).effects).toEqual([])
+    const again = step(unread, { type: "videosAgain", at: LATER })
+    expect(again.state.videosUnread).toBe(false)
+    expect(again.effects).toEqual([{ type: "readVideos" }])
+    const read = step(again.state, { type: "videosListed", videos: [] }).state
+    expect(step(read, { type: "makeChosen", at: LATER }).effects).toMatchObject(
+      [{ type: "create" }]
+    )
+  })
+
+  it("drops a pick's read that lands once another idea is open", () => {
+    let state: ShelfState = {
+      ...initialShelfState(),
+      ideas: [caught(), caught("idea-2")],
+      screen: { kind: "list", aside: false },
+    }
+    const tap = (event: ShelfIntent): void => {
+      state = step(state, { ...event, at: AT }).state
+    }
+    tap({ type: "opened", id: "idea-1" })
+    tap({ type: "replyPicked", file: blob("") })
+    const seq = state.pickSeq
+    tap({ type: "back" })
+    tap({ type: "opened", id: "idea-2" })
+    const late = step(state, {
+      type: "replyRead",
+      seq,
+      text: replyText({ ask: ["?"] }),
+      at: AT,
+    })
+    expect(late.effects).toEqual([])
+    expect(late.state.notice).toBeNull()
+    expect(
+      step(state, { type: "replyUnreadable", seq }).state.notice
+    ).toBeNull()
+  })
+
+  it("goes back to the list when the idea on screen is no longer kept", () => {
+    const open: ShelfState = {
+      ...initialShelfState(),
+      ideas: [caught(), caught("idea-2")],
+      screen: { kind: "idea", id: "idea-2" },
+    }
+    const read = step(open, { type: "listed", ideas: [caught()] }).state
+    expect(read.screen).toEqual({ kind: "list", aside: false })
+    expect(
+      step(read, { type: "opened", id: "idea-1", at: AT }).state.screen
+    ).toEqual({ kind: "idea", id: "idea-1" })
   })
 
   it("says so when the kept ideas can't be read", () => {

@@ -28,8 +28,10 @@
  *   there; otherwise a new idea starts at the first question.
  * - **Claude's questions are answered only when asked for** (ST19). A
  *   capture opened on one idea (`focus`, from the idea shelf) asks only
- *   Claude's questions about it still waiting, one per screen, the same way;
- *   New idea never opens on them.
+ *   Claude's questions about it still waiting, one per screen, the same way,
+ *   or, with none waiting, the first one skipped; New idea never opens on
+ *   them. One skipped waits on nothing and is answered later, as the
+ *   idea's own are.
  */
 import { assertNever } from "@some-ui/core-utils"
 
@@ -41,6 +43,7 @@ import {
   newIdea,
   openFollowUp,
   openQuestion,
+  skippedAsks,
   unanswered,
   withPassed,
   withWords,
@@ -482,9 +485,16 @@ export function step(state: IdeaState, event: IdeaEvent): IdeaStep {
       }
       if (state.focus !== null) {
         const focused = event.ideas.find((idea) => idea.id === state.focus)
-        return focused === undefined
-          ? same({ ...state, screen: { kind: "unreadable" } })
-          : same(advance({ ...state, ideaId: focused.id }, focused))
+        if (focused === undefined)
+          return same({ ...state, screen: { kind: "unreadable" } })
+        const [skipped] =
+          openFollowUp(focused) === null ? skippedAsks(focused) : []
+        const on = { ...state, ideaId: focused.id }
+        return same(
+          skipped === undefined
+            ? advance(on, focused)
+            : ask({ ...on, idea: focused }, skipped)
+        )
       }
       const resumed = resumable(event.ideas)
       if (resumed === undefined) {
@@ -596,7 +606,8 @@ export function step(state: IdeaState, event: IdeaEvent): IdeaStep {
           ? state.skipped
           : null
       const idea = fromKept ?? fromNew
-      const [first] = idea === null ? [] : unanswered(idea)
+      const skippedOf = state.focus === null ? unanswered : skippedAsks
+      const [first] = idea === null ? [] : skippedOf(idea)
       if (idea === null || first === undefined) return same(state)
       return same(
         ask(

@@ -461,12 +461,13 @@ export type Step = {
   readonly effects: ReadonlyArray<StudioEffect>
 }
 
-export function initialStudioState(): StudioState {
+/** `open`: the video to open on once the phone's are read, if it is there. */
+export function initialStudioState(open: string | null = null): StudioState {
   return {
     page: "new",
     visible: true,
     shelf: { kind: "reading" },
-    current: null,
+    current: open,
     screen: { kind: "start" },
     activity: { kind: "idle" },
     blocked: null,
@@ -1451,7 +1452,6 @@ export function step(state: StudioState, event: StudioEvent): Step {
     case "primerRead": {
       if (event.seq !== state.pickSeq) return stay(state)
       if (isProjectFile(event.text)) return pickedProject(state, event.text)
-      // Claude's reply about an idea is kept on the idea, from the shelf (ST19).
       if (isIdeaReply(event.text))
         return stay({ ...state, primerProblem: WORDS.start.ideaReply })
       const reading = readPrimer(event.text)
@@ -1459,6 +1459,10 @@ export function step(state: StudioState, event: StudioEvent): Step {
       // file (`PrimerReading`), never the screen (SW1).
       if (!reading.ok)
         return stay({ ...state, primerProblem: WORDS.start.sentProblem })
+      // Scenes naming an idea cite its answers as the owner's, which only the
+      // shelf, holding the idea, can check (ST19).
+      if (reading.primer.idea !== undefined)
+        return stay({ ...state, primerProblem: WORDS.start.ideaReply })
       if (project === null)
         return enqueue(state, {
           kind: "create",

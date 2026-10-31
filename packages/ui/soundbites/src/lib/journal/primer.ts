@@ -107,8 +107,8 @@ export type PrimerReading =
 const CUT_ID = /^[a-z0-9][a-z0-9-]{0,39}$/
 
 /** An idea's id, and the name of one of its answers (`lib/idea/model.ts`). */
-const IDEA_ID = /^[\w-]{1,64}$/
-const ANSWER_ID = /^[a-z][a-z0-9-]{0,19}$/
+export const IDEA_ID = /^[\w-]{1,64}$/
+export const ANSWER_ID = /^[a-z][a-z0-9-]{0,19}$/
 
 const isIdeaId = (value: unknown): value is string =>
   typeof value === "string" && IDEA_ID.test(value)

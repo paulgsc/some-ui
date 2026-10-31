@@ -7,15 +7,18 @@
  * `IdeaCapture`, opened on the idea.
  */
 import type { JSX, ReactNode } from "react"
-import { useEffect, useId, useState, useSyncExternalStore } from "react"
+import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
+import { FilePick } from "@soundbites/components/file-pick"
 import { IdeaCapture } from "@soundbites/components/idea"
+import { Notice } from "@soundbites/components/notice"
 import type { Idea, IdeaStage } from "@soundbites/lib/idea/model"
 import {
   firstWords,
   isFollowUp,
   latestDraft,
+  skippedAsks,
   stageOf,
   waiting,
   wordsFor,
@@ -28,12 +31,12 @@ import {
   ideaOnScreen,
   ideasWithVideos,
   shelved,
+  videoOf,
 } from "@soundbites/lib/idea/shelf"
 import type { ShelfPorts } from "@soundbites/lib/idea/shelf-runtime"
 import { createIdeaShelf } from "@soundbites/lib/idea/shelf-runtime"
 import { phoneShelfPorts } from "@soundbites/lib/phone"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
-import { FolderOpen } from "lucide-react"
 
 const WORDS = STUDIO_WORDS.shelf
 
@@ -49,18 +52,16 @@ export type IdeaShelfProps = {
   /** What answering Claude's questions listens with (the recognizer). */
   capture?: Partial<IdeaPorts>
   share?: IdeaShare
-  /** The way to Studio, as the app links it, once an idea is a video. */
-  studio?: ReactNode
+  /** The way to the video an idea became (`project`), as the app links it. */
+  studio?: (project: string) => ReactNode
   /** The way to New idea, as the app links it, while no idea is kept. */
   newIdea?: ReactNode
 }
 
 type Dispatch = (intent: ShelfIntent) => void
 
-const Notice = ({ state }: { state: ShelfState }): JSX.Element => (
-  <p aria-live="polite" className="text-muted-foreground min-h-5 text-sm">
-    {state.notice === null ? "" : WORDS.notice[state.notice]}
-  </p>
+const ShelfLine = ({ state }: { state: ShelfState }): JSX.Element => (
+  <Notice text={state.notice === null ? "" : WORDS.notice[state.notice]} />
 )
 
 /** Where an idea is, and whether Claude's questions wait on it. */
@@ -129,36 +130,8 @@ const List = ({
           {WORDS.showAll}
         </Button>
       )}
-      <Notice state={state} />
+      <ShelfLine state={state} />
     </div>
-  )
-}
-
-/** The quiet file pick for what Claude made of the idea. */
-const ReplyPick = ({ dispatch }: { dispatch: Dispatch }): JSX.Element => {
-  const hint = useId()
-  return (
-    <label className="bg-background border-border/60 focus-within:ring-ring relative flex cursor-pointer items-center gap-3 rounded-2xl border p-3 focus-within:ring-2">
-      <FolderOpen className="text-primary size-5 shrink-0" aria-hidden="true" />
-      <span className="min-w-0">
-        <span className="block text-sm font-semibold">{WORDS.openReply}</span>
-        <span id={hint} className="text-muted-foreground block text-xs">
-          {WORDS.openReplyHint}
-        </span>
-      </span>
-      <input
-        type="file"
-        accept=".json,application/json"
-        aria-describedby={hint}
-        className="sr-only"
-        onChange={(event) => {
-          const file = event.currentTarget.files?.[0]
-          // The same file again is a new pick.
-          event.currentTarget.value = ""
-          if (file) dispatch({ type: "replyPicked", file })
-        }}
-      />
-    </label>
   )
 }
 
@@ -247,10 +220,12 @@ const OneIdea = ({
   idea: Idea
   dispatch: Dispatch
   share: IdeaShare | undefined
-  studio: ReactNode
+  studio: IdeaShelfProps["studio"]
 }): JSX.Element => {
   const stage = stageOf(idea, ideasWithVideos(state))
   const asks = waiting(idea)
+  const skipped = skippedAsks(idea).length
+  const video = videoOf(state, idea.id)
   const moving = stage === "idea" || stage === "fleshed"
   const shareBox =
     share === undefined ? null : (
@@ -283,7 +258,7 @@ const OneIdea = ({
       {stage === "video" && (
         <div className="flex flex-col gap-2">
           <p className="text-muted-foreground text-sm">{WORDS.videoLine}</p>
-          {studio}
+          {video !== null && studio?.(video)}
         </div>
       )}
       {moving && asks > 0 && (
@@ -294,7 +269,30 @@ const OneIdea = ({
           <p className="text-muted-foreground text-xs">{WORDS.answerLine}</p>
         </div>
       )}
-      {stage === "fleshed" && asks === 0 && (
+      {moving && asks === 0 && skipped > 0 && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="self-start"
+          onClick={() => dispatch({ type: "answerChosen" })}
+        >
+          {STUDIO_WORDS.idea.answerSkipped(skipped)}
+        </Button>
+      )}
+      {stage === "fleshed" && asks === 0 && state.videosUnread && (
+        <div role="alert" className="flex flex-col gap-2">
+          <p className="text-sm">{WORDS.videosUnread}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="self-start"
+            onClick={() => dispatch({ type: "videosAgain" })}
+          >
+            {STUDIO_WORDS.readAgain}
+          </Button>
+        </div>
+      )}
+      {stage === "fleshed" && asks === 0 && !state.videosUnread && (
         <div className="flex flex-col gap-2">
           <Button
             size="lg"
@@ -307,8 +305,14 @@ const OneIdea = ({
         </div>
       )}
       {moving && shareBox}
-      {moving && <ReplyPick dispatch={dispatch} />}
-      <Notice state={state} />
+      {moving && (
+        <FilePick
+          label={WORDS.openReply}
+          hint={WORDS.openReplyHint}
+          onPick={(file) => dispatch({ type: "replyPicked", file })}
+        />
+      )}
+      <ShelfLine state={state} />
 
       <Scenes idea={idea} />
       <Answers idea={idea} />

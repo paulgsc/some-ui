@@ -16,16 +16,17 @@
  *   is another.
  * - **Where an idea is comes from what is kept.** Its stage (`stageOf`) is
  *   read from the idea and from the videos on the phone that name it
- *   (`videosOf`), never held as a flag of its own, so a video started from
- *   Claude's scenes through Start counts the same.
+ *   (`videosOf`), never held as a flag of its own.
  * - **A video starts once, from Claude's latest scenes.** Make this a video
  *   creates a project whose first version is that primer, naming the idea,
  *   and the store makes it only where no project has that id. It waits on
- *   the phone's videos being read, and a second tap while one is being made,
- *   or once a video names the idea, does nothing.
- * - **A pick answers only the pick asked for.** Picks are numbered, and a
- *   late read of an earlier one, or one landing after the idea on screen
- *   changed, changes nothing.
+ *   the phone's videos being read (and says so when they couldn't be), and
+ *   a second tap while one is being made, or once a video names the idea,
+ *   does nothing: the video made is counted the moment the store says so,
+ *   before the videos are read again.
+ * - **A pick answers only the pick asked for.** Picks are numbered, opening
+ *   or leaving an idea starts the count again, and a late read of an
+ *   earlier one changes nothing.
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { Primer } from "@soundbites/lib/journal/primer"
@@ -39,6 +40,7 @@ import {
   isAside,
   latestDraft,
   openFollowUp,
+  skippedAsks,
   stageOf,
   withAside,
   withReply,
@@ -70,6 +72,7 @@ export type ShelfNotice =
   | "unreadableFile"
   | "replied"
   | "asked"
+  | "alreadyKept"
   | "made"
   | "notMade"
   | "aside"
@@ -81,6 +84,8 @@ export type ShelfState = {
   readonly ideas: ReadonlyArray<Idea>
   /** The videos that began as ideas; null until read, or if they couldn't be. */
   readonly videos: ReadonlyArray<IdeaVideo> | null
+  /** The phone's videos couldn't be read, the last time they were. */
+  readonly videosUnread: boolean
   readonly notice: ShelfNotice | null
   /** The idea a video is being made from, until the store answers. */
   readonly making: string | null
@@ -103,6 +108,8 @@ export type ShelfIntent =
   | { readonly type: "asideChosen" }
   | { readonly type: "backChosen" }
   | { readonly type: "readAgain" }
+  /** Read the phone's videos again, after they couldn't be. */
+  | { readonly type: "videosAgain" }
 
 type Stamp = { readonly at: string }
 
@@ -162,6 +169,7 @@ export function initialShelfState(): ShelfState {
     screen: { kind: "loading" },
     ideas: [],
     videos: null,
+    videosUnread: false,
     notice: null,
     making: null,
     pickSeq: 0,
@@ -217,6 +225,25 @@ export function ideaOnScreen(state: ShelfState): Idea | null {
   return state.ideas.find((idea) => idea.id === screen.id) ?? null
 }
 
+/** The video that began as `idea`, if one did. */
+export function videoOf(state: ShelfState, idea: string): string | null {
+  return (
+    (state.videos ?? []).filter((video) => video.idea === idea).at(-1)
+      ?.project ?? null
+  )
+}
+
+/**
+ * `screen` once the ideas are `ideas`: on the idea it shows only while it
+ * is kept, else on the list.
+ */
+function placed(screen: ShelfScreen, ideas: ReadonlyArray<Idea>): ShelfScreen {
+  if (screen.kind !== "idea" && screen.kind !== "answering") return screen
+  return ideas.some((idea) => idea.id === screen.id)
+    ? screen
+    : { kind: "list", aside: false }
+}
+
 /**
  * The ideas with `op` applied, for the store to keep; unchanged when the op
  * names an idea it doesn't hold or adds nothing (a fourth question from
@@ -266,6 +293,7 @@ function onIdea(
         ...state,
         screen: { kind: "list", aside: isAside(idea) },
         notice: null,
+        pickSeq: state.pickSeq + 1,
       })
     }
     case "replyPicked": {
@@ -276,7 +304,7 @@ function onIdea(
       }
     }
     case "answerChosen": {
-      return openFollowUp(idea) === null
+      return openFollowUp(idea) === null && skippedAsks(idea).length === 0
         ? same(state)
         : same({
             ...state,
@@ -312,7 +340,8 @@ function onIdea(
     }
     case "opened":
     case "asideShown":
-    case "readAgain": {
+    case "readAgain":
+    case "videosAgain": {
       return same(state)
     }
     default: {
@@ -336,16 +365,27 @@ export function step(state: ShelfState, event: ShelfEvent): ShelfStep {
         return screen.kind === "loading"
           ? same({ ...state, screen: { kind: "unreadable" } })
           : same({ ...state, notice: "notKept" })
-      const ideas = event.ideas
       return same({
         ...state,
-        ideas,
+        ideas: event.ideas,
         screen:
-          screen.kind === "loading" ? { kind: "list", aside: false } : screen,
+          screen.kind === "loading"
+            ? { kind: "list", aside: false }
+            : placed(screen, event.ideas),
       })
     }
     case "videosListed": {
-      return same({ ...state, videos: event.videos })
+      return same({
+        ...state,
+        videos: event.videos,
+        videosUnread: event.videos === null,
+      })
+    }
+    case "videosAgain": {
+      return {
+        state: { ...state, videosUnread: false, notice: null },
+        effects: [{ type: "readVideos" }],
+      }
     }
     case "opened": {
       if (screen.kind !== "list") return same(state)
@@ -354,6 +394,7 @@ export function step(state: ShelfState, event: ShelfEvent): ShelfStep {
             ...state,
             screen: { kind: "idea", id: event.id },
             notice: null,
+            pickSeq: state.pickSeq + 1,
           })
         : same(state)
     }
@@ -381,6 +422,8 @@ export function step(state: ShelfState, event: ShelfEvent): ShelfStep {
         return same({ ...state, notice })
       }
       const { reply } = reading
+      const after = withReply(idea, reply, event.at)
+      if (after === null) return same({ ...state, notice: "alreadyKept" })
       return {
         state,
         effects: [
@@ -388,7 +431,10 @@ export function step(state: ShelfState, event: ShelfEvent): ShelfStep {
             type: "keep",
             op: { kind: "reply", idea: idea.id, reply },
             at: event.at,
-            notice: reply.primer === null ? "asked" : "replied",
+            notice:
+              (after.drafts?.length ?? 0) > (idea.drafts?.length ?? 0)
+                ? "replied"
+                : "asked",
           },
         ],
       }
@@ -400,16 +446,28 @@ export function step(state: ShelfState, event: ShelfEvent): ShelfStep {
     }
     case "kept": {
       if (event.ideas === null) return same({ ...state, notice: "notKept" })
-      return same({ ...state, ideas: event.ideas, notice: event.notice })
+      return same({
+        ...state,
+        ideas: event.ideas,
+        screen: placed(screen, event.ideas),
+        notice: event.notice,
+      })
     }
     case "made": {
+      const { making } = state
       const made = { ...state, making: null }
-      return event.project === null
-        ? same({ ...made, notice: "notMade" })
-        : {
-            state: { ...made, notice: "made" },
-            effects: [{ type: "readVideos" }],
-          }
+      if (event.project === null || making === null)
+        return same({ ...made, notice: "notMade" })
+      // Counted now, so a tap before the videos are read again finds it.
+      const video: IdeaVideo = { project: event.project, idea: making }
+      return {
+        state: {
+          ...made,
+          videos: [...(state.videos ?? []), video],
+          notice: "made",
+        },
+        effects: [{ type: "readVideos" }],
+      }
     }
     case "back": {
       if (screen.kind === "answering") {

@@ -543,10 +543,16 @@ export const STUDIO_WORDS = {
     backToIdea: "Back to the idea",
     answered:
       "Claude's questions are answered and kept as text on this phone. Share the idea with Claude again.",
+    /** Claude's questions met, `n` of them skipped (ST19). */
+    answeredSkipping: (n: number): string =>
+      `Your answers are kept as text on this phone. ${n === 1 ? "The question you skipped stays" : `The ${n} you skipped stay`} with the idea, to answer any time.`,
     askedOf: (n: number, of: number): string =>
       `Claude's question ${n} of ${of}`,
     askedHint: "Claude asked this about your idea.",
     firstVersion: (title: string): string => `From your idea: ${title}`,
+    /** In place of Make this a video while the phone's videos can't be read. */
+    videosUnread:
+      "The videos on this phone couldn't be read, so whether this idea is one yet isn't known. Read them again.",
     notice: {
       notKept: "That couldn't be kept on this phone, so nothing changed.",
       notReply:
@@ -557,6 +563,8 @@ export const STUDIO_WORDS = {
         "Part of Claude's reply is missing, or it cites answers this idea doesn't have. Ask Claude for it again.",
       unreadableFile: "That couldn't be opened. Pick it again.",
       replied: "Claude's scenes are kept with the idea.",
+      alreadyKept: "That's kept with the idea already, so nothing changed.",
+
       asked:
         "Claude's questions are kept with the idea. Answer them when you're ready.",
       made: "It's a video now, in Studio. The idea and every answer stay here.",

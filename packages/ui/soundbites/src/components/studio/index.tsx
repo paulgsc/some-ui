@@ -21,6 +21,8 @@ import {
 import { cn } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import { LOOKS, VOICES } from "@some-ui/video-render"
+import { FilePick } from "@soundbites/components/file-pick"
+import { Notice } from "@soundbites/components/notice"
 import { phoneStudioPorts } from "@soundbites/lib/phone"
 import { finishOf } from "@soundbites/lib/project/finish"
 import type { Project } from "@soundbites/lib/project/model"
@@ -43,7 +45,7 @@ import {
 import { askedAt, changesIn, shotAt } from "@soundbites/lib/studio/watch"
 import type { SittingKind, Snag, Went } from "@soundbites/lib/studio/words"
 import { SITTING_KINDS, STUDIO_WORDS } from "@soundbites/lib/studio/words"
-import { FolderOpen, Mic, Pause, Play, Square } from "lucide-react"
+import { Mic, Pause, Play, Square } from "lucide-react"
 
 const WORDS = STUDIO_WORDS
 
@@ -68,6 +70,11 @@ export type StudioProps = {
    * step while there is no video, a quiet link beside New idea once there is.
    */
   ideas?: { step: ReactNode; quiet: ReactNode }
+  /**
+   * The video to open on, by id (one an idea became, from Your ideas), when
+   * it is on the phone; otherwise the one touched last. Read once, on mount.
+   */
+  initialProject?: string
 }
 
 type Dispatch = (intent: StudioIntent) => void
@@ -82,60 +89,6 @@ const CHOSEN = {
   SittingKind,
   Extract<StudioIntent["type"], `${string}Chosen`>
 >
-
-const Notice = ({ text }: { text: string }): JSX.Element => (
-  <p aria-live="polite" className="text-muted-foreground min-h-5 text-sm">
-    {text}
-  </p>
-)
-
-/** The quiet file pick that opens what a session sent: scenes, or a version. */
-const PrimerPick = ({
-  state,
-  dispatch,
-  label,
-  hint: told,
-}: {
-  state: StudioState
-  dispatch: Dispatch
-  label: string
-  hint: string
-}): JSX.Element => {
-  const hint = useId()
-  return (
-    <label className="bg-background border-border/60 focus-within:ring-ring relative flex cursor-pointer items-center gap-3 rounded-2xl border p-3 focus-within:ring-2">
-      <FolderOpen className="text-primary size-5 shrink-0" aria-hidden="true" />
-      <span className="min-w-0">
-        <span className="block text-sm font-semibold">{label}</span>
-        <span
-          id={hint}
-          aria-live="polite"
-          className={cn(
-            "block text-xs",
-            state.primerProblem === null
-              ? "text-muted-foreground"
-              : "text-destructive"
-          )}
-        >
-          {state.primerProblem ?? told}
-        </span>
-      </span>
-      <input
-        type="file"
-        accept=".json,application/json"
-        aria-describedby={hint}
-        className="sr-only"
-        disabled={!isSettled(state.activity)}
-        onChange={(event) => {
-          const file = event.currentTarget.files?.[0]
-          // The same file again is a new pick.
-          event.currentTarget.value = ""
-          if (file) dispatch({ type: "primerPicked", file })
-        }}
-      />
-    </label>
-  )
-}
 
 /** The share slot for `project`, with "they reached Drive" told to the machine. */
 function shareFor(
@@ -335,15 +288,16 @@ const Start = ({
           </ul>
         </section>
       )}
-      <PrimerPick
-        state={state}
-        dispatch={dispatch}
+      <FilePick
         label={project === null ? WORDS.start.openSent : WORDS.start.openNewer}
         hint={
           project === null
             ? WORDS.start.openSentHint
             : WORDS.start.openNewerHint
         }
+        problem={state.primerProblem}
+        disabled={!isSettled(state.activity)}
+        onPick={(file) => dispatch({ type: "primerPicked", file })}
       />
       {state.choosing !== null && project !== null && (
         <div
@@ -1142,10 +1096,11 @@ export const Studio = ({
   share,
   newIdea,
   ideas,
+  initialProject,
 }: StudioProps): JSX.Element => {
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime is created once per mount, as the soundbites page's is */
   const [runtime] = useState(() =>
-    createStudio({ ...phoneStudioPorts(), ...ports })
+    createStudio({ ...phoneStudioPorts(), ...ports }, initialProject ?? null)
   )
   /* eslint-enable owner-guard/no-mount-snapshot */
   useEffect(() => runtime.attach(), [runtime])
