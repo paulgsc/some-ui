@@ -36,7 +36,7 @@ import type { SqlDriver, SqlRow, SqlValue } from "@/lib/device-backend/sql"
 import { num, numOrNull, one, text, textOrNull } from "@/lib/device-backend/sql"
 import { budgetedAnswer } from "@/lib/device-backend/storage"
 import { touchedToday } from "@/lib/study-nudge"
-import { isSessionId } from "@/lib/tenant/session-id"
+import { isSessionId, newSessionId } from "@/lib/tenant/session-id"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 const STATUSES = ["draft", "scheduled", "active", "paused", "completed"]
@@ -193,10 +193,6 @@ async function insertIfAbsent(
     valuesOf(session)
   )
   return changes > 0 ? session : find(db, session.id)
-}
-
-function newSessionId(): string {
-  return `session-${crypto.randomUUID()}`
 }
 
 /** Absent -> `undefined`; explicit `null` -> `"null"`; a tree -> its JSON. */
