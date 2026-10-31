@@ -344,17 +344,47 @@ describe("the drain's LeetType and Studio parts", () => {
         log: () => Promise.resolve([leetypeSession("a")]),
         answers: answer instanceof Error ? [] : [answer],
       })
-      const through: HomeCall = (method, path, body) =>
-        answer instanceof Error
+      const calls: Array<[string, string]> = []
+      const through: HomeCall = (method, path, body) => {
+        calls.push([method, path])
+        return answer instanceof Error
           ? Promise.reject(answer)
           : send(method, path, body)
+      }
       const ended = drainHome(through, ports)
       if (answer instanceof Error) {
         await expect(ended).rejects.toBeInstanceOf(HomeUnansweredError)
       } else {
         await expect(ended).resolves.toEqual({ kind: "forgotten" })
       }
+      expect(logPuts(calls)).toEqual([])
     }
+  })
+
+  it("sends LeetType and Studio when home's shelf is full, then says the shelf was", async () => {
+    const h = fullHome()
+    const shelfFull: HomeCall = (method, path, body) =>
+      path.startsWith("/shelf/")
+        ? Promise.resolve({ status: 409, body: "" })
+        : h.send(method, path, body)
+    const { ports } = setup({
+      local: [],
+      kept: [KEPT[0]],
+      log: () => Promise.resolve([leetypeSession("a")]),
+      studio: () => Promise.resolve({ sittings: [SITTING], reports: [REPORT] }),
+    })
+    await expect(drainHome(shelfFull, ports)).resolves.toEqual({
+      kind: "failed",
+      why: "full",
+    })
+    expect(logPuts(h.calls)).toEqual([
+      "/leetype/sessions/a/events/a-1",
+      "/leetype/sessions/a/events/a-2",
+    ])
+    const sent = readSent(ports.storage, PAIRING)
+    expect(sent.shelf).toEqual({})
+    expect(Object.keys(sent.leetype)).toEqual(["a"])
+    expect(Object.keys(sent.studio)).toHaveLength(2)
   })
 
   it("puts LeetType after a clean sessions copy and shelf, and remembers what home read back", async () => {

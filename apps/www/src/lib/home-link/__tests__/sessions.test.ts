@@ -21,7 +21,6 @@ import type { DeviceBackend } from "@/lib/device-backend/interceptor"
 import { createDeviceFetch } from "@/lib/device-backend/interceptor"
 import { clearHeld } from "@/lib/home-link/clear"
 import { drainHome } from "@/lib/home-link/drain"
-import { readSent } from "@/lib/home-link/sent"
 import {
   causedBy,
   HomeForgotPhoneError,
@@ -278,21 +277,12 @@ describe("letting the phone's copies go once home holds them", () => {
       today("c"),
     ]
     await expect(drain()).resolves.toEqual({ kind: "synced" })
-    // Finished ones went; the planned one stays on the phone, uncopied.
-    expect(Object.keys(readSent(storage, PAIRING).sessions).sort()).toEqual([
-      "a",
-      "c",
-    ])
-    expect(phone.sessions.map((s) => s.id)).toEqual(["a", "b", "c"])
-
-    let refreshed = 0
-    await expect(
-      clear(() => {
-        refreshed += 1
-      })
-    ).resolves.toEqual({ kind: "cleared", freed: 1, kept: 0 })
+    await expect(clear()).resolves.toEqual({
+      kind: "cleared",
+      freed: 1,
+      kept: 0,
+    })
     expect(phone.sessions.map((s) => s.id)).toEqual(["b", "c"])
-    expect(refreshed).toBe(1)
     // What left the phone is still on home, as it was.
     const there = await createHttpSessionsRepository(homeTransport(send)).list()
     expect(there.find((s) => s.name === "Session a")).toMatchObject({

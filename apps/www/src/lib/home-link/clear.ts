@@ -52,13 +52,18 @@ function phonePorts(): ClearPorts {
   }
 }
 
+/** Of `local`, the finished sessions a clear asks home about at `now`. */
+const leavingOf = (
+  local: ReadonlyArray<SessionRecord>,
+  now: Date
+): Array<SessionRecord> => local.filter((s) => mayLeavePhone(s, now))
+
 /** The finished sessions a clear would ask home about now. */
 export async function finishedOnPhone(
   now = new Date(),
   ports: ClearPorts = phonePorts()
 ): Promise<number> {
-  const local = await ports.sessions()
-  return local.filter((s) => mayLeavePhone(s, now)).length
+  return leavingOf(await ports.sessions(), now).length
 }
 
 /**
@@ -71,7 +76,7 @@ export async function clearHeld(
   ports: ClearPorts = phonePorts()
 ): Promise<ClearEnd> {
   const local = await ports.sessions()
-  const leaving = local.filter((s) => mayLeavePhone(s, now))
+  const leaving = leavingOf(local, now)
   if (leaving.length === 0) return { kind: "nothing" }
   const held: HeldReport = emptyHeldReport()
   let read: { ended: unknown; busy: boolean }

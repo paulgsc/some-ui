@@ -160,7 +160,7 @@ describe("sending voice notes home", () => {
     expect(p.current().waiting.map(({ id }) => id)).toEqual(["n1", "n2"])
   })
 
-  it("ends at a stop a home kept from before HF8, or a forgotten phone, refusing nothing", async () => {
+  it("ends at a `sharing_stopped` 409, or a forgotten phone, refusing nothing", async () => {
     const stopped = port([note("n1")])
     await expect(
       exchangeVoice(

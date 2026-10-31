@@ -2,8 +2,7 @@
  * The runtime behind `./routine-model`: Korean's look at what the
  * reflections routine left on the paired home (`GET /routine/files`,
  * paulgsc/server `handlers/routine.rs`), through the link's `keep`, on a
- * paired phone (LA8, LA15, docs/learner-data-authority.md). Home is the
- * owner's own store, so reading it asks nothing (HF8, #2182).
+ * paired phone (LA8, LA15, docs/learner-data-authority.md).
  *
  * - **Only paired, only under the pairing this phone holds, only in
  *   front.** `list` sends nothing unless the phone is paired and the app is

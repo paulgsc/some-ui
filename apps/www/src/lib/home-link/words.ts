@@ -138,21 +138,17 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
 /** The words every lane's sheet shares. */
 export const SHEET = {
   sendNow: "Send now",
-  pairFirst: "Pair this phone with home in Settings to keep a copy there.",
+  pairFirst: PAIR,
   settings: "Pairing, what waits and clearing space: Settings",
 } as const
 
-const they = (n: number): string => (n === 1 ? "it" : "they")
-
-/** The voice notes this phone holds and can't send home, by why (LA14). */
-export const VOICE_UNSENT = {
-  gone: (n: number): string =>
-    `${counted(n, "voice note")} ${n === 1 ? "isn't" : "aren't"} on this phone any more, so ${they(n)} can't go to home.`,
-} as const
-
-/** What Settings says of the voice notes it can't send, if any. */
+/** What Settings says of the voice notes this phone holds and can't send home, if any (LA14). */
 export function unsentLines({ gone }: Unsendable): Array<string> {
-  return gone > 0 ? [VOICE_UNSENT.gone(gone)] : []
+  if (gone <= 0) return []
+  const one = gone === 1
+  return [
+    `${counted(gone, "voice note")} ${one ? "isn't" : "aren't"} on this phone any more, so ${one ? "it" : "they"} can't go to home.`,
+  ]
 }
 
 /** Settings' Home server block, once paired: what goes, and when. */
@@ -242,7 +238,7 @@ export const CLEAR = {
   },
 } as const
 
-export type LaneFacts = Omit<LaneCounts, "offered"> & {
+export type LaneFacts = LaneCounts & {
   /** The link has read the phone's own record of its pairing. */
   known: boolean
   /** The phone is paired with home, so the lane drains. */

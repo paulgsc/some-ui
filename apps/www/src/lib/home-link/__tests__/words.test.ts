@@ -6,11 +6,12 @@
  */
 import { describe, expect, it } from "vitest"
 
+import type { ClearEnd } from "@/lib/home-link/clear"
 import type { KeptRun, KeptState } from "@/lib/home-link/kept-model"
 import { INITIAL_KEPT } from "@/lib/home-link/kept-model"
 import type { LaneFacts } from "@/lib/home-link/words"
 import * as words from "@/lib/home-link/words"
-import { laneView, lastLook, WORDS } from "@/lib/home-link/words"
+import { CLEAR, laneView, lastLook, WORDS } from "@/lib/home-link/words"
 import { HOW_ORDER, MARK_WORDS, WHERE_ORDER } from "@/lib/sharing-marks"
 
 import { MACHINERY } from "./machinery"
@@ -107,7 +108,10 @@ describe("each lane's sharing words", () => {
       })
     )
     // The sharing marks' words live outside the link (`lib/sharing-marks`).
-    const fixed = [...Object.values(words), MARK_WORDS].flatMap(stringsOf)
+    const fixed = [
+      ...[...Object.values(words), MARK_WORDS].flatMap(stringsOf),
+      ...[1, 2].flatMap((gone) => words.unsentLines({ gone })),
+    ]
 
     const named = [...said, ...fixed].filter((text) => MACHINERY.test(text))
     expect(fixed.length).toBeGreaterThan(30)
@@ -243,6 +247,32 @@ describe("each lane's sharing words", () => {
   })
 })
 
+describe("the clear's words", () => {
+  it("says each end in the person's terms", () => {
+    const ends: Array<ClearEnd> = [
+      { kind: "cleared", freed: 2, kept: 0 },
+      { kind: "cleared", freed: 1, kept: 1 },
+      { kind: "cleared", freed: 0, kept: 2 },
+      { kind: "nothing" },
+      { kind: "unreachable" },
+      { kind: "forgotten" },
+      { kind: "busy" },
+      { kind: "stopped" },
+      { kind: "not-cleared", error: new Error("locked") },
+    ]
+    const lines = ends.map((end) => CLEAR.ended(end, "home.example"))
+    expect(new Set(lines).size).toBe(lines.length)
+    expect(lines[1]).toBe(
+      "Cleared 1 finished session from this phone. 1 stays here: home.example doesn't hold it as it is yet."
+    )
+    expect(lines[2]).toBe(
+      "Nothing left this phone. 2 stay here: home.example doesn't hold them as they are yet."
+    )
+    // The sweep above can't call `ended` with an end: it says these here.
+    expect(lines.filter((line) => MACHINERY.test(line))).toEqual([])
+  })
+})
+
 describe("the routine's files in Korean", () => {
   it("says every look in the person's terms", () => {
     const looks = [
@@ -252,7 +282,6 @@ describe("the routine's files in Korean", () => {
       ),
     ]
     expect(new Set(looks).size).toBe(looks.length)
-    expect(looks.filter((line) => MACHINERY.test(line))).toEqual([])
     expect(lastLook({ kind: "read", at: 1 }, () => "18 Oct, 10:42")).toBe(
       "Last looked at home 18 Oct, 10:42."
     )

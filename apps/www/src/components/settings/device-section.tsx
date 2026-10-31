@@ -4,7 +4,7 @@
  * where a finished session home holds is cleared from the phone (LA8,
  * docs/learner-data-authority.md), each a tap that names where it goes.
  * Everything else the phone keeps goes to home on its own once paired
- * (LA15; HF8, #2182), and this page says what is kept where and what waits
+ * (LA15), and this page says what is kept where and what waits
  * (`./device-kept-on-home`, `./device-routine-reads`). `lib/home-link` owns
  * the work, and this component only shows it.
  */

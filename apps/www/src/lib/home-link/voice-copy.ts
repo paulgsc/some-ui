@@ -71,8 +71,7 @@ import { exchangeVoice } from "@/lib/voice-home/home"
 import type { CopyPass, Unsendable, VoiceOut } from "@/lib/voice-home/model"
 import { NO_PASS, passWith, runEnd } from "@/lib/voice-home/model"
 
-import { homeLink } from "./index"
-import { paired } from "./lanes"
+import { homeLink, paired } from "./index"
 
 /** A finished voice reflection, as home is told it; null for any other. */
 export function reflectionNote(reflection: Reflection): VoiceOut | null {

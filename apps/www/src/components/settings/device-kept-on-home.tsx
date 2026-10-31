@@ -1,35 +1,37 @@
 /**
  * Settings' readout of what this phone keeps on its paired home (LA15,
- * docs/learner-data-authority.md; HF8, #2182): one row per record, each
- * kind it holds and how much is on home, what waits on this phone, how the
- * last send went and Send now; what is never sent; and, for voice notes,
- * what this phone can't send and why (LA14). Its words are
+ * docs/learner-data-authority.md): one row per record, each kind it holds
+ * and how much is on home, what waits on this phone, how the last send went
+ * and Send now; what is never sent; and, for voice notes, what this phone
+ * can't send and why (LA14). Its words are
  * `lib/home-link/words`'s alone, and it mounts no watch of its own: the app
  * shell drains every lane (`components/device-home-glyph.tsx`), and this
- * reads how that is going (`useLaneRun`).
+ * reads how that is going (`useLaneView`).
  *
  * The status page's rows for the same records come from here too
- * (`useLaneRows`): LA8 lets only the modules on its allowlist read the
- * lanes, and this is one.
+ * (`useLaneRows`), each row the one `laneRow` makes: LA8 lets only the
+ * modules on its allowlist read the lanes, and this is one.
  */
 import type { JSX, ReactNode } from "react"
 import { Button, Label, Switch } from "@some-ui/shared"
 
 import { useHomeLink } from "@/lib/home-link"
 import { jobsLane } from "@/lib/home-link/jobs"
-import type { KeptState } from "@/lib/home-link/kept-model"
 import { INITIAL_KEPT } from "@/lib/home-link/kept-model"
-import type { Lane, LaneCounts, LaneId } from "@/lib/home-link/lanes"
-import { askLane, pairingOf, useLaneRun } from "@/lib/home-link/lanes"
+import type {
+  Lane,
+  LaneCounts,
+  LaneId,
+  LaneReading,
+} from "@/lib/home-link/lanes"
+import { askLane, laneReading, useLaneView } from "@/lib/home-link/lanes"
 import { practiceLane } from "@/lib/home-link/practice"
 import { useUnsendable, voiceLane } from "@/lib/home-link/voice"
 import {
   KEPT_ON_HOME,
-  laneView,
   lookedAt,
   SHEET,
   unsentLines,
-  WORDS,
 } from "@/lib/home-link/words"
 import { phoneJobs } from "@/lib/jobs"
 import { NOTICE_WORDS, noticeSaid } from "@/lib/jobs/words"
@@ -45,60 +47,85 @@ const NO_COUNTS: LaneCounts = {
   pulled: true,
 }
 
-/** A run home turned away (busy, or no answer) is worth trying again. */
-const retryable = (run: KeptState): boolean =>
-  run.last?.kind === "unreachable" ||
-  (run.last?.kind === "failed" && run.last.why === "busy")
+/** Each record's own screen, for its row on the status page. */
+const PAGES: Readonly<Record<LaneId, BoardPage>> = {
+  practice: "practice",
+  aph: "aph",
+  jobs: "jobs",
+  voice: "home-settings",
+}
+
+/**
+ * aph as Settings and the status page read it: it drains only while its
+ * own screens are open, so there is no run here to tell.
+ */
+function useAphReading(): LaneReading {
+  return laneReading("aph", NO_COUNTS, INITIAL_KEPT, useHomeLink())
+}
+
+/**
+ * One record this phone keeps on home, as Settings and the status page show
+ * it. aph's row says where it is kept, and that how its last send went shows
+ * on its own screen; `more` adds lines under it (what this phone can't send).
+ */
+function laneRow(
+  id: LaneId,
+  { run, paired, view }: LaneReading,
+  more: ReadonlyArray<string> = []
+): BoardRow {
+  const unseen = id === "aph" && paired
+  const last = run.last
+  return {
+    id,
+    group: "home",
+    name: KEPT_ON_HOME.names[id],
+    word: view.word,
+    line: unseen ? BOARD_WORDS.unseen(KEPT_ON_HOME.opens[id]) : view.line,
+    more:
+      last?.kind === "synced"
+        ? [BOARD_WORDS.lastWent(lookedAt(last.at)), ...more]
+        : more,
+    mark: { kind: "lane", where: view.where, how: unseen ? null : view.how },
+    page: PAGES[id],
+  }
+}
 
 const Row = ({
   id,
-  counts,
+  reading,
   lane,
-  more = [],
+  more,
   children,
 }: {
   id: LaneId
-  counts: LaneCounts
-  /** The lane whose run shows and Send now asks, or `null` where only its own screens drain it (aph). */
+  reading: LaneReading
+  /** The lane Send now asks, or `null` where only its own screens drain it (aph). */
   lane: Lane | null
   /** Lines under the rows: what this phone can't send (voice notes). */
   more?: ReadonlyArray<string>
   children?: ReactNode
 }): JSX.Element => {
-  const link = useHomeLink()
-  const run = useLaneRun(lane ?? practiceLane)
-  const paired = pairingOf(link) !== null
-  const view = laneView(WORDS[id], {
-    ...counts,
-    known: link.link.kind !== "reading",
-    paired,
-    run: lane === null ? INITIAL_KEPT : run,
-  })
+  const row = laneRow(id, reading, more)
   return (
     <li className="space-y-2 py-3">
-      <p className="text-sm font-medium">{KEPT_ON_HOME.names[id]}</p>
+      <p className="text-sm font-medium">{row.name}</p>
       <p className="text-muted-foreground text-xs" role="status">
-        {lane === null && paired
-          ? BOARD_WORDS.unseen(KEPT_ON_HOME.opens[id])
-          : view.line}
+        {row.line}
       </p>
       <ul className="space-y-0.5">
-        {view.rows.map((row) => (
-          <li key={row.label} className="text-muted-foreground text-xs">
-            {row.label}: {row.text}
+        {reading.view.rows.map((r) => (
+          <li key={r.label} className="text-muted-foreground text-xs">
+            {r.label}: {r.text}
           </li>
         ))}
       </ul>
-      {[...view.notes, ...more].map((note) => (
+      {[...reading.view.notes, ...row.more].map((note) => (
         <p key={note} className="text-muted-foreground text-xs">
           {note}
         </p>
       ))}
       {children}
-      {lane !== null &&
-      paired &&
-      (counts.waiting > 0 || retryable(run)) &&
-      !run.running ? (
+      {lane !== null && reading.sendNow ? (
         <Button
           type="button"
           variant="outline"
@@ -113,7 +140,11 @@ const Row = ({
 }
 
 const PracticeRow = (): JSX.Element => (
-  <Row id="practice" counts={practiceLane.useCounts()} lane={practiceLane} />
+  <Row id="practice" reading={useLaneView(practiceLane)} lane={practiceLane} />
+)
+
+const AphRow = (): JSX.Element => (
+  <Row id="aph" reading={useAphReading()} lane={null} />
 )
 
 /**
@@ -144,7 +175,7 @@ const JobsNotice = (): JSX.Element | null => {
 }
 
 const JobsRow = (): JSX.Element => (
-  <Row id="jobs" counts={jobsLane.useCounts()} lane={jobsLane}>
+  <Row id="jobs" reading={useLaneView(jobsLane)} lane={jobsLane}>
     <JobsNotice />
   </Row>
 )
@@ -152,60 +183,16 @@ const JobsRow = (): JSX.Element => (
 const VoiceRow = (): JSX.Element => (
   <Row
     id="voice"
-    counts={voiceLane.useCounts()}
+    reading={useLaneView(voiceLane)}
     lane={voiceLane}
     more={unsentLines(useUnsendable())}
   />
 )
 
-/** Each record's own screen, for its row on the status page. */
-const PAGES: Readonly<Record<LaneId, BoardPage>> = {
-  practice: "practice",
-  aph: "aph",
-  jobs: "jobs",
-  voice: "home-settings",
-}
-
-/**
- * One record this phone keeps on home, as the status page shows it. `run`
- * is null for aph, which drains only while its own screens are open: its
- * row says where, not how.
- */
-function laneRow(
-  id: LaneId,
-  counts: LaneCounts,
-  run: KeptState | null,
-  known: boolean,
-  paired: boolean,
-  more: ReadonlyArray<string> = []
-): BoardRow {
-  const view = laneView(WORDS[id], {
-    ...counts,
-    known,
-    paired,
-    run: run ?? INITIAL_KEPT,
-  })
-  const unseen = paired && run === null
-  const last = run?.last
-  return {
-    id,
-    group: "home",
-    name: KEPT_ON_HOME.names[id],
-    word: view.word,
-    line: unseen ? BOARD_WORDS.unseen(KEPT_ON_HOME.opens[id]) : view.line,
-    more:
-      last?.kind === "synced"
-        ? [BOARD_WORDS.lastWent(lookedAt(last.at)), ...more]
-        : more,
-    mark: { kind: "lane", where: view.where, how: unseen ? null : view.how },
-    page: PAGES[id],
-  }
-}
-
 /**
  * Each record kept on home as the status page shows it (#2165): where it is
  * kept and how its last send went, read without a watch of its own
- * (`useLaneRun`), so nothing is sent from the page. Voice notes add what
+ * (`useLaneView`), so nothing is sent from the page. Voice notes add what
  * this phone can't send (LA14). `paired`: whether this phone is paired with
  * home, so the Jobs record goes there, as the morning run's words need it.
  */
@@ -213,37 +200,15 @@ export function useLaneRows(): {
   rows: ReadonlyArray<BoardRow>
   paired: boolean
 } {
-  const link = useHomeLink()
-  const known = link.link.kind !== "reading"
-  const paired = pairingOf(link) !== null
-  const unsent = unsentLines(useUnsendable())
+  const practice = useLaneView(practiceLane)
   return {
     rows: [
-      laneRow(
-        "practice",
-        practiceLane.useCounts(),
-        useLaneRun(practiceLane),
-        known,
-        paired
-      ),
-      laneRow("aph", NO_COUNTS, null, known, paired),
-      laneRow(
-        "jobs",
-        jobsLane.useCounts(),
-        useLaneRun(jobsLane),
-        known,
-        paired
-      ),
-      laneRow(
-        "voice",
-        voiceLane.useCounts(),
-        useLaneRun(voiceLane),
-        known,
-        paired,
-        unsent
-      ),
+      laneRow("practice", practice),
+      laneRow("aph", useAphReading()),
+      laneRow("jobs", useLaneView(jobsLane)),
+      laneRow("voice", useLaneView(voiceLane), unsentLines(useUnsendable())),
     ],
-    paired,
+    paired: practice.paired,
   }
 }
 
@@ -255,7 +220,7 @@ export const KeptOnHome = (): JSX.Element => (
     </div>
     <ul className="divide-y rounded-md border px-3">
       <PracticeRow />
-      <Row id="aph" counts={NO_COUNTS} lane={null} />
+      <AphRow />
       <JobsRow />
       <VoiceRow />
     </ul>

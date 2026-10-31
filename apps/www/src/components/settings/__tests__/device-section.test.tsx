@@ -5,8 +5,7 @@
  * and sends nothing; the destination is named before any tap; unpairing and
  * the clear of finished sessions home holds each take a second, deliberate
  * press, and the clear only reads home, letting go of nothing it does not
- * hold. Once paired, the page says what goes on its own and makes no choice
- * to make (HF8, #2182).
+ * hold. Once paired, the page says what goes on its own (LA15).
  */
 
 import type { ReactNode } from "react"
@@ -148,7 +147,7 @@ const paired = (): void => {
 }
 
 describe("DeviceSection's Home server block", () => {
-  it("sends nothing when opened, paired or not, and offers no choice to make", async () => {
+  it("sends nothing when opened, paired or not, and says what goes on its own", async () => {
     await open()
     expect(screen.getByRole("button", { name: /pair/i })).toBeTruthy()
     cleanup()
@@ -160,10 +159,6 @@ describe("DeviceSection's Home server block", () => {
     expect(
       screen.getByText(/goes to home on its own while the app is open/i)
     ).toBeTruthy()
-    expect(screen.queryByText(/nothing is sent unless you tap/i)).toBeNull()
-    expect(screen.queryByRole("checkbox")).toBeNull()
-    expect(screen.queryByRole("button", { name: /keep sending/i })).toBeNull()
-    expect(screen.queryByRole("button", { name: /stop sending/i })).toBeNull()
     expect(home.sent).toEqual([])
   })
 

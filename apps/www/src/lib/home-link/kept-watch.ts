@@ -7,7 +7,7 @@
  * The one wiring (`./lanes`) hands in each lane's record and its runtime
  * (`./kept-runtime`); this module names no record.
  */
-import { homeLink } from "./index"
+import { homeLink, paired, pairingOf } from "./index"
 import type { Kept } from "./kept-runtime"
 
 /** A record as the watch sees it. */
@@ -19,7 +19,7 @@ export type KeptRecord = {
 
 /** Asks for a run when the phone is paired and the app is in front. */
 export function askKept(home: Kept, doc: Document): void {
-  if (homeLink().getSnapshot().link.kind !== "paired") return
+  if (!paired()) return
   if (doc.visibilityState !== "visible") return
   home.want()
 }
@@ -38,7 +38,7 @@ export function watchKept(
 ): () => void {
   const link = homeLink()
   let revision = record.revision()
-  let paired = link.getSnapshot().link.kind === "paired"
+  let wasPaired = pairingOf(link.getSnapshot()) !== null
   let idle = link.getSnapshot().activity.kind === "idle"
 
   const onRecord = (): void => {
@@ -48,15 +48,15 @@ export function watchKept(
     askKept(home, doc)
   }
   const onLink = (): void => {
-    const { link: pairing, activity } = link.getSnapshot()
-    const nowPaired = pairing.kind === "paired"
-    const nowIdle = activity.kind === "idle"
+    const state = link.getSnapshot()
+    const nowPaired = pairingOf(state) !== null
+    const nowIdle = state.activity.kind === "idle"
     const freed = nowIdle && !idle
     const turnedAway = home.getSnapshot().last?.kind === "busy"
-    if ((nowPaired && !paired) || (freed && turnedAway)) {
+    if ((nowPaired && !wasPaired) || (freed && turnedAway)) {
       askKept(home, doc)
     }
-    paired = nowPaired
+    wasPaired = nowPaired
     idle = nowIdle
   }
   const onBack = (): void => {

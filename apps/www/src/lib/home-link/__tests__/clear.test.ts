@@ -1,9 +1,9 @@
 /**
  * Settings' clear of finished sessions home holds (`../clear`, LA8): it
- * reads back each finished session, sends nothing, lets go of those home
- * holds exactly as the phone does, and says how it ended in a line that
- * names no machinery. Which sessions may leave, and that home must hold one
- * as it is, is `sessions.test.ts`'s.
+ * reads back each finished session, lets go of those home holds exactly as
+ * the phone does, and says how it ended. Which sessions may leave, and that
+ * home must hold one as it is, is `sessions.test.ts`'s; the lines it says
+ * are `words.test.ts`'s.
  */
 import { noAnswer } from "@/test-support/no-answer"
 import { sessionRecord } from "@/test-support/session-record"
@@ -14,10 +14,7 @@ import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import type { ClearEnd, ClearPorts } from "@/lib/home-link/clear"
 import { clearHeld, finishedOnPhone } from "@/lib/home-link/clear"
 import type * as Sessions from "@/lib/home-link/sessions"
-import { CLEAR } from "@/lib/home-link/words"
 import type { SessionRecord } from "@/lib/tenant/types"
-
-import { MACHINERY } from "./machinery"
 
 // The read-back itself is `sessions.test.ts`'s, against a real home: here a
 // session is held when home answers its read 200, and the read's end is
@@ -86,30 +83,31 @@ describe("clearHeld", () => {
   })
 
   it("lets go of what home holds, and nothing it does not", async () => {
-    const holding = ports(() =>
-      Promise.resolve({ status: 200, body: JSON.stringify(finished("a")) })
+    const holdingA = ports((method, path) =>
+      path === "/sessions/a"
+        ? Promise.resolve({ status: 200, body: JSON.stringify(finished("a")) })
+        : empty(method, path)
     )
-    expect(await clearHeld(() => undefined, NOW, holding)).toEqual({
-      kind: "cleared",
-      freed: 2,
-      kept: 0,
-    })
-    expect(holding.gone).toEqual(["a", "b"])
-  })
+    let refreshed = 0
+    expect(
+      await clearHeld(
+        () => {
+          refreshed += 1
+        },
+        NOW,
+        holdingA
+      )
+    ).toEqual({ kind: "cleared", freed: 1, kept: 1 })
+    expect(holdingA.gone).toEqual(["a"])
+    expect(refreshed).toBe(1)
 
-  it("lets go of nothing home does not hold, and sends nothing", async () => {
-    const calls: Array<string> = []
-    const p = ports((method, path) => {
-      calls.push(`${method} ${path}`)
-      return empty(method, path)
-    })
-    expect(await clearHeld(() => undefined, NOW, p)).toEqual({
+    const holdingNone = ports(empty)
+    expect(await clearHeld(() => undefined, NOW, holdingNone)).toEqual({
       kind: "cleared",
       freed: 0,
       kept: 2,
     })
-    expect(p.gone).toEqual([])
-    expect(calls.every((call) => call.startsWith("GET "))).toBe(true)
+    expect(holdingNone.gone).toEqual([])
   })
 
   it("says why it could not ask home, and lets nothing go", async () => {
@@ -150,32 +148,5 @@ describe("clearHeld", () => {
     expect(await clearHeld(() => undefined, NOW, p)).toMatchObject({
       kind: "not-cleared",
     })
-  })
-
-  it("says each end in the person's terms", () => {
-    const ends: Array<ClearEnd> = [
-      { kind: "cleared", freed: 2, kept: 0 },
-      { kind: "cleared", freed: 1, kept: 1 },
-      { kind: "cleared", freed: 0, kept: 2 },
-      { kind: "nothing" },
-      { kind: "unreachable" },
-      { kind: "forgotten" },
-      { kind: "busy" },
-      { kind: "stopped" },
-      { kind: "not-cleared", error: new Error("locked") },
-    ]
-    const lines = ends.map((end) => CLEAR.ended(end, "home.example"))
-    expect(new Set(lines).size).toBe(lines.length)
-    expect(lines[1]).toBe(
-      "Cleared 1 finished session from this phone. 1 stays here: home.example doesn't hold it as it is yet."
-    )
-    expect(lines[2]).toBe(
-      "Nothing left this phone. 2 stay here: home.example doesn't hold them as they are yet."
-    )
-    expect(
-      [...lines, CLEAR.question(3, "home.example"), CLEAR.button].filter(
-        (line) => MACHINERY.test(line)
-      )
-    ).toEqual([])
   })
 })

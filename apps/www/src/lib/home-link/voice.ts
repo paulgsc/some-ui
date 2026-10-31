@@ -16,10 +16,10 @@ import { reflections } from "@/lib/session-reflection"
 import { phoneVoiceHome } from "@/lib/voice-home"
 import type { Unsendable, VoiceHomeState } from "@/lib/voice-home/model"
 
-import { homeLink } from "./index"
+import { homeLink, paired } from "./index"
 import type { KeptState } from "./kept-model"
 import type { Lane, LaneCounts } from "./lanes"
-import { paired, useLaneHome } from "./lanes"
+import { useLaneHome } from "./lanes"
 import {
   candidates,
   copyPasses,

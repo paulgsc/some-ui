@@ -66,10 +66,12 @@ vi.mock("@/lib/voice-home", () => ({
   phoneVoiceHome: (): VoiceHome | null => fakes.home,
 }))
 vi.mock("@/lib/home-link/lanes", () => ({
-  paired: (): boolean => true,
   useLaneHome: (): unknown => null,
 }))
-vi.mock("@/lib/home-link", () => ({ homeLink: vi.fn() }))
+vi.mock("@/lib/home-link", () => ({
+  homeLink: vi.fn(),
+  paired: (): boolean => true,
+}))
 vi.mock("@some-ui/intent-kit", async (actual) => ({
   ...(await actual<object>()),
   reportFailure: vi.fn(),

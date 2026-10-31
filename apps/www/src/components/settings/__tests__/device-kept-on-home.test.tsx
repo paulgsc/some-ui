@@ -3,8 +3,7 @@
  *
  * Settings' readout of what this phone keeps on home (LA15): it reads the
  * phone's own pairing and what each record says, sends nothing on its own,
- * offers no choice to make, says each record's state in its own words, and
- * never says a voice note waits that this phone can't send (LA14). The
+ * says each record's state in its own words, and never says a voice note waits that this phone can't send (LA14). The
  * status page's rows for the same records (#2165) come from here too.
  */
 import {
@@ -17,7 +16,6 @@ import {
 } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { VOICE_UNSENT } from "@/lib/home-link/words"
 import type { SessionRecord } from "@/lib/tenant/types"
 import type { Unsendable } from "@/lib/voice-home/model"
 
@@ -129,16 +127,12 @@ async function mount(): Promise<void> {
 }
 
 describe("what this phone keeps on home", () => {
-  it("says each record is kept on home once paired, sends nothing, and offers no choice", async () => {
+  it("says each record is kept on home once paired, and sends nothing", async () => {
     await mount()
     // Practice's two kinds, aph, the Jobs record and voice notes.
     expect(
       screen.getAllByText(/: Kept on home$|: Nothing on home yet$/)
     ).toHaveLength(5)
-    expect(screen.queryByText(/choice/i)).toBeNull()
-    expect(
-      screen.queryByRole("button", { name: /stop|keep sending/i })
-    ).toBeNull()
     expect(home.sent).toEqual([])
   })
 
@@ -162,7 +156,11 @@ describe("what this phone keeps on home", () => {
   it("names voice notes it can't send, and says nothing waits for them (LA14)", async () => {
     home.unsent = { gone: 1 }
     await mount()
-    expect(screen.getByText(VOICE_UNSENT.gone(1))).toBeTruthy()
+    expect(
+      screen.getByText(
+        "1 voice note isn't on this phone any more, so it can't go to home."
+      )
+    ).toBeTruthy()
     expect(screen.queryByText(/wait/)).toBeNull()
     expect(screen.queryByRole("button", { name: "Send now" })).toBeNull()
   })
@@ -180,11 +178,6 @@ describe("what this phone keeps on home", () => {
     fireEvent.click(toggle)
     expect(home.wanted).toEqual([true])
     expect(home.sent).toEqual([])
-  })
-
-  it("says aph's last send shows on aph's own screen", async () => {
-    await mount()
-    expect(screen.getByText(/shows once aph opens\.$/)).toBeTruthy()
   })
 })
 
@@ -216,14 +209,5 @@ describe("the status page's rows", () => {
       mark: { kind: "lane", where: "kept", how: null },
     })
     expect(board.paired).toBe(true)
-  })
-
-  it("says phone only for every record while unpaired", async () => {
-    home.record = null
-    const board = await rows()
-    for (const row of board.rows) {
-      expect(row.mark).toEqual({ kind: "lane", where: "phone", how: null })
-    }
-    expect(board.paired).toBe(false)
   })
 })

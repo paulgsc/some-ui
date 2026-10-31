@@ -8,20 +8,19 @@
  * long as `useLaneHome` is mounted (the app shell mounts every lane's,
  * `components/device-home-glyph.tsx`'s `HomeLanes`; aph's once its screens
  * hand its store in, `useHandLane`).
- *
- * Sending to home is the default and asks nothing (HF8, #2182): a paired
- * phone drains, and the only choice is the pairing itself.
  */
 import { useEffect, useSyncExternalStore } from "react"
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 
-import { homeLink } from "./index"
+import { homeLink, paired, pairingOf, useHomeLink } from "./index"
 import type { KeptState } from "./kept-model"
 import type { Kept, KeptPorts } from "./kept-runtime"
 import { createKept, laneExchange } from "./kept-runtime"
 import type { KeptRecord } from "./kept-watch"
 import { askKept, watchKept } from "./kept-watch"
 import type { HomeLinkState } from "./model"
+import type { LaneView } from "./words"
+import { laneView, WORDS } from "./words"
 
 export type LaneId = "practice" | "aph" | "jobs" | "voice"
 
@@ -55,18 +54,6 @@ export type Lane = {
   readonly subscribe: (listener: () => void) => () => void
   /** A hook: the sheet's counts, read while the lane's mark shows. */
   readonly useCounts: () => LaneCounts
-}
-
-/** The id of the pairing this phone holds, or `null`. */
-export function pairingOf(
-  state: HomeLinkState = homeLink().getSnapshot()
-): string | null {
-  return state.link.kind === "paired" ? state.link.id : null
-}
-
-/** Whether this phone is paired with home now: the one gate on sending. */
-export function paired(): boolean {
-  return pairingOf() !== null
 }
 
 type Wired = {
@@ -103,12 +90,11 @@ function wire(lane: Lane): Wired {
  * runs asked for at the moments LA15 names.
  */
 export function useLaneHome(lane: Lane): KeptState {
-  const { sending } = wire(lane)
   useEffect(() => {
     const { record, sending } = wire(lane)
     return watchKept(record, sending)
   }, [lane])
-  return useSyncExternalStore(sending.subscribe, sending.getSnapshot)
+  return useLaneRun(lane)
 }
 
 /**
@@ -116,9 +102,62 @@ export function useLaneHome(lane: Lane): KeptState {
  * for a screen that shows a lane the app shell drains (a wing's mark,
  * Settings).
  */
-export function useLaneRun(lane: Lane): KeptState {
+function useLaneRun(lane: Lane): KeptState {
   const { sending } = wire(lane)
   return useSyncExternalStore(sending.subscribe, sending.getSnapshot)
+}
+
+/**
+ * Whether Send now is offered: paired, not sending, and something waits or
+ * the last run was turned away (home busy, or no answer), which is worth
+ * trying again even when nothing counted waits.
+ */
+function offersSendNow(
+  run: KeptState,
+  counts: LaneCounts,
+  isPaired: boolean
+): boolean {
+  if (!isPaired || run.running) return false
+  return (
+    counts.waiting > 0 ||
+    run.last?.kind === "unreachable" ||
+    (run.last?.kind === "failed" && run.last.why === "busy")
+  )
+}
+
+/** A lane as its mark and Settings show it. */
+export type LaneReading = {
+  readonly run: KeptState
+  /** The phone is paired with home, so the lane drains. */
+  readonly paired: boolean
+  readonly view: LaneView
+  readonly sendNow: boolean
+}
+
+/** How lane `id` reads from its `counts`, its `run` and the link's `state`. */
+export function laneReading(
+  id: LaneId,
+  counts: LaneCounts,
+  run: KeptState,
+  state: HomeLinkState
+): LaneReading {
+  const isPaired = pairingOf(state) !== null
+  return {
+    run,
+    paired: isPaired,
+    view: laneView(WORDS[id], {
+      ...counts,
+      known: state.link.kind !== "reading",
+      paired: isPaired,
+      run,
+    }),
+    sendNow: offersSendNow(run, counts, isPaired),
+  }
+}
+
+/** `lane` as its mark and Settings show it, read without a watch of its own. */
+export function useLaneView(lane: Lane): LaneReading {
+  return laneReading(lane.id, lane.useCounts(), useLaneRun(lane), useHomeLink())
 }
 
 /** "Send now": asks for a run, as any moment the watch names would. */

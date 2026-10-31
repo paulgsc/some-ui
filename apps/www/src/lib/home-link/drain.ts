@@ -1,6 +1,6 @@
 /**
  * The one drain of what this phone holds to its paired home (LA15,
- * docs/learner-data-authority.md; HF8, #2182): what changed on this phone
+ * docs/learner-data-authority.md): what changed on this phone
  * since home last held it, in order. Finished sessions are copied as a copy
  * to home copies them (`./sessions`, reading home only to plan), kept shelf
  * items PUT as the shelf sends them (`./shelf`), each finished LeetType
@@ -9,7 +9,9 @@
  * taken in, and nothing on the phone is let go: a finished session leaves
  * only by the clear in Settings (`./clear`), once home has read it back.
  *
- * What did not go goes on the next ask.
+ * A part home turned away (a full shelf, a refusal) does not hold back the
+ * parts after it, which share nothing with it; the run says the first such
+ * end once every part has gone. What did not go goes on the next ask.
  */
 import type { HomeCall, HomeExchanged, KeyedStorage } from "@some-ui/core-utils"
 import { unexpectedAnswer } from "@some-ui/core-utils"
@@ -37,6 +39,7 @@ import {
   shelfToSend,
 } from "./sent"
 import { causedBy, copyHome, HomeForgotPhoneError } from "./sessions"
+import type { EndedReport } from "./shelf"
 import { emptyReport, HomeUnansweredError, sendKept } from "./shelf"
 import type { StudioGoing } from "./studio-log"
 import { sendStudio } from "./studio-log"
@@ -51,9 +54,9 @@ export type DrainPorts = {
     kept: ReadonlyArray<Kept>
   }>
   /** The finished LeetType sessions home lacks under `pairing` (`./going`). */
-  logGoing: (pairing: string) => Promise<ReadonlyArray<HomeSession>>
+  logGoing: () => Promise<ReadonlyArray<HomeSession>>
   /** What of Studio's record home lacks under `pairing` (`./going`). */
-  studioGoing: (pairing: string) => Promise<StudioGoing>
+  studioGoing: () => Promise<StudioGoing>
   /** The pairing this run goes under (the link's id for it). */
   pairing: string
   storage: KeyedStorage | null
@@ -82,12 +85,20 @@ function answeredCopy(error: unknown): HomeExchanged | null {
     : null
 }
 
-/** How a log's part ended, when it ended the run: said, thrown, or null to go on. */
-function endedLog(report: LogReport): HomeExchanged | null {
+/** How a part ended the run, when home did not answer it as asked: said or thrown. */
+function endedPart(report: EndedReport): HomeExchanged | null {
   if (report.forgotten) return { kind: "forgotten" }
   if (report.unreachable) throw new HomeUnansweredError()
-  return report.refused + report.other > 0 ? failed("refused") : null
+  return null
 }
+
+/** One log's sender (`./leetype-log`'s `sendLog`, `./studio-log`'s `sendStudio`). */
+type LogSender<T> = (
+  going: T,
+  send: HomeCall,
+  report: LogReport,
+  held: (key: string, digest: string) => void
+) => Promise<void>
 
 /**
  * Sends what changed. Throws `HomeUnansweredError` when home does not answer
@@ -144,39 +155,41 @@ export async function drainHome(
   } finally {
     sent = rememberSent(ports.storage, sent, { shelf: held, refused })
   }
-  if (report.forgotten) return { kind: "forgotten" }
-  if (report.unreachable) throw new HomeUnansweredError()
-  if (report.full.size > 0) return failed("full")
-  if (report.refused + report.other > 0) return failed("refused")
+  const shelfEnded = endedPart(report)
+  if (shelfEnded !== null) return shelfEnded
+  let short: DrainWhy | null =
+    report.full.size > 0
+      ? "full"
+      : report.refused + report.other > 0
+        ? "refused"
+        : null
 
-  const log = emptyLogReport()
-  const leetype: Record<string, string> = {}
-  try {
-    await sendLog(await ports.logGoing(ports.pairing), send, log, (s, d) => {
-      leetype[s] = d
-    })
-  } finally {
-    sent = rememberSent(ports.storage, sent, { leetype })
+  /** Sends one log's `going`, remembering under `field` what home read back. */
+  const part = async <T>(
+    going: T,
+    sender: LogSender<T>,
+    field: "leetype" | "studio"
+  ): Promise<HomeExchanged | null> => {
+    const log = emptyLogReport()
+    const readBack: Record<string, string> = {}
+    try {
+      await sender(going, send, log, (key, digest) => {
+        readBack[key] = digest
+      })
+    } finally {
+      sent = rememberSent(ports.storage, sent, { [field]: readBack })
+    }
+    if (log.refused + log.other > 0) short ??= "refused"
+    return endedPart(log)
   }
-  const logEnded = endedLog(log)
+  const logEnded = await part(await ports.logGoing(), sendLog, "leetype")
   if (logEnded !== null) return logEnded
-
-  const sat = emptyLogReport()
-  const studio: Record<string, string> = {}
-  try {
-    await sendStudio(
-      await ports.studioGoing(ports.pairing),
-      send,
-      sat,
-      (k, d) => {
-        studio[k] = d
-      }
-    )
-  } finally {
-    rememberSent(ports.storage, sent, { studio })
-  }
-  const studioEnded = endedLog(sat)
+  const studioEnded = await part(
+    await ports.studioGoing(),
+    sendStudio,
+    "studio"
+  )
   if (studioEnded !== null) return studioEnded
 
-  return { kind: "synced" }
+  return short === null ? { kind: "synced" } : failed(short)
 }

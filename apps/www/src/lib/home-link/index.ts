@@ -5,7 +5,6 @@
  * phone keeps (aph, the Jobs record, Practice's record, voice notes), which
  * a paired phone sends on its own while the app is open (`./lanes`, LA15);
  * and Korean's look at the routine's files on home (`./routine`).
- * Sending to home is the default and asks nothing (HF8, #2182).
  * Phone-only (`build.paths.ts`).
  */
 import { useSyncExternalStore } from "react"
@@ -38,6 +37,18 @@ export function homeLink(): HomeLink {
     void link.load()
   }
   return link
+}
+
+/** The id of the pairing this phone holds, or `null`. */
+export function pairingOf(
+  state: HomeLinkState = homeLink().getSnapshot()
+): string | null {
+  return state.link.kind === "paired" ? state.link.id : null
+}
+
+/** Whether this phone is paired with home now: the one gate on sending. */
+export function paired(): boolean {
+  return pairingOf() !== null
 }
 
 export function useHomeLink(): HomeLinkState {

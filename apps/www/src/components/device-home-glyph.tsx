@@ -23,19 +23,18 @@ import {
 } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 
-import { useHomeLink } from "@/lib/home-link"
+import { pairingOf, useHomeLink } from "@/lib/home-link"
 import { jobsLane } from "@/lib/home-link/jobs"
 import type { Lane } from "@/lib/home-link/lanes"
 import {
   askLane,
-  pairingOf,
   useHandedLane,
   useLaneHome,
-  useLaneRun,
+  useLaneView,
 } from "@/lib/home-link/lanes"
 import { practiceLane } from "@/lib/home-link/practice"
 import { useVoiceHome } from "@/lib/home-link/voice"
-import { laneView, SHEET, WORDS } from "@/lib/home-link/words"
+import { SHEET, WORDS } from "@/lib/home-link/words"
 import type { WingId } from "@/lib/wings"
 import {
   HowMark,
@@ -48,24 +47,9 @@ import {
 const BIG = "h-12 rounded-2xl text-base"
 
 const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
-  const run = useLaneRun(lane)
-  const counts = lane.useCounts()
-  const link = useHomeLink()
+  const { run, paired, view, sendNow } = useLaneView(lane)
   const [open, setOpen] = useState(false)
-
   const words = WORDS[lane.id]
-  const pairing = pairingOf(link)
-  const view = laneView(words, {
-    ...counts,
-    known: link.link.kind !== "reading",
-    paired: pairing !== null,
-    run,
-  })
-  // A run home turned away (busy, or no answer) is worth trying again, even
-  // when nothing counted waits.
-  const retryable =
-    run.last?.kind === "unreachable" ||
-    (run.last?.kind === "failed" && run.last.why === "busy")
 
   return (
     <>
@@ -126,16 +110,14 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
                 {note}
               </p>
             ))}
-            {pairing !== null &&
-            (counts.waiting > 0 || retryable) &&
-            !run.running ? (
+            {sendNow ? (
               <Button size="lg" className={BIG} onClick={() => askLane(lane)}>
                 {SHEET.sendNow}
               </Button>
             ) : null}
-            {pairing === null ? (
+            {paired ? null : (
               <p className="text-muted-foreground text-sm">{SHEET.pairFirst}</p>
-            ) : null}
+            )}
             <p className="text-muted-foreground text-sm">{words.footnote}</p>
             <SharingLegend className="rounded-2xl border p-3" />
             <Link

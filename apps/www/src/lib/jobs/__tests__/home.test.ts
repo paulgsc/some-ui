@@ -218,7 +218,7 @@ describe("exchangeJobs", () => {
     expect(homeOutbox(k.current)).toEqual([])
   })
 
-  it("refuses nothing on a stop a home kept from before HF8, and ends there", async () => {
+  it("refuses nothing on a `sharing_stopped` 409, and ends there", async () => {
     const k = keeping(withLog)
     const h = home(() => ({
       status: 409,

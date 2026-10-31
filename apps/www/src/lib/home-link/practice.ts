@@ -19,9 +19,8 @@ import type { SessionRecord } from "@/lib/tenant/types"
 
 import { drainHome } from "./drain"
 import { logGoing, readPhone, studioGoing } from "./going"
-import { useHomeLink } from "./index"
+import { pairingOf, useHomeLink } from "./index"
 import type { Lane, LaneCounts } from "./lanes"
-import { pairingOf } from "./lanes"
 import type { HomeLinkState } from "./model"
 import type { Sent } from "./sent"
 import { heldCounts, readSent, sessionsToSend } from "./sent"
@@ -48,8 +47,8 @@ export const practiceLane: Lane = {
     const storage = localStorageOrNull()
     return drainHome(send, {
       read: readPhone,
-      logGoing: (under) => logGoing(under, storage),
-      studioGoing: (under) => studioGoing(under, storage),
+      logGoing: () => logGoing(pairing, storage),
+      studioGoing: () => studioGoing(pairing, storage),
       pairing,
       storage,
     })
