@@ -17,8 +17,7 @@
  * store`), and the handheld lesson offers the newest unopened ones first.
  */
 
-import type { Salvaged } from "@some-ui/core-utils"
-import { isRecord, jsonValues } from "@topik/lib/topik/generation/intake"
+import { isRecord, jsonValues, type Salvaged } from "@some-ui/core-utils"
 import type {
   ReadAloudDeck,
   ReadAloudLevel,

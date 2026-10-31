@@ -1,9 +1,5 @@
 import { AUTHORED_ROUNDS } from "@leetype/lib/leetype/authored-rounds"
-import {
-  fencedBodies,
-  fixRequest,
-  intakeRound,
-} from "@leetype/lib/leetype/generation/intake"
+import { fixRequest, intakeRound } from "@leetype/lib/leetype/generation/intake"
 import { serializeRound } from "@leetype/lib/leetype/round-export"
 import type { Round } from "@leetype/types/authored-round"
 import { describe, expect, it } from "vitest"
@@ -117,13 +113,6 @@ describe("intakeRound", () => {
     }
     const intake = intakeRound(reply(JSON.stringify(swapped)))
     expect(intake.ok).toBe(false)
-  })
-})
-
-describe("fencedBodies", () => {
-  it("reads ``` and ```json fences, and nothing outside them", () => {
-    const text = "prose\n```json\n{}\n```\nmore prose\n```\n[]\n```\n"
-    expect(fencedBodies(text)).toEqual(["{}\n", "[]\n"])
   })
 })
 
