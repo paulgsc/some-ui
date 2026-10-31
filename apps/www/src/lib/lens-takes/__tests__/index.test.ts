@@ -4,10 +4,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import {
-  lensTakesForExport,
-  sweepLensTakes,
-} from "@/lib/lens-takes"
+import { lensTakesForExport, sweepLensTakes } from "@/lib/lens-takes"
 
 const removeAudio = vi.hoisted(() => vi.fn(() => Promise.resolve()))
 /** The ids on the shelf, and one whose read fails. */
