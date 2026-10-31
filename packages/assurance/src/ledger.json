@@ -1442,7 +1442,7 @@
     {
       "store": "phone:device_home_answer",
       "class": "cache",
-      "growth": "bounded: one row per address home-sync reads (ETag plus body or hash), upserted.",
+      "growth": "bounded: one row per address home-sync reads (ETag plus the body's hash), upserted.",
       "family": "what-is-kept"
     },
     {
@@ -1454,7 +1454,7 @@
     {
       "store": "phone:device_storage_notice",
       "class": "telemetry",
-      "growth": "bounded: one row (id = 1), the count of rounds removed not yet shown; nothing adds to it since #2032, so it only shrinks.",
+      "growth": "bounded: one row (id = 1), the count of rounds removed not yet shown; nothing adds to it, so it only shrinks.",
       "family": "what-is-kept"
     },
     {

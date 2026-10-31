@@ -136,7 +136,7 @@ describe("syncFromHome", () => {
     }
   )
 
-  it("asks home for lessons and dramas only, never its rounds (#2032)", async () => {
+  it("asks home for lessons and dramas only, never its rounds", async () => {
     const asked: Array<string> = []
     const recording: HomeGet = (url, etag) => {
       asked.push(url)

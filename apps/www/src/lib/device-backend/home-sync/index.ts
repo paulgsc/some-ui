@@ -152,11 +152,9 @@ const done = (): Promise<void> => Promise.resolve()
 /**
  * `url`, revalidated (`device_home_answer`): sent with the `ETag` this phone
  * kept for it only while it holds the bytes that tag names: the lesson's
- * row (`held`), by digest. (The table's `body` column held a round's runs,
- * which no sync reads since #2032.) A `304` then
- * answers with those bytes, as a `200`. The tag is kept only by `keep`,
- * once the caller has stored what the answer carried, and within the
- * phone's budget.
+ * row (`held`), by digest. A `304` then answers with those bytes, as a
+ * `200`. The tag is kept only by `keep`, once the caller has stored what
+ * the answer carried, and within the phone's budget.
  */
 async function revalidated(
   sync: Reads,

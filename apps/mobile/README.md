@@ -208,10 +208,7 @@ storage failure (`launch/launch-test.sh`).
   made during a session and shared soon after, while the session is still
   on the phone.
 - **Published content follows its source.** A sync deletes the lessons home
-  stopped listing, and skips what would not fit. All of it is reported. The
-  phone keeps no Leetype round: device migration 7 dropped the copy of home's
-  rounds a sync used to bring, which nothing on the phone read (#2032);
-  home still keeps them.
+  stopped listing, and skips what would not fit. All of it is reported.
 - **Presence leases** are trimmed to the server's own 16.
 
 The database runs with `auto_vacuum = FULL`, so deleted rows leave the file
@@ -592,6 +589,12 @@ ends the sync there, said as "Home is busy right now", with what came before
 it kept and nothing retried. Each tap starts from the listings again, so a
 catalogue of more than about 55 lessons ends busy at the same
 place every time, and what is listed after it does not arrive.
+
+**Update the phone before home.** A sync fails whole when a route it reads is
+gone from home. So when a change retires a route the sync reads, install the
+APK built from it on the phone first, then pull home's `file_host` image. For
+example, an APK built before some-ui#2341 reads `/leetype/rounds` before any
+lesson, so it fails every sync from home once home runs paulgsc/server#584.
 
 **Pairing** lets the phone act for the person's account on the home server,
 which it cannot do with a passkey (its page is `https://localhost`, another

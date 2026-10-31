@@ -166,9 +166,10 @@ const MIGRATIONS: ReadonlyArray<string> = [
   // 7 - the phone's copy of home's Def. 1.7 rounds goes (#2032): no surface
   // has played one since #1941, and every row was a copy of home's corpus,
   // which home keeps, never one the person made. Each table that names
-  // `leetype_round` goes before it. A `device_home_answer` row kept for a
-  // round's runs is dropped by the next sync, which no longer reads it.
+  // `leetype_round` goes before it. Only a round's runs kept their `body` in
+  // `device_home_answer` (a lesson's is kept by digest), so those rows go too.
   `
+  DELETE FROM device_home_answer WHERE body IS NOT NULL;
   DROP TABLE device_round_from_home;
   DROP TABLE leetype_round_run;
   DROP TABLE leetype_round_witness;

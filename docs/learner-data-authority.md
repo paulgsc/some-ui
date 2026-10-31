@@ -231,7 +231,7 @@ declared (checked by reading every call site and by the tests named).
 
 ### LA4: a corpus read carries no credentials
 
-- _Claim:_ a `createDataSource` for lessons, rounds, runs or vocab passes
+- _Claim:_ a `createDataSource` for lessons or vocab passes
   `PUBLIC_READ` in its `fetchOptions`, so `credentials` is `"omit"`.
 - _Falsified by:_ a hunk that adds a `createDataSource` in `apps/www/src/lib/*-content`
   or `hangul-vocab` without `fetchOptions: PUBLIC_READ` (or spreading it), or that

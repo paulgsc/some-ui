@@ -271,10 +271,11 @@ describe("presence leases", () => {
   })
 })
 
-describe("the phone's copy of home's rounds, dropped (#2032)", () => {
+describe("the phone's copy of home's rounds, dropped", () => {
   it("goes at the start that reaches migration 7, and a notice noted before stays until shown", async () => {
-    // A phone at migration 6: home's rounds copied, and a notice of the
-    // seeded rounds an earlier start removed, not yet shown.
+    // A phone at migration 6: home's rounds copied, a round's runs and a
+    // lesson's tag kept by the sync, and a notice of the seeded rounds an
+    // earlier start removed, not yet shown.
     await db.exec(`
       CREATE TABLE leetype_round (id TEXT PRIMARY KEY, body TEXT NOT NULL);
       CREATE TABLE leetype_round_witness (round_id TEXT NOT NULL REFERENCES leetype_round(id) ON DELETE CASCADE);
@@ -284,6 +285,9 @@ describe("the phone's copy of home's rounds, dropped (#2032)", () => {
       INSERT INTO leetype_round_witness (round_id) VALUES ('home-round');
       INSERT INTO leetype_round_run (round_id) VALUES ('home-round');
       INSERT INTO device_round_from_home (round_id) VALUES ('home-round');
+      INSERT INTO device_home_answer (url, etag, hash, body) VALUES
+        ('http://home/leetype/rounds/home-round/runs', '"runs"', NULL, '{}'),
+        ('http://home/curriculum/lesson-01', '"lesson"', 'abc', NULL);
       INSERT INTO device_storage_notice (id, rounds) VALUES (1, 2);
       PRAGMA user_version = 6;
     `)
@@ -296,6 +300,8 @@ describe("the phone's copy of home's rounds, dropped (#2032)", () => {
       "SELECT name FROM sqlite_master WHERE type = 'table' AND (name LIKE 'leetype_round%' OR name = 'device_round_from_home')"
     )
     expect(left).toEqual([])
+    const answers = await db.all("SELECT url FROM device_home_answer")
+    expect(answers).toEqual([{ url: "http://home/curriculum/lesson-01" }])
     const notice = await readPruneNotice(db)
     expect(notice).toEqual({ rounds: 2 })
     if (notice === null) throw new Error("no notice")

@@ -166,10 +166,8 @@ export function onSaveRefused(listener: RefusalListener): () => void {
 }
 
 /**
- * Removals the person did not ask for and has not been shown. Nothing notes
- * one any more: its one writer, the start that removed the rounds an earlier
- * build seeded, went with the phone's copy of home's rounds (#2032). A
- * notice noted before then is still shown, once.
+ * Removals the person did not ask for and has not been shown. No writer; a
+ * notice already noted is shown once.
  */
 export type PruneNotice = { rounds: number }
 
