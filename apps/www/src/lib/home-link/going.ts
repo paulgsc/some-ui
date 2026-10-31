@@ -1,10 +1,12 @@
 /**
  * What this phone holds for the drain (`./drain`): its sessions and kept
  * shelf items, its finished LeetType sessions, Studio's sittings and
- * answers and its written reflections, each read from the phone alone, and
- * the LeetType, Studio and reflection parts already narrowed to what home
- * does not hold as it is now (`./sent`). Nothing here sends; the one thing
- * it lets go is a written reflection (`letGoHeldReflections`, LA16).
+ * answers, its written reflections and its asks for the next scene, each
+ * read from the phone alone, and the LeetType, Studio, reflection and ask
+ * parts already narrowed to what home does not hold as it is now
+ * (`./sent`). Nothing here sends; it lets go of a written reflection
+ * (`letGoHeldReflections`, LA16) and of an ask home holds, with the scene
+ * notes it named (`letGoHeldPrompts`, LA18).
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import type { HomeSession } from "@some-ui/leetype"
@@ -12,11 +14,15 @@ import type { HomeSession } from "@some-ui/leetype"
 import { deviceBackend } from "@/lib/device-backend/boot"
 import type { Kept } from "@/lib/device-backend/handlers/shelf"
 import { everyKept } from "@/lib/device-backend/handlers/shelf"
+import type { AskedPrompt } from "@/lib/scene-ask"
+import { sceneAsks } from "@/lib/scene-ask"
+import { phoneSceneVoice } from "@/lib/scene-voice"
 import { reflections } from "@/lib/session-reflection"
 import { studioKeeping } from "@/lib/studio-keeping"
 import { sessionsRepository } from "@/lib/tenant/queries"
 import type { SessionRecord } from "@/lib/tenant/types"
 
+import { heldPrompts, promptsToSend } from "./prompts"
 import type { Written } from "./reflections"
 import { heldWritten, writtenToSend } from "./reflections"
 import type { Sent } from "./sent"
@@ -96,4 +102,29 @@ export function reflectionsGoing(
  */
 export function letGoHeldReflections(sent: Sent): void {
   reflections.trimOffline(heldWritten(reflections.getSnapshot().kept, sent))
+}
+
+/**
+ * The asks for the next scene a run under `pairing` carries: what home
+ * doesn't hold as it is now. Reads only this phone.
+ */
+export function promptsGoing(
+  pairing: string,
+  storage: KeyedStorage | null
+): Array<AskedPrompt> {
+  return promptsToSend(sceneAsks.kept(), readSent(storage, pairing))
+}
+
+/**
+ * Lets go of the asks `sent` says home holds as they were sent (LA18): the
+ * scene notes each named are marked carried first (`prompted`), so the
+ * draft lets each go once home holds it too, then the asks are marked held,
+ * the store keeping the newest to say so. Every ask home does not hold
+ * stays.
+ */
+export function letGoHeldPrompts(sent: Sent): void {
+  const held = heldPrompts(sceneAsks.kept(), sent)
+  if (held.length === 0) return
+  phoneSceneVoice().prompted(held.flatMap((prompt) => prompt.notes))
+  sceneAsks.held(new Set(held.map((prompt) => prompt.stamp)))
 }

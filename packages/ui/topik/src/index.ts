@@ -88,9 +88,10 @@ export { QuizPanel } from "./components/topik/quiz-panel"
 /**
  * The phone's drama by state; apps/www's panel-fit page mounts it at a beat,
  * an open choice and an ending, through a resume point, and the record that
- * ending leaves, so it shows its review, with the share an ending offers.
+ * ending leaves, so it shows its review, with the ask an ending offers.
  */
 export { DramaLesson } from "./components/topik/handheld/drama-lesson"
+export { AskScene } from "./components/topik/handheld/ask-scene"
 export { SharePrompt } from "./components/topik/handheld/share-prompt"
 export { lastDramaOf } from "./lib/topik/core/last-drama"
 
@@ -122,6 +123,10 @@ export {
   PortionServed,
 } from "./components/topik/handheld/portion-menu"
 export type { Dish } from "./lib/topik/core/portion"
+export type {
+  SceneAsk,
+  SceneAskSnapshot,
+} from "./lib/topik/adapter/next-scene-ask"
 export type { FileShare } from "./lib/topik/adapter/next-scene-share"
 export type {
   SceneNote,

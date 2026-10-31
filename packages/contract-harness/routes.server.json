@@ -425,6 +425,13 @@
     },
     {
       "method": "PUT",
+      "path": "/routine/prompts/:stamp",
+      "full_path": "/api/v1/routine/prompts/:stamp",
+      "versioned": true,
+      "module": "routine"
+    },
+    {
+      "method": "PUT",
       "path": "/routine/reflections/:id",
       "full_path": "/api/v1/routine/reflections/:id",
       "versioned": true,

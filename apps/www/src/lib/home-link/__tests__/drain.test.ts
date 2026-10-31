@@ -79,6 +79,8 @@ function setup(
     studio?: DrainPorts["studioGoing"]
     reflections?: DrainPorts["reflectionsGoing"]
     letGoHeld?: DrainPorts["letGoHeld"]
+    prompts?: DrainPorts["promptsGoing"]
+    letGoHeldPrompts?: DrainPorts["letGoHeldPrompts"]
   } = {}
 ): {
   ports: DrainPorts
@@ -109,6 +111,8 @@ function setup(
         Promise.resolve({ sittings: [], reports: [] })),
     reflectionsGoing: over.reflections ?? ((): Array<never> => []),
     letGoHeld: over.letGoHeld ?? ((): void => undefined),
+    promptsGoing: over.prompts ?? ((): Array<never> => []),
+    letGoHeldPrompts: over.letGoHeldPrompts ?? ((): void => undefined),
     pairing: PAIRING,
     storage: memoryStorage(),
     copy:
@@ -508,5 +512,75 @@ describe("the drain's written reflections (LA16)", () => {
     })
     await drainHome(send, ports)
     expect(trims).toEqual([{}])
+  })
+})
+
+describe("the drain's asks for the next scene (LA18)", () => {
+  const ASK = {
+    stamp: "drama-20261031T071503120Z",
+    at: "2026-10-31T07:15:03.120Z",
+    text: "Write the next scene.",
+    notes: ["n1"],
+  }
+  const echo = (prompt: unknown): HomeAnswer => ({
+    status: 200,
+    body: JSON.stringify({ change: "added", prompt }),
+  })
+
+  it("puts each after the reflections, remembers the ones home answers with as sent, then lets go only what home holds", async () => {
+    const lets: Array<Readonly<Record<string, string>>> = []
+    const { ports, send, puts } = setup({
+      kept: [],
+      answers: [echo({ stamp: ASK.stamp, text: ASK.text })],
+      prompts: () => [ASK],
+      letGoHeldPrompts: (sent) => {
+        lets.push(sent.prompts)
+      },
+    })
+    await expect(drainHome(send, ports)).resolves.toEqual({ kind: "synced" })
+    expect(puts).toEqual(["/routine/prompts/drama-20261031T071503120Z"])
+    const held = readSent(ports.storage, PAIRING).prompts
+    expect(Object.keys(held)).toEqual([ASK.stamp])
+    expect(Object.values(held).every((digest) => digest.length < 32)).toBe(true)
+    expect(lets).toEqual([{ [ASK.stamp]: expect.any(String) }])
+  })
+
+  it("keeps one home answers with other words, and says the run fell short", async () => {
+    const lets: Array<Readonly<Record<string, string>>> = []
+    const { ports, send } = setup({
+      kept: [],
+      answers: [echo({ stamp: ASK.stamp, text: "other" })],
+      prompts: () => [ASK],
+      letGoHeldPrompts: (sent) => {
+        lets.push(sent.prompts)
+      },
+    })
+    await expect(drainHome(send, ports)).resolves.toEqual({
+      kind: "failed",
+      why: "refused",
+    })
+    expect(readSent(ports.storage, PAIRING).prompts).toEqual({})
+    expect(lets).toEqual([{}])
+  })
+
+  it("still lets go what home held when home stops answering partway", async () => {
+    const lets: Array<Readonly<Record<string, string>>> = []
+    const second = { ...ASK, stamp: "drama-20261031T081503120Z" }
+    const { ports } = setup({
+      kept: [],
+      prompts: () => [ASK, second],
+      letGoHeldPrompts: (sent) => {
+        lets.push(sent.prompts)
+      },
+    })
+    let calls = 0
+    const send: HomeCall = () => {
+      calls += 1
+      return calls === 1
+        ? Promise.resolve(echo({ stamp: ASK.stamp, text: ASK.text }))
+        : Promise.reject(noAnswer())
+    }
+    await expect(drainHome(send, ports)).rejects.toThrow(HomeUnansweredError)
+    expect(lets).toEqual([{ [ASK.stamp]: expect.any(String) }])
   })
 })

@@ -8,8 +8,8 @@
  * - a Jobs voice note (`lib/jobs`), once an event names it: `jobs`, the
  *   pick (`<day>:<pick>`) or scout, when that event was made;
  * - the drama's next scene said aloud (`lib/scene-voice`), once it is kept,
- *   shared or not (HF2, #2177): `scene`, `next-scene` (a drama prompt names
- *   it by its id), when it was kept;
+ *   asked for or not (HF2, #2177): `scene`, `next-scene` (an ask names it
+ *   by its id, HF4), when it was kept;
  * - a game bite (`lib/game-bites`), once Undo and the question of what it
  *   was about are closed: `game`, the game's ESPN id, when it was kept, and
  *   every field it keeps;
@@ -43,8 +43,8 @@
  *   ("LG1": a hand-off marks the session shared and keeps every reflection;
  *   the export lets nothing go), topik's `generate-lesson/index.test.tsx` ("LG1": nothing asks
  *   after a drama share, and no note is removed), `lib/scene-voice`'s
- *   `runtime.test.ts` ("LG1": `letGo` removes the notes home holds that a
- *   shared prompt carried, and no other),
+ *   `runtime.test.ts` ("LG1": `letGo` removes the notes home holds that an
+ *   ask home holds carried, and no other),
  *   and soundbites' `project/__tests__/model.test.ts` and
  *   `studio/__tests__/studio.test.ts` ("LG1": a take kept by Drive stays on
  *   the phone; only `home` lets it go).

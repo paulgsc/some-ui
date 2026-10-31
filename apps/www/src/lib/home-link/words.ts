@@ -75,12 +75,21 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
         label: "Written reflections",
         one: "written reflection",
       },
+      {
+        kind: "prompts",
+        label: "Asks for the next scene",
+        one: "ask for the next scene",
+        many: "asks for the next scene",
+      },
     ],
-    waits: waits("session or reflection", "sessions and reflections"),
+    waits: waits(
+      "session, reflection or ask",
+      "sessions, reflections and asks"
+    ),
     phoneOnly: `Practice is only on this phone. ${PAIR}`,
     partly:
       "Some of Practice is on home. New sessions stay on this phone until it is paired again.",
-    footnote: `Finished sessions, kept items, LeetType sessions, Studio sittings and written reflections go to home while the app is open. A finished session leaves this phone only when you clear it in Settings, once home has it. ${OFFLINE_SET_WORDS} Your answers to the three quick questions stay on this phone.`,
+    footnote: `Finished sessions, kept items, LeetType sessions, Studio sittings, written reflections and asks for the next scene go to home while the app is open. An ask leaves this phone once home has it. A finished session leaves this phone only when you clear it in Settings, once home has it. ${OFFLINE_SET_WORDS} Your answers to the three quick questions stay on this phone.`,
     clash: null,
     unread: null,
   },
@@ -158,7 +167,7 @@ export function unsentLines({ gone }: Unsendable): Array<string> {
 
 /** Settings' Home server block, once paired: what goes, and when. */
 export const HOME_BLOCK = {
-  lead: "Everything this phone keeps goes to home on its own while the app is open: finished sessions, kept items, LeetType sessions, Studio sittings, written reflections, the Jobs record, voice notes, and aph while it is open. Nothing leaves this phone until home has read it back.",
+  lead: "Everything this phone keeps goes to home on its own while the app is open: finished sessions, kept items, LeetType sessions, Studio sittings, written reflections, asks for the next scene, the Jobs record, voice notes, and aph while it is open. Nothing leaves this phone until home has read it back.",
 } as const
 
 /** Settings' readout of what this phone keeps on home, and what waits. */

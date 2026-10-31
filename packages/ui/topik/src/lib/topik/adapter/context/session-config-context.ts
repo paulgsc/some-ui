@@ -2,6 +2,7 @@ import { createContext, useContext } from "react"
 import type { ShelfPort } from "@some-ui/shared"
 import type { Speaker } from "@some-ui/speech"
 import type { LensTakes } from "@topik/lib/topik/adapter/lens-takes"
+import type { SceneAsk } from "@topik/lib/topik/adapter/next-scene-ask"
 import type { FileShare } from "@topik/lib/topik/adapter/next-scene-share"
 import type { RoutineFeed } from "@topik/lib/topik/adapter/routine-files"
 import type { SceneVoice } from "@topik/lib/topik/adapter/scene-voice"
@@ -36,6 +37,17 @@ export type SessionConfig = {
    * read by the handheld lesson only. Absent, it lists none.
    */
   routineFeed?: RoutineFeed
+  /**
+   * Asks the owner's home for the next scene (`adapter/next-scene-ask`):
+   * the Android app's. Where a host gives it, it is offered instead of
+   * `share`.
+   */
+  sceneAsk?: SceneAsk
+  /**
+   * Shares the next scene's prompt to a learner's own drive
+   * (`adapter/next-scene-share`): the product adapter for other learners'
+   * hosts (docs/makjang/README.md, "The loop through the learner's drive").
+   */
   share?: FileShare
   sceneVoice?: SceneVoice
   sceneFileHint?: string

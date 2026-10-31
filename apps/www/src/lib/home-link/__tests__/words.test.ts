@@ -135,6 +135,7 @@ describe("each lane's sharing words", () => {
       "Only on this phone",
       "Only on this phone",
       "Only on this phone",
+      "Only on this phone",
     ])
   })
 
@@ -152,7 +153,7 @@ describe("each lane's sharing words", () => {
       WORDS.practice,
       facts({
         paired: true,
-        held: { sessions: 3, shelf: 1, reflections: 4 },
+        held: { sessions: 3, shelf: 1, reflections: 4, prompts: 2 },
         refused: { shelf: 2 },
         run: { ...INITIAL_KEPT, last: { kind: "synced", at: 1 } },
       })
@@ -166,6 +167,7 @@ describe("each lane's sharing words", () => {
       "3 sessions on home",
       "1 kept item on home · 2 kept items home didn't take",
       "4 written reflections on home",
+      "2 asks for the next scene on home",
     ])
   })
 
@@ -230,7 +232,7 @@ describe("each lane's sharing words", () => {
       where: "kept",
       how: "busy",
       word: "Home busy",
-      line: "Home is busy right now. 2 sessions and reflections wait on this phone and go next time.",
+      line: "Home is busy right now. 2 sessions, reflections and asks wait on this phone and go next time.",
     })
     expect(laneView(WORDS.aph, busy).line).toBe(
       "Home is busy right now. 2 changes wait on this phone and go next time."

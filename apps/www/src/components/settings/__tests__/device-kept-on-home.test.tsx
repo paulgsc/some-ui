@@ -64,6 +64,8 @@ vi.mock("@/lib/home-link/going", () => ({
     Promise.resolve({ sittings: [], reports: [] }),
   reflectionsGoing: (): Array<never> => [],
   letGoHeldReflections: (): void => undefined,
+  promptsGoing: (): Array<never> => [],
+  letGoHeldPrompts: (): void => undefined,
 }))
 vi.mock("@/lib/jobs", async () => {
   const { EMPTY } = await import("@/lib/jobs/model")
@@ -131,17 +133,17 @@ async function mount(): Promise<void> {
 describe("what this phone keeps on home", () => {
   it("says each record is kept on home once paired, and sends nothing", async () => {
     await mount()
-    // Practice's three kinds, aph, the Jobs record and voice notes.
+    // Practice's four kinds, aph, the Jobs record and voice notes.
     expect(
       screen.getAllByText(/: Kept on home$|: Nothing on home yet$/)
-    ).toHaveLength(6)
+    ).toHaveLength(7)
     expect(home.sent).toEqual([])
   })
 
   it("says everything is only on this phone while it isn't paired", async () => {
     home.record = null
     await mount()
-    expect(screen.getAllByText(/: Only on this phone$/)).toHaveLength(6)
+    expect(screen.getAllByText(/: Only on this phone$/)).toHaveLength(7)
     expect(screen.queryByRole("button", { name: "Send now" })).toBeNull()
     expect(home.sent).toEqual([])
   })

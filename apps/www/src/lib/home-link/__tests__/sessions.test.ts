@@ -255,6 +255,8 @@ describe("letting the phone's copies go once home holds them", () => {
       studioGoing: () => Promise.resolve({ sittings: [], reports: [] }),
       reflectionsGoing: () => [],
       letGoHeld: () => undefined,
+      promptsGoing: () => [],
+      letGoHeldPrompts: () => undefined,
       pairing: PAIRING,
       storage,
     })

@@ -4,15 +4,11 @@
  * per page load, so the draft and a take under way outlive the screen that
  * shows them. Phone-only (`build.paths.ts`).
  */
-import type { IntentError } from "@some-ui/intent-kit"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import { SOUNDBITE_BITS_PER_SECOND } from "@some-ui/soundbites/contract"
-import type { FileShare } from "@some-ui/topik"
 import { micRecorder, savingShelf } from "@some-ui/voice-capture"
 
 import { boundedList } from "@/lib/bounded-list"
-import type { SharedFile } from "@/lib/share-files"
-import { shareFiles } from "@/lib/share-files"
 
 import { SCENE_AUDIO_MAX_BYTES, SCENE_NOTES_MAX } from "./budget"
 import type { KeptSceneNote, PhoneSceneVoice } from "./runtime"
@@ -86,8 +82,6 @@ export function sweepSceneVoice(): void {
     })
 }
 
-const SHARE_PORT = "scene voice (share)"
-
 /**
  * The draft's notes as the phone keeps them, oldest first, and each one's
  * audio, for the voice lane (`lib/home-link/voice-copy`, LA13). A note is
@@ -96,47 +90,4 @@ const SHARE_PORT = "scene voice (share)"
 export const sceneNotes = {
   read: notes.read,
   audio: (id: string): Promise<Blob | null> => shelf.shelf().get(id),
-}
-
-/**
- * The drama's next-scene prompt, as topik's `FileShare` port, with the
- * scene's voice notes it names beside it. A note whose audio cannot be read
- * fails the share, so the prompt never names a file that does not arrive.
- * Sharing it sends nothing home; it marks the notes it carried (`prompted`).
- */
-export const shareDramaPrompt: FileShare = async ({
-  name,
-  text,
-  notes: named = [],
-}) => {
-  const failed = (cause: unknown): Awaited<ReturnType<FileShare>> => {
-    const error: IntentError = {
-      ...toIntentError(cause),
-      summary: "A voice note couldn't be read. Let it go and share again.",
-    }
-    reportFailure({ port: SHARE_PORT, error })
-    return { status: "failed", error }
-  }
-  const audio = shelf.shelf()
-  let blobs: Array<Blob | null>
-  try {
-    blobs = await Promise.all(named.map(({ id }) => audio.get(id)))
-  } catch (error) {
-    return failed(error)
-  }
-  const files: Array<SharedFile> = [{ name, data: text }]
-  for (const [index, note] of named.entries()) {
-    const blob = blobs[index]
-    if (!blob) return failed(new Error(`no audio for voice note ${note.id}`))
-    files.push({ name: note.name, data: blob })
-  }
-  const outcome = await shareFiles(
-    "drama-prompt",
-    "The next scene's prompt",
-    files
-  )
-  if (outcome.status === "succeeded" && outcome.value === "shared") {
-    phoneSceneVoice().prompted(named.map(({ id }) => id))
-  }
-  return outcome
 }

@@ -2,11 +2,12 @@
  * Topik's `SceneVoice` port: `@some-ui/voice-capture`'s voice note, each
  * kept take a note in the draft, its audio on a shelf and its entry in a
  * list, with when it was kept (`at`), which home is told it by (LA13), and
- * whether a drama prompt carried it (`prompted`).
+ * whether an ask home holds carried it (`prompted`, LA18).
  *
  * A note goes home once it is kept (LA13), so home can hold one long before
- * its scene's prompt is shared: the draft lets a note go on home's word only
- * once a prompt carried it (`letGo`), or when the person lets it go.
+ * its scene is asked for: the draft lets a note go on home's word only once
+ * home holds the ask that named it too (`letGo`), or when the person lets it
+ * go.
  */
 import {
   SOUNDBITE_MAX_MS,
@@ -29,17 +30,17 @@ import { SCENE_NOTES_MAX } from "./budget"
 
 /**
  * A note as the phone keeps it: topik's, when it was kept (ISO 8601; a note
- * kept before the phone noted that has none), and whether a shared drama
- * prompt carried it.
+ * kept before the phone noted that has none), and whether an ask home holds
+ * carried it (before HF4, a shared drama prompt).
  */
 export type KeptSceneNote = SceneNote & {
   readonly at?: string
   readonly prompted?: boolean
 }
 
-/** Topik's port, and what the phone's share tells it. */
+/** Topik's port, and what the drain tells it. */
 export type PhoneSceneVoice = SceneVoice & {
-  /** A shared drama prompt carried these notes. */
+  /** An ask home holds carried these notes (`lib/home-link/going`, LA18). */
   prompted: (ids: ReadonlyArray<string>) => void
 }
 
@@ -57,7 +58,7 @@ export type SceneVoicePorts = {
     /** Says whether the device stored it. */
     add: (note: KeptSceneNote) => boolean
     remove: (ids: ReadonlyArray<string>) => boolean
-    /** Marks these notes carried by a prompt; says whether it stored. */
+    /** Marks these notes carried by an ask home holds; says whether it stored. */
     prompted: (ids: ReadonlyArray<string>) => boolean
   }
   /** A note whose audio is being written, and when done. */

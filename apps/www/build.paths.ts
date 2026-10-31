@@ -119,6 +119,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/leetype-takes/**",
   "apps/www/src/lib/reflection-voice/**",
   "apps/www/src/lib/rust-rounds/**",
+  "apps/www/src/lib/scene-ask/**",
   "apps/www/src/lib/scene-voice/**",
   "apps/www/src/lib/session-archive/**",
   "apps/www/src/lib/share-files/**",

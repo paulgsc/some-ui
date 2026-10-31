@@ -38,6 +38,7 @@ import {
 } from "react"
 import { assertNever, cn, dayOf } from "@some-ui/core-utils"
 import { Button, KeepOnShelf, KeptShelf } from "@some-ui/shared"
+import { AskScene } from "@topik/components/topik/handheld/ask-scene"
 import { CastSheet } from "@topik/components/topik/handheld/cast-sheet"
 import { DramaLesson } from "@topik/components/topik/handheld/drama-lesson"
 import { GenerateLesson } from "@topik/components/topik/handheld/generate-lesson"
@@ -190,6 +191,7 @@ export const HandheldLesson = ({
     treeFeed,
     routineFeed,
     metadataRepository,
+    sceneAsk,
     share,
     sceneVoice,
     sceneFileHint,
@@ -580,14 +582,24 @@ export const HandheldLesson = ({
           }
           last={last}
           ending={
-            share && (
-              <SharePrompt
-                share={share}
+            sceneAsk ? (
+              <AskScene
+                asks={sceneAsk}
                 label="다음 화 쓰기"
                 labelLang="ko"
                 prompt={() => lessonPrompt.prompt({ level: heldLevel })}
-                onShared={lessonPrompt.handedOff}
+                onAsked={lessonPrompt.handedOff}
               />
+            ) : (
+              share && (
+                <SharePrompt
+                  share={share}
+                  label="다음 화 쓰기"
+                  labelLang="ko"
+                  prompt={() => lessonPrompt.prompt({ level: heldLevel })}
+                  onShared={lessonPrompt.handedOff}
+                />
+              )
             )
           }
           short={short}
@@ -652,6 +664,7 @@ export const HandheldLesson = ({
           buildPrompt={lessonPrompt.prompt}
           onPromptHandedOff={lessonPrompt.handedOff}
           onStartTree={startTree}
+          sceneAsk={sceneAsk}
           share={share}
           sceneVoice={sceneVoice}
           short={short}

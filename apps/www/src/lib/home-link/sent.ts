@@ -4,7 +4,8 @@
  * it was copied, each kept shelf item's digest as home answered for it,
  * each LeetType session's digest as home read it back (`./leetype-log`),
  * each Studio sitting's and answer's (`./studio-log`), each written
- * reflection's as home answered it (`./reflections`), and the digests home
+ * reflection's as home answered it (`./reflections`), each ask for the next
+ * scene's as home answered it (`./prompts`), and the digests home
  * refused, so the drain does not offer an unchanged refused item again
  * (it goes once its bytes change). Kept for one pairing (`pairing`, the
  * link's id for it): another pairing starts from nothing. Bookkeeping, not
@@ -35,6 +36,7 @@ export type Sent = {
   readonly leetype: Readonly<Record<string, string>>
   readonly studio: Readonly<Record<string, string>>
   readonly reflections: Readonly<Record<string, string>>
+  readonly prompts: Readonly<Record<string, string>>
 }
 
 type Store = KeyedStorage | null
@@ -47,6 +49,7 @@ const emptyFor = (pairing: string): Sent => ({
   leetype: {},
   studio: {},
   reflections: {},
+  prompts: {},
 })
 
 /** The string entries of `value`, and whether every entry was one. */
@@ -77,6 +80,7 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
   const leetype = stringsOf(parsed.leetype)
   const studio = stringsOf(parsed.studio)
   const reflections = stringsOf(parsed.reflections)
+  const prompts = stringsOf(parsed.prompts)
   return {
     value: {
       pairing: parsed.pairing,
@@ -86,10 +90,17 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
       leetype: leetype.value,
       studio: studio.value,
       reflections: reflections.value,
+      prompts: prompts.value,
     },
-    whole: [sessions, shelf, refused, leetype, studio, reflections].every(
-      (kind) => kind.whole
-    ),
+    whole: [
+      sessions,
+      shelf,
+      refused,
+      leetype,
+      studio,
+      reflections,
+      prompts,
+    ].every((kind) => kind.whole),
   }
 }
 
@@ -127,6 +138,7 @@ export function rememberSent(
     leetype: { ...sent.leetype, ...more.leetype },
     studio: { ...sent.studio, ...more.studio },
     reflections: { ...sent.reflections, ...more.reflections },
+    prompts: { ...sent.prompts, ...more.prompts },
   }
   // Unwritten (full): the next send carries these again, and home says
   // unchanged.
@@ -206,19 +218,21 @@ export async function shelfToSend(
 }
 
 /**
- * How many sessions, kept items and written reflections this phone knows
- * home holds, and kept items home refused.
+ * How many sessions, kept items, written reflections and asks for the next
+ * scene this phone knows home holds, and kept items home refused.
  */
 export function heldCounts(sent: Sent): {
   sessions: number
   shelf: number
   refused: number
   reflections: number
+  prompts: number
 } {
   return {
     sessions: Object.keys(sent.sessions).length,
     shelf: Object.keys(sent.shelf).length,
     refused: Object.keys(sent.refused).length,
     reflections: Object.keys(sent.reflections).length,
+    prompts: Object.keys(sent.prompts).length,
   }
 }
