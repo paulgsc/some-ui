@@ -424,6 +424,27 @@
       "module": "routine"
     },
     {
+      "method": "GET",
+      "path": "/rust-rounds",
+      "full_path": "/api/v1/rust-rounds",
+      "versioned": true,
+      "module": "rust_rounds"
+    },
+    {
+      "method": "GET",
+      "path": "/rust-rounds/:id",
+      "full_path": "/api/v1/rust-rounds/:id",
+      "versioned": true,
+      "module": "rust_rounds"
+    },
+    {
+      "method": "PUT",
+      "path": "/rust-rounds/:id",
+      "full_path": "/api/v1/rust-rounds/:id",
+      "versioned": true,
+      "module": "rust_rounds"
+    },
+    {
       "method": "DELETE",
       "path": "/sessions",
       "full_path": "/api/v1/sessions",
