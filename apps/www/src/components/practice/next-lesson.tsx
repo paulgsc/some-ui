@@ -22,7 +22,7 @@ import {
 import { IntentButton } from "@/lib/intent/render"
 import { basicSession, startedPatch } from "@/lib/quick-start"
 import type { SessionRecord } from "@/lib/tenant"
-import { useCreateSession, useUpdateSession } from "@/lib/tenant"
+import { newSessionId, useCreateSession, useUpdateSession } from "@/lib/tenant"
 import type { LessonOpening } from "@/components/player/session-viewport"
 
 const activate = (
@@ -58,8 +58,8 @@ export const NextLesson = ({
   const create = useIntent(useCreateSession(), { presentation: "interactive" })
   const start = useIntent(useUpdateSession(), { presentation: "interactive" })
   // Named once per mount: a store that takes an id makes one session
-  // however often the same create is sent.
-  const [id] = useState(() => crypto.randomUUID())
+  // however often the same create is sent. In the shape it takes (SI1).
+  const [id] = useState(newSessionId)
 
   useIntentEffect(create, (session) => start.start(activate(session)))
   useIntentEffect(start, (session) => {
