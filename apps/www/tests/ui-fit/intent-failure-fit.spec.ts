@@ -1,14 +1,6 @@
 /**
- * Does a refused press leave every button where it was? (IB1.)
- *
- * On 2026-10-30, Practice Home's "Pick a portion" failed with "That request
- * couldn't be completed." and jumped: the failure widened its slot past the
- * row, so it wrapped to a line of its own and sat at that line's far end.
  * jsdom has no layout, so this measures the `intent-failure` fixture
- * (`./panel-page/intent-failure.tsx`): Practice Home's row with each of its
- * two buttons idle or refused, at the phone's sizes (Practice Home is the
- * phone's). Every button must keep, relative to its row, the box it has in
- * the idle row, and every failure must sit below both buttons, inside the row.
+ * (`./panel-page/intent-failure.tsx`) at the phone's sizes.
  *
  * Promise IB1.
  * - Claim: in a wrapping row of `IntentButton`s that sets `failureOwnLine`,

@@ -10,9 +10,8 @@
  * jump as the intent settles; a retryable failure replaces the action with
  * its retry rather than adding a second control. The button sits where it
  * sat before the failure, at the stack's start, with the failure below it.
- * Where several sit in one wrapping row (`failureOwnLine`), the failure
- * takes a line of its own at the row's end instead, so it widens no
- * button's slot and no button moves (`tests/ui-fit/intent-failure-fit`).
+ * `failureOwnLine` puts the failure on its own line
+ * (`tests/ui-fit/intent-failure-fit`).
  *
  * A non-retryable failure disables the button only when
  * `error.blocksResubmission` says the previous outcome is unknown (a
