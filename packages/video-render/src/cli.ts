@@ -13,6 +13,13 @@
  * capture, and `voice/takes.json` when the timeline names it) and writes
  * `<short folder>/cut-list.json`.
  *
+ *   pnpm --filter @some-ui/video-render render compare-hearings <home transcript> <session words>
+ *
+ * lines up two hearings of one take (ST25, `hearings.ts`) and prints the
+ * comparison as JSON: home's transcript as the Jobs mailbox holds it
+ * (`transcript-<note>-<n>.json`, its `words`), and the session's words, a
+ * list of `{ text, startMs, endMs, p }` or an object holding one as `words`.
+ *
  * `pnpm --filter` runs this from the package; INIT_CWD is where it was typed.
  */
 
@@ -22,6 +29,7 @@ import { parseArgs } from "node:util"
 import { z } from "zod"
 
 import { problemsOf } from "./cut-list"
+import { compareHearings } from "./hearings"
 import { nodePorts, readJson, readSeries, renderFolder } from "./node"
 import { fromTimelineV1 } from "./timeline-v1"
 
@@ -44,7 +52,18 @@ async function main(): Promise<void> {
       "without-burn-ins": { type: "boolean", default: false },
     },
   })
-  const [first, second] = positionals
+  const [first, second, third] = positionals
+  if (first === "compare-hearings") {
+    if (!second || !third) {
+      fail(["usage: render compare-hearings <home transcript> <session words>"])
+    }
+    const home = await readAs(HeardSchema, here(second))
+    const session = await readAs(HeardSchema, here(third))
+    process.stdout.write(
+      `${JSON.stringify(compareHearings(home, session), null, 1)}\n`
+    )
+    return
+  }
   const converting = first === "from-timeline"
   const folder = converting ? second : first
   if (!folder || !values.series) {
@@ -85,6 +104,20 @@ const TakesSchema = z.object({
     z.object({ id: z.string(), take: z.object({ file: z.string() }).nullish() })
   ),
 })
+
+/** A hearing's words: a list, or an object holding one as `words`. */
+const WordsSchema = z.array(
+  z.object({
+    text: z.string(),
+    startMs: z.number().nonnegative(),
+    endMs: z.number().nonnegative(),
+    p: z.number().min(0).max(1).optional(),
+  })
+)
+const HeardSchema = z.union([
+  WordsSchema,
+  z.object({ words: WordsSchema }).transform(({ words }) => words),
+])
 
 async function readAs<T>(schema: z.ZodType<T>, file: string): Promise<T> {
   const parsed = schema.safeParse(await readJson(file))

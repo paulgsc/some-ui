@@ -111,8 +111,9 @@ export const STEPS: ReadonlyArray<Step> = [
     now: "session",
     target: "home",
     milestone: "M1",
-    why: "Home's whisper.cpp already hears every voice note; a session reinstalls a model each run.",
-    blockedBy: "ST12 (#2260): the phone sending takes home",
+    why: "Home's whisper.cpp already hears every voice note; a session reinstalls a model each run. Home hears every take too (ST12), and the two hearings are lined up and their differences flagged (`hearings.ts`, ST25).",
+    blockedBy:
+      "ST25 (#2323) and ST20 (#2320): both hear every take until the gold set and a few real shorts show whether the session's hearing is worth keeping",
     reads: [{ file: "takes/" }],
     writes: [{ file: "transcripts/" }],
   },

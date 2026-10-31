@@ -360,7 +360,7 @@ function spokenNumber(
 }
 
 /** A word as compared, and the first and last of the raw words it came from. */
-type Token = {
+export type Token = {
   readonly word: string
   readonly first: number
   readonly last: number
@@ -368,9 +368,11 @@ type Token = {
 
 /**
  * The words of `raw` as compared: each split at its hyphens and
- * normalized, and each spoken number made one token.
+ * normalized, and each spoken number made one token. Both the take check
+ * and the comparison of two hearings (`hearings.ts`) read words through it,
+ * so `21` and `twenty-one` are one word to each.
  */
-function tokenized(raw: ReadonlyArray<string>): Array<Token> {
+export function tokenized(raw: ReadonlyArray<string>): Array<Token> {
   const pieces = raw.flatMap((text, at) =>
     text
       // A minus before a numeral is a sign, not a hyphen between words.
