@@ -21,7 +21,7 @@ import { reportFailure } from "@some-ui/intent-kit"
 import { ForeignCallError } from "./foreign"
 
 /** The port a shown failure is logged under. */
-export const SHOWN_FAILURE_PORT = "intent"
+const SHOWN_FAILURE_PORT = "intent"
 
 /**
  * Reports `failure` once each time it changes to a new failure. `null` while
