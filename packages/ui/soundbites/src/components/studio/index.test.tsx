@@ -190,7 +190,7 @@ describe("Studio", () => {
     )
   })
 
-  it("asks whose idea the scene playing is, and keeps yours in your own words", async () => {
+  it("asks whose idea the scene playing is, one task at a time, and then says it", async () => {
     const { project } = newProject("week-8", {
       author: "claude",
       message: "Primer",
@@ -245,20 +245,13 @@ describe("Studio", () => {
     expect(await screen.findByText(W.origin.where)).toBeInTheDocument()
     // One task: the note form waits while the idea is put right.
     expect(screen.queryByLabelText(W.watch.noteLabel)).toBeNull()
-    fireEvent.change(screen.getByLabelText(W.origin.wordsLabel), {
-      target: { value: "My week 8 notebook" },
-    })
-    fireEvent.click(screen.getByRole("button", { name: W.origin.keepWords }))
+    fireEvent.click(screen.getByRole("button", { name: W.origin.back }))
+    fireEvent.click(await screen.findByRole("button", { name: W.origin.right }))
+    // Once said, the scene says so quietly as it plays.
     expect(
-      await screen.findByText(
-        W.origin.said(1, {
-          who: "you",
-          from: "note",
-          words: "My week 8 notebook",
-        })
-      )
+      await screen.findByText(W.origin.said(1, { who: "agent" }))
     ).toBeInTheDocument()
-    expect(screen.getByText(W.origin.kept)).toBeInTheDocument()
+    expect(screen.queryByText(W.origin.question(1))).toBeNull()
     vi.unstubAllGlobals()
   })
 })

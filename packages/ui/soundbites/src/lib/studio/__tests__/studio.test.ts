@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import { inMemoryStorage } from "@some-ui/core-utils"
-import type { ShotTime } from "@some-ui/video-render"
+import type { Idea, ShotTime } from "@some-ui/video-render"
 import { REVIEW_SCHEMA } from "@some-ui/video-render"
 import type {
   Playback,
@@ -28,7 +28,7 @@ import type { StudioRuntime } from "@soundbites/lib/studio/runtime"
 import { createStudio } from "@soundbites/lib/studio/runtime"
 import { keptTimeLog } from "@soundbites/lib/studio/time-store"
 import { othersOnPhone, startView } from "@soundbites/lib/studio/view"
-import { ideaAskedAt } from "@soundbites/lib/studio/watch"
+import { ideaAsking } from "@soundbites/lib/studio/watch"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { describe, expect, it, vi } from "vitest"
 
@@ -1665,14 +1665,31 @@ describe("Watch", () => {
     }).project
   }
 
-  async function watchingIdeas(listener?: IdeaListener): Promise<Running> {
-    const runtime = studio(
-      memoryProjectStore([withIdeas()]),
-      fakeMic(),
-      "t",
-      undefined,
-      listener
-    )
+  /** `project` with Claude's next version giving scene `id` `idea`. */
+  function claudeGives(project: Project, id: string, idea: Idea): Project {
+    const { cutList } = latest(project)
+    return run(
+      { project, taking: null, closing: null },
+      {
+        type: "revised",
+        author: "claude",
+        message: "Another idea",
+        at: AT,
+        cutList: {
+          ...cutList,
+          shots: cutList.shots.map((each) =>
+            each.id === id ? { ...each, idea } : each
+          ),
+        },
+      }
+    ).project
+  }
+
+  async function watchingIdeas(
+    listener?: IdeaListener,
+    memory = memoryProjectStore([withIdeas()])
+  ): Promise<Running> {
+    const runtime = studio(memory, fakeMic(), "t", undefined, listener)
     await until(runtime, (state) => projectOf(state) !== null)
     await watching(runtime)
     return runtime
@@ -1704,10 +1721,9 @@ describe("Watch", () => {
       { shot: "a", rev: 2, at: expect.any(String), idea: { origin: "agent" } },
     ])
     const { screen } = runtime.getSnapshot()
-    if (screen.kind !== "watch" || screen.review === null)
-      throw new Error("watch")
-    expect(ideaAskedAt(project, screen.review, 500, [])).toBeNull()
-    expect(ideaAskedAt(project, screen.review, 2_500, [])).toBe("b")
+    if (screen.kind !== "watch") throw new Error("watch")
+    expect(ideaAsking(project, { ...screen, atMs: 500 }, [])).toBeNull()
+    expect(ideaAsking(project, { ...screen, atMs: 2_500 }, [])).toBe("b")
   })
 
   it("puts a scene right as yours, in its take: a new version of yours carrying it", async () => {
@@ -1719,6 +1735,7 @@ describe("Watch", () => {
       shot: "a",
       offsetMs: 600,
       step: "words",
+      asked: { origin: "agent" },
     })
     runtime.dispatch({ type: "ideaInTake" })
     await until(runtime, ideaKept)
@@ -1820,6 +1837,70 @@ describe("Watch", () => {
     expect(fixIn(runtime.getSnapshot())).toBeNull()
     expect(speakingIn(runtime.getSnapshot())).toBeNull()
     expect(projectIn(runtime)).toEqual(before)
+  })
+
+  it("keeps nothing of That's right once another screen changed that idea, and asks again", async () => {
+    const memory = memoryProjectStore([withIdeas()])
+    const runtime = await watchingIdeas(undefined, memory)
+    runtime.dispatch({ type: "playheadAt", ms: 500 })
+    const gate = holdWrites(memory)
+    runtime.dispatch({ type: "ideaRight", shot: "a" })
+    await until(runtime, (state) => state.inFlight?.kind === "idea")
+    // Another screen keeps Claude's version giving scene a a source first.
+    const moved = claudeGives(projectIn(runtime), "a", {
+      origin: "source",
+      from: { title: "Week 8 picks", ref: "w8" },
+    })
+    memory.projects.set(moved.id, moved)
+    gate.open()
+    await until(runtime, settledWrites)
+    expect(memory.projects.get(moved.id)).toEqual(moved)
+    const state = runtime.getSnapshot()
+    expect(state.notice).toBe(STUDIO_WORDS.origin.moved(1))
+    if (state.screen.kind !== "watch") throw new Error("watch")
+    expect(ideaAsking(projectIn(runtime), state.screen, [])).toBe("a")
+  })
+
+  it("asks again after an answer that wasn't kept, with a correction's words back", async () => {
+    const memory = memoryProjectStore([withIdeas()])
+    const runtime = await watchingIdeas(undefined, memory)
+    runtime.dispatch({ type: "playheadAt", ms: 500 })
+    const gate = holdWrites(memory)
+    runtime.dispatch({ type: "ideaRight", shot: "a" })
+    await until(runtime, (state) => state.inFlight?.kind === "idea")
+    // While it is on its way, the scene isn't asked again.
+    runtime.dispatch({ type: "ideaRight", shot: "a" })
+    expect(runtime.getSnapshot().queue).toEqual([])
+    gate.refuse()
+    await until(
+      runtime,
+      (state) =>
+        settledWrites(state) && state.notice === STUDIO_WORDS.notice.notSaved
+    )
+    runtime.dispatch({ type: "ideaRight", shot: "a" })
+    await until(runtime, ideaKept)
+    expect(projectIn(runtime).origins).toHaveLength(1)
+
+    runtime.dispatch({ type: "playheadAt", ms: 4_300 })
+    runtime.dispatch({ type: "ideaNotQuite", shot: "c" })
+    const again = holdWrites(memory)
+    runtime.dispatch({ type: "ideaInWords", text: "From my notebook" })
+    await until(runtime, (state) => state.inFlight?.kind === "idea")
+    expect(fixIn(runtime.getSnapshot())).toBeNull()
+    again.refuse()
+    await until(runtime, settledWrites)
+    expect(fixIn(runtime.getSnapshot())).toEqual({
+      shot: "c",
+      offsetMs: 300,
+      step: "words",
+      asked: { origin: "agent" },
+      draft: "From my notebook",
+    })
+    runtime.dispatch({ type: "ideaInWords", text: "From my notebook" })
+    await until(runtime, ideaKept)
+    expect(projectIn(runtime).notes.map((note) => note.text)).toEqual([
+      "From my notebook",
+    ])
   })
 
   it("asks for the video and the notes beside it together", async () => {

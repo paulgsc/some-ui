@@ -228,7 +228,7 @@ export function whoseOf(project: Project, idea: Idea): Whose {
       const { kind, id } = idea.from
       if (kind !== "note") return { who: "you", from: kind }
       const note = project.notes.find((each) => each.id === id)
-      return { who: "you", from: "note", words: note?.text ?? "" }
+      return { who: "you", from: "note", words: note?.text ?? null }
     }
     default: {
       return assertNever(idea)

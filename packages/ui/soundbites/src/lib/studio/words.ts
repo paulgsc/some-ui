@@ -5,7 +5,7 @@
  * never the machinery (`__tests__/words.test.ts` holds that).
  */
 import { formatSize, listed } from "@some-ui/core-utils"
-import type { Look, Voice } from "@some-ui/video-render"
+import type { Idea, Look, Voice } from "@some-ui/video-render"
 import type { RecordingFailure } from "@some-ui/voice-capture"
 import { RECORDING_FAILURE_COPY } from "@some-ui/voice-capture"
 import { formatDuration } from "@soundbites/lib/format"
@@ -17,26 +17,32 @@ import type { ShelfNotice } from "@soundbites/lib/idea/shelf"
  * where their words are; Claude's; or a source's, by its title.
  */
 export type Whose =
-  | { readonly who: "you"; readonly from: "note"; readonly words: string }
+  /** A note's own words, or null when the project doesn't hold that note. */
   | {
       readonly who: "you"
-      readonly from: "take" | "voice-note" | "prompt" | "idea"
+      readonly from: "note"
+      readonly words: string | null
     }
+  | { readonly who: "you"; readonly from: Exclude<OwnWordsKind, "note"> }
   | { readonly who: "agent" }
   | { readonly who: "source"; readonly title: string }
 
+/** Where an idea of the owner's cites their words (`OwnerRefSchema.kind`). */
+type OwnWordsKind = Extract<Idea, { origin: "you" }>["from"]["kind"]
+
 /** Where the owner's words are, for each citation but a note's own words. */
-const YOUR_WORDS = {
+const YOUR_WORDS: Readonly<Record<OwnWordsKind, string>> = {
+  note: "Your idea, from a note of yours",
   take: "Your idea, from what you said in a take",
   "voice-note": "Your idea, from one of your voice notes",
   prompt: "Your idea, from what you asked Claude",
   idea: "Your idea, from your answers when you caught it",
-} as const
+}
 
 function whose(idea: Whose): string {
   if (idea.who === "agent") return "Claude's idea"
   if (idea.who === "source") return `From “${idea.title}”`
-  return idea.from === "note"
+  return idea.from === "note" && idea.words !== null
     ? `Your idea, in your words: “${idea.words}”`
     : YOUR_WORDS[idea.from]
 }
@@ -401,7 +407,7 @@ export const STUDIO_WORDS = {
     notYet: "Not yet",
     notYetText: (text: string): string => `Not yet: ${text}`,
     back: "Back",
-    status: (changes: number, ideas = 0): string =>
+    status: (changes: number, ideas: number): string =>
       changes === 0 && ideas === 0
         ? "Note any moment of the review render"
         : [
@@ -441,6 +447,9 @@ export const STUDIO_WORDS = {
     say: "Say where it came from",
     back: "Leave it as it stands",
     kept: "Kept: whose idea it is.",
+    /** Answered of an idea the scene no longer has: nothing kept, asked again. */
+    moved: (n: number): string =>
+      `Scene ${n} changed in the meantime. Whose idea is it now?`,
     /** The new version a correction makes, as History lists it. */
     revised: (n: number, idea: Whose): string =>
       `Scene ${n}'s idea: ${whose(idea)}`,

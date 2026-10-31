@@ -24,18 +24,16 @@
  *   and its link stay as written, it takes no new note, and a change makes
  *   the next revision.
  * - **The owner's word on whose idea a scene is stays** (ST5, `./origin`).
- *   Each answer is a mark appended to `origins`; a correction is a new
- *   revision of the owner's carrying it, and a `you` origin cites the
- *   owner's own words.
  * - **A note follows its shot.** It is pinned to (revision, shot, offset),
  *   and `anchorAt` finds that shot in any later revision by id, or says the
  *   shot is gone; its time is read from the renderer's shot times.
  */
-import { assertNever, canonicalJson } from "@some-ui/core-utils"
-import type { CutList, Shot, ShotTime } from "@some-ui/video-render"
+import { assertNever } from "@some-ui/core-utils"
+import type { CutList, ShotTime } from "@some-ui/video-render"
 import type { Primer } from "@soundbites/lib/journal/primer"
 
 import { finishOf, isReleased, youtubeLink } from "./finish"
+import { latestShot, sameJson, shotIn } from "./lookup"
 import type { OriginMark } from "./origin"
 import { originRefusal } from "./origin"
 
@@ -258,10 +256,6 @@ function openSitting(project: Project): Sitting | null {
   return last?.closedAt === null ? last : null
 }
 
-function shotIn(cutList: CutListShape, shot: string): Shot | null {
-  return cutList.shots.find((each) => each.id === shot) ?? null
-}
-
 /**
  * Where the renderer put each shot of a revision (its `shot-times.json`),
  * or null when that revision has not been rendered. Times come only from
@@ -348,10 +342,6 @@ function letGoRefusal(project: Project, id: string): Refusal | null {
   if (take === undefined) return "noTake"
   if (!homeHolds(take)) return "unconfirmed"
   return null
-}
-
-export function sameJson(a: unknown, b: unknown): boolean {
-  return canonicalJson(a) === canonicalJson(b)
 }
 
 const SETTLES: Readonly<Record<NoteStatus, ReadonlyArray<NoteStatus>>> = {
@@ -549,7 +539,7 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
     case "takeStarted": {
       if (state.taking !== null || state.closing !== null)
         return refuse(state, "taking")
-      if (shotIn(latest(project).cutList, event.shot) === null)
+      if (latestShot(project, event.shot) === null)
         return refuse(state, "noShot")
       return {
         state: { ...state, taking: { shot: event.shot } },

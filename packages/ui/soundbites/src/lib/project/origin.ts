@@ -20,9 +20,9 @@
  *   mark's idea is the latest version's; a later version that changes it
  *   (Claude's, say) asks again.
  */
-import { canonicalJson } from "@some-ui/core-utils"
-import type { Idea, Shot } from "@some-ui/video-render"
+import type { Idea } from "@some-ui/video-render"
 
+import { latestShot, sameJson } from "./lookup"
 import type { Project } from "./model"
 
 /** The owner's word on whose idea scene `shot` presents in version `rev`. */
@@ -45,14 +45,6 @@ export type OriginRefusal =
   /** That is already the owner's word on the scene. */
   | "duplicate"
 
-const same = (a: unknown, b: unknown): boolean =>
-  canonicalJson(a) === canonicalJson(b)
-
-function latestShot(project: Project, shot: string): Shot | null {
-  const shots = project.revisions.at(-1)?.cutList.shots ?? []
-  return shots.find((each) => each.id === shot) ?? null
-}
-
 /** The owner's last word on scene `shot`, if any. */
 function lastMark(project: Project, shot: string): OriginMark | null {
   const marks = (project.origins ?? []).filter((each) => each.shot === shot)
@@ -63,7 +55,7 @@ function lastMark(project: Project, shot: string): OriginMark | null {
 export function originConfirmed(project: Project, shot: string): boolean {
   const scene = latestShot(project, shot)
   const mark = lastMark(project, shot)
-  return scene !== null && mark !== null && same(mark.idea, scene.idea)
+  return scene !== null && mark !== null && sameJson(mark.idea, scene.idea)
 }
 
 /** How many of the latest version's scenes wait on the owner's word. */
@@ -77,6 +69,8 @@ export function originsToConfirm(project: Project): number {
  * the owner's: a note the owner wrote, a take the owner recorded, or a
  * citation one of Claude's versions gave the scene (an idea's answer, a
  * voice note, a prompt), which the phone can confirm but not make up.
+ * The renderer refuses a cited note the same way, from the cut list's own
+ * notes (video-render's `authorshipProblems`).
  */
 function citesOwnWords(project: Project, shot: string, idea: Idea): boolean {
   if (idea.origin !== "you") return true
@@ -90,7 +84,7 @@ function citesOwnWords(project: Project, shot: string, idea: Idea): boolean {
     (revision) =>
       revision.author === "claude" &&
       revision.cutList.shots.some(
-        (each) => each.id === shot && same(each.idea, idea)
+        (each) => each.id === shot && sameJson(each.idea, idea)
       )
   )
 }
@@ -103,7 +97,7 @@ export function originRefusal(
 ): OriginRefusal | null {
   const scene = latestShot(project, shot)
   if (scene === null) return "noShot"
-  if (!same(scene.idea, idea)) return "otherIdea"
+  if (!sameJson(scene.idea, idea)) return "otherIdea"
   if (originConfirmed(project, shot)) return "duplicate"
   return citesOwnWords(project, shot, idea) ? null : "notYours"
 }

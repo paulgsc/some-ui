@@ -29,7 +29,11 @@ import type { Project } from "@soundbites/lib/project/model"
 import { latest } from "@soundbites/lib/project/model"
 import { lengthFor } from "@soundbites/lib/project/script"
 import type { StudioIntent, StudioState } from "@soundbites/lib/studio/machine"
-import { isSettled, projectOf } from "@soundbites/lib/studio/machine"
+import {
+  ideasAnswering,
+  isSettled,
+  projectOf,
+} from "@soundbites/lib/studio/machine"
 import type { StudioPorts } from "@soundbites/lib/studio/runtime"
 import { createStudio } from "@soundbites/lib/studio/runtime"
 import { timeView } from "@soundbites/lib/studio/time-log"
@@ -46,7 +50,7 @@ import {
 import {
   askedAt,
   changesIn,
-  ideaAskedAt,
+  ideaAsking,
   shotAt,
 } from "@soundbites/lib/studio/watch"
 import type { SittingKind, Snag, Went } from "@soundbites/lib/studio/words"
@@ -848,10 +852,7 @@ const Watch = ({
       ? null
       : askedAt(changesIn(project, review), screen.atMs, screen.answered)
   const here = review === null ? null : shotAt(review, screen.atMs)
-  const idea =
-    review === null || asked !== null || screen.speaking !== null
-      ? null
-      : ideaAskedAt(project, review, screen.atMs, screen.ideasSaid)
+  const idea = ideaAsking(project, screen, ideasAnswering(state, project.id))
   const scene =
     screen.origin !== null
       ? originView(project, screen.origin.shot)
@@ -903,6 +904,7 @@ const Watch = ({
           {screen.origin !== null && scene !== null ? (
             <IdeaFix
               fix={screen.origin}
+              initialText={screen.origin.draft ?? ""}
               scene={scene}
               listen={screen.listen === "available"}
               speaking={screen.speaking}
@@ -1039,6 +1041,7 @@ type OriginFix = NonNullable<WatchScreen["origin"]>
  */
 const IdeaFix = ({
   fix,
+  initialText,
   scene,
   listen,
   speaking,
@@ -1046,6 +1049,8 @@ const IdeaFix = ({
   dispatch,
 }: {
   fix: OriginFix
+  /** The words of this correction not kept last time, read once. */
+  initialText: string
   scene: OriginView
   listen: boolean
   speaking: WatchScreen["speaking"]
@@ -1053,8 +1058,8 @@ const IdeaFix = ({
   dispatch: Dispatch
 }): JSX.Element => {
   const wordsId = useId()
-  // An edit buffer for this correction alone: it mounts with it, empty.
-  const [text, setText] = useState("")
+  // An edit buffer for this correction alone: it mounts with it.
+  const [text, setText] = useState(initialText)
   const words = WORDS.origin
   const back = (
     <Button variant="ghost" onClick={() => dispatch({ type: "ideaBack" })}>

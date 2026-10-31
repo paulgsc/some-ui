@@ -1,7 +1,8 @@
 /** @vitest-environment node */
+import type { Project } from "@soundbites/lib/project/model"
 import { newProject } from "@soundbites/lib/project/model"
 import { cutListOf } from "@soundbites/lib/project/script"
-import { startView } from "@soundbites/lib/studio/view"
+import { startView, whoseOf } from "@soundbites/lib/studio/view"
 import type { Whose } from "@soundbites/lib/studio/words"
 import { seconds, STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { describe, expect, it } from "vitest"
@@ -18,6 +19,7 @@ const MACHINERY =
 /** Every way a scene's idea reads (`Whose`), for the makers that say it. */
 const WHOSE: ReadonlyArray<Whose> = [
   { who: "you", from: "note", words: "I saw it on the bus home" },
+  { who: "you", from: "note", words: null },
   { who: "you", from: "take" },
   { who: "you", from: "voice-note" },
   { who: "you", from: "prompt" },
@@ -107,16 +109,20 @@ function walk(table: unknown, path = "words"): Walk {
   return { words: [], unreached: [] }
 }
 
-/** Every string Start draws for a video just opened from its primer. */
-function startDrawn(): Array<string> {
-  const { project } = newProject("week-8", {
+/** A video just opened from its primer. */
+function opened(): Project {
+  return newProject("week-8", {
     author: "claude",
     message: "Primer",
     at: AT,
     cutList: cutListOf(primer()),
     primer: primer(),
-  })
-  const view = startView(project)
+  }).project
+}
+
+/** Every string Start draws for a video just opened from its primer. */
+function startDrawn(): Array<string> {
+  const view = startView(opened())
   return [view.title, view.standing, ...view.sittings.map((row) => row.status)]
 }
 
@@ -145,6 +151,13 @@ describe("Studio's words", () => {
       expect(said.startsWith("Your idea")).toBe(whose.who === "you")
       if (whose.who === "you") expect(said).toMatch(/, (from|in your words)/)
     }
+  })
+
+  it("quote no words for a note of yours the video doesn't hold (ST16)", () => {
+    const idea = { origin: "you", from: { kind: "note", id: "gone" } } as const
+    expect(STUDIO_WORDS.origin.whose(whoseOf(opened(), idea))).toBe(
+      "Your idea, from a note of yours"
+    )
   })
 
   it("write a length as a number of seconds", () => {

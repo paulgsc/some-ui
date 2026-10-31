@@ -12,6 +12,7 @@ import { CutListSchema, IdeaSchema, parseCutList } from "@some-ui/video-render"
 import { ANSWER_ID, IDEA_ID } from "@soundbites/lib/journal/primer"
 import { z } from "zod"
 
+import { sameJson, shotIn } from "./lookup"
 import type { Project } from "./model"
 import { cutListAt, PROJECT_SCHEMA } from "./model"
 
@@ -135,12 +136,13 @@ function shapeProblems(project: Project): Array<string> {
   }
   for (const [index, mark] of (project.origins ?? []).entries()) {
     const revision = project.revisions.find((each) => each.rev === mark.rev)
-    const shot = revision?.cutList.shots.find((each) => each.id === mark.shot)
-    if (shot === undefined)
+    const shot =
+      revision === undefined ? null : shotIn(revision.cutList, mark.shot)
+    if (shot === null)
       problems.push(
         `origins.${index}: rev ${mark.rev} has no shot ${mark.shot}`
       )
-    else if (canonicalJson(shot.idea) !== canonicalJson(mark.idea))
+    else if (!sameJson(shot.idea, mark.idea))
       problems.push(
         `origins.${index}: rev ${mark.rev} gives shot ${mark.shot} another idea`
       )
