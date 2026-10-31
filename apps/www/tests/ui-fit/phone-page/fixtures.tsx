@@ -58,16 +58,26 @@ const taken = (shot: string): ReadonlyArray<ProjectEvent> => [
 const FRESH: Project = projectFromPrimer("fit-fresh", PRIMER, AT).project
 
 /**
+ * Every scene taken, and no one's word yet on whose idea each is: Finish
+ * waits on that, and opens Watch at the first scene asked.
+ */
+const TAKEN: Project = run(
+  projectFromPrimer("fit-taken", PRIMER, AT),
+  ...FIT_CUTS.flatMap((cut) => taken(cut.id))
+).project
+
+/**
  * Every scene taken, a note of the owner's that Claude applied in revision
- * 2, and the owner's mark that it is ready: Watch asks about the change at
- * the first moment of a render of revision 2, Finish is ready for YouTube,
- * and Record shows a scene with its take.
+ * 2, and the owner's mark that it is ready, from before Finish waited on
+ * whose idea each scene is (#2253): Watch asks about the change at the
+ * first moment of a render of revision 2, then whose idea the scene is,
+ * Finish is still ready for YouTube, and Record shows a scene with its take.
  */
 const REVIEWED: Project = ((): Project => {
   const first = projectFromPrimer("fit-reviewed", PRIMER, AT)
   const [path] = FIT_CUTS
   const withTakes = run(first, ...FIT_CUTS.flatMap((cut) => taken(cut.id)))
-  return run(
+  const reviewed = run(
     withTakes,
     {
       type: "noted",
@@ -90,9 +100,9 @@ const REVIEWED: Project = ((): Project => {
         cutList: withTakes.project.revisions[0].cutList,
         project: withTakes.project,
       }),
-    },
-    { type: "markedReady", rev: 2, at: AT }
+    }
   ).project
+  return { ...reviewed, ready: [{ rev: 2, at: AT }] }
 })()
 
 const noop = (): void => undefined
@@ -149,6 +159,7 @@ export const PHONE_FIXTURES = {
   /** Start with no video: the primer pick alone. */
   "studio-empty": studioOn([]),
   "studio-fresh": studioOn([FRESH]),
+  "studio-taken": studioOn([TAKEN]),
   "studio-reviewed": studioOn([REVIEWED]),
 
   /** New idea (`/journal/idea`). */

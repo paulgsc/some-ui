@@ -1,12 +1,11 @@
 /**
- * The Jobs record's lane (LA10, docs/learner-data-authority.md): every event
+ * The Jobs record's lane (LA15, docs/learner-data-authority.md): every event
  * home does not hold yet, sent by `exchangeJobs` (`lib/jobs/home`) through
  * the one wiring (`./lanes`), which also takes in the digests home holds for
  * days the phone does not. Its record moves with each event added on this
  * phone, or home's copy taken in by a phone whose log was empty, and while a
  * notice token is owed to home (`lib/jobs/notice`); a digest taken in does
- * not move it. The phone keeps its whole log either way, so
- * stopping is only the choice.
+ * not move it. The phone keeps its whole log either way.
  */
 import { useSyncExternalStore } from "react"
 
@@ -19,7 +18,6 @@ import type { Lane, LaneCounts } from "./lanes"
 
 export const jobsLane: Lane = {
   id: "jobs",
-  scopes: ["jobs"],
   exchange: (send) => exchangeJobs(phoneJobs().keeping, send),
   // Doubled, so a notice filing coming owed or settling never lands on
   // the value of another log length.
@@ -37,11 +35,8 @@ export const jobsLane: Lane = {
       held: { jobs: state.home.held.length },
       refused: { jobs: state.home.refused.length },
       waiting: homeOutbox(state).length,
-      away: null,
       hidden: 0,
       pulled: true,
-      offered: homeOutbox(state).length,
     }
   },
-  keptBefore: () => phoneJobs().getSnapshot().state.home.kept,
 }

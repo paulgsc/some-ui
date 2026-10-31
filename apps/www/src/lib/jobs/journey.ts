@@ -21,7 +21,7 @@
  * - Claim: every control in the Jobs wing whose effect leaves the phone, or
  *   changes what will leave it, says on that surface where the effect is now.
  * - Family: the road (home without a tap, the share sheet, home refused, a
- *   missed run); the network (kept on home or not); timing (filed before the
+ *   missed run); the network (paired with home or not); timing (filed before the
  *   person looks, after a relaunch, a run going by); the order of shares (an
  *   unconfirmed share, then a filing, then its confirmation; something added
  *   after an unconfirmed share; a restored log).
@@ -291,7 +291,7 @@ function runsNow(state: JobsState): Runs {
 /** What a card reads its state from. */
 export type JourneyContext = {
   readonly state: JobsState
-  /** Jobs is kept on the paired home, so an exchange files its files. */
+  /** This phone is paired with home, so an exchange files its files. */
   readonly kept: boolean
   /** The file of each kind an exchange would file now (`keeping.outgoing`). */
   readonly outgoing: (kind: ShareKind) => Outgoing

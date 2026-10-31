@@ -10,7 +10,6 @@ import { MarkLegend } from "@some-ui/shared"
 import type { LucideIcon } from "lucide-react"
 import {
   Archive,
-  ArrowDown,
   ArrowUp,
   Ban,
   Check,
@@ -31,8 +30,8 @@ const HOUSE = "M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"
 
 /**
  * Where a record is kept, each in a form of its own: a phone for only here, a
- * dashed house for partly, a house for kept, a house holding a phone for on
- * home and not sent any more, and a dotted ring while it isn't known yet.
+ * dashed house for partly, a house for kept, and a dotted ring while it
+ * isn't known yet.
  */
 export const WhereMark = ({
   where,
@@ -65,9 +64,6 @@ export const WhereMark = ({
         strokeDasharray={where === "partly" ? "3 2.4" : undefined}
       />
     )}
-    {where === "away" ? (
-      <rect x="10" y="12" width="4" height="6.5" rx="0.8" />
-    ) : null}
   </svg>
 )
 
@@ -76,7 +72,6 @@ const HOW_ICONS: Readonly<Record<How, LucideIcon>> = {
   current: Check,
   waiting: ArrowUp,
   sending: Ellipsis,
-  bringing: ArrowDown,
   "no-answer": WifiOff,
   busy: Hourglass,
   forgotten: Unlink,
@@ -104,14 +99,12 @@ export const WHERE_TONE: Record<Where, string> = {
   phone: "text-muted-foreground",
   partly: "text-muted-foreground",
   kept: "text-success",
-  away: "text-success",
 }
 
 export const HOW_TONE: Record<How, string> = {
   current: "text-success",
   waiting: "text-success",
   sending: "text-success",
-  bringing: "text-success",
   "no-answer": "text-warning",
   busy: "text-warning",
   forgotten: "text-warning",
@@ -127,32 +120,17 @@ export const HOW_TONE: Record<How, string> = {
 export const toneOf = (where: Where, how: How | null): string =>
   how === null ? WHERE_TONE[where] : HOW_TONE[how]
 
-/** Marks a lane can show: away and bringing back only where it can stop short. */
-const shown = (
-  away: boolean
-): { where: ReadonlyArray<Where>; how: ReadonlyArray<How> } =>
-  away
-    ? { where: WHERE_ORDER, how: HOW_ORDER }
-    : {
-        where: WHERE_ORDER.filter((w) => w !== "away"),
-        how: HOW_ORDER.filter((h) => h !== "bringing"),
-      }
-
-/**
- * Every mark a lane can show, and what each means; `away` where the lane
- * can stop short and come back (aph).
- */
+/** Every mark a lane can show, and what each means. */
 export const SharingLegend = ({
-  away,
   title = MARK_WORDS.title,
   className,
 }: {
-  away: boolean
   /** Its heading, where the page already says what the marks are. */
   title?: string
   className?: string
 }): JSX.Element => {
-  const { where, how } = shown(away)
+  const where = WHERE_ORDER
+  const how = HOW_ORDER
   return (
     <MarkLegend
       title={title}

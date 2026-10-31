@@ -42,12 +42,19 @@
  *   after the take is kept or has failed, so its log counts it, and it
  *   records the scene on screen: the next sitting opens there. A microphone
  *   still opening is let go when it opens (`letGo`).
+ * - **Whose idea a scene is, one scene at a time** (ST5). Watch asks it of
+ *   the scene playing, after any change of Claude's there (`ideaAsking`);
+ *   the answer is one write (`Pending` `idea`): the owner's words it cites,
+ *   a version carrying it where it differs, and the mark
+ *   (`project/origin.ts`). It keeps nothing once another screen has changed
+ *   the idea it answered, and the scene is asked again; one not kept asks
+ *   again too, with any words of the owner's back where they were typed.
  * - **Nothing records while the page is off screen.** A take recording when
  *   the page is hidden or left is finished and kept; a microphone that opens
  *   then, or once the Record screen is gone, is let go.
  */
 import { assertNever } from "@some-ui/core-utils"
-import type { Look, Review, Voice } from "@some-ui/video-render"
+import type { Idea, Look, Review, Voice } from "@some-ui/video-render"
 import { readReview } from "@some-ui/video-render"
 import type { RecordingFailure, Take, TakePhase } from "@some-ui/voice-capture"
 import {
@@ -66,6 +73,7 @@ import {
 } from "@soundbites/lib/policy"
 import { isProjectFile, readProjectFile } from "@soundbites/lib/project/file"
 import { finishOf, youtubeLink } from "@soundbites/lib/project/finish"
+import { sameJson } from "@soundbites/lib/project/lookup"
 import type { Clash } from "@soundbites/lib/project/merge"
 import { mergeIn } from "@soundbites/lib/project/merge"
 import type { Note, Project, ProjectTake } from "@soundbites/lib/project/model"
@@ -89,9 +97,9 @@ import type {
 } from "@soundbites/lib/project/store"
 
 import type { TimeEvent } from "./time-log"
-import { sceneBeside } from "./view"
-import { askedAt, changesIn, isReviewOf, shotAt } from "./watch"
-import type { Went } from "./words"
+import { originView, sceneBeside, whoseOf } from "./view"
+import { askedAt, changesIn, ideaAsking, isReviewOf, shotAt } from "./watch"
+import type { Went, Whose } from "./words"
 import { STUDIO_WORDS } from "./words"
 
 const WORDS = STUDIO_WORDS
@@ -154,6 +162,10 @@ type StudioScreen =
       readonly listen: "checking" | "available" | "unavailable"
       /** A note being said, until it is kept or let go. */
       readonly speaking: Speaking | null
+      /** A scene's idea being put right, until it is kept or left. */
+      readonly origin: OriginFix | null
+      /** The scene the render opens at once read: Finish's first waiting on whose idea it is. */
+      readonly startAt: string | null
     }
   | {
       readonly kind: "done"
@@ -218,6 +230,17 @@ type Pending = { readonly project: string } & (
       readonly note: Omit<Note, "status" | "reason">
     }
   | { readonly kind: "good"; readonly note: string }
+  /**
+   * The owner's word on whose idea scene `shot` is (ST5), of `asked`, the
+   * idea the owner was asked about: kept only while the scene still has it.
+   */
+  | {
+      readonly kind: "idea"
+      readonly shot: string
+      readonly asked: Idea
+      readonly answer: IdeaAnswer
+      readonly at: string
+    }
   /** A project file back from Claude (ST8), merged into the copy kept. */
   | { readonly kind: "merge"; readonly file: Project }
   | {
@@ -236,11 +259,56 @@ type Pending = { readonly project: string } & (
 export type Speaking = {
   readonly seq: number
   readonly atMs: number
+  /** A note at that moment, or the owner's words for a scene's idea (`OriginFix`). */
+  readonly for: "note" | "idea"
   /** Listening (getting ready until `ready`), finishing after Done talking, then heard (LS1). */
   readonly phase: "listening" | "finishing" | "heard"
   readonly ready: boolean
   /** The words so far while listening; what was heard after. */
   readonly words: string
+}
+
+/**
+ * A scene's idea being put right in Watch (ST5): whose it is, then, for
+ * the owner's, where their words are. Pinned to the scene and offset the
+ * playhead was at when it began, as a spoken note is.
+ */
+export type OriginFix = {
+  readonly shot: string
+  readonly offsetMs: number
+  readonly step: "who" | "words"
+  /** The idea Not quite was said of. */
+  readonly asked: Idea
+  /** The owner's words of a correction not kept, back for another try. */
+  readonly draft?: string
+}
+
+/** The owner's words a correction to "mine" cites, kept as their note. */
+type OwnWords = {
+  readonly id: string
+  readonly offsetMs: number
+  readonly text: string
+}
+
+/**
+ * That's right, or the idea the scene is instead: a new version carrying
+ * it, with the owner's words it cites where they are new.
+ */
+type IdeaAnswer =
+  | { readonly kind: "right" }
+  | { readonly kind: "instead"; readonly idea: Idea; readonly words?: OwnWords }
+
+/** The scenes of `project` whose answer is on its way to being kept. */
+export function ideasAnswering(
+  state: StudioState,
+  project: string
+): ReadonlyArray<string> {
+  const ways = [state.inFlight, ...state.queue, ...state.held]
+  return ways.flatMap((pending) =>
+    pending?.kind === "idea" && pending.project === project
+      ? [pending.shot]
+      : []
+  )
 }
 
 /** Whether a note is still being heard: begun, or finishing. */
@@ -326,6 +394,14 @@ export type StudioIntent =
   | { readonly type: "spokenAgain" }
   | { readonly type: "spokenDropped" }
   | { readonly type: "changeGood"; readonly note: string }
+  /** Whose idea the scene playing is (ST5): as it stands, or not quite. */
+  | { readonly type: "ideaRight"; readonly shot: string }
+  | { readonly type: "ideaNotQuite"; readonly shot: string }
+  | { readonly type: "ideaWho"; readonly who: "you" | "agent" }
+  /** Yours: in the scene's chosen take, or in words typed now. */
+  | { readonly type: "ideaInTake" }
+  | { readonly type: "ideaInWords"; readonly text: string }
+  | { readonly type: "ideaBack" }
   | { readonly type: "changeNotYet"; readonly note: string }
   | { readonly type: "recordPressed" }
   | { readonly type: "discardPressed" }
@@ -659,6 +735,54 @@ function applied(project: Project | null, pending: Pending): Project | null {
         status: "confirmed",
       })
     }
+    case "idea": {
+      if (project === null) return null
+      const { shot, asked, answer, at } = pending
+      const view = originView(project, shot)
+      // Another screen changed the idea asked about: keep nothing, ask again.
+      if (view === null || !sameJson(view.idea, asked)) return null
+      if (answer.kind === "right")
+        return model(project, { type: "originSaid", shot, idea: asked, at })
+      const { idea, words } = answer
+      let next = project
+      if (!sameJson(asked, idea)) {
+        const { cutList } = latest(next)
+        const whose: Whose =
+          words === undefined
+            ? whoseOf(next, idea)
+            : { who: "you", from: "note", words: words.text }
+        const revised = model(next, {
+          type: "revised",
+          author: "owner",
+          message: WORDS.origin.revised(view.n, whose),
+          at,
+          cutList: {
+            ...cutList,
+            shots: cutList.shots.map((each) =>
+              each.id === shot ? { ...each, idea } : each
+            ),
+          },
+        })
+        if (revised === null) return null
+        next = revised
+      }
+      if (words !== undefined) {
+        // Pinned to the version that cites it, which no release has kept.
+        const worded = model(next, {
+          type: "worded",
+          note: {
+            id: words.id,
+            rev: latest(next).rev,
+            shot,
+            offsetMs: words.offsetMs,
+            text: words.text,
+          },
+        })
+        if (worded === null) return null
+        next = worded
+      }
+      return model(next, { type: "originSaid", shot, idea, at })
+    }
     case "merge": {
       if (project === null) return null
       const merged = mergeIn(project, pending.file)
@@ -713,7 +837,7 @@ function speak(
     notice,
     screen: { ...screen, ...next },
   })
-  const listen = (atMs: number): Step => {
+  const listen = (atMs: number, purpose: Speaking["for"]): Step => {
     const seq = state.listenSeq + 1
     return {
       state: {
@@ -722,6 +846,7 @@ function speak(
             speaking: {
               seq,
               atMs,
+              for: purpose,
               phase: "listening",
               ready: false,
               words: "",
@@ -744,11 +869,17 @@ function speak(
       if (
         screen.listen !== "available" ||
         speaking !== null ||
-        screen.review === null ||
-        shotAt(screen.review, screen.atMs) === null
+        screen.review === null
       )
         return stay(state)
-      return listen(screen.atMs)
+      // Putting a scene's idea right, the words said are where it came from.
+      if (screen.origin !== null)
+        return screen.origin.step === "words"
+          ? listen(screen.atMs, "idea")
+          : stay(state)
+      return shotAt(screen.review, screen.atMs) === null
+        ? stay(state)
+        : listen(screen.atMs, "note")
     }
     case "speakStopped": {
       return speaking?.phase === "listening"
@@ -805,7 +936,9 @@ function speak(
       }
     }
     case "spokenAgain": {
-      return speaking?.phase === "heard" ? listen(speaking.atMs) : stay(state)
+      return speaking?.phase === "heard"
+        ? listen(speaking.atMs, speaking.for)
+        : stay(state)
     }
     case "spokenDropped": {
       if (speaking === null) return stay(state)
@@ -818,6 +951,125 @@ function speak(
       return assertNever(event)
     }
   }
+}
+
+/**
+ * The owner's word on scene `shot`'s idea, as it was asked (`asked`),
+ * queued: any correction under way is done, and the scene isn't asked
+ * again while it is on its way (`ideasAnswering`).
+ */
+function ideaSaid(
+  state: StudioState,
+  screen: WatchScreen,
+  project: Project,
+  shot: string,
+  asked: Idea,
+  answer: IdeaAnswer,
+  at: string
+): Step {
+  return enqueue(
+    { ...state, notice: "", screen: { ...screen, origin: null } },
+    { kind: "idea", project: project.id, shot, asked, answer, at }
+  )
+}
+
+/** `pending`'s answer, by what the owner said the scene is instead. */
+const instead = (idea: Idea, words?: OwnWords): IdeaAnswer => ({
+  kind: "instead",
+  idea,
+  ...(words === undefined ? {} : { words }),
+})
+
+/**
+ * After an answer about a scene's idea that kept nothing: the owner's words
+ * of a correction back where they were typed, if Watch is free to take
+ * them, so they can keep them again. Without words the scene is simply
+ * asked again, as nothing is on its way about it.
+ */
+function ideaUnkept(state: StudioState, pending: Pending): StudioState {
+  const { screen } = state
+  if (
+    pending.kind !== "idea" ||
+    pending.answer.kind !== "instead" ||
+    pending.answer.words === undefined ||
+    screen.kind !== "watch" ||
+    screen.origin !== null ||
+    screen.speaking !== null ||
+    state.current !== pending.project
+  )
+    return state
+  const project = projectOf(state)
+  const view = project === null ? null : originView(project, pending.shot)
+  if (view === null) return state
+  const { offsetMs, text } = pending.answer.words
+  return {
+    ...state,
+    screen: {
+      ...screen,
+      origin: {
+        shot: pending.shot,
+        offsetMs,
+        step: "words",
+        asked: view.idea,
+        draft: text,
+      },
+    },
+  }
+}
+
+/** Yours, in words the owner typed or said now: kept as their note, and cited. */
+function yoursInWords(
+  state: StudioState,
+  fix: OriginFix,
+  project: Project,
+  text: string,
+  at: string
+): Step {
+  const { screen } = state
+  const words = text.trim()
+  if (screen.kind !== "watch" || words === "") return stay(state)
+  const id = noteIdAt(at)
+  return ideaSaid(
+    state,
+    screen,
+    project,
+    fix.shot,
+    fix.asked,
+    instead(
+      { origin: "you", from: { kind: "note", id } },
+      { id, offsetMs: fix.offsetMs, text: words }
+    ),
+    at
+  )
+}
+
+/** Watch, opened on `project`'s review render, at scene `startAt` once it is read. */
+function watchOpened(
+  state: StudioState,
+  project: Project,
+  startAt: string | null,
+  at: string
+): Step {
+  const opened = enqueue(
+    {
+      ...state,
+      screen: {
+        kind: "watch",
+        video: null,
+        review: null,
+        atMs: 0,
+        answered: [],
+        listen: "checking",
+        speaking: null,
+        origin: null,
+        startAt,
+      },
+      notice: "",
+      choosing: null,
+    },
+    { kind: "open", project: project.id, at }
+  )
+  return { ...opened, effects: [...opened.effects, { type: "checkVoice" }] }
 }
 
 /** A note's id from when it was made: letters, digits and dashes. */
@@ -958,6 +1210,9 @@ function landedNotice(
     case "note": {
       return WORDS.watch.noted
     }
+    case "idea": {
+      return WORDS.origin.kept
+    }
     case "good": {
       return state.notice
     }
@@ -983,7 +1238,11 @@ function refusedNotice(
 }
 
 /** What a write that changed nothing says, if anything. */
-function unchangedNotice(state: StudioState, pending: Pending): string {
+function unchangedNotice(
+  state: StudioState,
+  pending: Pending,
+  written: Written
+): string {
   switch (pending.kind) {
     case "keep": {
       return WORDS.notice.notKept
@@ -1003,6 +1262,15 @@ function unchangedNotice(state: StudioState, pending: Pending): string {
     case "note":
     case "good": {
       return WORDS.notice.notSaved
+    }
+    case "idea": {
+      const now =
+        written.project === null
+          ? null
+          : originView(written.project, pending.shot)
+      return now !== null && !sameJson(now.idea, pending.asked)
+        ? WORDS.origin.moved(now.n)
+        : WORDS.notice.notSaved
     }
     case "merge": {
       // It merged when picked: the phone made a version in between.
@@ -1604,24 +1872,7 @@ export function step(state: StudioState, event: StudioEvent): Step {
     case "watchChosen": {
       if (project === null || screen.kind !== "start" || !isSettled(activity))
         return stay(state)
-      const opened = enqueue(
-        {
-          ...state,
-          screen: {
-            kind: "watch",
-            video: null,
-            review: null,
-            atMs: 0,
-            answered: [],
-            listen: "checking",
-            speaking: null,
-          },
-          notice: "",
-          choosing: null,
-        },
-        { kind: "open", project: project.id, at: event.at }
-      )
-      return { ...opened, effects: [...opened.effects, { type: "checkVoice" }] }
+      return watchOpened(state, project, null, event.at)
     }
 
     case "watchBack": {
@@ -1654,8 +1905,18 @@ export function step(state: StudioState, event: StudioEvent): Step {
         project === null
       )
         return stay(state)
-      const here = shotAt(screen.review, speaking.atMs)
       const cleared = { ...state, screen: { ...screen, speaking: null } }
+      if (speaking.for === "idea")
+        return screen.origin?.step === "words"
+          ? yoursInWords(
+              cleared,
+              screen.origin,
+              project,
+              speaking.words,
+              event.at
+            )
+          : stay(cleared)
+      const here = shotAt(screen.review, speaking.atMs)
       if (here === null) return stay(cleared)
       return enqueue(
         { ...cleared, notice: "" },
@@ -1686,7 +1947,14 @@ export function step(state: StudioState, event: StudioEvent): Step {
           ...state,
           pickSeq: seq,
           notice: "",
-          screen: { ...screen, video, review: null, atMs: 0, answered: [] },
+          screen: {
+            ...screen,
+            video,
+            review: null,
+            atMs: 0,
+            answered: [],
+            origin: null,
+          },
         },
         effects: [{ type: "readFile", file: review, seq, as: "review" }],
       }
@@ -1708,7 +1976,18 @@ export function step(state: StudioState, event: StudioEvent): Step {
           notice: WORDS.watch.notThisVideo,
           screen: { ...screen, video: null },
         })
-      return stay({ ...state, screen: { ...screen, review: read.value } })
+      // Opened from Finish: at the scene first waiting on whose idea it is.
+      const from = read.value.shotTimes.find(
+        (each) => each.id === screen.startAt
+      )
+      return stay({
+        ...state,
+        screen: {
+          ...screen,
+          review: read.value,
+          atMs: from === undefined ? screen.atMs : from.startMs,
+        },
+      })
     }
 
     case "reviewUnreadable": {
@@ -1784,6 +2063,102 @@ export function step(state: StudioState, event: StudioEvent): Step {
       })
     }
 
+    case "ideaRight":
+    case "ideaNotQuite": {
+      if (screen.kind !== "watch" || screen.review === null || project === null)
+        return stay(state)
+      const asked = ideaAsking(
+        project,
+        screen,
+        ideasAnswering(state, project.id)
+      )
+      const view = asked === null ? null : originView(project, asked)
+      const here = shotAt(screen.review, screen.atMs)
+      if (view?.shot !== event.shot || here === null) return stay(state)
+      if (event.type === "ideaRight")
+        return ideaSaid(
+          state,
+          screen,
+          project,
+          view.shot,
+          view.idea,
+          { kind: "right" },
+          event.at
+        )
+      // Claude's already: putting it right can only make it yours.
+      const first = view.idea.origin === "agent" ? "words" : "who"
+      return stay({
+        ...state,
+        notice: "",
+        screen: {
+          ...screen,
+          origin: {
+            shot: view.shot,
+            offsetMs: here.offsetMs,
+            step: first,
+            asked: view.idea,
+          },
+        },
+      })
+    }
+
+    case "ideaWho": {
+      if (screen.kind !== "watch" || screen.origin?.step !== "who")
+        return stay(state)
+      if (project === null) return stay(state)
+      if (event.who === "you")
+        return stay({
+          ...state,
+          screen: { ...screen, origin: { ...screen.origin, step: "words" } },
+        })
+      return ideaSaid(
+        state,
+        screen,
+        project,
+        screen.origin.shot,
+        screen.origin.asked,
+        instead({ origin: "agent" }),
+        event.at
+      )
+    }
+
+    case "ideaInTake": {
+      if (screen.kind !== "watch" || screen.origin?.step !== "words")
+        return stay(state)
+      if (project === null || screen.speaking !== null) return stay(state)
+      const take = originView(project, screen.origin.shot)?.take ?? null
+      if (take === null) return stay(state)
+      return ideaSaid(
+        state,
+        screen,
+        project,
+        screen.origin.shot,
+        screen.origin.asked,
+        instead({ origin: "you", from: { kind: "take", id: take } }),
+        event.at
+      )
+    }
+
+    case "ideaInWords": {
+      if (screen.kind !== "watch" || screen.origin?.step !== "words")
+        return stay(state)
+      if (project === null || screen.speaking !== null) return stay(state)
+      return yoursInWords(state, screen.origin, project, event.text, event.at)
+    }
+
+    case "ideaBack": {
+      if (screen.kind !== "watch" || screen.origin === null) return stay(state)
+      return {
+        state: {
+          ...state,
+          screen: { ...screen, origin: null, speaking: null },
+        },
+        effects: stillHearing(screen.speaking)
+          ? [{ type: "cancelListening" }]
+          : [],
+      }
+    }
+
     case "finishChosen": {
       if (project === null || screen.kind !== "start" || !isSettled(activity))
         return stay(state)
@@ -1802,6 +2177,8 @@ export function step(state: StudioState, event: StudioEvent): Step {
     case "finishGo": {
       if (screen.kind !== "finish" || project === null) return stay(state)
       const finish = finishOf(project)
+      if (finish.kind === "idea")
+        return watchOpened(state, project, finish.shot, event.at)
       if (finish.kind !== "note" && finish.kind !== "take") return stay(state)
       const wanted = finish.kind === "take" ? finish.shot : finish.note.shot
       // A note on a scene a later revision dropped opens where work resumes.
@@ -2008,11 +2385,11 @@ export function step(state: StudioState, event: StudioEvent): Step {
       )
       const notice = written.changed
         ? landedNotice(state, pending, written)
-        : unchangedNotice(state, pending)
+        : unchangedNotice(state, pending, written)
       return then(
         then(
           told(
-            landed,
+            written.changed ? landed : ideaUnkept(landed, pending),
             notice,
             written.changed ? null : lostBy(pending, notice)
           ),
@@ -2030,11 +2407,14 @@ export function step(state: StudioState, event: StudioEvent): Step {
       return then(
         then(
           told(
-            {
-              ...state,
-              inFlight: null,
-              activity: pending.kind === "keep" ? { kind: "idle" } : activity,
-            },
+            ideaUnkept(
+              {
+                ...state,
+                inFlight: null,
+                activity: pending.kind === "keep" ? { kind: "idle" } : activity,
+              },
+              pending
+            ),
             notice,
             lostBy(pending, notice)
           ),

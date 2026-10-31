@@ -4,10 +4,10 @@
  * shelf of their own. Phone-only (`build.paths.ts`). What copies a note and
  * when is the home link's voice lane (`lib/home-link/voice`).
  */
+import { sha256Hex } from "@some-ui/core-utils"
 import { SOUNDBITE_TAKE_MAX_BYTES } from "@some-ui/soundbites/contract"
 import { savingShelf } from "@some-ui/voice-capture"
 
-import { sha256Hex } from "@/lib/device-backend/common"
 import { base64 } from "@/lib/share-files"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 

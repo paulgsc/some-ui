@@ -332,7 +332,7 @@ export function journeySaid(j: Journey, noun: Noun, now: Date): Said {
         title: "Goes by the share sheet",
         line:
           j.why === "not-kept"
-            ? `Jobs isn’t kept on home, so nothing goes there by itself. Share ${it} to Drive.`
+            ? `This phone isn’t paired with home, so nothing goes there by itself. Share ${it} to Drive.`
             : `A voice note rides along, and home keeps no audio. Share ${it} to Drive.`,
       }
     }

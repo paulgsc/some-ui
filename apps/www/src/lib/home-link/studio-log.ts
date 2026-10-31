@@ -1,8 +1,8 @@
 /**
- * The Studio half of "Send to home" (`./send`, STUDIO ST9): each sitting of
- * the phone's time log that home does not hold as it is now, one PUT per
- * event, then one read of the sitting back, compared event by event, as
- * LeetType's sessions go (`./leetype-log`); then each sitting's answer to
+ * The Studio part of the one drain (`./drain`, LA15; STUDIO ST9): each
+ * sitting of the phone's time log that home does not hold as it is now, one
+ * PUT per event, then one read of the sitting back, compared event by event,
+ * as LeetType's sessions go (`./leetype-log`); then each sitting's answer to
  * "How did that go?" that home does not hold yet, one PUT each
  * (paulgsc/server `routes::studio_log`). Phone to home only: the phone
  * keeps its whole log and every answer.
@@ -96,14 +96,6 @@ export function studioToSend(
       (report) => sent.studio[reportKey(report.id)] !== canonicalJson(report)
     ),
   }
-}
-
-/** How many sittings a send carries something of. */
-export function sittingsGoing(going: StudioGoing): number {
-  return new Set([
-    ...going.sittings.map((sitting) => sitting.name),
-    ...going.reports.map((report) => report.sitting),
-  ]).size
 }
 
 const sittingPath = (sitting: string): string =>

@@ -11,8 +11,8 @@
  * audio under that id) or a `422` naming the note's fields is a refusal,
  * kept and never sent again. A `422` naming only the body means the bytes
  * did not arrive (Android 7's native request sends none): not the note's
- * fault, so it ends the exchange and the note waits. A `409` saying this
- * phone stopped sending them refuses nothing and ends the exchange.
+ * fault, so it ends the exchange and the note waits. A `409` that
+ * `stoppedOnHome` reads refuses nothing and ends the exchange.
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import {

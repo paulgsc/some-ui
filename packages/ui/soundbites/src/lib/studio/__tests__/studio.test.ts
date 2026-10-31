@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import { inMemoryStorage } from "@some-ui/core-utils"
-import type { ShotTime } from "@some-ui/video-render"
+import type { Idea, Shot, ShotTime } from "@some-ui/video-render"
 import { REVIEW_SCHEMA } from "@some-ui/video-render"
 import type {
   Playback,
@@ -11,14 +11,20 @@ import type {
 import { fakeMic } from "@soundbites/lib/fake-mic"
 import type { Listened } from "@soundbites/lib/idea/machine"
 import type { IdeaListener, Listening } from "@soundbites/lib/idea/runtime"
-import { run, started, take } from "@soundbites/lib/project/__tests__/fixture"
+import {
+  run,
+  shot,
+  started,
+  take,
+} from "@soundbites/lib/project/__tests__/fixture"
 import { projectFile, readProjectFile } from "@soundbites/lib/project/file"
 import { finishOf } from "@soundbites/lib/project/finish"
+import { primerAt } from "@soundbites/lib/project/lookup"
 import { memoryProjectStore } from "@soundbites/lib/project/memory-store"
 import type { CutListShape, Project } from "@soundbites/lib/project/model"
-import { latest, newProject, primerAt } from "@soundbites/lib/project/model"
+import { latest, newProject } from "@soundbites/lib/project/model"
 import { cutListOf, TAIL_MS } from "@soundbites/lib/project/script"
-import type { Speaking } from "@soundbites/lib/studio/machine"
+import type { OriginFix, Speaking } from "@soundbites/lib/studio/machine"
 import {
   initialStudioState,
   projectOf,
@@ -27,7 +33,8 @@ import {
 import type { StudioRuntime } from "@soundbites/lib/studio/runtime"
 import { createStudio } from "@soundbites/lib/studio/runtime"
 import { keptTimeLog } from "@soundbites/lib/studio/time-store"
-import { othersOnPhone } from "@soundbites/lib/studio/view"
+import { othersOnPhone, startView } from "@soundbites/lib/studio/view"
+import { ideaAsking } from "@soundbites/lib/studio/watch"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { describe, expect, it, vi } from "vitest"
 
@@ -1231,15 +1238,69 @@ describe("Shape", () => {
 })
 
 /** ST7: Finish names the one thing missing, then keeps the mark and the link. */
+/** The latest version's review render picked on Watch, and read; its scene times. */
+async function reviewPicked(
+  runtime: StudioRuntime
+): Promise<ReadonlyArray<ShotTime>> {
+  const { rev, cutList } = latest(projectIn(runtime))
+  let start = 0
+  const shotTimes = cutList.shots.map((each) => {
+    const at = start
+    start += each.durationMs
+    return {
+      id: each.id,
+      cut: null,
+      startMs: at,
+      durationMs: each.durationMs,
+    }
+  })
+  runtime.dispatch({
+    type: "reviewPicked",
+    files: [
+      new Blob(["v"], { type: "video/mp4" }),
+      new Blob(
+        [
+          JSON.stringify({
+            schema: REVIEW_SCHEMA,
+            title: cutList.title,
+            rev,
+            shotTimes,
+          }),
+        ],
+        {
+          type: "application/json",
+        }
+      ),
+    ],
+  })
+  await until(
+    runtime,
+    (state) => state.screen.kind === "watch" && state.screen.review !== null
+  )
+  return shotTimes
+}
+
 describe("Finish", () => {
-  /** A video kept on the phone with every scene taken. */
-  async function taken(): Promise<Running> {
+  /** A video kept on the phone with every scene taken, and whose idea each is said of `said`. */
+  async function taken(
+    said: ReadonlyArray<string> = ["a", "b", "c"]
+  ): Promise<Running> {
     const state = ["a", "b", "c"].reduce(
       (at, id) =>
         run(at, { type: "takeStarted", shot: id }, take(`t-${id}`, id)),
       started()
     )
-    const runtime = studio(memoryProjectStore([state.project]))
+    const confirmed = said.reduce(
+      (at, id) =>
+        run(at, {
+          type: "originSaid",
+          shot: id,
+          idea: { origin: "agent" },
+          at: AT,
+        }),
+      state
+    )
+    const runtime = studio(memoryProjectStore([confirmed.project]))
     await until(runtime, (each) => projectOf(each) !== null)
     runtime.dispatch({ type: "finishChosen" })
     return runtime
@@ -1255,6 +1316,29 @@ describe("Finish", () => {
       kind: "record",
       shot: first?.id,
     })
+  })
+
+  it("waits on whose idea each scene is, and opens Watch at the first scene asked", async () => {
+    const runtime = await taken(["a"])
+    expect(finishOf(projectIn(runtime))).toEqual({
+      kind: "idea",
+      rev: 1,
+      shot: "b",
+      n: 2,
+      count: 2,
+    })
+    runtime.dispatch({ type: "readyMarked" })
+    expect(runtime.getSnapshot().queue).toEqual([])
+    runtime.dispatch({ type: "finishGo" })
+    expect(runtime.getSnapshot().screen).toMatchObject({
+      kind: "watch",
+      startAt: "b",
+    })
+    const [, second] = await reviewPicked(runtime)
+    const { screen } = runtime.getSnapshot()
+    if (screen.kind !== "watch") throw new Error("watch")
+    expect(screen.atMs).toBe(second?.startMs)
+    expect(ideaAsking(projectIn(runtime), screen, [])).toBe("b")
   })
 
   it("keeps the owner's mark, then the YouTube link, on the latest version", async () => {
@@ -1385,43 +1469,8 @@ describe("Watch", () => {
   async function watching(
     runtime: StudioRuntime
   ): Promise<ReadonlyArray<ShotTime>> {
-    const { rev, cutList } = latest(projectIn(runtime))
-    let start = 0
-    const shotTimes = cutList.shots.map((each) => {
-      const at = start
-      start += each.durationMs
-      return {
-        id: each.id,
-        cut: null,
-        startMs: at,
-        durationMs: each.durationMs,
-      }
-    })
     runtime.dispatch({ type: "watchChosen" })
-    runtime.dispatch({
-      type: "reviewPicked",
-      files: [
-        new Blob(["v"], { type: "video/mp4" }),
-        new Blob(
-          [
-            JSON.stringify({
-              schema: REVIEW_SCHEMA,
-              title: cutList.title,
-              rev,
-              shotTimes,
-            }),
-          ],
-          {
-            type: "application/json",
-          }
-        ),
-      ],
-    })
-    await until(
-      runtime,
-      (state) => state.screen.kind === "watch" && state.screen.review !== null
-    )
-    return shotTimes
+    return reviewPicked(runtime)
   }
 
   it("pins a note to the scene and offset playing, from the render's own times", async () => {
@@ -1631,6 +1680,302 @@ describe("Watch", () => {
     )
     runtime.dispatch({ type: "speakPressed" })
     expect(voice.listens()).toBe(0)
+  })
+
+  /**
+   * A video with scene a taken, and scene b's idea Claude's version gave as
+   * the owner's, from an answer of the idea it came from (ST19); each scene
+   * runs 2 s.
+   */
+  function withIdeas(): Project {
+    const taken = run(
+      started(),
+      { type: "takeStarted", shot: "a" },
+      take("t-a", "a")
+    )
+    const { cutList } = latest(taken.project)
+    return run(taken, {
+      type: "revised",
+      author: "claude",
+      message: "From your idea",
+      at: AT,
+      cutList: {
+        ...cutList,
+        shots: cutList.shots.map((each) =>
+          each.id === "b"
+            ? {
+                ...each,
+                idea: { origin: "you", from: { kind: "idea", id: "i1/what" } },
+              }
+            : each
+        ),
+      },
+    }).project
+  }
+
+  /** `project` with Claude's next version giving scene `id` `idea`. */
+  function claudeGives(project: Project, id: string, idea: Idea): Project {
+    const { cutList } = latest(project)
+    return run(
+      { project, taking: null, closing: null },
+      {
+        type: "revised",
+        author: "claude",
+        message: "Another idea",
+        at: AT,
+        cutList: {
+          ...cutList,
+          shots: cutList.shots.map((each) =>
+            each.id === id ? { ...each, idea } : each
+          ),
+        },
+      }
+    ).project
+  }
+
+  async function watchingIdeas(
+    listener?: IdeaListener,
+    memory = memoryProjectStore([withIdeas()])
+  ): Promise<Running> {
+    const runtime = studio(memory, fakeMic(), "t", undefined, listener)
+    await until(runtime, (state) => projectOf(state) !== null)
+    await watching(runtime)
+    return runtime
+  }
+
+  const fixIn = (
+    state: ReturnType<StudioRuntime["getSnapshot"]>
+  ): OriginFix | null =>
+    state.screen.kind === "watch" ? state.screen.origin : null
+
+  const ideaKept = (state: ReturnType<StudioRuntime["getSnapshot"]>): boolean =>
+    settledWrites(state) && state.notice === STUDIO_WORDS.origin.kept
+
+  it("asks whose idea the scene playing is, and keeps That's right as the owner's word (ST5)", async () => {
+    const runtime = await watchingIdeas()
+    const before = projectIn(runtime)
+    expect(
+      startView(before).sittings.find((row) => row.kind === "watch")?.status
+    ).toBe(STUDIO_WORDS.watch.status(0, 3))
+    runtime.dispatch({ type: "playheadAt", ms: 500 })
+    // Only the scene playing is asked about.
+    runtime.dispatch({ type: "ideaRight", shot: "b" })
+    expect(runtime.getSnapshot().queue).toEqual([])
+    runtime.dispatch({ type: "ideaRight", shot: "a" })
+    await until(runtime, ideaKept)
+    const project = projectIn(runtime)
+    expect(project.revisions).toEqual(before.revisions)
+    expect(project.origins).toEqual([
+      { shot: "a", rev: 2, at: expect.any(String), idea: { origin: "agent" } },
+    ])
+    const { screen } = runtime.getSnapshot()
+    if (screen.kind !== "watch") throw new Error("watch")
+    expect(ideaAsking(project, { ...screen, atMs: 500 }, [])).toBeNull()
+    expect(ideaAsking(project, { ...screen, atMs: 2_500 }, [])).toBe("b")
+  })
+
+  it("puts a scene right as yours, in its take: a new version of yours carrying it", async () => {
+    const runtime = await watchingIdeas()
+    runtime.dispatch({ type: "playheadAt", ms: 600 })
+    runtime.dispatch({ type: "ideaNotQuite", shot: "a" })
+    // Claude's already: putting it right can only make it yours.
+    expect(fixIn(runtime.getSnapshot())).toEqual({
+      shot: "a",
+      offsetMs: 600,
+      step: "words",
+      asked: { origin: "agent" },
+    })
+    runtime.dispatch({ type: "ideaInTake" })
+    await until(runtime, ideaKept)
+    const project = projectIn(runtime)
+    const idea = { origin: "you", from: { kind: "take", id: "t-a" } } as const
+    expect(latest(project)).toMatchObject({
+      rev: 3,
+      author: "owner",
+      message: STUDIO_WORDS.origin.revised(1, { who: "you", from: "take" }),
+    })
+    expect(latest(project).cutList.shots[0]?.idea).toEqual(idea)
+    expect(project.origins).toEqual([
+      { shot: "a", rev: 3, at: expect.any(String), idea },
+    ])
+    expect(fixIn(runtime.getSnapshot())).toBeNull()
+  })
+
+  it("puts yours right as Claude's, and asks nothing more of that scene", async () => {
+    const runtime = await watchingIdeas()
+    runtime.dispatch({ type: "playheadAt", ms: 2_500 })
+    runtime.dispatch({ type: "ideaNotQuite", shot: "b" })
+    expect(fixIn(runtime.getSnapshot())?.step).toBe("who")
+    runtime.dispatch({ type: "ideaWho", who: "agent" })
+    await until(runtime, ideaKept)
+    const project = projectIn(runtime)
+    expect(latest(project).cutList.shots[1]?.idea).toEqual({ origin: "agent" })
+    expect(latest(project).message).toBe(
+      STUDIO_WORDS.origin.revised(2, { who: "agent" })
+    )
+    expect(project.origins?.at(-1)).toMatchObject({ shot: "b", rev: 3 })
+  })
+
+  it("keeps yours in words typed now as your note, which leaves nothing open for Finish", async () => {
+    const runtime = await watchingIdeas()
+    runtime.dispatch({ type: "playheadAt", ms: 4_300 })
+    runtime.dispatch({ type: "ideaNotQuite", shot: "c" })
+    runtime.dispatch({ type: "ideaInWords", text: "  " })
+    expect(runtime.getSnapshot().queue).toEqual([])
+    runtime.dispatch({ type: "ideaInWords", text: "From my notebook, week 8" })
+    await until(runtime, ideaKept)
+    const project = projectIn(runtime)
+    const [note] = project.notes
+    expect(note).toMatchObject({
+      rev: 3,
+      shot: "c",
+      offsetMs: 300,
+      author: "owner",
+      text: "From my notebook, week 8",
+      status: "confirmed",
+    })
+    expect(latest(project).cutList.shots[2]?.idea).toEqual({
+      origin: "you",
+      from: { kind: "note", id: note?.id },
+    })
+    expect(finishOf(project).kind).not.toBe("note")
+    expect(readProjectFile(projectFile(project)).ok).toBe(true)
+  })
+
+  it("keeps yours in words said now, through the phone's recognizer", async () => {
+    const voice = fakeListener()
+    const runtime = await watchingIdeas(voice.listener)
+    await until(
+      runtime,
+      (state) =>
+        state.screen.kind === "watch" && state.screen.listen === "available"
+    )
+    runtime.dispatch({ type: "playheadAt", ms: 4_300 })
+    runtime.dispatch({ type: "ideaNotQuite", shot: "c" })
+    runtime.dispatch({ type: "playheadAt", ms: 5_000 })
+    runtime.dispatch({ type: "speakPressed" })
+    expect(speakingIn(runtime.getSnapshot())?.for).toBe("idea")
+    voice.end({ kind: "heard", words: "It came to me at the game" })
+    await until(runtime, (state) => speakingIn(state)?.phase === "heard")
+    runtime.dispatch({ type: "spokenKept" })
+    await until(runtime, ideaKept)
+    expect(projectIn(runtime).notes).toEqual([
+      expect.objectContaining({
+        shot: "c",
+        offsetMs: 300,
+        text: "It came to me at the game",
+        status: "confirmed",
+      }),
+    ])
+  })
+
+  it("leaves a correction begun with nothing kept", async () => {
+    const voice = fakeListener()
+    const runtime = await watchingIdeas(voice.listener)
+    await until(
+      runtime,
+      (state) =>
+        state.screen.kind === "watch" && state.screen.listen === "available"
+    )
+    const before = projectIn(runtime)
+    runtime.dispatch({ type: "playheadAt", ms: 4_300 })
+    runtime.dispatch({ type: "ideaNotQuite", shot: "c" })
+    runtime.dispatch({ type: "speakPressed" })
+    runtime.dispatch({ type: "ideaBack" })
+    expect(fixIn(runtime.getSnapshot())).toBeNull()
+    expect(speakingIn(runtime.getSnapshot())).toBeNull()
+    expect(projectIn(runtime)).toEqual(before)
+  })
+
+  it("never asks of a bare card, nor counts it on Start", async () => {
+    const ideas = withIdeas()
+    const { cutList } = latest(ideas)
+    const end: Shot = { ...shot("end"), picture: { kind: "card" } }
+    const carded = run(
+      { project: ideas, taking: null, closing: null },
+      {
+        type: "revised",
+        author: "claude",
+        message: "The series' end card",
+        at: AT,
+        cutList: { ...cutList, shots: [...cutList.shots, end] },
+      }
+    ).project
+    const runtime = await watchingIdeas(undefined, memoryProjectStore([carded]))
+    expect(
+      startView(carded).sittings.find((row) => row.kind === "watch")?.status
+    ).toBe(STUDIO_WORDS.watch.status(0, 3))
+    const { screen } = runtime.getSnapshot()
+    if (screen.kind !== "watch") throw new Error("watch")
+    expect(ideaAsking(carded, { ...screen, atMs: 4_300 }, [])).toBe("c")
+    expect(ideaAsking(carded, { ...screen, atMs: 6_300 }, [])).toBeNull()
+    runtime.dispatch({ type: "playheadAt", ms: 6_300 })
+    runtime.dispatch({ type: "ideaRight", shot: "end" })
+    expect(runtime.getSnapshot().queue).toEqual([])
+  })
+
+  it("keeps nothing of That's right once another screen changed that idea, and asks again", async () => {
+    const memory = memoryProjectStore([withIdeas()])
+    const runtime = await watchingIdeas(undefined, memory)
+    runtime.dispatch({ type: "playheadAt", ms: 500 })
+    const gate = holdWrites(memory)
+    runtime.dispatch({ type: "ideaRight", shot: "a" })
+    await until(runtime, (state) => state.inFlight?.kind === "idea")
+    // Another screen keeps Claude's version giving scene a a source first.
+    const moved = claudeGives(projectIn(runtime), "a", {
+      origin: "source",
+      from: { title: "Week 8 picks", ref: "w8" },
+    })
+    memory.projects.set(moved.id, moved)
+    gate.open()
+    await until(runtime, settledWrites)
+    expect(memory.projects.get(moved.id)).toEqual(moved)
+    const state = runtime.getSnapshot()
+    expect(state.notice).toBe(STUDIO_WORDS.origin.moved(1))
+    if (state.screen.kind !== "watch") throw new Error("watch")
+    expect(ideaAsking(projectIn(runtime), state.screen, [])).toBe("a")
+  })
+
+  it("asks again after an answer that wasn't kept, with a correction's words back", async () => {
+    const memory = memoryProjectStore([withIdeas()])
+    const runtime = await watchingIdeas(undefined, memory)
+    runtime.dispatch({ type: "playheadAt", ms: 500 })
+    const gate = holdWrites(memory)
+    runtime.dispatch({ type: "ideaRight", shot: "a" })
+    await until(runtime, (state) => state.inFlight?.kind === "idea")
+    // While it is on its way, the scene isn't asked again.
+    runtime.dispatch({ type: "ideaRight", shot: "a" })
+    expect(runtime.getSnapshot().queue).toEqual([])
+    gate.refuse()
+    await until(
+      runtime,
+      (state) =>
+        settledWrites(state) && state.notice === STUDIO_WORDS.notice.notSaved
+    )
+    runtime.dispatch({ type: "ideaRight", shot: "a" })
+    await until(runtime, ideaKept)
+    expect(projectIn(runtime).origins).toHaveLength(1)
+
+    runtime.dispatch({ type: "playheadAt", ms: 4_300 })
+    runtime.dispatch({ type: "ideaNotQuite", shot: "c" })
+    const again = holdWrites(memory)
+    runtime.dispatch({ type: "ideaInWords", text: "From my notebook" })
+    await until(runtime, (state) => state.inFlight?.kind === "idea")
+    expect(fixIn(runtime.getSnapshot())).toBeNull()
+    again.refuse()
+    await until(runtime, settledWrites)
+    expect(fixIn(runtime.getSnapshot())).toEqual({
+      shot: "c",
+      offsetMs: 300,
+      step: "words",
+      asked: { origin: "agent" },
+      draft: "From my notebook",
+    })
+    runtime.dispatch({ type: "ideaInWords", text: "From my notebook" })
+    await until(runtime, ideaKept)
+    expect(projectIn(runtime).notes.map((note) => note.text)).toEqual([
+      "From my notebook",
+    ])
   })
 
   it("asks for the video and the notes beside it together", async () => {

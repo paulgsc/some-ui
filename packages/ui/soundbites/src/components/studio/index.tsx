@@ -29,20 +29,30 @@ import type { Project } from "@soundbites/lib/project/model"
 import { latest } from "@soundbites/lib/project/model"
 import { lengthFor } from "@soundbites/lib/project/script"
 import type { StudioIntent, StudioState } from "@soundbites/lib/studio/machine"
-import { isSettled, projectOf } from "@soundbites/lib/studio/machine"
+import {
+  ideasAnswering,
+  isSettled,
+  projectOf,
+} from "@soundbites/lib/studio/machine"
 import type { StudioPorts } from "@soundbites/lib/studio/runtime"
 import { createStudio } from "@soundbites/lib/studio/runtime"
 import { timeView } from "@soundbites/lib/studio/time-log"
-import type { RecordView } from "@soundbites/lib/studio/view"
+import type { OriginView, RecordView } from "@soundbites/lib/studio/view"
 import {
   historyView,
   opensOn,
+  originView,
   othersOnPhone,
   recordView,
   startView,
   takesOnPhone,
 } from "@soundbites/lib/studio/view"
-import { askedAt, changesIn, shotAt } from "@soundbites/lib/studio/watch"
+import {
+  askedAt,
+  changesIn,
+  ideaAsking,
+  shotAt,
+} from "@soundbites/lib/studio/watch"
 import type { SittingKind, Snag, Went } from "@soundbites/lib/studio/words"
 import { SITTING_KINDS, STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { Mic, Pause, Play, Square } from "lucide-react"
@@ -788,9 +798,12 @@ type WatchScreen = Extract<StudioState["screen"], { kind: "watch" }>
 /** The picked render, played from the file where it is: never copied in. */
 const ReviewVideo = ({
   video,
+  startMs,
   dispatch,
 }: {
   video: Blob
+  /** Where it starts playing once loaded: Watch's playhead then. */
+  startMs: number
   dispatch: Dispatch
 }): JSX.Element => {
   const url = useMemo(() => URL.createObjectURL(video), [video])
@@ -807,6 +820,9 @@ const ReviewVideo = ({
       controls
       playsInline
       className="w-full rounded-2xl bg-black"
+      onLoadedMetadata={(event) => {
+        event.currentTarget.currentTime = startMs / 1_000
+      }}
       onTimeUpdate={(event) =>
         dispatch({
           type: "playheadAt",
@@ -819,7 +835,8 @@ const ReviewVideo = ({
 
 /**
  * Watch (STUDIO ST5): a review render, one button to note the moment on
- * screen, and each of Claude's changes asked once the playhead reaches it.
+ * screen, each of Claude's changes asked once the playhead reaches it, and
+ * then whose idea the scene playing is, until the owner has said so.
  */
 const Watch = ({
   state,
@@ -841,6 +858,13 @@ const Watch = ({
       ? null
       : askedAt(changesIn(project, review), screen.atMs, screen.answered)
   const here = review === null ? null : shotAt(review, screen.atMs)
+  const idea = ideaAsking(project, screen, ideasAnswering(state, project.id))
+  const scene =
+    screen.origin !== null
+      ? originView(project, screen.origin.shot)
+      : here === null
+        ? null
+        : originView(project, here.shot)
   return (
     <div className="flex flex-col gap-3">
       <h2 className="text-2xl font-extrabold">{words.heading}</h2>
@@ -860,7 +884,11 @@ const Watch = ({
         </label>
       ) : (
         <>
-          <ReviewVideo video={video} dispatch={dispatch} />
+          <ReviewVideo
+            video={video}
+            startMs={screen.atMs}
+            dispatch={dispatch}
+          />
           {asked !== null && (
             <div className="border-brand space-y-2 rounded-2xl border-2 p-3">
               <p className="text-sm">{words.changed(asked.note.text)}</p>
@@ -883,38 +911,42 @@ const Watch = ({
               </div>
             </div>
           )}
-          <form
-            className="flex flex-col gap-2"
-            onSubmit={(event) => {
-              event.preventDefault()
-              dispatch({ type: "notedHere", text })
-              setText("")
-            }}
-          >
-            <label htmlFor={noteId} className="text-sm font-semibold">
-              {words.noteLabel}
-            </label>
-            <input
-              id={noteId}
-              value={text}
-              onChange={(event) => setText(event.currentTarget.value)}
-              className="border-input bg-background focus-visible:ring-ring rounded-xl border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
-            />
-            <Button
-              type="submit"
-              size="lg"
-              disabled={text.trim() === "" || here === null}
-            >
-              {words.noteHere(screen.atMs)}
-            </Button>
-          </form>
-          {screen.listen === "available" && (
-            <SpokenNote
+          {screen.origin !== null && scene !== null ? (
+            <IdeaFix
+              fix={screen.origin}
+              initialText={screen.origin.draft ?? ""}
+              scene={scene}
+              listen={screen.listen === "available"}
               speaking={screen.speaking}
               atMs={screen.atMs}
-              canStart={here !== null}
               dispatch={dispatch}
             />
+          ) : (
+            <>
+              {scene !== null && asked === null && (
+                <IdeaAsk
+                  scene={scene}
+                  asking={idea === scene.shot}
+                  dispatch={dispatch}
+                />
+              )}
+              <NoteHere
+                text={text}
+                setText={setText}
+                noteId={noteId}
+                canNote={here !== null}
+                atMs={screen.atMs}
+                dispatch={dispatch}
+              />
+              {screen.listen === "available" && (
+                <SpokenNote
+                  speaking={screen.speaking}
+                  atMs={screen.atMs}
+                  canStart={here !== null}
+                  dispatch={dispatch}
+                />
+              )}
+            </>
           )}
         </>
       )}
@@ -922,6 +954,194 @@ const Watch = ({
         {words.back}
       </Button>
       <Notice text={state.notice} />
+    </div>
+  )
+}
+
+/** Watch's one main button: a typed note, pinned to the moment on screen. */
+const NoteHere = ({
+  text,
+  setText,
+  noteId,
+  canNote,
+  atMs,
+  dispatch,
+}: {
+  text: string
+  setText: (text: string) => void
+  noteId: string
+  canNote: boolean
+  atMs: number
+  dispatch: Dispatch
+}): JSX.Element => {
+  const words = WORDS.watch
+  return (
+    <form
+      className="flex flex-col gap-2"
+      onSubmit={(event) => {
+        event.preventDefault()
+        dispatch({ type: "notedHere", text })
+        setText("")
+      }}
+    >
+      <label htmlFor={noteId} className="text-sm font-semibold">
+        {words.noteLabel}
+      </label>
+      <input
+        id={noteId}
+        value={text}
+        onChange={(event) => setText(event.currentTarget.value)}
+        className="border-input bg-background focus-visible:ring-ring rounded-xl border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
+      />
+      <Button type="submit" size="lg" disabled={text.trim() === "" || !canNote}>
+        {words.noteHere(atMs)}
+      </Button>
+    </form>
+  )
+}
+
+/**
+ * Whose idea the scene playing is (ST5, ST16): asked once, That's right or
+ * Not quite, until the owner has said it of the scene as it stands; then
+ * said, quietly, as the scene plays.
+ */
+const IdeaAsk = ({
+  scene,
+  asking,
+  dispatch,
+}: {
+  scene: OriginView
+  asking: boolean
+  dispatch: Dispatch
+}): JSX.Element | null => {
+  const words = WORDS.origin
+  if (!asking)
+    return scene.confirmed ? (
+      <p className="text-muted-foreground text-sm">
+        {words.said(scene.n, scene.whose)}
+      </p>
+    ) : null
+  return (
+    <div className="border-brand space-y-2 rounded-2xl border-2 p-3">
+      <p className="font-semibold">{words.question(scene.n)}</p>
+      <p className="text-sm">{words.proposed(scene.whose)}</p>
+      <div className="flex gap-2">
+        <Button
+          onClick={() => dispatch({ type: "ideaRight", shot: scene.shot })}
+        >
+          {words.right}
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => dispatch({ type: "ideaNotQuite", shot: scene.shot })}
+        >
+          {words.notQuite}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+type OriginFix = NonNullable<WatchScreen["origin"]>
+
+/**
+ * Putting a scene's idea right (ST5): whose it is, then, for yours, where
+ * your own words are: the scene's take, or words typed or said now, kept as
+ * your note. The video credits you with an idea only where they show it.
+ */
+const IdeaFix = ({
+  fix,
+  initialText,
+  scene,
+  listen,
+  speaking,
+  atMs,
+  dispatch,
+}: {
+  fix: OriginFix
+  /** The words of this correction not kept last time, read once. */
+  initialText: string
+  scene: OriginView
+  listen: boolean
+  speaking: WatchScreen["speaking"]
+  atMs: number
+  dispatch: Dispatch
+}): JSX.Element => {
+  const wordsId = useId()
+  // An edit buffer for this correction alone: it mounts with it.
+  const [text, setText] = useState(initialText)
+  const words = WORDS.origin
+  const back = (
+    <Button variant="ghost" onClick={() => dispatch({ type: "ideaBack" })}>
+      {words.back}
+    </Button>
+  )
+  if (fix.step === "who")
+    return (
+      <div className="border-brand flex flex-col gap-2 rounded-2xl border-2 p-3">
+        <p className="font-semibold">{words.who}</p>
+        <Button
+          size="lg"
+          onClick={() => dispatch({ type: "ideaWho", who: "you" })}
+        >
+          {scene.idea.origin === "you" ? words.mineElse : words.mine}
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => dispatch({ type: "ideaWho", who: "agent" })}
+        >
+          {words.claudes}
+        </Button>
+        {back}
+      </div>
+    )
+  const take = scene.take
+  return (
+    <div className="border-brand flex flex-col gap-2 rounded-2xl border-2 p-3">
+      <p className="font-semibold">{words.where}</p>
+      <p className="text-muted-foreground text-sm">{words.whereHint}</p>
+      {take !== null && speaking === null && (
+        <Button size="lg" onClick={() => dispatch({ type: "ideaInTake" })}>
+          {words.inTake}
+        </Button>
+      )}
+      {speaking === null && (
+        <form
+          className="flex flex-col gap-2"
+          onSubmit={(event) => {
+            event.preventDefault()
+            dispatch({ type: "ideaInWords", text })
+          }}
+        >
+          <label htmlFor={wordsId} className="text-sm font-semibold">
+            {words.wordsLabel}
+          </label>
+          <input
+            id={wordsId}
+            value={text}
+            onChange={(event) => setText(event.currentTarget.value)}
+            className="border-input bg-background focus-visible:ring-ring rounded-xl border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
+          />
+          <Button
+            type="submit"
+            variant={take === null ? "default" : "outline"}
+            disabled={text.trim() === ""}
+          >
+            {words.keepWords}
+          </Button>
+        </form>
+      )}
+      {listen && (
+        <SpokenNote
+          speaking={speaking}
+          atMs={atMs}
+          canStart
+          dispatch={dispatch}
+          start={words.say}
+          keep={words.keepWords}
+        />
+      )}
+      {back}
     </div>
   )
 }
@@ -935,11 +1155,16 @@ const SpokenNote = ({
   atMs,
   canStart,
   dispatch,
+  start,
+  keep,
 }: {
   speaking: WatchScreen["speaking"]
   atMs: number
   canStart: boolean
   dispatch: Dispatch
+  /** What its buttons say, when the words are for a scene's idea. */
+  start?: string
+  keep?: string
 }): JSX.Element => {
   const words = WORDS.watch
   if (speaking === null)
@@ -951,7 +1176,7 @@ const SpokenNote = ({
         onClick={() => dispatch({ type: "speakPressed" })}
       >
         <Mic aria-hidden />
-        {words.say(atMs)}
+        {start ?? words.say(atMs)}
       </Button>
     )
   if (speaking.phase === "listening" || speaking.phase === "finishing") {
@@ -985,7 +1210,7 @@ const SpokenNote = ({
     <div className="border-brand flex flex-col gap-2 rounded-2xl border-2 p-3">
       <p className="text-sm">{speaking.words}</p>
       <Button size="lg" onClick={() => dispatch({ type: "spokenKept" })}>
-        {words.keepSaid(speaking.atMs)}
+        {keep ?? words.keepSaid(speaking.atMs)}
       </Button>
       <div className="flex gap-2">
         <Button
@@ -1039,6 +1264,14 @@ const Finish = ({
           <p className="text-sm">{words.take(finish.n)}</p>
           <Button size="lg" onClick={() => dispatch({ type: "finishGo" })}>
             {words.goTake(finish.n)}
+          </Button>
+        </>
+      )}
+      {finish.kind === "idea" && (
+        <>
+          <p className="text-sm">{words.idea(finish.count)}</p>
+          <Button size="lg" onClick={() => dispatch({ type: "finishGo" })}>
+            {words.goIdea(finish.n)}
           </Button>
         </>
       )}

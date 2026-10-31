@@ -1,5 +1,6 @@
 export * from "./authorship"
 export * from "./cut-list"
+export * from "./hearings"
 export * from "./plan"
 export * from "./plans"
 export * from "./render"

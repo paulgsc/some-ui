@@ -36,6 +36,8 @@ Each module's header says why it is the way it is.
   ports; `src/node.ts` gives it ffmpeg and the file system.
 - `src/steps.ts`: who owns each step of making a video, now and by when
   (ST10, #2258); its test holds the rules for moving one.
+- `src/take-check.ts`, `src/hearings.ts`: does a take say what its cut
+  asks (ST21, #2321), and its two hearings lined up (ST25, #2323).
 - `src/authorship.ts`: whose idea and whose hands each scene shows (ST16,
   #2274), read from each scene's `idea`, its voice and the step table. A
   video carries the mark as a video-wide `authorship` burn-in with no

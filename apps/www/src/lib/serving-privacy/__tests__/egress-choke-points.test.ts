@@ -15,12 +15,12 @@
  *   `no-restricted-globals` cannot see it, and `no-restricted-imports`
  *   misses a dynamic `import()` and `Capacitor.Plugins.CapacitorHttp`: only
  *   `lib/device-backend/native-http` may name it, only `lib/home-link` may
- *   call that module, and only the Home server block, the mark of a record
- *   kept on home (aph, LA9; the Jobs record, LA10; Practice, LA11), what
- *   hands aph's lane to that mark, and the choice and port of the routine's
- *   files in Korean (LA12, whose read sends one `GET /routine/files` and
- *   whose telling of what was opened one `PUT /routine/opened`) may call
- *   `lib/home-link`.
+ *   call that module, and only the Home server block, the drain and marks
+ *   of what this phone keeps on home (LA15), what hands aph's lane to them,
+ *   Settings' readout of what is kept where, and the readout and port of
+ *   the routine's files in Korean (whose read sends one `GET /routine/files`
+ *   and whose telling of what was opened one `PUT /routine/opened`) may
+ *   call `lib/home-link`.
  *
  * The last group feeds the checks known-bad sources, so a check that stopped
  * looking cannot stay green.
@@ -48,18 +48,16 @@ const NATIVE_HTTP = "lib/device-backend/native-http/index.ts"
 const NATIVE_HTTP_CALLERS = new Set(["lib/home-link/index.ts"])
 const HOME_LINK_CALLERS = new Set([
   "components/settings/device-section.tsx",
-  // LA13: Settings' choice to keep voice notes on home.
-  "components/settings/device-voice-home.tsx",
-  // Settings' ledger of what is shared: it reads the choices, and stops
-  // Practice and the Jobs record on a second press (LA9); the status page's
-  // rows for the same records are read here too, sending nothing.
-  "components/settings/device-sharing-ledger.tsx",
-  // LA9 to LA11: the mark of a record kept on home, in the header, which
-  // mounts its lane's watch, and what hands aph's lane to it.
+  // Settings' readout of what this phone keeps on home and what waits
+  // (LA15), with Send now; the status page's rows for the same records are
+  // read here too, sending nothing of their own.
+  "components/settings/device-kept-on-home.tsx",
+  // LA15: the drain, mounted by the app shell, the mark of a record in the
+  // header, and what hands aph's lane to them.
   "components/device-home-glyph.tsx",
   "components/aph/device-aph-lane.tsx",
-  // LA12: Settings' choice to show the routine's files in Korean, and the
-  // port Korean reads them through.
+  // Settings' readout of Korean's look at the routine's files, and the port
+  // Korean reads them through.
   "components/settings/device-routine-reads.tsx",
   "components/player/device-routine-files.ts",
   // LA13: game day's line of what of its bites waits on the phone for home
@@ -68,9 +66,9 @@ const HOME_LINK_CALLERS = new Set([
 ])
 
 /**
- * LA9, LA10 and LA11: the one wiring of every record kept on home, which
- * calls the link's `keep`, and the runtime it hands that port; and LA12:
- * Korean's read of the routine's files.
+ * LA15: the one wiring of every record this phone drains to home, which
+ * calls the link's `keep`, and the runtime it hands that port; and Korean's
+ * read of the routine's files.
  */
 const KEEPERS = new Set([
   "lib/home-link/lanes.ts",
@@ -78,7 +76,7 @@ const KEEPERS = new Set([
   "lib/home-link/routine.ts",
 ])
 
-/** LA12: the routine's read, and the two requests it may send. */
+/** The routine's read, and the two requests it may send. */
 const ROUTINE_READ = "lib/home-link/routine.ts"
 const ROUTINE_SENDS = [
   ['"GET"', '"/routine/files"'],
@@ -464,7 +462,7 @@ describe("LA8: the phone reaches home through one module", () => {
     ).toEqual([])
   })
 
-  it("calls the link's keep only from a record's keeping (LA9, LA10, LA11)", () => {
+  it("calls the link's keep only from the drain and Korean's look (LA15)", () => {
     const keeps = (f: string): boolean => /\.keep\(/.test(read(f))
     const reach = sources.filter(
       (f) =>
@@ -476,7 +474,7 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(read(ROUTINE_READ)).toContain("homeLink().keep(")
   })
 
-  it("sends nothing from the routine's read but one GET /routine/files and one PUT /routine/opened (LA12)", () => {
+  it("sends nothing from the routine's read but one GET /routine/files and one PUT /routine/opened", () => {
     expect(sendCalls(ROUTINE_READ, read(ROUTINE_READ))).toEqual(ROUTINE_SENDS)
   })
 

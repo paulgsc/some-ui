@@ -133,7 +133,7 @@ export function outboxLine(view: OutboxView): string {
     lines.push(
       view.sending
         ? `${bites} on this phone until home has ${view.waiting === 1 ? "it" : "them"}.`
-        : `${bites} on this phone. They go home once you keep voice notes on home, in Settings.`
+        : `${bites} on this phone. They go home once this phone is paired with home, in Settings.`
     )
   }
   if (view.refused > 0) {

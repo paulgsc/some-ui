@@ -25,6 +25,7 @@
  * - **Never evicted.** A full shelf is the host's `409`, reported as
  *   `full`; the learner removes something, the app never does.
  */
+import { sha256Hex } from "@some-ui/core-utils"
 
 /** One kept item, as the shelf's listing describes it: never its body. */
 export type ShelfItem = { key: string; contentHash: string; savedAt: string }
@@ -63,13 +64,7 @@ export function shelfFailureOf(error: unknown): ShelfFailure {
 async function contentHashOf(body: string): Promise<string | null> {
   // `crypto.subtle` is not exposed outside a secure context.
   if (typeof crypto === "undefined" || !("subtle" in crypto)) return null
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(body)
-  )
-  return Array.from(new Uint8Array(digest), (byte) =>
-    byte.toString(16).padStart(2, "0")
-  ).join("")
+  return sha256Hex(body)
 }
 
 /** Whether `key` on the shelf holds exactly `body`. */

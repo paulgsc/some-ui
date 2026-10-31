@@ -1,13 +1,16 @@
 /**
- * aph's lane (LA9, docs/learner-data-authority.md): what this phone holds
+ * aph's lane (LA15, docs/learner-data-authority.md): what this phone holds
  * that home has not confirmed, sent by aph's exchange through the one wiring
- * (`./lanes`). Kept on home, the phone holds only that, so the opt-in moves
- * aph's record (`keepOnHome`), and stopping brings it back from home's
- * (`bringBack`). Its record moves with each edit on this phone.
+ * (`./lanes`). A paired phone keeps aph on home: the first run moves the
+ * record there (`keepOnHome`), and from then on the phone holds only the
+ * settings and what home has not confirmed. Its record moves with each edit
+ * on this phone.
  *
  * `@some-ui/aph` is the phone's alone, so only aph's screens import it
  * (packages/some-vite-config/AUDIENCES.md): they hand its store and its
- * exchanges in (`AphKeeping`), and this module names its types alone.
+ * exchange in (`AphKeeping`), and this module names its types alone. The
+ * lane is handed to the app shell while aph's screens are mounted
+ * (`useHandLane`), so aph drains while it is open.
  */
 import { useSyncExternalStore } from "react"
 import type { AphStore, AphWhere } from "@some-ui/aph"
@@ -15,28 +18,14 @@ import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 
 import type { Lane, LaneCounts } from "./lanes"
 
-/** aph's store, and its two exchanges with home over it. */
+/** aph's store, and its exchange with home over it. */
 export type AphKeeping = {
   store: AphStore
   exchange: (store: AphStore, send: HomeCall) => Promise<HomeExchanged>
-  bringBack: (
-    store: AphStore,
-    send: HomeCall,
-    stopped: () => boolean
-  ) => Promise<HomeExchanged>
 }
 
 function editsOf(where: AphWhere): number {
   return where.kind === "home" ? where.edits : -1
-}
-
-/** Each waiting entry is a change, and the settings, when they go, one more. */
-function offeredOf(
-  outbox: ReturnType<AphStore["outbox"]>,
-  entries: number
-): number {
-  if (outbox === null) return entries + 1
-  return outbox.entries.length + (outbox.settings === null ? 0 : 1)
 }
 
 let lane: Lane | null = null
@@ -50,7 +39,6 @@ export function aphLane(aph: AphKeeping): Lane {
 function declared({ store, ...aph }: AphKeeping): Lane {
   return {
     id: "aph",
-    scopes: ["aph"],
     exchange: (send) =>
       store.where().kind === "home" || store.keepOnHome()
         ? aph.exchange(store, send)
@@ -67,16 +55,11 @@ function declared({ store, ...aph }: AphKeeping): Lane {
       return {
         held: {},
         refused: { aph: home?.refused.length ?? 0 },
+        // On the phone, every entry waits for the first run.
         waiting: home?.unsent ?? entries.length,
-        away: home?.unsent ?? null,
         hidden: home?.hidden ?? 0,
         pulled: home?.pulled ?? true,
-        // The entries and the settings that go: on the phone, all of them.
-        offered: offeredOf(store.outbox(), entries.length),
       }
     },
-    keptBefore: () => store.where().kind === "home",
-    switchOn: store.keepOnHome,
-    bringBack: (send, stopped) => aph.bringBack(store, send, stopped),
   }
 }

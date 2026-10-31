@@ -97,7 +97,7 @@ function runOf(runs: ReadonlyArray<JobsRun>, today: string): JobsRun | null {
   return todays.find((r) => r.added.length > 0) ?? todays.at(0) ?? null
 }
 
-/** This morning's run at `now`, given whether Jobs is kept on home. */
+/** This morning's run at `now`, given whether the phone is paired with home. */
 export function morningOf(state: JobsState, kept: boolean, now: Date): Morning {
   const today = pacificDay(now)
   const digest = digestOf(state, today)
@@ -344,7 +344,7 @@ export function morningSaid(m: Morning, now: Date): Said {
     case "not-kept": {
       return {
         title: "Today’s picks are in Drive",
-        line: "Jobs isn’t kept on home, so picks don’t come by themselves. Open them from Drive.",
+        line: "This phone isn’t paired with home, so picks don’t come by themselves. Open them from Drive.",
       }
     }
     default: {

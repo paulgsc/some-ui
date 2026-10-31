@@ -39,16 +39,11 @@ type Link =
       readonly kind: "paired"
       readonly base: string
       /**
-       * This pairing's own id, made when it was paired: what a choice to
-       * keep sending is for (LA11), so a new pairing starts from nothing.
+       * This pairing's own id, made when it was paired: what this phone's
+       * record of what home holds is for (`./sent`), so a new pairing
+       * starts from nothing.
        */
       readonly id: string
-      /**
-       * Paired by a build before the consent log held every record's
-       * choice, so a choice a record's own switch made may belong to it
-       * (LA9). A pairing this build makes never is.
-       */
-      readonly earlier: boolean
       /** The last Unpair could not forget the key on the phone. */
       readonly notForgotten: boolean
     }
@@ -62,9 +57,9 @@ type Activity =
   /** Sending what this phone holds to the paired home, with its key. */
   | { readonly kind: "sending"; readonly stopping: boolean }
   /**
-   * Keeping a record on home: what it has to send sent, started by
-   * `lib/home-link/lanes` rather than a tap (LA9 to LA11); or Korean's look
-   * at the routine's files (`lib/home-link/routine`, LA12).
+   * Draining a record to home: what it has to send sent, started by
+   * `lib/home-link/lanes` rather than a tap (LA15); or Korean's look at
+   * the routine's files (`lib/home-link/routine`).
    */
   | { readonly kind: "keeping"; readonly stopping: boolean }
 
@@ -82,11 +77,7 @@ export type HomeLinkEvent =
   | {
       readonly type: "read"
       readonly found:
-        | {
-            readonly base: string
-            readonly id: string
-            readonly earlier: boolean
-          }
+        | { readonly base: string; readonly id: string }
         | "lost"
         | "unreadable"
         | null
@@ -112,7 +103,7 @@ export const INITIAL: HomeLinkState = {
 
 const idle = { kind: "idle" } as const
 
-/** A sync, a send or aph's keeping: the activities Stop ends. */
+/** A sync, a send or a drain: the activities Stop ends. */
 export function working(
   activity: Activity
 ): activity is Extract<Activity, { stopping: boolean }> {
@@ -143,7 +134,6 @@ export function step(
                   kind: "paired",
                   base: found.base,
                   id: found.id,
-                  earlier: found.earlier,
                   notForgotten: false,
                 },
       }
@@ -165,7 +155,6 @@ export function step(
           kind: "paired",
           base: event.base,
           id: event.id,
-          earlier: false,
           notForgotten: false,
         },
         activity: idle,

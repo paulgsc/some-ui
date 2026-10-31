@@ -56,8 +56,8 @@ const VIEWER_SESSION_FILES =
 
 /**
  * What the reflections routine left on home, as the Android app reads it:
- * through its paired home, once its person chose to show it (LA12). The
- * flag is read here so other builds fold the branch and ship no link.
+ * through its paired home (LA15). The flag is read here so other builds
+ * fold the branch and ship no link.
  */
 const useRoutineFromHome =
   import.meta.env.VITE_DEVICE_BACKEND === "true"

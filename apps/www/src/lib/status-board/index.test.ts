@@ -36,7 +36,6 @@ describe("what each mark asks of its person", () => {
       current: "fine",
       waiting: "moving",
       sending: "moving",
-      bringing: "moving",
       "no-answer": "watch",
       busy: "watch",
       forgotten: "you",
@@ -67,13 +66,12 @@ describe("what each mark asks of its person", () => {
     expect(morning("read")).toBe("fine")
   })
 
-  it("reads Korean's look as off, not yet, or how home answered", () => {
-    expect(lookOf(false, { kind: "read", at: 1 })).toBe("off")
-    expect(lookOf(true, null)).toBe("not-yet")
-    expect(lookOf(true, { kind: "busy", at: 1 })).toBe("busy")
+  it("reads Korean's look as not yet, or how home answered", () => {
+    expect(lookOf(null)).toBe("not-yet")
+    expect(lookOf({ kind: "busy", at: 1 })).toBe("busy")
     expect(needOf({ kind: "look", look: "forgotten" })).toBe("you")
     expect(needOf({ kind: "look", look: "unreachable" })).toBe("watch")
-    expect(needOf({ kind: "look", look: "off" })).toBe("off")
+    expect(needOf({ kind: "look", look: "not-yet" })).toBe("moving")
   })
 
   it("lifts what the routine brought for you, and watches an early end, a quiet home or a lost voice note", () => {

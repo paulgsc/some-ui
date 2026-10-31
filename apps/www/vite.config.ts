@@ -345,6 +345,18 @@ export default defineConfig(
       },
       tsconfigPaths: true,
     },
+    // The grammars `@some-ui/shared`'s code-tokens loads. Each is a plain
+    // script that exports nothing, so the dev server's pre-bundle gives it no
+    // default export while still importing it as CommonJS, and no page loads.
+    // Served as they are, each runs against the global Prism its `./core` set.
+    optimizeDeps: {
+      exclude: [
+        "prismjs/components/prism-c",
+        "prismjs/components/prism-cpp",
+        "prismjs/components/prism-rust",
+        "prismjs/components/prism-typescript",
+      ],
+    },
     build: {
       // Enable rollup bundle analysis
       rolldownOptions: {

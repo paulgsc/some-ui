@@ -129,10 +129,10 @@ const StoredSchema = z.object({
       owner: z.string(),
     })
   ),
-  // A record kept by the first Jobs build has no `home`: not yet kept there.
+  // A record kept by the first Jobs build has no `home`: nothing there yet.
+  // One kept before HF8 (#2182) carries a `kept` switch, which is dropped.
   home: z
     .object({
-      kept: z.boolean(),
       held: Ids,
       refused: z.array(z.object({ id: z.string(), why: z.string() })),
       // A record kept before files went home has none.
@@ -164,7 +164,6 @@ const StoredSchema = z.object({
         .default(NO_NOTICE),
     })
     .default({
-      kept: false,
       held: [],
       refused: [],
       refusedFiles: [],

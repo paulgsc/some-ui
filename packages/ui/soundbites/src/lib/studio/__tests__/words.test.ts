@@ -1,7 +1,9 @@
 /** @vitest-environment node */
+import type { Project } from "@soundbites/lib/project/model"
 import { newProject } from "@soundbites/lib/project/model"
 import { cutListOf } from "@soundbites/lib/project/script"
-import { startView } from "@soundbites/lib/studio/view"
+import { startView, whoseOf } from "@soundbites/lib/studio/view"
+import type { Whose } from "@soundbites/lib/studio/words"
 import { seconds, STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { describe, expect, it } from "vitest"
 
@@ -13,6 +15,18 @@ import { AT, primer } from "./fixture"
  */
 const MACHINERY =
   /\b(grant|consent|scope|sync\w*|server|request|response|status|error|api|https?|token|queue|retry|null|undefined|indexeddb|database|store|blob|shot|cut list|revision|rev|keeper|pending|write|refused)\b/i
+
+/** Every way a scene's idea reads (`Whose`), for the makers that say it. */
+const WHOSE: ReadonlyArray<Whose> = [
+  { who: "you", from: "note", words: "I saw it on the bus home" },
+  { who: "you", from: "note", words: null },
+  { who: "you", from: "take" },
+  { who: "you", from: "voice-note" },
+  { who: "you", from: "prompt" },
+  { who: "you", from: "idea" },
+  { who: "agent" },
+  { who: "source", title: "The Athletic, week 8 picks" },
+]
 
 /**
  * What a word maker is handed to make one: a title, a count, a length, a
@@ -53,6 +67,8 @@ const SAMPLES: ReadonlyArray<ReadonlyArray<unknown>> = [
   [{ scenes: [1, 3], plans: true }],
   ["calm", "ad-lib"],
   ["denied"],
+  // Whose idea a scene is (ST5), each way it reads, alone and with its scene.
+  ...WHOSE.flatMap((whose) => [[whose], [3, whose]]),
 ]
 
 /** A word a sample did not fit shows the misfit; no screen shows that. */
@@ -93,16 +109,20 @@ function walk(table: unknown, path = "words"): Walk {
   return { words: [], unreached: [] }
 }
 
-/** Every string Start draws for a video just opened from its primer. */
-function startDrawn(): Array<string> {
-  const { project } = newProject("week-8", {
+/** A video just opened from its primer. */
+function opened(): Project {
+  return newProject("week-8", {
     author: "claude",
     message: "Primer",
     at: AT,
     cutList: cutListOf(primer()),
     primer: primer(),
-  })
-  const view = startView(project)
+  }).project
+}
+
+/** Every string Start draws for a video just opened from its primer. */
+function startDrawn(): Array<string> {
+  const view = startView(opened())
   return [view.title, view.standing, ...view.sittings.map((row) => row.status)]
 }
 
@@ -123,6 +143,21 @@ describe("Studio's words", () => {
     const file =
       /\.json|›|build journal|\bprimers?\b|\bfiles?\b|\bfolder\b|\bformat\b/i
     expect(all.filter((text) => file.test(text))).toEqual([])
+  })
+
+  it("say where your own words are whenever an idea is yours (ST5, ST16)", () => {
+    for (const whose of WHOSE) {
+      const said = STUDIO_WORDS.origin.whose(whose)
+      expect(said.startsWith("Your idea")).toBe(whose.who === "you")
+      if (whose.who === "you") expect(said).toMatch(/, (from|in your words)/)
+    }
+  })
+
+  it("quote no words for a note of yours the video doesn't hold (ST16)", () => {
+    const idea = { origin: "you", from: { kind: "note", id: "gone" } } as const
+    expect(STUDIO_WORDS.origin.whose(whoseOf(opened(), idea))).toBe(
+      "Your idea, from a note of yours"
+    )
   })
 
   it("write a length as a number of seconds", () => {

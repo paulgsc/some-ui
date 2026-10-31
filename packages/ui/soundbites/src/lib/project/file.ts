@@ -8,10 +8,11 @@
  */
 import { canonicalJson, isRecord, jsonOf } from "@some-ui/core-utils"
 import type { Parsed } from "@some-ui/video-render"
-import { CutListSchema, parseCutList } from "@some-ui/video-render"
+import { CutListSchema, IdeaSchema, parseCutList } from "@some-ui/video-render"
 import { ANSWER_ID, IDEA_ID } from "@soundbites/lib/journal/primer"
 import { z } from "zod"
 
+import { sameJson, shotIn } from "./lookup"
 import type { Project } from "./model"
 import { cutListAt, PROJECT_SCHEMA } from "./model"
 
@@ -92,6 +93,16 @@ const ProjectSchema = z.object({
       })
     )
     .optional(),
+  origins: z
+    .array(
+      z.object({
+        shot: id,
+        rev: z.number().int().positive(),
+        at,
+        idea: IdeaSchema,
+      })
+    )
+    .optional(),
 })
 
 /** The project as its file: every object's keys in order, two-space indents. */
@@ -121,6 +132,19 @@ function shapeProblems(project: Project): Array<string> {
     if (!revision?.cutList.shots.some((each) => each.id === note.shot))
       problems.push(
         `notes.${note.id}: rev ${note.rev} has no shot ${note.shot}`
+      )
+  }
+  for (const [index, mark] of (project.origins ?? []).entries()) {
+    const revision = project.revisions.find((each) => each.rev === mark.rev)
+    const shot =
+      revision === undefined ? null : shotIn(revision.cutList, mark.shot)
+    if (shot === null)
+      problems.push(
+        `origins.${index}: rev ${mark.rev} has no shot ${mark.shot}`
+      )
+    else if (!sameJson(shot.idea, mark.idea))
+      problems.push(
+        `origins.${index}: rev ${mark.rev} gives shot ${mark.shot} another idea`
       )
   }
   problems.push(

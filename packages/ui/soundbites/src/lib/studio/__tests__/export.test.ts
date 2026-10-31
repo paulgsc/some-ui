@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest"
 
 import { AT, primer } from "./fixture"
 
-/** A project with a take on "path" still on the phone and one on "miss" sent. */
+/** A take on "path" still on the phone, and one on "miss" that home holds. */
 function project(): Project {
   const first = newProject("week-8", {
     author: "claude",
@@ -34,7 +34,7 @@ function project(): Project {
       recordedAt: AT,
       durationMs: 3_000,
       mimeType: "audio/webm;codecs=opus",
-      keptBy: ["drive"],
+      keptBy: ["drive", "home"],
       onPhone: false,
     },
   ]
@@ -73,11 +73,24 @@ describe("a project shared with Claude", () => {
     expect(
       typeof projectJson === "string" && readProjectFile(projectJson).ok
     ).toBe(true)
+    // The fixture's audio is the one byte "x".
+    const sha256 =
+      "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881"
     expect(JSON.parse(String(written.files[1]?.data))).toMatchObject({
       cuts: [
-        { id: "path", voice: "ad-lib", take: { file: "path-t1.webm" } },
-        // Sent with an earlier share: still named, so the splicer finds it.
-        { id: "miss", voice: "read", take: { file: "miss-t2.webm" } },
+        {
+          id: "path",
+          voice: "ad-lib",
+          // The hash of the bytes sent, and the note home keeps them as.
+          take: { file: "path-t1.webm", sha256, homeNote: "t1" },
+        },
+        // Sent with an earlier share: still named, so the splicer finds it,
+        // with no hash, since this share does not carry its bytes.
+        {
+          id: "miss",
+          voice: "read",
+          take: { file: "miss-t2.webm", sha256: null, homeNote: "t2" },
+        },
         { id: "next", voice: "ad-lib", take: null },
       ],
     })

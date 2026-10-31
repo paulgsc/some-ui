@@ -1,10 +1,10 @@
 /**
- * A record kept on home (LA9 to LA11): one exchange at a time through the
- * link's `keep`, and how each ended; every request a lane's run makes first
- * finds one of its scopes still kept, and home being busy anywhere in a run
- * is said as busy. What an exchange sends is the record's own, tested with it
+ * A record this phone drains to home (LA15): one exchange at a time through
+ * the link's `keep`, and how each ended; a lane's run goes under the pairing
+ * the phone holds, and home being busy anywhere in a run is said as busy.
+ * What an exchange sends is the record's own, tested with it
  * (`@some-ui/aph`'s `lib/__tests__/sync.test.ts`, www's
- * `lib/jobs/__tests__/home.test.ts`, `standing.test.ts`).
+ * `lib/jobs/__tests__/home.test.ts`, `drain.test.ts`).
  */
 import { noAnswer } from "@/test-support/no-answer"
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
@@ -13,16 +13,12 @@ import { describe, expect, it } from "vitest"
 
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import { FileHostUnreachableError } from "@/lib/file-host-config"
-import type { Scope } from "@/lib/home-link/consent-model"
 import type { KeptState } from "@/lib/home-link/kept-model"
 import { INITIAL_KEPT, stepKept } from "@/lib/home-link/kept-model"
-import type { Kept, KeptPorts, Telling } from "@/lib/home-link/kept-runtime"
-import {
-  createKept,
-  laneExchange,
-  toldFirst,
-} from "@/lib/home-link/kept-runtime"
-import type { Lane } from "@/lib/home-link/lanes"
+import type { Kept, KeptPorts } from "@/lib/home-link/kept-runtime"
+import { createKept, laneExchange } from "@/lib/home-link/kept-runtime"
+import type { Lane, LaneCounts } from "@/lib/home-link/lanes"
+import { laneReading } from "@/lib/home-link/lanes"
 import { INITIAL, step } from "@/lib/home-link/model"
 import type { HomeLink } from "@/lib/home-link/runtime"
 import { HomeUnansweredError } from "@/lib/home-link/shelf"
@@ -185,11 +181,7 @@ describe("the link's keep lane", () => {
   it("starts only when paired and idle", () => {
     const paired = step(INITIAL, {
       type: "read",
-      found: {
-        base: "https://home.example/api/v1",
-        id: "pairing-1",
-        earlier: false,
-      },
+      found: { base: "https://home.example/api/v1", id: "pairing-1" },
     })
     const keeping = step(paired, { type: "keepStarted" })
     expect(keeping.activity).toEqual({ kind: "keeping", stopping: false })
@@ -204,7 +196,6 @@ describe("the link's keep lane", () => {
 function lane(requests: number, ends: HomeExchanged): Lane {
   const declared: Lane = {
     id: "jobs",
-    scopes: ["jobs"],
     exchange: async (send) => {
       for (let i = 0; i < requests; i += 1) await send("PUT", `/jobs/${i}`)
       return ends
@@ -235,126 +226,32 @@ function home(statuses: Array<number> = []): {
 }
 
 const SYNCED: HomeExchanged = { kind: "synced" }
-const kept = (): ReadonlySet<Scope> => new Set(["jobs"])
 
 describe("a lane's run", () => {
-  it("sends nothing unpaired, or with nothing kept", async () => {
+  it("sends nothing unpaired", async () => {
     const { send, sent } = home()
-    const run = (
-      pairing: string | null,
-      shared: ReadonlySet<Scope>
-    ): Promise<HomeExchanged> =>
-      laneExchange(
-        lane(2, SYNCED),
-        () => pairing,
-        () => shared
-      )(send)
-    await expect(run(null, kept())).resolves.toEqual(SYNCED)
-    await expect(run("p", new Set())).resolves.toEqual(SYNCED)
+    await expect(
+      laneExchange(lane(2, SYNCED), () => null)(send)
+    ).resolves.toEqual(SYNCED)
     expect(sent).toEqual([])
   })
 
-  it("tells home its choices first, and sends the record only once home heard them", async () => {
+  it("sends the record under the pairing the phone holds", async () => {
     const under: Array<string> = []
-    const tell = (ends: HomeExchanged): Telling => ({
-      tell: async (through, pairing): Promise<HomeExchanged> => {
-        under.push(pairing)
-        await through("PUT", "/sharing/jobs")
-        return ends
-      },
-      unheard: () => undefined,
-    })
-    const run = (
-      ends: HomeExchanged,
-      statuses: Array<number> = []
-    ): Promise<{ ended: HomeExchanged; sent: Array<string> }> => {
-      const { send, sent } = home(statuses)
-      return laneExchange(
-        lane(1, SYNCED),
-        () => "p",
-        kept,
-        tell(ends)
-      )(send).then((ended) => ({ ended, sent }))
-    }
-    await expect(run(SYNCED)).resolves.toEqual({
-      ended: SYNCED,
-      sent: ["/sharing/jobs", "/jobs/0"],
-    })
-    for (const ends of [
-      { kind: "forgotten" },
-      { kind: "failed", why: "a choice: home answered 500" },
-    ] satisfies Array<HomeExchanged>) {
-      await expect(run(ends)).resolves.toEqual({
-        ended: ends,
-        sent: ["/sharing/jobs"],
-      })
-    }
-    await expect(
-      run({ kind: "failed", why: "a choice: home answered 429" }, [429])
-    ).resolves.toEqual({
-      ended: { kind: "failed", why: "busy" },
-      sent: ["/sharing/jobs"],
-    })
-    expect(new Set(under)).toEqual(new Set(["p"]))
-  })
-
-  it("tells everything again when home says it heard a stop this phone ended", async () => {
-    const unheard: Array<string> = []
-    const stopped = {
-      status: 409,
-      body: JSON.stringify({ error: { code: "sharing_stopped" } }),
-    }
-    const send: HomeCall = (_, path) =>
-      Promise.resolve(
-        path.startsWith("/jobs/") ? stopped : { status: 200, body: "" }
-      )
-    const telling: Telling = {
-      tell: () => Promise.resolve(SYNCED),
-      unheard: (pairing) => unheard.push(pairing),
-    }
-    await laneExchange(lane(1, SYNCED), () => "p", kept, telling)(send)
-    expect(unheard).toEqual(["p"])
-  })
-
-  it("lets a run that only reads go on when home could not hear its choices", async () => {
-    const { send, sent } = home([500])
-    const telling: Telling = {
-      tell: async (through) => {
-        const { status } = await through("PUT", "/sharing/aph")
-        return { kind: "failed", why: `a choice: home answered ${status}` }
-      },
-      unheard: () => undefined,
-    }
-    const read: HomeCall = (method, path) => send(method, path)
-    const back = (heard: "needed" | "tried"): Promise<HomeExchanged> =>
-      toldFirst(
-        telling,
-        "p",
-        async (through) => {
-          await through("GET", "/aph")
-          return SYNCED
-        },
-        heard
-      )(read)
-    await expect(back("tried")).resolves.toEqual(SYNCED)
-    expect(sent).toEqual(["/sharing/aph", "/aph"])
-  })
-
-  it("sends nothing more once its person stops, before the next request", async () => {
     const { send, sent } = home()
-    let stopped = false
-    const run = laneExchange(
-      lane(3, SYNCED),
-      () => "p",
-      () => (stopped ? new Set() : kept())
-    )
-    const gated: HomeCall = async (method, path, body) => {
-      const answer = await send(method, path, body)
-      stopped = true
-      return answer
+    const declared: Lane = {
+      ...lane(1, SYNCED),
+      exchange: async (through, at) => {
+        under.push(at.pairing)
+        await through("PUT", "/jobs/0")
+        return SYNCED
+      },
     }
-    await expect(run(gated)).rejects.toBeInstanceOf(SyncStoppedError)
+    await expect(laneExchange(declared, () => "p")(send)).resolves.toEqual(
+      SYNCED
+    )
     expect(sent).toEqual(["/jobs/0"])
+    expect(under).toEqual(["p"])
   })
 
   it("says home was busy, however the exchange ended after it", async () => {
@@ -363,7 +260,7 @@ describe("a lane's run", () => {
     for (const ends of [SYNCED, failed]) {
       const { send } = home([429])
       await expect(
-        laneExchange(lane(2, ends), () => "p", kept)(send)
+        laneExchange(lane(2, ends), () => "p")(send)
       ).resolves.toEqual(busy)
     }
     const throwing: Lane = {
@@ -374,21 +271,71 @@ describe("a lane's run", () => {
       },
     }
     await expect(
-      laneExchange(throwing, () => "p", kept)(home([429]).send)
+      laneExchange(throwing, () => "p")(home([429]).send)
     ).resolves.toEqual(busy)
   })
 
   it("says forgotten, a stop, or no answer as they were when home was not busy", async () => {
     const forgotten: HomeExchanged = { kind: "forgotten" }
     await expect(
-      laneExchange(lane(1, forgotten), () => "p", kept)(home([429]).send)
+      laneExchange(lane(1, forgotten), () => "p")(home([429]).send)
     ).resolves.toEqual(forgotten)
     const throwing: Lane = {
       ...lane(0, SYNCED),
       exchange: () => Promise.reject(new Error("home did not answer")),
     }
     await expect(
-      laneExchange(throwing, () => "p", kept)(home().send)
+      laneExchange(throwing, () => "p")(home().send)
     ).rejects.toThrow("home did not answer")
+    const stopping: Lane = {
+      ...lane(0, SYNCED),
+      exchange: () => Promise.reject(new SyncStoppedError()),
+    }
+    await expect(
+      laneExchange(stopping, () => "p")(home([429]).send)
+    ).rejects.toBeInstanceOf(SyncStoppedError)
+  })
+})
+
+describe("Send now", () => {
+  const PAIRED = step(INITIAL, {
+    type: "read",
+    found: { base: "https://home.lan", id: "p" },
+  })
+  const NOTHING_WAITS: LaneCounts = {
+    held: { sessions: 2 },
+    refused: {},
+    waiting: 0,
+    hidden: 0,
+    pulled: false,
+  }
+  const after = (last: KeptState["last"]): KeptState => ({
+    ...INITIAL_KEPT,
+    last,
+  })
+  const offered = (run: KeptState): boolean =>
+    laneReading("practice", NOTHING_WAITS, run, PAIRED).sendNow
+
+  it("is offered with nothing counted waiting after a run that didn't get everything home", () => {
+    for (const why of ["full", "refused", "busy", "fault"]) {
+      expect(offered(after({ kind: "failed", why }))).toBe(true)
+    }
+    expect(offered(after({ kind: "unreachable", at: 1 }))).toBe(true)
+  })
+
+  it("is not offered after a clean run, while sending, or unpaired", () => {
+    expect(offered(after({ kind: "synced", at: 1 }))).toBe(false)
+    expect(offered(INITIAL_KEPT)).toBe(false)
+    expect(
+      offered({ ...after({ kind: "failed", why: "full" }), running: true })
+    ).toBe(false)
+    expect(
+      laneReading(
+        "practice",
+        NOTHING_WAITS,
+        after({ kind: "failed", why: "full" }),
+        INITIAL
+      ).sendNow
+    ).toBe(false)
   })
 })

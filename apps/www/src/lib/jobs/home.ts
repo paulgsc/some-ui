@@ -1,5 +1,5 @@
 /**
- * One exchange with home for the Jobs record kept on home: every event home
+ * One exchange with home for the Jobs record on a paired phone: every event home
  * does not hold yet sent, then, on a phone with no log, home's record read
  * back, then the digests home holds that the phone does not. Over a `send`
  * port the app's home link hands in (`lib/home-link/jobs`), so this module
@@ -12,9 +12,8 @@
  * 1. each event in `homeOutbox`, once (`PUT /jobs/events/:id`, the event as
  *    the body). Home answers with the event it holds; a `409` (another event
  *    under that id) or a `422` (an event it won't take, with why) is a
- *    refusal, kept on the phone and not sent again; a `409` saying this
- *    phone stopped sending it (`stoppedOnHome`) refuses nothing and ends
- *    the exchange;
+ *    refusal, kept on the phone and not sent again; a `409` that
+ *    `stoppedOnHome` reads refuses nothing and ends the exchange;
  * 2. home's whole record (`GET /jobs`), asked for only by a phone whose own
  *    log is empty, the one that takes it in: a reinstalled phone gets its
  *    record back;
@@ -118,7 +117,7 @@ async function sendEvents(
       JSON.stringify(event)
     )
     if (answer.status === 401) return { kind: "forgotten" }
-    // Home heard a stop this phone's log no longer holds: nothing is refused.
+    // Not a refusal of the event (`stoppedOnHome`).
     if (stoppedOnHome(answer)) {
       return unexpectedAnswer("an event", 409)
     }

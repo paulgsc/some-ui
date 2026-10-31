@@ -1,26 +1,29 @@
 /**
- * Practice's lane (LA11, docs/learner-data-authority.md): its finished
- * sessions and kept shelf items, sent by the standing send (`./standing`)
- * through the one wiring (`./lanes`). Its record moves with the sessions the
- * app has read (React Query's `sessionsKey`) and each shelf keep (`onKept`),
- * so a finished session or a newly kept item asks for a send.
+ * Practice's lane (LA15, docs/learner-data-authority.md): what this phone
+ * holds of its own record, drained by `./drain` through the one wiring
+ * (`./lanes`): its finished sessions and kept shelf items, its finished
+ * LeetType sessions, and Studio's sittings and answers. Its record moves
+ * with the sessions the app has read (React Query's `sessionsKey`), each
+ * shelf keep (`onKept`) and each write to Studio's projects, so a finished
+ * session, a newly kept item or a kept take asks for a run; a LeetType
+ * session finishing goes on the next ask (the app coming back, say).
  */
 import { queryClient } from "@/providers/tanstack-query"
 import { fnv1a, localStorageOrNull } from "@some-ui/core-utils"
 
 import { onKept } from "@/lib/shelf-client"
+import { onStudioKept, studioKeeping } from "@/lib/studio-keeping"
 import { useSessions } from "@/lib/tenant"
 import { sessionsKey } from "@/lib/tenant/queries"
 import type { SessionRecord } from "@/lib/tenant/types"
 
-import { useHomeLink } from "./index"
+import { drainHome } from "./drain"
+import { logGoing, readPhone, studioGoing } from "./going"
+import { pairingOf, useHomeLink } from "./index"
 import type { Lane, LaneCounts } from "./lanes"
-import { pairingOf } from "./lanes"
 import type { HomeLinkState } from "./model"
-import { readPhone } from "./send"
 import type { Sent } from "./sent"
 import { heldCounts, readSent, sessionsToSend } from "./sent"
-import { sendStanding } from "./standing"
 
 function cachedSessions(): ReadonlyArray<SessionRecord> {
   return queryClient.getQueryData<Array<SessionRecord>>(sessionsKey) ?? []
@@ -36,20 +39,25 @@ onKept(() => {
   shelfKeeps += 1
 })
 
+let studioWrites = 0
+
 export const practiceLane: Lane = {
   id: "practice",
-  scopes: ["sessions", "shelf"],
-  exchange: (send, { pairing, shared }) =>
-    sendStanding(send, {
+  exchange: (send, { pairing }) => {
+    const storage = localStorageOrNull()
+    return drainHome(send, {
       read: readPhone,
-      shared,
+      logGoing: () => logGoing(pairing, storage),
+      studioGoing: () => studioGoing(pairing, storage),
       pairing,
-      storage: localStorageOrNull(),
-    }),
+      storage,
+    })
+  },
   revision: () =>
     fnv1a(
       [
         shelfKeeps,
+        studioWrites,
         ...cachedSessions().map((s) => `${s.id}@${s.updatedAt}`),
       ].join("|")
     ),
@@ -58,9 +66,29 @@ export const practiceLane: Lane = {
     const unsubscribeCache = queryClient.getQueryCache().subscribe((event) => {
       if (isSessionsQuery(event.query.queryHash)) listener()
     })
+    // A kept take is a write to its project, once Studio has handed it in.
+    const onStudio = (): void => {
+      studioWrites += 1
+      listener()
+    }
+    let unsubscribeStudio: (() => void) | null = null
+    const handed = (): void => {
+      if (unsubscribeStudio !== null) return
+      const studio = studioKeeping()
+      if (studio !== null) {
+        unsubscribeStudio = studio.store.subscribe(onStudio)
+      }
+    }
+    handed()
+    const unsubscribeHanded = onStudioKept(() => {
+      handed()
+      onStudio()
+    })
     return () => {
       unsubscribeShelf()
       unsubscribeCache()
+      unsubscribeHanded()
+      unsubscribeStudio?.()
     }
   },
   useCounts: (): LaneCounts => {
@@ -73,10 +101,8 @@ export const practiceLane: Lane = {
       held: { sessions: counts.sessions, shelf: counts.shelf },
       refused: { shelf: counts.refused },
       waiting: sessions === undefined ? 0 : sessionsWaiting(sessions, link),
-      away: null,
       hidden: 0,
       pulled: true,
-      offered: 0,
     }
   },
 }

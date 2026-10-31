@@ -9,7 +9,8 @@ import {
 import type { Primer } from "@soundbites/lib/journal/primer"
 import { cutV1 } from "@soundbites/lib/journal/primer"
 import { projectFile, readProjectFile } from "@soundbites/lib/project/file"
-import { latest, primerAt } from "@soundbites/lib/project/model"
+import { primerAt } from "@soundbites/lib/project/lookup"
+import { latest } from "@soundbites/lib/project/model"
 import { TAIL_MS } from "@soundbites/lib/project/script"
 import { describe, expect, it } from "vitest"
 

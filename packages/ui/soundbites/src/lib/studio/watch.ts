@@ -11,10 +11,15 @@
  *   its moment in this one (`anchorAt`). Good confirms it; Not yet leaves it
  *   as it is and writes a new open note at that moment, wherever the
  *   playhead has gone since, as a note's status only moves forward.
+ * - **Whose idea a scene is** is asked as it plays (`ideaAsking`), once
+ *   no change of Claude's is waiting there, of each scene the owner hasn't
+ *   said it of as the latest version has it (`project/origin.ts`).
  */
 import type { Review } from "@some-ui/video-render"
+import { latestShot } from "@soundbites/lib/project/lookup"
 import type { Note, Project } from "@soundbites/lib/project/model"
 import { anchorAt } from "@soundbites/lib/project/model"
+import { carriesIdea, originConfirmed } from "@soundbites/lib/project/origin"
 
 /** The scene on screen `ms` into `review`, and how far into it. */
 export function shotAt(
@@ -86,4 +91,45 @@ export function isReviewOf(project: Project, review: Review): boolean {
     shots.length === review.shotTimes.length &&
     shots.every((shot, index) => shot.id === review.shotTimes[index]?.id)
   )
+}
+
+/** What of Watch's screen decides whether it asks whose idea a scene is. */
+export type Watching = {
+  readonly review: Review | null
+  /** Where the playhead is, in ms. */
+  readonly atMs: number
+  /** Claude's changes answered on the screen, by note id. */
+  readonly answered: ReadonlyArray<string>
+  /** A note being said, if one is. */
+  readonly speaking: object | null
+  /** A scene's idea being put right, if one is. */
+  readonly origin: object | null
+}
+
+/**
+ * The scene Watch asks whose idea it is, or null: the one playing, once no
+ * change of Claude's waits at this moment and nothing else is under way, if
+ * it carries an idea the owner hasn't said as the latest version has it,
+ * and no answer about it is on its way to being kept (`answering`, by
+ * scene).
+ */
+export function ideaAsking(
+  project: Project,
+  screen: Watching,
+  answering: ReadonlyArray<string>
+): string | null {
+  const { review, atMs } = screen
+  if (review === null || screen.speaking !== null || screen.origin !== null)
+    return null
+  // Claude's change at this moment is asked first, one question at a time.
+  if (askedAt(changesIn(project, review), atMs, screen.answered) !== null)
+    return null
+  const here = shotAt(review, atMs)
+  if (here === null || answering.includes(here.shot)) return null
+  const scene = latestShot(project, here.shot)
+  return scene !== null &&
+    carriesIdea(project, scene) &&
+    !originConfirmed(project, here.shot)
+    ? here.shot
+    : null
 }
