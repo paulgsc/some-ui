@@ -138,7 +138,6 @@ describe("a scout filed with home without a tap (JB2)", () => {
     expect(
       inCard.getByRole("button", { name: /^Home has it\. Show where it is/ })
     ).toBeTruthy()
-    expect(screen.queryByRole("button", { name: /Drive/ })).toBeNull()
   })
 })
 

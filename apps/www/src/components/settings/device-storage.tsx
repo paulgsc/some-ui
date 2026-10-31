@@ -140,8 +140,7 @@ export const DeviceStoragePrompt = (): JSX.Element | null => {
 const sessions = (n: number): string => counted(n, "finished session")
 
 /**
- * Settings' "Archive finished sessions" (`lib/session-archive`): a copy,
- * which lets nothing go (LG1).
+ * Settings' "Archive finished sessions" (`lib/session-archive`).
  */
 export const DeviceArchive = (): JSX.Element | null => {
   const { data } = useSessions()
@@ -150,8 +149,7 @@ export const DeviceArchive = (): JSX.Element | null => {
     presentation: "interactive",
   })
   useIntentEffect(share, (outcome) => {
-    if (outcome === "shared")
-      toast.success("Archived. They stay on this phone.")
+    if (outcome === "shared") toast.success("They stay on this phone.")
   })
   if (finished.length === 0) return null
   return (

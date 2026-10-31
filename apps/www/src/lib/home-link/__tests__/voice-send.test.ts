@@ -176,6 +176,7 @@ function setUp(
   { arrived = false, storage = memoryStorage() } = {}
 ): void {
   fakes.jobs = record(Object.keys(audio), arrived)
+  fakes.scene = []
   fakes.audio = new Map(
     Object.entries(audio).flatMap(([id, a]) => (a === null ? [] : [[id, a]]))
   )
@@ -287,8 +288,9 @@ describe("the drama's scene notes (HF2)", () => {
       return send(method, path, init)
     }
     expect(await sendVoice(recording)).toEqual({ kind: "synced" })
-    fakes.scene = []
-    // Studio's take, handed in above, goes too.
+    // `toContain`, not `toEqual`: Studio's take, once its test has handed it
+    // in, stays handed in for the module (`keepStudio` has no undo), so it
+    // goes too.
     expect(fakes.home?.getSnapshot().held).toContain("s1")
     expect(sent).toContain(
       "/voice-notes/s1?of=scene&ref=next-scene&at=2026-10-31T08%3A00%3A00.000Z"

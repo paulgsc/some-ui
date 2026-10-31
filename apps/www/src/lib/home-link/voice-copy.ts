@@ -35,9 +35,7 @@
  *   its soundbites, grammar-lens entries and takes, and LeetType answers and
  *   takes; a drama prompt with its scene notes; Studio takes; the finished
  *   sessions' archive) × every home state (held; waiting; unpaired; off the
- *   LAN, which the phone sees alike as not held). The Jobs share sheet is
- *   gone (HF2, #2177): its files go home, and its notes leave once home
- *   holds them.
+ *   LAN, which the phone sees alike as not held).
  * - _Proof:_ `lib/jobs/__tests__/runtime.test.ts` ("LG1": home's word lets
  *   a note's audio go, and a file a run missed is filed again with the audio
  *   still on the phone), `lib/session-archive/index.test.ts` ("LG1": an
@@ -349,9 +347,9 @@ export async function sendVoice(send: HomeCall): Promise<HomeExchanged> {
 type LetsGo = { letGo: (homeHolds: ReadonlySet<string>) => unknown }
 
 /**
- * Lets each game bite (`lib/game-bites`), Jobs voice note, scene note a
- * shared prompt carried and Studio take home now holds leave this phone
- * (LG1).
+ * Hands what home now holds to each store of game bites (`lib/game-bites`),
+ * Jobs voice notes, scene notes and Studio takes, whose `letGo` says which
+ * of them leave this phone (LG1).
  */
 function letGoHeld(): void {
   const { held } = phoneVoiceHome().getSnapshot()
@@ -383,8 +381,7 @@ export function watchVoiceNotes(): () => void {
         // A spoken reflection is listed before its audio is written.
         onAudioSettled(copySoon),
         phoneJobs().subscribe(copySoon),
-        // A scene note is listed once its audio is written, and leaves
-        // the draft once a shared prompt carried it and home holds it.
+        // A scene note is listed once its audio is written.
         phoneSceneVoice().subscribe(() => {
           copySoon()
           letGoHeld()

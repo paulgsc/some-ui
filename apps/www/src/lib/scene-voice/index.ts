@@ -94,7 +94,7 @@ const SHARE_PORT = "scene voice (share)"
  * listed only once its audio is on the shelf.
  */
 export const sceneNotes = {
-  read: (): Array<KeptSceneNote> => notes.read(),
+  read: notes.read,
   audio: (id: string): Promise<Blob | null> => shelf.shelf().get(id),
 }
 
@@ -102,9 +102,7 @@ export const sceneNotes = {
  * The drama's next-scene prompt, as topik's `FileShare` port, with the
  * scene's voice notes it names beside it. A note whose audio cannot be read
  * fails the share, so the prompt never names a file that does not arrive.
- * Sharing it sends nothing home and lets nothing go: each note went home
- * when it was kept (LA13), and one a shared prompt carried leaves the draft
- * once home holds it (`prompted`, LG1).
+ * Sharing it sends nothing home; it marks the notes it carried (`prompted`).
  */
 export const shareDramaPrompt: FileShare = async ({
   name,

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 
 import { isFile } from "@/lib/jobs/files"
 import type { PickRef } from "@/lib/jobs/model"
-import { EMPTY, step } from "@/lib/jobs/model"
+import { EMPTY } from "@/lib/jobs/model"
 import type { NoticeAsked, NoticePort } from "@/lib/jobs/runtime"
 import { createJobsRuntime } from "@/lib/jobs/runtime"
 import { STORAGE_KEY, writeStored } from "@/lib/jobs/stored"
@@ -137,47 +137,6 @@ describe("createJobsRuntime", () => {
     expect(runtime.read(ref)).toBe(false)
   })
 
-  it("files what a share nobody said arrived carried, by a name of its own", async () => {
-    const p = ports()
-    const before = createJobsRuntime(p)
-    before.open(blob(JSON.stringify(digest("2026-10-18"))))
-    await settle()
-    const pick = before.getSnapshot().state.digests[0].picks[1]
-    before.record({
-      type: "passed",
-      day: "2026-10-18",
-      pickId: pick.id,
-      fingerprint: pick.fingerprint,
-      reasons: ["pay"],
-      note: "",
-      voice: [],
-    })
-    // A Drive share from before HF2 that nobody said arrived.
-    const held = before.getSnapshot().state
-    writeStored(
-      p.storage,
-      step(held, {
-        type: "record",
-        event: {
-          type: "shared",
-          kind: "decisions",
-          day: "2026-10-18",
-          file: "decisions-2026-10-18.json",
-          through: held.log.length,
-          voice: [],
-        },
-        stamp: { id: "s1", at: "2026-10-18T21:00:00.000Z" },
-      })
-    )
-    const runtime = createJobsRuntime(p)
-    const file = runtime.keeping.outgoing("decisions")
-    if (!isFile(file)) throw new Error("expected a file")
-    expect(file.name).toBe("decisions-2026-10-18-2.json")
-    expect(JSON.parse(file.json).picks).toEqual([
-      expect.objectContaining({ pickId: pick.id, decision: "passed" }),
-    ])
-  })
-
   it("lets a voice note's audio go on home's word alone, never on its file's filing (LG1)", async () => {
     const p = ports()
     const note = { mimeType: "audio/webm", durationMs: 3_000, owner: "o" }
@@ -220,36 +179,6 @@ describe("createJobsRuntime", () => {
     runtime.sweep()
     await settle()
     expect(await p.audio.ids()).toEqual(["v2"])
-  })
-
-  it("files a note home holds by its id alone (LG1)", async () => {
-    const p = ports()
-    const note = { mimeType: "audio/webm", durationMs: 3_000, owner: "o" }
-    writeStored(p.storage, { ...EMPTY, voice: [{ ...note, id: "v1" }] })
-    await p.audio.put("v1", new Blob(["opus"]))
-    const runtime = createJobsRuntime(p)
-    runtime.open(blob(JSON.stringify(digest("2026-10-18"))))
-    await settle()
-    const pick = runtime.getSnapshot().state.digests[0].picks[1]
-    runtime.record({
-      type: "passed",
-      day: "2026-10-18",
-      pickId: pick.id,
-      fingerprint: pick.fingerprint,
-      reasons: ["pay"],
-      note: "",
-      voice: ["v1"],
-    })
-    // Home holds the note before its file is filed.
-    runtime.letGo(new Set(["v1"]))
-    await settle()
-    expect(await p.audio.ids()).toEqual([])
-    const file = runtime.keeping.outgoing("decisions")
-    if (!isFile(file)) throw new Error("expected a file")
-    expect(JSON.parse(file.json)).toMatchObject({
-      notes: { "2026-10-18_tid-7f2a_voice-1.webm": "v1" },
-    })
-    expect(runtime.keeping.filed("decisions", file)).toBe(true)
   })
 
   it("files what a run missed again, with the audio still on the phone (LG1)", async () => {

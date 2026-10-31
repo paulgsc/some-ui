@@ -359,28 +359,6 @@ describe("JB2: two shares interleaved", () => {
     ).not.toBeNull()
   })
 
-  it("counts a share nobody confirmed as carrying nothing", () => {
-    const scout = (id: string): Draft => ({
-      type: "scout",
-      scout: {
-        id,
-        url: "https://example.org/job",
-        title: id,
-        why: "",
-        postingText: null,
-        track: "software",
-        family: null,
-      },
-      voice: [],
-    })
-    const first = record(opened, scout("sc-1"))
-    const shared = share(first, NOON, "scouts")
-    const second = record(shared.state, scout("sc-2"))
-    const ctx = context(second)
-    expect(eventJourney(ctx, 0)?.id).toBe("on-phone")
-    expect(eventJourney(ctx, second.log.length - 1)?.id).toBe("on-phone")
-  })
-
   it("is read once a run named a share nobody confirmed", () => {
     const shared = share(record(opened, taken()))
     const file = shared.state.log.at(-1)

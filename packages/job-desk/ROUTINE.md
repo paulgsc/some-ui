@@ -101,9 +101,8 @@ Record both commits in `evidence`, and the some-ui commit as each build's
 Every digest lists in `read` the Decisions and Scout files it took in. Read
 every digest in `Brief/` and collect those names; the files in
 `some-ui jobs/Decisions/` and `some-ui jobs/Scout/` that no digest names are
-new. The phone files again what a run missed (and, before it filed
-everything with home, offered a share again until I confirmed it arrived),
-so a new file can repeat one already read:
+new. The phone files again what a run missed, so a new file can repeat one
+already read:
 
 - a pick's decision, a debrief, an outcome or a disagreement whose `id` a file
   some digest names in `read` already carried is not new: skip it;

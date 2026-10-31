@@ -59,7 +59,6 @@ function archiveFile(
 
 /**
  * Opens the share sheet with a copy of the finished sessions, oldest first.
- * Lets nothing go, however the sheet ends.
  */
 export async function shareArchive(
   now: () => Date = () => new Date()
