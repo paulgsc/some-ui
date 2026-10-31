@@ -145,7 +145,7 @@ function shareFor(
   })
 }
 
-/** The loop as steps, for a first visit (#2325): the first is New idea. */
+/** The loop as steps, for a first visit. */
 const Steps = ({ newIdea }: { newIdea: ReactNode }): JSX.Element => {
   const { steps } = WORDS.start
   const step = (

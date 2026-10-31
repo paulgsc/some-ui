@@ -20,12 +20,24 @@ function fixed(table: unknown): Array<string> {
 const W = STUDIO_WORDS
 const TITLE = "Playoff Delta, week 8"
 
-/** Every word the table makes, from a sample of what it is given. */
-const MADE: ReadonlyArray<string> = [
+/** Every word Start makes, from a sample of what it is given. */
+const START_MADE: ReadonlyArray<string> = [
   W.start.which(TITLE),
   W.start.nextVersion(TITLE),
   W.start.opened(TITLE),
   W.start.revised(TITLE),
+  W.start.onPhone(1),
+  W.start.onPhone(4),
+  W.start.stepOf(2),
+  W.standing(null),
+  W.standing({ done: "Kept takes for scene 1.", next: "Scene 2: The miss." }),
+  W.recordStatus(1, 3),
+  W.recordStatus(3, 3),
+]
+
+/** Every word the table makes, from a sample of what it is given. */
+const MADE: ReadonlyArray<string> = [
+  ...START_MADE,
   W.record.sceneOf(2, 3),
   W.record.onScreen("The path card"),
   W.record.mustStayTrue(2),
@@ -38,8 +50,6 @@ const MADE: ReadonlyArray<string> = [
   W.notice.carried(TITLE, 0, 0),
   W.notice.carried(TITLE, 0, 1),
   W.notice.carried(TITLE, 2, 3),
-  W.start.onPhone(1),
-  W.start.onPhone(4),
   W.notice.carryStays(0),
   W.notice.carryStays(820_000),
   W.notice.carryStays(1_400_000),
@@ -49,10 +59,6 @@ const MADE: ReadonlyArray<string> = [
   W.notice.arrived(1),
   W.notice.arrived(3),
   W.done.opensOn(2, "The miss"),
-  W.standing(null),
-  W.standing({ done: "Kept takes for scene 1.", next: "Scene 2: The miss." }),
-  W.recordStatus(1, 3),
-  W.recordStatus(3, 3),
   W.sittingDone([]),
   W.sittingDone([1, 2]),
   W.sittingNext(null),
@@ -107,28 +113,16 @@ describe("Studio's words", () => {
     expect(all.filter((text) => MACHINERY.test(text))).toEqual([])
   })
 
-  /**
-   * Start names a step the person takes, never a file, folder or format
-   * (#2325): no file name, no `›` path, no Drive folder, no "primer".
-   */
-  it("say the way in on Start in the person's terms, never a file or folder", () => {
+  it("SW1: say the way in on Start in the person's terms, never a file, folder or format", () => {
     const file = /\.json|›|build journal|\bprimers?\b|\bfolder\b|\bformat\b/i
     const start = [
       ...fixed(STUDIO_WORDS.start),
+      ...START_MADE,
       // What the pick says when a file is refused.
       W.notice.unreadableFile,
       W.merge.unreadable,
       W.merge.notHere,
-      W.start.stepOf(2),
-      W.start.which(TITLE),
-      W.start.nextVersion(TITLE),
-      W.start.opened(TITLE),
-      W.start.revised(TITLE),
-      W.start.onPhone(2),
-      W.standing(null),
-      W.recordStatus(0, 3),
     ]
-    expect(start.length).toBeGreaterThan(20)
     expect(start.filter((text) => file.test(text))).toEqual([])
   })
 

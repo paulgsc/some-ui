@@ -79,9 +79,8 @@ const studioShare: StudioShare | undefined =
 
 /**
  * The Studio wing's Home (lib/wings): a video made in sittings (STUDIO
- * ST4), with the way in to New idea (ST18) handed to Studio's Start, which
- * places it as the loop's first step while there is no video and as a quiet
- * link once there is (#2325).
+ * ST4), with the way in to New idea (ST18) handed to Studio's Start
+ * (`StudioProps.newIdea`).
  * Making something to publish, so not a study tool and not under Practice's
  * soundbites, though it records the same way (`@some-ui/voice-capture`).
  */

@@ -1452,7 +1452,7 @@ export function step(state: StudioState, event: StudioEvent): Step {
       if (isProjectFile(event.text)) return pickedProject(state, event.text)
       const reading = readPrimer(event.text)
       // What is wrong names cuts and fields: for the session that wrote the
-      // file, never the screen (SW1).
+      // file (`PrimerReading`), never the screen (SW1).
       if (!reading.ok)
         return stay({ ...state, primerProblem: WORDS.start.sentProblem })
       if (project === null)
