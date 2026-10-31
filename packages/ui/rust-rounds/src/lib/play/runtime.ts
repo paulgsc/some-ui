@@ -20,7 +20,7 @@ import type {
   PlayIntent,
   PlayState,
 } from "./machine"
-import { initialState, step } from "./machine"
+import { initialState, step, unsettled } from "./machine"
 import type { RoundsStore } from "./store"
 
 /** The microphone's voice notes: a list on the phone, one take at a time. */
@@ -31,8 +31,11 @@ export type NotesPort = {
   readonly start: (line: string) => void
   /** Ends a take under way and keeps it. */
   readonly stop: () => void
-  /** A new card: how the last take ended stops being said. */
-  readonly reset: () => void
+  /**
+   * The note kept on `line` at or after `since` (ms since the epoch), the
+   * earliest such; null when the phone holds none.
+   */
+  readonly keptOn: (line: string, since: number) => string | null
 }
 
 export type RustRoundsPorts = {
@@ -54,7 +57,11 @@ export type RustRoundsRuntime = {
   readonly getSnapshot: () => PlayState
   readonly subscribe: (listener: () => void) => () => void
   readonly dispatch: (intent: PlayIntent) => void
-  /** The screen is showing; returns the detach. */
+  /**
+   * The screen is showing; returns the detach. A take under way, or a card
+   * waiting on its note, keeps the microphone heard past the detach until it
+   * settles; the next opening settles what an ended app left waiting.
+   */
   readonly attach: () => () => void
 }
 
@@ -68,6 +75,10 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
   )
   const listeners = new Set<() => void>()
 
+  /** The microphone heard, while attached and after, until all settles. */
+  let stopNotes: (() => void) | null = null
+  let attached = false
+
   const send = (event: PlayEvent): void => {
     const next = step(state, event)
     if (next.state !== state) {
@@ -75,6 +86,10 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
       for (const listener of listeners) listener()
     }
     for (const effect of next.effects) run(effect)
+    if (!attached && stopNotes !== null && !unsettled(state)) {
+      stopNotes()
+      stopNotes = null
+    }
   }
 
   function run(effect: PlayEffect): void {
@@ -82,16 +97,25 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
       case "append": {
         send({
           type: "stored",
+          record: "log",
           ok: ports.store.append(effect.head, effect.add),
         })
         return
       }
       case "hold": {
-        send({ type: "stored", ok: ports.store.hold(effect.held) })
+        send({
+          type: "stored",
+          record: "held",
+          ok: ports.store.hold(effect.held),
+        })
         return
       }
       case "savePlace": {
-        send({ type: "stored", ok: ports.store.place(effect.place) })
+        send({
+          type: "stored",
+          record: "place",
+          ok: ports.store.place(effect.place, effect.pending),
+        })
         return
       }
       case "startNote": {
@@ -100,10 +124,6 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
       }
       case "stopNote": {
         ports.notes.stop()
-        return
-      }
-      case "resetNote": {
-        ports.notes.reset()
         return
       }
       case "copy": {
@@ -130,16 +150,28 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
     },
     dispatch: (intent): void => send({ ...intent, at: iso(ports.now()) }),
     attach(): () => void {
-      const stopNotes = ports.notes.subscribe(() =>
+      attached = true
+      stopNotes ??= ports.notes.subscribe(() =>
         send({ type: "notes", view: ports.notes.getSnapshot() })
       )
       // What changed between making the runtime and attaching it.
       send({ type: "notes", view: ports.notes.getSnapshot() })
+      // Cards an ended app left waiting on a note: the phone may hold it.
+      if (state.pending.length > 0) {
+        send({
+          type: "reopened",
+          found: state.pending.map(({ line, since }) => ({
+            line,
+            note: ports.notes.keptOn(line, since),
+          })),
+          busy: ports.notes.getSnapshot().take.kind !== "idle",
+        })
+      }
       const stopVisibility = ports.onVisibility((hidden) => {
         if (hidden) send({ type: "hidden" })
       })
       return (): void => {
-        stopNotes()
+        attached = false
         stopVisibility()
         send({ type: "left" })
       }

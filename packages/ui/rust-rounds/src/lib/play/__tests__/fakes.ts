@@ -3,8 +3,7 @@
  * says so, a clock, ids, a page that is never hidden, and a clipboard that
  * takes whatever is copied.
  */
-import type { NoteView } from "@rust-rounds/lib/play/machine"
-import { QUIET_NOTES } from "@rust-rounds/lib/play/machine"
+import type { NoteView, TakeEnd } from "@rust-rounds/lib/play/machine"
 import type { NotesPort, RustRoundsPorts } from "@rust-rounds/lib/play/runtime"
 import { keptRounds } from "@rust-rounds/lib/play/store"
 import { inMemoryStorage } from "@some-ui/core-utils"
@@ -13,22 +12,41 @@ import { vi } from "vitest"
 export type FakeNotes = NotesPort & {
   /** The lines takes were started on, in order. */
   readonly started: Array<string>
+  /** The notes the phone holds, as the desk lists them. */
+  readonly held: Array<{ id: string; line: string; takenAt: number }>
   /** Ends the take under way: kept as `id`, or too short when null. */
   readonly land: (id: string | null) => void
+  /** Ends the take under way kept nothing: `failed` or `full`. */
+  readonly lose: (end: Extract<TakeEnd, "failed" | "full">) => void
+  /** The microphone refuses every take from now on. */
   readonly refuse: (why: string) => void
-  readonly fill: () => void
 }
 
 export function fakeNotes(): FakeNotes {
-  let view: NoteView = QUIET_NOTES
+  let view: NoteView = {
+    take: { kind: "idle" },
+    ended: null,
+    blocked: null,
+  }
+  let line = ""
+  let refused: string | null = null
   const listeners = new Set<() => void>()
   const set = (next: NoteView): void => {
     view = next
     for (const listener of listeners) listener()
   }
+  const end = (how: TakeEnd, note: string | null): void => {
+    set({
+      take: { kind: "idle" },
+      blocked: how === "blocked" ? refused : null,
+      ended: { seq: (view.ended?.seq ?? 0) + 1, line, end: how, note },
+    })
+  }
   const started: Array<string> = []
+  const held: FakeNotes["held"] = []
   return {
     started,
+    held,
     getSnapshot: () => view,
     subscribe(listener): () => void {
       listeners.add(listener)
@@ -36,37 +54,34 @@ export function fakeNotes(): FakeNotes {
         listeners.delete(listener)
       }
     },
-    start(line): void {
-      if (view.take.kind !== "idle" || view.full) return
-      if (view.blocked !== null) {
-        // The microphone refuses again: the take ends with none.
-        set({ ...view })
+    start(next): void {
+      if (view.take.kind !== "idle") return
+      line = next
+      if (refused !== null) {
+        end("blocked", null)
         return
       }
-      started.push(line)
-      set({ ...view, take: { kind: "recording" }, ended: null })
+      started.push(next)
+      set({ ...view, take: { kind: "recording" } })
     },
     stop(): void {
       if (view.take.kind === "recording") {
         set({ ...view, take: { kind: "keeping" } })
       }
     },
-    reset(): void {
-      if (view.ended !== null) set({ ...view, ended: null })
-    },
+    keptOn: (on, since): string | null =>
+      held.find((each) => each.line === on && each.takenAt >= since)?.id ??
+      null,
     land(id): void {
-      set({
-        ...view,
-        take: { kind: "idle" },
-        kept: id === null ? view.kept : { id },
-        ended: id === null ? "short" : "kept",
-      })
+      // Listed once kept: after any take on this line began.
+      if (id !== null) held.push({ id, line, takenAt: Number.MAX_SAFE_INTEGER })
+      end(id === null ? "short" : "kept", id)
+    },
+    lose(how): void {
+      end(how, null)
     },
     refuse(why): void {
-      set({ ...view, blocked: why })
-    },
-    fill(): void {
-      set({ ...view, full: true })
+      refused = why
     },
   }
 }

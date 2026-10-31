@@ -209,6 +209,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "the cut list's schemas, which the phone's Studio project reads and checks, its timing, which fits a scene to its take as Record keeps it, and a review render's review.json, which Watch reads (@some-ui/soundbites, lib/project and lib/studio): the web builds render no video and keep no project",
     },
     {
+      modules: ["packages/some-styles/src/theme/boundary.ts"],
+      profiles: [MOBILE_PROFILE],
+      why: "the theme boundary's helpers as @some-ui/shared's source reaches them: only the phone's code card opens one (Rust Rounds' `code` appearance, src/routes/_dashboard/_apk/rust-rounds.tsx). The web's activities bundle their own copy in their dist",
+    },
+    {
       modules: ["apps/www/src/lib/demo/**"],
       profiles: ["pages"],
       why: "a viewer's sample drafts (CLAUDE.md, two mandates): only the Pages build is a viewer's, and the owner's builds keep to their own records",

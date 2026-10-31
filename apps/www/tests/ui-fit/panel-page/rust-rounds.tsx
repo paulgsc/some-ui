@@ -6,17 +6,11 @@ import { keptRounds, RustRounds } from "@some-ui/rust-rounds"
 
 /** A microphone that never records: the fit is measured with the button at rest. */
 const QUIET: NotesPort = {
-  getSnapshot: () => ({
-    take: { kind: "idle" },
-    kept: null,
-    ended: null,
-    blocked: null,
-    full: false,
-  }),
+  getSnapshot: () => ({ take: { kind: "idle" }, ended: null, blocked: null }),
   subscribe: () => () => undefined,
   start: () => undefined,
   stop: () => undefined,
-  reset: () => undefined,
+  keptOn: () => null,
 }
 
 function fixturePorts(): RustRoundsPorts {

@@ -47,19 +47,7 @@ const SHOWN = [
     })
   ),
   entryLine(null),
-  entryLine({
-    visit: {
-      round: "indexing-01",
-      card: "c",
-      stage: "see",
-      picked: null,
-      note: null,
-      shown: true,
-      pinned: false,
-    },
-    menu: null,
-    title: { concept: "indexing", number: 3 },
-  }),
+  entryLine({ concept: "indexing", number: 3 }),
 ]
 
 const BANNED: ReadonlyArray<[string, RegExp]> = [

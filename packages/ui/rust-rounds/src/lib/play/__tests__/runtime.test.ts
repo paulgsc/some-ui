@@ -147,6 +147,62 @@ describe("the worked example", () => {
     expect(storedLog(ports.storage)).toEqual([
       expect.objectContaining({ card: "a", note: null }),
     ])
+    // Too short is not lost: nothing to say about it once moved on.
+    expect(runtime.getSnapshot().lost).toBeNull()
+  })
+
+  it("says a note lost after moving on, on whatever card is on screen", () => {
+    const ports = fakePorts()
+    const runtime = opened(ports)
+    runtime.dispatch({ type: "continue" })
+    runtime.dispatch({ type: "pick", pick: "Prints z" })
+    runtime.dispatch({ type: "holdToSpeak" })
+    runtime.dispatch({ type: "next" })
+    ports.notes.lose("failed")
+    expect(runtime.getSnapshot().lost).toEqual({
+      concept: "indexing",
+      number: 1,
+    })
+    expect(storedLog(ports.storage)).toEqual([
+      expect.objectContaining({ card: "a", note: null }),
+    ])
+  })
+
+  it("never serves a card waiting on its note as a new one", () => {
+    const ports = fakePorts()
+    const runtime = opened(ports)
+    runtime.dispatch({ type: "play", concept: "indexing" })
+    runtime.dispatch({ type: "pick", pick: "Prints z" })
+    runtime.dispatch({ type: "holdToSpeak" })
+    for (let n = 0; n < 4; n += 1) runtime.dispatch({ type: "next" })
+    // a waits on its note: b, c, d were new, then a again only as played.
+    expect(runtime.getSnapshot().place?.visit).toMatchObject({
+      card: "a",
+      again: "played",
+    })
+  })
+
+  it("says when the card was had before, and when it is the only one", () => {
+    const storage = inMemoryStorage()
+    const [first] = INDEXING_01.cards
+    keptRounds(storage).hold({
+      rounds: [
+        {
+          ...INDEXING_01,
+          id: "borrowing-01",
+          concept: "borrowing",
+          cards: first === undefined ? [] : [first],
+        },
+      ],
+      runs: {},
+      notes: [],
+      notesMissing: false,
+    })
+    const runtime = opened(fakePorts(storage))
+    runtime.dispatch({ type: "play", concept: "borrowing" })
+    expect(runtime.getSnapshot().place?.visit.again).toBe("fresh")
+    runtime.dispatch({ type: "next" })
+    expect(runtime.getSnapshot().place?.visit.again).toBe("same")
   })
 
   it("logs where the tutor's guess differed from rustc's recorded run", () => {
@@ -237,7 +293,7 @@ describe("leaving and coming back", () => {
     expect(log.sessions.map((session) => session.cards.length)).toEqual([1, 1])
   })
 
-  it("keeps a take under way when the page is left, and logs what waited", () => {
+  it("keeps hearing the microphone past leaving, until the card's note lands", () => {
     const ports = fakePorts()
     const runtime = createRustRounds(ports)
     const detach = runtime.attach()
@@ -247,9 +303,69 @@ describe("leaving and coming back", () => {
     runtime.dispatch({ type: "next" })
     detach()
     expect(ports.notes.getSnapshot().take.kind).toBe("keeping")
+    expect(storedLog(ports.storage)).toEqual([])
+    ports.notes.land("note-after")
     expect(storedLog(ports.storage)).toEqual([
-      expect.objectContaining({ card: "a" }),
+      expect.objectContaining({ card: "a", note: "note-after" }),
     ])
+    // Settled: what waited is gone from the kept place.
+    expect(keptRounds(ports.storage).open().pending).toEqual([])
+  })
+
+  it("settles a card an ended app left waiting, once reopened, from the note the phone holds", () => {
+    const storage = inMemoryStorage()
+    const notes = fakeNotes()
+    const first = opened(fakePorts(storage, notes))
+    first.dispatch({ type: "continue" })
+    first.dispatch({ type: "pick", pick: "Prints z" })
+    first.dispatch({ type: "holdToSpeak" })
+    first.dispatch({ type: "next" })
+    // The app is ended before the note's end is heard; the desk kept it.
+    expect(keptRounds(storage).open().pending).toHaveLength(1)
+    const desk = fakeNotes()
+    desk.held.push({
+      id: "note-kept",
+      line: notes.started[0]!,
+      takenAt: Number.MAX_SAFE_INTEGER,
+    })
+
+    opened(fakePorts(storage, desk))
+    expect(storedLog(storage)).toEqual([
+      expect.objectContaining({ card: "a", note: "note-kept" }),
+    ])
+    expect(keptRounds(storage).open().pending).toEqual([])
+  })
+
+  it("logs a card an ended app left waiting as it stood when the phone holds no note", () => {
+    const storage = inMemoryStorage()
+    const first = opened(fakePorts(storage))
+    first.dispatch({ type: "continue" })
+    first.dispatch({ type: "pick", pick: "Prints z" })
+    first.dispatch({ type: "holdToSpeak" })
+    first.dispatch({ type: "next" })
+    opened(fakePorts(storage))
+    expect(storedLog(storage)).toEqual([
+      expect.objectContaining({ card: "a", note: null }),
+    ])
+  })
+
+  it("keeps saying a log write was refused until the log itself is kept", () => {
+    const storage = inMemoryStorage()
+    const ports = fakePorts(storage)
+    // The log cannot be written; the place can.
+    const runtime = opened({
+      ...ports,
+      store: { ...ports.store, append: (): boolean => false },
+    })
+    runtime.dispatch({ type: "continue" })
+    runtime.dispatch({ type: "next" })
+    expect(runtime.getSnapshot().notKept).toEqual({
+      log: true,
+      held: false,
+      place: false,
+    })
+    runtime.dispatch({ type: "pick", pick: "Prints 122" })
+    expect(runtime.getSnapshot().notKept.log).toBe(true)
   })
 
   it("never writes over a log it could not read", () => {
@@ -284,6 +400,33 @@ describe("the tutor's page", () => {
     expect(copy).toContain("#### indexing-01, card a (read)")
   })
 
+  it("lets only the latest copy say how it went, across leaving the page", async () => {
+    let finish: Array<() => void> = []
+    const ports = {
+      ...fakePorts(),
+      copy: (): Promise<void> =>
+        new Promise<void>((resolve) => {
+          finish = [...finish, resolve]
+        }),
+    }
+    const runtime = opened(ports)
+    runtime.dispatch({ type: "tutor" })
+    runtime.dispatch({ type: "copyLog" })
+    runtime.dispatch({ type: "tutor" })
+    runtime.dispatch({ type: "copyLog" })
+    expect(runtime.getSnapshot().copy).toMatchObject({ seq: 2 })
+    finish[0]?.()
+    await Promise.resolve()
+    expect(runtime.getSnapshot().copy.kind).toBe("copying")
+    finish[1]?.()
+    await Promise.resolve()
+    expect(runtime.getSnapshot().copy).toMatchObject({
+      kind: "copied",
+      seq: 2,
+      what: "log",
+    })
+  })
+
   it("keeps the text on screen when the clipboard refuses", async () => {
     const ports = {
       ...fakePorts(),
@@ -314,6 +457,10 @@ describe("the tutor's page", () => {
     runtime.dispatch({ type: "copyFix" })
     await Promise.resolve()
     expect(ports.copied[0]).toContain("Rust Rounds checked your reply")
+    expect(runtime.getSnapshot().copy).toMatchObject({
+      kind: "copied",
+      what: "fix",
+    })
   })
 
   it("takes a round once, and keeps it and its notes across a reopen", () => {
@@ -349,22 +496,26 @@ describe("the microphone", () => {
     runtime.dispatch({ type: "pick", pick: "Prints z" })
     runtime.dispatch({ type: "holdToSpeak" })
     expect(notes.started).toEqual([])
-    expect(runtime.getSnapshot().taking).toBeNull()
+    expect(runtime.getSnapshot()).toMatchObject({
+      taking: null,
+      said: "blocked",
+      notes: { blocked: "The microphone is off for this app." },
+    })
     runtime.dispatch({ type: "next" })
     expect(visitOf(runtime.getSnapshot())).toBe("b:choose")
     expect(storedLog(ports.storage)).toHaveLength(1)
   })
 
-  it("starts no take with no room on the phone, and nothing waits on one", () => {
-    const notes = fakeNotes()
-    notes.fill()
-    const ports = fakePorts(inMemoryStorage(), notes)
+  it("says the phone has no room once a take finds none, until one is kept", () => {
+    const ports = fakePorts()
     const runtime = opened(ports)
     runtime.dispatch({ type: "continue" })
     runtime.dispatch({ type: "pick", pick: "Prints z" })
     runtime.dispatch({ type: "holdToSpeak" })
-    expect(runtime.getSnapshot().taking).toBeNull()
+    ports.notes.lose("full")
+    expect(runtime.getSnapshot()).toMatchObject({ noRoom: true, taking: null })
     runtime.dispatch({ type: "next" })
+    expect(runtime.getSnapshot().noRoom).toBe(true)
     expect(storedLog(ports.storage)).toHaveLength(1)
   })
 })

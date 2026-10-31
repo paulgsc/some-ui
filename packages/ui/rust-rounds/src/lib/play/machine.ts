@@ -17,8 +17,13 @@
  *   the card's event; the card on screen is kept as the place, so leaving
  *   the app at any card and coming back lands on it with nothing lost.
  * - **A voice note is never lost to moving on.** A card left while its note
- *   is still being kept is logged once the note lands (`pending`), or as it
- *   is when the take ends with none.
+ *   is still being kept waits in `pending`, which is kept with the place, and
+ *   is logged once the microphone says how the take ended, or, after the app
+ *   was ended, once the reopened session finds the note on the phone. A take
+ *   that ends kept nothing is said, whichever card is on screen by then.
+ * - **A failed write is said until that record is kept.** Each record's last
+ *   write is tracked apart (`notKept`), so a later write of another record
+ *   cannot hide it.
  * - **rustc's result is never compared with the pick on screen.** The
  *   tutor's guess is checked only to log `tutorGuessedWrong`.
  */
@@ -44,7 +49,7 @@ import {
 } from "./held"
 import type { LogAdd, SessionHead } from "./log"
 import { appendToLog } from "./log"
-import type { Opened, Place, Visit } from "./store"
+import type { Again, Opened, Pending, Place, Title, Visit } from "./store"
 
 /** A voice take as the screen shows it. */
 type TakeView =
@@ -53,28 +58,28 @@ type TakeView =
   | { readonly kind: "recording" }
   | { readonly kind: "keeping" }
 
-/** How the last take ended. */
-export type TakeEnd = "kept" | "short" | "full" | "failed"
+/**
+ * How a take ended: kept, too short, no room, failed to keep, refused by
+ * the microphone, or let go before it opened.
+ */
+export type TakeEnd = "kept" | "short" | "full" | "failed" | "blocked" | "none"
 
 /** The microphone's voice notes, as the session reads them. */
 export type NoteView = {
   readonly take: TakeView
-  /** The last voice note kept on this phone, whatever card it was said on. */
-  readonly kept: { readonly id: string } | null
-  /** How the last take ended; null once something since made it moot. */
-  readonly ended: TakeEnd | null
-  /** Why the last take could not start (the microphone refused), in the person's words. */
+  /**
+   * The last take to end, whatever card it was said on; `seq` counts every
+   * take that ends, so a new one is told from the last.
+   */
+  readonly ended: {
+    readonly seq: number
+    readonly line: string
+    readonly end: TakeEnd
+    /** The note kept, when `end` is `kept`. */
+    readonly note: string | null
+  } | null
+  /** Why the microphone refused the last take, in the person's words. */
   readonly blocked: string | null
-  /** No room on the phone for another note: none can start. */
-  readonly full: boolean
-}
-
-export const QUIET_NOTES: NoteView = {
-  take: { kind: "idle" },
-  kept: null,
-  ended: null,
-  blocked: null,
-  full: false,
 }
 
 /** What became of a pasted reply. */
@@ -84,12 +89,22 @@ type ReplyAnswer =
   | { readonly kind: "already-here" }
   | { readonly kind: "refused"; readonly fixRequest: string }
 
+/** What a copy carries: the log for a tutor, or what a tutor should fix. */
+type CopyWhat = "log" | "fix"
+
 type CopyState =
-  | { readonly kind: "idle" }
-  | { readonly kind: "copying"; readonly seq: number }
-  | { readonly kind: "copied"; readonly seq: number }
+  | {
+      readonly kind: "idle" | "copying" | "copied"
+      readonly seq: number
+      readonly what: CopyWhat
+    }
   /** The clipboard refused: the text stays on screen to select by hand. */
-  | { readonly kind: "failed"; readonly seq: number; readonly text: string }
+  | {
+      readonly kind: "failed"
+      readonly seq: number
+      readonly what: CopyWhat
+      readonly text: string
+    }
 
 type Screen =
   | { readonly kind: "menu" }
@@ -100,6 +115,9 @@ type Screen =
       readonly answer: ReplyAnswer | null
     }
 
+/** The records the store keeps, each said apart when the phone refused it. */
+type KeptRecord = "log" | "held" | "place"
+
 export type PlayState = {
   readonly screen: Screen
   readonly held: Held
@@ -108,16 +126,19 @@ export type PlayState = {
   /** The card on screen, not logged yet; the menu's Continue returns to it. */
   readonly place: Place | null
   readonly notes: NoteView
-  /** The card (`lineOf`) a take under way was started on. */
-  readonly taking: string | null
+  /** The take under way: the card it was started on, and when. */
+  readonly taking: { readonly line: string; readonly since: number } | null
   /** Cards left while their voice note was still being kept. */
-  readonly pending: ReadonlyArray<{
-    readonly line: string
-    readonly add: LogAdd
-  }>
+  readonly pending: ReadonlyArray<Pending>
+  /** How the last take on the card on screen ended, until the next card. */
+  readonly said: TakeEnd | null
+  /** A card left whose note could not be kept, until the next card. */
+  readonly lost: Title | null
+  /** The phone had no room for the last note; cleared by one kept. */
+  readonly noRoom: boolean
   readonly copy: CopyState
-  /** The phone refused to keep the last change. */
-  readonly notKept: boolean
+  /** The records whose last write the phone refused. */
+  readonly notKept: Readonly<Record<KeptRecord, boolean>>
 }
 
 /** What the person does. */
@@ -140,11 +161,27 @@ export type PlayIntent =
 /** What the microphone, the clipboard, the page and the store report. */
 type PlaySignal =
   | { readonly type: "notes"; readonly view: NoteView }
+  /**
+   * The session opened: the note the phone holds for each card left
+   * waiting on one, and whether a take is still under way.
+   */
+  | {
+      readonly type: "reopened"
+      readonly found: ReadonlyArray<{
+        readonly line: string
+        readonly note: string | null
+      }>
+      readonly busy: boolean
+    }
   | { readonly type: "copied"; readonly seq: number }
   | { readonly type: "copyFailed"; readonly seq: number; readonly text: string }
   | { readonly type: "hidden" }
   | { readonly type: "left" }
-  | { readonly type: "stored"; readonly ok: boolean }
+  | {
+      readonly type: "stored"
+      readonly record: KeptRecord
+      readonly ok: boolean
+    }
 
 /** An intent, stamped with when it happened (ISO 8601) by the runtime. */
 export type PlayEvent = (PlayIntent & { readonly at: string }) | PlaySignal
@@ -156,10 +193,13 @@ export type PlayEffect =
       readonly add: LogAdd
     }
   | { readonly type: "hold"; readonly held: Held }
-  | { readonly type: "savePlace"; readonly place: Place }
+  | {
+      readonly type: "savePlace"
+      readonly place: Place | null
+      readonly pending: ReadonlyArray<Pending>
+    }
   | { readonly type: "startNote"; readonly line: string }
   | { readonly type: "stopNote" }
-  | { readonly type: "resetNote" }
   | { readonly type: "copy"; readonly seq: number; readonly text: string }
 
 export type Step = {
@@ -171,9 +211,16 @@ export type Step = {
 export const lineOf = (ref: CardRef): string =>
   `rust-rounds:${ref.round}/${ref.card}`
 
+const KEPT: Readonly<Record<KeptRecord, boolean>> = {
+  log: false,
+  held: false,
+  place: false,
+}
+
 /**
  * The session as it opens: on the card left last, if there is one, so
- * coming back lands on it; otherwise on the menu.
+ * coming back lands on it; otherwise on the menu. Cards still waiting on a
+ * note are settled once the runtime has asked the phone (`reopened`).
  */
 export function initialState(
   opened: Opened,
@@ -193,13 +240,23 @@ export function initialState(
     place,
     notes,
     taking: null,
-    pending: [],
-    copy: { kind: "idle" },
-    notKept: false,
+    pending: opened.pending,
+    said: null,
+    lost: null,
+    noRoom: false,
+    copy: { kind: "idle", seq: 0, what: "log" },
+    notKept: KEPT,
   }
 }
 
 const stay = (state: PlayState): Step => ({ state, effects: [] })
+
+/** Keeps the place and what waits on a note, as they now stand. */
+const savePlace = (state: PlayState): PlayEffect => ({
+  type: "savePlace",
+  place: state.place,
+  pending: state.pending,
+})
 
 /** The card on screen with its round, while the screen shows one. */
 function onScreen(state: PlayState): {
@@ -215,37 +272,53 @@ function onScreen(state: PlayState): {
 }
 
 function withVisit(state: PlayState, place: Place, visit: Visit): Step {
-  const next = { ...place, visit }
-  return {
-    state: { ...state, place: next },
-    effects: [{ type: "savePlace", place: next }],
-  }
+  const next = { ...state, place: { ...place, visit } }
+  return { state: next, effects: [savePlace(next)] }
 }
 
 /** The event that logs leaving `place`'s card at `at`. */
-function leaving(held: Held, place: Place, at: string): LogAdd | null {
+function leaving(
+  held: Held,
+  place: Place,
+  at: string
+): { event: CardEvent; guessedWrong: boolean } | null {
   const located = locate(playable(held), place.visit)
   if (located === null) return null
   const { card } = located
   const { visit } = place
   const ref = { round: visit.round, card: visit.card }
   const run = card.kind === "refine" ? null : runOf(held, ref)
-  const event: CardEvent = {
-    ...ref,
-    at,
-    picked: visit.picked,
-    note: visit.note,
-    refines: card.kind === "refine" ? card.note : null,
-    skipped: card.kind !== "refine" && !visit.shown,
-    rustc: run,
-  }
   return {
-    kind: "card",
-    event,
+    event: {
+      ...ref,
+      at,
+      picked: visit.picked,
+      note: visit.note,
+      refines: card.kind === "refine" ? card.note : null,
+      skipped: card.kind !== "refine" && !visit.shown,
+      rustc: run,
+    },
     guessedWrong:
       card.kind !== "refine" &&
       run !== null &&
       !expectMatches(card.expect, run),
+  }
+}
+
+/** Appends a card's event, with the note it ended with. */
+function logCard(
+  state: PlayState,
+  left: { event: CardEvent; guessedWrong: boolean },
+  note: string | null
+): Step {
+  const add: LogAdd = {
+    kind: "card",
+    event: { ...left.event, note: left.event.note ?? note },
+    guessedWrong: left.guessedWrong,
+  }
+  return {
+    state: { ...state, log: appendToLog(state.log, state.head, add) },
+    effects: [{ type: "append", head: state.head, add }],
   }
 }
 
@@ -255,102 +328,169 @@ function leaving(held: Held, place: Place, at: string): LogAdd | null {
  */
 function leave(state: PlayState, at: string): Step {
   if (state.place === null) return stay(state)
-  const add = leaving(state.held, state.place, at)
+  const left = leaving(state.held, state.place, at)
   const cleared = { ...state, place: null }
-  if (add === null) return stay(cleared)
+  if (left === null) return stay(cleared)
   const line = lineOf(state.place.visit)
-  if (state.taking === line) {
+  if (state.taking?.line === line) {
+    const waiting: Pending = {
+      line,
+      since: state.taking.since,
+      title: state.place.title,
+      ...left,
+    }
     return {
-      state: { ...cleared, pending: [...state.pending, { line, add }] },
+      state: { ...cleared, pending: [...state.pending, waiting] },
       effects: [{ type: "stopNote" }],
     }
   }
-  return {
-    state: { ...cleared, log: appendToLog(state.log, state.head, add) },
-    effects: [{ type: "append", head: state.head, add }],
-  }
+  return logCard(cleared, left, null)
 }
 
-/** Puts `ref` on screen, fresh. */
-function enter(state: PlayState, ref: CardRef, menu: string | null): Step {
+/** The log as it will stand once every card waiting on a note is logged. */
+function logWithPending(state: PlayState): RoundLog {
+  return state.pending.reduce(
+    (log, waiting) =>
+      appendToLog(log, state.head, {
+        kind: "card",
+        event: waiting.event,
+        guessedWrong: waiting.guessedWrong,
+      }),
+    state.log
+  )
+}
+
+/** Puts `ref` on screen, fresh; `from` is the card it was reached from. */
+function enter(
+  state: PlayState,
+  ref: CardRef,
+  menu: string | null,
+  from: CardRef | null
+): Step {
   const located = locate(playable(state.held), ref)
   if (located === null) return stay({ ...state, screen: { kind: "menu" } })
-  const place: Place = {
-    visit: {
-      ...ref,
-      stage: located.card.kind === "refine" ? "speak" : "choose",
-      picked: null,
-      note: null,
-      shown: false,
-      pinned: false,
+  const played = logWithPending(state).sessions.some((session) =>
+    session.cards.some(
+      (event) => event.round === ref.round && event.card === ref.card
+    )
+  )
+  const again: Again =
+    from?.round === ref.round && from.card === ref.card
+      ? "same"
+      : played
+        ? "played"
+        : "fresh"
+  const next: PlayState = {
+    ...state,
+    screen: { kind: "card" },
+    said: null,
+    lost: null,
+    place: {
+      visit: {
+        ...ref,
+        stage: located.card.kind === "refine" ? "speak" : "choose",
+        picked: null,
+        note: null,
+        shown: false,
+        pinned: false,
+        again,
+      },
+      menu,
+      title: { concept: located.round.concept, number: located.number },
     },
-    menu,
-    title: { concept: located.round.concept, number: located.number },
   }
-  return {
-    state: { ...state, screen: { kind: "card" }, place },
-    effects: [{ type: "savePlace", place }, { type: "resetNote" }],
-  }
+  return { state: next, effects: [savePlace(next)] }
 }
 
 /** Leaves the card on screen and puts the next one in `menu`'s concept up. */
 function moveOn(state: PlayState, at: string, menu: string | null): Step {
-  const current = state.place?.visit ?? null
+  const visit = state.place?.visit ?? null
+  const current =
+    visit === null ? null : { round: visit.round, card: visit.card }
   const left = leave(state, at)
+  // A card waiting on its note counts as played: it is not served as new.
   const ref = nextCard(
     playable(left.state.held),
-    left.state.log,
+    logWithPending(left.state),
     menu,
-    current === null ? null : { round: current.round, card: current.card }
+    current
   )
   if (ref === null) {
-    return {
-      state: { ...left.state, screen: { kind: "menu" } },
-      effects: left.effects,
-    }
+    const next = { ...left.state, screen: { kind: "menu" } as const }
+    return { state: next, effects: [...left.effects, savePlace(next)] }
   }
-  const entered = enter(left.state, ref, menu)
+  const entered = enter(left.state, ref, menu, current)
   return {
     state: entered.state,
     effects: [...left.effects, ...entered.effects],
   }
 }
 
-/** A voice note landed, or a take ended with none: settle what waited on it. */
-function settle(state: PlayState, line: string, note: string | null): Step {
-  const waiting = state.pending.find((each) => each.line === line)
+/** A take on `line` ended: settle the card on screen, or the card left waiting on it. */
+function settle(
+  state: PlayState,
+  line: string,
+  end: TakeEnd,
+  note: string | null
+): Step {
+  const base: PlayState = {
+    ...state,
+    taking: state.taking?.line === line ? null : state.taking,
+    noRoom: end === "full" ? true : end === "kept" ? false : state.noRoom,
+  }
+  const waiting = base.pending.find((each) => each.line === line)
   if (waiting !== undefined) {
-    const add: LogAdd =
-      waiting.add.kind === "card"
-        ? { ...waiting.add, event: { ...waiting.add.event, note } }
-        : waiting.add
+    const lostIt = end === "failed" || end === "full"
+    const next: PlayState = {
+      ...base,
+      pending: base.pending.filter((each) => each !== waiting),
+      lost: lostIt ? waiting.title : base.lost,
+    }
+    const logged = logCard(next, waiting, end === "kept" ? note : null)
     return {
-      state: {
-        ...state,
-        taking: null,
-        pending: state.pending.filter((each) => each !== waiting),
-        log: appendToLog(state.log, state.head, add),
-      },
-      effects: [{ type: "append", head: state.head, add }],
+      state: logged.state,
+      effects: [...logged.effects, savePlace(logged.state)],
     }
   }
-  const settled = { ...state, taking: null }
-  const place = state.place
-  if (note === null || place === null || lineOf(place.visit) !== line) {
-    return stay(settled)
+  const { place } = base
+  if (place === null || lineOf(place.visit) !== line) return stay(base)
+  const shown = { ...base, said: end }
+  if (end !== "kept" || note === null || place.visit.note !== null) {
+    return stay(shown)
   }
-  return withVisit(settled, place, { ...place.visit, note })
+  return withVisit(shown, place, { ...place.visit, note })
 }
 
 function onNotes(state: PlayState, view: NoteView): Step {
-  const before = state.notes.kept?.id ?? null
-  const landed =
-    view.kept !== null && view.kept.id !== before ? view.kept : null
+  const before = state.notes.ended?.seq ?? 0
   const next = { ...state, notes: view }
-  if (next.taking === null) return stay(next)
-  if (landed !== null) return settle(next, next.taking, landed.id)
-  if (view.take.kind === "idle") return settle(next, next.taking, null)
-  return stay(next)
+  const { ended } = view
+  if (ended === null || ended.seq <= before) return stay(next)
+  return settle(next, ended.line, ended.end, ended.note)
+}
+
+/** Settles the cards a session ended while they waited on a note. */
+function onReopened(
+  state: PlayState,
+  found: ReadonlyArray<{ line: string; note: string | null }>,
+  busy: boolean
+): Step {
+  let step = stay(state)
+  for (const { line, note } of found) {
+    // A take still under way may yet land; its end settles it then.
+    if (note === null && busy) continue
+    const settled = settle(
+      step.state,
+      line,
+      note === null ? "none" : "kept",
+      note
+    )
+    step = {
+      state: settled.state,
+      effects: [...step.effects, ...settled.effects],
+    }
+  }
+  return step
 }
 
 function takeReply(state: PlayState, reply: string): Step {
@@ -359,13 +499,11 @@ function takeReply(state: PlayState, reply: string): Step {
     screen: { kind: "tutor", reply, answer: value },
   })
   if (reply.trim() === "") return stay(answer({ kind: "empty" }))
-  const taken = intakeReply(reply, state.log)
+  const taken = intakeReply(reply, state.log, playable(state.held))
   if (!taken.ok) {
     return stay(answer({ kind: "refused", fixRequest: taken.fixRequest }))
   }
-  if (playable(state.held).some((round) => round.id === taken.round.id)) {
-    return stay(answer({ kind: "already-here" }))
-  }
+  if (taken.alreadyHeld) return stay(answer({ kind: "already-here" }))
   const held: Held = {
     ...state.held,
     rounds: [...state.held.rounds, taken.round],
@@ -393,10 +531,10 @@ function takeReply(state: PlayState, reply: string): Step {
   }
 }
 
-function copying(state: PlayState, text: string): Step {
-  const seq = state.copy.kind === "idle" ? 1 : state.copy.seq + 1
+function copying(state: PlayState, what: CopyWhat, text: string): Step {
+  const seq = state.copy.seq + 1
   return {
-    state: { ...state, copy: { kind: "copying", seq } },
+    state: { ...state, copy: { kind: "copying", seq, what } },
     effects: [{ type: "copy", seq, text }],
   }
 }
@@ -431,12 +569,14 @@ function onIntent(state: PlayState, event: PlayIntent & { at: string }): Step {
       if (shown.place.visit.note !== null || state.taking !== null) {
         return stay(state)
       }
-      if (state.notes.take.kind !== "idle" || state.notes.full) {
-        return stay(state)
-      }
+      if (state.notes.take.kind !== "idle") return stay(state)
       const line = lineOf(shown.place.visit)
       return {
-        state: { ...state, taking: line },
+        state: {
+          ...state,
+          said: null,
+          taking: { line, since: Date.parse(event.at) },
+        },
         effects: [{ type: "startNote", line }],
       }
     }
@@ -455,7 +595,7 @@ function onIntent(state: PlayState, event: PlayIntent & { at: string }): Step {
         stage: "see",
         shown: true,
       })
-      return state.taking === lineOf(visit)
+      return state.taking?.line === lineOf(visit)
         ? { ...step, effects: [{ type: "stopNote" }, ...step.effects] }
         : step
     }
@@ -487,13 +627,15 @@ function onIntent(state: PlayState, event: PlayIntent & { at: string }): Step {
       return stay({
         ...state,
         screen: { kind: "tutor", reply: "", answer: null },
-        copy: { kind: "idle" },
+        // A copy still under way can only land as stale: its seq is behind.
+        copy: { kind: "idle", seq: state.copy.seq, what: "log" },
       })
     }
     case "copyLog": {
       if (state.screen.kind !== "tutor") return stay(state)
       return copying(
         state,
+        "log",
         copyForTutor({
           log: state.log,
           rounds: playable(state.held),
@@ -521,7 +663,7 @@ function onIntent(state: PlayState, event: PlayIntent & { at: string }): Step {
       if (screen.kind !== "tutor" || screen.answer?.kind !== "refused") {
         return stay(state)
       }
-      return copying(state, screen.answer.fixRequest)
+      return copying(state, "fix", screen.answer.fixRequest)
     }
     default: {
       return assertNever(event)
@@ -531,6 +673,7 @@ function onIntent(state: PlayState, event: PlayIntent & { at: string }): Step {
 
 const SIGNALS: ReadonlySet<string> = new Set<PlaySignal["type"]>([
   "notes",
+  "reopened",
   "copied",
   "copyFailed",
   "hidden",
@@ -547,53 +690,48 @@ export function step(state: PlayState, event: PlayEvent): Step {
     case "notes": {
       return onNotes(state, event.view)
     }
+    case "reopened": {
+      return onReopened(state, event.found, event.busy)
+    }
     case "copied": {
-      return state.copy.kind === "copying" && state.copy.seq === event.seq
-        ? stay({ ...state, copy: { kind: "copied", seq: event.seq } })
+      const { copy } = state
+      return copy.kind === "copying" && copy.seq === event.seq
+        ? stay({ ...state, copy: { ...copy, kind: "copied" } })
         : stay(state)
     }
     case "copyFailed": {
-      return state.copy.kind === "copying" && state.copy.seq === event.seq
+      const { copy } = state
+      return copy.kind === "copying" && copy.seq === event.seq
         ? stay({
             ...state,
-            copy: { kind: "failed", seq: event.seq, text: event.text },
+            copy: { ...copy, kind: "failed", text: event.text },
           })
         : stay(state)
     }
-    case "hidden": {
+    case "hidden":
+    case "left": {
+      // A take under way is ended and kept by the microphone; a card waiting
+      // on it stays kept with the place until its end, or the next opening,
+      // settles it.
       return state.taking === null
         ? stay(state)
         : { state, effects: [{ type: "stopNote" }] }
     }
-    case "left": {
-      // The page is gone: a card still waiting on its note is logged as it
-      // stands, and a take under way is ended and kept by the microphone.
-      const effects: Array<PlayEffect> = state.pending.map(({ add }) => ({
-        type: "append",
-        head: state.head,
-        add,
-      }))
-      if (state.taking !== null) effects.push({ type: "stopNote" })
-      return {
-        state: {
-          ...state,
-          log: state.pending.reduce(
-            (log, { add }) => appendToLog(log, state.head, add),
-            state.log
-          ),
-          pending: [],
-          taking: null,
-        },
-        effects,
-      }
-    }
     case "stored": {
-      return state.notKept === !event.ok
+      const failed = !event.ok
+      return state.notKept[event.record] === failed
         ? stay(state)
-        : stay({ ...state, notKept: !event.ok })
+        : stay({
+            ...state,
+            notKept: { ...state.notKept, [event.record]: failed },
+          })
     }
     default: {
       return assertNever(event)
     }
   }
 }
+
+/** Whether a card is still waiting on its note, or a take is under way. */
+export const unsettled = (state: PlayState): boolean =>
+  state.taking !== null || state.pending.length > 0

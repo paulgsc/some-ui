@@ -29,6 +29,7 @@ const PLACE: Place = {
     note: null,
     shown: false,
     pinned: false,
+    again: "fresh",
   },
   menu: null,
   title: { concept: "indexing", number: 2 },
@@ -67,10 +68,13 @@ const stores: ReadonlyArray<KeptStore> = [
   {
     name: "the Rust Rounds card left on screen",
     key: PLACE_KEY,
-    older: '{"round":"indexing-01","card":"b"}',
+    older: '{"v":1,"visit":{"round":"indexing-01","card":"b"}}',
     open: (storage): KeptHandle => ({
-      write: (): unknown => keptRounds(storage).place(PLACE),
-      read: (): unknown => keptRounds(storage).open().place,
+      write: (): unknown => keptRounds(storage).place(PLACE, []),
+      read: (): unknown => {
+        const { place, pending } = keptRounds(storage).open()
+        return { place, pending }
+      },
     }),
   },
 ]

@@ -299,7 +299,7 @@ const CardRefSchema = z.strictObject({ round: SlugSchema, card: SlugSchema })
 export type CardRef = z.infer<typeof CardRefSchema>
 
 /** One card, as it went. Notes are named by id: the log never holds audio. */
-const CardEventSchema = z.strictObject({
+export const CardEventSchema = z.strictObject({
   round: SlugSchema,
   card: SlugSchema,
   at: WhenSchema,

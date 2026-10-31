@@ -1749,7 +1749,7 @@
     {
       "store": "phone:rust-rounds-notes",
       "class": "record",
-      "growth": "bounded: 100 voice notes, each <= 60 s: 100 x 60 x 4,000 = 24,000,000 B, inside the device's measured room; past 100 refused, never evicted (`some-ui:rust-rounds.notes`, `some-ui.rust-rounds-notes`).",
+      "growth": "Per Rust Rounds voice note (up to a minute at 32 kbps, ~240 KB) until home holds it (RR6, #2237); no count of its own (max = +Infinity), so notes grow until the device's measured room (withRoom, the 25 MiB pool) refuses one, which the session says on the menu and the card; none is ever evicted (`some-ui:rust-rounds.notes`, `some-ui.rust-rounds-notes`).",
       "horizon": "nothing lets them go yet: RR6 (#2237) sends them home",
       "family": "what-is-kept"
     },

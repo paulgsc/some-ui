@@ -6,6 +6,7 @@
  */
 import { RustRounds } from "@rust-rounds/components/rust-rounds"
 import { fakePorts } from "@rust-rounds/lib/play/__tests__/fakes"
+import { keptRounds } from "@rust-rounds/lib/play/store"
 import { WORDS } from "@rust-rounds/lib/play/words"
 import { INDEXING_01, INDEXING_01_RUNS } from "@rust-rounds/lib/worked-example"
 import { inMemoryStorage } from "@some-ui/core-utils"
@@ -29,9 +30,8 @@ describe("Rust Rounds on the phone", () => {
 
     // The menu: one tap into cards.
     expect(screen.getByText(WORDS.menuHeading)).toBeInTheDocument()
-    expect(
-      screen.getByText(WORDS.newFromTutor("indexing", 4))
-    ).toBeInTheDocument()
+    // The worked example is the first round, not news from a tutor.
+    expect(screen.queryByText(WORDS.newFromTutor("indexing", 4))).toBeNull()
     expectNothingDisabled()
     press(WORDS.start)
 
@@ -104,31 +104,6 @@ describe("Rust Rounds on the phone", () => {
     ).toHaveTextContent("r")
   })
 
-  it("asks the picked choice's sentence, and keeps what is said while held", () => {
-    const ports = fakePorts()
-    render(<RustRounds ports={ports} />)
-    press(WORDS.start)
-    const [card] = INDEXING_01.cards
-    if (card?.kind !== "read") throw new Error("the example opens on a read")
-    const choice = card.choices[0]!
-    press(choice.pick)
-    expect(screen.getByText(choice.say)).toBeInTheDocument()
-
-    const hold = screen.getByRole("button", { name: WORDS.holdToSpeak })
-    fireEvent.pointerDown(hold)
-    expect(
-      screen.getByRole("button", { name: WORDS.listening })
-    ).toBeInTheDocument()
-    fireEvent.pointerUp(hold)
-    act(() => ports.notes.land("note-1"))
-    expect(screen.getByText(WORDS.noteKept)).toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: WORDS.holdToSpeak })).toBeNull()
-    // Skip is still there with a note kept.
-    expectNothingDisabled()
-    press(WORDS.skipToRustc)
-    press(WORDS.next)
-  })
-
   it("says a take too short to keep, in the person's words", () => {
     const ports = fakePorts()
     render(<RustRounds ports={ports} />)
@@ -141,17 +116,19 @@ describe("Rust Rounds on the phone", () => {
     expect(screen.getByRole("status")).toHaveTextContent(WORDS.takeEnded.short)
   })
 
-  it("reopens on the card left, as far into it as it was", () => {
+  it("offers plain Skip on a card with no run of its program on the phone", () => {
     const storage = inMemoryStorage()
-    const first = render(<RustRounds ports={fakePorts(storage)} />)
-    press(WORDS.start)
-    press(WORDS.next)
-    press(WORDS.skipToRustc)
-    first.unmount()
-
+    keptRounds(storage).hold({
+      rounds: [{ ...INDEXING_01, id: "borrowing-01", concept: "borrowing" }],
+      runs: {},
+      notes: [],
+      notesMissing: false,
+    })
     render(<RustRounds ports={fakePorts(storage)} />)
-    expect(screen.getByText(WORDS.cardTitle("indexing", 2))).toBeInTheDocument()
-    expect(screen.getByText(WORDS.printed)).toBeInTheDocument()
+    press("borrowing")
+    expect(screen.queryByRole("button", { name: WORDS.skipToRustc })).toBeNull()
+    press(WORDS.skip)
+    expect(screen.getByText(WORDS.noRun)).toBeInTheDocument()
   })
 
   it("takes a tutor's reply, and says what to send back for one it can't", () => {

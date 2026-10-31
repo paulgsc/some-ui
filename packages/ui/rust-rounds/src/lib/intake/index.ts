@@ -6,7 +6,9 @@
  * sent anywhere.
  *
  * A malformed reply is refused, with a fix request to send back to the
- * tutor: every problem, one per line. A round that parses is taken, with
+ * tutor: every problem, one per line. A round with the id of one already
+ * held is the same round sent again when its content is the same, and is
+ * refused when it is not: an id names one round, never two. A round that parses is taken, with
  * the content lint's findings beside it (`lib/lint`), which never refuse.
  */
 import type { Round, RoundLog, TutorNotes } from "@rust-rounds/lib/formats"
@@ -29,6 +31,8 @@ export type ReplyIntake =
       /** Null when the reply carried none; the round still plays. */
       notes: TutorNotes | null
       findings: Array<Finding>
+      /** The very round is already held: nothing new to take. */
+      alreadyHeld: boolean
     }
   | {
       ok: false
@@ -147,12 +151,29 @@ const roundsPlayed = (log: RoundLog): Set<string> =>
     log.sessions.flatMap((session) => session.cards.map((event) => event.round))
   )
 
+/** `value` as JSON with every object's keys sorted: the same content, the same text. */
+function canonical(value: unknown): string {
+  return JSON.stringify(value, (_key, inner: unknown) =>
+    isRecord(inner) && !Array.isArray(inner)
+      ? Object.fromEntries(
+          Object.entries(inner).sort(([a], [b]) => a.localeCompare(b))
+        )
+      : inner
+  )
+}
+
 /**
  * Reads a tutor's reply. Never throws. `log` is the log the tutor was given
  * (a log with no sessions when there was none): a round must not reuse an
- * id it names, and the lint checks a refine card's note against it.
+ * id it names, and the lint checks a refine card's note against it. `held`
+ * is the rounds already on the phone: the same round again is
+ * `alreadyHeld`, and another round under one of their ids is refused.
  */
-export function intakeReply(reply: string, log: RoundLog): ReplyIntake {
+export function intakeReply(
+  reply: string,
+  log: RoundLog,
+  held: ReadonlyArray<Round> = []
+): ReplyIntake {
   const objects = objectsIn(reply)
   const rounds = objects.filter((object) => shapeOf(object) === "round")
   const allNotes = objects.filter((object) => shapeOf(object) === "notes")
@@ -183,7 +204,15 @@ export function intakeReply(reply: string, log: RoundLog): ReplyIntake {
     ...violationsOf(round, roundValue, "round"),
     ...(notes === null ? [] : violationsOf(notes, notesValue, "tutor notes")),
   ]
-  if (round.success && roundsPlayed(log).has(round.data.id)) {
+  const same = round.success
+    ? held.find((each) => each.id === round.data.id)
+    : undefined
+  const again = same !== undefined && canonical(same) === canonical(round.data)
+  if (same !== undefined && !again) {
+    violations.push(
+      `round id: "${same.id}" is a round already on the phone with other cards; give this round a new id, never reused.`
+    )
+  } else if (!again && round.success && roundsPlayed(log).has(round.data.id)) {
     violations.push(
       `round id: "${round.data.id}" is a round the log already played; give this round a new id, never reused.`
     )
@@ -206,6 +235,7 @@ export function intakeReply(reply: string, log: RoundLog): ReplyIntake {
     round: round.data,
     notes: notes?.success === true ? notes.data : null,
     findings: [...noNotes, ...lintRound(round.data, log)],
+    alreadyHeld: again,
   }
 }
 

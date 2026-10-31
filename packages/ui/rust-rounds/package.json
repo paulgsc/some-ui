@@ -57,6 +57,11 @@
       "types": "./dist/@some-ui/rust-rounds.d.ts",
       "import": "./dist/@some-ui/rust-rounds.es.js",
       "default": "./dist/@some-ui/rust-rounds.es.js"
+    },
+    "./entry": {
+      "types": "./dist/@some-ui/rust-rounds/entry.d.ts",
+      "import": "./dist/@some-ui/rust-rounds/entry.es.js",
+      "default": "./dist/@some-ui/rust-rounds/entry.es.js"
     }
   }
 }

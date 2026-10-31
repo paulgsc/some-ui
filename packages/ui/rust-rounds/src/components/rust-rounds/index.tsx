@@ -9,7 +9,7 @@
  * clipboard are `lib/play/runtime.ts`. It owns one runtime for as long as it
  * is mounted (docs/monorepo-boundaries.md, "Inside a React package").
  */
-import type { JSX, KeyboardEvent, ReactNode } from "react"
+import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import type { Card, Round, RustcRun } from "@rust-rounds/lib/formats"
 import { programLines, resolvePrograms } from "@rust-rounds/lib/formats"
@@ -26,8 +26,7 @@ import type { RustRoundsPorts } from "@rust-rounds/lib/play/runtime"
 import { createRustRounds } from "@rust-rounds/lib/play/runtime"
 import type { Visit } from "@rust-rounds/lib/play/store"
 import { runHeading, WORDS } from "@rust-rounds/lib/play/words"
-import { cn } from "@some-ui/core-utils"
-import { Button, CodeCard, Textarea } from "@some-ui/shared"
+import { Button, CodeCard, HoldButton, Textarea } from "@some-ui/shared"
 import { Mic, Pin } from "lucide-react"
 
 export type RustRoundsProps = {
@@ -94,6 +93,14 @@ const RunView = ({ run }: { run: RustcRun | null }): JSX.Element => {
   )
 }
 
+/** How the last take on this card ended, in the person's words; null for nothing to say. */
+function saidLine(state: PlayState): string | null {
+  const { said, notes } = state
+  if (said === "blocked") return notes.blocked
+  if (said === null || said === "none") return null
+  return WORDS.takeEnded[said]
+}
+
 /**
  * Hold to speak, let go to keep it. Withdrawn once this card's note is kept,
  * and while the phone has no room for another, rather than shown disabled.
@@ -107,53 +114,35 @@ const HoldToSpeak = ({
   visit: Visit
   dispatch: Dispatch
 }): JSX.Element => {
-  const { notes } = state
   if (visit.note !== null) {
-    return <p className="text-sm font-medium">{WORDS.noteKept}</p>
+    return <p className="text-sm font-medium">{WORDS.takeEnded.kept}</p>
   }
-  if (notes.full) {
-    return (
-      <p className="text-muted-foreground text-sm">{WORDS.takeEnded.full}</p>
-    )
+  if (state.noRoom) {
+    return <p className="text-muted-foreground text-sm">{WORDS.noRoom}</p>
   }
-  const busy = notes.take.kind !== "idle"
-  const label =
-    notes.take.kind === "keeping"
-      ? WORDS.keeping
-      : busy
-        ? WORDS.listening
-        : WORDS.holdToSpeak
-  const ended = state.taking === null ? notes.ended : null
-  const onKey = (event: KeyboardEvent, intent: PlayIntent): void => {
-    if (event.key !== " " && event.key !== "Enter") return
-    event.preventDefault()
-    if (!event.repeat) dispatch(intent)
-  }
+  const { take } = state.notes
+  const busy = take.kind !== "idle"
+  const said = saidLine(state)
   return (
     <div className="flex flex-col gap-2">
-      <button
-        type="button"
-        aria-pressed={busy}
-        className={cn(
-          "flex h-16 touch-none items-center justify-center gap-2 rounded-2xl border text-base font-semibold select-none",
-          busy
-            ? "bg-primary text-primary-foreground border-primary"
-            : "bg-card border-border"
-        )}
-        onPointerDown={() => dispatch({ type: "holdToSpeak" })}
-        onPointerUp={() => dispatch({ type: "letGo" })}
-        onPointerCancel={() => dispatch({ type: "letGo" })}
-        onPointerLeave={() => dispatch({ type: "letGo" })}
-        onKeyDown={(event) => onKey(event, { type: "holdToSpeak" })}
-        onKeyUp={(event) => onKey(event, { type: "letGo" })}
-        onContextMenu={(event) => event.preventDefault()}
+      <HoldButton
+        size="lg"
+        variant={busy ? "default" : "outline"}
+        className="h-16 rounded-2xl text-base font-semibold"
+        holding={busy}
+        onHold={() => dispatch({ type: "holdToSpeak" })}
+        onRelease={() => dispatch({ type: "letGo" })}
       >
         <Mic aria-hidden className="size-5" />
-        {label}
-      </button>
-      {(ended !== null || notes.blocked !== null) && (
+        {take.kind === "keeping"
+          ? WORDS.keeping
+          : busy
+            ? WORDS.listening
+            : WORDS.holdToSpeak}
+      </HoldButton>
+      {said !== null && (
         <p role="status" className="text-muted-foreground text-sm">
-          {notes.blocked ?? (ended === null ? "" : WORDS.takeEnded[ended])}
+          {said}
         </p>
       )}
     </div>
@@ -249,6 +238,11 @@ const CardScreen = ({
           {WORDS.menu}
         </Button>
       </header>
+      {visit.again !== "fresh" && (
+        <p className="text-muted-foreground -mt-2 text-sm">
+          {visit.again === "same" ? WORDS.onlyCard : WORDS.playedBefore}
+        </p>
+      )}
 
       {card.kind === "refine" ? (
         <>
@@ -320,7 +314,7 @@ const CardScreen = ({
                 variant="ghost"
                 onClick={() => dispatch({ type: "showRustc" })}
               >
-                {WORDS.skipToRustc}
+                {run === null ? WORDS.skip : WORDS.skipToRustc}
               </Button>
             )}
             <NextButton dispatch={dispatch} />
@@ -339,7 +333,8 @@ const MenuScreen = ({
   dispatch: Dispatch
 }): JSX.Element => {
   const rounds = playable(state.held)
-  const fresh = newRounds(rounds, state.log)
+  // Only what a tutor sent: the worked example is the first round, not news.
+  const fresh = newRounds(state.held.rounds, state.log)
   const refines = refinesWaiting(rounds, state.log)
   const { place } = state
   return (
@@ -352,6 +347,9 @@ const MenuScreen = ({
           ? WORDS.start
           : WORDS.continueAt(place.title.concept, place.title.number)}
       </Button>
+      {state.noRoom && (
+        <p className="text-muted-foreground text-sm">{WORDS.noRoom}</p>
+      )}
       {(fresh.length > 0 || refines > 0) && (
         <ul className="flex flex-col gap-1 text-sm">
           {fresh.map((round) => (
@@ -403,7 +401,7 @@ const TutorScreen = ({
     copy.kind === "copying"
       ? WORDS.copying
       : copy.kind === "copied"
-        ? answer?.kind === "refused"
+        ? copy.what === "fix"
           ? WORDS.fixCopied
           : WORDS.copied
         : copy.kind === "failed"
@@ -495,9 +493,14 @@ export const RustRounds = ({ ports }: RustRoundsProps): JSX.Element => {
   return (
     <div className="mx-auto flex w-full max-w-md min-w-0 flex-col gap-4">
       <h1 className="text-2xl font-bold tracking-tight">{WORDS.title}</h1>
-      {state.notKept && (
+      {Object.values(state.notKept).some(Boolean) && (
         <p role="alert" className="text-destructive text-sm">
           {WORDS.notKept}
+        </p>
+      )}
+      {state.lost !== null && (
+        <p role="alert" className="text-destructive text-sm">
+          {WORDS.noteLost(state.lost.concept, state.lost.number)}
         </p>
       )}
       {state.screen.kind === "menu" && (

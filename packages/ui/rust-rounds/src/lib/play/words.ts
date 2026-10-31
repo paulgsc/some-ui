@@ -9,7 +9,7 @@ import type { BLOOM_STEPS, RustcRun } from "@rust-rounds/lib/formats"
 import { assertNever } from "@some-ui/core-utils"
 
 import type { TakeEnd } from "./machine"
-import type { Place } from "./store"
+import type { Title } from "./store"
 
 type Aim = (typeof BLOOM_STEPS)[number]
 
@@ -36,17 +36,28 @@ export const WORDS = {
   program: "The program",
   oneLineChanged: (line: number): string => `Line ${line} changed`,
   skipToRustc: "Skip, show me rustc",
+  /** Skip on a card with no run of its program on the phone. */
+  skip: "Skip",
+  /** The card came up again, in a later turn. */
+  playedBefore: "You've had this card before.",
+  /** Next found no other card in this concept. */
+  onlyCard: "The only card in this concept, again.",
   sayThis: "Say it",
   holdToSpeak: "Hold to speak",
   listening: "Listening. Let go to keep it.",
   keeping: "Keeping it…",
-  noteKept: "Kept on this phone.",
   takeEnded: {
     kept: "Kept on this phone.",
     short: "Too short to keep. Hold, talk, then let go.",
     full: "There's no room on this phone for another voice note.",
     failed: "Couldn't keep that one. Hold to try again.",
-  } satisfies Readonly<Record<TakeEnd, string>>,
+  } satisfies Readonly<Record<Exclude<TakeEnd, "blocked" | "none">, string>>,
+  /** A card left before its note was kept, and the note was lost. */
+  noteLost: (concept: string, number: number): string =>
+    `The note on ${concept}, card ${number} couldn't be kept.`,
+  /** The phone's room for voice notes is used up; on the menu and the speak step. */
+  noRoom:
+    "This phone has no room left for voice notes. Sending them home comes next; until then, every card still plays.",
   earlierNote: "Your earlier note",
   earlierNoteMissing:
     "Your earlier note isn't on this phone yet. Say it again anyway.",
@@ -66,7 +77,7 @@ export const WORDS = {
   printed: "It printed",
   printedNothing: "It printed nothing.",
   errorOutput: "It printed to its error output",
-  notKept: "This phone couldn't save the last change. It's still on screen.",
+  notKept: "This phone couldn't save what you did last. It's still on screen.",
   copyForTutor: "Copy for a tutor",
   copying: "Copying…",
   copied: "Copied. Paste it into any chat, then paste the reply below.",
@@ -115,8 +126,8 @@ const STOPPED: Readonly<
 }
 
 /** What the Practice Home card says: where to come back to, or what this is. */
-export function entryLine(place: Place | null): string {
-  return place === null
+export function entryLine(title: Title | null): string {
+  return title === null
     ? WORDS.entryFresh
-    : WORDS.continueAt(place.title.concept, place.title.number)
+    : WORDS.continueAt(title.concept, title.number)
 }

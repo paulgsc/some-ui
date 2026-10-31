@@ -1,7 +1,7 @@
 import type { JSX } from "react"
 import { useEffect, useState } from "react"
 import { cn, formatTimecode } from "@some-ui/core-utils"
-import { entryLine, openPlace, RUST_ROUNDS_WORDS } from "@some-ui/rust-rounds"
+import { RUST_ROUNDS_TITLE, rustRoundsEntry } from "@some-ui/rust-rounds/entry"
 import {
   BrandMark,
   Button,
@@ -242,22 +242,25 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
  * left last, or one tap from the first. It says where you left off, and
  * nothing about how long or how much.
  */
-const RustRoundsCard = (): JSX.Element => (
-  <Link
-    to="/rust-rounds"
-    className="bg-card border-border/50 flex items-center gap-3 rounded-2xl border p-4 shadow-sm"
-  >
-    <span className="bg-brand/30 text-brand-foreground dark:text-brand flex size-12 shrink-0 items-center justify-center rounded-2xl">
-      <SquareTerminal aria-hidden className="size-6" />
-    </span>
-    <span className="flex min-w-0 flex-1 flex-col">
-      <span className="font-bold">{RUST_ROUNDS_WORDS.title}</span>
-      <span className="text-muted-foreground text-sm">
-        {entryLine(openPlace(browserLocalStorage))}
+const RustRoundsCard = (): JSX.Element => {
+  // Read once as Home opens, never on each render; it changes only in Rust
+  // Rounds itself, which is left to come back here.
+  const [line] = useState(() => rustRoundsEntry(browserLocalStorage))
+  return (
+    <Link
+      to="/rust-rounds"
+      className="bg-card border-border/50 flex items-center gap-3 rounded-2xl border p-4 shadow-sm"
+    >
+      <span className="bg-brand/30 text-brand-foreground dark:text-brand flex size-12 shrink-0 items-center justify-center rounded-2xl">
+        <SquareTerminal aria-hidden className="size-6" />
       </span>
-    </span>
-  </Link>
-)
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="font-bold">{RUST_ROUNDS_TITLE}</span>
+        <span className="text-muted-foreground text-sm">{line}</span>
+      </span>
+    </Link>
+  )
+}
 
 /**
  * Two low hills along the bottom of the screen, a shade off the ground, so a

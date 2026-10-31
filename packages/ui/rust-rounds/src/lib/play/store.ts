@@ -10,10 +10,13 @@
  * - `HELD_KEY`, what plays: the rounds taken, rustc's recorded runs, every
  *   version of the tutor notes (`./held`).
  * - `PLACE_KEY`, the card on screen and how far into it, so leaving at any
- *   card and coming back lands on it with nothing lost.
+ *   card and coming back lands on it with nothing lost; and the cards left
+ *   while their voice note was still being kept (`pending`), so a note that
+ *   lands after the app was left, or was ended, still finds its card.
  */
-import type { CardRef, RoundLog } from "@rust-rounds/lib/formats"
+import type { CardEvent, CardRef, RoundLog } from "@rust-rounds/lib/formats"
 import {
+  CardEventSchema,
   RoundLogSchema,
   RoundSchema,
   RustcRunSchema,
@@ -25,15 +28,20 @@ import { z } from "zod"
 
 import type { Held } from "./held"
 import { NOTHING_HELD } from "./held"
+import { HELD_KEY, LOG_KEY, PLACE_KEY } from "./keys"
 import type { LogAdd, SessionHead } from "./log"
 import { appendToLog, EMPTY_LOG } from "./log"
 
-export const LOG_KEY = "some-ui:rust-rounds.log"
-export const HELD_KEY = "some-ui:rust-rounds.held"
-export const PLACE_KEY = "some-ui:rust-rounds.place"
+export { HELD_KEY, LOG_KEY, PLACE_KEY } from "./keys"
 
 /** How far into a card: choosing, speaking to a choice, or seeing rustc's result. */
 type Stage = "choose" | "speak" | "see"
+
+/**
+ * Whether the card was played before it came up: never, in an earlier turn,
+ * or just now, the only card left to come back to.
+ */
+export type Again = "fresh" | "played" | "same"
 
 /** The card on screen, and what has happened on it so far. */
 export type Visit = CardRef & {
@@ -45,15 +53,30 @@ export type Visit = CardRef & {
   /** rustc's result has been shown. */
   readonly shown: boolean
   readonly pinned: boolean
+  readonly again: Again
 }
+
+/** What the entry says to come back to a card: its concept and number. */
+export type Title = { readonly concept: string; readonly number: number }
 
 /** Where the person is: the card on screen, and the concept they chose. */
 export type Place = {
   readonly visit: Visit
   /** The concept picked from the menu; null for Mixed. */
   readonly menu: string | null
-  /** What the entry says to come back to it: the card's concept and number. */
-  readonly title: { readonly concept: string; readonly number: number }
+  readonly title: Title
+}
+
+/** A card left while its voice note was still being kept: logged once it lands. */
+export type Pending = {
+  /** What the take was started on (`lineOf`). */
+  readonly line: string
+  /** When the take was started (ms since the epoch). */
+  readonly since: number
+  readonly title: Title
+  /** The card's event, its note still null. */
+  readonly event: CardEvent
+  readonly guessedWrong: boolean
 }
 
 const HeldSchema = z.strictObject({
@@ -64,22 +87,38 @@ const HeldSchema = z.strictObject({
   notesMissing: z.boolean(),
 })
 
-const PlaceSchema = z.strictObject({
+const TitleSchema = z.strictObject({
+  concept: z.string(),
+  number: z.int().positive(),
+})
+
+const PlaceRecordSchema = z.strictObject({
   v: z.literal(1),
-  visit: z.strictObject({
-    round: z.string(),
-    card: z.string(),
-    stage: z.enum(["choose", "speak", "see"]),
-    picked: z.string().nullable(),
-    note: z.string().nullable(),
-    shown: z.boolean(),
-    pinned: z.boolean(),
-  }),
-  menu: z.string().nullable(),
-  title: z.strictObject({
-    concept: z.string(),
-    number: z.int().positive(),
-  }),
+  place: z
+    .strictObject({
+      visit: z.strictObject({
+        round: z.string(),
+        card: z.string(),
+        stage: z.enum(["choose", "speak", "see"]),
+        picked: z.string().nullable(),
+        note: z.string().nullable(),
+        shown: z.boolean(),
+        pinned: z.boolean(),
+        again: z.enum(["fresh", "played", "same"]),
+      }),
+      menu: z.string().nullable(),
+      title: TitleSchema,
+    })
+    .nullable(),
+  pending: z.array(
+    z.strictObject({
+      line: z.string(),
+      since: z.number(),
+      title: TitleSchema,
+      event: CardEventSchema,
+      guessedWrong: z.boolean(),
+    })
+  ),
 })
 
 function parsed<T>(schema: z.ZodType<T>): (value: unknown) => T | null {
@@ -91,13 +130,14 @@ function parsed<T>(schema: z.ZodType<T>): (value: unknown) => T | null {
 
 const readLog = readJson(parsed(RoundLogSchema))
 const readHeld = readJson(parsed(HeldSchema))
-const readPlace = readJson(parsed(PlaceSchema))
+const readPlace = readJson(parsed(PlaceRecordSchema))
 
 /** What the store opened: each record, or what stands in for one it could not read. */
 export type Opened = {
   readonly log: RoundLog
   readonly held: Held
   readonly place: Place | null
+  readonly pending: ReadonlyArray<Pending>
 }
 
 export type RoundsStore = {
@@ -106,16 +146,11 @@ export type RoundsStore = {
   readonly append: (head: SessionHead, add: LogAdd) => boolean
   /** Keeps what plays; false when the phone did not keep it. */
   readonly hold: (held: Held) => boolean
-  /** Keeps the card on screen; false when the phone did not keep it. */
-  readonly place: (place: Place) => boolean
-}
-
-/** The card left on screen last, or null for none (or none readable). */
-export function openPlace(storage: KeyedStorage | null): Place | null {
-  const place = openKept(storage, PLACE_KEY, readPlace, null).value
-  return place === null
-    ? null
-    : { visit: place.visit, menu: place.menu, title: place.title }
+  /** Keeps the card on screen and the cards waiting on a note; false when the phone did not keep them. */
+  readonly place: (
+    place: Place | null,
+    pending: ReadonlyArray<Pending>
+  ) => boolean
 }
 
 /** The records in `storage`; with none (or one that throws), nothing is kept. */
@@ -126,10 +161,16 @@ export function keptRounds(storage: KeyedStorage | null): RoundsStore {
         v: 1,
         ...NOTHING_HELD,
       }).value
+      const { place, pending } = openKept(storage, PLACE_KEY, readPlace, {
+        v: 1,
+        place: null,
+        pending: [],
+      }).value
       return {
         log: openKept(storage, LOG_KEY, readLog, EMPTY_LOG).value,
         held,
-        place: openPlace(storage),
+        place,
+        pending,
       }
     },
     append(head, add): boolean {
@@ -145,8 +186,8 @@ export function keptRounds(storage: KeyedStorage | null): RoundsStore {
     hold(held): boolean {
       return writeKept(storage, HELD_KEY, { v: 1, ...held }, readHeld)
     },
-    place(place): boolean {
-      return writeKept(storage, PLACE_KEY, { v: 1, ...place }, readPlace)
+    place(place, pending): boolean {
+      return writeKept(storage, PLACE_KEY, { v: 1, place, pending }, readPlace)
     },
   }
 }
