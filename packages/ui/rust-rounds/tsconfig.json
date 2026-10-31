@@ -1,0 +1,14 @@
+{
+  "extends": "@some-ui/tsconfig/rollupconfig.json",
+  "compilerOptions": {
+    "declarationDir": "./",
+    "rootDir": ".",
+    "paths": {
+      "@rust-rounds/*": ["./src/*"],
+      // ROUTINE.md sits at the workspace root, where a tutor finds it.
+      "@rust-rounds-root/*": ["./*"]
+    }
+  },
+  "include": ["src", "vite.config.ts", "vitest.config.ts"],
+  "exclude": ["node_modules", "build", "dist"]
+}

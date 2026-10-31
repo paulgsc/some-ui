@@ -1,0 +1,177 @@
+/**
+ * Taking a tutor's reply: pasted from a chat (fenced JSON blocks, bare JSON,
+ * prose around it) or read from a file home holds. It finds the round and
+ * the tutor notes in it and holds both to their schemas. Nothing is sent
+ * anywhere.
+ *
+ * A malformed reply is refused, with a fix request to send back to the
+ * tutor: every problem, one per line. A round that parses is taken, with
+ * the content lint's findings beside it (`lib/lint`), which never refuse.
+ */
+import type { Round, RoundLog, TutorNotes } from "@rust-rounds/lib/formats"
+import {
+  NOTES_SCHEMA,
+  ROUND_SCHEMA,
+  RoundSchema,
+  TutorNotesSchema,
+} from "@rust-rounds/lib/formats"
+import type { Finding } from "@rust-rounds/lib/lint"
+import { lintRound } from "@rust-rounds/lib/lint"
+import { isRecord, jsonValues } from "@some-ui/core-utils"
+import type { z } from "zod"
+
+export type ReplyIntake =
+  | {
+      ok: true
+      round: Round
+      /** Null when the reply carried none; the round still plays. */
+      notes: TutorNotes | null
+      findings: Array<Finding>
+    }
+  | {
+      ok: false
+      /** One line per problem, for the tutor. */
+      violations: Array<string>
+      /** The text to send back to the tutor. */
+      fixRequest: string
+    }
+
+/** Keys a tutor might add to grade an answer. The app grades nothing. */
+const GRADING_KEYS = new Set([
+  "correct",
+  "isCorrect",
+  "answer",
+  "right",
+  "rubric",
+  "score",
+  "points",
+  "level",
+])
+
+type Issue = z.core.$ZodIssue
+
+function child(value: unknown, key: PropertyKey): unknown {
+  if (Array.isArray(value) && typeof key === "number") {
+    const items: Array<unknown> = value
+    return items[key]
+  }
+  return isRecord(value) && typeof key === "string" ? value[key] : undefined
+}
+
+/** `cards[1] ("b").choices[0].say`: the path, with each card's id. */
+function pathOf(path: ReadonlyArray<PropertyKey>, value: unknown): string {
+  let text = ""
+  let at = value
+  for (const key of path) {
+    at = child(at, key)
+    if (typeof key !== "number") {
+      text += `${text === "" ? "" : "."}${String(key)}`
+      continue
+    }
+    const id = isRecord(at) && typeof at.id === "string" ? ` ("${at.id}")` : ""
+    text += `[${key}]${id}`
+  }
+  return text
+}
+
+function describeIssue(issue: Issue, value: unknown, label: string): string {
+  const where = pathOf(issue.path, value)
+  const at = where === "" ? label : `${label} ${where}`
+  if (issue.code === "unrecognized_keys") {
+    return issue.keys
+      .map((key) =>
+        GRADING_KEYS.has(key)
+          ? `${at}: remove \`${key}\`. Rust Rounds never grades: no choice is right or wrong, and no card carries a rubric or a score.`
+          : `${at}: \`${key}\` is not part of the format; remove it.`
+      )
+      .join("\n")
+  }
+  return `${at}: ${issue.message}`
+}
+
+function violationsOf(
+  result: z.ZodSafeParseResult<unknown>,
+  value: unknown,
+  label: string
+): Array<string> {
+  if (result.success) return []
+  return result.error.issues.flatMap((issue) =>
+    describeIssue(issue, value, label).split("\n")
+  )
+}
+
+/** The JSON objects in a reply; an array of them counts as each of them. */
+function objectsIn(reply: string): Array<Record<string, unknown>> {
+  return jsonValues(reply)
+    .flatMap(
+      (value): Array<unknown> => (Array.isArray(value) ? value : [value])
+    )
+    .filter(isRecord)
+}
+
+/** The object tagged `schema`, or failing that the first with `key`. */
+const find = (
+  objects: Array<Record<string, unknown>>,
+  schema: string,
+  key: string
+): Record<string, unknown> | undefined =>
+  objects.find((object) => object.schema === schema) ??
+  objects.find((object) => key in object)
+
+/**
+ * Reads a tutor's reply. Never throws. `log` is the log the tutor was given
+ * (a log with no sessions when there was none); the lint checks a refine
+ * card's note against it.
+ */
+export function intakeReply(reply: string, log: RoundLog): ReplyIntake {
+  const objects = objectsIn(reply)
+  const roundValue = find(objects, ROUND_SCHEMA, "cards")
+  const notesValue = find(objects, NOTES_SCHEMA, "concepts")
+
+  if (roundValue === undefined) {
+    return refused([
+      `No round found: reply with the round as one \`\`\`json block whose \`schema\` is "${ROUND_SCHEMA}".`,
+    ])
+  }
+
+  const round = RoundSchema.safeParse(roundValue)
+  const notes =
+    notesValue === undefined ? null : TutorNotesSchema.safeParse(notesValue)
+  const violations = [
+    ...violationsOf(round, roundValue, "round"),
+    ...(notes === null ? [] : violationsOf(notes, notesValue, "tutor notes")),
+  ]
+  if (
+    round.success &&
+    notes?.success === true &&
+    notes.data.round !== round.data.id
+  ) {
+    violations.push(
+      `tutor notes round: "${notes.data.round}" must be the id of the round it travels with, "${round.data.id}".`
+    )
+  }
+  if (!round.success || violations.length > 0) return refused(violations)
+
+  return {
+    ok: true,
+    round: round.data,
+    notes: notes?.success === true ? notes.data : null,
+    findings: lintRound(round.data, log),
+  }
+}
+
+function refused(violations: Array<string>): ReplyIntake {
+  return { ok: false, violations, fixRequest: fixRequest(violations) }
+}
+
+/** The text sent back to a tutor whose reply was refused. */
+function fixRequest(violations: ReadonlyArray<string>): string {
+  return [
+    "Rust Rounds checked your reply and could not take the round. Fix exactly",
+    "these problems, keep everything else the same, and reply with the whole",
+    "round in one ```json block and the tutor notes in another:",
+    "",
+    ...violations.map((violation) => `- ${violation}`),
+    "",
+  ].join("\n")
+}
