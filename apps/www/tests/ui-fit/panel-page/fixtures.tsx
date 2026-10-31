@@ -39,6 +39,7 @@ import {
 
 import { PANELS } from "@/lib/playable"
 
+import { CodeCardFixture } from "./code-card"
 import { IncidentFixture } from "./incident"
 import { IntentFailureFixture } from "./intent-failure"
 import { JobsStatusFixture } from "./jobs-status"
@@ -554,6 +555,8 @@ export const PANEL_FIXTURES = {
   "leetype-incident": IncidentFixture,
 
   "jobs-status": JobsStatusFixture,
+
+  "code-card": CodeCardFixture,
 
   "intent-failure": IntentFailureFixture,
 

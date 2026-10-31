@@ -133,6 +133,9 @@ export const INCIDENT_FIXTURE = "leetype-incident"
 /** Every journey state's card (J0), walked by `./jobs-status-fit.spec.ts`. */
 export const JOBS_STATUS_FIXTURE = "jobs-status"
 
+/** The phone's code card (RR2), measured by `./code-card-fit.spec.ts`. */
+export const CODE_CARD_FIXTURE = "code-card"
+
 /** Practice Home's two buttons, idle and refused (`./intent-failure-fit.spec.ts`). */
 export const INTENT_FAILURE_FIXTURE = "intent-failure"
 
