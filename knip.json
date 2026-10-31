@@ -115,6 +115,9 @@
     },
     "packages/ui/shared": {
       "ignoreDependencies": ["clsx", "tailwind-merge"]
+    },
+    "packages/voice-capture": {
+      "entry": ["src/index.ts", "src/testing.ts"]
     }
   }
 }

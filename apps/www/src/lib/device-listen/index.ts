@@ -22,6 +22,12 @@
  * `callForeign` bounds a call; the two timers here bound an event the plugin
  * sends during one (ready) or after one (the words after a stop), which no
  * call's deadline can.
+ *
+ * The recognizer borrows the phone's one microphone (`phoneMicrophone`,
+ * MIC1 #2371) for each listening, as every take does, and gives it back once
+ * the listening ends: a listening asked for while a take records ends
+ * `notStarted` at once, and a take started while the recognizer listens is
+ * refused in words, so the two never fight over the microphone.
  */
 import { assertNever } from "@some-ui/core-utils"
 import type {
@@ -35,6 +41,8 @@ import {
   reportFailure,
 } from "@some-ui/intent-kit"
 import type { IdeaListener, Listened, Listening } from "@some-ui/soundbites"
+import type { MicOwner } from "@some-ui/voice-capture"
+import { phoneMicrophone } from "@some-ui/voice-capture"
 
 import { isMissingPlugin, pluginCode } from "@/lib/intent/foreign"
 
@@ -183,6 +191,28 @@ function listened(outcome: ForeignOutcome<string>): Listened {
     }
   }
 }
+/** A listening the microphone could not be lent for: it never starts. */
+const NOT_LENT: Listening = {
+  done: Promise.resolve({ kind: "notStarted" }),
+  stop: () => undefined,
+  cancel: () => undefined,
+}
+
+/** A listening on the microphone `owner` lends it, given back once it ends. */
+function borrowed(
+  owner: MicOwner,
+  onWords: (words: string) => void,
+  onReady: () => void,
+  deadlines: ListenDeadlines
+): Listening {
+  const lease = owner.claim("recognizer")
+  if (lease === null) return NOT_LENT
+  const listening = listen(onWords, onReady, deadlines)
+  // `done` settles exactly once, never rejecting.
+  void listening.done.then(lease.release)
+  return listening
+}
+
 function listen(
   onWords: (words: string) => void,
   onReady: () => void,
@@ -292,9 +322,13 @@ function listen(
   }
 }
 
-/** The phone's recognizer, with `deadlines` in place of the usual ones. */
+/**
+ * The phone's recognizer, with `deadlines` in place of the usual ones, on
+ * the microphone `owner` lends (the phone's one unless a test gives its own).
+ */
 export function createDeviceListener(
-  deadlines: ListenDeadlines = LISTEN_DEADLINES
+  deadlines: ListenDeadlines = LISTEN_DEADLINES,
+  owner: MicOwner = phoneMicrophone
 ): IdeaListener {
   return {
     available: () =>
@@ -309,7 +343,7 @@ export function createDeviceListener(
       }).outcome.then(
         (outcome) => outcome.status === "succeeded" && outcome.value
       ),
-    listen: (onWords, onReady) => listen(onWords, onReady, deadlines),
+    listen: (onWords, onReady) => borrowed(owner, onWords, onReady, deadlines),
   }
 }
 

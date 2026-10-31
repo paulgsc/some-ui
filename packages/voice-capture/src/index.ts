@@ -1,11 +1,22 @@
 export type { BlobShelf } from "./lib/blob-shelf"
 export { blobShelf, savingShelf, ShelfFullError } from "./lib/blob-shelf"
 export { bytesBesides, bytesOf, connection, done, result } from "./lib/idb"
+export type { MicLease, MicOwner } from "./lib/owner"
+export { microphoneOwner, phoneMicrophone } from "./lib/owner"
 export { onPageVisibility } from "./lib/page"
 export type { StorageRoom } from "./lib/room"
 export { claimedRoom, setStorageRoom, withRoom } from "./lib/room"
 export type { Playback, Player } from "./lib/player"
 export { audioPlayer } from "./lib/player"
+export type {
+  ObservedEnding,
+  TakeBound,
+  TakeMonitor,
+  TakeObservation,
+  TakeProperty,
+  TakeViolation,
+} from "./lib/properties"
+export { initialTakeMonitor, stepTakeMonitor } from "./lib/properties"
 export type {
   Recording,
   RecordingFailure,
@@ -33,8 +44,28 @@ export {
   takeRunner,
 } from "./lib/take"
 export type {
+  KeepResult,
+  TakeEnded,
+  TakeEndingWords,
+  TakeKit,
+  TakeKitEffect,
+  TakeKitEvent,
+  TakeKitPorts,
+  TakeKitSnapshot,
+  TakeKitState,
+  TakeKitView,
+} from "./lib/take-kit"
+export {
+  initialTakeKit,
+  stepTakeKit,
+  TAKE_ENDING_WORDS,
+  takeEndingSaid,
+  takeKit,
+  takeKitView,
+} from "./lib/take-kit"
+export type {
   TakeView,
-  VoiceNoteEnd,
+  TakeEnding,
   VoiceNoteOutcome,
   VoiceNoteRuntime,
   VoiceNoteState,
@@ -43,7 +74,7 @@ export {
   shelveTake,
   takeView,
   VOICE_NOTE_SAID,
-  voiceNoteEnd,
+  takeEnding,
   voiceNoteRuntime,
   voiceNoteSaid,
 } from "./lib/voice-note"

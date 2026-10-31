@@ -17,7 +17,8 @@
   },
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
-    "@some-ui/intent-kit": "workspace:*"
+    "@some-ui/intent-kit": "workspace:*",
+    "fast-check": "^4.10.2"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
@@ -47,6 +48,11 @@
       "types": "./dist/@some-ui/voice-capture.d.ts",
       "import": "./dist/@some-ui/voice-capture.es.js",
       "default": "./dist/@some-ui/voice-capture.es.js"
+    },
+    "./testing": {
+      "types": "./dist/@some-ui/voice-capture/testing.d.ts",
+      "import": "./dist/@some-ui/voice-capture/testing.es.js",
+      "default": "./dist/@some-ui/voice-capture/testing.es.js"
     }
   }
 }

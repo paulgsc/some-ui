@@ -1,4 +1,5 @@
 import type * as IntentKit from "@some-ui/intent-kit"
+import { microphoneOwner } from "@some-ui/voice-capture"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 const plugin = vi.hoisted(() => {
@@ -184,6 +185,35 @@ describe("the phone's recognizer, for ideas", () => {
  * one behaviour of the plugin; the deadlines are short so a withheld
  * callback shows within the test.
  */
+describe("the recognizer borrows the phone's one microphone (MIC1)", () => {
+  it("does not start while a take holds the microphone, and says it did not", async () => {
+    const owner = microphoneOwner()
+    const take = owner.claim("take")
+    const listening = createDeviceListener(SHORT, owner).listen(
+      () => undefined,
+      () => undefined
+    )
+    expect(await listening.done).toEqual({ kind: "notStarted" })
+    expect(plugin.start).not.toHaveBeenCalled()
+    take?.release()
+  })
+
+  it("holds the microphone while it listens, and gives it back once it ends", async () => {
+    const owner = microphoneOwner()
+    const { finish } = startHeld()
+    const listening = createDeviceListener(SHORT, owner).listen(
+      () => undefined,
+      () => undefined
+    )
+    await plugged()
+    expect(owner.holder()).toBe("recognizer")
+    expect(owner.claim("take")).toBeNull()
+    finish("a note")
+    await listening.done
+    await vi.waitFor(() => expect(owner.holder()).toBeNull())
+  })
+})
+
 describe("LS1: a tap that starts or stops listening is answered in human time", () => {
   const listener = createDeviceListener(SHORT)
 

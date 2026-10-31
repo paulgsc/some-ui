@@ -18,6 +18,8 @@ export type RecordingFailure =
   | "unsupported"
   /** Another app holds the microphone (a call, say). */
   | "busy"
+  /** Another screen of this app is recording (`owner.ts`). */
+  | "elsewhere"
   | "failed"
 
 /** What to tell the person when the microphone refuses, in their words. */
@@ -25,6 +27,7 @@ export const RECORDING_FAILURE_COPY: Record<RecordingFailure, string> = {
   denied:
     "The microphone is off for Some UI. Turn it on under Android Settings → Apps → Some UI → Permissions → Microphone, then try again.",
   busy: "Another app is using the microphone. Try again once it lets go.",
+  elsewhere: "Another screen is recording. Stop that one, then try again.",
   unsupported: "This phone's web view can't record audio.",
   failed: "The microphone didn't start. Try again.",
 }
@@ -34,6 +37,7 @@ const PORT = "microphone (getUserMedia, MediaRecorder)"
 const KIND: Record<RecordingFailure, IntentErrorKind> = {
   denied: "rejected",
   busy: "unreachable",
+  elsewhere: "unreachable",
   unsupported: "unavailable",
   failed: "unknown",
 }

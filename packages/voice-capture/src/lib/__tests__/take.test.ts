@@ -62,11 +62,15 @@ describe("a take", () => {
     ).toBe("short")
   })
 
-  it("finishes or discards only a take that is recording", () => {
+  it("finishes only a take that is recording, and discards one opening too", () => {
     expect(finishTake({ kind: "opening" })).toMatchObject({ kind: "taking" })
     expect(discardTake(recording)).toEqual({
       kind: "discarded",
       effects: [{ type: "stopClock" }, { type: "discardTake" }],
+    })
+    expect(discardTake({ kind: "opening" })).toEqual({
+      kind: "discarded",
+      effects: [{ type: "discardTake" }],
     })
   })
 })

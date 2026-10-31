@@ -1,15 +1,16 @@
 /**
  * A desk of takes answering prompts (topik's `LensTakes` port; LeetType's
- * spoken answers through `lib/leetype-takes`): `@some-ui/voice-capture`'s
- * voice note, each kept take's audio on a shelf and its entry in a list,
- * and the last one played back.
+ * spoken answers through `lib/leetype-takes`; Rust Rounds' notes):
+ * `@some-ui/voice-capture`'s take kit, each kept take's audio on a shelf and
+ * its entry in a list, and the last one played back. The kit records how
+ * each take ended; the desk keeps no copy of a take under way.
  *
  * - **Bounded on its own, and never evicted.** At most `limits.max` takes,
  *   each at most `limits.maxMs`. At the most a new take is refused and
  *   `full` says so; takes leave only by `letGo`, which `takesDesk`'s sweep
  *   calls for a take whose audio never landed.
- * - **Every take's end is said** (VC2, `@some-ui/voice-capture`'s
- *   `voice-note.ts`). `ended` names how each take ended and the line it was
+ * - **Every take's end is said** (VC2 and VC3, `@some-ui/voice-capture`'s
+ *   `properties.ts`). `ended` names how each take ended and the line it was
  *   started on, apart from `reset`'s hush, so a caller that moved on still
  *   hears that a take it left was kept or lost. A take let go before the
  *   microphone opened ends `early`, and is said like any other.
@@ -22,18 +23,20 @@ import { SOUNDBITE_MIN_MS } from "@some-ui/soundbites/contract"
 import type { LensTakes, LensTakeSnapshot } from "@some-ui/topik"
 import type {
   BlobShelf,
+  MicOwner,
   Playback,
   Player,
   RecordingFailure,
   StartRecording,
-  VoiceNoteEnd,
+  TakeDeadlines,
+  TakeEnding,
+  TakeKitView,
 } from "@some-ui/voice-capture"
 import {
   shelveTake,
-  takeView,
-  voiceNoteEnd,
-  voiceNoteRuntime,
-  voiceNoteSaid,
+  TAKE_ENDING_WORDS,
+  takeEndingSaid,
+  takeKit,
 } from "@some-ui/voice-capture"
 
 /** How many takes a desk keeps, and how long each runs at most. */
@@ -67,6 +70,10 @@ export type TakesPorts = {
   player: Player
   now: () => number
   newId: () => string
+  /** The phone's one microphone unless a test gives its own. */
+  owner?: MicOwner | undefined
+  /** The microphone's deadlines unless a test gives its own. */
+  deadlines?: TakeDeadlines | undefined
 }
 
 /**
@@ -79,7 +86,7 @@ type TakeEnded = {
   readonly seq: number
   /** What the take was started on (`start`'s `reading`). */
   readonly line: string
-  readonly end: VoiceNoteEnd
+  readonly end: TakeEnding
   /** The kept take's id, when `end` is `kept`. */
   readonly id: string | null
 }
@@ -98,6 +105,13 @@ export type PhoneTakes = Omit<LensTakes, "getSnapshot"> & {
   letGo: (ids: ReadonlyArray<string>) => void
 }
 
+/** The kit's take as the lens's port shows it. */
+function viewOf(take: TakeKitView): LensTakeSnapshot["take"] {
+  return take.kind === "recording"
+    ? { kind: "recording", elapsedMs: take.elapsedMs }
+    : take
+}
+
 export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
   const listeners = new Set<() => void>()
   let last: LensTakeSnapshot["last"] = null
@@ -107,24 +121,26 @@ export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
   let playRequest = 0
   // Bumped by `reset`: a take started before it is not the new item's.
   let item = 0
-  /** The take under way: the line it reads, and the item it was started on. */
-  let taking = { line: "", item: 0 }
+  /** The item the take under way was started on. */
+  let takingItem = 0
   // Reset hushes the last take's outcome, which was about the item before.
   let quiet = false
 
   const full = (): boolean => ports.takes.read().length >= limits.max
 
-  const note = voiceNoteRuntime(
+  const kit = takeKit(
     {
       startRecording: ports.startRecording,
       now: ports.now,
+      owner: ports.owner,
+      deadlines: ports.deadlines,
       // `sweepLensTakes` clears what a failed listing leaves.
-      save: (take, _atMs, saved) => {
+      keep: (take, line, done) => {
         const id = ports.newId()
-        const { line, item: forItem } = taking
+        const forItem = takingItem
         const durationMs = Math.round(take.durationMs)
         if (full()) {
-          saved("full")
+          done({ outcome: "full" })
           return
         }
         shelveTake(
@@ -143,27 +159,42 @@ export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
             if (listed && forItem === item) last = kept
             return listed
           },
-          saved
+          (outcome) =>
+            done(
+              outcome === "kept"
+                ? { outcome, id }
+                : { outcome: outcome === "full" ? "full" : "failed" }
+            )
         )
       },
     },
     { minMs: SOUNDBITE_MIN_MS, maxMs: limits.maxMs }
   )
 
-  let ended: TakeEnded | null = null
-  let busy = false
-
   const snapshotOf = (): DeskSnapshot => {
-    const state = note.getSnapshot()
+    const { take, ended, blocked } = kit.getSnapshot()
+    const atRest = take.kind === "idle"
     return {
-      take: takeView(state),
-      said: voiceNoteSaid(state, quiet),
+      take: viewOf(take),
+      // Why the microphone refuses is said whatever was hushed.
+      said:
+        atRest && ended !== null && (blocked !== null || !quiet)
+          ? takeEndingSaid(TAKE_ENDING_WORDS, ended)
+          : null,
       last,
       kept,
       playing: playback !== null,
       full: full(),
-      ended,
-      blocked: state.kind === "blocked" ? state.reason : null,
+      ended:
+        ended === null
+          ? null
+          : {
+              seq: ended.seq,
+              line: ended.answers,
+              end: ended.ending,
+              id: ended.id,
+            },
+      blocked,
     }
   }
   let snapshot = snapshotOf()
@@ -171,22 +202,7 @@ export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
     snapshot = snapshotOf()
     for (const listener of listeners) listener()
   }
-  note.subscribe(() => {
-    // A take ends when the note leaves taking or saving, however it ends.
-    const state = note.getSnapshot()
-    const now = state.kind === "taking" || state.kind === "saving"
-    const end = voiceNoteEnd(state)
-    if (busy && end !== null) {
-      ended = {
-        seq: (ended?.seq ?? 0) + 1,
-        line: taking.line,
-        end,
-        id: end === "kept" ? (kept?.id ?? null) : null,
-      }
-    }
-    busy = now
-    publish()
-  })
+  kit.subscribe(publish)
 
   const stopPlayback = (): void => {
     playRequest += 1
@@ -205,12 +221,12 @@ export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
     start: (reading): void => {
       if (snapshot.take.kind !== "idle" || snapshot.full) return
       stopPlayback()
-      taking = { line: reading, item }
+      takingItem = item
       quiet = false
-      note.start(null)
+      kit.start(reading)
     },
     stop: (): void => {
-      note.stop()
+      kit.stop()
       const wasPlaying = playback !== null
       // Always: a playback still being read must not start after a stop.
       stopPlayback()
@@ -254,7 +270,7 @@ export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
     },
     reset: (): void => {
       item += 1
-      note.leave()
+      kit.leave()
       stopPlayback()
       last = null
       quiet = true
