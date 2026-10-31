@@ -18,7 +18,7 @@
  */
 
 import type { Salvaged } from "@some-ui/core-utils"
-import { isRecord, jsonValues } from "@topik/lib/topik/generation/intake"
+import { isRecord, jsonValues } from "@some-ui/core-utils"
 import type {
   ReadAloudDeck,
   ReadAloudLevel,
