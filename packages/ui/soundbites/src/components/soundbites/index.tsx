@@ -5,9 +5,10 @@
  * (`SoundbiteContext`), so the person only ever supplies the why.
  *
  * Bounded twice: a take stops itself at `SOUNDBITE_MAX_MS`, and the phone
- * keeps `SOUNDBITE_LIMIT`. Being full never blocks a recording either: the
- * next one replaces the oldest, or whichever the person marks instead, and
- * that choice can be made before, during or never.
+ * keeps `SOUNDBITE_LIMIT`, an offline set (HF5, #2180). Once full, the next
+ * one replaces the oldest home holds, or whichever of those the person
+ * marks instead, a choice made before, during or never; while home holds
+ * none of them, the next one is refused, and none leaves.
  *
  * A take in progress is kept, not lost, when it is cut short from outside:
  * the screen turning off, the app going to the background, or the page being
@@ -29,6 +30,7 @@ import {
   formatDuration,
   formatWhen,
 } from "@soundbites/lib/format"
+import { heldByHome, homeHeld } from "@soundbites/lib/home-held"
 import type { Activity, SoundbiteSituation } from "@soundbites/lib/machine"
 import { canUseKept } from "@soundbites/lib/machine"
 import { phonePorts } from "@soundbites/lib/phone"
@@ -281,6 +283,8 @@ export const Soundbites = ({
   useEffect(() => runtime.attach(), [runtime])
   useEffect(() => runtime.setSituation(situation))
   const state = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
+  // Read so what home holds, said again, renders the offer again.
+  useSyncExternalStore(homeHeld.subscribe, homeHeld.getSnapshot)
   const { activity, library, choice, notice, blocked } = state
   const { dispatch } = runtime
 
@@ -294,7 +298,7 @@ export const Soundbites = ({
   const usable = canUseKept(activity)
   const kept = library.kind === "read" ? library.kept : null
   const full = kept !== null && kept.length >= SOUNDBITE_LIMIT
-  const replaced = kept === null ? null : nextReplaced(kept, choice)
+  const replaced = kept === null ? null : nextReplaced(kept, choice, heldByHome)
   const playingId = activity.kind === "playing" ? activity.id : null
 
   const confirmSheet = useConfirmSheet()
@@ -400,8 +404,15 @@ export const Soundbites = ({
             <span className="text-foreground font-medium">
               {formatWhen(replaced.recordedAt, now)}
             </span>
-            {choice === null ? ", the oldest" : ""}. Pick another below to
-            replace that one instead.
+            {choice === null ? ", the oldest home has" : ""}. Pick another below
+            to replace that one instead.
+          </p>
+        )}
+
+        {full && replaced === null && (
+          <p className="text-muted-foreground text-xs">
+            Full. These stay on this phone until home has them, and then your
+            next one replaces the oldest.
           </p>
         )}
 
@@ -412,7 +423,7 @@ export const Soundbites = ({
           >
             <p className="text-muted-foreground">
               Couldn&apos;t read what&apos;s on this phone. If it is full, your
-              next one replaces the oldest.
+              next one replaces the oldest home has.
             </p>
             <Button
               size="sm"
@@ -436,7 +447,7 @@ export const Soundbites = ({
                   key={bite.id}
                   bite={bite}
                   now={now}
-                  full={full}
+                  full={full && heldByHome(bite.id)}
                   isNextReplaced={replaced?.id === bite.id}
                   playing={playingId === bite.id}
                   disabled={!usable}

@@ -1,7 +1,11 @@
 /**
  * A desk of takes on the phone (`./runtime`): the microphone, the audio on a
  * shelf of its own, and the takes in a list, one runtime per page load.
- * A take leaves only when its audio never landed (`sweep`). Grammar-lens
+ * Each take goes home as a voice note (`lib/home-link/voice-copy`, HF5
+ * #2180), which tells the desk what home holds (`heldByHome`). A take leaves
+ * only when its audio never landed (`sweep`), or, once home holds it, to
+ * make room for a new one at the cap (`./runtime`'s `makesRoom`): the cap is
+ * an offline set, and nothing leaves before home holds it. Grammar-lens
  * takes (`lib/lens-takes`) and
  * LeetType's spoken answers (`lib/leetype-takes`) each keep one.
  * Phone-only (`build.paths.ts`).
@@ -47,6 +51,15 @@ export type TakesDesk = {
    * earliest such; null when this phone holds none.
    */
   readonly keptOn: (line: string, since: number) => string | null
+  /** The takes as kept, newest first, for the copy home. */
+  readonly kept: () => ReadonlyArray<Take>
+  /** A take's audio, or null when it is gone. */
+  readonly audio: (id: string) => Promise<Blob | null>
+  /**
+   * What home holds of the takes, read back, from the voice notes' lane
+   * (`lib/home-link/voice-copy`): those may make room for a new take.
+   */
+  readonly heldByHome: (held: (id: string) => boolean) => void
 }
 
 /** The shelf's own cap: a full desk of full-length takes at the soundbites' bitrate. */
@@ -74,6 +87,8 @@ export function takesDesk(options: {
     maxBytes: maxBytes(options.limits),
   })
 
+  // Home holds none until the voice notes' lane says otherwise.
+  let held: (id: string) => boolean = () => false
   let runtime: PhoneTakes | null = null
   const phone = (): PhoneTakes => {
     runtime ??= createTakes(
@@ -87,6 +102,7 @@ export function takesDesk(options: {
         player: audioPlayer,
         now: () => Date.now(),
         newId: () => crypto.randomUUID(),
+        held: (id) => held(id),
       },
       options.limits
     )
@@ -137,5 +153,11 @@ export function takesDesk(options: {
         .read()
         .filter((take) => take.line === line && take.takenAt >= since)
         .sort((a, b) => a.takenAt - b.takenAt)[0]?.id ?? null,
+    kept: takes.read,
+    audio: (id) => shelf.shelf().get(id),
+    heldByHome: (next): void => {
+      held = next
+      runtime?.recount()
+    },
   }
 }

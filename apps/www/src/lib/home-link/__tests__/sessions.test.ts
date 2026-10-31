@@ -21,12 +21,12 @@ import type { DeviceBackend } from "@/lib/device-backend/interceptor"
 import { createDeviceFetch } from "@/lib/device-backend/interceptor"
 import { clearHeld } from "@/lib/home-link/clear"
 import { drainHome } from "@/lib/home-link/drain"
+import { letGoUnchanged } from "@/lib/home-link/let-go"
 import {
   causedBy,
   HomeForgotPhoneError,
   homeTransport,
 } from "@/lib/home-link/sessions"
-import { letGoUnchanged } from "@/lib/session-archive"
 import { createHttpSessionsRepository } from "@/lib/tenant/http-sessions-repository"
 import { copySessionsTo } from "@/lib/tenant/sessions-copy"
 import type * as TenantStorage from "@/lib/tenant/storage"
@@ -253,6 +253,8 @@ describe("letting the phone's copies go once home holds them", () => {
       read: () => Promise.resolve({ local: [...phone.sessions], kept: [] }),
       logGoing: () => Promise.resolve([]),
       studioGoing: () => Promise.resolve({ sittings: [], reports: [] }),
+      notesGoing: () => Promise.resolve([]),
+      lensGoing: () => Promise.resolve([]),
       pairing: PAIRING,
       storage,
     })

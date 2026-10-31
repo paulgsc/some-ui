@@ -1,8 +1,9 @@
 /**
  * What this phone holds for the drain (`./drain`): its sessions and kept
- * shelf items, its finished LeetType sessions and Studio's sittings and
- * answers, each read from the phone alone, and the LeetType and Studio
- * parts already narrowed to what home does not hold as it is now (`./sent`).
+ * shelf items, its finished LeetType sessions, Studio's sittings and
+ * answers, and the study notes (`./notes`), each read from the phone alone,
+ * and all but the first two already narrowed to what home does not hold as
+ * it is now (`./sent`).
  * Nothing here sends.
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
@@ -11,10 +12,13 @@ import type { HomeSession } from "@some-ui/leetype"
 import { deviceBackend } from "@/lib/device-backend/boot"
 import type { Kept } from "@/lib/device-backend/handlers/shelf"
 import { everyKept } from "@/lib/device-backend/handlers/shelf"
+import { soundbiteKeeping } from "@/lib/soundbite-keeping"
 import { studioKeeping } from "@/lib/studio-keeping"
 import { sessionsRepository } from "@/lib/tenant/queries"
 import type { SessionRecord } from "@/lib/tenant/types"
 
+import type { StudyNote } from "./notes"
+import { notesOf, notesToSend } from "./notes"
 import { logToSend, readSent } from "./sent"
 import type { StudioGoing } from "./studio-log"
 import { reportsOf, studioToSend } from "./studio-log"
@@ -68,4 +72,19 @@ export async function studioGoing(
     reportsOf(friction, list, studio.sittingKey),
     readSent(storage, pairing)
   )
+}
+
+/**
+ * What a run under `pairing` carries of the soundbites' records and
+ * LeetType's answer notes: those home doesn't hold yet. Reads only this
+ * phone; a store it cannot read carries none.
+ */
+export async function notesGoing(
+  pairing: string,
+  storage: KeyedStorage | null
+): Promise<Array<StudyNote>> {
+  const { leetypeNotes } = await import("@/lib/leetype-takes")
+  const kept = soundbiteKeeping()
+  const bites = kept === null ? [] : await kept.store.list().catch(() => [])
+  return notesToSend(notesOf(bites, leetypeNotes()), readSent(storage, pairing))
 }

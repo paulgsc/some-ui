@@ -33,7 +33,6 @@ export const DRIVE_FOLDERS: Readonly<
   "journal-takes": () => "Build Journal › voice › takes",
   "studio-idea": () => "Build Journal › ideas",
   "drama-prompt": () => DRAMA_REQUESTS,
-  "session-archive": () => "Study ledger › sessions",
 }
 
 /**

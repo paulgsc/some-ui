@@ -3,10 +3,13 @@
  * `@some-ui/leetype`'s `SpokenTakes`): a desk of takes (`lib/takes-desk`),
  * at most forty, each at most sixty seconds, and beside each answer a note
  * of what it answered: the prompt, the rubric, the points ticked, and the
- * text when it was typed. Both lanes are Drive's (#1934): they leave with
- * the study-context export, once the learner says it arrived, and never go
- * home. Neither list evicts; past forty a new one is refused.
- * Phone-only (`build.paths.ts`).
+ * text when it was typed. Both go home (HF5, #2180, folding in #1934's
+ * "never home" lane): each take as a voice note and each note as a study
+ * note (`lib/home-link/voice-copy` and the drain's `./notes`), and the
+ * study-context export carries a copy of both. Each list is an offline set
+ * of forty: past it, a new one makes room by letting go the oldest home
+ * holds, and is refused while home holds none; nothing leaves before home
+ * holds it. Phone-only (`build.paths.ts`).
  */
 import type {
   SpokenTakeNote,
@@ -58,7 +61,22 @@ const isNote = (value: unknown): value is LeetypeTakeNote => {
 
 const notes = boundedList("some-ui:leetype-take-notes", MAX, isNote)
 
-const notesFull = (): boolean => notes.read().length >= MAX
+// Home holds none until the drain says otherwise (`lib/home-link`).
+let notesHeld: (id: string) => boolean = () => false
+
+/** The oldest note home holds, which a new one may replace at the cap. */
+function roomFor(): LeetypeTakeNote | null {
+  const kept = notes.read()
+  if (kept.length < MAX) return null
+  return (
+    kept
+      .filter(({ id }) => notesHeld(id))
+      .sort((a, b) => a.notedAt - b.notedAt)[0] ?? null
+  )
+}
+
+const notesFull = (): boolean =>
+  notes.read().length >= MAX && roomFor() === null
 
 /**
  * The port's snapshot, made again only when the desk's changes or the notes
@@ -100,9 +118,12 @@ export function phoneSpokenTakes(): SpokenTakes {
     stop: (): void => desk.phone().stop(),
     reset: (): void => desk.phone().reset(),
     note: (note): boolean => {
-      // Refused when full, never evicting an earlier one (the export lets
-      // them go).
+      // Refused when full, never evicting one home does not hold.
       if (notesFull()) return false
+      const room = roomFor()
+      if (room !== null && !notes.remove(({ id }) => id === room.id)) {
+        return false
+      }
       return notes.put(
         { ...note, id: crypto.randomUUID(), notedAt: Date.now() },
         () => false
@@ -113,6 +134,17 @@ export function phoneSpokenTakes(): SpokenTakes {
 }
 
 export const sweepLeetypeTakes = desk.sweep
+
+/** The takes' desk, for the copy home (`lib/home-link/voice-copy`). */
+export const leetypeTakesDesk = desk
+
+/** The notes as kept, for the drain (`lib/home-link`). */
+export const leetypeNotes = (): ReadonlyArray<LeetypeTakeNote> => notes.read()
+
+/** What home holds of the notes, read back: those may make room at forty. */
+export function leetypeNotesHeldByHome(held: (id: string) => boolean): void {
+  notesHeld = held
+}
 
 /** The notes and the takes with their audio, for the study-context export. */
 export async function leetypeTakesForExport(): Promise<{

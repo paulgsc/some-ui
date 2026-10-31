@@ -3,7 +3,9 @@
  * carries only what changed since: each finished session's `updatedAt` as
  * it was copied, each kept shelf item's digest as home answered for it,
  * each LeetType session's digest as home read it back (`./leetype-log`),
- * each Studio sitting's and answer's (`./studio-log`), and the digests home
+ * each Studio sitting's and answer's (`./studio-log`), each study note's
+ * SHA-256 as home answered for it (`./notes`), each grammar-lens entry's
+ * digest as home read it back (`./lens-record`), and the digests home
  * refused, so the drain does not offer an unchanged refused item again
  * (it goes once its bytes change). Kept for one pairing (`pairing`, the
  * link's id for it): another pairing starts from nothing. Bookkeeping, not
@@ -33,6 +35,8 @@ export type Sent = {
   readonly refused: Readonly<Record<string, string>>
   readonly leetype: Readonly<Record<string, string>>
   readonly studio: Readonly<Record<string, string>>
+  readonly notes: Readonly<Record<string, string>>
+  readonly lens: Readonly<Record<string, string>>
 }
 
 type Store = KeyedStorage | null
@@ -44,6 +48,8 @@ const emptyFor = (pairing: string): Sent => ({
   refused: {},
   leetype: {},
   studio: {},
+  notes: {},
+  lens: {},
 })
 
 /** The string entries of `value`, and whether every entry was one. */
@@ -73,6 +79,8 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
   const refused = stringsOf(parsed.refused)
   const leetype = stringsOf(parsed.leetype)
   const studio = stringsOf(parsed.studio)
+  const notes = stringsOf(parsed.notes)
+  const lens = stringsOf(parsed.lens)
   return {
     value: {
       pairing: parsed.pairing,
@@ -81,8 +89,10 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
       refused: refused.value,
       leetype: leetype.value,
       studio: studio.value,
+      notes: notes.value,
+      lens: lens.value,
     },
-    whole: [sessions, shelf, refused, leetype, studio].every(
+    whole: [sessions, shelf, refused, leetype, studio, notes, lens].every(
       (kind) => kind.whole
     ),
   }
@@ -121,6 +131,8 @@ export function rememberSent(
     refused: { ...without(sent.refused, more.shelf), ...more.refused },
     leetype: { ...sent.leetype, ...more.leetype },
     studio: { ...sent.studio, ...more.studio },
+    notes: { ...sent.notes, ...more.notes },
+    lens: { ...sent.lens, ...more.lens },
   }
   // Unwritten (full): the next send carries these again, and home says
   // unchanged.

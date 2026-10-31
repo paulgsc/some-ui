@@ -5,19 +5,16 @@
  */
 import type { JSX } from "react"
 import { useEffect, useSyncExternalStore } from "react"
-import { counted, formatSize } from "@some-ui/core-utils"
+import { formatSize } from "@some-ui/core-utils"
 import { Alert, AlertDescription, AlertTitle, Button } from "@some-ui/shared"
 import { HardDrive } from "lucide-react"
-import { toast } from "sonner"
 
 import type { RemovableSession } from "@/lib/device-backend/handlers/sessions"
-import { mayLeavePhone } from "@/lib/device-backend/handlers/sessions"
 import type { DeviceStorageView } from "@/lib/device-backend/storage-view"
 import { deviceStorage } from "@/lib/device-backend/storage-view"
-import { useAsyncIntent, useIntent, useIntentEffect } from "@/lib/intent"
+import { useIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
-import { shareArchive } from "@/lib/session-archive"
-import { useDeleteSession, useSessions } from "@/lib/tenant"
+import { useDeleteSession } from "@/lib/tenant"
 
 function useDeviceStorage(): DeviceStorageView | null {
   const view = useSyncExternalStore(
@@ -62,7 +59,7 @@ const RemoveOffer = ({
     <>
       <p>
         Remove “{session.name}” (finished {finishedOn(session.finishedAt)}) to
-        make room? It&apos;s gone unless you copied or archived it.
+        make room? It&apos;s gone unless home holds it.
       </p>
       <div className="flex gap-2">
         <IntentButton
@@ -133,38 +130,6 @@ export const DeviceStoragePrompt = (): JSX.Element | null => {
           </AlertDescription>
         </Alert>
       )}
-    </div>
-  )
-}
-
-const sessions = (n: number): string => counted(n, "finished session")
-
-/**
- * Settings' "Archive finished sessions" (`lib/session-archive`).
- */
-export const DeviceArchive = (): JSX.Element | null => {
-  const { data } = useSessions()
-  const finished = (data ?? []).filter((s) => mayLeavePhone(s, new Date()))
-  const share = useAsyncIntent((_: undefined) => shareArchive(), {
-    presentation: "interactive",
-  })
-  useIntentEffect(share, (outcome) => {
-    if (outcome === "shared") toast.success("They stay on this phone.")
-  })
-  if (finished.length === 0) return null
-  return (
-    <div className="space-y-1">
-      <IntentButton
-        state={share.state}
-        onPress={() => share.start(undefined)}
-        variant="outline"
-        size="sm"
-        idleLabel={`Archive ${sessions(finished.length)}`}
-        workingLabel="Preparing..."
-      />
-      <p className="text-muted-foreground text-xs">
-        Save a copy to a file (Drive, say). They stay on this phone.
-      </p>
     </div>
   )
 }

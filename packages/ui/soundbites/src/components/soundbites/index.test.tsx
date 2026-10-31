@@ -5,6 +5,7 @@ import { RecordingError } from "@some-ui/voice-capture"
 import type { SoundbitesProps } from "@soundbites/components/soundbites"
 import { Soundbites } from "@soundbites/components/soundbites"
 import { bite, memoryStore } from "@soundbites/lib/__tests__/fixture"
+import { soundbitesHeldByHome } from "@soundbites/lib/home-held"
 import type { SoundbiteSituation } from "@soundbites/lib/machine"
 import type { SoundbiteContext } from "@soundbites/lib/types"
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
@@ -146,12 +147,47 @@ describe("Soundbites", () => {
     expect(onAutoStart).toHaveBeenCalledTimes(1)
   })
 
-  it("when full, replaces the oldest without asking", async () => {
+  it("when full and home holds none, keeps every one and refuses the next (HF5)", async () => {
+    soundbitesHeldByHome(() => false)
+    const { kept } = setup({ kept: FULL })
+
+    expect(
+      await screen.findByText(/These stay on this phone until home has them/)
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: "Replace this one next instead" })
+    ).toBeNull()
+    await tap("Start talking")
+    await tap("Done, keep it")
+
+    expect(await screen.findByText(/No room for that one/)).toBeInTheDocument()
+    expect(kept.size).toBe(6)
+    expect(kept.has("b5")).toBe(true)
+  })
+
+  it("when full, replaces the oldest home holds without asking", async () => {
+    soundbitesHeldByHome((id) => id !== "b5")
     const { kept } = setup({ kept: FULL })
 
     expect(
       await screen.findByText(/Full\. Your next one replaces/)
-    ).toHaveTextContent(", the oldest")
+    ).toHaveTextContent(", the oldest home has")
+    await tap("Start talking")
+    await tap("Done, keep it")
+
+    expect(await screen.findByText(/6 of 6 on this phone/)).toBeInTheDocument()
+    expect(kept.has("b5")).toBe(true)
+    expect(kept.has("b4")).toBe(false)
+    expect(kept.size).toBe(6)
+  })
+
+  it("when full, replaces the oldest without asking", async () => {
+    soundbitesHeldByHome(() => true)
+    const { kept } = setup({ kept: FULL })
+
+    expect(
+      await screen.findByText(/Full\. Your next one replaces/)
+    ).toHaveTextContent(", the oldest home has")
     await tap("Start talking")
     await tap("Done, keep it")
 
@@ -161,6 +197,7 @@ describe("Soundbites", () => {
   })
 
   it("replaces the one picked instead, if the person picks", async () => {
+    soundbitesHeldByHome(() => true)
     const { kept } = setup({ kept: FULL })
 
     // Newest first, so the first offer is b0's; b5, the oldest, is the one
@@ -172,7 +209,7 @@ describe("Soundbites", () => {
     await settle(() => fireEvent.click(first))
     expect(
       screen.getByText(/Full\. Your next one replaces/)
-    ).not.toHaveTextContent(", the oldest")
+    ).not.toHaveTextContent(", the oldest home has")
 
     await tap("Start talking")
     await tap("Done, keep it")
