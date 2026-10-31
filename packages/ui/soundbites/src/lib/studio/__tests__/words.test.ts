@@ -114,14 +114,17 @@ describe("Studio's words", () => {
   })
 
   it("SW1: say the way in on Start in the person's terms, never a file, folder or format", () => {
-    const file = /\.json|›|build journal|\bprimers?\b|\bfolder\b|\bformat\b/i
+    const file =
+      /\.json|›|build journal|\bprimers?\b|\bfiles?\b|\bfolder\b|\bformat\b/i
     const start = [
       ...fixed(STUDIO_WORDS.start),
       ...START_MADE,
-      // What the pick says when a file is refused.
+      // What the pick says when what was picked is refused.
       W.notice.unreadableFile,
       W.merge.unreadable,
       W.merge.notHere,
+      W.merge.same,
+      W.merge.moved,
     ]
     expect(start.filter((text) => file.test(text))).toEqual([])
   })

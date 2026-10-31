@@ -213,7 +213,8 @@ export const STUDIO_WORDS = {
     notStarted:
       "The screen went away before the microphone opened. Tap to talk.",
     notSaved: "That change couldn't be saved, so nothing changed. Try again?",
-    unreadableFile: "That file couldn't be read.",
+    unreadableFile:
+      "That couldn't be opened. Pick it again, or ask Claude for it again.",
     audioMissing: "That take's audio isn't on the phone any more.",
     notPlayable: "That take couldn't be played.",
     behind:
@@ -384,11 +385,12 @@ export const STUDIO_WORDS = {
     /** Everything in Claude's version, this phone had changed too. */
     kept: (kept: KeptHere): string =>
       ["Nothing in Claude's version came in.", ...keptLines(kept)].join(" "),
-    same: "This phone already has everything in that file.",
+    same: "This phone already has everything in Claude's version.",
     moved:
-      "Since that file was shared, this phone and Claude changed the video in ways that can't both stand. Share the video with Claude again, and ask for the round to be redone on it.",
-    notHere: "That file is for a video that isn't on this phone.",
-    unreadable: "That file can't be opened as a Studio video.",
+      "Since the video was shared, this phone and Claude changed it in ways that can't both stand. Share the video with Claude again, and ask for the round to be redone on it.",
+    notHere: "That is Claude's version of a video that isn't on this phone.",
+    unreadable:
+      "That isn't Claude's version of a Studio video. Ask Claude for it again.",
   },
 
   /** Finish (ST7): ready for YouTube, or the one thing missing. */
