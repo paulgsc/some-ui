@@ -4,6 +4,9 @@
  */
 import { isRecord } from "@some-ui/core-utils"
 
+/** `file_host`'s content hash. */
+export { sha256Hex } from "@some-ui/core-utils"
+
 /**
  * The phone's one person: a fixed id (the server mints `subject-<32 hex>`
  * per account), distinct from the server's legacy `subject-local`.
@@ -21,20 +24,6 @@ export function rfc3339(ms: number): string {
 /** `to_rfc3339_opts(Millis, true)`: the shelf's `savedAt`, `Z` form. */
 export function rfc3339Millis(ms: number): string {
   return new Date(ms).toISOString()
-}
-
-/**
- * Lowercase hex SHA-256 of `data`, text as its UTF-8 bytes - `file_host`'s
- * content hash.
- */
-export async function sha256Hex(data: string | ArrayBuffer): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    typeof data === "string" ? new TextEncoder().encode(data) : data
-  )
-  return Array.from(new Uint8Array(digest), (byte) =>
-    byte.toString(16).padStart(2, "0")
-  ).join("")
 }
 
 /** `field` of the JSON object in `body`, when it is a string; else `null`. */

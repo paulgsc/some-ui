@@ -6,6 +6,7 @@ export * from "./stats"
 export { assertNever } from "./assert-never"
 export { isRecord } from "./is-record"
 export { lcsTable } from "./lcs"
+export { sha256Hex } from "./sha256"
 export { fencedBodies, jsonValues } from "./pasted-json"
 export type {
   HomeAnswer,
