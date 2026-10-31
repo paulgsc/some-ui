@@ -1952,7 +1952,13 @@
     {
       "store": "server:mailbox_outgoing",
       "class": "record",
-      "growth": "Per file the phone (or the poller, for transcripts) files for the mailbox (decisions, scout, transcript), bytes verbatim; append-only.",
+      "growth": "Per file the phone (or the poller, for transcripts and LeetType session logs) files for the mailbox (decisions, scout, opened, transcript, leetype-log), bytes verbatim; append-only. A LeetType session's log is filed again as log-<session>.r<n>.json only when an event of it arrives home after its last copy, and each copy repeats every earlier event of the session.",
+      "family": "routine-to-home"
+    },
+    {
+      "store": "server:mailbox_leetype_log",
+      "class": "derived",
+      "growth": "Per decision the poller makes on a LeetType session as its events arrive: a log filed for the mailbox (session, through, n) or a refusal (session, through, why: unreadable, no_file or too_big), through being the highest event rowid it covered; tiny rows; a session gets a new row only when an event of it arrives after its last decision; append-only.",
       "family": "routine-to-home"
     },
     {
