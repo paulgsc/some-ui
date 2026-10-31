@@ -1969,7 +1969,7 @@
     {
       "store": "server:mailbox_leetype_log",
       "class": "derived",
-      "growth": "Per LeetType session log the poller files for the mailbox: (session, n, through), through being the highest event rowid the copy covered; tiny rows; a session gets a new row only when an event of it arrives after its last copy; append-only.",
+      "growth": "Per decision the poller makes on a LeetType session as its events arrive: a log filed for the mailbox (session, through, n) or a refusal (session, through, why: unreadable, no_file or too_big), through being the highest event rowid it covered; tiny rows; a session gets a new row only when an event of it arrives after its last decision; append-only.",
       "family": "routine-to-home"
     },
     {
