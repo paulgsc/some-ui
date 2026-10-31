@@ -2,8 +2,9 @@
 
 A scheduled task runs this every morning at 09:00 Pacific, in a fresh session
 with the Google Drive connector, the GitHub MCP tools and a checkout of
-`paulgsc/some-ui`. It answers what the owner shares from their phone into
-Google Drive. For each study reflection: a scene of word sets, one to read
+`paulgsc/some-ui`. It answers the study reflections the owner writes on their
+phone, which home keeps and hands it through the Jobs mailbox, and what the
+owner shares from their phone into Google Drive. For each study reflection: a scene of word sets, one to read
 aloud and one for the grammar lens (part A), and a GitHub issue for anything it
 says about the app (part C). For each drama prompt: a drama (part B). Each
 scene and drama also goes to the Jobs mailbox, where home takes it for the
@@ -63,7 +64,12 @@ mailbox not yet taking scenes, `000` no network): skip every mailbox step,
 carry on with Drive alone, and say so in the summary. A mailbox problem never
 stops the run and never changes what goes to Drive. Use only `curl` with that
 `Authorization` header, never print the token, and don't turn on shell tracing
-(`set -x`). Drive stays the record; the mailbox carries a copy home.
+(`set -x`). For the routine's own files Drive stays the record and the mailbox
+carries a copy home. For written reflections home is the record, and the
+mailbox carries this run what it reads of each (part A, step 3); the
+reflections shared to Drive before the phone sent them home stay in
+`Study ledger/reflections`, read as before, until HF6
+(paulgsc/some-ui#2181) retires that folder.
 
 ### Voice notes
 
@@ -81,6 +87,10 @@ Once per run, list the folder, live and archived, as 10b lists a folder. Then:
   (its audio, if the phone shared it, is the `<base>_voice-*` file the entry's
   `file` names); its `id` is the note's id. Its transcript is the live
   `transcript-<id>-<n>.json` with the highest `<n>`, compared as a number.
+  For a session read from the mailbox (step 3), its spoken reflections are
+  the live transcripts whose body has `"of": "reflection"` and whose `ref` is
+  the session's id, one note per distinct `note` (the highest `<n>` of each),
+  in the order of their `at`.
 - **A drama prompt's scene notes** are the `drama-<stamp>.voice-<n>.<ext>`
   files beside the prompt, said in the order of `<n>`, which is the order its
   `Scene, spoken` line names them. The prompt names each one's id in a line
@@ -132,8 +142,10 @@ step 12 doesn't run. Voice notes never go to the mailbox from this run.
 
 ## Part A: word sets
 
-3. List `Study ledger/reflections`, `Read aloud/sets`, and each dated folder in
-   `Read aloud/archive` (folder ids are in the SOP's table). `Read aloud/sets`
+3. List the mailbox's `reflection` folder (live items, paged as in 10b; skip
+   it if 2a skipped the mailbox), `Study ledger/reflections`,
+   `Read aloud/sets`, and each dated folder in `Read aloud/archive` (folder
+   ids are in the SOP's table). `Read aloud/sets`
    holds one folder per scene, named `TOPIK <level> · <genre> · <title>`, each
    with `read-aloud.json` and `lens.json`; a retired scene sits whole, with its
    description, in `Read aloud/archive/<date>/`. Listings show each folder's
@@ -141,12 +153,37 @@ step 12 doesn't run. Voice notes never go to the mailbox from this run.
    folder whose description is `answers: <base>` holds both files, in
    `Read aloud/sets` or under `Read aloud/archive/`: a retired scene stays
    answered and is never written again. A folder whose description is
-   `stock: <base>` (part D) answers no reflection. Take the unanswered ones,
+   `stock: <base>` (part D) answers no reflection.
+
+   A written reflection in the mailbox is `reflection-<id>.json`, holding
+   `{"schema":"some-ui.reflection/1","reflection","session","at","text"}`:
+   the phone's id for it, the session it is about, when it was written and
+   the typed line. Fetch each with
+   `GET "$JOBS_MAILBOX_URL/v1/reflection/items/<name>"` and check its bytes'
+   SHA-256 against the listing's `sha256` and the body's `schema` and
+   `reflection`, as for a transcript. One whose `reflection` is the `id` of
+   an entry in a `<base>.json` in `Study ledger/reflections` belongs to that
+   file: it was shared there first, so it is answered with that file and
+   never again. The others are grouped by session and by the day of their
+   `at` in `America/Los_Angeles`, and each group is one reflection to
+   answer. Its base is `<day>_reflection_<session8>`, where `<session8>` is
+   the session's first 8 letters, digits or `-`, as written; the scene's
+   folder description and mailbox name carry it exactly as a Drive file's
+   base does. A group whose newest `at` is under two hours old waits for the
+   next run, since more of that session may be on its way; a reflection
+   written on the same day after its group was answered is not answered
+   again (say so in the summary). Its spoken reflections ("Voice notes",
+   above) belong to it when their transcript's `at` falls on the same day.
+   The routine cannot ask an archived reflection back, so a group whose
+   reflections have left the listing waits no more and is not counted.
+
+   Take the unanswered ones, from the mailbox and from Drive together,
    newest first, skipping any that wait on a voice note ("Voice notes"), at
    most three this run. If there are none, go to part B.
 
-4. For each: read the reflection JSON and what home heard in each of its voice
-   notes ("Voice notes" above; one home hasn't heard makes the reflection
+4. For each: read the reflection (a Drive file's JSON, or a mailbox group's
+   typed lines in the order of their `at`) and what home heard in each of its
+   voice notes ("Voice notes" above; one home hasn't heard makes the reflection
    wait). Do part C for it now, before you write anything,
    then choose its context and write the pair, both following the deck prompt
    exactly:
@@ -157,7 +194,10 @@ step 12 doesn't run. Voice notes never go to the mailbox from this run.
      the note mentions about studying; every line of both decks belongs in that
      scene;
    - level: the one the learner asked for in the note, else the level the
-     session was studied at (TOPIK 1-2 -> read-aloud level 1-2, higher -> 3);
+     session was studied at (TOPIK 1-2 -> read-aloud level 1-2, higher -> 3),
+     which only a Drive file carries: for a mailbox group, else the level in
+     the name of the newest folder in `Read aloud/sets` whose description is
+     `answers:` or `stock:`, else 1;
    - the read-aloud deck: `practice: "read-aloud"`, one pool sized for a
      sitting, as many lines as the deck prompt's table gives the deck's level
      and a few over, no `lens` on any line, `id` kebab-case and unique (e.g. a slug of
