@@ -4,7 +4,6 @@ import { defineNodeTest } from "@some-ui/vite-config/vitest"
 export default defineNodeTest({
   alias: {
     "@rust-rounds": new URL("./src", import.meta.url).pathname,
-    // ROUTINE.md sits at the workspace root, where a tutor finds it.
     "@rust-rounds-root": new URL(".", import.meta.url).pathname,
   },
 })

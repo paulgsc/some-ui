@@ -1,13 +1,16 @@
 import ROUTINE from "@rust-rounds-root/ROUTINE.md?raw"
 import type { Card, Round, RoundLog } from "@rust-rounds/lib/formats"
 import { LOG_SCHEMA } from "@rust-rounds/lib/formats"
+import type { Finding } from "@rust-rounds/lib/lint"
 import {
+  columns,
   describeFinding,
   LINE_WIDTH_CAP,
   lintRound,
   PROGRAM_LINE_CAP,
 } from "@rust-rounds/lib/lint"
-import { INDEXING_01, WORKED_LOG } from "@rust-rounds/lib/worked-example"
+import { INDEXING_01 } from "@rust-rounds/lib/worked-example"
+import { WORKED_LOG } from "@rust-rounds/lib/worked-example/fixture"
 import { describe, expect, it } from "vitest"
 
 const NO_LOG: RoundLog = { schema: LOG_SCHEMA, sessions: [] }
@@ -28,6 +31,17 @@ const refine = (note: string): Card => ({
   say: "Say again why `s[r]` doesn't compile, naming the trait.",
 })
 
+describe("columns", () => {
+  it("counts grapheme clusters, two for a wide one", () => {
+    expect(columns('let s = "aéz";')).toBe(14)
+    expect(columns("é")).toBe(1)
+    expect(columns("한글")).toBe(4)
+    expect(columns("ｚ")).toBe(2)
+    expect(columns("🦀")).toBe(2)
+    expect(columns("\tx")).toBe(5)
+  })
+})
+
 describe("lintRound", () => {
   it("finds nothing in the worked example", () => {
     expect(lintRound(INDEXING_01, WORKED_LOG)).toEqual([])
@@ -40,17 +54,26 @@ describe("lintRound", () => {
       { ...READ, program },
       { ...VARIANT, hunk: { line: 4, replace: wide } }
     )
+    const width = wide.length
     expect(lintRound(round, NO_LOG)).toEqual([
-      { kind: "line-too-wide", card: "a", line: 3, width: [...wide].length },
-      { kind: "line-too-wide", card: "b", line: 4, width: [...wide].length },
+      { kind: "line-too-wide", card: "a", line: 3, width },
+      { kind: "line-too-wide", card: "b", line: 4, width },
     ])
   })
 
-  it("counts characters, not bytes", () => {
-    const line = `// ${"é".repeat(LINE_WIDTH_CAP - 3)}`
-    expect([...line]).toHaveLength(LINE_WIDTH_CAP)
+  it("reports a line of wide characters that fits in characters but not in columns", () => {
+    const line = `// ${"한".repeat(20)}`
     const round = roundOf({ ...READ, program: `${line}\nfn main() {}\n` })
-    expect(lintRound(round, NO_LOG)).toEqual([])
+    expect(lintRound(round, NO_LOG)).toEqual([
+      { kind: "line-too-wide", card: "a", line: 1, width: 43 },
+    ])
+  })
+
+  it("reports a tab", () => {
+    const program = READ.program.replace("    let r", "\tlet r")
+    expect(lintRound(roundOf({ ...READ, program }), NO_LOG)).toEqual([
+      { kind: "tab", card: "a", line: 3 },
+    ])
   })
 
   it("reports a program over the line cap", () => {
@@ -60,10 +83,10 @@ describe("lintRound", () => {
     ])
   })
 
-  it("reports a hunk that does not apply", () => {
-    const round = roundOf(READ, { ...VARIANT, hunk: { line: 9, replace: "" } })
-    expect(lintRound(round, NO_LOG)).toEqual([
-      { kind: "hunk-does-not-apply", card: "b", why: "line-out-of-range" },
+  it("reports a hunk that changes nothing", () => {
+    const same = { ...VARIANT, hunk: { line: 4, replace: "    let c = s[r];" } }
+    expect(lintRound(roundOf(READ, same), NO_LOG)).toEqual([
+      { kind: "hunk-changes-nothing", card: "b" },
     ])
   })
 
@@ -107,24 +130,23 @@ describe("lintRound", () => {
 })
 
 describe("describeFinding", () => {
-  it("names the card and what to do, for every kind", () => {
-    const lines = [
-      describeFinding({ kind: "line-too-wide", card: "a", line: 3, width: 52 }),
-      describeFinding({ kind: "program-too-long", card: "a", lines: 30 }),
-      describeFinding({
-        kind: "hunk-does-not-apply",
-        card: "b",
-        why: "changes-nothing",
-      }),
-      describeFinding({ kind: "choice-without-say", card: "a", choice: 2 }),
-      describeFinding({ kind: "unknown-note", card: "e", note: "note-9" }),
+  it("says what to do for every kind, naming the card where there is one", () => {
+    const findings: Array<Finding> = [
+      { kind: "line-too-wide", card: "a", line: 3, width: 52 },
+      { kind: "tab", card: "a", line: 3 },
+      { kind: "program-too-long", card: "a", lines: 30 },
+      { kind: "hunk-changes-nothing", card: "b" },
+      { kind: "choice-without-say", card: "a", choice: 2 },
+      { kind: "unknown-note", card: "e", note: "note-9" },
     ]
-    for (const line of lines) expect(line).toMatch(/^card "[a-e]"/)
-    expect(lines[0]).toContain(String(LINE_WIDTH_CAP))
+    for (const finding of findings) {
+      expect(describeFinding(finding)).toMatch(/^card "[a-e]"/)
+    }
+    expect(describeFinding({ kind: "no-tutor-notes" })).toMatch(/tutor notes/)
   })
 
   it("agrees with ROUTINE.md on both caps", () => {
-    expect(ROUTINE).toContain(`at most ${LINE_WIDTH_CAP} characters`)
+    expect(ROUTINE).toContain(`at most ${LINE_WIDTH_CAP} columns`)
     expect(ROUTINE).toContain(`at most ${PROGRAM_LINE_CAP} lines`)
   })
 })

@@ -1,45 +1,88 @@
 /**
- * The content lint: what makes a round that parses hard to play. It reports
- * findings and never refuses a round; the intake refuses only what the
- * schema does (`lib/intake`).
- *
- * - A line wider than `LINE_WIDTH_CAP`. Code on the phone never wraps, so
- *   the cap is what keeps sideways scrolling rare.
- * - A program longer than `PROGRAM_LINE_CAP` lines.
- * - A variant whose hunk does not apply: `of` names no earlier card with a
- *   program, `line` is past the program's end, or `replace` is the line
- *   already there.
- * - A choice with no `say`: the field is there, and blank.
- * - A refine card naming a note the log never saw.
+ * The content lint: what makes a round that parses hard to play on a phone.
+ * It reports findings and never refuses; the intake refuses only what the
+ * schemas do (`lib/intake`).
  */
-import type { HunkProblem, Round, RoundLog } from "@rust-rounds/lib/formats"
+import type { Round, RoundLog } from "@rust-rounds/lib/formats"
 import { programLines, resolvePrograms } from "@rust-rounds/lib/formats"
 import { assertNever } from "@some-ui/core-utils"
 
 /**
- * Columns, counted in characters: about what a 360px-wide phone shows of a
- * monospace line beside the card's line gutter.
+ * Columns: about what a 360px-wide phone shows of a monospace line beside
+ * the card's line gutter. Code on the phone never wraps, so the cap is what
+ * keeps sideways scrolling rare.
  */
 export const LINE_WIDTH_CAP = 40
 
 /** A toy binary is about 20 lines; past this it stops being one. */
 export const PROGRAM_LINE_CAP = 25
 
+/** A tab's columns, as the card is expected to draw one; programs use spaces. */
+const TAB_COLUMNS = 4
+
 export type Finding =
   | { kind: "line-too-wide"; card: string; line: number; width: number }
+  | { kind: "tab"; card: string; line: number }
   | { kind: "program-too-long"; card: string; lines: number }
-  | { kind: "hunk-does-not-apply"; card: string; why: HunkProblem }
+  | { kind: "hunk-changes-nothing"; card: string }
   | { kind: "choice-without-say"; card: string; choice: number }
   | { kind: "unknown-note"; card: string; note: string }
+  /** The reply carried no tutor notes (`lib/intake`). */
+  | { kind: "no-tutor-notes" }
 
-const width = (line: string): number => [...line].length
+/**
+ * Code points whose East Asian Width is Wide or Fullwidth (Unicode UAX #11),
+ * by their main blocks: a monospace font draws each in two columns.
+ */
+const WIDE: ReadonlyArray<readonly [number, number]> = [
+  [0x1100, 0x115f], // Hangul Jamo initials
+  [0x2e80, 0x303e], // CJK radicals, punctuation
+  [0x3041, 0x33ff], // kana, CJK compatibility
+  [0x3400, 0x4dbf], // CJK extension A
+  [0x4e00, 0x9fff], // CJK unified ideographs
+  [0xa000, 0xa4cf], // Yi
+  [0xa960, 0xa97f], // Hangul Jamo extended A
+  [0xac00, 0xd7a3], // Hangul syllables
+  [0xf900, 0xfaff], // CJK compatibility ideographs
+  [0xfe10, 0xfe19], // vertical forms
+  [0xfe30, 0xfe6f], // CJK compatibility forms, small forms
+  [0xff00, 0xff60], // fullwidth forms
+  [0xffe0, 0xffe6], // fullwidth signs
+  [0x1f300, 0x1f64f], // pictographs, emoticons
+  [0x1f900, 0x1f9ff], // supplemental pictographs
+  [0x20000, 0x3fffd], // CJK extensions B and on
+]
 
-/** Every voice note the log names: said on a card, or about a pasted error. */
+const EMOJI = /\p{Emoji_Presentation}|️/u
+
+const graphemes = new Intl.Segmenter("en", { granularity: "grapheme" })
+
+/** How many columns a grapheme cluster takes in a monospace font. */
+function columnsOf(cluster: string): number {
+  if (cluster === "\t") return TAB_COLUMNS
+  const first = cluster.codePointAt(0) ?? 0
+  const wide =
+    EMOJI.test(cluster) ||
+    WIDE.some(([from, to]) => first >= from && first <= to)
+  return wide ? 2 : 1
+}
+
+/** A line's width in columns, counted by grapheme cluster. */
+export function columns(line: string): number {
+  let width = 0
+  for (const { segment } of graphemes.segment(line)) {
+    width += columnsOf(segment)
+  }
+  return width
+}
+
+/** Every voice note the log names: said on a card, refined, or about a pasted error. */
 function notesSeen(log: RoundLog): Set<string> {
   const seen = new Set<string>()
   for (const session of log.sessions) {
     for (const event of session.cards) {
       if (event.note !== null) seen.add(event.note)
+      if (event.refines !== null) seen.add(event.refines)
     }
     for (const paste of session.fromMyDesk) {
       if (paste.note !== null) seen.add(paste.note)
@@ -57,15 +100,13 @@ export function lintRound(round: Round, log: RoundLog): Array<Finding> {
   const programs = resolvePrograms(round)
   const seen = notesSeen(log)
 
-  const wide = (card: string, lines: Array<string>, first: number): void => {
+  const measure = (card: string, lines: Array<string>, first: number): void => {
     lines.forEach((text, index) => {
-      if (width(text) > LINE_WIDTH_CAP) {
-        findings.push({
-          kind: "line-too-wide",
-          card,
-          line: first + index,
-          width: width(text),
-        })
+      const line = first + index
+      if (text.includes("\t")) findings.push({ kind: "tab", card, line })
+      const width = columns(text)
+      if (width > LINE_WIDTH_CAP) {
+        findings.push({ kind: "line-too-wide", card, line, width })
       }
     })
   }
@@ -80,7 +121,7 @@ export function lintRound(round: Round, log: RoundLog): Array<Finding> {
 
     if (card.kind === "read") {
       const lines = programLines(card.program)
-      wide(card.id, lines, 1)
+      measure(card.id, lines, 1)
       if (lines.length > PROGRAM_LINE_CAP) {
         findings.push({
           kind: "program-too-long",
@@ -89,16 +130,12 @@ export function lintRound(round: Round, log: RoundLog): Array<Finding> {
         })
       }
     } else {
-      // A variant changes one line; the rest were checked on the card it
-      // changes, so only its new line is measured.
-      wide(card.id, [card.hunk.replace], card.hunk.line)
-      const problem = programs.get(card.id)?.problem ?? null
-      if (problem !== null) {
-        findings.push({
-          kind: "hunk-does-not-apply",
-          card: card.id,
-          why: problem,
-        })
+      // A variant changes one line; the rest were measured on the card it
+      // changes.
+      measure(card.id, [card.hunk.replace], card.hunk.line)
+      const base = programLines(programs.get(card.of) ?? "")
+      if (base[card.hunk.line - 1] === card.hunk.replace) {
+        findings.push({ kind: "hunk-changes-nothing", card: card.id })
       }
     }
 
@@ -115,26 +152,24 @@ export function lintRound(round: Round, log: RoundLog): Array<Finding> {
   return findings
 }
 
-const HUNK_PROBLEMS: Record<HunkProblem, string> = {
-  "no-earlier-card":
-    "`of` must name an earlier read or variant card in the round whose program applies.",
-  "line-out-of-range": "`hunk.line` is past the end of the program it changes.",
-  "changes-nothing":
-    "`hunk.replace` is the line already there; the variant changes nothing.",
-}
-
 /** A finding as a line for the tutor: what is wrong, and what to do. */
 export function describeFinding(finding: Finding): string {
+  if (finding.kind === "no-tutor-notes") {
+    return "The reply carried no tutor notes: send them with every round, rewritten."
+  }
   const card = `card "${finding.card}"`
   switch (finding.kind) {
     case "line-too-wide": {
-      return `${card}, line ${finding.line}: ${finding.width} characters wide; keep every line to ${LINE_WIDTH_CAP}, since code on the phone never wraps.`
+      return `${card}, line ${finding.line}: ${finding.width} columns wide; keep every line to ${LINE_WIDTH_CAP}, since code on the phone never wraps.`
+    }
+    case "tab": {
+      return `${card}, line ${finding.line}: indent with spaces, not a tab.`
     }
     case "program-too-long": {
       return `${card}: the program is ${finding.lines} lines; keep it to ${PROGRAM_LINE_CAP} or fewer.`
     }
-    case "hunk-does-not-apply": {
-      return `${card}: ${HUNK_PROBLEMS[finding.why]}`
+    case "hunk-changes-nothing": {
+      return `${card}: \`hunk.replace\` is the line already there; the variant changes nothing.`
     }
     case "choice-without-say": {
       return `${card}, choice ${finding.choice}: \`say\` is blank; every choice asks the owner to say something.`

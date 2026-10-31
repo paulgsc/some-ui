@@ -1,7 +1,8 @@
 /**
- * Reading JSON out of whatever a model replied: fenced blocks, bare JSON,
- * prose around it. The intakes that take a pasted reply (TOPIK's lessons,
- * LeetType's rounds, Rust Rounds) all start here.
+ * Reading JSON out of a model's reply: its ``` and ```json blocks, with any
+ * prose around them ignored, or, when it has no fence, the whole reply as
+ * JSON. The intakes that take a pasted reply (TOPIK's lessons, LeetType's
+ * rounds, Rust Rounds) all start here.
  */
 
 const FENCE = "```"

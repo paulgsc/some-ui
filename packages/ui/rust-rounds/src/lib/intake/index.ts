@@ -1,8 +1,9 @@
 /**
- * Taking a tutor's reply: pasted from a chat (fenced JSON blocks, bare JSON,
- * prose around it) or read from a file home holds. It finds the round and
- * the tutor notes in it and holds both to their schemas. Nothing is sent
- * anywhere.
+ * Taking a tutor's reply, pasted from a chat or read from a file home holds:
+ * its ``` and ```json blocks, with any prose around them ignored, or, when it
+ * has no fence, the whole reply as JSON. It finds the one round and the one
+ * set of tutor notes in them and holds both to their schemas. Nothing is
+ * sent anywhere.
  *
  * A malformed reply is refused, with a fix request to send back to the
  * tutor: every problem, one per line. A round that parses is taken, with
@@ -109,31 +110,53 @@ function objectsIn(reply: string): Array<Record<string, unknown>> {
     .filter(isRecord)
 }
 
-/** The object tagged `schema`, or failing that the first with `key`. */
-const find = (
+/** The objects tagged `schema`, or failing that every untagged one with `key`. */
+function candidates(
   objects: Array<Record<string, unknown>>,
   schema: string,
   key: string
-): Record<string, unknown> | undefined =>
-  objects.find((object) => object.schema === schema) ??
-  objects.find((object) => key in object)
+): Array<Record<string, unknown>> {
+  const tagged = objects.filter((object) => object.schema === schema)
+  return tagged.length > 0
+    ? tagged
+    : objects.filter((object) => !("schema" in object) && key in object)
+}
+
+/** Every round id the log has a card from. */
+const roundsPlayed = (log: RoundLog): Set<string> =>
+  new Set(
+    log.sessions.flatMap((session) => session.cards.map((event) => event.round))
+  )
 
 /**
  * Reads a tutor's reply. Never throws. `log` is the log the tutor was given
- * (a log with no sessions when there was none); the lint checks a refine
- * card's note against it.
+ * (a log with no sessions when there was none): a round must not reuse an
+ * id it names, and the lint checks a refine card's note against it.
  */
 export function intakeReply(reply: string, log: RoundLog): ReplyIntake {
   const objects = objectsIn(reply)
-  const roundValue = find(objects, ROUND_SCHEMA, "cards")
-  const notesValue = find(objects, NOTES_SCHEMA, "concepts")
+  const rounds = candidates(objects, ROUND_SCHEMA, "cards")
+  const allNotes = candidates(objects, NOTES_SCHEMA, "concepts")
 
+  const [roundValue] = rounds
   if (roundValue === undefined) {
     return refused([
       `No round found: reply with the round as one \`\`\`json block whose \`schema\` is "${ROUND_SCHEMA}".`,
     ])
   }
+  const several = [
+    ...(rounds.length > 1
+      ? [`The reply holds ${rounds.length} rounds: send exactly one.`]
+      : []),
+    ...(allNotes.length > 1
+      ? [
+          `The reply holds ${allNotes.length} sets of tutor notes: send exactly one, rewritten whole.`,
+        ]
+      : []),
+  ]
+  if (several.length > 0) return refused(several)
 
+  const [notesValue] = allNotes
   const round = RoundSchema.safeParse(roundValue)
   const notes =
     notesValue === undefined ? null : TutorNotesSchema.safeParse(notesValue)
@@ -141,6 +164,11 @@ export function intakeReply(reply: string, log: RoundLog): ReplyIntake {
     ...violationsOf(round, roundValue, "round"),
     ...(notes === null ? [] : violationsOf(notes, notesValue, "tutor notes")),
   ]
+  if (round.success && roundsPlayed(log).has(round.data.id)) {
+    violations.push(
+      `round id: "${round.data.id}" is a round the log already played; give this round a new id, never reused.`
+    )
+  }
   if (
     round.success &&
     notes?.success === true &&
@@ -152,11 +180,13 @@ export function intakeReply(reply: string, log: RoundLog): ReplyIntake {
   }
   if (!round.success || violations.length > 0) return refused(violations)
 
+  const noNotes: Array<Finding> =
+    notes === null ? [{ kind: "no-tutor-notes" }] : []
   return {
     ok: true,
     round: round.data,
     notes: notes?.success === true ? notes.data : null,
-    findings: lintRound(round.data, log),
+    findings: [...noNotes, ...lintRound(round.data, log)],
   }
 }
 

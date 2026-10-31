@@ -85,12 +85,26 @@ const ChoicesSchema = z
   .array(ChoiceSchema)
   .min(2, "a card offers 2 to 4 choices")
   .max(4, "a card offers 2 to 4 choices")
+  .superRefine((choices, ctx) =>
+    uniqueIds(
+      choices.map((choice) => choice.pick),
+      ctx,
+      (index) => [index, "pick"],
+      "pick"
+    )
+  )
+
+/** A whole program. Its lines end in `\n` alone, so a hunk's line numbers mean one thing. */
+const ProgramSchema = TextSchema.refine(
+  (text) => !text.includes("\r"),
+  "a program's lines end in \\n alone: remove every carriage return (\\r)"
+)
 
 /** A toy binary on its own. */
 const ReadCardSchema = z.strictObject({
   kind: z.literal("read"),
   id: SlugSchema,
-  program: TextSchema,
+  program: ProgramSchema,
   ask: TextSchema,
   choices: ChoicesSchema,
   expect: ExpectSchema,
@@ -151,7 +165,7 @@ export type ReadCard = z.infer<typeof ReadCardSchema>
 export type VariantCard = z.infer<typeof VariantCardSchema>
 export type RefineCard = z.infer<typeof RefineCardSchema>
 
-/** Each id at most once, so a `variant`'s `of` and the log name one thing. */
+/** Each name at most once, so a `variant`'s `of`, the log and a pick name one thing. */
 function uniqueIds(
   items: ReadonlyArray<string>,
   ctx: z.RefinementCtx,
@@ -164,12 +178,19 @@ function uniqueIds(
       ctx.addIssue({
         code: "custom",
         path: path(index),
-        message: `${what} "${id}" is used twice; ids are unique`,
+        message: `${what} "${id}" is used twice; each must be unique`,
       })
     }
     seen.add(id)
   })
 }
+
+/** Why a variant's program cannot be built: the round is then refused. */
+const UNPLAYABLE = {
+  "no-earlier-card":
+    "`of` must name an earlier read or variant card in this round",
+  "line-out-of-range": "`hunk.line` is past the end of the program of `of`",
+} as const
 
 export const RoundSchema = z
   .strictObject({
@@ -183,24 +204,44 @@ export const RoundSchema = z
     edges: z.array(SlugSchema),
     cards: z.array(CardSchema).min(1, "a round has at least one card"),
   })
-  .superRefine((round, ctx) =>
+  .superRefine((round, ctx) => {
     uniqueIds(
       round.cards.map((card) => card.id),
       ctx,
       (index) => ["cards", index, "id"],
       "card id"
     )
-  )
+    // A variant whose program cannot be built can be neither recorded nor
+    // played, so the round is refused rather than linted.
+    const resolved = resolveCards(round.cards)
+    round.cards.forEach((card, index) => {
+      const problem = resolved.get(card.id)
+      if (card.kind !== "variant" || problem?.program !== null) return
+      ctx.addIssue({
+        code: "custom",
+        path: [
+          "cards",
+          index,
+          problem.problem === "no-earlier-card" ? "of" : "hunk",
+        ],
+        message: UNPLAYABLE[problem.problem],
+      })
+    })
+  })
 export type Round = z.infer<typeof RoundSchema>
 
 // ── What rustc did ─────────────────────────────────────────────────────────
 
-/** rustc's primary span, 1-based, as its JSON diagnostics give it. */
+/**
+ * rustc's primary span, as its JSON diagnostics give it (`line_start`, …,
+ * camelCased): 1-based, columns counted in characters (code points), the end
+ * column exclusive. The phone's code card takes the same shape.
+ */
 const SpanSchema = z.strictObject({
-  line: z.int().positive(),
-  column: z.int().positive(),
-  endLine: z.int().positive(),
-  endColumn: z.int().positive(),
+  lineStart: z.int().positive(),
+  columnStart: z.int().positive(),
+  lineEnd: z.int().positive(),
+  columnEnd: z.int().positive(),
 })
 
 /** The toolchain that recorded the run, like `1.97.0`. Messages change between versions. */
@@ -216,6 +257,9 @@ const ToolchainSchema = TextSchema
  * - `panics`: it compiled and panicked (exit 101); `stderr` holds the panic.
  * - `stopped`: it compiled and the sandbox ended it, or it exited some other
  *   way: a time, memory or output limit, or another exit code (`exit`).
+ *
+ * A program that compiled also has `compileStderr`: what rustc printed while
+ * compiling it, such as warnings, or nothing.
  */
 export const RustcRunSchema = z.discriminatedUnion("outcome", [
   z.strictObject({
@@ -228,17 +272,20 @@ export const RustcRunSchema = z.discriminatedUnion("outcome", [
   z.strictObject({
     outcome: z.literal("prints"),
     toolchain: ToolchainSchema,
+    compileStderr: z.string(),
     stdout: z.string(),
   }),
   z.strictObject({
     outcome: z.literal("panics"),
     toolchain: ToolchainSchema,
+    compileStderr: z.string(),
     stdout: z.string(),
     stderr: z.string(),
   }),
   z.strictObject({
     outcome: z.literal("stopped"),
     toolchain: ToolchainSchema,
+    compileStderr: z.string(),
     why: z.enum(["time", "memory", "output", "exit"]),
     stdout: z.string(),
     stderr: z.string(),
@@ -260,9 +307,14 @@ const CardEventSchema = z.strictObject({
   picked: z.string().nullable(),
   /** The voice note said on this card; null when nothing was said. */
   note: NoteIdSchema.nullable(),
+  /**
+   * On a refine card, the earlier note it brought back, so the log alone
+   * links both takes; null on any other card.
+   */
+  refines: NoteIdSchema.nullable(),
   /** Moved on before rustc's result was shown. */
   skipped: z.boolean(),
-  /** The recorded run shown; null when none was held for the card. */
+  /** The recorded run held for the card (shown unless `skipped`); null when none was held. */
   rustc: RustcRunSchema.nullable(),
 })
 export type CardEvent = z.infer<typeof CardEventSchema>
@@ -352,27 +404,16 @@ export function programLines(program: string): Array<string> {
   return lines
 }
 
-/** Why a variant's hunk gives no program, or gives the same one. */
-export type HunkProblem =
-  | "no-earlier-card"
-  | "line-out-of-range"
-  | "changes-nothing"
+type Resolution =
+  | { program: string }
+  | { program: null; problem: keyof typeof UNPLAYABLE }
 
-export type Resolved =
-  | { program: string; problem: null | "changes-nothing" }
-  | { program: null; problem: Exclude<HunkProblem, "changes-nothing"> }
-
-/**
- * Every card's program, by card id: a read card's own, a variant's built by
- * replacing line `hunk.line` of the program of `of` with `hunk.replace`.
- * `of` must name an earlier read or variant card whose program resolved.
- * Refine cards have none.
- */
-export function resolvePrograms(round: Round): Map<string, Resolved> {
-  const resolved = new Map<string, Resolved>()
-  for (const card of round.cards) {
+/** Each read and variant card's program, or why a variant has none. */
+function resolveCards(cards: ReadonlyArray<Card>): Map<string, Resolution> {
+  const resolved = new Map<string, Resolution>()
+  for (const card of cards) {
     if (card.kind === "read") {
-      resolved.set(card.id, { program: card.program, problem: null })
+      resolved.set(card.id, { program: card.program })
     } else if (card.kind === "variant") {
       resolved.set(card.id, applyHunk(resolved.get(card.of), card.hunk))
     }
@@ -380,19 +421,30 @@ export function resolvePrograms(round: Round): Map<string, Resolved> {
   return resolved
 }
 
-function applyHunk(base: Resolved | undefined, hunk: Hunk): Resolved {
+function applyHunk(base: Resolution | undefined, hunk: Hunk): Resolution {
   if (base === undefined || base.program === null) {
     return { program: null, problem: "no-earlier-card" }
   }
   const lines = programLines(base.program)
-  const old = lines[hunk.line - 1]
-  if (old === undefined) return { program: null, problem: "line-out-of-range" }
+  if (hunk.line > lines.length) {
+    return { program: null, problem: "line-out-of-range" }
+  }
   lines[hunk.line - 1] = hunk.replace
   const ending = base.program.endsWith("\n") ? "\n" : ""
-  return {
-    program: lines.join("\n") + ending,
-    problem: old === hunk.replace ? "changes-nothing" : null,
+  return { program: lines.join("\n") + ending }
+}
+
+/**
+ * Every read and variant card's program, by card id: a read card's own, a
+ * variant's built by replacing line `hunk.line` of the program of `of` with
+ * `hunk.replace`. `RoundSchema` refuses a round where one cannot be built.
+ */
+export function resolvePrograms(round: Round): Map<string, string> {
+  const programs = new Map<string, string>()
+  for (const [id, resolved] of resolveCards(round.cards)) {
+    if (resolved.program !== null) programs.set(id, resolved.program)
   }
+  return programs
 }
 
 /**

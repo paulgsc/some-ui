@@ -1,11 +1,8 @@
 import type { RoundLog } from "@rust-rounds/lib/formats"
 import { LOG_SCHEMA } from "@rust-rounds/lib/formats"
 import { intakeReply } from "@rust-rounds/lib/intake"
-import {
-  INDEXING_01,
-  INDEXING_01_NOTES,
-  WORKED_LOG,
-} from "@rust-rounds/lib/worked-example"
+import { INDEXING_01, INDEXING_01_NOTES } from "@rust-rounds/lib/worked-example"
+import { WORKED_LOG } from "@rust-rounds/lib/worked-example/fixture"
 import { describe, expect, it } from "vitest"
 
 const NO_LOG: RoundLog = { schema: LOG_SCHEMA, sessions: [] }
@@ -15,6 +12,10 @@ const block = (value: unknown): string =>
 
 const reply = (...values: Array<unknown>): string =>
   ["Here is the next round.", ...values.map(block), "Have fun."].join("\n\n")
+
+/** The worked example, under an id the worked log has not played. */
+const NEXT = { ...INDEXING_01, id: "indexing-02" }
+const NEXT_NOTES = { ...INDEXING_01_NOTES, round: "indexing-02" }
 
 const [READ, ...REST] = INDEXING_01.cards
 if (READ?.kind !== "read") throw new Error("the worked example changed shape")
@@ -27,23 +28,27 @@ const withFirstChoice = (choice: object): unknown => ({
   cards: [{ ...READ, choices: [choice, ...READ.choices.slice(1)] }, ...REST],
 })
 
+/** The violations of a reply the intake refused; fails the test if it took it. */
+function refusal(text: string, log: RoundLog = NO_LOG): Array<string> {
+  const intake = intakeReply(text, log)
+  if (intake.ok) throw new Error("the intake took the reply")
+  for (const violation of intake.violations) {
+    expect(intake.fixRequest).toContain(`- ${violation}\n`)
+  }
+  return intake.violations
+}
+
 describe("intakeReply", () => {
   it("takes a round and its notes from fenced blocks inside prose", () => {
-    const intake = intakeReply(
-      reply(INDEXING_01, INDEXING_01_NOTES),
-      WORKED_LOG
-    )
-    expect(intake).toEqual({
+    expect(intakeReply(reply(NEXT, NEXT_NOTES), WORKED_LOG)).toEqual({
       ok: true,
-      round: INDEXING_01,
-      notes: INDEXING_01_NOTES,
+      round: NEXT,
+      notes: NEXT_NOTES,
       findings: [],
     })
   })
 
-  it("takes bare JSON: a round alone, or the round and notes as an array", () => {
-    const alone = intakeReply(JSON.stringify(INDEXING_01), NO_LOG)
-    expect(alone).toMatchObject({ ok: true, notes: null })
+  it("takes the round and notes as one bare JSON array", () => {
     const both = intakeReply(
       JSON.stringify([INDEXING_01, INDEXING_01_NOTES]),
       NO_LOG
@@ -51,78 +56,63 @@ describe("intakeReply", () => {
     expect(both).toMatchObject({ ok: true, notes: INDEXING_01_NOTES })
   })
 
-  it("takes a round the lint has findings on, with the findings", () => {
-    const wide = {
-      ...INDEXING_01,
-      cards: [
-        { ...READ, program: `// ${"x".repeat(60)}\n${READ.program}` },
-        ...REST,
-      ],
-    }
-    const intake = intakeReply(reply(wide), NO_LOG)
-    expect(intake.ok).toBe(true)
-    if (!intake.ok) return
-    expect(intake.findings.map((finding) => finding.kind)).toEqual([
-      "line-too-wide",
-    ])
+  it("takes a round without notes, reporting that they are missing", () => {
+    expect(intakeReply(JSON.stringify(INDEXING_01), NO_LOG)).toEqual({
+      ok: true,
+      round: INDEXING_01,
+      notes: null,
+      findings: [{ kind: "no-tutor-notes" }],
+    })
   })
 
   it("refuses a reply with no round, with a fix request saying so", () => {
-    const intake = intakeReply("Sorry, I can't help with that.", NO_LOG)
-    expect(intake.ok).toBe(false)
-    if (intake.ok) return
-    const [violation] = intake.violations
-    expect(intake.violations).toHaveLength(1)
-    expect(violation).toMatch(/No round found/)
-    expect(intake.fixRequest).toContain(`- ${String(violation)}`)
+    const violations = refusal("Sorry, I can't help with that.")
+    expect(violations).toHaveLength(1)
+    expect(violations[0]).toMatch(/^No round found/)
+  })
+
+  it("refuses two rounds, or two sets of notes", () => {
+    expect(refusal(reply(INDEXING_01, NEXT, INDEXING_01_NOTES))).toEqual([
+      "The reply holds 2 rounds: send exactly one.",
+    ])
+    expect(
+      refusal(reply(INDEXING_01, INDEXING_01_NOTES, INDEXING_01_NOTES))
+    ).toEqual([
+      "The reply holds 2 sets of tutor notes: send exactly one, rewritten whole.",
+    ])
+  })
+
+  it("refuses a round whose id the log already played", () => {
+    expect(refusal(reply(INDEXING_01, INDEXING_01_NOTES), WORKED_LOG)).toEqual([
+      'round id: "indexing-01" is a round the log already played; give this round a new id, never reused.',
+    ])
   })
 
   it("refuses a graded choice, telling the tutor the app never grades", () => {
     const graded = withFirstChoice({ ...CHOICE, correct: true })
-    const intake = intakeReply(reply(graded, INDEXING_01_NOTES), NO_LOG)
-    expect(intake.ok).toBe(false)
-    if (intake.ok) return
-    expect(intake.violations).toEqual([
+    expect(refusal(reply(graded, INDEXING_01_NOTES))).toEqual([
       'round cards[0] ("a").choices[0]: remove `correct`. Rust Rounds never grades: no choice is right or wrong, and no card carries a rubric or a score.',
     ])
-    expect(intake.fixRequest).toMatch(/^Rust Rounds checked your reply/)
-    expect(intake.fixRequest).toContain(`- ${String(intake.violations[0])}\n`)
   })
 
   it("refuses a choice with no `say`, naming where", () => {
     const { say: _say, ...pickOnly } = CHOICE
-    const silent = withFirstChoice(pickOnly)
-    const intake = intakeReply(reply(silent), NO_LOG)
-    expect(intake.ok).toBe(false)
-    if (intake.ok) return
-    expect(intake.violations).toEqual([
+    expect(refusal(reply(withFirstChoice(pickOnly)))).toEqual([
       'round cards[0] ("a").choices[0].say: every choice needs its `say`: the sentence picking it asks the owner to say',
     ])
   })
 
   it("refuses malformed notes, and notes written with another round", () => {
     const { by: _by, ...noBy } = INDEXING_01_NOTES
-    const broken = intakeReply(reply(INDEXING_01, noBy), NO_LOG)
-    expect(broken.ok).toBe(false)
-    if (broken.ok) return
-    expect(broken.violations[0]).toMatch(/^tutor notes by:/)
-
-    const stale = intakeReply(
-      reply(INDEXING_01, { ...INDEXING_01_NOTES, round: "indexing-00" }),
-      NO_LOG
-    )
-    expect(stale.ok).toBe(false)
-    if (stale.ok) return
-    expect(stale.violations).toEqual([
+    expect(refusal(reply(INDEXING_01, noBy))[0]).toMatch(/^tutor notes by:/)
+    const stale = { ...INDEXING_01_NOTES, round: "indexing-00" }
+    expect(refusal(reply(INDEXING_01, stale))).toEqual([
       'tutor notes round: "indexing-00" must be the id of the round it travels with, "indexing-01".',
     ])
   })
 
   it("refuses a round with no schema tag", () => {
     const { schema: _schema, ...untagged } = INDEXING_01
-    const intake = intakeReply(reply(untagged), NO_LOG)
-    expect(intake.ok).toBe(false)
-    if (intake.ok) return
-    expect(intake.violations[0]).toMatch(/^round schema:/)
+    expect(refusal(reply(untagged))[0]).toMatch(/^round schema:/)
   })
 })
