@@ -1477,6 +1477,10 @@
       "why": "Writes Studio's sitting log and friction reports; each answers with what it kept, and the phone reads it back."
     },
     {
+      "module": "study_notes",
+      "why": "Writes a soundbite's record or a LeetType answer's note; each answers with the SHA-256 of what it kept, and the phone checks it against what it sent."
+    },
+    {
       "module": "subjects",
       "why": "Reads the subject's own stats; the answer is the outcome."
     },
@@ -2190,6 +2194,12 @@
       "family": "what-is-kept"
     },
     {
+      "store": "server:study_note",
+      "class": "record",
+      "growth": "Per soundbite (its record) and per LeetType spoken answer (its note: prompt, rubric, ticks, what was typed), as the phone sends it (some-ui #2180, HF5): one JSON body each, at most BODY_CEILING = 64 KiB, a few hundred bytes in practice; append-only, kept for good.",
+      "family": "what-is-kept"
+    },
+    {
       "store": "server:tabs",
       "class": "cache",
       "growth": "Per distinct URL captured by the browser extension (upsert by URL hash), with the page's extracted content as a JSON blob; no subject column.",
@@ -2199,7 +2209,7 @@
     {
       "store": "server:voice_note",
       "class": "record",
-      "growth": "Per voice note sent home (reflection, jobs, scene, game, studio): one small metadata row; append-only.",
+      "growth": "Per voice note sent home (reflection, jobs, scene, game, studio, soundbite, lens, leetype): one small metadata row; append-only.",
       "family": "voice-heard"
     },
     {
