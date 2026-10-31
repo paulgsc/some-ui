@@ -101,7 +101,7 @@ export function useAsyncIntent<TVariables, TData>(
   }, [])
 
   useReportShownFailure(
-    local.status === "failed" ? { error: local.error } : null,
+    local.status === "failed" ? { error: local.error, attempt } : null,
     mapError
   )
 

@@ -105,6 +105,26 @@ it("logs what a non-mutation intent shows, again when a retry fails again", asyn
   await waitFor(() => expect(reported).toHaveLength(2))
 })
 
+it("logs each failed attempt even when a retry rejects with the same value", async () => {
+  const same = new TypeError("the same each time")
+  const { result } = renderHook(() =>
+    useAsyncIntent((): Promise<never> => Promise.reject(same), {
+      presentation: "interactive",
+    })
+  )
+  // Each attempt settles inside one act, so React folds its `working` and
+  // `failed` into one render: the state reads failed, with the same error.
+  await act(async () => {
+    result.current.start(undefined)
+    await Promise.resolve()
+  })
+  await act(async () => {
+    result.current.start(undefined)
+    await Promise.resolve()
+  })
+  expect(reported).toHaveLength(2)
+})
+
 it("logs a failure that is neither a refusal nor a foreign call", async () => {
   const { result } = renderHook(
     () =>

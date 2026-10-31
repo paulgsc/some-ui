@@ -24,20 +24,22 @@ import { ForeignCallError } from "./foreign"
 const SHOWN_FAILURE_PORT = "intent"
 
 /**
- * Reports `failure` once each time it changes to a new failure. `null` while
- * the intent is not failed.
+ * Reports `failure` once per failed attempt. `null` while the intent is not
+ * failed. `attempt` tells two failures apart when a retry rejects with the
+ * same value and React folds its `working` into the same render.
  */
 export function useReportShownFailure(
-  failure: { readonly error: unknown } | null,
+  failure: { readonly error: unknown; readonly attempt: number } | null,
   mapError: (error: unknown) => IntentError
 ): void {
   const report = useEffectEvent((error: unknown): void => {
     reportFailure({ port: SHOWN_FAILURE_PORT, error: mapError(error) })
   })
   const error = failure?.error
+  const attempt = failure?.attempt
   const failed = failure !== null
   useEffect(() => {
     if (!failed || error instanceof ForeignCallError) return
     report(error)
-  }, [failed, error])
+  }, [failed, error, attempt])
 }

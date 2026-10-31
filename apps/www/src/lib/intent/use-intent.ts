@@ -108,7 +108,7 @@ export function useIntent<TVariables, TData, TStep extends string = never>(
   }, [mutationReset])
 
   useReportShownFailure(
-    status === "error" ? { error: mutation.error } : null,
+    status === "error" ? { error: mutation.error, attempt: submittedAt } : null,
     mapError
   )
 
