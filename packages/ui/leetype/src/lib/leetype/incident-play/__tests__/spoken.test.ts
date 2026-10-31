@@ -5,13 +5,13 @@ import type {
   SpokenTakes,
   SpokenTakeSnapshot,
 } from "@leetype/lib/leetype/spoken-take"
-import { SessionFileSchema } from "@leetype/types/session-file"
+import { rubricText, SessionFileSchema } from "@leetype/types/session-file"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { describe, expect, it, vi } from "vitest"
 
 const FILE = SessionFileSchema.parse(AB_FIXTURES[1]?.raw)
 const TAKE = FILE.screens.s15
-const RUBRIC = TAKE?.type === "record" ? TAKE.rubric : []
+const RUBRIC = TAKE?.type === "record" ? rubricText(TAKE) : []
 
 /** A microphone the test lands takes on. */
 function fakeTakes(): SpokenTakes & {

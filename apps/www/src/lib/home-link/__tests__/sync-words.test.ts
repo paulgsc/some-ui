@@ -14,7 +14,6 @@ const tally = { listed: 2, added: 1, updated: 1, removed: 1, skipped: 1 }
 const report: SyncReport = {
   lessons: tally,
   trees: tally,
-  rounds: { ...tally, runs: 3 },
   failed: ["k2-cafe"],
 }
 

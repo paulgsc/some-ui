@@ -116,15 +116,40 @@ export const STUDIO_WORDS = {
   unreadable: "Couldn't open the video kept on this phone.",
   readAgain: "Try again",
 
+  /**
+   * Start says the loop in the person's terms. Every word in this table
+   * names what you do or what Claude made, never a file, folder or format
+   * (SW1, #2325): `__tests__/words.test.ts` refuses those anywhere in it.
+   */
   start: {
     eyebrow: "Your video",
     empty: "No video yet",
     emptyLine:
-      "Open a primer Claude saved to Drive, and its scenes are ready to record.",
-    openPrimer: "Open a primer",
-    openNewer: "Open a primer or Claude's version",
-    primerHint:
-      "A primer.json in Build Journal › voice › primers, or the project.json Claude sent back.",
+      "A video starts as an idea you say out loud. Here is the way through.",
+    /** The loop, as steps; the third is the sittings below. */
+    steps: {
+      idea: {
+        title: "Catch the idea",
+        line: "Say what the video is, the moment it comes. Here, by voice.",
+      },
+      scenes: {
+        title: "Claude turns it into scenes",
+        line: "Ask Claude in a session. The scenes to record arrive in your Drive.",
+      },
+      sittings: {
+        title: "Record, Watch, Shape, Finish",
+        line: "One sitting at a time, on this phone, until it's ready to upload.",
+      },
+    },
+    stepOf: (n: number): string => `Step ${n}`,
+    openSent: "Open what Claude sent",
+    openSentHint:
+      "The scenes Claude made for your idea, or Claude's version of your video.",
+    openNewer: "Open Claude's version",
+    openNewerHint:
+      "Claude's version of this video, or the scenes for a new one.",
+    sentProblem:
+      "That isn't something Claude made for Studio, or part of it is missing. Ask Claude for it again.",
     startHere: "Start here",
     others: "Other videos with takes on the phone",
     onPhone: (n: number): string =>
@@ -184,12 +209,13 @@ export const STUDIO_WORDS = {
     full: `No room on the phone for that take, so it wasn't kept. ${MAKING_ROOM}`,
     noRoom: `No room on the phone for another take. ${MAKING_ROOM}`,
     spent:
-      "The primer's time is all used. Record a long scene again, shorter, to make room.",
+      "The video's time is all used. Record a long scene again, shorter, to make room.",
     thrownAway: "Thrown away. Nothing kept.",
     notStarted:
       "The screen went away before the microphone opened. Tap to talk.",
     notSaved: "That change couldn't be saved, so nothing changed. Try again?",
-    unreadableFile: "That file couldn't be read.",
+    unreadableFile:
+      "That couldn't be opened. Pick it again, or ask Claude for it again.",
     audioMissing: "That take's audio isn't on the phone any more.",
     notPlayable: "That take couldn't be played.",
     behind:
@@ -247,7 +273,7 @@ export const STUDIO_WORDS = {
     sharing: "Preparing…",
     notYet: "Not yet",
     shareLine:
-      "The project file and your takes, for Claude, to Drive. Once they're there, the takes can leave the phone.",
+      "Your video and your takes, for Claude, to Drive. Once they're there, the takes can leave the phone.",
   },
 
   share: {
@@ -313,10 +339,10 @@ export const STUDIO_WORDS = {
     heading: "Watch",
     open: "Open a review render",
     openHint:
-      "Pick the video and the review.json beside it, together, from Build Journal › voice › reviews.",
-    pickBoth: "Pick the video and its review.json together.",
+      "Pick the review video Claude sent and the notes beside it, together, from your Drive.",
+    pickBoth: "Pick the video and the notes beside it together.",
     unreadable:
-      "That review.json can't be read. Pick the video and its review.json again.",
+      "Those notes can't be read. Pick the video and the notes beside it again.",
     notThisVideo:
       "That render is of a version this phone doesn't have. Open Claude's version first.",
     noteLabel: "Your note",
@@ -324,8 +350,10 @@ export const STUDIO_WORDS = {
     noted: "Noted, pinned to this moment.",
     /** Saying a note instead of typing it (ST5), pinned where it was begun. */
     say: (ms: number): string => `Say a note · ${formatDuration(ms)}`,
+    gettingReady: "Getting ready…",
     listening: "Listening…",
     stop: "Done talking",
+    finishing: "Finishing…",
     keepSaid: (ms: number): string => `Note this at ${formatDuration(ms)}`,
     again: "Say it again",
     drop: "Let it go",
@@ -333,6 +361,7 @@ export const STUDIO_WORDS = {
     notHeard: "Couldn't hear that. Say it again, or type it.",
     typeInstead:
       "Talking isn't available on this phone right now, so type the note.",
+    notStarted: "Listening isn't working right now. Type the note instead.",
     changed: (text: string): string =>
       `Claude changed this, from your note: "${text}"`,
     good: "Good",
@@ -357,11 +386,12 @@ export const STUDIO_WORDS = {
     /** Everything in Claude's version, this phone had changed too. */
     kept: (kept: KeptHere): string =>
       ["Nothing in Claude's version came in.", ...keptLines(kept)].join(" "),
-    same: "This phone already has everything in that file.",
+    same: "This phone already has everything in Claude's version.",
     moved:
-      "Since that file was shared, this phone and Claude changed the video in ways that can't both stand. Share the video with Claude again, and ask for the round to be redone on it.",
-    notHere: "That file is for a video that isn't on this phone.",
-    unreadable: "That file can't be opened as a Studio video.",
+      "Since the video was shared, this phone and Claude changed it in ways that can't both stand. Share the video with Claude again, and ask for the round to be redone on it.",
+    notHere: "That is Claude's version of a video that isn't on this phone.",
+    unreadable:
+      "That isn't Claude's version of a Studio video. Ask Claude for it again.",
   },
 
   /** Finish (ST7): ready for YouTube, or the one thing missing. */
@@ -377,7 +407,7 @@ export const STUDIO_WORDS = {
     mark: "It's ready",
     ready: "Ready for YouTube.",
     uploadCopy:
-      "Next, ask Claude for the upload copy: the full video, its title, its description with the music credit, and its captions file, on the shorts page. You upload it to YouTube yourself.",
+      "Next, ask Claude for the upload copy: the full video, its title, its description with the music credit, and its captions, on the shorts page. You upload it to YouTube yourself.",
     linkLabel: "Its YouTube link, once it is up",
     keepLink: "Keep this link",
     notALink:
@@ -425,8 +455,10 @@ export const STUDIO_WORDS = {
       },
     } satisfies Record<QuestionId, { ask: string; hint: string }>,
     talk: "Say it",
+    gettingReady: "Getting ready…",
     listening: "Listening…",
     stop: "Done talking",
+    finishing: "Finishing…",
     right: "That's right",
     fix: "Fix the words",
     again: "Say it again",
@@ -438,6 +470,7 @@ export const STUDIO_WORDS = {
       "Talking isn't available on this phone right now, so type it. Speech needs the microphone and the phone's offline English.",
     notHeard: "Didn't hear anything. Try again, or type it.",
     listenFailed: "Couldn't hear that. Try again, or type it.",
+    listenNotStarted: "Listening isn't working right now. Type it instead.",
     notKept: "Couldn't keep that on this phone. Your words are still here.",
     kept: "Kept. Come back to it any time.",
     keptLine: (n: number): string =>

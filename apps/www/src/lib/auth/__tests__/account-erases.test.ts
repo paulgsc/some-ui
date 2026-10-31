@@ -32,24 +32,41 @@ describe("what deleting the account says", () => {
       "aph",
       "The Jobs record",
       "Telling the phone a morning run is in",
-      "Jobs mailbox files home holds",
+      "Mailbox files home holds",
       "Filed with home for the mailbox",
       "LeetType sessions",
       "Korean's word sets and reading records",
       "Voice notes, game bites included",
+      "Rust Rounds' rounds",
       "Studio's time log",
       "What your phones share",
       "Sign-in",
     ])
+    expect(stays.map(({ label }) => label)).toEqual([
+      "On your phones",
+      "In Drive",
+      "In the mailbox",
+      "Rust Rounds' programs",
+      "Logs and backups",
+    ])
   })
 
   it("says the mailbox's files go, archived ones too, and what stays in the mailbox", () => {
-    const gone = textOf(goes, "Jobs mailbox files home holds")
+    const gone = textOf(goes, "Mailbox files home holds")
     expect(gone).toMatch(/archived out of the mailbox/)
     expect(gone).toMatch(/only one/)
-    const left = textOf(stays, "In the Jobs mailbox")
+    const left = textOf(stays, "In the mailbox")
     expect(left).toMatch(/still in the mailbox stay/)
     expect(left).toMatch(/never what was in it/)
+  })
+
+  it("says LeetType's session files and how each session went go too (some-ui#2026, #2027)", () => {
+    expect(textOf(goes, "Mailbox files home holds")).toMatch(
+      /LeetType session files/
+    )
+    expect(textOf(goes, "Filed with home for the mailbox")).toMatch(
+      /how each LeetType session went/
+    )
   })
 
   it("says a voice note goes with what home heard in it, the copy filed for the mailbox included", () => {
@@ -58,6 +75,15 @@ describe("what deleting the account says", () => {
     expect(voice).toMatch(/game-day bite, also what it was about/)
     expect(textOf(goes, "Filed with home for the mailbox")).toMatch(
       /what home heard in your voice notes/
+    )
+  })
+
+  it("says a Rust Rounds round goes and its programs stay, linked to no one", () => {
+    expect(textOf(goes, "Rust Rounds' rounds")).toMatch(
+      /which of your voice notes a card answered/
+    )
+    expect(textOf(stays, "Rust Rounds' programs")).toMatch(
+      /linked to no one once your rounds are gone/
     )
   })
 })

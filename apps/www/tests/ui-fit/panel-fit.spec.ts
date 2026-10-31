@@ -50,10 +50,13 @@ import { expect, test, type Page } from "@playwright/test"
 import type { PanelKey } from "@/lib/playable"
 
 import {
+  CODE_CARD_FIXTURE,
   describeViolation,
   findViolations,
   INCIDENT_FIXTURE,
+  INTENT_FAILURE_FIXTURE,
   JOBS_STATUS_FIXTURE,
+  RUST_ROUNDS_FIXTURE,
   servePanelPage,
   VIEWPORTS,
   type Violation,
@@ -127,11 +130,15 @@ const PLANTED_OVERFLOW: PanelId = "planted-overflow"
 
 /**
  * Fixtures another sweep walks (`./incident-fit.spec.ts`,
- * `./jobs-status-fit.spec.ts`).
+ * `./jobs-status-fit.spec.ts`, `./code-card-fit.spec.ts`,
+ * `./intent-failure-fit.spec.ts`, `./rust-rounds-fit.spec.ts`).
  */
 const SWEPT_ELSEWHERE: ReadonlyArray<PanelId> = [
   INCIDENT_FIXTURE,
   JOBS_STATUS_FIXTURE,
+  CODE_CARD_FIXTURE,
+  INTENT_FAILURE_FIXTURE,
+  RUST_ROUNDS_FIXTURE,
 ]
 
 type SweptPanel = { label: string; panel: PanelId; debt: string | null }

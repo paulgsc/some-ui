@@ -1,8 +1,7 @@
 /**
  * Copies what the home `file_host` publishes into the phone's database, for
  * offline study: TOPIK lessons and the served scene trees (which exist
- * nowhere else; each under its own curriculum activity, as home lists them)
- * and the Leetype rounds home serves.
+ * nowhere else; each under its own curriculum activity, as home lists them).
  *
  * One direction (home -> phone) and published content only: syncing the
  * learner's own history would need a merge rule. Every route read here is
@@ -14,7 +13,7 @@
  * content). Tests pass a second device backend standing in for home, which
  * passes the server's own contracts.
  *
- * Lessons and runs are revalidated (`revalidated`); home being busy ends the
+ * Lessons are revalidated (`revalidated`); home being busy ends the
  * sync (`HomeBusyError`), with no retry.
  */
 import { isRecord } from "@some-ui/core-utils"
@@ -24,12 +23,8 @@ import type { HeldBody, LessonEntry } from "@/lib/device-backend/content-store"
 import {
   DEFAULT_LESSON_ACTIVITY,
   removeLessonsExcept,
-  removeRoundsExcept,
   storedLesson,
-  storedRoundHash,
   upsertLesson,
-  upsertRound,
-  upsertRuns,
 } from "@/lib/device-backend/content-store"
 import type { SqlDriver } from "@/lib/device-backend/sql"
 import {
@@ -69,8 +64,7 @@ export type SyncReport = {
   lessons: Tally
   /** The served scene trees (`TREE_ACTIVITY`). */
   trees: Tally
-  rounds: Tally & { runs: number }
-  /** Items home listed but would not hand over, by key or id. */
+  /** Items home listed but would not hand over, by key. */
   failed: Array<string>
 }
 
@@ -138,16 +132,6 @@ function isLessonEntry(value: unknown): value is LessonEntry {
   )
 }
 
-type RoundListing = { id: string; contentHash: string }
-
-function isRoundListing(value: unknown): value is RoundListing {
-  return (
-    isRecord(value) &&
-    typeof value.id === "string" &&
-    typeof value.contentHash === "string"
-  )
-}
-
 /** One read's answer, and `keep`, which keeps its `ETag` once it is stored. */
 type Read = {
   status: number
@@ -167,37 +151,30 @@ const done = (): Promise<void> => Promise.resolve()
 
 /**
  * `url`, revalidated (`device_home_answer`): sent with the `ETag` this phone
- * kept for it only while it holds the bytes that tag names: for a lesson its
- * row (`held`), by digest, else the body kept with the tag. A `304` then
- * answers with those bytes, as a `200`. The tag is kept only by `keep`,
- * once the caller has stored what the answer carried, and within the
- * phone's budget.
+ * kept for it only while it holds the bytes that tag names: the lesson's
+ * row (`held`), by digest. A `304` then answers with those bytes, as a
+ * `200`. The tag is kept only by `keep`, once the caller has stored what
+ * the answer carried, and within the phone's budget.
  */
 async function revalidated(
   sync: Reads,
   url: string,
-  held?: () => Promise<HeldBody | null>
+  held: () => Promise<HeldBody | null>
 ): Promise<Read> {
   const { db, store, get } = sync
   sync.read.add(url)
   const kept = await one(
     db,
-    "SELECT etag, hash, body FROM device_home_answer WHERE url = ?",
+    "SELECT etag, hash FROM device_home_answer WHERE url = ?",
     [url]
   )
   // What the phone holds that the kept tag names: a lesson's row while its
-  // digest is the one kept with the tag, or the body written with the tag.
+  // digest is the one kept with the tag.
   let holding: { body: string; etag: string } | null = null
   if (kept !== null) {
-    const etag = text(kept, "etag")
-    const body = textOrNull(kept, "body")
-    if (held) {
-      const lesson = await held()
-      if (lesson !== null && lesson.hash === textOrNull(kept, "hash")) {
-        holding = { body: lesson.body, etag }
-      }
-    } else if (body !== null) {
-      holding = { body, etag }
+    const lesson = await held()
+    if (lesson !== null && lesson.hash === textOrNull(kept, "hash")) {
+      holding = { body: lesson.body, etag: text(kept, "etag") }
     }
   }
   const answer = await get(url, holding?.etag)
@@ -211,14 +188,14 @@ async function revalidated(
       await db.run("DELETE FROM device_home_answer WHERE url = ?", [url])
       return
     }
-    const hash = held ? await sha256Hex(answer.body) : null
+    const hash = await sha256Hex(answer.body)
     try {
       await store.transaction(() =>
         store.run(
-          `INSERT INTO device_home_answer (url, etag, hash, body) VALUES (?, ?, ?, ?)
+          `INSERT INTO device_home_answer (url, etag, hash, body) VALUES (?, ?, ?, NULL)
            ON CONFLICT(url) DO UPDATE SET
-             etag = excluded.etag, hash = excluded.hash, body = excluded.body`,
-          [url, etag, hash, held ? null : answer.body]
+             etag = excluded.etag, hash = excluded.hash, body = NULL`,
+          [url, etag, hash]
         )
       )
     } catch (error) {
@@ -338,7 +315,6 @@ export async function syncFromHome(
   const report: SyncReport = {
     lessons: { ...empty },
     trees: { ...empty },
-    rounds: { ...empty, runs: 0 },
     failed: [],
   }
 
@@ -357,7 +333,6 @@ export async function syncFromHome(
       `/curriculum/manifest.json?activity=${TREE_ACTIVITY}`
     )
   )
-  const rounds = await getJson(get, base, "/leetype/rounds")
 
   // Keys are one namespace, so a home that lists a lesson in both answered
   // the tree manifest with its lessons: it predates `?activity=`. Copying
@@ -376,44 +351,6 @@ export async function syncFromHome(
   await syncLessons(sync, DEFAULT_LESSON_ACTIVITY, lessons, report.lessons)
   if (scoped) await syncLessons(sync, TREE_ACTIVITY, trees, report.trees)
 
-  const roundsListed: Array<unknown> | null =
-    isRecord(rounds) && Array.isArray(rounds.rounds) ? rounds.rounds : null
-  const listings = (roundsListed ?? []).filter(isRoundListing)
-  report.rounds.listed = listings.length
-  if (roundsListed !== null) {
-    report.rounds.removed = await removeRoundsExcept(
-      db,
-      stringsAt(roundsListed, "id")
-    )
-  }
-  for (const listing of listings) {
-    try {
-      const id = encodeURIComponent(listing.id)
-      // Same bytes: no body to fetch, but the runs still are (home can record
-      // runs without changing the round, or a prior runs request failed).
-      if ((await storedRoundHash(db, listing.id)) !== listing.contentHash) {
-        const body = await get(`${base}/leetype/rounds/${id}`)
-        if (body.status !== 200) throw new Error(String(body.status))
-        const outcome = await upsertRound(
-          store,
-          body.body,
-          now(),
-          listing.contentHash
-        )
-        if (outcome === "inserted") report.rounds.added += 1
-        if (outcome === "updated") report.rounds.updated += 1
-      }
-      const runs = await revalidated(reads, `${base}/leetype/rounds/${id}/runs`)
-      if (runs.status === 200) {
-        report.rounds.runs += await upsertRuns(store, runs.body, now())
-        await runs.keep()
-      }
-    } catch (error) {
-      if (endsTheSync(error)) throw error
-      if (error instanceof OverBudgetError) report.rounds.skipped += 1
-      else report.failed.push(listing.id)
-    }
-  }
   await forgetUnread(db, reads.read)
   return report
 }

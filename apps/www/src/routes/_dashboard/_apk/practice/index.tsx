@@ -1,6 +1,7 @@
 import type { JSX } from "react"
 import { useEffect, useState } from "react"
 import { cn, formatTimecode } from "@some-ui/core-utils"
+import { RUST_ROUNDS_TITLE, rustRoundsEntry } from "@some-ui/rust-rounds/entry"
 import {
   BrandMark,
   Button,
@@ -9,7 +10,7 @@ import {
   TalkGlyph,
 } from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { Check } from "lucide-react"
+import { Check, SquareTerminal } from "lucide-react"
 
 import { useMinuteClock } from "@/lib/clock"
 import { isOfferedActivityId } from "@/lib/playable"
@@ -29,12 +30,14 @@ import {
   useSessions,
   useUpdateSession,
 } from "@/lib/tenant"
+import { browserLocalStorage } from "@/lib/tenant/storage"
 import { StopReasons } from "@/components/player/session-stop"
 import { NextLesson } from "@/components/practice/next-lesson"
 
 /**
  * Practice's Home: where studying picks up. What is open, what was finished
- * today, and a way to say why not; nothing from another wing (lib/wings).
+ * today, a way to say why not, and Rust Rounds; nothing from another wing
+ * (lib/wings).
  * Opened from the foyer, from Practice's own launcher icon, and from the
  * player when a session ends.
  */
@@ -235,6 +238,31 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
 }
 
 /**
+ * Rust Rounds' way in (#2235, the owner's D2): one tap opens it on the card
+ * left last, or one tap from the first. It says where you left off, and
+ * nothing about how long or how much.
+ */
+const RustRoundsCard = (): JSX.Element => {
+  // Read once as Home opens, never on each render; it changes only in Rust
+  // Rounds itself, which is left to come back here.
+  const [line] = useState(() => rustRoundsEntry(browserLocalStorage))
+  return (
+    <Link
+      to="/rust-rounds"
+      className="bg-card border-border/50 flex items-center gap-3 rounded-2xl border p-4 shadow-sm"
+    >
+      <span className="bg-brand/30 text-brand-foreground dark:text-brand flex size-12 shrink-0 items-center justify-center rounded-2xl">
+        <SquareTerminal aria-hidden className="size-6" />
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="font-bold">{RUST_ROUNDS_TITLE}</span>
+        <span className="text-muted-foreground text-sm">{line}</span>
+      </span>
+    </Link>
+  )
+}
+
+/**
  * Two low hills along the bottom of the screen, a shade off the ground, so a
  * tall phone's Home ends in a landscape and not in an empty field. Fixed to
  * the viewport, and below the cards in the column's own stacking context
@@ -293,6 +321,7 @@ const PracticeHome = (): JSX.Element => {
       </header>
 
       <StudyCard now={now} />
+      <RustRoundsCard />
     </div>
   )
 }

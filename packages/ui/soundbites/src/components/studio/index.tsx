@@ -42,7 +42,7 @@ import {
 } from "@soundbites/lib/studio/view"
 import { askedAt, changesIn, shotAt } from "@soundbites/lib/studio/watch"
 import type { SittingKind, Snag, Went } from "@soundbites/lib/studio/words"
-import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
+import { SITTING_KINDS, STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { FolderOpen, Mic, Pause, Play, Square } from "lucide-react"
 
 const WORDS = STUDIO_WORDS
@@ -58,6 +58,11 @@ export type StudioProps = {
   ports?: Partial<StudioPorts>
   /** Sending the project to Claude, where this build can (the share sheet). */
   share?: StudioShare
+  /**
+   * The way to New idea (ST18), as the app links it: the one big button
+   * while there is no video, a quiet link beside the sittings once there is.
+   */
+  newIdea?: { big: ReactNode; quiet: ReactNode }
 }
 
 type Dispatch = (intent: StudioIntent) => void
@@ -79,15 +84,17 @@ const Notice = ({ text }: { text: string }): JSX.Element => (
   </p>
 )
 
-/** The quiet file pick that opens a primer. */
+/** The quiet file pick that opens what a session sent: scenes, or a version. */
 const PrimerPick = ({
   state,
   dispatch,
   label,
+  hint: told,
 }: {
   state: StudioState
   dispatch: Dispatch
   label: string
+  hint: string
 }): JSX.Element => {
   const hint = useId()
   return (
@@ -105,7 +112,7 @@ const PrimerPick = ({
               : "text-destructive"
           )}
         >
-          {state.primerProblem ?? WORDS.start.primerHint}
+          {state.primerProblem ?? told}
         </span>
       </span>
       <input
@@ -138,16 +145,59 @@ function shareFor(
   })
 }
 
+/** The loop as steps, for a first visit. */
+const Steps = ({ newIdea }: { newIdea: ReactNode }): JSX.Element => {
+  const { steps } = WORDS.start
+  const step = (
+    n: number,
+    title: string,
+    line: string,
+    body?: ReactNode
+  ): JSX.Element => (
+    <li className="flex flex-col gap-2">
+      <span className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+        {WORDS.start.stepOf(n)}
+      </span>
+      <span className="block text-base font-extrabold">{title}</span>
+      <span className="text-muted-foreground block text-sm">{line}</span>
+      {body}
+    </li>
+  )
+  return (
+    <ol className="flex flex-col gap-4">
+      {step(1, steps.idea.title, steps.idea.line, newIdea)}
+      {step(2, steps.scenes.title, steps.scenes.line)}
+      {step(
+        3,
+        steps.sittings.title,
+        steps.sittings.line,
+        <ul className="flex flex-wrap gap-2" aria-label={steps.sittings.title}>
+          {SITTING_KINDS.map((kind) => (
+            <li
+              key={kind}
+              className="border-border/60 rounded-full border px-3 py-1 text-xs font-bold opacity-60"
+            >
+              {WORDS.start.sittings[kind]}
+            </li>
+          ))}
+        </ul>
+      )}
+    </ol>
+  )
+}
+
 const Start = ({
   state,
   project,
   dispatch,
   share,
+  newIdea,
 }: {
   state: StudioState
   project: Project | null
   dispatch: Dispatch
   share: StudioShare | undefined
+  newIdea: StudioProps["newIdea"]
 }): JSX.Element => {
   const view = project === null ? null : startView(project)
   const others = othersOnPhone(
@@ -167,6 +217,7 @@ const Start = ({
           {view?.standing ?? WORDS.start.emptyLine}
         </p>
       </header>
+      {view === null && <Steps newIdea={newIdea?.big} />}
       {view !== null && (
         <ul className="flex flex-col gap-2">
           {view.sittings.map((row) => (
@@ -225,6 +276,7 @@ const Start = ({
           >
             {WORDS.quiet.time}
           </button>
+          {newIdea?.quiet}
         </nav>
       )}
       {share !== undefined && project !== null && takesOnPhone(project) > 0 && (
@@ -272,8 +324,11 @@ const Start = ({
       <PrimerPick
         state={state}
         dispatch={dispatch}
-        label={
-          project === null ? WORDS.start.openPrimer : WORDS.start.openNewer
+        label={project === null ? WORDS.start.openSent : WORDS.start.openNewer}
+        hint={
+          project === null
+            ? WORDS.start.openSentHint
+            : WORDS.start.openNewerHint
         }
       />
       {state.choosing !== null && project !== null && (
@@ -923,22 +978,33 @@ const SpokenNote = ({
         {words.say(atMs)}
       </Button>
     )
-  if (speaking.phase === "listening")
+  if (speaking.phase === "listening" || speaking.phase === "finishing") {
+    const where =
+      speaking.phase === "finishing"
+        ? words.finishing
+        : speaking.ready
+          ? words.listening
+          : words.gettingReady
     return (
       <div className="flex flex-col gap-2" aria-live="polite">
         <p className="text-sm">
           {speaking.words === "" ? (
-            <span className="text-muted-foreground">{words.listening}</span>
+            <span className="text-muted-foreground">{where}</span>
           ) : (
             speaking.words
           )}
         </p>
-        <Button size="lg" onClick={() => dispatch({ type: "speakStopped" })}>
-          <Square aria-hidden />
-          {words.stop}
-        </Button>
+        {speaking.phase === "listening" ? (
+          <Button size="lg" onClick={() => dispatch({ type: "speakStopped" })}>
+            <Square aria-hidden />
+            {words.stop}
+          </Button>
+        ) : (
+          <p className="text-muted-foreground text-sm">{words.finishing}</p>
+        )}
       </div>
     )
+  }
   return (
     <div className="border-brand flex flex-col gap-2 rounded-2xl border-2 p-3">
       <p className="text-sm">{speaking.words}</p>
@@ -1057,7 +1123,7 @@ const Finish = ({
   )
 }
 
-export const Studio = ({ ports, share }: StudioProps): JSX.Element => {
+export const Studio = ({ ports, share, newIdea }: StudioProps): JSX.Element => {
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime is created once per mount, as the soundbites page's is */
   const [runtime] = useState(() =>
     createStudio({ ...phoneStudioPorts(), ...ports })
@@ -1111,6 +1177,12 @@ export const Studio = ({ ports, share }: StudioProps): JSX.Element => {
   if (screen.kind === "finish" && project !== null)
     return <Finish state={state} project={project} dispatch={dispatch} />
   return (
-    <Start state={state} project={project} dispatch={dispatch} share={share} />
+    <Start
+      state={state}
+      project={project}
+      dispatch={dispatch}
+      share={share}
+      newIdea={newIdea}
+    />
   )
 }

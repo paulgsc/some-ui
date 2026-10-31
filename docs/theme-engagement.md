@@ -55,7 +55,7 @@ The effect is documented, and it is moderate:
   reusable UI on them. What still hard-codes a state is listed in a
   `paletteRatchet` call in its package's `eslint.config.js`, each with the
   reason: Honeycomb's fixed dark HUD, and desktop-only surfaces (LeetType's
-  typing game, topik's desktop quiz and chat, lesson-crm's round editor) that
-  the desktop rebuild will replace.
+  typing game, topik's desktop quiz and chat) that the desktop rebuild will
+  replace.
 - "New" has no colour of its own. Nothing on the APK marks anything as new
   yet; when something does, add an `--info` role for it then.
