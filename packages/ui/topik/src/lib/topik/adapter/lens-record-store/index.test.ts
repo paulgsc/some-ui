@@ -4,7 +4,6 @@ import {
   LENS_RECORD_KEY,
   LENS_RECORD_MAX,
   lensRecordForExport,
-  letGoLensRecord,
 } from "@topik/lib/topik/adapter/lens-record-store"
 import type { LensRecordEntry } from "@topik/lib/topik/read-aloud/lens/record"
 import { describe, expect, it } from "vitest"
@@ -56,25 +55,6 @@ describe("the lens record store", () => {
     // 5.1 to 5.8 s on CI's runner, past vitest's 5 s default.
   }, 15_000)
 
-  it("lets go only what an export carried, unchanged since", () => {
-    const storage = memoryStorage()
-    const store = createLensRecordStore(storage)
-    store.add(entry(NOW, { line: "a" }))
-    store.add(entry(NOW, { line: "b" }))
-    const sent = lensRecordForExport(storage).entries
-    // After the export: b is answered further, c is new.
-    store.add(
-      entry(NOW, { line: "b", situation: { chosen: "x", intended: true } })
-    )
-    store.add(entry(NOW, { line: "c" }))
-    expect(letGoLensRecord(sent, storage)).toBe(1)
-    expect(lensRecordForExport(storage).entries.map((e) => e.line)).toEqual([
-      "b",
-      "c",
-    ])
-    expect(letGoLensRecord(sent, storage)).toBe(0)
-  })
-
   it("replaces an entry written again for the same item", () => {
     const storage = memoryStorage()
     const store = createLensRecordStore(storage)
@@ -122,7 +102,7 @@ describe("the lens record store", () => {
     expect(store.full()).toBe(true)
   })
 
-  it("neither exports nor lets go an entry with a field it does not know", () => {
+  it("exports no entry with a field it does not know", () => {
     const storage = memoryStorage()
     const newer = { ...entry(NOW), mood: "calm" }
     const nested = {
@@ -134,20 +114,6 @@ describe("the lens record store", () => {
       JSON.stringify({ version: 1, entries: [newer, nested] })
     )
     expect(lensRecordForExport(storage).entries).toEqual([])
-    expect(letGoLensRecord([entry(NOW)], storage)).toBe(0)
-    expect(
-      letGoLensRecord(
-        [
-          {
-            ...entry(NOW, { line: "nested" }),
-            take: { count: 1, lastMs: 2_000, heardFirst: false },
-          },
-        ],
-        storage
-      )
-    ).toBe(0)
-    expect(storage.map.get(LENS_RECORD_KEY)).toContain('"mood"')
-    expect(storage.map.get(LENS_RECORD_KEY)).toContain('"pitch"')
   })
 
   it("keeps what it cannot parse, and copies a record it cannot read aside before writing", () => {
@@ -159,10 +125,9 @@ describe("the lens record store", () => {
     )
     expect(lensRecordForExport(storage).entries).toHaveLength(1)
     createLensRecordStore(storage).add(entry(NOW, { line: "next" }))
-    letGoLensRecord(lensRecordForExport(storage).entries, storage)
     expect(JSON.parse(storage.map.get(LENS_RECORD_KEY) ?? "null")).toEqual({
       version: 1,
-      entries: [unknown],
+      entries: [entry(NOW), unknown, entry(NOW, { line: "next" })],
     })
     for (const [n, unreadable] of [
       [1, "{not json"],

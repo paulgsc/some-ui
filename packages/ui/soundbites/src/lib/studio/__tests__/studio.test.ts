@@ -4,16 +4,17 @@ import type { ShotTime } from "@some-ui/video-render"
 import { REVIEW_SCHEMA } from "@some-ui/video-render"
 import type {
   Playback,
-  Recording,
   StartRecording,
   Take,
   TakeDeadlines,
 } from "@some-ui/voice-capture"
+import { fakeMic } from "@soundbites/lib/fake-mic"
 import type { Listened } from "@soundbites/lib/idea/machine"
 import type { IdeaListener, Listening } from "@soundbites/lib/idea/runtime"
 import { run, started, take } from "@soundbites/lib/project/__tests__/fixture"
 import { projectFile, readProjectFile } from "@soundbites/lib/project/file"
 import { finishOf } from "@soundbites/lib/project/finish"
+import { memoryProjectStore } from "@soundbites/lib/project/memory-store"
 import type { CutListShape, Project } from "@soundbites/lib/project/model"
 import { latest, newProject, primerAt } from "@soundbites/lib/project/model"
 import { cutListOf, TAIL_MS } from "@soundbites/lib/project/script"
@@ -30,22 +31,7 @@ import { othersOnPhone } from "@soundbites/lib/studio/view"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { describe, expect, it, vi } from "vitest"
 
-import { AT, memoryProjectStore, primer, PRIMER_TEXT } from "./fixture"
-
-/** A microphone that hears `durationMs` of speech per take. */
-function fakeMic(durationMs = 4_000, bytes = 5): StartRecording {
-  return (): Promise<Recording> =>
-    Promise.resolve({
-      level: (): number => 0.3,
-      finish: (): Promise<Take> =>
-        Promise.resolve({
-          blob: new Blob(["v".repeat(bytes)], { type: "audio/webm" }),
-          mimeType: "audio/webm;codecs=opus",
-          durationMs,
-        }),
-      discard: (): void => undefined,
-    })
-}
+import { AT, primer, PRIMER_TEXT } from "./fixture"
 
 const NOW = Date.UTC(2026, 9, 30, 10)
 
@@ -342,20 +328,20 @@ describe("a sitting", () => {
   })
 })
 
-describe("takes that arrived", () => {
-  it("are kept by Drive and leave the phone, their record staying", async () => {
+describe("takes that arrived in Drive", () => {
+  it("are marked as kept by Drive too, and stay on the phone until home holds them (LG1)", async () => {
     const memory = memoryProjectStore()
     const runtime = await opened(memory)
     runtime.dispatch({ type: "recordChosen" })
     await recordOne(runtime)
     const { id } = projectIn(runtime)
     runtime.dispatch({ type: "takesArrived", project: id, takes: ["t1"] })
-    await until(runtime, (state) => state.notice.includes("left the phone"))
+    await until(runtime, (s) => s.notice === STUDIO_WORDS.notice.arrived(1))
     expect(projectIn(runtime).takes[0]).toMatchObject({
       keptBy: ["drive"],
-      onPhone: false,
+      onPhone: true,
     })
-    expect(memory.audio.has(`${id}:t1`)).toBe(false)
+    expect(memory.audio.has(`${id}:t1`)).toBe(true)
   })
 })
 
@@ -694,7 +680,7 @@ describe("every video with takes on the phone", () => {
     expect(projectIn(runtime).id).toBe(older)
     runtime.dispatch({ type: "takesArrived", project: older, takes: ["t1"] })
     await until(runtime, (s) => s.notice === STUDIO_WORDS.notice.arrived(1))
-    expect(memory.audio.size).toBe(0)
+    expect(memory.audio.size).toBe(1)
   })
 })
 
@@ -782,8 +768,8 @@ describe("how a sitting went", () => {
   })
 })
 
-describe("what the screen says it let go", () => {
-  it("counts only takes that left the phone", async () => {
+describe("what the screen says reached Drive", () => {
+  it("counts only takes newly marked as in Drive", async () => {
     const memory = memoryProjectStore()
     const runtime = await opened(memory)
     runtime.dispatch({ type: "recordChosen" })

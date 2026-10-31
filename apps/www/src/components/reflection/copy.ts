@@ -2,9 +2,8 @@ import { counted } from "@some-ui/core-utils"
 import type { ConfirmRequest } from "@some-ui/shared"
 
 /**
- * What the whole export's hand-off lets go, as "2 reflections, 1 soundbite
- * and 8 grammar-lens answers"; empty when nothing went out that the phone
- * would let go.
+ * What the whole export carried out, as "2 reflections, 1 soundbite and 8
+ * grammar-lens answers"; empty when nothing went out.
  */
 export function goingOut(counts: {
   reflections: number
@@ -28,7 +27,7 @@ export function goingOut(counts: {
 
 /**
  * The question after a share: Android says "shared" once an app is picked,
- * even if the person backs out of it, so `what` leaves the phone only on
+ * even if the person backs out of it, so `what` counts as shared only on
  * their word.
  */
 export function arrived(
@@ -38,8 +37,8 @@ export function arrived(
 ): ConfirmRequest {
   return {
     title: "Did they arrive?",
-    description: `Once they have, ${what} can leave this phone.`,
-    confirm: "They arrived: let them go",
+    description: `Once they have, ${what} count as shared. They stay on this phone.`,
+    confirm: "They arrived",
     keep,
     onConfirm,
   }

@@ -1,8 +1,8 @@
 /**
  * A desk of takes on the phone (`./runtime`): the microphone, the audio on a
  * shelf of its own, and the takes in a list, one runtime per page load.
- * They leave the phone only once the learner says a study-context export
- * carrying them arrived (`letGo`). Grammar-lens takes (`lib/lens-takes`) and
+ * A take leaves only when its audio never landed (`sweep`). Grammar-lens
+ * takes (`lib/lens-takes`) and
  * LeetType's spoken answers (`lib/leetype-takes`) each keep one.
  * Phone-only (`build.paths.ts`).
  */
@@ -37,7 +37,7 @@ export type TakesDesk = {
   /**
    * The takes as kept, newest first, each with its audio: null when it is
    * gone, and `read` false when the shelf could not be read, so that take,
-   * whose audio may still be there, is not let go with the export.
+   * whose audio may still be there, is not counted as gone with the export.
    */
   readonly forExport: () => Promise<
     Array<{ take: Take; audio: Blob | null; read: boolean }>
@@ -47,11 +47,6 @@ export type TakesDesk = {
    * earliest such; null when this phone holds none.
    */
   readonly keptOn: (line: string, since: number) => string | null
-  /**
-   * The learner says an export carrying `ids` arrived: those takes leave the
-   * phone, through the runtime so a screen showing one sees it go.
-   */
-  readonly letGo: (ids: ReadonlyArray<string>) => void
 }
 
 /** The shelf's own cap: a full desk of full-length takes at the soundbites' bitrate. */
@@ -142,8 +137,5 @@ export function takesDesk(options: {
         .read()
         .filter((take) => take.line === line && take.takenAt >= since)
         .sort((a, b) => a.takenAt - b.takenAt)[0]?.id ?? null,
-    letGo: (ids): void => {
-      phone().letGo(ids)
-    },
   }
 }

@@ -4,11 +4,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import {
-  leetypeTakesForExport,
-  letGoLeetypeTakes,
-  phoneSpokenTakes,
-} from "@/lib/leetype-takes"
+import { leetypeTakesForExport, phoneSpokenTakes } from "@/lib/leetype-takes"
 
 vi.mock("@some-ui/voice-capture", async (actual) => {
   const shelf = {
@@ -43,15 +39,12 @@ beforeEach(() => {
 })
 
 describe("phoneSpokenTakes", () => {
-  it("keeps each answer's note for the export, and lets it go once it arrived", async () => {
+  it("keeps each answer's note for the export", async () => {
     phoneSpokenTakes().note(NOTE)
     const { notes } = await leetypeTakesForExport()
     expect(notes).toEqual([
       expect.objectContaining({ ...NOTE, id: expect.any(String) }),
     ])
-
-    letGoLeetypeTakes({ notes: notes.map(({ id }) => id), takes: [] })
-    expect((await leetypeTakesForExport()).notes).toEqual([])
   })
 
   it("refuses a note past forty and says it is full, evicting none", async () => {

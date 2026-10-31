@@ -24,8 +24,8 @@ import type {
 import { createIdeaShelf } from "@soundbites/lib/idea/shelf-runtime"
 import { keptIdeaStore } from "@soundbites/lib/idea/store"
 import { projectFile, readProjectFile } from "@soundbites/lib/project/file"
+import { memoryProjectStore } from "@soundbites/lib/project/memory-store"
 import { latest } from "@soundbites/lib/project/model"
-import { memoryProjectStore } from "@soundbites/lib/studio/__tests__/fixture"
 import { describe, expect, it } from "vitest"
 
 import { AT, caught, DRAFT, LATER, replyText } from "./fixture"

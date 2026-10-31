@@ -121,13 +121,3 @@ export async function leetypeTakesForExport(): Promise<{
 }> {
   return { notes: notes.read(), takes: await desk.forExport() }
 }
-
-/** An export carrying these arrived: the notes and takes leave the phone. */
-export function letGoLeetypeTakes(
-  sent: Readonly<{ notes: ReadonlyArray<string>; takes: ReadonlyArray<string> }>
-): void {
-  if (sent.notes.length > 0) {
-    notes.remove(({ id }) => sent.notes.includes(id))
-  }
-  desk.letGo(sent.takes)
-}

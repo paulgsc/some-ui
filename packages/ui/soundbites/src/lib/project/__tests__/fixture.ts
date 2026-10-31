@@ -5,8 +5,9 @@ import type {
   ProjectEvent,
   ProjectState,
 } from "@soundbites/lib/project/model"
-import { newProject, step } from "@soundbites/lib/project/model"
-import { expect } from "vitest"
+import { newProject } from "@soundbites/lib/project/model"
+
+export { run } from "@soundbites/fixtures"
 
 export const AT = "2026-10-30T09:00:00.000Z"
 
@@ -50,18 +51,6 @@ export function started(): ProjectState {
     at: AT,
     cutList: shape([shot("a"), shot("b"), shot("c")]),
   })
-}
-
-/** `events` in order from `state`, each one accepted. */
-export function run(
-  state: ProjectState,
-  ...events: ReadonlyArray<ProjectEvent>
-): ProjectState {
-  return events.reduce((at, event) => {
-    const next = step(at, event)
-    expect(next.refused).toBeNull()
-    return next.state
-  }, state)
 }
 
 export function take(id: string, shotId: string): ProjectEvent {

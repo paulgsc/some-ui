@@ -1,10 +1,8 @@
 /**
  * The grammar-lens record on the device (adaptive-learning canon Rem. 4.18,
  * Rem. 7.5): entries from `lens/record`, at most a thousand. Nothing here
- * lets an entry go unseen: no age, no eviction of the oldest. An entry leaves
- * only once a copy of it is somewhere the learner says arrived
- * (`letGoLensRecord`, after the study-context export), and only if it is
- * unchanged since that copy was made. At the bound a new entry is not kept,
+ * lets an entry go unseen: no age, no eviction of the oldest, and an export
+ * is a copy that lets none go (LG1). At the bound a new entry is not kept,
  * and `full` says so, for the session to tell the learner. An entry written
  * again for the same item (its session, line and showing) replaces it: that
  * is the same item seen further, not more history. Kept only where the host
@@ -191,26 +189,4 @@ export function lensRecordForExport(
       ),
     })),
   }
-}
-
-/**
- * The learner says an export holding `sent` arrived: each stored entry equal
- * to one of them leaves; one rewritten since (a situation answered after the
- * export) stays, as does anything this build cannot read. Returns how many
- * left.
- */
-export function letGoLensRecord(
-  sent: ReadonlyArray<LensRecordEntry>,
-  storage: KeyedStorage | null = localStorageOrNull()
-): number {
-  const stored = readStored(storage)
-  if (!stored.writable || sent.length === 0) return 0
-  const copied = new Set(sent.map((entry) => JSON.stringify(entry)))
-  const kept = stored.value.filter((candidate) => {
-    const entry = parsed(candidate)
-    return !entry || !copied.has(JSON.stringify(entry))
-  })
-  const left = stored.value.length - kept.length
-  if (left === 0) return 0
-  return writeStored(storage, kept) ? left : 0
 }

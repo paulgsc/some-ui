@@ -4,8 +4,8 @@ import {
   letGoHeldTakes,
   notesForHome,
 } from "@soundbites/lib/project/home"
+import { memoryProjectStore } from "@soundbites/lib/project/memory-store"
 import type { Project } from "@soundbites/lib/project/model"
-import { memoryProjectStore } from "@soundbites/lib/studio/__tests__/fixture"
 import { describe, expect, it } from "vitest"
 
 import { AT, run, started, take } from "./fixture"

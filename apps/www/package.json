@@ -9,6 +9,7 @@
     "content:link": "node scripts/link-content-assets.js",
     "build": "node scripts/sync-resume.mjs && vite build && tsc",
     "build:fit": "WWW_FIT_HARNESS=1 vite build --outDir out/ui-fit --emptyOutDir",
+    "build:fit-phone": "SOME_UI_PROFILE=mobile WWW_FIT_HARNESS=1 WWW_FIT_PAGE=phone vite build --outDir out/ui-fit-phone --emptyOutDir",
     "check:bundle-paths": "node check-bundle-paths.ts",
     "serve": "vite preview",
     "clean": "rm -rf .turbo node_modules .eslintcache && pnpm clean:build",

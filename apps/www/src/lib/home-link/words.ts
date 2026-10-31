@@ -200,18 +200,13 @@ const they = (n: number): string => (n === 1 ? "it" : "they")
 
 /** The voice notes this phone holds and can't send home, by why (LA14). */
 export const VOICE_UNSENT = {
-  inDrive: (n: number): string =>
-    `This phone let go of ${counted(n, "Jobs voice note")} once a share arrived in Drive, so ${they(n)} can't go to home.`,
   gone: (n: number): string =>
     `${counted(n, "voice note")} ${n === 1 ? "isn't" : "aren't"} on this phone any more, so ${they(n)} can't go to home.`,
 } as const
 
 /** What Settings says of the voice notes it can't send, if any. */
-export function unsentLines({ inDrive, gone }: Unsendable): Array<string> {
-  return [
-    ...(inDrive > 0 ? [VOICE_UNSENT.inDrive(inDrive)] : []),
-    ...(gone > 0 ? [VOICE_UNSENT.gone(gone)] : []),
-  ]
+export function unsentLines({ gone }: Unsendable): Array<string> {
+  return gone > 0 ? [VOICE_UNSENT.gone(gone)] : []
 }
 
 /** The send confirm's box, and the words stored with the choice. */

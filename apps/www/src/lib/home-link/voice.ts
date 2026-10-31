@@ -76,13 +76,11 @@ export const voiceLane: Lane = {
 export function useUnsendable(): Unsendable {
   const home = phoneVoiceHome()
   useSyncExternalStore(home.subscribe, home.getSnapshot)
-  const jobs = phoneJobs()
-  const { state } = useSyncExternalStore(jobs.subscribe, jobs.getSnapshot)
   const pass = useSyncExternalStore(
     copyPasses.subscribe,
     copyPasses.getSnapshot
   )
-  return unsendable(state, pass, home.settled)
+  return unsendable(pass, home.settled)
 }
 
 /**

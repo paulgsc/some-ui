@@ -129,8 +129,7 @@ describe("what each voice note is told home as", () => {
       log: events,
       voice: [voice("v1"), voice("v2"), voice("draft-only")],
     })
-    expect(jobsNotes(state(log)).inDrive).toEqual([])
-    expect(jobsNotes(state(log)).onPhone).toEqual([
+    expect(jobsNotes(state(log))).toEqual([
       {
         id: "v1",
         of: "jobs",
@@ -197,21 +196,15 @@ describe("what each voice note is told home as", () => {
       voice: [voice("v1"), voice("v2")],
     })
     // Shared, not yet arrived: its audio is still on the phone.
-    expect(jobsNotes(state(log)).onPhone.map((n) => n.id)).toEqual(["v1", "v2"])
+    expect(jobsNotes(state(log)).map((n) => n.id)).toEqual(["v1", "v2"])
+    // Arrived in Drive: a copy, so the note is still offered home (LG1).
     const after = state([...log, arrived])
-    expect(jobsNotes(after).onPhone.map((n) => n.id)).toEqual(["v2"])
-    expect(jobsNotes(after).inDrive.map((n) => n.id)).toEqual(["v1"])
+    expect(jobsNotes(after).map((n) => n.id)).toEqual(["v1", "v2"])
 
     const none = (): boolean => false
-    expect(unsendable(after, NO_PASS, none)).toEqual({ inDrive: 1, gone: 0 })
-    // Copied before its audio went: on its way home, so nothing to say.
-    expect(unsendable(after, NO_PASS, (id) => id === "v1")).toEqual({
-      inDrive: 0,
-      gone: 0,
-    })
+    expect(unsendable(NO_PASS, none)).toEqual({ gone: 0 })
     const pass = { ...NO_PASS, gone: new Set(["r1", "r2"]) }
-    expect(unsendable(state(log), pass, (id) => id === "r2")).toEqual({
-      inDrive: 0,
+    expect(unsendable(pass, (id) => id === "r2")).toEqual({
       gone: 1,
     })
   })

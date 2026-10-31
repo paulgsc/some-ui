@@ -1,9 +1,7 @@
 /**
  * The learner's takes of grammar-lens lines, on the phone (adaptive-learning
  * canon Rem. 4.16): a desk of takes (`lib/takes-desk`), at most forty, each
- * at most thirty seconds. They leave the phone only once the learner says a
- * study-context export carrying them arrived (`letGoLensTakes`).
- * Phone-only (`build.paths.ts`).
+ * at most thirty seconds. Phone-only (`build.paths.ts`).
  */
 import { takesDesk } from "@/lib/takes-desk"
 
@@ -20,4 +18,3 @@ const desk = takesDesk({
 export const phoneLensTakes = desk.phone
 export const sweepLensTakes = desk.sweep
 export const lensTakesForExport = desk.forExport
-export const letGoLensTakes = desk.letGo

@@ -4,7 +4,7 @@ import { createViteConfig } from "@some-ui/vite-config"
 export default createViteConfig({
   packageName: "@some-ui/soundbites",
   libraryName: "SomeUISoundbites",
-  entries: { contract: "src/contract.ts" },
+  entries: { contract: "src/contract.ts", fixtures: "src/fixtures.ts" },
   alias: {
     "@soundbites": resolve(import.meta.dirname, "src"),
   },

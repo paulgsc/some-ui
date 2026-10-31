@@ -1,10 +1,11 @@
 /**
- * Plumbing for the panel sweeps (panel-fit, incident-fit): the viewport sizes
- * they sweep, the panel page (`./panel-page`) built with www's own config,
- * served over HTTP, and the measure of what leaves a fixture's rect. Never
- * `file://`: Chromium blocks cross-origin ES module loads from a file origin,
- * every panel then renders an empty root, and a sweep that does not check
- * for that passes having measured nothing.
+ * Plumbing for the fixture sweeps: the viewport sizes they sweep, the pages
+ * (`./panel-page`, `./phone-page`) built with www's own config, served over
+ * HTTP, the measure of what leaves a fixture's rect, and a walk that taps
+ * through screens measuring at each. Never `file://`: Chromium blocks
+ * cross-origin ES module loads from a file origin, every panel then renders
+ * an empty root, and a sweep that does not check for that passes having
+ * measured nothing.
  */
 
 import { createReadStream, existsSync, statSync } from "node:fs"
@@ -18,23 +19,33 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 /** Repo root, from `apps/www/tests/ui-fit`. */
 const REPO_ROOT = resolve(__dirname, "../../../..")
 
-/**
- * Where `pnpm --filter www build:fit` writes the panel page. `out/` because
- * it is ignored at any depth; the build is not part of `dist/`, which ships.
- */
-const PANEL_PAGE_BUILD = resolve(
-  REPO_ROOT,
-  process.env["WWW_FIT_HARNESS_DIST"] ?? "apps/www/out/ui-fit"
-)
-
-/** The page's path inside that build: Vite keeps the source's layout. */
-const PANEL_PAGE_PATH = "/tests/ui-fit/panel-page/index.html"
-
-function panelPageBuilt(): boolean {
-  return existsSync(join(PANEL_PAGE_BUILD, PANEL_PAGE_PATH))
+/** A fixture page as `pnpm --filter www <script>` builds it. */
+type FitBuild = {
+  /** The build directory, from the repo root; `WWW_FIT_HARNESS_DIST` and `WWW_FIT_PHONE_DIST` move them. */
+  readonly dir: string
+  /** The page's path inside that build: Vite keeps the source's layout. */
+  readonly path: string
+  readonly script: string
 }
 
-export type PanelPage = {
+/**
+ * The panel page (`./panel-page`). `out/` because it is ignored at any
+ * depth; the build is not part of `dist/`, which ships.
+ */
+const PANEL_PAGE: FitBuild = {
+  dir: process.env["WWW_FIT_HARNESS_DIST"] ?? "apps/www/out/ui-fit",
+  path: "/tests/ui-fit/panel-page/index.html",
+  script: "build:fit",
+}
+
+/** The phone page (`./phone-page`), built under the Android app's profile. */
+const PHONE_PAGE: FitBuild = {
+  dir: process.env["WWW_FIT_PHONE_DIST"] ?? "apps/www/out/ui-fit-phone",
+  path: "/tests/ui-fit/phone-page/index.html",
+  script: "build:fit-phone",
+}
+
+export type FitPage = {
   /** The page's URL, at one fixture when given its id. */
   readonly url: (panel?: string) => string
   /** Skips the calling describe when no build is found, outside CI. */
@@ -44,36 +55,43 @@ export type PanelPage = {
 }
 
 /**
- * Serves the built panel page for the spec that calls this at its top level.
+ * Serves a built fixture page for the spec that calls this at its top level.
  * Locally a missing build is a skip with directions; under CI it is a failure,
  * so a build step that broke never turns a sweep into a green run that
  * measured nothing.
  */
-export function servePanelPage(): PanelPage {
-  const built = panelPageBuilt()
+function serveFitPage(page: FitBuild): FitPage {
+  const dir = resolve(REPO_ROOT, page.dir)
+  const built = existsSync(join(dir, page.path))
   let site: StaticSite | null = null
   test.beforeAll(async () => {
-    if (built) site = await serve(PANEL_PAGE_BUILD)
+    if (built) site = await serve(dir)
   })
   test.afterAll(async () => {
     await site?.close()
   })
   return {
     url: (panel) =>
-      `${site!.origin}${PANEL_PAGE_PATH}${panel === undefined ? "" : `?panel=${panel}`}`,
+      `${site!.origin}${page.path}${panel === undefined ? "" : `?panel=${panel}`}`,
     skipUnbuilt: () =>
       test.skip(
         !built && !process.env["CI"],
-        `No panel page at ${PANEL_PAGE_BUILD}. Build one first: ` +
-          `pnpm --filter www build:fit (or point WWW_FIT_HARNESS_DIST at one).`
+        `No fixture page at ${dir}. Build one first: ` +
+          `pnpm --filter www ${page.script} (or point its env at one).`
       ),
     expectBuilt: () =>
       expect(
         built,
-        `No panel page at ${PANEL_PAGE_BUILD}: run pnpm --filter www build:fit.`
+        `No fixture page at ${dir}: run pnpm --filter www ${page.script}.`
       ).toBe(true),
   }
 }
+
+/** The panel page (`pnpm --filter www build:fit`), for the panel sweeps. */
+export const servePanelPage = (): FitPage => serveFitPage(PANEL_PAGE)
+
+/** The phone page (`pnpm --filter www build:fit-phone`), for the Studio sweep. */
+export const servePhonePage = (): FitPage => serveFitPage(PHONE_PAGE)
 
 const PHONE_LANDSCAPE = {
   name: "phone-landscape",
@@ -118,9 +136,9 @@ export const VIEWPORTS = [
 ] as const
 
 /**
- * The sizes a phone-only surface is swept at (incident-fit): a tall phone, a
- * narrow one, and the same phone on its side as above. A desktop size would
- * measure such a surface on a device that never shows it.
+ * The sizes a phone-only surface is swept at: a tall phone, a narrow one,
+ * and the same phone on its side as above. A desktop size would measure such
+ * a surface on a device that never shows it.
  */
 export const PHONE_VIEWPORTS = [
   { name: "phone-tall", width: 412, height: 915 },
@@ -223,9 +241,14 @@ const ALLOWED_FIT_INTENTS = new Set([
  *           panel below. A box that sizes to its content cannot leak - its
  *           `scrollHeight` and `clientHeight` are equal - so this only ever
  *           fires where something really did assert a size.
+ *   `wide`  a page (`data-scroll-intent="page"`) scrolls sideways. A page's
+ *           scroll is for its length, so a tall screen is no finding; a wide
+ *           one is, even when nothing in it leaks or escapes, since the box
+ *           wider than the phone sizes to its content and the page, which
+ *           scrolls, is the clipping ancestor the escape check excuses.
  */
 export type Violation = {
-  kind: "escape" | "leak"
+  kind: "escape" | "leak" | "wide"
   tag: string
   classes: string
   overY: number
@@ -279,6 +302,14 @@ export async function findViolations(
         const tag = element.tagName.toLowerCase()
         const classes = element.className.toString().slice(0, 120)
         const box = element.getBoundingClientRect()
+
+        // A page scrolls down, never across.
+        if (element.dataset["scrollIntent"] === "page") {
+          const overX = element.scrollWidth - element.clientWidth
+          if (overX > 2) {
+            violations.push({ kind: "wide", tag, classes, overY: 0, overX })
+          }
+        }
 
         // A box that clips or scrolls has resolved its own overflow; what
         // matters then is whether *it* fits, which is measured on its own turn.
@@ -341,6 +372,16 @@ export function describeViolation(where: string, violation: Violation): string {
     )
   }
 
+  if (violation.kind === "wide") {
+    return (
+      `${at} is a page that scrolls ${violation.overX}px sideways: something ` +
+      `on the screen is wider than the screen. A page scrolls down, never ` +
+      `across. Let the wide thing shrink or wrap (min-w-0, flex-wrap, ` +
+      `break-words), or give it a scroll of its own declared with ` +
+      `data-scroll-intent. ${classes}`
+    )
+  }
+
   return (
     `${at} paints ${violation.overY}px below / ${violation.overX}px right ` +
     `of the granted rect — the panel is asking for more room than the layout ` +
@@ -348,4 +389,85 @@ export function describeViolation(where: string, violation: Violation): string {
     `rows that cannot fit), or declare the escape with data-fit-intent. ` +
     `${classes}`
   )
+}
+
+/** One screen of a walk, and the taps that reach it from the one before. */
+export type Stop = {
+  readonly screen: string
+  readonly go: (page: Page) => Promise<void>
+}
+
+/** Taps the first button named `name`. */
+export const tap = (page: Page, name: string | RegExp): Promise<void> =>
+  page.getByRole("button", { name }).first().click()
+
+/**
+ * Takes `stops` in order from where the page is, measuring each screen once
+ * it settles. Returns what each leaves of the rect, said as the fix and
+ * headed `<label>: <screen>` (or the screen alone without a label); a screen
+ * that rendered nothing carries the page's `errors` so far.
+ */
+export async function walk(
+  page: Page,
+  stops: ReadonlyArray<Stop>,
+  label: string | null,
+  errors: ReadonlyArray<string>
+): Promise<Array<string>> {
+  const failures: Array<string> = []
+  for (const stop of stops) {
+    const where = label === null ? stop.screen : `${label}: ${stop.screen}`
+    await stop.go(page)
+    // Let a screen that just changed (a reveal scrolling itself into view,
+    // say) settle before measuring.
+    await page.waitForTimeout(250)
+    const { mounted, violations } = await findViolations(page)
+    if (!mounted) {
+      failures.push(`${where}: rendered nothing. ${errors.join(" | ")}`)
+      continue
+    }
+    for (const violation of violations) {
+      failures.push(describeViolation(where, violation))
+    }
+  }
+  return failures
+}
+
+/** What each planted fixture is, and how the sweep must report it. */
+const PLANTED = {
+  // A box (`planted-panel`) holding 900px of content in less, not clipping it.
+  leak: {
+    seen: (violation: Violation): boolean =>
+      violation.kind === "leak" && violation.classes.includes("planted-panel"),
+    says:
+      "The planted box holds 900px of content in less and does not clip it. " +
+      "If this is not reported, the sweep over its page is measuring nothing",
+  },
+  // A 900px row (`planted-wide`) in the phone page's body, which scrolls.
+  wide: {
+    seen: (violation: Violation): boolean => violation.kind === "wide",
+    says:
+      "The planted row is 900px wide, so the page holding it scrolls " +
+      "sideways. If this is not reported, the page's scroll hides every " +
+      "screen wider than the phone",
+  },
+} as const
+
+/**
+ * The guard the doctrine asks for, on either page: a planted fixture is
+ * mounted and reported as what it is. `leak` (the default) is each page's
+ * `planted-overflow`; `wide` is the phone page's `planted-wide`. If one is
+ * not reported, the sweep over that page cannot see what it plants.
+ */
+export function expectPlantedSeen(
+  { mounted, violations }: { mounted: boolean; violations: Array<Violation> },
+  errors: ReadonlyArray<string>,
+  planted: keyof typeof PLANTED = "leak"
+): void {
+  expect(
+    mounted,
+    `The planted fixture rendered nothing: ${errors.join(" | ")}`
+  ).toBe(true)
+  const { seen, says } = PLANTED[planted]
+  const found = violations.some(seen)
+  expect(found, `${says}: ${JSON.stringify(violations)}`).toBe(true)
 }

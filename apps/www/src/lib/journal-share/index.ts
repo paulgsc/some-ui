@@ -3,8 +3,8 @@
  * `project.json`, `takes.json` and each take's audio still on the phone
  * (`@some-ui/soundbites`, `studioFiles`). The person picks where they go
  * (Drive, say), and once they say the files arrived, the takes that went out
- * are kept by Drive and leave the phone. An idea goes out the same way, as
- * its text alone (`shareIdea`, ST19). Phone-only (`build.paths.ts`).
+ * are marked as kept by Drive too. An idea goes out the same way, as its
+ * text alone (`shareIdea`, ST19). Phone-only (`build.paths.ts`).
  */
 import { foreignValue } from "@/lib/intent/foreign"
 import type { SharedFile } from "@/lib/share-files"

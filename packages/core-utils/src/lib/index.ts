@@ -5,6 +5,7 @@ export * from "./array-utils"
 export * from "./stats"
 export { assertNever } from "./assert-never"
 export { isRecord } from "./is-record"
+export { lcsTable } from "./lcs"
 export { fencedBodies, jsonValues } from "./pasted-json"
 export type {
   HomeAnswer,

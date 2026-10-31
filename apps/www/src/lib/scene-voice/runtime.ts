@@ -82,6 +82,14 @@ export function createSceneVoice(ports: SceneVoicePorts): SceneVoice {
   }
   note.subscribe(publish)
 
+  const remove = (ids: ReadonlyArray<string>): void => {
+    if (!ports.notes.remove(ids)) return
+    // Ignored: audio no note names is cleared by the next sweep
+    // (`sweepSceneVoice`).
+    ports.audio.remove(ids).catch(() => undefined)
+    quiet = true
+    publish()
+  }
   return {
     getSnapshot: () => snapshot,
     subscribe(listener): () => void {
@@ -97,13 +105,13 @@ export function createSceneVoice(ports: SceneVoicePorts): SceneVoice {
     },
     stop: note.stop,
     leave: note.leave,
-    remove: (ids): void => {
-      if (!ports.notes.remove(ids)) return
-      // Ignored: audio no note names is cleared by the next sweep
-      // (`sweepSceneVoice`).
-      ports.audio.remove(ids).catch(() => undefined)
-      quiet = true
-      publish()
+    remove,
+    letGo(homeHolds): void {
+      const ids = ports.notes
+        .read()
+        .map(({ id }) => id)
+        .filter((id) => homeHolds.has(id))
+      if (ids.length > 0) remove(ids)
     },
   }
 }
