@@ -87,24 +87,13 @@ record (§9) and the summary (§10). Nothing ends a run before those two.
    so there is no older one to read or ask for. Fetch it from
    `index/items/<name>` as §2 fetches a decisions file, and check its
    `sha256`. A `404` means home put a newer one since the listing: list
-   again, once. It stands for this run when all of these hold:
+   again, once.
 
-   - it is JSON with `"schema": "some-ui.routine-index/1"` and
-     `"routine": "jobs"`;
-   - its `day` (when home computed it) is today or earlier, and today is no
-     later than its `validThrough`, the last day its queue holds before an
-     open pick lapses; a `validThrough` of `null` means no open pick can
-     lapse, so it holds on any later day. Home puts a new index only when
-     something arrives or a pick lapses, so an index from an earlier day is
-     the usual case, not a stale one;
-   - every `digest-*.json` in `Brief/` is in its `from.digests`, every file
-     in `Decisions/` in its `from.decisions`, and every file in `Scout/` in
-     its `from.scout` (list the three folders; download nothing). Home holds
-     only what the phone sent it and what the mailbox carried, so a file
-     only Drive has is one the index could not count.
-
-   Don't judge these by eye. Save the index, and the three folders' file
-   names as `{"brief":[…],"decisions":[…],"scout":[…]}`, in the scratch
+   It stands for this run when it is today's or earlier, today is within its
+   `validThrough`, and it names every digest, decisions file and scouts file
+   Drive holds (the voice notes beside them aside). Don't judge that by eye:
+   save the index, and the three folders' file names (list them; download
+   nothing) as `{"brief":[…],"decisions":[…],"scout":[…]}`, in the scratch
    folder, and from the repo root run:
 
    ```sh
@@ -128,9 +117,10 @@ record (§9) and the summary (§10). Nothing ends a run before those two.
      `backfill`), one named for a day before 2026-10-23 (`decisions-2026-10-20.json`,
      `scouts-20261021T101500.json`): the one-time backfill I agreed to
      (https://github.com/paulgsc/server/issues/509#issuecomment-6547096403).
-     The mailbox takes these names in `brief` only for a day before it
-     opened, so the backfill ends by itself once Drive's old files are in.
-     Home counts them as mine and names them in `from.backfill`.
+     The mailbox takes these names in `brief` only for a day from
+     2026-10-17, when the phone could first share one, through 2026-10-22,
+     so the backfill ends by itself once Drive's old files are in. Home
+     counts them as mine and names them in `from.backfill`.
    - **A decisions or scouts file named for 2026-10-23 or later** (its
      `later`) is one
      the phone kept off home, because it names a voice note. The mailbox
@@ -139,7 +129,13 @@ record (§9) and the summary (§10). Nothing ends a run before those two.
      doesn't stand; say which in the summary.
 
    A `409` means the mailbox holds other bytes under that name: say so in
-   the summary. Count what you put back, by kind, for §10.
+   the summary. A `422` for a backfill file means the mailbox refuses it (its
+   name is not one the phone writes, or it doesn't read as its schema), so
+   it can never go home and no index will count it: name it in the summary
+   as one that can't go home, take its name out of `drive.json`, and run
+   `stands` again; that second answer is the one that counts. The run keeps
+   nothing between days, so the next run puts it, meets the same `422` and
+   does the same. Count what you put back, by kind, for §10.
 
    When the index doesn't stand, or there is none, or the mailbox isn't
    usable, do §2's bookkeeping as written, from Drive and the mailbox, and say
@@ -886,5 +882,6 @@ mailbox (whether the digest was added, was already there or was refused, and
 why; the files taken in from it; any name whose bytes differed from Drive's; or
 that it was skipped, and why); home's index (whether it stood, and when it
 didn't, why, and what was put back for home to count: digests, and
-pre-mailbox decisions and scouts files); the run record (its outcome and problems, and
+pre-mailbox decisions and scouts files, and any the mailbox refused, which
+can't go home); the run record (its outcome and problems, and
 whether the mailbox took it); and anything skipped, with why.

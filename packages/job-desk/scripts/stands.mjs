@@ -1,11 +1,6 @@
 #!/usr/bin/env node
 // usage: pnpm --filter @some-ui/job-desk stands --day <today> <index.json> <drive.json>
-// Says whether home's Jobs index stands for today's run (ROUTINE.md §0.5),
-// and what Drive holds that the index lacks: the digests and pre-mailbox
-// decisions and scouts files to put back in the mailbox's `brief`, and the
-// later files that wait on the phone. <drive.json> is
-// {"brief":[names],"decisions":[names],"scout":[names]}, the three folders'
-// listings by file name. Reads this package's own build.
+// <drive.json> is {"brief":[names],"decisions":[names],"scout":[names]}.
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { indexStands } from "@some-ui/job-desk"

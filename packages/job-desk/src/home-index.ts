@@ -1,5 +1,8 @@
 import { z } from "zod"
 
+import { decisionsFileDay } from "./decisions"
+import { scoutsFileDay } from "./scouts"
+
 /**
  * Home's Jobs index, as far as the run reads it to decide whether it stands
  * (ROUTINE.md §0.5). Home writes the whole of it (paulgsc/server
@@ -21,14 +24,21 @@ const HomeIndexSchema = z.object({
     digests: z.array(z.string()),
     decisions: z.array(z.string()),
     scout: z.array(z.string()),
-    backfill: z.array(z.string()),
   }),
 })
 
-/** The day the mailbox opened: a file named for an earlier day is pre-mailbox. */
-export const MAILBOX_OPENED = "2026-10-23"
+/**
+ * The day the mailbox opened: a file named for an earlier day is pre-mailbox.
+ * The Worker holds the same day (`apps/mailbox/src/core.ts`), which cannot
+ * import this package.
+ */
+const MAILBOX_OPENED = "2026-10-23"
 
-/** What Drive's `some-ui jobs/` folders hold, by file name. */
+/**
+ * What Drive's `some-ui jobs/` folders hold, by file name. Only the Jobs
+ * files in each are compared (a digest, a decisions file, a scouts file), so
+ * the voice notes beside them in `Decisions/` and `Scout/` are not.
+ */
 export type DriveListing = {
   readonly brief: ReadonlyArray<string>
   readonly decisions: ReadonlyArray<string>
@@ -54,14 +64,8 @@ export type IndexStanding = {
   readonly later: ReadonlyArray<string>
 }
 
-/** The day a decisions or scouts file is named for, or `null`. */
-function dayOf(name: string): string | null {
-  const decisions = /^decisions-(\d{4}-\d{2}-\d{2})(?:-\d+)?\.json$/.exec(name)
-  if (decisions?.[1] !== undefined) return decisions[1]
-  const scouts = /^scouts-(\d{4})(\d{2})(\d{2})T\d{6}\.json$/.exec(name)
-  if (scouts === null) return null
-  return `${scouts[1] ?? ""}-${scouts[2] ?? ""}-${scouts[3] ?? ""}`
-}
+const isDecisions = (name: string): boolean => decisionsFileDay(name) !== null
+const isScouts = (name: string): boolean => scoutsFileDay(name) !== null
 
 /**
  * ROUTINE.md §0.5: home's index stands for a run on `today` when it reads
@@ -95,11 +99,11 @@ export function indexStands(
     drive.brief.filter((name) => /^digest-.*\.json$/.test(name))
   )
   const files = [
-    ...missing(from.decisions, drive.decisions),
-    ...missing(from.scout, drive.scout),
+    ...missing(from.decisions, drive.decisions.filter(isDecisions)),
+    ...missing(from.scout, drive.scout.filter(isScouts)),
   ]
   const before = (name: string): boolean => {
-    const day = dayOf(name)
+    const day = decisionsFileDay(name) ?? scoutsFileDay(name)
     return day !== null && day < MAILBOX_OPENED
   }
   const backfill = files.filter(before)

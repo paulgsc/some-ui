@@ -1,4 +1,4 @@
-import { indexStands, MAILBOX_OPENED } from "@job-desk/home-index"
+import { indexStands } from "@job-desk/home-index"
 import { describe, expect, it } from "vitest"
 
 /** Home's index as paulgsc/server `mailbox::index` writes it, trimmed to what the run reads. */
@@ -26,8 +26,13 @@ function index(overrides: Record<string, unknown> = {}): unknown {
 
 const DRIVE = {
   brief: ["digest-2026-10-20.json", "digest-2026-10-31.json", "notes.txt"],
-  decisions: ["decisions-2026-10-20.json", "decisions-2026-10-30.json"],
-  scout: ["scouts-20261021T101500.json"],
+  // The voice notes the phone files beside its decisions and scouts.
+  decisions: [
+    "decisions-2026-10-20.json",
+    "decisions-2026-10-30.json",
+    "2026-10-30_sw-0001_voice-1.webm",
+  ],
+  scout: ["scouts-20261021T101500.json", "sc-0001_voice-1.m4a"],
 }
 
 const NOTHING = { digests: [], backfill: [], later: [] }
@@ -76,7 +81,6 @@ describe("whether home's index stands (ROUTINE.md §0.5)", () => {
       backfill: ["decisions-2026-10-18.json", "decisions-2026-10-22-2.json"],
       later: ["decisions-2026-10-27.json", "scouts-20261023T000000.json"],
     })
-    expect(MAILBOX_OPENED).toBe("2026-10-23")
   })
 
   it("puts nothing back for an index that doesn't read", () => {
@@ -84,7 +88,7 @@ describe("whether home's index stands (ROUTINE.md §0.5)", () => {
       null,
       index({ routine: "reflections" }),
       index({ validThrough: "soon" }),
-      index({ from: { digests: [], decisions: [], scout: [] } }),
+      index({ from: { digests: [], decisions: [] } }),
     ]) {
       expect(indexStands(bad, "2026-11-01", DRIVE)).toEqual({
         stands: false,
