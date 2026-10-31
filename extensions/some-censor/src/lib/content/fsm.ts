@@ -69,7 +69,7 @@ type Evidence = MusicEvidence & {
  * a date the grammar cannot read, a live or upcoming card, anything younger
  * than the boundary, and every Short. Missing or invalidated evidence
  * therefore fails closed (doctrine §7), with one exception the owner chose:
- * when `undatedShown` (Music mix, a row of a music Mix), a card with no date
+ * when `undatedShown` (Music mix, a row of any Mix), a card with no date
  * at all is plated (QD3's amendment).
  */
 export function decide(

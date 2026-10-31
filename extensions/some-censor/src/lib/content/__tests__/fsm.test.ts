@@ -110,7 +110,6 @@ describe("decideWatch (#1805)", () => {
         dates,
         miniplayer: false,
         ...NO_MUSIC,
-        mix: null,
       },
       NOW,
       DEFAULT_BOUNDARY_DAYS,

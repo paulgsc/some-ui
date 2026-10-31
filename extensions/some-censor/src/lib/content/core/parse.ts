@@ -5,8 +5,7 @@
  * (Boundary Contract B3); what it *does* with each href is string logic
  * with no DOM in it, and that logic lives here so Core owns the meaning of
  * an id without ever touching the node it came from. `extract/video-id.ts`,
- * `extract/channel-id.ts`, `extract/mix.ts` and `extract/watch.ts` are its
- * only callers.
+ * `extract/channel-id.ts` and `extract/mix.ts` are its only callers.
  */
 
 import { asChannelId, asVideoId } from "@censor/types/ids"

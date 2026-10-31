@@ -192,14 +192,17 @@ outside. Everywhere else, unknown still means outside.
 
 _Amended by Music mix (owner, 2026-10-28):_ a row of a Mix's playlist carries
 no date at all, so this result held nearly every row, and a Mix stopped (or,
-under Skip, left the Mix) after a few songs. Under Music mix, a row of a Mix
-known to be music (one that has played a video whole in the lane, `QD15`;
-`core/reduce.ts` R11) that has no date is plated: the owner chose that a music
-radio plays on over that each row prove its age. A row whose date can be read
-is still decided by it, the watch page still decides by its own date, and
-every other mode, every other Mix and every other surface still holds an
-undated card. The cost is stated in the mode's own words: "Shown, even if
-recent".
+under Skip, left the Mix) after a few songs. Under Music mix, a row of any
+Mix's playlist (`list=RD…`; `core/reduce.ts` R11) that has no date is plated:
+the owner chose that a music radio plays on over that each row prove its age.
+Any Mix counts as music under that mode (owner, 2026-10-31, #2214), since the
+owner picks it only while listening to music; until then a Mix had first to
+play a video whole in the lane (`QD15`), and one started from a video those
+signs miss never did. A row whose date can be read is still decided by it,
+the watch page still decides by its own date, and every other mode and every
+other surface (a Mix's own card on a feed included) still holds an undated
+card. The cost is stated in the mode's own words: "Shown, even if recent",
+and it reaches a non-music Mix's undated rows too.
 
 ---
 
@@ -379,7 +382,7 @@ advance navigate by a `yt-navigate` marked `autonav`, naming the next video;
 the Sensor holds one in the capture phase, before the app sees it, unless a
 card for that video is on the page and plated (Core's `admits`). A navigation
 the owner starts carries no `autonav` and is never held. A playlist's rows
-carry no date (sealed under `QD3`, except a music Mix's under Music mix), so a
+carry no date (sealed under `QD3`, except a Mix's under Music mix), so a
 playlist, Mix or queue stops after nearly every video. Under Skip (#1966),
 Core names the first video it admits that is not the page's own and has not
 played in this tab (`skipTo`, R10), trying the playlist's rows after the
@@ -747,7 +750,8 @@ it can be parsed with certainty.
   those surfaces are permanently sealed. This is the correct outcome and should
   be documented as such rather than fixed — a surface that cannot prove its age
   does not get the benefit of the doubt. The owner made one exception on
-  2026-10-28: a music Mix's rows under Music mix (`QD3`'s amendment).
+  2026-10-28: a Mix's rows under Music mix (`QD3`'s amendment), any Mix
+  since 2026-10-31.
 - A parsed date is often an **interval, not a point**: `"2 weeks ago"` names a
   bucket, not a day count, and treating its midpoint as exact can promote a
   card near either boundary prematurely. QD3's fail-closed direction extends

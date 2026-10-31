@@ -586,7 +586,6 @@ describe("the watch page (#1805)", () => {
     title: null,
     channelName: null,
     artist: false,
-    mix: null,
   })
 
   it("announces the page's video when what is read of it changes, and only then", async () => {

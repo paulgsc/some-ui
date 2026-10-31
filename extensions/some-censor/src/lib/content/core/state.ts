@@ -69,8 +69,8 @@ export type Rules = {
    */
   readonly face: "none" | FaceWhen
   /**
-   * A row of a music Mix's playlist with no date: held, as any card
-   * without one is (QD3), or shown on its plate (Music mix).
+   * A row of a Mix's playlist with no date: held, as any card without one
+   * is (QD3), or shown on its plate (Music mix).
    */
   readonly undated: "held" | "mix"
 }
@@ -114,11 +114,6 @@ export type CoreState = {
    * at most {@link PLAYED_KEPT}: Skip never goes back to one (R10).
    */
   readonly played: ReadonlyArray<VideoId>
-  /**
-   * The Mixes (`RD…`) known to be music: each has played a video whole in
-   * the lane (QD15) since `start` (R11).
-   */
-  readonly musicMixes: ReadonlyArray<string>
   /**
    * Where autoplay, or Skip, last went on to, and from which video, until
    * the watch page shows that video decided or shows another one (SK1).
@@ -185,7 +180,6 @@ export function initialState(session: SessionId): CoreState {
     autoplay: "stop",
     unknownShapes: EMPTY_UNKNOWN_SHAPES,
     played: [],
-    musicMixes: [],
     arriving: null,
     stranded: null,
     queue: [],
@@ -209,7 +203,6 @@ export type CoreSnapshot = {
   readonly autoplay: AutoplayRule
   readonly unknownShapes: CoreState["unknownShapes"]
   readonly played: ReadonlyArray<VideoId>
-  readonly musicMixes: ReadonlyArray<string>
   readonly arriving: Arrival | null
   readonly stranded: VideoId | null
   readonly queue: ReadonlyArray<VideoId>
@@ -276,18 +269,10 @@ export function isStranded(state: CoreState): boolean {
 
 /**
  * Whether a card with no date is shown on its plate rather than held: only
- * under Music mix, and only a row of a Mix known to be music.
+ * under Music mix, and only a row of a Mix's playlist, any Mix (R11).
  */
-export function undatedShown(
-  state: Pick<CoreState, "musicMixes">,
-  rules: Rules,
-  observation: Observation
-): boolean {
-  return (
-    rules.undated === "mix" &&
-    observation.mix !== null &&
-    state.musicMixes.includes(observation.mix)
-  )
+export function undatedShown(rules: Rules, observation: Observation): boolean {
+  return rules.undated === "mix" && observation.mix !== null
 }
 
 export function snapshot(state: CoreState): CoreSnapshot {
@@ -302,7 +287,6 @@ export function snapshot(state: CoreState): CoreSnapshot {
     autoplay: state.autoplay,
     unknownShapes: state.unknownShapes,
     played: state.played,
-    musicMixes: state.musicMixes,
     arriving: state.arriving,
     stranded: state.stranded,
     queue: state.queue,

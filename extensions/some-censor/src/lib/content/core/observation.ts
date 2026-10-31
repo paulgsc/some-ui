@@ -76,8 +76,6 @@ export type WatchObservation = {
   readonly title: string | null
   readonly channelName: string | null
   readonly artist: boolean
-  /** The Mix the page plays in (`RD…`), or null outside one. */
-  readonly mix: string | null
 }
 
 /**
