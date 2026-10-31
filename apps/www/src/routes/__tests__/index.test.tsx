@@ -6,12 +6,18 @@
  * and the landing with one. Chosen in the component, so asserted by rendering
  * it under each state; a change swaps the page in place
  * (`useAuthoritySnapshot`).
+ *
+ * The landing is rendered under both web profiles (ADM1, #2389): on the home
+ * network it leads with how the system is running and offers no study or
+ * making; on the public site it is what it was before.
  */
 
 import type { JSX, ReactNode } from "react"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import { act, cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
+
+import type * as BuildProfile from "@/lib/build-profile"
 
 type Backend = "none" | "remote" | "in-process"
 const state: { backend: Backend; session: string } = {
@@ -71,31 +77,52 @@ vi.mock(
   }
 )
 
-const { Route } = await import("@/routes/index")
+const HOME_NETWORK = ["public", "lan", "web"] as const
+const PUBLIC_SITE = ["public", "web"] as const
 
-function renderRoot(): void {
+/**
+ * Renders `"/"` as a build carrying `audiences` makes it. The page reads the
+ * site map and the wings once, at module scope, so each profile gets a fresh
+ * import.
+ */
+async function renderRoot(
+  audiences: ReadonlyArray<string> = HOME_NETWORK
+): Promise<void> {
+  vi.resetModules()
+  vi.doMock("@/lib/build-profile", async () => ({
+    ...(await vi.importActual<typeof BuildProfile>("@/lib/build-profile")),
+    MOBILE_APP: false,
+    hasAudience: (audience: string): boolean => audiences.includes(audience),
+  }))
+  const { Route } = await import("@/routes/index")
   const Component = Route.options.component
   if (!Component) throw new Error('"/" has no component')
   render(<Component />)
 }
 
+/** Every link's address, in the order the page reads. */
+function hrefs(): Array<string | null> {
+  return screen.getAllByRole("link").map((a) => a.getAttribute("href"))
+}
+
 afterEach(() => {
   cleanup()
+  vi.doUnmock("@/lib/build-profile")
   state.backend = "none"
   state.session = "signed-out"
 })
 
 describe('"/"', () => {
-  it("is the extensions comb, as the front door, on the public site without a session", () => {
-    renderRoot()
+  it("is the extensions comb, as the front door, on the public site without a session", async () => {
+    await renderRoot(PUBLIC_SITE)
     const page = screen.getByTestId("extensions-page")
     expect(page.dataset.chrome).toBe("front")
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull()
   })
 
-  it("is the foyer on the public site once the demo is open", () => {
+  it("is the foyer on the public site once the demo is open, unchanged by ADM1", async () => {
     state.session = "signed-in"
-    renderRoot()
+    await renderRoot(PUBLIC_SITE)
     expect(screen.queryByTestId("extensions-page")).toBeNull()
     expect(
       screen.getByRole("heading", { level: 1, name: "Where to?" })
@@ -103,19 +130,50 @@ describe('"/"', () => {
     expect(
       screen.getByRole("link", { name: /^Practice/ }).getAttribute("href")
     ).toBe("/app")
-    // Vitest builds the `lan` profile, which carries "web".
-    expect(screen.getByText("Playoff Delta")).toBeTruthy()
+    expect(screen.queryByRole("navigation", { name: "How it's running" })).toBe(
+      null
+    )
+    expect(hrefs()).toEqual([
+      "/settings",
+      // The wings: Practice, Studio, Jobs.
+      "/app",
+      "/playoff-delta",
+      "/job-run",
+      // Published from here, after "Why this exists".
+      "/mission",
+      "/app",
+      "/playoff-delta",
+      "/extensions",
+      "/resume",
+    ])
   })
 
-  it("is the destinations landing wherever there is a server to learn against, with no session", () => {
+  it("leads the home network's landing with how it is running, and offers no study or making (ADM1)", async () => {
     state.backend = "remote"
-    renderRoot()
+    await renderRoot(HOME_NETWORK)
+    const [first] = screen.getAllByRole("navigation")
+    expect(first.getAttribute("aria-label")).toBe("How it's running")
+    expect(hrefs()).toEqual([
+      "/settings",
+      "/assurance",
+      // The one wing whose web side is not study or making: a morning run
+      // read on a sample digest.
+      "/job-run",
+      "/mission",
+      "/extensions",
+      "/resume",
+    ])
+  })
+
+  it("is the destinations landing wherever there is a server to learn against, with no session", async () => {
+    state.backend = "remote"
+    await renderRoot()
     expect(screen.queryByTestId("extensions-page")).toBeNull()
     expect(screen.getByRole("heading", { level: 1 })).toBeTruthy()
   })
 
-  it("swaps to the landing in place when the demo opens", () => {
-    renderRoot()
+  it("swaps to the landing in place when the demo opens", async () => {
+    await renderRoot(PUBLIC_SITE)
     expect(screen.getByTestId("extensions-page")).toBeTruthy()
 
     act(() => {
