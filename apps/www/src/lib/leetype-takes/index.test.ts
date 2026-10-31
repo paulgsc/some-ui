@@ -40,7 +40,7 @@ const NOTE = {
 
 beforeEach(() => {
   localStorage.clear()
-  leetypeNotesHeldByHome(() => false)
+  leetypeNotesHeldByHome(() => (): boolean => false)
 })
 
 describe("phoneSpokenTakes", () => {
@@ -79,7 +79,11 @@ describe("phoneSpokenTakes", () => {
         .filter(({ typed }) => typed === "3" || typed === "7")
         .map(({ id }) => id)
     )
-    leetypeNotesHeldByHome((id) => home.has(id))
+    leetypeNotesHeldByHome(
+      () =>
+        (id): boolean =>
+          home.has(id)
+    )
     expect(takes.getSnapshot()).toMatchObject({ notesFull: false })
     expect(takes.note({ ...NOTE, typed: "forty-one" })).toBe(true)
     const typed = (await leetypeTakesForExport()).notes.map(({ typed: t }) => t)
@@ -98,12 +102,12 @@ describe("phoneSpokenTakes", () => {
     const heard = vi.fn()
     const stop = takes.subscribe(heard)
     expect(takes.getSnapshot()).toMatchObject({ notesFull: true })
-    leetypeNotesHeldByHome(() => true)
+    leetypeNotesHeldByHome(() => (): boolean => true)
     expect(heard).toHaveBeenCalled()
     expect(takes.getSnapshot()).toMatchObject({ notesFull: false })
     stop()
     heard.mockClear()
-    leetypeNotesHeldByHome(() => false)
+    leetypeNotesHeldByHome(() => (): boolean => false)
     expect(heard).not.toHaveBeenCalled()
   })
 

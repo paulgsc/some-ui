@@ -10,12 +10,19 @@
  *
  * Phone to home only. What home holds, as it is, may leave the phone to make
  * room at the record's bound (topik's `lensRecordHeldByHome`, which
- * `lensGoing` hands what this phone knows); nothing here lets anything go.
+ * `./voice-copy` hands `lensEntriesHeld`); nothing here lets anything go.
  */
 import type { HomeCall, KeyedStorage } from "@some-ui/core-utils"
-import { canonicalJson, fnv1a, isRecord, jsonOf } from "@some-ui/core-utils"
+import {
+  canonicalJson,
+  fnv1a,
+  isRecord,
+  jsonOf,
+  localStorageOrNull,
+} from "@some-ui/core-utils"
 import type { LensRecordExport } from "@some-ui/topik"
 
+import { pairingOf } from "./index"
 import type { LogReport } from "./leetype-log"
 import { bucketOf } from "./leetype-log"
 import type { Sent } from "./sent"
@@ -95,22 +102,26 @@ export async function sendLens(
 }
 
 /**
+ * Whether the paired home holds each entry as it is now, as this phone last
+ * heard: none while unpaired. One reading, made once per look at the record.
+ */
+export function lensEntriesHeld(): (entry: LensEntry) => boolean {
+  const pairing = pairingOf()
+  if (pairing === null) return () => false
+  const { lens } = readSent(localStorageOrNull(), pairing)
+  return (entry) => lens[lensKey(entry)] === lensDigest(entry)
+}
+
+/**
  * What a run under `pairing` carries of the grammar-lens record: what home
- * doesn't hold as it is now. Hands the record what home holds, so it may
- * make room at its bound. Reads only this phone; none when it can't load.
+ * doesn't hold as it is now. Reads only this phone; none when it can't load.
  */
 export async function lensGoing(
   pairing: string,
   storage: KeyedStorage | null
 ): Promise<Array<LensEntry>> {
   try {
-    const { lensRecordForExport, lensRecordHeldByHome } = await import(
-      "@some-ui/topik"
-    )
-    lensRecordHeldByHome(() => {
-      const { lens } = readSent(storage, pairing)
-      return (entry): boolean => lens[lensKey(entry)] === lensDigest(entry)
-    })
+    const { lensRecordForExport } = await import("@some-ui/topik")
     return lensToSend(lensRecordForExport().entries, readSent(storage, pairing))
   } catch {
     return []

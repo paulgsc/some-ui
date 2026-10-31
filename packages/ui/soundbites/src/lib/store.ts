@@ -18,7 +18,7 @@ import {
   withRoom,
 } from "@some-ui/voice-capture"
 
-import { heldByHome } from "./home-held"
+import { homeHoldsNow } from "./home-held"
 import { byNewest, displacedBy, fitsMaxBytes, SOUNDBITE_LIMIT } from "./policy"
 import type { Soundbite } from "./types"
 
@@ -120,7 +120,7 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
       const leaving = displacedBy(
         await allKept(db.transaction(META, "readonly").objectStore(META)),
         replace,
-        heldByHome,
+        homeHoldsNow(),
         SOUNDBITE_LIMIT
       )
       if (leaving === null) throw new SoundbitesFullError()
@@ -137,7 +137,7 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
           const displaced = displacedBy(
             kept,
             replace,
-            heldByHome,
+            homeHoldsNow(),
             SOUNDBITE_LIMIT
           )
           if (displaced === null) {

@@ -9,7 +9,7 @@
  * (`./voice-copy`).
  *
  * Phone to home only. What home holds is what may leave the phone to make
- * room at a store's cap (`noteHeld`, which `./voice-copy` hands the stores);
+ * room at a store's cap (`notesHeld`, which `./voice-copy` hands the stores);
  * nothing here lets anything go.
  */
 import type { HomeCall } from "@some-ui/core-utils"
@@ -116,11 +116,12 @@ export async function sendNotes(
 }
 
 /**
- * Whether the paired home holds the note, as this phone last heard: false
- * while unpaired. Read when a store would make room, never cached.
+ * Whether the paired home holds each note of `kind`, as this phone last
+ * heard: none while unpaired. One reading, made once per look at a store.
  */
-export function noteHeld(kind: NoteKind, id: string): boolean {
+export function notesHeld(kind: NoteKind): (id: string) => boolean {
   const pairing = pairingOf()
-  if (pairing === null) return false
-  return noteKey(kind, id) in readSent(localStorageOrNull(), pairing).notes
+  if (pairing === null) return () => false
+  const { notes } = readSent(localStorageOrNull(), pairing)
+  return (id) => noteKey(kind, id) in notes
 }

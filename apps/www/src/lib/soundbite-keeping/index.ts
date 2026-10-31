@@ -16,10 +16,11 @@ export type SoundbiteKeeping = {
   /** What the lanes read of the kept soundbites. */
   readonly store: Pick<SoundbiteStore, "list" | "audio" | "subscribe">
   /**
-   * What home holds of them, read back, audio and record both: those may
-   * make room for a new one at the cap (soundbites' `soundbitesHeldByHome`).
+   * How to read what home holds of them, audio and record both, once per
+   * look: those may make room for a new one at the cap (soundbites'
+   * `soundbitesHeldByHome`).
    */
-  readonly heldByHome: (held: (id: string) => boolean) => void
+  readonly heldByHome: (next: () => (id: string) => boolean) => void
 }
 
 let keeping: SoundbiteKeeping | null = null

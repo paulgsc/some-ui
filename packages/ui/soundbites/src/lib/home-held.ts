@@ -8,19 +8,26 @@
  * leaves before home holds it. Until the link says so, home holds none.
  */
 
-let held: (id: string) => boolean = () => false
+/** Whether home holds a soundbite, as one reading of what home holds. */
+export type Held = (id: string) => boolean
+
+let held: () => Held = () => () => false
 let revision = 0
 const listeners = new Set<() => void>()
 
-/** The home link says what home holds now. */
-export function soundbitesHeldByHome(next: (id: string) => boolean): void {
+/**
+ * The home link says how to read what home holds now: `next` is asked once
+ * per look at the soundbites (`homeHoldsNow`), for a reading of what home
+ * holds then.
+ */
+export function soundbitesHeldByHome(next: () => Held): void {
   held = next
   revision += 1
   for (const listener of listeners) listener()
 }
 
-/** Whether home holds this soundbite, as last said. */
-export const heldByHome = (id: string): boolean => held(id)
+/** One reading of what home holds, for one look at the soundbites. */
+export const homeHoldsNow = (): Held => held()
 
 /** For `useSyncExternalStore`: moves each time the link says again. */
 export const homeHeld = {

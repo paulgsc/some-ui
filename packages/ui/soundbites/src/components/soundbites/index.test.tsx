@@ -148,7 +148,7 @@ describe("Soundbites", () => {
   })
 
   it("when full and home holds none, keeps every one and refuses the next (HF5)", async () => {
-    soundbitesHeldByHome(() => false)
+    soundbitesHeldByHome(() => (): boolean => false)
     const { kept } = setup({ kept: FULL })
 
     expect(
@@ -166,7 +166,11 @@ describe("Soundbites", () => {
   })
 
   it("when full, replaces the oldest home holds without asking", async () => {
-    soundbitesHeldByHome((id) => id !== "b5")
+    soundbitesHeldByHome(
+      () =>
+        (id): boolean =>
+          id !== "b5"
+    )
     const { kept } = setup({ kept: FULL })
 
     expect(
@@ -182,7 +186,7 @@ describe("Soundbites", () => {
   })
 
   it("when full, replaces the oldest without asking", async () => {
-    soundbitesHeldByHome(() => true)
+    soundbitesHeldByHome(() => (): boolean => true)
     const { kept } = setup({ kept: FULL })
 
     expect(
@@ -197,7 +201,7 @@ describe("Soundbites", () => {
   })
 
   it("replaces the one picked instead, if the person picks", async () => {
-    soundbitesHeldByHome(() => true)
+    soundbitesHeldByHome(() => (): boolean => true)
     const { kept } = setup({ kept: FULL })
 
     // Newest first, so the first offer is b0's; b5, the oldest, is the one

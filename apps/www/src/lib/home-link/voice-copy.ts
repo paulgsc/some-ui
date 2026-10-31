@@ -45,9 +45,9 @@
  * - _Family:_ every share kind (reflections; the study-context export with
  *   its soundbites, grammar-lens entries and takes, and LeetType answers and
  *   takes; Studio takes) and every cap that makes room (soundbites, lens
- *   takes, LeetType takes and answer notes, HF5 #2180) × every home state
- *   (held; waiting; unpaired; off the
- *   LAN, which the phone sees alike as not held).
+ *   takes, LeetType takes and answer notes, and the grammar-lens record,
+ *   HF5 #2180) × every home state (held; waiting; unpaired; off the LAN,
+ *   which the phone sees alike as not held).
  * - _Proof:_ `lib/jobs/__tests__/runtime.test.ts` ("LG1": home's word lets
  *   a note's audio go, and a file a run missed is filed again with the audio
  *   still on the phone), `lib/agent-export/index.test.ts`
@@ -60,9 +60,10 @@
  *   `studio/__tests__/studio.test.ts` ("LG1": a take kept by Drive stays on
  *   the phone; only `home` lets it go), and for the caps (HF5) soundbites'
  *   `__tests__/policy.test.ts` and `components/soundbites/index.test.tsx`,
- *   `lib/takes-desk/__tests__/runtime.test.ts` and
- *   `lib/leetype-takes/index.test.ts` (each "HF5": at the cap only one home
- *   holds makes room, and with none held the new one is refused).
+ *   `lib/takes-desk/__tests__/runtime.test.ts`,
+ *   `lib/leetype-takes/index.test.ts` and topik's
+ *   `adapter/lens-record-store/index.test.ts` (each "HF5": at the cap only
+ *   one home holds makes room, and with none held the new one is refused).
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/core-utils"
@@ -94,7 +95,8 @@ import type { CopyPass, Unsendable, VoiceOut } from "@/lib/voice-home/model"
 import { NO_PASS, passWith, runEnd } from "@/lib/voice-home/model"
 
 import { homeLink, paired } from "./index"
-import { noteHeld } from "./notes"
+import { lensEntriesHeld } from "./lens-record"
+import { notesHeld } from "./notes"
 
 /** A finished voice reflection, as home is told it; null for any other. */
 export function reflectionNote(reflection: Reflection): VoiceOut | null {
@@ -522,19 +524,43 @@ function voiceHeld(id: string): boolean {
   return heldSet.has(id)
 }
 
+/** Whether the grammar-lens record has been told how to read what home holds. */
+let lensRecordTold = false
+
+/**
+ * Tells the grammar-lens record, once, how to read what home holds of it.
+ * Its reading follows the pairing on its own, so once is enough, and a
+ * phone never paired loads none of topik for it.
+ */
+function holdLensRecord(): void {
+  if (lensRecordTold || !paired()) return
+  lensRecordTold = true
+  import("@some-ui/topik")
+    .then(({ lensRecordHeldByHome }) => {
+      lensRecordHeldByHome(lensEntriesHeld)
+    })
+    .catch((error: unknown) => {
+      lensRecordTold = false
+      reported(error)
+    })
+}
+
 /**
  * Hands each offline set what home holds, read back, so it may make room at
  * its cap with those and no others (HF5): the lens takes and LeetType takes
- * by their voice notes, LeetType's answer notes by their study notes, and a
- * soundbite once home holds both its audio and its record.
+ * by their voice notes, LeetType's answer notes by their study notes, a
+ * soundbite once home holds both its audio and its record, and a grammar-lens
+ * entry once home holds it as it is now. Each reads `sent` once per look.
  */
 function holdOffline(): void {
   lensTakesDesk.heldByHome(voiceHeld)
   leetypeTakesDesk.heldByHome(voiceHeld)
-  leetypeNotesHeldByHome((id) => noteHeld("leetype", id))
-  soundbiteKeeping()?.heldByHome(
-    (id) => voiceHeld(id) && noteHeld("soundbite", id)
-  )
+  leetypeNotesHeldByHome(() => notesHeld("leetype"))
+  soundbiteKeeping()?.heldByHome((): ((id: string) => boolean) => {
+    const records = notesHeld("soundbite")
+    return (id): boolean => voiceHeld(id) && records(id)
+  })
+  holdLensRecord()
 }
 
 /**

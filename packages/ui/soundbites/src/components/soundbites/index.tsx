@@ -30,7 +30,7 @@ import {
   formatDuration,
   formatWhen,
 } from "@soundbites/lib/format"
-import { heldByHome, homeHeld } from "@soundbites/lib/home-held"
+import { homeHeld, homeHoldsNow } from "@soundbites/lib/home-held"
 import type { Activity, SoundbiteSituation } from "@soundbites/lib/machine"
 import { canUseKept } from "@soundbites/lib/machine"
 import { phonePorts } from "@soundbites/lib/phone"
@@ -298,7 +298,9 @@ export const Soundbites = ({
   const usable = canUseKept(activity)
   const kept = library.kind === "read" ? library.kept : null
   const full = kept !== null && kept.length >= SOUNDBITE_LIMIT
-  const replaced = kept === null ? null : nextReplaced(kept, choice, heldByHome)
+  // One reading of what home holds for this render, not one per soundbite.
+  const held = homeHoldsNow()
+  const replaced = kept === null ? null : nextReplaced(kept, choice, held)
   const playingId = activity.kind === "playing" ? activity.id : null
 
   const confirmSheet = useConfirmSheet()
@@ -447,7 +449,7 @@ export const Soundbites = ({
                   key={bite.id}
                   bite={bite}
                   now={now}
-                  full={full && heldByHome(bite.id)}
+                  full={full && held(bite.id)}
                   isNextReplaced={replaced?.id === bite.id}
                   playing={playingId === bite.id}
                   disabled={!usable}

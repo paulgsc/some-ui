@@ -62,7 +62,7 @@ const isNote = (value: unknown): value is LeetypeTakeNote => {
 const notes = boundedList("some-ui:leetype-take-notes", MAX, isNote)
 
 // Home holds none until the voice lane says otherwise (`leetypeNotesHeldByHome`).
-let notesHeld: (id: string) => boolean = () => false
+let notesHeld: () => (id: string) => boolean = () => () => false
 /** Those reading the port, told when the notes' room changes. */
 const notesListeners = new Set<() => void>()
 const notesMoved = (): void => {
@@ -73,9 +73,10 @@ const notesMoved = (): void => {
 function roomFor(): LeetypeTakeNote | null {
   const kept = notes.read()
   if (kept.length < MAX) return null
+  const held = notesHeld()
   return (
     kept
-      .filter(({ id }) => notesHeld(id))
+      .filter(({ id }) => held(id))
       .sort((a, b) => a.notedAt - b.notedAt)[0] ?? null
   )
 }
@@ -156,12 +157,14 @@ export const leetypeTakesDesk = desk
 export const leetypeNotes = (): ReadonlyArray<LeetypeTakeNote> => notes.read()
 
 /**
- * What home holds of the notes, read back: those may make room at forty. A
- * screen reading the port hears it, so one that showed the notes full can
- * take an answer again.
+ * How to read what home holds of the notes, read back: those may make room
+ * at forty. `next` is asked once per look at the notes. A screen reading the
+ * port hears it, so one that showed the notes full can take an answer again.
  */
-export function leetypeNotesHeldByHome(held: (id: string) => boolean): void {
-  notesHeld = held
+export function leetypeNotesHeldByHome(
+  next: () => (id: string) => boolean
+): void {
+  notesHeld = next
   notesMoved()
 }
 

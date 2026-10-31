@@ -1,4 +1,4 @@
-import { heldByHome } from "@soundbites/lib/home-held"
+import { homeHoldsNow } from "@soundbites/lib/home-held"
 import { byNewest, displacedBy } from "@soundbites/lib/policy"
 import type { SoundbiteStore } from "@soundbites/lib/store"
 import { SoundbitesFullError } from "@soundbites/lib/store"
@@ -47,7 +47,7 @@ export function memoryStore(initial: ReadonlyArray<Soundbite> = []): {
         Promise.resolve(kept.get(id)?.audio ?? null),
       save: (b, audio, replace): Promise<void> => {
         const all = [...kept.values()].map((k) => k.bite)
-        const leaving = displacedBy(all, replace, heldByHome)
+        const leaving = displacedBy(all, replace, homeHoldsNow())
         if (leaving === null) return Promise.reject(new SoundbitesFullError())
         for (const id of leaving) kept.delete(id)
         kept.set(b.id, { bite: b, audio })
