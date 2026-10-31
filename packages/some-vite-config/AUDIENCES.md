@@ -45,6 +45,29 @@ a LAN-only page talks to is the server's to guard.
   profile that carries the audience: `fitPages` in `build.profiles.ts`, whose
   `FIT_PHONE_PAGE` says why it is neither a route nor a door (A4 does not apply to it).
 
+## What each build's navigation offers
+
+Audiences decide what a build carries. A second, per-build rule decides what its navigation
+offers (the front page's cards, the dashboard sidebar's wings, the site launcher), and it
+lives beside them in www's `src/lib/purpose`: every destination in `src/lib/site-map` and
+every wing's web side in `src/lib/wings` names a purpose (`administration`,
+`presentation`, `study` or `making`).
+
+- **The home network's build is administration-first** (owner, 2026-10-31, ADM1 #2389).
+  The build carrying `lan`, the owner's desktop, offers administration (the system's
+  health, accounting and storage, its promises) and presentation (the mission, the résumé,
+  the published extensions). Study and making leave its navigation.
+- **Every other build offers what viewers try**, and no administration: the public site's
+  navigation is what it was before the rule.
+- **Navigation only.** A page that is not offered still loads by its address and its
+  workspace is still bundled, so links and history keep working. Dropping study and
+  making from the `lan` bundle is a follow-up once nothing in `lan` points at them.
+
+`destinationsHere` and the wings' `onWebHere` apply the rule, so a component never checks
+the build itself. `src/lib/purpose/index.test.ts`, `src/routes/__tests__/index.test.tsx`,
+`src/components/site-launcher/__tests__/index.test.tsx` and `src/lib/wings/__tests__` hold
+it under both web profiles.
+
 ## What is enforced, and what is not
 
 | Layer | What                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |

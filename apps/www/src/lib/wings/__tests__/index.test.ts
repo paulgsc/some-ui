@@ -70,19 +70,17 @@ describe("wings", () => {
     }
   })
 
-  it("offers the web foyer the home network's wing only where the build carries it", () => {
+  it("offers the public site's foyer the wings viewers try, and no home network wing", () => {
     expect(webWingsHere().map((wing) => wing.id)).toEqual([
       "practice",
       "studio",
       "jobs",
     ])
+  })
+
+  it("offers the home network's foyer no study or making wing (ADM1)", () => {
     carriesLan = true
-    expect(webWingsHere().map((wing) => wing.id)).toEqual([
-      "practice",
-      "studio",
-      "jobs",
-      "operate",
-    ])
+    expect(webWingsHere().map((wing) => wing.id)).toEqual(["jobs"])
   })
 
   it("lists only a wing's own rooms in its web sidebar", () => {
@@ -101,11 +99,14 @@ describe("wings", () => {
     expect(webSettingsOf(wing("self"))).toBeNull()
     // The home network's rooms only where the build carries them (A3).
     expect(navOf(wing("operate"))).toEqual([])
+    // The home network's build carries them, and offers no making (ADM1):
+    // study and making leave its sidebar, while their routes still load.
     carriesLan = true
-    expect(navOf(wing("operate")).map((room) => room.nav)).toEqual([
-      "Lessons",
-      "Résumé build",
-    ])
+    expect(navOf(wing("operate"))).toEqual([])
+    expect(navOf(wing("practice"))).toEqual([])
+    expect(webSettingsOf(wing("practice"))).toBeNull()
+    expect(navOf(wing("studio"))).toEqual([])
+    expect(navOf(wing("jobs")).map((room) => room.nav)).toEqual(["Morning run"])
   })
 
   it("has no tabs in a build without the phone's pages (A3)", () => {

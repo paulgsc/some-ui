@@ -1,6 +1,8 @@
 import type { FileRoutesByTo } from "@/routeTree.gen"
 
 import { hasAudience } from "@/lib/build-profile"
+import type { Purpose } from "@/lib/purpose"
+import { offeredHere } from "@/lib/purpose"
 
 /**
  * Wings: what someone came in for. Build audiences separate the app by
@@ -42,8 +44,10 @@ export type Wing = {
    * The wing on the desktop web: its Home and what you come in for there,
    * which differ from the phone's (Studio records the Playoff Delta stage on
    * the desktop, voice takes on the phone). Null where the web has none.
+   * Its purpose (`lib/purpose`) decides the builds whose navigation offers
+   * it: on the home network, study and making leave (ADM1, #2389).
    */
-  web: { home: Path; job: string; lanOnly?: true } | null
+  web: { home: Path; job: string; purpose: Purpose; lanOnly?: true } | null
   /**
    * What the wing publishes and what it keeps, as the strip under the web
    * header says it to the owner (CLAUDE.md, "two mandates"). Absent where the
@@ -73,6 +77,7 @@ export const WINGS: ReadonlyArray<Wing> = [
     web: {
       home: "/app",
       job: "Study, reflect, and pick up where you left off",
+      purpose: "study",
     },
     exposure: {
       published: "these study screens, on Pages",
@@ -96,6 +101,7 @@ export const WINGS: ReadonlyArray<Wing> = [
     web: {
       home: "/playoff-delta",
       job: "Record what gets published: the Playoff Delta stage",
+      purpose: "making",
     },
   },
   {
@@ -107,6 +113,8 @@ export const WINGS: ReadonlyArray<Wing> = [
     web: {
       home: "/job-run",
       job: "Read one morning's run: what it picked, and why",
+      // A run read on a sample digest: how the routine works, shown.
+      purpose: "presentation",
     },
     exposure: {
       published: "how the run works, on a sample digest",
@@ -122,6 +130,7 @@ export const WINGS: ReadonlyArray<Wing> = [
     web: {
       home: "/lessons",
       job: "Make what gets published: lessons, the résumé",
+      purpose: "making",
       lanOnly: true,
     },
   },
@@ -209,8 +218,9 @@ export function tabsOf(wing: WingId): ReadonlyArray<Room & { tab: string }> {
 
 /**
  * The wings the desktop web's foyer offers in this build: each with a web
- * Home, and the home network's own only where this build carries it (A3,
- * packages/some-vite-config/AUDIENCES.md).
+ * Home, the home network's own only where this build carries it (A3,
+ * packages/some-vite-config/AUDIENCES.md), and only those whose purpose this
+ * build's navigation offers (`lib/purpose`).
  */
 export function webWingsHere(): ReadonlyArray<
   Wing & { web: NonNullable<Wing["web"]> }
@@ -220,15 +230,23 @@ export function webWingsHere(): ReadonlyArray<
   )
 }
 
-/** Whether `wing` has a side on the desktop web in this build (A3). */
+/**
+ * Whether `wing` has a side on the desktop web's navigation in this build
+ * (A3, and `lib/purpose`). Its routes still load by their address.
+ */
 function onWebHere(wing: Wing): boolean {
-  return wing.web !== null && (wing.web.lanOnly !== true || hasAudience("lan"))
+  return (
+    wing.web !== null &&
+    (wing.web.lanOnly !== true || hasAudience("lan")) &&
+    offeredHere(wing.web.purpose)
+  )
 }
 
 /**
  * A wing's rooms in its sidebar on the desktop web, in registry order, and
  * none for a wing this build's web does not carry (A3,
- * packages/some-vite-config/AUDIENCES.md).
+ * packages/some-vite-config/AUDIENCES.md) or its navigation does not offer
+ * (`lib/purpose`).
  */
 export function navOf(wing: Wing): ReadonlyArray<Room & { nav: string }> {
   if (!onWebHere(wing)) return []
