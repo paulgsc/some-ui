@@ -1256,6 +1256,121 @@ describe("written reflections", () => {
   })
 })
 
+describe("drama prompts", () => {
+  const STAMP = "drama-20261031T071503120Z"
+  const ASKED_FOR = {
+    schema: "some-ui.drama-prompt/1",
+    prompt: STAMP,
+    text: [
+      "> **For an agent:** follow the prompt below.",
+      "",
+      '<!-- notes: {"drama-20261031T071503120Z.voice-1.webm":"3f9c2a1e-7b4d"} -->',
+      "Write one scene: the fiancée meets his mother.",
+    ].join("\n"),
+  }
+  const PROMPT = JSON.stringify(ASKED_FOR)
+  const NAME = `${STAMP}.prompt.json`
+  const asHome = (
+    d: Deps,
+    name: string,
+    body: string = PROMPT
+  ): Promise<Response> => put(d, "prompt", name, { token: HOME, body })
+
+  it("home puts a prompt once, and the routine reads it; neither the other way", async () => {
+    const d = deps()
+    expect((await asHome(d, NAME)).status).toBe(201)
+    expect((await asHome(d, NAME)).status).toBe(200)
+    expect(
+      (await asHome(d, NAME, JSON.stringify({ ...ASKED_FOR, text: "other" })))
+        .status
+    ).toBe(409)
+
+    const path = `/v1/prompt/items/${NAME}`
+    const read = await send(d, "GET", path)
+    expect(read.status).toBe(200)
+    expect(await read.text()).toBe(PROMPT)
+    expect((await send(d, "GET", "/v1/prompt/items")).status).toBe(200)
+    expect((await send(d, "GET", path, { token: HOME })).status).toBe(403)
+    expect(
+      (await send(d, "GET", "/v1/prompt/items", { token: HOME })).status
+    ).toBe(403)
+    expect((await put(d, "prompt", NAME, { body: PROMPT })).status).toBe(403)
+  })
+
+  it("the routine neither lists archived prompts nor asks one back", async () => {
+    const d = deps()
+    expect((await asHome(d, NAME)).status).toBe(201)
+    expect((await send(d, "GET", "/v1/prompt/archived")).status).toBe(403)
+    expect((await send(d, "PUT", `/v1/prompt/wanted/${NAME}`)).status).toBe(403)
+  })
+
+  it("refuses a prompt that carries audio or names a Drive file, and says why", async () => {
+    const d = deps()
+    const audio =
+      "a prompt carries no audio: its scene notes go as their transcripts"
+    const drive = "a prompt names no Drive file"
+    const refused: ReadonlyArray<readonly [string, string]> = [
+      [JSON.stringify({ ...ASKED_FOR, audio: "T2dnUwACAAAAAAAA" }), audio],
+      [
+        JSON.stringify({
+          ...ASKED_FOR,
+          text: "here data:audio/webm;base64,GkXfo59ChoEB",
+        }),
+        audio,
+      ],
+      [JSON.stringify({ ...ASKED_FOR, driveId: "1AbCdEf" }), drive],
+      [
+        JSON.stringify({
+          ...ASKED_FOR,
+          text: "see https://drive.google.com/file/d/1AbC/view",
+        }),
+        drive,
+      ],
+    ]
+    for (const [body, why] of refused) {
+      const answer = await asHome(d, NAME, body)
+      expect(answer.status).toBe(422)
+      expect(await json(answer)).toEqual({ error: why })
+    }
+  })
+
+  it("takes only a prompt's own shape", async () => {
+    const d = deps()
+    const { text: _text, ...untexted } = ASKED_FOR
+    const shapes: ReadonlyArray<readonly [unknown, string]> = [
+      [{ ...ASKED_FOR, notes: ["a"] }, "notes is not part of a prompt"],
+      [
+        { ...ASKED_FOR, at: "2026-10-31T07:15:03.120Z" },
+        "at is not part of a prompt",
+      ],
+      [untexted, "text must be the prompt"],
+      [{ ...ASKED_FOR, text: "  " }, "text must be the prompt"],
+      [
+        { ...ASKED_FOR, prompt: "drama-2026-10-31" },
+        "the name must carry the prompt's stamp",
+      ],
+      [
+        { ...ASKED_FOR, prompt: "drama-20261031T071503121Z" },
+        "the name must carry the prompt's stamp",
+      ],
+      [{ ...ASKED_FOR, prompt: 7 }, "prompt must be the prompt's stamp"],
+    ]
+    for (const [body, why] of shapes) {
+      const answer = await asHome(d, NAME, JSON.stringify(body))
+      expect(answer.status).toBe(422)
+      expect(await json(answer)).toEqual({ error: why })
+    }
+    for (const name of [
+      `${STAMP}.json`,
+      `${STAMP}.prompt.md`,
+      "drama-20261031T0715031Z.prompt.json",
+      `prompt-${STAMP}.json`,
+    ]) {
+      expect((await asHome(d, name)).status).toBe(422)
+    }
+  })
+})
+
 describe("names", () => {
   it("a name that breaks the folder's pattern is refused", async () => {
     const d = deps()
@@ -1646,6 +1761,7 @@ describe("archiving", () => {
       "leetype-log",
       "transcript",
       "reflection",
+      "prompt",
     ]) {
       expect(
         (await send(d, "GET", `/v1/${folder}/items`, { token: ARCHIVE })).status

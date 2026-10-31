@@ -255,6 +255,45 @@ function reflectionRefusal(
   return null
 }
 
+/**
+ * The keys of a `some-ui.drama-prompt/1` body: only what the reflections
+ * routine reads of the next scene's prompt (paulgsc/some-ui#2174, D2). Any
+ * other is refused.
+ */
+const PROMPT_KEYS: ReadonlyArray<string> = ["schema", "prompt", "text"]
+const NO_AUDIO_PROMPT =
+  "a prompt carries no audio: its scene notes go as their transcripts"
+const NO_DRIVE_PROMPT = "a prompt names no Drive file"
+
+/**
+ * README, "What a put must satisfy": the next scene's prompt is its stamp
+ * and its markdown, and nothing else.
+ */
+function promptRefusal(
+  body: Readonly<Record<string, unknown>>,
+  text: string,
+  name: string
+): string | null {
+  const carried = carriesRefusal(text, NO_AUDIO_PROMPT, NO_DRIVE_PROMPT)
+  if (carried !== null) return carried
+  const extra = Object.keys(body).find((key) => !PROMPT_KEYS.includes(key))
+  if (extra !== undefined) {
+    if (AUDIO_KEY.test(extra)) return NO_AUDIO_PROMPT
+    if (DRIVE_KEY.test(extra)) return NO_DRIVE_PROMPT
+    return `${extra} is not part of a prompt`
+  }
+  if (typeof body.prompt !== "string") {
+    return "prompt must be the prompt's stamp"
+  }
+  if (name !== `${body.prompt}.prompt.json`) {
+    return "the name must carry the prompt's stamp"
+  }
+  if (typeof body.text !== "string" || body.text.trim() === "") {
+    return "text must be the prompt"
+  }
+  return null
+}
+
 /** The routines home computes an index for (README, "What a put must satisfy"). */
 const INDEX_ROUTINES: ReadonlySet<unknown> = new Set(["jobs"])
 /** The keys of a `some-ui.routine-index/1` body for the jobs routine; any other is refused. */
@@ -470,6 +509,14 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
     schema: "some-ui.reflection/1",
     refuses: reflectionRefusal,
   },
+  {
+    // The next scene's prompt, as home keeps it, named for its stamp as the
+    // drama that answers it is.
+    folder: "prompt",
+    name: /^drama-\d{8}T\d{9}Z\.prompt\.json$/,
+    schema: "some-ui.drama-prompt/1",
+    refuses: promptRefusal,
+  },
 ]
 
 /** The Worker secrets. An unset or empty one never authenticates anyone. */
@@ -510,13 +557,14 @@ const RECORDS: ReadonlyArray<Folder> = [
   "leetype-log",
   "transcript",
   "reflection",
+  "prompt",
 ]
 
 const ALL: ReadonlyArray<Folder> = [...RECORDS, "index"]
 
-/** Every record but `reflection`, which the routine never asks back (README, "Who may do what"; MI6). */
+/** Every record but `reflection` and `prompt`, which the routine never asks back (README, "Who may do what"; MI6). */
 const ASKED: ReadonlyArray<Folder> = RECORDS.filter(
-  (folder) => folder !== "reflection"
+  (folder) => folder !== "reflection" && folder !== "prompt"
 )
 
 /** MB2. Another role (the phone's, say) is the owner's call, not a code change. */
@@ -541,6 +589,7 @@ const ROLES: ReadonlyArray<Grant> = [
       "transcript",
       "index",
       "reflection",
+      "prompt",
     ],
     ask: [],
     move: [],

@@ -3,8 +3,9 @@
 A scheduled task runs this every morning at 09:00 Pacific, in a fresh session
 with the Google Drive connector, the GitHub MCP tools and a checkout of
 `paulgsc/some-ui`. It answers the study reflections the owner writes on their
-phone, which home keeps and hands it through the Jobs mailbox, and what the
-owner shares from their phone into Google Drive. For each study reflection: a scene of word sets, one to read
+phone and the drama prompts they ask for there, which home keeps and hands it
+through the Jobs mailbox, and what the owner shared from their phone into
+Google Drive before. For each study reflection: a scene of word sets, one to read
 aloud and one for the grammar lens (part A), and a GitHub issue for anything it
 says about the app (part C). For each drama prompt: a drama (part B). Each
 scene and drama also goes to the Jobs mailbox, where home takes it for the
@@ -65,11 +66,11 @@ carry on with Drive alone, and say so in the summary. A mailbox problem never
 stops the run and never changes what goes to Drive. Use only `curl` with that
 `Authorization` header, never print the token, and don't turn on shell tracing
 (`set -x`). For the routine's own files Drive stays the record and the mailbox
-carries a copy home. For written reflections home is the record, and the
-mailbox carries this run what it reads of each (part A, step 3); the
-reflections shared to Drive before the phone sent them home stay in
-`Study ledger/reflections`, read as before, until HF6
-(paulgsc/some-ui#2181) retires that folder.
+carries a copy home. For written reflections and drama prompts home is the
+record, and the mailbox carries this run what it reads of each (part A, step
+3, and part B, step 7); the reflections and prompts shared to Drive before the
+phone sent them home stay in `Study ledger/reflections` and `Dramas/requests`,
+read as before, until HF6 (paulgsc/some-ui#2181) retires that path.
 
 ### Voice notes
 
@@ -91,12 +92,14 @@ Once per run, list the folder, live and archived, as 10b lists a folder. Then:
   the live transcripts whose body has `"of": "reflection"` and whose `ref` is
   the session's id, one note per distinct `note` (the highest `<n>` of each),
   in the order of their `at`.
-- **A drama prompt's scene notes** are the `drama-<stamp>.voice-<n>.<ext>`
-  files beside the prompt, said in the order of `<n>`, which is the order its
-  `Scene, spoken` line names them. The prompt names each one's id in a line
-  under its agent note, `<!-- notes: {"<voice file name>":"<id>",...} -->`
-  (the JSON between `notes: ` and ` -->`). Each note's transcript is found by
-  its id, as a reflection's is.
+- **A drama prompt's scene notes** are named by its `Scene, spoken` line, in
+  the order they were said (`drama-<stamp>.voice-<n>.<ext>`, in the order of
+  `<n>`). The prompt names each one's id in a line under its agent note,
+  `<!-- notes: {"<voice file name>":"<id>",...} -->` (the JSON between
+  `notes: ` and ` -->`). Each note's transcript is found by its id, as a
+  reflection's is. A prompt shared to Drive has the voice files beside it; a
+  prompt read from the mailbox has none, and its notes are only these names
+  and ids: never look for their audio.
 - **A drama prompt shared before the phone named ids** has voice files beside
   it and no `notes` line. Their notes went home under the prompt's stamp, but their names don't carry it:
   fetch each live transcript no reflection or prompt claims by id, once per
@@ -126,7 +129,9 @@ doesn't use up that step's limit. Count it in the run record's
 A note reaches home from a paired phone once it is kept (a drama prompt's
 scene notes too, before the prompt is shared), and from a phone that isn't
 paired not until it is. So once its voice file
-(or, without one, the reflection's file) has been in Drive for two days, and
+(or, without one, the reflection's file) has been in Drive for two days, or,
+for a reflection or prompt read from the mailbox, its file has been there for
+two days (its `putAt`; a reflection group's newest), and
 nothing is coming back for it (this run asked none back for it, and
 `GET "$JOBS_MAILBOX_URL/v1/transcript/wanted"` lists no open ask for it: a
 note with an id by its transcript's name, and for an older drama prompt any
@@ -306,12 +311,28 @@ file it, and still write the pair.
 
 ## Part B: dramas
 
-7. List `Dramas/requests` (folder id in the SOP). A prompt is
-   `drama-<stamp>.prompt.md`; it is answered when `drama-<stamp>.json` sits
-   beside it. Take the unanswered ones, oldest first, skipping any that wait
-   on a voice note, at most two this run. If there are none, go to part D.
+7. List the mailbox's `prompt` folder (live items, paged as in 10b; skip it if
+   2a skipped the mailbox), the mailbox's `drama` folder (live and archived,
+   as 10b lists it), `Dramas/requests` and `Dramas/played` (folder ids in the
+   SOP). A prompt the phone asked for is `drama-<stamp>.prompt.json` in the
+   mailbox, holding `{"schema":"some-ui.drama-prompt/1","prompt","text"}`:
+   its stamp (`drama-<stamp>`, which the name carries) and its markdown,
+   exactly what a Drive share held as `drama-<stamp>.prompt.md`. Fetch each
+   with `GET "$JOBS_MAILBOX_URL/v1/prompt/items/<name>"`, and check its
+   bytes' SHA-256 against the listing's `sha256` and the body's `schema` and
+   `prompt`, as for a transcript. A prompt shared before is
+   `drama-<stamp>.prompt.md` in `Dramas/requests`. One stamp found in both
+   is one prompt. A prompt is answered when `drama-<stamp>.json` sits in
+   `Dramas/requests` or `Dramas/played`, or the mailbox's `drama` folder
+   lists that name, live or archived. The routine cannot ask an archived
+   prompt back, so one that has left the listing unanswered waits no more
+   and is not counted (say so in the summary). Take the unanswered ones,
+   from the mailbox and from Drive together, oldest first, skipping any
+   that wait on a voice note, at most two this run. If there are none, go
+   to part D.
 
-8. For each: read the prompt (download_file_content; it is plain markdown) and
+8. For each: read the prompt (a mailbox file's `text`, or a Drive file with
+   download_file_content; either is plain markdown) and
    read what home heard in each voice note beside it, in the order the prompt
    names them ("Voice notes" above; one home hasn't heard makes the prompt
    wait) before you write anything. Those transcripts stand in for the
@@ -329,7 +350,9 @@ file it, and still write the pair.
    never upload a drama with findings.
 
 10. Upload each as `drama-<stamp>.json` into `Dramas/requests`, next to its
-    prompt: bare JSON (no code fence), contentMimeType application/json,
+    prompt if Drive holds it (a prompt from the mailbox has none there, and
+    the drama goes in alone, since Drive stays the record of the routine's
+    own files until HF6): bare JSON (no code fence), contentMimeType application/json,
     disableConversionToGoogleType true. Confirm the result's mimeType is
     application/json and its fileSize equals your local file's byte count.
     Never edit, rename or move a prompt or a voice note. Then apply the SOP's
@@ -419,7 +442,7 @@ writes only to the mailbox.
   "outcome": "done | partly | stopped",
   "found": {
     "reflections": "<unanswered reflections found in step 3>",
-    "prompts": "<unanswered drama prompts found in step 7>"
+    "prompts": "<unanswered drama prompts found in step 7, mailbox and Drive>"
   },
   "added": [
     {

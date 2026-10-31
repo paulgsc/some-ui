@@ -15,7 +15,8 @@ routines read it instead of hearing the audio themselves. For the routines' book
 the Jobs routine, the queue, what is new since the last digest and each waiting note's newest
 transcript), so a routine reads it instead of rebuilding it. The index is a view of what home
 keeps, so only the latest of each routine's stays. For the reflections routine: each **written
-reflection** home keeps (`reflection`), its text only. Each side reaches it with
+reflection** home keeps (`reflection`), its text only, and each **drama prompt** (`prompt`),
+the next scene's prompt as the phone asked for it, its markdown only. Each side reaches it with
 its own token, so the files move between them without a hand-carried step.
 
 ## Why it exists
@@ -33,6 +34,7 @@ cloud routine ◀──GET leetype-log── [ mailbox ] ◀──PUT leetype-lo
 cloud routine ◀──GET transcript── [ mailbox ] ◀──PUT transcript── home ◀── phone (a voice note)
 cloud routine ◀──GET index── [ mailbox ] ◀──PUT index── home (after each pass, when it changed)
 cloud routine ◀──GET reflection── [ mailbox ] ◀──PUT reflection── home ◀── phone (a written reflection)
+cloud routine ◀──GET prompt── [ mailbox ] ◀──PUT prompt── home ◀── phone (Ask for the next scene)
 ```
 
 The phone talks to home only. The mailbox carries no audio: home keeps the audio
@@ -73,9 +75,9 @@ about it (owner, 2026-10-23):
 Nothing is deleted for good: the bytes are home's before the mailbox lets them go, and the
 `archived` row stays.
 
-A written reflection (`reflection`) is archived the same way, except that home lists the folder
-only once a reflection it put is old enough, and the routine cannot ask for one back (see "Who
-may do what"). Home's index is not archived (above, "What it keeps"): home can compute
+A written reflection (`reflection`) and a drama prompt (`prompt`) are archived the same way,
+except that home lists each folder only once a file it put there is old enough, and the routine
+cannot ask for one back (see "Who may do what"). Home's index is not archived (above, "What it keeps"): home can compute
 the same bytes again from what it keeps.
 
 ## API
@@ -95,7 +97,7 @@ Every request needs `Authorization: Bearer <token>`. Every answer is JSON, or th
 | anything else                                            | `404`; a method the path does not take is `405` with `Allow`. A missing or wrong token is `401`, a token that may not do this is `403`, and storage failing is `503`.                                                                                                                                                                                   |
 
 The folders are `brief`, `decisions`, `scout`, `scene`, `drama`, `run`, `opened`, `leetype`,
-`leetype-log`, `transcript`, `index` and `reflection`.
+`leetype-log`, `transcript`, `index`, `reflection` and `prompt`.
 
 **`seq` only grows, and it has gaps.** SQLite hands out a number for every put that reaches the
 table, including a put of a name already held (`unchanged` or `conflict`), which stores nothing.
@@ -105,11 +107,11 @@ then six repeats, then `seq 8`). Page with `after` set to the highest `seq` you 
 
 ### Who may do what
 
-| Secret          | Role      | May                                                                                                                                                            |
-| --------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ROUTINE_TOKEN` | `routine` | read every folder; put `brief`, `scene`, `drama`, `run` and `leetype`; list what is archived and ask for it back, in every folder but `index` and `reflection` |
-| `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama`, `run` and `leetype`; put `decisions`, `scout`, `opened`, `leetype-log`, `transcript`, `index` and `reflection`                 |
-| `ARCHIVE_TOKEN` | `archive` | read every folder; archive a file, put an archived one back and list the open asks, in every folder but `index`                                                |
+| Secret          | Role      | May                                                                                                                                                                      |
+| --------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ROUTINE_TOKEN` | `routine` | read every folder; put `brief`, `scene`, `drama`, `run` and `leetype`; list what is archived and ask for it back, in every folder but `index`, `reflection` and `prompt` |
+| `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama`, `run` and `leetype`; put `decisions`, `scout`, `opened`, `leetype-log`, `transcript`, `index`, `reflection` and `prompt`                 |
+| `ARCHIVE_TOKEN` | `archive` | read every folder; archive a file, put an archived one back and list the open asks, in every folder but `index`                                                          |
 
 The routine role is every scheduled routine's: the Jobs digest, the study reflections and,
 once it is scheduled, the LeetType review each put to their own folders.
@@ -118,7 +120,9 @@ The routine cannot list archived reflections or ask one back. Home holds every r
 puts (`written_reflection` in `paulgsc/server`), so it archives one by what it put, listing the
 folder only once one is old enough, and never answers an ask for it: a pass with nothing to do
 then makes no request for `reflection` at all. A reflection archived before the routine
-answered it is no longer offered to the routine; home still keeps it.
+answered it is no longer offered to the routine; home still keeps it. A drama prompt is the
+same: home holds every prompt it puts (`drama_prompt` in `paulgsc/server`), lists `prompt`
+only once one is old enough, and the routine cannot list or ask back an archived one.
 
 Home holds two tokens. `archive` is apart from `home` so the token home uses every pass cannot
 drop a byte. A secret that is unset or empty authenticates no one, and one value set for two
@@ -157,13 +161,17 @@ role, and it is the owner's call, so it is not built.
   millisecond, so each change goes under a new name, the greatest name is the newest, and the
   folder holds one per routine; and `reflection` takes `reflection-<id>.json`, named for the
   phone's id for the written reflection (1 to 64 letters, digits, `-` or `_`, as home's
-  `PUT /api/v1/routine/reflections/:id` takes it).
+  `PUT /api/v1/routine/reflections/:id` takes it); and `prompt` takes
+  `drama-YYYYMMDDTHHMMSSmmmZ.prompt.json`, named for the prompt's stamp as the phone names it
+  (the moment it was asked for, in UTC to the millisecond, as home's
+  `PUT /api/v1/routine/prompts/:stamp` takes it), so the drama that answers it is the
+  `drama` folder's `drama-<stamp>.json`.
   Anything else, an audio file's name included, is `422`.
 - **Content type** `application/json` (parameters such as `charset` are ignored), and the body
   must be UTF-8 JSON with no byte-order mark.
 - **Schema**: the top-level `schema` must be `some-ui.job-digest/1`, `some-ui.job-decisions/1`,
   `some-ui.job-scouts/1`, `some-ui.routine-scene/1`, `some-ui.routine-drama/1`, `some-ui.routine-run/1`,
-  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1` or `some-ui.reflection/1` to match the folder. The Worker checks that and nothing deeper, except for a transcript, an index and a reflection (below); the readers validate the full shape.
+  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1` or `some-ui.drama-prompt/1` to match the folder. The Worker checks that and nothing deeper, except for a transcript, an index, a reflection and a prompt (below); the readers validate the full shape.
 - **A scene** is `{"schema":"some-ui.routine-scene/1","answers":"<reflection>","title":"<the
 scene folder's name>","decks":[<read-aloud deck>,<lens deck>]}`, each deck exactly as the
   phone's word set check takes it. **A drama** is `{"schema":"some-ui.routine-drama/1",
@@ -245,6 +253,19 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   `a reflection names no Drive file` when it names Drive), a name that does not carry the
   body's `reflection` is `422`, and so is a body whose text as sent carries a `data:` URI, a
   Drive link or a run of 256 or more base64 characters, by the transcript's tests.
+- **A drama prompt** is `{"schema":"some-ui.drama-prompt/1","prompt","text"}`: the prompt's
+  stamp (`drama-YYYYMMDDTHHMMSSmmmZ`, which the name carries) and the next scene's prompt as
+  the phone wrote it, the markdown a Drive share carried as `drama-<stamp>.prompt.md`: the
+  note for an agent, the line naming each scene note's id, and the tree prompt with its
+  request and the last drama. That is the routine's minimum (paulgsc/some-ui#2174, decision
+  D2): no audio and no Drive link. A scene note is named by its id only; what home heard in
+  it is its `transcript`. The Worker holds this shape itself, as it holds a reflection's:
+  every key is required, and any other key is `422`. One that names audio is refused with
+  `a prompt carries no audio: its scene notes go as their transcripts`, and one that names
+  Drive with `a prompt names no Drive file`. A name that does not carry the body's `prompt` is `422`, and so is a body whose text
+  as sent carries a `data:` URI, a Drive link or a run of 256 or more base64 characters, by
+  the transcript's tests. A prompt is about 40 KB today, most of it the tree prompt; home
+  takes one of at most 256 KiB of text, so a file is well under the cap.
 - **Size**: at most 1,048,576 bytes. A declared `Content-Length` over that is refused before
   the body is read, and a body that declares nothing is cut off as it passes the cap. Real
   files are under 20 KB, except LeetType session files: Thread 1's first file is 30 KB
@@ -402,14 +423,15 @@ how each was checked when this workspace landed.
 
 - _Claim:_ the `ROLES` table in `src/core.ts` is the only place a token is mapped to what it
   may do, and it holds exactly three roles: `routine` (get every folder, put `brief`, `scene`,
-  `drama`, `run` and `leetype`, ask every folder but `index` and `reflection`), `home` (get
-  `brief`, `scene`, `drama`, `run` and `leetype`, put `decisions`, `scout`, `opened`,
-  `leetype-log`, `transcript`, `index` and `reflection`) and `archive` (get every folder, move
+  `drama`, `run` and `leetype`, ask every folder but `index`, `reflection` and `prompt`), `home`
+  (get `brief`, `scene`, `drama`, `run` and `leetype`, put `decisions`, `scout`, `opened`,
+  `leetype-log`, `transcript`, `index`, `reflection` and `prompt`) and `archive` (get every folder, move
   every folder but `index`; owner, 2026-10-23, and `scene` and `drama` the same day; `run` and
   `opened` 2026-10-24; `leetype` and `leetype-log` 2026-10-24 too; `transcript` 2026-10-25;
   `index` 2026-10-31, paulgsc/server#509, and kept out of `ask` and `move` the same day, since
   it is a view and not a record; `reflection` 2026-10-26, paulgsc/some-ui#2174 decision D2, and
-  kept out of `ask` so home lists nothing of it while nothing is due). The routine's `brief` also takes its one-time backfill: a Jobs decisions or
+  kept out of `ask` so home lists nothing of it while nothing is due; `prompt` the same day
+  and decision, paulgsc/some-ui#2179, kept out of `ask` for the same reason). The routine's `brief` also takes its one-time backfill: a Jobs decisions or
   scouts file under its Drive name, only as the phone names one (`sharedDay`: a real calendar
   day, a decisions share number from 2 to 99, a scouts stamp at a real time) and only for a
   day from 2026-10-17, when the phone could first share one, through 2026-10-22, the day
@@ -467,7 +489,12 @@ how each was checked when this workspace landed.
   transcripts do; paulgsc/some-ui#2178):_ `ROLES` has three entries; `core.test.ts` pins
   `reflection`: home puts it and may not read it, the routine reads it and may neither put
   it, list it as archived nor ask it back (`ASKED`, every record but `reflection`), and the
-  archive role reads and moves it.
+  archive role reads and moves it. _Checked at the drama prompt amendment (the same decision
+  D2: drama prompts go to the mailbox as the routine's minimum; paulgsc/some-ui#2179):_
+  `ROLES` has three entries; `core.test.ts` pins `prompt` as it pins `reflection`: home puts
+  it and may not read it, the routine reads it and may neither put it, list it as archived
+  nor ask it back (`ASKED`, every record but `reflection` and `prompt`), and the archive role
+  reads and moves it.
 
 **MB3: No token reaches the repo or a log.**
 
