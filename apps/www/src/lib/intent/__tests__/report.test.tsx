@@ -5,15 +5,20 @@
  */
 
 import { queryClientWrapper } from "@/test-support/query-client"
-import type { ForeignFailure } from "@some-ui/intent-kit"
-import { addFailureSink, matchIntent } from "@some-ui/intent-kit"
+import type { ForeignFailure, ForeignPort } from "@some-ui/intent-kit"
+import {
+  addFailureSink,
+  callForeign,
+  matchIntent,
+  reportFailure,
+} from "@some-ui/intent-kit"
 import { useMutation } from "@tanstack/react-query"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
 
 import { unprocessable } from "@/lib/device-backend/router"
 import { requestJSON } from "@/lib/file-host-config/client"
-import { ForeignCallError } from "@/lib/intent/foreign"
+import { foreignValue } from "@/lib/intent/foreign"
 import { useAsyncIntent } from "@/lib/intent/use-async-intent"
 import { useIntent } from "@/lib/intent/use-intent"
 import { failureLine } from "@/lib/native-log"
@@ -86,7 +91,7 @@ it("logs each failure again when a retry fails again", async () => {
   await waitFor(() => expect(reported).toHaveLength(2))
 })
 
-it("logs what a non-mutation intent shows, too", async () => {
+it("logs what a non-mutation intent shows, again when a retry fails again", async () => {
   const { result } = renderHook(() =>
     useAsyncIntent(refusedCreate, { presentation: "interactive" })
   )
@@ -94,18 +99,50 @@ it("logs what a non-mutation intent shows, too", async () => {
     result.current.start(undefined)
   })
   await waitFor(() => expect(reported).toHaveLength(1))
+  act(() => {
+    result.current.start(undefined)
+  })
+  await waitFor(() => expect(reported).toHaveLength(2))
 })
 
-it("leaves a foreign call's failure to callForeign, which already logged it", async () => {
+it("logs a failure that is neither a refusal nor a foreign call", async () => {
+  const { result } = renderHook(
+    () =>
+      useIntent(
+        useMutation({
+          mutationFn: (): Promise<never> =>
+            Promise.reject(new TypeError("boom")),
+        }),
+        { presentation: "interactive" }
+      ),
+    { wrapper: queryClientWrapper() }
+  )
+  act(() => {
+    result.current.start(undefined)
+  })
+  await waitFor(() => expect(reported).toHaveLength(1))
+  expect(failureLine(reported[0])).toContain("[intent] unknown:")
+  expect(failureLine(reported[0])).toContain("TypeError: boom")
+})
+
+it("logs a foreign call's failure once, as callForeign reports it", async () => {
+  const port: ForeignPort = {
+    name: "share sheet",
+    classify: () => ({
+      kind: "unavailable",
+      retryable: false,
+      summary: "Sharing isn't available here.",
+    }),
+    report: reportFailure,
+  }
   const { result } = renderHook(() =>
     useAsyncIntent(
       () =>
-        Promise.reject(
-          new ForeignCallError({
-            kind: "unavailable",
-            retryable: false,
-            summary: "Sharing isn't available here.",
-            cause: null,
+        foreignValue(
+          callForeign({
+            port,
+            deadlineMs: 1_000,
+            start: () => Promise.reject(new Error("no share sheet")),
           })
         ),
       { presentation: "interactive" }
@@ -124,5 +161,5 @@ it("leaves a foreign call's failure to callForeign, which already logged it", as
       })
     ).toBe("failed")
   )
-  expect(reported).toEqual([])
+  expect(reported.map((failure) => failure.port)).toEqual(["share sheet"])
 })
