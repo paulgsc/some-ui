@@ -2151,12 +2151,6 @@
       "horizon": "A session the owner deletes goes (SessionRepository::delete, delete_many), and an edit overwrites it in place; see docs/discard-sites.md."
     },
     {
-      "store": "server:sharing_choice",
-      "class": "record",
-      "growth": "Per change of a sharing choice per pairing and scope (append-only, \"with no cap\"); tiny rows.",
-      "family": "what-is-kept"
-    },
-    {
       "store": "server:storage_sample",
       "class": "telemetry",
       "growth": "Per UTC day: one row per table and index plus database, wal and disk_free, about 80 rows a day (\"a few MB a year\", docs/storage.md); append-only, triggers abort UPDATE, DELETE and REPLACE.",
