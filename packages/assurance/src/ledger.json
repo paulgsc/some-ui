@@ -2153,6 +2153,12 @@
       "family": "what-is-kept"
     },
     {
+      "store": "server:written_reflection",
+      "class": "record",
+      "growth": "Per written reflection the phone sends (a typed line, its session, when and how far in; paulgsc/server invariant 29), one row per id, append-only, body <= BODY_CEILING = 64 KiB, text <= 10,000 characters; each is filed once for the mailbox's reflection folder as it arrives.",
+      "family": "what-is-kept"
+    },
+    {
       "store": "server:studio_friction",
       "class": "record",
       "growth": "Per Studio sitting the owner rates at its end: how it went, the cause chosen, the sitting kind, the shot, an optional voice note id (server #553); one tiny row, append-only.",
