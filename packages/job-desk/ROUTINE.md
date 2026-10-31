@@ -513,10 +513,27 @@ else can't be opened: search the boards above for its title words and company
 instead, and read the match. Count each one found in `seen`, once per
 fingerprint. When neither turns it up, its `postingText`
 (what I pasted) stands in for the description and its link for the apply
-link: take the company, title, location and posted date from that text, never
-a guess. One whose text names no location or no posted date can't be
-fingerprinted or aged, so it never becomes a pick; it is scored and answered
-with a `review` only. With neither a match nor the text, its verdict is
+link: take the company and title from that text, never a guess.
+
+A scout may carry its own `location` and `postedOn`, which I copied from the
+posting's page. Where the posting isn't read from a source (above), they come
+before anything taken from `postingText`:
+
+- **`location`**, when present, is the place; match it against `LOCATIONS` as
+  step 4 does. When absent, take the place from the text.
+- **`postedOn`**, a day, is the posted day. `null` means the page shows no
+  posted date: the scout is **undated**, and the text is not searched for one.
+  When absent (a file from before these fields, or I didn't say), take the
+  posted day from the text; a text that names none leaves the scout undated
+  too.
+
+A scout with no place, from either, can't be fingerprinted, so it never
+becomes a pick; it is scored and answered with a `review` only. An undated
+scout can still become a pick (SC3, owner, 2026-10-31): §4's age rule and
+§5's age factor pass it by, its pick's `postedOn` is `null`, which the phone
+shows as undated, and its `oddsWhy` says "posted date not shown". Only a
+scout's pick may be undated; every source above dates its postings, and the
+checker holds that. With neither a match nor the text, its verdict is
 `not-found` and it goes no further.
 
 ## 4. Set aside
@@ -527,7 +544,8 @@ Set a posting aside, with a one-line `why`, when:
   phone duties, a sales quota, escalation calls or a support rotation. I never
   take customer-facing or phone roles. Solutions work qualifies only when it
   is integration or internal-tools building with no quota and no calls;
-- it was posted more than `MAX_POSTING_AGE_DAYS` days ago;
+- it was posted more than `MAX_POSTING_AGE_DAYS` days ago. An undated scout
+  (§3) can't be aged, so this rule passes it by;
 - it is part-time, an internship, fixed-term, temporary, a contract
   (Lever's "Full Time Contractor" too), gig work, or a staffing program with
   relocation or repayment terms. Lever's `commitment` and Ashby's
@@ -557,7 +575,8 @@ the halves as covered.
 **Odds**, 0 to 1, the chance of a reply: start at 0.5, then
 
 - −0.1 for each required year beyond two;
-- +0.1 if posted in the last 7 days, −0.1 if 15 to 30 days ago;
+- +0.1 if posted in the last 7 days, −0.1 if 15 to 30 days ago; nothing
+  for an undated scout (§3);
 - +0.05 if remote or within a commute of Berkeley;
 - −0.1 if a computer-science degree is required with no "or equivalent";
   my degree is a B.S. in Mechanical Engineering;

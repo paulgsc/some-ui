@@ -8,6 +8,8 @@ import { cn } from "@some-ui/core-utils"
 import type { Pick, ResumeRecommendation } from "@some-ui/job-desk"
 import { Badge } from "@some-ui/shared"
 
+import { postedWords } from "@/lib/jobs/words"
+
 export const sectionHeading =
   "text-muted-foreground text-xs font-semibold tracking-wider uppercase"
 
@@ -71,13 +73,16 @@ export const Gaps = ({
     </section>
   )
 
-/** Who posted it, where, what it pays and when it went up, in one line. */
+/**
+ * Who posted it, where, what it pays and when it went up, in one line: a
+ * pick whose page shows no posted date says it is undated.
+ */
 export function postingLine(posting: Pick["posting"]): string {
   return [
     posting.company,
     posting.location,
     posting.compensation,
-    posting.postedOn,
+    postedWords(posting.postedOn),
   ]
     .filter(Boolean)
     .join(" · ")

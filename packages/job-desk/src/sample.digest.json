@@ -254,14 +254,14 @@
         "location": "Remote",
         "compensation": "$88,000–$104,000 a year",
         "experience": null,
-        "postedOn": "2026-10-12",
+        "postedOn": null,
         "applyUrl": "https://jobs.example.com/kes-21c0"
       },
       "scores": {
         "fit": 0.63,
-        "odds": 0.65,
+        "odds": 0.55,
         "fitWhy": "covers 7 of 11 requirements",
-        "oddsWhy": "6 days old · remote"
+        "oddsWhy": "posted date not shown · remote"
       },
       "wants": "Keep an automated UI and API test suite running in CI for a mobile puzzle game, and triage failures with the developers.",
       "fits": [
@@ -339,7 +339,7 @@
     {
       "scoutId": "sc-3f9a21c0",
       "verdict": "agree",
-      "note": "A real fit, ranked third on the adjacent track today behind two fresher postings.",
+      "note": "A real fit, ranked third on the adjacent track today behind two that scored higher.",
       "pickId": null,
       "review": {
         "scores": {
@@ -359,6 +359,14 @@
           "template": "classic"
         }
       }
+    },
+    {
+      "scoutId": "sc-7b20e4d1",
+      "verdict": "agree",
+      "note": "Its page shows no posted date, so the pick says it is undated; it ranked second on the adjacent track today.",
+      "pickId": "kes-21c0",
+      "rule": null,
+      "review": null
     }
   ],
   "queue": {

@@ -456,6 +456,21 @@ export const postingTextLabel = (needed: boolean): string =>
 export const postingTextHint =
   "Paste the posting itself, its description word for word"
 
+/**
+ * When a posting went up, as a pick or a scout says it: undated when its page
+ * shows no posted date, which a scout's pick may be (SC3, owner, 2026-10-31).
+ */
+export const postedWords = (postedOn: string | null): string =>
+  postedOn === null ? "Undated" : `Posted ${formatDay(postedOn)}`
+
+/** The scout form's place and posted date, as its page shows them. */
+export const SCOUT_FIELD_WORDS = {
+  location: "Location, optional",
+  locationHint: "Remote, or the city the posting names",
+  posted: "Posted, optional",
+  notShown: "Not shown on the page",
+} as const
+
 /** The arrival notice's control (`./notice`, Settings' Jobs row). */
 export const NOTICE_WORDS = {
   label: "Tell me when the morning run is in",

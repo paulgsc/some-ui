@@ -228,6 +228,7 @@ describe("a digest's queue", () => {
     expect(messages(digest)).toEqual([])
     const full = sample()
     full.picks = full.picks.filter((p) => p.track === "software")
+    full.scouts = full.scouts.filter((s) => s.pickId === null)
     full.queue = { open: [held("old-0001"), held("old-0002")], lapsed: [] }
     expect(messages(full)).toEqual([])
   })
@@ -235,6 +236,7 @@ describe("a digest's queue", () => {
   it("lists only earlier digests' picks, each once", () => {
     const digest = sample()
     digest.picks = []
+    digest.scouts = []
     digest.queue = {
       open: [
         held("old-0001"),
@@ -252,6 +254,7 @@ describe("a digest's queue", () => {
   it("records a lapse only once due, and once in the whole queue", () => {
     const digest = sample()
     digest.picks = []
+    digest.scouts = []
     type Gone = NonNullable<Digest["queue"]>["lapsed"][number]
     const gone = (pickId: string, day: string): Gone => ({
       day,

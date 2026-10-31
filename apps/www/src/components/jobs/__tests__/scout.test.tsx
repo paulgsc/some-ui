@@ -182,3 +182,57 @@ describe("the scout form, with a link the run can't open (SC1)", () => {
     )
   })
 })
+
+describe("the scout form's place and posted date (SC2)", () => {
+  const fileOne = async (
+    fill: (field: (label: string, value: string) => void) => void
+  ): Promise<Record<string, unknown> | undefined> => {
+    const { phoneJobs } = await import("@/lib/jobs")
+    const { JobsScout } = await import("@/components/jobs/scout")
+    render(<JobsScout />)
+    const field = (label: string, value: string): void => {
+      fireEvent.change(screen.getByLabelText(label), { target: { value } })
+    }
+    field("Link", "https://jobs.lever.co/acme/2")
+    field("Title and company", "Backend Engineer · Acme")
+    fill(field)
+    fireEvent.click(screen.getByRole("button", { name: "Add to my scouts" }))
+    // Earlier tests' scouts stay in the mocked runtime; this one is newest.
+    return phoneJobs()
+      .getSnapshot()
+      .state.log.flatMap((e) => (e.type === "scout" ? [e.scout] : []))
+      .at(-1)
+  }
+
+  it("files the place and the day its page shows", async () => {
+    const filed = await fileOne((field) => {
+      field("Location, optional", " Remote ")
+      field("Posted, optional", "2026-10-20")
+    })
+    expect(filed).toMatchObject({ location: "Remote", postedOn: "2026-10-20" })
+    expect(screen.getByText(/· Remote · Posted Oct 20/)).toBeTruthy()
+  })
+
+  it("files a page that shows no posted date as undated", async () => {
+    const filed = await fileOne((field) => {
+      field("Posted, optional", "2026-10-20")
+      const notShown = screen.getByRole("button", {
+        name: "Not shown on the page",
+      })
+      fireEvent.click(notShown)
+      expect(notShown.getAttribute("aria-pressed")).toBe("true")
+      expect(
+        screen.getByLabelText<HTMLInputElement>("Posted, optional").value
+      ).toBe("")
+    })
+    expect(filed).toMatchObject({ postedOn: null })
+    expect(filed).not.toHaveProperty("location")
+    expect(screen.getAllByText(/· Undated/).length).toBeGreaterThan(0)
+  })
+
+  it("leaves both out when I give neither, as a scout always was", async () => {
+    const filed = await fileOne(() => undefined)
+    expect(filed).not.toHaveProperty("location")
+    expect(filed).not.toHaveProperty("postedOn")
+  })
+})

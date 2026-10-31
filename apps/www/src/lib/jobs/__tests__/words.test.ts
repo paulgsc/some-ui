@@ -161,12 +161,18 @@ const SAID: Readonly<Record<keyof typeof words, ReadonlyArray<string>>> = {
   cantOpenLink: [words.cantOpenLink],
   postingTextLabel: [true, false].map(words.postingTextLabel),
   postingTextHint: [words.postingTextHint],
+  postedWords: [words.postedWords(DAY), words.postedWords(null)],
+  SCOUT_FIELD_WORDS: Object.values(words.SCOUT_FIELD_WORDS),
 }
 
 describe("Jobs' words", () => {
   it("never name the machinery", () => {
     const said = Object.values(SAID).flat()
     expect(said.filter((text) => MACHINERY.test(text))).toEqual([])
+  })
+
+  it("say when a posting went up, and that one is undated", () => {
+    expect(SAID.postedWords).toEqual(["Posted Oct 18", "Undated"])
   })
 
   it("say a fit in words, from a strong fit down to a stretch", () => {

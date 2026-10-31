@@ -49,9 +49,11 @@ one said, and the routine never replaces a digest.
 ## A ChatGPT prompt for scouts
 
 When ChatGPT recommends a job, I file it as a scout (Jobs › Scout). When the
-run can't read a scout's posting on a board, it takes the company, title,
-location and posted date from the text I pasted, never from a summary, and it
-scores my fit against the résumé itself (`ROUTINE.md` §3). So I keep this
+run can't read a scout's posting on a board, it takes the place and posted
+date from the scout's Location and Posted, then the company, title and
+anything I left blank from the text I pasted, never from a summary, and it
+scores my fit against the résumé itself (`ROUTINE.md` §3). A posting whose
+page shows no date can still be picked, and the pick says it is undated. So I keep this
 prompt in ChatGPT: it hands me the posting first, and its own fit analysis
 after, which stays out of the scout.
 
@@ -76,4 +78,5 @@ paste that part.
 ```
 
 The link goes in the form's Link, the title and company in Title and company,
-and the whole block in Posting text.
+the location in Location, the posted date in Posted ("Not shown on the page"
+when it says "not shown"), and the whole block in Posting text.

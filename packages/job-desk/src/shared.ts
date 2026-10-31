@@ -32,6 +32,13 @@ export const MAX_NOTE = 2_000
 export const MAX_SCOUT_TITLE = 300
 export const MAX_URL = 2_048
 
+/**
+ * The longest place a scout names (`ScoutsSchema`'s `location`). Home holds
+ * no limit of its own for it yet: its scout takes neither `location` nor
+ * `postedOn` until paulgsc/server's `Scout` does (#2058).
+ */
+export const MAX_SCOUT_LOCATION = 200
+
 export const HttpsUrlSchema = z.url({ protocol: /^https$/ })
 
 /** A voice note shared beside a file, by its name in the same folder. */

@@ -199,15 +199,17 @@ function redraftFindings(digest: Digest): ReadonlyArray<Finding> {
 
 /**
  * What the schema cannot say about a digest: the policy's limits, the
- * queue's room, one fingerprint per posting, no fit that claims what the
- * evidence or the same pick rules out, each kit's drafts (`kitFindings`) and
- * each redraft (`redraftFindings`). An empty list is what a run uploads.
+ * queue's room, one fingerprint per posting, an undated pick only from a
+ * scout, no fit that claims what the evidence or the same pick rules out,
+ * each kit's drafts (`kitFindings`) and each redraft (`redraftFindings`). An
+ * empty list is what a run uploads.
  */
 export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
   const found: Array<Finding> = []
   const ids = new Set<string>()
   const prints = new Map<string, string>()
   const roles = new Map<string, string>()
+  const fromScouts = new Set(digest.scouts.map((s) => s.pickId))
 
   for (const track of TRACKS) {
     const count = digest.picks.filter((p) => p.track === track).length
@@ -383,6 +385,14 @@ export function digestFindings(digest: Digest): ReadonlyArray<Finding> {
       })
     }
     const posted = pick.posting.postedOn
+    // Only a scout's page can show no posted date (SC3, owner, 2026-10-31):
+    // every source the run searches dates its postings (ROUTINE.md §3).
+    if (posted === null && !fromScouts.has(pick.id)) {
+      found.push({
+        path: `${at}.posting.postedOn`,
+        message: "only a scout's pick may be undated",
+      })
+    }
     const age = posted ? daysBetween(posted, digest.day) : 0
     if (age > MAX_POSTING_AGE_DAYS || age < 0) {
       found.push({

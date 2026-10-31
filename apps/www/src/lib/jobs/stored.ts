@@ -99,6 +99,8 @@ export const EventSchema: z.ZodType<JobEvent> = z.discriminatedUnion("type", [
         title: z.string(),
         why: z.string(),
         postingText: z.string().max(MAX_POSTING_TEXT).nullable(),
+        location: z.string().optional(),
+        postedOn: z.string().nullable().optional(),
       })
       .and(TrackedSchema),
     voice: Ids,

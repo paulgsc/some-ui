@@ -40,6 +40,8 @@ import {
   MAX_SCOUT_TITLE,
   MAX_URL,
   pacificDay,
+  ScoutLocationSchema,
+  ScoutPostedOnSchema,
   TRACKS,
 } from "@some-ui/job-desk"
 
@@ -78,12 +80,20 @@ export type VoiceNote = {
   owner: string
 }
 
-/** A scout as the form makes it; the runtime gives it its `id`. */
+/**
+ * A scout as the form makes it; the runtime gives it its `id`. `location`
+ * and `postedOn` are left out when I give none, so a scout without them is
+ * the event it always was.
+ */
 export type ScoutDraft = {
   url: string
   title: string
   why: string
   postingText: string | null
+  /** Where the posting is, as its page says. */
+  location?: string
+  /** The day its page says it was posted, or null when the page shows none. */
+  postedOn?: string | null
 } & (
   | { track: "software"; family: null }
   | { track: "adjacent"; family: AdjacentFamily }
@@ -334,7 +344,11 @@ function withinLimits(event: Draft): boolean {
         scout.url.length <= MAX_URL &&
         scout.title.length <= MAX_SCOUT_TITLE &&
         scout.why.length <= MAX_NOTE &&
-        (scout.postingText?.length ?? 0) <= MAX_POSTING_TEXT
+        (scout.postingText?.length ?? 0) <= MAX_POSTING_TEXT &&
+        (scout.location === undefined ||
+          ScoutLocationSchema.safeParse(scout.location).success) &&
+        (scout.postedOn === undefined ||
+          ScoutPostedOnSchema.safeParse(scout.postedOn).success)
       )
     }
     case "taken":

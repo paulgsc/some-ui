@@ -10,6 +10,7 @@ import {
 import { digestFindings } from "@job-desk/findings"
 import { fingerprint } from "@job-desk/fingerprint"
 import { FORBIDDEN_TERMS } from "@job-desk/policy"
+import type { Scouts } from "@job-desk/scouts"
 import { parseScouts } from "@job-desk/scouts"
 import { describe, expect, it } from "vitest"
 
@@ -176,6 +177,25 @@ describe("digestFindings", () => {
     ])
   })
 
+  it("lets only a scout's pick be undated", () => {
+    const digest = sample()
+    // The sample's undated pick came from a scout (SC3, owner, 2026-10-31).
+    expect(digest.picks[3]!.posting.postedOn).toBe(null)
+    expect(digest.scouts.find((s) => s.pickId === digest.picks[3]!.id)).toBe(
+      digest.scouts[1]
+    )
+    digest.picks[1]!.posting.postedOn = null
+    expect(messages(digest)).toEqual([
+      "picks.1.posting.postedOn: only a scout's pick may be undated",
+    ])
+    digest.scouts[1]!.pickId = null
+    digest.scouts[1]!.verdict = "not-found"
+    expect(messages(digest)).toEqual([
+      "picks.1.posting.postedOn: only a scout's pick may be undated",
+      "picks.3.posting.postedOn: only a scout's pick may be undated",
+    ])
+  })
+
   it("finds the same role picked from two places", () => {
     const digest = sample()
     digest.queue = null // room for a third software pick
@@ -275,6 +295,7 @@ describe("digestFindings", () => {
     const twin = structuredClone(qa!)
     twin.id = "kes-21c1"
     twin.posting.title = "SDET II"
+    twin.posting.postedOn = "2026-10-12"
     twin.fingerprint = fingerprint(twin.posting)
     digest.picks[2] = twin
     expect(messages(digest)).toEqual([])
@@ -323,7 +344,7 @@ describe("digestFindings", () => {
       review: null,
     })
     expect(messages(digest)).toEqual([
-      "scouts.1.pickId: a scout the run did not agree with became no pick",
+      "scouts.2.pickId: a scout the run did not agree with became no pick",
     ])
   })
 
@@ -395,7 +416,7 @@ describe("digestFindings", () => {
     )
     expect(messages(digest)).toEqual([])
 
-    digest.scouts.splice(1)
+    digest.scouts.splice(2)
     digest.scouts.push(
       scout("agree", {}),
       scout("not-found", { fit: 0.7 }),
@@ -405,12 +426,12 @@ describe("digestFindings", () => {
       scout("agree", { rule: "senior title" })
     )
     expect(messages(digest)).toEqual([
-      "scouts.1.review: a scout the run scored and didn't pick carries its review",
-      "scouts.2.review: a scout the run couldn't find has no review",
-      "scouts.3.review: a scout that became a pick has no review",
-      "scouts.4.verdict: fit 0.7 is an agree; the cutoff is 0.5",
-      "scouts.5.verdict: fit 0.4 is a disagree; the cutoff is 0.5",
-      "scouts.6.rule: a scout a set-aside rule decided is a disagree and no pick",
+      "scouts.2.review: a scout the run scored and didn't pick carries its review",
+      "scouts.3.review: a scout the run couldn't find has no review",
+      "scouts.4.review: a scout that became a pick has no review",
+      "scouts.5.verdict: fit 0.7 is an agree; the cutoff is 0.5",
+      "scouts.6.verdict: fit 0.4 is a disagree; the cutoff is 0.5",
+      "scouts.7.rule: a scout a set-aside rule decided is a disagree and no pick",
     ])
   })
 
@@ -435,7 +456,7 @@ describe("digestFindings", () => {
       rule: null,
       review: null,
     })
-    expect(messages(digest)).toEqual(["scouts.1.pickId: no pick nope-123"])
+    expect(messages(digest)).toEqual(["scouts.2.pickId: no pick nope-123"])
   })
 
   it("drafts every required question the form asks", () => {
@@ -720,5 +741,50 @@ describe("the files the phone shares back", () => {
       true
     )
     expect(parseScouts(JSON.stringify({ ...file, scouts: [] })).ok).toBe(false)
+  })
+
+  it("reads a scout's place and posted day, a page with none, and neither", () => {
+    const scout = {
+      id: "sc-a1b2",
+      url: "https://jobs.gusto.com/postings/tarpon-health-junior-software-engineer",
+      track: "software",
+      family: null,
+      title: "Junior Software Engineer · Tarpon Health",
+      why: "",
+      postingText: "Title: Junior Software Engineer",
+      voice: [],
+      addedAt: "2026-10-24T19:13:46Z",
+    }
+    const file = (more: Record<string, unknown>): string =>
+      JSON.stringify({
+        schema: "some-ui.job-scouts/1",
+        sharedAt: "2026-10-24T19:14:00Z",
+        scouts: [{ ...scout, ...more }],
+      })
+    const read = (
+      more: Record<string, unknown>
+    ): Scouts["scouts"][number] | string | undefined => {
+      const parsed = parseScouts(file(more))
+      return parsed.ok ? parsed.value.scouts[0] : parsed.problem
+    }
+    expect(read({ location: "Remote", postedOn: "2026-10-20" })).toMatchObject({
+      location: "Remote",
+      postedOn: "2026-10-20",
+    })
+    // Undated: the page shows no posted date.
+    expect(read({ location: " Remote ", postedOn: null })).toMatchObject({
+      location: "Remote",
+      postedOn: null,
+    })
+    // A file from before both, or a scout I gave neither: each stays absent.
+    const older = read({})
+    expect(older).not.toHaveProperty("location")
+    expect(older).not.toHaveProperty("postedOn")
+    expect(read({ postedOn: "Oct 20" })).toMatch(
+      /^Not a scouts file: scouts\.0\.postedOn/
+    )
+    expect(read({ location: " " })).toMatch(
+      /^Not a scouts file: scouts\.0\.location/
+    )
   })
 })

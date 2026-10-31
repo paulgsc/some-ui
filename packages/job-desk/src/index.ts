@@ -55,6 +55,8 @@ export type { Scouts } from "./scouts"
 export {
   MAX_POSTING_TEXT,
   parseScouts,
+  ScoutLocationSchema,
+  ScoutPostedOnSchema,
   ScoutsSchema,
   scoutsFileName,
 } from "./scouts"
@@ -62,6 +64,7 @@ export type { Parsed } from "./shared"
 export {
   IdSchema,
   MAX_NOTE,
+  MAX_SCOUT_LOCATION,
   MAX_SCOUT_TITLE,
   MAX_URL,
   TrackedSchema,

@@ -2,7 +2,9 @@
  * Jobs › Scout: postings I found myself, for the morning run's second
  * opinion, each card wearing where it is on its way to that run. The run
  * opens only the hosts it reads (`linkReach`), so a link from anywhere else
- * waits for the posting's own text.
+ * waits for the posting's own text. Where it is and when it went up, as its
+ * page shows them, go in their own fields, which the run reads before that
+ * text; a page that shows no posted date is said so (ROUTINE.md §3).
  */
 import type { JSX } from "react"
 import { useState } from "react"
@@ -12,6 +14,7 @@ import {
   linkReach,
   MAX_NOTE,
   MAX_POSTING_TEXT,
+  MAX_SCOUT_LOCATION,
   MAX_SCOUT_TITLE,
   MAX_URL,
   TRACKS,
@@ -25,8 +28,10 @@ import { draftVoice, SCOUT_OWNER } from "@/lib/jobs/model"
 import {
   cantOpenLink,
   FILE_NAMES,
+  postedWords,
   postingTextHint,
   postingTextLabel,
+  SCOUT_FIELD_WORDS,
 } from "@/lib/jobs/words"
 import { Gaps, Scores, sectionHeading } from "@/components/job-reading"
 
@@ -102,6 +107,9 @@ export const JobsScout = (): JSX.Element => {
   const [title, setTitle] = useState("")
   const [why, setWhy] = useState("")
   const [postingText, setPostingText] = useState("")
+  const [location, setLocation] = useState("")
+  const [posted, setPosted] = useState("")
+  const [notShown, setNotShown] = useState(false)
   const voice = draftVoice(state, SCOUT_OWNER)
   const context = useJourneyContext()
   const scouts = state.log.flatMap((e, index) =>
@@ -130,6 +138,13 @@ export const JobsScout = (): JSX.Element => {
         title: title.trim(),
         why: why.trim(),
         postingText: postingText.trim() === "" ? null : postingText.trim(),
+        // Each left out when I give none, so the scout is the event it was.
+        ...(location.trim() === "" ? {} : { location: location.trim() }),
+        ...(notShown
+          ? { postedOn: null }
+          : posted === ""
+            ? {}
+            : { postedOn: posted }),
       },
       voice.map((v) => v.id)
     )
@@ -138,6 +153,9 @@ export const JobsScout = (): JSX.Element => {
     setTitle("")
     setWhy("")
     setPostingText("")
+    setLocation("")
+    setPosted("")
+    setNotShown(false)
   }
 
   return (
@@ -171,6 +189,42 @@ export const JobsScout = (): JSX.Element => {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
+        <Label htmlFor="scout-location" className={sectionHeading}>
+          {SCOUT_FIELD_WORDS.location}
+        </Label>
+        <Input
+          id="scout-location"
+          maxLength={MAX_SCOUT_LOCATION}
+          placeholder={SCOUT_FIELD_WORDS.locationHint}
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+        />
+        <Label htmlFor="scout-posted" className={sectionHeading}>
+          {SCOUT_FIELD_WORDS.posted}
+        </Label>
+        <Input
+          id="scout-posted"
+          type="date"
+          value={posted}
+          disabled={notShown}
+          onChange={(e) => {
+            setPosted(e.target.value)
+            setNotShown(false)
+          }}
+        />
+        <Button
+          type="button"
+          size="sm"
+          className="self-start rounded-full"
+          variant={notShown ? "default" : "outline"}
+          aria-pressed={notShown}
+          onClick={() => {
+            setNotShown(!notShown)
+            setPosted("")
+          }}
+        >
+          {SCOUT_FIELD_WORDS.notShown}
+        </Button>
         <Chips
           label="Track"
           options={TRACKS.map((t) => [t, TRACK_LABELS[t]] as const)}
@@ -237,6 +291,10 @@ export const JobsScout = (): JSX.Element => {
                       <span className="text-muted-foreground text-xs">
                         {scout.track}
                         {scout.family ? ` · ${scout.family}` : ""}
+                        {scout.location ? ` · ${scout.location}` : ""}
+                        {scout.postedOn === undefined
+                          ? ""
+                          : ` · ${postedWords(scout.postedOn)}`}
                         {scout.why ? ` · ${scout.why}` : ""}
                       </span>
                       {verdict && (

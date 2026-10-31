@@ -395,6 +395,40 @@ describe("scoutsFile", () => {
     })
     expect(scoutsFile(EMPTY, new Date(2026, 9, 18, 20, 5, 0))).toBeNull()
   })
+
+  it("carries a scout's place and posted day, an undated one, and neither", () => {
+    const scout = (id: string, more: object): Draft => ({
+      type: "scout",
+      scout: {
+        id,
+        url: "https://jobs.gusto.com/postings/tarpon-health-1",
+        track: "software",
+        family: null,
+        title: "Junior Software Engineer · Tarpon Health",
+        why: "",
+        postingText: "Junior Software Engineer",
+        ...more,
+      },
+      voice: [],
+    })
+    let state = record(
+      EMPTY,
+      scout("sc-0001", { location: "Remote", postedOn: "2026-10-20" })
+    )
+    state = record(state, scout("sc-0002", { postedOn: null }))
+    state = record(state, scout("sc-0003", {}))
+    // A day that isn't one, or an empty place, is never kept.
+    expect(record(state, scout("sc-0004", { postedOn: "Oct 20" }))).toBe(state)
+    expect(record(state, scout("sc-0005", { location: " " }))).toBe(state)
+    const [dated, undated, neither] = JSON.parse(
+      fileOf(scoutsFile(state, new Date(2026, 9, 24, 12, 0, 0))).json
+    ).scouts
+    expect(dated).toMatchObject({ location: "Remote", postedOn: "2026-10-20" })
+    expect(undated).toMatchObject({ postedOn: null })
+    expect(undated).not.toHaveProperty("location")
+    expect(neither).not.toHaveProperty("location")
+    expect(neither).not.toHaveProperty("postedOn")
+  })
 })
 
 describe("a log home restored", () => {
