@@ -361,7 +361,7 @@ declared (checked by reading every call site and by the tests named).
   `lib/home-link`, is started by a tap
   in the Home server block of Settings
   (`components/settings/device-section.tsx`):
-  the sync (published lessons and rounds, read with no credential), pairing
+  the sync (published lessons and dramas, read with no credential), pairing
   (the code only), unpairing, and the send to home (`lib/home-link/send`,
   after one confirm that names how many sessions, kept items, LeetType
   sessions and Studio sittings and the host): the phone's sessions, each one's record, its plan, status and

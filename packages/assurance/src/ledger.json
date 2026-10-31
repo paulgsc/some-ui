@@ -1452,15 +1452,9 @@
       "family": "what-is-kept"
     },
     {
-      "store": "phone:device_round_from_home",
-      "class": "derived",
-      "growth": "bounded: one row per round home wrote (cascade with leetype_round).",
-      "family": "what-is-kept"
-    },
-    {
       "store": "phone:device_storage_notice",
       "class": "telemetry",
-      "growth": "bounded: one row (id = 1), the count of rounds removed not yet shown.",
+      "growth": "bounded: one row (id = 1), the count of rounds removed not yet shown; nothing adds to it since #2032, so it only shrinks.",
       "family": "what-is-kept"
     },
     {
@@ -1586,25 +1580,6 @@
       "class": "record",
       "growth": "bounded: 40 spoken answers, each <= 60 s: 40 x 60 x 4,000 = 9,600,000 B; past 40 refused.",
       "horizon": "takes and notes leave with a confirmed study-context export (letGo); never sent home (#1934)",
-      "family": "what-is-kept"
-    },
-    {
-      "store": "phone:leetype_round",
-      "class": "cache",
-      "growth": "Per round synced from home; bounded by home's listing.",
-      "horizon": "rounds home no longer lists are removed at sync (removeRoundsExcept); rounds an earlier build seeded were removed once (removeSeededRounds, noted to the person)",
-      "family": "what-is-kept"
-    },
-    {
-      "store": "phone:leetype_round_run",
-      "class": "derived",
-      "growth": "bounded: <= 12 per round (upsert on round_id, variant, bounds).",
-      "family": "what-is-kept"
-    },
-    {
-      "store": "phone:leetype_round_witness",
-      "class": "derived",
-      "growth": "bounded: <= 5 per round, rewritten from the round body.",
       "family": "what-is-kept"
     },
     {

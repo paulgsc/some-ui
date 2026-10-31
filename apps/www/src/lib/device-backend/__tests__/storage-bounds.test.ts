@@ -9,7 +9,6 @@ import { withRoom } from "@some-ui/voice-capture"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { openDeviceBackend } from "@/lib/device-backend/backend"
-import { upsertRound } from "@/lib/device-backend/content-store"
 import {
   oldestRemovable,
   removeUnchanged,
@@ -272,22 +271,33 @@ describe("presence leases", () => {
   })
 })
 
-describe("the retired bundle", () => {
-  it("removes every round an earlier build seeded, says so, and keeps home's", async () => {
-    await upsertRound(db, JSON.stringify({ id: "dropped" }), NOW)
-    await db.run(
-      "DELETE FROM device_round_from_home WHERE round_id = 'dropped'"
-    )
-    await upsertRound(db, JSON.stringify({ id: "home-round" }), NOW)
+describe("the phone's copy of home's rounds, dropped (#2032)", () => {
+  it("goes at the start that reaches migration 7, and a notice noted before stays until shown", async () => {
+    // A phone at migration 6: home's rounds copied, and a notice of the
+    // seeded rounds an earlier start removed, not yet shown.
+    await db.exec(`
+      CREATE TABLE leetype_round (id TEXT PRIMARY KEY, body TEXT NOT NULL);
+      CREATE TABLE leetype_round_witness (round_id TEXT NOT NULL REFERENCES leetype_round(id) ON DELETE CASCADE);
+      CREATE TABLE leetype_round_run (round_id TEXT NOT NULL REFERENCES leetype_round(id) ON DELETE CASCADE);
+      CREATE TABLE device_round_from_home (round_id TEXT PRIMARY KEY REFERENCES leetype_round(id) ON DELETE CASCADE);
+      INSERT INTO leetype_round (id, body) VALUES ('home-round', '{}');
+      INSERT INTO leetype_round_witness (round_id) VALUES ('home-round');
+      INSERT INTO leetype_round_run (round_id) VALUES ('home-round');
+      INSERT INTO device_round_from_home (round_id) VALUES ('home-round');
+      INSERT INTO device_storage_notice (id, rounds) VALUES (1, 2);
+      PRAGMA user_version = 6;
+    `)
 
     backend = await openDeviceBackend(db, () => NOW, budget)
 
-    const ids = await db.all(
-      "SELECT id FROM leetype_round WHERE id IN ('dropped', 'home-round')"
+    const version = await one(db, "PRAGMA user_version")
+    expect(version === null ? null : num(version, "user_version")).toBe(7)
+    const left = await db.all(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND (name LIKE 'leetype_round%' OR name = 'device_round_from_home')"
     )
-    expect(ids.map((row) => row.id)).toEqual(["home-round"])
+    expect(left).toEqual([])
     const notice = await readPruneNotice(db)
-    expect(notice).toMatchObject({ rounds: 1 })
+    expect(notice).toEqual({ rounds: 2 })
     if (notice === null) throw new Error("no notice")
     await dismissPruneNotice(db, notice)
     await expect(readPruneNotice(db)).resolves.toBeNull()

@@ -165,17 +165,13 @@ export function onSaveRefused(listener: RefusalListener): () => void {
   return () => refusals.delete(listener)
 }
 
-/** Removals the person did not ask for and has not been shown. */
+/**
+ * Removals the person did not ask for and has not been shown. Nothing notes
+ * one any more: its one writer, the start that removed the rounds an earlier
+ * build seeded, went with the phone's copy of home's rounds (#2032). A
+ * notice noted before then is still shown, once.
+ */
 export type PruneNotice = { rounds: number }
-
-export async function notePruned(db: SqlDriver, rounds: number): Promise<void> {
-  if (rounds === 0) return
-  await db.run(
-    `INSERT INTO device_storage_notice (id, rounds) VALUES (1, ?)
-     ON CONFLICT(id) DO UPDATE SET rounds = device_storage_notice.rounds + excluded.rounds`,
-    [rounds]
-  )
-}
 
 export async function readPruneNotice(
   db: SqlDriver
