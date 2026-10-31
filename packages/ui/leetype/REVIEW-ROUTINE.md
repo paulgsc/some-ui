@@ -156,8 +156,8 @@ way. Then:
   `PUT "$JOBS_MAILBOX_URL/v1/leetype-log/wanted/<name>"` (no body); home puts
   it back within 15 minutes. Until it is back, that file's new logs are
   **held**: not judged this run, and not counted in `sessions`. A held log,
-  or an ask the mailbox refuses, is a record problem (§5), named every run
-  until it is judged.
+  or an ask the mailbox refuses, is a record problem (§5), named in each
+  review written and each run's summary until it is judged.
 - **A session with several copies:** only its highest `.r<n>` (no suffix is
   `r1`) is fed to `summariesOf`, since a later copy holds every event of an
   earlier one.
@@ -387,7 +387,8 @@ unheard: []
 - `answersThrough` (`YYYY-MM-DD`): the earliest export folder date holding
   an answer or take this run read but neither judged nor listed in
   `unheard`; with none, the latest folder date read; with no folder read,
-  the previous value.
+  the previous value. An item that holds it back for a second run is named
+  under **Record problems**, so the owner sees what pins it.
 - `sessionsDigest`: the SHA-256 of the newest export's `leetypeSessions`, as
   `JSON.stringify` of the parsed value, or `null` with none.
 - `answers`: the `id` of every answer this file judged.
@@ -411,7 +412,8 @@ Upload it with `contentMimeType` `text/markdown` and
 your local file's byte count. Then list `LeetType/reviews/` once more: if
 another file now has the same name (a run racing this one), name both in the
 summary. If a check fails, don't retry under the same name: write the next
-`-r<n>` revision and say so in the summary.
+`-r<n>` revision once and say so in the summary; if that fails too, stop
+and say so.
 
 ## 6. New session files: none for the first four reviews
 
