@@ -166,7 +166,7 @@ const readHeld = readJson(parsed(HeldSchema))
 const readPlace = readJson(parsed(PlaceRecordSchema))
 
 /** Where the session was: the card on screen, the take under way, and the cards waiting on a note. */
-export type Whereabouts = {
+type Whereabouts = {
   readonly place: Place | null
   readonly taking: Taking | null
   readonly pending: ReadonlyArray<Pending>
