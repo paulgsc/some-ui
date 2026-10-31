@@ -1,10 +1,11 @@
 /**
- * The LeetType half of "Send to home" (`./send`): each finished session of
- * the phone's LeetType session log that home does not hold as it is now, one
- * PUT per event in its home form (paulgsc/server `handlers/leetype_log.rs`,
- * docs/identity.md invariant 18: a spoken answer without its ticks), then
- * one read of the session back, compared event by event (LA8). Phone to home
- * only, and the phone keeps its whole log: nothing here lets an event go.
+ * The LeetType part of the one drain (`./drain`, LA15): each finished
+ * session of the phone's LeetType session log that home does not hold as it
+ * is now, one PUT per event in its home form (paulgsc/server
+ * `handlers/leetype_log.rs`, docs/identity.md invariant 18: a spoken answer
+ * without its ticks), then one read of the session back, compared event by
+ * event (LA8). Phone to home only, and the phone keeps its whole log:
+ * nothing here lets an event go.
  */
 import type { HomeCall } from "@some-ui/core-utils"
 import { canonicalJson, isRecord } from "@some-ui/core-utils"
@@ -21,7 +22,7 @@ import { answerOrEnd } from "./shelf"
 export type LogReport = EndedReport & {
   /** Entries home now holds as they are, read back. */
   held: number
-  /** Entries home refused a write of (`422`, `409`); kept here, offered by the next tap. */
+  /** Entries home refused a write of (`422`, `409`); kept here, offered again by the next run. */
   refused: number
   /** Entries home answered a write of some other way; kept here too. */
   other: number

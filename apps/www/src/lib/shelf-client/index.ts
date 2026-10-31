@@ -100,8 +100,8 @@ const keptListeners = new Set<() => void>()
 
 /**
  * Hears each item this app keeps, once home or the phone took it: on the
- * phone, Practice's standing send (`lib/home-link/practice`, LA11) asks to
- * carry it.
+ * phone, Practice's lane (`lib/home-link/practice`, LA15) asks the one drain
+ * for a run to carry it.
  */
 export function onKept(listener: () => void): () => void {
   keptListeners.add(listener)
