@@ -81,6 +81,15 @@ beforeAll(async () => {
       res.end(JSON.stringify(signedIn ? { id: 1 } : { error: "unauthorized" }))
       return
     }
+    // A paired phone's route: answers only the phone's bearer token, as
+    // file_host's `Paired` extractor does, and a browser's cookie a 403.
+    if (key === "GET /api/v1/phone") {
+      const paired = req.headers.authorization === "Bearer t0ken"
+      const status = paired ? 200 : req.headers.cookie === undefined ? 401 : 403
+      res.writeHead(status, { "content-type": "application/json" })
+      res.end(JSON.stringify(paired ? { id: 1 } : { error: "no" }))
+      return
+    }
     const route = ROUTES[key]
     if (route === undefined) {
       res.writeHead(404, { "content-type": "application/json" })
@@ -396,5 +405,56 @@ describe("probeContract against a live server", () => {
     )
 
     expect(outcome.status).toBe("passed")
+  })
+
+  it("skips a paired-phone contract when no phone token is supplied, saying how to supply one", async () => {
+    const outcome = await probeContract(
+      defineContract({
+        ...base,
+        id: "phone",
+        method: "GET",
+        path: "/phone",
+        paired: true,
+        expect: { status: 200 },
+      }),
+      { baseUrl, sessionCookie: "s3cret" }
+    )
+
+    expect(outcome.status).toBe("skipped")
+    expect(outcome.findings[0]?.message).toMatch(/--phone-token/)
+  })
+
+  it("sends the phone token as a bearer, and no cookie, with a paired-phone contract", async () => {
+    const outcome = await probeContract(
+      defineContract({
+        ...base,
+        id: "phone",
+        method: "GET",
+        path: "/phone",
+        paired: true,
+        expect: { status: 200, schema: z.object({ id: z.number() }) },
+      }),
+      { baseUrl, sessionCookie: "s3cret", phoneToken: "t0ken" }
+    )
+
+    expect(outcome.status).toBe("passed")
+  })
+
+  it("refuses a contract marked both session and paired, sending nothing", async () => {
+    const outcome = await probeContract(
+      defineContract({
+        ...base,
+        id: "both",
+        method: "GET",
+        path: "/phone",
+        session: true,
+        paired: true,
+        expect: { status: 200 },
+      }),
+      { baseUrl, sessionCookie: "s3cret", phoneToken: "t0ken" }
+    )
+
+    expect(outcome.status).toBe("failed")
+    expect(outcome.findings[0]?.code).toBe("credential-ambiguous")
   })
 })
