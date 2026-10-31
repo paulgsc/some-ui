@@ -1,5 +1,5 @@
+import { primerOf } from "@soundbites/fixtures"
 import type { Primer } from "@soundbites/lib/journal/primer"
-import { readPrimer } from "@soundbites/lib/journal/primer"
 
 export const AT = "2026-10-30T09:00:00.000Z"
 
@@ -33,8 +33,4 @@ export const PRIMER_TEXT = JSON.stringify({
   ],
 })
 
-export function primer(): Primer {
-  const reading = readPrimer(PRIMER_TEXT)
-  if (!reading.ok) throw new Error(reading.problem)
-  return reading.primer
-}
+export const primer = (): Primer => primerOf(PRIMER_TEXT)

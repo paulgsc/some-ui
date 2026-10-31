@@ -68,16 +68,13 @@ import { finishOf, youtubeLink } from "@soundbites/lib/project/finish"
 import type { Clash } from "@soundbites/lib/project/merge"
 import { mergeIn } from "@soundbites/lib/project/merge"
 import type { Note, Project, ProjectTake } from "@soundbites/lib/project/model"
-import {
-  latest,
-  newProject,
-  step as stepProject,
-} from "@soundbites/lib/project/model"
+import { latest, step as stepProject } from "@soundbites/lib/project/model"
 import {
   capFor,
   currentOf,
   cutListOf,
   fitted,
+  projectFromPrimer,
   projectIdFor,
   resumeAt,
   scriptOf,
@@ -553,14 +550,8 @@ function applied(project: Project | null, pending: Pending): Project | null {
   switch (pending.kind) {
     case "create": {
       if (project !== null) return null
-      const { primer, at } = pending
-      return newProject(pending.project, {
-        author: "claude",
-        message: `Primer: ${primer.title}`,
-        at,
-        cutList: cutListOf(primer),
-        primer,
-      }).project
+      return projectFromPrimer(pending.project, pending.primer, pending.at)
+        .project
     }
     case "revise": {
       if (project === null) return null

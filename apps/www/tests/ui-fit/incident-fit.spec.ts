@@ -18,23 +18,16 @@
  *   pnpm --filter www test:ui-fit
  */
 
-import { expect, test, type Page } from "@playwright/test"
+import { expect, test } from "@playwright/test"
 
+import type { Stop } from "./harness"
 import {
-  describeViolation,
-  findViolations,
   INCIDENT_FIXTURE,
   PHONE_VIEWPORTS,
   servePanelPage,
+  tap,
+  walk,
 } from "./harness"
-
-type Stop = {
-  readonly screen: string
-  readonly go: (page: Page) => Promise<void>
-}
-
-const tap = (page: Page, name: string | RegExp): Promise<void> =>
-  page.getByRole("button", { name }).first().click()
 
 /** The walk, in the order a learner meets each kind of screen. */
 const WALK: ReadonlyArray<Stop> = [
@@ -126,22 +119,7 @@ test.describe("every screen of the incident session fits the phone", () => {
       page.on("pageerror", (error) => errors.push(error.message))
       await page.goto(PAGE.url(INCIDENT_FIXTURE), { waitUntil: "load" })
 
-      const failures: Array<string> = []
-      for (const stop of WALK) {
-        await stop.go(page)
-        // The reveal scrolls itself into view; let it settle before measuring.
-        await page.waitForTimeout(250)
-        const { mounted, violations } = await findViolations(page)
-        if (!mounted) {
-          failures.push(
-            `${stop.screen}: rendered nothing. ${errors.join(" | ")}`
-          )
-          continue
-        }
-        for (const violation of violations) {
-          failures.push(describeViolation(stop.screen, violation))
-        }
-      }
+      const failures = await walk(page, WALK, null, errors)
 
       expect(errors, errors.join("\n")).toEqual([])
       expect(failures, failures.join("\n")).toEqual([])

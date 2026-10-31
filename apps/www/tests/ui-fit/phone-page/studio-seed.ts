@@ -1,14 +1,15 @@
 /**
  * The video the phone page's Studio fixtures open (`./fixtures.tsx`), and
  * the review render the sweep hands Watch (`../studio-fit.spec.ts`). One
- * module with no imports, so the page (bundled by Vite) and the spec (run
- * by Playwright in Node) agree on the title and the scenes without either
- * loading the other's world. The fixture checks the schema string against
- * `@some-ui/video-render`'s, so a renamed schema fails the build, not the
- * sweep.
+ * module with no runtime imports, so the page (bundled by Vite) and the spec
+ * (run by Playwright in Node) agree on the title and the scenes without
+ * either loading the other's world.
  */
 
-export const FIT_REVIEW_SCHEMA = "some-ui.studio-review/1"
+import type { REVIEW_SCHEMA } from "@some-ui/video-render"
+
+/** The renderer's schema: typed as its literal, so a renamed one fails tsc. */
+const FIT_REVIEW_SCHEMA: typeof REVIEW_SCHEMA = "some-ui.studio-review/1"
 
 /**
  * Written to fill the screens rather than to teach: a long title, a point

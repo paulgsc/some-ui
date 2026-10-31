@@ -459,9 +459,9 @@ const Record = ({
           </Button>
           {/* Wraps: on the narrowest phone (360px) a column is 160px, less
               than "Keep · next scene" on one line, and the last scene's
-              label is longer (ui-fit's studio-fit). `whitespace-normal`,
-              not `text-wrap`: the button's own `whitespace-nowrap` is a
-              shorthand that resets text-wrap, and wins in the cascade. */}
+              label is longer. `whitespace-normal`, not `text-wrap`: the
+              button's own `whitespace-nowrap` is a shorthand that resets
+              text-wrap, and wins in the cascade. */}
           <Button
             className="h-auto min-h-10 whitespace-normal"
             onClick={() => dispatch({ type: "keepNextPressed" })}

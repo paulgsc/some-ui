@@ -4,13 +4,8 @@
  * each standing the sweep needs, and New idea beside it. The spec taps from
  * each fixture's Start to the screens that standing reaches.
  *
- * Each mounts `Studio` as `/journal` does (src/routes/_dashboard/_apk/
- * journal/index.tsx): the wing's heading above it, in the route's own
- * column, and the route's way to New idea handed in as `newIdea` (the big
- * button on a Start with no video, the quiet link once there is one). The
- * links are plain anchors here, since the page has no router; their classes
- * are the route's, which www's CSS carries. A change to the route's shell or
- * its `newIdea` is a change to `NEW_IDEA` and `studioOn` below.
+ * Each mounts the page its route mounts (`StudioHome`, `NewIdeaPage`), with
+ * plain anchors for the route's links, since the page has no router.
  *
  * `planted-overflow` is not a screen. It is the sweep's self-test: a box of a
  * fixed height around content that cannot fit, so a harness that silently
@@ -23,73 +18,24 @@ import type {
   IdeaListener,
   Project,
   ProjectEvent,
-  ProjectState,
   StudioProps,
+  WingLink,
 } from "@some-ui/soundbites"
-import {
-  IdeaCapture,
-  keptTimeLog,
-  newProject,
-  step,
-  Studio,
-  STUDIO_WORDS,
-} from "@some-ui/soundbites"
-import type { Primer } from "@some-ui/soundbites/fixtures"
+import { keptTimeLog, NewIdeaPage, StudioHome } from "@some-ui/soundbites"
 import {
   cutListOf,
   fakeMic,
   memoryProjectStore,
-  readPrimer,
+  primerOf,
+  projectFromPrimer,
+  run,
 } from "@some-ui/soundbites/fixtures"
-import { REVIEW_SCHEMA } from "@some-ui/video-render"
-import { Lightbulb } from "lucide-react"
 
-import { FIT_CUTS, FIT_PRIMER_TEXT, FIT_REVIEW_SCHEMA } from "./studio-seed"
-
-const WORDS = STUDIO_WORDS
-
-// Widened: both are literals, and as such the check would read as settled.
-const renderedSchema: string = REVIEW_SCHEMA
-if (renderedSchema !== FIT_REVIEW_SCHEMA) {
-  throw new Error(
-    `studio-seed.ts writes reviews as ${FIT_REVIEW_SCHEMA}; the renderer reads ${renderedSchema}`
-  )
-}
+import { FIT_CUTS, FIT_PRIMER_TEXT } from "./studio-seed"
 
 const AT = "2026-10-30T09:00:00.000Z"
 
-const PRIMER: Primer = ((): Primer => {
-  const reading = readPrimer(FIT_PRIMER_TEXT)
-  if (!reading.ok) {
-    throw new Error(`the fit primer no longer reads: ${reading.problem}`)
-  }
-  return reading.primer
-})()
-
-/** `events` in order from `state`, each one accepted. */
-function run(
-  state: ProjectState,
-  ...events: ReadonlyArray<ProjectEvent>
-): ProjectState {
-  return events.reduce((at, event) => {
-    const next = step(at, event)
-    if (next.refused !== null) {
-      throw new Error(`the fit video refuses ${event.type}: ${next.refused}`)
-    }
-    return next.state
-  }, state)
-}
-
-/** The video as Studio opens a primer: revision 1, Claude's, nothing taken. */
-function opened(id: string): ProjectState {
-  return newProject(id, {
-    author: "claude",
-    message: `Primer: ${PRIMER.title}`,
-    at: AT,
-    cutList: cutListOf(PRIMER),
-    primer: PRIMER,
-  })
-}
+const PRIMER = primerOf(FIT_PRIMER_TEXT)
 
 /** A take of four seconds on scene `shot`, still on the phone. */
 const taken = (shot: string): ReadonlyArray<ProjectEvent> => [
@@ -107,7 +53,7 @@ const taken = (shot: string): ReadonlyArray<ProjectEvent> => [
 ]
 
 /** Nothing recorded yet: Record opens on scene 1 before any take. */
-const FRESH: Project = opened("fit-fresh").project
+const FRESH: Project = projectFromPrimer("fit-fresh", PRIMER, AT).project
 
 /**
  * Every scene taken, a note of the owner's that Claude applied in revision
@@ -116,7 +62,7 @@ const FRESH: Project = opened("fit-fresh").project
  * and Record shows a scene with its take.
  */
 const REVIEWED: Project = ((): Project => {
-  const first = opened("fit-reviewed")
+  const first = projectFromPrimer("fit-reviewed", PRIMER, AT)
   const [path] = FIT_CUTS
   const withTakes = run(first, ...FIT_CUTS.flatMap((cut) => taken(cut.id)))
   return run(
@@ -171,38 +117,23 @@ function studioPorts(
   }
 }
 
-/** The route's way to New idea (`StudioProps.newIdea`), as it builds it. */
-const NEW_IDEA: NonNullable<StudioProps["newIdea"]> = {
-  big: (
-    <a
-      href="#idea"
-      className="bg-card border-brand focus-visible:ring-ring flex items-center gap-3 rounded-2xl border-2 px-4 py-3 focus-visible:ring-2 focus-visible:outline-none"
-    >
-      <Lightbulb aria-hidden className="text-brand size-6 shrink-0" />
-      <span className="min-w-0">
-        <span className="block text-base font-extrabold">
-          {WORDS.idea.newIdea}
-        </span>
-        <span className="text-muted-foreground block text-sm">
-          {WORDS.idea.newIdeaLine}
-        </span>
-      </span>
+/** A link to `href`, as an anchor: the page has no router. */
+function anchorTo(href: string): WingLink {
+  const Anchor: WingLink = ({ className, children }) => (
+    <a href={href} className={className}>
+      {children}
     </a>
-  ),
-  quiet: (
-    <a href="#idea" className="text-muted-foreground underline">
-      {WORDS.idea.newIdea}
-    </a>
-  ),
+  )
+  return Anchor
 }
 
-/** The Studio wing's Home on `projects`, as the route lays it out. */
+const IDEA_LINK = anchorTo("#idea")
+const STUDIO_LINK = anchorTo("#studio")
+
+/** The Studio wing's Home on `projects`. */
 function studioOn(projects: ReadonlyArray<Project>): () => JSX.Element {
   const StudioFixture = (): JSX.Element => (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-4">
-      <h1 className="text-2xl font-bold tracking-tight">{WORDS.heading}</h1>
-      <Studio ports={studioPorts(projects)} newIdea={NEW_IDEA} />
-    </div>
+    <StudioHome ports={studioPorts(projects)} ideaLink={IDEA_LINK} />
   )
   return StudioFixture
 }
@@ -213,24 +144,9 @@ export const PHONE_FIXTURES = {
   "studio-fresh": studioOn([FRESH]),
   "studio-reviewed": studioOn([REVIEWED]),
 
-  /** New idea (`/journal/idea`), as its route lays it out. */
+  /** New idea (`/journal/idea`). */
   idea: (): JSX.Element => (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-4">
-      <h1 className="text-muted-foreground text-sm font-bold tracking-wider uppercase">
-        {WORDS.idea.heading}
-      </h1>
-      <IdeaCapture
-        ports={{ listener }}
-        back={
-          <a
-            href="#studio"
-            className="text-muted-foreground text-sm underline underline-offset-4"
-          >
-            {WORDS.idea.back}
-          </a>
-        }
-      />
-    </div>
+    <NewIdeaPage ports={{ listener }} backLink={STUDIO_LINK} />
   ),
 
   // A box that asserts a height its content cannot fit, which the body's
@@ -247,6 +163,3 @@ export type PhoneId = keyof typeof PHONE_FIXTURES
 export function isPhoneId(id: string | null): id is PhoneId {
   return id !== null && Object.hasOwn(PHONE_FIXTURES, id)
 }
-
-export const PHONE_IDS: ReadonlyArray<PhoneId> =
-  Object.keys(PHONE_FIXTURES).filter(isPhoneId)

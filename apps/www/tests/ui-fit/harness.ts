@@ -1,10 +1,11 @@
 /**
- * Plumbing for the fixture sweeps (panel-fit, incident-fit, studio-fit): the
- * viewport sizes they sweep, the pages (`./panel-page`, `./phone-page`)
- * built with www's own config, served over HTTP, and the measure of what
- * leaves a fixture's rect. Never `file://`: Chromium blocks cross-origin ES
- * module loads from a file origin, every panel then renders an empty root,
- * and a sweep that does not check for that passes having measured nothing.
+ * Plumbing for the fixture sweeps: the viewport sizes they sweep, the pages
+ * (`./panel-page`, `./phone-page`) built with www's own config, served over
+ * HTTP, the measure of what leaves a fixture's rect, and a walk that taps
+ * through screens measuring at each. Never `file://`: Chromium blocks
+ * cross-origin ES module loads from a file origin, every panel then renders
+ * an empty root, and a sweep that does not check for that passes having
+ * measured nothing.
  */
 
 import { createReadStream, existsSync, statSync } from "node:fs"
@@ -135,9 +136,9 @@ export const VIEWPORTS = [
 ] as const
 
 /**
- * The sizes a phone-only surface is swept at (incident-fit, studio-fit): a
- * tall phone, a narrow one, and the same phone on its side as above. A
- * desktop size would measure such a surface on a device that never shows it.
+ * The sizes a phone-only surface is swept at: a tall phone, a narrow one,
+ * and the same phone on its side as above. A desktop size would measure such
+ * a surface on a device that never shows it.
  */
 export const PHONE_VIEWPORTS = [
   { name: "phone-tall", width: 412, height: 915 },
@@ -365,4 +366,70 @@ export function describeViolation(where: string, violation: Violation): string {
     `rows that cannot fit), or declare the escape with data-fit-intent. ` +
     `${classes}`
   )
+}
+
+/** One screen of a walk, and the taps that reach it from the one before. */
+export type Stop = {
+  readonly screen: string
+  readonly go: (page: Page) => Promise<void>
+}
+
+/** Taps the first button named `name`. */
+export const tap = (page: Page, name: string | RegExp): Promise<void> =>
+  page.getByRole("button", { name }).first().click()
+
+/**
+ * Takes `stops` in order from where the page is, measuring each screen once
+ * it settles. Returns what each leaves of the rect, said as the fix and
+ * headed `<label>: <screen>` (or the screen alone without a label); a screen
+ * that rendered nothing carries the page's `errors` so far.
+ */
+export async function walk(
+  page: Page,
+  stops: ReadonlyArray<Stop>,
+  label: string | null,
+  errors: ReadonlyArray<string>
+): Promise<Array<string>> {
+  const failures: Array<string> = []
+  for (const stop of stops) {
+    const where = label === null ? stop.screen : `${label}: ${stop.screen}`
+    await stop.go(page)
+    // Let a screen that just changed (a reveal scrolling itself into view,
+    // say) settle before measuring.
+    await page.waitForTimeout(250)
+    const { mounted, violations } = await findViolations(page)
+    if (!mounted) {
+      failures.push(`${where}: rendered nothing. ${errors.join(" | ")}`)
+      continue
+    }
+    for (const violation of violations) {
+      failures.push(describeViolation(where, violation))
+    }
+  }
+  return failures
+}
+
+/**
+ * The guard the doctrine asks for, on either page: its `planted-overflow`
+ * fixture, a box (`planted-panel`) holding 900px of content in less and not
+ * clipping it, is mounted and reported as a leak. If it is not, the sweep
+ * over that page is measuring nothing.
+ */
+export function expectPlantedSeen(
+  { mounted, violations }: { mounted: boolean; violations: Array<Violation> },
+  errors: ReadonlyArray<string>
+): void {
+  expect(
+    mounted,
+    `The planted box rendered nothing: ${errors.join(" | ")}`
+  ).toBe(true)
+  expect(
+    violations.some(
+      (violation) =>
+        violation.kind === "leak" && violation.classes.includes("planted-panel")
+    ),
+    `The planted box holds 900px of content in less and does not clip it. ` +
+      `If this is not reported, the sweep over its page is measuring ` +
+      `nothing: ${JSON.stringify(violations)}`
+  ).toBe(true)
 }

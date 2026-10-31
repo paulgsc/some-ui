@@ -5,12 +5,8 @@
  * layout can depend on. The same shape as the panel page (`../panel-page`),
  * which says why the rest of `AppProviders` is left out.
  *
- * Built only on request (`pnpm --filter www build:fit-phone`, which sets
- * `WWW_FIT_HARNESS`, `WWW_FIT_PAGE=phone` and the Android app's profile;
- * vite.config.ts), into `out/ui-fit-phone/`. Its own build because the
- * panel page's profile stubs every `apk` workspace (build.profiles.ts), and
- * Studio is one. No shipped build has this entry. With no `?panel`, the page
- * lists the ids it knows, so the sweep can fail on a fixture nothing walks.
+ * Built by `pnpm --filter www build:fit-phone` into `out/ui-fit-phone/`;
+ * `FIT_PHONE_PAGE` (build.profiles.ts) says why it is its own build.
  */
 
 import type { JSX, ReactNode } from "react"
@@ -22,7 +18,7 @@ import ReactDOM from "react-dom/client"
 
 import "@/index.css"
 
-import { isPhoneId, PHONE_FIXTURES, PHONE_IDS } from "./fixtures"
+import { isPhoneId, PHONE_FIXTURES } from "./fixtures"
 
 // The authored component CSS www's own entry loads (src/main.tsx), with the
 // same globs: keep the two in step (../panel-page/main.tsx says why each
@@ -87,18 +83,9 @@ const Phone = ({ children }: { children: ReactNode }): JSX.Element => (
   </div>
 )
 
+// An unknown id renders an empty slot, which the sweep reports as a
+// fixture that rendered nothing.
 const PhonePage = ({ id }: { id: string | null }): JSX.Element => {
-  if (id === null) {
-    return (
-      <ul data-fit-panels="">
-        {PHONE_IDS.map((panel) => (
-          <li key={panel}>{panel}</li>
-        ))}
-      </ul>
-    )
-  }
-  // An unknown id renders an empty slot, which the sweep reports as a
-  // fixture that rendered nothing.
   const Fixture = isPhoneId(id) ? PHONE_FIXTURES[id] : null
   return <Phone>{Fixture && <Fixture />}</Phone>
 }

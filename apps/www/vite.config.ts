@@ -118,10 +118,8 @@ function fitPageEntry(): Record<string, string> {
       `WWW_FIT_PAGE=${page} names no ui-fit page; one of ${Object.keys(FIT_PAGES).join(", ")}.`
     )
   }
-  // The phone page mounts `apk` workspaces (build.profiles.ts), which every
-  // profile but the Android app's stubs with exports that throw. Built under
-  // another profile it would mount nothing, and a sweep over it would then
-  // fail on every fixture, or pass having measured none.
+  // The phone page mounts `apk` workspaces, which every other profile stubs
+  // (`FIT_PHONE_PAGE`, build.profiles.ts).
   if (page === "phone" && process.env.SOME_UI_PROFILE !== MOBILE_PROFILE) {
     throw new Error(
       `The ui-fit phone page is built under SOME_UI_PROFILE=${MOBILE_PROFILE} only (pnpm --filter www build:fit-phone).`
