@@ -20,7 +20,9 @@
  *   `p`. Where they differ, both hearings' words are kept, each marked whose
  *   it is, the session's on home's clock, and a number there as the one
  *   numeral it reads as, so it never runs into the other hearing's number
- *   when the take check reads the words again.
+ *   when the take check reads the words again. A written word the two partly
+ *   agree on (`two-year` against `three-year`) goes word by word, so the
+ *   part both heard (`year`) is kept.
  * - **A filler is never a difference**: `um`, `uh` and the like, heard by
  *   one engine only, are kept as that engine heard them.
  *
@@ -126,28 +128,34 @@ function shifted<
 type Gap = {
   readonly home: Array<Timed>
   readonly session: Array<Timed>
-  /** The last home word before it, by index into home's words; -1 at the start. */
-  readonly after: number
+  /** Its place among the take's gaps. */
+  readonly side: number
 }
 
-function gapsOf(steps: ReadonlyArray<Pairing>): Array<Gap> {
-  const gaps: Array<Gap> = []
+/** The alignment in the take's order: each word both heard, and each gap. */
+type Segment =
+  | { readonly kind: "both"; readonly home: Timed }
+  | ({ readonly kind: "gap" } & Gap)
+
+function segmentsOf(steps: ReadonlyArray<Pairing>): Array<Segment> {
+  const segments: Array<Segment> = []
   let open: Gap | null = null
-  let after = -1
+  let sides = 0
   for (const step of steps) {
     if (step.kind === "both") {
       open = null
-      after = step.a.last
+      segments.push({ kind: "both", home: step.a })
       continue
     }
     if (open === null) {
-      open = { home: [], session: [], after }
-      gaps.push(open)
+      open = { home: [], session: [], side: sides }
+      sides += 1
+      segments.push({ kind: "gap", ...open })
     }
     if (step.kind === "a") open.home.push(step.a)
     else open.session.push(step.b)
   }
-  return gaps
+  return segments
 }
 
 /** Every raw word index `tokens` came from, in order, each once. */
@@ -159,27 +167,38 @@ function rawOf(tokens: ReadonlyArray<Timed>): Array<number> {
   return [...indices].sort((a, b) => a - b)
 }
 
-const isFiller = (token: Timed): boolean => FILLERS.has(token.word)
+/** Whether a gap holds more than fillers. */
+const differs = (gap: Gap): boolean =>
+  [...gap.home, ...gap.session].some((token) => !FILLERS.has(token.word))
 
 /** A word the take check reads as a number. */
 const isNumber = (token: Timed): boolean => /^-?\d/.test(token.word)
 
+/** How each raw word of a hearing went out: as heard, or as its tokens' words. */
+type Went = Map<number, "heard" | "folded">
+
 /**
- * `tokens`' words, from `heard`, for the take check: a number as the one
- * numeral it reads as, with the least `p` of the words it was said in; any
- * other word as heard, each raw word once.
+ * `tokens`' words, from `heard`, for the take check, each raw word at most
+ * once across calls that share `went`: a raw word as heard where `whole`
+ * says `tokens`' side of the alignment holds all of it, and otherwise each
+ * token as the word it reads as, with the least `p` of the words it was
+ * said in. With `numerals`, a number is always the one numeral it reads as.
  */
 function wordsOf(
   tokens: ReadonlyArray<Timed>,
-  heard: ReadonlyArray<HeardWord>
+  heard: ReadonlyArray<HeardWord>,
+  {
+    whole,
+    went,
+    numerals,
+  }: { whole: (at: number) => boolean; went: Went; numerals: boolean }
 ): Array<HeardWord> {
   const out: Array<HeardWord> = []
-  // How each raw word went out: as heard, or folded into a token's word.
-  const went = new Map<number, "heard" | "folded">()
   for (const token of tokens) {
     const span: Array<number> = []
     for (let at = token.first; at <= token.last; at += 1) span.push(at)
-    if (!isNumber(token) && span.every((at) => !went.has(at))) {
+    const asHeard = !(numerals && isNumber(token)) && span.every(whole)
+    if (asHeard && span.every((at) => !went.has(at))) {
       for (const at of span) {
         const word = heard[at]
         if (word !== undefined) out.push(word)
@@ -187,9 +206,7 @@ function wordsOf(
       }
       continue
     }
-    if (!isNumber(token) && span.every((at) => went.get(at) === "heard")) {
-      continue
-    }
+    if (asHeard && span.every((at) => went.get(at) === "heard")) continue
     const ps = span.flatMap((at) => {
       const p = heard[at]?.p
       return p === undefined ? [] : [p]
@@ -203,6 +220,26 @@ function wordsOf(
     for (const at of span) went.set(at, "folded")
   }
   return out
+}
+
+/**
+ * Of each raw word of a hearing, which side of the alignment holds it: a
+ * gap's index, or -1 for words both heard; `null` where its tokens fall on
+ * more than one side (`two-year` against `three-year`: `2` differs, `year`
+ * agrees).
+ */
+function sidesOf(
+  sides: ReadonlyArray<{ tokens: ReadonlyArray<Timed>; side: number }>
+): Map<number, number | null> {
+  const of = new Map<number, number | null>()
+  for (const { tokens, side } of sides) {
+    for (const token of tokens) {
+      for (let at = token.first; at <= token.last; at += 1) {
+        of.set(at, of.has(at) && of.get(at) !== side ? null : side)
+      }
+    }
+  }
+  return of
 }
 
 /**
@@ -224,10 +261,10 @@ export function compareHearings(
       a.word === b.word &&
       Math.abs(b.startMs - offsetMs - a.startMs) <= DRIFT_MS
   )
-  const gaps = gapsOf(steps).map((gap) => ({
-    ...gap,
-    differs: [...gap.home, ...gap.session].some((token) => !isFiller(token)),
-  }))
+  const segments = segmentsOf(steps)
+  const gaps = segments.flatMap((segment) =>
+    segment.kind === "gap" ? [segment] : []
+  )
   const compared = (
     word: HeardWord,
     heardBy: ComparedWord["heardBy"],
@@ -239,58 +276,69 @@ export function compareHearings(
     ...(unsure ? { unsure: true } : {}),
   })
 
-  // Home's words of each stretch go at its first raw word, in place of the
-  // raw words it holds; the session's after its last home word, or after
-  // the home word it follows.
-  const homeAt = new Map<number, Array<ComparedWord>>()
-  const sessionAfter = new Map<number, Array<ComparedWord>>()
-  const inGap = new Set<number>()
-  for (const gap of gaps) {
-    const raw = rawOf(gap.home)
-    for (const at of raw) inGap.add(at)
-    const first = raw[0]
-    if (first !== undefined) {
-      homeAt.set(
-        first,
-        wordsOf(gap.home, home).map((word) =>
-          compared(word, "home", gap.differs)
-        )
+  // A raw word goes out as heard only where one side holds all of it, and
+  // otherwise token by token, so a word both heard alike is kept beside the
+  // part of its raw word the two differ on.
+  const homeSides = sidesOf([
+    {
+      tokens: steps.flatMap((step) => (step.kind === "both" ? [step.a] : [])),
+      side: -1,
+    },
+    ...gaps.map((gap) => ({ tokens: gap.home, side: gap.side })),
+  ])
+  const sessionSides = sidesOf([
+    {
+      tokens: steps.flatMap((step) => (step.kind === "both" ? [step.b] : [])),
+      side: -1,
+    },
+    ...gaps.map((gap) => ({ tokens: gap.session, side: gap.side })),
+  ])
+  const homeWent: Went = new Map()
+  const sessionWent: Went = new Map()
+  const words: Array<ComparedWord> = []
+  for (const segment of segments) {
+    if (segment.kind === "both") {
+      words.push(
+        ...wordsOf([segment.home], home, {
+          whole: (at) => homeSides.get(at) === -1,
+          went: homeWent,
+          numerals: false,
+        }).map((word) => compared(word, "both", false))
       )
+      continue
     }
-    const words = wordsOf(gap.session, session).map((word) =>
-      compared(shifted(word, offsetMs), "session", gap.differs)
+    const unsure = differs(segment)
+    words.push(
+      ...wordsOf(segment.home, home, {
+        whole: (at) => homeSides.get(at) === segment.side,
+        went: homeWent,
+        numerals: true,
+      }).map((word) => compared(word, "home", unsure)),
+      ...wordsOf(segment.session, session, {
+        whole: (at) => sessionSides.get(at) === segment.side,
+        went: sessionWent,
+        numerals: true,
+      }).map((word) => compared(shifted(word, offsetMs), "session", unsure))
     )
-    if (words.length === 0) continue
-    const at = Math.max(gap.after, ...raw)
-    sessionAfter.set(at, [...(sessionAfter.get(at) ?? []), ...words])
   }
-
-  const words: Array<ComparedWord> = [...(sessionAfter.get(-1) ?? [])]
-  home.forEach((word, at) => {
-    if (inGap.has(at)) words.push(...(homeAt.get(at) ?? []))
-    else words.push(compared(word, "both", false))
-    words.push(...(sessionAfter.get(at) ?? []))
-  })
 
   const textOf = (heard: ReadonlyArray<HeardWord>, at: Array<number>): string =>
     at
       .map((index) => heard[index]?.text.trim() ?? "")
       .filter((text) => text !== "")
       .join(" ")
-  const disagreements = gaps
-    .filter((gap) => gap.differs)
-    .map((gap) => {
-      const spans = [
-        ...gap.home,
-        ...gap.session.map((token) => shifted(token, offsetMs)),
-      ]
-      return {
-        startMs: Math.min(...spans.map((token) => token.startMs)),
-        endMs: Math.max(...spans.map((token) => token.endMs)),
-        home: textOf(home, rawOf(gap.home)),
-        session: textOf(session, rawOf(gap.session)),
-      }
-    })
+  const disagreements = gaps.filter(differs).map((gap) => {
+    const spans = [
+      ...gap.home,
+      ...gap.session.map((token) => shifted(token, offsetMs)),
+    ]
+    return {
+      startMs: Math.min(...spans.map((token) => token.startMs)),
+      endMs: Math.max(...spans.map((token) => token.endMs)),
+      home: textOf(home, rawOf(gap.home)),
+      session: textOf(session, rawOf(gap.session)),
+    }
+  })
 
   return {
     words,

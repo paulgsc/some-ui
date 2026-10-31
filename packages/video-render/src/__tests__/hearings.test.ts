@@ -83,6 +83,28 @@ describe("compareHearings", () => {
     })
   })
 
+  it("keeps the part of a hyphenated word both heard alike beside the part they differ on", () => {
+    const home = heard("a two-year plan")
+    const session = heard("a three-year plan")
+    const compared = compareHearings(home, session)
+    expect(read(compared.words)).toEqual([
+      "a:both",
+      "2:home?",
+      "3:session?",
+      "year:both",
+      "plan:both",
+    ])
+    expect(compared.disagreements).toEqual([
+      { startMs: 500, endMs: 900, home: "two-year", session: "three-year" },
+    ])
+    expect(
+      checkTake({ voice: "read", line: "a two-year plan" }, compared.words)
+    ).toMatchObject({
+      kind: "check",
+      facts: [{ unsure: ["2"], missing: [] }],
+    })
+  })
+
   it("marks a word one hearing dropped unsure", () => {
     const home = heard(LINE)
     // The session's model lost "paid": everything after shifts a word.
