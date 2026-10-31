@@ -45,13 +45,11 @@ import {
 
 import { StaleAuthorityError } from "@/lib/authority"
 import { FileHostResponseError } from "@/lib/file-host-config/client"
+import type { SessionId } from "@/lib/tenant/session-id"
+import { isSessionId, newSessionId } from "@/lib/tenant/session-id"
 import type { SessionsStore } from "@/lib/tenant/sessions-repository"
 import { keptSessions } from "@/lib/tenant/sessions-repository"
-import {
-  browserLocalStorage,
-  generateId,
-  NotKeptError,
-} from "@/lib/tenant/storage"
+import { browserLocalStorage, NotKeptError } from "@/lib/tenant/storage"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 /** Versioned alongside the store it describes, so a change is a new key. */
@@ -64,7 +62,7 @@ type Copy = {
    */
   readonly remoteId: string | null
   /** For an attempt, the id its create named, if it named one. */
-  readonly named?: string
+  readonly named?: SessionId
   /** The second step (restoring status and times) landed too. */
   readonly complete: boolean
 }
@@ -84,7 +82,9 @@ function isCopy(value: unknown): value is Copy {
     (remoteId === undefined ||
       remoteId === null ||
       typeof remoteId === "string") &&
-    (named === undefined || typeof named === "string") &&
+    // Every id ever minted here was `generateId("session")`'s, which fits.
+    (named === undefined ||
+      (typeof named === "string" && isSessionId(named))) &&
     typeof Reflect.get(value, "complete") === "boolean"
   )
 }
@@ -167,7 +167,7 @@ export async function planTransfer(
     )
   )
   /** Ids attempts named: each is its own session's to find, never matched. */
-  const named = new Set(
+  const named = new Set<string>(
     Object.values(receipt).flatMap((copies) =>
       copies.flatMap((copy) => (copy.named === undefined ? [] : [copy.named]))
     )
@@ -270,7 +270,7 @@ export async function runTransfer(
   remote: SessionsStore,
   storage: KeyedStorage,
   isCurrent: () => boolean = () => true,
-  mint?: () => string
+  mint?: () => SessionId
 ): Promise<Exclude<TransferOutcome, { kind: "not-on-account" }>> {
   const total = plan.create.length + plan.finish.length
   let copied = 0
@@ -302,8 +302,8 @@ export async function runTransfer(
    * Written before a create goes out, so a lost answer is not forgotten; the
    * id it names, the same on every retry until home answers.
    */
-  const attempting = (localId: string): string | undefined => {
-    let named: string | undefined
+  const attempting = (localId: string): SessionId | undefined => {
+    let named: SessionId | undefined
     write(localId, (known) => {
       const pending = known.find((copy) => copy.remoteId === null)
       named = pending?.named ?? mint?.()
@@ -398,7 +398,7 @@ export async function copySessionsTo(
     remote,
     storage,
     () => true,
-    () => generateId("session")
+    newSessionId
   )
   if (outcome.kind === "stale" || outcome.kind === "busy") {
     throw new Error(`a phone copy cannot be ${outcome.kind}`)

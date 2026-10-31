@@ -9,6 +9,7 @@
  * lesson.
  */
 
+import { isRecord, jsonValues } from "@some-ui/core-utils"
 import { topikLevelOf } from "@topik/lib/topik/core/lesson-selection"
 import type { TopikMetadata } from "@topik/lib/topik/entity/topik-metadata"
 import type { ConversationBatch } from "@topik/lib/topik/entity/topik-types"
@@ -21,60 +22,6 @@ export type Intake =
       batches: Array<ConversationBatch>
     }
   | { ok: false; error: string }
-
-const FENCE = "```"
-const LANGUAGE = "json"
-
-/** Spaces, tabs and a CR are allowed between a fence's opening and its newline. */
-const isInlineSpace = (char: string | undefined): boolean =>
-  char === " " || char === "\t" || char === "\r"
-
-/**
- * The body of every ``` or ```json fence in `text`, in order.
- *
- * A scan, not a regular expression: this reads whatever was pasted, and a
- * `\s*\n` pattern backtracks polynomially on many whitespace-and-newline
- * pairs (CodeQL, #1564). Each fence is visited once: linear in `text`.
- */
-export function fencedBodies(text: string): Array<string> {
-  const bodies: Array<string> = []
-  let from = 0
-  for (;;) {
-    const open = text.indexOf(FENCE, from)
-    if (open === -1) return bodies
-    let at = open + FENCE.length
-    if (text.startsWith(LANGUAGE, at)) at += LANGUAGE.length
-    while (isInlineSpace(text[at])) at += 1
-    if (text[at] !== "\n") {
-      // Not an opening fence (```ts, or text after the backticks): look again
-      // from the next character, as the pattern did.
-      from = open + 1
-      continue
-    }
-    const close = text.indexOf(FENCE, at + 1)
-    if (close === -1) return bodies
-    bodies.push(text.slice(at + 1, close))
-    from = close + FENCE.length
-  }
-}
-
-/** Every JSON value in a pasted reply: its fenced blocks, or the whole text. */
-export function jsonValues(text: string): Array<unknown> {
-  const fenced = fencedBodies(text)
-  const candidates = fenced.length > 0 ? fenced : [text]
-  return candidates.flatMap((candidate) => {
-    try {
-      const value: unknown = JSON.parse(candidate)
-      return [value]
-    } catch {
-      return []
-    }
-  })
-}
-
-// eslint-disable-next-line one-owner/no-local-primitive -- not moved: the open U3 branch (#2111) edits this file (#2112)
-export const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value)
 
 const text = (value: unknown): string | undefined =>
   typeof value === "string" && value.trim() !== "" ? value.trim() : undefined

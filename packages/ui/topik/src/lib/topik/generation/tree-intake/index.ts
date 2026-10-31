@@ -4,6 +4,7 @@
  * described in `core/tree-audit`. Nothing is sent anywhere.
  */
 
+import { isRecord, jsonValues } from "@some-ui/core-utils"
 import type { Lesson } from "@some-ui/makjang"
 import { auditStory, scenesOf } from "@some-ui/makjang"
 import { titleOf } from "@topik/lib/topik/core/drama"
@@ -12,11 +13,7 @@ import type { TreeFinding } from "@topik/lib/topik/core/tree-audit"
 import { auditTeaching } from "@topik/lib/topik/core/tree-audit"
 import type { TopikMetadata } from "@topik/lib/topik/entity/topik-metadata"
 import type { Probe } from "@topik/lib/topik/entity/topik-types"
-import {
-  DIFFICULTY_BY_LEVEL,
-  isRecord,
-  jsonValues,
-} from "@topik/lib/topik/generation/intake"
+import { DIFFICULTY_BY_LEVEL } from "@topik/lib/topik/generation/intake"
 
 export type TreeIntake =
   /** The reply holds no scene tree at all. */
