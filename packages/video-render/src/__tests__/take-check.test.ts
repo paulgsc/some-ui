@@ -190,6 +190,9 @@ describe("checkTake", () => {
       ["3.5 stars", "three point five stars"],
       ["the 3rd pick", "the third pick"],
       ["the 21st pick", "the twenty-first pick"],
+      ["-5 degrees", "minus five degrees"],
+      ["2 million users", "two million users"],
+      ["2.5 million users", "two point five million users"],
     ]
     for (const [fact, take] of spoken) {
       expect(checkTake({ voice: "ad-lib", keep: [fact] }, heard(take))).toEqual(
@@ -203,5 +206,11 @@ describe("checkTake", () => {
     expect(
       factTerms("twenty twenty and one two then thirty seconds").numbers
     ).toEqual(["20", "20", "1", "2", "30"])
+    expect(
+      checkTake(
+        { voice: "ad-lib", keep: ["temperature -5 degrees"] },
+        heard("temperature 5 degrees")
+      )
+    ).toMatchObject({ kind: "check" })
   })
 })

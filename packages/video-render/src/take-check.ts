@@ -239,16 +239,21 @@ export function normalized(word: string): string {
     .replace(/^[.']+|[.']+$/g, "")
     .replace(/'s$/, "")
     .replace(/'/g, "")
-  if (/^\d+(\.\d+)?$/.test(bare)) return bare
+  if (NUMERAL.test(bare)) return bare
   const ordinal = /^(\d+)(?:st|nd|rd|th)$/.exec(bare)
   if (ordinal?.[1] !== undefined) return ordinal[1]
   return bare.length > 3 &&
     bare.endsWith("s") &&
     !bare.endsWith("ss") &&
+    !bare.endsWith("us") &&
     !STOP.has(bare)
     ? bare.slice(0, -1)
     : bare
 }
+
+/** Words that sign the number after them. */
+const NEGATIVE: ReadonlySet<string> = new Set(["minus", "negative"])
+const NUMERAL = /^\d+(\.\d+)?$/
 
 /** The cardinal an ordinal word names (`third` as `three`), or null. */
 function cardinalOf(word: string): string | null {
@@ -273,13 +278,22 @@ function spokenNumber(
   let group = 0
   let lastScale = Infinity
   let at = from
+  const negative = NEGATIVE.has(words[at] ?? "")
+  if (negative) at += 1
+  const leading = words[at] ?? ""
+  // A numeral a scale follows (`2 million`) is that scale's group.
+  if (NUMERAL.test(leading) && SCALE[words[at + 1] ?? ""] !== undefined) {
+    group = Number(leading)
+    at += 1
+  }
+  const start = at
   while (at < words.length) {
     const word = words[at] ?? ""
     const cardinal = cardinalOf(word)
     const name = cardinal ?? word
     const small = SMALL[name]
     const scale = SCALE[name]
-    const started = at > from
+    const started = at > from && !(negative && at === from + 1)
     if (small !== undefined) {
       const fits =
         small === 0
@@ -311,7 +325,13 @@ function spokenNumber(
     // Nothing follows an ordinal or a zero.
     if (cardinal !== null || small === 0) break
   }
-  if (at === from) return null
+  if (at === start && group === 0) {
+    // `minus 5`, or `-5` as split: the numeral, signed.
+    const numeral = words[at] ?? ""
+    return negative && NUMERAL.test(numeral)
+      ? { value: `-${numeral}`, length: at - from + 1 }
+      : null
+  }
   const whole = total + group
   const digits: Array<number> = []
   if (cardinalOf(words[at - 1] ?? "") === null && words[at] === "point") {
@@ -321,10 +341,20 @@ function spokenNumber(
       digits.push(digit)
     }
   }
+  const sign = negative ? "-" : ""
+  const after = SCALE[words[at + 1 + digits.length] ?? ""]
+  if (digits.length > 0 && after !== undefined && after >= 1000) {
+    // `two point five million`: the decimal is that scale's group.
+    const scaled = Number(`${whole}.${digits.join("")}`) * after
+    return {
+      value: `${sign}${String(scaled)}`,
+      length: at - from + 2 + digits.length,
+    }
+  }
   return digits.length === 0
-    ? { value: String(whole), length: at - from }
+    ? { value: `${sign}${String(whole)}`, length: at - from }
     : {
-        value: `${whole}.${digits.join("")}`,
+        value: `${sign}${String(whole)}.${digits.join("")}`,
         length: at - from + 1 + digits.length,
       }
 }
@@ -343,6 +373,8 @@ type Token = {
 function tokenized(raw: ReadonlyArray<string>): Array<Token> {
   const pieces = raw.flatMap((text, at) =>
     text
+      // A minus before a numeral is a sign, not a hyphen between words.
+      .replace(/^[-\u2212](?=\d)/, "minus-")
       .split(/[-\u2013\u2014]/)
       .map(normalized)
       .filter((word) => word !== "")
@@ -378,8 +410,8 @@ export function factTerms(fact: string): {
 } {
   const words = tokens(fact)
   return {
-    numbers: words.filter((word) => /^\d/.test(word)),
-    terms: words.filter((word) => !/^\d/.test(word) && !STOP.has(word)),
+    numbers: words.filter((word) => /^-?\d/.test(word)),
+    terms: words.filter((word) => !/^-?\d/.test(word) && !STOP.has(word)),
   }
 }
 
