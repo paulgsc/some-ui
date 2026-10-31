@@ -110,7 +110,7 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
     partly:
       "Some of the Jobs record is on home. New events stay on this phone until it is paired again.",
     footnote:
-      "This phone keeps its whole record. Voice notes go to home too, and still go to Drive as you share them.",
+      "This phone keeps its whole record. Its voice notes go to home too, and its decisions and scouts go to the morning run through home.",
     clash: null,
     unread: null,
   },
