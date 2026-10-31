@@ -136,6 +136,9 @@ export const JOBS_STATUS_FIXTURE = "jobs-status"
 /** The phone's code card (RR2), measured by `./code-card-fit.spec.ts`. */
 export const CODE_CARD_FIXTURE = "code-card"
 
+/** Rust Rounds' screens (RR4), walked by `./rust-rounds-fit.spec.ts`. */
+export const RUST_ROUNDS_FIXTURE = "rust-rounds"
+
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",

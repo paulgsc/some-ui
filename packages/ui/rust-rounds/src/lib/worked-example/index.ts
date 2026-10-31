@@ -12,9 +12,12 @@
  * | `&s[1..2]`         | panics: "end byte index 2 is not a char boundary"  |
  * | `&s[1..3]`         | prints `é`                                         |
  *
- * `./fixture` holds one session playing it, for tests.
+ * `INDEXING_01_RUNS` is what rustc 1.97.0 really printed for each card, as
+ * home records a run (RR3, paulgsc/server). The phone plays the example with
+ * them until home serves recorded runs of its own. `./fixture` holds one
+ * session playing it, for tests.
  */
-import type { Round, TutorNotes } from "@rust-rounds/lib/formats"
+import type { Round, RustcRun, TutorNotes } from "@rust-rounds/lib/formats"
 import { NOTES_SCHEMA, ROUND_SCHEMA } from "@rust-rounds/lib/formats"
 
 const PROGRAM = [
@@ -154,4 +157,46 @@ export const INDEXING_01_NOTES: TutorNotes = {
       smooth: [],
     },
   ],
+}
+
+const TOOLCHAIN = "1.97.0"
+
+/** rustc's warning for cards c and d, whose line 4 no longer reads `r`. */
+const UNUSED_R =
+  "warning: unused variable: `r`\n --> main.rs:3:9\n  |\n3 |     let r: usize = 3;\n  |         ^ help: if this is intentional, prefix it with an underscore: `_r`\n  |\n  = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default\n\nwarning: 1 warning emitted\n\n"
+
+const E0277: RustcRun = {
+  outcome: "compile-error",
+  toolchain: TOOLCHAIN,
+  code: "E0277",
+  stderr:
+    "error[E0277]: the type `str` cannot be indexed by `usize`\n --> main.rs:4:15\n  |\n4 |     let c = s[r];\n  |               ^ string indices are ranges of `usize`\n  |\n  = help: the trait `SliceIndex<str>` is not implemented for `usize`\nhelp: `usize` implements trait `SliceIndex<T>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/slice/index.rs:214:0\n  |\n  = note: `SliceIndex<[T]>`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/core/src/bstr/traits.rs:197:0\n  |\n  = note: `SliceIndex<ByteStr>`\n  = note: required for `str` to implement `Index<usize>`\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0277`.\n",
+  span: { lineStart: 4, columnStart: 15, lineEnd: 4, columnEnd: 16 },
+}
+
+const PANIC: RustcRun = {
+  outcome: "panics",
+  toolchain: TOOLCHAIN,
+  compileStderr: UNUSED_R,
+  stdout: "",
+  stderr:
+    "\nthread 'main' (15505) panicked at main.rs:4:15:\nend byte index 2 is not a char boundary; it is inside 'é' (bytes 1..3 of string)\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+}
+
+/** What rustc 1.97.0 did with each card's program, by card id. */
+export const INDEXING_01_RUNS: Readonly<Record<string, RustcRun>> = {
+  a: E0277,
+  b: {
+    outcome: "prints",
+    toolchain: TOOLCHAIN,
+    compileStderr: "",
+    stdout: "122\n",
+  },
+  c: PANIC,
+  d: {
+    outcome: "prints",
+    toolchain: TOOLCHAIN,
+    compileStderr: UNUSED_R,
+    stdout: "é\n",
+  },
 }

@@ -42,6 +42,7 @@ import { PANELS } from "@/lib/playable"
 import { CodeCardFixture } from "./code-card"
 import { IncidentFixture } from "./incident"
 import { JobsStatusFixture } from "./jobs-status"
+import { RustRoundsFixture } from "./rust-rounds"
 
 type QuizPanelProps = ComponentProps<typeof QuizPanel>
 type Question = QuizPanelProps["questions"][number]
@@ -556,6 +557,8 @@ export const PANEL_FIXTURES = {
   "jobs-status": JobsStatusFixture,
 
   "code-card": CodeCardFixture,
+
+  "rust-rounds": RustRoundsFixture,
 
   // Inline styles, not utilities: this directory is outside www's Tailwind
   // sources (style.context.ts), so the page adds nothing to the CSS it

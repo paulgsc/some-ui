@@ -1,6 +1,7 @@
 /**
- * The paste kit's copy: the WebView's clipboard, waited on through
- * `callForeign` (F1, `@some-ui/intent-kit`).
+ * Copying text on the phone: the WebView's clipboard, waited on through
+ * `callForeign` (F1, `@some-ui/intent-kit`). The Jobs paste kit and Rust
+ * Rounds' "Copy for a tutor" copy through it. Phone-only (`build.paths.ts`).
  */
 import type { ForeignPort, ForeignVerdict } from "@some-ui/intent-kit"
 import {

@@ -2,7 +2,7 @@
   "name": "@some-ui/rust-rounds",
   "private": true,
   "version": "0.0.1",
-  "description": "Rust Rounds: the round, log and tutor-notes formats any tutor writes to and the phone reads, the intake that takes a tutor's reply, and the copy that asks a tutor for the next round.",
+  "description": "Rust Rounds: the round, log and tutor-notes formats any tutor writes to and the phone reads, the intake that takes a tutor's reply, the copy that asks a tutor for the next round, and the phone session: open it, stay, leave.",
   "type": "module",
   "someUi": {
     "audience": "public"
@@ -18,13 +18,20 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
+  "peerDependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
+    "@some-ui/shared": "workspace:*",
+    "lucide-react": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "@some-ui/vite-config": "workspace:*"
+    "@some-ui/vite-config": "workspace:*",
+    "@types/react": "^19.0.4"
   },
   "repository": {
     "type": "git",

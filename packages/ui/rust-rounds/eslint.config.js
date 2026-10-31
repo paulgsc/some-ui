@@ -1,5 +1,6 @@
 import {
   compiledPackageStyleImportBanPattern,
+  ownerGuardConfig,
   parentRelativeImportPattern,
   routerImportBanPattern,
   themeProviderBanPattern,
@@ -20,6 +21,9 @@ const TESTS = ["**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}"]
 
 export default defineConfig([
   ...uiRecommended,
+  // The screens read values the runtime owns and move on (see the config's
+  // doc comment).
+  ...ownerGuardConfig,
 
   // Flat config replaces this rule's options wholesale, so each block
   // restates what the preset sets for the same files: theme-protocol's four

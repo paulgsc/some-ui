@@ -1,0 +1,370 @@
+/**
+ * The phone session over its ports (#2235): the worked example plays end to
+ * end with every step skippable, leaving at any card and coming back lands
+ * on it with nothing lost, and no state is an end.
+ */
+import type { CardEvent } from "@rust-rounds/lib/formats"
+import { RoundLogSchema } from "@rust-rounds/lib/formats"
+import type { PlayState } from "@rust-rounds/lib/play/machine"
+import { lineOf } from "@rust-rounds/lib/play/machine"
+import type { RustRoundsRuntime } from "@rust-rounds/lib/play/runtime"
+import { createRustRounds } from "@rust-rounds/lib/play/runtime"
+import { keptRounds, LOG_KEY } from "@rust-rounds/lib/play/store"
+import {
+  INDEXING_01,
+  INDEXING_01_NOTES,
+  INDEXING_01_RUNS,
+} from "@rust-rounds/lib/worked-example"
+import { inMemoryStorage } from "@some-ui/core-utils"
+import { describe, expect, it } from "vitest"
+
+import type { FakePorts } from "./fakes"
+import { fakeNotes, fakePorts } from "./fakes"
+
+function opened(ports: FakePorts): RustRoundsRuntime {
+  const runtime = createRustRounds(ports)
+  runtime.attach()
+  return runtime
+}
+
+const visitOf = (state: PlayState): string =>
+  state.place === null
+    ? "none"
+    : `${state.place.visit.card}:${state.place.visit.stage}`
+
+const storedLog = (storage: Storage): Array<CardEvent> =>
+  keptRounds(storage)
+    .open()
+    .log.sessions.flatMap((session) => session.cards)
+
+describe("the worked example", () => {
+  it("plays every card with Skip and Next alone, and never ends", () => {
+    const ports = fakePorts()
+    const runtime = opened(ports)
+    expect(runtime.getSnapshot().screen.kind).toBe("menu")
+
+    runtime.dispatch({ type: "continue" })
+    const seen: Array<string> = []
+    for (let n = 0; n < INDEXING_01.cards.length; n += 1) {
+      seen.push(visitOf(runtime.getSnapshot()))
+      runtime.dispatch({ type: "showRustc" })
+      expect(runtime.getSnapshot().place?.visit.stage).toBe("see")
+      runtime.dispatch({ type: "next" })
+    }
+    expect(seen).toEqual(["a:choose", "b:choose", "c:choose", "d:choose"])
+    // There is no last card: Next comes back round to the first.
+    expect(runtime.getSnapshot().screen.kind).toBe("card")
+    expect(visitOf(runtime.getSnapshot())).toBe("a:choose")
+
+    const events = storedLog(ports.storage)
+    expect(events.map((event) => event.card)).toEqual(["a", "b", "c", "d"])
+    expect(events.every((event) => !event.skipped)).toBe(true)
+    // Each card's recorded run, as rustc 1.97 printed it.
+    expect(events.map((event) => event.rustc)).toEqual(
+      ["a", "b", "c", "d"].map((card) => INDEXING_01_RUNS[card])
+    )
+    expect(
+      RoundLogSchema.safeParse(keptRounds(ports.storage).open().log).success
+    ).toBe(true)
+  })
+
+  it("logs a card left with Next before rustc's result as skipped", () => {
+    const ports = fakePorts()
+    const runtime = opened(ports)
+    runtime.dispatch({ type: "continue" })
+    runtime.dispatch({ type: "next" })
+    const [event] = storedLog(ports.storage)
+    expect(event).toMatchObject({
+      card: "a",
+      picked: null,
+      note: null,
+      skipped: true,
+      rustc: INDEXING_01_RUNS.a,
+    })
+  })
+
+  it("asks the picked choice's sentence, and keeps the note said to it", () => {
+    const ports = fakePorts()
+    const runtime = opened(ports)
+    runtime.dispatch({ type: "continue" })
+    const [first] = INDEXING_01.cards
+    if (first?.kind !== "read") throw new Error("the example opens on a read")
+    const choice = first.choices[1]!
+    runtime.dispatch({ type: "pick", pick: choice.pick })
+    expect(runtime.getSnapshot().place?.visit).toMatchObject({
+      stage: "speak",
+      picked: choice.pick,
+    })
+
+    runtime.dispatch({ type: "holdToSpeak" })
+    expect(ports.notes.started).toEqual([
+      lineOf({ round: INDEXING_01.id, card: "a" }),
+    ])
+    runtime.dispatch({ type: "letGo" })
+    ports.notes.land("note-1")
+    expect(runtime.getSnapshot().place?.visit.note).toBe("note-1")
+
+    // One note a card: holding again starts nothing.
+    runtime.dispatch({ type: "holdToSpeak" })
+    expect(ports.notes.started).toHaveLength(1)
+
+    runtime.dispatch({ type: "showRustc" })
+    runtime.dispatch({ type: "next" })
+    expect(storedLog(ports.storage)[0]).toMatchObject({
+      card: "a",
+      picked: choice.pick,
+      note: "note-1",
+      skipped: false,
+    })
+  })
+
+  it("logs a card left mid-take once its note lands", () => {
+    const ports = fakePorts()
+    const runtime = opened(ports)
+    runtime.dispatch({ type: "continue" })
+    runtime.dispatch({ type: "pick", pick: "Prints z" })
+    runtime.dispatch({ type: "holdToSpeak" })
+    runtime.dispatch({ type: "next" })
+    // Moved on at once; the card waits for its note.
+    expect(visitOf(runtime.getSnapshot())).toBe("b:choose")
+    expect(storedLog(ports.storage)).toEqual([])
+    ports.notes.land("note-late")
+    expect(storedLog(ports.storage)).toEqual([
+      expect.objectContaining({ card: "a", note: "note-late", skipped: true }),
+    ])
+    // The note is the card it was said on's, not the one now on screen.
+    expect(runtime.getSnapshot().place?.visit.note).toBeNull()
+  })
+
+  it("logs a card left mid-take as it stands when the take keeps nothing", () => {
+    const ports = fakePorts()
+    const runtime = opened(ports)
+    runtime.dispatch({ type: "continue" })
+    runtime.dispatch({ type: "pick", pick: "Prints z" })
+    runtime.dispatch({ type: "holdToSpeak" })
+    runtime.dispatch({ type: "next" })
+    ports.notes.land(null)
+    expect(storedLog(ports.storage)).toEqual([
+      expect.objectContaining({ card: "a", note: null }),
+    ])
+  })
+
+  it("logs where the tutor's guess differed from rustc's recorded run", () => {
+    const storage = inMemoryStorage()
+    // A round whose first card rustc refuses, guessed to panic.
+    const [first] = INDEXING_01.cards
+    if (first?.kind !== "read") throw new Error("the example opens on a read")
+    const round = {
+      ...INDEXING_01,
+      id: "indexing-02",
+      cards: [{ ...first, expect: { outcome: "panics" as const } }],
+    }
+    keptRounds(storage).hold({
+      rounds: [round],
+      runs: { "indexing-02/a": INDEXING_01_RUNS.a! },
+      notes: [],
+      notesMissing: false,
+    })
+    const runtime = opened(fakePorts(storage))
+    runtime.dispatch({ type: "continue" })
+    for (let n = 0; n < 4; n += 1) runtime.dispatch({ type: "next" })
+    expect(runtime.getSnapshot().place?.visit.round).toBe("indexing-02")
+    runtime.dispatch({ type: "showRustc" })
+    runtime.dispatch({ type: "next" })
+    const [session] = keptRounds(storage).open().log.sessions
+    expect(session?.tutorGuessedWrong).toEqual([
+      { round: "indexing-02", card: "a" },
+    ])
+  })
+
+  it("plays a pasted round's cards with no run on the phone yet", () => {
+    const ports = fakePorts()
+    const runtime = opened(ports)
+    const round = { ...INDEXING_01, id: "indexing-02" }
+    runtime.dispatch({ type: "tutor" })
+    runtime.dispatch({
+      type: "reply",
+      text: `\`\`\`json\n${JSON.stringify(round)}\n\`\`\``,
+    })
+    runtime.dispatch({ type: "takeReply" })
+    expect(runtime.getSnapshot().screen).toMatchObject({
+      answer: { kind: "taken", concept: "indexing", cards: 4 },
+    })
+    expect(keptRounds(ports.storage).open().held.notesMissing).toBe(true)
+    runtime.dispatch({ type: "continue" })
+    for (let n = 0; n < 4; n += 1) runtime.dispatch({ type: "next" })
+    expect(runtime.getSnapshot().place?.visit.round).toBe("indexing-02")
+    runtime.dispatch({ type: "showRustc" })
+    runtime.dispatch({ type: "next" })
+    const pasted = storedLog(ports.storage).find(
+      (event) => event.round === "indexing-02"
+    )
+    expect(pasted?.rustc).toBeNull()
+  })
+
+  it("pins a card once, from any stage", () => {
+    const ports = fakePorts()
+    const runtime = opened(ports)
+    runtime.dispatch({ type: "continue" })
+    runtime.dispatch({ type: "pin" })
+    runtime.dispatch({ type: "pin" })
+    expect(runtime.getSnapshot().place?.visit.pinned).toBe(true)
+    expect(keptRounds(ports.storage).open().log.sessions[0]?.pinned).toEqual([
+      { round: INDEXING_01.id, card: "a" },
+    ])
+  })
+})
+
+describe("leaving and coming back", () => {
+  it("reopens on the card left, as far into it as it was, with its note", () => {
+    const storage = inMemoryStorage()
+    const first = opened(fakePorts(storage))
+    first.dispatch({ type: "continue" })
+    first.dispatch({ type: "next" })
+    first.dispatch({ type: "pick", pick: "Prints 122" })
+    const ports = first.getSnapshot()
+    expect(visitOf(ports)).toBe("b:speak")
+
+    // The app is gone; a new opening over the same phone.
+    const again = opened(fakePorts(storage))
+    const state = again.getSnapshot()
+    expect(state.screen.kind).toBe("card")
+    expect(visitOf(state)).toBe("b:speak")
+    expect(state.place?.visit.picked).toBe("Prints 122")
+    // A new session in the log; the old one kept whole.
+    again.dispatch({ type: "next" })
+    const log = keptRounds(storage).open().log
+    expect(log.sessions.map((session) => session.cards.length)).toEqual([1, 1])
+  })
+
+  it("keeps a take under way when the page is left, and logs what waited", () => {
+    const ports = fakePorts()
+    const runtime = createRustRounds(ports)
+    const detach = runtime.attach()
+    runtime.dispatch({ type: "continue" })
+    runtime.dispatch({ type: "pick", pick: "Prints z" })
+    runtime.dispatch({ type: "holdToSpeak" })
+    runtime.dispatch({ type: "next" })
+    detach()
+    expect(ports.notes.getSnapshot().take.kind).toBe("keeping")
+    expect(storedLog(ports.storage)).toEqual([
+      expect.objectContaining({ card: "a" }),
+    ])
+  })
+
+  it("never writes over a log it could not read", () => {
+    const storage = inMemoryStorage()
+    storage.setItem(LOG_KEY, '{"schema":"something else"}')
+    const runtime = opened(fakePorts(storage))
+    runtime.dispatch({ type: "continue" })
+    runtime.dispatch({ type: "next" })
+    const copies = Array.from({ length: storage.length }, (_, index) =>
+      storage.key(index)
+    ).filter((key) => key?.startsWith(`${LOG_KEY}:unreadable:`))
+    expect(copies).toHaveLength(1)
+    expect(storage.getItem(copies[0]!)).toBe('{"schema":"something else"}')
+  })
+})
+
+describe("the tutor's page", () => {
+  it("copies the log with the worked example's notes, for any chat", async () => {
+    const ports = fakePorts()
+    const runtime = opened(ports)
+    runtime.dispatch({ type: "continue" })
+    runtime.dispatch({ type: "showRustc" })
+    runtime.dispatch({ type: "next" })
+    runtime.dispatch({ type: "tutor" })
+    runtime.dispatch({ type: "copyLog" })
+    expect(runtime.getSnapshot().copy.kind).toBe("copying")
+    await Promise.resolve()
+    expect(runtime.getSnapshot().copy.kind).toBe("copied")
+    const [copy] = ports.copied
+    expect(copy).toContain("# Rust Rounds: the log, for a tutor")
+    expect(copy).toContain(INDEXING_01_NOTES.concepts[0]!.open[0]!.edge)
+    expect(copy).toContain("#### indexing-01, card a (read)")
+  })
+
+  it("keeps the text on screen when the clipboard refuses", async () => {
+    const ports = {
+      ...fakePorts(),
+      copy: (): Promise<void> => Promise.reject(new Error("no")),
+    }
+    const runtime = opened(ports)
+    runtime.dispatch({ type: "tutor" })
+    runtime.dispatch({ type: "copyLog" })
+    await Promise.resolve()
+    await Promise.resolve()
+    const { copy } = runtime.getSnapshot()
+    expect(copy.kind).toBe("failed")
+    expect(copy.kind === "failed" && copy.text).toContain("Rust Rounds")
+  })
+
+  it("refuses a malformed reply with what to send back, and copies it", async () => {
+    const ports = fakePorts()
+    const runtime = opened(ports)
+    runtime.dispatch({ type: "tutor" })
+    runtime.dispatch({ type: "takeReply" })
+    expect(runtime.getSnapshot().screen).toMatchObject({
+      answer: { kind: "empty" },
+    })
+    runtime.dispatch({ type: "reply", text: '{"cards": []}' })
+    runtime.dispatch({ type: "takeReply" })
+    const { screen } = runtime.getSnapshot()
+    expect(screen).toMatchObject({ answer: { kind: "refused" } })
+    runtime.dispatch({ type: "copyFix" })
+    await Promise.resolve()
+    expect(ports.copied[0]).toContain("Rust Rounds checked your reply")
+  })
+
+  it("takes a round once, and keeps it and its notes across a reopen", () => {
+    const ports = fakePorts()
+    const runtime = opened(ports)
+    const round = { ...INDEXING_01, id: "indexing-02" }
+    const notes = { ...INDEXING_01_NOTES, round: "indexing-02" }
+    const reply = [round, notes]
+      .map((value) => `\`\`\`json\n${JSON.stringify(value)}\n\`\`\``)
+      .join("\n")
+    runtime.dispatch({ type: "tutor" })
+    runtime.dispatch({ type: "reply", text: reply })
+    runtime.dispatch({ type: "takeReply" })
+    runtime.dispatch({ type: "reply", text: reply })
+    runtime.dispatch({ type: "takeReply" })
+    expect(runtime.getSnapshot().screen).toMatchObject({
+      answer: { kind: "already-here" },
+    })
+    const held = keptRounds(ports.storage).open().held
+    expect(held.rounds.map((each) => each.id)).toEqual(["indexing-02"])
+    expect(held.notes).toEqual([notes])
+    expect(held.notesMissing).toBe(false)
+  })
+})
+
+describe("the microphone", () => {
+  it("lets a take refused by the microphone end with none, and the card moves on", () => {
+    const notes = fakeNotes()
+    notes.refuse("The microphone is off for this app.")
+    const ports = fakePorts(inMemoryStorage(), notes)
+    const runtime = opened(ports)
+    runtime.dispatch({ type: "continue" })
+    runtime.dispatch({ type: "pick", pick: "Prints z" })
+    runtime.dispatch({ type: "holdToSpeak" })
+    expect(notes.started).toEqual([])
+    expect(runtime.getSnapshot().taking).toBeNull()
+    runtime.dispatch({ type: "next" })
+    expect(visitOf(runtime.getSnapshot())).toBe("b:choose")
+    expect(storedLog(ports.storage)).toHaveLength(1)
+  })
+
+  it("starts no take with no room on the phone, and nothing waits on one", () => {
+    const notes = fakeNotes()
+    notes.fill()
+    const ports = fakePorts(inMemoryStorage(), notes)
+    const runtime = opened(ports)
+    runtime.dispatch({ type: "continue" })
+    runtime.dispatch({ type: "pick", pick: "Prints z" })
+    runtime.dispatch({ type: "holdToSpeak" })
+    expect(runtime.getSnapshot().taking).toBeNull()
+    runtime.dispatch({ type: "next" })
+    expect(storedLog(ports.storage)).toHaveLength(1)
+  })
+})

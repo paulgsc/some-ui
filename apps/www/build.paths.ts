@@ -108,6 +108,7 @@ const SPEECH_ENTRY = "packages/speech/dist/@some-ui/speech"
 const DEVICE_MODULES = [
   `${SPEECH_ENTRY}/native.es.js`,
   "apps/www/src/lib/agent-export/**",
+  "apps/www/src/lib/clipboard/**",
   "apps/www/src/lib/drive-filing/**",
   "apps/www/src/lib/game-bites/**",
   "apps/www/src/lib/home-link/**",
@@ -117,6 +118,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/leetype-files/**",
   "apps/www/src/lib/leetype-takes/**",
   "apps/www/src/lib/reflection-voice/**",
+  "apps/www/src/lib/rust-rounds/**",
   "apps/www/src/lib/scene-voice/**",
   "apps/www/src/lib/session-archive/**",
   "apps/www/src/lib/share-files/**",

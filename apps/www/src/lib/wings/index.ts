@@ -146,6 +146,8 @@ export const ROOMS: ReadonlyArray<Room> = [
     nav: "Sessions",
   },
   { id: "soundbites", wing: "practice", roots: ["/soundbites"], tab: "Bites" },
+  // Opened from Practice Home's card (#2235, the owner's D2), not a tab.
+  { id: "rust-rounds", wing: "practice", roots: ["/rust-rounds"] },
   { id: "profile", wing: "practice", roots: ["/profile"], nav: "Profile" },
   { id: "aph", wing: "self", roots: ["/aph"] },
   { id: "journal", wing: "studio", roots: ["/journal"], tab: "Journal" },
