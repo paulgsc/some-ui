@@ -1,8 +1,8 @@
 /**
- * Copying text: the WebView's clipboard, waited on through `callForeign`
- * (F1, `@some-ui/intent-kit`). Jobs' paste kit and the failure log copy
- * through it, by `components/copy-button`, and so does Rust Rounds' "Copy for
- * a tutor".
+ * Copying text: the WebView's clipboard (the browser's, on Pages), waited on
+ * through `callForeign` (F1, `@some-ui/intent-kit`). Jobs' paste kit and the
+ * failure log copy through it, by `components/copy-button`, and so does Rust
+ * Rounds' "Copy for a tutor", on the phone and in the viewer's sample.
  */
 import type { ForeignPort, ForeignVerdict } from "@some-ui/intent-kit"
 import {

@@ -9,7 +9,7 @@
 import { RustRounds } from "@rust-rounds/components/rust-rounds"
 import { testPorts } from "@rust-rounds/lib/play/__tests__/ports"
 import { keptRounds } from "@rust-rounds/lib/play/store"
-import { WORDS } from "@rust-rounds/lib/play/words"
+import { runHeading, WORDS } from "@rust-rounds/lib/play/words"
 import { INDEXING_01, INDEXING_01_RUNS } from "@rust-rounds/lib/worked-example"
 import { inMemoryStorage } from "@some-ui/core-utils"
 import { TAKE_WORDS } from "@some-ui/voice-capture"
@@ -205,6 +205,22 @@ describe("Rust Rounds on the phone", () => {
     expect(screen.queryByRole("button", { name: WORDS.skipToRustc })).toBeNull()
     press(WORDS.skip)
     expect(screen.getByText(WORDS.noRun)).toBeInTheDocument()
+  })
+
+  it("says what the speak step would do where there is no microphone, and carries on", () => {
+    const ports = { ...fakePorts(), notes: null }
+    render(<RustRounds ports={ports} />)
+    press(WORDS.start)
+    press("Not sure")
+    expect(screen.getByText(WORDS.noMicrophone)).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: WORDS.holdToSpeak })).toBeNull()
+    expectNothingDisabled()
+    press(WORDS.skipToRustc)
+    expect(
+      screen.getByText(runHeading(INDEXING_01_RUNS.a!))
+    ).toBeInTheDocument()
+    press(WORDS.next)
+    expect(screen.getByText(WORDS.cardTitle("indexing", 2))).toBeInTheDocument()
   })
 
   it("takes a tutor's reply, and says what to send back for one it can't", () => {
