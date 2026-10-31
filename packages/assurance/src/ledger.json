@@ -167,11 +167,11 @@
             "tighter": "lower"
           },
           "verdict": "broken",
-          "conclusion": "Each request has a 30-second limit but the pass has none: at today's constants a full pass may make up to 831 calls, about 6.9 hours of waiting in the worst case.",
+          "conclusion": "Each request has a 30-second limit but the pass has none: at today's constants a full pass may make up to 841 calls, about 7.0 hours of waiting in the worst case.",
           "evidence": [
             {
               "class": "derived",
-              "says": "Inbound 5 folders × (10 pages + 20 gets) = 150, outbound 20, the Jobs index 1 put, restore 10 folders × (1 + 50) = 510, archive 11 folders × 10 pages + 20 × (get + archive) = 150: 831 calls, × 30 s ≈ 24,930 s. Filing transcripts and LeetType logs makes no call, archiving walks 11 of the 12 folders (not index), reflection's only once one is due, and restore walks the 10 the routine can ask back (not index or reflection; paulgsc/some-ui#2178).",
+              "says": "Inbound 5 folders × (10 pages + 20 gets) = 150, outbound 20, the Jobs index 1 put, restore 10 folders × (1 + 50) = 510, archive 12 folders × 10 pages + 20 × (get + archive) = 160: 841 calls, × 30 s ≈ 25,230 s. Filing transcripts and LeetType logs makes no call, archiving walks 12 of the 13 folders (not index), reflection's and prompt's only once one is due, and restore walks the 10 the routine can ask back (not index, reflection or prompt; paulgsc/some-ui#2178, #2179). Drama prompts share outbound's 20.",
               "ref": "server:apps/servers/file_host/src/mailbox/pass.rs"
             }
           ],
@@ -197,7 +197,7 @@
           "evidence": [
             {
               "class": "derived",
-              "says": "96 passes a day × 5 folder listings (brief, scene, drama, run, leetype) = 480; with archiving, + 10 wanted listings + 10 archive listings = 25 a pass, 2,400 a day. Filing LeetType logs reads home's database only. Home's index (index) adds no listing: archiving walks every folder but it (ARCHIVES), the routine's backfill rides brief, which a pass lists anyway, and with no files home computes no index. Once it holds some, it puts one only when a file it counts arrives or an open pick lapses (the index's validThrough), never for the day turning alone, so a day with no arrival and no lapse is exactly 2,400; the day a pick lapses adds one put, which is work, not idle (paulgsc/server#509). Written reflections (reflection) add no request either: home puts each when the phone sends it, which is work, never lists its asks (the routine cannot ask one back, apps/mailbox ASKED), and lists its live files only once a reflection it filed has been in the mailbox for MAILBOX_ARCHIVE_DAYS and is not yet archived, which it reads from its own tables (mailbox_repo::reflection_due), so a pass with nothing to do is still 25 requests (paulgsc/some-ui#2178).",
+              "says": "96 passes a day × 5 folder listings (brief, scene, drama, run, leetype) = 480; with archiving, + 10 wanted listings + 10 archive listings = 25 a pass, 2,400 a day. Filing LeetType logs reads home's database only. Home's index (index) adds no listing: archiving walks every folder but it (ARCHIVES), the routine's backfill rides brief, which a pass lists anyway, and with no files home computes no index. Once it holds some, it puts one only when a file it counts arrives or an open pick lapses (the index's validThrough), never for the day turning alone, so a day with no arrival and no lapse is exactly 2,400; the day a pick lapses adds one put, which is work, not idle (paulgsc/server#509). Written reflections (reflection) add no request either: home puts each when the phone sends it, which is work, never lists its asks (the routine cannot ask one back, apps/mailbox ASKED), and lists its live files only once a reflection it filed has been in the mailbox for MAILBOX_ARCHIVE_DAYS and is not yet archived, which it reads from its own tables (mailbox_repo::filed_due), so a pass with nothing to do is still 25 requests (paulgsc/some-ui#2178). Drama prompts (prompt) are the same, by the same tables (mailbox_repo::filed_due, unanswered_archives) (paulgsc/some-ui#2179).",
               "ref": "server:apps/servers/file_host/src/mailbox/pass.rs"
             }
           ],
@@ -1511,7 +1511,7 @@
     {
       "store": "mailbox:item",
       "class": "cache",
-      "growth": "Per file the routine or home puts (folders brief, decisions, scout, scene, drama, run, opened, leetype, leetype-log, transcript, index, reflection), body <= MAX_BODY_BYTES = 1,048,576; a few KB a day per README (a written reflection is its typed line, its session and when, paulgsc/some-ui#2178); bytes leave once archived. Home's index (index) is one per routine, the latest only: putting a new one drops the one before in the same write, and it is never archived (owner, paulgsc/server#509).",
+      "growth": "Per file the routine or home puts (folders brief, decisions, scout, scene, drama, run, opened, leetype, leetype-log, transcript, index, reflection, prompt), body <= MAX_BODY_BYTES = 1,048,576; a few KB a day per README (a written reflection is its typed line, its session and when, paulgsc/some-ui#2178; a drama prompt about 40 KB per ask, its text at most 256 KiB, paulgsc/some-ui#2179); bytes leave once archived. Home's index (index) is one per routine, the latest only: putting a new one drops the one before in the same write, and it is never archived (owner, paulgsc/server#509).",
       "horizon": "a file's bytes are deleted once it has been live >= 30 days (ARCHIVE_MIN_AGE_DAYS) and home has archived them (home waits MAILBOX_ARCHIVE_DAYS, >= 30); metadata moves to `archived`. An index's row and bytes go when home puts a newer one of its routine, with no `archived` row",
       "family": "routine-to-home"
     },

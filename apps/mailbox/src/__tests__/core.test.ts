@@ -1134,14 +1134,26 @@ describe("home's indexes", () => {
   })
 })
 
+const WRITTEN = {
+  schema: "some-ui.reflection/1",
+  reflection: "3f9c2a1e-7b4d-4c1a-9e2f-0a1b2c3d4e5f",
+  session: "s-7f3a91c2",
+  at: "2026-10-25T03:10:00.000Z",
+  text: "The second scene felt slow; more level two, please.",
+}
+const STAMP = "drama-20261031T071503120Z"
+const ASKED_FOR = {
+  schema: "some-ui.drama-prompt/1",
+  prompt: STAMP,
+  text: [
+    "> **For an agent:** follow the prompt below.",
+    "",
+    '<!-- notes: {"drama-20261031T071503120Z.voice-1.webm":"3f9c2a1e-7b4d"} -->',
+    "Write one scene: the fiancée meets his mother.",
+  ].join("\n"),
+}
+
 describe("written reflections", () => {
-  const WRITTEN = {
-    schema: "some-ui.reflection/1",
-    reflection: "3f9c2a1e-7b4d-4c1a-9e2f-0a1b2c3d4e5f",
-    session: "s-7f3a91c2",
-    at: "2026-10-25T03:10:00.000Z",
-    text: "The second scene felt slow; more level two, please.",
-  }
   const REFLECTION = JSON.stringify(WRITTEN)
   const NAME = `reflection-${WRITTEN.reflection}.json`
   const asHome = (
@@ -1180,36 +1192,6 @@ describe("written reflections", () => {
     expect((await send(d, "PUT", `/v1/reflection/wanted/${NAME}`)).status).toBe(
       403
     )
-  })
-
-  it("refuses a reflection that carries audio or names a Drive file, and says why", async () => {
-    const d = deps()
-    const audio =
-      "a reflection carries no audio: a spoken one goes as its transcript"
-    const drive = "a reflection names no Drive file"
-    const refused: ReadonlyArray<readonly [string, string]> = [
-      [JSON.stringify({ ...WRITTEN, audio: "T2dnUwACAAAAAAAA" }), audio],
-      [
-        JSON.stringify({
-          ...WRITTEN,
-          text: "here data:audio/webm;base64,GkXfo59ChoEB",
-        }),
-        audio,
-      ],
-      [JSON.stringify({ ...WRITTEN, driveId: "1AbCdEf" }), drive],
-      [
-        JSON.stringify({
-          ...WRITTEN,
-          text: "see https://drive.google.com/file/d/1AbC/view",
-        }),
-        drive,
-      ],
-    ]
-    for (const [body, why] of refused) {
-      const answer = await asHome(d, NAME, body)
-      expect(answer.status).toBe(422)
-      expect(await json(answer)).toEqual({ error: why })
-    }
   })
 
   it("takes only a written reflection's own shape", async () => {
@@ -1254,6 +1236,118 @@ describe("written reflections", () => {
       expect((await asHome(d, name)).status).toBe(422)
     }
   })
+})
+
+describe("drama prompts", () => {
+  const PROMPT = JSON.stringify(ASKED_FOR)
+  const NAME = `${STAMP}.prompt.json`
+  const asHome = (
+    d: Deps,
+    name: string,
+    body: string = PROMPT
+  ): Promise<Response> => put(d, "prompt", name, { token: HOME, body })
+
+  it("home puts a prompt once, and the routine reads it; neither the other way", async () => {
+    const d = deps()
+    expect((await asHome(d, NAME)).status).toBe(201)
+
+    const path = `/v1/prompt/items/${NAME}`
+    const read = await send(d, "GET", path)
+    expect(read.status).toBe(200)
+    expect(await read.text()).toBe(PROMPT)
+    expect((await send(d, "GET", "/v1/prompt/items")).status).toBe(200)
+    expect((await send(d, "GET", path, { token: HOME })).status).toBe(403)
+    expect(
+      (await send(d, "GET", "/v1/prompt/items", { token: HOME })).status
+    ).toBe(403)
+    expect((await put(d, "prompt", NAME, { body: PROMPT })).status).toBe(403)
+  })
+
+  it("the routine neither lists archived prompts nor asks one back", async () => {
+    const d = deps()
+    expect((await asHome(d, NAME)).status).toBe(201)
+    expect((await send(d, "GET", "/v1/prompt/archived")).status).toBe(403)
+    expect((await send(d, "PUT", `/v1/prompt/wanted/${NAME}`)).status).toBe(403)
+  })
+
+  it("takes only a prompt's own shape", async () => {
+    const d = deps()
+    const { text: _text, ...untexted } = ASKED_FOR
+    const shapes: ReadonlyArray<readonly [unknown, string]> = [
+      [{ ...ASKED_FOR, notes: ["a"] }, "notes is not part of a prompt"],
+      [
+        { ...ASKED_FOR, at: "2026-10-31T07:15:03.120Z" },
+        "at is not part of a prompt",
+      ],
+      [untexted, "text must be the prompt"],
+      [{ ...ASKED_FOR, text: "  " }, "text must be the prompt"],
+      [
+        { ...ASKED_FOR, prompt: "drama-2026-10-31" },
+        "the name must carry the prompt's stamp",
+      ],
+      [
+        { ...ASKED_FOR, prompt: "drama-20261031T071503121Z" },
+        "the name must carry the prompt's stamp",
+      ],
+      [{ ...ASKED_FOR, prompt: 7 }, "prompt must be the prompt's stamp"],
+    ]
+    for (const [body, why] of shapes) {
+      const answer = await asHome(d, NAME, JSON.stringify(body))
+      expect(answer.status).toBe(422)
+      expect(await json(answer)).toEqual({ error: why })
+    }
+    for (const name of [
+      `${STAMP}.json`,
+      `${STAMP}.prompt.md`,
+      "drama-20261031T0715031Z.prompt.json",
+      `prompt-${STAMP}.json`,
+    ]) {
+      expect((await asHome(d, name)).status).toBe(422)
+    }
+  })
+})
+
+describe("a reflection or a prompt", () => {
+  it.each([
+    {
+      folder: "reflection" as const,
+      name: `reflection-${WRITTEN.reflection}.json`,
+      body: WRITTEN,
+      audio:
+        "a reflection carries no audio: a spoken one goes as its transcript",
+      drive: "a reflection names no Drive file",
+    },
+    {
+      folder: "prompt" as const,
+      name: `${STAMP}.prompt.json`,
+      body: ASKED_FOR,
+      audio:
+        "a prompt carries no audio: its scene notes go as their transcripts",
+      drive: "a prompt names no Drive file",
+    },
+  ])(
+    "refuses a $folder that carries audio or names a Drive file, and says why",
+    async ({ folder, name, body, audio, drive }) => {
+      const d = deps()
+      const refused: ReadonlyArray<readonly [unknown, string]> = [
+        [{ ...body, audio: "T2dnUwACAAAAAAAA" }, audio],
+        [{ ...body, text: "here data:audio/webm;base64,GkXfo59ChoEB" }, audio],
+        [{ ...body, driveId: "1AbCdEf" }, drive],
+        [
+          { ...body, text: "see https://drive.google.com/file/d/1AbC/view" },
+          drive,
+        ],
+      ]
+      for (const [refusedBody, why] of refused) {
+        const answer = await put(d, folder, name, {
+          token: HOME,
+          body: JSON.stringify(refusedBody),
+        })
+        expect(answer.status).toBe(422)
+        expect(await json(answer)).toEqual({ error: why })
+      }
+    }
+  )
 })
 
 describe("names", () => {
@@ -1646,6 +1740,7 @@ describe("archiving", () => {
       "leetype-log",
       "transcript",
       "reflection",
+      "prompt",
     ]) {
       expect(
         (await send(d, "GET", `/v1/${folder}/items`, { token: ARCHIVE })).status
