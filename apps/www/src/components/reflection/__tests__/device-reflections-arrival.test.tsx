@@ -31,7 +31,6 @@ vi.mock("@/lib/tenant/queries", () => ({
 vi.mock("@/lib/reflection-voice", () => ({
   reflectionAudio: (): object => ({ get: () => Promise.resolve(null) }),
   isSaving: (): boolean => false,
-  letGoReflections: (): boolean => true,
 }))
 vi.mock("@some-ui/topik", () => ({
   readAloudPracticeRecord: (): null => null,
@@ -58,18 +57,17 @@ async function shareOne(id = "now", sessionId = "s1"): Promise<void> {
 }
 
 describe("DeviceReflectionsArrival", () => {
-  it("asks after a share it did not start, and marks the session shared once it arrived, keeping the reflection (LG1)", async () => {
+  it("asks after a share it did not start, and marks the session shared once it arrived", async () => {
     render(<DeviceReflectionsArrival />)
     await shareOne()
 
     fireEvent.click(await screen.findByRole("button", { name: "They arrived" }))
 
     expect(sharedSessions()).toEqual(["s1"])
-    expect(reflections.getSnapshot().kept.map((r) => r.id)).toEqual(["now"])
     expect(arrivals.getSnapshot()).toEqual([])
   })
 
-  it("keeps the reflection when the person says it did not arrive", async () => {
+  it("marks nothing shared when the person says it did not arrive", async () => {
     render(<DeviceReflectionsArrival />)
     await shareOne("later", "s2")
 
@@ -78,7 +76,6 @@ describe("DeviceReflectionsArrival", () => {
     )
 
     expect(sharedSessions()).not.toContain("s2")
-    expect(reflections.getSnapshot().kept.map((r) => r.id)).toEqual(["later"])
     expect(arrivals.getSnapshot()).toEqual([])
   })
 
@@ -95,7 +92,6 @@ describe("DeviceReflectionsArrival", () => {
     fireEvent.click(screen.getByRole("button", { name: "They arrived" }))
 
     expect(sharedSessions()).toEqual(["s1"])
-    expect(reflections.getSnapshot().kept).toHaveLength(2)
     expect(arrivals.getSnapshot()).toEqual([])
   })
 })

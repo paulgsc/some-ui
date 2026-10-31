@@ -202,13 +202,9 @@ describe("what each voice note is told home as", () => {
     expect(jobsNotes(after).map((n) => n.id)).toEqual(["v1", "v2"])
 
     const none = (): boolean => false
-    expect(unsendable(after, NO_PASS, none)).toEqual({ gone: 0 })
-    // Copied before its audio went: on its way home, so nothing to say.
-    expect(unsendable(after, NO_PASS, (id) => id === "v1")).toEqual({
-      gone: 0,
-    })
+    expect(unsendable(NO_PASS, none)).toEqual({ gone: 0 })
     const pass = { ...NO_PASS, gone: new Set(["r1", "r2"]) }
-    expect(unsendable(state(log), pass, (id) => id === "r2")).toEqual({
+    expect(unsendable(pass, (id) => id === "r2")).toEqual({
       gone: 1,
     })
   })

@@ -40,7 +40,7 @@ import type {
   ScoutDraft,
   ShareKind,
 } from "./model"
-import { EMPTY, hasArrived, readOn, releasedVoice, step } from "./model"
+import { EMPTY, hasArrived, readOn, step } from "./model"
 import { openStored, writeStored } from "./stored"
 
 /** Reading a picked file: nothing in hand, reading, or not a digest (and why). */
@@ -158,14 +158,11 @@ export type JobsRuntime = {
   share: (kind: ShareKind) => Promise<Shared>
   /**
    * The person said share `shareId`'s files arrived: what it carried counts
-   * as sent. Its audio stays (LG1).
+   * as sent.
    */
   arrived: (shareId: string) => void
-  /**
-   * Lets the audio of each voice note home holds (`held`) leave the phone:
-   * the one word that lets a note go (LG1).
-   */
-  letGoHeld: (held: ReadonlySet<string>) => void
+  /** Lets each voice note in `homeHolds` leave the phone (LG1). */
+  letGo: (homeHolds: ReadonlySet<string>) => void
   /** Audio no note lists (the app closed mid-save). Best effort. */
   sweep: () => void
   /**
@@ -368,26 +365,25 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
 
   /**
    * The share sheet's file: what an exchange would file, and what a run
-   * missed besides (`deliveryView`). A note already let go stays named in
-   * it, but its audio is gone, so none goes beside it.
+   * missed besides (`deliveryView`), each note's audio still on the phone
+   * beside it.
    */
-  const sheetFile = (kind: ShareKind, at: Date): Outgoing => {
-    const file = fileFor(kind, at, deliveryView(state, kind, at))
-    if (!isFile(file)) return file
-    const released = releasedVoice(state)
-    return { ...file, voice: file.voice.filter((v) => !released.has(v.id)) }
-  }
+  const sheetFile = (kind: ShareKind, at: Date): Outgoing =>
+    fileFor(kind, at, deliveryView(state, kind, at))
 
+  /**
+   * The audio of `file`'s notes the phone still has: a note whose audio is
+   * gone stays named in the file, and none goes beside it.
+   */
   const audioOf = async (
     file: OutgoingFile
-  ): Promise<ReadonlyArray<SharedFile>> => {
+  ): Promise<ReadonlyArray<SharedFile & { id: string }>> => {
     const blobs = await Promise.all(
       file.voice.map(({ id }) => ports.audio.get(id))
     )
-    return file.voice.map(({ id, name }, i) => {
+    return file.voice.flatMap(({ id, name }, i) => {
       const blob = blobs[i]
-      if (!blob) throw new Error(`no audio for voice note ${id}`)
-      return { name, data: blob }
+      return blob ? [{ id, name, data: blob }] : []
     })
   }
 
@@ -546,7 +542,7 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
         const { dir, title } = SHARES[kind]
         const result = await ports.share(dir, title, [
           { name: file.name, data: file.json },
-          ...audio,
+          ...audio.map(({ name, data }) => ({ name, data })),
         ])
         if (result !== "shared") return { outcome: "cancelled" }
         const shareStamp = stamp()
@@ -558,7 +554,7 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
             day: ports.dayOf(at),
             file: file.name,
             through: file.through,
-            voice: file.voice.map(({ id }) => id),
+            voice: audio.map(({ id }) => id),
           },
           stamp: shareStamp,
           since: file.since,
@@ -572,21 +568,20 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
     arrived(shareId): void {
       const share = state.log.find((e) => e.id === shareId)
       if (share?.type !== "shared" || hasArrived(state, shareId)) return
-      if (
-        !commit({
-          type: "record",
-          event: { type: "arrived", shareId },
-          stamp: stamp(),
-        })
-      ) {
+      commit({
+        type: "record",
+        event: { type: "arrived", shareId },
+        stamp: stamp(),
+      })
+    },
+    letGo(homeHolds): void {
+      const ids = state.voice.map((n) => n.id).filter((id) => homeHolds.has(id))
+      // An entry the phone couldn't drop keeps its audio, so a share still
+      // finds what the file names.
+      if (ids.length === 0 || !commit({ type: "voice-held", ids }, true)) {
         return
       }
-      // The audio stays: only home's word lets a note go (`letGoHeld`, LG1).
-    },
-    letGoHeld(held): void {
-      const ids = state.voice.map((n) => n.id).filter((id) => held.has(id))
-      if (ids.length === 0) return
-      // Ignored: `letGoHeldBites` asks again at home's next word.
+      // Ignored: audio no note lists is cleared by `sweep`.
       ports.audio.remove(ids).catch(() => undefined)
     },
     sweep(): void {

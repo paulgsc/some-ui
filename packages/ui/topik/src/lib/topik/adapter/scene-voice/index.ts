@@ -31,9 +31,6 @@ export type SceneVoice = {
   leave: () => void
   /** Lets these notes go, with their audio: discarded by the person. */
   remove: (ids: ReadonlyArray<string>) => void
-  /**
-   * Lets each note home holds (`held`) go, with its audio: home's word is
-   * the one that lets a note go (LG1, HF1 #2176). Says how many went.
-   */
-  letGoHeld: (held: ReadonlySet<string>) => number
+  /** Lets each note in `homeHolds` go, with its audio (LG1). */
+  letGo: (homeHolds: ReadonlySet<string>) => void
 }

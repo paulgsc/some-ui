@@ -4,7 +4,7 @@
  *
  * Android says "shared" once the person picks an app, even if they back out
  * of it, so a share counts only once the person says it arrived
- * (`DeviceReflectionsArrival`). The reflections stay on the phone (LG1).
+ * (`DeviceReflectionsArrival`).
  */
 import type { JSX, ReactNode } from "react"
 import type { ButtonProps } from "@some-ui/shared"

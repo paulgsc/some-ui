@@ -242,6 +242,9 @@ describe("takes", () => {
     expect(refused.refused).toBe("unconfirmed")
     expect(refused.effects).toEqual([])
     const inDrive = run(state, { type: "keptBy", take: "t1", keeper: "drive" })
+    expect(
+      step(inDrive, { type: "keptBy", take: "t1", keeper: "drive" }).refused
+    ).toBe("duplicate")
     expect(step(inDrive, { type: "letGo", take: "t1" }).refused).toBe(
       "unconfirmed"
     )

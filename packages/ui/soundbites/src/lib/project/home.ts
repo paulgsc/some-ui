@@ -3,12 +3,11 @@
  * still on the phone and that home doesn't hold yet goes as a voice note of
  * kind `studio`, its `ref` the take, `<project>:<shot>:<take>` (paulgsc/server
  * `voice_repo`'s `Of::Studio`). Once home says it holds one, the take is
- * marked kept by home and its audio leaves the phone, in one write: the
- * store lets audio go only once home holds a copy (`letGoRefusal`, LG1).
+ * marked kept by home and its audio leaves the phone, in one write.
  * Sending is the app's home link's (www `lib/home-link/voice-copy`).
  */
 import type { Project } from "./model"
-import { step } from "./model"
+import { homeHolds, step } from "./model"
 import type { ProjectStore } from "./store"
 
 /** A take as home is told it. */
@@ -30,7 +29,7 @@ export function notesForHome(
   return projects
     .flatMap((project) =>
       project.takes
-        .filter((take) => take.onPhone && !take.keptBy.includes("home"))
+        .filter((take) => take.onPhone && !homeHolds(take))
         .map((take) => ({
           id: take.id,
           ref: `${project.id}:${take.shot}:${take.id}`,

@@ -26,21 +26,24 @@
  * owner's frame, `docs/learner-data-authority.md`, "The owner's deployment").
  *
  * - _Claim:_ no share-sheet confirmation ("Did they arrive?", "They're in
- *   Drive") removes an item from the phone; an item's audio or record leaves
- *   only once home has read it back (`held`, `letGoHeldBites`), and a Drive
- *   copy is only ever a copy.
+ *   Drive") of a share the Family names removes an item from the phone; an
+ *   item's audio or record leaves only once home has read it back (`held`,
+ *   `letGoHeld`), and a Drive copy is only ever a copy. The finished
+ *   sessions' archive (`lib/session-archive`) is outside it until HF2
+ *   (#2177) moves it.
  * - _Family:_ every share kind (a Jobs decisions or scouts file with its
  *   voice notes; reflections; the study-context export with its soundbites,
  *   grammar-lens entries and takes, and LeetType answers and takes; a drama
  *   prompt with its scene notes; Studio takes) × every home state (held;
  *   waiting; unpaired; off the LAN, which the phone sees alike as not held).
  * - _Proof:_ `lib/jobs/__tests__/runtime.test.ts` ("LG1": a share arriving
- *   keeps the audio, home's word lets it go), `lib/agent-export/index.test.ts`
- *   ("LG1": a hand-off marks the session shared and keeps every reflection;
- *   the export lets nothing go), `components/reflection/__tests__/device-reflections-arrival.test.tsx`
- *   ("LG1"), topik's `generate-lesson/index.test.tsx` ("LG1": nothing asks
+ *   keeps the audio, home's word lets it go, a note home holds is shared by
+ *   name alone, and a file a run missed goes again with the audio still on
+ *   the phone), `lib/agent-export/index.test.ts` ("LG1": a hand-off marks
+ *   the session shared and keeps every reflection; the export lets nothing
+ *   go), topik's `generate-lesson/index.test.tsx` ("LG1": nothing asks
  *   after a drama share, and no note is removed), `lib/scene-voice`'s
- *   `runtime.test.ts` ("LG1": `letGoHeld` removes home's notes and no other),
+ *   `runtime.test.ts` ("LG1": `letGo` removes home's notes and no other),
  *   and soundbites' `project/__tests__/model.test.ts` and
  *   `studio/__tests__/studio.test.ts` ("LG1": a take kept by Drive stays on
  *   the phone; only `home` lets it go).
@@ -116,9 +119,9 @@ function jobsRef(event: JobEvent): string | null {
 
 /**
  * Each voice note the Jobs record names, as home is told it, by the first
- * event that names it; a note whose entry is gone (let go) is left out. One
- * whose audio is gone (let go before LG1, once its share arrived in Drive)
- * is offered and found gone, and named as such (LA14).
+ * event that names it; a note whose entry is gone (let go, or home holds
+ * it) is left out. One whose entry stays but whose audio is gone is offered,
+ * found gone and named as such (LA14).
  */
 export function jobsNotes(state: JobsState): Array<VoiceOut> {
   const types = new Map(state.voice.map((note) => [note.id, note.mimeType]))
@@ -137,7 +140,6 @@ export function jobsNotes(state: JobsState): Array<VoiceOut> {
 
 /** What this phone can't send home, from the last copy pass. */
 export function unsendable(
-  _jobs: JobsState,
   pass: CopyPass,
   settled: (id: string) => boolean
 ): Unsendable {
@@ -337,21 +339,25 @@ function copySceneNotes({ stamp, at, notes }: SharedPrompt): void {
   }
 }
 
+/** A store whose notes leave this phone once home holds them. */
+type LetsGo = { letGo: (homeHolds: ReadonlySet<string>) => unknown }
+
 /**
- * Lets each game bite (`lib/game-bites`), Studio take, Jobs voice note and
- * scene note home now holds leave this phone: home's read-back is the one
- * word that lets a note go (LG1, HF1 #2176).
+ * Lets each game bite (`lib/game-bites`), Jobs voice note, scene note and
+ * Studio take home now holds leave this phone (LG1).
  */
-function letGoHeldBites(): void {
+function letGoHeld(): void {
   const { held } = phoneVoiceHome().getSnapshot()
   // Home holds nothing on a phone that never sent: build no store for it.
   if (held.length === 0) return
   const holds = new Set(held)
-  void phoneGameBites().letGo(holds)
-  const studio = studioKeeping()
-  studio?.letGoHeldTakes(holds).catch(reported)
-  phoneJobs().letGoHeld(holds)
-  phoneSceneVoice().letGoHeld(holds)
+  const stores: ReadonlyArray<LetsGo> = [
+    phoneGameBites(),
+    phoneJobs(),
+    phoneSceneVoice(),
+  ]
+  for (const store of stores) void store.letGo(holds)
+  studioKeeping()?.letGoHeldTakes(holds).catch(reported)
 }
 
 /**
@@ -383,14 +389,14 @@ export function watchVoiceNotes(): () => void {
     copySoon()
   }
   changed()
-  letGoHeldBites()
+  letGoHeld()
   const stops = [
-    phoneVoiceHome().subscribe(letGoHeldBites),
+    phoneVoiceHome().subscribe(letGoHeld),
     onPromptShared(copySceneNotes),
     homeLink().subscribe(changed),
     onStudioKept(() => {
       changed()
-      letGoHeldBites()
+      letGoHeld()
     }),
   ]
   return (): void => {

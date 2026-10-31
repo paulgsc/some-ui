@@ -8,8 +8,7 @@
  * Each carries its session's ID. They are for the next session, not an
  * archive, so the phone keeps at most `REFLECTION_LIMIT` of them across every
  * session, nothing is dropped to make room, and one older than
- * `STALE_AFTER_MS` reads as stale. Room comes back only by letting some go:
- * a share is a copy (LG1).
+ * `STALE_AFTER_MS` reads as stale. Room comes back only by letting some go.
  */
 
 export const QUESTIONS = [

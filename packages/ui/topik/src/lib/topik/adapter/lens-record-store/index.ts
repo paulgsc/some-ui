@@ -2,8 +2,7 @@
  * The grammar-lens record on the device (adaptive-learning canon Rem. 4.18,
  * Rem. 7.5): entries from `lens/record`, at most a thousand. Nothing here
  * lets an entry go unseen: no age, no eviction of the oldest, and an export
- * is a copy that lets none go (LG1, HF1 #2176; home keeps the record from
- * HF5, #2180). At the bound a new entry is not kept,
+ * is a copy that lets none go (LG1). At the bound a new entry is not kept,
  * and `full` says so, for the session to tell the learner. An entry written
  * again for the same item (its session, line and showing) replaces it: that
  * is the same item seen further, not more history. Kept only where the host

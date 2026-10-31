@@ -261,8 +261,8 @@ export const JourneyCard = ({
 /**
  * What a card that waits on me, or stopped, asks: share `kind`'s file to
  * Drive (and its voice notes, and what a run missed), then say whether it
- * arrived; only then does the share count. Its audio stays until home holds
- * it (LG1). Nothing for a file on its way or read.
+ * arrived; only then does the share count. Nothing for a file on its way or
+ * read.
  */
 export const ShareAction = ({
   kind,

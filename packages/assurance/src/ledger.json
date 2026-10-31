@@ -1639,7 +1639,7 @@
       "store": "phone:job-voice",
       "class": "record",
       "growth": "bounded: JOB_VOICE_MAX_BYTES = 40 x 240,000 = 9,600,000 B of Jobs voice notes.",
-      "horizon": "a note leaves once the share it went out in has arrived (Drive)",
+      "horizon": "a note's audio leaves once home holds it (letGo, LG1); a Drive share is a copy",
       "family": "what-is-kept"
     },
     {
@@ -1659,7 +1659,7 @@
       "store": "phone:journal",
       "class": "record",
       "growth": "Studio's projects (every revision, note, take and sitting, append-only), and one row per sitting saying how it went (`friction`); the Journal tab's one episode, if a build before Studio kept one, is moved into a project the first time Studio opens, and every row of the Journal tab's stores it doesn't move is let go, unless the episode reads but can't become a project, when it all stays (owner, 2026-10-30, #2251). JOURNAL_TAKES_MAX_BYTES = 2 x 360 s x 4,000 B/s = 2,880,000 B covers the projects' takes' audio and what the Journal tab's stores still hold, together; a few notices a closed screen couldn't say wait in `notices` until the next Start says them.",
-      "horizon": "a project is never let go, and a take's audio leaves the phone only once home or Drive holds a copy",
+      "horizon": "a project is never let go, and a take's audio leaves the phone only once home holds a copy (LG1); Drive's is a copy",
       "family": "what-is-kept"
     },
     {
@@ -1699,21 +1699,21 @@
       "store": "phone:leetype-takes",
       "class": "record",
       "growth": "bounded: 40 spoken answers, each <= 60 s: 40 x 60 x 4,000 = 9,600,000 B; past 40 refused.",
-      "horizon": "takes and notes leave with a confirmed study-context export (letGo); never sent home (#1934)",
+      "horizon": "none: a study-context export is a copy (LG1), and nothing sends them home yet (#1934); only a take whose audio never landed is swept",
       "family": "what-is-kept"
     },
     {
       "store": "phone:lens-record",
       "class": "record",
       "growth": "Per grammar-lens item seen (session, line, showing): one entry each, rewritten in place for the same item; LENS_RECORD_MAX = 1,000 entries (about 700 KB), a new one past it refused, never evicted (`topik:lens-record`).",
-      "horizon": "entries leave once the person says a study-context export carrying them arrived (letGoLensRecord), and only if unchanged since that copy",
+      "horizon": "none: a study-context export is a copy (LG1), and nothing sends the record home yet (#2180)",
       "family": "what-is-kept"
     },
     {
       "store": "phone:lens-takes",
       "class": "record",
       "growth": "bounded: LENS_TAKES_MAX = 40 takes, each <= 30 s: 40 x 30 x 4,000 = 4,800,000 B; past 40 refused, never evicted.",
-      "horizon": "takes leave once the person says a study-context export carrying them arrived (letGo)",
+      "horizon": "none: a study-context export is a copy (LG1), and nothing sends them home yet (#2180); only a take whose audio never landed is swept",
       "family": "what-is-kept"
     },
     {
@@ -1794,7 +1794,7 @@
       "store": "phone:reflection-audio",
       "class": "record",
       "growth": "bounded: REFLECTION_LIMIT = 20 reflections across all sessions; REFLECTION_AUDIO_MAX_BYTES = 20 x 240,000 = 4,800,000 B; a 21st is refused (\"nothing is dropped to make room\").",
-      "horizon": "none automatic; room comes back by sharing or letting go",
+      "horizon": "none automatic: a share is a copy (LG1), so room comes back only by letting some go",
       "family": "what-is-kept"
     },
     {
@@ -1852,7 +1852,7 @@
       "store": "phone:scene-voice",
       "class": "record",
       "growth": "bounded: SCENE_NOTES_MAX = 5 notes per draft, SCENE_AUDIO_MAX_BYTES = 5 x 240,000 = 1,200,000 B.",
-      "horizon": "notes leave when the draft is shared and let go; sweepSceneVoice drops audio no note names and notes whose audio never landed",
+      "horizon": "notes leave when the person lets the draft go, or once home holds them (letGo, LG1); a shared prompt is a copy; sweepSceneVoice drops audio no note names and notes whose audio never landed",
       "family": "what-is-kept"
     },
     {

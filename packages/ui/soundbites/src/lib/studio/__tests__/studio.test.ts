@@ -352,10 +352,6 @@ describe("takes that arrived in Drive", () => {
       onPhone: true,
     })
     expect(memory.audio.has(`${id}:t1`)).toBe(true)
-    // Saying so again marks nothing new.
-    runtime.dispatch({ type: "takesArrived", project: id, takes: ["t1"] })
-    await until(runtime, (s) => settledWrites(s))
-    expect(projectIn(runtime).takes[0]?.keptBy).toEqual(["drive"])
   })
 })
 

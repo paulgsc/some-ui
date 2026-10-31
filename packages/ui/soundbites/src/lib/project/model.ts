@@ -15,9 +15,8 @@
  * - **Every take is kept.** A new take is chosen for its shot; the take it
  *   replaces stays, unchosen, and can be chosen again.
  * - **Nothing leaves the phone unconfirmed.** A take's audio is let go only
- *   once home has said it holds a copy (`letGoRefusal`; Drive's copy lets
- *   nothing go, LG1), and its
- *   record stays either way. The save that marks it off the phone is the one
+ *   once home has said it holds a copy (`letGoRefusal`), and its record
+ *   stays either way. The save that marks it off the phone is the one
  *   that lets its audio go, checked again in the store (`isAppendOnly`).
  * - **Closing a sitting mid-take keeps the take.** The take is finished
  *   first, and the sitting closes once it is kept or has failed.
@@ -57,10 +56,7 @@ export type Note = Readonly<CutList["notes"][number]>
 
 type NoteStatus = Note["status"]
 
-/**
- * Who has said it holds a copy of a take's audio. Only home's word lets the
- * audio leave the phone (LG1): Drive's is a copy for the session.
- */
+/** Who has said it holds a copy of a take's audio. */
 type Keeper = "home" | "drive"
 
 export type ProjectTake = {
@@ -317,11 +313,16 @@ export function cutListAt(project: Project, rev: number): CutList | null {
   }
 }
 
-/** Why the audio of take `id` can't leave the phone, or null if it can. */
+/** Whether home has said it holds a copy of `take`'s audio. */
+export function homeHolds(take: ProjectTake): boolean {
+  return take.keptBy.includes("home")
+}
+
+/** Why the audio of take `id` can't leave the phone, or null if it can (LG1). */
 function letGoRefusal(project: Project, id: string): Refusal | null {
   const take = project.takes.find((each) => each.id === id)
   if (take === undefined) return "noTake"
-  if (!take.keptBy.includes("home")) return "unconfirmed"
+  if (!homeHolds(take)) return "unconfirmed"
   return null
 }
 
@@ -345,7 +346,7 @@ export function reaches(from: NoteStatus, to: NoteStatus): boolean {
  * Whether `after` only adds to `before`: every revision kept as it was, every
  * note, take and sitting still there as written. Only a note's status moves
  * on (keeping a reason once given), a take gains keepers, an open sitting
- * closes, and audio leaves the phone once someone else holds it.
+ * closes, and audio leaves the phone once home holds it (LG1).
  */
 export function isAppendOnly(before: Project, after: Project): boolean {
   if (before.id !== after.id) return false
@@ -376,7 +377,7 @@ export function isAppendOnly(before: Project, after: Project): boolean {
       ) &&
       take.keptBy.every((keeper) => now.keptBy.includes(keeper)) &&
       (take.onPhone || !now.onPhone) &&
-      (now.onPhone || !take.onPhone || now.keptBy.includes("home"))
+      (now.onPhone || !take.onPhone || homeHolds(now))
     )
   })
   const sittings = before.sittings.every((sitting, index) => {

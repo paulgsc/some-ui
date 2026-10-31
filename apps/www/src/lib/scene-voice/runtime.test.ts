@@ -100,10 +100,9 @@ describe("createSceneVoice", () => {
     const voice = createSceneVoice(p)
     await talk(voice)
     await talk(voice)
-    expect(voice.letGoHeld(new Set(["n2", "never-heard"]))).toBe(1)
+    voice.letGo(new Set(["n2", "never-heard"]))
     expect(p.audio.remove).toHaveBeenCalledWith(["n2"])
     expect(voice.getSnapshot().notes.map(({ id }) => id)).toEqual(["n1"])
-    expect(voice.letGoHeld(new Set(["n2"]))).toBe(0)
   })
 
   it("says the draft is full once the last note it holds is kept", async () => {

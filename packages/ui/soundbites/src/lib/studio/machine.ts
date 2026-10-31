@@ -625,9 +625,7 @@ function applied(project: Project | null, pending: Pending): Project | null {
     }
     case "arrived": {
       if (project === null) return null
-      // The person said they reached Drive (`STUDIO_WORDS.share`): a copy
-      // for the session. The audio stays until home holds it (LG1,
-      // `project/home.ts`).
+      // The person said they reached Drive (`STUDIO_WORDS.share`).
       const after = pending.takes.reduce<Project>(
         (at, take) =>
           model(at, { type: "keptBy", take, keeper: "drive" }) ?? at,
@@ -912,7 +910,6 @@ function enqueue(state: StudioState, pending: Pending): Step {
   return pump({ ...state, queue: [...state.queue, pending] })
 }
 
-/** How many of `takes` went from on the phone to off it in `written`. */
 /** How many of `takes` this write newly marked as in Drive. */
 function arrivedCount(written: Written, takes: ReadonlyArray<string>): number {
   const inDrive = (project: Project | null, id: string): boolean =>

@@ -81,8 +81,8 @@ function pickVoice(
 
 /**
  * Whether the phone holds `id`'s audio. A log home restored names notes whose
- * audio stayed on the phone it came from: the file still names them, but none
- * goes out beside it.
+ * audio stayed on the phone it came from, and a note home holds has left this
+ * one (`voice-held`): the file still names them, but none goes out beside it.
  */
 function holds(state: JobsState): (id: string) => boolean {
   const kept = new Set(state.voice.map((n) => n.id))
@@ -131,8 +131,7 @@ export function decisionsFile(
         )
         .at(-1)
       const debrief = debriefOf(state, digest.day, pick.id)
-      // Whatever the pick's decision now: a note goes out once, so its
-      // audio is never released unsent (`releasedVoice`).
+      // Whatever the pick's decision now: a note goes out once.
       const fit = fitNotesOf(state, digest.day, pick.id)
       const names = pickVoice(state, digest.day, pick.id)
       const nameOf = (id: string): string => {

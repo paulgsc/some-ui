@@ -136,7 +136,7 @@ export type CopyPass = {
 
 /** What this phone holds and can't send home, by why (LA14). */
 export type Unsendable = {
-  /** Notes the last copy pass found no audio for: let go before LG1, once a share arrived in Drive. */
+  /** Notes the last copy pass found no audio for. */
   readonly gone: number
 }
 
