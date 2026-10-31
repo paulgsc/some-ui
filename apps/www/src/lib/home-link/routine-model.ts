@@ -1,107 +1,16 @@
 /**
  * Korean's look at what the reflections routine left on the paired home
- * (LA12, docs/learner-data-authority.md): the person's choice to show it,
- * and the one read at a time. Pure; `./routine` runs it.
+ * (`./routine`): the one read at a time, and what it last answered. Pure;
+ * `./routine` runs it.
  *
- * The choice is a log that only grows, as the consent log is
- * (`./consent-model`), and for the pairing it was made under alone: a new
- * pairing, even to the same address, starts with nothing shown. It is not a
- * scope of that log: home keeps no choice for a read, which sends nothing
- * of the person's.
- *
- * What home answered is held in memory only, for the choice it was read
- * under (`Under`): a stop, an unpairing or a new pairing leaves nothing of
- * it to show.
+ * What home answered is held in memory only, for the pairing it was read
+ * under (`Under`, the pairing's id): an unpairing or a new pairing leaves
+ * nothing of it to show.
  */
-import { assertNever, isRecord } from "@some-ui/core-utils"
+import { assertNever } from "@some-ui/core-utils"
 
-/** One choice, as made: shown or hidden, under which pairing, with the words pressed. */
-export type ReadChoice = {
-  readonly kind: "shown" | "hidden"
-  readonly pairing: string
-  /** This phone's clock. */
-  readonly at: number
-  /** The words the person pressed yes to, exactly as they were shown. */
-  readonly said: string
-}
-
-export type ReadLog = ReadonlyArray<ReadChoice>
-
-/** The words pressed for the choice `under` names (the latest, at a tie), or null. */
-export function saidUnder(log: ReadLog, under: Under): string | null {
-  let said: string | null = null
-  for (const choice of log) {
-    if (
-      choice.kind === "shown" &&
-      choice.pairing === under.pairing &&
-      choice.at === under.since
-    ) {
-      said = choice.said
-    }
-  }
-  return said
-}
-
-/** Since when the routine's files are shown under `pairing`, or null. */
-export function shownNow(log: ReadLog, pairing: string | null): number | null {
-  if (pairing === null) return null
-  let since: number | null = null
-  for (const choice of log) {
-    if (choice.pairing !== pairing) continue
-    if (choice.kind === "hidden") since = null
-    else since ??= choice.at
-  }
-  return since
-}
-
-/**
- * `log` with `choice` at its end, or `log` itself when it changes nothing
- * (showing what is shown, hiding what is not). Never edits a choice.
- */
-export function appendedRead(log: ReadLog, choice: ReadChoice): ReadLog {
-  const shown = shownNow(log, choice.pairing) !== null
-  if (shown === (choice.kind === "shown")) return log
-  return [...log, choice]
-}
-
-function choiceOf(value: unknown): ReadChoice | null {
-  if (!isRecord(value)) return null
-  const { kind, pairing, at, said } = value
-  if (kind !== "shown" && kind !== "hidden") return null
-  if (typeof pairing !== "string" || typeof at !== "number") return null
-  if (typeof said !== "string") return null
-  return { kind, pairing, at, said }
-}
-
-/** The log stored as `text`, or `null` when it cannot be read as one. */
-export function parseReadLog(text: string): ReadLog | null {
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(text)
-  } catch {
-    return null
-  }
-  if (!Array.isArray(parsed)) return null
-  const log: Array<ReadChoice> = []
-  for (const value of parsed) {
-    const choice = choiceOf(value)
-    if (choice === null) return null
-    log.push(choice)
-  }
-  return log
-}
-
-/** The choice a read is made under: its pairing, and since when it was shown there. */
-export type Under = { readonly pairing: string; readonly since: number }
-
-export const sameUnder = (a: Under | null, b: Under | null): boolean =>
-  a !== null && b !== null && a.pairing === b.pairing && a.since === b.since
-
-/** Under which choice a read may be made now, or null when none is shown. */
-export function underNow(log: ReadLog, pairing: string | null): Under | null {
-  const since = shownNow(log, pairing)
-  return pairing === null || since === null ? null : { pairing, since }
-}
+/** The pairing a read is made under: its id. */
+export type Under = string
 
 /** How the last read ended, and when. */
 export type LastRead = {
@@ -110,7 +19,7 @@ export type LastRead = {
 }
 
 export type ReadState = {
-  /** Home's last answer, as it came, for the choice it was read under. */
+  /** Home's last answer, as it came, for the pairing it was read under. */
   readonly answer: { readonly under: Under; readonly files: unknown } | null
   /** A read is on its way. */
   readonly reading: boolean
@@ -125,7 +34,7 @@ export const INITIAL_READ: ReadState = {
 
 export type ReadEvent =
   | { readonly type: "started" }
-  /** Home answered, under `under`, which is still shown. */
+  /** Home answered, under `under`, which the phone still holds. */
   | {
       readonly type: "answered"
       readonly under: Under
@@ -137,14 +46,14 @@ export type ReadEvent =
       readonly kind: Exclude<LastRead["kind"], "read">
       readonly at: number
     }
-  /** The read ended with nothing to keep: stopped, or no longer shown. */
+  /** The read ended with nothing to keep: stopped, or no longer paired so. */
   | { readonly type: "dropped" }
-  /** What was read is no longer shown: stopped, unpaired or paired anew. */
+  /** What was read is no longer this phone's pairing: unpaired or paired anew. */
   | { readonly type: "cleared" }
 
 /**
- * Whether a read may start now: shown under the pairing the phone holds,
- * with the app in front, and none on its way.
+ * Whether a read may start now: paired, with the app in front, and none on
+ * its way.
  */
 export function mayRead(
   state: ReadState,
@@ -155,7 +64,7 @@ export function mayRead(
 
 /** What may be shown under `under`: the last answer read under it, or none. */
 export function heldFor(state: ReadState, under: Under | null): unknown {
-  return state.answer !== null && sameUnder(state.answer.under, under)
+  return state.answer !== null && under !== null && state.answer.under === under
     ? state.answer.files
     : null
 }

@@ -2,10 +2,10 @@
  * @vitest-environment jsdom
  *
  * LA8 on the phone's Settings: opening it reads only the phone's own pairing
- * and sends nothing; the destination is named before any tap that sends;
- * unpairing and sending each take a second, deliberate press. LA11: the send's
- * confirm offers, unticked every time, to keep sending Practice, and only a
- * tick adds that choice to the consent log.
+ * and sends nothing; the destination is named before any tap; unpairing and
+ * the clear of finished sessions home holds each take a second, deliberate
+ * press, and the clear only reads home, letting go of nothing it does not
+ * hold. Once paired, the page says what goes on its own (LA15).
  */
 
 import type { ReactNode } from "react"
@@ -20,24 +20,48 @@ import {
 } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { sha256Hex } from "@/lib/device-backend/common"
 import type { HomeRequest } from "@/lib/device-backend/native-http"
-import { CONSENT_KEY } from "@/lib/home-link/consent-runtime"
-import { SENT_KEY } from "@/lib/home-link/sent"
+import type { SessionRecord } from "@/lib/tenant/types"
 
 const home = vi.hoisted(
-  (): { sent: Array<unknown>; record: string | null } => ({
+  (): {
+    sent: Array<HomeRequest>
+    record: string | null
+    sessions: Array<SessionRecord>
+    gone: Array<string>
+  } => ({
     sent: [],
     record: null,
+    sessions: [],
+    gone: [],
   })
 )
+
+const FINISHED: SessionRecord = {
+  id: "s1",
+  name: "Korean review",
+  status: "completed",
+  activities: [],
+  scenes: [],
+  layoutMode: "basic",
+  totalDurationMs: 600_000,
+  createdAt: "2026-10-14T09:00:00.000Z",
+  updatedAt: "2026-10-14T09:00:00.000Z",
+  startedAt: "2026-10-14T09:00:00.000Z",
+  completedAt: "2026-10-14T09:10:00.000Z",
+}
 
 vi.mock("@/lib/device-backend/native-http", () => ({
   homeRequest: (
     call: HomeRequest
   ): Promise<{ status: number; body: string }> => {
     home.sent.push(call)
-    return Promise.resolve({ status: 200, body: "{}" })
+    // Pairing's own requests are answered; a read of a session finds none.
+    return Promise.resolve(
+      call.method === "GET"
+        ? { status: 404, body: "{}" }
+        : { status: 200, body: "{}" }
+    )
   },
 }))
 vi.mock("@/lib/home-link/credential", () => ({
@@ -54,41 +78,25 @@ vi.mock("@/lib/home-link/credential", () => ({
     },
   },
 }))
-vi.mock("@/lib/device-backend/boot", () => ({
-  deviceBackend: (): Promise<{ context: { db: object } }> =>
-    Promise.resolve({ context: { db: {} } }),
-}))
-vi.mock("@/lib/device-backend/handlers/shelf", () => ({
-  everyKept: (): Promise<
-    Array<{ activity: string; key: string; body: string }>
-  > =>
-    Promise.resolve([
-      { activity: "topik", key: "a", body: '{"a":1}' },
-      { activity: "leetype", key: "b", body: "{}" },
-    ]),
-}))
 vi.mock("@/lib/tenant/queries", () => ({
   sessionsKey: ["tenant", "sessions"],
   sessionsRepository: {
-    list: (): Promise<Array<object>> =>
-      Promise.resolve([
-        {
-          id: "s1",
-          name: "Korean review",
-          status: "scheduled",
-          activities: [],
-          scenes: [],
-          layoutMode: "basic",
-          totalDurationMs: 600_000,
-          createdAt: "2026-10-14T09:00:00.000Z",
-          updatedAt: "2026-10-14T09:00:00.000Z",
-        },
-      ]),
+    list: (): Promise<Array<SessionRecord>> =>
+      Promise.resolve([...home.sessions]),
   },
 }))
-// The ledger has its own test (`device-sharing-ledger.test.tsx`).
-vi.mock("@/components/settings/device-sharing-ledger", () => ({
-  SharingLedger: (): null => null,
+vi.mock("@/lib/session-archive", () => ({
+  letGoUnchanged: (sessions: ReadonlyArray<SessionRecord>): Promise<number> => {
+    home.gone.push(...sessions.map((s) => s.id))
+    return Promise.resolve(sessions.length)
+  },
+}))
+// The readouts have their own tests (`device-kept-on-home.test.tsx`).
+vi.mock("@/components/settings/device-kept-on-home", () => ({
+  KeptOnHome: (): null => null,
+}))
+vi.mock("@/components/settings/device-routine-reads", () => ({
+  DeviceRoutineReads: (): null => null,
 }))
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
@@ -96,6 +104,8 @@ afterEach(() => {
   cleanup()
   home.sent.length = 0
   home.record = null
+  home.sessions = []
+  home.gone = []
   localStorage.clear()
   vi.resetModules()
 })
@@ -116,25 +126,12 @@ async function open(): Promise<void> {
   })
 }
 
-/** How long a step that digests kept items may take. */
-const SLOW = 5_000
-
-// A test waits on up to three such steps.
-vi.setConfig({ testTimeout: 4 * SLOW })
-
 async function press(name: RegExp): Promise<void> {
-  // The confirm appears once the count, which digests each kept item, is
-  // in, and a button is pressed once the run before it has ended.
-  // Digesting runs on the real `crypto.subtle`, slower on a loaded runner
-  // than the default second allows.
-  const button = await waitFor(
-    () => {
-      const found = screen.getByRole("button", { name })
-      expect(found).toHaveProperty("disabled", false)
-      return found
-    },
-    { timeout: SLOW }
-  )
+  const button = await waitFor(() => {
+    const found = screen.getByRole("button", { name })
+    expect(found).toHaveProperty("disabled", false)
+    return found
+  })
   await act(async () => {
     fireEvent.click(button)
     // Long enough for the runtime's chain of port calls to finish.
@@ -142,21 +139,25 @@ async function press(name: RegExp): Promise<void> {
   })
 }
 
+const paired = (): void => {
+  home.record = JSON.stringify({
+    base: "https://home.example/api/v1",
+    token: "t",
+  })
+}
+
 describe("DeviceSection's Home server block", () => {
-  it("sends nothing when opened, paired or not", async () => {
+  it("sends nothing when opened, paired or not, and says what goes on its own", async () => {
     await open()
     expect(screen.getByRole("button", { name: /pair/i })).toBeTruthy()
     cleanup()
     vi.resetModules()
 
-    home.record = JSON.stringify({
-      base: "https://home.example/api/v1",
-      token: "t",
-    })
+    paired()
     await open()
     expect(screen.getByText("Paired · home.example")).toBeTruthy()
     expect(
-      screen.getByText(/nothing is sent unless you tap below/i)
+      screen.getByText(/goes to home on its own while the app is open/i)
     ).toBeTruthy()
     expect(home.sent).toEqual([])
   })
@@ -183,10 +184,7 @@ describe("DeviceSection's Home server block", () => {
   })
 
   it("unpairs only on the second press, with one request", async () => {
-    home.record = JSON.stringify({
-      base: "https://home.example/api/v1",
-      token: "t",
-    })
+    paired()
     await open()
     await press(/^unpair$/i)
     expect(home.sent).toEqual([])
@@ -202,151 +200,42 @@ describe("DeviceSection's Home server block", () => {
     expect(screen.getByText("Unpaired.")).toBeTruthy()
   })
 
-  it("sends only after a confirm that names what and the host", async () => {
-    home.record = JSON.stringify({
-      base: "https://home.example/api/v1",
-      token: "t",
-    })
+  it("clears finished sessions only after a confirm that names the count and the host, and only reads home", async () => {
+    paired()
+    home.sessions = [FINISHED, { ...FINISHED, id: "s2", status: "scheduled" }]
     await open()
-    await press(/send to home.example/i)
+    await press(/clear finished sessions home holds/i)
     expect(home.sent).toEqual([])
     expect(
       await screen.findByText(
-        /send 1 session and 2 kept items to home.example\? finished sessions are cleared from this phone/i
+        /clear 1 finished session from this phone\? .*home\.example holds exactly/i
       )
     ).toBeTruthy()
 
-    await press(/^cancel$/i)
+    await press(/^keep them$/i)
     expect(home.sent).toEqual([])
 
-    await press(/send to home.example/i)
-    await press(/^send 3$/i)
-    await waitFor(() => {
-      expect(home.sent[0]).toMatchObject({
-        method: "POST",
-        url: "https://home.example/api/v1/sessions",
-        token: "t",
-      })
-    })
-    // The send runs on past its first request: let it end here, or its
-    // shelf requests land in the next test's record of what was sent.
-    expect(
-      await screen.findByText(/^Last send:/, {}, { timeout: SLOW })
-    ).toBeTruthy()
-  })
-
-  it("counts and sends only the kept items home didn't take as they are", async () => {
-    home.record = JSON.stringify({
-      base: "https://home.example/api/v1",
-      token: "t",
-    })
-    localStorage.setItem(
-      SENT_KEY,
-      JSON.stringify({
-        pairing: "https://home.example/api/v1",
-        sessions: {},
-        shelf: {
-          "topik/a": await sha256Hex('{"a":1}'),
-          "leetype/b": await sha256Hex("{}"),
-        },
-        refused: {},
-      })
+    await press(/clear finished sessions home holds/i)
+    await press(/^clear them$/i)
+    // Home holds no copy here, so nothing leaves; and home is only read.
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", {
+          name: /clear finished sessions home holds/i,
+        })
+      ).toBeTruthy()
     )
-    await open()
-    await press(/send to home.example/i)
-    expect(
-      await screen.findByText(
-        /^send 1 session to home.example\?/i,
-        {},
-        { timeout: SLOW }
-      )
-    ).toBeTruthy()
-    await press(/^send 1$/i)
-    // Once the send has run to its end, as its last line says.
-    expect(
-      await screen.findByText(/^Last send:/, {}, { timeout: SLOW })
-    ).toBeTruthy()
-    expect(
-      home.sent.filter((call) => JSON.stringify(call).includes("/shelf/"))
-    ).toEqual([])
+    expect(home.sent.every((call) => call.method === "GET")).toBe(true)
+    expect(home.gone).toEqual([])
   })
 
-  it("offers again a kept item home refused, since a tap is the way to retry", async () => {
-    home.record = JSON.stringify({
-      base: "https://home.example/api/v1",
-      token: "t",
-    })
-    localStorage.setItem(
-      SENT_KEY,
-      JSON.stringify({
-        pairing: "https://home.example/api/v1",
-        sessions: {},
-        shelf: { "topik/a": await sha256Hex('{"a":1}') },
-        refused: { "leetype/b": await sha256Hex("{}") },
-      })
-    )
+  it("says when there is nothing to clear", async () => {
+    paired()
     await open()
-    await press(/send to home.example/i)
+    await press(/clear finished sessions home holds/i)
     expect(
-      await screen.findByText(
-        /^send 1 session and 1 kept item to home.example\?/i
-      )
+      await screen.findByText("No finished session to clear.")
     ).toBeTruthy()
-    await press(/^send 2$/i)
-    expect(
-      await screen.findByText(/^Last send:/, {}, { timeout: SLOW })
-    ).toBeTruthy()
-    expect(
-      home.sent.filter((call) => JSON.stringify(call).includes("/shelf/"))
-    ).toEqual([
-      expect.objectContaining({
-        method: "PUT",
-        url: "https://home.example/api/v1/shelf/leetype/b",
-      }),
-    ])
-  })
-
-  it("keeps sending Practice only when its box is ticked, and asks every time until then", async () => {
-    home.record = JSON.stringify({
-      base: "https://home.example/api/v1",
-      token: "t",
-    })
-    await open()
-    const box = (): Promise<HTMLElement> =>
-      screen.findByRole("checkbox", { name: /keep sending these to home/i })
-
-    await press(/send to home.example/i)
-    expect(await box()).toHaveProperty("checked", false)
-    await press(/^send 3$/i)
-    expect(localStorage.getItem(CONSENT_KEY)).toBeNull()
-
-    await press(/send to home.example/i)
-    const ticked = await box()
-    expect(ticked).toHaveProperty("checked", false)
-    act(() => {
-      fireEvent.click(ticked)
-    })
-    await press(/^send 3$/i)
-    const log: unknown = JSON.parse(localStorage.getItem(CONSENT_KEY) ?? "[]")
-    expect(log).toEqual([
-      expect.objectContaining({
-        kind: "kept",
-        pairing: "https://home.example/api/v1",
-        scopes: ["sessions", "shelf"],
-        said: expect.stringMatching(
-          /^Keep sending these to home from now on\./
-        ),
-      }),
-    ])
-
-    await press(/send to home.example/i)
-    expect(
-      await screen.findByText(
-        /go to home on their own while Practice is open/,
-        {},
-        { timeout: SLOW }
-      )
-    ).toBeTruthy()
-    expect(screen.queryByRole("checkbox")).toBeNull()
+    expect(home.sent).toEqual([])
   })
 })

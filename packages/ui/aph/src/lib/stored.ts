@@ -24,7 +24,6 @@ import type { KeyedStorage } from "@some-ui/core-utils"
 import {
   localStorageOrNull,
   openRecord,
-  quarantine,
   writeRecord,
 } from "@some-ui/core-utils"
 import { z } from "zod"
@@ -46,11 +45,6 @@ const VERSION = 1
 export const HOME_KEY = "aph:home"
 /** Followed by 1, 2 …: an unreadable home record, kept as it was found. */
 export const HOME_QUARANTINE_PREFIX = "aph:home:unreadable:"
-/**
- * Followed by 1, 2 …: a home record whose waiting changes clashed with
- * home's record when aph came back to this phone, kept as it was.
- */
-export const LEFT_PREFIX = "aph:home:left:"
 const HOME_VERSION = 1
 
 const CheckpointSchema = z.object({
@@ -219,28 +213,6 @@ function forget(storage: AphStorage, key: string): boolean {
   } catch {
     return false
   }
-}
-
-/**
- * Removes the home record, once a device record carrying what it held is
- * kept, and a copy of it as stored under `LEFT_PREFIX` first when `clashed`
- * (some of its waiting changes are in no other record). False when the
- * storage would not; the home record then still wins on opening.
- */
-export function forgetHomeRecord(
-  storage: AphStorage,
-  clashed: boolean
-): boolean {
-  if (clashed) {
-    let text: string | null
-    try {
-      text = storage.getItem(HOME_KEY)
-    } catch {
-      return false
-    }
-    if (text !== null && !quarantine(storage, text, LEFT_PREFIX)) return false
-  }
-  return forget(storage, HOME_KEY)
 }
 
 /** Home's `GET /aph` answer. */

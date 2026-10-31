@@ -18,11 +18,7 @@ import { vi } from "vitest"
 
 import { browserPorts } from "@/lib/authority/singleton"
 import { boundedList } from "@/lib/bounded-list"
-import type { ConsentLog } from "@/lib/home-link/consent-model"
-import { CONSENT_KEY, createConsent } from "@/lib/home-link/consent-runtime"
-import { createRoutineReads, READS_KEY } from "@/lib/home-link/routine"
 import { readSent, rememberSent } from "@/lib/home-link/sent"
-import { readTold, tellHome } from "@/lib/home-link/told"
 import {
   readDurableFailure,
   writeDurableFailure,
@@ -74,17 +70,6 @@ const STOP: Stop = {
   outcome: "open",
   settledAt: null,
 }
-
-const CHOSEN: ConsentLog = [
-  {
-    seq: 3,
-    at: 0,
-    pairing: "p1",
-    kind: "kept",
-    scopes: ["sessions"],
-    said: null,
-  },
-]
 
 const isNumber = (value: unknown): value is number => typeof value === "number"
 
@@ -179,62 +164,6 @@ const stores: ReadonlyArray<KeptStore> = [
         }),
       read: (): unknown => readSent(storage, "p1"),
     }),
-  },
-  {
-    name: "the choices home heard",
-    key: "some-ui.home.told.v1",
-    older: '{"pairing":"p1"}',
-    open: (storage): KeptHandle => ({
-      write: (): unknown =>
-        tellHome(
-          () => Promise.resolve({ status: 200, body: "" }),
-          "p1",
-          CHOSEN,
-          storage
-        ),
-      read: (): unknown => readTold(storage, "p1"),
-    }),
-  },
-  {
-    name: "what its person chose to keep on home",
-    key: CONSENT_KEY,
-    older: '[{"seq":1,"kind":"kept"}]',
-    refusesUnreadable:
-      "LA11: every choice is refused until the log can be read, so none is told under a log nobody read",
-    open: (storage): KeptHandle => {
-      const consent = createConsent(storage, () => 1)
-      return {
-        write: (): unknown =>
-          consent.choose({
-            kind: "kept",
-            pairing: "p1",
-            scopes: ["sessions"],
-            said: "Keep my sessions on home",
-          }),
-        read: (): unknown => consent.getSnapshot(),
-      }
-    },
-  },
-  {
-    name: "whether the routine's files show",
-    key: READS_KEY,
-    older: '[{"kind":"shown"}]',
-    refusesUnreadable:
-      "LA12: as the consent log, an unreadable choice log refuses every choice",
-    open: (storage): KeptHandle => {
-      const reads = createRoutineReads({
-        keep: () => Promise.reject(new Error("not asked")),
-        pairing: () => "p1",
-        visible: () => true,
-        now: () => 1,
-        storage,
-        onLink: () => (): void => undefined,
-      })
-      return {
-        write: (): unknown => reads.choose("shown", "Show them here"),
-        read: (): unknown => reads.getSnapshot().log,
-      }
-    },
   },
   {
     name: "the data authority chosen",

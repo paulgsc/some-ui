@@ -1,19 +1,18 @@
 /**
  * The runtime behind `./kept-model`: one exchange with home at a time for a
- * record kept there (aph's `exchangeWithHome`, LA9; the Jobs record's
- * `exchangeJobs`, LA10; Practice's `sendStanding`, LA11), through the link's `keep`
- * (docs/learner-data-authority.md), and how each ended; and a lane's
- * exchange as a run makes it (`laneExchange`). The record's screens read
- * its snapshot; they hold no request of their own.
+ * record this phone drains there (aph's `exchangeWithHome`, the Jobs
+ * record's `exchangeJobs`, Practice's `drainHome`, voice notes'
+ * `sendVoice`; LA15, docs/learner-data-authority.md), through the link's
+ * `keep`, and how each ended; and a lane's exchange as a run makes it
+ * (`laneExchange`). The record's screens read its snapshot; they hold no
+ * request of their own.
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
-import { stoppedOnHome } from "@some-ui/core-utils"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import { ForeignCallError } from "@/lib/intent/foreign"
 
-import type { Scope } from "./consent-model"
 import type { KeptEvent, KeptRun, KeptState } from "./kept-model"
 import { INITIAL_KEPT, stepKept } from "./kept-model"
 import type { Lane } from "./lanes"
@@ -112,7 +111,7 @@ type Exchange = (send: HomeCall) => Promise<HomeExchanged>
  * `exchange` ending as busy once home answered any of its requests `429`,
  * whatever else it found, unless home forgot the phone or it was stopped.
  */
-export function sayingBusy(exchange: Exchange): Exchange {
+function sayingBusy(exchange: Exchange): Exchange {
   return async (link) => {
     const { send, seen } = noticingBusy(link)
     try {
@@ -125,66 +124,18 @@ export function sayingBusy(exchange: Exchange): Exchange {
   }
 }
 
-/** Telling home a pairing's choices (`./told`), and forgetting it did. */
-export type Telling = {
-  tell: (send: HomeCall, pairing: string) => Promise<HomeExchanged>
-  /** Home says it heard a stop this phone did not end. */
-  unheard: (pairing: string) => void
-}
-
-const NOT_TOLD: Telling = {
-  tell: () => Promise.resolve({ kind: "synced" }),
-  unheard: () => undefined,
-}
-
 /**
- * `then`, once home has heard every choice under `pairing` (`./told`; a home
- * that keeps none counts as having heard). Telling that ends any other way
- * ends the run there, so nothing of a record goes before home knows whether
- * it is kept; with `heard: "tried"`, for a run that only reads (aph's way
- * back), only home having forgotten the phone does.
- */
-export function toldFirst(
-  telling: Telling,
-  pairing: string,
-  then: Exchange,
-  heard: "needed" | "tried" = "needed"
-): Exchange {
-  return async (send) => {
-    const told = await telling.tell(send, pairing)
-    if (told.kind === "forgotten") return told
-    return told.kind === "synced" || heard === "tried" ? then(send) : told
-  }
-}
-
-/**
- * `lane`'s exchange as a run makes it: home first told the pairing's
- * choices it has not heard (`telling`, `./told`), then each of the record's
- * requests first finds a scope in `shared` still kept, and home being busy
- * is said (`sayingBusy`).
+ * `lane`'s exchange as a run makes it: under the pairing this phone holds
+ * when the run starts (nothing, unpaired), and home being busy said as such
+ * (`sayingBusy`).
  */
 export function laneExchange(
   lane: Lane,
-  pairing: () => string | null,
-  shared: () => ReadonlySet<Scope>,
-  telling: Telling = NOT_TOLD
+  pairing: () => string | null
 ): Exchange {
   return (link) => {
     const under = pairing()
-    if (under === null || shared().size === 0) {
-      return Promise.resolve({ kind: "synced" })
-    }
-    return sayingBusy(
-      toldFirst(telling, under, (send) => {
-        const gated: HomeCall = async (method, path, body) => {
-          if (shared().size === 0) throw new SyncStoppedError()
-          const answer = await send(method, path, body)
-          // Home's choices and this phone's differ: tell them all again.
-          if (stoppedOnHome(answer)) telling.unheard(under)
-          return answer
-        }
-        return lane.exchange(gated, { pairing: under, shared })
-      })
-    )(link)
+    if (under === null) return Promise.resolve({ kind: "synced" })
+    return sayingBusy((send) => lane.exchange(send, { pairing: under }))(link)
   }
 }

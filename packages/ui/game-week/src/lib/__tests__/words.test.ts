@@ -78,7 +78,7 @@ describe("the recorder's words", () => {
       "3 bites wait on this phone until home has them. Home couldn't take 2 bites. They stay on this phone."
     )
     expect(outboxLine({ ...none, waiting: 2, sending: false })).toMatch(
-      /keep voice notes on home/
+      /paired with home/
     )
     expect(outboxLine({ ...none, notKept: 2, waiting: 1 })).toBe(
       "2 bites couldn't be kept on this phone yet. The app keeps trying while it's open. 1 bite waits on this phone until home has it."

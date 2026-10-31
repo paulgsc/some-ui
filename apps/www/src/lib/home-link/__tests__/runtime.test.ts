@@ -80,13 +80,11 @@ describe("the home link", () => {
       record: JSON.stringify({ base: HOME.base, token: "t" }),
     })
     await paired.link.load()
-    // A pairing kept before pairings had an id is known by its base, and
-    // one an earlier build made may hold a choice made before the log.
+    // A pairing kept before pairings had an id is known by its base.
     expect(paired.link.getSnapshot().link).toEqual({
       kind: "paired",
       base: HOME.base,
       id: HOME.base,
-      earlier: true,
       notForgotten: false,
     })
     expect(paired.sent).toEqual([])
@@ -136,9 +134,7 @@ describe("the home link", () => {
       base: HOME.base,
       token: "phone-token",
       id: first,
-      choicesLogged: true,
     })
-    expect(home.link.getSnapshot().link).toMatchObject({ earlier: false })
 
     // Paired again to the same address, it is a new pairing.
     await home.link.unpair()

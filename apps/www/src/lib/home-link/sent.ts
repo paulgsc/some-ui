@@ -1,12 +1,11 @@
 /**
- * What this phone knows its paired home holds, so a standing send
- * (`./standing`, LA11) and Settings' send (`./send`) carry only what changed
- * since: each finished session's `updatedAt` as it was copied, each kept
- * shelf item's digest as home answered for it, each LeetType session's
- * digest as home read it back (`./leetype-log`), each Studio sitting's and
- * answer's (`./studio-log`), and the digests home
- * refused, so the standing send does not offer an unchanged refused item
- * again (a tap in Settings does). Kept for one pairing (`pairing`, the
+ * What this phone knows its paired home holds, so the drain (`./drain`)
+ * carries only what changed since: each finished session's `updatedAt` as
+ * it was copied, each kept shelf item's digest as home answered for it,
+ * each LeetType session's digest as home read it back (`./leetype-log`),
+ * each Studio sitting's and answer's (`./studio-log`), and the digests home
+ * refused, so the drain does not offer an unchanged refused item again
+ * (it goes once its bytes change). Kept for one pairing (`pairing`, the
  * link's id for it): another pairing starts from nothing. Bookkeeping, not
  * the record: lost, it only means sending again, which home answers as
  * unchanged.
@@ -181,8 +180,8 @@ async function shelfHeld(
 /**
  * The kept items home does not hold as they are now, with every item's
  * digest (`shelfHeld`), to remember home's answers by. An item home refused
- * as it is now is left out too, unless `refused` says to offer it again: a
- * person's tap does, a standing send does not.
+ * as it is now is left out too, unless `refused` says to offer it again,
+ * which the drain does not: a refused item goes once its bytes change.
  */
 export async function shelfToSend(
   kept: ReadonlyArray<Kept>,

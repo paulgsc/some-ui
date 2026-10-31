@@ -2,20 +2,13 @@
  * One exchange with home: the outbox sent, home's record read back, and the
  * phone lets go of exactly what home answered with. Whatever ends it early
  * (a refusal, no answer, a stop) keeps on the phone everything home has not
- * confirmed. Once its person stops sending, aph comes back to the phone from
- * home's record, sending nothing and losing nothing that waited here.
+ * confirmed.
  */
 import type { AphSettings, Entry } from "@aph/lib/model"
 import type { AphStore } from "@aph/lib/store"
 import { createAphStore } from "@aph/lib/store"
-import {
-  EntrySchema,
-  HOME_KEY,
-  LEFT_PREFIX,
-  SettingsSchema,
-  STORAGE_KEY,
-} from "@aph/lib/stored"
-import { bringBack, exchangeWithHome } from "@aph/lib/sync"
+import { EntrySchema, SettingsSchema } from "@aph/lib/stored"
+import { exchangeWithHome } from "@aph/lib/sync"
 import type { HomeCall } from "@some-ui/core-utils"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { describe, expect, it } from "vitest"
@@ -213,98 +206,6 @@ describe("an exchange with home", () => {
     )
     const home = fakeHome()
     expect(await exchangeWithHome(store, home.send)).toEqual({ kind: "synced" })
-    expect(home.requests).toEqual([])
-  })
-})
-
-describe("bringing aph back from home", () => {
-  /** Kept on home, `a` to `c` on home, and a settings change waiting here. */
-  async function withWaiting(): Promise<{
-    store: AphStore
-    storage: ReturnType<typeof memoryStorage>
-    home: ReturnType<typeof fakeHome>
-  }> {
-    const storage = memoryStorage()
-    const store = createAphStore(
-      { settings: SETTINGS, entries: ENTRIES },
-      storage
-    )
-    expect(store.keepOnHome()).toBe(true)
-    const home = fakeHome()
-    await exchangeWithHome(store, home.send)
-    expect(store.editSettings({ tolerance: 200 })).toBe(true)
-    home.requests.length = 0
-    return { store, storage, home }
-  }
-
-  it("keeps home's record on the phone again, with what waited here over it, sending nothing", async () => {
-    const { store, storage, home } = await withWaiting()
-    expect(await bringBack(store, home.send, () => true)).toEqual({
-      kind: "synced",
-    })
-    expect(home.requests).toEqual(["GET /aph"])
-    expect(store.where()).toEqual({ kind: "device" })
-    expect(store.get().entries).toEqual(ENTRIES)
-    expect(store.get().settings.tolerance).toBe(200)
-    expect(storage.map.has(HOME_KEY)).toBe(false)
-    const reopened = createAphStore(
-      { settings: SETTINGS, entries: [] },
-      storage
-    )
-    expect(reopened.where()).toEqual({ kind: "device" })
-    expect(reopened.get().entries).toEqual(ENTRIES)
-  })
-
-  it("keeps a waiting change that clashes with home's record aside, never dropped", async () => {
-    const storage = memoryStorage()
-    const store = createAphStore(
-      { settings: SETTINGS, entries: ENTRIES },
-      storage
-    )
-    expect(store.keepOnHome()).toBe(true)
-    const home = fakeHome()
-    // Home holds another plain morning figure on `a`'s day.
-    home.held.set("other", entry("other", "2026-10-14"))
-    expect(await bringBack(store, home.send, () => true)).toEqual({
-      kind: "synced",
-    })
-    expect(store.get().entries.map((e) => e.id)).not.toContain("a")
-    const aside = storage.map.get(`${LEFT_PREFIX}1`) ?? ""
-    expect(JSON.parse(aside)).toMatchObject({ pending: ENTRIES })
-  })
-
-  it("leaves aph where it was when home does not answer, or forgot the phone", async () => {
-    const { store, storage } = await withWaiting()
-    const failing = fakeHome({ fail: () => new Error("no route to host") })
-    await expect(bringBack(store, failing.send, () => true)).rejects.toThrow(
-      "no route to host"
-    )
-    const forgot: HomeCall = () => Promise.resolve({ status: 401, body: "" })
-    expect(await bringBack(store, forgot, () => true)).toEqual({
-      kind: "forgotten",
-    })
-    expect(store.where()).toMatchObject({ kind: "home", unsent: 1 })
-    expect(storage.map.has(STORAGE_KEY)).toBe(false)
-  })
-
-  it("leaves aph on home when its person chose to keep sending while home was read", async () => {
-    const { store, home } = await withWaiting()
-    expect(await bringBack(store, home.send, () => false)).toEqual({
-      kind: "synced",
-    })
-    expect(home.requests).toEqual(["GET /aph"])
-    expect(store.where()).toMatchObject({ kind: "home" })
-  })
-
-  it("sends nothing for a record kept on this phone", async () => {
-    const store = createAphStore(
-      { settings: SETTINGS, entries: ENTRIES },
-      memoryStorage()
-    )
-    const home = fakeHome()
-    expect(await bringBack(store, home.send, () => true)).toEqual({
-      kind: "synced",
-    })
     expect(home.requests).toEqual([])
   })
 })

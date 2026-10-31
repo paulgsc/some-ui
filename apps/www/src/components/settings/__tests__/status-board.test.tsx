@@ -21,8 +21,8 @@ const sources = vi.hoisted((): { lanes: Array<unknown>; look: unknown } => ({
   look: null,
 }))
 
-vi.mock("@/components/settings/device-sharing-ledger", () => ({
-  useLaneRows: (): unknown => ({ rows: sources.lanes, jobsKept: false }),
+vi.mock("@/components/settings/device-kept-on-home", () => ({
+  useLaneRows: (): unknown => ({ rows: sources.lanes, paired: false }),
 }))
 vi.mock("@/components/settings/device-routine-reads", () => ({
   useLookRow: (): unknown => sources.look,

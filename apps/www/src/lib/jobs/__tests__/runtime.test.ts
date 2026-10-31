@@ -79,7 +79,7 @@ describe("createJobsRuntime", () => {
     p.storage.setItem(STORAGE_KEY, JSON.stringify(firstBuild))
     expect(createJobsRuntime(p).getSnapshot().state).toMatchObject({
       current: "2026-10-18",
-      home: { kept: false, held: [], refused: [], refusedFiles: [] },
+      home: { held: [], refused: [], refusedFiles: [] },
     })
 
     p.storage.setItem(STORAGE_KEY, "{torn")

@@ -41,8 +41,8 @@ const GROUP_ORDER = ["home", "jobs", "korean"] as const
 
 export type GroupId = (typeof GROUP_ORDER)[number]
 
-/** Korean's look at the routine's files on home: its last look, or none. */
-export type Look = "off" | "not-yet" | LastRead["kind"]
+/** Korean's look at the routine's files on home: its last look, or none yet. */
+export type Look = "not-yet" | LastRead["kind"]
 
 /** A row's mark, in its own surface's language. */
 export type RowMark =
@@ -82,7 +82,6 @@ const LANE_NEEDS: Readonly<Record<How, Need>> = {
   current: "fine",
   waiting: "moving",
   sending: "moving",
-  bringing: "moving",
   "no-answer": "watch",
   busy: "watch",
   forgotten: "you",
@@ -108,7 +107,6 @@ const LOOK_NEEDS: Readonly<Record<Look, Need>> = {
   forgotten: "you",
   failed: "you",
   "not-yet": "moving",
-  off: "off",
 }
 
 const ROUTINE_NEEDS: Readonly<Record<RoutineShape, Need>> = {
@@ -161,9 +159,8 @@ export function needOf(mark: RowMark): Need {
   }
 }
 
-/** The look a `LastRead` says, given whether Korean shows the files at all. */
-export function lookOf(shown: boolean, last: LastRead | null): Look {
-  if (!shown) return "off"
+/** The look a `LastRead` says: not yet, or how home answered. */
+export function lookOf(last: LastRead | null): Look {
   return last === null ? "not-yet" : last.kind
 }
 

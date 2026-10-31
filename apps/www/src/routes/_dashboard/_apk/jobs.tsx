@@ -1,7 +1,7 @@
 import type { JSX } from "react"
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 
-import { useJobsKeptOnHome } from "@/components/device-home-glyph"
+import { usePairedWithHome } from "@/components/device-home-glyph"
 import { KeptOnHome } from "@/components/jobs/parts"
 import type { View } from "@/components/view-strip"
 import { ViewStrip } from "@/components/view-strip"
@@ -13,9 +13,9 @@ const VIEWS = [
   { to: "/jobs/record", label: "Record", exact: false },
 ] as const satisfies ReadonlyArray<View>
 
-/** The Jobs screens, told whether Jobs is kept on home: the phone's alone. */
+/** The Jobs screens, told whether this phone is paired with home: the phone's alone. */
 const KeptOutlet = (): JSX.Element => (
-  <KeptOnHome value={useJobsKeptOnHome()}>
+  <KeptOnHome value={usePairedWithHome()}>
     <Outlet />
   </KeptOnHome>
 )

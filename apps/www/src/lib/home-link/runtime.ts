@@ -7,14 +7,12 @@
  * LA8 (docs/learner-data-authority.md), as this module holds it:
  *
  * - **Nothing is sent but by a method a tap called,** or by `keep`, which
- *   only `lib/home-link/lanes` calls, for a record its person keeps on home
- *   (LA9 to LA11), and `lib/home-link/routine`, for Korean's look at the
- *   routine's files its person chose to show (LA12). Creating the runtime
- *   and `load` read only the phone's own record; being paired sends
- *   nothing on a timer, on resume or on a network change.
- * - **No retry.** A failed request is said once and left; the next tap is
- *   the next try. (A kept record's changes go again when it next asks: LA9
- *   to LA11.)
+ *   only `lib/home-link/lanes` calls, for the drain of what this phone keeps
+ *   (LA15), and `lib/home-link/routine`, for Korean's look at the routine's
+ *   files. Creating the runtime and `load` read only the phone's own
+ *   record; nothing is sent on a timer.
+ * - **No retry.** A failed request is said once and left; the next tap, or
+ *   the drain's next ask (LA15), is the next try.
  * - **Stop, and the background, end a sync, a send or a keep** after the request
  *   in flight: the `get` or `send` it is handed refuses to send once
  *   stopped. A run is over only once every request it started has settled.
@@ -57,12 +55,8 @@ export type HomeLinkPorts = {
   onHidden: (listener: () => void) => () => void
 }
 
-/**
- * A pairing kept before it had an id is known by its base. One this build
- * makes is kept with `choicesLogged`: the consent log holds every record's
- * choice for it, so none made before the log is entered under it (LA9).
- */
-type Pairing = { base: string; token: string; id: string; earlier: boolean }
+/** A pairing kept before it had an id is known by its base. */
+type Pairing = { base: string; token: string; id: string }
 
 function parsePairing(record: string): Pairing | null {
   try {
@@ -74,7 +68,6 @@ function parsePairing(record: string): Pairing | null {
           base: parsed.base,
           token: parsed.token,
           id: typeof parsed.id === "string" ? parsed.id : parsed.base,
-          earlier: parsed.choicesLogged !== true,
         }
       : null
   } catch {
@@ -159,8 +152,8 @@ export type HomeLink = {
     run: (send: HomeCall) => Promise<T>
   ) => Promise<SyncOutcome<T> | null>
   /**
-   * As `send`, for a record kept on home (`./lanes`, LA9 to LA11) and
-   * Korean's look at the routine's files (`./routine`, LA12).
+   * As `send`, for the drain of what this phone keeps (`./lanes`, LA15)
+   * and Korean's look at the routine's files (`./routine`).
    */
   keep: <T>(
     run: (send: HomeCall) => Promise<T>
@@ -252,9 +245,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     const token = stringFieldOf(answer.body, "token")
     if (token === null) return "other"
     try {
-      await ports.credential.write(
-        JSON.stringify({ base, token, id, choicesLogged: true })
-      )
+      await ports.credential.write(JSON.stringify({ base, token, id }))
     } catch {
       // Home made a session this phone cannot keep: end it, in the same
       // tap, rather than leave it to expire.
@@ -310,7 +301,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
           dispatch({
             type: "read",
             found: pairing
-              ? { base: pairing.base, id: pairing.id, earlier: pairing.earlier }
+              ? { base: pairing.base, id: pairing.id }
               : lost
                 ? "lost"
                 : null,

@@ -1,8 +1,7 @@
 /**
  * Which voice notes go home and what each is told home as (LA13), and the
- * copying of each for home while its person keeps voice notes there
- * (`lib/voice-home`): outside React, so `./voice`'s hook only starts and
- * stops it.
+ * copying of each for home while the phone is paired (`lib/voice-home`):
+ * outside React, so `./voice`'s hook only starts and stops it.
  *
  * - a reflection said aloud (`lib/reflection-voice`): `reflection`, its
  *   session, when it was said;
@@ -72,12 +71,7 @@ import { exchangeVoice } from "@/lib/voice-home/home"
 import type { CopyPass, Unsendable, VoiceOut } from "@/lib/voice-home/model"
 import { NO_PASS, passWith, runEnd } from "@/lib/voice-home/model"
 
-import { phoneConsent } from "./consent-runtime"
-import { homeLink } from "./index"
-import { keptNow } from "./lanes"
-
-/** What the voice lane keeps sending (`./voice`). */
-export const VOICE_SCOPES = { scopes: ["voice"] } as const
+import { homeLink, paired } from "./index"
 
 /** A finished voice reflection, as home is told it; null for any other. */
 export function reflectionNote(reflection: Reflection): VoiceOut | null {
@@ -240,8 +234,8 @@ function reported(error: unknown): void {
 }
 
 /**
- * Copies each note not yet copied, held or refused, while voice notes are
- * kept on home, and says what it could not copy and why: a note whose
+ * Copies each note not yet copied, held or refused, while the phone is
+ * paired, and says what it could not copy and why: a note whose
  * audio is gone, one with no room, one this phone failed to copy. A failure
  * goes on to the next note.
  */
@@ -252,7 +246,7 @@ async function copyAll(): Promise<CopyPass> {
   let failed = false
   await readStudio()
   for (const { note, audio } of candidates()) {
-    if (!keptNow(VOICE_SCOPES)) break
+    if (!paired()) break
     if (home.settled(note.id)) continue
     try {
       const blob = await audio()
@@ -260,8 +254,8 @@ async function copyAll(): Promise<CopyPass> {
         gone.add(note.id)
         continue
       }
-      // A stop can land while the audio is read.
-      if (!keptNow(VOICE_SCOPES)) break
+      // An unpairing can land while the audio is read.
+      if (!paired()) break
       pass = passWith(pass, await home.copy(note, blob))
     } catch (error) {
       if (!failed) reported(error)
@@ -290,7 +284,7 @@ export const copyPasses = {
 
 /** One copy pass at a time; a change during one asks for one more after it. */
 function copySoon(): void {
-  if (!keptNow(VOICE_SCOPES)) return
+  if (!paired()) return
   if (copying !== null) {
     again = true
     return
@@ -331,11 +325,11 @@ export async function sendVoice(send: HomeCall): Promise<HomeExchanged> {
 
 /**
  * A drama prompt was shared with these notes: each is copied for home under
- * the prompt's stamp, while voice notes are kept on home. Best effort, and
- * nothing waits on it; a failure goes to the native log.
+ * the prompt's stamp, while the phone is paired. Best effort, and nothing
+ * waits on it; a failure goes to the native log.
  */
 function copySceneNotes({ stamp, at, notes }: SharedPrompt): void {
-  if (!keptNow(VOICE_SCOPES)) return
+  if (!paired()) return
   const home = phoneVoiceHome()
   for (const { id, mimeType, audio } of notes) {
     home
@@ -366,16 +360,16 @@ function letGoHeld(): void {
 }
 
 /**
- * Copies each new note while voice notes are kept on home, until stopped.
- * The stores that hold notes are listened to only once voice notes are
- * kept, so a phone that never chose it builds none of them for this.
+ * Copies each new note while the phone is paired, until stopped. The stores
+ * that hold notes are listened to only once the phone is paired, so a phone
+ * that never was builds none of them for this.
  */
 
 export function watchVoiceNotes(): () => void {
   const stores: Array<() => void> = []
   let takes = false
   const changed = (): void => {
-    if (keptNow(VOICE_SCOPES) && stores.length === 0) {
+    if (paired() && stores.length === 0) {
       stores.push(
         reflections.subscribe(copySoon),
         // A spoken reflection is listed before its audio is written.
@@ -398,7 +392,6 @@ export function watchVoiceNotes(): () => void {
   const stops = [
     phoneVoiceHome().subscribe(letGoHeld),
     onPromptShared(copySceneNotes),
-    phoneConsent().subscribe(changed),
     homeLink().subscribe(changed),
     onStudioKept(() => {
       changed()

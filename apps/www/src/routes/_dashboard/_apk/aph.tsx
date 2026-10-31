@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { aphStore, bringBack, exchangeWithHome } from "@some-ui/aph"
+import { aphStore, exchangeWithHome } from "@some-ui/aph"
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 
 import type { AphKeeping } from "@/lib/home-link/aph"
@@ -21,7 +21,6 @@ const VIEWS = [
 const APH: AphKeeping = {
   store: aphStore,
   exchange: exchangeWithHome,
-  bringBack,
 }
 
 const AphLayout = (): JSX.Element => (

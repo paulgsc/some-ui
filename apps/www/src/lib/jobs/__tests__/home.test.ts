@@ -205,7 +205,6 @@ describe("exchangeJobs", () => {
     })
     expect(await exchangeJobs(k, h.send)).toEqual({ kind: "synced" })
     expect(k.current.home).toEqual({
-      kept: false,
       held: ["e3"],
       refused: [
         { id: "e1", why: "home holds a different event under this id" },
@@ -219,7 +218,7 @@ describe("exchangeJobs", () => {
     expect(homeOutbox(k.current)).toEqual([])
   })
 
-  it("refuses nothing when home says this phone stopped sending, and ends there", async () => {
+  it("refuses nothing on a `sharing_stopped` 409, and ends there", async () => {
     const k = keeping(withLog)
     const h = home(() => ({
       status: 409,

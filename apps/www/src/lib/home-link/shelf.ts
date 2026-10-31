@@ -1,9 +1,9 @@
 /**
- * The shelf half of "Send to home" (`./send`): what this phone kept, copied
- * to the paired home's shelf (paulgsc/server `handlers/shelf.rs`), one PUT
- * per item (LA8). Phone to home only: nothing is read back, nothing on home
- * is deleted, and the phone keeps its own: kept items are for studying
- * again, not an archive.
+ * The shelf part of the one drain (`./drain`, LA15): what this phone kept,
+ * copied to the paired home's shelf (paulgsc/server `handlers/shelf.rs`),
+ * one PUT per item (LA8). Phone to home only: nothing is read back,
+ * nothing on home is deleted, and the phone keeps its own: kept items are
+ * for studying again, not an archive.
  *
  * Home's answers are counted, never retried: a full shelf (`409`) and a
  * refused item (`422`) are counted and the send goes on; a `401` (home no

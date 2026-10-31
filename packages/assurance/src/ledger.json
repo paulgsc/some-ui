@@ -1609,18 +1609,6 @@
       "family": "what-is-kept"
     },
     {
-      "store": "phone:home-consent",
-      "class": "record",
-      "growth": "Per sharing choice the person makes (one event each, with its words), append-only: nothing written is rewritten; no cap (`some-ui.home.consent.v1`).",
-      "family": "what-is-kept"
-    },
-    {
-      "store": "phone:home-last-send",
-      "class": "telemetry",
-      "growth": "bounded: one line (time and outcome of the last Send to home), replaced by each send (`some-ui.device.last-send.v1`).",
-      "family": "what-is-kept"
-    },
-    {
       "store": "phone:home-last-sync",
       "class": "telemetry",
       "growth": "bounded: one line (time, home and outcome of the last lesson sync from home), replaced by each successful sync (`some-ui.device.last-sync.v1`).",
@@ -1631,13 +1619,6 @@
       "class": "cache",
       "growth": "Per finished session, kept shelf item and LeetType session home holds or refused (one digest or updatedAt each), for one pairing; no cap (`some-ui.home.sent.v1`).",
       "horizon": "a new pairing starts it over (the next write replaces the old pairing's record); a refused digest leaves when home later holds the item, and refused digests of items no longer kept are dropped (home-link/standing.ts)",
-      "family": "what-is-kept"
-    },
-    {
-      "store": "phone:home-told",
-      "class": "cache",
-      "growth": "bounded: one {pairing, seq}, the last sharing choice home heard, replaced as each is told (`some-ui.home.told.v1`).",
-      "horizon": "replaced by each choice told and by a new pairing",
       "family": "what-is-kept"
     },
     {
@@ -1834,12 +1815,6 @@
       "store": "phone:routine-opened",
       "class": "record",
       "growth": "Per routine file opened on the phone (folder/name), append-only: a few names a day; no cap (`topik:routine-opened`).",
-      "family": "routine-to-home"
-    },
-    {
-      "store": "phone:routine-reads",
-      "class": "record",
-      "growth": "Per choice to show or hide the routine's files on the phone (one event each), append-only; no cap (`some-ui.home.reads.v1`).",
       "family": "routine-to-home"
     },
     {
