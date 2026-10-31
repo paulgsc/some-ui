@@ -16,8 +16,14 @@ function mockJobs(): void {
   vi.doMock("@/lib/jobs", async () => {
     const { createJobsRuntime } = await import("@/lib/jobs/runtime")
     const { ports } = await import("@/lib/jobs/__tests__/fixture")
+    // Promise RC1. Claim: this file passes on any wall-clock date. Family:
+    // the wall clock. Proof: `now` and `dayOf` are the same pinned day, so
+    // the real clock never enters.
     const runtime = createJobsRuntime(
-      ports({ now: () => new Date(), dayOf: () => "2026-10-22" })
+      ports({
+        now: () => new Date("2026-10-22T18:00:00Z"),
+        dayOf: () => "2026-10-22",
+      })
     )
     return { phoneJobs: (): typeof runtime => runtime, copyText: vi.fn() }
   })
