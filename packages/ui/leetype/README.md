@@ -145,4 +145,4 @@ logs, from the mailbox's `leetype-log` folder) and what the owner said in
 their spoken answers (from Drive), and writes an assessment to Drive's
 `LeetType/reviews/` (some-ui#1927). Its one checker is
 `pnpm --filter @some-ui/leetype lint:session-file <file>`, for the session
-files it may write from 2026-11-30 on.
+files it may write once four weeks' reviews exist.
