@@ -19,10 +19,12 @@ async function showRecord(
   vi.doMock("@/lib/jobs", async () => {
     const { createJobsRuntime } = await import("@/lib/jobs/runtime")
     const { ports } = await import("@/lib/jobs/__tests__/fixture")
+    // Promise RC1. Claim: this file passes on any wall-clock date. Family:
+    // the wall clock. Proof: `now` and `dayOf` are the same pinned day, so
+    // the real clock never enters.
     const runtime = createJobsRuntime(
-      // A fixed clock: the real one made this fail from the day after.
       ports({
-        now: () => new Date("2026-10-30T22:00:00Z"),
+        now: () => new Date("2026-10-30T16:00:00Z"),
         dayOf: () => "2026-10-30",
       })
     )
