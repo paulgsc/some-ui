@@ -47,7 +47,7 @@ describe("what deleting the account says", () => {
     const gone = textOf(goes, "Mailbox files home holds")
     expect(gone).toMatch(/archived out of the mailbox/)
     expect(gone).toMatch(/only one/)
-    const left = textOf(stays, "In the Jobs mailbox")
+    const left = textOf(stays, "In the mailbox")
     expect(left).toMatch(/still in the mailbox stay/)
     expect(left).toMatch(/never what was in it/)
   })

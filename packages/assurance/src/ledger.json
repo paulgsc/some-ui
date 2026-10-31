@@ -1963,13 +1963,13 @@
     {
       "store": "server:mailbox_outgoing",
       "class": "record",
-      "growth": "Per file the phone (or the poller, for transcripts and LeetType session logs) files for the mailbox (decisions, scout, opened, transcript, leetype-log), bytes verbatim; append-only.",
+      "growth": "Per file the phone (or the poller, for transcripts and LeetType session logs) files for the mailbox (decisions, scout, opened, transcript, leetype-log), bytes verbatim; append-only. A LeetType session's log is filed again as log-<session>.r<n>.json only when an event of it arrives home after its last copy, and each copy repeats every earlier event of the session.",
       "family": "routine-to-home"
     },
     {
       "store": "server:mailbox_leetype_log",
       "class": "derived",
-      "growth": "Per LeetType session log the poller files for the mailbox: (session, n, events); tiny rows; a session gets a new row only once home holds more of its events; append-only.",
+      "growth": "Per LeetType session log the poller files for the mailbox: (session, n, through), through being the highest event rowid the copy covered; tiny rows; a session gets a new row only when an event of it arrives after its last copy; append-only.",
       "family": "routine-to-home"
     },
     {

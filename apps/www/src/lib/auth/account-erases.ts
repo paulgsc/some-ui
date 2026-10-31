@@ -78,7 +78,7 @@ export const ACCOUNT_ERASES = {
     },
     { label: "In Drive", text: "Your Drive copies." },
     {
-      label: "In the Jobs mailbox",
+      label: "In the mailbox",
       text: "Files still in the mailbox stay until you remove them there, because deleting here doesn't reach it. For each file it has let go, the mailbox keeps a note of its name, size and dates, never what was in it.",
     },
     {
