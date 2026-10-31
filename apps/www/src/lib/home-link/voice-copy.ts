@@ -351,19 +351,64 @@ function reported(error: unknown): void {
   })
 }
 
+/** A store whose notes are listed only asynchronously, and what it is called. */
+export type SourceRead = {
+  readonly source: string
+  readonly read: () => Promise<void>
+}
+
+/**
+ * Reads each source in turn: one that can't be read holds back none after
+ * it, keeps its notes as last read, and is told to `unread`. Says whether
+ * every one was read.
+ */
+export async function readEach(
+  reads: ReadonlyArray<SourceRead>,
+  unread: (source: string, error: unknown) => void
+): Promise<boolean> {
+  let all = true
+  for (const { source, read } of reads) {
+    try {
+      await read()
+    } catch (error) {
+      all = false
+      unread(source, error)
+    }
+  }
+  return all
+}
+
+/** A store this phone could not list its notes from, to the native log. */
+function unreadSource(source: string, error: unknown): void {
+  reportFailure({
+    port: `voice notes (list ${source})`,
+    error: {
+      ...toIntentError(error),
+      summary: `The ${source} on this phone couldn't be listed to copy for home.`,
+    },
+  })
+}
+
 /**
  * Copies each note not yet copied, held or refused, while the phone is
  * paired, and says what it could not copy and why: a note whose
- * audio is gone, one with no room, one this phone failed to copy. A failure
- * goes on to the next note.
+ * audio is gone, one with no room, one this phone failed to copy or list. A
+ * failure goes on to the next note, and a store that can't be listed to the
+ * next store.
  */
 async function copyAll(): Promise<CopyPass> {
   const home = phoneVoiceHome()
   let pass = NO_PASS
   const gone = new Set<string>()
   let failed = false
-  await readStudio()
-  await readSoundbites()
+  const listed = await readEach(
+    [
+      { source: "Studio takes", read: readStudio },
+      { source: "soundbites", read: readSoundbites },
+    ],
+    unreadSource
+  )
+  if (!listed) pass = passWith(pass, "fault")
   for (const { note, audio } of candidates()) {
     if (!paired()) break
     if (home.settled(note.id)) continue
