@@ -50,7 +50,7 @@ export type Revision = Readonly<CutList["revisions"][number]> & {
   readonly cutList: CutListShape
   /**
    * The primer this revision brought, when it brought one: what each scene
-   * says. `primerAt` finds the one in force at any revision.
+   * says. `primerAt` (`./lookup`) finds the one in force at any revision.
    */
   readonly primer?: Primer
 }
@@ -239,15 +239,6 @@ export function latest(project: Project): Revision {
 
 function revisionOf(project: Project, rev: number): Revision | null {
   return project.revisions.find((each) => each.rev === rev) ?? null
-}
-
-/** The primer in force at revision `rev`: the last one brought at or before it. */
-export function primerAt(project: Project, rev: number): Primer | null {
-  let found: Primer | null = null
-  for (const each of project.revisions) {
-    if (each.rev <= rev && each.primer !== undefined) found = each.primer
-  }
-  return found
 }
 
 /** The sitting under way, if one is. */

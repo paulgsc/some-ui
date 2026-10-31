@@ -24,8 +24,9 @@ import type { Shot } from "@some-ui/video-render"
 import { CUT_LIST_SCHEMA, fitToTake } from "@some-ui/video-render"
 import type { Cut, Primer } from "@soundbites/lib/journal/primer"
 
+import { primerAt } from "./lookup"
 import type { CutListShape, Project, ProjectState, ProjectTake } from "./model"
-import { latest, newProject, primerAt } from "./model"
+import { latest, newProject } from "./model"
 
 /** The breath after a take before the next scene: `render.py`'s default tail. */
 export const TAIL_MS = 500

@@ -164,6 +164,8 @@ type StudioScreen =
       readonly speaking: Speaking | null
       /** A scene's idea being put right, until it is kept or left. */
       readonly origin: OriginFix | null
+      /** The scene the render opens at once read: Finish's first waiting on whose idea it is. */
+      readonly startAt: string | null
     }
   | {
       readonly kind: "done"
@@ -1041,6 +1043,35 @@ function yoursInWords(
   )
 }
 
+/** Watch, opened on `project`'s review render, at scene `startAt` once it is read. */
+function watchOpened(
+  state: StudioState,
+  project: Project,
+  startAt: string | null,
+  at: string
+): Step {
+  const opened = enqueue(
+    {
+      ...state,
+      screen: {
+        kind: "watch",
+        video: null,
+        review: null,
+        atMs: 0,
+        answered: [],
+        listen: "checking",
+        speaking: null,
+        origin: null,
+        startAt,
+      },
+      notice: "",
+      choosing: null,
+    },
+    { kind: "open", project: project.id, at }
+  )
+  return { ...opened, effects: [...opened.effects, { type: "checkVoice" }] }
+}
+
 /** A note's id from when it was made: letters, digits and dashes. */
 function noteIdAt(at: string): string {
   return `n-${at.replace(/[^0-9A-Za-z]/g, "")}`
@@ -1841,25 +1872,7 @@ export function step(state: StudioState, event: StudioEvent): Step {
     case "watchChosen": {
       if (project === null || screen.kind !== "start" || !isSettled(activity))
         return stay(state)
-      const opened = enqueue(
-        {
-          ...state,
-          screen: {
-            kind: "watch",
-            video: null,
-            review: null,
-            atMs: 0,
-            answered: [],
-            listen: "checking",
-            speaking: null,
-            origin: null,
-          },
-          notice: "",
-          choosing: null,
-        },
-        { kind: "open", project: project.id, at: event.at }
-      )
-      return { ...opened, effects: [...opened.effects, { type: "checkVoice" }] }
+      return watchOpened(state, project, null, event.at)
     }
 
     case "watchBack": {
@@ -1963,7 +1976,18 @@ export function step(state: StudioState, event: StudioEvent): Step {
           notice: WORDS.watch.notThisVideo,
           screen: { ...screen, video: null },
         })
-      return stay({ ...state, screen: { ...screen, review: read.value } })
+      // Opened from Finish: at the scene first waiting on whose idea it is.
+      const from = read.value.shotTimes.find(
+        (each) => each.id === screen.startAt
+      )
+      return stay({
+        ...state,
+        screen: {
+          ...screen,
+          review: read.value,
+          atMs: from === undefined ? screen.atMs : from.startMs,
+        },
+      })
     }
 
     case "reviewUnreadable": {
@@ -2153,6 +2177,8 @@ export function step(state: StudioState, event: StudioEvent): Step {
     case "finishGo": {
       if (screen.kind !== "finish" || project === null) return stay(state)
       const finish = finishOf(project)
+      if (finish.kind === "idea")
+        return watchOpened(state, project, finish.shot, event.at)
       if (finish.kind !== "note" && finish.kind !== "take") return stay(state)
       const wanted = finish.kind === "take" ? finish.shot : finish.note.shot
       // A note on a scene a later revision dropped opens where work resumes.

@@ -1,5 +1,5 @@
 /** @vitest-environment node */
-import type { Idea } from "@some-ui/video-render"
+import type { Idea, Shot } from "@some-ui/video-render"
 import { authorshipOf, parseCutList } from "@some-ui/video-render"
 import { projectFile, readProjectFile } from "@soundbites/lib/project/file"
 import { mergeIn } from "@soundbites/lib/project/merge"
@@ -8,12 +8,12 @@ import {
   cutListAt,
   isAppendOnly,
   latest,
+  newProject,
   step,
 } from "@soundbites/lib/project/model"
-import {
-  originConfirmed,
-  originsToConfirm,
-} from "@soundbites/lib/project/origin"
+import { originConfirmed, originsWaiting } from "@soundbites/lib/project/origin"
+import { cutListOf } from "@soundbites/lib/project/script"
+import { primer } from "@soundbites/lib/studio/__tests__/fixture"
 import { describe, expect, it } from "vitest"
 
 import { AT, run, shape, shot, started, take } from "./fixture"
@@ -48,7 +48,7 @@ const said = (id: string, idea: Idea) =>
 describe("the owner's word on whose idea a scene is (ST5)", () => {
   it("is a mark kept for good, of the latest version, and the scene stands confirmed", () => {
     const before = started()
-    expect(originsToConfirm(before.project)).toBe(3)
+    expect(originsWaiting(before.project).length).toBe(3)
     const next = step(before, said("a", { origin: "agent" }))
     expect(next.refused).toBeNull()
     const { project } = next.state
@@ -57,7 +57,7 @@ describe("the owner's word on whose idea a scene is (ST5)", () => {
     ])
     expect(project.revisions).toEqual(before.project.revisions)
     expect(originConfirmed(project, "a")).toBe(true)
-    expect(originsToConfirm(project)).toBe(2)
+    expect(originsWaiting(project).length).toBe(2)
     expect(next.effects).toEqual([{ type: "save", project }])
     expect(isAppendOnly(before.project, project)).toBe(true)
   })
@@ -89,6 +89,28 @@ describe("the owner's word on whose idea a scene is (ST5)", () => {
     expect(step(once, said("a", { origin: "agent" })).refused).toBe("duplicate")
   })
 
+  it("is asked of every scene but a bare card: no take, and no line of the script", () => {
+    const script = cutListOf(primer())
+    const title: Shot = { ...shot("title"), picture: { kind: "card" } }
+    const state = newProject("p2", {
+      author: "claude",
+      message: "Primer",
+      at: AT,
+      cutList: { ...script, shots: [title, ...script.shots] },
+      primer: primer(),
+    })
+    // The primer's own scenes are cards too, each saying a line of it.
+    expect(originsWaiting(state.project)).toEqual(
+      script.shots.map((each, index) => ({ shot: each.id, n: index + 2 }))
+    )
+    const taken = run(
+      state,
+      { type: "takeStarted", shot: "title" },
+      take("t-title", "title")
+    )
+    expect(originsWaiting(taken.project)[0]).toEqual({ shot: "title", n: 1 })
+  })
+
   it("is asked again once a later version gives the scene another idea", () => {
     const confirmed = run(started(), said("a", { origin: "agent" }))
     const moved = withIdea(
@@ -98,7 +120,7 @@ describe("the owner's word on whose idea a scene is (ST5)", () => {
       "claude"
     )
     expect(originConfirmed(moved.project, "a")).toBe(false)
-    expect(originsToConfirm(moved.project)).toBe(3)
+    expect(originsWaiting(moved.project).length).toBe(3)
   })
 
   describe("yours cites the owner's own words", () => {

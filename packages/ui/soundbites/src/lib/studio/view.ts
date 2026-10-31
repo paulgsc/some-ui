@@ -9,10 +9,7 @@ import type { Finish } from "@soundbites/lib/project/finish"
 import { finishOf } from "@soundbites/lib/project/finish"
 import type { Note, Project, ProjectTake } from "@soundbites/lib/project/model"
 import { latest } from "@soundbites/lib/project/model"
-import {
-  originConfirmed,
-  originsToConfirm,
-} from "@soundbites/lib/project/origin"
+import { originConfirmed, originsWaiting } from "@soundbites/lib/project/origin"
 import { capFor, chosenTake, scriptOf } from "@soundbites/lib/project/script"
 
 import type { SittingKind, Whose } from "./words"
@@ -68,7 +65,7 @@ export function startView(project: Project): StartView {
         kind: "watch",
         status: STUDIO_WORDS.watch.status(
           changesWaiting(project),
-          originsToConfirm(project)
+          originsWaiting(project).length
         ),
         open: true,
         startHere: false,
@@ -101,6 +98,9 @@ function finishStatus(finish: Finish): string {
     }
     case "take": {
       return words.take(finish.n)
+    }
+    case "idea": {
+      return words.idea(finish.count)
     }
     case "unmarked":
     case "ready":

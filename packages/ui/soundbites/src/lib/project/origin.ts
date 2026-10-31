@@ -18,11 +18,17 @@
  *   versions gave the scene, which the owner can confirm, not make up.
  * - **Asked again when it moves.** A scene stands confirmed while its last
  *   mark's idea is the latest version's; a later version that changes it
- *   (Claude's, say) asks again.
+ *   (Claude's, say) asks again, and one that leaves it keeps the mark.
+ * - **A bare card carries no idea.** A card picture with no take and no
+ *   line of the script (the series' title or end card) is never asked
+ *   (`carriesIdea`; owner, #2253).
+ * - **Finish waits on it.** A version is ready for YouTube only once every
+ *   scene that carries an idea is confirmed (`./finish`); one marked ready
+ *   before stays so.
  */
-import type { Idea } from "@some-ui/video-render"
+import type { Idea, Shot } from "@some-ui/video-render"
 
-import { latestShot, sameJson } from "./lookup"
+import { latestShot, primerAt, sameJson } from "./lookup"
 import type { Project } from "./model"
 
 /** The owner's word on whose idea scene `shot` presents in version `rev`. */
@@ -58,10 +64,33 @@ export function originConfirmed(project: Project, shot: string): boolean {
   return scene !== null && mark !== null && sameJson(mark.idea, scene.idea)
 }
 
-/** How many of the latest version's scenes wait on the owner's word. */
-export function originsToConfirm(project: Project): number {
+/**
+ * Whether scene `shot` of the latest version carries an idea to ask the
+ * owner about: any but a bare card, a card picture with no take and no
+ * line of the script, which presents no one's idea.
+ */
+export function carriesIdea(project: Project, shot: Shot): boolean {
+  if (
+    shot.picture.kind !== "card" ||
+    shot.take !== undefined ||
+    project.chosen[shot.id] !== undefined
+  )
+    return true
+  const line = shot.cut ?? shot.id
+  const primer = primerAt(project, project.revisions.at(-1)?.rev ?? 0)
+  return primer?.cuts.some((cut) => cut.id === line) === true
+}
+
+/** The latest version's scenes that wait on the owner's word, in order, numbered from 1. */
+export function originsWaiting(
+  project: Project
+): ReadonlyArray<{ readonly shot: string; readonly n: number }> {
   const shots = project.revisions.at(-1)?.cutList.shots ?? []
-  return shots.filter((shot) => !originConfirmed(project, shot.id)).length
+  return shots.flatMap((shot, index) =>
+    carriesIdea(project, shot) && !originConfirmed(project, shot.id)
+      ? [{ shot: shot.id, n: index + 1 }]
+      : []
+  )
 }
 
 /**

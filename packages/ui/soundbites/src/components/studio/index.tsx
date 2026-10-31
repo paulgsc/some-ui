@@ -798,9 +798,12 @@ type WatchScreen = Extract<StudioState["screen"], { kind: "watch" }>
 /** The picked render, played from the file where it is: never copied in. */
 const ReviewVideo = ({
   video,
+  startMs,
   dispatch,
 }: {
   video: Blob
+  /** Where it starts playing once loaded: Watch's playhead then. */
+  startMs: number
   dispatch: Dispatch
 }): JSX.Element => {
   const url = useMemo(() => URL.createObjectURL(video), [video])
@@ -817,6 +820,9 @@ const ReviewVideo = ({
       controls
       playsInline
       className="w-full rounded-2xl bg-black"
+      onLoadedMetadata={(event) => {
+        event.currentTarget.currentTime = startMs / 1_000
+      }}
       onTimeUpdate={(event) =>
         dispatch({
           type: "playheadAt",
@@ -878,7 +884,11 @@ const Watch = ({
         </label>
       ) : (
         <>
-          <ReviewVideo video={video} dispatch={dispatch} />
+          <ReviewVideo
+            video={video}
+            startMs={screen.atMs}
+            dispatch={dispatch}
+          />
           {asked !== null && (
             <div className="border-brand space-y-2 rounded-2xl border-2 p-3">
               <p className="text-sm">{words.changed(asked.note.text)}</p>
@@ -1254,6 +1264,14 @@ const Finish = ({
           <p className="text-sm">{words.take(finish.n)}</p>
           <Button size="lg" onClick={() => dispatch({ type: "finishGo" })}>
             {words.goTake(finish.n)}
+          </Button>
+        </>
+      )}
+      {finish.kind === "idea" && (
+        <>
+          <p className="text-sm">{words.idea(finish.count)}</p>
+          <Button size="lg" onClick={() => dispatch({ type: "finishGo" })}>
+            {words.goIdea(finish.n)}
           </Button>
         </>
       )}

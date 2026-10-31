@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import { inMemoryStorage } from "@some-ui/core-utils"
-import type { Idea, ShotTime } from "@some-ui/video-render"
+import type { Idea, Shot, ShotTime } from "@some-ui/video-render"
 import { REVIEW_SCHEMA } from "@some-ui/video-render"
 import type {
   Playback,
@@ -11,12 +11,18 @@ import type {
 import { fakeMic } from "@soundbites/lib/fake-mic"
 import type { Listened } from "@soundbites/lib/idea/machine"
 import type { IdeaListener, Listening } from "@soundbites/lib/idea/runtime"
-import { run, started, take } from "@soundbites/lib/project/__tests__/fixture"
+import {
+  run,
+  shot,
+  started,
+  take,
+} from "@soundbites/lib/project/__tests__/fixture"
 import { projectFile, readProjectFile } from "@soundbites/lib/project/file"
 import { finishOf } from "@soundbites/lib/project/finish"
+import { primerAt } from "@soundbites/lib/project/lookup"
 import { memoryProjectStore } from "@soundbites/lib/project/memory-store"
 import type { CutListShape, Project } from "@soundbites/lib/project/model"
-import { latest, newProject, primerAt } from "@soundbites/lib/project/model"
+import { latest, newProject } from "@soundbites/lib/project/model"
 import { cutListOf, TAIL_MS } from "@soundbites/lib/project/script"
 import type { OriginFix, Speaking } from "@soundbites/lib/studio/machine"
 import {
@@ -1232,15 +1238,69 @@ describe("Shape", () => {
 })
 
 /** ST7: Finish names the one thing missing, then keeps the mark and the link. */
+/** The latest version's review render picked on Watch, and read; its scene times. */
+async function reviewPicked(
+  runtime: StudioRuntime
+): Promise<ReadonlyArray<ShotTime>> {
+  const { rev, cutList } = latest(projectIn(runtime))
+  let start = 0
+  const shotTimes = cutList.shots.map((each) => {
+    const at = start
+    start += each.durationMs
+    return {
+      id: each.id,
+      cut: null,
+      startMs: at,
+      durationMs: each.durationMs,
+    }
+  })
+  runtime.dispatch({
+    type: "reviewPicked",
+    files: [
+      new Blob(["v"], { type: "video/mp4" }),
+      new Blob(
+        [
+          JSON.stringify({
+            schema: REVIEW_SCHEMA,
+            title: cutList.title,
+            rev,
+            shotTimes,
+          }),
+        ],
+        {
+          type: "application/json",
+        }
+      ),
+    ],
+  })
+  await until(
+    runtime,
+    (state) => state.screen.kind === "watch" && state.screen.review !== null
+  )
+  return shotTimes
+}
+
 describe("Finish", () => {
-  /** A video kept on the phone with every scene taken. */
-  async function taken(): Promise<Running> {
+  /** A video kept on the phone with every scene taken, and whose idea each is said of `said`. */
+  async function taken(
+    said: ReadonlyArray<string> = ["a", "b", "c"]
+  ): Promise<Running> {
     const state = ["a", "b", "c"].reduce(
       (at, id) =>
         run(at, { type: "takeStarted", shot: id }, take(`t-${id}`, id)),
       started()
     )
-    const runtime = studio(memoryProjectStore([state.project]))
+    const confirmed = said.reduce(
+      (at, id) =>
+        run(at, {
+          type: "originSaid",
+          shot: id,
+          idea: { origin: "agent" },
+          at: AT,
+        }),
+      state
+    )
+    const runtime = studio(memoryProjectStore([confirmed.project]))
     await until(runtime, (each) => projectOf(each) !== null)
     runtime.dispatch({ type: "finishChosen" })
     return runtime
@@ -1256,6 +1316,29 @@ describe("Finish", () => {
       kind: "record",
       shot: first?.id,
     })
+  })
+
+  it("waits on whose idea each scene is, and opens Watch at the first scene asked", async () => {
+    const runtime = await taken(["a"])
+    expect(finishOf(projectIn(runtime))).toEqual({
+      kind: "idea",
+      rev: 1,
+      shot: "b",
+      n: 2,
+      count: 2,
+    })
+    runtime.dispatch({ type: "readyMarked" })
+    expect(runtime.getSnapshot().queue).toEqual([])
+    runtime.dispatch({ type: "finishGo" })
+    expect(runtime.getSnapshot().screen).toMatchObject({
+      kind: "watch",
+      startAt: "b",
+    })
+    const [, second] = await reviewPicked(runtime)
+    const { screen } = runtime.getSnapshot()
+    if (screen.kind !== "watch") throw new Error("watch")
+    expect(screen.atMs).toBe(second?.startMs)
+    expect(ideaAsking(projectIn(runtime), screen, [])).toBe("b")
   })
 
   it("keeps the owner's mark, then the YouTube link, on the latest version", async () => {
@@ -1386,43 +1469,8 @@ describe("Watch", () => {
   async function watching(
     runtime: StudioRuntime
   ): Promise<ReadonlyArray<ShotTime>> {
-    const { rev, cutList } = latest(projectIn(runtime))
-    let start = 0
-    const shotTimes = cutList.shots.map((each) => {
-      const at = start
-      start += each.durationMs
-      return {
-        id: each.id,
-        cut: null,
-        startMs: at,
-        durationMs: each.durationMs,
-      }
-    })
     runtime.dispatch({ type: "watchChosen" })
-    runtime.dispatch({
-      type: "reviewPicked",
-      files: [
-        new Blob(["v"], { type: "video/mp4" }),
-        new Blob(
-          [
-            JSON.stringify({
-              schema: REVIEW_SCHEMA,
-              title: cutList.title,
-              rev,
-              shotTimes,
-            }),
-          ],
-          {
-            type: "application/json",
-          }
-        ),
-      ],
-    })
-    await until(
-      runtime,
-      (state) => state.screen.kind === "watch" && state.screen.review !== null
-    )
-    return shotTimes
+    return reviewPicked(runtime)
   }
 
   it("pins a note to the scene and offset playing, from the render's own times", async () => {
@@ -1837,6 +1885,33 @@ describe("Watch", () => {
     expect(fixIn(runtime.getSnapshot())).toBeNull()
     expect(speakingIn(runtime.getSnapshot())).toBeNull()
     expect(projectIn(runtime)).toEqual(before)
+  })
+
+  it("never asks of a bare card, nor counts it on Start", async () => {
+    const ideas = withIdeas()
+    const { cutList } = latest(ideas)
+    const end: Shot = { ...shot("end"), picture: { kind: "card" } }
+    const carded = run(
+      { project: ideas, taking: null, closing: null },
+      {
+        type: "revised",
+        author: "claude",
+        message: "The series' end card",
+        at: AT,
+        cutList: { ...cutList, shots: [...cutList.shots, end] },
+      }
+    ).project
+    const runtime = await watchingIdeas(undefined, memoryProjectStore([carded]))
+    expect(
+      startView(carded).sittings.find((row) => row.kind === "watch")?.status
+    ).toBe(STUDIO_WORDS.watch.status(0, 3))
+    const { screen } = runtime.getSnapshot()
+    if (screen.kind !== "watch") throw new Error("watch")
+    expect(ideaAsking(carded, { ...screen, atMs: 4_300 }, [])).toBe("c")
+    expect(ideaAsking(carded, { ...screen, atMs: 6_300 }, [])).toBeNull()
+    runtime.dispatch({ type: "playheadAt", ms: 6_300 })
+    runtime.dispatch({ type: "ideaRight", shot: "end" })
+    expect(runtime.getSnapshot().queue).toEqual([])
   })
 
   it("keeps nothing of That's right once another screen changed that idea, and asks again", async () => {

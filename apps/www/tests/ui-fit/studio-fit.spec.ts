@@ -146,6 +146,21 @@ const WALKS: Record<
       },
     },
   ],
+  "studio-taken": [
+    { screen: "Start, every scene taken, no idea said", go: start },
+    {
+      screen: "Finish, whose idea waits",
+      go: (page) => tap(page, sitting("Finish")),
+    },
+    {
+      // Opened at the first scene asked, once its render is picked.
+      screen: "Watch, opened from Finish",
+      go: async (page): Promise<void> => {
+        await tap(page, /^Watch from scene 1$/)
+        await page.locator('input[type="file"]').waitFor()
+      },
+    },
+  ],
   "studio-reviewed": [
     { screen: "Start, every scene taken", go: start },
     {

@@ -19,7 +19,7 @@ import type { Review } from "@some-ui/video-render"
 import { latestShot } from "@soundbites/lib/project/lookup"
 import type { Note, Project } from "@soundbites/lib/project/model"
 import { anchorAt } from "@soundbites/lib/project/model"
-import { originConfirmed } from "@soundbites/lib/project/origin"
+import { carriesIdea, originConfirmed } from "@soundbites/lib/project/origin"
 
 /** The scene on screen `ms` into `review`, and how far into it. */
 export function shotAt(
@@ -109,8 +109,9 @@ export type Watching = {
 /**
  * The scene Watch asks whose idea it is, or null: the one playing, once no
  * change of Claude's waits at this moment and nothing else is under way, if
- * the owner hasn't said it as the latest version has it and no answer about
- * it is on its way to being kept (`answering`, by scene).
+ * it carries an idea the owner hasn't said as the latest version has it,
+ * and no answer about it is on its way to being kept (`answering`, by
+ * scene).
  */
 export function ideaAsking(
   project: Project,
@@ -125,7 +126,9 @@ export function ideaAsking(
     return null
   const here = shotAt(review, atMs)
   if (here === null || answering.includes(here.shot)) return null
-  return latestShot(project, here.shot) !== null &&
+  const scene = latestShot(project, here.shot)
+  return scene !== null &&
+    carriesIdea(project, scene) &&
     !originConfirmed(project, here.shot)
     ? here.shot
     : null

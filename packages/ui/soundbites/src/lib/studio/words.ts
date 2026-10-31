@@ -142,6 +142,11 @@ function andList(items: ReadonlyArray<string>): string {
     : `${items.slice(0, -1).join(", ")} and ${last}`
 }
 
+/** Scenes whose idea waits on the owner's word, as Watch's row and Finish say it. */
+function ideasToConfirm(n: number): string {
+  return `Whose idea: ${plural(n, "scene", "scenes")} to confirm`
+}
+
 function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
 }
@@ -416,9 +421,7 @@ export const STUDIO_WORDS = {
               : [
                   `${plural(changes, "change", "changes")} of Claude's to watch`,
                 ]),
-            ...(ideas === 0
-              ? []
-              : [`Whose idea: ${plural(ideas, "scene", "scenes")} to confirm`]),
+            ...(ideas === 0 ? [] : [ideasToConfirm(ideas)]),
           ].join(" · "),
   },
 
@@ -483,8 +486,10 @@ export const STUDIO_WORDS = {
     goNote: "Go to its scene",
     take: (n: number): string => `Scene ${n} has no kept take yet.`,
     goTake: (n: number): string => `Record scene ${n}`,
+    idea: ideasToConfirm,
+    goIdea: (n: number): string => `Watch from scene ${n}`,
     unmarked:
-      "Every scene has its take and no note is open. Say it's ready when you have watched it through.",
+      "Every scene has its take and its idea said, and no note is open. Say it's ready when you have watched it through.",
     mark: "It's ready",
     ready: "Ready for YouTube.",
     uploadCopy:
@@ -502,6 +507,7 @@ export const STUDIO_WORDS = {
     status: {
       note: "A note is open",
       take: (n: number): string => `Scene ${n} needs a take`,
+      idea: ideasToConfirm,
       unmarked: "Ready to mark",
       ready: "Ready for YouTube",
       released: "Released",
