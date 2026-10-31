@@ -12,7 +12,7 @@
  * room at the record's bound (topik's `lensRecordHeldByHome`, which
  * `./voice-copy` hands `lensEntriesHeld`); nothing here lets anything go.
  */
-import type { HomeCall, KeyedStorage } from "@some-ui/core-utils"
+import type { HomeCall } from "@some-ui/core-utils"
 import {
   canonicalJson,
   fnv1a,
@@ -110,20 +110,4 @@ export function lensEntriesHeld(): (entry: LensEntry) => boolean {
   if (pairing === null) return () => false
   const { lens } = readSent(localStorageOrNull(), pairing)
   return (entry) => lens[lensKey(entry)] === lensDigest(entry)
-}
-
-/**
- * What a run under `pairing` carries of the grammar-lens record: what home
- * doesn't hold as it is now. Reads only this phone; none when it can't load.
- */
-export async function lensGoing(
-  pairing: string,
-  storage: KeyedStorage | null
-): Promise<Array<LensEntry>> {
-  try {
-    const { lensRecordForExport } = await import("@some-ui/topik")
-    return lensToSend(lensRecordForExport().entries, readSent(storage, pairing))
-  } catch {
-    return []
-  }
 }

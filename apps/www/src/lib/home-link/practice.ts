@@ -27,6 +27,7 @@ import type { SessionRecord } from "@/lib/tenant/types"
 
 import { drainHome } from "./drain"
 import {
+  lensGoing,
   letGoHeldPrompts,
   letGoHeldReflections,
   logGoing,
@@ -38,7 +39,6 @@ import {
 } from "./going"
 import { pairingOf, useHomeLink } from "./index"
 import type { Lane, LaneCounts } from "./lanes"
-import { lensGoing } from "./lens-record"
 import type { HomeLinkState } from "./model"
 import { promptsToSend } from "./prompts"
 import { writtenToSend } from "./reflections"

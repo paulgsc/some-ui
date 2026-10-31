@@ -1,12 +1,13 @@
 /**
  * What this phone holds for the drain (`./drain`): its sessions and kept
  * shelf items, its finished LeetType sessions, Studio's sittings and
- * answers, its written reflections, its asks for the next scene and the
- * study notes (`./notes`), each read from the phone alone, and the
- * LeetType, Studio, reflection, ask and note parts already narrowed to what
- * home does not hold as it is now (`./sent`). Nothing here sends; it lets
- * go of a written reflection (`letGoHeldReflections`, LA16) and of an ask
- * home holds, with the scene notes it named (`letGoHeldPrompts`, LA18).
+ * answers, its written reflections, its asks for the next scene, the study
+ * notes (`./notes`) and the grammar-lens record (`./lens-record`), each read
+ * from the phone alone, and the LeetType, Studio, reflection, ask, note and
+ * lens parts already narrowed to what home does not hold as it is now
+ * (`./sent`). Nothing here sends; it lets go of a written reflection
+ * (`letGoHeldReflections`, LA16) and of an ask home holds, with the scene
+ * notes it named (`letGoHeldPrompts`, LA18).
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import type { HomeSession } from "@some-ui/leetype"
@@ -23,12 +24,14 @@ import { studioKeeping } from "@/lib/studio-keeping"
 import { sessionsRepository } from "@/lib/tenant/queries"
 import type { SessionRecord } from "@/lib/tenant/types"
 
+import type { LensEntry } from "./lens-record"
+import { lensKey, lensToSend } from "./lens-record"
 import type { StudyNote } from "./notes"
-import { notesOf, notesToSend } from "./notes"
+import { notesOf, notesOnPhone, notesToSend } from "./notes"
 import { heldPrompts, promptsToSend } from "./prompts"
 import type { Written } from "./reflections"
 import { heldWritten, writtenToSend } from "./reflections"
-import type { Sent } from "./sent"
+import type { KeyedGoing, Sent } from "./sent"
 import { logToSend, readSent } from "./sent"
 import type { StudioGoing } from "./studio-log"
 import { reportsOf, studioToSend } from "./studio-log"
@@ -134,15 +137,50 @@ export function letGoHeldPrompts(sent: Sent): void {
 
 /**
  * What a run under `pairing` carries of the soundbites' records and
- * LeetType's answer notes: those home doesn't hold yet. Reads only this
- * phone; a store it cannot read carries none.
+ * LeetType's answer notes: those home doesn't hold yet, and which notes are
+ * still on the phone. Reads only this phone; a store it cannot read carries
+ * none.
  */
 export async function notesGoing(
   pairing: string,
   storage: KeyedStorage | null
-): Promise<Array<StudyNote>> {
+): Promise<KeyedGoing<StudyNote>> {
   const { leetypeNotes } = await import("@/lib/leetype-takes")
   const kept = soundbiteKeeping()
-  const bites = kept === null ? [] : await kept.store.list().catch(() => [])
-  return notesToSend(notesOf(bites, leetypeNotes()), readSent(storage, pairing))
+  const bites =
+    kept === null
+      ? null
+      : await kept.store.list().catch(() => {
+          // Ignored: the voice lane reports a store it can't list
+          // (`./voice-copy`), and unread, every soundbite's key stays.
+          return null
+        })
+  const notes = notesOf(bites ?? [], leetypeNotes())
+  return {
+    going: notesToSend(notes, readSent(storage, pairing)),
+    onPhone: notesOnPhone(notes, bites !== null),
+  }
+}
+
+/**
+ * What a run under `pairing` carries of the grammar-lens record: what home
+ * doesn't hold as it is now, and which entries are still on the phone.
+ * Reads only this phone; none when it can't load.
+ */
+export async function lensGoing(
+  pairing: string,
+  storage: KeyedStorage | null
+): Promise<KeyedGoing<LensEntry>> {
+  try {
+    const { lensRecordForExport } = await import("@some-ui/topik")
+    const { entries } = lensRecordForExport()
+    const keys = new Set(entries.map(lensKey))
+    return {
+      going: lensToSend(entries, readSent(storage, pairing)),
+      onPhone: (key) => keys.has(key),
+    }
+  } catch {
+    // Unread: any entry `sent` remembers may still be on the phone.
+    return { going: [], onPhone: () => true }
+  }
 }

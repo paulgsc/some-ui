@@ -753,10 +753,12 @@ can say is when a run is asked for:
   (`confirmHeld`), or sends other than through `copyHome`, `sendKept`,
   `sendLog`, `sendStudio`, `sendReflections` (LA16), `sendPrompts` (LA18),
   `sendNotes` and `sendLens`; a hunk to `lib/home-link/notes.ts` that counts
+  `sendNotes` and `sendLens`; a hunk to `lib/home-link/notes.ts` that counts
   a note held without home's `200` naming the SHA-256 of the bytes sent, or
   to `lib/home-link/lens-record.ts` that counts an entry held without home's
-  `200` carrying it back as sent, or hands topik a reading of what home
-  holds other than `sent.lens` matching the entry as it is now; a hunk to
+  `200` carrying it back as sent, or makes `lensEntriesHeld` (the reading of
+  what home holds that `./voice-copy` hands topik) other than `sent.lens`
+  matching the entry as it is now; a hunk to
   `lib/home-link/model.ts` or `runtime.ts` that lets `pair` keep an earlier
   pairing's `id`, or lets `load` report an `id` other than the one stored
   with the key; a hunk to `lib/home-link/sent.ts` that lets

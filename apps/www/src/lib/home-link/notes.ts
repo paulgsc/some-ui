@@ -71,6 +71,20 @@ export function notesToSend(
   return notes.filter((note) => !(noteKey(note.kind, note.id) in sent.notes))
 }
 
+/**
+ * Whether a key `sent.notes` remembers names a note still on the phone: one
+ * of `notes`, or any soundbite's while their store is unread (`bitesRead`
+ * false: their page not loaded in this run, or their list failed).
+ */
+export function notesOnPhone(
+  notes: ReadonlyArray<StudyNote>,
+  bitesRead: boolean
+): (key: string) => boolean {
+  const keys = new Set(notes.map((note) => noteKey(note.kind, note.id)))
+  const bite = noteKey("soundbite", "")
+  return (key) => keys.has(key) || (!bitesRead && key.startsWith(bite))
+}
+
 /** The SHA-256 home's answer names for the note it holds, if any. */
 function heldSha(body: string): string | null {
   const answer = jsonOf(body)

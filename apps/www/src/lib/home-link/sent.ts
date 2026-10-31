@@ -123,6 +123,34 @@ export function readSent(storage: Store, pairing: string): Sent {
   return sent.value?.pairing === pairing ? sent.value : emptyFor(pairing)
 }
 
+/**
+ * What a run carries of a record `sent` remembers by key (the study notes,
+ * the grammar-lens record), and which of those keys still name something on
+ * the phone, so `sent` forgets the rest.
+ */
+export type KeyedGoing<T> = {
+  readonly going: ReadonlyArray<T>
+  /** True for a key whose item is on the phone, or may be (unread). */
+  readonly onPhone: (key: string) => boolean
+}
+
+/** For each map `sent` keeps only while its item is on the phone, which stay. */
+export type Staying = {
+  readonly notes?: (key: string) => boolean
+  readonly lens?: (key: string) => boolean
+}
+
+/** `record` with only the keys `stays` keeps; all of them without it. */
+function keptOnly(
+  record: Record<string, string>,
+  stays: ((key: string) => boolean) | undefined
+): Record<string, string> {
+  if (stays === undefined) return record
+  return Object.fromEntries(
+    Object.entries(record).filter(([key]) => stays(key))
+  )
+}
+
 /** `record` without the keys `answered` holds. */
 function without(
   record: Readonly<Record<string, string>>,
@@ -136,12 +164,15 @@ function without(
 /**
  * `sent` with what home now holds added; unwritten, the next send repeats
  * it. A kept item is held or refused, never both: home's latest answer for
- * it replaces the other.
+ * it replaces the other. The study notes and the grammar-lens record keep
+ * only the keys `stays` says are still on the phone: those stores let items
+ * go at their caps, and one value in `localStorage` must not outgrow them.
  */
 export function rememberSent(
   storage: Store,
   sent: Sent,
-  more: Partial<Omit<Sent, "pairing">>
+  more: Partial<Omit<Sent, "pairing">>,
+  stays: Staying = {}
 ): Sent {
   const next: Sent = {
     pairing: sent.pairing,
@@ -152,8 +183,8 @@ export function rememberSent(
     studio: { ...sent.studio, ...more.studio },
     reflections: { ...sent.reflections, ...more.reflections },
     prompts: { ...sent.prompts, ...more.prompts },
-    notes: { ...sent.notes, ...more.notes },
-    lens: { ...sent.lens, ...more.lens },
+    notes: keptOnly({ ...sent.notes, ...more.notes }, stays.notes),
+    lens: keptOnly({ ...sent.lens, ...more.lens }, stays.lens),
   }
   // Unwritten (full): the next send carries these again, and home says
   // unchanged.

@@ -44,7 +44,7 @@ import { sendNotes } from "./notes"
 import { sendPrompts } from "./prompts"
 import type { Written } from "./reflections"
 import { sendReflections } from "./reflections"
-import type { Sent } from "./sent"
+import type { KeyedGoing, Sent, Staying } from "./sent"
 import {
   readSent,
   rememberSent,
@@ -86,10 +86,10 @@ export type DrainPorts = {
    * they named as carried by them (`./going`'s `letGoHeldPrompts`).
    */
   letGoHeldPrompts: (sent: Sent) => void
-  /** The study notes home lacks under `pairing` (`./going`). */
-  notesGoing: () => Promise<ReadonlyArray<StudyNote>>
-  /** The grammar-lens entries home lacks as they are (`./lens-record`). */
-  lensGoing: () => Promise<ReadonlyArray<LensEntry>>
+  /** The study notes home lacks under `pairing`, and those on the phone (`./going`). */
+  notesGoing: () => Promise<KeyedGoing<StudyNote>>
+  /** The grammar-lens entries home lacks as they are, and those on the phone (`./going`). */
+  lensGoing: () => Promise<KeyedGoing<LensEntry>>
   /** The pairing this run goes under (the link's id for it). */
   pairing: string
   storage: KeyedStorage | null
@@ -200,11 +200,15 @@ export async function drainHome(
         ? "refused"
         : null
 
-  /** Sends one log's `going`, remembering under `field` what home read back. */
+  /**
+   * Sends one log's `going`, remembering under `field` what home read back,
+   * and keeping of a map `stays` names only what is still on the phone.
+   */
   const part = async <T>(
     going: T,
     sender: LogSender<T>,
-    field: "leetype" | "studio" | "reflections" | "prompts" | "notes" | "lens"
+    field: "leetype" | "studio" | "reflections" | "prompts" | "notes" | "lens",
+    stays: Staying = {}
   ): Promise<HomeExchanged | null> => {
     const log = emptyLogReport()
     const readBack: Record<string, string> = {}
@@ -213,7 +217,7 @@ export async function drainHome(
         readBack[key] = digest
       })
     } finally {
-      sent = rememberSent(ports.storage, sent, { [field]: readBack })
+      sent = rememberSent(ports.storage, sent, { [field]: readBack }, stays)
     }
     if (log.refused + log.other + log.differs > 0) short ??= "refused"
     return endedPart(log)
@@ -245,9 +249,15 @@ export async function drainHome(
     ports.letGoHeld(sent)
     ports.letGoHeldPrompts(sent)
   }
-  const notesEnded = await part(await ports.notesGoing(), sendNotes, "notes")
+  const notes = await ports.notesGoing()
+  const notesEnded = await part(notes.going, sendNotes, "notes", {
+    notes: notes.onPhone,
+  })
   if (notesEnded !== null) return notesEnded
-  const lensEnded = await part(await ports.lensGoing(), sendLens, "lens")
+  const lens = await ports.lensGoing()
+  const lensEnded = await part(lens.going, sendLens, "lens", {
+    lens: lens.onPhone,
+  })
   if (lensEnded !== null) return lensEnded
 
   return short === null ? { kind: "synced" } : failed(short)

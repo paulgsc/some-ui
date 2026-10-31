@@ -18,6 +18,8 @@ import type { DrainPorts } from "@/lib/home-link/drain"
 import { drainHome } from "@/lib/home-link/drain"
 import type { LensEntry } from "@/lib/home-link/lens-record"
 import { lensDigest, lensKey, lensToSend } from "@/lib/home-link/lens-record"
+import { notesOnPhone } from "@/lib/home-link/notes"
+import type { KeyedGoing } from "@/lib/home-link/sent"
 import { digestOf, readSent, SENT_KEY } from "@/lib/home-link/sent"
 import { HomeUnansweredError } from "@/lib/home-link/shelf"
 import type { CopyResult } from "@/lib/tenant/sessions-copy"
@@ -66,6 +68,10 @@ const REPORT = {
   cause: "The microphone",
   shot: "path",
 }
+
+/** No notes or entries going, and every key `sent` remembers still on the phone. */
+const nothingGoing = (): Promise<KeyedGoing<never>> =>
+  Promise.resolve({ going: [], onPhone: () => true })
 
 const copied = (n: number): CopyResult => ({
   outcome: { kind: "copied", copied: n },
@@ -118,9 +124,8 @@ function setup(
     letGoHeld: over.letGoHeld ?? ((): void => undefined),
     promptsGoing: over.prompts ?? ((): Array<never> => []),
     letGoHeldPrompts: over.letGoHeldPrompts ?? ((): void => undefined),
-    notesGoing:
-      over.notes ?? ((): Promise<Array<never>> => Promise.resolve([])),
-    lensGoing: over.lens ?? ((): Promise<Array<never>> => Promise.resolve([])),
+    notesGoing: over.notes ?? nothingGoing,
+    lensGoing: over.lens ?? nothingGoing,
     pairing: PAIRING,
     storage: memoryStorage(),
     copy:
@@ -466,10 +471,13 @@ describe("the drain's LeetType and Studio parts", () => {
       local: [],
       kept: [],
       notes: () =>
-        Promise.resolve([
-          { kind: "soundbite", id: "b1", body: { id: "b1", bytes: 3 } },
-          { kind: "leetype", id: "n2", body: { id: "n2", ticks: [] } },
-        ]),
+        Promise.resolve({
+          going: [
+            { kind: "soundbite", id: "b1", body: { id: "b1", bytes: 3 } },
+            { kind: "leetype", id: "n2", body: { id: "n2", ticks: [] } },
+          ],
+          onPhone: () => true,
+        }),
     })
     await expect(drainHome(send, ports)).resolves.toEqual({
       kind: "failed",
@@ -521,7 +529,7 @@ describe("the drain's LeetType and Studio parts", () => {
     const { ports } = setup({
       local: [],
       kept: [],
-      lens: () => Promise.resolve(sent),
+      lens: () => Promise.resolve({ going: sent, onPhone: () => true }),
     })
     await expect(drainHome(send, ports)).resolves.toEqual({
       kind: "failed",
@@ -538,6 +546,34 @@ describe("the drain's LeetType and Studio parts", () => {
     expect(held.lens).toEqual({ [lensKey(sent[0])]: lensDigest(sent[0]) })
     expect(lensToSend(sent, held)).toEqual([sent[1]])
     expect(lensToSend([{ ...sent[0], right: false }], held)).toHaveLength(1)
+  })
+
+  it("forgets the notes and grammar-lens entries no longer on the phone, keeping those still there (HF5)", async () => {
+    const { ports, send } = setup({ local: [], kept: [] })
+    ports.storage?.setItem(
+      SENT_KEY,
+      JSON.stringify({
+        pairing: PAIRING,
+        notes: { "soundbite:gone": "a", "leetype:kept": "b" },
+        lens: { "let-go": "1:2", here: "3:4" },
+      })
+    )
+    ports.notesGoing = (): Promise<KeyedGoing<never>> =>
+      Promise.resolve({ going: [], onPhone: (key) => key === "leetype:kept" })
+    ports.lensGoing = (): Promise<KeyedGoing<never>> =>
+      Promise.resolve({ going: [], onPhone: (key) => key === "here" })
+    await expect(drainHome(send, ports)).resolves.toEqual({ kind: "synced" })
+    const held = readSent(ports.storage, PAIRING)
+    expect(held.notes).toEqual({ "leetype:kept": "b" })
+    expect(held.lens).toEqual({ here: "3:4" })
+  })
+
+  it("counts every soundbite's note as still on the phone while their store is unread (HF5)", () => {
+    const notes = [{ kind: "leetype" as const, id: "n1", body: {} }]
+    expect(notesOnPhone(notes, true)("leetype:n1")).toBe(true)
+    expect(notesOnPhone(notes, true)("soundbite:b1")).toBe(false)
+    expect(notesOnPhone(notes, false)("soundbite:b1")).toBe(true)
+    expect(notesOnPhone(notes, false)("leetype:n2")).toBe(false)
   })
 
   it("says a LeetType session home refused, and keeps it here for the next run", async () => {

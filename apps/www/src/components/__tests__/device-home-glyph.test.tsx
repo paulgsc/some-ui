@@ -94,11 +94,10 @@ vi.mock("@/lib/home-link/going", () => ({
   letGoHeldReflections: (): void => undefined,
   promptsGoing: (): Array<never> => [],
   letGoHeldPrompts: (): void => undefined,
-  notesGoing: (): Promise<Array<never>> => Promise.resolve([]),
-}))
-vi.mock("@/lib/home-link/lens-record", async (actual) => ({
-  ...(await actual<object>()),
-  lensGoing: (): Promise<Array<never>> => Promise.resolve([]),
+  notesGoing: (): Promise<unknown> =>
+    Promise.resolve({ going: [], onPhone: () => true }),
+  lensGoing: (): Promise<unknown> =>
+    Promise.resolve({ going: [], onPhone: () => true }),
 }))
 vi.mock("@/lib/jobs", () => ({
   phoneJobs: (): unknown => ({
