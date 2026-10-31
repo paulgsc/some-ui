@@ -1464,6 +1464,13 @@
       "family": "what-is-kept"
     },
     {
+      "store": "phone:failure-log",
+      "class": "telemetry",
+      "growth": "bounded: the newest 200 failures this phone reported, each one line with its time (`some-ui.failure-log.v1`).",
+      "horizon": "the oldest line goes when the 201st is kept (lib/failure-log `withFailure`; owner, 2026-10-30, docs/discard-sites.md)",
+      "family": "what-is-kept"
+    },
+    {
       "store": "phone:game-bites",
       "class": "record",
       "growth": "Per game bite (up to a minute at 32 kbps, ~240 KB) until home holds it, then its audio leaves the phone and a small record stays (letGo, #2080); no cap of its own (maxBytes = +Infinity), so bites home does not hold yet grow until the 25 MiB pool refuses.",
