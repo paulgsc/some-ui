@@ -107,6 +107,44 @@ describe("PDS4: the best week's line names what its slide names", () => {
   })
 })
 
+// PDS5: each label under the strip sits under its own mark and inside the
+// frame: placed at the mark's x and pulled back by that share of its own
+// width, so the mark falls inside the label at either edge. Family: every
+// week of a real season, on both strip slides, across where a mark falls on
+// the axis (an edge, the middle) and how close two marks fall.
+describe("PDS5: the strip's labels sit at their marks", () => {
+  const STRIPS = ["best", "road"] as const
+  it.each(REAL_WEEKS)("%s week %i", (_, __, season, week) => {
+    for (const id of STRIPS) {
+      const Slide = SLIDES[id]
+      const { container, unmount } = render(
+        <Slide season={season} week={week} />
+      )
+      const marks = container.querySelectorAll("line.pd-ways__mark")
+      expect(marks.length, id).toBeGreaterThan(0)
+      for (const mark of marks) {
+        const tone =
+          /pd-ways__mark--(\w+)/.exec(mark.getAttribute("class") ?? "")?.[1] ??
+          "none"
+        const key = container.querySelector<HTMLElement>(
+          `.pd-ways__key--${tone}`
+        )
+        const place = key?.parentElement
+        if (!place) throw new Error(`${id}: no label for the ${tone} mark`)
+        const x = Math.min(100, Math.max(0, Number(mark.getAttribute("x1"))))
+        expect(parseFloat(place.style.left), `${id} ${tone}`).toBeCloseTo(x, 6)
+        expect(place.style.transform, `${id} ${tone}`).toBe(
+          `translateX(-${place.style.left})`
+        )
+        // A reveal's animation fills its transform, which would replace the
+        // placing one: the reveal must sit on another element.
+        expect(place.className, `${id} ${tone}`).not.toMatch(/\bpd-in\b/)
+      }
+      unmount()
+    }
+  })
+})
+
 describe("the podium", () => {
   it("lists tied medalists a line each, and still says our place", () => {
     const tied = SAMPLE_SEASON.weeks.find((w) => w.podium.medals.length > 3)

@@ -121,6 +121,17 @@ const KEY_CLASS: Readonly<Record<MarkTone, string>> = {
 }
 
 /**
+ * A label under the mark at `at` (0 to 100 across the strip), inside the
+ * frame (PDS5): its left edge at the mark, pulled back by the same share of
+ * its own width, so the mark falls inside the label at `at` of the way
+ * along it. Flush left at 0, centred at 50, flush right at 100.
+ */
+const under = (at: number): CSSProperties => {
+  const p = Math.min(100, Math.max(0, at))
+  return { left: `${p}%`, transform: `translateX(-${p}%)` }
+}
+
+/**
  * The week's ways as a histogram on a share axis: every way the week could
  * have gone, and then, row by row, the ways still possible after each result
  * in kickoff order, each drawn over the last (they nest, so the strip
@@ -209,20 +220,30 @@ export const Strip = ({
           />
         ))}
       </svg>
-      <div className="pd-mono text-muted-foreground flex justify-between text-[2.4cqw]">
-        <span>{(low * 100).toFixed(1)}%</span>
-        <span className="flex gap-[2.5cqw]">
-          {marks.map((m) => (
+      <div className="pd-mono text-muted-foreground text-[2.4cqw]">
+        <div className="flex justify-between">
+          <span>{(low * 100).toFixed(1)}%</span>
+          <span>{(high * 100).toFixed(1)}%</span>
+        </div>
+        {marks.map((m) => (
+          // A row per mark, so two labels never meet however close their
+          // marks fall.
+          <div key={m.tone} className="relative h-[1.5em]">
+            {/* The reveal's own transform would replace the placing one, so
+                they sit on two elements. */}
             <span
-              key={m.tone}
-              className={`pd-in ${KEY_CLASS[m.tone]}`}
-              style={delay(m.reveal)}
+              className="absolute top-0 whitespace-nowrap"
+              style={under(x(m.at))}
             >
-              {m.label}
+              <span
+                className={`pd-in inline-block ${KEY_CLASS[m.tone]}`}
+                style={delay(m.reveal)}
+              >
+                {m.label}
+              </span>
             </span>
-          ))}
-        </span>
-        <span>{(high * 100).toFixed(1)}%</span>
+          </div>
+        ))}
       </div>
     </div>
   )

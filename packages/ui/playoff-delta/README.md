@@ -87,6 +87,8 @@ bundled 2025 season and of 2026 as published on 2026-10-29
 - **PDS4:** the best week's voiceover line names the pieces its slide names,
   by the slide's names: our light and the league's two dearest, each with its
   material, the rest counted (`components/slides/__tests__/slides.test.tsx`).
+- **PDS5:** each label under the strip of the week's ways sits under its own
+  mark and inside the frame, a row per mark (same test file).
 
 ## Recording
 
