@@ -37,6 +37,8 @@ const ledgerOf = (
   ],
   synchronous: synchronous.map((module) => ({ module, why: "At once." })),
   stores: [],
+  processes: [],
+  crosscutting: [],
 })
 
 const around = (overrides: Partial<Surroundings> = {}): Surroundings => ({
@@ -408,6 +410,17 @@ describe("the ratchet against the base branch (GC3)", () => {
       expect(findRatchetViolations(base, amended)).toEqual([])
     }
   )
+
+  it("fails a watch that stops naming a check with no new amendment, and lets one add a check", () => {
+    const watched = (checks: ReadonlyArray<string>): Ledger =>
+      ledgerOf([objective({ watch: { by: "dashboard", checks } })])
+    expect(
+      errors(findRatchetViolations(watched(["p/probe"]), watched([])))
+    ).toContain("its watch no longer runs p/probe")
+    expect(
+      findRatchetViolations(watched(["p/probe"]), watched(["p/probe", "p/b"]))
+    ).toEqual([])
+  })
 
   it("lets a bound tighten, a watch strengthen and a verdict improve without an amendment", () => {
     const base = ledgerOf([
