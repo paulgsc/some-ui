@@ -161,8 +161,9 @@ function struggleEdges(
       : []
   }
   if (!isRound(screen)) return []
-  // A slow pick is a struggle even when correct (Def. 9.4); with no
-  // `onHesitate` it goes where the correct option goes.
+  // A slow correct pick is a struggle too (Def. 9.4), and goes to
+  // `onHesitate`, or with none where the correct option goes. A slow wrong
+  // pick goes where its option goes, like any wrong pick (Rem. 11.11).
   const slow =
     screen.onHesitate ?? screen.options.find((option) => option.correct)?.next
   const targets = new Map<string, string>()
@@ -172,7 +173,9 @@ function struggleEdges(
   if (slow !== undefined && !targets.has(slow)) {
     targets.set(
       slow,
-      screen.onHesitate ? "a slow pick" : "a slow pick (no onHesitate)"
+      screen.onHesitate
+        ? "a slow correct pick"
+        : "a slow correct pick (no onHesitate)"
     )
   }
   return [...targets].map(([to, how]) => ({ from: id, to, how }))

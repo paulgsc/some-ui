@@ -81,7 +81,7 @@
     `packages/some-content/prompts/leetype-exercise-generator` · `pedagogy/`
   ]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.5 --- 2026-10-31]
+  #text(size: 9.5pt)[Version 1.6 --- 2026-10-31]
   #v(2cm)
 ]
 
@@ -1879,6 +1879,33 @@ superseded and kept.
   author-expert review of Thread 1 that raised `#2029`.
 ]
 
+#remark("11.11", name: "A slow incorrect selection follows its option, not `onHesitate`")[
+  Amends Rem. 11.9, which is retained as filed, under Def. 9.4 and Rem. 9.6.
+  Rem. 11.9 recorded that a return's wiring was not yet its response's: the
+  phone sent any slow selection that was not the abstention, an incorrect one
+  included, to the round's `onHesitate` rather than its option's `next`
+  (`#2332`). Def. 9.4 keeps an incorrect selection incorrect however long it
+  took, and Rem. 9.6 gives it the incorrect follow-up, a variant in which the
+  option picked visibly fails, so the route now follows the response:
+
+  - A round's `onHesitate` is where a slow *correct* selection goes, in place
+    of the correct option's `next`; a round without one sends it where the
+    correct option goes. This is the `hesitate` response Rem. 11.9 names.
+  - Every other selection goes to its own option's `next`: an incorrect one,
+    slow or not, and the abstention, which carries no slowness.
+  - `lib/leetype/session-file`'s lint reads struggle edges the same way: a
+    wrong option's `next` for an incorrect selection, slow or not, and the
+    abstention; `onHesitate`, or the correct option's `next`, for a slow
+    correct one.
+
+  Rem. 11.9's caveat narrows to what remains: the lint still checks that each
+  response has its return, not that the placed reading a struggle reaches
+  leads to that return.
+
+  Evidence: the code (Amendment protocol, fourth rule), and the independent
+  review of `#2330` that raised `#2332`.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = Falsifiers
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2076,6 +2103,12 @@ session log records `rubric-shown` when the rubric is shown), the round's
 worked confirmation, or a correct, unhurried replay or return's reveal. An
 assisted return solves nothing in any report, and still takes the round off
 the ledger screen (`#2029`, `#2343`). No Definition, Axiom, Theorem, `CW-P`,
+`M` or `A` entry changes.
+
+*v1.6 --- 2026-10-31.* Rem. 11.11 routes a slow incorrect selection to its
+option's `next`, as the incorrect response Def. 9.4 keeps it, and leaves the
+round's `onHesitate` to a slow correct selection (`#2332`); the session-file
+lint's struggle edges read the same. No Definition, Axiom, Theorem, `CW-P`,
 `M` or `A` entry changes.
 
 #pagebreak()

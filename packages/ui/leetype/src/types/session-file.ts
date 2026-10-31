@@ -83,8 +83,10 @@ export type ResponseKind = z.infer<typeof ResponseKindSchema>
  * A choice. With a correct option it is a round (Def. 1.9): `rule` is ρ,
  * `cites` the reading screen whose passage answers it (π), `returnOf` the
  * round it returns (Prop. 9.4 (b)) and `returnFor` which of that round's
- * responses it follows (Rem. 11.9). `onHesitate` is where a slow pick goes
- * instead of the option's own `next` (Def. 9.4).
+ * responses it follows (Rem. 11.9). `onHesitate` is where a slow correct
+ * pick goes instead of the correct option's own `next`; a slow incorrect
+ * pick is an incorrect response and goes to its option's `next` (Def. 9.4,
+ * Rem. 11.11).
  */
 const ChoiceScreenSchema = z.strictObject({
   ...screenBase,
