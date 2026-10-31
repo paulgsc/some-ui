@@ -3,15 +3,19 @@
  * renders it and a test checks it without a store or a microphone.
  */
 import { assertNever } from "@some-ui/core-utils"
-import type { Shot } from "@some-ui/video-render"
+import type { Idea, Shot } from "@some-ui/video-render"
 import type { Cut } from "@soundbites/lib/journal/primer"
 import type { Finish } from "@soundbites/lib/project/finish"
 import { finishOf } from "@soundbites/lib/project/finish"
 import type { Note, Project, ProjectTake } from "@soundbites/lib/project/model"
 import { latest } from "@soundbites/lib/project/model"
+import {
+  originConfirmed,
+  originsToConfirm,
+} from "@soundbites/lib/project/origin"
 import { capFor, chosenTake, scriptOf } from "@soundbites/lib/project/script"
 
-import type { SittingKind } from "./words"
+import type { SittingKind, Whose } from "./words"
 import { STUDIO_WORDS } from "./words"
 
 type SittingRow = {
@@ -62,7 +66,10 @@ export function startView(project: Project): StartView {
       },
       {
         kind: "watch",
-        status: STUDIO_WORDS.watch.status(changesWaiting(project)),
+        status: STUDIO_WORDS.watch.status(
+          changesWaiting(project),
+          originsToConfirm(project)
+        ),
         open: true,
         startHere: false,
       },
@@ -206,4 +213,56 @@ export function historyView(project: Project): ReadonlyArray<HistoryRow> {
     message: revision.message,
     at: revision.at,
   }))
+}
+
+/** A scene's idea in the person's terms (ST16): a note it cites, by its words. */
+export function whoseOf(project: Project, idea: Idea): Whose {
+  switch (idea.origin) {
+    case "agent": {
+      return { who: "agent" }
+    }
+    case "source": {
+      return { who: "source", title: idea.from.title }
+    }
+    case "you": {
+      const { kind, id } = idea.from
+      if (kind !== "note") return { who: "you", from: kind }
+      const note = project.notes.find((each) => each.id === id)
+      return { who: "you", from: "note", words: note?.text ?? "" }
+    }
+    default: {
+      return assertNever(idea)
+    }
+  }
+}
+
+/** Whose idea a scene of the latest version is, for Watch (ST5). */
+export type OriginView = {
+  readonly shot: string
+  /** From 1. */
+  readonly n: number
+  readonly idea: Idea
+  readonly whose: Whose
+  /** Whether the owner has said so of it as it stands. */
+  readonly confirmed: boolean
+  /** The take chosen for it, which a `you` origin may cite. */
+  readonly take: string | null
+}
+
+export function originView(
+  project: Project,
+  shotId: string
+): OriginView | null {
+  const { shots } = latest(project).cutList
+  const index = shots.findIndex((shot) => shot.id === shotId)
+  const shot = shots[index]
+  if (shot === undefined) return null
+  return {
+    shot: shot.id,
+    n: index + 1,
+    idea: shot.idea,
+    whose: whoseOf(project, shot.idea),
+    confirmed: originConfirmed(project, shot.id),
+    take: chosenTake(project, shot.id)?.id ?? null,
+  }
 }

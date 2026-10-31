@@ -18,7 +18,7 @@ import { memoryProjectStore } from "@soundbites/lib/project/memory-store"
 import type { CutListShape, Project } from "@soundbites/lib/project/model"
 import { latest, newProject, primerAt } from "@soundbites/lib/project/model"
 import { cutListOf, TAIL_MS } from "@soundbites/lib/project/script"
-import type { Speaking } from "@soundbites/lib/studio/machine"
+import type { OriginFix, Speaking } from "@soundbites/lib/studio/machine"
 import {
   initialStudioState,
   projectOf,
@@ -27,7 +27,8 @@ import {
 import type { StudioRuntime } from "@soundbites/lib/studio/runtime"
 import { createStudio } from "@soundbites/lib/studio/runtime"
 import { keptTimeLog } from "@soundbites/lib/studio/time-store"
-import { othersOnPhone } from "@soundbites/lib/studio/view"
+import { othersOnPhone, startView } from "@soundbites/lib/studio/view"
+import { ideaAskedAt } from "@soundbites/lib/studio/watch"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { describe, expect, it, vi } from "vitest"
 
@@ -1631,6 +1632,194 @@ describe("Watch", () => {
     )
     runtime.dispatch({ type: "speakPressed" })
     expect(voice.listens()).toBe(0)
+  })
+
+  /**
+   * A video with scene a taken, and scene b's idea Claude's version gave as
+   * the owner's, from an answer of the idea it came from (ST19); each scene
+   * runs 2 s.
+   */
+  function withIdeas(): Project {
+    const taken = run(
+      started(),
+      { type: "takeStarted", shot: "a" },
+      take("t-a", "a")
+    )
+    const { cutList } = latest(taken.project)
+    return run(taken, {
+      type: "revised",
+      author: "claude",
+      message: "From your idea",
+      at: AT,
+      cutList: {
+        ...cutList,
+        shots: cutList.shots.map((each) =>
+          each.id === "b"
+            ? {
+                ...each,
+                idea: { origin: "you", from: { kind: "idea", id: "i1/what" } },
+              }
+            : each
+        ),
+      },
+    }).project
+  }
+
+  async function watchingIdeas(listener?: IdeaListener): Promise<Running> {
+    const runtime = studio(
+      memoryProjectStore([withIdeas()]),
+      fakeMic(),
+      "t",
+      undefined,
+      listener
+    )
+    await until(runtime, (state) => projectOf(state) !== null)
+    await watching(runtime)
+    return runtime
+  }
+
+  const fixIn = (
+    state: ReturnType<StudioRuntime["getSnapshot"]>
+  ): OriginFix | null =>
+    state.screen.kind === "watch" ? state.screen.origin : null
+
+  const ideaKept = (state: ReturnType<StudioRuntime["getSnapshot"]>): boolean =>
+    settledWrites(state) && state.notice === STUDIO_WORDS.origin.kept
+
+  it("asks whose idea the scene playing is, and keeps That's right as the owner's word (ST5)", async () => {
+    const runtime = await watchingIdeas()
+    const before = projectIn(runtime)
+    expect(
+      startView(before).sittings.find((row) => row.kind === "watch")?.status
+    ).toBe(STUDIO_WORDS.watch.status(0, 3))
+    runtime.dispatch({ type: "playheadAt", ms: 500 })
+    // Only the scene playing is asked about.
+    runtime.dispatch({ type: "ideaRight", shot: "b" })
+    expect(runtime.getSnapshot().queue).toEqual([])
+    runtime.dispatch({ type: "ideaRight", shot: "a" })
+    await until(runtime, ideaKept)
+    const project = projectIn(runtime)
+    expect(project.revisions).toEqual(before.revisions)
+    expect(project.origins).toEqual([
+      { shot: "a", rev: 2, at: expect.any(String), idea: { origin: "agent" } },
+    ])
+    const { screen } = runtime.getSnapshot()
+    if (screen.kind !== "watch" || screen.review === null)
+      throw new Error("watch")
+    expect(ideaAskedAt(project, screen.review, 500, [])).toBeNull()
+    expect(ideaAskedAt(project, screen.review, 2_500, [])).toBe("b")
+  })
+
+  it("puts a scene right as yours, in its take: a new version of yours carrying it", async () => {
+    const runtime = await watchingIdeas()
+    runtime.dispatch({ type: "playheadAt", ms: 600 })
+    runtime.dispatch({ type: "ideaNotQuite", shot: "a" })
+    // Claude's already: putting it right can only make it yours.
+    expect(fixIn(runtime.getSnapshot())).toEqual({
+      shot: "a",
+      offsetMs: 600,
+      step: "words",
+    })
+    runtime.dispatch({ type: "ideaInTake" })
+    await until(runtime, ideaKept)
+    const project = projectIn(runtime)
+    const idea = { origin: "you", from: { kind: "take", id: "t-a" } } as const
+    expect(latest(project)).toMatchObject({
+      rev: 3,
+      author: "owner",
+      message: STUDIO_WORDS.origin.revised(1, { who: "you", from: "take" }),
+    })
+    expect(latest(project).cutList.shots[0]?.idea).toEqual(idea)
+    expect(project.origins).toEqual([
+      { shot: "a", rev: 3, at: expect.any(String), idea },
+    ])
+    expect(fixIn(runtime.getSnapshot())).toBeNull()
+  })
+
+  it("puts yours right as Claude's, and asks nothing more of that scene", async () => {
+    const runtime = await watchingIdeas()
+    runtime.dispatch({ type: "playheadAt", ms: 2_500 })
+    runtime.dispatch({ type: "ideaNotQuite", shot: "b" })
+    expect(fixIn(runtime.getSnapshot())?.step).toBe("who")
+    runtime.dispatch({ type: "ideaWho", who: "agent" })
+    await until(runtime, ideaKept)
+    const project = projectIn(runtime)
+    expect(latest(project).cutList.shots[1]?.idea).toEqual({ origin: "agent" })
+    expect(latest(project).message).toBe(
+      STUDIO_WORDS.origin.revised(2, { who: "agent" })
+    )
+    expect(project.origins?.at(-1)).toMatchObject({ shot: "b", rev: 3 })
+  })
+
+  it("keeps yours in words typed now as your note, which leaves nothing open for Finish", async () => {
+    const runtime = await watchingIdeas()
+    runtime.dispatch({ type: "playheadAt", ms: 4_300 })
+    runtime.dispatch({ type: "ideaNotQuite", shot: "c" })
+    runtime.dispatch({ type: "ideaInWords", text: "  " })
+    expect(runtime.getSnapshot().queue).toEqual([])
+    runtime.dispatch({ type: "ideaInWords", text: "From my notebook, week 8" })
+    await until(runtime, ideaKept)
+    const project = projectIn(runtime)
+    const [note] = project.notes
+    expect(note).toMatchObject({
+      rev: 3,
+      shot: "c",
+      offsetMs: 300,
+      author: "owner",
+      text: "From my notebook, week 8",
+      status: "confirmed",
+    })
+    expect(latest(project).cutList.shots[2]?.idea).toEqual({
+      origin: "you",
+      from: { kind: "note", id: note?.id },
+    })
+    expect(finishOf(project).kind).not.toBe("note")
+    expect(readProjectFile(projectFile(project)).ok).toBe(true)
+  })
+
+  it("keeps yours in words said now, through the phone's recognizer", async () => {
+    const voice = fakeListener()
+    const runtime = await watchingIdeas(voice.listener)
+    await until(
+      runtime,
+      (state) =>
+        state.screen.kind === "watch" && state.screen.listen === "available"
+    )
+    runtime.dispatch({ type: "playheadAt", ms: 4_300 })
+    runtime.dispatch({ type: "ideaNotQuite", shot: "c" })
+    runtime.dispatch({ type: "playheadAt", ms: 5_000 })
+    runtime.dispatch({ type: "speakPressed" })
+    expect(speakingIn(runtime.getSnapshot())?.for).toBe("idea")
+    voice.end({ kind: "heard", words: "It came to me at the game" })
+    await until(runtime, (state) => speakingIn(state)?.phase === "heard")
+    runtime.dispatch({ type: "spokenKept" })
+    await until(runtime, ideaKept)
+    expect(projectIn(runtime).notes).toEqual([
+      expect.objectContaining({
+        shot: "c",
+        offsetMs: 300,
+        text: "It came to me at the game",
+        status: "confirmed",
+      }),
+    ])
+  })
+
+  it("leaves a correction begun with nothing kept", async () => {
+    const voice = fakeListener()
+    const runtime = await watchingIdeas(voice.listener)
+    await until(
+      runtime,
+      (state) =>
+        state.screen.kind === "watch" && state.screen.listen === "available"
+    )
+    const before = projectIn(runtime)
+    runtime.dispatch({ type: "playheadAt", ms: 4_300 })
+    runtime.dispatch({ type: "ideaNotQuite", shot: "c" })
+    runtime.dispatch({ type: "speakPressed" })
+    runtime.dispatch({ type: "ideaBack" })
+    expect(fixIn(runtime.getSnapshot())).toBeNull()
+    expect(speakingIn(runtime.getSnapshot())).toBeNull()
+    expect(projectIn(runtime)).toEqual(before)
   })
 
   it("asks for the video and the notes beside it together", async () => {

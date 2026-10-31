@@ -12,6 +12,35 @@ import { formatDuration } from "@soundbites/lib/format"
 import type { IdeaStage, QuestionId } from "@soundbites/lib/idea/model"
 import type { ShelfNotice } from "@soundbites/lib/idea/shelf"
 
+/**
+ * Whose idea a scene presents (ST16), as the person reads it: theirs, with
+ * where their words are; Claude's; or a source's, by its title.
+ */
+export type Whose =
+  | { readonly who: "you"; readonly from: "note"; readonly words: string }
+  | {
+      readonly who: "you"
+      readonly from: "take" | "voice-note" | "prompt" | "idea"
+    }
+  | { readonly who: "agent" }
+  | { readonly who: "source"; readonly title: string }
+
+/** Where the owner's words are, for each citation but a note's own words. */
+const YOUR_WORDS = {
+  take: "Your idea, from what you said in a take",
+  "voice-note": "Your idea, from one of your voice notes",
+  prompt: "Your idea, from what you asked Claude",
+  idea: "Your idea, from your answers when you caught it",
+} as const
+
+function whose(idea: Whose): string {
+  if (idea.who === "agent") return "Claude's idea"
+  if (idea.who === "source") return `From “${idea.title}”`
+  return idea.from === "note"
+    ? `Your idea, in your words: “${idea.words}”`
+    : YOUR_WORDS[idea.from]
+}
+
 /** How a sitting went, as the person answers it. */
 export type Went = "smooth" | "snags" | "rough"
 
@@ -372,10 +401,49 @@ export const STUDIO_WORDS = {
     notYet: "Not yet",
     notYetText: (text: string): string => `Not yet: ${text}`,
     back: "Back",
-    status: (changes: number): string =>
-      changes === 0
+    status: (changes: number, ideas = 0): string =>
+      changes === 0 && ideas === 0
         ? "Note any moment of the review render"
-        : `${plural(changes, "change", "changes")} of Claude's to watch`,
+        : [
+            ...(changes === 0
+              ? []
+              : [
+                  `${plural(changes, "change", "changes")} of Claude's to watch`,
+                ]),
+            ...(ideas === 0
+              ? []
+              : [`Whose idea: ${plural(ideas, "scene", "scenes")} to confirm`]),
+          ].join(" · "),
+  },
+
+  /**
+   * Whose idea each scene is (ST5, ST16): asked in Watch as the scene
+   * plays, one scene at a time; yours always says where your words are.
+   */
+  origin: {
+    whose,
+    question: (n: number): string => `Whose idea is scene ${n}?`,
+    proposed: (idea: Whose): string => `As it stands: ${whose(idea)}.`,
+    right: "That's right",
+    notQuite: "Not quite",
+    said: (n: number, idea: Whose): string =>
+      `Scene ${n}: ${whose(idea)}. You said so.`,
+    who: "Whose idea is it?",
+    mine: "Mine",
+    mineElse: "Mine, from other words",
+    claudes: "Claude's",
+    where: "Where is it, in your own words?",
+    whereHint:
+      "The video credits you with the idea only where your own words show it.",
+    inTake: "In my take for this scene",
+    wordsLabel: "Where it came from",
+    keepWords: "Keep it as mine",
+    say: "Say where it came from",
+    back: "Leave it as it stands",
+    kept: "Kept: whose idea it is.",
+    /** The new version a correction makes, as History lists it. */
+    revised: (n: number, idea: Whose): string =>
+      `Scene ${n}'s idea: ${whose(idea)}`,
   },
 
   /** A version back from Claude, opened as a primer is (ST8). */

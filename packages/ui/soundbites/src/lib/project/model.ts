@@ -23,6 +23,10 @@
  * - **A released revision is never edited** (ST7, `./finish`). Its mark
  *   and its link stay as written, it takes no new note, and a change makes
  *   the next revision.
+ * - **The owner's word on whose idea a scene is stays** (ST5, `./origin`).
+ *   Each answer is a mark appended to `origins`; a correction is a new
+ *   revision of the owner's carrying it, and a `you` origin cites the
+ *   owner's own words.
  * - **A note follows its shot.** It is pinned to (revision, shot, offset),
  *   and `anchorAt` finds that shot in any later revision by id, or says the
  *   shot is gone; its time is read from the renderer's shot times.
@@ -32,6 +36,8 @@ import type { CutList, Shot, ShotTime } from "@some-ui/video-render"
 import type { Primer } from "@soundbites/lib/journal/primer"
 
 import { finishOf, isReleased, youtubeLink } from "./finish"
+import type { OriginMark } from "./origin"
+import { originRefusal } from "./origin"
 
 export const PROJECT_SCHEMA = "some-ui.studio-project/1"
 
@@ -109,6 +115,11 @@ export type Project = {
   readonly ready?: ReadonlyArray<Mark>
   /** Each revision released, in order; absent as `ready` is. */
   readonly released?: ReadonlyArray<Release>
+  /**
+   * The owner's word on each scene's idea (ST5), in order; absent on a
+   * project from before Watch asked it.
+   */
+  readonly origins?: ReadonlyArray<OriginMark>
 }
 
 /** A take under way, and the sitting waiting on it to close. */
@@ -132,6 +143,17 @@ export type ProjectEvent =
       readonly primer?: Primer
     }
   | { readonly type: "noted"; readonly note: Omit<Note, "status" | "reason"> }
+  /**
+   * The owner's own words for the record, such as where a scene's idea came
+   * from (ST5): kept as the owner's note, confirmed as written, since it
+   * asks Claude for nothing.
+   */
+  | {
+      readonly type: "worded"
+      readonly note: Omit<Note, "status" | "reason" | "author">
+    }
+  /** The owner's word on whose idea a scene of the latest revision is. */
+  | ({ readonly type: "originSaid" } & Omit<OriginMark, "rev">)
   | {
       readonly type: "noteSettled"
       readonly id: string
@@ -183,6 +205,8 @@ export type Refusal =
   | "notReady"
   | "released"
   | "noLink"
+  | "otherIdea"
+  | "notYours"
 
 export type ProjectStep = {
   readonly state: ProjectState
@@ -389,7 +413,7 @@ export function isAppendOnly(before: Project, after: Project): boolean {
         : sameJson(now, sitting))
     )
   })
-  const marks = (["ready", "released"] as const).every((key) =>
+  const marks = (["ready", "released", "origins"] as const).every((key) =>
     (before[key] ?? []).every((mark, index) =>
       sameJson(mark, after[key]?.[index])
     )
@@ -475,8 +499,12 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
       })
     }
 
-    case "noted": {
-      const { note } = event
+    case "noted":
+    case "worded": {
+      const note: Note =
+        event.type === "noted"
+          ? { ...event.note, status: "open" }
+          : { ...event.note, author: "owner", status: "confirmed" }
       const revision = revisionOf(project, note.rev)
       if (revision === null) return refuse(state, "noRevision")
       if (shotIn(revision.cutList, note.shot) === null)
@@ -484,9 +512,17 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
       if (project.notes.some((each) => each.id === note.id))
         return refuse(state, "duplicate")
       if (isReleased(project, note.rev)) return refuse(state, "released")
+      return changed(state, { ...project, notes: [...project.notes, note] })
+    }
+
+    case "originSaid": {
+      const { type: _, ...said } = event
+      const refused = originRefusal(project, said.shot, said.idea)
+      if (refused !== null) return refuse(state, refused)
+      const mark: OriginMark = { ...said, rev: latest(project).rev }
       return changed(state, {
         ...project,
-        notes: [...project.notes, { ...note, status: "open" }],
+        origins: [...(project.origins ?? []), mark],
       })
     }
 

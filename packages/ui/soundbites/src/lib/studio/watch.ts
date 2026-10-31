@@ -11,10 +11,14 @@
  *   its moment in this one (`anchorAt`). Good confirms it; Not yet leaves it
  *   as it is and writes a new open note at that moment, wherever the
  *   playhead has gone since, as a note's status only moves forward.
+ * - **Whose idea a scene is** is asked as it plays (`ideaAskedAt`), once
+ *   no change of Claude's is waiting there, of each scene the owner hasn't
+ *   said it of as the latest version has it (`project/origin.ts`).
  */
 import type { Review } from "@some-ui/video-render"
 import type { Note, Project } from "@soundbites/lib/project/model"
-import { anchorAt } from "@soundbites/lib/project/model"
+import { anchorAt, latest } from "@soundbites/lib/project/model"
+import { originConfirmed } from "@soundbites/lib/project/origin"
 
 /** The scene on screen `ms` into `review`, and how far into it. */
 export function shotAt(
@@ -86,4 +90,23 @@ export function isReviewOf(project: Project, review: Review): boolean {
     shots.length === review.shotTimes.length &&
     shots.every((shot, index) => shot.id === review.shotTimes[index]?.id)
   )
+}
+
+/**
+ * The scene playing `ms` into `review` whose idea the owner hasn't said, as
+ * the latest version has it: unconfirmed, still in the video, and not
+ * answered on this screen (`said`, by scene).
+ */
+export function ideaAskedAt(
+  project: Project,
+  review: Review,
+  ms: number,
+  said: ReadonlyArray<string>
+): string | null {
+  const here = shotAt(review, ms)
+  if (here === null || said.includes(here.shot)) return null
+  const inVideo = latest(project).cutList.shots.some(
+    (shot) => shot.id === here.shot
+  )
+  return inVideo && !originConfirmed(project, here.shot) ? here.shot : null
 }
