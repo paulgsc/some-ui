@@ -41,6 +41,7 @@ import { PANELS } from "@/lib/playable"
 
 import { CodeCardFixture } from "./code-card"
 import { IncidentFixture } from "./incident"
+import { IntentFailureFixture } from "./intent-failure"
 import { JobsStatusFixture } from "./jobs-status"
 import { RustRoundsFixture } from "./rust-rounds"
 
@@ -557,6 +558,8 @@ export const PANEL_FIXTURES = {
   "jobs-status": JobsStatusFixture,
 
   "code-card": CodeCardFixture,
+
+  "intent-failure": IntentFailureFixture,
 
   "rust-rounds": RustRoundsFixture,
 

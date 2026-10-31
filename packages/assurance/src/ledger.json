@@ -10,7 +10,7 @@
         "server:apps/servers/file_host/src/mailbox",
         "server:crates/mailbox_kit"
       ],
-      "modules": ["jobs", "routine"],
+      "modules": ["jobs", "routine", "leetype_files"],
       "objectives": [
         {
           "id": "MI1",
@@ -167,11 +167,11 @@
             "tighter": "lower"
           },
           "verdict": "broken",
-          "conclusion": "Each request has a 30-second limit but the pass has none: at today's constants a full pass may make up to 668 calls, about 5.5 hours of waiting in the worst case.",
+          "conclusion": "Each request has a 30-second limit but the pass has none: at today's constants a full pass may make up to 820 calls, about 6.8 hours of waiting in the worst case.",
           "evidence": [
             {
               "class": "derived",
-              "says": "Inbound 4 × (10 pages + 20 gets) = 120, outbound 20, restore 8 × (1 + 50) = 408, archive 120: 668 calls, × 30 s ≈ 20,040 s.",
+              "says": "Inbound 5 folders × (10 pages + 20 gets) = 150, outbound 20, restore 10 folders × (1 + 50) = 510, archive 10 folders × 10 pages + 20 × (get + archive) = 140: 820 calls, × 30 s ≈ 24,600 s. Filing transcripts and LeetType logs makes no call.",
               "ref": "server:apps/servers/file_host/src/mailbox/pass.rs"
             }
           ],
@@ -186,9 +186,9 @@
           "kind": "RE7",
           "property": "work",
           "claim": "When there is nothing to do, the poller's own work stays small and counted.",
-          "requirement": "With no files and no asks, a day of passes makes at most 384 mailbox requests without archiving and 1,920 with it; a change that raises either needs an amendment.",
+          "requirement": "With no files and no asks, a day of passes makes at most 480 mailbox requests without archiving and 2,400 with it; a change that raises either needs an amendment.",
           "bound": {
-            "value": 1920,
+            "value": 2400,
             "unit": "requests a day",
             "tighter": "lower"
           },
@@ -197,7 +197,7 @@
           "evidence": [
             {
               "class": "derived",
-              "says": "96 passes a day × 4 folder listings = 384; with archiving, + 8 wanted listings + 8 archive listings = 20 a pass, 1,920 a day.",
+              "says": "96 passes a day × 5 folder listings (brief, scene, drama, run, leetype) = 480; with archiving, + 10 wanted listings + 10 archive listings = 25 a pass, 2,400 a day. Filing LeetType logs reads home's database only.",
               "ref": "server:apps/servers/file_host/src/mailbox/pass.rs"
             }
           ],
@@ -205,7 +205,14 @@
           "watch": {
             "by": "none"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-10-31",
+              "change": "The idle bound is 480 mailbox requests a day without archiving and 2,400 with it, up from 384 and 1,920.",
+              "why": "paulgsc/server#583 (some-ui#2026, #2027) has home read the leetype folder, so an idle pass lists five folders, and adds leetype and leetype-log to the ten folders archiving walks for asks and old files: 5 + 10 + 10 = 25 listings a pass, 96 passes a day. The owner chose the higher bound: \"yes, raise the bound to 2,400\".",
+              "decision": "https://github.com/paulgsc/some-ui/pull/2338#issuecomment-6536715212"
+            }
+          ]
         },
         {
           "id": "MW2",
@@ -1461,6 +1468,13 @@
       "store": "phone:device_storage_notice",
       "class": "telemetry",
       "growth": "bounded: one row (id = 1), the count of rounds removed not yet shown.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:failure-log",
+      "class": "telemetry",
+      "growth": "bounded: the newest 200 failures this phone reported, each one line with its time (`some-ui.failure-log.v1`).",
+      "horizon": "the oldest line goes when the 201st is kept (lib/failure-log `keepFailure`; owner, 2026-10-30, docs/discard-sites.md)",
       "family": "what-is-kept"
     },
     {
