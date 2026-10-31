@@ -355,6 +355,20 @@ describe("takes that arrived", () => {
   })
 })
 
+describe("what Claude sent that doesn't read as scenes", () => {
+  it("is refused in Start's words, never the reader's (SW1)", async () => {
+    const runtime = await opened(memoryProjectStore())
+    runtime.dispatch({
+      type: "primerPicked",
+      file: new Blob(['{"version":9,"title":"x","cuts":[]}']),
+    })
+    await until(runtime, (state) => state.primerProblem !== null)
+    expect(runtime.getSnapshot().primerProblem).toBe(
+      STUDIO_WORDS.start.sentProblem
+    )
+  })
+})
+
 describe("the Journal tab's episode", () => {
   it("is carried into Studio the first time it opens, and said so", async () => {
     const memory = memoryProjectStore()

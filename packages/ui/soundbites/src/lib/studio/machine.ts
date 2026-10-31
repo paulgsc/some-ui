@@ -1451,7 +1451,10 @@ export function step(state: StudioState, event: StudioEvent): Step {
       if (event.seq !== state.pickSeq) return stay(state)
       if (isProjectFile(event.text)) return pickedProject(state, event.text)
       const reading = readPrimer(event.text)
-      if (!reading.ok) return stay({ ...state, primerProblem: reading.problem })
+      // What is wrong names cuts and fields: for the session that wrote the
+      // file, never the screen (SW1).
+      if (!reading.ok)
+        return stay({ ...state, primerProblem: WORDS.start.sentProblem })
       if (project === null)
         return enqueue(state, {
           kind: "create",

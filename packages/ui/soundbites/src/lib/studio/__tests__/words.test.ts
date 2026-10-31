@@ -115,6 +115,10 @@ describe("Studio's words", () => {
     const file = /\.json|›|build journal|\bprimers?\b|\bfolder\b|\bformat\b/i
     const start = [
       ...fixed(STUDIO_WORDS.start),
+      // What the pick says when a file is refused.
+      W.notice.unreadableFile,
+      W.merge.unreadable,
+      W.merge.notHere,
       W.start.stepOf(2),
       W.start.which(TITLE),
       W.start.nextVersion(TITLE),

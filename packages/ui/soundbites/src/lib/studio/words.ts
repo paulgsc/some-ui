@@ -148,6 +148,9 @@ export const STUDIO_WORDS = {
     openNewer: "Open Claude's version",
     openNewerHint:
       "Claude's version of this video, or the scenes for a new one.",
+    /** What Claude sent doesn't read as scenes: what was wrong is the session's to fix. */
+    sentProblem:
+      "That isn't something Claude made for Studio, or part of it is missing. Ask Claude for it again.",
     startHere: "Start here",
     others: "Other videos with takes on the phone",
     onPhone: (n: number): string =>
