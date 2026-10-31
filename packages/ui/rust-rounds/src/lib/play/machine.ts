@@ -17,10 +17,17 @@
  *   the card's event; the card on screen is kept as the place, so leaving
  *   the app at any card and coming back lands on it with nothing lost.
  * - **A voice note is never lost to moving on.** A card left while its note
- *   is still being kept waits in `pending`, which is kept with the place, and
- *   is logged once the microphone says how the take ended, or, after the app
- *   was ended, once the reopened session finds the note on the phone. A take
- *   that ends kept nothing is said, whichever card is on screen by then.
+ *   is still being kept waits in `pending`, and the take under way in
+ *   `taking`, both kept with the place. The card is logged, or the note put
+ *   on the card on screen, once the microphone says how the take ended; or,
+ *   once the screen was left or the app ended, when the next opening finds
+ *   the note on the phone. A card is logged once, however many openings
+ *   settle it: the store adds a card's event only once (`./store`).
+ * - **A note the phone could not keep is said.** A card left before its take
+ *   ended, whose note then failed to be kept or found no room, is said,
+ *   whichever card is on screen by then. One let go too soon to keep is not:
+ *   letting go early is the person's own doing, and the card they left on
+ *   showed it when it happened.
  * - **A failed write is said until that record is kept.** Each record's last
  *   write is tracked apart (`notKept`), so a later write of another record
  *   cannot hide it.
@@ -49,7 +56,15 @@ import {
 } from "./held"
 import type { LogAdd, SessionHead } from "./log"
 import { appendToLog } from "./log"
-import type { Again, Opened, Pending, Place, Title, Visit } from "./store"
+import type {
+  Again,
+  Opened,
+  Pending,
+  Place,
+  Taking,
+  Title,
+  Visit,
+} from "./store"
 
 /** A voice take as the screen shows it. */
 type TakeView =
@@ -127,14 +142,17 @@ export type PlayState = {
   readonly place: Place | null
   readonly notes: NoteView
   /** The take under way: the card it was started on, and when. */
-  readonly taking: { readonly line: string; readonly since: number } | null
+  readonly taking: Taking | null
   /** Cards left while their voice note was still being kept. */
   readonly pending: ReadonlyArray<Pending>
   /** How the last take on the card on screen ended, until the next card. */
   readonly said: TakeEnd | null
   /** A card left whose note could not be kept, until the next card. */
   readonly lost: Title | null
-  /** The phone had no room for the last note; cleared by one kept. */
+  /**
+   * The phone had no room for the last note; cleared by one kept, and on
+   * each new card, which tries again.
+   */
   readonly noRoom: boolean
   readonly copy: CopyState
   /** The records whose last write the phone refused. */
@@ -196,6 +214,7 @@ export type PlayEffect =
   | {
       readonly type: "savePlace"
       readonly place: Place | null
+      readonly taking: Taking | null
       readonly pending: ReadonlyArray<Pending>
     }
   | { readonly type: "startNote"; readonly line: string }
@@ -219,8 +238,9 @@ const KEPT: Readonly<Record<KeptRecord, boolean>> = {
 
 /**
  * The session as it opens: on the card left last, if there is one, so
- * coming back lands on it; otherwise on the menu. Cards still waiting on a
- * note are settled once the runtime has asked the phone (`reopened`).
+ * coming back lands on it; otherwise on the menu. The take left under way,
+ * and the cards still waiting on a note, are settled once the runtime has
+ * asked the phone (`reopened`).
  */
 export function initialState(
   opened: Opened,
@@ -239,7 +259,7 @@ export function initialState(
     head,
     place,
     notes,
-    taking: null,
+    taking: opened.taking,
     pending: opened.pending,
     said: null,
     lost: null,
@@ -251,10 +271,11 @@ export function initialState(
 
 const stay = (state: PlayState): Step => ({ state, effects: [] })
 
-/** Keeps the place and what waits on a note, as they now stand. */
+/** Keeps the place, the take under way and what waits on a note, as they now stand. */
 const savePlace = (state: PlayState): PlayEffect => ({
   type: "savePlace",
   place: state.place,
+  taking: state.taking,
   pending: state.pending,
 })
 
@@ -324,13 +345,21 @@ function logCard(
 
 /**
  * Leaves the card on screen, if any: logs it now, or once its voice note
- * lands when a take on it is still under way.
+ * lands when a take on it is still under way. `stopping` says that take is
+ * to be ended, which the caller does last, once what waits on it is kept.
  */
-function leave(state: PlayState, at: string): Step {
-  if (state.place === null) return stay(state)
+function leave(
+  state: PlayState,
+  at: string
+): Step & { readonly stopping: boolean } {
+  const stays = (next: PlayState): Step & { stopping: false } => ({
+    ...stay(next),
+    stopping: false,
+  })
+  if (state.place === null) return stays(state)
   const left = leaving(state.held, state.place, at)
   const cleared = { ...state, place: null }
-  if (left === null) return stay(cleared)
+  if (left === null) return stays(cleared)
   const line = lineOf(state.place.visit)
   if (state.taking?.line === line) {
     const waiting: Pending = {
@@ -341,10 +370,11 @@ function leave(state: PlayState, at: string): Step {
     }
     return {
       state: { ...cleared, pending: [...state.pending, waiting] },
-      effects: [{ type: "stopNote" }],
+      effects: [],
+      stopping: true,
     }
   }
-  return logCard(cleared, left, null)
+  return { ...logCard(cleared, left, null), stopping: false }
 }
 
 /** The log as it will stand once every card waiting on a note is logged. */
@@ -385,6 +415,8 @@ function enter(
     screen: { kind: "card" },
     said: null,
     lost: null,
+    // Each card tries again: room may have been made since.
+    noRoom: false,
     place: {
       visit: {
         ...ref,
@@ -415,19 +447,46 @@ function moveOn(state: PlayState, at: string, menu: string | null): Step {
     menu,
     current
   )
+  // The take is ended last: its end may be heard at once, and the card
+  // waiting on it is kept with the place by then.
+  const stop: ReadonlyArray<PlayEffect> = left.stopping
+    ? [{ type: "stopNote" }]
+    : []
   if (ref === null) {
     const next = { ...left.state, screen: { kind: "menu" } as const }
-    return { state: next, effects: [...left.effects, savePlace(next)] }
+    return {
+      state: next,
+      effects: [...left.effects, savePlace(next), ...stop],
+    }
   }
   const entered = enter(left.state, ref, menu, current)
   return {
     state: entered.state,
-    effects: [...left.effects, ...entered.effects],
+    effects: [...left.effects, ...entered.effects, ...stop],
   }
 }
 
-/** A take on `line` ended: settle the card on screen, or the card left waiting on it. */
+/**
+ * A take on `line` ended: settle the card on screen, or the card left
+ * waiting on it. The take no longer under way is kept as such.
+ */
 function settle(
+  state: PlayState,
+  line: string,
+  end: TakeEnd,
+  note: string | null
+): Step {
+  const settled = settleCard(state, line, end, note)
+  const saved = settled.effects.some((effect) => effect.type === "savePlace")
+  return settled.state.taking === state.taking || saved
+    ? settled
+    : {
+        state: settled.state,
+        effects: [...settled.effects, savePlace(settled.state)],
+      }
+}
+
+function settleCard(
   state: PlayState,
   line: string,
   end: TakeEnd,
@@ -571,13 +630,16 @@ function onIntent(state: PlayState, event: PlayIntent & { at: string }): Step {
       }
       if (state.notes.take.kind !== "idle") return stay(state)
       const line = lineOf(shown.place.visit)
+      const next: PlayState = {
+        ...state,
+        said: null,
+        taking: { line, since: Date.parse(event.at) },
+      }
+      // Kept before the take starts, so a note that lands after the screen
+      // is gone still finds this card at the next opening.
       return {
-        state: {
-          ...state,
-          said: null,
-          taking: { line, since: Date.parse(event.at) },
-        },
-        effects: [{ type: "startNote", line }],
+        state: next,
+        effects: [savePlace(next), { type: "startNote", line }],
       }
     }
     case "letGo": {
@@ -595,8 +657,9 @@ function onIntent(state: PlayState, event: PlayIntent & { at: string }): Step {
         stage: "see",
         shown: true,
       })
+      // The take is ended last, once the card as it now stands is kept.
       return state.taking?.line === lineOf(visit)
-        ? { ...step, effects: [{ type: "stopNote" }, ...step.effects] }
+        ? { ...step, effects: [...step.effects, { type: "stopNote" }] }
         : step
     }
     case "next": {
@@ -633,16 +696,19 @@ function onIntent(state: PlayState, event: PlayIntent & { at: string }): Step {
     }
     case "copyLog": {
       if (state.screen.kind !== "tutor") return stay(state)
+      // With the cards still waiting on their note, as they stand: a card
+      // just left is in the copy, without the note that has not landed yet.
+      const log = logWithPending(state)
       return copying(
         state,
         "log",
         copyForTutor({
-          log: state.log,
+          log,
           rounds: playable(state.held),
           notes: notesNow(state.held),
           // What home transcribed reaches the phone with RR6 (#2237).
           transcripts: new Map(),
-          findings: findingsNow(state.held, state.log),
+          findings: findingsNow(state.held, log),
         })
       )
     }
@@ -710,9 +776,9 @@ export function step(state: PlayState, event: PlayEvent): Step {
     }
     case "hidden":
     case "left": {
-      // A take under way is ended and kept by the microphone; a card waiting
-      // on it stays kept with the place until its end, or the next opening,
-      // settles it.
+      // A take under way is ended and kept by the microphone. It, and a card
+      // waiting on it, stay kept with the place until its end, or the next
+      // opening, settles them.
       return state.taking === null
         ? stay(state)
         : { state, effects: [{ type: "stopNote" }] }
@@ -731,7 +797,3 @@ export function step(state: PlayState, event: PlayEvent): Step {
     }
   }
 }
-
-/** Whether a card is still waiting on its note, or a take is under way. */
-export const unsettled = (state: PlayState): boolean =>
-  state.taking !== null || state.pending.length > 0

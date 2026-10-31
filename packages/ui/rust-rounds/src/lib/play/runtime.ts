@@ -8,7 +8,14 @@
  * Its ports (#2235): what is held and the log (`store`, through the one
  * kept-record reader), the microphone (`notes`), the clipboard, the clock
  * and the page. None of them is the network: every card plays from what is
- * on the phone. Voice notes wait on the phone in the microphone's own list;
+ * on the phone.
+ *
+ * Only an attached runtime acts: it hears the microphone from `attach` to its
+ * detach and no longer. What it leaves unsettled (a take under way, a card
+ * waiting on its note) is kept with the place, and the next opening settles
+ * it from what the phone holds. Each route mount makes a runtime, and all of
+ * them share one microphone, so a detached one that went on hearing it would
+ * act on records a newer one now owns. Voice notes wait on the phone in the microphone's own list;
  * sending them and the log home is RR6 (#2237) and RR7 (#2238).
  */
 import { assertNever } from "@some-ui/core-utils"
@@ -20,7 +27,7 @@ import type {
   PlayIntent,
   PlayState,
 } from "./machine"
-import { initialState, step, unsettled } from "./machine"
+import { initialState, step } from "./machine"
 import type { RoundsStore } from "./store"
 
 /** The microphone's voice notes: a list on the phone, one take at a time. */
@@ -58,9 +65,9 @@ export type RustRoundsRuntime = {
   readonly subscribe: (listener: () => void) => () => void
   readonly dispatch: (intent: PlayIntent) => void
   /**
-   * The screen is showing; returns the detach. A take under way, or a card
-   * waiting on its note, keeps the microphone heard past the detach until it
-   * settles; the next opening settles what an ended app left waiting.
+   * The screen is showing; returns the detach, after which the runtime hears
+   * the microphone no more. What the detach leaves unsettled is kept with the
+   * place, and the next opening settles it.
    */
   readonly attach: () => () => void
 }
@@ -75,10 +82,6 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
   )
   const listeners = new Set<() => void>()
 
-  /** The microphone heard, while attached and after, until all settles. */
-  let stopNotes: (() => void) | null = null
-  let attached = false
-
   const send = (event: PlayEvent): void => {
     const next = step(state, event)
     if (next.state !== state) {
@@ -86,10 +89,6 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
       for (const listener of listeners) listener()
     }
     for (const effect of next.effects) run(effect)
-    if (!attached && stopNotes !== null && !unsettled(state)) {
-      stopNotes()
-      stopNotes = null
-    }
   }
 
   function run(effect: PlayEffect): void {
@@ -114,7 +113,11 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
         send({
           type: "stored",
           record: "place",
-          ok: ports.store.place(effect.place, effect.pending),
+          ok: ports.store.place({
+            place: effect.place,
+            taking: effect.taking,
+            pending: effect.pending,
+          }),
         })
         return
       }
@@ -150,17 +153,22 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
     },
     dispatch: (intent): void => send({ ...intent, at: iso(ports.now()) }),
     attach(): () => void {
-      attached = true
-      stopNotes ??= ports.notes.subscribe(() =>
+      const stopNotes = ports.notes.subscribe(() =>
         send({ type: "notes", view: ports.notes.getSnapshot() })
       )
       // What changed between making the runtime and attaching it.
       send({ type: "notes", view: ports.notes.getSnapshot() })
-      // Cards an ended app left waiting on a note: the phone may hold it.
-      if (state.pending.length > 0) {
+      // The take and the cards an earlier opening left unsettled: the phone
+      // may hold their notes.
+      const unsettled = new Map<string, number>()
+      if (state.taking !== null) {
+        unsettled.set(state.taking.line, state.taking.since)
+      }
+      for (const { line, since } of state.pending) unsettled.set(line, since)
+      if (unsettled.size > 0) {
         send({
           type: "reopened",
-          found: state.pending.map(({ line, since }) => ({
+          found: [...unsettled].map(([line, since]) => ({
             line,
             note: ports.notes.keptOn(line, since),
           })),
@@ -171,9 +179,10 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
         if (hidden) send({ type: "hidden" })
       })
       return (): void => {
-        attached = false
         stopVisibility()
+        // Ends a take under way; its end is the next opening's to hear.
         send({ type: "left" })
+        stopNotes()
       }
     },
   }

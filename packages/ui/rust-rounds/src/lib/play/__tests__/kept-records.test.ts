@@ -70,10 +70,15 @@ const stores: ReadonlyArray<KeptStore> = [
     key: PLACE_KEY,
     older: '{"v":1,"visit":{"round":"indexing-01","card":"b"}}',
     open: (storage): KeptHandle => ({
-      write: (): unknown => keptRounds(storage).place(PLACE, []),
+      write: (): unknown =>
+        keptRounds(storage).place({
+          place: PLACE,
+          taking: { line: "rust-rounds:indexing-01/b", since: 1 },
+          pending: [],
+        }),
       read: (): unknown => {
-        const { place, pending } = keptRounds(storage).open()
-        return { place, pending }
+        const { place, taking, pending } = keptRounds(storage).open()
+        return { place, taking, pending }
       },
     }),
   },

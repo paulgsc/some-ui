@@ -6,13 +6,16 @@
  *
  * - `LOG_KEY`, the log (`some-ui.rust-round-log/1`). Append-only: `append`
  *   opens what is stored and adds to it, never writing the session's own copy
- *   over it.
+ *   over it. A card's event is added once: one the stored log already holds
+ *   (the same card, left at the same moment) is not added again, so two
+ *   openings that both settle a card left waiting on its note log it once.
  * - `HELD_KEY`, what plays: the rounds taken, rustc's recorded runs, every
  *   version of the tutor notes (`./held`).
  * - `PLACE_KEY`, the card on screen and how far into it, so leaving at any
- *   card and coming back lands on it with nothing lost; and the cards left
- *   while their voice note was still being kept (`pending`), so a note that
- *   lands after the app was left, or was ended, still finds its card.
+ *   card and coming back lands on it with nothing lost; the take under way
+ *   (`taking`) and the cards left while their voice note was still being
+ *   kept (`pending`), so a note that lands after the screen was left, or the
+ *   app was ended, still finds its card at the next opening.
  */
 import type { CardEvent, CardRef, RoundLog } from "@rust-rounds/lib/formats"
 import {
@@ -79,6 +82,9 @@ export type Pending = {
   readonly guessedWrong: boolean
 }
 
+/** A take under way: the card it was started on (`lineOf`), and when (ms since the epoch). */
+export type Taking = { readonly line: string; readonly since: number }
+
 const HeldSchema = z.strictObject({
   v: z.literal(1),
   rounds: z.array(RoundSchema),
@@ -91,6 +97,8 @@ const TitleSchema = z.strictObject({
   concept: z.string(),
   number: z.int().positive(),
 })
+
+const TakingSchema = z.strictObject({ line: z.string(), since: z.number() })
 
 const PlaceRecordSchema = z.strictObject({
   v: z.literal(1),
@@ -110,6 +118,7 @@ const PlaceRecordSchema = z.strictObject({
       title: TitleSchema,
     })
     .nullable(),
+  taking: TakingSchema.nullable(),
   pending: z.array(
     z.strictObject({
       line: z.string(),
@@ -132,25 +141,41 @@ const readLog = readJson(parsed(RoundLogSchema))
 const readHeld = readJson(parsed(HeldSchema))
 const readPlace = readJson(parsed(PlaceRecordSchema))
 
+/** Where the session was: the card on screen, the take under way, and the cards waiting on a note. */
+export type Whereabouts = {
+  readonly place: Place | null
+  readonly taking: Taking | null
+  readonly pending: ReadonlyArray<Pending>
+}
+
 /** What the store opened: each record, or what stands in for one it could not read. */
-export type Opened = {
+export type Opened = Whereabouts & {
   readonly log: RoundLog
   readonly held: Held
-  readonly place: Place | null
-  readonly pending: ReadonlyArray<Pending>
+}
+
+/** The stored log already holds `add`: the same card's event, left at the same moment. */
+function holds(log: RoundLog, add: LogAdd): boolean {
+  if (add.kind !== "card") return false
+  const { round, card, at } = add.event
+  return log.sessions.some((session) =>
+    session.cards.some(
+      (each) => each.round === round && each.card === card && each.at === at
+    )
+  )
 }
 
 export type RoundsStore = {
   readonly open: () => Opened
-  /** Adds to the stored log; false when the phone did not keep it. */
+  /**
+   * Adds to the stored log, once: a card's event the log already holds is
+   * not added again. False when the phone did not keep it.
+   */
   readonly append: (head: SessionHead, add: LogAdd) => boolean
   /** Keeps what plays; false when the phone did not keep it. */
   readonly hold: (held: Held) => boolean
-  /** Keeps the card on screen and the cards waiting on a note; false when the phone did not keep them. */
-  readonly place: (
-    place: Place | null,
-    pending: ReadonlyArray<Pending>
-  ) => boolean
+  /** Keeps where the session is; false when the phone did not keep it. */
+  readonly place: (whereabouts: Whereabouts) => boolean
 }
 
 /** The records in `storage`; with none (or one that throws), nothing is kept. */
@@ -161,21 +186,22 @@ export function keptRounds(storage: KeyedStorage | null): RoundsStore {
         v: 1,
         ...NOTHING_HELD,
       }).value
-      const { place, pending } = openKept(storage, PLACE_KEY, readPlace, {
-        v: 1,
-        place: null,
-        pending: [],
-      }).value
+      const { v: _place, ...whereabouts } = openKept(
+        storage,
+        PLACE_KEY,
+        readPlace,
+        { v: 1, place: null, taking: null, pending: [] }
+      ).value
       return {
         log: openKept(storage, LOG_KEY, readLog, EMPTY_LOG).value,
         held,
-        place,
-        pending,
+        ...whereabouts,
       }
     },
     append(head, add): boolean {
       const kept = openKept(storage, LOG_KEY, readLog, EMPTY_LOG)
       if (!kept.writable) return false
+      if (holds(kept.value, add)) return true
       return writeKept(
         storage,
         LOG_KEY,
@@ -186,8 +212,8 @@ export function keptRounds(storage: KeyedStorage | null): RoundsStore {
     hold(held): boolean {
       return writeKept(storage, HELD_KEY, { v: 1, ...held }, readHeld)
     },
-    place(place, pending): boolean {
-      return writeKept(storage, PLACE_KEY, { v: 1, place, pending }, readPlace)
+    place(whereabouts): boolean {
+      return writeKept(storage, PLACE_KEY, { v: 1, ...whereabouts }, readPlace)
     },
   }
 }

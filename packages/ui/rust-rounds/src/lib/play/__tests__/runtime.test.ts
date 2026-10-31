@@ -293,23 +293,116 @@ describe("leaving and coming back", () => {
     expect(log.sessions.map((session) => session.cards.length)).toEqual([1, 1])
   })
 
-  it("keeps hearing the microphone past leaving, until the card's note lands", () => {
-    const ports = fakePorts()
-    const runtime = createRustRounds(ports)
+  it("hears the microphone no more once the screen is gone, and the next opening logs what waited", () => {
+    const storage = inMemoryStorage()
+    const notes = fakeNotes()
+    const runtime = createRustRounds(fakePorts(storage, notes))
     const detach = runtime.attach()
     runtime.dispatch({ type: "continue" })
     runtime.dispatch({ type: "pick", pick: "Prints z" })
     runtime.dispatch({ type: "holdToSpeak" })
     runtime.dispatch({ type: "next" })
     detach()
-    expect(ports.notes.getSnapshot().take.kind).toBe("keeping")
-    expect(storedLog(ports.storage)).toEqual([])
-    ports.notes.land("note-after")
-    expect(storedLog(ports.storage)).toEqual([
+    expect(notes.getSnapshot().take.kind).toBe("keeping")
+    notes.land("note-after")
+    // Nothing heard it land: the card waits, kept with the place.
+    expect(storedLog(storage)).toEqual([])
+    expect(keptRounds(storage).open().pending).toHaveLength(1)
+
+    opened(fakePorts(storage, notes))
+    expect(storedLog(storage)).toEqual([
       expect.objectContaining({ card: "a", note: "note-after" }),
     ])
     // Settled: what waited is gone from the kept place.
-    expect(keptRounds(ports.storage).open().pending).toEqual([])
+    expect(keptRounds(storage).open().pending).toEqual([])
+  })
+
+  it("logs a card waiting on its note once, when a newer opening hears it land", () => {
+    const storage = inMemoryStorage()
+    const notes = fakeNotes()
+    const first = createRustRounds(fakePorts(storage, notes))
+    const detach = first.attach()
+    first.dispatch({ type: "continue" })
+    first.dispatch({ type: "pick", pick: "Prints z" })
+    first.dispatch({ type: "holdToSpeak" })
+    first.dispatch({ type: "letGo" })
+    first.dispatch({ type: "next" })
+    detach()
+    // Back again while the note is still being kept: one microphone, one phone.
+    const second = opened(fakePorts(storage, notes))
+    expect(second.getSnapshot().pending).toHaveLength(1)
+    notes.land("note-a")
+    expect(storedLog(storage)).toEqual([
+      expect.objectContaining({ card: "a", note: "note-a" }),
+    ])
+    expect(keptRounds(storage).open().pending).toEqual([])
+  })
+
+  it("logs a card once when two openings both settle it", () => {
+    const storage = inMemoryStorage()
+    const notes = fakeNotes()
+    const first = opened(fakePorts(storage, notes))
+    first.dispatch({ type: "continue" })
+    first.dispatch({ type: "pick", pick: "Prints z" })
+    first.dispatch({ type: "holdToSpeak" })
+    first.dispatch({ type: "next" })
+    // Never detached: both hear the same microphone, both hold the card.
+    const second = opened(fakePorts(storage, notes))
+    expect(first.getSnapshot().pending).toHaveLength(1)
+    expect(second.getSnapshot().pending).toHaveLength(1)
+    notes.land("note-a")
+    expect(first.getSnapshot().pending).toEqual([])
+    expect(second.getSnapshot().pending).toEqual([])
+    expect(storedLog(storage)).toEqual([
+      expect.objectContaining({ card: "a", note: "note-a" }),
+    ])
+  })
+
+  it("puts a note that lands after the screen is gone on its card, at the next opening", () => {
+    const storage = inMemoryStorage()
+    const notes = fakeNotes()
+    const first = createRustRounds(fakePorts(storage, notes))
+    const detach = first.attach()
+    first.dispatch({ type: "continue" })
+    first.dispatch({ type: "pick", pick: "Prints z" })
+    first.dispatch({ type: "holdToSpeak" })
+    detach()
+    notes.land("note-a")
+
+    const again = opened(fakePorts(storage, notes))
+    expect(again.getSnapshot()).toMatchObject({
+      taking: null,
+      place: { visit: { card: "a", note: "note-a" } },
+    })
+    expect(keptRounds(storage).open()).toMatchObject({
+      taking: null,
+      place: { visit: { card: "a", note: "note-a" } },
+    })
+  })
+
+  it("puts a note on its card when it lands after the next opening", () => {
+    const storage = inMemoryStorage()
+    const notes = fakeNotes()
+    const first = createRustRounds(fakePorts(storage, notes))
+    const detach = first.attach()
+    first.dispatch({ type: "continue" })
+    first.dispatch({ type: "pick", pick: "Prints z" })
+    first.dispatch({ type: "holdToSpeak" })
+    detach()
+
+    const again = opened(fakePorts(storage, notes))
+    // Still being kept: no second take starts over it.
+    again.dispatch({ type: "holdToSpeak" })
+    expect(notes.started).toHaveLength(1)
+    notes.land("note-a")
+    expect(again.getSnapshot()).toMatchObject({
+      taking: null,
+      place: { visit: { card: "a", note: "note-a" } },
+    })
+    again.dispatch({ type: "next" })
+    expect(storedLog(storage)).toEqual([
+      expect.objectContaining({ card: "a", note: "note-a" }),
+    ])
   })
 
   it("settles a card an ended app left waiting, once reopened, from the note the phone holds", () => {
@@ -383,6 +476,19 @@ describe("leaving and coming back", () => {
 })
 
 describe("the tutor's page", () => {
+  it("copies a card just left while its note is still being kept", async () => {
+    const ports = fakePorts()
+    const runtime = opened(ports)
+    runtime.dispatch({ type: "continue" })
+    runtime.dispatch({ type: "pick", pick: "Prints z" })
+    runtime.dispatch({ type: "holdToSpeak" })
+    runtime.dispatch({ type: "next" })
+    runtime.dispatch({ type: "tutor" })
+    runtime.dispatch({ type: "copyLog" })
+    await Promise.resolve()
+    expect(ports.copied[0]).toContain("#### indexing-01, card a (read)")
+  })
+
   it("copies the log with the worked example's notes, for any chat", async () => {
     const ports = fakePorts()
     const runtime = opened(ports)
@@ -506,7 +612,7 @@ describe("the microphone", () => {
     expect(storedLog(ports.storage)).toHaveLength(1)
   })
 
-  it("says the phone has no room once a take finds none, until one is kept", () => {
+  it("says the phone has no room once a take finds none, and tries again on the next card", () => {
     const ports = fakePorts()
     const runtime = opened(ports)
     runtime.dispatch({ type: "continue" })
@@ -515,7 +621,17 @@ describe("the microphone", () => {
     ports.notes.lose("full")
     expect(runtime.getSnapshot()).toMatchObject({ noRoom: true, taking: null })
     runtime.dispatch({ type: "next" })
-    expect(runtime.getSnapshot().noRoom).toBe(true)
+    expect(runtime.getSnapshot().noRoom).toBe(false)
     expect(storedLog(ports.storage)).toHaveLength(1)
+
+    // Room was made: the next card's take is kept.
+    runtime.dispatch({ type: "pick", pick: "Prints 122" })
+    runtime.dispatch({ type: "holdToSpeak" })
+    expect(ports.notes.started).toHaveLength(2)
+    ports.notes.land("note-b")
+    expect(runtime.getSnapshot()).toMatchObject({
+      noRoom: false,
+      place: { visit: { card: "b", note: "note-b" } },
+    })
   })
 })

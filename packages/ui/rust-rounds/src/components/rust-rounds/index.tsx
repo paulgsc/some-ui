@@ -103,7 +103,8 @@ function saidLine(state: PlayState): string | null {
 
 /**
  * Hold to speak, let go to keep it. Withdrawn once this card's note is kept,
- * and while the phone has no room for another, rather than shown disabled.
+ * and, rather than shown disabled, once a take found the phone had no room:
+ * the next card tries again.
  */
 const HoldToSpeak = ({
   state,

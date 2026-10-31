@@ -213,8 +213,8 @@ describe("Practice's Rust Rounds card", () => {
   })
 
   it("says where it was left: the concept and the card, never how long", () => {
-    keptRounds(localStorage).place(
-      {
+    keptRounds(localStorage).place({
+      place: {
         visit: {
           round: "indexing-01",
           card: "c",
@@ -228,8 +228,9 @@ describe("Practice's Rust Rounds card", () => {
         menu: null,
         title: { concept: "indexing", number: 3 },
       },
-      []
-    )
+      taking: null,
+      pending: [],
+    })
     renderWith({ data: [], isError: false })
 
     expect(rustRoundsCard()?.textContent).toContain(
