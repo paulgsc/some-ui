@@ -28,7 +28,7 @@ async function showRecord(
         dayOf: () => "2026-10-30",
       })
     )
-    return { phoneJobs: (): typeof runtime => runtime, copyText: vi.fn() }
+    return { phoneJobs: (): typeof runtime => runtime }
   })
   const { phoneJobs } = await import("@/lib/jobs")
   const { digest } = await import("@/lib/jobs/__tests__/fixture")
