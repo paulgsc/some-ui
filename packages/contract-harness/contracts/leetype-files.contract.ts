@@ -14,17 +14,19 @@
  * body `@some-ui/leetype`'s `SessionFileSchema` takes, with `sha256` as its
  * `ETag` and a `304` on `If-None-Match`.
  *
- * Both routes are per person and read only, so nothing here writes. What CI's
- * throwaway run cannot reach: nothing puts a file in `mailbox_item` for the
- * run's subject (only the poller writes it, from the mailbox), so there the
- * list comes back empty and no file can be fetched (paulgsc/server#590). The served file, its `ETag` and the
- * `304` are held by the server's own handler tests, as is another subject's
- * file being a `404`: the run signs in as one subject.
+ * Both routes are per person and read only, so nothing here writes. Only the
+ * `mailbox` poller writes `mailbox_item`, so the server's contract run seeds
+ * it (paulgsc/server `scripts/seed_contract_run.py`, paulgsc/server#590): a held file for
+ * the signed-in subject, named by `$CONTRACT_LEETYPE_FILE` with its version
+ * in `$CONTRACT_LEETYPE_FILE_SHA256`, and one for another subject, named by
+ * `$CONTRACT_LEETYPE_OTHER_FILE`. The contracts that fetch them are skipped
+ * by name against a server nobody seeded (`readSeeds`).
  */
 
 import { z } from "zod"
 
 import { defineContract } from "../src/contract"
+import { readSeeds } from "../src/seeds"
 
 /** `handlers::leetype_files::FILES_LISTED`. */
 const FILES_LISTED = 200
@@ -42,6 +44,48 @@ const SessionFilesSchema = z.object({
     )
     .max(FILES_LISTED),
 })
+
+/**
+ * The served body, as the phone reads it: a copy of `SessionFileSchema`
+ * (`packages/ui/leetype/src/types/session-file.ts`) at the level the server
+ * is answerable for. The server serves the session file inside the held
+ * item verbatim, never the item (`{ schema, file }`), and checks only its
+ * title and one line; the screens are the routine's, so each is checked for
+ * a kind the phone plays and the start for naming one, and the rest of the
+ * screen grammar is left to the phone's picker, which parses every file it
+ * takes with the full schema. Its optional `variant` and `glossary` are left
+ * out, so a seeded file without them raises no phantom-field warning, and
+ * one with them reads as an unknown field rather than failing.
+ */
+const ServedSessionFileSchema = z
+  .object({
+    title: z.string().min(1),
+    oneLine: z.string().min(1),
+    session: z.strictObject({
+      kind: z.string().min(1),
+      budgetMinutes: z.number().positive(),
+    }),
+    start: z.string().min(1),
+    screens: z.record(
+      z.string().min(1),
+      z.looseObject({
+        type: z.enum(["info", "choice", "record", "reading", "end"]),
+      })
+    ),
+  })
+  .refine((file) => Object.hasOwn(file.screens, file.start), {
+    path: ["start"],
+    message: "start is not a screen",
+  })
+
+const seeded = readSeeds([
+  "CONTRACT_LEETYPE_FILE",
+  "CONTRACT_LEETYPE_FILE_SHA256",
+  "CONTRACT_LEETYPE_OTHER_FILE",
+])
+const HELD_FILE = seeded.values.CONTRACT_LEETYPE_FILE ?? ""
+const HELD_ETAG = `"${seeded.values.CONTRACT_LEETYPE_FILE_SHA256 ?? ""}"`
+const OTHER_FILE = seeded.values.CONTRACT_LEETYPE_OTHER_FILE ?? ""
 
 /** A name in the mailbox's own form that no routine writes. */
 const ABSENT_FILE = "t999-99-contract-harness-absent.json"
@@ -100,5 +144,75 @@ export const contracts = [
     summary: "one file is per person: without a session it is a 401",
     request: { path: { name: ABSENT_FILE } },
     expect: { status: 401 },
+  }),
+
+  defineContract({
+    id: "leetype-files.list_held",
+    module: "leetype_files",
+    session: true,
+    skip: seeded.skip,
+    method: "GET",
+    path: "/leetype/session-files",
+    summary:
+      "the list names the subject's held file with its version, and never another subject's",
+    expect: {
+      status: 200,
+      schema: SessionFilesSchema.refine(
+        ({ files }) =>
+          files.some(
+            (file) =>
+              file.name === HELD_FILE && `"${file.sha256}"` === HELD_ETAG
+          ) && !files.some((file) => file.name === OTHER_FILE),
+        {
+          message:
+            "the held file is not listed with its version, or another subject's file is",
+        }
+      ),
+    },
+  }),
+
+  defineContract({
+    id: "leetype-files.file_held",
+    module: "leetype_files",
+    session: true,
+    skip: seeded.skip,
+    method: "GET",
+    path: "/leetype/session-files/:name",
+    summary:
+      "a held file is the session file the phone plays, with its version as its ETag",
+    request: { path: { name: HELD_FILE } },
+    expect: {
+      status: 200,
+      schema: ServedSessionFileSchema,
+      headers: { etag: HELD_ETAG },
+    },
+  }),
+
+  defineContract({
+    id: "leetype-files.file_held_not_modified",
+    module: "leetype_files",
+    session: true,
+    skip: seeded.skip,
+    method: "GET",
+    path: "/leetype/session-files/:name",
+    summary:
+      "asking for a held file with the version the phone holds is a 304, with that ETag",
+    request: {
+      path: { name: HELD_FILE },
+      headers: { "If-None-Match": HELD_ETAG },
+    },
+    expect: { status: 304, headers: { etag: HELD_ETAG } },
+  }),
+
+  defineContract({
+    id: "leetype-files.file_other_subject",
+    module: "leetype_files",
+    session: true,
+    skip: seeded.skip,
+    method: "GET",
+    path: "/leetype/session-files/:name",
+    summary: "another subject's file is a 404, as if home held none",
+    request: { path: { name: OTHER_FILE } },
+    expect: { status: 404 },
   }),
 ]

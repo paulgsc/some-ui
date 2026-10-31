@@ -90,6 +90,17 @@ beforeAll(async () => {
       res.end(JSON.stringify(paired ? { id: 1 } : { error: "no" }))
       return
     }
+    // A versioned route: its version as the ETag, and a 304 when
+    // If-None-Match names it, as file_host's LeetType file does.
+    if (key === "GET /api/v1/versioned") {
+      const held = req.headers["if-none-match"] === '"v1"'
+      res.writeHead(held ? 304 : 200, {
+        "content-type": "application/json",
+        etag: '"v1"',
+      })
+      res.end(held ? undefined : JSON.stringify({ id: 1 }))
+      return
+    }
     const route = ROUTES[key]
     if (route === undefined) {
       res.writeHead(404, { "content-type": "application/json" })
@@ -456,5 +467,83 @@ describe("probeContract against a live server", () => {
 
     expect(outcome.status).toBe("failed")
     expect(outcome.findings[0]?.code).toBe("credential-ambiguous")
+  })
+
+  it("passes a response carrying the header the client relies on, on a 200 and a 304", async () => {
+    const fetched = await probeContract(
+      defineContract({
+        ...base,
+        id: "versioned",
+        method: "GET",
+        path: "/versioned",
+        expect: { status: 200, headers: { ETag: '"v1"' } },
+      }),
+      { baseUrl }
+    )
+    const held = await probeContract(
+      defineContract({
+        ...base,
+        id: "versioned_held",
+        method: "GET",
+        path: "/versioned",
+        request: { headers: { "If-None-Match": '"v1"' } },
+        expect: { status: 304, headers: { etag: '"v1"' } },
+      }),
+      { baseUrl }
+    )
+
+    expect(fetched.status).toBe("passed")
+    expect(held.status).toBe("passed")
+    expect(held.httpStatus).toBe(304)
+  })
+
+  it("fails a header that carries another value, saying both", async () => {
+    const outcome = await probeContract(
+      defineContract({
+        ...base,
+        id: "versioned",
+        method: "GET",
+        path: "/versioned",
+        expect: { status: 200, headers: { etag: '"v2"' } },
+      }),
+      { baseUrl }
+    )
+
+    expect(outcome.status).toBe("failed")
+    expect(outcome.findings[0]?.code).toBe("header-mismatch")
+    expect(outcome.findings[0]?.detail).toMatch(/"v2"[\s\S]*"v1"/)
+  })
+
+  it("fails a header the server does not send", async () => {
+    const outcome = await probeContract(
+      defineContract({
+        ...base,
+        id: "grown",
+        method: "GET",
+        path: "/grown",
+        expect: { status: 200, headers: { etag: '"v1"' } },
+      }),
+      { baseUrl }
+    )
+
+    expect(outcome.status).toBe("failed")
+    expect(outcome.findings[0]?.code).toBe("header-missing")
+  })
+
+  it("does not check headers on a status the contract does not accept", async () => {
+    const outcome = await probeContract(
+      defineContract({
+        ...base,
+        id: "gone",
+        method: "GET",
+        path: "/gone",
+        expect: { status: 200, headers: { etag: '"v1"' } },
+      }),
+      { baseUrl }
+    )
+
+    expect(outcome.findings.map((finding) => finding.code)).toEqual([
+      "status-mismatch",
+    ])
   })
 })

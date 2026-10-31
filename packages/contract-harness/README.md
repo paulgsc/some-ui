@@ -109,6 +109,17 @@ skipped without one. The server stores a phone's token under a different
 digest from a browser's, so a cookie value does not open a phone's session:
 write the browser's `403` as a `session` contract of its own.
 
+### Seeded contracts
+
+Some contracts need data only a seeded server holds. The server's contract
+run (paulgsc/server `routes.yml`, `scripts/seed_contract_run.py`) writes it
+and names it in the environment: a held LeetType session file for the
+signed-in subject (`$CONTRACT_LEETYPE_FILE`, its version in
+`$CONTRACT_LEETYPE_FILE_SHA256`) and one for another subject
+(`$CONTRACT_LEETYPE_OTHER_FILE`). A contract reads them with `readSeeds`
+when its file loads, and without them it is skipped, naming the variables it
+lacks.
+
 Exit code is non-zero for drift failures, failed probes and transport errors.
 Warnings do not fail the run.
 
@@ -175,6 +186,14 @@ An unbound `:id` is reported rather than requested, because a request for the
 literal path `/mood_events/:id` comes back as a 404 that reads like a missing
 route and sends you to the wrong side of the boundary.
 
+A header the client relies on, such as the `ETag` it sends back as
+`If-None-Match`, is stated with its exact value, and checked on every
+accepted status:
+
+```ts
+expect: { status: 304, headers: { etag: `"${version}"` } },
+```
+
 When a contract accepts both a success and a miss, say which one the schema
 describes:
 
@@ -234,7 +253,7 @@ Worth knowing before trusting a green run.
 pnpm --filter @some-ui/contract-harness test
 ```
 
-53 tests. The integration suite stands up a real HTTP server and drives each
+60 tests. The integration suite stands up a real HTTP server and drives each
 detector against a concrete divergence — a renamed field, a widened type, a
 moved route, a phantom optional — because a drift detector nobody has watched
 fail is just a green light with extra steps.
