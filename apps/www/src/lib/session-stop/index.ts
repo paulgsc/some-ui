@@ -17,9 +17,11 @@ import { finishedNaturally } from "@/lib/wind-down"
  * forwards events.
  *
  * Promise SS1, held by `__tests__/stop-resume.test.ts`, which enumerates its
- * Family: across any run of stops and resumes, on the phone or the desktop
- * web, the session's clock does not move while it is stopped, each resume
- * goes on from where its stop left the clock and the scene, and the time the
+ * Family: across any run of stops and resumes, and of the reflection drawer
+ * opening and closing (`./playback`'s `holdable`), on the phone or the
+ * desktop web, the session's clock does not move while it is stopped or the
+ * drawer is open, each resume goes on from where its stop left the clock and
+ * the scene, closing the drawer plays on what was playing, and the time the
  * session closes with is the time it played.
  */
 

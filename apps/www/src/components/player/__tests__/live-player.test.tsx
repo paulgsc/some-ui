@@ -26,6 +26,11 @@ const played = vi.hoisted((): { starts: number; opening: Array<unknown> } => ({
   starts: 0,
   opening: [],
 }))
+const transport = vi.hoisted(() => ({
+  pauses: 0,
+  resumes: 0,
+  mode: { is_running: false, is_paused: false },
+}))
 
 vi.mock("@/lib/orchestrator", async () => {
   const actual =
@@ -35,9 +40,21 @@ vi.mock("@/lib/orchestrator", async () => {
     start: (): void => {
       played.starts += 1
     },
-    // Read as the player closes, which leaves the session on both surfaces.
-    pause: (): void => undefined,
-    mode: { is_running: false, is_paused: false },
+    // Read as the player closes, which leaves the session on both surfaces,
+    // and as the reflection drawer opens and closes.
+    pause: (): void => {
+      transport.pauses += 1
+      transport.mode = { is_running: false, is_paused: true }
+    },
+    resume: (): void => {
+      transport.resumes += 1
+      transport.mode = { is_running: true, is_paused: false }
+    },
+    get mode(): { is_running: boolean; is_paused: boolean } {
+      return transport.mode
+    },
+    clock: { current_time: 0, total_duration: 60_000 },
+    lifetimes: { scene_lifetimes: [] },
   }
   return {
     ...actual,
@@ -91,6 +108,9 @@ vi.mock("@/lib/intent", () => ({
 vi.mock("@/lib/intent/render", () => ({
   AmbientIntentStatus: (): null => null,
 }))
+vi.mock("@/components/reflection/reflect-panel", () => ({
+  ReflectPanel: (): null => null,
+}))
 
 function fixtureSession(): SessionRecord {
   return {
@@ -111,11 +131,16 @@ beforeEach(() => {
   lifecycle.unmounts = 0
   played.starts = 0
   played.opening = []
+  transport.pauses = 0
+  transport.resumes = 0
+  transport.mode = { is_running: false, is_paused: false }
 })
 
 afterEach(() => {
   cleanup()
   resetViewport()
+  // A playing session left as the player closes keeps a stop.
+  localStorage.clear()
 })
 
 describe("LivePlayer across the breakpoint", () => {
@@ -160,5 +185,32 @@ describe("LivePlayer asked for the next lesson", () => {
     render(<LivePlayer session={fixtureSession()} initialOpening="next" />)
     await vi.waitFor(() => expect(played.starts).toBe(1))
     expect(played.opening.at(-1)).toBe("next")
+  })
+})
+
+// #1870: on a wide window the drawer is the player's own, beside the
+// transport; on a phone it is `SessionChrome`'s (its own test).
+describe("LivePlayer with the reflection drawer", () => {
+  it("on a wide window, holds a playing session while the sheet is open and plays on as it closes", () => {
+    setViewport(false)
+    transport.mode = { is_running: true, is_paused: false }
+    render(<LivePlayer session={fixtureSession()} />)
+
+    fireEvent.click(screen.getByRole("button", { name: /^reflect$/i }))
+    expect(transport).toMatchObject({ pauses: 1, resumes: 0 })
+
+    fireEvent.click(screen.getByRole("button", { name: /^close$/i }))
+    expect(transport).toMatchObject({ pauses: 1, resumes: 1 })
+  })
+
+  it("on a wide window, leaves a session the person paused paused", () => {
+    setViewport(false)
+    transport.mode = { is_running: false, is_paused: true }
+    render(<LivePlayer session={fixtureSession()} />)
+
+    fireEvent.click(screen.getByRole("button", { name: /^reflect$/i }))
+    fireEvent.click(screen.getByRole("button", { name: /^close$/i }))
+
+    expect(transport).toMatchObject({ pauses: 0, resumes: 0 })
   })
 })

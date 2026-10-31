@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { cn, formatTimecode } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import { NotebookPen } from "lucide-react"
@@ -11,20 +11,32 @@ import { ReflectionSheet } from "./reflection-sheet"
 
 /**
  * "Reflect", always one tap away during a session, with how many this session
- * has so far. Opens the panel in a sheet; the session keeps running, and each
- * reflection is stamped with how far into it it was said.
+ * has so far. Opens the panel in a sheet, and the session waits while it is
+ * open (#1870): `hold` pauses it, and closing the sheet, or the sheet going
+ * with its player, lets go. Each reflection is stamped with how far into the
+ * session it was said, which stays put while the sheet is open.
  */
 export const ReflectButton = ({
   sessionId,
   atMs,
+  hold,
   className,
 }: {
   sessionId: string
   /** How far into the session now. */
   atMs: number
+  /**
+   * Holds the session still until the returned release: the player's
+   * `holdable` (`lib/session-stop/playback`), typed here by shape, since LA7
+   * keeps this module's imports to the reflection's own.
+   */
+  hold: () => () => void
   className?: string
 }): JSX.Element => {
   const [open, setOpen] = useState(false)
+  // The sheet open is the external hold's lifetime: kept while it is open,
+  // let go as it closes or unmounts.
+  useEffect(() => (open ? hold() : undefined), [open, hold])
   const { kept } = useReflections()
   const count = kept.filter((r) => r.sessionId === sessionId).length
 
@@ -54,7 +66,7 @@ export const ReflectButton = ({
         open={open}
         onOpenChange={setOpen}
         title="What's on your mind?"
-        description={`Stamped ${formatTimecode(atMs)} into the session. It keeps running.`}
+        description={`Stamped ${formatTimecode(atMs)} into the session. It waits until you close this.`}
       >
         <ReflectPanel sessionId={sessionId} atMs={atMs} />
       </ReflectionSheet>
