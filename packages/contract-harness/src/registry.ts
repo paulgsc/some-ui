@@ -18,6 +18,7 @@ import { contracts as curriculumContracts } from "../contracts/curriculum.contra
 import { contracts as healthContracts } from "../contracts/health.contract"
 import { contracts as jobsContracts } from "../contracts/jobs.contract"
 import { contracts as koreanContracts } from "../contracts/korean.contract"
+import { contracts as leetypeFileContracts } from "../contracts/leetype-files.contract"
 import { contracts as leetypeLogContracts } from "../contracts/leetype-log.contract"
 import { contracts as routineContracts } from "../contracts/routine.contract"
 import { contracts as sessionContracts } from "../contracts/sessions.contract"
@@ -36,6 +37,7 @@ export const allContracts: ReadonlyArray<Contract> = [
   ...healthContracts,
   ...jobsContracts,
   ...koreanContracts,
+  ...leetypeFileContracts,
   ...leetypeLogContracts,
   ...routineContracts,
   ...sessionContracts,
