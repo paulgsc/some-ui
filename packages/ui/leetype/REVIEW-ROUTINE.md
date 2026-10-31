@@ -332,8 +332,6 @@ Then, across the rules:
 
 ## 4. Limits on what it says
 
-- The takes are the owner's own voice. They stay in Drive. Quote an answer
-  only as far as a rubric point needs, never whole.
 - Something wrong with the app (a screen that misbehaved, a log that doesn't
   add up, a funnel that looks wrong against its events, a rubric that gives a
   round away) goes in the review under **App problems**, in plain words, for
@@ -457,7 +455,9 @@ and don't retry. Name each file put in the review's **Sources**.
 - **Never** writes outside Drive and the mailbox: no GitHub issue, PR,
   comment or commit, nothing to home, no email.
 - **Never** uploads, sends or saves a take's audio or its transcript anywhere,
-  and never prints the mailbox token or the service account key.
+  and never prints the mailbox token or the service account key. The takes
+  are the owner's own voice: the review quotes an answer only as far as a
+  rubric point needs, never whole.
 
 ## 8. Summary
 
