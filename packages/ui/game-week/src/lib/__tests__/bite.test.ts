@@ -14,6 +14,7 @@ const MOMENT: BiteMoment = {
   strip: "Q3 8:42 · SF 17, SEA 13",
   watching: true,
   mode: "standard",
+  offsetMs: null,
 }
 
 const STARTED = Date.UTC(2026, 10, 1, 21, 0, 3, 250)
@@ -85,6 +86,18 @@ describe("biteFields (GW4)", () => {
       mode: "standard",
       catalog: String(CATALOG_VERSION),
     })
+  })
+
+  it("says home's clock against the phone's, in whole milliseconds, once measured (GW5)", () => {
+    const fields = biteFields(
+      { how: "said-first" },
+      { ...MOMENT, offsetMs: -1_234.6 },
+      STARTED
+    )
+    expect(fields.offset).toBe("-1235")
+    expect(
+      biteFields({ how: "said-first" }, MOMENT, STARTED)
+    ).not.toHaveProperty("offset")
   })
 
   it("keeps the strip and context to one line home takes", () => {
