@@ -52,6 +52,7 @@ import type { PanelKey } from "@/lib/playable"
 import {
   CODE_CARD_FIXTURE,
   describeViolation,
+  expectPlantedSeen,
   findViolations,
   INCIDENT_FIXTURE,
   INTENT_FAILURE_FIXTURE,
@@ -352,19 +353,6 @@ test.describe("every panel fits the rect the viewport grants it", () => {
       PLANTED_OVERFLOW
     )
 
-    expect(
-      mounted,
-      `The planted panel rendered nothing: ${errors.join(" | ")}`
-    ).toBe(true)
-    expect(
-      violations.some(
-        (violation) =>
-          violation.kind === "leak" &&
-          violation.classes.includes("planted-panel")
-      ),
-      `The planted panel holds 900px of content in a 400px rect and does not ` +
-        `clip it. If this is not reported, the sweep above is measuring ` +
-        `nothing: ${JSON.stringify(violations)}`
-    ).toBe(true)
+    expectPlantedSeen({ mounted, violations }, errors)
   })
 })

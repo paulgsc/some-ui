@@ -4,21 +4,26 @@ import type { ShotTime } from "@some-ui/video-render"
 import { REVIEW_SCHEMA } from "@some-ui/video-render"
 import type {
   Playback,
-  Recording,
   StartRecording,
   Take,
   TakeDeadlines,
 } from "@some-ui/voice-capture"
+import { fakeMic } from "@soundbites/lib/fake-mic"
 import type { Listened } from "@soundbites/lib/idea/machine"
 import type { IdeaListener, Listening } from "@soundbites/lib/idea/runtime"
 import { run, started, take } from "@soundbites/lib/project/__tests__/fixture"
 import { projectFile, readProjectFile } from "@soundbites/lib/project/file"
 import { finishOf } from "@soundbites/lib/project/finish"
+import { memoryProjectStore } from "@soundbites/lib/project/memory-store"
 import type { CutListShape, Project } from "@soundbites/lib/project/model"
 import { latest, newProject, primerAt } from "@soundbites/lib/project/model"
 import { cutListOf, TAIL_MS } from "@soundbites/lib/project/script"
 import type { Speaking } from "@soundbites/lib/studio/machine"
-import { projectOf } from "@soundbites/lib/studio/machine"
+import {
+  initialStudioState,
+  projectOf,
+  step,
+} from "@soundbites/lib/studio/machine"
 import type { StudioRuntime } from "@soundbites/lib/studio/runtime"
 import { createStudio } from "@soundbites/lib/studio/runtime"
 import { keptTimeLog } from "@soundbites/lib/studio/time-store"
@@ -26,22 +31,7 @@ import { othersOnPhone } from "@soundbites/lib/studio/view"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { describe, expect, it, vi } from "vitest"
 
-import { AT, memoryProjectStore, primer, PRIMER_TEXT } from "./fixture"
-
-/** A microphone that hears `durationMs` of speech per take. */
-function fakeMic(durationMs = 4_000, bytes = 5): StartRecording {
-  return (): Promise<Recording> =>
-    Promise.resolve({
-      level: (): number => 0.3,
-      finish: (): Promise<Take> =>
-        Promise.resolve({
-          blob: new Blob(["v".repeat(bytes)], { type: "audio/webm" }),
-          mimeType: "audio/webm;codecs=opus",
-          durationMs,
-        }),
-      discard: (): void => undefined,
-    })
-}
+import { AT, primer, PRIMER_TEXT } from "./fixture"
 
 const NOW = Date.UTC(2026, 9, 30, 10)
 
@@ -366,6 +356,58 @@ describe("what Claude sent that doesn't read as scenes", () => {
     expect(runtime.getSnapshot().primerProblem).toBe(
       STUDIO_WORDS.start.sentProblem
     )
+  })
+
+  it.each([
+    [
+      "Claude's reply about an idea",
+      '{"schema":"some-ui.studio-idea-reply/1","idea":"idea-1","ask":["?"]}',
+    ],
+    [
+      "scenes naming an idea, citing its answers",
+      PRIMER_TEXT.replace(/^\{/, '{"idea":"idea-1",'),
+    ],
+  ])(
+    "points %s to the idea it belongs to, starting nothing (ST19)",
+    async (_, text) => {
+      const memory = memoryProjectStore()
+      const runtime = studio(memory)
+      await until(runtime, (state) => state.shelf.kind === "read")
+      runtime.dispatch({ type: "primerPicked", file: new Blob([text]) })
+      await until(runtime, (state) => state.primerProblem !== null)
+      expect(runtime.getSnapshot().primerProblem).toBe(
+        STUDIO_WORDS.start.ideaReply
+      )
+      expect(memory.projects.size).toBe(0)
+    }
+  )
+})
+
+describe("which video Studio opens on", () => {
+  it("is the one asked for when it is on the phone, else the one touched last (ST19)", () => {
+    const made = (id: string, at: string): Project =>
+      newProject(id, {
+        author: "claude",
+        message: "Primer",
+        at,
+        cutList: cutListOf(primer()),
+        primer: primer(),
+      }).project
+    const projects = [
+      made("older", AT),
+      made("newer", "2026-10-31T09:00:00.000Z"),
+    ]
+    const opensOn = (open?: string): string | null =>
+      step(initialStudioState(open), {
+        type: "listed",
+        seq: 0,
+        projects,
+        notices: [],
+        roomBytes: 0,
+      }).state.current
+    expect(opensOn("older")).toBe("older")
+    expect(opensOn()).toBe("newer")
+    expect(opensOn("gone")).toBe("newer")
   })
 })
 

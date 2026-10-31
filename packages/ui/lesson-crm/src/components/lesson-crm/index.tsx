@@ -86,8 +86,9 @@ const canReadClipboard = (): boolean =>
  *   the list has loaded, since a new key can't be checked until it has.
  *
  * LAN-only by build: this workspace's audience is `lan`. The server's
- * operator routes answer only a passkey session whose subject is in
- * `OPERATOR_SUBJECTS` (401 without a session, 403 for anyone else).
+ * operator routes answer only a passkey session of the home's owner (or the
+ * subjects `OPERATOR_SUBJECTS` lists): 401 without a session, 403 for anyone
+ * else.
  */
 export const LessonCrm = ({
   client,

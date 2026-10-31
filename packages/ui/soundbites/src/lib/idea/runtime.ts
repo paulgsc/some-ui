@@ -66,8 +66,15 @@ export type IdeaRuntime = {
   attach: () => () => void
 }
 
-export function createIdeaCapture(ports: IdeaPorts): IdeaRuntime {
-  let state = initialIdeaState(ports.newId())
+/**
+ * `focus`: an idea whose waiting questions from Claude are to be answered
+ * (ST19), by id; with none, New idea.
+ */
+export function createIdeaCapture(
+  ports: IdeaPorts,
+  focus: string | null = null
+): IdeaRuntime {
+  let state = initialIdeaState(ports.newId(), focus)
   let listening: Listening | null = null
   const listeners = new Set<() => void>()
   const at = (): string => new Date(ports.now()).toISOString()

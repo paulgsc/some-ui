@@ -46,6 +46,12 @@ import { JOURNAL_BUDGET_MAX_MS } from "@soundbites/lib/policy"
  *
  * `budgetSec` is optional and at most the version's longest. A cut's `id`
  * names its take's file, so it is short, lowercase and unique.
+ *
+ * A version 2 primer fleshed out from an idea (STUDIO ST19, `lib/idea/reply.ts`)
+ * also names the idea (`idea`, its id), and each cut may name the idea's
+ * answers it came from (`from`: `"what"`, `"spark"`, `"ask-1"`, …), so the
+ * scene it becomes reads as the owner's idea, citing those words, and a cut
+ * naming none reads as Claude's.
  */
 
 /** A cut's target is a guide, never under this or over the budget. */
@@ -77,6 +83,8 @@ export type Cut = {
   /** What the Record screen asks for: the line when read, else the point. */
   readonly prompt: string
   readonly targetMs: number
+  /** The idea's answers it came from (ST19), when it came from any. */
+  readonly from?: ReadonlyArray<string>
 }
 
 export type Primer = {
@@ -84,6 +92,8 @@ export type Primer = {
   readonly budgetMs: number
   readonly voice: VoicePlan
   readonly cuts: ReadonlyArray<Cut>
+  /** The idea it was fleshed out from (ST19), by id. */
+  readonly idea?: string
 }
 
 export type PrimerReading =
@@ -95,6 +105,13 @@ export type PrimerReading =
   | { readonly ok: false; readonly problem: string }
 
 const CUT_ID = /^[a-z0-9][a-z0-9-]{0,39}$/
+
+/** An idea's id, and the name of one of its answers (`lib/idea/model.ts`). */
+export const IDEA_ID = /^[\w-]{1,64}$/
+export const ANSWER_ID = /^[a-z][a-z0-9-]{0,19}$/
+
+const isIdeaId = (value: unknown): value is string =>
+  typeof value === "string" && IDEA_ID.test(value)
 
 type Fields = Readonly<Record<string, unknown>>
 
@@ -199,6 +216,11 @@ function readCut(
     return {
       problem: `Cut ${n} is read word for word, so it needs a line, or set its voice to ad-lib.`,
     }
+  const from = texts(raw.from)
+  if (!from?.every((each) => ANSWER_ID.test(each)))
+    return {
+      problem: `Cut ${n}'s from should list the idea's answers it came from, as what or ask-1.`,
+    }
   return {
     id,
     artifact,
@@ -208,6 +230,7 @@ function readCut(
     voice,
     prompt: voice === "read" && line !== null ? line : point,
     targetMs,
+    ...(from.length === 0 ? {} : { from: [...new Set(from)] }),
   }
 }
 
@@ -219,6 +242,11 @@ export function readPrimer(source: string): PrimerReading {
   } catch {
     return fail("That file isn't JSON.")
   }
+  return primerOf(raw)
+}
+
+/** Reads a primer already parsed from JSON, or says what is wrong with it. */
+export function primerOf(raw: unknown): PrimerReading {
   if (!isFields(raw)) return fail("That file isn't a primer.")
   const version = raw.version
   if (version !== 1 && version !== 2)
@@ -246,5 +274,8 @@ export function readPrimer(source: string): PrimerReading {
       return fail(`Two cuts share the id "${cut.id}".`)
     cuts.push(cut)
   }
-  return { ok: true, primer: { title, budgetMs, voice, cuts } }
+  if (raw.idea !== undefined && (version === 1 || !isIdeaId(raw.idea)))
+    return fail("The primer's idea should be the id of the idea it came from.")
+  const idea = isIdeaId(raw.idea) ? { idea: raw.idea } : {}
+  return { ok: true, primer: { title, budgetMs, voice, cuts, ...idea } }
 }

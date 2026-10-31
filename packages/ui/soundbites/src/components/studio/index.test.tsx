@@ -1,37 +1,17 @@
-import type {
-  Playback,
-  Recording,
-  StartRecording,
-  Take,
-} from "@some-ui/voice-capture"
+import type { Playback } from "@some-ui/voice-capture"
 import type { StudioProps } from "@soundbites/components/studio"
 import { Studio } from "@soundbites/components/studio"
+import { fakeMic } from "@soundbites/lib/fake-mic"
+import { memoryProjectStore } from "@soundbites/lib/project/memory-store"
 import type { Project } from "@soundbites/lib/project/model"
 import { newProject } from "@soundbites/lib/project/model"
 import { cutListOf } from "@soundbites/lib/project/script"
-import {
-  memoryProjectStore,
-  primer,
-  PRIMER_TEXT,
-} from "@soundbites/lib/studio/__tests__/fixture"
+import { primer, PRIMER_TEXT } from "@soundbites/lib/studio/__tests__/fixture"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
 const W = STUDIO_WORDS
-
-/** A microphone that hears four seconds of speech per take. */
-const mic: StartRecording = (): Promise<Recording> =>
-  Promise.resolve({
-    level: (): number => 0.3,
-    finish: (): Promise<Take> =>
-      Promise.resolve({
-        blob: new Blob(["voice"], { type: "audio/webm" }),
-        mimeType: "audio/webm;codecs=opus",
-        durationMs: 4_000,
-      }),
-    discard: (): void => undefined,
-  })
 
 function setup(
   share?: StudioProps["share"],
@@ -43,7 +23,7 @@ function setup(
     <Studio
       ports={{
         store: memory.store,
-        startRecording: mic,
+        startRecording: fakeMic(),
         now: () => Date.UTC(2026, 9, 30, 10) + 1_000 * tick++,
         newId: () => `t${tick}`,
         readText: () => Promise.resolve(PRIMER_TEXT),

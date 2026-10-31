@@ -3,7 +3,8 @@
  * `project.json`, `takes.json` and each take's audio still on the phone
  * (`@some-ui/soundbites`, `studioFiles`). The person picks where they go
  * (Drive, say), and once they say the files arrived, the takes that went out
- * are marked as kept by Drive too. Phone-only (`build.paths.ts`).
+ * are marked as kept by Drive too. An idea goes out the same way, as its
+ * text alone (`shareIdea`, ST19). Phone-only (`build.paths.ts`).
  */
 import { foreignValue } from "@/lib/intent/foreign"
 import type { SharedFile } from "@/lib/share-files"
@@ -39,4 +40,15 @@ export async function shareStudio(
     outcome: shareFiles("journal-takes", title, written.files),
   })
   return { outcome, sent: written.sent }
+}
+
+/**
+ * One idea out through the share sheet, for Claude to flesh out (ST19): its
+ * answers as text (soundbites' `ideaFile`), and nothing else.
+ */
+export function shareIdea(
+  file: SharedFile,
+  title: string
+): Promise<"shared" | "cancelled"> {
+  return foreignValue({ outcome: shareFiles("studio-idea", title, [file]) })
 }

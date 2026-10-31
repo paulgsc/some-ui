@@ -78,9 +78,13 @@ export const BurnInSchema = z.object({
   params: z.record(z.string(), z.unknown()).default({}),
 })
 
-/** Whose words an idea came from, when they were the owner's (ST16). */
+/**
+ * Whose words an idea came from, when they were the owner's (ST16): an
+ * `idea` is one answer of a video idea the owner caught (ST18, ST19), as
+ * `<idea id>/<answer>`.
+ */
 const OwnerRefSchema = z.object({
-  kind: z.enum(["note", "take", "voice-note", "prompt"]),
+  kind: z.enum(["note", "take", "voice-note", "prompt", "idea"]),
   id: z.string().min(1).max(200),
 })
 
@@ -271,6 +275,10 @@ function authorshipProblems(cut: CutList): Array<string> {
       problems.push(`${s.id}: the authorship mark covers the whole video`)
     }
     const idea = s.idea
+    // Only a note is checked here: the cut list carries its notes, but an
+    // `idea` cites an answer kept on the phone, outside it, so the phone
+    // checks that one where it starts the scene (soundbites'
+    // `lib/idea/reply.ts`).
     const cited =
       idea.origin === "you" && idea.from.kind === "note"
         ? idea.from.id

@@ -9,6 +9,12 @@
  *   scene's length into the cut list as a number (`fitted`): the take's
  *   start (`voiceInMs`), the take, and `TAIL_MS` after it, never shorter
  *   than any moment the scene already pins (a motion, a tap, a cue).
+ * - **A scene's idea is the owner's only with their words cited.** A cut
+ *   naming the answers of the idea it was fleshed out from (ST19) makes a
+ *   scene whose idea is `you`, citing the first; any other is Claude's.
+ *   Only the idea shelf, holding the idea, starts one from such a primer,
+ *   once `lib/idea/reply.ts` checked each answer cited is the idea's;
+ *   Studio's Start points a primer naming an idea there.
  * - **The phone doesn't know the footage.** A scene the primer brings is a
  *   card (the series' ground) until a revision of Claude's sets its picture;
  *   a newer primer keeps every scene's picture whose cut kept its id.
@@ -18,8 +24,8 @@ import type { Shot } from "@some-ui/video-render"
 import { CUT_LIST_SCHEMA, fitToTake } from "@some-ui/video-render"
 import type { Cut, Primer } from "@soundbites/lib/journal/primer"
 
-import type { CutListShape, Project, ProjectTake } from "./model"
-import { latest, primerAt } from "./model"
+import type { CutListShape, Project, ProjectState, ProjectTake } from "./model"
+import { latest, newProject, primerAt } from "./model"
 
 /** The breath after a take before the next scene: `render.py`'s default tail. */
 export const TAIL_MS = 500
@@ -84,6 +90,18 @@ export function fitted(
   }
 }
 
+/**
+ * Whose idea a new scene presents (ST16): the owner's, citing the first of
+ * the idea's answers its cut came from (ST19), or else Claude's. Nothing
+ * claims the idea for the owner without the owner's words to cite.
+ */
+function ideaOf(cut: Cut, primer: Primer): Shot["idea"] {
+  const [answer] = cut.from ?? []
+  return primer.idea === undefined || answer === undefined
+    ? { origin: "agent" }
+    : { origin: "you", from: { kind: "idea", id: `${primer.idea}/${answer}` } }
+}
+
 function shotFor(cut: Cut, primer: Primer, was: Shot | undefined): Shot {
   const voice = primer.voice === "mixed" ? { voice: cut.voice } : {}
   if (was !== undefined) {
@@ -98,7 +116,7 @@ function shotFor(cut: Cut, primer: Primer, was: Shot | undefined): Shot {
     voiceInMs: 200,
     overrides: {},
     burnIns: [],
-    idea: { origin: "agent" },
+    idea: ideaOf(cut, primer),
     ...voice,
   }
 }
@@ -136,6 +154,21 @@ export function cutListOf(
     const take = chosenTake(before.project, shot.id)
     return take === null ? cutList : fitted(cutList, shot.id, take)
   }, base)
+}
+
+/** The project a primer opens as: revision 1, Claude's, nothing taken. */
+export function projectFromPrimer(
+  id: string,
+  primer: Primer,
+  at: string
+): ProjectState {
+  return newProject(id, {
+    author: "claude",
+    message: `Primer: ${primer.title}`,
+    at,
+    cutList: cutListOf(primer),
+    primer,
+  })
 }
 
 /** The take chosen for scene `shot`, if one is. */

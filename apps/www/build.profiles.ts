@@ -54,26 +54,47 @@ const WEB_DOOR = "src/lib/web-surface"
 const doors: ReadonlyArray<string> = [WEB_DOOR]
 
 /**
+ * The ui-fit phone page (`tests/ui-fit/phone-page`): the sweep of the
+ * phone's Studio screens (`tests/ui-fit/studio-fit.spec.ts`) mounts them
+ * there on fakes, as the panel page mounts the session panels. It is a
+ * third kind of gate. Not a layout route: nothing routes to it, so
+ * `audience-gates.test.ts` has no layout to check there. Not a door (A4,
+ * packages/some-vite-config/AUDIENCES.md): it imports the `apk` workspace
+ * statically and hands nothing out, so no guard stands between the import
+ * and a build that stubs it. What keeps a stub out is that only
+ * `build:fit-phone` builds the page, under the Android app's profile, and
+ * vite.config.ts refuses the page under any other.
+ */
+const FIT_PHONE_PAGE = "tests/ui-fit/phone-page"
+
+/** Every gate in `gates` that is a ui-fit page: neither a layout route nor a door. */
+const fitPages: ReadonlyArray<string> = [FIT_PHONE_PAGE]
+
+/**
  * Where each gated audience's workspaces may be imported from: routes under
  * `_lan/` (or `_apk/`), whose layout sends a visit to not-found where the
- * audience is stubbed, or a door (`doors`, above). The build fails on any
- * other import, and `src/routes/__tests__/audience-gates.test.ts` checks the
- * layouts.
+ * audience is stubbed, a door (`doors`, above), or a ui-fit page built only
+ * under a profile that carries the audience (`fitPages`). The build fails on
+ * any other import, and `src/routes/__tests__/audience-gates.test.ts` checks
+ * the layouts.
  */
 const gates: Readonly<Record<GatedAudience, ReadonlyArray<string>>> = {
   lan: ["src/routes/_dashboard/_lan"],
-  apk: ["src/routes/_dashboard/_apk"],
+  apk: ["src/routes/_dashboard/_apk", FIT_PHONE_PAGE],
   web: [WEB_DOOR],
 }
 
-/** `gates` without the doors: each audience's layout-route directories, if any. */
+/**
+ * `gates` without the doors and the ui-fit pages: each audience's
+ * layout-route directories, if any.
+ */
 export const routeGates: ReadonlyArray<{
   audience: string
   dirs: ReadonlyArray<string>
 }> = Object.entries(gates)
   .map(([audience, dirs]) => ({
     audience,
-    dirs: dirs.filter((dir) => !doors.includes(dir)),
+    dirs: dirs.filter((dir) => !doors.includes(dir) && !fitPages.includes(dir)),
   }))
   .filter(({ dirs }) => dirs.length > 0)
 
