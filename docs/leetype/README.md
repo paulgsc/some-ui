@@ -813,7 +813,10 @@ slow would break the loop's only rule.
 > `corpus/rounds/`, the importer and the round CRM's own checks. (Retired by
 > canon Rem. 11.7, #1924: the phone plays session files, `lib/leetype-content`
 > and the bundled corpus are gone, and the five rounds live on in Git history
-> and as the round CRM's prompt example.)
+> and as the round CRM's prompt example. #2032 retired the round CRM, its
+> prompt, the phone's copy of home's rounds and home's `/leetype/rounds*`
+> routes; the five rounds stay as `AUTHORED_ROUNDS`, inside
+> `@some-ui/leetype`, for `lint:corpus`, and home keeps its round tables.)
 
 **The corpus-fetch seam is gone, not re-typed.** `apps/www` no longer fetches
 anything for this activity, and the `public/leetype` plumbing, the

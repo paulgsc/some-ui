@@ -15,8 +15,7 @@
  * - **Every wait is bounded** (`callForeign`).
  *
  * The plugin parses any `application/json` answer regardless of
- * `responseType`, so `body` is re-serialised here, and `home-sync` stores
- * rounds against the server's attested hash.
+ * `responseType`, so `body` is re-serialised here.
  */
 import { CapacitorHttp } from "@capacitor/core"
 import type { HomeAnswer } from "@some-ui/core-utils"

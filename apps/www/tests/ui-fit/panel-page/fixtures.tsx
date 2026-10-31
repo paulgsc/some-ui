@@ -39,7 +39,9 @@ import {
 
 import { PANELS } from "@/lib/playable"
 
+import { CodeCardFixture } from "./code-card"
 import { IncidentFixture } from "./incident"
+import { IntentFailureFixture } from "./intent-failure"
 import { JobsStatusFixture } from "./jobs-status"
 
 type QuizPanelProps = ComponentProps<typeof QuizPanel>
@@ -553,6 +555,10 @@ export const PANEL_FIXTURES = {
   "leetype-incident": IncidentFixture,
 
   "jobs-status": JobsStatusFixture,
+
+  "code-card": CodeCardFixture,
+
+  "intent-failure": IntentFailureFixture,
 
   // Inline styles, not utilities: this directory is outside www's Tailwind
   // sources (style.context.ts), so the page adds nothing to the CSS it

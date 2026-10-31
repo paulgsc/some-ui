@@ -1,158 +1,16 @@
 /**
- * Writes into the device's content tables: the one place TOPIK lessons,
- * Leetype rounds and LeetType session files get *into* the phone's database.
+ * Writes into the device's content tables: the one place TOPIK lessons and
+ * LeetType session files get *into* the phone's database.
  *
  * Two callers: the sync from the home `file_host`
- * (`device-backend/home-sync`), the only way TOPIK lessons and Leetype
- * rounds arrive; and a session file the person picks from storage
- * (`lib/leetype-files`).
- *
- * Bodies are stored and hashed as received, so a round's recorded runs (keyed
- * by content hash) keep matching.
+ * (`device-backend/home-sync`), the only way TOPIK lessons arrive; and a
+ * session file the person picks from storage (`lib/leetype-files`).
  */
-import { isRecord } from "@some-ui/core-utils"
-
 import { rfc3339, sha256Hex } from "@/lib/device-backend/common"
 import type { SqlDriver, SqlValue } from "@/lib/device-backend/sql"
 import { num, one, text } from "@/lib/device-backend/sql"
-import { notePruned } from "@/lib/device-backend/storage"
 
 export type UpsertOutcome = "inserted" | "updated" | "unchanged"
-
-type Witness = { propositionId: string; admissible: boolean }
-
-/** `diffOptions[i].member`'s proposition and admissibility, in option order. */
-function witnessesOf(round: unknown): Array<Witness> {
-  if (!isRecord(round) || !Array.isArray(round.diffOptions)) return []
-  return round.diffOptions.flatMap((option): Array<Witness> => {
-    if (!isRecord(option) || !isRecord(option.member)) return []
-    const { propositionId, admissible } = option.member
-    return typeof propositionId === "string" && typeof admissible === "boolean"
-      ? [{ propositionId, admissible }]
-      : []
-  })
-}
-
-/**
- * A Leetype round, by the `id` in its own body. Re-listed if it had been
- * retired; its witness rows are rewritten with it. Throws on a body that is
- * not a round.
- *
- * `attestedHash` is the home manifest's content hash, used instead of hashing
- * `body`: Capacitor's native HTTP parses `application/json`, so a synced body
- * is a re-serialisation, and runs are keyed on the server's hash.
- *
- * Marks the round as home's, so `removeSeededRounds` keeps it.
- */
-export async function upsertRound(
-  db: SqlDriver,
-  body: string,
-  nowMs: number,
-  attestedHash?: string
-): Promise<UpsertOutcome> {
-  const round: unknown = JSON.parse(body)
-  if (!isRecord(round) || typeof round.id !== "string") {
-    throw new Error("device backend: a Leetype round needs a string `id`")
-  }
-  const id = round.id
-  const contentHash = attestedHash ?? (await sha256Hex(body))
-  return db.transaction(async () => {
-    const stored = await one(
-      db,
-      "SELECT content_hash, version, retired_at FROM leetype_round WHERE id = ?",
-      [id]
-    )
-    if (
-      stored !== null &&
-      text(stored, "content_hash") === contentHash &&
-      stored.retired_at === null
-    ) {
-      return "unchanged"
-    }
-    const version = stored === null ? 1 : num(stored, "version") + 1
-    await db.run(
-      `INSERT INTO leetype_round (id, language, published_at, version, content_hash, retired_at, body)
-       VALUES (?, 'rust', ?, ?, ?, NULL, ?)
-       ON CONFLICT(id) DO UPDATE SET
-         published_at = excluded.published_at, version = excluded.version,
-         content_hash = excluded.content_hash, retired_at = NULL, body = excluded.body`,
-      [id, rfc3339(nowMs), version, contentHash, body]
-    )
-    await db.run("DELETE FROM leetype_round_witness WHERE round_id = ?", [id])
-    let index = 0
-    for (const witness of witnessesOf(round)) {
-      await db.run(
-        "INSERT INTO leetype_round_witness (round_id, member_index, proposition_id, admissible) VALUES (?, ?, ?, ?)",
-        [id, index, witness.propositionId, witness.admissible ? 1 : 0]
-      )
-      index += 1
-    }
-    await db.run(
-      "INSERT OR IGNORE INTO device_round_from_home (round_id) VALUES (?)",
-      [id]
-    )
-    return stored === null ? "inserted" : "updated"
-  })
-}
-
-/**
- * A round's recorded runs (`RoundRuns`), stored against the hash they name,
- * so the runs route drops them once the round's bytes change. Ignored for a
- * round the device does not hold, and for runs recorded against other bytes
- * (they would replace runs that match).
- */
-export async function upsertRuns(
-  db: SqlDriver,
-  body: string,
-  nowMs: number
-): Promise<number> {
-  const parsed: unknown = JSON.parse(body)
-  if (
-    !isRecord(parsed) ||
-    typeof parsed.roundId !== "string" ||
-    typeof parsed.contentHash !== "string" ||
-    !Array.isArray(parsed.runs)
-  ) {
-    throw new Error("device backend: not a RoundRuns body")
-  }
-  const { roundId, contentHash, runs } = parsed
-  return db.transaction(async () => {
-    const round = await one(
-      db,
-      "SELECT content_hash FROM leetype_round WHERE id = ?",
-      [roundId]
-    )
-    if (round === null || text(round, "content_hash") !== contentHash) return 0
-    let written = 0
-    for (const run of runs) {
-      if (
-        !isRecord(run) ||
-        typeof run.variant !== "string" ||
-        typeof run.bounds !== "string"
-      ) {
-        continue
-      }
-      await db.run(
-        `INSERT INTO leetype_round_run (round_id, content_hash, variant, bounds, sizes, result, recorded_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(round_id, variant, bounds) DO UPDATE SET
-           content_hash = excluded.content_hash, sizes = excluded.sizes,
-           result = excluded.result, recorded_at = excluded.recorded_at`,
-        [
-          roundId,
-          contentHash,
-          run.variant,
-          run.bounds,
-          JSON.stringify(run.sizes ?? {}),
-          JSON.stringify(run.result ?? null),
-          rfc3339(nowMs),
-        ]
-      )
-      written += 1
-    }
-    return written
-  })
-}
 
 /** A TOPIK manifest entry as `/curriculum/manifest.json` lists it. */
 export type LessonEntry = {
@@ -184,19 +42,6 @@ export async function storedLesson(
   return row === null
     ? null
     : { body: text(row, "body"), hash: text(row, "content_hash") }
-}
-
-/** The content hash the device holds for round `id`, or `null`. */
-export async function storedRoundHash(
-  db: SqlDriver,
-  id: string
-): Promise<string | null> {
-  const row = await one(
-    db,
-    "SELECT content_hash FROM leetype_round WHERE id = ? AND retired_at IS NULL",
-    [id]
-  )
-  return row === null ? null : text(row, "content_hash")
 }
 
 /**
@@ -316,41 +161,6 @@ async function deleteCounted(
   )
   await db.run(`DELETE FROM ${table} WHERE ${where}`, params)
   return row === null ? 0 : num(row, "n")
-}
-
-/**
- * Deletes every round home's listing no longer names (`keep`), its
- * witnesses and runs with it (`ON DELETE CASCADE`).
- */
-export async function removeRoundsExcept(
-  db: SqlDriver,
-  keep: ReadonlyArray<string>
-): Promise<number> {
-  return deleteCounted(
-    db,
-    "leetype_round",
-    "id NOT IN (SELECT value FROM json_each(?))",
-    [JSON.stringify(keep)]
-  )
-}
-
-/**
- * Deletes every round home never wrote: those an earlier build seeded from
- * its bundled corpus (canon Rem. 11.7), noting them for the person. One home
- * also serves comes back at the next sync. Once they are gone it deletes
- * nothing.
- */
-export async function removeSeededRounds(db: SqlDriver): Promise<number> {
-  return db.transaction(async () => {
-    const removed = await deleteCounted(
-      db,
-      "leetype_round",
-      "id NOT IN (SELECT round_id FROM device_round_from_home)",
-      []
-    )
-    await notePruned(db, removed)
-    return removed
-  })
 }
 
 /** A LeetType session file the phone holds, as its list shows it. */

@@ -33,7 +33,7 @@ import type { JobEvent, PickRef } from "@/lib/jobs/model"
 import type { JobsPorts, JobsRuntime } from "@/lib/jobs/runtime"
 import { createJobsRuntime } from "@/lib/jobs/runtime"
 
-vi.mock("@/lib/jobs", () => ({ phoneJobs: vi.fn(), copyText: vi.fn() }))
+vi.mock("@/lib/jobs", () => ({ phoneJobs: vi.fn() }))
 
 afterEach(() => {
   cleanup()

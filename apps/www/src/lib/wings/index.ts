@@ -116,12 +116,12 @@ export const WINGS: ReadonlyArray<Wing> = [
   {
     id: "operate",
     name: "Operate",
-    job: "Lessons and rounds for every learner",
+    job: "Lessons for every learner",
     home: null,
     settings: null,
     web: {
       home: "/lessons",
-      job: "Make what gets published: lessons, rounds, the résumé",
+      job: "Make what gets published: lessons, the résumé",
       lanOnly: true,
     },
   },
@@ -155,7 +155,6 @@ export const ROOMS: ReadonlyArray<Room> = [
   { id: "jobs", wing: "jobs", roots: ["/jobs"] },
   { id: "job-run", wing: "jobs", roots: ["/job-run"], nav: "Morning run" },
   { id: "lessons", wing: "operate", roots: ["/lessons"], nav: "Lessons" },
-  { id: "rounds", wing: "operate", roots: ["/rounds"], nav: "Rounds" },
   {
     id: "resume-build",
     wing: "operate",

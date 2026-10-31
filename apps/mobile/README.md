@@ -109,8 +109,8 @@ www's in-process route table, over `@capacitor-community/sqlite`. Every other
 request goes to the real network.
 
 - **`DATA_MODE` stays `"server"`.** There _is_ a backend; it just lives in the
-  same process. So sessions, the shelf, the TOPIK catalogue and Leetype rounds
-  all take their normal server-mode code paths, unchanged.
+  same process. So sessions, the shelf and the TOPIK catalogue all take
+  their normal server-mode code paths, unchanged.
 - **It answers like the server.** The routes, status codes, error envelope and
   JSON shapes are copied from paulgsc/server. The schema is the server's
   migrations, column for column, subject column included. A test runs every
@@ -138,7 +138,6 @@ request goes to the real network.
 | `/sessions*`                                              | the `sessions` table                                     |
 | `/shelf/:activity[/:key]`                                 | `learner_shelf` (keep a pasted lesson or your own round) |
 | `/curriculum/manifest[.json]`, `/curriculum/:key`         | `curriculum`, filled by a sync from home                 |
-| `/leetype/rounds`, `/:id`, `/:id/runs`                    | `leetype_round*`, filled by a sync from home             |
 | `/auth/session`, `/signals`, `/presence/lease`, `/push/*` | see above                                                |
 
 Anything else answers `file_host`'s plain-text `404`, which is what a server
@@ -208,11 +207,8 @@ storage failure (`launch/launch-test.sh`).
   phone is listed, fetched or restored here. Reflections are meant to be
   made during a session and shared soon after, while the session is still
   on the phone.
-- **Published content follows its source.** A sync deletes the lessons and
-  rounds home stopped listing, and skips what would not fit. Each start
-  deletes the Leetype rounds an earlier build seeded from its own bundle and
-  keeps those home sent; one home also serves comes back at the next sync.
-  All of it is reported.
+- **Published content follows its source.** A sync deletes the lessons home
+  stopped listing, and skips what would not fit. All of it is reported.
 - **Presence leases** are trimmed to the server's own 16.
 
 The database runs with `auto_vacuum = FULL`, so deleted rows leave the file
@@ -221,8 +217,7 @@ Android backs up.
 ### What content is on the phone
 
 - **Leetype:** the session files picked from storage, kept in the content
-  store, and any rounds a sync from home brings, which the phone keeps but
-  does not play. The app bundles no rounds.
+  store. The app bundles no rounds, and a sync from home brings none.
 - **TOPIK:** lessons are not in either repository. They exist only in the home
   server's database, so the phone gets them by a **sync from home** (below).
   Before the first sync, TOPIK offers any lesson you paste and keep on the
@@ -577,27 +572,29 @@ being paired sends nothing; there is no retry and no background work.
 Unpaired, it has an address field (for example `192.168.1.10:3000`) and
 **Sync lessons from home**. Paired, it shows **Paired · host** with **Unpair**,
 and the sync reads from the paired host. **Sync lessons from home**, pressed
-while on the home network, copies two things into the phone's database:
+while on the home network, copies every listed TOPIK lesson and every
+served drama into the phone's database.
 
-- every listed TOPIK lesson;
-- any Leetype round whose content hash differs from the one the phone holds,
-  together with its runs.
-
-A lesson or round home no longer lists is deleted. A lesson that merely
+A lesson home no longer lists is deleted. A lesson that merely
 failed to download is kept, and one that would not fit is skipped. Only published content
 moves, and only home → phone, with no credential. **Stop** ends a running sync
 after the request in flight, and so does the app going to the background;
 what was copied stays. Sessions and the shelf stay where they were made.
 
-Each lesson and each round's runs are asked for with the `ETag` the phone
-kept from the last read (`device_home_answer`), while the phone still holds
-the bytes that tag named, so what home has not changed comes back without a
-body; the three listings are read whole, and the number of requests is the
-same. Home answering **429** (it allows 60 requests a minute per client)
+Each lesson is asked for with the `ETag` the phone kept from the last read
+(`device_home_answer`), while the phone still holds the bytes that tag named,
+so what home has not changed comes back without a body; the two listings are
+read whole, and the number of requests is the same. Home answering **429** (it allows 60 requests a minute per client)
 ends the sync there, said as "Home is busy right now", with what came before
 it kept and nothing retried. Each tap starts from the listings again, so a
-catalogue of more than about 55 lessons and rounds ends busy at the same
+catalogue of more than about 55 lessons ends busy at the same
 place every time, and what is listed after it does not arrive.
+
+**Update the phone before home.** A sync fails whole when a route it reads is
+gone from home. So when a change retires a route the sync reads, install the
+APK built from it on the phone first, then pull home's `file_host` image. For
+example, an APK built before some-ui#2341 reads `/leetype/rounds` before any
+lesson, so it fails every sync from home once home runs paulgsc/server#584.
 
 **Pairing** lets the phone act for the person's account on the home server,
 which it cannot do with a passkey (its page is `https://localhost`, another
@@ -669,10 +666,8 @@ allowlist would also have to name that origin. Two consequences:
 - `AndroidManifest.xml` sets `usesCleartextTraffic`. Android refuses
   plain-HTTP connections otherwise, and a network security config cannot
   scope that to "private addresses".
-- Native HTTP parses JSON, so the bytes change. A synced Leetype round is
-  therefore stored against the hash the server's manifest attests, which is
-  the hash its runs were recorded against, not the hash of the re-serialized
-  bytes.
+- Native HTTP parses JSON, so the bytes change: a synced lesson is the
+  re-serialized bytes, not the ones home stored.
 
 ## Study nudges
 

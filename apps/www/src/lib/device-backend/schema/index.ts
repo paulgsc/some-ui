@@ -4,14 +4,14 @@
  * included), so a row here is one `file_host` could take verbatim. Each table
  * names its source migration and anything left out.
  *
- * Four tables are the device's own: `device_round_from_home` (migration 2),
- * the rounds home wrote, so the start that removes rounds an earlier build
- * seeded keeps them; `device_storage_notice` (3), removals not yet shown
- * (`device-backend/storage`);
+ * Three tables are the device's own: `device_storage_notice` (migration 3),
+ * removals not yet shown (`device-backend/storage`);
  * `device_leetype_session_file` (4), the LeetType session files picked
  * from storage, which no server serves (`content-store`); and
  * `device_home_answer` (6), the `ETag` the sync from home last read at each
- * address (`home-sync`).
+ * address (`home-sync`). Migration 7 drops the phone's copy of home's
+ * Leetype rounds (`leetype_round` and the tables beside it, from 1 and 2),
+ * which nothing on the phone read.
  *
  * Migrations are append-only, numbered by `PRAGMA user_version`. Never edit a
  * shipped entry: a phone that ran it will not run it again.
@@ -163,6 +163,18 @@ const MIGRATIONS: ReadonlyArray<string> = [
       CHECK ((hash IS NULL) <> (body IS NULL))
   );
   `,
+  // 7 - the phone's copy of home's Def. 1.7 rounds goes (#2032): no surface
+  // has played one since #1941, and every row was a copy of home's corpus,
+  // which home keeps, never one the person made. Each table that names
+  // `leetype_round` goes before it. Only a round's runs kept their `body` in
+  // `device_home_answer` (a lesson's is kept by digest), so those rows go too.
+  `
+  DELETE FROM device_home_answer WHERE body IS NOT NULL;
+  DROP TABLE device_round_from_home;
+  DROP TABLE leetype_round_run;
+  DROP TABLE leetype_round_witness;
+  DROP TABLE leetype_round;
+  `,
 ]
 
 const AUTO_VACUUM_FULL = 1
@@ -172,8 +184,8 @@ const SCHEMA_VERSION = MIGRATIONS.length
 
 /**
  * Brings `db` up to `SCHEMA_VERSION`, one migration per transaction, and
- * turns on the foreign keys the round tables' cascades rely on (a
- * per-connection setting in SQLite, so every open sets it).
+ * turns on foreign keys (a per-connection setting in SQLite, so every open
+ * sets it).
  *
  * First, `auto_vacuum = FULL`, so deleted rows' pages leave the file Android
  * backs up at each commit. A new database takes it before its first table; an

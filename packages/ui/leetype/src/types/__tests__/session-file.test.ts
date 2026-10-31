@@ -133,6 +133,21 @@ describe("SessionFileSchema", () => {
       }),
       "a Machine or Agreement id",
     ],
+    [
+      "a response named on a screen that returns no round",
+      minimal({
+        r1: {
+          type: "choice",
+          returnFor: "abstain",
+          options: [
+            { label: "x", next: "end", correct: true },
+            { label: "y", next: "end" },
+          ],
+        },
+        end,
+      }),
+      "it needs returnOf",
+    ],
   ])("rejects %s", (_name, file, message) => {
     const result = SessionFileSchema.safeParse(file)
     expect(result.success).toBe(false)
