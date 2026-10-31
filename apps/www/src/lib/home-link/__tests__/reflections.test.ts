@@ -92,6 +92,17 @@ describe("sendReflections", () => {
     expect(held).toEqual(["t1"])
     expect(report).toMatchObject({ held: 1, differs: 1 })
   })
+  it("counts an answer that differs from what was sent, even with the same fingerprint", async () => {
+    // These two texts share a length and an FNV-1a hash on t1's metadata.
+    const report = emptyLogReport()
+    const held: Array<string> = []
+    const { send } = home([echo(typed("t1", "2d728257"))])
+    await sendReflections([typed("t1", "b71894e9")], send, report, (id) => {
+      held.push(id)
+    })
+    expect(held).toEqual([])
+    expect(report).toMatchObject({ held: 0, differs: 1 })
+  })
 })
 
 const ask = (

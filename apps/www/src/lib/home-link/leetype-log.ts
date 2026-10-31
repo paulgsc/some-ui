@@ -90,7 +90,7 @@ export async function sendWhole<T>(
     if (
       isRecord(parsed) &&
       isRecord(parsed[lane.key]) &&
-      fingerprintOf(parsed[lane.key]) === fingerprint
+      canonicalJson(parsed[lane.key]) === canonicalJson(wire)
     ) {
       report.held += 1
       held(id, fingerprint)
