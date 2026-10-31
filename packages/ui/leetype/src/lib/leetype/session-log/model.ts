@@ -72,7 +72,11 @@ export const SessionEventSchema = z.discriminatedUnion("type", [
     action: z.enum(["opened", "saved", "read", "skipped"]),
   }),
   z.strictObject({ ...Stamp, ...OnScreen, type: z.literal("parked") }),
-  /** The worked confirmation of a parked round, taken (Prop. 9.4 (d)). */
+  /**
+   * The worked confirmation of a struggled or parked round, taken
+   * (Prop. 9.4 (d)): it shows the round's answer, so a return after it is
+   * assisted, as after `rubric-shown` (Rem. 9.5, Rem. 11.10).
+   */
   z.strictObject({
     ...Stamp,
     ...OnScreen,
@@ -80,8 +84,8 @@ export const SessionEventSchema = z.discriminatedUnion("type", [
   }),
   /**
    * A take's rubric shown that states the answer of `screen`, a round
-   * (canon Rem. 11.10): a return of it after this, until the round parks
-   * again, is assisted (Rem. 9.5). `take` is the record screen.
+   * (canon Rem. 11.10): a return of it after this, until the round's next
+   * struggle, is assisted (Rem. 9.5). `take` is the record screen.
    */
   z.strictObject({
     ...Stamp,
@@ -150,11 +154,11 @@ type OnFile = z.infer<z.ZodObject<typeof OnScreen>>
  * What a session's ledger screen says (Prop. 10.2), computed from the log
  * up to the session's last event, so a past session's ledger never changes.
  * `parked` and `saved` are across every session until then: a round parked
- * earlier and not since returned and solved, unassisted, or a take not since
- * answered strongly, still waits on its reading, and a reading saved earlier
- * and not since read is still saved. A return is assisted when a take's
- * rubric stating the round's answer was shown since the round last parked
- * (`rubric-shown`, canon Rem. 9.5, Rem. 11.10): it solves nothing.
+ * earlier and not since returned correctly and unhurried, or a take not
+ * since answered strongly, still waits on its reading, and a reading saved
+ * earlier and not since read is still saved. An assisted return unparks its
+ * round here too, so the learner is not kept on a round they answer, though
+ * `summariesOf` counts it assisted, not solved (canon Rem. 11.10).
  */
 export type SessionLedger = {
   readonly walked: ReadonlyArray<OnFile>
@@ -178,17 +182,20 @@ const unhurried = (answer: Answer): boolean =>
   answer.response === "correct" && !answer.slow
 
 /**
- * Which rounds a take's rubric has shown the answer of since they last
- * parked (Rem. 11.10, promise LTY1): fed every event in order, it answers
- * for a return whether it is assisted. A park starts the round afresh.
+ * Which rounds had their answer shown since their last struggle, by a
+ * take's rubric (`rubric-shown`) or their worked confirmation
+ * (`confirmation-taken`) (Rem. 9.5, Rem. 11.10, promise LTY1): fed every
+ * event in order, it answers for a return whether it is assisted. A
+ * struggled pick of the round, first or replayed, starts it afresh; it
+ * comes before the reveal's confirmation and the park.
  */
 class Assistance {
   private readonly shown = new Set<string>()
 
   see(event: SessionEvent): void {
-    if (event.type === "rubric-shown") {
+    if (event.type === "rubric-shown" || event.type === "confirmation-taken") {
       this.shown.add(keyOf(event.file, event.screen))
-    } else if (event.type === "parked") {
+    } else if (event.type === "picked" && !unhurried(event.answer)) {
       this.shown.delete(keyOf(event.file, event.screen))
     }
   }
@@ -222,9 +229,7 @@ export function ledgerOf(log: SessionLog, session: string): SessionLedger {
   const placedFor = new Map<string, string>()
   const waiting = new Map<string, OnFile>()
   const saved = new Map<string, { file: string; reading: string }>()
-  const assisted = new Assistance()
   for (const event of before) {
-    assisted.see(event)
     if (event.type === "placed" && event.as === "placement") {
       placedFor.set(keyOf(event.file, event.screen), event.reading)
     } else if (event.type === "parked") {
@@ -235,8 +240,7 @@ export function ledgerOf(log: SessionLog, session: string): SessionLedger {
     } else if (
       event.type === "returned" &&
       // A slow correct return is still a struggle (Def. 9.4): it stays parked.
-      unhurried(event.answer) &&
-      !assisted.has(event)
+      unhurried(event.answer)
     ) {
       waiting.delete(keyOf(event.file, event.screen))
     } else if (
@@ -271,14 +275,15 @@ type Of<T extends SessionEvent["type"]> = Extract<SessionEvent, { type: T }>
 /**
  * One round's funnel (Prop. 9.4): its first pick, the readings placed after
  * a struggle and what was done with each, the returns played, and whether
- * it is solved: a correct, unhurried pick, or such a return unassisted,
- * since its last struggle, as `ledgerOf` counts parked rounds, except that
- * a struggle left on its reveal (the app closed before it parked) is
- * unsolved here. Later
- * sessions add to it: a reading saved on the bus and read the next day, a
- * return taken from the first screen, a replay's struggle that parks it
- * again. A reading opened with no placement in view goes to the round its
- * latest placement was for.
+ * it is solved: a correct, unhurried pick, or such a return unassisted
+ * (nothing showed its answer since its last struggle), since its last
+ * struggle. `ledgerOf` counts parked rounds the same way, except that an
+ * assisted return unparks there and a struggle left on its reveal (the app
+ * closed before it parked) is unsolved here. Later sessions add to it: a
+ * reading saved on the bus and read the next day, a return taken from the
+ * first screen, a replay's struggle that parks it again. A reading opened
+ * with no placement in view goes to the round its latest placement was
+ * for.
  */
 type RoundSummary = OnFile & {
   readonly picked: Answer["response"]
@@ -288,7 +293,7 @@ type RoundSummary = OnFile & {
     readonly reading: string
     readonly action: Of<"reading">["action"]
   }>
-  /** Each return's answer; `assisted` after a rubric that states it (Rem. 11.10). */
+  /** Each return's answer; `assisted` when its answer was shown since its last struggle. */
   readonly returned: ReadonlyArray<Answer & { readonly assisted: boolean }>
   readonly solved: boolean
 }

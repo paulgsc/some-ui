@@ -1,27 +1,34 @@
 /**
- * LTY1 (#2029, canon Rem. 9.5, Rem. 11.10): a return counts as solving its
- * round only when no take's rubric stating the round's answer was shown
- * between the round's last struggle and the return.
+ * LTY1 (#2029, #2343, canon Rem. 9.5, Rem. 11.10): a return counts as
+ * solving its round only when nothing showed the round's answer, a take's
+ * rubric that covers it or the round's own worked confirmation, between the
+ * round's last struggle and the return. On the ledger screen any correct,
+ * unhurried return unparks the round, assisted or not; the reports count an
+ * assisted one as assisted, not solved.
  *
  * The Family, played end to end on the runtime into the log and read back
  * by `ledgerOf` and `summariesOf`:
  *
- * - every order of a struggle that parks the round (S), a take's rubric
- *   shown (T) and a return of the round (R) in which the return follows a
- *   struggle (`S T R`, `S R T`, `T S R`), and the two that test how long
- *   assistance lasts: a second struggle after the rubric (`S T S R`) and a
- *   second return (`S T R R`);
- * - the rubric's coverage: known and naming the round, known and naming
- *   another round, or unknown (no point says `covers`), which is read as
- *   every round parked in the session that shows it;
- * - the session each event falls in: every split of the order into
- *   sessions;
- * - how the rubric is shown: after a typed answer, after a pass, or as a
- *   parked take's worked confirmation at a round boundary or from the
- *   first screen (Prop. 9.4 (d)).
+ * - every order of a struggle that parks the round (S), the answer shown
+ *   (T) and a return of the round (R) in which the return follows a
+ *   struggle (`STR`, `SRT`, `TSR`), and three that test how long
+ *   assistance lasts: a second struggle after T (`STSR`), a second return
+ *   (`STRR`), and a fresh struggle after an assisted return (`STRSR`);
+ * - what showed it: a take's rubric whose coverage is known and names the
+ *   round, known and names another round, or unknown (no point says
+ *   `covers`, read as every round parked in the session that shows it);
+ *   the round's own worked confirmation; another round's;
+ * - how: a rubric after a typed answer, after a pass, or as a parked take's
+ *   worked confirmation; a round's confirmation on its struggle's reveal;
+ *   either confirmation at a round boundary or from the first screen
+ *   (Prop. 9.4 (d));
+ * - the session each step falls in: every split of the order into
+ *   sessions.
  *
- * The oracle is the claim: a return is assisted when, after the round's
- * last struggle before it, some rubric shown covers the round.
+ * Only what the phone can offer is played: a confirmation from the parked
+ * list needs its round or take parked, the first screen comes before any
+ * step of its session, and a reveal's confirmation follows its struggle.
+ * The oracle is the claim.
  */
 import { IncidentPlayRuntime } from "@leetype/lib/leetype/incident-play"
 import { createSessionLogStore } from "@leetype/lib/leetype/session-log"
@@ -34,12 +41,18 @@ import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { describe, expect, it } from "vitest"
 
 type Coverage = "names-it" | "names-another" | "unknown"
-type Show = "typed" | "passed" | "at-a-boundary" | "from-the-first-screen"
+type What = Coverage | "its-confirmation" | "another's-confirmation"
+type How =
+  | "typed"
+  | "passed"
+  | "at-the-reveal"
+  | "at-a-boundary"
+  | "from-the-first-screen"
 
 const FILE_NAME = "lty1.json"
 
 /** The hub's actions, by index. */
-const HUB = { round: 0, take: 1, return: 2, done: 3 } as const
+const HUB = { round: 0, take: 1, return: 2, done: 3, other: 4 } as const
 
 const POINTS: Record<Coverage, ReadonlyArray<unknown>> = {
   "names-it": [
@@ -69,7 +82,7 @@ const choice = (next: string): Record<string, unknown> => ({
 function fileWith(coverage: Coverage): SessionFile {
   return SessionFileSchema.parse({
     title: "LTY1",
-    oneLine: "Struggle, take and return in every order.",
+    oneLine: "Struggle, answer shown and return in every order.",
     session: { kind: "incident", budgetMinutes: 30 },
     start: "hub",
     screens: {
@@ -80,6 +93,7 @@ function fileWith(coverage: Coverage): SessionFile {
           { label: "Take", next: "t1" },
           { label: "Return", next: "r1b" },
           { label: "Done" },
+          { label: "Another round", next: "r2" },
         ],
       },
       r1: choice("hub"),
@@ -101,12 +115,33 @@ type Token =
   | { readonly kind: "S" }
   | { readonly kind: "R" }
   | { readonly kind: "|" }
-  | { readonly kind: "T"; readonly show: Show }
+  /** A struggle on r2, so its confirmation is offered. */
+  | { readonly kind: "S2" }
+  | { readonly kind: "T"; readonly what: What; readonly how: How }
+
+/** The screen whose confirmation a confirmation `what` takes. */
+function confirmed(what: What): string {
+  switch (what) {
+    case "its-confirmation": {
+      return "r1"
+    }
+    case "another's-confirmation": {
+      return "r2"
+    }
+    case "names-it":
+    case "names-another":
+    case "unknown": {
+      return "t1"
+    }
+    default: {
+      return assertNever(what)
+    }
+  }
+}
 
 /**
  * Plays `script` on `file`, a new session at each `|`, and returns the log
- * and the last session's id. A take shown as a confirmation needs the take
- * parked first, so those scripts open with a session that passes it.
+ * and the last session's id.
  */
 function play(
   file: SessionFile,
@@ -127,28 +162,41 @@ function play(
     runtime.start({ fileName: FILE_NAME, file, form: "full" })
   const act = (action: number): void =>
     runtime.dispatch({ type: "act", action })
-  for (const token of script) {
+  const struggle = (action: number, confirm: boolean): void => {
+    act(action)
+    runtime.dispatch({ type: "pick", option: 1 })
+    if (confirm) runtime.dispatch({ type: "show-confirmation" })
+    runtime.dispatch({ type: "continue" })
+  }
+  script.forEach((token, index) => {
     if (token.kind === "|") {
       start()
       act(HUB.done)
       expect(runtime.getSnapshot().play?.ended).toBe("declared")
       runtime = new IncidentPlayRuntime(ports)
-      continue
+      return
     }
-    if (token.kind === "T" && token.show === "from-the-first-screen") {
+    if (token.kind === "T" && token.how === "from-the-first-screen") {
       if (at() !== undefined) {
         throw new Error("the first screen is before any step")
       }
-      runtime.takeConfirmation(FILE_NAME, file, "t1")
-      continue
+      runtime.takeConfirmation(FILE_NAME, file, confirmed(token.what))
+      return
     }
     start()
+    if (token.kind === "T" && token.how === "at-the-reveal") {
+      // Taken on the reveal of the struggle just played.
+      return
+    }
     expect(at()).toBe("hub")
     switch (token.kind) {
       case "S": {
-        act(HUB.round)
-        runtime.dispatch({ type: "pick", option: 1 })
-        runtime.dispatch({ type: "continue" })
+        const next = script[index + 1]
+        struggle(HUB.round, next?.kind === "T" && next.how === "at-the-reveal")
+        break
+      }
+      case "S2": {
+        struggle(HUB.other, false)
         break
       }
       case "R": {
@@ -158,13 +206,13 @@ function play(
         break
       }
       case "T": {
-        if (token.show === "at-a-boundary") {
-          runtime.takeConfirmation(FILE_NAME, file, "t1")
+        if (token.how === "at-a-boundary") {
+          runtime.takeConfirmation(FILE_NAME, file, confirmed(token.what))
           break
         }
         act(HUB.take)
         runtime.dispatch(
-          token.show === "passed"
+          token.how === "passed"
             ? { type: "pass" }
             : {
                 type: "answered",
@@ -179,7 +227,7 @@ function play(
       }
     }
     expect(at()).toBe("hub")
-  }
+  })
   start()
   const kept = log.getSnapshot()
   expect(kept.problem).toBeNull()
@@ -188,40 +236,44 @@ function play(
 }
 
 /** Whether each return in `script` is assisted, by the claim. */
-function oracle(
-  coverage: Coverage,
-  script: ReadonlyArray<Token>
-): Array<boolean> {
+function oracle(script: ReadonlyArray<Token>): Array<boolean> {
   const expected: Array<boolean> = []
   let assisted = false
   let parkedThisSession = false
   for (const token of script) {
     if (token.kind === "|") parkedThisSession = false
     if (token.kind === "S") {
+      // What was shown before this struggle did not keep it from struggling.
       assisted = false
       parkedThisSession = true
     }
     if (token.kind === "T") {
-      // A rubric shown before any struggle assists nothing: the park clears it.
       assisted ||=
-        coverage === "names-it" || (coverage === "unknown" && parkedThisSession)
+        token.what === "names-it" ||
+        token.what === "its-confirmation" ||
+        (token.what === "unknown" && parkedThisSession)
     }
     if (token.kind === "R") expected.push(assisted)
   }
   return expected
 }
 
-const ORDERS = ["STR", "SRT", "TSR", "STSR", "STRR"] as const
-const SHOWS: ReadonlyArray<Show> = [
-  "typed",
-  "passed",
-  "at-a-boundary",
-  "from-the-first-screen",
-]
-const COVERAGES: ReadonlyArray<Coverage> = [
-  "names-it",
-  "names-another",
-  "unknown",
+const ORDERS = ["STR", "SRT", "TSR", "STSR", "STRR", "STRSR"] as const
+
+/** The ways the phone can show an answer, by what shows it. */
+const WAYS: ReadonlyArray<{ readonly what: What; readonly how: How }> = [
+  ...(["names-it", "names-another", "unknown"] as const).flatMap((what) =>
+    (
+      ["typed", "passed", "at-a-boundary", "from-the-first-screen"] as const
+    ).map((how) => ({ what, how }))
+  ),
+  ...(["at-the-reveal", "at-a-boundary", "from-the-first-screen"] as const).map(
+    (how) => ({ what: "its-confirmation" as const, how })
+  ),
+  ...(["at-a-boundary", "from-the-first-screen"] as const).map((how) => ({
+    what: "another's-confirmation" as const,
+    how,
+  })),
 ]
 
 /** `order` with a session break, or none, in each gap between its steps. */
@@ -237,10 +289,10 @@ function splits(order: string): Array<string> {
   )
 }
 
-function tokenOf(one: string, show: Show): Token {
+function tokenOf(one: string, what: What, how: How): Token {
   switch (one) {
     case "T": {
-      return { kind: "T", show }
+      return { kind: "T", what, how }
     }
     case "S": {
       return { kind: "S" }
@@ -257,63 +309,92 @@ function tokenOf(one: string, show: Show): Token {
   }
 }
 
-function scriptOf(split: string, show: Show): Array<Token> | null {
-  const tokens = [...split].map((one) => tokenOf(one, show))
-  if (show === "from-the-first-screen") {
-    // Before any step of its session: only where a session opens with it.
-    const opens = tokens.every(
-      (token, index) =>
-        token.kind !== "T" || index === 0 || tokens[index - 1]?.kind === "|"
-    )
-    if (!opens) return null
-  }
-  // A take's confirmation is offered once the take is parked: pass it first.
-  const parksTake = show === "at-a-boundary" || show === "from-the-first-screen"
-  return parksTake
-    ? [{ kind: "T", show: "passed" }, { kind: "|" }, ...tokens]
-    : tokens
+/** Whether the phone offers each `T` in `tokens` where it stands. */
+function playable(tokens: ReadonlyArray<Token>): boolean {
+  let parked = false
+  return tokens.every((token, index) => {
+    const before = tokens[index - 1]
+    if (token.kind === "S") parked = true
+    if (token.kind === "R") parked = false
+    if (token.kind !== "T") return true
+    if (
+      token.how === "from-the-first-screen" &&
+      !(index === 0 || before?.kind === "|")
+    ) {
+      return false
+    }
+    if (token.how === "at-the-reveal") return before?.kind === "S"
+    // The parked list offers r1's confirmation only while r1 is parked.
+    return token.what !== "its-confirmation" || parked
+  })
 }
 
-const FAMILY = COVERAGES.flatMap((coverage) =>
-  SHOWS.flatMap((show) =>
-    ORDERS.flatMap((order) =>
-      splits(order).flatMap((split) => {
-        const script = scriptOf(split, show)
-        return script === null ? [] : [{ coverage, show, split, script }]
-      })
-    )
+function scriptOf(split: string, what: What, how: How): Array<Token> | null {
+  const tokens = [...split].map((one) => tokenOf(one, what, how))
+  if (!playable(tokens)) return null
+  // A confirmation from the parked list needs its take or round parked.
+  const fromList = how === "at-a-boundary" || how === "from-the-first-screen"
+  if (fromList && what === "another's-confirmation") {
+    return [{ kind: "S2" }, { kind: "|" }, ...tokens]
+  }
+  if (fromList && what !== "its-confirmation") {
+    return [{ kind: "T", what, how: "passed" }, { kind: "|" }, ...tokens]
+  }
+  return tokens
+}
+
+const FAMILY = WAYS.flatMap(({ what, how }) =>
+  ORDERS.flatMap((order) =>
+    splits(order).flatMap((split) => {
+      const script = scriptOf(split, what, how)
+      return script === null ? [] : [{ what, how, split, script }]
+    })
   )
 )
 
-describe("LTY1: a return after a rubric that states its answer is assisted", () => {
-  it("enumerates every member of the Family that can be played", () => {
-    // Splits: 4 each of STR, SRT and TSR, 8 each of STSR and STRR. From
-    // the first screen only those where a session opens with the take: 16.
-    expect(FAMILY).toHaveLength(3 * (3 * 28 + 16))
+describe("LTY1: a return after anything that showed its answer is assisted", () => {
+  it("enumerates every member of the Family the phone can play", () => {
+    const count = (what: What, how: How): number =>
+      FAMILY.filter((one) => one.what === what && one.how === how).length
+    // Splits: 4 each of STR, SRT and TSR, 8 each of STSR and STRR, 16 of
+    // STRSR: 44. The first screen keeps those where a session opens with T.
+    expect(count("names-it", "typed")).toBe(44)
+    expect(count("names-it", "from-the-first-screen")).toBe(24)
+    // A reveal's confirmation needs T right after S in the same session; the
+    // parked list's needs r1 parked, so never after a return.
+    expect(count("its-confirmation", "at-the-reveal")).toBe(18)
+    expect(count("its-confirmation", "at-a-boundary")).toBe(36)
+    expect(count("its-confirmation", "from-the-first-screen")).toBe(18)
+    expect(count("another's-confirmation", "at-a-boundary")).toBe(44)
+    expect(FAMILY).toHaveLength(3 * (3 * 44 + 24) + 18 + 36 + 18 + 44 + 24)
   })
 
-  it.each(FAMILY)("$coverage, $show: $split", ({ coverage, split, script }) => {
-    const file = fileWith(coverage)
-    const { log, last } = play(file, script)
-    const expected = oracle(coverage, script)
+  it.each(FAMILY)("$what, $how: $split", ({ what, split, script }) => {
+    const coverage: Coverage =
+      what === "its-confirmation" || what === "another's-confirmation"
+        ? "unknown"
+        : what
+    const { log, last } = play(fileWith(coverage), script)
+    const expected = oracle(script)
     const round = summariesOf(log)
       .flatMap((summary) => summary.rounds)
       .find((one) => one.screen === "r1")
     expect(round?.returned.map((one) => one.assisted)).toEqual(expected)
 
-    // Solved once an unassisted return follows its last struggle.
-    const lastPark = split.lastIndexOf("S")
-    const after = [...split.slice(lastPark)].filter((one) => one === "R")
-    const solved = expected.slice(expected.length - after.length)
-    const unassisted = solved.some((assisted) => !assisted)
-    expect(round?.solved).toBe(unassisted)
+    // Since the last struggle: solved by an unassisted return only, but
+    // off the ledger's parked list after any correct return (#2343).
+    const returns = [...split.slice(split.lastIndexOf("S"))].filter(
+      (one) => one === "R"
+    ).length
+    const sinceStruggle = expected.slice(expected.length - returns)
+    expect(round?.solved).toBe(sinceStruggle.some((assisted) => !assisted))
     const parked = ledgerOf(log, last).parked.map((one) => one.screen)
-    expect(parked.includes("r1")).toBe(!unassisted)
-    // Never a round the rubric does not cover.
+    expect(parked.includes("r1")).toBe(returns === 0)
+    // A rubric records no round it does not cover.
     expect(
       log.some(
         (event) => event.type === "rubric-shown" && event.screen === "r2"
       )
-    ).toBe(coverage === "names-another")
+    ).toBe(what === "names-another")
   })
 })

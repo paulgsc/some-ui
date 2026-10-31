@@ -34,8 +34,9 @@ import { assertNever, median } from "@some-ui/core-utils"
  * - The learner may leave at any round boundary: any screen not showing a
  *   reveal or a spoken answer's rubric (Prop. 9.6).
  * - A take's rubric states the answer of the rounds it covers, so showing
- *   it records `rubric-shown` for each (`rubricShown`, Rem. 11.10), and a
- *   later return of one is assisted until it parks again.
+ *   it records `rubric-shown` for each (`rubricShown`, Rem. 11.10). A
+ *   return after that or after the round's worked confirmation, until the
+ *   round's next struggle, is assisted (`session-log`'s `summariesOf`).
  */
 
 export type PlayForm = "full" | "short"
@@ -490,7 +491,7 @@ export function confirmationTaken(
  * points' `covers` name them; a rubric whose points name none is read as
  * covering every round parked in the session showing it (`parkedHere`).
  * Whether a covered round was parked then is the log's to say: a return
- * is assisted only by a rubric shown since the round last parked.
+ * is assisted only by a rubric shown since the round's last struggle.
  */
 export function rubricShown(
   args: {

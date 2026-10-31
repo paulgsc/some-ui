@@ -1825,7 +1825,7 @@ superseded and kept.
   Evidence: the code (Amendment protocol, fourth rule).
 ]
 
-#remark("11.10", name: "A take's rubric is assistance to the rounds it states")[
+#remark("11.10", name: "What shows a parked round's answer assists its return")[
   Amends Def. 9.5 and Rem. 11.7, which are retained as filed, under Rem. 9.5.
   A take is built from its session's rounds: a short form must reach a strong
   answer, so its rubric states what those rounds decide, a parked round's
@@ -1834,7 +1834,9 @@ superseded and kept.
   before its return, and by Rem. 9.5 an answer after it is an observation of
   it, not an unassisted commitment (Axiom 9.2). Until `#2029` the log did not
   record that, and a correct return after the rubric solved the round. The
-  owner's decision there (2026-10-30) records it:
+  same held for the round's own worked confirmation, which Rem. 9.5 names
+  outright: the log recorded it (`confirmation-taken`) and no reader counted
+  it (`#2343`). The owner's decisions there (2026-10-30) record both:
 
   - A rubric point may say which rounds it states the answer of, beside its
     text: `covers`, a list of round ids of the same file (`[]` for none).
@@ -1851,19 +1853,19 @@ superseded and kept.
     parked take's worked confirmation (Prop. 9.4 (d)), the session log
     records `rubric-shown` for each round it covers. Rem. 11.7's funnel gains
     the event; nothing already recorded changes.
-  - A return is *assisted* when a rubric covering its round was shown since
-    the round last parked. An assisted return solves nothing: the round stays
-    parked on the ledger screen (Prop. 10.2) and unsolved in every report,
-    which records the return as assisted. A later struggle that parks the
-    round again starts it afresh.
+  - A return is *assisted* when, since the round's last struggle, a rubric
+    covering it was shown or its worked confirmation was taken, on the
+    struggle's reveal or from the parked list. An assisted return solves
+    nothing: every report counts it as assisted, not solved, and records it
+    so.
+  - The ledger screen (Prop. 10.2) and the parked list are the learner's way
+    on, not a report: a correct, unhurried return unparks the round there,
+    assisted or not, so the learner is not kept answering a round they
+    answer. A later struggle parks it again as usual, and a return after
+    that, with nothing shown since, solves it.
 
-  A rubric shown before the struggle assists nothing, since the struggle is
-  the evidence that it was not retained. The worked confirmation of a
-  struggled round, which Rem. 9.5 already names as costing evidence, is
-  recorded (`confirmation-taken`) but not yet read as assistance (`#2343`).
-  Once a rubric covered a parked round, only a later struggle that parks it
-  again lets a return solve it; whether time or a reading should end the
-  assistance instead is the owner's call (`#2343`).
+  What is shown before the struggle assists nothing, since the struggle is
+  the evidence that it was not retained.
 
   Evidence: the code (Amendment protocol, fourth rule), and the closing
   author-expert review of Thread 1 that raised `#2029`.
@@ -2059,11 +2061,13 @@ response it follows (`returnFor`), and the session-file lint of `#2061`
 reports a round whose named returns leave a response without one. No
 Definition, Axiom, Theorem, `CW-P`, `M` or `A` entry changes.
 
-*v1.5 --- 2026-10-31.* Rem. 11.10 makes a take's rubric assistance to the
-parked rounds whose answer it states, under Rem. 9.5: a rubric point may name
-the rounds it covers (`covers`), the session log records `rubric-shown` when
-the rubric is shown, and a return after it is assisted and solves nothing
-(`#2029`). No Definition, Axiom, Theorem, `CW-P`, `M` or `A` entry changes.
+*v1.5 --- 2026-10-31.* Rem. 11.10 reads what shows a parked round's answer
+as assistance to its return, under Rem. 9.5: a take's rubric covering the
+round (a rubric point may name the rounds it covers, `covers`, and the
+session log records `rubric-shown` when the rubric is shown) or the round's
+worked confirmation. An assisted return solves nothing in any report, and
+still takes the round off the ledger screen (`#2029`, `#2343`). No
+Definition, Axiom, Theorem, `CW-P`, `M` or `A` entry changes.
 
 #pagebreak()
 
