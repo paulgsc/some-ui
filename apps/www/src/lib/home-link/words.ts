@@ -89,7 +89,7 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
     phoneOnly: `Practice is only on this phone. ${PAIR}`,
     partly:
       "Some of Practice is on home. New sessions stay on this phone until it is paired again.",
-    footnote: `Finished sessions, kept items, LeetType sessions, Studio sittings, written reflections and asks for the next scene go to home while the app is open. An ask leaves this phone once home has it. A finished session leaves this phone only when you clear it in Settings, once home has it. ${OFFLINE_SET_WORDS} Your answers to the three quick questions stay on this phone.`,
+    footnote: `Finished sessions, kept items, LeetType sessions and spoken answers, Studio sittings, soundbites, written reflections and asks for the next scene go to home while the app is open. An ask leaves this phone once home has it. A finished session leaves this phone only when you clear it in Settings, once home has it. ${OFFLINE_SET_WORDS} Your answers to the three quick questions stay on this phone.`,
     clash: null,
     unread: null,
   },
@@ -134,7 +134,8 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
     rows: [
       {
         kind: "voice",
-        label: "Spoken reflections, Jobs, game and scene notes, Studio takes",
+        label:
+          "Spoken reflections, soundbites, lens and LeetType takes, Jobs, game and scene notes, Studio takes",
         one: "voice note",
       },
     ],
@@ -143,7 +144,7 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
     partly:
       "Some voice notes are on home. New ones stay on this phone until it is paired again.",
     footnote:
-      "Home keeps every recording and turns it into text for the morning routines. This phone keeps a note until home has it, even after you let it go here. Read-aloud takes stay on this phone.",
+      "Home keeps every recording and turns it into text for the morning routines. This phone keeps a note until home has it, even after you let it go here.",
     clash: null,
     unread: null,
   },
@@ -167,7 +168,7 @@ export function unsentLines({ gone }: Unsendable): Array<string> {
 
 /** Settings' Home server block, once paired: what goes, and when. */
 export const HOME_BLOCK = {
-  lead: "Everything this phone keeps goes to home on its own while the app is open: finished sessions, kept items, LeetType sessions, Studio sittings, written reflections, asks for the next scene, the Jobs record, voice notes, and aph while it is open. Nothing leaves this phone until home has read it back.",
+  lead: "Everything this phone keeps goes to home on its own while the app is open: finished sessions, kept items, LeetType sessions and spoken answers, Studio sittings, soundbites, written reflections, asks for the next scene, the Jobs record, voice notes, and aph while it is open. Nothing leaves this phone until home has read it back.",
 } as const
 
 /** Settings' readout of what this phone keeps on home, and what waits. */
@@ -185,10 +186,6 @@ export const KEPT_ON_HOME = {
     {
       label: "Lessons and dramas home publishes",
       text: "Come from home when you ask for them. Nothing goes the other way.",
-    },
-    {
-      label: "Read-aloud takes",
-      text: "Never go to home. You can share them yourself, to Drive.",
     },
     {
       label: "Your answers to the three quick questions after a session",

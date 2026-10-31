@@ -66,6 +66,11 @@ vi.mock("@/lib/home-link/going", () => ({
   letGoHeldReflections: (): void => undefined,
   promptsGoing: (): Array<never> => [],
   letGoHeldPrompts: (): void => undefined,
+  notesGoing: (): Promise<Array<never>> => Promise.resolve([]),
+}))
+vi.mock("@/lib/home-link/lens-record", async (actual) => ({
+  ...(await actual<object>()),
+  lensGoing: (): Promise<Array<never>> => Promise.resolve([]),
 }))
 vi.mock("@/lib/jobs", async () => {
   const { EMPTY } = await import("@/lib/jobs/model")

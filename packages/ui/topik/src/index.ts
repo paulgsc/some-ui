@@ -75,7 +75,10 @@ export {
 } from "./lib/topik/adapter/read-aloud-store"
 export type { ReadAloudFeedback } from "./lib/topik/read-aloud/feedback"
 export type { LensRecordExport } from "./lib/topik/adapter/lens-record-store"
-export { lensRecordForExport } from "./lib/topik/adapter/lens-record-store"
+export {
+  lensRecordForExport,
+  lensRecordHeldByHome,
+} from "./lib/topik/adapter/lens-record-store"
 export type {
   LensTakes,
   LensTakeSnapshot,

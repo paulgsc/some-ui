@@ -3,13 +3,14 @@
  * holds of its own record, drained by `./drain` through the one wiring
  * (`./lanes`): its finished sessions and kept shelf items, its finished
  * LeetType sessions, Studio's sittings and answers, its written
- * reflections (LA16) and its asks for the next scene (LA18). Its record
- * moves with the sessions the app has read (React Query's `sessionsKey`),
- * each shelf keep (`onKept`), each write to Studio's projects, each change
- * to the reflections and each change to the asks, so a finished session, a
- * newly kept item, a kept take, a typed reflection or an ask asks for a run;
- * a LeetType session finishing goes on the next ask (the app coming back,
- * say).
+ * reflections (LA16), its asks for the next scene (LA18), the soundbites'
+ * records and LeetType's answer notes (`./notes`), and the grammar-lens
+ * record (`./lens-record`). Its record moves with the sessions the app has
+ * read (React Query's `sessionsKey`), each shelf keep (`onKept`), each write
+ * to Studio's projects, each change to the reflections and each change to
+ * the asks, so a finished session, a newly kept item, a kept take, a typed
+ * reflection or an ask asks for a run; a LeetType session finishing goes on
+ * the next ask (the app coming back, say).
  */
 import { useSyncExternalStore } from "react"
 import { queryClient } from "@/providers/tanstack-query"
@@ -29,6 +30,7 @@ import {
   letGoHeldPrompts,
   letGoHeldReflections,
   logGoing,
+  notesGoing,
   promptsGoing,
   readPhone,
   reflectionsGoing,
@@ -36,6 +38,7 @@ import {
 } from "./going"
 import { pairingOf, useHomeLink } from "./index"
 import type { Lane, LaneCounts } from "./lanes"
+import { lensGoing } from "./lens-record"
 import type { HomeLinkState } from "./model"
 import { promptsToSend } from "./prompts"
 import { writtenToSend } from "./reflections"
@@ -70,6 +73,8 @@ export const practiceLane: Lane = {
       letGoHeld: letGoHeldReflections,
       promptsGoing: () => promptsGoing(pairing, storage),
       letGoHeldPrompts,
+      notesGoing: () => notesGoing(pairing, storage),
+      lensGoing: () => lensGoing(pairing, storage),
       pairing,
       storage,
     })

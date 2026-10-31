@@ -5,7 +5,9 @@
  * each LeetType session's digest as home read it back (`./leetype-log`),
  * each Studio sitting's and answer's (`./studio-log`), each written
  * reflection's as home answered it (`./reflections`), each ask for the next
- * scene's as home answered it (`./prompts`), and the digests home
+ * scene's as home answered it (`./prompts`), each study note's SHA-256 as
+ * home answered for it (`./notes`), each grammar-lens entry's digest as home
+ * read it back (`./lens-record`), and the digests home
  * refused, so the drain does not offer an unchanged refused item again
  * (it goes once its bytes change). Kept for one pairing (`pairing`, the
  * link's id for it): another pairing starts from nothing. Bookkeeping, not
@@ -38,6 +40,8 @@ export type Sent = {
   readonly studio: Readonly<Record<string, string>>
   readonly reflections: Readonly<Record<string, string>>
   readonly prompts: Readonly<Record<string, string>>
+  readonly notes: Readonly<Record<string, string>>
+  readonly lens: Readonly<Record<string, string>>
 }
 
 type Store = KeyedStorage | null
@@ -51,6 +55,8 @@ const emptyFor = (pairing: string): Sent => ({
   studio: {},
   reflections: {},
   prompts: {},
+  notes: {},
+  lens: {},
 })
 
 /** The string entries of `value`, and whether every entry was one. */
@@ -82,6 +88,8 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
   const studio = stringsOf(parsed.studio)
   const reflections = stringsOf(parsed.reflections)
   const prompts = stringsOf(parsed.prompts)
+  const notes = stringsOf(parsed.notes)
+  const lens = stringsOf(parsed.lens)
   return {
     value: {
       pairing: parsed.pairing,
@@ -92,6 +100,8 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
       studio: studio.value,
       reflections: reflections.value,
       prompts: prompts.value,
+      notes: notes.value,
+      lens: lens.value,
     },
     whole: [
       sessions,
@@ -101,6 +111,8 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
       studio,
       reflections,
       prompts,
+      notes,
+      lens,
     ].every((kind) => kind.whole),
   }
 }
@@ -140,6 +152,8 @@ export function rememberSent(
     studio: { ...sent.studio, ...more.studio },
     reflections: { ...sent.reflections, ...more.reflections },
     prompts: { ...sent.prompts, ...more.prompts },
+    notes: { ...sent.notes, ...more.notes },
+    lens: { ...sent.lens, ...more.lens },
   }
   // Unwritten (full): the next send carries these again, and home says
   // unchanged.
