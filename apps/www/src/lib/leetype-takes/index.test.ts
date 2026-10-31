@@ -90,6 +90,23 @@ describe("phoneSpokenTakes", () => {
     expect(typed).toContain("0")
   })
 
+  it("tells a screen reading it when home comes to hold notes, so a full record takes an answer again (HF5)", () => {
+    const takes = phoneSpokenTakes()
+    for (let index = 0; index < 40; index++) {
+      takes.note({ ...NOTE, typed: String(index) })
+    }
+    const heard = vi.fn()
+    const stop = takes.subscribe(heard)
+    expect(takes.getSnapshot()).toMatchObject({ notesFull: true })
+    leetypeNotesHeldByHome(() => true)
+    expect(heard).toHaveBeenCalled()
+    expect(takes.getSnapshot()).toMatchObject({ notesFull: false })
+    stop()
+    heard.mockClear()
+    leetypeNotesHeldByHome(() => false)
+    expect(heard).not.toHaveBeenCalled()
+  })
+
   it("gives the same snapshot until something changes", () => {
     const takes = phoneSpokenTakes()
     expect(takes.getSnapshot()).toBe(takes.getSnapshot())

@@ -61,8 +61,13 @@ const isNote = (value: unknown): value is LeetypeTakeNote => {
 
 const notes = boundedList("some-ui:leetype-take-notes", MAX, isNote)
 
-// Home holds none until the drain says otherwise (`lib/home-link`).
+// Home holds none until the voice lane says otherwise (`leetypeNotesHeldByHome`).
 let notesHeld: (id: string) => boolean = () => false
+/** Those reading the port, told when the notes' room changes. */
+const notesListeners = new Set<() => void>()
+const notesMoved = (): void => {
+  for (const listener of notesListeners) listener()
+}
 
 /** The oldest note home holds, which a new one may replace at the cap. */
 function roomFor(): LeetypeTakeNote | null {
@@ -113,7 +118,14 @@ let port: SpokenTakes | null = null
 export function phoneSpokenTakes(): SpokenTakes {
   port ??= {
     getSnapshot: adapted(),
-    subscribe: (listener): (() => void) => desk.phone().subscribe(listener),
+    subscribe: (listener): (() => void) => {
+      notesListeners.add(listener)
+      const stop = desk.phone().subscribe(listener)
+      return (): void => {
+        notesListeners.delete(listener)
+        stop()
+      }
+    },
     start: ({ file, screen }): void => desk.phone().start(`${file}#${screen}`),
     stop: (): void => desk.phone().stop(),
     reset: (): void => desk.phone().reset(),
@@ -124,10 +136,12 @@ export function phoneSpokenTakes(): SpokenTakes {
       if (room !== null && !notes.remove(({ id }) => id === room.id)) {
         return false
       }
-      return notes.put(
+      const kept = notes.put(
         { ...note, id: crypto.randomUUID(), notedAt: Date.now() },
         () => false
       )
+      notesMoved()
+      return kept
     },
   }
   return port
@@ -141,9 +155,14 @@ export const leetypeTakesDesk = desk
 /** The notes as kept, for the drain (`lib/home-link`). */
 export const leetypeNotes = (): ReadonlyArray<LeetypeTakeNote> => notes.read()
 
-/** What home holds of the notes, read back: those may make room at forty. */
+/**
+ * What home holds of the notes, read back: those may make room at forty. A
+ * screen reading the port hears it, so one that showed the notes full can
+ * take an answer again.
+ */
 export function leetypeNotesHeldByHome(held: (id: string) => boolean): void {
   notesHeld = held
+  notesMoved()
 }
 
 /** The notes and the takes with their audio, for the study-context export. */
