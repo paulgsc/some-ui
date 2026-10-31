@@ -5,12 +5,47 @@
  * never the machinery (`__tests__/words.test.ts` holds that).
  */
 import { formatSize, listed } from "@some-ui/core-utils"
-import type { Look, Voice } from "@some-ui/video-render"
+import type { Idea, Look, Voice } from "@some-ui/video-render"
 import type { RecordingFailure } from "@some-ui/voice-capture"
 import { RECORDING_FAILURE_COPY } from "@some-ui/voice-capture"
 import { formatDuration } from "@soundbites/lib/format"
 import type { IdeaStage, QuestionId } from "@soundbites/lib/idea/model"
 import type { ShelfNotice } from "@soundbites/lib/idea/shelf"
+
+/**
+ * Whose idea a scene presents (ST16), as the person reads it: theirs, with
+ * where their words are; Claude's; or a source's, by its title.
+ */
+export type Whose =
+  /** A note's own words, or null when the project doesn't hold that note. */
+  | {
+      readonly who: "you"
+      readonly from: "note"
+      readonly words: string | null
+    }
+  | { readonly who: "you"; readonly from: Exclude<OwnWordsKind, "note"> }
+  | { readonly who: "agent" }
+  | { readonly who: "source"; readonly title: string }
+
+/** Where an idea of the owner's cites their words (`OwnerRefSchema.kind`). */
+type OwnWordsKind = Extract<Idea, { origin: "you" }>["from"]["kind"]
+
+/** Where the owner's words are, for each citation but a note's own words. */
+const YOUR_WORDS: Readonly<Record<OwnWordsKind, string>> = {
+  note: "Your idea, from a note of yours",
+  take: "Your idea, from what you said in a take",
+  "voice-note": "Your idea, from one of your voice notes",
+  prompt: "Your idea, from what you asked Claude",
+  idea: "Your idea, from your answers when you caught it",
+}
+
+function whose(idea: Whose): string {
+  if (idea.who === "agent") return "Claude's idea"
+  if (idea.who === "source") return `From “${idea.title}”`
+  return idea.from === "note" && idea.words !== null
+    ? `Your idea, in your words: “${idea.words}”`
+    : YOUR_WORDS[idea.from]
+}
 
 /** How a sitting went, as the person answers it. */
 export type Went = "smooth" | "snags" | "rough"
@@ -105,6 +140,11 @@ function andList(items: ReadonlyArray<string>): string {
   return items.length < 2
     ? last
     : `${items.slice(0, -1).join(", ")} and ${last}`
+}
+
+/** Scenes whose idea waits on the owner's word, as Watch's row and Finish say it. */
+function ideasToConfirm(n: number): string {
+  return `Whose idea: ${plural(n, "scene", "scenes")} to confirm`
 }
 
 function plural(n: number, one: string, many: string): string {
@@ -372,10 +412,50 @@ export const STUDIO_WORDS = {
     notYet: "Not yet",
     notYetText: (text: string): string => `Not yet: ${text}`,
     back: "Back",
-    status: (changes: number): string =>
-      changes === 0
+    status: (changes: number, ideas: number): string =>
+      changes === 0 && ideas === 0
         ? "Note any moment of the review render"
-        : `${plural(changes, "change", "changes")} of Claude's to watch`,
+        : [
+            ...(changes === 0
+              ? []
+              : [
+                  `${plural(changes, "change", "changes")} of Claude's to watch`,
+                ]),
+            ...(ideas === 0 ? [] : [ideasToConfirm(ideas)]),
+          ].join(" · "),
+  },
+
+  /**
+   * Whose idea each scene is (ST5, ST16): asked in Watch as the scene
+   * plays, one scene at a time; yours always says where your words are.
+   */
+  origin: {
+    whose,
+    question: (n: number): string => `Whose idea is scene ${n}?`,
+    proposed: (idea: Whose): string => `As it stands: ${whose(idea)}.`,
+    right: "That's right",
+    notQuite: "Not quite",
+    said: (n: number, idea: Whose): string =>
+      `Scene ${n}: ${whose(idea)}. You said so.`,
+    who: "Whose idea is it?",
+    mine: "Mine",
+    mineElse: "Mine, from other words",
+    claudes: "Claude's",
+    where: "Where is it, in your own words?",
+    whereHint:
+      "The video credits you with the idea only where your own words show it.",
+    inTake: "In my take for this scene",
+    wordsLabel: "Where it came from",
+    keepWords: "Keep it as mine",
+    say: "Say where it came from",
+    back: "Leave it as it stands",
+    kept: "Kept: whose idea it is.",
+    /** Answered of an idea the scene no longer has: nothing kept, asked again. */
+    moved: (n: number): string =>
+      `Scene ${n} changed in the meantime. Whose idea is it now?`,
+    /** The new version a correction makes, as History lists it. */
+    revised: (n: number, idea: Whose): string =>
+      `Scene ${n}'s idea: ${whose(idea)}`,
   },
 
   /** A version back from Claude, opened as a primer is (ST8). */
@@ -406,8 +486,10 @@ export const STUDIO_WORDS = {
     goNote: "Go to its scene",
     take: (n: number): string => `Scene ${n} has no kept take yet.`,
     goTake: (n: number): string => `Record scene ${n}`,
+    idea: ideasToConfirm,
+    goIdea: (n: number): string => `Watch from scene ${n}`,
     unmarked:
-      "Every scene has its take and no note is open. Say it's ready when you have watched it through.",
+      "Every scene has its take and its idea said, and no note is open. Say it's ready when you have watched it through.",
     mark: "It's ready",
     ready: "Ready for YouTube.",
     uploadCopy:
@@ -425,6 +507,7 @@ export const STUDIO_WORDS = {
     status: {
       note: "A note is open",
       take: (n: number): string => `Scene ${n} needs a take`,
+      idea: ideasToConfirm,
       unmarked: "Ready to mark",
       ready: "Ready for YouTube",
       released: "Released",

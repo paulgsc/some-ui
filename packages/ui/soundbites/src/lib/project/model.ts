@@ -23,15 +23,19 @@
  * - **A released revision is never edited** (ST7, `./finish`). Its mark
  *   and its link stay as written, it takes no new note, and a change makes
  *   the next revision.
+ * - **The owner's word on whose idea a scene is stays** (ST5, `./origin`).
  * - **A note follows its shot.** It is pinned to (revision, shot, offset),
  *   and `anchorAt` finds that shot in any later revision by id, or says the
  *   shot is gone; its time is read from the renderer's shot times.
  */
-import { assertNever, canonicalJson } from "@some-ui/core-utils"
-import type { CutList, Shot, ShotTime } from "@some-ui/video-render"
+import { assertNever } from "@some-ui/core-utils"
+import type { CutList, ShotTime } from "@some-ui/video-render"
 import type { Primer } from "@soundbites/lib/journal/primer"
 
 import { finishOf, isReleased, youtubeLink } from "./finish"
+import { latestShot, sameJson, shotIn } from "./lookup"
+import type { OriginMark } from "./origin"
+import { originRefusal } from "./origin"
 
 export const PROJECT_SCHEMA = "some-ui.studio-project/1"
 
@@ -46,7 +50,7 @@ export type Revision = Readonly<CutList["revisions"][number]> & {
   readonly cutList: CutListShape
   /**
    * The primer this revision brought, when it brought one: what each scene
-   * says. `primerAt` finds the one in force at any revision.
+   * says. `primerAt` (`./lookup`) finds the one in force at any revision.
    */
   readonly primer?: Primer
 }
@@ -109,6 +113,11 @@ export type Project = {
   readonly ready?: ReadonlyArray<Mark>
   /** Each revision released, in order; absent as `ready` is. */
   readonly released?: ReadonlyArray<Release>
+  /**
+   * The owner's word on each scene's idea (ST5), in order; absent on a
+   * project from before Watch asked it.
+   */
+  readonly origins?: ReadonlyArray<OriginMark>
 }
 
 /** A take under way, and the sitting waiting on it to close. */
@@ -132,6 +141,17 @@ export type ProjectEvent =
       readonly primer?: Primer
     }
   | { readonly type: "noted"; readonly note: Omit<Note, "status" | "reason"> }
+  /**
+   * The owner's own words for the record, such as where a scene's idea came
+   * from (ST5): kept as the owner's note, confirmed as written, since it
+   * asks Claude for nothing.
+   */
+  | {
+      readonly type: "worded"
+      readonly note: Omit<Note, "status" | "reason" | "author">
+    }
+  /** The owner's word on whose idea a scene of the latest revision is. */
+  | ({ readonly type: "originSaid" } & Omit<OriginMark, "rev">)
   | {
       readonly type: "noteSettled"
       readonly id: string
@@ -183,6 +203,8 @@ export type Refusal =
   | "notReady"
   | "released"
   | "noLink"
+  | "otherIdea"
+  | "notYours"
 
 export type ProjectStep = {
   readonly state: ProjectState
@@ -219,23 +241,10 @@ function revisionOf(project: Project, rev: number): Revision | null {
   return project.revisions.find((each) => each.rev === rev) ?? null
 }
 
-/** The primer in force at revision `rev`: the last one brought at or before it. */
-export function primerAt(project: Project, rev: number): Primer | null {
-  let found: Primer | null = null
-  for (const each of project.revisions) {
-    if (each.rev <= rev && each.primer !== undefined) found = each.primer
-  }
-  return found
-}
-
 /** The sitting under way, if one is. */
 function openSitting(project: Project): Sitting | null {
   const last = project.sittings.at(-1)
   return last?.closedAt === null ? last : null
-}
-
-function shotIn(cutList: CutListShape, shot: string): Shot | null {
-  return cutList.shots.find((each) => each.id === shot) ?? null
 }
 
 /**
@@ -326,10 +335,6 @@ function letGoRefusal(project: Project, id: string): Refusal | null {
   return null
 }
 
-export function sameJson(a: unknown, b: unknown): boolean {
-  return canonicalJson(a) === canonicalJson(b)
-}
-
 const SETTLES: Readonly<Record<NoteStatus, ReadonlyArray<NoteStatus>>> = {
   open: ["applied", "declined"],
   applied: ["confirmed"],
@@ -389,7 +394,7 @@ export function isAppendOnly(before: Project, after: Project): boolean {
         : sameJson(now, sitting))
     )
   })
-  const marks = (["ready", "released"] as const).every((key) =>
+  const marks = (["ready", "released", "origins"] as const).every((key) =>
     (before[key] ?? []).every((mark, index) =>
       sameJson(mark, after[key]?.[index])
     )
@@ -475,8 +480,12 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
       })
     }
 
-    case "noted": {
-      const { note } = event
+    case "noted":
+    case "worded": {
+      const note: Note =
+        event.type === "noted"
+          ? { ...event.note, status: "open" }
+          : { ...event.note, author: "owner", status: "confirmed" }
       const revision = revisionOf(project, note.rev)
       if (revision === null) return refuse(state, "noRevision")
       if (shotIn(revision.cutList, note.shot) === null)
@@ -484,9 +493,17 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
       if (project.notes.some((each) => each.id === note.id))
         return refuse(state, "duplicate")
       if (isReleased(project, note.rev)) return refuse(state, "released")
+      return changed(state, { ...project, notes: [...project.notes, note] })
+    }
+
+    case "originSaid": {
+      const { type: _, ...said } = event
+      const refused = originRefusal(project, said.shot, said.idea)
+      if (refused !== null) return refuse(state, refused)
+      const mark: OriginMark = { ...said, rev: latest(project).rev }
       return changed(state, {
         ...project,
-        notes: [...project.notes, { ...note, status: "open" }],
+        origins: [...(project.origins ?? []), mark],
       })
     }
 
@@ -513,7 +530,7 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
     case "takeStarted": {
       if (state.taking !== null || state.closing !== null)
         return refuse(state, "taking")
-      if (shotIn(latest(project).cutList, event.shot) === null)
+      if (latestShot(project, event.shot) === null)
         return refuse(state, "noShot")
       return {
         state: { ...state, taking: { shot: event.shot } },

@@ -3,13 +3,16 @@
  * YouTube, or the one thing missing. Pure, so a screen renders it and the
  * project's `step` refuses a mark it doesn't allow by the same rule.
  *
- * - **Ready** is three things: no note open, a kept take on every scene, and
- *   the owner's mark on that revision. Missing ones are named in that order,
- *   one at a time, since each has its own place to go.
+ * - **Ready** is four things: no note open, a kept take on every scene,
+ *   the owner's word on whose idea each scene is (`./origin`), and the
+ *   owner's mark on that revision. Missing ones are named in that order,
+ *   one at a time, since each has its own place to go. A revision marked
+ *   before Finish waited on the owner's word stays ready (owner, #2253).
  * - **Released** is the YouTube link the owner pastes after uploading by
  *   hand (owner, 2026-10-29: nothing here uploads).
  */
 import type { Note, Project } from "./model"
+import { originsWaiting } from "./origin"
 
 /** Where the latest revision stands, for Finish. */
 export type Finish =
@@ -21,6 +24,14 @@ export type Finish =
       readonly rev: number
       readonly shot: string
       readonly n: number
+    }
+  /** Scenes whose idea waits on the owner's word: the first, from 1, and how many. */
+  | {
+      readonly kind: "idea"
+      readonly rev: number
+      readonly shot: string
+      readonly n: number
+      readonly count: number
     }
   /** Nothing missing but the owner's word that it is ready. */
   | { readonly kind: "unmarked"; readonly rev: number }
@@ -43,9 +54,12 @@ export function finishOf(project: Project): Finish {
   const shot = shots[index]
   if (shot !== undefined)
     return { kind: "take", rev, shot: shot.id, n: index + 1 }
-  return isMarked(project, rev)
-    ? { kind: "ready", rev }
-    : { kind: "unmarked", rev }
+  if (isMarked(project, rev)) return { kind: "ready", rev }
+  const waiting = originsWaiting(project)
+  const [first] = waiting
+  if (first !== undefined)
+    return { kind: "idea", rev, ...first, count: waiting.length }
+  return { kind: "unmarked", rev }
 }
 
 /** Whether the owner marked revision `rev` ready. */

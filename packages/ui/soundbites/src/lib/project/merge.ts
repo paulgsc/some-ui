@@ -4,8 +4,9 @@
  * append-only, so a merge only adds: the file's revisions past the phone's
  * latest, its new notes, and each kept note's status where the session
  * settled it (applied, or declined with its reason). Takes, the chosen
- * take per scene, the sitting log and Finish's marks are the phone's own
- * record, and the file can't change them; the session writes text only.
+ * take per scene, the sitting log, Finish's marks and the owner's word on
+ * each scene's idea (`./origin`) are the phone's own record, and the file
+ * can't change them; the session writes text only.
  *
  * **When the phone made a version after sharing** (a take kept, a Shape
  * kept; #2317), the session's revisions are rebased onto the phone's: each
@@ -34,8 +35,9 @@
 import { CutListSchema } from "@some-ui/video-render"
 
 import { projectFile, readProjectFile } from "./file"
+import { sameJson } from "./lookup"
 import type { CutListShape, Note, Project, Revision } from "./model"
-import { isAppendOnly, latest, reaches, sameJson } from "./model"
+import { isAppendOnly, latest, reaches } from "./model"
 
 /** Where a merge kept the phone's value over the session's: a scene, or the video's own settings. */
 export type Clash = { readonly shot: string | null }

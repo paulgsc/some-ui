@@ -146,6 +146,21 @@ const WALKS: Record<
       },
     },
   ],
+  "studio-taken": [
+    { screen: "Start, every scene taken, no idea said", go: start },
+    {
+      screen: "Finish, whose idea waits",
+      go: (page) => tap(page, sitting("Finish")),
+    },
+    {
+      // Opened at the first scene asked, once its render is picked.
+      screen: "Watch, opened from Finish",
+      go: async (page): Promise<void> => {
+        await tap(page, /^Watch from scene 1$/)
+        await page.locator('input[type="file"]').waitFor()
+      },
+    },
+  ],
   "studio-reviewed": [
     { screen: "Start, every scene taken", go: start },
     {
@@ -168,6 +183,39 @@ const WALKS: Record<
           },
         ])
         await page.getByRole("button", { name: "Good" }).waitFor()
+      },
+    },
+    {
+      // Once the change is answered, the scene's idea is asked (ST5).
+      screen: "Watch, whose idea a scene is",
+      go: async (page): Promise<void> => {
+        await tap(page, "Good")
+        await page.getByRole("button", { name: "That's right" }).waitFor()
+      },
+    },
+    {
+      // Claude's idea, so putting it right asks where the owner's words are.
+      screen: "Watch, where your own words are",
+      go: async (page): Promise<void> => {
+        await tap(page, "Not quite")
+        await page
+          .getByRole("button", { name: "In my take for this scene" })
+          .waitFor()
+      },
+    },
+    {
+      // Left as it stands, then confirmed: no new version, so Finish below
+      // still finds the version marked ready.
+      screen: "Watch, the idea said",
+      go: async (page): Promise<void> => {
+        await page
+          .getByLabel("Where it came from")
+          .fill(
+            "From the notebook I kept through week 8, the page where the model called Detroit."
+          )
+        await tap(page, "Leave it as it stands")
+        await tap(page, "That's right")
+        await page.getByText("Kept: whose idea it is.").waitFor()
       },
     },
     {

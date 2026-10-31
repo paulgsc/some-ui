@@ -1,3 +1,4 @@
+import { REVIEW_SCHEMA } from "@some-ui/video-render"
 import type { Playback } from "@some-ui/voice-capture"
 import type { StudioProps } from "@soundbites/components/studio"
 import { Studio } from "@soundbites/components/studio"
@@ -15,7 +16,8 @@ const W = STUDIO_WORDS
 
 function setup(
   share?: StudioProps["share"],
-  initial: ReadonlyArray<Project> = []
+  initial: ReadonlyArray<Project> = [],
+  text = PRIMER_TEXT
 ): ReturnType<typeof memoryProjectStore> {
   const memory = memoryProjectStore(initial)
   let tick = 0
@@ -26,7 +28,7 @@ function setup(
         startRecording: fakeMic(),
         now: () => Date.UTC(2026, 9, 30, 10) + 1_000 * tick++,
         newId: () => `t${tick}`,
-        readText: () => Promise.resolve(PRIMER_TEXT),
+        readText: () => Promise.resolve(text),
         onVisibility: (listener) => {
           listener(false)
           return (): void => undefined
@@ -186,5 +188,70 @@ describe("Studio", () => {
     expect(share).toHaveBeenLastCalledWith(
       expect.objectContaining({ project: older })
     )
+  })
+
+  it("asks whose idea the scene playing is, one task at a time, and then says it", async () => {
+    const { project } = newProject("week-8", {
+      author: "claude",
+      message: "Primer",
+      at: "2026-10-29T09:00:00.000Z",
+      cutList: cutListOf(primer()),
+      primer: primer(),
+    })
+    const shots = project.revisions[0]?.cutList.shots ?? []
+    let start = 0
+    const review = JSON.stringify({
+      schema: REVIEW_SCHEMA,
+      title: "Playoff Delta, week 8",
+      rev: 1,
+      shotTimes: shots.map((each) => {
+        const at = start
+        start += each.durationMs
+        return {
+          id: each.id,
+          cut: null,
+          startMs: at,
+          durationMs: each.durationMs,
+        }
+      }),
+    })
+    // The render plays from the picked file, by a link jsdom doesn't make.
+    vi.stubGlobal(
+      "URL",
+      class extends URL {
+        static override createObjectURL = (): string => "blob:review"
+        static override revokeObjectURL = (): void => undefined
+      }
+    )
+    setup(undefined, [project], review)
+    expect(await screen.findByText(W.watch.status(0, 3))).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: /^Watch/ }))
+    fireEvent.change(
+      await screen.findByLabelText(new RegExp(`^${W.watch.open}`)),
+      {
+        target: {
+          files: [
+            new File(["v"], "review.mp4", { type: "video/mp4" }),
+            new File(["{}"], "review.json", { type: "application/json" }),
+          ],
+        },
+      }
+    )
+    expect(await screen.findByText(W.origin.question(1))).toBeInTheDocument()
+    expect(
+      screen.getByText(W.origin.proposed({ who: "agent" }))
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: W.origin.notQuite }))
+    expect(await screen.findByText(W.origin.where)).toBeInTheDocument()
+    // One task: the note form waits while the idea is put right.
+    expect(screen.queryByLabelText(W.watch.noteLabel)).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: W.origin.back }))
+    fireEvent.click(await screen.findByRole("button", { name: W.origin.right }))
+    // Once said, the scene says so quietly as it plays.
+    expect(
+      await screen.findByText(W.origin.said(1, { who: "agent" }))
+    ).toBeInTheDocument()
+    expect(screen.queryByText(W.origin.question(1))).toBeNull()
+    vi.unstubAllGlobals()
   })
 })
