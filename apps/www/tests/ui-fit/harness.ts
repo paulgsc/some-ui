@@ -133,6 +133,9 @@ export const INCIDENT_FIXTURE = "leetype-incident"
 /** Every journey state's card (J0), walked by `./jobs-status-fit.spec.ts`. */
 export const JOBS_STATUS_FIXTURE = "jobs-status"
 
+/** Practice Home's two buttons, idle and refused (`./intent-failure-fit.spec.ts`). */
+export const INTENT_FAILURE_FIXTURE = "intent-failure"
+
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",

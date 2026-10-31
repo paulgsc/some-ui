@@ -8,7 +8,10 @@
  *
  * The outer action stack is stable across every state, so a toolbar does not
  * jump as the intent settles; a retryable failure replaces the action with
- * its retry rather than adding a second control.
+ * its retry rather than adding a second control. The button sits where it
+ * sat before the failure, at the stack's start, with the failure below it.
+ * `failureOwnLine` puts the failure on its own line
+ * (`tests/ui-fit/intent-failure-fit`).
  *
  * A non-retryable failure disables the button only when
  * `error.blocksResubmission` says the previous outcome is unknown (a
@@ -45,13 +48,28 @@ export type IntentButtonProps<TStep extends string = never> = {
    * caller's `!isDirty` or a validation failure. */
   disabled?: boolean
   failureClassName?: string
+  /**
+   * For a host that lays several actions in one `flex flex-wrap` row: the
+   * button is the row's own item, and a failure takes a whole line at the
+   * row's end, so it moves neither this button nor its neighbours.
+   */
+  failureOwnLine?: boolean
   /** Passed to every rendered `<Button>`; needed for an icon-only button
    * (`sessions/index.tsx`'s row actions). */
   title?: string
 }
 
-const ActionStack = ({ children }: PropsWithChildren): JSX.Element => (
-  <div className="inline-flex flex-col items-start gap-2">{children}</div>
+const ActionStack = ({
+  ownLine,
+  children,
+}: PropsWithChildren<{ ownLine: boolean }>): JSX.Element => (
+  <div
+    className={
+      ownLine ? "contents" : "inline-flex flex-col items-start gap-1.5"
+    }
+  >
+    {children}
+  </div>
 )
 
 export const IntentButton = <TStep extends string = never>({
@@ -66,11 +84,12 @@ export const IntentButton = <TStep extends string = never>({
   className,
   disabled = false,
   failureClassName,
+  failureOwnLine = false,
   title,
 }: IntentButtonProps<TStep>): JSX.Element =>
   matchIntent<unknown, JSX.Element, TStep>(state, {
     idle: () => (
-      <ActionStack>
+      <ActionStack ownLine={failureOwnLine}>
         <Button
           variant={variant}
           size={size}
@@ -84,7 +103,7 @@ export const IntentButton = <TStep extends string = never>({
       </ActionStack>
     ),
     working: (step) => (
-      <ActionStack>
+      <ActionStack ownLine={failureOwnLine}>
         <Button
           variant={variant}
           size={size}
@@ -97,7 +116,7 @@ export const IntentButton = <TStep extends string = never>({
       </ActionStack>
     ),
     succeeded: () => (
-      <ActionStack>
+      <ActionStack ownLine={failureOwnLine}>
         <Button
           variant={variant}
           size={size}
@@ -113,29 +132,30 @@ export const IntentButton = <TStep extends string = never>({
     failed: (error, retry) => {
       const blocked = !error.retryable && error.blocksResubmission === true
       return (
-        <ActionStack>
-          <div className="flex flex-col items-end gap-1.5 pe-1.5">
-            <Button
-              variant={variant}
-              size={size}
-              className={cn(
-                className,
-                "opacity-80 hover:opacity-100 transition-opacity",
-                // Custom striped CSS gradient layered over the existing background
-                "bg-[linear-gradient(135deg,rgba(0,0,0,0.15)_25%,transparent_25%,transparent_50%,rgba(0,0,0,0.15)_50%,rgba(0,0,0,0.15)_75%,transparent_75%,transparent)]",
-                "bg-[size:1rem_1rem]" // Adjust tile size for tighter/wider stripes
-              )}
-              disabled={disabled || blocked}
-              onClick={error.retryable ? retry : blocked ? undefined : onPress}
-              title={title}
-            >
-              {error.retryable ? "Try again" : idleLabel}
-            </Button>
-            <IntentFailure
-              error={error}
-              className={cn("w-full", failureClassName)}
-            />
-          </div>
+        <ActionStack ownLine={failureOwnLine}>
+          <Button
+            variant={variant}
+            size={size}
+            className={cn(
+              className,
+              "opacity-80 hover:opacity-100 transition-opacity",
+              // Custom striped CSS gradient layered over the existing background
+              "bg-[linear-gradient(135deg,rgba(0,0,0,0.15)_25%,transparent_25%,transparent_50%,rgba(0,0,0,0.15)_50%,rgba(0,0,0,0.15)_75%,transparent_75%,transparent)]",
+              "bg-[size:1rem_1rem]" // Adjust tile size for tighter/wider stripes
+            )}
+            disabled={disabled || blocked}
+            onClick={error.retryable ? retry : blocked ? undefined : onPress}
+            title={title}
+          >
+            {error.retryable ? "Try again" : idleLabel}
+          </Button>
+          <IntentFailure
+            error={error}
+            className={cn(
+              failureOwnLine ? "order-last basis-full" : "w-full",
+              failureClassName
+            )}
+          />
         </ActionStack>
       )
     },
