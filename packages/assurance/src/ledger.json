@@ -1320,16 +1320,8 @@
       "why": "Reads and writes Korean lists; each write answers with what it kept."
     },
     {
-      "module": "leetype",
-      "why": "Reads typing rounds; the answer is the outcome."
-    },
-    {
       "module": "leetype_log",
       "why": "Writes typing events; each answers with what it kept, and the phone reads it back."
-    },
-    {
-      "module": "leetype_operator",
-      "why": "The owner's round edits; each answers with what it kept."
     },
     {
       "module": "mood_events",
