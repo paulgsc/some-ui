@@ -219,7 +219,7 @@ describe("createSceneVoice", () => {
     await talk(voice)
     await talk(voice)
     expect(
-      voice.getSnapshot().takes.map(({ id, kept }) => [id, kept.place])
+      voice.getSnapshot().takes.map(({ id, kept }) => [id, kept?.place])
     ).toEqual([
       ["n1", "home"],
       ["n2", "going"],

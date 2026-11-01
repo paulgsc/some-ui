@@ -47,8 +47,16 @@ export const SceneVoiceNotes = ({
                   key={row.take.id}
                   row={row}
                   onPlay={() => pattern.play(row.take.id)}
-                  onLetGo={() =>
-                    pattern.letGo(row.take.id, row.take.kept.place)
+                  // A note on neither this phone nor home has nowhere to set
+                  // it aside, as `TakeItem` offers none.
+                  onLetGo={
+                    row.take.kept === null
+                      ? undefined
+                      : (): void =>
+                          pattern.letGo(
+                            row.take.id,
+                            row.take.kept?.place ?? "phone"
+                          )
                   }
                 />
               ))}

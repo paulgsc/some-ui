@@ -238,7 +238,17 @@ const LineTakes = ({
                 key={row.take.id}
                 row={row}
                 onPlay={() => take.onPlay(row.take.id)}
-                onLetGo={() => take.onLetGo(row.take.id, row.take.kept.place)}
+                // A take on neither this phone nor home has nowhere to set
+                // it aside, as `TakeItem` offers none.
+                onLetGo={
+                  row.take.kept === null
+                    ? undefined
+                    : (): void =>
+                        take.onLetGo(
+                          row.take.id,
+                          row.take.kept?.place ?? "phone"
+                        )
+                }
               />
             ))}
           </ul>
