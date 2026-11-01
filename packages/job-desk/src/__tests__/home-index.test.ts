@@ -71,15 +71,21 @@ describe("whether home's index stands (ROUTINE.md §0.5)", () => {
         "decisions-2026-10-18.json",
         "decisions-2026-10-22-2.json",
         "decisions-2026-10-27.json",
+        "decisions-2026-11-04.json",
       ],
       scout: [...DRIVE.scout, "scouts-20261023T000000.json"],
     }
     expect(indexStands(index(), "2026-11-01", drive)).toEqual({
       stands: false,
-      why: ["Home hasn't counted 5 file(s) Drive holds."],
+      why: ["Home hasn't counted 6 file(s) Drive holds."],
       digests: ["digest-2026-10-19.json"],
-      backfill: ["decisions-2026-10-18.json", "decisions-2026-10-22-2.json"],
-      later: ["decisions-2026-10-27.json", "scouts-20261023T000000.json"],
+      backfill: [
+        "decisions-2026-10-18.json",
+        "decisions-2026-10-22-2.json",
+        "decisions-2026-10-27.json",
+        "scouts-20261023T000000.json",
+      ],
+      later: ["decisions-2026-11-04.json"],
     })
   })
 

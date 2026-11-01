@@ -450,18 +450,21 @@ function indexRefusal(
 }
 
 /**
- * MB2's backfill (owner, 2026-10-31, paulgsc/server#509) takes a
- * pre-mailbox Jobs file only under a name for a day from `FIRST_SHARED`
- * up to, not including, `MAILBOX_OPENED`, so the files it can take are a
- * closed set. `FIRST_SHARED` is the day the phone could first share one:
- * paulgsc/some-ui#1884 (the Jobs wing, `decisionsFileName` and
- * `scoutsFileName`) landed on 2026-10-17 at 21:06 in America/Los_Angeles,
- * and the phone names a file for its own day. `MAILBOX_OPENED` is the day
- * the mailbox opened; `@some-ui/job-desk`'s `home-index.ts` holds the same
- * day for the routine, which cannot import this Worker.
+ * MB2's backfill (owner, 2026-10-31, paulgsc/server#509, widened 2026-11-01,
+ * paulgsc/some-ui#2393) takes a Jobs file only Drive holds only under a name
+ * for a day from `FIRST_SHARED` up to, not including, `DRIVE_ONLY_ENDED`, so
+ * the files it can take are a closed set. `FIRST_SHARED` is the day the phone
+ * could first share one: paulgsc/some-ui#1884 (the Jobs wing,
+ * `decisionsFileName` and `scoutsFileName`) landed on 2026-10-17 at 21:06 in
+ * America/Los_Angeles, and the phone names a file for its own day.
+ * `DRIVE_ONLY_ENDED` is the first day the phone files every Jobs file home:
+ * the APK carrying HF2 (paulgsc/some-ui#2394), built and installed by then,
+ * stops sharing one that names a voice note to Drive alone.
+ * `@some-ui/job-desk`'s `home-index.ts` holds the same day for the routine,
+ * which cannot import this Worker.
  */
 const FIRST_SHARED = "2026-10-17"
-const MAILBOX_OPENED = "2026-10-23"
+const DRIVE_ONLY_ENDED = "2026-11-04"
 
 /**
  * The names of a Jobs decisions or scouts file exactly as the phone writes
@@ -504,7 +507,7 @@ type FolderRules = {
   /**
    * MB2's backfill: the folders whose files this one also takes, under each
    * one's name and schema, once each, and only as `sharedDay` reads the name,
-   * for a day from `FIRST_SHARED` to before `MAILBOX_OPENED`.
+   * for a day from `FIRST_SHARED` to before `DRIVE_ONLY_ENDED`.
    */
   readonly backfill?: ReadonlyArray<FolderRules>
 }
@@ -513,7 +516,7 @@ type FolderRules = {
 function kindOf(rules: FolderRules, name: string): FolderRules | null {
   if (rules.name.test(name)) return rules
   const day = sharedDay(name)
-  if (day === null || day < FIRST_SHARED || day >= MAILBOX_OPENED) return null
+  if (day === null || day < FIRST_SHARED || day >= DRIVE_ONLY_ENDED) return null
   return rules.backfill?.find((kind) => kind.name.test(name)) ?? null
 }
 

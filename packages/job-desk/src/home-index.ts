@@ -28,11 +28,13 @@ const HomeIndexSchema = z.object({
 })
 
 /**
- * The day the mailbox opened: a file named for an earlier day is pre-mailbox.
- * The Worker holds the same day (`apps/mailbox/src/core.ts`), which cannot
- * import this package.
+ * The first day the phone files every Jobs file home: a file named for an
+ * earlier day may be one only Drive holds, which the mailbox takes as the
+ * backfill (paulgsc/some-ui#2393). The Worker holds the same day
+ * (`DRIVE_ONLY_ENDED` in `apps/mailbox/src/core.ts`), which cannot import
+ * this package.
  */
-const MAILBOX_OPENED = "2026-10-23"
+const DRIVE_ONLY_ENDED = "2026-11-04"
 
 /**
  * What Drive's `some-ui jobs/` folders hold, by file name. Only the Jobs
@@ -104,7 +106,7 @@ export function indexStands(
   ]
   const before = (name: string): boolean => {
     const day = decisionsFileDay(name) ?? scoutsFileDay(name)
-    return day !== null && day < MAILBOX_OPENED
+    return day !== null && day < DRIVE_ONLY_ENDED
   }
   const backfill = files.filter(before)
   const later = files.filter((name) => !before(name))

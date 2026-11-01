@@ -113,20 +113,21 @@ record (§9) and the summary (§10). Nothing ends a run before those two.
    holds a name for good, so put it once and never again.
 
    - **A digest** in `Brief/` (its `digests`): always.
-   - **A decisions or scouts file from before the mailbox** (its
-     `backfill`), one named for a day before 2026-10-23 (`decisions-2026-10-20.json`,
+   - **A decisions or scouts file only Drive holds** (its `backfill`), one
+     named for a day before 2026-11-04 (`decisions-2026-10-20.json`,
      `scouts-20261021T101500.json`): the one-time backfill I agreed to
-     (https://github.com/paulgsc/server/issues/509#issuecomment-6547096403).
+     (https://github.com/paulgsc/server/issues/509#issuecomment-6547096403),
+     widened to the day the phone files every Jobs file home
+     (https://github.com/paulgsc/some-ui/issues/2393#issuecomment-6552332294).
      The mailbox takes these names in `brief` only for a day from
-     2026-10-17, when the phone could first share one, through 2026-10-22,
+     2026-10-17, when the phone could first share one, through 2026-11-03,
      so the backfill ends by itself once Drive's old files are in. Home
      counts them as mine and names them in `from.backfill`.
-   - **A decisions or scouts file named for 2026-10-23 or later** (its
-     `later`) is one
-     the phone kept off home, because it names a voice note. The mailbox
-     refuses it (`422`), so don't put it: the phone sends these itself once
-     #2177 lands. While one is in Drive and not in the index, the index
-     doesn't stand; say which in the summary.
+   - **A decisions or scouts file named for 2026-11-04 or later** (its
+     `later`): the phone files these home itself, so one only Drive holds
+     is not expected. The mailbox refuses it (`422`), so don't put it;
+     while one is in Drive and not in the index, the index doesn't stand:
+     say which in the summary.
 
    A `409` means the mailbox holds other bytes under that name: say so in
    the summary. A `422` for a backfill file means the mailbox refuses it (its

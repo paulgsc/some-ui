@@ -461,9 +461,10 @@ how each was checked when this workspace landed.
   and decision, paulgsc/some-ui#2179, kept out of `ask` for the same reason). The routine's `brief` also takes its one-time backfill: a Jobs decisions or
   scouts file under its Drive name, only as the phone names one (`sharedDay`: a real calendar
   day, a decisions share number from 2 to 99, a scouts stamp at a real time) and only for a
-  day from 2026-10-17, when the phone could first share one, through 2026-10-22, the day
-  before the mailbox opened (`FOLDERS`' `backfill`, `FIRST_SHARED`, `MAILBOX_OPENED`), so the
-  files it can add there are a closed set. Every request passes `authenticate` and then one of `serve`'s
+  day from 2026-10-17, when the phone could first share one, through 2026-11-03, the day
+  before the phone files every Jobs file home (`FOLDERS`' `backfill`, `FIRST_SHARED`,
+  `DRIVE_ONLY_ENDED`; widened from the day the mailbox opened by the owner's decision on
+  paulgsc/some-ui#2393, https://github.com/paulgsc/some-ui/issues/2393#issuecomment-6552332294), so the files it can add there are a closed set. Every request passes `authenticate` and then one of `serve`'s
   `may(grant.get | put | ask | move)` checks before anything reaches the store.
 - _Falsified by_ a hunk that adds, removes or renames a role; adds a folder to, or removes one
   from, any role's `get`, `put`, `ask` or `move` list; changes which secret a role reads, or
@@ -472,7 +473,7 @@ how each was checked when this workspace landed.
   checked against; lets `handle` reach `serve` or the store without a grant; adds a method to
   a route in `METHODS`; renames, moves or deletes the `ROLES` table; or adds a `backfill`
   folder to any folder, loosens `SHARED_NAMES` or `sharedDay`, moves `FIRST_SHARED` or
-  `MAILBOX_OPENED`, or lets `kindOf` take a backfill name `sharedDay` does not read or for a
+  `DRIVE_ONLY_ENDED`, or lets `kindOf` take a backfill name `sharedDay` does not read or for a
   day outside them; when the PR description does not name the owner's decision to do so.
 - _Scope:_ `apps/mailbox/src/core.ts` and `wrangler.jsonc`.
 - _Why not enforced:_ `__tests__/core.test.ts` pins today's matrix (every role against every
@@ -508,8 +509,9 @@ how each was checked when this workspace landed.
   `index`, and `core.test.ts` pins that no role archives `index`, lists it as archived or
   asked for, or asks for it; `brief`'s `backfill` is the `decisions` and `scout` folders'
   own rules, taken only for a name `sharedDay` reads as a day from `FIRST_SHARED`
-  (2026-10-17) to before `MAILBOX_OPENED` (2026-10-23), and `core.test.ts` pins the first
-  and last days taken and the days either side, impossible dates and times, share numbers
+  (2026-10-17) to before `DRIVE_ONLY_ENDED` (2026-11-04; 2026-10-23 until the owner widened
+  it, paulgsc/some-ui#2393), and `core.test.ts` pins the first and last days taken and the
+  days either side, impossible dates and times, share numbers
   the phone never writes, the schemas, and that only the routine puts one. _Checked at the
   reflection amendment (the owner's decision D2 on paulgsc/some-ui#2174, 2026-10-26: written
   reflections reach the routine by the mailbox as the routine's minimum, as spoken
