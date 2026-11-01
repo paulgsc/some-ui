@@ -81,6 +81,7 @@ export type {
 export {
   initialTakePattern,
   stepTakePattern,
+  ONE_TAKE,
   takePattern,
   takePatternSnapshot,
 } from "./lib/take-pattern"

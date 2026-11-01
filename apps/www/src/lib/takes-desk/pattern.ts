@@ -1,0 +1,202 @@
+/**
+ * A desk of takes on the take pattern (`@some-ui/voice-capture`'s
+ * `takePattern`): Rust Rounds' voice notes and LeetType's spoken answers.
+ * The pattern records, plays a take back, and says how each take ended;
+ * this is its store: each take's audio
+ * on a shelf and its entry in a list, as the lens's desk keeps them
+ * (`./runtime`).
+ *
+ * - **One current take per item** (`per: "one"`). A Redo's take becomes the
+ *   item's take and the one it supersedes an earlier take, in the same write
+ *   (D2). Let go marks a take set aside (D3). Neither removes anything: both
+ *   stay listed, with their audio, and go home as every take does.
+ * - **Bounded as the lens's desk is** (HF5, #2180): at most `limits.max`
+ *   takes, each at most `limits.maxMs`. At the most a new take makes room by
+ *   letting go the oldest take home holds (`held`); with none held it is
+ *   refused, and the pattern says so. Takes leave otherwise only by `letGo`,
+ *   which the desk's sweep calls for a take whose audio never landed.
+ * - **Where each take is kept** is read from `held`: on home once home holds
+ *   its audio, on this phone until then.
+ */
+import { SOUNDBITE_MIN_MS } from "@some-ui/soundbites/contract"
+import type {
+  BlobShelf,
+  MicOwner,
+  PatternTake,
+  Player,
+  StartRecording,
+  TakeDeadlines,
+  TakePattern,
+  TakePatternOptions,
+} from "@some-ui/voice-capture"
+import { ONE_TAKE, shelveTake, takePattern } from "@some-ui/voice-capture"
+
+import type { Take, TakeLimits } from "./runtime"
+import { makesRoom } from "./runtime"
+
+export type PatternTakesPorts = {
+  startRecording: StartRecording
+  audio: BlobShelf
+  /** The kept takes, newest first. */
+  takes: {
+    read: () => Array<Take>
+    /**
+     * Lists `take` first, and marks the take it supersedes an earlier one,
+     * in one write. Says whether the device stored it.
+     */
+    add: (take: Take, supersedes?: string | null) => boolean
+    remove: (ids: ReadonlyArray<string>) => boolean
+    /** Marks a take set aside, keeping it. Says whether the device stored it. */
+    setAside: (id: string) => boolean
+  }
+  /** A take whose audio is being written, and when done. */
+  saving: (id: string, inFlight: boolean) => void
+  now: () => number
+  newId: () => string
+  /** Whether home holds this take's audio, read back (`lib/home-link`). */
+  held: (id: string) => boolean
+  /** The kit's `audioPlayer` unless a test gives its own. */
+  player?: Player | undefined
+  /** The phone's one microphone unless a test gives its own. */
+  owner?: MicOwner | undefined
+  /** The microphone's deadlines unless a test gives its own. */
+  deadlines?: TakeDeadlines | undefined
+}
+
+/** The takes as the pattern lists them, newest first. */
+type PatternTakes = {
+  /** The same array while nothing changed. */
+  readonly getSnapshot: () => ReadonlyArray<PatternTake>
+  readonly subscribe: (listener: () => void) => () => void
+}
+
+export type PatternPhone = {
+  readonly pattern: TakePattern
+  readonly takes: PatternTakes
+  /** No new take can be kept until home holds some of those kept. */
+  readonly full: () => boolean
+  /** Lets these takes go, with their audio: the sweep's, for audio that never landed. */
+  readonly letGo: (ids: ReadonlyArray<string>) => void
+  /** What home holds has changed: where each take is kept, and `full`. */
+  readonly recount: () => void
+}
+
+const takenAt = (take: Take): number => take.takenAt
+
+function deskPatternOptions(limits: TakeLimits): TakePatternOptions {
+  return {
+    ...ONE_TAKE,
+    limits: { minMs: SOUNDBITE_MIN_MS, maxMs: limits.maxMs },
+  }
+}
+
+export function createPatternTakes(
+  ports: PatternTakesPorts,
+  limits: TakeLimits
+): PatternPhone {
+  const listeners = new Set<() => void>()
+  const listed = (): ReadonlyArray<PatternTake> =>
+    ports.takes.read().map(
+      (take): PatternTake => ({
+        id: take.id,
+        answers: take.line,
+        durationMs: take.durationMs,
+        recordedAt: new Date(take.takenAt).toISOString(),
+        standing: take.standing ?? "current",
+        place: ports.held(take.id) ? "home" : "phone",
+      })
+    )
+  let snapshot = listed()
+  const publish = (): void => {
+    snapshot = listed()
+    for (const listener of listeners) listener()
+  }
+
+  const full = (): boolean => {
+    const takes = ports.takes.read()
+    return (
+      takes.length >= limits.max &&
+      makesRoom(takes, limits.max, ports.held, takenAt) === null
+    )
+  }
+
+  const letGo = (ids: ReadonlyArray<string>): void => {
+    if (ids.length === 0) return
+    // The list first: audio whose entry stays would leave a silent take.
+    if (ports.takes.remove(ids)) {
+      // Ignored: audio no take names is cleared by the next sweep.
+      ports.audio.remove(ids).catch(() => undefined)
+    }
+    publish()
+  }
+
+  const pattern = takePattern(
+    {
+      startRecording: ports.startRecording,
+      now: ports.now,
+      owner: ports.owner,
+      deadlines: ports.deadlines,
+      player: ports.player,
+      keep: (take, answers, supersedes, done) => {
+        if (full()) {
+          done({ outcome: "full" })
+          return
+        }
+        const room = makesRoom(
+          ports.takes.read(),
+          limits.max,
+          ports.held,
+          takenAt
+        )
+        if (room !== null) letGo([room.id])
+        const id = ports.newId()
+        shelveTake(
+          ports,
+          id,
+          take,
+          () => {
+            const kept = ports.takes.add(
+              {
+                id,
+                line: answers,
+                takenAt: ports.now(),
+                durationMs: Math.round(take.durationMs),
+                mimeType: take.mimeType,
+              },
+              supersedes
+            )
+            if (kept) publish()
+            return kept
+          },
+          (outcome) =>
+            done(
+              outcome === "kept"
+                ? { outcome, id }
+                : { outcome: outcome === "full" ? "full" : "failed" }
+            )
+        )
+      },
+      setAside: (id) => {
+        if (ports.takes.setAside(id)) publish()
+      },
+      audio: (id) => ports.audio.get(id),
+    },
+    deskPatternOptions(limits)
+  )
+
+  return {
+    pattern,
+    takes: {
+      getSnapshot: () => snapshot,
+      subscribe(listener): () => void {
+        listeners.add(listener)
+        return (): void => {
+          listeners.delete(listener)
+        }
+      },
+    },
+    full,
+    letGo,
+    recount: publish,
+  }
+}

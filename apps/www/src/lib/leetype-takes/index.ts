@@ -1,7 +1,7 @@
 /**
  * LeetType's spoken answers on the phone (canon v1.2, Def. 9.5;
- * `@some-ui/leetype`'s `SpokenTakes`): a desk of takes (`lib/takes-desk`),
- * at most forty, each at most sixty seconds, and beside each answer a note
+ * `@some-ui/leetype`'s `SpokenTakes`): a desk of takes on the take pattern
+ * (`lib/takes-desk`'s `patternDesk`), at most forty, each at most sixty seconds, and beside each answer a note
  * of what it answered: the prompt, the rubric, the points ticked, and the
  * text when it was typed. Both go home (HF5, #2180): each take as a voice
  * note and each note as a study note (`lib/home-link/voice-copy` and the
@@ -15,10 +15,10 @@ import type {
   SpokenTakes,
   SpokenTakeSnapshot,
 } from "@some-ui/leetype"
-import type { LensTakeSnapshot } from "@some-ui/topik"
+import type { PatternTake } from "@some-ui/voice-capture"
 
 import { boundedList } from "@/lib/bounded-list"
-import { makesRoom, takesDesk } from "@/lib/takes-desk"
+import { makesRoom, patternDesk } from "@/lib/takes-desk"
 
 export type { Take as LeetypeTake } from "@/lib/takes-desk"
 
@@ -26,7 +26,7 @@ const MAX = 40
 /** A spoken answer runs up to sixty seconds (Def. 9.5). */
 const MAX_MS = 60_000
 
-const desk = takesDesk({
+const desk = patternDesk({
   key: "some-ui:leetype-takes",
   dbName: "some-ui.leetype-takes",
   limits: { max: MAX, maxMs: MAX_MS },
@@ -79,30 +79,34 @@ const notesFull = (): boolean =>
   notes.read().length >= MAX && roomFor() === null
 
 /**
- * The port's snapshot, made again only when the desk's changes or the notes
- * fill. A take needs room on both, so `full` when either is; a typed answer
+ * The port's snapshot, made again only when the takes change or either list
+ * fills. A take needs room on both, so `full` when either is; a typed answer
  * needs only a note, so `notesFull` alone stops it. The two part whenever a
  * take is kept with no note: one that answered nothing (the learner moved
- * on, or the surface closed mid-take), or one an export kept because it
- * could not read its audio while letting its note go.
+ * on, or the surface closed mid-take), one a Redo superseded or Let go set
+ * aside, or one an export kept because it could not read its audio while
+ * letting its note go.
  */
 function adapted(): () => SpokenTakeSnapshot {
-  let from: LensTakeSnapshot | null = null
+  let from: ReadonlyArray<PatternTake> | null = null
   let fromFull = false
+  let fromNotesFull = false
   let made: SpokenTakeSnapshot | null = null
   return () => {
-    const now = desk.phone().getSnapshot()
-    const full = notesFull()
-    if (made === null || now !== from || full !== fromFull) {
-      from = now
+    const phone = desk.phone()
+    const takes = phone.takes.getSnapshot()
+    const noRoom = notesFull()
+    const full = phone.full() || noRoom
+    if (
+      made === null ||
+      takes !== from ||
+      full !== fromFull ||
+      noRoom !== fromNotesFull
+    ) {
+      from = takes
       fromFull = full
-      made = {
-        recording: now.take.kind === "opening" || now.take.kind === "recording",
-        said: now.said,
-        last: now.last,
-        full: now.full || full,
-        notesFull: full,
-      }
+      fromNotesFull = noRoom
+      made = { takes, full, notesFull: noRoom }
     }
     return made
   }
@@ -112,18 +116,16 @@ let port: SpokenTakes | null = null
 
 export function phoneSpokenTakes(): SpokenTakes {
   port ??= {
+    pattern: desk.phone().pattern,
     getSnapshot: adapted(),
     subscribe: (listener): (() => void) => {
       notesListeners.add(listener)
-      const stop = desk.phone().subscribe(listener)
+      const stop = desk.phone().takes.subscribe(listener)
       return (): void => {
         notesListeners.delete(listener)
         stop()
       }
     },
-    start: ({ file, screen }): void => desk.phone().start(`${file}#${screen}`),
-    stop: (): void => desk.phone().stop(),
-    reset: (): void => desk.phone().reset(),
     note: (note): boolean => {
       // Refused when full, never evicting one home does not hold.
       if (notesFull()) return false

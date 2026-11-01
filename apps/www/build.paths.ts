@@ -170,6 +170,9 @@ type Debt = PathRules<Profile>["debt"][number]
 const SHARED_ROUTE_TREE =
   "every profile builds the one shared route tree; removed when this deployable gets its own"
 
+const TAKE_PATTERN_ON_THE_WEB =
+  "LeetType's record screen and play runtime use the take pattern's view and words, which the web builds bundle and never run: they give LeetType no microphone, so it offers typing only. Removed when those words and the view get a subpath entry of their own, or LeetType's web builds stop bundling the take parts (#2433)"
+
 export const paths: PathRules<Profile> = definePaths<Profile>({
   exclusive: [
     ...gatedRoutes,
@@ -370,6 +373,13 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
         module: "apps/www/src/routes/_dashboard/_apk**",
         why: SHARED_ROUTE_TREE,
       })
+    ),
+    ...(["lan", "pages"] as const).flatMap(
+      (profile): Array<Debt> =>
+        [
+          "packages/voice-capture/dist/@some-ui/voice-capture.es.js",
+          "packages/voice-capture/dist/take-pattern-*.js",
+        ].map((module) => ({ profile, module, why: TAKE_PATTERN_ON_THE_WEB }))
     ),
     {
       profile: "pages",

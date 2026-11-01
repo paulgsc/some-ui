@@ -1,133 +1,38 @@
 /**
  * @vitest-environment jsdom
  *
- * The takes desk as Rust Rounds' microphone: how each take ended reaches
- * the session as the desk's own end, and why the microphone refused in the
- * person's words, never as a sentence read back. Then Rust Rounds itself,
- * on the real desk and the real take kit over the one simulated microphone
- * every screen's tests share, so what the screen says is what
- * the phone's own stack says.
+ * Rust Rounds on the phone's own stack: the pattern desk (`patternDesk`'s
+ * runtime) and the real take pattern and take kit, over the one simulated
+ * microphone every screen's tests share, so what the screen says is what the
+ * phone's own stack says.
  */
 import { inMemoryStorage } from "@some-ui/core-utils"
 import { keptRounds, RustRounds } from "@some-ui/rust-rounds"
-import type { BlobShelf, MicOwner, Playback } from "@some-ui/voice-capture"
-import { microphoneOwner, RECORDING_FAILURE_COPY } from "@some-ui/voice-capture"
+import type { MicOwner } from "@some-ui/voice-capture"
+import {
+  microphoneOwner,
+  RECORDING_FAILURE_COPY,
+  TAKE_WORDS,
+} from "@some-ui/voice-capture"
 import type { SimulatedMicrophone } from "@some-ui/voice-capture/testing"
-import { simulatedMicrophone, SPEAKING } from "@some-ui/voice-capture/testing"
+import {
+  simulatedMicrophone,
+  SPEAKING,
+  takeButton as take,
+} from "@some-ui/voice-capture/testing"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { notesPort, noteView } from "@/lib/rust-rounds"
-import type { DeskSnapshot, Take } from "@/lib/takes-desk"
-import type { PhoneTakes } from "@/lib/takes-desk/runtime"
-import { createTakes } from "@/lib/takes-desk/runtime"
+import { notesPort } from "@/lib/rust-rounds"
+import type { TestDesk } from "@/lib/takes-desk/__tests__/desk"
+import { testDesk } from "@/lib/takes-desk/__tests__/desk"
 
-vi.mock("@/lib/takes-desk", () => ({
-  takesDesk: (): object => ({ phone: vi.fn(), sweep: vi.fn() }),
+vi.mock("@/lib/takes-desk", async (original) => ({
+  ...(await original<object>()),
+  patternDesk: (): object => ({ phone: vi.fn(), sweep: vi.fn() }),
 }))
 
-const AT_REST: DeskSnapshot = {
-  take: { kind: "idle" },
-  said: null,
-  last: null,
-  kept: null,
-  playing: false,
-  full: false,
-  ended: null,
-  blocked: null,
-}
-
-describe("noteView", () => {
-  it("passes each take's end on, with the note it kept", () => {
-    expect(
-      noteView({
-        ...AT_REST,
-        said: null,
-        ended: {
-          seq: 3,
-          line: "rust-rounds:a/b",
-          end: "kept",
-          id: "n1",
-          unheard: false,
-        },
-      })
-    ).toEqual({
-      take: { kind: "idle" },
-      ended: { seq: 3, line: "rust-rounds:a/b", end: "kept", note: "n1" },
-      blocked: null,
-    })
-  })
-
-  it("says why the microphone refused, in the person's words", () => {
-    expect(noteView({ ...AT_REST, blocked: "denied" }).blocked).toBe(
-      RECORDING_FAILURE_COPY.denied
-    )
-  })
-
-  it("shows a take under way without how long it has run", () => {
-    expect(
-      noteView({ ...AT_REST, take: { kind: "recording", elapsedMs: 4_000 } })
-        .take
-    ).toEqual({ kind: "recording" })
-  })
-})
-
-/** A desk on the simulated microphone, as `takesDesk` makes the phone's. */
-function deskOn(
-  mic: SimulatedMicrophone,
-  owner: MicOwner
-): {
-  takes: PhoneTakes
-  keptOn: (line: string, since: number) => string | null
-} {
-  const listed: Array<Take> = []
-  const audio = new Map<string, Blob>()
-  const shelf: BlobShelf = {
-    put: (id, blob) => {
-      audio.set(id, blob)
-      return Promise.resolve()
-    },
-    get: (id) => Promise.resolve(audio.get(id) ?? null),
-    remove: (ids) => {
-      for (const id of ids) audio.delete(id)
-      return Promise.resolve()
-    },
-    ids: () => Promise.resolve([...audio.keys()]),
-  }
-  let next = 0
-  const takes = createTakes(
-    {
-      startRecording: mic.startRecording,
-      owner,
-      audio: shelf,
-      takes: {
-        read: () => [...listed],
-        add: (take): boolean => {
-          listed.unshift(take)
-          return true
-        },
-        remove: (): boolean => true,
-      },
-      saving: () => undefined,
-      player: {
-        play: (): Playback => ({
-          ended: Promise.resolve(),
-          stop: () => undefined,
-        }),
-      },
-      now: Date.now,
-      newId: () => `n${(next += 1)}`,
-      held: () => false,
-    },
-    { max: Number.POSITIVE_INFINITY, maxMs: 60_000 }
-  )
-  return {
-    takes,
-    keptOn: (line, since) =>
-      listed.find((take) => take.line === line && take.takenAt >= since)?.id ??
-      null,
-  }
-}
+const LIMITS = { max: Number.POSITIVE_INFINITY, maxMs: 60_000 }
 
 describe("Rust Rounds on the simulated microphone", () => {
   beforeEach(() => {
@@ -138,21 +43,23 @@ describe("Rust Rounds on the simulated microphone", () => {
     vi.useRealTimers()
   })
 
-  const status = (): string => screen.getByRole("status").textContent
+  const tap = (): void => {
+    fireEvent.click(take())
+  }
 
   /** The session on a desk of its own, at the speak step of the first card. */
   function speakStep(owner: MicOwner = microphoneOwner()): {
     mic: SimulatedMicrophone
-    hold: HTMLElement
+    desk: TestDesk
   } {
     const mic = simulatedMicrophone({ now: Date.now })
-    const desk = deskOn(mic, owner)
+    const desk = testDesk(mic, owner, LIMITS)
     let ids = 0
     render(
       <RustRounds
         ports={{
           store: keptRounds(inMemoryStorage()),
-          notes: notesPort({ phone: () => desk.takes, keptOn: desk.keptOn }),
+          notes: notesPort({ phone: () => desk.phone, keptOn: desk.keptOn }),
           copy: () => Promise.resolve(),
           now: Date.now,
           newId: () => `session-${(ids += 1)}`,
@@ -162,7 +69,7 @@ describe("Rust Rounds on the simulated microphone", () => {
     )
     fireEvent.click(screen.getByRole("button", { name: "Start" }))
     fireEvent.click(screen.getByRole("button", { name: "Not sure" }))
-    return { mic, hold: screen.getByRole("button", { name: "Hold to speak" }) }
+    return { mic, desk }
   }
 
   const flush = async (ms = 0): Promise<void> => {
@@ -171,29 +78,38 @@ describe("Rust Rounds on the simulated microphone", () => {
     })
   }
 
-  it("keeps a note held, said and let go", async () => {
-    const { mic, hold } = speakStep()
+  it("keeps a note tapped on, said and tapped off, with the time against the cap, and says where", async () => {
+    const { mic, desk } = speakStep()
     mic.script({ ...SPEAKING, open: { kind: "after", ms: 300 } })
-    fireEvent.pointerDown(hold)
-    expect(hold.textContent).toContain("Opening the microphone")
+    tap()
+    expect(take().textContent).toContain(TAKE_WORDS.button.opening)
     await flush(300)
-    expect(hold.textContent).toContain("Listening")
     await flush(3_000)
-    fireEvent.pointerUp(hold)
+    expect(take().textContent).toContain("0:03 / 1:00")
+    tap()
     await flush()
-    // Kept: the card withdraws the button and says where the note is.
-    expect(screen.getByText("Kept on this phone.")).toBeTruthy()
-    expect(screen.queryByRole("button", { name: "Hold to speak" })).toBeNull()
+    // Kept: the card offers it again, and its row says where it is.
+    expect(screen.getByText(TAKE_WORDS.ended.kept)).toBeTruthy()
+    expect(take().getAttribute("aria-label")).toBe(TAKE_WORDS.buttonLabel.again)
+    expect(screen.getByText(new RegExp(TAKE_WORDS.place.phone))).toBeTruthy()
     expect(mic.open()).toBe(0)
+    expect(desk.listed()).toEqual([
+      expect.objectContaining({ line: "rust-rounds:indexing-01/a" }),
+    ])
+
+    // Once home holds it, the row says so.
+    desk.home.add(desk.listed()[0].id)
+    act(() => desk.phone.recount())
+    expect(screen.getByText(new RegExp(TAKE_WORDS.place.home))).toBeTruthy()
   })
 
-  it("says a press let go before the microphone opened, and lets the microphone go when it does (MIC0)", async () => {
-    const { mic, hold } = speakStep()
+  it("says a tap that stops it before the microphone opened, and lets the microphone go when it does (MIC0)", async () => {
+    const { mic } = speakStep()
     mic.script({ ...SPEAKING, open: { kind: "cue" } })
-    fireEvent.pointerDown(hold)
-    fireEvent.pointerUp(hold)
+    tap()
+    tap()
     await flush()
-    expect(status()).toContain("That ended before the microphone was listening")
+    expect(screen.getByText(TAKE_WORDS.ended.early)).toBeTruthy()
     mic.answer("open")
     await flush()
     expect(mic.open()).toBe(0)
@@ -202,23 +118,42 @@ describe("Rust Rounds on the simulated microphone", () => {
 
   it("says so when another screen is recording", async () => {
     const owner = microphoneOwner()
-    const other = deskOn(simulatedMicrophone({ now: Date.now }), owner)
-    other.takes.start("lens:line-1")
+    const other = testDesk(simulatedMicrophone({ now: Date.now }), owner, {
+      max: 40,
+      maxMs: 60_000,
+    })
+    other.phone.pattern.tap("lens:line-1")
     await flush()
-    const { mic, hold } = speakStep(owner)
-    fireEvent.pointerDown(hold)
+    const { mic } = speakStep(owner)
+    tap()
     await flush()
-    expect(status()).toContain(RECORDING_FAILURE_COPY.elsewhere)
+    expect(
+      screen.getByText(RECORDING_FAILURE_COPY.elsewhere, { exact: false })
+    ).toBeTruthy()
     expect(mic.asked()).toBe(0)
   })
 
-  it("keeps a note held past the cap, which ends it", async () => {
-    const { mic, hold } = speakStep()
-    fireEvent.pointerDown(hold)
+  it("keeps a note run to the cap, which ends it", async () => {
+    const { mic } = speakStep()
+    tap()
     await flush(61_000)
-    // Kept: the card withdraws the button and says where the note is.
-    expect(screen.getByText("Kept on this phone.")).toBeTruthy()
-    expect(screen.queryByRole("button", { name: "Hold to speak" })).toBeNull()
+    expect(screen.getByText(TAKE_WORDS.ended.kept)).toBeTruthy()
+    expect(take().getAttribute("aria-label")).toBe(TAKE_WORDS.buttonLabel.again)
     expect(mic.open()).toBe(0)
+  })
+
+  it("says a note it didn't hear, with Redo beside it (D4)", async () => {
+    const { mic } = speakStep()
+    mic.script({ ...SPEAKING, level: 0.03 })
+    tap()
+    await flush(3_000)
+    tap()
+    await flush()
+    expect(screen.getByText(TAKE_WORDS.ended.unheard)).toBeTruthy()
+    expect(
+      screen.getByRole("button", {
+        name: TAKE_WORDS.rowLabel(TAKE_WORDS.redo, 3_000),
+      })
+    ).toBeTruthy()
   })
 })

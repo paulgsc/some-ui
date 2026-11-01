@@ -31,5 +31,15 @@ export {
   SCENARIO_BOUNDS,
   takeScenarios,
 } from "./lib/scenario"
-export type { MemoryTakes, SimulatedPlayer } from "./lib/pattern-testing"
-export { memoryTakes, simulatedPlayer } from "./lib/pattern-testing"
+export type {
+  MemoryTakes,
+  SimulatedPattern,
+  SimulatedPlayer,
+} from "./lib/pattern-testing"
+export {
+  memoryShelf,
+  memoryTakes,
+  simulatedPattern,
+  simulatedPlayer,
+  takeButton,
+} from "./lib/pattern-testing"
