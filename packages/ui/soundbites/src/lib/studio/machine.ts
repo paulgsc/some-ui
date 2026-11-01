@@ -2339,6 +2339,19 @@ export function step(state: StudioState, event: StudioEvent): Step {
 
     case "recordPressed": {
       if (activity.kind === "recording") return finishRecording(state)
+      // The take button stays tappable while the microphone opens (D1): a
+      // tap then lets the take go before it starts, and says so.
+      if (activity.kind === "opening") {
+        const idle = pump({
+          ...state,
+          activity: { kind: "idle" },
+          notice: WORDS.notice.early,
+        })
+        return {
+          state: idle.state,
+          effects: [{ type: "discardTake" }, ...idle.effects],
+        }
+      }
       if (!isSettled(activity) || project === null || screen.kind !== "record")
         return stay(state)
       const roomMs =

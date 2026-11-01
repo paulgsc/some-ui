@@ -8,7 +8,7 @@ import type {
   Take,
   TakeDeadlines,
 } from "@some-ui/voice-capture"
-import { fakeMic } from "@soundbites/lib/fake-mic"
+import { simulatedMicrophone, SPEAKING } from "@some-ui/voice-capture/testing"
 import type { Listened } from "@soundbites/lib/idea/machine"
 import type { IdeaListener, Listening } from "@soundbites/lib/idea/runtime"
 import {
@@ -39,7 +39,7 @@ import { ideaAsking } from "@soundbites/lib/studio/watch"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { describe, expect, it, vi } from "vitest"
 
-import { AT, primer, PRIMER_TEXT } from "./fixture"
+import { AT, primer, PRIMER_TEXT, speaking } from "./fixture"
 
 const NOW = Date.UTC(2026, 9, 30, 10)
 
@@ -48,7 +48,7 @@ type Running = StudioRuntime & { readonly detach: () => void }
 /** A runtime on `memory`, attached; its takes' ids are `prefix` and a count. */
 function studio(
   memory: ReturnType<typeof memoryProjectStore>,
-  mic: StartRecording = fakeMic(),
+  mic: StartRecording = speaking(),
   prefix = "t",
   takeDeadlines?: TakeDeadlines,
   listener?: IdeaListener,
@@ -108,7 +108,7 @@ const settledWrites = (
 
 async function opened(
   memory = memoryProjectStore(),
-  mic: StartRecording = fakeMic(),
+  mic: StartRecording = speaking(),
   takeDeadlines?: TakeDeadlines,
   listener?: IdeaListener
 ): Promise<Running> {
@@ -233,10 +233,28 @@ describe("recording a scene", () => {
     )
   })
 
+  it("lets a take go when its button is tapped while the microphone opens", async () => {
+    const mic = simulatedMicrophone({ now: Date.now })
+    mic.script({ ...SPEAKING, open: { kind: "cue" } })
+    const runtime = await opened(memoryProjectStore(), mic.startRecording)
+    runtime.dispatch({ type: "recordChosen" })
+    await until(runtime, settledWrites)
+    runtime.dispatch({ type: "recordPressed" })
+    expect(runtime.getSnapshot().activity.kind).toBe("opening")
+    runtime.dispatch({ type: "recordPressed" })
+    expect(runtime.getSnapshot().activity.kind).toBe("idle")
+    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.notice.early)
+    // Opened after all: let go at once, never recording.
+    mic.answer("open")
+    await until(runtime, () => mic.open() === 0)
+    expect(mic.discarded()).toBe(1)
+    expect(runtime.getSnapshot().activity.kind).toBe("idle")
+  })
+
   it("refused for room as it is kept keeps nothing of it, and says what to do", async () => {
     // Room for ten seconds as read, but this take came out larger.
     const memory = memoryProjectStore([], 40_000)
-    const runtime = studio(memory, fakeMic(4_000, 50_000))
+    const runtime = studio(memory, speaking(4_000, 50_000))
     await until(runtime, (state) => state.shelf.kind === "read")
     runtime.dispatch({ type: "primerPicked", file: new Blob([PRIMER_TEXT]) })
     await until(
@@ -375,7 +393,7 @@ describe("a take home holds (HF11, LG1)", () => {
     memory: ReturnType<typeof memoryProjectStore>,
     storage: Storage | null
   ): Promise<Running> {
-    const runtime = studio(memory, fakeMic(), "t", undefined, undefined, {
+    const runtime = studio(memory, speaking(), "t", undefined, undefined, {
       letGo: keptLetGo(() => storage),
     })
     await until(runtime, (state) => state.shelf.kind === "read")
@@ -584,7 +602,7 @@ describe("the Journal tab's episode", () => {
 async function resumedOn(
   memory: ReturnType<typeof memoryProjectStore>
 ): Promise<unknown> {
-  const next = studio(memory, fakeMic(), "u")
+  const next = studio(memory, speaking(), "u")
   await until(next, (state) => projectOf(state) !== null)
   next.dispatch({ type: "recordChosen" })
   return next.getSnapshot().screen
@@ -622,7 +640,7 @@ describe("a sitting stopped after any take resumes on the same scene", () => {
     let hide: (hidden: boolean) => void = () => undefined
     const runtime = createStudio({
       store: memory.store,
-      startRecording: fakeMic(),
+      startRecording: speaking(),
       now: () => NOW,
       newId: () => "t1",
       readText: (file) => file.text(),
@@ -681,7 +699,7 @@ describe("two screens at once", () => {
   it("each sees the other's takes, and neither's is lost", async () => {
     const memory = memoryProjectStore()
     const first = await opened(memory)
-    const second = studio(memory, fakeMic(), "u")
+    const second = studio(memory, speaking(), "u")
     await until(second, (state) => projectOf(state) !== null)
     first.dispatch({ type: "recordChosen" })
     await until(first, settledWrites)
@@ -699,7 +717,7 @@ describe("two screens at once", () => {
   it("another screen writes, then Done for now while a take is kept: the take is kept", async () => {
     const memory = memoryProjectStore()
     const runtime = await opened(memory)
-    const other = studio(memory, fakeMic(), "u")
+    const other = studio(memory, speaking(), "u")
     await until(other, (state) => projectOf(state) !== null)
     runtime.dispatch({ type: "recordChosen" })
     await until(runtime, settledWrites)
@@ -733,7 +751,7 @@ describe("two screens at once", () => {
   it("a change from another screen while a write is pending is read after it", async () => {
     const memory = memoryProjectStore()
     const runtime = await opened(memory)
-    const other = studio(memory, fakeMic(), "u")
+    const other = studio(memory, speaking(), "u")
     await until(other, (state) => projectOf(state) !== null)
     let release: () => void = () => undefined
     const held = new Promise<void>((resolve) => {
@@ -769,7 +787,7 @@ describe("two screens at once", () => {
     await until(first, (state) => state.activity.kind === "idle")
     memory.gate.hold = null
     expect([...memory.notices.values()]).toEqual([STUDIO_WORDS.notice.notKept])
-    const next = studio(memory, fakeMic(), "u")
+    const next = studio(memory, speaking(), "u")
     await until(next, (state) => state.shelf.kind === "read")
     expect(next.getSnapshot().notice).toBe(STUDIO_WORDS.notice.notKept)
     await vi.waitFor(() => expect(memory.notices.size).toBe(0))
@@ -909,7 +927,7 @@ describe("what the screen says reached Drive", () => {
 
   it("a refused take's notice stays when the sitting closes after it", async () => {
     const memory = memoryProjectStore([], 40_000)
-    const runtime = studio(memory, fakeMic(4_000, 50_000))
+    const runtime = studio(memory, speaking(4_000, 50_000))
     await until(runtime, (state) => state.shelf.kind === "read")
     runtime.dispatch({ type: "primerPicked", file: new Blob([PRIMER_TEXT]) })
     await until(
@@ -1019,7 +1037,7 @@ describe("Done for now twice while a take is still saving", () => {
     })
     // eslint-disable-next-line one-owner/no-hand-written-microphone -- Studio's tests move onto the simulated microphone with its machine (#2442)
     const held: StartRecording = async () => {
-      const recording = await fakeMic()()
+      const recording = await speaking()()
       return {
         ...recording,
         finish: async (): Promise<Take> => {
@@ -1102,7 +1120,7 @@ describe("a screen that has gone", () => {
   it("lets go of no notice the store keeps for the next Start", async () => {
     const memory = memoryProjectStore()
     const runtime = await opened(memory)
-    const other = studio(memory, fakeMic(), "u")
+    const other = studio(memory, speaking(), "u")
     await until(other, (state) => projectOf(state) !== null)
     const gate = holdWrites(memory)
     runtime.dispatch({ type: "recordChosen" })
@@ -1152,7 +1170,7 @@ describe("VC1: a microphone that is slow or silent holds nothing for good", () =
     const mic: StartRecording = () =>
       new Promise((resolve) => {
         open = (): void => {
-          void fakeMic()().then((recording) =>
+          void speaking()().then((recording) =>
             resolve({
               ...recording,
               discard: (): void => {
@@ -1245,7 +1263,7 @@ describe("Studio's time log", () => {
     let ids = 0
     const runtime = createStudio({
       store: memory.store,
-      startRecording: fakeMic(),
+      startRecording: speaking(),
       now: () => NOW + 1_000 * tick++,
       newId: () => `id${++ids}`,
       readText: (file) => file.text(),
@@ -1857,7 +1875,7 @@ describe("Watch", () => {
     listener?: IdeaListener,
     memory = memoryProjectStore([withIdeas()])
   ): Promise<Running> {
-    const runtime = studio(memory, fakeMic(), "t", undefined, listener)
+    const runtime = studio(memory, speaking(), "t", undefined, listener)
     await until(runtime, (state) => projectOf(state) !== null)
     await watching(runtime)
     return runtime

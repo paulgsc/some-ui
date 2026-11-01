@@ -110,7 +110,7 @@ export function createGameWeek(ports: GameWeekPorts): GameWeekRuntime {
       .map(({ id }) => id)
     for (const id of kept) dispatch({ type: "kept", id })
     const row = state.lastBite
-    if (row === null || row.take.kept.place === "home") return
+    if (row === null || row.take.kept?.place === "home") return
     const since = ports.store.homeSince(row.take.id)
     if (since !== null) dispatch({ type: "homeHolds", id: row.take.id, since })
   }

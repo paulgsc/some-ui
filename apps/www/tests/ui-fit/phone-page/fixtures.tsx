@@ -31,12 +31,12 @@ import {
 } from "@some-ui/soundbites"
 import {
   cutListOf,
-  fakeMic,
   memoryProjectStore,
   primerOf,
   projectFromPrimer,
   run,
 } from "@some-ui/soundbites/fixtures"
+import { simulatedMicrophone, SPEAKING } from "@some-ui/voice-capture/testing"
 
 import { FIT_CUTS, FIT_PRIMER_TEXT } from "./studio-seed"
 
@@ -144,7 +144,11 @@ function studioPorts(
 ): NonNullable<StudioProps["ports"]> {
   return {
     store: memoryProjectStore(projects).store,
-    startRecording: fakeMic(),
+    // The shared simulated microphone: opens at once, hears four seconds.
+    startRecording: simulatedMicrophone({
+      now: Date.now,
+      fallback: { ...SPEAKING, durationMs: 4_000 },
+    }).startRecording,
     timeLog: keptTimeLog(inMemoryStorage),
     // Kept as long as the page is: a choice made on Start stays made.
     letGo: keptLetGo(once(inMemoryStorage())),
