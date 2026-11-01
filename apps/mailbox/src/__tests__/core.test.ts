@@ -395,6 +395,137 @@ describe("the routine's backfill of pre-mailbox files (MB2)", () => {
   })
 })
 
+describe("the build-journal session's list of the takes Drive holds (MB2, HF11)", () => {
+  const SHA_A = "a".repeat(64)
+  const SHA_B = `${"0123456789abcdef".repeat(4)}`
+  const LIST = {
+    schema: "some-ui.drive-takes/1",
+    at: "2026-11-01T09:15:00.000Z",
+    takes: [{ sha256: SHA_A }, { sha256: SHA_B }],
+  }
+  const NAME = "drive-takes-20261101T091500Z.json"
+
+  it("the routine puts one in brief, once, and home reads it there", async () => {
+    const d = deps()
+    const body = JSON.stringify(LIST)
+    expect((await put(d, "brief", NAME, { body })).status).toBe(201)
+    expect((await put(d, "brief", NAME, { body })).status).toBe(200)
+    expect(
+      (
+        await put(d, "brief", NAME, {
+          body: JSON.stringify({ ...LIST, takes: [] }),
+        })
+      ).status
+    ).toBe(409)
+    const read = await send(d, "GET", `/v1/brief/items/${NAME}`, {
+      token: HOME,
+    })
+    expect(read.status).toBe(200)
+    expect(await read.text()).toBe(body)
+    // Home lists it with the digests, so it needs no listing of its own.
+    const listed = await send(d, "GET", "/v1/brief/items", { token: HOME })
+    expect(await json(listed)).toMatchObject({
+      items: [expect.objectContaining({ name: NAME })],
+    })
+    // Only the routine puts it; home and the phone's folders may not.
+    expect((await put(d, "brief", NAME, { token: HOME, body })).status).toBe(
+      403
+    )
+    expect(
+      (await put(d, "decisions", NAME, { token: HOME, body })).status
+    ).toBe(422)
+  })
+
+  it("takes an empty list: Drive holds no takes yet", async () => {
+    const d = deps()
+    const body = JSON.stringify({ ...LIST, takes: [] })
+    expect((await put(d, "brief", NAME, { body })).status).toBe(201)
+  })
+
+  it("takes only SHA-256s and when Drive was listed: no audio, no Drive file or link", async () => {
+    const d = deps()
+    const shapes: ReadonlyArray<readonly [unknown, string]> = [
+      [
+        { ...LIST, audio: "UklGRg==" },
+        "a list of takes carries no audio: Drive and home keep it",
+      ],
+      [
+        { ...LIST, driveFolder: "x" },
+        "a list of takes names no Drive file or link",
+      ],
+      [{ ...LIST, folder: "takes" }, "folder is not part of a list of takes"],
+      [
+        { ...LIST, takes: [{ sha256: SHA_A, fileId: "1AbC" }] },
+        "a list of takes names no Drive file or link",
+      ],
+      [
+        { ...LIST, takes: [{ sha256: SHA_A, name: "take.webm" }] },
+        "name is not part of a take: only its sha256",
+      ],
+      [
+        { ...LIST, takes: [{ sha256: SHA_A, bytes: 3 }] },
+        "a list of takes carries no audio: Drive and home keep it",
+      ],
+      [
+        {
+          ...LIST,
+          takes: [{ sha256: SHA_A }],
+          note: "https://drive.google.com/file/d/1AbC",
+        },
+        "a list of takes names no Drive file or link",
+      ],
+      [
+        { ...LIST, takes: [{ sha256: SHA_A.toUpperCase() }] },
+        "sha256 must be the recording's SHA-256, in lower-case hex",
+      ],
+      [
+        { ...LIST, takes: [{ sha256: "a".repeat(63) }] },
+        "sha256 must be the recording's SHA-256, in lower-case hex",
+      ],
+      [{ ...LIST, takes: [SHA_A] }, "each take must be an object"],
+      [
+        { ...LIST, takes: [{ sha256: SHA_A }, { sha256: SHA_A }] },
+        "each take is named once",
+      ],
+      [{ ...LIST, takes: { sha256: SHA_A } }, "takes must be a list"],
+      [{ ...LIST, at: "today" }, "at must be when Drive's takes were listed"],
+      [
+        { ...LIST, at: "2026-11-01T09:15:01.000Z" },
+        "the name must carry when Drive's takes were listed, in UTC",
+      ],
+      [
+        {
+          ...LIST,
+          takes: Array.from({ length: 10_001 }, (_, n) => ({
+            sha256: n.toString(16).padStart(64, "0"),
+          })),
+        },
+        "takes may name at most 10000",
+      ],
+    ]
+    for (const [body, why] of shapes) {
+      const answer = await put(d, "brief", NAME, { body: JSON.stringify(body) })
+      expect([why, answer.status]).toEqual([why, 422])
+      expect(await json(answer)).toEqual({ error: why })
+    }
+    for (const name of [
+      "drive-takes-20261101T091500.json",
+      "drive-takes-2026-11-01.json",
+      "drive-takes-20261101T091500Z.webm",
+      "takes-20261101T091500Z.json",
+    ]) {
+      const answer = await put(d, "brief", name, {
+        body: JSON.stringify(LIST),
+      })
+      expect([name, answer.status]).toEqual([name, 422])
+    }
+    const wrong = await put(d, "brief", NAME, { body: DIGEST })
+    expect(await json(wrong)).toEqual({
+      error: "the body's schema must be some-ui.drive-takes/1",
+    })
+  })
+})
+
 describe("the routine's study files", () => {
   const SCENE = JSON.stringify({
     schema: "some-ui.routine-scene/1",
