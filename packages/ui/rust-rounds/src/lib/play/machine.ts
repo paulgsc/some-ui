@@ -42,13 +42,13 @@
  *   is killed, only the cards still in `pending` survive to the next opening.
  * - **rustc's result is never compared with the pick on screen.** The
  *   tutor's guess is checked only to log `tutorGuessedWrong`.
- * - **A card's kept note is the card's note** (MIC4, #2374). Notes are
- *   taken on the take pattern (`@some-ui/voice-capture`): tap to start, tap
- *   to stop (D1). Redo takes the card's note again, and the new one, once
- *   kept, is the card's note; the earlier one stays on the phone (D2). Let
- *   go sets the card's note aside, kept (D3), and the card has none. The
- *   pattern's snapshot (`notes`) is the only record of a take under way;
- *   `taking` is what the place record keeps of it for the next opening.
+ * - **A card's kept note is the card's note**, on the take pattern
+ *   (`@some-ui/voice-capture`). A Redo's note, once kept, is the card's
+ *   note, a card left mid-Redo's included, and the earlier one stays on the
+ *   phone (D2); one not kept leaves the card the note it had. Let go sets
+ *   the card's note aside, kept (D3), and the card has none. The pattern's
+ *   snapshot (`notes`) is the only record of a take under way; `taking` is
+ *   what the place record keeps of it for the next opening.
  */
 import type {
   CardEvent,
@@ -352,7 +352,10 @@ function leaving(
   }
 }
 
-/** Appends a card's event, with the note it ended with. */
+/**
+ * Appends a card's event, with the note it ended with: `note`, a take kept
+ * since it was left, in place of the one it was left with (D2).
+ */
 function logCard(
   state: PlayState,
   left: { event: CardEvent; guessedWrong: boolean },
@@ -360,7 +363,7 @@ function logCard(
 ): Step {
   const add: LogAdd = {
     kind: "card",
-    event: { ...left.event, note: left.event.note ?? note },
+    event: { ...left.event, note: note ?? left.event.note },
     guessedWrong: left.guessedWrong,
   }
   const log = holdsAdd(state.log, add)
@@ -532,7 +535,9 @@ function settleCard(
   }
   const waiting = base.pending.find((each) => each.line === line)
   if (waiting !== undefined) {
-    const lostIt = end === "failed" || end === "full"
+    // A Redo that was not kept leaves the card the note it was left with.
+    const lostIt =
+      (end === "failed" || end === "full") && waiting.event.note === null
     const next: PlayState = {
       ...base,
       pending: base.pending.filter((each) => each !== waiting),

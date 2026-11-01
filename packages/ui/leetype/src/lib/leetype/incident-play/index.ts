@@ -128,8 +128,7 @@ export class IncidentPlayRuntime {
     // The surface is going: a take under way is kept, and answers nothing.
     return () => {
       this.attached = false
-      this.takingFor = null
-      takes?.pattern.leave()
+      this.leaveTake()
       this.cancelTimer()
       for (const off of unsubscribe) off?.()
     }
@@ -194,7 +193,16 @@ export class IncidentPlayRuntime {
   dispatch = (input: PlayInput): void => {
     const play = this.snapshot.play
     if (play === null) return
+    // A take under way may yet be the answer: Done waits on how it ends.
+    if (input.type === "ticked" && this.answering()) return
+    // Passed instead: a take under way is kept, and answers nothing.
+    if (input.type === "pass" && play.spoken === null) this.leaveTake()
     this.apply(step(play, input, this.context()))
+  }
+
+  /** The answer is to be typed: a take under way is kept, and answers nothing. */
+  typeInstead = (): void => {
+    if (onRecord(this.snapshot.play)) this.leaveTake()
   }
 
   /**
@@ -217,7 +225,6 @@ export class IncidentPlayRuntime {
     pattern.tap(answers, spoken?.take ?? null)
   }
 
-  /** Plays a take of this answer, or stops it while it plays. */
   playTake = (id: string): void => {
     this.ports.takes?.pattern.play(id)
   }
@@ -229,9 +236,25 @@ export class IncidentPlayRuntime {
     if (pattern === undefined || !onRecord(play)) return
     if (play.spoken?.as !== "recorded" || play.spoken.take !== id) return
     // The row's actions wait while a take is under way.
-    if (pattern.getSnapshot().take.kind !== "idle") return
+    if (this.busy()) return
     pattern.letGo(id, place)
     this.dispatch({ type: "withdrawn" })
+  }
+
+  private busy(): boolean {
+    const pattern = this.ports.takes?.pattern
+    return pattern !== undefined && pattern.getSnapshot().take.kind !== "idle"
+  }
+
+  /** A take started on the screen in view is under way: it may yet answer it. */
+  private answering(): boolean {
+    return this.takingFor !== null && this.busy()
+  }
+
+  /** A take under way is kept, and answers nothing; nothing plays on. */
+  private leaveTake(): void {
+    this.takingFor = null
+    this.ports.takes?.pattern.leave()
   }
 
   /** Sets the timer for what is left of the declared length. */
@@ -316,7 +339,9 @@ export class IncidentPlayRuntime {
       view.said?.kind === "ended" && this.takingFor !== play.screen
         ? { ...view, said: null }
         : view
-    return { item, full, notesFull }
+    const answering =
+      this.takingFor === play.screen && pattern.take.kind !== "idle"
+    return { item, answering, full, notesFull }
   }
 
   /** The screens of `file` still parked, by the log. */
@@ -347,12 +372,10 @@ export class IncidentPlayRuntime {
       }
     }
     if (play.screen !== before?.screen || play.ended !== before.ended) {
-      this.takingFor = null
       this.visitTakes = new Set()
       this.hiddenTotal = 0
       if (this.hiddenSince !== null) this.hiddenSince = this.ports.now()
-      // A take under way is kept, and answers nothing; nothing plays on.
-      this.ports.takes?.pattern.leave()
+      this.leaveTake()
     }
     if (play.ended !== null) this.cancelTimer()
     const problem = this.ports.log.getSnapshot().problem ?? this.unkept
@@ -423,7 +446,6 @@ export const pageVisibility: Visibility = {
   },
 }
 
-/** The play is on a record screen. */
 function onRecord(play: Play | null): play is Play {
   return play?.file.screens[play.screen]?.type === "record"
 }

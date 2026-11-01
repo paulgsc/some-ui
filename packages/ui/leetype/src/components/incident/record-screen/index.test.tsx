@@ -1,8 +1,7 @@
 /**
- * The record screen on the take pattern's parts (MIC4, #2374): tap to
- * record and tap to stop, the take's row once it is the answer, and typing
- * and passing beside them. The take's view is the play runtime's, over the
- * simulated microphone every screen's tests share.
+ * The record screen on the take pattern's parts: the take's row once it is
+ * the answer, and typing and passing beside it. The take's view is the play
+ * runtime's, over the simulated microphone every screen's tests share.
  */
 import type { JSX } from "react"
 import { useSyncExternalStore } from "react"
@@ -68,6 +67,7 @@ const Screen = ({ runtime }: { runtime: IncidentPlayRuntime }): JSX.Element => {
       onTap={runtime.tapTake}
       onPlay={runtime.playTake}
       onLetGo={runtime.letGoTake}
+      onTypeInstead={runtime.typeInstead}
       onTyped={(text): void =>
         runtime.dispatch({ type: "answered", answer: { as: "typed", text } })
       }
@@ -118,14 +118,51 @@ describe("RecordScreenView", () => {
     }
     expect(screen.getByText("Tick what your answer said")).toBeTruthy()
     expect(screen.queryByText(/You answered aloud/)).toBeNull()
+  })
 
-    // Let go: the answer is withdrawn, and the take is set aside, kept.
-    press(TAKE_WORDS.rowLabel(TAKE_WORDS.letGo, 12_000))
-    expect(screen.getByText(TAKE_WORDS.setAside.phone)).toBeTruthy()
+  it("ticks a Redo's take afresh, and waits on it before Done", async () => {
+    const takes = phoneTakes()
+    show(atTheTake(takes))
+    press(TAKE_WORDS.buttonLabel.ready)
+    await settle(5_000)
+    press(TAKE_WORDS.buttonLabel.recording)
+    await settle()
+    const [point] = screen.getAllByRole("checkbox")
+    if (point === undefined) throw new Error("no rubric points")
+    fireEvent.click(point)
+    expect(point).toHaveProperty("checked", true)
+
+    press(TAKE_WORDS.rowLabel(TAKE_WORDS.redo, 5_000))
+    await settle(1_000)
+    expect(screen.getByRole("button", { name: "Done" })).toHaveProperty(
+      "disabled",
+      true
+    )
+    press(TAKE_WORDS.buttonLabel.recording)
+    await settle()
+    expect(screen.getByRole("button", { name: "Done" })).toHaveProperty(
+      "disabled",
+      false
+    )
+    for (const box of screen.getAllByRole("checkbox")) {
+      expect(box).toHaveProperty("checked", false)
+    }
+  })
+
+  it("stops a take under way to type instead, and the take answers nothing", async () => {
+    const takes = phoneTakes()
+    show(atTheTake(takes))
+    press(TAKE_WORDS.buttonLabel.ready)
+    await settle(5_000)
+    typedAnswer()
+    await settle(60_000)
+    expect(takes.mic.open()).toBe(0)
+    expect(takes.store.getSnapshot()).toHaveLength(1)
+    expect(screen.getByLabelText("Your answer, typed")).toHaveProperty(
+      "value",
+      "A majority never held it."
+    )
     expect(screen.queryByText("Tick what your answer said")).toBeNull()
-    expect(
-      screen.getByRole("button", { name: TAKE_WORDS.buttonLabel.ready })
-    ).toBeTruthy()
   })
 
   it("still takes a typed answer when only the recordings are full", () => {

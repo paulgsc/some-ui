@@ -200,6 +200,7 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
             onTap={runtime.tapTake}
             onPlay={runtime.playTake}
             onLetGo={runtime.letGoTake}
+            onTypeInstead={runtime.typeInstead}
             onTyped={(text): void =>
               dispatch({ type: "answered", answer: { as: "typed", text } })
             }

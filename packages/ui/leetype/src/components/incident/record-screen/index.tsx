@@ -27,6 +27,8 @@ type RecordScreenProps = {
   onPlay: (id: string) => void
   /** D3: sets the recorded answer's take aside, withdrawing the answer. */
   onLetGo: (id: string, place: TakePlace) => void
+  /** The answer is to be typed: a take under way answers nothing. */
+  onTypeInstead: () => void
   onTyped: (text: string) => void
   onPass: () => void
   onTicked: (ticks: ReadonlyArray<string>) => void
@@ -49,6 +51,64 @@ function answered(spoken: SpokenAnswer): string {
   }
 }
 
+/** What the ticks are of: a Redo's take, or a new answer, starts them afresh. */
+function answerKey(spoken: SpokenAnswer): string {
+  return spoken.as === "recorded" ? spoken.take : spoken.as
+}
+
+/** The rubric's points, ticked for one answer, and Done. */
+const TickedRubric: FC<{
+  points: ReadonlyArray<string>
+  waiting: boolean
+  onTicked: (ticks: ReadonlyArray<string>) => void
+}> = ({ points, waiting, onTicked }) => {
+  // An edit buffer for one answer: keyed by it where it is drawn.
+  const [ticks, setTicks] = useState<ReadonlyArray<string>>([])
+  return (
+    <>
+      <fieldset className="flex flex-col gap-2">
+        <legend className="text-sm font-medium text-foreground">
+          Tick what your answer said
+        </legend>
+        {points.map((point, index) => (
+          <div
+            key={`${String(index)} ${point}`}
+            className="flex items-start gap-2"
+          >
+            <input
+              type="checkbox"
+              id={`tick-${String(index)}`}
+              className="mt-0.5 size-5 shrink-0 accent-primary"
+              checked={ticks.includes(point)}
+              onChange={(event): void => {
+                const { checked } = event.target
+                setTicks((now) =>
+                  checked
+                    ? [...now, point]
+                    : now.filter((tick) => tick !== point)
+                )
+              }}
+            />
+            <Label
+              htmlFor={`tick-${String(index)}`}
+              className="text-pretty text-sm font-normal leading-snug"
+            >
+              {point}
+            </Label>
+          </div>
+        ))}
+      </fieldset>
+      <Button
+        className="min-h-11 self-start"
+        disabled={waiting}
+        onClick={(): void => onTicked(ticks)}
+      >
+        Done
+      </Button>
+    </>
+  )
+}
+
 /**
  * A spoken answer (canon v1.2, Def. 9.5): the prompt, then tap to record,
  * type instead, or pass. The take is the take pattern's parts (`TakeItem`):
@@ -64,6 +124,7 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
   onTap,
   onPlay,
   onLetGo,
+  onTypeInstead,
   onTyped,
   onPass,
   onTicked,
@@ -71,7 +132,6 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
   // Edit buffers for this screen's answer; the screen is keyed by its id.
   const [typing, setTyping] = useState(take === null)
   const [text, setText] = useState("")
-  const [ticks, setTicks] = useState<ReadonlyArray<string>>([])
   // A take needs room for audio and a note; a typed answer, a note only.
   const full = take?.full === true
   const noRoom = take?.notesFull === true
@@ -109,47 +169,23 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
           </p>
         )}
         {spoken.as === "passed" ? (
-          <RubricPoints rubric={rubricText(screen)} />
+          <>
+            <RubricPoints rubric={rubricText(screen)} />
+            <Button
+              className="min-h-11 self-start"
+              onClick={(): void => onTicked([])}
+            >
+              Continue
+            </Button>
+          </>
         ) : (
-          <fieldset className="flex flex-col gap-2">
-            <legend className="text-sm font-medium text-foreground">
-              Tick what your answer said
-            </legend>
-            {rubricText(screen).map((point, index) => (
-              <div
-                key={`${String(index)} ${point}`}
-                className="flex items-start gap-2"
-              >
-                <input
-                  type="checkbox"
-                  id={`tick-${String(index)}`}
-                  className="mt-0.5 size-5 shrink-0 accent-primary"
-                  checked={ticks.includes(point)}
-                  onChange={(event): void => {
-                    const { checked } = event.target
-                    setTicks((now) =>
-                      checked
-                        ? [...now, point]
-                        : now.filter((tick) => tick !== point)
-                    )
-                  }}
-                />
-                <Label
-                  htmlFor={`tick-${String(index)}`}
-                  className="text-pretty text-sm font-normal leading-snug"
-                >
-                  {point}
-                </Label>
-              </div>
-            ))}
-          </fieldset>
+          <TickedRubric
+            key={answerKey(spoken)}
+            points={rubricText(screen)}
+            waiting={take?.answering === true}
+            onTicked={onTicked}
+          />
         )}
-        <Button
-          className="min-h-11 self-start"
-          onClick={(): void => onTicked(ticks)}
-        >
-          {spoken.as === "passed" ? "Continue" : "Done"}
-        </Button>
       </article>
     )
   }
@@ -170,7 +206,10 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
           <Button
             variant="outline"
             className="min-h-11 self-start"
-            onClick={(): void => setTyping(true)}
+            onClick={(): void => {
+              setTyping(true)
+              onTypeInstead()
+            }}
           >
             Type it instead
           </Button>

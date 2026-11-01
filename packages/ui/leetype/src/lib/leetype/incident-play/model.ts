@@ -134,6 +134,11 @@ export type Play = {
   readonly asked: boolean
   /** A spoken answer given on the record screen in view, before its rubric. */
   readonly spoken: SpokenAnswer | null
+  /**
+   * The record screen in view's rubric has been shown this visit: an answer
+   * given again after Let go shows it, and logs `rubric-shown`, no more.
+   */
+  readonly rubricSeen: boolean
   /** Rounds played this session, returns aside: the short form plays one. */
   readonly rounds: number
   readonly ended: "declared" | "left" | null
@@ -282,7 +287,14 @@ function firstEnd(file: SessionFile): string | null {
 
 function ended(play: Play, screen: string, ctx: StepContext): Stepped {
   return {
-    play: { ...play, screen, reveal: null, spoken: null, ended: "declared" },
+    play: {
+      ...play,
+      screen,
+      reveal: null,
+      spoken: null,
+      rubricSeen: false,
+      ended: "declared",
+    },
     events: [
       {
         ...stamp(play, ctx),
@@ -315,6 +327,7 @@ function detour(play: Play, take: TakeParked): Play {
     placing: null,
     asked: take.asked,
     spoken: null,
+    rubricSeen: false,
     resume: play.resume ?? { scope, screen, placement, placing, asked },
   }
 }
@@ -394,6 +407,7 @@ function enter(
       shownAt: ctx.at,
       reveal: null,
       spoken: null,
+      rubricSeen: false,
       resume: null,
     }
     return { play: resumed, events: [] }
@@ -414,6 +428,7 @@ function enter(
     placing,
     asked: extra.asked ?? false,
     spoken: null,
+    rubricSeen: false,
     rounds: play.rounds + (freshRound ? 1 : 0),
   }
   return screen?.type === "end"
@@ -450,6 +465,7 @@ export function startPlay(
     resume: null,
     asked: false,
     spoken: null,
+    rubricSeen: false,
     rounds: 0,
     ended: null,
   }
@@ -525,15 +541,16 @@ export function rubricShown(
   }))
 }
 
-/** The rubric of the record screen in view comes into view after `spoken`. */
+/** The rubric of the record screen in view comes into view after `spoken`, logged once a visit. */
 function showRubric(
   play: Play,
   screen: RecordScreen,
   spoken: SpokenAnswer,
   ctx: StepContext
 ): Stepped {
+  if (play.rubricSeen) return { play: { ...play, spoken }, events: [] }
   return {
-    play: { ...play, spoken },
+    play: { ...play, spoken, rubricSeen: true },
     events: rubricShown(
       {
         session: play.session,

@@ -246,6 +246,34 @@ describe("the worked example", () => {
     ])
   })
 
+  it.each(["kept", "failed"] as const)(
+    "logs a card left mid-Redo once its take ends, %s, with the note it then has (D2)",
+    async (how) => {
+      const ports = testPorts()
+      const runtime = opened(ports)
+      speaking(runtime)
+      await noted(runtime)
+      const first = runtime.getSnapshot().place?.visit.note
+      ports.notes.mic.script({
+        ...SPEAKING,
+        finish: { kind: "after", ms: 1_000 },
+      })
+      ports.notes.keeping(how)
+      await talking(runtime)
+      runtime.dispatch({ type: "next" })
+      await settle(1_000)
+      const [logged] = storedLog(ports.storage)
+      if (how === "kept") {
+        expect(logged?.note).toEqual(NOTE)
+        expect(logged?.note).not.toBe(first)
+      } else {
+        expect(logged?.note).toBe(first)
+      }
+      // The card still has a note: none is lost.
+      expect(runtime.getSnapshot().lost).toBeNull()
+    }
+  )
+
   it("never serves a card waiting on its note as a new one", async () => {
     const ports = testPorts()
     ports.notes.mic.script({ ...SPEAKING, finish: { kind: "never" } })
@@ -500,6 +528,29 @@ describe("leaving and coming back", () => {
       expect.objectContaining({ card: "a", note: "note-kept" }),
     ])
     expect(keptRounds(storage).open().pending).toEqual([])
+  })
+
+  it.each([
+    ["the Redo's note, which the phone holds", true],
+    ["its first note, when the phone holds no other", false],
+  ])("settles a card an ended app left mid-Redo with %s", async (_, landed) => {
+    const storage = inMemoryStorage()
+    const first = opened(testPorts(storage))
+    speaking(first)
+    await noted(first)
+    const note = first.getSnapshot().place?.visit.note
+    await talking(first)
+    first.dispatch({ type: "next" })
+    expect(keptRounds(storage).open().pending).toHaveLength(1)
+    const phone = testNotes(landed ? [keptNote("note-redo", LINE_A)] : [])
+
+    opened(testPorts(storage, phone))
+    expect(storedLog(storage)).toEqual([
+      expect.objectContaining({
+        card: "a",
+        note: landed ? "note-redo" : note,
+      }),
+    ])
   })
 
   it("logs a card an ended app left waiting as it stood when the phone holds no note", async () => {

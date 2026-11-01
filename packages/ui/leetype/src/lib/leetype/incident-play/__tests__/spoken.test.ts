@@ -1,8 +1,7 @@
 /**
- * A spoken answer on the take pattern (MIC4, #2374), over the simulated
- * microphone every screen's tests share (`spoken-take/__tests__/phone`), on
- * faked timers: tap to record, the take kept is the answer, Redo's in its
- * place, and Let go withdraws it.
+ * A spoken answer on the take pattern, over the simulated microphone every
+ * screen's tests share (`spoken-take/__tests__/phone`), on faked timers: the
+ * take kept is the answer, Redo's in its place, and Let go withdraws it.
  */
 import { IncidentPlayRuntime } from "@leetype/lib/leetype/incident-play"
 import { AB_FIXTURES } from "@leetype/lib/leetype/session-file/__tests__/fixtures"
@@ -17,6 +16,31 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 const FILE = SessionFileSchema.parse(AB_FIXTURES[1]?.raw)
 const TAKE = FILE.screens.s15
 const RUBRIC = TAKE?.type === "record" ? rubricText(TAKE) : []
+
+/** A file opening on a take whose rubric names the round after it. */
+const COVERED = SessionFileSchema.parse({
+  title: "Covered",
+  oneLine: "A take whose rubric names its round.",
+  session: { kind: "incident", budgetMinutes: 30 },
+  start: "t1",
+  screens: {
+    t1: {
+      type: "record",
+      prompt: "Why did the write not stick?",
+      maxSeconds: 60,
+      rubric: [{ text: "The write needs a majority", covers: ["r1"] }],
+      weakIfFewerThan: 0,
+      next: "r1",
+    },
+    r1: {
+      type: "choice",
+      options: [
+        { label: "Right", next: "t1", correct: true },
+        { label: "Not sure", next: "t1", abstain: true },
+      ],
+    },
+  },
+})
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -165,6 +189,41 @@ describe("a spoken answer", () => {
     )
   })
 
+  it("waits on a Redo under way before Done, then settles the Redo's take", async () => {
+    const takes = phoneTakes()
+    const { runtime, log } = atTheTake(takes)
+    await answerAloud(runtime, 10_000)
+    runtime.tapTake()
+    await settle(3_000)
+    expect(runtime.getSnapshot().take?.answering).toBe(true)
+    runtime.dispatch({ type: "ticked", ticks: RUBRIC })
+    expect(runtime.getSnapshot().play?.screen).toBe("s15")
+    expect(takes.note).not.toHaveBeenCalled()
+
+    runtime.tapTake()
+    await settle()
+    expect(runtime.getSnapshot().take?.answering).toBe(false)
+    runtime.dispatch({ type: "ticked", ticks: RUBRIC })
+    expect(
+      log.getSnapshot().log.find((event) => event.type === "spoken")
+    ).toMatchObject({ answer: { as: "recorded", seconds: 3 } })
+    expect(takes.note).toHaveBeenCalledWith(
+      expect.objectContaining({ take: "take-2" })
+    )
+  })
+
+  it("keeps a take under way when the answer is typed instead, and it answers nothing", async () => {
+    const takes = phoneTakes()
+    const { runtime } = atTheTake(takes)
+    runtime.tapTake()
+    await settle(5_000)
+    runtime.typeInstead()
+    await settle(60_000)
+    expect(takes.store.getSnapshot()).toHaveLength(1)
+    expect(runtime.getSnapshot().play?.spoken).toBeNull()
+    expect(runtime.getSnapshot().take?.item.current).toEqual([])
+  })
+
   it("lets a recorded answer's take go, kept, and the answer with it (D3)", async () => {
     const takes = phoneTakes()
     const { runtime } = atTheTake(takes)
@@ -185,6 +244,31 @@ describe("a spoken answer", () => {
       as: "recorded",
       take: "take-2",
     })
+  })
+
+  it("shows the rubric once a visit, however often the take is answered", async () => {
+    const takes = phoneTakes()
+    const log = createSessionLogStore(memoryStorage())
+    let id = 0
+    const runtime = new IncidentPlayRuntime({
+      log,
+      now: (): number => 0,
+      newId: (): string => `id${String(++id)}`,
+      takes,
+    })
+    runtime.attach()
+    runtime.start({ fileName: "covered", file: COVERED, form: "full" })
+    const shown = (): number =>
+      log.getSnapshot().log.filter((event) => event.type === "rubric-shown")
+        .length
+    await answerAloud(runtime, 10_000)
+    expect(shown()).toBe(1)
+    runtime.letGoTake("take-1", "phone")
+    await answerAloud(runtime, 5_000)
+    expect(runtime.getSnapshot().play?.spoken).toMatchObject({
+      take: "take-2",
+    })
+    expect(shown()).toBe(1)
   })
 
   it("is weak with fewer ticks than asked, and places its reading", () => {

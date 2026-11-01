@@ -1,9 +1,8 @@
 /**
  * A spoken answer's take (canon v1.2, Def. 9.5) on the take pattern
- * (`@some-ui/voice-capture`, MIC4 #2374): tap to start and stop, then where
- * it's kept, Play, Redo and Let go. The microphone, keeping the audio and
- * what the take answered are the phone's (`apps/www`'s `lib/leetype-takes`),
- * so this is the port only. The play runtime decides which take answers the
+ * (`@some-ui/voice-capture`). The microphone, keeping the audio and what the
+ * take answered are the phone's (`apps/www`'s `lib/leetype-takes`), so this
+ * is the port only. The play runtime decides which take answers the
  * record screen in view; a take and its notes go home, and to Drive with the
  * study-context export (#1934).
  */
@@ -47,6 +46,8 @@ export type SpokenTakes = {
 export type SpokenTakeView = {
   /** The pattern's parts for this answer: the take button, its line, its take's row. */
   readonly item: TakeItemView
+  /** A take started on this screen is under way: Done waits on how it ends. */
+  readonly answering: boolean
   readonly full: boolean
   readonly notesFull: boolean
 }
