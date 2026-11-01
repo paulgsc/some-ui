@@ -1659,7 +1659,7 @@
       "store": "phone:journal",
       "class": "record",
       "growth": "Studio's projects (every revision, note, take and sitting, append-only), and one row per sitting saying how it went (`friction`); the Journal tab's one episode, if a build before Studio kept one, is moved into a project the first time Studio opens, and every row of the Journal tab's stores it doesn't move is let go, unless the episode reads but can't become a project, when it all stays (owner, 2026-10-30, #2251). JOURNAL_TAKES_MAX_BYTES = 2 x 360 s x 4,000 B/s = 2,880,000 B covers the projects' takes' audio and what the Journal tab's stores still hold, together; a few notices a closed screen couldn't say wait in `notices` until the next Start says them.",
-      "horizon": "a project is never let go, and a take's audio leaves the phone only once home holds a copy (LG1); Drive's is a copy",
+      "horizon": "a project is never let go, and a take's audio leaves the phone only once home holds a copy and the owner's choice allows it: never before they choose, and under keep-until-Drive only on their Drive has it (LG1, HF11 #2401); Drive's is a copy, and at the cap Record names the choice instead of evicting",
       "family": "what-is-kept"
     },
     {

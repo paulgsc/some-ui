@@ -66,6 +66,13 @@ const SAMPLES: ReadonlyArray<ReadonlyArray<unknown>> = [
   [{ scenes: [], plans: true }],
   [{ scenes: [1, 3], plans: true }],
   ["calm", "ad-lib"],
+  // The owner's choice of when takes leave (HF11), with takes waiting on it.
+  [null, 0],
+  [null, 2],
+  ["drive", 0],
+  ["drive", 1],
+  ["home", 0],
+  [null, 4_700],
   ["denied"],
   // Whose idea a scene is (ST5), each way it reads, alone and with its scene.
   ...WHOSE.flatMap((whose) => [[whose], [3, whose]]),
@@ -184,12 +191,22 @@ describe("Studio's words", () => {
     ).toBe("Last time: Kept takes for scene 2. Next: Scene 3: End card.")
   })
 
-  it("say what frees room when the phone is full: home holding the takes (LG1)", () => {
-    const full = STUDIO_WORDS.notice.full
-    expect(full).toMatch(/wasn't kept/)
-    expect(full).toMatch(/once home holds them/)
-    expect(full).not.toMatch(/Drive/)
-    expect(full).toMatch(/the room they held is free/)
+  it("say what frees room when the phone is full: home holding the takes, as the owner chose (LG1, HF11)", () => {
+    const { full, noRoom } = STUDIO_WORDS.notice
+    const { choices, driveHasIt } = STUDIO_WORDS.letGo
+    expect(full("home", 0)).toMatch(/wasn't kept/)
+    expect(full("home", 0)).toMatch(/once home holds them/)
+    expect(full("home", 0)).not.toMatch(/Drive/)
+    expect(full("home", 0)).toMatch(/the room they held is free/)
+    // What fills it waits on the choice, and the words name it.
+    expect(noRoom(null, 2)).toMatch(/Home has 2 takes .*waiting on your choice/)
+    expect(noRoom(null, 2)).toContain(choices.home)
+    expect(noRoom(null, 2)).toContain(choices.drive)
+    expect(noRoom("drive", 1)).toContain(`tap “${driveHasIt}”`)
+    expect(noRoom(null, 0)).toMatch(/you choose when/)
+    for (const letGo of [null, "home", "drive"] as const)
+      for (const waiting of [0, 3])
+        expect(full(letGo, waiting)).not.toMatch(/evict|deleted|removed/i)
   })
 
   it("never say takes were kept where a sitting wasn't saved", () => {

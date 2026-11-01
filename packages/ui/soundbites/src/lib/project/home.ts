@@ -3,10 +3,14 @@
  * still on the phone and that home doesn't hold yet goes as a voice note of
  * kind `studio`, its `ref` the take, `<project>:<shot>:<take>` (paulgsc/server
  * `voice_repo`'s `Of::Studio`). Once home says it holds one, the take is
- * marked kept by home and its audio leaves the phone, in one write.
+ * marked kept by home, and its audio leaves the phone in the same write only
+ * if the owner's choice allows it (`./let-go`, LG1); otherwise it waits on
+ * the phone, marked, for that choice.
  * Sending is the app's home link's (www `lib/home-link/voice-copy`).
  */
-import type { Project } from "./model"
+import type { LetGoChoice, OnDrive } from "./let-go"
+import { mayLeave, NONE_ON_DRIVE } from "./let-go"
+import type { Project, ProjectEvent } from "./model"
 import { homeHolds, step } from "./model"
 import type { ProjectStore } from "./store"
 
@@ -42,20 +46,22 @@ export function notesForHome(
 }
 
 /**
- * `project` with each take home holds (`held`, by id) marked kept by home
- * and off the phone; null when it changes nothing.
+ * `project` with each take home holds (`held`, by id) marked kept by home,
+ * and off the phone where `leaves` allows it; null when it changes nothing.
  */
 export function heldByHome(
   project: Project,
-  held: ReadonlySet<string>
+  held: ReadonlySet<string>,
+  leaves: (id: string) => boolean
 ): Project | null {
   let at = project
   for (const take of project.takes) {
     if (!held.has(take.id) || !take.onPhone) continue
-    for (const event of [
+    const events: ReadonlyArray<ProjectEvent> = [
       { type: "keptBy", take: take.id, keeper: "home" },
-      { type: "letGo", take: take.id },
-    ] as const) {
+      ...(leaves(take.id) ? [{ type: "letGo", take: take.id } as const] : []),
+    ]
+    for (const event of events) {
       const next = step({ project: at, taking: null, closing: null }, event)
       if (next.refused === null) at = next.state.project
     }
@@ -64,20 +70,25 @@ export function heldByHome(
 }
 
 /**
- * Lets the audio of every take home holds leave the phone, project by
- * project, each in its own write; how many projects changed.
+ * Marks every take home holds as kept there and lets the audio of each the
+ * owner's choice allows leave the phone (`mayLeave`: none before they
+ * choose; under "keep until Drive has it", only those home says Drive has),
+ * project by project, each in its own write; how many projects changed.
  */
 export async function letGoHeldTakes(
   store: ProjectStore,
-  held: ReadonlySet<string>
+  held: ReadonlySet<string>,
+  choice: LetGoChoice,
+  onDrive: OnDrive = NONE_ON_DRIVE
 ): Promise<number> {
   if (held.size === 0) return 0
+  const leaves = (id: string): boolean => mayLeave(choice, id, onDrive)
   const projects = await store.list()
   let changed = 0
   for (const project of projects) {
-    if (heldByHome(project, held) === null) continue
+    if (heldByHome(project, held, leaves) === null) continue
     const written = await store.update(project.id, (now) =>
-      now === null ? null : heldByHome(now, held)
+      now === null ? null : heldByHome(now, held, leaves)
     )
     if (written.changed) changed++
   }

@@ -15,7 +15,8 @@
  *   every field it keeps;
  * - a Studio take still on the phone (`@some-ui/soundbites`' `notesForHome`,
  *   handed in by Studio's route, `lib/studio-keeping`): `studio`, the take as
- *   `<project>:<shot>:<take>`, when it was recorded;
+ *   `<project>:<shot>:<take>`, when it was recorded; once home holds it, it
+ *   waits on the phone for the owner's choice of when it leaves (HF11);
  * - a soundbite (`@some-ui/soundbites`' store, handed in by its page,
  *   `lib/soundbite-keeping`; HF5 #2180): `soundbite`, how it came to be
  *   recorded, when it was; its record goes as a study note (`./notes`);
@@ -37,13 +38,20 @@
  *   item's audio or record leaves only once home has read it back (`held`,
  *   `letGoHeld`, the clear of finished sessions home holds, and a capped
  *   store making room with what home holds), and a Drive copy is only ever
- *   a copy.
+ *   a copy. A Studio take's audio leaves only once home holds it **and** the
+ *   owner's choice allows it (HF11, #2401; soundbites' `lib/project/let-go`):
+ *   none before they choose, every one under "Let takes go once home has
+ *   them", and under "Keep each until Drive has it too" only the one they
+ *   tap "Drive has it" on.
  * - _Family:_ every share kind (reflections; the study-context export with
  *   its soundbites, grammar-lens entries and takes, and LeetType answers and
  *   takes; Studio takes) and every cap that makes room (soundbites, lens
  *   takes, LeetType takes and answer notes, and the grammar-lens record,
  *   HF5 #2180) × every home state (held; waiting; unpaired; off the LAN,
- *   which the phone sees alike as not held).
+ *   which the phone sees alike as not held); for Studio takes, × every
+ *   choice (none yet, once home has them, until Drive has it too) × the
+ *   owner's "Drive has it" on the take (tapped or not) and the share sheet's
+ *   "They're in Drive" (said or not), which lets nothing go.
  * - _Proof:_ `lib/jobs/__tests__/runtime.test.ts` ("LG1": home's word lets
  *   a note's audio go, and a file a run missed is filed again with the audio
  *   still on the phone), `lib/agent-export/index.test.ts`
@@ -54,7 +62,12 @@
  *   ask home holds carried, and no other),
  *   soundbites' `project/__tests__/model.test.ts` and
  *   `studio/__tests__/studio.test.ts` ("LG1": a take kept by Drive stays on
- *   the phone; only `home` lets it go), and for the caps (HF5) soundbites'
+ *   the phone; only `home` lets it go), soundbites'
+ *   `project/__tests__/home.test.ts` ("LG1": every choice × Drive's word,
+ *   home holding the take) and `studio/__tests__/studio.test.ts` ("a take
+ *   home holds (HF11, LG1)": nothing before the choice, every one on "once
+ *   home has them", only the tapped one on "until Drive has it too", none
+ *   when the choice can't be kept), and for the caps (HF5) soundbites'
  *   `__tests__/policy.test.ts` and `components/soundbites/index.test.tsx`,
  *   `lib/takes-desk/__tests__/runtime.test.ts`,
  *   `lib/leetype-takes/index.test.ts` and topik's

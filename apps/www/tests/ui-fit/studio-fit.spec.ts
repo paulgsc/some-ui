@@ -245,6 +245,27 @@ const WALKS: Record<
       },
     },
   ],
+  "studio-held": [
+    {
+      // Home holds every take, and nothing leaves until the owner chooses.
+      screen: "Start, home holds the takes: when they leave",
+      go: async (page): Promise<void> => {
+        await start(page)
+        await page
+          .getByRole("button", { name: "Keep each until Drive has it too" })
+          .waitFor()
+      },
+    },
+    {
+      screen: "Start, each take kept until Drive has it",
+      go: async (page): Promise<void> => {
+        await tap(page, "Keep each until Drive has it too")
+        await page
+          .getByRole("button", { name: /^Drive has it: Scene 3/ })
+          .waitFor()
+      },
+    },
+  ],
   idea: [
     {
       screen: "New idea, the first question",

@@ -20,6 +20,7 @@ import { indexedDbProjectStore } from "./project/store"
 import type { SoundbitesPorts } from "./runtime"
 import type { SoundbiteStore } from "./store"
 import { indexedDbSoundbiteStore } from "./store"
+import { keptLetGo } from "./studio/let-go-store"
 import type { StudioPorts } from "./studio/runtime"
 import { keptTimeLog } from "./studio/time-store"
 
@@ -59,6 +60,7 @@ export function phoneStudioPorts(): StudioPorts {
     readText: (file) => file.text(),
     onVisibility: onPageVisibility,
     timeLog: keptTimeLog(),
+    letGo: keptLetGo(),
   }
 }
 

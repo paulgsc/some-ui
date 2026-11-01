@@ -31,7 +31,10 @@ type StudioKeeping = {
   readonly notesForHome: (
     projects: ReadonlyArray<Project>
   ) => ReadonlyArray<StudioNote>
-  /** Lets the audio of each take home holds (`held`) leave the phone. */
+  /**
+   * Marks each take home holds (`held`) as kept there, and lets the audio of
+   * each the owner's choice allows leave the phone (HF11, LG1).
+   */
   readonly letGoHeldTakes: (held: ReadonlySet<string>) => Promise<number>
   readonly sittingKey: (sitting: Sitting) => string
 }

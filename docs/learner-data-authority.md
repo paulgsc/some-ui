@@ -41,6 +41,7 @@ toward this frame without doing so is a finding.
 | Every share sheet's let-go (done: HF1, #2176, promise LG1); the Jobs share sheet itself and the archive's (done)     | HF2, #2177        |
 | The drama prompt's share sheet, and its scene notes let go on a share (done: LA18 declared, LA13 reworded)           | HF4, #2179        |
 | LA13's notes (done: soundbites, lens and LeetType takes); LA15's drain (done: their notes); the archive (done: gone) | HF5, #2180        |
+| LG1's Studio takes, which left the phone as soon as home held them (done: they wait on the owner's choice)           | HF11, #2401       |
 
 HF8 (#2182, owner's decision D3: no per-domain switch, and no consent log told
 to home or enforced by home) removed the phone's consent machinery: the
@@ -80,6 +81,17 @@ makes room with the oldest home holds, and is refused while home holds none
 nothing go, and "Archive finished sessions" is gone: home already holds
 finished sessions. The study list's delete does not keep a home copy first
 yet (the HF5 issue).
+
+HF11 (#2401; the owner, 2026-10-31: "no silent behavior … a purposeful
+action by user") stops a Studio take leaving the phone the moment home holds
+it, which left a take home received before it was shared to Drive with no way
+to Drive from the phone. Once home holds a take, Studio's Start offers one
+choice, kept on the phone and changeable: "Let takes go once home has them",
+or "Keep each until Drive has it too", where each take home holds waits with
+its own "Drive has it". Until the owner chooses, none leaves, and at the takes
+cap Record names the choice that would free room (LG1). Home confirming that
+Drive has a take, so it can go on home's word, is route (a) on #2401 and
+follows.
 
 ## The two questions
 
