@@ -29,7 +29,7 @@ import { boundedList } from "@/lib/bounded-list"
 import type { PatternPhone, PatternTakesPorts } from "./pattern"
 import { createPatternTakes } from "./pattern"
 import type { PhoneTakes, Take, TakeLimits } from "./runtime"
-import { createTakes } from "./runtime"
+import { createTakes, homeHolds } from "./runtime"
 
 export type { DeskSnapshot, PhoneTakes, Take } from "./runtime"
 export { makesRoom } from "./runtime"
@@ -166,7 +166,7 @@ function desk<R extends Runtime>(
       now: () => Date.now(),
       newId: () => crypto.randomUUID(),
       kept: (id) => where(id),
-      held: (id) => where(id).place === "home",
+      held: (id) => homeHolds(where(id)),
     })
     return runtime
   }

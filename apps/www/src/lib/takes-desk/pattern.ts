@@ -36,7 +36,7 @@ import type {
 import { ONE_TAKE, shelveTake, takePattern } from "@some-ui/voice-capture"
 
 import type { Take, TakeLimits } from "./runtime"
-import { makesRoom } from "./runtime"
+import { homeHolds, makesRoom } from "./runtime"
 
 export type PatternTakesPorts = {
   startRecording: StartRecording
@@ -99,7 +99,7 @@ export function createPatternTakes(
   limits: TakeLimits
 ): PatternPhone {
   const listeners = new Set<() => void>()
-  const held = (id: string): boolean => ports.kept(id).place === "home"
+  const held = (id: string): boolean => homeHolds(ports.kept(id))
   const listed = (): ReadonlyArray<PatternTake> =>
     ports.takes.read().map(
       (take): PatternTake => ({

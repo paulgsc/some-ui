@@ -119,6 +119,22 @@ describe("createPatternTakes", () => {
     expect(on.listed().map(({ id }) => id)).toEqual(["n1"])
   })
 
+  it("refuses a take at its cap while the only other one is going home, letting none go (MIC3)", async () => {
+    const on = desk(1)
+    await take(on, "a")
+    on.home.copied("n1")
+    on.phone.recount()
+    expect(on.phone.takes.getSnapshot()[0]?.kept).toEqual({ place: "going" })
+    expect(on.phone.full()).toBe(true)
+    await take(on, "b")
+    expect(on.phone.pattern.getSnapshot().ended).toMatchObject({
+      answers: "b",
+      ending: "full",
+    })
+    expect(on.listed().map(({ id }) => id)).toEqual(["n1"])
+    expect(await on.shelf.ids()).toEqual(["n1"])
+  })
+
   it("makes room at its cap by letting go the oldest take home holds (HF5)", async () => {
     const on = desk(2)
     await take(on, "a")

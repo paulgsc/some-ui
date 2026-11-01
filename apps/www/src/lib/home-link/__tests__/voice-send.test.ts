@@ -51,6 +51,8 @@ const fakes = vi.hoisted(
     letGo: "home" | "drive" | null
     waitingIds: ReadonlyArray<string>
     onDrive: Array<ReadonlyArray<string>>
+    /** Whether the phone is paired with home. */
+    paired: boolean
   } => ({
     jobs: null,
     audio: new Map(),
@@ -59,6 +61,7 @@ const fakes = vi.hoisted(
     letGo: null,
     waitingIds: [],
     onDrive: [],
+    paired: true,
   })
 )
 
@@ -110,7 +113,7 @@ vi.mock("@/lib/home-link/lanes", () => ({
 }))
 vi.mock("@/lib/home-link", () => ({
   homeLink: (): unknown => ({ subscribe: () => (): void => undefined }),
-  paired: (): boolean => true,
+  paired: (): boolean => fakes.paired,
   pairingOf: (): string => PAIRING,
 }))
 vi.mock("@some-ui/topik", () => ({
@@ -208,6 +211,7 @@ function setUp(
   audio: Record<string, Blob | Error | null>,
   { arrived = false, storage = memoryStorage(), now = Date.now } = {}
 ): void {
+  fakes.paired = true
   fakes.jobs = record(Object.keys(audio), arrived)
   fakes.scene = []
   fakes.audio = new Map(
@@ -257,7 +261,7 @@ describe("the voice lane's run, after its copy pass (LA14)", () => {
     expect(waiting()).toBe(1)
   })
 
-  it("MIC3: says a note is kept on this phone, going home while its copy waits, then on home since this phone heard so; one no lane carries stays kept on this phone", async () => {
+  it("MIC3: says a note is kept on this phone, going home while its copy waits and the phone is paired, then on home since this phone heard so; one no lane carries stays kept on this phone", async () => {
     const heard = "2026-11-01T09:15:00.000Z"
     setUp(5, { v1: new Blob(["a"]) }, { now: () => Date.parse(heard) })
     const said = (id: string): string => keptSaid(TAKE_WORDS, voiceKept(id))
@@ -265,6 +269,11 @@ describe("the voice lane's run, after its copy pass (LA14)", () => {
 
     const busy: HomeCall = () => Promise.resolve({ status: 503, body: "" })
     expect((await sendVoice(busy)).kind).toBe("failed")
+    expect(said("v1")).toBe(TAKE_WORDS.place.going)
+    // Unpaired, its copy goes nowhere: kept here until paired again.
+    fakes.paired = false
+    expect(said("v1")).toBe(TAKE_WORDS.place.phone)
+    fakes.paired = true
     expect(said("v1")).toBe(TAKE_WORDS.place.going)
 
     expect(await sendVoice(send)).toEqual({ kind: "synced" })

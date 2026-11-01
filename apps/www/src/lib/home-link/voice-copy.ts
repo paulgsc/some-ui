@@ -98,6 +98,7 @@ import type { KeptBite } from "@some-ui/game-week"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import type { Soundbite } from "@some-ui/soundbites"
 import type { TakeKept } from "@some-ui/voice-capture"
+import { ON_PHONE } from "@some-ui/voice-capture"
 
 import { phoneGameBites } from "@/lib/game-bites"
 import type { IdeaTake } from "@/lib/idea-takes"
@@ -611,13 +612,16 @@ let kept: {
 
 /**
  * Where a take of a kind this lane carries is kept, and since when (MIC3):
- * what its desk's rows say. A kind no lane carries is never asked, so its
- * rows say it is kept on this phone.
+ * what its desk's rows say. A copy waiting while the phone is unpaired goes
+ * nowhere, so its take is kept on this phone until the phone is paired again
+ * (`holdOffline` hears the pairing change). A kind no lane carries is never
+ * asked, so its rows say it is kept on this phone.
  */
 export function voiceKept(id: string): TakeKept {
   const state = phoneVoiceHome().getSnapshot()
   if (kept?.from !== state) kept = { from: state, of: keptIn(state) }
-  return kept.of(id)
+  const where = kept.of(id)
+  return where.place === "going" && !paired() ? ON_PHONE : where
 }
 
 /** A store whose notes leave this phone once home holds them. */
