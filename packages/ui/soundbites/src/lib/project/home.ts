@@ -9,7 +9,7 @@
  * Sending is the app's home link's (www `lib/home-link/voice-copy`).
  */
 import type { LetGoChoice } from "./let-go"
-import { mayLeave } from "./let-go"
+import { mayLeave, waitingTakes } from "./let-go"
 import type { Project, ProjectEvent } from "./model"
 import { homeHolds, step } from "./model"
 import type { ProjectStore } from "./store"
@@ -88,6 +88,66 @@ export async function letGoHeldTakes(
     if (heldByHome(project, held, leaves) === null) continue
     const written = await store.update(project.id, (now) =>
       now === null ? null : heldByHome(now, held, leaves)
+    )
+    if (written.changed) changed++
+  }
+  return changed
+}
+
+/** The ids of the takes home holds still on the phone, over `projects`: what home is asked about Drive for. */
+export function waitingIds(
+  projects: ReadonlyArray<Project>
+): ReadonlyArray<string> {
+  return projects.flatMap((project) =>
+    waitingTakes(project).map((take) => take.id)
+  )
+}
+
+/**
+ * `project` with each take home holds and home says Drive has too
+ * (`onDrive`, HF11) marked kept by Drive and let go, once the owner has
+ * chosen; null when it changes nothing.
+ */
+function onDriveByHome(
+  project: Project,
+  onDrive: (id: string) => boolean,
+  choice: LetGoChoice
+): Project | null {
+  let at = project
+  for (const take of waitingTakes(project)) {
+    if (!onDrive(take.id) || choice === null) continue
+    const events: ReadonlyArray<ProjectEvent> = [
+      ...(take.keptBy.includes("drive")
+        ? []
+        : [{ type: "keptBy", take: take.id, keeper: "drive" } as const]),
+      { type: "letGo", take: take.id },
+    ]
+    for (const event of events) {
+      const next = step({ project: at, taking: null, closing: null }, event)
+      if (next.refused === null) at = next.state.project
+    }
+  }
+  return at === project ? null : at
+}
+
+/**
+ * Lets the audio of each take home holds and says Drive has too leave the
+ * phone, as the owner's choice allows (none before they choose), project by
+ * project, each in its own write; how many projects changed.
+ */
+export async function letGoOnDrive(
+  store: ProjectStore,
+  onDrive: ReadonlySet<string>,
+  choice: LetGoChoice
+): Promise<number> {
+  if (onDrive.size === 0 || choice === null) return 0
+  const says = (id: string): boolean => onDrive.has(id)
+  const projects = await store.list()
+  let changed = 0
+  for (const project of projects) {
+    if (onDriveByHome(project, says, choice) === null) continue
+    const written = await store.update(project.id, (now) =>
+      now === null ? null : onDriveByHome(now, says, choice)
     )
     if (written.changed) changed++
   }

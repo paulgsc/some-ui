@@ -111,7 +111,7 @@ const DRIVE_HAS_IT = "Drive has it"
 /** What each choice does, as Start says it under the choice. */
 const LET_GO_SAYS = {
   home: "Takes leave the phone once home has them.",
-  drive: `Each take stays on the phone until Drive has it too. Tap “${DRIVE_HAS_IT}” once it does.`,
+  drive: `Each take stays on the phone until Drive has it too. It goes once home sees it in Drive, the next time Claude reads the takes there, or when you tap “${DRIVE_HAS_IT}”.`,
 } as const satisfies Record<LetGo, string>
 
 /**
@@ -341,7 +341,7 @@ export const STUDIO_WORDS = {
     chosen: {
       home: LET_GO_SAYS.home,
       drive:
-        "Each take home has stays on the phone until you say Drive has it too.",
+        "Each take home has stays on the phone until home sees it in Drive too, or you say Drive has it.",
     } satisfies Record<LetGo, string>,
     notKept:
       "That choice couldn't be kept on the phone, so nothing changed. Try again?",

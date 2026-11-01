@@ -38,7 +38,19 @@ const fakes = vi.hoisted(
       mimeType: string
       at: string
     }>
-  } => ({ jobs: null, audio: new Map(), home: null, scene: [] })
+    /** Studio's choice and its waiting takes, as its route hands them in. */
+    letGo: "home" | "drive" | null
+    waitingIds: ReadonlyArray<string>
+    onDrive: Array<ReadonlyArray<string>>
+  } => ({
+    jobs: null,
+    audio: new Map(),
+    home: null,
+    scene: [],
+    letGo: null,
+    waitingIds: [],
+    onDrive: [],
+  })
 )
 
 vi.mock("@/lib/jobs", () => ({
@@ -261,6 +273,12 @@ describe("Studio's takes, once its route hands them in (ST12)", () => {
         },
       ],
       letGoHeldTakes: () => Promise.resolve(0),
+      letGo: () => fakes.letGo,
+      waitingIds: () => fakes.waitingIds,
+      letGoOnDrive: (onDrive) => {
+        fakes.onDrive.push([...onDrive])
+        return Promise.resolve(1)
+      },
       sittingKey: () => "s",
     })
     const sent: Array<string> = []
@@ -272,6 +290,57 @@ describe("Studio's takes, once its route hands them in (ST12)", () => {
     expect(fakes.home?.getSnapshot().held).toEqual(["t1"])
     expect(sent.some((path) => path.includes("of=studio"))).toBe(true)
     expect(waiting()).toBe(0)
+    // No choice yet: home is not asked which takes Drive has.
+    expect(sent.some((path) => path.includes("on-drive"))).toBe(false)
+  })
+
+  /**
+   * LG1 (HF11): home's word that Drive has a take is asked for only under
+   * "Keep each until Drive has it too", after the notes synced, and lets go
+   * only what home named; a read that fails lets nothing go. Runs after the
+   * test above, which handed Studio in for the module.
+   */
+  it.each([
+    ["home", false],
+    [null, false],
+    ["drive", true],
+  ] as const)(
+    "LG1: with the choice %s, home is asked which takes Drive has: %s",
+    async (letGo, asked) => {
+      setUp(5, {})
+      fakes.letGo = letGo
+      fakes.waitingIds = ["t1", "t:9"]
+      fakes.onDrive = []
+      const sent: Array<string> = []
+      const answering: HomeCall = (method, path, init) => {
+        sent.push(path)
+        if (path.startsWith("/voice-notes/on-drive"))
+          return Promise.resolve({
+            status: 200,
+            body: JSON.stringify({
+              onDrive: [{ note: "t1", listedAt: "2026-11-01T09:15:00.000Z" }],
+            }),
+          })
+        return send(method, path, init)
+      }
+      expect(await sendVoice(answering)).toEqual({ kind: "synced" })
+      expect(sent.includes("/voice-notes/on-drive?ids=t1,t%3A9")).toBe(asked)
+      expect(fakes.onDrive).toEqual(asked ? [["t1"]] : [])
+    }
+  )
+
+  it("LG1: a home that can't say which takes Drive has lets none go, and the run still ends as its notes did", async () => {
+    setUp(5, {})
+    fakes.letGo = "drive"
+    fakes.waitingIds = ["t1"]
+    fakes.onDrive = []
+    const old: HomeCall = (method, path, init) =>
+      path.startsWith("/voice-notes/on-drive")
+        ? Promise.resolve({ status: 404, body: "{}" })
+        : send(method, path, init)
+    expect(await sendVoice(old)).toEqual({ kind: "synced" })
+    expect(fakes.onDrive).toEqual([])
+    fakes.letGo = null
   })
 })
 

@@ -11,12 +11,14 @@ import {
   keptLetGo,
   keptTimeLog,
   letGoHeldTakes,
+  letGoOnDrive,
   notesForHome,
   phoneProjectStore,
   sittingKey,
   STUDIO_WORDS,
   studioFiles,
   StudioHome,
+  waitingIds,
 } from "@some-ui/soundbites"
 import { createFileRoute, Link } from "@tanstack/react-router"
 
@@ -113,6 +115,11 @@ const StudioRoute = (): JSX.Element => {
       notesForHome,
       // As the owner chose, read at each let-go (HF11, LG1): none before.
       letGoHeldTakes: (held) => letGoHeldTakes(store, held, keptLetGo().read()),
+      letGo: () => keptLetGo().read(),
+      waitingIds,
+      // Home's word that Drive has a take too (HF11), as the owner chose.
+      letGoOnDrive: (onDrive) =>
+        letGoOnDrive(store, onDrive, keptLetGo().read()),
       sittingKey,
     })
   }, [])

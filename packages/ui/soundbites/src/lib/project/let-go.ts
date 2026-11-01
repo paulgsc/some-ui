@@ -5,7 +5,8 @@
  *
  * - `home`: a take leaves once home holds it.
  * - `drive`: a take home holds stays until Drive has it too: the owner's tap
- *   on that take ("Drive has it").
+ *   on that take ("Drive has it"), or home's word that Claude found the
+ *   take's recording in Drive (`letGoOnDrive` in `./home`).
  *
  * Until the owner chooses, no take leaves. A take home does not hold never
  * leaves, whatever the choice (`letGoRefusal` in `./model`).
