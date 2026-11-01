@@ -91,9 +91,7 @@ export class HttpSessionsRepository implements SessionsStore {
         activities: input.activities,
         scenes: input.scenes,
         layoutMode: input.layoutMode,
-        ...(input.createdAt === undefined
-          ? {}
-          : { createdAt: input.createdAt }),
+        createdAt: input.createdAt,
       }),
     })
   }

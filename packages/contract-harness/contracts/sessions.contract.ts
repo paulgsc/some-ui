@@ -182,6 +182,37 @@ export const contracts = [
   }),
 
   defineContract({
+    id: "sessions.update_dated_not_found",
+    module: "sessions",
+    session: true,
+    method: "PATCH",
+    path: "/sessions/:id",
+    summary:
+      "a patch may send createdAt, which brings a copy's date up to the device's; to an id this subject does not hold it is a 404",
+    mutates: true,
+    // `sessions-copy`'s catch-up patch sends `createdAt`. A well-formed one
+    // is taken, so the miss is what answers.
+    request: { path: { id: ABSENT_ID }, body: { createdAt: MADE_AT } },
+    expect: { status: 404 },
+  }),
+
+  defineContract({
+    id: "sessions.update_dated_refused",
+    module: "sessions",
+    session: true,
+    method: "PATCH",
+    path: "/sessions/:id",
+    summary:
+      "a patch whose createdAt is no RFC 3339 time is a 422, and nothing changes",
+    mutates: true,
+    request: {
+      path: { id: ABSENT_ID },
+      body: { createdAt: "2026-10-14" },
+    },
+    expect: { status: 422 },
+  }),
+
+  defineContract({
     id: "sessions.update_not_found",
     module: "sessions",
     session: true,

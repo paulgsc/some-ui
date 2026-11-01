@@ -417,8 +417,12 @@ declared (checked by reading every call site and by the tests named).
   of the link, and the phone lets go of its own copy only if `confirmHeld`
   reports it held and it is unchanged since it was read
   (`letGoUnchanged`); otherwise it stays. Home's copy keeps its plan,
-  status and times, and its `createdAt`, which the copy sends and
-  `sameRecord` compares (paulgsc/server#630). On a
+  status and times, and its `createdAt`, which the copy sends (on create,
+  and in the patch that brings a copy up to date) and `sameRecord`
+  compares (paulgsc/server#630). A finished session drained while home
+  dated its copy on arrival is sent once more by the drain (its held entry
+  in `lib/home-link/sent` names `createdAt` too), whose patch dates home's
+  copy, so the clear then finds it held. On a
   phone known to be unpaired (`pairingIn`), whose confirm (`promiseOf`)
   says it can't be brought back, it is deleted as before and nothing is
   sent. The phone-full offer's "Remove it"
@@ -589,6 +593,13 @@ declared (checked by reading every call site and by the tests named).
   tap, and one shown while the pairing can't be read promises home and
   keeps it; an unpaired phone's offer says it can't be brought back and
   deletes it as before).
+- _Tolerance:_ home refuses a `createdAt` more than five minutes past its
+  own clock, so a phone whose clock runs further ahead has that copy
+  refused, and the copy (the drain's, or a let-go's) ends there, leaving
+  the rest of that run unsent, until home's clock comes within five
+  minutes of that `createdAt`. A home that predates paulgsc/server#630 ignores
+  `createdAt`, so its copies never match the phone's, and nothing is let
+  go on its word until it runs that change.
 
 ### LA9 (retired): aph is sent home only while its person is using it
 

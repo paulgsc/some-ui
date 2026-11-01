@@ -201,7 +201,12 @@ async function insertIfAbsent(
 /** How far past now a sent `createdAt` may be (`CREATED_AT_AHEAD`). */
 const CREATED_AT_AHEAD_MS = 5 * 60_000
 
-/** chrono's `parse_from_rfc3339`: a date, a time and an offset. */
+/**
+ * RFC 3339's shape (a date, a time and an offset), then `Date.parse`. Near
+ * chrono's `parse_from_rfc3339`, which file_host uses, but not the same on
+ * an impossible date or a leap second (`2026-02-30`, `24:00:00`,
+ * `23:59:60`), which no client of this backend sends.
+ */
 const RFC3339 =
   /^\d{4}-\d{2}-\d{2}[Tt ]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})$/
 

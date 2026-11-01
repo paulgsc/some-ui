@@ -18,10 +18,12 @@
  * account never keeps a stale one and the phone can let its own go.
  *
  * **Dated where it was made.** A create sends the session's `createdAt`,
- * which home keeps since paulgsc/server#630, so a draft copied home is not
- * dated the day it got there. A copy made before then carries home's date;
- * `sameRecord` compares it, so the next press finds that copy differing and
- * its patch dates it too.
+ * which home keeps (paulgsc/server#630), and `sameRecord` compares it. A
+ * copy home dated on arrival therefore differs, and is dated by the patch
+ * of the next copy that plans it: a let-go's, or the drain's, which sends
+ * each finished session drained before then once more (`home-link/sent`'s
+ * held entry names `createdAt`). The clear sends nothing, so it frees such
+ * a copy only after that.
  *
  * **Resumable.** There is no import endpoint: a copy is a create then a patch.
  * The receipt is written after each (`complete: false`, then `true`), so a
@@ -235,7 +237,6 @@ function caughtUp(
   session: SessionRecord
 ): Parameters<SessionsStore["update"]>[1] {
   return {
-    // Its create sent it; a copy made before home kept it did not.
     createdAt: session.createdAt,
     name: session.name,
     activities: session.activities,

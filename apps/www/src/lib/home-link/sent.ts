@@ -1,7 +1,7 @@
 /**
  * What this phone knows its paired home holds, so the drain (`./drain`)
- * carries only what changed since: each finished session's `updatedAt` as
- * it was copied, each kept shelf item's digest as home answered for it,
+ * carries only what changed since: each finished session's `updatedAt` and
+ * `createdAt` as it was copied (`heldEntryOf`), each kept shelf item's digest as home answered for it,
  * each LeetType session's digest as home read it back (`./leetype-log`),
  * each Studio sitting's and answer's (`./studio-log`), each written
  * reflection's as home answered it (`./reflections`), each ask for the next
@@ -192,6 +192,15 @@ export function rememberSent(
   return next
 }
 
+/**
+ * A finished session's held entry: when it last changed and when it was
+ * made. An entry holding only `updatedAt` names a copy home dated on
+ * arrival (before paulgsc/server#630), so it reads as changed, and the
+ * drain sends that session once more: its copy's patch dates home's.
+ */
+const heldEntryOf = (session: SessionRecord): string =>
+  `${session.updatedAt} ${session.createdAt}`
+
 /** The finished sessions home does not hold as they are now. */
 export function sessionsToSend(
   local: ReadonlyArray<SessionRecord>,
@@ -200,7 +209,7 @@ export function sessionsToSend(
   return local.filter(
     (session) =>
       session.status === "completed" &&
-      sent.sessions[session.id] !== session.updatedAt
+      sent.sessions[session.id] !== heldEntryOf(session)
   )
 }
 
@@ -208,7 +217,7 @@ export function sessionsToSend(
 export function sessionsHeld(
   sessions: ReadonlyArray<SessionRecord>
 ): Record<string, string> {
-  return Object.fromEntries(sessions.map((s) => [s.id, s.updatedAt]))
+  return Object.fromEntries(sessions.map((s) => [s.id, heldEntryOf(s)]))
 }
 
 /**

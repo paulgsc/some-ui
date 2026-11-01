@@ -79,7 +79,7 @@ export type CreateSessionInput = {
   layoutMode: "basic" | "advanced"
   /**
    * When it was made where it was made, for a copy: `file_host` dates the
-   * session by it (paulgsc/server#630), as this store does.
+   * session by it (paulgsc/server#630), and so, for parity, does this store.
    */
   createdAt?: string
 }
