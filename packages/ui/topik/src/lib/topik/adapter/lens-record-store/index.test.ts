@@ -39,9 +39,16 @@ const entry = (
 
 /**
  * A record already at the bound: one entry 400 days old named `oldest`, then
- * `l1` … `l999`, written once. Filling it with a thousand adds rewrote the
- * whole record each time, which took 15.7 s on a busy CI host (EG1's host
- * load), past even a raised timeout; the bound is what these tests are about.
+ * `l1` … `l999`, written once.
+ *
+ * LR1: the bound tests below fail only on a broken bound, not because the
+ * host is slow.
+ * - Claim: their setup costs one write, whatever `LENS_RECORD_MAX` is.
+ * - Family: host load (shared with EG1 in serving-privacy's egress scans).
+ * - Proof: this fixture. Filling the record with a thousand adds rewrote the
+ *   whole record each time, quadratic in the bound: 15.7 s on a busy CI host,
+ *   past even a raised timeout. Seeded, each test runs a handful of adds, well
+ *   inside vitest's 5 s default.
  */
 function atTheBound(oldest: string): ReturnType<typeof memoryStorage> {
   const entries = [
