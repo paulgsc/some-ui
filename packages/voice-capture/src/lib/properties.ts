@@ -11,7 +11,9 @@
  * - _Claim:_ a take started through the take kit, or through
  *   `voiceNoteRuntime` or www's `lib/takes-desk`, reaches exactly one
  *   ending (`TakeEnding`), within the take's deadlines (VC1) and its cap,
- *   and every ending has a sentence the screen says (`TakeEndingWords`).
+ *   and every ending has a sentence (`TakeEndingWords`) in the snapshot a
+ *   screen reads. On Rust Rounds' card it is on screen; each other screen
+ *   joins when it moves to the take pattern (MIC4–MIC6).
  * - _Family:_ every trace of the scenario family (`takeScenarios`): taps
  *   (a start, a stop, a spurious second tap), leaving, the page hidden or
  *   shown, one to three screens, and per opening the microphone's answer
@@ -24,8 +26,9 @@
  *   `lib/takes-desk/__tests__/runtime.test.ts` ("VC2", "VC3") over the real
  *   desk; www's `lib/rust-rounds/index.test.tsx` over Rust Rounds on the
  *   real desk and the simulated microphone; `TakeEndingWords` and
- *   `VOICE_NOTE_SAID` are `Record`s over every ending. `voiceNoteRuntime` dispatches the same `stepVoiceNote` the kit
- *   embeds, so it is covered through the step until MIC5 moves its screens.
+ *   `VOICE_NOTE_SAID` are `Record`s over every ending. `voiceNoteRuntime`
+ *   dispatches the same `stepVoiceNote` the kit embeds, so it is covered
+ *   through the step until MIC5 moves its screens.
  *
  * **VC3: the phone's microphone is held by at most one take, only while
  * that take is under way, and audio is kept only for a take that was
