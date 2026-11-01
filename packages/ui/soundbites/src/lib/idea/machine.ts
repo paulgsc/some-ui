@@ -182,7 +182,6 @@ export type IdeaEvent =
   | { readonly type: "ready"; readonly seq: number }
   /** The listening's take is kept, and home is hearing it (IH1). */
   | { readonly type: "hearing"; readonly seq: number }
-  /** A take was kept that home won't hear for an answer (IH1). */
   | { readonly type: "partial"; readonly seq: number; readonly words: string }
   | {
       readonly type: "listened"
