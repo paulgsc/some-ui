@@ -56,6 +56,9 @@ const CreatedSessionSchema = SessionRecordSchema.omit({
  */
 const NAMED_ID = "session-contract-harness-named-probe"
 
+/** When a copied session was made where it was made: long before any run. */
+const MADE_AT = "2026-10-14T09:00:00.000Z"
+
 /** An id no one holds, so every miss below is a real miss. */
 const ABSENT_ID = "session-contract-harness-does-not-exist"
 
@@ -139,6 +142,42 @@ export const contracts = [
     summary: "a named id that is not a session's is a 422, and nothing is made",
     mutates: true,
     request: { body: { id: "contract-harness", ...DRAFT } },
+    expect: { status: 422 },
+  }),
+
+  defineContract({
+    id: "sessions.create_dated",
+    module: "sessions",
+    session: true,
+    method: "POST",
+    path: "/sessions",
+    summary:
+      "a create that sends createdAt is dated by it: a copy keeps when it was made where it was made",
+    mutates: true,
+    // `sessions-copy` sends each session's own `createdAt` (paulgsc/server#630).
+    // Home keeps it in UTC in its own form, so the instant is compared, not
+    // the text.
+    request: { body: { ...DRAFT, createdAt: MADE_AT } },
+    expect: {
+      status: 200,
+      schema: CreatedSessionSchema.extend({
+        createdAt: z
+          .string()
+          .refine((at) => Date.parse(at) === Date.parse(MADE_AT)),
+      }),
+    },
+  }),
+
+  defineContract({
+    id: "sessions.create_dated_refused",
+    module: "sessions",
+    session: true,
+    method: "POST",
+    path: "/sessions",
+    summary:
+      "a createdAt that is no RFC 3339 time is a 422, and nothing is made",
+    mutates: true,
+    request: { body: { ...DRAFT, createdAt: "2026-10-14" } },
     expect: { status: 422 },
   }),
 

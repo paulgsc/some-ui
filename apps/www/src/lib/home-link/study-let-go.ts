@@ -15,7 +15,7 @@
  * One request run, no retry: a run the link is already busy with, or one
  * Stop or the background ends, keeps the session (CLAUDE.md, "Never lose
  * the record"). Home's copy carries the session's plan, status and times,
- * but not its `createdAt`: home dates it the day it reached home.
+ * and when it was made (`createdAt`).
  *
  * A failure that is not home's word or silence (home turning it away, a
  * fault on this phone) is reported (`reportFailure`), as the sync's are; the

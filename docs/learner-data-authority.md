@@ -83,8 +83,8 @@ nothing go, and "Archive finished sessions" is gone: home already holds
 finished sessions. The study list's "Let it go" keeps a home copy first: on
 a paired phone it copies the session home, whatever its status, reads it
 back, and lets the phone's copy go only once home holds it as it is and it
-is unchanged since (LA8). Home keeps its plan, status and times, but not
-its `createdAt`: on home that is the day it reached home. A phone that is
+is unchanged since (LA8). Home keeps its plan, status and times, and when
+it was made (paulgsc/server#630). A phone that is
 not paired has no home to keep a copy, so there it deletes as it always did,
 and its confirm says the session can't be brought back. The phone-full
 offer's "Remove it" of the oldest finished session is the same let-go, with
@@ -417,9 +417,8 @@ declared (checked by reading every call site and by the tests named).
   of the link, and the phone lets go of its own copy only if `confirmHeld`
   reports it held and it is unchanged since it was read
   (`letGoUnchanged`); otherwise it stays. Home's copy keeps its plan,
-  status and times but for `createdAt`, which on home is the day it reached
-  home (home sets it on create, and `sameRecord` does not compare it), so a
-  draft or scheduled session let go reads there as made that day. On a
+  status and times, and its `createdAt`, which the copy sends and
+  `sameRecord` compares (paulgsc/server#630). On a
   phone known to be unpaired (`pairingIn`), whose confirm (`promiseOf`)
   says it can't be brought back, it is deleted as before and nothing is
   sent. The phone-full offer's "Remove it"

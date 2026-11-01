@@ -81,8 +81,8 @@ export class HttpSessionsRepository implements SessionsStore {
   }
 
   async create(input: CreateSessionInput): Promise<SessionRecord> {
-    // No `totalDurationMs` or timestamps: the server's. The full record comes
-    // back for the react-query cache.
+    // No `totalDurationMs` or `updatedAt`: the server's, as `createdAt` is
+    // but for a copy's. The full record comes back for the react-query cache.
     return this.request<SessionRecord>("/sessions", {
       method: "POST",
       body: JSON.stringify({
@@ -91,6 +91,9 @@ export class HttpSessionsRepository implements SessionsStore {
         activities: input.activities,
         scenes: input.scenes,
         layoutMode: input.layoutMode,
+        ...(input.createdAt === undefined
+          ? {}
+          : { createdAt: input.createdAt }),
       }),
     })
   }
