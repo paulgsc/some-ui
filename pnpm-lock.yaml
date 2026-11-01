@@ -1564,6 +1564,9 @@ importers:
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
+      '@some-ui/voice-capture':
+        specifier: workspace:*
+        version: link:../../voice-capture
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -1583,6 +1586,9 @@ importers:
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
+      '@some-ui/vite-config':
+        specifier: workspace:*
+        version: link:../../some-vite-config
       '@types/prismjs':
         specifier: ^1.26.5
         version: 1.26.6

@@ -31,3 +31,5 @@ export {
   SCENARIO_BOUNDS,
   takeScenarios,
 } from "./lib/scenario"
+export type { MemoryTakes, SimulatedPlayer } from "./lib/pattern-testing"
+export { memoryTakes, simulatedPlayer } from "./lib/pattern-testing"

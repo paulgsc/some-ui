@@ -14,6 +14,8 @@
  *
  * A screen's parameters, not copies: what each take answers (`start`'s
  * `answers`, carried to its ending), the cap and the minimum (`limits`).
+ * One current take or many, Redo, Let go and playing a take back are the
+ * take pattern's (`./take-pattern`), which embeds this step.
  *
  * The properties every trace of the kit keeps (VC2, VC3) are `./properties`.
  */
@@ -275,7 +277,7 @@ export type TakeKitPorts = {
   readonly tickMs?: number | undefined
 }
 
-const TICK_MS = 200
+export const TICK_MS = 200
 
 /**
  * Runs `stepTakeKit` over the ports: it holds the microphone through

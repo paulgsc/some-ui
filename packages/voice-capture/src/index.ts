@@ -64,6 +64,35 @@ export {
   takeKitView,
 } from "./lib/take-kit"
 export type {
+  PatternPlayback,
+  PatternTake,
+  TakePattern,
+  TakePatternEffect,
+  TakePatternEvent,
+  TakePatternOptions,
+  TakePatternPorts,
+  TakePatternSnapshot,
+  TakePatternState,
+  TakePlace,
+  TakesPerItem,
+  TakeStanding,
+} from "./lib/take-pattern"
+export {
+  initialTakePattern,
+  stepTakePattern,
+  takePattern,
+  takePatternSnapshot,
+} from "./lib/take-pattern"
+export type {
+  TakeButtonView,
+  TakeItemView,
+  TakeRowView,
+  TakeSaid,
+} from "./lib/take-view"
+export { NEARLY_UP_MS, takeItemView } from "./lib/take-view"
+export type { TakeWords } from "./lib/take-words"
+export { buttonLabel, buttonSaid, TAKE_WORDS, takeSaid } from "./lib/take-words"
+export type {
   TakeView,
   TakeEnding,
   VoiceNoteOutcome,
