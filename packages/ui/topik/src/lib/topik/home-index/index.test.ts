@@ -80,7 +80,12 @@ describe("reflectionsIndexStands", () => {
   })
 
   it("does not stand when it does not read as a reflections index", () => {
-    for (const index of [{ ...INDEX, routine: "jobs" }, null]) {
+    for (const index of [
+      { ...INDEX, routine: "jobs" },
+      { ...INDEX, validUntil: "soon" },
+      { ...INDEX, answered: [] },
+      null,
+    ]) {
       expect(
         reflectionsIndexStands(index, "2026-11-01T16:00:00.000Z", DRIVE)
       ).toEqual({
@@ -89,5 +94,13 @@ describe("reflectionsIndexStands", () => {
         lacking: [],
       })
     }
+  })
+
+  it("does not stand when the run's own time doesn't read", () => {
+    expect(reflectionsIndexStands(INDEX, "soon", DRIVE)).toEqual({
+      stands: false,
+      why: ["The run's own time doesn't read."],
+      lacking: [],
+    })
   })
 })
