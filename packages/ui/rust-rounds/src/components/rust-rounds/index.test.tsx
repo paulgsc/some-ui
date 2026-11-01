@@ -2,7 +2,7 @@
  * The session's screens (#2235): a walk through every screen choosing Skip
  * and Next only, the worked example's rustc results shown as printed, a
  * voice note tapped on and off, heard, redone and let go on the take
- * pattern's parts (MIC4), and the tutor's page. Every control a screen
+ * pattern's parts, and the tutor's page. Every control a screen
  * offers is enabled: nothing waits on a choice. The microphone is the
  * simulated one every screen's tests share, on faked timers.
  */
@@ -13,19 +13,12 @@ import { WORDS } from "@rust-rounds/lib/play/words"
 import { INDEXING_01, INDEXING_01_RUNS } from "@rust-rounds/lib/worked-example"
 import { inMemoryStorage } from "@some-ui/core-utils"
 import { TAKE_WORDS } from "@some-ui/voice-capture"
-import { SPEAKING } from "@some-ui/voice-capture/testing"
+import { SPEAKING, takeButton as take } from "@some-ui/voice-capture/testing"
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const press = (name: string | RegExp): void => {
   fireEvent.click(screen.getByRole("button", { name }))
-}
-
-/** The take button. */
-const take = (): HTMLElement => {
-  const button = document.querySelector<HTMLElement>("[data-take]")
-  if (button === null) throw new Error("no take button")
-  return button
 }
 
 const settle = async (ms = 0): Promise<void> => {

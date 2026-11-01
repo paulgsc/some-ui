@@ -120,13 +120,4 @@ describe("phoneSpokenTakes", () => {
       notesFull: false,
     })
   })
-
-  it("records on the pattern desk's take pattern: one take an answer, Redo and Let go", () => {
-    expect(phoneSpokenTakes().pattern.options).toMatchObject({
-      takes: { per: "one" },
-      limits: { maxMs: 60_000 },
-      redo: "supersede",
-      letGo: "set-aside",
-    })
-  })
 })

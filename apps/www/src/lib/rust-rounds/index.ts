@@ -5,9 +5,8 @@
  * reaches the network: every card plays from what is on the phone.
  * Phone-only (`build.paths.ts`).
  *
- * The voice notes are taken on the take pattern (`patternDesk`, MIC4
- * #2374): tap to start and stop, then Play, Redo and Let go. They wait on
- * this phone, each named by id in the log; a Redo's earlier note and one set
+ * The voice notes are taken on the take pattern (`patternDesk`). They wait
+ * on this phone, each named by id in the log; a Redo's earlier note and one set
  * aside stay there too. What sends them home is RR6 (#2237). Until then the
  * desk keeps every one: it has no count of its own, and only the device's
  * measured room (`withRoom`) refuses a note, which the session then says,

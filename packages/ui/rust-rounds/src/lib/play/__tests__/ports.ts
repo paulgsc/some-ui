@@ -9,32 +9,10 @@
 import type { NotesPort, RustRoundsPorts } from "@rust-rounds/lib/play/runtime"
 import { keptRounds, LOG_KEY } from "@rust-rounds/lib/play/store"
 import { inMemoryStorage } from "@some-ui/core-utils"
-import type {
-  KeepResult,
-  PatternTake,
-  TakePatternOptions,
-} from "@some-ui/voice-capture"
-import { microphoneOwner, takePattern } from "@some-ui/voice-capture"
-import type {
-  MemoryTakes,
-  SimulatedMicrophone,
-  SimulatedPlayer,
-} from "@some-ui/voice-capture/testing"
-import {
-  memoryTakes,
-  simulatedMicrophone,
-  simulatedPlayer,
-} from "@some-ui/voice-capture/testing"
+import type { PatternTake } from "@some-ui/voice-capture"
+import type { SimulatedPattern } from "@some-ui/voice-capture/testing"
+import { simulatedPattern } from "@some-ui/voice-capture/testing"
 import { vi } from "vitest"
-
-/** The phone's: one note per card, each at least a second and at most a minute. */
-const NOTE_OPTIONS: TakePatternOptions = {
-  takes: { per: "one" },
-  limits: { minMs: 1_000, maxMs: 60_000 },
-  redo: "supersede",
-  letGo: "set-aside",
-  play: "each",
-}
 
 /**
  * The session's clock and the notes' list's, one second a read from the
@@ -43,53 +21,16 @@ const NOTE_OPTIONS: TakePatternOptions = {
 let clock = Date.parse("2026-10-30T19:00:00Z")
 const tick = (): number => (clock += 1_000)
 
-export type TestNotes = NotesPort & {
-  readonly mic: SimulatedMicrophone
-  readonly player: SimulatedPlayer
-  readonly store: MemoryTakes
-  /** How the phone answers each note it is asked to keep from now on. */
-  readonly keeping: (how: KeepResult["outcome"]) => void
-}
+export type TestNotes = NotesPort & SimulatedPattern
 
 /** A phone's notes on the simulated microphone, holding `seed` to begin with. */
 export function testNotes(seed: ReadonlyArray<PatternTake> = []): TestNotes {
-  const mic = simulatedMicrophone({ now: Date.now })
-  const player = simulatedPlayer()
-  const store = memoryTakes({ now: tick, seed })
-  let how: KeepResult["outcome"] = "kept"
-  const pattern = takePattern(
-    {
-      startRecording: mic.startRecording,
-      now: Date.now,
-      // Each phone's own: a take one test leaves holds no other's microphone.
-      owner: microphoneOwner(),
-      player,
-      ...store.ports,
-      keep: (take, answers, supersedes, done) => {
-        if (how === "kept") store.ports.keep(take, answers, supersedes, done)
-        else done({ outcome: how })
-      },
-    },
-    NOTE_OPTIONS
-  )
+  const phone = simulatedPattern({ recordedAt: tick, seed })
+  const { store } = phone
   return {
-    pattern,
+    ...phone,
     takes: { getSnapshot: store.getSnapshot, subscribe: store.subscribe },
-    keptOn: (line, since): string | null =>
-      store
-        .getSnapshot()
-        .filter(
-          (take) =>
-            take.answers === line && Date.parse(take.recordedAt) >= since
-        )
-        .sort((a, b) => a.recordedAt.localeCompare(b.recordedAt))[0]?.id ??
-      null,
-    mic,
-    player,
-    store,
-    keeping: (next): void => {
-      how = next
-    },
+    keptOn: store.keptOn,
   }
 }
 

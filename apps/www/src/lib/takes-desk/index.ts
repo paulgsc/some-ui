@@ -3,7 +3,7 @@
  * takes in a list, one runtime per page load. Two runtimes sit on it:
  *
  * - `takesDesk`: the take kit's (`./runtime`), the grammar lens's port
- *   (`lib/lens-takes`), until the lens moves to the take pattern (MIC5).
+ *   (`lib/lens-takes`).
  * - `patternDesk`: the take pattern's (`./pattern`), with Redo and Let go:
  *   Rust Rounds' notes (`lib/rust-rounds`) and LeetType's spoken answers
  *   (`lib/leetype-takes`).
@@ -93,12 +93,10 @@ type Runtime = {
   readonly recount: () => void
 }
 
-function desk<R extends Runtime>(
-  options: DeskOptions,
-  make: (ports: PatternTakesPorts & { readonly player: Player }) => R
-): DeskShelf & { readonly phone: () => R } {
-  const list = boundedList(options.key, options.limits.max, isTake)
-  const takes: PatternTakesPorts["takes"] = {
+/** The desk's list in `localStorage` under `key`, at most `max` takes long. */
+export function deskList(key: string, max: number): PatternTakesPorts["takes"] {
+  const list = boundedList(key, max, isTake)
+  return {
     read: list.read,
     add: (take, supersedes): boolean =>
       list.put(
@@ -113,6 +111,26 @@ function desk<R extends Runtime>(
         take.id === id ? { ...take, standing: "set-aside" } : take
       ),
   }
+}
+
+/** `DeskShelf.keptOn` over `takes`. */
+export function keptOn(
+  takes: ReadonlyArray<Take>,
+  line: string,
+  since: number
+): string | null {
+  return (
+    takes
+      .filter((take) => take.line === line && take.takenAt >= since)
+      .sort((a, b) => a.takenAt - b.takenAt)[0]?.id ?? null
+  )
+}
+
+function desk<R extends Runtime>(
+  options: DeskOptions,
+  make: (ports: PatternTakesPorts & { readonly player: Player }) => R
+): DeskShelf & { readonly phone: () => R } {
+  const takes = deskList(options.key, options.limits.max)
   // Nothing keeps it free; the device's measured budget (`withRoom`) still
   // refuses a take the phone has no room for.
   const shelf = savingShelf({
@@ -178,11 +196,7 @@ function desk<R extends Runtime>(
         })
       )
     },
-    keptOn: (line, since): string | null =>
-      takes
-        .read()
-        .filter((take) => take.line === line && take.takenAt >= since)
-        .sort((a, b) => a.takenAt - b.takenAt)[0]?.id ?? null,
+    keptOn: (line, since): string | null => keptOn(takes.read(), line, since),
     kept: takes.read,
     audio: (id) => shelf.shelf().get(id),
     heldByHome: (next): void => {

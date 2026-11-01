@@ -68,6 +68,19 @@ export type TakePatternOptions = {
   readonly play: "each" | "latest"
 }
 
+/**
+ * One current take an item, each played on its own, at least a second and
+ * at most a minute: what the phone's screens on the pattern choose. A screen
+ * with limits of its own spreads it and sets `limits`.
+ */
+export const ONE_TAKE: TakePatternOptions = {
+  takes: { per: "one" },
+  limits: { minMs: 1_000, maxMs: 60_000 },
+  redo: "supersede",
+  letGo: "set-aside",
+  play: "each",
+}
+
 /** Where a take is kept, in the person's terms (`./take-words`). */
 export type TakePlace = "phone" | "home"
 

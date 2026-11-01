@@ -1,6 +1,6 @@
 /**
- * The card's voice note as the take pattern's parts show it (MIC4, #2374):
- * a pure projection of the session's state, the notes the phone keeps and
+ * The card's voice note as the take pattern's parts show it: a pure
+ * projection of the session's state, the notes the phone keeps and
  * the pattern's options onto `takeItemView`. Only the card's own note is its
  * row (a card's kept note is the card's note), and what the card says is the
  * session's, until the next card: how this visit's last take ended, or that

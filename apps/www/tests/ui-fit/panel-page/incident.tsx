@@ -1,11 +1,6 @@
 import type { JSX } from "react"
 import type { SessionFileStore, SpokenTakes } from "@some-ui/leetype"
-import { microphoneOwner, takePattern } from "@some-ui/voice-capture"
-import {
-  memoryTakes,
-  simulatedMicrophone,
-  simulatedPlayer,
-} from "@some-ui/voice-capture/testing"
+import { simulatedPattern } from "@some-ui/voice-capture/testing"
 
 import { PANELS } from "@/lib/playable"
 
@@ -35,24 +30,8 @@ const ROOM = { takes: [], full: false, notesFull: false }
  * A microphone that is there and idle, so the record screen shows its
  * button: the take pattern over the simulated microphone, nothing kept.
  */
-const store = memoryTakes({ now: Date.now })
 const takes: SpokenTakes = {
-  pattern: takePattern(
-    {
-      startRecording: simulatedMicrophone({ now: Date.now }).startRecording,
-      now: Date.now,
-      owner: microphoneOwner(),
-      player: simulatedPlayer(),
-      ...store.ports,
-    },
-    {
-      takes: { per: "one" },
-      limits: { minMs: 1_000, maxMs: 60_000 },
-      redo: "supersede",
-      letGo: "set-aside",
-      play: "each",
-    }
-  ),
+  pattern: simulatedPattern().pattern,
   getSnapshot: () => ROOM,
   subscribe: () => (): void => undefined,
   note: (): boolean => true,

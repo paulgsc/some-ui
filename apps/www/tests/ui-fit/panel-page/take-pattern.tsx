@@ -6,7 +6,7 @@ import type {
   TakePattern,
   TakePatternOptions,
 } from "@some-ui/voice-capture"
-import { microphoneOwner, takePattern } from "@some-ui/voice-capture"
+import { microphoneOwner, ONE_TAKE, takePattern } from "@some-ui/voice-capture"
 import type { MemoryTakes } from "@some-ui/voice-capture/testing"
 import {
   memoryTakes,
@@ -14,16 +14,8 @@ import {
   simulatedPlayer,
 } from "@some-ui/voice-capture/testing"
 
-const ONE: TakePatternOptions = {
-  takes: { per: "one" },
-  limits: { minMs: 500, maxMs: 60_000 },
-  redo: "supersede",
-  letGo: "set-aside",
-  play: "each",
-}
-
 const MANY: TakePatternOptions = {
-  ...ONE,
+  ...ONE_TAKE,
   takes: { per: "many", max: 3 },
   play: "latest",
 }
@@ -77,7 +69,7 @@ function screen(): Screen {
     ...store.ports,
   }
   return {
-    one: takePattern(ports, ONE),
+    one: takePattern(ports, ONE_TAKE),
     many: takePattern(ports, MANY),
     store,
   }

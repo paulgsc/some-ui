@@ -4,7 +4,7 @@
  * Rust Rounds on the phone's own stack: the pattern desk (`patternDesk`'s
  * runtime) and the real take pattern and take kit, over the one simulated
  * microphone every screen's tests share, so what the screen says is what the
- * phone's own stack says (MIC4, #2374).
+ * phone's own stack says.
  */
 import { inMemoryStorage } from "@some-ui/core-utils"
 import { keptRounds, RustRounds } from "@some-ui/rust-rounds"
@@ -15,7 +15,11 @@ import {
   TAKE_WORDS,
 } from "@some-ui/voice-capture"
 import type { SimulatedMicrophone } from "@some-ui/voice-capture/testing"
-import { simulatedMicrophone, SPEAKING } from "@some-ui/voice-capture/testing"
+import {
+  simulatedMicrophone,
+  SPEAKING,
+  takeButton as take,
+} from "@some-ui/voice-capture/testing"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -23,7 +27,8 @@ import { notesPort } from "@/lib/rust-rounds"
 import type { TestDesk } from "@/lib/takes-desk/__tests__/desk"
 import { testDesk } from "@/lib/takes-desk/__tests__/desk"
 
-vi.mock("@/lib/takes-desk", () => ({
+vi.mock("@/lib/takes-desk", async (original) => ({
+  ...(await original<object>()),
   patternDesk: (): object => ({ phone: vi.fn(), sweep: vi.fn() }),
 }))
 
@@ -37,13 +42,6 @@ describe("Rust Rounds on the simulated microphone", () => {
     cleanup()
     vi.useRealTimers()
   })
-
-  /** The take button. */
-  const take = (): HTMLElement => {
-    const button = document.querySelector<HTMLElement>("[data-take]")
-    if (button === null) throw new Error("no take button")
-    return button
-  }
 
   const tap = (): void => {
     fireEvent.click(take())
@@ -95,12 +93,12 @@ describe("Rust Rounds on the simulated microphone", () => {
     expect(take().getAttribute("aria-label")).toBe(TAKE_WORDS.buttonLabel.again)
     expect(screen.getByText(new RegExp(TAKE_WORDS.place.phone))).toBeTruthy()
     expect(mic.open()).toBe(0)
-    expect(desk.listed).toEqual([
+    expect(desk.listed()).toEqual([
       expect.objectContaining({ line: "rust-rounds:indexing-01/a" }),
     ])
 
     // Once home holds it, the row says so.
-    desk.home.add(desk.listed[0].id)
+    desk.home.add(desk.listed()[0].id)
     act(() => desk.phone.recount())
     expect(screen.getByText(new RegExp(TAKE_WORDS.place.home))).toBeTruthy()
   })
@@ -157,38 +155,5 @@ describe("Rust Rounds on the simulated microphone", () => {
         name: TAKE_WORDS.rowLabel(TAKE_WORDS.redo, 3_000),
       })
     ).toBeTruthy()
-  })
-
-  it("redoes a note, keeping the first as an earlier one, and lets the new one go, kept (D2, D3)", async () => {
-    const { desk } = speakStep()
-    tap()
-    await flush(3_000)
-    tap()
-    await flush()
-    const [first] = desk.listed
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: TAKE_WORDS.rowLabel(TAKE_WORDS.redo, 3_000),
-      })
-    )
-    await flush(5_000)
-    tap()
-    await flush()
-    expect(desk.listed).toEqual([
-      expect.objectContaining({ durationMs: 5_000 }),
-      expect.objectContaining({ id: first.id, standing: "earlier" }),
-    ])
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: TAKE_WORDS.rowLabel(TAKE_WORDS.letGo, 5_000),
-      })
-    )
-    expect(screen.getByText(TAKE_WORDS.setAside.phone)).toBeTruthy()
-    expect(desk.listed.map(({ standing }) => standing)).toEqual([
-      "set-aside",
-      "earlier",
-    ])
-    // Both are kept, audio and all.
-    expect(await desk.shelf.ids()).toHaveLength(2)
   })
 })

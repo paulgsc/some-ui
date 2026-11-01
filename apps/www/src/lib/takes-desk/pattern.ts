@@ -1,8 +1,8 @@
 /**
  * A desk of takes on the take pattern (`@some-ui/voice-capture`'s
- * `takePattern`, MIC4 #2374): Rust Rounds' voice notes and LeetType's spoken
- * answers. The pattern records (tap to start, tap to stop, D1), plays a take
- * back, and says how each take ended; this is its store: each take's audio
+ * `takePattern`): Rust Rounds' voice notes and LeetType's spoken answers.
+ * The pattern records, plays a take back, and says how each take ended;
+ * this is its store: each take's audio
  * on a shelf and its entry in a list, as the lens's desk keeps them
  * (`./runtime`).
  *
@@ -29,7 +29,7 @@ import type {
   TakePattern,
   TakePatternOptions,
 } from "@some-ui/voice-capture"
-import { shelveTake, takePattern } from "@some-ui/voice-capture"
+import { ONE_TAKE, shelveTake, takePattern } from "@some-ui/voice-capture"
 
 import type { Take, TakeLimits } from "./runtime"
 import { makesRoom } from "./runtime"
@@ -83,14 +83,10 @@ export type PatternPhone = {
 
 const takenAt = (take: Take): number => take.takenAt
 
-/** One current take per item, played each, as both screens on it choose. */
 function deskPatternOptions(limits: TakeLimits): TakePatternOptions {
   return {
-    takes: { per: "one" },
+    ...ONE_TAKE,
     limits: { minMs: SOUNDBITE_MIN_MS, maxMs: limits.maxMs },
-    redo: "supersede",
-    letGo: "set-aside",
-    play: "each",
   }
 }
 

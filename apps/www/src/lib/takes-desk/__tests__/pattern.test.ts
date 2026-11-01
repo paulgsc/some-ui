@@ -1,8 +1,11 @@
 /**
- * The pattern desk (`createPatternTakes`, MIC4 #2374) on the simulated
- * microphone: a Redo supersedes in one write and keeps the earlier take
- * (D2), Let go sets a take aside and keeps it (D3), each take says where it
- * is kept, and at its cap a new take makes room only with one home holds.
+ * @vitest-environment jsdom
+ *
+ * The pattern desk (`createPatternTakes`) on the simulated microphone, its
+ * list in `localStorage`: a Redo supersedes in one write and keeps the
+ * earlier take (D2), Let go sets a take aside and keeps it (D3), each take
+ * says where it is kept, and at its cap a new take makes room only with one
+ * home holds.
  */
 import { microphoneOwner } from "@some-ui/voice-capture"
 import { simulatedMicrophone } from "@some-ui/voice-capture/testing"
@@ -71,12 +74,11 @@ describe("createPatternTakes", () => {
     on.phone.takes.subscribe(add)
     await take(on, "card", 3_000, "n1")
     expect(add).toHaveBeenCalledOnce()
-    expect(on.listed).toEqual([
+    expect(on.listed()).toEqual([
       expect.objectContaining({ id: "n2" }),
       expect.objectContaining({ id: "n1", standing: "earlier" }),
     ])
-    // The item's take carries no standing: it is the current one.
-    expect(on.listed[0]?.standing).toBeUndefined()
+    expect(on.listed()[0]?.standing).toBeUndefined()
     expect(await on.shelf.ids()).toEqual(["n1", "n2"])
   })
 
@@ -109,7 +111,7 @@ describe("createPatternTakes", () => {
       answers: "b",
       ending: "full",
     })
-    expect(on.listed.map(({ id }) => id)).toEqual(["n1"])
+    expect(on.listed().map(({ id }) => id)).toEqual(["n1"])
   })
 
   it("makes room at its cap by letting go the oldest take home holds (HF5)", async () => {
@@ -120,7 +122,7 @@ describe("createPatternTakes", () => {
     on.phone.recount()
     expect(on.phone.full()).toBe(false)
     await take(on, "c")
-    expect(on.listed.map(({ id }) => id)).toEqual(["n3", "n2"])
+    expect(on.listed().map(({ id }) => id)).toEqual(["n3", "n2"])
     expect((await on.shelf.ids()).sort()).toEqual(["n2", "n3"])
   })
 

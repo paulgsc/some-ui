@@ -6,7 +6,7 @@
  * never in them; the pick is never set against it.
  *
  * A voice note's own words are the take pattern's (`@some-ui/voice-capture`'s
- * `TAKE_WORDS`, MIC4 #2374), said by its parts: the take button, its line and
+ * `TAKE_WORDS`), said by its parts: the take button, its line and
  * the note's row. They include the one time on screen, a take's elapsed time
  * against its cap and its length (the owner, 2026-10-31, epic #2368); none of
  * these words counts time.

@@ -3,35 +3,14 @@ import { useState } from "react"
 import { inMemoryStorage } from "@some-ui/core-utils"
 import type { NotesPort, RustRoundsPorts } from "@some-ui/rust-rounds"
 import { keptRounds, RustRounds } from "@some-ui/rust-rounds"
-import { microphoneOwner, takePattern } from "@some-ui/voice-capture"
-import {
-  memoryTakes,
-  simulatedMicrophone,
-  simulatedPlayer,
-} from "@some-ui/voice-capture/testing"
+import { simulatedPattern } from "@some-ui/voice-capture/testing"
 
 /**
  * The phone's take pattern over the simulated microphone, with the notes in
  * memory: the fit is measured with the take button at rest.
  */
 function quietNotes(): NotesPort {
-  const store = memoryTakes({ now: Date.now })
-  const pattern = takePattern(
-    {
-      startRecording: simulatedMicrophone({ now: Date.now }).startRecording,
-      now: Date.now,
-      owner: microphoneOwner(),
-      player: simulatedPlayer(),
-      ...store.ports,
-    },
-    {
-      takes: { per: "one" },
-      limits: { minMs: 1_000, maxMs: 60_000 },
-      redo: "supersede",
-      letGo: "set-aside",
-      play: "each",
-    }
-  )
+  const { pattern, store } = simulatedPattern()
   return {
     pattern,
     takes: { getSnapshot: store.getSnapshot, subscribe: store.subscribe },

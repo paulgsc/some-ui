@@ -1,8 +1,7 @@
 /**
  * LeetType's spoken answers on the phone (canon v1.2, Def. 9.5;
  * `@some-ui/leetype`'s `SpokenTakes`): a desk of takes on the take pattern
- * (`lib/takes-desk`'s `patternDesk`, MIC4 #2374: tap to talk, Play, Redo,
- * Let go), at most forty, each at most sixty seconds, and beside each answer a note
+ * (`lib/takes-desk`'s `patternDesk`), at most forty, each at most sixty seconds, and beside each answer a note
  * of what it answered: the prompt, the rubric, the points ticked, and the
  * text when it was typed. Both go home (HF5, #2180): each take as a voice
  * note and each note as a study note (`lib/home-link/voice-copy` and the
