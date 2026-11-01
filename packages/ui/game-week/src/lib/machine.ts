@@ -218,7 +218,7 @@ export type GameWeekEvent = GameWeekIntent | GameWeekSignal
 
 export type GameWeekEffect =
   /** The take pattern's: the microphone, the clock and the playback. */
-  | Exclude<TakePatternEffect, { type: "keep" | "setAside" }>
+  | Exclude<TakePatternEffect, { type: "keep" | "setAside" | "discard" }>
   | { readonly type: "keep"; readonly bite: KeptBite; readonly audio: Blob }
   | {
       readonly type: "amend"
@@ -369,7 +369,10 @@ function withTakes(
   const effects: Array<GameWeekEffect> = []
   for (const effect of next.effects) {
     if (effect.type === "keep") keep = effect.take
-    else if (effect.type !== "setAside") effects.push(effect)
+    // Bites have no Let go, and are sent at once, so nothing is set aside
+    // or deleted for good here.
+    else if (effect.type !== "setAside" && effect.type !== "discard")
+      effects.push(effect)
   }
   const moved =
     next.state === state.takes ? state : { ...state, takes: next.state }
