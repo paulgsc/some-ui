@@ -427,10 +427,7 @@ describe("the build-journal session's list of the takes Drive holds (MB2, HF11)"
     expect(await json(listed)).toMatchObject({
       items: [expect.objectContaining({ name: NAME })],
     })
-    // Only the routine puts it; home and the phone's folders may not.
-    expect((await put(d, "brief", NAME, { token: HOME, body })).status).toBe(
-      403
-    )
+    // A folder the phone puts in does not take its name.
     expect(
       (await put(d, "decisions", NAME, { token: HOME, body })).status
     ).toBe(422)
@@ -523,6 +520,26 @@ describe("the build-journal session's list of the takes Drive holds (MB2, HF11)"
     expect(await json(wrong)).toEqual({
       error: "the body's schema must be some-ui.drive-takes/1",
     })
+  })
+
+  it("refuses a key given twice, whose first value JSON.parse would drop unread", async () => {
+    const d = deps()
+    const take = (inner: string): string =>
+      `{"schema":"${LIST.schema}","at":"${LIST.at}","takes":[${inner}]}`
+    // A Drive id under a key the last value then hides, in a take and at the top.
+    for (const body of [
+      take(`{"sha256":"1AbCdEfGhIjKlMnOp","sha256":"${SHA_A}"}`),
+      take(`{"sha256":12345,"sha256":"${SHA_A}"}`),
+      take(`{"sh\u0061256":"1AbC","sha256":"${SHA_A}"}`),
+      `{"at":"1AbCdEfGhIjKlMnOp",${take(`{"sha256":"${SHA_A}"}`).slice(1)}`,
+    ]) {
+      const answer = await put(d, "brief", NAME, { body })
+      expect([body, answer.status]).toEqual([body, 422])
+      expect(await json(answer)).toEqual({ error: "each key is given once" })
+    }
+    // The same list, spaced and with each key once, is taken.
+    const spaced = take(`{ "sha256" : "${SHA_A}" }`).replaceAll(",", ", ")
+    expect((await put(d, "brief", NAME, { body: spaced })).status).toBe(201)
   })
 })
 

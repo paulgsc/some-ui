@@ -380,7 +380,19 @@ function driveTakesRefusal(
     if (seen.has(take.sha256)) return "each take is named once"
     seen.add(take.sha256)
   }
+  // `JSON.parse` keeps a key given twice by its last value, so a first one
+  // (a Drive id, say) would be kept here unread. Every key and value this
+  // shape takes is quote-free (checked above), so each is two of the text's
+  // `"`: the text as sent holds more only where a key is given twice.
+  if (quotes(text) !== quotes(JSON.stringify(body))) {
+    return "each key is given once"
+  }
   return null
+}
+
+/** How many `"` `text` holds. */
+function quotes(text: string): number {
+  return text.split('"').length - 1
 }
 
 /** The routines home computes an index for (README, "What a put must satisfy"). */
@@ -540,8 +552,7 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
     backfill: [DECISIONS, SCOUT],
     // The build-journal session's list of the Studio takes Drive holds, by
     // SHA-256, for home to match against the takes it holds (MB2, the
-    // owner's route a, paulgsc/some-ui#2401). In `brief`, which home lists
-    // every pass anyway, so it adds no listing (MI6).
+    // owner's route a, paulgsc/some-ui#2401).
     also: [
       {
         folder: "brief",

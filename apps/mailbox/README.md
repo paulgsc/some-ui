@@ -284,8 +284,10 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
 carries no audio: Drive and home keep it` when it names audio or bytes, `a list of takes
 names no Drive file or link` when it names Drive or a file id), a take with any key but
   `sha256` is `422`, and so is a body whose text as sent carries a `data:` URI, a Drive link or
-  a run of 256 or more base64 characters, by the transcript's tests. A list is about 78 bytes a
-  take, so 10,000 takes stay under the cap.
+  a run of 256 or more base64 characters, by the transcript's tests, or that gives any key twice
+  (`each key is given once`: `JSON.parse` keeps a repeated key's last value, so a first one, a
+  Drive id say, would be kept unread). A list is about 78 bytes a take, so 10,000 takes stay
+  under the cap.
 - **Size**: at most 1,048,576 bytes. A declared `Content-Length` over that is refused before
   the body is read, and a body that declares nothing is cut off as it passes the cap. Real
   files are under 20 KB, except LeetType session files: Thread 1's first file is 30 KB
