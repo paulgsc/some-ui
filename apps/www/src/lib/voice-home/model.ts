@@ -15,7 +15,15 @@ import type { HomeExchanged } from "@some-ui/core-utils"
 import { assertNever, isRecord } from "@some-ui/core-utils"
 
 /** What a note is said for, as home's `PUT /voice-notes/:id` takes `of`. */
-type VoiceOf = "reflection" | "jobs" | "scene" | "game" | "studio"
+type VoiceOf =
+  | "reflection"
+  | "jobs"
+  | "scene"
+  | "game"
+  | "studio"
+  | "soundbite"
+  | "lens"
+  | "leetype"
 
 /** One note as home is told it: what it belongs to, and when it was recorded. */
 export type VoiceOut = {
@@ -24,7 +32,9 @@ export type VoiceOut = {
   /**
    * The reflection's session, the Jobs pick or scout, `next-scene` for the
    * drama's next scene said aloud (before HF2, the prompt's stamp), the
-   * game's ESPN id, the Studio take (`<project>:<shot>:<take>`).
+   * game's ESPN id, the Studio take (`<project>:<shot>:<take>`), how a
+   * soundbite came to be recorded (its `context.source`), the grammar-lens
+   * line read aloud, LeetType's session file and screen (`<file>:<screen>`).
    */
   readonly ref: string
   /** When it was recorded, ISO 8601. */
@@ -189,6 +199,9 @@ const OFS: ReadonlySet<unknown> = new Set([
   "scene",
   "game",
   "studio",
+  "soundbite",
+  "lens",
+  "leetype",
 ])
 
 /** Extra fields a note's own query carries, never one of `of`, `ref` or `at`. */

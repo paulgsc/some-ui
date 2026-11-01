@@ -13,7 +13,6 @@
  */
 import { mayLeavePhone } from "@/lib/device-backend/handlers/sessions"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
-import { letGoUnchanged } from "@/lib/session-archive"
 import { sessionsRepository } from "@/lib/tenant/queries"
 import type { HeldReport } from "@/lib/tenant/sessions-copy"
 import { emptyHeldReport } from "@/lib/tenant/sessions-copy"
@@ -21,6 +20,7 @@ import type { SessionRecord } from "@/lib/tenant/types"
 
 import type { HomeLink } from "./index"
 import { homeLink } from "./index"
+import { letGoUnchanged } from "./let-go"
 import { causedBy, HomeForgotPhoneError, readHeld } from "./sessions"
 
 /** How a clear ended, for its line (`./words`' `CLEAR.ended`). */

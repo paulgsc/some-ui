@@ -3,10 +3,12 @@
  * `@some-ui/leetype`'s `SpokenTakes`): a desk of takes (`lib/takes-desk`),
  * at most forty, each at most sixty seconds, and beside each answer a note
  * of what it answered: the prompt, the rubric, the points ticked, and the
- * text when it was typed. Both lanes are Drive's (#1934): they leave with
- * the study-context export, once the learner says it arrived, and never go
- * home. Neither list evicts; past forty a new one is refused.
- * Phone-only (`build.paths.ts`).
+ * text when it was typed. Both go home (HF5, #2180): each take as a voice
+ * note and each note as a study note (`lib/home-link/voice-copy` and the
+ * drain's `./notes`), and the study-context export carries a copy of both.
+ * Each list keeps forty: past it, a new one makes room by letting go the
+ * oldest home holds, and is refused while home holds none. Phone-only
+ * (`build.paths.ts`).
  */
 import type {
   SpokenTakeNote,
@@ -16,7 +18,7 @@ import type {
 import type { LensTakeSnapshot } from "@some-ui/topik"
 
 import { boundedList } from "@/lib/bounded-list"
-import { takesDesk } from "@/lib/takes-desk"
+import { makesRoom, takesDesk } from "@/lib/takes-desk"
 
 export type { Take as LeetypeTake } from "@/lib/takes-desk"
 
@@ -58,7 +60,23 @@ const isNote = (value: unknown): value is LeetypeTakeNote => {
 
 const notes = boundedList("some-ui:leetype-take-notes", MAX, isNote)
 
-const notesFull = (): boolean => notes.read().length >= MAX
+// Home holds none until the voice lane says otherwise (`leetypeNotesHeldByHome`).
+let notesHeld: () => (id: string) => boolean = () => () => false
+/** Those reading the port or the notes, told when the notes or their room change. */
+const notesListeners = new Set<() => void>()
+/** Moves with each change to the notes or their room. */
+let notesRevision = 0
+const notesMoved = (): void => {
+  notesRevision += 1
+  for (const listener of notesListeners) listener()
+}
+
+/** The oldest note home holds, which a new one may replace at the cap. */
+const roomFor = (): LeetypeTakeNote | null =>
+  makesRoom(notes.read(), MAX, notesHeld(), (note) => note.notedAt)
+
+const notesFull = (): boolean =>
+  notes.read().length >= MAX && roomFor() === null
 
 /**
  * The port's snapshot, made again only when the desk's changes or the notes
@@ -95,24 +113,68 @@ let port: SpokenTakes | null = null
 export function phoneSpokenTakes(): SpokenTakes {
   port ??= {
     getSnapshot: adapted(),
-    subscribe: (listener): (() => void) => desk.phone().subscribe(listener),
+    subscribe: (listener): (() => void) => {
+      notesListeners.add(listener)
+      const stop = desk.phone().subscribe(listener)
+      return (): void => {
+        notesListeners.delete(listener)
+        stop()
+      }
+    },
     start: ({ file, screen }): void => desk.phone().start(`${file}#${screen}`),
     stop: (): void => desk.phone().stop(),
     reset: (): void => desk.phone().reset(),
     note: (note): boolean => {
-      // Refused when full, never evicting an earlier one (the export lets
-      // them go).
+      // Refused when full, never evicting one home does not hold.
       if (notesFull()) return false
-      return notes.put(
+      const room = roomFor()
+      if (room !== null && !notes.remove(({ id }) => id === room.id)) {
+        return false
+      }
+      const kept = notes.put(
         { ...note, id: crypto.randomUUID(), notedAt: Date.now() },
         () => false
       )
+      notesMoved()
+      return kept
     },
   }
   return port
 }
 
 export const sweepLeetypeTakes = desk.sweep
+
+/** The takes' desk, for the copy home (`lib/home-link/voice-copy`). */
+export const leetypeTakesDesk = desk
+
+/** The notes as kept, for the drain (`lib/home-link`). */
+export const leetypeNotes = (): ReadonlyArray<LeetypeTakeNote> => notes.read()
+
+/**
+ * For `useSyncExternalStore` and the drain's lane (`lib/home-link/practice`):
+ * moves each time a note is kept or let go, or their room changes.
+ */
+export const leetypeNotesMoved = {
+  getSnapshot: (): number => notesRevision,
+  subscribe(listener: () => void): () => void {
+    notesListeners.add(listener)
+    return (): void => {
+      notesListeners.delete(listener)
+    }
+  },
+}
+
+/**
+ * How to read what home holds of the notes, read back: those may make room
+ * at forty. `next` is asked once per look at the notes. A screen reading the
+ * port hears it, so one that showed the notes full can take an answer again.
+ */
+export function leetypeNotesHeldByHome(
+  next: () => (id: string) => boolean
+): void {
+  notesHeld = next
+  notesMoved()
+}
 
 /** The notes and the takes with their audio, for the study-context export. */
 export async function leetypeTakesForExport(): Promise<{

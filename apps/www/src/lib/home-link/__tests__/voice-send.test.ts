@@ -6,19 +6,23 @@
  * as waiting; one with no room fails the run as the phone's lack of room,
  * still waits, and goes once there is room; one the phone fails to copy,
  * or whose record storage won't keep, fails the run as the phone's fault;
- * and a Jobs note let go once its share arrived is never offered.
+ * a Jobs note let go once its share arrived is never offered; and a store
+ * that can't be listed holds back none of the others.
  */
 import type { HomeCall } from "@some-ui/core-utils"
+import { reportFailure } from "@some-ui/intent-kit"
+import type { Soundbite } from "@some-ui/soundbites"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import type { BlobShelf } from "@some-ui/voice-capture"
 import { ShelfFullError } from "@some-ui/voice-capture"
 import { renderHook } from "@testing-library/react"
-import { describe, expect, it, vi } from "vitest"
+import { beforeAll, describe, expect, it, vi } from "vitest"
 
 import { useUnsendable, voiceLane } from "@/lib/home-link/voice"
-import { sendVoice } from "@/lib/home-link/voice-copy"
+import { sendVoice, storesRead } from "@/lib/home-link/voice-copy"
 import type { JobEvent, JobsState } from "@/lib/jobs/model"
 import { EMPTY } from "@/lib/jobs/model"
+import { keepSoundbites } from "@/lib/soundbite-keeping"
 import { keepStudio } from "@/lib/studio-keeping"
 import type { VoiceHome } from "@/lib/voice-home/runtime"
 import { createVoiceHome } from "@/lib/voice-home/runtime"
@@ -294,6 +298,76 @@ describe("the drama's scene notes (HF2)", () => {
     expect(fakes.home?.getSnapshot().held).toContain("s1")
     expect(sent).toContain(
       "/voice-notes/s1?of=scene&ref=next-scene&at=2026-10-31T08%3A00%3A00.000Z"
+    )
+  })
+})
+
+describe("the soundbites, once their page hands them in (HF5)", () => {
+  /** What the soundbites' store answers its next list with. */
+  let listed: () => Promise<Array<Soundbite>> = () => Promise.resolve([])
+  const bite: Soundbite = {
+    id: "b1",
+    recordedAt: "2026-10-31T08:30:00.000Z",
+    durationMs: 5000,
+    mimeType: "audio/webm",
+    bytes: 4,
+    context: {
+      source: "reminder",
+      lastSessionAt: null,
+      openSessions: 0,
+      timeZone: "UTC",
+    },
+  }
+  // Last: `keepSoundbites` has no undo, so every test after would list them.
+  beforeAll(() => {
+    keepSoundbites({
+      store: {
+        list: () => listed(),
+        audio: (id: string) =>
+          Promise.resolve(id === "b1" ? new Blob(["bite"]) : null),
+        subscribe: () => (): void => undefined,
+      },
+      heldByHome: (): void => undefined,
+    })
+  })
+
+  it("are copied as soundbites, and each read tells the lane's count", async () => {
+    setUp(5, {})
+    listed = (): Promise<Array<Soundbite>> => Promise.resolve([bite])
+    const heard = vi.fn()
+    const stop = storesRead.subscribe(heard)
+    const sent: Array<string> = []
+    const recording: HomeCall = (method, path, init) => {
+      sent.push(path)
+      return send(method, path, init)
+    }
+    expect(await sendVoice(recording)).toEqual({ kind: "synced" })
+    stop()
+    expect(heard).toHaveBeenCalled()
+    expect(fakes.home?.getSnapshot().held).toContain("b1")
+    expect(sent.some((path) => path.includes("of=soundbite"))).toBe(true)
+  })
+
+  it("that can't be listed are reported, fail the run as the phone's fault, and hold back none of the others", async () => {
+    setUp(5, { v1: new Blob(["a"]) })
+    fakes.scene = [
+      {
+        id: "s1",
+        durationMs: 4000,
+        mimeType: "audio/mp4",
+        at: "2026-10-31T09:00:00.000Z",
+      },
+    ]
+    listed = (): Promise<Array<Soundbite>> =>
+      Promise.reject(new Error("metadata unreadable"))
+    vi.mocked(reportFailure).mockClear()
+    expect(await sendVoice(send)).toEqual({ kind: "failed", why: "fault" })
+    // The Jobs note and the scene note after it went all the same.
+    expect(fakes.home?.getSnapshot().held).toEqual(
+      expect.arrayContaining(["v1", "s1"])
+    )
+    expect(vi.mocked(reportFailure)).toHaveBeenCalledWith(
+      expect.objectContaining({ port: "voice notes (list soundbites)" })
     )
   })
 })

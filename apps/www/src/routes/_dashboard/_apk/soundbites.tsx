@@ -1,13 +1,19 @@
 import type { JSX } from "react"
+import { useEffect } from "react"
 import { useConfirmSheet } from "@some-ui/shared"
 import type { SoundbiteSituation, SoundbiteSource } from "@some-ui/soundbites"
-import { phoneSoundbiteStore, Soundbites } from "@some-ui/soundbites"
+import {
+  phoneSoundbiteStore,
+  Soundbites,
+  soundbitesHeldByHome,
+} from "@some-ui/soundbites"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
 import { handOff, shareAgentExport } from "@/lib/agent-export"
 import { useArrivalKey } from "@/lib/arrival-key"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
+import { keepSoundbites } from "@/lib/soundbite-keeping"
 import type { SessionRecord, SessionStatus } from "@/lib/tenant"
 import { sessionsQuery, useSessions } from "@/lib/tenant"
 import { arrived, goingOut } from "@/components/reflection/copy"
@@ -88,8 +94,8 @@ const ShareWithAgent = ({ taking }: { taking: boolean }): JSX.Element => {
       <p className="text-muted-foreground text-sm">
         Your sessions with their reflections, soundbites, stop reasons,
         grammar-lens answers and takes, and LeetType answers and takes, as files
-        for an agent to read. You pick where they go. Everything stays on this
-        phone.
+        for an agent to read. You pick where they go. It&apos;s a copy: nothing
+        leaves this phone for it.
       </p>
       <IntentButton
         state={share.state}
@@ -126,6 +132,15 @@ const SoundbitesRoute = (): JSX.Element => {
   // A new request remounts the recorder (it reads its way in once); the
   // clearing below is not a new request, so it never remounts mid-take.
   const arrival = useArrivalKey(isSaySource(say) ? say : undefined)
+  // Hands the store to the home link, which copies each soundbite home and
+  // says which home holds (`lib/soundbite-keeping`, HF5).
+  useEffect(() => {
+    if (import.meta.env.VITE_DEVICE_BACKEND !== "true") return
+    keepSoundbites({
+      store: phoneSoundbiteStore(),
+      heldByHome: soundbitesHeldByHome,
+    })
+  }, [])
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-4">

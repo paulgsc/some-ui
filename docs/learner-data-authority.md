@@ -32,14 +32,15 @@ Each invariant below still describes the code, and holds until the change that
 moves its code retires or rewords it in the same PR; a hunk that moves code
 toward this frame without doing so is a finding.
 
-| Invariant                                                                                                          | Moved by          |
-| ------------------------------------------------------------------------------------------------------------------ | ----------------- |
-| LA7 (a reflection reaches no server) (done: LA7 retired, LA16 declared)                                            | HF3, #2178        |
-| LA8's "only on a tap"; LA9–LA11 and LA13's consent; LA12 (consent to read) (done: LA9–LA12 retired, LA15 declared) | HF8, #2182        |
-| LA6's reporting reset on every sign-in, on the owner's `lan` build                                                 | HF8, #2182 (open) |
-| LA13's scene notes copied only once a drama prompt is shared (done: copied once kept)                              | HF2, #2177        |
-| Every share sheet's let-go (done: HF1, #2176, promise LG1); the Jobs share sheet itself and the archive's (done)   | HF2, #2177        |
-| The drama prompt's share sheet, and its scene notes let go on a share (done: LA18 declared, LA13 reworded)         | HF4, #2179        |
+| Invariant                                                                                                            | Moved by          |
+| -------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| LA7 (a reflection reaches no server) (done: LA7 retired, LA16 declared)                                              | HF3, #2178        |
+| LA8's "only on a tap"; LA9–LA11 and LA13's consent; LA12 (consent to read) (done: LA9–LA12 retired, LA15 declared)   | HF8, #2182        |
+| LA6's reporting reset on every sign-in, on the owner's `lan` build                                                   | HF8, #2182 (open) |
+| LA13's scene notes copied only once a drama prompt is shared (done: copied once kept)                                | HF2, #2177        |
+| Every share sheet's let-go (done: HF1, #2176, promise LG1); the Jobs share sheet itself and the archive's (done)     | HF2, #2177        |
+| The drama prompt's share sheet, and its scene notes let go on a share (done: LA18 declared, LA13 reworded)           | HF4, #2179        |
+| LA13's notes (done: soundbites, lens and LeetType takes); LA15's drain (done: their notes); the archive (done: gone) | HF5, #2180        |
 
 HF8 (#2182, owner's decision D3: no per-domain switch, and no consent log told
 to home or enforced by home) removed the phone's consent machinery: the
@@ -68,6 +69,18 @@ and its Drive folder are gone from the owner's app, and topik's `FileShare`
 port and `SharePrompt`, which no host injected, are removed (the owner, on
 #2179; `docs/makjang/README.md`, "The loop through the learner's drive").
 
+HF5 (#2180) keeps soundbites, grammar-lens takes, the grammar-lens record
+and LeetType's spoken answers on home (paulgsc/server: voice notes said for
+`soundbite`, `lens` and `leetype`, study notes for a soundbite's record and an
+answer's note, and the Korean record's `lens` entries; docs/identity.md
+invariants 23, 25 and 30). Each goes through the voice lane (LA13) or the
+drain (LA15), and each capped store is an offline set: at its cap a new one
+makes room with the oldest home holds, and is refused while home holds none
+(LG1). The study-context export is a copy for the owner's own agent that lets
+nothing go, and "Archive finished sessions" is gone: home already holds
+finished sessions. The study list's delete does not keep a home copy first
+yet (the HF5 issue).
+
 ## The two questions
 
 |                    | Asks                                       | Answers                                                                                                         |
@@ -88,27 +101,28 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 
 ## What leaves the device
 
-|                                             | Learning on the device                       | On the account, reporting off                                                                                                                                                                                                                                                                                                                                               | On the account, reporting on               |
-| ------------------------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| Sessions, settings, profile                 | `localStorage`, never sent                   | sessions go to `file_host`                                                                                                                                                                                                                                                                                                                                                  | the same                                   |
-| Session probe (`GET /auth/session`)         | never made                                   | at boot, only because the account was chosen                                                                                                                                                                                                                                                                                                                                | the same                                   |
-| Passkey ceremonies                          | only when the person starts one              | the same                                                                                                                                                                                                                                                                                                                                                                    | the same                                   |
-| Lesson, round and vocab reads               | made, **without credentials**                | made, without credentials                                                                                                                                                                                                                                                                                                                                                   | the same                                   |
-| This device's sessions                      | stay here                                    | copied only by "Copy to my account", per account, after a confirmation; the phone's finished ones, to its paired home, by the drain (LA15), and freed from the phone only by "Clear finished sessions home holds", which reads each back first (LA8)                                                                                                                        | the same                                   |
-| `/signals`, `/presence/lease`               | never                                        | never                                                                                                                                                                                                                                                                                                                                                                       | sent                                       |
-| Push subscription                           | never                                        | never                                                                                                                                                                                                                                                                                                                                                                       | the account's, on the person's own taps    |
-| Reflections                                 | on the device, never sent                    | on a paired phone, each written one sent to home by the drain and kept there, which hands its text to the Jobs mailbox for the routine; a spoken one's audio as its voice note; the one-tap answers never sent; the phone keeps its newest 20, and past them only the written ones home does not hold (LA13, LA16)                                                          | the same                                   |
-| Asks for the next scene (the phone's)       | on the phone, never sent                     | on a paired phone, each ask sent to home by the drain and kept there, which hands its prompt to the Jobs mailbox for the routine; the scene notes it names go as voice notes; the phone keeps each until home holds it, and the newest after (LA18)                                                                                                                         | the same                                   |
-| Voice notes (the phone's)                   | on the phone, never sent                     | on a paired phone, each spoken reflection, Jobs voice note an event names, game bite, Studio take and scene note copied and sent to the paired home while the app is open, the copy kept until home holds it (LA13, LA15)                                                                                                                                                   | the same                                   |
-| Shelf                                       | never                                        | the account's, on the person's own taps                                                                                                                                                                                                                                                                                                                                     | the same                                   |
-| aph (the phone's)                           | on the phone, never sent                     | on a paired phone, on the paired home from the first run, synced while aph is open; the phone keeps only what home has not confirmed (LA15)                                                                                                                                                                                                                                 | the same                                   |
-| Jobs record (the phone's)                   | on the phone, never sent                     | on a paired phone, a copy on the paired home, synced while the app is open; its decisions and scouts files, each naming its voice notes by id, filed with home, which hands them to the Jobs mailbox on Cloudflare; the phone keeps its whole log (LA15)                                                                                                                    | the same                                   |
-| Practice (the phone's)                      | on the phone, never sent                     | on a paired phone, its finished sessions and kept items sent while the app is open; nothing let go on its own (LA15)                                                                                                                                                                                                                                                        | the same                                   |
-| The routine's word sets and dramas (home's) | not read                                     | read with the account's session while Korean is open; in the Android app, from the paired home with the pairing's key while Korean is open, nothing of the phone's sent but which it opened, by name, its newest files and its run records kept on the phone (LA15)                                                                                                         | the same                                   |
-| LeetType session log (the phone's)          | on the phone, never sent                     | its finished sessions copied to the paired home by the drain, each event without a spoken answer's ticks, read back before it counts as held; the phone keeps its whole log (LA15); for home's owner alone (its only account, or the one `MAILBOX_SUBJECT` names), home passes each finished session it holds on to the Jobs mailbox on Cloudflare, for the routine to read | the same                                   |
-| Studio's time log and answers (the phone's) | on the phone, never sent                     | each sitting's time log and its answer to how it went, copied to the paired home by the drain, the log read back before it counts as held; the phone keeps its whole log (LA15)                                                                                                                                                                                             | the same                                   |
-| Speech                                      | the browser's own voice                      | the server's speech service                                                                                                                                                                                                                                                                                                                                                 | the same                                   |
-| Reminders                                   | the client's own policy, while a tab is open | the client's own policy, while a tab is open                                                                                                                                                                                                                                                                                                                                | the server's push, with the browser closed |
+|                                                                                        | Learning on the device                       | On the account, reporting off                                                                                                                                                                                                                                                                                                                                               | On the account, reporting on               |
+| -------------------------------------------------------------------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| Sessions, settings, profile                                                            | `localStorage`, never sent                   | sessions go to `file_host`                                                                                                                                                                                                                                                                                                                                                  | the same                                   |
+| Session probe (`GET /auth/session`)                                                    | never made                                   | at boot, only because the account was chosen                                                                                                                                                                                                                                                                                                                                | the same                                   |
+| Passkey ceremonies                                                                     | only when the person starts one              | the same                                                                                                                                                                                                                                                                                                                                                                    | the same                                   |
+| Lesson, round and vocab reads                                                          | made, **without credentials**                | made, without credentials                                                                                                                                                                                                                                                                                                                                                   | the same                                   |
+| This device's sessions                                                                 | stay here                                    | copied only by "Copy to my account", per account, after a confirmation; the phone's finished ones, to its paired home, by the drain (LA15), and freed from the phone only by "Clear finished sessions home holds", which reads each back first (LA8)                                                                                                                        | the same                                   |
+| `/signals`, `/presence/lease`                                                          | never                                        | never                                                                                                                                                                                                                                                                                                                                                                       | sent                                       |
+| Push subscription                                                                      | never                                        | never                                                                                                                                                                                                                                                                                                                                                                       | the account's, on the person's own taps    |
+| Reflections                                                                            | on the device, never sent                    | on a paired phone, each written one sent to home by the drain and kept there, which hands its text to the Jobs mailbox for the routine; a spoken one's audio as its voice note; the one-tap answers never sent; the phone keeps its newest 20, and past them only the written ones home does not hold (LA13, LA16)                                                          | the same                                   |
+| Asks for the next scene (the phone's)                                                  | on the phone, never sent                     | on a paired phone, each ask sent to home by the drain and kept there, which hands its prompt to the Jobs mailbox for the routine; the scene notes it names go as voice notes; the phone keeps each until home holds it, and the newest after (LA18)                                                                                                                         | the same                                   |
+| Voice notes (the phone's)                                                              | on the phone, never sent                     | on a paired phone, each spoken reflection, Jobs voice note an event names, game bite, Studio take, scene note, soundbite, grammar-lens take and LeetType take copied and sent to the paired home while the app is open, the copy kept until home holds it (LA13, LA15)                                                                                                      | the same                                   |
+| Soundbites' records, LeetType's answer notes and the grammar-lens record (the phone's) | on the phone, never sent                     | on a paired phone, each sent to the paired home by the drain and counted as held only when home names or carries back its bytes; the phone keeps six soundbites, forty notes and a thousand lens entries, making room only with what home holds (LA15)                                                                                                                      | the same                                   |
+| Shelf                                                                                  | never                                        | the account's, on the person's own taps                                                                                                                                                                                                                                                                                                                                     | the same                                   |
+| aph (the phone's)                                                                      | on the phone, never sent                     | on a paired phone, on the paired home from the first run, synced while aph is open; the phone keeps only what home has not confirmed (LA15)                                                                                                                                                                                                                                 | the same                                   |
+| Jobs record (the phone's)                                                              | on the phone, never sent                     | on a paired phone, a copy on the paired home, synced while the app is open; its decisions and scouts files, each naming its voice notes by id, filed with home, which hands them to the Jobs mailbox on Cloudflare; the phone keeps its whole log (LA15)                                                                                                                    | the same                                   |
+| Practice (the phone's)                                                                 | on the phone, never sent                     | on a paired phone, its finished sessions and kept items sent while the app is open; nothing let go on its own (LA15)                                                                                                                                                                                                                                                        | the same                                   |
+| The routine's word sets and dramas (home's)                                            | not read                                     | read with the account's session while Korean is open; in the Android app, from the paired home with the pairing's key while Korean is open, nothing of the phone's sent but which it opened, by name, its newest files and its run records kept on the phone (LA15)                                                                                                         | the same                                   |
+| LeetType session log (the phone's)                                                     | on the phone, never sent                     | its finished sessions copied to the paired home by the drain, each event without a spoken answer's ticks, read back before it counts as held; the phone keeps its whole log (LA15); for home's owner alone (its only account, or the one `MAILBOX_SUBJECT` names), home passes each finished session it holds on to the Jobs mailbox on Cloudflare, for the routine to read | the same                                   |
+| Studio's time log and answers (the phone's)                                            | on the phone, never sent                     | each sitting's time log and its answer to how it went, copied to the paired home by the drain, the log read back before it counts as held; the phone keeps its whole log (LA15)                                                                                                                                                                                             | the same                                   |
+| Speech                                                                                 | the browser's own voice                      | the server's speech service                                                                                                                                                                                                                                                                                                                                                 | the same                                   |
+| Reminders                                                                              | the client's own policy, while a tab is open | the client's own policy, while a tab is open                                                                                                                                                                                                                                                                                                                                | the server's push, with the browser closed |
 
 A returning account user whose server cannot be reached at boot (a timeout, a
 5xx, a refused connection) stays on the account, and its calls fail where they
@@ -398,8 +412,8 @@ declared (checked by reading every call site and by the tests named).
   renames or moves it, or replaces a call to it with a condition of its
   own, without the same test at every site that picks what may leave; one
   that deletes or weakens `removeUnchanged`'s `updated_at` match (in the
-  same file), or lets `letGoUnchanged` (`lib/session-archive`) delete by
-  any other route; one that makes `confirmHeld` write, or compare less than
+  same file), or lets `letGoUnchanged` (`lib/home-link/let-go`) delete by
+  any other route, or be called but by the clear; one that makes `confirmHeld` write, or compare less than
   everything a copy carries (`sameRecord`); one that passes `copySessionsTo`
   anything but session records (a reflection, a stop or a soundbite: LA16),
   or lets `homeTransport` send a method other than `GET`, `POST` or
@@ -494,8 +508,9 @@ declared (checked by reading every call site and by the tests named).
 
 Voice notes are drained through LA15's wiring, with a lane of their own
 (`lib/home-link/voice.ts`) and no mark: they come from more than one wing
-(spoken reflections and the drama's scene notes in Practice, voice notes
-in Jobs, game bites, Studio takes), so the app shell mounts the lane's watch
+(spoken reflections, the drama's scene notes, soundbites and grammar-lens
+and LeetType takes in Practice, voice notes in Jobs, game bites, Studio
+takes), so the app shell mounts the lane's watch
 on every screen (`HomeLanes`, owner, paulgsc/some-ui#2038). Home keeps each
 recording and transcribes it (paulgsc/server#460).
 
@@ -509,7 +524,11 @@ next scene (`next-scene`), by when it was kept, shared or not (HF2, #2177;
 (Undo, and what a bite said first was about) has run out; a Studio take
 still on the phone by its project, scene and take
 (`<project>:<shot>:<take>`), when it was recorded, its audio leaving the
-phone once home holds it (soundbites' `letGoHeldTakes`). That a note's audio is copied
+phone once home holds it (soundbites' `letGoHeldTakes`); a soundbite, once
+its page has handed its store in (`lib/soundbite-keeping`), by how it came
+to be recorded and when; a grammar-lens take by its line, and a LeetType
+take by its session file and screen (`<file>:<screen>`), each by when it was
+taken (HF5, #2180). That a note's audio is copied
 once, before the record names it, that the copy goes once home holds the
 note and stays when home refused it, and that a copy nothing names is swept
 (`lib/voice-home/__tests__/runtime.test.ts`); that a note counts as home's
@@ -524,7 +543,8 @@ only from the lane's hook and the scene notes read for home only there
 - _Claim:_ a voice note's audio is copied for home (`phoneVoiceHome().copy`)
   only while the phone is paired (`paired()`), and only from `copyAll` (each
   spoken reflection, named Jobs note, scene note in the draft, game bite past
-  its hold and Studio take still on the phone, from `watchVoiceNotes`, which
+  its hold, Studio take still on the phone, soundbite, and grammar-lens and
+  LeetType take on its desk, from `watchVoiceNotes`, which
   only `useVoiceHome`'s effect starts, and from the lane's exchange,
   `sendVoice`); the lane's runs are asked for as LA15 says, its
   exchange is `sendVoice` (a copy pass, then `exchangeVoice` over the
@@ -560,7 +580,8 @@ only from the lane's hook and the scene notes read for home only there
   that names only its body.
 - _Scope:_ LA15's shared files, `apps/www/src/lib/home-link/voice.ts`,
   `voice-copy.ts`, `apps/www/src/lib/voice-home/**`,
-  `apps/www/src/lib/scene-voice/index.ts`, `runtime.ts`.
+  `apps/www/src/lib/scene-voice/index.ts`, `runtime.ts`,
+  `apps/www/src/lib/soundbite-keeping/index.ts`.
 - _Tolerance:_ a note let go before the watch copies it (the app closed in
   between, or a long pass had not reached it) is not copied; one the copies'
   shelf has no room for (`VOICE_HOME_MAX_BYTES`, a hundred minutes), or whose
@@ -581,7 +602,9 @@ only from the lane's hook and the scene notes read for home only there
   call: `copy` only in `copyAll`, behind `paired()` before each note and
   after its audio is read; `sceneNotes.read` only in `candidates`, over
   the draft's list, which `shelveTake` writes only after the audio is
-  shelved; `watchVoiceNotes` only in
+  shelved; the soundbites, lens takes and LeetType takes read only in
+  `readSoundbites` and `candidates`, from the stores themselves (HF5);
+  `watchVoiceNotes` only in
   `useVoiceHome`'s effect, which returns its cleanup; `useVoiceHome` only in
   `HomeLanes`, which `_dashboard.tsx` mounts under `VITE_DEVICE_BACKEND`;
   `shelf.remove` in the runtime only on `held` and in `sweep`, which keeps
@@ -629,7 +652,9 @@ was silent, so the run ended as if all had gone.
 ### LA15: a paired phone drains what it keeps to home on its own, at the moments its person is using the app
 
 Everything the phone keeps for home (aph, the Jobs record, Practice's
-record with its written reflections and asks for the next scene, voice notes) goes through one wiring (`lib/home-link/lanes.ts`):
+record with its written reflections, asks for the next scene, the
+soundbites' records, LeetType's answer notes and the grammar-lens record,
+voice notes) goes through one wiring (`lib/home-link/lanes.ts`):
 each declares its lane (its exchange, how its record moves, its sheet's
 counts; `aph.ts`, `jobs.ts`, `practice.ts`, `voice.ts`), and every lane
 shares the runtime (`kept-runtime.ts`), the watch (`kept-watch.ts`) and the
@@ -649,7 +674,9 @@ home answers with it unchanged (`packages/ui/aph/src/lib/__tests__/sync.test.ts`
 `home.test.ts`; `lib/jobs/__tests__/home.test.ts`; `lib/home-link/__tests__/drain.test.ts`,
 which also holds that the drain sends only finished sessions and what
 changed since home last held it, lets nothing go, and stops before its next
-request; `voice-send.test.ts`), one run at a time and home being busy said
+request; `voice-send.test.ts`), that Practice's lane asks for a run on a
+new soundbite, LeetType answer note or lens entry and counts each waiting
+until home holds it (`practice.test.ts`), one run at a time and home being busy said
 as such (`kept.test.ts`), and that the shell's drain sends nothing unpaired
 and sends once paired on the moments below, while a mark sends nothing of
 its own (`components/__tests__/device-home-glyph.test.tsx`). What no test
@@ -719,15 +746,33 @@ can say is when a run is asked for:
   `exchangeJobs` no longer makes it in every run that gets that far; a hunk
   to `lib/home-link/practice.ts` that makes the lane's `revision` or
   `subscribe` follow anything but the sessions cache, `onKept`, Studio's
-  store, the reflections store (HF3) and the asks store (`lib/scene-ask`,
-  HF4), or its `exchange` anything but
+  store, the reflections store (HF3), the asks store (`lib/scene-ask`,
+  HF4), LeetType's answer notes (`leetypeNotesMoved`, HF5) and the
+  soundbites and lens record as `lib/home-link/practice-reads.ts` last read
+  them (HF5), or that drops one of those from it, drops from its waiting
+  count any of the sessions, written reflections, asks, notes or lens
+  entries home lacks, or makes its `exchange` anything but
   `drainHome` over the phone's own ports (`./going`) under the run's
-  `pairing`; a hunk to `lib/home-link/drain.ts` that takes home's copy in,
+  `pairing`; a hunk to `lib/home-link/practice-reads.ts` that reads either
+  store other than on its watch starting, the soundbites' hand-in or
+  change (their store's `subscribe`), or, once the phone is paired, a write
+  to the lens record (topik's `onLensRecordWritten`), or that keeps a list
+  of the soundbites that started before a newer one; a hunk to topik's
+  `adapter/lens-record-store` that keeps an entry without telling
+  `onLensRecordWritten`'s listeners, or to `lib/leetype-takes` that keeps
+  or lets go of a note without moving `leetypeNotesMoved`; a hunk to `lib/home-link/drain.ts` that takes home's copy in,
   lets a phone session go, lets anything else go but through `letGoHeld`
   (LA16) and `letGoHeldPrompts` (LA18), or confirms what home holds
   (`confirmHeld`), or sends other than through `copyHome`, `sendKept`,
-  `sendLog`, `sendStudio`, `sendReflections` (LA16) and `sendPrompts`
-  (LA18); a hunk to
+  `sendLog`, `sendStudio`, `sendReflections` (LA16), `sendPrompts` (LA18),
+  `sendNotes` and `sendLens`; a hunk to `lib/home-link/leetype-log.ts` that
+  lets `sendEach` count an item held on any answer but a `200` its `heldAs`
+  accepts; a hunk to `lib/home-link/notes.ts` that counts a note held
+  without home's `200` naming the SHA-256 of the bytes sent, or to
+  `lib/home-link/lens-record.ts` that counts an entry held without home's
+  `200` carrying it back as sent, or makes `lensEntriesHeld` (the reading
+  of what home holds that `./voice-copy` hands topik) other than `sent.lens`
+  matching the entry as it is now; a hunk to
   `lib/home-link/model.ts` or `runtime.ts` that lets `pair` keep an earlier
   pairing's `id`, or lets `load` report an `id` other than the one stored
   with the key; a hunk to `lib/home-link/sent.ts` that lets
@@ -759,8 +804,10 @@ can say is when a run is asked for:
   renames or moves any file, function or constant this claim names without
   carrying the claim to its new place.
 - _Scope:_ `apps/www/src/lib/home-link/kept-watch.ts`, `lanes.ts`,
-  `kept-runtime.ts`, `aph.ts`, `jobs.ts`, `practice.ts`, `voice.ts`,
-  `drain.ts`, `going.ts`, `sent.ts`, `model.ts`, `runtime.ts`, `routine.ts`,
+  `kept-runtime.ts`, `aph.ts`, `jobs.ts`, `practice.ts`,
+  `practice-reads.ts`, `voice.ts`,
+  `drain.ts`, `going.ts`, `leetype-log.ts`, `notes.ts`, `lens-record.ts`,
+  `sent.ts`, `model.ts`, `runtime.ts`, `routine.ts`,
   `routine-model.ts`, `apps/www/src/components/device-home-glyph.tsx`,
   `apps/www/src/components/settings/device-kept-on-home.tsx`,
   `apps/www/src/components/aph/device-aph-lane.tsx`,
@@ -773,7 +820,9 @@ can say is when a run is asked for:
   `packages/ui/topik/src/lib/topik/adapter/server/routine-files-queries/index.ts`,
   `packages/ui/topik/src/lib/topik/adapter/routine-files/index.ts`,
   `packages/ui/topik/src/components/topik/handheld/handheld-lesson/index.tsx`,
-  `packages/ui/topik/src/components/topik/study-session/index.tsx`.
+  `packages/ui/topik/src/components/topik/study-session/index.tsx`,
+  `packages/ui/topik/src/lib/topik/adapter/lens-record-store/index.ts`,
+  `apps/www/src/lib/leetype-takes/index.ts`.
 - _Why not enforced:_ whether a moment is one where the person is using the
   app is a reading of intent: a test sees a listener or a query run, not why
   it is there, and a lint rule cannot tell a press handler from an effect
@@ -954,11 +1003,9 @@ a scene note goes only once `prompted` and held (`lib/scene-voice`'s
   sessions, reflections, stops, soundbites, grammar-lens record and
   grammar-lens takes, and a session's (or every session's) **Share** hands
   it that session's reflections, and the learner picks where they go; the
-  reflections (and, from the whole export, the soundbites and grammar-lens
-  entries and takes) stay on the phone, the share being a copy (LG1, HF1
-  #2176). "Archive finished sessions"
-  (`lib/session-archive`) hands the share sheet one file of the finished
-  sessions' records, a copy that lets no session go (LG1, HF2 #2177). The
+  reflections (and, from the whole export, the soundbites, grammar-lens
+  entries and takes, and LeetType answers and takes) stay on the phone, the
+  share being a copy that releases nothing (LG1, HF1 #2176; HF5 #2180). The
   phone's Home server block syncs, pairs, unpairs and clears
   finished sessions home holds on a tap (LA8); a paired phone drains what it
   keeps to home on its own, since home is the owner's own store (LA15), and

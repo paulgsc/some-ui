@@ -7,11 +7,13 @@
  * session PUT event by event and read back (`./leetype-log`), then Studio's
  * sittings and answers the same way (`./studio-log`), then each written
  * reflection (`./reflections`, LA16), then each ask for the next scene
- * (`./prompts`, LA18). Nothing of home's is taken in, and nothing on the
- * phone is let go but written reflections (`letGoHeld`, LA16) and the asks
- * home holds, with the scene notes they named (`letGoHeldPrompts`, LA18):
- * a finished session leaves only by the clear in Settings (`./clear`), once
- * home has read it back.
+ * (`./prompts`, LA18), then each soundbite's record and LeetType answer's
+ * note home lacks (`./notes`), and the grammar-lens entries home lacks as
+ * they are (`./lens-record`). Nothing of home's is taken in, and nothing on
+ * the phone is let go but written reflections (`letGoHeld`, LA16) and the
+ * asks home holds, with the scene notes they named (`letGoHeldPrompts`,
+ * LA18): a finished session leaves only by the clear in Settings
+ * (`./clear`), once home has read it back.
  *
  * A part home turned away (a full shelf, a refusal, a read-back that did not
  * match what was sent) does not hold back the parts after it, which share
@@ -35,10 +37,14 @@ import type { SessionRecord } from "@/lib/tenant/types"
 
 import type { LogReport } from "./leetype-log"
 import { emptyLogReport, sendLog } from "./leetype-log"
+import type { LensEntry } from "./lens-record"
+import { sendLens } from "./lens-record"
+import type { StudyNote } from "./notes"
+import { sendNotes } from "./notes"
 import { sendPrompts } from "./prompts"
 import type { Written } from "./reflections"
 import { sendReflections } from "./reflections"
-import type { Sent } from "./sent"
+import type { KeyedGoing, Sent, Staying } from "./sent"
 import {
   readSent,
   rememberSent,
@@ -80,6 +86,10 @@ export type DrainPorts = {
    * they named as carried by them (`./going`'s `letGoHeldPrompts`).
    */
   letGoHeldPrompts: (sent: Sent) => void
+  /** The study notes home lacks under `pairing`, and those on the phone (`./going`). */
+  notesGoing: () => Promise<KeyedGoing<StudyNote>>
+  /** The grammar-lens entries home lacks as they are, and those on the phone (`./going`). */
+  lensGoing: () => Promise<KeyedGoing<LensEntry>>
   /** The pairing this run goes under (the link's id for it). */
   pairing: string
   storage: KeyedStorage | null
@@ -115,7 +125,10 @@ function endedPart(report: EndedReport): HomeExchanged | null {
   return null
 }
 
-/** One log's sender (`./leetype-log`'s `sendLog`, `./studio-log`'s `sendStudio`). */
+/**
+ * One log's sender (`./leetype-log`'s `sendLog`, `./studio-log`'s
+ * `sendStudio`, `./notes`' `sendNotes`, `./lens-record`'s `sendLens`).
+ */
 type LogSender<T> = (
   going: T,
   send: HomeCall,
@@ -187,11 +200,15 @@ export async function drainHome(
         ? "refused"
         : null
 
-  /** Sends one log's `going`, remembering under `field` what home read back. */
+  /**
+   * Sends one log's `going`, remembering under `field` what home read back,
+   * and keeping of a map `stays` names only what is still on the phone.
+   */
   const part = async <T>(
     going: T,
     sender: LogSender<T>,
-    field: "leetype" | "studio" | "reflections" | "prompts"
+    field: "leetype" | "studio" | "reflections" | "prompts" | "notes" | "lens",
+    stays: Staying = {}
   ): Promise<HomeExchanged | null> => {
     const log = emptyLogReport()
     const readBack: Record<string, string> = {}
@@ -200,7 +217,7 @@ export async function drainHome(
         readBack[key] = digest
       })
     } finally {
-      sent = rememberSent(ports.storage, sent, { [field]: readBack })
+      sent = rememberSent(ports.storage, sent, { [field]: readBack }, stays)
     }
     if (log.refused + log.other + log.differs > 0) short ??= "refused"
     return endedPart(log)
@@ -232,6 +249,16 @@ export async function drainHome(
     ports.letGoHeld(sent)
     ports.letGoHeldPrompts(sent)
   }
+  const notes = await ports.notesGoing()
+  const notesEnded = await part(notes.going, sendNotes, "notes", {
+    notes: notes.onPhone,
+  })
+  if (notesEnded !== null) return notesEnded
+  const lens = await ports.lensGoing()
+  const lensEnded = await part(lens.going, sendLens, "lens", {
+    lens: lens.onPhone,
+  })
+  if (lensEnded !== null) return lensEnded
 
   return short === null ? { kind: "synced" } : failed(short)
 }

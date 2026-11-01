@@ -5,7 +5,9 @@
  * each LeetType session's digest as home read it back (`./leetype-log`),
  * each Studio sitting's and answer's (`./studio-log`), each written
  * reflection's as home answered it (`./reflections`), each ask for the next
- * scene's as home answered it (`./prompts`), and the digests home
+ * scene's as home answered it (`./prompts`), each study note's SHA-256 as
+ * home answered for it (`./notes`), each grammar-lens entry's digest as home
+ * read it back (`./lens-record`), and the digests home
  * refused, so the drain does not offer an unchanged refused item again
  * (it goes once its bytes change). Kept for one pairing (`pairing`, the
  * link's id for it): another pairing starts from nothing. Bookkeeping, not
@@ -38,6 +40,8 @@ export type Sent = {
   readonly studio: Readonly<Record<string, string>>
   readonly reflections: Readonly<Record<string, string>>
   readonly prompts: Readonly<Record<string, string>>
+  readonly notes: Readonly<Record<string, string>>
+  readonly lens: Readonly<Record<string, string>>
 }
 
 type Store = KeyedStorage | null
@@ -51,6 +55,8 @@ const emptyFor = (pairing: string): Sent => ({
   studio: {},
   reflections: {},
   prompts: {},
+  notes: {},
+  lens: {},
 })
 
 /** The string entries of `value`, and whether every entry was one. */
@@ -82,6 +88,8 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
   const studio = stringsOf(parsed.studio)
   const reflections = stringsOf(parsed.reflections)
   const prompts = stringsOf(parsed.prompts)
+  const notes = stringsOf(parsed.notes)
+  const lens = stringsOf(parsed.lens)
   return {
     value: {
       pairing: parsed.pairing,
@@ -92,6 +100,8 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
       studio: studio.value,
       reflections: reflections.value,
       prompts: prompts.value,
+      notes: notes.value,
+      lens: lens.value,
     },
     whole: [
       sessions,
@@ -101,6 +111,8 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
       studio,
       reflections,
       prompts,
+      notes,
+      lens,
     ].every((kind) => kind.whole),
   }
 }
@@ -109,6 +121,34 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
 export function readSent(storage: Store, pairing: string): Sent {
   const sent = openKept<Sent | null>(storage, SENT_KEY, readSentRecord, null)
   return sent.value?.pairing === pairing ? sent.value : emptyFor(pairing)
+}
+
+/**
+ * What a run carries of a record `sent` remembers by key (the study notes,
+ * the grammar-lens record), and which of those keys still name something on
+ * the phone, so `sent` forgets the rest.
+ */
+export type KeyedGoing<T> = {
+  readonly going: ReadonlyArray<T>
+  /** True for a key whose item is on the phone, or may be (unread). */
+  readonly onPhone: (key: string) => boolean
+}
+
+/** For each map `sent` keeps only while its item is on the phone, which stay. */
+export type Staying = {
+  readonly notes?: (key: string) => boolean
+  readonly lens?: (key: string) => boolean
+}
+
+/** `record` with only the keys `stays` keeps; all of them without it. */
+function keptOnly(
+  record: Record<string, string>,
+  stays: ((key: string) => boolean) | undefined
+): Record<string, string> {
+  if (stays === undefined) return record
+  return Object.fromEntries(
+    Object.entries(record).filter(([key]) => stays(key))
+  )
 }
 
 /** `record` without the keys `answered` holds. */
@@ -124,12 +164,15 @@ function without(
 /**
  * `sent` with what home now holds added; unwritten, the next send repeats
  * it. A kept item is held or refused, never both: home's latest answer for
- * it replaces the other.
+ * it replaces the other. The study notes and the grammar-lens record keep
+ * only the keys `stays` says are still on the phone: those stores let items
+ * go at their caps, and one value in `localStorage` must not outgrow them.
  */
 export function rememberSent(
   storage: Store,
   sent: Sent,
-  more: Partial<Omit<Sent, "pairing">>
+  more: Partial<Omit<Sent, "pairing">>,
+  stays: Staying = {}
 ): Sent {
   const next: Sent = {
     pairing: sent.pairing,
@@ -140,6 +183,8 @@ export function rememberSent(
     studio: { ...sent.studio, ...more.studio },
     reflections: { ...sent.reflections, ...more.reflections },
     prompts: { ...sent.prompts, ...more.prompts },
+    notes: keptOnly({ ...sent.notes, ...more.notes }, stays.notes),
+    lens: keptOnly({ ...sent.lens, ...more.lens }, stays.lens),
   }
   // Unwritten (full): the next send carries these again, and home says
   // unchanged.

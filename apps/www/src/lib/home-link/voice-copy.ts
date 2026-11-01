@@ -15,7 +15,13 @@
  *   every field it keeps;
  * - a Studio take still on the phone (`@some-ui/soundbites`' `notesForHome`,
  *   handed in by Studio's route, `lib/studio-keeping`): `studio`, the take as
- *   `<project>:<shot>:<take>`, when it was recorded.
+ *   `<project>:<shot>:<take>`, when it was recorded;
+ * - a soundbite (`@some-ui/soundbites`' store, handed in by its page,
+ *   `lib/soundbite-keeping`; HF5 #2180): `soundbite`, how it came to be
+ *   recorded, when it was; its record goes as a study note (`./notes`);
+ * - a grammar-lens take (`lib/lens-takes`): `lens`, the line, when taken;
+ * - a LeetType spoken answer's take (`lib/leetype-takes`): `leetype`, the
+ *   session file and screen, when taken; its note goes as a study note.
  *
  * Copying deletes nothing where the note was recorded; letting it go there
  * leaves the copy, which goes once home holds the note. Each pass says what
@@ -29,34 +35,45 @@
  *   "They're in Drive"), of a kind the Family names removes an item from
  *   the phone; an
  *   item's audio or record leaves only once home has read it back (`held`,
- *   `letGoHeld`, the clear of finished sessions home holds), and a Drive
- *   copy is only ever a copy.
+ *   `letGoHeld`, the clear of finished sessions home holds, and a capped
+ *   store making room with what home holds), and a Drive copy is only ever
+ *   a copy.
  * - _Family:_ every share kind (reflections; the study-context export with
  *   its soundbites, grammar-lens entries and takes, and LeetType answers and
- *   takes; Studio takes; the finished
- *   sessions' archive) × every home state (held; waiting; unpaired; off the
- *   LAN, which the phone sees alike as not held).
+ *   takes; Studio takes) and every cap that makes room (soundbites, lens
+ *   takes, LeetType takes and answer notes, and the grammar-lens record,
+ *   HF5 #2180) × every home state (held; waiting; unpaired; off the LAN,
+ *   which the phone sees alike as not held).
  * - _Proof:_ `lib/jobs/__tests__/runtime.test.ts` ("LG1": home's word lets
  *   a note's audio go, and a file a run missed is filed again with the audio
- *   still on the phone), `lib/session-archive/index.test.ts` ("LG1": an
- *   archive shared lets no session go), `lib/agent-export/index.test.ts`
+ *   still on the phone), `lib/agent-export/index.test.ts`
  *   ("LG1": a hand-off marks the session shared and keeps every reflection;
  *   the export lets nothing go), topik's `generate-lesson/index.test.tsx`
  *   ("LG1": an ask removes no scene note), `lib/scene-voice`'s
  *   `runtime.test.ts` ("LG1": `letGo` removes the notes home holds that an
  *   ask home holds carried, and no other),
- *   and soundbites' `project/__tests__/model.test.ts` and
+ *   soundbites' `project/__tests__/model.test.ts` and
  *   `studio/__tests__/studio.test.ts` ("LG1": a take kept by Drive stays on
- *   the phone; only `home` lets it go).
+ *   the phone; only `home` lets it go), and for the caps (HF5) soundbites'
+ *   `__tests__/policy.test.ts` and `components/soundbites/index.test.tsx`,
+ *   `lib/takes-desk/__tests__/runtime.test.ts`,
+ *   `lib/leetype-takes/index.test.ts` and topik's
+ *   `adapter/lens-record-store/index.test.ts` (each "HF5": at the cap only
+ *   one home holds makes room, and with none held the new one is refused).
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/core-utils"
 import type { KeptBite } from "@some-ui/game-week"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
+import type { Soundbite } from "@some-ui/soundbites"
 
 import { phoneGameBites } from "@/lib/game-bites"
 import { jobVoiceAudio, phoneJobs } from "@/lib/jobs"
 import type { JobEvent, JobsState } from "@/lib/jobs/model"
+import type { LeetypeTake } from "@/lib/leetype-takes"
+import { leetypeNotesHeldByHome, leetypeTakesDesk } from "@/lib/leetype-takes"
+import type { LensTake } from "@/lib/lens-takes"
+import { lensTakesDesk } from "@/lib/lens-takes"
 import {
   isSaving,
   onAudioSettled,
@@ -66,6 +83,7 @@ import type { KeptSceneNote } from "@/lib/scene-voice"
 import { phoneSceneVoice, sceneNotes } from "@/lib/scene-voice"
 import { reflections } from "@/lib/session-reflection"
 import type { Reflection } from "@/lib/session-reflection/policy"
+import { onSoundbitesKept, soundbiteKeeping } from "@/lib/soundbite-keeping"
 import { onStudioKept, studioKeeping } from "@/lib/studio-keeping"
 import { phoneVoiceHome } from "@/lib/voice-home"
 import { exchangeVoice } from "@/lib/voice-home/home"
@@ -73,6 +91,8 @@ import type { CopyPass, Unsendable, VoiceOut } from "@/lib/voice-home/model"
 import { NO_PASS, passWith, runEnd } from "@/lib/voice-home/model"
 
 import { homeLink, paired } from "./index"
+import { lensEntriesHeld } from "./lens-record"
+import { notesHeld } from "./notes"
 
 /** A finished voice reflection, as home is told it; null for any other. */
 export function reflectionNote(reflection: Reflection): VoiceOut | null {
@@ -152,6 +172,48 @@ export function sceneNote(note: KeptSceneNote, now: Date): VoiceOut {
   }
 }
 
+/**
+ * `text` as a `ref` home takes: letters, digits, `.`, `_`, `:` and `-`, at
+ * most 200; anything else becomes `-`.
+ */
+export function refOf(text: string): string {
+  const ref = text.replace(/[^\w.:-]+/g, "-").slice(0, 200)
+  return ref === "" ? "-" : ref
+}
+
+/** A grammar-lens take, as home is told it. */
+export function lensNote(take: LensTake): VoiceOut {
+  return {
+    id: take.id,
+    of: "lens",
+    ref: refOf(take.line),
+    at: new Date(take.takenAt).toISOString(),
+    contentType: take.mimeType,
+  }
+}
+
+/** A LeetType spoken answer's take (its `line` is `<file>#<screen>`), as home is told it. */
+export function leetypeNote(take: LeetypeTake): VoiceOut {
+  return {
+    id: take.id,
+    of: "leetype",
+    ref: refOf(take.line.replace("#", ":")),
+    at: new Date(take.takenAt).toISOString(),
+    contentType: take.mimeType,
+  }
+}
+
+/** A soundbite, as home is told it. */
+export function soundbiteNote(bite: Soundbite): VoiceOut {
+  return {
+    id: bite.id,
+    of: "soundbite",
+    ref: bite.context.source,
+    at: bite.recordedAt,
+    contentType: bite.mimeType,
+  }
+}
+
 /** What this phone can't send home, from the last copy pass. */
 export function unsendable(
   pass: CopyPass,
@@ -167,22 +229,43 @@ type Candidate = {
 }
 
 /**
- * Studio's takes still on the phone that home doesn't hold yet, as last
- * read (`readStudio`): its store answers only asynchronously, so each copy
- * pass reads it first and the count renders what that read found.
+ * Studio's takes still on the phone that home doesn't hold yet, and the
+ * soundbites on the phone, each as last read (`readStudio`,
+ * `readSoundbites`): their stores answer only asynchronously, so each copy
+ * pass reads them first and the count renders what those reads found.
  */
 let studioTakes: ReadonlyArray<Candidate> = []
-const studioListeners = new Set<() => void>()
+let soundbites: ReadonlyArray<Candidate> = []
+/** Moves with each read of either store. */
+let reads = 0
+const readListeners = new Set<() => void>()
 
-/** What the last read of Studio's store found, for the lane's count. */
-export const studioRead = {
-  getSnapshot: (): ReadonlyArray<Candidate> => studioTakes,
+function wasRead(): void {
+  reads += 1
+  for (const listener of readListeners) listener()
+}
+
+/** What the last reads of Studio's and the soundbites' stores found, for the lane's count. */
+export const storesRead = {
+  getSnapshot: (): number => reads,
   subscribe(listener: () => void): () => void {
-    studioListeners.add(listener)
+    readListeners.add(listener)
     return (): void => {
-      studioListeners.delete(listener)
+      readListeners.delete(listener)
     }
   },
+}
+
+async function readSoundbites(): Promise<void> {
+  const kept = soundbiteKeeping()
+  if (kept === null) return
+  const { store } = kept
+  const bites = await store.list()
+  soundbites = bites.map((bite) => ({
+    note: soundbiteNote(bite),
+    audio: (): Promise<Blob | null> => store.audio(bite.id),
+  }))
+  wasRead()
 }
 
 async function readStudio(): Promise<void> {
@@ -195,7 +278,7 @@ async function readStudio(): Promise<void> {
       note: { ...note, of: "studio" },
       audio: (): Promise<Blob | null> => store.audio(project, note.id),
     }))
-  for (const listener of studioListeners) listener()
+  wasRead()
 }
 
 export function candidates(): Array<Candidate> {
@@ -227,7 +310,24 @@ export function candidates(): Array<Candidate> {
     note: gameNote(bite),
     audio: (): Promise<Blob | null> => bites.audio(bite.id),
   }))
-  return [...said, ...named, ...scene, ...game, ...studioTakes]
+  const lens = lensTakesDesk.kept().map((take) => ({
+    note: lensNote(take),
+    audio: (): Promise<Blob | null> => lensTakesDesk.audio(take.id),
+  }))
+  const leetype = leetypeTakesDesk.kept().map((take) => ({
+    note: leetypeNote(take),
+    audio: (): Promise<Blob | null> => leetypeTakesDesk.audio(take.id),
+  }))
+  return [
+    ...said,
+    ...named,
+    ...scene,
+    ...game,
+    ...studioTakes,
+    ...soundbites,
+    ...lens,
+    ...leetype,
+  ]
 }
 
 /** A game bite, as home is told it. */
@@ -253,18 +353,64 @@ function reported(error: unknown): void {
   })
 }
 
+/** A store whose notes are listed only asynchronously, and what it is called. */
+type SourceRead = {
+  readonly source: string
+  readonly read: () => Promise<void>
+}
+
+/**
+ * Reads each source in turn: one that can't be read holds back none after
+ * it, keeps its notes as last read, and is told to `unread`. Says whether
+ * every one was read.
+ */
+async function readEach(
+  reads: ReadonlyArray<SourceRead>,
+  unread: (source: string, error: unknown) => void
+): Promise<boolean> {
+  let all = true
+  for (const { source, read } of reads) {
+    try {
+      await read()
+    } catch (error) {
+      all = false
+      unread(source, error)
+    }
+  }
+  return all
+}
+
+/** A store this phone could not list its notes from, to the native log. */
+function unreadSource(source: string, error: unknown): void {
+  reportFailure({
+    port: `voice notes (list ${source})`,
+    error: {
+      ...toIntentError(error),
+      summary: `The ${source} on this phone couldn't be listed to copy for home.`,
+    },
+  })
+}
+
 /**
  * Copies each note not yet copied, held or refused, while the phone is
  * paired, and says what it could not copy and why: a note whose
- * audio is gone, one with no room, one this phone failed to copy. A failure
- * goes on to the next note.
+ * audio is gone, one with no room, one this phone failed to copy or list. A
+ * failure goes on to the next note, and a store that can't be listed to the
+ * next store.
  */
 async function copyAll(): Promise<CopyPass> {
   const home = phoneVoiceHome()
   let pass = NO_PASS
   const gone = new Set<string>()
   let failed = false
-  await readStudio()
+  const listed = await readEach(
+    [
+      { source: "Studio takes", read: readStudio },
+      { source: "soundbites", read: readSoundbites },
+    ],
+    unreadSource
+  )
+  if (!listed) pass = passWith(pass, "fault")
   for (const { note, audio } of candidates()) {
     if (!paired()) break
     if (home.settled(note.id)) continue
@@ -343,6 +489,21 @@ export async function sendVoice(send: HomeCall): Promise<HomeExchanged> {
   return runEnd(pass, await exchangeVoice(phoneVoiceHome().keeping, send))
 }
 
+/** Home's held notes as a set, made again only when the list changes. */
+let heldFrom: ReadonlyArray<string> | null = null
+let heldSet: ReadonlySet<string> = new Set()
+
+function heldIds(): ReadonlySet<string> {
+  const { held } = phoneVoiceHome().getSnapshot()
+  if (held !== heldFrom) {
+    heldFrom = held
+    heldSet = new Set(held)
+  }
+  return heldSet
+}
+
+const voiceHeld = (id: string): boolean => heldIds().has(id)
+
 /** A store whose notes leave this phone once home holds them. */
 type LetsGo = { letGo: (homeHolds: ReadonlySet<string>) => unknown }
 
@@ -352,10 +513,9 @@ type LetsGo = { letGo: (homeHolds: ReadonlySet<string>) => unknown }
  * of them leave this phone (LG1).
  */
 function letGoHeld(): void {
-  const { held } = phoneVoiceHome().getSnapshot()
+  const holds = heldIds()
   // Home holds nothing on a phone that never sent: build no store for it.
-  if (held.length === 0) return
-  const holds = new Set(held)
+  if (holds.size === 0) return
   const stores: ReadonlyArray<LetsGo> = [
     phoneGameBites(),
     phoneJobs(),
@@ -363,6 +523,45 @@ function letGoHeld(): void {
   ]
   for (const store of stores) void store.letGo(holds)
   studioKeeping()?.letGoHeldTakes(holds).catch(reported)
+}
+
+/** Whether the grammar-lens record has been told how to read what home holds. */
+let lensRecordTold = false
+
+/**
+ * Tells the grammar-lens record, once, how to read what home holds of it.
+ * Its reading follows the pairing on its own, so once is enough, and a
+ * phone never paired loads none of topik for it.
+ */
+function holdLensRecord(): void {
+  if (lensRecordTold || !paired()) return
+  lensRecordTold = true
+  import("@some-ui/topik")
+    .then(({ lensRecordHeldByHome }) => {
+      lensRecordHeldByHome(lensEntriesHeld)
+    })
+    .catch((error: unknown) => {
+      lensRecordTold = false
+      reported(error)
+    })
+}
+
+/**
+ * Hands each offline set what home holds, read back, so it may make room at
+ * its cap with those and no others (HF5): the lens takes and LeetType takes
+ * by their voice notes, LeetType's answer notes by their study notes, a
+ * soundbite once home holds both its audio and its record, and a grammar-lens
+ * entry once home holds it as it is now. Each reads `sent` once per look.
+ */
+function holdOffline(): void {
+  lensTakesDesk.heldByHome(voiceHeld)
+  leetypeTakesDesk.heldByHome(voiceHeld)
+  leetypeNotesHeldByHome(() => notesHeld("leetype"))
+  soundbiteKeeping()?.heldByHome((): ((id: string) => boolean) => {
+    const records = notesHeld("soundbite")
+    return (id): boolean => voiceHeld(id) && records(id)
+  })
+  holdLensRecord()
 }
 
 /**
@@ -374,6 +573,7 @@ function letGoHeld(): void {
 export function watchVoiceNotes(): () => void {
   const stores: Array<() => void> = []
   let takes = false
+  let saidBites = false
   const changed = (): void => {
     if (paired() && stores.length === 0) {
       stores.push(
@@ -387,7 +587,9 @@ export function watchVoiceNotes(): () => void {
           letGoHeld()
         }),
         // A bite's release (Undo closed) is a change to its record.
-        phoneGameBites().subscribe(copySoon)
+        phoneGameBites().subscribe(copySoon),
+        lensTakesDesk.phone().subscribe(copySoon),
+        leetypeTakesDesk.phone().subscribe(copySoon)
       )
     }
     // A kept take is a write to its project, once Studio has handed it in.
@@ -396,16 +598,30 @@ export function watchVoiceNotes(): () => void {
       takes = true
       stores.push(studio.store.subscribe(copySoon))
     }
+    // Likewise a soundbite, once its page has handed its store in.
+    const bites = soundbiteKeeping()
+    if (stores.length > 0 && bites !== null && !saidBites) {
+      saidBites = true
+      stores.push(bites.store.subscribe(copySoon))
+    }
     copySoon()
   }
+  holdOffline()
   changed()
   letGoHeld()
   const stops = [
     phoneVoiceHome().subscribe(letGoHeld),
+    // What home holds moved: the offline sets may make room again.
+    phoneVoiceHome().subscribe(holdOffline),
+    homeLink().subscribe(holdOffline),
     homeLink().subscribe(changed),
     onStudioKept(() => {
       changed()
       letGoHeld()
+    }),
+    onSoundbitesKept(() => {
+      holdOffline()
+      changed()
     }),
   ]
   return (): void => {

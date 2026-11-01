@@ -17,8 +17,10 @@ import type {
   TimeEvent,
 } from "@some-ui/soundbites"
 
+import { handedIn } from "@/lib/handed-in"
+
 /** What the lanes need of Studio, handed in by its route. */
-export type StudioKeeping = {
+type StudioKeeping = {
   /** What the lanes read of Studio's projects. */
   readonly store: Pick<
     ProjectStore,
@@ -34,25 +36,13 @@ export type StudioKeeping = {
   readonly sittingKey: (sitting: Sitting) => string
 }
 
-let keeping: StudioKeeping | null = null
-const listeners = new Set<() => void>()
+const studio = handedIn<StudioKeeping>()
 
 /** Studio's route hands its pieces in; the lanes then carry its record. */
-export function keepStudio(handed: StudioKeeping): void {
-  if (keeping !== null) return
-  keeping = handed
-  for (const listener of listeners) listener()
-}
+export const keepStudio = studio.keep
 
 /** Studio's pieces, once its route has handed them in; null until then. */
-export function studioKeeping(): StudioKeeping | null {
-  return keeping
-}
+export const studioKeeping = studio.kept
 
 /** Calls `listener` once Studio's pieces are handed in. */
-export function onStudioKept(listener: () => void): () => void {
-  listeners.add(listener)
-  return (): void => {
-    listeners.delete(listener)
-  }
-}
+export const onStudioKept = studio.onKept

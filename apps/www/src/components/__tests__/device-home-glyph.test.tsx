@@ -94,6 +94,10 @@ vi.mock("@/lib/home-link/going", () => ({
   letGoHeldReflections: (): void => undefined,
   promptsGoing: (): Array<never> => [],
   letGoHeldPrompts: (): void => undefined,
+  notesGoing: (): Promise<unknown> =>
+    Promise.resolve({ going: [], onPhone: () => true }),
+  lensGoing: (): Promise<unknown> =>
+    Promise.resolve({ going: [], onPhone: () => true }),
 }))
 vi.mock("@/lib/jobs", () => ({
   phoneJobs: (): unknown => ({

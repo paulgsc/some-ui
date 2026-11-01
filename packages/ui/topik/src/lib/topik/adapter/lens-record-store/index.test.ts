@@ -4,9 +4,11 @@ import {
   LENS_RECORD_KEY,
   LENS_RECORD_MAX,
   lensRecordForExport,
+  lensRecordHeldByHome,
+  onLensRecordWritten,
 } from "@topik/lib/topik/adapter/lens-record-store"
 import type { LensRecordEntry } from "@topik/lib/topik/read-aloud/lens/record"
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it } from "vitest"
 
 const DAY = 24 * 60 * 60 * 1000
 const NOW = Date.UTC(2026, 9, 17)
@@ -36,7 +38,11 @@ const entry = (
 })
 
 describe("the lens record store", () => {
-  it("keeps every entry however old, and none past the bound until shared", () => {
+  afterEach(() => {
+    lensRecordHeldByHome(() => (): boolean => false)
+  })
+
+  it("keeps every entry however old, and none past the bound while home holds none", () => {
     const storage = memoryStorage()
     const store = createLensRecordStore(storage)
     store.add(entry(NOW - 400 * DAY, { line: "old" }))
@@ -55,6 +61,27 @@ describe("the lens record store", () => {
     // 5.1 to 5.8 s on CI's runner, past vitest's 5 s default.
   }, 15_000)
 
+  it("makes room at the bound with the earliest entry home holds, and only one it holds (HF5)", () => {
+    const storage = memoryStorage()
+    const store = createLensRecordStore(storage)
+    store.add(entry(NOW - 400 * DAY, { line: "oldest" }))
+    for (let n = 1; n < LENS_RECORD_MAX; n += 1)
+      store.add(entry(NOW - n, { line: `l${n}` }))
+    lensRecordHeldByHome(
+      () =>
+        (e): boolean =>
+          e.line === "l5" || e.line === "l9"
+    )
+    expect(store.full()).toBe(false)
+    store.add(entry(NOW, { line: "new" }))
+    const lines = lensRecordForExport(storage).entries.map((e) => e.line)
+    expect(lines).toHaveLength(LENS_RECORD_MAX)
+    expect(lines).toContain("new")
+    expect(lines).toContain("oldest")
+    expect(lines).not.toContain("l9")
+    expect(lines).toContain("l5")
+  }, 15_000)
+
   it("replaces an entry written again for the same item", () => {
     const storage = memoryStorage()
     const store = createLensRecordStore(storage)
@@ -70,6 +97,26 @@ describe("the lens record store", () => {
       { line: "other" },
       { line: "school", situation: chosen },
     ])
+  })
+
+  it("tells its listeners of each write it keeps, and of none it refuses (HF5)", () => {
+    const storage = memoryStorage()
+    const store = createLensRecordStore(storage)
+    let told = 0
+    const stop = onLensRecordWritten(() => {
+      told += 1
+    })
+    store.add(entry(NOW))
+    // The same item seen further is a write too: home keeps each version.
+    store.add(entry(NOW, { right: false }))
+    expect(told).toBe(2)
+    storage.full = true
+    store.add(entry(NOW, { line: "refused" }))
+    expect(told).toBe(2)
+    storage.full = false
+    stop()
+    store.add(entry(NOW, { line: "unheard" }))
+    expect(told).toBe(2)
   })
 
   it("flags a session racing once any of its entries was", () => {
