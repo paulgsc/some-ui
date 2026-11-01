@@ -189,13 +189,14 @@ step 12 doesn't run. Voice notes never go to the mailbox from this run.
    `node scripts/base.mjs <absolute path of the file>`. The file takes the
    reflections a Drive file holds too, grouped as the others are, though they
    are still answered with their file: home's index counts every group it
-   gathered (paulgsc/server `mailbox/index/reflections.rs`, `waiting_groups`),
+   gathered (paulgsc/server
+   `apps/servers/file_host/src/mailbox/index/reflections.rs`, `waiting_groups`),
    and whether an earlier base names one group turns on all of that day's. It
    prints each group with its `base` and its `earlier` base,
    which is `null` when a scene under it answers none. A group is answered by
    a scene that carries its `base`, or its `earlier` base when that isn't
-   `null`. If it fails or says the groups don't read (it names the entry when
-   it can), fix the file and run it again. A group whose newest `at` is under two hours old waits for the
+   `null`. If it says the groups don't read, fix what it names and run it
+   again; if it fails any other way, stop part A and say why in the summary. A group whose newest `at` is under two hours old waits for the
    next run, since more of that session may be on its way; a reflection
    written on the same day after its group was answered is not answered
    again (say so in the summary). Its spoken reflections ("Voice notes",
@@ -529,43 +530,31 @@ and is not retried.
 
 **RB1: a reflection group's base tells its sessions apart.**
 
-- _Claim:_ step 3 has the run take every mailbox group's base from
-  `scripts/base.mjs`, which names the session by the last 8 letters, digits or
-  `-` of its id, the random end of every id the phone or home makes, and lets a
-  scene under the earlier base (the first 8) answer a group only when no other
-  group of that day still in the listing, answered or not, has the same
-  earlier base.
+The rule is a test's: `src/lib/topik/reflection-base/index.test.ts`, "RB1",
+holds `baseOf`, `earlierBaseOf` and `groupBases` (the session id's last 8
+letters, digits or `-`; an earlier-base scene answers a group only when no
+other group of that day still in the listing, answered or not, has the same
+earlier base) over each id form, and
+`apps/www/src/lib/tenant/__tests__/session-id.test.ts`, "RB1", holds that the
+last 8 of every id `newSessionId` makes are random. What follows is the one
+part no test can see.
+
+- _Claim:_ step 3 has the run take every group's base from
+  `scripts/base.mjs`, and `scripts/base.mjs` prints
+  `groupBases(readGroups(<the file>))` of the module it loads,
+  `src/lib/topik/reflection-base/index.ts`, or says that the groups don't
+  read.
 - _Falsified by_ a hunk in this file's step 3 that has the run work out a base
-  other than with `scripts/base.mjs`, that names the session in a base by any
-  part every session id shares, or that drops the earlier-base clause or
-  changes when it answers a group; a hunk that deletes, renames or moves
-  `scripts/base.mjs` without step 3 following it; a hunk in `scripts/base.mjs`
-  that prints anything other than `groupBases(readGroups(<the file>))` or
-  that the groups don't read, or that passes `withSource` any path but
-  `/src/lib/topik/reflection-base/index.ts`; a hunk in `scripts/source.mjs`
-  that changes what `readArg` reads or what `withSource` loads; a hunk that
-  moves or renames `src/lib/topik/reflection-base/index.ts` or its
-  `groupBases`/`readGroups` exports without `base.mjs` following; a hunk
-  anywhere under `apps/www/src` that gives a new session an id other than one
-  `newSessionId` returned; or a hunk that deletes, skips or narrows the "RB1"
-  `describe` in either test file named below.
-- _Scope:_ this file's step 3, `scripts/base.mjs`, `scripts/source.mjs`,
-  `src/lib/topik/reflection-base/index.ts`, and the phone's session ids:
-  `newSessionId` in `apps/www/src/lib/tenant/session-id.ts` and every caller
-  of it under `apps/www/src`. Home's `new_session_id` makes ids of
-  the same form and lives in paulgsc/server, outside this repo.
-- _Why not a test alone:_ the rule itself is a test's.
-  `src/lib/topik/reflection-base/index.test.ts`, "RB1", holds `baseOf`,
-  `earlierBaseOf` and `groupBases` over each id form (`session-<uuid>`,
-  `session-<ms>-<rand>`, and a bare UUID from "Next lesson" before #2327), and
-  `apps/www/src/lib/tenant/__tests__/session-id.test.ts`, "RB1", holds that
-  the last 8 of an id `newSessionId` makes come from `generateId`'s random
-  part, in both its forms. What no test sees is that the run, which follows
-  this file by hand, calls `scripts/base.mjs`, and that the script prints what
-  the module computes.
+  any other way, or that drops or changes the earlier-base clause; a hunk in
+  `scripts/base.mjs` that prints anything else or loads another module; or a
+  hunk that deletes, renames or moves `scripts/base.mjs` without step 3
+  following it.
+- _Scope:_ this file's step 3 and `scripts/base.mjs`.
+- _Why not enforced:_ the run follows this file by hand, so whether it calls
+  the script is something only a reader of this file can check.
 - _Tolerance:_ a group that arrives late for a day whose other groups have all
   left the listing, when one of them was answered under the earlier base, is
-  taken as answered by that scene. Earlier-base scenes were written only
-  before this rule (2026-10-31 and 2026-11-01), and a reflection leaves the
-  listing only once home archives it, at least 30 days on, so such a group
+  taken as answered by that scene. Earlier-base scenes are written only by runs
+  from HF3 (#2396, 2026-10-31) until RB1 reached main, and a reflection leaves
+  the listing only once home archives it, at least 30 days on, so such a group
   would have to arrive more than a month late.
