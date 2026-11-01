@@ -46,6 +46,7 @@ const OPTIONS: TakePatternOptions = {
   redo: "supersede",
   letGo: "set-aside",
   play: "each",
+  clock: "elapsed",
 }
 
 const take = {
@@ -179,6 +180,16 @@ describe("the take pattern's step", () => {
       { type: "setAside", id: "t1" },
     ])
     expect(state.setAside).toEqual({ id: "t1", place: "phone" })
+  })
+
+  it("takes back its word when the store couldn't set the take aside", () => {
+    const aside = run([{ type: "letGo", id: "t1", place: "phone" }]).state
+    expect(
+      run([{ type: "setAsideFailed", id: "t2" }], aside).state.setAside
+    ).toEqual({ id: "t1", place: "phone" })
+    const failed = run([{ type: "setAsideFailed", id: "t1" }], aside)
+    expect(failed.state.setAside).toBeNull()
+    expect(failed.effects).toEqual([])
   })
 
   it("lets nothing go while a take is under way", () => {
@@ -321,7 +332,7 @@ describe("the take pattern's runtime, on the simulated microphone", () => {
       OPTIONS
     )
     pattern.letGo("t1", "home")
-    expect(setAside).toHaveBeenCalledWith("t1")
+    expect(setAside).toHaveBeenCalledWith("t1", expect.any(Function))
     expect(pattern.getSnapshot().setAside).toEqual({ id: "t1", place: "home" })
   })
 

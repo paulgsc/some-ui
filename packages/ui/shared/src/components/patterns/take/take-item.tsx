@@ -3,6 +3,7 @@ import type {
   PatternTake,
   TakeItemView,
   TakePlace,
+  TakeRowView,
 } from "@some-ui/voice-capture"
 import { TAKE_WORDS, takeSaid } from "@some-ui/voice-capture"
 
@@ -26,6 +27,11 @@ export type TakeItemProps = {
   label?: string
   /** The screen's words about one take, under its length. */
   describe?: (take: PatternTake) => ReactNode
+  /**
+   * The screen's own action on one of the item's current takes: the row's
+   * named `extra` slot (`TakeRow`).
+   */
+  extra?: (row: TakeRowView) => ReactNode
   className?: string
 } & Pick<TakeButtonProps, "size">
 
@@ -46,6 +52,7 @@ export const TakeItem = ({
   onLetGo,
   label,
   describe,
+  extra,
   size,
   className,
 }: TakeItemProps): JSX.Element => {
@@ -66,6 +73,40 @@ export const TakeItem = ({
           {said === null ? null : takeSaid(words, said)}
         </p>
       </div>
+      <TakeRows
+        view={view}
+        onPlay={onPlay}
+        onRedo={onRedo}
+        onLetGo={onLetGo}
+        describe={describe}
+        extra={extra}
+      />
+    </section>
+  )
+}
+
+export type TakeRowsProps = Pick<
+  TakeItemProps,
+  "view" | "onPlay" | "onRedo" | "onLetGo" | "describe" | "extra"
+>
+
+/**
+ * An item's takes as rows: its current takes, then the earlier ones a Redo
+ * superseded, collapsed (D2). `TakeItem` draws them under its button; a
+ * screen whose button sits apart from its list (the Soundbites page, its
+ * button in the header) draws `TakeButton` and these where each goes.
+ */
+export const TakeRows = ({
+  view,
+  onPlay,
+  onRedo,
+  onLetGo,
+  describe,
+  extra,
+}: TakeRowsProps): JSX.Element => {
+  const words = TAKE_WORDS
+  return (
+    <>
       {view.current.length > 0 && (
         <ul className="space-y-2">
           {view.current.map((row) => (
@@ -75,6 +116,7 @@ export const TakeItem = ({
               onPlay={() => onPlay(row.take.id)}
               onRedo={() => onRedo(row.take.id)}
               onLetGo={() => onLetGo(row.take.id, row.take.kept.place)}
+              extra={extra?.(row)}
             >
               {describe?.(row.take)}
             </TakeRow>
@@ -99,6 +141,6 @@ export const TakeItem = ({
           </ul>
         </details>
       )}
-    </section>
+    </>
   )
 }

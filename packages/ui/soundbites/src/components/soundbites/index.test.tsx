@@ -1,16 +1,33 @@
 import type { JSX } from "react"
 import { StrictMode } from "react"
-import type { Recording, StartRecording, Take } from "@some-ui/voice-capture"
-import { RecordingError } from "@some-ui/voice-capture"
+import type { MicOwner } from "@some-ui/voice-capture"
+import { microphoneOwner, TAKE_WORDS } from "@some-ui/voice-capture"
+import type {
+  SimulatedMicrophone,
+  SimulatedPlayer,
+} from "@some-ui/voice-capture/testing"
+import {
+  simulatedMicrophone,
+  simulatedPlayer,
+  SPEAKING,
+} from "@some-ui/voice-capture/testing"
 import type { SoundbitesProps } from "@soundbites/components/soundbites"
 import { Soundbites } from "@soundbites/components/soundbites"
 import { bite, memoryStore } from "@soundbites/lib/__tests__/fixture"
+import { formatWhen } from "@soundbites/lib/format"
 import { soundbitesHeldByHome } from "@soundbites/lib/home-held"
 import type { SoundbiteSituation } from "@soundbites/lib/machine"
+import type { SoundbitesPorts } from "@soundbites/lib/runtime"
 import type { SoundbiteContext } from "@soundbites/lib/types"
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
-import type { Mock } from "vitest"
-import { describe, expect, it, vi } from "vitest"
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 const SITUATION: SoundbiteSituation = {
   lastSessionAt: "2026-09-29T08:00:00.000Z",
@@ -21,61 +38,72 @@ const SITUATION: SoundbiteSituation = {
 /** What a take kept on arrival from the sessions list notes. */
 const CONTEXT: SoundbiteContext = { ...SITUATION, source: "sessions" }
 
-type FakeMic = {
-  start: Mock<StartRecording>
-  finish: Mock<() => Promise<Take>>
-  discard: Mock<() => void>
+const W = TAKE_WORDS
+
+/**
+ * The phone the page records on: the shared simulated microphone, hearing
+ * five seconds of speech a take unless scripted otherwise, a player, and a
+ * microphone of its own, so a take one test leaves holds no other's.
+ */
+type Phone = {
+  readonly mic: SimulatedMicrophone
+  readonly player: SimulatedPlayer
+  readonly owner: MicOwner
 }
 
-/** A microphone that hears `durationMs` of speech per take. */
-function fakeMic(durationMs = 5_000): FakeMic {
-  const finish = vi.fn(
-    (): Promise<Take> =>
-      Promise.resolve({
-        blob: new Blob(["voice"], { type: "audio/webm" }),
-        mimeType: "audio/webm",
-        durationMs,
-      })
-  )
-  const discard = vi.fn((): void => undefined)
-  const start = vi.fn(
-    (): Promise<Recording> =>
-      Promise.resolve({ level: (): number => 0.3, finish, discard })
-  )
-  return { start, finish, discard }
+function phone(): Phone {
+  return {
+    mic: simulatedMicrophone({
+      now: Date.now,
+      fallback: { ...SPEAKING, durationMs: 5_000 },
+    }),
+    player: simulatedPlayer(),
+    owner: microphoneOwner(),
+  }
+}
+
+function portsOn(
+  on: Phone,
+  store: SoundbitesPorts["store"]
+): Partial<SoundbitesPorts> {
+  return {
+    store,
+    startRecording: on.mic.startRecording,
+    player: on.player,
+    owner: on.owner,
+  }
 }
 
 function setup(
   options: {
     kept?: Parameters<typeof memoryStore>[0]
-    mic?: FakeMic
+    on?: Phone
     autoStart?: boolean
     onAutoStart?: () => void
     source?: SoundbiteContext["source"]
     footer?: SoundbitesProps["footer"]
   } = {}
-): ReturnType<typeof memoryStore> &
-  ReturnType<typeof render> & { mic: FakeMic } {
-  const mic = options.mic ?? fakeMic()
+): ReturnType<typeof memoryStore> & ReturnType<typeof render> & { on: Phone } {
+  const on = options.on ?? phone()
   const memory = memoryStore(options.kept)
   const view = render(
     <Soundbites
       situation={() => SITUATION}
       source={options.source ?? "sessions"}
-      ports={{ store: memory.store, startRecording: mic.start }}
+      ports={portsOn(on, memory.store)}
       autoStart={options.autoStart}
       onAutoStart={options.onAutoStart}
       footer={options.footer}
     />
   )
-  return { ...memory, ...view, mic }
+  return { ...memory, ...view, on }
 }
 
-/** Runs `event`, then lets the promises it started settle. */
+/** Runs `event`, then lets the promises and timers it started settle. */
 async function settle(event: () => void): Promise<void> {
   await act(async () => {
     event()
-    await Promise.resolve()
+    await new Promise((resolve) => setTimeout(resolve, 5))
   })
 }
 
@@ -85,66 +113,97 @@ async function tap(name: string | RegExp): Promise<void> {
   await settle(() => fireEvent.click(button))
 }
 
-/** A fake `Audio` whose `play` is `play(src)`, and stub object URLs. */
-function stubAudio(
-  play: (src: string) => Promise<void>,
-  url: () => string
-): void {
-  vi.stubGlobal(
-    "Audio",
-    class {
-      onended: (() => void) | null = null
-      constructor(readonly src: string) {}
-      play(): Promise<void> {
-        return play(this.src)
-      }
-      pause(): void {}
-    }
-  )
-  vi.spyOn(URL, "createObjectURL").mockImplementation(url)
-  vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined)
+/** Starts a take, waits for the microphone, and stops it. */
+async function record(): Promise<void> {
+  await tap(W.buttonLabel.ready)
+  await tap(W.buttonLabel.recording)
 }
+
+/** The kept soundbites' rows. */
+const rows = (): Array<HTMLElement> =>
+  within(screen.getByRole("region", { name: "On this phone" })).queryAllByRole(
+    "listitem"
+  )
 
 /** Six kept, `b0` the newest and `b5` the oldest. */
 const FULL = Array.from({ length: 6 }, (_, i) => bite(`b${i}`, i * 60))
 
+afterEach(() => {
+  vi.useRealTimers()
+  soundbitesHeldByHome(() => (): boolean => false)
+})
+
 describe("Soundbites", () => {
   it("listens on one tap and keeps what was said on the next", async () => {
-    const { kept, mic } = setup({
+    const { kept, on } = setup({
       footer: (taking) => <p>{taking ? "taking" : "settled"}</p>,
     })
     expect(screen.getByText("settled")).toBeInTheDocument()
 
-    await tap("Start talking")
-    expect(mic.start).toHaveBeenCalledTimes(1)
+    await tap(W.buttonLabel.ready)
+    expect(on.mic.asked()).toBe(1)
     expect(screen.getByText("taking")).toBeInTheDocument()
     expect(
-      screen.getByRole("button", { name: "Done, keep it" })
+      screen.getByRole("button", { name: W.buttonLabel.recording })
     ).toHaveAttribute("aria-pressed", "true")
 
-    await tap("Done, keep it")
-    expect(
-      await screen.findByText("Kept, 0:05. 1 of 6 on this phone.")
-    ).toBeInTheDocument()
+    await tap(W.buttonLabel.recording)
+    expect(await screen.findByText(W.ended.kept)).toBeInTheDocument()
     const [saved] = [...kept.values()]
     expect(saved?.bite).toMatchObject({
       durationMs: 5_000,
-      mimeType: "audio/webm",
+      mimeType: "audio/webm;codecs=opus",
       context: CONTEXT,
     })
-    expect(screen.getByText("1 of 6 kept")).toBeVisible()
+    expect(await screen.findByText("1 of 6 kept")).toBeVisible()
+    expect(rows()).toHaveLength(1)
+    expect(rows()[0]).toHaveTextContent(`0:05 · ${W.place.phone}`)
     expect(screen.getByText("settled")).toBeInTheDocument()
+    expect(on.mic.open()).toBe(0)
   })
 
   it("starts listening on arrival when asked, once", async () => {
     const onAutoStart = vi.fn()
-    const { mic } = setup({ autoStart: true, onAutoStart })
+    const { on } = setup({ autoStart: true, onAutoStart })
 
     expect(
-      await screen.findByRole("button", { name: "Done, keep it" })
+      await screen.findByRole("button", { name: W.buttonLabel.recording })
     ).toBeInTheDocument()
-    expect(mic.start).toHaveBeenCalledTimes(1)
+    expect(on.mic.asked()).toBe(1)
     expect(onAutoStart).toHaveBeenCalledTimes(1)
+  })
+
+  it("counts down the minute, stops itself at it and keeps it", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const on = phone()
+    on.mic.script({ ...SPEAKING })
+    const { kept } = setup({ on })
+
+    await tap(W.buttonLabel.ready)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_100)
+    })
+    expect(
+      screen.getByRole("button", { name: W.buttonLabel.recording })
+    ).toHaveTextContent(/0:5\d left/)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000)
+    })
+
+    expect(on.mic.open()).toBe(0)
+    expect(kept.size).toBe(1)
+    expect([...kept.values()][0]?.bite.durationMs).toBe(60_000)
+  })
+
+  it("keeps nothing from a stray double tap", async () => {
+    const on = phone()
+    on.mic.script({ ...SPEAKING, durationMs: 300 })
+    const { kept } = setup({ on })
+
+    await record()
+
+    expect(await screen.findByText(W.ended.short)).toBeInTheDocument()
+    expect(kept.size).toBe(0)
   })
 
   it("when full and home holds none, keeps every one and refuses the next (HF5)", async () => {
@@ -159,10 +218,9 @@ describe("Soundbites", () => {
     expect(
       screen.queryByRole("button", { name: "Replace this one next instead" })
     ).toBeNull()
-    await tap("Start talking")
-    await tap("Done, keep it")
+    await record()
 
-    expect(await screen.findByText(/No room for that one/)).toBeInTheDocument()
+    expect(await screen.findByText(W.ended.full)).toBeInTheDocument()
     expect(kept.size).toBe(6)
     expect(kept.has("b5")).toBe(true)
   })
@@ -178,10 +236,9 @@ describe("Soundbites", () => {
     expect(
       await screen.findByText(/Full\. Your next one replaces/)
     ).toHaveTextContent(", the oldest home has")
-    await tap("Start talking")
-    await tap("Done, keep it")
+    await record()
 
-    expect(await screen.findByText(/6 of 6 on this phone/)).toBeInTheDocument()
+    expect(await screen.findByText(W.ended.kept)).toBeInTheDocument()
     expect(kept.has("b5")).toBe(true)
     expect(kept.has("b4")).toBe(false)
     expect(kept.size).toBe(6)
@@ -197,55 +254,35 @@ describe("Soundbites", () => {
       name: "Replace this one next instead",
     })
     if (first === undefined) throw new Error("nothing offered to replace")
+    expect(screen.getByText("Replaced by your next one")).toBeInTheDocument()
     await settle(() => fireEvent.click(first))
     expect(
       screen.getByText(/Full\. Your next one replaces/)
     ).not.toHaveTextContent(", the oldest home has")
 
-    await tap("Start talking")
-    await tap("Done, keep it")
-    await screen.findByText(/6 of 6 on this phone/)
+    await record()
+    await screen.findByText(W.ended.kept)
     expect(kept.has("b0")).toBe(false)
     expect(kept.has("b5")).toBe(true)
   })
 
-  it("stops itself at one minute and keeps it", async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    const { kept, mic } = setup({ mic: fakeMic(60_000) })
-
-    await tap("Start talking")
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(60_100)
-    })
-
-    expect(mic.finish).toHaveBeenCalledTimes(1)
-    expect(kept.size).toBe(1)
-  })
-
-  it("keeps nothing from a stray double tap", async () => {
-    const { kept } = setup({ mic: fakeMic(300) })
-
-    await tap("Start talking")
-    await tap("Done, keep it")
-
-    expect(await screen.findByText(/Too short to keep/)).toBeInTheDocument()
-    expect(kept.size).toBe(0)
-  })
-
-  it("throws a take away when asked", async () => {
-    const { kept, mic } = setup()
-
-    await tap("Start talking")
-    await tap("Throw it away")
-
-    expect(mic.discard).toHaveBeenCalledTimes(1)
-    expect(screen.getByText("Thrown away. Nothing kept.")).toBeInTheDocument()
-    expect(kept.size).toBe(0)
+  it("says on each row where it is kept, and what the app noted", async () => {
+    soundbitesHeldByHome(
+      () =>
+        (id): boolean =>
+          id === "a"
+    )
+    setup({ kept: [bite("a", 5), bite("b", 10)] })
+    await screen.findByText("2 of 6 kept")
+    const [a, b] = rows()
+    expect(a).toHaveTextContent(`0:12 · ${W.place.home}`)
+    expect(a).toHaveTextContent("No sessions yet")
+    expect(b).toHaveTextContent(`0:12 · ${W.place.phone}`)
   })
 
   it("keeps what was said when the screen goes away mid-take", async () => {
     const { kept } = setup()
-    await tap("Start talking")
+    await tap(W.buttonLabel.ready)
 
     const visibility = vi
       .spyOn(document, "visibilityState", "get")
@@ -253,32 +290,37 @@ describe("Soundbites", () => {
     await settle(() => document.dispatchEvent(new Event("visibilitychange")))
     visibility.mockRestore()
 
-    expect(await screen.findByText(/1 of 6 on this phone/)).toBeInTheDocument()
+    expect(await screen.findByText("1 of 6 kept")).toBeInTheDocument()
     expect(kept.size).toBe(1)
   })
 
   it("keeps what was said when the page is left mid-take", async () => {
     const { kept, unmount } = setup()
-    await tap("Start talking")
+    await tap(W.buttonLabel.ready)
 
     await settle(unmount)
 
     expect(kept.size).toBe(1)
   })
 
-  it("says how to turn the microphone on when Android says no", async () => {
-    const mic = fakeMic()
-    mic.start.mockRejectedValueOnce(new RecordingError("denied"))
-    setup({ mic })
+  it("says how to turn the microphone on when Android says no, and tries again on a tap", async () => {
+    const on = phone()
+    on.mic.script({
+      ...SPEAKING,
+      open: { kind: "refuse", reason: "denied", ms: 0 },
+    })
+    setup({ on })
 
-    await tap("Start talking")
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Android Settings → Apps → Some UI → Permissions → Microphone"
-    )
-
-    await tap("Try again")
+    await tap(W.buttonLabel.ready)
     expect(
-      screen.getByRole("button", { name: "Done, keep it" })
+      await screen.findByText(
+        /Android Settings → Apps → Some UI → Permissions → Microphone/
+      )
+    ).toBeInTheDocument()
+
+    await tap(W.buttonLabel.ready)
+    expect(
+      screen.getByRole("button", { name: W.buttonLabel.recording })
     ).toBeInTheDocument()
   })
 
@@ -288,45 +330,30 @@ describe("Soundbites", () => {
       new Error("IndexedDB unavailable")
     )
 
-    await tap("Start talking")
-    await tap("Done, keep it")
-    expect(
-      await screen.findByText("That one couldn't be kept. Try again?")
-    ).toBeInTheDocument()
+    await record()
+    expect(await screen.findByText(W.ended.failed)).toBeInTheDocument()
     expect(kept.size).toBe(0)
 
-    await tap("Start talking")
-    await tap("Done, keep it")
-    await screen.findByText(/1 of 6 on this phone/)
+    await record()
+    await screen.findByText("1 of 6 kept")
     expect([...kept.values()][0]?.bite.context.source).toBe("sessions")
 
     // Once one is stored, any later take on this visit is the page's own.
-    await tap("Start talking")
-    await tap("Done, keep it")
-    await screen.findByText(/2 of 6 on this phone/)
+    await record()
+    await screen.findByText("2 of 6 kept")
     const sources = [...kept.values()].map((k) => k.bite.context.source)
     expect(sources.sort()).toEqual(["direct", "sessions"])
   })
 
   it("says a take was kept even when the list cannot be re-read after", async () => {
-    const memory = memoryStore()
-    const mic = fakeMic()
-    render(
-      <Soundbites
-        situation={() => SITUATION}
-        source="sessions"
-        ports={{ store: memory.store, startRecording: mic.start }}
-      />
-    )
+    const { kept, store } = setup()
     await screen.findByText("Nothing kept yet.")
-    vi.spyOn(memory.store, "list").mockRejectedValueOnce(new Error("busy"))
+    vi.spyOn(store, "list").mockRejectedValueOnce(new Error("busy"))
 
-    await tap("Start talking")
-    await tap("Done, keep it")
+    await record()
 
-    expect(await screen.findByText("Kept, 0:05.")).toBeInTheDocument()
-    expect(screen.queryByText(/couldn't be kept/)).not.toBeInTheDocument()
-    expect(memory.kept.size).toBe(1)
+    expect(await screen.findByText(W.ended.kept)).toBeInTheDocument()
+    expect(kept.size).toBe(1)
     // ... and the list it could not re-read goes unknown, not stale: no
     // "Nothing kept yet" and no 0/6 beside a take that was just kept.
     expect(screen.getByRole("alert")).toHaveTextContent(
@@ -336,116 +363,11 @@ describe("Soundbites", () => {
     expect(screen.queryByText(/of 6 kept/)).toBeNull()
   })
 
-  it("keeps the new recording playing when an old play fails late", async () => {
-    const audios: Array<{
-      src: string
-      fail: (error: Error) => void
-    }> = []
-    let urls = 0
-    stubAudio(
-      (src) =>
-        new Promise((_resolve, reject) => {
-          audios.push({ src, fail: reject })
-        }),
-      () => `blob:${++urls}`
-    )
-    setup({ kept: [bite("a", 5), bite("b", 10)] })
-
-    const [first, second] = await screen.findAllByRole("button", {
-      name: /^Play /,
-    })
-    if (first === undefined || second === undefined)
-      throw new Error("two recordings to play")
-    await settle(() => fireEvent.click(first))
-    await screen.findByRole("button", { name: /^Stop playing / })
-    await settle(() => fireEvent.click(second))
-    await waitFor(() => expect(audios).toHaveLength(2))
-
-    // The first recording's play, abandoned by the switch, fails now.
-    await settle(() => audios[0]?.fail(new Error("interrupted")))
-
-    expect(
-      screen.getAllByRole("button", { name: /^Stop playing / })
-    ).toHaveLength(1)
-    expect(
-      screen.getAllByRole("button", { name: /^(Play|Stop playing) / })[1]
-    ).toHaveAccessibleName(/^Stop playing /)
-    vi.unstubAllGlobals()
-  })
-
-  it("says so when a recording's audio cannot be read", async () => {
-    const memory = memoryStore([bite("a", 5)])
-    vi.spyOn(memory.store, "audio").mockRejectedValueOnce(new Error("busy"))
-    render(
-      <Soundbites
-        situation={() => SITUATION}
-        ports={{ store: memory.store, startRecording: fakeMic().start }}
-      />
-    )
-
-    await tap(/^Play /)
-
-    expect(
-      await screen.findByText("That recording couldn't be played.")
-    ).toBeInTheDocument()
-  })
-
-  it("keeps a recording it could not delete, and says so", async () => {
-    const memory = memoryStore([bite("a", 5)])
-    vi.spyOn(memory.store, "remove").mockRejectedValueOnce(new Error("busy"))
-    render(
-      <Soundbites
-        situation={() => SITUATION}
-        ports={{ store: memory.store, startRecording: fakeMic().start }}
-      />
-    )
-
-    await tap(/^Delete /)
-    await tap("Delete it")
-
-    expect(
-      await screen.findByText("That one couldn't be deleted. Try again?")
-    ).toBeInTheDocument()
-    expect(screen.getByText("1 of 6 kept")).toBeVisible()
-  })
-
-  it("shows the list unknown when it cannot be re-read after a delete", async () => {
-    const memory = memoryStore([bite("a", 5), bite("b", 10)])
-    render(
-      <Soundbites
-        situation={() => SITUATION}
-        ports={{ store: memory.store, startRecording: fakeMic().start }}
-      />
-    )
-    await screen.findByText("2 of 6 kept")
-    vi.spyOn(memory.store, "list").mockRejectedValueOnce(new Error("busy"))
-
-    const [first] = screen.getAllByRole("button", { name: /^Delete / })
-    if (first === undefined) throw new Error("a recording to delete")
-    await settle(() => fireEvent.click(first))
-    await tap("Delete it")
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Couldn't read what's on this phone"
-    )
-    expect(screen.queryByText(/of 6 kept/)).toBeNull()
-    expect(memory.kept.size).toBe(1)
-  })
-
   it("plays one recording at a time, however fast the taps", async () => {
-    const played: Array<string> = []
-    let urls = 0
-    stubAudio(
-      (src) => {
-        played.push(src)
-        return Promise.resolve()
-      },
-      () => `blob:${++urls}`
-    )
-    setup({ kept: [bite("a", 5), bite("b", 10)] })
+    const { on } = setup({ kept: [bite("a", 5), bite("b", 10)] })
 
     const [first, second] = await screen.findAllByRole("button", {
-      name: /^Play /,
+      name: W.rowLabel(W.play, 12_000),
     })
     if (first === undefined || second === undefined)
       throw new Error("two recordings to play")
@@ -454,9 +376,23 @@ describe("Soundbites", () => {
       fireEvent.click(second)
     })
 
-    await screen.findByRole("button", { name: /^Stop playing / })
-    expect(played).toHaveLength(1)
-    vi.unstubAllGlobals()
+    expect(
+      await screen.findAllByRole("button", { name: W.rowLabel(W.stop, 12_000) })
+    ).toHaveLength(1)
+    expect(on.player.playing()).toBe(1)
+    await settle(() => on.player.finish())
+    expect(
+      screen.queryAllByRole("button", { name: W.rowLabel(W.stop, 12_000) })
+    ).toHaveLength(0)
+  })
+
+  it("says so when a recording's audio cannot be read", async () => {
+    const { store } = setup({ kept: [bite("a", 5)] })
+    vi.spyOn(store, "audio").mockRejectedValueOnce(new Error("busy"))
+
+    await tap(W.rowLabel(W.play, 12_000))
+
+    expect(await screen.findByText(W.unplayable)).toBeInTheDocument()
   })
 
   it("never shows an unreadable phone as an empty one", async () => {
@@ -465,7 +401,7 @@ describe("Soundbites", () => {
     render(
       <Soundbites
         situation={() => SITUATION}
-        ports={{ store: memory.store, startRecording: fakeMic().start }}
+        ports={portsOn(phone(), memory.store)}
       />
     )
 
@@ -475,7 +411,6 @@ describe("Soundbites", () => {
     expect(screen.queryByText("Nothing kept yet.")).not.toBeInTheDocument()
     // No count either: an unread phone has none, and 0 would say empty.
     expect(screen.queryByText(/of 6 kept/)).toBeNull()
-    expect(screen.queryByText("0/6")).toBeNull()
 
     await tap("Read them again")
     expect(await screen.findByText("1 of 6 kept")).toBeInTheDocument()
@@ -483,42 +418,27 @@ describe("Soundbites", () => {
   })
 
   it("plays nothing while the microphone opens", async () => {
-    const played: Array<string> = []
-    stubAudio(
-      (src) => {
-        played.push(src)
-        return Promise.resolve()
-      },
-      () => "blob:1"
-    )
-    const mic = fakeMic()
-    let open: (recording: Recording) => void = () => undefined
-    mic.start.mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          open = resolve
-        })
-    )
-    setup({ kept: [bite("a", 5)], mic })
+    const on = phone()
+    on.mic.script({ ...SPEAKING, open: { kind: "cue" } })
+    setup({ kept: [bite("a", 5)], on })
 
-    await tap("Start talking")
-    const play = screen.getByRole("button", { name: /^Play / })
+    await tap(W.buttonLabel.ready)
+    const play = screen.getByRole("button", {
+      name: W.rowLabel(W.play, 12_000),
+    })
     expect(play).toBeDisabled()
     await settle(() => fireEvent.click(play))
 
-    await settle(() =>
-      open({ level: () => 0, finish: mic.finish, discard: mic.discard })
-    )
+    await settle(() => on.mic.answer("open"))
     expect(
-      screen.getByRole("button", { name: "Done, keep it" })
+      screen.getByRole("button", { name: W.buttonLabel.recording })
     ).toBeInTheDocument()
-    expect(played).toEqual([])
-    vi.unstubAllGlobals()
+    expect(on.player.playing()).toBe(0)
   })
 
   it("opens the microphone once under StrictMode's double mount", async () => {
     const memory = memoryStore()
-    const mic = fakeMic()
+    const on = phone()
     const onAutoStart = vi.fn()
     render(
       <StrictMode>
@@ -527,22 +447,22 @@ describe("Soundbites", () => {
           source="sessions"
           autoStart
           onAutoStart={onAutoStart}
-          ports={{ store: memory.store, startRecording: mic.start }}
+          ports={portsOn(on, memory.store)}
         />
       </StrictMode>
     )
 
     expect(
-      await screen.findByRole("button", { name: "Done, keep it" })
+      await screen.findByRole("button", { name: W.buttonLabel.recording })
     ).toBeInTheDocument()
-    expect(mic.start).toHaveBeenCalledTimes(1)
-    expect(mic.discard).not.toHaveBeenCalled()
+    expect(on.mic.asked()).toBe(1)
+    expect(on.mic.discarded()).toBe(0)
     expect(onAutoStart).toHaveBeenCalledTimes(1)
   })
 
   it("shows a take saved by the page that was left, after coming back", async () => {
     const memory = memoryStore()
-    const mic = fakeMic()
+    const on = phone()
     const save = memory.store.save
     let commit: () => void = () => undefined
     vi.spyOn(memory.store, "save").mockImplementationOnce(
@@ -556,11 +476,11 @@ describe("Soundbites", () => {
     const page = (): JSX.Element => (
       <Soundbites
         situation={() => SITUATION}
-        ports={{ store: memory.store, startRecording: mic.start }}
+        ports={portsOn(on, memory.store)}
       />
     )
     const first = render(page())
-    await tap("Start talking")
+    await tap(W.buttonLabel.ready)
     // Left mid-take: the take is finishing and its save is still pending.
     await settle(first.unmount)
 
@@ -576,17 +496,17 @@ describe("Soundbites", () => {
       .spyOn(document, "visibilityState", "get")
       .mockReturnValue("hidden")
     const onAutoStart = vi.fn()
-    const { mic } = setup({ autoStart: true, onAutoStart })
+    const { on } = setup({ autoStart: true, onAutoStart })
     await screen.findByText("Nothing kept yet.")
-    expect(mic.start).not.toHaveBeenCalled()
+    expect(on.mic.asked()).toBe(0)
     expect(onAutoStart).not.toHaveBeenCalled()
 
     visibility.mockReturnValue("visible")
     await settle(() => document.dispatchEvent(new Event("visibilitychange")))
     expect(
-      await screen.findByRole("button", { name: "Done, keep it" })
+      await screen.findByRole("button", { name: W.buttonLabel.recording })
     ).toBeInTheDocument()
-    expect(mic.start).toHaveBeenCalledTimes(1)
+    expect(on.mic.asked()).toBe(1)
     expect(onAutoStart).toHaveBeenCalledTimes(1)
     visibility.mockRestore()
   })
@@ -615,9 +535,8 @@ describe("Soundbites", () => {
 
   it("asks like any other visit once the Talk now take is kept", async () => {
     setup({ source: "capture" })
-    await tap("Start talking")
-    await tap("Done, keep it")
-    await screen.findByText("Kept, 0:05. 1 of 6 on this phone.")
+    await record()
+    await screen.findByText(W.ended.kept)
     // The runtime records the next take as "direct", so the page asks as it
     // does for one.
     expect(
@@ -633,27 +552,106 @@ describe("Soundbites", () => {
     expect(screen.getByText("Too tired")).toBeInTheDocument()
   })
 
-  it("deletes a kept one after asking", async () => {
-    const { kept } = setup({ kept: [bite("only", 5)] })
+  it("lets one go without asking: set aside, still kept on this phone (D3)", async () => {
+    const { kept } = setup({ kept: [bite("only", 5), bite("other", 10)] })
 
-    await tap(/^Delete /)
-    expect(
-      await screen.findByRole("dialog", { name: "Delete this soundbite?" })
-    ).toBeInTheDocument()
-    expect(kept.size).toBe(1)
-    await tap("Delete it")
+    const [newest] = await screen.findAllByRole("button", {
+      name: W.rowLabel(W.letGo, 12_000),
+    })
+    if (newest === undefined) throw new Error("a row to let go")
+    await settle(() => fireEvent.click(newest))
 
-    expect(await screen.findByText("Nothing kept yet.")).toBeInTheDocument()
-    expect(kept.size).toBe(0)
+    expect(screen.queryByRole("dialog")).toBeNull()
+    expect(await screen.findByText(W.setAside.phone)).toBeInTheDocument()
+    await waitFor(() => expect(rows()).toHaveLength(1))
+    expect(kept.get("only")?.bite.standing).toBe("set-aside")
+    expect(kept.size).toBe(2)
+    expect(screen.getByText("2 of 6 kept")).toBeVisible()
   })
 
-  it("keeps a kept one when the person keeps it", async () => {
+  it("says so when a let-go one couldn't be set aside", async () => {
+    const { store } = setup({ kept: [bite("only", 5)] })
+    vi.spyOn(store, "setAside").mockRejectedValueOnce(new Error("busy"))
+
+    await tap(W.rowLabel(W.letGo, 12_000))
+
+    expect(
+      await screen.findByText("That one couldn't be set aside. Try again?")
+    ).toBeInTheDocument()
+    // The pattern takes back its word: no line says it was set aside.
+    expect(screen.queryByText(W.setAside.phone)).toBeNull()
+    expect(rows()).toHaveLength(1)
+  })
+
+  it("makes room at the cap from one let go before any still listed", async () => {
+    soundbitesHeldByHome(() => (): boolean => true)
+    const { kept } = setup({ kept: FULL })
+
+    const [newest] = await screen.findAllByRole("button", {
+      name: W.rowLabel(W.letGo, 12_000),
+    })
+    if (newest === undefined) throw new Error("a row to let go")
+    await settle(() => fireEvent.click(newest))
+    await waitFor(() => expect(rows()).toHaveLength(5))
+    // The next one replaces the one set aside, and says so.
+    const set = FULL[0]
+    if (set === undefined) throw new Error("six kept")
+    expect(screen.getByText(/Full\. Your next one replaces/)).toHaveTextContent(
+      `Full. Your next one replaces ${formatWhen(set.recordedAt, new Date())}, one you set aside. Pick another below to replace that one instead.`
+    )
+
+    await record()
+    await screen.findByText(W.ended.kept)
+    expect(kept.has("b0")).toBe(false)
+    expect(kept.has("b5")).toBe(true)
+    expect(kept.size).toBe(6)
+  })
+
+  it("counts set-aside and earlier ones toward the six, and refuses a seventh while home holds none", async () => {
+    soundbitesHeldByHome(() => (): boolean => false)
+    const { kept } = setup({
+      kept: FULL.map((each, i) =>
+        i === 0
+          ? { ...each, standing: "set-aside" as const }
+          : i === 1
+            ? { ...each, standing: "earlier" as const }
+            : each
+      ),
+    })
+    expect(await screen.findByText("6 of 6 kept")).toBeVisible()
+
+    await record()
+
+    expect(await screen.findByText(W.ended.full)).toBeInTheDocument()
+    expect(kept.size).toBe(6)
+    expect(kept.get("b0")?.bite.standing).toBe("set-aside")
+  })
+
+  it("redoes one at the cap: the oldest home holds makes room, and the redone one is kept as earlier", async () => {
+    soundbitesHeldByHome(() => (): boolean => true)
+    const { kept } = setup({ kept: FULL })
+
+    const [newest] = await screen.findAllByRole("button", {
+      name: W.rowLabel(W.redo, 12_000),
+    })
+    if (newest === undefined) throw new Error("a row to redo")
+    await settle(() => fireEvent.click(newest))
+    await tap(W.buttonLabel.recording)
+
+    expect(await screen.findByText(W.earlier(1))).toBeInTheDocument()
+    expect(kept.get("b0")?.bite.standing).toBe("earlier")
+    expect(kept.has("b5")).toBe(false)
+    expect(kept.size).toBe(6)
+  })
+
+  it("redoes one: the new one is listed, and the earlier one kept apart (D2)", async () => {
     const { kept } = setup({ kept: [bite("only", 5)] })
 
-    await tap(/^Delete /)
-    await tap("Keep it")
+    await tap(W.rowLabel(W.redo, 12_000))
+    await tap(W.buttonLabel.recording)
 
-    expect(kept.size).toBe(1)
-    expect(screen.queryByText("Nothing kept yet.")).toBeNull()
+    expect(await screen.findByText(W.earlier(1))).toBeInTheDocument()
+    expect(kept.get("only")?.bite.standing).toBe("earlier")
+    expect(kept.size).toBe(2)
   })
 })

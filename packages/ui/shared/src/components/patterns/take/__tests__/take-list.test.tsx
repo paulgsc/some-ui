@@ -12,6 +12,7 @@ import type {
   PatternTake,
   TakePattern,
   TakePatternOptions,
+  TakeRowView,
 } from "@some-ui/voice-capture"
 import {
   microphoneOwner,
@@ -40,6 +41,7 @@ const ONE: TakePatternOptions = {
   redo: "supersede",
   letGo: "set-aside",
   play: "each",
+  clock: "elapsed",
 }
 
 type Phone = {
@@ -92,6 +94,23 @@ const Screen = ({
       takes={takes}
       label={answers}
     />
+  )
+}
+
+/** A screen's own action on a row. */
+const mine = (row: TakeRowView): JSX.Element => <span>Mine: {row.take.id}</span>
+
+/** A screen with an action of its own on each row (the row's `extra`). */
+const ExtraScreen = ({
+  pattern,
+  store,
+}: {
+  pattern: TakePattern
+  store: MemoryTakes
+}): JSX.Element => {
+  const takes = useSyncExternalStore(store.subscribe, store.getSnapshot)
+  return (
+    <TakeList pattern={pattern} answers="card-1" takes={takes} extra={mine} />
   )
 }
 
@@ -149,11 +168,15 @@ describe("the take button, row and list", () => {
     const on = phone()
     render(
       <Screen
-        {...screenOn(on, { ...ONE, takes: { per: "many", max: 5 } }, [
-          kept("t1", 1, { place: "phone" }),
-          kept("t2", 2, { place: "going" }),
-          kept("t3", 3, { place: "home", since }),
-        ])}
+        {...screenOn(
+          on,
+          { ...ONE, takes: { per: "many", max: 5, full: "refuse" } },
+          [
+            kept("t1", 1, { place: "phone" }),
+            kept("t2", 2, { place: "going" }),
+            kept("t3", 3, { place: "home", since }),
+          ]
+        )}
       />
     )
     expect(
@@ -209,6 +232,33 @@ describe("the take button, row and list", () => {
     await pass(10_000)
     expect(screen.getByText(TAKE_ENDING_WORDS.kept)).toBeInTheDocument()
     expect(screen.getByRole("listitem")).toHaveTextContent("0:15")
+  })
+
+  it('counts down under `clock: "left"`, without a second warning line', async () => {
+    const on = phone()
+    render(
+      <Screen
+        {...screenOn(on, {
+          ...ONE,
+          limits: { minMs: 500, maxMs: 15_000 },
+          clock: "left",
+        })}
+      />
+    )
+    fireEvent.click(takeButton())
+    await pass(6_100)
+    expect(live()).toHaveTextContent(W.left(9_000))
+    expect(live()).not.toHaveTextContent(W.nearlyUp(9_000))
+  })
+
+  it("draws a screen's own action in the row's extra slot", async () => {
+    const on = phone()
+    render(<ExtraScreen {...screenOn(on)} />)
+    fireEvent.click(takeButton())
+    await pass(2_100)
+    fireEvent.click(live())
+    await pass(0)
+    expect(screen.getByRole("listitem")).toHaveTextContent("Mine: take-1")
   })
 
   it("redoes a take: the new one is the item's, and the earlier one is kept apart (D2)", async () => {
@@ -327,7 +377,7 @@ describe("the take button, row and list", () => {
       <Screen
         {...screenOn(on, {
           ...ONE,
-          takes: { per: "many", max: 2 },
+          takes: { per: "many", max: 2, full: "refuse" },
           play: "latest",
         })}
       />

@@ -103,6 +103,7 @@ function renderedScreens(
       redo: "supersede",
       letGo: "set-aside",
       play: "each",
+      clock: "elapsed",
     }
     const screens = Array.from({ length: count }, (_, at) => {
       const store = memoryTakes({ now: phone.now })

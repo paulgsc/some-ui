@@ -363,7 +363,10 @@ export async function shareAgentExport(
   now: () => Date = () => new Date()
 ): Promise<AgentExportResult> {
   const audio = new Map<string, Blob>()
-  const bites = await soundbites.list()
+  // One let go (D3) is kept, but out of what an agent reads.
+  const bites = (await soundbites.list()).filter(
+    (bite) => bite.standing !== "set-aside"
+  )
   for (const bite of bites) {
     const blob = await soundbites.audio(bite.id)
     if (blob) audio.set(bite.id, blob)

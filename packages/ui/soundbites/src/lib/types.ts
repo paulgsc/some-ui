@@ -49,4 +49,11 @@ export type Soundbite = {
   mimeType: string
   bytes: number
   context: SoundbiteContext
+  /**
+   * Where it stands on the page (the take pattern's D2 and D3): absent is
+   * a current one, as every soundbite kept before these were; `earlier`
+   * once a Redo of it was kept; `set-aside` once the person let it go. Both
+   * are still kept, audio and all.
+   */
+  standing?: "earlier" | "set-aside"
 }
