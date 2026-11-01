@@ -16,11 +16,12 @@
  *   misses a dynamic `import()` and `Capacitor.Plugins.CapacitorHttp`: only
  *   `lib/device-backend/native-http` may name it, only `lib/home-link` may
  *   call that module, and only the Home server block, the study list's
- *   "Let it go", the drain and marks of what this phone keeps on home
- *   (LA15), what hands aph's lane to them, Settings' readout of what is
- *   kept where, and the readout and port of the routine's files in Korean
- *   (whose read sends one `GET /routine/files` and whose telling of what
- *   was opened one `PUT /routine/opened`) may call `lib/home-link`.
+ *   "Let it go" and the phone-full offer's "Remove it", the drain and
+ *   marks of what this phone keeps on home (LA15), what hands aph's lane to
+ *   them, Settings' readout of what is kept where, and the readout and port
+ *   of the routine's files in Korean (whose read sends one
+ *   `GET /routine/files` and whose telling of what was opened one
+ *   `PUT /routine/opened`) may call `lib/home-link`.
  *
  * The last group feeds the checks known-bad sources, so a check that stopped
  * looking cannot stay green.
@@ -66,6 +67,9 @@ const HOME_LINK_CALLERS = new Set([
   // LA8: the study list's "Let it go" of one session, a tap after a confirm,
   // which copies it home and reads it back before the phone lets it go.
   "components/sessions/device-let-go.tsx",
+  // LA8, PF1: the phone-full offer's "Remove it", the same let-go of the one
+  // session it names, on its press.
+  "components/settings/device-storage.tsx",
 ])
 
 /**

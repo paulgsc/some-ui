@@ -8,11 +8,16 @@
  * it can't be brought back, and the tap deletes it as it always did. Every
  * word is `lib/home-link/words`' `LET_GO`.
  *
+ * `useSessionLetGo` is that flow without its confirm, which the phone-full
+ * offer's "Remove it" (`components/settings/device-storage.tsx`, PF1) asks
+ * in its own words.
+ *
  * Device build only, like this module (`build.paths.ts`): the route picks
  * `useHomeLetGo` behind an inline `import.meta.env.VITE_DEVICE_BACKEND ===
  * "true"`.
  */
 import type { JSX, ReactNode } from "react"
+import type { Intent } from "@some-ui/intent-kit"
 import { matchIntent } from "@some-ui/intent-kit"
 import { useConfirmSheet } from "@some-ui/shared"
 import { useQueryClient } from "@tanstack/react-query"
@@ -41,15 +46,28 @@ export type LetGoControl = {
   readonly sheet: ReactNode
 }
 
-export function useHomeLetGo(session: SessionRecord): LetGoControl {
-  const { ask, sheet } = useConfirmSheet()
+/**
+ * "Let it go"'s flow, for a control that asks in its own words: what it may
+ * promise now, who keeps it, and the run. The promise travels with `start`:
+ * what the question said is what runs, however the pairing moved while it
+ * was shown.
+ */
+export type SessionLetGo = {
+  /** What a question asked now may promise (`promiseOf`). */
+  readonly promise: LetGoPromise
+  /** Who keeps it: the paired host, or "home" while the pairing is unsure. */
+  readonly host: string
+  readonly state: Intent<LetGoEnd>
+  /** Counts runs, for `useIntentEffect`. */
+  readonly attempt: number
+  readonly start: (id: string, promised: LetGoPromise) => void
+}
+
+export function useSessionLetGo(): SessionLetGo {
   const queryClient = useQueryClient()
   const link = useHomeLink()
   const host = link.link.kind === "paired" ? hostOf(link.link.base) : "home"
-  const promise = promiseOf(link)
-  // The promise travels with the tap: what the confirm said is what runs,
-  // however the pairing moved while it was open.
-  // Said from the flow, not an effect: the row unmounts once the list it
+  // Said from the flow, not an effect: a row unmounts once the list it
   // refreshes no longer holds the session.
   const letGo = useAsyncIntent(
     ({ id, promised }: { id: string; promised: LetGoPromise }) =>
@@ -59,6 +77,19 @@ export function useHomeLetGo(session: SessionRecord): LetGoControl {
       }),
     { presentation: "interactive" }
   )
+  return {
+    promise: promiseOf(link),
+    host,
+    state: letGo.state,
+    attempt: letGo.attempt,
+    start: (id, promised) => letGo.start({ id, promised }),
+  }
+}
+
+export function useHomeLetGo(session: SessionRecord): LetGoControl {
+  const { ask, sheet } = useConfirmSheet()
+  const letGo = useSessionLetGo()
+  const { host, promise } = letGo
 
   const lines = matchIntent(letGo.state, {
     idle: (): JSX.Element | null => null,
@@ -86,7 +117,7 @@ export function useHomeLetGo(session: SessionRecord): LetGoControl {
         title: LET_GO.title,
         description: LET_GO.question(session.name, promised, host),
         confirm: LET_GO.confirm,
-        onConfirm: () => letGo.start({ id: session.id, promised }),
+        onConfirm: () => letGo.start(session.id, promised),
       })
     },
     lines,

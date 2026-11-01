@@ -258,7 +258,8 @@ export const CLEAR = {
 /**
  * The study list's "Let it go" (`./study-let-go`): its confirm, given what
  * it promises, and how it ended, given the host ("home" while the pairing
- * is unsure). Said in the session's own row.
+ * is unsure). Said in the session's own row. `room` is the phone-full
+ * offer's ask of the same let-go (PF1), whose ends are these too.
  */
 export const LET_GO = {
   title: "Let this session go?",
@@ -268,6 +269,21 @@ export const LET_GO = {
     promise === "home"
       ? `"${name}" leaves this phone, and ${host} keeps it. If ${host} can't, it stays here.`
       : `"${name}" leaves this phone, and can't be brought back.`,
+  /** The phone-full offer of the oldest finished session. */
+  room: {
+    /** Its ask, given the session's name and the day it was finished. */
+    question: (
+      name: string,
+      finished: string,
+      promise: LetGoPromise,
+      host: string
+    ): string =>
+      promise === "home"
+        ? `Remove “${name}” (finished ${finished}) to make room? ${host} keeps it. If ${host} can't, it stays here.`
+        : `Remove “${name}” (finished ${finished}) to make room? It can't be brought back.`,
+    confirm: "Remove it",
+    working: "Removing...",
+  },
   working: (host: string): string => `Keeping it on ${host}...`,
   ended: (end: LetGoEnd, host: string): string => {
     const stays = "it stays on this phone"
