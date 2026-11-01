@@ -178,6 +178,15 @@ const SESSION: HomeSession = {
 /** What an event the log keeps carries besides its type and session. */
 const LOGGED = { id: "x", at: "2026-11-01T09:00:00.000Z" }
 
+const STARTED: SessionEvent = {
+  ...LOGGED,
+  session: "s",
+  type: "started",
+  file: "f",
+  form: "full",
+  declaredMinutes: 10,
+}
+
 const ENTRY: LensEntry = {
   session: "2026-11-01T09:00:00.000Z",
   line: "cup",
@@ -434,6 +443,46 @@ describe("Practice's lane, for HF5's records", () => {
     counts.rerender()
     expect(counts.result.current.waiting).toBe(before)
 
+    // A new session starting finishes the one before it: read, asked for.
+    const LEFT: HomeSession = {
+      session: "s0",
+      events: [{ ...STARTED, id: "e0", session: "s0" }],
+    }
+    fakes.finished = [SESSION, LEFT]
+    logged({ ...STARTED, session: "s2" })
+    expect(want).toHaveBeenCalledTimes(2)
+    expect(counts.result.current.waiting).toBe(before + 1)
+
+    // An event kept in a session already finished is read again too.
+    const MORE: HomeSession = {
+      session: "s1",
+      events: [
+        ...SESSION.events,
+        {
+          ...LOGGED,
+          id: "e2",
+          session: "s1",
+          type: "parked",
+          file: "f",
+          screen: "x",
+        },
+      ],
+    }
+    fakes.finished = [MORE, LEFT]
+    logged({
+      ...LOGGED,
+      id: "e2",
+      session: "s1",
+      type: "parked",
+      file: "f",
+      screen: "x",
+    })
+    expect(want).toHaveBeenCalledTimes(3)
+    expect(counts.result.current.waiting).toBe(before + 2)
+    homeHolds({ leetype: { s0: digestOf(LEFT), s1: digestOf(MORE) } })
+    counts.rerender()
+    expect(counts.result.current.waiting).toBe(before)
+
     // Studio, once its route hands its record in: one sitting and its answer.
     const projects: Array<Project> = [
       {
@@ -455,16 +504,15 @@ describe("Practice's lane, for HF5's records", () => {
         ],
       },
     ]
-    const friction: Array<Friction> = [
-      {
-        project: "p1",
-        sitting: "k1",
-        shot: null,
-        at: "2026-11-01T10:20:00.000Z",
-        went: "smooth",
-        gotInTheWay: null,
-      },
-    ]
+    const answer: Friction = {
+      project: "p1",
+      sitting: "k1",
+      shot: null,
+      at: "2026-11-01T10:20:00.000Z",
+      went: "smooth",
+      gotInTheWay: null,
+    }
+    const friction: Array<Friction> = [answer]
     const timeLog: Array<TimeEvent> = [
       {
         id: "t1",
@@ -475,13 +523,19 @@ describe("Practice's lane, for HF5's records", () => {
         screen: null,
       },
     ]
+    const studioHeard = new Set<() => void>()
     await act(async () => {
       keepStudio({
         store: {
           list: () => Promise.resolve(projects),
           audio: () => Promise.resolve(null),
-          friction: () => Promise.resolve(friction),
-          subscribe: () => (): void => undefined,
+          friction: () => Promise.resolve([...friction]),
+          subscribe: (listener) => {
+            studioHeard.add(listener)
+            return (): void => {
+              studioHeard.delete(listener)
+            }
+          },
         },
         timeLog: () => timeLog,
         notesForHome: () => [],
@@ -509,6 +563,13 @@ describe("Practice's lane, for HF5's records", () => {
     })
     counts.rerender()
     expect(counts.result.current.waiting).toBe(before)
+
+    // A later write to Studio's store, an answer changed, is read and counted.
+    want.mockClear()
+    friction[0] = { ...answer, went: "snags", gotInTheWay: "mic" }
+    await changed(studioHeard)
+    expect(want).toHaveBeenCalledTimes(1)
+    expect(counts.result.current.waiting).toBe(before + 1)
 
     counts.unmount()
     stop()
