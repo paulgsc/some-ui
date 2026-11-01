@@ -1469,6 +1469,10 @@
       "why": "Answers whether the process is up; nothing is owed after."
     },
     {
+      "module": "ideas",
+      "why": "The owner's ideas and the lists they pick from (ST26, paulgsc/server#645); each write answers with what home now holds, and the phone compares it with what it sent."
+    },
+    {
       "module": "korean",
       "why": "Reads and writes Korean lists; each write answers with what it kept."
     },
@@ -2224,6 +2228,36 @@
       "store": "server:studio_sitting_event",
       "class": "record",
       "growth": "Per Studio screen entered or left, page hidden or shown, sitting opened or closed, as the phone sends it (server #553); tiny rows, append-only.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:idea_answer",
+      "class": "record",
+      "growth": "Per answer of an idea's revision: the question and either a studio voice note's id or the words typed when voice failed (<= MAX_TYPED_CHARS = 1,000 characters); at most 4 per revision (question set 1); append-only (paulgsc/server invariant 32).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:idea_furnishing",
+      "class": "record",
+      "growth": "Per change of an idea's \"still furnishing\" mark: one tiny row, the latest standing; a mark that changes nothing writes nothing; append-only (paulgsc/server invariant 32).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:idea_list_mark",
+      "class": "record",
+      "growth": "Per entry the owner adds to or takes off the topics or keywords list: one tiny row (entry <= 40 characters), the latest per entry standing over the seeds; a mark that changes nothing writes nothing; append-only (paulgsc/server invariant 32).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:idea_revision",
+      "class": "record",
+      "growth": "Per send of an idea that changes it (ST26): title <= 80 characters, topic, format, <= 20 keywords, the question set's version and its times; the same bundle again writes nothing; append-only (paulgsc/server invariant 32).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:idea_set_aside",
+      "class": "record",
+      "growth": "Per idea the owner sets aside: one tiny row, the first mark standing, at most one per idea, so bounded by idea_revision's ideas; append-only (paulgsc/server invariant 32).",
       "family": "what-is-kept"
     },
     {
