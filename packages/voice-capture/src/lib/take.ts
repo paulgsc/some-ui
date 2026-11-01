@@ -50,7 +50,13 @@ export type TakePhase =
 export type TakeSignal =
   | { readonly type: "micOpened"; readonly at: number }
   | { readonly type: "micFailed"; readonly reason: RecordingFailure }
-  | { readonly type: "ticked"; readonly now: number; readonly level: number }
+  | {
+      readonly type: "ticked"
+      readonly now: number
+      readonly level: number
+      /** See `Recording.metered`. */
+      readonly metered?: boolean | undefined
+    }
   | { readonly type: "taken"; readonly take: Take }
   | { readonly type: "takeFailed" }
 
@@ -302,6 +308,7 @@ export function takeRunner(
                 type: "ticked",
                 now: ports.now(),
                 level: recording?.level() ?? 0,
+                metered: recording?.metered?.(),
               }),
             ports.tickMs
           )

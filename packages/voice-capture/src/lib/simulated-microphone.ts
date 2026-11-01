@@ -43,6 +43,8 @@ export type MicScript = {
   readonly finish: MicFinish
   /** The input's level, 0 (silence) to 1, for every read. */
   readonly level: number
+  /** Whether the level is measured; true when absent. */
+  readonly metered?: boolean | undefined
   /** How long the take says it ran; the clock's time open when absent. */
   readonly durationMs?: number | undefined
   /** How many bytes it hands back: 0 is a recorder that wrote nothing. */
@@ -92,6 +94,7 @@ export function simulatedMicrophone(ports: {
     }
     return {
       level: () => (held ? script.level : 0),
+      metered: () => held && script.metered !== false,
       finish: (): Promise<Take> => {
         const durationMs = script.durationMs ?? ports.now() - openedAt
         // Stops and releases the microphone at once, as the real one does;

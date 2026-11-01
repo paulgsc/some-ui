@@ -50,7 +50,18 @@ export type TakeEnded = {
   readonly id: string | null
   /** Why the microphone refused it, when `ending` is `blocked`. */
   readonly reason: RecordingFailure | null
+  /** D4: kept, measured (`Recording.metered`), and never reached `HEARD_FLOOR`. */
+  readonly unheard: boolean
 }
+
+/**
+ * Below this level (`Recording.level`, 0 to 1) the microphone hears no
+ * talking: speech reads 0.2 and up, a room's hum and a TV across it lower.
+ * A take's loudest moment must reach it to count as heard (D4), and Game
+ * Week's quiet stop reads the same line. To tune from the peaks CK2's
+ * outcome events will carry (#2369).
+ */
+export const HEARD_FLOOR = 0.12
 
 export type TakeKitState = {
   readonly note: VoiceNoteState
@@ -58,6 +69,11 @@ export type TakeKitState = {
   readonly answers: string
   /** The id `keep` gave the take being kept. */
   readonly keptId: string | null
+  /**
+   * The loudest measured level the take under way, or the last one,
+   * reached; null while no read of it was measured.
+   */
+  readonly peak: number | null
   readonly ended: TakeEnded | null
 }
 
@@ -84,6 +100,7 @@ export const initialTakeKit: TakeKitState = {
   note: initialVoiceNote,
   answers: "",
   keptId: null,
+  peak: null,
   ended: null,
 }
 
@@ -103,7 +120,7 @@ export function stepTakeKit(
   limits: TakeLimits
 ): Next {
   const busy = underway(state.note)
-  let { answers, keptId } = state
+  let { answers, keptId, peak } = state
   let noteEvent: VoiceNoteEvent
   switch (event.type) {
     case "start":
@@ -114,6 +131,7 @@ export function stepTakeKit(
       } else {
         answers = event.answers
         keptId = null
+        peak = null
         noteEvent = { type: "start", atMs: null }
       }
       break
@@ -124,11 +142,16 @@ export function stepTakeKit(
       noteEvent = { type: "saved", outcome: result.outcome }
       break
     }
+    case "ticked": {
+      if (busy && event.metered === true)
+        peak = Math.max(peak ?? 0, event.level)
+      noteEvent = event
+      break
+    }
     case "stop":
     case "left":
     case "micOpened":
     case "micFailed":
-    case "ticked":
     case "taken":
     case "takeFailed": {
       noteEvent = event
@@ -155,16 +178,21 @@ export function stepTakeKit(
           ending,
           id: ending === "kept" ? keptId : null,
           reason: next.state.kind === "blocked" ? next.state.reason : null,
+          unheard: ending === "kept" && peak !== null && peak < HEARD_FLOOR,
         }
   if (
     next.state === state.note &&
     ended === state.ended &&
     answers === state.answers &&
-    keptId === state.keptId
+    keptId === state.keptId &&
+    peak === state.peak
   ) {
     return { state, effects }
   }
-  return { state: { note: next.state, answers, keptId, ended }, effects }
+  return {
+    state: { note: next.state, answers, keptId, peak, ended },
+    effects,
+  }
 }
 
 /** A take as a screen shows it: the button, the time against the cap, the level. */
@@ -212,17 +240,21 @@ export function takeKitView(
 
 /**
  * A screen's words for every ending: a sentence for each, and the
- * microphone's refusal by its reason. Closed: an ending added to
- * `TakeEnding` fails to compile in every table until it has words.
+ * microphone's refusal by its reason. Closed: an ending added to `TakeEnding` fails to compile in every table
+ * until it has words.
  */
 export type TakeEndingWords = {
   readonly [Ending in Exclude<TakeEnding, "blocked">]: string
-} & { readonly blocked: (reason: RecordingFailure) => string }
+} & {
+  readonly blocked: (reason: RecordingFailure) => string
+  readonly unheard: string
+}
 
 /** The shared words, which a screen's table may start from. */
 export const TAKE_ENDING_WORDS: TakeEndingWords = {
   ...VOICE_NOTE_SAID,
   blocked: (reason) => RECORDING_FAILURE_COPY[reason],
+  unheard: "Kept, but I didn't hear you. Try it again.",
 }
 
 /** How `ended` is said in `words`. */
@@ -231,6 +263,7 @@ export function takeEndingSaid(
   ended: TakeEnded
 ): string {
   if (ended.ending === "blocked") return words.blocked(ended.reason ?? "failed")
+  if (ended.unheard) return words.unheard
   return words[ended.ending]
 }
 

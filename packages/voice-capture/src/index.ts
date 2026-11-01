@@ -58,6 +58,7 @@ export type {
 export {
   initialTakeKit,
   stepTakeKit,
+  HEARD_FLOOR,
   TAKE_ENDING_WORDS,
   takeEndingSaid,
   takeKit,
