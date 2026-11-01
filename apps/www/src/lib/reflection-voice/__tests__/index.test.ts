@@ -2,6 +2,7 @@
  * @vitest-environment jsdom
  */
 
+import { simulatedMicrophone } from "@some-ui/voice-capture/testing"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
@@ -16,37 +17,28 @@ const removeAudio = vi.hoisted(() => vi.fn(() => Promise.resolve()))
 /** The ids on the shelf. */
 const shelved = vi.hoisted(() => new Set<string>())
 
+// IndexedDB's stand-in: jsdom has none.
 // eslint-disable-next-line one-owner/no-hand-written-microphone -- stands in for the shelf this module builds on import, which no seam lets a test hand in (#2447)
-vi.mock("@some-ui/voice-capture", () => {
+vi.mock("@some-ui/voice-capture", async (actual) => {
   const shelf = {
+    put: (id: string): Promise<void> => {
+      shelved.add(id)
+      return Promise.resolve()
+    },
     remove: removeAudio,
     ids: (): Promise<Array<string>> => Promise.resolve([...shelved]),
     get: (id: string): Promise<Blob | null> =>
       Promise.resolve(shelved.has(id) ? new Blob(["opus"]) : null),
   }
   return {
+    ...(await actual<object>()),
     savingShelf: (): object => ({
       shelf: () => shelf,
       saving: vi.fn(),
       isSaving: () => false,
     }),
-    micRecorder: vi.fn(),
   }
 })
-
-/** The `saving` port the runtime was made with. */
-const ports = vi.hoisted(
-  () => new Map<"saving", (id: string, writing: boolean) => void>()
-)
-
-vi.mock("@/lib/reflection-voice/runtime", () => ({
-  createVoiceNote: (made: {
-    saving: (id: string, writing: boolean) => void
-  }): object => {
-    ports.set("saving", made.saving)
-    return {}
-  },
-}))
 
 function voice(id: string): void {
   reflections.keep({
@@ -103,17 +95,24 @@ describe("sweepOrphans", () => {
 })
 
 describe("onAudioSettled", () => {
-  it("tells each listener when a take's audio is written, and not while it is", () => {
+  it("tells each listener once a take's audio is written, and not before", async () => {
+    vi.useFakeTimers()
     const heard = vi.fn()
     const stop = onAudioSettled(heard)
-    phoneVoiceNote("s1")
-    const saving = ports.get("saving")
-    saving?.("v2", true)
+    const mic = simulatedMicrophone({ now: Date.now })
+    const voice = phoneVoiceNote("s1", mic.startRecording)
+    voice.tap(null)
+    await vi.advanceTimersByTimeAsync(3_000)
     expect(heard).not.toHaveBeenCalled()
-    saving?.("v2", false)
+    voice.tap(null)
+    await vi.advanceTimersByTimeAsync(0)
     expect(heard).toHaveBeenCalledTimes(1)
     stop()
-    saving?.("v3", false)
+    voice.tap(null)
+    await vi.advanceTimersByTimeAsync(3_000)
+    voice.tap(null)
+    await vi.advanceTimersByTimeAsync(0)
     expect(heard).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
   })
 })

@@ -4,7 +4,7 @@ import { Badge } from "@some-ui/shared"
 import { Check, NotebookPen } from "lucide-react"
 
 import { useMinuteClock } from "@/lib/clock"
-import { bySession, describeAge } from "@/lib/session-reflection"
+import { bySession, describeAge, inView } from "@/lib/session-reflection"
 import { useReflections } from "@/lib/session-reflection/use-reflections"
 
 /**
@@ -22,7 +22,8 @@ export const SessionReflectionsRow = ({
   const { kept, shared } = useReflections()
   const now = useMinuteClock().getTime()
   const group = bySession(
-    kept.filter((r) => r.sessionId === sessionId),
+    // One recorded again or set aside is kept, but not the session's.
+    kept.filter((r) => r.sessionId === sessionId && inView(r)),
     now
   ).at(0)
   const sharedAt = shared.find((m) => m.sessionId === sessionId)?.sharedAt

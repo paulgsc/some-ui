@@ -7,6 +7,7 @@ import {
   bySession,
   describeAge,
   fromLegacy,
+  inView,
   isStale,
   parseReflection,
   STALE_AFTER_MS,
@@ -155,6 +156,28 @@ describe("parseReflection", () => {
       parseReflection({ ...note("t", "s1"), createdAt: "never" })
     ).toBeNull()
     expect(parseReflection({ ...note("t", "s1"), atMs: "1" })).toBeNull()
+  })
+
+  it("reads a spoken one out of view as kept, and out of its session's view (D2, D3)", () => {
+    const body = {
+      kind: "voice",
+      durationMs: 4000,
+      mimeType: "audio/webm",
+      bytes: 9,
+    } as const
+    const aside = parseReflection({
+      ...note("v", "s1"),
+      body: { ...body, standing: "set-aside" },
+    })
+    expect(aside?.body).toEqual({ ...body, standing: "set-aside" })
+    expect(aside && inView(aside)).toBe(false)
+    // An unknown standing reads as in view: nothing is hidden by a typo.
+    const odd = parseReflection({
+      ...note("v", "s1"),
+      body: { ...body, standing: "gone" },
+    })
+    expect(odd && inView(odd)).toBe(true)
+    expect(inView(note("t", "s1"))).toBe(true)
   })
 })
 

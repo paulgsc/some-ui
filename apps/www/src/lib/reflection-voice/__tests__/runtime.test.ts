@@ -1,64 +1,41 @@
-import type { BlobShelf, Recording } from "@some-ui/voice-capture"
 import { ShelfFullError } from "@some-ui/voice-capture"
-import { describe, expect, it, vi } from "vitest"
+import { memoryShelf } from "@some-ui/voice-capture/testing"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import type { VoicePorts } from "@/lib/reflection-voice/runtime"
-import { createVoiceNote } from "@/lib/reflection-voice/runtime"
-import type { Reflection } from "@/lib/session-reflection"
+import { testReflections } from "@/lib/reflection-voice/__tests__/takes"
+import type { ReflectionTakes } from "@/lib/reflection-voice/runtime"
+import { REDO_REFUSED } from "@/lib/reflection-voice/words"
 
-// eslint-disable-next-line one-owner/no-hand-written-microphone -- goes with voiceNoteRuntime when reflection voice moves onto the take pattern (MIC5, #2444)
-function recording(durationMs: number): Recording {
-  return {
-    level: () => 0,
-    finish: () =>
-      Promise.resolve({
-        blob: new Blob(["abc"]),
-        mimeType: "audio/webm",
-        durationMs,
-      }),
-    discard: vi.fn(),
-  }
+const pass = async (ms = 0): Promise<void> => {
+  await vi.advanceTimersByTimeAsync(ms)
 }
 
-function ports(
-  overrides: Partial<VoicePorts> = {}
-): VoicePorts & { kept: Array<Reflection> } {
-  const kept: Array<Reflection> = []
-  const audio: BlobShelf = {
-    put: vi.fn(() => Promise.resolve()),
-    get: () => Promise.resolve(null),
-    remove: vi.fn(() => Promise.resolve()),
-    ids: () => Promise.resolve([]),
-  }
-  let now = 0
-  return {
-    kept,
-    startRecording: () => Promise.resolve(recording(4_000)),
-    audio,
-    keep: (r): "kept" => {
-      kept.push(r)
-      return "kept"
-    },
-    letGo: vi.fn(),
-    saving: vi.fn(),
-    now: () => (now += 2_000),
-    newId: () => "v1",
-    ...overrides,
-  }
+/** One take of `ms`, `atMs` into the session, tapped on and off. */
+async function talk(
+  voice: ReflectionTakes,
+  atMs: number | null,
+  supersedes: string | null = null,
+  ms = 4_000
+): Promise<void> {
+  voice.tap(atMs, supersedes)
+  await pass(ms)
+  voice.tap(atMs)
+  await pass()
 }
 
-const settle = (): Promise<void> => new Promise((r) => setTimeout(r, 0))
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 describe("createVoiceNote", () => {
-  it("keeps the reflection with its session and moment, then its audio", async () => {
-    const p = ports()
-    const note = createVoiceNote(p, "s1")
-    note.start(90_000)
-    await settle()
-    note.stop()
-    await settle()
-
-    expect(p.kept).toEqual([
+  it("keeps the reflection with its session and the moment it was started, then its audio", async () => {
+    const phone = testReflections("s1")
+    await talk(phone.voice, 90_000)
+    expect(phone.kept()).toEqual([
       {
         id: "v1",
         sessionId: "s1",
@@ -67,37 +44,82 @@ describe("createVoiceNote", () => {
         body: {
           kind: "voice",
           durationMs: 4_000,
-          mimeType: "audio/webm",
-          bytes: 3,
+          mimeType: expect.any(String),
+          bytes: expect.any(Number),
         },
       },
     ])
-    expect(p.audio.put).toHaveBeenCalledWith("v1", expect.any(Blob))
-    expect(note.getSnapshot()).toEqual({ kind: "idle", last: "kept" })
+    expect(await phone.audio.ids()).toEqual(["v1"])
+    expect(phone.voice.pattern.getSnapshot().ended?.ending).toBe("kept")
+    expect(phone.voice.getSnapshot()).toMatchObject([
+      {
+        id: "v1",
+        answers: "s1",
+        standing: "current",
+        kept: { place: "phone" },
+      },
+    ])
+  })
+
+  it("keeps the take a Redo records again, out of view, and sets one aside, kept (D2, D3)", async () => {
+    const phone = testReflections("s1")
+    await talk(phone.voice, 1_000)
+    await talk(phone.voice, 2_000, "v1")
+    phone.voice.pattern.letGo("v2", "phone")
+    expect(
+      phone
+        .kept()
+        .map((r) => [r.id, r.body.kind === "voice" && r.body.standing])
+    ).toEqual([
+      ["v2", "set-aside"],
+      ["v1", "earlier"],
+    ])
+    expect(await phone.audio.ids()).toEqual(["v1", "v2"])
+  })
+
+  it("lists only its own session's spoken reflections, saying where each is kept", async () => {
+    const phone = testReflections("s1")
+    await talk(phone.voice, null)
+    phone.where(() => ({ place: "home", since: null }))
+    expect(phone.voice.getSnapshot()).toMatchObject([
+      { id: "v1", kept: { place: "home" } },
+    ])
   })
 
   it("stores no audio when the reflection could not be kept", async () => {
-    const p = ports({ keep: () => "failed" })
-    const note = createVoiceNote(p, "s1")
-    note.start(null)
-    await settle()
-    note.stop()
-    await settle()
-
-    expect(p.audio.put).not.toHaveBeenCalled()
-    expect(note.getSnapshot()).toEqual({ kind: "idle", last: "failed" })
+    const phone = testReflections("s1", { stores: () => "failed" })
+    await talk(phone.voice, null)
+    expect(await phone.audio.ids()).toEqual([])
+    expect(phone.voice.pattern.getSnapshot().ended?.ending).toBe("failed")
   })
 
-  it("takes the reflection back out when its audio cannot be kept", async () => {
-    const p = ports()
-    p.audio.put = (): Promise<never> => Promise.reject(new ShelfFullError())
-    const note = createVoiceNote(p, "s1")
-    note.start(null)
-    await settle()
-    note.stop()
-    await settle()
+  it("takes the reflection back out when its audio cannot be kept, and supersedes nothing", async () => {
+    const audio = memoryShelf()
+    const phone = testReflections("s1", { audio })
+    await talk(phone.voice, null)
+    audio.put = (): Promise<never> => Promise.reject(new ShelfFullError())
+    await talk(phone.voice, null, "v1")
+    expect(phone.kept().map((r) => r.id)).toEqual(["v1"])
+    expect(phone.voice.getSnapshot()).toMatchObject([{ standing: "current" }])
+    expect(phone.voice.pattern.getSnapshot().ended?.ending).toBe("full")
+  })
 
-    expect(p.letGo).toHaveBeenCalledWith(["v1"])
-    expect(note.getSnapshot()).toEqual({ kind: "idle", last: "full" })
+  it("unsays a Let go the phone won't store, says a Redo it half-stored, and keeps both the session's", async () => {
+    const phone = testReflections("s1", { standsAside: () => false })
+    await talk(phone.voice, null)
+    phone.voice.pattern.letGo("v1", "phone")
+    // The pattern takes back its "Set aside" line; nothing else is said.
+    expect(phone.voice.pattern.getSnapshot().setAside).toBeNull()
+    expect(phone.voice.refused()).toBeNull()
+    expect(phone.voice.getSnapshot()).toMatchObject([{ standing: "current" }])
+    await talk(phone.voice, null, "v1")
+    expect(phone.voice.refused()).toBe(REDO_REFUSED)
+    expect(phone.voice.getSnapshot().map(({ standing }) => standing)).toEqual([
+      "current",
+      "current",
+    ])
+    // The next tap clears it.
+    phone.voice.tap(null)
+    expect(phone.voice.refused()).toBeNull()
   })
 })

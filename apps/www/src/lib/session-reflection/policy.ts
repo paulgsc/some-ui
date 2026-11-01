@@ -68,7 +68,17 @@ type ReflectionBody =
   | { kind: "answers"; answers: Answers }
   | { kind: "text"; text: string }
   /** The audio is kept beside it, under the reflection's `id`. */
-  | { kind: "voice"; durationMs: number; mimeType: string; bytes: number }
+  | {
+      kind: "voice"
+      durationMs: number
+      mimeType: string
+      bytes: number
+      /**
+       * Out of its session's view, kept (MIC5): recorded again by a Redo
+       * (D2) or set aside (D3). Absent for one in view.
+       */
+      standing?: "earlier" | "set-aside"
+    }
 
 export type Reflection = {
   id: string
@@ -103,6 +113,16 @@ export function beyondOffline(
     .slice(limit)
     .filter((r) => held.has(r.id))
     .map((r) => r.id)
+}
+
+/**
+ * Whether a reflection is in its session's view: every written one, and a
+ * spoken one neither recorded again nor set aside. One out of view is kept,
+ * and goes home, but is not shared or shown as the session's.
+ */
+export function inView(reflection: Reflection): boolean {
+  const { body } = reflection
+  return body.kind !== "voice" || body.standing === undefined
 }
 
 /** The one-tap answers kept for `sessionId`, if any. */
@@ -196,7 +216,9 @@ export function bySession(
 }
 
 /** One session's, in the order they were said. */
-export function inOrder(kept: ReadonlyArray<Reflection>): Array<Reflection> {
+export function inOrder<R extends Reflection>(
+  kept: ReadonlyArray<R>
+): Array<R> {
   return [...kept].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
 }
 
@@ -231,11 +253,17 @@ function bodyOf(value: unknown): ReflectionBody | null {
     const durationMs = field("durationMs")
     const mimeType = field("mimeType")
     const bytes = field("bytes")
-    return typeof durationMs === "number" &&
-      typeof mimeType === "string" &&
-      typeof bytes === "number"
-      ? { kind, durationMs, mimeType, bytes }
-      : null
+    const standing = field("standing")
+    if (
+      typeof durationMs !== "number" ||
+      typeof mimeType !== "string" ||
+      typeof bytes !== "number"
+    ) {
+      return null
+    }
+    return standing === "earlier" || standing === "set-aside"
+      ? { kind, durationMs, mimeType, bytes, standing }
+      : { kind, durationMs, mimeType, bytes }
   }
   return null
 }

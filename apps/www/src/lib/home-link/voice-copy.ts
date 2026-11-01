@@ -3,10 +3,11 @@
  * copying of each for home while the phone is paired (`lib/voice-home`):
  * outside React, so `./voice`'s hook only starts and stops it.
  *
- * - a reflection said aloud (`lib/reflection-voice`): `reflection`, its
- *   session, when it was said;
- * - a Jobs voice note (`lib/jobs`), once an event names it: `jobs`, the
- *   pick (`<day>:<pick>`) or scout, when that event was made;
+ * - a reflection said aloud (`lib/reflection-voice`), recorded again or set
+ *   aside or not (MIC5): `reflection`, its session, when it was said;
+ * - a Jobs voice note (`lib/jobs`), once an event names it, or once the
+ *   event that records its form files it out of the draft (#2443): `jobs`,
+ *   the pick (`<day>:<pick>`) or scout, when that event was made;
  * - the drama's next scene said aloud (`lib/scene-voice`), once it is kept,
  *   asked for or not (HF2, #2177): `scene`, `next-scene` (an ask names it
  *   by its id), when it was kept;
@@ -113,6 +114,7 @@ import {
   isSaving,
   onAudioSettled,
   reflectionAudio,
+  reflectionNotesKept,
 } from "@/lib/reflection-voice"
 import type { KeptSceneNote } from "@/lib/scene-voice"
 import { phoneSceneVoice, sceneNotes } from "@/lib/scene-voice"
@@ -195,6 +197,18 @@ export function jobsNotes(state: JobsState): Array<VoiceOut> {
       if (contentType === undefined || notes.has(id)) continue
       notes.set(id, { id, of: "jobs", ref, at: event.at, contentType })
     }
+  }
+  // A form's notes out of its draft (recorded again or set aside) go home
+  // with the event that recorded the form, which names none of them (#2443).
+  for (const note of state.voice) {
+    if (note.filed === undefined || notes.has(note.id)) continue
+    notes.set(note.id, {
+      id: note.id,
+      of: "jobs",
+      ref: note.filed.ref,
+      at: note.filed.at,
+      contentType: note.mimeType,
+    })
   }
   return [...notes.values()]
 }
@@ -686,7 +700,7 @@ export function holdNotes(): void {
  * Hands each offline set what home holds, read back, so it may make room at
  * its cap with those and no others (HF5): the lens takes, LeetType takes and
  * Studio idea takes by their voice notes, with where each is kept (MIC3,
- * `voiceKept`), the stores of study notes (`holdNotes`), and the
+ * `voiceKept`), where each spoken reflection is kept, the stores of study notes (`holdNotes`), and the
  * grammar-lens record by each entry as it is now. Each reads `sent` once per
  * look.
  */
@@ -694,6 +708,7 @@ function holdOffline(): void {
   lensTakesDesk.keptWhere(voiceKept)
   leetypeTakesDesk.keptWhere(voiceKept)
   ideaTakesDesk.keptWhere(voiceKept)
+  reflectionNotesKept(voiceKept)
   holdNotes()
   holdLensRecord()
 }

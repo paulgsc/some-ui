@@ -11,15 +11,15 @@ import {
   useEffect,
   useSyncExternalStore,
 } from "react"
-import { counted, formatTimecode } from "@some-ui/core-utils"
-import { Button, useConfirmSheet } from "@some-ui/shared"
-import { FolderOpen, Mic, Square } from "lucide-react"
+import { Button, TakeList, useTakePattern } from "@some-ui/shared"
+import { FolderOpen } from "lucide-react"
 
 import type { JobsSnapshot } from "@/lib/jobs"
 import { phoneJobs } from "@/lib/jobs"
 import type { JourneyContext } from "@/lib/jobs/journey"
 import type { ShareKind } from "@/lib/jobs/model"
-import { openFromDrive } from "@/lib/jobs/words"
+import { formTakes } from "@/lib/jobs/model"
+import { openFromDrive, voiceGoesHome } from "@/lib/jobs/words"
 import type { Journey, Noun } from "@/lib/journey"
 import { lookIn } from "@/lib/share-files"
 import { journeyBarState, StatusCard } from "@/components/journey-status"
@@ -31,8 +31,8 @@ export function useJobs(): JobsSnapshot {
 
 /** Whether `owner`'s voice note is still opening, recording or being kept. */
 export function useVoiceBusy(owner: string): boolean {
-  const { take, takeOwner } = useJobs()
-  return take.kind !== "idle" && takeOwner === owner
+  const { take, answers } = useTakePattern(phoneJobs().voice)
+  return take.kind !== "idle" && answers === owner
 }
 
 /**
@@ -90,88 +90,54 @@ export const Chips = <T extends string>({
 }
 
 /**
- * A minute-long voice note for `owner`, and the notes it already has. A note
- * stays on the phone until the share it goes out in arrives.
+ * `owner`'s voice notes on the take pattern's parts: tap to talk, tap to
+ * keep, then each note's row with Play, Redo and Let it go. Many a form,
+ * each a minute at most (`JOB_VOICE_OPTIONS`). A note goes home with what
+ * it is added to; Let go sets it aside, kept on this phone (D3), and Redo
+ * keeps the one it records again (D2), neither added to the form.
  */
 export const VoiceNotes = ({
   owner,
-  notes,
   hint,
 }: {
   owner: string
-  notes: ReadonlyArray<{ id: string; durationMs: number }>
+  /** What the form's notes are for, said under them. */
   hint: string
 }): JSX.Element => {
-  const { take, takeOwner, said } = useJobs()
-  const jobs = phoneJobs()
-  const mine = takeOwner === owner
-  const busy = take.kind !== "idle"
-  const { ask, sheet } = useConfirmSheet()
-  // Leaving the form ends its note under way rather than recording on.
+  const { state } = useJobs()
+  const { voice } = phoneJobs()
+  // Leaving the form ends its note under way rather than recording on, and
+  // stops one of its notes playing, whose Stop goes with it.
   useEffect(
     () => (): void => {
-      if (jobs.getSnapshot().takeOwner === owner) jobs.leaveVoice()
+      const { answers, playback } = voice.getSnapshot()
+      if (answers === owner) {
+        voice.leave()
+        return
+      }
+      // By owner, not the draft: recording the form names or files its
+      // notes, and one may be playing as it goes.
+      const { voice: notes } = phoneJobs().getSnapshot().state
+      if (
+        playback.kind !== "quiet" &&
+        notes.some((n) => n.id === playback.id && n.owner === owner)
+      ) {
+        voice.stopPlaying()
+      }
     },
-    [jobs, owner]
+    [voice, owner]
   )
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-dashed p-3">
-      <div className="flex items-center gap-3">
-        <Button
-          type="button"
-          size="icon"
-          variant={
-            mine && take.kind === "recording" ? "secondary" : "destructive"
-          }
-          className="rounded-full"
-          disabled={busy && !mine}
-          aria-label={mine && busy ? "Stop recording" : "Record a voice note"}
-          onClick={() =>
-            mine && busy ? jobs.stopVoice() : jobs.startVoice(owner)
-          }
-        >
-          {mine && busy ? <Square aria-hidden /> : <Mic aria-hidden />}
-        </Button>
-        <div className="flex min-w-0 flex-col">
-          <span className="font-mono text-sm tabular-nums">
-            {mine && take.kind === "recording"
-              ? `${formatTimecode(take.elapsedMs)} / 1:00`
-              : notes.length > 0
-                ? counted(notes.length, "voice note")
-                : hint}
-          </span>
-          <span className="text-muted-foreground text-xs">
-            {mine && said ? said : "Goes home with what you add it to."}
-          </span>
-        </div>
-      </div>
-      {notes.length > 0 && (
-        <ul className="flex flex-wrap gap-2">
-          {notes.map((n, i) => (
-            <li key={n.id}>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() =>
-                  ask({
-                    title: `Delete note ${i + 1}?`,
-                    description:
-                      "It isn’t kept anywhere else, so deleting it can’t be undone.",
-                    confirm: "Delete it",
-                    keep: "Keep it",
-                    onConfirm: () => jobs.dropVoice([n.id]),
-                  })
-                }
-                aria-label={`Delete voice note ${i + 1}`}
-              >
-                {`Note ${i + 1} · ${formatTimecode(n.durationMs)} ×`}
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {sheet}
+      <TakeList
+        pattern={voice}
+        answers={owner}
+        takes={formTakes(state, owner)}
+        label="Voice notes"
+      />
+      <p className="text-muted-foreground text-xs">
+        {hint}. {voiceGoesHome}
+      </p>
     </div>
   )
 }
