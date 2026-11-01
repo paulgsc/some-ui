@@ -1,7 +1,8 @@
 /**
- * The one tap that lets something leave this phone for home's sake (LA8,
- * docs/learner-data-authority.md): Settings' "Clear finished sessions home
- * holds". It reads each finished session (`mayLeavePhone`: completed, not
+ * One of the two taps that let something leave this phone for home's sake
+ * (LA8, docs/learner-data-authority.md): Settings' "Clear finished sessions
+ * home holds"; the other is the study list's "Let it go" of one session
+ * (`./study-let-go`). It reads each finished session (`mayLeavePhone`: completed, not
  * today's) back from home (`./sessions`' `readHeld`) and lets go of those
  * alone that home holds exactly as the phone does, each unchanged since it
  * was read (`letGoUnchanged`). It sends nothing: the drain (`./drain`) has

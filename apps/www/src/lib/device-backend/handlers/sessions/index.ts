@@ -226,9 +226,12 @@ export async function removeUnchanged(
 }
 
 /**
- * Whether the phone may let its copy of `session` go, to make room or once
- * home or an archive holds it: finished, and not one the study card and
- * nudge read as studied today. Unfinished work always stays.
+ * Whether the phone may let its copy of `session` go on its own, to make
+ * room or once home holds it (the clear, the phone-full offer): finished,
+ * and not one the study card and nudge read as studied today. Unfinished
+ * work stays through those. The study list's "Let it go" is the exception:
+ * the person names the session, of any status, and it leaves once home
+ * holds it (`lib/home-link/study-let-go`).
  */
 export function mayLeavePhone(
   session: Pick<SessionRecord, "status" | "startedAt" | "completedAt">,

@@ -12,8 +12,9 @@
  * they are (`./lens-record`). Nothing of home's is taken in, and nothing on
  * the phone is let go but written reflections (`letGoHeld`, LA16) and the
  * asks home holds, with the scene notes they named (`letGoHeldPrompts`,
- * LA18): a finished session leaves only by the clear in Settings
- * (`./clear`), once home has read it back.
+ * LA18): a session leaves on home's word only by a tap, the clear in
+ * Settings (`./clear`) or the study list's "Let it go" (`./study-let-go`),
+ * once home has read it back.
  *
  * A part home turned away (a full shelf, a refusal, a read-back that did not
  * match what was sent) does not hold back the parts after it, which share

@@ -50,6 +50,8 @@ import { usePagination } from "@/hooks/use-pagination"
 import { PaginationControls } from "@/components/pagination-controls"
 import { HandOffStrip } from "@/components/reflection/hand-off-strip"
 import { SessionReflectionsRow } from "@/components/reflection/session-reflections-row"
+import type { LetGoControl } from "@/components/sessions/device-let-go"
+import { useHomeLetGo } from "@/components/sessions/device-let-go"
 
 const STATUS_LABEL: Record<SessionStatus, string> = {
   draft: "Draft",
@@ -219,6 +221,37 @@ const SessionCard = ({
 }
 
 /**
+ * "Let it go" in a phone build with no device backend (the ui-fit phone
+ * harness, `build:fit-phone`), where sessions are not this phone's own
+ * record: today's delete, after a confirm that says it can't be brought back.
+ */
+function usePlainLetGo(session: SessionRecord): LetGoControl {
+  const { ask, sheet } = useConfirmSheet()
+  const deleteIntent = useIntent(useDeleteSession(), {
+    presentation: "interactive",
+  })
+  return {
+    ask: (): void => {
+      ask({
+        title: "Let this session go?",
+        description: `"${session.name}" leaves this phone, and can't be brought back.`,
+        confirm: "Let it go",
+        onConfirm: () => deleteIntent.start(session.id),
+      })
+    },
+    lines: failureOf(deleteIntent.state),
+    sheet,
+  }
+}
+
+/**
+ * The Android app keeps a home copy first (`components/sessions/device-let-go`,
+ * LA8); picked here, inline, so no other build ships it.
+ */
+const useLetGo: (session: SessionRecord) => LetGoControl =
+  import.meta.env.VITE_DEVICE_BACKEND === "true" ? useHomeLetGo : usePlainLetGo
+
+/**
  * The phone's row (lib/wings, Practice's Study tab): the whole row opens the
  * session, and what is done less often (duplicate, let go) is under ⋯. No
  * multi-select or bulk status: that is the desktop's, where a mouse and a
@@ -230,10 +263,7 @@ const PhoneSessionRow = ({
   session: SessionRecord
 }): JSX.Element => {
   const [menuOpen, setMenuOpen] = useState(false)
-  const { ask, sheet } = useConfirmSheet()
-  const deleteIntent = useIntent(useDeleteSession(), {
-    presentation: "interactive",
-  })
+  const letGo = useLetGo(session)
   const duplicateIntent = useIntent(useDuplicateSession(), {
     presentation: "interactive",
   })
@@ -294,7 +324,7 @@ const PhoneSessionRow = ({
           sessionId={session.id}
           finished={session.status === "completed"}
         />
-        {failureOf(deleteIntent.state)}
+        {letGo.lines}
         {failureOf(duplicateIntent.state)}
       </CardContent>
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
@@ -320,12 +350,7 @@ const PhoneSessionRow = ({
               className="text-destructive hover:text-destructive h-12 justify-start gap-3 text-base"
               onClick={() => {
                 setMenuOpen(false)
-                ask({
-                  title: "Let this session go?",
-                  description: `"${session.name}" leaves this phone, and can't be brought back.`,
-                  confirm: "Let it go",
-                  onConfirm: () => deleteIntent.start(session.id),
-                })
+                letGo.ask()
               }}
             >
               <Trash2 className="size-5" aria-hidden />
@@ -334,7 +359,7 @@ const PhoneSessionRow = ({
           </div>
         </SheetContent>
       </Sheet>
-      {sheet}
+      {letGo.sheet}
     </Card>
   )
 }

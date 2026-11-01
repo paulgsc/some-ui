@@ -4,9 +4,12 @@
  * nothing new; a `401` is the pairing's, never the app's sign-out; a stop
  * keeps what was copied and says so. The drain copies finished sessions,
  * and the clear in Settings lets go of those home holds exactly as the
- * phone does, and nothing else. Home is a second device backend, which
- * answers `/sessions` as `file_host` does.
+ * phone does, and nothing else; the study list's "Let it go" copies its one
+ * session of any status first, and lets it go only once home holds it as it
+ * is. Home is a second device backend, which answers `/sessions` as
+ * `file_host` does.
  */
+import { noAnswer } from "@/test-support/no-answer"
 import { openNodeSqlite } from "@/test-support/node-sqlite-driver"
 import { inMemoryStorage } from "@some-ui/core-utils"
 import type { HomeAnswer, HomeCall, KeyedStorage } from "@some-ui/core-utils"
@@ -27,6 +30,9 @@ import {
   HomeForgotPhoneError,
   homeTransport,
 } from "@/lib/home-link/sessions"
+import type { LetGoPorts, Pairing } from "@/lib/home-link/study-let-go"
+import { letSessionGo } from "@/lib/home-link/study-let-go"
+import { ForeignCallError } from "@/lib/intent/foreign"
 import { createHttpSessionsRepository } from "@/lib/tenant/http-sessions-repository"
 import { copySessionsTo } from "@/lib/tenant/sessions-copy"
 import type * as TenantStorage from "@/lib/tenant/storage"
@@ -338,5 +344,216 @@ describe("letting the phone's copies go once home holds them", () => {
         : send(method, path, body)
     await expect(clear()).resolves.toEqual({ kind: "stopped" })
     expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
+  })
+})
+
+describe("the study list's Let it go", () => {
+  let removed: Array<string>
+  let refreshed: number
+  let reported: Array<string>
+
+  beforeEach(() => {
+    removed = []
+    refreshed = 0
+    reported = []
+  })
+
+  /** The flow over the phone's sessions, the link's `send` and `pairing`. */
+  const letGo = (
+    id: string,
+    pairing: Pairing = "paired",
+    promised: "home" | "phone-only" = "home",
+    over: Partial<LetGoPorts> = {}
+  ): ReturnType<typeof letSessionGo> =>
+    letSessionGo(
+      id,
+      promised,
+      () => {
+        refreshed += 1
+      },
+      {
+        session: (asked) =>
+          Promise.resolve(phone.sessions.find((s) => s.id === asked) ?? null),
+        pairing: () => Promise.resolve(pairing),
+        run: async (r) => {
+          if (phone.send === null) throw new Error("no send")
+          return { kind: "done", value: await r(phone.send) }
+        },
+        letGo: letGoUnchanged,
+        remove: (asked) => {
+          removed.push(asked)
+          phone.sessions = phone.sessions.filter((s) => s.id !== asked)
+          return Promise.resolve()
+        },
+        report: (failure) => {
+          reported.push(`${failure.port}: ${failure.error.summary}`)
+        },
+        ...over,
+      }
+    )
+
+  const onHome = (): Promise<Array<SessionRecord>> =>
+    createHttpSessionsRepository(homeTransport(send)).list()
+
+  it("copies an unfinished session home, reads it back, and only then lets it go", async () => {
+    phone.sessions = [onPhone("a", "paused"), onPhone("b", "completed")]
+    await expect(letGo("a")).resolves.toEqual({ kind: "kept-home" })
+    expect(phone.sessions.map((s) => s.id)).toEqual(["b"])
+    expect(removed).toEqual([])
+    expect(refreshed).toBe(1)
+    // Home holds it as the phone did, and only it: nothing else went.
+    expect(await onHome()).toEqual([
+      expect.objectContaining({ name: "Session a", status: "paused" }),
+    ])
+    expect(sent.some((call) => call.startsWith("DELETE "))).toBe(false)
+  })
+
+  it("keeps it on the phone when home can't be reached, and says so", async () => {
+    phone.sessions = [onPhone("a", "draft")]
+    phone.send = (): Promise<HomeAnswer> => Promise.reject(noAnswer())
+    await expect(letGo("a")).resolves.toEqual({ kind: "unreachable" })
+    expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
+    expect(refreshed).toBe(0)
+    // Home's silence is said on screen, and is not a fault to log.
+    expect(reported).toEqual([])
+  })
+
+  it("keeps it when home turns it away, forgets the phone, or the link is busy", async () => {
+    phone.sessions = [onPhone("a", "draft")]
+    phone.send = (method, path, body): Promise<HomeAnswer> =>
+      method === "POST"
+        ? Promise.resolve({ status: 500, body: "{}" })
+        : send(method, path, body)
+    await expect(letGo("a")).resolves.toMatchObject({ kind: "refused" })
+    expect(reported).toEqual([
+      "home-link: Home didn't take a session it was asked to keep.",
+    ])
+    phone.send = (method, path, body): Promise<HomeAnswer> =>
+      method === "POST"
+        ? Promise.resolve({ status: 401, body: "{}" })
+        : send(method, path, body)
+    await expect(letGo("a")).resolves.toEqual({ kind: "forgotten" })
+    // The link runs nothing while it is busy: this phone's own, not home's.
+    await expect(
+      letGo("a", "paired", "home", { run: () => Promise.resolve(null) })
+    ).resolves.toEqual({ kind: "phone-busy" })
+    // Or once the phone was unpaired while it was asking.
+    let reads = 0
+    await expect(
+      letGo("a", "paired", "home", {
+        run: () => Promise.resolve(null),
+        pairing: () => Promise.resolve(++reads === 1 ? "paired" : "unpaired"),
+      })
+    ).resolves.toEqual({ kind: "unpaired" })
+    expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
+  })
+
+  it("reports a fault on this phone, before home holds it or after", async () => {
+    phone.sessions = [onPhone("a", "draft")]
+    await expect(
+      letGo("a", "paired", "home", {
+        session: () => Promise.reject(new Error("locked")),
+      })
+    ).resolves.toMatchObject({ kind: "not-let-go", held: false })
+    await expect(
+      letGo("a", "paired", "home", {
+        letGo: () => Promise.reject(new Error("locked")),
+      })
+    ).resolves.toMatchObject({ kind: "not-let-go", held: true })
+    expect(reported).toEqual([
+      "home-link: This phone couldn't let a session go.",
+      "home-link: Home holds a session this phone couldn't let go.",
+    ])
+    expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
+  })
+
+  it("doesn't report again a fault the phone's native call already reported", async () => {
+    phone.sessions = [onPhone("a", "draft")]
+    const native = new ForeignCallError({
+      kind: "unknown",
+      summary: "SQLite failed",
+      retryable: true,
+      cause: new Error("SQLITE_BUSY"),
+    })
+    await expect(
+      letGo("a", "paired", "home", {
+        letGo: () => Promise.reject(new Error("locked", { cause: native })),
+      })
+    ).resolves.toMatchObject({ kind: "not-let-go", held: true })
+    expect(reported).toEqual([])
+    expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
+  })
+
+  it("keeps it when home holds a different version, or the phone changed it since", async () => {
+    phone.sessions = [onPhone("a", "active")]
+    // Home's read-back no longer matches what the phone holds.
+    phone.send = async (method, path, body): Promise<HomeAnswer> => {
+      const answer = await send(method, path, body)
+      if (method !== "GET" || path === "/sessions") return answer
+      const there: unknown = JSON.parse(answer.body)
+      return answer.status === 200
+        ? {
+            ...answer,
+            body: JSON.stringify({ ...Object(there), name: "Elsewhere" }),
+          }
+        : answer
+    }
+    await expect(letGo("a")).resolves.toEqual({ kind: "not-held" })
+    expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
+
+    // Saved on the phone after the phone read it for the copy: what home
+    // holds is no longer it as it is.
+    phone.send = async (method, path, body): Promise<HomeAnswer> => {
+      const answer = await send(method, path, body)
+      if (method === "GET" && path !== "/sessions") {
+        phone.sessions = phone.sessions.map((s) => ({
+          ...s,
+          updatedAt: "2026-10-15T09:30:00.000Z",
+        }))
+      }
+      return answer
+    }
+    await expect(letGo("a")).resolves.toEqual({ kind: "changed" })
+    expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
+    expect(refreshed).toBe(0)
+  })
+
+  it("deletes as before on a phone that is not paired, sending nothing", async () => {
+    phone.sessions = [onPhone("a", "draft")]
+    await expect(letGo("a", "unpaired", "phone-only")).resolves.toEqual({
+      kind: "deleted",
+    })
+    expect(removed).toEqual(["a"])
+    expect(phone.sessions).toEqual([])
+    expect(refreshed).toBe(1)
+    expect(sent).toEqual([])
+  })
+
+  it("throws the plain delete's own failure, for the row to show and retry", async () => {
+    phone.sessions = [onPhone("a", "draft")]
+    await expect(
+      letGo("a", "unpaired", "phone-only", {
+        remove: () => Promise.reject(new Error("locked")),
+      })
+    ).rejects.toThrow("locked")
+    expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
+    expect(refreshed).toBe(0)
+  })
+
+  it("never deletes without home once the confirm promised home", async () => {
+    phone.sessions = [onPhone("a", "draft")]
+    await expect(letGo("a", "unpaired", "home")).resolves.toEqual({
+      kind: "unpaired",
+    })
+    await expect(letGo("a", "unsure", "home")).resolves.toEqual({
+      kind: "unpaired",
+    })
+    // A pairing that could not be read is said as that, and keeps it too.
+    await expect(letGo("a", "unreadable", "home")).resolves.toEqual({
+      kind: "unreadable",
+    })
+    expect(removed).toEqual([])
+    expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
+    expect(sent).toEqual([])
   })
 })

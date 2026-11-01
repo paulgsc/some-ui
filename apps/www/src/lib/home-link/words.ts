@@ -2,7 +2,8 @@
  * Every word a record this phone drains to home shows (LA14, LA15): each
  * lane's mark in the header, its sheet, and Settings' readout of what is
  * kept where and what waits; the clear of finished sessions home holds
- * (`./clear`); and Korean's look at the routine's files. Pure, and the one
+ * (`./clear`); the study list's "Let it go" (`./study-let-go`); and
+ * Korean's look at the routine's files. Pure, and the one
  * place those words live, so they stay in the person's terms (what is kept
  * where, and what waits) and never the machinery's: no request, status
  * code, address or state name reaches the screen (`__tests__/words.test.ts`).
@@ -18,6 +19,7 @@ import type { ClearEnd } from "./clear"
 import type { KeptState } from "./kept-model"
 import type { LaneCounts, LaneId, LaneKind } from "./lanes"
 import type { LastRead } from "./routine-model"
+import type { LetGoEnd, LetGoPromise } from "./study-let-go"
 
 /** One row of a lane's sheet: what one kind is called, and one of it. */
 type Row = {
@@ -245,6 +247,74 @@ export const CLEAR = {
       }
       case "not-cleared": {
         return "Home holds them, but this phone couldn't clear them. Try again."
+      }
+      default: {
+        return assertNever(end)
+      }
+    }
+  },
+} as const
+
+/**
+ * The study list's "Let it go" (`./study-let-go`): its confirm, given what
+ * it promises, and how it ended, given the host ("home" while the pairing
+ * is unsure). Said in the session's own row.
+ */
+export const LET_GO = {
+  title: "Let this session go?",
+  confirm: "Let it go",
+  /** The confirm's line, given the session's name. */
+  question: (name: string, promise: LetGoPromise, host: string): string =>
+    promise === "home"
+      ? `"${name}" leaves this phone, and ${host} keeps it. If ${host} can't, it stays here.`
+      : `"${name}" leaves this phone, and can't be brought back.`,
+  working: (host: string): string => `Keeping it on ${host}...`,
+  ended: (end: LetGoEnd, host: string): string => {
+    const stays = "it stays on this phone"
+    switch (end.kind) {
+      case "kept-home": {
+        return `Gone from this phone. ${host} keeps it.`
+      }
+      case "deleted": {
+        return "Gone from this phone."
+      }
+      case "missing": {
+        return "It's no longer on this phone."
+      }
+      case "not-held": {
+        return `${host} doesn't hold it as it is here yet, so ${stays}.`
+      }
+      case "changed": {
+        return `It changed while ${host} was checking, so ${stays}. Try again.`
+      }
+      case "unreachable": {
+        return `Couldn't reach ${host}. Are you on the home network? It stays on this phone.`
+      }
+      case "forgotten": {
+        return `${host} no longer knows this phone: unpair, then pair again. It stays on this phone.`
+      }
+      case "busy": {
+        return `${host} is busy just now. Try again in a minute; ${stays}.`
+      }
+      case "phone-busy": {
+        return `This phone is busy sending to ${host}. Try again in a minute; ${stays}.`
+      }
+      case "stopped": {
+        return "Stopped. It stays on this phone."
+      }
+      case "refused": {
+        return `${host} didn't take it, so ${stays}.`
+      }
+      case "unpaired": {
+        return "This phone isn't paired with home right now, so it stays here. Pair it in Settings, or try again."
+      }
+      case "unreadable": {
+        return "This phone couldn't read its pairing with home just now, so it stays here. Try again."
+      }
+      case "not-let-go": {
+        return end.held
+          ? `${host} keeps it, and it's still here: this phone couldn't let it go. Try again.`
+          : "This phone couldn't let it go. It's still here; try again."
       }
       default: {
         return assertNever(end)

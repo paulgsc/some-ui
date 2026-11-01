@@ -141,6 +141,7 @@ const DEVICE_MODULES = [
   "apps/www/src/components/auth/device-*.tsx",
   "apps/www/src/components/settings/device-*.tsx",
   "apps/www/src/components/reflection/device-*.tsx",
+  "apps/www/src/components/sessions/device-*.tsx",
   "packages/voice-capture/**",
   "node_modules/@capacitor/**",
   "node_modules/@capacitor-community/**",
