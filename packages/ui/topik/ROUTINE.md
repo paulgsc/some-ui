@@ -196,7 +196,8 @@ step 12 doesn't run. Voice notes never go to the mailbox from this run.
    which is `null` when a scene under it answers none. A group is answered by
    a scene that carries its `base`, or its `earlier` base when that isn't
    `null`. If it says the groups don't read, fix what it names and run it
-   again; if it fails any other way, stop part A and say why in the summary. A group whose newest `at` is under two hours old waits for the
+   again; if the command or path was wrong, fix that and run it again; if it
+   fails any other way, stop part A, say why in the summary, and go to part B. A group whose newest `at` is under two hours old waits for the
    next run, since more of that session may be on its way; a reflection
    written on the same day after its group was answered is not answered
    again (say so in the summary). Its spoken reflections ("Voice notes",
