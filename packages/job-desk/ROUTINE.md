@@ -40,15 +40,18 @@ couldn't do:
   after the run), a digest only Drive holds (below), and, when the mailbox
   isn't usable, all of `Brief/`.
 - **A digest only Drive holds:** one a run put there alone, on a day the
-  mailbox wasn't usable (§0.1). Only a run with both the mailbox and Drive
-  puts it home (§0.5), and a run without Drive can't count it (§2).
-- **Decisions and scouts files only Drive holds** (paulgsc/some-ui#2393):
-  whatever `stands` lists as `later` (§0.5). A phone on an APK without HF2
-  shares a file that names a voice note to Drive alone, and the mailbox
-  refuses such a file under its Drive name, so home can't hold it. While
-  Drive holds one, home's index can't stand: a run with Drive reads it from
-  Drive (§2), and a run without Drive goes on without it and says so. Drive
-  gets no new ones once I install an APK with HF2.
+  mailbox wasn't usable (§0.1) or when a usable mailbox didn't take it
+  (§8.5). It has picks. Only a run with both the mailbox and Drive puts it
+  home (§0.5), and a run without Drive can't count it (§2).
+- **Decisions and scouts files only Drive holds** (paulgsc/some-ui#2393). A
+  phone on an APK without HF2 shared a file that names a voice note to Drive
+  alone. One named for a day §0.5's backfill covers (before 2026-11-04) goes
+  home that way, by a run with both the mailbox and Drive; the mailbox
+  refuses a later one (`stands` lists it as `later`), so home can't hold it.
+  While Drive holds one the index lacks, home's index can't stand: a run
+  with Drive reads it from Drive (§2), and a run without Drive goes on
+  without it and says so. My phone has had HF2 since 2026-10-31 and files
+  every Jobs file home, so no new one is expected.
 
 The shapes are this package's schemas, and `src/sample.digest.json`
 is a complete digest to copy. The limits (picks per track, open picks,
@@ -148,7 +151,8 @@ record (§9) and the summary (§10). Nothing ends a run before those two.
    holds a name for good, so put it once and never again.
 
    - **A digest** in `Brief/` (its `digests`): always. It is one a run put in
-     Drive alone, on a day the mailbox wasn't usable (step 1).
+     Drive alone, on a day the mailbox wasn't usable (step 1) or when a
+     usable mailbox didn't take it (§8.5).
    - **A decisions or scouts file only Drive holds** (its `backfill`), one
      named for a day before 2026-11-04 (`decisions-2026-10-20.json`,
      `scouts-20261021T101500.json`): the one-time backfill I agreed to
@@ -250,7 +254,7 @@ one, as below; while it is on its way back, Drive's copy in `Brief/` stands
 in, if this session has Drive).
 
 **Otherwise**, work it out as follows, from the mailbox, and from Drive only
-for what the mailbox doesn't hold.
+for what the mailbox's live files don't give it.
 
 Every digest lists in `read` the Decisions and Scout files it took in. Read
 every digest and collect those names; the decisions and scouts files that no
@@ -324,15 +328,20 @@ says why in the summary. A new decisions file with an entry for a pick of an
 unread digest (each entry names its digest day) isn't taken in either: leave
 it out of `read`, so the next run, with that digest back, takes it in.
 
-Drive is read only for what the mailbox doesn't hold, and only with the
-Drive connector (§0.2): a digest in `Brief/` that no mailbox listing, live
-or archived, names (a run put it in Drive alone, and §0.5 puts it back), and
+Drive is read only for what the mailbox's live files don't give it, and
+only with the Drive connector (§0.2): the copy in `Brief/` of a digest home
+has archived (above); a digest in `Brief/` that no mailbox listing, live or
+archived, names (a run put it in Drive alone, and §0.5 puts it back); and
 the decisions and scouts files in `Decisions/` and `Scout/` that none names
-(those of "What still needs Drive", and a pre-mailbox file §0.5 couldn't put
+(those of "What still needs Drive", and a backfill file §0.5 couldn't put
 back). For a name both hold, the mailbox's bytes are the file; if Drive's
 differ, say so in the summary. Without Drive, say in the summary that what
 only Drive holds wasn't counted: a digest only Drive holds is one of those,
-and its picks count toward neither the queue nor "never picked again".
+and its picks count toward neither the queue nor "never picked again", so
+the run could pick past `MAX_OPEN_PICKS` or pick one of them again. When a
+decisions file names a digest day that no mailbox listing, live or
+archived, shows, that digest is one only Drive holds: hold the search back
+as for an unread digest (above), and say why in the summary.
 
 With Drive and no usable mailbox (§0.1), Drive's `Brief/`, `Decisions/` and
 `Scout/` are all this run can read, and they lack every decisions file that
@@ -440,10 +449,11 @@ lapses and frees its slot, so the queue never turns into a backlog to clear.
 
 1. With home's index (above), its `queue` is this step's answer: skip to
    step 2. Without a usable mailbox, step 3 records the queue as last known
-   (§2, its last paragraph), and the run skips steps 2 and 4. Otherwise, put
-   every digest and every decisions file that passes the checker (all of
-   them, not only the new ones; a file step 1 skipped stays out), each read
-   as §2 reads it, into one scratch folder, and from the repo root run:
+   (§2, the paragraph "With Drive and no usable mailbox"), and the run skips
+   steps 2 and 4. Otherwise, put every digest and every decisions file that
+   passes the checker (all of them, not only the new ones; a file step 1
+   skipped stays out), each read as §2 reads it, into one scratch folder, and
+   from the repo root run:
 
    ```sh
    pnpm --filter @some-ui/job-desk build
@@ -908,7 +918,9 @@ so it is written even when nothing else was. The shape is `JobsRunSchema` in
   a mailbox that turned the digest down, a Drive copy that failed, a search
   held back because the run couldn't see every earlier file (§2). A run
   without the Drive connector is not `partly` for that alone: what it leaves
-  undone ("What still needs Drive") goes in the summary. Otherwise it is
+  undone ("What still needs Drive") goes in the summary. A search held back
+  is `partly` even when the missing connector is why (an archived digest it
+  couldn't read, a digest only Drive holds): that rule wins. Otherwise it is
   `done`. Picking nothing is `done`: weak postings or full places are what
   the run found, not something it failed at.
 - `found` is what the run read: `postings` is the digest's `seen` (0 when it

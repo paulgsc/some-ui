@@ -29,15 +29,17 @@ kept only for what the mailbox can't carry or the phone can't reach:
 - **LeetType** (`LeetType/`): the session files the phone picks back, and the weekly review
   routine's folders (`packages/ui/leetype/REVIEW-ROUTINE.md`).
 - **Copies for refreshing away from home** (D4, #2183): the phone can't reach home there, so
-  it picks from Drive. The Jobs run copies each digest to `some-ui jobs/Brief`, and the
-  reflections run copies each scene to a folder of `Read aloud/sets` and each drama to
-  `Dramas/requests`, each only after home has it.
+  it picks from Drive. The Jobs run copies each digest to `some-ui jobs/Brief` after the
+  mailbox takes it, or puts it there alone when the mailbox can't take it (a later run puts
+  that one home). The reflections run copies each scene to a folder of `Read aloud/sets` and
+  each drama to `Dramas/requests`, each only after home has it.
 - **What only Drive holds, read and never rewritten,** in `Study ledger/reflections`,
   `Dramas/requests`, `Dramas/played`, `Read aloud/sets`, `Read aloud/archive` and
-  `some-ui jobs/Brief`, `Decisions` and `Scout`. Among them are the Jobs files `stands` lists
-  as `later`: a phone on an APK without HF2 shares a file that names a voice note to Drive
-  alone, and the mailbox refuses such a file under its Drive name. Drive gets no new ones once
-  the owner installs an APK with HF2 (#2393).
+  `some-ui jobs/Brief`, `Decisions` and `Scout`. Among them are Jobs decisions and scouts
+  files: a phone on an APK without HF2 shared a file that names a voice note to Drive alone.
+  One named for a day the Jobs run's backfill covers (before 2026-11-04) goes home that way,
+  and the mailbox refuses a later one (`stands` lists it as `later`). The owner's phone has
+  had HF2 since 2026-10-31 and files every Jobs file home, so no new one is expected (#2393).
 - **The rest of the tree:** `Inbox/`, `Vlog/playoff-delta/week-NN` and `published`,
   `some-ui jobs/Recommended resume`, `Archive/`, and the `Publish ledger` sheet. The doc
   carries each folder's id.
