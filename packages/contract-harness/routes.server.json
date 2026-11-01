@@ -698,6 +698,20 @@
     },
     {
       "method": "GET",
+      "path": "/voice-notes/:id/heard",
+      "full_path": "/api/v1/voice-notes/:id/heard",
+      "versioned": true,
+      "module": "voice"
+    },
+    {
+      "method": "GET",
+      "path": "/voice-notes/on-drive",
+      "full_path": "/api/v1/voice-notes/on-drive",
+      "versioned": true,
+      "module": "voice"
+    },
+    {
+      "method": "GET",
       "path": "/ws",
       "full_path": "/ws",
       "versioned": false,
