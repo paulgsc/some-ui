@@ -3,12 +3,7 @@ import type {
   VoiceNoteEvent,
   VoiceNoteState,
 } from "@voice-capture/lib/voice-note"
-import {
-  initialVoiceNote,
-  stepVoiceNote,
-  voiceNoteEnd,
-  voiceNoteSaid,
-} from "@voice-capture/lib/voice-note"
+import { initialVoiceNote, stepVoiceNote } from "@voice-capture/lib/voice-note"
 import { describe, expect, it } from "vitest"
 
 const LIMITS = { minMs: 1_000, maxMs: 60_000 }
@@ -75,14 +70,14 @@ describe("a voice note", () => {
     })
   })
 
-  it("discards a microphone that opens after the person left", () => {
+  it("lets go of a microphone still opening when the person leaves, and of one that opens anyway", () => {
     const { state, effects } = run([
       { type: "start", atMs: null },
       { type: "left" },
       { type: "micOpened", at: 0 },
     ])
     expect(state).toEqual({ kind: "idle", last: "early" })
-    expect(effects).toEqual(["openMic", "discardTake"])
+    expect(effects).toEqual(["openMic", "discardTake", "discardTake"])
   })
 
   it("says why the microphone did not open, and can try again", () => {
@@ -107,55 +102,5 @@ describe("a voice note", () => {
         LIMITS
       ).state
     ).toEqual({ kind: "idle", last: "full" })
-  })
-})
-
-/**
- * VC2 over the pure step: each order of start, stop and leave against the
- * microphone's answer ends the take once, and the ending has words.
- */
-describe("VC2: every take that starts ends once, and says how", () => {
-  const start: VoiceNoteEvent = { type: "start", atMs: null }
-  const opened: VoiceNoteEvent = { type: "micOpened", at: 1_000 }
-  const refused: VoiceNoteEvent = { type: "micFailed", reason: "denied" }
-  const taken: VoiceNoteEvent = { type: "taken", take: take(5_000) }
-  const saved: VoiceNoteEvent = { type: "saved", outcome: "kept" }
-
-  it.each<[string, ReadonlyArray<VoiceNoteEvent>, string]>([
-    ["stopped before the microphone opens", [start, { type: "stop" }], "early"],
-    ["left before the microphone opens", [start, { type: "left" }], "early"],
-    [
-      "stopped, then the microphone opens",
-      [start, { type: "stop" }, opened],
-      "early",
-    ],
-    [
-      "stopped, then the microphone refuses",
-      [start, { type: "stop" }, refused],
-      "early",
-    ],
-    ["refused before any stop", [start, refused, { type: "stop" }], "blocked"],
-    [
-      "stopped once the microphone opened",
-      [start, opened, { type: "stop" }, taken, saved],
-      "kept",
-    ],
-    [
-      "left once the microphone opened",
-      [start, opened, { type: "left" }, taken, saved],
-      "kept",
-    ],
-  ])("%s", (_, events, end) => {
-    let state = initialVoiceNote
-    let ends = 0
-    for (const event of events) {
-      const next = stepVoiceNote(state, event, LIMITS).state
-      const busy = state.kind === "taking" || state.kind === "saving"
-      if (busy && voiceNoteEnd(next) !== null) ends += 1
-      state = next
-    }
-    expect(ends).toBe(1)
-    expect(voiceNoteEnd(state)).toBe(end)
-    expect(voiceNoteSaid(state, false)).toEqual(expect.any(String))
   })
 })

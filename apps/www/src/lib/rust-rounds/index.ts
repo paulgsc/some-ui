@@ -18,7 +18,7 @@ import {
 } from "@some-ui/voice-capture"
 
 import { copyText } from "@/lib/clipboard"
-import type { DeskSnapshot } from "@/lib/takes-desk"
+import type { DeskSnapshot, TakesDesk } from "@/lib/takes-desk"
 import { takesDesk } from "@/lib/takes-desk"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 
@@ -53,23 +53,26 @@ export function noteView(snapshot: DeskSnapshot): NoteView {
   }
 }
 
-/** The desk as the session's microphone; the same view while nothing changed. */
-function notesPort(): NotesPort {
+/**
+ * A desk as the session's microphone; the same view while nothing changed.
+ * The phone's is `desk`; tests give theirs over the simulated microphone.
+ */
+export function notesPort(on: Pick<TakesDesk, "phone" | "keptOn">): NotesPort {
   let from: DeskSnapshot | null = null
   let view: NoteView | null = null
   return {
     getSnapshot(): NoteView {
-      const now = desk.phone().getSnapshot()
+      const now = on.phone().getSnapshot()
       if (view === null || now !== from) {
         from = now
         view = noteView(now)
       }
       return view
     },
-    subscribe: (listener) => desk.phone().subscribe(listener),
-    start: (line) => desk.phone().start(line),
-    stop: () => desk.phone().stop(),
-    keptOn: desk.keptOn,
+    subscribe: (listener) => on.phone().subscribe(listener),
+    start: (line) => on.phone().start(line),
+    stop: () => on.phone().stop(),
+    keptOn: on.keptOn,
   }
 }
 
@@ -77,7 +80,7 @@ function notesPort(): NotesPort {
 export function phoneRustRoundsPorts(): RustRoundsPorts {
   return {
     store: keptRounds(browserLocalStorage),
-    notes: notesPort(),
+    notes: notesPort(desk),
     copy: copyText,
     now: () => Date.now(),
     newId: () => crypto.randomUUID(),

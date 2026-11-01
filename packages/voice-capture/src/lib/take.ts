@@ -12,13 +12,19 @@
  * - Finishing keeps what was said; discarding keeps nothing.
  */
 import { assertNever } from "@some-ui/core-utils"
-import type { ForeignFailure, ForeignPort } from "@some-ui/intent-kit"
+import type {
+  ForeignCall,
+  ForeignFailure,
+  ForeignPort,
+} from "@some-ui/intent-kit"
 import {
   callForeign,
   ForeignDeadlineError,
   reportFailure,
 } from "@some-ui/intent-kit"
 
+import type { MicLease, MicOwner } from "./owner"
+import { phoneMicrophone } from "./owner"
 import type {
   Recording,
   RecordingFailure,
@@ -86,9 +92,9 @@ export function finishTake(phase: TakePhase): TakeStep {
 }
 
 /**
- * Stop and keep nothing. A microphone still opening is the embedding
- * machine's to let go when it arrives: answer its `micOpened` with
- * `{ type: "discardTake" }` once this take is no longer wanted.
+ * Stop and keep nothing. A microphone still opening is let go too:
+ * `takeRunner` stops waiting for it, frees the phone's microphone, and lets
+ * it go at once if it opens after all.
  */
 export function discardTake(phase: TakePhase): TakeStep {
   if (phase.kind === "recording")
@@ -96,7 +102,8 @@ export function discardTake(phase: TakePhase): TakeStep {
       kind: "discarded",
       effects: [{ type: "stopClock" }, { type: "discardTake" }],
     }
-  if (phase.kind === "opening") return { kind: "discarded", effects: [] }
+  if (phase.kind === "opening")
+    return { kind: "discarded", effects: [{ type: "discardTake" }] }
   return taking(phase)
 }
 
@@ -148,9 +155,9 @@ export function stepTake(
  * How long the microphone may take to open: Android's prompt the first
  * time waits on a person, so a long while, but not for ever.
  */
-const OPEN_DEADLINE_MS = 60_000
+export const OPEN_DEADLINE_MS = 60_000
 
-const FINISH_DEADLINE_MS = 15_000
+export const FINISH_DEADLINE_MS = 15_000
 
 /** How long `takeRunner` waits on the microphone; tests shorten it. */
 export type TakeDeadlines = {
@@ -193,6 +200,12 @@ const MICROPHONE: ForeignPort = {
  * (`OPEN_DEADLINE_MS`, `FINISH_DEADLINE_MS`), as `micFailed` or
  * `takeFailed` when it doesn't answer, and a microphone that opens after
  * its deadline is let go at once, never left recording.
+ *
+ * One take at a time per phone (`owner.ts`): opening claims the phone's
+ * microphone first, and a claim refused while another screen holds it is
+ * answered `micFailed` with `elsewhere`. The claim is held from the opening
+ * until the take lets go of it: the opening fails or is let go, the
+ * recording is discarded, or its finish settles.
  */
 export function takeRunner(
   ports: {
@@ -202,36 +215,75 @@ export function takeRunner(
     tickMs: number
     /** Defaults `OPEN_DEADLINE_MS` and `FINISH_DEADLINE_MS`. */
     deadlines?: TakeDeadlines | undefined
+    /** Defaults to the phone's one microphone, `phoneMicrophone`. */
+    owner?: MicOwner | undefined
   },
   signal: (signal: TakeSignal) => void
 ): { run: (effect: TakeEffect) => void } {
+  const owner = ports.owner ?? phoneMicrophone
+  let lease: MicLease | null = null
+  let opening: ForeignCall<Recording> | null = null
   let recording: Recording | null = null
   let clock: ReturnType<typeof setInterval> | null = null
   const stopClock = (): void => {
     if (clock !== null) clearInterval(clock)
     clock = null
   }
+  const release = (): void => {
+    lease?.release()
+    lease = null
+  }
+  /** Stops waiting on an opening, and lets go of what is held. */
+  const letGo = (): void => {
+    opening?.abandon()
+    opening = null
+    recording?.discard()
+    recording = null
+    release()
+  }
 
   return {
     run(effect): void {
       switch (effect.type) {
         case "openMic": {
+          letGo()
+          lease = owner.claim("take")
+          if (lease === null) {
+            // Answered as the microphone answers: never within the step
+            // that asked.
+            void Promise.resolve().then(() =>
+              signal({ type: "micFailed", reason: "elsewhere" })
+            )
+            return
+          }
+          // What opened, once it has: a call let go between the opening and
+          // its outcome settles `abandoned`, and this is all that holds it.
+          let arrived: Recording | null = null
           const call = callForeign<Recording>({
             port: MICROPHONE,
             deadlineMs: ports.deadlines?.openMs ?? OPEN_DEADLINE_MS,
             start: async (late) => {
               const opened = await ports.startRecording()
-              // Opened after its deadline: nothing waits for it any more.
+              // Opened after its deadline, or let go: nothing waits for it.
               if (late.aborted) opened.discard()
+              else arrived = opened
               return opened
             },
           })
+          opening = call
           void call.outcome.then((outcome) => {
+            if (opening !== call) {
+              arrived?.discard()
+              return
+            }
+            opening = null
             if (outcome.status === "succeeded") {
-              recording?.discard()
               recording = outcome.value
               signal({ type: "micOpened", at: ports.now() })
             } else if (outcome.status === "failed") {
+              // Past its deadline once it had opened: nothing waits for it.
+              arrived?.discard()
+              release()
               const { cause } = outcome.error
               signal({
                 type: "micFailed",
@@ -263,26 +315,30 @@ export function takeRunner(
           const finishing = recording
           recording = null
           if (finishing === null) {
+            release()
             signal({ type: "takeFailed" })
             return
           }
+          const held = lease
           const call = callForeign<Take>({
             port: MICROPHONE,
             deadlineMs: ports.deadlines?.finishMs ?? FINISH_DEADLINE_MS,
             start: () => finishing.finish(),
           })
-          void call.outcome.then((outcome) =>
+          void call.outcome.then((outcome) => {
+            // This take's own claim: a later take's is its own.
+            held?.release()
+            if (lease === held) lease = null
             signal(
               outcome.status === "succeeded"
                 ? { type: "taken", take: outcome.value }
                 : { type: "takeFailed" }
             )
-          )
+          })
           return
         }
         case "discardTake": {
-          recording?.discard()
-          recording = null
+          letGo()
           return
         }
         default: {

@@ -1761,6 +1761,9 @@ importers:
       '@some-ui/intent-kit':
         specifier: workspace:*
         version: link:../intent-kit
+      fast-check:
+        specifier: ^4.10.2
+        version: 4.10.2
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
