@@ -2,19 +2,31 @@
  * The phone's storage, said plainly (`lib/device-backend/storage`). Device
  * build only, like this module (`build.paths.ts`): render each behind an
  * inline `import.meta.env.VITE_DEVICE_BACKEND === "true"`.
+ *
+ * When a save is refused, the offer to remove the oldest finished session
+ * is the study list's let-go asked in its own words (`useSessionLetGo`,
+ * LA8): on a paired phone "Remove it" copies the session home and lets it
+ * go only once home holds it as it is, and otherwise it stays, said in the
+ * offer (PF1, `__tests__/device-storage.test.tsx`). On a phone known to be
+ * unpaired it is deleted, after an offer that says it can't be brought back.
  */
 import type { JSX } from "react"
 import { useEffect, useSyncExternalStore } from "react"
 import { formatSize } from "@some-ui/core-utils"
+import type { Intent } from "@some-ui/intent-kit"
+import { matchIntent } from "@some-ui/intent-kit"
 import { Alert, AlertDescription, AlertTitle, Button } from "@some-ui/shared"
 import { HardDrive } from "lucide-react"
 
 import type { RemovableSession } from "@/lib/device-backend/handlers/sessions"
 import type { DeviceStorageView } from "@/lib/device-backend/storage-view"
 import { deviceStorage } from "@/lib/device-backend/storage-view"
-import { useIntent, useIntentEffect } from "@/lib/intent"
+import type { LetGoEnd, LetGoRun } from "@/lib/home-link/study-let-go"
+import { leftPhone } from "@/lib/home-link/study-let-go"
+import { LET_GO } from "@/lib/home-link/words"
+import { useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
-import { useDeleteSession } from "@/lib/tenant"
+import { useSessionLetGo } from "@/components/sessions/device-let-go"
 
 function useDeviceStorage(): DeviceStorageView | null {
   const view = useSyncExternalStore(
@@ -47,28 +59,68 @@ export const DeviceStorageSummary = (): JSX.Element | null => {
 const finishedOn = (stamp: string): string =>
   new Date(stamp).toLocaleDateString()
 
-/** One offer per refusal: keyed by the session it names. */
+/**
+ * Whether the offer is done once a let-go ended so: the session left this
+ * phone, or was no longer on it, so there is nothing left to offer.
+ */
+const closes = (end: LetGoEnd): boolean =>
+  leftPhone(end) || end.kind === "missing"
+
+/**
+ * Why the offered session is still here, once a let-go ended with it
+ * staying, naming the host the offer asked about. A failure is said by the
+ * button's own, with its retry.
+ */
+function stayedLine(state: Intent<LetGoRun>): string | null {
+  return matchIntent(state, {
+    idle: () => null,
+    working: () => null,
+    succeeded: ({ end, host }) =>
+      closes(end) ? null : LET_GO.ended(end, host),
+    failed: () => null,
+  })
+}
+
+/**
+ * One offer per refusal: keyed by the session it names. It closes once the
+ * session is off this phone; while it stays, the offer says why and asks
+ * again. "Try again" after a failure re-runs the same promise.
+ */
 const RemoveOffer = ({
   session,
 }: {
   session: RemovableSession
 }): JSX.Element => {
-  const remove = useIntent(useDeleteSession(), { presentation: "interactive" })
-  useIntentEffect(remove, () => void deviceStorage.settle())
+  const letGo = useSessionLetGo()
+  const { host, promise } = letGo
+  useIntentEffect(letGo, ({ end }) => {
+    if (closes(end)) void deviceStorage.settle()
+  })
+  const stayed = stayedLine(letGo.state)
   return (
     <>
       <p>
-        Remove “{session.name}” (finished {finishedOn(session.finishedAt)}) to
-        make room? It&apos;s gone unless home holds it.
+        {LET_GO.room.question(
+          session.name,
+          finishedOn(session.finishedAt),
+          promise,
+          host
+        )}
       </p>
+      {/* Inside the prompt's own alert, which announces it. */}
+      {stayed === null ? null : (
+        <p className="text-destructive break-words">{stayed}</p>
+      )}
       <div className="flex gap-2">
         <IntentButton
-          state={remove.state}
-          onPress={() => remove.start(session.id)}
+          state={letGo.state}
+          // What this offer says is what runs: the promise and the host it
+          // rendered with.
+          onPress={() => letGo.start(session.id, promise, host)}
           size="sm"
           variant="destructive"
-          idleLabel="Remove it"
-          workingLabel="Removing..."
+          idleLabel={LET_GO.room.confirm}
+          workingLabel={LET_GO.room.working}
         />
         <Button
           size="sm"

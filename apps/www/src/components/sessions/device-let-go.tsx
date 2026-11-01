@@ -8,21 +8,26 @@
  * it can't be brought back, and the tap deletes it as it always did. Every
  * word is `lib/home-link/words`' `LET_GO`.
  *
+ * `useSessionLetGo` is that flow without its confirm, which the phone-full
+ * offer's "Remove it" (`components/settings/device-storage.tsx`, PF1) asks
+ * in its own words.
+ *
  * Device build only, like this module (`build.paths.ts`): the route picks
  * `useHomeLetGo` behind an inline `import.meta.env.VITE_DEVICE_BACKEND ===
  * "true"`.
  */
 import type { JSX, ReactNode } from "react"
+import type { Intent } from "@some-ui/intent-kit"
 import { matchIntent } from "@some-ui/intent-kit"
 import { useConfirmSheet } from "@some-ui/shared"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
 import { hostOf, useHomeLink } from "@/lib/home-link"
-import type { LetGoEnd, LetGoPromise } from "@/lib/home-link/study-let-go"
+import type { LetGoPromise, LetGoRun } from "@/lib/home-link/study-let-go"
 import {
   leftPhone,
-  letSessionGo,
+  letSessionGoFor,
   promiseOf,
 } from "@/lib/home-link/study-let-go"
 import { LET_GO } from "@/lib/home-link/words"
@@ -41,24 +46,54 @@ export type LetGoControl = {
   readonly sheet: ReactNode
 }
 
-export function useHomeLetGo(session: SessionRecord): LetGoControl {
-  const { ask, sheet } = useConfirmSheet()
+/**
+ * "Let it go"'s flow, for a control that asks in its own words: what it may
+ * promise now, who keeps it, and the run. The promise and the host travel
+ * with `start`: what the question said is what runs, and its end names the
+ * host the question did, however the pairing moved while it was shown. `start` asks nothing itself, so only a caller that asks first
+ * may import this module (LA8; `LET_GO_CALLERS` in
+ * `lib/serving-privacy/__tests__/egress-choke-points.test.ts`).
+ */
+export type SessionLetGo = {
+  /** What a question asked now may promise (`promiseOf`). */
+  readonly promise: LetGoPromise
+  /** Who keeps it: the paired host, or "home" while the pairing is unsure. */
+  readonly host: string
+  readonly state: Intent<LetGoRun>
+  /** Counts runs, for `useIntentEffect`. */
+  readonly attempt: number
+  readonly start: (id: string, promised: LetGoPromise, host: string) => void
+}
+
+export function useSessionLetGo(): SessionLetGo {
   const queryClient = useQueryClient()
   const link = useHomeLink()
   const host = link.link.kind === "paired" ? hostOf(link.link.base) : "home"
-  const promise = promiseOf(link)
-  // The promise travels with the tap: what the confirm said is what runs,
-  // however the pairing moved while it was open.
-  // Said from the flow, not an effect: the row unmounts once the list it
+  // Said from the flow, not an effect: a row unmounts once the list it
   // refreshes no longer holds the session.
   const letGo = useAsyncIntent(
-    ({ id, promised }: { id: string; promised: LetGoPromise }) =>
-      letSessionGo(id, promised, (end: LetGoEnd) => {
-        if (end.kind === "kept-home") toast.success(LET_GO.ended(end, host))
+    (asked: { id: string; promised: LetGoPromise; host: string }) =>
+      letSessionGoFor(asked.host, asked.id, asked.promised, (end) => {
+        if (end.kind === "kept-home") {
+          toast.success(LET_GO.ended(end, asked.host))
+        }
         void queryClient.invalidateQueries({ queryKey: sessionsKey })
       }),
     { presentation: "interactive" }
   )
+  return {
+    promise: promiseOf(link),
+    host,
+    state: letGo.state,
+    attempt: letGo.attempt,
+    start: (id, promised, asked) => letGo.start({ id, promised, host: asked }),
+  }
+}
+
+export function useHomeLetGo(session: SessionRecord): LetGoControl {
+  const { ask, sheet } = useConfirmSheet()
+  const letGo = useSessionLetGo()
+  const { host, promise } = letGo
 
   const lines = matchIntent(letGo.state, {
     idle: (): JSX.Element | null => null,
@@ -68,10 +103,10 @@ export function useHomeLetGo(session: SessionRecord): LetGoControl {
           {LET_GO.working(host)}
         </p>
       ) : null,
-    succeeded: (end): JSX.Element | null =>
-      leftPhone(end) ? null : (
+    succeeded: (run): JSX.Element | null =>
+      leftPhone(run.end) ? null : (
         <p className="text-destructive text-sm break-words" role="alert">
-          {LET_GO.ended(end, host)}
+          {LET_GO.ended(run.end, run.host)}
         </p>
       ),
     failed: (error, retry): JSX.Element => (
@@ -82,11 +117,12 @@ export function useHomeLetGo(session: SessionRecord): LetGoControl {
   return {
     ask: (): void => {
       const promised = promise
+      const asked = host
       ask({
         title: LET_GO.title,
-        description: LET_GO.question(session.name, promised, host),
+        description: LET_GO.question(session.name, promised, asked),
         confirm: LET_GO.confirm,
-        onConfirm: () => letGo.start({ id: session.id, promised }),
+        onConfirm: () => letGo.start(session.id, promised, asked),
       })
     },
     lines,

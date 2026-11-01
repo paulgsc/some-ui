@@ -224,6 +224,24 @@ export async function letSessionGo(
   return end
 }
 
+/** A let-go's end, with the host its question named. */
+export type LetGoRun = { readonly end: LetGoEnd; readonly host: string }
+
+/**
+ * `letSessionGo`, with the host the question named kept beside its end, so
+ * what a control says of that end names the host it asked about, however
+ * the pairing moved since.
+ */
+export async function letSessionGoFor(
+  host: string,
+  id: string,
+  promised: LetGoPromise,
+  refresh: (end: LetGoEnd) => unknown = () => undefined,
+  ports: LetGoPorts = phonePorts()
+): Promise<LetGoRun> {
+  return { end: await letSessionGo(id, promised, refresh, ports), host }
+}
+
 /**
  * A failure a native call already reported (`callForeign` reports before it
  * throws `ForeignCallError`), anywhere in the cause chain, as IR1 skips it.

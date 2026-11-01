@@ -324,10 +324,32 @@ describe("the study list's Let it go", () => {
       '"Evening reading" leaves this phone, and home.example keeps it. If home.example can\'t, it stays here.',
       '"Evening reading" leaves this phone, and can\'t be brought back.',
     ])
+    // The phone-full offer asks the same let-go in its own words (PF1); the
+    // host, "home" while the pairing is unsure, never opens a sentence.
+    const offered = [
+      LET_GO.room.question(
+        "Evening reading",
+        "9/1/2026",
+        "home",
+        "home.example"
+      ),
+      LET_GO.room.question("Evening reading", "9/1/2026", "home", "home"),
+      LET_GO.room.question("Evening reading", "9/1/2026", "phone-only", "home"),
+    ]
+    expect(offered).toEqual([
+      "Remove “Evening reading” (finished 9/1/2026) to make room? It leaves this phone, and home.example keeps it. If home.example can't, it stays here.",
+      "Remove “Evening reading” (finished 9/1/2026) to make room? It leaves this phone, and home keeps it. If home can't, it stays here.",
+      "Remove “Evening reading” (finished 9/1/2026) to make room? It leaves this phone, and can't be brought back.",
+    ])
+    expect(offered.filter((line) => /(^|[.?!] )home/.test(line))).toEqual([])
     expect(
-      [...lines, ...asked, LET_GO.working("home.example")].filter((line) =>
-        MACHINERY.test(line)
-      )
+      [
+        ...lines,
+        ...asked,
+        ...offered,
+        LET_GO.working("home.example"),
+        LET_GO.room.working,
+      ].filter((line) => MACHINERY.test(line))
     ).toEqual([])
   })
 })

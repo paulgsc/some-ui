@@ -37,8 +37,8 @@
  *   the phone; an
  *   item's audio or record leaves only once home has read it back (`held`,
  *   `letGoHeld`, the clear of finished sessions home holds, and a capped
- *   store making room with what home holds), and a Drive copy is only ever
- *   a copy. A Studio take's audio leaves only once home holds it **and** the
+ *   store making room with what home holds, the session budget's phone-full
+ *   offer included: PF1), and a Drive copy is only ever a copy. A Studio take's audio leaves only once home holds it **and** the
  *   owner's choice allows it (HF11, #2401; soundbites' `lib/project/let-go`):
  *   none before they choose, every one under "Let takes go once home has
  *   them", and under "Keep each until Drive has it too" only the one they
@@ -49,7 +49,8 @@
  *   its soundbites, grammar-lens entries and takes, and LeetType answers and
  *   takes; Studio takes) and every cap that makes room (soundbites, lens
  *   takes, LeetType takes and answer notes, and the grammar-lens record,
- *   HF5 #2180) × every home state (held; waiting; unpaired; off the LAN,
+ *   HF5 #2180; the session budget's offer of the oldest finished session,
+ *   "Remove it", #2422) × every home state (held; waiting; unpaired; off the LAN,
  *   which the phone sees alike as not held); for Studio takes, × every
  *   choice (none yet, once home has them, until Drive has it too) × the
  *   owner's "Drive has it" on the take (tapped or not), home's word that
@@ -79,7 +80,14 @@
  *   `lib/takes-desk/__tests__/runtime.test.ts`,
  *   `lib/leetype-takes/index.test.ts` and topik's
  *   `adapter/lens-record-store/index.test.ts` (each "HF5": at the cap only
- *   one home holds makes room, and with none held the new one is refused).
+ *   one home holds makes room, and with none held the new one is refused),
+ *   and for the session budget
+ *   `components/settings/__tests__/device-storage.test.tsx` ("PF1": the
+ *   offered session leaves on home's word alone, and stays when home can't
+ *   keep it or the pairing moved or can't be read).
+ * - _Tolerance:_ on a phone known to be unpaired, the session budget's
+ *   offer deletes the session on the person's yes, after saying it can't be
+ *   brought back: there is no home, so no one's word but theirs (PF1).
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/core-utils"

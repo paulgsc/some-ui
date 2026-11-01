@@ -11,12 +11,13 @@
  * pairing each test sets.
  */
 
+import { keepingHome } from "@/test-support/keeping-home"
 import { noAnswer } from "@/test-support/no-answer"
 import { withQueryClient } from "@/test-support/query-client"
 import { routeComponent } from "@/test-support/router-stubs"
 import { sessionRecord } from "@/test-support/session-record"
 import { signInForTests } from "@/test-support/sign-in"
-import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
+import type { HomeCall } from "@some-ui/core-utils"
 import { addFailureSink } from "@some-ui/intent-kit"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import {
@@ -147,36 +148,6 @@ let deletes: Array<string>
 let deleteStatus = 200
 
 const EVENING = sessionRecord({ id: "session-1", name: "Evening reading" })
-
-/**
- * A home that keeps what it is sent, as `file_host` answers `/sessions`: a
- * create under the id it names, a patch, and a read of either.
- */
-function keepingHome(): HomeCall {
-  const held = new Map<string, Record<string, unknown>>()
-  const answer = (status: number, body: unknown): Promise<HomeAnswer> =>
-    Promise.resolve({ status, body: JSON.stringify(body) })
-  return (method, path, body) => {
-    const sent: unknown = typeof body === "string" ? JSON.parse(body) : {}
-    const fields = typeof sent === "object" && sent !== null ? sent : {}
-    if (method === "POST" && path === "/sessions") {
-      const created: Record<string, unknown> = {
-        ...fields,
-        status: "draft",
-        origin: "user",
-        totalDurationMs: 0,
-        createdAt: "2026-11-01T00:00:00.000Z",
-        updatedAt: "2026-11-01T00:00:00.000Z",
-      }
-      held.set(String(created.id), created)
-      return answer(200, created)
-    }
-    const there = held.get(decodeURIComponent(path.replace("/sessions/", "")))
-    if (there === undefined) return answer(404, { error: "not_found" })
-    if (method === "PATCH") Object.assign(there, fields)
-    return answer(200, there)
-  }
-}
 
 beforeEach(() => {
   signInForTests()
