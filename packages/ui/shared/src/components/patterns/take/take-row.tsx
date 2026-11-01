@@ -47,6 +47,7 @@ export const TakeRow = ({
     >
       <div className="flex min-w-0 items-center gap-3">
         <Button
+          type="button"
           size="icon"
           className="bg-brand text-brand-foreground hover:bg-brand/85 size-11 shrink-0 rounded-full"
           onClick={onPlay}
@@ -80,6 +81,7 @@ export const TakeRow = ({
         <div className="flex flex-wrap justify-end gap-1">
           {onRedo !== undefined && (
             <Button
+              type="button"
               size="sm"
               variant="ghost"
               onClick={onRedo}
@@ -91,6 +93,7 @@ export const TakeRow = ({
           )}
           {onLetGo !== undefined && (
             <Button
+              type="button"
               size="sm"
               variant="ghost"
               className="text-muted-foreground"

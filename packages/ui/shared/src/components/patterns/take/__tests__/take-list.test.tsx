@@ -184,6 +184,28 @@ describe("the take button, row and list", () => {
     expect(rows[1]).toHaveTextContent("0:02")
   })
 
+  it("submits no form around it: every control is a plain button", async () => {
+    const on = phone()
+    const { pattern, store } = screenOn(on)
+    const submit = vi.fn((event: Event) => event.preventDefault())
+    render(
+      <form onSubmit={(event) => submit(event.nativeEvent)}>
+        <Screen pattern={pattern} store={store} />
+      </form>
+    )
+    fireEvent.click(takeButton())
+    await pass(2_100)
+    fireEvent.click(live())
+    await pass(0)
+    for (const button of screen.getAllByRole("button")) {
+      expect(button).toHaveAttribute("type", "button")
+    }
+    fireEvent.click(
+      screen.getByRole("button", { name: W.rowLabel(W.redo, 2_000) })
+    )
+    expect(submit).not.toHaveBeenCalled()
+  })
+
   it("lets a take go without asking, sets it aside and says where it is kept (D3)", async () => {
     const on = phone()
     const { pattern, store } = screenOn(on)
