@@ -633,6 +633,12 @@ export const STUDIO_WORDS = {
     keptOnHome:
       "Home has what you said but hasn't heard it yet. Type the words for now.",
     keptOnPhone:
+      "What you said is kept on this phone and goes home later. Type the words for now.",
+    homeNoWords:
+      "Home has what you said but can't give the words back yet. Type the words for now.",
+    awayOnHome:
+      "Home can't be reached right now. It has what you said. Type the words for now.",
+    awayOnPhone:
       "Home can't be reached right now. What you said is kept on this phone and goes home later. Type the words for now.",
     takeFull:
       "There's no room on this phone for another take until home has the ones before it. Type it instead.",

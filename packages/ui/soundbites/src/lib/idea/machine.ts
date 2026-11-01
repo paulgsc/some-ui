@@ -96,6 +96,11 @@ export type IdeaNotice =
   /** A take was kept, and its words didn't come in time (IH1): where it is. */
   | "keptOnHome"
   | "keptOnPhone"
+  /** A take home holds, and home can't give its words back (IH1). */
+  | "homeNoWords"
+  /** A take was kept, and home couldn't be reached (IH1): where it is. */
+  | "awayOnHome"
+  | "awayOnPhone"
   /** A take couldn't be kept: no room, or it failed. */
   | "takeFull"
   | "takeNotKept"
@@ -147,10 +152,15 @@ export type Listened =
   | { readonly kind: "notStarted" }
   | { readonly kind: "failed" }
   /**
-   * The take was kept, and home's words for it didn't come in time (IH1):
-   * where it is kept now.
+   * The take was kept, and home's words for it didn't come (IH1): where it
+   * is kept now, and why: not in time (`late`), home can't give them back
+   * (`noWords`), or home couldn't be reached (`away`).
    */
-  | { readonly kind: "kept"; readonly on: "home" | "phone" }
+  | {
+      readonly kind: "kept"
+      readonly on: "home" | "phone"
+      readonly why: "late" | "noWords" | "away"
+    }
   /** The take couldn't be kept: no room for it, or keeping it failed. */
   | { readonly kind: "notKept"; readonly why: "full" | "failed" }
   /** The microphone refused the take. */
@@ -188,6 +198,8 @@ export type IdeaEvent =
   | { readonly type: "ready"; readonly seq: number }
   /** The listening's take is kept, and home is hearing it (IH1). */
   | { readonly type: "hearing"; readonly seq: number }
+  /** A take was kept that home won't hear for an answer (IH1). */
+  | { readonly type: "took" }
   | { readonly type: "partial"; readonly seq: number; readonly words: string }
   | {
       readonly type: "listened"
@@ -319,6 +331,24 @@ function sofarOf(phase: Underway): string {
   return phase.kind === "hearing" ? "" : phase.words.trim()
 }
 
+/** Where a take whose words didn't come is kept, and why, as a notice. */
+function keptNotice(result: Extract<Listened, { kind: "kept" }>): IdeaNotice {
+  switch (result.why) {
+    case "late": {
+      return result.on === "home" ? "keptOnHome" : "keptOnPhone"
+    }
+    case "noWords": {
+      return "homeNoWords"
+    }
+    case "away": {
+      return result.on === "home" ? "awayOnHome" : "awayOnPhone"
+    }
+    default: {
+      return assertNever(result.why)
+    }
+  }
+}
+
 function listened(state: IdeaState, seq: number, result: Listened): IdeaStep {
   const { screen } = state
   if (screen.kind !== "ask" || !underway(screen.phase, seq)) {
@@ -353,10 +383,11 @@ function listened(state: IdeaState, seq: number, result: Listened): IdeaStep {
     }
     case "kept": {
       // The take is kept; its words for this answer are typed (IH1).
-      return at(
-        { kind: "typing", draft: sofar },
-        result.on === "home" ? "keptOnHome" : "keptOnPhone"
-      )
+      const typing = at({ kind: "typing", draft: sofar }, keptNotice(result))
+      // Home didn't answer: what the listener can do next may have changed.
+      return result.why === "away"
+        ? { ...typing, effects: [{ type: "checkVoice" }] }
+        : typing
     }
     case "notKept": {
       return at(
@@ -627,6 +658,9 @@ export function step(state: IdeaState, event: IdeaEvent): IdeaStep {
         })
       }
       return same(state)
+    }
+    case "took": {
+      return state.took ? same(state) : same({ ...state, took: true })
     }
     case "partial": {
       if (

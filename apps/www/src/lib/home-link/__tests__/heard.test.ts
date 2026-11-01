@@ -79,13 +79,17 @@ describe("home's words for a take (MIC10, GET /voice-notes/:id/heard)", () => {
     expect(heardPath("t1")).toBe("/voice-notes/t1/heard")
   })
 
-  it("is unreachable, asking nothing, when unpaired, busy or failing", async () => {
+  it("is busy, asking nothing, when the link is busy with another run", async () => {
+    answer = null
+    expect(await askHeard("t1")).toEqual({ kind: "busy" })
+    expect(asked).toEqual([])
+  })
+
+  it("is unreachable when unpaired, asking nothing, or when home doesn't answer", async () => {
     pairedNow = false
     expect(await askHeard("t1")).toEqual({ kind: "unreachable" })
     expect(asked).toEqual([])
     pairedNow = true
-    answer = null
-    expect(await askHeard("t1")).toEqual({ kind: "unreachable" })
     answer = new Error("no answer")
     expect(await askHeard("t1")).toEqual({ kind: "unreachable" })
   })

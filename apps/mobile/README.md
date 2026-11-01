@@ -1014,8 +1014,12 @@ recorded through the shared take kit as the Soundbites page records, kept on
 the phone and sent home as a Studio voice note; home hears it and the screen
 asks for its words every few seconds while it shows, for up to three minutes
 (www's `src/lib/idea-hearing`, IH1). Words that don't come by then leave the
-take kept and the answer typed. No recognizer is needed, so this works on
-every phone that records at all.
+take kept and the answer typed. It stops waiting at once for a silent take,
+when home doesn't answer, and when home holds the take but can't give its
+words back, and for five minutes after home didn't answer, the answers are
+heard by the phone's recognizer, or typed on a phone without one. No
+recognizer is needed at home, so this works on every phone that records at
+all.
 
 On a phone not paired with home, it shows the words as they are spoken,
 heard through the app's own plugin, `ListenPlugin.java` (registered in

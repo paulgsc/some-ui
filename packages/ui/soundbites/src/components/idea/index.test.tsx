@@ -88,10 +88,10 @@ describe("IdeaCapture", () => {
     expect(screen.getByText(W.hearing)).toBeTruthy()
     expect(screen.getByRole("button", { name: W.type })).toBeTruthy()
     await act(async () => {
-      voice.finish({ kind: "kept", on: "phone" })
+      voice.finish({ kind: "kept", on: "phone", why: "away" })
       await Promise.resolve()
     })
-    expect(screen.getByText(W.keptOnPhone)).toBeTruthy()
+    expect(screen.getByText(W.awayOnPhone)).toBeTruthy()
     const box = screen.getByRole("textbox", { name: W.questions.what.ask })
     fireEvent.change(box, { target: { value: "typed after all" } })
     fireEvent.click(screen.getByRole("button", { name: W.keepWords }))

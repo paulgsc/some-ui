@@ -395,7 +395,8 @@ declared (checked by reading every call site and by the tests named).
   for a take's words (`lib/idea-hearing`, through `lib/home-link/heard`'s
   `keep`: one `GET /voice-notes/:id/heard` every 5 s while the idea screen
   shows a take home is hearing, never while the page is hidden, for at most
-  3 minutes from the take's keeping; the owner's direction on #2428,
+  3 minutes from the take's keeping; once home didn't answer, none more for
+  that take, nor for any for 5 minutes; the owner's direction on #2428,
   2026-11-01, and IH1), which are the other callers of
   `lib/home-link`, is started by a tap in the Home server block of Settings
   (`components/settings/device-section.tsx`): the sync (published lessons
@@ -535,7 +536,8 @@ declared (checked by reading every call site and by the tests named).
   the read of a take's words one `GET /voice-notes/:id/heard` and nothing
   else; and `confirmHeld` is called only in `lib/home-link/sessions.ts`).
   That the read of a take's words asks only while the idea screen shows it
-  being heard, every `pollMs` and until `deadlineMs`, is by test
+  being heard, every `pollMs` and until `deadlineMs` or home's first
+  failure to answer, is by test
   (`@some-ui/soundbites`' `lib/idea/__tests__/hearing.test.ts`, "IH1"), held
   when it joined (MIC10, #2428). What a test
   cannot say is that a call site in that block is a tap: a lint rule cannot

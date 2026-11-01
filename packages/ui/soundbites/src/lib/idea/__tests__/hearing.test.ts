@@ -29,8 +29,16 @@ const NOW = Date.UTC(2026, 10, 1, 9)
 const LIMITS = { minMs: 500, maxMs: 60_000 }
 const { pollMs, deadlineMs } = HEARING_TIMING
 
-/** The shared take kit as the idea's take port sees it. */
-function kitTakes(kit: TakeKit, full = false): IdeaTakes {
+/**
+ * The shared take kit as the idea's take port sees it, home holding what
+ * `held` says. www's own port over its desk (`lib/idea-takes`) is run
+ * through `homeHearing` in that workspace's test.
+ */
+function kitTakes(
+  kit: TakeKit,
+  full: boolean,
+  held: (id: string) => boolean
+): IdeaTakes {
   return {
     getSnapshot: (): ReturnType<IdeaTakes["getSnapshot"]> => {
       const { take, ended, blocked } = kit.getSnapshot()
@@ -44,6 +52,7 @@ function kitTakes(kit: TakeKit, full = false): IdeaTakes {
                 ending: ended.ending,
                 id: ended.id,
                 reason: blocked ?? ended.reason,
+                unheard: ended.unheard,
               },
         full,
       }
@@ -52,6 +61,7 @@ function kitTakes(kit: TakeKit, full = false): IdeaTakes {
     start: kit.start,
     stop: kit.stop,
     leave: kit.leave,
+    held,
   }
 }
 
@@ -88,6 +98,10 @@ function capture(options: {
   keeps?: ReadonlyArray<KeepScript>
   full?: boolean
 }): {
+  /** The takes this phone has read back that home holds. */
+  homeHolds: Set<string>
+  /** How often the screen asked whether it can listen. */
+  voiceChecks: () => number
   state: () => IdeaState
   dispatch: ReturnType<typeof createIdeaCapture>["dispatch"]
   asked: () => ReadonlyArray<string>
@@ -112,8 +126,10 @@ function capture(options: {
   const asked: Array<string> = []
   const queue = [...options.answers]
   const visible = page()
-  const listener: IdeaListener = homeHearing({
-    takes: kitTakes(kit, options.full),
+  const homeHolds = new Set<string>()
+  let voiceChecks = 0
+  const hearing: IdeaListener = homeHearing({
+    takes: kitTakes(kit, options.full ?? false, (id) => homeHolds.has(id)),
     heard: (id) => {
       asked.push(id)
       const answer =
@@ -124,6 +140,13 @@ function capture(options: {
     now,
     onVisibility: visible.onVisibility,
   })
+  const listener: IdeaListener = {
+    ...hearing,
+    available: () => {
+      voiceChecks += 1
+      return hearing.available()
+    },
+  }
   const storage = inMemoryStorage()
   const runtime = createIdeaCapture({
     store: keptIdeaStore(() => storage),
@@ -134,6 +157,8 @@ function capture(options: {
   })
   const detach = runtime.attach()
   return {
+    homeHolds,
+    voiceChecks: () => voiceChecks,
     state: runtime.getSnapshot,
     dispatch: runtime.dispatch,
     asked: () => asked,
@@ -210,13 +235,18 @@ describe("IH1: an answer said as a take, its words from home", () => {
   })
 
   it.each([
-    [{ kind: "notYet" } as const, "keptOnHome"],
-    [{ kind: "notHeld" } as const, "keptOnPhone"],
-    [{ kind: "unreachable" } as const, "keptOnPhone"],
+    // Home said it holds the take.
+    [{ kind: "notYet" } as const, false, "keptOnHome"],
+    // Neither home nor the phone's read-back says home holds it.
+    [{ kind: "notHeld" } as const, false, "keptOnPhone"],
+    // The link was busy at every ask.
+    [{ kind: "busy" } as const, false, "keptOnPhone"],
+    [{ kind: "busy" } as const, true, "keptOnHome"],
   ])(
-    "keeps the take and takes typed words once the deadline passes (home answering %o)",
-    async (answer, notice) => {
+    "keeps the take and takes typed words once the deadline passes (home answering %o, read back as held: %s)",
+    async (answer, held, notice) => {
       const run = capture({ answers: [answer] })
+      if (held) run.homeHolds.add("take-1")
       await say(run)
       await vi.advanceTimersByTimeAsync(deadlineMs - pollMs)
       expect(phaseOf(run.state())).toBe("hearing")
@@ -230,6 +260,87 @@ describe("IH1: an answer said as a take, its words from home", () => {
       expect(run.asked()).toHaveLength(asks)
     }
   )
+
+  it("stops waiting once the phone has read back that home holds a take home knows no words for", async () => {
+    // Home serves no words (a 404 that never stops), and the voice lane
+    // delivers the note between the second and third asks.
+    const run = capture({ answers: [{ kind: "notHeld" }] })
+    await say(run)
+    await vi.advanceTimersByTimeAsync(2 * pollMs)
+    expect(phaseOf(run.state())).toBe("hearing")
+    run.homeHolds.add("take-1")
+    await vi.advanceTimersByTimeAsync(pollMs)
+    expect(phaseOf(run.state())).toBe("typing")
+    expect(run.state().notice).toBe("homeNoWords")
+    expect(run.asked()).toHaveLength(3)
+    await vi.advanceTimersByTimeAsync(deadlineMs)
+    expect(run.asked()).toHaveLength(3)
+  })
+
+  it.each([
+    [false, "awayOnPhone"],
+    [true, "awayOnHome"],
+  ] as const)(
+    "stops waiting at the first ask home doesn't answer, saying where the take is (read back as held: %s)",
+    async (held, notice) => {
+      const run = capture({ answers: [{ kind: "unreachable" }] })
+      if (held) run.homeHolds.add("take-1")
+      await say(run)
+      expect(run.voiceChecks()).toBe(1)
+      await vi.advanceTimersByTimeAsync(pollMs)
+      expect(phaseOf(run.state())).toBe("typing")
+      expect(run.state().notice).toBe(notice)
+      // What can listen now is asked again (www's `lib/idea-hearing` skips
+      // home for a while once it didn't answer).
+      expect(run.voiceChecks()).toBe(2)
+      expect(run.state().took).toBe(true)
+      expect(run.kept()).toEqual(["take-1"])
+      await vi.advanceTimersByTimeAsync(deadlineMs)
+      expect(run.asked()).toHaveLength(1)
+    }
+  )
+
+  it("asks again at the next poll when the link was busy", async () => {
+    const run = capture({
+      answers: [{ kind: "busy" }, { kind: "heard", text: "picks" }],
+    })
+    await say(run)
+    await vi.advanceTimersByTimeAsync(pollMs)
+    expect(phaseOf(run.state())).toBe("hearing")
+    await vi.advanceTimersByTimeAsync(pollMs)
+    expect(run.state().screen).toMatchObject({
+      phase: { kind: "heard", words: "picks" },
+    })
+    expect(run.asked()).toHaveLength(2)
+  })
+
+  it("keeps a silent take and says at once it heard nothing, asking home nothing", async () => {
+    const run = capture({
+      answers: [{ kind: "notYet" }],
+      mic: [{ ...SPEAKING, level: 0 }],
+    })
+    await say(run)
+    expect(phaseOf(run.state())).toBe("idle")
+    expect(run.state().notice).toBe("notHeard")
+    expect(run.kept()).toEqual(["take-1"])
+    expect(run.state().took).toBe(true)
+    await vi.advanceTimersByTimeAsync(deadlineMs)
+    expect(run.asked()).toEqual([])
+  })
+
+  it("counts a take let go while recording: Type instead keeps it, and the idea says so", async () => {
+    const run = capture({ answers: [{ kind: "notYet" }] })
+    await vi.advanceTimersByTimeAsync(0)
+    run.dispatch({ type: "talk" })
+    await vi.advanceTimersByTimeAsync(2_000)
+    run.dispatch({ type: "type" })
+    expect(phaseOf(run.state())).toBe("typing")
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(run.kept()).toEqual(["take-1"])
+    expect(run.state().took).toBe(true)
+    await vi.advanceTimersByTimeAsync(deadlineMs)
+    expect(run.asked()).toEqual([])
+  })
 
   it("asks home nothing while the page is hidden, and asks at once when it shows again", async () => {
     const run = capture({
@@ -343,14 +454,21 @@ describe("stepHearing", () => {
   const kept = (state: HearingState): HearingState =>
     stepHearing(
       state,
-      { type: "ended", now: NOW, ending: "kept", id: "t1", reason: null },
+      {
+        type: "ended",
+        now: NOW,
+        ending: "kept",
+        id: "t1",
+        reason: null,
+        unheard: false,
+      },
       HEARING_TIMING
     ).state
 
   it("ignores an answer once let go, and a second answer for one ask", () => {
     const asking = stepHearing(
       kept(initialHearing),
-      { type: "tick", now: NOW + pollMs },
+      { type: "tick", now: NOW + pollMs, holds: false },
       HEARING_TIMING
     )
     expect(asking.effects).toEqual([{ type: "ask", id: "t1" }])
@@ -365,6 +483,7 @@ describe("stepHearing", () => {
         {
           type: "answered",
           now: NOW + pollMs,
+          holds: false,
           answer: { kind: "heard", text: "late" },
         },
         HEARING_TIMING
@@ -372,7 +491,12 @@ describe("stepHearing", () => {
     ).toEqual([])
     const answered = stepHearing(
       asking.state,
-      { type: "answered", now: NOW + pollMs, answer: { kind: "notYet" } },
+      {
+        type: "answered",
+        now: NOW + pollMs,
+        holds: false,
+        answer: { kind: "notYet" },
+      },
       HEARING_TIMING
     )
     expect(
@@ -381,6 +505,7 @@ describe("stepHearing", () => {
         {
           type: "answered",
           now: NOW + pollMs,
+          holds: false,
           answer: { kind: "heard", text: "twice" },
         },
         HEARING_TIMING
@@ -391,20 +516,20 @@ describe("stepHearing", () => {
   it("never has two asks out: a tick while one is out does nothing", () => {
     const asking = stepHearing(
       kept(initialHearing),
-      { type: "tick", now: NOW + pollMs },
+      { type: "tick", now: NOW + pollMs, holds: false },
       HEARING_TIMING
     )
     expect(
       stepHearing(
         asking.state,
-        { type: "tick", now: NOW + 2 * pollMs },
+        { type: "tick", now: NOW + 2 * pollMs, holds: false },
         HEARING_TIMING
       ).effects
     ).toEqual([])
     expect(
       stepHearing(
         stepHearing(asking.state, { type: "hidden" }, HEARING_TIMING).state,
-        { type: "shown", now: NOW + 2 * pollMs },
+        { type: "shown", now: NOW + 2 * pollMs, holds: false },
         HEARING_TIMING
       ).effects
     ).toEqual([])

@@ -43,7 +43,13 @@ describe("noteView", () => {
       noteView({
         ...AT_REST,
         said: null,
-        ended: { seq: 3, line: "rust-rounds:a/b", end: "kept", id: "n1" },
+        ended: {
+          seq: 3,
+          line: "rust-rounds:a/b",
+          end: "kept",
+          id: "n1",
+          unheard: false,
+        },
       })
     ).toEqual({
       take: { kind: "idle" },

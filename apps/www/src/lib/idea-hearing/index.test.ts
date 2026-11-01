@@ -2,12 +2,13 @@
 import type { IdeaListener, Listened, Listening } from "@some-ui/soundbites"
 import { describe, expect, it, vi } from "vitest"
 
-import { eitherListener } from "@/lib/idea-hearing"
+import { AWAY_MS, eitherListener } from "@/lib/idea-hearing"
 
-/** A listener that says who it is in what it hears. */
+/** A listener that says who it is in what it hears, unless told otherwise. */
 function fake(
   name: string,
-  available: boolean
+  available: boolean,
+  result: Listened = { kind: "heard", words: name }
 ): IdeaListener & {
   listened: Array<unknown>
 } {
@@ -18,7 +19,7 @@ function fake(
     listen: (...args): Listening => {
       listened.push(args)
       return {
-        done: Promise.resolve<Listened>({ kind: "heard", words: name }),
+        done: Promise.resolve<Listened>(result),
         stop: () => undefined,
         cancel: () => undefined,
       }
@@ -35,9 +36,14 @@ describe("IH1: where an idea answer's words come from", () => {
       paired: () => true,
       home,
       device,
+      now: () => 0,
     })
     expect(await listener.available()).toBe(true)
-    const take = { answers: "idea:i1:what", onHearing: vi.fn() }
+    const take = {
+      answers: "idea:i1:what",
+      onHearing: vi.fn(),
+      onTook: vi.fn(),
+    }
     const words = vi.fn()
     const ready = vi.fn()
     expect(await listener.listen(words, ready, take).done).toEqual({
@@ -56,6 +62,7 @@ describe("IH1: where an idea answer's words come from", () => {
       paired: () => false,
       home,
       device,
+      now: () => 0,
     })
     expect(await listener.available()).toBe(false)
     expect(await listener.listen(vi.fn(), vi.fn()).done).toEqual({
@@ -80,9 +87,59 @@ describe("IH1: where an idea answer's words come from", () => {
       paired: () => paired,
       home: fake("home", true),
       device: fake("device", false),
+      now: () => 0,
     })
     const available = listener.available()
     loaded()
     expect(await available).toBe(true)
+  })
+
+  it.each([true, false])(
+    "once home doesn't answer, skips it for a while: the recognizer hears, or typing (recognizer: %s)",
+    async (recognizer) => {
+      let now = 1_000
+      const home = fake("home", true, {
+        kind: "kept",
+        on: "phone",
+        why: "away",
+      })
+      const device = fake("device", recognizer)
+      const listener = eitherListener({
+        loaded: () => Promise.resolve(),
+        paired: () => true,
+        home,
+        device,
+        now: () => now,
+      })
+      expect(await listener.listen(vi.fn(), vi.fn()).done).toMatchObject({
+        why: "away",
+      })
+      // What the screen asks next, as it does once home didn't answer.
+      expect(await listener.available()).toBe(recognizer)
+      await listener.listen(vi.fn(), vi.fn()).done
+      expect(home.listened).toHaveLength(1)
+      expect(device.listened).toHaveLength(1)
+      now += AWAY_MS
+      expect(await listener.available()).toBe(true)
+      await listener.listen(vi.fn(), vi.fn()).done
+      expect(home.listened).toHaveLength(2)
+    }
+  )
+
+  it("keeps hearing through home when the take's words were only late", async () => {
+    const home = fake("home", true, { kind: "kept", on: "home", why: "late" })
+    const device = fake("device", false)
+    const listener = eitherListener({
+      loaded: () => Promise.resolve(),
+      paired: () => true,
+      home,
+      device,
+      now: () => 0,
+    })
+    await listener.listen(vi.fn(), vi.fn()).done
+    expect(await listener.available()).toBe(true)
+    await listener.listen(vi.fn(), vi.fn()).done
+    expect(home.listened).toHaveLength(2)
+    expect(device.listened).toEqual([])
   })
 })

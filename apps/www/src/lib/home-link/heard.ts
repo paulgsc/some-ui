@@ -11,8 +11,10 @@
  * - `200` `{ "heard": { "text", "heardAt" } }`: what home heard, other
  *   fields ignored.
  *
- * Anything else, a link already busy with another run, or no answer, is
- * `unreachable`: the screen asks again on its next poll.
+ * A link already busy with another run (or stopped by the page going) is
+ * `busy`: nothing was asked, and the screen asks again on its next poll.
+ * Anything else, or no answer, is `unreachable`: home can't give the words
+ * now, and the screen stops waiting for them.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { readAs } from "@some-ui/core-utils"
@@ -49,7 +51,7 @@ export async function askHeard(id: string): Promise<HeardAnswer> {
     const outcome = await homeLink().keep((send) => send("GET", heardPath(id)))
     return outcome?.kind === "done"
       ? readHeard(outcome.value)
-      : { kind: "unreachable" }
+      : { kind: "busy" }
   } catch {
     return { kind: "unreachable" }
   }

@@ -19,24 +19,39 @@
  *   take kit, whatever recognizer the phone has; once kept, the screen says
  *   home is hearing it and asks home every `pollMs` while the page shows,
  *   never while it is hidden, until `deadlineMs` from the take's keeping;
- *   home's words go to That's right / Fix, and a take whose words don't come
- *   by then is said kept (on home once home holds it, on the phone before)
- *   and the question takes typed words. A phone never paired listens through
- *   its recognizer as before (LS1), and with neither, takes typed words.
+ *   home's words go to That's right / Fix. It stops waiting at once, the
+ *   take kept and the question taking typed words, when the take is silent
+ *   (D4), when home doesn't answer (it can't be reached), and when home
+ *   says it knows no words for a take the phone has read back that home
+ *   holds; otherwise at the deadline. Where it says the take is kept comes
+ *   from what the phone has read back of home (or home's own word that it
+ *   holds it), never from home not knowing it. A take let go while under
+ *   way (Type instead, Skip, the screen going) is kept, and the screen
+ *   counts it. A phone never paired listens through its recognizer as
+ *   before (LS1), and with neither, takes typed words; for `AWAY_MS` after
+ *   home didn't answer, www's `lib/idea-hearing` hears through the
+ *   recognizer when the phone has one, and takes typed words when not.
  * - _Family:_ hosts with and without an on-device recognizer × home paired
- *   or not × home reachable or not × the take held by home or not yet ×
- *   home's words arriving, never, or empty × the page shown or hidden while
- *   home hears × every way a take ends (kept, too short, no room, failed,
- *   the microphone refused).
+ *   or not × home reachable, busy or not × the take held by home or not yet
+ *   (as read back, and as home says) × home's words arriving, never, or
+ *   empty, and home's read missing (`404` for a take it holds) × the page
+ *   shown or hidden while home hears × every way a take ends (kept, kept
+ *   silent, too short, no room, failed, the microphone refused) × a
+ *   cancel before, during or after the take.
  * - _Proof:_ `__tests__/hearing.test.ts` ("IH1"): over the shared simulated
- *   microphone and a fake home answering not held, held and not heard, and
- *   words, each ending reaches the screen that says it, a hidden page asks
- *   nothing, and the deadline ends in typing with the take kept; www's
- *   `lib/idea-hearing` test ("IH1"): paired, home hears; unpaired, the
- *   recognizer listens unchanged.
+ *   microphone, the real take kit and a fake home, each ending reaches the
+ *   screen that says it, a hidden page asks nothing, a busy link is asked
+ *   again, the deadline ends in typing with the take kept where the phone
+ *   read back it is, no answer and a missing read for a held take settle at
+ *   once, a silent take settles without asking, and a cancel during a take
+ *   counts it; www's `lib/idea-takes` test ("IH1") runs the same through
+ *   the real desk's mapping; www's `lib/idea-hearing` test ("IH1"):
+ *   paired, home hears; unpaired, the recognizer listens unchanged; home
+ *   not answering, the recognizer or typing for `AWAY_MS`.
  * - _Tolerance:_ a take whose words come after the deadline, or after the
  *   screen moved on, does not fill that answer in later: the take is kept,
- *   and the answer is the words typed.
+ *   and the answer is the words typed. A take the read-back has not yet
+ *   seen home holding is said kept on the phone.
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { RecordingFailure, TakeEnding } from "@some-ui/voice-capture"
@@ -50,8 +65,13 @@ export type HeardAnswer =
   | { readonly kind: "heard"; readonly text: string }
   /** Home holds the take and hasn't heard it yet. */
   | { readonly kind: "notYet" }
-  /** Home doesn't hold the take (yet: it may still be on its way). */
+  /**
+   * Home doesn't know the take's words: it doesn't hold it yet, or (when
+   * the phone has read back that it does) it can't give words back.
+   */
   | { readonly kind: "notHeld" }
+  /** The link was busy with another run: nothing was asked. */
+  | { readonly kind: "busy" }
   /** Home couldn't be asked, or didn't answer as it should. */
   | { readonly kind: "unreachable" }
 
@@ -79,10 +99,14 @@ type TakeEnd = {
   readonly id: string | null
   /** Why the microphone refused it, when `ending` is `blocked`. */
   readonly reason: RecordingFailure | null
+  /** Kept, and the microphone never heard talking in it (MIC8, D4). */
+  readonly unheard: boolean
 }
 
 type Phase =
   | { readonly kind: "taking" }
+  /** Let go while the take was under way: it is being kept, unheard. */
+  | { readonly kind: "leaving" }
   | {
       readonly kind: "waiting"
       readonly id: string
@@ -105,22 +129,31 @@ export const initialHearing: HearingState = {
   hidden: false,
 }
 
+/**
+ * `holds`: whether home holds the take, as this phone last read back from
+ * home (www's voice lane), read when the event happened.
+ */
 export type HearingEvent =
   | ({ readonly type: "ended"; readonly now: number } & TakeEnd)
-  | { readonly type: "tick"; readonly now: number }
+  | { readonly type: "tick"; readonly now: number; readonly holds: boolean }
   | {
       readonly type: "answered"
       readonly now: number
+      readonly holds: boolean
       readonly answer: HeardAnswer
     }
   | { readonly type: "hidden" }
-  | { readonly type: "shown"; readonly now: number }
+  | { readonly type: "shown"; readonly now: number; readonly holds: boolean }
   /** Let go: nothing more is said for it. */
   | { readonly type: "cancel" }
 
 type HearingEffect =
   /** Tell the screen home is hearing the take. */
   | { readonly type: "hearing" }
+  /** Tell the screen a take was kept, though home won't hear it for it. */
+  | { readonly type: "took" }
+  /** Keep the take under way, and send it home as any other. */
+  | { readonly type: "leave" }
   | { readonly type: "ask"; readonly id: string }
   /** The one timer, set again: a `tick` in `ms`. */
   | { readonly type: "wait"; readonly ms: number }
@@ -133,6 +166,8 @@ type Next = {
 }
 
 const DONE: Phase = { kind: "done" }
+
+type Waiting = Extract<Phase, { kind: "waiting" }>
 
 /** How a take that ended without being kept is said. */
 function unkept(end: TakeEnd): Listened {
@@ -159,13 +194,20 @@ function unkept(end: TakeEnd): Listened {
   }
 }
 
-/** The words didn't come in time: the take is kept, and where. */
-function timedOut(state: HearingState, held: boolean): Next {
+/** The hearing ends: the take is kept, where it is, and why no words. */
+function keptAs(
+  state: HearingState,
+  on: boolean,
+  why: "late" | "noWords" | "away"
+): Next {
   return {
     state: { ...state, phase: DONE },
     effects: [
       { type: "clearWait" },
-      { type: "settle", result: { kind: "kept", on: held ? "home" : "phone" } },
+      {
+        type: "settle",
+        result: { kind: "kept", on: on ? "home" : "phone", why },
+      },
     ],
   }
 }
@@ -173,14 +215,111 @@ function timedOut(state: HearingState, held: boolean): Next {
 /** The next ask: now, unless the page is hidden or the time is up. */
 function askNext(
   state: HearingState,
-  phase: Extract<Phase, { kind: "waiting" }>,
-  now: number
+  phase: Waiting,
+  now: number,
+  holds: boolean
 ): Next {
-  if (now >= phase.until) return timedOut(state, phase.held)
+  if (now >= phase.until) return keptAs(state, phase.held || holds, "late")
   if (state.hidden) return { state: { ...state, phase }, effects: [] }
   return {
     state: { ...state, phase: { ...phase, asking: true } },
     effects: [{ type: "ask", id: phase.id }],
+  }
+}
+
+/** A take's ending, while it was being taken or let go. */
+function ended(
+  state: HearingState,
+  phase: Phase,
+  event: Extract<HearingEvent, { type: "ended" }>,
+  timing: HearingTiming
+): Next {
+  const id = event.ending === "kept" ? event.id : null
+  if (phase.kind === "leaving") {
+    return {
+      state: { ...state, phase: DONE },
+      effects: id === null ? [] : [{ type: "took" }],
+    }
+  }
+  if (phase.kind !== "taking") return { state, effects: [] }
+  if (id === null) {
+    return {
+      state: { ...state, phase: DONE },
+      effects: [{ type: "settle", result: unkept(event) }],
+    }
+  }
+  if (event.unheard) {
+    // Kept and sent home, but nothing was said into it: home has no words
+    // to give, so it is said at once, as a recognizer that heard nothing.
+    return {
+      state: { ...state, phase: DONE },
+      effects: [
+        { type: "took" },
+        { type: "settle", result: { kind: "heard", words: "" } },
+      ],
+    }
+  }
+  return {
+    state: {
+      ...state,
+      phase: {
+        kind: "waiting",
+        id,
+        until: event.now + timing.deadlineMs,
+        held: false,
+        asking: false,
+      },
+    },
+    // The take is on its way home: the first ask a poll from now.
+    effects: [{ type: "hearing" }, { type: "wait", ms: timing.pollMs }],
+  }
+}
+
+/** Home's answer to the ask that was out. */
+function answered(
+  state: HearingState,
+  phase: Waiting,
+  event: Extract<HearingEvent, { type: "answered" }>,
+  timing: HearingTiming
+): Next {
+  const { answer, holds } = event
+  switch (answer.kind) {
+    case "heard": {
+      return {
+        state: { ...state, phase: DONE },
+        effects: [
+          { type: "clearWait" },
+          { type: "settle", result: { kind: "heard", words: answer.text } },
+        ],
+      }
+    }
+    case "unreachable": {
+      // Home isn't answering: waiting out the deadline would gain nothing.
+      return keptAs(state, phase.held || holds, "away")
+    }
+    case "notHeld": {
+      // This phone has read back that home holds the take, and home says
+      // it knows no words for it: it can't give them back.
+      if (holds) return keptAs(state, true, "noWords")
+      break
+    }
+    case "notYet":
+    case "busy": {
+      break
+    }
+    default: {
+      return assertNever(answer)
+    }
+  }
+  const next: Waiting = {
+    ...phase,
+    asking: false,
+    held: phase.held || answer.kind === "notYet",
+  }
+  if (event.now >= next.until) return keptAs(state, next.held || holds, "late")
+  return {
+    state: { ...state, phase: next },
+    effects: state.hidden ? [] : [{ type: "wait", ms: timing.pollMs }],
   }
 }
 
@@ -193,61 +332,19 @@ export function stepHearing(
   if (phase.kind === "done") return { state, effects: [] }
   switch (event.type) {
     case "ended": {
-      if (phase.kind !== "taking") return { state, effects: [] }
-      if (event.ending !== "kept" || event.id === null) {
-        return {
-          state: { ...state, phase: DONE },
-          effects: [{ type: "settle", result: unkept(event) }],
-        }
-      }
-      return {
-        state: {
-          ...state,
-          phase: {
-            kind: "waiting",
-            id: event.id,
-            until: event.now + timing.deadlineMs,
-            held: false,
-            asking: false,
-          },
-        },
-        // The take is on its way home: the first ask a poll from now.
-        effects: [{ type: "hearing" }, { type: "wait", ms: timing.pollMs }],
-      }
+      return ended(state, phase, event, timing)
     }
     case "tick": {
       if (phase.kind !== "waiting" || phase.asking) {
         return { state, effects: [] }
       }
-      return askNext(state, phase, event.now)
+      return askNext(state, phase, event.now, event.holds)
     }
     case "answered": {
       if (phase.kind !== "waiting" || !phase.asking) {
         return { state, effects: [] }
       }
-      const { answer } = event
-      if (answer.kind === "heard") {
-        return {
-          state: { ...state, phase: DONE },
-          effects: [
-            { type: "clearWait" },
-            {
-              type: "settle",
-              result: { kind: "heard", words: answer.text },
-            },
-          ],
-        }
-      }
-      const next = {
-        ...phase,
-        asking: false,
-        held: phase.held || answer.kind === "notYet",
-      }
-      if (event.now >= next.until) return timedOut(state, next.held)
-      return {
-        state: { ...state, phase: next },
-        effects: state.hidden ? [] : [{ type: "wait", ms: timing.pollMs }],
-      }
+      return answered(state, phase, event, timing)
     }
     case "hidden": {
       if (state.hidden) return { state, effects: [] }
@@ -263,12 +360,29 @@ export function stepHearing(
       if (phase.kind !== "waiting" || phase.asking) {
         return { state: shown, effects: [] }
       }
-      return askNext(shown, phase, event.now)
+      return askNext(shown, phase, event.now, event.holds)
     }
     case "cancel": {
-      return {
-        state: { ...state, phase: DONE },
-        effects: phase.kind === "waiting" ? [{ type: "clearWait" }] : [],
+      switch (phase.kind) {
+        case "taking": {
+          // A take under way is kept, and goes home as any other.
+          return {
+            state: { ...state, phase: { kind: "leaving" } },
+            effects: [{ type: "leave" }],
+          }
+        }
+        case "waiting": {
+          return {
+            state: { ...state, phase: DONE },
+            effects: [{ type: "clearWait" }],
+          }
+        }
+        case "leaving": {
+          return { state, effects: [] }
+        }
+        default: {
+          return assertNever(phase)
+        }
       }
     }
     default: {
@@ -298,6 +412,11 @@ export type IdeaTakes = {
   readonly stop: () => void
   /** The screen went: a take under way is kept. */
   readonly leave: () => void
+  /**
+   * Whether home holds take `id`, as this phone last read back from home
+   * (www's voice lane): where a take is, said from what the phone knows.
+   */
+  readonly held: (id: string) => boolean
 }
 
 export type HearingPorts = {
@@ -348,6 +467,9 @@ export function homeHearing(ports: HearingPorts): IdeaListener {
         if (timer !== null) clearTimeout(timer)
         timer = null
       }
+      /** Whether home holds the take being heard, as last read back. */
+      const holds = (): boolean =>
+        state.phase.kind === "waiting" && takes.held(state.phase.id)
       const stops: Array<() => void> = []
       const close = (): void => {
         clearWait()
@@ -367,9 +489,23 @@ export function homeHearing(ports: HearingPorts): IdeaListener {
             take?.onHearing()
             return
           }
+          case "took": {
+            take?.onTook()
+            return
+          }
+          case "leave": {
+            takes.leave()
+            return
+          }
           case "ask": {
-            void ports.heard(effect.id).then((answer) => {
-              send({ type: "answered", now: ports.now(), answer })
+            const { id } = effect
+            void ports.heard(id).then((answer) => {
+              send({
+                type: "answered",
+                now: ports.now(),
+                holds: takes.held(id),
+                answer,
+              })
             })
             return
           }
@@ -377,7 +513,7 @@ export function homeHearing(ports: HearingPorts): IdeaListener {
             clearWait()
             timer = setTimeout(() => {
               timer = null
-              send({ type: "tick", now: ports.now() })
+              send({ type: "tick", now: ports.now(), holds: holds() })
             }, effect.ms)
             return
           }
@@ -402,8 +538,9 @@ export function homeHearing(ports: HearingPorts): IdeaListener {
           onReady()
         }
         const { ended } = snapshot
+        const { kind } = state.phase
         if (
-          state.phase.kind === "taking" &&
+          (kind === "taking" || kind === "leaving") &&
           ended &&
           ended.seq > startedAfter
         ) {
@@ -414,7 +551,9 @@ export function homeHearing(ports: HearingPorts): IdeaListener {
         takes.subscribe(watch),
         ports.onVisibility((hidden) =>
           send(
-            hidden ? { type: "hidden" } : { type: "shown", now: ports.now() }
+            hidden
+              ? { type: "hidden" }
+              : { type: "shown", now: ports.now(), holds: holds() }
           )
         )
       )
@@ -427,8 +566,8 @@ export function homeHearing(ports: HearingPorts): IdeaListener {
           if (state.phase.kind === "taking") takes.stop()
         },
         cancel: (): void => {
-          // A take under way is kept, and goes home as any other.
-          if (state.phase.kind === "taking") takes.leave()
+          // A take under way is kept and goes home, and the screen is told
+          // once it is (`took`); the listening is over either way.
           send({ type: "cancel" })
           // Ignored by the machine, which has moved on from it.
           settle({ kind: "failed" })

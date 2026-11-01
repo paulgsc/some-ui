@@ -41,6 +41,7 @@ function ideaTakeSnapshot(snapshot: DeskSnapshot): IdeaTakeSnapshot {
             ending: ended.end,
             id: ended.id,
             reason: ended.end === "blocked" ? snapshot.blocked : null,
+            unheard: ended.unheard,
           },
     full: snapshot.full,
   }
@@ -55,6 +56,7 @@ export function ideaTakesOf(phone: PhoneTakes): IdeaTakes {
     stop: phone.stop,
     // `reset` keeps a take under way, as the screen going asks.
     leave: phone.reset,
+    held: phone.held,
   }
 }
 

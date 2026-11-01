@@ -91,6 +91,8 @@ type TakeEnded = {
   readonly end: TakeEnding
   /** The kept take's id, when `end` is `kept`. */
   readonly id: string | null
+  /** Kept, and the microphone never heard talking in it (MIC8, D4). */
+  readonly unheard: boolean
 }
 
 export type DeskSnapshot = LensTakeSnapshot & {
@@ -107,6 +109,8 @@ export type PhoneTakes = Omit<LensTakes, "getSnapshot"> & {
   letGo: (ids: ReadonlyArray<string>) => void
   /** Says `full` again: what home holds has changed. */
   recount: () => void
+  /** Whether home holds take `id`, as last read back (`held`). */
+  held: (id: string) => boolean
 }
 
 /**
@@ -245,6 +249,7 @@ export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
               line: ended.answers,
               end: ended.ending,
               id: ended.id,
+              unheard: ended.unheard,
             },
       blocked,
     }
@@ -314,6 +319,7 @@ export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
     recount: (): void => {
       if (full() !== snapshot.full) publish()
     },
+    held: (id) => ports.held(id),
     reset: (): void => {
       item += 1
       kit.leave()
