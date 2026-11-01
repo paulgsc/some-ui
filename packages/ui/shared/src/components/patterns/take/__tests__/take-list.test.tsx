@@ -269,12 +269,52 @@ describe("the take button, row and list", () => {
             canPlay: false,
             canRedo: false,
             canLetGo: false,
+            unsent: false,
           }}
           onPlay={() => undefined}
         />
       </ul>
     )
     expect(screen.getByRole("listitem")).toHaveTextContent(/^0:04$/)
+  })
+
+  it("says a take that never left the phone is unsent, and offers Delete in Let go's place (ST26)", () => {
+    const letGo = vi.fn()
+    render(
+      <ul>
+        <TakeRow
+          row={{
+            take: {
+              id: "t1",
+              answers: "card-1",
+              durationMs: 4_000,
+              recordedAt: "2026-11-01T09:00:00.000Z",
+              standing: "current",
+              kept: { place: "phone" },
+            },
+            playing: false,
+            canPlay: true,
+            canRedo: true,
+            canLetGo: true,
+            unsent: true,
+          }}
+          onPlay={() => undefined}
+          onLetGo={letGo}
+        />
+      </ul>
+    )
+    expect(screen.getByRole("listitem")).toHaveTextContent(
+      TAKE_WORDS.place.unsent
+    )
+    expect(
+      screen.queryByRole("button", { name: /Let it go/ })
+    ).not.toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: TAKE_WORDS.rowLabel(TAKE_WORDS.discard, 4_000),
+      })
+    )
+    expect(letGo).toHaveBeenCalledOnce()
   })
 
   it("says the screen's full words in the button's place, offers no Redo, and still plays and lets go every take", async () => {

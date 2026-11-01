@@ -21,6 +21,12 @@
  *   on this phone, going home while its copy waits in the voice lane, or on
  *   home since this phone heard home hold it. A desk whose kind no lane
  *   carries is never told, so each of its takes is kept on this phone.
+ * - **Under `send: "on-confirm"`** (Studio's idea, ST26) each take is kept
+ *   waiting (`waits`), on this phone alone, until the screen sends its item
+ *   (`release`); the copy home reads only those sent (`./index`'s `kept`).
+ *   Let go deletes a waiting take for good with its audio (`discard`, the
+ *   owner's ruling on #2265), and nothing else: one already sent is never
+ *   deleted here.
  */
 import { SOUNDBITE_MIN_MS } from "@some-ui/soundbites/contract"
 import type {
@@ -34,7 +40,12 @@ import type {
   TakePattern,
   TakePatternOptions,
 } from "@some-ui/voice-capture"
-import { ONE_TAKE, shelveTake, takePattern } from "@some-ui/voice-capture"
+import {
+  ON_PHONE,
+  ONE_TAKE,
+  shelveTake,
+  takePattern,
+} from "@some-ui/voice-capture"
 
 import type { MarkFrom, MarkOwing } from "@/lib/voice-marks"
 import { setAsideOwing } from "@/lib/voice-marks"
@@ -59,6 +70,14 @@ export type PatternTakesPorts = {
      * whether the device stored it.
      */
     setAside: (id: string, at: number) => boolean
+    /**
+     * Removes these takes, of those still waiting for their item to be sent
+     * (`waits`) and no others. Gives the ids removed, or null when the
+     * device couldn't store it.
+     */
+    discard: (ids: ReadonlyArray<string>) => ReadonlyArray<string> | null
+    /** Lets these waiting takes go home. Says whether the device stored it. */
+    release: (ids: ReadonlyArray<string>) => boolean
   }
   /** A take whose audio is being written, and when done. */
   saving: (id: string, inFlight: boolean) => void
@@ -100,12 +119,25 @@ export type PatternPhone = {
   readonly letGo: (ids: ReadonlyArray<string>) => boolean
   /** Where takes are kept has changed: each row, and `full`. */
   readonly recount: () => void
+  /**
+   * Deletes these takes for good, with their audio, of those still waiting
+   * for their item (`send: "on-confirm"`); says whether the list stored it.
+   */
+  readonly discard: (ids: ReadonlyArray<string>) => boolean
+  /**
+   * Lets these waiting takes go home: the screen sent their item. Says
+   * whether the list stored it.
+   */
+  readonly release: (ids: ReadonlyArray<string>) => boolean
 }
 
 const takenAt = (take: Take): number => take.takenAt
 
-/** How many takes an item keeps, and which of them play: `ONE_TAKE`'s unless a desk says. */
-export type DeskShape = Pick<TakePatternOptions, "takes" | "play">
+/**
+ * How many takes an item keeps, which of them play, and when they go home:
+ * `ONE_TAKE`'s unless a desk says.
+ */
+export type DeskShape = Pick<TakePatternOptions, "takes" | "play" | "send">
 
 function deskPatternOptions(
   limits: TakeLimits,
@@ -124,6 +156,10 @@ export function createPatternTakes(
   shape: DeskShape = ONE_TAKE
 ): PatternPhone {
   const listeners = new Set<() => void>()
+  const holds = shape.send === "on-confirm"
+  /** Where a take is: on this phone alone while it waits for its item. */
+  const keptOf = (take: Take): TakeKept =>
+    take.waits === true ? ON_PHONE : ports.kept(take.id)
   const held = (id: string): boolean => homeHolds(ports.kept(id))
   const listed = (): ReadonlyArray<PatternTake> =>
     ports.takes.read().map(
@@ -133,7 +169,8 @@ export function createPatternTakes(
         durationMs: take.durationMs,
         recordedAt: new Date(take.takenAt).toISOString(),
         standing: take.standing ?? "current",
-        kept: ports.kept(take.id),
+        kept: keptOf(take),
+        ...(take.waits === true ? { waits: true as const } : {}),
       })
     )
   let snapshot = listed()
@@ -158,6 +195,25 @@ export function createPatternTakes(
       // Ignored: audio no take names is cleared by the next sweep.
       ports.audio.remove(ids).catch(() => undefined)
     }
+    publish()
+    return stored
+  }
+
+  const discard = (ids: ReadonlyArray<string>): boolean => {
+    // The list first, as `letGo`; it removes only the waiting ones, and the
+    // audio goes only for those.
+    const removed = ports.takes.discard(ids)
+    if (removed !== null && removed.length > 0) {
+      // Ignored: audio no take names is cleared by the next sweep.
+      ports.audio.remove(removed).catch(() => undefined)
+    }
+    publish()
+    return removed !== null && removed.length === ids.length
+  }
+
+  const release = (ids: ReadonlyArray<string>): boolean => {
+    if (ids.length === 0) return true
+    const stored = ports.takes.release(ids)
     publish()
     return stored
   }
@@ -194,6 +250,7 @@ export function createPatternTakes(
                 takenAt: ports.now(),
                 durationMs: Math.round(take.durationMs),
                 mimeType: take.mimeType,
+                ...(holds ? { waits: true as const } : {}),
               },
               supersedes
             )
@@ -221,6 +278,9 @@ export function createPatternTakes(
         if (stored) publish()
         done(stored)
       },
+      discard: (id, done) => {
+        done(discard([id]))
+      },
       audio: (id) => ports.audio.get(id),
     },
     deskPatternOptions(limits, shape)
@@ -240,5 +300,7 @@ export function createPatternTakes(
     full,
     letGo,
     recount: publish,
+    discard,
+    release,
   }
 }

@@ -192,6 +192,34 @@ describe("the take pattern's step", () => {
     expect(failed.effects).toEqual([])
   })
 
+  it('deletes a take that never left the phone for good under `send: "on-confirm"`, and sets aside one that went (ST26)', () => {
+    const held: TakePatternOptions = { ...OPTIONS, send: "on-confirm" }
+    const onPhone = stepTakePattern(
+      initialTakePattern,
+      { type: "letGo", id: "t1", place: "phone" },
+      held
+    )
+    expect(onPhone.effects).toEqual([{ type: "discard", id: "t1" }])
+    expect(onPhone.state.discarded).toBe("t1")
+    expect(onPhone.state.setAside).toBeNull()
+    const went = stepTakePattern(
+      initialTakePattern,
+      { type: "letGo", id: "t2", place: "going" },
+      held
+    )
+    expect(went.effects).toEqual([{ type: "setAside", id: "t2" }])
+    // Without the option, a take on the phone is set aside as ever (D3).
+    expect(run([{ type: "letGo", id: "t1", place: "phone" }]).effects).toEqual([
+      { type: "setAside", id: "t1" },
+    ])
+    const failed = stepTakePattern(
+      onPhone.state,
+      { type: "discardFailed", id: "t1" },
+      held
+    )
+    expect(failed.state.discarded).toBeNull()
+  })
+
   it("lets nothing go while a take is under way", () => {
     const { effects } = run([tap(), { type: "letGo", id: "t1", place: "home" }])
     expect(effects.some((effect) => effect.type === "setAside")).toBe(false)
@@ -334,6 +362,28 @@ describe("the take pattern's runtime, on the simulated microphone", () => {
     pattern.letGo("t1", "home")
     expect(setAside).toHaveBeenCalledWith("t1", expect.any(Function))
     expect(pattern.getSnapshot().setAside).toEqual({ id: "t1", place: "home" })
+  })
+
+  it("deletes an unsent take through the screen's store, and takes its word back when the store can't", () => {
+    const discard = vi.fn((_id: string, done: (stored: boolean) => void) =>
+      done(false)
+    )
+    const pattern = takePattern(
+      {
+        startRecording: simulatedMicrophone({ now: Date.now }).startRecording,
+        now: Date.now,
+        owner: microphoneOwner(),
+        keep: vi.fn(),
+        setAside: vi.fn(),
+        discard,
+        audio: () => Promise.resolve(null),
+        player: simulatedPlayer(),
+      },
+      { ...OPTIONS, send: "on-confirm" }
+    )
+    pattern.letGo("t1", "phone")
+    expect(discard).toHaveBeenCalledWith("t1", expect.any(Function))
+    expect(pattern.getSnapshot().discarded).toBeNull()
   })
 
   it("says a take whose audio is gone", async () => {

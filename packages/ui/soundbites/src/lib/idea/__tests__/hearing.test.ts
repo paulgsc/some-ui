@@ -25,6 +25,8 @@ import { createIdeaCapture, NO_LISTENER } from "@soundbites/lib/idea/runtime"
 import { keptIdeaStore } from "@soundbites/lib/idea/store"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+import { asked as withClaudesQuestions } from "./fixture"
+
 const NOW = Date.UTC(2026, 10, 1, 9)
 const LIMITS = { minMs: 500, maxMs: 60_000 }
 const { pollMs, deadlineMs } = HEARING_TIMING
@@ -156,13 +158,17 @@ function capture(options: {
     },
   }
   const storage = inMemoryStorage()
-  const runtime = createIdeaCapture({
-    store: keptIdeaStore(() => storage),
-    listener,
-    now,
-    newId: () => "idea-1",
-    onVisibility: visible.onVisibility,
-  })
+  const store = keptIdeaStore(() => storage)
+  store.keep(() => [withClaudesQuestions()])
+  const runtime = createIdeaCapture(
+    {
+      store,
+      listener,
+      now,
+      onVisibility: visible.onVisibility,
+    },
+    "idea-1"
+  )
   const detach = runtime.attach()
   return {
     homeHolds,
@@ -230,13 +236,12 @@ describe("IH1: an answer said as a take, its words from home", () => {
       phase: { kind: "heard", words: "a short about the week 8 picks" },
     })
     run.dispatch({ type: "right" })
-    expect(run.state().idea?.answers[0]?.versions).toEqual([
+    expect(run.state().idea?.answers.at(-1)?.versions).toEqual([
       expect.objectContaining({
         how: "heard",
         words: "a short about the week 8 picks",
       }),
     ])
-    expect(run.state().took).toBe(true)
     // Nothing more is asked once the words came.
     await vi.advanceTimersByTimeAsync(10 * pollMs)
     expect(run.asked()).toHaveLength(3)
@@ -301,7 +306,6 @@ describe("IH1: an answer said as a take, its words from home", () => {
       // What can listen now is asked again (www's `lib/idea-hearing` skips
       // home for a while once it didn't answer).
       expect(run.voiceChecks()).toBe(2)
-      expect(run.state().took).toBe(true)
       expect(run.kept()).toEqual(["take-1"])
       await vi.advanceTimersByTimeAsync(deadlineMs)
       expect(run.asked()).toHaveLength(1)
@@ -394,7 +398,6 @@ describe("IH1: an answer said as a take, its words from home", () => {
     expect(phaseOf(run.state())).toBe("idle")
     expect(run.state().notice).toBe("notHeard")
     expect(run.kept()).toEqual(["take-1"])
-    expect(run.state().took).toBe(true)
     await vi.advanceTimersByTimeAsync(deadlineMs)
     expect(run.asked()).toEqual([])
   })
@@ -408,7 +411,6 @@ describe("IH1: an answer said as a take, its words from home", () => {
     expect(phaseOf(run.state())).toBe("typing")
     await vi.advanceTimersByTimeAsync(1_000)
     expect(run.kept()).toEqual(["take-1"])
-    expect(run.state().took).toBe(true)
     await vi.advanceTimersByTimeAsync(deadlineMs)
     expect(run.asked()).toEqual([])
   })

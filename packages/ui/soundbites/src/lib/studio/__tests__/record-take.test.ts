@@ -53,6 +53,7 @@ describe("recordTake", () => {
       canPlay: true,
       canRedo: false,
       canLetGo: false,
+      unsent: false,
     })
   })
 

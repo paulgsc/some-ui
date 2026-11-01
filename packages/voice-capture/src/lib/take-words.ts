@@ -52,6 +52,8 @@ export type TakeWords = {
     /** On home, when this phone didn't note since when. */
     readonly home: string
     readonly homeSince: (when: string) => string
+    /** On this phone, waiting for the screen to send its item (`on-confirm`). */
+    readonly unsent: string
   }
   /** A moment, as `place.homeSince` says it: its day and time. */
   readonly when: (iso: string) => string
@@ -59,6 +61,12 @@ export type TakeWords = {
   readonly stop: string
   readonly redo: string
   readonly letGo: string
+  /**
+   * Let go of a take that never left this phone (`send: "on-confirm"`),
+   * which deletes it for good, and what is said once it has.
+   */
+  readonly discard: string
+  readonly discarded: string
   /** For a screen reader: which take a row's control acts on. */
   readonly rowLabel: (action: string, lengthMs: number) => string
   /** The superseded takes, collapsed (D2). */
@@ -104,6 +112,7 @@ export const TAKE_WORDS: TakeWords = {
     going: "On this phone, going home",
     home: "On home",
     homeSince: (when) => `On home since ${when}`,
+    unsent: "On this phone. Nothing has been sent",
   },
   when: (iso) =>
     new Date(iso).toLocaleString(undefined, {
@@ -116,6 +125,8 @@ export const TAKE_WORDS: TakeWords = {
   stop: "Stop",
   redo: "Redo",
   letGo: "Let it go",
+  discard: "Delete",
+  discarded: "Deleted. Nothing was sent.",
   rowLabel: (action, lengthMs) =>
     `${action} the take of ${formatTimecode(lengthMs)}`,
   earlier: (count) => `Earlier take${count === 1 ? "" : "s"} (${count})`,

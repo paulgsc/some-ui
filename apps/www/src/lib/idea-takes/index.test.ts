@@ -155,7 +155,6 @@ async function said(
   result: () => Listened | null
   asked: Array<string>
   hearing: ReturnType<typeof vi.fn>
-  took: ReturnType<typeof vi.fn>
 }> {
   const asked: Array<string> = []
   const listener = homeHearing({
@@ -171,12 +170,10 @@ async function said(
     },
   })
   const hearing = vi.fn()
-  const took = vi.fn()
   let result: Listened | null = null
   const listening = listener.listen(vi.fn(), vi.fn(), {
     answers: "idea:i1:what",
     onHearing: hearing,
-    onTook: took,
   })
   void listening.done.then((settled) => {
     result = settled
@@ -184,7 +181,7 @@ async function said(
   await vi.advanceTimersByTimeAsync(2_000)
   listening.stop()
   await vi.advanceTimersByTimeAsync(1_000)
-  return { result: () => result, asked, hearing, took }
+  return { result: () => result, asked, hearing }
 }
 
 describe("IH1: home hearing a take through this desk's port", () => {
@@ -204,7 +201,6 @@ describe("IH1: home hearing a take through this desk's port", () => {
     run.mic.script({ ...SPEAKING, level: 0 })
     const heard = await said(run, { kind: "notYet" })
     expect(heard.result()).toEqual({ kind: "heard", words: "" })
-    expect(heard.took).toHaveBeenCalledOnce()
     expect(heard.hearing).not.toHaveBeenCalled()
     expect(run.listed.map(({ id }) => id)).toEqual(["take-1"])
     expect(heard.asked).toEqual([])

@@ -115,7 +115,10 @@ vi.mock("@/lib/leetype-takes", () => ({
   leetypeTakesDesk: desk(() => fakes.leetype),
   leetypeNotesHeldByHome: (): void => undefined,
 }))
-vi.mock("@/lib/idea-takes", () => ({ ideaTakesDesk: desk(() => []) }))
+vi.mock("@/lib/idea-takes", () => ({
+  ideaTakesDesk: desk(() => []),
+  ideaBundleDesk: desk(() => []),
+}))
 vi.mock("@/lib/game-bites", () => ({
   phoneGameBites: (): unknown => ({
     ready: (): Array<never> => [],

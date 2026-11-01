@@ -27,6 +27,11 @@
  *   read, kept (on home once home holds it; on the phone until then). It is
  *   never permanent, so it asks nothing first.
  *
+ * And on ST26 (#2453, the owner's ruling on #2265): under `send:
+ * "on-confirm"` a take stays on this phone until the screen sends the whole
+ * item, and Let go of one that never left the phone deletes it for good
+ * (`discard`); the screen asks first, since that can't be undone.
+ *
  * Playing and recording never overlap: a tap that starts a take stops what
  * plays, and Play does nothing while a take is under way.
  */
@@ -82,6 +87,14 @@ export type TakePatternOptions = {
    * ("0:12 / 1:00"), or the time left ("0:48 left", Soundbites' countdown).
    */
   readonly clock: "elapsed" | "left"
+  /**
+   * When a take leaves the phone: as soon as it is kept (`at-once`, the
+   * default), or only once the screen sends the whole item it answers
+   * (`on-confirm`, Studio's idea, ST26). Under `on-confirm` a take on this
+   * phone alone never left it, so Let go deletes it for good (`discard`),
+   * and one that went is set aside as D3 says.
+   */
+  readonly send?: "at-once" | "on-confirm" | undefined
 }
 
 /**
@@ -144,6 +157,11 @@ export type PatternTake = {
    * says no place.
    */
   readonly kept: TakeKept | null
+  /**
+   * Under `send: "on-confirm"`: true while it waits on this phone for its
+   * item to be sent; absent once sent, and on every other pattern's take.
+   */
+  readonly waits?: true
 }
 
 /** What plays: nothing, a take whose audio is being read, or a take playing. */
@@ -166,6 +184,11 @@ export type TakePatternState = {
     readonly id: string
     readonly place: TakePlace
   } | null
+  /**
+   * The take last deleted for good (`send: "on-confirm"`, one that never
+   * left the phone), until the next play or take.
+   */
+  readonly discarded: string | null
 }
 
 export const initialTakePattern: TakePatternState = {
@@ -175,6 +198,18 @@ export const initialTakePattern: TakePatternState = {
   plays: 0,
   unplayable: null,
   setAside: null,
+  discarded: null,
+}
+
+/**
+ * Whether Let go deletes the take for good rather than setting it aside:
+ * under `send: "on-confirm"`, a take on this phone alone never left it.
+ */
+export function discards(
+  options: TakePatternOptions,
+  place: TakePlace
+): boolean {
+  return options.send === "on-confirm" && place === "phone"
 }
 
 export type TakePatternEvent =
@@ -194,6 +229,8 @@ export type TakePatternEvent =
   | { readonly type: "letGo"; readonly id: string; readonly place: TakePlace }
   /** The screen's store couldn't mark it: it stays the item's, unsaid. */
   | { readonly type: "setAsideFailed"; readonly id: string }
+  /** The screen's store couldn't delete it: it stays the item's, unsaid. */
+  | { readonly type: "discardFailed"; readonly id: string }
   /** The screen went: a take under way is kept, and nothing plays. */
   | { readonly type: "left" }
   | {
@@ -214,6 +251,7 @@ export type TakePatternEffect =
       readonly supersedes: string | null
     }
   | { readonly type: "setAside"; readonly id: string }
+  | { readonly type: "discard"; readonly id: string }
   | { readonly type: "loadAudio"; readonly id: string; readonly play: number }
   | { readonly type: "playAudio"; readonly audio: Blob; readonly play: number }
   | { readonly type: "stopAudio" }
@@ -278,6 +316,7 @@ export function stepTakePattern(
           supersedes: event.supersedes,
           unplayable: null,
           setAside: null,
+          discarded: null,
         },
         event,
         options
@@ -307,6 +346,7 @@ export function stepTakePattern(
           plays: play,
           unplayable: null,
           setAside: null,
+          discarded: null,
         },
         effects: [...quiet.effects, { type: "loadAudio", id: event.id, play }],
       }
@@ -348,11 +388,23 @@ export function stepTakePattern(
         playback.kind !== "quiet" && playback.id === event.id
           ? quieted(state)
           : { state, effects: [] }
+      if (discards(options, event.place)) {
+        return {
+          state: {
+            ...quiet.state,
+            unplayable: null,
+            setAside: null,
+            discarded: event.id,
+          },
+          effects: [...quiet.effects, { type: "discard", id: event.id }],
+        }
+      }
       return {
         state: {
           ...quiet.state,
           unplayable: null,
           setAside: { id: event.id, place: event.place },
+          discarded: null,
         },
         effects: [...quiet.effects, { type: "setAside", id: event.id }],
       }
@@ -360,6 +412,10 @@ export function stepTakePattern(
     case "setAsideFailed": {
       if (state.setAside?.id !== event.id) return { state, effects: [] }
       return { state: { ...state, setAside: null }, effects: [] }
+    }
+    case "discardFailed": {
+      if (state.discarded !== event.id) return { state, effects: [] }
+      return { state: { ...state, discarded: null }, effects: [] }
     }
     case "micOpened":
     case "micFailed":
@@ -389,6 +445,7 @@ export type TakePatternSnapshot = {
   readonly playback: PatternPlayback
   readonly unplayable: string | null
   readonly setAside: TakePatternState["setAside"]
+  readonly discarded: string | null
 }
 
 export function takePatternSnapshot(
@@ -406,6 +463,7 @@ export function takePatternSnapshot(
     playback: state.playback,
     unplayable: state.unplayable,
     setAside: state.setAside,
+    discarded: state.discarded,
   }
 }
 
@@ -422,7 +480,10 @@ export type TakePattern = {
   /** Plays a take, or stops it when it is the one playing. */
   readonly play: (id: string) => void
   readonly stopPlaying: () => void
-  /** D3: sets a take aside; `place` is where it is kept, for the words. */
+  /**
+   * D3: sets a take aside; `place` is where it is kept, for the words. Under
+   * `send: "on-confirm"` a take on this phone alone is deleted for good.
+   */
   readonly letGo: (id: string, place: TakePlace) => void
   /** The screen went: a take under way is kept, and nothing plays. */
   readonly leave: () => void
@@ -446,6 +507,14 @@ export type TakePatternPorts = Omit<TakeKitPorts, "keep"> & {
    * item's, and the line saying it was set aside goes.
    */
   readonly setAside: (id: string, done: (stored: boolean) => void) => void
+  /**
+   * Deletes a take that never left the phone, with its audio, for good
+   * (`send: "on-confirm"`), then says, once, whether the store did. A store
+   * without it deletes nothing, and the take stays the item's.
+   */
+  readonly discard?:
+    | ((id: string, done: (stored: boolean) => void) => void)
+    | undefined
   /** A take's audio, or null when it can't be read. */
   readonly audio: (id: string) => Promise<Blob | null>
   /** Defaults to the kit's `audioPlayer`. */
@@ -565,6 +634,19 @@ export function takePattern(
           answered = true
           if (!stored) dispatch({ type: "setAsideFailed", id })
         })
+        return
+      }
+      case "discard": {
+        const { id } = effect
+        let answered = false
+        const done = (stored: boolean): void => {
+          // Once: a second answer is for nobody.
+          if (answered) return
+          answered = true
+          if (!stored) dispatch({ type: "discardFailed", id })
+        }
+        if (ports.discard === undefined) done(false)
+        else ports.discard(id, done)
         return
       }
       case "loadAudio":

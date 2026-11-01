@@ -64,8 +64,18 @@ export type MemoryTakes = {
    * epoch), the earliest such; null when none is.
    */
   readonly keptOn: (answers: string, since: number) => string | null
-  /** The pattern's store ports: `keep`, `setAside` and `audio`. */
-  readonly ports: Pick<TakePatternPorts, "keep" | "setAside" | "audio">
+  /** The pattern's store ports: `keep`, `setAside`, `discard` and `audio`. */
+  readonly ports: Pick<
+    TakePatternPorts,
+    "keep" | "setAside" | "discard" | "audio"
+  >
+  /**
+   * Deletes these takes for good, of those still waiting (`held`); says
+   * whether every one was.
+   */
+  readonly discard: (ids: ReadonlyArray<string>) => boolean
+  /** Sends these waiting takes: each is then going home. */
+  readonly release: (ids: ReadonlyArray<string>) => boolean
 }
 
 /**
@@ -76,14 +86,26 @@ export function memoryTakes(options: {
   readonly now: () => number
   readonly seed?: ReadonlyArray<PatternTake> | undefined
   readonly kept?: TakeKept | undefined
+  /** Each take waits on the phone until `release` (`send: "on-confirm"`). */
+  readonly held?: boolean | undefined
 }): MemoryTakes {
   let takes: ReadonlyArray<PatternTake> = options.seed ?? []
   const audio = new Map<string, Blob>()
   const listeners = new Set<() => void>()
+  const waiting = new Set<string>()
   let next = takes.length
   const write = (to: ReadonlyArray<PatternTake>): void => {
     takes = to
     for (const listener of listeners) listener()
+  }
+  const discard = (ids: ReadonlyArray<string>): boolean => {
+    const gone = ids.filter((id) => waiting.has(id))
+    for (const id of gone) {
+      waiting.delete(id)
+      audio.delete(id)
+    }
+    if (gone.length > 0) write(takes.filter((take) => !gone.includes(take.id)))
+    return gone.length === ids.length
   }
   return {
     getSnapshot: () => takes,
@@ -111,6 +133,7 @@ export function memoryTakes(options: {
         next += 1
         const id = `take-${next}`
         audio.set(id, take.blob)
+        if (options.held === true) waiting.add(id)
         write([
           ...takes.map(
             (kept): PatternTake =>
@@ -122,10 +145,14 @@ export function memoryTakes(options: {
             durationMs: take.durationMs,
             recordedAt: new Date(options.now()).toISOString(),
             standing: "current",
-            kept: options.kept ?? ON_PHONE,
+            kept: options.held === true ? ON_PHONE : (options.kept ?? ON_PHONE),
+            ...(options.held === true ? { waits: true as const } : {}),
           },
         ])
         done({ outcome: "kept", id })
+      },
+      discard: (id: string, done: (stored: boolean) => void): void => {
+        done(discard([id]))
       },
       setAside: (id: string, done: (stored: boolean) => void): void => {
         write(
@@ -143,6 +170,20 @@ export function memoryTakes(options: {
               ? new Blob(["v"], { type: "audio/webm" })
               : null)
         ),
+    },
+    discard,
+    release: (ids): boolean => {
+      const sent = ids.filter((id) => waiting.delete(id))
+      if (sent.length > 0) {
+        write(
+          takes.map((take): PatternTake => {
+            if (!sent.includes(take.id)) return take
+            const { waits: _sent, ...released } = take
+            return { ...released, kept: { place: "going" } }
+          })
+        )
+      }
+      return true
     },
   }
 }
@@ -194,6 +235,7 @@ export function simulatedPattern(
   const store = memoryTakes({
     now: setup.recordedAt ?? Date.now,
     seed: setup.seed,
+    held: setup.options?.send === "on-confirm",
   })
   let how: KeepResult["outcome"] = "kept"
   const pattern = takePattern(

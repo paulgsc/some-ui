@@ -81,6 +81,7 @@ export type {
   TakeStanding,
 } from "./lib/take-pattern"
 export {
+  discards,
   initialTakePattern,
   ON_PHONE,
   stepTakePattern,

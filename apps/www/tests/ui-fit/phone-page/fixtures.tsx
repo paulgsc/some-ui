@@ -24,19 +24,28 @@ import type {
   WingLink,
 } from "@some-ui/soundbites"
 import {
+  keptDraftStore,
+  keptIdeaStore,
   keptLetGo,
   keptTimeLog,
   NewIdeaPage,
   StudioHome,
 } from "@some-ui/soundbites"
 import {
+  bundleTakesOf,
   cutListOf,
   memoryProjectStore,
   primerOf,
   projectFromPrimer,
   run,
 } from "@some-ui/soundbites/fixtures"
-import { simulatedMicrophone, SPEAKING } from "@some-ui/voice-capture/testing"
+import { ONE_TAKE } from "@some-ui/voice-capture"
+import type { MicScript } from "@some-ui/voice-capture/testing"
+import {
+  simulatedMicrophone,
+  simulatedPattern,
+  SPEAKING,
+} from "@some-ui/voice-capture/testing"
 
 import { FIT_CUTS, FIT_PRIMER_TEXT } from "./studio-seed"
 
@@ -156,6 +165,40 @@ function studioPorts(
   }
 }
 
+/**
+ * New idea on the shared simulated microphone and the take pattern with
+ * `send: "on-confirm"`, its draft and ideas in this page load's memory;
+ * `refuse`: the microphone refuses the first take, so voice doesn't come
+ * through.
+ */
+function newIdea(refuse: boolean): () => JSX.Element {
+  const simulated = simulatedPattern({
+    options: { ...ONE_TAKE, send: "on-confirm" },
+  })
+  // Each take hears four seconds, however soon the walk taps to stop it.
+  const speaking: MicScript = { ...SPEAKING, durationMs: 4_000 }
+  const refused: MicScript = {
+    ...SPEAKING,
+    open: { kind: "refuse", reason: "denied", ms: 0 },
+  }
+  simulated.mic.script(
+    ...(refuse ? [refused] : []),
+    speaking,
+    speaking,
+    speaking
+  )
+  const storage = once(inMemoryStorage())
+  const takes = bundleTakesOf(simulated)
+  const ports = {
+    drafts: keptDraftStore(storage),
+    ideas: keptIdeaStore(storage),
+  }
+  const IdeaFixture = (): JSX.Element => (
+    <NewIdeaPage takes={takes} ports={ports} backLink={STUDIO_LINK} />
+  )
+  return IdeaFixture
+}
+
 /** `storage`, the same one on every look. */
 function once(storage: Storage): () => Storage {
   return () => storage
@@ -196,9 +239,9 @@ export const PHONE_FIXTURES = {
   "studio-held": studioOn([HELD]),
 
   /** New idea (`/journal/idea`). */
-  idea: (): JSX.Element => (
-    <NewIdeaPage ports={{ listener }} backLink={STUDIO_LINK} />
-  ),
+  idea: newIdea(false),
+  /** New idea, where the microphone refuses the first take. */
+  "idea-voice-lost": newIdea(true),
 
   // A box that asserts a height its content cannot fit, which the body's
   // scroll does not excuse: the leak the sweep must see.

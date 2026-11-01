@@ -10,6 +10,9 @@ import {
   onPageVisibility,
 } from "@some-ui/voice-capture"
 
+import type { BundlePorts } from "./idea/bundle-runtime"
+import { NO_HOME } from "./idea/bundle-runtime"
+import { IDEA_LISTS_SEED, keptDraftStore } from "./idea/draft"
 import type { IdeaPorts } from "./idea/runtime"
 import { NO_LISTENER } from "./idea/runtime"
 import type { ShelfPorts } from "./idea/shelf-runtime"
@@ -64,11 +67,26 @@ export function phoneStudioPorts(): StudioPorts {
   }
 }
 
-/** Catching an idea; the recognizer is the build's to add (www). */
+/** Answering Claude's questions about an idea; the recognizer is the build's to add (www). */
 export function phoneIdeaPorts(): IdeaPorts {
   return {
     store: keptIdeaStore(),
     listener: NO_LISTENER,
+    now: () => Date.now(),
+    onVisibility: onPageVisibility,
+  }
+}
+
+/**
+ * A new idea (ST26), but for its takes, which the build hands in (www's
+ * `lib/idea-takes`), and home, which it may.
+ */
+export function phoneBundlePorts(): Omit<BundlePorts, "takes"> {
+  return {
+    drafts: keptDraftStore(),
+    ideas: keptIdeaStore(),
+    lists: () => IDEA_LISTS_SEED,
+    home: NO_HOME,
     now: () => Date.now(),
     newId: () => crypto.randomUUID(),
     onVisibility: onPageVisibility,

@@ -12,11 +12,19 @@
  * without one, instead of each being recorded for a home that can't hear
  * it (IH1).
  *
+ * A new idea (ST26) asks home nothing here: `ideaHome` says only whether the
+ * phone is paired, for its screen to say where the idea goes.
+ *
  * `@some-ui/soundbites` is the phone's alone, so its `homeHearing` is handed
  * in by the idea screens' routes (`routes/_dashboard/_apk/journal`), which
  * may import it. Phone-only (`build.paths.ts`).
  */
-import type { HearingPorts, IdeaListener, Listening } from "@some-ui/soundbites"
+import type {
+  HearingPorts,
+  IdeaHome,
+  IdeaListener,
+  Listening,
+} from "@some-ui/soundbites"
 import { onPageVisibility } from "@some-ui/voice-capture"
 
 import { deviceListener } from "@/lib/device-listen"
@@ -110,4 +118,14 @@ export function phoneIdeaListener(
     device: deviceListener,
     now: () => Date.now(),
   })
+}
+
+/**
+ * Home, as a new idea's screen says where its idea goes (ST26): this phone
+ * paired with it or not, read from the pairing it holds. Whether home
+ * answers is the drain's to learn once ideas go home whole.
+ */
+export const ideaHome: IdeaHome = {
+  reach: () => (pairingOf() === null ? "unpaired" : "near"),
+  subscribe: (listener) => homeLink().subscribe(listener),
 }

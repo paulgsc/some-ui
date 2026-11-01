@@ -1,5 +1,5 @@
 import type { Idea } from "@soundbites/lib/idea/model"
-import { newIdea, withWords } from "@soundbites/lib/idea/model"
+import { newIdea, withReply, withWords } from "@soundbites/lib/idea/model"
 
 export const AT = "2026-10-30T10:00:00.000Z"
 export const LATER = "2026-11-20T18:30:00.000Z"
@@ -47,4 +47,18 @@ export function replyText(
     idea: id,
     ...fields,
   })
+}
+
+/**
+ * `caught`, with three questions from Claude waiting on it: what the capture
+ * of Claude's questions (`IdeaCapture`, ST19) opens on.
+ */
+export function asked(id = "idea-1"): Idea {
+  const idea = withReply(
+    caught(id),
+    { primer: null, ask: ["Which week?", "Why now?", "What changed?"] },
+    AT
+  )
+  if (idea === null) throw new Error("no questions asked")
+  return idea
 }

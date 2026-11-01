@@ -84,6 +84,13 @@ export type Take = {
    * set aside, and on one set aside before the desk noted when.
    */
   setAsideAt?: number
+  /**
+   * On a desk whose takes wait for their item to be sent (`send:
+   * "on-confirm"`, Studio's idea, ST26): true until the screen sends it
+   * (`release`), so nothing copies it home before then. Absent once sent,
+   * and on every other desk's take.
+   */
+  waits?: true
 }
 
 export type TakesPorts = {

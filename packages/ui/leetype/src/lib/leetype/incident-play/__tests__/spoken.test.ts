@@ -158,6 +158,7 @@ describe("a spoken answer", () => {
         canPlay: true,
         canRedo: true,
         canLetGo: true,
+        unsent: false,
       }),
     ])
     runtime.playTake("take-1")

@@ -72,4 +72,41 @@ describe("the idea store", () => {
       store.keep((ideas) => ideas.map((idea) => ({ ...idea, shelved: [] })))
     ).toBeNull()
   })
+
+  it("keeps a sent bundle whole, its answers takes, and lets nothing about it change (ST26)", () => {
+    const storage = inMemoryStorage()
+    const store = keptIdeaStore(() => storage)
+    const about = {
+      title: "Two hearings",
+      topic: "Studio",
+      keywords: ["voice"],
+      format: "short",
+    } as const
+    const bundle: Idea = {
+      id: "idea-2",
+      at: AT,
+      questions: 1,
+      answers: [
+        { question: "what", versions: [], takes: [{ at: AT, take: "t1" }] },
+      ],
+      passed: ["takeaway", "spark", "picture"],
+      about,
+      sent: [AT],
+    }
+    expect(store.keep(() => [bundle])).toEqual([bundle])
+    expect(keptIdeaStore(() => storage).list()).toEqual([bundle])
+    const changed = (over: Partial<Idea>): ReadonlyArray<Idea> | null =>
+      store.keep(() => [{ ...bundle, ...over }])
+    expect(changed({ about: { ...about, title: "Another" } })).toBeNull()
+    expect(changed({ sent: [] })).toBeNull()
+    expect(
+      changed({ answers: [{ question: "what", versions: [], takes: [] }] })
+    ).toBeNull()
+    // An answer with neither words nor a take is not one.
+    expect(
+      keptIdeaStore(() => inMemoryStorage()).keep(() => [
+        { ...bundle, answers: [{ question: "what", versions: [] }] },
+      ])
+    ).toBeNull()
+  })
 })

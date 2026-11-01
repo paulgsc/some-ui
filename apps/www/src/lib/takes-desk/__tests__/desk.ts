@@ -10,7 +10,7 @@ import type { SimulatedMicrophone } from "@some-ui/voice-capture/testing"
 import { memoryShelf, simulatedPlayer } from "@some-ui/voice-capture/testing"
 
 import { deskList, keptOn } from "@/lib/takes-desk"
-import type { PatternPhone } from "@/lib/takes-desk/pattern"
+import type { DeskShape, PatternPhone } from "@/lib/takes-desk/pattern"
 import { createPatternTakes } from "@/lib/takes-desk/pattern"
 import type { Take, TakeLimits } from "@/lib/takes-desk/runtime"
 import {
@@ -46,7 +46,8 @@ export function testDesk(
   mic: SimulatedMicrophone,
   owner: MicOwner,
   limits: TakeLimits,
-  marks?: MarkOwing
+  marks?: MarkOwing,
+  shape?: DeskShape
 ): TestDesk {
   desks += 1
   const takes = deskList(`test-desk-${String(desks)}`, limits.max)
@@ -80,7 +81,8 @@ export function testDesk(
       marks,
       from: "leetype",
     },
-    limits
+    limits,
+    shape
   )
   return {
     phone,

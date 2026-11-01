@@ -1373,7 +1373,7 @@
             },
             {
               "class": "structural",
-              "says": "The phone's audio caps add up to about 2.22 times the 25 MiB pool, and voice-home's alone (24 MB) is about 91% of it; a save past the pool is refused, so nothing is lost, but one store can leave the others no room.",
+              "says": "The phone's audio caps add up to about 2.22 times the 25 MiB pool before Studio's two desks of idea takes (9,600,000 B each: answers to Claude's questions since MIC10, a new idea's answers since ST26), and about 2.95 times with them; voice-home's alone (24 MB) is about 91% of it; a save past the pool is refused, so nothing is lost, but one store can leave the others no room.",
               "ref": "some-ui:apps/www/src/lib/device-backend/storage/index.ts"
             },
             {
@@ -1648,8 +1648,22 @@
     {
       "store": "phone:ideas",
       "class": "record",
-      "growth": "Per video idea caught in Studio (ST18): the confirmed text of up to four answers, each a few versions (what was heard, then any fix), and since ST19 (#2301) up to three questions Claude asked back with their answers, each primer Claude fleshed it out into (up to 24 scenes of text), and a mark each time it is set aside or brought back; append-only; no audio is ever written, so nothing is discarded (owner, 2026-10-30, #2300); no cap (`some-ui:studio:ideas`).",
+      "growth": "Per video idea caught in Studio (ST18): the confirmed text of up to four answers, each a few versions (what was heard, then any fix), and since ST19 (#2301) up to three questions Claude asked back with their answers, each primer Claude fleshed it out into (up to 24 scenes of text), and a mark each time it is set aside or brought back; since ST26 (#2453) a new idea is added only when it is sent, whole: what it is (a title of at most 80 characters, a subject, keywords, a format), each answer's take ids and home's words once heard, and when it was sent; append-only; no audio is ever written, so nothing is discarded (owner, 2026-10-30, #2300); no cap (`some-ui:studio:ideas`).",
       "horizon": "an idea is never let go",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:idea-draft",
+      "class": "cache",
+      "growth": "One new idea before it is sent (ST26, #2453): its title (at most 80 characters), subject, keywords, format, the questions left for later and any answer typed because voice didn't work (at most 1,000 characters each), a few KB; overwritten on each change (`some-ui:studio:idea-draft`).",
+      "horizon": "cleared once Send has kept the idea whole in phone:ideas, or on Delete all, which is for good: nothing in it has left the phone (owner, #2453, decision 4; docs/discard-sites.md)",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:idea-takes",
+      "class": "record",
+      "growth": "bounded: two desks of Studio's idea takes (answers to Claude's questions, MIC10 #2428, `some-ui:idea-takes`; a new idea's answers, ST26 #2453, `some-ui:idea-bundle-takes`), each an offline set of 40 takes of <= 60 s: 40 x 60 x 4,000 = 9,600,000 B each; past 40, a new one makes room with the oldest home holds, and is refused while home holds none.",
+      "horizon": "a take leaves the phone only to make room at 40, and only once home holds it (HF5 #2180, LG1); a new idea's take waits on the phone until the idea is sent, and one deleted before Send is gone for good (owner, #2453, decision 4); a take whose audio never landed is swept",
       "family": "what-is-kept"
     },
     {

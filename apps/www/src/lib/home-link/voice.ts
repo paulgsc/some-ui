@@ -13,7 +13,7 @@ import type { OutboxPort, OutboxView } from "@some-ui/game-week"
 
 import type { PhoneBite } from "@/lib/game-bites"
 import { phoneGameBites } from "@/lib/game-bites"
-import { ideaTakesDesk } from "@/lib/idea-takes"
+import { ideaBundleDesk, ideaTakesDesk } from "@/lib/idea-takes"
 import { phoneJobs } from "@/lib/jobs"
 import { leetypeTakesDesk } from "@/lib/leetype-takes"
 import { lensTakesDesk } from "@/lib/lens-takes"
@@ -47,7 +47,8 @@ export const voiceLane: Lane = {
     const home = phoneVoiceHome()
     const state = useSyncExternalStore(home.subscribe, home.getSnapshot)
     // Read so a reflection, Jobs note, game bite, Studio take, soundbite,
-    // lens take, LeetType take or idea take added renders the offer again.
+    // lens take, LeetType take or idea take added, or a new idea's sent,
+    // renders the offer again.
     useSyncExternalStore(reflections.subscribe, reflections.getSnapshot)
     const jobs = phoneJobs()
     useSyncExternalStore(jobs.subscribe, jobs.getSnapshot)
@@ -60,6 +61,9 @@ export const voiceLane: Lane = {
     useSyncExternalStore(leetype.subscribe, leetype.getSnapshot)
     const ideas = ideaTakesDesk.phone()
     useSyncExternalStore(ideas.subscribe, ideas.getSnapshot)
+    // A new idea's takes, released by its Send (ST26).
+    const bundle = ideaBundleDesk.phone().takes
+    useSyncExternalStore(bundle.subscribe, bundle.getSnapshot)
     const { gone } = useSyncExternalStore(
       copyPasses.subscribe,
       copyPasses.getSnapshot

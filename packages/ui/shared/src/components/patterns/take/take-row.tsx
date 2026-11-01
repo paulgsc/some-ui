@@ -29,8 +29,10 @@ export type TakeRowProps = {
 /**
  * One take: how long it is and where it is kept, since when once home
  * holds it (MIC3), Play and Stop, Redo, and Let it go. Let it go sets the
- * take aside (D3), which keeps it, so it asks nothing first; a step that
- * can't be undone would go through `ConfirmSheet`, and the pattern has none.
+ * take aside (D3), which keeps it, so it asks nothing first. A take that
+ * never left the phone under `send: "on-confirm"` (`row.unsent`) says so,
+ * and offers Delete instead, which deletes it for good: the screen asks
+ * first (`ConfirmSheet`), since that can't be undone.
  * A control the row can't offer now (a take under way) stays in place,
  * disabled, so nothing jumps.
  */
@@ -46,6 +48,7 @@ export const TakeRow = ({
   const words = TAKE_WORDS
   const { take } = row
   const action = row.playing ? words.stop : words.play
+  const letGo = row.unsent ? words.discard : words.letGo
   return (
     <li
       className={cn(
@@ -76,7 +79,7 @@ export const TakeRow = ({
             {take.kept !== null && (
               <span className="text-muted-foreground">
                 {" · "}
-                {keptSaid(words, take.kept)}
+                {row.unsent ? words.place.unsent : keptSaid(words, take.kept)}
               </span>
             )}
           </p>
@@ -112,9 +115,9 @@ export const TakeRow = ({
               className="text-muted-foreground"
               onClick={onLetGo}
               disabled={!row.canLetGo}
-              aria-label={words.rowLabel(words.letGo, take.durationMs)}
+              aria-label={words.rowLabel(letGo, take.durationMs)}
             >
-              {words.letGo}
+              {letGo}
             </Button>
           )}
         </div>

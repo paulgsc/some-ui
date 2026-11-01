@@ -26,7 +26,9 @@
  *   session file and screen, when taken; its note goes as a study note;
  * - a Studio idea answer's take (`lib/idea-takes`, MIC10): `studio`, the
  *   answer as `idea:<idea>:<question>`, when taken; home gives its words back
- *   to the idea screen (`./heard`).
+ *   to the idea screen (`./heard`). A new idea's take (ST26) goes the same
+ *   way, but only once its idea is sent: until then it waits on the phone
+ *   (`waits`), and its desk lists it for nobody here.
  *
  * Copying deletes nothing where the note was recorded; letting it go there
  * leaves the copy, which goes once home holds the note. Each pass says what
@@ -118,7 +120,7 @@ import { ON_PHONE } from "@some-ui/voice-capture"
 
 import { phoneGameBites } from "@/lib/game-bites"
 import type { IdeaTake } from "@/lib/idea-takes"
-import { ideaTakesDesk } from "@/lib/idea-takes"
+import { ideaBundleDesk, ideaTakesDesk } from "@/lib/idea-takes"
 import { jobVoiceAudio, phoneJobs } from "@/lib/jobs"
 import type { JobEvent, JobsState } from "@/lib/jobs/model"
 import type { LeetypeTake } from "@/lib/leetype-takes"
@@ -535,6 +537,12 @@ export function candidates(): Array<Candidate> {
     audio: (): Promise<Blob | null> => ideaTakesDesk.audio(take.id),
     aside: asideAt(take),
   }))
+  // ST26: only the takes of an idea sent; one still waiting is not listed.
+  const bundled = ideaBundleDesk.kept().map((take) => ({
+    note: ideaNote(take),
+    audio: (): Promise<Blob | null> => ideaBundleDesk.audio(take.id),
+    aside: asideAt(take),
+  }))
   return [
     ...said,
     ...named,
@@ -545,6 +553,7 @@ export function candidates(): Array<Candidate> {
     ...lens,
     ...leetype,
     ...ideas,
+    ...bundled,
   ]
 }
 
@@ -881,6 +890,7 @@ function holdOffline(): void {
   lensTakesDesk.keptWhere(voiceKept)
   leetypeTakesDesk.keptWhere(voiceKept)
   ideaTakesDesk.keptWhere(voiceKept)
+  ideaBundleDesk.keptWhere(voiceKept)
   sceneNotesKept(voiceKept)
   reflectionNotesKept(voiceKept)
   holdNotes()
@@ -913,7 +923,9 @@ export function watchVoiceNotes(): () => void {
         phoneGameBites().subscribe(copySoon),
         lensTakesDesk.phone().takes.subscribe(copySoon),
         leetypeTakesDesk.phone().takes.subscribe(copySoon),
-        ideaTakesDesk.phone().subscribe(copySoon)
+        ideaTakesDesk.phone().subscribe(copySoon),
+        // A new idea's takes go once it is sent (ST26): its Send is a change.
+        ideaBundleDesk.phone().takes.subscribe(copySoon)
       )
     }
     // A kept take is a write to its project, once Studio has handed it in.

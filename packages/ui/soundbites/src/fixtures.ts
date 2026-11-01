@@ -5,6 +5,10 @@
  * IndexedDB, the microphone or the page's storage. The microphone they
  * record on is the shared simulated one (`@some-ui/voice-capture/testing`).
  */
+import type { TakePattern } from "@some-ui/voice-capture"
+import type { MemoryTakes } from "@some-ui/voice-capture/testing"
+
+import type { BundleTakes } from "./lib/idea/bundle-runtime"
 import type { Primer } from "./lib/journal/primer"
 import { readPrimer } from "./lib/journal/primer"
 import type { ProjectEvent, ProjectState } from "./lib/project/model"
@@ -33,4 +37,22 @@ export function run(
     }
     return next.state
   }, state)
+}
+
+/**
+ * A new idea's takes (ST26) over the take pattern on the simulated
+ * microphone (`simulatedPattern`, with `send: "on-confirm"`), its takes in
+ * memory: what `IdeaBundle` runs on in tests and the phone page.
+ */
+export function bundleTakesOf(simulated: {
+  readonly pattern: TakePattern
+  readonly store: MemoryTakes
+}): BundleTakes {
+  const { pattern, store } = simulated
+  return {
+    pattern,
+    takes: { getSnapshot: store.getSnapshot, subscribe: store.subscribe },
+    discard: store.discard,
+    release: store.release,
+  }
 }

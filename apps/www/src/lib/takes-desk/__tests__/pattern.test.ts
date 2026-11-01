@@ -7,10 +7,11 @@
  * says where it is kept, and at its cap a new take makes room only with one
  * home holds.
  */
-import { microphoneOwner } from "@some-ui/voice-capture"
+import { microphoneOwner, ONE_TAKE } from "@some-ui/voice-capture"
 import { simulatedMicrophone } from "@some-ui/voice-capture/testing"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { sent } from "@/lib/takes-desk"
 import type { MarkOwing } from "@/lib/voice-marks"
 
 import type { TestDesk } from "./desk"
@@ -71,6 +72,60 @@ async function take(
 }
 
 describe("createPatternTakes", () => {
+  describe("ST26: a desk whose takes wait for their item to be sent", () => {
+    const held = (): TestDesk =>
+      testDesk(
+        simulatedMicrophone({ now: Date.now }),
+        microphoneOwner(),
+        { max: 40, maxMs: 60_000 },
+        undefined,
+        { ...ONE_TAKE, send: "on-confirm" }
+      )
+
+    it("keeps each take waiting on this phone alone, whatever the voice lane says", async () => {
+      const on = held()
+      await take(on, "idea:i1:what")
+      on.home.copied("n1")
+      on.phone.recount()
+      expect(on.listed()[0]?.waits).toBe(true)
+      expect(on.listed().filter(sent)).toEqual([])
+      expect(on.phone.takes.getSnapshot()[0]?.kept).toEqual({ place: "phone" })
+    })
+
+    it("deletes a waiting take for good on Let go, audio and all, and says nothing was sent", async () => {
+      const on = held()
+      await take(on, "idea:i1:what")
+      on.phone.pattern.letGo("n1", "phone")
+      expect(on.listed()).toEqual([])
+      await settle()
+      expect(await on.shelf.ids()).toEqual([])
+      expect(on.phone.pattern.getSnapshot().discarded).toBe("n1")
+    })
+
+    it("lets a take go home once released, and never deletes it after", async () => {
+      const on = held()
+      await take(on, "idea:i1:what")
+      await take(on, "idea:i1:spark")
+      expect(on.phone.release(["n1"])).toBe(true)
+      expect(
+        on
+          .listed()
+          .filter(sent)
+          .map(({ id }) => id)
+      ).toEqual(["n1"])
+      expect(on.phone.discard(["n1"])).toBe(false)
+      expect(on.listed().map(({ id }) => id)).toEqual(["n2", "n1"])
+      expect(on.phone.discard(["n2"])).toBe(true)
+      expect(on.listed().map(({ id }) => id)).toEqual(["n1"])
+      // Asked for a sent take beside a waiting one, it deletes only the
+      // waiting one's audio.
+      await take(on, "idea:i1:picture")
+      expect(on.phone.discard(["n1", "n3"])).toBe(false)
+      await settle()
+      expect(await on.shelf.ids()).toEqual(["n1"])
+    })
+  })
+
   it("keeps a take on this phone, listed with its audio, as the pattern lists it", async () => {
     const on = desk()
     await take(on, "t1-01#s15", 4_000)
