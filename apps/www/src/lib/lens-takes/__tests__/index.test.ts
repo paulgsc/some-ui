@@ -28,7 +28,6 @@ vi.mock("@some-ui/voice-capture", async (actual) => {
       saving: vi.fn(),
       isSaving: () => false,
     }),
-    micRecorder: vi.fn(),
   }
 })
 

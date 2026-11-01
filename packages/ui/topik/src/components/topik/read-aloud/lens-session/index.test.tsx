@@ -1,9 +1,7 @@
+import { takeButton } from "@some-ui/voice-capture/testing"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { LensSession } from "@topik/components/topik/read-aloud/lens-session"
-import type {
-  LensTakes,
-  LensTakeSnapshot,
-} from "@topik/lib/topik/adapter/lens-takes"
+import { lensTakes } from "@topik/lib/topik/adapter/lens-takes/__tests__/takes"
 import type { LensRecordEntry } from "@topik/lib/topik/read-aloud/lens/record"
 import { MISTAKES } from "@topik/lib/topik/read-aloud/mistakes"
 import { REPO_LENS } from "@topik/lib/topik/read-aloud/repo-sets"
@@ -15,43 +13,19 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-/** A port that keeps a 2.5 s take whenever one is stopped. */
-function fakeTakes(
-  initial: Partial<LensTakeSnapshot> = {}
-): LensTakes & { started: Array<string> } {
-  let snapshot: LensTakeSnapshot = {
-    take: { kind: "idle" },
-    said: null,
-    last: null,
-    kept: null,
-    playing: false,
-    full: false,
-    ...initial,
-  }
-  const listeners = new Set<() => void>()
-  const set = (next: Partial<LensTakeSnapshot>): void => {
-    snapshot = { ...snapshot, ...next }
-    for (const listener of listeners) listener()
-  }
-  const started: Array<string> = []
-  return {
-    started,
-    getSnapshot: () => snapshot,
-    subscribe: (listener) => {
-      listeners.add(listener)
-      return () => listeners.delete(listener)
-    },
-    start: (line): void => {
-      started.push(line)
-      set({ take: { kind: "recording", elapsedMs: 0 } })
-    },
-    stop: (): void => {
-      const kept = { id: `take-${started.length}`, durationMs: 2_500 }
-      set({ take: { kind: "idle" }, last: kept, kept })
-    },
-    playLast: () => undefined,
-    reset: () => set({ take: { kind: "idle" }, last: null }),
-  }
+/** Lets the simulated microphone and the pattern answer for `ms`. */
+const pass = (ms = 0): Promise<void> =>
+  act(async () => {
+    await vi.advanceTimersByTimeAsync(ms)
+  })
+
+/** Taps the take button, lets the microphone run `ms`, and taps it again. */
+async function record(ms: number): Promise<void> {
+  fireEvent.click(takeButton())
+  await pass(ms)
+  expect(takeButton().getAttribute("data-take")).toBe("recording")
+  fireEvent.click(takeButton())
+  await pass()
 }
 
 /** Answer whatever the card asks, the first way it offers. */
@@ -245,8 +219,9 @@ describe("LensSession", () => {
     expect(onExit).toHaveBeenCalledOnce()
   })
 
-  it("offers a take on the reveal, and records how many were kept, never the audio", () => {
-    const takes = fakeTakes()
+  it("offers takes on the reveal, plays the newest, and records how many were kept, never the audio", async () => {
+    vi.useFakeTimers()
+    const takes = lensTakes()
     const entries: Array<LensRecordEntry> = []
     render(
       <LensSession
@@ -259,9 +234,7 @@ describe("LensSession", () => {
         record={(entry) => entries.push(entry)}
       />
     )
-    expect(
-      screen.queryByRole("button", { name: /record yourself/i })
-    ).toBeNull()
+    expect(document.querySelector("[data-take]")).toBeNull()
     while (
       document
         .querySelector('[data-slot="lens-card"]')
@@ -269,28 +242,29 @@ describe("LensSession", () => {
     ) {
       answerCard()
     }
-    act(() => {
-      fireEvent.click(screen.getByRole("button", { name: /record yourself/i }))
-    })
-    expect(screen.getByRole("button", { name: /stop/i })).toBeTruthy()
-    act(() => {
-      fireEvent.click(screen.getByRole("button", { name: /stop/i }))
-    })
-    expect(screen.getByRole("button", { name: /mine 2\.5s/i })).toBeTruthy()
-    fireEvent.click(screen.getByRole("button", { name: /^again$/i }))
-    fireEvent.click(screen.getByRole("button", { name: /stop/i }))
+    await record(2_500)
+    await record(2_500)
+    // Many a line, beside each other: only the newest plays.
+    const plays = screen.getAllByRole("button", { name: /^Play the take/ })
+    expect(plays.map((play) => play.hasAttribute("disabled"))).toEqual([
+      false,
+      true,
+    ])
+    const line = takes.store.getSnapshot()[0]?.answers
     answerCard()
-    expect(takes.started).toHaveLength(2)
     expect(entries).toHaveLength(1)
     expect(entries[0]).toMatchObject({
-      line: takes.started[0],
+      line,
       take: { count: 2, lastMs: 2_500, heardFirst: false },
     })
-    expect(screen.queryByRole("button", { name: /mine/i })).toBeNull()
+    expect(takes.store.getSnapshot().map((take) => take.answers)).toEqual([
+      line,
+      line,
+    ])
   })
 
-  it("offers no take once the takes are full, and says how to make room (Rem. 4.16)", () => {
-    const takes = fakeTakes({ full: true })
+  it("starts no take once the takes are full, and says how room is made (Rem. 4.16)", () => {
+    const takes = lensTakes({ full: true })
     render(
       <LensSession
         deck={REPO_LENS}
@@ -308,10 +282,9 @@ describe("LensSession", () => {
     ) {
       answerCard()
     }
-    const button = screen.getByRole("button", { name: /no room for a take/i })
-    expect(button.hasAttribute("disabled")).toBe(true)
+    expect(document.querySelector("[data-take]")).toBeNull()
     expect(screen.getByRole("status").textContent).toMatch(
-      /makes room once a home this phone is paired with has/i
+      /kept as many takes as it can until a home it's paired with has/i
     )
   })
 })

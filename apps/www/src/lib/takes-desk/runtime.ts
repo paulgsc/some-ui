@@ -1,9 +1,9 @@
 /**
- * A desk of takes answering prompts (topik's `LensTakes` port; LeetType's
- * spoken answers through `lib/leetype-takes`; Rust Rounds' notes):
- * `@some-ui/voice-capture`'s take kit, each kept take's audio on a shelf and
- * its entry in a list, and the last one played back. The kit records how
- * each take ended.
+ * A desk of takes answering prompts on `@some-ui/voice-capture`'s take kit
+ * (Studio's idea answers, `lib/idea-takes`): each kept take's audio on a
+ * shelf and its entry in a list, and the last one played back. The kit
+ * records how each take ended. The desks on the take pattern (`./pattern`)
+ * share its bounds (`makesRoom`, `homeHolds`).
  *
  * - **Bounded on its own, an offline set, and nothing evicted before home
  *   holds it** (HF5, #2180). At most `limits.max` takes, each at most
@@ -21,7 +21,6 @@
  *   record to count on the item it was started on.
  */
 import { SOUNDBITE_MIN_MS } from "@some-ui/soundbites/contract"
-import type { LensTakes, LensTakeSnapshot } from "@some-ui/topik"
 import type {
   BlobShelf,
   MicOwner,
@@ -33,6 +32,7 @@ import type {
   TakeEnding,
   TakeKept,
   TakeKitView,
+  TakeView,
 } from "@some-ui/voice-capture"
 import {
   shelveTake,
@@ -40,6 +40,24 @@ import {
   takeEndingSaid,
   takeKit,
 } from "@some-ui/voice-capture"
+
+/** What a kit desk shows of its takes. */
+export type KitTakeSnapshot = {
+  take: TakeView
+  /** Said once beside the button: how the last take ended, or why none can. */
+  said: string | null
+  /** The last take kept since the last `reset`. */
+  last: { id: string; durationMs: number } | null
+  /**
+   * The last take kept, whatever item it was started on: a take cut off by
+   * leaving lands after `reset`.
+   */
+  kept: { id: string; durationMs: number } | null
+  /** The last take is playing back. */
+  playing: boolean
+  /** No new take can be kept until home holds some of those kept. */
+  full: boolean
+}
 
 /** How many takes a desk keeps, and how long each runs at most. */
 export type TakeLimits = { readonly max: number; readonly maxMs: number }
@@ -57,7 +75,7 @@ export type Take = {
   mimeType: string
   /**
    * Out of its item's view, kept (`./pattern`): superseded by a Redo (D2)
-   * or set aside (D3). Absent for the item's take, and on every lens take.
+   * or set aside (D3). Absent for the item's take, and on every kit desk's.
    */
   standing?: "earlier" | "set-aside"
 }
@@ -101,7 +119,7 @@ type TakeEnded = {
   readonly unheard: boolean
 }
 
-export type DeskSnapshot = LensTakeSnapshot & {
+export type DeskSnapshot = KitTakeSnapshot & {
   /** The last take to end, never hushed. */
   readonly ended: TakeEnded | null
   /** Why the microphone refused the last take, while it is refused. */
@@ -109,8 +127,17 @@ export type DeskSnapshot = LensTakeSnapshot & {
 }
 
 /** The port, and the sweep's way to let takes go (`takesDesk`). */
-export type PhoneTakes = Omit<LensTakes, "getSnapshot"> & {
+export type PhoneTakes = {
   getSnapshot: () => DeskSnapshot
+  subscribe: (listener: () => void) => () => void
+  /** Starts a take answering `line`. */
+  start: (line: string) => void
+  /** Ends a take under way and keeps it, and stops a playback. */
+  stop: () => void
+  /** Plays the last take back. */
+  playLast: () => void
+  /** The item is done: a take under way is kept, and the last is forgotten. */
+  reset: () => void
   /** Lets these takes go, with their audio. */
   letGo: (ids: ReadonlyArray<string>) => void
   /** Says `full` again: what home holds has changed. */
@@ -152,8 +179,8 @@ export function makesRoom<T extends { readonly id: string }>(
 
 const takenAt = (take: Take): number => take.takenAt
 
-/** The kit's take as the lens's port shows it. */
-function viewOf(take: TakeKitView): LensTakeSnapshot["take"] {
+/** The kit's take as the desk's port shows it. */
+function viewOf(take: TakeKitView): TakeView {
   return take.kind === "recording"
     ? { kind: "recording", elapsedMs: take.elapsedMs }
     : take
@@ -161,8 +188,8 @@ function viewOf(take: TakeKitView): LensTakeSnapshot["take"] {
 
 export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
   const listeners = new Set<() => void>()
-  let last: LensTakeSnapshot["last"] = null
-  let kept: LensTakeSnapshot["kept"] = null
+  let last: KitTakeSnapshot["last"] = null
+  let kept: KitTakeSnapshot["kept"] = null
   let playback: Playback | null = null
   // Bumped by every play, stop and reset: a read that lands after is stale.
   let playRequest = 0
@@ -199,7 +226,7 @@ export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
       now: ports.now,
       owner: ports.owner,
       deadlines: ports.deadlines,
-      // `sweepLensTakes` clears what a failed listing leaves.
+      // The desk's sweep clears what a failed listing leaves.
       keep: (take, line, done) => {
         const id = ports.newId()
         const forItem = takingItem

@@ -2,11 +2,11 @@
  * A desk of takes on the phone: the audio on a shelf of its own and the
  * takes in a list, one runtime per page load. Two runtimes sit on it:
  *
- * - `takesDesk`: the take kit's (`./runtime`), the grammar lens's port
- *   (`lib/lens-takes`).
+ * - `takesDesk`: the take kit's (`./runtime`), Studio's idea answers
+ *   (`lib/idea-takes`).
  * - `patternDesk`: the take pattern's (`./pattern`), with Redo and Let go:
- *   Rust Rounds' notes (`lib/rust-rounds`) and LeetType's spoken answers
- *   (`lib/leetype-takes`).
+ *   Rust Rounds' notes (`lib/rust-rounds`), LeetType's spoken answers
+ *   (`lib/leetype-takes`) and the grammar lens's takes (`lib/lens-takes`).
  *
  * A desk whose takes go home as voice notes (`lib/home-link/voice-copy`,
  * HF5 #2180) is told where each is kept (`keptWhere`): what home holds may
@@ -26,7 +26,7 @@ import {
 
 import { boundedList } from "@/lib/bounded-list"
 
-import type { PatternPhone, PatternTakesPorts } from "./pattern"
+import type { DeskShape, PatternPhone, PatternTakesPorts } from "./pattern"
 import { createPatternTakes } from "./pattern"
 import type { PhoneTakes, Take, TakeLimits } from "./runtime"
 import { createTakes, homeHolds } from "./runtime"
@@ -88,6 +88,11 @@ type DeskOptions = {
   readonly key: string
   readonly dbName: string
   readonly limits: TakeLimits
+}
+
+type PatternDeskOptions = DeskOptions & {
+  /** How many takes an item keeps, and which play: one each unless said. */
+  readonly shape?: DeskShape | undefined
 }
 
 /** The shelf's own cap: a full desk of full-length takes at the soundbites' bitrate. */
@@ -220,12 +225,14 @@ function desk<R extends Runtime>(
   }
 }
 
-/** The lens's desk, on the take kit (`./runtime`). */
+/** A desk on the take kit (`./runtime`): Studio's idea answers. */
 export function takesDesk(options: DeskOptions): TakesDesk {
   return desk(options, (ports) => createTakes(ports, options.limits))
 }
 
 /** A desk on the take pattern (`./pattern`): Redo and Let go. */
-export function patternDesk(options: DeskOptions): PatternDesk {
-  return desk(options, (ports) => createPatternTakes(ports, options.limits))
+export function patternDesk(options: PatternDeskOptions): PatternDesk {
+  return desk(options, (ports) =>
+    createPatternTakes(ports, options.limits, options.shape)
+  )
 }

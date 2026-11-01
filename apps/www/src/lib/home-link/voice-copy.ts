@@ -722,7 +722,7 @@ export function watchVoiceNotes(): () => void {
         }),
         // A bite's release (Undo closed) is a change to its record.
         phoneGameBites().subscribe(copySoon),
-        lensTakesDesk.phone().subscribe(copySoon),
+        lensTakesDesk.phone().takes.subscribe(copySoon),
         leetypeTakesDesk.phone().takes.subscribe(copySoon),
         ideaTakesDesk.phone().subscribe(copySoon)
       )
