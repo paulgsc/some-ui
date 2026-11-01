@@ -5,7 +5,7 @@
  * the session as the desk's own end, and why the microphone refused in the
  * person's words, never as a sentence read back. Then Rust Rounds itself,
  * on the real desk and the real take kit over the one simulated microphone
- * every screen's tests share (MIC1, #2371), so what the screen says is what
+ * every screen's tests share, so what the screen says is what
  * the phone's own stack says.
  */
 import { inMemoryStorage } from "@some-ui/core-utils"

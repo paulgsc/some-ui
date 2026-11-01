@@ -1,6 +1,6 @@
 /**
  * `@some-ui/voice-capture/testing`: the one simulated microphone and the
- * scenario family every screen's tests share (MIC1, #2371), so no screen
+ * scenario family every screen's tests share, so no screen
  * writes a fake microphone of its own. Not the phone's code: nothing here
  * reaches the microphone, and fast-check is only for tests.
  */

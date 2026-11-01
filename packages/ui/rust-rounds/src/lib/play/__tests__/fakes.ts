@@ -5,10 +5,9 @@
  *
  * The microphone keeps www's takes desk's phases (`lib/takes-desk`): a take
  * starts `opening`, records once `open` is called, and one stopped before
- * then ends `early` (VC2). The session on the real desk and the one simulated
- * microphone every screen's tests share (`@some-ui/voice-capture/testing`,
- * MIC1) is www's `lib/rust-rounds/index.test.tsx`; MIC4 (#2374) deletes this
- * fake when the session moves to the take pattern.
+ * then ends `early` (VC2). The session on the real desk and the shared
+ * simulated microphone (`@some-ui/voice-capture/testing`) is tested in
+ * www's `lib/rust-rounds/index.test.tsx`.
  */
 import type { NoteView, TakeEnd } from "@rust-rounds/lib/play/machine"
 import type { NotesPort, RustRoundsPorts } from "@rust-rounds/lib/play/runtime"

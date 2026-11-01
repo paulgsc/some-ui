@@ -180,12 +180,7 @@ describe("the phone's recognizer, for ideas", () => {
   })
 })
 
-/**
- * LS1: the recognizer's answers × the calls × when they come. Each row is
- * one behaviour of the plugin; the deadlines are short so a withheld
- * callback shows within the test.
- */
-describe("the recognizer borrows the phone's one microphone (MIC1)", () => {
+describe("the recognizer borrows the phone's one microphone", () => {
   it("does not start while a take holds the microphone, and says it did not", async () => {
     const owner = microphoneOwner()
     const take = owner.claim("take")
@@ -214,6 +209,11 @@ describe("the recognizer borrows the phone's one microphone (MIC1)", () => {
   })
 })
 
+/**
+ * LS1: the recognizer's answers × the calls × when they come. Each row is
+ * one behaviour of the plugin; the deadlines are short so a withheld
+ * callback shows within the test.
+ */
 describe("LS1: a tap that starts or stops listening is answered in human time", () => {
   const listener = createDeviceListener(SHORT)
 

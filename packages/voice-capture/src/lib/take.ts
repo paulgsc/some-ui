@@ -155,9 +155,9 @@ export function stepTake(
  * How long the microphone may take to open: Android's prompt the first
  * time waits on a person, so a long while, but not for ever.
  */
-const OPEN_DEADLINE_MS = 60_000
+export const OPEN_DEADLINE_MS = 60_000
 
-const FINISH_DEADLINE_MS = 15_000
+export const FINISH_DEADLINE_MS = 15_000
 
 /** How long `takeRunner` waits on the microphone; tests shorten it. */
 export type TakeDeadlines = {

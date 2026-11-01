@@ -57,6 +57,11 @@ export type ObservedEnding = {
   readonly id: string | null
   /** The sentence the screen says for it. */
   readonly said: string
+  /**
+   * The screen left the take's item, and says nothing about it on purpose
+   * (www's takes desk after `reset`): the one ending `silent` exempts.
+   */
+  readonly hushed?: boolean
 }
 
 export type TakeObservation =
@@ -156,10 +161,10 @@ export function stepTakeMonitor(
       }
       const seq = observation.ended?.seq ?? 0
       if (observation.ended !== null && seq !== was.seq) {
-        const { ending, said, id } = observation.ended
+        const { ending, said, id, hushed } = observation.ended
         if (seq !== was.seq + 1 || startedAt === null)
           broke("extra-ending", `${observation.screen}: ending ${seq}`)
-        if (said.trim() === "")
+        if (hushed !== true && said.trim() === "")
           broke("silent", `${observation.screen}: ${ending}`)
         if (startedAt !== null && at - startedAt > bound.boundMs)
           broke("late", `${observation.screen}: ${ending} ${at - startedAt}ms`)

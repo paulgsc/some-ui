@@ -3,7 +3,7 @@
  * spoken answers through `lib/leetype-takes`; Rust Rounds' notes):
  * `@some-ui/voice-capture`'s take kit, each kept take's audio on a shelf and
  * its entry in a list, and the last one played back. The kit records how
- * each take ended; the desk keeps no copy of a take under way.
+ * each take ended.
  *
  * - **Bounded on its own, an offline set, and nothing evicted before home
  *   holds it** (HF5, #2180). At most `limits.max` takes, each at most

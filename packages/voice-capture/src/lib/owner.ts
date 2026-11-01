@@ -3,7 +3,7 @@
  * screen. Every take opens the microphone through `takeRunner`, which claims
  * it here first, and the recognizer (www's `lib/device-listen`) borrows it
  * the same way, so a recorder and a recognizer never fight over it and two
- * screens never record at once (MIC1, #2371).
+ * screens never record at once.
  *
  * A second claim while one is held is refused, never queued and never taken
  * from the holder: the take that asked ends `blocked` with the reason

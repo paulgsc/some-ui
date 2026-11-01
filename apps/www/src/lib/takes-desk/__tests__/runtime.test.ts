@@ -4,11 +4,7 @@ import type {
   Playback,
   Recording,
 } from "@some-ui/voice-capture"
-import {
-  microphoneOwner,
-  RECORDING_FAILURE_COPY,
-  VOICE_NOTE_SAID,
-} from "@some-ui/voice-capture"
+import { microphoneOwner } from "@some-ui/voice-capture"
 import type {
   ScenarioBuild,
   ScenarioPhone,
@@ -292,8 +288,8 @@ describe("createTakes", () => {
  * VC2 and VC3 (`@some-ui/voice-capture`'s `properties.ts`) over the real
  * desk: every generated trace of the scenario family, desks on one phone
  * sharing the simulated microphone, keeps every property. A take a reset
- * left is hushed on purpose (`said` is null): its ending is still named,
- * for the caller's own words.
+ * left is hushed on purpose (`said` is null), which the monitor exempts by
+ * name; its ending is still named, for the caller's own words.
  */
 describe("VC2, VC3: every take on the desk ends once, says how, and holds the microphone only while it runs", () => {
   beforeEach(() => {
@@ -354,17 +350,14 @@ describe("VC2, VC3: every take on the desk ends once, says how, and holds the mi
           subscribe: takes.subscribe,
           underway: () => takes.getSnapshot().take.kind !== "idle",
           ended: (): ObservedEnding | null => {
-            const { ended, said, blocked } = takes.getSnapshot()
+            const { ended, said } = takes.getSnapshot()
             if (ended === null) return null
-            const words =
-              ended.end === "blocked"
-                ? RECORDING_FAILURE_COPY[blocked ?? "failed"]
-                : VOICE_NOTE_SAID[ended.end]
             return {
               seq: ended.seq,
               ending: ended.end,
               id: ended.id,
-              said: said ?? (hushed ? words : ""),
+              said: said ?? "",
+              hushed,
             }
           },
         }

@@ -1,5 +1,5 @@
 /**
- * The one simulated microphone every screen's tests share (MIC1, #2371): a
+ * The one simulated microphone every screen's tests share: a
  * `StartRecording` that answers each opening as its script says, on the
  * timers a test fakes, and counts the streams it holds open the way the
  * real recorder (`../lib/recorder.ts`) holds them: from the opening's
