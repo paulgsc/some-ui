@@ -1,20 +1,24 @@
 /**
- * The next scene said aloud, on the phone (`./runtime`): the microphone, its
- * audio on a shelf of its own, and the draft's notes in a list. One runtime
- * per page load, so the draft and a take under way outlive the screen that
- * shows them. Phone-only (`build.paths.ts`).
+ * The next scene said aloud, on the phone (`./runtime`, on the take
+ * pattern): the microphone, its audio on a shelf of its own, and the draft's
+ * notes in a list, those set aside or recorded again among them until home
+ * holds them. One runtime per page load, so the draft and a take under way
+ * outlive the screen that shows them. Phone-only (`build.paths.ts`).
  */
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import { SOUNDBITE_BITS_PER_SECOND } from "@some-ui/soundbites/contract"
-import { micRecorder, savingShelf } from "@some-ui/voice-capture"
+import type { TakeKept } from "@some-ui/voice-capture"
+import { micRecorder, ON_PHONE, savingShelf } from "@some-ui/voice-capture"
 
 import { boundedList } from "@/lib/bounded-list"
 
 import { SCENE_AUDIO_MAX_BYTES, SCENE_NOTES_MAX } from "./budget"
-import type { KeptSceneNote, PhoneSceneVoice } from "./runtime"
+import type { KeptSceneNote, PhoneSceneVoice, SceneVoicePorts } from "./runtime"
 import { createSceneVoice } from "./runtime"
 
 export type { KeptSceneNote } from "./runtime"
+
+const STANDINGS: ReadonlyArray<unknown> = [undefined, "earlier", "set-aside"]
 
 const isNote = (value: unknown): value is KeptSceneNote =>
   typeof value === "object" &&
@@ -23,20 +27,29 @@ const isNote = (value: unknown): value is KeptSceneNote =>
   typeof Reflect.get(value, "durationMs") === "number" &&
   typeof Reflect.get(value, "mimeType") === "string" &&
   ["string", "undefined"].includes(typeof Reflect.get(value, "at")) &&
-  ["boolean", "undefined"].includes(typeof Reflect.get(value, "prompted"))
+  ["boolean", "undefined"].includes(typeof Reflect.get(value, "prompted")) &&
+  STANDINGS.includes(Reflect.get(value, "standing"))
 
 const list = boundedList("some-ui:scene-voice", SCENE_NOTES_MAX, isNote)
 
-/** The draft's notes, oldest first (the list keeps the newest first). */
-const notes = {
+/** The notes, oldest first (the list keeps the newest first). */
+const notes: SceneVoicePorts["notes"] = {
   read: (): Array<KeptSceneNote> => list.read().reverse(),
-  add: (note: KeptSceneNote): boolean =>
-    list.put(note, ({ id }) => id === note.id),
-  remove: (ids: ReadonlyArray<string>): boolean =>
-    list.remove(({ id }) => ids.includes(id)),
-  prompted: (ids: ReadonlyArray<string>): boolean =>
+  add: (note, supersedes): boolean =>
+    list.put(
+      note,
+      ({ id }) => id === note.id,
+      (other) =>
+        other.id === supersedes ? { ...other, standing: "earlier" } : other
+    ),
+  remove: (ids): boolean => list.remove(({ id }) => ids.includes(id)),
+  prompted: (ids): boolean =>
     list.update((note) =>
       ids.includes(note.id) ? { ...note, prompted: true } : note
+    ),
+  setAside: (ids): boolean =>
+    list.update((note) =>
+      ids.includes(note.id) ? { ...note, standing: "set-aside" } : note
     ),
 }
 
@@ -46,6 +59,17 @@ const shelf = savingShelf({
 })
 
 let voice: PhoneSceneVoice | null = null
+// On this phone until the voice lane says otherwise.
+let where: (id: string) => TakeKept = () => ON_PHONE
+
+/**
+ * Where each note is kept, from the voice lane (`lib/home-link/voice-copy`,
+ * MIC3): what each row says. Builds no runtime that is not there yet.
+ */
+export function sceneNotesKept(next: (id: string) => TakeKept): void {
+  where = next
+  voice?.recount()
+}
 
 export function phoneSceneVoice(): PhoneSceneVoice {
   voice ??= createSceneVoice({
@@ -55,6 +79,7 @@ export function phoneSceneVoice(): PhoneSceneVoice {
     saving: shelf.saving,
     now: () => Date.now(),
     newId: () => crypto.randomUUID(),
+    kept: (id) => where(id),
   })
   return voice
 }
@@ -83,9 +108,10 @@ export function sweepSceneVoice(): void {
 }
 
 /**
- * The draft's notes as the phone keeps them, oldest first, and each one's
- * audio, for the voice lane (`lib/home-link/voice-copy`, LA13). A note is
- * listed only once its audio is on the shelf.
+ * The notes as the phone keeps them, oldest first, those out of the draft
+ * among them, and each one's audio, for the voice lane
+ * (`lib/home-link/voice-copy`, LA13). A note is listed only once its audio
+ * is on the shelf.
  */
 export const sceneNotes = {
   read: notes.read,

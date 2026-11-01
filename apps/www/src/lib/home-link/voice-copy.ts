@@ -8,8 +8,8 @@
  * - a Jobs voice note (`lib/jobs`), once an event names it: `jobs`, the
  *   pick (`<day>:<pick>`) or scout, when that event was made;
  * - the drama's next scene said aloud (`lib/scene-voice`), once it is kept,
- *   asked for or not (HF2, #2177): `scene`, `next-scene` (an ask names it
- *   by its id), when it was kept;
+ *   asked for or not, set aside or not (HF2, #2177; MIC5): `scene`,
+ *   `next-scene` (an ask names it by its id), when it was kept;
  * - a game bite (`lib/game-bites`), once Undo and the question of what it
  *   was about are closed: `game`, the game's ESPN id, when it was kept, and
  *   every field it keeps;
@@ -66,7 +66,7 @@
  *   the export lets nothing go), topik's `generate-lesson/index.test.tsx`
  *   ("LG1": an ask removes no scene note), `lib/scene-voice`'s
  *   `runtime.test.ts` ("LG1": `letGo` removes the notes home holds that an
- *   ask home holds carried, and no other),
+ *   ask home holds carried or that are out of the draft, and no other),
  *   soundbites' `project/__tests__/model.test.ts` ("LG1": a take kept by
  *   Drive stays on the phone; only `home` lets it go),
  *   `project/__tests__/home.test.ts` ("LG1": every choice, home holding the
@@ -115,7 +115,7 @@ import {
   reflectionAudio,
 } from "@/lib/reflection-voice"
 import type { KeptSceneNote } from "@/lib/scene-voice"
-import { phoneSceneVoice, sceneNotes } from "@/lib/scene-voice"
+import { phoneSceneVoice, sceneNotes, sceneNotesKept } from "@/lib/scene-voice"
 import { reflections } from "@/lib/session-reflection"
 import type { Reflection } from "@/lib/session-reflection/policy"
 import { onSoundbitesKept, soundbiteKeeping } from "@/lib/soundbite-keeping"
@@ -686,14 +686,15 @@ export function holdNotes(): void {
  * Hands each offline set what home holds, read back, so it may make room at
  * its cap with those and no others (HF5): the lens takes, LeetType takes and
  * Studio idea takes by their voice notes, with where each is kept (MIC3,
- * `voiceKept`), the stores of study notes (`holdNotes`), and the
- * grammar-lens record by each entry as it is now. Each reads `sent` once per
- * look.
+ * `voiceKept`), where each scene note is kept, the stores of study notes
+ * (`holdNotes`), and the grammar-lens record by each entry as it is now.
+ * Each reads `sent` once per look.
  */
 function holdOffline(): void {
   lensTakesDesk.keptWhere(voiceKept)
   leetypeTakesDesk.keptWhere(voiceKept)
   ideaTakesDesk.keptWhere(voiceKept)
+  sceneNotesKept(voiceKept)
   holdNotes()
   holdLensRecord()
 }

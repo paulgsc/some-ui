@@ -1,173 +1,222 @@
-import type { BlobShelf, Recording } from "@some-ui/voice-capture"
-import { ShelfFullError } from "@some-ui/voice-capture"
-import { describe, expect, it, vi } from "vitest"
+import type { TakeKept } from "@some-ui/voice-capture"
+import { microphoneOwner } from "@some-ui/voice-capture"
+import {
+  memoryShelf,
+  simulatedMicrophone,
+  simulatedPlayer,
+} from "@some-ui/voice-capture/testing"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { SCENE_NOTES_MAX } from "@/lib/scene-voice/budget"
-import type { KeptSceneNote, SceneVoicePorts } from "@/lib/scene-voice/runtime"
-import { createSceneVoice } from "@/lib/scene-voice/runtime"
+import type {
+  KeptSceneNote,
+  PhoneSceneVoice,
+  SceneVoicePorts,
+} from "@/lib/scene-voice/runtime"
+import { createSceneVoice, NEXT_SCENE } from "@/lib/scene-voice/runtime"
 
-function recording(durationMs: number): Recording {
+/** The draft's list in memory, as the phone's keeps it (`./index`). */
+function memoryNotes(
+  listed: Array<KeptSceneNote>,
+  stores = true
+): SceneVoicePorts["notes"] {
+  const write = (next: Array<KeptSceneNote>): boolean => {
+    if (!stores) return false
+    listed.splice(0, listed.length, ...next)
+    return true
+  }
   return {
-    level: () => 0,
-    finish: () =>
-      Promise.resolve({
-        blob: new Blob(["abc"]),
-        mimeType: "audio/webm",
-        durationMs,
-      }),
-    discard: vi.fn(),
+    read: () => [...listed],
+    add: (note, supersedes): boolean =>
+      write([
+        ...listed.map(
+          (other): KeptSceneNote =>
+            other.id === supersedes ? { ...other, standing: "earlier" } : other
+        ),
+        note,
+      ]),
+    remove: (ids): boolean =>
+      write(listed.filter(({ id }) => !ids.includes(id))),
+    prompted: (ids): boolean =>
+      write(
+        listed.map((note) =>
+          ids.includes(note.id) ? { ...note, prompted: true } : note
+        )
+      ),
+    setAside: (ids): boolean =>
+      write(
+        listed.map(
+          (note): KeptSceneNote =>
+            ids.includes(note.id) ? { ...note, standing: "set-aside" } : note
+        )
+      ),
   }
 }
 
-function ports(
-  overrides: Partial<SceneVoicePorts> = {},
-  listed: Array<KeptSceneNote> = []
-): SceneVoicePorts & { listed: Array<KeptSceneNote>; audio: BlobShelf } {
-  const audio: BlobShelf = {
-    put: vi.fn(() => Promise.resolve()),
-    get: () => Promise.resolve(null),
-    remove: vi.fn(() => Promise.resolve()),
-    ids: () => Promise.resolve([]),
-  }
-  let now = 0
+function phone(
+  listed: Array<KeptSceneNote> = [],
+  {
+    stores = true,
+    kept = (): TakeKept => ({ place: "phone" }),
+  }: { stores?: boolean; kept?: (id: string) => TakeKept } = {}
+): {
+  voice: PhoneSceneVoice
+  audio: ReturnType<typeof memoryShelf>
+  listed: Array<KeptSceneNote>
+} {
+  const mic = simulatedMicrophone({ now: Date.now })
+  const audio = memoryShelf()
   let next = 0
-  return {
-    listed,
-    startRecording: () => Promise.resolve(recording(4_000)),
+  const voice = createSceneVoice({
+    startRecording: mic.startRecording,
+    owner: microphoneOwner(),
+    player: simulatedPlayer(),
     audio,
-    notes: {
-      read: () => [...listed],
-      add: (note): boolean => {
-        listed.push(note)
-        return true
-      },
-      remove: (ids): boolean => {
-        listed.splice(
-          0,
-          listed.length,
-          ...listed.filter(({ id }) => !ids.includes(id))
-        )
-        return true
-      },
-      prompted: (ids): boolean => {
-        listed.splice(
-          0,
-          listed.length,
-          ...listed.map((note) =>
-            ids.includes(note.id) ? { ...note, prompted: true } : note
-          )
-        )
-        return true
-      },
-    },
-    saving: vi.fn(),
-    now: () => (now += 2_000),
+    notes: memoryNotes(listed, stores),
+    saving: () => undefined,
+    now: Date.now,
     newId: () => `n${(next += 1)}`,
-    ...overrides,
-  }
+    kept,
+  })
+  return { voice, audio, listed }
 }
 
-const settle = (): Promise<void> => new Promise((r) => setTimeout(r, 0))
-
-/** One take, start to kept. */
-async function talk(voice: ReturnType<typeof createSceneVoice>): Promise<void> {
-  voice.start()
-  await settle()
-  voice.stop()
-  await settle()
+const pass = async (ms = 0): Promise<void> => {
+  await vi.advanceTimersByTimeAsync(ms)
 }
+
+/** One take of `ms`, tapped on and off, as the scene's button does. */
+async function talk(
+  voice: ReturnType<typeof createSceneVoice>,
+  ms = 4_000,
+  supersedes: string | null = null
+): Promise<void> {
+  voice.pattern.tap(NEXT_SCENE, supersedes)
+  await pass(ms)
+  voice.pattern.tap(NEXT_SCENE)
+  await pass()
+}
+
+const ids = (voice: ReturnType<typeof createSceneVoice>): Array<string> =>
+  voice.getSnapshot().notes.map(({ id }) => id)
+
+const note = (
+  id: string,
+  extra: Partial<KeptSceneNote> = {}
+): KeptSceneNote => ({
+  id,
+  durationMs: 1_000,
+  mimeType: "audio/webm",
+  ...extra,
+})
+
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 describe("createSceneVoice", () => {
-  it("keeps each take as a note in the draft: its audio, then its entry", async () => {
-    const p = ports()
-    const voice = createSceneVoice(p)
+  it("keeps each take as a note in the draft: its audio, then its entry, with when", async () => {
+    const { voice, audio, listed } = phone()
     await talk(voice)
     await talk(voice)
-    expect(p.audio.put).toHaveBeenCalledTimes(2)
-    expect(voice.getSnapshot()).toMatchObject({
-      notes: [
-        { id: "n1", durationMs: 4_000 },
-        { id: "n2", durationMs: 4_000 },
-      ],
-      take: { kind: "idle" },
-      said: "Kept.",
-      full: false,
-    })
+    expect(await audio.ids()).toEqual(["n1", "n2"])
+    expect(ids(voice)).toEqual(["n1", "n2"])
+    expect(voice.getSnapshot()).toMatchObject({ taking: false, full: false })
+    expect(voice.pattern.getSnapshot().ended?.ending).toBe("kept")
+    // When it was kept, for home (LA13).
+    expect(listed[0]?.at).toMatch(/^\d{4}-\d\d-\d\dT/)
   })
 
-  it("lets notes go with their audio, and the last take's word with them", async () => {
-    const p = ports()
-    const voice = createSceneVoice(p)
+  it("sets a note aside, kept with its audio, and out of what an ask names (D3)", async () => {
+    const { voice, audio, listed } = phone()
     await talk(voice)
-    voice.remove(["n1"])
-    expect(p.audio.remove).toHaveBeenCalledWith(["n1"])
-    expect(voice.getSnapshot()).toMatchObject({ notes: [], said: null })
+    await talk(voice)
+    voice.pattern.letGo("n1", "phone")
+    expect(ids(voice)).toEqual(["n2"])
+    expect(listed.map(({ id, standing }) => [id, standing])).toEqual([
+      ["n1", "set-aside"],
+      ["n2", undefined],
+    ])
+    expect(await audio.ids()).toEqual(["n1", "n2"])
   })
 
-  it("lets go the notes home holds that an ask home holds carried, and no other (LG1)", async () => {
-    const p = ports()
-    const voice = createSceneVoice(p)
+  it("lets the whole scene go by setting every note in the draft aside, kept", async () => {
+    const { voice, audio, listed } = phone()
+    await talk(voice)
+    await talk(voice)
+    voice.letGoScene()
+    expect(ids(voice)).toEqual([])
+    expect(listed.map(({ standing }) => standing)).toEqual([
+      "set-aside",
+      "set-aside",
+    ])
+    expect(await audio.ids()).toEqual(["n1", "n2"])
+  })
+
+  it("keeps the note a Redo records again, out of the draft, beside the new one (D2)", async () => {
+    const { voice, listed } = phone()
+    await talk(voice)
+    await talk(voice, 4_000, "n1")
+    expect(ids(voice)).toEqual(["n2"])
+    expect(listed.map(({ id, standing }) => [id, standing])).toEqual([
+      ["n1", "earlier"],
+      ["n2", undefined],
+    ])
+  })
+
+  it("lets go from the phone only notes home holds that a held ask carried or that are out of the draft (LG1)", async () => {
+    const { voice, audio } = phone()
     await talk(voice)
     await talk(voice)
     await talk(voice)
+    await talk(voice)
+    voice.pattern.letGo("n4", "home")
     // Home holds a note as soon as it is kept: the draft keeps it until a
-    // prompt carried it (HF2).
+    // prompt carried it (HF2), or it is out of the draft.
     voice.letGo(new Set(["n1", "n2", "never-heard"]))
-    expect(p.audio.remove).not.toHaveBeenCalled()
+    expect(await audio.ids()).toEqual(["n1", "n2", "n3", "n4"])
     voice.prompted(["n2", "n3"])
-    voice.letGo(new Set(["n1", "n2", "never-heard"]))
-    expect(p.audio.remove).toHaveBeenCalledWith(["n2"])
-    expect(voice.getSnapshot().notes.map(({ id }) => id)).toEqual(["n1", "n3"])
+    voice.letGo(new Set(["n1", "n2", "n4", "never-heard"]))
+    await pass()
+    expect(await audio.ids()).toEqual(["n1", "n3"])
+    expect(ids(voice)).toEqual(["n1", "n3"])
   })
 
-  it("keeps when each note was kept, for home (LA13)", async () => {
-    const p = ports()
-    const voice = createSceneVoice(p)
+  it("says where each note is kept, from the voice lane (MIC3)", async () => {
+    const { voice } = phone([], {
+      kept: (id) =>
+        id === "n1" ? { place: "home", since: null } : { place: "going" },
+    })
     await talk(voice)
-    expect(p.listed[0]?.at).toMatch(/^1970-01-01T00:00:0\d\.\d{3}Z$/)
-  })
-
-  it("says the draft is full once the last note it holds is kept", async () => {
-    const kept = Array.from({ length: SCENE_NOTES_MAX - 1 }, (_, index) => ({
-      id: `kept-${index}`,
-      durationMs: 1_000,
-      mimeType: "audio/webm",
-    }))
-    const voice = createSceneVoice(ports({}, kept))
     await talk(voice)
-    expect(voice.getSnapshot().full).toBe(true)
-    expect(voice.getSnapshot().said).toContain("let one go")
+    expect(
+      voice.getSnapshot().takes.map(({ id, kept }) => [id, kept.place])
+    ).toEqual([
+      ["n1", "home"],
+      ["n2", "going"],
+    ])
   })
 
-  it("opens on the draft already kept, and starts no take once it is full", () => {
-    const full = Array.from({ length: SCENE_NOTES_MAX }, (_, index) => ({
-      id: `kept-${index}`,
-      durationMs: 1_000,
-      mimeType: "audio/webm",
-    }))
-    const startRecording = vi.fn(() => Promise.resolve(recording(4_000)))
-    const voice = createSceneVoice(ports({ startRecording }, full))
+  it("refuses a take once the phone keeps as many notes as it can, those set aside counted until home holds them", async () => {
+    const full = Array.from({ length: SCENE_NOTES_MAX }, (_, index) =>
+      note(`kept-${index}`, index === 0 ? {} : { standing: "set-aside" })
+    )
+    const { voice, listed } = phone(full)
     expect(voice.getSnapshot()).toMatchObject({ full: true })
-    expect(voice.getSnapshot().said).toContain("let one go")
-    voice.start()
-    expect(startRecording).not.toHaveBeenCalled()
-  })
-
-  it("says so when the shelf is full, and lists nothing it could not keep", async () => {
-    const p = ports()
-    p.audio.put = vi.fn(() => Promise.reject(new ShelfFullError()))
-    const voice = createSceneVoice(p)
+    expect(ids(voice)).toEqual(["kept-0"])
     await talk(voice)
-    expect(p.listed).toEqual([])
-    expect(voice.getSnapshot().said).toMatch(/no room/)
+    expect(voice.pattern.getSnapshot().ended?.ending).toBe("full")
+    expect(listed).toHaveLength(SCENE_NOTES_MAX)
   })
 
   it("takes the audio back out when its entry cannot be listed", async () => {
-    const p = ports()
-    p.notes.add = (): boolean => false
-    const voice = createSceneVoice(p)
+    const { voice, audio } = phone([], { stores: false })
     await talk(voice)
-    expect(p.audio.remove).toHaveBeenCalledWith(["n1"])
-    expect(voice.getSnapshot().said).toMatch(/Couldn't keep/)
+    expect(await audio.ids()).toEqual([])
+    expect(voice.pattern.getSnapshot().ended?.ending).toBe("failed")
   })
 })

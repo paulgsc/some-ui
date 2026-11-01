@@ -104,6 +104,7 @@ vi.mock("@/lib/scene-voice", () => ({
     audio: (id: string): Promise<Blob | null> =>
       Promise.resolve(id === "s1" ? new Blob(["s"]) : null),
   },
+  sceneNotesKept: (): void => undefined,
 }))
 vi.mock("@/lib/voice-home", () => ({
   phoneVoiceHome: (): VoiceHome | null => fakes.home,

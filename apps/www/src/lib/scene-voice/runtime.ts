@@ -1,13 +1,22 @@
 /**
- * Topik's `SceneVoice` port: `@some-ui/voice-capture`'s voice note, each
- * kept take a note in the draft, its audio on a shelf and its entry in a
- * list, with when it was kept (`at`), which home is told it by (LA13), and
- * whether an ask home holds carried it (`prompted`, LA18).
+ * Topik's `SceneVoice` port on the take pattern (`@some-ui/voice-capture`'s
+ * `takePattern`): each kept take a note of the draft, its audio on a shelf
+ * and its entry in a list, with when it was kept (`at`), which home is told
+ * it by (LA13), whether an ask home holds carried it (`prompted`, LA18), and
+ * where it stands in the draft (`standing`).
  *
- * A note goes home once it is kept (LA13), so home can hold one long before
- * its scene is asked for: the draft lets a note go on home's word only once
- * home holds the ask that named it too (`letGo`), or when the person lets it
- * go.
+ * - **Up to `SCENE_NOTES_MAX` notes in the draft**, beside each other, each
+ *   played on its own. Redo makes the new note the draft's and keeps the one
+ *   it supersedes, out of the draft (D2); Let go sets a note aside, kept
+ *   (D3), and the scene's Let go sets every note in the draft aside at once.
+ *   An ask names only the draft's notes.
+ * - **Nothing the person does removes a note** (#2265, MIC5). A note leaves
+ *   this phone only on home's word (LG1, `letGo`): once home holds it and
+ *   holds the ask that carried it, or once home holds it and it is out of the
+ *   draft. Until then it counts toward the phone's `SCENE_NOTES_MAX`, and a
+ *   take past them is refused (`full`).
+ * - **Where each note is kept**, and since when, is read from the voice
+ *   lane (`kept`, MIC3).
  */
 import {
   SOUNDBITE_MAX_MS,
@@ -16,38 +25,52 @@ import {
 import type { SceneNote, SceneVoice, SceneVoiceSnapshot } from "@some-ui/topik"
 import type {
   BlobShelf,
+  MicOwner,
+  PatternTake,
+  Player,
   StartRecording,
-  VoiceNoteState,
+  TakeDeadlines,
+  TakeKept,
+  TakePatternOptions,
 } from "@some-ui/voice-capture"
-import {
-  shelveTake,
-  takeView,
-  voiceNoteRuntime,
-  voiceNoteSaid,
-} from "@some-ui/voice-capture"
+import { ONE_TAKE, shelveTake, takePattern } from "@some-ui/voice-capture"
 
 import { SCENE_NOTES_MAX } from "./budget"
 
 /**
  * A note as the phone keeps it: topik's, when it was kept (ISO 8601; a note
- * kept before the phone noted that has none), and whether an ask home holds
- * carried it.
+ * kept before the phone noted that has none), whether an ask home holds
+ * carried it, and, once out of the draft, why: a Redo superseded it (D2) or
+ * it was set aside (D3).
  */
 export type KeptSceneNote = SceneNote & {
   readonly at?: string
   readonly prompted?: boolean
+  readonly standing?: "earlier" | "set-aside"
 }
 
-/** Topik's port, and what the drain tells it. */
+/** Topik's port, and what the voice lane and the drain tell it. */
 export type PhoneSceneVoice = SceneVoice & {
   /** An ask home holds carried these notes (`lib/home-link/going`, LA18). */
   prompted: (ids: ReadonlyArray<string>) => void
+  /** Where notes are kept has changed: each row says it again. */
+  recount: () => void
+  /**
+   * Lets these notes go, with their audio: the sweep's, for a note whose
+   * audio never landed.
+   */
+  remove: (ids: ReadonlyArray<string>) => void
 }
 
-/** A note is a take of a soundbite's length. */
-const LIMITS = { minMs: SOUNDBITE_MIN_MS, maxMs: SOUNDBITE_MAX_MS }
+/** What every note of the draft answers: the ref home is told it by. */
+export const NEXT_SCENE = "next-scene"
 
-const FULL = `A scene holds ${SCENE_NOTES_MAX} voice notes: let one go to say more.`
+/** The scene's choice of the pattern's options. */
+export const SCENE_OPTIONS: TakePatternOptions = {
+  ...ONE_TAKE,
+  takes: { per: "many", max: SCENE_NOTES_MAX },
+  limits: { minMs: SOUNDBITE_MIN_MS, maxMs: SOUNDBITE_MAX_MS },
+}
 
 export type SceneVoicePorts = {
   startRecording: StartRecording
@@ -55,67 +78,131 @@ export type SceneVoicePorts = {
   /** The draft's notes, oldest first. */
   notes: {
     read: () => Array<KeptSceneNote>
-    /** Says whether the device stored it. */
-    add: (note: KeptSceneNote) => boolean
+    /**
+     * Lists `note`, and marks the note it supersedes out of the draft, in
+     * one write. Says whether the device stored it.
+     */
+    add: (note: KeptSceneNote, supersedes: string | null) => boolean
     remove: (ids: ReadonlyArray<string>) => boolean
     /** Marks these notes carried by an ask home holds; says whether it stored. */
     prompted: (ids: ReadonlyArray<string>) => boolean
+    /** Marks these notes set aside, keeping them; says whether it stored. */
+    setAside: (ids: ReadonlyArray<string>) => boolean
   }
   /** A note whose audio is being written, and when done. */
   saving: (id: string, inFlight: boolean) => void
   now: () => number
   newId: () => string
+  /** Where this note is kept, from what home told this phone (`lib/home-link`). */
+  kept: (id: string) => TakeKept
+  /** The kit's `audioPlayer` unless a test gives its own. */
+  player?: Player | undefined
+  /** The phone's one microphone unless a test gives its own. */
+  owner?: MicOwner | undefined
+  /** The microphone's deadlines unless a test gives its own. */
+  deadlines?: TakeDeadlines | undefined
 }
 
-function snapshotOf(
-  state: VoiceNoteState,
-  notes: ReadonlyArray<SceneNote>,
-  quiet: boolean
-): SceneVoiceSnapshot {
-  const full = notes.length >= SCENE_NOTES_MAX
-  const said =
-    state.kind !== "blocked" && full ? FULL : voiceNoteSaid(state, quiet)
-  return { notes, take: takeView(state), said, full }
-}
+const inDraft = (note: KeptSceneNote): boolean => note.standing === undefined
 
 export function createSceneVoice(ports: SceneVoicePorts): PhoneSceneVoice {
-  // Letting notes go hushes the last take's outcome, which was about them.
-  let quiet = false
   const listeners = new Set<() => void>()
-  const note = voiceNoteRuntime(
+
+  const listed = (
+    notes: ReadonlyArray<KeptSceneNote>
+  ): ReadonlyArray<PatternTake> =>
+    notes.map(
+      (note): PatternTake => ({
+        id: note.id,
+        answers: NEXT_SCENE,
+        durationMs: note.durationMs,
+        // A note kept before the phone noted when sorts as the oldest.
+        recordedAt: note.at ?? new Date(0).toISOString(),
+        standing: note.standing ?? "current",
+        kept: ports.kept(note.id),
+      })
+    )
+
+  const full = (): boolean => ports.notes.read().length >= SCENE_NOTES_MAX
+
+  const pattern = takePattern(
     {
       startRecording: ports.startRecording,
       now: ports.now,
+      owner: ports.owner,
+      deadlines: ports.deadlines,
+      player: ports.player,
       // `sweepSceneVoice` clears what a failed listing leaves.
-      save: (take, _atMs, saved) => {
+      keep: (take, _answers, supersedes, done) => {
+        if (full()) {
+          done({ outcome: "full" })
+          return
+        }
         const id = ports.newId()
-        const entry = {
+        const entry: KeptSceneNote = {
           id,
           durationMs: Math.round(take.durationMs),
           mimeType: take.mimeType,
           at: new Date(ports.now()).toISOString(),
         }
-        shelveTake(ports, id, take, () => ports.notes.add(entry), saved)
+        shelveTake(
+          ports,
+          id,
+          take,
+          () => {
+            const kept = ports.notes.add(entry, supersedes)
+            if (kept) publish()
+            return kept
+          },
+          (outcome) =>
+            done(
+              outcome === "kept"
+                ? { outcome, id }
+                : { outcome: outcome === "full" ? "full" : "failed" }
+            )
+        )
       },
+      setAside: (id) => {
+        if (ports.notes.setAside([id])) publish()
+      },
+      audio: (id) => ports.audio.get(id),
     },
-    LIMITS
+    SCENE_OPTIONS
   )
-  let snapshot = snapshotOf(note.getSnapshot(), ports.notes.read(), quiet)
+
+  const snapshotOf = (): SceneVoiceSnapshot => {
+    const notes = ports.notes.read()
+    return {
+      notes: notes
+        .filter(inDraft)
+        .map(({ id, durationMs, mimeType }) => ({ id, durationMs, mimeType })),
+      takes: listed(notes),
+      taking: pattern.getSnapshot().take.kind !== "idle",
+      full: full(),
+    }
+  }
+  let snapshot = snapshotOf()
   const publish = (): void => {
-    snapshot = snapshotOf(note.getSnapshot(), ports.notes.read(), quiet)
+    snapshot = snapshotOf()
     for (const listener of listeners) listener()
   }
-  note.subscribe(publish)
+  pattern.subscribe(() => {
+    if (snapshot.taking !== (pattern.getSnapshot().take.kind !== "idle")) {
+      publish()
+    }
+  })
 
   const remove = (ids: ReadonlyArray<string>): void => {
-    if (!ports.notes.remove(ids)) return
+    if (ids.length === 0 || !ports.notes.remove(ids)) return
     // Ignored: audio no note names is cleared by the next sweep
     // (`sweepSceneVoice`).
     ports.audio.remove(ids).catch(() => undefined)
-    quiet = true
     publish()
   }
+
   return {
+    pattern,
+    answers: NEXT_SCENE,
     getSnapshot: () => snapshot,
     subscribe(listener): () => void {
       listeners.add(listener)
@@ -123,23 +210,27 @@ export function createSceneVoice(ports: SceneVoicePorts): PhoneSceneVoice {
         listeners.delete(listener)
       }
     },
-    start: (): void => {
-      if (snapshot.full) return
-      quiet = false
-      note.start(null)
+    letGoScene(): void {
+      for (const note of ports.notes.read().filter(inDraft)) {
+        pattern.letGo(note.id, ports.kept(note.id).place)
+      }
     },
-    stop: note.stop,
-    leave: note.leave,
-    remove,
+    letGo(homeHolds): void {
+      remove(
+        ports.notes
+          .read()
+          .filter(
+            (note) =>
+              homeHolds.has(note.id) &&
+              (note.prompted === true || !inDraft(note))
+          )
+          .map(({ id }) => id)
+      )
+    },
     prompted(ids): void {
       if (ids.length > 0 && ports.notes.prompted(ids)) publish()
     },
-    letGo(homeHolds): void {
-      const ids = ports.notes
-        .read()
-        .filter(({ id, prompted }) => prompted === true && homeHolds.has(id))
-        .map(({ id }) => id)
-      if (ids.length > 0) remove(ids)
-    },
+    recount: publish,
+    remove,
   }
 }
