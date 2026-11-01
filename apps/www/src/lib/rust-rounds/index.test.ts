@@ -77,6 +77,7 @@ describe("noteView", () => {
         },
         now: () => 0,
         newId: () => "n1",
+        held: () => false,
       },
       { max: Number.POSITIVE_INFINITY, maxMs: 60_000 }
     )
