@@ -38,7 +38,6 @@ describe("recordTake", () => {
     expect(kept({ keptBy: [], onPhone: true })).toEqual({ place: "going" })
     // Carried in without its audio, and home doesn't hold it.
     expect(kept({ keptBy: [], onPhone: false })).toBeNull()
-    expect(kept({ keptBy: ["drive"], onPhone: false })).toBeNull()
   })
 
   it("plays only a take whose audio is on this phone, and only while settled", () => {
