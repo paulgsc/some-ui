@@ -272,7 +272,7 @@ describe("a new idea as one bundle (ST26)", () => {
       expect(run([tap({ type: "go", index: 1 })], state).state.index).toBe(1)
     })
 
-    it("holds still while a take is under way, and keeps it when the screen goes", () => {
+    it("holds still while a take is under way, and keeps it when the screen goes or the page hides", () => {
       const busy = run([{ type: "busy", busy: true }], onQuestions()).state
       for (const intent of [
         { type: "swipe", to: "next" },
@@ -283,6 +283,10 @@ describe("a new idea as one bundle (ST26)", () => {
         expect(run([tap(intent)], busy).state).toBe(busy)
       }
       expect(run([{ type: "left" }], busy).effects).toEqual([{ type: "leave" }])
+      // The page hiding (the app sent to the background) finishes it too.
+      expect(run([{ type: "hidden" }], busy).effects).toEqual([
+        { type: "leave" },
+      ])
     })
 
     it("tells a swipe from a tap by how far the finger went", () => {

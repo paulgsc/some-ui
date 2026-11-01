@@ -89,6 +89,7 @@ export function phoneBundlePorts(): Omit<BundlePorts, "takes"> {
     home: NO_HOME,
     now: () => Date.now(),
     newId: () => crypto.randomUUID(),
+    onVisibility: onPageVisibility,
   }
 }
 

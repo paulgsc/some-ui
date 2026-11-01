@@ -39,6 +39,8 @@ type Phone = {
   readonly drafts: DraftStore
   readonly ideas: IdeaStore
   readonly release: ReturnType<typeof vi.fn>
+  /** Hides the page, as the app sent to the background does, or shows it. */
+  readonly page: (hidden: boolean) => void
 }
 
 let ids = 0
@@ -54,6 +56,7 @@ function phone(
   const ideas = keptIdeaStore(() => storage)
   const takes = bundleTakesOf(simulated)
   const release = vi.fn(takes.release)
+  const watching = new Set<(hidden: boolean) => void>()
   const bundle = createIdeaBundle({
     takes: { ...takes, release },
     drafts,
@@ -62,9 +65,19 @@ function phone(
     home: { reach: () => "near", subscribe: () => (): void => undefined },
     now: Date.now,
     newId: (): string => `idea-${(ids += 1)}`,
+    onVisibility: (listener) => {
+      watching.add(listener)
+      listener(false)
+      return (): void => {
+        watching.delete(listener)
+      }
+    },
   })
   bundle.attach()
-  return { bundle, simulated, drafts, ideas, release }
+  const page = (hidden: boolean): void => {
+    for (const listener of watching) listener(hidden)
+  }
+  return { bundle, simulated, drafts, ideas, release, page }
 }
 
 /** Says the answer on the card at `question`: a tap, talk, a tap. */
@@ -206,6 +219,22 @@ describe("a new idea, end to end on the simulated microphone (ST26)", () => {
     expect(on.ideas.list()?.[0]?.answers.map((each) => each.question)).toEqual([
       "what",
     ])
+  })
+
+  it("finishes and keeps a take under way when the app goes to the background, and records again once back", async () => {
+    const on = phone()
+    titled(on)
+    on.bundle.dispatch({ type: "tap", question: "what" })
+    await pass(2_000)
+    expect(on.bundle.getSnapshot().busy).toBe(true)
+    on.page(true)
+    await pass(100)
+    expect(on.simulated.pattern.getSnapshot().take.kind).toBe("idle")
+    expect(on.bundle.getSnapshot().busy).toBe(false)
+    expect(on.simulated.store.getSnapshot()).toHaveLength(1)
+    on.page(false)
+    await say(on, "spark")
+    expect(on.simulated.store.getSnapshot()).toHaveLength(2)
   })
 
   it("starts no take when the draft it would answer couldn't be kept", async () => {

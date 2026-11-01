@@ -67,6 +67,8 @@ export type BundlePorts = {
   readonly now: () => number
   /** A new idea's id: letters, digits and dashes. */
   readonly newId: () => string
+  /** As `SoundbitesPorts.onVisibility`: now, then on each change. */
+  readonly onVisibility: (listener: (hidden: boolean) => void) => () => void
 }
 
 export type BundleRuntime = {
@@ -203,6 +205,10 @@ export function createIdeaBundle(ports: BundlePorts): BundleRuntime {
     attach(): () => void {
       seen = pattern.getSnapshot()
       const stops = [
+        // Hidden, a take under way finishes and is kept, as on leaving.
+        ports.onVisibility((hidden) => {
+          if (hidden) send({ type: "hidden" })
+        }),
         pattern.subscribe(watchPattern),
         ports.takes.takes.subscribe(() =>
           send({ type: "takes", takes: ports.takes.takes.getSnapshot() })

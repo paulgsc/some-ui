@@ -31,7 +31,8 @@
  *   or that failed) or the phone had no room for one, and a typed answer
  *   offers "Say it instead": a take kept for it takes the typed words' place.
  * - **Nothing moves while a take is under way**: a swipe, a dot, Look it
- *   over and Back wait until it ends, and leaving the screen keeps it.
+ *   over and Back wait until it ends, and leaving the screen, or the page
+ *   hiding (the app sent to the background), finishes and keeps it.
  * - **One play at a time.** Play all plays each answer's take in order,
  *   one after the other, and any other play or tap stops it.
  * - **Send needs a title and the first answer**; the other questions can
@@ -154,6 +155,8 @@ export type BundleEvent =
   | ({ readonly type: "another"; readonly id: string } & Stamp)
   | ({ readonly type: "entered" } & Stamp)
   | { readonly type: "left" }
+  /** The page hid: the app went to the background, or the screen locked. */
+  | { readonly type: "hidden" }
   | {
       readonly type: "opened"
       /** The draft kept, null for none, undefined when unreadable. */
@@ -219,7 +222,10 @@ export type BundleEffect =
     }
   /** Lets the takes ideas already kept name, still waiting, go home. */
   | { readonly type: "settle"; readonly takes: ReadonlyArray<string> }
-  /** The screen went: a take under way is kept, and nothing plays. */
+  /**
+   * The screen went, or the page hid: a take under way is finished and
+   * kept, and nothing plays.
+   */
   | { readonly type: "leave" }
 
 export type BundleStep = {
@@ -781,7 +787,8 @@ export function stepBundle(state: BundleState, event: BundleEvent): BundleStep {
         effects: [{ type: "open" }],
       }
     }
-    case "left": {
+    case "left":
+    case "hidden": {
       return {
         state: { ...state, playAll: null },
         effects: [{ type: "leave" }],
