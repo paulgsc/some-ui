@@ -44,7 +44,7 @@ export const primitiveOwners = {
  * screen that imports it runs a take beside the pattern's. `ports` maps a
  * factory a screen does wire to the one slot it is handed to.
  */
-export const microphoneOwner = {
+const microphoneOwner = {
   owner: "packages/voice-capture/",
   entry: "@some-ui/voice-capture",
   testing: "@some-ui/voice-capture/testing",
