@@ -1,8 +1,8 @@
 /**
  * The Jobs wing's runtime: it owns the async work around `step` (reading a
- * picked digest, a voice note's take, the push service's token) and decides
- * which late result is stale. Screens read `getSnapshot` and call the
- * methods below.
+ * picked digest, the push service's token) and decides which late result is
+ * stale, and its forms' voice notes on the take pattern (`voice`). Screens
+ * read `getSnapshot` and call the methods below.
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/core-utils"
@@ -14,15 +14,13 @@ import {
 } from "@some-ui/soundbites/contract"
 import type {
   BlobShelf,
+  MicOwner,
+  Player,
   StartRecording,
-  TakeView,
+  TakePattern,
+  TakePatternOptions,
 } from "@some-ui/voice-capture"
-import {
-  shelveTake,
-  takeView,
-  voiceNoteRuntime,
-  voiceNoteSaid,
-} from "@some-ui/voice-capture"
+import { ONE_TAKE, shelveTake, takePattern } from "@some-ui/voice-capture"
 
 import type { FormDraft, FormDrafts } from "./drafts"
 import { draftRecordedBy, readDrafts, withDraft, writeDrafts } from "./drafts"
@@ -57,10 +55,6 @@ export type JobsSnapshot = {
   problem: string | null
   /** What the pick forms hold that isn't kept yet (`./drafts`). */
   drafts: FormDrafts
-  /** The voice note under way, and whose. */
-  take: TakeView
-  takeOwner: string | null
-  said: string | null
   /** Whether this phone can be told when a morning run is in (`./notice`). */
   notice: NoticeView
 }
@@ -101,6 +95,10 @@ export type JobsPorts = {
   newId: () => string
   /** The push service, where this build has one. */
   notice?: NoticePort
+  /** The kit's `audioPlayer` unless a test gives its own. */
+  player?: Player | undefined
+  /** The phone's one microphone unless a test gives its own. */
+  owner?: MicOwner | undefined
 }
 
 export type JobsRuntime = {
@@ -130,11 +128,13 @@ export type JobsRuntime = {
    * outcome has that id, or it wasn't kept.
    */
   withdrawOutcome: (outcomeId: string) => boolean
-  startVoice: (owner: string) => void
-  stopVoice: () => void
-  leaveVoice: () => void
-  /** Lets a draft's voice notes go; a note the record names stays. */
-  dropVoice: (ids: ReadonlyArray<string>) => void
+  /**
+   * The forms' voice notes on the take pattern: each take answers its form's
+   * owner (`pickOwner`, `SCOUT_OWNER`). Redo keeps the note it records
+   * again, out of the draft (D2); Let go sets a draft's note aside, kept
+   * (D3); a note the record names stays as it is.
+   */
+  voice: TakePattern
   /** Lets each voice note in `homeHolds` leave the phone (LG1). */
   letGo: (homeHolds: ReadonlySet<string>) => void
   /** Audio no note lists (the app closed mid-save). Best effort. */
@@ -148,8 +148,18 @@ export type JobsRuntime = {
   keeping: JobsRecordPort
 }
 
-/** A note is a take of a soundbite's length. */
-const LIMITS = { minMs: SOUNDBITE_MIN_MS, maxMs: SOUNDBITE_MAX_MS }
+/** The voice notes the phone keeps until home holds them: a minute each. */
+export const JOB_VOICE_NOTES = 40
+
+/**
+ * The forms' choice of the pattern's options: many notes a form, beside
+ * each other, each played; a note is a take of a soundbite's length.
+ */
+const JOB_VOICE_OPTIONS: TakePatternOptions = {
+  ...ONE_TAKE,
+  takes: { per: "many", max: JOB_VOICE_NOTES, full: "refuse" },
+  limits: { minMs: SOUNDBITE_MIN_MS, maxMs: SOUNDBITE_MAX_MS },
+}
 
 const IDLE: Importing = { kind: "idle" }
 
@@ -164,7 +174,6 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
   let problem: string | null = null
   const keptDrafts = readDrafts(ports.storage)
   let drafts = keptDrafts.drafts
-  let takeOwner: string | null = null
   let picks = 0
   const listeners = new Set<() => void>()
   let notice: NoticeView = {
@@ -175,51 +184,56 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
   /** The latest ask: an earlier one's answer is stale. */
   let asks = 0
 
-  const note = voiceNoteRuntime(
+  const voice = takePattern(
     {
       startRecording: ports.startRecording,
       now: () => ports.now().getTime(),
-      save: (take, _atMs, saved) => {
-        const owner = takeOwner ?? "draft"
+      owner: ports.owner,
+      player: ports.player,
+      // `sweep` clears what a failed listing leaves.
+      keep: (take, owner, supersedes, done) => {
         const id = ports.newId()
         const entry = {
           id,
           mimeType: take.mimeType,
           durationMs: Math.round(take.durationMs),
           owner,
+          at: ports.now().toISOString(),
         }
         shelveTake(
           ports,
           id,
           take,
-          () => commit({ type: "voice-kept", note: entry }),
-          saved
+          () => commit({ type: "voice-kept", note: entry, supersedes }),
+          (outcome) =>
+            done(
+              outcome === "kept"
+                ? { outcome, id }
+                : { outcome: outcome === "full" ? "full" : "failed" }
+            )
         )
       },
+      setAside: (id, done) => {
+        done(commit({ type: "voice-set-aside", id }))
+      },
+      audio: (id) => ports.audio.get(id),
     },
-    LIMITS
+    JOB_VOICE_OPTIONS
   )
 
-  const snapshotNow = (): JobsSnapshot => {
-    const voice = note.getSnapshot()
-    return {
-      state,
-      importing,
-      readOnly,
-      problem,
-      drafts,
-      take: takeView(voice),
-      takeOwner: voice.kind === "idle" ? null : takeOwner,
-      said: voiceNoteSaid(voice, false),
-      notice,
-    }
-  }
+  const snapshotNow = (): JobsSnapshot => ({
+    state,
+    importing,
+    readOnly,
+    problem,
+    drafts,
+    notice,
+  })
   let snapshot = snapshotNow()
   const publish = (): void => {
     snapshot = snapshotNow()
     for (const listener of listeners) listener()
   }
-  note.subscribe(publish)
 
   /**
    * Applies `action`, keeping the result first; false if it changed nothing.
@@ -466,21 +480,7 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
         event: { type: "outcome-withdrawn", outcomeId },
         stamp: stamp(),
       }),
-    startVoice(owner): void {
-      if (note.getSnapshot().kind !== "idle") return
-      takeOwner = owner
-      note.start(null)
-    },
-    stopVoice: note.stop,
-    leaveVoice: note.leave,
-    dropVoice(ids): void {
-      const before = state.voice
-      if (!commit({ type: "voice-dropped", ids })) return
-      const gone = before.filter((n) => !state.voice.includes(n))
-      // Ignored: audio that fails to go is named by no note, and `sweep`
-      // clears it.
-      ports.audio.remove(gone.map((n) => n.id)).catch(() => undefined)
-    },
+    voice,
     letGo(homeHolds): void {
       const ids = state.voice.map((n) => n.id).filter((id) => homeHolds.has(id))
       // An entry the phone couldn't drop keeps its audio, so the voice lane

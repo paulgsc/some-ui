@@ -66,4 +66,43 @@ describe("ReflectPanel", () => {
       screen.getByRole("button", { name: "Let go of the one at 4:12" })
     ).toBeTruthy()
   })
+
+  it("asks before letting a written one go, and keeps it on Keep it", () => {
+    vi.stubEnv("VITE_DEVICE_BACKEND", "true")
+    reflections.keep({
+      id: "typed",
+      sessionId: "s1",
+      createdAt: "2026-10-10T09:00:00.000Z",
+      atMs: 252_000,
+      body: { kind: "text", text: "particles" },
+    })
+    render(withQueryClient(<ReflectPanel sessionId="s1" atMs={300_000} />))
+
+    const letGo = screen.getByRole("button", {
+      name: "Let go of the one at 4:12",
+    })
+    fireEvent.click(letGo)
+    fireEvent.click(screen.getByRole("button", { name: "Keep it" }))
+    expect(reflections.getSnapshot().kept).toHaveLength(1)
+    fireEvent.click(letGo)
+    fireEvent.click(screen.getByRole("button", { name: "Let it go" }))
+    expect(reflections.getSnapshot().kept).toHaveLength(0)
+  })
+
+  it("lists only the written ones: a spoken one is the take pattern's row", () => {
+    reflections.keep({
+      id: "said",
+      sessionId: "s1",
+      createdAt: "2026-10-10T09:00:00.000Z",
+      atMs: 1_000,
+      body: {
+        kind: "voice",
+        durationMs: 4_000,
+        mimeType: "audio/webm",
+        bytes: 3,
+      },
+    })
+    render(withQueryClient(<ReflectPanel sessionId="s1" atMs={300_000} />))
+    expect(screen.queryByText(/^Voice ·/)).toBeNull()
+  })
 })

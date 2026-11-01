@@ -127,6 +127,9 @@ const StoredSchema = z.object({
       mimeType: z.string(),
       durationMs: z.number(),
       owner: z.string(),
+      at: z.string().optional(),
+      standing: z.enum(["earlier", "set-aside"]).optional(),
+      filed: z.object({ ref: z.string(), at: z.string() }).optional(),
     })
   ),
   // A record kept by the first Jobs build has no `home`: nothing there yet.

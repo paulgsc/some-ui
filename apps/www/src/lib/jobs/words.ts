@@ -287,6 +287,9 @@ export const whatHappened = "What happened"
 
 export const sayItAloud = "Or say it, up to a minute"
 
+/** Under a form's voice notes: where they go. */
+export const voiceGoesHome = "Each goes home with what you add it to."
+
 export const endedAs = (result: DebriefResult): string =>
   `Ended: ${endingLabels[result]}. Add replies and interviews under Record as they come.`
 

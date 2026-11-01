@@ -4,6 +4,7 @@ import type {
   TakeItemView,
   TakePlace,
   TakeRowView,
+  TakeWords,
 } from "@some-ui/voice-capture"
 import { TAKE_WORDS, takeSaid } from "@some-ui/voice-capture"
 
@@ -27,6 +28,12 @@ export type TakeItemProps = {
   label?: string
   /** The screen's words about one take, under its length. */
   describe?: (take: PatternTake) => ReactNode
+  /**
+   * The line beside the button, where a screen's store says more than the
+   * pattern's table can (its way to make room when full): `TAKE_WORDS`,
+   * spread, unless given.
+   */
+  words?: TakeWords
   /**
    * The screen's own action on one of the item's current takes: the row's
    * named `extra` slot (`TakeRow`).
@@ -52,11 +59,11 @@ export const TakeItem = ({
   onLetGo,
   label,
   describe,
+  words = TAKE_WORDS,
   extra,
   size,
   className,
 }: TakeItemProps): JSX.Element => {
-  const words = TAKE_WORDS
   const { said } = view
   return (
     <section

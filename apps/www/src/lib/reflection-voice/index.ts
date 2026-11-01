@@ -1,17 +1,21 @@
 /**
- * Voice reflections on the phone: a take (`./runtime`) on the phone's
- * microphone, its audio on a shelf of its own, and letting reflections go
- * with their audio. Phone-only (`build.paths.ts`).
+ * Voice reflections on the phone: a session's takes on the take pattern
+ * (`./runtime`) on the phone's microphone, their audio on a shelf of its own,
+ * where each is kept (`reflectionNotesKept`), and letting reflections go with
+ * their audio. Phone-only (`build.paths.ts`).
  */
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import { SOUNDBITE_BITS_PER_SECOND } from "@some-ui/soundbites/contract"
-import type { VoiceNoteRuntime } from "@some-ui/voice-capture"
-import { micRecorder, savingShelf } from "@some-ui/voice-capture"
+import type { StartRecording, TakeKept } from "@some-ui/voice-capture"
+import { micRecorder, ON_PHONE, savingShelf } from "@some-ui/voice-capture"
 
 import { reflections } from "@/lib/session-reflection"
 
 import { REFLECTION_AUDIO_MAX_BYTES } from "./budget"
+import type { ReflectionTakes } from "./runtime"
 import { createVoiceNote } from "./runtime"
+
+export type { ReflectionTakes } from "./runtime"
 
 const shelf = savingShelf({
   dbName: "some-ui.reflection-audio",
@@ -41,16 +45,50 @@ function saving(id: string, writing: boolean): void {
 
 export const reflectionAudio = shelf.shelf
 
-export function phoneVoiceNote(sessionId: string): VoiceNoteRuntime {
+// On this phone until the voice lane says otherwise.
+let where: (id: string) => TakeKept = () => ON_PHONE
+const keptListeners = new Set<() => void>()
+
+/**
+ * Where each spoken reflection is kept, from the voice lane
+ * (`lib/home-link/voice-copy`, MIC3): what each row says.
+ */
+export function reflectionNotesKept(next: (id: string) => TakeKept): void {
+  where = next
+  for (const listener of keptListeners) listener()
+}
+
+/**
+ * One screen's takes of session `sessionId`: made once per mount, on the
+ * phone's microphone unless a test gives its own.
+ */
+export function phoneVoiceNote(
+  sessionId: string,
+  startRecording: StartRecording = micRecorder({
+    bitsPerSecond: SOUNDBITE_BITS_PER_SECOND,
+  })
+): ReflectionTakes {
   return createVoiceNote(
     {
-      startRecording: micRecorder({ bitsPerSecond: SOUNDBITE_BITS_PER_SECOND }),
+      startRecording,
       audio: reflectionAudio(),
+      read: () => reflections.getSnapshot().kept,
+      subscribe: (listener) => {
+        keptListeners.add(listener)
+        const stop = reflections.subscribe(listener)
+        return (): void => {
+          keptListeners.delete(listener)
+          stop()
+        }
+      },
       keep: (reflection) => reflections.keep(reflection),
+      supersede: (id) => reflections.standAside(id, "earlier"),
+      setAside: (id) => reflections.standAside(id, "set-aside"),
       letGo: (ids) => reflections.letGo(ids),
       saving,
       now: () => Date.now(),
       newId: () => crypto.randomUUID(),
+      kept: (id) => where(id),
     },
     sessionId
   )

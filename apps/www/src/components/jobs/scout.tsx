@@ -27,6 +27,7 @@ import {
   FILE_NAMES,
   postingTextHint,
   postingTextLabel,
+  sayWhyAloud,
 } from "@/lib/jobs/words"
 import { Gaps, Scores, sectionHeading } from "@/components/job-reading"
 
@@ -207,11 +208,7 @@ export const JobsScout = (): JSX.Element => {
           value={postingText}
           onChange={(e) => setPostingText(e.target.value)}
         />
-        <VoiceNotes
-          owner={SCOUT_OWNER}
-          notes={voice}
-          hint="Or say why, up to a minute"
-        />
+        <VoiceNotes owner={SCOUT_OWNER} hint={sayWhyAloud} />
         <Button type="button" disabled={!ready || busy} onClick={add}>
           Add to my scouts
         </Button>
