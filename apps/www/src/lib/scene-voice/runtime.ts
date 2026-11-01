@@ -255,3 +255,29 @@ export function createSceneVoice(ports: SceneVoicePorts): PhoneSceneVoice {
     remove,
   }
 }
+
+/**
+ * **SV1: the sweep lets go only a note whose audio never landed.**
+ * The list is read before the shelf's ids: a note is listed only once its
+ * audio is written (`shelveTake`), so every note listed then whose id the
+ * shelf lacks is silent, and one that lands while the ids are read is
+ * neither listed in that read nor counted silent. Audio is removed only when
+ * the list read after the ids names no note for it and it is not being
+ * written.
+ */
+export async function sweepNotes(ports: {
+  readonly notes: Pick<SceneVoicePorts["notes"], "read">
+  readonly audio: BlobShelf
+  readonly isSaving: (id: string) => boolean
+  /** Lets these notes go, through the runtime. */
+  readonly remove: (ids: ReadonlyArray<string>) => void
+}): Promise<void> {
+  const listed = ports.notes.read().map(({ id }) => id)
+  const stored = await ports.audio.ids()
+  const silent = listed.filter((id) => !stored.includes(id))
+  if (silent.length > 0) ports.remove(silent)
+  const named = ports.notes.read().map(({ id }) => id)
+  await ports.audio.remove(
+    stored.filter((id) => !named.includes(id) && !ports.isSaving(id))
+  )
+}

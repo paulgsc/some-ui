@@ -13,7 +13,11 @@ import type {
   PhoneSceneVoice,
   SceneVoicePorts,
 } from "@/lib/scene-voice/runtime"
-import { createSceneVoice, NEXT_SCENE } from "@/lib/scene-voice/runtime"
+import {
+  createSceneVoice,
+  NEXT_SCENE,
+  sweepNotes,
+} from "@/lib/scene-voice/runtime"
 
 /** The draft's list in memory, as the phone's keeps it (`./index`). */
 function memoryNotes(
@@ -254,5 +258,45 @@ describe("createSceneVoice", () => {
     await talk(voice)
     expect(await audio.ids()).toEqual([])
     expect(voice.pattern.getSnapshot().ended?.ending).toBe("failed")
+  })
+})
+
+describe("sweepNotes (SV1)", () => {
+  it("lets go a note whose audio never landed, and audio no note names", async () => {
+    const listed = [note("silent"), note("kept")]
+    const audio = memoryShelf()
+    await audio.put("kept", new Blob(["v"]))
+    await audio.put("stray", new Blob(["v"]))
+    const remove = vi.fn()
+    await sweepNotes({
+      notes: memoryNotes(listed),
+      audio,
+      isSaving: () => false,
+      remove,
+    })
+    expect(remove).toHaveBeenCalledWith(["silent"])
+    expect(await audio.ids()).toEqual(["kept"])
+  })
+
+  it("never counts silent a note that lands while the shelf's ids are read", async () => {
+    const listed: Array<KeptSceneNote> = []
+    const audio = memoryShelf()
+    const ids = audio.ids
+    // The note's audio, then its entry, land while the ids are being read.
+    audio.ids = async (): Promise<Array<string>> => {
+      const before = await ids()
+      await audio.put("late", new Blob(["v"]))
+      listed.push(note("late"))
+      return before
+    }
+    const remove = vi.fn()
+    await sweepNotes({
+      notes: memoryNotes(listed),
+      audio,
+      isSaving: () => false,
+      remove,
+    })
+    expect(remove).not.toHaveBeenCalled()
+    expect(await ids()).toEqual(["late"])
   })
 })

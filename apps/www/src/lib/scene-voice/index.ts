@@ -14,7 +14,7 @@ import { boundedList } from "@/lib/bounded-list"
 
 import { SCENE_AUDIO_MAX_BYTES, SCENE_NOTES_KEPT } from "./budget"
 import type { KeptSceneNote, PhoneSceneVoice, SceneVoicePorts } from "./runtime"
-import { createSceneVoice } from "./runtime"
+import { createSceneVoice, sweepNotes } from "./runtime"
 
 export type { KeptSceneNote } from "./runtime"
 
@@ -85,26 +85,20 @@ export function phoneSceneVoice(): PhoneSceneVoice {
 }
 
 /**
- * Each half without the other: audio no note names (the app closed between
- * writing it and listing it), and a note whose audio never landed, let go
- * through the runtime so a screen showing the draft sees it go. Best effort,
- * and nothing waits on it.
+ * Each half without the other (`sweepNotes`, SV1): audio no note names (the
+ * app closed between writing it and listing it), and a note whose audio
+ * never landed, let go through the runtime so a screen showing the draft
+ * sees it go. Best effort, and nothing waits on it.
  */
 export function sweepSceneVoice(): void {
-  const audio = shelf.shelf()
-  audio
-    .ids()
-    .then(async (stored) => {
-      const listed = notes.read().map(({ id }) => id)
-      await audio.remove(
-        stored.filter((id) => !listed.includes(id) && !shelf.isSaving(id))
-      )
-      const silent = listed.filter((id) => !stored.includes(id))
-      if (silent.length > 0) phoneSceneVoice().remove(silent)
-    })
-    .catch((error: unknown) => {
-      reportFailure({ port: "scene voice sweep", error: toIntentError(error) })
-    })
+  sweepNotes({
+    notes,
+    audio: shelf.shelf(),
+    isSaving: shelf.isSaving,
+    remove: (ids) => phoneSceneVoice().remove(ids),
+  }).catch((error: unknown) => {
+    reportFailure({ port: "scene voice sweep", error: toIntentError(error) })
+  })
 }
 
 /**
