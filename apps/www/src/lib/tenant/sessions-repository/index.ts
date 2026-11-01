@@ -3,10 +3,10 @@ import { openKept, salvageList, writeKept } from "@some-ui/core-utils"
 import type { SceneConfig } from "@some-ui/types"
 
 import type { SessionId } from "@/lib/tenant/session-id"
+import { newSessionId } from "@/lib/tenant/session-id"
 import {
   browserLocalStorage,
   delay,
-  generateId,
   MOCK_LATENCY_MS,
   NotKeptError,
 } from "@/lib/tenant/storage"
@@ -145,7 +145,7 @@ export class SessionsRepository implements SessionsStore {
     await delay(this.latencyMs)
     const now = new Date().toISOString()
     const record: SessionRecord = {
-      id: generateId("session"),
+      id: newSessionId(),
       name: input.name,
       status: "draft",
       activities: input.activities,
@@ -213,7 +213,7 @@ export class SessionsRepository implements SessionsStore {
     const now = new Date().toISOString()
     const copy: SessionRecord = {
       ...source,
-      id: generateId("session"),
+      id: newSessionId(),
       name: `${source.name} (copy)`,
       status: "draft",
       startedAt: undefined,

@@ -139,8 +139,8 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
       {full && (
         <p role="status" className="text-pretty text-sm text-muted-foreground">
           {noRoom
-            ? "This phone has kept as many answers as it can until you share them with a study-context export."
-            : "This phone has kept as many recorded answers as it can until you share them with a study-context export. You can still type one."}
+            ? "This phone has kept as many answers as it can until a home it's paired with has the ones on it."
+            : "This phone has kept as many recorded answers as it can until a home it's paired with has the ones on it. You can still type one."}
         </p>
       )}
       {take !== null && !typing && (

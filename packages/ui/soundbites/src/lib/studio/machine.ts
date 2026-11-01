@@ -49,6 +49,12 @@
  *   (`project/origin.ts`). It keeps nothing once another screen has changed
  *   the idea it answered, and the scene is asked again; one not kept asks
  *   again too, with any words of the owner's back where they were typed.
+ * - **A take home holds leaves only as the owner chose** (HF11, LG1). The
+ *   choice is kept on the phone (`letGo`, `keepLetGo`) and is in force only
+ *   once kept; until it is made nothing leaves. Choosing "once home has
+ *   them" lets go every take home holds (`leave`); "until Drive has it too"
+ *   drops any such let-go not yet begun, and only the owner's "Drive has it"
+ *   on a take (`driveHasIt`) then lets that one go.
  * - **Nothing records while the page is off screen.** A take recording when
  *   the page is hidden or left is finished and kept; a microphone that opens
  *   then, or once the Record screen is gone, is let go.
@@ -73,6 +79,12 @@ import {
 } from "@soundbites/lib/policy"
 import { isProjectFile, readProjectFile } from "@soundbites/lib/project/file"
 import { finishOf, youtubeLink } from "@soundbites/lib/project/finish"
+import type { LetGo, LetGoChoice } from "@soundbites/lib/project/let-go"
+import {
+  driveHasItIn,
+  waitingCount,
+  waitingTakes,
+} from "@soundbites/lib/project/let-go"
 import { sameJson } from "@soundbites/lib/project/lookup"
 import type { Clash } from "@soundbites/lib/project/merge"
 import { mergeIn } from "@soundbites/lib/project/merge"
@@ -218,6 +230,10 @@ type Pending = { readonly project: string } & (
     }
   | { readonly kind: "close"; readonly at: string; readonly shot: string }
   | { readonly kind: "arrived"; readonly takes: ReadonlyArray<string> }
+  /** Every take home holds still on the phone, let go: the choice allows it. */
+  | { readonly kind: "leave" }
+  /** The owner's word that Drive has `take` too, which lets it go. */
+  | { readonly kind: "driveHasIt"; readonly take: string }
   | {
       readonly kind: "shape"
       readonly look: Look
@@ -342,6 +358,11 @@ export type StudioState = {
   /** The bytes of audio the phone may still keep, as last read; null unread. */
   readonly roomBytes: number | null
   /**
+   * The owner's choice of when a take home holds leaves the phone, as kept
+   * (`lib/project/let-go.ts`); null until they make it.
+   */
+  readonly letGo: LetGoChoice
+  /**
    * A Done for now's close waiting on the take under way, and every write asked
    * for after it, in order, so none runs ahead of that close.
    */
@@ -419,6 +440,14 @@ export type StudioIntent =
     }
   | { readonly type: "projectOpened"; readonly project: string }
   | { readonly type: "retryRead" }
+  /** When a take home holds leaves the phone (HF11). */
+  | { readonly type: "letGoChosen"; readonly letGo: LetGo }
+  /** Drive has `take` too, on the owner's word: it may leave. */
+  | {
+      readonly type: "driveHasIt"
+      readonly project: string
+      readonly take: string
+    }
 
 /** What the page, the clock and the ports report. */
 type StudioSignal =
@@ -467,6 +496,8 @@ type StudioSignal =
   | { readonly type: "writeFailed"; readonly reason: "full" | "failed" }
   | { readonly type: "reported" }
   | { readonly type: "reportFailed" }
+  | { readonly type: "letGoKept"; readonly letGo: LetGo }
+  | { readonly type: "letGoNotKept" }
   | { readonly type: "audioLoaded"; readonly seq: number; readonly audio: Blob }
   | { readonly type: "audioMissing"; readonly seq: number }
   | { readonly type: "audioUnreadable"; readonly seq: number }
@@ -511,6 +542,8 @@ export type StudioEffect =
   /** Let go of notices the store kept, now that a screen has shown them. */
   | { readonly type: "forget"; readonly keys: ReadonlyArray<number> }
   | { readonly type: "report"; readonly friction: Friction }
+  /** Keep the owner's choice of when a take home holds leaves the phone. */
+  | { readonly type: "keepLetGo"; readonly letGo: LetGo; readonly at: string }
   | {
       readonly type: "loadAudio"
       readonly project: string
@@ -534,8 +567,14 @@ export type Step = {
   readonly effects: ReadonlyArray<StudioEffect>
 }
 
-/** `open`: the video to open on once the phone's are read, if it is there. */
-export function initialStudioState(open: string | null = null): StudioState {
+/**
+ * `open`: the video to open on once the phone's are read, if it is there;
+ * `letGo`: the owner's choice as kept on the phone.
+ */
+export function initialStudioState(
+  open: string | null = null,
+  letGo: LetGoChoice = null
+): StudioState {
   return {
     page: "new",
     visible: true,
@@ -553,6 +592,7 @@ export function initialStudioState(open: string | null = null): StudioState {
     ready: false,
     said: [],
     roomBytes: null,
+    letGo,
     held: [],
     closed: null,
     filings: [],
@@ -701,6 +741,18 @@ function applied(project: Project | null, pending: Pending): Project | null {
         project
       )
       return after === project ? null : after
+    }
+    case "leave": {
+      if (project === null) return null
+      const after = waitingTakes(project).reduce<Project>(
+        (at, take) => model(at, { type: "letGo", take: take.id }) ?? at,
+        project
+      )
+      return after === project ? null : after
+    }
+    case "driveHasIt": {
+      if (project === null) return null
+      return driveHasItIn(project, pending.take)
     }
     case "shape": {
       if (project === null) return null
@@ -1119,6 +1171,32 @@ function pickedProject(state: StudioState, text: string): Step {
 }
 
 /**
+ * The owner's choice, now kept, in force: "once home has them" lets go
+ * every take home holds, video by video; "until Drive has it too" drops
+ * each such let-go not yet begun (one under way lands as it was asked).
+ */
+function chosen(state: StudioState, letGo: LetGo): Step {
+  const said = { ...state, letGo, notice: WORDS.letGo.chosen[letGo] }
+  if (letGo === "drive") {
+    const keep = (pending: Pending): boolean => pending.kind !== "leave"
+    return stay({
+      ...said,
+      queue: said.queue.filter(keep),
+      held: said.held.filter(keep),
+    })
+  }
+  return projectsOf(said)
+    .filter((project) => waitingTakes(project).length > 0)
+    .reduce<Step>(
+      (at, project) =>
+        then(at, (next) =>
+          enqueue(next, { kind: "leave", project: project.id })
+        ),
+      stay(said)
+    )
+}
+
+/**
  * Starts the next write if none is in flight: the first pending one that
  * changes the project as kept. Held writes (a Done for now and all asked
  * for after it) join the queue once no take is under way.
@@ -1155,6 +1233,22 @@ function enqueue(state: StudioState, pending: Pending): Step {
   return pump({ ...state, queue: [...state.queue, pending] })
 }
 
+/** How many takes this write let go from the phone. */
+function leftCount(written: Written): number {
+  const before = written.before?.takes ?? []
+  return before.filter(
+    (take) =>
+      take.onPhone &&
+      written.project?.takes.find((each) => each.id === take.id)?.onPhone ===
+        false
+  ).length
+}
+
+/** How many takes home holds wait on the phone for the owner's choice. */
+function waiting(state: StudioState): number {
+  return waitingCount(projectsOf(state))
+}
+
 /** How many of `takes` this write newly marked as in Drive. */
 function arrivedCount(written: Written, takes: ReadonlyArray<string>): number {
   const inDrive = (project: Project | null, id: string): boolean =>
@@ -1184,6 +1278,13 @@ function landedNotice(
     case "arrived": {
       const n = arrivedCount(written, pending.takes)
       return n === 0 ? state.notice : WORDS.notice.arrived(n)
+    }
+    case "leave": {
+      const n = leftCount(written)
+      return n === 0 ? state.notice : WORDS.letGo.left(n)
+    }
+    case "driveHasIt": {
+      return WORDS.letGo.driveLeft
     }
     case "open":
     case "close":
@@ -1232,7 +1333,9 @@ function refusedNotice(
   reason: "full" | "failed"
 ): string {
   if (pending.kind === "keep")
-    return reason === "full" ? WORDS.notice.full : WORDS.notice.notKept
+    return reason === "full"
+      ? WORDS.notice.full(state.letGo, waiting(state))
+      : WORDS.notice.notKept
   if (pending.kind === "close") return state.notice
   return WORDS.notice.notSaved
 }
@@ -1253,7 +1356,9 @@ function unchangedNotice(
     }
     case "open":
     case "close":
-    case "arrived": {
+    case "arrived":
+    case "leave":
+    case "driveHasIt": {
       return state.notice
     }
     case "shape":
@@ -2240,7 +2345,7 @@ export function step(state: StudioState, event: StudioEvent): Step {
           ...state,
           notice:
             roomMs < SOUNDBITE_MIN_MS
-              ? WORDS.notice.noRoom
+              ? WORDS.notice.noRoom(state.letGo, waiting(state))
               : WORDS.notice.spent,
         })
       const opened = openTake()
@@ -2485,6 +2590,32 @@ export function step(state: StudioState, event: StudioEvent): Step {
         kind: "arrived",
         project: event.project,
         takes: event.takes,
+      })
+    }
+
+    case "letGoChosen": {
+      if (screen.kind !== "start" || event.letGo === state.letGo)
+        return stay(state)
+      return {
+        state,
+        effects: [{ type: "keepLetGo", letGo: event.letGo, at: event.at }],
+      }
+    }
+
+    case "letGoKept": {
+      return chosen(state, event.letGo)
+    }
+
+    case "letGoNotKept": {
+      return stay({ ...state, notice: WORDS.letGo.notKept })
+    }
+
+    case "driveHasIt": {
+      if (state.letGo !== "drive" || screen.kind !== "start") return stay(state)
+      return enqueue(state, {
+        kind: "driveHasIt",
+        project: event.project,
+        take: event.take,
       })
     }
 

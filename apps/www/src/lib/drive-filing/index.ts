@@ -4,7 +4,7 @@
  * `lookIn` names where a file the person picks back waits, by the Drive's own
  * SOP (the Doc "README — Drive SOP"; `.claude/skills/drive-sop`).
  * It renames nothing: the files name each other (`context.json` its
- * soundbites, a drama prompt its voice notes, `takes.json` its takes), and
+ * soundbites, `takes.json` its takes), and
  * the SOP files them under the names the app gives.
  *
  * It is one person's workflow, not the app's: only main.tsx's install
@@ -16,7 +16,7 @@ import { toast } from "sonner"
 
 import type { ShareSidecar } from "@/lib/share-files"
 
-/** Where an agent answers a drama prompt, beside it. */
+/** Where the routine leaves each drama it writes. */
 const DRAMA_REQUESTS = "Dramas › requests"
 
 /**
@@ -26,14 +26,11 @@ const DRAMA_REQUESTS = "Dramas › requests"
 export const DRIVE_FOLDERS: Readonly<
   Partial<Record<string, (day: string) => string>>
 > = {
-  reflections: () => "Study ledger › reflections",
   // One folder per export: each `context.json` is a full snapshot, and the
   // next export's files carry the same names.
   "agent-export": (day) => `Study ledger › study-context › ${day} (new folder)`,
   "journal-takes": () => "Build Journal › voice › takes",
   "studio-idea": () => "Build Journal › ideas",
-  "drama-prompt": () => DRAMA_REQUESTS,
-  "session-archive": () => "Study ledger › sessions",
 }
 
 /**

@@ -28,10 +28,11 @@ import { defineConfig } from "eslint/config"
 const NETWORK_GUARD =
   "Network access goes through createFileHostTransport (lib/file-host-config/client.ts), which refuses to send unless the learner's data authority allows it. See docs/learner-data-authority.md, LA1."
 
-// LA7: what holds or shows a reflection, what those may import from `@/`,
+// LA16: what holds or shows a reflection, what those may import from `@/`,
 // and the only other modules that may import them. `lib/agent-export` is the
-// share sheet's: it reads the sessions repository, so it is not held to the
-// first list, and LA7's falsifier names it for review instead.
+// whole export's share: it reads the sessions repository, so it is not held
+// to the first list, and LA16's falsifier names it for review instead, as it
+// does the drain's modules that send the written ones home.
 const REFLECTION_MODULES = [
   "src/lib/session-reflection/**",
   "src/lib/reflection-voice/**",
@@ -40,7 +41,6 @@ const REFLECTION_MODULES = [
 const REFLECTION_MAY_IMPORT = [
   "lib/session-reflection",
   "lib/reflection-voice",
-  "lib/agent-export",
   "lib/bounded-list",
   "lib/clock",
   "lib/format",
@@ -55,6 +55,13 @@ const REFLECTION_IMPORTERS = [
   // and only while its person keeps voice notes there.
   "src/lib/home-link/voice.ts",
   "src/lib/home-link/voice-copy.ts",
+  // LA16: the drain sends the written ones home and lets go of the ones past
+  // the offline set home holds; the Practice lane follows the store.
+  "src/lib/home-link/reflections.ts",
+  "src/lib/home-link/going.ts",
+  "src/lib/home-link/practice.ts",
+  // Practice's footnote says the offline set in the strip's own words.
+  "src/lib/home-link/words.ts",
   "src/main.tsx",
   "src/components/player/completion-summary.tsx",
   "src/components/player/live-player.tsx",
@@ -74,7 +81,7 @@ const DOOR_PATTERN = {
 }
 
 const REFLECTION_GUARD =
-  "Reflections leave the device only through the share sheet (lib/agent-export), never by a server transport or a session record. See docs/learner-data-authority.md, LA7."
+  "A written reflection goes home only through the drain (lib/home-link/reflections), a spoken one only as its voice note, and the one-tap answers never: never by another server transport or a session record. See docs/learner-data-authority.md, LA16."
 
 export default defineConfig([
   ...appsRecommended,
@@ -128,7 +135,7 @@ export default defineConfig([
     },
   },
 
-  // LA7 (docs/learner-data-authority.md): a reflection reaches no server. Both
+  // LA16 (docs/learner-data-authority.md): what may send a reflection home. Both
   // blocks are allowlists, and restate base.config.ts's patterns, which a
   // block setting this rule would otherwise replace.
   {
@@ -187,7 +194,7 @@ export default defineConfig([
   },
 
   {
-    // A4 for what both LA7 blocks leave out, restating the preset's patterns.
+    // A4 for what both LA16 blocks leave out, restating the preset's patterns.
     files: [...REFLECTION_IMPORTERS, ...TESTS],
     rules: {
       "no-restricted-imports": [

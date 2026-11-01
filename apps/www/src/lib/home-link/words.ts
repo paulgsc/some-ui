@@ -2,13 +2,15 @@
  * Every word a record this phone drains to home shows (LA14, LA15): each
  * lane's mark in the header, its sheet, and Settings' readout of what is
  * kept where and what waits; the clear of finished sessions home holds
- * (`./clear`); and Korean's look at the routine's files. Pure, and the one
+ * (`./clear`); the study list's "Let it go" (`./study-let-go`); and
+ * Korean's look at the routine's files. Pure, and the one
  * place those words live, so they stay in the person's terms (what is kept
  * where, and what waits) and never the machinery's: no request, status
  * code, address or state name reaches the screen (`__tests__/words.test.ts`).
  */
 import { assertNever, counted } from "@some-ui/core-utils"
 
+import { OFFLINE_SET_WORDS } from "@/lib/session-reflection/policy"
 import type { How, Where } from "@/lib/sharing-marks"
 import type { Unsendable } from "@/lib/voice-home/model"
 import { NO_ROOM } from "@/lib/voice-home/model"
@@ -17,6 +19,7 @@ import type { ClearEnd } from "./clear"
 import type { KeptState } from "./kept-model"
 import type { LaneCounts, LaneId, LaneKind } from "./lanes"
 import type { LastRead } from "./routine-model"
+import type { LetGoEnd, LetGoPromise } from "./study-let-go"
 
 /** One row of a lane's sheet: what one kind is called, and one of it. */
 type Row = {
@@ -48,9 +51,9 @@ export type LaneWords = {
 }
 
 const waits =
-  (noun: string) =>
+  (noun: string, many?: string) =>
   (n: number): string =>
-    `${counted(n, noun)} wait${n === 1 ? "s" : ""}`
+    `${counted(n, noun, many)} wait${n === 1 ? "s" : ""}`
 
 const PAIR = "Pair this phone with home in Settings to keep a copy there."
 
@@ -69,13 +72,26 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
         label: "Kept shelf items",
         one: "kept item",
       },
+      {
+        kind: "reflections",
+        label: "Written reflections",
+        one: "written reflection",
+      },
+      {
+        kind: "prompts",
+        label: "Asks for the next scene",
+        one: "ask for the next scene",
+        many: "asks for the next scene",
+      },
     ],
-    waits: waits("session"),
+    waits: waits(
+      "session, reflection or ask",
+      "sessions, reflections and asks"
+    ),
     phoneOnly: `Practice is only on this phone. ${PAIR}`,
     partly:
       "Some of Practice is on home. New sessions stay on this phone until it is paired again.",
-    footnote:
-      "Finished sessions, kept items, LeetType sessions and Studio sittings go to home while the app is open. A finished session leaves this phone only when you clear it in Settings, once home has it. Written reflections never leave this phone.",
+    footnote: `Finished sessions, kept items, LeetType sessions and spoken answers, Studio sittings, soundbites, written reflections and asks for the next scene go to home while the app is open. An ask leaves this phone once home has it. A finished session leaves this phone only when you clear it in Settings, once home has it. ${OFFLINE_SET_WORDS} Your answers to the three quick questions stay on this phone.`,
     clash: null,
     unread: null,
   },
@@ -120,7 +136,8 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
     rows: [
       {
         kind: "voice",
-        label: "Spoken reflections, Jobs, game and scene notes, Studio takes",
+        label:
+          "Spoken reflections, soundbites, lens and LeetType takes, Jobs, game and scene notes, Studio takes",
         one: "voice note",
       },
     ],
@@ -129,7 +146,7 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
     partly:
       "Some voice notes are on home. New ones stay on this phone until it is paired again.",
     footnote:
-      "Home keeps every recording and turns it into text for the morning routines. This phone keeps a note until home has it, even after you let it go here. Written reflections and read-aloud takes stay on this phone.",
+      "Home keeps every recording and turns it into text for the morning routines. This phone keeps a note until home has it, even after you let it go here.",
     clash: null,
     unread: null,
   },
@@ -153,7 +170,7 @@ export function unsentLines({ gone }: Unsendable): Array<string> {
 
 /** Settings' Home server block, once paired: what goes, and when. */
 export const HOME_BLOCK = {
-  lead: "Everything this phone keeps goes to home on its own while the app is open: finished sessions, kept items, LeetType sessions, Studio sittings, the Jobs record, voice notes, and aph while it is open. Nothing leaves this phone until home has read it back.",
+  lead: "Everything this phone keeps goes to home on its own while the app is open: finished sessions, kept items, LeetType sessions and spoken answers, Studio sittings, soundbites, written reflections, asks for the next scene, the Jobs record, voice notes, and aph while it is open. Nothing leaves this phone until home has read it back.",
 } as const
 
 /** Settings' readout of what this phone keeps on home, and what waits. */
@@ -173,8 +190,8 @@ export const KEPT_ON_HOME = {
       text: "Come from home when you ask for them. Nothing goes the other way.",
     },
     {
-      label: "Written reflections and read-aloud takes",
-      text: "Never go to home. You can share them yourself, to Drive.",
+      label: "Your answers to the three quick questions after a session",
+      text: "Stay on this phone.",
     },
     {
       label: "What you set in Settings, and your profile",
@@ -230,6 +247,93 @@ export const CLEAR = {
       }
       case "not-cleared": {
         return "Home holds them, but this phone couldn't clear them. Try again."
+      }
+      default: {
+        return assertNever(end)
+      }
+    }
+  },
+} as const
+
+/**
+ * The study list's "Let it go" (`./study-let-go`): its confirm, given what
+ * it promises, and how it ended, given the host ("home" while the pairing
+ * is unsure). Said in the session's own row. `room` is the phone-full
+ * offer's ask of the same let-go (PF1), whose ends are these too.
+ */
+export const LET_GO = {
+  title: "Let this session go?",
+  confirm: "Let it go",
+  /** The confirm's line, given the session's name. */
+  question: (name: string, promise: LetGoPromise, host: string): string =>
+    promise === "home"
+      ? `"${name}" leaves this phone, and ${host} keeps it. If ${host} can't, it stays here.`
+      : `"${name}" leaves this phone, and can't be brought back.`,
+  /** The phone-full offer of the oldest finished session. */
+  room: {
+    /**
+     * Its ask, given the session's name and the day it was finished. The
+     * host never opens a sentence: it may be the word "home".
+     */
+    question: (
+      name: string,
+      finished: string,
+      promise: LetGoPromise,
+      host: string
+    ): string =>
+      promise === "home"
+        ? `Remove “${name}” (finished ${finished}) to make room? It leaves this phone, and ${host} keeps it. If ${host} can't, it stays here.`
+        : `Remove “${name}” (finished ${finished}) to make room? It leaves this phone, and can't be brought back.`,
+    confirm: "Remove it",
+    working: "Removing...",
+  },
+  working: (host: string): string => `Keeping it on ${host}...`,
+  ended: (end: LetGoEnd, host: string): string => {
+    const stays = "it stays on this phone"
+    switch (end.kind) {
+      case "kept-home": {
+        return `Gone from this phone. ${host} keeps it.`
+      }
+      case "deleted": {
+        return "Gone from this phone."
+      }
+      case "missing": {
+        return "It's no longer on this phone."
+      }
+      case "not-held": {
+        return `${host} doesn't hold it as it is here yet, so ${stays}.`
+      }
+      case "changed": {
+        return `It changed while ${host} was checking, so ${stays}. Try again.`
+      }
+      case "unreachable": {
+        return `Couldn't reach ${host}. Are you on the home network? It stays on this phone.`
+      }
+      case "forgotten": {
+        return `${host} no longer knows this phone: unpair, then pair again. It stays on this phone.`
+      }
+      case "busy": {
+        return `${host} is busy just now. Try again in a minute; ${stays}.`
+      }
+      case "phone-busy": {
+        return `This phone is busy sending to ${host}. Try again in a minute; ${stays}.`
+      }
+      case "stopped": {
+        return "Stopped. It stays on this phone."
+      }
+      case "refused": {
+        return `${host} didn't take it, so ${stays}.`
+      }
+      case "unpaired": {
+        return "This phone isn't paired with home right now, so it stays here. Pair it in Settings, or try again."
+      }
+      case "unreadable": {
+        return "This phone couldn't read its pairing with home just now, so it stays here. Try again."
+      }
+      case "not-let-go": {
+        return end.held
+          ? `${host} keeps it, and it's still here: this phone couldn't let it go. Try again.`
+          : "This phone couldn't let it go. It's still here; try again."
       }
       default: {
         return assertNever(end)

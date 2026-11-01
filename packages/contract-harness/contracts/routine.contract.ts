@@ -13,7 +13,13 @@
  * Per person, so `session` contracts. An accepted `PUT /routine/opened`
  * (`tellOpened`) would become the newest `opened` file, which the routine
  * counts unopened lessons from, so that write is pinned by a refusal, which
- * files nothing.
+ * files nothing. So is `PUT /routine/reflections/:id`
+ * (`apps/www/src/lib/home-link/reflections`): an accepted one is kept on home
+ * for good and filed for the routine, and a spoken reflection is refused by
+ * name, keeping and filing nothing. So is `PUT /routine/prompts/:stamp`
+ * (`apps/www/src/lib/home-link/prompts`): an accepted ask is kept on home for
+ * good and filed for the routine, and a stamp that is no moment on the
+ * calendar is refused, keeping and filing nothing.
  */
 
 import { z } from "zod"
@@ -65,6 +71,52 @@ export const contracts = [
       "a name that is not one of the routine's lessons is a 422, and nothing is filed for the mailbox",
     mutates: true,
     request: { body: { opened: ["brief/digest-2026-10-26.json"] } },
+    expect: { status: 422 },
+  }),
+
+  defineContract({
+    id: "routine.reflection_refused",
+    module: "routine",
+    session: true,
+    method: "PUT",
+    path: "/routine/reflections/:id",
+    summary:
+      "a spoken reflection is a 422 naming body.kind, and nothing is kept or filed for the mailbox",
+    mutates: true,
+    request: {
+      path: { id: "contract-harness-spoken" },
+      body: {
+        id: "contract-harness-spoken",
+        sessionId: "contract-harness",
+        createdAt: "2026-11-01T08:15:00.000Z",
+        atMs: null,
+        body: {
+          kind: "voice",
+          durationMs: 1000,
+          mimeType: "audio/webm",
+          bytes: 1,
+        },
+      },
+    },
+    expect: { status: 422 },
+  }),
+
+  defineContract({
+    id: "routine.prompt_refused",
+    module: "routine",
+    session: true,
+    method: "PUT",
+    path: "/routine/prompts/:stamp",
+    summary:
+      "an ask whose stamp is no moment on the calendar is a 422 naming stamp, and nothing is kept or filed for the mailbox",
+    mutates: true,
+    request: {
+      path: { stamp: "drama-20261399T000000000Z" },
+      body: {
+        stamp: "drama-20261399T000000000Z",
+        text: "contract-harness: refused before it is kept",
+      },
+    },
     expect: { status: 422 },
   }),
 ]
