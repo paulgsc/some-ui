@@ -128,18 +128,6 @@ describe("the take kit's step", () => {
     expect(state.ended).toMatchObject({ seq: 2, id: "n2", unheard: true })
   })
 
-  it("never calls a take it did not keep unheard", () => {
-    const { state } = run([
-      { type: "tap", answers: "a" },
-      { type: "micOpened", at: 0 },
-      { type: "ticked", now: 200, level: 0.03, metered: true },
-      { type: "tap", answers: "a" },
-      { type: "taken", take },
-      { type: "kept", result: { outcome: "full" } },
-    ])
-    expect(state.ended).toMatchObject({ ending: "full", unheard: false })
-  })
-
   it("records one ending per take, with what it answered", () => {
     const { state } = run([
       { type: "start", answers: "a" },

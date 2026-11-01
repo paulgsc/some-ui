@@ -50,21 +50,18 @@ export type TakeEnded = {
   readonly id: string | null
   /** Why the microphone refused it, when `ending` is `blocked`. */
   readonly reason: RecordingFailure | null
-  /**
-   * D4: kept, measured, and its level never rose to `HEARD_FLOOR`. Never
-   * true for a take no read of which was measured (`Recording.metered`): a
-   * flat zero there is a meter that isn't running, not silence.
-   */
+  /** D4: kept, measured (`Recording.metered`), and never reached `HEARD_FLOOR`. */
   readonly unheard: boolean
 }
 
 /**
- * The level (0 to 1, `Recording.level`) a take's loudest moment must reach
- * for it to count as heard. The meter stretches speech's 0.05-0.2 RMS to
- * 0.2-0.8 and a quiet room sits below 0.1. A first value, to tune from the
- * peaks CK2's outcome events will carry (#2369).
+ * Below this level (`Recording.level`, 0 to 1) the microphone hears no
+ * talking: speech reads 0.2 and up, a room's hum and a TV across it lower.
+ * A take's loudest moment must reach it to count as heard (D4), and Game
+ * Week's quiet stop reads the same line. To tune from the peaks CK2's
+ * outcome events will carry (#2369).
  */
-export const HEARD_FLOOR = 0.1
+export const HEARD_FLOOR = 0.12
 
 export type TakeKitState = {
   readonly note: VoiceNoteState
@@ -72,10 +69,11 @@ export type TakeKitState = {
   readonly answers: string
   /** The id `keep` gave the take being kept. */
   readonly keptId: string | null
-  /** The loudest measured level the take under way, or the last one, reached. */
-  readonly peak: number
-  /** Whether any read of that take's level was measured. */
-  readonly metered: boolean
+  /**
+   * The loudest measured level the take under way, or the last one,
+   * reached; null while no read of it was measured.
+   */
+  readonly peak: number | null
   readonly ended: TakeEnded | null
 }
 
@@ -102,8 +100,7 @@ export const initialTakeKit: TakeKitState = {
   note: initialVoiceNote,
   answers: "",
   keptId: null,
-  peak: 0,
-  metered: false,
+  peak: null,
   ended: null,
 }
 
@@ -123,7 +120,7 @@ export function stepTakeKit(
   limits: TakeLimits
 ): Next {
   const busy = underway(state.note)
-  let { answers, keptId, peak, metered } = state
+  let { answers, keptId, peak } = state
   let noteEvent: VoiceNoteEvent
   switch (event.type) {
     case "start":
@@ -134,8 +131,7 @@ export function stepTakeKit(
       } else {
         answers = event.answers
         keptId = null
-        peak = 0
-        metered = false
+        peak = null
         noteEvent = { type: "start", atMs: null }
       }
       break
@@ -147,10 +143,8 @@ export function stepTakeKit(
       break
     }
     case "ticked": {
-      if (busy && event.metered === true) {
-        metered = true
-        peak = Math.max(peak, event.level)
-      }
+      if (busy && event.metered === true)
+        peak = Math.max(peak ?? 0, event.level)
       noteEvent = event
       break
     }
@@ -184,20 +178,19 @@ export function stepTakeKit(
           ending,
           id: ending === "kept" ? keptId : null,
           reason: next.state.kind === "blocked" ? next.state.reason : null,
-          unheard: ending === "kept" && metered && peak < HEARD_FLOOR,
+          unheard: ending === "kept" && peak !== null && peak < HEARD_FLOOR,
         }
   if (
     next.state === state.note &&
     ended === state.ended &&
     answers === state.answers &&
     keptId === state.keptId &&
-    peak === state.peak &&
-    metered === state.metered
+    peak === state.peak
   ) {
     return { state, effects }
   }
   return {
-    state: { note: next.state, answers, keptId, peak, metered, ended },
+    state: { note: next.state, answers, keptId, peak, ended },
     effects,
   }
 }
@@ -247,8 +240,7 @@ export function takeKitView(
 
 /**
  * A screen's words for every ending: a sentence for each, and the
- * microphone's refusal by its reason, and a kept take it didn't hear (D4).
- * Closed: an ending added to `TakeEnding` fails to compile in every table
+ * microphone's refusal by its reason. Closed: an ending added to `TakeEnding` fails to compile in every table
  * until it has words.
  */
 export type TakeEndingWords = {

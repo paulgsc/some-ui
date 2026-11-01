@@ -54,7 +54,7 @@ export type TakeSignal =
       readonly type: "ticked"
       readonly now: number
       readonly level: number
-      /** Whether `level` was measured (`Recording.metered`); absent: unknown. */
+      /** See `Recording.metered`. */
       readonly metered?: boolean | undefined
     }
   | { readonly type: "taken"; readonly take: Take }

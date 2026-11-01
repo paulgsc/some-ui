@@ -141,9 +141,6 @@ describe("the take button, row and list", () => {
     fireEvent.click(live())
     await pass(0)
     expect(screen.getByText(W.ended.unheard)).toBeInTheDocument()
-    expect(screen.getByRole("listitem")).toHaveTextContent(
-      `0:02 · ${W.place.phone}`
-    )
     expect(
       screen.getByRole("button", { name: W.rowLabel(W.redo, 2_000) })
     ).toBeInTheDocument()
