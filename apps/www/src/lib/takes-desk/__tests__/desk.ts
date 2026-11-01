@@ -34,6 +34,8 @@ export type TestDesk = {
     readonly copied: (id: string) => void
     /** Home holds a take, as this phone heard at `at`. */
     readonly held: (id: string, at?: string) => void
+    /** The take's set-aside mark is owed, kept as the record keeps it (LA13). */
+    readonly owe: (id: string) => void
   }
   readonly keptOn: (line: string, since: number) => string | null
 }
@@ -75,6 +77,7 @@ export function testDesk(
       now: Date.now,
       newId: () => `n${(next += 1)}`,
       kept,
+      marked: (id) => lane.aside.owed.some((mark) => mark.id === id),
     },
     limits
   )
@@ -87,6 +90,13 @@ export function testDesk(
       held: (id, at = new Date(Date.now()).toISOString()): void => {
         copied(id)
         lane = stepVoiceHome(lane, { kind: "held", id, at })
+      },
+      owe: (id): void => {
+        lane = stepVoiceHome(lane, {
+          kind: "aside",
+          id,
+          at: new Date(Date.now()).toISOString(),
+        })
       },
     },
     keptOn: (line, since) => keptOn(takes.read(), line, since),

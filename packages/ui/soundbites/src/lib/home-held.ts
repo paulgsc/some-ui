@@ -7,8 +7,13 @@
  * `nextReplaced`). Until the link says so, home holds none.
  */
 
-/** Whether home holds a soundbite, as one reading of what home holds. */
-export type Held = (id: string) => boolean
+/**
+ * Whether home holds a soundbite, as one reading of what home holds. Asked
+ * with the soundbite's `standing` when it is to make room: one set aside
+ * then counts as held only once home's mark for it is safe (MIC2, www's
+ * LA13), so it never leaves the phone before its mark.
+ */
+export type Held = (id: string, standing?: string) => boolean
 
 let held: () => Held = () => () => false
 let revision = 0

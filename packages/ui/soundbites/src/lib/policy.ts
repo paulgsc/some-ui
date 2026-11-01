@@ -1,5 +1,6 @@
 import type { PatternTake, TakePatternOptions } from "@some-ui/voice-capture"
 
+import type { Held } from "./home-held"
 import type { Soundbite } from "./types"
 
 /**
@@ -104,15 +105,16 @@ const LEAVES_FIRST: Readonly<
 /**
  * The held ones in the order they make room: a soundbite let go (D3) before
  * one a Redo superseded (D2), before one still listed, and the oldest first
- * within each.
+ * within each. `held` is asked with each one's standing, so one set aside
+ * whose mark home is not safely owed is passed over (`./home-held`).
  */
 function inLeavingOrder(
   kept: ReadonlyArray<Soundbite>,
-  held: (id: string) => boolean
+  held: Held
 ): Array<Soundbite> {
   const rank = (bite: Soundbite): number =>
     LEAVES_FIRST[bite.standing ?? "current"]
-  return byNewest(kept.filter((bite) => held(bite.id)))
+  return byNewest(kept.filter((bite) => held(bite.id, bite.standing)))
     .reverse()
     .sort((a, b) => rank(a) - rank(b))
 }
@@ -127,7 +129,7 @@ function inLeavingOrder(
 export function nextReplaced(
   kept: ReadonlyArray<Soundbite>,
   choice: string | null,
-  held: (id: string) => boolean = NONE_HELD,
+  held: Held = NONE_HELD,
   limit = SOUNDBITE_LIMIT
 ): Soundbite | null {
   if (kept.length < limit) return null
@@ -146,7 +148,7 @@ export function nextReplaced(
 export function displacedBy(
   kept: ReadonlyArray<Soundbite>,
   choice: string | null,
-  held: (id: string) => boolean = NONE_HELD,
+  held: Held = NONE_HELD,
   limit = SOUNDBITE_LIMIT
 ): Array<string> | null {
   const excess = kept.length + 1 - limit

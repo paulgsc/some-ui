@@ -163,6 +163,24 @@ export function homeHolds(kept: TakeKept): boolean {
 }
 
 /**
+ * Whether `item`, kept at `kept`, may leave this phone on home's word
+ * (LA13, MIC2): home holds it, and one set aside only once its set-aside
+ * mark is safe (`marked`: owed in the voice-home record as storage kept
+ * it, or answered), so no note leaves before home can be told it was let
+ * go. Every make-room and let-go of a desk with Let go reads it.
+ */
+export function mayLeave(
+  item: { readonly id: string; readonly standing?: string | undefined },
+  kept: TakeKept,
+  marked: (id: string) => boolean
+): boolean {
+  return homeHolds(kept) && (item.standing !== "set-aside" || marked(item.id))
+}
+
+/** No mark is safe: what a store the voice lane never told assumes. */
+export const NONE_MARKED = (): boolean => false
+
+/**
  * The item a new one makes room by letting go at `max`: the oldest by `at`
  * of those home holds (`held`), or null while there is room or home holds
  * none. The takes' and LeetType's answer notes' (`lib/leetype-takes`).
@@ -184,13 +202,13 @@ export function homeHolds(kept: TakeKept): boolean {
 export function makesRoom<T extends { readonly id: string }>(
   items: ReadonlyArray<T>,
   max: number,
-  held: (id: string) => boolean,
+  held: (id: string, item: T) => boolean,
   at: (item: T) => number
 ): T | null {
   if (items.length < max) return null
   let oldest: T | null = null
   for (const item of items) {
-    if (held(item.id) && (oldest === null || at(item) < at(oldest))) {
+    if (held(item.id, item) && (oldest === null || at(item) < at(oldest))) {
       oldest = item
     }
   }

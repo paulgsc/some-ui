@@ -61,7 +61,7 @@ describe("home's set-aside mark (MIC2)", () => {
     expect(marks.answers).toEqual([["marked", "n1"]])
   })
 
-  it("leaves a mark home found no note for owed, gives up only on one home can't read, and goes on to the next", async () => {
+  it("tells the record of a mark home found no note for and one it can't read, and goes on to the next", async () => {
     vi.mocked(reportFailure).mockClear()
     const marks = port([
       { id: "missing", at: AT },
@@ -74,6 +74,7 @@ describe("home's set-aside mark (MIC2)", () => {
     ).toEqual({ kind: "synced" })
     expect(sent).toHaveLength(3)
     expect(marks.answers).toEqual([
+      ["unfound", "missing"],
       ["unmarkable", "unreadable"],
       ["marked", "n3"],
     ])

@@ -147,6 +147,26 @@ describe("createPatternTakes", () => {
     expect((await on.shelf.ids()).sort()).toEqual(["n2", "n3"])
   })
 
+  it("makes no room with a take set aside that home holds until its mark is safe (LA13)", async () => {
+    const on = desk(2)
+    await take(on, "a")
+    await take(on, "b")
+    on.phone.pattern.letGo("n1", "phone")
+    on.home.held("n1")
+    on.phone.recount()
+    // Held, set aside, its mark not owed yet (an unpaired phone, say).
+    expect(on.phone.full()).toBe(true)
+    await take(on, "c")
+    expect(on.phone.pattern.getSnapshot().ended?.ending).toBe("full")
+    expect(on.listed().map(({ id }) => id)).toEqual(["n2", "n1"])
+
+    on.home.owe("n1")
+    on.phone.recount()
+    expect(on.phone.full()).toBe(false)
+    await take(on, "c")
+    expect(on.listed().map(({ id }) => id)).toEqual(["n3", "n2"])
+  })
+
   it("keeps nothing when the room it makes at its cap is not stored, dropping none home lacks (RM1)", async () => {
     const on = desk(2)
     await take(on, "a")

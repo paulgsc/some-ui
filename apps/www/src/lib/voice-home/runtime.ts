@@ -63,13 +63,26 @@ export type VoiceHome = {
   /**
    * The owner set note `id` aside at `at` (ISO 8601): home is owed its mark,
    * once. A note already owed, answered or refused is left as it is, so the
-   * first time stands.
+   * first time stands. Says whether the mark is now safe (`markSafe`).
    */
-  owe: (id: string, at: string) => void
+  owe: (id: string, at: string) => boolean
+  /**
+   * Whether note `id`'s set-aside mark is safe (MIC2, LA13): owed in the
+   * record as storage last kept it, or answered there for good. Only then
+   * may a held note set aside leave this phone: a mark owed only in memory
+   * is lost if the app closes, and with the note gone nothing owes it again.
+   */
+  markSafe: (id: string) => boolean
   /** What `lib/home-link/set-aside`'s marks read and answer through. */
   marks: AsidePort
   /** Clears copies the record names neither waiting nor refused. Best effort. */
   sweep: () => void
+}
+
+/** `id`'s mark owed or answered in `record`. */
+function markSafe(record: VoiceHomeState, id: string): boolean {
+  const { owed, answered } = record.aside
+  return answered.includes(id) || owed.some((mark) => mark.id === id)
 }
 
 export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
@@ -81,6 +94,8 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
   let state = opened?.kind === "kept" ? opened.value : INITIAL_VOICE_HOME
   // Storage that threw is written to by no one: the record stays in memory.
   const writable = storage !== null && opened?.kind !== "unreadable"
+  // The record as storage last kept it; with none writable, nothing is.
+  let stored = writable ? state : INITIAL_VOICE_HOME
   const listeners = new Set<() => void>()
 
   /** Steps the record; false when the step could not be kept in storage. */
@@ -94,6 +109,7 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
     // would sweep it while the person may have let the note go.
     if (!kept && event.kind === "copied") return false
     state = next
+    if (kept) stored = next
     for (const listener of listeners) listener()
     return kept
   }
@@ -143,9 +159,19 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
         }
       },
     },
-    owe(id, at): void {
+    owe(id, at): boolean {
       apply({ kind: "aside", id, at })
+      // Owed in memory only, after a write storage refused: try it again.
+      if (
+        !markSafe(stored, id) &&
+        writable &&
+        writeRecord(storage, STORAGE_KEY, JSON.stringify(state), parseVoiceHome)
+      ) {
+        stored = state
+      }
+      return markSafe(stored, id)
     },
+    markSafe: (id) => markSafe(stored, id),
     marks: {
       due: () => marksDue(state),
       answered(kind, id): void {

@@ -36,7 +36,7 @@ import type {
 } from "@some-ui/voice-capture"
 import { ONE_TAKE, shelveTake, takePattern } from "@some-ui/voice-capture"
 
-import { homeHolds, makesRoom } from "@/lib/takes-desk/runtime"
+import { makesRoom, mayLeave, NONE_MARKED } from "@/lib/takes-desk/runtime"
 
 import { SCENE_NOTES_KEPT, SCENE_NOTES_MAX } from "./budget"
 
@@ -107,6 +107,11 @@ export type SceneVoicePorts = {
   newId: () => string
   /** Where this note is kept, from what home told this phone (`lib/home-link`). */
   kept: (id: string) => TakeKept
+  /**
+   * Whether a note's set-aside mark is safe (`mayLeave`, LA13); none is
+   * unless the voice lane says so.
+   */
+  marked?: ((id: string) => boolean) | undefined
   /** The kit's `audioPlayer` unless a test gives its own. */
   player?: Player | undefined
   /** The phone's one microphone unless a test gives its own. */
@@ -136,6 +141,7 @@ export function createSceneVoice(ports: SceneVoicePorts): PhoneSceneVoice {
     )
 
   /** A note home holds may leave the phone once out of the draft, or asked with. */
+  const marked = ports.marked ?? NONE_MARKED
   const leaves = (note: KeptSceneNote): boolean =>
     note.prompted === true || !inDraft(note)
   /** The note a new one makes room by letting go at the phone's cap, if any. */
@@ -144,9 +150,7 @@ export function createSceneVoice(ports: SceneVoicePorts): PhoneSceneVoice {
     return makesRoom(
       notes,
       SCENE_NOTES_KEPT,
-      (id) =>
-        notes.some((note) => note.id === id && leaves(note)) &&
-        homeHolds(ports.kept(id)),
+      (id, note) => leaves(note) && mayLeave(note, ports.kept(id), marked),
       (note) => Date.parse(note.at ?? new Date(0).toISOString())
     )
   }
@@ -265,7 +269,9 @@ export function createSceneVoice(ports: SceneVoicePorts): PhoneSceneVoice {
           .filter(
             (note) =>
               homeHolds.has(note.id) &&
-              (note.prompted === true || !inDraft(note))
+              leaves(note) &&
+              // Set aside: only once its mark is safe (LA13).
+              (note.standing !== "set-aside" || marked(note.id))
           )
           .map(({ id }) => id)
       )

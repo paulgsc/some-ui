@@ -452,7 +452,7 @@
           "claim": "Every voice note sent home gets a transcript or a recorded reason it has none, its set-aside mark among them.",
           "requirement": "Each note home holds gets a row; a failed hearing is recorded and tried again on at most ATTEMPTS (3) passes, then stays recorded as failed, so no note is left without an outcome after three passes. A note set aside (D3) before it was heard leaves the queue, its mark the recorded reason; the phone sends that mark once for each note it set aside that home holds, and keeps it owed until home takes it.",
           "verdict": "holds",
-          "conclusion": "Every note gets a row, and a failure is retried a few times and then kept as failed. A note I let go before home heard it is not heard, and home keeps its mark saying so; the phone sends the mark for every kind of note that goes home.",
+          "conclusion": "Every note gets a row, and a failure is retried a few times and then kept as failed. A note I let go before home heard it is not heard, and home keeps its mark saying so; the phone sends the mark for every kind of note that can be let go, and lets none of them leave the phone before its mark is safely noted.",
           "evidence": [
             {
               "class": "measured",
@@ -483,8 +483,8 @@
             {
               "on": "2026-11-01",
               "change": "A note set aside before home heard it is no longer heard: its set-aside mark is the recorded reason it has no transcript.",
-              "why": "The owner's D3 on epic #2368: Let go takes a take out of what routines read and keeps it on home, set aside. The owner chose its own table for the mark (shape B), with the transcriber's queue among what skips a marked note.",
-              "decision": "https://github.com/paulgsc/some-ui/issues/2372#issuecomment-6559370232"
+              "why": "The owner's D3 is what changes VH1: set aside means out of what routines read, kept on home, and the transcriber's queue is one of those reads. Keeping the mark in a table of its own (shape B) was the session's choice under the owner's direction to go with recommendations (some-ui#2372 comment 6559370232).",
+              "decision": "https://github.com/paulgsc/some-ui/issues/2368"
             }
           ]
         },
@@ -1937,7 +1937,7 @@
     {
       "store": "phone:voice-home",
       "class": "cache",
-      "growth": "bounded: VOICE_HOME_MAX_BYTES = 100 x 240,000 = 24,000,000 B of copies of voice notes not yet held by home. Its record (`some-ui:voice-home`) also keeps the set-aside marks owed to home, one per note let go until home answers it, and at most ASIDE_ANSWERED_MAX = 1,000 ids home answered (MIC2).",
+      "growth": "bounded: VOICE_HOME_MAX_BYTES = 100 x 240,000 = 24,000,000 B of copies of voice notes not yet held by home. Its record (`some-ui:voice-home`) also keeps the set-aside marks owed to home, one per note let go until home answers it or it is given up (ASIDE_UNFOUND_MAX = 5 runs home finds no such note), and at most ASIDE_ANSWERED_MAX = 1,000 ids home answered and as many marks given up (MIC2).",
       "horizon": "A copy leaves once home holds the note; a copy home refuses stays on the phone for good (voice-home runtime's sweep keeps it), still counted in the pool.",
       "family": "voice-heard"
     },

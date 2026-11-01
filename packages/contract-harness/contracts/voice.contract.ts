@@ -19,14 +19,16 @@
  * seeds only an account and its session, so `{ "heard": null }` and
  * `{ "heard": { "text", "heardAt", … } }` are declared and skipped, and are
  * held by the server's own test
- * (`handlers/voice.rs`, `the_phone_reads_back_what_home_heard_in_its_note`). *
+ * (`handlers/voice.rs`, `the_phone_reads_back_what_home_heard_in_its_note`).
+ *
  * Home's set-aside mark on a note the owner let go on the phone
  * (`PUT /voice-notes/:id/set-aside?at=`, MIC2 some-ui#2372): the voice lane
  * sends it for a note home holds (`apps/www/src/lib/home-link/set-aside.ts`).
  * Home answers `204` with no body, marked or already marked, which no probe
  * may cause: a mark is kept for good. A note the caller doesn't hold is a
  * `404`, and a time home can't read a `422` naming `at`; both write nothing,
- * and the phone reads each by its status alone.
+ * and the phone reads each by its status alone (a `404` is asked again on a
+ * few runs, then given up).
  */
 
 import { z } from "zod"

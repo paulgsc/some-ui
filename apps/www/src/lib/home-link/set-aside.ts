@@ -14,7 +14,8 @@
  *
  * - `204`, marked or already marked (the first time stands): answered;
  * - `404`, home holds no such note for this phone's account: still owed,
- *   and asked again on the next run;
+ *   and asked again on the next run, up to `ASIDE_UNFOUND_MAX` runs, then
+ *   given up (a phone paired again with another account never finds it);
  * - `422` naming `at`, a time home can't read: answered for good, since no
  *   later run could send another, and said to the native log;
  * - `401`: home no longer knows this phone, and the run ends there;
@@ -45,7 +46,7 @@ function untaken(mark: AsideMark, status: number): void {
       ),
       summary:
         status === 404
-          ? "Home didn't find a voice note set aside on this phone, so it is asked again next time."
+          ? "Home didn't find a voice note set aside on this phone; it is asked again next time, a few times at most."
           : "Home couldn't read when a voice note was set aside, so it isn't marked set aside there.",
     },
   })
@@ -64,7 +65,7 @@ export async function markSetAside(
     }
     if (answer.status === 401) return { kind: "forgotten" }
     if (answer.status === 404 || answer.status === 422) {
-      if (answer.status === 422) port.answered("unmarkable", mark.id)
+      port.answered(answer.status === 404 ? "unfound" : "unmarkable", mark.id)
       untaken(mark, answer.status)
       continue
     }

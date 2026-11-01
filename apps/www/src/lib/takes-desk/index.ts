@@ -29,7 +29,7 @@ import { boundedList } from "@/lib/bounded-list"
 import type { DeskShape, PatternPhone, PatternTakesPorts } from "./pattern"
 import { createPatternTakes } from "./pattern"
 import type { PhoneTakes, Take, TakeLimits } from "./runtime"
-import { createTakes, homeHolds } from "./runtime"
+import { createTakes, homeHolds, NONE_MARKED } from "./runtime"
 
 export type { DeskSnapshot, PhoneTakes, Take } from "./runtime"
 export { makesRoom } from "./runtime"
@@ -81,9 +81,13 @@ type DeskShelf = {
   /**
    * Where each take is kept, from the voice notes' lane
    * (`lib/home-link/voice-copy`): those home holds may make room for a new
-   * take, and a pattern desk's rows say it (MIC3).
+   * take, and a pattern desk's rows say it (MIC3); and which set-aside
+   * marks are safe, without which a take set aside makes no room (LA13).
    */
-  readonly keptWhere: (where: (id: string) => TakeKept) => void
+  readonly keptWhere: (
+    where: (id: string) => TakeKept,
+    marked?: (id: string) => boolean
+  ) => void
 }
 
 export type TakesDesk = DeskShelf & { readonly phone: () => PhoneTakes }
@@ -168,6 +172,7 @@ function desk<R extends Runtime>(
 
   // On this phone until the voice notes' lane says otherwise.
   let where: (id: string) => TakeKept = () => ON_PHONE
+  let marked: (id: string) => boolean = NONE_MARKED
   let runtime: R | null = null
   const phone = (): R => {
     runtime ??= make({
@@ -181,6 +186,9 @@ function desk<R extends Runtime>(
       now: () => Date.now(),
       newId: () => crypto.randomUUID(),
       kept: (id) => where(id),
+      marked: (id) => marked(id),
+      // The kit's desk (idea takes) has no Let go, so no take of it is set
+      // aside to ask about.
       held: (id) => homeHolds(where(id)),
     })
     return runtime
@@ -231,8 +239,9 @@ function desk<R extends Runtime>(
     keptOn: (line, since): string | null => keptOn(takes.read(), line, since),
     kept: takes.read,
     audio: (id) => shelf.shelf().get(id),
-    keptWhere: (next): void => {
+    keptWhere: (next, safe = NONE_MARKED): void => {
       where = next
+      marked = safe
       runtime?.recount()
     },
   }

@@ -151,23 +151,29 @@ import { notesHeld } from "./notes"
 import { askOnDrive } from "./on-drive"
 import { markSetAside } from "./set-aside"
 
-/** What a store keeps of a note's standing, and when it was set aside. */
-type Standing = {
-  readonly standing?: "earlier" | "set-aside" | undefined
-  readonly setAsideAt?: string | number | undefined
+/**
+ * When a note was set aside (D3), ISO 8601, as its store recorded it
+ * (`standing` and `setAsideAt`, read off any record, so a store that gains
+ * a Let go is covered once it keeps them); null for one set aside with no
+ * time it can read (before stores noted when, or a time that is no time);
+ * undefined for one not set aside, a Redo's `earlier` included, which owes
+ * home no mark.
+ */
+export function asideAt(kept: object | undefined): string | null | undefined {
+  if (kept === undefined) return undefined
+  if (Reflect.get(kept, "standing") !== "set-aside") return undefined
+  const at: unknown = Reflect.get(kept, "setAsideAt")
+  const ms =
+    typeof at === "number" ? at : typeof at === "string" ? Date.parse(at) : NaN
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null
 }
 
 /**
- * When a note was set aside (D3), ISO 8601, as its store recorded it; null
- * for one set aside before stores noted when; undefined for one not set
- * aside, a Redo's `earlier` included, which owes home no mark.
+ * Whether note `id`'s set-aside mark is safe: owed in the voice-home record
+ * as storage kept it, or answered (LA13). Each store that lets a held note
+ * go asks it first of one set aside.
  */
-function asideAt(kept: Standing | undefined): string | null | undefined {
-  if (kept?.standing !== "set-aside") return undefined
-  return kept.setAsideAt === undefined
-    ? null
-    : new Date(kept.setAsideAt).toISOString()
-}
+const markSafe = (id: string): boolean => phoneVoiceHome().markSafe(id)
 
 /** A finished voice reflection, as home is told it; null for any other. */
 export function reflectionNote(reflection: Reflection): VoiceOut | null {
@@ -383,6 +389,7 @@ async function readStudio(): Promise<void> {
     .map(({ project, ...note }) => ({
       note: { ...note, of: "studio" },
       audio: (): Promise<Blob | null> => store.audio(project, note.id),
+      aside: asideAt(note),
     }))
   wasRead()
 }
@@ -422,6 +429,7 @@ export function candidates(): Array<Candidate> {
   const game = bites.ready().map((bite) => ({
     note: gameNote(bite),
     audio: (): Promise<Blob | null> => bites.audio(bite.id),
+    aside: asideAt(bite),
   }))
   const lens = lensTakesDesk.kept().map((take) => ({
     note: lensNote(take),
@@ -436,6 +444,7 @@ export function candidates(): Array<Candidate> {
   const ideas = ideaTakesDesk.kept().map((take) => ({
     note: ideaNote(take),
     audio: (): Promise<Blob | null> => ideaTakesDesk.audio(take.id),
+    aside: asideAt(take),
   }))
   return [
     ...said,
@@ -464,16 +473,22 @@ export function gameNote(bite: KeptBite): VoiceOut {
 
 /**
  * Notes, in the voice-home record, the mark home is owed for each of
- * `listed` set aside: when its store says it was let go, or now for one set
- * aside before stores noted when. The first time noted stands, so a mark
- * already owed or answered is left as it is.
+ * `listed` set aside: when its store says it was let go, or now for one
+ * with no time it can read. The first time noted stands, so a mark already
+ * owed or answered is left as it is. Says which of them are not safe yet
+ * (`markSafe`: storage would not keep the record), which no store may let
+ * go.
  */
-function oweMarks(listed: ReadonlyArray<Candidate>): void {
+function oweMarks(listed: ReadonlyArray<Candidate>): ReadonlySet<string> {
   const home = phoneVoiceHome()
   const now = new Date().toISOString()
+  const unsafe = new Set<string>()
   for (const { note, aside } of listed) {
-    if (aside !== undefined) home.owe(note.id, aside ?? now)
+    if (aside !== undefined && !home.owe(note.id, aside ?? now)) {
+      unsafe.add(note.id)
+    }
   }
+  return unsafe
 }
 
 /** One note this phone failed to copy, to the native log (once per pass). */
@@ -710,13 +725,18 @@ type LetsGo = { letGo: (homeHolds: ReadonlySet<string>) => unknown }
  * Hands what home now holds to each store of game bites (`lib/game-bites`),
  * Jobs voice notes, scene notes and Studio takes, whose `letGo` says which
  * of them leave this phone (LG1). The marks owed for those set aside are
- * noted first (`oweMarks`), so a note that leaves keeps its mark.
+ * noted first (`oweMarks`), and a set-aside note whose mark is not safe is
+ * not handed as held, so none leaves without its mark (LA13).
  */
 function letGoHeld(): void {
-  const holds = heldIds()
+  const held = heldIds()
   // Home holds nothing on a phone that never sent: build no store for it.
-  if (holds.size === 0) return
-  oweMarks(candidates())
+  if (held.size === 0) return
+  const unsafe = oweMarks(candidates())
+  const holds =
+    unsafe.size === 0
+      ? held
+      : new Set([...held].filter((id) => !unsafe.has(id)))
   const stores: ReadonlyArray<LetsGo> = [
     phoneGameBites(),
     phoneJobs(),
@@ -757,10 +777,16 @@ function holdLensRecord(): void {
  */
 export function holdNotes(): void {
   leetypeNotesHeldByHome(() => notesHeld("leetype"))
-  soundbiteKeeping()?.heldByHome((): ((id: string) => boolean) => {
-    const records = notesHeld("soundbite")
-    return (id): boolean => voiceHeld(id) && records(id)
-  })
+  soundbiteKeeping()?.heldByHome(
+    (): ((id: string, standing?: string) => boolean) => {
+      const records = notesHeld("soundbite")
+      // One set aside makes room only once its mark is safe (LA13).
+      return (id, standing): boolean =>
+        voiceHeld(id) &&
+        records(id) &&
+        (standing !== "set-aside" || markSafe(id))
+    }
+  )
 }
 
 /**
@@ -769,13 +795,17 @@ export function holdNotes(): void {
  * Studio idea takes by their voice notes, with where each is kept (MIC3,
  * `voiceKept`), where each scene note and each spoken reflection is kept,
  * the stores of study notes (`holdNotes`), and the grammar-lens record by
- * each entry as it is now. Each reads `sent` once per look.
+ * each entry as it is now. Each reads `sent` once per look. The marks owed
+ * are noted first, and each store is told which are safe (`markSafe`).
  */
 function holdOffline(): void {
-  lensTakesDesk.keptWhere(voiceKept)
-  leetypeTakesDesk.keptWhere(voiceKept)
-  ideaTakesDesk.keptWhere(voiceKept)
-  sceneNotesKept(voiceKept)
+  // Paired or not: what home holds of a store makes room at its cap, and
+  // one set aside makes room only once its mark is safe (LA13).
+  if (heldIds().size > 0) oweMarks(candidates())
+  lensTakesDesk.keptWhere(voiceKept, markSafe)
+  leetypeTakesDesk.keptWhere(voiceKept, markSafe)
+  ideaTakesDesk.keptWhere(voiceKept, markSafe)
+  sceneNotesKept(voiceKept, markSafe)
   reflectionNotesKept(voiceKept)
   holdNotes()
   holdLensRecord()

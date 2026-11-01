@@ -57,8 +57,25 @@ export type VoiceOut = {
 
 type VoiceRefusal = { readonly id: string; readonly why: string }
 
-/** A set-aside mark home is owed: the note, and when it was let go (ISO 8601). */
-export type AsideMark = { readonly id: string; readonly at: string }
+/**
+ * A set-aside mark home is owed: the note, when it was let go (ISO 8601),
+ * and how many runs home answered that it holds no such note.
+ */
+export type AsideMark = {
+  readonly id: string
+  readonly at: string
+  readonly unfound?: number
+}
+
+/**
+ * How many runs a mark is sent that home answers holds no such note
+ * (`404`) before this phone gives it up: home holds the notes of its own
+ * account alone, so a phone paired again with another never finds one.
+ */
+export const ASIDE_UNFOUND_MAX = 5
+
+/** A mark home never took, and why: a time it couldn't read, or no such note. */
+export type GivenUp = AsideMark & { readonly why: "unreadable" | "unfound" }
 
 /**
  * How many answered marks this phone remembers, newest kept. A take still
@@ -74,13 +91,15 @@ export type AsideState = {
   readonly owed: ReadonlyArray<AsideMark>
   /**
    * The notes whose mark home answered for good, oldest first, at most
-   * `ASIDE_ANSWERED_MAX`: it took the mark, or never will (a time it can't
-   * read), so neither is owed again.
+   * `ASIDE_ANSWERED_MAX`: it took the mark, or never will (`givenUp`), so
+   * neither is owed again.
    */
   readonly answered: ReadonlyArray<string>
+  /** The marks given up, oldest first, at most `ASIDE_ANSWERED_MAX`. */
+  readonly givenUp: ReadonlyArray<GivenUp>
 }
 
-export const NO_ASIDE: AsideState = { owed: [], answered: [] }
+export const NO_ASIDE: AsideState = { owed: [], answered: [], givenUp: [] }
 
 export type VoiceHomeState = {
   /** Copied for home and not held there yet, oldest first. */
@@ -130,6 +149,8 @@ export type VoiceHomeEvent =
   | { readonly kind: "marked"; readonly id: string }
   /** Home will never take the note's mark (a time it can't read). */
   | { readonly kind: "unmarkable"; readonly id: string }
+  /** Home holds no such note: the mark is given up after `ASIDE_UNFOUND_MAX`. */
+  | { readonly kind: "unfound"; readonly id: string }
 
 /**
  * What home's set-aside marks are read and answered through
@@ -137,7 +158,10 @@ export type VoiceHomeEvent =
  */
 export type AsidePort = {
   readonly due: () => ReadonlyArray<AsideMark>
-  readonly answered: (kind: "marked" | "unmarkable", id: string) => void
+  readonly answered: (
+    kind: "marked" | "unmarkable" | "unfound",
+    id: string
+  ) => void
 }
 
 /** `id` is copied, held or refused: nothing more to do for it here. */
@@ -231,18 +255,46 @@ export function stepVoiceHome(
       }
       return {
         ...state,
-        aside: { owed: [...owed, { id: event.id, at: event.at }], answered },
+        aside: {
+          ...state.aside,
+          owed: [...owed, { id: event.id, at: event.at }],
+        },
       }
     }
     case "marked":
-    case "unmarkable": {
-      if (!state.aside.owed.some((mark) => mark.id === event.id)) return state
-      const answered = [...state.aside.answered, event.id].slice(
-        -ASIDE_ANSWERED_MAX
-      )
+    case "unmarkable":
+    case "unfound": {
+      const mark = state.aside.owed.find((owed) => owed.id === event.id)
+      if (mark === undefined) return state
+      const unfound = (mark.unfound ?? 0) + 1
+      if (event.kind === "unfound" && unfound < ASIDE_UNFOUND_MAX) {
+        return {
+          ...state,
+          aside: {
+            ...state.aside,
+            owed: state.aside.owed.map((owed) =>
+              owed === mark ? { ...mark, unfound } : owed
+            ),
+          },
+        }
+      }
+      const given: GivenUp =
+        event.kind === "unfound"
+          ? { ...mark, unfound, why: "unfound" }
+          : { ...mark, why: "unreadable" }
+      const givenUp =
+        event.kind === "marked"
+          ? state.aside.givenUp
+          : [...state.aside.givenUp, given].slice(-ASIDE_ANSWERED_MAX)
       return {
         ...state,
-        aside: { owed: unowed(state.aside, event.id), answered },
+        aside: {
+          owed: unowed(state.aside, event.id),
+          answered: [...state.aside.answered, event.id].slice(
+            -ASIDE_ANSWERED_MAX
+          ),
+          givenUp,
+        },
       }
     }
     default: {
@@ -367,7 +419,15 @@ function isRefusal(value: unknown): value is VoiceRefusal {
 }
 
 const isMark = (value: unknown): value is AsideMark =>
-  isRecord(value) && isString(value.id) && isString(value.at)
+  isRecord(value) &&
+  isString(value.id) &&
+  isString(value.at) &&
+  (value.unfound === undefined || typeof value.unfound === "number")
+
+const isGivenUp = (value: unknown): value is GivenUp =>
+  isMark(value) &&
+  (Reflect.get(value, "why") === "unreadable" ||
+    Reflect.get(value, "why") === "unfound")
 
 /** The record's `aside`, or none owed for one written before MIC2. */
 function asideOf(value: unknown): AsideState | null {
@@ -377,11 +437,13 @@ function asideOf(value: unknown): AsideState | null {
     !Array.isArray(value.owed) ||
     !value.owed.every(isMark) ||
     !Array.isArray(value.answered) ||
-    !value.answered.every(isString)
+    !value.answered.every(isString) ||
+    !Array.isArray(value.givenUp) ||
+    !value.givenUp.every(isGivenUp)
   ) {
     return null
   }
-  return { owed: value.owed, answered: value.answered }
+  return { owed: value.owed, answered: value.answered, givenUp: value.givenUp }
 }
 
 /** The stored record, or null for one this build cannot read. */

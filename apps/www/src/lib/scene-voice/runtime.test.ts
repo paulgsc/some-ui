@@ -69,6 +69,7 @@ function phone(
     removes,
     asides,
     kept = (): TakeKept => ({ place: "phone" }),
+    marked = (): boolean => true,
   }: {
     stores?: boolean
     /** Whether the list stores a note let go; it does unless said. */
@@ -76,6 +77,8 @@ function phone(
     /** Whether the list stores a note set aside; it does unless said. */
     asides?: () => boolean
     kept?: (id: string) => TakeKept
+    /** Whether a note's set-aside mark is safe; every one is unless said. */
+    marked?: (id: string) => boolean
   } = {}
 ): {
   voice: PhoneSceneVoice
@@ -95,6 +98,7 @@ function phone(
     now: Date.now,
     newId: () => `n${(next += 1)}`,
     kept,
+    marked,
   })
   return { voice, audio, listed }
 }
@@ -277,6 +281,34 @@ describe("createSceneVoice", () => {
     expect(listed.map(({ id }) => id)).toContain("aside-3")
     expect(listed).toHaveLength(SCENE_NOTES_KEPT)
     expect(ids(voice)).toEqual(["draft", "n1"])
+  })
+
+  it("lets no note set aside leave, on home's word or to make room, before its mark is safe (LA13)", async () => {
+    const aside = Array.from({ length: SCENE_NOTES_KEPT - 1 }, (_, index) =>
+      note(`aside-${index}`, {
+        standing: "set-aside",
+        at: new Date(index * 1_000).toISOString(),
+      })
+    )
+    const safe = new Set<string>()
+    const { voice, listed } = phone([note("draft"), ...aside], {
+      kept: () => ({ place: "home", since: null }),
+      marked: (id) => safe.has(id),
+    })
+    // Home holds every one, but no mark is safe: none may go.
+    expect(voice.getSnapshot().full).toBe(true)
+    voice.letGo(new Set(aside.map(({ id }) => id)))
+    expect(listed).toHaveLength(SCENE_NOTES_KEPT)
+    await talk(voice)
+    expect(voice.pattern.getSnapshot().ended?.ending).toBe("full")
+
+    safe.add("aside-2")
+    voice.recount()
+    await talk(voice)
+    expect(voice.pattern.getSnapshot().ended?.ending).toBe("kept")
+    expect(listed.map(({ id }) => id)).not.toContain("aside-2")
+    voice.letGo(new Set(aside.map(({ id }) => id)))
+    expect(listed.map(({ id }) => id)).toContain("aside-0")
   })
 
   it("keeps nothing when the room it makes at twenty is not stored, dropping none home lacks (RM1)", async () => {
