@@ -174,11 +174,11 @@ holds the APK to it).
 - **Nothing the person made is deleted without their yes.** A session save
   or shelf keep that would cross the budget is refused. The app then names
   the oldest finished session (never today's or an unfinished one) and
-  removes it only if the person agrees ("Remove it"). On a paired phone it
-  is copied home first and leaves only once home holds it as it is;
-  otherwise it stays, and the offer says why. On a phone that is not
-  paired there is no home to keep it, so a removed one is gone, as the
-  offer says.
+  removes it only if the person agrees ("Remove it"). On a phone known to
+  be unpaired there is no home to keep it, so a removed one is gone, as
+  the offer says. Otherwise it is copied home first and leaves only once
+  home holds it as it is; if home can't keep it, it stays, and the offer
+  says why.
 - **Letting go is how the phone makes room, and it is always the person's
   act.** The app is client first: nothing requires a server, and a paired
   phone sends to its own home on its own (HF8), but nothing leaves the

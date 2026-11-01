@@ -73,6 +73,16 @@ const HOME_LINK_CALLERS = new Set([
 ])
 
 /**
+ * LA8: who may start a session's let-go (`components/sessions/device-let-go`,
+ * whose `useSessionLetGo` starts it with no confirm): the study list's row,
+ * after its confirm, and the phone-full offer's "Remove it".
+ */
+const LET_GO_CALLERS = [
+  "components/settings/device-storage.tsx",
+  "routes/_dashboard/sessions/index.tsx",
+]
+
+/**
  * LA15: the one wiring of every record this phone drains to home, which
  * calls the link's `keep`, and the runtime it hands that port; and Korean's
  * read of the routine's files.
@@ -474,6 +484,18 @@ describe("LA8: the phone reaches home through one module", () => {
         .filter((f) => !HOME_LINK_CALLERS.has(f))
         .flatMap((f) => valueImportsOf(f, read(f), isHomeLink))
     ).toEqual([])
+  })
+
+  it("starts a session's let-go only from the study list and the phone-full offer (LA8)", () => {
+    // `useSessionLetGo` hands out a `start` with no confirm of its own: each
+    // caller asks first, in its own words.
+    const isLetGo = (module: string): boolean =>
+      module === "components/sessions/device-let-go"
+    expect(
+      sources
+        .filter((f) => valueImportsOf(f, read(f), isLetGo).length > 0)
+        .sort()
+    ).toEqual(LET_GO_CALLERS)
   })
 
   it("calls the link's keep only from the drain and Korean's look (LA15)", () => {

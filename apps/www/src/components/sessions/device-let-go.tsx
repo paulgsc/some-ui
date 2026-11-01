@@ -50,7 +50,9 @@ export type LetGoControl = {
  * "Let it go"'s flow, for a control that asks in its own words: what it may
  * promise now, who keeps it, and the run. The promise travels with `start`:
  * what the question said is what runs, however the pairing moved while it
- * was shown.
+ * was shown. `start` asks nothing itself, so only a caller that asks first
+ * may import this module (LA8; `LET_GO_CALLERS` in
+ * `lib/serving-privacy/__tests__/egress-choke-points.test.ts`).
  */
 export type SessionLetGo = {
   /** What a question asked now may promise (`promiseOf`). */

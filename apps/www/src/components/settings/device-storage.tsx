@@ -60,6 +60,13 @@ const finishedOn = (stamp: string): string =>
   new Date(stamp).toLocaleDateString()
 
 /**
+ * Whether the offer is done once a let-go ended so: the session left this
+ * phone, or was no longer on it, so there is nothing left to offer.
+ */
+const closes = (end: LetGoEnd): boolean =>
+  leftPhone(end) || end.kind === "missing"
+
+/**
  * Why the offered session is still here, once a let-go ended with it
  * staying. A failure is said by the button's own, with its retry.
  */
@@ -67,14 +74,15 @@ function stayedLine(state: Intent<LetGoEnd>, host: string): string | null {
   return matchIntent(state, {
     idle: () => null,
     working: () => null,
-    succeeded: (end) => (leftPhone(end) ? null : LET_GO.ended(end, host)),
+    succeeded: (end) => (closes(end) ? null : LET_GO.ended(end, host)),
     failed: () => null,
   })
 }
 
 /**
  * One offer per refusal: keyed by the session it names. It closes once the
- * session left this phone; while it stays, the offer says why and asks again.
+ * session is off this phone; while it stays, the offer says why and asks
+ * again. "Try again" after a failure re-runs the same promise.
  */
 const RemoveOffer = ({
   session,
@@ -84,7 +92,7 @@ const RemoveOffer = ({
   const letGo = useSessionLetGo()
   const { host, promise } = letGo
   useIntentEffect(letGo, (end) => {
-    if (leftPhone(end)) void deviceStorage.settle()
+    if (closes(end)) void deviceStorage.settle()
   })
   const stayed = stayedLine(letGo.state, host)
   return (

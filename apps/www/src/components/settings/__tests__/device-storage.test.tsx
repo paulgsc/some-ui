@@ -19,7 +19,9 @@
  *   the read and the let-go.
  * - _Proof:_ the "PF1" tests here (paired and held: it goes on home's word
  *   alone; paired and unreachable: it stays, said in the offer, which stays
- *   open; unpaired: today's delete), and for each end over the same flow,
+ *   open; shown paired and unpaired by the tap: it stays; shown while the
+ *   pairing can't be read: home is promised and it stays; unpaired: today's
+ *   delete), and for each end over the same flow,
  *   `lib/home-link/__tests__/sessions.test.ts`'s "the study list's Let it go"
  *   (a promise of home is never kept by a plain delete; an unreachable,
  *   refusing or forgetting home, a busy link, a read-back that differs and a
@@ -41,9 +43,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { DeviceStorageView } from "@/lib/device-backend/storage-view"
 import type { HomeLink, HomeLinkState } from "@/lib/home-link"
+import { LET_GO } from "@/lib/home-link/words"
 
 const UNPAIRED: HomeLinkState = {
   link: { kind: "unpaired", note: null },
+  activity: { kind: "idle" },
+  pairFailure: null,
+}
+
+const UNREADABLE: HomeLinkState = {
+  link: { kind: "unpaired", note: "unreadable" },
   activity: { kind: "idle" },
   pairFailure: null,
 }
@@ -192,7 +201,7 @@ describe("the phone-full offer", () => {
 
     expect(
       screen.getByText(
-        `Remove “Evening reading” (finished ${finished}) to make room? home.example keeps it. If home.example can't, it stays here.`
+        `Remove “Evening reading” (finished ${finished}) to make room? It leaves this phone, and home.example keeps it. If home.example can't, it stays here.`
       )
     ).toBeTruthy()
     await pressRemove()
@@ -238,7 +247,7 @@ describe("the phone-full offer", () => {
 
     expect(
       screen.getByText(
-        `Remove “Evening reading” (finished ${finished}) to make room? It can't be brought back.`
+        `Remove “Evening reading” (finished ${finished}) to make room? It leaves this phone, and can't be brought back.`
       )
     ).toBeTruthy()
     await pressRemove()
@@ -247,6 +256,59 @@ describe("the phone-full offer", () => {
     expect(deletes[0]).toContain("session-1")
     expect(letGo.ids).toEqual([])
     expect(storage.settled).toBe(1)
+  })
+
+  it("PF1: shown paired, keeps it here when the phone is unpaired by the tap: what the offer said is what runs", async () => {
+    home.state = PAIRED
+    home.send = keepingHome()
+    render(withQueryClient(<DeviceStoragePrompt />))
+
+    // Unpaired between the offer and the tap, with no render in between.
+    home.state = UNPAIRED
+    await pressRemove()
+
+    expect(deletes).toEqual([])
+    expect(letGo.ids).toEqual([])
+    expect(
+      await screen.findByText(LET_GO.ended({ kind: "unpaired" }, "home"))
+    ).toBeTruthy()
+    expect(storage.settled).toBe(0)
+  })
+
+  it("PF1: while the pairing can't be read, promises home and keeps it here", async () => {
+    home.state = UNREADABLE
+    render(withQueryClient(<DeviceStoragePrompt />))
+
+    expect(
+      screen.getByText(
+        `Remove “Evening reading” (finished ${finished}) to make room? It leaves this phone, and home keeps it. If home can't, it stays here.`
+      )
+    ).toBeTruthy()
+    await pressRemove()
+
+    expect(deletes).toEqual([])
+    expect(letGo.ids).toEqual([])
+    expect(
+      await screen.findByText(LET_GO.ended({ kind: "unreadable" }, "home"))
+    ).toBeTruthy()
+    expect(storage.settled).toBe(0)
+  })
+
+  it("closes the offer when the session is no longer on the phone", async () => {
+    home.state = PAIRED
+    home.send = keepingHome()
+    vi.stubGlobal("fetch", () =>
+      Promise.resolve(
+        new Response(JSON.stringify({ error: "not_found" }), { status: 404 })
+      )
+    )
+    render(withQueryClient(<DeviceStoragePrompt />))
+
+    await pressRemove()
+
+    expect(letGo.ids).toEqual([])
+    expect(storage.settled).toBe(1)
+    expect(screen.queryByText("Phone full. Not saved.")).toBeNull()
   })
 
   it("lets nothing go when the offer is declined", () => {

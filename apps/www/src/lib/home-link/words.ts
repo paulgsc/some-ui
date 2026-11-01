@@ -271,7 +271,10 @@ export const LET_GO = {
       : `"${name}" leaves this phone, and can't be brought back.`,
   /** The phone-full offer of the oldest finished session. */
   room: {
-    /** Its ask, given the session's name and the day it was finished. */
+    /**
+     * Its ask, given the session's name and the day it was finished. The
+     * host never opens a sentence: it may be the word "home".
+     */
     question: (
       name: string,
       finished: string,
@@ -279,8 +282,8 @@ export const LET_GO = {
       host: string
     ): string =>
       promise === "home"
-        ? `Remove “${name}” (finished ${finished}) to make room? ${host} keeps it. If ${host} can't, it stays here.`
-        : `Remove “${name}” (finished ${finished}) to make room? It can't be brought back.`,
+        ? `Remove “${name}” (finished ${finished}) to make room? It leaves this phone, and ${host} keeps it. If ${host} can't, it stays here.`
+        : `Remove “${name}” (finished ${finished}) to make room? It leaves this phone, and can't be brought back.`,
     confirm: "Remove it",
     working: "Removing...",
   },

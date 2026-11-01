@@ -448,7 +448,9 @@ declared (checked by reading every call site and by the tests named).
   `components/sessions/device-let-go.tsx` whose `onConfirm`, or in
   `device-storage.tsx` whose `onPress`, passes a promise other than the one
   its question was given, or that has the offer remove its session by any
-  route but `letSessionGo` (`useDeleteSession`, `sessionsRepository`); one that calls its `keep` from anywhere but
+  route but `letSessionGo` (`useDeleteSession`, `sessionsRepository`), or
+  that calls `useSessionLetGo`'s `start` (which asks nothing itself) from
+  anywhere but those two, or widens the egress test's `LET_GO_CALLERS`; one that calls its `keep` from anywhere but
   `lib/home-link/lanes.ts` (LA15) and `lib/home-link/routine.ts`; one that
   has `lib/home-link/on-drive.ts` send anything but its `GET`s, one per 100
   waiting takes, or lets
@@ -548,12 +550,18 @@ declared (checked by reading every call site and by the tests named).
   (#2422), by reading its one call (`RemoveOffer` in
   `components/settings/device-storage.tsx` starts `letSessionGo`, through
   `useSessionLetGo`, only in "Remove it"'s `onPress`, with the promise its
-  `LET_GO.room.question` was given, and imports no other delete) and by
+  `LET_GO.room.question` was given, and imports no other delete; its
+  `IntentButton`'s "Try again" re-runs the same stored promise, as
+  `useAsyncIntent`'s retry replays the variables it failed with), by
+  `egress-choke-points.test.ts` (only the study list's route and the offer
+  value-import `components/sessions/device-let-go`, `LET_GO_CALLERS`) and by
   `components/settings/__tests__/device-storage.test.tsx` (PF1: on a paired
   phone the offer says home keeps it and the session leaves on home's word
   alone; an unreachable home leaves it here, said in the offer, which stays
-  open; an unpaired phone's offer says it can't be brought back and deletes
-  it as before).
+  open; an offer shown paired keeps it when the phone is unpaired by the
+  tap, and one shown while the pairing can't be read promises home and
+  keeps it; an unpaired phone's offer says it can't be brought back and
+  deletes it as before).
 
 ### LA9 (retired): aph is sent home only while its person is using it
 
