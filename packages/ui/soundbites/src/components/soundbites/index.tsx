@@ -52,6 +52,7 @@ import {
 import type { SoundbitesPorts } from "@soundbites/lib/runtime"
 import { createSoundbites } from "@soundbites/lib/runtime"
 import type { SoundbiteSource } from "@soundbites/lib/types"
+import { replacedBy, SOUNDBITE_WORDS as WORDS } from "@soundbites/lib/words"
 
 export type SoundbitesProps = {
   /** Where the app stands. Read once, as each soundbite is kept. */
@@ -258,20 +259,17 @@ export const Soundbites = ({
 
         {full && replaced !== null && (
           <p className="text-muted-foreground text-xs">
-            Full. Your next one replaces{" "}
+            {WORDS.fullReplaces}{" "}
             <span className="text-foreground font-medium">
               {formatWhen(replaced.recordedAt, now)}
             </span>
-            {choice === null ? ", the oldest home has" : ""}. Pick another below
-            to replace that one instead.
+            {WORDS.whichGoes[replacedBy(replaced, choice)]}
+            {WORDS.pickAnother}
           </p>
         )}
 
         {full && replaced === null && (
-          <p className="text-muted-foreground text-xs">
-            Full. These stay on this phone until a home it&apos;s paired with
-            has them, and then your next one replaces the oldest.
-          </p>
+          <p className="text-muted-foreground text-xs">{WORDS.fullNoneHeld}</p>
         )}
 
         {library.kind === "unreadable" ? (
@@ -279,11 +277,7 @@ export const Soundbites = ({
             role="alert"
             className="bg-muted/40 space-y-3 rounded-2xl p-4 text-center text-sm"
           >
-            <p className="text-muted-foreground">
-              Couldn&apos;t read what&apos;s on this phone. If it is full, your
-              next one replaces the oldest home has, or isn&apos;t kept while
-              home has none.
-            </p>
+            <p className="text-muted-foreground">{WORDS.unreadable}</p>
             <Button
               size="sm"
               variant="outline"

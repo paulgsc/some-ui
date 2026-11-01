@@ -699,6 +699,13 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
           notice:
             state.notice === NOTICES.notKept ? NOTICES.keptNow : state.notice,
         })
+      // Kept after the next bite was taken: Undo offers only the bite on
+      // screen, so this one may go home now.
+      if (lastBite?.take.id !== event.id)
+        return {
+          state: settled,
+          effects: [{ type: "release", id: event.id }],
+        }
       return offerUndo(settled, entry)
     }
 
@@ -713,6 +720,9 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
           each === entry ? { ...each, held: true } : each
         ),
       }
+      // Not the bite on screen any more: no Undo for it either.
+      if (state.lastBite?.take.id !== event.id)
+        return stay({ ...held, notice: NOTICES.notKept })
       const offered = offerUndo(held, entry)
       return {
         ...offered,
