@@ -115,10 +115,12 @@ export const VoiceNotes = ({
         voice.leave()
         return
       }
-      const mine = formTakes(phoneJobs().getSnapshot().state, owner)
+      // By owner, not the draft: recording the form names or files its
+      // notes, and one may be playing as it goes.
+      const { voice: notes } = phoneJobs().getSnapshot().state
       if (
         playback.kind !== "quiet" &&
-        mine.some(({ id }) => id === playback.id)
+        notes.some((n) => n.id === playback.id && n.owner === owner)
       ) {
         voice.stopPlaying()
       }
