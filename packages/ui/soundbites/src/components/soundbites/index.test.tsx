@@ -14,6 +14,7 @@ import {
 import type { SoundbitesProps } from "@soundbites/components/soundbites"
 import { Soundbites } from "@soundbites/components/soundbites"
 import { bite, memoryStore } from "@soundbites/lib/__tests__/fixture"
+import { formatWhen } from "@soundbites/lib/format"
 import { soundbitesHeldByHome } from "@soundbites/lib/home-held"
 import type { SoundbiteSituation } from "@soundbites/lib/machine"
 import type { SoundbitesPorts } from "@soundbites/lib/runtime"
@@ -592,10 +593,12 @@ describe("Soundbites", () => {
     if (newest === undefined) throw new Error("a row to let go")
     await settle(() => fireEvent.click(newest))
     await waitFor(() => expect(rows()).toHaveLength(5))
-    // The next one replaces the one set aside, so the line names no row.
-    expect(
-      screen.getByText(/Full\. Your next one replaces/)
-    ).toBeInTheDocument()
+    // The next one replaces the one set aside, and says so.
+    const set = FULL[0]
+    if (set === undefined) throw new Error("six kept")
+    expect(screen.getByText(/Full\. Your next one replaces/)).toHaveTextContent(
+      `Full. Your next one replaces ${formatWhen(set.recordedAt, new Date())}, one you set aside. Pick another below to replace that one instead.`
+    )
 
     await record()
     await screen.findByText(W.ended.kept)
