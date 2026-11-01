@@ -187,6 +187,8 @@ export type TakePatternEvent =
   | { readonly type: "stopPlaying" }
   /** D3: sets a take aside. */
   | { readonly type: "letGo"; readonly id: string; readonly place: TakePlace }
+  /** The screen's store couldn't mark it: it stays the item's, unsaid. */
+  | { readonly type: "setAsideFailed"; readonly id: string }
   /** The screen went: a take under way is kept, and nothing plays. */
   | { readonly type: "left" }
   | {
@@ -350,6 +352,10 @@ export function stepTakePattern(
         effects: [...quiet.effects, { type: "setAside", id: event.id }],
       }
     }
+    case "setAsideFailed": {
+      if (state.setAside?.id !== event.id) return { state, effects: [] }
+      return { state: { ...state, setAside: null }, effects: [] }
+    }
     case "micOpened":
     case "micFailed":
     case "ticked":
@@ -429,8 +435,12 @@ export type TakePatternPorts = Omit<TakeKitPorts, "keep"> & {
     supersedes: string | null,
     done: (result: KeepResult) => void
   ) => void
-  /** Marks a take set aside (D3): out of the item, kept. */
-  readonly setAside: (id: string) => void
+  /**
+   * Marks a take set aside (D3): out of the item, kept. Then says, once,
+   * whether the store kept the mark; a take it couldn't mark stays the
+   * item's, and the line saying it was set aside goes.
+   */
+  readonly setAside: (id: string, done: (stored: boolean) => void) => void
   /** A take's audio, or null when it can't be read. */
   readonly audio: (id: string) => Promise<Blob | null>
   /** Defaults to the kit's `audioPlayer`. */
@@ -486,7 +496,14 @@ export function takePattern(
         return
       }
       case "setAside": {
-        ports.setAside(effect.id)
+        const { id } = effect
+        let answered = false
+        ports.setAside(id, (stored) => {
+          // Once: a second answer is for nobody.
+          if (answered) return
+          answered = true
+          if (!stored) dispatch({ type: "setAsideFailed", id })
+        })
         return
       }
       case "loadAudio": {

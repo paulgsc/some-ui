@@ -577,7 +577,68 @@ describe("Soundbites", () => {
     expect(
       await screen.findByText("That one couldn't be set aside. Try again?")
     ).toBeInTheDocument()
+    // The pattern takes back its word: no line says it was set aside.
+    expect(screen.queryByText(W.setAside.phone)).toBeNull()
     expect(rows()).toHaveLength(1)
+  })
+
+  it("makes room at the cap from one let go before any still listed", async () => {
+    soundbitesHeldByHome(() => (): boolean => true)
+    const { kept } = setup({ kept: FULL })
+
+    const [newest] = await screen.findAllByRole("button", {
+      name: W.rowLabel(W.letGo, 12_000),
+    })
+    if (newest === undefined) throw new Error("a row to let go")
+    await settle(() => fireEvent.click(newest))
+    await waitFor(() => expect(rows()).toHaveLength(5))
+    // The next one replaces the one set aside, so the line names no row.
+    expect(
+      screen.getByText(/Full\. Your next one replaces/)
+    ).toBeInTheDocument()
+
+    await record()
+    await screen.findByText(W.ended.kept)
+    expect(kept.has("b0")).toBe(false)
+    expect(kept.has("b5")).toBe(true)
+    expect(kept.size).toBe(6)
+  })
+
+  it("counts set-aside and earlier ones toward the six, and refuses a seventh while home holds none", async () => {
+    soundbitesHeldByHome(() => (): boolean => false)
+    const { kept } = setup({
+      kept: FULL.map((each, i) =>
+        i === 0
+          ? { ...each, standing: "set-aside" as const }
+          : i === 1
+            ? { ...each, standing: "earlier" as const }
+            : each
+      ),
+    })
+    expect(await screen.findByText("6 of 6 kept")).toBeVisible()
+
+    await record()
+
+    expect(await screen.findByText(W.ended.full)).toBeInTheDocument()
+    expect(kept.size).toBe(6)
+    expect(kept.get("b0")?.bite.standing).toBe("set-aside")
+  })
+
+  it("redoes one at the cap: the oldest home holds makes room, and the redone one is kept as earlier", async () => {
+    soundbitesHeldByHome(() => (): boolean => true)
+    const { kept } = setup({ kept: FULL })
+
+    const [newest] = await screen.findAllByRole("button", {
+      name: W.rowLabel(W.redo, 12_000),
+    })
+    if (newest === undefined) throw new Error("a row to redo")
+    await settle(() => fireEvent.click(newest))
+    await tap(W.buttonLabel.recording)
+
+    expect(await screen.findByText(W.earlier(1))).toBeInTheDocument()
+    expect(kept.get("b0")?.bite.standing).toBe("earlier")
+    expect(kept.has("b5")).toBe(false)
+    expect(kept.size).toBe(6)
   })
 
   it("redoes one: the new one is listed, and the earlier one kept apart (D2)", async () => {
