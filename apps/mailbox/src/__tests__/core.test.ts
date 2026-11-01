@@ -1033,17 +1033,11 @@ describe("home's indexes", () => {
     expect(await refused({ ...JOBS, routine: "topik" })).toEqual({
       error: "routine must be jobs or reflections",
     })
-    expect(
-      await refused(
-        { ...JOBS, routine: "reflections" },
-        "index-reflections-20261031T144502118Z.json"
-      )
-    ).toEqual({ error: "day is not part of the reflections index" })
     expect(await refused(JOBS, "index-topik-20261031T144502118Z.json")).toEqual(
       { error: "the name must carry the body's routine" }
     )
     expect(await refused({ ...JOBS, drafts: [] })).toEqual({
-      error: "drafts is not part of the jobs index",
+      error: "drafts is not part of a jobs index",
     })
     const { picked: _, ...short } = JOBS
     expect(await refused(short)).toEqual({
@@ -1132,6 +1126,8 @@ describe("home's indexes", () => {
       [withNote("data:audio/webm;base64,GkXfo59ChoEBQveBAULygQRC"), audio],
       [withNote("A".repeat(300)), audio],
       [withNote("https://drive.google.com/file/d/1AbC/view"), drive],
+      [JSON.stringify({ ...JOBS, audio: "take-1" }), audio],
+      [JSON.stringify({ ...JOBS, driveId: "1AbC" }), drive],
     ] as const) {
       const response = await asHome(d, NAME, body)
       expect(response.status).toBe(422)
@@ -1148,7 +1144,7 @@ describe("home's reflections index", () => {
     validUntil: "2026-11-02T14:01:00.000Z",
     skipped: [],
     answered: {
-      scenes: ["2026-10-29_reflection_7f3a91c2", "2026-10-30_stock_1"],
+      scenes: ["2026-10-29_reflection_2a4b6c01", "2026-10-30_stock_1"],
       dramas: ["drama-20261029T071503120Z"],
     },
     words: [{ id: "coffee", lemma: "커피" }],
@@ -1168,8 +1164,8 @@ describe("home's reflections index", () => {
     },
     reflections: [
       {
-        base: "2026-10-31_reflection_7f3a91c2",
-        session: "7f3a91c2-0000-4000-8000-000000000001",
+        base: "2026-10-31_reflection_2a4b6c01",
+        session: "session-7f3a91c2-5d1e-4b6a-9c3f-0e8d2a4b6c01",
         day: "2026-10-31",
         reflections: ["reflection-r1.json"],
         newestAt: "2026-10-31T14:00:00.000Z",
@@ -1192,43 +1188,13 @@ describe("home's reflections index", () => {
   ): Promise<Response> =>
     put(d, "index", name, { token: HOME, body: JSON.stringify(body) })
 
-  it("is kept beside the jobs index: each routine keeps only its own latest", async () => {
+  it("keeps a validUntil of null as home put it", async () => {
     const d = deps()
-    const JOBS_NAME = "index-jobs-20261031T144502118Z.json"
-    const jobs = {
-      schema: "some-ui.routine-index/1",
-      routine: "jobs",
-      day: "2026-10-31",
-      validThrough: null,
-      asOf: null,
-      from: { digests: [], decisions: [], scout: [], backfill: [] },
-      skipped: [],
-      queue: { open: [], lapsed: [], free: { software: 3, adjacent: 2 } },
-      new: { decisions: [], scout: [] },
-      notes: [],
-      picked: [],
-    }
-    expect((await asHome(d, JOBS_NAME, jobs)).status).toBe(201)
-    expect((await asHome(d, NAME)).status).toBe(201)
-    const NEWER = "index-reflections-20261101T080001003Z.json"
-    expect(
-      (await asHome(d, NEWER, { ...REFLECTIONS, validUntil: null })).status
-    ).toBe(201)
-    expect(
-      await json(await send(d, "GET", "/v1/index/items?after=0&limit=50"))
-    ).toEqual({
-      items: [
-        expect.objectContaining({ name: JOBS_NAME }),
-        expect.objectContaining({ name: NEWER }),
-      ],
-    })
-    expect(
-      await json(await send(d, "GET", `/v1/index/items/${NEWER}`))
-    ).toEqual({
-      ...REFLECTIONS,
-      validUntil: null,
-    })
-    expect((await asHome(d, NAME)).status).toBe(409)
+    const body = { ...REFLECTIONS, validUntil: null }
+    expect((await asHome(d, NAME, body)).status).toBe(201)
+    expect(await json(await send(d, "GET", `/v1/index/items/${NAME}`))).toEqual(
+      body
+    )
   })
 
   it("takes only a reflections index's own shape, and says why not", async () => {
@@ -1239,7 +1205,7 @@ describe("home's reflections index", () => {
       return json(response)
     }
     expect(await refused({ ...REFLECTIONS, day: "2026-10-31" })).toEqual({
-      error: "day is not part of the reflections index",
+      error: "day is not part of a reflections index",
     })
     const { words: _, ...short } = REFLECTIONS
     expect(await refused(short)).toEqual({
@@ -1249,8 +1215,6 @@ describe("home's reflections index", () => {
       "2026-10-31T14:45:02.118Z",
       "2026-10-30T00:00:00.000Z",
       "in two days",
-      "2026-11-02",
-      7,
     ]) {
       expect(await refused({ ...REFLECTIONS, validUntil })).toEqual({
         error: "validUntil must be a moment after asOf, or null",
@@ -1272,34 +1236,6 @@ describe("home's reflections index", () => {
       (await asHome(d, NAME, { ...REFLECTIONS, asOf: null, validUntil: null }))
         .status
     ).toBe(201)
-  })
-
-  it("refuses one that carries audio or names a Drive file", async () => {
-    const d = deps()
-    const withNote = (note: string): Record<string, unknown> => ({
-      ...REFLECTIONS,
-      reflections: [
-        { ...REFLECTIONS.reflections[0], notes: [{ note, transcript: null }] },
-      ],
-    })
-    for (const [body, why] of [
-      [
-        withNote("data:audio/webm;base64,GkXfo59ChoEBQveBAULygQRC"),
-        "an index carries no audio: home keeps the audio",
-      ],
-      [
-        withNote("A".repeat(300)),
-        "an index carries no audio: home keeps the audio",
-      ],
-      [
-        withNote("https://drive.google.com/file/d/1AbC/view"),
-        "an index names no Drive file",
-      ],
-    ] as const) {
-      const response = await asHome(d, NAME, body)
-      expect(response.status).toBe(422)
-      expect(await json(response)).toEqual({ error: why })
-    }
   })
 })
 

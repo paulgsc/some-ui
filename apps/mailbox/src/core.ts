@@ -353,7 +353,6 @@ const NO_DRIVE_INDEX = "an index names no Drive file"
 /** One routine's index shape past its keys: why it is refused, or `null`. */
 type IndexShape = (body: Readonly<Record<string, unknown>>) => string | null
 
-/** Why `body` is refused: a key of `objects` that is not an object, or of `lists` that is not a list. */
 function shapeOf(
   objects: ReadonlyArray<string>,
   lists: ReadonlyArray<string>,
@@ -428,19 +427,25 @@ function indexRefusal(
   text: string,
   name: string
 ): string | null {
-  const carried = carriesRefusal(text, NO_AUDIO_INDEX, NO_DRIVE_INDEX)
-  if (carried !== null) return carried
   const routine = INDEX_ROUTINES.get(body.routine)
-  if (routine === undefined) return "routine must be jobs or reflections"
+  if (routine === undefined) {
+    return `routine must be ${[...INDEX_ROUTINES.keys()].join(" or ")}`
+  }
+  const what = `${String(body.routine)} index`
+  const shape = shapeRefusal(
+    body,
+    text,
+    routine.keys,
+    NO_AUDIO_INDEX,
+    NO_DRIVE_INDEX,
+    what
+  )
+  if (shape !== null) return shape
   if (!name.startsWith(`index-${String(body.routine)}-`)) {
     return "the name must carry the body's routine"
   }
-  const what = `the ${String(body.routine)} index`
-  const keys = Object.keys(body)
-  const extra = keys.find((key) => !routine.keys.has(key))
-  if (extra !== undefined) return `${extra} is not part of ${what}`
   const missing = [...routine.keys].find((key) => !(key in body))
-  if (missing !== undefined) return `${what} carries ${missing}`
+  if (missing !== undefined) return `the ${what} carries ${missing}`
   return routine.shape(body)
 }
 
