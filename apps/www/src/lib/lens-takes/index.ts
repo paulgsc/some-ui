@@ -21,7 +21,10 @@ const desk = patternDesk({
   dbName: "some-ui.lens-takes",
   limits: { max: LENS_TAKES_MAX, maxMs: LENS_TAKE_MAX_MS },
   // As many a line as the desk keeps, the newest played, as "Mine" was.
-  shape: { takes: { per: "many", max: LENS_TAKES_MAX }, play: "latest" },
+  shape: {
+    takes: { per: "many", max: LENS_TAKES_MAX, full: "refuse" },
+    play: "latest",
+  },
 })
 
 export const sweepLensTakes = desk.sweep

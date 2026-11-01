@@ -16,7 +16,7 @@ import type {
 /** The phone's choice for the lens (www's `lib/lens-takes`). */
 const LENS_OPTIONS: TakePatternOptions = {
   ...ONE_TAKE,
-  takes: { per: "many", max: 40 },
+  takes: { per: "many", max: 40, full: "refuse" },
   limits: { minMs: 1_000, maxMs: 30_000 },
   play: "latest",
 }

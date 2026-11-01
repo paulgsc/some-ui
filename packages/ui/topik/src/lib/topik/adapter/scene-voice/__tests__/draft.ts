@@ -38,7 +38,7 @@ export function sceneDraft(
   room: { readonly full: boolean } = { full: false }
 ): TestDraft {
   const simulated = simulatedPattern({
-    options: { ...ONE_TAKE, takes: { per: "many", max: 5 } },
+    options: { ...ONE_TAKE, takes: { per: "many", max: 5, full: "refuse" } },
     seed,
   })
   const { pattern, store } = simulated

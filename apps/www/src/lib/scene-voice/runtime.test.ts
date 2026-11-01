@@ -23,7 +23,8 @@ import {
 function memoryNotes(
   listed: Array<KeptSceneNote>,
   stores = true,
-  removes = (): boolean => true
+  removes = (): boolean => true,
+  asides = (): boolean => true
 ): SceneVoicePorts["notes"] {
   const write = (next: Array<KeptSceneNote>): boolean => {
     if (!stores) return false
@@ -49,6 +50,7 @@ function memoryNotes(
         )
       ),
     setAside: (ids): boolean =>
+      asides() &&
       write(
         listed.map(
           (note): KeptSceneNote =>
@@ -63,11 +65,14 @@ function phone(
   {
     stores = true,
     removes,
+    asides,
     kept = (): TakeKept => ({ place: "phone" }),
   }: {
     stores?: boolean
     /** Whether the list stores a note let go; it does unless said. */
     removes?: () => boolean
+    /** Whether the list stores a note set aside; it does unless said. */
+    asides?: () => boolean
     kept?: (id: string) => TakeKept
   } = {}
 ): {
@@ -83,7 +88,7 @@ function phone(
     owner: microphoneOwner(),
     player: simulatedPlayer(),
     audio,
-    notes: memoryNotes(listed, stores, removes),
+    notes: memoryNotes(listed, stores, removes, asides),
     saving: () => undefined,
     now: Date.now,
     newId: () => `n${(next += 1)}`,
@@ -153,6 +158,15 @@ describe("createSceneVoice", () => {
       ["n2", undefined],
     ])
     expect(await audio.ids()).toEqual(["n1", "n2"])
+  })
+
+  it("takes back the set-aside line when the phone won't store the note set aside", async () => {
+    const { voice, listed } = phone([], { asides: () => false })
+    await talk(voice)
+    voice.pattern.letGo("n1", "phone")
+    expect(voice.pattern.getSnapshot().setAside).toBeNull()
+    expect(ids(voice)).toEqual(["n1"])
+    expect(listed[0]?.standing).toBeUndefined()
   })
 
   it("lets the whole scene go by setting every note in the draft aside, kept", async () => {
