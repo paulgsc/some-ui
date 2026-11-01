@@ -31,21 +31,22 @@ kept only for what the mailbox can't carry or the phone can't reach:
 - **Copies for refreshing away from home** (D4, #2183): the phone can't reach home there, so
   it picks from Drive. The Jobs run copies each digest to `some-ui jobs/Brief`, and the
   reflections run copies each scene to a folder of `Read aloud/sets` and each drama to
-  `Dramas/requests`, each only after home has it. A routine reads a copy back only where
-  home's has been archived out of the mailbox's live files.
-- **What only Drive holds, read and never rewritten:** reflections and drama prompts shared
-  to `Study ledger/reflections` and `Dramas/requests` before the phone sent them home (an APK
-  from before HF3 and HF4 still shares them there); scene folders an earlier run wrote,
-  whose description (`answers: <base>`, `stock: <base>`) says what they answer; dramas in
-  `Dramas/requests` and `Dramas/played`; and `some-ui jobs/Decisions` and `Scout`, which take
-  nothing new since HF2, and hold two files home can't take yet (#2393).
+  `Dramas/requests`, each only after home has it.
+- **What only Drive holds, read and never rewritten,** in `Study ledger/reflections`,
+  `Dramas/requests`, `Dramas/played`, `Read aloud/sets`, `Read aloud/archive` and
+  `some-ui jobs/Brief`, `Decisions` and `Scout`. Among them are the Jobs files `stands` lists
+  as `later`: a phone on an APK without HF2 shares a file that names a voice note to Drive
+  alone, and the mailbox refuses such a file under its Drive name. Drive gets no new ones once
+  the owner installs an APK with HF2 (#2393).
 - **The rest of the tree:** `Inbox/`, `Vlog/playoff-delta/week-NN` and `published`,
   `some-ui jobs/Recommended resume`, `Archive/`, and the `Publish ledger` sheet. The doc
   carries each folder's id.
 
-No run keeps state in Drive any more: none writes a folder description, and none moves a
-drama set to `Dramas/played`. Each routine's `ROUTINE.md` says, under "What still needs
-Drive", what it does without the connector and what it can't.
+A routine reads Drive for what the mailbox's live files don't give it, and keeps no state
+there: none writes a folder description, and none moves a drama set to `Dramas/played`. Each
+routine's `ROUTINE.md` (`packages/job-desk`, `packages/ui/topik`) says, under "What still
+needs Drive", which files only Drive holds and why, what it reads there, and what it can't do
+without the connector.
 
 ## What the SOP settles
 

@@ -58,9 +58,10 @@ export type IndexStanding = {
    */
   readonly backfill: ReadonlyArray<string>
   /**
-   * Later decisions and scouts files only Drive holds: the mailbox refuses
-   * them, and the phone, which sends every new one home since HF2 (#2177),
-   * doesn't send these old ones (#2393).
+   * Later decisions and scouts files only Drive holds: a phone on an APK
+   * without HF2 shares a file that names a voice note to Drive alone, and the
+   * mailbox refuses such a file under its Drive name. Drive gets no new ones
+   * once the owner installs an APK with HF2 (#2393).
    */
   readonly later: ReadonlyArray<string>
 }
