@@ -14,7 +14,7 @@ import type {
 } from "@topik/lib/topik/adapter/lens-takes"
 
 /** The phone's choice for the lens (www's `lib/lens-takes`). */
-export const LENS_OPTIONS: TakePatternOptions = {
+const LENS_OPTIONS: TakePatternOptions = {
   ...ONE_TAKE,
   takes: { per: "many", max: 40 },
   limits: { minMs: 1_000, maxMs: 30_000 },

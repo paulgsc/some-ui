@@ -42,7 +42,7 @@ import {
 } from "@some-ui/voice-capture"
 
 /** What a kit desk shows of its takes. */
-export type KitTakeSnapshot = {
+type KitTakeSnapshot = {
   take: TakeView
   /** Said once beside the button: how the last take ended, or why none can. */
   said: string | null

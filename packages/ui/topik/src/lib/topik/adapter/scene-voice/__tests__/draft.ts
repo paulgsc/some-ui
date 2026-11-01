@@ -13,7 +13,7 @@ import type {
   SceneVoiceSnapshot,
 } from "@topik/lib/topik/adapter/scene-voice"
 
-export const DRAFT = "next-scene"
+const DRAFT = "next-scene"
 
 /** A note already in the draft, kept on this phone, the `nth` minute of the day. */
 export const draftNote = (

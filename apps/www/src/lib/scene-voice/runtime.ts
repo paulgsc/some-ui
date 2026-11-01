@@ -69,7 +69,7 @@ export type PhoneSceneVoice = SceneVoice & {
 export const NEXT_SCENE = "next-scene"
 
 /** The scene's choice of the pattern's options. */
-export const SCENE_OPTIONS: TakePatternOptions = {
+const SCENE_OPTIONS: TakePatternOptions = {
   ...ONE_TAKE,
   takes: { per: "many", max: SCENE_NOTES_MAX },
   limits: { minMs: SOUNDBITE_MIN_MS, maxMs: SOUNDBITE_MAX_MS },
