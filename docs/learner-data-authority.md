@@ -752,7 +752,11 @@ request; `voice-send.test.ts`, which also holds that the voice run asks
 home which Studio takes Drive has only under "Keep each until Drive has it
 too", HF11, and lets go only what home names), that Practice's lane asks for a run on a
 new soundbite, LeetType answer note or lens entry and counts each waiting
-until home holds it (`practice.test.ts`), one run at a time and home being busy said
+until home holds it, and that once its run has sent them LeetType's answer
+notes stop saying full with no other redraw and the soundbites' page is
+handed what home holds again (`practice.test.ts`, OS1), as it is when the
+voice lane comes to hold a soundbite's audio after that run
+(`voice-send.test.ts`, OS1), one run at a time and home being busy said
 as such (`kept.test.ts`), and that the shell's drain sends nothing unpaired
 and sends once paired on the moments below, while a mark sends nothing of
 its own (`components/__tests__/device-home-glyph.test.tsx`). What no test
@@ -828,8 +832,10 @@ can say is when a run is asked for:
   them (HF5), or that drops one of those from it, drops from its waiting
   count any of the sessions, written reflections, asks, notes or lens
   entries home lacks, or makes its `exchange` anything but
-  `drainHome` over the phone's own ports (`./going`) under the run's
-  `pairing`; a hunk to `lib/home-link/practice-reads.ts` that reads either
+  `drainHome` over the phone's own ports (`./going`, and `./voice-copy`'s
+  `holdNotes`, which only hands the soundbites and LeetType's answer notes
+  how to read what home holds of them, OS1) under the run's `pairing`; a
+  hunk to `lib/home-link/practice-reads.ts` that reads either
   store other than on its watch starting, the soundbites' hand-in or
   change (their store's `subscribe`), or, once the phone is paired, a write
   to the lens record (topik's `onLensRecordWritten`), or that keeps a list
@@ -841,7 +847,10 @@ can say is when a run is asked for:
   (LA16) and `letGoHeldPrompts` (LA18), or confirms what home holds
   (`confirmHeld`), or sends other than through `copyHome`, `sendKept`,
   `sendLog`, `sendStudio`, `sendReflections` (LA16), `sendPrompts` (LA18),
-  `sendNotes` and `sendLens`; a hunk to `lib/home-link/leetype-log.ts` that
+  `sendNotes` and `sendLens`; a hunk to `lib/home-link/voice-copy.ts` that
+  makes `holdNotes` do anything but hand LeetType's answer notes
+  (`leetypeNotesHeldByHome`) and the soundbites (their `heldByHome`) how to
+  read what home holds of them; a hunk to `lib/home-link/leetype-log.ts` that
   lets `sendEach` count an item held on any answer but a `200` its `heldAs`
   accepts; a hunk to `lib/home-link/notes.ts` that counts a note held
   without home's `200` naming the SHA-256 of the bytes sent, or to
@@ -882,7 +891,8 @@ can say is when a run is asked for:
 - _Scope:_ `apps/www/src/lib/home-link/kept-watch.ts`, `lanes.ts`,
   `kept-runtime.ts`, `aph.ts`, `jobs.ts`, `practice.ts`,
   `practice-reads.ts`, `voice.ts`,
-  `drain.ts`, `going.ts`, `leetype-log.ts`, `notes.ts`, `lens-record.ts`,
+  `drain.ts`, `going.ts`, `voice-copy.ts`'s `holdNotes`, `leetype-log.ts`,
+  `notes.ts`, `lens-record.ts`,
   `sent.ts`, `model.ts`, `runtime.ts`, `routine.ts`,
   `routine-model.ts`, `apps/www/src/components/device-home-glyph.tsx`,
   `apps/www/src/components/settings/device-kept-on-home.tsx`,

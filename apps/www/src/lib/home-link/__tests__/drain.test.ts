@@ -91,6 +91,7 @@ function setup(
     prompts?: DrainPorts["promptsGoing"]
     letGoHeldPrompts?: DrainPorts["letGoHeldPrompts"]
     notes?: DrainPorts["notesGoing"]
+    holdNotes?: DrainPorts["holdNotes"]
     lens?: DrainPorts["lensGoing"]
   } = {}
 ): {
@@ -125,6 +126,7 @@ function setup(
     promptsGoing: over.prompts ?? ((): Array<never> => []),
     letGoHeldPrompts: over.letGoHeldPrompts ?? ((): void => undefined),
     notesGoing: over.notes ?? nothingGoing,
+    holdNotes: over.holdNotes ?? ((): void => undefined),
     lensGoing: over.lens ?? nothingGoing,
     pairing: PAIRING,
     storage: memoryStorage(),
@@ -454,10 +456,12 @@ describe("the drain's LeetType and Studio parts", () => {
     })
   })
 
-  it("puts each study note home lacks last, and remembers only those home names the bytes of (HF5)", async () => {
+  it("puts each study note home lacks last, remembers only those home names the bytes of (HF5), and then tells their stores, however the part ended (OS1)", async () => {
     const puts: Array<string> = []
+    let stopAt: string | null = null
     const send: HomeCall = (_method, path, body) => {
       puts.push(path)
+      if (path === stopAt) return Promise.reject(noAnswer())
       const sent = typeof body === "string" ? body : ""
       const sha = createHash("sha256").update(sent).digest("hex")
       // Home holds the second note under other bytes.
@@ -467,6 +471,8 @@ describe("the drain's LeetType and Studio parts", () => {
         body: JSON.stringify({ change: "added", note: { sha256: said } }),
       })
     }
+    // What `sent` remembers of the notes each time their stores are told.
+    const told: Array<Readonly<Record<string, string>>> = []
     const { ports } = setup({
       local: [],
       kept: [],
@@ -478,7 +484,15 @@ describe("the drain's LeetType and Studio parts", () => {
           ],
           onPhone: () => true,
         }),
+      holdNotes: () => {
+        told.push(readSent(ports.storage, PAIRING).notes)
+      },
     })
+    const b1 = {
+      "soundbite:b1": createHash("sha256")
+        .update('{"bytes":3,"id":"b1"}')
+        .digest("hex"),
+    }
     await expect(drainHome(send, ports)).resolves.toEqual({
       kind: "failed",
       why: "refused",
@@ -487,11 +501,15 @@ describe("the drain's LeetType and Studio parts", () => {
       "/study-notes/soundbite/b1",
       "/study-notes/leetype/n2",
     ])
-    expect(readSent(ports.storage, PAIRING).notes).toEqual({
-      "soundbite:b1": createHash("sha256")
-        .update('{"bytes":3,"id":"b1"}')
-        .digest("hex"),
-    })
+    expect(readSent(ports.storage, PAIRING).notes).toEqual(b1)
+    expect(told).toEqual([b1])
+
+    // Home stops answering at the second note: the first is still told.
+    ports.storage?.removeItem(SENT_KEY)
+    told.length = 0
+    stopAt = "/study-notes/leetype/n2"
+    await expect(drainHome(send, ports)).rejects.toThrow(HomeUnansweredError)
+    expect(told).toEqual([b1])
   })
 
   it("puts each grammar-lens entry home lacks as it is, and remembers those home read back (HF5)", async () => {

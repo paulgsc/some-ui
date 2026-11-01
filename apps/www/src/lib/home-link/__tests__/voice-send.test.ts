@@ -6,8 +6,9 @@
  * as waiting; one with no room fails the run as the phone's lack of room,
  * still waits, and goes once there is room; one the phone fails to copy,
  * or whose record storage won't keep, fails the run as the phone's fault;
- * a Jobs note let go once its share arrived is never offered; and a store
- * that can't be listed holds back none of the others.
+ * a Jobs note let go once its share arrived is never offered; a store
+ * that can't be listed holds back none of the others; and the soundbites
+ * hear again what home holds once the voice lane holds a bite's audio (OS1).
  */
 import type { HomeCall } from "@some-ui/core-utils"
 import { reportFailure } from "@some-ui/intent-kit"
@@ -18,8 +19,13 @@ import { ShelfFullError } from "@some-ui/voice-capture"
 import { renderHook } from "@testing-library/react"
 import { beforeAll, describe, expect, it, vi } from "vitest"
 
+import { readSent, rememberSent } from "@/lib/home-link/sent"
 import { useUnsendable, voiceLane } from "@/lib/home-link/voice"
-import { sendVoice, storesRead } from "@/lib/home-link/voice-copy"
+import {
+  sendVoice,
+  storesRead,
+  watchVoiceNotes,
+} from "@/lib/home-link/voice-copy"
 import type { JobEvent, JobsState } from "@/lib/jobs/model"
 import { EMPTY } from "@/lib/jobs/model"
 import { keepSoundbites } from "@/lib/soundbite-keeping"
@@ -57,6 +63,7 @@ vi.mock("@/lib/jobs", () => ({
   phoneJobs: (): unknown => ({
     getSnapshot: () => fakes.jobs,
     subscribe: () => (): void => undefined,
+    letGo: (): void => undefined,
   }),
   jobVoiceAudio: (): unknown => ({
     get: (id: string): Promise<Blob | null> => {
@@ -99,9 +106,16 @@ vi.mock("@/lib/home-link/lanes", () => ({
   useLaneHome: (): unknown => null,
 }))
 vi.mock("@/lib/home-link", () => ({
-  homeLink: vi.fn(),
+  homeLink: (): unknown => ({ subscribe: () => (): void => undefined }),
   paired: (): boolean => true,
+  pairingOf: (): string => PAIRING,
 }))
+vi.mock("@some-ui/topik", () => ({
+  lensRecordHeldByHome: (): void => undefined,
+}))
+
+/** The pairing home's record is kept under, in this test's storage. */
+const PAIRING = "pairing-1"
 vi.mock("@some-ui/intent-kit", async (actual) => ({
   ...(await actual<object>()),
   reportFailure: vi.fn(),
@@ -385,6 +399,8 @@ describe("the drama's scene notes (HF2)", () => {
 describe("the soundbites, once their page hands them in (HF5)", () => {
   /** What the soundbites' store answers its next list with. */
   let listed: () => Promise<Array<Soundbite>> = () => Promise.resolve([])
+  /** Whether home held b1, read as each reading is handed to their page. */
+  const told: Array<boolean> = []
   const bite: Soundbite = {
     id: "b1",
     recordedAt: "2026-10-31T08:30:00.000Z",
@@ -407,7 +423,9 @@ describe("the soundbites, once their page hands them in (HF5)", () => {
           Promise.resolve(id === "b1" ? new Blob(["bite"]) : null),
         subscribe: () => (): void => undefined,
       },
-      heldByHome: (): void => undefined,
+      heldByHome: (next): void => {
+        told.push(next()("b1"))
+      },
     })
   })
 
@@ -449,5 +467,26 @@ describe("the soundbites, once their page hands them in (HF5)", () => {
     expect(vi.mocked(reportFailure)).toHaveBeenCalledWith(
       expect.objectContaining({ port: "voice notes (list soundbites)" })
     )
+  })
+
+  it("OS1: once Practice's run has their record home, the voice lane holding a bite's audio tells their page again", async () => {
+    setUp(5, {})
+    listed = (): Promise<Array<Soundbite>> => Promise.resolve([bite])
+    // Practice's run left b1's record on home; its audio is not there yet.
+    rememberSent(localStorage, readSent(localStorage, PAIRING), {
+      notes: { "soundbite:b1": "sha" },
+    })
+    const stop = watchVoiceNotes()
+    const before = told.length
+    expect(before).toBeGreaterThan(0)
+
+    expect(await sendVoice(send)).toEqual({ kind: "synced" })
+    expect(fakes.home?.getSnapshot().held).toContain("b1")
+    stop()
+    // Every reading handed before home held the audio said not held; the
+    // one handed once it did says held.
+    expect(told.length).toBeGreaterThan(before)
+    expect(told.slice(0, -1).every((held) => !held)).toBe(true)
+    expect(told.at(-1)).toBe(true)
   })
 })

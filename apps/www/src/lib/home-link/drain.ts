@@ -8,11 +8,12 @@
  * sittings and answers the same way (`./studio-log`), then each written
  * reflection (`./reflections`, LA16), then each ask for the next scene
  * (`./prompts`, LA18), then each soundbite's record and LeetType answer's
- * note home lacks (`./notes`), and the grammar-lens entries home lacks as
- * they are (`./lens-record`). Nothing of home's is taken in, and nothing on
- * the phone is let go but written reflections (`letGoHeld`, LA16) and the
- * asks home holds, with the scene notes they named (`letGoHeldPrompts`,
- * LA18): a session leaves on home's word only by a tap, the clear in
+ * note home lacks (`./notes`), whose stores then hear what home holds of
+ * them (`holdNotes`, OS1), and the grammar-lens entries home lacks as they
+ * are (`./lens-record`). Nothing of home's is taken in, and nothing on the
+ * phone is let go but written reflections (`letGoHeld`, LA16) and the asks
+ * home holds, with the scene notes they named (`letGoHeldPrompts`, LA18): a
+ * session leaves on home's word only by a tap, the clear in
  * Settings (`./clear`) or the study list's "Let it go" (`./study-let-go`),
  * once home has read it back.
  *
@@ -89,6 +90,12 @@ export type DrainPorts = {
   letGoHeldPrompts: (sent: Sent) => void
   /** The study notes home lacks under `pairing`, and those on the phone (`./going`). */
   notesGoing: () => Promise<KeyedGoing<StudyNote>>
+  /**
+   * Tells the stores whose records go as study notes what home now holds of
+   * them (`./voice-copy`'s `holdNotes`), so a full one's screen hears it may
+   * make room (OS1).
+   */
+  holdNotes: () => void
   /** The grammar-lens entries home lacks as they are, and those on the phone (`./going`). */
   lensGoing: () => Promise<KeyedGoing<LensEntry>>
   /** The pairing this run goes under (the link's id for it). */
@@ -251,9 +258,16 @@ export async function drainHome(
     ports.letGoHeldPrompts(sent)
   }
   const notes = await ports.notesGoing()
-  const notesEnded = await part(notes.going, sendNotes, "notes", {
-    notes: notes.onPhone,
-  })
+  let notesEnded: HomeExchanged | null
+  try {
+    notesEnded = await part(notes.going, sendNotes, "notes", {
+      notes: notes.onPhone,
+    })
+  } finally {
+    // What home holds of the notes, as this run has heard it, however the
+    // part ended (OS1).
+    ports.holdNotes()
+  }
   if (notesEnded !== null) return notesEnded
   const lens = await ports.lensGoing()
   const lensEnded = await part(lens.going, sendLens, "lens", {
