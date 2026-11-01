@@ -32,6 +32,7 @@ import {
   FileHostResponseError,
 } from "@/lib/file-host-config/client"
 import { clearDurableFailure } from "@/lib/intent/durable-failure"
+import { ForeignCallError } from "@/lib/intent/foreign"
 import { sessionsRepository } from "@/lib/tenant/queries"
 import { emptyHeldReport } from "@/lib/tenant/sessions-copy"
 import { SessionNotFoundError } from "@/lib/tenant/sessions-repository"
@@ -200,6 +201,7 @@ export async function letSessionGo(
     return said(refresh, { kind: "deleted" })
   }
   const end = await keptHome(id, pairing, refresh, ports)
+  if (reportedAlready(end)) return end
   if (end.kind === "not-let-go") {
     ports.report({
       port: PORT,
@@ -220,6 +222,22 @@ export async function letSessionGo(
     })
   }
   return end
+}
+
+/**
+ * A failure a native call already reported (`callForeign` reports before it
+ * throws `ForeignCallError`), anywhere in the cause chain, as IR1 skips it.
+ */
+function reportedAlready(end: LetGoEnd): boolean {
+  if (end.kind !== "not-let-go" && end.kind !== "refused") return false
+  for (
+    let cause: unknown = end.error;
+    cause instanceof Error;
+    cause = cause.cause
+  ) {
+    if (cause instanceof ForeignCallError) return true
+  }
+  return false
 }
 
 /** Why `pairing` keeps the session, when it is not "paired". */

@@ -32,6 +32,7 @@ import {
 } from "@/lib/home-link/sessions"
 import type { LetGoPorts, Pairing } from "@/lib/home-link/study-let-go"
 import { letSessionGo } from "@/lib/home-link/study-let-go"
+import { ForeignCallError } from "@/lib/intent/foreign"
 import { createHttpSessionsRepository } from "@/lib/tenant/http-sessions-repository"
 import { copySessionsTo } from "@/lib/tenant/sessions-copy"
 import type * as TenantStorage from "@/lib/tenant/storage"
@@ -463,6 +464,22 @@ describe("the study list's Let it go", () => {
       "home-link: This phone couldn't let a session go.",
       "home-link: Home holds a session this phone couldn't let go.",
     ])
+    expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
+  })
+
+  it("doesn't report again a fault the phone's native call already reported", async () => {
+    phone.sessions = [onPhone("a", "draft")]
+    const native = new ForeignCallError({
+      kind: "unknown",
+      summary: "SQLite failed",
+      retryable: true,
+    })
+    await expect(
+      letGo("a", "paired", "home", {
+        letGo: () => Promise.reject(new Error("locked", { cause: native })),
+      })
+    ).resolves.toMatchObject({ kind: "not-let-go", held: true })
+    expect(reported).toEqual([])
     expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
   })
 
