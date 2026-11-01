@@ -12,7 +12,7 @@
  */
 import type { HomeCall } from "@some-ui/core-utils"
 import { canonicalJson, isRecord, jsonOf } from "@some-ui/core-utils"
-import type { HomeSession } from "@some-ui/leetype"
+import type { HomeSession, SessionLog, SessionLogStore } from "@some-ui/leetype"
 
 import { digestOf, fingerprintOf } from "./sent"
 import type { EndedReport } from "./shelf"
@@ -246,4 +246,16 @@ export async function sendLogs(
       report.differs += 1
     }
   }
+}
+
+/**
+ * This phone's finished LeetType sessions, in their home form, read through
+ * `@some-ui/leetype` once it is loaded; none when the log can't be read.
+ */
+export function finishedOnPhone(leetype: {
+  readonly createSessionLogStore: () => SessionLogStore
+  readonly finishedSessions: (log: SessionLog) => Array<HomeSession>
+}): Array<HomeSession> {
+  const store = leetype.createSessionLogStore()
+  return store.readOnly ? [] : leetype.finishedSessions(store.getSnapshot().log)
 }
