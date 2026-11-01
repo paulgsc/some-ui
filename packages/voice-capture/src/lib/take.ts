@@ -256,6 +256,9 @@ export function takeRunner(
             )
             return
           }
+          // What opened, once it has: a call let go between the opening and
+          // its outcome settles `abandoned`, and this is all that holds it.
+          let arrived: Recording | null = null
           const call = callForeign<Recording>({
             port: MICROPHONE,
             deadlineMs: ports.deadlines?.openMs ?? OPEN_DEADLINE_MS,
@@ -263,17 +266,23 @@ export function takeRunner(
               const opened = await ports.startRecording()
               // Opened after its deadline, or let go: nothing waits for it.
               if (late.aborted) opened.discard()
+              else arrived = opened
               return opened
             },
           })
           opening = call
           void call.outcome.then((outcome) => {
-            if (opening !== call) return
+            if (opening !== call) {
+              arrived?.discard()
+              return
+            }
             opening = null
             if (outcome.status === "succeeded") {
               recording = outcome.value
               signal({ type: "micOpened", at: ports.now() })
             } else if (outcome.status === "failed") {
+              // Past its deadline once it had opened: nothing waits for it.
+              arrived?.discard()
               release()
               const { cause } = outcome.error
               signal({
