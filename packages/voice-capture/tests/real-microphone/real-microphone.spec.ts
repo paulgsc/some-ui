@@ -14,8 +14,9 @@
  *   real microphone's open streams by their tracks, so a stream left live
  *   after an ending fails here (`held-idle`);
  * - a track the real microphone handed out is still live once it is over;
- * - the real take does not look like the clip: no bytes, a length far
- *   from the clip's, a peak on the wrong side of `HEARD_FLOOR`.
+ * - the real take does not look like the clip: no bytes, a length that is
+ *   not how long the microphone was open or not what its bytes decode to,
+ *   a peak on the wrong side of `HEARD_FLOOR`.
  */
 import { readFile } from "node:fs/promises"
 import { extname, resolve } from "node:path"
@@ -32,8 +33,11 @@ const TYPES: Readonly<Record<string, string>> = {
   ".map": "application/json",
 }
 
-/** How far a take's length may sit from the clip's: the opening, a tick. */
-const LENGTH_SLACK_MS = 400
+/**
+ * How far a take's lengths may sit from each other: the recorder's own
+ * clock against the page's, and the last chunk Opus hands over.
+ */
+const LENGTH_SLACK_MS = 150
 
 test.beforeEach(async ({ page }) => {
   // `http://localhost` is a secure context, so `getUserMedia` is there.
@@ -78,9 +82,17 @@ for (const take of TAKE_CASES) {
       if (kept === undefined) throw new Error("no take")
       expect(kept.bytes).toBeGreaterThan(0)
       expect(kept.mimeType).toMatch(/^audio\//)
-      expect(Math.abs(kept.durationMs - CLIP_MS)).toBeLessThan(LENGTH_SLACK_MS)
+      // The take is as long as the microphone was open, and its bytes hold
+      // that much audio. Open for most of the clip: the taps are CLIP_MS
+      // apart, less however long the device took to open, which a cold
+      // runner stretches, so only half is asked for.
+      expect(kept.openMs).toBeLessThanOrEqual(CLIP_MS + LENGTH_SLACK_MS)
+      expect(kept.openMs).toBeGreaterThan(CLIP_MS / 2)
+      expect(Math.abs(kept.durationMs - kept.openMs)).toBeLessThan(
+        LENGTH_SLACK_MS
+      )
       expect(kept.decodedMs, "the bytes decode as audio").not.toBeNull()
-      expect(Math.abs((kept.decodedMs ?? 0) - CLIP_MS)).toBeLessThan(
+      expect(Math.abs((kept.decodedMs ?? 0) - kept.durationMs)).toBeLessThan(
         LENGTH_SLACK_MS
       )
       expect(kept.peak, "the meter measured the take").not.toBeNull()

@@ -77,9 +77,13 @@ async function decodedMs(blob: Blob): Promise<number | null> {
 
 function watched(microphone: ScenarioMicrophone): Watched {
   let opening = 0
-  const handed: Array<{ readonly take: Take; readonly peak: number | null }> =
-    []
+  const handed: Array<{
+    readonly take: Take
+    readonly openMs: number
+    readonly peak: number | null
+  }> = []
   const seen = (recording: Recording): Recording => {
+    const openedAt = performance.now()
     let peak: number | null = null
     return {
       ...recording,
@@ -90,8 +94,9 @@ function watched(microphone: ScenarioMicrophone): Watched {
         return level
       },
       finish: async (): Promise<Take> => {
+        const openMs = performance.now() - openedAt
         const take = await recording.finish()
-        handed.push({ take, peak })
+        handed.push({ take, openMs, peak })
         return take
       },
     }
@@ -110,9 +115,10 @@ function watched(microphone: ScenarioMicrophone): Watched {
     takes: () =>
       Promise.all(
         handed.map(
-          async ({ take, peak }): Promise<TakeSeen> => ({
+          async ({ take, openMs, peak }): Promise<TakeSeen> => ({
             bytes: take.blob.size,
             mimeType: take.mimeType,
+            openMs,
             durationMs: take.durationMs,
             decodedMs: await decodedMs(take.blob),
             peak,

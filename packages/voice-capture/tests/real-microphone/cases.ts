@@ -97,6 +97,9 @@ export function scenarioOf(take: TakeCase): TakeScenario {
 export type TakeSeen = {
   readonly bytes: number
   readonly mimeType: string
+  /** How long the microphone was open: from its opening to the stop. */
+  readonly openMs: number
+  /** How long the recorder says the take ran (`Take.durationMs`). */
   readonly durationMs: number
   /** The audio's own length, decoded; null where it does not decode. */
   readonly decodedMs: number | null
