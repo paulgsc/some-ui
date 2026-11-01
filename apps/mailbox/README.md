@@ -13,7 +13,9 @@ sessions went. For voice notes: what home heard in each one (`transcript`), text
 routines read it instead of hearing the audio themselves. For the routines' bookkeeping: an
 **index** per routine (`index`), which home computes from what it holds after each pass (for
 the Jobs routine, the queue, what is new since the last digest and each waiting note's newest
-transcript), so a routine reads it instead of rebuilding it. The index is a view of what home
+transcript; for the reflections routine, what is answered, the word ids its decks use, its
+latest scenes, the lessons waiting unopened and which reflections and prompts still wait on a
+voice note), so a routine reads it instead of rebuilding it. The index is a view of what home
 keeps, so only the latest of each routine's stays. For the reflections routine: each **written
 reflection** home keeps (`reflection`), its text only, and each **drama prompt** (`prompt`),
 the next scene's prompt as the phone asked for it, its markdown only. Each side reaches it with
@@ -215,9 +217,10 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   `data:`, say), or a bare Drive id in any field, which looks like any other id. **An index**
   is home's bookkeeping for one routine, deterministic from what home holds (paulgsc/server
   `mailbox::index`, paulgsc/server#509): the same rows give the same bytes, and home keeps no
-  copy. Home puts a new one only when something it counts arrives or an open pick lapses: a
-  new day alone moves nothing else, so a day with neither puts none. Its `routine` names the routine, as the file's
-  name does; `jobs` is the only one so far. The Jobs index is
+  copy. Home puts a new one only when something it counts arrives or a moment the index
+  carries passes (for the Jobs index, an open pick lapsing): a new day alone moves nothing
+  else, so a day with neither puts none. Its `routine` names the routine, as the file's
+  name does: `jobs` or `reflections`. The Jobs index is
   `{"schema":"some-ui.routine-index/1","routine":"jobs","day","validThrough","asOf","from","skipped","queue","new","notes","picked"}`:
   `day`, the day in America/Los_Angeles home computed it on; `validThrough`, the last day its
   queue holds with nothing new arriving (the day before the first open pick no decision answers
@@ -242,6 +245,30 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   refusal with its reason (`an index carries no audio` or `an index names no Drive file`).
   Nothing in it is audio or points at audio: notes are named by their file name and id, and
   transcripts by their name here.
+  The reflections index is
+  `{"schema":"some-ui.routine-index/1","routine":"reflections","asOf","validUntil","skipped","answered","words","recent","unopened","reflections","prompts"}`
+  (paulgsc/server `mailbox::index::reflections`): `asOf`, when home last took in something
+  it counts, or `null`; `validUntil`, the first moment still to come at which it would say
+  something else with nothing new arriving (a group of reflections settling two hours after
+  its newest, a voice note's two-day wait ending, a lesson leaving the unopened window), or
+  `null` when none is, so it stands until then; `skipped`, the files it could not read as
+  their schema; `answered`, the bases its scenes answer and the prompts its dramas answer
+  (`{"scenes","dramas"}`); `words`, every word id its scenes' decks use with its dictionary
+  form (`[{"id","lemma"}]`); `recent`, the latest three scenes, newest first
+  (`[{"name","answers","title","level","genre"}]`); `unopened`, how many of the routine's
+  lessons wait unopened and which, and the list of opened lessons it went by
+  (`{"count","lessons","opened"}`); `reflections`, each group of written reflections no scene
+  answers, newest first, with its notes
+  (`[{"base","session","day","reflections","newestAt","settled","notes":[{"note","transcript"}],"voice":{"state","since","until"}}]`);
+  and `prompts`, each drama prompt no drama answers, oldest first
+  (`[{"name","prompt","notes":[{"file","note","transcript"}],"voice":{…}}]`).
+  `packages/ui/topik/ROUTINE.md` says how the routine reads it. The Worker holds its shape as
+  it holds the Jobs index's: those keys and no other, an `asOf` that is an instant or `null`,
+  a `validUntil` that is an instant later than `asOf` or `null`, `answered` and `unopened`
+  objects, `skipped`, `words`, `recent`, `reflections` and `prompts` lists, a name that carries
+  the body's `routine`, and no audio or Drive link, by the same tests. It carries no
+  reflection's, prompt's or transcript's words: reflections and prompts are named by their
+  names here and ids, notes by their ids, and transcripts by their name here.
 - **A written reflection** is `{"schema":"some-ui.reflection/1","reflection","session","at","text"}`:
   the phone's id for it (which the name carries), the session it is about (the phone's id for
   it, as a reflection transcript's `ref` names it), when it was written, and the typed line.
@@ -271,7 +298,9 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   for two rounds, and the ten-round draft was 140 KB. A Jobs index grows with what it names
   for good (`from` and `picked`: a file name or a fingerprint, tens of bytes, for every file
   and pick), so a few hundred bytes a day; only the latest is kept, and home puts none over
-  the cap.
+  the cap. A reflections index grows with the bases answered (tens of bytes each) and the
+  distinct word ids the decks use (about 35 bytes each, a few new ones per scene), so about
+  1 KB a day; the rest of it is bounded by what still waits.
 
 ## Limits
 
