@@ -13,6 +13,7 @@ import oneOwnerConfig, {
 import typescriptParser from "@typescript-eslint/parser"
 import type { Linter } from "eslint"
 import { defineConfig } from "eslint/config"
+import globals from "globals"
 import { describe, expect, it } from "vitest"
 
 import {
@@ -28,7 +29,12 @@ const WORDS = "one-owner/no-local-take-words"
 
 const KIT_FILE = "fixtures/packages/voice-capture/src/lib/take-kit.ts"
 
-/** The rules as every preset carries them: tests, specs and source each get theirs. */
+/**
+ * `oneOwnerConfig` as `maishatuRecommended` and the presets built on it
+ * carry it (tests, specs and source each get their blocks), over the
+ * browser globals the base config declares, so `MediaRecorder` resolves to
+ * a declared global as it does in a workspace.
+ */
 function makeConfig(): Array<Linter.Config> {
   return defineConfig([
     {
@@ -36,6 +42,7 @@ function makeConfig(): Array<Linter.Config> {
       languageOptions: {
         parser: typescriptParser,
         parserOptions: { ecmaFeatures: { jsx: true } },
+        globals: globals.browser,
       },
     },
     ...oneOwnerConfig,
@@ -202,6 +209,10 @@ export { stepTakePattern, takeKit, TAKE_WORDS }`,
       "export type R = MediaRecorder\nexport let held: MediaRecorder | null = null",
     ],
     [
+      "typeof MediaRecorder in a type",
+      "export type C = typeof MediaRecorder\nexport type I = InstanceType<typeof MediaRecorder>",
+    ],
+    [
       "a local named MediaRecorder",
       "const MediaRecorder = { name: 'mine' }\nexport const r = MediaRecorder",
     ],
@@ -251,10 +262,27 @@ vi.spyOn(kit, "${name}")`
     expectNoMessageForRule(await lint(code, file), MIC, shape)
   })
 
-  it("allows a type-only import of the testing entry in source", async () => {
+  it.each([
+    [
+      "import type",
+      'import type { MicScript } from "@some-ui/voice-capture/testing"',
+    ],
+    [
+      "every name inline type",
+      'import { type MicScript, type SimulatedMicrophone } from "@some-ui/voice-capture/testing"',
+    ],
+  ])(
+    "allows a %s import of the testing entry in source",
+    async (shape, line) => {
+      const code = `${line}\nexport type S = MicScript`
+      expectNoMessageForRule(await lint(code), MIC, shape)
+    }
+  )
+
+  it("fires on a testing import in source that brings a value beside a type", async () => {
     const code =
-      'import type { MicScript } from "@some-ui/voice-capture/testing"\nexport type S = MicScript'
-    expectNoMessageForRule(await lint(code), MIC, "import type")
+      'import { type MicScript, simulatedMicrophone } from "@some-ui/voice-capture/testing"\nexport type S = MicScript\nexport const mic = simulatedMicrophone'
+    expectMessageForRule(await lint(code), MIC, "a value beside a type")
   })
 
   it("stays quiet in the kit's own files", async () => {
@@ -346,7 +374,7 @@ describe("lint: one-owner/no-hand-written-microphone", () => {
     ],
     [
       "a class implementing Recording",
-      `${types}export class Held implements Recording { level = (): number => 0; finish = (): Promise<Take> => Promise.reject(new Error("x")); discard = (): void => undefined }`,
+      `${types}export class Held implements Recording { finish = (): Promise<Take> => Promise.reject(new Error("x")) }`,
     ],
     [
       "a class with a recording's members",

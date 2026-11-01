@@ -60,6 +60,14 @@ function typeOnly(node: ESTree.Node): boolean {
   )
 }
 
+/** An import that brings in types alone: `import type`, or every name `type`. */
+function typeOnlyImport(node: ESTree.ImportDeclaration): boolean {
+  return (
+    typeOnly(node) ||
+    (node.specifiers.length > 0 && node.specifiers.every(typeOnly))
+  )
+}
+
 /** A module specifier written as a string, or a template with no `${}`. */
 function staticSource(node: ESTree.Node | null | undefined): string | null {
   if (node?.type === "Literal" && typeof node.value === "string")
@@ -83,7 +91,7 @@ function slotOf(call: Rule.Node): string | null {
   return null
 }
 
-/** The names an object pattern takes out, nested patterns included. */
+/** The names an object pattern takes out at its top level. */
 function patternKeys(pattern: ESTree.ObjectPattern): Array<string> {
   return pattern.properties.flatMap((property) => {
     if (property.type !== "Property") return []
@@ -276,10 +284,20 @@ export const noLocalMicrophone: Rule.RuleModule = {
       node: ESTree.Identifier & Rule.Node,
       reference: Scope.Reference
     ): void {
-      if (reference.resolved !== null) return
+      // A global the config declares (`globals.browser`) resolves to a
+      // variable with no definition; only a local one is defined.
+      if ((reference.resolved?.defs.length ?? 0) > 0) return
       // typescript-eslint marks a type position's reference; ESLint's own
       // Reference type does not carry the flag.
       if (Reflect.get(reference, "isTypeReference") === true) return
+      // `typeof MediaRecorder` in a type reads its type, not the value.
+      const inTypeQuery = context.sourceCode
+        .getAncestors(node)
+        .some((ancestor) => {
+          const kind: string = ancestor.type
+          return kind === "TSTypeQuery"
+        })
+      if (inTypeQuery) return
       context.report({
         node,
         messageId: "browserMicrophone",
@@ -355,7 +373,7 @@ export const noLocalMicrophone: Rule.RuleModule = {
       },
       ImportDeclaration(node): void {
         const source = String(node.source.value)
-        if (checkSource(node, source, typeOnly(node))) return
+        if (checkSource(node, source, typeOnlyImport(node))) return
         if (source !== entry || typeOnly(node)) return
         for (const spec of node.specifiers) {
           if (spec.type !== "ImportSpecifier" || typeOnly(spec)) continue
