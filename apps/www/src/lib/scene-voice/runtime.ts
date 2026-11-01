@@ -13,8 +13,9 @@
  * - **Nothing the person does removes a note** (#2265, MIC5). A note leaves
  *   this phone only on home's word (LG1, `letGo`): once home holds it and
  *   holds the ask that carried it, or once home holds it and it is out of the
- *   draft. Until then it counts toward the phone's `SCENE_NOTES_MAX`, and a
- *   take past them is refused (`full`).
+ *   draft. Until then it counts toward the phone's `SCENE_NOTES_KEPT`; past
+ *   them a new note makes room by letting go the oldest of those home holds
+ *   that `letGo` would let go, and is refused while there is none (`full`).
  * - **Where each note is kept**, and since when, is read from the voice
  *   lane (`kept`, MIC3).
  */
@@ -35,7 +36,9 @@ import type {
 } from "@some-ui/voice-capture"
 import { ONE_TAKE, shelveTake, takePattern } from "@some-ui/voice-capture"
 
-import { SCENE_NOTES_MAX } from "./budget"
+import { homeHolds, makesRoom } from "@/lib/takes-desk/runtime"
+
+import { SCENE_NOTES_KEPT, SCENE_NOTES_MAX } from "./budget"
 
 /**
  * A note as the phone keeps it: topik's, when it was kept (ISO 8601; a note
@@ -123,7 +126,23 @@ export function createSceneVoice(ports: SceneVoicePorts): PhoneSceneVoice {
       })
     )
 
-  const full = (): boolean => ports.notes.read().length >= SCENE_NOTES_MAX
+  /** A note home holds may leave the phone once out of the draft, or asked with. */
+  const leaves = (note: KeptSceneNote): boolean =>
+    note.prompted === true || !inDraft(note)
+  /** The note a new one makes room by letting go at the phone's cap, if any. */
+  const roomFor = (): KeptSceneNote | null => {
+    const notes = ports.notes.read()
+    return makesRoom(
+      notes,
+      SCENE_NOTES_KEPT,
+      (id) =>
+        notes.some((note) => note.id === id && leaves(note)) &&
+        homeHolds(ports.kept(id)),
+      (note) => Date.parse(note.at ?? new Date(0).toISOString())
+    )
+  }
+  const full = (): boolean =>
+    ports.notes.read().length >= SCENE_NOTES_KEPT && roomFor() === null
 
   const pattern = takePattern(
     {
@@ -138,6 +157,8 @@ export function createSceneVoice(ports: SceneVoicePorts): PhoneSceneVoice {
           done({ outcome: "full" })
           return
         }
+        const room = roomFor()
+        if (room !== null) remove([room.id])
         const id = ports.newId()
         const entry: KeptSceneNote = {
           id,

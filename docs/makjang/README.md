@@ -940,8 +940,9 @@ says what they are.
 - **They leave once home holds them.** A note leaves the phone once home
   holds it and the ask that named it (LA13, LA18), or once home holds it
   and it is out of the draft, never on a share's word. Until then a note
-  out of the draft still counts toward the phone's five, and a take past
-  them is refused.
+  out of the draft is kept on the phone, which keeps twenty notes in all:
+  past them a new note makes room by letting go the oldest home holds that
+  is out of the draft, and is refused while there is none.
 - **Where it runs.** Recording is the Android app's (www's `lib/scene-voice`,
   over `@some-ui/voice-capture`'s take pattern). Topik holds only the
   `SceneVoice` port and draws the pattern's parts; without it the scene is

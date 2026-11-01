@@ -7,7 +7,7 @@ import {
 } from "@some-ui/voice-capture/testing"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { SCENE_NOTES_MAX } from "@/lib/scene-voice/budget"
+import { SCENE_NOTES_KEPT, SCENE_NOTES_MAX } from "@/lib/scene-voice/budget"
 import type {
   KeptSceneNote,
   PhoneSceneVoice,
@@ -201,16 +201,52 @@ describe("createSceneVoice", () => {
     ])
   })
 
-  it("refuses a take once the phone keeps as many notes as it can, those set aside counted until home holds them", async () => {
-    const full = Array.from({ length: SCENE_NOTES_MAX }, (_, index) =>
-      note(`kept-${index}`, index === 0 ? {} : { standing: "set-aside" })
+  it("caps the draft at five, and lets notes out of it count only toward the phone's twenty", async () => {
+    const { voice } = phone()
+    await talk(voice)
+    await talk(voice)
+    await talk(voice)
+    // Three notes and two Redos: the draft still has room for two more.
+    await talk(voice, 4_000, "n3")
+    await talk(voice, 4_000, "n4")
+    expect(ids(voice)).toEqual(["n1", "n2", "n5"])
+    expect(voice.getSnapshot().full).toBe(false)
+    await talk(voice)
+    await talk(voice)
+    expect(ids(voice)).toHaveLength(SCENE_NOTES_MAX)
+    // A new scene starts with room, the old notes set aside and kept.
+    voice.letGoScene()
+    await talk(voice)
+    expect(ids(voice)).toEqual(["n8"])
+  })
+
+  it("at the phone's twenty, makes room with the oldest home holds out of the draft, and refuses while there is none", async () => {
+    const aside = Array.from({ length: SCENE_NOTES_KEPT - 1 }, (_, index) =>
+      note(`aside-${index}`, {
+        standing: "set-aside",
+        at: new Date(index * 1_000).toISOString(),
+      })
     )
-    const { voice, listed } = phone(full)
+    const home = new Set<string>()
+    const { voice, listed } = phone([note("draft"), ...aside], {
+      kept: (id) =>
+        home.has(id) ? { place: "home", since: null } : { place: "going" },
+    })
     expect(voice.getSnapshot()).toMatchObject({ full: true })
-    expect(ids(voice)).toEqual(["kept-0"])
     await talk(voice)
     expect(voice.pattern.getSnapshot().ended?.ending).toBe("full")
-    expect(listed).toHaveLength(SCENE_NOTES_MAX)
+    expect(listed).toHaveLength(SCENE_NOTES_KEPT)
+    // Home holds two set aside, and the draft's own note: only one out of
+    // the draft makes room, the oldest.
+    home.add("aside-3").add("aside-1").add("draft")
+    voice.recount()
+    expect(voice.getSnapshot().full).toBe(false)
+    await talk(voice)
+    expect(voice.pattern.getSnapshot().ended?.ending).toBe("kept")
+    expect(listed.map(({ id }) => id)).not.toContain("aside-1")
+    expect(listed.map(({ id }) => id)).toContain("aside-3")
+    expect(listed).toHaveLength(SCENE_NOTES_KEPT)
+    expect(ids(voice)).toEqual(["draft", "n1"])
   })
 
   it("takes the audio back out when its entry cannot be listed", async () => {

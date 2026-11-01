@@ -12,7 +12,7 @@ import { micRecorder, ON_PHONE, savingShelf } from "@some-ui/voice-capture"
 
 import { boundedList } from "@/lib/bounded-list"
 
-import { SCENE_AUDIO_MAX_BYTES, SCENE_NOTES_MAX } from "./budget"
+import { SCENE_AUDIO_MAX_BYTES, SCENE_NOTES_KEPT } from "./budget"
 import type { KeptSceneNote, PhoneSceneVoice, SceneVoicePorts } from "./runtime"
 import { createSceneVoice } from "./runtime"
 
@@ -30,7 +30,7 @@ const isNote = (value: unknown): value is KeptSceneNote =>
   ["boolean", "undefined"].includes(typeof Reflect.get(value, "prompted")) &&
   STANDINGS.includes(Reflect.get(value, "standing"))
 
-const list = boundedList("some-ui:scene-voice", SCENE_NOTES_MAX, isNote)
+const list = boundedList("some-ui:scene-voice", SCENE_NOTES_KEPT, isNote)
 
 /** The notes, oldest first (the list keeps the newest first). */
 const notes: SceneVoicePorts["notes"] = {
