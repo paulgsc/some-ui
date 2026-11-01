@@ -92,7 +92,7 @@ test.describe("Rust Rounds fits the phone, screen by screen", () => {
       // A choice's spoken prompt, with the microphone at rest.
       await page.getByRole("button", { name: "Not sure" }).click()
       await expect(
-        page.getByRole("button", { name: "Hold to speak" })
+        page.getByRole("button", { name: "Start talking" })
       ).toBeVisible()
       await expectFits(page, "speaking")
 

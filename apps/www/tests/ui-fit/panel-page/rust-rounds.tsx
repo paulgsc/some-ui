@@ -3,20 +3,46 @@ import { useState } from "react"
 import { inMemoryStorage } from "@some-ui/core-utils"
 import type { NotesPort, RustRoundsPorts } from "@some-ui/rust-rounds"
 import { keptRounds, RustRounds } from "@some-ui/rust-rounds"
+import { microphoneOwner, takePattern } from "@some-ui/voice-capture"
+import {
+  memoryTakes,
+  simulatedMicrophone,
+  simulatedPlayer,
+} from "@some-ui/voice-capture/testing"
 
-/** A microphone that never records: the fit is measured with the button at rest. */
-const QUIET: NotesPort = {
-  getSnapshot: () => ({ take: { kind: "idle" }, ended: null, blocked: null }),
-  subscribe: () => () => undefined,
-  start: () => undefined,
-  stop: () => undefined,
-  keptOn: () => null,
+/**
+ * The phone's take pattern over the simulated microphone, with the notes in
+ * memory: the fit is measured with the take button at rest.
+ */
+function quietNotes(): NotesPort {
+  const store = memoryTakes({ now: Date.now })
+  const pattern = takePattern(
+    {
+      startRecording: simulatedMicrophone({ now: Date.now }).startRecording,
+      now: Date.now,
+      owner: microphoneOwner(),
+      player: simulatedPlayer(),
+      ...store.ports,
+    },
+    {
+      takes: { per: "one" },
+      limits: { minMs: 1_000, maxMs: 60_000 },
+      redo: "supersede",
+      letGo: "set-aside",
+      play: "each",
+    }
+  )
+  return {
+    pattern,
+    takes: { getSnapshot: store.getSnapshot, subscribe: store.subscribe },
+    keptOn: () => null,
+  }
 }
 
 function fixturePorts(): RustRoundsPorts {
   return {
     store: keptRounds(inMemoryStorage()),
-    notes: QUIET,
+    notes: quietNotes(),
     copy: () => Promise.resolve(),
     now: () => Date.now(),
     newId: () => "fit",

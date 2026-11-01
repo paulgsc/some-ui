@@ -7,7 +7,9 @@
  * This component only renders and forwards taps. What happens and in what
  * order is `lib/play/machine.ts`; the store, the microphone and the
  * clipboard are `lib/play/runtime.ts`. It owns one runtime for as long as it
- * is mounted (docs/monorepo-boundaries.md, "Inside a React package").
+ * is mounted (docs/monorepo-boundaries.md, "Inside a React package"). A
+ * voice note is the take pattern's parts (`TakeItem`), over the view
+ * `lib/play/note.ts` makes.
  */
 import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
@@ -22,12 +24,14 @@ import {
   runOf,
 } from "@rust-rounds/lib/play/held"
 import type { PlayIntent, PlayState } from "@rust-rounds/lib/play/machine"
-import type { RustRoundsPorts } from "@rust-rounds/lib/play/runtime"
+import { cardNote } from "@rust-rounds/lib/play/note"
+import type { NotesPort, RustRoundsPorts } from "@rust-rounds/lib/play/runtime"
 import { createRustRounds } from "@rust-rounds/lib/play/runtime"
 import type { Visit } from "@rust-rounds/lib/play/store"
 import { runHeading, WORDS } from "@rust-rounds/lib/play/words"
-import { Button, CodeCard, HoldButton, Textarea } from "@some-ui/shared"
-import { Mic, Pin } from "lucide-react"
+import { Button, CodeCard, TakeItem, Textarea } from "@some-ui/shared"
+import type { PatternTake } from "@some-ui/voice-capture"
+import { Pin } from "lucide-react"
 
 export type RustRoundsProps = {
   /** The phone's ports. Read once, on mount. */
@@ -93,59 +97,51 @@ const RunView = ({ run }: { run: RustcRun | null }): JSX.Element => {
   )
 }
 
-/** How the last take on this card ended, in the person's words; null for nothing to say. */
-function saidLine(state: PlayState): string | null {
-  const { said, notes } = state
-  if (said === "blocked") return notes.blocked
-  if (said === null) return null
-  return WORDS.takeEnded[said]
+/** What a card's voice note needs besides the session: the notes the phone keeps. */
+type Notes = {
+  readonly port: NotesPort
+  readonly takes: ReadonlyArray<PatternTake>
 }
 
 /**
- * Hold to speak, let go to keep it. Withdrawn once this card's note is kept,
- * and, rather than shown disabled, once a take found the phone had no room:
+ * The card's voice note, on the take pattern's parts: tap to talk and tap
+ * to stop, then where it's kept, Play, Redo and Let it go. Once a take found
+ * the phone had no room, a card with no note says so in place of the button:
  * the next card tries again.
  */
-const HoldToSpeak = ({
+const VoiceNote = ({
   state,
   visit,
+  notes,
   dispatch,
 }: {
   state: PlayState
   visit: Visit
+  notes: Notes
   dispatch: Dispatch
 }): JSX.Element => {
-  if (visit.note !== null) {
-    return <p className="text-sm font-medium">{WORDS.takeEnded.kept}</p>
-  }
-  if (state.noRoom) {
+  if (state.noRoom && visit.note === null) {
     return <p className="text-muted-foreground text-sm">{WORDS.noRoom}</p>
   }
-  const { take } = state.notes
-  const busy = take.kind !== "idle"
-  const said = saidLine(state)
+  const { item, aside } = cardNote(
+    state,
+    visit,
+    notes.takes,
+    notes.port.pattern.options
+  )
   return (
     <div className="flex flex-col gap-2">
-      <HoldButton
-        size="lg"
-        variant={busy ? "default" : "outline"}
-        className="h-16 rounded-2xl text-base font-semibold"
-        holding={busy}
-        onHold={() => dispatch({ type: "holdToSpeak" })}
-        onRelease={() => dispatch({ type: "letGo" })}
-      >
-        <Mic aria-hidden className="size-5" />
-        {take.kind === "keeping"
-          ? WORDS.keeping
-          : take.kind === "opening"
-            ? WORDS.opening
-            : busy
-              ? WORDS.listening
-              : WORDS.holdToSpeak}
-      </HoldButton>
-      {said !== null && (
+      <TakeItem
+        view={item}
+        label={WORDS.voiceNote}
+        onTap={() => dispatch({ type: "tapNote" })}
+        onPlay={() => dispatch({ type: "playNote" })}
+        onRedo={() => dispatch({ type: "tapNote" })}
+        onLetGo={(_, place) => dispatch({ type: "letGoNote", place })}
+      />
+      {aside !== null && (
         <p role="status" className="text-muted-foreground text-sm">
-          {said}
+          {aside}
         </p>
       )}
     </div>
@@ -203,9 +199,11 @@ const NextButton = ({ dispatch }: { dispatch: Dispatch }): JSX.Element => (
 
 const CardScreen = ({
   state,
+  notes,
   dispatch,
 }: {
   state: PlayState
+  notes: Notes
   dispatch: Dispatch
 }): JSX.Element | null => {
   const { place } = state
@@ -264,7 +262,12 @@ const CardScreen = ({
           <p className="text-lg font-semibold">
             {WORDS.aim[card.aim]}: {card.say}
           </p>
-          <HoldToSpeak state={state} visit={visit} dispatch={dispatch} />
+          <VoiceNote
+            state={state}
+            visit={visit}
+            notes={notes}
+            dispatch={dispatch}
+          />
           <Actions>
             <NextButton dispatch={dispatch} />
           </Actions>
@@ -307,7 +310,12 @@ const CardScreen = ({
                     ?.say ?? card.ask}
                 </p>
               </section>
-              <HoldToSpeak state={state} visit={visit} dispatch={dispatch} />
+              <VoiceNote
+                state={state}
+                visit={visit}
+                notes={notes}
+                dispatch={dispatch}
+              />
             </>
           )}
           {visit.stage === "see" && <RunView run={run} />}
@@ -487,10 +495,17 @@ export const RustRounds = ({ ports }: RustRoundsProps): JSX.Element => {
   // The runtime owns the store, the microphone and the clipboard for this
   // mount, so it is made once, from the ports it arrived with.
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime is created once per mount (see above) */
-  const [runtime] = useState(() => createRustRounds(ports))
+  const [{ runtime, port }] = useState(() => ({
+    runtime: createRustRounds(ports),
+    port: ports.notes,
+  }))
   /* eslint-enable owner-guard/no-mount-snapshot */
   useEffect(() => runtime.attach(), [runtime])
   const state = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
+  const takes = useSyncExternalStore(
+    port.takes.subscribe,
+    port.takes.getSnapshot
+  )
   const { dispatch } = runtime
 
   return (
@@ -510,7 +525,7 @@ export const RustRounds = ({ ports }: RustRoundsProps): JSX.Element => {
         <MenuScreen state={state} dispatch={dispatch} />
       )}
       {state.screen.kind === "card" && (
-        <CardScreen state={state} dispatch={dispatch} />
+        <CardScreen state={state} notes={{ port, takes }} dispatch={dispatch} />
       )}
       {state.screen.kind === "tutor" && (
         <TutorScreen state={state} dispatch={dispatch} />

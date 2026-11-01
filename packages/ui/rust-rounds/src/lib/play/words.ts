@@ -4,11 +4,16 @@
  * said", level or streak, nothing that counts the time or says "done", and
  * no status code or internal name. rustc's own output is shown as printed, beside these words,
  * never in them; the pick is never set against it.
+ *
+ * A voice note's own words are the take pattern's (`@some-ui/voice-capture`'s
+ * `TAKE_WORDS`, MIC4 #2374), said by its parts: the take button, its line and
+ * the note's row. They include the one time on screen, a take's elapsed time
+ * against its cap and its length (the owner, 2026-10-31, epic #2368); none of
+ * these words counts time.
  */
 import type { BLOOM_STEPS, RustcRun } from "@rust-rounds/lib/formats"
 import { assertNever } from "@some-ui/core-utils"
 
-import type { TakeEnd } from "./machine"
 import type { Title } from "./store"
 
 type Aim = (typeof BLOOM_STEPS)[number]
@@ -43,20 +48,10 @@ export const WORDS = {
   /** Next found no other card in this concept. */
   onlyCard: "The only card in this concept, again.",
   sayThis: "Say it",
-  holdToSpeak: "Hold to speak",
-  /** Held, and the microphone is not on yet. */
-  opening: "Opening the microphone…",
-  listening: "Listening. Let go to keep it.",
-  keeping: "Keeping it…",
-  takeEnded: {
-    kept: "Kept on this phone.",
-    short: "Too short to keep. Hold, talk, then let go.",
-    full: "There's no room on this phone for another voice note.",
-    failed: "Couldn't keep that one. Hold to try again.",
-    early:
-      "That ended before the microphone was listening, so nothing was kept. Hold until it says Listening, then talk.",
-    missing: "The note you started here wasn't kept. Hold to say it again.",
-  } satisfies Readonly<Record<Exclude<TakeEnd, "blocked">, string>>,
+  /** What the card on screen says of its voice note. */
+  voiceNote: "Your note",
+  /** A take an earlier opening left here, of which the phone holds no note. */
+  noteMissing: "The note you started here wasn't kept. Tap to say it again.",
   /** A card left before its note was kept, and the note was lost. */
   noteLost: (concept: string, number: number): string =>
     `The note on ${concept}, card ${number} couldn't be kept.`,
