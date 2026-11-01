@@ -15,6 +15,16 @@ import { letGo } from "./let-go"
  * Every session holding reflections, the longest-waiting first, each to share
  * (on the phone) or let go: what makes room once all the slots are taken.
  */
+/** Spoken ones recorded again or set aside: kept, each holding a slot. */
+const outOfView = (reflections: ReadonlyArray<Reflection>): number =>
+  reflections.filter((r) => !inView(r)).length
+
+/** "2 reflections, 1 set aside": every one holds a slot, so all are counted. */
+function counts(reflections: ReadonlyArray<Reflection>): string {
+  const aside = outOfView(reflections)
+  return `${counted(reflections.length, "reflection")}${aside === 0 ? "" : `, ${String(aside)} set aside`}`
+}
+
 export const HandOff = (): JSX.Element | null => {
   const { kept } = useReflections()
   const now = useMinuteClock().getTime()
@@ -30,7 +40,7 @@ export const HandOff = (): JSX.Element | null => {
     reflections: ReadonlyArray<Reflection>
   ): void => {
     const ids = reflections.map((r) => r.id)
-    const aside = reflections.length - reflections.filter(inView).length
+    const aside = outOfView(reflections)
     // Spoken ones recorded again or set aside go too: the sheet says so.
     const including =
       aside === 0
@@ -70,11 +80,8 @@ export const HandOff = (): JSX.Element | null => {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{name}</p>
                 <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
-                  {counted(
-                    group.reflections.filter(inView).length,
-                    "reflection"
-                  )}{" "}
-                  · {describeAge(group.oldestMs)} old
+                  {counts(group.reflections)} · {describeAge(group.oldestMs)}{" "}
+                  old
                   {group.stale && <Badge variant="secondary">stale</Badge>}
                 </p>
               </div>

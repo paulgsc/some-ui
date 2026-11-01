@@ -6,10 +6,11 @@
  */
 
 import { withQueryClient } from "@/test-support/query-client"
-import { cleanup, render, screen } from "@testing-library/react"
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { reflections } from "@/lib/session-reflection"
+import { HandOff } from "@/components/reflection/hand-off"
 import { HandOffStrip } from "@/components/reflection/hand-off-strip"
 import { SessionReflectionsRow } from "@/components/reflection/session-reflections-row"
 
@@ -18,7 +19,10 @@ beforeEach(() => {
   reflections.letGo(reflections.getSnapshot().kept.map((r) => r.id))
 })
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.unstubAllEnvs()
+})
 
 function keep(id: string, sessionId: string, createdAt: string): void {
   reflections.keep({
@@ -43,6 +47,41 @@ describe("HandOffStrip", () => {
     render(withQueryClient(<HandOffStrip />))
 
     expect(screen.getByText(/2 kept · oldest today/)).toBeTruthy()
+  })
+})
+
+describe("HandOff", () => {
+  it("counts every reflection a session holds, names those set aside, and says so before letting them go", () => {
+    vi.stubEnv("VITE_DEVICE_BACKEND", "true")
+    keep("a", "s1", new Date().toISOString())
+    for (const id of ["v1", "v2"]) {
+      reflections.keep({
+        id,
+        sessionId: "s1",
+        createdAt: new Date().toISOString(),
+        atMs: null,
+        body: {
+          kind: "voice",
+          durationMs: 3_000,
+          mimeType: "audio/webm",
+          bytes: 3,
+        },
+      })
+    }
+    reflections.standAside("v1", "set-aside")
+    reflections.standAside("v2", "earlier")
+
+    render(withQueryClient(<HandOff />))
+
+    expect(screen.getByText(/3 reflections, 2 set aside ·/)).toBeTruthy()
+    fireEvent.click(
+      screen.getByRole("button", { name: /^Let go of the reflections/ })
+    )
+    expect(
+      screen.getByText(
+        /including 2 set aside or recorded again\. They won't be shared/
+      )
+    ).toBeTruthy()
   })
 })
 

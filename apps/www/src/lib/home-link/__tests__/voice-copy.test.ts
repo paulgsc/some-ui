@@ -297,7 +297,7 @@ describe("what each voice note is told home as", () => {
           filed: { ref: "2026-10-25:acme", at: "2026-10-25T09:00:00.000Z" },
         },
         {
-          id: "draft",
+          id: "aside-unfiled",
           mimeType: "audio/webm",
           durationMs: 2_000,
           owner: "2026-10-25/acme/pass",
