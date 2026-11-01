@@ -161,6 +161,32 @@ describe("one take at a time per phone", () => {
     expect(mic.open()).toBe(0)
     expect(mic.discarded()).toBe(1)
   })
+
+  it.each([0, 1, 2, 3, 4, 5, 6])(
+    "leaves no stream open when stopped %i microtasks after the microphone opened",
+    async (ticks) => {
+      const mic = simulatedMicrophone({ now: Date.now })
+      mic.script({ ...SPEAKING, open: { kind: "cue" } })
+      const owner = microphoneOwner()
+      const kit = takeKit(
+        {
+          startRecording: mic.startRecording,
+          now: Date.now,
+          keep: (_, __, done) => done({ outcome: "kept", id: "k" }),
+          owner,
+        },
+        LIMITS
+      )
+      kit.tap("x")
+      mic.answer("open")
+      for (let tick = 0; tick < ticks; tick += 1) await Promise.resolve()
+      kit.tap("x")
+      await vi.advanceTimersByTimeAsync(LIMITS.maxMs)
+      expect(kit.getSnapshot().take.kind).toBe("idle")
+      expect(mic.open()).toBe(0)
+      expect(owner.holder()).toBeNull()
+    }
+  )
 })
 
 /** The owner's cases, as points in the family. */
