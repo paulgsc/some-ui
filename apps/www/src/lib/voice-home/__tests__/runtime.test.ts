@@ -158,13 +158,13 @@ describe("the voice notes on their way home", () => {
       },
     }
     const home = createVoiceHome({ storage, shelf: shelf(), encode, now })
-    expect(home.owe("n1", HEARD)).toBe(true)
+    expect(home.owe("n1", HEARD, "lens")).toBe(true)
     full = true
-    expect(home.owe("n2", HEARD)).toBe(false)
+    expect(home.owe("n2", HEARD, "lens")).toBe(false)
     // Owed nowhere, not even in memory, so no later write carries it.
     expect(home.getSnapshot().aside.owed.map(({ id }) => id)).toEqual(["n1"])
     full = false
-    expect(home.owe("n2", HEARD)).toBe(true)
+    expect(home.owe("n2", HEARD, "lens")).toBe(true)
     const relaunched = createVoiceHome({ storage, shelf: shelf(), encode, now })
     expect(relaunched.getSnapshot().aside.owed.map(({ id }) => id)).toEqual([
       "n1",
@@ -178,7 +178,8 @@ describe("the voice notes on their way home", () => {
     expect(
       createVoiceHome({ storage: null, shelf: shelf(), encode, now }).owe(
         "n1",
-        HEARD
+        HEARD,
+        "lens"
       )
     ).toBe(false)
   })

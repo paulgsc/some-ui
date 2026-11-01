@@ -687,21 +687,31 @@ only from the lane's hook and the scene notes read for home only there
   A note is set aside only once its mark is owed in the voice-home record
   as storage keeps it: every Let go (`standing: "set-aside"`; a Redo's
   `earlier` owes none) goes through `lib/voice-marks`' `setAsideOwing`,
-  which owes the mark (`owe`, which says no when storage refused it and
-  then holds it nowhere) before the store writes the standing, writes
-  nothing when it can't, and takes the mark back when that write fails.
-  Whether home holds the note yet, and whether the phone is paired, do not
-  matter: `marksDue` sends a mark only once home holds its note. So no exit
-  that lets a held note go needs a check of its own. The stores with Let go
-  are spoken reflections, Jobs notes, scene notes, soundbites (through
-  `soundbitesOweMarks`), and lens, LeetType and Rust Rounds takes; game
-  bites, Studio takes and idea takes have none. A note set aside before
-  marks were owed at Let go, or while no lane was wired (`voiceMarks`
-  answers yes until `watchVoiceNotes` wires it), is owed on the first pass
-  that lists it (`oweMarks` in `copyAll` and first in `letGoHeld`), and
-  until then may leave as before. A mark home answers `404` for stays owed
-  and is asked for again on every run, never given up: a `404` is also
-  what a home without the route answers.
+  which owes the mark, with the store it is kept in (`owe`, which says no
+  when storage refused it and then holds it nowhere), before the store
+  writes the standing, writes nothing when it can't, and takes the mark
+  back when that write fails. Whether home holds the note yet, and whether
+  the phone is paired, do not matter: `marksDue` sends a mark only once
+  home holds its note. So no exit that lets a held note go needs a check of
+  its own. The stores with Let go are spoken reflections, Jobs notes, scene
+  notes, soundbites (through `soundbitesOweMarks`), and lens and LeetType
+  takes; Rust Rounds takes owe none until their notes go home (RR6, `from`
+  null); game bites, Studio takes and idea takes have no Let go. A mark
+  goes to home only while its note reads set aside where it is kept, or
+  is listed nowhere by its store, read this pass (`marksSendable`; the
+  soundbites count as read only once the pass has read them): one whose
+  note reads current, its write still pending or never landed (the app
+  closed between the owe and the soundbites' write), is taken back by the
+  next copy pass (`settleMarks`). A pass also forgets a mark whose note
+  its store, read, no longer lists and whose copy neither waits nor is
+  held, so marks owed stay bounded by the notes on this phone and on their
+  way home. A note set aside before marks were owed at Let go, or while no
+  lane was wired (`voiceMarks` answers yes until `watchVoiceNotes` wires
+  it, first), is owed on the first pass that lists it (`oweMarks` in
+  `copyAll` and first in `letGoHeld`), and until then may leave as before.
+  A mark home answers `404` for stays owed and is asked for again on every
+  run, never given up: a `404` is also what a home without the route
+  answers.
 - _Falsified by:_ a hunk LA15's falsifier names for the shared files; a hunk
   to `lib/scene-voice/runtime.ts` that lets `letGo` remove a scene note that
   is not `prompted` (an ask home holds named it, LA18) or that home does not
@@ -725,7 +735,13 @@ only from the lane's hook and the scene notes read for home only there
   port after `asideMarks().owe` (`packages/ui/soundbites/src/lib/runtime.ts`),
   that writes it when the mark was not owed or keeps it when the mark was
   taken back, or that drops `wireVoiceMarks` from `watchVoiceNotes` or
-  `soundbitesOweMarks(voiceMarks)` from the soundbites route; one to
+  `soundbitesOweMarks` from the soundbites route, or calls it later than
+  first in `watchVoiceNotes`; one that lets `sendVoice` hand `markSetAside`
+  a mark `marksSendable` does not pass, or reads the soundbites' standing
+  from a list the pass did not read; one that drops `settleMarks` from
+  `copyAll`, or has it forget a mark whose copy waits or is held; one that
+  gives a takes desk whose takes go home (`lib/lens-takes`,
+  `lib/leetype-takes`) a `from` of null, or a store the wrong `from`; one to
   `lib/voice-home/runtime.ts` that has `owe` say yes of a mark storage did
   not keep, or keep one it refused in memory; one to
   `lib/home-link/set-aside.ts` that gives up a mark on a `404`; a hunk to
@@ -763,11 +779,11 @@ only from the lane's hook and the scene notes read for home only there
   phone that was never paired is not copied until it is. A scene note kept
   before HF2 noted when is told home as of its copy. A note set aside
   before marks were owed at Let go, or before the lane was wired, may leave
-  the phone before the pass that owes its mark. A mark owed for a note that
-  never reaches home (a Rust Rounds note, until RR6; one let go before it
-  was copied, on a phone never paired again) stays owed for good. On the
-  soundbites page, whose store writes asynchronously, a run between the
-  owe and a write that then fails could send a mark the phone takes back.
+  the phone before the pass that owes its mark. A soundbite whose
+  set-aside write lands after a pass read it as current has its mark taken
+  back by that pass and owed again by the next, which reads it set aside;
+  if a new soundbite makes room with it in between, home never gets its
+  mark.
 - _Why not enforced:_ which files call the copy, the watch and the scene
   notes' read are pinned (`egress-choke-points`). Whether each call
   copies only while the phone is paired is a reading of its guard, which a
@@ -791,7 +807,8 @@ only from the lane's hook and the scene notes read for home only there
   writes, and writes nothing without, is held by its own test (the desk's
   `pattern.test.ts`, `scene-voice/runtime.test.ts`, `jobs/__tests__/runtime.test.ts`,
   soundbites' `components/soundbites/index.test.tsx`, `voice-marks/index.test.ts`),
-  and the marks' path end to end by `voice-aside.test.ts`, `set-aside.test.ts`
+  and the marks' path end to end, `marksSendable` and `settleMarks`
+  included, by `voice-aside.test.ts`, `set-aside.test.ts`
   and `lib/voice-home/__tests__/model.test.ts` and `runtime.test.ts`.
 
 ### LA14: Settings never says a voice note waits that this phone cannot send
@@ -1064,7 +1081,7 @@ What no test can say is where a reflection goes once an allowed module holds it:
   (`sendReflections` in `lib/home-link/reflections.ts`, through `sendWhole`
   in `leetype-log.ts`, one `PUT /routine/reflections/:id` each, from
   `drainHome` alone), or as a spoken
-  one's voice note (LA13); the one-tap answers reach no server; nothing else
+  one's voice note and its set-aside mark (LA13); the one-tap answers reach no server; nothing else
   passes one to anything that sends to `file_host` or writes a session, a
   signal or the device backend's database; and a reflection leaves the phone
   without its person's own let go only through the store's `trimOffline`,
@@ -1085,7 +1102,8 @@ What no test can say is where a reflection goes once an allowed module holds it:
   the module it names against the claim); a hunk, in a module either list
   names, that passes a reflection or a value built from one to a call that
   sends to `file_host` or writes a session, a signal or the device backend's
-  database, other than `sendReflections`' `PUT` and LA13's voice lane; a hunk
+  database, other than `sendReflections`' `PUT` and LA13's voice lane; a
+  hunk that calls `wireVoiceMarks` anywhere but `watchVoiceNotes`; a hunk
   to `lib/home-link/reflections.ts`, or to `sendWhole` or `heldBy` in
   `lib/home-link/leetype-log.ts`, that sends anything but a `text`
   reflection, whole as kept, or by another method or path, or lets `held`

@@ -25,6 +25,7 @@ import {
 } from "@some-ui/voice-capture"
 
 import { boundedList } from "@/lib/bounded-list"
+import type { MarkFrom } from "@/lib/voice-marks"
 
 import type { DeskShape, PatternPhone, PatternTakesPorts } from "./pattern"
 import { createPatternTakes } from "./pattern"
@@ -95,6 +96,12 @@ type DeskOptions = {
   readonly key: string
   readonly dbName: string
   readonly limits: TakeLimits
+  /**
+   * The store home is told the takes are kept in, for their set-aside marks
+   * (`lib/voice-marks`); null for takes that go home in no lane yet, or have
+   * no Let go.
+   */
+  readonly from: MarkFrom | null
 }
 
 type PatternDeskOptions = DeskOptions & {
@@ -181,6 +188,7 @@ function desk<R extends Runtime>(
       now: () => Date.now(),
       newId: () => crypto.randomUUID(),
       kept: (id) => where(id),
+      from: options.from,
       held: (id) => homeHolds(where(id)),
     })
     return runtime

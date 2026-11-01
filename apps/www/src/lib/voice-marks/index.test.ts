@@ -15,8 +15,8 @@ const AT = "2026-11-01T09:15:00.000Z"
 /** A lane's owing that records what happened, in order. */
 function lane(keeps: boolean, log: Array<string>): MarkOwing {
   return {
-    owe: (id, at): boolean => {
-      log.push(`owe ${id} ${at}`)
+    owe: (id, at, from): boolean => {
+      log.push(`owe ${id} ${at} ${from}`)
       return keeps
     },
     unowe: (id): void => {
@@ -30,6 +30,7 @@ describe("setAsideOwing (LA13)", () => {
     const log: Array<string> = []
     const written = setAsideOwing(
       "n1",
+      "lens",
       AT,
       () => {
         log.push("write")
@@ -38,7 +39,7 @@ describe("setAsideOwing (LA13)", () => {
       lane(true, log)
     )
     expect(written).toBe(true)
-    expect(log).toEqual([`owe n1 ${AT}`, "write"])
+    expect(log).toEqual([`owe n1 ${AT} lens`, "write"])
   })
 
   it("writes nothing when the mark can't be kept, and takes it back when the write fails", () => {
@@ -46,6 +47,7 @@ describe("setAsideOwing (LA13)", () => {
     expect(
       setAsideOwing(
         "n1",
+        "lens",
         AT,
         () => {
           refused.push("write")
@@ -54,21 +56,40 @@ describe("setAsideOwing (LA13)", () => {
         lane(false, refused)
       )
     ).toBe(false)
-    expect(refused).toEqual([`owe n1 ${AT}`])
+    expect(refused).toEqual([`owe n1 ${AT} lens`])
 
     const failed: Array<string> = []
-    expect(setAsideOwing("n1", AT, () => false, lane(true, failed))).toBe(false)
-    expect(failed).toEqual([`owe n1 ${AT}`, "unowe n1"])
+    expect(
+      setAsideOwing("n1", "lens", AT, () => false, lane(true, failed))
+    ).toBe(false)
+    expect(failed).toEqual([`owe n1 ${AT} lens`, "unowe n1"])
   })
 
   it("owes through the lane while it is wired, and answers yes with none", () => {
-    expect(voiceMarks.owe("n1", AT)).toBe(true)
+    expect(voiceMarks.owe("n1", AT, "scene")).toBe(true)
     const log: Array<string> = []
     const unwire = wireVoiceMarks(lane(false, log))
-    expect(voiceMarks.owe("n1", AT)).toBe(false)
-    expect(setAsideOwing("n2", AT, () => true)).toBe(false)
+    expect(voiceMarks.owe("n1", AT, "scene")).toBe(false)
+    expect(setAsideOwing("n2", "jobs", AT, () => true)).toBe(false)
     unwire()
-    expect(voiceMarks.owe("n3", AT)).toBe(true)
-    expect(log).toEqual([`owe n1 ${AT}`, `owe n2 ${AT}`])
+    expect(voiceMarks.owe("n3", AT, "scene")).toBe(true)
+    expect(log).toEqual([`owe n1 ${AT} scene`, `owe n2 ${AT} jobs`])
+  })
+
+  it("owes nothing for a store whose notes go home in no lane yet, and just writes", () => {
+    const log: Array<string> = []
+    expect(
+      setAsideOwing(
+        "n1",
+        null,
+        AT,
+        () => {
+          log.push("write")
+          return true
+        },
+        lane(false, log)
+      )
+    ).toBe(true)
+    expect(log).toEqual(["write"])
   })
 })

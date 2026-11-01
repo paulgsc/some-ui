@@ -20,6 +20,8 @@ const MAX = 40
 
 const desk = takesDesk({
   key: "some-ui:idea-takes",
+  // The kit's desk: no Let go.
+  from: null,
   dbName: "some-ui.idea-takes",
   limits: { max: MAX, maxMs: MAX_MS },
 })

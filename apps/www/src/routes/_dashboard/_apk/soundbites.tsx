@@ -139,7 +139,10 @@ const SoundbitesRoute = (): JSX.Element => {
   useEffect(() => {
     // Let go owes each soundbite's set-aside mark through the voice lane
     // (`lib/voice-marks`, MIC2).
-    soundbitesOweMarks(voiceMarks)
+    soundbitesOweMarks({
+      owe: (id, at) => voiceMarks.owe(id, at, "soundbite"),
+      unowe: voiceMarks.unowe,
+    })
     if (import.meta.env.VITE_DEVICE_BACKEND !== "true") return
     keepSoundbites({
       store: phoneSoundbiteStore(),

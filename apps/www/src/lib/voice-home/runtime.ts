@@ -67,9 +67,17 @@ export type VoiceHome = {
    * the mark, has it answered, or needs none (home refused the note); a mark
    * storage would not keep is owed nowhere, not even in memory.
    */
-  owe: (id: string, at: string) => boolean
-  /** Takes back a mark owed for a set-aside write that did not happen. */
+  owe: (id: string, at: string, from: string) => boolean
+  /**
+   * Takes back a mark owed for a set-aside write that did not happen, or for
+   * a note its store lists as current.
+   */
   unowe: (id: string) => void
+  /**
+   * Forgets the marks owed for `ids`, notes listed nowhere they could be,
+   * whose copy neither waits nor is held: they can never be taken.
+   */
+  forget: (ids: ReadonlyArray<string>) => void
   /** What `lib/home-link/set-aside`'s marks read and answer through. */
   marks: AsidePort
   /** Clears copies the record names neither waiting nor refused. Best effort. */
@@ -160,8 +168,8 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
         }
       },
     },
-    owe(id, at): boolean {
-      apply({ kind: "aside", id, at })
+    owe(id, at, from): boolean {
+      apply({ kind: "aside", id, at, from })
       if (owes(stored, id)) return true
       // Not owed as storage keeps it: owed nowhere, so no later write
       // carries a mark for a note that was not set aside.
@@ -170,6 +178,9 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
     },
     unowe(id): void {
       apply({ kind: "unowed", id })
+    },
+    forget(ids): void {
+      if (ids.length > 0) apply({ kind: "gone", ids })
     },
     marks: {
       due: () => marksDue(state),

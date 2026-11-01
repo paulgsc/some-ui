@@ -78,6 +78,7 @@ export function testDesk(
       newId: () => `n${(next += 1)}`,
       kept,
       marks,
+      from: "leetype",
     },
     limits
   )

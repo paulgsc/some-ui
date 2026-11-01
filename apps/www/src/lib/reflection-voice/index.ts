@@ -87,7 +87,7 @@ export function phoneVoiceNote(
       // LA13: set aside only once its mark is owed (`lib/voice-marks`).
       setAside: (id) => {
         const at = new Date().toISOString()
-        return setAsideOwing(id, at, () =>
+        return setAsideOwing(id, "reflection", at, () =>
           reflections.standAside(id, "set-aside", at)
         )
       },

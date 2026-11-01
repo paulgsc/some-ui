@@ -206,6 +206,7 @@ export function createSceneVoice(ports: SceneVoicePorts): PhoneSceneVoice {
         const at = new Date(ports.now()).toISOString()
         const stored = setAsideOwing(
           id,
+          "scene",
           at,
           () => ports.notes.setAside([id], at),
           ports.marks

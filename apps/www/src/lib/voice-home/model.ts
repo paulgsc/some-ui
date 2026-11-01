@@ -57,8 +57,17 @@ export type VoiceOut = {
 
 type VoiceRefusal = { readonly id: string; readonly why: string }
 
-/** A set-aside mark home is owed: the note, and when it was let go (ISO 8601). */
-export type AsideMark = { readonly id: string; readonly at: string }
+/**
+ * A set-aside mark home is owed: the note, when it was let go (ISO 8601),
+ * and the store it is kept in (`lib/voice-marks`' `MarkFrom`; none on a
+ * mark an earlier build owed), which says whether the voice lane has read
+ * where the note would be listed.
+ */
+export type AsideMark = {
+  readonly id: string
+  readonly at: string
+  readonly from?: string
+}
 
 /**
  * How many answered marks this phone remembers, newest kept. A take still
@@ -124,14 +133,28 @@ export type VoiceHomeEvent =
   /** Home holds it, as this phone heard at `at` (ISO 8601). */
   | { readonly kind: "held"; readonly id: string; readonly at: string }
   | { readonly kind: "refused"; readonly id: string; readonly why: string }
-  /** The owner set this note aside at `at`, as this phone first saw it. */
-  | { readonly kind: "aside"; readonly id: string; readonly at: string }
+  /** The owner set this note aside at `at`, kept in `from`. */
+  | {
+      readonly kind: "aside"
+      readonly id: string
+      readonly at: string
+      readonly from?: string
+    }
   /** Home took the note's set-aside mark. */
   | { readonly kind: "marked"; readonly id: string }
   /** Home will never take the note's mark (a time it can't read). */
   | { readonly kind: "unmarkable"; readonly id: string }
-  /** The set-aside write the mark was owed for did not happen. */
+  /**
+   * The set-aside write the mark was owed for did not happen, or the note
+   * reads as current where it is kept.
+   */
   | { readonly kind: "unowed"; readonly id: string }
+  /**
+   * These notes are listed nowhere they could be, and their copy neither
+   * waits nor is held: they left the phone before home had them, so no mark
+   * of theirs can ever be taken.
+   */
+  | { readonly kind: "gone"; readonly ids: ReadonlyArray<string> }
 
 /**
  * What home's set-aside marks are read and answered through
@@ -233,8 +256,27 @@ export function stepVoiceHome(
       }
       return {
         ...state,
-        aside: { owed: [...owed, { id: event.id, at: event.at }], answered },
+        aside: {
+          owed: [
+            ...owed,
+            event.from === undefined
+              ? { id: event.id, at: event.at }
+              : { id: event.id, at: event.at, from: event.from },
+          ],
+          answered,
+        },
       }
+    }
+    case "gone": {
+      const gone = new Set(event.ids)
+      const held = new Set(state.held)
+      const waiting = new Set(state.waiting.map((note) => note.id))
+      const owed = state.aside.owed.filter(
+        (mark) =>
+          !gone.has(mark.id) || held.has(mark.id) || waiting.has(mark.id)
+      )
+      if (owed.length === state.aside.owed.length) return state
+      return { ...state, aside: { ...state.aside, owed } }
     }
     case "unowed": {
       if (!state.aside.owed.some((mark) => mark.id === event.id)) return state
@@ -378,7 +420,10 @@ function isRefusal(value: unknown): value is VoiceRefusal {
 }
 
 const isMark = (value: unknown): value is AsideMark =>
-  isRecord(value) && isString(value.id) && isString(value.at)
+  isRecord(value) &&
+  isString(value.id) &&
+  isString(value.at) &&
+  (value.from === undefined || isString(value.from))
 
 /** The record's `aside`, or none owed for one written before MIC2. */
 function asideOf(value: unknown): AsideState | null {
@@ -395,7 +440,9 @@ function asideOf(value: unknown): AsideState | null {
   // A record an earlier build wrote may carry more (a count of runs home
   // found no note, marks given up): only the mark and its time are read.
   return {
-    owed: value.owed.map(({ id, at }) => ({ id, at })),
+    owed: value.owed.map(({ id, at, from }) =>
+      from === undefined ? { id, at } : { id, at, from }
+    ),
     answered: value.answered,
   }
 }

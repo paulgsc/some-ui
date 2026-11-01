@@ -36,7 +36,7 @@ import type {
 } from "@some-ui/voice-capture"
 import { ONE_TAKE, shelveTake, takePattern } from "@some-ui/voice-capture"
 
-import type { MarkOwing } from "@/lib/voice-marks"
+import type { MarkFrom, MarkOwing } from "@/lib/voice-marks"
 import { setAsideOwing } from "@/lib/voice-marks"
 
 import type { Take, TakeLimits } from "./runtime"
@@ -68,6 +68,11 @@ export type PatternTakesPorts = {
   kept: (id: string) => TakeKept
   /** What owes home a take's set-aside mark; the phone's unless a test gives its own. */
   marks?: MarkOwing | undefined
+  /**
+   * The store home is told the takes are kept in, for their set-aside marks;
+   * null for a desk whose takes go home in no lane yet (Rust Rounds).
+   */
+  from: MarkFrom | null
   /** The kit's `audioPlayer` unless a test gives its own. */
   player?: Player | undefined
   /** The phone's one microphone unless a test gives its own. */
@@ -208,6 +213,7 @@ export function createPatternTakes(
         const at = ports.now()
         const stored = setAsideOwing(
           id,
+          ports.from,
           new Date(at).toISOString(),
           () => ports.takes.setAside(id, at),
           ports.marks

@@ -140,6 +140,8 @@ import { onStudioKept, studioKeeping } from "@/lib/studio-keeping"
 import { phoneVoiceHome } from "@/lib/voice-home"
 import { exchangeVoice } from "@/lib/voice-home/home"
 import type {
+  AsideMark,
+  AsidePort,
   CopyPass,
   Unsendable,
   VoiceHomeState,
@@ -365,6 +367,12 @@ export const storesRead = {
   },
 }
 
+/**
+ * Whether the soundbites were read in the last copy pass: only then does
+ * their list say which are set aside, and which have left the phone.
+ */
+let soundbitesFresh = false
+
 async function readSoundbites(): Promise<void> {
   const kept = soundbiteKeeping()
   if (kept === null) return
@@ -375,7 +383,71 @@ async function readSoundbites(): Promise<void> {
     audio: (): Promise<Blob | null> => store.audio(bite.id),
     aside: asideAt(bite),
   }))
+  soundbitesFresh = true
   wasRead()
+}
+
+/**
+ * The stores with Let go read as they are now (`MarkFrom`): every one but
+ * the soundbites at each look, and those once the last copy pass read them.
+ * A mark of an earlier build names no store, so its note is read only when
+ * every store is.
+ */
+function readNow(from: string | undefined): boolean {
+  if (from === undefined || from === "soundbite") return soundbitesFresh
+  return true
+}
+
+/**
+ * Which set-aside marks may go to home now (MIC2, LA13): one whose note its
+ * store lists as set aside, or whose note its store, read, lists no more
+ * (it left the phone once home held it). One whose note is listed as
+ * current goes nowhere: its set-aside write is pending or never happened
+ * (the soundbites' store writes after the mark is owed, and the app can be
+ * closed between).
+ */
+function marksSendable(
+  listed: ReadonlyArray<Candidate>
+): (mark: AsideMark) => boolean {
+  const standing = standingsRead(listed)
+  return (mark): boolean => standing.get(mark.id) ?? readNow(mark.from)
+}
+
+/**
+ * Whether each note `listed` is set aside, by id, from the stores read now
+ * alone: soundbites listed by a read that is not the last pass's say
+ * nothing, so a stale list can neither send a mark nor take one back.
+ */
+function standingsRead(
+  listed: ReadonlyArray<Candidate>
+): ReadonlyMap<string, boolean> {
+  return new Map(
+    listed
+      .filter(({ note }) => readNow(note.of))
+      .map(({ note, aside }) => [note.id, aside !== undefined])
+  )
+}
+
+/**
+ * Settles the marks owed against what the stores list (MIC2, LA13): one
+ * whose note is listed as current is taken back, its set-aside write never
+ * having landed; one whose note no store it could be in lists, read, and
+ * whose copy neither waits nor is held is forgotten, since it left the
+ * phone before home had it and no mark of it can be taken.
+ */
+function settleMarks(listed: ReadonlyArray<Candidate>): void {
+  const home = phoneVoiceHome()
+  const { owed } = home.getSnapshot().aside
+  if (owed.length === 0) return
+  const standing = standingsRead(listed)
+  for (const mark of owed) {
+    if (standing.get(mark.id) === false) home.unowe(mark.id)
+  }
+  home.forget(
+    owed
+      .filter((mark) => !standing.has(mark.id) && readNow(mark.from))
+      .map(({ id }) => id)
+  )
 }
 
 async function readStudio(): Promise<void> {
@@ -478,7 +550,7 @@ function oweMarks(listed: ReadonlyArray<Candidate>): void {
   const home = phoneVoiceHome()
   const now = new Date().toISOString()
   for (const { note, aside } of listed) {
-    if (aside !== undefined) home.owe(note.id, aside ?? now)
+    if (aside !== undefined) home.owe(note.id, aside ?? now, note.of)
   }
 }
 
@@ -543,6 +615,7 @@ async function copyAll(): Promise<CopyPass> {
   let pass = NO_PASS
   const gone = new Set<string>()
   let failed = false
+  soundbitesFresh = false
   const listed = await readEach(
     [
       { source: "Studio takes", read: readStudio },
@@ -553,6 +626,7 @@ async function copyAll(): Promise<CopyPass> {
   if (!listed) pass = passWith(pass, "fault")
   const all = candidates()
   oweMarks(all)
+  settleMarks(all)
   for (const { note, audio } of all) {
     if (!paired()) break
     if (home.settled(note.id)) continue
@@ -671,7 +745,12 @@ export async function sendVoice(send: HomeCall): Promise<HomeExchanged> {
   const exchanged = await exchangeVoice(home.keeping, send)
   if (exchanged.kind !== "synced") return runEnd(pass, exchanged)
   await letGoOnHomesWord(send)
-  return runEnd(pass, await markSetAside(home.marks, send))
+  const sendable = marksSendable(candidates())
+  const marks: AsidePort = {
+    due: () => home.marks.due().filter(sendable),
+    answered: home.marks.answered,
+  }
+  return runEnd(pass, await markSetAside(marks, send))
 }
 
 /** Home's held notes as a set, made again only when the list changes. */
@@ -830,18 +909,20 @@ export function watchVoiceNotes(): () => void {
     }
     copySoon()
   }
+  // First, so nothing below can leave Let go owing nothing for the launch:
+  // it owes each note's mark in the record before its standing is written
+  // (LA13).
+  const unwire = wireVoiceMarks({
+    owe: (id, at, from) => phoneVoiceHome().owe(id, at, from),
+    unowe: (id): void => {
+      phoneVoiceHome().unowe(id)
+    },
+  })
   holdOffline()
   changed()
   letGoHeld()
   const stops = [
-    // Let go owes each note's mark in the record before its standing is
-    // written (LA13).
-    wireVoiceMarks({
-      owe: (id, at) => phoneVoiceHome().owe(id, at),
-      unowe: (id): void => {
-        phoneVoiceHome().unowe(id)
-      },
-    }),
+    unwire,
     phoneVoiceHome().subscribe(letGoHeld),
     // What home holds moved: the offline sets may make room again.
     phoneVoiceHome().subscribe(holdOffline),

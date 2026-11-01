@@ -28,6 +28,7 @@ const MAX_MS = 60_000
 
 const desk = patternDesk({
   key: "some-ui:leetype-takes",
+  from: "leetype",
   dbName: "some-ui.leetype-takes",
   limits: { max: MAX, maxMs: MAX_MS },
 })

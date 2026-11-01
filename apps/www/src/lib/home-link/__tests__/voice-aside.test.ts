@@ -54,6 +54,8 @@ const fakes = vi.hoisted(
     leetype: Array<Take>
     scene: Array<KeptSceneNote>
     paired: boolean
+    /** Whether the soundbites page has handed its store in this launch. */
+    bitesHanded: boolean
   } => ({
     home: null,
     reflections: [],
@@ -63,6 +65,7 @@ const fakes = vi.hoisted(
     leetype: [],
     scene: [],
     paired: true,
+    bitesHanded: true,
   })
 )
 
@@ -87,14 +90,17 @@ vi.mock("@/lib/jobs", () => ({
   jobVoiceAudio: (): unknown => ({ get: AUDIO }),
 }))
 vi.mock("@/lib/soundbite-keeping", () => ({
-  soundbiteKeeping: (): unknown => ({
-    store: {
-      list: (): Promise<Array<Soundbite>> => Promise.resolve(fakes.bites),
-      audio: AUDIO,
-      subscribe: () => (): void => undefined,
-    },
-    heldByHome: (): void => undefined,
-  }),
+  soundbiteKeeping: (): unknown =>
+    fakes.bitesHanded
+      ? {
+          store: {
+            list: (): Promise<Array<Soundbite>> => Promise.resolve(fakes.bites),
+            audio: AUDIO,
+            subscribe: () => (): void => undefined,
+          },
+          heldByHome: (): void => undefined,
+        }
+      : null,
   onSoundbitesKept: () => (): void => undefined,
 }))
 vi.mock("@/lib/studio-keeping", () => ({
@@ -316,6 +322,7 @@ beforeEach(() => {
   fakes.leetype = []
   fakes.scene = []
   fakes.paired = true
+  fakes.bitesHanded = true
 })
 
 describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
@@ -353,7 +360,7 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     const first: Array<string> = []
     expect(await sendVoice(home(first, () => 404))).toEqual({ kind: "synced" })
     expect(marksIn(first)).toHaveLength(1)
-    expect(fakes.home?.getSnapshot().aside.owed).toEqual([
+    expect(fakes.home?.getSnapshot().aside.owed).toMatchObject([
       { id: "n1", at: LET_GO },
     ])
 
@@ -374,7 +381,7 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
       })
       expect(marksIn(heard)).toHaveLength(1)
     }
-    expect(fakes.home?.getSnapshot().aside.owed).toEqual([
+    expect(fakes.home?.getSnapshot().aside.owed).toMatchObject([
       { id: "n1", at: LET_GO },
     ])
   })
@@ -386,7 +393,7 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
         ? Promise.reject(new Error("no answer"))
         : home([])(method, path, body)
     await expect(sendVoice(lost)).rejects.toThrow("no answer")
-    expect(fakes.home?.getSnapshot().aside.owed).toEqual([
+    expect(fakes.home?.getSnapshot().aside.owed).toMatchObject([
       { id: "n1", at: LET_GO },
     ])
   })
@@ -439,7 +446,7 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     await sendVoice(home([]))
     const stop = watchVoiceNotes()
     const letGo = (id: string): boolean =>
-      setAsideOwing(id, LET_GO, () => {
+      setAsideOwing(id, "scene", LET_GO, () => {
         fakes.scene = fakes.scene.map((note) =>
           note.id === id ? sceneNote(id, "set-aside") : note
         )
@@ -456,9 +463,9 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     expect(letGo("s2")).toBe(true)
     stop()
     // Unwired, Let go owes nothing: no lane, nothing goes home under a mark.
-    expect(voiceMarks.owe("s9", LET_GO)).toBe(true)
+    expect(voiceMarks.owe("s9", LET_GO, "scene")).toBe(true)
     expect(fakes.home.getSnapshot().aside.owed).toEqual([
-      { id: "s2", at: LET_GO },
+      { id: "s2", at: LET_GO, from: "scene" },
     ])
 
     // The draft lets s2 go on home's word; its mark goes all the same.
@@ -473,7 +480,7 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     fakes.reflections = [reflection("r1")]
     const stop = watchVoiceNotes()
     expect(
-      setAsideOwing("r1", LET_GO, () => {
+      setAsideOwing("r1", "reflection", LET_GO, () => {
         fakes.reflections = [reflection("r1", "set-aside")]
         return true
       })
@@ -488,6 +495,59 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     expect(await sendVoice(home(heard))).toEqual({ kind: "synced" })
     expect(heard.at(0)).toMatch(/^\/voice-notes\/r1\?/)
     expect(marksIn(heard)).toEqual([setAsidePath({ id: "r1", at: LET_GO })])
+  })
+
+  it("sends no mark for a soundbite its store still lists as current, and takes it back: the write is pending, or the app closed before it landed", async () => {
+    fakes.bites = [bite("b1")]
+    await sendVoice(home([]))
+    expect(fakes.home?.getSnapshot().held).toEqual(["b1"])
+    const stop = watchVoiceNotes()
+    // Owed at Let go, its write to the soundbites' store not landed.
+    expect(voiceMarks.owe("b1", LET_GO, "soundbite")).toBe(true)
+    stop()
+    const heard: Array<string> = []
+    expect(await sendVoice(home(heard))).toEqual({ kind: "synced" })
+    expect(marksIn(heard)).toEqual([])
+    expect(fakes.home?.getSnapshot().aside.owed).toEqual([])
+  })
+
+  it("holds back a mark for a note that isn't listed while its store isn't read this launch, and sends it once it is", async () => {
+    fakes.bites = [bite("b1")]
+    await sendVoice(home([]))
+    const stop = watchVoiceNotes()
+    expect(voiceMarks.owe("b1", LET_GO, "soundbite")).toBe(true)
+    stop()
+    // A new launch: the soundbites page hasn't handed its store in yet.
+    fakes.bitesHanded = false
+    const unread: Array<string> = []
+    expect(await sendVoice(home(unread))).toEqual({ kind: "synced" })
+    expect(marksIn(unread)).toEqual([])
+    expect(fakes.home?.getSnapshot().aside.owed).toHaveLength(1)
+
+    fakes.bitesHanded = true
+    fakes.bites = [bite("b1", "set-aside")]
+    const read: Array<string> = []
+    expect(await sendVoice(home(read))).toEqual({ kind: "synced" })
+    expect(marksIn(read)).toEqual([setAsidePath({ id: "b1", at: LET_GO })])
+  })
+
+  it("forgets a mark whose note left the phone before home had it, once its store is read, and keeps one whose copy waits", async () => {
+    fakes.paired = false
+    const stop = watchVoiceNotes()
+    expect(voiceMarks.owe("r1", LET_GO, "reflection")).toBe(true)
+    expect(voiceMarks.owe("b1", LET_GO, "soundbite")).toBe(true)
+    stop()
+    // Both let go from the phone before any copy was made.
+    fakes.paired = true
+    fakes.bitesHanded = false
+    await sendVoice(home([]))
+    // The reflections are read at each look; the soundbites aren't yet.
+    expect(fakes.home?.getSnapshot().aside.owed.map(({ id }) => id)).toEqual([
+      "b1",
+    ])
+    fakes.bitesHanded = true
+    await sendVoice(home([]))
+    expect(fakes.home?.getSnapshot().aside.owed).toEqual([])
   })
 
   it("reads when a note was set aside off any record, a time it can't read as none", () => {
