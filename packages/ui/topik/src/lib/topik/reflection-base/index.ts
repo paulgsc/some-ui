@@ -80,10 +80,20 @@ const GroupsSchema = z.array(
   })
 )
 
-/** `raw` as groups, or `null` when it doesn't read as them. */
-export function readGroups(
-  raw: unknown
-): ReadonlyArray<ReflectionGroup> | null {
+/** What `readGroups` makes of a file: its groups, or the entry it refuses. */
+export type ReadGroups =
+  | { readonly groups: ReadonlyArray<ReflectionGroup> }
+  | {
+      /** The first entry that doesn't read, as "entry 3's session". */
+      readonly refused: string
+    }
+
+/** `raw` as groups, or the first entry that doesn't read as one. */
+export function readGroups(raw: unknown): ReadGroups {
   const parsed = GroupsSchema.safeParse(raw)
-  return parsed.success ? parsed.data : null
+  if (parsed.success) return { groups: parsed.data }
+  const [index, field] = parsed.error.issues[0]?.path ?? []
+  if (typeof index !== "number") return { refused: "the list" }
+  const entry = `entry ${index + 1}`
+  return { refused: typeof field === "string" ? `${entry}'s ${field}` : entry }
 }

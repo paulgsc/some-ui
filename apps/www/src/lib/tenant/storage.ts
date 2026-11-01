@@ -37,7 +37,8 @@ export class NotKeptError extends Error {
  * `crypto.randomUUID` is missing: either way the id ends in random characters.
  *
  * RB1 (`packages/ui/topik/ROUTINE.md`): the reflections routine names a session
- * by its id's last 8 characters, so they stay the random part.
+ * by its id's last 8 characters; `__tests__/session-id.test.ts`, "RB1", holds
+ * that they are this random part.
  */
 export function generateId(prefix: string): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {

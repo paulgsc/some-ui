@@ -83,18 +83,25 @@ describe("RB1: a reflection group's base tells its sessions apart", () => {
 })
 
 describe("readGroups", () => {
-  it("reads groups and nothing else", () => {
-    expect(readGroups([{ day: DAY, session: UUID }])).toEqual([
-      { day: DAY, session: UUID },
-    ])
-    for (const raw of [
-      null,
-      {},
-      [{ day: "31 October", session: UUID }],
-      [{ day: DAY, session: "" }],
-      [{ day: DAY }],
-    ]) {
-      expect(readGroups(raw)).toBeNull()
-    }
+  it("reads groups", () => {
+    expect(readGroups([{ day: DAY, session: UUID }])).toEqual({
+      groups: [{ day: DAY, session: UUID }],
+    })
+  })
+
+  it("names the first entry that doesn't read, counting from 1", () => {
+    const one = { day: DAY, session: UUID }
+    expect(readGroups(null)).toEqual({ refused: "the list" })
+    expect(readGroups({})).toEqual({ refused: "the list" })
+    expect(readGroups([one, { day: "31 October", session: UUID }])).toEqual({
+      refused: "entry 2's day",
+    })
+    expect(readGroups([one, one, { day: DAY, session: "_." }])).toEqual({
+      refused: "entry 3's session",
+    })
+    expect(readGroups([{ day: DAY }])).toEqual({
+      refused: "entry 1's session",
+    })
+    expect(readGroups([one, "s1"])).toEqual({ refused: "entry 2" })
   })
 })
