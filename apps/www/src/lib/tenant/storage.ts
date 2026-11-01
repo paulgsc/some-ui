@@ -32,6 +32,13 @@ export class NotKeptError extends Error {
   }
 }
 
+/**
+ * `<prefix>-`, then a UUID, or the time and a random part where
+ * `crypto.randomUUID` is missing: either way the id ends in random characters.
+ *
+ * RB1 (`packages/ui/topik/ROUTINE.md`): the reflections routine names a session
+ * by its id's last 8 characters, so they stay the random part.
+ */
 export function generateId(prefix: string): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return `${prefix}-${crypto.randomUUID()}`
