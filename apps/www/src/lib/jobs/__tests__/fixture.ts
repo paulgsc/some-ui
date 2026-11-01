@@ -2,7 +2,11 @@ import { inMemoryStorage } from "@some-ui/core-utils"
 import type { Digest, JobsRun, Pick } from "@some-ui/job-desk"
 import { digestFileName, fingerprint } from "@some-ui/job-desk"
 import type { BlobShelf } from "@some-ui/voice-capture"
-import { vi } from "vitest"
+import { microphoneOwner } from "@some-ui/voice-capture"
+import {
+  simulatedMicrophone,
+  simulatedPlayer,
+} from "@some-ui/voice-capture/testing"
 
 import type { JobsPorts } from "@/lib/jobs/runtime"
 
@@ -144,7 +148,9 @@ export function ports(overrides: Partial<JobsPorts> = {}): JobsPorts {
     audio: memoryShelf(),
     saving: () => undefined,
     isSaving: () => false,
-    startRecording: vi.fn(),
+    startRecording: simulatedMicrophone({ now: Date.now }).startRecording,
+    owner: microphoneOwner(),
+    player: simulatedPlayer(),
     now: () => new Date("2026-10-18T22:00:00Z"),
     dayOf: () => "2026-10-18",
     newId: () => `id${(n += 1)}`,

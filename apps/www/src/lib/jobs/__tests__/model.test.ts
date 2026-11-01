@@ -15,6 +15,7 @@ import {
   DIGESTS_KEPT,
   draftVoice,
   EMPTY,
+  formTakes,
   kitOf,
   openOf,
   progressOf,
@@ -278,7 +279,7 @@ describe("step", () => {
     )
   })
 
-  it("lets a draft's voice note go, and never one the record names", () => {
+  it("sets a draft's voice note aside, kept, and never one the record names (D3)", () => {
     const note = (id: string): VoiceNote => ({
       id,
       mimeType: "audio/webm",
@@ -294,9 +295,41 @@ describe("step", () => {
       note: "",
       voice: ["v1"],
     })
-    state = step(state, { type: "voice-dropped", ids: ["v1", "v2"] })
-    expect(state.voice.map((v) => v.id)).toEqual(["v1"])
+    state = step(state, { type: "voice-set-aside", id: "v1" })
+    state = step(state, { type: "voice-set-aside", id: "v2" })
+    expect(state.voice.map((v) => [v.id, v.standing])).toEqual([
+      ["v1", undefined],
+      ["v2", "set-aside"],
+    ])
     expect(draftVoice(state, "o")).toEqual([])
+    expect(formTakes(state, "o")).toMatchObject([
+      {
+        id: "v2",
+        answers: "o",
+        standing: "set-aside",
+        kept: { place: "phone" },
+      },
+    ])
+  })
+
+  it("keeps the draft's note a Redo records again, out of the draft (D2)", () => {
+    const note = (id: string): VoiceNote => ({
+      id,
+      mimeType: "audio/webm",
+      durationMs: 2000,
+      owner: "o",
+    })
+    let state = step(opened, { type: "voice-kept", note: note("v1") })
+    state = step(state, {
+      type: "voice-kept",
+      note: note("v2"),
+      supersedes: "v1",
+    })
+    expect(state.voice.map((v) => [v.id, v.standing])).toEqual([
+      ["v1", "earlier"],
+      ["v2", undefined],
+    ])
+    expect(draftVoice(state, "o").map((v) => v.id)).toEqual(["v2"])
   })
 })
 

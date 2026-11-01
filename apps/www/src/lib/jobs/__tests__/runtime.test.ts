@@ -1,10 +1,10 @@
 import { inMemoryStorage } from "@some-ui/core-utils"
 import type { KeyedStorage } from "@some-ui/core-utils"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { isFile } from "@/lib/jobs/files"
 import type { PickRef } from "@/lib/jobs/model"
-import { EMPTY } from "@/lib/jobs/model"
+import { draftVoice, EMPTY, formTakes } from "@/lib/jobs/model"
 import type { NoticeAsked, NoticePort } from "@/lib/jobs/runtime"
 import { createJobsRuntime } from "@/lib/jobs/runtime"
 import { STORAGE_KEY, writeStored } from "@/lib/jobs/stored"
@@ -179,6 +179,39 @@ describe("createJobsRuntime", () => {
     runtime.sweep()
     await settle()
     expect(await p.audio.ids()).toEqual(["v2"])
+  })
+
+  it("keeps a form's voice note under its owner, and Redo and Let go keep every note out of the draft (D2, D3)", async () => {
+    vi.useFakeTimers()
+    try {
+      const p = ports({ now: () => new Date(Date.now()) })
+      const runtime = createJobsRuntime(p)
+      const { voice } = runtime
+      const talk = async (supersedes: string | null = null): Promise<void> => {
+        voice.tap("o", supersedes)
+        await vi.advanceTimersByTimeAsync(3_000)
+        voice.tap("o")
+        await vi.advanceTimersByTimeAsync(0)
+      }
+      await talk()
+      await talk()
+      const [first, second] = runtime
+        .getSnapshot()
+        .state.voice.map(({ id }) => id)
+      await talk(first)
+      voice.letGo(String(second), "phone")
+      const { state } = runtime.getSnapshot()
+      expect(state.voice.map((n) => [n.owner, n.standing])).toEqual([
+        ["o", "earlier"],
+        ["o", "set-aside"],
+        ["o", undefined],
+      ])
+      expect(draftVoice(state, "o")).toHaveLength(1)
+      expect(formTakes(state, "o")).toHaveLength(3)
+      expect(await p.audio.ids()).toHaveLength(3)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("files what a run missed again, with the audio still on the phone (LG1)", async () => {

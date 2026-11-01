@@ -1645,8 +1645,8 @@
     {
       "store": "phone:job-voice",
       "class": "record",
-      "growth": "bounded: JOB_VOICE_MAX_BYTES = 40 x 240,000 = 9,600,000 B of Jobs voice notes.",
-      "horizon": "a note's audio leaves once home holds it (letGo, LG1); a Drive share is a copy",
+      "growth": "bounded: JOB_VOICE_MAX_BYTES = JOB_VOICE_NOTES (40) x 240,000 = 9,600,000 B of Jobs voice notes; past it a take is refused.",
+      "horizon": "a note's audio leaves once home holds it (letGo, LG1), and nothing else removes one: a draft's note set aside or recorded again stays on the phone, out of the form (D2, D3, MIC5); a Drive share is a copy",
       "family": "what-is-kept"
     },
     {
