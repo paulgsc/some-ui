@@ -135,10 +135,10 @@ role, and it is the owner's call, so it is not built.
 - **Name**, anchored to its folder: `brief` takes `digest-YYYY-MM-DD.json`, and, from the
   routine's one-time backfill (MB2, below), a `decisions-YYYY-MM-DD.json`,
   `decisions-YYYY-MM-DD-<n>.json` (`<n>` from 2 to 99, no leading zero, as the phone numbers
-  a later share that day) or `scouts-YYYYMMDDTHHMMSS.json` (a time on the clock) under its
-  Drive name, only for a real calendar day from 2026-10-17, the first day the phone could
-  share one, through 2026-11-03, the day before the phone files every Jobs file home, that
-  only Drive holds, and each with its own
+  a later share that day) or `scouts-YYYYMMDDTHHMMSS.json` (a time on the clock) that only
+  Drive holds, under its Drive name, only for a real calendar day from 2026-10-17, the first
+  day the phone could share one, through 2026-11-03, the day before the phone files every
+  Jobs file home, and each with its own
   schema (`some-ui.job-decisions/1` or `some-ui.job-scouts/1`); `decisions` takes
   `decisions-YYYY-MM-DD.json` or `decisions-YYYY-MM-DD-<n>.json`; `scout` takes
   `scouts-YYYYMMDDTHHMMSS.json`; `scene` takes `scene-<reflection>.json` or

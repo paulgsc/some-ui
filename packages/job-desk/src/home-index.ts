@@ -61,9 +61,9 @@ export type IndexStanding = {
    */
   readonly backfill: ReadonlyArray<string>
   /**
-   * Files named for `DRIVE_ONLY_ENDED` or later that only Drive holds: the
-   * mailbox refuses them, and none is expected, since the phone files them
-   * home.
+   * Files named for `DRIVE_ONLY_ENDED` or later that Drive holds and the index
+   * lacks: the mailbox refuses them; the phone files them home, so one should
+   * only show up until home's next index.
    */
   readonly later: ReadonlyArray<string>
 }

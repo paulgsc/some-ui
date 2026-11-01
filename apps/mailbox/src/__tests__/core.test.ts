@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto"
+import { readFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
 import type { Deps } from "@mailbox/core"
 import {
   ARCHIVE_MIN_AGE_DAYS,
@@ -2063,5 +2065,19 @@ describe("when storage fails", () => {
     const written = await put(d, "brief", DIGEST_NAME, { body: DIGEST })
     expect(written.status).toBe(503)
     expect(reported).toHaveLength(2)
+  })
+})
+
+describe("the backfill's last day", () => {
+  it("is the day job-desk's index check holds too, which neither file can import", () => {
+    const bound = (path: string): string | undefined =>
+      /const DRIVE_ONLY_ENDED = "(\d{4}-\d{2}-\d{2})"/.exec(
+        readFileSync(fileURLToPath(new URL(path, import.meta.url).href), "utf8")
+      )?.[1]
+    const worker = bound("../core.ts")
+    expect(worker).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(bound("../../../../packages/job-desk/src/home-index.ts")).toBe(
+      worker
+    )
   })
 })
