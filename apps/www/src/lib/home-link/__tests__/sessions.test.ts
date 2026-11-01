@@ -264,6 +264,7 @@ describe("letting the phone's copies go once home holds them", () => {
       promptsGoing: () => [],
       letGoHeldPrompts: () => undefined,
       notesGoing: () => Promise.resolve({ going: [], onPhone: () => true }),
+      holdNotes: () => undefined,
       lensGoing: () => Promise.resolve({ going: [], onPhone: () => true }),
       pairing: PAIRING,
       storage,

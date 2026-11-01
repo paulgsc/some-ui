@@ -14,6 +14,9 @@
  * note or a lens answer asks for a run; a LeetType session finishing goes
  * on the next ask (the app coming back, say). Its waiting count is the
  * sessions, written reflections, asks, notes and lens entries home lacks.
+ * Once a run's notes part ends, the soundbites and LeetType's answer notes
+ * hear what home now holds of them (`./voice-copy`'s `holdNotes`, OS1), so
+ * a screen that said "full" can take one again.
  */
 import { useSyncExternalStore } from "react"
 import { queryClient } from "@/providers/tanstack-query"
@@ -51,6 +54,7 @@ import { promptsToSend } from "./prompts"
 import { writtenToSend } from "./reflections"
 import type { Sent } from "./sent"
 import { heldCounts, readSent, sessionsToSend } from "./sent"
+import { holdNotes } from "./voice-copy"
 
 function cachedSessions(): ReadonlyArray<SessionRecord> {
   return queryClient.getQueryData<Array<SessionRecord>>(sessionsKey) ?? []
@@ -81,6 +85,7 @@ export const practiceLane: Lane = {
       promptsGoing: () => promptsGoing(pairing, storage),
       letGoHeldPrompts,
       notesGoing: () => notesGoing(pairing, storage),
+      holdNotes,
       lensGoing: () => lensGoing(pairing, storage),
       pairing,
       storage,

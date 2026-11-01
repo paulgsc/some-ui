@@ -616,20 +616,32 @@ function holdLensRecord(): void {
 }
 
 /**
- * Hands each offline set what home holds, read back, so it may make room at
- * its cap with those and no others (HF5): the lens takes and LeetType takes
- * by their voice notes, LeetType's answer notes by their study notes, a
- * soundbite once home holds both its audio and its record, and a grammar-lens
- * entry once home holds it as it is now. Each reads `sent` once per look.
+ * Hands the offline sets whose records go as study notes (`./notes`) what
+ * home holds of them, read back: LeetType's answer notes by their study
+ * notes, and a soundbite once home holds both its audio and its record. Each
+ * store tells its screen, so a "full" line drawn before home held any clears
+ * (OS1, #2408). Practice's drain calls it once its notes part ends, since
+ * that run is what moves what home holds of their records.
  */
-function holdOffline(): void {
-  lensTakesDesk.heldByHome(voiceHeld)
-  leetypeTakesDesk.heldByHome(voiceHeld)
+export function holdNotes(): void {
   leetypeNotesHeldByHome(() => notesHeld("leetype"))
   soundbiteKeeping()?.heldByHome((): ((id: string) => boolean) => {
     const records = notesHeld("soundbite")
     return (id): boolean => voiceHeld(id) && records(id)
   })
+}
+
+/**
+ * Hands each offline set what home holds, read back, so it may make room at
+ * its cap with those and no others (HF5): the lens takes and LeetType takes
+ * by their voice notes, the stores of study notes (`holdNotes`), and the
+ * grammar-lens record by each entry as it is now. Each reads `sent` once per
+ * look.
+ */
+function holdOffline(): void {
+  lensTakesDesk.heldByHome(voiceHeld)
+  leetypeTakesDesk.heldByHome(voiceHeld)
+  holdNotes()
   holdLensRecord()
 }
 

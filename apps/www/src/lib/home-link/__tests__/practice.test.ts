@@ -4,8 +4,12 @@
  * Practice's lane hears the records HF5 added to its drain (LA15): a new
  * soundbite, LeetType answer note or grammar-lens entry moves its revision,
  * so its watch asks for a run, and each counts as waiting until this phone
- * knows home holds it.
+ * knows home holds it. Once its run has sent them, their stores hear what
+ * home holds (OS1).
  */
+import { createHash } from "node:crypto"
+import { useSyncExternalStore } from "react"
+import type { HomeCall } from "@some-ui/core-utils"
 import type { Soundbite } from "@some-ui/soundbites"
 import { act, renderHook } from "@testing-library/react"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
@@ -16,9 +20,14 @@ import type { Kept } from "@/lib/home-link/kept-runtime"
 import { watchKept } from "@/lib/home-link/kept-watch"
 import type { LensEntry } from "@/lib/home-link/lens-record"
 import { lensDigest, lensKey } from "@/lib/home-link/lens-record"
+import { notesHeld } from "@/lib/home-link/notes"
 import { practiceLane } from "@/lib/home-link/practice"
-import { readSent, rememberSent } from "@/lib/home-link/sent"
-import { leetypeNotes, phoneSpokenTakes } from "@/lib/leetype-takes"
+import { readSent, rememberSent, SENT_KEY } from "@/lib/home-link/sent"
+import {
+  leetypeNotes,
+  leetypeNotesHeldByHome,
+  phoneSpokenTakes,
+} from "@/lib/leetype-takes"
 import { keepSoundbites } from "@/lib/soundbite-keeping"
 
 const fakes = vi.hoisted(
@@ -27,7 +36,18 @@ const fakes = vi.hoisted(
     bitesHeard: Set<() => void>
     lens: Array<unknown>
     lensHeard: Set<() => void>
-  } => ({ bites: [], bitesHeard: new Set(), lens: [], lensHeard: new Set() })
+    /** Each reading of what home holds the soundbites' page was handed. */
+    bitesHeld: Array<() => (id: string) => boolean>
+    /** The voice notes home holds, as the voice lane last heard. */
+    voiceHeld: Array<string>
+  } => ({
+    bites: [],
+    bitesHeard: new Set(),
+    lens: [],
+    lensHeard: new Set(),
+    bitesHeld: [],
+    voiceHeld: [],
+  })
 )
 
 vi.mock("@/lib/device-backend/native-http", () => ({
@@ -45,7 +65,34 @@ vi.mock("@/lib/home-link/credential", () => ({
     clear: (): Promise<void> => Promise.resolve(),
   },
 }))
-vi.mock("@/lib/home-link/going", () => ({}))
+// The phone's ports for a run, carrying only the notes (`./going`'s `notesGoing`).
+vi.mock("@/lib/home-link/going", () => ({
+  readPhone: (): Promise<unknown> => Promise.resolve({ local: [], kept: [] }),
+  logGoing: (): Promise<Array<never>> => Promise.resolve([]),
+  studioGoing: (): Promise<unknown> =>
+    Promise.resolve({ sittings: [], reports: [] }),
+  reflectionsGoing: (): Array<never> => [],
+  letGoHeldReflections: (): void => undefined,
+  promptsGoing: (): Array<never> => [],
+  letGoHeldPrompts: (): void => undefined,
+  notesGoing: async (pairing: string): Promise<unknown> => {
+    const { leetypeNotes: answers } = await import("@/lib/leetype-takes")
+    const { notesOf, notesToSend } = await import("@/lib/home-link/notes")
+    const { readSent: sentOf } = await import("@/lib/home-link/sent")
+    const notes = notesOf(fakes.bites, answers())
+    return {
+      going: notesToSend(notes, sentOf(localStorage, pairing)),
+      onPhone: (): boolean => true,
+    }
+  },
+  lensGoing: (): Promise<unknown> =>
+    Promise.resolve({ going: [], onPhone: () => true }),
+}))
+vi.mock("@/lib/voice-home", () => ({
+  phoneVoiceHome: (): unknown => ({
+    getSnapshot: (): unknown => ({ held: fakes.voiceHeld }),
+  }),
+}))
 vi.mock("@/lib/tenant", () => ({
   useSessions: (): { data: Array<never> } => ({ data: [] }),
 }))
@@ -144,7 +191,9 @@ beforeAll(async () => {
         }
       },
     },
-    heldByHome: (): void => undefined,
+    heldByHome: (next): void => {
+      fakes.bitesHeld.push(next)
+    },
   })
   homeLink()
   await vi.waitFor(() => {
@@ -218,5 +267,73 @@ describe("Practice's lane, for HF5's records", () => {
     stop()
     expect(fakes.bitesHeard.size).toBe(0)
     expect(fakes.lensHeard.size).toBe(0)
+  })
+
+  it("OS1: a store full while home held none says so no longer once a run has sent what waited, with no other redraw", async () => {
+    // Home holds nothing yet, and the voice lane has told the stores how to
+    // read what home holds, as its watch does on starting.
+    localStorage.removeItem(SENT_KEY)
+    leetypeNotesHeldByHome(() => notesHeld("leetype"))
+    fakes.bites = [BITE]
+    fakes.voiceHeld = ["b1"]
+    const note = (): boolean =>
+      phoneSpokenTakes().note({
+        take: null,
+        file: "two-sum.md",
+        screen: "approach",
+        prompt: "Which structure?",
+        rubric: ["a map"],
+        ticks: [],
+        typed: "a hash map",
+      })
+    act(() => {
+      while (note()) {
+        // Noted, until there is no room.
+      }
+    })
+    const port = phoneSpokenTakes()
+    const shown = renderHook(() =>
+      useSyncExternalStore(port.subscribe, port.getSnapshot)
+    )
+    expect(shown.result.current.notesFull).toBe(true)
+    const toldBefore = fakes.bitesHeld.length
+
+    const puts: Array<string> = []
+    const send: HomeCall = (method, path, body) => {
+      expect(method).toBe("PUT")
+      puts.push(path)
+      const sha = createHash("sha256")
+        .update(typeof body === "string" ? body : "")
+        .digest("hex")
+      return Promise.resolve({
+        status: 200,
+        body: JSON.stringify({ change: "added", note: { sha256: sha } }),
+      })
+    }
+    await act(async () => {
+      await expect(
+        practiceLane.exchange(send, { pairing: PAIRING })
+      ).resolves.toEqual({ kind: "synced" })
+    })
+    expect(puts).toContain("/study-notes/soundbite/b1")
+    expect(puts.filter((p) => p.startsWith("/study-notes/leetype/"))).toEqual(
+      leetypeNotes().map((n) => `/study-notes/leetype/${n.id}`)
+    )
+
+    // The answers' screen heard it, so one more is taken again.
+    expect(shown.result.current.notesFull).toBe(false)
+    let noted = false
+    act(() => {
+      noted = note()
+    })
+    expect(noted).toBe(true)
+
+    // The soundbites' page was told again: home holds b1's audio and record.
+    expect(fakes.bitesHeld.length).toBe(toldBefore + 1)
+    const held = fakes.bitesHeld.at(-1)
+    expect(held?.()("b1")).toBe(true)
+    fakes.voiceHeld = []
+    expect(held?.()("b1")).toBe(false)
+    shown.unmount()
   })
 })
