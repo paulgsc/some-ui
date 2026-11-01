@@ -236,6 +236,23 @@ describe("GenerateLesson's spoken scene", () => {
     expect(onPromptHandedOff).not.toHaveBeenCalled()
   })
 
+  it("records nothing while the phone keeps as many notes as it can, and still plays and lets each go", () => {
+    renderGenerate({ sceneVoice: sceneDraft(notes, { full: true }) })
+    expect(screen.getByRole("status").textContent).toMatch(
+      /kept as many voice notes as it can\. One you let go makes room once a home it's paired with has it/
+    )
+    expect(document.querySelector("[data-take]")).toBeNull()
+    expect(
+      screen.getAllByRole("button", { name: /^Play the take/ })
+    ).toHaveLength(2)
+    expect(
+      screen.getAllByRole("button", { name: /^Let it go the take/ })
+    ).toHaveLength(2)
+    expect(
+      screen.queryAllByRole("button", { name: /^Redo the take/ })
+    ).toHaveLength(0)
+  })
+
   it("opens on the draft left open, and starts another by setting it aside, kept (D3)", () => {
     const draft = sceneDraft(notes)
     renderGenerate({ sceneVoice: draft })
