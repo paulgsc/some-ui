@@ -17,6 +17,7 @@ import type {
   StartRecording,
   TakeView,
 } from "@some-ui/voice-capture"
+// eslint-disable-next-line one-owner/no-local-microphone -- Jobs notes keep voiceNoteRuntime until they move onto the take pattern (MIC5, #2444)
 import {
   shelveTake,
   takeView,

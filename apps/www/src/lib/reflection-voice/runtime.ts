@@ -8,6 +8,7 @@ import type {
   StartRecording,
   VoiceNoteRuntime,
 } from "@some-ui/voice-capture"
+// eslint-disable-next-line one-owner/no-local-microphone -- reflection voice keeps voiceNoteRuntime until it moves onto the take pattern (MIC5, #2444)
 import { ShelfFullError, voiceNoteRuntime } from "@some-ui/voice-capture"
 
 import type { KeepResult, Reflection } from "@/lib/session-reflection"

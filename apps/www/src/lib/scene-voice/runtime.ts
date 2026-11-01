@@ -19,6 +19,7 @@ import type {
   StartRecording,
   VoiceNoteState,
 } from "@some-ui/voice-capture"
+// eslint-disable-next-line one-owner/no-local-microphone -- scene voice keeps voiceNoteRuntime until it moves onto the take pattern (MIC5, #2439)
 import {
   shelveTake,
   takeView,

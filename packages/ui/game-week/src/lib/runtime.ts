@@ -18,6 +18,7 @@ import type {
   StartRecording,
   TakeDeadlines,
 } from "@some-ui/voice-capture"
+// eslint-disable-next-line one-owner/no-local-microphone -- runs the embedded pattern's take effects; the kit exports takePlayback for the playback half but no runner for the take half (#2446)
 import { takePlayback, takeRunner } from "@some-ui/voice-capture"
 
 import type { FeedPort } from "./feed"

@@ -12,6 +12,7 @@ import type {
   StartRecording,
   TakeDeadlines,
 } from "@some-ui/voice-capture"
+// eslint-disable-next-line one-owner/no-local-microphone -- Studio runs its own take until its machine embeds the take kit (#2442)
 import { takeRunner } from "@some-ui/voice-capture"
 import type { IdeaListener, Listening } from "@soundbites/lib/idea/runtime"
 import { NO_LISTENER } from "@soundbites/lib/idea/runtime"

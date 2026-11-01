@@ -22,6 +22,9 @@ export { messageSentOnlyThrough } from "./message-sent-only-through.js"
 export { consoleReportsMessageOnly } from "./console-reports-message-only.js"
 export { noMountSnapshot } from "./no-mount-snapshot.js"
 export { noLocalPrimitive } from "./no-local-primitive.js"
+export { noLocalMicrophone } from "./no-local-microphone.js"
+export { noHandWrittenMicrophone } from "./no-hand-written-microphone.js"
+export { noLocalTakeWords } from "./no-local-take-words.js"
 export {
   noFixedStatusColor,
   noStructuralPaletteColor,

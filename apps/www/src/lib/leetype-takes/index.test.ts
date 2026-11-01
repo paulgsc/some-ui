@@ -10,6 +10,7 @@ import {
   phoneSpokenTakes,
 } from "@/lib/leetype-takes"
 
+// eslint-disable-next-line one-owner/no-hand-written-microphone -- stands in for the shelf this module builds on import, which no seam lets a test hand in (#2447)
 vi.mock("@some-ui/voice-capture", async (actual) => {
   const shelf = {
     put: vi.fn(() => Promise.resolve()),

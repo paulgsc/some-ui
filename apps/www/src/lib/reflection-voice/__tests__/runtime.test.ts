@@ -6,6 +6,7 @@ import type { VoicePorts } from "@/lib/reflection-voice/runtime"
 import { createVoiceNote } from "@/lib/reflection-voice/runtime"
 import type { Reflection } from "@/lib/session-reflection"
 
+// eslint-disable-next-line one-owner/no-hand-written-microphone -- goes with voiceNoteRuntime when reflection voice moves onto the take pattern (MIC5, #2444)
 function recording(durationMs: number): Recording {
   return {
     level: () => 0,

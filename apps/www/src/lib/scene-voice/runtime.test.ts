@@ -6,6 +6,7 @@ import { SCENE_NOTES_MAX } from "@/lib/scene-voice/budget"
 import type { KeptSceneNote, SceneVoicePorts } from "@/lib/scene-voice/runtime"
 import { createSceneVoice } from "@/lib/scene-voice/runtime"
 
+// eslint-disable-next-line one-owner/no-hand-written-microphone -- goes with voiceNoteRuntime when scene voice moves onto the take pattern (MIC5, #2439)
 function recording(durationMs: number): Recording {
   return {
     level: () => 0,

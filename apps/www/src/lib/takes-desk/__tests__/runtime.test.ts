@@ -2,7 +2,7 @@ import type {
   BlobShelf,
   ObservedEnding,
   Playback,
-  Recording,
+  StartRecording,
 } from "@some-ui/voice-capture"
 import { microphoneOwner, TAKE_ENDING_WORDS } from "@some-ui/voice-capture"
 import type {
@@ -10,7 +10,11 @@ import type {
   ScenarioPhone,
   ScenarioScreen,
 } from "@some-ui/voice-capture/testing"
-import { assertTakeProperties } from "@some-ui/voice-capture/testing"
+import {
+  assertTakeProperties,
+  simulatedMicrophone,
+  SPEAKING,
+} from "@some-ui/voice-capture/testing"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { Take, TakesPorts } from "@/lib/takes-desk/runtime"
@@ -25,17 +29,12 @@ import {
 const LENS_TAKES_MAX = 40
 const LIMITS = { max: LENS_TAKES_MAX, maxMs: 30_000 }
 
-function recording(durationMs: number): Recording {
-  return {
-    level: () => 0,
-    finish: () =>
-      Promise.resolve({
-        blob: new Blob(["abc"]),
-        mimeType: "audio/webm",
-        durationMs,
-      }),
-    discard: vi.fn(),
-  }
+/** The shared simulated microphone, hearing four seconds of speech per take. */
+function speaking(): StartRecording {
+  return simulatedMicrophone({
+    now: Date.now,
+    fallback: { ...SPEAKING, durationMs: 4_000 },
+  }).startRecording
 }
 
 const NOW = 1_760_000_000_000
@@ -62,7 +61,7 @@ function ports(listed: Array<Take> = []): TakesPorts & {
     home,
     held: (id) => home.has(id),
     ended: () => end(),
-    startRecording: () => Promise.resolve(recording(4_000)),
+    startRecording: speaking(),
     takes: {
       read: () => [...listed],
       add: (take): boolean => {
@@ -120,12 +119,10 @@ describe("createTakes", () => {
     vi.useFakeTimers()
     try {
       const p = ports()
-      p.startRecording = (): Promise<Recording> =>
-        Promise.resolve({
-          ...recording(4_000),
-          level: () => 0.03,
-          metered: () => true,
-        })
+      p.startRecording = simulatedMicrophone({
+        now: Date.now,
+        fallback: { ...SPEAKING, durationMs: 4_000, level: 0.03 },
+      }).startRecording
       const takes = createTakes({ ...p, owner: microphoneOwner() }, LIMITS)
       takes.start("school-bus")
       await vi.advanceTimersByTimeAsync(1_000)
