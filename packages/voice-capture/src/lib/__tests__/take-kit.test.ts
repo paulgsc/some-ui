@@ -359,30 +359,14 @@ describe("VC2, VC3: every trace of the family keeps every property", () => {
   })
 
   it.each(CASES)("$name", async ({ screens = 1, mic = [], steps, ends }) => {
-    const endings: Array<string> = []
-    const build = kitScreens(takeKit, screens)
     const result = await runTakeScenario(
       { screens, mic, keeps: [], steps },
-      {
-        ...harness(screens),
-        build: (phone) => {
-          const built = build(phone)
-          for (const screen of built.screens) {
-            let seen = 0
-            screen.subscribe(() => {
-              const ended = screen.ended()
-              if (ended !== null && ended.seq > seen) {
-                seen = ended.seq
-                endings.push(ended.ending)
-              }
-            })
-          }
-          return built
-        },
-      }
+      harness(screens)
     )
     expect(result.violations).toEqual([])
-    expect([...endings].sort()).toEqual([...ends].sort())
+    expect(result.endings.map(({ ending }) => ending).sort()).toEqual(
+      [...ends].sort()
+    )
   })
 
   it("holds on every generated trace", async () => {
