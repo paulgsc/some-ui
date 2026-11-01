@@ -132,6 +132,23 @@ describe("the take button, row and list", () => {
     expect(on.mic.open()).toBe(0)
   })
 
+  it("keeps a take it didn't hear, says so, and offers Redo beside it (D4)", async () => {
+    const on = phone()
+    on.mic.script({ ...SPEAKING, level: 0.04 })
+    render(<Screen {...screenOn(on)} />)
+    fireEvent.click(takeButton())
+    await pass(2_100)
+    fireEvent.click(live())
+    await pass(0)
+    expect(screen.getByText(W.ended.unheard)).toBeInTheDocument()
+    expect(screen.getByRole("listitem")).toHaveTextContent(
+      `0:02 · ${W.place.phone}`
+    )
+    expect(
+      screen.getByRole("button", { name: W.rowLabel(W.redo, 2_000) })
+    ).toBeInTheDocument()
+  })
+
   it("can still be tapped while the microphone opens, which lets the take go", async () => {
     const on = phone()
     on.mic.script({ ...SPEAKING, open: { kind: "cue" } })

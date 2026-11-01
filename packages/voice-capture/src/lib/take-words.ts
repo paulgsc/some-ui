@@ -98,7 +98,11 @@ export const TAKE_WORDS: TakeWords = {
     home: "Set aside. Home keeps it.",
   },
   unplayable: "Couldn't play that take.",
-  ended: TAKE_ENDING_WORDS,
+  // The pattern's row offers Redo beside the take, so it says so.
+  ended: {
+    ...TAKE_ENDING_WORDS,
+    unheard: "Kept, but I didn't hear you. Redo it to say it again.",
+  },
 }
 
 /** What the take button shows. */

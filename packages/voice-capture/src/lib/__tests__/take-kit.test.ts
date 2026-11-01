@@ -20,8 +20,11 @@ import {
 } from "@voice-capture/lib/simulated-microphone"
 import type { TakeKitState } from "@voice-capture/lib/take-kit"
 import {
+  HEARD_FLOOR,
   initialTakeKit,
   stepTakeKit,
+  TAKE_ENDING_WORDS,
+  takeEndingSaid,
   takeKit,
 } from "@voice-capture/lib/take-kit"
 import fc from "fast-check"
@@ -71,7 +74,70 @@ describe("the take kit's step", () => {
       ending: "kept",
       id: "n1",
       reason: null,
+      unheard: false,
     })
+  })
+
+  it.each([
+    { peak: 0, metered: true, unheard: true, why: "silence, measured" },
+    { peak: 0.04, metered: true, unheard: true, why: "below the floor" },
+    { peak: HEARD_FLOOR, metered: true, unheard: false, why: "at the floor" },
+    { peak: 0.6, metered: true, unheard: false, why: "speech" },
+    { peak: 0, metered: false, unheard: false, why: "no meter running" },
+    { peak: 0, metered: undefined, unheard: false, why: "unknown meter" },
+  ])(
+    "keeps a take whose loudest level is $peak (metered: $metered), unheard: $unheard ($why) (D4)",
+    ({ peak, metered, unheard }) => {
+      const { state } = run([
+        { type: "tap", answers: "card-3" },
+        { type: "micOpened", at: 0 },
+        { type: "ticked", now: 200, level: peak / 2, metered },
+        { type: "ticked", now: 400, level: peak, metered },
+        { type: "ticked", now: 600, level: 0, metered },
+        { type: "tap", answers: "card-3" },
+        { type: "taken", take },
+        { type: "kept", result: { outcome: "kept", id: "n1" } },
+      ])
+      expect(state.ended).toMatchObject({ ending: "kept", unheard })
+      expect(takeEndingSaid(TAKE_ENDING_WORDS, state.ended!)).toBe(
+        unheard ? TAKE_ENDING_WORDS.unheard : TAKE_ENDING_WORDS.kept
+      )
+    }
+  )
+
+  it("counts only the take under way: a quiet take after a loud one is unheard (D4)", () => {
+    const loud = run([
+      { type: "tap", answers: "a" },
+      { type: "micOpened", at: 0 },
+      { type: "ticked", now: 200, level: 0.7, metered: true },
+      { type: "tap", answers: "a" },
+      { type: "taken", take },
+      { type: "kept", result: { outcome: "kept", id: "n1" } },
+    ])
+    const { state } = run(
+      [
+        { type: "tap", answers: "b" },
+        { type: "micOpened", at: 1_000 },
+        { type: "ticked", now: 1_200, level: 0.03, metered: true },
+        { type: "tap", answers: "b" },
+        { type: "taken", take },
+        { type: "kept", result: { outcome: "kept", id: "n2" } },
+      ],
+      loud.state
+    )
+    expect(state.ended).toMatchObject({ seq: 2, id: "n2", unheard: true })
+  })
+
+  it("never calls a take it did not keep unheard", () => {
+    const { state } = run([
+      { type: "tap", answers: "a" },
+      { type: "micOpened", at: 0 },
+      { type: "ticked", now: 200, level: 0.03, metered: true },
+      { type: "tap", answers: "a" },
+      { type: "taken", take },
+      { type: "kept", result: { outcome: "full" } },
+    ])
+    expect(state.ended).toMatchObject({ ending: "full", unheard: false })
   })
 
   it("records one ending per take, with what it answered", () => {
@@ -88,6 +154,7 @@ describe("the take kit's step", () => {
       ending: "blocked",
       id: null,
       reason: "elsewhere",
+      unheard: false,
     })
   })
 

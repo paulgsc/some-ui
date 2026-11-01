@@ -59,6 +59,11 @@ export type Take = { blob: Blob; mimeType: string; durationMs: number }
 export type Recording = {
   /** How loud the input is right now, 0 (silence) to 1. */
   level: () => number
+  /**
+   * Whether `level` is measuring right now: false where the meter is a flat
+   * zero (no Web Audio, or a context that would not start). Absent: unknown.
+   */
+  metered?: () => boolean
   /** Stops, releases the microphone, and resolves with what was said. */
   finish: () => Promise<Take>
   /** Stops and releases the microphone, keeping nothing. */
@@ -101,6 +106,7 @@ function failureOf(error: unknown): RecordingFailure {
  */
 function meter(stream: MediaStream): {
   level: () => number
+  metered: () => boolean
   close: () => void
 } {
   try {
@@ -123,11 +129,12 @@ function meter(stream: MediaStream): {
         // Speech sits around 0.05-0.2 RMS; stretch it across the meter.
         return Math.min(1, Math.sqrt(sum / samples.length) * 4)
       },
+      metered: () => context.state === "running",
       // Ignored: the meter is done either way.
       close: () => void context.close().catch(() => undefined),
     }
   } catch {
-    return { level: () => 0, close: () => undefined }
+    return { level: () => 0, metered: () => false, close: () => undefined }
   }
 }
 
@@ -225,6 +232,7 @@ async function startMicRecording(bitsPerSecond: number): Promise<Recording> {
 
   return {
     level: levels.level,
+    metered: levels.metered,
     async finish(): Promise<Take> {
       const durationMs = performance.now() - startedAt
       stop()

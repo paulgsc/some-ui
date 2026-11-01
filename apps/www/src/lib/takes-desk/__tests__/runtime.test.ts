@@ -4,7 +4,7 @@ import type {
   Playback,
   Recording,
 } from "@some-ui/voice-capture"
-import { microphoneOwner } from "@some-ui/voice-capture"
+import { microphoneOwner, TAKE_ENDING_WORDS } from "@some-ui/voice-capture"
 import type {
   ScenarioBuild,
   ScenarioPhone,
@@ -110,6 +110,30 @@ const kept = (id: string, takenAt: number): Take => ({
 })
 
 describe("createTakes", () => {
+  it("says a kept take it didn't hear, measured below the floor (D4)", async () => {
+    vi.useFakeTimers()
+    try {
+      const p = ports()
+      p.startRecording = (): Promise<Recording> =>
+        Promise.resolve({
+          ...recording(4_000),
+          level: () => 0.03,
+          metered: () => true,
+        })
+      const takes = createTakes({ ...p, owner: microphoneOwner() }, LIMITS)
+      takes.start("school-bus")
+      await vi.advanceTimersByTimeAsync(1_000)
+      takes.stop()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(takes.getSnapshot()).toMatchObject({
+        ended: { end: "kept" },
+        said: TAKE_ENDING_WORDS.unheard,
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("keeps a take of the line, audio then entry, as the item's last", async () => {
     const p = ports()
     const takes = createTakes(p, LIMITS)

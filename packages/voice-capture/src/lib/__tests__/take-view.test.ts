@@ -67,6 +67,7 @@ const ended = (ending: TakeEnding, answers = "card-1"): TakeEnded => ({
   ending,
   id: ending === "kept" ? "t9" : null,
   reason: ending === "blocked" ? "denied" : null,
+  unheard: false,
 })
 
 describe("one item's takes", () => {
